@@ -71,20 +71,12 @@ namespace Spartan
 		Pass_Ssao();
         Pass_Ssr();
         Pass_Light();
-        Pass_Composition(m_render_targets[RenderTarget_Composition]);
-
-		Pass_PostComposision
-		(
-            m_render_targets[RenderTarget_Composition],	// IN:	Light pass result
-            m_render_targets[RenderTarget_Final]	    // OUT: Result
-		);
-
-        m_render_targets[RenderTarget_Composition].swap(m_render_targets[RenderTarget_Composition_Previous]);
-
-        Pass_Lines(m_render_targets[RenderTarget_Final]);
-        Pass_Gizmos(m_render_targets[RenderTarget_Final]);
-		Pass_DebugBuffer(m_render_targets[RenderTarget_Final]);
-		Pass_PerformanceMetrics(m_render_targets[RenderTarget_Final]);
+        Pass_Composition();
+		Pass_PostProcess();
+        Pass_Lines(m_render_targets[RenderTarget_Composition_Ldr]);
+        Pass_Gizmos(m_render_targets[RenderTarget_Composition_Ldr]);
+		Pass_DebugBuffer(m_render_targets[RenderTarget_Composition_Ldr]);
+		Pass_PerformanceMetrics(m_render_targets[RenderTarget_Composition_Ldr]);
 
 		m_cmd_list->End();
 		m_cmd_list->Submit();
@@ -418,7 +410,7 @@ namespace Spartan
                 m_render_targets[RenderTarget_Gbuffer_Normal]->GetResource_Texture(),
                 m_render_targets[RenderTarget_Gbuffer_Depth]->GetResource_Texture(),
                 m_render_targets[RenderTarget_Gbuffer_Material]->GetResource_Texture(),
-                m_render_targets[RenderTarget_Composition_Previous]->GetResource_Texture()
+                m_render_targets[RenderTarget_Composition_Ldr_2]->GetResource_Texture()
             };
 
             // Pack samplers
@@ -559,13 +551,16 @@ namespace Spartan
         m_cmd_list->End();
     }
 
-	void Renderer::Pass_Composition(shared_ptr<RHI_Texture>& tex_out)
+	void Renderer::Pass_Composition()
 	{
         // Acquire shaders
         const auto& shader_quad         = m_shaders[Shader_Quad_V];
 		const auto& shader_composition  = m_shaders[Shader_Composition_P];
 		if (!shader_quad->IsCompiled() || !shader_composition->IsCompiled())
 			return;
+
+        // Acquire render target
+        auto& tex_out = m_render_targets[RenderTarget_Composition_Hdr];
 
         // Begin command list
 		m_cmd_list->Begin("Pass_Composition");
@@ -613,15 +608,18 @@ namespace Spartan
 		m_cmd_list->Submit();
 	}
 
-	void Renderer::Pass_PostComposision(shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+	void Renderer::Pass_PostProcess()
 	{
+        // IN:  RenderTarget_Composition_Hdr
+        // OUT: RenderTarget_Composition_Ldr
+
 		// Acquire shader
 		const auto& shader_quad = m_shaders[Shader_Quad_V];
 		if (!shader_quad->IsCompiled())
 			return;
 
 		// All post-process passes share the following, so set them once here
-		m_cmd_list->Begin("Pass_PostComposision");
+		m_cmd_list->Begin("Pass_PostProcess");
 		m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
 		m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
 		m_cmd_list->SetBlendState(m_blend_disabled);
@@ -631,74 +629,85 @@ namespace Spartan
 		m_cmd_list->SetShaderVertex(shader_quad);
 		m_cmd_list->SetInputLayout(shader_quad->GetInputLayout());
 
+        // Acquire render targets
+        auto& tex_in_hdr    = m_render_targets[RenderTarget_Composition_Hdr];
+        auto& tex_out_hdr   = m_render_targets[RenderTarget_Composition_Hdr_2];
+        auto& tex_in_ldr    = m_render_targets[RenderTarget_Composition_Ldr];
+        auto& tex_out_ldr   = m_render_targets[RenderTarget_Composition_Ldr_2];
+
 		// Render target swapping
-		const auto swap_targets = [this, &tex_in, &tex_out]() { m_cmd_list->Submit(); tex_out.swap(tex_in); };
+		const auto swap_targets_hdr = [this, &tex_in_hdr, &tex_out_hdr]() { m_cmd_list->Submit(); tex_in_hdr.swap(tex_out_hdr); };
+        const auto swap_targets_ldr = [this, &tex_in_ldr, &tex_out_ldr]() { m_cmd_list->Submit(); tex_in_ldr.swap(tex_out_ldr); };
 
 		// TAA	
-		if (FlagEnabled(Render_PostProcess_TAA))
-		{
-			Pass_TAA(tex_in, tex_out);
-			swap_targets();
-		}
+        if (FlagEnabled(Render_PostProcess_TAA))
+        {
+            Pass_TAA(tex_in_hdr, tex_out_hdr);
+            swap_targets_hdr();
+        }
 
 		// Bloom
 		if (FlagEnabled(Render_PostProcess_Bloom))
 		{
-			Pass_Bloom(tex_in, tex_out);
-			swap_targets();
+			Pass_Bloom(tex_in_hdr, tex_out_hdr);
+            swap_targets_hdr();
 		}
 
 		// Motion Blur
 		if (FlagEnabled(Render_PostProcess_MotionBlur))
 		{
-			Pass_MotionBlur(tex_in, tex_out);
-			swap_targets();
-		}
-
-		// Dithering
-		if (FlagEnabled(Render_PostProcess_Dithering))
-		{
-			Pass_Dithering(tex_in, tex_out);
-			swap_targets();
+			Pass_MotionBlur(tex_in_hdr, tex_out_hdr);
+            swap_targets_hdr();
 		}
 
 		// Tone-Mapping
 		if (m_tonemapping != ToneMapping_Off)
 		{
-			Pass_ToneMapping(tex_in, tex_out);
-			swap_targets();
+			Pass_ToneMapping(tex_in_hdr, tex_in_ldr); // HDR -> LDR
 		}
+        else
+        {
+            Pass_Copy(tex_in_hdr, tex_in_ldr);
+        }
+
+        // Dithering
+        if (FlagEnabled(Render_PostProcess_Dithering))
+        {
+            Pass_Dithering(tex_in_ldr, tex_out_ldr);
+            swap_targets_ldr();
+        }
 
 		// FXAA
 		if (FlagEnabled(Render_PostProcess_FXAA))
 		{
-			Pass_FXAA(tex_in, tex_out);
-			swap_targets();
+			Pass_FXAA(tex_in_ldr, tex_out_ldr);
+            swap_targets_ldr();
 		}
 
         // Sharpening - TAA controlled
         if (FlagEnabled(Render_PostProcess_TAA))
         {
-            Pass_TaaSharpen(tex_in, tex_out);
-            swap_targets();
+            Pass_TaaSharpen(tex_in_ldr, tex_out_ldr);
+            swap_targets_ldr();
         }
 
 		// Sharpening - User controlled
 		if (FlagEnabled(Render_PostProcess_Sharpening))
 		{
-			Pass_LumaSharpen(tex_in, tex_out);
-			swap_targets();
+			Pass_LumaSharpen(tex_in_ldr, tex_out_ldr);
+            swap_targets_ldr();
 		}
 
 		// Chromatic aberration
 		if (FlagEnabled(Render_PostProcess_ChromaticAberration))
 		{
-			Pass_ChromaticAberration(tex_in, tex_out);
-			swap_targets();
+			Pass_ChromaticAberration(tex_in_ldr, tex_out_ldr);
+            swap_targets_ldr();
 		}
 
 		// Gamma correction
-		Pass_GammaCorrection(tex_in, tex_out);
+		Pass_GammaCorrection(tex_in_ldr, tex_out_ldr);
+        swap_targets_ldr();
 
 		m_cmd_list->End();
 		m_cmd_list->Submit();
@@ -889,16 +898,15 @@ namespace Spartan
 			return;
 
         // Acquire render targets
-        auto& tex_current   = m_render_targets[RenderTarget_Taa_Current];
-        auto& tex_history   = m_render_targets[RenderTarget_Taa_History];
+        auto& tex_history   = m_render_targets[RenderTarget_Composition_Hdr_History];
+        auto& tex_history_2 = m_render_targets[RenderTarget_Composition_Hdr_History_2];
 
 		m_cmd_list->Begin("Pass_TAA");
         m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
 
-		// Resolve
+		// Resolve and accumulate to history texture
 		{
-			// Prepare resources
-			UpdateUberBuffer(tex_current->GetWidth(), tex_current->GetHeight());
+			// Pack textures
 			void* textures[] =
             {
                 tex_history->GetResource_Texture(),
@@ -907,35 +915,27 @@ namespace Spartan
                 m_render_targets[RenderTarget_Gbuffer_Depth]->GetResource_Texture()
             };
 
+            // Updated buffer
+            UpdateUberBuffer(tex_out->GetWidth(), tex_out->GetHeight());
+
 			m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from some previous pass)
-			m_cmd_list->SetRenderTarget(tex_current);
-			m_cmd_list->SetViewport(tex_current->GetViewport());
+			m_cmd_list->SetRenderTarget(tex_history_2);
+			m_cmd_list->SetViewport(tex_out->GetViewport());
 			m_cmd_list->SetShaderPixel(shader_taa);
 			m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
-			m_cmd_list->SetTextures(0, textures, 3);
+			m_cmd_list->SetTextures(0, textures, 4);
 			m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_uber_buffer);
 			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		}
 
 		// Copy
-		{
-			// Prepare resources
-			UpdateUberBuffer(tex_out->GetWidth(), tex_out->GetHeight());
-
-			m_cmd_list->SetRenderTarget(tex_out);
-			m_cmd_list->SetViewport(tex_out->GetViewport());
-			m_cmd_list->SetShaderPixel(shader_texture);
-			m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
-			m_cmd_list->SetTexture(0, tex_current);
-			m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_uber_buffer);
-			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
-		}
+        Pass_Copy(tex_history_2, tex_out);
 
 		m_cmd_list->End();
 		m_cmd_list->Submit();
 
-		// Swap textures so current becomes history
-        tex_current.swap(tex_history);
+		// Swap history texture so the above works again in the next frame
+        tex_history.swap(tex_history_2);
 	}
 
 	void Renderer::Pass_Bloom(shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
@@ -1558,7 +1558,7 @@ namespace Spartan
 
 		// Bind correct texture & shader pass
         shared_ptr<RHI_Texture> texture;
-        Shader_Type shader_type;
+        Renderer_Shader_Type shader_type;
 		if (m_debug_buffer == Renderer_Buffer_Albedo)
 		{
 			texture     = m_render_targets[RenderTarget_Gbuffer_Albedo];
@@ -1694,5 +1694,35 @@ namespace Spartan
         m_cmd_list->Submit();
 
         m_brdf_specular_lut_rendered = true;
+    }
+
+    void Renderer::Pass_Copy(shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    {
+        // Acquire shaders
+        const auto& shader_quad     = m_shaders[Shader_Quad_V];
+        const auto& shader_pixel    = m_shaders[Shader_Texture_P];
+        if (!shader_quad->IsCompiled() || !shader_pixel->IsCompiled())
+            return;
+
+        // Draw
+        m_cmd_list->Begin("Pass_Copy");
+        UpdateUberBuffer(tex_out->GetWidth(), tex_out->GetHeight(), m_view_projection_orthographic);
+        m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
+        m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
+        m_cmd_list->SetBlendState(m_blend_disabled);
+        m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+        m_cmd_list->SetRenderTarget(tex_out);
+        m_cmd_list->SetViewport(tex_out->GetViewport());
+        m_cmd_list->SetShaderVertex(shader_quad);
+        m_cmd_list->SetInputLayout(shader_quad->GetInputLayout());
+        m_cmd_list->SetShaderPixel(shader_pixel);
+        m_cmd_list->SetTexture(0, tex_in);
+        m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
+        m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_uber_buffer);
+        m_cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
+        m_cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
+        m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
+        m_cmd_list->End();
+        m_cmd_list->Submit();
     }
 }

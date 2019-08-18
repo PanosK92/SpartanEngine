@@ -95,7 +95,7 @@ namespace Spartan
         Renderer_Buffer_Shadows
 	};
 
-	enum ToneMapping_Type
+	enum Renderer_ToneMapping_Type
 	{
 		ToneMapping_Off,
 		ToneMapping_ACES,
@@ -114,7 +114,7 @@ namespace Spartan
 		Renderer_Object_Camera
 	};
 
-	enum Shader_Type
+	enum Renderer_Shader_Type
 	{
 		Shader_Gbuffer_V,
 		Shader_Depth_V,
@@ -154,7 +154,7 @@ namespace Spartan
 		Shader_BlurGaussianBilateral_P
 	};
 
-    enum RenderTarget_Type
+    enum Renderer_RenderTarget_Type
     {
         // G-Buffer
         RenderTarget_Gbuffer_Albedo,
@@ -164,25 +164,25 @@ namespace Spartan
         RenderTarget_Gbuffer_Depth,
         // Specular BRDF IBL
         RenderTarget_Brdf_Specular_Lut,
-        // Light
+        // Lighting
         RenderTarget_Light_Diffuse,
         RenderTarget_Light_Specular,
+        // Volumetric light
         RenderTarget_Light_Volumetric,
         RenderTarget_Light_Volumetric_Blurred,
         // Composition
-        RenderTarget_Composition,
-        RenderTarget_Composition_Previous,
-        // TAA
-        RenderTarget_Taa_Current,
-        RenderTarget_Taa_History,
+        RenderTarget_Composition_Hdr,
+        RenderTarget_Composition_Hdr_2,
+        RenderTarget_Composition_Ldr,
+        RenderTarget_Composition_Ldr_2,
+        RenderTarget_Composition_Hdr_History,
+        RenderTarget_Composition_Hdr_History_2,
         // SSAO
         RenderTarget_Ssao_Half,
         RenderTarget_Ssao_Half_Blurred,
         RenderTarget_Ssao,
         // SSR
-        RenderTarget_Ssr,
-        // Final frame
-        RenderTarget_Final
+        RenderTarget_Ssr
     };
 
 	class SPARTAN_CLASS Renderer : public ISubsystem
@@ -231,7 +231,7 @@ namespace Spartan
 		//================================================================
 
 		//= MISC ===============================================================================================================
-		auto& GetFrameTexture() 	                    { return m_render_targets[RenderTarget_Final]; }
+		auto& GetFrameTexture() 	                    { return m_render_targets[RenderTarget_Composition_Ldr]; }
 		auto GetFrameNum() const		                { return m_frame_num; }
 		const auto& GetCamera() const	                { return m_camera; }
 		auto IsInitialized() const		                { return m_initialized; }	
@@ -252,7 +252,7 @@ namespace Spartan
 		//======================================================================================================================
 
         //= Graphics Settings ====================================================================================================================================================
-        ToneMapping_Type m_tonemapping  = ToneMapping_Uncharted2;
+        Renderer_ToneMapping_Type m_tonemapping  = ToneMapping_Uncharted2;
         float m_exposure                = 1.5f;
         float m_gamma                   = 2.2f;
         // FXAA
@@ -269,6 +269,7 @@ namespace Spartan
         //========================================================================================================================================================================
 
 	private:
+        //= STARTUP CREATION ===========
 		void CreateDepthStencilStates();
 		void CreateRasterizerStates();
 		void CreateBlendStates();
@@ -277,10 +278,7 @@ namespace Spartan
 		void CreateShaders();
 		void CreateSamplers();
 		void CreateRenderTextures();
-		bool UpdateUberBuffer(uint32_t resolution_width, uint32_t resolution_height, const Math::Matrix& mMVP = Math::Matrix::Identity);
-		void RenderablesAcquire(const Variant& renderables);
-		void RenderablesSort(std::vector<Entity*>* renderables);
-		std::shared_ptr<RHI_RasterizerState>& GetRasterizerState(RHI_Cull_Mode cull_mode, RHI_Fill_Mode fill_mode);
+        //==============================
 
 		//= PASSES ============================================================================================================================================
 		void Pass_Main();
@@ -289,8 +287,8 @@ namespace Spartan
 		void Pass_Ssao();
         void Pass_Ssr();
         void Pass_Light();
-		void Pass_Composition(std::shared_ptr<RHI_Texture>& tex_out);
-		void Pass_PostComposision(std::shared_ptr<RHI_Texture>& tex_in,			std::shared_ptr<RHI_Texture>& tex_out);
+		void Pass_Composition();
+		void Pass_PostProcess();
 		void Pass_TAA(std::shared_ptr<RHI_Texture>& tex_in,						std::shared_ptr<RHI_Texture>& tex_out);
 		bool Pass_DebugBuffer(std::shared_ptr<RHI_Texture>& tex_out);
 		void Pass_ToneMapping(std::shared_ptr<RHI_Texture>& tex_in,				std::shared_ptr<RHI_Texture>& tex_out);
@@ -310,16 +308,24 @@ namespace Spartan
 		void Pass_Gizmos(std::shared_ptr<RHI_Texture>& tex_out);
 		void Pass_PerformanceMetrics(std::shared_ptr<RHI_Texture>& tex_out);
         void Pass_BrdfSpecularLut();
+        void Pass_Copy(std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
 		//=====================================================================================================================================================
 
-        //= RENDER TEXTURES =======================================================
-        std::map<RenderTarget_Type, std::shared_ptr<RHI_Texture>> m_render_targets;
-        std::vector<std::shared_ptr<RHI_Texture>> m_render_tex_bloom;
-        //=========================================================================
+        //= MISC =======================================================================================================================
+        bool UpdateUberBuffer(uint32_t resolution_width, uint32_t resolution_height, const Math::Matrix& mMVP = Math::Matrix::Identity);
+        void RenderablesAcquire(const Variant& renderables);
+        void RenderablesSort(std::vector<Entity*>* renderables);
+        std::shared_ptr<RHI_RasterizerState>& GetRasterizerState(RHI_Cull_Mode cull_mode, RHI_Fill_Mode fill_mode);
+        //==============================================================================================================================
 
-		//= SHADERS =================================================
-		std::map<Shader_Type, std::shared_ptr<RHI_Shader>> m_shaders;
-		//===========================================================
+        //= RENDER TEXTURES ================================================================
+        std::map<Renderer_RenderTarget_Type, std::shared_ptr<RHI_Texture>> m_render_targets;
+        std::vector<std::shared_ptr<RHI_Texture>> m_render_tex_bloom;
+        //==================================================================================
+
+		//= SHADERS ==========================================================
+		std::map<Renderer_Shader_Type, std::shared_ptr<RHI_Shader>> m_shaders;
+		//====================================================================
 
 		//= DEPTH-STENCIL STATES =======================================
 		std::shared_ptr<RHI_DepthStencilState> m_depth_stencil_enabled;
@@ -351,14 +357,14 @@ namespace Spartan
 		std::shared_ptr<RHI_Sampler> m_sampler_anisotropic_wrap;
 		//======================================================
 
-		//= STANDARD TEXTURES =======================================
+		//= STANDARD TEXTURES =====================================
 		std::shared_ptr<RHI_Texture> m_tex_noise_normal;
 		std::shared_ptr<RHI_Texture> m_tex_white;
 		std::shared_ptr<RHI_Texture> m_tex_black;
 		std::shared_ptr<RHI_Texture> m_gizmo_tex_light_directional;
 		std::shared_ptr<RHI_Texture> m_gizmo_tex_light_point;
 		std::shared_ptr<RHI_Texture> m_gizmo_tex_light_spot;
-		//===========================================================
+		//=========================================================
 
 		//= LINE RENDERING ========================================
 		std::shared_ptr<RHI_VertexBuffer> m_vertex_buffer_lines;

@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //======================
 
 static const float g_blendMin = 0.01f;
-static const float g_blendMax = 0.8f;
+static const float g_blendMax = 0.5f;
 
 float3 clip_aabb(float3 aabb_min, float3 aabb_max, float3 p, float3 q)
 {
@@ -56,22 +56,22 @@ float4 ResolveTAA(float2 texCoord, Texture2D tex_history, Texture2D tex_current,
 	float2 texCoord_history = texCoord - velocity;
 	
 	// Get current and history colors
-	float3 color_current 	= tex_current.Sample(sampler_bilinear, texCoord).rgb;
-	float3 color_history 	= tex_history.Sample(sampler_bilinear, texCoord_history).rgb;
+	float3 color_current 	= Reinhard(tex_current.Sample(sampler_bilinear, texCoord).rgb);
+	float3 color_history 	= Reinhard(tex_history.Sample(sampler_bilinear, texCoord_history).rgb);
 
 	//= Sample neighbourhood ==============================================================================
 	float2 du = float2(g_texel_size.x, 0.0f);
 	float2 dv = float2(0.0f, g_texel_size.y);
 
-	float3 ctl = tex_current.Sample(sampler_bilinear, texCoord - dv - du).rgb;
-	float3 ctc = tex_current.Sample(sampler_bilinear, texCoord - dv).rgb;
-	float3 ctr = tex_current.Sample(sampler_bilinear, texCoord - dv + du).rgb;
-	float3 cml = tex_current.Sample(sampler_bilinear, texCoord - du).rgb;
-	float3 cmc = tex_current.Sample(sampler_bilinear, texCoord).rgb;
-	float3 cmr = tex_current.Sample(sampler_bilinear, texCoord + du).rgb;
-	float3 cbl = tex_current.Sample(sampler_bilinear, texCoord + dv - du).rgb;
-	float3 cbc = tex_current.Sample(sampler_bilinear, texCoord + dv).rgb;
-	float3 cbr = tex_current.Sample(sampler_bilinear, texCoord + dv + du).rgb;
+	float3 ctl = Reinhard(tex_current.Sample(sampler_bilinear, texCoord - dv - du).rgb);
+	float3 ctc = Reinhard(tex_current.Sample(sampler_bilinear, texCoord - dv).rgb);
+	float3 ctr = Reinhard(tex_current.Sample(sampler_bilinear, texCoord - dv + du).rgb);
+	float3 cml = Reinhard(tex_current.Sample(sampler_bilinear, texCoord - du).rgb);
+	float3 cmc = Reinhard(tex_current.Sample(sampler_bilinear, texCoord).rgb);
+	float3 cmr = Reinhard(tex_current.Sample(sampler_bilinear, texCoord + du).rgb);
+	float3 cbl =Reinhard( tex_current.Sample(sampler_bilinear, texCoord + dv - du).rgb);
+	float3 cbc = Reinhard(tex_current.Sample(sampler_bilinear, texCoord + dv).rgb);
+	float3 cbr = Reinhard(tex_current.Sample(sampler_bilinear, texCoord + dv + du).rgb);
 	
 	float3 color_min = min(ctl, min(ctc, min(ctr, min(cml, min(cmc, min(cmr, min(cbl, min(cbc, cbr))))))));
 	float3 color_max = max(ctl, max(ctc, max(ctr, max(cml, max(cmc, max(cmr, max(cbl, max(cbc, cbr))))))));
@@ -86,10 +86,6 @@ float4 ResolveTAA(float2 texCoord, Texture2D tex_history, Texture2D tex_current,
 	
 	// Compute blend factor (but simply use max blend if the re-projected texcoord is out of screen)
 	float blendfactor = is_saturated(texCoord_history) ? lerp(g_blendMin, g_blendMax, factor_subpixel) : 1.0f;
-	
-	// Tonemap
-	color_history = Reinhard(color_history);
-	color_current = Reinhard(color_current);
 	
 	// Resolve
 	float3 resolved = lerp(color_history, color_current, blendfactor);

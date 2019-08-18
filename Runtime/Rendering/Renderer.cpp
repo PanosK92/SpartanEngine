@@ -246,25 +246,22 @@ namespace Spartan
         m_render_targets[RenderTarget_Gbuffer_Depth]    = make_shared<RHI_Texture2D>(m_context, width, height, Format_D32_FLOAT);
 
         // Light
-        m_render_targets[RenderTarget_Light_Diffuse]            = make_unique<RHI_Texture2D>(m_context, width, height, Format_R32G32B32A32_FLOAT);
-        m_render_targets[RenderTarget_Light_Specular]           = make_unique<RHI_Texture2D>(m_context, width, height, Format_R32G32B32A32_FLOAT);
-        m_render_targets[RenderTarget_Light_Volumetric]         = make_unique<RHI_Texture2D>(m_context, width, height, Format_R32G32B32A32_FLOAT);
-        m_render_targets[RenderTarget_Light_Volumetric_Blurred] = make_unique<RHI_Texture2D>(m_context, width, height, Format_R32G32B32A32_FLOAT);
+        m_render_targets[RenderTarget_Light_Diffuse]            = make_unique<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT);
+        m_render_targets[RenderTarget_Light_Specular]           = make_unique<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT);
+        m_render_targets[RenderTarget_Light_Volumetric]         = make_unique<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT);
+        m_render_targets[RenderTarget_Light_Volumetric_Blurred] = make_unique<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT);
 
         // BRDF Specular Lut
         m_render_targets[RenderTarget_Brdf_Specular_Lut]    = make_unique<RHI_Texture2D>(m_context, 400, 400, Format_R8G8_UNORM);
         m_brdf_specular_lut_rendered                        = false;
 
 		// Composition
-        m_render_targets[RenderTarget_Composition]          = make_unique<RHI_Texture2D>(m_context, width, height, Format_R32G32B32A32_FLOAT);
-        m_render_targets[RenderTarget_Composition_Previous] = make_unique<RHI_Texture2D>(m_context, width, height, Format_R32G32B32A32_FLOAT);
-
-        // TAA
-        m_render_targets[RenderTarget_Taa_Current] = make_unique<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT);
-        m_render_targets[RenderTarget_Taa_History] = make_unique<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT);
-
-        // Final
-        m_render_targets[RenderTarget_Final] = make_unique<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT);
+        m_render_targets[RenderTarget_Composition_Hdr]              = make_unique<RHI_Texture2D>(m_context, width, height, Format_R32G32B32A32_FLOAT);
+        m_render_targets[RenderTarget_Composition_Ldr]              = make_unique<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT);
+        m_render_targets[RenderTarget_Composition_Hdr_2]            = make_unique<RHI_Texture2D>(m_context, width, height, m_render_targets[RenderTarget_Composition_Hdr]->GetFormat()); // Used for Post-Processing   
+        m_render_targets[RenderTarget_Composition_Hdr_History]      = make_unique<RHI_Texture2D>(m_context, width, height, m_render_targets[RenderTarget_Composition_Hdr]->GetFormat()); // Used by TAA and SSR
+        m_render_targets[RenderTarget_Composition_Hdr_History_2]    = make_unique<RHI_Texture2D>(m_context, width, height, m_render_targets[RenderTarget_Composition_Hdr]->GetFormat()); // Used by TAA
+        m_render_targets[RenderTarget_Composition_Ldr_2]            = make_unique<RHI_Texture2D>(m_context, width, height, m_render_targets[RenderTarget_Composition_Ldr]->GetFormat()); // Used for Post-Processing   
 
 		// SSAO
         m_render_targets[RenderTarget_Ssao_Half]            = make_unique<RHI_Texture2D>(m_context, width / 2, height / 2, Format_R8_UNORM);  // Raw
@@ -566,14 +563,14 @@ namespace Spartan
 		// If there is no camera, do nothing
 		if (!m_camera)
 		{
-			m_cmd_list->ClearRenderTarget(m_render_targets[RenderTarget_Final]->GetResource_RenderTarget(), Vector4(0.0f, 0.0f, 0.0f, 1.0f));
+			m_cmd_list->ClearRenderTarget(m_render_targets[RenderTarget_Composition_Ldr]->GetResource_RenderTarget(), Vector4(0.0f, 0.0f, 0.0f, 1.0f));
 			return;
 		}
 
 		// If there is nothing to render clear to camera's color and present
 		if (m_entities.empty())
 		{
-			m_cmd_list->ClearRenderTarget(m_render_targets[RenderTarget_Final]->GetResource_RenderTarget(), m_camera->GetClearColor());
+			m_cmd_list->ClearRenderTarget(m_render_targets[RenderTarget_Composition_Ldr]->GetResource_RenderTarget(), m_camera->GetClearColor());
 			return;
 		}
 
@@ -679,7 +676,7 @@ namespace Spartan
 		DrawLine(Vector3(min.x, max.y, max.z), Vector3(min.x, min.y, max.z), color, depth);
 	}
 
-	bool Renderer::UpdateUberBuffer(const uint32_t resolution_width, const uint32_t resolution_height, const Matrix& mvp)
+    bool Renderer::UpdateUberBuffer(const uint32_t resolution_width, const uint32_t resolution_height, const Matrix& mvp)
 	{
 		auto buffer = static_cast<UberBuffer*>(m_uber_buffer->Map());
 		if (!buffer)
