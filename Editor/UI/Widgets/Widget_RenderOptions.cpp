@@ -98,7 +98,7 @@ void Widget_RenderOptions::Tick()
         // Display
         {
             const auto tooltip = [](const char* text) { if (ImGui::IsItemHovered()) { ImGui::BeginTooltip(); ImGui::Text(text); ImGui::EndTooltip(); } };
-            const auto input_float = [](const char* text, float* value, float step) { ImGui::PushItemWidth(120); ImGui::InputFloat(text, value, step); ImGui::PopItemWidth(); };
+            const auto input_float = [](const char* id, const char* text, float* value, float step) { ImGui::PushID(id); ImGui::PushItemWidth(120); ImGui::InputFloat(text, value, step); ImGui::PopItemWidth(); ImGui::PopID(); };
 
             // Tonemapping
             if (ImGui::BeginCombo("Tonemapping", type_char_ptr))
@@ -109,7 +109,7 @@ void Widget_RenderOptions::Tick()
                     if (ImGui::Selectable(types[i], is_selected))
                     {
                         type_char_ptr = types[i];
-                        m_renderer->m_tonemapping = static_cast<ToneMapping_Type>(i);
+                        m_renderer->m_tonemapping = static_cast<Renderer_ToneMapping_Type>(i);
                     }
                     if (is_selected)
                     {
@@ -118,11 +118,13 @@ void Widget_RenderOptions::Tick()
                 }
                 ImGui::EndCombo();
             }
-            ImGui::SameLine(); input_float("Exposure", &m_renderer->m_exposure, 0.1f); ImGui::SameLine(); input_float("Gamma", &m_renderer->m_gamma, 0.1f);
+            ImGui::SameLine(); input_float("##tonemapping_option_1", "Exposure", &m_renderer->m_exposure, 0.1f);
+            ImGui::SameLine(); input_float("##tonemapping_option_2", "Gamma", &m_renderer->m_gamma, 0.1f);
             ImGui::Separator();
 
             // Bloom
-            ImGui::Checkbox("Bloom", &do_bloom); ImGui::SameLine(); input_float("Intensity", &m_renderer->m_bloom_intensity, 0.001f);
+            ImGui::Checkbox("Bloom", &do_bloom); ImGui::SameLine();
+            input_float("##bloom_option_1", "Intensity", &m_renderer->m_bloom_intensity, 0.001f);
             ImGui::Separator();
 
             // Volumetric lighting
@@ -142,7 +144,8 @@ void Widget_RenderOptions::Tick()
             ImGui::Separator();
 
             // Motion blur
-            ImGui::Checkbox("Motion Blur", &do_motion_blur); ImGui::SameLine(); input_float("Intensity", &m_renderer->m_motion_blur_intensity, 0.1f);
+            ImGui::Checkbox("Motion Blur", &do_motion_blur); ImGui::SameLine();
+            input_float("##motion_blur_option_1", "Intensity", &m_renderer->m_motion_blur_intensity, 0.1f);
             ImGui::Separator();
 
             // Chromatic aberration
@@ -155,15 +158,15 @@ void Widget_RenderOptions::Tick()
 
             // FXAA
             ImGui::Checkbox("FXAA - Fast Approximate Anti-Aliasing",   &do_fxaa);
-            ImGui::SameLine(); input_float("Sub-Pixel",          &m_renderer->m_fxaa_sub_pixel, 0.1f);			tooltip("The amount of sub-pixel aliasing removal");
-            ImGui::SameLine(); input_float("Edge Threshold",     &m_renderer->m_fxaa_edge_threshold, 0.1f);		tooltip("The minimum amount of local contrast required to apply algorithm");
-            ImGui::SameLine(); input_float("Edge Threshold Min", &m_renderer->m_fxaa_edge_threshold_min, 0.1f);	tooltip("Trims the algorithm from processing darks");
+            ImGui::SameLine(); input_float("##fxaa_option_1", "Sub-Pixel",          &m_renderer->m_fxaa_sub_pixel, 0.1f);			tooltip("The amount of sub-pixel aliasing removal");
+            ImGui::SameLine(); input_float("##fxaa_option_2", "Edge Threshold",     &m_renderer->m_fxaa_edge_threshold, 0.1f);		tooltip("The minimum amount of local contrast required to apply algorithm");
+            ImGui::SameLine(); input_float("##fxaa_option_3", "Edge Threshold Min", &m_renderer->m_fxaa_edge_threshold_min, 0.1f);	tooltip("Trims the algorithm from processing darks");
             ImGui::Separator();
 
             // Sharpen
             ImGui::Checkbox("Sharpen", &do_sharperning);
-            ImGui::SameLine(); input_float("Strength", &m_renderer->m_sharpen_strength, 0.1f);
-            ImGui::SameLine(); input_float("Clamp", &m_renderer->m_sharpen_clamp, 0.1f); tooltip("Limits maximum amount of sharpening a pixel receives");
+            ImGui::SameLine(); input_float("##sharpen_option_1", "Strength", &m_renderer->m_sharpen_strength, 0.1f);
+            ImGui::SameLine(); input_float("##sharpen_option_2", "Clamp", &m_renderer->m_sharpen_clamp, 0.1f); tooltip("Limits maximum amount of sharpening a pixel receives");
             ImGui::Separator();
 
             // Dithering

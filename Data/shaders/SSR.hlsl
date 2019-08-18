@@ -36,7 +36,7 @@ SamplerState sampler_linear_clamp 	: register(s1);
 //=================================================
 
 
-static const int g_steps 					= 16;
+static const int g_steps 					= 8;
 static const int g_binarySearchSteps 		= 8;
 static const float g_binarySearchThreshold 	= 0.01f;
 

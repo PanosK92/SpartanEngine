@@ -105,6 +105,10 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 	color.rgb = LumaSharpen(texCoord, sourceTexture, samplerState, g_resolution, g_sharpen_strength, g_sharpen_clamp);	
 #endif
 
+#if PASS_TAA_RESOLVE
+	color = ResolveTAA(texCoord, sourceTexture, sourceTexture2, sourceTexture3, sourceTexture4, samplerState);
+#endif
+
 #if PASS_TAA_SHARPEN
 	// Requirements: Bilinear sampler
 	color = SharpenTaa(texCoord, sourceTexture, samplerState);	
@@ -151,10 +155,6 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 #if PASS_DITHERING
 	color = sourceTexture.Sample(samplerState, texCoord);
     color = Dither_Ordered(color, texCoord);
-#endif
-
-#if PASS_TAA_RESOLVE
-	color = ResolveTAA(texCoord, sourceTexture, sourceTexture2, sourceTexture3, sourceTexture4, samplerState);
 #endif
 
 #if PASS_MOTION_BLUR
