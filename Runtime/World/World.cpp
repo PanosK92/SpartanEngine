@@ -371,6 +371,14 @@ namespace Spartan
 		return m_entity_empty;
 	}
 
+    void World::IterateManagers(std::function<void(std::shared_ptr<BaseComponentManager>)> func)
+    {   // Hardcoded types make it harder to write new components
+        for (auto& manager : m_components_managers)
+        {
+            func(manager.second);
+        }
+    }
+
 	shared_ptr<Entity>& World::CreateSkybox()
 	{
 		auto& skybox = EntityCreate();

@@ -44,36 +44,48 @@ namespace Spartan
 
 	class BaseComponentManager 
 	{
-	public:
-		BaseComponentManager() = default;
+    public:
+        ComponentType m_type;
+
+    public:
+        BaseComponentManager(ComponentType type) : m_type(type) {}
+        BaseComponentManager() = default;
 		virtual ~BaseComponentManager() = default;
-			
+
+        virtual void AddComponent(uint32_t entityID, std::shared_ptr<IComponent>& component) = 0;
+
+        virtual std::shared_ptr<IComponent> GetComponent(uint32_t entityID) = 0;
+        virtual std::shared_ptr<IComponent> GetComponentByID(uint32_t entityID, uint32_t componentID) = 0;
+        virtual std::vector<std::shared_ptr<IComponent>> GetComponents(uint32_t entityID) = 0;
+
+        virtual void RemoveComponent(uint32_t entityID) = 0;
+        virtual void RemoveComponentByID(uint32_t entityID, uint32_t componentID) = 0;
+
+        virtual void Iterate(std::function<void(std::shared_ptr<IComponent>)> func) = 0;
+
 		BaseComponentManager(const BaseComponentManager&) = default;
 		BaseComponentManager& operator=(const BaseComponentManager&) = default;
 			
 		BaseComponentManager(BaseComponentManager&&) = default;
-		BaseComponentManager& operator=(BaseComponentManager&&) = default;
+		BaseComponentManager& operator=(BaseComponentManager&&) = default;    
 	};
 
 	template<typename T>
 	class SPARTAN_CLASS ComponentManager : public BaseComponentManager
 	{
 	public:
-		ComponentType m_type = IComponent::TypeToEnum<T>();
+        ComponentManager() : BaseComponentManager(IComponent::TypeToEnum<T>()) {}
 
-	public:
-        ComponentManager() = default;
+		void AddComponent(uint32_t entityID, std::shared_ptr<IComponent>& component) override;
 
-		void AddComponent(uint32_t entityID, std::shared_ptr<T>& component);
+        std::shared_ptr<IComponent> GetComponent(uint32_t entityID) override;
+        std::shared_ptr<IComponent> GetComponentByID(uint32_t entityID, uint32_t componentID) override;
+        std::vector<std::shared_ptr<IComponent>> GetComponents(uint32_t entityID) override;
 
-        std::shared_ptr<T> GetComponent(uint32_t entityID);
-        std::shared_ptr<T> GetComponentByID(uint32_t entityID, uint32_t componentID);
-        std::vector<std::shared_ptr<T>> GetComponents(uint32_t entityID);
+	    void RemoveComponent(uint32_t entityID) override;
+        void RemoveComponentByID(uint32_t entityID, uint32_t componentID) override;
 
-	    void RemoveComponent(uint32_t entityID);
-        void RemoveComponentByID(uint32_t entityID, uint32_t componentID);
-
-		void Iterate(std::function<void(std::shared_ptr<T>)> func);
+		void Iterate(std::function<void(std::shared_ptr<IComponent>)> func) override;
 
 	private:
 		ComponentData<T> mComponentData;
@@ -83,10 +95,11 @@ namespace Spartan
 	};
 		
 	template<typename T>
-	inline void ComponentManager<T>::AddComponent(uint32_t entityID, std::shared_ptr<T>& component)
+	inline void ComponentManager<T>::AddComponent(uint32_t entityID, std::shared_ptr<IComponent>& component)
 	{
 		ComponentInstance instance = mComponentData.mSize;
-		mComponentData.mData[instance] = component;
+        std::cout << "EntityID: " << entityID << " Instance: " << instance << "\n";
+        mComponentData.mData[instance] = std::dynamic_pointer_cast<T>(component);
 			
 		mEntityMap[entityID][component->GetId()] = instance;
 		mInstanceMap[instance] = entityID;
@@ -95,43 +108,43 @@ namespace Spartan
 	}
 		
 	template<typename T>
-	inline std::shared_ptr<T> ComponentManager<T>::GetComponent(uint32_t entityID)
+	inline std::shared_ptr<IComponent> ComponentManager<T>::GetComponent(uint32_t entityID)
 	{
         std::unordered_map<uint32_t, ComponentInstance> inst = mEntityMap[entityID];
 			
 		if (!inst.empty())
 		{
-			return mComponentData.mData[inst.begin()->second];
+			return std::dynamic_pointer_cast<IComponent>(mComponentData.mData[inst.begin()->second]);
 		}
 
         return nullptr;
 	}
 
     template<typename T>
-    inline std::shared_ptr<T> ComponentManager<T>::GetComponentByID(uint32_t entityID, uint32_t componentID)
+    inline std::shared_ptr<IComponent> ComponentManager<T>::GetComponentByID(uint32_t entityID, uint32_t componentID)
     {
         auto inst = mEntityMap[entityID];
 
-        if (!inst.count(componentID) > 0)
+        if (!(inst.count(componentID) > 0))
         {
             ComponentInstance i = inst[componentID];
-            return mComponentData.mData[i];
+            return std::dynamic_pointer_cast<IComponent>(mComponentData.mData[i]);
         }
 
         return nullptr;
     }
 
     template<typename T>
-    inline std::vector<std::shared_ptr<T>> ComponentManager<T>::GetComponents(uint32_t entityID)
+    inline std::vector<std::shared_ptr<IComponent>> ComponentManager<T>::GetComponents(uint32_t entityID)
     {
         auto inst = mEntityMap[entityID];
 
-        std::vector<std::shared_ptr<T>> components;
+        std::vector<std::shared_ptr<IComponent>> components;
         if (!inst.empty())
         {
             for (auto& c : inst)
             {
-                components.push_back(mComponentData.mData[c.second]);
+                components.push_back(std::dynamic_pointer_cast<IComponent>(mComponentData.mData[c.second]));
             }
         }
 
@@ -147,7 +160,7 @@ namespace Spartan
         {
             ComponentInstance lastComponent = mComponentData.mSize - 1;
             mComponentData.mData[mEntityMap[entityID].begin()->second] = mComponentData.mData[lastComponent];
-            //mEntityMap[mInstanceMap[lastComponent]][mComponentData.mData[lastComponent]->GetId()] = componentID; // componentID not defined ?
+            mEntityMap[mInstanceMap[lastComponent]][mComponentData.mData[lastComponent]->GetId()] = mEntityMap[entityID].begin()->second;
             mComponentData.mData[lastComponent] = nullptr;
             mEntityMap[entityID].erase(mEntityMap[entityID].begin());
 
@@ -173,11 +186,12 @@ namespace Spartan
     }
 		
 	template<typename T>
-    inline void ComponentManager<T>::Iterate(std::function<void(std::shared_ptr<T>)> func)
+    inline void ComponentManager<T>::Iterate(std::function<void(std::shared_ptr<IComponent>)> func)
 	{
 		for (uint32_t i = 1; i < mComponentData.mSize; i++)
 		{
-			func(mComponentData.mData[i]);
+            std::shared_ptr<IComponent> component = std::dynamic_pointer_cast<IComponent>(mComponentData.mData[i]);
+            func(component);
 		}
 	}
 }

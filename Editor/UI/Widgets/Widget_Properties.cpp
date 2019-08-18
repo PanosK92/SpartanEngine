@@ -184,7 +184,7 @@ void Widget_Properties::Tick()
 		ShowConstraint(constraint);
 		for (auto& script : scripts)
 		{
-			ShowScript(script);
+			ShowScript(std::dynamic_pointer_cast<Script>(script));
 		}
 
 		ShowAddComponentButton();

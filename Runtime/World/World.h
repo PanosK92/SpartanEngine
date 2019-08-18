@@ -89,8 +89,7 @@ namespace Spartan
         template <typename T>
         std::shared_ptr<ComponentManager<T>> GetComponentManager();
         
-        template <typename Func>
-        void IterateManagers(Func f);
+        void IterateManagers(std::function<void(std::shared_ptr<BaseComponentManager>)> func);
         //=========================================================
 
 	private:
@@ -124,18 +123,5 @@ namespace Spartan
         std::shared_ptr<BaseComponentManager> manager = m_components_managers[type];
 
         return std::static_pointer_cast<ComponentManager<T>>(manager);
-    }
-
-    template<typename Func>
-    inline void World::IterateManagers(Func f)
-    {
-        // Hardcoded types make it harder to write new components
-        Spartan::for_each(std::tie(Transform(), AudioSource(), AudioListener(),
-            Constraint(), Collider(), RigidBody(), Light(),
-            Renderable(), Script(), Skybox(), Camera()), [&](auto type)
-        {
-              auto manager = this->GetComponentManager<decltype(type)>();
-              f(manager);
-        });
     }
 }

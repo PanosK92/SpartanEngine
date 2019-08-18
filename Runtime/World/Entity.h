@@ -69,7 +69,7 @@ namespace Spartan
             m_component_mask |= (1 << static_cast<unsigned int>(type));
 
 			// Create new component
-            auto new_component = std::make_shared<T>(m_context, this, GetTransform_PtrRaw());
+            std::shared_ptr<IComponent> new_component = std::make_shared<T>(m_context, this, GetTransform_PtrRaw());
 			new_component->SetType(type);
 			new_component->OnInitialize();
 
@@ -89,10 +89,9 @@ namespace Spartan
 			// Make the scene resolve
 			FIRE_EVENT(Event_World_Resolve);
 
-			return new_component;
+			return std::dynamic_pointer_cast<T>(new_component);
 		}
 
-        // Adds a component of ComponentType 
         std::shared_ptr<IComponent> AddComponent(ComponentType type);
 
 		// Returns a component of type T (if it exists)
@@ -102,12 +101,12 @@ namespace Spartan
 			const ComponentType type = IComponent::TypeToEnum<T>();
 
             auto world = m_context->GetSubsystem<World>();
-            return world->GetComponentManager<T>()->GetComponent(GetId());
+            return std::dynamic_pointer_cast<T>(world->GetComponentManager<T>()->GetComponent(GetId()));
 		}
 
 		// Returns any components of type T (if they exist)
 		template <class T>
-		std::vector<std::shared_ptr<T>> GetComponents()
+		std::vector<std::shared_ptr<IComponent>> GetComponents()
 		{
 			const ComponentType type = IComponent::TypeToEnum<T>();
 

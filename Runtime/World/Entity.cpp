@@ -76,7 +76,6 @@ namespace Spartan
 		{
 			// Clone the name and the ID
 			auto clone = scene->EntityCreate().get();
-			clone->SetId(GenerateId());
 			clone->SetName(entity->GetName());
 			clone->SetActive(entity->IsActive());
 			clone->SetHierarchyVisibility(entity->IsVisibleInHierarchy());
@@ -128,16 +127,40 @@ namespace Spartan
 
 		//= COMPONENTS ================================
 		stream->Write(static_cast<uint32_t>(components.size()));
-		for (const auto& component : components)
+
+
+        auto world = m_context->GetSubsystem<World>();
+
+        world->IterateManagers([&](std::shared_ptr<BaseComponentManager> manager)
+        {
+            auto components = manager->GetComponents(this->GetId());
+            for (auto& component : components)
+            {
+                stream->Write(static_cast<uint32_t>(component->GetType()));
+                stream->Write(component->GetId());
+            }
+        });
+
+        /*for (const auto& component : components)
 		{
 			stream->Write(static_cast<uint32_t>(component->GetType()));
 			stream->Write(component->GetId());
-		}
+		}*/
 
-		for (const auto& component : components)
+
+        world->IterateManagers([&](std::shared_ptr<BaseComponentManager> manager)
+        {
+            auto components = manager->GetComponents(this->GetId());
+            for (auto& component : components)
+            {
+                component->Serialize(stream);
+            }
+        });
+
+		/*for (const auto& component : components)
 		{
 			component->Serialize(stream);
-		}
+		}*/
 		//=============================================
 
 		//= CHILDREN ==================================
