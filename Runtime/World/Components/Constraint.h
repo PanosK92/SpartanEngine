@@ -48,7 +48,7 @@ namespace Spartan
 	{
 	public:
         Constraint() = default;
-		Constraint(Context* context, Entity* entity, Transform* transform);
+		Constraint(Context* context, Entity* entity, uint32_t id = 0);
 		~Constraint();
 
 		//= COMPONENT ================================

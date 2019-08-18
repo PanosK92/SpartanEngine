@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include <iostream>
 #include <functional>
+#include "../Logging/Log.h"
 //================================
 
 namespace Spartan
@@ -40,7 +41,7 @@ namespace Spartan
     };
 
 	// Simple unsigned int (syntactical sugar) that refers to the index of a component in the componentData array
-	typedef unsigned int ComponentInstance;
+	typedef uint32_t ComponentIndex;
 
 	class BaseComponentManager 
 	{
@@ -78,28 +79,30 @@ namespace Spartan
 
 		void AddComponent(uint32_t entityID, std::shared_ptr<IComponent>& component) override;
 
-        std::shared_ptr<IComponent> GetComponent(uint32_t entityID) override;
-        std::shared_ptr<IComponent> GetComponentByID(uint32_t entityID, uint32_t componentID) override;
-        std::vector<std::shared_ptr<IComponent>> GetComponents(uint32_t entityID) override;
+        std::shared_ptr<T>& GetComponent(uint32_t entityID);
+        std::shared_ptr<T>& GetComponentByID(uint32_t entityID, uint32_t componentID);
+        std::vector<std::shared_ptr<T>> GetComponents(uint32_t entityID);
 
 	    void RemoveComponent(uint32_t entityID) override;
         void RemoveComponentByID(uint32_t entityID, uint32_t componentID) override;
 
 		void Iterate(std::function<void(std::shared_ptr<IComponent>)> func) override;
 
+        //TODO: void Serialize(FileStream* stream); 
+        //TODO: void Deserialize(FileStream* stream, Transform* parent);
+
 	private:
 		ComponentData<T> mComponentData;
 			
-		std::unordered_map<uint32_t, std::unordered_map<uint32_t, ComponentInstance>> mEntityMap;
-		std::unordered_map<ComponentInstance, uint32_t> mInstanceMap;
+		std::unordered_map<uint32_t, std::unordered_map<uint32_t, ComponentIndex>> mEntityMap;
+		std::unordered_map<ComponentIndex, uint32_t> mInstanceMap;
 	};
 		
 	template<typename T>
 	inline void ComponentManager<T>::AddComponent(uint32_t entityID, std::shared_ptr<IComponent>& component)
 	{
-		ComponentInstance instance = mComponentData.mSize;
-        std::cout << "EntityID: " << entityID << " Instance: " << instance << "\n";
-        mComponentData.mData[instance] = std::dynamic_pointer_cast<T>(component);
+		ComponentIndex instance = mComponentData.mSize;
+		mComponentData.mData[instance] = component;
 			
 		mEntityMap[entityID][component->GetId()] = instance;
 		mInstanceMap[instance] = entityID;
@@ -108,41 +111,39 @@ namespace Spartan
 	}
 		
 	template<typename T>
-	inline std::shared_ptr<IComponent> ComponentManager<T>::GetComponent(uint32_t entityID)
+	inline std::shared_ptr<T>& ComponentManager<T>::GetComponent(uint32_t entity_id)
 	{
-        std::unordered_map<uint32_t, ComponentInstance> inst = mEntityMap[entityID];
-			
-		if (!inst.empty())
+        std::unordered_map<uint32_t, ComponentIndex> _map = mEntityMap[entity_id];		
+		if (!_map.empty())
 		{
-			return std::dynamic_pointer_cast<IComponent>(mComponentData.mData[inst.begin()->second]);
+			return mComponentData.mData[_map.begin()->second];
 		}
 
-        return nullptr;
+        static std::shared_ptr<T> empty;
+        return empty;
 	}
 
     template<typename T>
-    inline std::shared_ptr<IComponent> ComponentManager<T>::GetComponentByID(uint32_t entityID, uint32_t componentID)
+    inline std::shared_ptr<T>& ComponentManager<T>::GetComponentByID(uint32_t entity_id, uint32_t componentID)
     {
-        auto inst = mEntityMap[entityID];
-
-        if (!(inst.count(componentID) > 0))
+        auto _map = mEntityMap[entity_id];
+        if (!_map.count(componentID) > 0)
         {
-            ComponentInstance i = inst[componentID];
-            return std::dynamic_pointer_cast<IComponent>(mComponentData.mData[i]);
+            ComponentIndex i = _map[componentID];
+            return mComponentData.mData[i];
         }
 
         return nullptr;
     }
 
     template<typename T>
-    inline std::vector<std::shared_ptr<IComponent>> ComponentManager<T>::GetComponents(uint32_t entityID)
+    inline std::vector<std::shared_ptr<T>> ComponentManager<T>::GetComponents(uint32_t entity_id)
     {
-        auto inst = mEntityMap[entityID];
-
-        std::vector<std::shared_ptr<IComponent>> components;
-        if (!inst.empty())
+        auto _map = mEntityMap[entity_id];
+        std::vector<std::shared_ptr<T>> components;
+        if (!_map.empty())
         {
-            for (auto& c : inst)
+            for (auto& c : _map)
             {
                 components.push_back(std::dynamic_pointer_cast<IComponent>(mComponentData.mData[c.second]));
             }
@@ -152,34 +153,36 @@ namespace Spartan
     }
 		
 	template<typename T>
-	inline void ComponentManager<T>::RemoveComponent(uint32_t entityID)
+	inline void ComponentManager<T>::RemoveComponent(uint32_t entity_id)
 	{
-       std::unordered_map<uint32_t, ComponentInstance> inst = mEntityMap[entityID];
-
-        if (!inst.empty())
+        std::unordered_map<uint32_t, ComponentIndex> _map = mEntityMap[entity_id];
+        if (!_map.empty())
         {
-            ComponentInstance lastComponent = mComponentData.mSize - 1;
-            mComponentData.mData[mEntityMap[entityID].begin()->second] = mComponentData.mData[lastComponent];
-            mEntityMap[mInstanceMap[lastComponent]][mComponentData.mData[lastComponent]->GetId()] = mEntityMap[entityID].begin()->second;
+            ComponentIndex lastComponent = mComponentData.mSize - 1;
+            mComponentData.mData[mEntityMap[entity_id].begin()->second] = mComponentData.mData[lastComponent];
+            //mEntityMap[mInstanceMap[lastComponent]][mComponentData.mData[lastComponent]->GetId()] = componentID; // componentID not defined ?
             mComponentData.mData[lastComponent] = nullptr;
-            mEntityMap[entityID].erase(mEntityMap[entityID].begin());
+            mEntityMap[entity_id].erase(mEntityMap[entity_id].begin());
 
             mComponentData.mSize--;
+        }
+        else
+        {
+            __debugbreak();
         }
     }
 
     template<typename T>
-    inline void ComponentManager<T>::RemoveComponentByID(uint32_t entityID, uint32_t componentID)
+    inline void ComponentManager<T>::RemoveComponentByID(uint32_t entity_id, uint32_t componentID)
     {
-        std::unordered_map<uint32_t, ComponentInstance> inst = mEntityMap[entityID];
-
-        if (inst.count(componentID) > 0)
+        std::unordered_map<uint32_t, ComponentIndex> _map = mEntityMap[entity_id];
+        if (_map.count(componentID) > 0)
         {
-            ComponentInstance lastComponent = mComponentData.mSize - 1;
-            mComponentData.mData[inst[componentID]] = mComponentData.mData[lastComponent];
+            ComponentIndex lastComponent = mComponentData.mSize - 1;
+            mComponentData.mData[_map[componentID]] = mComponentData.mData[lastComponent];
             mEntityMap[mInstanceMap[lastComponent]][mComponentData.mData[lastComponent]->GetId()] = componentID;
             mComponentData.mData[lastComponent] = nullptr;
-            mEntityMap[entityID].erase(componentID);
+            mEntityMap[entity_id].erase(componentID);
 
             mComponentData.mSize--;
         }

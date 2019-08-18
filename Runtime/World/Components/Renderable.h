@@ -53,7 +53,7 @@ namespace Spartan
 	{
 	public:
         Renderable() = default;
-		Renderable(Context* context, Entity* entity, Transform* transform);
+		Renderable(Context* context, Entity* entity, uint32_t id = 0);
 		~Renderable() = default;
 
 		//= ICOMPONENT ===============================
@@ -93,8 +93,8 @@ namespace Spartan
 
 		void UseDefaultMaterial();
 		std::string GetMaterialName();
-		const auto& GetMaterial()	const { return m_material; }
-		auto HasMaterial()			const { return m_material != nullptr; }
+		auto& GetMaterial()         { return m_material; }
+		auto HasMaterial()  const   { return m_material != nullptr; }
 		//=======================================================================
 
 		//= PROPERTIES ============================================================================

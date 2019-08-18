@@ -38,8 +38,6 @@ namespace Spartan
 	class Context;
 	class FileStream;
 
-    #define VALIDATE_COMPONENT_TYPE(T) static_assert(std::is_base_of<IComponent, T>::value, "Provided type does not implement IComponent")
-
 	enum ComponentType : uint32_t
 	{
 		ComponentType_AudioListener,
@@ -66,7 +64,7 @@ namespace Spartan
 	{
 	public:
         IComponent() = default;
-		IComponent(Context* context, Entity* entity, Transform* transform);
+		IComponent(Context* context, Entity* entity, uint32_t id = 0, Transform* transform = nullptr);
 		virtual ~IComponent() = default;
 
 		// Runs when the component gets added
@@ -105,6 +103,7 @@ namespace Spartan
 		Context* GetContext() const				{ return m_context; }
 		constexpr ComponentType GetType() const	{ return m_type; }
 		void SetType(const ComponentType type)	{ m_type = type; }
+        bool IsParentEntityActive();
 
 		const auto& GetAttributes() const { return m_attributes; }
 		void SetAttributes(const std::vector<Attribute>& attributes)
@@ -115,9 +114,6 @@ namespace Spartan
 			}
 		}
 		//=========================================================================================
-
-        bool IsParentEntityActive() { return m_is_parent_active; }
-        void SetIsParentEntityActive(bool active) { m_is_parent_active = active; }
 
 	protected:
 		#define REGISTER_ATTRIBUTE_GET_SET(getter, setter, type) RegisterAttribute(		\
@@ -145,7 +141,6 @@ namespace Spartan
 		ComponentType m_type	= ComponentType_Unknown;
 		// The state of the component
 		bool m_enabled			= false;
-        bool m_is_parent_active = true;
         // The owner of the component
 		Entity* m_entity		= nullptr;
 		// The transform of the component (always exists)

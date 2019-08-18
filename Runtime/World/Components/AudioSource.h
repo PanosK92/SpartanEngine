@@ -35,7 +35,7 @@ namespace Spartan
 	{
 	public:
         AudioSource() = default;
-		AudioSource(Context* context, Entity* entity, Transform* transform);
+		AudioSource(Context* context, Entity* entity, uint32_t id = 0);
 		~AudioSource() = default;
 
 		//= INTERFACE ================================

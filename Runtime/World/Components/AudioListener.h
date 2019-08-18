@@ -33,7 +33,7 @@ namespace Spartan
 	{
 	public:
         AudioListener() = default;
-		AudioListener(Context* context, Entity* entity, Transform* transform);
+		AudioListener(Context* context, Entity* entity, uint32_t id = 0);
 		~AudioListener();
 
         //= COMPONENT =========================
@@ -42,6 +42,6 @@ namespace Spartan
         //=====================================
 
 	private:
-		Audio* m_audio;
+        Audio* m_audio = nullptr;
 	};
 }

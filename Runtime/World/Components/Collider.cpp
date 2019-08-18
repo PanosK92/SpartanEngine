@@ -45,7 +45,7 @@ using namespace std;
 
 namespace Spartan
 {
-	Collider::Collider(Context* context, Entity* entity, Transform* transform) : IComponent(context, entity, transform)
+	Collider::Collider(Context* context, Entity* entity, uint32_t id /*= 0*/) : IComponent(context, entity, id)
 	{
 		m_shapeType = ColliderShape_Box;
 		m_center	= Vector3::Zero;

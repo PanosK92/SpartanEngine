@@ -32,10 +32,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Input/Input.h"
 //=====================================
 
-//= NAMESPACES ================
+//= NAMESPACES ===============
 using namespace std;
 using namespace Spartan::Math;
-//=============================
+//============================
 
 namespace Spartan
 {
@@ -93,7 +93,7 @@ namespace Spartan
 
         TIME_BLOCK_START_CPU(m_profiler);
 
-		// Tick entities
+		// Tick components
 		{
 			// Detect game toggling
 			bool started	    = m_context->m_engine->EngineMode_IsSet(Engine_Game) && m_wasInEditorMode;
@@ -105,11 +105,13 @@ namespace Spartan
 			{
                 IterateManagers([&](auto& manager)
                 {
-                     manager->Iterate([&](auto& component)
-                     {
-                             if (component->IsParentEntityActive())
-                                 component->OnStart();
-                     });
+                    manager->Iterate([&](auto& component)
+                    {
+                        if (component->IsParentEntityActive())
+                        {
+                            component->OnStart();
+                        }
+                    });
                 });
 			}
 
@@ -119,9 +121,11 @@ namespace Spartan
                 IterateManagers([&](auto& manager)
                 {
                      manager->Iterate([&](auto& component)
-                     {
-                            if (component->IsParentEntityActive())
-                               component->OnStop();
+                    {
+                        if (component->IsParentEntityActive())
+                        {
+                            component->OnStop();
+                        }
                      });
                 });
 			}
@@ -129,11 +133,13 @@ namespace Spartan
 			// Tick
             IterateManagers([&](auto& manager)
             {
-                  manager->Iterate([&](auto& component)
-                  {
-                        if (component->IsParentEntityActive())
-                            component->OnTick(delta_time);
-                  });
+                manager->Iterate([&](auto& component)
+                {
+                    if (component->IsParentEntityActive())
+                    {
+                        component->OnTick(delta_time);
+                    }
+                });
             });
 		}
 
@@ -200,6 +206,7 @@ namespace Spartan
 		for (const auto& root : root_actors)
 		{
 			file->Write(root->GetId());
+            file->Write(root->GetTransform_PtrRaw()->GetId());
 		}
 
 		// Save root entities
@@ -257,8 +264,9 @@ namespace Spartan
 		// Load root entity IDs
 		for (uint32_t i = 0; i < root_entity_count; i++)
 		{
-			auto& entity = EntityCreate();
-			entity->SetId(file->ReadAs<uint32_t>());
+            uint32_t id             = file->ReadAs<uint32_t>();
+            uint32_t transform_id   = file->ReadAs<uint32_t>();
+			auto& entity = EntityCreate(id, transform_id);
 		}
 
 		// Serialize root entities
@@ -277,15 +285,17 @@ namespace Spartan
 		return true;
 	}
 
-	shared_ptr<Entity>& World::EntityCreate()
-	{
-		return m_entities_primary.emplace_back(make_shared<Entity>(m_context));
-	}
+    shared_ptr<Spartan::Entity>& World::EntityCreate(uint32_t id /*= 0*/, uint32_t transform_id /*= 0*/)
+    {
+        return m_entities_primary.emplace_back(make_shared<Entity>(m_context, id, transform_id));
+    }
 
-	shared_ptr<Entity>& World::EntityAdd(const shared_ptr<Entity>& entity)
+    shared_ptr<Entity>& World::EntityAdd(const shared_ptr<Entity>& entity)
 	{
+        static shared_ptr<Entity> empty;
+
 		if (!entity)
-			return m_entity_empty;
+			return empty;
 
 		return m_entities_primary.emplace_back(entity);
 	}
@@ -357,7 +367,8 @@ namespace Spartan
 				return entity;
 		}
 
-		return m_entity_empty;
+        static shared_ptr<Entity> empty;
+		return empty;
 	}
 
 	const shared_ptr<Entity>& World::EntityGetById(const uint32_t id)
@@ -368,7 +379,8 @@ namespace Spartan
 				return entity;
 		}
 
-		return m_entity_empty;
+        static shared_ptr<Entity> empty;
+		return empty;
 	}
 
     void World::IterateManagers(std::function<void(std::shared_ptr<BaseComponentManager>)> func)

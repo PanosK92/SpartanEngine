@@ -74,7 +74,7 @@ namespace Spartan
 		const auto& GetName() { return m_name; }
 
 		//= Entities ===========================================================================
-		std::shared_ptr<Entity>& EntityCreate();
+		std::shared_ptr<Entity>& EntityCreate(uint32_t id = 0, uint32_t transform_id = 0);
 		std::shared_ptr<Entity>& EntityAdd(const std::shared_ptr<Entity>& entity);
 		bool EntityExists(const std::shared_ptr<Entity>& entity);
 		void EntityRemove(const std::shared_ptr<Entity>& entity);	
@@ -105,11 +105,10 @@ namespace Spartan
 
         std::unordered_map<ComponentType, std::shared_ptr<BaseComponentManager>> m_components_managers;
 
-		std::shared_ptr<Entity> m_entity_empty;
-		Input* m_input;
-		Profiler* m_profiler;
-		bool m_wasInEditorMode;
-		bool m_isDirty;
+        Input* m_input          = nullptr;
+		Profiler* m_profiler    = nullptr;
+        bool m_wasInEditorMode  = false;
+		bool m_isDirty          = false;
 		Scene_State m_state;
 		std::string m_name;
 	};
@@ -117,11 +116,6 @@ namespace Spartan
     template<typename T>
     inline std::shared_ptr<ComponentManager<T>> World::GetComponentManager()
     {
-        VALIDATE_COMPONENT_TYPE(T);
-        ComponentType type = IComponent::TypeToEnum<T>();
-
-        std::shared_ptr<BaseComponentManager> manager = m_components_managers[type];
-
-        return std::static_pointer_cast<ComponentManager<T>>(manager);
+        return std::static_pointer_cast<ComponentManager<T>>(m_components_managers[IComponent::TypeToEnum<T>()]);
     }
 }
