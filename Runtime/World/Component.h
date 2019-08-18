@@ -76,6 +76,9 @@ namespace Spartan
 
 		void Iterate(std::function<void(std::shared_ptr<T>)> func);
 
+        //TODO: void Serialize(FileStream* stream); 
+        //TODO: void Deserialize(FileStream* stream, Transform* parent);
+
 	private:
 		ComponentData<T> mComponentData;
 			
