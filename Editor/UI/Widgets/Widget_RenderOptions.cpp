@@ -86,7 +86,7 @@ void Widget_RenderOptions::Tick()
         auto do_volumetric_lighting     = m_renderer->FlagEnabled(Render_PostProcess_VolumetricLighting);
         auto do_fxaa                    = m_renderer->FlagEnabled(Render_PostProcess_FXAA);
         auto do_ssao                    = m_renderer->FlagEnabled(Render_PostProcess_SSAO);
-        auto do_sss                     = m_renderer->FlagEnabled(Render_PostProcess_SSS);
+        auto do_sscs                    = m_renderer->FlagEnabled(Render_PostProcess_SSCS);
         auto do_ssr                     = m_renderer->FlagEnabled(Render_PostProcess_SSR);
         auto do_taa                     = m_renderer->FlagEnabled(Render_PostProcess_TAA);
         auto do_motion_blur             = m_renderer->FlagEnabled(Render_PostProcess_MotionBlur);
@@ -129,8 +129,8 @@ void Widget_RenderOptions::Tick()
             ImGui::Checkbox("Volumetric lighting", &do_volumetric_lighting); tooltip("Requires a light with shadows");
             ImGui::Separator();
 
-            // Screen space shadows
-            ImGui::Checkbox("SSS - Screen Space Shadows", &do_sss); tooltip("Requires a light with shadows");
+            // Screen space contact shadows
+            ImGui::Checkbox("SSCS - Screen Space Contact Shadows", &do_sscs); tooltip("Requires a light with shadows");
             ImGui::Separator();
 
             // Screen space ambient occlusion
@@ -192,7 +192,7 @@ void Widget_RenderOptions::Tick()
         set_flag_if(Render_PostProcess_VolumetricLighting,  do_volumetric_lighting);
         set_flag_if(Render_PostProcess_FXAA,                do_fxaa);
         set_flag_if(Render_PostProcess_SSAO,                do_ssao);
-        set_flag_if(Render_PostProcess_SSS,                 do_sss);
+        set_flag_if(Render_PostProcess_SSCS,                 do_sscs);
         set_flag_if(Render_PostProcess_SSR,                 do_ssr);
         set_flag_if(Render_PostProcess_TAA,                 do_taa);
         set_flag_if(Render_PostProcess_MotionBlur,          do_motion_blur);

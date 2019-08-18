@@ -23,7 +23,7 @@ static const uint g_steps 				= 32;
 static const float g_ray_step 			= 0.003f;
 static const float g_rejection_depth 	= 0.05f;
 
-float ScreenSpaceShadows(float2 uv, float3 light_dir)
+float ScreenSpaceContactShadows(float2 uv, float3 light_dir)
 {
     // Origin view space position
     float origin_depth 	= tex_depth.Sample(sampler_point_clamp, uv).r;
