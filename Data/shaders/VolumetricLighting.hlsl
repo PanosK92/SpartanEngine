@@ -43,7 +43,7 @@ float3 VolumetricLighting(Light light, float3 pos_world, float2 uv)
 	float ray_dot_light				= dot(ray_dir, light.direction);
 
 	// Apply dithering as it will allows us to get away with a crazy low sample count ;-)
-	float3 dither_value = Dither_Valve(uv * g_resolution) * 400;
+	float3 dither_value = Dither_Valve(uv + g_taa_jitterOffset) * 300;
 	ray_pos += ray_step * dither_value;
 	
 	static const int cascade = 0;

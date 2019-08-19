@@ -31,9 +31,6 @@ namespace Spartan
 {
     class Engine;
 
-    template<typename T>
-    constexpr void validate_subsystem_type() { static_assert(std::is_base_of<ISubsystem, T>::value, "Provided type does not implement ISubystem"); }
-
     enum Tick_Group
     {
         Tick_Variable,
