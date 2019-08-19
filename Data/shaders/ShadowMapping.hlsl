@@ -143,16 +143,13 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, float 
     float3 scaled_normal_offset = normal * cos_angle * g_shadow_texel_size * normal_bias * 10;
 	float4 position_world   	= float4(world_pos + scaled_normal_offset, 1.0f);
 	float shadow 				= 1.0f;
-
-	// Dither bias
-	float dither = Dither_Valve(uv * g_resolution).x * 100;
-	bias *= dither;
+	float3 dither 				= Dither_Valve(uv + g_taa_jitterOffset) * 0.3f;
 	
 	#if DIRECTIONAL
 	{
 		for (int cascade = 0; cascade < cascade_count; cascade++)
 		{
-			float4 pos 	= mul(position_world, light_view_projection[cascade]);
+			float4 pos 	= mul(position_world, light_view_projection[cascade]) + float4(dither.xyz, 0.0f);
 			float3 uv 	= pos.xyz * float3(0.5f, -0.5f, 0.5f) + 0.5f;	
 			
 			// If a cascade was found, do shadow mapping

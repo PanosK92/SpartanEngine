@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =========
 #include "Common.hlsl"
+#include "Dithering.hlsl"
 //====================
 
 //= TEXTURES ==========================
@@ -91,6 +92,10 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 	float depth  			= tex_depth.Sample(sampler_point_clamp, uv).r;
     float3 position_world 	= get_world_position_from_depth(depth, g_viewProjectionInv, uv);
 
+	// Apply dithering as it will allows us to get away with a crazy low sample count ;-)
+	float3 dither_value = Dither_Valve(uv + g_taa_jitterOffset) * roughness * 20;
+	position_world += dither_value;
+
 	// Convert everything to view space
 	float3 view_pos			= mul(float4(position_world, 1.0f), g_view).xyz;
 	float3 view_normal		= normalize(mul(float4(normal, 0.0f), g_view).xyz);
@@ -101,7 +106,8 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 	{
 		float2 edgeFactor = float2(1, 1) - pow(saturate(abs(ray_hit_uv - float2(0.5f, 0.5f)) * 2), 8);
 		float fade_screen = saturate(min(edgeFactor.x, edgeFactor.y));
-		return tex_frame.Sample(sampler_linear_clamp, ray_hit_uv) * fade_screen;
+		float fade_camera =  saturate(view_reflection.z);
+		return tex_frame.Sample(sampler_linear_clamp, ray_hit_uv) * fade_screen * fade_camera;
 	}
 	
 	return 0.0f;

@@ -46,11 +46,12 @@ float4 Dither_Ordered(float4 color, float2 texcoord)
 // note: valve edition
 // from http://alex.vlachos.com/graphics/Alex_Vlachos_Advanced_VR_Rendering_GDC2015.pdf
 // note: input in pixels (ie not normalized uv)
-float3 Dither_Valve(float2 screen_pos)
+float3 Dither_Valve(float2 uv)
 {
-	float _dot = dot(float2(171.0, 231.0), screen_pos.xy);
-    float3 dither = float3(_dot, _dot, _dot);
-    dither.rgb = frac(dither.rgb / float3(103.0, 71.0, 97.0));
+	float2 screen_pos 	= uv * g_resolution;
+	float _dot 			= dot(float2(171.0, 231.0), screen_pos.xy);
+    float3 dither 		= float3(_dot, _dot, _dot);
+    dither.rgb 			= frac(dither.rgb / float3(103.0, 71.0, 97.0));
     
     return dither.rgb / 255.0;
 }

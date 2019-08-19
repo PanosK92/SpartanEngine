@@ -29,13 +29,13 @@ namespace Spartan
 {
 	class Context;
 
+    template<typename T>
+    constexpr void validate_subsystem_type() { static_assert(std::is_base_of<ISubsystem, T>::value, "Provided type does not implement ISubystem"); }
+
 	class SPARTAN_CLASS ISubsystem
 	{		
 	public:
-		ISubsystem(Context* context)
-		{ 
-			m_context = context;
-		}
+		ISubsystem(Context* context) { m_context = context; }
 		virtual ~ISubsystem() = default;
 		virtual bool Initialize() { return true; }
 		virtual void Tick(float delta_time) {}
