@@ -81,7 +81,7 @@ struct ImGuiItemHoveredDataBackup;  // Backup and restore IsItemHovered() intern
 struct ImGuiMenuColumns;            // Simple column measurement, currently used for MenuItem() only
 struct ImGuiNavMoveResult;          // Result of a directional navigation move query result
 struct ImGuiNextWindowData;         // Storage for SetNextWindow** functions
-struct ImGuiNextItemData;           // Storage for SetNextItem** functions
+struct ImGuiNextItem_data;           // Storage for SetNextItem** functions
 struct ImGuiPopupData;              // Storage for current popup stack
 struct ImGuiSettingsHandler;        // Storage for one type registered in the .ini file
 struct ImGuiStyleMod;               // Stacked style modifier, backup of modified data so we can restore it
@@ -102,7 +102,7 @@ typedef int ImGuiItemStatusFlags;       // -> enum ImGuiItemStatusFlags_    // F
 typedef int ImGuiNavHighlightFlags;     // -> enum ImGuiNavHighlightFlags_  // Flags: for RenderNavHighlight()
 typedef int ImGuiNavDirSourceFlags;     // -> enum ImGuiNavDirSourceFlags_  // Flags: for GetNavInputAmount2d()
 typedef int ImGuiNavMoveFlags;          // -> enum ImGuiNavMoveFlags_       // Flags: for navigation requests
-typedef int ImGuiNextItemDataFlags;     // -> enum ImGuiNextItemDataFlags_  // Flags: for SetNextItemXXX() functions
+typedef int ImGuiNextItem_dataFlags;     // -> enum ImGuiNextItem_dataFlags_  // Flags: for SetNextItemXXX() functions
 typedef int ImGuiNextWindowDataFlags;   // -> enum ImGuiNextWindowDataFlags_// Flags: for SetNextWindowXXX() functions
 typedef int ImGuiSeparatorFlags;        // -> enum ImGuiSeparatorFlags_     // Flags: for SeparatorEx()
 typedef int ImGuiSliderFlags;           // -> enum ImGuiSliderFlags_        // Flags: for SliderBehavior()
@@ -801,10 +801,10 @@ struct ImGuiViewportP : public ImGuiViewport
     ImDrawData          DrawDataP;
     ImDrawDataBuilder   DrawDataBuilder;
     ImVec2              LastPlatformPos;
-    ImVec2              LastPlatformSize;
+    ImVec2              LastPlatform_size;
     ImVec2              LastRendererSize;
 
-    ImGuiViewportP()            { Idx = -1; LastFrameActive = LastFrameDrawLists[0] = LastFrameDrawLists[1] = LastFrontMostStampCount = -1; LastNameHash = 0; Alpha = LastAlpha = 1.0f; PlatformMonitor = -1; PlatformWindowCreated = false; Window = NULL; DrawLists[0] = DrawLists[1] = NULL; LastPlatformPos = LastPlatformSize = LastRendererSize = ImVec2(FLT_MAX, FLT_MAX); }
+    ImGuiViewportP()            { Idx = -1; LastFrameActive = LastFrameDrawLists[0] = LastFrameDrawLists[1] = LastFrontMostStampCount = -1; LastNameHash = 0; Alpha = LastAlpha = 1.0f; PlatformMonitor = -1; PlatformWindowCreated = false; Window = NULL; DrawLists[0] = DrawLists[1] = NULL; LastPlatformPos = LastPlatform_size = LastRendererSize = ImVec2(FLT_MAX, FLT_MAX); }
     ~ImGuiViewportP()           { if (DrawLists[0]) IM_DELETE(DrawLists[0]); if (DrawLists[1]) IM_DELETE(DrawLists[1]); }
     ImRect  GetRect() const     { return ImRect(Pos.x, Pos.y, Pos.x + Size.x, Pos.y + Size.y); }
     ImVec2  GetCenter() const   { return ImVec2(Pos.x + Size.x * 0.5f, Pos.y + Size.y * 0.5f); }
@@ -867,22 +867,22 @@ struct ImGuiNextWindowData
     inline void ClearFlags()    { Flags = ImGuiNextWindowDataFlags_None; }
 };
 
-enum ImGuiNextItemDataFlags_
+enum ImGuiNextItem_dataFlags_
 {
-    ImGuiNextItemDataFlags_None     = 0,
-    ImGuiNextItemDataFlags_HasWidth = 1 << 0,
-    ImGuiNextItemDataFlags_HasOpen  = 1 << 1
+    ImGuiNextItem_dataFlags_None     = 0,
+    ImGuiNextItem_dataFlags_HasWidth = 1 << 0,
+    ImGuiNextItem_dataFlags_HasOpen  = 1 << 1
 };
 
-struct ImGuiNextItemData
+struct ImGuiNextItem_data
 {
-    ImGuiNextItemDataFlags      Flags;
+    ImGuiNextItem_dataFlags      Flags;
     float                       Width;          // Set by SetNextItemWidth().
     bool                        OpenVal;        // Set by SetNextItemOpen() function.
     ImGuiCond                   OpenCond;
 
-    ImGuiNextItemData()         { memset(this, 0, sizeof(*this)); }
-    inline void ClearFlags()    { Flags = ImGuiNextItemDataFlags_None; }
+    ImGuiNextItem_data()         { memset(this, 0, sizeof(*this)); }
+    inline void ClearFlags()    { Flags = ImGuiNextItem_dataFlags_None; }
 };
 
 //-----------------------------------------------------------------------------
@@ -1054,7 +1054,7 @@ struct ImGuiContext
 
     // Next window/item data
     ImGuiNextWindowData     NextWindowData;                     // Storage for SetNextWindow** functions
-    ImGuiNextItemData       NextItemData;                       // Storage for SetNextItem** functions
+    ImGuiNextItem_data       NextItem_data;                       // Storage for SetNextItem** functions
 
     // Shared stacks
     ImVector<ImGuiColorMod> ColorModifiers;                     // Stack for PushStyleColor()/PopStyleColor()
@@ -1718,14 +1718,14 @@ namespace ImGui
     IMGUI_API void          PushOverrideID(ImGuiID id);
 
     // Basic Helpers for widget code
-    IMGUI_API void          ItemSize(const ImVec2& size, float text_offset_y = 0.0f);
-    IMGUI_API void          ItemSize(const ImRect& bb, float text_offset_y = 0.0f);
+    IMGUI_API void          Item_size(const ImVec2& size, float text_offset_y = 0.0f);
+    IMGUI_API void          Item_size(const ImRect& bb, float text_offset_y = 0.0f);
     IMGUI_API bool          ItemAdd(const ImRect& bb, ImGuiID id, const ImRect* nav_bb = NULL);
     IMGUI_API bool          ItemHoverable(const ImRect& bb, ImGuiID id);
     IMGUI_API bool          IsClippedEx(const ImRect& bb, ImGuiID id, bool clip_even_when_logged);
     IMGUI_API bool          FocusableItemRegister(ImGuiWindow* window, ImGuiID id);   // Return true if focus is requested
     IMGUI_API void          FocusableItemUnregister(ImGuiWindow* window);
-    IMGUI_API ImVec2        CalcItemSize(ImVec2 size, float default_w, float default_h);
+    IMGUI_API ImVec2        CalcItem_size(ImVec2 size, float default_w, float default_h);
     IMGUI_API float         CalcWrapWidthForPos(const ImVec2& pos, float wrap_pos_x);
     IMGUI_API void          PushMultiItemsWidths(int components, float width_full);
     IMGUI_API void          PushItemFlag(ImGuiItemFlags option, bool enabled);

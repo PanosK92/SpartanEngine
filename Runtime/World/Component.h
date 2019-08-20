@@ -39,8 +39,8 @@ namespace Spartan
     template <typename T>
 	struct SPARTAN_CLASS ComponentData
 	{
-		unsigned int mSize = 1;
-		std::array<std::shared_ptr<T>, 1024> mData;
+		unsigned int m_size = 1;
+		std::array<std::shared_ptr<T>, 1024> m_data;
     };
 
     enum class DuplicateMode : char
@@ -81,10 +81,10 @@ namespace Spartan
         BaseComponentManager& operator=(BaseComponentManager&&) = default;
 
     protected:
-        ComponentData<IComponent> mComponentData;
+        ComponentData<IComponent> m_component_data;
 
-        std::unordered_map<uint32_t, std::unordered_map<uint32_t, ComponentIndex>> mEntityMap;
-        std::unordered_map<ComponentIndex, uint32_t> mInstanceMap;
+        std::unordered_map<uint32_t, std::unordered_map<uint32_t, ComponentIndex>> m_entity_map;
+        std::unordered_map<ComponentIndex, uint32_t> m_instance_map;
 	};
 
 	template<typename T>
@@ -103,28 +103,28 @@ namespace Spartan
         void RemoveComponentByID(uint32_t entityID, uint32_t componentID) override;
 
 		void Iterate(std::function<void(std::shared_ptr<IComponent>)> func) override;
-        void Clear() override { mEntityMap.clear(); mInstanceMap.clear(); mComponentData.mSize = 1; }
+        void Clear() override { m_entity_map.clear(); m_instance_map.clear(); m_component_data.m_size = 1; }
 	};
 		
 	template<typename T>
 	inline void ComponentManager<T>::AddComponent(uint32_t entityID, std::shared_ptr<IComponent>& component, DuplicateMode mode)
 	{
-        ComponentIndex instance = mComponentData.mSize;
+        ComponentIndex instance = m_component_data.m_size;
 
-        mComponentData.mData[instance] = component;
-        mEntityMap[entityID][component->GetId()] = instance;
-        mInstanceMap[instance] = entityID;
+        m_component_data.m_data[instance] = component;
+        m_entity_map[entityID][component->GetId()] = instance;
+        m_instance_map[instance] = entityID;
 
-        mComponentData.mSize++;        
+        m_component_data.m_size++;        
 	}
 		
 	template<typename T>
 	inline std::shared_ptr<IComponent> ComponentManager<T>::GetComponent(uint32_t entity_id)
 	{
-        std::unordered_map<uint32_t, ComponentIndex> _map = mEntityMap[entity_id];		
+        std::unordered_map<uint32_t, ComponentIndex> _map = m_entity_map[entity_id];		
         if (!_map.empty())
 		{
-			return mComponentData.mData[_map.begin()->second];
+			return m_component_data.m_data[_map.begin()->second];
 		}
 
         static std::shared_ptr<T> empty;
@@ -134,11 +134,11 @@ namespace Spartan
     template<typename T>
     inline std::shared_ptr<IComponent> ComponentManager<T>::GetComponentByID(uint32_t entity_id, uint32_t componentID)
     {
-        auto _map = mEntityMap[entity_id];
+        auto _map = m_entity_map[entity_id];
         if (!(_map.count(componentID) > 0))
         {
             ComponentIndex i = _map[componentID];
-            return mComponentData.mData[i];
+            return m_component_data.m_data[i];
         }
 
         return nullptr;
@@ -147,13 +147,13 @@ namespace Spartan
     template<typename T>
     inline std::vector<std::shared_ptr<IComponent>> ComponentManager<T>::GetComponents(uint32_t entity_id)
     {
-        auto _map = mEntityMap[entity_id];
+        auto _map = m_entity_map[entity_id];
         std::vector<std::shared_ptr<IComponent>> components;
         if (!_map.empty())
         {
             for (auto& c : _map)
             {
-                components.push_back(mComponentData.mData[c.second]);
+                components.push_back(m_component_data.m_data[c.second]);
             }
         }
 
@@ -163,40 +163,40 @@ namespace Spartan
 	template<typename T>
 	inline void ComponentManager<T>::RemoveComponent(uint32_t entity_id)
 	{
-        std::unordered_map<uint32_t, ComponentIndex> _map = mEntityMap[entity_id];
+        std::unordered_map<uint32_t, ComponentIndex> _map = m_entity_map[entity_id];
         if (!_map.empty())
         {
-            mComponentData.mData[mEntityMap[entity_id].begin()->second] = nullptr;
+            m_component_data.m_data[m_entity_map[entity_id].begin()->second] = nullptr;
 
-            if ((mEntityMap[entity_id].begin()->second) == (mComponentData.mSize - 1))
-                mComponentData.mSize--;
+            if ((m_entity_map[entity_id].begin()->second) == (m_component_data.m_size - 1))
+                m_component_data.m_size--;
 
-            mEntityMap[entity_id].erase(mEntityMap[entity_id].begin());
+            m_entity_map[entity_id].erase(m_entity_map[entity_id].begin());
         }
     }
 
     template<typename T>
     inline void ComponentManager<T>::RemoveComponentByID(uint32_t entity_id, uint32_t componentID)
     {
-        std::unordered_map<uint32_t, ComponentIndex> _map = mEntityMap[entity_id];
+        std::unordered_map<uint32_t, ComponentIndex> _map = m_entity_map[entity_id];
         if (_map.count(componentID) > 0)
         {
-            ComponentIndex lastComponent = mComponentData.mSize - 1;
-            mComponentData.mData[_map[componentID]] = nullptr;      
+            ComponentIndex lastComponent = m_component_data.m_size - 1;
+            m_component_data.m_data[_map[componentID]] = nullptr;      
 
-            if ((mEntityMap[entity_id][componentID]) == (mComponentData.mSize - 1))
-                mComponentData.mSize--;
+            if ((m_entity_map[entity_id][componentID]) == (m_component_data.m_size - 1))
+                m_component_data.m_size--;
 
-            mEntityMap[entity_id].erase(componentID);
+            m_entity_map[entity_id].erase(componentID);
         }
     }
 		
 	template<typename T>
     inline void ComponentManager<T>::Iterate(std::function<void(std::shared_ptr<IComponent>)> func)
 	{
-		for (uint32_t i = 1; i < mComponentData.mSize; i++)
+		for (uint32_t i = 1; i < m_component_data.m_size; i++)
 		{
-            std::shared_ptr<IComponent> component = mComponentData.mData[i];
+            std::shared_ptr<IComponent> component = m_component_data.m_data[i];
             if (component != nullptr)
             {
                 func(component);

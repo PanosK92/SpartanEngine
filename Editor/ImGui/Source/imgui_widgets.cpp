@@ -212,7 +212,7 @@ void ImGui::TextEx(const char* text, const char* text_end, ImGuiTextFlags flags)
         text_size.y = (pos - text_pos).y;
 
         ImRect bb(text_pos, text_pos + text_size);
-        ItemSize(text_size);
+        Item_size(text_size);
         ItemAdd(bb, 0);
     }
     else
@@ -221,7 +221,7 @@ void ImGui::TextEx(const char* text, const char* text_end, ImGuiTextFlags flags)
         const ImVec2 text_size = CalcTextSize(text_begin, text_end, false, wrap_width);
 
         ImRect bb(text_pos, text_pos + text_size);
-        ItemSize(text_size);
+        Item_size(text_size);
         if (!ItemAdd(bb, 0))
             return;
 
@@ -325,7 +325,7 @@ void ImGui::LabelTextV(const char* label, const char* fmt, va_list args)
     const ImVec2 label_size = CalcTextSize(label, NULL, true);
     const ImRect value_bb(window->DC.CursorPos, window->DC.CursorPos + ImVec2(w, label_size.y + style.FramePadding.y*2));
     const ImRect total_bb(window->DC.CursorPos, window->DC.CursorPos + ImVec2(w + (label_size.x > 0.0f ? style.ItemInnerSpacing.x : 0.0f), style.FramePadding.y*2) + label_size);
-    ItemSize(total_bb, style.FramePadding.y);
+    Item_size(total_bb, style.FramePadding.y);
     if (!ItemAdd(total_bb, 0))
         return;
 
@@ -358,10 +358,10 @@ void ImGui::BulletTextV(const char* fmt, va_list args)
     const char* text_begin = g.TempBuffer;
     const char* text_end = text_begin + ImFormatStringV(g.TempBuffer, IM_ARRAYSIZE(g.TempBuffer), fmt, args);
     const ImVec2 label_size = CalcTextSize(text_begin, text_end, false);
-    const float text_base_offset_y = ImMax(0.0f, window->DC.CurrLineTextBaseOffset); // Latch before ItemSize changes it
+    const float text_base_offset_y = ImMax(0.0f, window->DC.CurrLineTextBaseOffset); // Latch before Item_size changes it
     const float line_height = ImMax(ImMin(window->DC.CurrLineSize.y, g.FontSize + g.Style.FramePadding.y*2), g.FontSize);
     const ImRect bb(window->DC.CursorPos, window->DC.CursorPos + ImVec2(g.FontSize + (label_size.x > 0.0f ? (label_size.x + style.FramePadding.x*2) : 0.0f), ImMax(line_height, label_size.y)));  // Empty text doesn't add padding
-    ItemSize(bb);
+    Item_size(bb);
     if (!ItemAdd(bb, 0))
         return;
 
@@ -615,10 +615,10 @@ bool ImGui::ButtonEx(const char* label, const ImVec2& size_arg, ImGuiButtonFlags
     ImVec2 pos = window->DC.CursorPos;
     if ((flags & ImGuiButtonFlags_AlignTextBaseLine) && style.FramePadding.y < window->DC.CurrLineTextBaseOffset) // Try to vertically align buttons that are smaller/have no padding so that text baseline matches (bit hacky, since it shouldn't be a flag)
         pos.y += window->DC.CurrLineTextBaseOffset - style.FramePadding.y;
-    ImVec2 size = CalcItemSize(size_arg, label_size.x + style.FramePadding.x * 2.0f, label_size.y + style.FramePadding.y * 2.0f);
+    ImVec2 size = CalcItem_size(size_arg, label_size.x + style.FramePadding.x * 2.0f, label_size.y + style.FramePadding.y * 2.0f);
 
     const ImRect bb(pos, pos + size);
-    ItemSize(size, style.FramePadding.y);
+    Item_size(size, style.FramePadding.y);
     if (!ItemAdd(bb, id))
         return false;
 
@@ -669,9 +669,9 @@ bool ImGui::InvisibleButton(const char* str_id, const ImVec2& size_arg)
     IM_ASSERT(size_arg.x != 0.0f && size_arg.y != 0.0f);
 
     const ImGuiID id = window->GetID(str_id);
-    ImVec2 size = CalcItemSize(size_arg, 0.0f, 0.0f);
+    ImVec2 size = CalcItem_size(size_arg, 0.0f, 0.0f);
     const ImRect bb(window->DC.CursorPos, window->DC.CursorPos + size);
-    ItemSize(size);
+    Item_size(size);
     if (!ItemAdd(bb, id))
         return false;
 
@@ -691,7 +691,7 @@ bool ImGui::ArrowButtonEx(const char* str_id, ImGuiDir dir, ImVec2 size, ImGuiBu
     const ImGuiID id = window->GetID(str_id);
     const ImRect bb(window->DC.CursorPos, window->DC.CursorPos + size);
     const float default_size = GetFrameHeight();
-    ItemSize(size, (size.y >= default_size) ? g.Style.FramePadding.y : 0.0f);
+    Item_size(size, (size.y >= default_size) ? g.Style.FramePadding.y : 0.0f);
     if (!ItemAdd(bb, id))
         return false;
 
@@ -923,7 +923,7 @@ void ImGui::Image(ImTextureID user_texture_id, const ImVec2& size, const ImVec2&
     ImRect bb(window->DC.CursorPos, window->DC.CursorPos + size);
     if (border_col.w > 0.0f)
         bb.Max += ImVec2(2, 2);
-    ItemSize(bb);
+    Item_size(bb);
     if (!ItemAdd(bb, 0))
         return;
 
@@ -960,7 +960,7 @@ bool ImGui::ImageButton(ImTextureID user_texture_id, const ImVec2& size, const I
     const ImVec2 padding = (frame_padding >= 0) ? ImVec2((float)frame_padding, (float)frame_padding) : style.FramePadding;
     const ImRect bb(window->DC.CursorPos, window->DC.CursorPos + size + padding * 2);
     const ImRect image_bb(window->DC.CursorPos + padding, window->DC.CursorPos + padding + size);
-    ItemSize(bb);
+    Item_size(bb);
     if (!ItemAdd(bb, id))
         return false;
 
@@ -992,7 +992,7 @@ bool ImGui::Checkbox(const char* label, bool* v)
     const float square_sz = GetFrameHeight();
     const ImVec2 pos = window->DC.CursorPos;
     const ImRect total_bb(pos, pos + ImVec2(square_sz + (label_size.x > 0.0f ? style.ItemInnerSpacing.x + label_size.x : 0.0f), label_size.y + style.FramePadding.y * 2.0f));
-    ItemSize(total_bb, style.FramePadding.y);
+    Item_size(total_bb, style.FramePadding.y);
     if (!ItemAdd(total_bb, id))
         return false;
 
@@ -1059,7 +1059,7 @@ bool ImGui::RadioButton(const char* label, bool active)
     const ImVec2 pos = window->DC.CursorPos;
     const ImRect check_bb(pos, pos + ImVec2(square_sz, square_sz));
     const ImRect total_bb(pos, pos + ImVec2(square_sz + (label_size.x > 0.0f ? style.ItemInnerSpacing.x + label_size.x : 0.0f), label_size.y + style.FramePadding.y * 2.0f));
-    ItemSize(total_bb, style.FramePadding.y);
+    Item_size(total_bb, style.FramePadding.y);
     if (!ItemAdd(total_bb, id))
         return false;
 
@@ -1115,9 +1115,9 @@ void ImGui::ProgressBar(float fraction, const ImVec2& size_arg, const char* over
     const ImGuiStyle& style = g.Style;
 
     ImVec2 pos = window->DC.CursorPos;
-    ImVec2 size = CalcItemSize(size_arg, CalcItemWidth(), g.FontSize + style.FramePadding.y*2.0f);
+    ImVec2 size = CalcItem_size(size_arg, CalcItemWidth(), g.FontSize + style.FramePadding.y*2.0f);
     ImRect bb(pos, pos + size);
-    ItemSize(size, style.FramePadding.y);
+    Item_size(size, style.FramePadding.y);
     if (!ItemAdd(bb, 0))
         return;
 
@@ -1151,7 +1151,7 @@ void ImGui::Bullet()
     const ImGuiStyle& style = g.Style;
     const float line_height = ImMax(ImMin(window->DC.CurrLineSize.y, g.FontSize + g.Style.FramePadding.y*2), g.FontSize);
     const ImRect bb(window->DC.CursorPos, window->DC.CursorPos + ImVec2(g.FontSize, line_height));
-    ItemSize(bb);
+    Item_size(bb);
     if (!ItemAdd(bb, 0))
     {
         SameLine(0, style.FramePadding.x*2);
@@ -1182,7 +1182,7 @@ void ImGui::Spacing()
     ImGuiWindow* window = GetCurrentWindow();
     if (window->SkipItems)
         return;
-    ItemSize(ImVec2(0,0));
+    Item_size(ImVec2(0,0));
 }
 
 void ImGui::Dummy(const ImVec2& size)
@@ -1192,7 +1192,7 @@ void ImGui::Dummy(const ImVec2& size)
         return;
 
     const ImRect bb(window->DC.CursorPos, window->DC.CursorPos + size);
-    ItemSize(size);
+    Item_size(size);
     ItemAdd(bb, 0);
 }
 
@@ -1206,9 +1206,9 @@ void ImGui::NewLine()
     const ImGuiLayoutType backup_layout_type = window->DC.LayoutType;
     window->DC.LayoutType = ImGuiLayoutType_Vertical;
     if (window->DC.CurrLineSize.y > 0.0f)     // In the event that we are on a line with items that is smaller that FontSize high, we will preserve its height.
-        ItemSize(ImVec2(0,0));
+        Item_size(ImVec2(0,0));
     else
-        ItemSize(ImVec2(0.0f, g.FontSize));
+        Item_size(ImVec2(0.0f, g.FontSize));
     window->DC.LayoutType = backup_layout_type;
 }
 
@@ -1241,7 +1241,7 @@ void ImGui::SeparatorEx(ImGuiSeparatorFlags flags)
         float y1 = window->DC.CursorPos.y;
         float y2 = window->DC.CursorPos.y + window->DC.CurrLineSize.y;
         const ImRect bb(ImVec2(window->DC.CursorPos.x, y1), ImVec2(window->DC.CursorPos.x + thickness_draw, y2));
-        ItemSize(ImVec2(thickness_layout, 0.0f));
+        Item_size(ImVec2(thickness_layout, 0.0f));
         if (!ItemAdd(bb, 0))
             return;
 
@@ -1264,7 +1264,7 @@ void ImGui::SeparatorEx(ImGuiSeparatorFlags flags)
 
         // We don't provide our width to the layout so that it doesn't get feed back into AutoFit
         const ImRect bb(ImVec2(x1, window->DC.CursorPos.y), ImVec2(x2, window->DC.CursorPos.y + thickness_draw));
-        ItemSize(ImVec2(0.0f, thickness_layout));
+        Item_size(ImVec2(0.0f, thickness_layout));
         if (!ItemAdd(bb, 0))
         {
             if (columns)
@@ -1421,7 +1421,7 @@ bool ImGui::BeginCombo(const char* label, const char* preview_value, ImGuiComboF
     const float w = (flags & ImGuiComboFlags_NoPreview) ? arrow_size : expected_w;
     const ImRect frame_bb(window->DC.CursorPos, window->DC.CursorPos + ImVec2(w, label_size.y + style.FramePadding.y*2.0f));
     const ImRect total_bb(frame_bb.Min, frame_bb.Max + ImVec2(label_size.x > 0.0f ? style.ItemInnerSpacing.x + label_size.x : 0.0f, 0.0f));
-    ItemSize(total_bb, style.FramePadding.y);
+    Item_size(total_bb, style.FramePadding.y);
     if (!ItemAdd(total_bb, id, &frame_bb))
         return false;
 
@@ -2052,7 +2052,7 @@ bool ImGui::DragScalar(const char* label, ImGuiDataType data_type, void* v, floa
     const ImRect frame_bb(window->DC.CursorPos, window->DC.CursorPos + ImVec2(w, label_size.y + style.FramePadding.y*2.0f));
     const ImRect total_bb(frame_bb.Min, frame_bb.Max + ImVec2(label_size.x > 0.0f ? style.ItemInnerSpacing.x + label_size.x : 0.0f, 0.0f));
 
-    ItemSize(total_bb, style.FramePadding.y);
+    Item_size(total_bb, style.FramePadding.y);
     if (!ItemAdd(total_bb, id, &frame_bb))
         return false;
 
@@ -2502,7 +2502,7 @@ bool ImGui::SliderScalar(const char* label, ImGuiDataType data_type, void* v, co
     const ImRect frame_bb(window->DC.CursorPos, window->DC.CursorPos + ImVec2(w, label_size.y + style.FramePadding.y*2.0f));
     const ImRect total_bb(frame_bb.Min, frame_bb.Max + ImVec2(label_size.x > 0.0f ? style.ItemInnerSpacing.x + label_size.x : 0.0f, 0.0f));
 
-    ItemSize(total_bb, style.FramePadding.y);
+    Item_size(total_bb, style.FramePadding.y);
     if (!ItemAdd(total_bb, id, &frame_bb))
         return false;
 
@@ -2663,7 +2663,7 @@ bool ImGui::VSliderScalar(const char* label, const ImVec2& size, ImGuiDataType d
     const ImRect frame_bb(window->DC.CursorPos, window->DC.CursorPos + size);
     const ImRect bb(frame_bb.Min, frame_bb.Max + ImVec2(label_size.x > 0.0f ? style.ItemInnerSpacing.x + label_size.x : 0.0f, 0.0f));
 
-    ItemSize(bb, style.FramePadding.y);
+    Item_size(bb, style.FramePadding.y);
     if (!ItemAdd(frame_bb, id))
         return false;
 
@@ -3387,7 +3387,7 @@ bool ImGui::InputTextEx(const char* label, const char* hint, char* buf, int buf_
         BeginGroup();
     const ImGuiID id = window->GetID(label);
     const ImVec2 label_size = CalcTextSize(label, NULL, true);
-    ImVec2 size = CalcItemSize(size_arg, CalcItemWidth(), (is_multiline ? GetTextLineHeight() * 8.0f : label_size.y) + style.FramePadding.y*2.0f); // Arbitrary default of 8 lines high for multi-line
+    ImVec2 size = CalcItem_size(size_arg, CalcItemWidth(), (is_multiline ? GetTextLineHeight() * 8.0f : label_size.y) + style.FramePadding.y*2.0f); // Arbitrary default of 8 lines high for multi-line
     const ImRect frame_bb(window->DC.CursorPos, window->DC.CursorPos + size);
     const ImRect total_bb(frame_bb.Min, frame_bb.Max + ImVec2(label_size.x > 0.0f ? (style.ItemInnerSpacing.x + label_size.x) : 0.0f, 0.0f));
 
@@ -3396,7 +3396,7 @@ bool ImGui::InputTextEx(const char* label, const char* hint, char* buf, int buf_
     {
         if (!ItemAdd(total_bb, id, &frame_bb))
         {
-            ItemSize(total_bb, style.FramePadding.y);
+            Item_size(total_bb, style.FramePadding.y);
             EndGroup();
             return false;
         }
@@ -3412,7 +3412,7 @@ bool ImGui::InputTextEx(const char* label, const char* hint, char* buf, int buf_
     }
     else
     {
-        ItemSize(total_bb, style.FramePadding.y);
+        Item_size(total_bb, style.FramePadding.y);
         if (!ItemAdd(total_bb, id, &frame_bb))
             return false;
     }
@@ -4150,7 +4150,7 @@ bool ImGui::ColorEdit4(const char* label, float col[4], ImGuiColorEditFlags flag
     const float w_button = (flags & ImGuiColorEditFlags_NoSmallPreview) ? 0.0f : (square_sz + style.ItemInnerSpacing.x);
     const float w_inputs = w_full - w_button;
     const char* label_display_end = FindRenderedTextEnd(label);
-    g.NextItemData.ClearFlags();
+    g.NextItem_data.ClearFlags();
 
     BeginGroup();
     PushID(label);
@@ -4435,7 +4435,7 @@ bool ImGui::ColorPicker4(const char* label, float col[4], ImGuiColorEditFlags fl
     ImGuiIO& io = g.IO;
 
     const float width = CalcItemWidth();
-    g.NextItemData.ClearFlags();
+    g.NextItem_data.ClearFlags();
 
     PushID(label);
     BeginGroup();
@@ -4789,7 +4789,7 @@ bool ImGui::ColorButton(const char* desc_id, const ImVec4& col, ImGuiColorEditFl
     if (size.y == 0.0f)
         size.y = default_size;
     const ImRect bb(window->DC.CursorPos, window->DC.CursorPos + size);
-    ItemSize(bb, (size.y >= default_size) ? g.Style.FramePadding.y : 0.0f);
+    Item_size(bb, (size.y >= default_size) ? g.Style.FramePadding.y : 0.0f);
     if (!ItemAdd(bb, id))
         return false;
 
@@ -5102,11 +5102,11 @@ bool ImGui::TreeNodeBehaviorIsOpen(ImGuiID id, ImGuiTreeNodeFlags flags)
     ImGuiStorage* storage = window->DC.StateStorage;
 
     bool is_open;
-    if (g.NextItemData.Flags & ImGuiNextItemDataFlags_HasOpen)
+    if (g.NextItem_data.Flags & ImGuiNextItem_dataFlags_HasOpen)
     {
-        if (g.NextItemData.OpenCond & ImGuiCond_Always)
+        if (g.NextItem_data.OpenCond & ImGuiCond_Always)
         {
-            is_open = g.NextItemData.OpenVal;
+            is_open = g.NextItem_data.OpenVal;
             storage->SetInt(id, is_open);
         }
         else
@@ -5115,7 +5115,7 @@ bool ImGui::TreeNodeBehaviorIsOpen(ImGuiID id, ImGuiTreeNodeFlags flags)
             const int stored_value = storage->GetInt(id, -1);
             if (stored_value == -1)
             {
-                is_open = g.NextItemData.OpenVal;
+                is_open = g.NextItem_data.OpenVal;
                 storage->SetInt(id, is_open);
             }
             else
@@ -5153,7 +5153,7 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char* l
     const ImVec2 label_size = CalcTextSize(label, label_end, false);
 
     // We vertically grow up to current line height up the typical widget height.
-    const float text_base_offset_y = ImMax(padding.y, window->DC.CurrLineTextBaseOffset); // Latch before ItemSize changes it
+    const float text_base_offset_y = ImMax(padding.y, window->DC.CurrLineTextBaseOffset); // Latch before Item_size changes it
     const float frame_height = ImMax(ImMin(window->DC.CurrLineSize.y, g.FontSize + style.FramePadding.y*2), label_size.y + padding.y*2);
     ImRect frame_bb = ImRect(window->DC.CursorPos, ImVec2(window->WorkRect.Max.x, window->DC.CursorPos.y + frame_height));
     if (display_frame)
@@ -5165,7 +5165,7 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char* l
 
     const float text_offset_x = (g.FontSize + (display_frame ? padding.x*3 : padding.x*2));   // Collapser arrow width + Spacing
     const float text_width = g.FontSize + (label_size.x > 0.0f ? label_size.x + padding.x*2 : 0.0f);   // Include collapser
-    ItemSize(ImVec2(text_width, frame_height), text_base_offset_y);
+    Item_size(ImVec2(text_width, frame_height), text_base_offset_y);
 
     // For regular tree nodes, we arbitrary allow to click past 2 worth of ItemSpacing
     // (Ideally we'd want to add a flag for the user to specify if we want the hit test to be done up to the right side of the content or not)
@@ -5355,9 +5355,9 @@ void ImGui::SetNextItemOpen(bool is_open, ImGuiCond cond)
     ImGuiContext& g = *GImGui;
     if (g.CurrentWindow->SkipItems)
         return;
-    g.NextItemData.Flags |= ImGuiNextItemDataFlags_HasOpen;
-    g.NextItemData.OpenVal = is_open;
-    g.NextItemData.OpenCond = cond ? cond : ImGuiCond_Always;
+    g.NextItem_data.Flags |= ImGuiNextItem_dataFlags_HasOpen;
+    g.NextItem_data.OpenVal = is_open;
+    g.NextItem_data.OpenCond = cond ? cond : ImGuiCond_Always;
 }
 
 // CollapsingHeader returns true when opened but do not indent nor push into the ID stack (because of the ImGuiTreeNodeFlags_NoTreePushOnOpen flag).
@@ -5427,7 +5427,7 @@ bool ImGui::Selectable(const char* label, bool selected, ImGuiSelectableFlags fl
     ImVec2 pos = window->DC.CursorPos;
     pos.y += window->DC.CurrLineTextBaseOffset;
     ImRect bb_inner(pos, pos + size);
-    ItemSize(size);
+    Item_size(size);
 
     // Fill horizontal space.
     ImVec2 window_padding = window->WindowPadding;
@@ -5566,16 +5566,16 @@ bool ImGui::ListBoxHeader(const char* label, const ImVec2& size_arg)
     const ImVec2 label_size = CalcTextSize(label, NULL, true);
 
     // Size default to hold ~7 items. Fractional number of items helps seeing that we can scroll down/up without looking at scrollbar.
-    ImVec2 size = CalcItemSize(size_arg, CalcItemWidth(), GetTextLineHeightWithSpacing() * 7.4f + style.ItemSpacing.y);
+    ImVec2 size = CalcItem_size(size_arg, CalcItemWidth(), GetTextLineHeightWithSpacing() * 7.4f + style.ItemSpacing.y);
     ImVec2 frame_size = ImVec2(size.x, ImMax(size.y, label_size.y));
     ImRect frame_bb(window->DC.CursorPos, window->DC.CursorPos + frame_size);
     ImRect bb(frame_bb.Min, frame_bb.Max + ImVec2(label_size.x > 0.0f ? style.ItemInnerSpacing.x + label_size.x : 0.0f, 0.0f));
     window->DC.LastItemRect = bb; // Forward storage for ListBoxFooter.. dodgy.
-    g.NextItemData.ClearFlags();
+    g.NextItem_data.ClearFlags();
 
     if (!IsRectVisible(bb.Min, bb.Max))
     {
-        ItemSize(bb.GetSize(), style.FramePadding.y);
+        Item_size(bb.GetSize(), style.FramePadding.y);
         ItemAdd(bb, 0, &frame_bb);
         return false;
     }
@@ -5620,7 +5620,7 @@ void ImGui::ListBoxFooter()
     // We call SameLine() to restore DC.CurrentLine* data
     SameLine();
     parent_window->DC.CursorPos = bb.Min;
-    ItemSize(bb, style.FramePadding.y);
+    Item_size(bb, style.FramePadding.y);
     EndGroup();
 }
 
@@ -5691,7 +5691,7 @@ void ImGui::PlotEx(ImGuiPlotType plot_type, const char* label, float (*values_ge
     const ImRect frame_bb(window->DC.CursorPos, window->DC.CursorPos + frame_size);
     const ImRect inner_bb(frame_bb.Min + style.FramePadding, frame_bb.Max - style.FramePadding);
     const ImRect total_bb(frame_bb.Min, frame_bb.Max + ImVec2(label_size.x > 0.0f ? style.ItemInnerSpacing.x + label_size.x : 0.0f, 0));
-    ItemSize(total_bb, style.FramePadding.y);
+    Item_size(total_bb, style.FramePadding.y);
     if (!ItemAdd(total_bb, 0, &frame_bb))
         return;
     const bool hovered = ItemHoverable(frame_bb, id);
@@ -6360,7 +6360,7 @@ bool    ImGui::BeginTabBarEx(ImGuiTabBar* tab_bar, const ImRect& tab_bar_bb, ImG
     tab_bar->FramePadding = g.Style.FramePadding;
 
     // Layout
-    ItemSize(ImVec2(0.0f /*tab_bar->OffsetMax*/, tab_bar->BarRect.GetHeight())); // Don't feed width back
+    Item_size(ImVec2(0.0f /*tab_bar->OffsetMax*/, tab_bar->BarRect.GetHeight())); // Don't feed width back
     window->DC.CursorPos.x = tab_bar->BarRect.Min.x;
 
     // Draw separator
@@ -6964,7 +6964,7 @@ bool    ImGui::TabItemEx(ImGuiTabBar* tab_bar, const char* label, bool* p_open, 
         PushClipRect(ImVec2(ImMax(bb.Min.x, tab_bar->BarRect.Min.x), bb.Min.y - 1), ImVec2(tab_bar->BarRect.Max.x, bb.Max.y), true);
 
     ImVec2 backup_cursor_max_pos = window->DC.CursorMaxPos;
-    ItemSize(bb.GetSize(), style.FramePadding.y);
+    Item_size(bb.GetSize(), style.FramePadding.y);
     window->DC.CursorMaxPos = backup_cursor_max_pos;
 
     if (!ItemAdd(bb, id))
