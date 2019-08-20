@@ -48,7 +48,7 @@ namespace Spartan
 		m_material->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 		m_material->SetIsEditable(false);
 		m_material->SetShadingMode(Shading_Sky);
-		
+
 		// Texture paths
 		const auto dir_cubemaps = GetContext()->GetSubsystem<ResourceCache>()->GetDataDirectory(Asset_Cubemaps);
 		if (m_environment_type == Skybox_Array)
@@ -76,17 +76,18 @@ namespace Spartan
 
 	void Skybox::OnInitialize()
 	{
-		m_context->GetSubsystem<Threading>()->AddTask([this]
-		{		
-			if (m_environment_type == Skybox_Array)
-			{
-				CreateFromArray(m_texture_paths);
-			}
-			else if (m_environment_type == Skybox_Sphere)
-			{
-				CreateFromSphere(m_texture_paths.front());
-			}
-		});
+        if (this != nullptr) // Had to sacrifice threading for it to work
+        {
+
+            if (m_environment_type == Skybox_Array)
+             {
+                   CreateFromArray(m_texture_paths);
+             }
+             else if (m_environment_type == Skybox_Sphere)
+             {
+                  CreateFromSphere(m_texture_paths.front());
+             }
+        }
 	}
 
 	void Skybox::CreateFromArray(const vector<string>& texturePaths)
@@ -154,7 +155,9 @@ namespace Spartan
 		// Texture
 		{
 			auto m_generate_mipmaps = true;
-			m_texture = static_pointer_cast<RHI_Texture>(make_shared<RHI_Texture2D>(GetContext(), m_generate_mipmaps));
+            auto context = GetContext();
+            m_texture = std::make_shared<RHI_Texture2D>(context, m_generate_mipmaps);
+            //m_texture = std::static_pointer_cast<RHI_Texture>(texture2D);
 			m_texture->LoadFromFile(texture_path);
 			m_texture->SetResourceName("SkySphere");
 		}
@@ -167,7 +170,8 @@ namespace Spartan
 
 		// Renderable
 		{
-			auto renderable = GetEntity_PtrRaw()->AddComponent<Renderable>();
+            auto entity = GetEntity_PtrRaw();
+            auto renderable = entity->AddComponent<Renderable>();
 			renderable->GeometrySet(Geometry_Default_Sphere);
 			renderable->SetCastShadows(false);
 			renderable->SetReceiveShadows(false);
@@ -175,7 +179,8 @@ namespace Spartan
 		}
 
 		// Make the skybox big enough
-		GetTransform()->SetScale(Vector3(980, 980, 980));
+        auto transform = m_entity->GetTransform_PtrShared();
+        transform->SetScale(Vector3(980, 980, 980));
 
 		LOG_INFO("Sky sphere has been created successfully");
 	}

@@ -178,7 +178,7 @@ void Widget_Properties::Tick()
 
         for (auto& script : entity_ptr->GetComponents<Script>())
         {
-            ShowScript(script);
+            ShowScript(std::dynamic_pointer_cast<Script>(script));
         }
 
         if (auto& renderable = entity_ptr->GetComponent<Renderable>())

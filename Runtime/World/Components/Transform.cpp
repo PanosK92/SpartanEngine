@@ -45,6 +45,7 @@ namespace Spartan
 		m_matrixLocal		= Matrix::Identity;
 		m_wvp_previous		= Matrix::Identity;
 		m_parent			= nullptr;
+        c                   = context;
 
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_positionLocal,	Vector3);
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_rotationLocal,	Quaternion);
@@ -240,7 +241,7 @@ namespace Spartan
 		// in this script, tweak it with great caution.
 
 		// if the new parent is null, it means that this should become a root transform
-		if (!new_parent)
+		if (new_parent == NULL)
 		{
 			BecomeOrphan();
 			return;
@@ -338,17 +339,20 @@ namespace Spartan
 	// This is a recursive function, the children will also find their own children and so on...
 	void Transform::AcquireChildren()
 	{
-		m_children.clear();
-		m_children.shrink_to_fit();
+        if (!m_children.empty())
+        {
+            m_children.clear();
+            m_children.shrink_to_fit();
+        }
 
-		auto entities = GetContext()->GetSubsystem<World>()->EntityGetAll();
+		auto entities = c->GetSubsystem<World>()->EntityGetAll();
 		for (const auto& entity : entities)
 		{
 			if (!entity)
 				continue;
 
 			// get the possible child
-			auto possible_child = entity->GetTransform_PtrRaw();
+			auto possible_child = entity->GetComponent<Transform>().get();
 
 			// if it doesn't have a parent, forget about it.
 			if (!possible_child->HasParent())
@@ -454,7 +458,8 @@ namespace Spartan
 	void Transform::BecomeOrphan()
 	{
 		// if there is no parent, no need to do anything
-		if (!m_parent)
+        return;
+        if (m_parent == NULL)
 			return;
 
 		// create a temporary reference to the parent

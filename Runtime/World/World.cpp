@@ -121,7 +121,7 @@ namespace Spartan
                 IterateManagers([&](auto& manager)
                 {
                      manager->Iterate([&](auto& component)
-                    {
+                     {
                         if (component->IsParentEntityActive())
                         {
                             component->OnStop();
@@ -160,6 +160,11 @@ namespace Spartan
 
 		m_entities_primary.clear();
 		m_entities_primary.shrink_to_fit();
+
+        IterateManagers([&](std::shared_ptr<BaseComponentManager> manager)
+        {
+                manager->Clear();
+        });
 
 		m_isDirty = true;
 		
@@ -206,7 +211,7 @@ namespace Spartan
 		for (const auto& root : root_actors)
 		{
 			file->Write(root->GetId());
-            file->Write(root->GetTransform_PtrRaw()->GetId());
+            file->Write(root->GetComponent<Transform>()->GetId());
 		}
 
 		// Save root entities
@@ -266,14 +271,17 @@ namespace Spartan
 		{
             uint32_t id             = file->ReadAs<uint32_t>();
             uint32_t transform_id   = file->ReadAs<uint32_t>();
-			auto& entity = EntityCreate(id, transform_id);
+			EntityCreate(id, transform_id);
 		}
 
 		// Serialize root entities
-		for (uint32_t i = 0; i < root_entity_count; i++)
+		for (auto& entity : m_entities_primary)
 		{
-			m_entities_primary[i]->Deserialize(file.get(), nullptr);
-			ProgressReport::Get().IncrementJobsDone(g_progress_world);
+            if (entity != nullptr)
+            {
+                entity->Deserialize(file.get(), nullptr);
+                ProgressReport::Get().IncrementJobsDone(g_progress_world);
+            }
 		}
 
 		m_isDirty	= true;
@@ -285,9 +293,9 @@ namespace Spartan
 		return true;
 	}
 
-    shared_ptr<Spartan::Entity>& World::EntityCreate(uint32_t id /*= 0*/, uint32_t transform_id /*= 0*/)
+    shared_ptr<Spartan::Entity>& World::EntityCreate(uint32_t id /*= 0*/, uint32_t transform_id /*= 0*/, bool postpone_transform)
     {
-        return m_entities_primary.emplace_back(make_shared<Entity>(m_context, id, transform_id));
+        return m_entities_primary.emplace_back(std::make_shared<Entity>(m_context, id, transform_id, postpone_transform));
     }
 
     shared_ptr<Entity>& World::EntityAdd(const shared_ptr<Entity>& entity)
@@ -348,12 +356,17 @@ namespace Spartan
 	vector<shared_ptr<Entity>> World::EntityGetRoots()
 	{
 		vector<shared_ptr<Entity>> root_entities;
-		for (const auto& entity : m_entities_primary)
+
+        for (const auto& entity : m_entities_primary)
 		{
-			if (entity->GetTransform_PtrRaw()->IsRoot())
-			{
-				root_entities.emplace_back(entity);
-			}
+            std::shared_ptr<Transform> transform = entity->GetComponent<Transform>();
+            if (transform != nullptr)
+            {
+                if (entity->GetComponent<Transform>()->IsRoot())
+                {
+                    root_entities.emplace_back(entity);
+                }
+            }
 		}
 
 		return root_entities;

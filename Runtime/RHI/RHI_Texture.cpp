@@ -119,9 +119,12 @@ namespace Spartan
 			return false;
 		}
 
-		m_data.clear();
-		m_data.shrink_to_fit();
-		m_load_state = LoadState_Started;
+        if (!m_data.empty())
+        {
+            m_data.clear();
+            m_data.shrink_to_fit();
+        }
+        m_load_state = LoadState_Started;
 
 		// Load from disk
 		auto texture_data_loaded = false;		

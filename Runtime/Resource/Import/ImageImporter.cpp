@@ -169,8 +169,10 @@ namespace Spartan
 		const auto size = width * height * channels * ComputeBitsPerChannel(bitmap);
 		if (size != data->size())
 		{
-			data->clear();
-			data->reserve(size);
+            if (!data->empty())
+                data->clear();
+
+            data->reserve(size);
 			data->resize(size);
 		}
 

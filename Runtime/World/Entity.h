@@ -37,7 +37,7 @@ namespace Spartan
     class SPARTAN_CLASS Entity : public Spartan_Object, public std::enable_shared_from_this<Entity>
     {
     public:
-        Entity(Context* context, uint32_t id = 0, uint32_t transform_id = 0);
+        Entity(Context* context, uint32_t id = 0, uint32_t transform_id = 0, bool postpone_transform = false);
         ~Entity();
 
         void Clone();
@@ -65,11 +65,11 @@ namespace Spartan
 
         // Returns a component
         template <class T>
-        inline std::shared_ptr<T>& GetComponent()
+        inline std::shared_ptr<T> GetComponent()
         {
             if (HasComponent<T>())
             {
-                return m_world->GetComponentManager<T>()->GetComponent(GetId());
+                return std::dynamic_pointer_cast<T>(m_world->GetComponentManager<T>()->GetComponent(GetId()));
             }
 
             static std::shared_ptr<T> empty;
@@ -78,25 +78,28 @@ namespace Spartan
 
         // Returns components
         template <class T>
-        inline std::vector<std::shared_ptr<T>> GetComponents()
+        inline std::vector<std::shared_ptr<IComponent>> GetComponents()
         {
             if (HasComponent<T>())
             {
                 return m_world->GetComponentManager<T>()->GetComponents(GetId());
             }
 
-            return std::vector<std::shared_ptr<T>>();
+            return std::vector<std::shared_ptr<IComponent>>();
         }
 
         // Adds a component
         template <class T>
-        inline std::shared_ptr<T> AddComponent(uint32_t component_id = 0)
+        inline std::shared_ptr<T> AddComponent(uint32_t component_id = 0, bool check_if_exists = true)
         {
             const ComponentType type = IComponent::TypeToEnum<T>();
 
-            // Return component in case it already exists while ignoring Script components (they can exist multiple times)
-            if (HasComponent(type) && type != ComponentType_Script)
-                return GetComponent<T>();
+            if (check_if_exists)
+            {
+                // Return component in case it already exists while ignoring Script components (they can exist multiple times)
+                if (HasComponent(type) && type != ComponentType_Script)
+                    return GetComponent<T>();
+            }
 
             // Create new component
             auto new_component = std::make_shared<T>(m_context, this, component_id);
@@ -105,7 +108,7 @@ namespace Spartan
 
             // Add the component to the component manager
             m_id_to_type[new_component->GetId()] = type;
-            m_world->GetComponentManager<T>()->AddComponent(GetId(), new_component);
+            m_world->GetComponentManager<T>()->AddComponent(GetId(), std::dynamic_pointer_cast<IComponent>(new_component), static_cast<DuplicateMode>(check_if_exists));
 
             // Add component mask
             m_component_mask |= (1 << static_cast<unsigned int>(type));
@@ -116,6 +119,11 @@ namespace Spartan
                 m_renderable = static_cast<Renderable*>(new_component.get());
             }
 
+            if constexpr (std::is_same<T, Transform>::value)
+            {
+                m_transform = new_component.get();
+            }
+
             // Make the scene resolve
             FIRE_EVENT(Event_World_Resolve);
 
@@ -123,7 +131,7 @@ namespace Spartan
         }
 
         // Adds a component 
-        std::shared_ptr<IComponent> AddComponent(ComponentType type, uint32_t component_id = 0);
+        std::shared_ptr<IComponent> AddComponent(ComponentType type, uint32_t component_id = 0, bool check_if_exists = true);
 
 		// Removes a component
 		template <class T>
@@ -148,7 +156,8 @@ namespace Spartan
 
         // Misc
         std::vector<std::shared_ptr<IComponent>> GetAllComponents() const;
-		Transform* GetTransform_PtrRaw() const		{ return m_transform; }
+        Transform* GetTransform_PtrRaw() const      { return m_transform; }
+        std::shared_ptr<Transform> GetTransform_PtrShared() { return GetComponent<Transform>(); }
 		Renderable* GetRenderable_PtrRaw() const	{ return m_renderable; }
 		std::shared_ptr<Entity> GetPtrShared()		{ return shared_from_this(); }
 
@@ -166,5 +175,7 @@ namespace Spartan
         Renderable* m_renderable    = nullptr;
         Context* m_context          = nullptr;
         World* m_world              = nullptr;
+
+        uint32_t m_transform_id;
 	};
 }
