@@ -180,7 +180,7 @@ namespace Spartan
 					}
 
 					// Update constant buffer
-					const auto& transform = entity->GetTransform_PtrRaw();
+					const auto transform = entity->GetTransform_PtrShared();
 					transform->UpdateConstantBufferLight(m_rhi_device, light_view_projection, i);
 					m_cmd_list->SetConstantBuffer(1, Buffer_VertexShader, transform->GetConstantBufferLight(i));
 
@@ -245,7 +245,7 @@ namespace Spartan
         auto draw_entity = [this, &currently_bound_geometry, &currently_bound_shader, &currently_bound_material](Entity* entity)
         {
             // Get renderable
-            const auto& renderable = entity->GetRenderable_PtrRaw();
+            const auto renderable = entity->GetComponent<Renderable>().get();
             if (!renderable)
                 return;
 
@@ -302,7 +302,7 @@ namespace Spartan
             }
 
             // Bind object buffer
-            const auto& transform = entity->GetTransform_PtrRaw();
+            const auto transform = entity->GetTransform_PtrShared();
             transform->UpdateConstantBuffer(m_rhi_device, m_view_projection);
             m_cmd_list->SetConstantBuffer(2, Buffer_VertexShader, transform->GetConstantBuffer());
 

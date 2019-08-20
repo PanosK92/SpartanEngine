@@ -153,10 +153,11 @@ namespace Spartan
 
         // Misc
         std::vector<std::shared_ptr<IComponent>> GetAllComponents() const;
-        Transform* GetTransform_PtrRaw() const      { return m_transform; }
-        std::shared_ptr<Transform> GetTransform_PtrShared() { return GetComponent<Transform>(); }
-		Renderable* GetRenderable_PtrRaw() const	{ return m_renderable; }
-		std::shared_ptr<Entity> GetPtrShared()		{ return shared_from_this(); }
+        Transform* GetTransform_PtrRaw() const                 { return m_transform; }
+        std::shared_ptr<Transform> GetTransform_PtrShared()    { return GetComponent<Transform>(); }
+		Renderable* GetRenderable_PtrRaw() const	           { return m_renderable; }
+        std::shared_ptr<Renderable> GetRenderable_PtrShared()  { return GetComponent<Renderable>(); }
+		std::shared_ptr<Entity> GetPtrShared()		           { return shared_from_this(); }
 
 	private:
 		std::string m_name			= "Entity";

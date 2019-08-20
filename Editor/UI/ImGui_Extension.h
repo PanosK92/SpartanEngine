@@ -223,9 +223,9 @@ public:
 		auto world = g_world;
 
 		// Save the scene asynchronously
-		g_threading->AddTask([world, file_path]()
+		g_threading->AddTask([&]()
 		{
-			world->SaveToFile(file_path);
+			g_world->SaveToFile(file_path);
 		});
 	}
 

@@ -46,7 +46,7 @@ namespace Spartan
     {
         m_context   = context;
         m_entity    = entity;
-        m_transform = transform == nullptr ? entity->GetTransform_PtrRaw() : transform;
+        m_transform = transform == nullptr ? entity->GetComponent<Transform>().get() : transform;
         m_enabled   = true;
     }
 

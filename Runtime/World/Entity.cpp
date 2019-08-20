@@ -122,13 +122,13 @@ namespace Spartan
         {
             stream->Write(m_is_active);
             stream->Write(m_hierarchy_visibility);
-            stream->Write(GetId());
             stream->Write(m_name);
         }
        
 		// COMPONENTS
         {
             stream->Write(m_component_mask);
+
             m_context->GetSubsystem<World>()->IterateManagers([&](std::shared_ptr<BaseComponentManager> manager)
             {
                     bool hasComponent = m_component_mask & (1 << manager->m_type);
@@ -139,7 +139,7 @@ namespace Spartan
                         std::shared_ptr<IComponent> _component = manager->GetComponent(GetId());                        
 
                         stream->Write(static_cast<uint32_t>(_component->GetType()));
-                        stream->Write(_component->GetId());                    
+                        stream->Write(_component->GetId());
                     }
             });
 
@@ -151,7 +151,6 @@ namespace Spartan
                   {                   
                     _component->Serialize(stream);
                   }                       
-                    
             });
         }
         
@@ -180,13 +179,10 @@ namespace Spartan
 
 	void Entity::Deserialize(FileStream* stream, Transform* parent)
 	{
-        uint32_t id;
-
         // ENTITY
         {
             stream->Read(&m_is_active);
             stream->Read(&m_hierarchy_visibility);
-            stream->Read(&id);
             stream->Read(&m_name);
         }
         
@@ -218,7 +214,6 @@ namespace Spartan
                        }                      
                     }
             });
-
 
             // Sometimes there are component dependencies, e.g. a collider that needs
             // to set it's shape to a rigibody. So, it's important to first create all 

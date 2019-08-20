@@ -76,7 +76,8 @@ namespace Spartan
 		}
 
         // If the selected entity is the actual viewport camera, ignore the input
-        if (m_entity_selected->GetId() == camera->GetTransform()->GetEntity_PtrRaw()->GetId())
+        auto camera_transform = camera->GetTransform();
+        if (m_entity_selected->GetId() == camera_transform->GetEntity_PtrRaw()->GetId())
         {
             m_is_editing = false;
             return false;
