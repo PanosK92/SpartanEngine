@@ -107,7 +107,7 @@ namespace Spartan
 		stream->Read(&m_pan);
 	
 		// ResourceManager will return cached audio clip if it's already loaded
-		m_audio_clip = m_context->GetSubsystem<ResourceCache>()->Load<AudioClip>(m_file_path);
+        SetAudioClip(m_context->GetSubsystem<ResourceCache>()->Load<AudioClip>(m_file_path));
 	}
 
 	void AudioSource::SetAudioClip(const shared_ptr<AudioClip>& audio_clip)

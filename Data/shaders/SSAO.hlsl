@@ -119,7 +119,7 @@ float mainPS(Pixel_PosUv input) : SV_TARGET
     float3 color            = float3(0.0f, 0.0f, 0.0f);
 
 	// Compute range based dithered radius
-	float dither 		= Dither_Valve(uv + g_taa_jitterOffset).x * 500;
+	float dither 		= Dither(uv + g_taa_jitterOffset).x * 500;
 	float radius_depth	= get_linear_depth(depth) / (1.0f / (radius)) * dither;
 
 	// Construct TBN
