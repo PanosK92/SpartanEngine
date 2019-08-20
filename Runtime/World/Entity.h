@@ -90,17 +90,14 @@ namespace Spartan
 
         // Adds a component
         template <class T>
-        inline std::shared_ptr<T> AddComponent(uint32_t component_id = 0, bool check_if_exists = true)
+        inline std::shared_ptr<T> AddComponent(uint32_t component_id = 0, DuplicateMode mode = DuplicateMode::None)
         {
             const ComponentType type = IComponent::TypeToEnum<T>();
-
-            if (check_if_exists)
-            {
-                // Return component in case it already exists while ignoring Script components (they can exist multiple times)
-                if (HasComponent(type) && type != ComponentType_Script)
-                    return GetComponent<T>();
-            }
-
+            
+            // Return component in case it already exists while ignoring Script components (they can exist multiple times)
+            if (HasComponent(type) && type != ComponentType_Script)
+                return GetComponent<T>();
+            
             // Create new component
             auto new_component = std::make_shared<T>(m_context, this, component_id);
             new_component->SetType(type);
@@ -108,7 +105,7 @@ namespace Spartan
 
             // Add the component to the component manager
             m_id_to_type[new_component->GetId()] = type;
-            m_world->GetComponentManager<T>()->AddComponent(GetId(), std::dynamic_pointer_cast<IComponent>(new_component), static_cast<DuplicateMode>(check_if_exists));
+            m_world->GetComponentManager<T>()->AddComponent(GetId(), std::dynamic_pointer_cast<IComponent>(new_component), mode);
 
             // Add component mask
             m_component_mask |= (1 << static_cast<unsigned int>(type));
@@ -131,7 +128,7 @@ namespace Spartan
         }
 
         // Adds a component 
-        std::shared_ptr<IComponent> AddComponent(ComponentType type, uint32_t component_id = 0, bool check_if_exists = true);
+        std::shared_ptr<IComponent> AddComponent(ComponentType type, uint32_t component_id = 0, DuplicateMode mode = DuplicateMode::None);
 
 		// Removes a component
 		template <class T>

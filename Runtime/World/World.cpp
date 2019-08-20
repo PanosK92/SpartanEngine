@@ -163,7 +163,7 @@ namespace Spartan
 
         IterateManagers([&](std::shared_ptr<BaseComponentManager> manager)
         {
-                manager->Clear();
+             manager->Clear();
         });
 
 		m_isDirty = true;
@@ -288,7 +288,7 @@ namespace Spartan
 		m_state		= Ticking;
 		ProgressReport::Get().SetIsLoading(g_progress_world, false);	
 		LOG_INFO("Loading took " + to_string(static_cast<int>(timer.GetElapsedTimeMs())) + " ms");	
-
+        
 		FIRE_EVENT(Event_World_Loaded);
 		return true;
 	}
@@ -360,13 +360,14 @@ namespace Spartan
         for (const auto& entity : m_entities_primary)
 		{
             std::shared_ptr<Transform> transform = entity->GetComponent<Transform>();
-            if (transform != nullptr)
+
+            if (transform == nullptr)
+                continue;
+
+            if (entity->GetComponent<Transform>()->IsRoot())
             {
-                if (entity->GetComponent<Transform>()->IsRoot())
-                {
-                    root_entities.emplace_back(entity);
-                }
-            }
+                  root_entities.emplace_back(entity);
+            }           
 		}
 
 		return root_entities;
@@ -412,6 +413,7 @@ namespace Spartan
 
 		return skybox;
 	}
+
 	shared_ptr<Entity> World::CreateCamera()
 	{
 		auto resource_mng		= m_context->GetSubsystem<ResourceCache>();

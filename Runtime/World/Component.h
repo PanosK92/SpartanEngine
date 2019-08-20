@@ -109,42 +109,13 @@ namespace Spartan
 	template<typename T>
 	inline void ComponentManager<T>::AddComponent(uint32_t entityID, std::shared_ptr<IComponent>& component, DuplicateMode mode)
 	{
-        switch (mode)
-        {
-        case DuplicateMode::None:
-        {
-            ComponentIndex instance = mComponentData.mSize;
+        ComponentIndex instance = mComponentData.mSize;
 
-            if (mEntityMap[entityID].empty())
-            {
-                mComponentData.mData[instance] = component;
-                mEntityMap[entityID][component->GetId()] = instance;
-                mInstanceMap[instance] = entityID;
+        mComponentData.mData[instance] = component;
+        mEntityMap[entityID][component->GetId()] = instance;
+        mInstanceMap[instance] = entityID;
 
-                mComponentData.mSize++;
-            }
-        }
-        case DuplicateMode::Override:
-        {
-            if (!mEntityMap[entityID].empty())
-            {
-                ComponentIndex index = mEntityMap[entityID].begin()->second;
-                mEntityMap[entityID].erase(mEntityMap[entityID].begin()->first);
-                mEntityMap[entityID][component->GetId()] = index;
-                mComponentData.mData[index] = component;
-            }
-            else
-            {
-                ComponentIndex instance = mComponentData.mSize;
-
-                mComponentData.mData[instance] = component;
-                mEntityMap[entityID][component->GetId()] = instance;
-                mInstanceMap[instance] = entityID;
-
-                mComponentData.mSize++;
-            }
-        }
-        }
+        mComponentData.mSize++;        
 	}
 		
 	template<typename T>
@@ -201,10 +172,6 @@ namespace Spartan
                 mComponentData.mSize--;
 
             mEntityMap[entity_id].erase(mEntityMap[entity_id].begin());
-        }
-        else
-        {
-            __debugbreak();
         }
     }
 

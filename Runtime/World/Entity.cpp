@@ -49,26 +49,13 @@ namespace Spartan
         m_world     = context->GetSubsystem<World>().get();
         m_transform_id = transform_id;
 
+        // All entities must have a transform but sometimes we might need to create it a bit later (deserialization)
         if (!postpone_transform)
-            this->AddComponent<Transform>(transform_id, false); // All entities must have a transform
+            AddComponent<Transform>(transform_id);
     }
 
     Entity::~Entity()
 	{
-		// delete components
-        m_world->IterateManagers([&](auto& manager)
-        {
-            if (auto& components = manager->GetComponents(GetId()); !components.empty())
-            {
-                for (auto& component : components)
-                {
-                    if (component != nullptr)
-                        component->OnRemove();
-                    manager->RemoveComponent(GetId());
-                }
-            }
-        });
-
         // Reset component mask
         m_component_mask = 0;
 
@@ -85,12 +72,11 @@ namespace Spartan
 		auto clone_entity = [this, &clones](Entity* entity)
 		{
 			// Clone the name and the ID
-            Entity* clone = m_world->EntityCreate(GetId(), 0, true).get();
+            Entity* clone = m_world->EntityCreate(GenerateId(), 0, true).get();
 			clone->SetName(entity->GetName());
-            clone->SetId(GenerateId());
             clone->SetActive(entity->IsActive());
 			clone->SetHierarchyVisibility(entity->IsVisibleInHierarchy());
-            clone->AddComponent<Transform>(0, false);
+            clone->AddComponent<Transform>();
 
 			// Clone all the components
             m_context->GetSubsystem<World>()->IterateManagers([&](std::shared_ptr<BaseComponentManager> manager)
@@ -155,12 +141,6 @@ namespace Spartan
                         stream->Write(static_cast<uint32_t>(_component->GetType()));
                         stream->Write(_component->GetId());                    
                     }
-                    else
-                    {
-                        // Dummies
-                        stream->Write(-1);
-                        stream->Write(-2);
-                    }
             });
 
             m_context->GetSubsystem<World>()->IterateManagers([&](std::shared_ptr<BaseComponentManager> manager)
@@ -212,7 +192,9 @@ namespace Spartan
         
         // COMPONENTS
         {
-            stream->Read(&m_component_mask);
+            unsigned int component_mask;
+            stream->Read(&component_mask);
+
             m_context->GetSubsystem<World>()->IterateManagers([&](std::shared_ptr<BaseComponentManager> manager)
             {
                     bool hasComponent;
@@ -227,7 +209,7 @@ namespace Spartan
                         stream->Read(&id);                       
 
                        auto componentType = static_cast<ComponentType>(type);
-                       auto _component = AddComponent(componentType, id, false); // Add component at all costs and override component mask checks
+                       auto _component = AddComponent(componentType, id); // Add component at all costs and override component mask checks
 
                        // Add component
                        if (_component == nullptr)
@@ -235,18 +217,13 @@ namespace Spartan
                            LOGF_ERROR("Component with an id of %d and a type of %d failed to load", id, type);
                        }                      
                     }
-                    else
-                    {
-                        // Dummies
-                        int id, type;
-                        stream->Read(&id);
-                        stream->Read(&type);
-                    }
             });
+
+
             // Sometimes there are component dependencies, e.g. a collider that needs
             // to set it's shape to a rigibody. So, it's important to first create all 
             // the components (like above) and then deserialize them (like here).
-
+            m_component_mask = component_mask;
             m_context->GetSubsystem<World>()->IterateManagers([&](std::shared_ptr<BaseComponentManager> manager)
             {
                  std::shared_ptr<IComponent> _component = manager->GetComponent(GetId());
@@ -258,7 +235,6 @@ namespace Spartan
             });
         }
         
-
         // Set the transform's parent
         if (m_transform && (parent != NULL))
         {
@@ -298,26 +274,26 @@ namespace Spartan
 		FIRE_EVENT(Event_World_Resolve);
 	}
 
-	std::shared_ptr<IComponent> Entity::AddComponent(ComponentType type, uint32_t component_id, bool check_if_exists)
+	std::shared_ptr<IComponent> Entity::AddComponent(ComponentType type, uint32_t component_id, DuplicateMode mode)
     {
         // This is the only hardcoded part regarding components. It's 
         // one function but it would be nice if that gets automated too, somehow...
         shared_ptr<IComponent> component;
         switch (type)
         {
-        case ComponentType_AudioListener:	component = AddComponent<AudioListener>(component_id, check_if_exists);  break;
-        case ComponentType_AudioSource:		component = AddComponent<AudioSource>(component_id, check_if_exists);	 break;
-        case ComponentType_Camera:			component = AddComponent<Camera>(component_id, check_if_exists);		 break;
-        case ComponentType_Collider:		component = AddComponent<Collider>(component_id, check_if_exists);		 break;
-        case ComponentType_Constraint:		component = AddComponent<Constraint>(component_id, check_if_exists);     break;
-        case ComponentType_Light:			component = AddComponent<Light>(component_id, check_if_exists);		     break;
-        case ComponentType_Renderable:		component = AddComponent<Renderable>(component_id, check_if_exists);	 break;
-        case ComponentType_RigidBody:		component = AddComponent<RigidBody>(component_id, check_if_exists);	     break;
-        case ComponentType_Script:			component = AddComponent<Script>(component_id, check_if_exists);		 break;
-        case ComponentType_Skybox:			component = AddComponent<Skybox>(component_id, check_if_exists);		 break;
-        case ComponentType_Transform:		component = AddComponent<Transform>(component_id, check_if_exists);	     break;
-        case ComponentType_Unknown:														                             break;
-        default:																		                             break;
+        case ComponentType_AudioListener:	component = AddComponent<AudioListener>(component_id, mode);  break;
+        case ComponentType_AudioSource:		component = AddComponent<AudioSource>(component_id, mode);	  break;
+        case ComponentType_Camera:			component = AddComponent<Camera>(component_id, mode);		  break;
+        case ComponentType_Collider:		component = AddComponent<Collider>(component_id, mode);		  break;
+        case ComponentType_Constraint:		component = AddComponent<Constraint>(component_id, mode);     break;
+        case ComponentType_Light:			component = AddComponent<Light>(component_id, mode);		  break;
+        case ComponentType_Renderable:		component = AddComponent<Renderable>(component_id, mode);	  break;
+        case ComponentType_RigidBody:		component = AddComponent<RigidBody>(component_id, mode);	  break;
+        case ComponentType_Script:			component = AddComponent<Script>(component_id, mode);		  break;
+        case ComponentType_Skybox:			component = AddComponent<Skybox>(component_id, mode);		  break;
+        case ComponentType_Transform:		component = AddComponent<Transform>(component_id, mode);	  break;
+        case ComponentType_Unknown:														                  break;
+        default:																		                  break;
         }
 
         return component;

@@ -210,10 +210,12 @@ public:
 		auto world = g_world;
 
 		// Load the scene asynchronously
-		g_threading->AddTask([world, file_path]()
+		g_threading->AddTask([&]()
 		{
-			world->LoadFromFile(file_path);
+			g_world->LoadFromFile(file_path);
 		});
+
+        //g_world->LoadFromFile(file_path);
 	}
 
 	void SaveScene(const std::string& file_path) const

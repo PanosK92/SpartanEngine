@@ -82,17 +82,20 @@ namespace Spartan
 			if (m_stopping && m_tasks.empty())
 				return;
 
-			// Get next task in the queue.
-			task = m_tasks.front();
+			// Get next task in the queue if it exists.
+            if (!m_tasks.empty())
+            {
+                task = m_tasks.front();
 
-			// Remove it from the queue.
-			m_tasks.pop();
+                // Remove it from the queue.
+                m_tasks.pop();
 
-			// Unlock the mutex
-			lock.unlock();
+                // Unlock the mutex
+                lock.unlock();
 
-			// Execute the task.
-			task->Execute();
+                // Execute the task.
+                task->Execute();
+            }
 		}
 	}
 }

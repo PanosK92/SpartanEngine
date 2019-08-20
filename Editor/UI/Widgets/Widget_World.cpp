@@ -145,7 +145,7 @@ void Widget_World::TreeAddEntity(Entity* entity)
 		return;
 
 	// Determine children visibility
-	auto children = entity->GetComponent<Transform>()->GetChildren();
+	auto children = entity->GetTransform_PtrRaw()->GetChildren();
 	for (const auto& child : children)
 	{
 		if (child->GetEntity_PtrRaw()->IsVisibleInHierarchy())
