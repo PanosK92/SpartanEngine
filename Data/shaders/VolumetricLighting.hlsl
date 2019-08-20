@@ -46,7 +46,19 @@ float3 VolumetricLighting(Light light, float3 pos_world, float2 uv)
 	float3 dither_value = Dither(uv + g_taa_jitterOffset) * 300;
 	ray_pos += ray_step * dither_value;
 	
-	static const int cascade = 0;
+	// Find closest shadow cascade
+	int cascade = 0;
+	for (int cascade_index = 0; cascade_index < cascade_count; cascade_index++)
+	{
+		float4 pos 	= mul(float4(ray_pos, 1.0f), light_view_projection[cascade_index]);
+		float3 uv 	= pos.xyz * float3(0.5f, -0.5f, 0.5f) + 0.5f;	
+		
+		if (is_saturated(uv))
+		{
+			cascade = cascade_index;
+				break;
+		}
+	}
 	
 	float3 fog = 0.0f;
 	for (int i = 0; i < g_vl_steps; i++)
