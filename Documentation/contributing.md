@@ -4,7 +4,7 @@ This project is open to contributors, so if you feel like you can help with anyt
 
 I will probaly update and adds things to this page, but for now, here are few simple guidlines that can help give you an idea of how to approach things.
 
-# Guidelines
+# Code
 - Try to follow the [KISS](https://en.wikipedia.org/wiki/KISS_principle) principle whenever possible.
 
 - Choose the right tool for the job. Abstain from dogmas like "Only use orthodox c++" or "Only use modern C++".
@@ -18,10 +18,10 @@ I will probaly update and adds things to this page, but for now, here are few si
     m_positionLocal	= Vector3::Zero;
     m_rotationLocal	= Quaternion(0, 0, 0, 1);
     m_scaleLocal	= Vector3::One;
-    m_matrix	= Matrix::Identity;
+    m_matrix	    = Matrix::Identity;
     m_matrixLocal	= Matrix::Identity;
     m_wvp_previous	= Matrix::Identity;
-    m_parent	= nullptr;
+    m_parent        = nullptr;
     ```
     
 - Always use braces on code blocks, even with the encapsulated code is one line.
@@ -37,3 +37,6 @@ I will probaly update and adds things to this page, but for now, here are few si
     /*Bad*/     auto data       = GetAllData();       // The type is not deducable by eye, the definition of the functions has to be looked for.
 	```
 - Rules are rarely perfect, if you stumble upon some special case, let me know and we'll discuss about what might be best.
+
+# Pull Requests
+Please ensure that your pull request is of decent quality. This means that you should always test what you write and also take as much time as you want to write what you want. In the end of the day, it's okay if there is a bug or two, I'll help you iron them out myself. However, due to time limitations and due to the definition of a pull request, I can't always devote an amount of time (fixing, reviewing, commenting) which is equal or higher that then amount of time it would have taken me to implement it myself. So to sum it up, I'll always try to be helpful but please try to do the same. Much appreciated.
