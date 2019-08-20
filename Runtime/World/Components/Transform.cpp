@@ -458,7 +458,6 @@ namespace Spartan
 	void Transform::BecomeOrphan()
 	{
 		// if there is no parent, no need to do anything
-        return;
         if (m_parent == NULL)
 			return;
 

@@ -359,14 +359,14 @@ namespace Spartan
 
         for (const auto& entity : m_entities_primary)
 		{
-            std::shared_ptr<Transform> transform = entity->GetComponent<Transform>();
+            std::shared_ptr<Transform> transform = entity->GetTransform_PtrShared();
 
             if (transform == nullptr)
                 continue;
 
-            if (entity->GetComponent<Transform>()->IsRoot())
+            if (transform->IsRoot())
             {
-                  root_entities.emplace_back(entity);
+                  root_entities.push_back(entity);
             }           
 		}
 

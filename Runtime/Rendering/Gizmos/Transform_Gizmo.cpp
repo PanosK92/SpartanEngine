@@ -66,21 +66,26 @@ namespace Spartan
 
 	bool Transform_Gizmo::Update(Camera* camera, const float handle_size, const float handle_speed)
 	{
-		m_just_finished_editing = false;
+        auto camera_entity = camera->GetEntity_PtrRaw();        
 
-		// If there is no camera, don't even bother
-		if (!camera || !m_entity_selected)
-		{
-			m_is_editing = false;
-			return false;
-		}
-
-        // If the selected entity is the actual viewport camera, ignore the input
-        auto camera_transform = camera->GetTransform();
-        if (m_entity_selected->GetId() == camera_transform->GetEntity_PtrRaw()->GetId())
+        // Only update the gizmo if the camera transform is there
+        if (camera_entity != nullptr)
         {
-            m_is_editing = false;
-            return false;
+            m_just_finished_editing = false;
+
+            // If there is no camera, don't even bother
+            if (!camera || !m_entity_selected)
+            {
+                m_is_editing = false;
+                return false;
+            }
+
+            // If the selected entity is the actual viewport camera, ignore the input       
+            if (m_entity_selected->GetId() == camera_entity->GetId())
+            {
+                m_is_editing = false;
+                return false;
+            }
         }
 
 		// Switch between position, rotation and scale handles, with W, E and R respectively

@@ -185,7 +185,7 @@ namespace Spartan
             stream->Read(&m_hierarchy_visibility);
             stream->Read(&m_name);
         }
-        
+
         // COMPONENTS
         {
             unsigned int component_mask;
