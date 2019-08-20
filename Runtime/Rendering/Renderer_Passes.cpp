@@ -149,7 +149,7 @@ namespace Spartan
 				for (const auto& entity : entities_opaque)
 				{
 					// Acquire renderable component
-					const auto& renderable = entity->GetRenderable_PtrRaw();
+					const auto& renderable = entity->GetComponent<Renderable>();
 					if (!renderable)
 						continue;
 

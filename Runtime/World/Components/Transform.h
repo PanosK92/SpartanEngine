@@ -128,6 +128,7 @@ namespace Spartan
 		Math::Vector3 m_lookAt;
 
 		Transform* m_parent; // the parent of this transform
+        Context* m_context;
 		std::vector<Transform*> m_children; // the children of this transform
 
 		// Constant buffer

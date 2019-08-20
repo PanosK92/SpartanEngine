@@ -85,19 +85,26 @@ namespace Spartan
 		auto clone_entity = [this, &clones](Entity* entity)
 		{
 			// Clone the name and the ID
-            Entity* clone = m_world->EntityCreate().get();
+            Entity* clone = m_world->EntityCreate(GetId(), 0, true).get();
 			clone->SetName(entity->GetName());
-			clone->SetActive(entity->IsActive());
+            clone->SetId(GenerateId());
+            clone->SetActive(entity->IsActive());
 			clone->SetHierarchyVisibility(entity->IsVisibleInHierarchy());
+            clone->AddComponent<Transform>(0, false);
 
 			// Clone all the components
-			for (const auto& component : entity->GetAllComponents())
+            m_context->GetSubsystem<World>()->IterateManagers([&](std::shared_ptr<BaseComponentManager> manager)
             {
-				auto clone_comp = clone->AddComponent(component->GetType());
-				clone_comp->SetAttributes(component->GetAttributes());
-			}
+                std::shared_ptr<IComponent> _component = manager->GetComponent(GetId());
 
-			clones.emplace_back(clone);
+                if (_component != nullptr)
+                {
+                    auto clone_comp = clone->AddComponent(_component->GetType());
+                    clone_comp->SetAttributes(_component->GetAttributes());
+                }
+			});
+
+			clones.push_back(clone);
 
 			return clone;
 		};
@@ -261,7 +268,7 @@ namespace Spartan
 		// CHILDREN
         {
             // 1st - children count
-            int children_count = 0;
+            uint32_t children_count = 0;
            stream->Read(&children_count);
             
             // 2nd - children IDs

@@ -45,7 +45,7 @@ namespace Spartan
 		m_matrixLocal		= Matrix::Identity;
 		m_wvp_previous		= Matrix::Identity;
 		m_parent			= nullptr;
-        c                   = context;
+        m_context           = context;
 
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_positionLocal,	Vector3);
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_rotationLocal,	Quaternion);
@@ -345,7 +345,7 @@ namespace Spartan
             m_children.shrink_to_fit();
         }
 
-		auto entities = c->GetSubsystem<World>()->EntityGetAll();
+		auto entities = m_context->GetSubsystem<World>()->EntityGetAll();
 		for (const auto& entity : entities)
 		{
 			if (!entity)
@@ -434,7 +434,7 @@ namespace Spartan
 			LightCascade cb_light;
 			cb_light.buffer = make_shared<RHI_ConstantBuffer>(rhi_device);
 			cb_light.buffer->Create<Matrix>();
-			m_light_cascades.emplace_back(cb_light);
+			m_light_cascades.push_back(cb_light);
 		}
 		auto& cb_light = m_light_cascades[cascade_index];
 
