@@ -55,3 +55,28 @@ float3 Dither_Valve(float2 uv)
     
     return dither.rgb / 255.0;
 }
+
+// https://www.shadertoy.com/view/MslGR8
+float3 Dither_Test(float2 uv)
+{
+	float2 screen_pos = uv * g_resolution;
+
+	// bit-depth of display. Normally 8 but some LCD monitors are 7 or even 6-bit.
+	float dither_bit = 8.0; 
+	
+	// compute grid position
+	float grid_position = frac(dot(screen_pos.xy - float2(0.5, 0.5), float2(1.0/16.0,10.0/36.0) + 0.25));
+	
+	// compute how big the shift should be
+	float dither_shift = (0.25) * (1.0 / (pow(2.0, dither_bit) - 1.0));
+	
+	// shift the individual colors differently, thus making it even harder to see the dithering pattern
+	//float3 dither_shift_RGB = float3(dither_shift, -dither_shift, dither_shift); //subpixel dithering (chromatic)
+	float3 dither_shift_RGB = float3(dither_shift, dither_shift, dither_shift); //non-chromatic dithering
+	
+	// modify shift acording to grid position.
+	dither_shift_RGB = lerp(2.0 * dither_shift_RGB, -2.0 * dither_shift_RGB, grid_position); //shift acording to grid position.
+	
+	// return dither shift
+	return 0.5/255.0 + dither_shift_RGB; 
+}
