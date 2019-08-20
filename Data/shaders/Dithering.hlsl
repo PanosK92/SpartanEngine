@@ -57,7 +57,7 @@ float3 Dither_Valve(float2 uv)
 }
 
 // https://www.shadertoy.com/view/MslGR8
-float3 Dither_Test(float2 uv)
+float3 Dither(float2 uv)
 {
 	float2 screen_pos = uv * g_resolution;
 
