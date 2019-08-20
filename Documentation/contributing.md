@@ -17,9 +17,9 @@ I will probaly update and adds things to this page, but for now, here are few si
     ```
     m_positionLocal	= Vector3::Zero;
     m_rotationLocal	= Quaternion(0, 0, 0, 1);
-    m_scaleLocal	= Vector3::One;
-    m_matrix	    = Matrix::Identity;
-    m_matrixLocal	= Matrix::Identity;
+    m_scaleLocal	  = Vector3::One;
+    m_matrix	      = Matrix::Identity;
+    m_matrixLocal	  = Matrix::Identity;
     m_wvp_previous	= Matrix::Identity;
     m_parent        = nullptr;
     ```
