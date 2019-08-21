@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= DEFINES =============================
-#define PCF_SAMPLES 2
+#define PCF_SAMPLES 4
 #define PCF_DIM float(PCF_SAMPLES) / 2.0f
 //=======================================
 
@@ -51,7 +51,7 @@ float random(float2 seed2)
     return frac(sin(dot_product) * 43758.5453);
 }
 
-float Technique_Poisson(int cascade, float3 tex_coords, float compare)
+float Technique_Poisson(int cascade, float3 tex_coords, float compare, float2 dither)
 {
 	float packing = 700.0f; // how close together are the samples
 	float2 poissonDisk[8] = 
@@ -86,10 +86,11 @@ float Technique_Poisson(int cascade, float3 tex_coords, float compare)
 	return amountLit;
 }
 
-float Technique_PCF_2d(int cascade, float texel, float2 tex_coords, float compare)
+float Technique_PCF_2d(int cascade, float texel, float2 tex_coords, float compare, float2 dither)
 {
-	float amountLit = 0.0f;
-	float count 	= 0.0f;
+	float amountLit 	= 0.0f;
+	float count 		= 0.0f;
+	float2 offset_scale = texel * dither;
 	
 	[unroll]
 	for (float y = -PCF_DIM; y <= PCF_DIM; ++y)
@@ -97,7 +98,7 @@ float Technique_PCF_2d(int cascade, float texel, float2 tex_coords, float compar
 		[unroll]
 		for (float x = -PCF_DIM; x <= PCF_DIM; ++x)
 		{
-			float2 offset 	= float2(x, y) * texel;
+			float2 offset 	= float2(x, y) * offset_scale;
 			
 			#if DIRECTIONAL
 			amountLit 	+= DepthTest_Directional(cascade, tex_coords + offset, compare);
@@ -111,7 +112,7 @@ float Technique_PCF_2d(int cascade, float texel, float2 tex_coords, float compar
 	return amountLit /= count;
 }
 
-float ShadowMap_Directional(int cascade, float4 positionCS, float texel, float bias)
+float ShadowMap_Directional(int cascade, float4 positionCS, float texel, float bias, float2 dither)
 {	
 	// If the cascade is not covering this pixel, don't sample anything
 	if( positionCS.x < -1.0f || positionCS.x > 1.0f || 
@@ -121,10 +122,10 @@ float ShadowMap_Directional(int cascade, float4 positionCS, float texel, float b
 	float2 tex_coord 	= project(positionCS);
 	float compare_depth	= positionCS.z + bias;
 
-	return Technique_PCF_2d(cascade, texel, tex_coord, compare_depth);
+	return Technique_PCF_2d(cascade, texel, tex_coord, compare_depth, dither);
 }
 
-float ShadowMap_Spot(float4 positionCS, float texel, float3 sample_direction, float bias)
+float ShadowMap_Spot(float4 positionCS, float texel, float3 sample_direction, float bias, float2 dither)
 {	
 	// If the cascade is not covering this pixel, don't sample anything
 	if( positionCS.x < -1.0f || positionCS.x > 1.0f || 
@@ -133,7 +134,7 @@ float ShadowMap_Spot(float4 positionCS, float texel, float3 sample_direction, fl
 		
 	float compare_depth	= positionCS.z + bias;
 	
-	return Technique_PCF_2d(0, texel, sample_direction.xy, compare_depth);
+	return Technique_PCF_2d(0, texel, sample_direction.xy, compare_depth, dither);
 }
 
 float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, float bias, float normal_bias, Light light)
@@ -143,21 +144,21 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, float 
     float3 scaled_normal_offset = normal * cos_angle * g_shadow_texel_size * normal_bias * 10;
 	float4 position_world   	= float4(world_pos + scaled_normal_offset, 1.0f);
 	float shadow 				= 1.0f;
-	float3 dither 				= Dither(uv + g_taa_jitterOffset) * 0.3f;
+	float2 dither 				= Dither(uv + g_taa_jitterOffset).xy * 400;
 
 	#if DIRECTIONAL
 	{
 		for (int cascade = 0; cascade < cascade_count; cascade++)
 		{
-			float4 pos 	= mul(position_world, light_view_projection[cascade]) + float4(dither, 0.0f);
-			float3 uv 	= pos.xyz * float3(0.5f, -0.5f, 0.5f) + 0.5f;	
+			float4 pos 	= mul(position_world, light_view_projection[cascade]);
+			float3 uv 	= pos.xyz * float3(0.5f, -0.5f, 0.5f) + 0.5f;
 			
 			// If a cascade was found, do shadow mapping
 			[branch]
 			if (is_saturated(uv))
 			{	
 				// Sample the primary cascade
-				float shadow_primary = ShadowMap_Directional(cascade, pos, g_shadow_texel_size, bias);
+				float shadow_primary = ShadowMap_Directional(cascade, pos, g_shadow_texel_size, bias, dither);
 
 				// Edge threshold
 				float edge = 0.8f; // 1.0f is where the cascade ends
@@ -170,7 +171,7 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, float 
 				{
 					int cacade_secondary = cascade + 1;
 					pos = mul(position_world, light_view_projection[cacade_secondary]);
-					shadow_secondary = ShadowMap_Directional(cacade_secondary, pos, g_shadow_texel_size, bias);
+					shadow_secondary = ShadowMap_Directional(cacade_secondary, pos, g_shadow_texel_size, bias, dither);
 					
 					// Blend cascades	
 					shadow = min(shadow_primary, shadow_secondary);
