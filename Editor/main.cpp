@@ -31,7 +31,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	// Create window
 	Window::g_OnMessage = ImGui_ImplWin32_WndProcHandler;
-	Window::g_onResize	= [&editor](unsigned int width, unsigned int height) { if (editor) editor->Resize(width, height); };
+	Window::g_onResize	= [&editor](float width, float height) { if (editor) editor->Resize(width, height); };
 	Window::Create(hInstance, "Spartan " + std::string(engine_version));	
 
 	// Create editor

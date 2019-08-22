@@ -43,7 +43,7 @@ public:
 	Editor(void* window_handle, void* window_instance, float width, float height);
 	~Editor();
 
-	void Resize(unsigned int width, unsigned int height);
+	void Resize(float width, float height);
 	void Tick();
 
 private:

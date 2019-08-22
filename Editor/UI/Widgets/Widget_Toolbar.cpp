@@ -48,7 +48,8 @@ Widget_Toolbar::Widget_Toolbar(Context* context) : Widget(context)
 		ImGuiWindowFlags_NoMove             |
 		ImGuiWindowFlags_NoSavedSettings    |
 		ImGuiWindowFlags_NoScrollbar        |
-		ImGuiWindowFlags_NoTitleBar;
+		ImGuiWindowFlags_NoTitleBar         |
+        ImGuiWindowFlags_NoDocking;
 
     m_callback_begin_pre = [this]()
     {

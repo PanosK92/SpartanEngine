@@ -111,12 +111,13 @@ Editor::~Editor()
 	ImGui::DestroyContext();
 }
 
-void Editor::Resize(const unsigned int width, const unsigned int height)
+void Editor::Resize(const float width, const float height)
 {
 	if (!m_initialized)
 		return;
 
 	ImGui::RHI::OnResize(width, height);
+    Tick();
 }
 
 void Editor::Tick()

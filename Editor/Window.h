@@ -12,26 +12,42 @@ namespace Window
 	static HINSTANCE g_instance;
 	static HWND g_handle;
 	static std::function<LRESULT(HWND, UINT, WPARAM, LPARAM)> g_OnMessage;
-	static std::function<void(int, int)> g_onResize;
+	static std::function<void(float, float)> g_onResize;
+
+    inline void GetWindowSize(float* width, float* height)
+    {
+        RECT rect;
+        ::GetClientRect(g_handle, &rect);
+        *width  = static_cast<float>(rect.right - rect.left);
+        *height = static_cast<float>(rect.bottom - rect.top);
+    }
 
 	// Window Procedure
 	inline LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	{
 		g_OnMessage(hwnd, msg, wParam, lParam);
 
+        auto resize_event = [&lParam]()
+        {
+            if (g_onResize) g_onResize(
+                static_cast<float>(lParam & 0xffff),
+                static_cast<float>((lParam >> 16) & 0xffff)
+            );
+        };
+
 		switch(msg)
 		{
 			case WM_DISPLAYCHANGE:
-				if (g_onResize) g_onResize(lParam & 0xffff, (lParam >> 16) & 0xffff);
-			break;
+                resize_event();
+			    break;
 
 			case WM_SIZE:
-				if (g_onResize) g_onResize(lParam & 0xffff, (lParam >> 16) & 0xffff);
-			break;
+                resize_event();
+                break;
 
 			case WM_CLOSE:
 				PostQuitMessage(0);	
-			break;
+			    break;
         
     		default:
 				return DefWindowProc(hwnd, msg, wParam, lParam);
@@ -40,13 +56,6 @@ namespace Window
 		return 0;
 	}
 
-	inline void GetWindowSize(float* width, float* height)
-	{
-		RECT rect;
-		::GetClientRect(g_handle, &rect);
-		(*width)	= (float)(rect.right - rect.left);
-		(*height)	= (float)(rect.bottom - rect.top);
-	}
 	inline bool Create(HINSTANCE instance, const std::string& title)
 	{
 		g_instance = instance;

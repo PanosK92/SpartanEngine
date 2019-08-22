@@ -106,8 +106,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 	{
 		float2 edgeFactor = float2(1, 1) - pow(saturate(abs(ray_hit_uv - float2(0.5f, 0.5f)) * 2), 8);
 		float fade_screen = saturate(min(edgeFactor.x, edgeFactor.y));
-		float fade_camera =  saturate(view_reflection.z);
-		return tex_frame.Sample(sampler_linear_clamp, ray_hit_uv) * fade_screen * fade_camera;
+		return tex_frame.Sample(sampler_linear_clamp, ray_hit_uv) * fade_screen;
 	}
 	
 	return 0.0f;
