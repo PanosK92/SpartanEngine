@@ -326,7 +326,7 @@ namespace ImGui::RHI
 		}
 	}
 
-	inline void OnResize(const unsigned int width, const unsigned int height)
+	inline void OnResize(const float width, const float height)
 	{
 		if (!g_renderer || !g_renderer->GetSwapChain())
 			return;

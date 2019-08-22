@@ -646,17 +646,17 @@ namespace Spartan
             swap_targets_hdr();
         }
 
+        // Motion Blur
+        if (FlagEnabled(Render_PostProcess_MotionBlur))
+        {
+            Pass_MotionBlur(tex_in_hdr, tex_out_hdr);
+            swap_targets_hdr();
+        }
+
 		// Bloom
 		if (FlagEnabled(Render_PostProcess_Bloom))
 		{
 			Pass_Bloom(tex_in_hdr, tex_out_hdr);
-            swap_targets_hdr();
-		}
-
-		// Motion Blur
-		if (FlagEnabled(Render_PostProcess_MotionBlur))
-		{
-			Pass_MotionBlur(tex_in_hdr, tex_out_hdr);
             swap_targets_hdr();
 		}
 
