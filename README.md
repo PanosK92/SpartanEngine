@@ -104,7 +104,7 @@ Vulkan      					| 60%           | Don't port it, re-architect the engine instea
 
 # Documentation
 - [Compiling](https://github.com/PanosK92/SpartanEngine/blob/master/Documentation/CompilingFromSource/CompilingFromSource.md) - A guide on how to compile from source.
-- [Contributing](https://github.com/PanosK92/SpartanEngine/blob/master/Documentation/contributing.md) - Guidelines on how to contribute.
+- [Contributing](https://github.com/PanosK92/SpartanEngine/blob/master/CONTRIBUTING.md) - Guidelines on how to contribute.
 
 # Dependencies
 - [DirectX End-User Runtimes](https://www.microsoft.com/en-us/download/details.aspx?id=8109).
