@@ -40,7 +40,7 @@ namespace Spartan
 	class SPARTAN_CLASS Skybox : public IComponent
 	{
 	public:
-		Skybox(Context* context, Entity* entity, Transform* transform);
+		Skybox(Context* context, Entity* entity, uint32_t id = 0);
 		~Skybox();
 
 		//= IComponent ==============

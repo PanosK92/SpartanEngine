@@ -42,15 +42,15 @@ using namespace std;
 
 namespace Spartan
 {
-	IComponent::IComponent(Context* context, Entity* entity, Transform* transform) : Spartan_Object()
-	{
-		m_context	= context;
-		m_entity	= entity;
-		m_transform	= transform;
-		m_enabled	= true;
-	}
+    IComponent::IComponent(Context* context, Entity* entity, uint32_t id /*= 0*/, Transform* transform /*= nullptr*/)
+    {
+        m_context   = context;
+        m_entity    = entity;
+        m_transform = transform ? transform : entity->GetTransform_PtrRaw();
+        m_enabled   = true;
+    }
 
-	shared_ptr<Entity> IComponent::GetEntity_PtrShared() const
+    shared_ptr<Entity> IComponent::GetEntity_PtrShared() const
 	{
 		return m_entity->GetPtrShared();
 	}

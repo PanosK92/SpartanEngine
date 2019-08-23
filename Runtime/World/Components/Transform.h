@@ -38,7 +38,7 @@ namespace Spartan
 	class SPARTAN_CLASS Transform : public IComponent
 	{
 	public:
-		Transform(Context* context, Entity* entity, Transform* transform);
+		Transform(Context* context, Entity* entity, uint32_t id = 0);
 		~Transform() = default;
 
 		//= ICOMPONENT ===============================

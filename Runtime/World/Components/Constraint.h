@@ -47,7 +47,7 @@ namespace Spartan
 	class SPARTAN_CLASS Constraint : public IComponent
 	{
 	public:
-		Constraint(Context* context, Entity* entity, Transform* transform);
+		Constraint(Context* context, Entity* entity, uint32_t id = 0);
 		~Constraint();
 
 		//= COMPONENT ================================

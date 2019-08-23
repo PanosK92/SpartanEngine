@@ -61,7 +61,7 @@ namespace Spartan
 	class SPARTAN_CLASS Light : public IComponent
 	{
 	public:
-		Light(Context* context, Entity* entity, Transform* transform);
+		Light(Context* context, Entity* entity, uint32_t id = 0);
 		~Light();
 
 		//= COMPONENT ================================
