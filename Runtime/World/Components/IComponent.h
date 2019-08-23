@@ -63,7 +63,7 @@ namespace Spartan
 	class SPARTAN_CLASS IComponent : public Spartan_Object
 	{
 	public:
-		IComponent(Context* context, Entity* entity, Transform* transform);
+		IComponent(Context* context, Entity* entity, uint32_t id = 0, Transform* transform = nullptr);
 		virtual ~IComponent() = default;
 
 		// Runs when the component gets added
@@ -98,10 +98,10 @@ namespace Spartan
 		std::shared_ptr<Entity>		GetEntity_PtrShared()	const;
 		std::string GetEntityName() const;
 
-		Transform* GetTransform() const			{ return m_transform; }
-		Context* GetContext() const				{ return m_context; }
-		constexpr ComponentType GetType() const	{ return m_type; }
-		void SetType(const ComponentType type)	{ m_type = type; }
+		Transform* GetTransform() const		{ return m_transform; }
+		Context* GetContext() const			{ return m_context; }
+		ComponentType GetType() const	    { return m_type; }
+        void SetType(ComponentType type)    { m_type = type; }
 
 		const auto& GetAttributes() const { return m_attributes; }
 		void SetAttributes(const std::vector<Attribute>& attributes)

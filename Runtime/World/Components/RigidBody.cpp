@@ -79,7 +79,7 @@ namespace Spartan
 		}
 	};
 
-	RigidBody::RigidBody(Context* context, Entity* entity, Transform* transform) : IComponent(context, entity, transform)
+	RigidBody::RigidBody(Context* context, Entity* entity, uint32_t id /*= 0*/) : IComponent(context, entity, id)
 	{
 		m_inWorld			= false;
 		m_mass				= DEFAULT_MASS;

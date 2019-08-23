@@ -47,7 +47,7 @@ namespace Spartan
 	class SPARTAN_CLASS Collider : public IComponent
 	{
 	public:
-		Collider(Context* context, Entity* entity, Transform* transform);
+		Collider(Context* context, Entity* entity, uint32_t id = 0);
 		~Collider();
 
 		//= ICOMPONENT ===============================

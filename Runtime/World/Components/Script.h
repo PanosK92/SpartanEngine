@@ -31,7 +31,7 @@ namespace Spartan
 	class SPARTAN_CLASS Script : public IComponent
 	{
 	public:
-		Script(Context* context, Entity* entity, Transform* transform);
+		Script(Context* context, Entity* entity, uint32_t id = 0);
 		~Script();
 
 		//= ICOMPONENT ===============================

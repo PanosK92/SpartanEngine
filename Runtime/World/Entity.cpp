@@ -43,15 +43,16 @@ using namespace std;
 
 namespace Spartan
 {
-	Entity::Entity(Context* context) : Spartan_Object()
-	{
-		m_context				= context;
-		m_name					= "Entity";
-		m_is_active				= true;
-		m_hierarchy_visibility	= true;	
-	}
+    Entity::Entity(Context* context, uint32_t transform_id /*= 0*/)
+    {
+        m_context               = context;
+        m_name                  = "Entity";
+        m_is_active             = true;
+        m_hierarchy_visibility  = true;
+        AddComponent<Transform>(transform_id);
+    }
 
-	Entity::~Entity()
+    Entity::~Entity()
 	{
 		// delete components
 		for (auto it = m_components.begin(); it != m_components.end();)
@@ -65,11 +66,6 @@ namespace Spartan
 		m_name.clear();
 		m_is_active				= true;
 		m_hierarchy_visibility	= true;
-	}
-
-	void Entity::Initialize(Transform* transform)
-	{
-		m_transform = transform;
 	}
 
 	void Entity::Clone()
@@ -153,147 +149,154 @@ namespace Spartan
 
 	void Entity::Serialize(FileStream* stream)
 	{
-		//= BASIC DATA ======================
-		stream->Write(m_is_active);
-		stream->Write(m_hierarchy_visibility);
-		stream->Write(GetId());
-		stream->Write(m_name);
-		//===================================
+        // BASIC DATA
+        {
+            stream->Write(m_is_active);
+            stream->Write(m_hierarchy_visibility);
+            stream->Write(GetId());
+            stream->Write(m_name);
+        }
 
-		//= COMPONENTS ================================
-		stream->Write(static_cast<uint32_t>(m_components.size()));
-		for (const auto& component : m_components)
-		{
-			stream->Write(static_cast<uint32_t>(component->GetType()));
-			stream->Write(component->GetId());
-		}
+		// COMPONENTS
+        {
+            stream->Write(static_cast<uint32_t>(m_components.size()));
+            for (const auto& component : m_components)
+            {
+                stream->Write(static_cast<uint32_t>(component->GetType()));
+                stream->Write(component->GetId());
+            }
 
-		for (const auto& component : m_components)
-		{
-			component->Serialize(stream);
-		}
-		//=============================================
+            for (const auto& component : m_components)
+            {
+                component->Serialize(stream);
+            }
+        }
 
-		//= CHILDREN ==================================
-		auto children = GetTransform_PtrRaw()->GetChildren();
+        // CHILDREN
+        {
+            auto children = GetTransform_PtrRaw()->GetChildren();
 
-		// 1st - children count
-		stream->Write(static_cast<uint32_t>(children.size()));
+            // Children count
+            stream->Write(static_cast<uint32_t>(children.size()));
 
-		// 2nd - children IDs
-		for (const auto& child : children)
-		{
-			stream->Write(child->GetId());
-		}
+            // Children IDs
+            for (const auto& child : children)
+            {
+                stream->Write(child->GetId());
+            }
 
-		// 3rd - children
-		for (const auto& child : children)
-		{
-			if (child->GetEntity_PtrRaw())
-			{
-				child->GetEntity_PtrRaw()->Serialize(stream);
-			}
-			else
-			{
-				LOG_ERROR("Aborting , child entity is nullptr.");
-				break;
-			}
-		}
-		//=============================================
+            // Children
+            for (const auto& child : children)
+            {
+                if (child->GetEntity_PtrRaw())
+                {
+                    child->GetEntity_PtrRaw()->Serialize(stream);
+                }
+                else
+                {
+                    LOG_ERROR("Aborting , child entity is nullptr.");
+                    break;
+                }
+            }
+        }
 	}
 
 	void Entity::Deserialize(FileStream* stream, Transform* parent)
 	{
-		//= BASIC DATA =======================
-		stream->Read(&m_is_active);
-		stream->Read(&m_hierarchy_visibility);
-		stream->Read(&m_id);
-		stream->Read(&m_name);
-		//====================================
+        // BASIC DAA
+        {
+            stream->Read(&m_is_active);
+            stream->Read(&m_hierarchy_visibility);
+            stream->Read(&m_id);
+            stream->Read(&m_name);
+        }
 
-		//= COMPONENTS ================================
-		const auto component_count = stream->ReadAs<uint32_t>();
-		for (uint32_t i = 0; i < component_count; i++)
-		{
-			uint32_t type = ComponentType_Unknown;
-			uint32_t id = 0;
+        // COMPONENTS
+        {
+            const auto component_count = stream->ReadAs<uint32_t>();
+            for (uint32_t i = 0; i < component_count; i++)
+            {
+                uint32_t type = ComponentType_Unknown;
+                uint32_t id = 0;
 
-			stream->Read(&type);	// load component's type
-			stream->Read(&id);		// load component's id
+                stream->Read(&type);	// load component's type
+                stream->Read(&id);		// load component's id
 
-			auto component = AddComponent(static_cast<ComponentType>(type));
-			component->SetId(id);
-		}
-		// Sometimes there are component dependencies, e.g. a collider that needs
-		// to set it's shape to a rigibody. So, it's important to first create all 
-		// the components (like above) and then deserialize them (like here).
-		for (const auto& component : m_components)
-		{
-			component->Deserialize(stream);
-		}
-		//=============================================
+                auto component = AddComponent(static_cast<ComponentType>(type), id);
+            }
 
-		// Set the transform's parent
-		if (m_transform)
-		{
-			m_transform->SetParent(parent);
-		}
+            // Sometimes there are component dependencies, e.g. a collider that needs
+            // to set it's shape to a rigibody. So, it's important to first create all 
+            // the components (like above) and then deserialize them (like here).
+            for (const auto& component : m_components)
+            {
+                component->Deserialize(stream);
+            }
 
-		//= CHILDREN ===================================
-		// 1st - children count
-		const auto children_count = stream->ReadAs<uint32_t>();
+            // Set the transform's parent
+            if (m_transform)
+            {
+                m_transform->SetParent(parent);
+            }
+        }
 
-		// 2nd - children IDs
-		auto scene = m_context->GetSubsystem<World>();
-		vector<std::weak_ptr<Entity>> children;
-		for (uint32_t i = 0; i < children_count; i++)
-		{
-			auto child = scene->EntityCreate();
-			child->SetId(stream->ReadAs<uint32_t>());
-			children.emplace_back(child);
-		}
+        // CHILDREN
+        {
+            // Children count
+            const auto children_count = stream->ReadAs<uint32_t>();
 
-		// 3rd - children
-		for (const auto& child : children)
-		{
-			child.lock()->Deserialize(stream, GetTransform_PtrRaw());
-		}
-		//=============================================
+            // Children IDs
+            auto scene = m_context->GetSubsystem<World>();
+            vector<std::weak_ptr<Entity>> children;
+            for (uint32_t i = 0; i < children_count; i++)
+            {
+                auto child = scene->EntityCreate();
+                child->SetId(stream->ReadAs<uint32_t>());
+                children.emplace_back(child);
+            }
 
-		if (m_transform)
-		{
-			m_transform->AcquireChildren();
-		}
+            // Children
+            for (const auto& child : children)
+            {
+                child.lock()->Deserialize(stream, GetTransform_PtrRaw());
+            }
+
+            if (m_transform)
+            {
+                m_transform->AcquireChildren();
+            }
+        }
 
 		// Make the scene resolve
 		FIRE_EVENT(Event_World_Resolve);
 	}
 
-    shared_ptr<IComponent> Entity::AddComponent(const ComponentType type)
+    shared_ptr<IComponent> Entity::AddComponent(const ComponentType type, uint32_t id /*= 0*/)
     {
         // This is the only hardcoded part regarding components. It's 
         // one function but it would be nice if that gets automated too, somehow...
         shared_ptr<IComponent> component;
         switch (type)
         {
-            case ComponentType_AudioListener:	component = AddComponent<AudioListener>();	break;
-            case ComponentType_AudioSource:		component = AddComponent<AudioSource>();	break;
-            case ComponentType_Camera:			component = AddComponent<Camera>();			break;
-            case ComponentType_Collider:		component = AddComponent<Collider>();		break;
-            case ComponentType_Constraint:		component = AddComponent<Constraint>();		break;
-            case ComponentType_Light:			component = AddComponent<Light>();			break;
-            case ComponentType_Renderable:		component = AddComponent<Renderable>();		break;
-            case ComponentType_RigidBody:		component = AddComponent<RigidBody>();		break;
-            case ComponentType_Script:			component = AddComponent<Script>();			break;
-            case ComponentType_Skybox:			component = AddComponent<Skybox>();			break;
-            case ComponentType_Transform:		component = AddComponent<Transform>();		break;
-            case ComponentType_Unknown:														break;
-            default:																		break;
+            case ComponentType_AudioListener:	component = AddComponent<AudioListener>(id);    break;
+            case ComponentType_AudioSource:		component = AddComponent<AudioSource>(id);	    break;
+            case ComponentType_Camera:			component = AddComponent<Camera>(id);		    break;
+            case ComponentType_Collider:		component = AddComponent<Collider>(id);		    break;
+            case ComponentType_Constraint:		component = AddComponent<Constraint>(id);	    break;
+            case ComponentType_Light:			component = AddComponent<Light>(id);		    break;
+            case ComponentType_Renderable:		component = AddComponent<Renderable>(id);	    break;
+            case ComponentType_RigidBody:		component = AddComponent<RigidBody>(id);	    break;
+            case ComponentType_Script:			component = AddComponent<Script>(id);		    break;
+            case ComponentType_Skybox:			component = AddComponent<Skybox>(id);		    break;
+            case ComponentType_Transform:		component = AddComponent<Transform>(id);	    break;
+            case ComponentType_Unknown:														    break;
+            default:																		    break;
         }
 
         return component;
     }
-	void Entity::RemoveComponentById(const uint32_t id)
+
+    void Entity::RemoveComponentById(const uint32_t id)
 	{
 		for (auto it = m_components.begin(); it != m_components.end(); ) 
 		{

@@ -36,18 +36,13 @@ namespace Spartan
 	class SPARTAN_CLASS Entity : public Spartan_Object, public std::enable_shared_from_this<Entity>
 	{
 	public:
-		Entity(Context* context);
+		Entity(Context* context, uint32_t transform_id = 0);
 		~Entity();
 
-		void Initialize(Transform* transform);
 		void Clone();
-
-		//==========================
 		void Start();
 		void Stop();
 		void Tick(float delta_time);
-		//==========================
-
 		void Serialize(FileStream* stream);
 		void Deserialize(FileStream* stream, Transform* parent);
 
@@ -64,7 +59,7 @@ namespace Spartan
 
 		// Adds a component of type T
 		template <class T>
-		std::shared_ptr<T> AddComponent()
+		std::shared_ptr<T> AddComponent(uint32_t id = 0)
 		{
 			const ComponentType type = IComponent::TypeToEnum<T>();
 
@@ -72,35 +67,25 @@ namespace Spartan
 			if (HasComponent(type) && type != ComponentType_Script)
 				return GetComponent<T>();
 
-			// Add component
-			m_components.emplace_back
-			(	
-				std::make_shared<T>
-				(
-					m_context,
-					this,
-					GetTransform_PtrRaw()
-				)
-			);
+            // Create a new component
+            std::shared_ptr<T>& component = std::make_shared<T>(m_context, this, id);
 
-			auto new_component = std::static_pointer_cast<T>(m_components.back());
-			new_component->SetType(type);
-			new_component->OnInitialize();
+            // Caching of rendering performance critical components
+            if constexpr (std::is_same<T, Transform>::value)    { m_transform   = static_cast<Transform*>(component.get()); }
+            if constexpr (std::is_same<T, Renderable>::value)   { m_renderable  = static_cast<Renderable*>(component.get()); }
 
-			// Caching of rendering performance critical components
-			if constexpr(std::is_same<T, Renderable>::value)
-			{
-				m_renderable = static_cast<Renderable*>(new_component.get());
-			}
+            // Initialize component
+            component->SetType(type);
+            component->OnInitialize();
 
 			// Make the scene resolve
 			FIRE_EVENT(Event_World_Resolve);
 
-			return new_component;
+            return std::static_pointer_cast<T>(m_components.emplace_back(component));
 		}
 
         // Adds a component of ComponentType 
-        std::shared_ptr<IComponent> AddComponent(ComponentType type);
+        std::shared_ptr<IComponent> AddComponent(ComponentType type, uint32_t id = 0);
 
 		// Returns a component of type T (if it exists)
 		template <class T>

@@ -98,7 +98,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 	float3 view_reflection 	= normalize(reflect(view_pos, view_normal));
 
 	// Apply dithering as it will allows us to get away with more detail
-	float3 dither_value = Dither(uv + g_taa_jitterOffset) * 500;
+	float3 dither_value = Dither(uv + g_taa_jitterOffset) * 200;
 	view_pos += view_reflection * dither_value;
 	
 	float2 ray_hit_uv = 0.0f;

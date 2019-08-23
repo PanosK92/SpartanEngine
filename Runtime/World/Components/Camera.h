@@ -48,7 +48,7 @@ namespace Spartan
 	class SPARTAN_CLASS Camera : public IComponent
 	{
 	public:
-		Camera(Context* context, Entity* entity, Transform* transform);
+		Camera(Context* context, Entity* entity, uint32_t id = 0);
 		~Camera() = default;
 
 		//= ICOMPONENT ===============================

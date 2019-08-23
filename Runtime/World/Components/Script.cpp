@@ -32,7 +32,7 @@ using namespace std;
 
 namespace Spartan
 {
-	Script::Script(Context* context, Entity* entity, Transform* transform) : IComponent(context, entity, transform)
+	Script::Script(Context* context, Entity* entity, uint32_t id /*= 0*/) : IComponent(context, entity, id)
 	{
 
 	}

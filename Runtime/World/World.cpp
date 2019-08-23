@@ -258,9 +258,7 @@ namespace Spartan
 
 	shared_ptr<Entity>& World::EntityCreate()
 	{
-		auto entity = make_shared<Entity>(m_context);
-		entity->Initialize(entity->AddComponent<Transform>().get());
-		return m_entities_primary.emplace_back(entity);
+		return m_entities_primary.emplace_back(make_shared<Entity>(m_context));
 	}
 
 	shared_ptr<Entity>& World::EntityAdd(const shared_ptr<Entity>& entity)
