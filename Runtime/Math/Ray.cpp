@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Context.h"
 #include "../World/World.h"
 #include "../World/Entity.h"
-#include "../World/Components/Skybox.h"
+#include "../World/Components/Environment.h"
 #include "../World/Components/Renderable.h"
 //=========================================
 
@@ -52,8 +52,8 @@ namespace Spartan::Math
 		const auto& entities = context->GetSubsystem<World>()->EntityGetAll();
 		for (const auto& entity : entities)
 		{
-			// Make sure there entity has a mesh and exclude the SkyBox
-			if (!entity->HasComponent<Renderable>() || entity->HasComponent<Skybox>())
+			// Make sure there entity has renderable
+			if (!entity->HasComponent<Renderable>())
 				continue;
 
 			// Get object oriented bounding box

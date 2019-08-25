@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Light.h"
 #include "../World/Components/Renderable.h"
 #include "../World/Components/RigidBody.h"
-#include "../World/Components/Skybox.h"
+#include "../World/Components/Environment.h"
 #include "../World/Components/Script.h"
 #include "../World/Components/AudioSource.h"
 #include "../World/Components/AudioListener.h"
@@ -287,7 +287,7 @@ namespace Spartan
             case ComponentType_Renderable:		component = AddComponent<Renderable>(id);	    break;
             case ComponentType_RigidBody:		component = AddComponent<RigidBody>(id);	    break;
             case ComponentType_Script:			component = AddComponent<Script>(id);		    break;
-            case ComponentType_Skybox:			component = AddComponent<Skybox>(id);		    break;
+            case ComponentType_Environment:			component = AddComponent<Environment>(id);		    break;
             case ComponentType_Transform:		component = AddComponent<Transform>(id);	    break;
             case ComponentType_Unknown:														    break;
             default:																		    break;

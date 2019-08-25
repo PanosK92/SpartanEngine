@@ -37,7 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/AudioListener.h"
 #include "World/Components/Camera.h"
 #include "World/Components/Script.h"
-#include "World/Components/Skybox.h"
+#include "World/Components/Environment.h"
 #include "Audio/AudioClip.h"
 #include "Core/Engine.h"
 #include "RHI/RHI_Texture2D.h"
@@ -1060,9 +1060,9 @@ void Widget_Properties::ComponentContextMenu_Add() const
 			// ENVIRONMENT
 			if (ImGui::BeginMenu("Environment"))
 			{
-				if (ImGui::MenuItem("Skybox"))
+				if (ImGui::MenuItem("Environment"))
 				{
-					entity->AddComponent<Skybox>();
+					entity->AddComponent<Environment>();
 				}
 
 				ImGui::EndMenu();

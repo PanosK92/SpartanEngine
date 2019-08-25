@@ -36,7 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Entity.h"
 #include "../World/Components/Transform.h"
 #include "../World/Components/Renderable.h"
-#include "../World/Components/Skybox.h"
+#include "../World/Components/Environment.h"
 #include "../World/Components/Camera.h"
 #include "../RHI/RHI_Device.h"
 #include "../RHI/RHI_SwapChain.h"
@@ -738,8 +738,7 @@ namespace Spartan
 		// Clear previous state
 		m_entities.clear();
 		m_camera = nullptr;
-		m_skybox = nullptr;
-		
+
 		auto entities_vec = entities_variant.Get<vector<shared_ptr<Entity>>>();
 		for (const auto& entitieshared : entities_vec)
 		{
@@ -750,16 +749,12 @@ namespace Spartan
 			// Get all the components we are interested in
 			auto renderable = entity->GetComponent<Renderable>();
 			auto light		= entity->GetComponent<Light>();
-			auto skybox		= entity->GetComponent<Skybox>();
 			auto camera		= entity->GetComponent<Camera>();
 
 			if (renderable)
 			{
 				const auto is_transparent = !renderable->HasMaterial() ? false : renderable->GetMaterial()->GetColorAlbedo().w < 1.0f;
-				if (!skybox) // Ignore skybox
-				{
-					m_entities[is_transparent ? Renderer_Object_Transparent : Renderer_Object_Opaque].emplace_back(entity);
-				}
+                m_entities[is_transparent ? Renderer_Object_Transparent : Renderer_Object_Opaque].emplace_back(entity);
 			}
 
 			if (light)
@@ -769,11 +764,6 @@ namespace Spartan
                 if (light->GetLightType() == LightType_Directional) m_entities[Renderer_Object_LightDirectional].emplace_back(entity);
                 if (light->GetLightType() == LightType_Point)       m_entities[Renderer_Object_LightPoint].emplace_back(entity);
                 if (light->GetLightType() == LightType_Spot)        m_entities[Renderer_Object_LightSpot].emplace_back(entity);
-			}
-
-			if (skybox)
-			{
-				m_skybox = skybox;
 			}
 
 			if (camera)
@@ -829,4 +819,10 @@ namespace Spartan
 
 		return m_rasterizer_cull_back_solid;
 	}
+
+    void* Renderer::GetEnvironmentTexture_GpuResource()
+    {
+        shared_ptr<RHI_Texture>& environment_texture = m_render_targets[RenderTarget_Brdf_Prefiltered_Environment];
+        return environment_texture ? environment_texture->GetResource_Texture() : m_tex_white->GetResource_Texture();
+    }
 }

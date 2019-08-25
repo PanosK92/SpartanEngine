@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===========================
 #include "IComponent.h"
 #include "Light.h"
-#include "Skybox.h"
+#include "Environment.h"
 #include "Script.h"
 #include "RigidBody.h"
 #include "Collider.h"
@@ -82,6 +82,6 @@ namespace Spartan
 	REGISTER_COMPONENT(Renderable,		ComponentType_Renderable)
 	REGISTER_COMPONENT(RigidBody,		ComponentType_RigidBody)
 	REGISTER_COMPONENT(Script,			ComponentType_Script)
-	REGISTER_COMPONENT(Skybox,			ComponentType_Skybox)
+	REGISTER_COMPONENT(Environment,		ComponentType_Environment)
 	REGISTER_COMPONENT(Transform,		ComponentType_Transform)
 }

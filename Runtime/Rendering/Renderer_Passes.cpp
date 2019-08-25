@@ -38,7 +38,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Entity.h"
 #include "../World/Components/Renderable.h"
 #include "../World/Components/Transform.h"
-#include "../World/Components/Skybox.h"
+#include "../World/Components/Environment.h"
 #include "../World/Components/Light.h"
 #include "../World/Components/Camera.h"
 //=========================================
@@ -578,7 +578,7 @@ namespace Spartan
             m_render_targets[RenderTarget_Light_Specular]->GetResource_Texture(),
             (m_flags & Render_PostProcess_VolumetricLighting) ? m_render_targets[RenderTarget_Light_Volumetric_Blurred]->GetResource_Texture() : m_tex_black->GetResource_Texture(),
             m_render_targets[RenderTarget_Ssr]->GetResource_Texture(),
-            m_skybox ? (m_skybox->GetTexture() ? m_skybox->GetTexture()->GetResource_Texture() : nullptr) : m_tex_white->GetResource_Texture(),
+            GetEnvironmentTexture_GpuResource(),
             m_render_targets[RenderTarget_Brdf_Specular_Lut]->GetResource_Texture()
 		};
 

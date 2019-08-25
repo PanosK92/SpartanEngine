@@ -40,7 +40,7 @@ namespace Spartan
 {
 	class Entity;
 	class Camera;
-	class Skybox;
+	class Environment;
 	class Light;
 	class ResourceCache;
 	class Font;
@@ -162,7 +162,8 @@ namespace Spartan
         RenderTarget_Gbuffer_Material,
         RenderTarget_Gbuffer_Velocity,
         RenderTarget_Gbuffer_Depth,
-        // Specular BRDF IBL
+        // BRDF
+        RenderTarget_Brdf_Prefiltered_Environment,
         RenderTarget_Brdf_Specular_Lut,
         // Lighting
         RenderTarget_Light_Diffuse,
@@ -230,26 +231,37 @@ namespace Spartan
 		const auto& GetCmdList()		const { return m_cmd_list; }
 		//================================================================
 
-		//= MISC ===============================================================================================================
-		auto& GetFrameTexture() 	                    { return m_render_targets[RenderTarget_Composition_Ldr]; }
-		auto GetFrameNum() const		                { return m_frame_num; }
-		const auto& GetCamera() const	                { return m_camera; }
-		auto IsInitialized() const		                { return m_initialized; }	
-        auto& GetShaders()                              { return m_shaders; }    
-        auto GetMaxResolution() const                   { return m_max_resolution; } 
-        auto IsRendering() const                        { return m_is_rendering; }
-        auto GetReverseZ() const                        { return m_reverse_z; }
-        auto GetClearDepth()                            { return m_reverse_z ? m_viewport.depth_min : m_viewport.depth_max; }
-        auto GetComparisonFunction()                    { return m_reverse_z ? Comparison_GreaterEqual : Comparison_LessEqual; }
-        auto GetShadowResolution()                      { return m_resolution_shadow; }
+		//= MISC =========================================================================================================================================
+		auto& GetFrameTexture() 	                        { return m_render_targets[RenderTarget_Composition_Ldr]; }
+		auto GetFrameNum() const		                    { return m_frame_num; }
+		const auto& GetCamera() const	                    { return m_camera; }
+		auto IsInitialized() const		                    { return m_initialized; }	
+        auto& GetShaders()                                  { return m_shaders; }    
+        auto GetMaxResolution() const                       { return m_max_resolution; } 
+        auto IsRendering() const                            { return m_is_rendering; }
+
+        // Depth
+        auto GetReverseZ() const                            { return m_reverse_z; }
+        auto GetClearDepth()                                { return m_reverse_z ? m_viewport.depth_min : m_viewport.depth_max; }
+        auto GetComparisonFunction()                        { return m_reverse_z ? Comparison_GreaterEqual : Comparison_LessEqual; }
+
+        // Shadow
+        auto GetShadowResolution()                          { return m_resolution_shadow; }
         void SetShadowResolution(uint32_t resolution);
-        auto GetAnisotropy()                            { return m_anisotropy; }
+
+        // Anisotropy
+        auto GetAnisotropy()                                { return m_anisotropy; }
         void SetAnisotropy(uint32_t anisotropy);
-        auto GetFlags()                                 { return m_flags; }
-        void EnableFlag(Renderer_Option flag)           { m_flags |= flag; };
-        void DisableFlag(Renderer_Option flag)          { m_flags &= ~flag; };
-        bool FlagEnabled(Renderer_Option flag)          { return m_flags & flag; }
-		//======================================================================================================================
+
+        // Flags
+        auto GetFlags()                                     { return m_flags; }
+        void EnableFlag(Renderer_Option flag)               { m_flags |= flag; };
+        void DisableFlag(Renderer_Option flag)              { m_flags &= ~flag; };
+        bool FlagEnabled(Renderer_Option flag)              { return m_flags & flag; }
+
+        // Environment
+        void SetEnvironmentTexture(const std::shared_ptr<RHI_Texture>& texture) { m_render_targets[RenderTarget_Brdf_Prefiltered_Environment] = texture; }
+		//================================================================================================================================================
 
         //= Graphics Settings ====================================================================================================================================================
         Renderer_ToneMapping_Type m_tonemapping  = ToneMapping_Uncharted2;
@@ -316,12 +328,22 @@ namespace Spartan
         void RenderablesAcquire(const Variant& renderables);
         void RenderablesSort(std::vector<Entity*>* renderables);
         std::shared_ptr<RHI_RasterizerState>& GetRasterizerState(RHI_Cull_Mode cull_mode, RHI_Fill_Mode fill_mode);
+        void* GetEnvironmentTexture_GpuResource();
         //==============================================================================================================================
 
         //= RENDER TEXTURES ================================================================
         std::map<Renderer_RenderTarget_Type, std::shared_ptr<RHI_Texture>> m_render_targets;
         std::vector<std::shared_ptr<RHI_Texture>> m_render_tex_bloom;
         //==================================================================================
+
+        //= STANDARD TEXTURES =====================================
+        std::shared_ptr<RHI_Texture> m_tex_noise_normal;
+        std::shared_ptr<RHI_Texture> m_tex_white;
+        std::shared_ptr<RHI_Texture> m_tex_black;
+        std::shared_ptr<RHI_Texture> m_gizmo_tex_light_directional;
+        std::shared_ptr<RHI_Texture> m_gizmo_tex_light_point;
+        std::shared_ptr<RHI_Texture> m_gizmo_tex_light_spot;
+        //=========================================================
 
 		//= SHADERS ==========================================================
 		std::map<Renderer_Shader_Type, std::shared_ptr<RHI_Shader>> m_shaders;
@@ -356,15 +378,6 @@ namespace Spartan
 		std::shared_ptr<RHI_Sampler> m_sampler_trilinear_clamp;
 		std::shared_ptr<RHI_Sampler> m_sampler_anisotropic_wrap;
 		//======================================================
-
-		//= STANDARD TEXTURES =====================================
-		std::shared_ptr<RHI_Texture> m_tex_noise_normal;
-		std::shared_ptr<RHI_Texture> m_tex_white;
-		std::shared_ptr<RHI_Texture> m_tex_black;
-		std::shared_ptr<RHI_Texture> m_gizmo_tex_light_directional;
-		std::shared_ptr<RHI_Texture> m_gizmo_tex_light_point;
-		std::shared_ptr<RHI_Texture> m_gizmo_tex_light_spot;
-		//=========================================================
 
 		//= LINE RENDERING ========================================
 		std::shared_ptr<RHI_VertexBuffer> m_vertex_buffer_lines;
@@ -421,9 +434,7 @@ namespace Spartan
                                                                                   
 		//= ENTITIES/COMPONENTS ==================================================
 		std::unordered_map<Renderer_Object_Type, std::vector<Entity*>> m_entities;
-		std::shared_ptr<Camera> m_camera;                                         
-		std::shared_ptr<Skybox> m_skybox;                                         
-                       
+		std::shared_ptr<Camera> m_camera;
 		//========================================================================
 
 		//= DEPENDENCIES =========================
