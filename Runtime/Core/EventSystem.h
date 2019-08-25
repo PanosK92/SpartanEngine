@@ -42,16 +42,16 @@ Note: Currently, this is a blocking event system
 
 enum Event_Type
 {
-	Event_Frame_End,		// A frame ends
-	Event_World_Save,		// The world must be saved to file
-	Event_World_Saved,		// The world finished saving to file
-	Event_World_Load,		// The world must be loaded from file
-	Event_World_Loaded,		// The world finished loading from file
-	Event_World_Unload,		// The world should clear everything
-	Event_World_Resolve,	// The world should resolve
-	Event_World_Submit,		// The world is submitting entities to the renderer
-	Event_World_Stop,		// The world should stop ticking
-	Event_World_Start		// The world should start ticking
+	Event_Frame_End,		        // A frame ends
+	Event_World_Save,		        // The world must be saved to file
+	Event_World_Saved,		        // The world finished saving to file
+	Event_World_Load,		        // The world must be loaded from file
+	Event_World_Loaded,		        // The world finished loading from file
+	Event_World_Unload,		        // The world should clear everything
+	Event_World_Resolve_Pending,	// The world should resolve
+	Event_World_Resolve_Complete,	// The world has finished resolving
+	Event_World_Stop,		        // The world should stop ticking
+	Event_World_Start		        // The world should start ticking
 };
 
 //= MACROS ====================================================================================================

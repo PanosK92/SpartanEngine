@@ -77,13 +77,14 @@ namespace Spartan
 		//m_flags	|= Render_PostProcess_ChromaticAberration;	// Disabled by default: It doesn't improve the image quality, it's more of a stylistic effect.	
 
 		// Subscribe to events
-		SUBSCRIBE_TO_EVENT(Event_World_Submit, EVENT_HANDLER_VARIANT(RenderablesAcquire));
+		SUBSCRIBE_TO_EVENT(Event_World_Resolve_Complete,    EVENT_HANDLER_VARIANT(RenderablesAcquire));
+        SUBSCRIBE_TO_EVENT(Event_World_Unload,              EVENT_HANDLER(ClearEntities));
 	}
 
 	Renderer::~Renderer()
 	{
 		// Unsubscribe from events
-		UNSUBSCRIBE_FROM_EVENT(Event_World_Submit, EVENT_HANDLER_VARIANT(RenderablesAcquire));
+		UNSUBSCRIBE_FROM_EVENT(Event_World_Resolve_Complete, EVENT_HANDLER_VARIANT(RenderablesAcquire));
 
 		m_entities.clear();
 		m_camera = nullptr;
@@ -740,11 +741,10 @@ namespace Spartan
 		m_entities.clear();
 		m_camera = nullptr;
 
-		auto entities_vec = entities_variant.Get<vector<shared_ptr<Entity>>>();
-		for (const auto& entitieshared : entities_vec)
+		vector<shared_ptr<Entity>> entities = entities_variant.Get<vector<shared_ptr<Entity>>>();
+		for (const auto& entity : entities)
 		{
-			auto entity = entitieshared.get();
-			if (!entity)
+			if (!entity || !entity->IsActive())
 				continue;
 
 			// Get all the components we are interested in
@@ -755,21 +755,21 @@ namespace Spartan
 			if (renderable)
 			{
 				const auto is_transparent = !renderable->HasMaterial() ? false : renderable->GetMaterial()->GetColorAlbedo().w < 1.0f;
-                m_entities[is_transparent ? Renderer_Object_Transparent : Renderer_Object_Opaque].emplace_back(entity);
+                m_entities[is_transparent ? Renderer_Object_Transparent : Renderer_Object_Opaque].emplace_back(entity.get());
 			}
 
 			if (light)
 			{
-				m_entities[Renderer_Object_Light].emplace_back(entity);
+				m_entities[Renderer_Object_Light].emplace_back(entity.get());
 
-                if (light->GetLightType() == LightType_Directional) m_entities[Renderer_Object_LightDirectional].emplace_back(entity);
-                if (light->GetLightType() == LightType_Point)       m_entities[Renderer_Object_LightPoint].emplace_back(entity);
-                if (light->GetLightType() == LightType_Spot)        m_entities[Renderer_Object_LightSpot].emplace_back(entity);
+                if (light->GetLightType() == LightType_Directional) m_entities[Renderer_Object_LightDirectional].emplace_back(entity.get());
+                if (light->GetLightType() == LightType_Point)       m_entities[Renderer_Object_LightPoint].emplace_back(entity.get());
+                if (light->GetLightType() == LightType_Spot)        m_entities[Renderer_Object_LightSpot].emplace_back(entity.get());
 			}
 
 			if (camera)
 			{
-				m_entities[Renderer_Object_Camera].emplace_back(entity);
+				m_entities[Renderer_Object_Camera].emplace_back(entity.get());
 				m_camera = camera;
 			}
 		}

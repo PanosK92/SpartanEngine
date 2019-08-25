@@ -70,5 +70,5 @@ private:
 	static void ActionEntityCreateSkybox();
 	
 	std::shared_ptr<Spartan::Entity> m_entity_empty;
-	bool m_expand_to_showentity = false;
+	bool m_expand_to_show_entity = false;
 };

@@ -60,17 +60,17 @@ namespace Spartan
 		bool LoadFromFile(const std::string& file_path);
 		const auto& GetName() { return m_name; }
 
-		//= Entities ===============================================================================
-		std::shared_ptr<Entity>& EntityCreate();
+		//= Entities ===================================================================
+		std::shared_ptr<Entity>& EntityCreate(bool is_active = true);
 		std::shared_ptr<Entity>& EntityAdd(const std::shared_ptr<Entity>& entity);
 		bool EntityExists(const std::shared_ptr<Entity>& entity);
 		void EntityRemove(const std::shared_ptr<Entity>& entity);	
 		std::vector<std::shared_ptr<Entity>> EntityGetRoots();
 		const std::shared_ptr<Entity>& EntityGetByName(const std::string& name);
 		const std::shared_ptr<Entity>& EntityGetById(uint32_t id);
-		const auto& EntityGetAll()	{ return m_entities_primary; }
-		auto EntityGetCount()		{ return static_cast<uint32_t>(m_entities_primary.size()); }
-		//==========================================================================================
+		const auto& EntityGetAll()	{ return m_entities; }
+		auto EntityGetCount()		{ return static_cast<uint32_t>(m_entities.size()); }
+		//==============================================================================
 
 	private:
 		//= COMMON ENTITY CREATION ========================
@@ -79,16 +79,12 @@ namespace Spartan
 		std::shared_ptr<Entity>& CreateDirectionalLight();
 		//================================================
 
-		// Double-buffered actors
-		std::vector<std::shared_ptr<Entity>> m_entities_primary;
-		std::vector<std::shared_ptr<Entity>> m_entities_secondary;
-
-		std::shared_ptr<Entity> m_entity_empty;
-		Input* m_input;
-		Profiler* m_profiler;
-		bool m_wasInEditorMode;
-		bool m_isDirty;
-		Scene_State m_state;
-		std::string m_name;
+		std::vector<std::shared_ptr<Entity>> m_entities;
+        std::string m_name;
+        bool m_wasInEditorMode  = false;
+        bool m_is_dirty         = true;
+        Scene_State m_state     = Ticking;	
+        Input* m_input          = nullptr;
+        Profiler* m_profiler    = nullptr;
 	};
 }

@@ -77,7 +77,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     float3 camera_to_pixel  = normalize(worldPos.xyz - g_camera_position.xyz);
 
 	// Ambient light
-	float light_ambient_min = 0.02f; // until i use reflection probes for environmental lighting, this will have to do
+	float light_ambient_min = 0.0025f; // until i use reflection probes for environmental lighting, this will have to do
 	float light_ambient		= g_directional_light_intensity * directional_shadow; // uber fake
 	light_ambient			= clamp(light_ambient, light_ambient_min, 1.0f);
 	

@@ -268,7 +268,7 @@ namespace Spartan
         }
 
 		// Make the scene resolve
-		FIRE_EVENT(Event_World_Resolve);
+		FIRE_EVENT(Event_World_Resolve_Pending);
 	}
 
     shared_ptr<IComponent> Entity::AddComponent(const ComponentType type, uint32_t id /*= 0*/)
@@ -314,6 +314,6 @@ namespace Spartan
 		}
 
 		// Make the scene resolve
-		FIRE_EVENT(Event_World_Resolve);
+		FIRE_EVENT(Event_World_Resolve_Pending);
 	}
 }

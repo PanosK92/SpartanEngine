@@ -168,7 +168,7 @@ void Widget_World::TreeAddEntity(Entity* entity)
 		node_flags |= is_selected_entity ? ImGuiTreeNodeFlags_Selected : 0;
 
 		// Expand to show entity, if it was clicked during this frame
-		if (m_expand_to_showentity)
+		if (m_expand_to_show_entity)
 		{
 			// If the selected entity is a descendant of the this entity, start expanding (this can happen if the user clicks on something in the 3D scene)
 			if (selected_entity->GetTransform_PtrRaw()->IsDescendantOf(entity->GetTransform_PtrRaw()))
@@ -178,7 +178,7 @@ void Widget_World::TreeAddEntity(Entity* entity)
 				// Stop expanding when we have reached the selected entity (it's visible to the user)
 				if (is_selected_entity)
 				{
-					m_expand_to_showentity = false;
+					m_expand_to_show_entity = false;
 				}
 			}
 		}
@@ -273,7 +273,7 @@ void Widget_World::EntityHandleDragDrop(Entity* entity_ptr) const
 
 void Widget_World::SetSelectedEntity(const shared_ptr<Entity>& entity, const bool from_editor /*= true*/)
 {
-	m_expand_to_showentity = true;
+	m_expand_to_show_entity = true;
 
 	// If the update comes from this widget, let the engine know about it
 	if (from_editor)

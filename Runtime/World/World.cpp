@@ -47,13 +47,10 @@ namespace Spartan
 {
 	World::World(Context* context) : ISubsystem(context)
 	{
-		m_isDirty	= true;
-		m_state		= Ticking;
-		
 		// Subscribe to events
-		SUBSCRIBE_TO_EVENT(Event_World_Resolve, [this](Variant) { m_isDirty = true; });
-		SUBSCRIBE_TO_EVENT(Event_World_Stop,	[this](Variant)	{ m_state = Idle; });
-		SUBSCRIBE_TO_EVENT(Event_World_Start,	[this](Variant)	{ m_state = Ticking; });
+		SUBSCRIBE_TO_EVENT(Event_World_Resolve_Pending, [this](Variant) { m_is_dirty = true; });
+		SUBSCRIBE_TO_EVENT(Event_World_Stop,	        [this](Variant)	{ m_state = Idle; });
+		SUBSCRIBE_TO_EVENT(Event_World_Start,	        [this](Variant)	{ m_state = Ticking; });
 	}
 
 	World::~World()
@@ -96,21 +93,23 @@ namespace Spartan
 			// Start
 			if (started)
 			{
-				for (const auto& entity : m_entities_primary)
+				for (const auto& entity : m_entities)
 				{
 					entity->Start();
 				}
 			}
+
 			// Stop
 			if (stopped)
 			{
-				for (const auto& entity : m_entities_primary)
+				for (const auto& entity : m_entities)
 				{
 					entity->Stop();
 				}
 			}
+
 			// Tick
-			for (const auto& entity : m_entities_primary)
+			for (const auto& entity : m_entities)
 			{
 				entity->Tick(delta_time);
 			}
@@ -118,25 +117,23 @@ namespace Spartan
 
         TIME_BLOCK_END(m_profiler);
 
-		if (m_isDirty)
+		if (m_is_dirty)
 		{
-			m_entities_secondary = m_entities_primary;
-			// Submit to the Renderer
-			FIRE_EVENT_DATA(Event_World_Submit, m_entities_secondary);
-			m_isDirty = false;
+            // Notify Renderer
+			FIRE_EVENT_DATA(Event_World_Resolve_Complete, m_entities);
+            m_is_dirty = false;
 		}
 	}
 
 	void World::Unload()
 	{
+        // Notify any systems that the entities are about to be cleared
 		FIRE_EVENT(Event_World_Unload);
 
-		m_entities_primary.clear();
-		m_entities_primary.shrink_to_fit();
+        m_entities.clear();
+        m_entities.shrink_to_fit();
 
-		m_isDirty = true;
-		
-		// Don't clear secondary m_entities_secondary as they might be used by the renderer
+		m_is_dirty = true;
 	}
 
 	bool World::SaveToFile(const string& filePathIn)
@@ -243,11 +240,11 @@ namespace Spartan
 		// Serialize root entities
 		for (uint32_t i = 0; i < root_entity_count; i++)
 		{
-			m_entities_primary[i]->Deserialize(file.get(), nullptr);
+			m_entities[i]->Deserialize(file.get(), nullptr);
 			ProgressReport::Get().IncrementJobsDone(g_progress_world);
 		}
 
-		m_isDirty	= true;
+		m_is_dirty	= true;
 		m_state		= Ticking;
 		ProgressReport::Get().SetIsLoading(g_progress_world, false);	
 		LOG_INFO("Loading took " + to_string(static_cast<int>(timer.GetElapsedTimeMs())) + " ms");	
@@ -256,17 +253,21 @@ namespace Spartan
 		return true;
 	}
 
-	shared_ptr<Entity>& World::EntityCreate()
-	{
-		return m_entities_primary.emplace_back(make_shared<Entity>(m_context));
-	}
+    shared_ptr<Spartan::Entity>& World::EntityCreate(bool is_active /*= true*/)
+    {
+        auto& entity = m_entities.emplace_back(make_shared<Entity>(m_context));
+        entity->SetActive(is_active);
+        return entity;
+    }
 
-	shared_ptr<Entity>& World::EntityAdd(const shared_ptr<Entity>& entity)
-	{
+    shared_ptr<Entity>& World::EntityAdd(const shared_ptr<Entity>& entity)
+    {
+        static shared_ptr<Entity> empty;
+
 		if (!entity)
-			return m_entity_empty;
+			return empty;
 
-		return m_entities_primary.emplace_back(entity);
+		return m_entities.emplace_back(entity);
 	}
 
 	bool World::EntityExists(const shared_ptr<Entity>& entity)
@@ -294,12 +295,12 @@ namespace Spartan
 		auto parent = entity->GetTransform_PtrRaw()->GetParent();
 
 		// Remove this entity
-		for (auto it = m_entities_primary.begin(); it < m_entities_primary.end();)
+		for (auto it = m_entities.begin(); it < m_entities.end();)
 		{
 			const auto temp = *it;
 			if (temp->GetId() == entity->GetId())
 			{
-				it = m_entities_primary.erase(it);
+				it = m_entities.erase(it);
 				break;
 			}
 			++it;
@@ -311,13 +312,13 @@ namespace Spartan
 			parent->AcquireChildren();
 		}
 
-		m_isDirty = true;
+        m_is_dirty = true;
 	}
 
 	vector<shared_ptr<Entity>> World::EntityGetRoots()
 	{
 		vector<shared_ptr<Entity>> root_entities;
-		for (const auto& entity : m_entities_primary)
+		for (const auto& entity : m_entities)
 		{
 			if (entity->GetTransform_PtrRaw()->IsRoot())
 			{
@@ -330,24 +331,26 @@ namespace Spartan
 
 	const shared_ptr<Entity>& World::EntityGetByName(const string& name)
 	{
-		for (const auto& entity : m_entities_primary)
+		for (const auto& entity : m_entities)
 		{
 			if (entity->GetName() == name)
 				return entity;
 		}
 
-		return m_entity_empty;
+        static shared_ptr<Entity> empty;
+		return empty;
 	}
 
 	const shared_ptr<Entity>& World::EntityGetById(const uint32_t id)
 	{
-		for (const auto& entity : m_entities_primary)
+		for (const auto& entity : m_entities)
 		{
 			if (entity->GetId() == id)
 				return entity;
 		}
 
-		return m_entity_empty;
+        static shared_ptr<Entity> empty;
+		return empty;
 	}
 
 	shared_ptr<Entity>& World::CreateEnvironment()
