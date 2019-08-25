@@ -310,9 +310,10 @@ namespace Spartan
         shader_gbuffer->CompileAsync<RHI_Vertex_PosTexNorTan>(m_context, Shader_Vertex, dir_shaders + "GBuffer.hlsl");
         m_shaders[Shader_Gbuffer_V] = shader_gbuffer;
 
-        // BRDF specular lut
+        // BRDF - Specular Lut
         auto shader_brdf_specular_lut = make_shared<RHI_Shader>(m_rhi_device);
-        shader_brdf_specular_lut->CompileAsync(m_context, Shader_Pixel, dir_shaders + "BRDF_SpecularLut.hlsl");
+        shader_brdf_specular_lut->AddDefine("BRDF_ENV_SPECULAR_LUT");
+        shader_brdf_specular_lut->CompileAsync(m_context, Shader_Pixel, dir_shaders + "BRDF.hlsl");
         m_shaders[Shader_BrdfSpecularLut] = shader_brdf_specular_lut;
 
         // Light - Directional
@@ -824,5 +825,17 @@ namespace Spartan
     {
         shared_ptr<RHI_Texture>& environment_texture = m_render_targets[RenderTarget_Brdf_Prefiltered_Environment];
         return environment_texture ? environment_texture->GetResource_Texture() : m_tex_white->GetResource_Texture();
+    }
+
+    void Renderer::SetEnvironmentTexture(const shared_ptr<RHI_Texture>& texture)
+    {
+       /* if (texture->HasMipmaps())
+        {
+            LOG_ERROR("Prefiltered mipmaps will be generated, the provided texture must not have any mimaps");
+            return;
+        }*/
+
+        // Save environment texture
+        m_render_targets[RenderTarget_Brdf_Prefiltered_Environment] = texture;
     }
 }

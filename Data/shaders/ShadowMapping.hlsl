@@ -206,20 +206,17 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, float 
 	}
 	#endif
 
-	// Screen space shadow
+	// Screen space contact shadow
 	if (screen_space_contact_shadows_enabled)
 	{
-		// Contact shadow
 		float sscs = ScreenSpaceContactShadows(uv, light.direction);
-		shadow = min(shadow, sscs);
-
+		shadow = min(shadow, sscs);	
+	}
+	
 		// Self shadow
 		float self_shadow_smoothness = 15;
 		float self_shadow = saturate(n_dot_l);
 		shadow = min(shadow, 1.0f - pow(1.0f - self_shadow, self_shadow_smoothness));
-	}
-	
-
 
 	return shadow;
 }

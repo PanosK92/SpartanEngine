@@ -87,7 +87,8 @@ namespace Spartan
 		vector<vector<vector<std::byte>>> cubemapData;
 
 		// Load all the cubemap sides
-		auto loaderTex = make_shared<RHI_Texture2D>(GetContext(), true);
+        auto m_generate_mipmaps = false;
+		auto loaderTex = make_shared<RHI_Texture2D>(GetContext(), m_generate_mipmaps);
 		{
 			loaderTex->LoadFromFile(texturePaths[0]);
 			cubemapData.emplace_back(loaderTex->GetData());
@@ -121,13 +122,14 @@ namespace Spartan
 
 	void Environment::CreateFromSphere(const string& texture_path)
 	{
-        // Skysphere
+        // Don't generate mipmaps as the Renderer will generate a prefiltered environment which is required for proper IBL
         auto m_generate_mipmaps = true;
-        auto texture = static_pointer_cast<RHI_Texture>(make_shared<RHI_Texture2D>(GetContext(), m_generate_mipmaps));
-        texture->LoadFromFile(texture_path);
-        texture->SetResourceName("SkySphere");
 
-        // Apply cubemap to renderer
+        // Skysphere
+        auto texture = make_shared<RHI_Texture2D>(GetContext(), m_generate_mipmaps);
+        texture->LoadFromFile(texture_path);
+
+        // Apply sky sphere to renderer
         m_context->GetSubsystem<Renderer>()->SetEnvironmentTexture(static_pointer_cast<RHI_Texture>(texture));
 	}
 }

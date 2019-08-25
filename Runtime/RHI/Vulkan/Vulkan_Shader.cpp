@@ -49,14 +49,14 @@ namespace Spartan
 
 		if (HasVertexShader())
 		{
-			vkDestroyShaderModule(rhi_context->device, static_cast<VkShaderModule>(m_vertex_shader), nullptr);
-			m_vertex_shader = nullptr;
+			vkDestroyShaderModule(rhi_context->device, static_cast<VkShaderModule>(m_resource_vertex), nullptr);
+			m_resource_vertex = nullptr;
 		}
 
 		if (HasPixelShader())
 		{
-			vkDestroyShaderModule(rhi_context->device, static_cast<VkShaderModule>(m_pixel_shader), nullptr);
-			m_pixel_shader = nullptr;
+			vkDestroyShaderModule(rhi_context->device, static_cast<VkShaderModule>(m_resource_pixel), nullptr);
+			m_resource_pixel = nullptr;
 		}
 	}
 
@@ -381,7 +381,7 @@ namespace Spartan
 	}
 	
 	template <typename T>
-	void* RHI_Shader::_Compile(const Shader_Stage type, const string& shader)
+	void* RHI_Shader::_Compile(const Shader_Type type, const string& shader)
 	{
 		// Deduce some things
 		auto is_file	= FileSystem::IsSupportedShaderFile(shader);
@@ -392,9 +392,6 @@ namespace Spartan
 			file_directory = FileSystem::GetDirectoryFromFilePath(shader);
 		}
 
-		// Arguments
-		auto entry_point		= FileSystem::StringToWstring((type == Shader_Vertex) ? _RHI_Shader::entry_point_vertex : _RHI_Shader::entry_point_pixel);
-		auto target_profile		= FileSystem::StringToWstring((type == Shader_Vertex) ? "vs_" + _RHI_Shader::shader_model : "ps_" + _RHI_Shader::shader_model);
 		vector<LPCWSTR> arguments = 
 		{	
             L"-spirv",
@@ -410,8 +407,9 @@ namespace Spartan
 		// Create standard defines
 		vector<DxcDefine> defines =
 		{
-			DxcDefine{ L"COMPILE_VS", type == Shader_Vertex ? L"1" : L"0" },
-			DxcDefine{ L"COMPILE_PS", type == Shader_Pixel ? L"1" : L"0" }
+			DxcDefine{ L"COMPILE_VS", type == Shader_Vertex     ? L"1" : L"0" },
+			DxcDefine{ L"COMPILE_PS", type == Shader_Pixel      ? L"1" : L"0" },
+            DxcDefine{ L"COMPILE_CS", type == Shader_Compute    ? L"1" : L"0" }
 		};
 
 		// Convert defines to wstring...
@@ -454,17 +452,17 @@ namespace Spartan
 		CComPtr<IDxcIncludeHandler> include_handler = new DxShaderCompiler::SpartanIncludeHandler(file_directory);
 		CComPtr<IDxcOperationResult> compilation_result = nullptr;
 		{
-			if (FAILED(DxShaderCompiler::Instance::Get().compiler->Compile(
+			if (FAILED(DxShaderCompiler::Instance::Get().compiler->Compile
+            (
 					shader_blob,												// shader blob
 					file_name.c_str(),											// file name (for warnings and errors)
-					entry_point.c_str(),										// entry point function
-					target_profile.c_str(),										// target profile
+                    FileSystem::StringToWstring(GetEntryPoint()).c_str(),		// entry point function
+                    FileSystem::StringToWstring(GetTargetProfile()).c_str(),	// target profile
 					arguments.data(), static_cast<uint32_t>(arguments.size()),	// compilation arguments
 					defines.data(), static_cast<uint32_t>(defines.size()),		// shader defines
 					include_handler,											// handler for #include directives
 					&compilation_result))
-				)
-			{
+			){
 				LOGF_ERROR("Failed to compile %s", file_name.c_str());
 				return nullptr;
 			}

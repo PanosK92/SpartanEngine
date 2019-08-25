@@ -35,7 +35,7 @@ SamplerComparisonState  sampler_cmp_depth 	: register(s1);
 SamplerState samplerLinear_clamp 			: register(s2);
 //=========================================================
 
-//= BUFFERS ================================
+//= BUFFERS =====================================
 #define cascade_count 4
 cbuffer LightBuffer : register(b1)
 {
@@ -53,10 +53,9 @@ cbuffer LightBuffer : register(b1)
 	float 	screen_space_contact_shadows_enabled;
 	float3	padding_2;
 };
-//==========================================
+//===============================================
 
-//= INCLUDES =====================
-#include "Common.hlsl"       
+//= INCLUDES =====================      
 #include "BRDF.hlsl"              
 #include "ShadowMapping.hlsl"
 #include "VolumetricLighting.hlsl"
