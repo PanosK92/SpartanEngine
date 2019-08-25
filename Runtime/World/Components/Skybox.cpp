@@ -21,15 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ============================
 #include "Skybox.h"
-#include "Transform.h"
-#include "Renderable.h"
-#include "../Entity.h"
 #include "../../Resource/ResourceCache.h"
-#include "../../RHI/RHI_Texture.h"
 #include "../../RHI/RHI_Texture2D.h"
 #include "../../RHI/RHI_TextureCube.h"
-#include "../../Math/MathHelper.h"
-#include "../../Rendering/Material.h"
 #include "../../Threading/Threading.h"
 //=======================================
 
@@ -42,13 +36,8 @@ namespace Spartan
 {
 	Skybox::Skybox(Context* context, Entity* entity, uint32_t id /*= 0*/) : IComponent(context, entity, id)
 	{
-		m_environment_type	= Skybox_Sphere;
-		m_material			= make_shared<Material>(GetContext());
-		m_material->SetCullMode(Cull_Front);
-		m_material->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
-		m_material->SetIsEditable(false);
-		m_material->SetShadingMode(Shading_Sky);
-		
+		m_environment_type = Skybox_Sphere;
+
 		// Texture paths
 		const auto dir_cubemaps = GetContext()->GetSubsystem<ResourceCache>()->GetDataDirectory(Asset_Cubemaps);
 		if (m_environment_type == Skybox_Array)
@@ -67,11 +56,6 @@ namespace Spartan
 		{
 			m_texture_paths = { dir_cubemaps + "sphere/syferfontein_0d_clear_4k.hdr" };
 		}
-	}
-
-	Skybox::~Skybox()
-	{
-		 
 	}
 
 	void Skybox::OnInitialize()
@@ -120,62 +104,21 @@ namespace Spartan
 		}
 
 		// Cubemap
-		{
-			m_texture = static_pointer_cast<RHI_Texture>(make_shared<RHI_TextureCube>(GetContext(), loaderTex->GetWidth(), loaderTex->GetHeight(), loaderTex->GetFormat(), cubemapData));
-			m_texture->SetResourceName("Cubemap");
-			m_texture->SetWidth(loaderTex->GetWidth());
-			m_texture->SetHeight(loaderTex->GetHeight());
-			m_texture->SetGrayscale(false);
-		}
-
-		// Material
-		{
-			m_material->SetResourceName("Standard_Skybox");
-			m_material->SetTextureSlot(TextureType_Albedo, m_texture);
-		}
-
-		// Renderable
-		{
-			auto renderable = GetEntity_PtrRaw()->AddComponent<Renderable>();
-			renderable->GeometrySet(Geometry_Default_Cube);
-			renderable->SetCastShadows(false);
-			renderable->SetReceiveShadows(false);
-			renderable->MaterialSet(m_material);
-		}
-
-		// Make the skybox big enough
-		GetTransform()->SetScale(Vector3(1000, 1000, 1000));
+        m_texture = static_pointer_cast<RHI_Texture>(make_shared<RHI_TextureCube>(GetContext(), loaderTex->GetWidth(), loaderTex->GetHeight(), loaderTex->GetFormat(), cubemapData));
+        m_texture->SetResourceName("Cubemap");
+        m_texture->SetWidth(loaderTex->GetWidth());
+        m_texture->SetHeight(loaderTex->GetHeight());
+        m_texture->SetGrayscale(false);
 	}
 
 	void Skybox::CreateFromSphere(const string& texture_path)
 	{
 		LOG_INFO("Creating HDR sky sphere...");
 
-		// Texture
-		{
-			auto m_generate_mipmaps = true;
-			m_texture = static_pointer_cast<RHI_Texture>(make_shared<RHI_Texture2D>(GetContext(), m_generate_mipmaps));
-			m_texture->LoadFromFile(texture_path);
-			m_texture->SetResourceName("SkySphere");
-		}
-
-		// Material
-		{
-			m_material->SetResourceName("Standard_SkySphere");
-			m_material->SetTextureSlot(TextureType_Albedo, m_texture);
-		}
-
-		// Renderable
-		{
-			auto renderable = GetEntity_PtrRaw()->AddComponent<Renderable>();
-			renderable->GeometrySet(Geometry_Default_Sphere);
-			renderable->SetCastShadows(false);
-			renderable->SetReceiveShadows(false);
-			renderable->MaterialSet(m_material);
-		}
-
-		// Make the skybox big enough
-		GetTransform()->SetScale(Vector3(980, 980, 980));
+        auto m_generate_mipmaps = true;
+        m_texture = static_pointer_cast<RHI_Texture>(make_shared<RHI_Texture2D>(GetContext(), m_generate_mipmaps));
+        m_texture->LoadFromFile(texture_path);
+        m_texture->SetResourceName("SkySphere");
 
 		LOG_INFO("Sky sphere has been created successfully");
 	}

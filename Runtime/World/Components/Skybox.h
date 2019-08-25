@@ -29,8 +29,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-	class Material;
-
 	enum Skybox_Type
 	{
 		Skybox_Array,
@@ -41,14 +39,13 @@ namespace Spartan
 	{
 	public:
 		Skybox(Context* context, Entity* entity, uint32_t id = 0);
-		~Skybox();
+        ~Skybox() = default;
 
 		//= IComponent ==============
 		void OnInitialize() override;
 		//===========================
 
-		const std::shared_ptr<RHI_Texture>& GetTexture()	{ return m_texture; }
-		std::weak_ptr<Material> GetMaterial()				{ return m_material; }
+		const std::shared_ptr<RHI_Texture>& GetTexture() { return m_texture; }
 
 	private:
 
@@ -57,7 +54,6 @@ namespace Spartan
 
 		std::vector<std::string> m_texture_paths;
 		std::shared_ptr<RHI_Texture> m_texture;
-		std::shared_ptr<Material> m_material;
 		Skybox_Type m_environment_type;
 	};
 }
