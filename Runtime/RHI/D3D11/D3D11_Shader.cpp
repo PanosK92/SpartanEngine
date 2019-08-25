@@ -43,12 +43,13 @@ namespace Spartan
 {
 	RHI_Shader::~RHI_Shader()
 	{
-		safe_release(static_cast<ID3D11VertexShader*>(m_vertex_shader));
-		safe_release(static_cast<ID3D11PixelShader*>(m_pixel_shader));
+		safe_release(static_cast<ID3D11VertexShader*>(m_resource_vertex));
+		safe_release(static_cast<ID3D11PixelShader*>(m_resource_pixel));
+        safe_release(static_cast<ID3D11ComputeShader*>(m_resource_compute));
 	}
 
 	template <typename T>
-	void* RHI_Shader::_Compile(const Shader_Stage type, const string& shader)
+	void* RHI_Shader::_Compile(const Shader_Type type, const string& shader)
 	{
 		if (!m_rhi_device)
 		{
@@ -69,15 +70,12 @@ namespace Spartan
 		compile_flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_PREFER_FLOW_CONTROL;
 		#endif
 
-		// Arguments
-		auto entry_point	= (type == Shader_Vertex) ? _RHI_Shader::entry_point_vertex : _RHI_Shader::entry_point_pixel;
-		auto target_profile	= (type == Shader_Vertex) ? "vs_" + _RHI_Shader::shader_model : "ps_" + _RHI_Shader::shader_model;
-
 		// Defines
 		vector<D3D_SHADER_MACRO> defines =
 		{
-			D3D_SHADER_MACRO{ "COMPILE_VS", type == Shader_Vertex ? "1" : "0" },
-			D3D_SHADER_MACRO{ "COMPILE_PS", type == Shader_Pixel ? "1" : "0" }
+			D3D_SHADER_MACRO{ "COMPILE_VS", type == Shader_Vertex   ? "1" : "0" },
+			D3D_SHADER_MACRO{ "COMPILE_PS", type == Shader_Pixel    ? "1" : "0" },
+            D3D_SHADER_MACRO{ "COMPILE_CS", type == Shader_Compute  ? "1" : "0" }
 		};
 		for (const auto& define : m_defines)
 		{
@@ -100,8 +98,8 @@ namespace Spartan
 				file_path.c_str(),
 				defines.data(),
 				D3D_COMPILE_STANDARD_FILE_INCLUDE,
-				entry_point.c_str(),
-				target_profile.c_str(),
+				GetEntryPoint().c_str(),
+                GetTargetProfile().c_str(),
 				compile_flags,
 				0,
 				&shader_blob,
@@ -117,8 +115,8 @@ namespace Spartan
 				nullptr,
 				defines.data(),
 				nullptr,
-				entry_point.c_str(),
-				target_profile.c_str(),
+				GetEntryPoint().c_str(),
+				GetTargetProfile().c_str(),
 				compile_flags,
 				0,
 				&shader_blob,
@@ -160,13 +158,10 @@ namespace Spartan
 		{
 			if (type == Shader_Vertex)
 			{
-				ID3D11VertexShader* buffer_vertex = nullptr;
-                result = d3d11_device->CreateVertexShader(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), nullptr, &buffer_vertex);
-				if (FAILED(result))
+				if (FAILED(d3d11_device->CreateVertexShader(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), nullptr, reinterpret_cast<ID3D11VertexShader**>(&shader_view))))
 				{
                     LOGF_ERROR("Failed to create vertex shader, %s", D3D11_Common::dxgi_error_to_string(result));
 				}
-				shader_view = static_cast<void*>(buffer_vertex);
 
 				// Create input layout
 				if (RHI_Vertex_Type_To_Enum<T>() != RHI_Vertex_Type_Unknown)
@@ -179,14 +174,18 @@ namespace Spartan
 			}
 			else if (type == Shader_Pixel)
 			{
-				ID3D11PixelShader* buffer_pixel = nullptr;
-                result = d3d11_device->CreatePixelShader(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), nullptr, &buffer_pixel);
-				if (FAILED(result))
+				if (FAILED(d3d11_device->CreatePixelShader(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), nullptr, reinterpret_cast<ID3D11PixelShader**>(&shader_view))))
 				{
 					LOGF_ERROR("Failed to create pixel shader, %s", D3D11_Common::dxgi_error_to_string(result));
 				}
-				shader_view = static_cast<void*>(buffer_pixel);
 			}
+            else if (type == Shader_Compute)
+            {
+                if (FAILED(d3d11_device->CreateComputeShader(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), nullptr, reinterpret_cast<ID3D11ComputeShader**>(&shader_view))))
+                {
+                    LOGF_ERROR("Failed to create compute shader, %s", D3D11_Common::dxgi_error_to_string(result));
+                }
+            }
 		}
 
 		safe_release(shader_blob);

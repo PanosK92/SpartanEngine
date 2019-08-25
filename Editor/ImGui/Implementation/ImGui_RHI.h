@@ -331,7 +331,7 @@ namespace ImGui::RHI
 		if (!g_renderer || !g_renderer->GetSwapChain())
 			return;
 
-        g_renderer->GetSwapChain()->Resize(width, height);
+        g_renderer->GetSwapChain()->Resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
 	}
 
 	//--------------------------------------------

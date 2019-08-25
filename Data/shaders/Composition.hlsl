@@ -38,10 +38,9 @@ SamplerState sampler_trlinear_clamp	: register(s1);
 SamplerState sampler_point_clamp	: register(s2);
 //=================================================
 
-// = INCLUDES ========
-#include "Common.hlsl"
-#include "IBL.hlsl"
-//====================
+// = INCLUDES ======
+#include "BRDF.hlsl"
+//==================
 
 float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {

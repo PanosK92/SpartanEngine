@@ -51,6 +51,7 @@ namespace Spartan
 		RHI_Cmd_SetIndexBuffer,	
 		RHI_Cmd_SetVertexShader,
 		RHI_Cmd_SetPixelShader,
+        RHI_Cmd_SetComputeShader,
 		RHI_Cmd_SetConstantBuffers,
 		RHI_Cmd_SetSamplers,
 		RHI_Cmd_SetTextures,
@@ -99,7 +100,8 @@ namespace Spartan
 			buffer_index				= nullptr;
 			buffer_vertex				= nullptr;
 			shader_vertex				= nullptr;
-			shader_pixel				= nullptr;			
+			shader_pixel				= nullptr;
+            shader_compute              = nullptr;
 			primitive_topology			= PrimitiveTopology_NotAssigned;
             pass_name                   = "N/A";
 		}
@@ -150,6 +152,7 @@ namespace Spartan
 		const RHI_VertexBuffer* buffer_vertex			= nullptr;
 		const RHI_Shader* shader_vertex					= nullptr;
 		const RHI_Shader* shader_pixel					= nullptr;
+        const RHI_Shader* shader_compute            = nullptr;
 		RHI_Viewport viewport;
 		Math::Rectangle scissor_rectangle;
 	};
@@ -204,6 +207,10 @@ namespace Spartan
 		// Pixel shader
 		void SetShaderPixel(const RHI_Shader* shader);
 		void SetShaderPixel(const std::shared_ptr<RHI_Shader>& shader) { SetShaderPixel(shader.get()); }
+
+        // Compute shader
+        void SetShaderCompute(const RHI_Shader* shader);
+        void SetShaderCompute(const std::shared_ptr<RHI_Shader>& shader) { SetShaderCompute(shader.get()); }
 
 		// Constant buffer
 		void SetConstantBuffers(uint32_t start_slot, RHI_Buffer_Scope scope, const std::vector<void*>& constant_buffers);

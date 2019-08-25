@@ -202,7 +202,7 @@ namespace Spartan
 	void RHI_CommandList::SetShaderVertex(const RHI_Shader* shader)
 	{
 		// Null shaders are allowed, but if a shader is valid, it must have a valid resource
-		if (shader && !shader->GetResource_VertexShader())
+		if (shader && !shader->GetResource_Vertex())
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return;
@@ -215,7 +215,7 @@ namespace Spartan
 
 	void RHI_CommandList::SetShaderPixel(const RHI_Shader* shader)
 	{
-		if (shader && !shader->GetResource_PixelShader())
+		if (shader && !shader->GetResource_Pixel())
 		{
 			LOGF_WARNING("%s hasn't compiled", shader->GetName().c_str());
 			return;
@@ -225,6 +225,19 @@ namespace Spartan
 		cmd.type			= RHI_Cmd_SetPixelShader;
 		cmd.shader_pixel	= shader;
 	}
+
+    void RHI_CommandList::SetShaderCompute(const RHI_Shader* shader)
+    {
+        if (shader && !shader->GetResource_Compute())
+        {
+            LOGF_WARNING("%s hasn't compiled", shader->GetName().c_str());
+            return;
+        }
+
+        auto& cmd           = GetCmd();
+        cmd.type            = RHI_Cmd_SetComputeShader;
+        cmd.shader_compute  = shader;
+    }
 
 	void RHI_CommandList::SetConstantBuffers(const uint32_t start_slot, const RHI_Buffer_Scope scope, const vector<void*>& constant_buffers)
 	{
@@ -479,21 +492,30 @@ namespace Spartan
 
 				case RHI_Cmd_SetVertexShader:
 				{
-					const auto ptr = static_cast<ID3D11VertexShader*>(cmd.shader_vertex->GetResource_VertexShader());
+					const auto ptr = static_cast<ID3D11VertexShader*>(cmd.shader_vertex->GetResource_Vertex());
 					device_context->VSSetShader(ptr, nullptr, 0);
 
-					m_profiler->m_rhi_bindings_vertex_shader++;
+					m_profiler->m_rhi_bindings_shader_vertex++;
 					break;
 				}
 
 				case RHI_Cmd_SetPixelShader:
 				{
-					const auto ptr = static_cast<ID3D11PixelShader*>(cmd.shader_pixel ? cmd.shader_pixel->GetResource_PixelShader() : nullptr);
+					const auto ptr = static_cast<ID3D11PixelShader*>(cmd.shader_pixel ? cmd.shader_pixel->GetResource_Pixel() : nullptr);
 					device_context->PSSetShader(ptr, nullptr, 0);
 
-					m_profiler->m_rhi_bindings_pixel_shader++;
+					m_profiler->m_rhi_bindings_shader_pixel++;
 					break;
 				}
+
+                case RHI_Cmd_SetComputeShader:
+                {
+                    const auto ptr = static_cast<ID3D11ComputeShader*>(cmd.shader_compute ? cmd.shader_compute->GetResource_Compute() : nullptr);
+                    device_context->CSSetShader(ptr, nullptr, 0);
+
+                    m_profiler->m_rhi_bindings_shader_compute++;
+                    break;
+                }
 
 				case RHI_Cmd_SetConstantBuffers:
 				{

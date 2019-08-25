@@ -54,11 +54,11 @@ namespace Spartan::Math
 
 	// Lerp linearly between to values
 	template <class T, class U>
-	constexpr T Lerp(T lhs, T rhs, U t) { return lhs * ((U)1.0 - t) + rhs * t; }
+	constexpr T Lerp(T lhs, T rhs, U t) { return lhs * (static_cast<U>(1.0) - t) + rhs * t; }
 
 	// Returns the absolute value
 	template <class T>
-	constexpr T Abs(T value) { return value >= 0.0 ? value : -value; }
+	constexpr T Abs(T value) { return value >= static_cast<T>(0) ? value : -value; }
 
 	// Check for equality but allow for a small error
 	template <class T>
@@ -83,10 +83,13 @@ namespace Spartan::Math
 	constexpr T Round(T x) { return round(x); }
 
 	template <typename T>
-	constexpr int Sign(T x) { return (T(0) < x) - (x < T(0)); }
+	constexpr int Sign(T x) { return (static_cast<T>(0) < x) - (x < static_cast<T>(0)); }
 
 	template <class T>
 	constexpr T Pow(T x, T y) { return pow(x, y); }
+
+    template <class T>
+    constexpr T Saturate(T x) { return Clamp(x, static_cast<T>(0), static_cast<T>(1)); }
 
 	// Reduces a given angle to a value between PI and -PI
 	// The angle to reduce, in radians

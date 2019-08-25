@@ -19,6 +19,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+//= INCLUDES =========
+#include "Common.hlsl"
+//====================
+
 // F - Fresnel
 float3 Fresnel_Schlick(float HdV, float3 f0)
 {
@@ -63,6 +67,11 @@ float Distribution_GGX(float NdotH, float a)
 	
     return num / denom;
 }
+
+//= INCLUDES ===================
+#include "BRDF_IBL.hlsl"
+#include "BRDF_Environment.hlsl"
+//==============================
 
 float3 Diffuse_Lambert( float3 diffuse_color )
 {

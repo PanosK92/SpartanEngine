@@ -277,6 +277,7 @@ namespace Spartan
 			"RHI Texture bindings:\t\t\t%d\n"
 			"RHI Vertex Shader bindings:\t\t%d\n"
 			"RHI Pixel Shader bindings:\t\t%d\n"
+            "RHI Compute Shader bindings:\t%d\n"
 			"RHI Render Target bindings:\t\t%d",
 			
 			// Performance
@@ -300,8 +301,9 @@ namespace Spartan
 			m_rhi_bindings_buffer_constant,
 			m_rhi_bindings_sampler,
 			m_rhi_bindings_texture,
-			m_rhi_bindings_vertex_shader,
-			m_rhi_bindings_pixel_shader,
+			m_rhi_bindings_shader_vertex,
+			m_rhi_bindings_shader_pixel,
+            m_rhi_bindings_shader_compute,
 			m_rhi_bindings_render_target
 		);
 

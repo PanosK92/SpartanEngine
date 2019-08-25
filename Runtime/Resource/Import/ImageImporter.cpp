@@ -191,7 +191,7 @@ namespace Spartan
 	
 		// Create a RescaleJob for every mip that we need
 		vector<_ImagImporter::RescaleJob> jobs;
-		while (width > 1 && height > 1)
+		while (width > 1 || height > 1)
 		{
 			width	= Math::Max(width / 2, static_cast<uint32_t>(1));
 			height	= Math::Max(height / 2, static_cast<uint32_t>(1));

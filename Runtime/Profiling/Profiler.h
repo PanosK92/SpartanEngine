@@ -89,8 +89,9 @@ namespace Spartan
 		uint32_t m_rhi_bindings_buffer_constant = 0;
 		uint32_t m_rhi_bindings_sampler			= 0;
 		uint32_t m_rhi_bindings_texture			= 0;
-		uint32_t m_rhi_bindings_vertex_shader	= 0;
-		uint32_t m_rhi_bindings_pixel_shader	= 0;
+		uint32_t m_rhi_bindings_shader_vertex	= 0;
+		uint32_t m_rhi_bindings_shader_pixel	= 0;
+        uint32_t m_rhi_bindings_shader_compute  = 0;
 		uint32_t m_rhi_bindings_render_target	= 0;
 
 		// Metrics - Renderer
@@ -111,8 +112,9 @@ namespace Spartan
             m_rhi_bindings_buffer_constant  = 0;
             m_rhi_bindings_sampler          = 0;
             m_rhi_bindings_texture          = 0;
-            m_rhi_bindings_vertex_shader    = 0;
-            m_rhi_bindings_pixel_shader     = 0;
+            m_rhi_bindings_shader_vertex    = 0;
+            m_rhi_bindings_shader_pixel     = 0;
+            m_rhi_bindings_shader_compute   = 0;
             m_rhi_bindings_render_target    = 0;
         }
 

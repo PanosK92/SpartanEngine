@@ -40,15 +40,12 @@ namespace Spartan
 {
 	class Entity;
 	class Camera;
-	class Environment;
 	class Light;
 	class ResourceCache;
 	class Font;
 	class Variant;
 	class Grid;
 	class Transform_Gizmo;
-	class ShaderComposition;
-	class ShaderBuffered;
 	class Profiler;
 	namespace Math
 	{
@@ -231,7 +228,7 @@ namespace Spartan
 		const auto& GetCmdList()		const { return m_cmd_list; }
 		//================================================================
 
-		//= MISC =========================================================================================================================================
+		//= MISC ===================================================================================================================
 		auto& GetFrameTexture() 	                        { return m_render_targets[RenderTarget_Composition_Ldr]; }
 		auto GetFrameNum() const		                    { return m_frame_num; }
 		const auto& GetCamera() const	                    { return m_camera; }
@@ -260,8 +257,8 @@ namespace Spartan
         bool FlagEnabled(Renderer_Option flag)              { return m_flags & flag; }
 
         // Environment
-        void SetEnvironmentTexture(const std::shared_ptr<RHI_Texture>& texture) { m_render_targets[RenderTarget_Brdf_Prefiltered_Environment] = texture; }
-		//================================================================================================================================================
+        void SetEnvironmentTexture(const std::shared_ptr<RHI_Texture>& texture);
+		//==========================================================================================================================
 
         //= Graphics Settings ====================================================================================================================================================
         Renderer_ToneMapping_Type m_tonemapping  = ToneMapping_Uncharted2;
