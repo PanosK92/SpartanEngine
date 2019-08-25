@@ -136,10 +136,12 @@ namespace Spartan
 
 	void ModelImporter::ReadNodeHierarchy(const aiScene* assimp_scene, aiNode* assimp_node, Model* model, Entity* parent_node, Entity* new_entity)
 	{
+        bool is_new_entity_active = false;
+
 		// Is this the root node?
 		if (!assimp_node->mParent || !new_entity)
 		{
-			new_entity = m_world->EntityCreate().get();
+			new_entity = m_world->EntityCreate(is_new_entity_active).get();
 			model->SetRootentity(new_entity->GetPtrShared());
 
 			int job_count;
@@ -147,13 +149,13 @@ namespace Spartan
 			ProgressReport::Get().SetJobCount(g_progress_model_importer, job_count);
 		}
 
-		//= GET NODE NAME ==========================================================================================================================
+		//= GET NODE NAME =================================================================================================================================
 		// In case this is the root node, aiNode.mName will be "RootNode". 
 		// To get a more descriptive name we instead get the name from the file path.
 		const auto name = assimp_node->mParent ? assimp_node->mName.C_Str() : FileSystem::GetFileNameNoExtensionFromFilePath(_ModelImporter::m_model_path);
 		new_entity->SetName(name);
 		ProgressReport::Get().SetStatus(g_progress_model_importer, "Creating entity for " + name);
-		//==========================================================================================================================================
+		//=================================================================================================================================================
 
 		// Set the transform of parentNode as the parent of the newNode's transform
 		const auto parent_trans = parent_node ? parent_node->GetTransform_PtrRaw() : nullptr;
@@ -172,7 +174,7 @@ namespace Spartan
 			// if this node has many meshes, then assign a new entity for each one of them
 			if (assimp_node->mNumMeshes > 1)
 			{
-				entity = m_world->EntityCreate().get(); // create
+				entity = m_world->EntityCreate(is_new_entity_active).get(); // create
 				entity->GetTransform_PtrRaw()->SetParent(new_entity->GetTransform_PtrRaw()); // set parent
 				_name += "_" + to_string(i + 1); // set name
 			}
@@ -182,6 +184,7 @@ namespace Spartan
 
 			// Process mesh
 			LoadMesh(assimp_scene, assimp_mesh, model, entity);
+            entity->SetActive(true);
 		}
 
 		// Process children
@@ -207,7 +210,7 @@ namespace Spartan
 			animation->SetTicksPerSec(assimp_animation->mTicksPerSecond != 0.0f ? assimp_animation->mTicksPerSecond : 25.0f);
 
 			// Animation channels
-			for (uint32_t j = 0; j > assimp_animation->mNumChannels; j++)
+			for (uint32_t j = 0; j > static_cast<uint32_t>(assimp_animation->mNumChannels); j++)
 			{
 				const auto assimp_node_anim = assimp_animation->mChannels[j];
 				AnimationNode animation_node;
@@ -215,7 +218,7 @@ namespace Spartan
 				animation_node.name = assimp_node_anim->mNodeName.C_Str();
 
 				// Position keys
-				for (uint32_t k = 0; k < assimp_node_anim->mNumPositionKeys; k++)
+				for (uint32_t k = 0; k < static_cast<uint32_t>(assimp_node_anim->mNumPositionKeys); k++)
 				{
 					const auto time = assimp_node_anim->mPositionKeys[k].mTime;
 					const auto value = AssimpHelper::to_vector3(assimp_node_anim->mPositionKeys[k].mValue);
@@ -224,7 +227,7 @@ namespace Spartan
 				}
 
 				// Rotation keys
-				for (uint32_t k = 0; k < assimp_node_anim->mNumRotationKeys; k++)
+				for (uint32_t k = 0; k < static_cast<uint32_t>(assimp_node_anim->mNumRotationKeys); k++)
 				{
 					const auto time = assimp_node_anim->mPositionKeys[k].mTime;
 					const auto value = AssimpHelper::to_quaternion(assimp_node_anim->mRotationKeys[k].mValue);
@@ -233,7 +236,7 @@ namespace Spartan
 				}
 
 				// Scaling keys
-				for (uint32_t k = 0; k < assimp_node_anim->mNumScalingKeys; k++)
+				for (uint32_t k = 0; k < static_cast<uint32_t>(assimp_node_anim->mNumScalingKeys); k++)
 				{
 					const auto time = assimp_node_anim->mPositionKeys[k].mTime;
 					const auto value = AssimpHelper::to_vector3(assimp_node_anim->mScalingKeys[k].mValue);

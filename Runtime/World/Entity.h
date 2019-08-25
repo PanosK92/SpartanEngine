@@ -79,7 +79,7 @@ namespace Spartan
             component->OnInitialize();
 
 			// Make the scene resolve
-			FIRE_EVENT(Event_World_Resolve);
+			FIRE_EVENT(Event_World_Resolve_Pending);
 
             return std::static_pointer_cast<T>(m_components.emplace_back(component));
 		}
@@ -158,7 +158,7 @@ namespace Spartan
 			}
 
 			// Make the scene resolve
-			FIRE_EVENT(Event_World_Resolve);
+			FIRE_EVENT(Event_World_Resolve_Pending);
 		}
 
 		void RemoveComponentById(uint32_t id);
