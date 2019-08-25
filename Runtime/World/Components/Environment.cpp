@@ -20,11 +20,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ============================
-#include "Skybox.h"
+#include "Environment.h"
 #include "../../Resource/ResourceCache.h"
 #include "../../RHI/RHI_Texture2D.h"
 #include "../../RHI/RHI_TextureCube.h"
 #include "../../Threading/Threading.h"
+#include "../../Rendering/Renderer.h"
 //=======================================
 
 //= NAMESPACES ===============
@@ -34,13 +35,13 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-	Skybox::Skybox(Context* context, Entity* entity, uint32_t id /*= 0*/) : IComponent(context, entity, id)
+	Environment::Environment(Context* context, Entity* entity, uint32_t id /*= 0*/) : IComponent(context, entity, id)
 	{
-		m_environment_type = Skybox_Sphere;
+		m_environment_type = Environment_Sphere;
 
 		// Texture paths
 		const auto dir_cubemaps = GetContext()->GetSubsystem<ResourceCache>()->GetDataDirectory(Asset_Cubemaps);
-		if (m_environment_type == Skybox_Array)
+		if (m_environment_type == Enviroment_Cubemap)
 		{
 			m_texture_paths =
 			{
@@ -52,28 +53,32 @@ namespace Spartan
 				dir_cubemaps + "array/Z+.tga"	// front
 			};
 		}
-		else if (m_environment_type == Skybox_Sphere)
+		else if (m_environment_type == Environment_Sphere)
 		{
 			m_texture_paths = { dir_cubemaps + "sphere/syferfontein_0d_clear_4k.hdr" };
 		}
 	}
 
-	void Skybox::OnInitialize()
+	void Environment::OnInitialize()
 	{
 		m_context->GetSubsystem<Threading>()->AddTask([this]
-		{		
-			if (m_environment_type == Skybox_Array)
+		{
+			if (m_environment_type == Enviroment_Cubemap)
 			{
+                LOG_INFO("Creating sky box...");
 				CreateFromArray(m_texture_paths);
+                LOG_INFO("Sky box has been created successfully");
 			}
-			else if (m_environment_type == Skybox_Sphere)
+			else if (m_environment_type == Environment_Sphere)
 			{
+                LOG_INFO("Creating sky sphere...");
 				CreateFromSphere(m_texture_paths.front());
+                LOG_INFO("Sky sphere has been created successfully");
 			}
 		});
 	}
 
-	void Skybox::CreateFromArray(const vector<string>& texturePaths)
+	void Environment::CreateFromArray(const vector<string>& texturePaths)
 	{
 		if (texturePaths.empty())
 			return;
@@ -104,22 +109,25 @@ namespace Spartan
 		}
 
 		// Cubemap
-        m_texture = static_pointer_cast<RHI_Texture>(make_shared<RHI_TextureCube>(GetContext(), loaderTex->GetWidth(), loaderTex->GetHeight(), loaderTex->GetFormat(), cubemapData));
-        m_texture->SetResourceName("Cubemap");
-        m_texture->SetWidth(loaderTex->GetWidth());
-        m_texture->SetHeight(loaderTex->GetHeight());
-        m_texture->SetGrayscale(false);
+        auto texture = make_shared<RHI_TextureCube>(GetContext(), loaderTex->GetWidth(), loaderTex->GetHeight(), loaderTex->GetFormat(), cubemapData);
+        texture->SetResourceName("Cubemap");
+        texture->SetWidth(loaderTex->GetWidth());
+        texture->SetHeight(loaderTex->GetHeight());
+        texture->SetGrayscale(false);
+
+        // Apply cubemap to renderer
+        m_context->GetSubsystem<Renderer>()->SetEnvironmentTexture(static_pointer_cast<RHI_Texture>(texture));
 	}
 
-	void Skybox::CreateFromSphere(const string& texture_path)
+	void Environment::CreateFromSphere(const string& texture_path)
 	{
-		LOG_INFO("Creating HDR sky sphere...");
-
+        // Skysphere
         auto m_generate_mipmaps = true;
-        m_texture = static_pointer_cast<RHI_Texture>(make_shared<RHI_Texture2D>(GetContext(), m_generate_mipmaps));
-        m_texture->LoadFromFile(texture_path);
-        m_texture->SetResourceName("SkySphere");
+        auto texture = static_pointer_cast<RHI_Texture>(make_shared<RHI_Texture2D>(GetContext(), m_generate_mipmaps));
+        texture->LoadFromFile(texture_path);
+        texture->SetResourceName("SkySphere");
 
-		LOG_INFO("Sky sphere has been created successfully");
+        // Apply cubemap to renderer
+        m_context->GetSubsystem<Renderer>()->SetEnvironmentTexture(static_pointer_cast<RHI_Texture>(texture));
 	}
 }

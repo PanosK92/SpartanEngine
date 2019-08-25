@@ -49,7 +49,7 @@ namespace Spartan
 		ComponentType_Renderable,
 		ComponentType_RigidBody,
 		ComponentType_Script,
-		ComponentType_Skybox,
+		ComponentType_Environment,
 		ComponentType_Transform,
 		ComponentType_Unknown
 	};

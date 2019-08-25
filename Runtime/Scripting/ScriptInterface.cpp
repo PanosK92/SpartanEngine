@@ -76,7 +76,7 @@ namespace Spartan
 		m_scriptEngine->RegisterEnumValue("ComponentType", "Renderable",	int(ComponentType_Renderable));
 		m_scriptEngine->RegisterEnumValue("ComponentType", "RigidBody",		int(ComponentType_RigidBody));
 		m_scriptEngine->RegisterEnumValue("ComponentType", "Script",		int(ComponentType_Script));
-		m_scriptEngine->RegisterEnumValue("ComponentType", "Skybox",		int(ComponentType_Skybox));
+		m_scriptEngine->RegisterEnumValue("ComponentType", "Environment",	int(ComponentType_Environment));
 		m_scriptEngine->RegisterEnumValue("ComponentType", "Transform",		int(ComponentType_Transform));
 
 		// KeyCode

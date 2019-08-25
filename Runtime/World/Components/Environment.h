@@ -29,31 +29,27 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-	enum Skybox_Type
+	enum Environment_Type
 	{
-		Skybox_Array,
-		Skybox_Sphere
+		Enviroment_Cubemap,
+		Environment_Sphere
 	};
 
-	class SPARTAN_CLASS Skybox : public IComponent
+	class SPARTAN_CLASS Environment : public IComponent
 	{
 	public:
-		Skybox(Context* context, Entity* entity, uint32_t id = 0);
-        ~Skybox() = default;
+		Environment(Context* context, Entity* entity, uint32_t id = 0);
+        ~Environment() = default;
 
 		//= IComponent ==============
 		void OnInitialize() override;
 		//===========================
 
-		const std::shared_ptr<RHI_Texture>& GetTexture() { return m_texture; }
-
 	private:
-
 		void CreateFromArray(const std::vector<std::string>& texturePaths);
 		void CreateFromSphere(const std::string& texturePath);
 
 		std::vector<std::string> m_texture_paths;
-		std::shared_ptr<RHI_Texture> m_texture;
-		Skybox_Type m_environment_type;
+		Environment_Type m_environment_type;
 	};
 }

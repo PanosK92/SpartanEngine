@@ -74,7 +74,7 @@ namespace Spartan
 
 	private:
 		//= COMMON ENTITY CREATION ========================
-		std::shared_ptr<Entity>& CreateSkybox();
+		std::shared_ptr<Entity>& CreateEnvironment();
 		std::shared_ptr<Entity> CreateCamera();
 		std::shared_ptr<Entity>& CreateDirectionalLight();
 		//================================================

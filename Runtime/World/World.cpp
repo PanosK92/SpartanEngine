@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Camera.h"
 #include "Components/Light.h"
 #include "Components/Script.h"
-#include "Components/Skybox.h"
+#include "Components/Environment.h"
 #include "Components/AudioListener.h"
 #include "../Core/Engine.h"
 #include "../Core/Stopwatch.h"
@@ -67,7 +67,7 @@ namespace Spartan
 		m_profiler	= m_context->GetSubsystem<Profiler>().get();
 
 		CreateCamera();
-		CreateSkybox();
+		CreateEnvironment();
 		CreateDirectionalLight();
 
 		return true;
@@ -350,13 +350,13 @@ namespace Spartan
 		return m_entity_empty;
 	}
 
-	shared_ptr<Entity>& World::CreateSkybox()
+	shared_ptr<Entity>& World::CreateEnvironment()
 	{
-		auto& skybox = EntityCreate();
-		skybox->SetName("Skybox");
-		skybox->AddComponent<Skybox>();
+		auto& environment = EntityCreate();
+		environment->SetName("Environment");
+		environment->AddComponent<Environment>();
 
-		return skybox;
+		return environment;
 	}
 	shared_ptr<Entity> World::CreateCamera()
 	{
