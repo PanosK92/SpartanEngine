@@ -29,9 +29,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "SSCS.hlsl"
 //=======================
 
-float DepthTest_Directional(float slice, float2 tex_coords, float compare)
+float DepthTest_Directional(float slice, float2 uv, float compare)
 {
-	return light_depth_directional.SampleCmpLevelZero(sampler_cmp_depth, float3(tex_coords, slice), compare).r;
+	return light_depth_directional.SampleCmpLevelZero(sampler_cmp_depth, float3(uv, slice), compare).r;
 }
 
 float DepthTest_Point(float3 direction, float compare)
@@ -39,9 +39,9 @@ float DepthTest_Point(float3 direction, float compare)
 	return light_depth_point.SampleCmp(sampler_cmp_depth, direction, compare).r;
 }
 
-float DepthTest_Spot(float2 tex_coords, float compare)
+float DepthTest_Spot(float2 uv, float compare)
 {
-	return light_depth_spot.SampleCmp(sampler_cmp_depth, tex_coords, compare).r;
+	return light_depth_spot.SampleCmp(sampler_cmp_depth, uv, compare).r;
 }
 
 float random(float2 seed2) 
@@ -51,7 +51,7 @@ float random(float2 seed2)
     return frac(sin(dot_product) * 43758.5453);
 }
 
-float Technique_Poisson(int cascade, float3 tex_coords, float compare, float2 dither)
+float Technique_Poisson(int cascade, float3 uv, float compare, float2 dither)
 {
 	float packing = 700.0f; // how close together are the samples
 	float2 poissonDisk[8] = 
@@ -71,14 +71,14 @@ float Technique_Poisson(int cascade, float3 tex_coords, float compare, float2 di
 	[unroll]
 	for (uint i = 0; i < samples; i++)
 	{
-		uint index 	= uint(samples * random(tex_coords.xy * i)) % samples; // A pseudo-random number between 0 and 15, different for each pixel and each index
+		uint index 	= uint(samples * random(uv.xy * i)) % samples; // A pseudo-random number between 0 and 15, different for each pixel and each index
 
 		#if DIRECTIONAL
-		amountLit 	+= DepthTest_Directional(cascade, tex_coords.xy + (poissonDisk[index] / packing), compare);
+		amountLit 	+= DepthTest_Directional(cascade, uv.xy + (poissonDisk[index] / packing), compare);
 		#elif POINT
-		amountLit 	+= DepthTest_Point(tex_coords, compare);
+		amountLit 	+= DepthTest_Point(uv, compare);
 		#elif SPOT
-		amountLit 	+= DepthTest_Spot(tex_coords.xy + (poissonDisk[index] / packing), compare);
+		amountLit 	+= DepthTest_Spot(uv.xy + (poissonDisk[index] / packing), compare);
 		#endif
 	}	
 
@@ -86,7 +86,7 @@ float Technique_Poisson(int cascade, float3 tex_coords, float compare, float2 di
 	return amountLit;
 }
 
-float Technique_PCF_2d(int cascade, float texel, float2 tex_coords, float compare, float2 dither)
+float Technique_PCF_2d(int cascade, float texel, float2 uv, float compare, float2 dither)
 {
 	float amountLit 	= 0.0f;
 	float count 		= 0.0f;
@@ -101,9 +101,9 @@ float Technique_PCF_2d(int cascade, float texel, float2 tex_coords, float compar
 			float2 offset 	= float2(x, y) * offset_scale;
 			
 			#if DIRECTIONAL
-			amountLit 	+= DepthTest_Directional(cascade, tex_coords + offset, compare);
+			amountLit 	+= DepthTest_Directional(cascade, uv + offset, compare);
 			#elif SPOT
-			amountLit 	+= DepthTest_Spot(tex_coords + offset, compare);
+			amountLit 	+= DepthTest_Spot(uv + offset, compare);
 			#endif
 			
 			count++;			
@@ -158,16 +158,12 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, float 
 			if (is_saturated(uv))
 			{	
 				// Sample the primary cascade
-				float shadow_primary = ShadowMap_Directional(cascade, pos, g_shadow_texel_size, bias, dither);
-
-				// Edge threshold
-				float edge = 0.8f; // 1.0f is where the cascade ends
-				bool near_edge = !is_saturated(uv + (1.0f - edge));
+				float shadow_primary 	= ShadowMap_Directional(cascade, pos, g_shadow_texel_size, bias, dither);
+				float shadow_secondary 	= 1.0f;
 
 				// Sample the secondary cascade
-				float shadow_secondary = 1.0f;
 				[branch]
-				if (near_edge && cascade <= 2)
+				if (cascade < cascade_count - 1)
 				{
 					int cacade_secondary = cascade + 1;
 					pos = mul(position_world, light_view_projection[cacade_secondary]);

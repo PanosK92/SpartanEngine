@@ -82,6 +82,9 @@ namespace Spartan::Math
 	template <class T>
 	constexpr T Round(T x) { return round(x); }
 
+    template <class T>
+    constexpr T Tan(T x) { return tan(x); }
+
 	template <typename T>
 	constexpr int Sign(T x) { return (static_cast<T>(0) < x) - (x < static_cast<T>(0)); }
 

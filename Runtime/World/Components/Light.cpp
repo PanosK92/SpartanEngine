@@ -78,14 +78,14 @@ namespace Spartan
 			m_is_dirty = true;
 		}
 
-		// Camera position dirty check
+		// Camera dirty check (need for directional light cascade computations
 		if (m_lightType == LightType_Directional)
 		{
-			if (auto camera = m_renderer->GetCamera())
+			if (auto& camera = m_renderer->GetCamera())
 			{
-				if (m_lastPosCamera != camera->GetTransform()->GetPosition())
+				if (m_camera_last_view != camera->GetViewMatrix())
 				{
-					m_lastPosCamera = camera->GetTransform()->GetPosition();
+                    m_camera_last_view = camera->GetViewMatrix();
 					m_is_dirty = true;
 				}
 			}
@@ -195,9 +195,11 @@ namespace Spartan
 		{
             for (uint32_t i = 0; i < g_cascade_count; i++)
             {
-                Cascade& cascade = m_cascades[i];
-                Vector3 position = cascade.center - GetDirection() * cascade.min.z;
-                m_matrix_view[i] = Matrix::CreateLookAtLH(position, cascade.center, Vector3::Up);
+                Cascade& cascade    = m_cascades[i];
+                Vector3 position    = cascade.center - GetDirection() * cascade.max.z;
+                Vector3 target      = cascade.center;
+                Vector3 up          = Vector3::Up;
+                m_matrix_view[i]    = Matrix::CreateLookAtLH(position, target, up);
             }
 		}
 		else if (m_lightType == LightType_Spot)
@@ -233,12 +235,13 @@ namespace Spartan
 
 		if (m_lightType == LightType_Directional)
 		{
-            Cascade& cascade = m_cascades[index];
+            Cascade& cascade        = m_cascades[index];
+            float cascade_extents   = (cascade.max.z - cascade.min.z);
             m_matrix_projection[index] = Matrix::CreateOrthoOffCenterLH
             (
-                cascade.min.x, cascade.max.x,               // x
-                cascade.min.y, cascade.max.y,               // y
-                0.0f, Abs(cascade.max.z - cascade.min.z)    // z
+                cascade.min.x, cascade.max.x,                                                                           // x
+                cascade.min.y, cascade.max.y,                                                                           // y
+                m_renderer->GetReverseZ() ? cascade_extents : 0.0f, m_renderer->GetReverseZ() ? 0.0f : cascade_extents  // z
             );
 		}
 		else
@@ -279,85 +282,89 @@ namespace Spartan
             return false;
         }
 
-        Camera* camera = m_renderer->GetCamera().get();
-
         if (m_cascades.empty())
         {
             m_cascades = vector<Cascade>(g_cascade_count);
         }
 
-        float clip_near     = camera->GetNearPlane();
-        float clip_far      = camera->GetFarPlane();
+        Camera* camera = m_renderer->GetCamera().get();
+
+        // Compute camera required information
+        float clip_near         = camera->GetNearPlane();
+        float clip_far          = camera->GetFarPlane();
+        Vector3 camera_forward  = camera->GetTransform()->GetForward();
+        Vector3 camera_up       = camera->GetTransform()->GetUp();
+        Vector3 camera_right    = camera->GetTransform()->GetRight();
+        Vector3 pos_near        = camera->GetTransform()->GetPosition() + clip_near * camera_forward;
+        Vector3 pos_far         = camera->GetTransform()->GetPosition() + clip_far * camera_forward;
+        float tanHalfHFOV       = Math::Tan(camera->GetFovHorizontalRad() / 2.0f);
+        float tanHalfVFOV       = Math::Tan(camera->GetFovVerticalRad() / 2.0f);
+        float near_height       = clip_near * tanHalfVFOV;
+        float near_width        = clip_near * tanHalfHFOV;
+        float far_height        = clip_far * tanHalfVFOV;
+        float far_width         = clip_far * tanHalfHFOV;
+
+        // Calculate split depths based on view camera frustum
+        // Based on method presented in https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch10.html
+        float split_lambda  = 0.95f;
         float clip_range    = clip_far - clip_near;
         float min_z         = clip_near;
         float max_z         = clip_near + clip_range;
         float range         = max_z - min_z;
-        float ratio         = max_z / min_z;
-
-        // Calculate split depths based on view camera frustum
-        // Based on method presented in https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch10.html
-        float split_lambda = 0.95f;
+        float ratio         = max_z / min_z;    
         float splits[g_cascade_count];
         for (uint32_t i = 0; i < g_cascade_count; i++)
         {
             float p         = (i + 1) / static_cast<float>(g_cascade_count);
-            float log       = min_z * std::pow(ratio, p);
+            float log       = min_z * Math::Pow(ratio, p);
             float uniform   = min_z + range * p;
             float d         = split_lambda * (log - uniform) + uniform;
-            splits[i]       = (d - clip_near);
+            splits[i]       = (d - clip_near) / clip_range;
         }
 
         for (uint32_t cascade_index = 0; cascade_index < g_cascade_count; cascade_index++)
         {
-            // Compute cascade's projection-space points
-            Vector3 points[8] =
+            // Compute frustum corners in world space
+            Vector3 frustum_corners[8] =
             {
-                Vector3(-1.0f,  1.0f,   -1.0f),
-                Vector3(1.0f,   1.0f,   -1.0f),
-                Vector3(1.0f,   -1.0f,  -1.0f),
-                Vector3(-1.0f,  -1.0f,  -1.0f),
-                Vector3(-1.0f,  1.0f,   1.0f),
-                Vector3(1.0f,   1.0f,   1.0f),
-                Vector3(1.0f,   -1.0f,  1.0f),
-                Vector3(-1.0f,  -1.0f,  1.0f),
+                pos_near    - camera_up * near_height   - camera_right * near_width,    // near-bottom-left
+                pos_near    + camera_up * near_height   - camera_right * near_width,    // near-top-left
+                pos_near    + camera_up * near_height   + camera_right * near_width,    // near-top-right
+                pos_near    - camera_up * near_height   + camera_right * near_width,    // near-bottom-right
+                pos_far     - camera_up * far_height    - camera_right * far_width,     // far-bottom-left
+                pos_far     + camera_up * far_height    - camera_right * far_width,     // far-top-left
+                pos_far     + camera_up * far_height    + camera_right * far_width,     // far-top-right
+                pos_far     - camera_up * far_height    + camera_right * far_width      // far-bottom-right
             };
-
-            // Transform points to world space
-            auto to_world = (camera->GetViewMatrix() * camera->GetProjectionMatrix()).Inverted();
-            for (uint32_t i = 0; i < 8; i++)
-            {
-                Vector4 world_point = to_world * Vector4(points[i], 1.0f);
-                points[i] = world_point / world_point.w;
-            }
 
             // Compute split distance
             {
-                static float last_split_distance;
-
                 // Reset split distance every time we restart
+                static float last_split_distance;
                 if (cascade_index == 0) last_split_distance = 0.0f;
 
                 float split_distance = splits[cascade_index];
                 for (uint32_t i = 0; i < 4; i++)
                 {
-                    Vector3 distance    = points[i + 4] - points[i];
-                    points[i + 4]       = points[i] + (distance * split_distance);
-                    points[i]           = points[i] + (distance * last_split_distance);
+                    Vector3 distance        = frustum_corners[i + 4] - frustum_corners[i];
+                    frustum_corners[i + 4]  = frustum_corners[i] + (distance * split_distance);
+                    frustum_corners[i]      = frustum_corners[i] + (distance * last_split_distance);
                 }
                 last_split_distance = splits[cascade_index];
             }
 
-            // Compute bounding sphere which encloses the frustum
-            // Since a sphere is rotational invariant it will keep the size of the orthographic
-            // projection frustum same independent of eye view direction. This will keep the
-            // size of the frustum in light space, the same, hence eliminating shimmering.
+            // Compute frustum bounds
             {
+                // Compute bounding sphere which encloses the frustum.
+                // Since a sphere is rotational invariant it will keep the size of the orthographic
+                // projection frustum same independent of eye view direction, hence eliminating shimmering.
+
                 Cascade& cascade = m_cascades[cascade_index];
 
                 // Compute center
                 for (uint32_t i = 0; i < 8; i++)
                 {
-                    cascade.center += Vector3(points[i]);
+                    cascade.center += Vector3(frustum_corners[i]);
                 }
                 cascade.center /= 8.0f;
 
@@ -365,18 +372,31 @@ namespace Spartan
                 float radius = 0.0f;
                 for (uint32_t i = 0; i < 8; i++)
                 {
-                    float distance = (Vector3(points[i]) - cascade.center).Length();
+                    float distance = (Vector3(frustum_corners[i]) - cascade.center).Length();
                     radius = Max(radius, distance);
                 }
                 radius = Ceil(radius * 16.0f) / 16.0f;
 
-                // Move in texel sized increments to prevent shimmering
-                float world_units_per_texel = (radius * 2.0f) / static_cast<float>(m_shadow_map->GetWidth()); // not correct?
-                radius = Floor(radius / world_units_per_texel) * world_units_per_texel;
-
                 // Compute min and max
-                cascade.max = Vector3(radius);
-                cascade.min = -cascade.max;
+                cascade.max = radius;
+                cascade.min = -radius;
+            }
+
+            // Debug
+            {
+                //Vector3 offset  = camera_forward * 1.0f;
+                //Vector4 color   = Vector4(cascade_index == 0 ? 1.0f : 0.0f, cascade_index == 1 ? 1.0f : 0.0f, cascade_index == 2 ? 1.0f : 0.0f, 1.0f);
+
+                //// Draw only near as the next cascade's near will the far for this one
+                //m_renderer->DrawLine(frustum_corners[0] + offset, frustum_corners[1] + offset, color, color);
+                //m_renderer->DrawLine(frustum_corners[1] + offset, frustum_corners[2] + offset, color, color);
+                //m_renderer->DrawLine(frustum_corners[2] + offset, frustum_corners[3] + offset, color, color);
+                //m_renderer->DrawLine(frustum_corners[3] + offset, frustum_corners[0] + offset, color, color);
+                //// Connect with far
+                //m_renderer->DrawLine(frustum_corners[0] + offset, frustum_corners[4] + offset, color, color);
+                //m_renderer->DrawLine(frustum_corners[1] + offset, frustum_corners[5] + offset, color, color);
+                //m_renderer->DrawLine(frustum_corners[2] + offset, frustum_corners[6] + offset, color, color);
+                //m_renderer->DrawLine(frustum_corners[3] + offset, frustum_corners[7] + offset, color, color);
             }
         }
 
