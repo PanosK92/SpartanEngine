@@ -382,7 +382,7 @@ namespace Spartan::Math
 
 		void operator*=(const Matrix& rhs) { (*this) = (*this) * rhs; }
 
-		Vector3 operator *(const Vector3& rhs) const
+		Vector3 operator*(const Vector3& rhs) const
 		{
 			Vector4 vWorking;
 
@@ -394,7 +394,7 @@ namespace Spartan::Math
 			return Vector3(vWorking.x * vWorking.w, vWorking.y * vWorking.w, vWorking.z * vWorking.w);
 		}
 
-        Vector4 operator *(const Vector4& rhs) const
+        Vector4 operator*(const Vector4& rhs) const
         {
             return Vector4
             (
@@ -439,4 +439,5 @@ namespace Spartan::Math
 
 	// Reverse order operators
 	inline SPARTAN_CLASS Vector3 operator*(const Vector3& lhs, const Matrix& rhs) { return rhs * lhs; }
+    inline SPARTAN_CLASS Vector4 operator*(const Vector4& lhs, const Matrix& rhs) { return rhs * lhs; }
 }
