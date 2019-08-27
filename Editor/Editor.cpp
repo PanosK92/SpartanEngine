@@ -111,7 +111,15 @@ Editor::~Editor()
 	ImGui::DestroyContext();
 }
 
-void Editor::Resize(const float width, const float height)
+void Editor::OnWindowMessage(uint32_t message)
+{
+    if (m_engine)
+    {
+        m_engine->SetWindowMessage(message);
+    }
+}
+
+void Editor::OnWindowResize(const float width, const float height)
 {
 	if (!m_initialized)
 		return;

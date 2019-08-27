@@ -107,7 +107,6 @@ namespace Spartan
 		bool GamepadVibrate(float left_motor_speed, float right_motor_speed) const;
 
 	private:
-		bool ReadMouse() const;
 		bool ReadKeyboard() const;
 		bool ReadGamepad() const;
 

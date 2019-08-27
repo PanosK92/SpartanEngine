@@ -23,8 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Input_Implementation.h"
 #include "../Input.h"
 #include <sstream>
-#include "../../Logging/Log.h"
-#include "../../Core/Settings.h"
 #include "../../Core/EventSystem.h"
 #include "../../Core/Context.h"
 #include "../../Core/Engine.h"
@@ -41,10 +39,8 @@ namespace Spartan
 {
 	IDirectInput8*			g_direct_input;
 	IDirectInputDevice8*	g_keyboard;
-	IDirectInputDevice8*	g_mouse;
 	XINPUT_STATE			g_gamepad;
 	uint32_t			    g_gamepad_num;
-	DIMOUSESTATE			g_mouse_state;
 	unsigned char			g_keyboard_state[256];
 
 	Input::Input(Context* context) : ISubsystem(context)
@@ -105,36 +101,6 @@ namespace Spartan
 			result = false;
 		}
 
-		// Initialize the direct input interface for the mouse.
-		hresult = g_direct_input->CreateDevice(GUID_SysMouse, &g_mouse, nullptr);
-		if (SUCCEEDED(hresult))
-		{
-			// Set the data format for the mouse using the pre-defined mouse data format.
-			hresult = g_mouse->SetDataFormat(&c_dfDIMouse);
-			if (FAILED(hresult))
-			{
-				LOG_ERROR("Failed to initialize a DirectInput mouse.");
-			}
-
-			// Set the cooperative level of the mouse to share with other programs.
-			hresult = g_mouse->SetCooperativeLevel(window_handle, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
-			if (FAILED(hresult))
-			{
-				LOG_ERROR("Failed to set DirectInput mouse's cooperative level.");
-			}
-
-			// Acquire the mouse.
-			if (!SUCCEEDED(g_mouse->Acquire()))
-			{
-				LOG_ERROR("Failed to aquire the mouse.");
-			}
-		}
-		else
-		{
-			LOG_ERROR("Failed to initialize a DirectInput mouse.");
-			result = false;
-		}
-
 		if (result)
 		{
 			stringstream ss;
@@ -146,14 +112,6 @@ namespace Spartan
 
 	Input::~Input()
 	{
-		// Release the mouse.
-		if (g_mouse)
-		{
-			g_mouse->Unacquire();
-			g_mouse->Release();
-			g_mouse = nullptr;
-		}
-
 		// Release the keyboard.
 		if (g_keyboard)
 		{
@@ -172,8 +130,9 @@ namespace Spartan
 
 	void Input::Tick(float delta_time)
 	{
-		m_keys_previous				= m_keys;
-		const auto window_handle	= static_cast<HWND>(m_context->m_engine->GetWindowHandle());
+		m_keys_previous		    = m_keys;
+        auto window_handle	    = static_cast<HWND>(m_context->m_engine->GetWindowHandle());
+        uint32_t window_message = m_context->m_engine->GetWindowMessage();
 
 		if(ReadKeyboard())
 		{
@@ -274,45 +233,30 @@ namespace Spartan
 			}
 		}
 
-		if (ReadMouse())
+		// Mouse
 		{
-			// Keys
-			m_keys[start_index_mouse]		= g_mouse_state.rgbButtons[0] & 0x80; // Left Button
-			m_keys[start_index_mouse + 1]	= g_mouse_state.rgbButtons[3] & 0x80; // Middle Button
-			m_keys[start_index_mouse + 2]	= g_mouse_state.rgbButtons[1] & 0x80; // Right Button
+			// Key
+			m_keys[start_index_mouse]		= GetKeyState(VK_LBUTTON) < 0; // Left button pressed
+			m_keys[start_index_mouse + 1]	= GetKeyState(VK_MBUTTON) < 0; // Middle button pressed
+			m_keys[start_index_mouse + 2]	= GetKeyState(VK_RBUTTON) < 0; // Right button pressed
 
-			// Get mouse position and scroll wheel delta
-			m_mouse_delta.x		= static_cast<float>(g_mouse_state.lX); // lX = x
-			m_mouse_delta.y		= static_cast<float>(g_mouse_state.lY); // lY = y
-			m_mouse_wheel_delta	= static_cast<float>(g_mouse_state.lZ); // lZ = wheel
+			// Position
+            if (window_handle == ::GetActiveWindow())
+            {
+                POINT mouse_screen_pos;
+                if (::GetCursorPos(&mouse_screen_pos))
+                {
+                    ::ScreenToClient(window_handle, &mouse_screen_pos);
 
-			// Mouse position
-			POINT mouse_screen_pos;
-			if (GetCursorPos(&mouse_screen_pos))
-			{
-				if (const auto focused_hwnd = GetActiveWindow())
-				{
-					if (focused_hwnd == window_handle)
-					{
-						auto mouse_client_pos = mouse_screen_pos;
-						ScreenToClient(focused_hwnd, &mouse_client_pos);
-						m_mouse_position = Vector2(static_cast<float>(mouse_client_pos.x), static_cast<float>(mouse_client_pos.y));
-					}
-				}
-			}
+                    m_mouse_delta.x     = static_cast<float>(mouse_screen_pos.x) - m_mouse_position.x;
+                    m_mouse_delta.y     = static_cast<float>(mouse_screen_pos.y) - m_mouse_position.y;
+                    m_mouse_position    = Vector2(static_cast<float>(mouse_screen_pos.x), static_cast<float>(mouse_screen_pos.y));
+                }
+            }
 
-			// Scroll wheel position
-			m_mouse_wheel = GetScrollPos(window_handle, SB_VERT);
-		}
-		else
-		{
-			m_keys[start_index_mouse]		= false;
-			m_keys[start_index_mouse + 1]	= false;
-			m_keys[start_index_mouse + 2]	= false;
-
-			m_mouse_delta.x		= 0;
-			m_mouse_delta.y		= 0;
-			m_mouse_wheel_delta	= 0;
+			// Scroll wheel
+            m_mouse_wheel_delta = static_cast<float>(m_mouse_wheel) - m_mouse_wheel;
+			m_mouse_wheel       = ::GetScrollPos(window_handle, SB_VERT);      
 		}
 
 		if (ReadGamepad())
@@ -358,22 +302,6 @@ namespace Spartan
 
 			m_gamepad_connected = false;
 		}
-	}
-
-	bool Input::ReadMouse() const
-	{
-		// Get mouse state
-		auto result = g_mouse->GetDeviceState(sizeof(DIMOUSESTATE), static_cast<LPVOID>(&g_mouse_state));
-		if (SUCCEEDED(result))
-			return true;
-
-		// If the mouse lost focus or was not acquired then try to get control back.
-		if ((result == DIERR_INPUTLOST) || (result == DIERR_NOTACQUIRED) || (result == DIERR_OTHERAPPHASPRIO))
-		{
-			g_mouse->Acquire();
-		}
-
-		return false;
 	}
 
 	bool Input::ReadKeyboard() const

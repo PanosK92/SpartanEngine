@@ -54,10 +54,12 @@ namespace Spartan
 		bool EngineMode_IsSet(const Engine_Mode flag) const	{ return m_flags & flag; }
 
         // Window
-        const auto& GetWindowHandle()   { return m_window_handle; }
-        const auto& GetWindowInstance() { return m_window_instance; }
-        const auto GetWindowWidth()     { return m_window_width; }
-        const auto GetWindowHeight()    { return m_window_height; }
+        const auto& GetWindowHandle()                   { return m_window_handle; }
+        const auto& GetWindowInstance()                 { return m_window_instance; }
+        const auto GetWindowWidth()                     { return m_window_width; }
+        const auto GetWindowHeight()                    { return m_window_height; }
+        const auto GetWindowMessage()                   { return m_window_message; }
+        void SetWindowMessage(uint32_t window_message)  { m_window_message = window_message; }
 
         auto GetContext() const { return m_context.get(); }
 
@@ -65,6 +67,7 @@ namespace Spartan
         void* m_draw_handle         = nullptr;
         void* m_window_handle       = nullptr;
         void* m_window_instance     = nullptr;
+        uint32_t m_window_message   = 0;
         float m_window_width        = 0;
         float m_window_height       = 0;
         uint32_t m_flags            = 0;
