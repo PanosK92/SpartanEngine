@@ -11,8 +11,9 @@ namespace Window
 {
 	static HINSTANCE g_instance;
 	static HWND g_handle;
-	static std::function<LRESULT(HWND, UINT, WPARAM, LPARAM)> g_OnMessage;
-	static std::function<void(float, float)> g_onResize;
+	static std::function<LRESULT(HWND, UINT, WPARAM, LPARAM)> g_on_message;
+    static std::function<void(UINT)> g_on_message_2;
+	static std::function<void(float, float)> g_on_resize;
 
     inline void GetWindowSize(float* width, float* height)
     {
@@ -25,11 +26,12 @@ namespace Window
 	// Window Procedure
 	inline LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	{
-		g_OnMessage(hwnd, msg, wParam, lParam);
+		if (g_on_message)   g_on_message(hwnd, msg, wParam, lParam);
+        if (g_on_message_2) g_on_message_2(msg);
 
         auto resize_event = [&lParam]()
         {
-            if (g_onResize) g_onResize(
+            if (g_on_resize) g_on_resize(
                 static_cast<float>(lParam & 0xffff),
                 static_cast<float>((lParam >> 16) & 0xffff)
             );

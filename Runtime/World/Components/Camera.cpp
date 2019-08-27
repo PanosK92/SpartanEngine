@@ -261,7 +261,7 @@ namespace Spartan
 
     void Camera::FpsControl(float delta_time)
     {
-        static const float mouse_sensetivity        = 15.0f;
+        static const float mouse_sensitivity        = 15.0f;
         static const float movement_speed_max       = 10.0f;
         static const float movement_acceleration    = 0.8f;
         static const float movement_drag            = 0.08f;
@@ -271,7 +271,7 @@ namespace Spartan
             // Mouse look
             {
                 // Get mouse delta
-                mouse_delta += m_input->GetMouseDelta() * mouse_sensetivity * delta_time;
+                mouse_delta += m_input->GetMouseDelta() * mouse_sensitivity * delta_time;
 
                 // Clamp rotation along the x-axis
                 mouse_delta.y = Clamp(mouse_delta.y, -90.0f, 90.0f);
