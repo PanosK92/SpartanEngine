@@ -120,8 +120,8 @@ namespace Spartan
 		float m_range			= 10.0f;
 		float m_intensity		= 2.0f;
 		float m_angle_rad		= 0.5f; // about 30 degrees
-		float m_bias			= 0.0005;
-		float m_normal_bias		= 20.0f;	
+		float m_bias			= 0.001f;
+		float m_normal_bias		= 40.0f;	
 		bool m_is_dirty			= true;
 		Math::Vector4 m_color   = Math::Vector4(1.0f, 0.76f, 0.57f, 1.0f);
 		std::array<Math::Matrix, 6> m_matrix_view;

@@ -180,7 +180,8 @@ namespace Spartan
         RenderTarget_Ssao_Half_Blurred,
         RenderTarget_Ssao,
         // SSR
-        RenderTarget_Ssr
+        RenderTarget_Ssr,
+        RenderTarget_Ssr_Blurred
     };
 
 	class SPARTAN_CLASS Renderer : public ISubsystem
