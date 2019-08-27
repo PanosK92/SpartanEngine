@@ -54,7 +54,7 @@ namespace Spartan::Math
 
 	// Lerp linearly between to values
 	template <class T, class U>
-	constexpr T Lerp(T lhs, T rhs, U t) { return lhs * (static_cast<U>(1.0) - t) + rhs * t; }
+	constexpr T Lerp(T lhs, T rhs, U t) { return lhs * (static_cast<U>(1) - t) + rhs * t; }
 
 	// Returns the absolute value
 	template <class T>
