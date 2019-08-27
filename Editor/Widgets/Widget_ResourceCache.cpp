@@ -21,11 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ========================
+//= INCLUDES ======================
 #include "Widget_ResourceCache.h"
 #include "Resource/ResourceCache.h"
-#include "../../ImGui/Source/imgui.h"
-//===================================
+#include "../ImGui/Source/imgui.h"
+//=================================
 
 //= NAMESPACES ==========
 using namespace std;
