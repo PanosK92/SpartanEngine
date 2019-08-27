@@ -124,7 +124,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 
 #if PASS_BLUR_GAUSSIAN
 	// Requirements: Bilinear sampler
-	color =  Blur_Gaussian(texCoord, sourceTexture, samplerState, g_texel_size, blur_direction, blur_sigma);
+	color = Blur_Gaussian(texCoord, sourceTexture, samplerState, g_texel_size, blur_direction, blur_sigma);
 #endif
 
 #if PASS_BLUR_BILATERAL_GAUSSIAN

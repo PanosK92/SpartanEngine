@@ -53,7 +53,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 	float4 sample_material  	= tex_material.Sample(sampler_point_clamp, uv);
 	float4 sample_diffuse 		= tex_lightDiffuse.Sample(sampler_point_clamp, uv);
 	float4 sample_specular 		= tex_lightSpecular.Sample(sampler_point_clamp, uv);
-	float3 sample_ssr 			= tex_ssr.Sample(sampler_point_clamp, uv).rgb;
+	float4 sample_ssr 			= tex_ssr.Sample(sampler_point_clamp, uv);
 	float sample_depth  		= tex_depth.Sample(sampler_point_clamp, uv).r;
 	float3 light_volumetric 	= tex_lightVolumetric.Sample(sampler_point_clamp, uv).rgb;
 
@@ -62,6 +62,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 	float3 normal				= normal_decode(sample_normal.xyz);	
 	float directional_shadow 	= sample_diffuse.a;
 	float light_received 		= sample_specular.a;
+	bool ssr_available			= sample_ssr.a != 0.0f;
 	bool is_sky 				= sample_material.a == 0.0f;
 
 	// Create material
@@ -94,19 +95,18 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 		color += light_volumetric;
 
 		// IBL
-		float3 light_image_based = ImageBasedLighting(material, normal, camera_to_pixel, tex_environment, tex_lutIbl, sampler_linear_clamp, sampler_trlinear_clamp) * light_ambient;
+		float3 reflectivity = 0.0f;
+		float3 light_image_based = ImageBasedLighting(material, normal, camera_to_pixel, tex_environment, tex_lutIbl, sampler_linear_clamp, sampler_trlinear_clamp, reflectivity) * light_ambient;
 	
+		// SSR
+		color += sample_ssr.rgb * reflectivity * light_received;
+		
 		// Emissive
 		sample_specular.rgb += material.emissive * 10.0f;
 	
 		// Combine
 		float3 light_sources = (sample_diffuse.rgb + sample_specular.rgb) * material.albedo;
-		color += light_sources + light_image_based;
-	
-		// SSR
-		float smoothness = 1.0f - material.roughness;
-		smoothness *= smoothness;
-		color += sample_ssr * smoothness * light_received;
+		color += light_sources + light_image_based;	
 	}
 	
     return  float4(color, 1.0f);

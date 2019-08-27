@@ -397,11 +397,11 @@ namespace Spartan
             return;
 
         // Acquire render targets
-        const auto& tex_ssr = m_render_targets[RenderTarget_Ssr];
+        auto& tex_ssr         = m_render_targets[RenderTarget_Ssr];
+        auto& tex_ssr_blurred = m_render_targets[RenderTarget_Ssr_Blurred];
 
         m_cmd_list->Begin("Pass_Ssr");
-        m_cmd_list->ClearRenderTarget(tex_ssr->GetResource_RenderTarget(), Vector4::Zero);
-
+        
         if (m_flags & Render_PostProcess_SSR)
         {
             // Pack textures
@@ -420,9 +420,7 @@ namespace Spartan
                 m_sampler_bilinear_clamp->GetResource()
             };
 
-            // Update uber
             UpdateUberBuffer(tex_ssr->GetWidth(), tex_ssr->GetHeight());
-
             m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from some previous pass)
             m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
             m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
@@ -439,10 +437,21 @@ namespace Spartan
             m_cmd_list->SetSamplers(0, samplers);
             m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_uber_buffer);
             m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
+            m_cmd_list->Submit();
+
+            // Bilateral blur
+            const auto sigma = 1.0f;
+            const auto pixel_stride = 1.0f;
+            Pass_BlurGaussian(tex_ssr, tex_ssr_blurred, sigma, pixel_stride);
+        }
+        else
+        {
+            m_cmd_list->ClearRenderTarget(tex_ssr->GetResource_RenderTarget(), Vector4(0.0f, 0.0f, 0.0f, 1.0f));
+            m_cmd_list->ClearRenderTarget(tex_ssr_blurred->GetResource_RenderTarget(), Vector4(0.0f, 0.0f, 0.0f, 1.0f));
+            m_cmd_list->Submit();
         }
 
         m_cmd_list->End();
-        m_cmd_list->Submit();
     }
 
     void Renderer::Pass_Light()
@@ -577,7 +586,7 @@ namespace Spartan
             m_render_targets[RenderTarget_Light_Diffuse]->GetResource_Texture(),
             m_render_targets[RenderTarget_Light_Specular]->GetResource_Texture(),
             (m_flags & Render_PostProcess_VolumetricLighting) ? m_render_targets[RenderTarget_Light_Volumetric_Blurred]->GetResource_Texture() : m_tex_black->GetResource_Texture(),
-            m_render_targets[RenderTarget_Ssr]->GetResource_Texture(),
+            m_render_targets[RenderTarget_Ssr_Blurred]->GetResource_Texture(),
             GetEnvironmentTexture_GpuResource(),
             m_render_targets[RenderTarget_Brdf_Specular_Lut]->GetResource_Texture()
 		};
@@ -766,21 +775,26 @@ namespace Spartan
 			return;
 		}
 
-		UpdateUberBuffer(tex_in->GetWidth(), tex_in->GetHeight());
+        // Acquire shaders
+        const auto& shader_quad = m_shaders[Shader_Quad_V];
+        auto shader_gaussian    = static_pointer_cast<ShaderBuffered>(m_shaders[Shader_BlurGaussian_P]);
+        if (!shader_quad->IsCompiled() || !shader_gaussian->IsCompiled())
+            return;
 
-		auto shader_gaussian = static_pointer_cast<ShaderBuffered>(m_shaders[Shader_BlurGaussian_P]);
+        UpdateUberBuffer(tex_in->GetWidth(), tex_in->GetHeight());
 
 		// Start command list
 		m_cmd_list->Begin("Pass_BlurGaussian");
         m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
         m_cmd_list->SetBlendState(m_blend_disabled);
-		m_cmd_list->SetViewport(tex_out->GetViewport());
-		m_cmd_list->SetShaderPixel(shader_gaussian);
-		m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
-		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_uber_buffer);
+        m_cmd_list->SetViewport(tex_out->GetViewport());
+        m_cmd_list->SetShaderVertex(shader_quad);
+        m_cmd_list->SetInputLayout(shader_quad->GetInputLayout());
+        m_cmd_list->SetShaderPixel(shader_gaussian);
+        m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
+        m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_uber_buffer);
 
 		// Horizontal Gaussian blur	
-		m_cmd_list->Begin("Pass_BlurGaussian_Horizontal");
 		{
 			const auto direction	= Vector2(pixel_stride, 0.0f);
 			auto buffer				= Struct_Blur(direction, sigma);
@@ -789,14 +803,12 @@ namespace Spartan
 			m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
 			m_cmd_list->SetRenderTarget(tex_out);
 			m_cmd_list->SetTexture(0, tex_in);
-			m_cmd_list->SetConstantBuffer(1, Buffer_PixelShader, shader_gaussian->GetConstantBuffer(0));
+			m_cmd_list->SetConstantBuffer(1, Buffer_PixelShader, shader_gaussian->GetConstantBuffer());
 			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
             m_cmd_list->Submit();
 		}
-		m_cmd_list->End();
 
 		// Vertical Gaussian blur
-		m_cmd_list->Begin("Pass_BlurGaussian_Horizontal");
 		{
 			const auto direction	= Vector2(0.0f, pixel_stride);
 			auto buffer				= Struct_Blur(direction, sigma);
@@ -805,11 +817,10 @@ namespace Spartan
 			m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
 			m_cmd_list->SetRenderTarget(tex_in);
 			m_cmd_list->SetTexture(0, tex_out);
-			m_cmd_list->SetConstantBuffer(1, Buffer_PixelShader, shader_gaussian->GetConstantBuffer(0));
+			m_cmd_list->SetConstantBuffer(1, Buffer_PixelShader, shader_gaussian->GetConstantBuffer());
 			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
             m_cmd_list->Submit();
 		}
-		m_cmd_list->End();
 
 		m_cmd_list->End();
 		
@@ -826,8 +837,8 @@ namespace Spartan
 		}
 
 		// Acquire shaders
-		const auto& shader_quad = m_shaders[Shader_Quad_V];
-		auto shader_gaussianBilateral = static_pointer_cast<ShaderBuffered>(m_shaders[Shader_BlurGaussianBilateral_P]);
+		const auto& shader_quad         = m_shaders[Shader_Quad_V];
+		auto shader_gaussianBilateral   = static_pointer_cast<ShaderBuffered>(m_shaders[Shader_BlurGaussianBilateral_P]);
 		if (!shader_quad->IsCompiled() || !shader_gaussianBilateral->IsCompiled())
 			return;
 
@@ -849,7 +860,6 @@ namespace Spartan
 		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_uber_buffer);
 
 		// Horizontal Gaussian blur
-		m_cmd_list->Begin("Pass_BlurBilateralGaussian_Horizontal");
 		{
 			// Prepare resources
 			const auto direction	= Vector2(pixel_stride, 0.0f);
@@ -860,14 +870,12 @@ namespace Spartan
 			m_cmd_list->ClearTextures(); // avoids d3d11 warning where render target is also bound as texture (from Pass_PreLight)
 			m_cmd_list->SetRenderTarget(tex_out);
 			m_cmd_list->SetTextures(0, textures, 3);
-			m_cmd_list->SetConstantBuffer(1, Buffer_PixelShader, shader_gaussianBilateral->GetConstantBuffer(0));
+			m_cmd_list->SetConstantBuffer(1, Buffer_PixelShader, shader_gaussianBilateral->GetConstantBuffer());
 			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
             m_cmd_list->Submit();
 		}
-		m_cmd_list->End();
 
 		// Vertical Gaussian blur
-		m_cmd_list->Begin("Pass_BlurBilateralGaussian_Vertical");
 		{
 			// Prepare resources
 			const auto direction	= Vector2(0.0f, pixel_stride);
@@ -878,14 +886,12 @@ namespace Spartan
 			m_cmd_list->ClearTextures(); // avoids d3d11 warning where render target is also bound as texture (from above pass)
 			m_cmd_list->SetRenderTarget(tex_in);
 			m_cmd_list->SetTextures(0, textures, 3);
-			m_cmd_list->SetConstantBuffer(1, Buffer_PixelShader, shader_gaussianBilateral->GetConstantBuffer(0));
+			m_cmd_list->SetConstantBuffer(1, Buffer_PixelShader, shader_gaussianBilateral->GetConstantBuffer());
 			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
             m_cmd_list->Submit();
 		}
-		m_cmd_list->End();
 
 		m_cmd_list->End();	
-
 		tex_in.swap(tex_out);
 	}
 
@@ -1609,7 +1615,7 @@ namespace Spartan
 
         if (m_debug_buffer == Renderer_Buffer_SSR)
         {
-            texture     = m_render_targets[RenderTarget_Ssr];
+            texture     = m_render_targets[RenderTarget_Ssr_Blurred];
             shader_type = Shader_DebugChannelRgbGammaCorrect_P;
         }
 
