@@ -121,7 +121,8 @@ namespace Spartan
         Math::Quaternion m_rotation         = Math::Quaternion::Identity;
         bool m_isDirty                      = false;
         Math::Vector3 m_movement_speed      = Math::Vector3::Zero;
-        Math::Vector2 mouse_delta           = Math::Vector2::Zero;
+        Math::Vector2 mouse_smoothed        = Math::Vector2::Zero;
+        Math::Vector2 mouse_rotation        = Math::Vector2::Zero;
         Input* m_input                      = nullptr;
         RHI_Viewport m_last_known_viewport;
         Math::Ray m_ray;
