@@ -21,14 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =================================
+//= INCLUDES ==============================
 #include <string>
 #include <functional>
-#include "../../ImGui/Source/imgui.h"
-#include "../../ImGui/Source/imgui_internal.h"
+#include "../ImGui/Source/imgui.h"
+#include "../ImGui/Source/imgui_internal.h"
 #include "Profiling/Profiler.h"
 #include "Core/Context.h"
-//============================================
+//=========================================
 
 namespace Spartan { class Context; }
 

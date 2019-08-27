@@ -141,10 +141,9 @@ float mainPS(Pixel_PosUv input) : SV_TARGET
 		float3 center_to_sample_dir 	= normalize(center_to_sample);
 		
 		// Accumulate
-		float3 sampled_normal   = normal_decode(texNormal.Sample(samplerLinear_clamp, ray_uv).xyz);  
-		float occlusion			= dot(center_normal, center_to_sample_dir);
-		float rangeCheck		= center_to_sample_distance <= radius_depth;
-		occlusion_acc 			+= occlusion * rangeCheck * intensity;
+		float occlusion		= dot(center_normal, center_to_sample_dir);
+		float rangeCheck	= center_to_sample_distance <= radius_depth;
+		occlusion_acc 		+= occlusion * rangeCheck * intensity;
     }
     occlusion_acc /= (float)sample_count;
 

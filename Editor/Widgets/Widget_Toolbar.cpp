@@ -54,9 +54,10 @@ Widget_Toolbar::Widget_Toolbar(Context* context) : Widget(context)
     m_callback_begin_pre = [this]()
     {
         auto& ctx = *ImGui::GetCurrentContext();
-        ctx.NextWindowData.MenuBarOffsetMinVal = ImVec2( ctx.Style.DisplaySafeAreaPadding.x, Max(ctx.Style.DisplaySafeAreaPadding.y - ctx.Style.FramePadding.y, 0.0f));
-        m_position  = Vector2(ctx.Viewports[0]->Pos.x, ctx.Viewports[0]->Pos.y + 25.0f);
-        m_size      = Vector2(ctx.Viewports[0]->Size.x, ctx.NextWindowData.MenuBarOffsetMinVal.y + ctx.FontBaseSize + ctx.Style.FramePadding.y + 20.0f);
+        ctx.NextWindowData.MenuBarOffsetMinVal = ImVec2(ctx.Style.DisplaySafeAreaPadding.x, Max(ctx.Style.DisplaySafeAreaPadding.y - ctx.Style.FramePadding.y, 0.0f));
+        m_position = Vector2(ctx.Viewports[0]->Pos.x, ctx.Viewports[0]->Pos.y + 25.0f);
+        m_size = Vector2(ctx.Viewports[0]->Size.x, ctx.NextWindowData.MenuBarOffsetMinVal.y + ctx.FontBaseSize + ctx.Style.FramePadding.y + 20.0f);
+
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, Vector2(0, 5));
     };
 

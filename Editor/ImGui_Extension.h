@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 #include <variant>
 #include "IconProvider.h"
-#include "../ImGui/Source/imgui.h"
+#include "ImGui/Source/imgui.h"
 #include "RHI/RHI_Texture.h"
 #include "Rendering/Renderer.h"
 #include "Resource/ResourceCache.h"

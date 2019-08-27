@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widget_World.h"
 #include "Widget_Properties.h"
 #include "../ImGui_Extension.h"
-#include "../../ImGui/Source/imgui_stdlib.h"
+#include "../ImGui/Source/imgui_stdlib.h"
 #include "Input/Input.h"
 #include "Resource/ProgressReport.h"
 #include "World/Entity.h"

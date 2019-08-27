@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widget_World.h"
 #include "../ImGui_Extension.h"
 #include "../ButtonColorPicker.h"
-#include "../../ImGui/Source/imgui_stdlib.h"
+#include "../ImGui/Source/imgui_stdlib.h"
 #include "Rendering/Shaders/ShaderVariation.h"
 #include "World/Entity.h"
 #include "World/Components/Transform.h"
