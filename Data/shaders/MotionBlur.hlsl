@@ -27,8 +27,8 @@ float4 MotionBlur(float2 texCoord, Texture2D texture_color, Texture2D texture_ve
 	float2 velocity = GetVelocity_Dilate_Max(texCoord, texture_velocity, texture_depth, sampler_bilinear);
 	
 	// Make velocity scale based on user preference instead of frame rate
-	float velocity_scale 	= (g_fps_current / g_fps_target) * g_motionBlur_strength;
-	velocity						*= velocity_scale;
+	float velocity_scale = g_motionBlur_strength / g_delta_time;
+	velocity			*= velocity_scale;
 	
 	// Early exit
 	if (abs(velocity.x) + abs(velocity.y) < EPSILON)
