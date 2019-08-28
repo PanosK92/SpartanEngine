@@ -367,6 +367,7 @@ namespace Spartan
 		std::shared_ptr<RHI_RasterizerState> m_rasterizer_cull_back_wireframe;
 		std::shared_ptr<RHI_RasterizerState> m_rasterizer_cull_front_wireframe;
 		std::shared_ptr<RHI_RasterizerState> m_rasterizer_cull_none_wireframe;
+        std::shared_ptr<RHI_RasterizerState> m_rasterizer_cull_back_ccw_solid;
 		//=====================================================================
 
 		//= SAMPLERS ===========================================
@@ -412,7 +413,7 @@ namespace Spartan
 		Renderer_Buffer_Type m_debug_buffer         = Renderer_Buffer_None;
 		uint32_t m_flags                            = 0;
 		bool m_initialized                          = false;
-        bool m_reverse_z                            = true;
+        bool m_reverse_z                            = false;
         uint32_t m_resolution_shadow                = 4096;
         uint32_t m_resolution_shadow_min            = 128;
         uint32_t m_anisotropy                       = 16;

@@ -36,6 +36,7 @@ namespace Spartan
 			const std::shared_ptr<RHI_Device>& rhi_device,
 			RHI_Cull_Mode cull_mode,
 			RHI_Fill_Mode fill_mode,
+            bool front_counter_clock_wise,
 			bool depth_clip_enabled,
 			bool scissor_enabled,
 			bool multi_sample_enabled, 
@@ -45,6 +46,7 @@ namespace Spartan
 
 		auto GetCullMode()				const { return m_cull_mode; }
 		auto GetFillMode()				const { return m_fill_mode; }
+        auto GetFrontCounterClockWise() const { return m_front_counter_clock_wise; }
 		auto GetDepthClipEnabled()		const { return m_depth_clip_enabled; }
 		auto GetScissorEnabled()		const { return m_scissor_enabled; }
 		auto GetMultiSampleEnabled()	const { return m_multi_sample_enabled; }
@@ -57,6 +59,7 @@ namespace Spartan
 			return
 				m_cull_mode == rhs.GetCullMode() &&
 				m_fill_mode == rhs.GetFillMode() &&
+                m_front_counter_clock_wise == rhs.GetFrontCounterClockWise() &&
 				m_depth_clip_enabled == rhs.GetDepthClipEnabled() &&
 				m_scissor_enabled == rhs.GetScissorEnabled() &&
 				m_multi_sample_enabled == rhs.GetMultiSampleEnabled() &&
@@ -67,6 +70,7 @@ namespace Spartan
 		// Properties
 		RHI_Cull_Mode m_cull_mode;
 		RHI_Fill_Mode m_fill_mode;
+        bool m_front_counter_clock_wise;
 		bool m_depth_clip_enabled;
 		bool m_scissor_enabled;
 		bool m_multi_sample_enabled;
