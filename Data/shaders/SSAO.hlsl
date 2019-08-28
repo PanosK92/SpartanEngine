@@ -35,6 +35,11 @@ SamplerState samplerLinear_clamp : register(s0);
 SamplerState samplerLinear_wrap : register(s1);
 //==============================================
 
+static const int sample_count		= 16;
+static const float radius			= 0.5f;
+static const float intensity    	= 2.0f;
+static const float2 noiseScale  	= float2(g_resolution.x / 128.0f, g_resolution.y / 128.0f);
+
 static const float3 sampleKernel[64] =
 {
     float3(0.04977, -0.04471, 0.04996),
@@ -102,11 +107,6 @@ static const float3 sampleKernel[64] =
 	float3(0.41729, -0.15485, 0.46251),
 	float3(-0.44272, -0.67928, 0.1865)
 };
-
-static const int sample_count		= 16;
-static const float radius			= 0.5f;
-static const float intensity    	= 2.0f;
-static const float2 noiseScale  	= float2(g_resolution.x / 128.0f, g_resolution.y / 128.0f);
 
 float mainPS(Pixel_PosUv input) : SV_TARGET
 {
