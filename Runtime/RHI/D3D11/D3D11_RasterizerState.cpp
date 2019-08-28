@@ -41,6 +41,7 @@ namespace Spartan
 		const shared_ptr<RHI_Device>& rhi_device,
 		const RHI_Cull_Mode cull_mode,
 		const RHI_Fill_Mode fill_mode,
+        const bool front_counter_clock_wise,
 		const bool depth_clip_enabled,
 		const bool scissor_enabled,
 		const bool multi_sample_enabled,
@@ -61,6 +62,7 @@ namespace Spartan
 		// Save properties
 		m_cull_mode					= cull_mode;
 		m_fill_mode					= fill_mode;
+        m_front_counter_clock_wise  = front_counter_clock_wise;
 		m_depth_clip_enabled		= depth_clip_enabled;
 		m_scissor_enabled			= scissor_enabled;
 		m_multi_sample_enabled		= multi_sample_enabled;
@@ -70,7 +72,7 @@ namespace Spartan
 		D3D11_RASTERIZER_DESC desc;
 		desc.CullMode				= d3d11_cull_mode[cull_mode];
 		desc.FillMode				= d3d11_polygon_mode[fill_mode];	
-		desc.FrontCounterClockwise	= false;
+		desc.FrontCounterClockwise	= front_counter_clock_wise;
 		desc.DepthBias				= 0;
 		desc.DepthBiasClamp			= 0.0f;
 		desc.SlopeScaledDepthBias	= 0.0f;
