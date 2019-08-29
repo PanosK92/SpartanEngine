@@ -156,39 +156,6 @@ namespace Spartan
 		float m_padding2;
 	};
 
-	struct Struct_ShadowMapping
-	{
-		Struct_ShadowMapping(const Math::Matrix& view_projection_inv, Light* light)
-		{
-			// Fill the buffer
-			m_view_projection_inv = view_projection_inv;
-
-			if (light)
-			{
-				auto light_view			= light->GetViewMatrix();
-				m_view					= light_view;
-				m_view_projection[0]	= light_view * light->GetProjectionMatrix(0);
-				m_view_projection[1]	= light_view * light->GetProjectionMatrix(1);
-				m_view_projection[2]	= light_view * light->GetProjectionMatrix(2);
-				m_biases				= Math::Vector2(light->GetBias(), light->GetNormalBias());
-				m_direction				= light->GetDirection();
-				m_range					= light->GetRange();
-				m_position				= light->GetTransform()->GetPosition();
-				m_resolution			= static_cast<float>(light->GetShadowMap()->GetWidth());
-			}
-		}
-
-		Math::Matrix m_view;
-		Math::Matrix m_view_projection_inv;
-		Math::Matrix m_view_projection[3];
-		Math::Vector3 m_position;
-		float m_resolution;
-		Math::Vector3 m_direction;
-		float m_range;
-		Math::Vector2 m_biases;
-		Math::Vector2 m_padding = Math::Vector2::Zero;
-	};
-
 	struct Struct_Matrix_Matrix_Vector2
 	{
 		Struct_Matrix_Matrix_Vector2

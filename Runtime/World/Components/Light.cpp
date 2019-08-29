@@ -52,11 +52,6 @@ namespace Spartan
 		m_renderer = m_context->GetSubsystem<Renderer>().get();
 	}
 
-	Light::~Light()
-	{
-		
-	}
-
 	void Light::OnInitialize()
 	{
 		CreateShadowMap(true);
@@ -447,7 +442,7 @@ namespace Spartan
         buffer->range                           = GetRange();
         buffer->direction                       = GetDirection();
         buffer->angle                           = GetAngle();
-        buffer->bias                            = GetBias();
+        buffer->bias                            = m_renderer->GetReverseZ() ? GetBias() : -GetBias();
         buffer->normal_bias                     = GetNormalBias();
         buffer->shadow_enabled                  = GetCastShadows();
         buffer->volumetric_lighting             = volumetric_lighting;

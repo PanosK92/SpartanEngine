@@ -177,7 +177,6 @@ namespace Spartan
 		m_rasterizer_cull_back_wireframe	= make_shared<RHI_RasterizerState>(m_rhi_device, Cull_Back,		Fill_Wireframe,	false, true, false, false, true);
 		m_rasterizer_cull_front_wireframe	= make_shared<RHI_RasterizerState>(m_rhi_device, Cull_Front,	Fill_Wireframe,	false, true, false, false, true);
 		m_rasterizer_cull_none_wireframe	= make_shared<RHI_RasterizerState>(m_rhi_device, Cull_None,		Fill_Wireframe,	false, true, false, false, true);
-        m_rasterizer_cull_back_ccw_solid    = make_shared<RHI_RasterizerState>(m_rhi_device, Cull_Back,     Fill_Solid,     true,  true, false, false, true);
 	}
 
 	void Renderer::CreateBlendStates()
@@ -517,10 +516,10 @@ namespace Spartan
 	void Renderer::CreateSamplers()
 	{
 		m_sampler_compare_depth		= make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_BILINEAR,	Sampler_Address_Clamp,	m_reverse_z ? Comparison_Greater : Comparison_Less, false, true);
-		m_sampler_point_clamp		= make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_POINT,		Sampler_Address_Clamp,	Comparison_Always, false);
-		m_sampler_bilinear_clamp	= make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_BILINEAR,	Sampler_Address_Clamp,	Comparison_Always, false);
-		m_sampler_bilinear_wrap		= make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_BILINEAR,	Sampler_Address_Wrap,	Comparison_Always, false);
-		m_sampler_trilinear_clamp	= make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_TRILINEAR,	Sampler_Address_Clamp,	Comparison_Always, false);
+		m_sampler_point_clamp		= make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_POINT,		Sampler_Address_Clamp,	Comparison_Always);
+		m_sampler_bilinear_clamp	= make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_BILINEAR,	Sampler_Address_Clamp,	Comparison_Always);
+		m_sampler_bilinear_wrap		= make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_BILINEAR,	Sampler_Address_Wrap,	Comparison_Always);
+		m_sampler_trilinear_clamp	= make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_TRILINEAR,	Sampler_Address_Clamp,	Comparison_Always);
 		m_sampler_anisotropic_wrap	= make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_TRILINEAR,	Sampler_Address_Wrap,	Comparison_Always, true);
 	}
 

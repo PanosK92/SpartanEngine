@@ -62,7 +62,7 @@ namespace Spartan
 	{
 	public:
 		Light(Context* context, Entity* entity, uint32_t id = 0);
-		~Light();
+        ~Light() = default;
 
 		//= COMPONENT ================================
 		void OnInitialize() override;

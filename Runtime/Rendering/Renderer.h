@@ -367,7 +367,6 @@ namespace Spartan
 		std::shared_ptr<RHI_RasterizerState> m_rasterizer_cull_back_wireframe;
 		std::shared_ptr<RHI_RasterizerState> m_rasterizer_cull_front_wireframe;
 		std::shared_ptr<RHI_RasterizerState> m_rasterizer_cull_none_wireframe;
-        std::shared_ptr<RHI_RasterizerState> m_rasterizer_cull_back_ccw_solid;
 		//=====================================================================
 
 		//= SAMPLERS ===========================================
