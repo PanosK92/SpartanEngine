@@ -28,7 +28,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <map>
 #include <unordered_map>
 #include "../Core/ISubsystem.h"
-#include "../Core/Settings.h"
 #include "../RHI/RHI_Definition.h"
 #include "../RHI/RHI_Viewport.h"
 #include "../Math/Matrix.h"
@@ -38,6 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
+    // Forward declarations
 	class Entity;
 	class Camera;
 	class Light;
@@ -212,8 +212,8 @@ namespace Spartan
 		//========================================================================
 
 		//= EDITOR ======================================================================================
-		float m_gizmo_transform_size = 0.015f;
-		float m_gizmo_transform_speed = 12.0f;
+		float m_gizmo_transform_size    = 0.015f;
+		float m_gizmo_transform_speed   = 12.0f;
         const std::shared_ptr<Entity>& SnapTransformGizmoTo(const std::shared_ptr<Entity>& entity) const;
 		//===============================================================================================
 		
