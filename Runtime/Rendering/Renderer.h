@@ -413,7 +413,7 @@ namespace Spartan
 		Renderer_Buffer_Type m_debug_buffer         = Renderer_Buffer_None;
 		uint32_t m_flags                            = 0;
 		bool m_initialized                          = false;
-        bool m_reverse_z                            = false;
+        bool m_reverse_z                            = true;
         uint32_t m_resolution_shadow                = 4096;
         uint32_t m_resolution_shadow_min            = 128;
         uint32_t m_anisotropy                       = 16;
