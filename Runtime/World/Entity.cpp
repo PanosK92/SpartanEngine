@@ -203,7 +203,7 @@ namespace Spartan
 
 	void Entity::Deserialize(FileStream* stream, Transform* parent)
 	{
-        // BASIC DAA
+        // BASIC DATA
         {
             stream->Read(&m_is_active);
             stream->Read(&m_hierarchy_visibility);
@@ -216,8 +216,8 @@ namespace Spartan
             const auto component_count = stream->ReadAs<uint32_t>();
             for (uint32_t i = 0; i < component_count; i++)
             {
-                uint32_t type = ComponentType_Unknown;
-                uint32_t id = 0;
+                uint32_t type   = ComponentType_Unknown;
+                uint32_t id     = 0;
 
                 stream->Read(&type);	// load component's type
                 stream->Read(&id);		// load component's id

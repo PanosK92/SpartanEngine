@@ -68,7 +68,11 @@ namespace Spartan
 				return GetComponent<T>();
 
             // Create a new component
-            std::shared_ptr<T>& component = std::make_shared<T>(m_context, this, id);
+            std::shared_ptr<T> component = std::make_shared<T>(m_context, this, id);
+
+            // Save new component
+            m_components.emplace_back(std::static_pointer_cast<IComponent>(component));
+            m_component_mask |= GetComponentMask(type);
 
             // Caching of rendering performance critical components
             if constexpr (std::is_same<T, Transform>::value)    { m_transform   = static_cast<Transform*>(component.get()); }
@@ -81,7 +85,7 @@ namespace Spartan
 			// Make the scene resolve
 			FIRE_EVENT(Event_World_Resolve_Pending);
 
-            return std::static_pointer_cast<T>(m_components.emplace_back(component));
+            return component;
 		}
 
         // Adds a component of ComponentType 
@@ -91,7 +95,10 @@ namespace Spartan
 		template <class T>
 		std::shared_ptr<T> GetComponent()
 		{
-			const ComponentType type = IComponent::TypeToEnum<T>();
+            const ComponentType type = IComponent::TypeToEnum<T>();
+
+            if (!HasComponent(type))
+                return nullptr;
 
 			for (const auto& component : m_components)
 			{
@@ -106,9 +113,12 @@ namespace Spartan
 		template <class T>
 		std::vector<std::shared_ptr<T>> GetComponents()
 		{
+            std::vector<std::shared_ptr<T>> components;
 			const ComponentType type = IComponent::TypeToEnum<T>();
 
-			std::vector<std::shared_ptr<T>> components;
+            if (!HasComponent(type))
+                return components;
+		
 			for (const auto& component : m_components)
 			{
 				if (component->GetType() != type)
@@ -120,23 +130,14 @@ namespace Spartan
 			return components;
 		}
 		
-		// Checks if a component of ComponentType exists
-		bool HasComponent(const ComponentType type) 
-		{ 
-			for (const auto& component : m_components)
-			{
-				if (component->GetType() == type)
-					return true;
-			}
+		// Checks if a component exists
+        bool HasComponent(const ComponentType type) { return m_component_mask & GetComponentMask(type); }
 
-			return false;
-		}
-
-		// Checks if a component of type T exists
+		// Checks if a component exists
 		template <class T>
 		bool HasComponent() { return HasComponent(IComponent::TypeToEnum<T>()); }
 
-		// Removes a component of type T (if it exists)
+		// Removes a component (if it exists)
 		template <class T>
 		void RemoveComponent()
 		{
@@ -150,6 +151,7 @@ namespace Spartan
 					component->OnRemove();
 					component.reset();
 					it = m_components.erase(it);
+                    m_component_mask &= ~GetComponentMask(type);
 				}
 				else
 				{
@@ -170,18 +172,17 @@ namespace Spartan
 		std::shared_ptr<Entity> GetPtrShared()		{ return shared_from_this(); }
 
 	private:
+        uint32_t GetComponentMask(ComponentType type) { return 1 << static_cast<uint32_t>(type); }
+
 		std::string m_name			= "Entity";
 		bool m_is_active			= true;
 		bool m_hierarchy_visibility	= true;
-		// Caching of performance critical components
 		Transform* m_transform		= nullptr;
 		Renderable* m_renderable	= nullptr;
-
-		// Components
-		std::vector<std::shared_ptr<IComponent>> m_components;
-		std::shared_ptr<Entity> m_component_empty;
-
-		// Misc
-		Context* m_context;
+        Context* m_context          = nullptr;
+		
+        // Components
+        std::vector<std::shared_ptr<IComponent>> m_components;
+        uint32_t m_component_mask = 0;
 	};
 }
