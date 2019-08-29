@@ -119,7 +119,7 @@ namespace Spartan
 			m_cmd_list->SetShaderPixel(nullptr);
 			m_cmd_list->SetBlendState(m_blend_disabled);
 			m_cmd_list->SetDepthStencilState(m_depth_stencil_enabled);
-            m_cmd_list->SetRasterizerState(GetReverseZ() ? m_rasterizer_cull_back_solid : m_rasterizer_cull_back_ccw_solid);
+            m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
 			m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 			m_cmd_list->SetShaderVertex(shader_depth);
 			m_cmd_list->SetInputLayout(shader_depth->GetInputLayout());
