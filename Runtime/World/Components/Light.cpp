@@ -301,7 +301,7 @@ namespace Spartan
 
         // Calculate split depths based on view camera frustum
         // Based on method presented in https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch10.html
-        float split_lambda  = 0.95f;
+        float split_lambda  = 0.99f;
         float clip_range    = clip_far - clip_near;
         float min_z         = clip_near;
         float max_z         = clip_near + clip_range;
