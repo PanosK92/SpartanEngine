@@ -25,26 +25,26 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include <memory>
 #include "RHI/RHI_Definition.h"
+#include "Widgets/Widget.h"
 //=============================
 
 //= FORWARD DECLARATIONS =
-class Widget;
 namespace Spartan 
 {
 	class Context; 
 	class Engine;
 	class Renderer;
+    struct WindowData;
 }
 //========================
 
 class Editor
 {
 public:
-	Editor(void* window_handle, void* window_instance, float width, float height);
+    Editor() = default;
 	~Editor();
 
-    void OnWindowMessage(uint32_t message);
-	void OnWindowResize(float width, float height);
+    void OnWindowMessage(Spartan::WindowData& window_data);
 	void Tick();
 
 private:

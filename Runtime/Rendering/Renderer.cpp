@@ -96,12 +96,14 @@ namespace Spartan
 
         // Create swap chain
         {
+            WindowData& window_data = m_context->m_engine->GetWindowData();
+
             m_swap_chain = make_shared<RHI_SwapChain>
             (
-                m_context->m_engine->GetWindowHandle(),
+                window_data.handle,
                 m_rhi_device,
-                static_cast<uint32_t>(m_context->m_engine->GetWindowWidth()),
-                static_cast<uint32_t>(m_context->m_engine->GetWindowHeight()),
+                static_cast<uint32_t>(window_data.width),
+                static_cast<uint32_t>(window_data.height),
                 Format_R8G8B8A8_UNORM,
                 2,
                 Present_Immediate | Swap_Flip_Discard

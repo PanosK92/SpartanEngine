@@ -51,52 +51,6 @@ namespace _Editor
 	const char* dockspace_name	= "EditorDockspace";
 }
 
-Editor::Editor(void* window_handle, void* window_instance, float window_width, float window_height)
-{
-	// Create engine
-	m_engine = make_unique<Engine>(window_handle, window_handle, window_instance, window_width, window_height);
-	
-	// Acquire useful engine subsystems
-	m_context	= m_engine->GetContext();
-	m_renderer	= m_context->GetSubsystem<Renderer>().get();
-	m_rhiDevice = m_renderer->GetRhiDevice();
-
-	if (!m_renderer->IsInitialized())
-	{
-		LOG_ERROR("The engine failed to initialize the renderer subsystem, aborting editor creation.");
-		return;
-	}
-
-	// ImGui version validation
-	IMGUI_CHECKVERSION();
-    m_context->GetSubsystem<Settings>()->m_versionImGui = IMGUI_VERSION;
-
-	// ImGui context creation
-	ImGui::CreateContext();
-
-	// ImGui configuration
-	auto& io		= ImGui::GetIO();
-	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-	io.ConfigWindowsResizeFromEdges = true;
-	io.ConfigViewportsNoTaskBarIcon = true;
-	ApplyStyle();
-
-	// ImGui backend setup
-	ImGui_ImplWin32_Init(window_handle);
-	ImGui::RHI::Initialize(m_context, window_width, window_height);
-
-	// Initialization of misc custom systems
-	IconProvider::Get().Initialize(m_context);
-	EditorHelper::Get().Initialize(m_context);
-
-	// Create all ImGui widgets
-	Widgets_Create();
-
-	m_initialized = true;
-}
-
 Editor::~Editor()
 {
 	if (!m_initialized)
@@ -111,21 +65,70 @@ Editor::~Editor()
 	ImGui::DestroyContext();
 }
 
-void Editor::OnWindowMessage(uint32_t message)
+void Editor::OnWindowMessage(WindowData& window_data)
 {
-    if (m_engine)
+    if (!m_initialized)
     {
-        m_engine->SetWindowMessage(message);
+        // Create engine
+        m_engine = make_unique<Engine>(window_data);
+
+        // Acquire useful engine subsystems
+        m_context   = m_engine->GetContext();
+        m_renderer  = m_context->GetSubsystem<Renderer>().get();
+        m_rhiDevice = m_renderer->GetRhiDevice();
+
+        if (!m_renderer->IsInitialized())
+        {
+            LOG_ERROR("The engine failed to initialize the renderer subsystem, aborting editor creation.");
+            return;
+        }
+
+        // ImGui version validation
+        IMGUI_CHECKVERSION();
+        m_context->GetSubsystem<Settings>()->m_versionImGui = IMGUI_VERSION;
+
+        // ImGui context creation
+        ImGui::CreateContext();
+
+        // ImGui configuration
+        auto& io = ImGui::GetIO();
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+        io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+        io.ConfigWindowsResizeFromEdges = true;
+        io.ConfigViewportsNoTaskBarIcon = true;
+        ApplyStyle();
+
+        // ImGui backend setup
+        ImGui_ImplWin32_Init(window_data.handle);
+        ImGui::RHI::Initialize(m_context, static_cast<float>(window_data.width), static_cast<float>(window_data.height));
+
+        // Initialization of misc custom systems
+        IconProvider::Get().Initialize(m_context);
+        EditorHelper::Get().Initialize(m_context);
+
+        // Create all ImGui widgets
+        Widgets_Create();
+
+        m_initialized = true;
     }
-}
+    else
+    {
+        ImGui_ImplWin32_WndProcHandler(
+            static_cast<HWND>(window_data.handle),
+            static_cast<uint32_t>(window_data.message),
+            static_cast<int64_t>(window_data.wparam),
+            static_cast<uint64_t>(window_data.lparam)
+        );
 
-void Editor::OnWindowResize(const float width, const float height)
-{
-	if (!m_initialized)
-		return;
+        if (m_engine->GetWindowData().width != window_data.width || m_engine->GetWindowData().height != window_data.height)
+        {
+            ImGui::RHI::OnResize(window_data.width, window_data.height);
+            Tick();
+        }
 
-	ImGui::RHI::OnResize(width, height);
-    Tick();
+        m_engine->SetWindowData(window_data);
+    }
 }
 
 void Editor::Tick()

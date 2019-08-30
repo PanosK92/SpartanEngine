@@ -43,18 +43,14 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-	Engine::Engine(void* draw_handle, void* window_handle, void* window_instance, float window_width, float window_height)
+	Engine::Engine(const WindowData& window_data)
 	{
+        // Window
+        m_window_data = window_data;
+
         // Flags
         m_flags |= Engine_Physics;
         m_flags |= Engine_Game;
-
-        // Window
-        m_draw_handle       = draw_handle;
-        m_window_handle     = window_handle;
-        m_window_instance   = window_instance;
-        m_window_width      = window_width;
-        m_window_height     = window_height;
 
         // Create context
 		m_context = make_shared<Context>();
