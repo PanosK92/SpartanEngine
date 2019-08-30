@@ -47,8 +47,9 @@ namespace Spartan
 	{
 		g_gamepad_num				= 0;
 		auto result					= true;
-		const auto window_handle	= static_cast<HWND>(context->m_engine->GetWindowHandle());
-		const auto window_instance	= static_cast<HINSTANCE>(context->m_engine->GetWindowInstance());
+        WindowData& window_data     = context->m_engine->GetWindowData();
+		const auto window_handle	= static_cast<HWND>(window_data.handle);
+		const auto window_instance	= static_cast<HINSTANCE>(window_data.instance);
 
 		if (!window_handle || !window_instance)
 			return;
@@ -131,8 +132,8 @@ namespace Spartan
 	void Input::Tick(float delta_time)
 	{
 		m_keys_previous		    = m_keys;
-        auto window_handle	    = static_cast<HWND>(m_context->m_engine->GetWindowHandle());
-        uint32_t window_message = m_context->m_engine->GetWindowMessage();
+        WindowData& window_data = m_context->m_engine->GetWindowData();
+        HWND window_handle      = static_cast<HWND>(window_data.handle);
 
 		if(ReadKeyboard())
 		{
