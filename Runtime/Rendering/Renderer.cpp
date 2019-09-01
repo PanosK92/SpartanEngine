@@ -318,11 +318,14 @@ namespace Spartan
 		}
 
         float light_directional_intensity = 0.0f;
-        if (Entity* entity = m_entities[Renderer_Object_LightDirectional].front())
+        if (!m_entities[Renderer_Object_LightDirectional].empty())
         {
-            if (shared_ptr<Light>& light = entity->GetComponent<Light>())
+            if (Entity * entity = m_entities[Renderer_Object_LightDirectional].front())
             {
-                light_directional_intensity = light->GetIntensity();
+                if (shared_ptr<Light>& light = entity->GetComponent<Light>())
+                {
+                    light_directional_intensity = light->GetIntensity();
+                }
             }
         }
 

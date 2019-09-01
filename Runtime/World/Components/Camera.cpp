@@ -77,7 +77,7 @@ namespace Spartan
 		ComputeViewMatrix();
 		ComputeProjection();
 
-		m_frustrum.Construct(GetViewMatrix(), GetProjectionMatrix(), m_context->GetSubsystem<Renderer>()->GetReverseZ() ? GetNearPlane() : GetFarPlane());
+		m_frustrum = Frustum(GetViewMatrix(), GetProjectionMatrix(), m_context->GetSubsystem<Renderer>()->GetReverseZ() ? GetNearPlane() : GetFarPlane());
 
 		m_isDirty = false;
 	}

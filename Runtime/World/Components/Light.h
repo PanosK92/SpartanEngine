@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/Matrix.h"
 #include "../../RHI/RHI_Definition.h"
 #include "../../Math/Vector2.h"
+#include "../../Math/Frustum.h"
 //===================================
 
 namespace Spartan
@@ -37,11 +38,6 @@ namespace Spartan
 	class Camera;
 	class Renderable;
 	class Renderer;
-
-	namespace Math
-	{
-		class Frustum;
-	}
 
 	enum LightType
 	{
@@ -53,9 +49,10 @@ namespace Spartan
     static const int g_cascade_count = 4;
     struct Cascade
     {
-        Math::Vector3 min;
-        Math::Vector3 max;
-        Math::Vector3 center;
+        Math::Vector3 min       = Math::Vector3::Zero;
+        Math::Vector3 max       = Math::Vector3::Zero;
+        Math::Vector3 center    = Math::Vector3::Zero;
+        Math::Frustum frustum;
     };
 
 	class SPARTAN_CLASS Light : public IComponent
@@ -106,6 +103,8 @@ namespace Spartan
 		const auto& GetShadowMap() { return m_shadow_map; }
         void CreateShadowMap(bool force);
 
+        bool IsInViewFrustrum(Renderable* renderable, uint32_t index);
+
         // Constant buffer
         void UpdateConstantBuffer(bool volumetric_lighting, bool screen_space_contact_shadows);
         const auto& GetConstantBuffer() const { return m_cb_light_gpu; }
@@ -113,7 +112,7 @@ namespace Spartan
 	private:
 		void ComputeViewMatrix();
 		bool ComputeProjectionMatrix(uint32_t index = 0);
-        bool ComputeCascadeSplits();
+        void ComputeCascadeSplits();
 		
 		LightType m_lightType	= LightType_Directional;
 		bool m_cast_shadows		= true;

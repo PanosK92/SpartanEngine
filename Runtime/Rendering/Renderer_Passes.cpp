@@ -145,6 +145,10 @@ namespace Spartan
 					if (!renderable)
 						continue;
 
+                    // Skip objects outside of the view frustum
+                    if (!light->IsInViewFrustrum(renderable, i))
+                        continue;
+
 					// Acquire material
 					const auto& material = renderable->GetMaterial();
 					if (!material)
@@ -174,8 +178,13 @@ namespace Spartan
 					// Update constant buffer
 					const auto& transform = entity->GetTransform_PtrRaw();
 					transform->UpdateConstantBufferLight(m_rhi_device, light_view_projection, i);
-					m_cmd_list->SetConstantBuffer(1, Buffer_VertexShader, transform->GetConstantBufferLight(i));
-
+                    if (const shared_ptr<RHI_ConstantBuffer>& buffer = transform->GetConstantBufferLight(i))
+                    {
+                        if (buffer->GetResource())
+                        {
+                            m_cmd_list->SetConstantBuffer(1, Buffer_VertexShader, buffer);
+                        }
+                    }
 					m_cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
 				}
 				m_cmd_list->End(); // end of cascade

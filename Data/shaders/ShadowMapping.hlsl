@@ -210,9 +210,9 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, float 
 	}
 	
 		// Self shadow
-		float self_shadow_smoothness = 15;
-		float self_shadow = saturate(n_dot_l);
-		shadow = min(shadow, 1.0f - pow(1.0f - self_shadow, self_shadow_smoothness));
+		float self_shadow_contrast = 30.0f;
+		float self_shadow = 1.0f - pow(1.0f - saturate(n_dot_l), self_shadow_contrast);
+		shadow = min(shadow, self_shadow);
 
 	return shadow;
 }

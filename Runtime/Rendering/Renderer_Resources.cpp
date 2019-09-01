@@ -43,12 +43,12 @@ namespace Spartan
 
     void Renderer::CreateRasterizerStates()
     {
-        m_rasterizer_cull_back_solid        = make_shared<RHI_RasterizerState>(m_rhi_device, Cull_Back,     Fill_Solid,     false, true, false, false, false);
-        m_rasterizer_cull_front_solid       = make_shared<RHI_RasterizerState>(m_rhi_device, Cull_Front,    Fill_Solid,     false, true, false, false, false);
-        m_rasterizer_cull_none_solid        = make_shared<RHI_RasterizerState>(m_rhi_device, Cull_None,     Fill_Solid,     false, true, false, false, false);
-        m_rasterizer_cull_back_wireframe    = make_shared<RHI_RasterizerState>(m_rhi_device, Cull_Back,     Fill_Wireframe, false, true, false, false, true);
-        m_rasterizer_cull_front_wireframe   = make_shared<RHI_RasterizerState>(m_rhi_device, Cull_Front,    Fill_Wireframe, false, true, false, false, true);
-        m_rasterizer_cull_none_wireframe    = make_shared<RHI_RasterizerState>(m_rhi_device, Cull_None,     Fill_Wireframe, false, true, false, false, true);
+        m_rasterizer_cull_back_solid        = make_shared<RHI_RasterizerState>(m_rhi_device, Cull_Back,     Fill_Solid,     true, false, false, false);
+        m_rasterizer_cull_front_solid       = make_shared<RHI_RasterizerState>(m_rhi_device, Cull_Front,    Fill_Solid,     true, false, false, false);
+        m_rasterizer_cull_none_solid        = make_shared<RHI_RasterizerState>(m_rhi_device, Cull_None,     Fill_Solid,     true, false, false, false);
+        m_rasterizer_cull_back_wireframe    = make_shared<RHI_RasterizerState>(m_rhi_device, Cull_Back,     Fill_Wireframe, true, false, false, true);
+        m_rasterizer_cull_front_wireframe   = make_shared<RHI_RasterizerState>(m_rhi_device, Cull_Front,    Fill_Wireframe, true, false, false, true);
+        m_rasterizer_cull_none_wireframe    = make_shared<RHI_RasterizerState>(m_rhi_device, Cull_None,     Fill_Wireframe, true, false, false, true);
     }
 
     void Renderer::CreateBlendStates()

@@ -79,12 +79,13 @@ namespace Spartan
 		std::shared_ptr<Entity>& CreateDirectionalLight();
 		//================================================
 
-		std::vector<std::shared_ptr<Entity>> m_entities;
         std::string m_name;
         bool m_wasInEditorMode  = false;
         bool m_is_dirty         = true;
         Scene_State m_state     = Ticking;	
         Input* m_input          = nullptr;
         Profiler* m_profiler    = nullptr;
+
+        std::vector<std::shared_ptr<Entity>> m_entities;
 	};
 }
