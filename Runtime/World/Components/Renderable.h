@@ -80,7 +80,6 @@ namespace Spartan
 		const auto& GeometryName()	const { return m_geometryName; }
 		const auto& GeometryModel() const { return m_model; }
 		const Math::BoundingBox& GetAabb();
-        const Math::BoundingBox& GetOobb();
 		//=====================================================================================================
 
 		//= MATERIAL ============================================================

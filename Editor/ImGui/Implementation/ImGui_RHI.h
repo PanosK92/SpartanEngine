@@ -96,7 +96,6 @@ namespace ImGui::RHI
 			    g_rhi_device,
 			    Cull_None,
 			    Fill_Solid,
-                false,  // front counter clock wise
 			    true,	// depth clip
 			    true,	// scissor
 			    false,	// multi-sample

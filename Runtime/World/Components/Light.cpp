@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Light.h"
 #include "Transform.h"
 #include "Camera.h"
+#include "Renderable.h"
 #include "../../IO/FileStream.h"
 #include "../../Rendering/Renderer.h"
 #include "../../Core/Context.h"
@@ -89,8 +90,7 @@ namespace Spartan
 		if (!m_is_dirty)
 			return;
 
-        if (!ComputeCascadeSplits())
-            return;
+        ComputeCascadeSplits();
 
 		// Prevent directional light from casting shadows 
 		// from underneath the scene, which can look weird
@@ -188,7 +188,7 @@ namespace Spartan
 	{
 		if (m_lightType == LightType_Directional)
 		{
-            for (uint32_t i = 0; i < g_cascade_count; i++)
+            for (uint32_t i = 0; i < static_cast<uint32_t>(m_cascades.size()); i++)
             {
                 Cascade& cascade    = m_cascades[i];
                 Vector3 position    = cascade.center - GetDirection() * cascade.max.z;
@@ -230,14 +230,12 @@ namespace Spartan
 
 		if (m_lightType == LightType_Directional)
 		{
-            Cascade& cascade        = m_cascades[index];
-            float cascade_extents   = (cascade.max.z - cascade.min.z);
-            m_matrix_projection[index] = Matrix::CreateOrthoOffCenterLH
-            (
-                cascade.min.x, cascade.max.x,                                                                           // x
-                cascade.min.y, cascade.max.y,                                                                           // y
-                m_renderer->GetReverseZ() ? cascade_extents : 0.0f, m_renderer->GetReverseZ() ? 0.0f : cascade_extents  // z
-            );
+            Cascade& cascade            = m_cascades[index];
+            float cascade_extent        = (cascade.max.z - cascade.min.z);
+            float min_z                 = m_renderer->GetReverseZ() ? cascade_extent : 0.0f;
+            float max_z                 = m_renderer->GetReverseZ() ? 0.0f : cascade_extent;
+            m_matrix_projection[index]  = Matrix::CreateOrthoOffCenterLH(cascade.min.x, cascade.max.x, cascade.min.y, cascade.max.y, min_z, max_z);
+            cascade.frustum             = Frustum(m_matrix_view[index], m_matrix_projection[index], max_z);
 		}
 		else
 		{
@@ -269,12 +267,12 @@ namespace Spartan
         return m_matrix_projection[index];
     }
 
-    bool Light::ComputeCascadeSplits()
+    void Light::ComputeCascadeSplits()
     {
         if (!m_renderer || !m_renderer->GetCamera())
         {
             LOG_ERROR_INVALID_INTERNALS();
-            return false;
+            return;
         }
 
         if (m_cascades.empty())
@@ -357,6 +355,7 @@ namespace Spartan
                 Cascade& cascade = m_cascades[cascade_index];
 
                 // Compute center
+                cascade.center = Vector3::Zero;
                 for (uint32_t i = 0; i < 8; i++)
                 {
                     cascade.center += Vector3(frustum_corners[i]);
@@ -393,9 +392,8 @@ namespace Spartan
                 //m_renderer->DrawLine(frustum_corners[2] + offset, frustum_corners[6] + offset, color, color);
                 //m_renderer->DrawLine(frustum_corners[3] + offset, frustum_corners[7] + offset, color, color);
             }
-        }
 
-        return true;
+        }
     }
 
     void Light::CreateShadowMap(bool force)
@@ -419,6 +417,15 @@ namespace Spartan
 			m_shadow_map = make_unique<RHI_Texture2D>(m_context, resolution, resolution, Format_D32_FLOAT, 1);
 		}
 	}
+
+    bool Light::IsInViewFrustrum(Renderable* renderable, uint32_t index)
+    {
+        const auto box      = renderable->GetAabb();
+        const auto center   = box.GetCenter();
+        const auto extents  = box.GetExtents();
+
+        return m_cascades[index].frustum.CheckCube(center, extents) != Outside;
+    }
 
     void Light::UpdateConstantBuffer(bool volumetric_lighting, bool screen_space_contact_shadows)
     {

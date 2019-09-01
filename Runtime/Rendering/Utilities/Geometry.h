@@ -110,7 +110,7 @@ namespace Spartan::Utility::Geometry
 		indices->emplace_back(1);
 	}
 
-	static void CreateSphere(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, float radius = 1.0f, int slices = 15, int stacks = 15)
+	static void CreateSphere(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, float radius = 1.0f, int slices = 50, int stacks = 50)
 	{
 		using namespace Math;
 

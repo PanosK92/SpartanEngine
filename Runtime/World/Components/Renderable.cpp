@@ -51,22 +51,22 @@ namespace Spartan
 		else if (type == Geometry_Default_Quad)
 		{
 			Utility::Geometry::CreateQuad(&vertices, &indices);
-			model->SetResourceName("Default_Cube");
+			model->SetResourceName("Default_Quad");
 		}
 		else if (type == Geometry_Default_Sphere)
 		{
 			Utility::Geometry::CreateSphere(&vertices, &indices);
-			model->SetResourceName("Default_Cube");
+			model->SetResourceName("Default_Sphere");
 		}
 		else if (type == Geometry_Default_Cylinder)
 		{
 			Utility::Geometry::CreateCylinder(&vertices, &indices);
-			model->SetResourceName("Default_Cube");
+			model->SetResourceName("Default_Cylinder");
 		}
 		else if (type == Geometry_Default_Cone)
 		{
 			Utility::Geometry::CreateCone(&vertices, &indices);
-			model->SetResourceName("Default_Cube");
+			model->SetResourceName("Default_Cone");
 		}
 
 		if (vertices.empty() || indices.empty())
@@ -217,22 +217,6 @@ namespace Spartan
 
 		return m_aabb;
 	}
-
-    const BoundingBox& Renderable::GetOobb()
-    {
-        if (m_last_transform != GetTransform()->GetMatrix())
-        {
-            m_is_dirty = true;
-        }
-
-        if (m_is_dirty)
-        {
-            m_oobb = m_bounding_box.TransformToOobb(GetTransform()->GetMatrix());
-            m_last_transform = GetTransform()->GetMatrix();
-        }
-
-        return m_oobb;
-    }
 
     //==============================================================================
 

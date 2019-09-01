@@ -111,7 +111,7 @@ namespace Spartan
 		void UpdateConstantBuffer(const std::shared_ptr<RHI_Device>& rhi_device, const Math::Matrix& view_projection);
 		const auto& GetConstantBuffer() const { return m_cb_gbuffer_gpu; }
 		void UpdateConstantBufferLight(const std::shared_ptr<RHI_Device>& rhi_device, const Math::Matrix& view_projection, uint32_t cascade_index);
-		const auto& GetConstantBufferLight(const uint32_t cascade_index) { return m_light_cascades[cascade_index].buffer; }
+        const std::shared_ptr<RHI_ConstantBuffer>& GetConstantBufferLight(const uint32_t cascade_index);
 		//=========================================================================================================================================
 
 	private:

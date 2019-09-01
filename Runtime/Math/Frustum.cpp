@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan::Math
 {
-	void Frustum::Construct(const Matrix& mView, const Matrix& mProjection, float screenDepth)
+    Frustum::Frustum(const Matrix& mView, const Matrix& mProjection, float screenDepth)
 	{
 		// Calculate the minimum Z distance in the frustum.
 		float zMinimum = -mProjection.m32 / mProjection.m22;
@@ -134,4 +134,5 @@ namespace Spartan::Math
 		// otherwise we are fully in view
 		return Inside;
 	}
+
 }
