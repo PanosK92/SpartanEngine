@@ -287,7 +287,7 @@ namespace Spartan
         float clip_far          = camera->GetFarPlane();
         Vector3 camera_forward  = camera->GetTransform()->GetForward();
         Vector3 camera_up       = Vector3::Up;
-        Vector3 camera_right    = camera->GetTransform()->GetRight();
+        Vector3 camera_right    = Vector3::Cross(camera_forward, camera_up);
         Vector3 pos_near        = camera->GetTransform()->GetPosition() + clip_near * camera_forward;
         Vector3 pos_far         = camera->GetTransform()->GetPosition() + clip_far * camera_forward;
         float tanHalfHFOV       = Math::Tan(camera->GetFovHorizontalRad() / 2.0f);
