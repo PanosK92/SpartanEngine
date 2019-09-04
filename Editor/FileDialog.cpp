@@ -148,10 +148,10 @@ void FileDialog::ShowMiddle()
     const auto window           = ImGui::GetCurrentWindowRead();
     const auto content_width    = ImGui::GetContentRegionAvail().x;
     const auto content_height   = ImGui::GetContentRegionAvail().y - (m_type != FileDialog_Type_Browser ? 30.0f : 0.0f);
-    auto& g                     = *GImGui;
-    auto& style                 = ImGui::GetStyle();      
-    const float font_scale      = m_item_size.x / 100.0f;
-    const float label_height    = g.FontSize * font_scale;
+    ImGuiContext& g             = *GImGui;
+    ImGuiStyle& style           = ImGui::GetStyle();      
+    const float font_height     = g.FontSize;
+    const float label_height    = font_height;
     const float text_offset     = 3.0f;
 
     ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.0f); // Remove border
@@ -248,9 +248,8 @@ void FileDialog::ShowMiddle()
                     //ImGui::GetWindowDrawList()->AddRect(label_rect.Min, label_rect.Max, IM_COL32(1.0f * 255, 0, 0, 255)); // debug
 
                     // Draw text
-                    ImGui::SetWindowFontScale(font_scale);
-                    ImGui::SetCursorScreenPos(ImVec2(label_rect.Min.x, label_rect.Min.y + text_offset));
-                    if (label_size.x <= m_item_size.x)
+                    ImGui::SetCursorScreenPos(ImVec2(label_rect.Min.x + text_offset, label_rect.Min.y + text_offset));
+                    if (label_size.x <= m_item_size.x && label_size.y <= m_item_size.y)
                     {
                         ImGui::TextUnformatted(label_text);
                     }

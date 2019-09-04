@@ -117,8 +117,9 @@ namespace ComponentProperty
 		// Component Options - Top right
 		if (options)
 		{
-			ImGui::SameLine(ImGui::GetWindowContentRegionWidth() * 0.973f); ImGui::SetCursorPosY(original_pen_y + 1.5f);
-			if (ImGuiEx::ImageButton(name.c_str(), Icon_Component_Options, 12))
+            float icon_width = 16.0f;
+			ImGui::SameLine(ImGui::GetWindowContentRegionWidth() - icon_width + 1.0f); ImGui::SetCursorPosY(original_pen_y);
+			if (ImGuiEx::ImageButton(name.c_str(), Icon_Component_Options, icon_width))
 			{
 				g_contex_menu_id = name;
 				ImGui::OpenPopup(g_contex_menu_id.c_str());
@@ -229,47 +230,47 @@ void Widget_Properties::ShowTransform(shared_ptr<Transform>& transform) const
 {
 	if (ComponentProperty::Begin("Transform", Icon_Component_Transform, transform, true, false))
 	{
-		const auto is_playing = m_context->m_engine->EngineMode_IsSet(Engine_Game);
+		bool is_playing = m_context->m_engine->EngineMode_IsSet(Engine_Game);
 
-		//= REFLECT ======================================================================================================
-		auto position	= transform->GetPositionLocal();
-		auto rotation	= !is_playing ? _Widget_Properties::rotation_hint : transform->GetRotationLocal().ToEulerAngles();
-		auto scale		= transform->GetScaleLocal();
-		//================================================================================================================
+		//= REFLECT ==========================================================================================================
+		Vector3 position	= transform->GetPositionLocal();
+		Vector3 rotation	= !is_playing ? _Widget_Properties::rotation_hint : transform->GetRotationLocal().ToEulerAngles();
+		Vector3 scale		= transform->GetScaleLocal();
+		//====================================================================================================================
 
-		const auto start_column = ComponentProperty::g_column - 70.0f;
-
-		const auto show_float = [](const char* id, const char* label, float* value) 
+		const auto show_float = [](const char* label, float* value) 
 		{
-			const auto step				= 1.0f;
-			const auto step_fast		= 1.0f;
-			char* decimals				= "%.4f";
-			const auto input_text_flags = ImGuiInputTextFlags_CharsDecimal;
+            float step      = 0.1f;
+			char* format    = "%.4f";
 
-			ImGui::PushItemWidth(125.0f);
-			ImGui::PushID(id);
-			ImGui::InputFloat(label, value, step, step_fast, decimals, input_text_flags);
+            ImGui::TextUnformatted(label);
+            ImGui::SameLine();
+			ImGui::PushItemWidth(128.0f);
+			ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
+            ImGui::DragFloat("##no_label", value, step, numeric_limits<float>::lowest(), numeric_limits<float>::max(), format);
 			ImGui::PopID();
 			ImGui::PopItemWidth();
 		};
 
-		// Position
-		ImGui::Text("Position");
-		ImGui::SameLine(start_column);	show_float("##trans_pos_x", "X", &position.x);
-		ImGui::SameLine();				show_float("##trans_pos_y", "Y", &position.y);
-		ImGui::SameLine();				show_float("##trans_pos_z", "Z", &position.z);
+        const auto show_vector = [&show_float](const char* label, Vector3& vector)
+        {
+            float indentation = 15.0f;
 
-		// Rotation
-		ImGui::Text("Rotation");
-        ImGui::SameLine(start_column);	show_float("##trans_rot_x", "X", &rotation.x);
-        ImGui::SameLine();				show_float("##trans_rot_y", "Y", &rotation.y);
-        ImGui::SameLine();				show_float("##trans_rot_z", "Z", &rotation.z);
-
-		// Scale
-		ImGui::Text("Scale");
-        ImGui::SameLine(start_column);	show_float("##trans_sca_x", "X", &scale.x);
-        ImGui::SameLine();				show_float("##trans_sca_y", "Y", &scale.y);
-        ImGui::SameLine();				show_float("##trans_sca_z", "Z", &scale.z);
+            ImGui::BeginGroup();
+            ImGui::Indent(indentation);
+            ImGui::TextUnformatted(label);
+            ImGui::Unindent(indentation);
+            show_float("X", &vector.x);
+            show_float("Y", &vector.y);
+            show_float("Z", &vector.z);
+            ImGui::EndGroup();
+        };
+       
+        show_vector("Position", position);
+        ImGui::SameLine();
+        show_vector("Rotation", rotation);
+        ImGui::SameLine();
+        show_vector("Scale", scale);   
         
 		//= MAP ===================================================================
 		if (!is_playing)
@@ -342,19 +343,15 @@ void Widget_Properties::ShowLight(shared_ptr<Light>& light) const
 		ImGui::Text("Shadows");
 		ImGui::SameLine(ComponentProperty::g_column); ImGui::Checkbox("##lightShadows", &casts_shadows);
 
-		// Cascade splits
-		if (light->GetLightType() == LightType_Directional)
-		{
-			// Bias
-			ImGui::Text("Bias");
-			ImGui::SameLine(ComponentProperty::g_column);
-			ImGui::PushItemWidth(300); ImGui::InputFloat("##lightBias", &bias, 0.01f, 0.01f, "%.4f"); ImGui::PopItemWidth();
+		// Bias
+		ImGui::Text("Bias");
+		ImGui::SameLine(ComponentProperty::g_column);
+		ImGui::PushItemWidth(300); ImGui::InputFloat("##lightBias", &bias, 0.01f, 0.01f, "%.4f"); ImGui::PopItemWidth();
 
-			// Normal Bias
-			ImGui::Text("Normal Bias");
-			ImGui::SameLine(ComponentProperty::g_column);
-			ImGui::PushItemWidth(300); ImGui::InputFloat("##lightNormalBias", &normal_bias, 1.0f, 1.0f, "%.0f"); ImGui::PopItemWidth();
-		}
+		// Normal Bias
+		ImGui::Text("Normal Bias");
+		ImGui::SameLine(ComponentProperty::g_column);
+		ImGui::PushItemWidth(300); ImGui::InputFloat("##lightNormalBias", &normal_bias, 1.0f, 1.0f, "%.0f"); ImGui::PopItemWidth();
 
 		// Range
 		if (light->GetLightType() != LightType_Directional)

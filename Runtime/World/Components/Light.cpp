@@ -200,14 +200,11 @@ namespace Spartan
 		else if (m_lightType == LightType_Spot)
 		{
             Vector3 position    = GetTransform()->GetPosition();
-            Vector3 look_at		= GetTransform()->GetForward();
+            Vector3 forward		= GetTransform()->GetForward();
             Vector3 up			= GetTransform()->GetUp();
 
-			// Offset look_at by current position
-			look_at += position;
-
 			// Compute
-			m_matrix_view[0] = Matrix::CreateLookAtLH(position, look_at, up);
+			m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + forward, up);
 		}
 		else if (m_lightType == LightType_Point)
 		{
@@ -225,8 +222,17 @@ namespace Spartan
 
 	bool Light::ComputeProjectionMatrix(uint32_t index /*= 0*/)
 	{
-		if (!m_renderer->GetCamera() || index >= m_shadow_map->GetArraySize())
-			return false;
+		if (index >= m_shadow_map->GetArraySize())
+        {
+            LOG_ERROR_INVALID_PARAMETER();
+            return false;
+        }
+
+        if (!m_renderer->GetCamera())
+        {
+            LOG_ERROR_INVALID_INTERNALS();
+            return false;
+        }
 
 		if (m_lightType == LightType_Directional)
 		{
@@ -254,7 +260,10 @@ namespace Spartan
     const Matrix& Light::GetViewMatrix(uint32_t index /*= 0*/)
     {
         if (index >= static_cast<uint32_t>(m_matrix_view.size()))
+        {
+            LOG_ERROR_INVALID_PARAMETER();
             return Matrix::Identity;
+        }
 
         return m_matrix_view[index];
     }
@@ -262,14 +271,17 @@ namespace Spartan
     const Matrix& Light::GetProjectionMatrix(uint32_t index /*= 0*/)
     {
         if (index >= static_cast<uint32_t>(m_matrix_projection.size()))
+        {
+            LOG_ERROR_INVALID_PARAMETER();
             return Matrix::Identity;
+        }
 
         return m_matrix_projection[index];
     }
 
     void Light::ComputeCascadeSplits()
     {
-        if (!m_renderer || !m_renderer->GetCamera())
+        if (!m_renderer->GetCamera() || !m_renderer)
         {
             LOG_ERROR_INVALID_INTERNALS();
             return;
