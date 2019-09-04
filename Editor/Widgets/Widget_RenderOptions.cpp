@@ -195,7 +195,7 @@ void Widget_RenderOptions::Tick()
         set_flag_if(Render_PostProcess_VolumetricLighting,  do_volumetric_lighting);
         set_flag_if(Render_PostProcess_FXAA,                do_fxaa);
         set_flag_if(Render_PostProcess_SSAO,                do_ssao);
-        set_flag_if(Render_PostProcess_SSCS,                 do_sscs);
+        set_flag_if(Render_PostProcess_SSCS,                do_sscs);
         set_flag_if(Render_PostProcess_SSR,                 do_ssr);
         set_flag_if(Render_PostProcess_TAA,                 do_taa);
         set_flag_if(Render_PostProcess_MotionBlur,          do_motion_blur);
@@ -237,14 +237,14 @@ void Widget_RenderOptions::Tick()
             ImGui::InputDouble("Target FPS", &fps_target);
             timer->SetTargetFps(fps_target);
             const auto fps_policy = timer->GetFpsPolicy();
-            ImGui::Text(fps_policy == Fps_FixedMonitor ? "Fixed (Monitor)" : fps_target == Fps_Unlocked ? "Unlocked" : "Fixed");
+            ImGui::SameLine(); ImGui::Text(fps_policy == Fps_FixedMonitor ? "Fixed (Monitor)" : fps_target == Fps_Unlocked ? "Unlocked" : "Fixed");
         }
         ImGui::Separator();
 
         // Transform
         ImGui::Checkbox("Transform", &_RenderOptions::g_gizmo_transform);
-        ImGui::InputFloat("Size", &m_renderer->m_gizmo_transform_size, 0.0025f);
-        ImGui::InputFloat("Speed", &m_renderer->m_gizmo_transform_speed, 1.0f);
+        ImGui::SameLine(); ImGui::InputFloat("Size", &m_renderer->m_gizmo_transform_size, 0.0025f);
+        ImGui::SameLine(); ImGui::InputFloat("Speed", &m_renderer->m_gizmo_transform_speed, 1.0f);
         // Physics
         ImGui::Checkbox("Physics", &_RenderOptions::g_gizmo_physics);
         // AABB
