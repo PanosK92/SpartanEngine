@@ -279,7 +279,7 @@ namespace Spartan
 		}
 		catch (filesystem_error& e) 
 		{
-			LOG_ERROR("Could not copy \"" + source + "\". " + string(e.what()));
+			LOGF_ERROR("%s", e.what());
 			return true;
 		}
 	}
@@ -334,32 +334,50 @@ namespace Spartan
 
 	vector<string> FileSystem::GetDirectoriesInDirectory(const string& directory)
 	{
-		vector<string> subDirs;
-		directory_iterator end_itr; // default construction yields past-the-end
-		for (directory_iterator itr(directory); itr != end_itr; ++itr)
+		vector<string> directories;
+		directory_iterator it_end; // default construction yields past-the-end
+		for (directory_iterator it(directory); it != it_end; ++it)
 		{
-			if (!is_directory(itr->status()))
+			if (!is_directory(it->status()))
 				continue;
 
-			subDirs.emplace_back(itr->path().generic_string());
+            try
+            {
+                // a crash is possible if the characters are
+                // something that can't be converted, like Russian.
+                directories.emplace_back(it->path().string());
+            }
+            catch (system_error& e)
+            {
+                LOGF_ERROR("Failed to read a directory path. %s", e.what());
+            }
 		}
 
-		return subDirs;
+		return directories;
 	}
 
 	vector<string> FileSystem::GetFilesInDirectory(const string& directory)
 	{
-		vector<string> filePaths;
-		directory_iterator end_itr; // default construction yields past-the-end
-		for (directory_iterator itr(directory); itr != end_itr; ++itr)
+		vector<string> file_paths;
+		directory_iterator it_end; // default construction yields past-the-end
+		for (directory_iterator it(directory); it != it_end; ++it)
 		{
-			if (!is_regular_file(itr->status()))
+			if (!is_regular_file(it->status()))
 				continue;
 
-			filePaths.emplace_back(itr->path().generic_string());
+            try
+            {
+                // a crash is possible if the characters are
+                // something that can't be converted, like Russian.
+                file_paths.emplace_back(it->path().string());
+            }
+            catch (system_error& e)
+            {
+                LOGF_ERROR("Failed to read a file path. %s", e.what());
+            }
 		}
 
-		return filePaths;
+		return file_paths;
 	}
 
 	vector<string> FileSystem::GetSupportedFilesInDirectory(const string& directory)
