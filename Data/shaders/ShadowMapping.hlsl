@@ -184,16 +184,17 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, float 
 	#elif POINT
 	{
 		float3 light_to_pixel_direction	= position_world.xyz - light.position;
-		float light_to_pixel_distance = length(light_to_pixel_direction) / g_camera_far;
+		float light_to_pixel_distance = length(light_to_pixel_direction);
+		light_to_pixel_direction = normalize(light_to_pixel_direction);
 		
 		[branch]
 		if (light_to_pixel_distance < light.range)
 		{
-			float depth = light_depth_point.Sample(samplerLinear_clamp, light_to_pixel_direction).r;
-			shadow = depth < light_to_pixel_distance ? 1.0f : 0.0f;
+			///float depth = light_depth_point.Sample(samplerLinear_clamp, light_to_pixel_direction).r;
+			//shadow = depth < (light_to_pixel_distance / light.range) ? 1.0f : 0.0f;
 
-			//float compare = 1.0f - light_to_pixel_distance / range * (1.0f - bias); 
-			//return light_depth_point.SampleCmpLevelZero(sampler_cmp_depth, light_to_pixel_direction, compare).r;
+			float compare = (light_to_pixel_distance / light.range) + bias;
+			return light_depth_point.SampleCmpLevelZero(sampler_cmp_depth, light_to_pixel_direction, compare).r;
 		}
 	}
 	#elif SPOT
@@ -210,7 +211,7 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, float 
 	}
 	
 		// Self shadow
-		float self_shadow_contrast = 30.0f;
+		float self_shadow_contrast = 20.0f;
 		float self_shadow = 1.0f - pow(1.0f - saturate(n_dot_l), self_shadow_contrast);
 		shadow = min(shadow, self_shadow);
 
