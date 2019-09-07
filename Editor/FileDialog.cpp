@@ -452,7 +452,7 @@ void FileDialog::EmptyAreaContextMenu()
 
 	if (ImGui::MenuItem("Create folder"))
 	{
-		FileSystem::CreateDirectory_(m_current_directory + "New folder");
+		FileSystem::CreateDirectory_(m_current_directory + "//New folder");
 		m_is_dirty = true;
 	}
 
