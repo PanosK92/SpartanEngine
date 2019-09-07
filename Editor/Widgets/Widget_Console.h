@@ -70,6 +70,7 @@ public:
 private:
 	std::shared_ptr<EngineLogger> m_logger;
 	std::deque<LogPackage> m_logs;
-	unsigned int m_max_log_entries = 500;
-    bool m_visibility[3];
+    bool m_visibility[3]        = { true, true, true };
+    uint32_t m_count[3]         = { 0, 0, 0 };
+    uint32_t m_max_log_entries  = 1000;
 };

@@ -25,11 +25,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../ImGui_Extension.h"
 //=============================
 
-//= NAMESPACES ==========
+//= NAMESPACES =========
 using namespace std;
 using namespace Spartan;
 using namespace Math;
-//=======================
+//======================
 
 namespace _Widget_Console
 {
@@ -53,10 +53,6 @@ Widget_Console::Widget_Console(Context* context) : Widget(context)
 
 	// Set the logger implementation for the engine to use
 	Log::SetLogger(m_logger);
-
-	m_visibility[0]	= true; // Info
-    m_visibility[1] = true; // Warning
-    m_visibility[2] = true; // Error
 }
 
 void Widget_Console::Tick()
@@ -65,22 +61,26 @@ void Widget_Console::Tick()
 	if (ImGui::Button("Clear"))	{ Clear();} ImGui::SameLine();
 
 	// Lambda for info, warning, error filter buttons
-	const auto display_button = [](const Icon_Type icon, bool* toggle)
+	const auto display_button = [this](const Icon_Type icon, uint32_t index)
 	{
-		ImGui::PushStyleColor(ImGuiCol_Button, *toggle ? ImGui::GetStyle().Colors[ImGuiCol_ButtonActive] : ImGui::GetStyle().Colors[ImGuiCol_Button]);
+        bool& visibility = m_visibility[index];
+
+		ImGui::PushStyleColor(ImGuiCol_Button, visibility ? ImGui::GetStyle().Colors[ImGuiCol_ButtonActive] : ImGui::GetStyle().Colors[ImGuiCol_Button]);
 		if (ImGuiEx::ImageButton(icon, 15.0f))
 		{
-			*toggle = !(*toggle);
+            visibility = !visibility;
 			_Widget_Console::scroll_to_bottom = true;
 		}
 		ImGui::PopStyleColor();
 		ImGui::SameLine();
+        ImGui::Text("%d", m_count[index]);
+        ImGui::SameLine();
 	};
 
 	// Log category visibility buttons
-	display_button(Icon_Console_Info,       &m_visibility[0]);
-	display_button(Icon_Console_Warning,    &m_visibility[1]);
-	display_button(Icon_Console_Error,      &m_visibility[2]);
+	display_button(Icon_Console_Info,       0);
+	display_button(Icon_Console_Warning,    1);
+	display_button(Icon_Console_Error,      2);
 
 	// Text filter
 	_Widget_Console::log_filter.Draw("Filter", -100.0f);
@@ -112,11 +112,15 @@ void Widget_Console::Tick()
 
 void Widget_Console::AddLogPackage(const LogPackage& package)
 {
+    // Save to deque
 	m_logs.push_back(package);
 	if (static_cast<uint32_t>(m_logs.size()) > m_max_log_entries)
 	{
 		m_logs.pop_front();
 	}
+
+    // Update count
+    m_count[package.error_level]++;
 
     // If the user is displaying this type of messages, scroll to bottom
     if (m_visibility[package.error_level])
@@ -129,4 +133,8 @@ void Widget_Console::Clear()
 {
 	m_logs.clear();
 	m_logs.shrink_to_fit();
+
+    m_count[0] = 0;
+    m_count[1] = 0;
+    m_count[2] = 0;
 }
