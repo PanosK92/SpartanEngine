@@ -32,34 +32,8 @@ float ComputeScattering(float v_dot_l)
 	return result;
 }
 
-float3 VolumetricLighting(Light light, float3 pos_world, float2 uv)
+float3 vl_raymarch(float3 ray_pos, float3 ray_step, float ray_dot_light, int cascade)
 {
-	float3 pixel_to_camera 			= g_camera_position.xyz - pos_world;
-	float pixel_to_cameral_length 	= length(pixel_to_camera);
-	float3 ray_dir					= pixel_to_camera / pixel_to_cameral_length;
-	float step_length 				= pixel_to_cameral_length / g_vl_steps;
-	float3 ray_step 				= ray_dir * step_length;
-	float3 ray_pos 					= pos_world;
-	float ray_dot_light				= dot(ray_dir, light.direction);
-
-	// Apply dithering as it will allows us to get away with a crazy low sample count ;-)
-	float3 dither_value = Dither(uv + g_taa_jitterOffset) * 300;
-	ray_pos += ray_step * dither_value;
-	
-	// Find closest shadow cascade
-	int cascade = 0;
-	for (int cascade_index = 0; cascade_index < cascade_count; cascade_index++)
-	{
-		float4 pos 	= mul(float4(ray_pos, 1.0f), light_view_projection[cascade_index]);
-		float3 uv 	= pos.xyz * float3(0.5f, -0.5f, 0.5f) + 0.5f;	
-		
-		if (is_saturated(uv))
-		{
-			cascade = cascade_index;
-				break;
-		}
-	}
-	
 	float3 fog = 0.0f;
 	for (int i = 0; i < g_vl_steps; i++)
 	{
@@ -80,6 +54,55 @@ float3 VolumetricLighting(Light light, float3 pos_world, float2 uv)
 		ray_pos += ray_step;
 	}
 	fog /= g_vl_steps;
+	
+	return fog;
+}
+
+float3 VolumetricLighting(Light light, float3 pos_world, float2 uv)
+{
+	float3 pixel_to_camera 			= g_camera_position.xyz - pos_world;
+	float pixel_to_cameral_length 	= length(pixel_to_camera);
+	float3 ray_dir					= pixel_to_camera / pixel_to_cameral_length;
+	float step_length 				= pixel_to_cameral_length / g_vl_steps;
+	float3 ray_step 				= ray_dir * step_length;
+	float3 ray_pos 					= pos_world;
+	float ray_dot_light				= dot(ray_dir, light.direction);
+	float3 fog 						= 0.0f;
+
+	// Apply dithering as it will allows us to get away with a crazy low sample count ;-)
+	float3 dither_value = Dither(uv + g_taa_jitterOffset) * 300;
+	ray_pos += ray_step * dither_value;
+	
+	// Find closest shadow cascade
+	int cascade = 0;
+	for (int cascade_index = 0; cascade_index < cascade_count; cascade_index++)
+	{
+		float4 pos 	= mul(float4(ray_pos, 1.0f), light_view_projection[cascade_index]);
+		float3 uv 	= pos.xyz * float3(0.5f, -0.5f, 0.5f) + 0.5f;	
+		
+		[branch]
+		if (is_saturated(uv))
+		{
+			// Sample the primary cascade
+			float3 fog_primary 		= vl_raymarch(ray_pos, ray_step, ray_dot_light, cascade_index);
+			float3 fog_secondary 	= 0.0f;
+				
+			[branch]
+			if (cascade < cascade_count - 1)
+			{
+				int cacade_secondary = cascade + 1;
+				fog_secondary = vl_raymarch(ray_pos, ray_step, ray_dot_light, cacade_secondary);
+				
+				// Blend cascades	
+				fog = min(fog_primary, fog_secondary);
+			}
+			else
+			{
+				fog = fog_primary;
+			}
+			break;
+		}
+	}
 	
 	return fog * light.color * light.intensity;
 }
