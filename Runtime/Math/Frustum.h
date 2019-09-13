@@ -36,10 +36,12 @@ namespace Spartan::Math
         Frustum(const Matrix& mView, const Matrix& mProjection, float screenDepth);
 		~Frustum() = default;
 
-		Intersection CheckCube(const Vector3& center, const Vector3& extent);
-		Intersection CheckSphere(const Vector3& center, float radius);
+        bool IsVisible(const Vector3& center, const Vector3& extent);
 
 	private:
+        Intersection CheckCube(const Vector3& center, const Vector3& extent);
+        Intersection CheckSphere(const Vector3& center, float radius);
+
 		Plane m_planes[6];
 	};
 }

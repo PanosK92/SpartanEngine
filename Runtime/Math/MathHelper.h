@@ -67,8 +67,14 @@ namespace Spartan::Math
 	template <class T>
 	constexpr T Max(T a, T b) { return a > b ? a : b; }
 
+    template <class T>
+    constexpr T Max3(T a, T b, T c) { return Max(a, Max(b, c)); }
+
 	template <class T>
 	constexpr T Min(T a, T b) { return a < b ? a : b; }
+
+    template <class T>
+    constexpr T Min3(T a, T b, T c) { return Min(a, Min(b, c)); }
 
 	template <class T>
 	constexpr T Sqrt(T x) { return sqrt(x); }

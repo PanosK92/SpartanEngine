@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 static const uint g_steps 				= 32;
 static const float g_ray_step 			= 0.003f;
-static const float g_rejection_depth 	= 0.05f;
+static const float g_rejection_depth 	= 0.03f;
 
 float ScreenSpaceContactShadows(float2 uv, float3 light_dir)
 {
