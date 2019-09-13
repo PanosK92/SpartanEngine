@@ -38,6 +38,7 @@ namespace Spartan
 	class Model;
 	class Renderable;
     class Input;
+    class Renderer;
 
 	enum ProjectionType
 	{
@@ -78,14 +79,14 @@ namespace Spartan
 		Math::Vector3 ScreenToWorldPoint(const Math::Vector2& position_screen) const;
 		//==============================================================================
 
-		//= PLANES/PROJECTION ================================================================
+		//= PLANES/PROJECTION =================================================================
 		void SetNearPlane(float near_plane);		
 		void SetFarPlane(float far_plane);	
 		void SetProjection(ProjectionType projection);
 		float GetNearPlane() const			{ return m_near_plane; }
 		float GetFarPlane() const			{ return m_far_plane; }
 		ProjectionType GetProjectionType()	{ ComputeProjection();  return m_projection_type; }
-		//====================================================================================
+		//=====================================================================================
 
 		//= FOV ==========================================================
 		float GetFovHorizontalRad() const { return m_fov_horizontal_rad; }
@@ -102,12 +103,12 @@ namespace Spartan
 		void SetClearColor(const Math::Vector4& color)	{ m_clear_color = color; }
 		//===============================================================================
 
+        Math::Matrix ComputeViewMatrix();
+        Math::Matrix ComputeBaseView();
+        Math::Matrix ComputeProjection(const bool force_non_reverse_z = false);
+
 	private:
         void FpsControl(float delta_time);
-
-		void ComputeViewMatrix();
-		void ComputeBaseView();
-		void ComputeProjection();
 
         float m_fov_horizontal_rad          = Math::DegreesToRadians(90.0f);
         float m_near_plane                  = 0.3f;
@@ -122,10 +123,13 @@ namespace Spartan
         bool m_isDirty                      = false;
         Math::Vector3 m_movement_speed      = Math::Vector3::Zero;
         Math::Vector2 mouse_smoothed        = Math::Vector2::Zero;
-        Math::Vector2 mouse_rotation        = Math::Vector2::Zero;
-        Input* m_input                      = nullptr;
+        Math::Vector2 mouse_rotation        = Math::Vector2::Zero;     
         RHI_Viewport m_last_known_viewport;
         Math::Ray m_ray;
         Math::Frustum m_frustrum;
+
+        // Dependencies     
+        Renderer* m_renderer    = nullptr;
+        Input* m_input          = nullptr;
 	};
 }

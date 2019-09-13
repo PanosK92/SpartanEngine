@@ -81,6 +81,20 @@ namespace Spartan::Math
 		m_planes[5].Normalize();
 	}
 
+    bool Frustum::IsVisible(const Vector3& center, const Vector3& extent)
+    {
+        float radius = Max3(extent.x, extent.y, extent.z);
+
+        // Check sphere first as it's cheaper
+        if (CheckSphere(center, radius) != Outside)
+            return true;
+
+        if (CheckCube(center, radius) != Outside)
+            return true;
+
+        return false;
+    }
+
 	Intersection Frustum::CheckCube(const Vector3& center, const Vector3& extent)
 	{
 		// Check if any one point of the cube is in the view frustum.
@@ -116,23 +130,18 @@ namespace Spartan::Math
 		for (const auto& plane : m_planes)
 		{
 			// find the distance to this plane
-			float fDistance = Vector3::Dot(plane.normal, center) + plane.d;
+			float distance = Vector3::Dot(plane.normal, center) + plane.d;
 
 			// if this distance is < -sphere.radius, we are outside
-			if (fDistance < -radius)
-			{
+			if (distance < -radius)
 				return Outside;
-			}
 
 			// else if the distance is between +- radius, then we intersect
-			if ((float)fabs(fDistance) < radius)
-			{
+			if (static_cast<float>(Abs(distance)) < radius)
 				return Intersects;
-			}
 		}
 
 		// otherwise we are fully in view
 		return Inside;
 	}
-
 }

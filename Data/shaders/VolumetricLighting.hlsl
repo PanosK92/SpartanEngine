@@ -77,29 +77,34 @@ float3 VolumetricLighting(Light light, float3 pos_world, float2 uv)
 	int cascade = 0;
 	for (int cascade_index = 0; cascade_index < cascade_count; cascade_index++)
 	{
-		float4 pos 	= mul(float4(ray_pos, 1.0f), light_view_projection[cascade_index]);
-		float3 uv 	= pos.xyz * float3(0.5f, -0.5f, 0.5f) + 0.5f;	
+		// Compute clip space position and uv for our ray
+		float3 pos 	= mul(float4(ray_pos, 1.0f), light_view_projection[cascade_index]).xyz;
+		float3 uv 	= pos * float3(0.5f, -0.5f, 0.5f) + 0.5f;	
 		
 		[branch]
 		if (is_saturated(uv))
 		{
-			// Sample the primary cascade
+			// Ray-march using the primary cascade
 			float3 fog_primary 		= vl_raymarch(ray_pos, ray_step, ray_dot_light, cascade_index);
-			float3 fog_secondary 	= 0.0f;
-				
+			float3 cascade_edge 	= (abs(pos) - 0.9f) * 2.5f;
+			float cascade_lerp 		= max(cascade_edge.x, max(cascade_edge.y, cascade_edge.z));
+			
+			// If we are close to the edge of the primary cascade and a secondary cascade exists, lerp with it.
 			[branch]
-			if (cascade < cascade_count - 1)
+			if (cascade_lerp > 0.0f && cascade < cascade_count - 1)
 			{
+				// Ray-march using the secondary cascade
 				int cacade_secondary = cascade + 1;
-				fog_secondary = vl_raymarch(ray_pos, ray_step, ray_dot_light, cacade_secondary);
+				float3 fog_secondary = vl_raymarch(ray_pos, ray_step, ray_dot_light, cacade_secondary);
 				
 				// Blend cascades	
-				fog = min(fog_primary, fog_secondary);
+				fog = lerp(fog_primary, fog_secondary, cascade_lerp);
 			}
 			else
 			{
 				fog = fog_primary;
 			}
+			
 			break;
 		}
 	}

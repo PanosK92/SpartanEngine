@@ -26,7 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Renderable.h"
 #include "../../IO/FileStream.h"
 #include "../../Rendering/Renderer.h"
-#include "../../Core/Context.h"
 #include "../../RHI/RHI_Texture2D.h"
 #include "../../RHI/RHI_TextureCube.h"
 #include "../../RHI/RHI_ConstantBuffer.h"
@@ -51,6 +50,7 @@ namespace Spartan
 		REGISTER_ATTRIBUTE_GET_SET(GetLightType, SetLightType, LightType);
 
 		m_renderer = m_context->GetSubsystem<Renderer>().get();
+        m_cascades = vector<Cascade>(g_cascade_count);
 	}
 
 	void Light::OnInitialize()
@@ -73,6 +73,13 @@ namespace Spartan
 
 			m_is_dirty = true;
 		}
+
+        // Used in many place, no point in continuing without it
+        if (!m_renderer)
+        {
+            LOG_ERROR_INVALID_INTERNALS();
+            return;
+        }
 
 		// Camera dirty check (need for directional light cascade computations
 		if (m_lightType == LightType_Directional)
@@ -102,7 +109,7 @@ namespace Spartan
 		// Update view matrix
 		ComputeViewMatrix();
 
-		// Update projection matrix
+		// Update projection matrices
 		for (uint32_t i = 0; i < m_shadow_map->GetArraySize(); i++)
 		{
 			ComputeProjectionMatrix(i);
@@ -228,18 +235,14 @@ namespace Spartan
             return false;
         }
 
-        if (!m_renderer->GetCamera())
-        {
-            LOG_ERROR_INVALID_INTERNALS();
-            return false;
-        }
+        bool reverse_z = m_renderer ? m_renderer->GetReverseZ() : false;
 
 		if (m_lightType == LightType_Directional)
 		{
             Cascade& cascade            = m_cascades[index];
             float cascade_extent        = (cascade.max.z - cascade.min.z);
-            float min_z                 = m_renderer->GetReverseZ() ? cascade_extent : 0.0f;
-            float max_z                 = m_renderer->GetReverseZ() ? 0.0f : cascade_extent;
+            float min_z                 = reverse_z ? cascade_extent : 0.0f;
+            float max_z                 = reverse_z ? 0.0f : cascade_extent;
             m_matrix_projection[index]  = Matrix::CreateOrthoOffCenterLH(cascade.min.x, cascade.max.x, cascade.min.y, cascade.max.y, min_z, max_z);
             cascade.frustum             = Frustum(m_matrix_view[index], m_matrix_projection[index], max_z);
 		}
@@ -249,8 +252,8 @@ namespace Spartan
 			const auto height			= static_cast<float>(m_shadow_map->GetHeight());		
 			const auto aspect_ratio		= width / height;
 			const float fov				= (m_lightType == LightType_Spot) ? m_angle_rad : 1.57079633f; // 1.57079633 = 90 deg
-			const float near_plane		= m_renderer->GetReverseZ() ? m_range : 0.1f;
-			const float far_plane		= m_renderer->GetReverseZ() ? 0.1f : m_range;
+			const float near_plane		= reverse_z ? m_range : 0.1f;
+			const float far_plane		= reverse_z ? 0.1f : m_range;
 			m_matrix_projection[index]	= Matrix::CreatePerspectiveFieldOfViewLH(fov, aspect_ratio, near_plane, far_plane);
 		}
 
@@ -281,33 +284,16 @@ namespace Spartan
 
     void Light::ComputeCascadeSplits()
     {
-        if (!m_renderer->GetCamera() || !m_renderer)
+        if (!m_renderer || !m_renderer->GetCamera())
         {
             LOG_ERROR_INVALID_INTERNALS();
             return;
         }
 
-        if (m_cascades.empty())
-        {
-            m_cascades = vector<Cascade>(g_cascade_count);
-        }
-
-        Camera* camera = m_renderer->GetCamera().get();
-
-        // Compute camera required information
-        float clip_near         = camera->GetNearPlane();
-        float clip_far          = camera->GetFarPlane();
-        Vector3 camera_forward  = camera->GetTransform()->GetForward();
-        Vector3 camera_up       = Vector3::Up;
-        Vector3 camera_right    = Vector3::Cross(camera_forward, camera_up);
-        Vector3 pos_near        = camera->GetTransform()->GetPosition() + clip_near * camera_forward;
-        Vector3 pos_far         = camera->GetTransform()->GetPosition() + clip_far * camera_forward;
-        float tanHalfHFOV       = Math::Tan(camera->GetFovHorizontalRad() / 2.0f);
-        float tanHalfVFOV       = Math::Tan(camera->GetFovVerticalRad() / 2.0f);
-        float near_height       = clip_near * tanHalfVFOV;
-        float near_width        = clip_near * tanHalfHFOV;
-        float far_height        = clip_far * tanHalfVFOV;
-        float far_width         = clip_far * tanHalfHFOV;
+        Camera* camera                  = m_renderer->GetCamera().get();
+        float clip_near                 = camera->GetNearPlane();
+        float clip_far                  = camera->GetFarPlane();
+        Matrix view_projection_inverted = Matrix::Invert(camera->GetViewMatrix() * camera->ComputeProjection(true));
 
         // Calculate split depths based on view camera frustum
         // Based on method presented in https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch10.html
@@ -329,18 +315,25 @@ namespace Spartan
 
         for (uint32_t cascade_index = 0; cascade_index < g_cascade_count; cascade_index++)
         {
-            // Compute frustum corners in world space
+            // Define camera frustum corners in clip space
             Vector3 frustum_corners[8] =
             {
-                pos_near    - camera_up * near_height   - camera_right * near_width,    // near-bottom-left
-                pos_near    + camera_up * near_height   - camera_right * near_width,    // near-top-left
-                pos_near    + camera_up * near_height   + camera_right * near_width,    // near-top-right
-                pos_near    - camera_up * near_height   + camera_right * near_width,    // near-bottom-right
-                pos_far     - camera_up * far_height    - camera_right * far_width,     // far-bottom-left
-                pos_far     + camera_up * far_height    - camera_right * far_width,     // far-top-left
-                pos_far     + camera_up * far_height    + camera_right * far_width,     // far-top-right
-                pos_far     - camera_up * far_height    + camera_right * far_width      // far-bottom-right
+                Vector3(-1.0f,  1.0f, -1.0f),
+                Vector3( 1.0f,  1.0f, -1.0f),
+                Vector3( 1.0f, -1.0f, -1.0f),
+                Vector3(-1.0f, -1.0f, -1.0f),
+                Vector3(-1.0f,  1.0f,  1.0f),
+                Vector3( 1.0f,  1.0f,  1.0f),
+                Vector3( 1.0f, -1.0f,  1.0f),
+                Vector3(-1.0f, -1.0f,  1.0f)
             };
+
+            // Project frustum corners into world space
+            for (uint32_t i = 0; i < 8; i++)
+            {
+                Vector4 inverted_corner = Vector4(frustum_corners[i], 1.0f) * view_projection_inverted;
+                frustum_corners[i] = inverted_corner / inverted_corner.w;
+            }
 
             // Compute split distance
             {
@@ -378,7 +371,7 @@ namespace Spartan
                 float radius = 0.0f;
                 for (uint32_t i = 0; i < 8; i++)
                 {
-                    float distance = (Vector3(frustum_corners[i]) - cascade.center).Length();
+                    float distance = Vector3::Distance(frustum_corners[i], cascade.center);
                     radius = Max(radius, distance);
                 }
                 radius = Ceil(radius * 16.0f) / 16.0f;
@@ -387,24 +380,6 @@ namespace Spartan
                 cascade.max = radius;
                 cascade.min = -radius;
             }
-
-            // Debug
-            {
-                //Vector3 offset  = camera_forward * 1.0f;
-                //Vector4 color   = Vector4(cascade_index == 0 ? 1.0f : 0.0f, cascade_index == 1 ? 1.0f : 0.0f, cascade_index == 2 ? 1.0f : 0.0f, 1.0f);
-
-                //// Draw only near as the next cascade's near will the far for this one
-                //m_renderer->DrawLine(frustum_corners[0] + offset, frustum_corners[1] + offset, color, color);
-                //m_renderer->DrawLine(frustum_corners[1] + offset, frustum_corners[2] + offset, color, color);
-                //m_renderer->DrawLine(frustum_corners[2] + offset, frustum_corners[3] + offset, color, color);
-                //m_renderer->DrawLine(frustum_corners[3] + offset, frustum_corners[0] + offset, color, color);
-                //// Connect with far
-                //m_renderer->DrawLine(frustum_corners[0] + offset, frustum_corners[4] + offset, color, color);
-                //m_renderer->DrawLine(frustum_corners[1] + offset, frustum_corners[5] + offset, color, color);
-                //m_renderer->DrawLine(frustum_corners[2] + offset, frustum_corners[6] + offset, color, color);
-                //m_renderer->DrawLine(frustum_corners[3] + offset, frustum_corners[7] + offset, color, color);
-            }
-
         }
     }
 
@@ -436,7 +411,7 @@ namespace Spartan
         const auto center   = box.GetCenter();
         const auto extents  = box.GetExtents();
 
-        return m_cascades[index].frustum.CheckCube(center, extents) != Outside;
+        return m_cascades[index].frustum.IsVisible(center, extents);
     }
 
     void Light::UpdateConstantBuffer(bool volumetric_lighting, bool screen_space_contact_shadows)

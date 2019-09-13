@@ -32,13 +32,17 @@ namespace Spartan
 
     struct WindowData
     {
-        void* handle        = nullptr;
-        void* instance      = nullptr;
-        uint32_t message    = 0;
-        float width         = 0;
-        float height        = 0;
-        int64_t wparam      = 0;
-        uint64_t lparam     = 0;
+        void* handle                    = nullptr;
+        void* instance                  = nullptr;
+        uint32_t message                = 0;
+        float width                     = 0;
+        float height                    = 0;
+        uint32_t monitor_width          = 0;
+        uint32_t monitor_height         = 0;
+        uint32_t monitor_width_virtual  = 0; // multi-monitor setup
+        uint32_t monitor_height_virtual = 0; // multi-monitor setup
+        int64_t wparam                  = 0;
+        uint64_t lparam                 = 0;
     };
 
 	enum Engine_Mode : uint32_t

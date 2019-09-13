@@ -192,3 +192,4 @@ float micro_shadow(float ao, float3 N, float3 L, float shadow)
 bool is_saturated(float value) 	{ return value == saturate(value); }
 bool is_saturated(float2 value) { return is_saturated(value.x) && is_saturated(value.y); }
 bool is_saturated(float3 value) { return is_saturated(value.x) && is_saturated(value.y) && is_saturated(value.z); }
+bool is_saturated(float4 value) { return is_saturated(value.x) && is_saturated(value.y) && is_saturated(value.z) && is_saturated(value.w); }

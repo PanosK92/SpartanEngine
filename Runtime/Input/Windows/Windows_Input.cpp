@@ -247,11 +247,33 @@ namespace Spartan
                 POINT mouse_screen_pos;
                 if (::GetCursorPos(&mouse_screen_pos))
                 {
+                    // Convert to client space
                     ::ScreenToClient(window_handle, &mouse_screen_pos);
 
-                    m_mouse_delta.x     = static_cast<float>(mouse_screen_pos.x) - m_mouse_position.x;
-                    m_mouse_delta.y     = static_cast<float>(mouse_screen_pos.y) - m_mouse_position.y;
-                    m_mouse_position    = Vector2(static_cast<float>(mouse_screen_pos.x), static_cast<float>(mouse_screen_pos.y));
+                    // Make the cursor position jump between the edges of the window to prevent it form getting clipped
+                    bool jumped_from_left   = false;
+                    bool jumped_from_right  = false;                                      
+                    if (mouse_screen_pos.x <= 0)
+                    {
+                        ::SetCursorPos(static_cast<int>(window_data.width) - 1, mouse_screen_pos.y);
+                        ::GetCursorPos(&mouse_screen_pos);
+                        jumped_from_left = true;
+                    }
+                    else if (mouse_screen_pos.x >= static_cast<int>(window_data.width))
+                    {
+                        ::SetCursorPos(1, mouse_screen_pos.y);
+                        ::GetCursorPos(&mouse_screen_pos);
+                        jumped_from_right = true;
+                    }
+           
+                    // Compute delta (accounting for jumps)
+                    if      (jumped_from_left)  m_mouse_delta.x = static_cast<float>(mouse_screen_pos.x) - m_mouse_position.x - window_data.width;
+                    else if (jumped_from_right) m_mouse_delta.x = static_cast<float>(mouse_screen_pos.x) - m_mouse_position.x + window_data.width;
+                    else                        m_mouse_delta.x = static_cast<float>(mouse_screen_pos.x) - m_mouse_position.x;
+                    m_mouse_delta.y = static_cast<float>(mouse_screen_pos.y) - m_mouse_position.y;
+
+                    // Save position
+                    m_mouse_position = Vector2(static_cast<float>(mouse_screen_pos.x), static_cast<float>(mouse_screen_pos.y));
                 }
             }
 
