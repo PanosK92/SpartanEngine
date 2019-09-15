@@ -51,9 +51,9 @@ void Widget_Viewport::Tick()
 		return;
 	
 	// Get current frame window resolution
-	auto width			= static_cast<unsigned int>(ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x);
-	auto height			= static_cast<unsigned int>(ImGui::GetWindowContentRegionMax().y - ImGui::GetWindowContentRegionMin().y);
-	const auto max_res	= m_renderer->GetMaxResolution();
+	uint32_t width			= static_cast<uint32_t>(ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x);
+	uint32_t height			= static_cast<uint32_t>(ImGui::GetWindowContentRegionMax().y - ImGui::GetWindowContentRegionMin().y);
+	const uint32_t max_res	= m_renderer->GetMaxResolution();
 	if (width > max_res || height > max_res)
 		return;
 

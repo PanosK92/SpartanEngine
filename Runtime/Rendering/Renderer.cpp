@@ -96,7 +96,7 @@ namespace Spartan
 
         // Create swap chain
         {
-            WindowData& window_data = m_context->m_engine->GetWindowData();
+            const WindowData& window_data = m_context->m_engine->GetWindowData();
 
             m_swap_chain = make_shared<RHI_SwapChain>
             (

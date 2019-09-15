@@ -43,6 +43,7 @@ Note: Currently, this is a blocking event system
 enum Event_Type
 {
 	Event_Frame_End,		        // A frame ends
+    Event_Window_Data,              // The window has a message for proccesing
 	Event_World_Save,		        // The world must be saved to file
 	Event_World_Saved,		        // The world finished saving to file
 	Event_World_Load,		        // The world must be loaded from file

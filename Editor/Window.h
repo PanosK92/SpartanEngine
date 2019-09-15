@@ -45,8 +45,8 @@ namespace Window
         window_data.handle                  = static_cast<void*>(g_handle);
         window_data.instance                = static_cast<void*>(g_instance);
         window_data.message                 = static_cast<uint32_t>(msg);
-        window_data.wparam                  = static_cast<int64_t>(wParam);
-        window_data.lparam                  = static_cast<uint64_t>(lParam);
+        window_data.wparam                  = static_cast<uint64_t>(wParam);
+        window_data.lparam                  = static_cast<int64_t>(lParam);
         window_data.monitor_width           = GetSystemMetrics(SM_CXSCREEN);
         window_data.monitor_height          = GetSystemMetrics(SM_CYSCREEN);
         window_data.monitor_width_virtual   = GetSystemMetrics(SM_CXVIRTUALSCREEN);
