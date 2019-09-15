@@ -124,14 +124,13 @@ void Editor::OnWindowMessage(WindowData& window_data)
         if (m_engine->GetWindowData().width != window_data.width || m_engine->GetWindowData().height != window_data.height)
         {
             ImGui::RHI::OnResize(window_data.width, window_data.height);
-            Tick();
         }
 
         m_engine->SetWindowData(window_data);
     }
 }
 
-void Editor::Tick()
+void Editor::OnTick()
 {	
 	if (!m_initialized)
 		return;

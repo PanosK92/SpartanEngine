@@ -4,8 +4,8 @@
 #include <string>
 #include <Windows.h>
 #include <functional>
-#include "FileSystem/FileSystem.h"
 #include "Core/Engine.h"
+#include "FileSystem/FileSystem.h"
 //================================
 
 namespace Window
@@ -136,7 +136,7 @@ namespace Window
 		MSG msg;
 		ZeroMemory(&msg, sizeof(msg));
 
-        while(PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE))
+        while(PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
 		{
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);

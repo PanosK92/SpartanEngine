@@ -40,8 +40,12 @@ constexpr auto engine_version = "v0.31 WIP";
 #endif
 
 // Windows
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
-#define NOMINMAX 
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 
 //= DISABLED WARNINGS ==============================================================================================================================
 // identifier' : class 'type' needs to have dll-interface to be used by clients of class 'type2'
