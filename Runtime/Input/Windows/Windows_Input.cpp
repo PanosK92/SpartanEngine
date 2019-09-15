@@ -45,11 +45,11 @@ namespace Spartan
 
 	Input::Input(Context* context) : ISubsystem(context)
 	{
-		g_gamepad_num				= 0;
-		auto result					= true;
-        WindowData& window_data     = context->m_engine->GetWindowData();
-		const auto window_handle	= static_cast<HWND>(window_data.handle);
-		const auto window_instance	= static_cast<HINSTANCE>(window_data.instance);
+		g_gamepad_num				    = 0;
+		auto result					    = true;
+        const WindowData& window_data   = context->m_engine->GetWindowData();
+		const auto window_handle	    = static_cast<HWND>(window_data.handle);
+		const auto window_instance	    = static_cast<HINSTANCE>(window_data.instance);
 
 		if (!window_handle || !window_instance)
 			return;
@@ -102,6 +102,24 @@ namespace Spartan
 			result = false;
 		}
 
+        // Register mouse
+        {
+            #ifndef HID_USAGE_PAGE_GENERIC
+            #define HID_USAGE_PAGE_GENERIC         ((USHORT) 0x01)
+            #endif
+            #ifndef HID_USAGE_GENERIC_MOUSE
+            #define HID_USAGE_GENERIC_MOUSE        ((USHORT) 0x02)
+            #endif
+            RAWINPUTDEVICE Rid[1];
+            Rid[0].usUsagePage  = HID_USAGE_PAGE_GENERIC;
+            Rid[0].usUsage      = HID_USAGE_GENERIC_MOUSE;
+            Rid[0].dwFlags      = RIDEV_INPUTSINK;
+            Rid[0].hwndTarget   = window_handle;
+            RegisterRawInputDevices(Rid, 1, sizeof(Rid[0]));
+        }
+
+        SUBSCRIBE_TO_EVENT(Event_Window_Data, EVENT_HANDLER(OnWindowData));
+
 		if (result)
 		{
 			stringstream ss;
@@ -129,11 +147,55 @@ namespace Spartan
 		}
 	}
 
+    void Input::OnWindowData()
+    {
+        const WindowData& window_data   = m_context->m_engine->GetWindowData();
+        HWND window_handle              = static_cast<HWND>(window_data.handle);
+
+        // Mouse
+        {
+            // Keys
+            m_keys[start_index_mouse]       = ::GetKeyState(VK_LBUTTON) < 0; // Left button pressed
+            m_keys[start_index_mouse + 1]   = ::GetKeyState(VK_MBUTTON) < 0; // Middle button pressed
+            m_keys[start_index_mouse + 2]   = ::GetKeyState(VK_RBUTTON) < 0; // Right button pressed
+
+            // Delta
+            if (window_data.message == WM_INPUT)
+            {
+                UINT dwSize = 48;
+                static BYTE lpb[48];
+                GetRawInputData((HRAWINPUT)window_data.lparam, RID_INPUT, lpb, &dwSize, sizeof(RAWINPUTHEADER));
+                RAWINPUT* raw = (RAWINPUT*)lpb;
+                if (raw->header.dwType == RIM_TYPEMOUSE)
+                {
+                    m_mouse_delta.x = static_cast<float>(raw->data.mouse.lLastX);
+                    m_mouse_delta.y = static_cast<float>(raw->data.mouse.lLastY);
+                }
+            }
+
+            // Position
+            if (window_handle == ::GetActiveWindow())
+            {
+                POINT mouse_screen_pos;
+                if (::GetCursorPos(&mouse_screen_pos))
+                {
+                    ::ScreenToClient(window_handle, &mouse_screen_pos);
+                    m_mouse_position = Vector2(static_cast<float>(mouse_screen_pos.x), static_cast<float>(mouse_screen_pos.y));
+                }
+            }
+
+            // Wheel
+            {
+                float wheel_delta   = static_cast<float>(::GetScrollPos(window_handle, SB_VERT));
+                m_mouse_wheel_delta = wheel_delta - m_mouse_wheel;
+                m_mouse_wheel       = wheel_delta;
+            }
+        }
+    }
+
 	void Input::Tick(float delta_time)
 	{
-		m_keys_previous		    = m_keys;
-        WindowData& window_data = m_context->m_engine->GetWindowData();
-        HWND window_handle      = static_cast<HWND>(window_data.handle);
+		m_keys_previous = m_keys;
 
 		if(ReadKeyboard())
 		{
@@ -232,54 +294,6 @@ namespace Spartan
 			{
 				m_keys[i] = false;
 			}
-		}
-
-		// Mouse
-		{
-			// Key
-			m_keys[start_index_mouse]		= GetKeyState(VK_LBUTTON) < 0; // Left button pressed
-			m_keys[start_index_mouse + 1]	= GetKeyState(VK_MBUTTON) < 0; // Middle button pressed
-			m_keys[start_index_mouse + 2]	= GetKeyState(VK_RBUTTON) < 0; // Right button pressed
-
-			// Position
-            if (window_handle == ::GetActiveWindow())
-            {
-                POINT mouse_screen_pos;
-                if (::GetCursorPos(&mouse_screen_pos))
-                {
-                    // Convert to client space
-                    ::ScreenToClient(window_handle, &mouse_screen_pos);
-
-                    // Make the cursor position jump between the edges of the window to prevent it form getting clipped
-                    bool jumped_from_left   = false;
-                    bool jumped_from_right  = false;                                      
-                    if (mouse_screen_pos.x <= 0)
-                    {
-                        ::SetCursorPos(static_cast<int>(window_data.width) - 1, mouse_screen_pos.y);
-                        ::GetCursorPos(&mouse_screen_pos);
-                        jumped_from_left = true;
-                    }
-                    else if (mouse_screen_pos.x >= static_cast<int>(window_data.width))
-                    {
-                        ::SetCursorPos(1, mouse_screen_pos.y);
-                        ::GetCursorPos(&mouse_screen_pos);
-                        jumped_from_right = true;
-                    }
-           
-                    // Compute delta (accounting for jumps)
-                    if      (jumped_from_left)  m_mouse_delta.x = static_cast<float>(mouse_screen_pos.x) - m_mouse_position.x - window_data.width;
-                    else if (jumped_from_right) m_mouse_delta.x = static_cast<float>(mouse_screen_pos.x) - m_mouse_position.x + window_data.width;
-                    else                        m_mouse_delta.x = static_cast<float>(mouse_screen_pos.x) - m_mouse_position.x;
-                    m_mouse_delta.y = static_cast<float>(mouse_screen_pos.y) - m_mouse_position.y;
-
-                    // Save position
-                    m_mouse_position = Vector2(static_cast<float>(mouse_screen_pos.x), static_cast<float>(mouse_screen_pos.y));
-                }
-            }
-
-			// Scroll wheel
-            m_mouse_wheel_delta = static_cast<float>(m_mouse_wheel) - m_mouse_wheel;
-			m_mouse_wheel       = ::GetScrollPos(window_handle, SB_VERT);      
 		}
 
 		if (ReadGamepad())

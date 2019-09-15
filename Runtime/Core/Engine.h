@@ -41,8 +41,8 @@ namespace Spartan
         uint32_t monitor_height         = 0;
         uint32_t monitor_width_virtual  = 0; // multi-monitor setup
         uint32_t monitor_height_virtual = 0; // multi-monitor setup
-        int64_t wparam                  = 0;
-        uint64_t lparam                 = 0;
+        uint64_t wparam                 = 0;
+        int64_t lparam                  = 0;
     };
 
 	enum Engine_Mode : uint32_t
@@ -69,14 +69,14 @@ namespace Spartan
 		bool EngineMode_IsSet(const Engine_Mode flag) const	{ return m_flags & flag; }
 
         // Window
-        WindowData& GetWindowData()                 { return m_window_data; }
-        void SetWindowData(WindowData& window_data) { m_window_data = window_data; }
+        const auto& GetWindowData() { return m_window_data; }
+        void SetWindowData(WindowData& window_data);
 
         auto GetContext() const { return m_context.get(); }
 
 	private:
         WindowData m_window_data;
-        uint32_t m_flags            = 0;
+        uint32_t m_flags = 0;
 		std::shared_ptr<Context> m_context;
 	};
 }

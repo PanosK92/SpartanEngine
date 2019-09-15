@@ -29,6 +29,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
+    struct WindowData;
+
 	enum KeyCode
 	{
 		// Keyboard
@@ -82,6 +84,7 @@ namespace Spartan
 		Input(Context* context);
 		~Input();
 
+        void OnWindowData();
 		//= ISubsystem ======================
 		void Tick(float delta_time) override;
 		//===================================

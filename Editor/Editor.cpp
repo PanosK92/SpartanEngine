@@ -73,9 +73,9 @@ void Editor::OnWindowMessage(WindowData& window_data)
         m_engine = make_unique<Engine>(window_data);
 
         // Acquire useful engine subsystems
-        m_context   = m_engine->GetContext();
-        m_renderer  = m_context->GetSubsystem<Renderer>().get();
-        m_rhiDevice = m_renderer->GetRhiDevice();
+        m_context       = m_engine->GetContext();
+        m_renderer      = m_context->GetSubsystem<Renderer>().get();
+        m_rhi_device    = m_renderer->GetRhiDevice();
 
         if (!m_renderer->IsInitialized())
         {

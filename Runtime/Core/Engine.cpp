@@ -87,4 +87,10 @@ namespace Spartan
         m_context->Tick(Tick_Variable, static_cast<float>(timer->GetDeltaTimeSec()));
         m_context->Tick(Tick_Smoothed, static_cast<float>(timer->GetDeltaTimeSmoothedSec()));
 	}
+
+    void Engine::SetWindowData(WindowData& window_data)
+    {
+        m_window_data = window_data;
+        FIRE_EVENT(Event_Window_Data);
+    }
 }

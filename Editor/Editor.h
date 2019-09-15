@@ -60,7 +60,7 @@ private:
 
 	// Engine
 	std::unique_ptr<Spartan::Engine> m_engine;
-	std::shared_ptr<Spartan::RHI_Device> m_rhiDevice;
+	std::shared_ptr<Spartan::RHI_Device> m_rhi_device;
 	Spartan::Context* m_context	    = nullptr;
 	Spartan::Renderer* m_renderer	= nullptr;	
 };
