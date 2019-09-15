@@ -29,8 +29,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    struct WindowData;
-
 	enum KeyCode
 	{
 		// Keyboard
@@ -82,7 +80,7 @@ namespace Spartan
 	{
 	public:
 		Input(Context* context);
-		~Input();
+        ~Input() = default;
 
         void OnWindowData();
 		//= ISubsystem ======================
@@ -90,9 +88,9 @@ namespace Spartan
 		//===================================
 		
 		// Keys
-		bool GetKey(const KeyCode key)		{ return m_keys[static_cast<uint32_t>(key)]; }							// Returns true while the button identified by KeyCode is held down.
-		bool GetKeyDown(const KeyCode key)	{ return GetKey(key) && !m_keys_previous[static_cast<uint32_t>(key)]; }	// Returns true during the frame the user pressed down the button identified by KeyCode.
-		bool GetKeyUp(const KeyCode key)	{ return !GetKey(key) && m_keys_previous[static_cast<uint32_t>(key)]; }	// Returns true the first frame the user releases the button identified by KeyCode.
+		bool GetKey(const KeyCode key)		{ return m_keys[static_cast<uint32_t>(key)]; }							        // Returns true while the button identified by KeyCode is held down.
+		bool GetKeyDown(const KeyCode key)	{ return GetKey(key) && !m_keys_previous_frame[static_cast<uint32_t>(key)]; }	// Returns true during the frame the user pressed down the button identified by KeyCode.
+		bool GetKeyUp(const KeyCode key)	{ return !GetKey(key) && m_keys_previous_frame[static_cast<uint32_t>(key)]; }	// Returns true the first frame the user releases the button identified by KeyCode.
 
 		// Mouse
 		const Math::Vector2& GetMousePosition() const	{ return m_mouse_position; }
@@ -110,12 +108,9 @@ namespace Spartan
 		bool GamepadVibrate(float left_motor_speed, float right_motor_speed) const;
 
 	private:
-		bool ReadKeyboard() const;
-		bool ReadGamepad() const;
-
 		// Keys
 		std::array<bool, 99> m_keys;
-		std::array<bool, 99> m_keys_previous; // A copy of m_keys, as it was during the previous frame
+		std::array<bool, 99> m_keys_previous_frame;
 		uint32_t start_index_mouse		= 83;
 		uint32_t start_index_gamepad	= 86;
 
@@ -125,11 +120,15 @@ namespace Spartan
 		int m_mouse_wheel				= 0;
 		float m_mouse_wheel_delta		= 0;
 
-		// Gamepad
-		bool m_gamepad_connected;
-		Math::Vector2 m_gamepad_thumb_left;
-		Math::Vector2 m_gamepad_thumb_right;
-		float m_gamepad_trigger_left;
-		float m_gamepad_trigger_right;
+		// Gamepad   
+        bool m_gamepad_connected            = false;
+        Math::Vector2 m_gamepad_thumb_left  = Math::Vector2::Zero;
+		Math::Vector2 m_gamepad_thumb_right = Math::Vector2::Zero;
+        float m_gamepad_trigger_left        = 0.0f;
+		float m_gamepad_trigger_right       = 0.0f;
+
+        // Misc
+        bool m_is_new_frame         = false;
+        bool m_check_for_new_device = false;
 	};
 }

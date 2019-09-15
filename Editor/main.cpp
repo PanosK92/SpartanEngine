@@ -37,10 +37,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     Window::g_on_message = [&editor](Spartan::WindowData& window_data) { editor.OnWindowMessage(window_data); };
 
     // Tick
-	while (Window::Tick()) 
-	{ 
-		editor.Tick();
-	}
+    while (Window::Tick())
+    {
+        editor.OnTick();
+    }
 
     // Exit
 	Window::Destroy();

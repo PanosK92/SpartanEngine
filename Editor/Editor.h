@@ -45,7 +45,7 @@ public:
 	~Editor();
 
     void OnWindowMessage(Spartan::WindowData& window_data);
-	void Tick();
+	void OnTick();
 
 private:
 	void Widgets_Create();
