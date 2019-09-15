@@ -135,13 +135,17 @@ namespace Window
 	{
 		MSG msg;
 		ZeroMemory(&msg, sizeof(msg));
-		if (PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE))
+
+        while(PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE))
 		{
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
+
+            if (msg.message == WM_QUIT)
+                return false;
 		}
 
-		return msg.message != WM_QUIT;
+        return true;
 	}
 
     inline void Destroy()
