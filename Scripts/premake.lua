@@ -81,9 +81,9 @@ project (RUNTIME_NAME)
 	-- Includes
 	includedirs { "../ThirdParty/DirectXShaderCompiler" }
 	includedirs { "../ThirdParty/SPIRV-Cross" }
-	includedirs { "../ThirdParty/Vulkan_1.1.114.0" }
+	includedirs { "../ThirdParty/Vulkan_1.1.121.0" }
 	includedirs { "../ThirdParty/AngelScript_2.33.0" }
-	includedirs { "../ThirdParty/Assimp_5.0.0" }
+	includedirs { "../ThirdParty/Assimp_5.0.0.rc2" }
 	includedirs { "../ThirdParty/Bullet_2.88" }
 	includedirs { "../ThirdParty/FMOD_1.10.10" }
 	includedirs { "../ThirdParty/FreeImage_3.18.0" }

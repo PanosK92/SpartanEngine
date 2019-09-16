@@ -29,6 +29,7 @@ typedef enum {
   shaderc_compilation_status_invalid_assembly = 5,
   shaderc_compilation_status_validation_error = 6,
   shaderc_compilation_status_transformation_error = 7,
+  shaderc_compilation_status_configuration_error = 8,
 } shaderc_compilation_status;
 
 #ifdef __cplusplus
