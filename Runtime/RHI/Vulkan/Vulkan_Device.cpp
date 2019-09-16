@@ -278,7 +278,7 @@ namespace Spartan
 			std::vector<VkPhysicalDevice> physical_devices(device_count);
 			vkEnumeratePhysicalDevices(m_rhi_context->instance, &device_count, physical_devices.data());
 			
-			if (!_Vulkan_Device::choose_physical_device(this, context->m_engine->GetWindowHandle(), physical_devices))
+			if (!_Vulkan_Device::choose_physical_device(this, context->m_engine->GetWindowData().handle, physical_devices))
 			{
 				LOG_ERROR("Failed to find a suitable device.");
 				return;

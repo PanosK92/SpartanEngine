@@ -261,7 +261,7 @@ namespace Spartan
 
     void Camera::FpsControl(float delta_time)
     {
-        static const float mouse_sensitivity        = 0.2f;
+        static const float mouse_sensitivity        = 20.0f;
         static const float mouse_smoothing          = 2.5f;
         static const float movement_speed_max       = 10.0f;
         static const float movement_acceleration    = 0.8f;
@@ -278,7 +278,7 @@ namespace Spartan
                 mouse_smoothed = Math::Lerp(mouse_smoothed, mouse_delta, 1.0f / mouse_smoothing);
 
                 // Accumulate rotation
-                mouse_rotation += mouse_smoothed;
+                mouse_rotation += mouse_smoothed * delta_time;
 
                 // Clamp rotation along the x-axis
                 mouse_rotation.y = Clamp(mouse_rotation.y, -90.0f, 90.0f);
