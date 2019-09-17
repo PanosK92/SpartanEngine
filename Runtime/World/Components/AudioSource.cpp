@@ -164,7 +164,7 @@ namespace Spartan
 	
 		// Priority for the channel, from 0 (most important) 
 		// to 256 (least important), default = 128.
-		m_priority = (int)Clamp(priority, 0, 255);
+		m_priority = static_cast<int>(Clamp(priority, 0, 255));
 		m_audio_clip->SetPriority(m_priority);
 	}
 	

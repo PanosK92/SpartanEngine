@@ -30,7 +30,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <optional>
 #include <set>
 #include "../../Logging/Log.h"
-#include "../../Math/MathHelper.h"
 #include "../RHI_Device.h"
 //================================
 
@@ -118,7 +117,7 @@ namespace Spartan::Vulkan_Common
 			cmd_pool_info.queueFamilyIndex			= rhi_device->GetContextRhi()->indices.graphics_family.value();
 			cmd_pool_info.flags						= VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
-			auto cmd_pool_temp = reinterpret_cast<VkCommandPool*>(&cmd_pool);
+            const auto cmd_pool_temp = reinterpret_cast<VkCommandPool*>(&cmd_pool);
 			SPARTAN_ASSERT(vkCreateCommandPool(rhi_device->GetContextRhi()->device, &cmd_pool_info, nullptr, cmd_pool_temp) == VK_SUCCESS);
 		}
 	}
@@ -170,13 +169,13 @@ namespace Spartan::Vulkan_Common
 
 		inline void wait(const std::shared_ptr<RHI_Device>&rhi_device, void*& fence_in)
 		{
-			auto fence_temp = reinterpret_cast<VkFence*>(&fence_in);
+            const auto fence_temp = reinterpret_cast<VkFence*>(&fence_in);
 			SPARTAN_ASSERT(vkWaitForFences(rhi_device->GetContextRhi()->device, 1, fence_temp, true, 0xFFFFFFFFFFFFFFFF) == VK_SUCCESS);
 		}
 
 		inline void reset(const std::shared_ptr<RHI_Device>& rhi_device, void*& fence_in)
 		{
-			auto fence_temp = reinterpret_cast<VkFence*>(&fence_in);
+            const auto fence_temp = reinterpret_cast<VkFence*>(&fence_in);
 			SPARTAN_ASSERT(vkResetFences(rhi_device->GetContextRhi()->device, 1, fence_temp) == VK_SUCCESS);
 		}
 

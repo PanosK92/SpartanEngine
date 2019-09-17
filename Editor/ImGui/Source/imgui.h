@@ -1,4 +1,4 @@
-// dear imgui, v1.72b
+// dear imgui, v1.73 WIP
 // (headers)
 
 // See imgui.cpp file for documentation.
@@ -47,8 +47,8 @@ Index of this file:
 
 // Version
 // (Integer encoded as XYYZZ for use in #if preprocessor conditionals. Work in progress versions typically starts at XYY99 then bounce up to XYY00, XYY01 etc. when release tagging happens)
-#define IMGUI_VERSION               "1.72b"
-#define IMGUI_VERSION_NUM           17202
+#define IMGUI_VERSION               "1.73 WIP"
+#define IMGUI_VERSION_NUM           17203
 #define IMGUI_CHECKVERSION()        ImGui::DebugCheckVersionAndDataLayout(IMGUI_VERSION, sizeof(ImGuiIO), sizeof(ImGuiStyle), sizeof(ImVec2), sizeof(ImVec4), sizeof(ImDrawVert), sizeof(ImDrawIdx))
 #define IMGUI_HAS_VIEWPORT          1 // Viewport WIP branch
 #define IMGUI_HAS_DOCK              1 // Docking WIP branch
@@ -76,8 +76,12 @@ Index of this file:
 #define IM_FMTLIST(FMT)
 #endif
 #define IM_ARRAYSIZE(_ARR)          ((int)(sizeof(_ARR)/sizeof(*_ARR)))         // Size of a static C-style array. Don't use on pointers!
-#define IM_OFFSETOF(_TYPE,_MEMBER)  ((size_t)&(((_TYPE*)0)->_MEMBER))           // Offset of _MEMBER within _TYPE. Standardized as offsetof() in modern C++.
 #define IM_UNUSED(_VAR)             ((void)_VAR)                                // Used to silence "unused variable warnings". Often useful as asserts may be stripped out from final builds.
+#if (__cplusplus >= 201100)
+#define IM_OFFSETOF(_TYPE,_MEMBER)  offsetof(_TYPE, _MEMBER)                    // Offset of _MEMBER within _TYPE. Standardized as offsetof() in C++11
+#else
+#define IM_OFFSETOF(_TYPE,_MEMBER)  ((size_t)&(((_TYPE*)0)->_MEMBER))           // Offset of _MEMBER within _TYPE. Old style macro.
+#endif
 
 // Warnings
 #if defined(__clang__)
@@ -147,7 +151,7 @@ typedef int ImGuiBackendFlags;      // -> enum ImGuiBackendFlags_    // Flags: f
 typedef int ImGuiColorEditFlags;    // -> enum ImGuiColorEditFlags_  // Flags: for ColorEdit4(), ColorPicker4() etc.
 typedef int ImGuiConfigFlags;       // -> enum ImGuiConfigFlags_     // Flags: for io.ConfigFlags
 typedef int ImGuiComboFlags;        // -> enum ImGuiComboFlags_      // Flags: for BeginCombo()
-typedef int ImGuiDockNodeFlags;     // -> enum ImGuiDockNodeFlags_   // Flags: for DockSpace()                   
+typedef int ImGuiDockNodeFlags;     // -> enum ImGuiDockNodeFlags_   // Flags: for DockSpace()
 typedef int ImGuiDragDropFlags;     // -> enum ImGuiDragDropFlags_   // Flags: for BeginDragDropSource(), AcceptDragDropPayload()
 typedef int ImGuiFocusedFlags;      // -> enum ImGuiFocusedFlags_    // Flags: for IsWindowFocused()
 typedef int ImGuiHoveredFlags;      // -> enum ImGuiHoveredFlags_    // Flags: for IsItemHovered(), IsWindowHovered() etc.
@@ -336,7 +340,7 @@ namespace ImGui
     IMGUI_API ImU32         GetColorU32(ImU32 col);                                         // retrieve given color with style alpha applied
 
     // Parameters stacks (current window)
-    IMGUI_API void          PushItemWidth(float item_width);                                // set width of items for common large "item+label" widgets. >0.0f: width in pixels, <0.0f align xx pixels to the right of window (so -1.0f always align width to the right side). 0.0f = default to ~2/3 of windows width, 
+    IMGUI_API void          PushItemWidth(float item_width);                                // set width of items for common large "item+label" widgets. >0.0f: width in pixels, <0.0f align xx pixels to the right of window (so -1.0f always align width to the right side). 0.0f = default to ~2/3 of windows width,
     IMGUI_API void          PopItemWidth();
     IMGUI_API void          SetNextItemWidth(float item_width);                             // set width of the _next_ common large "item+label" widget. >0.0f: width in pixels, <0.0f align xx pixels to the right of window (so -1.0f always align width to the right side)
     IMGUI_API float         CalcItemWidth();                                                // width of item given pushed settings and current cursor position. NOT necessarily the width of last item unlike most 'Item' functions.
@@ -434,6 +438,8 @@ namespace ImGui
     // - For all the Float2/Float3/Float4/Int2/Int3/Int4 versions of every functions, note that a 'float v[X]' function argument is the same as 'float* v', the array syntax is just a way to document the number of elements that are expected to be accessible. You can pass address of your first element out of a contiguous set, e.g. &myvector.x
     // - Adjust format string to decorate the value with a prefix, a suffix, or adapt the editing and display precision e.g. "%.3f" -> 1.234; "%5.2f secs" -> 01.23 secs; "Biscuit: %.0f" -> Biscuit: 1; etc.
     // - Speed are per-pixel of mouse movement (v_speed=0.2f: mouse needs to move by 5 pixels to increase value by 1). For gamepad/keyboard navigation, minimum speed is Max(v_speed, minimum_step_at_given_precision).
+    // - Use v_min < v_max to clamp edits to given limits. Note that CTRL+Click manual input can override those limits.
+    // - Use v_min > v_max to lock edits.
     IMGUI_API bool          DragFloat(const char* label, float* v, float v_speed = 1.0f, float v_min = 0.0f, float v_max = 0.0f, const char* format = "%.3f", float power = 1.0f);     // If v_min >= v_max we have no bound
     IMGUI_API bool          DragFloat2(const char* label, float v[2], float v_speed = 1.0f, float v_min = 0.0f, float v_max = 0.0f, const char* format = "%.3f", float power = 1.0f);
     IMGUI_API bool          DragFloat3(const char* label, float v[3], float v_speed = 1.0f, float v_min = 0.0f, float v_max = 0.0f, const char* format = "%.3f", float power = 1.0f);
@@ -596,9 +602,9 @@ namespace ImGui
     IMGUI_API void          EndTabItem();                                                       // only call EndTabItem() if BeginTabItem() returns true!
     IMGUI_API void          SetTabItemClosed(const char* tab_or_docked_window_label);           // notify TabBar or Docking system of a closed tab/window ahead (useful to reduce visual flicker on reorderable tab bars). For tab-bar: call after BeginTabBar() and before Tab submissions. Otherwise call with a window name.
 
-    // Docking 
+    // Docking
     // [BETA API] Enable with io.ConfigFlags |= ImGuiConfigFlags_DockingEnable.
-    // Note: you DO NOT need to call DockSpace() to use most Docking facilities! 
+    // Note: you DO NOT need to call DockSpace() to use most Docking facilities!
     // - To dock windows: if io.ConfigDockingWithShift == false (default) drag window from their title bar.
     // - To dock windows: if io.ConfigDockingWithShift == true: hold SHIFT anywhere while moving windows.
     // - Use DockSpace() to create an explicit dock node _within_ an existing window. See Docking demo for details.
@@ -607,7 +613,7 @@ namespace ImGui
     IMGUI_API void          SetNextWindowDockID(ImGuiID dock_id, ImGuiCond cond = 0);           // set next window dock id (FIXME-DOCK)
     IMGUI_API void          SetNextWindowClass(const ImGuiWindowClass* window_class);           // set next window class (rare/advanced uses: provide hints to the platform back-end via altered viewport flags and parent/child info)
     IMGUI_API ImGuiID       GetWindowDockID();
-    IMGUI_API bool          IsWindowDocked();                                                   // is current window docked into another window? 
+    IMGUI_API bool          IsWindowDocked();                                                   // is current window docked into another window?
 
     // Logging/Capture
     // - All text output from the interface can be captured into tty/file/clipboard. By default, tree nodes are automatically opened during logging.
@@ -926,7 +932,7 @@ enum ImGuiDockNodeFlags_
     ImGuiDockNodeFlags_NoDockingInCentralNode       = 1 << 2,   // Shared       // Disable docking inside the Central Node, which will be always kept empty.
     ImGuiDockNodeFlags_PassthruCentralNode          = 1 << 3,   // Shared       // Enable passthru dockspace: 1) DockSpace() will render a ImGuiCol_WindowBg background covering everything excepted the Central Node when empty. Meaning the host window should probably use SetNextWindowBgAlpha(0.0f) prior to Begin() when using this. 2) When Central Node is empty: let inputs pass-through + won't display a DockingEmptyBg background. See demo for details.
     ImGuiDockNodeFlags_NoSplit                      = 1 << 4,   // Shared/Local // Disable splitting the node into smaller nodes. Useful e.g. when embedding dockspaces into a main root one (the root one may have splitting disabled to reduce confusion). Note: when turned off, existing splits will be preserved.
-    ImGuiDockNodeFlags_NoResize                     = 1 << 5,   // Shared/Local // Disable resizing node using the splitter/separators. Useful with programatically setup dockspaces. 
+    ImGuiDockNodeFlags_NoResize                     = 1 << 5,   // Shared/Local // Disable resizing node using the splitter/separators. Useful with programatically setup dockspaces.
     ImGuiDockNodeFlags_AutoHideTabBar               = 1 << 6    // Shared/Local // Tab bar will automatically hide when there is a single window in the dock node.
 };
 
@@ -1355,7 +1361,7 @@ struct ImGuiStyle
     float       WindowBorderSize;           // Thickness of border around windows. Generally set to 0.0f or 1.0f. (Other values are not well tested and more CPU/GPU costly).
     ImVec2      WindowMinSize;              // Minimum window size. This is a global setting. If you want to constraint individual windows, use SetNextWindowSizeConstraints().
     ImVec2      WindowTitleAlign;           // Alignment for title bar text. Defaults to (0.0f,0.5f) for left-aligned,vertically centered.
-    ImGuiDir    WindowMenuButtonPosition;   // Side of the collapsing/docking button in the title bar (left/right). Defaults to ImGuiDir_Left.
+    ImGuiDir    WindowMenuButtonPosition;   // Side of the collapsing/docking button in the title bar (None/Left/Right). Defaults to ImGuiDir_Left.
     float       ChildRounding;              // Radius of child window corners rounding. Set to 0.0f to have rectangular windows.
     float       ChildBorderSize;            // Thickness of border around child windows. Generally set to 0.0f or 1.0f. (Other values are not well tested and more CPU/GPU costly).
     float       PopupRounding;              // Radius of popup window corners rounding. (Note that tooltip windows use WindowRounding)
@@ -1427,7 +1433,7 @@ struct ImGuiIO
     bool        ConfigDockingWithShift;         // = false          // Enable docking with holding Shift key (reduce visual noise, allows dropping in wider space)
     bool        ConfigDockingAlwaysTabBar;      // = false          // [BETA] [FIXME: This currently creates regression with auto-sizing and general overhead] Make every single floating window display within a docking node.
     bool        ConfigDockingTransparentPayload;// = false          // [BETA] Make window or viewport transparent when docking and only display docking boxes on the target viewport. Useful if rendering of multiple viewport cannot be synced. Best used with ConfigViewportsNoAutoMerge.
-    
+
     // Viewport options (when ImGuiConfigFlags_ViewportsEnable is set)
     bool        ConfigViewportsNoAutoMerge;     // = false;         // Set to make all floating imgui windows always create their own viewport. Otherwise, they are merged into the main host viewports when overlapping it. May also set ImGuiViewportFlags_NoAutoMerge on individual viewport.
     bool        ConfigViewportsNoTaskBarIcon;   // = false          // Disable default OS task bar icon flag for secondary viewports. When a viewport doesn't want a task bar icon, ImGuiViewportFlags_NoTaskBarIcon will be set on it.
@@ -1440,6 +1446,7 @@ struct ImGuiIO
     bool        ConfigInputTextCursorBlink;     // = true           // Set to false to disable blinking cursor, for users who consider it distracting. (was called: io.OptCursorBlink prior to 1.63)
     bool        ConfigWindowsResizeFromEdges;   // = true           // Enable resizing of windows from their edges and from the lower-left corner. This requires (io.BackendFlags & ImGuiBackendFlags_HasMouseCursors) because it needs mouse cursor feedback. (This used to be a per-window ImGuiWindowFlags_ResizeFromAnySide flag)
     bool        ConfigWindowsMoveFromTitleBarOnly; // = false       // [BETA] Set to true to only allow moving windows when clicked+dragged from the title bar. Windows without a title bar are not affected.
+    float       ConfigWindowsMemoryCompactTimer;// = 60.0f          // [BETA] Compact window memory usage when unused. Set to -1.0f to disable.
 
     //------------------------------------------------------------------
     // Platform Functions
@@ -1851,7 +1858,7 @@ struct ImColor
 
 // Draw callbacks for advanced uses.
 // NB: You most likely do NOT need to use draw callbacks just to create your own widget or customized UI rendering,
-// you can poke into the draw list for that! Draw callback may be useful for example to: 
+// you can poke into the draw list for that! Draw callback may be useful for example to:
 //  A) Change your GPU render state,
 //  B) render a complex 3D scene inside a UI element without an intermediate texture/render target, etc.
 // The expected behavior from your rendering function is 'if (cmd.UserCallback != NULL) { cmd.UserCallback(parent_list, cmd); } else { RenderTriangles() }'
@@ -1879,10 +1886,10 @@ struct ImDrawCmd
     ImDrawCallback  UserCallback;           // If != NULL, call the function instead of rendering the vertices. clip_rect and texture_id will be set normally.
     void*           UserCallbackData;       // The draw callback code can access this.
 
-    ImDrawCmd() { ElemCount = 0; ClipRect.x = ClipRect.y = ClipRect.z = ClipRect.w = 0.0f; TextureId = (ImTextureID)NULL; VtxOffset = IdxOffset = 0;  UserCallback = NULL; UserCallbackData = NULL; }
+    ImDrawCmd() { ElemCount = 0; TextureId = (ImTextureID)NULL; VtxOffset = IdxOffset = 0;  UserCallback = NULL; UserCallbackData = NULL; }
 };
 
-// Vertex index 
+// Vertex index
 // (to allow large meshes with 16-bits indices: set 'io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset' and handle ImDrawCmd::VtxOffset in the renderer back-end)
 // (to use 32-bits indices: override with '#define ImDrawIdx unsigned int' in imconfig.h)
 #ifndef ImDrawIdx
@@ -1913,7 +1920,7 @@ struct ImDrawChannel
 };
 
 // Split/Merge functions are used to split the draw list into different layers which can be drawn into out of order.
-// This is used by the Columns api, so items of each column can be batched together in a same draw call. 
+// This is used by the Columns api, so items of each column can be batched together in a same draw call.
 struct ImDrawListSplitter
 {
     int                         _Current;    // Current channel number (0)
@@ -1954,7 +1961,7 @@ enum ImDrawListFlags_
 // Draw command list
 // This is the low-level list of polygons that ImGui:: functions are filling. At the end of the frame,
 // all command lists are passed to your ImGuiIO::RenderDrawListFn function for rendering.
-// Each dear imgui window contains its own ImDrawList. You can use ImGui::GetWindowDrawList() to 
+// Each dear imgui window contains its own ImDrawList. You can use ImGui::GetWindowDrawList() to
 // access the current window draw list and draw custom primitives.
 // You can interleave normal ImGui:: calls and adding primitives to the current draw list.
 // All positions are generally in pixel coordinates (generally top-left at 0,0, bottom-right at io.DisplaySize, unless multiple viewports are used), but you are totally free to apply whatever transformation matrix to want to the data (if you apply such transformation you'll want to apply it to ClipRect as well)
@@ -1991,24 +1998,30 @@ struct ImDrawList
     inline ImVec2   GetClipRectMax() const { const ImVec4& cr = _ClipRectStack.back(); return ImVec2(cr.z, cr.w); }
 
     // Primitives
-    IMGUI_API void  AddLine(const ImVec2& a, const ImVec2& b, ImU32 col, float thickness = 1.0f);
-    IMGUI_API void  AddRect(const ImVec2& a, const ImVec2& b, ImU32 col, float rounding = 0.0f, ImDrawCornerFlags rounding_corners = ImDrawCornerFlags_All, float thickness = 1.0f);   // a: upper-left, b: lower-right (== upper-left + size), rounding_corners_flags: 4-bits corresponding to which corner to round
-    IMGUI_API void  AddRectFilled(const ImVec2& a, const ImVec2& b, ImU32 col, float rounding = 0.0f, ImDrawCornerFlags rounding_corners = ImDrawCornerFlags_All);                     // a: upper-left, b: lower-right (== upper-left + size)
-    IMGUI_API void  AddRectFilledMultiColor(const ImVec2& a, const ImVec2& b, ImU32 col_upr_left, ImU32 col_upr_right, ImU32 col_bot_right, ImU32 col_bot_left);
-    IMGUI_API void  AddQuad(const ImVec2& a, const ImVec2& b, const ImVec2& c, const ImVec2& d, ImU32 col, float thickness = 1.0f);
-    IMGUI_API void  AddQuadFilled(const ImVec2& a, const ImVec2& b, const ImVec2& c, const ImVec2& d, ImU32 col);
-    IMGUI_API void  AddTriangle(const ImVec2& a, const ImVec2& b, const ImVec2& c, ImU32 col, float thickness = 1.0f);
-    IMGUI_API void  AddTriangleFilled(const ImVec2& a, const ImVec2& b, const ImVec2& c, ImU32 col);
-    IMGUI_API void  AddCircle(const ImVec2& centre, float radius, ImU32 col, int num_segments = 12, float thickness = 1.0f);
-    IMGUI_API void  AddCircleFilled(const ImVec2& centre, float radius, ImU32 col, int num_segments = 12);
+    // - For rectangular primitives, "p_min" and "p_max" represent the upper-left and lower-right corners.
+    IMGUI_API void  AddLine(const ImVec2& p1, const ImVec2& p2, ImU32 col, float thickness = 1.0f);
+    IMGUI_API void  AddRect(const ImVec2& p_min, const ImVec2& p_max, ImU32 col, float rounding = 0.0f, ImDrawCornerFlags rounding_corners = ImDrawCornerFlags_All, float thickness = 1.0f);   // a: upper-left, b: lower-right (== upper-left + size), rounding_corners_flags: 4-bits corresponding to which corner to round
+    IMGUI_API void  AddRectFilled(const ImVec2& p_min, const ImVec2& p_max, ImU32 col, float rounding = 0.0f, ImDrawCornerFlags rounding_corners = ImDrawCornerFlags_All);                     // a: upper-left, b: lower-right (== upper-left + size)
+    IMGUI_API void  AddRectFilledMultiColor(const ImVec2& p_min, const ImVec2& p_max, ImU32 col_upr_left, ImU32 col_upr_right, ImU32 col_bot_right, ImU32 col_bot_left);
+    IMGUI_API void  AddQuad(const ImVec2& p1, const ImVec2& p2, const ImVec2& p3, const ImVec2& p4, ImU32 col, float thickness = 1.0f);
+    IMGUI_API void  AddQuadFilled(const ImVec2& p1, const ImVec2& p2, const ImVec2& p3, const ImVec2& p4, ImU32 col);
+    IMGUI_API void  AddTriangle(const ImVec2& p1, const ImVec2& p2, const ImVec2& p3, ImU32 col, float thickness = 1.0f);
+    IMGUI_API void  AddTriangleFilled(const ImVec2& p1, const ImVec2& p2, const ImVec2& p3, ImU32 col);
+    IMGUI_API void  AddCircle(const ImVec2& center, float radius, ImU32 col, int num_segments = 12, float thickness = 1.0f);
+    IMGUI_API void  AddCircleFilled(const ImVec2& center, float radius, ImU32 col, int num_segments = 12);
     IMGUI_API void  AddText(const ImVec2& pos, ImU32 col, const char* text_begin, const char* text_end = NULL);
     IMGUI_API void  AddText(const ImFont* font, float font_size, const ImVec2& pos, ImU32 col, const char* text_begin, const char* text_end = NULL, float wrap_width = 0.0f, const ImVec4* cpu_fine_clip_rect = NULL);
-    IMGUI_API void  AddImage(ImTextureID user_texture_id, const ImVec2& a, const ImVec2& b, const ImVec2& uv_a = ImVec2(0,0), const ImVec2& uv_b = ImVec2(1,1), ImU32 col = IM_COL32_WHITE);
-    IMGUI_API void  AddImageQuad(ImTextureID user_texture_id, const ImVec2& a, const ImVec2& b, const ImVec2& c, const ImVec2& d, const ImVec2& uv_a = ImVec2(0,0), const ImVec2& uv_b = ImVec2(1,0), const ImVec2& uv_c = ImVec2(1,1), const ImVec2& uv_d = ImVec2(0,1), ImU32 col = IM_COL32_WHITE);
-    IMGUI_API void  AddImageRounded(ImTextureID user_texture_id, const ImVec2& a, const ImVec2& b, const ImVec2& uv_a, const ImVec2& uv_b, ImU32 col, float rounding, ImDrawCornerFlags rounding_corners = ImDrawCornerFlags_All);
     IMGUI_API void  AddPolyline(const ImVec2* points, int num_points, ImU32 col, bool closed, float thickness);
     IMGUI_API void  AddConvexPolyFilled(const ImVec2* points, int num_points, ImU32 col); // Note: Anti-aliased filling requires points to be in clockwise order.
     IMGUI_API void  AddBezierCurve(const ImVec2& pos0, const ImVec2& cp0, const ImVec2& cp1, const ImVec2& pos1, ImU32 col, float thickness, int num_segments = 0);
+
+    // Image primitives
+    // - Read FAQ to understand what ImTextureID is.
+    // - "p_min" and "p_max" represent the upper-left and lower-right corners of the rectangle.
+    // - "uv_min" and "uv_max" represent the normalized texture coordinates to use for those corners. Using (0,0)->(1,1) texture coordinates will generally display the entire texture.
+    IMGUI_API void  AddImage(ImTextureID user_texture_id, const ImVec2& p_min, const ImVec2& p_max, const ImVec2& uv_min = ImVec2(0, 0), const ImVec2& uv_max = ImVec2(1, 1), ImU32 col = IM_COL32_WHITE);
+    IMGUI_API void  AddImageQuad(ImTextureID user_texture_id, const ImVec2& p1, const ImVec2& p2, const ImVec2& p3, const ImVec2& p4, const ImVec2& uv1 = ImVec2(0, 0), const ImVec2& uv2 = ImVec2(1, 0), const ImVec2& uv3 = ImVec2(1, 1), const ImVec2& uv4 = ImVec2(0, 1), ImU32 col = IM_COL32_WHITE);
+    IMGUI_API void  AddImageRounded(ImTextureID user_texture_id, const ImVec2& p_min, const ImVec2& p_max, const ImVec2& uv_min, const ImVec2& uv_max, ImU32 col, float rounding, ImDrawCornerFlags rounding_corners = ImDrawCornerFlags_All);
 
     // Stateful path API, add points then finish with PathFillConvex() or PathStroke()
     inline    void  PathClear()                                                 { _Path.Size = 0; }
@@ -2016,8 +2029,8 @@ struct ImDrawList
     inline    void  PathLineToMergeDuplicate(const ImVec2& pos)                 { if (_Path.Size == 0 || memcmp(&_Path.Data[_Path.Size-1], &pos, 8) != 0) _Path.push_back(pos); }
     inline    void  PathFillConvex(ImU32 col)                                   { AddConvexPolyFilled(_Path.Data, _Path.Size, col); _Path.Size = 0; }  // Note: Anti-aliased filling requires points to be in clockwise order.
     inline    void  PathStroke(ImU32 col, bool closed, float thickness = 1.0f)  { AddPolyline(_Path.Data, _Path.Size, col, closed, thickness); _Path.Size = 0; }
-    IMGUI_API void  PathArcTo(const ImVec2& centre, float radius, float a_min, float a_max, int num_segments = 10);
-    IMGUI_API void  PathArcToFast(const ImVec2& centre, float radius, int a_min_of_12, int a_max_of_12);                                            // Use precomputed angles for a 12 steps circle
+    IMGUI_API void  PathArcTo(const ImVec2& center, float radius, float a_min, float a_max, int num_segments = 10);
+    IMGUI_API void  PathArcToFast(const ImVec2& center, float radius, int a_min_of_12, int a_max_of_12);                                            // Use precomputed angles for a 12 steps circle
     IMGUI_API void  PathBezierCurveTo(const ImVec2& p1, const ImVec2& p2, const ImVec2& p3, int num_segments = 0);
     IMGUI_API void  PathRect(const ImVec2& rect_min, const ImVec2& rect_max, float rounding = 0.0f, ImDrawCornerFlags rounding_corners = ImDrawCornerFlags_All);
 
@@ -2093,6 +2106,7 @@ struct ImFontConfig
     bool            MergeMode;              // false    // Merge into previous ImFont, so you can combine multiple inputs font into one ImFont (e.g. ASCII font + icons + Japanese glyphs). You may want to use GlyphOffset.y when merge font of different heights.
     unsigned int    RasterizerFlags;        // 0x00     // Settings for custom font rasterizer (e.g. ImGuiFreeType). Leave as zero if you aren't using one.
     float           RasterizerMultiply;     // 1.0f     // Brighten (>1.0f) or darken (<1.0f) font output. Brightening small fonts may be a good workaround to make them more readable.
+    ImWchar         EllipsisChar;           // -1       // Explicitly specify unicode codepoint of ellipsis character. When fonts are being merged first specified ellipsis will be used.
 
     // [Internal]
     char            Name[40];               // Name (strictly to ease debugging)
@@ -2208,9 +2222,9 @@ struct ImFontAtlas
     // [BETA] Custom Rectangles/Glyphs API
     //-------------------------------------------
 
-    // You can request arbitrary rectangles to be packed into the atlas, for your own purposes. 
+    // You can request arbitrary rectangles to be packed into the atlas, for your own purposes.
     // After calling Build(), you can query the rectangle position and render your pixels.
-    // You can also request your rectangles to be mapped as font glyph (given a font + Unicode point), 
+    // You can also request your rectangles to be mapped as font glyph (given a font + Unicode point),
     // so you can render e.g. custom colorful icons and use them as regular glyphs.
     // Read misc/fonts/README.txt for more details about using colorful icons.
     IMGUI_API int               AddCustomRectRegular(unsigned int id, int width, int height);                                                                   // Id needs to be >= 0x10000. Id >= 0x80000000 are reserved for ImGui and ImDrawList
@@ -2269,7 +2283,8 @@ struct ImFont
     ImFontAtlas*                ContainerAtlas;     // 4-8   // out //            // What we has been loaded into
     const ImFontConfig*         ConfigData;         // 4-8   // in  //            // Pointer within ContainerAtlas->ConfigData
     short                       ConfigDataCount;    // 2     // in  // ~ 1        // Number of ImFontConfig involved in creating this font. Bigger than 1 when merging multiple font sources into one ImFont.
-    ImWchar                     FallbackChar;       // 2     // in  // = '?'      // Replacement glyph if one isn't found. Only set via SetFallbackChar()
+    ImWchar                     FallbackChar;       // 2     // in  // = '?'      // Replacement character if a glyph isn't found. Only set via SetFallbackChar()
+    ImWchar                     EllipsisChar;       // 2     // out // = -1       // Character used for ellipsis rendering.
     float                       Scale;              // 4     // in  // = 1.f      // Base font scale, multiplied by the per-window font scale which you can adjust with SetWindowFontScale()
     float                       Ascent, Descent;    // 4+4   // out //            // Ascent: distance from top to bottom of e.g. 'A' [0..FontSize]
     int                         MetricsTotalSurface;// 4     // out //            // Total surface in pixels to get an idea of the font rasterization/texture cost (not exact, we approximate the cost of padding between glyphs)
@@ -2312,7 +2327,7 @@ struct ImFont
 // - if you are new to dear imgui and trying to integrate it into your engine, you should probably ignore this for now.
 //-----------------------------------------------------------------------------
 
-// (Optional) This is required when enabling multi-viewport. Represent the bounds of each connected monitor/display and their DPI. 
+// (Optional) This is required when enabling multi-viewport. Represent the bounds of each connected monitor/display and their DPI.
 // We use this information for multiple DPI support + clamping the position of popups and tooltips so they don't straddle multiple monitors.
 struct ImGuiPlatformMonitor
 {
@@ -2322,12 +2337,12 @@ struct ImGuiPlatformMonitor
     ImGuiPlatformMonitor() { MainPos = MainSize = WorkPos = WorkSize = ImVec2(0,0); DpiScale = 1.0f; }
 };
 
-// (Optional) Setup required only if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) is enabled. 
+// (Optional) Setup required only if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) is enabled.
 // Access via ImGui::GetPlatformIO(). This is designed so we can mix and match two imgui_impl_xxxx files,
-// one for the Platform (~window handling), one for Renderer. Custom engine back-ends will often provide 
+// one for the Platform (~window handling), one for Renderer. Custom engine back-ends will often provide
 // both Platform and Renderer interfaces and so may not need to use all functions.
-// Platform functions are typically called before their Renderer counterpart, 
-// apart from Destroy which are called the other way. 
+// Platform functions are typically called before their Renderer counterpart,
+// apart from Destroy which are called the other way.
 // RenderPlatformWindowsDefault() is that helper that iterate secondary viewports and call, in this order:
 //   Platform_RenderWindow(), Renderer_RenderWindow(), Platform_SwapBuffers(), Renderer_SwapBuffers()
 // You may skip using RenderPlatformWindowsDefault() and call your draw/swap functions yourself if you need
@@ -2376,7 +2391,7 @@ struct ImGuiPlatformIO
 
     // List of viewports (the list is updated by calling ImGui::EndFrame or ImGui::Render)
     ImGuiViewport*                  MainViewport;                           // Guaranteed to be == Viewports[0]
-    ImVector<ImGuiViewport*>        Viewports;                              // Main viewports, followed by all secondary viewports. 
+    ImVector<ImGuiViewport*>        Viewports;                              // Main viewports, followed by all secondary viewports.
     ImGuiPlatformIO()               { memset(this, 0, sizeof(*this)); }     // Zero clear
 };
 

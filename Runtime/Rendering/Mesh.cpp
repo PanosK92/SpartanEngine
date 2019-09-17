@@ -72,7 +72,7 @@ namespace Spartan
 	{
 		if (vertexOffset)
 		{
-			*vertexOffset = (uint32_t)m_vertices.size();
+			*vertexOffset = static_cast<uint32_t>(m_vertices.size());
 		}
 
 		m_vertices.insert(m_vertices.end(), vertices.begin(), vertices.end());
@@ -80,7 +80,7 @@ namespace Spartan
 
 	uint32_t Mesh::Vertices_Count() const
 	{
-		return (uint32_t)m_vertices.size();
+		return static_cast<uint32_t>(m_vertices.size());
 	}
 
 	void Mesh::Vertex_Add(const RHI_Vertex_PosTexNorTan& vertex)
@@ -92,7 +92,7 @@ namespace Spartan
 	{
 		if (indexOffset)
 		{
-			*indexOffset = (uint32_t)m_indices.size();
+			*indexOffset = static_cast<uint32_t>(m_indices.size());
 		}
 
 		m_indices.insert(m_indices.end(), indices.begin(), indices.end());

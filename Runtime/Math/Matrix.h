@@ -59,7 +59,7 @@ namespace Spartan::Math
 
 		Matrix(const Vector3& translation, const Quaternion& rotation, const Vector3& scale)
 		{
-			Matrix mRotation = CreateRotation(rotation);
+            const Matrix mRotation = CreateRotation(rotation);
 
 			m00 = scale.x * mRotation.m00;  m01 = scale.x * mRotation.m01;  m02 = scale.x * mRotation.m02;  m03 = 0.0f;
 			m10 = scale.y * mRotation.m10;  m11 = scale.y * mRotation.m11;  m12 = scale.y * mRotation.m12;  m13 = 0.0f;
@@ -67,10 +67,10 @@ namespace Spartan::Math
 			m30 = translation.x;            m31 = translation.y;            m32 = translation.z;            m33 = 1.0f;
 		}
 
-		~Matrix() {}
+        ~Matrix() = default;
 
 		//= TRANSLATION ===========================================
-		Vector3 GetTranslation() { return Vector3(m30, m31, m32); }
+        [[nodiscard]] Vector3 GetTranslation() const { return Vector3(m30, m31, m32); }
 
 		static Matrix CreateTranslation(const Vector3& translation)
 		{
@@ -86,15 +86,15 @@ namespace Spartan::Math
 		//= ROTATION =====================================================================================
 		static Matrix CreateRotation(const Quaternion& rotation)
 		{
-			float num9	= rotation.x * rotation.x;
-		    float num8	= rotation.y * rotation.y;
-		    float num7	= rotation.z * rotation.z;
-		    float num6	= rotation.x * rotation.y;
-		    float num5	= rotation.z * rotation.w;
-		    float num4	= rotation.z * rotation.x;
-		    float num3	= rotation.y * rotation.w;
-		    float num2	= rotation.y * rotation.z;
-		    float num	= rotation.x * rotation.w;
+            const float num9	= rotation.x * rotation.x;
+            const float num8	= rotation.y * rotation.y;
+            const float num7	= rotation.z * rotation.z;
+            const float num6	= rotation.x * rotation.y;
+            const float num5	= rotation.z * rotation.w;
+            const float num4	= rotation.z * rotation.x;
+            const float num3	= rotation.y * rotation.w;
+            const float num2	= rotation.y * rotation.z;
+            const float num	= rotation.x * rotation.w;
 
 			return Matrix(
 				1.0f - (2.0f * (num8 + num7)),
@@ -116,9 +116,9 @@ namespace Spartan::Math
 			);
 		}
 
-		Quaternion GetRotation() const
+        [[nodiscard]] Quaternion GetRotation() const
 		{
-			Vector3 scale = GetScale();
+            const Vector3 scale = GetScale();
 
 			// Avoid division by zero (we'll divide to remove scaling)
 			if (scale.x == 0.0f || scale.y == 0.0f || scale.z == 0.0f) { return Quaternion(0, 0, 0, 1); }
@@ -138,7 +138,7 @@ namespace Spartan::Math
 			Quaternion quaternion;
             float sqrt;
             float half;
-            float scale = mRot.m00 + mRot.m11 + mRot.m22;
+            const float scale = mRot.m00 + mRot.m11 + mRot.m22;
 
 		    if (scale > 0.0f)
 		    {
@@ -189,16 +189,16 @@ namespace Spartan::Math
 		//================================================================================================
 
 		//= SCALE ========================================================================================
-		Vector3 GetScale() const
+        [[nodiscard]] Vector3 GetScale() const
 		{
-			int xs = (Sign(m00 * m01 * m02 * m03) < 0) ? -1 : 1;
-            int ys = (Sign(m10 * m11 * m12 * m13) < 0) ? -1 : 1;
-            int zs = (Sign(m20 * m21 * m22 * m23) < 0) ? -1 : 1;
+            const int xs = (Sign(m00 * m01 * m02 * m03) < 0) ? -1 : 1;
+            const int ys = (Sign(m10 * m11 * m12 * m13) < 0) ? -1 : 1;
+            const int zs = (Sign(m20 * m21 * m22 * m23) < 0) ? -1 : 1;
 
 			return Vector3(
-				(float)xs * Sqrt(m00 * m00 + m01 * m01 + m02 * m02),
-				(float)ys * Sqrt(m10 * m10 + m11 * m11 + m12 * m12),
-				(float)zs * Sqrt(m20 * m20 + m21 * m21 + m22 * m22)
+				static_cast<float>(xs) * Sqrt(m00 * m00 + m01 * m01 + m02 * m02),
+				static_cast<float>(ys) * Sqrt(m10 * m10 + m11 * m11 + m12 * m12),
+				static_cast<float>(zs) * Sqrt(m20 * m20 + m21 * m21 + m22 * m22)
 			);
 		}
 
@@ -218,9 +218,9 @@ namespace Spartan::Math
 		//= MISC ===========================================================================================================================
 		static Matrix CreateLookAtLH(const Vector3& cameraPosition, const Vector3& target, const Vector3& up)
 		{
-			Vector3 zAxis = Vector3::Normalize(target - cameraPosition);
-			Vector3 xAxis = Vector3::Normalize(Vector3::Cross(up, zAxis));
-			Vector3 yAxis = Vector3::Cross(zAxis, xAxis);
+            const Vector3 zAxis = Vector3::Normalize(target - cameraPosition);
+            const Vector3 xAxis = Vector3::Normalize(Vector3::Cross(up, zAxis));
+            const Vector3 yAxis = Vector3::Cross(zAxis, xAxis);
 
 			return Matrix(
 				xAxis.x, yAxis.x, zAxis.x, 0,
@@ -253,11 +253,11 @@ namespace Spartan::Math
 		// fieldOfView -> Field of view in the y direction, in radians.
 		static Matrix CreatePerspectiveFieldOfViewLH(float fieldOfView, float aspectRatio, float nearPlaneDistance, float farPlaneDistance)
 		{
-			float yScale = CotF(fieldOfView / 2);
-			float xScale = yScale / aspectRatio;
+            const float yScale = CotF(fieldOfView / 2);
+            const float xScale = yScale / aspectRatio;
 
-			float zn = nearPlaneDistance;
-			float zf = farPlaneDistance;
+            const float zn = nearPlaneDistance;
+            const float zf = farPlaneDistance;
 
 			return Matrix(
 				xScale, 0, 0, 0,
@@ -269,7 +269,7 @@ namespace Spartan::Math
 		//=================================================================================================================================
 
 		//= TRANSPOSE ====================================================================================
-		Matrix Transposed() const { return Transpose(*this); }
+        [[nodiscard]] Matrix Transposed() const { return Transpose(*this); }
 		void Transpose() { *this = Transpose(*this); }
 		static Matrix Transpose(const Matrix& matrix)
 		{
@@ -283,7 +283,7 @@ namespace Spartan::Math
 		//================================================================================================
 
 		//= INVERT =======================================================================================
-		Matrix Inverted() const { return Invert(*this); }
+        [[nodiscard]] Matrix Inverted() const { return Invert(*this); }
 		static Matrix Invert(const Matrix& matrix)
 		{
 			float v0 = matrix.m20 * matrix.m31 - matrix.m21 * matrix.m30;
@@ -298,17 +298,17 @@ namespace Spartan::Math
 			float i20 = (v4 * matrix.m10 - v2 * matrix.m11 + v0 * matrix.m13);
 			float i30 = -(v3 * matrix.m10 - v1 * matrix.m11 + v0 * matrix.m12);
 
-			float invDet = 1.0f / (i00 * matrix.m00 + i10 * matrix.m01 + i20 * matrix.m02 + i30 * matrix.m03);
+            const float invDet = 1.0f / (i00 * matrix.m00 + i10 * matrix.m01 + i20 * matrix.m02 + i30 * matrix.m03);
 
 			i00 *= invDet;
 			i10 *= invDet;
 			i20 *= invDet;
 			i30 *= invDet;
 
-			float i01 = -(v5 * matrix.m01 - v4 * matrix.m02 + v3 * matrix.m03) * invDet;
-			float i11 = (v5 * matrix.m00 - v2 * matrix.m02 + v1 * matrix.m03) * invDet;
-			float i21 = -(v4 * matrix.m00 - v2 * matrix.m01 + v0 * matrix.m03) * invDet;
-			float i31 = (v3 * matrix.m00 - v1 * matrix.m01 + v0 * matrix.m02) * invDet;
+            const float i01 = -(v5 * matrix.m01 - v4 * matrix.m02 + v3 * matrix.m03) * invDet;
+            const float i11 = (v5 * matrix.m00 - v2 * matrix.m02 + v1 * matrix.m03) * invDet;
+            const float i21 = -(v4 * matrix.m00 - v2 * matrix.m01 + v0 * matrix.m03) * invDet;
+            const float i31 = (v3 * matrix.m00 - v1 * matrix.m01 + v0 * matrix.m02) * invDet;
 
 			v0 = matrix.m10 * matrix.m31 - matrix.m11 * matrix.m30;
 			v1 = matrix.m10 * matrix.m32 - matrix.m12 * matrix.m30;
@@ -317,10 +317,10 @@ namespace Spartan::Math
 			v4 = matrix.m11 * matrix.m33 - matrix.m13 * matrix.m31;
 			v5 = matrix.m12 * matrix.m33 - matrix.m13 * matrix.m32;
 
-			float i02 = (v5 * matrix.m01 - v4 * matrix.m02 + v3 * matrix.m03) * invDet;
-			float i12 = -(v5 * matrix.m00 - v2 * matrix.m02 + v1 * matrix.m03) * invDet;
-			float i22 = (v4 * matrix.m00 - v2 * matrix.m01 + v0 * matrix.m03) * invDet;
-			float i32 = -(v3 * matrix.m00 - v1 * matrix.m01 + v0 * matrix.m02) * invDet;
+            const float i02 = (v5 * matrix.m01 - v4 * matrix.m02 + v3 * matrix.m03) * invDet;
+            const float i12 = -(v5 * matrix.m00 - v2 * matrix.m02 + v1 * matrix.m03) * invDet;
+            const float i22 = (v4 * matrix.m00 - v2 * matrix.m01 + v0 * matrix.m03) * invDet;
+            const float i32 = -(v3 * matrix.m00 - v1 * matrix.m01 + v0 * matrix.m02) * invDet;
 
 			v0 = matrix.m21 * matrix.m10 - matrix.m20 * matrix.m11;
 			v1 = matrix.m22 * matrix.m10 - matrix.m20 * matrix.m12;
@@ -329,10 +329,10 @@ namespace Spartan::Math
 			v4 = matrix.m23 * matrix.m11 - matrix.m21 * matrix.m13;
 			v5 = matrix.m23 * matrix.m12 - matrix.m22 * matrix.m13;
 
-			float i03 = -(v5 * matrix.m01 - v4 * matrix.m02 + v3 * matrix.m03) * invDet;
-			float i13 = (v5 * matrix.m00 - v2 * matrix.m02 + v1 * matrix.m03) * invDet;
-			float i23 = -(v4 * matrix.m00 - v2 * matrix.m01 + v0 * matrix.m03) * invDet;
-			float i33 = (v3 * matrix.m00 - v1 * matrix.m01 + v0 * matrix.m02) * invDet;
+            const float i03 = -(v5 * matrix.m01 - v4 * matrix.m02 + v3 * matrix.m03) * invDet;
+            const float i13 = (v5 * matrix.m00 - v2 * matrix.m02 + v1 * matrix.m03) * invDet;
+            const float i23 = -(v4 * matrix.m00 - v2 * matrix.m01 + v0 * matrix.m03) * invDet;
+            const float i33 = (v3 * matrix.m00 - v1 * matrix.m01 + v0 * matrix.m02) * invDet;
 
 			return Matrix(
 				i00, i01, i02, i03,
@@ -424,8 +424,8 @@ namespace Spartan::Math
 		bool operator!=(const Matrix& b) const { return !(*this == b); }
 		//==============================================================
 
-		const float* Data() const { return &m00; }
-		std::string ToString() const;
+        [[nodiscard]] const float* Data() const { return &m00; }
+        [[nodiscard]] std::string ToString() const;
 
 		// Column-major memory representation 
 		float m00{}, m10{}, m20{}, m30{};

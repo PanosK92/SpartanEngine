@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= IMPLEMENTATION ===============
 #include "../RHI_Implementation.h"
+#include "../../Math/MathHelper.h"
 #ifdef API_GRAPHICS_VULKAN
 //================================
 
@@ -95,7 +96,7 @@ namespace Spartan
 
         inline VkSurfaceFormatKHR choose_format(const VkFormat prefered_format, const std::vector<VkSurfaceFormatKHR>& available_formats)
         {
-            VkColorSpaceKHR color_space = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+            const VkColorSpaceKHR color_space = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 
             if (available_formats.size() == 1 && available_formats[0].format == VK_FORMAT_UNDEFINED)
             {
@@ -175,8 +176,8 @@ namespace Spartan
             // Compute extent
             VkExtent2D extent =
             {
-                Clamp(width, surface_support.capabilities.minImageExtent.width, surface_support.capabilities.maxImageExtent.width),
-                Clamp(height, surface_support.capabilities.minImageExtent.height, surface_support.capabilities.maxImageExtent.height)
+                Math::Clamp(width, surface_support.capabilities.minImageExtent.width, surface_support.capabilities.maxImageExtent.width),
+                Math::Clamp(height, surface_support.capabilities.minImageExtent.height, surface_support.capabilities.maxImageExtent.height)
             };
 
             // Choose format
@@ -233,7 +234,7 @@ namespace Spartan
             }
 
             // Create image view lambda
-            auto CreateImageView = [](const std::shared_ptr<RHI_Device>& rhi_device, VkImage& _image, VkImageView& image_view, VkFormat format, bool swizzle = false)
+            auto create_image_view = [](const std::shared_ptr<RHI_Device>& rhi_device, VkImage& _image, VkImageView& image_view, VkFormat format, bool swizzle = false)
             {
                 VkImageViewCreateInfo create_info           = {};
                 create_info.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -263,7 +264,7 @@ namespace Spartan
                 swap_chain_image_views.resize(swap_chain_images.size());
                 for (size_t i = 0; i < swap_chain_image_views.size(); i++)
                 {
-                    if (!CreateImageView(rhi_device, swap_chain_images[i], swap_chain_image_views[i], rhi_context->surface_format.format, swizzle))
+                    if (!create_image_view(rhi_device, swap_chain_images[i], swap_chain_image_views[i], rhi_context->surface_format.format, swizzle))
                     {
                         LOG_ERROR("Failed to create image view");
                         return false;

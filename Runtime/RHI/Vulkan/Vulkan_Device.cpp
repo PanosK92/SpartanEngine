@@ -145,7 +145,7 @@ namespace Spartan
                 create_info.hwnd                        = static_cast<HWND>(window_handle);
                 create_info.hinstance                   = GetModuleHandle(nullptr);
 
-                auto result = vkCreateWin32SurfaceKHR(rhi_device->GetContextRhi()->instance, &create_info, nullptr, &surface_temp);
+                const auto result = vkCreateWin32SurfaceKHR(rhi_device->GetContextRhi()->instance, &create_info, nullptr, &surface_temp);
                 if (result != VK_SUCCESS)
                 {
                     LOGF_ERROR("Failed to create Win32 surface, %s.", Vulkan_Common::to_string(result));
@@ -155,10 +155,10 @@ namespace Spartan
 
             for (const auto& device : physical_devices)
             {
-                bool extensions_supported = check_extension_support(rhi_device, device);
+                const bool extensions_supported = check_extension_support(rhi_device, device);
                 auto _indices = get_family_indices(rhi_device, surface_temp, device);
 
-                bool is_suitable = _indices.IsComplete() && extensions_supported;
+                const bool is_suitable = _indices.IsComplete() && extensions_supported;
                 if (is_suitable)
                 {
                     rhi_device->GetContextRhi()->device_physical   = device;

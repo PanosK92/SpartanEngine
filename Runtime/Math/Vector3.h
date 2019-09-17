@@ -72,10 +72,10 @@ namespace Spartan::Math
         // Normalize
         void Normalize()
         {
-            auto length_squared = LengthSquared();
+            const auto length_squared = LengthSquared();
             if (!Equals(length_squared, 1.0f) && length_squared > 0.0f)
             {
-                auto length_inverted = 1.0f / Sqrt(length_squared);
+                const auto length_inverted = 1.0f / Sqrt(length_squared);
                 x *= length_inverted;
                 y *= length_inverted;
                 z *= length_inverted;
@@ -83,12 +83,12 @@ namespace Spartan::Math
         };
 
         // Return normalized vector
-		Vector3 Normalized() const
+        [[nodiscard]] Vector3 Normalized() const
 		{
-            auto length_squared = LengthSquared();
+            const auto length_squared = LengthSquared();
             if (!Equals(length_squared, 1.0f) && length_squared > 0.0f)
             {
-                auto length_inverted = 1.0f / Sqrt(length_squared);
+                const auto length_inverted = 1.0f / Sqrt(length_squared);
                 return (*this) * length_inverted;
             }
             else
@@ -101,24 +101,24 @@ namespace Spartan::Math
         // Returns the dot product
 		static float Dot(const Vector3& v1, const Vector3& v2)	{ return (v1.x * v2.x + v1.y * v2.y + v1.z * v2.z); }
         // Returns the dot product
-		float Dot(const Vector3& rhs) const						{ return x * rhs.x + y * rhs.y + z * rhs.z; }
+        [[nodiscard]] float Dot(const Vector3& rhs) const						{ return x * rhs.x + y * rhs.y + z * rhs.z; }
 
         // Returns the cross product
 		static Vector3 Cross(const Vector3& v1, const Vector3& v2)
 		{
-			float x = v1.y * v2.z - v2.y * v1.z;
-			float y = -(v1.x * v2.z - v2.x * v1.z);
-			float z = v1.x * v2.y - v2.x * v1.y;
+            const float x = v1.y * v2.z - v2.y * v1.z;
+            const float y = -(v1.x * v2.z - v2.x * v1.z);
+            const float z = v1.x * v2.y - v2.x * v1.y;
 
 			return Vector3(x, y, z);
 		}
         // Returns the cross product
-		Vector3 Cross(const Vector3& v2) const { return Cross(*this, v2); }
+        [[nodiscard]] Vector3 Cross(const Vector3& v2) const { return Cross(*this, v2); }
 
         // Returns the length
-		float Length() const		{ return Sqrt(x * x + y * y + z * z); }
+        [[nodiscard]] float Length() const		    { return Sqrt(x * x + y * y + z * z); }
         // Returns the squared length
-		float LengthSquared() const { return x * x + y * y + z * z; }
+        [[nodiscard]] float LengthSquared() const   { return x * x + y * y + z * z; }
 
         // Returns the distance between to vectors
         static float Distance(const Vector3& a, const Vector3& b)           { return (b - a).Length(); }
@@ -134,7 +134,7 @@ namespace Spartan::Math
 		}
 
         // Return absolute vector
-		Vector3 Absolute() const { return Vector3(Abs(x), Abs(y), Abs(z)); }
+        [[nodiscard]] Vector3 Absolute() const { return Vector3(Abs(x), Abs(y), Abs(z)); }
 
 		Vector3 operator*(const Vector3& b) const
 		{
@@ -168,8 +168,8 @@ namespace Spartan::Math
 			z *= value;
 		}
 
-		Vector3 operator+(const Vector3& b) const { return Vector3(x + b.x, y + b.y, z + b.z); }
-		Vector3 operator+(const float value) const { return Vector3(x + value, y + value, z + value); }
+		Vector3 operator+(const Vector3& b) const   { return Vector3(x + b.x, y + b.y, z + b.z); }
+		Vector3 operator+(const float value) const  { return Vector3(x + value, y + value, z + value); }
 
 		void operator+=(const Vector3& b)
 		{
@@ -185,8 +185,8 @@ namespace Spartan::Math
 			z += value;
 		}
 
-		Vector3 operator-(const Vector3& b) const { return Vector3(x - b.x, y - b.y, z - b.z); }
-		Vector3 operator-(const float value) { return Vector3(x - value, y - value, z - value); }
+		Vector3 operator-(const Vector3& b) const   { return Vector3(x - b.x, y - b.y, z - b.z); }
+		Vector3 operator-(const float value) const  { return Vector3(x - value, y - value, z - value); }
 
 		void operator-=(const Vector3& rhs)
 		{
@@ -196,7 +196,7 @@ namespace Spartan::Math
 		}
 
 		Vector3 operator/(const Vector3& rhs) const { return Vector3(x / rhs.x, y / rhs.y, z / rhs.z); }
-		Vector3 operator/(const float rhs) { return Vector3(x / rhs, y / rhs, z / rhs); }
+		Vector3 operator/(const float rhs) const    { return Vector3(x / rhs, y / rhs, z / rhs); }
 
 		void operator/=(const Vector3& rhs)
 		{
@@ -220,9 +220,8 @@ namespace Spartan::Math
         // Return negation.
         Vector3 operator -() const { return Vector3(-x, -y, -z); }
 
-
-		std::string ToString() const;
-		const float* Data() const { return &x; }
+        [[nodiscard]] std::string ToString() const;
+        [[nodiscard]] const float* Data() const { return &x; }
 
 		float x;
 		float y;

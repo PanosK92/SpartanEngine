@@ -72,7 +72,7 @@ namespace Spartan
 		void SetJobCount(int progressID, int jobCount)				{ m_reports[progressID].jobCount = jobCount;}
 		void IncrementJobsDone(int progressID)						{ m_reports[progressID].jobsDone++; }
 		void SetJobsDone(int progressID, int jobsDone)				{ m_reports[progressID].jobsDone = jobsDone; }
-		float GetPercentage(int progressID)							{ return (float)m_reports[progressID].jobsDone / (float)m_reports[progressID].jobCount; }
+		float GetPercentage(int progressID)							{ return static_cast<float>(m_reports[progressID].jobsDone) / static_cast<float>(m_reports[progressID].jobCount); }
 		bool GetIsLoading(int progressID)							{ return m_reports[progressID].isLoading; }
 		void SetIsLoading(int progressID, bool isLoading)			{ m_reports[progressID].isLoading = isLoading; }
 

@@ -166,6 +166,9 @@ namespace Spartan
 		void RemoveComponentById(uint32_t id);
 		const auto& GetAllComponents() const { return m_components; }
 
+        void MarkForDestruction()           { m_destruction_pending = true; }
+        bool IsPendingDestruction() const   { return m_destruction_pending; }
+
 		// Direct access for performance critical usage (not safe)
 		Transform* GetTransform_PtrRaw() const		{ return m_transform; }
 		Renderable* GetRenderable_PtrRaw() const	{ return m_renderable; }
@@ -180,6 +183,7 @@ namespace Spartan
 		Transform* m_transform		= nullptr;
 		Renderable* m_renderable	= nullptr;
         Context* m_context          = nullptr;
+        bool m_destruction_pending  = false;
 		
         // Components
         std::vector<std::shared_ptr<IComponent>> m_components;

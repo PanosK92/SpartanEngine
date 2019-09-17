@@ -51,14 +51,14 @@ namespace Spartan::Math
 
 		Vector2(int x, int y)
 		{
-			this->x = (float)x;
-			this->y = (float)y;
+			this->x = static_cast<float>(x);
+			this->y = static_cast<float>(y);
 		}
 
 		Vector2(uint32_t x, uint32_t y)
 		{
-			this->x = (float)x;
-			this->y = (float)y;
+			this->x = static_cast<float>(x);
+			this->y = static_cast<float>(y);
 		}
 		
 		Vector2(float x)

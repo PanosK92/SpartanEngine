@@ -54,7 +54,13 @@ namespace Spartan
 
     Entity::~Entity()
 	{
-		// delete components
+        m_is_active             = false;
+        m_hierarchy_visibility  = false;
+        m_transform             = nullptr;
+        m_renderable            = nullptr;
+        m_context               = nullptr;
+        m_name.clear();
+        m_component_mask = 0;
 		for (auto it = m_components.begin(); it != m_components.end();)
 		{
 			(*it)->OnRemove();
@@ -62,10 +68,6 @@ namespace Spartan
 			it = m_components.erase(it);
 		}
 		m_components.clear();
-
-		m_name.clear();
-		m_is_active				= true;
-		m_hierarchy_visibility	= true;
 	}
 
 	void Entity::Clone()
