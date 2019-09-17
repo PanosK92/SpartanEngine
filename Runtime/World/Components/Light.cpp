@@ -31,10 +31,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../RHI/RHI_ConstantBuffer.h"
 //=======================================
 
-//= NAMESPACES ================
+//= NAMESPACES ===============
 using namespace Spartan::Math;
 using namespace std;
-//=============================
+//============================
 
 namespace Spartan
 {
@@ -74,7 +74,7 @@ namespace Spartan
 			m_is_dirty = true;
 		}
 
-        // Used in many place, no point in continuing without it
+        // Used in many places, no point in continuing without it
         if (!m_renderer)
         {
             LOG_ERROR_INVALID_INTERNALS();
@@ -155,7 +155,7 @@ namespace Spartan
 
 	void Light::SetCastShadows(bool castShadows)
 	{
-		if (m_cast_shadows = castShadows)
+		if (m_cast_shadows == castShadows)
 			return;
 
 		m_cast_shadows = castShadows;
@@ -170,17 +170,17 @@ namespace Spartan
 	void Light::SetAngle(float angle)
 	{
 		m_angle_rad = Clamp(angle, 0.0f, 1.0f);
-		m_is_dirty = true;
+		m_is_dirty  = true;
 	}
 
-	Vector3 Light::GetDirection()
-	{
+	Vector3 Light::GetDirection() const
+    {
 		return GetTransform()->GetForward();
 	}
 
-	void Light::ClampRotation()
-	{
-		Vector3 rotation = GetTransform()->GetRotation().ToEulerAngles();
+	void Light::ClampRotation() const
+    {
+        const Vector3 rotation = GetTransform()->GetRotation().ToEulerAngles();
 		if (rotation.x <= 0.0f)
 		{
 			GetTransform()->SetRotation(Quaternion::FromEulerAngles(179.0f, rotation.y, rotation.z));
@@ -206,24 +206,24 @@ namespace Spartan
 		}
 		else if (m_lightType == LightType_Spot)
 		{
-            Vector3 position    = GetTransform()->GetPosition();
-            Vector3 forward		= GetTransform()->GetForward();
-            Vector3 up			= GetTransform()->GetUp();
+            const Vector3 position   = GetTransform()->GetPosition();
+            const Vector3 forward	= GetTransform()->GetForward();
+            const Vector3 up		= GetTransform()->GetUp();
 
 			// Compute
 			m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + forward, up);
 		}
 		else if (m_lightType == LightType_Point)
 		{
-            Vector3 position = GetTransform()->GetPosition();
+            const Vector3 position = GetTransform()->GetPosition();
 
 			// Compute view for each side of the cube map
-			m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + Vector3::Right,		Vector3::Up);		// x+
-			m_matrix_view[1] = Matrix::CreateLookAtLH(position, position + Vector3::Left,		Vector3::Up);		// x-
-			m_matrix_view[2] = Matrix::CreateLookAtLH(position, position + Vector3::Up,			Vector3::Backward);	// y+
+			m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + Vector3::Right,		Vector3::Up);		    // x+
+			m_matrix_view[1] = Matrix::CreateLookAtLH(position, position + Vector3::Left,		Vector3::Up);		    // x-
+			m_matrix_view[2] = Matrix::CreateLookAtLH(position, position + Vector3::Up,		Vector3::Backward);	// y+
 			m_matrix_view[3] = Matrix::CreateLookAtLH(position, position + Vector3::Down,		Vector3::Forward);	// y-
-			m_matrix_view[4] = Matrix::CreateLookAtLH(position, position + Vector3::Forward,	Vector3::Up);		// z+
-			m_matrix_view[5] = Matrix::CreateLookAtLH(position, position + Vector3::Backward,	Vector3::Up);		// z-
+			m_matrix_view[4] = Matrix::CreateLookAtLH(position, position + Vector3::Forward,	Vector3::Up);		    // z+
+			m_matrix_view[5] = Matrix::CreateLookAtLH(position, position + Vector3::Backward,	Vector3::Up);		    // z-
 		}
 	}
 
@@ -235,14 +235,14 @@ namespace Spartan
             return false;
         }
 
-        bool reverse_z = m_renderer ? m_renderer->GetReverseZ() : false;
+        const bool reverse_z = m_renderer ? m_renderer->GetReverseZ() : false;
 
 		if (m_lightType == LightType_Directional)
 		{
             Cascade& cascade            = m_cascades[index];
-            float cascade_extent        = (cascade.max.z - cascade.min.z);
-            float min_z                 = reverse_z ? cascade_extent : 0.0f;
-            float max_z                 = reverse_z ? 0.0f : cascade_extent;
+            const float cascade_extent  = (cascade.max.z - cascade.min.z);
+            const float min_z           = reverse_z ? cascade_extent : 0.0f;
+            const float max_z           = reverse_z ? 0.0f : cascade_extent;
             m_matrix_projection[index]  = Matrix::CreateOrthoOffCenterLH(cascade.min.x, cascade.max.x, cascade.min.y, cascade.max.y, min_z, max_z);
             cascade.frustum             = Frustum(m_matrix_view[index], m_matrix_projection[index], max_z);
 		}
@@ -284,33 +284,31 @@ namespace Spartan
 
     void Light::ComputeCascadeSplits()
     {
-        if (!m_renderer || !m_renderer->GetCamera())
-        {
-            LOG_ERROR_INVALID_INTERNALS();
+        // Can happen during the first frame, don't log error
+        if (!m_renderer->GetCamera())
             return;
-        }
 
-        Camera* camera                  = m_renderer->GetCamera().get();
-        float clip_near                 = camera->GetNearPlane();
-        float clip_far                  = camera->GetFarPlane();
-        Matrix view_projection_inverted = Matrix::Invert(camera->GetViewMatrix() * camera->ComputeProjection(true));
+        Camera* camera                        = m_renderer->GetCamera().get();
+        const float clip_near                 = camera->GetNearPlane();
+        const float clip_far                  = camera->GetFarPlane();
+        const Matrix view_projection_inverted = Matrix::Invert(camera->GetViewMatrix() * camera->ComputeProjection(true));
 
         // Calculate split depths based on view camera frustum
         // Based on method presented in https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch10.html
-        float split_lambda  = 0.99f;
-        float clip_range    = clip_far - clip_near;
-        float min_z         = clip_near;
-        float max_z         = clip_near + clip_range;
-        float range         = max_z - min_z;
-        float ratio         = max_z / min_z;    
+        const float split_lambda  = 0.99f;
+        const float clip_range    = clip_far - clip_near;
+        const float min_z         = clip_near;
+        const float max_z         = clip_near + clip_range;
+        const float range         = max_z - min_z;
+        const float ratio         = max_z / min_z;    
         float splits[g_cascade_count];
         for (uint32_t i = 0; i < g_cascade_count; i++)
         {
-            float p         = (i + 1) / static_cast<float>(g_cascade_count);
-            float log       = min_z * Math::Pow(ratio, p);
-            float uniform   = min_z + range * p;
-            float d         = split_lambda * (log - uniform) + uniform;
-            splits[i]       = (d - clip_near) / clip_range;
+            const float p           = (i + 1) / static_cast<float>(g_cascade_count);
+            const float log         = min_z * Math::Pow(ratio, p);
+            const float uniform     = min_z + range * p;
+            const float d           = split_lambda * (log - uniform) + uniform;
+            splits[i]               = (d - clip_near) / clip_range;
         }
 
         for (uint32_t cascade_index = 0; cascade_index < g_cascade_count; cascade_index++)
@@ -329,10 +327,10 @@ namespace Spartan
             };
 
             // Project frustum corners into world space
-            for (uint32_t i = 0; i < 8; i++)
+            for (Vector3& frustum_corner : frustum_corners)
             {
-                Vector4 inverted_corner = Vector4(frustum_corners[i], 1.0f) * view_projection_inverted;
-                frustum_corners[i] = inverted_corner / inverted_corner.w;
+                Vector4 inverted_corner = Vector4(frustum_corner, 1.0f) * view_projection_inverted;
+                frustum_corner = inverted_corner / inverted_corner.w;
             }
 
             // Compute split distance
@@ -341,7 +339,7 @@ namespace Spartan
                 static float last_split_distance;
                 if (cascade_index == 0) last_split_distance = 0.0f;
 
-                float split_distance = splits[cascade_index];
+                const float split_distance = splits[cascade_index];
                 for (uint32_t i = 0; i < 4; i++)
                 {
                     Vector3 distance        = frustum_corners[i + 4] - frustum_corners[i];
@@ -361,17 +359,17 @@ namespace Spartan
 
                 // Compute center
                 cascade.center = Vector3::Zero;
-                for (uint32_t i = 0; i < 8; i++)
+                for (const Vector3& frustum_corner : frustum_corners)
                 {
-                    cascade.center += Vector3(frustum_corners[i]);
+                    cascade.center += Vector3(frustum_corner);
                 }
                 cascade.center /= 8.0f;
 
                 // Compute radius
                 float radius = 0.0f;
-                for (uint32_t i = 0; i < 8; i++)
+                for (const Vector3& frustum_corner : frustum_corners)
                 {
-                    float distance = Vector3::Distance(frustum_corners[i], cascade.center);
+                    const float distance = Vector3::Distance(frustum_corner, cascade.center);
                     radius = Max(radius, distance);
                 }
                 radius = Ceil(radius * 16.0f) / 16.0f;

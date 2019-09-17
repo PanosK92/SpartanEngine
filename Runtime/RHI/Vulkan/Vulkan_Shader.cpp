@@ -45,7 +45,7 @@ namespace Spartan
 {
 	RHI_Shader::~RHI_Shader()
 	{
-		auto rhi_context = m_rhi_device->GetContextRhi();
+        const auto rhi_context = m_rhi_device->GetContextRhi();
 
 		if (HasVertexShader())
 		{
@@ -269,7 +269,7 @@ namespace Spartan
 				}
 
                 // utf16 to utf8, is this done properly ?
-                string file_name_utf8 = CW2A(file_name);
+                const string file_name_utf8 = CW2A(file_name);
 
 				auto blob_deleter = [](Blob* blob) { delete blob; };
 				unique_ptr<Blob, decltype(blob_deleter)> source(nullptr, blob_deleter);
@@ -302,7 +302,7 @@ namespace Spartan
 			ULONG STDMETHODCALLTYPE Release() override
 			{
 				--m_ref;
-				ULONG result = m_ref;
+                const ULONG result = m_ref;
 				if (result == 0)
 				{
 					delete this;
@@ -341,8 +341,8 @@ namespace Spartan
 	void* RHI_Shader::_Compile(const Shader_Type type, const string& shader)
 	{
 		// Deduce some things
-		auto is_file	= FileSystem::IsSupportedShaderFile(shader);
-		auto file_name	= is_file ? FileSystem::StringToWstring(FileSystem::GetFileNameFromFilePath(shader)) : wstring(L"shader");
+        const auto is_file	    = FileSystem::IsSupportedShaderFile(shader);
+        const auto file_name	= is_file ? FileSystem::StringToWstring(FileSystem::GetFileNameFromFilePath(shader)) : wstring(L"shader");
 		string file_directory;
 		if (is_file)
 		{
@@ -374,7 +374,7 @@ namespace Spartan
 		for (const auto& define : m_defines)
 		{
 			auto first	= FileSystem::StringToWstring(define.first);
-			auto second = FileSystem::StringToWstring(define.second);
+            const auto second = FileSystem::StringToWstring(define.second);
 			defines_wstring[first] = second;
 		}
 
@@ -390,7 +390,7 @@ namespace Spartan
 			HRESULT result;
 			if (is_file)
 			{
-				auto file_path = FileSystem::StringToWstring(shader);				
+                const auto file_path = FileSystem::StringToWstring(shader);				
 				result = DxShaderCompiler::Instance::Get().library->CreateBlobFromFile(file_path.c_str(), nullptr, &shader_blob);
 			}
 			else // Source
@@ -406,7 +406,7 @@ namespace Spartan
 		}
 
 		// Compile
-		CComPtr<IDxcIncludeHandler> include_handler = new DxShaderCompiler::SpartanIncludeHandler(file_directory);
+        const CComPtr<IDxcIncludeHandler> include_handler = new DxShaderCompiler::SpartanIncludeHandler(file_directory);
 		CComPtr<IDxcOperationResult> compilation_result = nullptr;
 		{
 			if (FAILED(DxShaderCompiler::Instance::Get().compiler->Compile
@@ -434,9 +434,8 @@ namespace Spartan
 		// Create shader module
 		CComPtr<IDxcBlob> shader_compiled	= nullptr;
 		VkShaderModule shader_module		= nullptr;
-		compilation_result->GetResult(&shader_compiled);			
-		if (shader_compiled)
-		{
+        if (SUCCEEDED(compilation_result->GetResult(&shader_compiled)))
+        {
 			VkShaderModuleCreateInfo create_info = {};
 			create_info.sType		= VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 			create_info.codeSize	= static_cast<size_t>(shader_compiled->GetBufferSize());
@@ -458,14 +457,22 @@ namespace Spartan
 					if (!m_input_layout->Create<T>(nullptr))
 					{
 						LOGF_ERROR("Failed to create input layout for %s", FileSystem::GetFileNameFromFilePath(shader).c_str());
+                        return nullptr;
 					}
 				}
 			}
+            else
+            {
+                LOG_ERROR("Failed to create shader module.");
+                return nullptr;
+            }
 		}	
-		else
+        else
 		{
-				LOG_ERROR("Failed to create shader module.");
+            LOG_ERROR("Failed to get shader buffer.");
+            return nullptr;
 		}
+
 		return static_cast<void*>(shader_module);
 	}		
 }

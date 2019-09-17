@@ -221,8 +221,8 @@ namespace Spartan
 		if (!GetAttribute(nodeName, attributeName, &valueStr))
 			return false;
 
-		value->x = (float)atof(FileSystem::GetStringBetweenExpressions(valueStr, "X:", ",").c_str());
-		value->y = (float)atof(FileSystem::GetStringAfterExpression(valueStr, "Y:").c_str());
+		value->x = static_cast<float>(atof(FileSystem::GetStringBetweenExpressions(valueStr, "X:", ",").c_str()));
+		value->y = static_cast<float>(atof(FileSystem::GetStringAfterExpression(valueStr, "Y:").c_str()));
 
 		return true;
 	}
@@ -233,9 +233,9 @@ namespace Spartan
 		if (!GetAttribute(nodeName, attributeName, &valueStr))
 			return false;
 
-		value->x = (float)atof(FileSystem::GetStringBetweenExpressions(valueStr, "X:", ",").c_str());
-		value->y = (float)atof(FileSystem::GetStringBetweenExpressions(valueStr, "Y:", ",").c_str());
-		value->z = (float)atof(FileSystem::GetStringAfterExpression(valueStr, "Z:").c_str());
+		value->x = static_cast<float>(atof(FileSystem::GetStringBetweenExpressions(valueStr, "X:", ",").c_str()));
+		value->y = static_cast<float>(atof(FileSystem::GetStringBetweenExpressions(valueStr, "Y:", ",").c_str()));
+		value->z = static_cast<float>(atof(FileSystem::GetStringAfterExpression(valueStr, "Z:").c_str()));
 
 		return true;
 	}
@@ -246,10 +246,10 @@ namespace Spartan
 		if (!GetAttribute(nodeName, attributeName, &valueStr))
 			return false;
 
-		value->x = (float)atof(FileSystem::GetStringBetweenExpressions(valueStr, "X:", ",").c_str());
-		value->y = (float)atof(FileSystem::GetStringBetweenExpressions(valueStr, "Y:", ",").c_str());
-		value->z = (float)atof(FileSystem::GetStringBetweenExpressions(valueStr, "Z:", ",").c_str());
-		value->w = (float)atof(FileSystem::GetStringAfterExpression(valueStr, "W:").c_str());
+		value->x = static_cast<float>(atof(FileSystem::GetStringBetweenExpressions(valueStr, "X:", ",").c_str()));
+		value->y = static_cast<float>(atof(FileSystem::GetStringBetweenExpressions(valueStr, "Y:", ",").c_str()));
+		value->z = static_cast<float>(atof(FileSystem::GetStringBetweenExpressions(valueStr, "Z:", ",").c_str()));
+		value->w = static_cast<float>(atof(FileSystem::GetStringAfterExpression(valueStr, "W:").c_str()));
 
 		return true;
 	}

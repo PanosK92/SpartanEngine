@@ -57,7 +57,7 @@ namespace Spartan
 		void Index_Add(uint32_t index)							{ m_indices.emplace_back(index); }
 		std::vector<uint32_t>& Indices_Get()					{ return m_indices; }
 		void Indices_Set(const std::vector<uint32_t>& indices)	{ m_indices = indices; }
-		uint32_t Indices_Count() const							{ return (uint32_t)m_indices.size(); }
+		uint32_t Indices_Count() const							{ return static_cast<uint32_t>(m_indices.size()); }
 		void Indices_Append(const std::vector<uint32_t>& indices, uint32_t* indexOffset);
 	
 		// Misc

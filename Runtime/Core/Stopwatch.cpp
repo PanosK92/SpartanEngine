@@ -48,12 +48,12 @@ namespace Spartan
 	float Stopwatch::GetElapsedTimeSec()
 	{
 		duration<double, milli> ms = high_resolution_clock::now() - m_start;
-		return (float)(ms.count() / 1000);
+		return static_cast<float>(ms.count() / 1000);
 	}
 
 	float Stopwatch::GetElapsedTimeMs()
 	{
 		duration<double, milli> ms = high_resolution_clock::now() - m_start;
-		return (float)ms.count();
+		return static_cast<float>(ms.count());
 	}
 }

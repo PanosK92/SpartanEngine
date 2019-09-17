@@ -332,10 +332,10 @@ namespace Spartan
 			glyph.yBottom			= pen_y + bitmap->rows;
 			glyph.width				= glyph.xRight - glyph.xLeft;
 			glyph.height			= glyph.yBottom - glyph.yTop;
-			glyph.uvXLeft			= (float)glyph.xLeft / (float)atlas_width;
-			glyph.uvXRight			= (float)glyph.xRight / (float)atlas_width;
-			glyph.uvYTop			= (float)glyph.yTop / (float)atlas_height;
-			glyph.uvYBottom			= (float)glyph.yBottom / (float)atlas_height;
+			glyph.uvXLeft			= static_cast<float>(glyph.xLeft) / static_cast<float>(atlas_width);
+			glyph.uvXRight			= static_cast<float>(glyph.xRight) / static_cast<float>(atlas_width);
+			glyph.uvYTop			= static_cast<float>(glyph.yTop) / static_cast<float>(atlas_height);
+			glyph.uvYBottom			= static_cast<float>(glyph.yBottom) / static_cast<float>(atlas_height);
 			glyph.descent			= row_height - face->glyph->bitmap_top;
 			glyph.horizontalOffset	= face->glyph->advance.x >> 6;
 

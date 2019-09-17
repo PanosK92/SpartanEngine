@@ -34,7 +34,7 @@ namespace Spartan::Utility::Sampling
 		float f = 1; float r = 0;
 		while (index > 0)
 		{
-			f = f / (float)base;
+			f = f / static_cast<float>(base);
 			r = r + f * (index % base);
 			index = index / base;
 		}
