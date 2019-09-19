@@ -164,7 +164,7 @@ namespace Spartan::Math
 		static Quaternion FromLookRotation(const Vector3& direction, const Vector3& upDirection = Vector3::Up)
 		{
 			Quaternion ret;
-			Vector3 forward = direction.Normalized();
+            const Vector3 forward = direction.Normalized();
 
 			Vector3 v = forward.Cross(upDirection);
 			if (v.LengthSquared() >= M_EPSILON)

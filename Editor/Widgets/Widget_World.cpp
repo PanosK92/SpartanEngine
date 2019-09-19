@@ -156,7 +156,7 @@ void Widget_World::TreeAddEntity(Entity* entity)
 	}
 
 	// Flags
-	ImGuiTreeNodeFlags node_flags	= ImGuiTreeNodeFlags_AllowItemOverlap;
+	ImGuiTreeNodeFlags node_flags	= ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_SpanAvailWidth;
 
 	// Flag - Is expandable (has children) ?
 	node_flags |= has_visible_children ? ImGuiTreeNodeFlags_OpenOnArrow : ImGuiTreeNodeFlags_Leaf; 

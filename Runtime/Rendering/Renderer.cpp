@@ -361,12 +361,6 @@ namespace Spartan
 
 	void Renderer::RenderablesAcquire(const Variant& entities_variant)
 	{
-        while(m_acquiring_renderables)
-        {
-            LOGF_WARNING("Waiting for previous operation to finish...");
-        }
-        m_acquiring_renderables = true;
-
 		TIME_BLOCK_START_CPU(m_profiler);
 
 		// Clear previous state
@@ -380,9 +374,9 @@ namespace Spartan
 				continue;
 
 			// Get all the components we are interested in
-			auto renderable = entity->GetComponent<Renderable>();
-			auto light		= entity->GetComponent<Light>();
-			auto camera		= entity->GetComponent<Camera>();
+			auto& renderable    = entity->GetComponent<Renderable>();
+			auto& light		    = entity->GetComponent<Light>();
+			auto& camera		= entity->GetComponent<Camera>();
 
 			if (renderable)
 			{
@@ -410,8 +404,6 @@ namespace Spartan
 		RenderablesSort(&m_entities[Renderer_Object_Transparent]);
 
 		TIME_BLOCK_END(m_profiler);
-
-        m_acquiring_renderables = false;
 	}
 
 	void Renderer::RenderablesSort(vector<Entity*>* renderables)

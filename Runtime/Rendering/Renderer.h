@@ -422,7 +422,6 @@ namespace Spartan
         bool m_is_odd_frame                         = false;
         bool m_is_rendering                         = false;
         bool m_brdf_specular_lut_rendered           = false;
-        std::atomic<bool> m_acquiring_renderables   = false;
 		//=================================================================
 
 		//= RHI ============================================

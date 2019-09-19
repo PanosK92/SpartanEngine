@@ -167,7 +167,7 @@ void Widget_Properties::Tick()
 		auto& audio_source	    = entity_ptr->GetComponent<AudioSource>();
 		auto& audio_listener	= entity_ptr->GetComponent<AudioListener>();
 		auto& renderable		= entity_ptr->GetComponent<Renderable>();
-		auto& material		    = renderable ? renderable->GetMaterial() : shared_ptr<Material>();
+		auto material		    = renderable ? renderable->GetMaterial() : nullptr;
 		auto& rigid_body		= entity_ptr->GetComponent<RigidBody>();
 		auto& collider		    = entity_ptr->GetComponent<Collider>();
 		auto& constraint		= entity_ptr->GetComponent<Constraint>();
@@ -230,7 +230,7 @@ void Widget_Properties::ShowTransform(shared_ptr<Transform>& transform) const
 {
 	if (ComponentProperty::Begin("Transform", Icon_Component_Transform, transform, true, false))
 	{
-		bool is_playing = m_context->m_engine->EngineMode_IsSet(Engine_Game);
+        const bool is_playing = m_context->m_engine->EngineMode_IsSet(Engine_Game);
 
 		//= REFLECT ==========================================================================================================
 		Vector3 position	= transform->GetPositionLocal();
@@ -240,11 +240,15 @@ void Widget_Properties::ShowTransform(shared_ptr<Transform>& transform) const
 
 		const auto show_float = [](const char* label, float* value) 
 		{
-            float step      = 0.1f;
-			char* format    = "%.4f";
+            const float label_float_spacing = 15.0f;
+            const float step                = 0.1f;
+			char* format                    = "%.4f";
 
+            // Label
             ImGui::TextUnformatted(label);
-            ImGui::SameLine();
+            ImGui::SameLine(label_float_spacing);
+
+            // Float
 			ImGui::PushItemWidth(128.0f);
 			ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
             ImGui::DragFloat("##no_label", value, step, numeric_limits<float>::lowest(), numeric_limits<float>::max(), format);
@@ -254,12 +258,12 @@ void Widget_Properties::ShowTransform(shared_ptr<Transform>& transform) const
 
         const auto show_vector = [&show_float](const char* label, Vector3& vector)
         {
-            float indentation = 15.0f;
+            const float label_indetation = 15.0f;
 
             ImGui::BeginGroup();
-            ImGui::Indent(indentation);
+            ImGui::Indent(label_indetation);
             ImGui::TextUnformatted(label);
-            ImGui::Unindent(indentation);
+            ImGui::Unindent(label_indetation);
             show_float("X", &vector.x);
             show_float("Y", &vector.y);
             show_float("Z", &vector.z);
