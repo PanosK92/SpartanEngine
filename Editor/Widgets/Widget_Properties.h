@@ -40,6 +40,7 @@ namespace Spartan
 	class AudioSource;
 	class AudioListener;
 	class Script;
+    class Terrain;
 	class IComponent;
 }
 
@@ -67,6 +68,7 @@ private:
 	void ShowConstraint(std::shared_ptr<Spartan::Constraint>& constraint) const;
 	void ShowMaterial(std::shared_ptr<Spartan::Material>& material) const;
 	void ShowCamera(std::shared_ptr<Spartan::Camera>& camera) const;
+    void ShowTerrain(std::shared_ptr<Spartan::Terrain>& terrain) const;
 	void ShowAudioSource(std::shared_ptr<Spartan::AudioSource>& audio_source) const;
 	void ShowAudioListener(std::shared_ptr<Spartan::AudioListener>& audio_listener) const;
 	void ShowScript(std::shared_ptr<Spartan::Script>& script) const;
