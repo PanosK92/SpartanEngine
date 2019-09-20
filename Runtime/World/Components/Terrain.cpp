@@ -19,35 +19,23 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#pragma once
+//= INCLUDES =======
+#include "Terrain.h"
+//==================
 
-//= INCLUDES ==========
-#include "IComponent.h"
-//=====================
+//= NAMESPACES =====
+using namespace std;
+//==================
 
 namespace Spartan
 {
-	enum Environment_Type
-	{
-		Enviroment_Cubemap,
-		Environment_Sphere
-	};
+    Terrain::Terrain(Context* context, Entity* entity, uint32_t id /*= 0*/) : IComponent(context, entity, id)
+    {
+        
+    }
 
-	class SPARTAN_CLASS Environment : public IComponent
-	{
-	public:
-		Environment(Context* context, Entity* entity, uint32_t id = 0);
-        ~Environment() = default;
-
-		//= IComponent ==============
-		void OnInitialize() override;
-		//===========================
-
-	private:
-		void CreateFromArray(const std::vector<std::string>& texturePaths);
-		void CreateFromSphere(const std::string& texturePath);
-
-		std::vector<std::string> m_texture_paths;
-		Environment_Type m_environment_type;
-	};
+    void Terrain::OnInitialize()
+    {
+        
+    }
 }

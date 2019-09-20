@@ -21,33 +21,27 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==========
+//= INCLUDES ========================
 #include "IComponent.h"
-//=====================
+#include "../../RHI/RHI_Definition.h"
+//===================================
 
 namespace Spartan
 {
-	enum Environment_Type
-	{
-		Enviroment_Cubemap,
-		Environment_Sphere
-	};
+    class SPARTAN_CLASS Terrain : public IComponent
+    {
+    public:
+        Terrain(Context* context, Entity* entity, uint32_t id = 0);
+        ~Terrain() = default;
 
-	class SPARTAN_CLASS Environment : public IComponent
-	{
-	public:
-		Environment(Context* context, Entity* entity, uint32_t id = 0);
-        ~Environment() = default;
+        //= IComponent ==============
+        void OnInitialize() override;
+        //===========================
 
-		//= IComponent ==============
-		void OnInitialize() override;
-		//===========================
+        const auto& GetHeightMap()                                          { return m_height_map; }
+        void SetHeightMap(const std::shared_ptr<RHI_Texture>& height_map)   { m_height_map = height_map; }
 
-	private:
-		void CreateFromArray(const std::vector<std::string>& texturePaths);
-		void CreateFromSphere(const std::string& texturePath);
-
-		std::vector<std::string> m_texture_paths;
-		Environment_Type m_environment_type;
-	};
+    private:
+        std::shared_ptr<RHI_Texture> m_height_map;
+    };
 }

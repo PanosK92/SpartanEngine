@@ -51,6 +51,7 @@ namespace Spartan
 		ComponentType_Script,
 		ComponentType_Environment,
 		ComponentType_Transform,
+        ComponentType_Terrain,
 		ComponentType_Unknown
 	};
 

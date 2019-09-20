@@ -103,7 +103,7 @@ PixelOutputType mainPS(PixelInputType input)
 	float2 texCoords 		= float2(input.uv.x * materialTiling.x + materialOffset.x, input.uv.y * materialTiling.y + materialOffset.y);
 	float4 albedo			= materialAlbedoColor;
 	float roughness 		= materialRoughness;
-	float metallic 			= saturate(materialMetallic);
+	float metallic 			= materialMetallic;
 	float3 normal			= input.normal.xyz;
 	float normal_intensity	= clamp(materialNormalStrength, 0.012f, materialNormalStrength);
 	float emission			= 0.0f;
@@ -143,14 +143,7 @@ PixelOutputType mainPS(PixelInputType input)
 	#endif
 	
 	#if ROUGHNESS_MAP
-		if (materialRoughness >= 0.0f)
-		{
-			roughness *= texRoughness.Sample(samplerAniso, texCoords).r;
-		}
-		else
-		{
-			roughness *= 1.0f - texRoughness.Sample(samplerAniso, texCoords).r;
-		}
+		roughness *= texRoughness.Sample(samplerAniso, texCoords).r;
 	#endif
 	
 	#if METALLIC_MAP

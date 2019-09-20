@@ -37,6 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Constraint.h"
 #include "World/Components/Renderable.h"
 #include "World/Components/Environment.h"
+#include "World/Components/Terrain.h"
 //==========================================
 
 //= NAMESPACES ==========
@@ -425,6 +426,12 @@ void Widget_World::PopupContextMenu()
 		ImGui::EndMenu();
 	}
 
+    // TERRAIN
+    if (ImGui::MenuItem("Terrain"))
+    {
+        ActionEntityCreateTerrain();
+    }
+
 	ImGui::EndPopup();
 }
 
@@ -537,6 +544,13 @@ void Widget_World::ActionEntityCreateCamera()
 	auto entity = ActionEntityCreateEmpty();
 	entity->AddComponent<Camera>();
 	entity->SetName("Camera");
+}
+
+void Widget_World::ActionEntityCreateTerrain()
+{
+    auto entity = ActionEntityCreateEmpty();
+    entity->AddComponent<Terrain>();
+    entity->SetName("Terrain");
 }
 
 void Widget_World::ActionEntityCreateLightDirectional()

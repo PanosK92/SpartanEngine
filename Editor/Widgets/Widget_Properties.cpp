@@ -25,6 +25,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../ImGui_Extension.h"
 #include "../ButtonColorPicker.h"
 #include "../ImGui/Source/imgui_stdlib.h"
+#include "Audio/AudioClip.h"
+#include "Core/Engine.h"
+#include "RHI/RHI_Texture2D.h"
 #include "Rendering/Shaders/ShaderVariation.h"
 #include "World/Entity.h"
 #include "World/Components/Transform.h"
@@ -38,9 +41,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Camera.h"
 #include "World/Components/Script.h"
 #include "World/Components/Environment.h"
-#include "Audio/AudioClip.h"
-#include "Core/Engine.h"
-#include "RHI/RHI_Texture2D.h"
+#include "World/Components/Terrain.h"
 //=============================================
 
 //= NAMESPACES =========
@@ -164,6 +165,7 @@ void Widget_Properties::Tick()
 		auto& transform		    = entity_ptr->GetComponent<Transform>();
 		auto& light			    = entity_ptr->GetComponent<Light>();
 		auto& camera			= entity_ptr->GetComponent<Camera>();
+        auto& terrain           = entity_ptr->GetComponent<Terrain>();
 		auto& audio_source	    = entity_ptr->GetComponent<AudioSource>();
 		auto& audio_listener	= entity_ptr->GetComponent<AudioListener>();
 		auto& renderable		= entity_ptr->GetComponent<Renderable>();
@@ -176,6 +178,7 @@ void Widget_Properties::Tick()
 		ShowTransform(transform);
 		ShowLight(light);
 		ShowCamera(camera);
+        ShowTerrain(terrain);
 		ShowAudioSource(audio_source);
 		ShowAudioListener(audio_listener);
 		ShowRenderable(renderable);
@@ -710,89 +713,41 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material) const
 		m_colorPicker_material->SetColor(material->GetColorAlbedo());
 		//===========================================================
 
-		static const auto material_text_size = ImVec2(80, 80);
-
-		const auto tex_albedo		= material->GetTexture(TextureType_Albedo).get();
-		const auto tex_roughness	= material->GetTexture(TextureType_Roughness).get();
-		const auto tex_metallic		= material->GetTexture(TextureType_Metallic).get();
-		const auto tex_normal		= material->GetTexture(TextureType_Normal).get();
-		const auto tex_height		= material->GetTexture(TextureType_Height).get();
-		const auto tex_occlusion	= material->GetTexture(TextureType_Occlusion).get();
-		const auto tex_emission		= material->GetTexture(TextureType_Emission).get();
-		const auto tex_mask			= material->GetTexture(TextureType_Mask).get();
-
 		// Name
 		ImGui::Text("Name");
 		ImGui::SameLine(ComponentProperty::g_column); ImGui::Text(material->GetResourceName().c_str());
 
 		if (material->IsEditable())
 		{
-			const auto display_texture_slot = [&material](RHI_Texture* texture, const char* texture_name, const TextureType textureType)
-			{
-				// Texture
-				ImGui::Text(texture_name);
-				ImGui::SameLine(ComponentProperty::g_column); 
-				ImGuiEx::Image
-				(
-					texture,
-					material_text_size,
-					ImColor(255, 255, 255, 255),
-					ImColor(255, 255, 255, 128)
-				);
+            // Texture slots
+            {
+                const auto texture_slot = [&material](const char* texture_name, const TextureType texture_type, bool enable_drag_float)
+                {
+                    ImGuiEx::ImageSlot(
+                        texture_name,
+                        [&material, &texture_type]() { return material->GetTexture(texture_type); },
+                        [&material, &texture_type](const shared_ptr<RHI_Texture>& texture) { material->SetTextureSlot(texture_type, texture); },
+                        ComponentProperty::g_column
+                    );
 
-				// Drop target
-				if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayload_Texture))
-				{
-					try
-					{
-						if (const auto tex = _Widget_Properties::resource_cache->Load<RHI_Texture2D>(get<const char*>(payload->data)))
-						{
-							material->SetTextureSlot(textureType, tex);
-						}
-					}
-					catch (const bad_variant_access& e) { LOGF_ERROR("Widget_Properties::ShowMaterial: %s", e.what()); }
-				}
+                    if (enable_drag_float)
+                    {
+                        ImGui::SameLine();
+                        ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
+                        ImGui::DragFloat("", &material->GetMultiplier(texture_type), 0.004f, 0.0f, 1.0f);
+                        ImGui::PopID();
+                    }
+                };
 
-				// Remove texture button
-				if (material->HasTexture(textureType))
-				{
-					const auto size = 15.0f;
-					ImGui::SameLine(); ImGui::SetCursorPosX(ImGui::GetCursorPosX() - size * 2.0f);
-					if (ImGuiEx::ImageButton(texture_name, Icon_Component_Material_RemoveTexture, size))
-					{
-						material->SetTextureSlot(textureType, shared_ptr<RHI_Texture>());
-					}
-				}
-			};
-
-			// Albedo
-			display_texture_slot(tex_albedo, "Albedo", TextureType_Albedo);
-			ImGui::SameLine(); m_colorPicker_material->Update();
-
-			// Roughness
-			display_texture_slot(tex_roughness, "Roughness", TextureType_Roughness);
-			ImGui::SameLine(); ImGui::DragFloat("##matRoughness", &material->GetMultiplier(TextureType_Roughness), 0.004f, 0.0f, 1.0f);
-
-			// Metallic
-			display_texture_slot(tex_metallic, "Metallic", TextureType_Metallic);
-			ImGui::SameLine(); ImGui::DragFloat("##matMetallic", &material->GetMultiplier(TextureType_Metallic), 0.004f, 0.0f, 1.0f);
-
-			// Normal
-			display_texture_slot(tex_normal, "Normal", TextureType_Normal);
-			ImGui::SameLine(); ImGui::DragFloat("##matNormal", &material->GetMultiplier(TextureType_Normal), 0.004f, 0.0f, 1.0f);
-
-			// Height
-			display_texture_slot(tex_height, "Height", TextureType_Height);
-			ImGui::SameLine(); ImGui::DragFloat("##matHeight", &material->GetMultiplier(TextureType_Height), 0.004f, 0.0f, 1.0f);
-
-			// Occlusion
-			display_texture_slot(tex_occlusion, "Occlusion", TextureType_Occlusion);
-
-			// Emission
-			display_texture_slot(tex_emission, "Emission", TextureType_Emission);
-
-			// Mask
-			display_texture_slot(tex_mask, "Mask", TextureType_Mask);
+                texture_slot("Albedo",      TextureType_Albedo,     false); ImGui::SameLine(); m_colorPicker_material->Update();
+                texture_slot("Roughness",   TextureType_Roughness,  true);
+                texture_slot("Metallic",    TextureType_Metallic,   true);
+                texture_slot("Normal",      TextureType_Normal,     true);
+                texture_slot("Height",      TextureType_Height,     true);
+                texture_slot("Occlusion",   TextureType_Occlusion,  false);
+                texture_slot("Emission",    TextureType_Emission,   false);
+                texture_slot("Mask",        TextureType_Mask,       false);
+            }
 
 			// Tiling
 			ImGui::Text("Tiling");
@@ -875,6 +830,23 @@ void Widget_Properties::ShowCamera(shared_ptr<Camera>& camera) const
 		//==========================================================================================================================
 	}
 	ComponentProperty::End();
+}
+
+void Widget_Properties::ShowTerrain(shared_ptr<Terrain>& terrain) const
+{
+    if (!terrain)
+        return;
+
+    if (ComponentProperty::Begin("Terrain", Icon_Component_Terrain, terrain))
+    {
+        ImGuiEx::ImageSlot(
+            "Terrain",
+            [&terrain]()                                        { return terrain->GetHeightMap(); },
+            [&terrain](const shared_ptr<RHI_Texture>& texture)  { terrain->SetHeightMap(texture); },
+            ComponentProperty::g_column
+        );
+    }
+    ComponentProperty::End();
 }
 
 void Widget_Properties::ShowAudioSource(shared_ptr<AudioSource>& audio_source) const
@@ -1068,6 +1040,12 @@ void Widget_Properties::ComponentContextMenu_Add() const
 
 				ImGui::EndMenu();
 			}
+
+            // TERRAIN
+            if (ImGui::MenuItem("Terrain"))
+            {
+                entity->AddComponent<Terrain>();
+            }
 		}
 
 		ImGui::EndPopup();

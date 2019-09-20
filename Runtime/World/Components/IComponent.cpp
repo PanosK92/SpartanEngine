@@ -32,6 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "AudioListener.h"
 #include "Renderable.h"
 #include "Transform.h"
+#include "Terrain.h"
 #include "../Entity.h"
 #include "../../FileSystem/FileSystem.h"
 //======================================
@@ -83,5 +84,6 @@ namespace Spartan
 	REGISTER_COMPONENT(RigidBody,		ComponentType_RigidBody)
 	REGISTER_COMPONENT(Script,			ComponentType_Script)
 	REGISTER_COMPONENT(Environment,		ComponentType_Environment)
+    REGISTER_COMPONENT(Terrain,         ComponentType_Terrain)
 	REGISTER_COMPONENT(Transform,		ComponentType_Transform)
 }

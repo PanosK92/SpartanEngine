@@ -117,6 +117,7 @@ namespace Spartan
 			".fbx",
 			".blend",
 			".dae",
+            ".gltf",
 			".lwo",
 			".c4d",
 			".ase",

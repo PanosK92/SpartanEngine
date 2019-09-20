@@ -61,6 +61,7 @@ void IconProvider::Initialize(Context* context)
 	Thumbnail_Load(data_dir + "Icons\\component_rigidBody.png",				Icon_Component_RigidBody);
 	Thumbnail_Load(data_dir + "Icons\\component_script.png",				Icon_Component_Script);	
 	Thumbnail_Load(data_dir + "Icons\\component_transform.png",				Icon_Component_Transform);
+    Thumbnail_Load(data_dir + "Icons\\component_terrain.png",               Icon_Component_Terrain);
 	Thumbnail_Load(data_dir + "Icons\\console_info.png",					Icon_Console_Info);	
 	Thumbnail_Load(data_dir + "Icons\\console_warning.png",					Icon_Console_Warning);
 	Thumbnail_Load(data_dir + "Icons\\console_error.png",					Icon_Console_Error);	
