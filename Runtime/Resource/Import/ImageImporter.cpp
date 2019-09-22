@@ -103,17 +103,27 @@ namespace Spartan
 		format		= (format == FIF_UNKNOWN) ? FreeImage_GetFIFFromFilename(file_path.c_str()) : format;  // If the format is unknown, try to get it from the the filename	
 		if (!FreeImage_FIFSupportsReading(format)) // If the format is still unknown, give up
 		{
-			LOGF_ERROR("Unsupported format.");
+			LOGF_ERROR("Unsupported format");
 			return false;
 		}
 
 		// Load the image
 		auto bitmap = FreeImage_Load(format, file_path.c_str());
-	
+
+        // Deduce image properties. Important that this is done here, before ApplyBitmapCorrections(), as after that, results for grayscale seemed to be always false
+        const bool image_is_transparent = FreeImage_IsTransparent(bitmap);
+        const bool image_is_grayscale   = FreeImage_GetColorType(bitmap) == FIC_MINISBLACK;
+
 		// Perform some fix ups
 		bitmap = ApplyBitmapCorrections(bitmap);
 		if (!bitmap)
 			return false;
+
+        // Deduce image properties
+        const unsigned int image_bpp            = FreeImage_GetBPP(bitmap);
+        const uint32_t image_bytes_per_channel  = ComputeBitsPerChannel(bitmap) * 8;
+        const uint32_t image_channels           = ComputeChannelCount(bitmap);
+        const RHI_Format image_format           = ComputeTextureFormat(image_bytes_per_channel, image_channels);
 
 		// Perform any scaling (if necessary)
 		const auto user_define_dimensions	= (texture->GetWidth() != 0 && texture->GetHeight() != 0);
@@ -121,15 +131,9 @@ namespace Spartan
 		const auto scale					= user_define_dimensions && dimension_mismatch;
 		bitmap								= scale ? _FreeImage_Rescale(bitmap, texture->GetWidth(), texture->GetHeight()) : bitmap;
 
-		// Deduce image properties	
-		const auto image_is_transparent		= FreeImage_IsTransparent(bitmap);
-		const auto image_width				= FreeImage_GetWidth(bitmap);
-		const auto image_height				= FreeImage_GetHeight(bitmap);
-		const auto image_bpp				= FreeImage_GetBPP(bitmap);
-		const auto image_bytes_per_channel	= ComputeBitsPerChannel(bitmap) * 8;
-		const auto image_channels			= ComputeChannelCount(bitmap);
-		const auto image_format				= ComputeTextureFormat(image_bpp, image_channels);
-		const auto image_is_grayscale		= IsGrayscale(bitmap);
+		// Deduce image properties
+		const unsigned int image_width	= FreeImage_GetWidth(bitmap);
+		const unsigned int image_height = FreeImage_GetHeight(bitmap);
 
 		// Fill RGBA vector with the data from the FIBITMAP
 		const auto mip = texture->AddMipmap();
@@ -283,54 +287,29 @@ namespace Spartan
 		return size;
 	}
 
-	RHI_Format ImageImporter::ComputeTextureFormat(const uint32_t bpp, const uint32_t channels) const
+	RHI_Format ImageImporter::ComputeTextureFormat(const uint32_t bytes_per_channel, const uint32_t channels) const
 	{
-		if (channels == 3)
+        if (channels == 1)
+        {
+            if (bytes_per_channel == 8)	return Format_R8_UNORM;
+        }
+        else if (channels == 2)
+        {
+            if (bytes_per_channel == 8)	return Format_R8G8_UNORM;
+        }
+		else if (channels == 3)
 		{
-			if (bpp == 96)	return Format_R32G32B32_FLOAT;
+			if (bytes_per_channel == 32)	return Format_R32G32B32_FLOAT;
 		}
 		else if (channels == 4)
 		{
-			if (bpp == 32)	return Format_R8G8B8A8_UNORM;
-			if (bpp == 64)	return Format_R16G16B16A16_FLOAT;
-			if (bpp == 128) return Format_R32G32B32A32_FLOAT;
+			if (bytes_per_channel == 8)     return Format_R8G8B8A8_UNORM;
+			if (bytes_per_channel == 16)	return Format_R16G16B16A16_FLOAT;
+			if (bytes_per_channel == 32)    return Format_R32G32B32A32_FLOAT;
 		}
 		
 		LOG_ERROR_INVALID_PARAMETER();
 		return Format_R8_UNORM;
-	}
-
-	bool ImageImporter::IsGrayscale(FIBITMAP* bitmap) const
-	{
-		if (!bitmap)
-		{
-			LOG_ERROR_INVALID_PARAMETER();
-			return false;
-		}
-
-		const auto image_width		= static_cast<uint32_t>(FreeImage_GetWidth(bitmap));
-		const auto image_height		= static_cast<uint32_t>(FreeImage_GetHeight(bitmap));
-		const uint32_t min_step		= 1;
-		const auto step_y			= Math::Clamp(image_height / 100, min_step, image_height);
-		const auto step_x			= Math::Clamp(image_width / 100, min_step, image_height);	
-		float samples				= 0;
-		float samples_grey			= 0;
-
-		for (uint32_t y = 0; y < image_height; y+= step_y)
-		{
-			for (uint32_t x = 0; x < image_width; x+= step_x)
-			{
-				RGBQUAD color;
-				FreeImage_GetPixelColor(bitmap, x, y, &color);
-				if ((color.rgbRed == color.rgbGreen) && (color.rgbGreen == color.rgbBlue))
-				{
-					samples_grey++;
-				}
-				samples++;
-			}
-		}
-
-		return (samples_grey / samples) > 0.7f;
 	}
 
 	FIBITMAP* ImageImporter::ApplyBitmapCorrections(FIBITMAP* bitmap) const
@@ -341,14 +320,19 @@ namespace Spartan
 			return nullptr;
 		}
 
-		// Converting a 1 channel, 16-bit texture to a 32-bit texture, seems to fail.
-		// But converting it down to a 8-bit texture, then up to a 32-bit one, seems to work. FreeImage bug?
-		if ((ComputeChannelCount(bitmap)) == 1 && (ComputeBitsPerChannel(bitmap) == 16))
-		{
-			const auto previous_bitmap = bitmap;
-			bitmap = FreeImage_ConvertTo8Bits(bitmap);
-			FreeImage_Unload(previous_bitmap);
-		}
+        // Convert to a standard bitmap. FIT_UINT16 and FIT_RGBA16 are processed without errors
+        // but show up empty in the editor. For now, we convert everything to a standard bitmap.
+        FREE_IMAGE_TYPE type = FreeImage_GetImageType(bitmap);
+        if (type != FIT_BITMAP)
+        {
+            // FreeImage can't convert that
+            if (type != FIT_RGBF)
+            {
+                auto previous_bitmap = bitmap;
+                bitmap = FreeImage_ConvertToType(bitmap, FIT_BITMAP);
+                FreeImage_Unload(previous_bitmap);
+            }
+        }
 
 		// Convert it to 32 bits (if lower)
 		if (FreeImage_GetBPP(bitmap) < 32)
@@ -356,19 +340,19 @@ namespace Spartan
 			bitmap = _FreeImage_ConvertTo32Bits(bitmap);
 		}
 
-		// Swap red with blue channel (if needed)
+		// Convert BGR to RGB (if needed)
 		if (FreeImage_GetBPP(bitmap) == 32)
 		{
-			if (FreeImage_GetRedMask(bitmap) == 0xff0000 && ComputeChannelCount(bitmap) >= 2)
-			{
-				const bool swapped = SwapRedBlue32(bitmap);
-				if (!swapped)
-				{
-					LOG_ERROR("Failed to swap red with blue channel");
-				}
-			}
+            if (FreeImage_GetRedMask(bitmap) == 0xff0000 && ComputeChannelCount(bitmap) >= 2)
+            {
+                const bool swapped = SwapRedBlue32(bitmap);
+                if (!swapped)
+                {
+                    LOG_ERROR("Failed to swap red with blue channel");
+                }
+            }
 		}
-			
+   
 		// Flip it vertically
 		FreeImage_FlipVertical(bitmap);
 
@@ -386,8 +370,8 @@ namespace Spartan
 		const auto previous_bitmap	= bitmap;
 		bitmap						= FreeImage_ConvertTo32Bits(previous_bitmap);
 		if (!bitmap)
-		{
-			LOGF_ERROR("Failed (%d bpp, %d channels).", FreeImage_GetBPP(previous_bitmap), ComputeChannelCount(previous_bitmap));
+        {
+            LOGF_ERROR("Failed (%d bpp, %d channels).", FreeImage_GetBPP(previous_bitmap), ComputeChannelCount(previous_bitmap));
 			return nullptr;
 		}
 
