@@ -447,19 +447,24 @@ namespace Spartan
 
     void* Renderer::GetEnvironmentTexture_GpuResource()
     {
-        shared_ptr<RHI_Texture>& environment_texture = m_render_targets[RenderTarget_Brdf_Prefiltered_Environment];
-        return environment_texture ? environment_texture->GetResource_Texture() : m_tex_white->GetResource_Texture();
+        if (const shared_ptr<RHI_Texture>& environment_texture = GetEnvironmentTexture())
+        {
+            return environment_texture->GetResource_Texture();
+        }
+
+        return m_tex_white->GetResource_Texture();
+    }
+
+    const std::shared_ptr<Spartan::RHI_Texture>& Renderer::GetEnvironmentTexture()
+    {
+        if (m_render_targets.find(RenderTarget_Brdf_Prefiltered_Environment) != m_render_targets.end())
+            return m_render_targets[RenderTarget_Brdf_Prefiltered_Environment];
+
+        return m_tex_white;
     }
 
     void Renderer::SetEnvironmentTexture(const shared_ptr<RHI_Texture>& texture)
     {
-       /* if (texture->HasMipmaps())
-        {
-            LOG_ERROR("Prefiltered mipmaps will be generated, the provided texture must not have any mimaps");
-            return;
-        }*/
-
-        // Save environment texture
         m_render_targets[RenderTarget_Brdf_Prefiltered_Environment] = texture;
     }
 }

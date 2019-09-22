@@ -42,6 +42,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Script.h"
 #include "World/Components/Environment.h"
 #include "World/Components/Terrain.h"
+#include "World/Components/Environment.h"
 //=============================================
 
 //= NAMESPACES =========
@@ -166,6 +167,7 @@ void Widget_Properties::Tick()
 		auto& light			    = entity_ptr->GetComponent<Light>();
 		auto& camera			= entity_ptr->GetComponent<Camera>();
         auto& terrain           = entity_ptr->GetComponent<Terrain>();
+        auto& environment       = entity_ptr->GetComponent<Environment>();
 		auto& audio_source	    = entity_ptr->GetComponent<AudioSource>();
 		auto& audio_listener	= entity_ptr->GetComponent<AudioListener>();
 		auto& renderable		= entity_ptr->GetComponent<Renderable>();
@@ -179,6 +181,7 @@ void Widget_Properties::Tick()
 		ShowLight(light);
 		ShowCamera(camera);
         ShowTerrain(terrain);
+        ShowEnvironment(environment);
 		ShowAudioSource(audio_source);
 		ShowAudioListener(audio_listener);
 		ShowRenderable(renderable);
@@ -707,6 +710,8 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material) const
 
 	if (ComponentProperty::Begin("Material", Icon_Component_Material, nullptr, false))
 	{
+        const float offset_from_pos_x = 100;
+
 		//= REFLECT =================================================
 		auto tiling	= material->GetTiling();
 		auto offset	= material->GetOffset();
@@ -715,19 +720,19 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material) const
 
 		// Name
 		ImGui::Text("Name");
-		ImGui::SameLine(ComponentProperty::g_column); ImGui::Text(material->GetResourceName().c_str());
+		ImGui::SameLine(offset_from_pos_x); ImGui::Text(material->GetResourceName().c_str());
 
 		if (material->IsEditable())
 		{
             // Texture slots
             {
-                const auto texture_slot = [&material](const char* texture_name, const TextureType texture_type, bool enable_drag_float)
+                const auto texture_slot = [&offset_from_pos_x, &material](const char* texture_name, const TextureType texture_type, bool enable_drag_float)
                 {
                     ImGuiEx::ImageSlot(
                         texture_name,
-                        [&material, &texture_type]() { return material->GetTexture(texture_type); },
-                        [&material, &texture_type](const shared_ptr<RHI_Texture>& texture) { material->SetTextureSlot(texture_type, texture); },
-                        ComponentProperty::g_column
+                        material->GetTexture(texture_type),
+                        [&material, &texture_type](const shared_ptr<RHI_Texture>& texture)  { material->SetTextureSlot(texture_type, texture); },
+                        offset_from_pos_x
                     );
 
                     if (enable_drag_float)
@@ -751,12 +756,12 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material) const
 
 			// Tiling
 			ImGui::Text("Tiling");
-			ImGui::SameLine(ComponentProperty::g_column); ImGui::Text("X"); ImGui::SameLine(); ImGui::InputFloat("##matTilingX", &tiling.x, ImGuiInputTextFlags_CharsDecimal);
+			ImGui::SameLine(offset_from_pos_x); ImGui::Text("X"); ImGui::SameLine(); ImGui::InputFloat("##matTilingX", &tiling.x, ImGuiInputTextFlags_CharsDecimal);
 			ImGui::SameLine(); ImGui::Text("Y"); ImGui::SameLine(); ImGui::InputFloat("##matTilingY", &tiling.y, ImGuiInputTextFlags_CharsDecimal);
 
 			// Offset
 			ImGui::Text("Offset");
-			ImGui::SameLine(ComponentProperty::g_column); ImGui::Text("X"); ImGui::SameLine(); ImGui::InputFloat("##matOffsetX", &offset.x, ImGuiInputTextFlags_CharsDecimal);
+			ImGui::SameLine(offset_from_pos_x); ImGui::Text("X"); ImGui::SameLine(); ImGui::InputFloat("##matOffsetX", &offset.x, ImGuiInputTextFlags_CharsDecimal);
 			ImGui::SameLine(); ImGui::Text("Y"); ImGui::SameLine(); ImGui::InputFloat("##matOffsetY", &offset.y, ImGuiInputTextFlags_CharsDecimal);
 		}
 
@@ -832,6 +837,22 @@ void Widget_Properties::ShowCamera(shared_ptr<Camera>& camera) const
 	ComponentProperty::End();
 }
 
+void Widget_Properties::ShowEnvironment(shared_ptr<Environment>& environment) const
+{
+    if (!environment)
+        return;
+
+    if (ComponentProperty::Begin("Environment", Icon_Component_Environment, environment))
+    {
+        ImGuiEx::ImageSlot(
+            "Sphere Map",
+            environment->GetTexture(),
+            [&environment](const shared_ptr<RHI_Texture>& texture) { environment->SetTexture(texture); }
+        );
+    }
+    ComponentProperty::End();
+}
+
 void Widget_Properties::ShowTerrain(shared_ptr<Terrain>& terrain) const
 {
     if (!terrain)
@@ -841,7 +862,7 @@ void Widget_Properties::ShowTerrain(shared_ptr<Terrain>& terrain) const
     {
         ImGuiEx::ImageSlot(
             "Terrain",
-            [&terrain]()                                        { return terrain->GetHeightMap(); },
+            terrain->GetHeightMap(),
             [&terrain](const shared_ptr<RHI_Texture>& texture)  { terrain->SetHeightMap(texture); },
             ComponentProperty::g_column
         );
