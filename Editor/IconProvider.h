@@ -43,6 +43,7 @@ enum Icon_Type
 	Icon_Component_RigidBody,
 	Icon_Component_Script,
     Icon_Component_Terrain,
+    Icon_Component_Environment,
 	Icon_Component_Transform,
 	Icon_Console_Info,
 	Icon_Console_Warning,

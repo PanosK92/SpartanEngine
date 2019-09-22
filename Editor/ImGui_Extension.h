@@ -264,7 +264,7 @@ namespace ImGuiEx
     // Image slot
     inline void ImageSlot(
         const char* name,
-        const std::function<const std::shared_ptr<Spartan::RHI_Texture>&()>& getter,
+        const const std::shared_ptr<Spartan::RHI_Texture>& image,
         const std::function<void(const std::shared_ptr<Spartan::RHI_Texture>&)>& setter,
         float offset_from_start_x = 0.0f
     )
@@ -272,17 +272,32 @@ namespace ImGuiEx
         const auto slot_size        = ImVec2(80, 80);
         const auto x_button_size    = 15.0f;
 
-        // Texture
+        // Text
         ImGui::Text(name);
-        ImGui::SameLine(offset_from_start_x);
-        ImGuiEx::Image
-        (
-            getter().get(),
-            slot_size,
-            ImColor(255, 255, 255, 255),
-            ImColor(255, 255, 255, 128)
-        );
-        
+
+        // Image        
+        ImGui::BeginGroup();
+        {
+            ImGuiEx::Image
+            (
+                image.get(),
+                slot_size,
+                ImColor(255, 255, 255, 255),
+                ImColor(255, 255, 255, 128)
+            );
+
+            // Remove button
+            if (image != nullptr)
+            {
+                ImGui::SameLine(); ImGui::SetCursorPosX(ImGui::GetCursorPosX() - x_button_size * 2.0f);
+                if (ImGuiEx::ImageButton(name, Icon_Component_Material_RemoveTexture, x_button_size))
+                {
+                    setter(nullptr);
+                }
+            }
+        }
+        ImGui::EndGroup();
+
         // Drop target
         if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayload_Texture))
         {
@@ -294,16 +309,6 @@ namespace ImGuiEx
                 }
             }
             catch (const std::bad_variant_access& e) { LOGF_ERROR("%s", e.what()); }
-        }
-        
-        // Remove texture button
-        if (getter() != nullptr)
-        {
-            ImGui::SameLine(); ImGui::SetCursorPosX(ImGui::GetCursorPosX() - x_button_size * 2.0f);
-            if (ImGuiEx::ImageButton(name, Icon_Component_Material_RemoveTexture, x_button_size))
-            {
-                setter(nullptr);
-            }
         }
     }
 }

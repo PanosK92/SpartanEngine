@@ -78,7 +78,17 @@ namespace Spartan
 		});
 	}
 
-	void Environment::CreateFromArray(const vector<string>& texturePaths)
+    const shared_ptr<RHI_Texture>& Environment::GetTexture()
+    {
+        return m_context->GetSubsystem<Renderer>()->GetEnvironmentTexture();
+    }
+
+    void Environment::SetTexture(const shared_ptr<RHI_Texture>& texture)
+    {
+        m_context->GetSubsystem<Renderer>()->SetEnvironmentTexture(static_pointer_cast<RHI_Texture>(texture));
+    }
+
+    void Environment::CreateFromArray(const vector<string>& texturePaths)
 	{
 		if (texturePaths.empty())
 			return;
@@ -116,8 +126,8 @@ namespace Spartan
         texture->SetHeight(loaderTex->GetHeight());
         texture->SetGrayscale(false);
 
-        // Apply cubemap to renderer
-        m_context->GetSubsystem<Renderer>()->SetEnvironmentTexture(static_pointer_cast<RHI_Texture>(texture));
+        // Apply sky sphere to renderer
+        SetTexture(static_pointer_cast<RHI_Texture>(texture));
 	}
 
 	void Environment::CreateFromSphere(const string& texture_path)
@@ -130,6 +140,6 @@ namespace Spartan
         texture->LoadFromFile(texture_path);
 
         // Apply sky sphere to renderer
-        m_context->GetSubsystem<Renderer>()->SetEnvironmentTexture(static_pointer_cast<RHI_Texture>(texture));
+        SetTexture(static_pointer_cast<RHI_Texture>(texture));
 	}
 }

@@ -21,9 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==========
+//= INCLUDES ========================
 #include "IComponent.h"
-//=====================
+#include "../../RHI/RHI_Definition.h"
+//===================================
 
 namespace Spartan
 {
@@ -42,6 +43,9 @@ namespace Spartan
 		//= IComponent ==============
 		void OnInitialize() override;
 		//===========================
+
+        const std::shared_ptr<RHI_Texture>& GetTexture();
+        void SetTexture(const std::shared_ptr<RHI_Texture>& texture);
 
 	private:
 		void CreateFromArray(const std::vector<std::string>& texturePaths);
