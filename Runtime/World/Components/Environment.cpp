@@ -55,7 +55,7 @@ namespace Spartan
 		}
 		else if (m_environment_type == Environment_Sphere)
 		{
-			m_texture_paths = { dir_cubemaps + "sphere/syferfontein_0d_clear_4k.hdr" };
+			m_texture_paths = { dir_cubemaps + "syferfontein_0d_clear_4k.hdr" };
 		}
 	}
 

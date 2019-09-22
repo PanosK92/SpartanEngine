@@ -42,7 +42,7 @@ namespace Spartan
 		string data_dir = GetDataDirectory();
 
 		// Add engine standard resource directories
-		AddDataDirectory(Asset_Cubemaps,		data_dir + "cubemaps//");
+		AddDataDirectory(Asset_Cubemaps,		data_dir + "environment//");
 		AddDataDirectory(Asset_Fonts,			data_dir + "fonts//");
 		AddDataDirectory(Asset_Icons,			data_dir + "icons//");
 		AddDataDirectory(Asset_Scripts,			data_dir + "scripts//");
