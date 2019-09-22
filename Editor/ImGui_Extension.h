@@ -275,7 +275,8 @@ namespace ImGuiEx
         // Text
         ImGui::Text(name);
 
-        // Image        
+        // Image
+        ImGui::SameLine(offset_from_start_x);
         ImGui::BeginGroup();
         {
             ImGuiEx::Image
