@@ -44,6 +44,12 @@ namespace Spartan
         const auto& GetHeightMap() { return m_height_map; }
         bool SetHeightMap(const std::shared_ptr<RHI_Texture>& height_map);
 
+        float GetMinZ()             { return m_min_z; }
+        void SetMinZ(float min_z)   { m_min_z = min_z; }
+
+        float GetMaxZ()             { return m_max_z; }
+        void SetMaxZ(float max_z)   { m_max_z = max_z; }
+
     private:     
         uint32_t m_width    = 0;
         uint32_t m_height   = 0;

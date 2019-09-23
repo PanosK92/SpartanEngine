@@ -860,12 +860,30 @@ void Widget_Properties::ShowTerrain(shared_ptr<Terrain>& terrain) const
 
     if (ComponentProperty::Begin("Terrain", Icon_Component_Terrain, terrain))
     {
+        //= REFLECT =====================
+        float min_z = terrain->GetMinZ();
+        float max_z = terrain->GetMaxZ();
+        //===============================
+
         ImGuiEx::ImageSlot(
             "Terrain",
             terrain->GetHeightMap(),
             [&terrain](const shared_ptr<RHI_Texture>& texture)  { terrain->SetHeightMap(texture); },
             ComponentProperty::g_column
         );
+
+        ImGui::SameLine();
+        ImGui::BeginGroup();
+        {
+            ImGui::InputFloat("Min Z", &min_z);
+            ImGui::InputFloat("Max Z", &max_z);
+        }
+        ImGui::EndGroup();
+
+        //= MAP =================================================
+        if (min_z != terrain->GetMinZ()) terrain->SetMinZ(min_z);
+        if (max_z != terrain->GetMaxZ()) terrain->SetMaxZ(max_z);
+        //=======================================================
     }
     ComponentProperty::End();
 }
