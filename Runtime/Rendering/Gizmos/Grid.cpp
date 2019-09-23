@@ -35,7 +35,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-	Grid::Grid(shared_ptr<RHI_Device> rhiDevice)
+	Grid::Grid(shared_ptr<RHI_Device> rhi_device)
 	{
 		m_indexCount	= 0;
 		m_terrainHeight = 200;
@@ -44,7 +44,7 @@ namespace Spartan
 		vector<RHI_Vertex_PosCol> vertices;
 		vector<unsigned> indices;
 		BuildGrid(&vertices, &indices);
-		CreateBuffers(vertices, indices, rhiDevice);
+		CreateBuffers(vertices, indices, rhi_device);
 	}
 
 	const Matrix& Grid::ComputeWorldMatrix(Transform* camera)
@@ -138,7 +138,7 @@ namespace Spartan
 		m_vertexBuffer = make_shared<RHI_VertexBuffer>(rhi_device);
 		if (!m_vertexBuffer->Create(vertices))
 		{
-			LOG_ERROR("Grid::CreateBuffers: Failed to create vertex buffer.");
+			LOG_ERROR("Failed to create vertex buffer.");
 			return false;
 		}
 

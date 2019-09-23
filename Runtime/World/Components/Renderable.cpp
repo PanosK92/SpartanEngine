@@ -97,17 +97,17 @@ namespace Spartan
 		m_castShadows			= true;
 		m_receiveShadows		= true;
 
-		REGISTER_ATTRIBUTE_VALUE_VALUE(m_materialDefault, bool);
-		REGISTER_ATTRIBUTE_VALUE_VALUE(m_material, shared_ptr<Material>);
-		REGISTER_ATTRIBUTE_VALUE_VALUE(m_castShadows, bool);
-		REGISTER_ATTRIBUTE_VALUE_VALUE(m_receiveShadows, bool);
-		REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryIndexOffset, uint32_t);
-		REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryIndexCount, uint32_t);
-		REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryVertexOffset, uint32_t);
-		REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryVertexCount, uint32_t);
-		REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryName, string);
-		REGISTER_ATTRIBUTE_VALUE_VALUE(m_model, shared_ptr<Model>);
-		REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box, BoundingBox);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_materialDefault,       bool);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_material,              shared_ptr<Material>);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_castShadows,           bool);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_receiveShadows,        bool);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryIndexOffset,   uint32_t);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryIndexCount,    uint32_t);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryVertexOffset,  uint32_t);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryVertexCount,   uint32_t);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryName,          string);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_model,                 shared_ptr<Model>);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box,          BoundingBox);
 		REGISTER_ATTRIBUTE_GET_SET(Geometry_Type, GeometrySet, Geometry_Type);
 	}
 

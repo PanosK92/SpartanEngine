@@ -24,10 +24,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include "IComponent.h"
 #include "../../RHI/RHI_Definition.h"
+#include <vector>
 //===================================
 
 namespace Spartan
 {
+    class Model;
+
     class SPARTAN_CLASS Terrain : public IComponent
     {
     public:
@@ -38,10 +41,15 @@ namespace Spartan
         void OnInitialize() override;
         //===========================
 
-        const auto& GetHeightMap()                                          { return m_height_map; }
-        void SetHeightMap(const std::shared_ptr<RHI_Texture>& height_map)   { m_height_map = height_map; }
+        const auto& GetHeightMap() { return m_height_map; }
+        bool SetHeightMap(const std::shared_ptr<RHI_Texture>& height_map);
 
-    private:
+    private:     
+        uint32_t m_width    = 0;
+        uint32_t m_height   = 0;
+        float m_min_z       = 0.0f;
+        float m_max_z       = 1.0f;
         std::shared_ptr<RHI_Texture> m_height_map;
+        std::shared_ptr<Model> m_model;
     };
 }

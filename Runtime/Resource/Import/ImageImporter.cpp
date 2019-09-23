@@ -42,11 +42,11 @@ namespace _ImagImporter
 	// A struct that rescaling threads will work with
 	struct RescaleJob
 	{
-		uint32_t width		= 0;
-		uint32_t height		= 0;
-		uint32_t channels	= 0;
+		uint32_t width		    = 0;
+		uint32_t height		    = 0;
+		uint32_t channels	    = 0;
 		vector<std::byte>* data	= nullptr;
-		bool done			= false;
+		bool done			    = false;
 
 		RescaleJob(const uint32_t width, const uint32_t height, const uint32_t channels)
 		{
