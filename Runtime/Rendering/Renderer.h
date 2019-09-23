@@ -397,7 +397,7 @@ namespace Spartan
 		uint32_t m_max_resolution	= 16384;
 		//===========================================================
 
-		//= CORE ==========================================================
+		//= CORE ======================================================
 		Math::Rectangle m_quad;
 		std::shared_ptr<RHI_CommandList> m_cmd_list;
 		std::unique_ptr<Font> m_font;	
@@ -410,20 +410,20 @@ namespace Spartan
 		Math::Matrix m_view_projection_orthographic;
 		Math::Vector2 m_taa_jitter;
 		Math::Vector2 m_taa_jitter_previous;
-		Renderer_Buffer_Type m_debug_buffer         = Renderer_Buffer_None;
-		uint32_t m_flags                            = 0;
-		bool m_initialized                          = false;
-        bool m_reverse_z                            = true;
-        uint32_t m_resolution_shadow                = 4096;
-        uint32_t m_resolution_shadow_min            = 128;
-        uint32_t m_anisotropy                       = 16;
-        float m_near_plane                          = 0.0f;
-        float m_far_plane                           = 0.0f;
-        uint64_t m_frame_num                        = 0;
-        bool m_is_odd_frame                         = false;
-        bool m_is_rendering                         = false;
-        bool m_brdf_specular_lut_rendered           = false;
-		//=================================================================
+		Renderer_Buffer_Type m_debug_buffer     = Renderer_Buffer_None;
+		uint32_t m_flags                        = 0;
+		bool m_initialized                      = false;
+        bool m_reverse_z                        = true;
+        uint32_t m_resolution_shadow            = 4096;
+        uint32_t m_resolution_shadow_min        = 128;
+        uint32_t m_anisotropy                   = 16;
+        float m_near_plane                      = 0.0f;
+        float m_far_plane                       = 0.0f;
+        uint64_t m_frame_num                    = 0;
+        bool m_is_odd_frame                     = false;
+        bool m_is_rendering                     = false;
+        bool m_brdf_specular_lut_rendered       = false;
+		//=============================================================
 
 		//= RHI ============================================
 		std::shared_ptr<RHI_Device> m_rhi_device;
