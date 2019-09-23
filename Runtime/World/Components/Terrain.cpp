@@ -76,79 +76,104 @@ namespace Spartan
             }
         }
 
-        // Pre-allocate enough space for triangle list
-        vector<RHI_Vertex_PosTexNorTan> vertices(m_height * m_width * 4, RHI_Vertex_PosTexNorTan{});
-        vector<uint32_t> indices(m_height * m_width * 6, 0);
-
-        // Create triangles
-        for (uint32_t y = 0; y < m_height - 1; y++)
+        // Create the vertices and the indices of the grid
+        vector<RHI_Vertex_PosTexNorTan> vertices(m_height * m_width);
+        uint32_t face_count = (m_height - 1) * (m_width - 1) * 2;
+        vector<uint32_t> indices(face_count * 3);
+        uint32_t k = 0;
+        uint32_t texUIndex = 0;
+        uint32_t texVIndex = 0;
         {
-            for (uint32_t x = 0; x < m_width - 1; x++)
+            for (uint32_t y = 0; y < m_height - 1; y++)
             {
-                // Get the indexes to the four points of the quad.
-                uint32_t index1 = (m_width * y)         + x;        // Upper left
-                uint32_t index2 = (m_width * y)         + (x + 1);  // Upper right
-                uint32_t index3 = (m_width * (y + 1))   + x;        // Bottom left
-                uint32_t index4 = (m_width * (y + 1))   + (x + 1);  // Bottom right
+                for (uint32_t x = 0; x < m_width - 1; x++)
+                {
+                    // Bottom left of quad
+                    indices[k] = y * m_width + x;
+                    vertices[y * m_width + x] = RHI_Vertex_PosTexNorTan
+                    {
+                        points[y * m_width + x],
+                        Vector2(texUIndex + 0.0f, texVIndex + 1.0f),
+                        Vector3(0, 1, 0),
+                        Vector3(1, 0, 0)
+                    };
 
-                // 0 top-left
-                vertices.emplace_back(
-                    points[index1],
-                    Vector2(0, 0),
-                    Vector3(0, 1, 0),
-                    Vector3(1, 0, 0)
-                );
+                    // Bottom right of quad
+                    indices[k + 1] = y * m_width + x + 1;
+                    vertices[y * m_width + x + 1] = RHI_Vertex_PosTexNorTan
+                    {
+                        points[y * m_width + x + 1],
+                        Vector2(texUIndex + 1.0f, texVIndex + 1.0f),
+                        Vector3(0, 1, 0),
+                        Vector3(1, 0, 0)
+                    };
 
-                // 1 top-right
-                vertices.emplace_back(
-                    points[index2],
-                    Vector2(1, 0),
-                    Vector3(0, 1, 0),
-                    Vector3(1, 0, 0)
-                );
+                    // Top left of quad
+                    indices[k + 2] = (y + 1) * m_width + x;
+                    vertices[(y + 1) * m_width + x] = RHI_Vertex_PosTexNorTan
+                    {
+                        points[(y + 1) * m_width + x],
+                        Vector2(texUIndex + 0.0f, texVIndex + 0.0f),
+                        Vector3(0, 1, 0),
+                        Vector3(1, 0, 0)
+                    };
 
-                // 2 bottom-left
-                vertices.emplace_back(
-                    points[index3],
-                    Vector2(0, 1),
-                    Vector3(0, 1, 0),
-                    Vector3(1, 0, 0)
-                );
+                    // Top left of quad
+                    indices[k + 3] = (y + 1) * m_width + x;
+                    vertices[(y + 1) * m_width + x] = RHI_Vertex_PosTexNorTan
+                    {
+                        points[(y + 1) * m_width + x],
+                        Vector2(texUIndex + 0.0f, texVIndex + 0.0f),
+                        Vector3(0, 1, 0),
+                        Vector3(1, 0, 0)
+                    };
 
-                // 3 bottom-right
-                vertices.emplace_back(
-                    index4,
-                    Vector2(1, 1),
-                    Vector3(0, 1, 0),
-                    Vector3(1, 0, 0)
-                ); 
+                    // Bottom right of quad
+                    indices[k + 4] = y * m_width + x + 1;
+                    vertices[y * m_width + x + 1] = RHI_Vertex_PosTexNorTan
+                    {
+                        points[y * m_width + x + 1],
+                        Vector2(texUIndex + 1.0f, texVIndex + 1.0f),
+                        Vector3(0, 1, 0),
+                        Vector3(1, 0, 0)
+                    };
 
-                indices.emplace_back(index4);
-                indices.emplace_back(index3);
-                indices.emplace_back(index1);
-                indices.emplace_back(index4);
-                indices.emplace_back(index1);
-                indices.emplace_back(index2);
+                    // Top right of quad
+                    indices[k + 5] = (y + 1) * m_width + x + 1;
+                    vertices[(y + 1) * m_width + x + 1] = RHI_Vertex_PosTexNorTan
+                    {
+                        points[(y + 1) * m_width + x + 1],
+                        Vector2(texUIndex + 1.0f, texVIndex + 0.0f),
+                        Vector3(0, 1, 0),
+                        Vector3(1, 0, 0)
+                    };
+
+                    k += 6; // next quad
+
+                    texUIndex++;
+                }
+                texUIndex = 0;
+                texVIndex++;
             }
         }
 
         // Create model
         m_model = make_shared<Model>(m_context);
         m_model->GeometryAppend(indices, vertices);
+        m_model->GeometryUpdate();
 
         // Add renderable and pass the model to it
         Renderable* renderable = m_entity->AddComponent<Renderable>().get();
-        renderable->UseDefaultMaterial();
-        string name = "Terrain";
         renderable->GeometrySet(
-            name,
+            "Terrain",
             0,
-            indices.size(),
+            static_cast<uint32_t>(indices.size()),
             0,
-            vertices.size(),
-            m_model->GeometryAabb(),
+            static_cast<uint32_t>(vertices.size()),
+            BoundingBox(vertices),
             m_model.get()
         );
+        renderable->UseDefaultMaterial();
 
         return true;
     }
