@@ -102,8 +102,8 @@ namespace Spartan
 		RHI_Vertex_PosTexNorTan(
 			const Math::Vector3& pos,
 			const Math::Vector2& tex,
-			const Math::Vector3& nor,
-			const Math::Vector3& tan)
+			const Math::Vector3& nor = Math::Vector3::Zero,
+			const Math::Vector3& tan = Math::Vector3::Zero)
 		{
 			this->pos[0] = pos.x;
 			this->pos[1] = pos.y;

@@ -266,17 +266,24 @@ namespace ImGuiEx
         const char* name,
         const const std::shared_ptr<Spartan::RHI_Texture>& image,
         const std::function<void(const std::shared_ptr<Spartan::RHI_Texture>&)>& setter,
-        float offset_from_start_x = 0.0f
+        float offset_from_start_x   = 0.0f,
+        bool align_vertically       = false
     )
     {
         const auto slot_size        = ImVec2(80, 80);
         const auto x_button_size    = 15.0f;
 
         // Text
-        ImGui::Text(name);
+        if (name)
+        {
+            ImGui::Text(name);
+            if (!align_vertically)
+            {
+                ImGui::SameLine(offset_from_start_x);
+            }
+        }
 
         // Image
-        ImGui::SameLine(offset_from_start_x);
         ImGui::BeginGroup();
         {
             ImGuiEx::Image
@@ -291,10 +298,12 @@ namespace ImGuiEx
             if (image != nullptr)
             {
                 ImGui::SameLine(); ImGui::SetCursorPosX(ImGui::GetCursorPosX() - x_button_size * 2.0f);
-                if (ImGuiEx::ImageButton(name, Icon_Component_Material_RemoveTexture, x_button_size))
+                ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
+                if (ImGuiEx::ImageButton("", Icon_Component_Material_RemoveTexture, x_button_size))
                 {
                     setter(nullptr);
                 }
+                ImGui::PopID();
             }
         }
         ImGui::EndGroup();

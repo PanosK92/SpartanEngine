@@ -37,12 +37,14 @@ namespace Spartan
         Terrain(Context* context, Entity* entity, uint32_t id = 0);
         ~Terrain() = default;
 
-        //= IComponent ==============
+        //= IComponent ===============================
         void OnInitialize() override;
-        //===========================
+        void Serialize(FileStream* stream) override;
+        void Deserialize(FileStream* stream) override;
+        //============================================
 
-        const auto& GetHeightMap() { return m_height_map; }
-        bool SetHeightMap(const std::shared_ptr<RHI_Texture>& height_map);
+        const auto& GetHeightMap()                                          { return m_height_map; }
+        void SetHeightMap(const std::shared_ptr<RHI_Texture>& height_map)   { m_height_map = height_map; }
 
         float GetMinZ()             { return m_min_z; }
         void SetMinZ(float min_z)   { m_min_z = min_z; }
@@ -50,11 +52,24 @@ namespace Spartan
         float GetMaxZ()             { return m_max_z; }
         void SetMaxZ(float max_z)   { m_max_z = max_z; }
 
-    private:     
+        float GetSmoothness()                   { return m_smoothness; }
+        void SetSmoothness(float smoothness)    { m_smoothness = smoothness; }
+
+        void Generate();
+
+    private:
+        void UpdateModel(const std::vector<uint32_t>& indices, std::vector<RHI_Vertex_PosTexNorTan>& vertices);
+        void ComputeNormals(const std::vector<uint32_t>& indices, std::vector<RHI_Vertex_PosTexNorTan>& vertices);
+        void ClearGeometry();
+        void FreeMemory();
+
         uint32_t m_width    = 0;
         uint32_t m_height   = 0;
         float m_min_z       = 0.0f;
-        float m_max_z       = 1.0f;
+        float m_max_z       = 20.0f;
+        float m_smoothness  = 1.0f;
+        std::vector<RHI_Vertex_PosTexNorTan> m_vertices;
+        std::vector<uint32_t> m_indices;
         std::shared_ptr<RHI_Texture> m_height_map;
         std::shared_ptr<Model> m_model;
     };
