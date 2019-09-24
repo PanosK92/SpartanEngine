@@ -54,8 +54,8 @@ namespace Spartan
 		
 		//= GEOMETRY ======================================
 		void GeometryAppend(
-			std::vector<uint32_t>& indices,
-			std::vector<RHI_Vertex_PosTexNorTan>& vertices,
+			const std::vector<uint32_t>& indices,
+			const std::vector<RHI_Vertex_PosTexNorTan>& vertices,
 			uint32_t* index_offset = nullptr,
 			uint32_t* vertex_offset = nullptr
 		) const;

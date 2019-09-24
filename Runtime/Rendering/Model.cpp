@@ -109,7 +109,7 @@ namespace Spartan
 	}
 	//=======================================================
 
-	void Model::GeometryAppend(std::vector<uint32_t>& indices, std::vector<RHI_Vertex_PosTexNorTan>& vertices, uint32_t* index_offset, uint32_t* vertex_offset) const
+	void Model::GeometryAppend(const vector<uint32_t>& indices, const vector<RHI_Vertex_PosTexNorTan>& vertices, uint32_t* index_offset, uint32_t* vertex_offset) const
 	{
 		if (indices.empty() || vertices.empty())
 		{

@@ -860,30 +860,42 @@ void Widget_Properties::ShowTerrain(shared_ptr<Terrain>& terrain) const
 
     if (ComponentProperty::Begin("Terrain", Icon_Component_Terrain, terrain))
     {
-        //= REFLECT =====================
-        float min_z = terrain->GetMinZ();
-        float max_z = terrain->GetMaxZ();
-        //===============================
+        //= REFLECT ===================================
+        float min_z         = terrain->GetMinZ();
+        float max_z         = terrain->GetMaxZ();
+        float smoothness    = terrain->GetSmoothness();
+        //=============================================
+
+        float cursor_y = ImGui::GetCursorPosY();
 
         ImGuiEx::ImageSlot(
-            "Terrain",
+            "Height Map",
             terrain->GetHeightMap(),
-            [&terrain](const shared_ptr<RHI_Texture>& texture)  { terrain->SetHeightMap(texture); },
-            ComponentProperty::g_column
+            [&terrain](const shared_ptr<RHI_Texture>& texture) { terrain->SetHeightMap(texture); },
+            0.0f,   // offset_from_start_x
+            true    // align_vertically
         );
 
         ImGui::SameLine();
+        ImGui::SetCursorPosY(cursor_y);
         ImGui::BeginGroup();
         {
             ImGui::InputFloat("Min Z", &min_z);
             ImGui::InputFloat("Max Z", &max_z);
+            ImGui::InputFloat("Smoothness", &smoothness);
+
+            if (ImGui::Button("Generate"))
+            {
+                terrain->Generate();
+            }
         }
         ImGui::EndGroup();
 
-        //= MAP =================================================
-        if (min_z != terrain->GetMinZ()) terrain->SetMinZ(min_z);
-        if (max_z != terrain->GetMaxZ()) terrain->SetMaxZ(max_z);
-        //=======================================================
+        //= MAP =======================================================================
+        if (min_z != terrain->GetMinZ())            terrain->SetMinZ(min_z);
+        if (max_z != terrain->GetMaxZ())            terrain->SetMaxZ(max_z);
+        if (smoothness != terrain->GetSmoothness()) terrain->SetSmoothness(smoothness);
+        //=============================================================================
     }
     ComponentProperty::End();
 }

@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==================
 #include "../Core/EngineDefs.h"
 #include <string>
+#include "MathHelper.h"
 //=============================
 
 namespace Spartan::Math
@@ -61,7 +62,7 @@ namespace Spartan::Math
 		Vector4(const Vector3& value, float w);
 		Vector4(const Vector3& value);
 
-		~Vector4(){}
+        ~Vector4() = default;
 
 		bool operator ==(const Vector4& rhs) const
 		{
@@ -73,9 +74,59 @@ namespace Spartan::Math
 			return !(*this == rhs);
 		}
 
+        Vector4 operator*(const float value) const
+        {
+            return Vector4(
+                x * value,
+                y * value,
+                z * value,
+                w * value
+            );
+        }
+
+        void operator*=(const float value)
+        {
+            x *= value;
+            y *= value;
+            z *= value;
+            w *= value;
+        }
+
         Vector4 operator /(const float rhs)
         {
             return Vector4(x / rhs, y / rhs, z / rhs, w / rhs);
+        }
+
+        // Returns the length
+        [[nodiscard]] float Length() const { return Sqrt(x * x + y * y + z * z + w * w); }
+        // Returns the squared length
+        [[nodiscard]] float LengthSquared() const { return x * x + y * y + z * z + w * w; }
+
+        // Normalize
+        void Normalize()
+        {
+            const auto length_squared = LengthSquared();
+            if (!Equals(length_squared, 1.0f) && length_squared > 0.0f)
+            {
+                const auto length_inverted = 1.0f / Sqrt(length_squared);
+                x *= length_inverted;
+                y *= length_inverted;
+                z *= length_inverted;
+                w *= length_inverted;
+            }
+        };
+
+        // Return normalized vector
+        [[nodiscard]] Vector4 Normalized() const
+        {
+            const auto length_squared = LengthSquared();
+            if (!Equals(length_squared, 1.0f) && length_squared > 0.0f)
+            {
+                const auto length_inverted = 1.0f / Sqrt(length_squared);
+                return (*this) * length_inverted;
+            }
+            else
+                return *this;
         }
 
 		std::string ToString() const;

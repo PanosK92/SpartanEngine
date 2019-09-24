@@ -70,8 +70,9 @@ namespace Spartan
 			const Math::BoundingBox& aabb, 
 			Model* model
 		);
+        void GeometryClear();
+        void GeometrySet(Geometry_Type type);
 		void GeometryGet(std::vector<uint32_t>* indices, std::vector<RHI_Vertex_PosTexNorTan>* vertices) const;
-		void GeometrySet(Geometry_Type type);
 		auto GeometryIndexOffset()	const { return m_geometryIndexOffset; }
 		auto GeometryIndexCount()	const { return m_geometryIndexCount; }		
 		auto GeometryVertexOffset() const { return m_geometryVertexOffset; }

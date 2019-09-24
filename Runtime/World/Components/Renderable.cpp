@@ -178,7 +178,7 @@ namespace Spartan
 		m_geometryVertexOffset	= vertex_offset;
 		m_geometryVertexCount	= vertex_count;
 		m_bounding_box			= bounding_box;
-		m_model					= model->GetSharedPtr();
+		m_model					= model ? model->GetSharedPtr() : nullptr;
 	}
 
 	void Renderable::GeometrySet(const Geometry_Type type)
@@ -191,6 +191,11 @@ namespace Spartan
 		}
 	}
 
+    void Renderable::GeometryClear()
+    {
+        GeometrySet("Cleared", 0, 0, 0, 0, BoundingBox(), nullptr);
+    }
+
 	void Renderable::GeometryGet(vector<uint32_t>* indices, vector<RHI_Vertex_PosTexNorTan>* vertices) const
 	{
 		if (!m_model)
@@ -202,7 +207,7 @@ namespace Spartan
 		m_model->GeometryGet(m_geometryIndexOffset, m_geometryIndexCount, m_geometryVertexOffset, m_geometryVertexCount, indices, vertices);
 	}
 
-	const BoundingBox& Renderable::GetAabb()
+    const BoundingBox& Renderable::GetAabb()
 	{
         if (m_last_transform != GetTransform()->GetMatrix())
         {
