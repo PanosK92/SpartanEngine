@@ -103,20 +103,20 @@ namespace Spartan
             m_indices   = vector<uint32_t>(m_face_count * 3);
             
             // Read height map and construct positions
-            m_progress_desc = "Computing positions...";
-            ComputePositions(m_positions, height_map_data);
+            m_progress_desc = "Generating positions...";
+            GeneratePositions(m_positions, height_map_data);
 
             // Compute the vertices (without the normals) and the indices
-            m_progress_desc = "Computing terrain vertices and indices...";
-            ComputeVerticesIndices(m_positions, m_indices, m_vertices);
+            m_progress_desc = "Generating terrain vertices and indices...";
+            GenerateVerticesIndices(m_positions, m_indices, m_vertices);
 
             // Free position memory now that we are done with it
             m_positions.clear();
             m_positions.shrink_to_fit();
 
             // Compute the normals by doing normal averaging (very expensive)
-            m_progress_desc = "Computing normals...";
-            ComputeNormals(m_indices, m_vertices);
+            m_progress_desc = "Generating normals and tangents...";
+            GenerateNormalTangents(m_indices, m_vertices);
 
             // Create a model and set to to the renderable component
             UpdateModel(m_indices, m_vertices);
@@ -130,7 +130,7 @@ namespace Spartan
         });
     }
 
-    void Terrain::ComputePositions(vector<Vector3>& positions, const vector<std::byte>& height_map)
+    void Terrain::GeneratePositions(vector<Vector3>& positions, const vector<std::byte>& height_map)
     {
         uint32_t index  = 0;
         uint32_t k      = 0;
@@ -139,15 +139,15 @@ namespace Spartan
         {
             for (uint32_t x = 0; x < m_width; x++)
             {
-                // Read height and scale it to [0,1]
+                // Read height and scale it to a [0, 1] range
                 float height = (static_cast<float>(height_map[k]) / 255.0f);
-        
+
                 // Construct position
                 uint32_t index        = y * m_width + x;
-                positions[index].x    = static_cast<float>(x) - m_width * 0.5f;   // center it by offsetting to the left
-                positions[index].z    = static_cast<float>(y) - m_height * 0.5f;  // center it by offsetting backwards
-                positions[index].y    = Lerp(m_min_z, m_max_z, height) / m_smoothness;
-        
+                positions[index].x    = static_cast<float>(x) - m_width * 0.5f;     // center on the X axis
+                positions[index].z    = static_cast<float>(y) - m_height * 0.5f;    // center on the Z axis
+                positions[index].y    = Lerp(m_min_y, m_max_y, height);
+
                 k += 4;
 
                 // track progress
@@ -156,7 +156,7 @@ namespace Spartan
         }
     }
 
-    void Terrain::ComputeVerticesIndices(const vector<Vector3>& positions, vector<uint32_t>& indices, vector<RHI_Vertex_PosTexNorTan>& vertices)
+    void Terrain::GenerateVerticesIndices(const vector<Vector3>& positions, vector<uint32_t>& indices, vector<RHI_Vertex_PosTexNorTan>& vertices)
     {
         uint32_t index      = 0;
         uint32_t k          = 0;
@@ -214,33 +214,56 @@ namespace Spartan
         }
     }
 
-    void Terrain::ComputeNormals(const vector<uint32_t>& indices, vector<RHI_Vertex_PosTexNorTan>& vertices)
+    void Terrain::GenerateNormalTangents(const vector<uint32_t>& indices, vector<RHI_Vertex_PosTexNorTan>& vertices)
     {
         // Normals are computed by normal averaging, which can be crazy slow
         uint32_t face_count     = static_cast<uint32_t>(indices.size()) / 3;
         uint32_t vertex_count   = static_cast<uint32_t>(vertices.size());
 
-        // Compute face normals
+        // Compute face normals and tangents
         vector<Vector3> face_normals(face_count);
+        vector<Vector3> face_tangents(face_count);
         {
             for (uint32_t i = 0; i < face_count; ++i)
             {
-                // Get the vector describing one edge of our triangle (edge 0,2)
-                Vector3 edge_a = Vector3(
-                    vertices[indices[(i * 3)]].pos[0] - vertices[indices[(i * 3) + 2]].pos[0],
-                    vertices[indices[(i * 3)]].pos[1] - vertices[indices[(i * 3) + 2]].pos[1],
-                    vertices[indices[(i * 3)]].pos[2] - vertices[indices[(i * 3) + 2]].pos[2]
-                );
+                Vector3 edge_a;
+                Vector3 edge_b;
 
-                // Get the vector describing another edge of our triangle (edge 2,1)
-                Vector3 edge_b = Vector3(
-                    vertices[indices[(i * 3) + 2]].pos[0] - vertices[indices[(i * 3) + 1]].pos[0],
-                    vertices[indices[(i * 3) + 2]].pos[1] - vertices[indices[(i * 3) + 1]].pos[1],
-                    vertices[indices[(i * 3) + 2]].pos[2] - vertices[indices[(i * 3) + 1]].pos[2]
-                );
+                // Normal
+                {
+                    // Get the vector describing one edge of our triangle (edge 0, 1)
+                    edge_a = Vector3(
+                        vertices[indices[(i * 3)]].pos[0] - vertices[indices[(i * 3) + 1]].pos[0],
+                        vertices[indices[(i * 3)]].pos[1] - vertices[indices[(i * 3) + 1]].pos[1],
+                        vertices[indices[(i * 3)]].pos[2] - vertices[indices[(i * 3) + 1]].pos[2]
+                    );
 
-                // Cross multiply the two edge vectors to get the unnormalized face normal
-                face_normals[i] = Vector3::Cross(edge_a, edge_b);
+                    // Get the vector describing another edge of our triangle (edge 2,1)
+                    edge_b = Vector3(
+                        vertices[indices[(i * 3) + 1]].pos[0] - vertices[indices[(i * 3) + 2]].pos[0],
+                        vertices[indices[(i * 3) + 1]].pos[1] - vertices[indices[(i * 3) + 2]].pos[1],
+                        vertices[indices[(i * 3) + 1]].pos[2] - vertices[indices[(i * 3) + 2]].pos[2]
+                    );
+
+                    // Cross multiply the two edge vectors to get the unnormalized face normal
+                    face_normals[i] = Vector3::Cross(edge_a, edge_b);
+                }
+
+                // Tangent
+                {
+                    // find first texture coordinate edge 2d vector
+                    float tcU1 = vertices[indices[(i * 3)]].tex[0] - vertices[indices[(i * 3) + 1]].tex[0];
+                    float tcV1 = vertices[indices[(i * 3)]].tex[1] - vertices[indices[(i * 3) + 1]].tex[1];
+
+                    // find second texture coordinate edge 2d vector
+                    float tcU2 = vertices[indices[(i * 3) + 1]].tex[0] - vertices[indices[(i * 3) + 2]].tex[0];
+                    float tcV2 = vertices[indices[(i * 3) + 1]].tex[1] - vertices[indices[(i * 3) + 2]].tex[1];
+
+                    // find tangent using both tex coord edges and position edges
+                    face_tangents[i].x = (tcV1 * edge_a.x - tcV2 * edge_b.x * (1.0f / (tcU1 * tcV2 - tcU2 * tcV1)));
+                    face_tangents[i].y = (tcV1 * edge_a.y - tcV2 * edge_b.y * (1.0f / (tcU1 * tcV2 - tcU2 * tcV1)));
+                    face_tangents[i].z = (tcV1 * edge_a.z - tcV2 * edge_b.z * (1.0f / (tcU1 * tcV2 - tcU2 * tcV1)));
+                }
 
                 // track progress
                 m_progress_jobs_done++;
@@ -249,8 +272,9 @@ namespace Spartan
 
         // Compute vertex normals (normal averaging)
         {
-            Vector3 normal_sum = Vector3::Zero;
-            float faces_using = 0;
+            Vector3 normal_sum  = Vector3::Zero;
+            Vector3 tangent_sum = Vector3::Zero;
+            float faces_using   = 0;
 
             // Go through each vertex
             for (uint32_t i = 0; i < vertex_count; ++i)
@@ -260,8 +284,9 @@ namespace Spartan
                 {
                     if (indices[j * 3] == i || indices[(j * 3) + 1] == i || indices[(j * 3) + 2] == i)
                     {
-                        // If a face is using the vertex, add the unnormalized face normal to the normal_sum
-                        normal_sum += face_normals[j]; 
+                        // If a face is using the vertex, accumulate the face normal/tangent
+                        normal_sum  += face_normals[j];
+                        tangent_sum += face_tangents[j];
                         faces_using++;
                     }
 
@@ -269,27 +294,27 @@ namespace Spartan
                     m_progress_jobs_done++;
                 }
 
-                // Get the actual normal by dividing the normal_sum by the number of faces sharing the vertex
-                normal_sum = normal_sum / faces_using;
+                // Compute actual normal
+                normal_sum /= faces_using;
+                normal_sum.Normalize();
 
-                // Normalize the normal_sum vector
-                normal_sum = normal_sum.Normalized();
+                // Compute actual tangent
+                tangent_sum /= faces_using;
+                tangent_sum.Normalize();
 
-                // Normal
+                // Write normal to vertex
                 vertices[i].nor[0] = normal_sum.x;
                 vertices[i].nor[1] = normal_sum.y;
                 vertices[i].nor[2] = normal_sum.z;
 
-                // Tangent
-                Vector3 tangent1    = Vector3::Cross(normal_sum, Vector3::Forward);
-                Vector3 tangent2    = Vector3::Cross(normal_sum, Vector3::Up);
-                Vector3 tangent     = tangent1.LengthSquared() > tangent2.LengthSquared() ? tangent1 : tangent2;
-                vertices[i].tan[0]  = tangent.x;
-                vertices[i].tan[1]  = tangent.y;
-                vertices[i].tan[2]  = tangent.z;
+                // Write tangent to vertex
+                vertices[i].tan[0]  = tangent_sum.x;
+                vertices[i].tan[1]  = tangent_sum.y;
+                vertices[i].tan[2]  = tangent_sum.z;
 
-                // Clear normal_sum and faces_using for next vertex
+                // Reset
                 normal_sum  = Vector3::Zero;
+                tangent_sum = Vector3::Zero;
                 faces_using = 0.0f;
             }
         }
