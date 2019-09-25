@@ -23,8 +23,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ========================
 #include "IComponent.h"
-#include "../../RHI/RHI_Definition.h"
 #include <vector>
+#include "../../RHI/RHI_Definition.h"
+#include "../../Math/Vector3.h"
 //===================================
 
 namespace Spartan
@@ -55,19 +56,30 @@ namespace Spartan
         float GetSmoothness()                   { return m_smoothness; }
         void SetSmoothness(float smoothness)    { m_smoothness = smoothness; }
 
-        void Generate();
+        float GetProgress() { return static_cast<float>(m_progress_jobs_done) / static_cast<float>(m_progress_job_count); }
+        const auto& GetProgressDescription() { return m_progress_desc; }
+
+        void GenerateAsync();
 
     private:
-        void UpdateModel(const std::vector<uint32_t>& indices, std::vector<RHI_Vertex_PosTexNorTan>& vertices);
+        void ComputePositions(std::vector<Math::Vector3>& positions, const std::vector<std::byte>& height_map);
+        void ComputeVerticesIndices(const std::vector<Math::Vector3>& positions, std::vector<uint32_t>& indices, std::vector<RHI_Vertex_PosTexNorTan>& vertices);
         void ComputeNormals(const std::vector<uint32_t>& indices, std::vector<RHI_Vertex_PosTexNorTan>& vertices);
-        void ClearGeometry();
+        void UpdateModel(const std::vector<uint32_t>& indices, std::vector<RHI_Vertex_PosTexNorTan>& vertices);
         void FreeMemory();
 
-        uint32_t m_width    = 0;
-        uint32_t m_height   = 0;
-        float m_min_z       = 0.0f;
-        float m_max_z       = 20.0f;
-        float m_smoothness  = 1.0f;
+        uint32_t m_width                = 0;
+        uint32_t m_height               = 0;
+        float m_min_z                   = 0.0f;
+        float m_max_z                   = 20.0f;
+        float m_smoothness              = 1.0f;
+        bool m_is_generating            = false;
+        uint32_t m_vertex_count         = 0;
+        uint32_t m_face_count           = 0;
+        uint32_t m_progress_jobs_done   = 0;
+        uint32_t m_progress_job_count   = 1; // avoid devision by zero in GetProgress()
+        std::string m_progress_desc;
+        std::vector<Math::Vector3> m_positions;
         std::vector<RHI_Vertex_PosTexNorTan> m_vertices;
         std::vector<uint32_t> m_indices;
         std::shared_ptr<RHI_Texture> m_height_map;
