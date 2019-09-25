@@ -95,7 +95,6 @@ namespace Spartan
 		auto GetNormalBias()			{ return m_normal_bias; }
 
 		Math::Vector3 GetDirection() const;
-		void ClampRotation() const;
 
 		const Math::Matrix& GetViewMatrix(uint32_t index = 0);
 		const Math::Matrix& GetProjectionMatrix(uint32_t index = 0);
