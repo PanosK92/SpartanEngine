@@ -860,12 +860,11 @@ void Widget_Properties::ShowTerrain(shared_ptr<Terrain>& terrain) const
 
     if (ComponentProperty::Begin("Terrain", Icon_Component_Terrain, terrain))
     {
-        //= REFLECT ===================================
-        float min_z         = terrain->GetMinZ();
-        float max_z         = terrain->GetMaxZ();
-        float smoothness    = terrain->GetSmoothness();
+        //= REFLECT =================================
+        float min_y         = terrain->GetMinY();
+        float max_y         = terrain->GetMaxY();
         float progress      = terrain->GetProgress();
-        //=============================================
+        //===========================================
 
         float cursor_y = ImGui::GetCursorPosY();
 
@@ -879,7 +878,7 @@ void Widget_Properties::ShowTerrain(shared_ptr<Terrain>& terrain) const
                 true    // label_align_vertically
             );
 
-            if (ImGui::Button("Generate"))
+            if (ImGui::Button("Generate", ImVec2(82, 0)))
             {
                 terrain->GenerateAsync();
             }
@@ -890,9 +889,8 @@ void Widget_Properties::ShowTerrain(shared_ptr<Terrain>& terrain) const
         ImGui::SetCursorPosY(cursor_y);
         ImGui::BeginGroup();
         {
-            ImGui::InputFloat("Min Z", &min_z);
-            ImGui::InputFloat("Max Z", &max_z);
-            ImGui::InputFloat("Smoothness", &smoothness);
+            ImGui::InputFloat("Min Y", &min_y);
+            ImGui::InputFloat("Max Y", &max_y);
 
             if (progress > 0.0f && progress < 1.0f)
             {
@@ -903,11 +901,10 @@ void Widget_Properties::ShowTerrain(shared_ptr<Terrain>& terrain) const
         }
         ImGui::EndGroup();
 
-        //= MAP =======================================================================
-        if (min_z != terrain->GetMinZ())            terrain->SetMinZ(min_z);
-        if (max_z != terrain->GetMaxZ())            terrain->SetMaxZ(max_z);
-        if (smoothness != terrain->GetSmoothness()) terrain->SetSmoothness(smoothness);
-        //=============================================================================
+        //= MAP =================================================
+        if (min_y != terrain->GetMinY()) terrain->SetMinY(min_y);
+        if (max_y != terrain->GetMaxY()) terrain->SetMaxY(max_y);
+        //=======================================================
     }
     ComponentProperty::End();
 }
