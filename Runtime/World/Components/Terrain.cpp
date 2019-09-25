@@ -19,8 +19,9 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =====================
+//= INCLUDES =========================
 #include "Terrain.h"
+#include "Renderable.h"
 #include "..\..\RHI\RHI_Texture.h"
 #include "..\..\Logging\Log.h"
 #include "..\..\Math\Vector3.h"
@@ -28,9 +29,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\..\RHI\RHI_Vertex.h"
 #include "..\..\Rendering\Model.h"
 #include "..\..\IO\FileStream.h"
-#include "Renderable.h"
 #include "..\Entity.h"
-//================================
+#include "..\..\Threading\Threading.h"
+//====================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -66,133 +67,183 @@ namespace Spartan
         FreeMemory();
     }
 
-    void Terrain::Generate()
+    void Terrain::GenerateAsync()
     {
-        ClearGeometry();
-
-        if (!m_height_map)
+        if (m_is_generating)
+        {
+            LOG_WARNING("Terrain is already being generated, please wait...");
             return;
+        }
 
-        // Get height map data
-        vector<std::byte> data  = m_height_map->GetMipmap(0);
-        m_height                = m_height_map->GetHeight();
-        m_width                 = m_height_map->GetWidth();
-        uint32_t bpp            = m_height_map->GetBpp();
+        FreeMemory();
+        
+        if (!m_height_map)
+        {
+            UpdateModel(m_indices, m_vertices);
+            LOG_WARNING("You need to assign a height map before trying to generate a terrain.");
+            return;
+        }
 
-        // Read height map
-        vector<Vector3> points(m_height * m_width);
+        m_context->GetSubsystem<Threading>()->AddTask([this]()
+        {
+            m_is_generating = true;
+
+            // Get height map data
+            vector<std::byte> height_map_data   = m_height_map->GetMipmap(0);
+            m_height                            = m_height_map->GetHeight();
+            m_width                             = m_height_map->GetWidth();
+            m_vertex_count                      = m_height * m_width;
+            m_face_count                        = (m_height - 1) * (m_width - 1) * 2;
+            m_progress_jobs_done                = 0;
+            m_progress_job_count                = m_vertex_count * 2 + m_face_count + m_vertex_count * m_face_count;
+
+            // Pre-allocate memory for calculations that follow
+            m_positions = vector<Vector3>(m_height * m_width);
+            m_vertices  = vector<RHI_Vertex_PosTexNorTan>(m_vertex_count);
+            m_indices   = vector<uint32_t>(m_face_count * 3);
+            
+            // Read height map and construct positions
+            m_progress_desc = "Computing positions...";
+            ComputePositions(m_positions, height_map_data);
+
+            // Compute the vertices (without the normals) and the indices
+            m_progress_desc = "Computing terrain vertices and indices...";
+            ComputeVerticesIndices(m_positions, m_indices, m_vertices);
+
+            // Free position memory now that we are done with it
+            m_positions.clear();
+            m_positions.shrink_to_fit();
+
+            // Compute the normals by doing normal averaging (very expensive)
+            m_progress_desc = "Computing normals...";
+            ComputeNormals(m_indices, m_vertices);
+
+            // Create a model and set to to the renderable component
+            UpdateModel(m_indices, m_vertices);
+
+            // Clear progress stats
+            m_progress_jobs_done = 0;
+            m_progress_job_count = 1;
+            m_progress_desc.clear();
+
+            m_is_generating = false;
+        });
+    }
+
+    void Terrain::ComputePositions(vector<Vector3>& positions, const vector<std::byte>& height_map)
+    {
         uint32_t index  = 0;
         uint32_t k      = 0;
+
         for (uint32_t y = 0; y < m_height; y++)
         {
             for (uint32_t x = 0; x < m_width; x++)
             {
                 // Read height and scale it to [0,1]
-                float height = (static_cast<float>(data[k]) / 255.0f);
-
+                float height = (static_cast<float>(height_map[k]) / 255.0f);
+        
                 // Construct position
-                uint32_t index = y * m_width + x;
-                points[index].x = static_cast<float>(x) - m_width * 0.5f;   // center it by offsetting to the left
-                points[index].z = static_cast<float>(y) - m_height * 0.5f;  // center it by offsetting backwards
-                points[index].y = Lerp(m_min_z, m_max_z, height) / m_smoothness;
-
+                uint32_t index        = y * m_width + x;
+                positions[index].x    = static_cast<float>(x) - m_width * 0.5f;   // center it by offsetting to the left
+                positions[index].z    = static_cast<float>(y) - m_height * 0.5f;  // center it by offsetting backwards
+                positions[index].y    = Lerp(m_min_z, m_max_z, height) / m_smoothness;
+        
                 k += 4;
+
+                // track progress
+                m_progress_jobs_done++;
             }
         }
-      
-        uint32_t vertex_count   = m_height * m_width;
-        uint32_t face_count     = (m_height - 1) * (m_width - 1) * 2;
+    }
 
-        // Pre-allocate memory in advance
-        m_vertices  = vector<RHI_Vertex_PosTexNorTan>(vertex_count);
-        m_indices   = vector<uint32_t>(face_count * 3);
-
-        // Create the vertices and the indices of the grid
-        index               = 0;
-        k                   = 0;
+    void Terrain::ComputeVerticesIndices(const vector<Vector3>& positions, vector<uint32_t>& indices, vector<RHI_Vertex_PosTexNorTan>& vertices)
+    {
+        uint32_t index      = 0;
+        uint32_t k          = 0;
         uint32_t u_index    = 0;
         uint32_t v_index    = 0;
+
+        for (uint32_t y = 0; y < m_height - 1; y++)
         {
-            for (uint32_t y = 0; y < m_height - 1; y++)
+            for (uint32_t x = 0; x < m_width - 1; x++)
             {
-                for (uint32_t x = 0; x < m_width - 1; x++)
-                {
-                    uint32_t index_bottom_left  = y * m_width + x;
-                    uint32_t index_bottom_right = y * m_width + x + 1;
-                    uint32_t index_top_left     = (y + 1) * m_width + x;
-                    uint32_t index_top_right    = (y + 1) * m_width + x + 1;
+                uint32_t index_bottom_left  = y * m_width + x;
+                uint32_t index_bottom_right = y * m_width + x + 1;
+                uint32_t index_top_left     = (y + 1) * m_width + x;
+                uint32_t index_top_right    = (y + 1) * m_width + x + 1;
 
-                    // Bottom right of quad
-                    index               = index_bottom_right;
-                    m_indices[k]        = index;
-                    m_vertices[index]   = RHI_Vertex_PosTexNorTan(points[index], Vector2(u_index + 1.0f, v_index + 1.0f));
+                // Bottom right of quad
+                index               = index_bottom_right;
+                m_indices[k]        = index;
+                m_vertices[index]   = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u_index + 1.0f, v_index + 1.0f));
 
-                    // Bottom left of quad
-                    index               = index_bottom_left;
-                    m_indices[k + 1]    = index;
-                    m_vertices[index]   = RHI_Vertex_PosTexNorTan(points[index], Vector2(u_index + 0.0f, v_index + 1.0f));
+                // Bottom left of quad
+                index               = index_bottom_left;
+                m_indices[k + 1]    = index;
+                m_vertices[index]   = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u_index + 0.0f, v_index + 1.0f));
 
-                    // Top left of quad
-                    index               = index_top_left;
-                    m_indices[k + 2]    = index;
-                    m_vertices[index]   = RHI_Vertex_PosTexNorTan(points[index], Vector2(u_index + 0.0f, v_index + 0.0f));
+                // Top left of quad
+                index               = index_top_left;
+                m_indices[k + 2]    = index;
+                m_vertices[index]   = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u_index + 0.0f, v_index + 0.0f));
 
-                    // Bottom right of quad
-                    index               = index_bottom_right;
-                    m_indices[k + 3]    = index;
-                    m_vertices[index]   = RHI_Vertex_PosTexNorTan(points[index], Vector2(u_index + 1.0f, v_index + 1.0f));
+                // Bottom right of quad
+                index               = index_bottom_right;
+                m_indices[k + 3]    = index;
+                m_vertices[index]   = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u_index + 1.0f, v_index + 1.0f));
 
-                    // Top left of quad
-                    index               = index_top_left;
-                    m_indices[k + 4]    = index;
-                    m_vertices[index]   = RHI_Vertex_PosTexNorTan(points[index], Vector2(u_index + 0.0f, v_index + 0.0f));
+                // Top left of quad
+                index               = index_top_left;
+                m_indices[k + 4]    = index;
+                m_vertices[index]   = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u_index + 0.0f, v_index + 0.0f));
 
-                    // Top right of quad
-                    index               = index_top_right;
-                    m_indices[k + 5]    = index;
-                    m_vertices[index]   = RHI_Vertex_PosTexNorTan(points[index], Vector2(u_index + 1.0f, v_index + 0.0f));
+                // Top right of quad
+                index               = index_top_right;
+                m_indices[k + 5]    = index;
+                m_vertices[index]   = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u_index + 1.0f, v_index + 0.0f));
 
-                    k += 6; // next quad
+                k += 6; // next quad
 
-                    u_index++;
-                }
-                u_index = 0;
-                v_index++;
+                u_index++;
+
+                // track progress
+                m_progress_jobs_done++;
             }
+            u_index = 0;
+            v_index++;
         }
-
-        ComputeNormals(m_indices, m_vertices);
-        UpdateModel(m_indices, m_vertices);
     }
 
     void Terrain::ComputeNormals(const vector<uint32_t>& indices, vector<RHI_Vertex_PosTexNorTan>& vertices)
     {
         // Normals are computed by normal averaging, which can be crazy slow
-
         uint32_t face_count     = static_cast<uint32_t>(indices.size()) / 3;
         uint32_t vertex_count   = static_cast<uint32_t>(vertices.size());
 
         // Compute face normals
-        vector<Vector3> temp_normals(face_count);
+        vector<Vector3> face_normals(face_count);
         {
             for (uint32_t i = 0; i < face_count; ++i)
             {
                 // Get the vector describing one edge of our triangle (edge 0,2)
-                Vector3 edge1 = Vector3(
+                Vector3 edge_a = Vector3(
                     vertices[indices[(i * 3)]].pos[0] - vertices[indices[(i * 3) + 2]].pos[0],
                     vertices[indices[(i * 3)]].pos[1] - vertices[indices[(i * 3) + 2]].pos[1],
                     vertices[indices[(i * 3)]].pos[2] - vertices[indices[(i * 3) + 2]].pos[2]
                 );
 
                 // Get the vector describing another edge of our triangle (edge 2,1)
-                Vector3 edge2 = Vector3(
+                Vector3 edge_b = Vector3(
                     vertices[indices[(i * 3) + 2]].pos[0] - vertices[indices[(i * 3) + 1]].pos[0],
                     vertices[indices[(i * 3) + 2]].pos[1] - vertices[indices[(i * 3) + 1]].pos[1],
                     vertices[indices[(i * 3) + 2]].pos[2] - vertices[indices[(i * 3) + 1]].pos[2]
                 );
 
                 // Cross multiply the two edge vectors to get the unnormalized face normal
-                temp_normals[i] = Vector3::Cross(edge1, edge2);
+                face_normals[i] = Vector3::Cross(edge_a, edge_b);
+
+                // track progress
+                m_progress_jobs_done++;
             }
         }
 
@@ -207,23 +258,21 @@ namespace Spartan
                 // Check which triangles use this vertex
                 for (uint32_t j = 0; j < face_count; ++j)
                 {
-                    if (indices[j * 3] == i ||
-                        indices[(j * 3) + 1] == i ||
-                        indices[(j * 3) + 2] == i)
+                    if (indices[j * 3] == i || indices[(j * 3) + 1] == i || indices[(j * 3) + 2] == i)
                     {
-                        float tX = normal_sum.x + temp_normals[j].x;
-                        float tY = normal_sum.y + temp_normals[j].y;
-                        float tZ = normal_sum.z + temp_normals[j].z;
-
-                        normal_sum = Vector3(tX, tY, tZ); // If a face is using the vertex, add the unnormalized face normal to the normal_sum
+                        // If a face is using the vertex, add the unnormalized face normal to the normal_sum
+                        normal_sum += face_normals[j]; 
                         faces_using++;
                     }
+
+                    // track progress
+                    m_progress_jobs_done++;
                 }
 
                 // Get the actual normal by dividing the normal_sum by the number of faces sharing the vertex
                 normal_sum = normal_sum / faces_using;
 
-                // Normalize the normalSum vector
+                // Normalize the normal_sum vector
                 normal_sum = normal_sum.Normalized();
 
                 // Normal
@@ -239,7 +288,7 @@ namespace Spartan
                 vertices[i].tan[1]  = tangent.y;
                 vertices[i].tan[2]  = tangent.z;
 
-                // Clear normalSum and faces_using for next vertex
+                // Clear normal_sum and faces_using for next vertex
                 normal_sum  = Vector3::Zero;
                 faces_using = 0.0f;
             }
@@ -277,15 +326,10 @@ namespace Spartan
         renderable->UseDefaultMaterial();
     }
 
-    void Terrain::ClearGeometry()
-    {
-        FreeMemory();
-        UpdateModel(m_indices, m_vertices);
-    }
-
     void Terrain::FreeMemory()
     {
-        // Free memory
+        m_positions.clear();
+        m_positions.shrink_to_fit();
         m_indices.clear();
         m_indices.shrink_to_fit();
         m_vertices.clear();

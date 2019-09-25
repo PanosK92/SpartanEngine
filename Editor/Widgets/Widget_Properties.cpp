@@ -864,17 +864,27 @@ void Widget_Properties::ShowTerrain(shared_ptr<Terrain>& terrain) const
         float min_z         = terrain->GetMinZ();
         float max_z         = terrain->GetMaxZ();
         float smoothness    = terrain->GetSmoothness();
+        float progress      = terrain->GetProgress();
         //=============================================
 
         float cursor_y = ImGui::GetCursorPosY();
 
-        ImGuiEx::ImageSlot(
-            "Height Map",
-            terrain->GetHeightMap(),
-            [&terrain](const shared_ptr<RHI_Texture>& texture) { terrain->SetHeightMap(texture); },
-            0.0f,   // offset_from_start_x
-            true    // align_vertically
-        );
+        ImGui::BeginGroup();
+        {
+            ImGuiEx::ImageSlot(
+                "Height Map",
+                terrain->GetHeightMap(),
+                [&terrain](const shared_ptr<RHI_Texture>& texture) { terrain->SetHeightMap(texture); },
+                0.0f,   // offset_from_start_x
+                true    // label_align_vertically
+            );
+
+            if (ImGui::Button("Generate"))
+            {
+                terrain->GenerateAsync();
+            }
+        }
+        ImGui::EndGroup();
 
         ImGui::SameLine();
         ImGui::SetCursorPosY(cursor_y);
@@ -884,9 +894,11 @@ void Widget_Properties::ShowTerrain(shared_ptr<Terrain>& terrain) const
             ImGui::InputFloat("Max Z", &max_z);
             ImGui::InputFloat("Smoothness", &smoothness);
 
-            if (ImGui::Button("Generate"))
+            if (progress > 0.0f && progress < 1.0f)
             {
-                terrain->Generate();
+                ImGui::ProgressBar(progress, ImVec2(0.0f, 0.0f));
+                ImGui::SameLine();
+                ImGui::Text(terrain->GetProgressDescription().c_str());
             }
         }
         ImGui::EndGroup();

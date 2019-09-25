@@ -267,7 +267,7 @@ namespace ImGuiEx
         const const std::shared_ptr<Spartan::RHI_Texture>& image,
         const std::function<void(const std::shared_ptr<Spartan::RHI_Texture>&)>& setter,
         float offset_from_start_x   = 0.0f,
-        bool align_vertically       = false
+        bool label_align_vertically       = false
     )
     {
         const auto slot_size        = ImVec2(80, 80);
@@ -277,7 +277,7 @@ namespace ImGuiEx
         if (name)
         {
             ImGui::Text(name);
-            if (!align_vertically)
+            if (!label_align_vertically)
             {
                 ImGui::SameLine(offset_from_start_x);
             }
