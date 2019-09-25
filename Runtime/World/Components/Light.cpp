@@ -99,13 +99,6 @@ namespace Spartan
 
         ComputeCascadeSplits();
 
-		// Prevent directional light from casting shadows 
-		// from underneath the scene, which can look weird
-		if (m_lightType == LightType_Directional)
-		{
-			ClampRotation();
-		}
-
 		// Update view matrix
 		ComputeViewMatrix();
 
@@ -176,19 +169,6 @@ namespace Spartan
 	Vector3 Light::GetDirection() const
     {
 		return GetTransform()->GetForward();
-	}
-
-	void Light::ClampRotation() const
-    {
-        const Vector3 rotation = GetTransform()->GetRotation().ToEulerAngles();
-		if (rotation.x <= 0.0f)
-		{
-			GetTransform()->SetRotation(Quaternion::FromEulerAngles(179.0f, rotation.y, rotation.z));
-		}
-		if (rotation.x >= 180.0f)
-		{
-			GetTransform()->SetRotation(Quaternion::FromEulerAngles(1.0f, rotation.y, rotation.z));
-		}
 	}
 
 	void Light::ComputeViewMatrix()
