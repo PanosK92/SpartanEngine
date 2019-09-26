@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include "IComponent.h"
 #include <vector>
+#include <atomic>
 #include "../../RHI/RHI_Definition.h"
 #include "../../Math/Vector3.h"
 //===================================
@@ -65,15 +66,15 @@ namespace Spartan
         void UpdateModel(const std::vector<uint32_t>& indices, std::vector<RHI_Vertex_PosTexNorTan>& vertices);
         void FreeMemory();
 
-        uint32_t m_width                = 0;
-        uint32_t m_height               = 0;
-        float m_min_y                   = 0.0f;
-        float m_max_y                   = 30.0f;
-        bool m_is_generating            = false;
-        uint64_t m_vertex_count         = 0;
-        uint64_t m_face_count           = 0;
-        uint64_t m_progress_jobs_done   = 0;
-        uint64_t m_progress_job_count   = 1; // avoid devision by zero in GetProgress()
+        uint32_t m_width                            = 0;
+        uint32_t m_height                           = 0;
+        float m_min_y                               = 0.0f;
+        float m_max_y                               = 30.0f;
+        bool m_is_generating                        = false;
+        uint64_t m_vertex_count                     = 0;
+        uint64_t m_face_count                       = 0;
+        std::atomic<uint64_t> m_progress_jobs_done  = 0;
+        uint64_t m_progress_job_count               = 1; // avoid devision by zero in GetProgress()
         std::string m_progress_desc;
         std::vector<Math::Vector3> m_positions;
         std::vector<RHI_Vertex_PosTexNorTan> m_vertices;

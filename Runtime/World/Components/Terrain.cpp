@@ -331,14 +331,15 @@ namespace Spartan
             }
         }
 
-        // Compute vertex normals (normal averaging)
+        
+        // Compute vertex normals and tangents (normals averaging) - This is very expensive show we split it into multiple threads below
+        const auto compute_vertex_normals_tangents = [this, &face_normals , &face_tangents, &vertices, &indices, &vertex_count, &face_count](uint32_t i_start, uint32_t i_end)
         {
             Vector3 normal_sum  = Vector3::Zero;
             Vector3 tangent_sum = Vector3::Zero;
             float faces_using   = 0;
 
-            // Go through each vertex
-            for (uint32_t i = 0; i < vertex_count; ++i)
+            for (uint32_t i = i_start; i < i_end; ++i)
             {
                 // Check which triangles use this vertex
                 for (uint32_t j = 0; j < face_count; ++j)
@@ -351,8 +352,12 @@ namespace Spartan
                         faces_using++;
                     }
 
-                    // track progress
-                    m_progress_jobs_done++;
+                    // Track progress but only every time the inner loop (face_count) finished.
+                    // This is because different threads increment the progress tracker which is also an atomic so it locks and unlocks.
+                    if (j == face_count < 1)
+                    {
+                        m_progress_jobs_done += face_count;
+                    }
                 }
 
                 // Compute actual normal
@@ -369,16 +374,18 @@ namespace Spartan
                 vertices[i].nor[2] = normal_sum.z;
 
                 // Write tangent to vertex
-                vertices[i].tan[0]  = tangent_sum.x;
-                vertices[i].tan[1]  = tangent_sum.y;
-                vertices[i].tan[2]  = tangent_sum.z;
+                vertices[i].tan[0] = tangent_sum.x;
+                vertices[i].tan[1] = tangent_sum.y;
+                vertices[i].tan[2] = tangent_sum.z;
 
                 // Reset
                 normal_sum  = Vector3::Zero;
                 tangent_sum = Vector3::Zero;
-                faces_using = 0.0f;
+                faces_using = 0;
             }
-        }
+        };
+
+        m_context->GetSubsystem<Threading>()->Loop(compute_vertex_normals_tangents, vertex_count);
 
         return true;
     }
