@@ -873,7 +873,7 @@ void Widget_Properties::ShowTerrain(shared_ptr<Terrain>& terrain) const
             ImGuiEx::ImageSlot(
                 "Height Map",
                 terrain->GetHeightMap(),
-                [&terrain](const shared_ptr<RHI_Texture>& texture) { terrain->SetHeightMap(texture); },
+                [&terrain](const shared_ptr<RHI_Texture>& texture) { terrain->SetHeightMap(static_pointer_cast<RHI_Texture2D>(texture)); },
                 0.0f,   // offset_from_start_x
                 true    // label_align_vertically
             );

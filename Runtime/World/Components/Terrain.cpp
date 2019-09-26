@@ -19,19 +19,20 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========================
+//= INCLUDES ============================
 #include "Terrain.h"
 #include "Renderable.h"
-#include "..\..\RHI\RHI_Texture.h"
+#include "..\Entity.h"
+#include "..\..\RHI\RHI_Texture2D.h"
 #include "..\..\Logging\Log.h"
 #include "..\..\Math\Vector3.h"
 #include "..\..\Math\MathHelper.h"
 #include "..\..\RHI\RHI_Vertex.h"
 #include "..\..\Rendering\Model.h"
 #include "..\..\IO\FileStream.h"
-#include "..\Entity.h"
 #include "..\..\Threading\Threading.h"
-//====================================
+#include "..\..\Resource\ResourceCache.h"
+//=======================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -52,19 +53,49 @@ namespace Spartan
 
     void Terrain::Serialize(FileStream* stream)
     {
-        stream->Write(m_indices);
-        stream->Write(m_vertices);
+        bool vertices_indices = !m_indices.empty() && !m_vertices.empty();
+        string height_map_file_path = m_height_map ? m_height_map->GetResourceFilePath() : "";
+
+        stream->Write(height_map_file_path);
+        stream->Write(m_width);
+        stream->Write(m_height);
+        stream->Write(m_min_y);
+        stream->Write(m_max_y);
+        stream->Write(m_vertex_count);
+        stream->Write(m_face_count);
+        stream->Write(vertices_indices);
+        if (vertices_indices)
+        {
+            stream->Write(m_indices);
+            stream->Write(m_vertices);
+        }
 
         FreeMemory();
     }
 
     void Terrain::Deserialize(FileStream* stream)
     {
-        stream->Read(&m_indices);
-        stream->Read(&m_vertices);
+        m_height_map = m_context->GetSubsystem<ResourceCache>()->GetByPath<RHI_Texture2D>(stream->ReadAs<string>());
+        stream->Read(&m_width);
+        stream->Read(&m_height);
+        stream->Read(&m_min_y);
+        stream->Read(&m_max_y);
+        stream->Read(&m_vertex_count);
+        stream->Read(&m_face_count);
+        if (stream->ReadAs<bool>())
+        {
+            stream->Read(&m_indices);
+            stream->Read(&m_vertices);
+        }
 
         UpdateModel(m_indices, m_vertices);
         FreeMemory();
+    }
+
+    void Terrain::SetHeightMap(const shared_ptr<RHI_Texture2D>& height_map)
+    {
+        m_height_map = height_map;
+        m_context->GetSubsystem<ResourceCache>()->Cache<RHI_Texture2D>(m_height_map);
     }
 
     void Terrain::GenerateAsync()
@@ -97,29 +128,26 @@ namespace Spartan
             m_progress_jobs_done                = 0;
             m_progress_job_count                = m_vertex_count * 2 + m_face_count + m_vertex_count * m_face_count;
 
-            // Pre-allocate memory for calculations that follow
-            m_positions = vector<Vector3>(m_height * m_width);
-            m_vertices  = vector<RHI_Vertex_PosTexNorTan>(m_vertex_count);
-            m_indices   = vector<uint32_t>(m_face_count * 3);
-            
             // Read height map and construct positions
             m_progress_desc = "Generating positions...";
-            GeneratePositions(m_positions, height_map_data);
+            if (GeneratePositions(m_positions, height_map_data))
+            {
+                // Compute the vertices (without the normals) and the indices
+                m_progress_desc = "Generating terrain vertices and indices...";
+                if (GenerateVerticesIndices(m_positions, m_indices, m_vertices))
+                {
+                    m_progress_desc = "Generating normals and tangents...";
+                    m_positions.clear();
+                    m_positions.shrink_to_fit();
 
-            // Compute the vertices (without the normals) and the indices
-            m_progress_desc = "Generating terrain vertices and indices...";
-            GenerateVerticesIndices(m_positions, m_indices, m_vertices);
-
-            // Free position memory now that we are done with it
-            m_positions.clear();
-            m_positions.shrink_to_fit();
-
-            // Compute the normals by doing normal averaging (very expensive)
-            m_progress_desc = "Generating normals and tangents...";
-            GenerateNormalTangents(m_indices, m_vertices);
-
-            // Create a model and set to to the renderable component
-            UpdateModel(m_indices, m_vertices);
+                    // Compute the normals by doing normal averaging (very expensive)
+                    if (GenerateNormalTangents(m_indices, m_vertices))
+                    {
+                        // Create a model and set it to the renderable component
+                        UpdateModel(m_indices, m_vertices);
+                    }
+                }
+            }
 
             // Clear progress stats
             m_progress_jobs_done = 0;
@@ -130,8 +158,15 @@ namespace Spartan
         });
     }
 
-    void Terrain::GeneratePositions(vector<Vector3>& positions, const vector<std::byte>& height_map)
+    bool Terrain::GeneratePositions(vector<Vector3>& positions, const vector<std::byte>& height_map)
     {
+        if (height_map.empty())
+        {
+            LOG_ERROR("Height map is empty");
+            return false;
+        }
+
+        m_positions     = vector<Vector3>(m_height * m_width);
         uint32_t index  = 0;
         uint32_t k      = 0;
 
@@ -154,10 +189,22 @@ namespace Spartan
                 m_progress_jobs_done++;
             }
         }
+
+        return true;
     }
 
-    void Terrain::GenerateVerticesIndices(const vector<Vector3>& positions, vector<uint32_t>& indices, vector<RHI_Vertex_PosTexNorTan>& vertices)
+    bool Terrain::GenerateVerticesIndices(const vector<Vector3>& positions, vector<uint32_t>& indices, vector<RHI_Vertex_PosTexNorTan>& vertices)
     {
+        if (positions.empty())
+        {
+            LOG_ERROR("Positions are empty");
+            return false;
+        }
+
+        // Pre-allocate memory for the calculations that follow
+        m_vertices  = vector<RHI_Vertex_PosTexNorTan>(m_vertex_count);
+        m_indices   = vector<uint32_t>(m_face_count * 3);
+
         uint32_t index      = 0;
         uint32_t k          = 0;
         uint32_t u_index    = 0;
@@ -212,10 +259,24 @@ namespace Spartan
             u_index = 0;
             v_index++;
         }
+
+        return true;
     }
 
-    void Terrain::GenerateNormalTangents(const vector<uint32_t>& indices, vector<RHI_Vertex_PosTexNorTan>& vertices)
+    bool Terrain::GenerateNormalTangents(const vector<uint32_t>& indices, vector<RHI_Vertex_PosTexNorTan>& vertices)
     {
+        if (indices.empty())
+        {
+            LOG_ERROR("Indices are empty");
+            return false;
+        }
+
+        if (vertices.empty())
+        {
+            LOG_ERROR("Vertices are empty");
+            return false;
+        }
+
         // Normals are computed by normal averaging, which can be crazy slow
         uint32_t face_count     = static_cast<uint32_t>(indices.size()) / 3;
         uint32_t vertex_count   = static_cast<uint32_t>(vertices.size());
@@ -318,6 +379,8 @@ namespace Spartan
                 faces_using = 0.0f;
             }
         }
+
+        return true;
     }
 
     void Terrain::UpdateModel(const vector<uint32_t>& indices, vector<RHI_Vertex_PosTexNorTan>& vertices)

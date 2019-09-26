@@ -77,7 +77,7 @@ namespace Spartan
 		void SetData(const std::vector<std::vector<std::byte>>& data)	{ m_data = data; }
 		std::vector<std::byte>* GetData(uint32_t mipmap_index);
 		auto AddMipmap()												{ return &m_data.emplace_back(std::vector<std::byte>()); }
-        const auto& GetMipmap(uint32_t index)                           { return m_data[index]; }
+        const std::vector<std::byte>& GetMipmap(uint32_t index);
         bool HasMipmaps()                                               { return m_data.size() > 1;  }
 
 		// GPU resources

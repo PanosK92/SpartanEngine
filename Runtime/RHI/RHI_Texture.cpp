@@ -170,7 +170,16 @@ namespace Spartan
 		return &m_data[index];
 	}
 
-	bool RHI_Texture::LoadFromFile_ForeignFormat(const string& file_path, const bool generate_mipmaps)
+    const std::vector<std::byte>& RHI_Texture::GetMipmap(uint32_t index)
+    {
+        if (index < m_data.size())
+            return m_data[index];
+
+        static std::vector<std::byte> empty;
+        return empty;
+    }
+
+    bool RHI_Texture::LoadFromFile_ForeignFormat(const string& file_path, const bool generate_mipmaps)
 	{
 		// Load texture
 		auto imageImp = m_context->GetSubsystem<ResourceCache>()->GetImageImporter();	

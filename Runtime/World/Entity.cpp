@@ -35,6 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Script.h"
 #include "../World/Components/AudioSource.h"
 #include "../World/Components/AudioListener.h"
+#include "../World/Components/Terrain.h"
 //============================================
 
 //= NAMESPACES =====
@@ -289,8 +290,9 @@ namespace Spartan
             case ComponentType_Renderable:		component = AddComponent<Renderable>(id);	    break;
             case ComponentType_RigidBody:		component = AddComponent<RigidBody>(id);	    break;
             case ComponentType_Script:			component = AddComponent<Script>(id);		    break;
-            case ComponentType_Environment:			component = AddComponent<Environment>(id);		    break;
+            case ComponentType_Environment:		component = AddComponent<Environment>(id);		break;
             case ComponentType_Transform:		component = AddComponent<Transform>(id);	    break;
+            case ComponentType_Terrain:		    component = AddComponent<Terrain>(id);	        break;
             case ComponentType_Unknown:														    break;
             default:																		    break;
         }
