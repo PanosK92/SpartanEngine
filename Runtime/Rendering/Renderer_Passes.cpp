@@ -272,7 +272,7 @@ namespace Spartan
                 return;
 
             // Set face culling (changes only if required)
-            m_cmd_list->SetRasterizerState(GetRasterizerState(material->GetCullMode(), Fill_Solid));
+            m_cmd_list->SetRasterizerState(GetRasterizerState(material->GetCullMode(), !IsFlagSet(Render_Debug_Wireframe) ? Fill_Solid : Fill_Wireframe));
 
             // Bind geometry
             if (currently_bound_geometry != model->GetId())
@@ -658,21 +658,21 @@ namespace Spartan
         const auto swap_targets_ldr = [this, &tex_in_ldr, &tex_out_ldr]() { m_cmd_list->Submit(); tex_in_ldr.swap(tex_out_ldr); };
 
 		// TAA	
-        if (FlagEnabled(Render_PostProcess_TAA))
+        if (IsFlagSet(Render_PostProcess_TAA))
         {
             Pass_TAA(tex_in_hdr, tex_out_hdr);
             swap_targets_hdr();
         }
 
         // Motion Blur
-        if (FlagEnabled(Render_PostProcess_MotionBlur))
+        if (IsFlagSet(Render_PostProcess_MotionBlur))
         {
             Pass_MotionBlur(tex_in_hdr, tex_out_hdr);
             swap_targets_hdr();
         }
 
 		// Bloom
-		if (FlagEnabled(Render_PostProcess_Bloom))
+		if (IsFlagSet(Render_PostProcess_Bloom))
 		{
 			Pass_Bloom(tex_in_hdr, tex_out_hdr);
             swap_targets_hdr();
@@ -689,35 +689,35 @@ namespace Spartan
         }
 
         // Dithering
-        if (FlagEnabled(Render_PostProcess_Dithering))
+        if (IsFlagSet(Render_PostProcess_Dithering))
         {
             Pass_Dithering(tex_in_ldr, tex_out_ldr);
             swap_targets_ldr();
         }
 
 		// FXAA
-		if (FlagEnabled(Render_PostProcess_FXAA))
+		if (IsFlagSet(Render_PostProcess_FXAA))
 		{
 			Pass_FXAA(tex_in_ldr, tex_out_ldr);
             swap_targets_ldr();
 		}
 
         // Sharpening - TAA controlled
-        if (FlagEnabled(Render_PostProcess_TAA))
+        if (IsFlagSet(Render_PostProcess_TAA))
         {
             Pass_TaaSharpen(tex_in_ldr, tex_out_ldr);
             swap_targets_ldr();
         }
 
 		// Sharpening - User controlled
-		if (FlagEnabled(Render_PostProcess_Sharpening))
+		if (IsFlagSet(Render_PostProcess_Sharpening))
 		{
 			Pass_LumaSharpen(tex_in_ldr, tex_out_ldr);
             swap_targets_ldr();
 		}
 
 		// Chromatic aberration
-		if (FlagEnabled(Render_PostProcess_ChromaticAberration))
+		if (IsFlagSet(Render_PostProcess_ChromaticAberration))
 		{
 			Pass_ChromaticAberration(tex_in_ldr, tex_out_ldr);
             swap_targets_ldr();
@@ -1268,9 +1268,9 @@ namespace Spartan
 
 	void Renderer::Pass_Lines(shared_ptr<RHI_Texture>& tex_out)
 	{
-		const bool draw_picking_ray = m_flags & Render_Gizmo_PickingRay;
-		const bool draw_aabb		= m_flags & Render_Gizmo_AABB;
-		const bool draw_grid		= m_flags & Render_Gizmo_Grid;
+		const bool draw_picking_ray = m_flags & Render_Debug_PickingRay;
+		const bool draw_aabb		= m_flags & Render_Debug_AABB;
+		const bool draw_grid		= m_flags & Render_Debug_Grid;
 		const auto draw_lines		= !m_lines_list_depth_enabled.empty() || !m_lines_list_depth_disabled.empty(); // Any kind of lines, physics, user debug, etc.
 		const auto draw				= draw_picking_ray || draw_aabb || draw_grid || draw_lines;
 		if (!draw)
@@ -1401,8 +1401,8 @@ namespace Spartan
 
 	void Renderer::Pass_Gizmos(shared_ptr<RHI_Texture>& tex_out)
 	{
-		bool render_lights		= m_flags & Render_Gizmo_Lights;
-		bool render_transform	= m_flags & Render_Gizmo_Transform;
+		bool render_lights		= m_flags & Render_Debug_Lights;
+		bool render_transform	= m_flags & Render_Debug_Transform;
 		auto render				= render_lights || render_transform;
 		if (!render)
 			return;
@@ -1533,7 +1533,7 @@ namespace Spartan
 	void Renderer::Pass_PerformanceMetrics(shared_ptr<RHI_Texture>& tex_out)
 	{
         // Early exit cases
-        const bool draw         = m_flags & Render_Gizmo_PerformanceMetrics;
+        const bool draw         = m_flags & Render_Debug_PerformanceMetrics;
         const bool empty        = m_profiler->GetMetrics().empty();
         const auto& shader_font = static_pointer_cast<ShaderBuffered>(m_shaders[Shader_Font_Vp]);
         if (!draw || empty || !shader_font->IsCompiled())

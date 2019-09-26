@@ -35,13 +35,14 @@ using namespace Spartan::Math;
 
 namespace _RenderOptions
 {
-    static bool g_gizmo_physics             = true;
-    static bool g_gizmo_aabb                = false;
-    static bool g_gizmo_light               = true;
-    static bool g_gizmo_transform           = true;
-    static bool g_gizmo_picking_ray         = false;
-    static bool g_gizmo_grid                = true;
-    static bool g_gizmo_performance_metrics = false;
+    static bool g_debug_physics             = true;
+    static bool g_debug_aabb                = false;
+    static bool g_debug_light               = true;
+    static bool g_debug_transform           = true;
+    static bool g_debug_picking_ray         = false;
+    static bool g_debug_grid                = true;
+    static bool g_debug_performance_metrics = false;
+    static bool g_debug_wireframe           = false;
     static vector<string> debug_textures =
     {
         "None",
@@ -82,17 +83,17 @@ void Widget_RenderOptions::Tick()
         static vector<char*> types = { "Off", "ACES", "Reinhard", "Uncharted 2" };
         const char* type_char_ptr = types[static_cast<unsigned int>(m_renderer->m_tonemapping)];
 
-        auto do_bloom                   = m_renderer->FlagEnabled(Render_PostProcess_Bloom);
-        auto do_volumetric_lighting     = m_renderer->FlagEnabled(Render_PostProcess_VolumetricLighting);
-        auto do_fxaa                    = m_renderer->FlagEnabled(Render_PostProcess_FXAA);
-        auto do_ssao                    = m_renderer->FlagEnabled(Render_PostProcess_SSAO);
-        auto do_sscs                    = m_renderer->FlagEnabled(Render_PostProcess_SSCS);
-        auto do_ssr                     = m_renderer->FlagEnabled(Render_PostProcess_SSR);
-        auto do_taa                     = m_renderer->FlagEnabled(Render_PostProcess_TAA);
-        auto do_motion_blur             = m_renderer->FlagEnabled(Render_PostProcess_MotionBlur);
-        auto do_sharperning             = m_renderer->FlagEnabled(Render_PostProcess_Sharpening);
-        auto do_chromatic_aberration    = m_renderer->FlagEnabled(Render_PostProcess_ChromaticAberration);
-        auto do_dithering               = m_renderer->FlagEnabled(Render_PostProcess_Dithering);
+        auto do_bloom                   = m_renderer->IsFlagSet(Render_PostProcess_Bloom);
+        auto do_volumetric_lighting     = m_renderer->IsFlagSet(Render_PostProcess_VolumetricLighting);
+        auto do_fxaa                    = m_renderer->IsFlagSet(Render_PostProcess_FXAA);
+        auto do_ssao                    = m_renderer->IsFlagSet(Render_PostProcess_SSAO);
+        auto do_sscs                    = m_renderer->IsFlagSet(Render_PostProcess_SSCS);
+        auto do_ssr                     = m_renderer->IsFlagSet(Render_PostProcess_SSR);
+        auto do_taa                     = m_renderer->IsFlagSet(Render_PostProcess_TAA);
+        auto do_motion_blur             = m_renderer->IsFlagSet(Render_PostProcess_MotionBlur);
+        auto do_sharperning             = m_renderer->IsFlagSet(Render_PostProcess_Sharpening);
+        auto do_chromatic_aberration    = m_renderer->IsFlagSet(Render_PostProcess_ChromaticAberration);
+        auto do_dithering               = m_renderer->IsFlagSet(Render_PostProcess_Dithering);
         auto resolution_shadow          = static_cast<int>(m_renderer->GetShadowResolution());
 
         // Display
@@ -188,7 +189,7 @@ void Widget_RenderOptions::Tick()
         m_renderer->m_motion_blur_intensity     = Abs(m_renderer->m_motion_blur_intensity);
         m_renderer->SetShadowResolution(static_cast<uint32_t>(resolution_shadow));
        
-        #define set_flag_if(flag, value) value? m_renderer->EnableFlag(flag) : m_renderer->DisableFlag(flag)
+        #define set_flag_if(flag, value) value? m_renderer->SetFlag(flag) : m_renderer->UnsetFlag(flag)
 
         // Map back to engine
         set_flag_if(Render_PostProcess_Bloom,               do_bloom);
@@ -241,29 +242,24 @@ void Widget_RenderOptions::Tick()
         }
         ImGui::Separator();
 
-        // Transform
-        ImGui::Checkbox("Transform", &_RenderOptions::g_gizmo_transform);
-        ImGui::SameLine(); ImGui::InputFloat("Size", &m_renderer->m_gizmo_transform_size, 0.0025f);
-        ImGui::SameLine(); ImGui::InputFloat("Speed", &m_renderer->m_gizmo_transform_speed, 1.0f);
-        // Physics
-        ImGui::Checkbox("Physics", &_RenderOptions::g_gizmo_physics);
-        // AABB
-        ImGui::Checkbox("AABB", &_RenderOptions::g_gizmo_aabb);
-        // Lights
-        ImGui::Checkbox("Lights", &_RenderOptions::g_gizmo_light);
-        // Picking Ray
-        ImGui::Checkbox("Picking Ray", &_RenderOptions::g_gizmo_picking_ray);
-        // Grid
-        ImGui::Checkbox("Grid", &_RenderOptions::g_gizmo_grid);
-        // Performance metrics
-        ImGui::Checkbox("Performance Metrics", &_RenderOptions::g_gizmo_performance_metrics);
+        ImGui::Checkbox("Transform", &_RenderOptions::g_debug_transform);
+        ImGui::SameLine(); ImGui::InputFloat("Size",    &m_renderer->m_gizmo_transform_size, 0.0025f);
+        ImGui::SameLine(); ImGui::InputFloat("Speed",   &m_renderer->m_gizmo_transform_speed, 1.0f);
+        ImGui::Checkbox("Physics",              &_RenderOptions::g_debug_physics);
+        ImGui::Checkbox("AABB",                 &_RenderOptions::g_debug_aabb);
+        ImGui::Checkbox("Lights",               &_RenderOptions::g_debug_light);
+        ImGui::Checkbox("Picking Ray",          &_RenderOptions::g_debug_picking_ray);
+        ImGui::Checkbox("Grid",                 &_RenderOptions::g_debug_grid);
+        ImGui::Checkbox("Performance Metrics",  &_RenderOptions::g_debug_performance_metrics);
+        ImGui::Checkbox("Wireframe",            &_RenderOptions::g_debug_wireframe);
 
-        set_flag_if(Render_Gizmo_Transform,             _RenderOptions::g_gizmo_transform);
-        set_flag_if(Render_Gizmo_Physics,               _RenderOptions::g_gizmo_physics); 
-        set_flag_if(Render_Gizmo_AABB,                  _RenderOptions::g_gizmo_aabb);
-        set_flag_if(Render_Gizmo_Lights,                _RenderOptions::g_gizmo_light);
-        set_flag_if(Render_Gizmo_PickingRay,            _RenderOptions::g_gizmo_picking_ray);
-        set_flag_if(Render_Gizmo_Grid,                  _RenderOptions::g_gizmo_grid);
-        set_flag_if(Render_Gizmo_PerformanceMetrics,    _RenderOptions::g_gizmo_performance_metrics);
+        set_flag_if(Render_Debug_Transform,             _RenderOptions::g_debug_transform);
+        set_flag_if(Render_Debug_Physics,               _RenderOptions::g_debug_physics); 
+        set_flag_if(Render_Debug_AABB,                  _RenderOptions::g_debug_aabb);
+        set_flag_if(Render_Debug_Lights,                _RenderOptions::g_debug_light);
+        set_flag_if(Render_Debug_PickingRay,            _RenderOptions::g_debug_picking_ray);
+        set_flag_if(Render_Debug_Grid,                  _RenderOptions::g_debug_grid);
+        set_flag_if(Render_Debug_PerformanceMetrics,    _RenderOptions::g_debug_performance_metrics);
+        set_flag_if(Render_Debug_Wireframe,             _RenderOptions::g_debug_wireframe);
     }
 }

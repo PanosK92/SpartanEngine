@@ -55,24 +55,25 @@ namespace Spartan
 
 	enum Renderer_Option : uint32_t
 	{
-		Render_Gizmo_AABB						= 1 << 0,
-		Render_Gizmo_PickingRay					= 1 << 1,
-		Render_Gizmo_Grid						= 1 << 2,
-		Render_Gizmo_Transform					= 1 << 3,
-		Render_Gizmo_Lights						= 1 << 4,
-		Render_Gizmo_PerformanceMetrics			= 1 << 5,
-		Render_Gizmo_Physics					= 1 << 6,
-		Render_PostProcess_Bloom				= 1 << 7,
-        Render_PostProcess_VolumetricLighting   = 1 << 8,
-		Render_PostProcess_FXAA					= 1 << 9,
-		Render_PostProcess_SSAO					= 1 << 10,
-        Render_PostProcess_SSCS                 = 1 << 11,
-		Render_PostProcess_SSR					= 1 << 12,
-		Render_PostProcess_TAA					= 1 << 13,
-		Render_PostProcess_MotionBlur			= 1 << 14,
-		Render_PostProcess_Sharpening			= 1 << 15,
-		Render_PostProcess_ChromaticAberration	= 1 << 16,
-		Render_PostProcess_Dithering			= 1 << 17
+		Render_Debug_AABB						= 1 << 0,
+		Render_Debug_PickingRay					= 1 << 1,
+		Render_Debug_Grid						= 1 << 2,
+		Render_Debug_Transform					= 1 << 3,
+		Render_Debug_Lights						= 1 << 4,
+		Render_Debug_PerformanceMetrics			= 1 << 5,
+		Render_Debug_Physics					= 1 << 6,
+        Render_Debug_Wireframe                  = 1 << 7,
+		Render_PostProcess_Bloom				= 1 << 8,
+        Render_PostProcess_VolumetricLighting   = 1 << 9,
+		Render_PostProcess_FXAA					= 1 << 10,
+		Render_PostProcess_SSAO					= 1 << 11,
+        Render_PostProcess_SSCS                 = 1 << 12,
+		Render_PostProcess_SSR					= 1 << 13,
+		Render_PostProcess_TAA					= 1 << 14,
+		Render_PostProcess_MotionBlur			= 1 << 15,
+		Render_PostProcess_Sharpening			= 1 << 16,
+		Render_PostProcess_ChromaticAberration	= 1 << 17,
+		Render_PostProcess_Dithering			= 1 << 18
 	};
 
 	enum Renderer_Buffer_Type
@@ -253,9 +254,9 @@ namespace Spartan
 
         // Flags
         auto GetFlags()                                     { return m_flags; }
-        void EnableFlag(Renderer_Option flag)               { m_flags |= flag; };
-        void DisableFlag(Renderer_Option flag)              { m_flags &= ~flag; };
-        bool FlagEnabled(Renderer_Option flag)              { return m_flags & flag; }
+        void SetFlag(Renderer_Option flag)                  { m_flags |= flag; };
+        void UnsetFlag(Renderer_Option flag)                { m_flags &= ~flag; };
+        bool IsFlagSet(Renderer_Option flag)                { return m_flags & flag; }
 
         // Environment
         const std::shared_ptr<RHI_Texture>& GetEnvironmentTexture();
