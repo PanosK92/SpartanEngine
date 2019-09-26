@@ -47,10 +47,10 @@ namespace Spartan
 {
 	Renderer::Renderer(Context* context) : ISubsystem(context)
 	{	
-		m_flags		|= Render_Gizmo_Transform;
-		m_flags		|= Render_Gizmo_Grid;
-		m_flags		|= Render_Gizmo_Lights;
-		m_flags		|= Render_Gizmo_Physics;
+		m_flags		|= Render_Debug_Transform;
+		m_flags		|= Render_Debug_Grid;
+		m_flags		|= Render_Debug_Lights;
+		m_flags		|= Render_Debug_Physics;
 		m_flags		|= Render_PostProcess_Bloom;
         m_flags     |= Render_PostProcess_VolumetricLighting;
 		m_flags		|= Render_PostProcess_SSAO;
@@ -218,7 +218,7 @@ namespace Spartan
 			m_projection	= m_camera->GetProjectionMatrix();
 
 			// TAA - Generate jitter
-			if (FlagEnabled(Render_PostProcess_TAA))
+			if (IsFlagSet(Render_PostProcess_TAA))
 			{
 				m_taa_jitter_previous = m_taa_jitter;
 
@@ -353,7 +353,7 @@ namespace Spartan
 		buffer->exposure				    = m_exposure;
 		buffer->gamma					    = m_gamma;
         buffer->directional_light_intensity = light_directional_intensity;
-        buffer->ssr_enabled                 = FlagEnabled(Render_PostProcess_SSR) ? 1.0f : 0.0f;
+        buffer->ssr_enabled                 = IsFlagSet(Render_PostProcess_SSR) ? 1.0f : 0.0f;
         buffer->shadow_resolution           = static_cast<float>(m_resolution_shadow);
 
 		return m_uber_buffer->Unmap();
