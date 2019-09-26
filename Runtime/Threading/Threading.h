@@ -21,31 +21,31 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =================
+//= INCLUDES ==================
 #include <vector>
 #include <thread>
 #include <mutex>
-#include <queue>
+#include <deque>
 #include <functional>
 #include "../Logging/Log.h"
 #include "../Core/ISubsystem.h"
-//============================
+//=============================
 
 namespace Spartan
 {
-	//= TASK ===============================================================================
 	class Task
 	{
 	public:
-		typedef std::function<void()> functionType;
+		typedef std::function<void()> function_type;
 
-		Task(functionType&& function) { m_function = std::forward<functionType>(function); }
-		void Execute() { m_function(); }
+		Task(function_type&& function)  { m_function = std::forward<function_type>(function); }
+        void Execute()                  { m_is_executing = true; m_function(); m_is_executing = false; }
+        bool IsExecuting()              { return m_is_executing; }
 
 	private:
-		functionType m_function;
+        bool m_is_executing = false;
+		function_type m_function;
 	};
-	//======================================================================================
 
 	class Threading : public ISubsystem
 	{
@@ -68,28 +68,57 @@ namespace Spartan
 			}
 
 			// Lock tasks mutex
-			std::unique_lock<std::mutex> lock(m_tasksMutex);
+			std::unique_lock<std::mutex> lock(m_mutex_tasks);
 
 			// Save the task
-			m_tasks.push(std::make_shared<Task>(std::bind(std::forward<Function>(function))));
+			m_tasks.push_back(std::make_shared<Task>(std::bind(std::forward<Function>(function))));
 
 			// Unlock the mutex
 			lock.unlock();
 
 			// Wake up a thread
-			m_conditionVar.notify_one();
+			m_condition_var.notify_one();
 		}
 
-        auto GetThreadCount()       { return m_thread_count; }
-        auto GetThreadCountMax()    { return m_thread_max; }
+        template <typename Function>
+        void Loop(Function&& function, uint32_t range)
+        {
+            uint32_t available_threads  = GetThreadsAvailable();
+            vector<bool> tasks_done     = vector<bool>(available_threads, false);
+
+            for (uint32_t i = 0; i < available_threads; i++)
+            {
+                bool is_last_job    = i >= (available_threads - 1);
+                uint32_t start      = (range / available_threads) * i;
+                uint32_t end        = is_last_job ? range : start + (range / available_threads);
+
+                // Kick off task
+                AddTask([&function, &tasks_done, i, start, end] { function(start, end); tasks_done[i] = true; });
+            }
+
+            // Wait till the threads are done
+            uint32_t tasks = 0;
+            while (tasks != tasks_done.size())
+            {
+                tasks = 0;
+                for (const bool job_done : tasks_done)
+                {
+                    tasks += job_done ? 1 : 0;
+                }
+            }
+        }
+
+        uint32_t GetThreadCount()       { return m_thread_count; }
+        uint32_t GetThreadCountMax()    { return m_thread_max; }
+        uint32_t GetThreadsAvailable();
 
 	private:
 		uint32_t m_thread_count = 0;
         uint32_t m_thread_max   = 0;
 		std::vector<std::thread> m_threads;
-		std::queue<std::shared_ptr<Task>> m_tasks;
-		std::mutex m_tasksMutex;
-		std::condition_variable m_conditionVar;
+		std::deque<std::shared_ptr<Task>> m_tasks;
+		std::mutex m_mutex_tasks;
+		std::condition_variable m_condition_var;
 		bool m_stopping;
 	};
 }

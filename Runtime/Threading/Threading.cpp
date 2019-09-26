@@ -32,21 +32,22 @@ namespace Spartan
 {
 	Threading::Threading(Context* context) : ISubsystem(context)
 	{
-		m_stopping		= false;
+		m_stopping	    = false;
         m_thread_max    = thread::hardware_concurrency();
-		m_thread_count	= m_thread_max - 1;
+		m_thread_count  = m_thread_max - 1; // exclude the main (this) thread
 
 		for (uint32_t i = 0; i < m_thread_count; i++)
 		{
 			m_threads.emplace_back(thread(&Threading::Invoke, this));
 		}
+
 		LOGF_INFO("%d threads have been created", m_thread_count);
 	}
 
 	Threading::~Threading()
 	{
 		// Put unique lock on task mutex.
-		unique_lock<mutex> lock(m_tasksMutex);
+		unique_lock<mutex> lock(m_mutex_tasks);
 
 		// Set termination flag to true.
 		m_stopping = true;
@@ -55,7 +56,7 @@ namespace Spartan
 		lock.unlock();
 
 		// Wake up all threads.
-		m_conditionVar.notify_all();
+		m_condition_var.notify_all();
 
 		// Join all threads.
 		for (auto& thread : m_threads)
@@ -73,10 +74,10 @@ namespace Spartan
 		while (true)
 		{
 			// Lock tasks mutex
-			unique_lock<mutex> lock(m_tasksMutex);
+			unique_lock<mutex> lock(m_mutex_tasks);
 
 			// Check condition on notification
-			m_conditionVar.wait(lock, [this] { return !m_tasks.empty() || m_stopping; });
+			m_condition_var.wait(lock, [this] { return !m_tasks.empty() || m_stopping; });
 
 			// If m_stopping is true, it's time to shut everything down
 			if (m_stopping && m_tasks.empty())
@@ -86,7 +87,7 @@ namespace Spartan
 			task = m_tasks.front();
 
 			// Remove it from the queue.
-			m_tasks.pop();
+			m_tasks.pop_front();
 
 			// Unlock the mutex
 			lock.unlock();
@@ -95,4 +96,15 @@ namespace Spartan
 			task->Execute();
 		}
 	}
+
+    uint32_t Threading::GetThreadsAvailable()
+    {
+        uint32_t available_threads = 0;
+        for (const auto& task : m_tasks)
+        {
+            available_threads += task->IsExecuting() ? 1 : 0;
+        }
+
+        return m_thread_count - available_threads;
+    }
 }
