@@ -50,7 +50,7 @@ namespace Spartan
 		//======================================================
 
 		// Sets the entity that represents this model in the scene
-		void SetRootentity(const std::shared_ptr<Entity>& entity) { m_root_entity = entity; }
+		void SetRootEntity(const std::shared_ptr<Entity>& entity) { m_root_entity = entity; }
 		
 		//= GEOMETRY ======================================
 		void GeometryAppend(

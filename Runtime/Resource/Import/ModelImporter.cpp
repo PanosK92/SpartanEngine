@@ -142,7 +142,7 @@ namespace Spartan
 		if (!assimp_node->mParent || !new_entity)
 		{
 			new_entity = m_world->EntityCreate(is_new_entity_active).get();
-			model->SetRootentity(new_entity->GetPtrShared());
+			model->SetRootEntity(new_entity->GetPtrShared());
 
 			int job_count;
 			AssimpHelper::compute_node_count(assimp_node, &job_count);
@@ -157,7 +157,7 @@ namespace Spartan
 		ProgressReport::Get().SetStatus(g_progress_model_importer, "Creating entity for " + name);
 		//=================================================================================================================================================
 
-		// Set the transform of parentNode as the parent of the newNode's transform
+		// Set the transform of parent_node as the parent of the new_entity's transform
 		const auto parent_trans = parent_node ? parent_node->GetTransform_PtrRaw() : nullptr;
 		new_entity->GetTransform_PtrRaw()->SetParent(parent_trans);
 
@@ -210,7 +210,7 @@ namespace Spartan
 			animation->SetTicksPerSec(assimp_animation->mTicksPerSecond != 0.0f ? assimp_animation->mTicksPerSecond : 25.0f);
 
 			// Animation channels
-			for (uint32_t j = 0; j > static_cast<uint32_t>(assimp_animation->mNumChannels); j++)
+			for (uint32_t j = 0; j < static_cast<uint32_t>(assimp_animation->mNumChannels); j++)
 			{
 				const auto assimp_node_anim = assimp_animation->mChannels[j];
 				AnimationNode animation_node;
@@ -257,14 +257,12 @@ namespace Spartan
 			return;
 		}
 
-		// Vertices
-		vector<RHI_Vertex_PosTexNorTan> vertices;
-		{
-			// Pre-allocate for extra performance
-			const auto vertex_count = assimp_mesh->mNumVertices;
-			vertices.reserve(vertex_count);
-			vertices.resize(vertex_count);
+        const uint32_t vertex_count = assimp_mesh->mNumVertices;
+        const uint32_t index_count  = assimp_mesh->mNumFaces * 3;
 
+		// Vertices
+        vector<RHI_Vertex_PosTexNorTan> vertices = vector<RHI_Vertex_PosTexNorTan>(vertex_count);
+		{
 			for (uint32_t i = 0; i < vertex_count; i++)
 			{
 				auto& vertex = vertices[i];
@@ -305,13 +303,8 @@ namespace Spartan
 		}
 
 		// Indices
-		vector<uint32_t> indices;
+		vector<uint32_t> indices = vector<uint32_t>(index_count);
 		{
-			// Pre-allocate for extra performance
-			const auto index_count = assimp_mesh->mNumFaces * 3;
-			indices.reserve(index_count);
-			indices.resize(index_count);
-
 			// Get indices by iterating through each face of the mesh.
 			for (uint32_t face_index = 0; face_index < assimp_mesh->mNumFaces; face_index++)
 			{
