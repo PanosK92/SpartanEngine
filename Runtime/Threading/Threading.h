@@ -85,16 +85,21 @@ namespace Spartan
         {
             uint32_t available_threads  = GetThreadsAvailable();
             vector<bool> tasks_done     = vector<bool>(available_threads, false);
+            uint32_t task_count         = available_threads + 1; // plus one for the current thread
 
+            uint32_t start  = 0;
+            uint32_t end    = 0;
             for (uint32_t i = 0; i < available_threads; i++)
             {
-                bool is_last_job    = i >= (available_threads - 1);
-                uint32_t start      = (range / available_threads) * i;
-                uint32_t end        = is_last_job ? range : start + (range / available_threads);
+                start   = (range / task_count) * i;
+                end     = start + (range / task_count);
 
                 // Kick off task
                 AddTask([&function, &tasks_done, i, start, end] { function(start, end); tasks_done[i] = true; });
             }
+
+            // Do last task in the current thread
+            function(end, range);
 
             // Wait till the threads are done
             uint32_t tasks = 0;

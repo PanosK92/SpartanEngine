@@ -186,7 +186,7 @@ namespace Spartan
 		}
 		else if (m_lightType == LightType_Spot)
 		{
-            const Vector3 position   = GetTransform()->GetPosition();
+            const Vector3 position  = GetTransform()->GetPosition();
             const Vector3 forward	= GetTransform()->GetForward();
             const Vector3 up		= GetTransform()->GetUp();
 
@@ -198,12 +198,12 @@ namespace Spartan
             const Vector3 position = GetTransform()->GetPosition();
 
 			// Compute view for each side of the cube map
-			m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + Vector3::Right,		Vector3::Up);		    // x+
-			m_matrix_view[1] = Matrix::CreateLookAtLH(position, position + Vector3::Left,		Vector3::Up);		    // x-
-			m_matrix_view[2] = Matrix::CreateLookAtLH(position, position + Vector3::Up,		Vector3::Backward);	// y+
+			m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + Vector3::Right,		Vector3::Up);		// x+
+			m_matrix_view[1] = Matrix::CreateLookAtLH(position, position + Vector3::Left,		Vector3::Up);		// x-
+			m_matrix_view[2] = Matrix::CreateLookAtLH(position, position + Vector3::Up,		    Vector3::Backward);	// y+
 			m_matrix_view[3] = Matrix::CreateLookAtLH(position, position + Vector3::Down,		Vector3::Forward);	// y-
-			m_matrix_view[4] = Matrix::CreateLookAtLH(position, position + Vector3::Forward,	Vector3::Up);		    // z+
-			m_matrix_view[5] = Matrix::CreateLookAtLH(position, position + Vector3::Backward,	Vector3::Up);		    // z-
+			m_matrix_view[4] = Matrix::CreateLookAtLH(position, position + Vector3::Forward,	Vector3::Up);		// z+
+			m_matrix_view[5] = Matrix::CreateLookAtLH(position, position + Vector3::Backward,	Vector3::Up);		// z-
 		}
 	}
 

@@ -70,6 +70,7 @@ namespace Spartan
         uint32_t m_height                           = 0;
         float m_min_y                               = 0.0f;
         float m_max_y                               = 30.0f;
+        float m_vertex_density                      = 1.0f;
         bool m_is_generating                        = false;
         uint64_t m_vertex_count                     = 0;
         uint64_t m_face_count                       = 0;
