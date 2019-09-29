@@ -115,7 +115,7 @@ namespace Spartan
 		_Settings::write_setting(_Settings::fout, "iAnisotropy",            m_anisotropy);
 		_Settings::write_setting(_Settings::fout, "fFPSLimit",              m_fps_limit);
 		_Settings::write_setting(_Settings::fout, "iMaxThreadCount",        m_max_thread_count);
-        _Settings::write_setting(_Settings::fout, "iRendererFlags",         m_context->GetSubsystem<Renderer>()->GetFlags());
+        _Settings::write_setting(_Settings::fout, "iRendererFlags",         m_renderer_flags);
 
 		// Close the file.
 		_Settings::fout.close();
@@ -138,10 +138,7 @@ namespace Spartan
 		_Settings::read_setting(_Settings::fin, "iAnisotropy",             m_anisotropy);
 		_Settings::read_setting(_Settings::fin, "fFPSLimit",               m_fps_limit);
 		_Settings::read_setting(_Settings::fin, "iMaxThreadCount",         m_max_thread_count);
-
-        uint32_t renderer_flags = 0;
-        _Settings::read_setting(_Settings::fin, "iRendererFlags", renderer_flags);
-        m_context->GetSubsystem<Renderer>()->SetFlags(renderer_flags);
+        _Settings::read_setting(_Settings::fin, "iRendererFlags",          m_renderer_flags);
 
 		// Close the file.
 		_Settings::fin.close();
@@ -156,6 +153,7 @@ namespace Spartan
         m_resolution            = renderer->GetResolution();   
         m_shadow_map_resolution = renderer->GetShadowResolution();
         m_anisotropy            = renderer->GetAnisotropy();
+        m_renderer_flags        = renderer->GetFlags();
     }
 
     void Settings::Map()
@@ -165,5 +163,6 @@ namespace Spartan
         m_context->GetSubsystem<Timer>()->SetTargetFps(m_fps_limit);
         renderer->SetAnisotropy(m_anisotropy);
         renderer->SetShadowResolution(m_shadow_map_resolution);
+        renderer->SetFlags(m_renderer_flags);
     }
 }

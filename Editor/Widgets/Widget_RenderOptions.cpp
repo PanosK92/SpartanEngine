@@ -231,18 +231,20 @@ void Widget_RenderOptions::Tick()
         ImGui::Separator();
 
         {
-            static bool debug_physics               = true;
-            static bool debug_aabb                  = false;
-            static bool debug_light                 = true;
-            static bool debug_transform             = true;
-            static bool debug_picking_ray           = false;
-            static bool debug_grid                  = true;
-            static bool debug_performance_metrics   = false;
-            static bool debug_wireframe             = false;
+            bool debug_physics               = m_renderer->IsFlagSet(Render_Debug_Physics);
+            bool debug_aabb                  = m_renderer->IsFlagSet(Render_Debug_AABB);
+            bool debug_light                 = m_renderer->IsFlagSet(Render_Debug_Lights);
+            bool debug_transform             = m_renderer->IsFlagSet(Render_Debug_Transform);
+            bool debug_picking_ray           = m_renderer->IsFlagSet(Render_Debug_PickingRay);
+            bool debug_grid                  = m_renderer->IsFlagSet(Render_Debug_Grid);
+            bool debug_performance_metrics   = m_renderer->IsFlagSet(Render_Debug_PerformanceMetrics);
+            bool debug_wireframe             = m_renderer->IsFlagSet(Render_Debug_Wireframe);
 
             ImGui::Checkbox("Transform", &debug_transform);
-            ImGui::SameLine(); ImGui::InputFloat("Size", &m_renderer->m_gizmo_transform_size, 0.0025f);
-            ImGui::SameLine(); ImGui::InputFloat("Speed", &m_renderer->m_gizmo_transform_speed, 1.0f);
+            {
+                ImGui::SameLine(); ImGui::InputFloat("Size", &m_renderer->m_gizmo_transform_size, 0.0025f);
+                ImGui::SameLine(); ImGui::InputFloat("Speed", &m_renderer->m_gizmo_transform_speed, 1.0f);
+            }
             ImGui::Checkbox("Physics",              &debug_physics);
             ImGui::Checkbox("AABB",                 &debug_aabb);
             ImGui::Checkbox("Lights",               &debug_light);
