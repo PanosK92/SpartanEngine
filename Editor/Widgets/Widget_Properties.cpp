@@ -411,8 +411,17 @@ void Widget_Properties::ShowRenderable(shared_ptr<Renderable>& renderable) const
 		ImGui::SameLine(ComponentProperty::g_column); ImGui::Text(mesh_name.c_str());
 
 		// Material
-		ImGui::Text("Material");
-		ImGui::SameLine(ComponentProperty::g_column); ImGui::Text(material_name.c_str());
+        ImGui::Text("Material");
+        ImGui::SameLine(ComponentProperty::g_column);
+        ImGui::PushID("##material_name");
+        ImGui::PushItemWidth(200.0f);
+        ImGui::InputText("", &material_name, ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
+        if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayload_Material))
+        {
+            renderable->SetMaterial(std::get<const char*>(payload->data));
+        }
+        ImGui::PopItemWidth();
+        ImGui::PopID();
 
 		// Cast shadows
 		ImGui::Text("Cast Shadows");
@@ -644,8 +653,8 @@ void Widget_Properties::ShowConstraint(shared_ptr<Constraint>& constraint) const
 		ImGui::Text("Other Body"); ImGui::SameLine(ComponentProperty::g_column);
 		ImGui::PushID("##OtherBodyName");
 		ImGui::PushItemWidth(200.0f);
-		ImGui::InputText("", &other_body_name, ImGuiInputTextFlags_ReadOnly);
-		if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayload_entity))
+		ImGui::InputText("", &other_body_name, ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
+		if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayload_Entity))
 		{
 			const auto entity_id	= get<unsigned int>(payload->data);
 			other_body				= _Widget_Properties::scene->EntityGetById(entity_id);
@@ -754,15 +763,28 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material) const
                 texture_slot("Mask",        TextureType_Mask,       false);
             }
 
-			// Tiling
-			ImGui::Text("Tiling");
-			ImGui::SameLine(offset_from_pos_x); ImGui::Text("X"); ImGui::SameLine(); ImGui::InputFloat("##matTilingX", &tiling.x, ImGuiInputTextFlags_CharsDecimal);
-			ImGui::SameLine(); ImGui::Text("Y"); ImGui::SameLine(); ImGui::InputFloat("##matTilingY", &tiling.y, ImGuiInputTextFlags_CharsDecimal);
+            // UV
+            {
+                const float input_width = 128.0f;
 
-			// Offset
-			ImGui::Text("Offset");
-			ImGui::SameLine(offset_from_pos_x); ImGui::Text("X"); ImGui::SameLine(); ImGui::InputFloat("##matOffsetX", &offset.x, ImGuiInputTextFlags_CharsDecimal);
-			ImGui::SameLine(); ImGui::Text("Y"); ImGui::SameLine(); ImGui::InputFloat("##matOffsetY", &offset.y, ImGuiInputTextFlags_CharsDecimal);
+                // Tiling
+                ImGui::Text("Tiling");
+                ImGui::SameLine(offset_from_pos_x); ImGui::Text("X");
+                ImGui::PushItemWidth(input_width);
+                ImGui::SameLine(); ImGui::InputFloat("##matTilingX", &tiling.x, 0.01f, 0.1f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
+                ImGui::SameLine(); ImGui::Text("Y");
+                ImGui::SameLine(); ImGui::InputFloat("##matTilingY", &tiling.y, 0.01f, 0.1, "%.2f", ImGuiInputTextFlags_CharsDecimal);
+                ImGui::PopItemWidth();
+
+                // Offset
+                ImGui::Text("Offset");
+                ImGui::SameLine(offset_from_pos_x); ImGui::Text("X");
+                ImGui::PushItemWidth(input_width);
+                ImGui::SameLine(); ImGui::InputFloat("##matOffsetX", &offset.x, 0.01f, 0.1, "%.2f", ImGuiInputTextFlags_CharsDecimal);
+                ImGui::SameLine(); ImGui::Text("Y");
+                ImGui::SameLine(); ImGui::InputFloat("##matOffsetY", &offset.y, 0.01f, 0.1, "%.2f", ImGuiInputTextFlags_CharsDecimal);
+                ImGui::PopItemWidth();
+            }
 		}
 
 		//= MAP =============================================================================================================================

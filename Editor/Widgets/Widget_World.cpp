@@ -100,7 +100,7 @@ void Widget_World::TreeShow()
 	if (ImGui::TreeNodeEx("Root", ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		// Dropping on the scene node should unparent the entity
-		if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayload_entity))
+		if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayload_Entity))
 		{
 			const auto entity_id = get<unsigned int>(payload->data);
 			if (const auto dropped_entity = _Widget_World::g_world->EntityGetById(entity_id))
@@ -254,12 +254,12 @@ void Widget_World::EntityHandleDragDrop(Entity* entity_ptr) const
 	if (ImGui::BeginDragDropSource())
 	{
 		_Widget_World::g_payload.data = entity_ptr->GetId();
-		_Widget_World::g_payload.type = ImGuiEx::DragPayload_entity;
+		_Widget_World::g_payload.type = ImGuiEx::DragPayload_Entity;
 		ImGuiEx::CreateDragPayload(_Widget_World::g_payload);
 		ImGui::EndDragDropSource();
 	}
 	// Drop
-	if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayload_entity))
+	if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayload_Entity))
 	{
 		const auto entity_id = get<unsigned int>(payload->data);
 		if (const auto dropped_entity = _Widget_World::g_world->EntityGetById(entity_id))

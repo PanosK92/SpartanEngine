@@ -170,7 +170,7 @@ namespace Spartan
 		if (entity)
 		{
 			auto renderable = entity->AddComponent<Renderable>();
-			renderable->MaterialSet(material);
+			renderable->SetMaterial(material);
 		}
 	}
 
@@ -221,7 +221,7 @@ namespace Spartan
 			const auto model_relative_tex_path = m_model_directory_textures + tex_name + EXTENSION_TEXTURE;
 			texture->SetResourceFilePath(model_relative_tex_path);
 			texture->SetResourceName(FileSystem::GetFileNameNoExtensionFromFilePath(model_relative_tex_path));
-			texture->SaveToFile(model_relative_tex_path);		
+			texture->SaveToFile(model_relative_tex_path);
 
 			// Set the texture to the provided material
 			m_resource_manager->Cache(texture);

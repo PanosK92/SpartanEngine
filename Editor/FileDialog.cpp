@@ -327,10 +327,11 @@ void FileDialog::ItemDrag(FileDialogItem* item) const
 			ImGuiEx::CreateDragPayload(_FileDialog::drag_drop_payload);
 		};
 
-		if (FileSystem::IsSupportedModelFile(item->GetPath()))	{ set_payload(ImGuiEx::DragPayload_Model,	item->GetPath()); }
-		if (FileSystem::IsSupportedImageFile(item->GetPath()))	{ set_payload(ImGuiEx::DragPayload_Texture,	item->GetPath()); }
-		if (FileSystem::IsSupportedAudioFile(item->GetPath()))	{ set_payload(ImGuiEx::DragPayload_Audio,	item->GetPath()); }
-		if (FileSystem::IsEngineScriptFile(item->GetPath()))	{ set_payload(ImGuiEx::DragPayload_Script,	item->GetPath()); }
+		if (FileSystem::IsSupportedModelFile(item->GetPath()))	{ set_payload(ImGuiEx::DragPayload_Model,	    item->GetPath()); }
+		if (FileSystem::IsSupportedImageFile(item->GetPath()))	{ set_payload(ImGuiEx::DragPayload_Texture,	    item->GetPath()); }
+		if (FileSystem::IsSupportedAudioFile(item->GetPath()))	{ set_payload(ImGuiEx::DragPayload_Audio,	    item->GetPath()); }
+		if (FileSystem::IsEngineScriptFile(item->GetPath()))	{ set_payload(ImGuiEx::DragPayload_Script,	    item->GetPath()); }
+        if (FileSystem::IsEngineMaterialFile(item->GetPath()))  { set_payload(ImGuiEx::DragPayload_Material,    item->GetPath()); }
 
         // Preview
 		ImGuiEx::Image(item->GetTexture(), 50);
@@ -455,6 +456,14 @@ void FileDialog::EmptyAreaContextMenu()
 		FileSystem::CreateDirectory_(m_current_directory + "//New folder");
 		m_is_dirty = true;
 	}
+
+    if (ImGui::MenuItem("Create material"))
+    {
+        Material material = Material(m_context);
+        material.SetResourceName("new_material");
+        material.SaveToFile(m_current_directory + "//new_material" + EXTENSION_MATERIAL);
+        m_is_dirty = true;
+    }
 
 	if (ImGui::MenuItem("Open directory in explorer"))
 	{

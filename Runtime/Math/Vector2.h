@@ -143,6 +143,7 @@ namespace Spartan::Math
 			return x != b.x || y != b.y;
 		}
 
+        [[nodiscard]] const float* Data() const { return &x; }
 		std::string ToString() const;
 
 		float x;

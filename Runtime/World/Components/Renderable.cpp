@@ -227,7 +227,7 @@ namespace Spartan
 
 	//= MATERIAL ===================================================================
 	// All functions (set/load) resolve to this
-	void Renderable::MaterialSet(const shared_ptr<Material>& material)
+	void Renderable::SetMaterial(const shared_ptr<Material>& material)
 	{
 		if (!material)
 		{
@@ -237,7 +237,7 @@ namespace Spartan
 		m_material = material;
 	}
 
-	shared_ptr<Material> Renderable::MaterialSet(const string& file_path)
+	shared_ptr<Material> Renderable::SetMaterial(const string& file_path)
 	{
 		// Load the material
 		auto material = make_shared<Material>(GetContext());
@@ -248,7 +248,7 @@ namespace Spartan
 		}
 
 		// Set it as the current material
-		MaterialSet(material);
+		SetMaterial(material);
 
 		// Return it
 		return material;
@@ -265,7 +265,7 @@ namespace Spartan
 		materialStandard->SetCullMode(Cull_Back);
 		materialStandard->SetColorAlbedo(Vector4(0.6f, 0.6f, 0.6f, 1.0f));
 		materialStandard->SetIsEditable(false);		
-		MaterialSet(materialStandard);
+		SetMaterial(materialStandard);
 	}
 
 	string Renderable::GetMaterialName()
