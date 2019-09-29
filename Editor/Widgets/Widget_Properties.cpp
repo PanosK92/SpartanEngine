@@ -773,16 +773,16 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material) const
                 ImGui::PushItemWidth(input_width);
                 ImGui::SameLine(); ImGui::InputFloat("##matTilingX", &tiling.x, 0.01f, 0.1f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
                 ImGui::SameLine(); ImGui::Text("Y");
-                ImGui::SameLine(); ImGui::InputFloat("##matTilingY", &tiling.y, 0.01f, 0.1, "%.2f", ImGuiInputTextFlags_CharsDecimal);
+                ImGui::SameLine(); ImGui::InputFloat("##matTilingY", &tiling.y, 0.01f, 0.1f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
                 ImGui::PopItemWidth();
 
                 // Offset
                 ImGui::Text("Offset");
                 ImGui::SameLine(offset_from_pos_x); ImGui::Text("X");
                 ImGui::PushItemWidth(input_width);
-                ImGui::SameLine(); ImGui::InputFloat("##matOffsetX", &offset.x, 0.01f, 0.1, "%.2f", ImGuiInputTextFlags_CharsDecimal);
+                ImGui::SameLine(); ImGui::InputFloat("##matOffsetX", &offset.x, 0.01f, 0.1f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
                 ImGui::SameLine(); ImGui::Text("Y");
-                ImGui::SameLine(); ImGui::InputFloat("##matOffsetY", &offset.y, 0.01f, 0.1, "%.2f", ImGuiInputTextFlags_CharsDecimal);
+                ImGui::SameLine(); ImGui::InputFloat("##matOffsetY", &offset.y, 0.01f, 0.1f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
                 ImGui::PopItemWidth();
             }
 		}
