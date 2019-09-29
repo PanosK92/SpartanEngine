@@ -360,7 +360,7 @@ namespace Spartan
 		m_cmd_list->ClearRenderTarget(tex_ssao_half->GetResource_RenderTarget(), Vector4::One);
         m_cmd_list->ClearRenderTarget(tex_ssao->GetResource_RenderTarget(), Vector4::One);
 
-		if (m_flags & Render_PostProcess_SSAO)
+		if (m_flags & Render_SSAO)
 		{
             // Prepare resources	
             void* textures[] = { m_render_targets[RenderTarget_Gbuffer_Normal]->GetResource_Texture(), m_render_targets[RenderTarget_Gbuffer_Depth]->GetResource_Texture(), m_tex_noise_normal->GetResource_Texture() };
@@ -411,7 +411,7 @@ namespace Spartan
 
         m_cmd_list->Begin("Pass_Ssr");
         
-        if (m_flags & Render_PostProcess_SSR)
+        if (m_flags & Render_SSR)
         {
             // Pack textures
             void* textures[] =
@@ -540,7 +540,7 @@ namespace Spartan
                 };
 
                 // Update light buffer   
-                light->UpdateConstantBuffer(m_flags & Render_PostProcess_VolumetricLighting, m_flags & Render_PostProcess_SSCS);
+                light->UpdateConstantBuffer(m_flags & Render_VolumetricLighting, m_flags & Render_SSCS);
                 const vector<void*> constant_buffers = { m_uber_buffer->GetResource(), light->GetConstantBuffer()->GetResource() };
 
                 m_cmd_list->SetConstantBuffers(0, Buffer_Global, constant_buffers);
@@ -559,7 +559,7 @@ namespace Spartan
         m_cmd_list->Submit();
 
         // If we are doing volumetric lighting, blur it
-        if (m_flags & Render_PostProcess_VolumetricLighting)
+        if (m_flags & Render_VolumetricLighting)
         {
             const auto sigma = 2.0f;
             const auto pixel_stride = 2.0f;
@@ -594,7 +594,7 @@ namespace Spartan
             m_render_targets[RenderTarget_Gbuffer_Material]->GetResource_Texture(),
             m_render_targets[RenderTarget_Light_Diffuse]->GetResource_Texture(),
             m_render_targets[RenderTarget_Light_Specular]->GetResource_Texture(),
-            (m_flags & Render_PostProcess_VolumetricLighting) ? m_render_targets[RenderTarget_Light_Volumetric_Blurred]->GetResource_Texture() : m_tex_black->GetResource_Texture(),
+            (m_flags & Render_VolumetricLighting) ? m_render_targets[RenderTarget_Light_Volumetric_Blurred]->GetResource_Texture() : m_tex_black->GetResource_Texture(),
             m_render_targets[RenderTarget_Ssr_Blurred]->GetResource_Texture(),
             GetEnvironmentTexture_GpuResource(),
             m_render_targets[RenderTarget_Brdf_Specular_Lut]->GetResource_Texture()
@@ -658,21 +658,21 @@ namespace Spartan
         const auto swap_targets_ldr = [this, &tex_in_ldr, &tex_out_ldr]() { m_cmd_list->Submit(); tex_in_ldr.swap(tex_out_ldr); };
 
 		// TAA	
-        if (IsFlagSet(Render_PostProcess_TAA))
+        if (IsFlagSet(Render_AntiAliasing_TAA))
         {
             Pass_TAA(tex_in_hdr, tex_out_hdr);
             swap_targets_hdr();
         }
 
         // Motion Blur
-        if (IsFlagSet(Render_PostProcess_MotionBlur))
+        if (IsFlagSet(Render_MotionBlur))
         {
             Pass_MotionBlur(tex_in_hdr, tex_out_hdr);
             swap_targets_hdr();
         }
 
 		// Bloom
-		if (IsFlagSet(Render_PostProcess_Bloom))
+		if (IsFlagSet(Render_Bloom))
 		{
 			Pass_Bloom(tex_in_hdr, tex_out_hdr);
             swap_targets_hdr();
@@ -689,35 +689,35 @@ namespace Spartan
         }
 
         // Dithering
-        if (IsFlagSet(Render_PostProcess_Dithering))
+        if (IsFlagSet(Render_Dithering))
         {
             Pass_Dithering(tex_in_ldr, tex_out_ldr);
             swap_targets_ldr();
         }
 
 		// FXAA
-		if (IsFlagSet(Render_PostProcess_FXAA))
+		if (IsFlagSet(Render_AntiAliasing_FXAA))
 		{
 			Pass_FXAA(tex_in_ldr, tex_out_ldr);
             swap_targets_ldr();
 		}
 
         // Sharpening - TAA controlled
-        if (IsFlagSet(Render_PostProcess_TAA))
+        if (IsFlagSet(Render_AntiAliasing_TAA))
         {
             Pass_TaaSharpen(tex_in_ldr, tex_out_ldr);
             swap_targets_ldr();
         }
 
 		// Sharpening - User controlled
-		if (IsFlagSet(Render_PostProcess_Sharpening))
+		if (IsFlagSet(Render_Sharpening_LumaSharpen))
 		{
 			Pass_LumaSharpen(tex_in_ldr, tex_out_ldr);
             swap_targets_ldr();
 		}
 
 		// Chromatic aberration
-		if (IsFlagSet(Render_PostProcess_ChromaticAberration))
+		if (IsFlagSet(Render_ChromaticAberration))
 		{
 			Pass_ChromaticAberration(tex_in_ldr, tex_out_ldr);
             swap_targets_ldr();
@@ -1618,7 +1618,7 @@ namespace Spartan
 
 		if (m_debug_buffer == Renderer_Buffer_SSAO)
 		{
-			texture     = m_flags & Render_PostProcess_SSAO ? m_render_targets[RenderTarget_Ssao] : m_tex_white;
+			texture     = m_flags & Render_SSAO ? m_render_targets[RenderTarget_Ssao] : m_tex_white;
 			shader_type = Shader_DebugChannelR_P;
 		}
 

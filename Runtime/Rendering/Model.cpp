@@ -46,8 +46,6 @@ namespace Spartan
 {
 	Model::Model(Context* context) : IResource(context, Resource_Model)
 	{
-		m_normalized_scale	= 1.0f;
-		m_is_animated		= false;
 		m_resource_manager	= m_context->GetSubsystem<ResourceCache>().get();
 		m_rhi_device		= m_context->GetSubsystem<Renderer>()->GetRhiDevice();
 		m_mesh				= make_unique<Mesh>();
@@ -55,14 +53,25 @@ namespace Spartan
 
 	Model::~Model()
 	{
-		m_materials.clear();
-		m_materials.shrink_to_fit();
-
-		m_animations.clear();
-		m_animations.shrink_to_fit();
+        Clear();
 	}
 
-	//= RESOURCE ============================================
+    void Model::Clear()
+    {
+        m_root_entity.reset();
+        m_vertex_buffer.reset();
+        m_index_buffer.reset();
+        m_mesh->Geometry_Clear();
+        m_aabb.Undefine();
+        m_materials.clear();
+        m_animations.clear();
+        m_model_directory_model.clear();
+        m_model_directory_materials.clear();
+        m_model_directory_textures.clear();
+        m_normalized_scale = 1.0f;
+        m_is_animated = false;
+    }
+
 	bool Model::LoadFromFile(const string& file_path)
 	{
 		Stopwatch timer;
@@ -107,7 +116,6 @@ namespace Spartan
 
 		return true;
 	}
-	//=======================================================
 
 	void Model::GeometryAppend(const vector<uint32_t>& indices, const vector<RHI_Vertex_PosTexNorTan>& vertices, uint32_t* index_offset, uint32_t* vertex_offset) const
 	{
@@ -328,6 +336,12 @@ namespace Spartan
 
 	uint32_t Model::GeometryComputeMemoryUsage() const
 	{
+        if (!m_vertex_buffer || !m_index_buffer)
+        {
+            LOG_ERROR_INVALID_INTERNALS();
+            return 0;
+        }
+
 		// Vertices & Indices
 		auto size = !m_mesh ? 0 : m_mesh->Geometry_MemoryUsage();
 

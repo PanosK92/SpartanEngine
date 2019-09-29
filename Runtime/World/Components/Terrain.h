@@ -23,15 +23,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ========================
 #include "IComponent.h"
-#include <vector>
 #include <atomic>
 #include "../../RHI/RHI_Definition.h"
-#include "../../Math/Vector3.h"
 //===================================
 
 namespace Spartan
 {
     class Model;
+    namespace Math
+    {
+        class Vector3;
+    }
 
     class SPARTAN_CLASS Terrain : public IComponent
     {
@@ -63,8 +65,8 @@ namespace Spartan
         bool GeneratePositions(std::vector<Math::Vector3>& positions, const std::vector<std::byte>& height_map);
         bool GenerateVerticesIndices(const std::vector<Math::Vector3>& positions, std::vector<uint32_t>& indices, std::vector<RHI_Vertex_PosTexNorTan>& vertices);
         bool GenerateNormalTangents(const std::vector<uint32_t>& indices, std::vector<RHI_Vertex_PosTexNorTan>& vertices);
-        void UpdateModel(const std::vector<uint32_t>& indices, std::vector<RHI_Vertex_PosTexNorTan>& vertices);
-        void FreeMemory();
+        void UpdateFromModel(const std::shared_ptr<Model>& model);
+        void UpdateFromVertices(const std::vector<uint32_t>& indices, std::vector<RHI_Vertex_PosTexNorTan>& vertices);
 
         uint32_t m_width                            = 0;
         uint32_t m_height                           = 0;
@@ -77,9 +79,6 @@ namespace Spartan
         std::atomic<uint64_t> m_progress_jobs_done  = 0;
         uint64_t m_progress_job_count               = 1; // avoid devision by zero in GetProgress()
         std::string m_progress_desc;
-        std::vector<Math::Vector3> m_positions;
-        std::vector<RHI_Vertex_PosTexNorTan> m_vertices;
-        std::vector<uint32_t> m_indices;
         std::shared_ptr<RHI_Texture2D> m_height_map;
         std::shared_ptr<Model> m_model;
     };

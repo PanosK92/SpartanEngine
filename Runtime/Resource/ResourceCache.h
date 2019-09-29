@@ -67,7 +67,7 @@ namespace Spartan
 
 		// Get by path
 		template <class T>
-		std::shared_ptr<T>& GetByPath(const std::string& path)
+		std::shared_ptr<T> GetByPath(const std::string& path)
 		{
 			for (auto& resource : m_resource_groups[IResource::TypeToEnum<T>()])
 			{
@@ -75,7 +75,7 @@ namespace Spartan
 					return std::static_pointer_cast<T>(resource);
 			}
 
-			return std::static_pointer_cast<T>(m_empty_resource);
+            return nullptr;
 		}
 
 		// Caches resource, or replaces with existing cached resource
@@ -97,6 +97,26 @@ namespace Spartan
 			m_resource_groups[resource->GetResourceType()].emplace_back(resource);
 		}
 		bool IsCached(const std::string& resource_name, Resource_Type resource_type);
+
+        template <class T>
+        void Remove(std::shared_ptr<T>& resource)
+        {
+            if (!resource)
+                return;
+
+            if (!IsCached(resource->GetResourceName(), resource->GetResourceType()))
+                return;
+
+            auto& vector = m_resource_groups[resource->GetResourceType()];
+            for (auto it = vector.begin(); it != vector.end(); it++)
+            {
+                if ((*it)->GetId() == resource->GetId())
+                {
+                    vector.erase(it);
+                    break;
+                }
+            }
+        }
 
 		// Loads a resource and adds it to the resource cache
 		template <class T>
@@ -179,7 +199,5 @@ namespace Spartan
 		std::shared_ptr<ModelImporter> m_importer_model;
 		std::shared_ptr<ImageImporter> m_importer_image;
 		std::shared_ptr<FontImporter> m_importer_font;
-
-		std::shared_ptr<IResource> m_empty_resource = nullptr;
 	};
 }

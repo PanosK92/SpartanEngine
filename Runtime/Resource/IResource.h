@@ -67,7 +67,10 @@ namespace Spartan
 		const std::string& GetResourceName() const				{ return m_resource_name; }
 		void SetResourceName(const std::string& name)			{ m_resource_name = name; }
 		const std::string& GetResourceFilePath() const			{ return m_resource_file_path; }
-		void SetResourceFilePath(const std::string& file_path)  { m_resource_file_path = file_path; }
+		void SetResourceFilePath(const std::string& file_path)
+        {
+            m_resource_file_path = file_path;
+        }
 		bool HasFilePath() const								{ return !m_resource_file_path.empty(); }
 		std::string GetResourceFileName() const					{ return FileSystem::GetFileNameNoExtensionFromFilePath(m_resource_file_path); }
 		std::string GetResourceDirectory() const				{ return FileSystem::GetDirectoryFromFilePath(m_resource_file_path); }

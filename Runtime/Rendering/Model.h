@@ -44,10 +44,12 @@ namespace Spartan
 		Model(Context* context);
 		~Model();
 
-		//= RESOURCE INTERFACE =================================
+		//= IResource ===========================================
 		bool LoadFromFile(const std::string& file_path) override;
 		bool SaveToFile(const std::string& file_path) override;
-		//======================================================
+		//=======================================================
+
+        void Clear();
 
 		// Sets the entity that represents this model in the scene
 		void SetRootEntity(const std::shared_ptr<Entity>& entity) { m_root_entity = entity; }
@@ -69,6 +71,7 @@ namespace Spartan
 		) const;
 		void GeometryUpdate();
 		const auto& GeometryAabb() const { return m_aabb; }
+        const auto& GetMesh() { return m_mesh; }
 		//=================================================
 
 		// Add resources to the model

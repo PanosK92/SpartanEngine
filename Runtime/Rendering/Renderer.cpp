@@ -51,13 +51,13 @@ namespace Spartan
 		m_flags		|= Render_Debug_Grid;
 		m_flags		|= Render_Debug_Lights;
 		m_flags		|= Render_Debug_Physics;
-		m_flags		|= Render_PostProcess_Bloom;
-        m_flags     |= Render_PostProcess_VolumetricLighting;
-		m_flags		|= Render_PostProcess_SSAO;
-        m_flags     |= Render_PostProcess_SSCS;
-		m_flags		|= Render_PostProcess_MotionBlur;
-		m_flags		|= Render_PostProcess_TAA;
-        m_flags     |= Render_PostProcess_SSR;
+		m_flags		|= Render_Bloom;
+        m_flags     |= Render_VolumetricLighting;
+		m_flags		|= Render_SSAO;
+        m_flags     |= Render_SSCS;
+		m_flags		|= Render_MotionBlur;
+		m_flags		|= Render_AntiAliasing_TAA;
+        m_flags     |= Render_SSR;
 		//m_flags	|= Render_PostProcess_FXAA;                 // Disabled by default: TAA is superior.
 		//m_flags	|= Render_PostProcess_Sharpening;		    // Disabled by default: TAA's blurring is taken core of with an always on sharpen pass specifically for it.
 		//m_flags	|= Render_PostProcess_Dithering;			// Disabled by default: It's only needed in very dark scenes to fix smooth color gradients.
@@ -218,7 +218,7 @@ namespace Spartan
 			m_projection	= m_camera->GetProjectionMatrix();
 
 			// TAA - Generate jitter
-			if (IsFlagSet(Render_PostProcess_TAA))
+			if (IsFlagSet(Render_AntiAliasing_TAA))
 			{
 				m_taa_jitter_previous = m_taa_jitter;
 
@@ -353,7 +353,7 @@ namespace Spartan
 		buffer->exposure				    = m_exposure;
 		buffer->gamma					    = m_gamma;
         buffer->directional_light_intensity = light_directional_intensity;
-        buffer->ssr_enabled                 = IsFlagSet(Render_PostProcess_SSR) ? 1.0f : 0.0f;
+        buffer->ssr_enabled                 = IsFlagSet(Render_SSR) ? 1.0f : 0.0f;
         buffer->shadow_resolution           = static_cast<float>(m_resolution_shadow);
 
 		return m_uber_buffer->Unmap();

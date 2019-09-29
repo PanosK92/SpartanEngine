@@ -100,7 +100,8 @@ namespace Spartan
 				return resource;
 		}
 
-		return m_empty_resource;
+        static shared_ptr<IResource> empty;
+		return empty;
 	}
 
 	vector<shared_ptr<IResource>> ResourceCache::GetByType(const Resource_Type type /*= Resource_Unknown*/)

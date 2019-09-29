@@ -21,17 +21,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
+//= INCLUDES =====================
 #include <vector>
 #include "../RHI/RHI_Definition.h"
-//=============================
+//================================
 
 namespace Spartan
 {
 	class Mesh
 	{
 	public:
-		Mesh() {}
+        Mesh() = default;
 		~Mesh() { Geometry_Clear(); }
 
 		// Geometry
@@ -50,7 +50,7 @@ namespace Spartan
 		void Vertex_Add(const RHI_Vertex_PosTexNorTan& vertex);
 		void Vertices_Append(const std::vector<RHI_Vertex_PosTexNorTan>& vertices, uint32_t* vertexOffset);	
 		uint32_t Vertices_Count() const;
-		std::vector<RHI_Vertex_PosTexNorTan>& Vertices_Get()						{ return m_vertices; }
+		std::vector<RHI_Vertex_PosTexNorTan>& Vertices_Get()					{ return m_vertices; }
 		void Vertices_Set(const std::vector<RHI_Vertex_PosTexNorTan>& vertices)	{ m_vertices = vertices; }
 
 		// Indices
