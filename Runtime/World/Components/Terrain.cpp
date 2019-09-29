@@ -32,6 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\..\IO\FileStream.h"
 #include "..\..\Threading\Threading.h"
 #include "..\..\Resource\ResourceCache.h"
+#include "..\..\Rendering\Mesh.h"
 //=======================================
 
 //= NAMESPACES ===============
@@ -53,49 +54,31 @@ namespace Spartan
 
     void Terrain::Serialize(FileStream* stream)
     {
-        bool vertices_indices = !m_indices.empty() && !m_vertices.empty();
-        string height_map_file_path = m_height_map ? m_height_map->GetResourceFilePath() : "";
+        string no_path;
 
-        stream->Write(height_map_file_path);
-        stream->Write(m_width);
-        stream->Write(m_height);
+        stream->Write(m_height_map ? m_height_map->GetResourceFilePath() : no_path);
+        stream->Write(m_model ? m_model->GetResourceName() : no_path);
         stream->Write(m_min_y);
         stream->Write(m_max_y);
-        stream->Write(m_vertex_count);
-        stream->Write(m_face_count);
-        stream->Write(vertices_indices);
-        if (vertices_indices)
-        {
-            stream->Write(m_indices);
-            stream->Write(m_vertices);
-        }
-
-        FreeMemory();
     }
 
     void Terrain::Deserialize(FileStream* stream)
     {
-        m_height_map = m_context->GetSubsystem<ResourceCache>()->GetByPath<RHI_Texture2D>(stream->ReadAs<string>());
-        stream->Read(&m_width);
-        stream->Read(&m_height);
+        ResourceCache* resource_cache = m_context->GetSubsystem<ResourceCache>().get();
+        m_height_map    = resource_cache->GetByPath<RHI_Texture2D>(stream->ReadAs<string>());
+        m_model         = resource_cache->GetByName<Model>(stream->ReadAs<string>());
         stream->Read(&m_min_y);
         stream->Read(&m_max_y);
-        stream->Read(&m_vertex_count);
-        stream->Read(&m_face_count);
-        if (stream->ReadAs<bool>())
-        {
-            stream->Read(&m_indices);
-            stream->Read(&m_vertices);
-        }
 
-        UpdateModel(m_indices, m_vertices);
-        FreeMemory();
+        UpdateFromModel(m_model);
     }
 
     void Terrain::SetHeightMap(const shared_ptr<RHI_Texture2D>& height_map)
     {
         m_height_map = height_map;
-        m_context->GetSubsystem<ResourceCache>()->Cache<RHI_Texture2D>(m_height_map);
+
+        ResourceCache* resource_cahe = m_context->GetSubsystem<ResourceCache>().get();
+        resource_cahe->Cache<RHI_Texture2D>(m_height_map);
     }
 
     void Terrain::GenerateAsync()
@@ -106,12 +89,17 @@ namespace Spartan
             return;
         }
 
-        FreeMemory();
-        
         if (!m_height_map)
         {
-            UpdateModel(m_indices, m_vertices);
             LOG_WARNING("You need to assign a height map before trying to generate a terrain.");
+
+            m_context->GetSubsystem<ResourceCache>()->Remove(m_model);
+            m_model.reset();
+            if (shared_ptr<Renderable>& renderable = m_entity->AddComponent<Renderable>())
+            {
+                renderable->GeometryClear();
+            }
+            
             return;
         }
 
@@ -120,7 +108,13 @@ namespace Spartan
             m_is_generating = true;
 
             // Get height map data
-            vector<std::byte> height_map_data   = m_height_map->GetMipmap(0);
+            vector<std::byte> height_map_data = m_height_map->GetMipmap(0);
+            if (height_map_data.empty())
+            {
+                LOG_ERROR("Height map has no data");
+            }
+
+            // Deduce some stuff
             m_height                            = m_height_map->GetHeight();
             m_width                             = m_height_map->GetWidth();
             m_vertex_count                      = m_height * m_width;
@@ -128,23 +122,28 @@ namespace Spartan
             m_progress_jobs_done                = 0;
             m_progress_job_count                = m_vertex_count * 2 + m_face_count + m_vertex_count * m_face_count;
 
+            // Pre-allocate memory for the calculations that follow
+            vector<Vector3> positions                 = vector<Vector3>(m_height * m_width);
+            vector<RHI_Vertex_PosTexNorTan> vertices  = vector<RHI_Vertex_PosTexNorTan>(m_vertex_count);
+            vector<uint32_t> indices                  = vector<uint32_t>(m_face_count * 3);
+
             // Read height map and construct positions
             m_progress_desc = "Generating positions...";
-            if (GeneratePositions(m_positions, height_map_data))
+            if (GeneratePositions(positions, height_map_data))
             {
                 // Compute the vertices (without the normals) and the indices
                 m_progress_desc = "Generating terrain vertices and indices...";
-                if (GenerateVerticesIndices(m_positions, m_indices, m_vertices))
+                if (GenerateVerticesIndices(positions, indices, vertices))
                 {
                     m_progress_desc = "Generating normals and tangents...";
-                    m_positions.clear();
-                    m_positions.shrink_to_fit();
+                    positions.clear();
+                    positions.shrink_to_fit();
 
                     // Compute the normals by doing normal averaging (very expensive)
-                    if (GenerateNormalTangents(m_indices, m_vertices))
+                    if (GenerateNormalTangents(indices, vertices))
                     {
                         // Create a model and set it to the renderable component
-                        UpdateModel(m_indices, m_vertices);
+                        UpdateFromVertices(indices, vertices);
                     }
                 }
             }
@@ -166,7 +165,6 @@ namespace Spartan
             return false;
         }
 
-        m_positions     = vector<Vector3>(m_height * m_width);
         uint32_t index  = 0;
         uint32_t k      = 0;
 
@@ -201,10 +199,6 @@ namespace Spartan
             return false;
         }
 
-        // Pre-allocate memory for the calculations that follow
-        m_vertices  = vector<RHI_Vertex_PosTexNorTan>(m_vertex_count);
-        m_indices   = vector<uint32_t>(m_face_count * 3);
-
         uint32_t index      = 0;
         uint32_t k          = 0;
         uint32_t u_index    = 0;
@@ -220,34 +214,34 @@ namespace Spartan
                 uint32_t index_top_right    = (y + 1) * m_width + x + 1;
 
                 // Bottom right of quad
-                index               = index_bottom_right;
-                m_indices[k]        = index;
-                m_vertices[index]   = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u_index + 1.0f, v_index + 1.0f));
+                index           = index_bottom_right;
+                indices[k]      = index;
+                vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u_index + 1.0f, v_index + 1.0f));
 
                 // Bottom left of quad
-                index               = index_bottom_left;
-                m_indices[k + 1]    = index;
-                m_vertices[index]   = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u_index + 0.0f, v_index + 1.0f));
+                index           = index_bottom_left;
+                indices[k + 1]  = index;
+                vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u_index + 0.0f, v_index + 1.0f));
 
                 // Top left of quad
-                index               = index_top_left;
-                m_indices[k + 2]    = index;
-                m_vertices[index]   = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u_index + 0.0f, v_index + 0.0f));
+                index           = index_top_left;
+                indices[k + 2]  = index;
+                vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u_index + 0.0f, v_index + 0.0f));
 
                 // Bottom right of quad
-                index               = index_bottom_right;
-                m_indices[k + 3]    = index;
-                m_vertices[index]   = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u_index + 1.0f, v_index + 1.0f));
+                index           = index_bottom_right;
+                indices[k + 3]  = index;
+                vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u_index + 1.0f, v_index + 1.0f));
 
                 // Top left of quad
-                index               = index_top_left;
-                m_indices[k + 4]    = index;
-                m_vertices[index]   = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u_index + 0.0f, v_index + 0.0f));
+                index           = index_top_left;
+                indices[k + 4]  = index;
+                vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u_index + 0.0f, v_index + 0.0f));
 
                 // Top right of quad
-                index               = index_top_right;
-                m_indices[k + 5]    = index;
-                m_vertices[index]   = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u_index + 1.0f, v_index + 0.0f));
+                index           = index_top_right;
+                indices[k + 5]  = index;
+                vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u_index + 1.0f, v_index + 0.0f));
 
                 k += 6; // next quad
 
@@ -390,44 +384,51 @@ namespace Spartan
         return true;
     }
 
-    void Terrain::UpdateModel(const vector<uint32_t>& indices, vector<RHI_Vertex_PosTexNorTan>& vertices)
+    void Terrain::UpdateFromModel(const shared_ptr<Model>& model)
     {
-        if (indices.empty() || vertices.empty())
+        if (!model)
         {
-            m_model.reset();
-            if (shared_ptr<Renderable>& renderable = m_entity->AddComponent<Renderable>())
-            {
-                renderable->GeometryClear();
-            }
+            LOG_ERROR_INVALID_PARAMETER();
             return;
         }
 
-        // Create model
-        m_model = make_shared<Model>(m_context);
+        if (shared_ptr<Renderable>& renderable = m_entity->AddComponent<Renderable>())
+        {
+            renderable->GeometrySet(
+                "Terrain",
+                0,                                  // index offset
+                model->GetMesh()->Indices_Count(),  // index count
+                0,                                  // vertex offset
+                model->GetMesh()->Vertices_Count(), // vertex count
+                model->GeometryAabb(),
+                model.get()
+            );
+
+            renderable->UseDefaultMaterial();
+        }
+    }
+
+    void Terrain::UpdateFromVertices(const vector<uint32_t>& indices, vector<RHI_Vertex_PosTexNorTan>& vertices)
+    {
+        // Create model and cache it
+        if (!m_model)
+        {
+            ResourceCache* resource_cache = m_context->GetSubsystem<ResourceCache>().get();
+
+            // The model has to have a file path for the resource cache to be able to save/load it.
+            string file_path = resource_cache->GetProjectDirectory() + m_entity->GetName() + "_terrain_" + to_string(m_id) + "." + string(EXTENSION_MODEL);
+
+            m_model = make_shared<Model>(m_context);
+            m_model->SetResourceName("Terrain");
+            m_model->SetResourceFilePath(file_path);
+            resource_cache->Cache(m_model);
+        }
+
+        // Update with geometry
+        m_model->Clear();
         m_model->GeometryAppend(indices, vertices);
         m_model->GeometryUpdate();
 
-        // Add renderable and pass the model to it
-        shared_ptr<Renderable>& renderable = m_entity->AddComponent<Renderable>();
-        renderable->GeometrySet(
-            "Terrain",
-            0,                                      // index offset
-            static_cast<uint32_t>(indices.size()),  // index count
-            0,                                      // vertex offset
-            static_cast<uint32_t>(indices.size()),  // vertex count
-            BoundingBox(vertices),
-            m_model.get()
-        );
-        renderable->UseDefaultMaterial();
-    }
-
-    void Terrain::FreeMemory()
-    {
-        m_positions.clear();
-        m_positions.shrink_to_fit();
-        m_indices.clear();
-        m_indices.shrink_to_fit();
-        m_vertices.clear();
-        m_vertices.shrink_to_fit();
+        UpdateFromModel(m_model);
     }
 }

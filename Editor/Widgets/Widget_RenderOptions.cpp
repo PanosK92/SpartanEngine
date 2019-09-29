@@ -33,37 +33,6 @@ using namespace Spartan;
 using namespace Spartan::Math;
 //============================
 
-namespace _RenderOptions
-{
-    static bool g_debug_physics             = true;
-    static bool g_debug_aabb                = false;
-    static bool g_debug_light               = true;
-    static bool g_debug_transform           = true;
-    static bool g_debug_picking_ray         = false;
-    static bool g_debug_grid                = true;
-    static bool g_debug_performance_metrics = false;
-    static bool g_debug_wireframe           = false;
-    static vector<string> debug_textures =
-    {
-        "None",
-        "Albedo",
-        "Normal",
-        "Material",
-        "Diffuse",
-        "Specular",
-        "Velocity",
-        "Depth",
-        "SSAO",
-        "SSR",
-        "Bloom",
-        "Volumetric Lighting",
-        "Shadows"
-    };
-    static int debug_texture_selected_index = 0;
-    static string debug_texture_selected = debug_textures[0];
-}
-
-
 Widget_RenderOptions::Widget_RenderOptions(Context* context) : Widget(context)
 {
     m_title         = "Renderer Options";
@@ -80,20 +49,20 @@ void Widget_RenderOptions::Tick()
     if (ImGui::CollapsingHeader("Graphics", ImGuiTreeNodeFlags_DefaultOpen))
     {
         // Read from engine
-        static vector<char*> types = { "Off", "ACES", "Reinhard", "Uncharted 2" };
-        const char* type_char_ptr = types[static_cast<unsigned int>(m_renderer->m_tonemapping)];
+        static vector<char*> tonemapping_options    = { "Off", "ACES", "Reinhard", "Uncharted 2" };
+        const char* tonemapping_selection           = tonemapping_options[static_cast<unsigned int>(m_renderer->m_tonemapping)];
 
-        auto do_bloom                   = m_renderer->IsFlagSet(Render_PostProcess_Bloom);
-        auto do_volumetric_lighting     = m_renderer->IsFlagSet(Render_PostProcess_VolumetricLighting);
-        auto do_fxaa                    = m_renderer->IsFlagSet(Render_PostProcess_FXAA);
-        auto do_ssao                    = m_renderer->IsFlagSet(Render_PostProcess_SSAO);
-        auto do_sscs                    = m_renderer->IsFlagSet(Render_PostProcess_SSCS);
-        auto do_ssr                     = m_renderer->IsFlagSet(Render_PostProcess_SSR);
-        auto do_taa                     = m_renderer->IsFlagSet(Render_PostProcess_TAA);
-        auto do_motion_blur             = m_renderer->IsFlagSet(Render_PostProcess_MotionBlur);
-        auto do_sharperning             = m_renderer->IsFlagSet(Render_PostProcess_Sharpening);
-        auto do_chromatic_aberration    = m_renderer->IsFlagSet(Render_PostProcess_ChromaticAberration);
-        auto do_dithering               = m_renderer->IsFlagSet(Render_PostProcess_Dithering);
+        auto do_bloom                   = m_renderer->IsFlagSet(Render_Bloom);
+        auto do_volumetric_lighting     = m_renderer->IsFlagSet(Render_VolumetricLighting);
+        auto do_fxaa                    = m_renderer->IsFlagSet(Render_AntiAliasing_FXAA);
+        auto do_ssao                    = m_renderer->IsFlagSet(Render_SSAO);
+        auto do_sscs                    = m_renderer->IsFlagSet(Render_SSCS);
+        auto do_ssr                     = m_renderer->IsFlagSet(Render_SSR);
+        auto do_taa                     = m_renderer->IsFlagSet(Render_AntiAliasing_TAA);
+        auto do_motion_blur             = m_renderer->IsFlagSet(Render_MotionBlur);
+        auto do_sharperning             = m_renderer->IsFlagSet(Render_Sharpening_LumaSharpen);
+        auto do_chromatic_aberration    = m_renderer->IsFlagSet(Render_ChromaticAberration);
+        auto do_dithering               = m_renderer->IsFlagSet(Render_Dithering);
         auto resolution_shadow          = static_cast<int>(m_renderer->GetShadowResolution());
 
         // Display
@@ -102,14 +71,14 @@ void Widget_RenderOptions::Tick()
             const auto input_float = [](const char* id, const char* text, float* value, float step) { ImGui::PushID(id); ImGui::PushItemWidth(120); ImGui::InputFloat(text, value, step); ImGui::PopItemWidth(); ImGui::PopID(); };
 
             // Tonemapping
-            if (ImGui::BeginCombo("Tonemapping", type_char_ptr))
+            if (ImGui::BeginCombo("Tonemapping", tonemapping_selection))
             {
-                for (unsigned int i = 0; i < static_cast<unsigned int>(types.size()); i++)
+                for (unsigned int i = 0; i < static_cast<unsigned int>(tonemapping_options.size()); i++)
                 {
-                    const auto is_selected = (type_char_ptr == types[i]);
-                    if (ImGui::Selectable(types[i], is_selected))
+                    const auto is_selected = (tonemapping_selection == tonemapping_options[i]);
+                    if (ImGui::Selectable(tonemapping_options[i], is_selected))
                     {
-                        type_char_ptr = types[i];
+                        tonemapping_selection = tonemapping_options[i];
                         m_renderer->m_tonemapping = static_cast<Renderer_ToneMapping_Type>(i);
                     }
                     if (is_selected)
@@ -192,32 +161,51 @@ void Widget_RenderOptions::Tick()
         #define set_flag_if(flag, value) value? m_renderer->SetFlag(flag) : m_renderer->UnsetFlag(flag)
 
         // Map back to engine
-        set_flag_if(Render_PostProcess_Bloom,               do_bloom);
-        set_flag_if(Render_PostProcess_VolumetricLighting,  do_volumetric_lighting);
-        set_flag_if(Render_PostProcess_FXAA,                do_fxaa);
-        set_flag_if(Render_PostProcess_SSAO,                do_ssao);
-        set_flag_if(Render_PostProcess_SSCS,                do_sscs);
-        set_flag_if(Render_PostProcess_SSR,                 do_ssr);
-        set_flag_if(Render_PostProcess_TAA,                 do_taa);
-        set_flag_if(Render_PostProcess_MotionBlur,          do_motion_blur);
-        set_flag_if(Render_PostProcess_Sharpening,          do_sharperning);
-        set_flag_if(Render_PostProcess_ChromaticAberration, do_chromatic_aberration);
-        set_flag_if(Render_PostProcess_Dithering,           do_dithering);
+        set_flag_if(Render_Bloom,                   do_bloom);
+        set_flag_if(Render_VolumetricLighting,      do_volumetric_lighting);
+        set_flag_if(Render_AntiAliasing_FXAA,       do_fxaa);
+        set_flag_if(Render_SSAO,                    do_ssao);
+        set_flag_if(Render_SSCS,                    do_sscs);
+        set_flag_if(Render_SSR,                     do_ssr);
+        set_flag_if(Render_AntiAliasing_TAA,        do_taa);
+        set_flag_if(Render_MotionBlur,              do_motion_blur);
+        set_flag_if(Render_Sharpening_LumaSharpen,  do_sharperning);
+        set_flag_if(Render_ChromaticAberration,     do_chromatic_aberration);
+        set_flag_if(Render_Dithering,               do_dithering);
     }
 
     if (ImGui::CollapsingHeader("Debug", ImGuiTreeNodeFlags_None))
     {
         // Buffer
         {
-            if (ImGui::BeginCombo("Buffer", _RenderOptions::debug_texture_selected.c_str()))
+            static vector<string> buffer_options =
             {
-                for (auto i = 0; i < _RenderOptions::debug_textures.size(); i++)
+                "None",
+                "Albedo",
+                "Normal",
+                "Material",
+                "Diffuse",
+                "Specular",
+                "Velocity",
+                "Depth",
+                "SSAO",
+                "SSR",
+                "Bloom",
+                "Volumetric Lighting",
+                "Shadows"
+            };
+            static int buffer_selection = 0;
+            static string buffer_selection_str = buffer_options[0];
+
+            if (ImGui::BeginCombo("Buffer", buffer_selection_str.c_str()))
+            {
+                for (auto i = 0; i < buffer_options.size(); i++)
                 {
-                    const auto is_selected = (_RenderOptions::debug_texture_selected == _RenderOptions::debug_textures[i]);
-                    if (ImGui::Selectable(_RenderOptions::debug_textures[i].c_str(), is_selected))
+                    const auto is_selected = (buffer_selection_str == buffer_options[i]);
+                    if (ImGui::Selectable(buffer_options[i].c_str(), is_selected))
                     {
-                        _RenderOptions::debug_texture_selected = _RenderOptions::debug_textures[i];
-                        _RenderOptions::debug_texture_selected_index = i;
+                        buffer_selection_str = buffer_options[i];
+                        buffer_selection = i;
                     }
                     if (is_selected)
                     {
@@ -226,7 +214,7 @@ void Widget_RenderOptions::Tick()
                 }
                 ImGui::EndCombo();
             }
-            m_renderer->SetDebugBuffer(static_cast<Renderer_Buffer_Type>(_RenderOptions::debug_texture_selected_index));
+            m_renderer->SetDebugBuffer(static_cast<Renderer_Buffer_Type>(buffer_selection));
         }
         ImGui::Separator();
 
@@ -242,24 +230,35 @@ void Widget_RenderOptions::Tick()
         }
         ImGui::Separator();
 
-        ImGui::Checkbox("Transform", &_RenderOptions::g_debug_transform);
-        ImGui::SameLine(); ImGui::InputFloat("Size",    &m_renderer->m_gizmo_transform_size, 0.0025f);
-        ImGui::SameLine(); ImGui::InputFloat("Speed",   &m_renderer->m_gizmo_transform_speed, 1.0f);
-        ImGui::Checkbox("Physics",              &_RenderOptions::g_debug_physics);
-        ImGui::Checkbox("AABB",                 &_RenderOptions::g_debug_aabb);
-        ImGui::Checkbox("Lights",               &_RenderOptions::g_debug_light);
-        ImGui::Checkbox("Picking Ray",          &_RenderOptions::g_debug_picking_ray);
-        ImGui::Checkbox("Grid",                 &_RenderOptions::g_debug_grid);
-        ImGui::Checkbox("Performance Metrics",  &_RenderOptions::g_debug_performance_metrics);
-        ImGui::Checkbox("Wireframe",            &_RenderOptions::g_debug_wireframe);
+        {
+            static bool debug_physics               = true;
+            static bool debug_aabb                  = false;
+            static bool debug_light                 = true;
+            static bool debug_transform             = true;
+            static bool debug_picking_ray           = false;
+            static bool debug_grid                  = true;
+            static bool debug_performance_metrics   = false;
+            static bool debug_wireframe             = false;
 
-        set_flag_if(Render_Debug_Transform,             _RenderOptions::g_debug_transform);
-        set_flag_if(Render_Debug_Physics,               _RenderOptions::g_debug_physics); 
-        set_flag_if(Render_Debug_AABB,                  _RenderOptions::g_debug_aabb);
-        set_flag_if(Render_Debug_Lights,                _RenderOptions::g_debug_light);
-        set_flag_if(Render_Debug_PickingRay,            _RenderOptions::g_debug_picking_ray);
-        set_flag_if(Render_Debug_Grid,                  _RenderOptions::g_debug_grid);
-        set_flag_if(Render_Debug_PerformanceMetrics,    _RenderOptions::g_debug_performance_metrics);
-        set_flag_if(Render_Debug_Wireframe,             _RenderOptions::g_debug_wireframe);
+            ImGui::Checkbox("Transform", &debug_transform);
+            ImGui::SameLine(); ImGui::InputFloat("Size", &m_renderer->m_gizmo_transform_size, 0.0025f);
+            ImGui::SameLine(); ImGui::InputFloat("Speed", &m_renderer->m_gizmo_transform_speed, 1.0f);
+            ImGui::Checkbox("Physics",              &debug_physics);
+            ImGui::Checkbox("AABB",                 &debug_aabb);
+            ImGui::Checkbox("Lights",               &debug_light);
+            ImGui::Checkbox("Picking Ray",          &debug_picking_ray);
+            ImGui::Checkbox("Grid",                 &debug_grid);
+            ImGui::Checkbox("Performance Metrics",  &debug_performance_metrics);
+            ImGui::Checkbox("Wireframe",            &debug_wireframe);
+
+            set_flag_if(Render_Debug_Transform,             debug_transform);
+            set_flag_if(Render_Debug_Physics,               debug_physics);
+            set_flag_if(Render_Debug_AABB,                  debug_aabb);
+            set_flag_if(Render_Debug_Lights,                debug_light);
+            set_flag_if(Render_Debug_PickingRay,            debug_picking_ray);
+            set_flag_if(Render_Debug_Grid,                  debug_grid);
+            set_flag_if(Render_Debug_PerformanceMetrics,    debug_performance_metrics);
+            set_flag_if(Render_Debug_Wireframe,             debug_wireframe);
+        }
     }
 }

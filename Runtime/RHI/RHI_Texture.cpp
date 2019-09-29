@@ -107,15 +107,15 @@ namespace Spartan
 		return true;
 	}
 
-	bool RHI_Texture::LoadFromFile(const string& rawFilePath)
+	bool RHI_Texture::LoadFromFile(const string& file_path)
 	{
 		// Make the path relative to the engine
-		const auto file_path = FileSystem::GetRelativeFilePath(rawFilePath);
+		const auto file_path_relative = FileSystem::GetRelativeFilePath(file_path);
 
 		// Validate file path
-		if (!FileSystem::FileExists(file_path))
+		if (!FileSystem::FileExists(file_path_relative))
 		{
-			LOGF_ERROR("Path \"%s\" is invalid.", file_path.c_str());
+			LOGF_ERROR("Path \"%s\" is invalid.", file_path_relative.c_str());
 			return false;
 		}
 
@@ -125,18 +125,18 @@ namespace Spartan
 
 		// Load from disk
 		auto texture_data_loaded = false;		
-		if (FileSystem::IsEngineTextureFile(file_path)) // engine format (binary)
+		if (FileSystem::IsEngineTextureFile(file_path_relative)) // engine format (binary)
 		{
-			texture_data_loaded = LoadFromFile_NativeFormat(file_path);
+			texture_data_loaded = LoadFromFile_NativeFormat(file_path_relative);
 		}	
-		else if (FileSystem::IsSupportedImageFile(file_path)) // foreign format (most known image formats)
+		else if (FileSystem::IsSupportedImageFile(file_path_relative)) // foreign format (most known image formats)
 		{
-			texture_data_loaded = LoadFromFile_ForeignFormat(file_path, m_generate_mipmaps_when_loading);
+			texture_data_loaded = LoadFromFile_ForeignFormat(file_path_relative, m_generate_mipmaps_when_loading);
 		}
 
 		if (!texture_data_loaded)
 		{
-			LOGF_ERROR("Failed to load \"%s\".", file_path.c_str());
+			LOGF_ERROR("Failed to load \"%s\".", file_path_relative.c_str());
 			m_load_state = LoadState_Failed;
 			return false;
 		}
@@ -150,7 +150,7 @@ namespace Spartan
 		}
 
 		// Only clear texture bytes if that's an engine texture, if not, it's not serialized yet.
-		if (FileSystem::IsEngineTextureFile(file_path)) 
+		if (FileSystem::IsEngineTextureFile(file_path_relative)) 
 		{
 			m_data.clear();
 			m_data.shrink_to_fit();
@@ -170,13 +170,44 @@ namespace Spartan
 		return &m_data[index];
 	}
 
-    const std::vector<std::byte>& RHI_Texture::GetMipmap(uint32_t index)
+    std::vector<std::byte> RHI_Texture::GetMipmap(uint32_t index)
     {
-        if (index < m_data.size())
-            return m_data[index];
+        std::vector<std::byte> data;
 
-        static std::vector<std::byte> empty;
-        return empty;
+        // Use existing data, if it's there
+        if (index < m_data.size())
+        {
+            data = m_data[index];
+        }
+        // Else attempt to load the data
+        else
+        {
+            auto file = make_unique<FileStream>(GetResourceFilePath(), FileStream_Read);
+            if (file->IsOpen())
+            {
+                auto byte_count = file->ReadAs<uint32_t>();
+                auto mip_count  = file->ReadAs<uint32_t>();
+
+                if (index < mip_count)
+                {
+                    for (uint32_t i = 0; i <= index; i++)
+                    {
+                        file->Read(&data);
+                    }
+                }
+                else
+                {
+                    LOG_ERROR("Invalid index");
+                }
+                file->Close();
+            }
+            else
+            {
+                LOG_ERROR("Unable to retreive data");
+            }
+        }
+
+        return data;
     }
 
     bool RHI_Texture::LoadFromFile_ForeignFormat(const string& file_path, const bool generate_mipmaps)
@@ -203,11 +234,11 @@ namespace Spartan
 		m_data.shrink_to_fit();
 
 		// Read byte and mipmap count
-		auto byte_count		= file->ReadAs<uint32_t>();
-		auto mipmap_count	= file->ReadAs<uint32_t>();
+		auto byte_count = file->ReadAs<uint32_t>();
+        auto mip_count  = file->ReadAs<uint32_t>();
 
 		// Read bytes
-		m_data.resize(mipmap_count);
+		m_data.resize(mip_count);
 		for (auto& mip : m_data)
 		{
 			file->Read(&mip);
@@ -260,5 +291,4 @@ namespace Spartan
 
 		return byte_count;
 	}
-
 }
