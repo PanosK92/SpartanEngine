@@ -224,10 +224,11 @@ namespace ImGuiEx
     {
         DragPayload_Unknown,
         DragPayload_Texture,
-        DragPayload_entity,
+        DragPayload_Entity,
         DragPayload_Model,
         DragPayload_Audio,
-        DragPayload_Script
+        DragPayload_Script,
+        DragPayload_Material
     };
 
     struct DragDropPayload
