@@ -302,20 +302,36 @@ namespace Spartan
 
     void Entity::RemoveComponentById(const uint32_t id)
 	{
+        ComponentType component_type = ComponentType_Unknown;
+
 		for (auto it = m_components.begin(); it != m_components.end(); ) 
 		{
 			auto component = *it;
 			if (id == component->GetId())
 			{
+                component_type = component->GetType();
 				component->OnRemove();
-				component.reset();
-				it = m_components.erase(it);
+				it = m_components.erase(it);    
+                break;
 			}
 			else
 			{
 				++it;
 			}
 		}
+
+        // The script component can have multiple instance, so only remove
+        // it's flag if there are no more components of that type left
+        bool others_of_same_type_exist = false;
+        for (auto it = m_components.begin(); it != m_components.end(); ++it)
+        {
+            others_of_same_type_exist = ((*it)->GetType() == component_type) ? true : others_of_same_type_exist;
+        }
+
+        if (!others_of_same_type_exist)
+        {
+            m_component_mask &= ~GetComponentMask(component_type);
+        }
 
 		// Make the scene resolve
 		FIRE_EVENT(Event_World_Resolve_Pending);

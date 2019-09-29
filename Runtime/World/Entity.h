@@ -131,7 +131,7 @@ namespace Spartan
 		}
 		
 		// Checks if a component exists
-        bool HasComponent(const ComponentType type) { return m_component_mask & GetComponentMask(type); }
+        constexpr bool HasComponent(const ComponentType type) { return m_component_mask & GetComponentMask(type); }
 
 		// Checks if a component exists
 		template <class T>
@@ -144,12 +144,11 @@ namespace Spartan
 			const ComponentType type = IComponent::TypeToEnum<T>();
 
 			for (auto it = m_components.begin(); it != m_components.end();)
-			{
+            {
 				auto component = *it;
 				if (component->GetType() == type)
 				{
 					component->OnRemove();
-					component.reset();
 					it = m_components.erase(it);
                     m_component_mask &= ~GetComponentMask(type);
 				}
@@ -175,7 +174,7 @@ namespace Spartan
 		std::shared_ptr<Entity> GetPtrShared()		{ return shared_from_this(); }
 
 	private:
-        uint32_t GetComponentMask(ComponentType type) { return 1 << static_cast<uint32_t>(type); }
+        constexpr uint32_t GetComponentMask(ComponentType type) { return static_cast<uint32_t>(1) << static_cast<uint32_t>(type); }
 
 		std::string m_name			= "Entity";
 		bool m_is_active			= true;
