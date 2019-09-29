@@ -254,6 +254,7 @@ namespace Spartan
 
         // Flags
         auto GetFlags()                                     { return m_flags; }
+        void SetFlags(uint32_t flags)                       { m_flags = flags; }
         void SetFlag(Renderer_Option flag)                  { m_flags |= flag; };
         void UnsetFlag(Renderer_Option flag)                { m_flags &= ~flag; };
         bool IsFlagSet(Renderer_Option flag)                { return m_flags & flag; }
