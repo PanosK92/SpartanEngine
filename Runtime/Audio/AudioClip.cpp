@@ -64,13 +64,44 @@ namespace Spartan
 
 	bool AudioClip::LoadFromFile(const std::string& file_path)
 	{
-		m_soundFMOD = nullptr;
-		m_channelFMOD = nullptr;
+		m_soundFMOD     = nullptr;
+		m_channelFMOD   = nullptr;
+
+        string file_path_relative = FileSystem::GetRelativeFilePath(file_path);
+
+        // Native
+        if (FileSystem::GetExtensionFromFilePath(file_path_relative) == EXTENSION_AUDIO)
+        {
+            //// Deserialize
+            //auto file = make_unique<FileStream>(file_path_relative, FileStream_Read);
+            //if (!file->IsOpen())
+            //    return false;
+
+            //file->Close();
+        }
+        // Foreign
+        else
+        {
+
+        }
+        // Construct a resource path for this asset (required for the resource cache to work)
+        SetResourceFilePathNative(FileSystem::ReplaceFileExtension(file_path, EXTENSION_AUDIO));
 
 		return m_playMode == Play_Memory ? CreateSound(file_path) : CreateStream(file_path);
 	}
 
-	bool AudioClip::Play()
+    bool AudioClip::SaveToFile(const std::string& file_path)
+    {
+        /*auto file = make_unique<FileStream>(file_path, FileStream_Write);
+        if (!file->IsOpen())
+            return false;
+
+        file->Close();*/
+
+        return true;
+    }
+
+    bool AudioClip::Play()
 	{
 		// Check if the sound is playing
 		if (IsChannelValid())

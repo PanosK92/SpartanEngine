@@ -61,22 +61,24 @@ namespace Spartan
 		IResource(Context* context, Resource_Type type);
 		virtual ~IResource() = default;
 
-		//= PROPERTIES =========================================================================================================================
-		Resource_Type GetResourceType() const					{ return m_resource_type; }
-		const char* GetResourceTypeCstr() const					{ return typeid(*this).name(); }
-		const std::string& GetResourceName() const				{ return m_resource_name; }
-		void SetResourceName(const std::string& name)			{ m_resource_name = name; }
-		const std::string& GetResourceFilePath() const			{ return m_resource_file_path; }
-		void SetResourceFilePath(const std::string& file_path)
-        {
-            m_resource_file_path = file_path;
-        }
-		bool HasFilePath() const								{ return !m_resource_file_path.empty(); }
-		std::string GetResourceFileName() const					{ return FileSystem::GetFileNameNoExtensionFromFilePath(m_resource_file_path); }
-		std::string GetResourceDirectory() const				{ return FileSystem::GetDirectoryFromFilePath(m_resource_file_path); }
-		virtual uint32_t GetMemoryUsage()						{ return static_cast<uint32_t>(sizeof(*this)); }
-		LoadState GetLoadState() const							{ return m_load_state; }
-		//======================================================================================================================================
+		//= PROPERTIES ========================================================================================================================================
+		Resource_Type GetResourceType() const					        { return m_resource_type; }
+		const char* GetResourceTypeCstr() const					        { return typeid(*this).name(); }
+
+		const std::string& GetResourceName() const				        { return m_resource_name; }
+		void SetResourceName(const std::string& name)			        { m_resource_name = name; }
+
+		const std::string& GetResourceFilePathNative() const			{ return m_resource_file_path_native; }
+		void SetResourceFilePathNative(const std::string& file_path)    { m_resource_file_path_native = file_path; }
+		bool HasFilePathNative() const								    { return !m_resource_file_path_native.empty(); }
+
+		std::string GetResourceFileName() const					        { return FileSystem::GetFileNameNoExtensionFromFilePath(m_resource_file_path_native); }
+
+		std::string GetResourceDirectory() const				        { return FileSystem::GetDirectoryFromFilePath(m_resource_file_path_native); }
+
+		virtual uint32_t GetMemoryUsage()						        { return static_cast<uint32_t>(sizeof(*this)); }
+		LoadState GetLoadState() const							        { return m_load_state; }
+		//=====================================================================================================================================================
 
 		//= IO =================================================================
 		virtual bool SaveToFile(const std::string& file_path)	{ return true; }
@@ -95,6 +97,7 @@ namespace Spartan
 
 	private:
 		std::string m_resource_name;
-		std::string m_resource_file_path;
+		std::string m_resource_file_path_native;
+        std::string m_resource_file_path_foreign;
 	};
 }

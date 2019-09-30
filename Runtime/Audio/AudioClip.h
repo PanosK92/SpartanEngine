@@ -57,10 +57,10 @@ namespace Spartan
 		AudioClip(Context* context);
 		~AudioClip();
 
-		//= IResource =========================================================
-		bool LoadFromFile(const std::string& file_path) override;
-		bool SaveToFile(const std::string& file_path) override { return true; }
-		//=====================================================================
+        //= IResource ===========================================
+        bool LoadFromFile(const std::string& file_path) override;
+        bool SaveToFile(const std::string& file_path) override;
+        //=======================================================
 
 		bool Play();
 		bool Pause();
@@ -114,6 +114,6 @@ namespace Spartan
 		float m_minDistance;
 		float m_maxDistance;
 		int m_modeRolloff;
-		int m_result;	
+		int m_result;
 	};
 }

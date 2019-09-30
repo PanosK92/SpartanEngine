@@ -35,7 +35,7 @@ namespace Spartan
 	class ResourceCache;
 	class Entity;
 	class Mesh;
-	class Animation;
+    class Animation;
 	namespace Math{ class BoundingBox; }
 
 	class SPARTAN_CLASS Model : public IResource, public std::enable_shared_from_this<Model>
@@ -44,82 +44,61 @@ namespace Spartan
 		Model(Context* context);
 		~Model();
 
+        void Clear();
+
 		//= IResource ===========================================
 		bool LoadFromFile(const std::string& file_path) override;
 		bool SaveToFile(const std::string& file_path) override;
 		//=======================================================
 
-        void Clear();
-
-		// Sets the entity that represents this model in the scene
-		void SetRootEntity(const std::shared_ptr<Entity>& entity) { m_root_entity = entity; }
-		
-		//= GEOMETRY ======================================
-		void GeometryAppend(
-			const std::vector<uint32_t>& indices,
-			const std::vector<RHI_Vertex_PosTexNorTan>& vertices,
-			uint32_t* index_offset = nullptr,
-			uint32_t* vertex_offset = nullptr
-		) const;
-		void GeometryGet(
-			uint32_t index_offset,
-			uint32_t index_count,
-			uint32_t vertex_offset, 
-			uint32_t vertex_count,
-			std::vector<uint32_t>* indices,
-			std::vector<RHI_Vertex_PosTexNorTan>* vertices
-		) const;
-		void GeometryUpdate();
-		const auto& GeometryAabb() const { return m_aabb; }
-        const auto& GetMesh() { return m_mesh; }
-		//=================================================
+        // Geometry
+        void AppendGeometry(
+            const std::vector<uint32_t>& indices,
+            const std::vector<RHI_Vertex_PosTexNorTan>& vertices,
+            uint32_t* index_offset  = nullptr,
+            uint32_t* vertex_offset = nullptr
+        ) const;
+        void GetGeometry(
+            uint32_t index_offset,
+            uint32_t index_count,
+            uint32_t vertex_offset,
+            uint32_t vertex_count,
+            std::vector<uint32_t>* indices,
+            std::vector<RHI_Vertex_PosTexNorTan>* vertices
+        ) const;
+        void UpdateGeometry();
+        const auto& GetAabb() const { return m_aabb; }
+        const auto& GetMesh() const { return m_mesh; }
 
 		// Add resources to the model
+        void SetRootEntity(const std::shared_ptr<Entity>& entity) { m_root_entity = entity; }
 		void AddMaterial(std::shared_ptr<Material>& material, const std::shared_ptr<Entity>& entity);
 		void AddAnimation(std::shared_ptr<Animation>& animation);
 		void AddTexture(std::shared_ptr<Material>& material, TextureType texture_type, const std::string& file_path);
 
+        // Misc
 		auto IsAnimated() const						{ return m_is_animated; }
 		void SetAnimated(const bool is_animated)	{ m_is_animated = is_animated; }
 		const auto& GetIndexBuffer() const			{ return m_index_buffer; }
 		const auto& GetVertexBuffer() const			{ return m_vertex_buffer; }
 		auto GetSharedPtr()							{ return shared_from_this(); }
 
-		void SetWorkingDirectory(const std::string& directory);
-
 	private:
-		// Load the model from disk
-		bool LoadFromEngineFormat(const std::string& file_path);
-		bool LoadFromForeignFormat(const std::string& file_path);
-
 		// Geometry
 		bool GeometryCreateBuffers();
 		float GeometryComputeNormalizedScale() const;
 		uint32_t GeometryComputeMemoryUsage() const;
 
-		// The root entity that represents this model in the scene
+		// Misc
 		std::weak_ptr<Entity> m_root_entity;
-
-		// Geometry
 		std::shared_ptr<RHI_VertexBuffer> m_vertex_buffer;
 		std::shared_ptr<RHI_IndexBuffer> m_index_buffer;
 		std::shared_ptr<Mesh> m_mesh;
 		Math::BoundingBox m_aabb;
-
-		// Material
-		std::vector<std::shared_ptr<Material>> m_materials;
-
-		// Animations
-		std::vector<std::shared_ptr<Animation>> m_animations;
-
-		// Directories relative to this model
-		std::string m_model_directory_model;
-		std::string m_model_directory_materials;
-		std::string m_model_directory_textures;
-
-		// Misc
 		float m_normalized_scale	= 1.0f;
 		bool m_is_animated			= false;
+
+        // Dependencies
 		ResourceCache* m_resource_manager;
 		std::shared_ptr<RHI_Device> m_rhi_device;	
 	};

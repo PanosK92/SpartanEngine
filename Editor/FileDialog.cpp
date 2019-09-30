@@ -418,7 +418,10 @@ bool FileDialog::DialogUpdateFromDirectory(const std::string& path)
 		child_files = FileSystem::GetFilesInDirectory(path);
 		for (const auto& child_file : child_files)
 		{
-			m_items.emplace_back(child_file, IconProvider::Get().Thumbnail_Load(child_file, Thumbnail_Custom, static_cast<int>(m_item_size.x)));
+            if (!FileSystem::IsEngineTextureFile(child_file))
+            {
+                m_items.emplace_back(child_file, IconProvider::Get().Thumbnail_Load(child_file, Thumbnail_Custom, static_cast<int>(m_item_size.x)));
+            }
 		}
 	}
 	else if (m_filter == FileDialog_Filter_Scene)
@@ -426,7 +429,7 @@ bool FileDialog::DialogUpdateFromDirectory(const std::string& path)
 		child_files = FileSystem::GetSupportedSceneFilesInDirectory(path);
 		for (const auto& child_file : child_files)
 		{
-			m_items.emplace_back(child_file, IconProvider::Get().Thumbnail_Load(child_file, Thumbnail_File_Scene, static_cast<int>(m_item_size.x)));
+            m_items.emplace_back(child_file, IconProvider::Get().Thumbnail_Load(child_file, Thumbnail_File_Scene, static_cast<int>(m_item_size.x)));
 		}
 	}
 	else if (m_filter == FileDialog_Filter_Model)
@@ -434,7 +437,7 @@ bool FileDialog::DialogUpdateFromDirectory(const std::string& path)
 		child_files = FileSystem::GetSupportedModelFilesInDirectory(path);
 		for (const auto& child_file : child_files)
 		{
-			m_items.emplace_back(child_file, IconProvider::Get().Thumbnail_Load(child_file, Thumbnail_File_Model, static_cast<int>(m_item_size.x)));
+            m_items.emplace_back(child_file, IconProvider::Get().Thumbnail_Load(child_file, Thumbnail_File_Model, static_cast<int>(m_item_size.x)));
 		}
 	}
 

@@ -24,8 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Transform.h"
 #include "../../IO/FileStream.h"
 #include "../../Resource/ResourceCache.h"
-#include "../../Rendering/Model.h"
-#include "../../Rendering/Material.h"
 #include "../../Rendering/Utilities/Geometry.h"
 //=============================================
 
@@ -72,8 +70,9 @@ namespace Spartan
 		if (vertices.empty() || indices.empty())
 			return;
 
-		model->GeometryAppend(indices, vertices, nullptr, nullptr);
-		model->GeometryUpdate();
+        model->SetResourceFilePathNative(renderable->GetContext()->GetSubsystem<ResourceCache>()->GetProjectDirectory() + model->GetResourceFileName());
+		model->AppendGeometry(indices, vertices, nullptr, nullptr);
+		model->UpdateGeometry();
 
 		renderable->GeometrySet(
 			"Default_Geometry",
@@ -111,7 +110,6 @@ namespace Spartan
 		REGISTER_ATTRIBUTE_GET_SET(Geometry_Type, GeometrySet, Geometry_Type);
 	}
 
-	//= ICOMPONENT ===============================================================
 	void Renderable::Serialize(FileStream* stream)
 	{
 		// Mesh
@@ -167,9 +165,7 @@ namespace Spartan
 			m_material = m_context->GetSubsystem<ResourceCache>()->GetByName<Material>(material_name);
 		}
 	}
-	//==============================================================================
 
-	//= GEOMETRY =====================================================================================
 	void Renderable::GeometrySet(const string& name, const uint32_t index_offset, const uint32_t index_count, const uint32_t vertex_offset, const uint32_t vertex_count, const BoundingBox& bounding_box, Model* model)
 	{	
 		m_geometryName			= name;
@@ -204,7 +200,7 @@ namespace Spartan
 			return;
 		}
 
-		m_model->GeometryGet(m_geometryIndexOffset, m_geometryIndexCount, m_geometryVertexOffset, m_geometryVertexCount, indices, vertices);
+		m_model->GetGeometry(m_geometryIndexOffset, m_geometryIndexCount, m_geometryVertexOffset, m_geometryVertexCount, indices, vertices);
 	}
 
     const BoundingBox& Renderable::GetAabb()
@@ -223,9 +219,6 @@ namespace Spartan
 		return m_aabb;
 	}
 
-    //==============================================================================
-
-	//= MATERIAL ===================================================================
 	// All functions (set/load) resolve to this
 	void Renderable::SetMaterial(const shared_ptr<Material>& material)
 	{
@@ -234,7 +227,9 @@ namespace Spartan
 			LOG_ERROR_INVALID_PARAMETER();
 			return;
 		}
-		m_material = material;
+
+        // In order for the component to guarantee serialization/deserialization, we cache the material
+		m_material = m_context->GetSubsystem<ResourceCache>()->Cache(material);
 	}
 
 	shared_ptr<Material> Renderable::SetMaterial(const string& file_path)
@@ -251,26 +246,28 @@ namespace Spartan
 		SetMaterial(material);
 
 		// Return it
-		return material;
+		return m_material;
 	}
 
 	void Renderable::UseDefaultMaterial()
 	{
 		m_materialDefault = true;
 
-		auto data_dir = GetContext()->GetSubsystem<ResourceCache>()->GetDataDirectory();
+        ResourceCache* resource_cache = GetContext()->GetSubsystem<ResourceCache>().get();
+
+		auto data_dir = resource_cache->GetDataDirectory();
 		FileSystem::CreateDirectory_(data_dir);
-		auto materialStandard = make_shared<Material>(GetContext());
-		materialStandard->SetResourceName("Standard");
-		materialStandard->SetCullMode(Cull_Back);
-		materialStandard->SetColorAlbedo(Vector4(0.6f, 0.6f, 0.6f, 1.0f));
-		materialStandard->SetIsEditable(false);		
-		SetMaterial(materialStandard);
+		auto material = make_shared<Material>(GetContext());
+		material->SetResourceName("Standard");
+        material->SetResourceFilePathNative(resource_cache->GetProjectDirectory() + material->GetResourceName() + EXTENSION_MATERIAL);
+		material->SetCullMode(Cull_Back);
+		material->SetColorAlbedo(Vector4(0.6f, 0.6f, 0.6f, 1.0f));
+		material->SetIsEditable(false);		
+		SetMaterial(material);
 	}
 
 	string Renderable::GetMaterialName()
 	{
 		return m_material ? m_material->GetResourceName() : "";
 	}
-	//==============================================================================
 }

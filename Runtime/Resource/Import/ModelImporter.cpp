@@ -121,7 +121,7 @@ namespace Spartan
 			FIRE_EVENT(Event_World_Stop);
 			ReadNodeHierarchy(scene, scene->mRootNode, model);
 			ReadAnimations(scene, model);
-			model->GeometryUpdate();
+			model->UpdateGeometry();
 			FIRE_EVENT(Event_World_Start);
 		}
 		else
@@ -323,7 +323,7 @@ namespace Spartan
 		// Add the mesh to the model
 		uint32_t index_offset;
 		uint32_t vertex_offset;
-		model->GeometryAppend(move(indices), move(vertices), &index_offset, &vertex_offset);
+		model->AppendGeometry(move(indices), move(vertices), &index_offset, &vertex_offset);
 
 		// Add a renderable component to this entity
 		auto renderable	= entity_parent->AddComponent<Renderable>();
@@ -416,16 +416,22 @@ namespace Spartan
 						// auto textureType others pass a height map as a normal map, we try to fix that.
 						if (type_spartan == TextureType_Normal || type_spartan == TextureType_Height)
 						{
-							const auto texture = material->GetTexture(type_spartan);							
-							auto proper_type = type_spartan;
-							proper_type = (proper_type == TextureType_Normal && texture->GetGrayscale()) ? TextureType_Height : proper_type;
-							proper_type = (proper_type == TextureType_Height && !texture->GetGrayscale()) ? TextureType_Normal : proper_type;
+                            if (const auto texture = material->GetTexture(type_spartan))
+                            {
+                                auto proper_type = type_spartan;
+                                proper_type = (proper_type == TextureType_Normal && texture->GetGrayscale()) ? TextureType_Height : proper_type;
+                                proper_type = (proper_type == TextureType_Height && !texture->GetGrayscale()) ? TextureType_Normal : proper_type;
 
-							if (proper_type != type_spartan)
-							{
-								material->SetTextureSlot(type_spartan, shared_ptr<RHI_Texture>());
-								material->SetTextureSlot(proper_type, texture);
-							}
+                                if (proper_type != type_spartan)
+                                {
+                                    material->SetTextureSlot(type_spartan, shared_ptr<RHI_Texture>());
+                                    material->SetTextureSlot(proper_type, texture);
+                                }
+                            }
+                            else
+                            {
+                                LOG_ERROR("Failed to get texture");
+                            }
 						}
 					}
 				}

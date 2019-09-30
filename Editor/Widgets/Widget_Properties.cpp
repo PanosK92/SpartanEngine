@@ -221,7 +221,7 @@ void Widget_Properties::Inspect(const weak_ptr<Entity>& entity)
 	// If we were previously inspecting a material, save the changes
 	if (!m_inspected_material.expired())
 	{
-		m_inspected_material.lock()->SaveToFile(m_inspected_material.lock()->GetResourceFilePath());
+		m_inspected_material.lock()->SaveToFile(m_inspected_material.lock()->GetResourceFilePathNative());
 	}
 	m_inspected_material.reset();
 }
@@ -956,9 +956,7 @@ void Widget_Properties::ShowAudioSource(shared_ptr<AudioSource>& audio_source) c
 		ImGui::PopItemWidth();
 		if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayload_Audio))
 		{
-			audio_clip_name			= FileSystem::GetFileNameFromFilePath(get<const char*>(payload->data));
-			const auto audio_clip	= _Widget_Properties::resource_cache->Load<AudioClip>(get<const char*>(payload->data));
-			audio_source->SetAudioClip(audio_clip);
+			audio_source->SetAudioClip(std::get<const char*>(payload->data));
 		}
 
 		// Mute

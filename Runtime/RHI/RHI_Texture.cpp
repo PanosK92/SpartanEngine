@@ -102,7 +102,7 @@ namespace Spartan
 		file->Write(m_is_transparent);
 		file->Write(GetId());
 		file->Write(GetResourceName());
-		file->Write(GetResourceFilePath());
+		file->Write(GetResourceFilePathNative());
 
 		return true;
 	}
@@ -144,7 +144,7 @@ namespace Spartan
 		// Create GPU resource
 		if (!CreateResourceGpu())
 		{
-			LOGF_ERROR("Failed to create shader resource for \"%s\".", GetResourceFilePath().c_str());
+			LOGF_ERROR("Failed to create shader resource for \"%s\".", GetResourceFilePathNative().c_str());
 			m_load_state = LoadState_Failed;
 			return false;
 		}
@@ -182,7 +182,7 @@ namespace Spartan
         // Else attempt to load the data
         else
         {
-            auto file = make_unique<FileStream>(GetResourceFilePath(), FileStream_Read);
+            auto file = make_unique<FileStream>(GetResourceFilePathNative(), FileStream_Read);
             if (file->IsOpen())
             {
                 auto byte_count = file->ReadAs<uint32_t>();
@@ -218,8 +218,8 @@ namespace Spartan
 			return false;
 
 		// Change texture extension to an engine texture
-		SetResourceFilePath(FileSystem::GetFilePathWithoutExtension(file_path) + EXTENSION_TEXTURE);
-		SetResourceName(FileSystem::GetFileNameNoExtensionFromFilePath(GetResourceFilePath()));
+		SetResourceFilePathNative(FileSystem::GetFilePathWithoutExtension(file_path) + EXTENSION_TEXTURE);
+		SetResourceName(FileSystem::GetFileNameNoExtensionFromFilePath(GetResourceFilePathNative()));
 
 		return true;
 	}
@@ -253,7 +253,7 @@ namespace Spartan
 		file->Read(&m_is_transparent);
 		SetId(file->ReadAs<uint32_t>());
 		SetResourceName(file->ReadAs<string>());
-		SetResourceFilePath(file->ReadAs<string>());
+		SetResourceFilePathNative(file->ReadAs<string>());
 
 		return true;
 	}

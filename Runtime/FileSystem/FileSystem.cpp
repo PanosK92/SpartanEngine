@@ -287,53 +287,66 @@ namespace Spartan
 
 	string FileSystem::GetFileNameFromFilePath(const string& path)
 	{
-		auto lastindex	= path.find_last_of("\\/");
-		auto fileName	= path.substr(lastindex + 1, path.length());
+		auto last_index	= path.find_last_of("\\/");
+		auto fileName	= path.substr(last_index + 1, path.length());
 
 		return fileName;
 	}
 
-	string FileSystem::GetFileNameNoExtensionFromFilePath(const string& filepath)
+	string FileSystem::GetFileNameNoExtensionFromFilePath(const string& file_path)
 	{
-		auto fileName		= GetFileNameFromFilePath(filepath);
-		auto lastindex		= fileName.find_last_of('.');
-		auto fileNameNoExt	= fileName.substr(0, lastindex);
+		auto file_name		= GetFileNameFromFilePath(file_path);
+		auto last_index		= file_name.find_last_of('.');
+		auto fileNameNoExt	= file_name.substr(0, last_index);
 
 		return fileNameNoExt;
 	}
 
-	string FileSystem::GetDirectoryFromFilePath(const string& filePath)
+    string FileSystem::GetFileFormatFromFilePath(const string& file_path)
+    {
+        auto last_index     = file_path.find_last_of('.');
+        auto fileNameNoExt  = file_path.substr(last_index, file_path.length());
+
+        return fileNameNoExt;
+    }
+
+    string FileSystem::GetDirectoryFromFilePath(const string& file_path)
 	{
-		auto lastindex = filePath.find_last_of("\\/");
-		auto directory = filePath.substr(0, lastindex + 1);
+		auto last_index = file_path.find_last_of("\\/");
+		auto directory  = file_path.substr(0, last_index + 1);
 
 		return directory;
 	}
 
-	string FileSystem::GetFilePathWithoutExtension(const string& filePath)
+	string FileSystem::GetFilePathWithoutExtension(const string& file_path)
 	{
-		auto directory		= GetDirectoryFromFilePath(filePath);
-		auto fileNameNoExt	= GetFileNameNoExtensionFromFilePath(filePath);
+		auto directory		= GetDirectoryFromFilePath(file_path);
+		auto fileNameNoExt	= GetFileNameNoExtensionFromFilePath(file_path);
 
 		return directory + fileNameNoExt;
 	}
 
-	string FileSystem::GetExtensionFromFilePath(const string& filePath)
+	string FileSystem::GetExtensionFromFilePath(const string& file_path)
 	{
-		if (filePath.empty())
+		if (file_path.empty())
 			return "";
 
-		auto lastindex = filePath.find_last_of('.');
-		if (string::npos != lastindex)
+		auto last_index = file_path.find_last_of('.');
+		if (string::npos != last_index)
 		{
 			// extension with dot included
-			return filePath.substr(lastindex, filePath.length());
+			return file_path.substr(last_index, file_path.length());
 		}
 
 		return "";
 	}
 
-	vector<string> FileSystem::GetDirectoriesInDirectory(const string& directory)
+    string FileSystem::ReplaceFileExtension(const string& file_path, const string& extension)
+    {
+        return GetFilePathWithoutExtension(file_path) + extension;
+    }
+
+    vector<string> FileSystem::GetDirectoriesInDirectory(const string& directory)
 	{
 		vector<string> directories;
 		directory_iterator it_end; // default construction yields past-the-end
@@ -604,17 +617,30 @@ namespace Spartan
 		return GetExtensionFromFilePath(filePath) == EXTENSION_TEXTURE;
 	}
 
-	bool FileSystem::IsEngineShaderFile(const string& filePath)
+    bool FileSystem::IsEngineAudioFile(const std::string& filePath)
+    {
+        return GetExtensionFromFilePath(filePath) == EXTENSION_AUDIO;
+    }
+
+    bool FileSystem::IsEngineShaderFile(const string& filePath)
 	{
 		return GetExtensionFromFilePath(filePath) == EXTENSION_SHADER;
 	}
 
-	bool FileSystem::IsEngineMetadataFile(const string& filePath)
-	{
-		return GetExtensionFromFilePath(filePath) == METADATA_EXTENSION;
-	}
+    bool FileSystem::IsEngineFile(const string& file_path)
+    {
+        return  IsEngineScriptFile(file_path)   ||
+                IsEnginePrefabFile(file_path)   ||
+                IsEngineModelFile(file_path)    ||
+                IsEngineMaterialFile(file_path) ||
+                IsEngineMeshFile(file_path)     ||
+                IsEngineSceneFile(file_path)    ||
+                IsEngineTextureFile(file_path)  ||
+                IsEngineAudioFile(file_path)    ||
+                IsEngineShaderFile(file_path);
+    }
 
-	// Returns a file path which is relative to the engine's executable
+    // Returns a file path which is relative to the engine's executable
 	string FileSystem::GetRelativeFilePath(const string& absoluteFilePath)
 	{		
 		// create absolute paths

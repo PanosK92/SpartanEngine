@@ -71,7 +71,7 @@ namespace Spartan
 		{
 			for (auto& resource : m_resource_groups[IResource::TypeToEnum<T>()])
 			{
-				if (path == resource->GetResourceFilePath())
+				if (path == resource->GetResourceFilePathNative())
 					return std::static_pointer_cast<T>(resource);
 			}
 
@@ -80,21 +80,38 @@ namespace Spartan
 
 		// Caches resource, or replaces with existing cached resource
 		template <class T>
-		void Cache(std::shared_ptr<T>& resource)
+        [[nodiscard]] std::shared_ptr<T> Cache(const std::shared_ptr<T>& resource)
 		{
+            // Validate resource
 			if (!resource)
-				return;
+				return nullptr;
 
-			// If the resource is already loaded, replace it with the existing one, then early exit
+            // Validate resource file path
+            if (!resource->HasFilePathNative() && !FileSystem::IsDirectory(resource->GetResourceFilePathNative()))
+            {
+                LOG_ERROR("A resource must have a valid file path in order to be cached");
+                return nullptr;
+            }
+
+            // Validate resource file path
+            if (!FileSystem::IsEngineFile(resource->GetResourceFilePathNative()))
+            {
+                LOGF_ERROR("A resource must have a native file format in order to be cached, provide format was %s", FileSystem::GetFileFormatFromFilePath(resource->GetResourceFilePathNative()).c_str());
+                return nullptr;
+            }
+
+			// Ensure that this resource is not already cached
 			if (IsCached(resource->GetResourceName(), resource->GetResourceType()))
-			{
-				resource = GetByName<T>(FileSystem::GetFileNameNoExtensionFromFilePath(resource->GetResourceFilePath()));
-				return;
-			}
+				return GetByName<T>(resource->GetResourceName());
 
-			// Cache the resource
-			std::lock_guard<mutex> guard(m_mutex);
-			m_resource_groups[resource->GetResourceType()].emplace_back(resource);
+            // Prevent threads from colliding in critical section
+            std::lock_guard<mutex> guard(m_mutex);
+
+            // In order to guarantee deserialization, we save it now
+            resource->SaveToFile(resource->GetResourceFilePathNative());
+
+			// Cache it
+			return static_pointer_cast<T>(m_resource_groups[resource->GetResourceType()].emplace_back(resource));
 		}
 		bool IsCached(const std::string& resource_name, Resource_Type resource_type);
 
@@ -134,28 +151,24 @@ namespace Spartan
 
 			// Check if the resource is already loaded
 			if (IsCached(name, IResource::TypeToEnum<T>()))
-			{
 				return GetByName<T>(name);
-			}
 
 			// Create new resource
 			auto typed = std::make_shared<T>(m_context);
+
 			// Set a default name and a default filepath in case it's not overridden by LoadFromFile()
 			typed->SetResourceName(name);
-			typed->SetResourceFilePath(file_path_relative);
-
-			// Cache it now so LoadFromFile() can safely pass around a reference to the resource from the ResourceManager
-			Cache<T>(typed);
+			typed->SetResourceFilePathNative(file_path_relative);
 
 			// Load
-			if (!typed->LoadFromFile(file_path_relative))
+			if (!typed || !typed->LoadFromFile(file_path_relative))
 			{
 				LOGF_ERROR("Failed to load \"%s\".", file_path_relative.c_str());
 				return nullptr;
 			}
 
-			// Cache it and cast it
-			return typed;
+            // Returned cached reference which is guaranteed to be around after deserialization
+			return Cache<T>(typed);
 		}
 
 		//= I/O ======================

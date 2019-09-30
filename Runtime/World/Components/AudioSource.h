@@ -48,6 +48,7 @@ namespace Spartan
 		//============================================
 
 		//= PROPERTIES ===================================================================
+        void SetAudioClip(const std::string& file_path);
 		void SetAudioClip(const std::shared_ptr<AudioClip>& audio_clip);
 		std::string GetAudioClipName();
 
@@ -78,7 +79,6 @@ namespace Spartan
 
 	private:
 		std::shared_ptr<AudioClip> m_audio_clip;
-		std::string m_file_path;
 		bool m_mute;
 		bool m_play_on_start;
 		bool m_loop;
