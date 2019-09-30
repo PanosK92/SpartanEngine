@@ -368,7 +368,8 @@ namespace Spartan
 		// NAME
 		aiString name;
 		aiGetMaterialString(assimp_material, AI_MATKEY_NAME, &name);
-		material->SetResourceName(name.C_Str());
+        // Set a resource file path so it can be used by the resource cache
+		material->SetResourceFilePath(FileSystem::GetDirectoryFromFilePath(_ModelImporter::m_model_path) + string(name.C_Str()) + EXTENSION_MATERIAL);
 
 		// CULL MODE
 		// Specifies whether meshes using this material must be rendered 

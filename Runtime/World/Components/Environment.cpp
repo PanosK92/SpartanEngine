@@ -119,9 +119,9 @@ namespace Spartan
 			cubemapData.emplace_back(loaderTex->GetData());
 		}
 
-		// Cubemap
+		// Texture
         auto texture = make_shared<RHI_TextureCube>(GetContext(), loaderTex->GetWidth(), loaderTex->GetHeight(), loaderTex->GetFormat(), cubemapData);
-        texture->SetResourceName("Cubemap");
+        texture->SetResourceFilePath(m_context->GetSubsystem<ResourceCache>()->GetProjectDirectory() + "environment" + EXTENSION_TEXTURE);
         texture->SetWidth(loaderTex->GetWidth());
         texture->SetHeight(loaderTex->GetHeight());
         texture->SetGrayscale(false);

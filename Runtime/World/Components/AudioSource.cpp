@@ -134,11 +134,6 @@ namespace Spartan
         auto audio_clip = make_shared<AudioClip>(m_context);
         if (audio_clip->LoadFromFile(file_path))
         {
-            // Construct a file path for the spartan asset
-            string spartan_asset_path = FileSystem::ReplaceFileExtension(FileSystem::GetRelativeFilePath(file_path), EXTENSION_AUDIO);
-            audio_clip->SetResourceFilePathNative(spartan_asset_path);
-            audio_clip->SetResourceName(FileSystem::GetFileNameNoExtensionFromFilePath(spartan_asset_path));
-
             // In order for the component to guarantee serialization/deserialization, we cache the audio clip
             m_audio_clip = m_context->GetSubsystem<ResourceCache>()->Cache(audio_clip);
         }

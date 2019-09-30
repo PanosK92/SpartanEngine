@@ -58,15 +58,11 @@ namespace Spartan
 	//= IResource ==============================================
 	bool Material::LoadFromFile(const std::string& file_path)
 	{
-		// Make sure the path is relative
-		SetResourceFilePathNative(FileSystem::GetRelativeFilePath(file_path));
-
 		auto xml = make_unique<XmlDocument>();
-		if (!xml->Load(GetResourceFilePathNative()))
+		if (!xml->Load(file_path))
 			return false;
 
-		SetResourceName(xml->GetAttributeAs<string>("Material",	"Name"));
-		SetResourceFilePathNative(xml->GetAttributeAs<string>("Material",	"Path"));
+		SetResourceFilePath(xml->GetAttributeAs<string>("Material",	"Path"));
 		xml->GetAttribute("Material", "Roughness_Multiplier",	&GetMultiplier(TextureType_Roughness));
 		xml->GetAttribute("Material", "Metallic_Multiplier",	&GetMultiplier(TextureType_Metallic));
 		xml->GetAttribute("Material", "Normal_Multiplier",		&GetMultiplier(TextureType_Normal));
@@ -103,14 +99,7 @@ namespace Spartan
 
 	bool Material::SaveToFile(const std::string& file_path)
 	{
-		// Make sure the path is relative
-		SetResourceFilePathNative(FileSystem::GetRelativeFilePath(file_path));
-
-		// Add material extension if not present
-		if (FileSystem::GetExtensionFromFilePath(GetResourceFilePathNative()) != EXTENSION_MATERIAL)
-		{
-			SetResourceFilePathNative(GetResourceFilePathNative() + EXTENSION_MATERIAL);
-		}
+        SetResourceFilePath(file_path);
 
 		auto xml = make_unique<XmlDocument>();
 		xml->AddNode("Material");

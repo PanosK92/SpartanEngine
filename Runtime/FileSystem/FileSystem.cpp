@@ -285,37 +285,49 @@ namespace Spartan
 		}
 	}
 
-	string FileSystem::GetFileNameFromFilePath(const string& path)
+	string FileSystem::GetFileNameFromFilePath(const string& file_path)
 	{
-		auto last_index	= path.find_last_of("\\/");
-		auto fileName	= path.substr(last_index + 1, path.length());
+        size_t last_index = file_path.find_last_of("\\/");
 
-		return fileName;
+        if (last_index != string::npos)
+		    return file_path.substr(last_index + 1, file_path.length());
+
+        LOGF_ERROR("Failed to extract file name from \"%s\"", file_path.c_str());
+		return file_path;
 	}
 
 	string FileSystem::GetFileNameNoExtensionFromFilePath(const string& file_path)
 	{
 		auto file_name		= GetFileNameFromFilePath(file_path);
-		auto last_index		= file_name.find_last_of('.');
-		auto fileNameNoExt	= file_name.substr(0, last_index);
+        size_t last_index	= file_name.find_last_of('.');
 
-		return fileNameNoExt;
+        if (last_index != string::npos)
+		    return file_name.substr(0, last_index);
+
+        LOGF_ERROR("Failed to extract file name from \"%s\"", file_path.c_str());
+		return file_path;
 	}
 
     string FileSystem::GetFileFormatFromFilePath(const string& file_path)
     {
-        auto last_index     = file_path.find_last_of('.');
-        auto fileNameNoExt  = file_path.substr(last_index, file_path.length());
+        size_t last_index = file_path.find_last_of('.');
 
-        return fileNameNoExt;
+        if (last_index != string::npos)
+            return file_path.substr(last_index, file_path.length());
+
+        LOGF_ERROR("Failed to extract file format from \"%s\"", file_path.c_str());
+        return file_path;
     }
 
     string FileSystem::GetDirectoryFromFilePath(const string& file_path)
 	{
-		auto last_index = file_path.find_last_of("\\/");
-		auto directory  = file_path.substr(0, last_index + 1);
+        size_t last_index = file_path.find_last_of("\\/");
 
-		return directory;
+        if (last_index != string::npos)
+		    return file_path.substr(0, last_index + 1);
+
+        LOGF_ERROR("Failed to extract directory from \"%s\"", file_path.c_str());
+		return file_path;
 	}
 
 	string FileSystem::GetFilePathWithoutExtension(const string& file_path)
@@ -331,8 +343,8 @@ namespace Spartan
 		if (file_path.empty())
 			return "";
 
-		auto last_index = file_path.find_last_of('.');
-		if (string::npos != last_index)
+        size_t last_index = file_path.find_last_of('.');
+        if (last_index != string::npos)
 		{
 			// extension with dot included
 			return file_path.substr(last_index, file_path.length());
@@ -341,9 +353,18 @@ namespace Spartan
 		return "";
 	}
 
-    string FileSystem::ReplaceFileExtension(const string& file_path, const string& extension)
+    string FileSystem::NativizeFilePath(const string& file_path)
     {
-        return GetFilePathWithoutExtension(file_path) + extension;
+        string file_path_no_ext = GetFilePathWithoutExtension(file_path);
+
+        if (IsSupportedAudioFile(file_path))    return file_path_no_ext + EXTENSION_AUDIO;
+        if (IsSupportedImageFile(file_path))    return file_path_no_ext + EXTENSION_TEXTURE;
+        if (IsSupportedModelFile(file_path))    return file_path_no_ext + EXTENSION_MODEL;
+        if (IsSupportedFontFile(file_path))     return file_path_no_ext + EXTENSION_FONT;
+        if (IsSupportedShaderFile(file_path))   return file_path_no_ext + EXTENSION_SHADER;
+
+        LOGF_ERROR("Failed to nativize file path");
+        return file_path;
     }
 
     vector<string> FileSystem::GetDirectoriesInDirectory(const string& directory)
