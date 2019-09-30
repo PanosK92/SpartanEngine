@@ -418,7 +418,7 @@ bool FileDialog::DialogUpdateFromDirectory(const std::string& path)
 		child_files = FileSystem::GetFilesInDirectory(path);
 		for (const auto& child_file : child_files)
 		{
-            if (!FileSystem::IsEngineTextureFile(child_file))
+            if (!FileSystem::IsEngineTextureFile(child_file) && !FileSystem::IsEngineModelFile(child_file))
             {
                 m_items.emplace_back(child_file, IconProvider::Get().Thumbnail_Load(child_file, Thumbnail_Custom, static_cast<int>(m_item_size.x)));
             }
@@ -463,8 +463,9 @@ void FileDialog::EmptyAreaContextMenu()
     if (ImGui::MenuItem("Create material"))
     {
         Material material = Material(m_context);
-        material.SetResourceName("new_material");
-        material.SaveToFile(m_current_directory + "//new_material" + EXTENSION_MATERIAL);
+        string file_path = m_current_directory + "//new_material" + EXTENSION_MATERIAL;
+        material.SetResourceFilePath(file_path);
+        material.SaveToFile(file_path);
         m_is_dirty = true;
     }
 

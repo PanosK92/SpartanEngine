@@ -412,14 +412,10 @@ namespace Spartan
         if (!m_model)
         {
             ResourceCache* resource_cache = m_context->GetSubsystem<ResourceCache>().get();
-
-            // The model has to have a file path for the resource cache to be able to save/load it.
-            string file_path = resource_cache->GetProjectDirectory() + m_entity->GetName() + "_terrain_" + to_string(m_id) + "." + string(EXTENSION_MODEL);
-
             m_model = make_shared<Model>(m_context);
-            m_model->SetResourceName("Terrain");
-            m_model->SetResourceFilePathNative(file_path);
-            resource_cache->Cache(m_model);
+            // Set a file path so the model can be used by the resource cache
+            m_model->SetResourceFilePath(resource_cache->GetProjectDirectory() + m_entity->GetName() + "_terrain_" + to_string(m_id) + string(EXTENSION_MODEL));
+            m_model = resource_cache->Cache(m_model);
         }
 
         // Update with geometry

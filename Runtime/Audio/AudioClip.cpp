@@ -67,10 +67,8 @@ namespace Spartan
 		m_soundFMOD     = nullptr;
 		m_channelFMOD   = nullptr;
 
-        string file_path_relative = FileSystem::GetRelativeFilePath(file_path);
-
         // Native
-        if (FileSystem::GetExtensionFromFilePath(file_path_relative) == EXTENSION_AUDIO)
+        if (FileSystem::GetExtensionFromFilePath(file_path) == EXTENSION_AUDIO)
         {
             //// Deserialize
             //auto file = make_unique<FileStream>(file_path_relative, FileStream_Read);
@@ -84,8 +82,9 @@ namespace Spartan
         {
 
         }
-        // Construct a resource path for this asset (required for the resource cache to work)
-        SetResourceFilePathNative(FileSystem::ReplaceFileExtension(file_path, EXTENSION_AUDIO));
+
+        // Set file path so it can be used by the resource cache
+        SetResourceFilePath(file_path);
 
 		return m_playMode == Play_Memory ? CreateSound(file_path) : CreateStream(file_path);
 	}

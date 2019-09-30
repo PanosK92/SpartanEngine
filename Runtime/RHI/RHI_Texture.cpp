@@ -101,21 +101,17 @@ namespace Spartan
 		file->Write(m_is_grayscale);
 		file->Write(m_is_transparent);
 		file->Write(GetId());
-		file->Write(GetResourceName());
-		file->Write(GetResourceFilePathNative());
+		file->Write(GetResourceFilePath());
 
 		return true;
 	}
 
 	bool RHI_Texture::LoadFromFile(const string& file_path)
 	{
-		// Make the path relative to the engine
-		const auto file_path_relative = FileSystem::GetRelativeFilePath(file_path);
-
 		// Validate file path
-		if (!FileSystem::FileExists(file_path_relative))
+		if (!FileSystem::FileExists(file_path))
 		{
-			LOGF_ERROR("Path \"%s\" is invalid.", file_path_relative.c_str());
+			LOGF_ERROR("Path \"%s\" is invalid.", file_path.c_str());
 			return false;
 		}
 
@@ -125,18 +121,18 @@ namespace Spartan
 
 		// Load from disk
 		auto texture_data_loaded = false;		
-		if (FileSystem::IsEngineTextureFile(file_path_relative)) // engine format (binary)
+		if (FileSystem::IsEngineTextureFile(file_path)) // engine format (binary)
 		{
-			texture_data_loaded = LoadFromFile_NativeFormat(file_path_relative);
+			texture_data_loaded = LoadFromFile_NativeFormat(file_path);
 		}	
-		else if (FileSystem::IsSupportedImageFile(file_path_relative)) // foreign format (most known image formats)
+		else if (FileSystem::IsSupportedImageFile(file_path)) // foreign format (most known image formats)
 		{
-			texture_data_loaded = LoadFromFile_ForeignFormat(file_path_relative, m_generate_mipmaps_when_loading);
+			texture_data_loaded = LoadFromFile_ForeignFormat(file_path, m_generate_mipmaps_when_loading);
 		}
 
 		if (!texture_data_loaded)
 		{
-			LOGF_ERROR("Failed to load \"%s\".", file_path_relative.c_str());
+			LOGF_ERROR("Failed to load \"%s\".", file_path.c_str());
 			m_load_state = LoadState_Failed;
 			return false;
 		}
@@ -150,7 +146,7 @@ namespace Spartan
 		}
 
 		// Only clear texture bytes if that's an engine texture, if not, it's not serialized yet.
-		if (FileSystem::IsEngineTextureFile(file_path_relative)) 
+		if (FileSystem::IsEngineTextureFile(file_path))
 		{
 			m_data.clear();
 			m_data.shrink_to_fit();
@@ -170,9 +166,9 @@ namespace Spartan
 		return &m_data[index];
 	}
 
-    std::vector<std::byte> RHI_Texture::GetMipmap(uint32_t index)
+    vector<std::byte> RHI_Texture::GetMipmap(uint32_t index)
     {
-        std::vector<std::byte> data;
+        vector<std::byte> data;
 
         // Use existing data, if it's there
         if (index < m_data.size())
@@ -217,9 +213,8 @@ namespace Spartan
 		if (!imageImp->Load(file_path, this, generate_mipmaps))
 			return false;
 
-		// Change texture extension to an engine texture
-		SetResourceFilePathNative(FileSystem::GetFilePathWithoutExtension(file_path) + EXTENSION_TEXTURE);
-		SetResourceName(FileSystem::GetFileNameNoExtensionFromFilePath(GetResourceFilePathNative()));
+		// Set resource file path so it can be used by the resource cache
+		SetResourceFilePath(file_path);
 
 		return true;
 	}
@@ -252,8 +247,7 @@ namespace Spartan
 		file->Read(&m_is_grayscale);
 		file->Read(&m_is_transparent);
 		SetId(file->ReadAs<uint32_t>());
-		SetResourceName(file->ReadAs<string>());
-		SetResourceFilePathNative(file->ReadAs<string>());
+		SetResourceFilePath(file->ReadAs<string>());
 
 		return true;
 	}

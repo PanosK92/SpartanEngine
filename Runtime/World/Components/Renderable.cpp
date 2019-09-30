@@ -40,37 +40,38 @@ namespace Spartan
 		vector<RHI_Vertex_PosTexNorTan> vertices;
 		vector<uint32_t> indices;
 
+        string project_directory = renderable->GetContext()->GetSubsystem<ResourceCache>()->GetProjectDirectory();
+
 		// Construct geometry
 		if (type == Geometry_Default_Cube)
 		{
 			Utility::Geometry::CreateCube(&vertices, &indices);		
-			model->SetResourceName("Default_Cube");
+			model->SetResourceFilePath(project_directory + "default_cube" + EXTENSION_MODEL);
 		}
 		else if (type == Geometry_Default_Quad)
 		{
 			Utility::Geometry::CreateQuad(&vertices, &indices);
-			model->SetResourceName("Default_Quad");
+			model->SetResourceFilePath(project_directory + "default_quad" + EXTENSION_MODEL);
 		}
 		else if (type == Geometry_Default_Sphere)
 		{
 			Utility::Geometry::CreateSphere(&vertices, &indices);
-			model->SetResourceName("Default_Sphere");
+			model->SetResourceFilePath(project_directory + "default_sphere" + EXTENSION_MODEL);
 		}
 		else if (type == Geometry_Default_Cylinder)
 		{
 			Utility::Geometry::CreateCylinder(&vertices, &indices);
-			model->SetResourceName("Default_Cylinder");
+			model->SetResourceFilePath(project_directory + "default_cylinder" + EXTENSION_MODEL);
 		}
 		else if (type == Geometry_Default_Cone)
 		{
 			Utility::Geometry::CreateCone(&vertices, &indices);
-			model->SetResourceName("Default_Cone");
+			model->SetResourceFilePath(project_directory + "default_cone" + EXTENSION_MODEL);
 		}
 
 		if (vertices.empty() || indices.empty())
 			return;
 
-        model->SetResourceFilePathNative(renderable->GetContext()->GetSubsystem<ResourceCache>()->GetProjectDirectory() + model->GetResourceFileName());
 		model->AppendGeometry(indices, vertices, nullptr, nullptr);
 		model->UpdateGeometry();
 
@@ -258,8 +259,8 @@ namespace Spartan
 		auto data_dir = resource_cache->GetDataDirectory();
 		FileSystem::CreateDirectory_(data_dir);
 		auto material = make_shared<Material>(GetContext());
-		material->SetResourceName("Standard");
-        material->SetResourceFilePathNative(resource_cache->GetProjectDirectory() + material->GetResourceName() + EXTENSION_MATERIAL);
+        // Set resource file path so it can be used by the resource cache
+        material->SetResourceFilePath(resource_cache->GetProjectDirectory() + "standard" + EXTENSION_MATERIAL);
 		material->SetCullMode(Cull_Back);
 		material->SetColorAlbedo(Vector4(0.6f, 0.6f, 0.6f, 1.0f));
 		material->SetIsEditable(false);		

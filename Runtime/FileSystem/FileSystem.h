@@ -33,6 +33,7 @@ static const char* EXTENSION_MATERIAL		= ".material";
 static const char* EXTENSION_MODEL			= ".model";
 static const char* EXTENSION_PREFAB			= ".prefab";
 static const char* EXTENSION_SHADER			= ".shader";
+static const char* EXTENSION_FONT           = ".font";
 static const char* EXTENSION_TEXTURE		= ".texture";
 static const char* EXTENSION_MESH			= ".mesh";
 static const char* EXTENSION_AUDIO          = ".audio";
@@ -66,7 +67,7 @@ namespace Spartan
 		static std::string GetDirectoryFromFilePath(const std::string& file_path);
 		static std::string GetFilePathWithoutExtension(const std::string& file_path);
 		static std::string GetExtensionFromFilePath(const std::string& file_path);
-        static std::string ReplaceFileExtension(const std::string& file_path, const std::string& extension);
+        static std::string NativizeFilePath(const std::string& file_path);
 		static std::string GetRelativeFilePath(const std::string& file_path_absolute);
 		static std::string GetWorkingDirectory();
 		static std::string GetParentDirectory(const std::string& directory);

@@ -145,25 +145,21 @@ namespace Spartan
 				return nullptr;
 			}
 
-			// Try to make the path relative to the engine (in case it isn't)
-			auto file_path_relative	= FileSystem::GetRelativeFilePath(file_path);
-			auto name				= FileSystem::GetFileNameNoExtensionFromFilePath(file_path_relative);
-
 			// Check if the resource is already loaded
+            auto name = FileSystem::GetFileNameNoExtensionFromFilePath(file_path);
 			if (IsCached(name, IResource::TypeToEnum<T>()))
 				return GetByName<T>(name);
 
 			// Create new resource
 			auto typed = std::make_shared<T>(m_context);
 
-			// Set a default name and a default filepath in case it's not overridden by LoadFromFile()
-			typed->SetResourceName(name);
-			typed->SetResourceFilePathNative(file_path_relative);
+			// Set a default file path in case it's not overridden by LoadFromFile()
+			typed->SetResourceFilePath(file_path);
 
 			// Load
-			if (!typed || !typed->LoadFromFile(file_path_relative))
+			if (!typed || !typed->LoadFromFile(file_path))
 			{
-				LOGF_ERROR("Failed to load \"%s\".", file_path_relative.c_str());
+				LOGF_ERROR("Failed to load \"%s\".", file_path.c_str());
 				return nullptr;
 			}
 

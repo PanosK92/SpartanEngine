@@ -94,8 +94,7 @@ namespace Spartan
             if (!file->IsOpen())
                 return false;
 
-            SetResourceName(file->ReadAs<string>());
-            SetResourceFilePathNative(file->ReadAs<string>());
+            SetResourceFilePath(file->ReadAs<string>());
             file->Read(&m_normalized_scale);
             file->Read(&m_mesh->Indices_Get());
             file->Read(&m_mesh->Vertices_Get());
@@ -118,8 +117,8 @@ namespace Spartan
             }
         }
 
-        // Set a file path with a native format so the model can be cached
-        SetResourceFilePathNative(FileSystem::ReplaceFileExtension(file_path_relative, EXTENSION_MODEL));
+        // Set a file path so the the model can be used by the resource cache
+        SetResourceFilePath(file_path);
 
 		m_size = GeometryComputeMemoryUsage();
 		LOGF_INFO("Loading \"%s\" took %d ms", FileSystem::GetFileNameFromFilePath(file_path).c_str(), static_cast<int>(timer.GetElapsedTimeMs()));
@@ -133,8 +132,7 @@ namespace Spartan
 		if (!file->IsOpen())
 			return false;
 
-		file->Write(GetResourceName());
-		file->Write(GetResourceFilePathNative());
+		file->Write(GetResourceFilePath());
 		file->Write(m_normalized_scale);
 		file->Write(m_mesh->Indices_Get());
 		file->Write(m_mesh->Vertices_Get());	
@@ -183,7 +181,7 @@ namespace Spartan
 
 		// Create a file path for this material
         string spartan_asset_path = FileSystem::GetDirectoryFromFilePath(GetResourceFilePathNative()) + material->GetResourceName() + EXTENSION_MATERIAL;
-		material->SetResourceFilePathNative(spartan_asset_path);
+		material->SetResourceFilePath(spartan_asset_path);
 
 		// Create a Renderable and pass the material to it
         auto renderable = entity->AddComponent<Renderable>();
@@ -222,11 +220,6 @@ namespace Spartan
 			auto generate_mipmaps = true;
             texture = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
 			texture->LoadFromFile(file_path);
-
-			// Assign a file path to it so it can be cached
-            string spartan_asset_path = FileSystem::ReplaceFileExtension(file_path, EXTENSION_TEXTURE);
-			texture->SetResourceFilePathNative(spartan_asset_path);
-			texture->SetResourceName(FileSystem::GetFileNameNoExtensionFromFilePath(spartan_asset_path));
 
 			// Set the texture to the provided material
 			material->SetTextureSlot(texture_type, texture);
