@@ -119,8 +119,8 @@ namespace Spartan
 			Utility::Geometry::CreateCylinder(&vertices, &indices);
 		}
 		m_model = make_unique<Model>(m_context);
-		m_model->GeometryAppend(indices, vertices);
-		m_model->GeometryUpdate();
+		m_model->AppendGeometry(indices, vertices);
+		m_model->UpdateGeometry();
 
 		// Create bounding boxes for the handles, based on the vertices used
 		m_handle_x.box		= vertices;

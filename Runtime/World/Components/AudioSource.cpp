@@ -85,7 +85,6 @@ namespace Spartan
 	
 	void AudioSource::Serialize(FileStream* stream)
 	{
-		stream->Write(m_file_path);
 		stream->Write(m_mute);
 		stream->Write(m_play_on_start);
 		stream->Write(m_loop);
@@ -93,11 +92,16 @@ namespace Spartan
 		stream->Write(m_volume);
 		stream->Write(m_pitch);
 		stream->Write(m_pan);
+
+        stream->Write(m_audio_clip ? true : false);
+        if (m_audio_clip)
+        {
+            stream->Write(m_audio_clip->GetResourceName());
+        }
 	}
 	
 	void AudioSource::Deserialize(FileStream* stream)
 	{
-		stream->Read(&m_file_path);
 		stream->Read(&m_mute);
 		stream->Read(&m_play_on_start);
 		stream->Read(&m_loop);
@@ -105,9 +109,11 @@ namespace Spartan
 		stream->Read(&m_volume);
 		stream->Read(&m_pitch);
 		stream->Read(&m_pan);
-	
-		// ResourceManager will return cached audio clip if it's already loaded
-        SetAudioClip(m_context->GetSubsystem<ResourceCache>()->Load<AudioClip>(m_file_path));
+
+        if (stream->ReadAs<bool>())
+        {
+            m_audio_clip = m_context->GetSubsystem<ResourceCache>()->GetByName<AudioClip>(stream->ReadAs<string>());
+        }
 	}
 
 	void AudioSource::SetAudioClip(const shared_ptr<AudioClip>& audio_clip)
@@ -117,10 +123,28 @@ namespace Spartan
 			LOG_ERROR_INVALID_PARAMETER();
 			return;
 		}
-		m_audio_clip = audio_clip;
+
+        // In order for the component to guarantee serialization/deserialization, we cache the audio clip
+		m_audio_clip = m_context->GetSubsystem<ResourceCache>()->Cache(audio_clip);
 	}
 
-	string AudioSource::GetAudioClipName()
+    void AudioSource::SetAudioClip(const string& file_path)
+    {
+        // Create and load the audio clip
+        auto audio_clip = make_shared<AudioClip>(m_context);
+        if (audio_clip->LoadFromFile(file_path))
+        {
+            // Construct a file path for the spartan asset
+            string spartan_asset_path = FileSystem::ReplaceFileExtension(FileSystem::GetRelativeFilePath(file_path), EXTENSION_AUDIO);
+            audio_clip->SetResourceFilePathNative(spartan_asset_path);
+            audio_clip->SetResourceName(FileSystem::GetFileNameNoExtensionFromFilePath(spartan_asset_path));
+
+            // In order for the component to guarantee serialization/deserialization, we cache the audio clip
+            m_audio_clip = m_context->GetSubsystem<ResourceCache>()->Cache(audio_clip);
+        }
+    }
+
+    string AudioSource::GetAudioClipName()
 	{
 		return m_audio_clip ? m_audio_clip->GetResourceName() : "";
 	}

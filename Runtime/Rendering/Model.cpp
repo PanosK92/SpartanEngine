@@ -24,14 +24,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Mesh.h"
 #include "Animation.h"
 #include "Renderer.h"
-#include "Material.h"
 #include "../IO/FileStream.h"
 #include "../Core/Stopwatch.h"
 #include "../Resource/ResourceCache.h"
 #include "../World/Entity.h"
 #include "../World/Components/Transform.h"
 #include "../World/Components/Renderable.h"
-#include "../RHI/RHI_Implementation.h"
 #include "../RHI/RHI_VertexBuffer.h"
 #include "../RHI/RHI_IndexBuffer.h"
 #include "../RHI/RHI_Texture2D.h"
@@ -63,11 +61,6 @@ namespace Spartan
         m_index_buffer.reset();
         m_mesh->Geometry_Clear();
         m_aabb.Undefine();
-        m_materials.clear();
-        m_animations.clear();
-        m_model_directory_model.clear();
-        m_model_directory_materials.clear();
-        m_model_directory_textures.clear();
         m_normalized_scale = 1.0f;
         m_is_animated = false;
     }
@@ -75,7 +68,7 @@ namespace Spartan
 	bool Model::LoadFromFile(const string& file_path)
 	{
 		Stopwatch timer;
-		auto model_file_path = file_path;
+		string file_path_relative = FileSystem::GetRelativeFilePath(file_path);
 
 		// Check if this is a directory instead of a model file path
 		if (FileSystem::IsDirectory(file_path))
@@ -84,7 +77,7 @@ namespace Spartan
 			auto model_file_paths = FileSystem::GetSupportedModelFilesInDirectory(file_path);
 			if (!model_file_paths.empty())
 			{
-				model_file_path = model_file_paths.front();
+				file_path_relative = model_file_paths.front();
 			}
 			else // abort
 			{
@@ -93,13 +86,45 @@ namespace Spartan
 			}
 		}
 
-		const auto engine_format = FileSystem::GetExtensionFromFilePath(model_file_path) == EXTENSION_MODEL;
-		const auto success = engine_format ? LoadFromEngineFormat(model_file_path) : LoadFromForeignFormat(model_file_path);
+        // Load engine format
+        if (FileSystem::GetExtensionFromFilePath(file_path_relative) == EXTENSION_MODEL)
+        {
+            // Deserialize
+            auto file = make_unique<FileStream>(file_path_relative, FileStream_Read);
+            if (!file->IsOpen())
+                return false;
+
+            SetResourceName(file->ReadAs<string>());
+            SetResourceFilePathNative(file->ReadAs<string>());
+            file->Read(&m_normalized_scale);
+            file->Read(&m_mesh->Indices_Get());
+            file->Read(&m_mesh->Vertices_Get());
+
+            UpdateGeometry();
+        }
+        // Load foreign format
+        else
+        {
+            if (m_resource_manager->GetModelImporter()->Load(this, file_path_relative))
+            {
+                // Set the normalized scale to the root entity's transform
+                m_normalized_scale = GeometryComputeNormalizedScale();
+                m_root_entity.lock()->GetComponent<Transform>()->SetScale(m_normalized_scale);
+                m_root_entity.lock()->GetComponent<Transform>()->UpdateTransform();
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        // Set a file path with a native format so the model can be cached
+        SetResourceFilePathNative(FileSystem::ReplaceFileExtension(file_path_relative, EXTENSION_MODEL));
 
 		m_size = GeometryComputeMemoryUsage();
 		LOGF_INFO("Loading \"%s\" took %d ms", FileSystem::GetFileNameFromFilePath(file_path).c_str(), static_cast<int>(timer.GetElapsedTimeMs()));
 
-		return success;
+		return true;
 	}
 
 	bool Model::SaveToFile(const string& file_path)
@@ -109,7 +134,7 @@ namespace Spartan
 			return false;
 
 		file->Write(GetResourceName());
-		file->Write(GetResourceFilePath());
+		file->Write(GetResourceFilePathNative());
 		file->Write(m_normalized_scale);
 		file->Write(m_mesh->Indices_Get());
 		file->Write(m_mesh->Vertices_Get());	
@@ -117,7 +142,7 @@ namespace Spartan
 		return true;
 	}
 
-	void Model::GeometryAppend(const vector<uint32_t>& indices, const vector<RHI_Vertex_PosTexNorTan>& vertices, uint32_t* index_offset, uint32_t* vertex_offset) const
+	void Model::AppendGeometry(const vector<uint32_t>& indices, const vector<RHI_Vertex_PosTexNorTan>& vertices, uint32_t* index_offset, uint32_t* vertex_offset) const
 	{
 		if (indices.empty() || vertices.empty())
 		{
@@ -130,12 +155,12 @@ namespace Spartan
 		m_mesh->Vertices_Append(vertices, vertex_offset);
 	}
 
-	void Model::GeometryGet(const uint32_t index_offset, const uint32_t index_count, const uint32_t vertex_offset, const uint32_t vertex_count, vector<uint32_t>* indices, vector<RHI_Vertex_PosTexNorTan>* vertices) const
+	void Model::GetGeometry(const uint32_t index_offset, const uint32_t index_count, const uint32_t vertex_offset, const uint32_t vertex_count, vector<uint32_t>* indices, vector<RHI_Vertex_PosTexNorTan>* vertices) const
 	{
 		m_mesh->Geometry_Get(index_offset, index_count, vertex_offset, vertex_count, indices, vertices);
 	}
 
-	void Model::GeometryUpdate()
+	void Model::UpdateGeometry()
 	{
 		if (m_mesh->Indices_Count() == 0 || m_mesh->Vertices_Count() == 0)
 		{
@@ -150,28 +175,19 @@ namespace Spartan
 
 	void Model::AddMaterial(shared_ptr<Material>& material, const shared_ptr<Entity>& entity)
 	{
-		if (!material)
+		if (!material || !entity)
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return;
 		}
 
 		// Create a file path for this material
-		material->SetResourceFilePath(m_model_directory_materials + material->GetResourceName() + EXTENSION_MATERIAL);
-
-		// Save the material in the model directory		
-		material->SaveToFile(material->GetResourceFilePath());
-
-		// Keep a reference to it
-		m_resource_manager->Cache(material);
-		m_materials.emplace_back(material);
+        string spartan_asset_path = FileSystem::GetDirectoryFromFilePath(GetResourceFilePathNative()) + material->GetResourceName() + EXTENSION_MATERIAL;
+		material->SetResourceFilePathNative(spartan_asset_path);
 
 		// Create a Renderable and pass the material to it
-		if (entity)
-		{
-			auto renderable = entity->AddComponent<Renderable>();
-			renderable->SetMaterial(material);
-		}
+        auto renderable = entity->AddComponent<Renderable>();
+        renderable->SetMaterial(material);
 	}
 
 	void Model::AddAnimation(shared_ptr<Animation>& animation)
@@ -182,106 +198,39 @@ namespace Spartan
 			return;
 		}
 
-		m_context->GetSubsystem<ResourceCache>()->Cache<Animation>(animation);
-		m_animations.emplace_back(animation);
 		m_is_animated = true;
 	}
 
 	void Model::AddTexture(shared_ptr<Material>& material, const TextureType texture_type, const string& file_path)
 	{
-		if (!material)
+		if (!material || file_path.empty())
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return;
 		}
 
-		// Validate texture file path
-		if (file_path.empty())
-		{
-			LOG_WARNING("Provided texture file path hasn't been provided. Can't execute function");
-			return;
-		}
-
 		// Try to get the texture
 		const auto tex_name = FileSystem::GetFileNameNoExtensionFromFilePath(file_path);
-		auto texture = m_context->GetSubsystem<ResourceCache>()->GetByName<RHI_Texture2D>(tex_name);
-		if (texture)
+		if (auto texture = m_context->GetSubsystem<ResourceCache>()->GetByName<RHI_Texture2D>(tex_name))
 		{
 			material->SetTextureSlot(texture_type, texture);
 		}
 		// If we didn't get a texture, it's not cached, hence we have to load it and cache it now
-		else if (!texture)
+		else
 		{
 			// Load texture
 			auto generate_mipmaps = true;
-			texture = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
+            texture = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
 			texture->LoadFromFile(file_path);
 
-			// Update the texture with Model directory relative file path. Then save it to this directory
-			const auto model_relative_tex_path = m_model_directory_textures + tex_name + EXTENSION_TEXTURE;
-			texture->SetResourceFilePath(model_relative_tex_path);
-			texture->SetResourceName(FileSystem::GetFileNameNoExtensionFromFilePath(model_relative_tex_path));
-			texture->SaveToFile(model_relative_tex_path);
+			// Assign a file path to it so it can be cached
+            string spartan_asset_path = FileSystem::ReplaceFileExtension(file_path, EXTENSION_TEXTURE);
+			texture->SetResourceFilePathNative(spartan_asset_path);
+			texture->SetResourceName(FileSystem::GetFileNameNoExtensionFromFilePath(spartan_asset_path));
 
 			// Set the texture to the provided material
-			m_resource_manager->Cache(texture);
 			material->SetTextureSlot(texture_type, texture);
 		}
-	}
-
-	void Model::SetWorkingDirectory(const string& directory)
-	{
-		// Set directories based on new directory
-		m_model_directory_model		= directory;
-		m_model_directory_materials	= m_model_directory_model + "Materials//";
-		m_model_directory_textures	= m_model_directory_model + "Textures//";
-
-		// Create directories
-		FileSystem::CreateDirectory_(directory);
-		FileSystem::CreateDirectory_(m_model_directory_materials);
-		FileSystem::CreateDirectory_(m_model_directory_textures);
-	}
-
-	bool Model::LoadFromEngineFormat(const string& file_path)
-	{
-		// Deserialize
-		auto file = make_unique<FileStream>(file_path, FileStream_Read);
-		if (!file->IsOpen())
-			return false;
-
-		SetResourceName(file->ReadAs<string>());
-		SetResourceFilePath(file->ReadAs<string>());
-		file->Read(&m_normalized_scale);
-		file->Read(&m_mesh->Indices_Get());
-		file->Read(&m_mesh->Vertices_Get());
-
-		GeometryUpdate();
-
-		return true;
-	}
-
-	bool Model::LoadFromForeignFormat(const string& file_path)
-	{
-		// Set some crucial data (Required by ModelImporter)
-		SetWorkingDirectory(m_context->GetSubsystem<ResourceCache>()->GetProjectDirectory() + FileSystem::GetFileNameNoExtensionFromFilePath(file_path) + "//"); // Assets/Sponza/
-		SetResourceFilePath(m_model_directory_model + FileSystem::GetFileNameNoExtensionFromFilePath(file_path) + EXTENSION_MODEL); // Assets/Sponza/Sponza.model
-		SetResourceName(FileSystem::GetFileNameNoExtensionFromFilePath(file_path)); // Sponza
-
-		// Load the model
-		if (m_resource_manager->GetModelImporter()->Load(this, file_path))
-		{
-			// Set the normalized scale to the root entity's transform
-			m_normalized_scale = GeometryComputeNormalizedScale();
-			m_root_entity.lock()->GetComponent<Transform>()->SetScale(m_normalized_scale);
-			m_root_entity.lock()->GetComponent<Transform>()->UpdateTransform();
-
-			// Save the model in our custom format.
-			SaveToFile(GetResourceFilePath());
-
-			return true;
-		}
-
-		return false;
 	}
 
 	bool Model::GeometryCreateBuffers()

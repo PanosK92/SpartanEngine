@@ -63,13 +63,13 @@ void Widget_ResourceCache::Tick()
 		ImGui::Text(resource->GetResourceTypeCstr());					ImGui::NextColumn();
 
 		// ID
-		ImGui::Text(to_string(resource->GetId()).c_str());		ImGui::NextColumn();
+		ImGui::Text(to_string(resource->GetId()).c_str());		        ImGui::NextColumn();
 
 		// Name
 		ImGui::Text(resource->GetResourceName().c_str());				ImGui::NextColumn();
 
 		// Path
-		ImGui::Text(resource->GetResourceFilePath().c_str());			ImGui::NextColumn();
+		ImGui::Text(resource->GetResourceFilePathNative().c_str());		ImGui::NextColumn();
 
 		// Memory
 		auto memory = (unsigned int)(resource->GetMemoryUsage() / 1000.0f); // default in Kb

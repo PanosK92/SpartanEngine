@@ -27,20 +27,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/EngineDefs.h"
 //=============================
 
-//=========================================================
-// Metadata extensions
-static const char* METADATA_EXTENSION		= ".xml";
-static const char* METADATA_TYPE_TEXTURE	= "Texture";
-static const char* METADATA_TYPE_AUDIOCLIP	= "Audio_Clip";
-// Engine file extensions
+//========================================================
 static const char* EXTENSION_WORLD			= ".world";
-static const char* EXTENSION_MATERIAL		= ".mat";
+static const char* EXTENSION_MATERIAL		= ".material";
 static const char* EXTENSION_MODEL			= ".model";
 static const char* EXTENSION_PREFAB			= ".prefab";
 static const char* EXTENSION_SHADER			= ".shader";
 static const char* EXTENSION_TEXTURE		= ".texture";
 static const char* EXTENSION_MESH			= ".mesh";
-//=========================================================
+static const char* EXTENSION_AUDIO          = ".audio";
+//========================================================
 
 namespace Spartan
 {
@@ -63,20 +59,22 @@ namespace Spartan
 		static bool CopyFileFromTo(const std::string& source, const std::string& destination);
 		//====================================================================================
 
-		//= DIRECTORY PARSING  =================================================================
-		static std::string GetFileNameFromFilePath(const std::string& path);
-		static std::string GetFileNameNoExtensionFromFilePath(const std::string& filepath);
-		static std::string GetDirectoryFromFilePath(const std::string& filePath);
-		static std::string GetFilePathWithoutExtension(const std::string& filePath);
-		static std::string GetExtensionFromFilePath(const std::string& filePath);
-		static std::string GetRelativeFilePath(const std::string& absoluteFilePath);
+		//= DIRECTORY PARSING  =============================================================================
+		static std::string GetFileNameFromFilePath(const std::string& file_path);
+		static std::string GetFileNameNoExtensionFromFilePath(const std::string& file_path);
+        static std::string GetFileFormatFromFilePath(const std::string& file_path);
+		static std::string GetDirectoryFromFilePath(const std::string& file_path);
+		static std::string GetFilePathWithoutExtension(const std::string& file_path);
+		static std::string GetExtensionFromFilePath(const std::string& file_path);
+        static std::string ReplaceFileExtension(const std::string& file_path, const std::string& extension);
+		static std::string GetRelativeFilePath(const std::string& file_path_absolute);
 		static std::string GetWorkingDirectory();
 		static std::string GetParentDirectory(const std::string& directory);
 		static std::vector<std::string> GetDirectoriesInDirectory(const std::string& directory);
 		static std::vector<std::string> GetFilesInDirectory(const std::string& directory);
-		//======================================================================================
+		//==================================================================================================
 
-		//= SUPPORTED FILES IN DIRECTORY ======================================================================
+		//= SUPPORTED FILES IN DIRECTORY =======================================================================
 		static std::vector<std::string> GetSupportedFilesInDirectory(const std::string& directory);
 		static std::vector<std::string> GetSupportedImageFilesFromPaths(const std::vector<std::string>& paths);
 		static std::vector<std::string> GetSupportedAudioFilesFromPaths(const std::vector<std::string>& paths);
@@ -99,8 +97,9 @@ namespace Spartan
 		static bool IsEngineModelFile(const std::string& filePath);
 		static bool IsEngineSceneFile(const std::string& filePath);
 		static bool IsEngineTextureFile(const std::string& filePath);
+        static bool IsEngineAudioFile(const std::string& filePath);
 		static bool IsEngineShaderFile(const std::string& filePath);
-		static bool IsEngineMetadataFile(const std::string& filePath);
+        static bool IsEngineFile(const std::string& filePath);
 		//=============================================================
 
 		//= STRING PARSING =============================================================================================================================

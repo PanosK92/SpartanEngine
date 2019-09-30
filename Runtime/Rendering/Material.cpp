@@ -59,14 +59,14 @@ namespace Spartan
 	bool Material::LoadFromFile(const std::string& file_path)
 	{
 		// Make sure the path is relative
-		SetResourceFilePath(FileSystem::GetRelativeFilePath(file_path));
+		SetResourceFilePathNative(FileSystem::GetRelativeFilePath(file_path));
 
 		auto xml = make_unique<XmlDocument>();
-		if (!xml->Load(GetResourceFilePath()))
+		if (!xml->Load(GetResourceFilePathNative()))
 			return false;
 
 		SetResourceName(xml->GetAttributeAs<string>("Material",	"Name"));
-		SetResourceFilePath(xml->GetAttributeAs<string>("Material",	"Path"));
+		SetResourceFilePathNative(xml->GetAttributeAs<string>("Material",	"Path"));
 		xml->GetAttribute("Material", "Roughness_Multiplier",	&GetMultiplier(TextureType_Roughness));
 		xml->GetAttribute("Material", "Metallic_Multiplier",	&GetMultiplier(TextureType_Metallic));
 		xml->GetAttribute("Material", "Normal_Multiplier",		&GetMultiplier(TextureType_Normal));
@@ -104,18 +104,18 @@ namespace Spartan
 	bool Material::SaveToFile(const std::string& file_path)
 	{
 		// Make sure the path is relative
-		SetResourceFilePath(FileSystem::GetRelativeFilePath(file_path));
+		SetResourceFilePathNative(FileSystem::GetRelativeFilePath(file_path));
 
 		// Add material extension if not present
-		if (FileSystem::GetExtensionFromFilePath(GetResourceFilePath()) != EXTENSION_MATERIAL)
+		if (FileSystem::GetExtensionFromFilePath(GetResourceFilePathNative()) != EXTENSION_MATERIAL)
 		{
-			SetResourceFilePath(GetResourceFilePath() + EXTENSION_MATERIAL);
+			SetResourceFilePathNative(GetResourceFilePathNative() + EXTENSION_MATERIAL);
 		}
 
 		auto xml = make_unique<XmlDocument>();
 		xml->AddNode("Material");
 		xml->AddAttribute("Material", "Name",					GetResourceName());
-		xml->AddAttribute("Material", "Path",					GetResourceFilePath());
+		xml->AddAttribute("Material", "Path",					GetResourceFilePathNative());
 		xml->AddAttribute("Material", "Cull_Mode",				uint32_t(m_cull_mode));	
 		xml->AddAttribute("Material", "Shading_Mode",			uint32_t(m_shading_mode));
 		xml->AddAttribute("Material", "Color",					m_color_albedo);
@@ -136,18 +136,20 @@ namespace Spartan
 			xml->AddChildNode("Textures", tex_node);
 			xml->AddAttribute(tex_node, "Texture_Type", static_cast<uint32_t>(texture.first));
 			xml->AddAttribute(tex_node, "Texture_Name", texture.second ? texture.second->GetResourceName() : "");
-			xml->AddAttribute(tex_node, "Texture_Path", texture.second ? texture.second->GetResourceFilePath() : "");
+			xml->AddAttribute(tex_node, "Texture_Path", texture.second ? texture.second->GetResourceFilePathNative() : "");
 			i++;
 		}
 
-		return xml->Save(GetResourceFilePath());
+		return xml->Save(GetResourceFilePathNative());
 	}
 
 	void Material::SetTextureSlot(const TextureType type, const shared_ptr<RHI_Texture>& texture)
 	{
 		if (texture)
 		{
-			m_textures[type] = texture;		
+            // In order for the material to guarantee serialization/deserialization we cache the texture
+            auto texture_cached = m_context->GetSubsystem<ResourceCache>()->Cache(texture);
+			m_textures[type] = texture_cached != nullptr ? texture_cached : texture;
 		}
 		else
 		{
@@ -176,19 +178,28 @@ namespace Spartan
 			if (!texture.second)
 				continue;
 
-			if (texture.second->GetResourceFilePath() == path)
+			if (texture.second->GetResourceFilePathNative() == path)
 				return true;
 		}
 
 		return false;
 	}
 
-	string Material::GetTexturePathByType(const TextureType type)
+    bool Material::HasTexture(const TextureType type)
+    {
+        if (m_textures.empty())
+            return false;
+
+        auto pair = m_textures.find(type);
+        return pair != m_textures.end() && pair->second != nullptr;
+    }
+
+    string Material::GetTexturePathByType(const TextureType type)
 	{
 		if (!HasTexture(type))
 			return "";
 
-		return m_textures[type]->GetResourceFilePath();
+		return m_textures[type]->GetResourceFilePathNative();
 	}
 
 	vector<string> Material::GetTexturePaths()
@@ -199,7 +210,7 @@ namespace Spartan
 			if (!texture.second)
 				continue;
 
-			paths.emplace_back(texture.second->GetResourceFilePath());
+			paths.emplace_back(texture.second->GetResourceFilePathNative());
 		}
 
 		return paths;

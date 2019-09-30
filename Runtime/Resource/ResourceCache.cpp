@@ -178,15 +178,15 @@ namespace Spartan
 		{
 			for (const auto& resource : resource_group.second)
 			{
-				if (!resource->HasFilePath())
+				if (!resource->HasFilePathNative())
 					continue;
 
 				// Save file path
-				file->Write(resource->GetResourceFilePath());
+				file->Write(resource->GetResourceFilePathNative());
 				// Save type
 				file->Write(static_cast<uint32_t>(resource->GetResourceType()));
 				// Save resource (to a dedicated file)
-				resource->SaveToFile(resource->GetResourceFilePath());
+				resource->SaveToFile(resource->GetResourceFilePathNative());
 
 				// Update progress
 				ProgressReport::Get().IncrementJobsDone(g_progress_resource_cache);

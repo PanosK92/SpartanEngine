@@ -56,7 +56,7 @@ namespace Spartan
     {
         string no_path;
 
-        stream->Write(m_height_map ? m_height_map->GetResourceFilePath() : no_path);
+        stream->Write(m_height_map ? m_height_map->GetResourceFilePathNative() : no_path);
         stream->Write(m_model ? m_model->GetResourceName() : no_path);
         stream->Write(m_min_y);
         stream->Write(m_max_y);
@@ -75,10 +75,8 @@ namespace Spartan
 
     void Terrain::SetHeightMap(const shared_ptr<RHI_Texture2D>& height_map)
     {
-        m_height_map = height_map;
-
-        ResourceCache* resource_cahe = m_context->GetSubsystem<ResourceCache>().get();
-        resource_cahe->Cache<RHI_Texture2D>(m_height_map);
+        // In order for the component to guarantee serialization/deserialization, we cache the height_map
+        m_height_map = m_context->GetSubsystem<ResourceCache>()->Cache<RHI_Texture2D>(height_map);
     }
 
     void Terrain::GenerateAsync()
@@ -400,7 +398,7 @@ namespace Spartan
                 model->GetMesh()->Indices_Count(),  // index count
                 0,                                  // vertex offset
                 model->GetMesh()->Vertices_Count(), // vertex count
-                model->GeometryAabb(),
+                model->GetAabb(),
                 model.get()
             );
 
@@ -420,14 +418,14 @@ namespace Spartan
 
             m_model = make_shared<Model>(m_context);
             m_model->SetResourceName("Terrain");
-            m_model->SetResourceFilePath(file_path);
+            m_model->SetResourceFilePathNative(file_path);
             resource_cache->Cache(m_model);
         }
 
         // Update with geometry
         m_model->Clear();
-        m_model->GeometryAppend(indices, vertices);
-        m_model->GeometryUpdate();
+        m_model->AppendGeometry(indices, vertices);
+        m_model->UpdateGeometry();
 
         UpdateFromModel(m_model);
     }
