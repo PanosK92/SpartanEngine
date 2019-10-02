@@ -378,7 +378,7 @@ namespace Spartan
 	{
 		auto& environment = EntityCreate();
 		environment->SetName("Environment");
-		environment->AddComponent<Environment>();
+		environment->AddComponent<Environment>()->LoadDefault();
 
 		return environment;
 	}

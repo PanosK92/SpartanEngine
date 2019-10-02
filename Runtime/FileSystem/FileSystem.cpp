@@ -246,6 +246,20 @@ namespace Spartan
 		}
 	}
 
+    bool FileSystem::IsFilePath(const string& file_path)
+    {
+        if (file_path.empty())
+            return false;
+
+        if (IsDirectory(file_path))
+            return false;
+
+        if (GetFileFormatFromFilePath(file_path).empty())
+            return false;
+
+        return true;
+    }
+
 	bool FileSystem::DeleteFile_(const string& file_path)
 	{
 		// If this is a directory path, return
@@ -285,7 +299,7 @@ namespace Spartan
 		}
 	}
 
-	string FileSystem::GetFileNameFromFilePath(const string& file_path)
+    string FileSystem::GetFileNameFromFilePath(const string& file_path)
 	{
         size_t last_index = file_path.find_last_of("\\/");
 
@@ -293,7 +307,7 @@ namespace Spartan
 		    return file_path.substr(last_index + 1, file_path.length());
 
         LOGF_ERROR("Failed to extract file name from \"%s\"", file_path.c_str());
-		return file_path;
+		return "";
 	}
 
 	string FileSystem::GetFileNameNoExtensionFromFilePath(const string& file_path)
@@ -305,7 +319,7 @@ namespace Spartan
 		    return file_name.substr(0, last_index);
 
         LOGF_ERROR("Failed to extract file name from \"%s\"", file_path.c_str());
-		return file_path;
+		return "";
 	}
 
     string FileSystem::GetFileFormatFromFilePath(const string& file_path)
@@ -316,7 +330,7 @@ namespace Spartan
             return file_path.substr(last_index, file_path.length());
 
         LOGF_ERROR("Failed to extract file format from \"%s\"", file_path.c_str());
-        return file_path;
+        return "";
     }
 
     string FileSystem::GetDirectoryFromFilePath(const string& file_path)
@@ -327,7 +341,7 @@ namespace Spartan
 		    return file_path.substr(0, last_index + 1);
 
         LOGF_ERROR("Failed to extract directory from \"%s\"", file_path.c_str());
-		return file_path;
+		return "";
 	}
 
 	string FileSystem::GetFilePathWithoutExtension(const string& file_path)

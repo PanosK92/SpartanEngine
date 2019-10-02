@@ -63,7 +63,7 @@ namespace Spartan
 
 		void SetResourceFilePath(const std::string& file_path)
         {
-            if (file_path.empty())
+            if (!FileSystem::IsFilePath(file_path))
             {
                 LOG_ERROR("File path is invalid.");
                 return;

@@ -40,18 +40,21 @@ namespace Spartan
 		Environment(Context* context, Entity* entity, uint32_t id = 0);
         ~Environment() = default;
 
-		//= IComponent ==============
-		void OnInitialize() override;
-		//===========================
+        //= IComponent ===============================
+        void Serialize(FileStream* stream) override;
+        void Deserialize(FileStream* stream) override;
+        //============================================
+
+        void LoadDefault();
 
         const std::shared_ptr<RHI_Texture>& GetTexture();
         void SetTexture(const std::shared_ptr<RHI_Texture>& texture);
 
 	private:
-		void CreateFromArray(const std::vector<std::string>& texturePaths);
-		void CreateFromSphere(const std::string& texturePath);
+		void SetFromTextureArray(const std::vector<std::string>& texturePaths);
+		void SetFromTextureSphere(const std::string& texturePath);
 
-		std::vector<std::string> m_texture_paths;
+		std::vector<std::string> m_file_paths;
 		Environment_Type m_environment_type;
 	};
 }

@@ -21,11 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ============================
 #include "Environment.h"
+#include "../../IO/FileStream.h"
+#include "../../Threading/Threading.h"
 #include "../../Resource/ResourceCache.h"
+#include "../../Rendering/Renderer.h"
 #include "../../RHI/RHI_Texture2D.h"
 #include "../../RHI/RHI_TextureCube.h"
-#include "../../Threading/Threading.h"
-#include "../../Rendering/Renderer.h"
 //=======================================
 
 //= NAMESPACES ===============
@@ -39,11 +40,11 @@ namespace Spartan
 	{
 		m_environment_type = Environment_Sphere;
 
-		// Texture paths
+		// Default texture paths
 		const auto dir_cubemaps = GetContext()->GetSubsystem<ResourceCache>()->GetDataDirectory(Asset_Cubemaps);
 		if (m_environment_type == Enviroment_Cubemap)
 		{
-			m_texture_paths =
+            m_file_paths =
 			{
 				dir_cubemaps + "array/X+.tga",	// right
 				dir_cubemaps + "array/X-.tga",	// left
@@ -55,28 +56,43 @@ namespace Spartan
 		}
 		else if (m_environment_type == Environment_Sphere)
 		{
-			m_texture_paths = { dir_cubemaps + "syferfontein_0d_clear_4k.hdr" };
+            m_file_paths = { dir_cubemaps + "syferfontein_0d_clear_4k.hdr" };
 		}
 	}
 
-	void Environment::OnInitialize()
-	{
-		m_context->GetSubsystem<Threading>()->AddTask([this]
-		{
-			if (m_environment_type == Enviroment_Cubemap)
-			{
-                LOG_INFO("Creating sky box...");
-				CreateFromArray(m_texture_paths);
-                LOG_INFO("Sky box has been created successfully");
-			}
-			else if (m_environment_type == Environment_Sphere)
-			{
-                LOG_INFO("Creating sky sphere...");
-				CreateFromSphere(m_texture_paths.front());
-                LOG_INFO("Sky sphere has been created successfully");
-			}
-		});
-	}
+    void Environment::Serialize(FileStream* stream)
+    {
+        stream->Write(static_cast<uint8_t>(m_environment_type));
+        stream->Write(m_file_paths);
+    }
+
+    void Environment::Deserialize(FileStream* stream)
+    {
+        m_environment_type = static_cast<Environment_Type>(stream->ReadAs<uint8_t>());
+        stream->Read(&m_file_paths);
+
+        m_context->GetSubsystem<Threading>()->AddTask([this]
+        {
+            if (m_environment_type == Enviroment_Cubemap)
+            {
+                SetFromTextureArray(m_file_paths);
+                
+            }
+            else if (m_environment_type == Environment_Sphere)
+            {
+                
+                SetFromTextureSphere(m_file_paths.front());
+            }
+        });
+    }
+
+    void Environment::LoadDefault()
+    {
+        m_context->GetSubsystem<Threading>()->AddTask([this]
+        {
+            SetFromTextureSphere(m_file_paths.front());
+        });
+    }
 
     const shared_ptr<RHI_Texture>& Environment::GetTexture()
     {
@@ -86,12 +102,17 @@ namespace Spartan
     void Environment::SetTexture(const shared_ptr<RHI_Texture>& texture)
     {
         m_context->GetSubsystem<Renderer>()->SetEnvironmentTexture(static_pointer_cast<RHI_Texture>(texture));
+
+        // Save file path for serialization/deserialization
+        m_file_paths = { texture->GetResourceFilePath() };
     }
 
-    void Environment::CreateFromArray(const vector<string>& texturePaths)
+    void Environment::SetFromTextureArray(const vector<string>& file_paths)
 	{
-		if (texturePaths.empty())
+		if (file_paths.empty())
 			return;
+
+        LOG_INFO("Creating sky box...");
 
 		// Load all textures (sides)
 		vector<vector<vector<std::byte>>> cubemapData;
@@ -100,22 +121,22 @@ namespace Spartan
         auto m_generate_mipmaps = false;
 		auto loaderTex = make_shared<RHI_Texture2D>(GetContext(), m_generate_mipmaps);
 		{
-			loaderTex->LoadFromFile(texturePaths[0]);
+			loaderTex->LoadFromFile(file_paths[0]);
 			cubemapData.emplace_back(loaderTex->GetData());
 
-			loaderTex->LoadFromFile(texturePaths[1]);
+			loaderTex->LoadFromFile(file_paths[1]);
 			cubemapData.emplace_back(loaderTex->GetData());
 
-			loaderTex->LoadFromFile(texturePaths[2]);
+			loaderTex->LoadFromFile(file_paths[2]);
 			cubemapData.emplace_back(loaderTex->GetData());
 
-			loaderTex->LoadFromFile(texturePaths[3]);
+			loaderTex->LoadFromFile(file_paths[3]);
 			cubemapData.emplace_back(loaderTex->GetData());
 
-			loaderTex->LoadFromFile(texturePaths[4]);
+			loaderTex->LoadFromFile(file_paths[4]);
 			cubemapData.emplace_back(loaderTex->GetData());
 
-			loaderTex->LoadFromFile(texturePaths[5]);
+			loaderTex->LoadFromFile(file_paths[5]);
 			cubemapData.emplace_back(loaderTex->GetData());
 		}
 
@@ -128,18 +149,24 @@ namespace Spartan
 
         // Apply sky sphere to renderer
         SetTexture(static_pointer_cast<RHI_Texture>(texture));
+
+        LOG_INFO("Sky box has been created successfully");
 	}
 
-	void Environment::CreateFromSphere(const string& texture_path)
+	void Environment::SetFromTextureSphere(const string& file_path)
 	{
+        LOG_INFO("Creating sky sphere...");
+
         // Don't generate mipmaps as the Renderer will generate a prefiltered environment which is required for proper IBL
-        auto m_generate_mipmaps = true;
+        auto generate_mipmaps = true;
 
         // Skysphere
-        auto texture = make_shared<RHI_Texture2D>(GetContext(), m_generate_mipmaps);
-        texture->LoadFromFile(texture_path);
+        auto texture = make_shared<RHI_Texture2D>(GetContext(), generate_mipmaps);
+        texture->LoadFromFile(file_path);
 
         // Apply sky sphere to renderer
         SetTexture(static_pointer_cast<RHI_Texture>(texture));
+
+        LOG_INFO("Sky sphere has been created successfully");
 	}
 }
