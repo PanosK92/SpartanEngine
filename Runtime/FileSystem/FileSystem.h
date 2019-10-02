@@ -55,8 +55,9 @@ namespace Spartan
 		//============================================================
 
 		//= FILES ============================================================================
-		static bool FileExists(const std::string& filePath);
-		static bool DeleteFile_(const std::string& filePath);
+		static bool FileExists(const std::string& file_path);
+        static bool IsFilePath(const std::string& file_path);
+		static bool DeleteFile_(const std::string& file_path);
 		static bool CopyFileFromTo(const std::string& source, const std::string& destination);
 		//====================================================================================
 
