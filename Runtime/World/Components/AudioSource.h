@@ -49,7 +49,6 @@ namespace Spartan
 
 		//= PROPERTIES ===================================================================
         void SetAudioClip(const std::string& file_path);
-		void SetAudioClip(const std::shared_ptr<AudioClip>& audio_clip);
 		std::string GetAudioClipName();
 
 		bool Play();

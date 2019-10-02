@@ -93,8 +93,9 @@ namespace Spartan
 		stream->Write(m_pitch);
 		stream->Write(m_pan);
 
-        stream->Write(m_audio_clip ? true : false);
-        if (m_audio_clip)
+        bool has_audio_clip = m_audio_clip != nullptr;
+        stream->Write(has_audio_clip);
+        if (has_audio_clip)
         {
             stream->Write(m_audio_clip->GetResourceName());
         }
@@ -114,18 +115,6 @@ namespace Spartan
         {
             m_audio_clip = m_context->GetSubsystem<ResourceCache>()->GetByName<AudioClip>(stream->ReadAs<string>());
         }
-	}
-
-	void AudioSource::SetAudioClip(const shared_ptr<AudioClip>& audio_clip)
-	{
-		if (!audio_clip)
-		{
-			LOG_ERROR_INVALID_PARAMETER();
-			return;
-		}
-
-        // In order for the component to guarantee serialization/deserialization, we cache the audio clip
-		m_audio_clip = m_context->GetSubsystem<ResourceCache>()->Cache(audio_clip);
 	}
 
     void AudioSource::SetAudioClip(const string& file_path)

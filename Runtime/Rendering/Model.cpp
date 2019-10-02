@@ -68,29 +68,18 @@ namespace Spartan
 	bool Model::LoadFromFile(const string& file_path)
 	{
 		Stopwatch timer;
-		string file_path_relative = FileSystem::GetRelativeFilePath(file_path);
 
-		// Check if this is a directory instead of a model file path
-		if (FileSystem::IsDirectory(file_path))
-		{
-			// If it is, try to find a model file in it
-			auto model_file_paths = FileSystem::GetSupportedModelFilesInDirectory(file_path);
-			if (!model_file_paths.empty())
-			{
-				file_path_relative = model_file_paths.front();
-			}
-			else // abort
-			{
-				LOGF_WARNING("Failed to load model. Unable to find supported file in \"%s\".", FileSystem::GetDirectoryFromFilePath(file_path).c_str());
-				return false;
-			}
-		}
+        if (file_path.empty() || FileSystem::IsDirectory(file_path))
+        {
+            LOG_WARNING("Invalid file path");
+            return false;
+        }
 
         // Load engine format
-        if (FileSystem::GetExtensionFromFilePath(file_path_relative) == EXTENSION_MODEL)
+        if (FileSystem::GetExtensionFromFilePath(file_path) == EXTENSION_MODEL)
         {
             // Deserialize
-            auto file = make_unique<FileStream>(file_path_relative, FileStream_Read);
+            auto file = make_unique<FileStream>(file_path, FileStream_Read);
             if (!file->IsOpen())
                 return false;
 
@@ -104,7 +93,9 @@ namespace Spartan
         // Load foreign format
         else
         {
-            if (m_resource_manager->GetModelImporter()->Load(this, file_path_relative))
+            SetResourceFilePath(file_path);
+
+            if (m_resource_manager->GetModelImporter()->Load(this, file_path))
             {
                 // Set the normalized scale to the root entity's transform
                 m_normalized_scale = GeometryComputeNormalizedScale();
@@ -116,9 +107,6 @@ namespace Spartan
                 return false;
             }
         }
-
-        // Set a file path so the the model can be used by the resource cache
-        SetResourceFilePath(file_path);
 
 		m_size = GeometryComputeMemoryUsage();
 		LOGF_INFO("Loading \"%s\" took %d ms", FileSystem::GetFileNameFromFilePath(file_path).c_str(), static_cast<int>(timer.GetElapsedTimeMs()));
@@ -135,7 +123,9 @@ namespace Spartan
 		file->Write(GetResourceFilePath());
 		file->Write(m_normalized_scale);
 		file->Write(m_mesh->Indices_Get());
-		file->Write(m_mesh->Vertices_Get());	
+		file->Write(m_mesh->Vertices_Get());
+
+        file->Close();
 
 		return true;
 	}

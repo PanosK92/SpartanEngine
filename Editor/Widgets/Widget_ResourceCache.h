@@ -30,4 +30,7 @@ class Widget_ResourceCache : public Widget
 public:
 	Widget_ResourceCache(Spartan::Context* context);
 	void Tick() override;
+
+private:
+    bool m_column_width_set = false;
 };

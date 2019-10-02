@@ -408,20 +408,28 @@ namespace Spartan
 
     void Terrain::UpdateFromVertices(const vector<uint32_t>& indices, vector<RHI_Vertex_PosTexNorTan>& vertices)
     {
-        // Create model and cache it
+        // Add vertices and indices into a model struct (and cache that)
         if (!m_model)
         {
-            ResourceCache* resource_cache = m_context->GetSubsystem<ResourceCache>().get();
+            // Create new model
             m_model = make_shared<Model>(m_context);
+
+            // Set geometry
+            m_model->AppendGeometry(indices, vertices);
+            m_model->UpdateGeometry();
+
             // Set a file path so the model can be used by the resource cache
+            ResourceCache* resource_cache = m_context->GetSubsystem<ResourceCache>().get();
             m_model->SetResourceFilePath(resource_cache->GetProjectDirectory() + m_entity->GetName() + "_terrain_" + to_string(m_id) + string(EXTENSION_MODEL));
             m_model = resource_cache->Cache(m_model);
         }
-
-        // Update with geometry
-        m_model->Clear();
-        m_model->AppendGeometry(indices, vertices);
-        m_model->UpdateGeometry();
+        else
+        {
+            // Update with new geometry
+            m_model->Clear();
+            m_model->AppendGeometry(indices, vertices);
+            m_model->UpdateGeometry();
+        }
 
         UpdateFromModel(m_model);
     }
