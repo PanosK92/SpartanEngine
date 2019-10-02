@@ -36,50 +36,66 @@ Widget_ResourceCache::Widget_ResourceCache(Context* context) : Widget(context)
 {
 	m_title			= "Resource Cache";
 	m_flags	        |= ImGuiWindowFlags_HorizontalScrollbar;
+    m_size          = ImVec2(1366, 768);
 	m_is_visible	= false;
 }
 
 void Widget_ResourceCache::Tick()
 {
-	auto resourceCache		= m_context->GetSubsystem<ResourceCache>();
-	auto resources			= resourceCache->GetByType();
-	auto totalMemoryUsage	= resourceCache->GetMemoryUsage() / 1000.0f / 1000.0f;
+	auto resource_cache		= m_context->GetSubsystem<ResourceCache>();
+	auto resources			= resource_cache->GetByType();
+	auto totalMemoryUsage	= resource_cache->GetMemoryUsage() / 1000.0f / 1000.0f;
 
-	ImGui::Text("Resource count: %d, Total memory usage: %d Mb", (int)resources.size(), (int)totalMemoryUsage);
+	ImGui::Text("Resource count: %d, Total memory usage: %d Mb", static_cast<uint32_t>(resources.size()), static_cast<uint32_t>(totalMemoryUsage));
 	ImGui::Separator();
-	ImGui::Columns(5, "##MenuBar::ShowResourceCacheColumns");
-	ImGui::Text("Type"); ImGui::NextColumn();
-	ImGui::Text("ID"); ImGui::NextColumn();
-	ImGui::Text("Name"); ImGui::NextColumn();
-	ImGui::Text("Path"); ImGui::NextColumn();
-	ImGui::Text("Size"); ImGui::NextColumn();
+	ImGui::Columns(6, "##Widget_ResourceCache");
+
+    // Set column width - Has to be done only once in order to allow for the user to resize them
+    if (!m_column_width_set)
+    {
+        ImGui::SetColumnWidth(0, m_size.x * 0.15f);
+        ImGui::SetColumnWidth(1, m_size.x * 0.05f);
+        ImGui::SetColumnWidth(2, m_size.x * 0.15f);
+        ImGui::SetColumnWidth(3, m_size.x * 0.3f);
+        ImGui::SetColumnWidth(4, m_size.x * 0.3f);
+        ImGui::SetColumnWidth(5, m_size.x * 0.05f);
+        m_column_width_set = true;
+    }
+
+    // Set column titles
+	ImGui::Text("Type");            ImGui::NextColumn();
+	ImGui::Text("ID");              ImGui::NextColumn();
+	ImGui::Text("Name");            ImGui::NextColumn();
+    ImGui::Text("Path");            ImGui::NextColumn();
+	ImGui::Text("Path (native)");   ImGui::NextColumn();
+	ImGui::Text("Size");            ImGui::NextColumn();
 	ImGui::Separator();
-	for (const auto& resource : resources)
+
+    // Fill rows with resource information
+	for (const shared_ptr<IResource>& resource : resources)
 	{
 		if (!resource)
 			continue;
 
 		// Type
 		ImGui::Text(resource->GetResourceTypeCstr());					ImGui::NextColumn();
-
 		// ID
 		ImGui::Text(to_string(resource->GetId()).c_str());		        ImGui::NextColumn();
-
 		// Name
-		ImGui::Text(resource->GetResourceName().c_str());				ImGui::NextColumn();
-
-		// Path
+        ImGui::Text(resource->GetResourceName().c_str());				ImGui::NextColumn();
+        // Path
+        ImGui::Text(resource->GetResourceFilePath().c_str());		    ImGui::NextColumn();
+		// Path (native)
 		ImGui::Text(resource->GetResourceFilePathNative().c_str());		ImGui::NextColumn();
-
 		// Memory
-		auto memory = (unsigned int)(resource->GetMemoryUsage() / 1000.0f); // default in Kb
+		uint32_t memory = static_cast<uint32_t>(resource->GetMemoryUsage() / 1000.0f); // default in Kb
 		if (memory <= 1024)
 		{
 			ImGui::Text((to_string(memory) + string(" Kb")).c_str());	ImGui::NextColumn();
 		}
 		else
 		{
-			memory = (unsigned int)(memory / 1000.0f); // turn into Mb
+            memory = static_cast<uint32_t>(memory / 1000.0f); // turn into Mb
 			ImGui::Text((to_string(memory) + string(" Mb")).c_str());	ImGui::NextColumn();
 		}
 	}

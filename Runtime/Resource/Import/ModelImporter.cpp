@@ -83,6 +83,9 @@ namespace Spartan
 
 	bool ModelImporter::Load(Model* model, const string& file_path)
 	{
+        const uint32_t triangle_limit   = 1000000;
+        const uint32_t vertex_limit     = 1000000;
+
 		if (!m_context)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
@@ -97,11 +100,9 @@ namespace Spartan
 		importer.SetPropertyFloat(AI_CONFIG_PP_GSN_MAX_SMOOTHING_ANGLE, _ModelImporter::max_normal_smoothing_angle);
 		// Set tangent smoothing angle
 		importer.SetPropertyFloat(AI_CONFIG_PP_CT_MAX_SMOOTHING_ANGLE, _ModelImporter::max_tangent_smoothing_angle);	
-		// Maximum number of triangles in a mesh (before splitting)
-		const uint32_t triangle_limit = 1000000;
+		// Maximum number of triangles in a mesh (before splitting)	
 		importer.SetPropertyInteger(AI_CONFIG_PP_SLM_TRIANGLE_LIMIT, triangle_limit);
-		// Maximum number of vertices in a mesh (before splitting)
-		const uint32_t vertex_limit = 1000000;
+		// Maximum number of vertices in a mesh (before splitting)	
 		importer.SetPropertyInteger(AI_CONFIG_PP_SLM_VERTEX_LIMIT, vertex_limit);
 		// Remove points and lines.
 		importer.SetPropertyInteger(AI_CONFIG_PP_SBP_REMOVE, aiPrimitiveType_LINE | aiPrimitiveType_POINT);	

@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/EventSystem.h"
 #include "../RHI/RHI_Texture2D.h"
 #include "../RHI/RHI_TextureCube.h"
+#include "../Audio/AudioClip.h"
 //=================================
 
 //= NAMESPACES ================
@@ -233,6 +234,9 @@ namespace Spartan
 			case Resource_TextureCube:
 				Load<RHI_TextureCube>(file_path);
 				break;
+            case Resource_Audio:
+                Load<AudioClip>(file_path);
+                break;
 			}
 		}
 	}
