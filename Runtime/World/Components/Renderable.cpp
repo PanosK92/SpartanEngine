@@ -93,11 +93,11 @@ namespace Spartan
 		m_geometryIndexCount	= 0;
 		m_geometryVertexOffset	= 0;
 		m_geometryVertexCount	= 0;
-		m_materialDefault		= false;
+		m_material_default		= false;
 		m_castShadows			= true;
 		m_receiveShadows		= true;
 
-		REGISTER_ATTRIBUTE_VALUE_VALUE(m_materialDefault,       bool);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_material_default,       bool);
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_material,              shared_ptr<Material>);
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_castShadows,           bool);
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_receiveShadows,        bool);
@@ -125,8 +125,8 @@ namespace Spartan
 		// Material
 		stream->Write(m_castShadows);
 		stream->Write(m_receiveShadows);
-		stream->Write(m_materialDefault);
-		if (!m_materialDefault)
+		stream->Write(m_material_default);
+		if (!m_material_default)
 		{
 			stream->Write(m_material ? m_material->GetResourceName() : "");
 		}
@@ -154,8 +154,8 @@ namespace Spartan
 		// Material
 		stream->Read(&m_castShadows);
 		stream->Read(&m_receiveShadows);
-		stream->Read(&m_materialDefault);
-		if (m_materialDefault)
+		stream->Read(&m_material_default);
+		if (m_material_default)
 		{
 			UseDefaultMaterial();		
 		}
@@ -231,6 +231,9 @@ namespace Spartan
 
         // In order for the component to guarantee serialization/deserialization, we cache the material
 		m_material = m_context->GetSubsystem<ResourceCache>()->Cache(material);
+
+        // Set to false otherwise material won't serialize/deserialize
+        m_material_default = false;
 	}
 
 	shared_ptr<Material> Renderable::SetMaterial(const string& file_path)
@@ -252,7 +255,7 @@ namespace Spartan
 
 	void Renderable::UseDefaultMaterial()
 	{
-		m_materialDefault = true;
+		m_material_default = true;
 
         ResourceCache* resource_cache = GetContext()->GetSubsystem<ResourceCache>().get();
 
@@ -265,6 +268,7 @@ namespace Spartan
 		material->SetColorAlbedo(Vector4(0.6f, 0.6f, 0.6f, 1.0f));
 		material->SetIsEditable(false);		
 		SetMaterial(material);
+        m_material_default = true;
 	}
 
 	string Renderable::GetMaterialName()

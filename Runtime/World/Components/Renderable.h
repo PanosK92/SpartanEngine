@@ -118,7 +118,7 @@ namespace Spartan
         bool m_is_dirty                 = true;
         bool m_castShadows              = true;
         bool m_receiveShadows           = true;
-		bool m_materialDefault;
+		bool m_material_default;
         std::shared_ptr<Material> m_material;
 	};
 }
