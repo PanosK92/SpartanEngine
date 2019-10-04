@@ -333,7 +333,7 @@ namespace Spartan
 		}
 
         // Draw transparent (transparency of the poor)
-        m_cmd_list->SetBlendState(m_blend_color_add);
+        m_cmd_list->SetBlendState(m_blend_enabled);
         for (const auto& entity : m_entities[Renderer_Object_Transparent])
         {
             draw_entity(entity);
