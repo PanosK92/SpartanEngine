@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==================================
 #include "Renderable.h"
 #include "Transform.h"
+#include "../../Rendering/Model.h"
 #include "../../IO/FileStream.h"
 #include "../../Resource/ResourceCache.h"
 #include "../../Rendering/Utilities/Geometry.h"

@@ -21,8 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================
 #include "Widget_Assets.h"
-#include "../FileDialog.h"
 #include "Widget_Properties.h"
+#include "Rendering\Model.h"
+#include "../FileDialog.h"
 //============================
 
 //= NAMESPACES ==========

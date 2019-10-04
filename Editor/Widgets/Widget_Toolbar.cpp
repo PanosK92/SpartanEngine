@@ -26,9 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widget_ShaderEditor.h"
 #include "Widget_RenderOptions.h"
 #include "Core/Engine.h"
-#include "Core/Settings.h"
-#include "Rendering/Renderer.h"
-#include "../IconProvider.h"
+#include "Rendering\Model.h"
 #include "../ImGui_Extension.h"
 //===============================
 

@@ -30,10 +30,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_TextureCube.h"
 //====================================
 
-//= NAMESPACES ================
+//= NAMESPACES ===============
 using namespace std;
 using namespace Spartan::Math;
-//=============================
+//============================
 
 namespace Spartan
 {
@@ -56,7 +56,7 @@ namespace Spartan
 	}
 
 	//= IResource ==============================================
-	bool Material::LoadFromFile(const std::string& file_path)
+	bool Material::LoadFromFile(const string& file_path)
 	{
 		auto xml = make_unique<XmlDocument>();
 		if (!xml->Load(file_path))
@@ -98,7 +98,7 @@ namespace Spartan
 		return true;
 	}
 
-	bool Material::SaveToFile(const std::string& file_path)
+	bool Material::SaveToFile(const string& file_path)
 	{
         SetResourceFilePath(file_path);
 

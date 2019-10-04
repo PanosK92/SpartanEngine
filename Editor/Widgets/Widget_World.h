@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ======
 #include "Widget.h"
 #include <memory>
+namespace Spartan { class Context; }
 //=================
 
 namespace Spartan { class Entity; }

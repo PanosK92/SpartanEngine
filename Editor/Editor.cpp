@@ -22,8 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================================
 #include "Editor.h"
 #include "Core/Engine.h"
-#include "Rendering/Renderer.h"
-#include "IconProvider.h"
+#include "Rendering/Model.h"
 #include "ImGui_Extension.h"
 #include "ImGui/Implementation/ImGui_RHI.h"
 #include "ImGui/Implementation/imgui_impl_win32.h"

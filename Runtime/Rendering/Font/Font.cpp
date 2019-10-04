@@ -19,18 +19,16 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ============================
+//= INCLUDES ==================================
 #include "Font.h"
-#include "Glyph.h"
 #include "../Renderer.h"
 #include "../../Core/Stopwatch.h"
-#include "../../RHI/RHI_Implementation.h"
+#include "../../RHI/RHI_Vertex.h"
 #include "../../RHI/RHI_VertexBuffer.h"
 #include "../../RHI/RHI_IndexBuffer.h"
-#include "../../RHI/RHI_Vertex.h"
-#include "../../RHI/RHI_Texture.h"
 #include "../../Resource/ResourceCache.h"
-//=======================================
+#include "../../Resource/Import/FontImporter.h"
+//=============================================
 
 //= NAMESPACES ================
 using namespace std;

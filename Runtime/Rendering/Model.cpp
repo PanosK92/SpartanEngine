@@ -19,21 +19,21 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==============================
+//= INCLUDES ================================
 #include "Model.h"
 #include "Mesh.h"
-#include "Animation.h"
 #include "Renderer.h"
 #include "../IO/FileStream.h"
 #include "../Core/Stopwatch.h"
 #include "../Resource/ResourceCache.h"
+#include "../Resource/Import/ModelImporter.h"
 #include "../World/Entity.h"
 #include "../World/Components/Transform.h"
 #include "../World/Components/Renderable.h"
 #include "../RHI/RHI_VertexBuffer.h"
 #include "../RHI/RHI_IndexBuffer.h"
 #include "../RHI/RHI_Texture2D.h"
-//=========================================
+//===========================================
 
 //= NAMESPACES ================
 using namespace std;
