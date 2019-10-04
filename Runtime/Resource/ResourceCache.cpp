@@ -22,13 +22,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ======================
 #include "ResourceCache.h"
 #include "ProgressReport.h"
+#include "Import/ImageImporter.h"
+#include "Import/ModelImporter.h"
+#include "Import/FontImporter.h"
 #include "../World/World.h"
 #include "../World/Entity.h"
 #include "../IO/FileStream.h"
-#include "../Core/EventSystem.h"
 #include "../RHI/RHI_Texture2D.h"
 #include "../RHI/RHI_TextureCube.h"
 #include "../Audio/AudioClip.h"
+#include "../Rendering/Model.h"
 //=================================
 
 //= NAMESPACES ================

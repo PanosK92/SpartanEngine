@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==============================
 #include "Renderer.h"
+#include "Model.h"
 #include "Font/Font.h"
 #include "Shaders/ShaderBuffered.h"
 #include "Utilities/Sampling.h"
@@ -46,7 +47,7 @@ using namespace Spartan::Math;
 namespace Spartan
 {
 	Renderer::Renderer(Context* context) : ISubsystem(context)
-	{	
+	{
 		m_flags		|= Render_Debug_Transform;
 		m_flags		|= Render_Debug_Grid;
 		m_flags		|= Render_Debug_Lights;

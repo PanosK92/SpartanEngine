@@ -19,12 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========================
+//= INCLUDES ================================
 #include "RHI_Texture.h"
 #include "../IO/FileStream.h"
 #include "../Rendering/Renderer.h"
 #include "../Resource/ResourceCache.h"
-//====================================
+#include "../Resource/Import/ImageImporter.h"
+//===========================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -209,8 +210,8 @@ namespace Spartan
     bool RHI_Texture::LoadFromFile_ForeignFormat(const string& file_path, const bool generate_mipmaps)
 	{
 		// Load texture
-		auto imageImp = m_context->GetSubsystem<ResourceCache>()->GetImageImporter();	
-		if (!imageImp->Load(file_path, this, generate_mipmaps))
+		ImageImporter* importer = m_context->GetSubsystem<ResourceCache>()->GetImageImporter();	
+		if (!importer->Load(file_path, this, generate_mipmaps))
 			return false;
 
 		// Set resource file path so it can be used by the resource cache

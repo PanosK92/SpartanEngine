@@ -21,18 +21,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====================
-#include <memory>
+//= INCLUDES ==================
 #include <map>
-#include "Import/ModelImporter.h"
-#include "Import/ImageImporter.h"
-#include "Import/FontImporter.h"
+#include "IResource.h"
 #include "../Core/ISubsystem.h"
-#include "../Rendering/Model.h"
-//===============================
+//=============================
 
 namespace Spartan
 {
+    // Forward declarations
+    class FontImporter;
+    class ImageImporter;
+    class ModelImporter;
+
 	enum Asset_Type
 	{
 		Asset_Cubemaps,

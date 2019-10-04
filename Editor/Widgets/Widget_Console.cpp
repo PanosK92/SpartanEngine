@@ -21,8 +21,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================
 #include "Widget_Console.h"
-#include "../IconProvider.h"
 #include "../ImGui_Extension.h"
+#include "Rendering\Model.h"
 //=============================
 
 //= NAMESPACES =========

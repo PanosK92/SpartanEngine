@@ -19,15 +19,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =======================
+//= INCLUDES ==================
 #include "Widget_Viewport.h"
-#include "Rendering/Renderer.h"
-#include "World/Entity.h"
-#include "World/Components/Camera.h"
-#include "Widget_World.h"
 #include "../ImGui_Extension.h"
 #include "Core/Timer.h"
-//==================================
+#include "Rendering\Model.h"
+//=============================
 
 //= NAMESPACES =========
 using namespace std;

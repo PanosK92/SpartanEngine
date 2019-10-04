@@ -19,13 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===============================
+//= INCLUDES ==============================
 #include "Widget_World.h"
 #include "Widget_Properties.h"
 #include "../ImGui_Extension.h"
 #include "../ImGui/Source/imgui_stdlib.h"
-#include "Input/Input.h"
 #include "Resource/ProgressReport.h"
+#include "Rendering/Model.h"
 #include "World/Entity.h"
 #include "World/Components/Transform.h"
 #include "World/Components/Light.h"
@@ -33,12 +33,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/AudioListener.h"
 #include "World/Components/RigidBody.h"
 #include "World/Components/Collider.h"
-#include "World/Components/Camera.h"
 #include "World/Components/Constraint.h"
 #include "World/Components/Renderable.h"
 #include "World/Components/Environment.h"
 #include "World/Components/Terrain.h"
-//==========================================
+//=========================================
 
 //= NAMESPACES ==========
 using namespace std;
