@@ -116,7 +116,7 @@ namespace Spartan
 		LightType m_lightType	= LightType_Directional;
 		bool m_cast_shadows		= true;
 		float m_range			= 10.0f;
-		float m_intensity		= 2.0f;
+		float m_intensity		= 15.0f;
 		float m_angle_rad		= 0.5f; // about 30 degrees
 		float m_bias			= 0.001f;
 		float m_normal_bias		= 40.0f;	

@@ -148,7 +148,7 @@ void Widget_RenderOptions::Tick()
         }
 
         // Filter input
-        m_renderer->m_exposure                  = Abs(m_renderer->m_exposure);
+        m_renderer->m_exposure                  = m_renderer->m_exposure;
         m_renderer->m_bloom_intensity           = Abs(m_renderer->m_bloom_intensity);
         m_renderer->m_fxaa_sub_pixel            = Abs(m_renderer->m_fxaa_sub_pixel);
         m_renderer->m_fxaa_edge_threshold       = Abs(m_renderer->m_fxaa_edge_threshold);
