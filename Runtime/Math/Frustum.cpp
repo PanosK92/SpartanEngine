@@ -22,68 +22,83 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =======
 #include "Frustum.h"
 #include "Plane.h"
+#include <limits>
+//==================
+
+//= NAMESPACES =====
+using namespace std;
 //==================
 
 namespace Spartan::Math
 {
-    Frustum::Frustum(const Matrix& mView, const Matrix& mProjection, float screenDepth)
+    Frustum::Frustum(const Matrix& view, const Matrix& projection, float screen_depth)
 	{
 		// Calculate the minimum Z distance in the frustum.
-		float zMinimum = -mProjection.m32 / mProjection.m22;
-		float r = screenDepth / (screenDepth - zMinimum);
-		Matrix mProjectionUpdated = mProjection;
-		mProjectionUpdated.m22 = r;
-		mProjectionUpdated.m32 = -r * zMinimum;
+		float z_min                 = -projection.m32 / projection.m22;
+		float r                     = screen_depth / (screen_depth - z_min);
+		Matrix projection_updated   = projection;
+		projection_updated.m22      = r;
+		projection_updated.m32      = -r * z_min;
 
 		// Create the frustum matrix from the view matrix and updated projection matrix.
-		Matrix viewProjection = mView * mProjectionUpdated;
+		Matrix view_projection = view * projection_updated;
 
 		// Calculate near plane of frustum.
-		m_planes[0].normal.x = viewProjection.m03 + viewProjection.m02;
-		m_planes[0].normal.y = viewProjection.m13 + viewProjection.m12;
-		m_planes[0].normal.z = viewProjection.m23 + viewProjection.m22;
-		m_planes[0].d = viewProjection.m33 + viewProjection.m32;
+		m_planes[0].normal.x = view_projection.m03 + view_projection.m02;
+		m_planes[0].normal.y = view_projection.m13 + view_projection.m12;
+		m_planes[0].normal.z = view_projection.m23 + view_projection.m22;
+		m_planes[0].d = view_projection.m33 + view_projection.m32;
 		m_planes[0].Normalize();
 
 		// Calculate far plane of frustum.
-		m_planes[1].normal.x = viewProjection.m03 - viewProjection.m02;
-		m_planes[1].normal.y = viewProjection.m13 - viewProjection.m12;
-		m_planes[1].normal.z = viewProjection.m23 - viewProjection.m22;
-		m_planes[1].d = viewProjection.m33 - viewProjection.m32;
+		m_planes[1].normal.x = view_projection.m03 - view_projection.m02;
+		m_planes[1].normal.y = view_projection.m13 - view_projection.m12;
+		m_planes[1].normal.z = view_projection.m23 - view_projection.m22;
+		m_planes[1].d = view_projection.m33 - view_projection.m32;
 		m_planes[1].Normalize();
 
 		// Calculate left plane of frustum.
-		m_planes[2].normal.x = viewProjection.m03 + viewProjection.m00;
-		m_planes[2].normal.y = viewProjection.m13 + viewProjection.m10;
-		m_planes[2].normal.z = viewProjection.m23 + viewProjection.m20;
-		m_planes[2].d = viewProjection.m33 + viewProjection.m30;
+		m_planes[2].normal.x = view_projection.m03 + view_projection.m00;
+		m_planes[2].normal.y = view_projection.m13 + view_projection.m10;
+		m_planes[2].normal.z = view_projection.m23 + view_projection.m20;
+		m_planes[2].d = view_projection.m33 + view_projection.m30;
 		m_planes[2].Normalize();
 
 		// Calculate right plane of frustum.
-		m_planes[3].normal.x = viewProjection.m03 - viewProjection.m00;
-		m_planes[3].normal.y = viewProjection.m13 - viewProjection.m10;
-		m_planes[3].normal.z = viewProjection.m23 - viewProjection.m20;
-		m_planes[3].d = viewProjection.m33 - viewProjection.m30;
+		m_planes[3].normal.x = view_projection.m03 - view_projection.m00;
+		m_planes[3].normal.y = view_projection.m13 - view_projection.m10;
+		m_planes[3].normal.z = view_projection.m23 - view_projection.m20;
+		m_planes[3].d = view_projection.m33 - view_projection.m30;
 		m_planes[3].Normalize();
 
 		// Calculate top plane of frustum.
-		m_planes[4].normal.x = viewProjection.m03 - viewProjection.m01;
-		m_planes[4].normal.y = viewProjection.m13 - viewProjection.m11;
-		m_planes[4].normal.z = viewProjection.m23 - viewProjection.m21;
-		m_planes[4].d = viewProjection.m33 - viewProjection.m31;
+		m_planes[4].normal.x = view_projection.m03 - view_projection.m01;
+		m_planes[4].normal.y = view_projection.m13 - view_projection.m11;
+		m_planes[4].normal.z = view_projection.m23 - view_projection.m21;
+		m_planes[4].d = view_projection.m33 - view_projection.m31;
 		m_planes[4].Normalize();
 
 		// Calculate bottom plane of frustum.
-		m_planes[5].normal.x = viewProjection.m03 + viewProjection.m01;
-		m_planes[5].normal.y = viewProjection.m13 + viewProjection.m11;
-		m_planes[5].normal.z = viewProjection.m23 + viewProjection.m21;
-		m_planes[5].d = viewProjection.m33 + viewProjection.m31;
+		m_planes[5].normal.x = view_projection.m03 + view_projection.m01;
+		m_planes[5].normal.y = view_projection.m13 + view_projection.m11;
+		m_planes[5].normal.z = view_projection.m23 + view_projection.m21;
+		m_planes[5].d = view_projection.m33 + view_projection.m31;
 		m_planes[5].Normalize();
 	}
 
-    bool Frustum::IsVisible(const Vector3& center, const Vector3& extent)
+    bool Frustum::IsVisible(const Vector3& center, const Vector3& extent, bool ignore_near_plane /*= false*/)
     {
-        float radius = Max3(extent.x, extent.y, extent.z);
+        float radius = 0.0f;
+
+        if (!ignore_near_plane)
+        {
+            radius = Max3(extent.x, extent.y, extent.z);
+        }
+        else
+        {
+            constexpr float z = numeric_limits<float>::infinity(); // reverse-z onle (but I must read form Renderer)
+            radius = Max3(extent.x, extent.y, z);
+        }
 
         // Check sphere first as it's cheaper
         if (CheckSphere(center, radius) != Outside)

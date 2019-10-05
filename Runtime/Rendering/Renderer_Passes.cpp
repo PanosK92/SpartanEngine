@@ -119,11 +119,15 @@ namespace Spartan
 			m_cmd_list->SetShaderPixel(nullptr);
 			m_cmd_list->SetBlendState(m_blend_disabled);
 			m_cmd_list->SetDepthStencilState(m_depth_stencil_enabled);
-            m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
 			m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 			m_cmd_list->SetShaderVertex(shader_depth);
 			m_cmd_list->SetInputLayout(shader_depth->GetInputLayout());
 			m_cmd_list->SetViewport(shadow_map->GetViewport());
+
+            // "Pancaking" - https://www.gamedev.net/forums/topic/639036-shadow-mapping-and-high-up-objects/
+            // It's basically a way to capture the silhouettes of potential shadow casters behind the camera.
+            // Of course we also have to make sure that the light doesn't cull them in the first place (this is done automatically by the light)
+            m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid_no_clip);
 
 			// Tracking
 			uint32_t currently_bound_geometry   = 0;

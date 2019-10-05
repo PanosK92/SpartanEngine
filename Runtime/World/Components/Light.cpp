@@ -175,7 +175,7 @@ namespace Spartan
 	{
 		if (m_lightType == LightType_Directional)
 		{
-            for (uint32_t i = 0; i < static_cast<uint32_t>(m_cascades.size()); i++)
+            for (uint32_t i = 0; i < g_cascade_count; i++)
             {
                 Cascade& cascade    = m_cascades[i];
                 Vector3 position    = cascade.center - GetDirection() * cascade.max.z;
@@ -220,9 +220,10 @@ namespace Spartan
 		if (m_lightType == LightType_Directional)
 		{
             Cascade& cascade            = m_cascades[index];
-            const float cascade_extent  = (cascade.max.z - cascade.min.z);
-            const float min_z           = reverse_z ? cascade_extent : 0.0f;
-            const float max_z           = reverse_z ? 0.0f : cascade_extent;
+            const float zMod            = 10.0f; // z range ends up super tight but I don't think I am doing something wrong, so I manually extend it here.
+            const float cascade_extent  = (cascade.max.z - cascade.min.z) * zMod;
+            const float min_z           = reverse_z ? cascade_extent : -cascade_extent;
+            const float max_z           = reverse_z ? -cascade_extent : cascade_extent;
             m_matrix_projection[index]  = Matrix::CreateOrthoOffCenterLH(cascade.min.x, cascade.max.x, cascade.min.y, cascade.max.y, min_z, max_z);
             cascade.frustum             = Frustum(m_matrix_view[index], m_matrix_projection[index], max_z);
 		}
@@ -291,7 +292,7 @@ namespace Spartan
             splits[i]               = (d - clip_near) / clip_range;
         }
 
-        for (uint32_t cascade_index = 0; cascade_index < g_cascade_count; cascade_index++)
+        for (uint32_t i = 0; i < g_cascade_count; i++)
         {
             // Define camera frustum corners in clip space
             Vector3 frustum_corners[8] =
@@ -317,16 +318,16 @@ namespace Spartan
             {
                 // Reset split distance every time we restart
                 static float last_split_distance;
-                if (cascade_index == 0) last_split_distance = 0.0f;
+                if (i == 0) last_split_distance = 0.0f;
 
-                const float split_distance = splits[cascade_index];
+                const float split_distance = splits[i];
                 for (uint32_t i = 0; i < 4; i++)
                 {
                     Vector3 distance        = frustum_corners[i + 4] - frustum_corners[i];
                     frustum_corners[i + 4]  = frustum_corners[i] + (distance * split_distance);
                     frustum_corners[i]      = frustum_corners[i] + (distance * last_split_distance);
                 }
-                last_split_distance = splits[cascade_index];
+                last_split_distance = splits[i];
             }
 
             // Compute frustum bounds
@@ -335,7 +336,7 @@ namespace Spartan
                 // Since a sphere is rotational invariant it will keep the size of the orthographic
                 // projection frustum same independent of eye view direction, hence eliminating shimmering.
 
-                Cascade& cascade = m_cascades[cascade_index];
+                Cascade& cascade = m_cascades[i];
 
                 // Compute center
                 cascade.center = Vector3::Zero;
@@ -385,11 +386,14 @@ namespace Spartan
 
     bool Light::IsInViewFrustrum(Renderable* renderable, uint32_t index)
     {
-        const auto box      = renderable->GetAabb();
-        const auto center   = box.GetCenter();
-        const auto extents  = box.GetExtents();
+        const auto box          = renderable->GetAabb();
+        const auto center       = box.GetCenter();
+        const auto extents      = box.GetExtents();
 
-        return m_cascades[index].frustum.IsVisible(center, extents);
+        // ensure that potential shadow casters from behind the near plane are not rejected
+        bool ignore_near_plane = true; 
+
+        return m_cascades[index].frustum.IsVisible(center, extents, ignore_near_plane);
     }
 
     void Light::UpdateConstantBuffer(bool volumetric_lighting, bool screen_space_contact_shadows)
