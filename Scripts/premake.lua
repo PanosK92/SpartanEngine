@@ -83,12 +83,12 @@ project (RUNTIME_NAME)
 	includedirs { "../ThirdParty/SPIRV-Cross" }
 	includedirs { "../ThirdParty/Vulkan_1.1.121.0" }
 	includedirs { "../ThirdParty/AngelScript_2.33.0" }
-	includedirs { "../ThirdParty/Assimp_5.0.0.rc2" }
+	includedirs { "../ThirdParty/Assimp_5.0.0" }
 	includedirs { "../ThirdParty/Bullet_2.88" }
 	includedirs { "../ThirdParty/FMOD_1.10.10" }
 	includedirs { "../ThirdParty/FreeImage_3.18.0" }
 	includedirs { "../ThirdParty/FreeType_2.10.0" }
-	includedirs { "../ThirdParty/pugixml_1.9" }
+	includedirs { "../ThirdParty/pugixml_1.10" }
 	
 	-- Libraries
 	libdirs (LIBRARY_DIR)

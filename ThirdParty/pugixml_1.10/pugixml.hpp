@@ -1,8 +1,8 @@
 /**
- * pugixml parser - version 1.9
+ * pugixml parser - version 1.10
  * --------------------------------------------------------
- * Copyright (C) 2006-2018, by Arseny Kapoulkine (arseny.kapoulkine@gmail.com)
- * Report bugs and download new versions at http://pugixml.org/
+ * Copyright (C) 2006-2019, by Arseny Kapoulkine (arseny.kapoulkine@gmail.com)
+ * Report bugs and download new versions at https://pugixml.org/
  *
  * This library is distributed under the MIT License. See notice at the end
  * of this file.
@@ -12,8 +12,9 @@
  */
 
 #ifndef PUGIXML_VERSION
-// Define version macro; evaluates to major * 100 + minor so that it's safe to use in less-than comparisons
-#	define PUGIXML_VERSION 190
+// Define version macro; evaluates to major * 1000 + minor * 10 + patch so that it's safe to use in less-than comparisons
+// Note: pugixml used major * 100 + minor * 10 + patch format up until 1.9 (which had version identifier 190); starting from pugixml 1.10, the minor version number is two digits
+#	define PUGIXML_VERSION 1100
 #endif
 
 // Include user configuration file (this can define various configuration macros)
@@ -251,6 +252,12 @@ namespace pugi
 
 	// Don't output empty element tags, instead writing an explicit start and end tag even if there are no children. This flag is off by default.
 	const unsigned int format_no_empty_element_tags = 0x80;
+
+	// Skip characters belonging to range [0; 32) instead of "&#xNN;" encoding. This flag is off by default.
+	const unsigned int format_skip_control_chars = 0x100;
+
+	// Use single quotes ' instead of double quotes " for enclosing attribute values. This flag is off by default.
+	const unsigned int format_attribute_single_quote = 0x200;
 
 	// The default set of formatting flags.
 	// Nodes are indented depending on their depth in DOM tree, a default declaration is output if document has none.
@@ -1251,6 +1258,12 @@ namespace pugi
 	};
 
 	#ifndef PUGIXML_NO_EXCEPTIONS
+        #if defined(_MSC_VER)
+          // C4275 can be ignored in Visual C++ if you are deriving
+          // from a type in the Standard C++ Library
+          #pragma warning(push)
+          #pragma warning(disable: 4275)
+        #endif
 	// XPath exception class
 	class PUGIXML_CLASS xpath_exception: public std::exception
 	{
@@ -1267,6 +1280,9 @@ namespace pugi
 		// Get parse result
 		const xpath_parse_result& result() const;
 	};
+        #if defined(_MSC_VER)
+          #pragma warning(pop)
+        #endif
 	#endif
 
 	// XPath node class (either xml_node or xml_attribute)
@@ -1372,7 +1388,7 @@ namespace pugi
 	private:
 		type_t _type;
 
-		xpath_node _storage;
+		xpath_node _storage[1];
 
 		xpath_node* _begin;
 		xpath_node* _end;
@@ -1436,7 +1452,7 @@ namespace std
 #endif
 
 /**
- * Copyright (c) 2006-2018 Arseny Kapoulkine
+ * Copyright (c) 2006-2019 Arseny Kapoulkine
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
