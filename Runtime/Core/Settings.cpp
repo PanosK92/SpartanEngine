@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../FileSystem/FileSystem.h"
 #include "../Rendering/Renderer.h"
 #include "../Threading/Threading.h"
+#include "pugixml.hpp"
 //===================================
 
 //= NAMESPACES ================
@@ -69,6 +70,11 @@ namespace Spartan
     Settings::Settings(Context* context) : ISubsystem(context)
     {
         m_context = context;
+
+        // Get PugiXml version
+        const auto major = to_string(PUGIXML_VERSION / 1000);
+        const auto minor = to_string(PUGIXML_VERSION).erase(0, 1).erase(1, 1);
+        m_versionPugiXML = major + "." + minor;
     }
 
     Settings::~Settings()

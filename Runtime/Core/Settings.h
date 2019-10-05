@@ -53,7 +53,7 @@ namespace Spartan
 		std::string m_versionFreeImage;
 		std::string m_versionFreeType;
 		std::string m_versionImGui;
-		std::string m_versionPugiXML = "1.90";
+        std::string m_versionPugiXML;
 		std::string m_versionGraphicsAPI;
 
     private:
