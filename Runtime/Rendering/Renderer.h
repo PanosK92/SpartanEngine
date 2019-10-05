@@ -265,15 +265,15 @@ namespace Spartan
 		//=================================================================================================================================
 
         //= Graphics Settings ====================================================================================================================================================
-        Renderer_ToneMapping_Type m_tonemapping  = ToneMapping_Uncharted2;
-        float m_exposure                = 1.5f;
+        Renderer_ToneMapping_Type m_tonemapping  = ToneMapping_ACES;
+        float m_exposure                = 0.0f;
         float m_gamma                   = 2.2f;
         // FXAA
         float m_fxaa_sub_pixel          = 1.25f;	// The amount of sub-pixel aliasing removal														- Algorithm's default: 0.75f
         float m_fxaa_edge_threshold     = 0.125f;	// Edge detection threshold. The minimum amount of local contrast required to apply algorithm.  - Algorithm's default: 0.166f
         float m_fxaa_edge_threshold_min = 0.0312f;	// Darkness threshold. Trims the algorithm from processing darks								- Algorithm's default: 0.0833f
         // Bloom
-        float m_bloom_intensity         = 0.02f;	// The intensity of the bloom
+        float m_bloom_intensity         = 0.01f;	// The intensity of the bloom
         // Sharpening
         float m_sharpen_strength        = 1.0f;		// Strength of the sharpening
         float m_sharpen_clamp           = 0.35f;	// Limits maximum amount of sharpening a pixel receives											- Algorithm's default: 0.035f

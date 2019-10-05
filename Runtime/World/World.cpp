@@ -407,7 +407,6 @@ namespace Spartan
 
 		auto light_comp = light->AddComponent<Light>().get();
 		light_comp->SetLightType(LightType_Directional);
-		light_comp->SetIntensity(1.5f);
 
 		return light;
 	}

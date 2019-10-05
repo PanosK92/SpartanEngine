@@ -30,12 +30,12 @@ float3 SampleEnvironment(SamplerState sampler_linear, Texture2D tex_environment,
 		float2 mip_size	= float2(2, 1);
 		float dx 		= mip_size.x;
 	
-		float3 tl = degamma(tex_environment.SampleLevel(sampler_linear, uv + float2(-dx, 0.0f), mip_level).rgb);
-		float3 tr = degamma(tex_environment.SampleLevel(sampler_linear, uv + float2(dx, 0.0f), mip_level).rgb);
+		float3 tl = (tex_environment.SampleLevel(sampler_linear, uv + float2(-dx, 0.0f), mip_level).rgb);
+		float3 tr = (tex_environment.SampleLevel(sampler_linear, uv + float2(dx, 0.0f), mip_level).rgb);
 		return (tl + tr) / 2.0f;
 	}
 	
-	return degamma(tex_environment.SampleLevel(sampler_linear, uv, mip_level).rgb);
+	return (tex_environment.SampleLevel(sampler_linear, uv, mip_level).rgb);
 }
 
 float3 GetSpecularDominantDir(float3 normal, float3 reflection, float roughness)
