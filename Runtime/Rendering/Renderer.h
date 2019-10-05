@@ -363,14 +363,15 @@ namespace Spartan
         std::shared_ptr<RHI_BlendState> m_blend_bloom;
         //================================================
 
-		//= RASTERIZER STATES =================================================
+		//= RASTERIZER STATES ====================================================
 		std::shared_ptr<RHI_RasterizerState> m_rasterizer_cull_back_solid;
+        std::shared_ptr<RHI_RasterizerState> m_rasterizer_cull_back_solid_no_clip;
 		std::shared_ptr<RHI_RasterizerState> m_rasterizer_cull_front_solid;
 		std::shared_ptr<RHI_RasterizerState> m_rasterizer_cull_none_solid;
 		std::shared_ptr<RHI_RasterizerState> m_rasterizer_cull_back_wireframe;
 		std::shared_ptr<RHI_RasterizerState> m_rasterizer_cull_front_wireframe;
 		std::shared_ptr<RHI_RasterizerState> m_rasterizer_cull_none_wireframe;
-		//=====================================================================
+		//========================================================================
 
 		//= SAMPLERS ===========================================
 		std::shared_ptr<RHI_Sampler> m_sampler_compare_depth;
