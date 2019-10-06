@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 static const float g_vl_steps 		= 16;
-static const float g_vl_scattering 	= 0.995f;
+static const float g_vl_scattering 	= 0.997f;
 static const float g_vl_pow			= 0.5f;
 
 // Mie scaterring approximated with Henyey-Greenstein phase function.

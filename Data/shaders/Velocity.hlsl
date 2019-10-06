@@ -25,14 +25,13 @@ float2 GetVelocity_Dilate_Average(float2 texCoord, Texture2D texture_velocity, S
 	float dx = g_texel_size.x;
 	float dy = g_texel_size.y;
 	
-	float2 velocity_tl 	= texture_velocity.Sample(sampler_bilinear, texCoord + float2(-dx, -dy)).xy;
-	float2 velocity_tr	= texture_velocity.Sample(sampler_bilinear, texCoord + float2(dx, -dy)).xy;
-	float2 velocity_bl	= texture_velocity.Sample(sampler_bilinear, texCoord + float2(-dx, dy)).xy;
-	float2 velocity_br 	= texture_velocity.Sample(sampler_bilinear, texCoord + float2(dx, dy)).xy;
-	float2 velocity_ce 	= texture_velocity.Sample(sampler_bilinear, texCoord).xy;
-	float2 velocity_avg = (velocity_tl + velocity_tr + velocity_bl + velocity_br + velocity_ce) / 5.0f;	
+	float2 tl 	= texture_velocity.Sample(sampler_bilinear, texCoord + float2(-dx, -dy)).xy;
+	float2 tr	= texture_velocity.Sample(sampler_bilinear, texCoord + float2( dx, -dy)).xy;
+	float2 bl	= texture_velocity.Sample(sampler_bilinear, texCoord + float2(-dx, dy)).xy;
+	float2 br 	= texture_velocity.Sample(sampler_bilinear, texCoord + float2( dx, dy)).xy;
+	float2 ce 	= texture_velocity.Sample(sampler_bilinear, texCoord).xy;
 	
-	return velocity_avg;
+	return (tl + tr + bl + br + ce) / 5.0f;
 }
 
 // Returns velocity with min depth (in a 3x3 neighborhood)
@@ -40,6 +39,7 @@ float2 GetVelocity_Dilate_Min(float2 texCoord, Texture2D texture_velocity, Textu
 {	
 	float min_depth	= 0.0f;
 	float2 min_uv 	= texCoord;
+	
 	[unroll]
     for(int y = -1; y <= 1; ++y)
     {
@@ -64,6 +64,7 @@ float2 GetVelocity_Dilate_Max(float2 texCoord, Texture2D texture_velocity, Textu
 {	
 	float max_depth	= 1.0f;
 	float2 max_uv 	= texCoord;
+	
 	[unroll]
     for(int y = -1; y <= 1; ++y)
     {
