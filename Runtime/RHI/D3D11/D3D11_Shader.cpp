@@ -132,7 +132,14 @@ namespace Spartan
 			while (getline(ss, line, '\n'))
 			{
 				const auto is_error = line.find("error") != string::npos;
-				if (is_error) LOG_ERROR(line) else LOG_WARNING(line);
+                if (is_error)
+                {
+                    LOG_ERROR(line);
+                }
+                else
+                {
+                    LOG_WARNING(line);
+                }
 			}
 
 			safe_release(blob_error);

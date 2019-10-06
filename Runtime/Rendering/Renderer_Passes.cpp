@@ -754,6 +754,7 @@ namespace Spartan
         m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
         m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_uber_buffer);
         m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
+        m_cmd_list->Submit();
         m_cmd_list->End();
     }
 
