@@ -90,15 +90,15 @@ float4 Downsample_Box13Tap(float2 uv, float2 texelSize, Texture2D sourceTexture,
 }
 
 // Upsample with a 4x4 box filter
-float4 Upsample_Box(float2 uv, float2 texelSize, Texture2D sourceTexture, SamplerState bilinearSampler, float4 sampleScale)
+float4 Upsample_Box(float2 uv, float2 texel_size, Texture2D texture_source, SamplerState sampler_bilinear, float4 sample_scale)
 {
-	float4 d = texelSize.xyxy * float4(-1.0f, -1.0f, 1.0f, 1.0f) * (sampleScale * 0.5f);
+	float4 uv_delta = texel_size.xyxy * float4(-1.0f, -1.0f, 1.0f, 1.0f) * (sample_scale * 0.5f);
 	
-	float4 s;
-	s  = sourceTexture.Sample(bilinearSampler, uv + d.xy);
-	s += sourceTexture.Sample(bilinearSampler, uv + d.zy);
-	s += sourceTexture.Sample(bilinearSampler, uv + d.xw);
-	s += sourceTexture.Sample(bilinearSampler, uv + d.zw);
-	
-	return s * (1.0f / 4.0f);
+	float4 upsampled =
+	texture_source.Sample(sampler_bilinear, uv + uv_delta.xy) +
+	texture_source.Sample(sampler_bilinear, uv + uv_delta.zy) +
+	texture_source.Sample(sampler_bilinear, uv + uv_delta.xw) +
+	texture_source.Sample(sampler_bilinear, uv + uv_delta.zw);
+
+	return upsampled / 4.0f;
 }
