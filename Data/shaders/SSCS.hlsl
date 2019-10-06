@@ -19,9 +19,9 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-static const uint g_steps 				= 32;
-static const float g_ray_step 			= 0.003f;
-static const float g_rejection_depth 	= 0.03f;
+static const uint g_sscs_steps 				= 32;
+static const float g_sscs_ray_step 			= 0.01f;
+static const float g_sscs_rejection_depth 	= 0.02f;
 
 float ScreenSpaceContactShadows(float2 uv, float3 light_dir)
 {
@@ -35,10 +35,10 @@ float ScreenSpaceContactShadows(float2 uv, float3 light_dir)
 
 	// Compute ray position and direction
 	float3 ray_pos = origin_pos;
-	float3 ray_dir = light_dir_view * g_ray_step;
+	float3 ray_dir = light_dir_view * g_sscs_ray_step;
 
     // Ray march towards the light
-    for (uint i = 0; i < g_steps; i++)
+    for (uint i = 0; i < g_sscs_steps; i++)
     {
         // Step ray
         ray_pos 		+= ray_dir;
@@ -52,7 +52,7 @@ float ScreenSpaceContactShadows(float2 uv, float3 light_dir)
 		float depth_delta 	= ray_pos.z - depth_sampled;
 
         // Occlusion test
-        if (depth_delta > 0.02f && depth_delta <= g_rejection_depth)
+        if (depth_delta > 0.005f && depth_delta < g_sscs_rejection_depth)
 			return 0;
     }
 
