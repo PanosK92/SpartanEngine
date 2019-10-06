@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../IO/FileStream.h"
 #include "../../Resource/ResourceCache.h"
 #include "../../Rendering/Utilities/Geometry.h"
+#include "../../RHI/RHI_Texture2D.h"
 //=============================================
 
 //= NAMESPACES ===============
@@ -257,17 +258,21 @@ namespace Spartan
 	void Renderable::UseDefaultMaterial()
 	{
 		m_material_default = true;
-
         ResourceCache* resource_cache = GetContext()->GetSubsystem<ResourceCache>().get();
-
 		auto data_dir = resource_cache->GetDataDirectory();
 		FileSystem::CreateDirectory_(data_dir);
+
+        // Create material
 		auto material = make_shared<Material>(GetContext());
-        // Set resource file path so it can be used by the resource cache
-        material->SetResourceFilePath(resource_cache->GetProjectDirectory() + "standard" + EXTENSION_MATERIAL);
+        material->SetResourceFilePath(resource_cache->GetProjectDirectory() + "standard" + EXTENSION_MATERIAL); // Set resource file path so it can be used by the resource cache
 		material->SetCullMode(Cull_Back);
-		material->SetColorAlbedo(Vector4(0.6f, 0.6f, 0.6f, 1.0f));
-		material->SetIsEditable(false);		
+		material->SetIsEditable(false);
+
+        // Se default texture
+        shared_ptr<RHI_Texture2D> texture = resource_cache->Load<RHI_Texture2D>(resource_cache->GetDataDirectory(Asset_Textures) + "no_texture.png");
+        material->SetTextureSlot(TextureType_Albedo, texture);
+
+        // Set material
 		SetMaterial(material);
         m_material_default = true;
 	}
