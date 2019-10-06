@@ -91,7 +91,7 @@ namespace Spartan
 		bool LoadFromFile_NativeFormat(const std::string& file_path);
 		bool LoadFromFile_ForeignFormat(const std::string& file_path, bool generate_mipmaps);
 		static uint32_t GetChannelCountFromFormat(RHI_Format format);
-		virtual bool CreateResourceGpu() { return false; }
+        virtual bool CreateResourceGpu() { LOG_ERROR("Call to empty virtual function"); return false; }
 
 		uint32_t m_bpp			= 0;
 		uint32_t m_bpc			= 8;
