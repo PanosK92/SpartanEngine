@@ -37,35 +37,32 @@ SamplerState sampler_linear_clamp 	: register(s1);
 //=================================================
 
 
-static const int g_steps 					= 8;
-static const int g_binarySearchSteps 		= 8;
-static const float g_binarySearchThreshold 	= 0.01f;
+static const uint g_ssr_steps 					= 8;
+static const uint g_ssr_binarySearchSteps 		= 8;
+static const float g_ssr_binarySearchThreshold 	= 0.01f;
 
-bool binary_search(float3 ray_dir, inout float3 ray_pos, inout float2 ray_uv)
+bool binary_search(float3 ray_dir, inout float3 ray_pos, inout float2 ray_uv, in float depth_delta)
 {
-	for (int i = 0; i < g_binarySearchSteps; i++)
+	for (uint i = 0; i < g_ssr_binarySearchSteps; i++)
 	{	
-		ray_uv 				= project(ray_pos, g_projection);
-		float depth 		= get_linear_depth(tex_depth, sampler_linear_clamp, ray_uv);
-		float depth_delta 	= ray_pos.z - depth;
-
-		if (depth_delta <= 0.0f)
-			ray_pos += ray_dir;
-
 		ray_dir *= 0.5f;
-		ray_pos -= ray_dir;
+		ray_pos += -sign(depth_delta) * ray_dir;
+
+		ray_uv		= project(ray_pos, g_projection);
+		float depth	= get_linear_depth(tex_depth, sampler_linear_clamp, ray_uv);
+		depth_delta	= ray_pos.z - depth;
 	}
 
 	ray_uv 				= project(ray_pos, g_projection);
 	float depth_sample 	= get_linear_depth(tex_depth, sampler_linear_clamp, ray_uv);
-	float depth_delta 	= ray_pos.z - depth_sample;
+	depth_delta 		= abs(ray_pos.z - depth_sample);
 
-	return abs(depth_delta) < g_binarySearchThreshold;
+	return depth_delta < g_ssr_binarySearchThreshold;
 }
 
 bool ray_march(float3 ray_pos, float3 ray_dir, inout float2 ray_uv)
 {
-	for(int i = 0; i < g_steps; i++)
+	for(uint i = 0; i < g_ssr_steps; i++)
 	{
 		// Step ray
 		ray_pos += ray_dir;
@@ -73,11 +70,11 @@ bool ray_march(float3 ray_pos, float3 ray_dir, inout float2 ray_uv)
 
 		// Compare depth
 		float depth_sampled = get_linear_depth(tex_depth, sampler_linear_clamp, ray_uv);
-		float depth_delta 	= ray_pos.z - depth_sampled;
+		float depth_delta 	= abs(ray_pos.z - depth_sampled);
 		
 		[branch]
 		if (depth_delta > 0.0f)
-			return binary_search(ray_dir, ray_pos, ray_uv);
+			return binary_search(ray_dir, ray_pos, ray_uv, depth_delta);
 	}
 
 	return false;
@@ -98,7 +95,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 	float3 view_reflection 	= normalize(reflect(view_pos, view_normal));
 
 	// Apply dithering as it will allows us to get away with more detail
-	float3 dither_value = Dither(uv + g_taa_jitterOffset) * 200;
+	float3 dither_value = Dither(uv + g_taa_jitterOffset) * 60;
 	view_pos += view_reflection * dither_value;
 	
 	float2 ray_hit_uv = 0.0f;
