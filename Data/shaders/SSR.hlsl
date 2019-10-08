@@ -95,7 +95,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 	float3 view_reflection 	= normalize(reflect(view_pos, view_normal));
 
 	// Apply dithering as it will allows us to get away with more detail
-	float3 dither_value = Dither(uv + g_taa_jitterOffset) * 60;
+	float3 dither_value = Dither(uv + g_taa_jitterOffset) * 300.0f;
 	view_pos += view_reflection * dither_value;
 	
 	float2 ray_hit_uv = 0.0f;
@@ -103,7 +103,9 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 	{
 		float2 edgeFactor = float2(1, 1) - pow(saturate(abs(ray_hit_uv - float2(0.5f, 0.5f)) * 2), 8);
 		float fade_screen = saturate(min(edgeFactor.x, edgeFactor.y));
-		return tex_frame.Sample(sampler_linear_clamp, ray_hit_uv) * fade_screen;
+
+		// multiply with 2 to compensate for dither intensity loss
+		return tex_frame.Sample(sampler_linear_clamp, ray_hit_uv) * fade_screen * 2;
 	}
 	
 	return 0.0f;
