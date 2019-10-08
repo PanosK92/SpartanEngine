@@ -178,17 +178,6 @@ namespace Spartan
         renderable->SetMaterial(material);
 	}
 
-	void Model::AddAnimation(shared_ptr<Animation>& animation)
-	{
-		if (!animation)
-		{
-			LOG_ERROR_INVALID_PARAMETER();
-			return;
-		}
-
-		m_is_animated = true;
-	}
-
 	void Model::AddTexture(shared_ptr<Material>& material, const TextureType texture_type, const string& file_path)
 	{
 		if (!material || file_path.empty())

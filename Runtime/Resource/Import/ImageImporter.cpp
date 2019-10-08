@@ -109,6 +109,11 @@ namespace Spartan
 
 		// Load the image
 		auto bitmap = FreeImage_Load(format, file_path.c_str());
+        if (!bitmap)
+        {
+            LOGF_ERROR("Failed to load");
+            return false;
+        }
 
         // Deduce image properties. Important that this is done here, before ApplyBitmapCorrections(), as after that, results for grayscale seemed to be always false
         const bool image_is_transparent = FreeImage_IsTransparent(bitmap);
@@ -116,8 +121,11 @@ namespace Spartan
 
 		// Perform some fix ups
 		bitmap = ApplyBitmapCorrections(bitmap);
-		if (!bitmap)
-			return false;
+        if (!bitmap)
+        {
+            LOGF_ERROR("Failed to apply bitmap corrections");
+            return false;
+        }
 
         // Deduce image properties
         const unsigned int image_bpp            = FreeImage_GetBPP(bitmap);

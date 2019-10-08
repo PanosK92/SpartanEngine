@@ -48,7 +48,7 @@ namespace Spartan::AssimpHelper
 		);
 	}
 
-	constexpr void set_entity_transform(aiNode* node, Entity* entity)
+	constexpr void set_entity_transform(const aiNode* node, Entity* entity)
 	{
 		if (!entity)
 			return;
@@ -62,7 +62,7 @@ namespace Spartan::AssimpHelper
 		entity->GetTransform_PtrRaw()->SetScaleLocal(matrix_engine.GetScale());
 	}
 
-	constexpr void compute_node_count(aiNode* node, int* count)
+	constexpr void compute_node_count(const aiNode* node, int* count)
 	{
 		if (!node)
 			return;
