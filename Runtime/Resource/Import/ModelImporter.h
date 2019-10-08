@@ -40,6 +40,19 @@ namespace Spartan
 	class Model;
 	class World;
 
+    struct ModelParams
+    {
+        uint32_t triangle_limit;
+        uint32_t vertex_limit;
+        float max_normal_smoothing_angle;
+        float max_tangent_smoothing_angle;
+        std::string file_path;
+        std::string name;
+        Model* model;
+        bool has_animation;
+        const aiScene* scene;
+    };
+
 	class SPARTAN_CLASS ModelImporter
 	{
 	public:
@@ -49,12 +62,17 @@ namespace Spartan
 		bool Load(Model* model, const std::string& file_path);
 
 	private:
-		// PROCESSING
-		void ReadNodeHierarchy(const aiScene* assimp_scene, aiNode* assimp_node, Model* model, Entity* parent_node = nullptr, Entity* new_entity = nullptr);
-		void ReadAnimations(const aiScene* scene, Model* model);
-		void LoadMesh(const aiScene* assimp_scene, aiMesh* assimp_mesh, Model* model, Entity* entity_parent);
-		std::shared_ptr<Material> AiMaterialToMaterial(aiMaterial* assimp_material, Model* model);
+        // Parsing
+		void ParseNode(const aiNode* assimp_node, const ModelParams& params, Entity* parent_node = nullptr, Entity* new_entity = nullptr);
+        void ParseNodeMeshes(const aiNode* assimp_node, Entity* new_entity, const ModelParams& params);
+        void ParseAnimations(const ModelParams& params);
 
+        // Loading
+		void LoadMesh(aiMesh* assimp_mesh, Entity* entity_parent, const ModelParams& params);
+        void LoadBones(const aiMesh* assimp_mesh, const ModelParams& params);
+		std::shared_ptr<Material> LoadMaterial(aiMaterial* assimp_material, const ModelParams& params);
+
+        // Dependencies
 		Context* m_context;
 		World* m_world;
 	};

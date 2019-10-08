@@ -28,38 +28,38 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-	struct VertexWeight
-	{
-		uint32_t vertexID;
-		float weight;
-	};
+    struct AnimationVertexWeight
+    {
+        uint32_t vertexID;
+        float weight;
+    };
 
-	struct Bone
-	{
-		std::string name;
-		std::vector<VertexWeight> vertexWeights;
-		Math::Matrix offset;
-	};
+    struct AnimationBone
+    {
+        std::string name;
+        std::vector<AnimationVertexWeight> vertexWeights;
+        Math::Matrix offset;
+    };
 
-	struct KeyVector
-	{
-		double time;
-		Math::Vector3 value;
-	};
+    struct KeyVector
+    {
+        double time;
+        Math::Vector3 value;
+    };
 
-	struct KeyQuaternion
-	{
-		double time;
-		Math::Quaternion value;
-	};
+    struct KeyQuaternion
+    {
+        double time;
+        Math::Quaternion value;
+    };
 
-	struct AnimationNode
-	{
-		std::string name;
-		std::vector<KeyVector> positionFrames;
-		std::vector<KeyQuaternion> rotationFrames;
-		std::vector<KeyVector> scaleFrames;
-	};
+    struct AnimationNode
+    {
+        std::string name;
+        std::vector<KeyVector> positionFrames;
+        std::vector<KeyQuaternion> rotationFrames;
+        std::vector<KeyVector> scaleFrames;
+    };
 
 	class SPARTAN_CLASS Animation : public IResource
 	{

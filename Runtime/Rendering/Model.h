@@ -35,7 +35,6 @@ namespace Spartan
 	class ResourceCache;
 	class Entity;
 	class Mesh;
-    class Animation;
 	namespace Math{ class BoundingBox; }
 
 	class SPARTAN_CLASS Model : public IResource, public std::enable_shared_from_this<Model>
@@ -73,7 +72,6 @@ namespace Spartan
 		// Add resources to the model
         void SetRootEntity(const std::shared_ptr<Entity>& entity) { m_root_entity = entity; }
 		void AddMaterial(std::shared_ptr<Material>& material, const std::shared_ptr<Entity>& entity);
-		void AddAnimation(std::shared_ptr<Animation>& animation);
 		void AddTexture(std::shared_ptr<Material>& material, TextureType texture_type, const std::string& file_path);
 
         // Misc
