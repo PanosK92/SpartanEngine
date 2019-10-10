@@ -20,8 +20,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 static const uint g_sscs_steps 				= 32;
-static const float g_sscs_ray_step 			= 0.01f;
-static const float g_sscs_rejection_depth 	= 0.02f;
+static const float g_sscs_ray_step 			= 0.02f;
+static const float g_sscs_rejection_depth 	= 0.05f;
 
 float ScreenSpaceContactShadows(float2 uv, float3 light_dir)
 {
@@ -37,11 +37,15 @@ float ScreenSpaceContactShadows(float2 uv, float3 light_dir)
 	float3 ray_pos = origin_pos;
 	float3 ray_dir = light_dir_view * g_sscs_ray_step;
 
+	// Apply dithering as it will allows us to get away with more detail
+	float3 dither_value = Dither(uv + g_taa_jitterOffset) * 300.0f;
+	ray_pos += ray_dir * dither_value;
+
     // Ray march towards the light
     for (uint i = 0; i < g_sscs_steps; i++)
     {
         // Step ray
-        ray_pos 		+= ray_dir;
+        ray_pos 			+= ray_dir;
 		float2 ray_uv 	= project(ray_pos, g_projection);
 
 		if (!is_saturated(ray_uv))
@@ -52,7 +56,7 @@ float ScreenSpaceContactShadows(float2 uv, float3 light_dir)
 		float depth_delta 	= ray_pos.z - depth_sampled;
 
         // Occlusion test
-        if (depth_delta > 0.005f && depth_delta < g_sscs_rejection_depth)
+        if (depth_delta > 0.0f && depth_delta < g_sscs_rejection_depth)
 			return 0;
     }
 

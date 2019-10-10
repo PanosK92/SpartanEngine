@@ -601,7 +601,8 @@ namespace Spartan
             (m_flags & Render_VolumetricLighting) ? m_render_targets[RenderTarget_Light_Volumetric_Blurred]->GetResource_Texture() : m_tex_black->GetResource_Texture(),
             m_render_targets[RenderTarget_Ssr_Blurred]->GetResource_Texture(),
             GetEnvironmentTexture_GpuResource(),
-            m_render_targets[RenderTarget_Brdf_Specular_Lut]->GetResource_Texture()
+            m_render_targets[RenderTarget_Brdf_Specular_Lut]->GetResource_Texture(),
+             m_render_targets[RenderTarget_Ssao]->GetResource_Texture()
 		};
 
         const vector<void*> samplers =
@@ -622,7 +623,7 @@ namespace Spartan
 		m_cmd_list->SetInputLayout(shader_quad->GetInputLayout());
         m_cmd_list->SetShaderPixel(shader_composition);
 		m_cmd_list->SetSamplers(0, samplers);
-		m_cmd_list->SetTextures(0, textures, 10);
+		m_cmd_list->SetTextures(0, textures, 11);
 		m_cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
 		m_cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
 		m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
