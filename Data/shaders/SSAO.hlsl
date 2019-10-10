@@ -36,8 +36,8 @@ SamplerState samplerLinear_wrap : register(s1);
 //==============================================
 
 static const int sample_count		= 16;
-static const float radius			= 0.5f;
-static const float intensity    	= 2.0f;
+static const float radius			= 1.5f;
+static const float intensity    	= 1.5f;
 static const float2 noiseScale  	= float2(g_resolution.x / 128.0f, g_resolution.y / 128.0f);
 
 static const float3 sampleKernel[64] =

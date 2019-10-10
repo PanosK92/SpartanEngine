@@ -263,7 +263,7 @@ namespace Spartan
     {
         static const float mouse_sensitivity        = 20.0f;
         static const float mouse_smoothing          = 2.5f;
-        static const float movement_speed_max       = 10.0f;
+        static const float movement_speed_max       = 40.0f;
         static const float movement_acceleration    = 0.8f;
         static const float movement_drag            = 0.08f;
 

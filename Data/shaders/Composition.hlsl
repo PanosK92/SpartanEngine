@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= TEXTURES ==================================
+//= TEXTURES ===================================
 Texture2D tex_albedo 			: register(t0);
 Texture2D tex_normal 			: register(t1);
 Texture2D tex_depth 			: register(t2);
@@ -30,7 +30,8 @@ Texture2D tex_lightVolumetric 	: register(t6);
 Texture2D tex_ssr 				: register(t7);
 Texture2D tex_environment 		: register(t8);
 Texture2D tex_lutIbl			: register(t9);
-//=============================================
+Texture2D tex_ssao				: register(t10);
+//==============================================
 
 //= SAMPLERS ======================================
 SamplerState sampler_linear_clamp	: register(s0);
@@ -55,6 +56,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 	float4 sample_specular 		= tex_lightSpecular.Sample(sampler_point_clamp, uv);
 	float4 sample_ssr 			= tex_ssr.Sample(sampler_point_clamp, uv);
 	float sample_depth  		= tex_depth.Sample(sampler_point_clamp, uv).r;
+	float sample_ssao			= tex_ssao.Sample(sampler_point_clamp, uv).r;
 	float3 light_volumetric 	= tex_lightVolumetric.Sample(sampler_point_clamp, uv).rgb;
 
 	// Post-process samples
@@ -78,8 +80,8 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     float3 camera_to_pixel  = normalize(worldPos.xyz - g_camera_position.xyz);
 
 	// Ambient light
-	float light_ambient_min = g_directional_light_intensity * 0.025f; // best available option for now
-	float light_ambient		= g_directional_light_intensity * directional_shadow; // best available option for now
+	float light_ambient_min = sample_ssao * g_directional_light_intensity * 0.025f; // no global illumination, so ambient light of the poor it is...
+	float light_ambient		= g_directional_light_intensity * directional_shadow;
 	light_ambient			= clamp(light_ambient, light_ambient_min, 1.0f);
 	
 	// Sky
@@ -102,7 +104,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 		color += sample_ssr.rgb * reflectivity * light_received;
 		
 		// Emissive
-		sample_specular.rgb += material.emissive * 10.0f;
+		sample_specular.rgb += material.emissive * 40.0f;
 	
 		// Combine
 		float3 light_sources = (sample_diffuse.rgb + sample_specular.rgb) * material.albedo;
