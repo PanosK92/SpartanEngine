@@ -242,7 +242,7 @@ void Widget_Properties::ShowTransform(shared_ptr<Transform>& transform) const
 		const auto show_float = [](const char* label, float* value) 
 		{
             const float label_float_spacing = 15.0f;
-            const float step                = 0.1f;
+            const float step                = 0.01f;
 			char* format                    = "%.4f";
 
             // Label
@@ -351,7 +351,7 @@ void Widget_Properties::ShowLight(shared_ptr<Light>& light) const
 		// Bias
 		ImGui::Text("Bias");
 		ImGui::SameLine(ComponentProperty::g_column);
-		ImGui::PushItemWidth(300); ImGui::InputFloat("##lightBias", &bias, 0.01f, 0.01f, "%.4f"); ImGui::PopItemWidth();
+		ImGui::PushItemWidth(300); ImGui::InputFloat("##lightBias", &bias, 0.00001f, 0.00001f, "%.5f"); ImGui::PopItemWidth();
 
 		// Normal Bias
 		ImGui::Text("Normal Bias");
