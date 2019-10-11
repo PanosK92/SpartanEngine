@@ -23,6 +23,10 @@ static const uint g_sscs_steps 				= 32;
 static const float g_sscs_ray_step 			= 0.02f;
 static const float g_sscs_rejection_depth 	= 0.05f;
 
+//= INLUCES =============
+#include "Dithering.hlsl"
+//=======================
+
 float ScreenSpaceContactShadows(float2 uv, float3 light_dir)
 {
     // Origin view space position

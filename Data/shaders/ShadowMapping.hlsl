@@ -19,15 +19,26 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= DEFINES =============================
-#define PCF_SAMPLES 4
-#define PCF_DIM float(PCF_SAMPLES) / 2.0f
-//=======================================
+//= DEFINES =========================================================
+static const float g_pcf_taps 			= 5.0f;
+static const float g_pcf_filter_size 	= (g_pcf_taps - 1.0f) / 2.0f;
 
-//= INCLUDES ============
-#include "Dithering.hlsl"
+static const float2 poisson_disk[8] = 
+	{
+		float2(0.493393f, 0.394269f),
+		float2(0.798547f, 0.885922f),
+		float2(0.247322f, 0.92645f),
+		float2(0.0514542f, 0.140782f),
+		float2(0.831843f, 0.00955229f),
+		float2(0.428632f, 0.0171514f),
+		float2(0.015656f, 0.749779f),
+		float2(0.758385f, 0.49617f)
+	};
+//===================================================================
+
+//= INCLUDES =======
 #include "SSCS.hlsl"
-//=======================
+//==================
 
 float DepthTest_Directional(float slice, float2 uv, float compare)
 {
@@ -53,63 +64,48 @@ float random(float2 seed2)
 
 float Technique_Poisson(int cascade, float3 uv, float compare, float2 dither)
 {
-	float packing = 700.0f; // how close together are the samples
-	float2 poissonDisk[8] = 
-	{
-		float2(0.493393f, 0.394269f),
-		float2(0.798547f, 0.885922f),
-		float2(0.247322f, 0.92645f),
-		float2(0.0514542f, 0.140782f),
-		float2(0.831843f, 0.00955229f),
-		float2(0.428632f, 0.0171514f),
-		float2(0.015656f, 0.749779f),
-		float2(0.758385f, 0.49617f)
-	};
-    
-	uint samples 	= 16;
-	float amountLit = 0.0f;
+	float packing	= 700.0f; // how close together are the samples
+	uint samples	= 16;
+	float shadow 	= 0.0f;
+	
 	[unroll]
 	for (uint i = 0; i < samples; i++)
 	{
 		uint index 	= uint(samples * random(uv.xy * i)) % samples; // A pseudo-random number between 0 and 15, different for each pixel and each index
 
 		#if DIRECTIONAL
-		amountLit 	+= DepthTest_Directional(cascade, uv.xy + (poissonDisk[index] / packing), compare);
+		shadow += DepthTest_Directional(cascade, uv.xy + (poisson_disk[index] / packing), compare);
 		#elif POINT
-		amountLit 	+= DepthTest_Point(uv, compare);
+		shadow += DepthTest_Point(uv, compare);
 		#elif SPOT
-		amountLit 	+= DepthTest_Spot(uv.xy + (poissonDisk[index] / packing), compare);
+		shadow += DepthTest_Spot(uv.xy + (poisson_disk[index] / packing), compare);
 		#endif
 	}	
 
-	amountLit /= (float)samples;
-	return amountLit;
+	return shadow / (float)samples;
 }
 
-float Technique_PCF_2d(int cascade, float2 uv, float texel, float compare, float2 dither)
+float Technique_PCF_2d(int cascade, float2 uv, float texel, float compare)
 {
-	float amountLit 	= 0.0f;
-	float count 		= 0.0f;
-	float2 offset_scale = texel * dither;
-	
+	float shadow = 0.0f;
+
 	[unroll]
-	for (float y = -PCF_DIM; y <= PCF_DIM; ++y)
+	for (float y = -g_pcf_filter_size; y <= g_pcf_filter_size; y++)
 	{
 		[unroll]
-		for (float x = -PCF_DIM; x <= PCF_DIM; ++x)
+		for (float x = -g_pcf_filter_size; x <= g_pcf_filter_size; x++)
 		{
-			float2 offset 	= float2(x, y) * offset_scale;
+			float2 uv_offset = float2(x, y) * texel;
 			
 			#if DIRECTIONAL
-			amountLit 	+= DepthTest_Directional(cascade, uv + offset, compare);
+			shadow += DepthTest_Directional(cascade, uv + uv_offset, compare);
 			#elif SPOT
-			amountLit 	+= DepthTest_Spot(uv + offset, compare);
-			#endif
-			
-			count++;			
+			shadow += DepthTest_Spot(uv + uv_offset, compare);
+			#endif		
 		}
 	}
-	return amountLit /= count;
+	
+	return shadow / ((2.0f * g_pcf_filter_size + 1.0f) * (2.0f * g_pcf_filter_size + 1.0f));
 }
 
 float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, float bias, float normal_bias, Light light)
@@ -119,7 +115,6 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, float 
     float3 scaled_normal_offset = normal * cos_angle * g_shadow_texel_size * normal_bias * 10;
 	float4 position_world   	= float4(world_pos + scaled_normal_offset, 1.0f);
 	float shadow 				= 1.0f;
-	float2 dither 				= Dither(uv + g_taa_jitterOffset).xy * 400;
 
 	#if DIRECTIONAL
 	{
@@ -135,7 +130,7 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, float 
 			{	
 				// Sample primary cascade
 				float compare_depth 	= pos.z + (bias * (cascade + 1));
-				float shadow_primary 	= Technique_PCF_2d(cascade, uv.xy, g_shadow_texel_size, compare_depth, dither);
+				float shadow_primary 	= Technique_PCF_2d(cascade, uv.xy, g_shadow_texel_size, compare_depth);
 				float3 cascade_edge 	= (abs(pos) - 0.9f) * 2.5f;
 				float cascade_lerp 		= max(cascade_edge.x, max(cascade_edge.y, cascade_edge.z));
 
@@ -151,7 +146,7 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, float 
 
                     // Sample secondary cascade
                     compare_depth           = pos.z + (bias * (cacade_secondary + 1));
-					float shadow_secondary  = Technique_PCF_2d(cacade_secondary, uv.xy, g_shadow_texel_size, compare_depth, dither);
+					float shadow_secondary  = Technique_PCF_2d(cacade_secondary, uv.xy, g_shadow_texel_size, compare_depth);
 
 					// Blend cascades	
 					shadow = lerp(shadow_primary, shadow_secondary, cascade_lerp);

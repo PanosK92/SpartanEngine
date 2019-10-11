@@ -71,7 +71,7 @@ float4 Blur_GaussianBilateral(float2 uv, Texture2D sourceTexture, Texture2D dept
     float4 color 			= 0.0f;
 	float center_depth		= get_linear_depth(depthTexture.SampleLevel(bilinearSampler, uv, 0).r);
 	float3 center_normal	= normal_decode(normalTexture.SampleLevel(bilinearSampler, uv, 0).xyz);
-	float threshold 		= 0.1f;
+	float threshold 		= 0.5f;
 
     for (int i = -5; i < 5; i++)
     {
