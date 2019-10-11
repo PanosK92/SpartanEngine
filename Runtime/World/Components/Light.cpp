@@ -220,10 +220,10 @@ namespace Spartan
 		if (m_lightType == LightType_Directional)
 		{
             Cascade& cascade            = m_cascades[index];
-            const float zMod            = 10.0f; // z range ends up super tight but I don't think I am doing something wrong, so I manually extend it here.
+            const float zMod            = 10.0f; // z range ends up not being enough (to meet the next cascade) but I don't think I am doing something wrong, so I manually extend it here.
             const float cascade_extent  = (cascade.max.z - cascade.min.z) * zMod;
-            const float min_z           = reverse_z ? cascade_extent : -cascade_extent;
-            const float max_z           = reverse_z ? -cascade_extent : cascade_extent;
+            const float min_z           = reverse_z ? cascade_extent : 0.0f;
+            const float max_z           = reverse_z ? 0.0f : cascade_extent;
             m_matrix_projection[index]  = Matrix::CreateOrthoOffCenterLH(cascade.min.x, cascade.max.x, cascade.min.y, cascade.max.y, min_z, max_z);
             cascade.frustum             = Frustum(m_matrix_view[index], m_matrix_projection[index], max_z);
 		}
@@ -233,8 +233,8 @@ namespace Spartan
 			const auto height			= static_cast<float>(m_shadow_map->GetHeight());		
 			const auto aspect_ratio		= width / height;
 			const float fov				= (m_lightType == LightType_Spot) ? m_angle_rad : 1.57079633f; // 1.57079633 = 90 deg
-			const float near_plane		= reverse_z ? m_range : 0.1f;
-			const float far_plane		= reverse_z ? 0.1f : m_range;
+			const float near_plane		= reverse_z ? m_range : 0.0f;
+			const float far_plane		= reverse_z ? 0.0f : m_range;
 			m_matrix_projection[index]	= Matrix::CreatePerspectiveFieldOfViewLH(fov, aspect_ratio, near_plane, far_plane);
 		}
 
