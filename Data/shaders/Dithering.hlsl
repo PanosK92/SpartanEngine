@@ -23,8 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // http://alex.vlachos.com/graphics/Alex_Vlachos_Advanced_VR_Rendering_GDC2015.pdf
 float3 dither(float2 uv)
 {
-	float2 taa_offset = g_taa_jitterOffset * 0.5f + 0.5f;
-	float2 screen_pos = (uv + taa_offset) * g_resolution;
+	
+	float2 screen_pos = (uv * g_resolution) + sin(g_time) * any(g_taa_jitterOffset);
 	
     float3 dither 		= dot(float2(171.0f, 231.0f), screen_pos);
     dither.rgb 			= frac(dither.rgb / float3(103.0f, 71.0f, 97.0f));

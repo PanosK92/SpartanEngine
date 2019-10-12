@@ -70,7 +70,7 @@ float3 VolumetricLighting(Light light, float3 pos_world, float2 uv)
 	float3 fog 						= 0.0f;
 
 	// Apply dithering as it will allows us to get away with a crazy low sample count ;-)
-	float3 dither_value = dither(uv) * 200;
+	float3 dither_value = dither(uv) * 100;
 	ray_pos += ray_step * dither_value;
 	
 	// Find closest shadow cascade

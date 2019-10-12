@@ -36,9 +36,9 @@ static const float2 poisson_disk[8] =
 	};
 //===================================================================
 
-//= INCLUDES =======
+//= INCLUDES =====
 #include "SSCS.hlsl"
-//==================
+//===============
 
 float DepthTest_Directional(float slice, float2 uv, float compare)
 {
@@ -115,6 +115,7 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, float 
     float3 scaled_normal_offset = normal * cos_angle * g_shadow_texel_size * normal_bias * 10;
 	float4 position_world   	= float4(world_pos + scaled_normal_offset, 1.0f);
 	float shadow 				= 1.0f;
+	float2 dither_value 				= dither(uv).xy * 0.1f;
 
 	#if DIRECTIONAL
 	{
@@ -130,7 +131,7 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, float 
 			{	
 				// Sample primary cascade
 				float compare_depth 	= pos.z + (bias * (cascade + 1));
-				float shadow_primary 	= Technique_PCF_2d(cascade, uv.xy, g_shadow_texel_size, compare_depth);
+				float shadow_primary 	= Technique_PCF_2d(cascade, uv.xy + dither_value, g_shadow_texel_size + dither_value, compare_depth);
 				float3 cascade_edge 	= (abs(pos) - 0.9f) * 2.5f;
 				float cascade_lerp 		= max(cascade_edge.x, max(cascade_edge.y, cascade_edge.z));
 
@@ -146,7 +147,7 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, float 
 
                     // Sample secondary cascade
                     compare_depth           = pos.z + (bias * (cacade_secondary + 1));
-					float shadow_secondary  = Technique_PCF_2d(cacade_secondary, uv.xy, g_shadow_texel_size, compare_depth);
+					float shadow_secondary  = Technique_PCF_2d(cacade_secondary, uv.xy, g_shadow_texel_size + dither_value, compare_depth);
 
 					// Blend cascades	
 					shadow = lerp(shadow_primary, shadow_secondary, cascade_lerp);

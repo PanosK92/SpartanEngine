@@ -189,6 +189,12 @@ float micro_shadow(float ao, float3 N, float3 L, float shadow)
 	return shadow * microShadow;
 }
 
+float min2(float2 value) { return min(value.x, value.y); }
+float min3(float3 value) { return min(min(value.x, value.y), value.z); }
+
+float max2(float2 value) { return max(value.x, value.y); }
+float max3(float3 value) { return max(max(value.x, value.y), value.z); }
+
 bool is_saturated(float value) 	{ return value == saturate(value); }
 bool is_saturated(float2 value) { return is_saturated(value.x) && is_saturated(value.y); }
 bool is_saturated(float3 value) { return is_saturated(value.x) && is_saturated(value.y) && is_saturated(value.z); }
