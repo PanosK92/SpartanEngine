@@ -20,8 +20,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 static const uint g_sscs_steps 				= 32;
-static const float g_sscs_ray_step 			= 0.02f;
 static const float g_sscs_rejection_depth 	= 0.05f;
+static const float g_sscs_ray_max_distance 	= 0.4f;
 
 //= INLUCES =============
 #include "Dithering.hlsl"
@@ -37,19 +37,21 @@ float ScreenSpaceContactShadows(float2 uv, float3 light_dir)
 	// Compute vector that points to the light
 	float3 light_dir_view = mul(float4(-light_dir, 0.0f), g_view).xyz;
 
-	// Compute ray position and direction
-	float3 ray_pos = origin_pos;
-	float3 ray_dir = light_dir_view * g_sscs_ray_step;
+	// Compute ray
+	float3 ray_pos 		= origin_pos;
+	float3 ray_dir 		= light_dir_view;
+	float step_length	= g_sscs_ray_max_distance / (float)g_sscs_steps;
+	float3 ray_step		= ray_dir * step_length;
 
 	// Apply dithering as it will allows us to get away with more detail
-	float3 dither_value = Dither(uv + g_taa_jitterOffset) * 300.0f;
+	float3 dither_value = dither(uv) * 2.0f;
 	ray_pos += ray_dir * dither_value;
 
     // Ray march towards the light
     for (uint i = 0; i < g_sscs_steps; i++)
     {
         // Step ray
-        ray_pos 			+= ray_dir;
+        ray_pos 		+= ray_step;
 		float2 ray_uv 	= project(ray_pos, g_projection);
 
 		if (!is_saturated(ray_uv))

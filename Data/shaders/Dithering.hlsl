@@ -19,64 +19,15 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-static const float4x4 ditherPattern =
+
+// http://alex.vlachos.com/graphics/Alex_Vlachos_Advanced_VR_Rendering_GDC2015.pdf
+float3 dither(float2 uv)
 {
-	{ 0.0f, 0.5f, 0.125f, 0.625f},
-	{ 0.75f, 0.22f, 0.875f, 0.375f},
-	{ 0.1875f, 0.6875f, 0.0625f, 0.5625},
-	{ 0.9375f, 0.4375f, 0.8125f, 0.3125}
-};
-
-float4 Dither_Ordered(float4 color, float2 texcoord)
-{
-    float ditherBits = 8.0;
-
-    float2 ditherSize	= float2(1.0 / 16.0, 10.0 / 36.0);
-    float gridPosition	= frac(dot(texcoord, (g_resolution * ditherSize)) + 0.25);
-    float ditherShift	= (0.25) * (1.0 / (pow(2.0, ditherBits) - 1.0));
-
-    float3 RGBShift = float3(ditherShift, -ditherShift, ditherShift);
-    RGBShift = lerp(2.0 * RGBShift, -2.0 * RGBShift, gridPosition);
-
-    color.rgb += RGBShift;
-
-    return color;
-}
-
-// note: valve edition
-// from http://alex.vlachos.com/graphics/Alex_Vlachos_Advanced_VR_Rendering_GDC2015.pdf
-// note: input in pixels (ie not normalized uv)
-float3 Dither_Valve(float2 uv)
-{
-	float2 screen_pos 	= uv * g_resolution;
-	float _dot 			= dot(float2(171.0, 231.0), screen_pos.xy);
-    float3 dither 		= float3(_dot, _dot, _dot);
-    dither.rgb 			= frac(dither.rgb / float3(103.0, 71.0, 97.0));
+	float2 taa_offset = g_taa_jitterOffset * 0.5f + 0.5f;
+	float2 screen_pos = (uv + taa_offset) * g_resolution;
+	
+    float3 dither 		= dot(float2(171.0f, 231.0f), screen_pos);
+    dither.rgb 			= frac(dither.rgb / float3(103.0f, 71.0f, 97.0f));
     
     return dither.rgb / 255.0;
-}
-
-// https://www.shadertoy.com/view/MslGR8
-float3 Dither(float2 uv)
-{
-	float2 screen_pos = uv * g_resolution;
-
-	// bit-depth of display. Normally 8 but some LCD monitors are 7 or even 6-bit.
-	float dither_bit = 8.0; 
-	
-	// compute grid position
-	float grid_position = frac(dot(screen_pos.xy - float2(0.5, 0.5), float2(1.0/16.0,10.0/36.0) + 0.25));
-	
-	// compute how big the shift should be
-	float dither_shift = (0.25) * (1.0 / (pow(2.0, dither_bit) - 1.0));
-	
-	// shift the individual colors differently, thus making it even harder to see the dithering pattern
-	//float3 dither_shift_RGB = float3(dither_shift, -dither_shift, dither_shift); //subpixel dithering (chromatic)
-	float3 dither_shift_RGB = float3(dither_shift, dither_shift, dither_shift); //non-chromatic dithering
-	
-	// modify shift acording to grid position.
-	dither_shift_RGB = lerp(2.0 * dither_shift_RGB, -2.0 * dither_shift_RGB, grid_position); //shift acording to grid position.
-	
-	// return dither shift
-	return 0.5/255.0 + dither_shift_RGB; 
 }

@@ -19,10 +19,9 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ============
+//= INCLUDES =========
 #include "Common.hlsl"
-#include "Dithering.hlsl"
-//=======================
+//====================
 
 //= TEXTURES ==========================
 Texture2D tex_normal 	: register(t0);
@@ -36,10 +35,10 @@ SamplerState sampler_point_clamp 	: register(s0);
 SamplerState sampler_linear_clamp 	: register(s1);
 //=================================================
 
-
-static const uint g_ssr_steps 					= 8;
+static const uint g_ssr_steps 					= 32;
 static const uint g_ssr_binarySearchSteps 		= 8;
-static const float g_ssr_binarySearchThreshold 	= 0.01f;
+static const float g_ssr_binarySearchThreshold 	= 0.002f;
+static const float g_ssr_ray_max_distance 		= 20.0f;
 
 bool binary_search(float3 ray_dir, inout float3 ray_pos, inout float2 ray_uv, in float depth_delta)
 {
@@ -67,10 +66,10 @@ bool ray_march(float3 ray_pos, float3 ray_dir, inout float2 ray_uv)
 		// Step ray
 		ray_pos += ray_dir;
 		ray_uv 	= project(ray_pos, g_projection);
-
+		
 		// Compare depth
-		float depth_sampled = get_linear_depth(tex_depth, sampler_linear_clamp, ray_uv);
-		float depth_delta 	= abs(ray_pos.z - depth_sampled);
+		float depth_sampled	= get_linear_depth(tex_depth, sampler_linear_clamp, ray_uv);
+		float depth_delta	= ray_pos.z - depth_sampled;
 		
 		[branch]
 		if (depth_delta > 0.0f)
@@ -84,26 +83,24 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
 	// Sample textures and compute world position
     float2 uv				= input.uv;
-	float3 normal 			= normal_decode(tex_normal.Sample(sampler_point_clamp, uv).xyz);	
+	float3 normal_world 	= normal_decode(tex_normal.Sample(sampler_point_clamp, uv).xyz);	
 	float roughness 		= tex_material.Sample(sampler_point_clamp, uv).r;
 	float depth  			= tex_depth.Sample(sampler_point_clamp, uv).r;
     float3 position_world 	= get_world_position_from_depth(depth, g_viewProjectionInv, uv);
 
-	// Convert everything to view space
-	float3 view_pos			= mul(float4(position_world, 1.0f), g_view).xyz;
-	float3 view_normal		= normalize(mul(float4(normal, 0.0f), g_view).xyz);
-	float3 view_reflection 	= normalize(reflect(view_pos, view_normal));
-
-	// Apply dithering as it will allows us to get away with more detail
-	float3 dither_value = Dither(uv + g_taa_jitterOffset) * 30.0f;
-	view_pos += view_reflection * dither_value;
+	// Convert ray in view space
+	float3 normal_view	= normalize(mul(float4(normal_world, 0.0f), g_view).xyz);
+	float3 ray_pos		= mul(float4(position_world, 1.0f), g_view).xyz;
+	float3 ray_dir 		= normalize(reflect(ray_pos, normal_view));
+	float step_length	= g_ssr_ray_max_distance / (float)g_ssr_steps;
+	float3 ray_step		= ray_dir * step_length;
 	
 	float2 ray_hit_uv = 0.0f;
-	if (ray_march(view_pos, view_reflection, ray_hit_uv))
+	if (ray_march(ray_pos, ray_step, ray_hit_uv))
 	{
 		float2 edgeFactor = float2(1, 1) - pow(saturate(abs(ray_hit_uv - float2(0.5f, 0.5f)) * 2), 8);
 		float fade_screen = saturate(min(edgeFactor.x, edgeFactor.y));
-
+		
 		return tex_frame.Sample(sampler_linear_clamp, ray_hit_uv) * fade_screen;
 	}
 	

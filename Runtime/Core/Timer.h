@@ -57,6 +57,8 @@ namespace Spartan
         auto GetMonitorRefreshRate() { return m_monitor_refresh_rate; }
         //=============================================================
 
+        auto GetTimeMs()                const { return m_time_ms; }
+        auto GetTimeSec()               const { return static_cast<float>(m_time_ms / 1000.0); }
 		auto GetDeltaTimeMs()           const { return m_delta_time_ms; }
 		auto GetDeltaTimeSec()          const { return static_cast<float>(m_delta_time_ms / 1000.0); }
         auto GetDeltaTimeSmoothedMs()   const { return m_delta_time_smoothed_ms; }
@@ -64,8 +66,10 @@ namespace Spartan
 
 	private:
         // Frame time
-		std::chrono::high_resolution_clock::time_point time_a;
-		std::chrono::high_resolution_clock::time_point time_b;
+        std::chrono::high_resolution_clock::time_point m_time_start;
+        std::chrono::high_resolution_clock::time_point m_time_frame_start;
+		std::chrono::high_resolution_clock::time_point m_time_frame_end;
+        double m_time_ms                = 0.0f;
 		double m_delta_time_ms          = 0.0f;
         double m_delta_time_smoothed_ms = 0.0f;
 

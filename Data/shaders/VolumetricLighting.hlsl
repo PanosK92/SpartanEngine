@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-static const float g_vl_steps 		= 16;
+static const float g_vl_steps 		= 32;
 static const float g_vl_scattering 	= 0.997f;
 static const float g_vl_pow			= 0.5f;
 
@@ -70,7 +70,7 @@ float3 VolumetricLighting(Light light, float3 pos_world, float2 uv)
 	float3 fog 						= 0.0f;
 
 	// Apply dithering as it will allows us to get away with a crazy low sample count ;-)
-	float3 dither_value = Dither(uv + g_taa_jitterOffset) * 300;
+	float3 dither_value = dither(uv) * 200;
 	ray_pos += ray_step * dither_value;
 	
 	// Find closest shadow cascade
