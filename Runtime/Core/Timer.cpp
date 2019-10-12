@@ -35,15 +35,20 @@ namespace Spartan
 {
 	Timer::Timer(Context* context) : ISubsystem(context)
 	{
-		time_a  = high_resolution_clock::now();
-		time_b  = high_resolution_clock::now();
+        m_time_start        = high_resolution_clock::now();
+		m_time_frame_start  = high_resolution_clock::now();
+		m_time_frame_end    = high_resolution_clock::now();
 	}
 
 	void Timer::Tick(float delta_time)
 	{
+        m_time_frame_start = high_resolution_clock::now();
+
+        // Engine time
+        m_time_ms = (m_time_start - m_time_frame_start).count();
+
 		// Compute work time
-		time_a								= high_resolution_clock::now();
-		duration<double, milli> time_work	= time_a - time_b;
+		duration<double, milli> time_work	= m_time_frame_start - m_time_frame_end;
 		
 		// Compute sleep time
 		const double max_fps		= m_fps_target;
@@ -57,8 +62,8 @@ namespace Spartan
 		}
 
 		// Compute delta time
-		time_b										= high_resolution_clock::now();
-		const duration<double, milli> time_sleep	= time_b - time_a;
+        m_time_frame_end                            = high_resolution_clock::now();
+		const duration<double, milli> time_sleep	= m_time_frame_end - m_time_frame_start;
 		m_delta_time_ms								= (time_work + time_sleep).count();
 
         // Compute smoothed delta time

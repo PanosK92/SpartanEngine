@@ -154,7 +154,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 
 #if PASS_DITHERING
 	color = sourceTexture.Sample(samplerState, texCoord);
-    color = Dither_Ordered(color, texCoord);
+    color.rgb += dither(texCoord);
 #endif
 
 #if PASS_MOTION_BLUR

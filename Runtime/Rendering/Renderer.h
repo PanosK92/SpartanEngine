@@ -470,16 +470,16 @@ namespace Spartan
 			float sharpen_clamp;
 			float motion_blur_strength;
             float delta_time;
-			float gamma;
+            float time;
 
+			float gamma;
 			Math::Vector2 taa_jitter_offset;
 			float tonemapping;
-			float exposure;
 
+			float exposure;
 			float directional_light_intensity;
             float ssr_enabled;
             float shadow_resolution;
-            float padding;
 		};
 		std::shared_ptr<RHI_ConstantBuffer> m_uber_buffer;
 	};

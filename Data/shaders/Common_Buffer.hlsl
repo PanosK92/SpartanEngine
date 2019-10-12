@@ -43,17 +43,17 @@ cbuffer GlobalBuffer : register(b0)
 	
 	float g_sharpen_clamp;	
 	float g_motionBlur_strength;
-	float g_delta_time;			
-	float g_gamma;	
+	float g_delta_time;
+	float g_time;
 	
+	float g_gamma;	
 	float2 g_taa_jitterOffset;
 	float g_toneMapping;	
-	float g_exposure;
 	
+	float g_exposure;	
 	float g_directional_light_intensity;
 	float g_ssr_enabled;
 	float g_shadow_resolution;
-	float g_padding;
 };
 
 #define g_texel_size float2(1.0f / g_resolution.x, 1.0f / g_resolution.y)
