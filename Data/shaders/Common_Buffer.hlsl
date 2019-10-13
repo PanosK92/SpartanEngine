@@ -54,4 +54,7 @@ cbuffer GlobalBuffer : register(b0)
 	float g_directional_light_intensity;
 	float g_ssr_enabled;
 	float g_shadow_resolution;
+	
+	float g_ssao_scale;
+	float3 g_padding;
 };
