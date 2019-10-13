@@ -104,7 +104,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 		color += sample_ssr.rgb * reflectivity * light_received;
 		
 		// Emissive
-		sample_specular.rgb += material.emissive * 40.0f;
+		sample_specular.rgb += material.emissive * 200.0f;
 	
 		// Combine
 		float3 light_sources = (sample_diffuse.rgb + sample_specular.rgb) * material.albedo;
