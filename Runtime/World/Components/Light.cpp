@@ -271,12 +271,12 @@ namespace Spartan
 
         Camera* camera                        = m_renderer->GetCamera().get();
         const float clip_near                 = camera->GetNearPlane();
-        const float clip_far                  = camera->GetFarPlane();
+        const float clip_far                  = camera->GetFarPlane() * 0.5f; // cover half of the camera's depth (far away pixel can hardly be seen anyway)
         const Matrix view_projection_inverted = Matrix::Invert(camera->GetViewMatrix() * camera->ComputeProjection(true));
 
         // Calculate split depths based on view camera frustum
         // Based on method presented in https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch10.html
-        const float split_lambda  = 0.97f;
+        const float split_lambda  = 0.98f;
         const float clip_range    = clip_far - clip_near;
         const float min_z         = clip_near;
         const float max_z         = clip_near + clip_range;

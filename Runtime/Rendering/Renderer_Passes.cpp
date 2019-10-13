@@ -906,7 +906,9 @@ namespace Spartan
 		UpdateUberBuffer(tex_in->GetWidth(), tex_in->GetHeight());
 
 		// Start command list
-		m_cmd_list->Begin("Pass_BlurBilateralGaussian");
+        m_cmd_list->Begin("Pass_BlurBilateralGaussian");
+        m_cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
+        m_cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
         m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
         m_cmd_list->SetBlendState(m_blend_disabled);
 		m_cmd_list->SetViewport(tex_out->GetViewport());	
@@ -928,7 +930,7 @@ namespace Spartan
 			m_cmd_list->SetRenderTarget(tex_out);
 			m_cmd_list->SetTextures(0, textures, 3);
 			m_cmd_list->SetConstantBuffer(1, Buffer_PixelShader, shader_gaussianBilateral->GetConstantBuffer());
-			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
+			m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
             m_cmd_list->Submit();
 		}
 
@@ -944,7 +946,7 @@ namespace Spartan
 			m_cmd_list->SetRenderTarget(tex_in);
 			m_cmd_list->SetTextures(0, textures, 3);
 			m_cmd_list->SetConstantBuffer(1, Buffer_PixelShader, shader_gaussianBilateral->GetConstantBuffer());
-			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
+			m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
             m_cmd_list->Submit();
 		}
 
