@@ -19,9 +19,9 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-static const float g_vl_steps 		= 32;
-static const float g_vl_scattering 	= 0.997f;
-static const float g_vl_pow			= 0.5f;
+static const float g_vl_steps 		= 64;
+static const float g_vl_scattering 	= 0.998f;
+static const float g_vl_pow			= 0.4f;
 
 // Mie scaterring approximated with Henyey-Greenstein phase function.
 float ComputeScattering(float v_dot_l)

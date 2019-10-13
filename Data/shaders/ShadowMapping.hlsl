@@ -131,7 +131,7 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, float 
 				float compare_depth 	= pos.z + (bias * (cascade + 1));
 				float shadow_primary 	= Technique_PCF_2d(cascade, uv.xy + dither_value, g_shadow_texel_size + dither_value, compare_depth);
 				float3 cascade_edge 	= (abs(pos) - 0.9f) * 2.5f;
-				float cascade_lerp 		= max(cascade_edge.x, max(cascade_edge.y, cascade_edge.z));
+				float cascade_lerp 		= max3(cascade_edge);
 
 				// If we are close to the edge of the primary cascade and a secondary cascade exists, lerp with it.
 				[branch]
