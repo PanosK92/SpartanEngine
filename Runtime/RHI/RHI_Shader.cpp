@@ -19,14 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ========================
+//= INCLUDES ======================
 #include "RHI_Shader.h"
 #include "RHI_InputLayout.h"
 #include <spirv_hlsl.hpp>
 #include "../Core/Context.h"
 #include "../Threading/Threading.h"
-#include "../FileSystem/FileSystem.h"
-//===================================
+#include "../Core/FileSystem.h"
+//=================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -45,10 +45,13 @@ namespace Spartan
 	{
         m_shader_type = type;
 
+        // Can also be the source
+        bool is_file = FileSystem::IsFile(shader);
+
 		// Deduce name and file path
-		if (!FileSystem::IsDirectory(shader))
+		if (is_file)
 		{
-			m_name = FileSystem::GetFileNameFromFilePath(shader);
+			m_name      = FileSystem::GetFileNameFromFilePath(shader);
 			m_file_path = shader;
 		}
 		else

@@ -19,26 +19,24 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= DEFINES =========================================================
 static const float g_pcf_taps 			= 5.0f;
 static const float g_pcf_filter_size 	= (g_pcf_taps - 1.0f) / 2.0f;
 
 static const float2 poisson_disk[8] = 
-	{
-		float2(0.493393f, 0.394269f),
-		float2(0.798547f, 0.885922f),
-		float2(0.247322f, 0.92645f),
-		float2(0.0514542f, 0.140782f),
-		float2(0.831843f, 0.00955229f),
-		float2(0.428632f, 0.0171514f),
-		float2(0.015656f, 0.749779f),
-		float2(0.758385f, 0.49617f)
-	};
-//===================================================================
+{
+	float2(0.493393f, 0.394269f),
+	float2(0.798547f, 0.885922f),
+	float2(0.247322f, 0.92645f),
+	float2(0.0514542f, 0.140782f),
+	float2(0.831843f, 0.00955229f),
+	float2(0.428632f, 0.0171514f),
+	float2(0.015656f, 0.749779f),
+	float2(0.758385f, 0.49617f)
+};
 
-//= INCLUDES =====
+//= INCLUDES =======
 #include "SSCS.hlsl"
-//===============
+//==================
 
 float DepthTest_Directional(float slice, float2 uv, float compare)
 {
@@ -62,7 +60,7 @@ float random(float2 seed2)
     return frac(sin(dot_product) * 43758.5453);
 }
 
-float Technique_Poisson(int cascade, float3 uv, float compare, float2 dither)
+float Technique_Poisson(int cascade, float3 uv, float compare)
 {
 	float packing	= 700.0f; // how close together are the samples
 	uint samples	= 16;
@@ -85,7 +83,7 @@ float Technique_Poisson(int cascade, float3 uv, float compare, float2 dither)
 	return shadow / (float)samples;
 }
 
-float Technique_PCF_2d(int cascade, float2 uv, float texel, float compare)
+float Technique_PCF_2d(int cascade, float2 uv, float2 texel, float compare)
 {
 	float shadow = 0.0f;
 
@@ -115,7 +113,7 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, float 
     float3 scaled_normal_offset = normal * cos_angle * g_shadow_texel_size * normal_bias * 10;
 	float4 position_world   	= float4(world_pos + scaled_normal_offset, 1.0f);
 	float shadow 				= 1.0f;
-	float2 dither_value 				= dither(uv).xy * 0.1f;
+	float2 dither_value 		= dither(uv).xy * 0.1f;
 
 	#if DIRECTIONAL
 	{
@@ -186,7 +184,7 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, float 
 	// Screen space contact shadow
 	if (screen_space_contact_shadows_enabled)
 	{
-		float sscs = ScreenSpaceContactShadows(uv, light.direction);
+		float sscs = ScreenSpaceContactShadows(tex_depth, uv, light.direction);
 		shadow = min(shadow, sscs);	
 	}
 	

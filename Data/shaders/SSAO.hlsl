@@ -31,8 +31,7 @@ Texture2D texNoise  : register(t2);
 //=================================
 
 //= SAMPLERS ===================================
-SamplerState samplerLinear_clamp : register(s0);
-SamplerState samplerLinear_wrap : register(s1);
+SamplerState sampler_linear_wrap : register(s0);
 //==============================================
 
 static const int sample_count		= 16;
@@ -110,14 +109,13 @@ static const float3 sampleKernel[64] =
 
 float mainPS(Pixel_PosUv input) : SV_TARGET
 {
-	float2 uv				= input.uv;  
-    float depth      		= texDepth.Sample(samplerLinear_clamp, uv).r;
-    float3 center_pos       = get_world_position_from_depth(depth, uv);
-    float3 center_normal    = normal_decode(texNormal.Sample(samplerLinear_clamp, uv).xyz);		
-	float radius_depth 		= radius;
+	float2 uv				= input.uv;
+    float center_depth      = get_depth(texDepth, uv);
+    float3 center_pos       = get_world_position_from_depth(center_depth, uv);
+    float3 center_normal    = get_normal(texNormal, uv);		
 
 	// Construct TBN
-	float3 noise	= unpack(texNoise.Sample(samplerLinear_wrap, uv * noiseScale).xyz);		
+	float3 noise	= unpack(texNoise.Sample(sampler_linear_wrap, input.uv * noiseScale).xyz);		
 	float3 tangent	= normalize(noise - center_normal * dot(noise, center_normal));
 	float3x3 TBN	= makeTBN(center_normal, tangent);
 
@@ -126,20 +124,20 @@ float mainPS(Pixel_PosUv input) : SV_TARGET
     for (int i = 0; i < sample_count; i++)
     {	
 		// Compute sample uv
-		float3 dither_value = dither(uv + float(i )/ float(sample_count)) * 500.0f;
+		float3 dither_value = dither(uv + float(i )/ float(sample_count)) * 250.0f;
 		float3 offset 		= mul(sampleKernel[i], TBN);
-		float3 ray_pos		= center_pos + offset * radius_depth * dither_value;
+		float3 ray_pos		= center_pos + offset * radius * dither_value;
 		float2 ray_uv 		= project(ray_pos, g_viewProjection);
 		
 		// Compute sample data
-        float3 sample_pos      			= get_world_position_from_depth(texDepth, samplerLinear_clamp, ray_uv);
+        float3 sample_pos      			= get_world_position_from_depth(texDepth, ray_uv);
         float3 center_to_sample			= sample_pos - center_pos;
 		float center_to_sample_distance	= length(center_to_sample);
 		float3 center_to_sample_dir 	= normalize(center_to_sample);
 		
 		// Accumulate
 		float occlusion_factor	= dot(center_normal, center_to_sample_dir);
-		float range_check		= center_to_sample_distance <= radius_depth;
+		float range_check		= step(radius, center_to_sample_distance);
 		occlusion 				+= occlusion_factor * range_check * intensity;
     }
     occlusion /= (float)sample_count;

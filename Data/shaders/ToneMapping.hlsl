@@ -98,7 +98,7 @@ float3 ToneMap(float3 color, float exposure = 1.0f)
 	else if (g_toneMapping == 1) // ACES
 	{
 		// attempting to match contrast levels
-        color = pow(color, 0.833f);
+        color = pow(abs(color), 0.833f);
         color *= 1.07f;
 
 		color = ACESFitted(color);

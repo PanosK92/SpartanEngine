@@ -111,9 +111,10 @@ namespace Spartan
         m_render_targets[RenderTarget_Composition_Ldr_2]            = make_unique<RHI_Texture2D>(m_context, width, height, m_render_targets[RenderTarget_Composition_Ldr]->GetFormat()); // Used for Post-Processing   
 
         // SSAO
-        m_render_targets[RenderTarget_Ssao_Half]            = make_unique<RHI_Texture2D>(m_context, width / 2, height / 2, Format_R8_UNORM);                                       // Raw
-        m_render_targets[RenderTarget_Ssao_Half_Blurred]    = make_unique<RHI_Texture2D>(m_context, width / 2, height / 2, m_render_targets[RenderTarget_Ssao_Half]->GetFormat()); // Blurred
-        m_render_targets[RenderTarget_Ssao]                 = make_unique<RHI_Texture2D>(m_context, width, height, m_render_targets[RenderTarget_Ssao_Half]->GetFormat()); // Upscaled
+        float ssao_scale                                = m_options[Option_Value_Ssao_Scale];
+        m_render_targets[RenderTarget_Ssao_Raw]         = make_unique<RHI_Texture2D>(m_context, width * ssao_scale, height * ssao_scale, Format_R8_UNORM);                                       // Raw
+        m_render_targets[RenderTarget_Ssao_Blurred]     = make_unique<RHI_Texture2D>(m_context, width * ssao_scale, height * ssao_scale, m_render_targets[RenderTarget_Ssao_Raw]->GetFormat());  // Blurred
+        m_render_targets[RenderTarget_Ssao]             = make_unique<RHI_Texture2D>(m_context, width, height, m_render_targets[RenderTarget_Ssao_Raw]->GetFormat());                            // Upscaled
 
         // SSR
         m_render_targets[RenderTarget_Ssr]          = make_shared<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT);
@@ -254,6 +255,11 @@ namespace Spartan
         m_shaders[Shader_Upsample_P] = make_shared<RHI_Shader>(m_rhi_device);
         m_shaders[Shader_Upsample_P]->AddDefine("PASS_UPSAMPLE_BOX");
         m_shaders[Shader_Upsample_P]->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
+
+        // Downsample box
+        m_shaders[Shader_Downsample_P] = make_shared<RHI_Shader>(m_rhi_device);
+        m_shaders[Shader_Downsample_P]->AddDefine("PASS_DOWNSAMPLE_BOX");
+        m_shaders[Shader_Downsample_P]->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
 
         // Debug Normal
         m_shaders[Shader_DebugNormal_P] = make_shared<RHI_Shader>(m_rhi_device);

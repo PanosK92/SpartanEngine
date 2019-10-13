@@ -265,7 +265,7 @@ namespace ImGuiEx
     // Image slot
     inline void ImageSlot(
         const char* name,
-        const const std::shared_ptr<Spartan::RHI_Texture>& image,
+        const std::shared_ptr<Spartan::RHI_Texture>& image,
         const std::function<void(const std::shared_ptr<Spartan::RHI_Texture>&)>& setter,
         float offset_from_start_x   = 0.0f,
         bool label_align_vertically       = false
@@ -320,6 +320,19 @@ namespace ImGuiEx
                 }
             }
             catch (const std::bad_variant_access& e) { LOGF_ERROR("%s", e.what()); }
+        }
+    }
+
+    inline void Tooltip(const char* text)
+    {
+        if (!text)
+            return;
+
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::BeginTooltip();
+            ImGui::Text(text);
+            ImGui::EndTooltip();
         }
     }
 }

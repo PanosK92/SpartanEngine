@@ -19,14 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ========================
+//= INCLUDES ==================
 #include "ScriptInstance.h"
 #include <angelscript.h>
 #include "Module.h"
-#include "../FileSystem/FileSystem.h"
+#include "../Core/FileSystem.h"
 #include "../Logging/Log.h"
 #include "../World/Entity.h"
-//===================================
+//=============================
 
 //= NAMESPACES =====
 using namespace std;

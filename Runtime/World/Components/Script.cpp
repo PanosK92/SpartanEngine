@@ -19,12 +19,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===========================
+//= INCLUDES =====================
 #include "Script.h"			
 #include "../../Core/Context.h"
+#include "../../Core/FileSystem.h"
 #include "../../IO/FileStream.h"
-#include "../../FileSystem/FileSystem.h"
-//======================================
+//================================
 
 //= NAMESPACES =====
 using namespace std;

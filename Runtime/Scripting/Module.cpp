@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <scriptbuilder/scriptbuilder.cpp>
 #include "Scripting.h"
 #include "../Logging/Log.h"
-#include "../FileSystem/FileSystem.h"
+#include "../Core/FileSystem.h"
 //========================================
 
 //= NAMESPACES =====

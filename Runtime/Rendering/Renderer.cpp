@@ -25,10 +25,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Font/Font.h"
 #include "Shaders/ShaderBuffered.h"
 #include "Utilities/Sampling.h"
-#include "../Profiling/Profiler.h"
-#include "../Resource/ResourceCache.h"
 #include "Gizmos/Grid.h"
 #include "Gizmos/Transform_Gizmo.h"
+#include "../Profiling/Profiler.h"
+#include "../Resource/ResourceCache.h"
 #include "../Core/Engine.h"
 #include "../Core/Timer.h"
 #include "../World/Entity.h"
@@ -37,6 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Device.h"
 #include "../RHI/RHI_PipelineCache.h"
 #include "../RHI/RHI_CommandList.h"
+#include "../RHI/RHI_Texture2D.h"
 //=========================================
 
 //= NAMESPACES ===============
@@ -63,6 +64,18 @@ namespace Spartan
 		//m_flags	|= Render_PostProcess_Sharpening;		    // Disabled by default: TAA's blurring is taken core of with an always on sharpen pass specifically for it.
 		//m_flags	|= Render_PostProcess_Dithering;			// Disabled by default: It's only needed in very dark scenes to fix smooth color gradients.
 		//m_flags	|= Render_PostProcess_ChromaticAberration;	// Disabled by default: It doesn't improve the image quality, it's more of a stylistic effect.	
+
+        m_options[Option_Value_Tonemapping]             = static_cast<float>(Renderer_ToneMapping_ACES);
+        m_options[Option_Value_Exposure]                = 0.0f;
+        m_options[Option_Value_Gamma]                   = 2.2f;
+        m_options[Option_Value_Fxaa_Sub_Pixel]          = 1.25f;
+        m_options[Option_Value_Fxaa_Edge_Threshold]     = 0.125f;
+        m_options[Option_Value_Fxaa_Edge_Threshold_Min] = 0.0312f;
+        m_options[Option_Value_Bloom_Intensity]         = 0.005f;
+        m_options[Option_Value_Sharpen_Strength]        = 1.0f;
+        m_options[Option_Value_Sharpen_Clamp]           = 0.35f;
+        m_options[Option_Value_Bloom_Intensity]         = 0.025f;
+        m_options[Option_Value_Ssao_Scale]              = 1.0f;
 
 		// Subscribe to events
 		SUBSCRIBE_TO_EVENT(Event_World_Resolve_Complete,    EVENT_HANDLER_VARIANT(RenderablesAcquire));
@@ -341,22 +354,23 @@ namespace Spartan
 		buffer->camera_near				    = m_camera->GetNearPlane();
 		buffer->camera_far				    = m_camera->GetFarPlane();
 		buffer->resolution				    = Vector2(static_cast<float>(resolution_width), static_cast<float>(resolution_height));
-		buffer->fxaa_sub_pixel			    = m_fxaa_sub_pixel;
-		buffer->fxaa_edge_threshold		    = m_fxaa_edge_threshold;
-		buffer->fxaa_edge_threshold_min	    = m_fxaa_edge_threshold_min;
-		buffer->bloom_intensity			    = m_bloom_intensity;
-		buffer->sharpen_strength		    = m_sharpen_strength;
-		buffer->sharpen_clamp			    = m_sharpen_clamp;
+		buffer->fxaa_sub_pixel			    = m_options[Option_Value_Fxaa_Sub_Pixel];
+		buffer->fxaa_edge_threshold		    = m_options[Option_Value_Fxaa_Edge_Threshold];
+		buffer->fxaa_edge_threshold_min	    = m_options[Option_Value_Fxaa_Edge_Threshold_Min];
+		buffer->bloom_intensity			    = m_options[Option_Value_Bloom_Intensity];
+		buffer->sharpen_strength		    = m_options[Option_Value_Sharpen_Strength];
+		buffer->sharpen_clamp			    = m_options[Option_Value_Sharpen_Clamp];
 		buffer->taa_jitter_offset		    = m_taa_jitter - m_taa_jitter_previous;
-		buffer->motion_blur_strength	    = m_motion_blur_intensity;
+        buffer->motion_blur_strength        = m_options[Option_Value_Motion_Blur_Intensity];
 		buffer->delta_time				    = static_cast<float>(m_context->GetSubsystem<Timer>()->GetDeltaTimeSmoothedSec());
         buffer->time                        = static_cast<float>(m_context->GetSubsystem<Timer>()->GetTimeSec());
-		buffer->tonemapping				    = static_cast<float>(m_tonemapping);
-		buffer->exposure				    = m_exposure;
-		buffer->gamma					    = m_gamma;
+        buffer->tonemapping                 = m_options[Option_Value_Tonemapping];
+		buffer->exposure				    = m_options[Option_Value_Exposure];
+		buffer->gamma					    = m_options[Option_Value_Gamma];
         buffer->directional_light_intensity = light_directional_intensity;
         buffer->ssr_enabled                 = IsFlagSet(Render_SSR) ? 1.0f : 0.0f;
         buffer->shadow_resolution           = static_cast<float>(m_resolution_shadow);
+        buffer->ssao_scale                  = m_options[Option_Value_Ssao_Scale];
 
 		return m_uber_buffer->Unmap();
 	}
@@ -457,7 +471,7 @@ namespace Spartan
         return m_tex_white->GetResource_Texture();
     }
 
-    const std::shared_ptr<Spartan::RHI_Texture>& Renderer::GetEnvironmentTexture()
+    const shared_ptr<Spartan::RHI_Texture>& Renderer::GetEnvironmentTexture()
     {
         if (m_render_targets.find(RenderTarget_Brdf_Prefiltered_Environment) != m_render_targets.end())
             return m_render_targets[RenderTarget_Brdf_Prefiltered_Environment];
@@ -468,5 +482,22 @@ namespace Spartan
     void Renderer::SetEnvironmentTexture(const shared_ptr<RHI_Texture>& texture)
     {
         m_render_targets[RenderTarget_Brdf_Prefiltered_Environment] = texture;
+    }
+
+    void Renderer::SetOption(Renderer_Option_Value option, float value)
+    {
+        if (m_options[option] == value)
+            return;
+
+        if (option == Option_Value_Ssao_Scale)
+        {
+            value = Clamp(value, 0.25f, 1.0f);
+            uint32_t width  = static_cast<uint32_t>(m_resolution.x);
+            uint32_t height = static_cast<uint32_t>(m_resolution.y);
+            m_render_targets[RenderTarget_Ssao_Raw]     = make_unique<RHI_Texture2D>(m_context, width * value, height * value, m_render_targets[RenderTarget_Ssao_Raw]->GetFormat());
+            m_render_targets[RenderTarget_Ssao_Blurred] = make_unique<RHI_Texture2D>(m_context, width * value, height * value, m_render_targets[RenderTarget_Ssao_Raw]->GetFormat());
+        }
+
+        m_options[option] = value;
     }
 }

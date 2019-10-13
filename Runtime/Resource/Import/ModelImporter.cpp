@@ -57,7 +57,7 @@ namespace Spartan
 
 	bool ModelImporter::Load(Model* model, const string& file_path)
 	{
-		if (!model || !m_context || !FileSystem::IsFilePath(file_path))
+		if (!model || !m_context || !FileSystem::IsFile(file_path))
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;

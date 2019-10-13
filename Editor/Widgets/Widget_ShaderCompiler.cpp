@@ -23,11 +23,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widget_ShaderEditor.h"
 #include "Rendering/Renderer.h"
 #include "Core/Context.h"
+#include "Core/FileSystem.h"
 #include "RHI/RHI_Shader.h"
 #include <fstream>
 #include <sstream>
 #include "../ImGui/Source/imgui_stdlib.h"
-#include "FileSystem/FileSystem.h"
 //=======================================
 
 //= NAMESPACES =========

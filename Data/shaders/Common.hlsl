@@ -27,9 +27,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /*------------------------------------------------------------------------------
 								[GLOBALS]
 ------------------------------------------------------------------------------*/
-#define PI 3.1415926535897932384626433832795
-#define INV_PI 1.0 / PI;
-#define EPSILON 0.00000001
+static const float PI 		= 3.14159265f;
+static const float INV_PI 	= 0.31830988f;
+static const float EPSILON 	= 0.00000001f;
+#define g_texel_size 		float2(1.0f / g_resolution.x, 1.0f / g_resolution.y)
+#define g_shadow_texel_size	(1.0f / g_shadow_resolution)
 
 /*------------------------------------------------------------------------------
 							[STRUCTS]
@@ -65,7 +67,7 @@ float3 gamma(float3 color)		{ return pow(abs(color), 1.0f / g_gamma); }
 /*------------------------------------------------------------------------------
 								[PROJECT]
 ------------------------------------------------------------------------------*/
-float2 project(float4 value)	{ return (value.xy / value.w) * float2(0.5f, -0.5f) + 0.5f; }
+float2 project(float4 value) { return (value.xy / value.w) * float2(0.5f, -0.5f) + 0.5f; }
 float2 project(float3 position, matrix transform)
 {
 	float4 projectedCoords 	= mul(float4(position, 1.0f), transform);
@@ -86,6 +88,11 @@ float2 pack(float2 value)	{ return value * 0.5f + 0.5f; }
 /*------------------------------------------------------------------------------
 								[NORMALS]
 ------------------------------------------------------------------------------*/
+float3 get_normal(Texture2D _texture, float2 uv)
+{
+	return normalize(_texture.Load(int3(uv * g_resolution, 0)).rgb);
+}
+
 float3x3 makeTBN(float3 n, float3 t)
 {
 	// re-orthogonalize T with respect to N
@@ -103,9 +110,9 @@ float3 normal_encode(float3 normal)	{ return normalize(normal); }
 /*------------------------------------------------------------------------------
 							[DEPTH/POS]
 ------------------------------------------------------------------------------*/
-float get_depth(Texture2D tex_depth, SamplerState sampler_linear, float2 tex_coord)
+float get_depth(Texture2D _texture, float2 uv)
 {
-	return tex_depth.SampleLevel(sampler_linear, tex_coord, 0).r;
+	return _texture.Load(int3(uv * g_resolution, 0)).r;
 }
 
 float get_linear_depth(float z)
@@ -115,30 +122,30 @@ float get_linear_depth(float z)
 	return 2.0f * g_camera_far * g_camera_near / (g_camera_near + g_camera_far - z_n * (g_camera_near - g_camera_far));
 }
 
-float get_linear_depth(Texture2D tex_depth, SamplerState sampler_linear, float2 tex_coord)
+float get_linear_depth(Texture2D _texture, float2 uv)
 {
-	float depth = get_depth(tex_depth, sampler_linear, tex_coord);
+	float depth = get_depth(_texture, uv);
 	return get_linear_depth(depth);
 }
 
-float3 get_world_position_from_depth(float z, matrix viewProjectionInverse, float2 tex_coord)
+float3 get_world_position_from_depth(float z, matrix viewProjectionInverse, float2 uv)
 {	
-	float x 			= tex_coord.x * 2.0f - 1.0f;
-	float y 			= (1.0f - tex_coord.y) * 2.0f - 1.0f;
+	float x 			= uv.x * 2.0f - 1.0f;
+	float y 			= (1.0f - uv.y) * 2.0f - 1.0f;
     float4 pos_clip 	= float4(x, y, z, 1.0f);
 	float4 pos_world 	= mul(pos_clip, viewProjectionInverse);	
     return pos_world.xyz / pos_world.w;  
 }
 
-float3 get_world_position_from_depth(Texture2D tex_depth, SamplerState sampler_linear, float2 tex_coord)
+float3 get_world_position_from_depth(Texture2D _texture, float2 uv)
 {
-	float depth = get_depth(tex_depth, sampler_linear, tex_coord);
-    return get_world_position_from_depth(depth, g_viewProjectionInv, tex_coord);
+	float depth = get_depth(_texture, uv);
+    return get_world_position_from_depth(depth, g_viewProjectionInv, uv);
 }
 
-float3 get_world_position_from_depth(float depth, float2 tex_coord)
+float3 get_world_position_from_depth(float depth, float2 uv)
 {
-    return get_world_position_from_depth(depth, g_viewProjectionInv, tex_coord);
+    return get_world_position_from_depth(depth, g_viewProjectionInv, uv);
 }
 
 /*------------------------------------------------------------------------------

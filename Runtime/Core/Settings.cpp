@@ -19,17 +19,17 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ========================
+//= INCLUDES ======================
 #include "Settings.h"
 #include "Timer.h"
 #include "Context.h"
 #include <fstream>
 #include "../Logging/Log.h"
-#include "../FileSystem/FileSystem.h"
+#include "../Core/FileSystem.h"
 #include "../Rendering/Renderer.h"
 #include "../Threading/Threading.h"
 #include "pugixml.hpp"
-//===================================
+//=================================
 
 //= NAMESPACES ================
 using namespace std;

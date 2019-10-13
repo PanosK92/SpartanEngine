@@ -79,7 +79,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 #endif
 
 #if PASS_FXAA
-	// Requirements: Bilinear sampler
+	// FXAA requires a bilinear sampler
 	FxaaTex tex 				= { samplerState, sourceTexture };
     float2 fxaaQualityRcpFrame	= g_texel_size;
   
@@ -101,7 +101,6 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 #endif
 
 #if PASS_LUMA_SHARPEN
-	// Requirements: Bilinear sampler
 	color.rgb = LumaSharpen(texCoord, sourceTexture, samplerState, g_resolution, g_sharpen_strength, g_sharpen_clamp);	
 #endif
 
@@ -110,12 +109,15 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 #endif
 
 #if PASS_TAA_SHARPEN
-	// Requirements: Bilinear sampler
 	color = SharpenTaa(texCoord, sourceTexture, samplerState);	
 #endif
 
 #if PASS_UPSAMPLE_BOX
-	color = Upsample_Box(texCoord, g_texel_size, sourceTexture, samplerState, 1.0f);
+	color = Upsample_Box(texCoord, g_texel_size, sourceTexture, samplerState);
+#endif
+
+#if PASS_DOWNSAMPLE_BOX
+	color = Downsample_Box(texCoord, g_texel_size, sourceTexture, samplerState);
 #endif
 
 #if PASS_BLUR_BOX
@@ -123,12 +125,10 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 #endif
 
 #if PASS_BLUR_GAUSSIAN
-	// Requirements: Bilinear sampler
 	color = Blur_Gaussian(texCoord, sourceTexture, samplerState, g_texel_size, blur_direction, blur_sigma);
 #endif
 
 #if PASS_BLUR_BILATERAL_GAUSSIAN
-	// Requirements: Bilinear sampler
 	color = Blur_GaussianBilateral(texCoord, sourceTexture, sourceTexture2, sourceTexture3, samplerState, g_texel_size, blur_direction, blur_sigma);
 #endif
 
@@ -143,7 +143,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 
 #if PASS_BLOOM_BLEND_ADDITIVE
 	float4 sourceColor 	= sourceTexture.Sample(samplerState, texCoord);
-	float4 sourceColor2 = Upsample_Box(texCoord, g_texel_size, sourceTexture2, samplerState, 2.0f);
+	float4 sourceColor2 = Upsample_Box(texCoord, g_texel_size, sourceTexture2, samplerState);
 	color 				= sourceColor + sourceColor2 * g_bloom_intensity;
 #endif
 
