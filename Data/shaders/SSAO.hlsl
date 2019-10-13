@@ -25,14 +25,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //=======================
 
 //= TEXTURES ======================
-Texture2D texNormal : register(t0);
-Texture2D texDepth  : register(t1);
+Texture2D texDepth  : register(t0);
+Texture2D texNormal : register(t1);
 Texture2D texNoise  : register(t2);
 //=================================
 
-//= SAMPLERS ===================================
-SamplerState sampler_linear_wrap : register(s0);
-//==============================================
+//= SAMPLERS ======================================
+SamplerState sampler_linear_clamp	: register(s0);
+SamplerState sampler_linear_wrap	: register(s1);
+//=================================================
 
 static const int sample_count		= 16;
 static const float radius			= 5.0f;
@@ -110,9 +111,9 @@ static const float3 sampleKernel[64] =
 float mainPS(Pixel_PosUv input) : SV_TARGET
 {
 	float2 uv				= input.uv;
-    float center_depth      = get_depth(texDepth, uv);
-    float3 center_pos       = get_world_position_from_depth(center_depth, uv);
-    float3 center_normal    = get_normal(texNormal, uv);		
+    float center_depth      = texDepth.SampleLevel(sampler_linear_clamp, uv, 0).r;
+    float3 center_pos       = get_world_position_from_depth(center_depth, uv / g_ssao_scale);
+    float3 center_normal    = get_normal(texNormal, uv / g_ssao_scale);		
 
 	// Construct TBN
 	float3 noise	= unpack(texNoise.Sample(sampler_linear_wrap, input.uv * noiseScale).xyz);		
@@ -124,7 +125,7 @@ float mainPS(Pixel_PosUv input) : SV_TARGET
     for (int i = 0; i < sample_count; i++)
     {	
 		// Compute sample uv
-		float3 dither_value = dither(uv + float(i )/ float(sample_count)) * 250.0f;
+		float3 dither_value = dither(uv + float(i )/ float(sample_count)) * 500.0f;
 		float3 offset 		= mul(sampleKernel[i], TBN);
 		float3 ray_pos		= center_pos + offset * radius * dither_value;
 		float2 ray_uv 		= project(ray_pos, g_viewProjection);
@@ -137,7 +138,7 @@ float mainPS(Pixel_PosUv input) : SV_TARGET
 		
 		// Accumulate
 		float occlusion_factor	= dot(center_normal, center_to_sample_dir);
-		float range_check		= step(radius, center_to_sample_distance);
+		float range_check		= step(center_to_sample_distance, radius);
 		occlusion 				+= occlusion_factor * range_check * intensity;
     }
     occlusion /= (float)sample_count;
