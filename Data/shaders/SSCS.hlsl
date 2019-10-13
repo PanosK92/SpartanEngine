@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 static const uint g_sscs_steps 				= 32;
 static const float g_sscs_rejection_depth 	= 0.04f;
 static const float g_sscs_ray_max_distance 	= 0.2f;
-static const float g_sscs_bias 	= 0.0000002f;
+static const float g_sscs_bias 	= 0.005f;
 
 //= INLUCES =============
 #include "Dithering.hlsl"
