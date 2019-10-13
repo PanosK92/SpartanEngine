@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <scriptstdstring/scriptstdstring.cpp>
 #include "ScriptInterface.h"
 #include "../Logging/Log.h"
-#include "../FileSystem/FileSystem.h"
+#include "../Core/FileSystem.h"
 #include "../Core/EventSystem.h"
 #include "../Core/Settings.h"
 #include "../Core/Context.h"

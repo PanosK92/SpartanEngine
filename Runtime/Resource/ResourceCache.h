@@ -97,7 +97,7 @@ namespace Spartan
             // Validate resource file path
             if (!FileSystem::IsEngineFile(resource->GetResourceFilePathNative()))
             {
-                LOGF_ERROR("A resource must have a native file format in order to be cached, provide format was %s", FileSystem::GetFileFormatFromFilePath(resource->GetResourceFilePathNative()).c_str());
+                LOGF_ERROR("A resource must have a native file format in order to be cached, provide format was %s", FileSystem::GetExtensionFromFilePath(resource->GetResourceFilePathNative()).c_str());
                 return nullptr;
             }
 

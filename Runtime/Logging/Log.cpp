@@ -19,15 +19,15 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ========================
+//= INCLUDES ===================
 #include "Log.h"
 #include "ILogger.h"
 #include <fstream>
 #include <cstdarg>
 #include "../World/Entity.h"
 #include "../Core/EventSystem.h"
-#include "../FileSystem/FileSystem.h"
-//===================================
+#include "../Core/FileSystem.h"
+//==============================
 
 //= NAMESPACES ===============
 using namespace std;

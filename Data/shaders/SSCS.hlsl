@@ -22,15 +22,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 static const uint g_sscs_steps 				= 32;
 static const float g_sscs_rejection_depth 	= 0.04f;
 static const float g_sscs_ray_max_distance 	= 0.2f;
+static const float g_sscs_bias 	= 0.0000002f;
 
 //= INLUCES =============
 #include "Dithering.hlsl"
 //=======================
 
-float ScreenSpaceContactShadows(float2 uv, float3 light_dir)
+float ScreenSpaceContactShadows(Texture2D tex_depth, float2 uv, float3 light_dir)
 {
     // Origin view space position
-    float origin_depth 	= tex_depth.Sample(sampler_point_clamp, uv).r;
+    float origin_depth 	= get_depth(tex_depth, uv);
     float3 temp  		= get_world_position_from_depth(origin_depth, g_viewProjectionInv, uv);
     float3 origin_pos	= mul(float4(temp, 1.0f), g_view).xyz;
 
@@ -58,8 +59,8 @@ float ScreenSpaceContactShadows(float2 uv, float3 light_dir)
 			break;
 
 		// Compare depth
-		float depth_sampled = get_linear_depth(tex_depth, sampler_point_clamp, ray_uv);
-		float depth_delta 	= ray_pos.z - depth_sampled;
+		float depth_sampled = get_linear_depth(tex_depth, ray_uv);
+		float depth_delta 	= ray_pos.z - depth_sampled - g_sscs_bias;
 
         // Occlusion test
         if (depth_delta > 0.0f && depth_delta < g_sscs_rejection_depth)

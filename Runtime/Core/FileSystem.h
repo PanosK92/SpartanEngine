@@ -46,25 +46,32 @@ namespace Spartan
 	public:
 		static void Initialize();
 
-		//= DIRECTORIES ==============================================
+        // String operations
+        static bool IsEmptyOrWhitespace(const std::string& var);
+        static bool IsAlphanumeric(const std::string& var);
+        static std::string GetStringAfterExpression(const std::string& str, const std::string& exp);
+        static std::string GetStringBetweenExpressions(const std::string& str, const std::string& exp_a, const std::string& exp_b);
+        static std::string ConvertToUppercase(const std::string& lower);
+        static std::string ReplaceExpression(const std::string& str, const std::string& from, const std::string& to);
+        static std::wstring StringToWstring(const std::string& str);
+        static std::vector<std::string> GetIncludedFiles(const std::string& file_path);
+
+		// Directories
 		static bool CreateDirectory_(const std::string& path);
 		static bool DeleteDirectory(const std::string& directory);
 		static bool DirectoryExists(const std::string& directory);
 		static bool IsDirectory(const std::string& directory);
 		static void OpenDirectoryWindow(const std::string& directory);
-		//============================================================
 
-		//= FILES ============================================================================
+		// Files
 		static bool FileExists(const std::string& file_path);
-        static bool IsFilePath(const std::string& file_path);
+        static bool IsFile(const std::string& file_path);
 		static bool DeleteFile_(const std::string& file_path);
 		static bool CopyFileFromTo(const std::string& source, const std::string& destination);
-		//====================================================================================
 
-		//= DIRECTORY PARSING  =============================================================================
+		// Directory manipulation
 		static std::string GetFileNameFromFilePath(const std::string& file_path);
 		static std::string GetFileNameNoExtensionFromFilePath(const std::string& file_path);
-        static std::string GetFileFormatFromFilePath(const std::string& file_path);
 		static std::string GetDirectoryFromFilePath(const std::string& file_path);
 		static std::string GetFilePathWithoutExtension(const std::string& file_path);
 		static std::string GetExtensionFromFilePath(const std::string& file_path);
@@ -74,9 +81,8 @@ namespace Spartan
 		static std::string GetParentDirectory(const std::string& directory);
 		static std::vector<std::string> GetDirectoriesInDirectory(const std::string& directory);
 		static std::vector<std::string> GetFilesInDirectory(const std::string& directory);
-		//==================================================================================================
 
-		//= SUPPORTED FILES IN DIRECTORY =======================================================================
+		// Get supported files in directory
 		static std::vector<std::string> GetSupportedFilesInDirectory(const std::string& directory);
 		static std::vector<std::string> GetSupportedImageFilesFromPaths(const std::vector<std::string>& paths);
 		static std::vector<std::string> GetSupportedAudioFilesFromPaths(const std::vector<std::string>& paths);
@@ -84,43 +90,31 @@ namespace Spartan
 		static std::vector<std::string> GetSupportedModelFilesFromPaths(const std::vector<std::string>& paths);
 		static std::vector<std::string> GetSupportedModelFilesInDirectory(const std::string& directory);
 		static std::vector<std::string> GetSupportedSceneFilesInDirectory(const std::string& directory);
-		//======================================================================================================
 
-		//= SUPPORTED FILE CHECKS =====================================	
-		static bool IsSupportedAudioFile(const std::string& path);
-		static bool IsSupportedImageFile(const std::string& path);	
-		static bool IsSupportedModelFile(const std::string& path);
-		static bool IsSupportedShaderFile(const std::string& path);
-		static bool IsSupportedFontFile(const std::string& path);
-		static bool IsEngineScriptFile(const std::string& path);
-		static bool IsEnginePrefabFile(const std::string& filePath);		
-		static bool IsEngineMaterialFile(const std::string& filePath);
-		static bool IsEngineMeshFile(const std::string& filePath);
-		static bool IsEngineModelFile(const std::string& filePath);
-		static bool IsEngineSceneFile(const std::string& filePath);
-		static bool IsEngineTextureFile(const std::string& filePath);
-        static bool IsEngineAudioFile(const std::string& filePath);
-		static bool IsEngineShaderFile(const std::string& filePath);
-        static bool IsEngineFile(const std::string& filePath);
-		//=============================================================
+		// Check if file is supported
+		static bool IsSupportedAudioFile(const std::string& file_path);
+		static bool IsSupportedImageFile(const std::string& file_path);
+		static bool IsSupportedModelFile(const std::string& file_path);
+		static bool IsSupportedShaderFile(const std::string& file_path);
+		static bool IsSupportedFontFile(const std::string& file_path);
+		static bool IsEngineScriptFile(const std::string& file_path);
+		static bool IsEnginePrefabFile(const std::string& file_path);
+		static bool IsEngineMaterialFile(const std::string& file_path);
+		static bool IsEngineMeshFile(const std::string& file_path);
+		static bool IsEngineModelFile(const std::string& file_path);
+		static bool IsEngineSceneFile(const std::string& file_path);
+		static bool IsEngineTextureFile(const std::string& file_path);
+        static bool IsEngineAudioFile(const std::string& file_path);
+		static bool IsEngineShaderFile(const std::string& file_path);
+        static bool IsEngineFile(const std::string& file_path);
 
-		//= STRING PARSING =============================================================================================================================
-		static std::string GetStringAfterExpression(const std::string& str, const std::string& expression);
-		static std::string GetStringBetweenExpressions(const std::string& str, const std::string& firstExpression, const std::string& secondExpression);
-		static std::string ConvertToUppercase(const std::string& lower);		
-		static std::string ReplaceExpression(const std::string& str, const std::string& from, const std::string& to);
-		static std::wstring StringToWstring(const std::string& str);
-		static std::vector<std::string> GetIncludedFiles(const std::string& file_path);
-		//==============================================================================================================================================
-
-		//= SUPPORTED ASSET FILE FORMATS ===============================================================
-		static std::vector<std::string> GetSupportedImageFormats()	{ return m_supportedImageFormats; }
-		static std::vector<std::string> GetSupportedAudioFormats()	{ return m_supportedAudioFormats; }
-		static std::vector<std::string> GetSupportedModelFormats()	{ return m_supportedModelFormats; }
-		static std::vector<std::string> GetSupportedShaderFormats()	{ return m_supportedShaderFormats; }
-		static std::vector<std::string> GetSupportedScriptFormats()	{ return m_supportedScriptFormats; }
-		static std::vector<std::string> GetSupportedFontFormats()	{ return m_supportedFontFormats; }
-		//==============================================================================================
+		// Lists of supported file formats
+		static const auto& GetSupportedImageFormats()	{ return m_supportedImageFormats; }
+		static const auto& GetSupportedAudioFormats()	{ return m_supportedAudioFormats; }
+		static const auto& GetSupportedModelFormats()	{ return m_supportedModelFormats; }
+		static const auto& GetSupportedShaderFormats()	{ return m_supportedShaderFormats; }
+		static const auto& GetSupportedScriptFormats()	{ return m_supportedScriptFormats; }
+		static const auto& GetSupportedFontFormats()	{ return m_supportedFontFormats; }
 
 	private:
 		static std::vector<std::string> m_supportedImageFormats;

@@ -176,7 +176,145 @@ namespace Spartan
 		};
 	}
 
-	bool FileSystem::CreateDirectory_(const string& path)
+    bool FileSystem::IsEmptyOrWhitespace(const std::string& var)
+    {
+        // Check if it's empty
+        if (var.empty())
+            return true;
+
+        // Check if it's made out of whitespace characters
+        for (char _char : var)
+        {
+            if (!std::isspace(_char))
+                return false;
+        }
+
+        return true;
+    }
+
+    bool FileSystem::IsAlphanumeric(const std::string& var)
+    {
+        if (IsEmptyOrWhitespace(var))
+            return false;
+
+        for (char _char : var)
+        {
+            if (!std::isalnum(_char))
+                return false;
+        }
+
+        return true;
+    }
+
+    string FileSystem::GetStringAfterExpression(const string& str, const string& expression)
+    {
+        // ("The quick brown fox", "brown") -> "brown fox"
+        auto position = str.find(expression);
+        auto remaining = position != string::npos ? str.substr(position + expression.length()) : str;
+
+        return remaining;
+    }
+
+    string FileSystem::GetStringBetweenExpressions(const string& str, const string& firstExpression, const string& secondExpression)
+    {
+        // ("The quick brown fox", "The ", " brown") -> "quick"
+
+        regex base_regex(firstExpression + "(.*)" + secondExpression);
+
+        smatch base_match;
+        if (regex_search(str, base_match, base_regex))
+        {
+            // The first sub_match is the whole string; the next
+            // sub_match is the first parenthesized expression.
+            if (base_match.size() == 2)
+            {
+                return base_match[1].str();
+            }
+        }
+
+        return str;
+    }
+
+    string FileSystem::ConvertToUppercase(const string& lower)
+    {
+        locale loc;
+        string upper;
+        for (const auto& character : lower)
+        {
+            upper += std::toupper(character, loc);
+        }
+
+        return upper;
+    }
+
+    string FileSystem::ReplaceExpression(const string& str, const string& from, const string& to)
+    {
+        return regex_replace(str, regex(from), to);
+    }
+
+    wstring FileSystem::StringToWstring(const string& str)
+    {
+        const auto slength = static_cast<int>(str.length()) + 1;
+        const auto len = MultiByteToWideChar(CP_ACP, 0, str.c_str(), slength, nullptr, 0);
+        const auto buf = new wchar_t[len];
+        MultiByteToWideChar(CP_ACP, 0, str.c_str(), slength, buf, len);
+        std::wstring result(buf);
+        delete[] buf;
+        return result;
+    }
+
+    vector<string> FileSystem::GetIncludedFiles(const std::string& file_path)
+    {
+        // Read the file
+        ifstream in(file_path);
+        stringstream buffer;
+        buffer << in.rdbuf();
+
+        string source = buffer.str();
+        string directory = GetDirectoryFromFilePath(file_path);
+        string directive_exp = "#include \"";
+        vector<string> file_paths;
+
+        // Early exit if there is no include directive
+        if (source.find(directive_exp) == string::npos)
+            return file_paths;
+
+        // Scan for include directives
+        istringstream stream(source);
+        string include_directive;
+        while (std::getline(stream, include_directive))
+        {
+            if (include_directive.find(directive_exp) != string::npos)
+            {
+                // Construct file path and save it
+                string file_name = GetStringBetweenExpressions(include_directive, directive_exp, "\"");
+                file_paths.emplace_back(directory + file_name);
+            }
+        }
+
+        // If any file path contains more file paths inside, start resolving them recursively
+        auto file_paths_copy = file_paths; // copy the file paths to avoid modification while iterating
+        for (const auto& _file_path : file_paths_copy)
+        {
+            // Read the file
+            ifstream _in(_file_path);
+            stringstream _buffer;
+            _buffer << _in.rdbuf();
+
+            // Check for include directive
+            string source = _buffer.str();
+            if (source.find(directive_exp) != string::npos)
+            {
+                auto new_includes = GetIncludedFiles(_file_path);
+                file_paths.insert(file_paths.end(), new_includes.begin(), new_includes.end());
+            }
+        }
+
+        // At this point, everything should be resolved
+        return file_paths;
+    }
+
+    bool FileSystem::CreateDirectory_(const string& path)
 	{
 		try
 		{
@@ -184,7 +322,7 @@ namespace Spartan
 		}
 		catch (filesystem_error& e)
 		{
-			LOGF_ERROR("%s, %s", e.what(), path.c_str());
+			LOGF_WARNING("%s, %s", e.what(), path.c_str());
 			return true;
 		}
 	}
@@ -197,7 +335,7 @@ namespace Spartan
 		}
 		catch (filesystem_error& e)
 		{
-			LOGF_ERROR("s, %s", e.what(), directory.c_str());
+			LOGF_WARNING("s, %s", e.what(), directory.c_str());
 			return true;
 		}
 	}
@@ -210,7 +348,7 @@ namespace Spartan
 		}
 		catch (filesystem_error& e)
 		{
-			LOGF_ERROR("%s, %s", e.what(), directory.c_str());
+			LOGF_WARNING("%s, %s", e.what(), directory.c_str());
 			return true;
 		}
 	}
@@ -223,7 +361,7 @@ namespace Spartan
 		}
 		catch (filesystem_error& e)
 		{
-			LOGF_ERROR("%s, %s", e.what(), directory.c_str());
+			LOGF_WARNING("%s, %s", e.what(), directory.c_str());
 			return false;
 		}
 	}
@@ -233,7 +371,7 @@ namespace Spartan
 		ShellExecute(nullptr, nullptr, StringToWstring(directory).c_str(), nullptr, nullptr, SW_SHOW);
 	}
 
-	bool FileSystem::FileExists(const string& file_path)
+    bool FileSystem::FileExists(const string& file_path)
 	{
 		try
 		{
@@ -241,20 +379,20 @@ namespace Spartan
 		}
 		catch (filesystem_error& e)
 		{
-			LOGF_ERROR("%s, %s", e.what(), file_path.c_str());
+			LOGF_WARNING("%s, %s", e.what(), file_path.c_str());
 			return true;
 		}
 	}
 
-    bool FileSystem::IsFilePath(const string& file_path)
+    bool FileSystem::IsFile(const string& file_path)
     {
-        if (file_path.empty())
+        if (IsEmptyOrWhitespace(file_path))
             return false;
 
         if (IsDirectory(file_path))
             return false;
 
-        if (GetFileFormatFromFilePath(file_path).empty())
+        if (IsEmptyOrWhitespace(GetExtensionFromFilePath(file_path)))
             return false;
 
         return true;
@@ -272,7 +410,7 @@ namespace Spartan
 		}
 		catch (filesystem_error& e)
 		{
-			LOGF_ERROR("%s, %s", e.what(), file_path.c_str());
+			LOGF_WARNING("%s, %s", e.what(), file_path.c_str());
 			return true;
 		}
 	}
@@ -294,7 +432,7 @@ namespace Spartan
 		}
 		catch (filesystem_error& e) 
 		{
-			LOGF_ERROR("%s", e.what());
+			LOGF_WARNING("%s", e.what());
 			return true;
 		}
 	}
@@ -306,7 +444,7 @@ namespace Spartan
         if (last_index != string::npos)
 		    return file_path.substr(last_index + 1, file_path.length());
 
-        LOGF_ERROR("Failed to extract file name from \"%s\"", file_path.c_str());
+        LOGF_WARNING("Failed to extract file name from \"%s\"", file_path.c_str());
 		return "";
 	}
 
@@ -318,20 +456,9 @@ namespace Spartan
         if (last_index != string::npos)
 		    return file_name.substr(0, last_index);
 
-        LOGF_ERROR("Failed to extract file name from \"%s\"", file_path.c_str());
+        LOGF_WARNING("Failed to extract file name from \"%s\"", file_path.c_str());
 		return "";
 	}
-
-    string FileSystem::GetFileFormatFromFilePath(const string& file_path)
-    {
-        size_t last_index = file_path.find_last_of('.');
-
-        if (last_index != string::npos)
-            return file_path.substr(last_index, file_path.length());
-
-        LOGF_ERROR("Failed to extract file format from \"%s\"", file_path.c_str());
-        return "";
-    }
 
     string FileSystem::GetDirectoryFromFilePath(const string& file_path)
 	{
@@ -340,7 +467,7 @@ namespace Spartan
         if (last_index != string::npos)
 		    return file_path.substr(0, last_index + 1);
 
-        LOGF_ERROR("Failed to extract directory from \"%s\"", file_path.c_str());
+        LOGF_WARNING("Failed to extract directory from \"%s\"", file_path.c_str());
 		return "";
 	}
 
@@ -354,16 +481,21 @@ namespace Spartan
 
 	string FileSystem::GetExtensionFromFilePath(const string& file_path)
 	{
-		if (file_path.empty())
+		if (IsEmptyOrWhitespace(file_path))
 			return "";
 
         size_t last_index = file_path.find_last_of('.');
         if (last_index != string::npos)
 		{
-			// extension with dot included
-			return file_path.substr(last_index, file_path.length());
+            string extention            = file_path.substr(last_index + 1, file_path.length());
+            string extention_with_dot   = file_path.substr(last_index, file_path.length());
+
+            // Try to ensure we didn't grab something totally random
+            if (IsAlphanumeric(extention))
+                return extention_with_dot;
 		}
 
+        LOGF_WARNING("Failed to extract file format from \"%s\"", file_path.c_str());
 		return "";
 	}
 
@@ -377,7 +509,7 @@ namespace Spartan
         if (IsSupportedFontFile(file_path))     return file_path_no_ext + EXTENSION_FONT;
         if (IsSupportedShaderFile(file_path))   return file_path_no_ext + EXTENSION_SHADER;
 
-        LOGF_ERROR("Failed to nativize file path");
+        LOGF_WARNING("Failed to nativize file path");
         return file_path;
     }
 
@@ -398,7 +530,7 @@ namespace Spartan
             }
             catch (system_error& e)
             {
-                LOGF_ERROR("Failed to read a directory path. %s", e.what());
+                LOGF_WARNING("Failed to read a directory path. %s", e.what());
             }
 		}
 
@@ -422,7 +554,7 @@ namespace Spartan
             }
             catch (system_error& e)
             {
-                LOGF_ERROR("Failed to read a file path. %s", e.what());
+                LOGF_WARNING("Failed to read a file path. %s", e.what());
             }
 		}
 
@@ -743,113 +875,5 @@ namespace Spartan
 
 		// Return parent directory including a slash at the end
 		return result.substr(0, found) + "/";
-	}
-
-	string FileSystem::GetStringAfterExpression(const string& str, const string& expression)
-	{
-		// ("The quick brown fox", "brown") -> "brown fox"
-		auto position	= str.find(expression);
-		auto remaining	= position != string::npos ? str.substr(position + expression.length()) : str;
-
-		return remaining;
-	}
-
-	string FileSystem::GetStringBetweenExpressions(const string& str, const string& firstExpression, const string& secondExpression)
-	{
-		// ("The quick brown fox", "The ", " brown") -> "quick"
-
-		regex base_regex(firstExpression + "(.*)" + secondExpression);
-
-		smatch base_match;
-		if (regex_search(str, base_match, base_regex)) 
-		{
-			// The first sub_match is the whole string; the next
-			// sub_match is the first parenthesized expression.
-			if (base_match.size() == 2) 
-			{
-				return base_match[1].str();
-			}			
-		}
-
-		return str;
-	}
-
-	string FileSystem::ConvertToUppercase(const string& lower)
-	{
-		locale loc;
-		string upper;
-		for (const auto& character : lower)
-		{
-			upper += std::toupper(character, loc);
-		}
-	
-		return upper;
-	}
-
-	string FileSystem::ReplaceExpression(const string& str, const string& from, const string& to)
-	{
-		return regex_replace(str, regex(from), to);
-	}
-
-	wstring FileSystem::StringToWstring(const string& str)
-	{
-		const auto slength =	 static_cast<int>(str.length()) + 1;
-		const auto len		= MultiByteToWideChar(CP_ACP, 0, str.c_str(), slength, nullptr, 0);
-		const auto buf		= new wchar_t[len];
-		MultiByteToWideChar(CP_ACP, 0, str.c_str(), slength, buf, len);
-		std::wstring result(buf);
-		delete[] buf;
-		return result;
-	}
-
-    vector<string> FileSystem::GetIncludedFiles(const std::string& file_path)
-    {
-        // Read the file
-        ifstream in(file_path);
-        stringstream buffer;
-        buffer << in.rdbuf();
-
-        string source           = buffer.str();
-        string directory        = GetDirectoryFromFilePath(file_path);
-        string directive_exp    = "#include \"";
-        vector<string> file_paths;
-
-		// Early exit if there is no include directive
-		if (source.find(directive_exp) == string::npos)
-			return file_paths;
-
-		// Scan for include directives
-		istringstream stream(source);
-        string include_directive;
-		while (std::getline(stream, include_directive))
-		{
-			if (include_directive.find(directive_exp) != string::npos)
-            {
-                // Construct file path and save it
-                string file_name = GetStringBetweenExpressions(include_directive, directive_exp, "\"");
-				file_paths.emplace_back(directory + file_name);
-            }
-		}
-
-		// If any file path contains more file paths inside, start resolving them recursively
-        auto file_paths_copy = file_paths; // copy the file paths to avoid modification while iterating
-        for (const auto& _file_path : file_paths_copy)
-        {
-            // Read the file
-            ifstream _in(_file_path);
-            stringstream _buffer;
-            _buffer << _in.rdbuf();
-
-            // Check for include directive
-            string source = _buffer.str();
-		    if (source.find(directive_exp) != string::npos)
-		    {
-		    	auto new_includes = GetIncludedFiles(_file_path);
-                file_paths.insert(file_paths.end(), new_includes.begin(), new_includes.end());
-		    }
-        }
-	
-		// At this point, everything should be resolved
-		return file_paths;
 	}
 }

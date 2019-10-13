@@ -21,13 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ========================
+//= INCLUDES ======================
 #include <memory>
 #include "../Core/Context.h"
 #include "../Core/Spartan_Object.h"
-#include "../FileSystem/FileSystem.h"
+#include "../Core/FileSystem.h"
 #include "../Logging/Log.h"
-//===================================
+//=================================
 
 namespace Spartan
 {
@@ -63,7 +63,7 @@ namespace Spartan
 
 		void SetResourceFilePath(const std::string& file_path)
         {
-            if (!FileSystem::IsFilePath(file_path))
+            if (!FileSystem::IsFile(file_path))
             {
                 LOG_ERROR("File path is invalid.");
                 return;

@@ -25,15 +25,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifdef API_GRAPHICS_D3D11
 //================================
 
-//= INCLUDES ===========================
+//= INCLUDES =====================
 #include "../RHI_Device.h"
 #include "../RHI_Shader.h"
 #include "../RHI_InputLayout.h"
 #include "../../Logging/Log.h"
-#include "../../FileSystem/FileSystem.h"
+#include "../../Core/FileSystem.h"
 #include <d3dcompiler.h>
 #include <sstream> 
-//======================================
+//================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -83,14 +83,14 @@ namespace Spartan
 		}
 		defines.emplace_back(D3D_SHADER_MACRO{ nullptr, nullptr });
 
-		// Deduce weather we should compile from memory
-		const auto is_file = FileSystem::IsSupportedShaderFile(shader);
+		// Is file or source ?
+		const auto is_source = !FileSystem::IsSupportedShaderFile(shader);
 
 		// Compile from file
 		ID3DBlob* blob_error	= nullptr;
 		ID3DBlob* shader_blob	= nullptr;
 		HRESULT result;
-		if (is_file)
+		if (!is_source)
 		{
 			auto file_path = FileSystem::StringToWstring(shader);
 			result = D3DCompileFromFile

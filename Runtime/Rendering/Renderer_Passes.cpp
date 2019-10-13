@@ -356,21 +356,30 @@ namespace Spartan
             return;
 
         // Acquire render targets
-        auto& tex_ssao_half           = m_render_targets[RenderTarget_Ssao_Half];
-        auto& tex_ssao_half_blurred   = m_render_targets[RenderTarget_Ssao_Half_Blurred];
-        auto& tex_ssao                = m_render_targets[RenderTarget_Ssao];
+        auto& tex_ssao_raw      = m_render_targets[RenderTarget_Ssao_Raw];
+        auto& tex_ssao_blurred  = m_render_targets[RenderTarget_Ssao_Blurred];
+        auto& tex_ssao          = m_render_targets[RenderTarget_Ssao];
 
-		m_cmd_list->Begin("Pass_Ssao");	
-		m_cmd_list->ClearRenderTarget(tex_ssao_half->GetResource_RenderTarget(), Vector4::One);
-        m_cmd_list->ClearRenderTarget(tex_ssao->GetResource_RenderTarget(), Vector4::One);
+		m_cmd_list->Begin("Pass_Ssao");
+		m_cmd_list->ClearRenderTarget(tex_ssao_raw->GetResource_RenderTarget(), Vector4::One);
+        m_cmd_list->ClearRenderTarget(tex_ssao->GetResource_RenderTarget(),     Vector4::One);
 
 		if (m_flags & Render_SSAO)
 		{
-            // Prepare resources	
-            void* textures[] = { m_render_targets[RenderTarget_Gbuffer_Normal]->GetResource_Texture(), m_render_targets[RenderTarget_Gbuffer_Depth]->GetResource_Texture(), m_tex_noise_normal->GetResource_Texture() };
-            vector<void*> samplers = { m_sampler_bilinear_clamp->GetResource() /*SSAO (clamp) */, m_sampler_bilinear_wrap->GetResource() /*SSAO noise texture (wrap)*/ };
-            UpdateUberBuffer(tex_ssao_half->GetWidth(), tex_ssao_half->GetHeight());
+            // Pack resources	
+            void* textures[] =
+            {
+                m_render_targets[RenderTarget_Gbuffer_Depth]->GetResource_Texture(),
+                m_render_targets[RenderTarget_Gbuffer_Normal]->GetResource_Texture(),
+                m_tex_noise_normal->GetResource_Texture()
+            };
+            vector<void*> samplers =
+            {
+                m_sampler_bilinear_clamp->GetResource() /*SSAO (clamp) */,
+                m_sampler_bilinear_wrap->GetResource()  /*SSAO noise texture (wrap)*/
+            };
 
+            UpdateUberBuffer(tex_ssao_raw->GetWidth(), tex_ssao_raw->GetHeight());
             m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from some previous pass)
             m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
             m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
@@ -378,8 +387,8 @@ namespace Spartan
             m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
             m_cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
             m_cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
-            m_cmd_list->SetRenderTarget(tex_ssao_half);
-            m_cmd_list->SetViewport(tex_ssao_half->GetViewport());
+            m_cmd_list->SetRenderTarget(tex_ssao_raw);
+            m_cmd_list->SetViewport(tex_ssao_raw->GetViewport());
             m_cmd_list->SetShaderVertex(shader_quad);
             m_cmd_list->SetInputLayout(shader_quad->GetInputLayout());
             m_cmd_list->SetShaderPixel(shader_ssao);
@@ -392,13 +401,26 @@ namespace Spartan
             // Bilateral blur
             const auto sigma = 2.0f;
             const auto pixel_stride = 2.0f;
-            Pass_BlurBilateralGaussian(tex_ssao_half, tex_ssao_half_blurred, sigma, pixel_stride);
+            Pass_BlurBilateralGaussian(tex_ssao_raw, tex_ssao_blurred, sigma, pixel_stride);
 
             // Upscale to full size
-            Pass_Upsample(tex_ssao_half_blurred, tex_ssao);
+            float ssao_scale = m_options[Option_Value_Ssao_Scale];
+            if (ssao_scale < 1.0f)
+            {
+                Pass_Upsample(tex_ssao_blurred, tex_ssao);
+            }
+            else if (ssao_scale > 1.0f)
+            {
+                Pass_Downsample(tex_ssao_blurred, tex_ssao, Shader_Downsample_P);
+            }
+            else
+            {
+                tex_ssao_blurred.swap(tex_ssao);
+            }
 		}
 
 		m_cmd_list->End();
+        m_cmd_list->Submit();
 	}
 
     void Renderer::Pass_Ssr()
@@ -426,13 +448,6 @@ namespace Spartan
                 m_render_targets[RenderTarget_Composition_Ldr_2]->GetResource_Texture()
             };
 
-            // Pack samplers
-            vector<void*> samplers =
-            {
-                m_sampler_point_clamp->GetResource(),
-                m_sampler_bilinear_clamp->GetResource()
-            };
-
             UpdateUberBuffer(tex_ssr->GetWidth(), tex_ssr->GetHeight());
             m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from some previous pass)
             m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
@@ -447,7 +462,7 @@ namespace Spartan
             m_cmd_list->SetInputLayout(shader_quad->GetInputLayout());
             m_cmd_list->SetShaderPixel(shader_ssr);
             m_cmd_list->SetTextures(0, textures, 4);
-            m_cmd_list->SetSamplers(0, samplers);
+            m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
             m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_uber_buffer);
             m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
             m_cmd_list->Submit();
@@ -684,7 +699,7 @@ namespace Spartan
 		}
 
 		// Tone-Mapping
-		if (m_tonemapping != ToneMapping_Off)
+		if (m_options[Option_Value_Tonemapping] != 0)
 		{
 			Pass_ToneMapping(tex_in_hdr, tex_in_ldr); // HDR -> LDR
 		}
@@ -744,8 +759,10 @@ namespace Spartan
         if (!shader_vertex->IsCompiled() || !shader_pixel->IsCompiled())
             return;
 
-        m_cmd_list->Begin("Upscale");
+        m_cmd_list->Begin("Pass_Upsample");
         UpdateUberBuffer(tex_out->GetWidth(), tex_out->GetHeight());
+        m_cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
+        m_cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
         m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
         m_cmd_list->SetRenderTarget(tex_out);
         m_cmd_list->SetViewport(tex_out->GetViewport());
@@ -754,9 +771,34 @@ namespace Spartan
         m_cmd_list->SetTexture(0, tex_in);
         m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
         m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_uber_buffer);
-        m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
-        m_cmd_list->Submit();
+        m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
         m_cmd_list->End();
+        m_cmd_list->Submit();
+    }
+
+    void Renderer::Pass_Downsample(shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out, Renderer_Shader_Type pixel_shader)
+    {
+        // Acquire shader
+        const auto& shader_vertex   = m_shaders[Shader_Quad_V];
+        const auto& shader_pixel    = m_shaders[pixel_shader];
+        if (!shader_vertex->IsCompiled() || !shader_pixel->IsCompiled())
+            return;
+
+        m_cmd_list->Begin("Pass_Downsample");  
+        UpdateUberBuffer(tex_out->GetWidth(), tex_out->GetHeight());
+        m_cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
+        m_cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
+        m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
+        m_cmd_list->SetRenderTarget(tex_out);
+        m_cmd_list->SetViewport(tex_out->GetViewport());
+        m_cmd_list->SetShaderVertex(shader_vertex);
+        m_cmd_list->SetShaderPixel(shader_pixel);
+        m_cmd_list->SetTexture(0, tex_in);
+        m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
+        m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_uber_buffer);
+        m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
+        m_cmd_list->End();
+        m_cmd_list->Submit();
     }
 
 	void Renderer::Pass_BlurBox(shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out, const float sigma)
@@ -767,9 +809,9 @@ namespace Spartan
 			return;
 
 		m_cmd_list->Begin("Pass_BlurBox");
-
 		UpdateUberBuffer(tex_out->GetWidth(), tex_out->GetHeight());
-
+        m_cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
+        m_cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
 		m_cmd_list->SetRenderTarget(tex_out);
         m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
 		m_cmd_list->SetViewport(tex_out->GetViewport());
@@ -777,7 +819,7 @@ namespace Spartan
 		m_cmd_list->SetTexture(0, tex_in); // Shadows are in the alpha channel
 		m_cmd_list->SetSampler(0, m_sampler_trilinear_clamp);
 		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_uber_buffer);
-		m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
+		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 		m_cmd_list->End();
 		m_cmd_list->Submit();
 	}
@@ -974,7 +1016,7 @@ namespace Spartan
         m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
         m_cmd_list->SetBlendState(m_blend_disabled);
 
-        m_cmd_list->Begin("DownscaleLuminance");
+        m_cmd_list->Begin("Downsample_And_Luminance");
         {
             UpdateUberBuffer(m_render_tex_bloom[0]->GetWidth(), m_render_tex_bloom[0]->GetHeight());
             m_cmd_list->SetRenderTarget(m_render_tex_bloom[0]);
@@ -986,27 +1028,11 @@ namespace Spartan
         }
         m_cmd_list->End();
 
-        auto downsample = [this, &shader_downsample](shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
-        {
-		    m_cmd_list->Begin("Downsample");
-		    {
-		    	UpdateUberBuffer(tex_out->GetWidth(), tex_out->GetHeight()); 
-		    	m_cmd_list->SetRenderTarget(tex_out);
-		    	m_cmd_list->SetViewport(tex_out->GetViewport());
-		    	m_cmd_list->SetShaderPixel(shader_downsample);
-		    	m_cmd_list->SetTexture(0, tex_in);
-		    	m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_uber_buffer);
-		    	m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
-		    }
-		    m_cmd_list->End();
-            m_cmd_list->Submit(); // we have to submit because all downsample passes are using the same buffer
-        };
-
         // Downsample
         // The last bloom texture is the same size as the previous one (it's used for the Gaussian pass below), so we skip it
         for (int i = 0; i < static_cast<int>(m_render_tex_bloom.size() - 1); i++)
         {
-            downsample(m_render_tex_bloom[i], m_render_tex_bloom[i + 1]);
+            Pass_Downsample(m_render_tex_bloom[i], m_render_tex_bloom[i + 1], Shader_BloomDownsample_P);
         }
 
         auto upsample = [this, &shader_upsample](shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)

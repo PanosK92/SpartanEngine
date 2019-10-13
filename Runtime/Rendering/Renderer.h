@@ -78,10 +78,10 @@ namespace Spartan
 
     enum Renderer_ToneMapping_Type
     {
-        ToneMapping_Off,
-        ToneMapping_ACES,
-        ToneMapping_Reinhard,
-        ToneMapping_Uncharted2
+        Renderer_ToneMapping_Off,
+        Renderer_ToneMapping_ACES,
+        Renderer_ToneMapping_Reinhard,
+        Renderer_ToneMapping_Uncharted2
     };
 
 	enum Renderer_Buffer_Type
@@ -132,6 +132,7 @@ namespace Spartan
 		Shader_GammaCorrection_P,
 		Shader_Dithering_P,
 		Shader_Upsample_P,
+        Shader_Downsample_P,
 		Shader_DebugNormal_P,
 		Shader_DebugVelocity_P,
 		Shader_DebugChannelR_P,
@@ -177,12 +178,27 @@ namespace Spartan
         RenderTarget_Composition_Hdr_History,
         RenderTarget_Composition_Hdr_History_2,
         // SSAO
-        RenderTarget_Ssao_Half,
-        RenderTarget_Ssao_Half_Blurred,
+        RenderTarget_Ssao_Raw,
+        RenderTarget_Ssao_Blurred,
         RenderTarget_Ssao,
         // SSR
         RenderTarget_Ssr,
         RenderTarget_Ssr_Blurred
+    };
+
+    enum Renderer_Option_Value
+    {
+        Option_Value_Tonemapping,
+        Option_Value_Exposure,
+        Option_Value_Gamma,
+        Option_Value_Fxaa_Sub_Pixel,          // The amount of sub-pixel aliasing removal														- Algorithm's default: 0.75f
+        Option_Value_Fxaa_Edge_Threshold,     // Edge detection threshold. The minimum amount of local contrast required to apply algorithm.    - Algorithm's default: 0.166f
+        Option_Value_Fxaa_Edge_Threshold_Min, // Darkness threshold. Trims the algorithm from processing darks								    - Algorithm's default: 0.0833f
+        Option_Value_Bloom_Intensity,
+        Option_Value_Sharpen_Strength,
+        Option_Value_Sharpen_Clamp,           // Limits maximum amount of sharpening a pixel receives - Algorithm's default: 0.035f
+        Option_Value_Motion_Blur_Intensity,
+        Option_Value_Ssao_Scale
     };
 
 	class SPARTAN_CLASS Renderer : public ISubsystem
@@ -230,7 +246,7 @@ namespace Spartan
 		const auto& GetCmdList()		const { return m_cmd_list; }
 		//================================================================
 
-		//= MISC ===========================================================================================================================
+		//= MISC ===================================================================================================================
 		auto& GetFrameTexture() 	                        { return m_render_targets[RenderTarget_Composition_Ldr]; }
 		auto GetFrameNum() const		                    { return m_frame_num; }
 		const auto& GetCamera() const	                    { return m_camera; }
@@ -262,24 +278,10 @@ namespace Spartan
         // Environment
         const std::shared_ptr<RHI_Texture>& GetEnvironmentTexture();
         void SetEnvironmentTexture(const std::shared_ptr<RHI_Texture>& texture);
-		//=================================================================================================================================
 
-        //= Graphics Settings ====================================================================================================================================================
-        Renderer_ToneMapping_Type m_tonemapping  = ToneMapping_ACES;
-        float m_exposure                = 0.0f;
-        float m_gamma                   = 2.2f;
-        // FXAA
-        float m_fxaa_sub_pixel          = 1.25f;	// The amount of sub-pixel aliasing removal														- Algorithm's default: 0.75f
-        float m_fxaa_edge_threshold     = 0.125f;	// Edge detection threshold. The minimum amount of local contrast required to apply algorithm.  - Algorithm's default: 0.166f
-        float m_fxaa_edge_threshold_min = 0.0312f;	// Darkness threshold. Trims the algorithm from processing darks								- Algorithm's default: 0.0833f
-        // Bloom
-        float m_bloom_intensity         = 0.005f;	// The intensity of the bloom
-        // Sharpening
-        float m_sharpen_strength        = 1.0f;		// Strength of the sharpening
-        float m_sharpen_clamp           = 0.35f;	// Limits maximum amount of sharpening a pixel receives											- Algorithm's default: 0.035f
-        // Motion Blur
-        float m_motion_blur_intensity   = 0.025f;	// Strength of the motion blur
-        //========================================================================================================================================================================
+        float GetOption(Renderer_Option_Value option)               { return m_options[option]; }
+        void SetOption(Renderer_Option_Value option, float value);
+		//==========================================================================================================================
 
 	private:
         //= STARTUP CREATION ===========
@@ -314,6 +316,7 @@ namespace Spartan
 		void Pass_Dithering(std::shared_ptr<RHI_Texture>& tex_in,				std::shared_ptr<RHI_Texture>& tex_out);
 		void Pass_Bloom(std::shared_ptr<RHI_Texture>& tex_in,					std::shared_ptr<RHI_Texture>& tex_out);
         void Pass_Upsample(std::shared_ptr<RHI_Texture>& tex_in,                std::shared_ptr<RHI_Texture>& tex_out);
+        void Pass_Downsample(std::shared_ptr<RHI_Texture>& tex_in,              std::shared_ptr<RHI_Texture>& tex_out, Renderer_Shader_Type pixel_shader);
 		void Pass_BlurBox(std::shared_ptr<RHI_Texture>& tex_in,					std::shared_ptr<RHI_Texture>& tex_out, float sigma);
 		void Pass_BlurGaussian(std::shared_ptr<RHI_Texture>& tex_in,			std::shared_ptr<RHI_Texture>& tex_out, float sigma, float pixel_stride = 1.0f);
 		void Pass_BlurBilateralGaussian(std::shared_ptr<RHI_Texture>& tex_in,	std::shared_ptr<RHI_Texture>& tex_out, float sigma, float pixel_stride = 1.0f);
@@ -426,6 +429,7 @@ namespace Spartan
         bool m_is_odd_frame                     = false;
         bool m_is_rendering                     = false;
         bool m_brdf_specular_lut_rendered       = false;
+        std::map<Renderer_Option_Value, float> m_options;
 		//=============================================================
 
 		//= RHI ============================================
@@ -480,6 +484,9 @@ namespace Spartan
 			float directional_light_intensity;
             float ssr_enabled;
             float shadow_resolution;
+
+            float ssao_scale;
+            Math::Vector3 padding;
 		};
 		std::shared_ptr<RHI_ConstantBuffer> m_uber_buffer;
 	};

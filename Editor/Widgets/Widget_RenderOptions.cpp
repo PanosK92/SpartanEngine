@@ -25,6 +25,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/Context.h"
 #include "Math/MathHelper.h"
 #include <Core\Timer.h>
+#include "../ImGui_Extension.h"
+#include "Rendering/Model.h"
 //===============================
 
 //= NAMESPACES ===============
@@ -50,7 +52,7 @@ void Widget_RenderOptions::Tick()
     {
         // Read from engine
         static vector<char*> tonemapping_options    = { "Off", "ACES", "Reinhard", "Uncharted 2" };
-        const char* tonemapping_selection           = tonemapping_options[static_cast<unsigned int>(m_renderer->m_tonemapping)];
+        const char* tonemapping_selection           = tonemapping_options[static_cast<unsigned int>(m_renderer->GetOption(Option_Value_Tonemapping))];
 
         auto do_bloom                   = m_renderer->IsFlagSet(Render_Bloom);
         auto do_volumetric_lighting     = m_renderer->IsFlagSet(Render_VolumetricLighting);
@@ -67,8 +69,25 @@ void Widget_RenderOptions::Tick()
 
         // Display
         {
-            const auto tooltip = [](const char* text) { if (ImGui::IsItemHovered()) { ImGui::BeginTooltip(); ImGui::Text(text); ImGui::EndTooltip(); } };
-            const auto input_float = [](const char* id, const char* text, float* value, float step) { ImGui::PushID(id); ImGui::PushItemWidth(120); ImGui::InputFloat(text, value, step); ImGui::PopItemWidth(); ImGui::PopID(); };
+            const auto render_option_float = [this](const char* id, const char* text, Renderer_Option_Value render_option, char* tooltip = nullptr, float step = 0.1f)
+            {
+                float value = m_renderer->GetOption(render_option);
+
+                ImGui::PushID(id);
+                ImGui::PushItemWidth(120);
+                ImGui::InputFloat(text, &value, step);
+                ImGui::PopItemWidth();
+                ImGui::PopID();
+                value = Abs(value);
+
+                // Only update if changed
+                if (m_renderer->GetOption(render_option) != value)
+                {
+                    m_renderer->SetOption(render_option, value);
+                }
+
+                ImGuiEx::Tooltip(tooltip);
+            };
 
             // Tonemapping
             if (ImGui::BeginCombo("Tonemapping", tonemapping_selection))
@@ -79,7 +98,7 @@ void Widget_RenderOptions::Tick()
                     if (ImGui::Selectable(tonemapping_options[i], is_selected))
                     {
                         tonemapping_selection = tonemapping_options[i];
-                        m_renderer->m_tonemapping = static_cast<Renderer_ToneMapping_Type>(i);
+                        m_renderer->SetOption(Option_Value_Tonemapping, static_cast<float>(i));
                     }
                     if (is_selected)
                     {
@@ -88,25 +107,28 @@ void Widget_RenderOptions::Tick()
                 }
                 ImGui::EndCombo();
             }
-            ImGui::SameLine(); input_float("##tonemapping_option_1", "Exposure", &m_renderer->m_exposure, 0.1f);
-            ImGui::SameLine(); input_float("##tonemapping_option_2", "Gamma", &m_renderer->m_gamma, 0.1f);
+            ImGui::SameLine(); render_option_float("##tonemapping_option_1", "Exposure", Option_Value_Exposure);
+            ImGui::SameLine(); render_option_float("##tonemapping_option_2", "Gamma", Option_Value_Gamma);
             ImGui::Separator();
 
             // Bloom
             ImGui::Checkbox("Bloom", &do_bloom); ImGui::SameLine();
-            input_float("##bloom_option_1", "Intensity", &m_renderer->m_bloom_intensity, 0.001f);
+            render_option_float("##bloom_option_1", "Intensity", Option_Value_Bloom_Intensity, nullptr, 0.001f);
             ImGui::Separator();
 
             // Volumetric lighting
-            ImGui::Checkbox("Volumetric lighting", &do_volumetric_lighting); tooltip("Requires a light with shadows");
+            ImGui::Checkbox("Volumetric lighting", &do_volumetric_lighting);
+            ImGuiEx::Tooltip("Requires a light with shadows enabled");
             ImGui::Separator();
 
             // Screen space contact shadows
-            ImGui::Checkbox("SSCS - Screen Space Contact Shadows", &do_sscs); tooltip("Requires a light with shadows");
+            ImGui::Checkbox("SSCS - Screen Space Contact Shadows", &do_sscs);
+            ImGuiEx::Tooltip("Requires a light with shadows enabled");
             ImGui::Separator();
 
             // Screen space ambient occlusion
             ImGui::Checkbox("SSAO - Screen Space Ambient Occlusion", &do_ssao);
+            ImGui::SameLine(); render_option_float("##ssao_option_1", "Scale", Option_Value_Ssao_Scale);
             ImGui::Separator();
 
             // Screen space reflections
@@ -115,11 +137,12 @@ void Widget_RenderOptions::Tick()
 
             // Motion blur
             ImGui::Checkbox("Motion Blur", &do_motion_blur); ImGui::SameLine();
-            input_float("##motion_blur_option_1", "Intensity", &m_renderer->m_motion_blur_intensity, 0.1f);
+            render_option_float("##motion_blur_option_1", "Intensity", Option_Value_Motion_Blur_Intensity);
             ImGui::Separator();
 
             // Chromatic aberration
-            ImGui::Checkbox("Chromatic Aberration", &do_chromatic_aberration); tooltip("Emulates the inability of old cameras to focus all colors in the same focal point");
+            ImGui::Checkbox("Chromatic Aberration", &do_chromatic_aberration);
+            ImGuiEx::Tooltip("Emulates the inability of old cameras to focus all colors in the same focal point");
             ImGui::Separator();
 
             // Temporal anti-aliasing
@@ -128,39 +151,30 @@ void Widget_RenderOptions::Tick()
 
             // FXAA
             ImGui::Checkbox("FXAA - Fast Approximate Anti-Aliasing",   &do_fxaa);
-            ImGui::SameLine(); input_float("##fxaa_option_1", "Sub-Pixel",          &m_renderer->m_fxaa_sub_pixel, 0.1f);			tooltip("The amount of sub-pixel aliasing removal");
-            ImGui::SameLine(); input_float("##fxaa_option_2", "Edge Threshold",     &m_renderer->m_fxaa_edge_threshold, 0.1f);		tooltip("The minimum amount of local contrast required to apply algorithm");
-            ImGui::SameLine(); input_float("##fxaa_option_3", "Edge Threshold Min", &m_renderer->m_fxaa_edge_threshold_min, 0.1f);	tooltip("Trims the algorithm from processing darks");
+            ImGui::SameLine(); render_option_float("##fxaa_option_1", "Sub-Pixel",          Option_Value_Fxaa_Sub_Pixel,            "The amount of sub-pixel aliasing removal");
+            ImGui::SameLine(); render_option_float("##fxaa_option_2", "Edge Threshold",     Option_Value_Fxaa_Edge_Threshold,       "The minimum amount of local contrast required to apply algorithm");
+            ImGui::SameLine(); render_option_float("##fxaa_option_3", "Edge Threshold Min", Option_Value_Fxaa_Edge_Threshold_Min,   "Trims the algorithm from processing darks");
             ImGui::Separator();
 
             // Sharpen
             ImGui::Checkbox("Sharpen", &do_sharperning);
-            ImGui::SameLine(); input_float("##sharpen_option_1", "Strength", &m_renderer->m_sharpen_strength, 0.1f);
-            ImGui::SameLine(); input_float("##sharpen_option_2", "Clamp", &m_renderer->m_sharpen_clamp, 0.1f); tooltip("Limits maximum amount of sharpening a pixel receives");
+            ImGui::SameLine(); render_option_float("##sharpen_option_1", "Strength",    Option_Value_Sharpen_Strength);
+            ImGui::SameLine(); render_option_float("##sharpen_option_2", "Clamp",       Option_Value_Sharpen_Clamp, "Limits maximum amount of sharpening a pixel receives");
             ImGui::Separator();
 
             // Dithering
-            ImGui::Checkbox("Dithering", &do_dithering); tooltip("Reduces color banding");
+            ImGui::Checkbox("Dithering", &do_dithering);
+            ImGuiEx::Tooltip("Reduces color banding");
             ImGui::Separator();
 
             // Shadow resolution
             ImGui::InputInt("Shadow Resolution", &resolution_shadow, 1);
         }
 
-        // Filter input
-        m_renderer->m_exposure                  = m_renderer->m_exposure;
-        m_renderer->m_bloom_intensity           = Abs(m_renderer->m_bloom_intensity);
-        m_renderer->m_fxaa_sub_pixel            = Abs(m_renderer->m_fxaa_sub_pixel);
-        m_renderer->m_fxaa_edge_threshold       = Abs(m_renderer->m_fxaa_edge_threshold);
-        m_renderer->m_fxaa_edge_threshold_min   = Abs(m_renderer->m_fxaa_edge_threshold_min);
-        m_renderer->m_sharpen_strength          = Abs(m_renderer->m_sharpen_strength);
-        m_renderer->m_sharpen_clamp             = Abs(m_renderer->m_sharpen_clamp);
-        m_renderer->m_motion_blur_intensity     = Abs(m_renderer->m_motion_blur_intensity);
-        m_renderer->SetShadowResolution(static_cast<uint32_t>(resolution_shadow));
-       
         #define set_flag_if(flag, value) value? m_renderer->SetFlag(flag) : m_renderer->UnsetFlag(flag)
 
         // Map back to engine
+        m_renderer->SetShadowResolution(static_cast<uint32_t>(resolution_shadow));
         set_flag_if(Render_Bloom,                   do_bloom);
         set_flag_if(Render_VolumetricLighting,      do_volumetric_lighting);
         set_flag_if(Render_AntiAliasing_FXAA,       do_fxaa);
