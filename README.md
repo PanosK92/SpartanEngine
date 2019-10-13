@@ -1,7 +1,4 @@
 
-
-
-
 <img align="left" width="128" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/logo.png"/>
 
 # Spartan Engine
@@ -24,8 +21,9 @@ Platform | API | Status | Quality | Binaries | :+1:
 
 ## Media
 [![](https://i.imgur.com/j6zIEI9.jpg)](https://www.youtube.com/watch?v=RIae1ma_DSo)
-
-<img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/screenshot-v0.3_preview5.jpg"/>
+<img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/readme_screen_1.JPG"/>
+<img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/readme_screen_2.JPG"/>
+<img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/readme_screen_3.JPG"/>
 
 ## Features (v0.3)
 - 10+ font file formats support (FreeType)
