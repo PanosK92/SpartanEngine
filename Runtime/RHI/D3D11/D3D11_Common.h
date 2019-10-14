@@ -76,7 +76,7 @@ namespace Spartan::D3D11_Common
 		const auto result = CreateDXGIFactory1(IID_PPV_ARGS(&factory));
 		if (FAILED(result))
 		{
-			LOGF_ERROR("Failed to create a DirectX graphics interface factory, %s.", dxgi_error_to_string(result));
+			LOG_ERROR("Failed to create a DirectX graphics interface factory, %s.", dxgi_error_to_string(result));
 			return;
 		}
 
@@ -167,7 +167,7 @@ namespace Spartan::D3D11_Common
 			}
 			else
 			{
-				LOGF_ERROR("Failed to get display modes for \"%s\".", display_adapter.name.c_str());
+				LOG_ERROR("Failed to get display modes for \"%s\".", display_adapter.name.c_str());
 			}
 		}
 
@@ -175,7 +175,7 @@ namespace Spartan::D3D11_Common
 		if (!device->GetPrimaryAdapter() && device->GetAdapters().size() != 0)
 		{
 			auto& adapter = device->GetAdapters().front();
-			LOGF_ERROR("Failed to detect display modes for all adapters, using %s, unexpected results may occur.", adapter.name.c_str());
+			LOG_ERROR("Failed to detect display modes for all adapters, using %s, unexpected results may occur.", adapter.name.c_str());
 			device->SetPrimaryAdapter(&adapter);
 		}
 	}

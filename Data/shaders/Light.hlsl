@@ -35,25 +35,22 @@ SamplerComparisonState  sampler_cmp_depth 	: register(s1);
 SamplerState samplerLinear_clamp 			: register(s2);
 //=========================================================
 
-//= BUFFERS =====================================
+//= BUFFERS ================================================
 #define cascade_count 4
-cbuffer LightBuffer : register(b1)
+#define lights_max 100
+cbuffer LightBuffer : register(b2)
 {
-	matrix 	light_view_projection[cascade_count];
-	float3	color;
-	float	intensity;
-	float3	position;
-	float	range;
-	float3	direction;
-    float 	angle;
-	float 	bias;
-	float 	normal_bias;
-	float 	shadow_enabled;	
-	float	volumetric_lighting_enabled;
-	float 	screen_space_contact_shadows_enabled;
-	float3	padding_2;
+	matrix light_view_projection[lights_max][cascade_count];	
+	float4 intensity_range_angle_bias[lights_max];
+	float4 normalBias_shadow_volumetric_contact[lights_max];
+	float4 color[lights_max];
+	float4 position[lights_max];
+	float4 direction[lights_max];
+	
+	float light_count;
+	float3 g_padding2;
 };
-//===============================================
+//==========================================================
 
 //= INCLUDES =====================      
 #include "BRDF.hlsl"              
@@ -71,9 +68,9 @@ struct PixelOutputType
 PixelOutputType mainPS(Pixel_PosUv input)
 {
 	PixelOutputType light_out;
-	light_out.diffuse 		= float4(0.0f, 0.0f, 0.0f, 0.0f);
-	light_out.specular 		= float4(0.0f, 0.0f, 0.0f, 0.0f);
-	light_out.volumetric 	= float4(0.0f, 0.0f, 0.0f, 0.0f);
+	light_out.diffuse 		= 0.0f;
+	light_out.specular 		= 0.0f;
+	light_out.volumetric 	= 0.0f;
 	float2 uv 				= input.uv;
 	
 	// Sample textures
@@ -145,7 +142,7 @@ PixelOutputType mainPS(Pixel_PosUv input)
         light.intensity    *= attenuation * attenuation;
 		
 		// Erase light if there is no need to compute it
-		light.intensity *=step(dist, range);
+		light.intensity *= step(dist, range);
 	#endif
 	
 	#if SPOT

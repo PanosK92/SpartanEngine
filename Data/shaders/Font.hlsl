@@ -26,18 +26,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 Texture2D textureAtlas 	: register(t0);
 SamplerState texSampler : register(s0);
 
-cbuffer MiscBuffer : register(b0)
-{
-	matrix mTransform;
-	float4 color;
-};
-
 Pixel_PosUv mainVS(Vertex_PosUv input)
 {
     Pixel_PosUv output;
 	
     input.position.w 	= 1.0f;
-    output.position 	= mul(input.position, mTransform);
+    output.position 	= mul(input.position, g_viewProjectionOrtho);
     output.uv 			= input.uv;
 	
     return output;
@@ -54,7 +48,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 	finalColor.a = finalColor.r;
 	
 	// Color it
-	finalColor *= color;
+	finalColor *= g_color;
 	
 	return finalColor;
 }

@@ -54,7 +54,7 @@ namespace Spartan
 		auto result = vkMapMemory(m_rhi_device->GetContextRhi()->device, static_cast<VkDeviceMemory>(m_buffer_memory), 0, m_size, 0, reinterpret_cast<void**>(&ptr));
 		if (result != VK_SUCCESS)
 		{
-			LOGF_ERROR("Failed to map memory, %s", Vulkan_Common::to_string(result));
+			LOG_ERROR("Failed to map memory, %s", Vulkan_Common::to_string(result));
 			return nullptr;
 		}
 

@@ -151,11 +151,11 @@ namespace Spartan
 			auto shader_name = FileSystem::GetFileNameFromFilePath(shader);
 			if (result == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
 			{
-				LOGF_ERROR("Failed to find shader \"%s\" with path \"%s\".", shader_name.c_str(), shader.c_str());
+				LOG_ERROR("Failed to find shader \"%s\" with path \"%s\".", shader_name.c_str(), shader.c_str());
 			}
 			else
 			{
-				LOGF_ERROR("An error occurred when trying to load and compile \"%s\"", shader_name.c_str());
+				LOG_ERROR("An error occurred when trying to load and compile \"%s\"", shader_name.c_str());
 			}
 		}
 
@@ -167,7 +167,7 @@ namespace Spartan
 			{
 				if (FAILED(d3d11_device->CreateVertexShader(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), nullptr, reinterpret_cast<ID3D11VertexShader**>(&shader_view))))
 				{
-                    LOGF_ERROR("Failed to create vertex shader, %s", D3D11_Common::dxgi_error_to_string(result));
+                    LOG_ERROR("Failed to create vertex shader, %s", D3D11_Common::dxgi_error_to_string(result));
 				}
 
 				// Create input layout
@@ -175,7 +175,7 @@ namespace Spartan
 				{
 					if (!m_input_layout->Create<T>(shader_blob))
 					{
-						LOGF_ERROR("Failed to create input layout for %s", FileSystem::GetFileNameFromFilePath(m_file_path).c_str());
+						LOG_ERROR("Failed to create input layout for %s", FileSystem::GetFileNameFromFilePath(m_file_path).c_str());
 					}
 				}
 			}
@@ -183,14 +183,14 @@ namespace Spartan
 			{
 				if (FAILED(d3d11_device->CreatePixelShader(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), nullptr, reinterpret_cast<ID3D11PixelShader**>(&shader_view))))
 				{
-					LOGF_ERROR("Failed to create pixel shader, %s", D3D11_Common::dxgi_error_to_string(result));
+					LOG_ERROR("Failed to create pixel shader, %s", D3D11_Common::dxgi_error_to_string(result));
 				}
 			}
             else if (type == Shader_Compute)
             {
                 if (FAILED(d3d11_device->CreateComputeShader(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), nullptr, reinterpret_cast<ID3D11ComputeShader**>(&shader_view))))
                 {
-                    LOGF_ERROR("Failed to create compute shader, %s", D3D11_Common::dxgi_error_to_string(result));
+                    LOG_ERROR("Failed to create compute shader, %s", D3D11_Common::dxgi_error_to_string(result));
                 }
             }
 		}

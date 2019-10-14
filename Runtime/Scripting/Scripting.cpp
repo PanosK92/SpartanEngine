@@ -179,7 +179,7 @@ namespace Spartan
 		string scriptFile = FileSystem::GetFileNameFromFilePath(scriptPath);
 		string exceptionLine = to_string(ctx->GetExceptionLineNumber());
 
-		LOGF_ERROR("%s, at line %s, in function %s, in script %s", exceptionDescription.c_str(), exceptionLine.c_str(), functionDecleration.c_str(), scriptFile.c_str());
+		LOG_ERROR("%s, at line %s, in function %s, in script %s", exceptionDescription.c_str(), exceptionLine.c_str(), functionDecleration.c_str(), scriptFile.c_str());
 	}
 
 	// This is used for AngelScript error messages
@@ -188,12 +188,12 @@ namespace Spartan
 		string filename = FileSystem::GetFileNameFromFilePath(msg.section);
 		string message = msg.message;
 
-		string finalMessage;
+		string final_message;
 		if (filename != "")
-			finalMessage = filename + " " + message;
+			final_message = filename + " " + message;
 		else
-			finalMessage = message;
+			final_message = message;
 
-		LOG_ERROR(finalMessage);
+		LOG_ERROR(final_message);
 	}
 }

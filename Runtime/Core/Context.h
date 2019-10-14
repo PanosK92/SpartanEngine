@@ -82,7 +82,7 @@ namespace Spartan
             {
                 if (!subsystem.ptr->Initialize())
                 {
-                	LOGF_ERROR("Failed to initialize %s", typeid(*subsystem.ptr).name());
+                	LOG_ERROR("Failed to initialize %s", typeid(*subsystem.ptr).name());
                 	result = false;
                 }
             }

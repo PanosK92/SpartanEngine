@@ -41,7 +41,7 @@ namespace Spartan
 			m_threads.emplace_back(thread(&Threading::Invoke, this));
 		}
 
-		LOGF_INFO("%d threads have been created", m_thread_count);
+		LOG_INFO("%d threads have been created", m_thread_count);
 	}
 
 	Threading::~Threading()

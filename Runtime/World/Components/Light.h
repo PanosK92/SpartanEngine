@@ -46,7 +46,6 @@ namespace Spartan
 		LightType_Spot
 	};
 
-    static const int g_cascade_count = 4;
     struct Cascade
     {
         Math::Vector3 min       = Math::Vector3::Zero;
@@ -104,10 +103,6 @@ namespace Spartan
 
         bool IsInViewFrustrum(Renderable* renderable, uint32_t index);
 
-        // Constant buffer
-        void UpdateConstantBuffer(bool volumetric_lighting, bool screen_space_contact_shadows);
-        const auto& GetConstantBuffer() const { return m_cb_light_gpu; }
-
 	private:
 		void ComputeViewMatrix();
 		bool ComputeProjectionMatrix(uint32_t index = 0);
@@ -132,24 +127,5 @@ namespace Spartan
 		// Shadow map
 		std::shared_ptr<RHI_Texture> m_shadow_map;	
 		Renderer* m_renderer;
-
-        // Constant buffer
-        struct CB_Light
-        {
-            Math::Matrix view_projection[g_cascade_count];
-            Math::Vector3 color;
-            float intensity;
-            Math::Vector3 position;
-            float range;
-            Math::Vector3 direction;
-            float angle;
-            float bias;
-            float normal_bias;
-            float shadow_enabled;
-            float volumetric_lighting;
-            float screen_space_contact_shadows;
-            Math::Vector3 padding = Math::Vector3::Zero;
-        };
-        std::shared_ptr<RHI_ConstantBuffer> m_cb_light_gpu;
 	};
 }

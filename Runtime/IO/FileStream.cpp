@@ -45,7 +45,7 @@ namespace Spartan
 			out.open(path, ios_flags);
 			if (out.fail())
 			{
-				LOGF_ERROR("Failed to open \"%s\" for writing", path.c_str());
+				LOG_ERROR("Failed to open \"%s\" for writing", path.c_str());
 				return;
 			}
 		}
@@ -54,7 +54,7 @@ namespace Spartan
 			in.open(path, ios_flags);
 			if(in.fail())
 			{
-				LOGF_ERROR("Failed to open \"%s\" for reading", path.c_str());
+				LOG_ERROR("Failed to open \"%s\" for reading", path.c_str());
 				return;
 			}
 		}

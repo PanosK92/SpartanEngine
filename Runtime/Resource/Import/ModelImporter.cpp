@@ -141,7 +141,7 @@ namespace Spartan
 		}
 		else
 		{
-			LOGF_ERROR("%s", importer.GetErrorString());
+			LOG_ERROR("%s", importer.GetErrorString());
 		}
 
 		importer.FreeScene();

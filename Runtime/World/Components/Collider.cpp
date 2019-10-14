@@ -39,8 +39,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //=============================================================
 
 //= NAMESPACES ================
-using namespace Spartan::Math;
 using namespace std;
+using namespace Spartan::Math;
 //=============================
 
 namespace Spartan
@@ -178,14 +178,14 @@ namespace Spartan
 			Renderable* renderable = GetEntity_PtrRaw()->GetComponent<Renderable>().get();
 			if (!renderable)
 			{
-				LOG_WARNING("Collider::Shape_Update: Can't construct mesh shape, there is no Renderable component attached.");
+				LOG_WARNING("Can't construct mesh shape, there is no Renderable component attached.");
 				return;
 			}
 
 			// Validate vertex count
 			if (renderable->GeometryVertexCount() >= m_vertexLimit)
 			{
-				LOG_WARNING("Collider::Shape_Update: No user defined collider with more than " + to_string(m_vertexLimit) + " vertices is allowed.");
+				LOG_WARNING("No user defined collider with more than %d vertices is allowed.", m_vertexLimit);
 				return;
 			}
 
@@ -196,7 +196,7 @@ namespace Spartan
 
 			if (vertices.empty())
 			{
-				LOG_WARNING("Collider::UpdateShape: No vertices.");
+				LOG_WARNING("No vertices.");
 				return;
 			}
 

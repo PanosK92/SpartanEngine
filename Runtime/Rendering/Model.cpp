@@ -109,7 +109,7 @@ namespace Spartan
         }
 
 		m_size = GeometryComputeMemoryUsage();
-		LOGF_INFO("Loading \"%s\" took %d ms", FileSystem::GetFileNameFromFilePath(file_path).c_str(), static_cast<int>(timer.GetElapsedTimeMs()));
+		LOG_INFO("Loading \"%s\" took %d ms", FileSystem::GetFileNameFromFilePath(file_path).c_str(), static_cast<int>(timer.GetElapsedTimeMs()));
 
 		return true;
 	}
@@ -218,13 +218,13 @@ namespace Spartan
 			m_index_buffer = make_shared<RHI_IndexBuffer>(m_rhi_device);
 			if (!m_index_buffer->Create(indices))
 			{
-				LOGF_ERROR("Failed to create index buffer for \"%s\".", GetResourceName().c_str());
+				LOG_ERROR("Failed to create index buffer for \"%s\".", GetResourceName().c_str());
 				success = false;
 			}
 		}
 		else
 		{
-			LOGF_ERROR("Failed to create index buffer for \"%s\". Provided indices are empty", GetResourceName().c_str());
+			LOG_ERROR("Failed to create index buffer for \"%s\". Provided indices are empty", GetResourceName().c_str());
 			success = false;
 		}
 
@@ -233,13 +233,13 @@ namespace Spartan
 			m_vertex_buffer = make_shared<RHI_VertexBuffer>(m_rhi_device);
 			if (!m_vertex_buffer->Create(vertices))
 			{
-				LOGF_ERROR("Failed to create vertex buffer for \"%s\".", GetResourceName().c_str());
+				LOG_ERROR("Failed to create vertex buffer for \"%s\".", GetResourceName().c_str());
 				success = false;
 			}
 		}
 		else
 		{
-			LOGF_ERROR("Failed to create vertex buffer for \"%s\". Provided vertices are empty", GetResourceName().c_str());
+			LOG_ERROR("Failed to create vertex buffer for \"%s\". Provided vertices are empty", GetResourceName().c_str());
 			success = false;
 		}
 

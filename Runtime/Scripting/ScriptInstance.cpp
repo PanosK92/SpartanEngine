@@ -122,7 +122,7 @@ namespace Spartan
 		m_constructorFunction	= type->GetFactoryByDecl(m_constructorDeclaration.c_str()); // Get the constructor function from the script
 		if (!m_constructorFunction)
 		{
-			LOG_ERROR("Couldn't find the appropriate factory for the type '" + m_className + "'");
+			LOG_ERROR("Couldn't find the appropriate factory for the type '%s'", m_className.c_str());
 			return false;
 		}
 

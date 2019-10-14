@@ -236,11 +236,11 @@ namespace Spartan
 
             if (m_gamepad_connected)
             {
-                LOGF_INFO("Gamepad connected");
+                LOG_INFO("Gamepad connected");
             }
             else
             {
-                LOGF_INFO("Gamepad disconnected");
+                LOG_INFO("Gamepad disconnected");
             }
 
             m_check_for_new_device = false;

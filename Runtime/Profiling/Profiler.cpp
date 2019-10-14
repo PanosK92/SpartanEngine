@@ -112,7 +112,7 @@ namespace Spartan
             TimeBlock& time_block = m_time_blocks[i];
             if (!time_block.IsComplete())
             {
-                LOGF_WARNING("Ensure that TimeBlockEnd() is called for %s", time_block.GetName().c_str());
+                LOG_WARNING("Ensure that TimeBlockEnd() is called for %s", time_block.GetName().c_str());
             }
             time_block.Clear();
         }
@@ -192,7 +192,7 @@ namespace Spartan
 			uint32_t new_size = m_time_block_count + 100;
 			m_time_blocks.reserve(new_size);
 			m_time_blocks.resize(new_size);
-			LOGF_WARNING("Time block list has grown to fit %d commands. Consider making the capacity larger to avoid re-allocations.", m_time_block_count + 1);
+			LOG_WARNING("Time block list has grown to fit %d commands. Consider making the capacity larger to avoid re-allocations.", m_time_block_count + 1);
 		}
 
 		// Return a time block

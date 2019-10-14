@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ============================
+//= INCLUDES =========================
 #include "Light.h"
 #include "Transform.h"
 #include "Camera.h"
@@ -28,8 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Rendering/Renderer.h"
 #include "../../RHI/RHI_Texture2D.h"
 #include "../../RHI/RHI_TextureCube.h"
-#include "../../RHI/RHI_ConstantBuffer.h"
-//=======================================
+//====================================
 
 //= NAMESPACES ===============
 using namespace Spartan::Math;
@@ -220,10 +219,9 @@ namespace Spartan
 		if (m_lightType == LightType_Directional)
 		{
             Cascade& cascade            = m_cascades[index];
-            const float zMod            = 10.0f; // z range ends up not being enough (to meet the next cascade) but I don't think I am doing something wrong, so I manually extend it here.
-            const float cascade_extent  = (cascade.max.z - cascade.min.z) * zMod;
-            const float min_z           = reverse_z ? cascade_extent : 0.0f;
-            const float max_z           = reverse_z ? 0.0f : cascade_extent;
+            const float cascade_depth   = (cascade.max.z - cascade.min.z);
+            const float min_z           = reverse_z ? cascade_depth : 0.0f;
+            const float max_z           = reverse_z ? 0.0f : cascade_depth;
             m_matrix_projection[index]  = Matrix::CreateOrthoOffCenterLH(cascade.min.x, cascade.max.x, cascade.min.y, cascade.max.y, min_z, max_z);
             cascade.frustum             = Frustum(m_matrix_view[index], m_matrix_projection[index], max_z);
 		}
@@ -271,8 +269,8 @@ namespace Spartan
 
         Camera* camera                        = m_renderer->GetCamera().get();
         const float clip_near                 = camera->GetNearPlane();
-        const float clip_far                  = camera->GetFarPlane() * 0.5f; // cover half of the camera's depth (far away pixel can hardly be seen anyway)
-        const Matrix view_projection_inverted = Matrix::Invert(camera->GetViewMatrix() * camera->ComputeProjection(true));
+        const float clip_far                  = camera->GetFarPlane() * 0.1f; // cover half of the camera's depth (far away pixels can hardly be seen anyway)
+        const Matrix view_projection_inverted = Matrix::Invert(camera->GetViewMatrix() * camera->ComputeProjection(true, clip_far));
 
         // Calculate split depths based on view camera frustum
         // Based on method presented in https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch10.html
@@ -317,17 +315,17 @@ namespace Spartan
             // Compute split distance
             {
                 // Reset split distance every time we restart
-                static float last_split_distance;
-                if (i == 0) last_split_distance = 0.0f;
+                static float split_distance_previous;
+                if (i == 0) split_distance_previous = 0.0f;
 
                 const float split_distance = splits[i];
                 for (uint32_t i = 0; i < 4; i++)
                 {
                     Vector3 distance        = frustum_corners[i + 4] - frustum_corners[i];
                     frustum_corners[i + 4]  = frustum_corners[i] + (distance * split_distance);
-                    frustum_corners[i]      = frustum_corners[i] + (distance * last_split_distance);
+                    frustum_corners[i]      = frustum_corners[i] + (distance * split_distance_previous);
                 }
-                last_split_distance = splits[i];
+                split_distance_previous = splits[i];
             }
 
             // Compute frustum bounds
@@ -394,36 +392,5 @@ namespace Spartan
         bool ignore_near_plane = true; 
 
         return m_cascades[index].frustum.IsVisible(center, extents, ignore_near_plane);
-    }
-
-    void Light::UpdateConstantBuffer(bool volumetric_lighting, bool screen_space_contact_shadows)
-    {
-        // Has to match GBuffer.hlsl
-        if (!m_cb_light_gpu)
-        {
-            m_cb_light_gpu = make_shared<RHI_ConstantBuffer>(m_context->GetSubsystem<Renderer>()->GetRhiDevice());
-            m_cb_light_gpu->Create<CB_Light>();
-        }
-
-        // Update buffer
-        auto buffer = static_cast<CB_Light*>(m_cb_light_gpu->Map());
-
-        for (int i = 0; i < g_cascade_count; i++)
-        {
-            buffer->view_projection[i] = GetViewMatrix(i) * GetProjectionMatrix(i);
-        }
-        buffer->color                           = m_color;
-        buffer->intensity                       = GetIntensity();
-        buffer->position                        = GetTransform()->GetPosition();
-        buffer->range                           = GetRange();
-        buffer->direction                       = GetDirection();
-        buffer->angle                           = GetAngle();
-        buffer->bias                            = m_renderer->GetReverseZ() ? GetBias() : -GetBias();
-        buffer->normal_bias                     = GetNormalBias();
-        buffer->shadow_enabled                  = GetCastShadows();
-        buffer->volumetric_lighting             = volumetric_lighting;
-        buffer->screen_space_contact_shadows    = screen_space_contact_shadows;
-
-        m_cb_light_gpu->Unmap();
     }
 }  

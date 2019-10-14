@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common.hlsl"
 //====================
 
-cbuffer ObjectBuffer : register(b1)
+cbuffer ObjectBuffer : register(b2)
 {		
 	matrix mvp;
 };

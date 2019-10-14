@@ -69,7 +69,7 @@ namespace Spartan
 		// Load
 		if (!m_context->GetSubsystem<ResourceCache>()->GetFontImporter()->LoadFromFile(this, file_path))
 		{
-			LOGF_ERROR("Failed to load font \"%s\"", file_path.c_str());
+			LOG_ERROR("Failed to load font \"%s\"", file_path.c_str());
 			return false;
 		}
 
@@ -80,7 +80,7 @@ namespace Spartan
 			m_char_max_height	= Max<int>(char_info.second.height, m_char_max_height);
 		}
 		
-		LOGF_INFO("Loading \"%s\" took %d ms", FileSystem::GetFileNameFromFilePath(file_path).c_str(), static_cast<int>(timer.GetElapsedTimeMs()));
+		LOG_INFO("Loading \"%s\" took %d ms", FileSystem::GetFileNameFromFilePath(file_path).c_str(), static_cast<int>(timer.GetElapsedTimeMs()));
 		return true;
 	}
 

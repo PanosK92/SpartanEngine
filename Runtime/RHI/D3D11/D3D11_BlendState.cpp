@@ -101,7 +101,7 @@ namespace Spartan
 		else
 		{
 			m_initialized = false;
-			LOGF_ERROR("Failed to create blend state %s.", D3D11_Common::dxgi_error_to_string(result));
+			LOG_ERROR("Failed to create blend state %s.", D3D11_Common::dxgi_error_to_string(result));
 		}
 	}
 

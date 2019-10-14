@@ -410,7 +410,7 @@ namespace Spartan
 
 	void AudioClip::LogErrorFmod(int error) const
 	{
-		LOG_ERROR("AudioClip::FMOD: " + string(FMOD_ErrorString(static_cast<FMOD_RESULT>(error))));
+		LOG_ERROR("%s", FMOD_ErrorString(static_cast<FMOD_RESULT>(error)));
 	}
 
 	bool AudioClip::IsChannelValid() const

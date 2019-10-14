@@ -322,7 +322,7 @@ namespace Spartan
 		}
 		catch (filesystem_error& e)
 		{
-			LOGF_WARNING("%s, %s", e.what(), path.c_str());
+			LOG_WARNING("%s, %s", e.what(), path.c_str());
 			return true;
 		}
 	}
@@ -335,7 +335,7 @@ namespace Spartan
 		}
 		catch (filesystem_error& e)
 		{
-			LOGF_WARNING("s, %s", e.what(), directory.c_str());
+			LOG_WARNING("s, %s", e.what(), directory.c_str());
 			return true;
 		}
 	}
@@ -348,7 +348,7 @@ namespace Spartan
 		}
 		catch (filesystem_error& e)
 		{
-			LOGF_WARNING("%s, %s", e.what(), directory.c_str());
+			LOG_WARNING("%s, %s", e.what(), directory.c_str());
 			return true;
 		}
 	}
@@ -361,7 +361,7 @@ namespace Spartan
 		}
 		catch (filesystem_error& e)
 		{
-			LOGF_WARNING("%s, %s", e.what(), directory.c_str());
+			LOG_WARNING("%s, %s", e.what(), directory.c_str());
 			return false;
 		}
 	}
@@ -379,7 +379,7 @@ namespace Spartan
 		}
 		catch (filesystem_error& e)
 		{
-			LOGF_WARNING("%s, %s", e.what(), file_path.c_str());
+			LOG_WARNING("%s, %s", e.what(), file_path.c_str());
 			return true;
 		}
 	}
@@ -410,7 +410,7 @@ namespace Spartan
 		}
 		catch (filesystem_error& e)
 		{
-			LOGF_WARNING("%s, %s", e.what(), file_path.c_str());
+			LOG_WARNING("%s, %s", e.what(), file_path.c_str());
 			return true;
 		}
 	}
@@ -432,7 +432,7 @@ namespace Spartan
 		}
 		catch (filesystem_error& e) 
 		{
-			LOGF_WARNING("%s", e.what());
+			LOG_WARNING("%s", e.what());
 			return true;
 		}
 	}
@@ -444,7 +444,7 @@ namespace Spartan
         if (last_index != string::npos)
 		    return file_path.substr(last_index + 1, file_path.length());
 
-        LOGF_WARNING("Failed to extract file name from \"%s\"", file_path.c_str());
+        LOG_WARNING("Failed to extract file name from \"%s\"", file_path.c_str());
 		return "";
 	}
 
@@ -456,7 +456,7 @@ namespace Spartan
         if (last_index != string::npos)
 		    return file_name.substr(0, last_index);
 
-        LOGF_WARNING("Failed to extract file name from \"%s\"", file_path.c_str());
+        LOG_WARNING("Failed to extract file name from \"%s\"", file_path.c_str());
 		return "";
 	}
 
@@ -467,7 +467,7 @@ namespace Spartan
         if (last_index != string::npos)
 		    return file_path.substr(0, last_index + 1);
 
-        LOGF_WARNING("Failed to extract directory from \"%s\"", file_path.c_str());
+        LOG_WARNING("Failed to extract directory from \"%s\"", file_path.c_str());
 		return "";
 	}
 
@@ -495,7 +495,7 @@ namespace Spartan
                 return extention_with_dot;
 		}
 
-        LOGF_WARNING("Failed to extract file format from \"%s\"", file_path.c_str());
+        LOG_WARNING("Failed to extract file format from \"%s\"", file_path.c_str());
 		return "";
 	}
 
@@ -509,7 +509,7 @@ namespace Spartan
         if (IsSupportedFontFile(file_path))     return file_path_no_ext + EXTENSION_FONT;
         if (IsSupportedShaderFile(file_path))   return file_path_no_ext + EXTENSION_SHADER;
 
-        LOGF_WARNING("Failed to nativize file path");
+        LOG_WARNING("Failed to nativize file path");
         return file_path;
     }
 
@@ -530,7 +530,7 @@ namespace Spartan
             }
             catch (system_error& e)
             {
-                LOGF_WARNING("Failed to read a directory path. %s", e.what());
+                LOG_WARNING("Failed to read a directory path. %s", e.what());
             }
 		}
 
@@ -554,7 +554,7 @@ namespace Spartan
             }
             catch (system_error& e)
             {
-                LOGF_WARNING("Failed to read a file path. %s", e.what());
+                LOG_WARNING("Failed to read a file path. %s", e.what());
             }
 		}
 

@@ -37,6 +37,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
+    // Global properties
+    static const int g_cascade_count = 4;
+
     // Forward declarations
 	class Entity;
 	class Camera;
@@ -285,6 +288,7 @@ namespace Spartan
 
 	private:
         //= STARTUP CREATION ===========
+        void CreateConstantBuffers();
 		void CreateDepthStencilStates();
 		void CreateRasterizerStates();
 		void CreateBlendStates();
@@ -327,14 +331,16 @@ namespace Spartan
         void Pass_Copy(std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
 		//=====================================================================================================================================================
 
-        //= MISC =======================================================================================================================
-        bool UpdateUberBuffer(uint32_t resolution_width, uint32_t resolution_height, const Math::Matrix& mMVP = Math::Matrix::Identity);
+        //= MISC ==================================================================================================
+        bool UpdateFrameBuffer();
+        bool UpdateUberBuffer();
+        bool UpdateLightBuffer(const std::vector<Entity*>& entities);
         void RenderablesAcquire(const Variant& renderables);
         void RenderablesSort(std::vector<Entity*>* renderables);
         std::shared_ptr<RHI_RasterizerState>& GetRasterizerState(RHI_Cull_Mode cull_mode, RHI_Fill_Mode fill_mode);
         void* GetEnvironmentTexture_GpuResource();
         void ClearEntities() { m_entities.clear(); }
-        //==============================================================================================================================
+        //=========================================================================================================
 
         //= RENDER TEXTURES ================================================================
         std::map<Renderer_RenderTarget_Type, std::shared_ptr<RHI_Texture>> m_render_targets;
@@ -447,47 +453,78 @@ namespace Spartan
 		Profiler* m_profiler	        = nullptr;
         ResourceCache* m_resource_cache = nullptr;
 		//========================================
-		
-		// Uber buffer (holds what is needed by almost every shader)
-		struct UberBuffer
-		{
-			Math::Matrix m_mvp;
-			Math::Matrix m_view;
-			Math::Matrix m_projection;
-			Math::Matrix m_projection_ortho;
-			Math::Matrix m_view_projection;
-			Math::Matrix m_view_projection_inv;
-			Math::Matrix m_view_projection_ortho;
 
-			float camera_near;
-			float camera_far;
-			Math::Vector2 resolution;
-
-			Math::Vector3 camera_position;
-			float fxaa_sub_pixel;
-
-			float fxaa_edge_threshold;
-			float fxaa_edge_threshold_min;
-			float bloom_intensity;
-			float sharpen_strength;
-
-			float sharpen_clamp;
-			float motion_blur_strength;
+        // Updates once every frame
+        struct FrameBuffer
+        {
             float delta_time;
             float time;
+            float camera_near;
+            float camera_far;
 
-			float gamma;
-			Math::Vector2 taa_jitter_offset;
-			float tonemapping;
+            Math::Vector3 camera_position;
+            float fxaa_sub_pixel;
 
-			float exposure;
-			float directional_light_intensity;
+            float fxaa_edge_threshold;
+            float fxaa_edge_threshold_min;
+            float bloom_intensity;
+            float sharpen_strength;
+
+            float sharpen_clamp;
+            float motion_blur_strength;
+            float gamma;
+            float tonemapping;
+
+            Math::Vector2 taa_jitter_offset;
+            float exposure;
+            float directional_light_intensity;
+
             float ssr_enabled;
             float shadow_resolution;
-
             float ssao_scale;
-            Math::Vector3 padding;
+            float padding;
+        };
+        FrameBuffer m_buffer_frame_cpu;
+        std::shared_ptr<RHI_ConstantBuffer> m_buffer_frame_gpu;
+
+		// Updates multiple times per frame
+		struct UberBuffer
+		{
+            Math::Matrix world;
+			Math::Matrix view;
+			Math::Matrix projection;
+			Math::Matrix projection_ortho;
+			Math::Matrix view_projection;
+			Math::Matrix view_projection_inv;
+			Math::Matrix view_projection_ortho;
+            Math::Matrix transform; // can be anything
+
+            Math::Vector4 color;
+
+            Math::Vector3 transform_axis;
+            float blur_sigma;
+
+            Math::Vector2 blur_direction;
+            Math::Vector2 resolution;
 		};
-		std::shared_ptr<RHI_ConstantBuffer> m_uber_buffer;
-	};
+        UberBuffer m_buffer_uber_cpu;
+		std::shared_ptr<RHI_ConstantBuffer> m_buffer_uber_gpu;
+
+        // Light buffer
+        static const int g_max_lights = 100;
+        struct LightBuffer
+        {
+            Math::Matrix view_projection[g_max_lights][g_cascade_count];
+            Math::Vector4 intensity_range_angle_bias[g_max_lights];
+            Math::Vector4 normalBias_shadow_volumetric_contact[g_max_lights];
+            Math::Vector4 color[g_max_lights];
+            Math::Vector4 position[g_max_lights];
+            Math::Vector4 direction[g_max_lights];
+
+            float light_count;
+            Math::Vector3 g_padding2;
+        };
+        LightBuffer m_buffer_light_cpu;
+        std::shared_ptr<RHI_ConstantBuffer> m_buffer_light_gpu;
+    };
 }

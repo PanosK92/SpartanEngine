@@ -202,7 +202,7 @@ namespace Spartan
 
 		// Finish with progress report and timer
 		ProgressReport::Get().SetIsLoading(g_progress_world, false);
-		LOG_INFO("Saving took " + to_string(static_cast<int>(timer.GetElapsedTimeMs())) + " ms");
+		LOG_INFO("Saving took %.2f ms", timer.GetElapsedTimeMs());
 
 		// Notify subsystems waiting for us to finish
 		FIRE_EVENT(Event_World_Saved);
@@ -214,7 +214,7 @@ namespace Spartan
 	{
 		if (!FileSystem::FileExists(file_path))
 		{
-			LOG_ERROR(file_path + " was not found.");
+			LOG_ERROR("%s was not found.", file_path.c_str());
 			return false;
 		}
 
@@ -262,7 +262,7 @@ namespace Spartan
 		m_is_dirty	= true;
 		m_state		= Ticking;
 		ProgressReport::Get().SetIsLoading(g_progress_world, false);	
-		LOG_INFO("Loading took " + to_string(static_cast<int>(timer.GetElapsedTimeMs())) + " ms");	
+		LOG_INFO("Loading took %.2f ms", timer.GetElapsedTimeMs());
 
 		FIRE_EVENT(Event_World_Loaded);
 		return true;

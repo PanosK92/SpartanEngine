@@ -279,7 +279,7 @@ namespace Spartan
 				}
 				catch (std::exception const& e)
 				{
-					LOGF_ERROR(e.what());
+					LOG_ERROR(e.what());
 					return E_FAIL;
 				}
 
@@ -420,13 +420,13 @@ namespace Spartan
 					include_handler,											// handler for #include directives
 					&compilation_result))
 			){
-				LOGF_ERROR("Failed to compile %s", file_name.c_str());
+				LOG_ERROR("Failed to compile %s", file_name.c_str());
 				return nullptr;
 			}
 
 			if (!DxShaderCompiler::ValidateOperationResult(compilation_result))
 			{
-				LOGF_ERROR("Failed to compile %s", shader.c_str());
+				LOG_ERROR("Failed to compile %s", shader.c_str());
 				return nullptr;
 			}
 		}
@@ -456,7 +456,7 @@ namespace Spartan
 				{
 					if (!m_input_layout->Create<T>(nullptr))
 					{
-						LOGF_ERROR("Failed to create input layout for %s", FileSystem::GetFileNameFromFilePath(shader).c_str());
+						LOG_ERROR("Failed to create input layout for %s", FileSystem::GetFileNameFromFilePath(shader).c_str());
                         return nullptr;
 					}
 				}

@@ -104,8 +104,8 @@ namespace Spartan
 		//======================================================================================
 
 		void LookAt(const Math::Vector3& v) { m_lookAt = v; }
-		auto& GetMatrix()		{ return m_matrix; }
-		auto& GetLocalMatrix()	{ return m_matrixLocal; }
+		auto& GetMatrix()		            { return m_matrix; }
+		auto& GetLocalMatrix()	            { return m_matrixLocal; }
 
 		//= CONSTANT BUFFERS ======================================================================================================================
 		void UpdateConstantBuffer(const std::shared_ptr<RHI_Device>& rhi_device, const Math::Matrix& view_projection);

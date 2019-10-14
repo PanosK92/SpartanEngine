@@ -98,11 +98,11 @@ namespace Spartan
             Save();
         }
 
-        LOGF_INFO("Resolution: %dx%d", static_cast<int>(m_resolution.x), static_cast<int>(m_resolution.y));
-        LOGF_INFO("FPS Limit: %f", m_fps_limit);
-        LOGF_INFO("Shadow resolution: %d", m_shadow_map_resolution);
-        LOGF_INFO("Anisotropy: %d", m_anisotropy);
-        LOGF_INFO("Max threads: %d", m_max_thread_count);
+        LOG_INFO("Resolution: %dx%d", static_cast<int>(m_resolution.x), static_cast<int>(m_resolution.y));
+        LOG_INFO("FPS Limit: %f", m_fps_limit);
+        LOG_INFO("Shadow resolution: %d", m_shadow_map_resolution);
+        LOG_INFO("Anisotropy: %d", m_anisotropy);
+        LOG_INFO("Max threads: %d", m_max_thread_count);
 
         return true;
     }

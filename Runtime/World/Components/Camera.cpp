@@ -341,11 +341,11 @@ namespace Spartan
 		return Matrix::CreateLookAtLH(camera_pos, look_at, Vector3::Up);
 	}
 
-	Matrix Camera::ComputeProjection(const bool force_non_reverse_z /*= false*/)
+	Matrix Camera::ComputeProjection(const bool force_non_reverse_z /*= false*/, const float ovveride_far_plane /*= 0.0f*/)
 	{
         bool reverse_z      = (m_renderer ? m_renderer->GetReverseZ() : false) && !force_non_reverse_z;
 		float near_plane	= m_near_plane;
-		float far_plane	    = m_far_plane;
+		float far_plane	    = ovveride_far_plane == 0.0f ? m_far_plane : ovveride_far_plane;
 
         // Swap planes if reverse Z is enabled
         if (reverse_z)
