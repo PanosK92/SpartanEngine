@@ -106,11 +106,11 @@ float Technique_PCF_2d(int cascade, float2 uv, float2 texel, float compare)
 	return shadow / ((2.0f * g_pcf_filter_size + 1.0f) * (2.0f * g_pcf_filter_size + 1.0f));
 }
 
-float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, float bias, float normal_bias, Light light)
+float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, Light light)
 {
     float n_dot_l               = dot(normal, normalize(-light.direction));
     float cos_angle             = saturate(1.0f - n_dot_l);
-    float3 scaled_normal_offset = normal * cos_angle * g_shadow_texel_size * normal_bias * 10;
+    float3 scaled_normal_offset = normal * cos_angle * g_shadow_texel_size * light.normal_bias * 10;
 	float4 position_world   	= float4(world_pos + scaled_normal_offset, 1.0f);
 	float shadow 				= 1.0f;
 	float2 dither_value 		= dither(uv).xy * 0.1f;
@@ -120,7 +120,7 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, float 
 		for (int cascade = 0; cascade < cascade_count; cascade++)
 		{
             // Compute clip space position and uv for primary cascade
-			float3 pos  = mul(position_world, light_view_projection[cascade]).xyz;
+			float3 pos  = mul(position_world, light_view_projection[light.index][cascade]).xyz;
 			float3 uv   = pos * float3(0.5f, -0.5f, 0.5f) + 0.5f;
 			
 			// If the position exists within the cascade, sample it
@@ -128,7 +128,7 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, float 
 			if (is_saturated(uv))
 			{	
 				// Sample primary cascade
-				float compare_depth 	= pos.z + (bias * (cascade + 1));
+				float compare_depth 	= pos.z + (light.bias * (cascade + 1));
 				float shadow_primary 	= Technique_PCF_2d(cascade, uv.xy + dither_value, g_shadow_texel_size + dither_value, compare_depth);
 				float cascade_lerp 		= (max3(abs(pos)) - 0.9f) * 10.0f;
 
@@ -139,11 +139,11 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, float 
 					int cacade_secondary = cascade + 1;
 
                     // Compute clip space position and uv for secondary cascade
-					pos = mul(position_world, light_view_projection[cacade_secondary]).xyz;
+					pos = mul(position_world, light_view_projection[light.index][cacade_secondary]).xyz;
                     uv  = pos * float3(0.5f, -0.5f, 0.5f) + 0.5f;
 
                     // Sample secondary cascade
-                    compare_depth           = pos.z + (bias * (cacade_secondary + 1));
+                    compare_depth           = pos.z + (light.bias * (cacade_secondary + 1));
 					float shadow_secondary  = Technique_PCF_2d(cacade_secondary, uv.xy, g_shadow_texel_size + dither_value, compare_depth);
 
 					// Blend cascades	
@@ -170,7 +170,7 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, float 
 			///float depth = light_depth_point.Sample(samplerLinear_clamp, light_to_pixel_direction).r;
 			//shadow = depth < (light_to_pixel_distance / light.range) ? 1.0f : 0.0f;
 
-			float compare = (light_to_pixel_distance / light.range) + bias;
+			float compare = (light_to_pixel_distance / light.range) + light.bias;
 			return light_depth_point.SampleCmpLevelZero(sampler_cmp_depth, light_to_pixel_direction, compare).r;
 		}
 	}
@@ -181,7 +181,7 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, float 
 	#endif
 
 	// Screen space contact shadow
-	if (screen_space_contact_shadows_enabled)
+	if (normalBias_shadow_volumetric_contact[light.index].w)
 	{
 		float sscs = ScreenSpaceContactShadows(tex_depth, uv, light.direction);
 		shadow = min(shadow, sscs);	

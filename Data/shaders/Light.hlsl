@@ -90,113 +90,121 @@ PixelOutputType mainPS(Pixel_PosUv input)
     float3 position_world 	= get_world_position_from_depth(depth_sample, g_viewProjectionInv, input.uv);
     float3 camera_to_pixel  = normalize(position_world - g_camera_position.xyz);
 	
-	// Fill in light struct with default values
-	Light light;
-	light.color 	= color;
-	light.position 	= position;
-	#if DIRECTIONAL
-	light.direction	= direction;
-	#elif POINT
-	light.direction	= normalize(position_world - light.position);
-	#elif SPOT
-	light.direction	= normalize(position_world - light.position);
-	#endif
-	light.intensity = intensity;
-	light.range 	= range;
-	light.angle 	= angle;
-	
-	// Shadow
-	float shadow = 1.0f;
-	if (shadow_enabled)
+	for (int i = 0; i < light_count; i++)
 	{
-		if (!is_sky)
+		// Fill in light struct with default values
+		Light light;
+		light.index		= i;
+		light.color 	= color[i].xyz;
+		light.position 	= position[i].xyz;
+		#if DIRECTIONAL
+		light.direction	= direction[i].xyz;
+		#elif POINT
+		light.direction	= normalize(position_world - light.position);
+		#elif SPOT
+		light.direction	= normalize(position_world - light.position);
+		#endif
+		light.intensity 			= intensity_range_angle_bias[i].x;
+		light.range 				= intensity_range_angle_bias[i].y;
+		light.angle 				= intensity_range_angle_bias[i].z;
+		light.bias					= intensity_range_angle_bias[i].w;
+		light.normal_bias 			= normalBias_shadow_volumetric_contact[i].x;
+		light.shadow_enabled 		= normalBias_shadow_volumetric_contact[i].y;
+		light.volumetric_enabled 	= normalBias_shadow_volumetric_contact[i].z;
+		
+		// Shadow
+		float shadow = 1.0f;
+		if (light.shadow_enabled)
 		{
-			shadow = Shadow_Map(uv, normal, depth_sample, position_world, bias, normal_bias, light);
+			if (!is_sky)
+			{
+				shadow = Shadow_Map(uv, normal, depth_sample, position_world, light);
+			}
+	
+			if (light.volumetric_enabled)
+			{
+				light_out.volumetric.rgb = VolumetricLighting(light, position_world, uv);
+			}
 		}
-
-		if (volumetric_lighting_enabled)
+	
+		// Ignore sky (but after we have allowed for the volumetric light to affect it)
+		if (is_sky)
 		{
-			light_out.volumetric.rgb = VolumetricLighting(light, position_world, uv);
+			return light_out;
 		}
-	}
-
-	// Ignore sky (but after we have allowed for the volumetric light to affect it)
-    if (is_sky)
-    {
-		return light_out;
-    }
-
-	// Mix shadow with ssao and modulate light's intensity
-	shadow = min(shadow, occlusion);
-	light.intensity *= shadow;
-		
-	#if DIRECTIONAL
-		// Save shadows in the diffuse's alpha channel (used to modulate IBL later)
-		light_out.diffuse.a = shadow;
-	#endif
 	
-	#if POINT
-        // Attunate
-        float dist         = length(position_world - light.position);
-        float attenuation  = saturate(1.0f - dist / range);
-        light.intensity    *= attenuation * attenuation;
+		// Mix shadow with ssao and modulate light's intensity
+		shadow = min(shadow, occlusion);
+		light.intensity *= shadow;
+			
+		#if DIRECTIONAL
+			// Save shadows in the diffuse's alpha channel (used to modulate IBL later)
+			light_out.diffuse.a = shadow;
+		#endif
 		
-		// Erase light if there is no need to compute it
-		light.intensity *= step(dist, range);
-	#endif
-	
-	#if SPOT
-		// Attunate
-        float cutoffAngle   = 1.0f - light.angle;      
-        float dist          = length(position_world - light.position);
-        float theta         = dot(direction, light.direction);
-        float epsilon       = cutoffAngle - cutoffAngle * 0.9f;
-        float attenuation 	= saturate((theta - cutoffAngle) / epsilon); // atteunate when approaching the outer cone
-        attenuation         *= saturate(1.0f - dist / light.range);
-        light.intensity 	*= attenuation * attenuation;
+		#if POINT
+			// Attunate
+			float dist         = length(position_world - light.position);
+			float attenuation  = saturate(1.0f - dist / light.angle);
+			light.intensity    *= attenuation * attenuation;
+			
+			// Erase light if there is no need to compute it
+			light.intensity *= step(dist, light.angle);
+		#endif
 		
-		// Erase light if there is no need to compute it
-		light.intensity *= step(theta, cutoffAngle);
-	#endif
-	
-	// Accumulate total light amount hitting that pixel (used to modulate ssr later)
-	light_out.specular.a = light.intensity;
-
-	// Diffuse color for BRDFs which will allow for diffuse and specular light to be multiplied by albedo later
-	float3 diffuse_color = float3(1,1,1);
-	
-	// Create material
-	Material material;
-	material.roughness  		= material_sample.r;
-	material.metallic   		= material_sample.g;
-	material.emissive   		= material_sample.b;
-	material.F0 				= lerp(0.04f, diffuse_color, material.metallic);
-
-	// Reflectance equation
-	if (light.intensity > 0.0f)
-	{
-		// Compute some stuff
-		float3 l		= -light.direction;
-		float3 v 		= -camera_to_pixel;
-		float3 h 		= normalize(v + l);
-		float v_dot_h 	= saturate(dot(v, h));
-		float n_dot_v 	= saturate(dot(normal, v));
-		float n_dot_l 	= saturate(dot(normal, l));
-		float n_dot_h 	= saturate(dot(normal, h));
-		float3 radiance	= light.color * light.intensity * n_dot_l;
-
-		// BRDF components
-		float3 F 			= 0.0f;
-		float3 cDiffuse 	= BRDF_Diffuse(diffuse_color, material, n_dot_v, n_dot_l, v_dot_h);	
-		float3 cSpecular 	= BRDF_Specular(material, n_dot_v, n_dot_l, n_dot_h, v_dot_h, F);
-				
-		// Ensure energy conservation
-		float3 kS 	= F;							// The energy of light that gets reflected - Equal to Fresnel
-		float3 kD 	= 1.0f - kS; 					// Remaining energy, light that gets refracted			
-		kD 			*= 1.0f - material.metallic; 	// Multiply kD by the inverse metalness such that only non-metals have diffuse lighting		
+		#if SPOT
+			// Attunate
+			float cutoffAngle   = 1.0f - light.angle;      
+			float dist          = length(position_world - light.position);
+			float theta         = dot(direction[i].xyz, light.direction);
+			float epsilon       = cutoffAngle - cutoffAngle * 0.9f;
+			float attenuation 	= saturate((theta - cutoffAngle) / epsilon); // atteunate when approaching the outer cone
+			attenuation         *= saturate(1.0f - dist / light.range);
+			light.intensity 	*= attenuation * attenuation;
+			
+			// Erase light if there is no need to compute it
+			light.intensity *= step(theta, cutoffAngle);
+		#endif
 		
-		light_out.diffuse.rgb	= kD * cDiffuse * radiance;
-		light_out.specular.rgb	= cSpecular * radiance;
+		// Accumulate total light amount hitting that pixel (used to modulate ssr later)
+		light_out.specular.a = light.intensity;
+	
+		// Diffuse color for BRDFs which will allow for diffuse and specular light to be multiplied by albedo later
+		float3 diffuse_color = float3(1,1,1);
+		
+		// Create material
+		Material material;
+		material.roughness  		= material_sample.r;
+		material.metallic   		= material_sample.g;
+		material.emissive   		= material_sample.b;
+		material.F0 				= lerp(0.04f, diffuse_color, material.metallic);
+	
+		// Reflectance equation
+		if (light.intensity > 0.0f)
+		{
+			// Compute some stuff
+			float3 l		= -light.direction;
+			float3 v 		= -camera_to_pixel;
+			float3 h 		= normalize(v + l);
+			float v_dot_h 	= saturate(dot(v, h));
+			float n_dot_v 	= saturate(dot(normal, v));
+			float n_dot_l 	= saturate(dot(normal, l));
+			float n_dot_h 	= saturate(dot(normal, h));
+			float3 radiance	= light.color * light.intensity * n_dot_l;
+	
+			// BRDF components
+			float3 F 			= 0.0f;
+			float3 cDiffuse 	= BRDF_Diffuse(diffuse_color, material, n_dot_v, n_dot_l, v_dot_h);	
+			float3 cSpecular 	= BRDF_Specular(material, n_dot_v, n_dot_l, n_dot_h, v_dot_h, F);
+					
+			// Ensure energy conservation
+			float3 kS 	= F;							// The energy of light that gets reflected - Equal to Fresnel
+			float3 kD 	= 1.0f - kS; 					// Remaining energy, light that gets refracted			
+			kD 			*= 1.0f - material.metallic; 	// Multiply kD by the inverse metalness such that only non-metals have diffuse lighting		
+			
+			light_out.diffuse.rgb	= kD * cDiffuse * radiance;
+			light_out.specular.rgb	= cSpecular * radiance;
+		}
 	}
 
 	return light_out;

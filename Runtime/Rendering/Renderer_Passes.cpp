@@ -570,7 +570,6 @@ namespace Spartan
             for (const auto& entity : entities)
             {
                 Light* light = entity->GetComponent<Light>().get();
-
                 // Light can be null if it just got removed and our buffer doesn't update till the next frame
                 if (!light)
                     break;

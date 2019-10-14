@@ -48,12 +48,17 @@ struct Material
 
 struct Light
 {
+	float 	index;
 	float3	color;
 	float	intensity;
 	float3	position;
 	float	range;
 	float3	direction;
     float 	angle;
+	float	bias;
+	float 	normal_bias;
+	float 	shadow_enabled;
+	float 	volumetric_enabled;
 };
 
 /*------------------------------------------------------------------------------
