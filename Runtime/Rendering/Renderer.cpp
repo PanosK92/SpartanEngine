@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Renderer.h"
 #include "Model.h"
 #include "Font/Font.h"
-#include "Shaders/ShaderBuffered.h"
 #include "Utilities/Sampling.h"
 #include "Gizmos/Grid.h"
 #include "Gizmos/Transform_Gizmo.h"
@@ -32,8 +31,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Engine.h"
 #include "../Core/Timer.h"
 #include "../World/Entity.h"
+#include "../World/Components/Transform.h"
 #include "../World/Components/Renderable.h"
 #include "../World/Components/Camera.h"
+#include "../World/Components/Light.h"
 #include "../RHI/RHI_Device.h"
 #include "../RHI/RHI_PipelineCache.h"
 #include "../RHI/RHI_CommandList.h"
@@ -140,13 +141,10 @@ namespace Spartan
 		m_gizmo_grid		= make_unique<Grid>(m_rhi_device);
 		m_gizmo_transform	= make_unique<Transform_Gizmo>(m_context);
 
-		// Create a constant buffer that will be used for most shaders
-		m_uber_buffer = make_shared<RHI_ConstantBuffer>(m_rhi_device);
-		m_uber_buffer->Create<UberBuffer>();
-
 		// Line buffer
 		m_vertex_buffer_lines = make_shared<RHI_VertexBuffer>(m_rhi_device);
 
+        CreateConstantBuffers();
 		CreateShaders();
 		CreateDepthStencilStates();
 		CreateRasterizerStates();
@@ -256,6 +254,16 @@ namespace Spartan
 			m_view_projection_orthographic	= m_view_base * m_projection_orthographic;
 		}
 
+        // Update uber buffer with matrices that are most likely to be used as is (some might be overridden)
+        {
+            m_buffer_uber_cpu.view                  = m_view;
+            m_buffer_uber_cpu.projection            = m_projection;
+            m_buffer_uber_cpu.projection_ortho      = m_projection_orthographic;
+            m_buffer_uber_cpu.view_projection       = m_view_projection;
+            m_buffer_uber_cpu.view_projection_inv   = m_view_projection_inv;
+            m_buffer_uber_cpu.view_projection_ortho = m_view_projection_orthographic;
+        }
+
 		m_is_rendering = true;
 		Pass_Main();
 		m_is_rendering = false;
@@ -266,7 +274,7 @@ namespace Spartan
 		// Return if resolution is invalid
 		if (width == 0 || width > m_max_resolution || height == 0 || height > m_max_resolution)
 		{
-			LOGF_WARNING("%dx%d is an invalid resolution", width, height);
+			LOG_WARNING("%dx%d is an invalid resolution", width, height);
 			return;
 		}
 
@@ -286,7 +294,7 @@ namespace Spartan
 		CreateRenderTextures();
 
 		// Log
-		LOGF_INFO("Resolution set to %dx%d", width, height);
+		LOG_INFO("Resolution set to %dx%d", width, height);
 	}
 
 	void Renderer::DrawLine(const Vector3& from, const Vector3& to, const Vector4& color_from, const Vector4& color_to, const bool depth /*= true*/)
@@ -322,19 +330,20 @@ namespace Spartan
 		DrawLine(Vector3(min.x, max.y, max.z), Vector3(min.x, min.y, max.z), color, depth);
 	}
 
-    bool Renderer::UpdateUberBuffer(const uint32_t resolution_width, const uint32_t resolution_height, const Matrix& mvp)
-	{
-		auto buffer = static_cast<UberBuffer*>(m_uber_buffer->Map());
-		if (!buffer)
-		{
-			LOGF_ERROR("Failed to map buffer");
-			return false;
-		}
+    bool Renderer::UpdateFrameBuffer()
+    {
+        // Map
+        FrameBuffer* buffer = static_cast<FrameBuffer*>(m_buffer_frame_gpu->Map());
+        if (!buffer)
+        {
+            LOG_ERROR("Failed to map buffer");
+            return false;
+        }
 
         float light_directional_intensity = 0.0f;
         if (!m_entities[Renderer_Object_LightDirectional].empty())
         {
-            if (Entity * entity = m_entities[Renderer_Object_LightDirectional].front())
+            if (Entity* entity = m_entities[Renderer_Object_LightDirectional].front())
             {
                 if (shared_ptr<Light>& light = entity->GetComponent<Light>())
                 {
@@ -343,37 +352,84 @@ namespace Spartan
             }
         }
 
-		buffer->m_mvp					    = mvp;
-		buffer->m_view					    = m_view;
-		buffer->m_projection			    = m_projection;
-		buffer->m_projection_ortho		    = m_projection_orthographic;
-		buffer->m_view_projection		    = m_view_projection;
-		buffer->m_view_projection_inv	    = m_view_projection_inv;
-		buffer->m_view_projection_ortho	    = m_view_projection_orthographic;
-		buffer->camera_position			    = m_camera->GetTransform()->GetPosition();
-		buffer->camera_near				    = m_camera->GetNearPlane();
-		buffer->camera_far				    = m_camera->GetFarPlane();
-		buffer->resolution				    = Vector2(static_cast<float>(resolution_width), static_cast<float>(resolution_height));
-		buffer->fxaa_sub_pixel			    = m_options[Option_Value_Fxaa_Sub_Pixel];
-		buffer->fxaa_edge_threshold		    = m_options[Option_Value_Fxaa_Edge_Threshold];
-		buffer->fxaa_edge_threshold_min	    = m_options[Option_Value_Fxaa_Edge_Threshold_Min];
-		buffer->bloom_intensity			    = m_options[Option_Value_Bloom_Intensity];
-		buffer->sharpen_strength		    = m_options[Option_Value_Sharpen_Strength];
-		buffer->sharpen_clamp			    = m_options[Option_Value_Sharpen_Clamp];
-		buffer->taa_jitter_offset		    = m_taa_jitter - m_taa_jitter_previous;
-        buffer->motion_blur_strength        = m_options[Option_Value_Motion_Blur_Intensity];
-		buffer->delta_time				    = static_cast<float>(m_context->GetSubsystem<Timer>()->GetDeltaTimeSmoothedSec());
-        buffer->time                        = static_cast<float>(m_context->GetSubsystem<Timer>()->GetTimeSec());
-        buffer->tonemapping                 = m_options[Option_Value_Tonemapping];
-		buffer->exposure				    = m_options[Option_Value_Exposure];
-		buffer->gamma					    = m_options[Option_Value_Gamma];
-        buffer->directional_light_intensity = light_directional_intensity;
-        buffer->ssr_enabled                 = IsFlagSet(Render_SSR) ? 1.0f : 0.0f;
-        buffer->shadow_resolution           = static_cast<float>(m_resolution_shadow);
-        buffer->ssao_scale                  = m_options[Option_Value_Ssao_Scale];
+        // Struct is updated automatically here as per frame data are (by definition) known ahead of time
+        m_buffer_frame_cpu.camera_near                  = m_camera->GetNearPlane();
+        m_buffer_frame_cpu.camera_far                   = m_camera->GetFarPlane();
+        m_buffer_frame_cpu.fxaa_sub_pixel               = m_options[Option_Value_Fxaa_Sub_Pixel];
+        m_buffer_frame_cpu.fxaa_edge_threshold          = m_options[Option_Value_Fxaa_Edge_Threshold];
+        m_buffer_frame_cpu.fxaa_edge_threshold_min      = m_options[Option_Value_Fxaa_Edge_Threshold_Min];
+        m_buffer_frame_cpu.bloom_intensity              = m_options[Option_Value_Bloom_Intensity];
+        m_buffer_frame_cpu.sharpen_strength             = m_options[Option_Value_Sharpen_Strength];
+        m_buffer_frame_cpu.sharpen_clamp                = m_options[Option_Value_Sharpen_Clamp];
+        m_buffer_frame_cpu.taa_jitter_offset            = m_taa_jitter - m_taa_jitter_previous;
+        m_buffer_frame_cpu.motion_blur_strength         = m_options[Option_Value_Motion_Blur_Intensity];
+        m_buffer_frame_cpu.delta_time                   = static_cast<float>(m_context->GetSubsystem<Timer>()->GetDeltaTimeSmoothedSec());
+        m_buffer_frame_cpu.time                         = static_cast<float>(m_context->GetSubsystem<Timer>()->GetTimeSec());
+        m_buffer_frame_cpu.tonemapping                  = m_options[Option_Value_Tonemapping];
+        m_buffer_frame_cpu.exposure                     = m_options[Option_Value_Exposure];
+        m_buffer_frame_cpu.gamma                        = m_options[Option_Value_Gamma];
+        m_buffer_frame_cpu.directional_light_intensity  = light_directional_intensity;
+        m_buffer_frame_cpu.ssr_enabled                  = IsFlagSet(Render_SSR) ? 1.0f : 0.0f;
+        m_buffer_frame_cpu.shadow_resolution            = static_cast<float>(m_resolution_shadow);
+        m_buffer_frame_cpu.ssao_scale                   = m_options[Option_Value_Ssao_Scale];
 
-		return m_uber_buffer->Unmap();
+        // Update
+        *buffer = m_buffer_frame_cpu;
+
+        // Unmap
+        return m_buffer_frame_gpu->Unmap();
+    }
+
+    bool Renderer::UpdateUberBuffer()
+	{
+        // Map
+        UberBuffer* buffer = static_cast<UberBuffer*>(m_buffer_uber_gpu->Map());
+		if (!buffer)
+		{
+			LOG_ERROR("Failed to map buffer");
+			return false;
+		}
+
+        // Update
+        *buffer = m_buffer_uber_cpu;
+
+        // Unmap
+		return m_buffer_uber_gpu->Unmap();
 	}
+
+    bool Renderer::UpdateLightBuffer(const vector<Entity*>& entities)
+    {
+        if (entities.empty())
+            return false;
+
+        // Map
+        LightBuffer* buffer = static_cast<LightBuffer*>(m_buffer_light_gpu->Map());
+        if (!buffer)
+        {
+            LOG_ERROR("Failed to map buffer");
+            return false;
+        }
+
+        for (uint32_t i = 0; i < entities.size(); i++)
+        {
+            if (Light* light = entities[i]->GetComponent<Light>().get())
+            {
+                for (int j = 0; j < g_cascade_count; j++)                   { m_buffer_light_cpu.view_projection[i][j] = light->GetViewMatrix(i) * light->GetProjectionMatrix(i); }
+                m_buffer_light_cpu.intensity_range_angle_bias[i]            = Vector4(light->GetIntensity(), light->GetRange(), light->GetAngle(), GetReverseZ() ? light->GetBias() : -light->GetBias());
+                m_buffer_light_cpu.normalBias_shadow_volumetric_contact[i]  = Vector4(light->GetNormalBias(), light->GetCastShadows(), m_flags & Render_VolumetricLighting, m_flags & Render_SSCS);
+                m_buffer_light_cpu.color[i]                                 = light->GetColor();
+                m_buffer_light_cpu.position[i]                              = light->GetTransform()->GetPosition();
+                m_buffer_light_cpu.direction[i]                             = light->GetDirection();
+            }
+        }
+        m_buffer_light_cpu.light_count = static_cast<float>(entities.size());
+
+        // Update
+        *buffer = m_buffer_light_cpu;
+
+        // Unmap
+        return m_buffer_light_gpu->Unmap();
+    }
 
 	void Renderer::RenderablesAcquire(const Variant& entities_variant)
 	{
@@ -492,10 +548,10 @@ namespace Spartan
         if (option == Option_Value_Ssao_Scale)
         {
             value = Clamp(value, 0.25f, 1.0f);
-            uint32_t width  = static_cast<uint32_t>(m_resolution.x);
-            uint32_t height = static_cast<uint32_t>(m_resolution.y);
-            m_render_targets[RenderTarget_Ssao_Raw]     = make_unique<RHI_Texture2D>(m_context, width * value, height * value, m_render_targets[RenderTarget_Ssao_Raw]->GetFormat());
-            m_render_targets[RenderTarget_Ssao_Blurred] = make_unique<RHI_Texture2D>(m_context, width * value, height * value, m_render_targets[RenderTarget_Ssao_Raw]->GetFormat());
+            uint32_t width  = static_cast<uint32_t>(m_resolution.x * value);
+            uint32_t height = static_cast<uint32_t>(m_resolution.y * value);
+            m_render_targets[RenderTarget_Ssao_Raw] = make_unique<RHI_Texture2D>(m_context, width, height, m_render_targets[RenderTarget_Ssao_Raw]->GetFormat());
+            m_render_targets[RenderTarget_Ssao_Blurred] = make_unique<RHI_Texture2D>(m_context, width, height, m_render_targets[RenderTarget_Ssao_Raw]->GetFormat());
         }
 
         m_options[option] = value;

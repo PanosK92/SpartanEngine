@@ -319,7 +319,7 @@ namespace ImGuiEx
                     setter(tex);
                 }
             }
-            catch (const std::bad_variant_access& e) { LOGF_ERROR("%s", e.what()); }
+            catch (const std::bad_variant_access& e) { LOG_ERROR("%s", e.what()); }
         }
     }
 

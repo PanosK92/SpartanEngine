@@ -41,13 +41,6 @@ Texture2D sourceTexture3 		: register(t2);
 Texture2D sourceTexture4 		: register(t3);
 SamplerState samplerState 		: register(s0);
 
-cbuffer BlurBuffer : register(b1)
-{	
-	float2 blur_direction;
-	float blur_sigma;
-	float blur_padding;
-}
-
 Pixel_PosUv mainVS(Vertex_PosUv input)
 {
     Pixel_PosUv output;
@@ -121,15 +114,15 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 #endif
 
 #if PASS_BLUR_BOX
-	color = Blur_Box(texCoord, g_texel_size, blur_sigma, sourceTexture, samplerState);
+	color = Blur_Box(texCoord, g_texel_size, g_blur_sigma, sourceTexture, samplerState);
 #endif
 
 #if PASS_BLUR_GAUSSIAN
-	color = Blur_Gaussian(texCoord, sourceTexture, samplerState, g_texel_size, blur_direction, blur_sigma);
+	color = Blur_Gaussian(texCoord, sourceTexture, samplerState, g_texel_size, g_blur_direction, g_blur_sigma);
 #endif
 
 #if PASS_BLUR_BILATERAL_GAUSSIAN
-	color = Blur_GaussianBilateral(texCoord, sourceTexture, sourceTexture2, sourceTexture3, samplerState, g_texel_size, blur_direction, blur_sigma);
+	color = Blur_GaussianBilateral(texCoord, sourceTexture, sourceTexture2, sourceTexture3, samplerState, g_texel_size, g_blur_direction, g_blur_sigma);
 #endif
 
 #if PASS_BLOOM_DOWNSAMPLE

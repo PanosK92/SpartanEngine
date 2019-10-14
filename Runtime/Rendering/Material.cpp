@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =========================
 #include "Material.h"
 #include "Renderer.h"
-#include "Shaders/ShaderVariation.h"
+#include "ShaderVariation.h"
 #include "../Resource/ResourceCache.h"
 #include "../IO/XmlDocument.h"
 #include "../RHI/RHI_ConstantBuffer.h"

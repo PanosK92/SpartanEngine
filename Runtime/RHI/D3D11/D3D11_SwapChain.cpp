@@ -58,7 +58,7 @@ namespace Spartan
 		// Return if resolution is invalid
 		if (width == 0 || width > m_max_resolution || height == 0 || height > m_max_resolution)
 		{
-			LOGF_WARNING("%dx%d is an invalid resolution", width, height);
+			LOG_WARNING("%dx%d is an invalid resolution", width, height);
 			return;
 		}
 
@@ -119,7 +119,7 @@ namespace Spartan
 			const auto result	= dxgi_factory->CreateSwapChain(m_rhi_device->GetContextRhi()->device, &desc, &swap_chain);
 			if (FAILED(result))
 			{
-				LOGF_ERROR("%s", D3D11_Common::dxgi_error_to_string(result));
+				LOG_ERROR("%s", D3D11_Common::dxgi_error_to_string(result));
 				return;
 			}
 			m_swap_chain_view = static_cast<void*>(swap_chain);
@@ -132,7 +132,7 @@ namespace Spartan
 			auto result = swap_chain->GetBuffer(0, IID_PPV_ARGS(&backbuffer));
 			if (FAILED(result))
 			{
-				LOGF_ERROR("%s", D3D11_Common::dxgi_error_to_string(result));
+				LOG_ERROR("%s", D3D11_Common::dxgi_error_to_string(result));
 				return;
 			}
 
@@ -141,7 +141,7 @@ namespace Spartan
 			backbuffer->Release();
 			if (FAILED(result))
 			{
-				LOGF_ERROR("%s", D3D11_Common::dxgi_error_to_string(result));
+				LOG_ERROR("%s", D3D11_Common::dxgi_error_to_string(result));
 				return;
 			}
 			m_render_target_view = static_cast<void*>(render_target_view);
@@ -175,7 +175,7 @@ namespace Spartan
 		// Return if resolution is invalid
 		if (width == 0 || width > m_max_resolution || height == 0 || height > m_max_resolution)
 		{
-			LOGF_WARNING("%dx%d is an invalid resolution", width, height);
+			LOG_WARNING("%dx%d is an invalid resolution", width, height);
 			return false;
 		}
 
@@ -211,7 +211,7 @@ namespace Spartan
 			const auto result = swap_chain->ResizeTarget(&dxgi_mode_desc);
 			if (FAILED(result))
 			{
-				LOGF_ERROR("Failed to resize swapchain target, %s.", D3D11_Common::dxgi_error_to_string(result));
+				LOG_ERROR("Failed to resize swapchain target, %s.", D3D11_Common::dxgi_error_to_string(result));
 				return false;
 			}
 		}
@@ -221,7 +221,7 @@ namespace Spartan
 		auto result = swap_chain->ResizeBuffers(m_buffer_count, static_cast<UINT>(width), static_cast<UINT>(height), d3d11_format[m_format], d3d11_flags);
 		if (FAILED(result))
 		{
-			LOGF_ERROR("Failed to resize swapchain buffers, %s.", D3D11_Common::dxgi_error_to_string(result));
+			LOG_ERROR("Failed to resize swapchain buffers, %s.", D3D11_Common::dxgi_error_to_string(result));
 			return false;
 		}
 
@@ -230,7 +230,7 @@ namespace Spartan
 		result = swap_chain->GetBuffer(0, IID_PPV_ARGS(&backbuffer));
 		if (FAILED(result))
 		{
-			LOGF_ERROR("Failed to get swapchain buffer, %s.", D3D11_Common::dxgi_error_to_string(result));
+			LOG_ERROR("Failed to get swapchain buffer, %s.", D3D11_Common::dxgi_error_to_string(result));
 			return false;
 		}
 
@@ -239,7 +239,7 @@ namespace Spartan
 		safe_release(backbuffer);
 		if (FAILED(result))
 		{
-			LOGF_ERROR("Failed to create render target view, %s.", D3D11_Common::dxgi_error_to_string(result));
+			LOG_ERROR("Failed to create render target view, %s.", D3D11_Common::dxgi_error_to_string(result));
 			return false;
 		}
 		m_render_target_view = static_cast<void*>(render_target_view);
@@ -265,7 +265,7 @@ namespace Spartan
 		auto result = ptr_swap_chain->Present(sync_interval, flags);
         if (FAILED(result))
         {
-            LOGF_ERROR("Failed to present, %s.", D3D11_Common::dxgi_error_to_string(result));
+            LOG_ERROR("Failed to present, %s.", D3D11_Common::dxgi_error_to_string(result));
             return false;
         }
 

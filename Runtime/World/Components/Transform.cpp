@@ -309,14 +309,14 @@ namespace Spartan
 	{
 		if (!HasChildren())
 		{
-			LOG_WARNING(GetEntityName() + " has no children.");
+			LOG_WARNING("%s has no children.", GetEntityName().c_str());
 			return nullptr;
 		}
 
 		// prevent an out of vector bounds error
 		if (index >= GetChildrenCount())
 		{
-			LOG_WARNING("There is no child with an index of \"" + to_string(index) + "\".");
+			LOG_WARNING("There is no child with an index of \"%d\".", index);
 			return nullptr;
 		}
 

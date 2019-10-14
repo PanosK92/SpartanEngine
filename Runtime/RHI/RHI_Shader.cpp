@@ -100,11 +100,11 @@ namespace Spartan
 
             if (m_compilation_state == Shader_Compiled)
             {
-                LOGF_INFO("Successfully compiled %s from \"%s\"", shader_type.c_str(), shader.c_str());
+                LOG_INFO("Successfully compiled %s from \"%s\"", shader_type.c_str(), shader.c_str());
             }
             else if (m_compilation_state == Shader_Failed)
             {
-                LOGF_ERROR("Failed to compile %s from \"%s\"", shader_type.c_str(), shader.c_str());
+                LOG_ERROR("Failed to compile %s from \"%s\"", shader_type.c_str(), shader.c_str());
             }
         }
 	}

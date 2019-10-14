@@ -148,7 +148,7 @@ namespace Spartan
                 const auto result = vkCreateWin32SurfaceKHR(rhi_device->GetContextRhi()->instance, &create_info, nullptr, &surface_temp);
                 if (result != VK_SUCCESS)
                 {
-                    LOGF_ERROR("Failed to create Win32 surface, %s.", Vulkan_Common::to_string(result));
+                    LOG_ERROR("Failed to create Win32 surface, %s.", Vulkan_Common::to_string(result));
                     return false;
                 }
             }
@@ -181,7 +181,7 @@ namespace Spartan
             vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, extensions.data());
             for (const auto& extension : extensions)
             {
-                LOGF_INFO("%s", extension.extensionName);
+                LOG_INFO("%s", extension.extensionName);
             }
         }
 
@@ -244,7 +244,7 @@ namespace Spartan
 			auto result = vkCreateInstance(&create_info, nullptr, &m_rhi_context->instance);
 			if (result != VK_SUCCESS)
 			{
-				LOGF_ERROR("Failed to create instance, %s.", Vulkan_Common::to_string(result));
+				LOG_ERROR("Failed to create instance, %s.", Vulkan_Common::to_string(result));
 				return;
 			}
 		}
@@ -335,7 +335,7 @@ namespace Spartan
 			auto result = vkCreateDevice(m_rhi_context->device_physical, &create_info, nullptr, &m_rhi_context->device);
 			if (result != VK_SUCCESS)
 			{
-				LOGF_ERROR("Failed to create device, %s.", Vulkan_Common::to_string(result));
+				LOG_ERROR("Failed to create device, %s.", Vulkan_Common::to_string(result));
 				return;
 			}
 		}
@@ -372,7 +372,7 @@ namespace Spartan
 		}
 		else
 		{
-			LOGF_ERROR("Failed to wait idle, %s.", Vulkan_Common::to_string(result));
+			LOG_ERROR("Failed to wait idle, %s.", Vulkan_Common::to_string(result));
 		}
 	}
 

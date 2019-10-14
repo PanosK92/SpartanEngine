@@ -402,7 +402,7 @@ namespace Spartan
 			);
 		if (result != VK_SUCCESS)
 		{
-			LOGF_ERROR("Failed to create image, %s", Vulkan_Common::to_string(result));
+			LOG_ERROR("Failed to create image, %s", Vulkan_Common::to_string(result));
 			return false;
 		}
 
@@ -429,7 +429,7 @@ namespace Spartan
             result = CreateImageView(m_rhi_device, image, reinterpret_cast<VkImageView*>(&m_resource_render_target), image_format, m_bind_flags);
             if (result != VK_SUCCESS)
             {
-                LOGF_ERROR("Failed to create render target view, %s", Vulkan_Common::to_string(result));
+                LOG_ERROR("Failed to create render target view, %s", Vulkan_Common::to_string(result));
                 return false;
             }
         }
@@ -441,7 +441,7 @@ namespace Spartan
             result = CreateImageView(m_rhi_device, image, reinterpret_cast<VkImageView*>(&depth_stencil), image_format, m_bind_flags);
             if (result != VK_SUCCESS)
             {
-                LOGF_ERROR("Failed to create depth stencil view, %s", Vulkan_Common::to_string(result));
+                LOG_ERROR("Failed to create depth stencil view, %s", Vulkan_Common::to_string(result));
                 return false;
             }
         }
@@ -452,7 +452,7 @@ namespace Spartan
             result = CreateImageView(m_rhi_device, image, reinterpret_cast<VkImageView*>(&m_resource_texture), image_format, m_bind_flags);
             if (result != VK_SUCCESS)
             {
-                LOGF_ERROR("Failed to create sampled image view, %s", Vulkan_Common::to_string(result));
+                LOG_ERROR("Failed to create sampled image view, %s", Vulkan_Common::to_string(result));
                 return false;
             }
         }

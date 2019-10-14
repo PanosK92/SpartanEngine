@@ -19,17 +19,17 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ====================================
+//= INCLUDES ============================
 #include "IResource.h"
 #include "../Audio/AudioClip.h"
 #include "../Rendering/Model.h"
 #include "../Rendering/Font/Font.h"
-#include "../Rendering/Shaders/ShaderVariation.h"
+#include "../Rendering/ShaderVariation.h"
 #include "../Rendering/Animation.h"
 #include "../RHI/RHI_Texture.h"
 #include "../RHI/RHI_Texture2D.h"
 #include "../RHI/RHI_TextureCube.h"
-//===============================================
+//=======================================
 
 //= NAMESPACES ==========
 using namespace std;

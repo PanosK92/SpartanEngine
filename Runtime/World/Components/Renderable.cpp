@@ -244,7 +244,7 @@ namespace Spartan
 		auto material = make_shared<Material>(GetContext());
 		if (!material->LoadFromFile(file_path))
 		{
-			LOGF_WARNING("Failed to load material from \"%s\"", file_path.c_str());
+			LOG_WARNING("Failed to load material from \"%s\"", file_path.c_str());
 			return nullptr;
 		}
 

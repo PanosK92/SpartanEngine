@@ -21,7 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =========================
 #include "Renderer.h"
-#include "Shaders/ShaderBuffered.h"
 #include "Font/Font.h"
 #include "../Resource/ResourceCache.h"
 #include "../RHI/RHI_PipelineCache.h"
@@ -35,6 +34,18 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
+    void Renderer::CreateConstantBuffers()
+    {
+        m_buffer_frame_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device);
+        m_buffer_frame_gpu->Create<FrameBuffer>();
+
+        m_buffer_uber_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device);
+        m_buffer_uber_gpu->Create<UberBuffer>();
+
+        m_buffer_light_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device);
+        m_buffer_light_gpu->Create<LightBuffer>();
+    }
+
     void Renderer::CreateDepthStencilStates()
     {
         m_depth_stencil_enabled     = make_shared<RHI_DepthStencilState>(m_rhi_device, true,    GetComparisonFunction());
@@ -77,7 +88,7 @@ namespace Spartan
 
         if ((width / 4) == 0 || (height / 4) == 0)
         {
-            LOGF_WARNING("%dx%d is an invalid resolution", width, height);
+            LOG_WARNING("%dx%d is an invalid resolution", width, height);
             return;
         }
 
@@ -286,55 +297,39 @@ namespace Spartan
         m_shaders[Shader_DebugChannelRgbGammaCorrect_P]->AddDefine("DEBUG_RGB_CHANNEL_GAMMA_CORRECT");
         m_shaders[Shader_DebugChannelRgbGammaCorrect_P]->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
 
-        // Composition
-        auto shader_composition = make_shared<ShaderBuffered>(m_rhi_device);
-        shader_composition->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Composition.hlsl");
-        m_shaders[Shader_Composition_P] = shader_composition;
-
-        // Font
-        auto font = make_shared<ShaderBuffered>(m_rhi_device);
-        font->CompileAsync<RHI_Vertex_PosTex>(m_context, Shader_VertexPixel, dir_shaders + "Font.hlsl");
-        font->AddBuffer<Struct_Matrix_Vector4>();
-        m_shaders[Shader_Font_Vp] = font;
-
-        // Transform gizmo
-        auto shader_gizmoTransform = make_shared<ShaderBuffered>(m_rhi_device);
-        shader_gizmoTransform->CompileAsync<RHI_Vertex_PosTexNorTan>(m_context, Shader_VertexPixel, dir_shaders + "TransformGizmo.hlsl");
-        shader_gizmoTransform->AddBuffer<Struct_Matrix_Vector3>();
-        shader_gizmoTransform->AddBuffer<Struct_Matrix_Vector3>();
-        shader_gizmoTransform->AddBuffer<Struct_Matrix_Vector3>();
-        shader_gizmoTransform->AddBuffer<Struct_Matrix_Vector3>();
-        m_shaders[Shader_GizmoTransform_Vp] = shader_gizmoTransform;
-
         // Blur Gaussian
-        auto shader_blurGaussian = make_shared<ShaderBuffered>(m_rhi_device);
-        shader_blurGaussian->AddDefine("PASS_BLUR_GAUSSIAN");
-        shader_blurGaussian->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
-        shader_blurGaussian->AddBuffer<Struct_Blur>();
-        m_shaders[Shader_BlurGaussian_P] = shader_blurGaussian;
+        m_shaders[Shader_BlurGaussian_P] = make_shared<RHI_Shader>(m_rhi_device);
+        m_shaders[Shader_BlurGaussian_P]->AddDefine("PASS_BLUR_GAUSSIAN");
+        m_shaders[Shader_BlurGaussian_P]->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
 
         // Blur Bilateral Gaussian
-        auto shader_blurGaussianBilateral = make_shared<ShaderBuffered>(m_rhi_device);
-        shader_blurGaussianBilateral->AddDefine("PASS_BLUR_BILATERAL_GAUSSIAN");
-        shader_blurGaussianBilateral->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
-        shader_blurGaussianBilateral->AddBuffer<Struct_Blur>();
-        m_shaders[Shader_BlurGaussianBilateral_P] = shader_blurGaussianBilateral;
+        m_shaders[Shader_BlurGaussianBilateral_P] = make_shared<RHI_Shader>(m_rhi_device);
+        m_shaders[Shader_BlurGaussianBilateral_P]->AddDefine("PASS_BLUR_BILATERAL_GAUSSIAN");
+        m_shaders[Shader_BlurGaussianBilateral_P]->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
 
         // SSAO
-        auto shader_ssao = make_shared<ShaderBuffered>(m_rhi_device);
-        shader_ssao->CompileAsync(m_context, Shader_Pixel, dir_shaders + "SSAO.hlsl");
-        m_shaders[Shader_Ssao_P] = shader_ssao;
+        m_shaders[Shader_Ssao_P] = make_shared<RHI_Shader>(m_rhi_device);
+        m_shaders[Shader_Ssao_P]->CompileAsync(m_context, Shader_Pixel, dir_shaders + "SSAO.hlsl");
 
         // SSR
-        auto shader_ssr = make_shared<ShaderBuffered>(m_rhi_device);
-        shader_ssr->CompileAsync(m_context, Shader_Pixel, dir_shaders + "SSR.hlsl");
-        m_shaders[Shader_Ssr_P] = shader_ssr;
+        m_shaders[Shader_Ssr_P] = make_shared<RHI_Shader>(m_rhi_device);
+        m_shaders[Shader_Ssr_P]->CompileAsync(m_context, Shader_Pixel, dir_shaders + "SSR.hlsl");
+
+        // Transform gizmo
+        m_shaders[Shader_GizmoTransform_Vp] = make_shared<RHI_Shader>(m_rhi_device);
+        m_shaders[Shader_GizmoTransform_Vp]->CompileAsync<RHI_Vertex_PosTexNorTan>(m_context, Shader_VertexPixel, dir_shaders + "TransformGizmo.hlsl");
+
+        // Composition
+        m_shaders[Shader_Composition_P] = make_shared<RHI_Shader>(m_rhi_device);
+        m_shaders[Shader_Composition_P]->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Composition.hlsl");
+
+        // Font
+        m_shaders[Shader_Font_Vp] = make_shared<RHI_Shader>(m_rhi_device);
+        m_shaders[Shader_Font_Vp]->CompileAsync<RHI_Vertex_PosTex>(m_context, Shader_VertexPixel, dir_shaders + "Font.hlsl");
 
         // Color
-        auto shader_color = make_shared<ShaderBuffered>(m_rhi_device);
-        shader_color->CompileAsync<RHI_Vertex_PosCol>(m_context, Shader_VertexPixel, dir_shaders + "Color.hlsl");
-        shader_color->AddBuffer<Struct_Matrix_Matrix>();
-        m_shaders[Shader_Color_Vp] = shader_color;
+        m_shaders[Shader_Color_Vp] = make_shared<RHI_Shader>(m_rhi_device);
+        m_shaders[Shader_Color_Vp]->CompileAsync<RHI_Vertex_PosCol>(m_context, Shader_VertexPixel, dir_shaders + "Color.hlsl");
     }
 
     void Renderer::CreateFonts()

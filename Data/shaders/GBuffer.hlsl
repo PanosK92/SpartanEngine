@@ -39,7 +39,7 @@ Texture2D texMask 		: register (t7);
 SamplerState samplerAniso : register (s0);
 //========================================
 
-cbuffer MaterialBuffer : register(b1)
+cbuffer MaterialBuffer : register(b2)
 {
 	float4 materialAlbedoColor;	
 	float2 materialTiling;
@@ -52,7 +52,7 @@ cbuffer MaterialBuffer : register(b1)
 	float3 padding2;
 };
 
-cbuffer ObjectBuffer : register(b2)
+cbuffer ObjectBuffer : register(b3)
 {		
 	matrix mModel;
 	matrix mMVP_current;

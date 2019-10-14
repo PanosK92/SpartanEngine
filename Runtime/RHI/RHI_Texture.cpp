@@ -112,7 +112,7 @@ namespace Spartan
 		// Validate file path
 		if (!FileSystem::FileExists(file_path))
 		{
-			LOGF_ERROR("Path \"%s\" is invalid.", file_path.c_str());
+			LOG_ERROR("Path \"%s\" is invalid.", file_path.c_str());
 			return false;
 		}
 
@@ -133,7 +133,7 @@ namespace Spartan
 
 		if (!texture_data_loaded)
 		{
-			LOGF_ERROR("Failed to load \"%s\".", file_path.c_str());
+			LOG_ERROR("Failed to load \"%s\".", file_path.c_str());
 			m_load_state = LoadState_Failed;
 			return false;
 		}
@@ -141,7 +141,7 @@ namespace Spartan
 		// Create GPU resource
 		if (!CreateResourceGpu())
 		{
-			LOGF_ERROR("Failed to create shader resource for \"%s\".", GetResourceFilePathNative().c_str());
+			LOG_ERROR("Failed to create shader resource for \"%s\".", GetResourceFilePathNative().c_str());
 			m_load_state = LoadState_Failed;
 			return false;
 		}

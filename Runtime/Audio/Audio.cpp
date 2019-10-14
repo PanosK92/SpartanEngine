@@ -190,6 +190,6 @@ namespace Spartan
 
 	void Audio::LogErrorFmod(int error) const
 	{
-		LOG_ERROR("Audio::FMOD: " + string(FMOD_ErrorString(static_cast<FMOD_RESULT>(error))));
+		LOG_ERROR("%s", FMOD_ErrorString(static_cast<FMOD_RESULT>(error)));
 	}
 }

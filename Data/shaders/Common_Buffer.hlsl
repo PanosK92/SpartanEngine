@@ -19,42 +19,54 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-cbuffer GlobalBuffer : register(b0)
+// Updates once per frame
+cbuffer FrameBuffer : register(b0)
+{
+	float g_delta_time;
+	float g_time;
+	float g_camera_near;
+    float g_camera_far;
+	
+	float3 g_camera_position;
+	float g_fxaa_subPix;
+	
+	float g_fxaa_edgeThreshold;
+    float g_fxaa_edgeThresholdMin;
+	float g_bloom_intensity;
+	float g_sharpen_strength;
+	
+	float g_sharpen_clamp;
+	float g_motionBlur_strength;
+	float g_gamma;
+	float g_toneMapping;
+	
+	float2 g_taa_jitterOffset;
+	float g_exposure;	
+	float g_directional_light_intensity;
+	
+	float g_ssr_enabled;
+	float g_shadow_resolution;
+	float g_ssao_scale;
+	float g_padding;
+};
+
+// Updates multiple times per frame
+cbuffer UberBuffer : register(b1)
 {	
-	matrix g_mvp;
+	matrix g_world;
 	matrix g_view;
 	matrix g_projection;
 	matrix g_projectionOrtho;
 	matrix g_viewProjection;
 	matrix g_viewProjectionInv;
 	matrix g_viewProjectionOrtho;
+	matrix g_transform; // can be anything	
 	
-	float g_camera_near;
-    float g_camera_far;
-    float2 g_resolution;
+	float4 g_color;
 	
-	float3 g_camera_position;	
-	float g_fxaa_subPix;
+	float3 g_transform_axis;
+	float g_blur_sigma;
 	
-	float g_fxaa_edgeThreshold;
-    float g_fxaa_edgeThresholdMin;	
-	float g_bloom_intensity;
-	float g_sharpen_strength;
-	
-	float g_sharpen_clamp;	
-	float g_motionBlur_strength;
-	float g_delta_time;
-	float g_time;
-	
-	float g_gamma;	
-	float2 g_taa_jitterOffset;
-	float g_toneMapping;	
-	
-	float g_exposure;	
-	float g_directional_light_intensity;
-	float g_ssr_enabled;
-	float g_shadow_resolution;
-	
-	float g_ssao_scale;
-	float3 g_padding;
+	float2 g_blur_direction;
+	float2 g_resolution;
 };

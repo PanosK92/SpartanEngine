@@ -103,14 +103,14 @@ namespace Spartan
             // Using the D3D11_CREATE_DEVICE_DEBUG flag, requires the SDK to be installed, so try again without it
             if (result == DXGI_ERROR_SDK_COMPONENT_MISSING)
             {
-                LOGF_WARNING("Failed to create device with D3D11_CREATE_DEVICE_DEBUG flags as it requires the DirectX SDK to be installed. Attempting to create a device without it.");
+                LOG_WARNING("Failed to create device with D3D11_CREATE_DEVICE_DEBUG flags as it requires the DirectX SDK to be installed. Attempting to create a device without it.");
                 device_flags &= ~D3D11_CREATE_DEVICE_DEBUG;
                 result = create_device();
             }
 
 			if (FAILED(result))
 			{
-				LOGF_ERROR("Failed to create device, %s.", D3D11_Common::dxgi_error_to_string(result));
+				LOG_ERROR("Failed to create device, %s.", D3D11_Common::dxgi_error_to_string(result));
 				return;
 			}
 		}
@@ -171,7 +171,7 @@ namespace Spartan
 			}
 			else 
 			{
-				LOGF_ERROR("Failed to enable multi-threaded protection");
+				LOG_ERROR("Failed to enable multi-threaded protection");
 			}
 		}
 
@@ -179,7 +179,7 @@ namespace Spartan
 		const auto result = m_rhi_context->device_context->QueryInterface(IID_PPV_ARGS(&m_rhi_context->annotation));
 		if (FAILED(result))
 		{
-			LOGF_ERROR("Failed to create ID3DUserDefinedAnnotation for event reporting, %s.", D3D11_Common::dxgi_error_to_string(result));
+			LOG_ERROR("Failed to create ID3DUserDefinedAnnotation for event reporting, %s.", D3D11_Common::dxgi_error_to_string(result));
 			return;
 		}
 
@@ -297,7 +297,7 @@ namespace Spartan
             auto result = adapter->GetDesc(&adapter_desc);
 			if (FAILED(result))
 			{
-                LOGF_ERROR("Failed to get adapter description, %s", D3D11_Common::dxgi_error_to_string(result));
+                LOG_ERROR("Failed to get adapter description, %s", D3D11_Common::dxgi_error_to_string(result));
 				return 0;
 			}
 			return static_cast<uint32_t>(adapter_desc.DedicatedVideoMemory / 1024 / 1024); // convert to MBs
@@ -313,7 +313,7 @@ namespace Spartan
             auto result = adapter->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &info);
 			if (FAILED(result))
 			{
-                LOGF_ERROR("Failed to get adapter memory info, %s", D3D11_Common::dxgi_error_to_string(result));
+                LOG_ERROR("Failed to get adapter memory info, %s", D3D11_Common::dxgi_error_to_string(result));
 				return 0;
 			}
 			return static_cast<uint32_t>(info.CurrentUsage / 1024 / 1024); // convert to MBs

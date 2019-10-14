@@ -217,7 +217,7 @@ namespace Spartan
 	{
 		if (shader && !shader->GetResource_Pixel())
 		{
-			LOGF_WARNING("%s hasn't compiled", shader->GetName().c_str());
+			LOG_WARNING("%s hasn't compiled", shader->GetName().c_str());
 			return;
 		}
 
@@ -230,7 +230,7 @@ namespace Spartan
     {
         if (shader && !shader->GetResource_Compute())
         {
-            LOGF_WARNING("%s hasn't compiled", shader->GetName().c_str());
+            LOG_WARNING("%s hasn't compiled", shader->GetName().c_str());
             return;
         }
 
@@ -631,7 +631,7 @@ namespace Spartan
 			const auto new_size = m_command_count + 100;
 			m_commands.reserve(new_size);
 			m_commands.resize(new_size);
-			LOGF_WARNING("Command list has grown to fit %d commands. Consider making the capacity larger to avoid re-allocations.", m_command_count + 1);
+			LOG_WARNING("Command list has grown to fit %d commands. Consider making the capacity larger to avoid re-allocations.", m_command_count + 1);
 		}
 
 		m_command_count++;

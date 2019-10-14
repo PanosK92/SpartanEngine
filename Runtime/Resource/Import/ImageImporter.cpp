@@ -71,7 +71,7 @@ namespace Spartan
 			const auto text		= (message != nullptr) ? message : "Unknown error";
 			const auto format	= (fif != FIF_UNKNOWN) ? FreeImage_GetFormatFromFIF(fif) : "Unknown";
 			
-			LOGF_ERROR("%s, Format: %s", text, format);
+			LOG_ERROR("%s, Format: %s", text, format);
 		};
 		FreeImage_SetOutputMessage(free_image_error_handler);
 
@@ -94,7 +94,7 @@ namespace Spartan
 
 		if (!FileSystem::FileExists(file_path))
 		{
-			LOGF_ERROR("Path \"%s\" is invalid.", file_path.c_str());
+			LOG_ERROR("Path \"%s\" is invalid.", file_path.c_str());
 			return false;
 		}
 
@@ -103,7 +103,7 @@ namespace Spartan
 		format		= (format == FIF_UNKNOWN) ? FreeImage_GetFIFFromFilename(file_path.c_str()) : format;  // If the format is unknown, try to get it from the the filename	
 		if (!FreeImage_FIFSupportsReading(format)) // If the format is still unknown, give up
 		{
-			LOGF_ERROR("Unsupported format");
+			LOG_ERROR("Unsupported format");
 			return false;
 		}
 
@@ -111,7 +111,7 @@ namespace Spartan
 		auto bitmap = FreeImage_Load(format, file_path.c_str());
         if (!bitmap)
         {
-            LOGF_ERROR("Failed to load");
+            LOG_ERROR("Failed to load");
             return false;
         }
 
@@ -123,7 +123,7 @@ namespace Spartan
 		bitmap = ApplyBitmapCorrections(bitmap);
         if (!bitmap)
         {
-            LOGF_ERROR("Failed to apply bitmap corrections");
+            LOG_ERROR("Failed to apply bitmap corrections");
             return false;
         }
 
@@ -232,7 +232,7 @@ namespace Spartan
 				const auto bitmap_scaled = FreeImage_Rescale(bitmap, job.width, job.height, _ImagImporter::rescale_filter);
 				if (!GetBitsFromFibitmap(job.data, bitmap_scaled, job.width, job.height, job.channels))
 				{
-					LOGF_ERROR("Failed to create mip level %dx%d", job.width, job.height);
+					LOG_ERROR("Failed to create mip level %dx%d", job.width, job.height);
 				}
 				FreeImage_Unload(bitmap_scaled);
 				job.done = true;
@@ -379,7 +379,7 @@ namespace Spartan
 		bitmap						= FreeImage_ConvertTo32Bits(previous_bitmap);
 		if (!bitmap)
         {
-            LOGF_ERROR("Failed (%d bpp, %d channels).", FreeImage_GetBPP(previous_bitmap), ComputeChannelCount(previous_bitmap));
+            LOG_ERROR("Failed (%d bpp, %d channels).", FreeImage_GetBPP(previous_bitmap), ComputeChannelCount(previous_bitmap));
 			return nullptr;
 		}
 

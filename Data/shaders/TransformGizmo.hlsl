@@ -23,13 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common.hlsl"
 //====================
 
-cbuffer defaultBuffer : register(b1)
-{
-	matrix world;
-	float3 axis;
-	float padding2;
-};
-
 struct PixelInputType
 {
 	float4 position 	: SV_POSITION;
@@ -43,9 +36,9 @@ PixelInputType mainVS(Vertex_PosUvNorTan input)
     PixelInputType output;
     	
 	input.position.w 	= 1.0f;
-	output.positionWS 	= mul(input.position, world).xyz;
+	output.positionWS 	= mul(input.position, g_world).xyz;
 	output.position 	= mul(float4(output.positionWS, 1.0f), g_viewProjection);
-	output.normal 		= mul(input.normal, (float3x3)world);
+	output.normal 		= mul(input.normal, (float3x3)g_world);
     output.uv 			= input.uv;
 	
 	return output;
@@ -53,7 +46,7 @@ PixelInputType mainVS(Vertex_PosUvNorTan input)
 
 float4 mainPS(PixelInputType input) : SV_TARGET
 {
-	float3 color_diffuse	= axis.xyz;
+	float3 color_diffuse	= g_transform_axis.xyz;
 	float3 color_ambient 	= color_diffuse * 0.3f;
 	float3 color_specular	= 1.0f;
 	float3 lightPos 		= float3(10.0f, 10.0f, 10.0f);

@@ -78,7 +78,7 @@ namespace Spartan
 		m_caller_name.clear();
 	}
 
-	void Log::WriteFInfo(const char* text, ...)
+    void Log::WriteFInfo(const char* text, ...)
 	{
 		char buffer[1024];
 		va_list args;
@@ -89,7 +89,7 @@ namespace Spartan
 		Write(buffer, Log_Info);
 	}
 
-	void Log::WriteFWarning(const char* text, ...)
+    void Log::WriteFWarning(const char* text, ...)
 	{
 		char buffer[1024];
 		va_list args;
@@ -100,7 +100,7 @@ namespace Spartan
 		Write(buffer, Log_Warning);
 	}
 
-	void Log::WriteFError(const char* text, ...)
+    void Log::WriteFError(const char* text, ...)
 	{
 		char buffer[1024];
 		va_list args;
@@ -111,7 +111,45 @@ namespace Spartan
 		Write(buffer, Log_Error);
 	}
 
-	void Log::Write(const weak_ptr<Entity>& entity, const Log_Type type)
+    void Log::Write(const string& text, const Log_Type type)
+    {
+        Write(text.c_str(), type);
+    }
+
+    void Log::WriteFInfo(const string text, ...)
+    {
+        char buffer[1024];
+        va_list args;
+        va_start(args, text);
+        auto w = vsnprintf(buffer, sizeof(buffer), text.c_str(), args);
+        va_end(args);
+
+        Write(buffer, Log_Info);
+    }
+
+    void Log::WriteFWarning(const string text, ...)
+    {
+        char buffer[1024];
+        va_list args;
+        va_start(args, text);
+        auto w = vsnprintf(buffer, sizeof(buffer), text.c_str(), args);
+        va_end(args);
+
+        Write(buffer, Log_Warning);
+    }
+
+    void Log::WriteFError(const string text, ...)
+    {
+        char buffer[1024];
+        va_list args;
+        va_start(args, text);
+        auto w = vsnprintf(buffer, sizeof(buffer), text.c_str(), args);
+        va_end(args);
+
+        Write(buffer, Log_Error);
+    }
+
+    void Log::Write(const weak_ptr<Entity>& entity, const Log_Type type)
 	{
 		entity.expired() ? Write("Null", type) : Write(entity.lock()->GetName(), type);
 	}

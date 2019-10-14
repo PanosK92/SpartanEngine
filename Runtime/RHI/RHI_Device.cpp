@@ -67,7 +67,7 @@ namespace Spartan
 			return adapter1.memory > adapter2.memory;
 		});
 
-		LOGF_INFO("%s (%d MB)", name.c_str(), memory);
+		LOG_INFO("%s (%d MB)", name.c_str(), memory);
 	}
 
 	void RHI_Device::SetPrimaryAdapter(const DisplayAdapter* primary_adapter)
@@ -79,6 +79,6 @@ namespace Spartan
 		}
 
 		m_primaryAdapter = primary_adapter;
-		LOGF_INFO("%s (%d MB)", primary_adapter->name.c_str(), primary_adapter->memory);
+		LOG_INFO("%s (%d MB)", primary_adapter->name.c_str(), primary_adapter->memory);
 	}
 }

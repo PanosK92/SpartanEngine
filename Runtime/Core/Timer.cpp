@@ -45,7 +45,7 @@ namespace Spartan
         m_time_frame_start = high_resolution_clock::now();
 
         // Engine time
-        m_time_ms = (m_time_start - m_time_frame_start).count();
+        m_time_ms = static_cast<double>((m_time_start - m_time_frame_start).count());
 
 		// Compute work time
 		duration<double, milli> time_work	= m_time_frame_start - m_time_frame_end;
@@ -96,7 +96,7 @@ namespace Spartan
 
         m_fps_target = fps;
         m_user_selected_fps_target = true;
-        LOGF_INFO("FPS limit set to %.2f", m_fps_target);
+        LOG_INFO("FPS limit set to %.2f", m_fps_target);
     }
 
     void Timer::AddMonitorRefreshRate(double refresh_rate)
@@ -114,6 +114,6 @@ namespace Spartan
             m_fps_target = m_monitor_refresh_rate;
         }
 
-        LOGF_INFO("Maximum monitor refresh rate set to %.2f hz", m_monitor_refresh_rate);
+        LOG_INFO("Maximum monitor refresh rate set to %.2f hz", m_monitor_refresh_rate);
     }
 }

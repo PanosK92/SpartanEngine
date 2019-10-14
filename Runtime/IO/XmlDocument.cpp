@@ -70,7 +70,7 @@ namespace Spartan
 		auto parentNode = GetNodeByName(parentNodeName);
 		if (!parentNode)
 		{
-			LOG_WARNING("XmlDocument: Can't add child node \"" + childNodeName + "\", parent node \"" + parentNodeName + "\" doesn't exist.");
+			LOG_WARNING("Can't add child node \"%s\", parent node \"%s\" doesn't exist.", childNodeName.c_str(), parentNodeName.c_str());
 			return false;
 		}
 
@@ -86,7 +86,7 @@ namespace Spartan
 		auto node = GetNodeByName(nodeName);
 		if (!node)
 		{
-			LOG_WARNING("XmlDocument: Can't add attribute \"" + attributeName + "\", node \"" + nodeName + "\" doesn't exist.");
+			LOG_WARNING("Can't add attribute \"%s\", node \"%s\" doesn't exist.", attributeName.c_str(), nodeName.c_str());
 			return false;
 		}
 
@@ -263,11 +263,11 @@ namespace Spartan
 		{
 			if (result.status == status_file_not_found)
 			{
-				LOG_ERROR("XmlDocument: File \"" + string(filePath) + "\" was not found.");
+				LOG_ERROR("File \"%s\" was not found.", filePath.c_str());
 			}
 			else
 			{
-				LOG_ERROR("XmlDocument: " + string(result.description()));
+				LOG_ERROR("%s", result.description());
 			}
 
 			m_document.release();
@@ -301,7 +301,7 @@ namespace Spartan
 		auto node = GetNodeByName(nodeName);
 		if (!node)
 		{
-			LOG_WARNING("XmlDocument: Can't get attribute \"" + attributeName + "\", node \"" + nodeName + "\" doesn't exist.");
+			LOG_WARNING("Can't get attribute \"%s\", node \"%s\" doesn't exist.", attributeName.c_str(), nodeName.c_str());
 			return attribute;
 		}
 
@@ -309,7 +309,7 @@ namespace Spartan
 		attribute = node->attribute(attributeName.c_str());
 		if (!attribute)
 		{
-			LOG_WARNING("XmlDocument: Can't get attribute, attribute \"" + attributeName + "\" doesn't exist.");
+			LOG_WARNING("Can't get attribute, attribute \"%s\" doesn't exist.", attributeName.c_str());
 		}
 
 		return attribute;
