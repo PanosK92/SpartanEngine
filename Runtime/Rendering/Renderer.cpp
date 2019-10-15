@@ -355,6 +355,7 @@ namespace Spartan
         // Struct is updated automatically here as per frame data are (by definition) known ahead of time
         m_buffer_frame_cpu.camera_near                  = m_camera->GetNearPlane();
         m_buffer_frame_cpu.camera_far                   = m_camera->GetFarPlane();
+        m_buffer_frame_cpu.camera_position              = m_camera->GetTransform()->GetPosition();
         m_buffer_frame_cpu.fxaa_sub_pixel               = m_options[Option_Value_Fxaa_Sub_Pixel];
         m_buffer_frame_cpu.fxaa_edge_threshold          = m_options[Option_Value_Fxaa_Edge_Threshold];
         m_buffer_frame_cpu.fxaa_edge_threshold_min      = m_options[Option_Value_Fxaa_Edge_Threshold_Min];
@@ -372,6 +373,7 @@ namespace Spartan
         m_buffer_frame_cpu.ssr_enabled                  = IsFlagSet(Render_SSR) ? 1.0f : 0.0f;
         m_buffer_frame_cpu.shadow_resolution            = static_cast<float>(m_resolution_shadow);
         m_buffer_frame_cpu.ssao_scale                   = m_options[Option_Value_Ssao_Scale];
+        m_buffer_frame_cpu.padding                      = 0.0f;
 
         // Update
         *buffer = m_buffer_frame_cpu;

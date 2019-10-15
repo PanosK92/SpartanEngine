@@ -121,8 +121,7 @@ namespace Spartan
 			{
                 auto& settings = m_context->GetSubsystem<Settings>();
                 settings->m_versionGraphicsAPI = level;
-                Log::m_caller_name.clear();
-				Log::Write("Spartan::RHI_Device: DirectX " + settings->m_versionGraphicsAPI, Log_Info);
+				LOG_INFO("DirectX " + settings->m_versionGraphicsAPI, Log_Info);
 			};
 
 			switch (m_rhi_context->device->GetFeatureLevel())

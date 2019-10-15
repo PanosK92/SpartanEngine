@@ -31,16 +31,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-	// Macros
-	#define LOG_TO_FILE(value)		{ Spartan::Log::m_log_to_file = value; }
-	#define LOG_INFO(text, ...)	    { Spartan::Log::m_caller_name = __FUNCTION__; Spartan::Log::WriteFInfo(text, __VA_ARGS__); }
-	#define LOG_WARNING(text, ...)	{ Spartan::Log::m_caller_name = __FUNCTION__; Spartan::Log::WriteFWarning(text, __VA_ARGS__); }
-	#define LOG_ERROR(text, ...)	{ Spartan::Log::m_caller_name = __FUNCTION__; Spartan::Log::WriteFError(text, __VA_ARGS__); }
+    #define LOG_INFO(text, ...)	    { Spartan::Log::WriteFInfo(std::string(__FUNCTION__)    + ": " + std::string(text), __VA_ARGS__); }
+    #define LOG_WARNING(text, ...)	{ Spartan::Log::WriteFWarning(std::string(__FUNCTION__) + ": " + std::string(text), __VA_ARGS__); }
+    #define LOG_ERROR(text, ...)	{ Spartan::Log::WriteFError(std::string(__FUNCTION__)   + ": " + std::string(text), __VA_ARGS__); }
 
-	// Pre-Made
+	// Standard errors
 	#define LOG_ERROR_GENERIC_FAILURE()		LOG_ERROR("Failed.")
 	#define LOG_ERROR_INVALID_PARAMETER()	LOG_ERROR("Invalid parameter.")
 	#define LOG_ERROR_INVALID_INTERNALS()	LOG_ERROR("Invalid internals.")
+
+    // Misc
+    #define LOG_TO_FILE(value) { Spartan::Log::m_log_to_file = value; }
 
 	// Forward declarations
 	class Entity;
@@ -79,7 +80,7 @@ namespace Spartan
         Log() = default;
 
 		// Set a logger to be used (if not set, logging will done in a text file.
-		static void SetLogger(const std::weak_ptr<ILogger>& logger);
+		static void SetLogger(const std::weak_ptr<ILogger>& logger) { m_logger = logger; }
 
 		// Alpha
 		static void Write(const char* text, const Log_Type type);
@@ -122,17 +123,16 @@ namespace Spartan
 		static void Write(const std::weak_ptr<Entity>& entity, Log_Type type);
 		static void Write(const std::shared_ptr<Entity>& entity, Log_Type type);
 
-		static bool m_log_to_file;
-		static std::string m_caller_name;
+		static bool m_log_to_file;     
 
 	private:
         static void FlushBuffer();
 		static void LogString(const char* text, Log_Type type);
 		static void LogToFile(const char* text, Log_Type type);
 
+        static std::mutex m_mutex_log;
 		static std::weak_ptr<ILogger> m_logger;
-		static std::ofstream m_fout;
-		static std::mutex m_mutex_log;
+		static std::ofstream m_fout;	
 		static std::string m_log_file_name;
 		static bool m_first_log;
         static std::vector<LogCmd> m_log_buffer;
