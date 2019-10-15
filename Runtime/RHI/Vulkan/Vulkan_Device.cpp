@@ -49,14 +49,18 @@ namespace Spartan
             const VkDebugUtilsMessengerCallbackDataEXT* p_callback_data,
             void* p_user_data
         ) {
-            auto type = Spartan::Log_Info;
-            type = message_severity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT  ? Log_Warning : type;
-            type = message_severity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT    ? Log_Error : type;
-
-            Log::m_caller_name = "Vulkan";
-            Log::Write(p_callback_data->pMessage, type);
-            Log::m_caller_name = "";
-
+            if (message_severity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
+            {
+                LOG_INFO(p_callback_data->pMessage);
+            }
+            else if (message_severity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+            {
+                LOG_WARNING(p_callback_data->pMessage);
+            }
+            else if (message_severity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+            {
+                LOG_ERROR(p_callback_data->pMessage);
+            }
             return VK_FALSE;
         }
 

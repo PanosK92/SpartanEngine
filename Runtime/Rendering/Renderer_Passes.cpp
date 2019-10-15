@@ -549,7 +549,6 @@ namespace Spartan
         auto draw_lights = [this, &shader_light_directional, &shader_light_point, &shader_light_spot](Renderer_Object_Type type)
         {
             const vector<Entity*>& entities = m_entities[type];
-
             if (entities.empty())
                 return;
 
@@ -1369,6 +1368,11 @@ namespace Spartan
 		if (!draw)
 			return;
 
+        // Acquire color shader
+        const auto& shader_color = m_shaders[Shader_Color_Vp];
+        if (!shader_color->IsCompiled())
+            return;
+
 		m_cmd_list->Begin("Pass_Lines");
 
 		// Generate lines for debug primitives offered by the renderer
@@ -1401,8 +1405,6 @@ namespace Spartan
 			}
 		}
 
-		const auto& shader_color = m_shaders[Shader_Color_Vp];
-
 		// Begin command list
 		m_cmd_list->SetViewport(tex_out->GetViewport());
 		m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_wireframe);
@@ -1424,8 +1426,8 @@ namespace Spartan
 			if (draw_grid)
 			{
                 // Update uber buffer
-                m_buffer_uber_cpu.resolution            = m_resolution;
-                m_buffer_uber_cpu.transform = m_gizmo_grid->ComputeWorldMatrix(m_camera->GetTransform()) * view_projection_unjittered;
+                m_buffer_uber_cpu.resolution    = m_resolution;
+                m_buffer_uber_cpu.transform     = m_gizmo_grid->ComputeWorldMatrix(m_camera->GetTransform()) * view_projection_unjittered;
                 UpdateUberBuffer();
 
                 m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
@@ -1451,8 +1453,8 @@ namespace Spartan
 				m_vertex_buffer_lines->Unmap();
 
                 // Update uber buffer
-                m_buffer_uber_cpu.resolution            = m_resolution;
-                m_buffer_uber_cpu.transform = view_projection_unjittered;
+                m_buffer_uber_cpu.resolution    = m_resolution;
+                m_buffer_uber_cpu.transform     = view_projection_unjittered;
                 UpdateUberBuffer();
 
                 m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
@@ -1483,8 +1485,8 @@ namespace Spartan
 				m_vertex_buffer_lines->Unmap();
 
                 // Update uber buffer
-                m_buffer_uber_cpu.resolution            = m_resolution;
-                m_buffer_uber_cpu.transform = view_projection_unjittered;
+                m_buffer_uber_cpu.resolution    = m_resolution;
+                m_buffer_uber_cpu.transform     = view_projection_unjittered;
                 UpdateUberBuffer();
 
 				m_cmd_list->SetBufferVertex(m_vertex_buffer_lines);
@@ -1564,8 +1566,8 @@ namespace Spartan
 				}
 
                 // Update uber buffer
-                m_buffer_uber_cpu.resolution            = Vector2(static_cast<float>(tex_width), static_cast<float>(tex_width));
-                m_buffer_uber_cpu.transform = m_view_projection_orthographic;
+                m_buffer_uber_cpu.resolution    = Vector2(static_cast<float>(tex_width), static_cast<float>(tex_width));
+                m_buffer_uber_cpu.transform     = m_view_projection_orthographic;
                 UpdateUberBuffer();
 
 				m_cmd_list->SetShaderVertex(shader_quad);
@@ -1589,6 +1591,9 @@ namespace Spartan
             if (!shader_gizmo_transform->IsCompiled())
                 return;
 
+            // unjittered matrix to avoid TAA jitter due to lack of motion vectors
+            const auto view_projection_unjittered = m_camera->GetViewMatrix() * m_camera->GetProjectionMatrix();
+
 			m_cmd_list->SetShaderVertex(shader_gizmo_transform);
 			m_cmd_list->SetShaderPixel(shader_gizmo_transform);
 			m_cmd_list->SetInputLayout(shader_gizmo_transform->GetInputLayout());
@@ -1596,10 +1601,10 @@ namespace Spartan
 			m_cmd_list->SetBufferVertex(m_gizmo_transform->GetVertexBuffer());
 
 			// Axis - X
-            m_buffer_uber_cpu.resolution            = m_resolution;
-            m_buffer_uber_cpu.transform = m_view_projection_orthographic;
-            m_buffer_uber_cpu.world                 = m_gizmo_transform->GetHandle().GetTransform(Vector3::Right);
-            m_buffer_uber_cpu.transform_axis        = m_gizmo_transform->GetHandle().GetColor(Vector3::Right);
+            m_buffer_uber_cpu.resolution        = m_resolution;
+            m_buffer_uber_cpu.transform         = view_projection_unjittered;
+            m_buffer_uber_cpu.world             = m_gizmo_transform->GetHandle().GetTransform(Vector3::Right);
+            m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle().GetColor(Vector3::Right);
             UpdateUberBuffer();
             m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
 			m_cmd_list->DrawIndexed(m_gizmo_transform->GetIndexCount(), 0, 0);

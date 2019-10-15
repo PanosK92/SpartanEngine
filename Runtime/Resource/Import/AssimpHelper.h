@@ -107,27 +107,23 @@ namespace Spartan::AssimpHelper
 		void OnDebug(const char* message) override
 		{
 #ifdef DEBUG
-			Log::m_caller_name = "Spartan::ModelImporter";
-			Log::Write(message, Log_Info);
+			LOG_INFO(message, Log_Info);
 #endif
 		}
 
 		void OnInfo(const char* message) override
 		{
-			Log::m_caller_name = "Spartan::ModelImporter";
-			Log::Write(message, Log_Info);
+            LOG_INFO(message, Log_Info);
 		}
 
 		void OnWarn(const char* message) override
 		{
-			Log::m_caller_name = "Spartan::ModelImporter";
-			Log::Write(message, Log_Warning);
+            LOG_WARNING(message, Log_Warning);
 		}
 
 		void OnError(const char* message) override
 		{
-			Log::m_caller_name = "Spartan::ModelImporter";
-			Log::Write(message, Log_Error);
+			LOG_ERROR(message, Log_Error);
 		}
 	};
 

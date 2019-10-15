@@ -24,18 +24,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifdef API_GRAPHICS_VULKAN
 //================================
 
-//= INCLUDES ===========================
+//= INCLUDES =======================
 #include "../RHI_Device.h"
 #include "../RHI_Shader.h"
 #include "../RHI_InputLayout.h"
 #include "../../Logging/Log.h"
-#include "../../FileSystem/FileSystem.h"
+#include "../../Core/FileSystem.h"
 #include <sstream> 
 #include <fstream>
 #include <atomic>
 #include <dxc/Support/WinIncludes.h>
 #include <dxc/dxcapi.h>
-//======================================
+//==================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -206,7 +206,14 @@ namespace Spartan
 			while (getline(ss, line, '\n'))
 			{
 				const auto is_error = line.find("error") != string::npos;
-				if (is_error) LOG_ERROR(line) else LOG_WARNING(line);
+                if (is_error)
+                {
+                    LOG_ERROR(line);
+                }
+                else
+                {
+                    LOG_WARNING(line);
+                }
 			}
 
 			safe_release(error_buffer);

@@ -40,16 +40,10 @@ namespace Spartan
 	ofstream Log::m_fout;
 	mutex Log::m_mutex_log;
     vector<LogCmd> Log::m_log_buffer;
-	string Log::m_caller_name;
 	string Log::m_log_file_name	    = "log.txt";
 	bool Log::m_log_to_file		    = true; // start logging to file (unless changed by the user, e.g. Renderer initialization was successful, so logging can happen on screen)
 	bool Log::m_first_log		    = true;
    
-    void Log::SetLogger(const weak_ptr<ILogger>& logger)
-	{
-		m_logger = logger;
-	}
-
 	// Everything resolves to this
 	void Log::Write(const char* text, const Log_Type type)
 	{
@@ -61,21 +55,18 @@ namespace Spartan
 
         lock_guard<mutex> guard(m_mutex_log);
 
-        const auto log_to_file      = m_logger.expired() || m_log_to_file;
-		const auto formated_text    = !m_caller_name.empty() ? m_caller_name + ": " + string(text) : string(text);
+        const auto log_to_file = m_logger.expired() || m_log_to_file;
 
         if (log_to_file)
         {
-            m_log_buffer.emplace_back(formated_text, type);
-            LogToFile(formated_text.c_str(), type);
+            m_log_buffer.emplace_back(text, type);
+            LogToFile(text, type);
         }
         else
         {
             FlushBuffer();
-            LogString(formated_text.c_str(), type);
+            LogString(text, type);
         }
-
-		m_caller_name.clear();
 	}
 
     void Log::WriteFInfo(const char* text, ...)

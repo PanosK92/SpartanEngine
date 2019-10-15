@@ -56,7 +56,7 @@ namespace Spartan
 			switch (error_code)
 			{
 				// Generic errors
-				case FT_Err_Cannot_Open_Resource:	LOG_ERROR("FreeType: Cannot open resource.") break;
+                case FT_Err_Cannot_Open_Resource:	LOG_ERROR("FreeType: Cannot open resource."); break;
 				case FT_Err_Unknown_File_Format:	LOG_ERROR("FreeType: Unknown file format."); break;
 				case FT_Err_Invalid_File_Format:	LOG_ERROR("FreeType: Broken file."); break;
 				case FT_Err_Invalid_Version:		LOG_ERROR("FreeType: Invalid FreeType version."); break;
