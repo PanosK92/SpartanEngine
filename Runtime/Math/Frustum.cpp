@@ -86,7 +86,7 @@ namespace Spartan::Math
 		m_planes[5].Normalize();
 	}
 
-    bool Frustum::IsVisible(const Vector3& center, const Vector3& extent, bool ignore_near_plane /*= false*/)
+    bool Frustum::IsVisible(const Vector3& center, const Vector3& extent, bool ignore_near_plane /*= false*/) const
     {
         float radius = 0.0f;
 
@@ -110,7 +110,7 @@ namespace Spartan::Math
         return false;
     }
 
-	Intersection Frustum::CheckCube(const Vector3& center, const Vector3& extent)
+	Intersection Frustum::CheckCube(const Vector3& center, const Vector3& extent) const
 	{
 		// Check if any one point of the cube is in the view frustum.
 		Intersection result = Inside;
@@ -139,7 +139,7 @@ namespace Spartan::Math
 		return result;
 	}
 
-	Intersection Frustum::CheckSphere(const Vector3& center, float radius)
+	Intersection Frustum::CheckSphere(const Vector3& center, float radius) const
 	{
 		// calculate our distances to each of the planes
 		for (const auto& plane : m_planes)

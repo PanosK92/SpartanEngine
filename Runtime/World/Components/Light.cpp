@@ -219,7 +219,7 @@ namespace Spartan
 		if (m_lightType == LightType_Directional)
 		{
             Cascade& cascade            = m_cascades[index];
-            const float cascade_depth   = (cascade.max.z - cascade.min.z);
+            const float cascade_depth   = (cascade.max.z - cascade.min.z) * 10.0f;
             const float min_z           = reverse_z ? cascade_depth : 0.0f;
             const float max_z           = reverse_z ? 0.0f : cascade_depth;
             m_matrix_projection[index]  = Matrix::CreateOrthoOffCenterLH(cascade.min.x, cascade.max.x, cascade.min.y, cascade.max.y, min_z, max_z);
@@ -382,7 +382,7 @@ namespace Spartan
 		}
 	}
 
-    bool Light::IsInViewFrustrum(Renderable* renderable, uint32_t index)
+    bool Light::IsInViewFrustrum(Renderable* renderable, uint32_t index) const
     {
         const auto box          = renderable->GetAabb();
         const auto center       = box.GetCenter();
