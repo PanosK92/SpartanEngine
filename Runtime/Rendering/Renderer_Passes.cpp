@@ -1408,9 +1408,6 @@ namespace Spartan
 		m_cmd_list->SetInputLayout(shader_color->GetInputLayout());
 		m_cmd_list->SetSampler(0, m_sampler_point_clamp);
 
-        // unjittered matrix to avoid TAA jitter due to lack of motion vectors (line rendering is anti-aliased by m_rasterizer_cull_back_wireframe, decently)
-        const auto view_projection_unjittered = m_camera->GetViewMatrix() * m_camera->GetProjectionMatrix();
-
 		// Draw lines that require depth
 		m_cmd_list->SetDepthStencilState(m_depth_stencil_enabled);
 		m_cmd_list->SetRenderTarget(tex_out, m_render_targets[RenderTarget_Gbuffer_Depth]->GetResource_DepthStencil());
@@ -1420,7 +1417,7 @@ namespace Spartan
 			{
                 // Update uber buffer
                 m_buffer_uber_cpu.resolution    = m_resolution;
-                m_buffer_uber_cpu.transform     = m_gizmo_grid->ComputeWorldMatrix(m_camera->GetTransform()) * view_projection_unjittered;
+                m_buffer_uber_cpu.transform     = m_gizmo_grid->ComputeWorldMatrix(m_camera->GetTransform()) * m_buffer_frame_cpu.view_projection_unjittered;
                 UpdateUberBuffer();
 
                 m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
@@ -1444,11 +1441,6 @@ namespace Spartan
 				const auto buffer = static_cast<RHI_Vertex_PosCol*>(m_vertex_buffer_lines->Map());
 				copy(m_lines_list_depth_enabled.begin(), m_lines_list_depth_enabled.end(), buffer);
 				m_vertex_buffer_lines->Unmap();
-
-                // Update uber buffer
-                m_buffer_uber_cpu.resolution    = m_resolution;
-                m_buffer_uber_cpu.transform     = view_projection_unjittered;
-                UpdateUberBuffer();
 
                 m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
 				m_cmd_list->SetBufferVertex(m_vertex_buffer_lines);
@@ -1476,11 +1468,6 @@ namespace Spartan
 				const auto buffer = static_cast<RHI_Vertex_PosCol*>(m_vertex_buffer_lines->Map());
 				copy(m_lines_list_depth_disabled.begin(), m_lines_list_depth_disabled.end(), buffer);
 				m_vertex_buffer_lines->Unmap();
-
-                // Update uber buffer
-                m_buffer_uber_cpu.resolution    = m_resolution;
-                m_buffer_uber_cpu.transform     = view_projection_unjittered;
-                UpdateUberBuffer();
 
 				m_cmd_list->SetBufferVertex(m_vertex_buffer_lines);
 				m_cmd_list->Draw(line_vertex_buffer_size);
