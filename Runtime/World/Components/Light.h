@@ -68,7 +68,7 @@ namespace Spartan
 		void Deserialize(FileStream* stream) override;
 		//============================================
 
-		auto GetLightType() { return m_lightType; }
+		auto GetLightType() { return m_light_type; }
 		void SetLightType(LightType type);
 
 		void SetColor(float r, float g, float b, float a)	{ m_color = Math::Vector4(r, g, b, a); }
@@ -98,6 +98,7 @@ namespace Spartan
 		const Math::Matrix& GetViewMatrix(uint32_t index = 0);
 		const Math::Matrix& GetProjectionMatrix(uint32_t index = 0);
 
+        const uint32_t GetCascadeCount() const { return static_cast<uint32_t>(m_cascades.size()); }
 		const auto& GetShadowMap() const { return m_shadow_map; }
         void CreateShadowMap(bool force);
 
@@ -108,14 +109,14 @@ namespace Spartan
 		bool ComputeProjectionMatrix(uint32_t index = 0);
         void ComputeCascadeSplits();
 		
-		LightType m_lightType	= LightType_Directional;
-		bool m_cast_shadows		= true;
-		float m_range			= 10.0f;
-		float m_intensity		= 15.0f;
-		float m_angle_rad		= 0.5f; // about 30 degrees
-		float m_bias			= 0.0001f;
-		float m_normal_bias		= 15.0f;	
-		bool m_is_dirty			= true;
+		LightType m_light_type	    = LightType_Directional;
+		bool m_cast_shadows		    = true;
+		float m_range			    = 10.0f;
+		float m_intensity		    = 15.0f;
+		float m_angle_rad		    = 0.5f; // about 30 degrees
+		float m_bias			    = 0.0001f;
+		float m_normal_bias		    = 15.0f;	
+		bool m_is_dirty			    = true;
 		Math::Vector4 m_color   = Math::Vector4(1.0f, 0.76f, 0.57f, 1.0f);
 		std::array<Math::Matrix, 6> m_matrix_view;
 		std::array<Math::Matrix, 6> m_matrix_projection;

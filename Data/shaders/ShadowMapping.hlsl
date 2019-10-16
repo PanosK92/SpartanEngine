@@ -114,7 +114,7 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, Light 
 	float4 position_world   	= float4(world_pos + scaled_normal_offset, 1.0f);
 	float shadow 				= 1.0f;
 	float2 dither_value 		= dither(uv).xy * 0.1f;
-
+light.bias = 0;
 	#if DIRECTIONAL
 	{
 		for (int cascade = 0; cascade < cascade_count; cascade++)
@@ -130,7 +130,7 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, Light 
 				// Sample primary cascade
 				float compare_depth 	= pos.z + (light.bias * (cascade + 1));
 				float shadow_primary 	= Technique_PCF_2d(cascade, uv.xy + dither_value, g_shadow_texel_size + dither_value, compare_depth);
-				float cascade_lerp 		= (max3(abs(pos)) - 0.9f) * 10.0f;
+				float cascade_lerp 		= (max2(abs(pos.xy)) - 0.9f) * 10.0f;
 
 				// If we are close to the edge of the primary cascade and a secondary cascade exists, lerp with it.
 				[branch]
@@ -138,7 +138,7 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, Light 
 				{
 					int cacade_secondary = cascade + 1;
 
-                    // Compute clip space position and uv for secondary cascade
+                    // Coute clip space position and uv for secondary cascade
 					pos = mul(position_world, light_view_projection[light.index][cacade_secondary]).xyz;
                     uv  = pos * float3(0.5f, -0.5f, 0.5f) + 0.5f;
 

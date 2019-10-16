@@ -138,7 +138,7 @@ namespace Spartan
 			// Tracking
 			uint32_t currently_bound_geometry = 0;
 
-			for (uint32_t cascade_index = 0; cascade_index < light->GetShadowMap()->GetArraySize(); cascade_index++)
+			for (uint32_t cascade_index = 0; cascade_index < light->GetCascadeCount(); cascade_index++)
 			{
 				const auto cascade_depth_stencil = shadow_map->GetResource_DepthStencil(cascade_index);
 
@@ -239,10 +239,6 @@ namespace Spartan
             tex_velocity->GetResource_RenderTarget()
 		};
 
-        // Update uber buffer
-        m_buffer_uber_cpu.resolution = m_resolution;
-		UpdateUberBuffer();
-	
 		// Variables that help reduce state changes
 		uint32_t currently_bound_geometry	= 0;
 		uint32_t currently_bound_shader		= 0;
@@ -265,7 +261,7 @@ namespace Spartan
             const auto& model   = renderable->GeometryModel();
 
             // Validate shader
-            if (!shader || shader->GetCompilationState() != Shader_Compiled)
+            if (!shader || !shader->IsCompiled())
                 return;
 
             // Validate geometry
@@ -316,6 +312,10 @@ namespace Spartan
             m_cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
             m_profiler->m_renderer_meshes_rendered++;
         };
+
+        // Update uber buffer
+        m_buffer_uber_cpu.resolution = m_resolution;
+        UpdateUberBuffer();
 
         // Star command list
         m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
@@ -562,22 +562,25 @@ namespace Spartan
             {
                 if (Light* light = entity->GetComponent<Light>().get())
                 {
-                    // Pack textures
-                    void* textures[] =
+                    if (RHI_Texture* shadow_map = light->GetShadowMap().get())
                     {
-                        m_render_targets[RenderTarget_Gbuffer_Normal]->GetResource_Texture(),
-                        m_render_targets[RenderTarget_Gbuffer_Material]->GetResource_Texture(),
-                        m_render_targets[RenderTarget_Gbuffer_Depth]->GetResource_Texture(),
-                        m_render_targets[RenderTarget_Ssao]->GetResource_Texture(),
-                        light->GetCastShadows() ? (light->GetLightType() == LightType_Directional   ? light->GetShadowMap()->GetResource_Texture() : nullptr) : nullptr,
-                        light->GetCastShadows() ? (light->GetLightType() == LightType_Point         ? light->GetShadowMap()->GetResource_Texture() : nullptr) : nullptr,
-                        light->GetCastShadows() ? (light->GetLightType() == LightType_Spot          ? light->GetShadowMap()->GetResource_Texture() : nullptr) : nullptr
-                    };
-
-                    m_cmd_list->SetTextures(0, textures, 7);
-                    m_cmd_list->SetShaderPixel(shader);
-                    m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
-                    m_cmd_list->Submit();
+                        // Pack textures
+                        void* textures[] =
+                        {
+                            m_render_targets[RenderTarget_Gbuffer_Normal]->GetResource_Texture(),
+                            m_render_targets[RenderTarget_Gbuffer_Material]->GetResource_Texture(),
+                            m_render_targets[RenderTarget_Gbuffer_Depth]->GetResource_Texture(),
+                            m_render_targets[RenderTarget_Ssao]->GetResource_Texture(),
+                            light->GetCastShadows() ? (light->GetLightType() == LightType_Directional   ? shadow_map->GetResource_Texture() : nullptr) : nullptr,
+                            light->GetCastShadows() ? (light->GetLightType() == LightType_Point         ? shadow_map->GetResource_Texture() : nullptr) : nullptr,
+                            light->GetCastShadows() ? (light->GetLightType() == LightType_Spot          ? shadow_map->GetResource_Texture() : nullptr) : nullptr
+                        };
+                    
+                        m_cmd_list->SetTextures(0, textures, 7);
+                        m_cmd_list->SetShaderPixel(shader);
+                        m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
+                        m_cmd_list->Submit();
+                    }
                 }
             }
         };

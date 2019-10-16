@@ -54,7 +54,7 @@ namespace Spartan
 
 	void Light::OnInitialize()
 	{
-		CreateShadowMap(true);
+
 	}
 
 	void Light::OnStart()
@@ -64,6 +64,8 @@ namespace Spartan
 
 	void Light::OnTick(float delta_time)
 	{
+        CreateShadowMap(false);
+
 		// Position and rotation dirty check
 		if (m_lastPosLight != GetTransform()->GetPosition() || m_lastRotLight != GetTransform()->GetRotation())
 		{
@@ -81,7 +83,7 @@ namespace Spartan
         }
 
 		// Camera dirty check (need for directional light cascade computations
-		if (m_lightType == LightType_Directional)
+		if (m_light_type == LightType_Directional)
 		{
 			if (auto& camera = m_renderer->GetCamera())
 			{
@@ -96,23 +98,24 @@ namespace Spartan
 		if (!m_is_dirty)
 			return;
 
-        ComputeCascadeSplits();
+		// Update shadow map(s)
+        if (m_shadow_map)
+        {
+            ComputeCascadeSplits();
+            ComputeViewMatrix();
 
-		// Update view matrix
-		ComputeViewMatrix();
-
-		// Update projection matrices
-		for (uint32_t i = 0; i < m_shadow_map->GetArraySize(); i++)
-		{
-			ComputeProjectionMatrix(i);
-		}
+            for (uint32_t i = 0; i < m_shadow_map->GetArraySize(); i++)
+            {
+                ComputeProjectionMatrix(i);
+            }
+        }
 
         m_is_dirty = false;
 	}
 
 	void Light::Serialize(FileStream* stream)
 	{
-		stream->Write(static_cast<uint32_t>(m_lightType));
+		stream->Write(static_cast<uint32_t>(m_light_type));
 		stream->Write(m_cast_shadows);
 		stream->Write(m_color);
 		stream->Write(m_range);
@@ -136,22 +139,32 @@ namespace Spartan
 
 	void Light::SetLightType(LightType type)
 	{
-		m_lightType = type;
-		m_is_dirty	= true;
+        if (m_light_type == type)
+            return;
 
-        // Temp tweak because only directional light shadows work without issues so far
-        m_cast_shadows = GetLightType() == LightType_Directional;
+		m_light_type    = type;
+		m_is_dirty      = true;
 
-		CreateShadowMap(true);
+        if (m_cast_shadows)
+        {
+            // Temp tweak because only directional light shadows work without issues so far
+            m_cast_shadows = GetLightType() == LightType_Directional;
+
+            CreateShadowMap(true);
+        }
 	}
 
-	void Light::SetCastShadows(bool castShadows)
+	void Light::SetCastShadows(bool cast_shadows)
 	{
-		if (m_cast_shadows == castShadows)
+		if (m_cast_shadows == cast_shadows)
 			return;
 
-		m_cast_shadows = castShadows;
-		CreateShadowMap(true);
+		m_cast_shadows = cast_shadows;
+
+        if (m_cast_shadows)
+        {
+            CreateShadowMap(true);
+        }
 	}
 
 	void Light::SetRange(float range)
@@ -172,7 +185,7 @@ namespace Spartan
 
 	void Light::ComputeViewMatrix()
 	{
-		if (m_lightType == LightType_Directional)
+		if (m_light_type == LightType_Directional)
 		{
             for (uint32_t i = 0; i < g_cascade_count; i++)
             {
@@ -183,7 +196,7 @@ namespace Spartan
                 m_matrix_view[i]    = Matrix::CreateLookAtLH(position, target, up);
             }
 		}
-		else if (m_lightType == LightType_Spot)
+		else if (m_light_type == LightType_Spot)
 		{
             const Vector3 position  = GetTransform()->GetPosition();
             const Vector3 forward	= GetTransform()->GetForward();
@@ -192,7 +205,7 @@ namespace Spartan
 			// Compute
 			m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + forward, up);
 		}
-		else if (m_lightType == LightType_Point)
+		else if (m_light_type == LightType_Point)
 		{
             const Vector3 position = GetTransform()->GetPosition();
 
@@ -216,7 +229,7 @@ namespace Spartan
 
         const bool reverse_z = m_renderer ? m_renderer->GetReverseZ() : false;
 
-		if (m_lightType == LightType_Directional)
+		if (m_light_type == LightType_Directional)
 		{
             Cascade& cascade            = m_cascades[index];
             const float cascade_depth   = (cascade.max.z - cascade.min.z) * 10.0f;
@@ -230,7 +243,7 @@ namespace Spartan
 			const auto width			= static_cast<float>(m_shadow_map->GetWidth());
 			const auto height			= static_cast<float>(m_shadow_map->GetHeight());		
 			const auto aspect_ratio		= width / height;
-			const float fov				= (m_lightType == LightType_Spot) ? m_angle_rad : 1.57079633f; // 1.57079633 = 90 deg
+			const float fov				= (m_light_type == LightType_Spot) ? m_angle_rad : 1.57079633f; // 1.57079633 = 90 deg
 			const float near_plane		= reverse_z ? m_range : 0.0f;
 			const float far_plane		= reverse_z ? 0.0f : m_range;
 			m_matrix_projection[index]	= Matrix::CreatePerspectiveFieldOfViewLH(fov, aspect_ratio, near_plane, far_plane);
@@ -269,7 +282,7 @@ namespace Spartan
 
         Camera* camera                        = m_renderer->GetCamera().get();
         const float clip_near                 = camera->GetNearPlane();
-        const float clip_far                  = camera->GetFarPlane() * 1.0f; // cover half of the camera's depth (far away pixels can hardly be seen anyway)
+        const float clip_far                  = camera->GetFarPlane() * 0.5f; // cover half of the camera's depth (far away pixels can hardly be seen anyway)
         const Matrix view_projection_inverted = Matrix::Invert(camera->GetViewMatrix() * camera->ComputeProjection(true, clip_far));
 
         // Calculate split depths based on view camera frustum
@@ -362,8 +375,11 @@ namespace Spartan
 
     void Light::CreateShadowMap(bool force)
 	{		
-		if (!force && !m_shadow_map)
+		if (!m_cast_shadows)
 			return;
+
+        if (m_shadow_map && !force)
+            return;
 
  		uint32_t resolution = m_renderer->GetShadowResolution();
 		auto rhi_device		= m_renderer->GetRhiDevice();

@@ -223,10 +223,12 @@ namespace Spartan
 
 		// Get camera matrices
 		{
-			m_near_plane	                = m_camera->GetNearPlane();
-			m_far_plane		                = m_camera->GetFarPlane();
-			m_buffer_frame_cpu.view			= m_camera->GetViewMatrix();
-			m_buffer_frame_cpu.projection	= m_camera->GetProjectionMatrix();
+			m_near_plane	                            = m_camera->GetNearPlane();
+			m_far_plane		                            = m_camera->GetFarPlane();
+			m_buffer_frame_cpu.view			            = m_camera->GetViewMatrix();
+			m_buffer_frame_cpu.projection	            = m_camera->GetProjectionMatrix();
+            m_buffer_frame_cpu.projection_ortho         = Matrix::CreateOrthographicLH(m_resolution.x, m_resolution.y, m_near_plane, m_far_plane);
+            m_buffer_frame_cpu.view_projection_ortho    = Matrix::CreateLookAtLH(Vector3(0, 0, -m_near_plane), Vector3::Forward, Vector3::Up) * m_buffer_frame_cpu.projection_ortho;
 
 			// TAA - Generate jitter
 			if (IsFlagSet(Render_AntiAliasing_TAA))
@@ -247,10 +249,9 @@ namespace Spartan
 				m_taa_jitter_previous	= Vector2::Zero;		
 			}
 
+            // Compute some TAA affected matrices
             m_buffer_frame_cpu.view_projection              = m_buffer_frame_cpu.view * m_buffer_frame_cpu.projection;
-            m_buffer_frame_cpu.view_projection_inv          = Matrix::Invert(m_buffer_frame_cpu.view_projection);
-            m_buffer_frame_cpu.projection_ortho             = Matrix::CreateOrthographicLH(m_resolution.x, m_resolution.y, m_near_plane, m_far_plane);
-            m_buffer_frame_cpu.view_projection_ortho        = Matrix::CreateLookAtLH(Vector3(0, 0, -m_near_plane), Vector3::Forward, Vector3::Up) * m_buffer_frame_cpu.projection_ortho;
+            m_buffer_frame_cpu.view_projection_inv          = Matrix::Invert(m_buffer_frame_cpu.view_projection);   
             m_buffer_frame_cpu.view_projection_unjittered   = m_buffer_frame_cpu.view * m_camera->GetProjectionMatrix();
 		}
 

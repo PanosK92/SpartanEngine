@@ -60,6 +60,19 @@ namespace Spartan
 		}
 	}
 
+    void Environment::OnTick(float delta_time)
+    {
+        if (!m_is_dirty)
+            return;
+
+        m_context->GetSubsystem<Threading>()->AddTask([this]
+        {
+            SetFromTextureSphere(m_file_paths.front());
+        });
+
+        m_is_dirty = false;
+    }
+
     void Environment::Serialize(FileStream* stream)
     {
         stream->Write(static_cast<uint8_t>(m_environment_type));
@@ -88,10 +101,7 @@ namespace Spartan
 
     void Environment::LoadDefault()
     {
-        m_context->GetSubsystem<Threading>()->AddTask([this]
-        {
-            SetFromTextureSphere(m_file_paths.front());
-        });
+        m_is_dirty = true;
     }
 
     const shared_ptr<RHI_Texture>& Environment::GetTexture()
