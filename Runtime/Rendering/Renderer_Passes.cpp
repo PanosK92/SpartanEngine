@@ -1584,9 +1584,6 @@ namespace Spartan
             if (!shader_gizmo_transform->IsCompiled())
                 return;
 
-            // unjittered matrix to avoid TAA jitter due to lack of motion vectors
-            const auto view_projection_unjittered = m_camera->GetViewMatrix() * m_camera->GetProjectionMatrix();
-
 			m_cmd_list->SetShaderVertex(shader_gizmo_transform);
 			m_cmd_list->SetShaderPixel(shader_gizmo_transform);
 			m_cmd_list->SetInputLayout(shader_gizmo_transform->GetInputLayout());
@@ -1595,8 +1592,7 @@ namespace Spartan
 
 			// Axis - X
             m_buffer_uber_cpu.resolution        = m_resolution;
-            m_buffer_uber_cpu.transform         = view_projection_unjittered;
-            m_buffer_uber_cpu.world             = m_gizmo_transform->GetHandle().GetTransform(Vector3::Right);
+            m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle().GetTransform(Vector3::Right);
             m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle().GetColor(Vector3::Right);
             UpdateUberBuffer();
             m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
@@ -1604,7 +1600,7 @@ namespace Spartan
             m_cmd_list->Submit();
 
 			// Axis - Y
-            m_buffer_uber_cpu.world             = m_gizmo_transform->GetHandle().GetTransform(Vector3::Up);
+            m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle().GetTransform(Vector3::Up);
             m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle().GetColor(Vector3::Up);
             UpdateUberBuffer();
             m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
@@ -1612,7 +1608,7 @@ namespace Spartan
             m_cmd_list->Submit();
 
 			// Axis - Z
-            m_buffer_uber_cpu.world             = m_gizmo_transform->GetHandle().GetTransform(Vector3::Forward);
+            m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle().GetTransform(Vector3::Forward);
             m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle().GetColor(Vector3::Forward);
             UpdateUberBuffer();
             m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
@@ -1622,7 +1618,7 @@ namespace Spartan
 			// Axes - XYZ
 			if (m_gizmo_transform->DrawXYZ())
 			{
-                m_buffer_uber_cpu.world             = m_gizmo_transform->GetHandle().GetTransform(Vector3::One);
+                m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle().GetTransform(Vector3::One);
                 m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle().GetColor(Vector3::One);
                 UpdateUberBuffer();
                 m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);

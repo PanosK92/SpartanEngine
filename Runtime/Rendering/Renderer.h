@@ -457,6 +457,15 @@ namespace Spartan
         // Updates once every frame
         struct FrameBuffer
         {
+            Math::Matrix world;
+            Math::Matrix view;
+            Math::Matrix projection;
+            Math::Matrix projection_ortho;
+            Math::Matrix view_projection;
+            Math::Matrix view_projection_inv;
+            Math::Matrix view_projection_ortho;
+            Math::Matrix view_projection_unjittered;
+
             float delta_time;
             float time;
             float camera_near;
@@ -490,14 +499,7 @@ namespace Spartan
 		// Updates multiple times per frame
 		struct UberBuffer
 		{
-            Math::Matrix world;
-			Math::Matrix view;
-			Math::Matrix projection;
-			Math::Matrix projection_ortho;
-			Math::Matrix view_projection;
-			Math::Matrix view_projection_inv;
-			Math::Matrix view_projection_ortho;
-            Math::Matrix transform; // can be anything
+            Math::Matrix transform;
 
             Math::Vector4 color;
 
@@ -506,8 +508,20 @@ namespace Spartan
 
             Math::Vector2 blur_direction;
             Math::Vector2 resolution;
+
+            bool operator==(const UberBuffer& rhs)
+            {
+                return
+                    transform       == rhs.transform        &&
+                    color           == rhs.color            &&
+                    transform_axis  == rhs.transform_axis   &&
+                    blur_sigma      == rhs.blur_sigma       &&
+                    blur_direction  == rhs.blur_direction   &&
+                    resolution      == rhs.resolution;
+            }
 		};
         UberBuffer m_buffer_uber_cpu;
+        UberBuffer m_buffer_uber_cpu_previous;
 		std::shared_ptr<RHI_ConstantBuffer> m_buffer_uber_gpu;
 
         // Light buffer
@@ -523,8 +537,21 @@ namespace Spartan
 
             float light_count;
             Math::Vector3 g_padding2;
+
+            bool operator==(const LightBuffer& rhs)
+            {
+                return
+                    view_projection                         == rhs.view_projection                      &&
+                    intensity_range_angle_bias              == rhs.color                                &&
+                    normalBias_shadow_volumetric_contact    == rhs.normalBias_shadow_volumetric_contact &&
+                    color                                   == rhs.color                                &&
+                    position                                == rhs.position                             &&
+                    direction                               == rhs.direction                            &&
+                    light_count                             == rhs.light_count;
+            }
         };
         LightBuffer m_buffer_light_cpu;
+        LightBuffer m_buffer_light_cpu_previous;
         std::shared_ptr<RHI_ConstantBuffer> m_buffer_light_gpu;
     };
 }
