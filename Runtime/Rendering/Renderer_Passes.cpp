@@ -312,7 +312,7 @@ namespace Spartan
 
             // Bind object buffer
             const auto& transform = entity->GetTransform_PtrRaw();
-            transform->UpdateConstantBuffer(m_rhi_device, m_view_projection);
+            transform->UpdateConstantBuffer(m_rhi_device, m_buffer_frame_cpu.view_projection);
             m_cmd_list->SetConstantBuffer(3, Buffer_VertexShader, transform->GetConstantBuffer());
 
             // Render	
@@ -1547,7 +1547,7 @@ namespace Spartan
 
                 // Update uber buffer
                 m_buffer_uber_cpu.resolution    = Vector2(static_cast<float>(tex_width), static_cast<float>(tex_width));
-                m_buffer_uber_cpu.transform     = m_view_projection_orthographic;
+                m_buffer_uber_cpu.transform     = m_buffer_frame_cpu.view_projection_ortho;
                 UpdateUberBuffer();
 
 				m_cmd_list->SetShaderVertex(shader_quad);
@@ -1746,8 +1746,8 @@ namespace Spartan
         m_cmd_list->Begin("Pass_DebugBuffer");
 
         // Update uber buffer
-        m_buffer_uber_cpu.resolution            = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-        m_buffer_uber_cpu.transform = m_view_projection_orthographic;
+        m_buffer_uber_cpu.resolution    = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+        m_buffer_uber_cpu.transform     = m_buffer_frame_cpu.view_projection_ortho;
         UpdateUberBuffer();
 
         m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
@@ -1822,8 +1822,8 @@ namespace Spartan
         m_cmd_list->Begin("Pass_Copy");
 
         // Update uber buffer
-        m_buffer_uber_cpu.resolution            = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-        m_buffer_uber_cpu.transform = m_view_projection_orthographic;
+        m_buffer_uber_cpu.resolution    = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+        m_buffer_uber_cpu.transform     = m_buffer_frame_cpu.view_projection_ortho;
         UpdateUberBuffer();
 
         m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
