@@ -41,6 +41,7 @@ namespace Spartan
         ~Environment() = default;
 
         //= IComponent ===============================
+        void OnTick(float delta_time) override;
         void Serialize(FileStream* stream) override;
         void Deserialize(FileStream* stream) override;
         //============================================
@@ -56,5 +57,6 @@ namespace Spartan
 
 		std::vector<std::string> m_file_paths;
 		Environment_Type m_environment_type;
+        bool m_is_dirty = false;
 	};
 }
