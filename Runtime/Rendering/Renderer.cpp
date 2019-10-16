@@ -254,14 +254,15 @@ namespace Spartan
 			m_view_projection_orthographic	= m_view_base * m_projection_orthographic;
 		}
 
-        // Update uber buffer with matrices that are most likely to be used as is (some might be overridden)
+        // Update frame buffer with matrices
         {
-            m_buffer_uber_cpu.view                  = m_view;
-            m_buffer_uber_cpu.projection            = m_projection;
-            m_buffer_uber_cpu.projection_ortho      = m_projection_orthographic;
-            m_buffer_uber_cpu.view_projection       = m_view_projection;
-            m_buffer_uber_cpu.view_projection_inv   = m_view_projection_inv;
-            m_buffer_uber_cpu.view_projection_ortho = m_view_projection_orthographic;
+            m_buffer_frame_cpu.view                         = m_view;
+            m_buffer_frame_cpu.projection                   = m_projection;
+            m_buffer_frame_cpu.projection_ortho             = m_projection_orthographic;
+            m_buffer_frame_cpu.view_projection              = m_view_projection;
+            m_buffer_frame_cpu.view_projection_inv          = m_view_projection_inv;
+            m_buffer_frame_cpu.view_projection_ortho        = m_view_projection_orthographic;
+            m_buffer_frame_cpu.view_projection_unjittered   = m_view * m_camera->GetProjectionMatrix();
         }
 
 		m_is_rendering = true;
@@ -384,6 +385,10 @@ namespace Spartan
 
     bool Renderer::UpdateUberBuffer()
 	{
+        // Only update if needed
+        if (m_buffer_uber_cpu == m_buffer_uber_cpu_previous)
+            return true;
+
         // Map
         UberBuffer* buffer = static_cast<UberBuffer*>(m_buffer_uber_gpu->Map());
 		if (!buffer)
@@ -394,6 +399,7 @@ namespace Spartan
 
         // Update
         *buffer = m_buffer_uber_cpu;
+        m_buffer_uber_cpu_previous = m_buffer_uber_cpu;
 
         // Unmap
 		return m_buffer_uber_gpu->Unmap();
@@ -403,6 +409,10 @@ namespace Spartan
     {
         if (entities.empty())
             return false;
+
+        // Only update if needed
+        if (m_buffer_light_cpu == m_buffer_light_cpu_previous)
+            return true;
 
         // Map
         LightBuffer* buffer = static_cast<LightBuffer*>(m_buffer_light_gpu->Map());
@@ -428,6 +438,7 @@ namespace Spartan
 
         // Update
         *buffer = m_buffer_light_cpu;
+        m_buffer_light_cpu_previous = m_buffer_light_cpu;
 
         // Unmap
         return m_buffer_light_gpu->Unmap();
