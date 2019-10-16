@@ -22,6 +22,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // Updates once per frame
 cbuffer FrameBuffer : register(b0)
 {
+	matrix g_world;
+	matrix g_view;
+	matrix g_projection;
+	matrix g_projectionOrtho;
+	matrix g_viewProjection;
+	matrix g_viewProjectionInv;
+	matrix g_viewProjectionOrtho;
+	matrix g_viewProjectionUnjittered;
+
 	float g_delta_time;
 	float g_time;
 	float g_camera_near;
@@ -53,13 +62,6 @@ cbuffer FrameBuffer : register(b0)
 // Updates multiple times per frame
 cbuffer UberBuffer : register(b1)
 {	
-	matrix g_world;
-	matrix g_view;
-	matrix g_projection;
-	matrix g_projectionOrtho;
-	matrix g_viewProjection;
-	matrix g_viewProjectionInv;
-	matrix g_viewProjectionOrtho;
 	matrix g_transform; // can be anything	
 	
 	float4 g_color;
