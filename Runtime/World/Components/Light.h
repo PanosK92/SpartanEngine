@@ -78,7 +78,7 @@ namespace Spartan
 		void SetIntensity(float value)	{ m_intensity = value; }
 		auto GetIntensity()				{ return m_intensity; }
 
-		bool GetCastShadows() { return m_cast_shadows; }
+		bool GetCastShadows() const { return m_cast_shadows; }
 		void SetCastShadows(bool castShadows);
 
 		void SetRange(float range);
@@ -98,10 +98,10 @@ namespace Spartan
 		const Math::Matrix& GetViewMatrix(uint32_t index = 0);
 		const Math::Matrix& GetProjectionMatrix(uint32_t index = 0);
 
-		const auto& GetShadowMap() { return m_shadow_map; }
+		const auto& GetShadowMap() const { return m_shadow_map; }
         void CreateShadowMap(bool force);
 
-        bool IsInViewFrustrum(Renderable* renderable, uint32_t index);
+        bool IsInViewFrustrum(Renderable* renderable, uint32_t index) const;
 
 	private:
 		void ComputeViewMatrix();

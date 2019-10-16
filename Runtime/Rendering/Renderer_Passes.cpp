@@ -103,9 +103,9 @@ namespace Spartan
         // Get light entities
 		const auto& entities_light = m_entities[Renderer_Object_Light];
 
-		for (const auto& light_entity : entities_light)
-		{
-			const auto& light = light_entity->GetComponent<Light>();
+        for (uint32_t light_index = 0; light_index < entities_light.size(); light_index++)
+        {
+			const Light* light = entities_light[light_index]->GetComponent<Light>().get();
 
             // Light can be null if it just got removed and our buffer doesn't update till the next frame
             if (!light)
@@ -129,7 +129,7 @@ namespace Spartan
 			m_cmd_list->SetShaderVertex(shader_depth);
 			m_cmd_list->SetInputLayout(shader_depth->GetInputLayout());
 			m_cmd_list->SetViewport(shadow_map->GetViewport());
-
+            m_cmd_list->SetConstantBuffer(1, Buffer_VertexShader, m_buffer_uber_gpu);
             // "Pancaking" - https://www.gamedev.net/forums/topic/639036-shadow-mapping-and-high-up-objects/
             // It's basically a way to capture the silhouettes of potential shadow casters behind the camera.
             // Of course we also have to make sure that the light doesn't cull them in the first place (this is done automatically by the light)
@@ -138,15 +138,13 @@ namespace Spartan
 			// Tracking
 			uint32_t currently_bound_geometry = 0;
 
-			for (uint32_t i = 0; i < light->GetShadowMap()->GetArraySize(); i++)
+			for (uint32_t cascade_index = 0; cascade_index < light->GetShadowMap()->GetArraySize(); cascade_index++)
 			{
-				const auto cascade_depth_stencil = shadow_map->GetResource_DepthStencil(i);
+				const auto cascade_depth_stencil = shadow_map->GetResource_DepthStencil(cascade_index);
 
-				m_cmd_list->Begin("Array_" + to_string(i + 1));
+				m_cmd_list->Begin("Array_" + to_string(cascade_index + 1));
 				m_cmd_list->ClearDepthStencil(cascade_depth_stencil, Clear_Depth, GetClearDepth());
 				m_cmd_list->SetRenderTarget(nullptr, cascade_depth_stencil);
-
-				auto light_view_projection = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
 
 				for (const auto& entity : entities_opaque)
 				{
@@ -156,7 +154,7 @@ namespace Spartan
 						continue;
 
                     // Skip objects outside of the view frustum
-                    if (!light->IsInViewFrustrum(renderable, i))
+                    if (!light->IsInViewFrustrum(renderable, cascade_index))
                         continue;
 
 					// Acquire material
@@ -186,9 +184,8 @@ namespace Spartan
 					}
 
                     // Update uber buffer with cascade transform
-                    m_buffer_uber_cpu.transform = entity->GetTransform_PtrRaw()->GetMatrix() * light_view_projection;
+                    m_buffer_uber_cpu.transform = entity->GetTransform_PtrRaw()->GetMatrix() * m_buffer_light_cpu.view_projection[light_index][cascade_index];
                     UpdateUberBuffer();
-                    m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
 
 					m_cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
                     m_cmd_list->Submit();
@@ -529,8 +526,9 @@ namespace Spartan
         // Update uber buffer
         m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_diffuse->GetWidth()), static_cast<float>(tex_diffuse->GetHeight()));
         UpdateUberBuffer();
-        m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
 
+        m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
+        m_cmd_list->SetConstantBuffer(2, Buffer_Global, m_buffer_light_gpu);
         m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
         m_cmd_list->ClearRenderTargets(render_targets, Vector4::Zero);
         m_cmd_list->SetRenderTargets(render_targets);
@@ -543,7 +541,7 @@ namespace Spartan
         m_cmd_list->SetInputLayout(shader_quad->GetInputLayout());
         m_cmd_list->SetSamplers(0, samplers);
         m_cmd_list->SetBlendState(m_blend_color_add); // light accumulation
-
+        
         auto draw_lights = [this, &shader_light_directional, &shader_light_point, &shader_light_spot](Renderer_Object_Type type)
         {
             const vector<Entity*>& entities = m_entities[type];
@@ -558,8 +556,7 @@ namespace Spartan
 
             // Update light buffer   
             UpdateLightBuffer(entities);
-            m_cmd_list->SetConstantBuffer(2, Buffer_Global, m_buffer_light_gpu);
-            
+           
             // Draw
             for (const auto& entity : entities)
             {
