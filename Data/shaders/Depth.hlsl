@@ -23,17 +23,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common.hlsl"
 //====================
 
-cbuffer ObjectBuffer : register(b2)
-{		
-	matrix mvp;
-};
-
 Pixel_Pos mainVS(Vertex_Pos input)
 {
 	Pixel_Pos output;
 
 	input.position.w 	= 1.0f;	
-    output.position 	= mul(input.position, mvp);
+    output.position 	= mul(input.position, g_transform);
 		
 	return output;
 }

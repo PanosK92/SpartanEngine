@@ -148,6 +148,11 @@ namespace Spartan
 
 				auto light_view_projection = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
 
+                // Update uber buffer with cascade transform
+                m_buffer_uber_cpu.transform = light_view_projection;
+                UpdateUberBuffer();
+                m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
+
 				for (const auto& entity : entities_opaque)
 				{
 					// Acquire renderable component
@@ -185,17 +190,8 @@ namespace Spartan
 						currently_bound_geometry = model->GetId();
 					}
 
-					// Update constant buffer
-					const auto& transform = entity->GetTransform_PtrRaw();
-					transform->UpdateConstantBufferLight(m_rhi_device, light_view_projection, i);
-                    if (const shared_ptr<RHI_ConstantBuffer>& buffer = transform->GetConstantBufferLight(i))
-                    {
-                        if (buffer->GetResource())
-                        {
-                            m_cmd_list->SetConstantBuffer(2, Buffer_VertexShader, buffer);
-                        }
-                    }
 					m_cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
+                    m_cmd_list->Submit();
 				}
 				m_cmd_list->End(); // end of cascade
 			}
@@ -527,12 +523,14 @@ namespace Spartan
             m_sampler_bilinear_clamp->GetResource()
         };
 
+        // Begin
+        m_cmd_list->Begin("Pass_Light");
+
         // Update uber buffer
         m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_diffuse->GetWidth()), static_cast<float>(tex_diffuse->GetHeight()));
         UpdateUberBuffer();
+        m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
 
-        // Begin
-        m_cmd_list->Begin("Pass_Light");
         m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
         m_cmd_list->ClearRenderTargets(render_targets, Vector4::Zero);
         m_cmd_list->SetRenderTargets(render_targets);
@@ -560,35 +558,30 @@ namespace Spartan
 
             // Update light buffer   
             UpdateLightBuffer(entities);
-
-            // Pack and set constant buffers
-            const vector<void*> constant_buffers = { m_buffer_uber_gpu->GetResource(), m_buffer_light_gpu->GetResource() };
-            m_cmd_list->SetConstantBuffers(1, Buffer_Global, constant_buffers);
+            m_cmd_list->SetConstantBuffer(2, Buffer_Global, m_buffer_light_gpu);
             
             // Draw
             for (const auto& entity : entities)
             {
-                Light* light = entity->GetComponent<Light>().get();
-                // Light can be null if it just got removed and our buffer doesn't update till the next frame
-                if (!light)
-                    break;
-
-                // Pack textures
-                void* textures[] =
+                if (Light* light = entity->GetComponent<Light>().get())
                 {
-                    m_render_targets[RenderTarget_Gbuffer_Normal]->GetResource_Texture(),
-                    m_render_targets[RenderTarget_Gbuffer_Material]->GetResource_Texture(),
-                    m_render_targets[RenderTarget_Gbuffer_Depth]->GetResource_Texture(),
-                    m_render_targets[RenderTarget_Ssao]->GetResource_Texture(),
-                    light->GetCastShadows() ? (light->GetLightType() == LightType_Directional  ? light->GetShadowMap()->GetResource_Texture() : nullptr) : nullptr,
-                    light->GetCastShadows() ? (light->GetLightType() == LightType_Point        ? light->GetShadowMap()->GetResource_Texture() : nullptr) : nullptr,
-                    light->GetCastShadows() ? (light->GetLightType() == LightType_Spot         ? light->GetShadowMap()->GetResource_Texture() : nullptr) : nullptr
-                };
+                    // Pack textures
+                    void* textures[] =
+                    {
+                        m_render_targets[RenderTarget_Gbuffer_Normal]->GetResource_Texture(),
+                        m_render_targets[RenderTarget_Gbuffer_Material]->GetResource_Texture(),
+                        m_render_targets[RenderTarget_Gbuffer_Depth]->GetResource_Texture(),
+                        m_render_targets[RenderTarget_Ssao]->GetResource_Texture(),
+                        light->GetCastShadows() ? (light->GetLightType() == LightType_Directional   ? light->GetShadowMap()->GetResource_Texture() : nullptr) : nullptr,
+                        light->GetCastShadows() ? (light->GetLightType() == LightType_Point         ? light->GetShadowMap()->GetResource_Texture() : nullptr) : nullptr,
+                        light->GetCastShadows() ? (light->GetLightType() == LightType_Spot          ? light->GetShadowMap()->GetResource_Texture() : nullptr) : nullptr
+                    };
 
-                m_cmd_list->SetTextures(0, textures, 7);
-                m_cmd_list->SetShaderPixel(shader);
-                m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
-                m_cmd_list->Submit();
+                    m_cmd_list->SetTextures(0, textures, 7);
+                    m_cmd_list->SetShaderPixel(shader);
+                    m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
+                    m_cmd_list->Submit();
+                }
             }
         };
 

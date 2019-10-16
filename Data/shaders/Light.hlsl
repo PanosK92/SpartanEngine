@@ -145,11 +145,11 @@ PixelOutputType mainPS(Pixel_PosUv input)
 		#if POINT
 			// Attunate
 			float dist         = length(position_world - light.position);
-			float attenuation  = saturate(1.0f - dist / light.angle);
+			float attenuation  = saturate(1.0f - dist / light.range);
 			light.intensity    *= attenuation * attenuation;
 			
 			// Erase light if there is no need to compute it
-			light.intensity *= step(dist, light.angle);
+			light.intensity *= step(dist, light.range);
 		#endif
 		
 		#if SPOT

@@ -107,12 +107,10 @@ namespace Spartan
 		auto& GetMatrix()		            { return m_matrix; }
 		auto& GetLocalMatrix()	            { return m_matrixLocal; }
 
-		//= CONSTANT BUFFERS ======================================================================================================================
+		//= CONSTANT BUFFERS =========================================================================================
 		void UpdateConstantBuffer(const std::shared_ptr<RHI_Device>& rhi_device, const Math::Matrix& view_projection);
 		const auto& GetConstantBuffer() const { return m_cb_gbuffer_gpu; }
-		void UpdateConstantBufferLight(const std::shared_ptr<RHI_Device>& rhi_device, const Math::Matrix& view_projection, uint32_t cascade_index);
-        const std::shared_ptr<RHI_ConstantBuffer>& GetConstantBufferLight(const uint32_t cascade_index);
-		//=========================================================================================================================================
+		//============================================================================================================
 
 	private:
 		Math::Matrix GetParentTransformMatrix() const;
@@ -139,13 +137,5 @@ namespace Spartan
 		CB_Gbuffer m_cb_gbuffer_cpu;
 		std::shared_ptr<RHI_ConstantBuffer> m_cb_gbuffer_gpu;
 		Math::Matrix m_wvp_previous;
-
-		// Constant buffer
-		struct LightCascade
-		{
-			Math::Matrix data;
-			std::shared_ptr<RHI_ConstantBuffer> buffer;
-		};
-		std::vector<LightCascade> m_light_cascades;
 	};
 }
