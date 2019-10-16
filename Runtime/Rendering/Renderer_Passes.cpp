@@ -136,7 +136,7 @@ namespace Spartan
             m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid_no_clip);
 
 			// Tracking
-			uint32_t currently_bound_geometry   = 0;
+			uint32_t currently_bound_geometry = 0;
 
 			for (uint32_t i = 0; i < light->GetShadowMap()->GetArraySize(); i++)
 			{
@@ -147,11 +147,6 @@ namespace Spartan
 				m_cmd_list->SetRenderTarget(nullptr, cascade_depth_stencil);
 
 				auto light_view_projection = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
-
-                // Update uber buffer with cascade transform
-                m_buffer_uber_cpu.transform = light_view_projection;
-                UpdateUberBuffer();
-                m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
 
 				for (const auto& entity : entities_opaque)
 				{
@@ -189,6 +184,11 @@ namespace Spartan
 						m_cmd_list->SetBufferVertex(model->GetVertexBuffer());
 						currently_bound_geometry = model->GetId();
 					}
+
+                    // Update uber buffer with cascade transform
+                    m_buffer_uber_cpu.transform = entity->GetTransform_PtrRaw()->GetMatrix() * light_view_projection;
+                    UpdateUberBuffer();
+                    m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
 
 					m_cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
                     m_cmd_list->Submit();
