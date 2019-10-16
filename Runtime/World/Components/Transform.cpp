@@ -422,49 +422,6 @@ namespace Spartan
 		m_wvp_previous = mvp_current;
 	}
 
-	void Transform::UpdateConstantBufferLight(const shared_ptr<RHI_Device>& rhi_device, const Matrix& view_projection, const uint32_t cascade_index)
-	{
-		// Add cascade if needed
-		if (cascade_index >= static_cast<uint32_t>(m_light_cascades.size()))
-		{
-			LightCascade cb_light;
-			cb_light.buffer = make_shared<RHI_ConstantBuffer>(rhi_device);
-			cb_light.buffer->Create<Matrix>();
-			m_light_cascades.emplace_back(cb_light);
-		}
-
-        // Ensure we have enough cascades
-        if (cascade_index >= static_cast<uint32_t>(m_light_cascades.size()))
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return;
-        }
-
-		auto& cb_light = m_light_cascades[cascade_index];
-
-		// Determine if the buffer needs to update
-		auto mvp = m_matrix * view_projection;
-		if (cb_light.data == mvp)
-			return;
-
-		// Update buffer
-		auto& data = *static_cast<Matrix*>(cb_light.buffer->Map());
-		data = mvp;
-		cb_light.buffer->Unmap();
-	}
-
-    const shared_ptr<RHI_ConstantBuffer>& Transform::GetConstantBufferLight(const uint32_t cascade_index)
-    {
-        static shared_ptr<RHI_ConstantBuffer> empty;
-        if (cascade_index >= m_light_cascades.size())
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return empty;
-        }
-
-        return m_light_cascades[cascade_index].buffer;
-    }
-
     Matrix Transform::GetParentTransformMatrix() const
 	{
 		return HasParent() ? GetParent()->GetMatrix() : Matrix::Identity;
