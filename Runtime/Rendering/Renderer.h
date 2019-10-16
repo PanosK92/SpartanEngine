@@ -412,14 +412,7 @@ namespace Spartan
 		//= CORE ======================================================
 		Math::Rectangle m_quad;
 		std::shared_ptr<RHI_CommandList> m_cmd_list;
-		std::unique_ptr<Font> m_font;	
-		Math::Matrix m_view;
-		Math::Matrix m_view_base;
-		Math::Matrix m_projection;
-		Math::Matrix m_projection_orthographic;
-		Math::Matrix m_view_projection;
-		Math::Matrix m_view_projection_inv;
-		Math::Matrix m_view_projection_orthographic;
+		std::unique_ptr<Font> m_font;
 		Math::Vector2 m_taa_jitter;
 		Math::Vector2 m_taa_jitter_previous;
 		Renderer_Buffer_Type m_debug_buffer     = Renderer_Buffer_None;

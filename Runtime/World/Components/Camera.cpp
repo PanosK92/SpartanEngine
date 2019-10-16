@@ -47,7 +47,6 @@ namespace Spartan
 
 	void Camera::OnInitialize()
 	{
-        m_mBaseView     = ComputeBaseView();
         m_mView         = ComputeViewMatrix();
         m_mProjection   = ComputeProjection();
 	}
@@ -74,7 +73,6 @@ namespace Spartan
 		if (!m_isDirty)
 			return;
 
-        m_mBaseView     = ComputeBaseView();
         m_mView         = ComputeViewMatrix();
         m_mProjection   = ComputeProjection();
 		m_frustrum      = Frustum(GetViewMatrix(), GetProjectionMatrix(), m_renderer->GetReverseZ() ? GetNearPlane() : GetFarPlane());
@@ -99,7 +97,6 @@ namespace Spartan
 		stream->Read(&m_near_plane);
 		stream->Read(&m_far_plane);
 
-        m_mBaseView     = ComputeBaseView();
 		m_mView         = ComputeViewMatrix();
 		m_mProjection   = ComputeProjection();
 	}
@@ -330,15 +327,6 @@ namespace Spartan
 
 		// compute view matrix
 		return Matrix::CreateLookAtLH(position, look_at, up);
-	}
-
-    Matrix Camera::ComputeBaseView()
-	{
-		const auto camera_pos	= Vector3(0, 0, -m_near_plane);
-		const auto look_at		= (Vector3::Forward * Matrix::Identity).Normalized();
-
-        // compute view matrix
-		return Matrix::CreateLookAtLH(camera_pos, look_at, Vector3::Up);
 	}
 
 	Matrix Camera::ComputeProjection(const bool force_non_reverse_z /*= false*/, const float ovveride_far_plane /*= 0.0f*/)

@@ -223,11 +223,10 @@ namespace Spartan
 
 		// Get camera matrices
 		{
-			m_near_plane	= m_camera->GetNearPlane();
-			m_far_plane		= m_camera->GetFarPlane();
-			m_view			= m_camera->GetViewMatrix();
-			m_view_base		= m_camera->GetBaseViewMatrix();
-			m_projection	= m_camera->GetProjectionMatrix();
+			m_near_plane	                = m_camera->GetNearPlane();
+			m_far_plane		                = m_camera->GetFarPlane();
+			m_buffer_frame_cpu.view			= m_camera->GetViewMatrix();
+			m_buffer_frame_cpu.projection	= m_camera->GetProjectionMatrix();
 
 			// TAA - Generate jitter
 			if (IsFlagSet(Render_AntiAliasing_TAA))
@@ -235,12 +234,12 @@ namespace Spartan
 				m_taa_jitter_previous = m_taa_jitter;
 
 				// Halton(2, 3) * 16 seems to work nice
-				const uint64_t samples	= 16;
-				const uint64_t index	= m_frame_num % samples;
-				m_taa_jitter			= Utility::Sampling::Halton2D(index, 2, 3) * 2.0f - 1.0f;
-				m_taa_jitter.x			= m_taa_jitter.x / m_resolution.x;
-				m_taa_jitter.y			= m_taa_jitter.y / m_resolution.y;
-				m_projection			*= Matrix::CreateTranslation(Vector3(m_taa_jitter.x, m_taa_jitter.y, 0.0f));
+				const uint64_t samples	        = 16;
+				const uint64_t index	        = m_frame_num % samples;
+				m_taa_jitter			        = Utility::Sampling::Halton2D(index, 2, 3) * 2.0f - 1.0f;
+				m_taa_jitter.x			        = m_taa_jitter.x / m_resolution.x;
+				m_taa_jitter.y			        = m_taa_jitter.y / m_resolution.y;
+                m_buffer_frame_cpu.projection   *= Matrix::CreateTranslation(Vector3(m_taa_jitter.x, m_taa_jitter.y, 0.0f));
 			}
 			else
 			{
@@ -248,22 +247,12 @@ namespace Spartan
 				m_taa_jitter_previous	= Vector2::Zero;		
 			}
 
-			m_view_projection				= m_view * m_projection;
-			m_view_projection_inv			= Matrix::Invert(m_view_projection);
-			m_projection_orthographic		= Matrix::CreateOrthographicLH(m_resolution.x, m_resolution.y, m_near_plane, m_far_plane);
-			m_view_projection_orthographic	= m_view_base * m_projection_orthographic;
+            m_buffer_frame_cpu.view_projection              = m_buffer_frame_cpu.view * m_buffer_frame_cpu.projection;
+            m_buffer_frame_cpu.view_projection_inv          = Matrix::Invert(m_buffer_frame_cpu.view_projection);
+            m_buffer_frame_cpu.projection_ortho             = Matrix::CreateOrthographicLH(m_resolution.x, m_resolution.y, m_near_plane, m_far_plane);
+            m_buffer_frame_cpu.view_projection_ortho        = Matrix::CreateLookAtLH(Vector3(0, 0, -m_near_plane), Vector3::Forward, Vector3::Up) * m_buffer_frame_cpu.projection_ortho;
+            m_buffer_frame_cpu.view_projection_unjittered   = m_buffer_frame_cpu.view * m_camera->GetProjectionMatrix();
 		}
-
-        // Update frame buffer with matrices
-        {
-            m_buffer_frame_cpu.view                         = m_view;
-            m_buffer_frame_cpu.projection                   = m_projection;
-            m_buffer_frame_cpu.projection_ortho             = m_projection_orthographic;
-            m_buffer_frame_cpu.view_projection              = m_view_projection;
-            m_buffer_frame_cpu.view_projection_inv          = m_view_projection_inv;
-            m_buffer_frame_cpu.view_projection_ortho        = m_view_projection_orthographic;
-            m_buffer_frame_cpu.view_projection_unjittered   = m_view * m_camera->GetProjectionMatrix();
-        }
 
 		m_is_rendering = true;
 		Pass_Main();

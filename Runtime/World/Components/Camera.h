@@ -62,7 +62,6 @@ namespace Spartan
 		//= MATRICES ============================================================
 		const Math::Matrix& GetViewMatrix() const		{ return m_mView; }
 		const Math::Matrix& GetProjectionMatrix() const { return m_mProjection; }
-		const Math::Matrix& GetBaseViewMatrix() const	{ return m_mBaseView; }
 		//=======================================================================
 
 		//= RAYCASTING =================================================================
@@ -104,7 +103,6 @@ namespace Spartan
 		//===============================================================================
 
         Math::Matrix ComputeViewMatrix();
-        Math::Matrix ComputeBaseView();
         Math::Matrix ComputeProjection(const bool force_non_reverse_z = false, const float ovveride_far_plane = 0.0f);
 
 	private:
@@ -117,7 +115,6 @@ namespace Spartan
 		Math::Vector4 m_clear_color         = Math::Vector4(0.396f, 0.611f, 0.937f, 1.0f); // A nice cornflower blue 
 		Math::Matrix m_mView                = Math::Matrix::Identity;
 		Math::Matrix m_mProjection          = Math::Matrix::Identity;
-        Math::Matrix m_mBaseView            = Math::Matrix::Identity;
 		Math::Vector3 m_position            = Math::Vector3::Zero;
         Math::Quaternion m_rotation         = Math::Quaternion::Identity;
         bool m_isDirty                      = false;
