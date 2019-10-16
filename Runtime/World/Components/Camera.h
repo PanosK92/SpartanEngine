@@ -103,7 +103,7 @@ namespace Spartan
 		//===============================================================================
 
         Math::Matrix ComputeViewMatrix();
-        Math::Matrix ComputeProjection(const bool force_non_reverse_z = false, const float ovveride_far_plane = 0.0f);
+        Math::Matrix ComputeProjection(const bool force_non_reverse_z = false);
 
 	private:
         void FpsControl(float delta_time);
