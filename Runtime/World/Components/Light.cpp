@@ -99,14 +99,17 @@ namespace Spartan
 			return;
 
 		// Update shadow map(s)
-        if (m_shadow_map)
+        if (m_cast_shadows)
         {
             ComputeCascadeSplits();
             ComputeViewMatrix();
 
-            for (uint32_t i = 0; i < m_shadow_map->GetArraySize(); i++)
+            if (m_shadow_map)
             {
-                ComputeProjectionMatrix(i);
+                for (uint32_t i = 0; i < m_shadow_map->GetArraySize(); i++)
+                {
+                    ComputeProjectionMatrix(i);
+                }
             }
         }
 
@@ -249,7 +252,7 @@ namespace Spartan
 		return true;
 	}
 
-    const Matrix& Light::GetViewMatrix(uint32_t index /*= 0*/)
+    const Matrix& Light::GetViewMatrix(uint32_t index /*= 0*/) const
     {
         if (index >= static_cast<uint32_t>(m_matrix_view.size()))
         {
@@ -260,7 +263,7 @@ namespace Spartan
         return m_matrix_view[index];
     }
 
-    const Matrix& Light::GetProjectionMatrix(uint32_t index /*= 0*/)
+    const Matrix& Light::GetProjectionMatrix(uint32_t index /*= 0*/) const
     {
         if (index >= static_cast<uint32_t>(m_matrix_projection.size()))
         {

@@ -95,8 +95,8 @@ namespace Spartan
 
 		Math::Vector3 GetDirection() const;
 
-		const Math::Matrix& GetViewMatrix(uint32_t index = 0);
-		const Math::Matrix& GetProjectionMatrix(uint32_t index = 0);
+		const Math::Matrix& GetViewMatrix(uint32_t index = 0) const;
+		const Math::Matrix& GetProjectionMatrix(uint32_t index = 0) const;
 
         const uint32_t GetCascadeCount() const { return static_cast<uint32_t>(m_cascades.size()); }
 		const auto& GetShadowMap() const { return m_shadow_map; }

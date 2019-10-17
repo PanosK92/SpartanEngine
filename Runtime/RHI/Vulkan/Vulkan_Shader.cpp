@@ -356,17 +356,23 @@ namespace Spartan
 			file_directory = FileSystem::GetDirectoryFromFilePath(shader);
 		}
 
-		vector<LPCWSTR> arguments = 
-		{	
-            L"-spirv",
-            L"-fspv-reflect",
-            L"-fvk-use-dx-layout",
-            L"-flegacy-macro-expansion",
-			#ifdef DEBUG
-			L"-Zi"
+        vector<LPCWSTR> arguments =
+        {
+            L"-spirv",                      // Generate SPIR-V code
+            L"-fspv-reflect",               // Emit additional SPIR-V instructions to aid reflection
+            L"-fvk-use-dx-layout",          // Use DirectX memory layout for Vulkan resources
+            L"-flegacy-macro-expansion",    // Expand the operands before performing token-pasting operation (fxc behavior)
+            #ifdef DEBUG
+            L"-Od",                         // Disable optimizations
+			L"-Zi"                          // Enable debug information
 			#endif
 		};
-        if (type == Shader_Vertex) arguments.emplace_back(L"-fvk-invert-y"); // Can only be used in VS/DS/GS
+
+        if (type == Shader_Vertex)
+        {
+            // Can only be used in VS/DS/GS
+            arguments.emplace_back(L"-fvk-invert-y");
+        }
 
 		// Create standard defines
 		vector<DxcDefine> defines =

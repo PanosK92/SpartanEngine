@@ -114,7 +114,7 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, Light 
 	float4 position_world   	= float4(world_pos + scaled_normal_offset, 1.0f);
 	float shadow 				= 1.0f;
 	float2 dither_value 		= dither(uv).xy * 0.1f;
-light.bias = 0;
+
 	#if DIRECTIONAL
 	{
 		for (int cascade = 0; cascade < cascade_count; cascade++)

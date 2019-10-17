@@ -562,7 +562,7 @@ namespace Spartan
             {
                 return
                     view_projection                         == rhs.view_projection                      &&
-                    intensity_range_angle_bias              == rhs.color                                &&
+                    intensity_range_angle_bias              == rhs.intensity_range_angle_bias           &&
                     normalBias_shadow_volumetric_contact    == rhs.normalBias_shadow_volumetric_contact &&
                     color                                   == rhs.color                                &&
                     position                                == rhs.position                             &&

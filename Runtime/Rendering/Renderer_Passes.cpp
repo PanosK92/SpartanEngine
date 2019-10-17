@@ -166,7 +166,8 @@ namespace Spartan
 
 			for (uint32_t cascade_index = 0; cascade_index < light->GetCascadeCount(); cascade_index++)
 			{
-				const auto cascade_depth_stencil = shadow_map->GetResource_DepthStencil(cascade_index);
+				const auto cascade_depth_stencil    = shadow_map->GetResource_DepthStencil(cascade_index);
+                const Matrix& view_projection       = light->GetViewMatrix(cascade_index) * light->GetProjectionMatrix(cascade_index);
 
 				m_cmd_list->Begin("Array_" + to_string(cascade_index + 1));
 				m_cmd_list->ClearDepthStencil(cascade_depth_stencil, Clear_Depth, GetClearDepth());
@@ -210,7 +211,7 @@ namespace Spartan
 					}
 
                     // Update uber buffer with cascade transform
-                    m_buffer_uber_cpu.transform = entity->GetTransform_PtrRaw()->GetMatrix() * m_buffer_light_cpu.view_projection[light_index][cascade_index];
+                    m_buffer_uber_cpu.transform = entity->GetTransform_PtrRaw()->GetMatrix() * view_projection;
 
                     // Only updates if needed
                     UpdateUberBuffer();
