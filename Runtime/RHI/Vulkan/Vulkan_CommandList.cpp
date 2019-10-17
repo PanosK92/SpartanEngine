@@ -97,6 +97,12 @@ namespace Spartan
 		if (m_is_recording)
 			return;
 
+        if (!pipeline)
+        {
+            LOG_WARNING("There is no pipeline");
+            return;
+        }
+
 		// Sync CPU to GPU
 		if (m_sync_cpu_to_gpu)
 		{
@@ -114,7 +120,7 @@ namespace Spartan
 		SPARTAN_ASSERT(swap_chain->AcquireNextImage());
 		m_buffer_index = swap_chain->GetImageIndex();
 
-		// Let the swapchain know when the this command list is submited and consumed
+		// Let the swapchain know when the this command list is submitted and consumed
 		swap_chain->SetSemaphoreRenderFinished(m_semaphores_cmd_list_consumed[m_buffer_index]);
 
 		// Begin command buffer

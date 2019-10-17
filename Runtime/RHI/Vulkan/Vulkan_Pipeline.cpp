@@ -274,7 +274,7 @@ namespace Spartan
 		{
 			VkDescriptorImageInfo image_info	= {};
 			image_info.imageLayout				= VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			image_info.imageView				= texture ? static_cast<VkImageView>(texture->GetResource_Texture()) : nullptr;
+            image_info.imageView                = texture ? static_cast<VkImageView>(texture->GetResource_Texture()) : nullptr;
 			image_info.sampler					= m_state->sampler ? static_cast<VkSampler>(m_state->sampler->GetResource()) : nullptr;
 
 			VkDescriptorBufferInfo buffer_info	= {};
