@@ -52,27 +52,38 @@ static const float GIZMO_MIN_SIZE = 0.1f;
 
 namespace Spartan
 {
-	void Renderer::Pass_Main()
-	{
-        // Update frame buffer
-        m_cmd_list->Begin("BindConstantBuffers");
+    void Renderer::Pass_Setup()
+    {
+        // Bind the buffers we will be using thought the frame
+        m_cmd_list->Begin("SetConstantBuffers");
         {
-            UpdateFrameBuffer();
             m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_frame_gpu);
             m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
+            m_cmd_list->SetConstantBuffer(2, Buffer_PixelShader, m_buffer_light_gpu);
         }
         m_cmd_list->End();
-        m_cmd_list->Submit();
 
+        m_cmd_list->Submit();
+    }
+
+    void Renderer::Pass_Main()
+	{
 		m_cmd_list->Begin("Pass_Main");
+
+        // Update the frame buffer (doesn't change thought the frame)
+        m_cmd_list->Begin("UpdateFrameBuffer");
+        {
+            UpdateFrameBuffer();
+        }
+        m_cmd_list->End();
+
+        Pass_BrdfSpecularLut(); // only happens once
 #ifdef API_GRAPHICS_VULKAN
-        // For the time being, when using Vulkan, do simple stuff so I can debug
-        Pass_LightDepth();
+// For the time being, when using Vulkan, do simple stuff so I can debug
         m_cmd_list->End();
         m_cmd_list->Submit();
         return;
 #endif
-        Pass_BrdfSpecularLut(); // only happens once
 		Pass_LightDepth();
 		Pass_GBuffer();
 		Pass_Ssao();
@@ -536,8 +547,7 @@ namespace Spartan
         // Update uber buffer
         m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_diffuse->GetWidth()), static_cast<float>(tex_diffuse->GetHeight()));
         UpdateUberBuffer();
-
-        m_cmd_list->SetConstantBuffer(2, Buffer_Global, m_buffer_light_gpu);
+        
         m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
         m_cmd_list->ClearRenderTargets(render_targets, Vector4::Zero);
         m_cmd_list->SetRenderTargets(render_targets);
@@ -854,7 +864,6 @@ namespace Spartan
 		m_cmd_list->SetShaderPixel(shader_blurBox);
 		m_cmd_list->SetTexture(0, tex_in); // Shadows are in the alpha channel
 		m_cmd_list->SetSampler(0, m_sampler_trilinear_clamp);
-		m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
 		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 		m_cmd_list->End();
 		m_cmd_list->Submit();
@@ -948,7 +957,6 @@ namespace Spartan
 		m_cmd_list->SetInputLayout(shader_quad->GetInputLayout());
 		m_cmd_list->SetShaderPixel(shader_gaussianBilateral);	
 		m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
-		m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
 
 		// Horizontal Gaussian blur
 		{
@@ -1025,7 +1033,6 @@ namespace Spartan
 			m_cmd_list->SetShaderPixel(shader_taa);
 			m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
 			m_cmd_list->SetTextures(0, textures, 4);
-			m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
 			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		}
 
@@ -1114,7 +1121,6 @@ namespace Spartan
 			m_cmd_list->SetViewport(tex_out->GetViewport());
 			m_cmd_list->SetShaderPixel(shader_bloomBlend);
 			m_cmd_list->SetTextures(0, textures, 2);
-			m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
 			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		}
 		m_cmd_list->End();
@@ -1143,7 +1149,6 @@ namespace Spartan
 		m_cmd_list->SetShaderPixel(shader_toneMapping);
 		m_cmd_list->SetTexture(0, tex_in);
 		m_cmd_list->SetSampler(0, m_sampler_point_clamp);
-		m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
 		m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		m_cmd_list->End();
 		m_cmd_list->Submit();
@@ -1169,7 +1174,6 @@ namespace Spartan
 		m_cmd_list->SetShaderPixel(shader_gammaCorrection);
 		m_cmd_list->SetTexture(0, tex_in);
 		m_cmd_list->SetSampler(0, m_sampler_point_clamp);
-		m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
 		m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		m_cmd_list->End();
 		m_cmd_list->Submit();
@@ -1194,7 +1198,6 @@ namespace Spartan
 		m_cmd_list->SetRenderTarget(tex_out);
 		m_cmd_list->SetViewport(tex_out->GetViewport());
 		m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
-		m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
 
 		// Luma
 		m_cmd_list->SetRenderTarget(tex_out);	
@@ -1235,7 +1238,6 @@ namespace Spartan
 		m_cmd_list->SetShaderPixel(shader_chromaticAberration);
 		m_cmd_list->SetTexture(0, tex_in);
 		m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
-		m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
 		m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		m_cmd_list->End();
 		m_cmd_list->Submit();
@@ -1269,7 +1271,6 @@ namespace Spartan
 		m_cmd_list->SetShaderPixel(shader_motionBlur);
 		m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
 		m_cmd_list->SetTextures(0, textures, 2);
-		m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
 		m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		m_cmd_list->End();
 		m_cmd_list->Submit();
@@ -1295,7 +1296,6 @@ namespace Spartan
 		m_cmd_list->SetShaderPixel(shader_dithering);
 		m_cmd_list->SetSampler(0, m_sampler_point_clamp);
 		m_cmd_list->SetTexture(0, tex_in);
-		m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
 		m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		m_cmd_list->End();
 		m_cmd_list->Submit();
@@ -1346,7 +1346,6 @@ namespace Spartan
 		m_cmd_list->SetShaderPixel(shader);
 		m_cmd_list->SetTexture(0, tex_in);
 		m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
-		m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
 		m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		m_cmd_list->End();
 		m_cmd_list->Submit();
@@ -1553,7 +1552,6 @@ namespace Spartan
 				m_cmd_list->SetInputLayout(shader_quad->GetInputLayout());
 				m_cmd_list->SetShaderPixel(m_shaders[Shader_Texture_P]);
 				m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
-				m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
 				m_cmd_list->SetTexture(0, light_tex);
 				m_cmd_list->SetBufferIndex(m_gizmo_light_rect.GetIndexBuffer());
 				m_cmd_list->SetBufferVertex(m_gizmo_light_rect.GetVertexBuffer());

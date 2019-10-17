@@ -60,3 +60,10 @@ struct Pixel_PosColor
     float4 position : SV_POSITION;
     float4 color 	: COLOR;
 };
+
+struct Vertex_Pos2dUvColor
+{
+    float2 position     : POSITION0;
+    float2 uv           : TEXCOORD0;
+    float4 color        : COLOR0;
+};

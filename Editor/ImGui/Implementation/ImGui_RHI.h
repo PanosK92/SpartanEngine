@@ -31,7 +31,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI/RHI_Device.h"
 #include "RHI/RHI_VertexBuffer.h"
 #include "RHI/RHI_IndexBuffer.h"
-#include "RHI/RHI_ConstantBuffer.h"
 #include "RHI/RHI_DepthStencilState.h"
 #include "RHI/RHI_RasterizerState.h"
 #include "RHI/RHI_BlendState.h"
@@ -59,7 +58,6 @@ namespace ImGui::RHI
 	static shared_ptr<RHI_Device>				g_rhi_device;
 	static shared_ptr<RHI_Texture>				g_texture;
 	static shared_ptr<RHI_Sampler>				g_sampler;
-	static shared_ptr<RHI_ConstantBuffer>		g_constant_buffer;
 	static shared_ptr<RHI_VertexBuffer>			g_vertex_buffer;
 	static shared_ptr<RHI_IndexBuffer>			g_index_buffer;
 	static shared_ptr<RHI_DepthStencilState>	g_depth_stencil_state;
@@ -86,7 +84,6 @@ namespace ImGui::RHI
 		// Create required RHI objects
 		{
 			g_sampler				= make_shared<RHI_Sampler>(g_rhi_device, SAMPLER_BILINEAR, Sampler_Address_Wrap, Comparison_Always);
-			g_constant_buffer		= make_shared<RHI_ConstantBuffer>(g_rhi_device); g_constant_buffer->Create<Matrix>();
 			g_vertex_buffer			= make_shared<RHI_VertexBuffer>(g_rhi_device, static_cast<uint32_t>(sizeof(ImDrawVert)));
 			g_index_buffer			= make_shared<RHI_IndexBuffer>(g_rhi_device);
 			g_depth_stencil_state	= make_shared<RHI_DepthStencilState>(g_rhi_device, false, g_renderer->GetComparisonFunction());
@@ -114,40 +111,8 @@ namespace ImGui::RHI
 			    Blend_Operation_Add		// destination op alpha
 			);
 
-			// Shader
-			static string shader_source =
-				"SamplerState sampler0;"
-				"Texture2D texture0;"
-				"cbuffer vertexBuffer : register(b0)"
-				"{"
-				"	matrix transform;"
-				"};"
-				"struct VS_INPUT"
-				"{"
-				"	float2 pos	: POSITION0;"
-				"	float2 uv	: TEXCOORD0;"
-				"	float4 col	: COLOR0;"
-				"};"
-				"struct PS_INPUT"
-				"{"
-				"	float4 pos : SV_POSITION;"
-				"	float4 col : COLOR;"
-				"	float2 uv  : TEXCOORD;"
-				"};"
-				"PS_INPUT mainVS(VS_INPUT input)"
-				"{"
-				"	PS_INPUT output;"
-				"	output.pos = mul(transform, float4(input.pos.xy, 0.f, 1.f));"
-				"	output.col = input.col;	"
-				"	output.uv  = input.uv;"
-				"	return output;"
-				"}"
-				"float4 mainPS(PS_INPUT input) : SV_Target"
-				"{"
-				"	return input.col * texture0.Sample(sampler0, input.uv);"
-				"}";
 			g_shader = make_shared<RHI_Shader>(g_rhi_device);
-			g_shader->Compile<RHI_Vertex_Pos2dTexCol8>(Shader_VertexPixel, shader_source);
+			g_shader->Compile<RHI_Vertex_Pos2dTexCol8>(Shader_VertexPixel, g_context->GetSubsystem<ResourceCache>()->GetDataDirectory(Asset_Shaders) + "ImGui.hlsl");
 		}
 
 		// Font atlas
@@ -241,7 +206,7 @@ namespace ImGui::RHI
 			const auto R = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
 			const auto T = draw_data->DisplayPos.y;
 			const auto B = draw_data->DisplayPos.y + draw_data->DisplaySize.y;
-			const auto mvp = Matrix
+			const auto wvp = Matrix
 			(
 				2.0f / (R - L),	0.0f,			0.0f,	(R + L) / (L - R),
 				0.0f,			2.0f / (T - B), 0.0f,	(T + B) / (B - T),
@@ -249,11 +214,7 @@ namespace ImGui::RHI
 				0.0f,			0.0f,			0.0f,	1.0f
 			);
 
-			if (const auto buffer = static_cast<Matrix*>(g_constant_buffer->Map()))
-			{
-				*buffer = mvp;
-				g_constant_buffer->Unmap();
-			}
+            g_renderer->SetShaderTransform(wvp);
 		}
 
 		// Set render state
@@ -267,7 +228,6 @@ namespace ImGui::RHI
 			state.shader_vertex			= g_shader.get();
 			state.shader_pixel			= g_shader.get();
 			state.input_layout			= g_shader->GetInputLayout().get();
-			state.constant_buffer		= g_constant_buffer.get();
 			state.rasterizer_state		= g_rasterizer_state.get();
 			state.blend_state			= g_blend_state.get();
 			state.depth_stencil_state	= g_depth_stencil_state.get();
@@ -283,7 +243,6 @@ namespace ImGui::RHI
 			g_cmd_list->SetViewport(g_viewport);
 			g_cmd_list->SetBufferVertex(g_vertex_buffer);
 			g_cmd_list->SetBufferIndex(g_index_buffer);
-			g_cmd_list->SetConstantBuffer(0, Buffer_VertexShader, g_constant_buffer);
 			g_cmd_list->SetSampler(0, g_sampler);
 		}
 		
