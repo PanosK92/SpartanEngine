@@ -45,7 +45,7 @@ float3 vl_raymarch(Light light, float3 ray_pos, float3 ray_step, float ray_dot_l
 		float2 ray_uv = pos_light.xy * float2(0.5f, -0.5f) + 0.5f;
 		
 		// Check to see if the light can "see" the pixel
-		float depth_delta = light_depth_directional.SampleCmpLevelZero(sampler_cmp_depth, float3(ray_uv, cascade), pos_light.z).r;		
+		float depth_delta = light_depth_directional.SampleCmpLevelZero(sampler_compare_depth, float3(ray_uv, cascade), pos_light.z).r;		
 		if (depth_delta > 0.0f)
 		{
 			fog += ComputeScattering(ray_dot_light);

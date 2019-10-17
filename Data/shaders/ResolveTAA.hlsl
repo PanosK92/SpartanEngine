@@ -49,29 +49,29 @@ float3 clip_aabb(float3 aabb_min, float3 aabb_max, float3 p, float3 q)
 	return p + r;
 }
 
-float4 ResolveTAA(float2 texCoord, Texture2D tex_history, Texture2D tex_current, Texture2D tex_velocity, Texture2D tex_depth, SamplerState sampler_bilinear)
+float4 ResolveTAA(float2 texCoord, Texture2D tex_history, Texture2D tex_current, Texture2D tex_velocity, Texture2D tex_depth)
 {
 	// Reproject
-	float2 velocity			= GetVelocity_Dilate_Min(texCoord, tex_velocity, tex_depth, sampler_bilinear);
+	float2 velocity			= GetVelocity_Dilate_Min(texCoord, tex_velocity, tex_depth);
 	float2 texCoord_history = texCoord - velocity;
 	
 	// Get current and history colors
-	float3 color_current 	= Reinhard(tex_current.Sample(sampler_bilinear, texCoord).rgb);
-	float3 color_history 	= Reinhard(tex_history.Sample(sampler_bilinear, texCoord_history).rgb);
+	float3 color_current 	= Reinhard(tex_current.Sample(sampler_point_clamp, texCoord).rgb);
+	float3 color_history 	= Reinhard(tex_history.Sample(sampler_bilinear_clamp, texCoord_history).rgb);
 
 	//= Sample neighbourhood ==============================================================================
 	float2 du = float2(g_texel_size.x, 0.0f);
 	float2 dv = float2(0.0f, g_texel_size.y);
 
-	float3 ctl = Reinhard(tex_current.Sample(sampler_bilinear, texCoord - dv - du).rgb);
-	float3 ctc = Reinhard(tex_current.Sample(sampler_bilinear, texCoord - dv).rgb);
-	float3 ctr = Reinhard(tex_current.Sample(sampler_bilinear, texCoord - dv + du).rgb);
-	float3 cml = Reinhard(tex_current.Sample(sampler_bilinear, texCoord - du).rgb);
-	float3 cmc = Reinhard(tex_current.Sample(sampler_bilinear, texCoord).rgb);
-	float3 cmr = Reinhard(tex_current.Sample(sampler_bilinear, texCoord + du).rgb);
-	float3 cbl = Reinhard( tex_current.Sample(sampler_bilinear, texCoord + dv - du).rgb);
-	float3 cbc = Reinhard(tex_current.Sample(sampler_bilinear, texCoord + dv).rgb);
-	float3 cbr = Reinhard(tex_current.Sample(sampler_bilinear, texCoord + dv + du).rgb);
+	float3 ctl = Reinhard(tex_current.Sample(sampler_bilinear_clamp, 	texCoord - dv - du).rgb);
+	float3 ctc = Reinhard(tex_current.Sample(sampler_bilinear_clamp, 	texCoord - dv).rgb);
+	float3 ctr = Reinhard(tex_current.Sample(sampler_bilinear_clamp, 	texCoord - dv + du).rgb);
+	float3 cml = Reinhard(tex_current.Sample(sampler_bilinear_clamp, 	texCoord - du).rgb);
+	float3 cmc = Reinhard(tex_current.Sample(sampler_point_clamp, 		texCoord).rgb);
+	float3 cmr = Reinhard(tex_current.Sample(sampler_bilinear_clamp, 	texCoord + du).rgb);
+	float3 cbl = Reinhard(tex_current.Sample(sampler_bilinear_clamp, 	texCoord + dv - du).rgb);
+	float3 cbc = Reinhard(tex_current.Sample(sampler_bilinear_clamp, 	texCoord + dv).rgb);
+	float3 cbr = Reinhard(tex_current.Sample(sampler_bilinear_clamp, 	texCoord + dv + du).rgb);
 	
 	float3 color_min = min(ctl, min(ctc, min(ctr, min(cml, min(cmc, min(cmr, min(cbl, min(cbc, cbr))))))));
 	float3 color_max = max(ctl, max(ctc, max(ctr, max(cml, max(cmc, max(cmr, max(cbl, max(cbc, cbr))))))));

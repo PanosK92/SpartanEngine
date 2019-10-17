@@ -29,12 +29,6 @@ TextureCube light_depth_point 			: register(t5);
 Texture2D light_depth_spot 				: register(t6);
 //=====================================================
 
-//= SAMPLERS ==============================================
-SamplerState sampler_point_clamp 			: register(s0);
-SamplerComparisonState  sampler_cmp_depth 	: register(s1);
-SamplerState samplerLinear_clamp 			: register(s2);
-//=========================================================
-
 //= BUFFERS ================================================
 #define cascade_count 4
 #define lights_max 100

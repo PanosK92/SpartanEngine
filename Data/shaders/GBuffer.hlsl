@@ -35,10 +35,6 @@ Texture2D texEmission 	: register (t6);
 Texture2D texMask 		: register (t7);
 //======================================
 
-//= SAMPLERS =============================
-SamplerState samplerAniso : register (s0);
-//========================================
-
 struct PixelInputType
 {
     float4 positionCS 			: SV_POSITION;
@@ -103,19 +99,19 @@ PixelOutputType mainPS(PixelInputType input)
 		// Parallax Mapping
 		float height_scale 		= materialHeight * 0.04f;
 		float3 camera_to_pixel 	= normalize(g_camera_position - input.positionWS.xyz);
-		texCoords 				= ParallaxMapping(texHeight, samplerAniso, texCoords, camera_to_pixel, TBN, height_scale);
+		texCoords 				= ParallaxMapping(texHeight, sampler_anisotropic_wrap, texCoords, camera_to_pixel, TBN, height_scale);
 	#endif
 	
 	float mask_threshold = 0.6f;
 	
 	#if MASK_MAP
-		float3 maskSample = texMask.Sample(samplerAniso, texCoords).rgb;
+		float3 maskSample = texMask.Sample(sampler_anisotropic_wrap, texCoords).rgb;
 		if (maskSample.r <= mask_threshold && maskSample.g <= mask_threshold && maskSample.b <= mask_threshold)
 			discard;
 	#endif
 	
 	#if ALBEDO_MAP
-		float4 albedo_sample = texAlbedo.Sample(samplerAniso, texCoords);
+		float4 albedo_sample = texAlbedo.Sample(sampler_anisotropic_wrap, texCoords);
 		if (albedo_sample.a <= mask_threshold)
 			discard;
 			
@@ -123,26 +119,26 @@ PixelOutputType mainPS(PixelInputType input)
 	#endif
 	
 	#if ROUGHNESS_MAP
-		roughness *= texRoughness.Sample(samplerAniso, texCoords).r;
+		roughness *= texRoughness.Sample(sampler_anisotropic_wrap, texCoords).r;
 	#endif
 	
 	#if METALLIC_MAP
-		metallic *= texMetallic.Sample(samplerAniso, texCoords).r;
+		metallic *= texMetallic.Sample(sampler_anisotropic_wrap, texCoords).r;
 	#endif
 	
 	#if NORMAL_MAP
 		// Get tangent space normal and apply intensity
-		float3 tangent_normal 	= normalize(unpack(texNormal.Sample(samplerAniso, texCoords).rgb));
+		float3 tangent_normal 	= normalize(unpack(texNormal.Sample(sampler_anisotropic_wrap, texCoords).rgb));
 		tangent_normal.xy 		*= saturate(normal_intensity);
 		normal 					= normalize(mul(tangent_normal, TBN).xyz); // Transform to world space
 	#endif
 
 	#if OCCLUSION_MAP
-		occlusion = texOcclusion.Sample(samplerAniso, texCoords).r;
+		occlusion = texOcclusion.Sample(sampler_anisotropic_wrap, texCoords).r;
 	#endif
 	
 	#if EMISSION_MAP
-		emission = texEmission.Sample(samplerAniso, texCoords).r;
+		emission = texEmission.Sample(sampler_anisotropic_wrap, texCoords).r;
 	#endif
 
 	// Write to G-Buffer

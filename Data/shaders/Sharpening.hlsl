@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-float3 LumaSharpen(float2 texCoord, Texture2D sourceTexture, SamplerState bilinearSampler, float2 resolution, float sharp_strength, float sharp_clamp)
+float3 LumaSharpen(float2 texCoord, Texture2D sourceTexture, float2 resolution, float sharp_strength, float sharp_clamp)
 {
 	/*
 		LumaSharpen 1.4.1
@@ -39,7 +39,7 @@ float3 LumaSharpen(float2 texCoord, Texture2D sourceTexture, SamplerState biline
 	#define offset_bias 1.0f  //[0.0 to 6.0] Offset bias adjusts the radius of the sampling pattern.
 	#define CoefLuma float3(0.2126f, 0.7152f, 0.0722f)      // BT.709 & sRBG luma coefficient (Monitors and HD Television)
 
-	float4 colorInput = sourceTexture.Sample(bilinearSampler, texCoord);  	
+	float4 colorInput = sourceTexture.Sample(sampler_point_clamp, texCoord);  	
 	float3 ori = colorInput.rgb;
 
 	// -- Combining the strength and luma multipliers --
@@ -53,10 +53,10 @@ float3 LumaSharpen(float2 texCoord, Texture2D sourceTexture, SamplerState biline
 	float px = 1.0f / resolution[0];
 	float py = 1.0f / resolution[1];
 
-	float3 blur_ori = sourceTexture.Sample(bilinearSampler, texCoord + float2(px,-py) * 0.5f * offset_bias).rgb; // South East
-	blur_ori += sourceTexture.Sample(bilinearSampler, texCoord + float2(-px,-py) * 0.5f * offset_bias).rgb;  // South West
-	blur_ori += sourceTexture.Sample(bilinearSampler, texCoord + float2(px,py) * 0.5f * offset_bias).rgb; // North East
-	blur_ori += sourceTexture.Sample(bilinearSampler, texCoord + float2(-px,py) * 0.5f * offset_bias).rgb; // North West
+	float3 blur_ori = sourceTexture.Sample(sampler_bilinear_clamp, texCoord + float2(px,-py) * 0.5f * offset_bias).rgb; // South East
+	blur_ori += sourceTexture.Sample(sampler_bilinear_clamp, texCoord + float2(-px,-py) * 0.5f * offset_bias).rgb;  // South West
+	blur_ori += sourceTexture.Sample(sampler_bilinear_clamp, texCoord + float2(px,py) * 0.5f * offset_bias).rgb; // North East
+	blur_ori += sourceTexture.Sample(sampler_bilinear_clamp, texCoord + float2(-px,py) * 0.5f * offset_bias).rgb; // North West
 	blur_ori *= 0.25f;  // ( /= 4) Divide by the number of texture fetches
 
 	// -- Calculate the sharpening --
@@ -73,18 +73,18 @@ float3 LumaSharpen(float2 texCoord, Texture2D sourceTexture, SamplerState biline
 	return clamp(colorInput, 0.0f, 1.0f).rgb;
 }
 
-float4 SharpenTaa(float2 uv, Texture2D source_texture, SamplerState sampler_bilinear)
+float4 SharpenTaa(float2 uv, Texture2D source_texture)
 {
 	float intensity = 0.2f;
 
 	float2 dx = float2(g_texel_size.x, 0.0f);
 	float2 dy = float2(0.0f, g_texel_size.y);
 
-	float4 up 		= source_texture.Sample(sampler_bilinear, uv - dy);
-	float4 down 	= source_texture.Sample(sampler_bilinear, uv + dy);
-	float4 center 	= source_texture.Sample(sampler_bilinear, uv);
-	float4 right 	= source_texture.Sample(sampler_bilinear, uv + dx);
-	float4 left 	= source_texture.Sample(sampler_bilinear, uv - dx);
+	float4 up 		= source_texture.Sample(sampler_bilinear_clamp, uv - dy);
+	float4 down 	= source_texture.Sample(sampler_bilinear_clamp, uv + dy);
+	float4 center 	= source_texture.Sample(sampler_bilinear_clamp, uv);
+	float4 right 	= source_texture.Sample(sampler_bilinear_clamp, uv + dx);
+	float4 left 	= source_texture.Sample(sampler_bilinear_clamp, uv - dx);
 	
 	return saturate(center + (4 * center - up - down - left - right) * intensity);
 }

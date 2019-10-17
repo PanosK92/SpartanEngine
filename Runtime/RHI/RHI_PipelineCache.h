@@ -27,7 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Rectangle.h"
 #include "RHI_Pipeline.h"
 #include "RHI_Shader.h"
-#include "RHI_Sampler.h"
 #include "RHI_Viewport.h"
 #include "RHI_SwapChain.h"
 #include "RHI_Definition.h"
@@ -50,12 +49,11 @@ namespace Spartan
 			sprintf_s
 			(
 				buffer,
-				"%d-%d-%d-%d-%d-%d-%d",
+				"%d-%d-%d-%d-%d-%d",
 				shader_vertex->GetId(),
 				shader_pixel->GetId(),
 				depth_stencil_state->GetId(),
 				vertex_buffer->GetId(),
-				sampler->GetId(),
 				swap_chain->GetId(),
 				static_cast<uint32_t>(primitive_topology)
 			);
@@ -73,7 +71,6 @@ namespace Spartan
 		RHI_RasterizerState* rasterizer_state			= nullptr;
 		RHI_BlendState* blend_state						= nullptr;
 		RHI_DepthStencilState* depth_stencil_state		= nullptr;
-		RHI_Sampler* sampler							= nullptr;
 		RHI_VertexBuffer* vertex_buffer					= nullptr;
 		RHI_SwapChain* swap_chain						= nullptr;
 		RHI_PrimitiveTopology_Mode primitive_topology	= PrimitiveTopology_NotAssigned;

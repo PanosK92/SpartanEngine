@@ -54,15 +54,30 @@ namespace Spartan
 {
     void Renderer::Pass_Setup()
     {
+        m_cmd_list->Begin("Pass_Setup");
+
         // Bind the buffers we will be using thought the frame
-        m_cmd_list->Begin("SetConstantBuffers");
         {
             m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_frame_gpu);
             m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
             m_cmd_list->SetConstantBuffer(2, Buffer_PixelShader, m_buffer_light_gpu);
         }
-        m_cmd_list->End();
+        
+        // Set the samplers we will be using thought the frame
+        {
+            vector<void*> samplers =
+            {
+                m_sampler_compare_depth->GetResource(),
+                m_sampler_point_clamp->GetResource(),
+                m_sampler_bilinear_clamp->GetResource(),
+                m_sampler_bilinear_wrap->GetResource(),
+                m_sampler_trilinear_clamp->GetResource(),
+                m_sampler_anisotropic_wrap->GetResource(),
+            };
+            m_cmd_list->SetSamplers(0, samplers);
+        }
 
+        m_cmd_list->End();
         m_cmd_list->Submit();
     }
 
@@ -352,7 +367,6 @@ namespace Spartan
         m_cmd_list->ClearDepthStencil(tex_depth->GetResource_DepthStencil(), Clear_Depth, GetClearDepth());
         m_cmd_list->SetShaderVertex(shader_gbuffer);
         m_cmd_list->SetInputLayout(shader_gbuffer->GetInputLayout());
-        m_cmd_list->SetSampler(0, m_sampler_anisotropic_wrap);
 
         // Draw opaque
 		for (const auto& entity : m_entities[Renderer_Object_Opaque])
@@ -397,11 +411,6 @@ namespace Spartan
                 m_render_targets[RenderTarget_Gbuffer_Normal]->GetResource_Texture(),
                 m_tex_noise_normal->GetResource_Texture()
             };
-            vector<void*> samplers =
-            {
-                m_sampler_bilinear_clamp->GetResource() /*SSAO (clamp) */,
-                m_sampler_bilinear_wrap->GetResource()  /*SSAO noise texture (wrap)*/
-            };
 
             // Update uber buffer
             m_buffer_uber_cpu.resolution = Vector2(tex_ssao_raw->GetWidth(), tex_ssao_raw->GetHeight());
@@ -420,7 +429,6 @@ namespace Spartan
             m_cmd_list->SetInputLayout(shader_quad->GetInputLayout());
             m_cmd_list->SetShaderPixel(shader_ssao);
             m_cmd_list->SetTextures(0, textures, 3);
-            m_cmd_list->SetSamplers(0, samplers);
             m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
             m_cmd_list->Submit();
 
@@ -491,7 +499,6 @@ namespace Spartan
             m_cmd_list->SetInputLayout(shader_quad->GetInputLayout());
             m_cmd_list->SetShaderPixel(shader_ssr);
             m_cmd_list->SetTextures(0, textures, 4);
-            m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
             m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
             m_cmd_list->Submit();
 
@@ -533,14 +540,6 @@ namespace Spartan
             tex_volumetric->GetResource_RenderTarget()
         };
 
-        // Pack samplers
-        vector<void*> samplers =
-        {
-            m_sampler_point_clamp->GetResource(),
-            m_sampler_compare_depth->GetResource(),
-            m_sampler_bilinear_clamp->GetResource()
-        };
-
         // Begin
         m_cmd_list->Begin("Pass_Light");
 
@@ -558,7 +557,6 @@ namespace Spartan
         m_cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
         m_cmd_list->SetShaderVertex(shader_quad);
         m_cmd_list->SetInputLayout(shader_quad->GetInputLayout());
-        m_cmd_list->SetSamplers(0, samplers);
         m_cmd_list->SetBlendState(m_blend_color_add); // light accumulation
         
         auto draw_lights = [this, &shader_light_directional, &shader_light_point, &shader_light_spot](Renderer_Object_Type type)
@@ -656,14 +654,6 @@ namespace Spartan
             m_render_targets[RenderTarget_Ssao]->GetResource_Texture()
 		};
 
-        // Pack samplers
-        const vector<void*> samplers =
-        {
-            m_sampler_bilinear_clamp->GetResource(),
-            m_sampler_trilinear_clamp->GetResource(),
-            m_sampler_point_clamp->GetResource()
-        };
-
 		// Setup command list
 		m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
 		m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
@@ -674,7 +664,6 @@ namespace Spartan
 		m_cmd_list->SetShaderVertex(shader_quad);
 		m_cmd_list->SetInputLayout(shader_quad->GetInputLayout());
         m_cmd_list->SetShaderPixel(shader_composition);
-		m_cmd_list->SetSamplers(0, samplers);
 		m_cmd_list->SetTextures(0, textures, 11);
 		m_cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
 		m_cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
@@ -809,7 +798,6 @@ namespace Spartan
         m_cmd_list->SetShaderVertex(shader_vertex);
         m_cmd_list->SetShaderPixel(shader_pixel);
         m_cmd_list->SetTexture(0, tex_in);
-        m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
         m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
         m_cmd_list->End();
         m_cmd_list->Submit();
@@ -837,7 +825,6 @@ namespace Spartan
         m_cmd_list->SetShaderVertex(shader_vertex);
         m_cmd_list->SetShaderPixel(shader_pixel);
         m_cmd_list->SetTexture(0, tex_in);
-        m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
         m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
         m_cmd_list->End();
         m_cmd_list->Submit();
@@ -863,7 +850,6 @@ namespace Spartan
 		m_cmd_list->SetViewport(tex_out->GetViewport());
 		m_cmd_list->SetShaderPixel(shader_blurBox);
 		m_cmd_list->SetTexture(0, tex_in); // Shadows are in the alpha channel
-		m_cmd_list->SetSampler(0, m_sampler_trilinear_clamp);
 		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 		m_cmd_list->End();
 		m_cmd_list->Submit();
@@ -891,9 +877,7 @@ namespace Spartan
         m_cmd_list->SetShaderVertex(shader_quad);
         m_cmd_list->SetInputLayout(shader_quad->GetInputLayout());
         m_cmd_list->SetShaderPixel(shader_gaussian);
-        m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
-        
-
+   
 		// Horizontal Gaussian blur	
 		{
             // Update uber buffer
@@ -956,7 +940,6 @@ namespace Spartan
 		m_cmd_list->SetShaderVertex(shader_quad);
 		m_cmd_list->SetInputLayout(shader_quad->GetInputLayout());
 		m_cmd_list->SetShaderPixel(shader_gaussianBilateral);	
-		m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
 
 		// Horizontal Gaussian blur
 		{
@@ -1031,7 +1014,6 @@ namespace Spartan
 			m_cmd_list->SetRenderTarget(tex_history_2);
 			m_cmd_list->SetViewport(tex_out->GetViewport());
 			m_cmd_list->SetShaderPixel(shader_taa);
-			m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
 			m_cmd_list->SetTextures(0, textures, 4);
 			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		}
@@ -1057,7 +1039,6 @@ namespace Spartan
 			return;
 
 		m_cmd_list->Begin("Pass_Bloom");
-		m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
         m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
         m_cmd_list->SetBlendState(m_blend_disabled);
 
@@ -1148,7 +1129,6 @@ namespace Spartan
 		m_cmd_list->SetViewport(tex_out->GetViewport());
 		m_cmd_list->SetShaderPixel(shader_toneMapping);
 		m_cmd_list->SetTexture(0, tex_in);
-		m_cmd_list->SetSampler(0, m_sampler_point_clamp);
 		m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		m_cmd_list->End();
 		m_cmd_list->Submit();
@@ -1173,7 +1153,6 @@ namespace Spartan
 		m_cmd_list->SetViewport(tex_out->GetViewport());
 		m_cmd_list->SetShaderPixel(shader_gammaCorrection);
 		m_cmd_list->SetTexture(0, tex_in);
-		m_cmd_list->SetSampler(0, m_sampler_point_clamp);
 		m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		m_cmd_list->End();
 		m_cmd_list->Submit();
@@ -1197,7 +1176,6 @@ namespace Spartan
         m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
 		m_cmd_list->SetRenderTarget(tex_out);
 		m_cmd_list->SetViewport(tex_out->GetViewport());
-		m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
 
 		// Luma
 		m_cmd_list->SetRenderTarget(tex_out);	
@@ -1237,7 +1215,6 @@ namespace Spartan
 		m_cmd_list->SetViewport(tex_out->GetViewport());
 		m_cmd_list->SetShaderPixel(shader_chromaticAberration);
 		m_cmd_list->SetTexture(0, tex_in);
-		m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
 		m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		m_cmd_list->End();
 		m_cmd_list->Submit();
@@ -1269,7 +1246,6 @@ namespace Spartan
 		m_cmd_list->SetRenderTarget(tex_out);
 		m_cmd_list->SetViewport(tex_out->GetViewport());
 		m_cmd_list->SetShaderPixel(shader_motionBlur);
-		m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
 		m_cmd_list->SetTextures(0, textures, 2);
 		m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		m_cmd_list->End();
@@ -1294,7 +1270,6 @@ namespace Spartan
 		m_cmd_list->SetRenderTarget(tex_out);
 		m_cmd_list->SetViewport(tex_out->GetViewport());
 		m_cmd_list->SetShaderPixel(shader_dithering);
-		m_cmd_list->SetSampler(0, m_sampler_point_clamp);
 		m_cmd_list->SetTexture(0, tex_in);
 		m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		m_cmd_list->End();
@@ -1320,7 +1295,6 @@ namespace Spartan
         m_cmd_list->SetViewport(tex_out->GetViewport());
         m_cmd_list->SetShaderPixel(shader);
         m_cmd_list->SetTexture(0, tex_in);
-        m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
         m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
         m_cmd_list->End();
         m_cmd_list->Submit();
@@ -1345,7 +1319,6 @@ namespace Spartan
 		m_cmd_list->SetViewport(tex_out->GetViewport());		
 		m_cmd_list->SetShaderPixel(shader);
 		m_cmd_list->SetTexture(0, tex_in);
-		m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
 		m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		m_cmd_list->End();
 		m_cmd_list->Submit();
@@ -1406,7 +1379,6 @@ namespace Spartan
 		m_cmd_list->SetShaderVertex(shader_color);
 		m_cmd_list->SetShaderPixel(shader_color);
 		m_cmd_list->SetInputLayout(shader_color->GetInputLayout());
-		m_cmd_list->SetSampler(0, m_sampler_point_clamp);
 
 		// Draw lines that require depth
 		m_cmd_list->SetDepthStencilState(m_depth_stencil_enabled);
@@ -1551,7 +1523,6 @@ namespace Spartan
 				m_cmd_list->SetShaderVertex(shader_quad);
 				m_cmd_list->SetInputLayout(shader_quad->GetInputLayout());
 				m_cmd_list->SetShaderPixel(m_shaders[Shader_Texture_P]);
-				m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
 				m_cmd_list->SetTexture(0, light_tex);
 				m_cmd_list->SetBufferIndex(m_gizmo_light_rect.GetIndexBuffer());
 				m_cmd_list->SetBufferVertex(m_gizmo_light_rect.GetVertexBuffer());
@@ -1637,7 +1608,6 @@ namespace Spartan
 		m_cmd_list->SetViewport(tex_out->GetViewport());
 		m_cmd_list->SetBlendState(m_blend_enabled);	
 		m_cmd_list->SetTexture(0, m_font->GetAtlas());
-		m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
 		m_cmd_list->SetShaderVertex(shader_font);
 		m_cmd_list->SetShaderPixel(shader_font);
 		m_cmd_list->SetInputLayout(shader_font->GetInputLayout());	
@@ -1752,7 +1722,6 @@ namespace Spartan
 		m_cmd_list->SetInputLayout(shader_quad->GetInputLayout());
         m_cmd_list->SetShaderPixel(shader_pixel);
         m_cmd_list->SetTexture(0, texture);
-		m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
 		m_cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
 		m_cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
 		m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
@@ -1826,7 +1795,6 @@ namespace Spartan
         m_cmd_list->SetInputLayout(shader_quad->GetInputLayout());
         m_cmd_list->SetShaderPixel(shader_pixel);
         m_cmd_list->SetTexture(0, tex_in);
-        m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
         m_cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
         m_cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
         m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
