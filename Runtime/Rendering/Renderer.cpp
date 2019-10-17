@@ -37,6 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Light.h"
 #include "../RHI/RHI_Device.h"
 #include "../RHI/RHI_PipelineCache.h"
+#include "../RHI/RHI_ConstantBuffer.h"
 #include "../RHI/RHI_CommandList.h"
 #include "../RHI/RHI_Texture2D.h"
 //=========================================
@@ -161,6 +162,8 @@ namespace Spartan
 			LOG_TO_FILE(false);
 			m_initialized = true;
 		}
+
+        Pass_Setup();
 
 		return true;
 	}

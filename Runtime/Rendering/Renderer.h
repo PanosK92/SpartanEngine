@@ -284,6 +284,8 @@ namespace Spartan
 
         float GetOption(Renderer_Option_Value option)               { return m_options[option]; }
         void SetOption(Renderer_Option_Value option, float value);
+
+        void SetShaderTransform(const Math::Matrix& transform) { m_buffer_uber_cpu.transform = transform; UpdateUberBuffer(); }
 		//==========================================================================================================================
 
 	private:
@@ -300,6 +302,7 @@ namespace Spartan
         //==============================
 
 		//= PASSES ============================================================================================================================================
+        void Pass_Setup();
 		void Pass_Main();
 		void Pass_LightDepth();
 		void Pass_GBuffer();

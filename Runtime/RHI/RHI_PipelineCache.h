@@ -34,7 +34,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_BlendState.h"
 #include "RHI_InputLayout.h"
 #include "RHI_VertexBuffer.h"
-#include "RHI_ConstantBuffer.h"
 #include "RHI_RasterizerState.h"
 #include "RHI_DepthStencilState.h"
 //================================
@@ -51,13 +50,12 @@ namespace Spartan
 			sprintf_s
 			(
 				buffer,
-				"%d-%d-%d-%d-%d-%d-%d-%d",
+				"%d-%d-%d-%d-%d-%d-%d",
 				shader_vertex->GetId(),
 				shader_pixel->GetId(),
 				depth_stencil_state->GetId(),
 				vertex_buffer->GetId(),
 				sampler->GetId(),
-				constant_buffer->GetId(),
 				swap_chain->GetId(),
 				static_cast<uint32_t>(primitive_topology)
 			);
@@ -76,7 +74,6 @@ namespace Spartan
 		RHI_BlendState* blend_state						= nullptr;
 		RHI_DepthStencilState* depth_stencil_state		= nullptr;
 		RHI_Sampler* sampler							= nullptr;
-		RHI_ConstantBuffer* constant_buffer				= nullptr;
 		RHI_VertexBuffer* vertex_buffer					= nullptr;
 		RHI_SwapChain* swap_chain						= nullptr;
 		RHI_PrimitiveTopology_Mode primitive_topology	= PrimitiveTopology_NotAssigned;
