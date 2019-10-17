@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 static const float mip_max = 11.0f;
 
-float3 SampleEnvironment(SamplerState sampler_linear, Texture2D tex_environment, float2 uv, float mip_level)
+float3 SampleEnvironment(Texture2D tex_environment, float2 uv, float mip_level)
 {
 	// We are currently using a spherical environment map which has a 2:1 ratio, so at the smallest 
 	// mipmap we have to do a bit of blending otherwise we'll get a visible seem in the middle.
@@ -30,12 +30,12 @@ float3 SampleEnvironment(SamplerState sampler_linear, Texture2D tex_environment,
 		float2 mip_size	= float2(2, 1);
 		float dx 		= mip_size.x;
 	
-		float3 tl = (tex_environment.SampleLevel(sampler_linear, uv + float2(-dx, 0.0f), mip_level).rgb);
-		float3 tr = (tex_environment.SampleLevel(sampler_linear, uv + float2(dx, 0.0f), mip_level).rgb);
+		float3 tl = (tex_environment.SampleLevel(sampler_trilinear_clamp, uv + float2(-dx, 0.0f), mip_level).rgb);
+		float3 tr = (tex_environment.SampleLevel(sampler_trilinear_clamp, uv + float2(dx, 0.0f), mip_level).rgb);
 		return (tl + tr) / 2.0f;
 	}
 	
-	return (tex_environment.SampleLevel(sampler_linear, uv, mip_level).rgb);
+	return (tex_environment.SampleLevel(sampler_trilinear_clamp, uv, mip_level).rgb);
 }
 
 float3 GetSpecularDominantDir(float3 normal, float3 reflection, float roughness)
@@ -56,7 +56,7 @@ float3 EnvBRDFApprox(float3 specColor, float roughness, float NdV)
     return specColor * AB.x + AB.y;
 }
 
-float3 ImageBasedLighting(Material material, float3 normal, float3 camera_to_pixel, Texture2D tex_environment, Texture2D tex_lutIBL, SamplerState sampler_linear, SamplerState sampler_trilinear, out float3 reflectivity)
+float3 ImageBasedLighting(Material material, float3 normal, float3 camera_to_pixel, Texture2D tex_environment, Texture2D tex_lutIBL, out float3 reflectivity)
 {
 	float3 reflection 	= reflect(camera_to_pixel, normal);
 	// From Sebastien Lagarde Moving Frostbite to PBR page 69
@@ -70,14 +70,14 @@ float3 ImageBasedLighting(Material material, float3 normal, float3 camera_to_pix
 	kD 			*= 1.0f - material.metallic;	
 
 	// Diffuse
-	float3 irradiance	= SampleEnvironment(sampler_linear, tex_environment, directionToSphereUV(normal), mip_max);
+	float3 irradiance	= SampleEnvironment(tex_environment, directionToSphereUV(normal), mip_max);
 	float3 cDiffuse		= irradiance * material.albedo;
 
 	// Specular
 	float alpha 			= max(EPSILON, material.roughness * material.roughness);
 	float mip_level 		= lerp(0, mip_max, material.roughness);
-	float3 prefilteredColor	= SampleEnvironment(sampler_trilinear, tex_environment, directionToSphereUV(reflection), mip_level);
-	float2 envBRDF  		= tex_lutIBL.Sample(sampler_linear, float2(NdV, material.roughness)).xy;
+	float3 prefilteredColor	= SampleEnvironment(tex_environment, directionToSphereUV(reflection), mip_level);
+	float2 envBRDF  		= tex_lutIBL.Sample(sampler_bilinear_clamp, float2(NdV, material.roughness)).xy;
 	reflectivity			= F * envBRDF.x + envBRDF.y;
 	float3 cSpecular 		= prefilteredColor * reflectivity;
 

@@ -30,10 +30,6 @@ Texture2D tex_material  : register(t2);
 Texture2D tex_frame  	: register(t3);
 //=====================================
 
-//= SAMPLERS ====================================
-SamplerState sampler_linear_clamp : register(s0);
-//===============================================
-
 static const uint g_ssr_max_steps 				= 64;
 static const uint g_ssr_binarySearchSteps 		= 16;
 static const float g_ssr_binarySearchThreshold 	= 0.05f;
@@ -100,7 +96,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 		float2 edgeFactor = float2(1, 1) - pow(saturate(abs(ray_hit_uv - float2(0.5f, 0.5f)) * 2), 8);
 		float fade_screen = saturate(min(edgeFactor.x, edgeFactor.y));
 		
-		return tex_frame.Sample(sampler_linear_clamp, ray_hit_uv) * fade_screen;
+		return tex_frame.Sample(sampler_bilinear_clamp, ray_hit_uv) * fade_screen;
 	}
 	
 	return 0.0f;

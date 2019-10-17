@@ -26,7 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ImGui_RHI.h"
 #include "../Source/imgui.h"
 #include "Rendering/Renderer.h"
-#include "RHI/RHI_Sampler.h"
 #include "RHI/RHI_Texture2D.h"
 #include "RHI/RHI_Device.h"
 #include "RHI/RHI_VertexBuffer.h"
@@ -57,7 +56,6 @@ namespace ImGui::RHI
 	// RHI Data	
 	static shared_ptr<RHI_Device>				g_rhi_device;
 	static shared_ptr<RHI_Texture>				g_texture;
-	static shared_ptr<RHI_Sampler>				g_sampler;
 	static shared_ptr<RHI_VertexBuffer>			g_vertex_buffer;
 	static shared_ptr<RHI_IndexBuffer>			g_index_buffer;
 	static shared_ptr<RHI_DepthStencilState>	g_depth_stencil_state;
@@ -83,7 +81,6 @@ namespace ImGui::RHI
 
 		// Create required RHI objects
 		{
-			g_sampler				= make_shared<RHI_Sampler>(g_rhi_device, SAMPLER_BILINEAR, Sampler_Address_Wrap, Comparison_Always);
 			g_vertex_buffer			= make_shared<RHI_VertexBuffer>(g_rhi_device, static_cast<uint32_t>(sizeof(ImDrawVert)));
 			g_index_buffer			= make_shared<RHI_IndexBuffer>(g_rhi_device);
 			g_depth_stencil_state	= make_shared<RHI_DepthStencilState>(g_rhi_device, false, g_renderer->GetComparisonFunction());
@@ -231,7 +228,6 @@ namespace ImGui::RHI
 			state.rasterizer_state		= g_rasterizer_state.get();
 			state.blend_state			= g_blend_state.get();
 			state.depth_stencil_state	= g_depth_stencil_state.get();
-			state.sampler				= g_sampler.get();
 			state.vertex_buffer			= g_vertex_buffer.get();
 			state.primitive_topology	= PrimitiveTopology_TriangleList;
 			state.swap_chain			= is_main_viewport ? g_renderer->GetSwapChain().get() : swap_chain_other;
@@ -243,7 +239,6 @@ namespace ImGui::RHI
 			g_cmd_list->SetViewport(g_viewport);
 			g_cmd_list->SetBufferVertex(g_vertex_buffer);
 			g_cmd_list->SetBufferIndex(g_index_buffer);
-			g_cmd_list->SetSampler(0, g_sampler);
 		}
 		
 		// Render command lists

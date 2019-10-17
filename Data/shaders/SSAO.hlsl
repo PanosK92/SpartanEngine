@@ -30,11 +30,6 @@ Texture2D texNormal : register(t1);
 Texture2D texNoise  : register(t2);
 //=================================
 
-//= SAMPLERS ======================================
-SamplerState sampler_linear_clamp	: register(s0);
-SamplerState sampler_linear_wrap	: register(s1);
-//=================================================
-
 static const int sample_count		= 16;
 static const float radius			= 3.0f;
 static const float intensity    	= 1.5f;
@@ -111,12 +106,12 @@ static const float3 sampleKernel[64] =
 float mainPS(Pixel_PosUv input) : SV_TARGET
 {
 	float2 uv				= input.uv;
-    float center_depth      = texDepth.SampleLevel(sampler_linear_clamp, uv, 0).r;
+    float center_depth      = texDepth.SampleLevel(sampler_bilinear_clamp, uv, 0).r;
     float3 center_pos       = get_world_position_from_depth(center_depth, uv / g_ssao_scale);
     float3 center_normal    = get_normal(texNormal, uv / g_ssao_scale);		
 
 	// Construct TBN
-	float3 noise	= unpack(texNoise.Sample(sampler_linear_wrap, input.uv * noiseScale).xyz);		
+	float3 noise	= unpack(texNoise.Sample(sampler_bilinear_wrap, input.uv * noiseScale).xyz);		
 	float3 tangent	= normalize(noise - center_normal * dot(noise, center_normal));
 	float3x3 TBN	= makeTBN(center_normal, tangent);
 

@@ -40,17 +40,17 @@ static const float2 poisson_disk[8] =
 
 float DepthTest_Directional(float slice, float2 uv, float compare)
 {
-	return light_depth_directional.SampleCmpLevelZero(sampler_cmp_depth, float3(uv, slice), compare).r;
+	return light_depth_directional.SampleCmpLevelZero(sampler_compare_depth, float3(uv, slice), compare).r;
 }
 
 float DepthTest_Point(float3 direction, float compare)
 {
-	return light_depth_point.SampleCmp(sampler_cmp_depth, direction, compare).r;
+	return light_depth_point.SampleCmp(sampler_compare_depth, direction, compare).r;
 }
 
 float DepthTest_Spot(float2 uv, float compare)
 {
-	return light_depth_spot.SampleCmp(sampler_cmp_depth, uv, compare).r;
+	return light_depth_spot.SampleCmp(sampler_compare_depth, uv, compare).r;
 }
 
 float random(float2 seed2) 
@@ -171,7 +171,7 @@ light.bias = 0;
 			//shadow = depth < (light_to_pixel_distance / light.range) ? 1.0f : 0.0f;
 
 			float compare = (light_to_pixel_distance / light.range) + light.bias;
-			return light_depth_point.SampleCmpLevelZero(sampler_cmp_depth, light_to_pixel_direction, compare).r;
+			return light_depth_point.SampleCmpLevelZero(sampler_compare_depth, light_to_pixel_direction, compare).r;
 		}
 	}
 	#elif SPOT

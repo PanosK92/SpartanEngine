@@ -1,6 +1,5 @@
 #include "Common.hlsl"
 
-SamplerState sampler0;
 Texture2D texture0;
 
 struct PS_INPUT
@@ -21,5 +20,5 @@ PS_INPUT mainVS(Vertex_Pos2dUvColor input)
 
 float4 mainPS(PS_INPUT input) : SV_Target
 {
-	return input.color * texture0.Sample(sampler0, input.uv);
+	return input.color * texture0.Sample(sampler_bilinear_wrap, input.uv);
 }

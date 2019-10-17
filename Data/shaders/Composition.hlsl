@@ -33,12 +33,6 @@ Texture2D tex_lutIbl			: register(t9);
 Texture2D tex_ssao				: register(t10);
 //==============================================
 
-//= SAMPLERS ======================================
-SamplerState sampler_linear_clamp	: register(s0);
-SamplerState sampler_trlinear_clamp	: register(s1);
-SamplerState sampler_point_clamp	: register(s2);
-//=================================================
-
 // = INCLUDES ======
 #include "BRDF.hlsl"
 //==================
@@ -87,7 +81,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 	// Sky
     if (is_sky)
     {
-        color += tex_environment.Sample(sampler_linear_clamp, directionToSphereUV(camera_to_pixel)).rgb;
+        color += tex_environment.Sample(sampler_bilinear_clamp, directionToSphereUV(camera_to_pixel)).rgb;
         color *= clamp(g_directional_light_intensity / 5.0f, 0.01f, 1.0f);
 		color += light_volumetric;
     }
@@ -98,7 +92,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 
 		// IBL
 		float3 reflectivity = 0.0f;
-		float3 light_image_based = ImageBasedLighting(material, normal, camera_to_pixel, tex_environment, tex_lutIbl, sampler_linear_clamp, sampler_trlinear_clamp, reflectivity) * light_ambient;
+		float3 light_image_based = ImageBasedLighting(material, normal, camera_to_pixel, tex_environment, tex_lutIbl, reflectivity) * light_ambient;
 	
 		// SSR
 		color += sample_ssr.rgb * reflectivity * light_received;

@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-float4 Blur_Box(float2 texCoord, float2 texelSize, int blurSize, Texture2D sourceTexture, SamplerState bilinearSampler)
+float4 Blur_Box(float2 texCoord, float2 texelSize, int blurSize, Texture2D sourceTexture)
 {
 	float4 result 	= float4(0.0f, 0.0f, 0.0f, 0.0f);
 	float temp 		= float(-blurSize) * 0.5f + 0.5f;
@@ -29,7 +29,7 @@ float4 Blur_Box(float2 texCoord, float2 texelSize, int blurSize, Texture2D sourc
 		for (int j = 0; j < blurSize; ++j) 
 		{
 			float2 offset = (hlim + float2(float(i), float(j))) * texelSize;
-			result += sourceTexture.SampleLevel(bilinearSampler, texCoord + offset, 0);
+			result += sourceTexture.SampleLevel(sampler_bilinear_clamp, texCoord + offset, 0);
 		}
 	}
 		
@@ -46,7 +46,7 @@ float CalcGaussianWeight(int sampleDist, float sigma)
 }
 
 // Performs a gaussian blur in one direction
-float4 Blur_Gaussian(float2 uv, Texture2D sourceTexture, SamplerState bilinearSampler, float2 texelSize, float2 direction, float sigma)
+float4 Blur_Gaussian(float2 uv, Texture2D sourceTexture, float2 texelSize, float2 direction, float sigma)
 {
 	// https://github.com/TheRealMJP/MSAAFilter/blob/master/MSAAFilter/PostProcessing.hlsl#L50
 	float weightSum = 0.0f;
@@ -55,7 +55,7 @@ float4 Blur_Gaussian(float2 uv, Texture2D sourceTexture, SamplerState bilinearSa
     {
         float2 texCoord = uv + (i * texelSize * direction);    
 		float weight 	= CalcGaussianWeight(i, sigma);
-        color 			+= sourceTexture.SampleLevel(bilinearSampler, texCoord, 0) * weight;
+        color 			+= sourceTexture.SampleLevel(sampler_bilinear_clamp, texCoord, 0) * weight;
 		weightSum 		+= weight;
     }
 
@@ -65,19 +65,19 @@ float4 Blur_Gaussian(float2 uv, Texture2D sourceTexture, SamplerState bilinearSa
 }
 
 // Performs a bilateral gaussian blur (depth aware) in one direction
-float4 Blur_GaussianBilateral(float2 uv, Texture2D sourceTexture, Texture2D depthTexture, Texture2D normalTexture, SamplerState bilinearSampler, float2 texelSize, float2 direction, float sigma)
+float4 Blur_GaussianBilateral(float2 uv, Texture2D sourceTexture, Texture2D depthTexture, Texture2D normalTexture, float2 texelSize, float2 direction, float sigma)
 {
 	float weightSum 		= 0.0f;
     float4 color 			= 0.0f;
-	float center_depth		= get_linear_depth(depthTexture.SampleLevel(bilinearSampler, uv, 0).r);
-	float3 center_normal	= normal_decode(normalTexture.SampleLevel(bilinearSampler, uv, 0).xyz);
+	float center_depth		= get_linear_depth(depthTexture.SampleLevel(sampler_point_clamp, uv, 0).r);
+	float3 center_normal	= normal_decode(normalTexture.SampleLevel(sampler_point_clamp, uv, 0).xyz);
 	float threshold 		= 0.1f;
 
     for (int i = -5; i < 5; i++)
     {
         float2 texCoord 		= uv + (i * texelSize * direction);    
-		float sample_depth 		= get_linear_depth(depthTexture.SampleLevel(bilinearSampler, texCoord, 0).r);
-		float3 sample_normal	= normal_decode(normalTexture.SampleLevel(bilinearSampler, texCoord, 0).xyz);
+		float sample_depth 		= get_linear_depth(depthTexture.SampleLevel(sampler_bilinear_clamp, texCoord, 0).r);
+		float3 sample_normal	= normal_decode(normalTexture.SampleLevel(sampler_bilinear_clamp, texCoord, 0).xyz);
 		
 		// Depth-awareness
 		float awareness_depth	= saturate(threshold - abs(center_depth - sample_depth));
@@ -85,7 +85,7 @@ float4 Blur_GaussianBilateral(float2 uv, Texture2D sourceTexture, Texture2D dept
 		float awareness			= awareness_normal * awareness_depth;
 
 		float weight 		= CalcGaussianWeight(i, sigma) * awareness;
-		color 				+= sourceTexture.SampleLevel(bilinearSampler, texCoord, 0) * weight;
+		color 				+= sourceTexture.SampleLevel(sampler_bilinear_clamp, texCoord, 0) * weight;
 		weightSum 			+= weight; 
     }
     color /= weightSum;

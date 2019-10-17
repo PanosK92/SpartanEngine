@@ -39,7 +39,6 @@ Texture2D sourceTexture 		: register(t0);
 Texture2D sourceTexture2 		: register(t1);
 Texture2D sourceTexture3 		: register(t2);
 Texture2D sourceTexture4 		: register(t3);
-SamplerState samplerState 		: register(s0);
 
 Pixel_PosUv mainVS(Vertex_PosUv input)
 {
@@ -58,22 +57,21 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     float4 color 		= float4(1.0f, 0.0f, 0.0f, 1.0f);
 
 #if PASS_GAMMA_CORRECTION
-	color 		= sourceTexture.Sample(samplerState, texCoord);
+	color 		= sourceTexture.Sample(sampler_point_clamp, texCoord);
 	color 		= gamma(color);
 #endif
 
 #if PASS_TONEMAPPING
-	color 		= sourceTexture.Sample(samplerState, texCoord);
+	color 		= sourceTexture.Sample(sampler_point_clamp, texCoord);
 	color.rgb 	= ToneMap(color.rgb, g_exposure);
 #endif
 
 #if PASS_TEXTURE
-	color = sourceTexture.Sample(samplerState, texCoord);
+	color = sourceTexture.Sample(sampler_point_clamp, texCoord);
 #endif
 
 #if PASS_FXAA
-	// FXAA requires a bilinear sampler
-	FxaaTex tex 				= { samplerState, sourceTexture };
+	FxaaTex tex 				= { sampler_bilinear_clamp, sourceTexture };
     float2 fxaaQualityRcpFrame	= g_texel_size;
   
 	color.rgb = FxaaPixelShader
@@ -89,95 +87,94 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 #endif
 
 #if PASS_CHROMATIC_ABERRATION
-	// Requirements: Bilinear sampler
-	color.rgb = ChromaticAberration(texCoord, g_texel_size, sourceTexture, samplerState);
+	color.rgb = ChromaticAberration(texCoord, g_texel_size, sourceTexture);
 #endif
 
 #if PASS_LUMA_SHARPEN
-	color.rgb = LumaSharpen(texCoord, sourceTexture, samplerState, g_resolution, g_sharpen_strength, g_sharpen_clamp);	
+	color.rgb = LumaSharpen(texCoord, sourceTexture, g_resolution, g_sharpen_strength, g_sharpen_clamp);	
 #endif
 
 #if PASS_TAA_RESOLVE
-	color = ResolveTAA(texCoord, sourceTexture, sourceTexture2, sourceTexture3, sourceTexture4, samplerState);
+	color = ResolveTAA(texCoord, sourceTexture, sourceTexture2, sourceTexture3, sourceTexture4);
 #endif
 
 #if PASS_TAA_SHARPEN
-	color = SharpenTaa(texCoord, sourceTexture, samplerState);	
+	color = SharpenTaa(texCoord, sourceTexture);	
 #endif
 
 #if PASS_UPSAMPLE_BOX
-	color = Upsample_Box(texCoord, g_texel_size, sourceTexture, samplerState);
+	color = Upsample_Box(texCoord, g_texel_size, sourceTexture);
 #endif
 
 #if PASS_DOWNSAMPLE_BOX
-	color = Downsample_Box(texCoord, g_texel_size, sourceTexture, samplerState);
+	color = Downsample_Box(texCoord, g_texel_size, sourceTexture);
 #endif
 
 #if PASS_BLUR_BOX
-	color = Blur_Box(texCoord, g_texel_size, g_blur_sigma, sourceTexture, samplerState);
+	color = Blur_Box(texCoord, g_texel_size, g_blur_sigma, sourceTexture);
 #endif
 
 #if PASS_BLUR_GAUSSIAN
-	color = Blur_Gaussian(texCoord, sourceTexture, samplerState, g_texel_size, g_blur_direction, g_blur_sigma);
+	color = Blur_Gaussian(texCoord, sourceTexture, g_texel_size, g_blur_direction, g_blur_sigma);
 #endif
 
 #if PASS_BLUR_BILATERAL_GAUSSIAN
-	color = Blur_GaussianBilateral(texCoord, sourceTexture, sourceTexture2, sourceTexture3, samplerState, g_texel_size, g_blur_direction, g_blur_sigma);
+	color = Blur_GaussianBilateral(texCoord, sourceTexture, sourceTexture2, sourceTexture3, g_texel_size, g_blur_direction, g_blur_sigma);
 #endif
 
 #if PASS_BLOOM_DOWNSAMPLE
-	color = Downsample_Box13Tap(texCoord, g_texel_size, sourceTexture, samplerState);
+	color = Downsample_Box13Tap(texCoord, g_texel_size, sourceTexture);
 #endif
 
 #if PASS_BLOOM_DOWNSAMPLE_LUMINANCE
-	color = Downsample_Box13Tap(texCoord, g_texel_size, sourceTexture, samplerState);
+	color = Downsample_Box13Tap(texCoord, g_texel_size, sourceTexture);
 	color = luminance(color) * color;
 #endif
 
 #if PASS_BLOOM_BLEND_ADDITIVE
-	float4 sourceColor 	= sourceTexture.Sample(samplerState, texCoord);
-	float4 sourceColor2 = Upsample_Box(texCoord, g_texel_size, sourceTexture2, samplerState);
+	float4 sourceColor 	= sourceTexture.Sample(sampler_point_clamp, texCoord);
+	float4 sourceColor2 = Upsample_Box(texCoord, g_texel_size, sourceTexture2);
 	color 				= sourceColor + sourceColor2 * g_bloom_intensity;
 #endif
 
 #if PASS_LUMA
-	color 	= sourceTexture.Sample(samplerState, texCoord);
+	color 	= sourceTexture.Sample(sampler_point_clamp, texCoord);
     color.a = luminance(color.rgb);
 #endif
 
 #if PASS_DITHERING
-	color = sourceTexture.Sample(samplerState, texCoord);
+	color = sourceTexture.Sample(sampler_point_clamp, texCoord);
     color.rgb += dither(texCoord);
 #endif
 
 #if PASS_MOTION_BLUR
-	color = MotionBlur(texCoord, sourceTexture, sourceTexture2, sourceTexture3, samplerState);
+	color = MotionBlur(texCoord, sourceTexture, sourceTexture2, sourceTexture3);
 #endif
 
 #if DEBUG_NORMAL
-	float3 normal = sourceTexture.Sample(samplerState, texCoord).rgb;
+	float3 normal = sourceTexture.Sample(sampler_point_clamp, texCoord).rgb;
 	normal = pack(normal);
 	color = float4(normal, 1.0f);
 #endif
 
 #if DEBUG_VELOCITY
-	float3 velocity = sourceTexture.Sample(samplerState, texCoord).rgb;
+	float3 velocity = sourceTexture.Sample(sampler_point_clamp, texCoord).rgb;
 	velocity = abs(velocity) * 20.0f;
 	color = float4(velocity, 1.0f);
 #endif
 
 #if DEBUG_R_CHANNEL
-	float r = sourceTexture.Sample(samplerState, texCoord).r;
+	float r = sourceTexture.Sample(sampler_point_clamp, texCoord).r;
 	color = float4(r, r, r, 1.0f);
 #endif
 
 #if DEBUG_A_CHANNEL
-	float a = sourceTexture.Sample(samplerState, texCoord).a;
+	float a = sourceTexture.Sample(sampler_point_clamp, texCoord).a;
 	color = float4(a, a, a, 1.0f);
 #endif
 
 #if DEBUG_RGB_CHANNEL_GAMMA_CORRECT
-	float3 rgb 	= sourceTexture.Sample(samplerState, texCoord).rgb;
+	float3 rgb 	= sourceTexture.Sample(sampler_point_clamp, texCoord).rgb;
 	rgb 		= gamma(rgb);
 	color 		= float4(rgb, 1.0f);
 #endif
