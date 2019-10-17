@@ -48,7 +48,7 @@ cbuffer LightBuffer : register(b2)
 	float4 direction[lights_max];
 	
 	float light_count;
-	float3 g_padding2;
+	float3 g_padding3;
 };
 //==========================================================
 

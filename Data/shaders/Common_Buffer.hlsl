@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // Updates once per frame
 cbuffer FrameBuffer : register(b0)
 {
-	matrix g_world;
 	matrix g_view;
 	matrix g_projection;
 	matrix g_projectionOrtho;
@@ -61,9 +60,24 @@ cbuffer FrameBuffer : register(b0)
 
 // Updates multiple times per frame
 cbuffer UberBuffer : register(b1)
-{	
+{
 	matrix g_transform; // can be anything	
-	
+	matrix g_wvp_current;
+	matrix g_wvp_previous;
+
+	float4 materialAlbedoColor;	
+
+	float2 materialTiling;
+	float2 materialOffset;
+
+    float materialRoughness;
+    float materialMetallic;
+    float materialNormalStrength;
+	float materialHeight;
+
+	float materialShadingMode;
+	float3 g_padding2;
+
 	float4 g_color;
 	
 	float3 g_transform_axis;

@@ -246,9 +246,8 @@ namespace Spartan
 
 	void Profiler::UpdateRhiMetricsString()
 	{
-		const auto texture_count	= m_resource_manager->GetResourceCount(Resource_Texture);
+		const auto texture_count	= m_resource_manager->GetResourceCount(Resource_Texture) + m_resource_manager->GetResourceCount(Resource_Texture2d) + m_resource_manager->GetResourceCount(Resource_TextureCube);
 		const auto material_count	= m_resource_manager->GetResourceCount(Resource_Material);
-		const auto shader_count		= m_resource_manager->GetResourceCount(Resource_Shader);
 
 		static char buffer[1000]; // real usage is around 700
 		sprintf_s
@@ -267,7 +266,6 @@ namespace Spartan
 			"Meshes rendered:\t\t\t\t%d\n"
 			"Textures:\t\t\t\t\t%d\n"
 			"Materials:\t\t\t\t\t%d\n"
-			"Shaders:\t\t\t\t\t\t%d\n"
 			// RHI
 			"RHI Draw calls:\t\t\t\t%d\n"
 			"RHI Index buffer bindings:\t\t%d\n"
@@ -293,7 +291,6 @@ namespace Spartan
 			m_renderer_meshes_rendered,
 			texture_count,
 			material_count,
-			shader_count,
 			// RHI
 			m_rhi_draw_calls,
 			m_rhi_bindings_buffer_index,

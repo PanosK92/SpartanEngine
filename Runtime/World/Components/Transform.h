@@ -104,13 +104,10 @@ namespace Spartan
 		//======================================================================================
 
 		void LookAt(const Math::Vector3& v) { m_lookAt = v; }
-		auto& GetMatrix()		            { return m_matrix; }
-		auto& GetLocalMatrix()	            { return m_matrixLocal; }
-
-		//= CONSTANT BUFFERS =========================================================================================
-		void UpdateConstantBuffer(const std::shared_ptr<RHI_Device>& rhi_device, const Math::Matrix& view_projection);
-		const auto& GetConstantBuffer() const { return m_cb_gbuffer_gpu; }
-		//============================================================================================================
+		const auto& GetMatrix()         const { return m_matrix; }     
+		const auto& GetLocalMatrix()    const { return m_matrixLocal; }
+        const auto& GetWvpLastFrame()   const { return m_wvp_previous; }
+        void SetWvpLastFrame(const Math::Matrix& matrix) { m_wvp_previous = matrix;}
 
 	private:
 		Math::Matrix GetParentTransformMatrix() const;
@@ -127,15 +124,6 @@ namespace Spartan
 		Transform* m_parent; // the parent of this transform
 		std::vector<Transform*> m_children; // the children of this transform
 
-		// Constant buffer
-		struct CB_Gbuffer
-		{
-			Math::Matrix model;
-			Math::Matrix mvp_current;
-			Math::Matrix mvp_previous;
-		};
-		CB_Gbuffer m_cb_gbuffer_cpu;
-		std::shared_ptr<RHI_ConstantBuffer> m_cb_gbuffer_gpu;
 		Math::Matrix m_wvp_previous;
 	};
 }
