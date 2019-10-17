@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ShaderVariation.h"
 #include "../Resource/ResourceCache.h"
 #include "../IO/XmlDocument.h"
-#include "../RHI/RHI_ConstantBuffer.h"
 #include "../RHI/RHI_Texture2D.h"
 #include "../RHI/RHI_TextureCube.h"
 //====================================
@@ -247,44 +246,6 @@ namespace Spartan
 		shader->Compile(dir_shaders + "GBuffer.hlsl", shader_flags);
 
 		return shader;
-	}
-
-	bool Material::UpdateConstantBuffer()
-	{
-		// Has to match GBuffer.hlsl
-		if (!m_constant_buffer_gpu)
-		{
-			m_constant_buffer_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device);
-			m_constant_buffer_gpu->Create<ConstantBufferData>();
-		}
-
-		// Determine if the buffer needs to update
-		auto update = false;
-		update = m_constant_buffer_cpu.mat_albedo			!= GetColorAlbedo() 					? true : update;
-		update = m_constant_buffer_cpu.mat_tiling_uv		!= GetTiling()							? true : update;
-		update = m_constant_buffer_cpu.mat_offset_uv		!= GetOffset()							? true : update;
-		update = m_constant_buffer_cpu.mat_roughness_mul	!= GetMultiplier(TextureType_Roughness) ? true : update;
-		update = m_constant_buffer_cpu.mat_metallic_mul		!= GetMultiplier(TextureType_Metallic)	? true : update;
-		update = m_constant_buffer_cpu.mat_normal_mul		!= GetMultiplier(TextureType_Normal)	? true : update;
-		update = m_constant_buffer_cpu.mat_height_mul		!= GetMultiplier(TextureType_Height)	? true : update;
-		update = m_constant_buffer_cpu.mat_shading_mode		!= static_cast<float>(GetShadingMode())	? true : update;
-
-		if (!update)
-			return true;
-
-		auto buffer = static_cast<ConstantBufferData*>(m_constant_buffer_gpu->Map());
-
-		buffer->mat_albedo			= m_constant_buffer_cpu.mat_albedo			= GetColorAlbedo();
-		buffer->mat_tiling_uv		= m_constant_buffer_cpu.mat_tiling_uv		= GetTiling();
-		buffer->mat_offset_uv		= m_constant_buffer_cpu.mat_offset_uv		= GetOffset();
-		buffer->mat_roughness_mul	= m_constant_buffer_cpu.mat_roughness_mul	= GetMultiplier(TextureType_Roughness);
-		buffer->mat_metallic_mul	= m_constant_buffer_cpu.mat_metallic_mul	= GetMultiplier(TextureType_Metallic);
-		buffer->mat_normal_mul		= m_constant_buffer_cpu.mat_normal_mul		= GetMultiplier(TextureType_Normal);
-		buffer->mat_height_mul		= m_constant_buffer_cpu.mat_height_mul		= GetMultiplier(TextureType_Height);
-		buffer->mat_shading_mode	= m_constant_buffer_cpu.mat_shading_mode	= static_cast<float>(GetShadingMode());
-		buffer->padding				= m_constant_buffer_cpu.padding				= Vector3::Zero;
-
-		return m_constant_buffer_gpu->Unmap();
 	}
 
 	TextureType Material::TextureTypeFromString(const string& type)

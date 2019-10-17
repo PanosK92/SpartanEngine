@@ -39,26 +39,6 @@ Texture2D texMask 		: register (t7);
 SamplerState samplerAniso : register (s0);
 //========================================
 
-cbuffer MaterialBuffer : register(b2)
-{
-	float4 materialAlbedoColor;	
-	float2 materialTiling;
-	float2 materialOffset;
-    float materialRoughness;
-    float materialMetallic;
-    float materialNormalStrength;
-	float materialHeight;
-	float materialShadingMode;
-	float3 padding2;
-};
-
-cbuffer ObjectBuffer : register(b3)
-{		
-	matrix mModel;
-	matrix mMVP_current;
-	matrix mMVP_previous;
-};
-
 struct PixelInputType
 {
     float4 positionCS 			: SV_POSITION;
@@ -84,13 +64,13 @@ PixelInputType mainVS(Vertex_PosUvNorTan input)
     PixelInputType output;
     
     input.position.w 			= 1.0f;	
-	output.positionWS 			= mul(input.position, mModel);
+	output.positionWS 			= mul(input.position, g_transform);
     output.positionVS   		= mul(output.positionWS, g_view);
     output.positionCS   		= mul(output.positionVS, g_projection);
-	output.positionCS_Current 	= mul(input.position, mMVP_current);
-	output.positionCS_Previous 	= mul(input.position, mMVP_previous);
-	output.normal 				= normalize(mul(input.normal, (float3x3)mModel)).xyz;	
-	output.tangent 				= normalize(mul(input.tangent, (float3x3)mModel)).xyz;
+	output.positionCS_Current 	= mul(input.position, g_wvp_current);
+	output.positionCS_Previous 	= mul(input.position, g_wvp_previous);
+	output.normal 				= normalize(mul(input.normal, (float3x3)g_transform)).xyz;	
+	output.tangent 				= normalize(mul(input.tangent, (float3x3)g_transform)).xyz;
     output.uv 					= input.uv;
 	
 	return output;

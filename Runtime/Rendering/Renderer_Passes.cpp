@@ -55,10 +55,11 @@ namespace Spartan
 	void Renderer::Pass_Main()
 	{
         // Update frame buffer
-        m_cmd_list->Begin("UpdateFrameBuffer");
+        m_cmd_list->Begin("BindConstantBuffers");
         {
             UpdateFrameBuffer();
             m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_frame_gpu);
+            m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
         }
         m_cmd_list->End();
         m_cmd_list->Submit();
@@ -129,7 +130,6 @@ namespace Spartan
 			m_cmd_list->SetShaderVertex(shader_depth);
 			m_cmd_list->SetInputLayout(shader_depth->GetInputLayout());
 			m_cmd_list->SetViewport(shadow_map->GetViewport());
-            m_cmd_list->SetConstantBuffer(1, Buffer_VertexShader, m_buffer_uber_gpu);
             // "Pancaking" - https://www.gamedev.net/forums/topic/639036-shadow-mapping-and-high-up-objects/
             // It's basically a way to capture the silhouettes of potential shadow casters behind the camera.
             // Of course we also have to make sure that the light doesn't cull them in the first place (this is done automatically by the light)
@@ -185,6 +185,8 @@ namespace Spartan
 
                     // Update uber buffer with cascade transform
                     m_buffer_uber_cpu.transform = entity->GetTransform_PtrRaw()->GetMatrix() * m_buffer_light_cpu.view_projection[light_index][cascade_index];
+
+                    // Only updates if needed
                     UpdateUberBuffer();
 
 					m_cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
@@ -296,26 +298,37 @@ namespace Spartan
                 // Bind material textures		
                 m_cmd_list->SetTextures(0, material->GetResources(), 8);
 
-                // Bind material buffer
-                material->UpdateConstantBuffer();
-                m_cmd_list->SetConstantBuffer(2, Buffer_PixelShader, material->GetConstantBuffer());
+                // Update uber buffer with material properties
+               m_buffer_uber_cpu.mat_albedo          = material->GetColorAlbedo();
+               m_buffer_uber_cpu.mat_tiling_uv       = material->GetTiling();
+               m_buffer_uber_cpu.mat_offset_uv       = material->GetOffset();
+               m_buffer_uber_cpu.mat_roughness_mul   = material->GetMultiplier(TextureType_Roughness);
+               m_buffer_uber_cpu.mat_metallic_mul    = material->GetMultiplier(TextureType_Metallic);
+               m_buffer_uber_cpu.mat_normal_mul      = material->GetMultiplier(TextureType_Normal);
+               m_buffer_uber_cpu.mat_height_mul      = material->GetMultiplier(TextureType_Height);
+               m_buffer_uber_cpu.mat_shading_mode    = static_cast<float>(material->GetShadingMode());
 
                 currently_bound_material = material->GetId();
             }
 
-            // Bind object buffer
-            const auto& transform = entity->GetTransform_PtrRaw();
-            transform->UpdateConstantBuffer(m_rhi_device, m_buffer_frame_cpu.view_projection);
-            m_cmd_list->SetConstantBuffer(3, Buffer_VertexShader, transform->GetConstantBuffer());
+            // Update uber buffer with entity transform
+            if (Transform* transform = entity->GetTransform_PtrRaw())
+            {
+                m_buffer_uber_cpu.transform     = transform->GetMatrix();
+                m_buffer_uber_cpu.wvp_current   = transform->GetMatrix() * m_buffer_frame_cpu.view_projection;
+                m_buffer_uber_cpu.wvp_previous  = transform->GetWvpLastFrame();
+                transform->SetWvpLastFrame(m_buffer_uber_cpu.wvp_current);
+            }
+
+            // Only happens if needed
+            UpdateUberBuffer();
 
             // Render	
             m_cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
             m_profiler->m_renderer_meshes_rendered++;
-        };
 
-        // Update uber buffer
-        m_buffer_uber_cpu.resolution = m_resolution;
-        UpdateUberBuffer();
+            m_cmd_list->Submit();
+        };
 
         // Star command list
         m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
@@ -328,7 +341,6 @@ namespace Spartan
         m_cmd_list->ClearDepthStencil(tex_depth->GetResource_DepthStencil(), Clear_Depth, GetClearDepth());
         m_cmd_list->SetShaderVertex(shader_gbuffer);
         m_cmd_list->SetInputLayout(shader_gbuffer->GetInputLayout());
-        m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
         m_cmd_list->SetSampler(0, m_sampler_anisotropic_wrap);
 
         // Draw opaque
@@ -398,7 +410,6 @@ namespace Spartan
             m_cmd_list->SetShaderPixel(shader_ssao);
             m_cmd_list->SetTextures(0, textures, 3);
             m_cmd_list->SetSamplers(0, samplers);
-            m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
             m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
             m_cmd_list->Submit();
 
@@ -470,7 +481,6 @@ namespace Spartan
             m_cmd_list->SetShaderPixel(shader_ssr);
             m_cmd_list->SetTextures(0, textures, 4);
             m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
-            m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
             m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
             m_cmd_list->Submit();
 
@@ -527,7 +537,6 @@ namespace Spartan
         m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_diffuse->GetWidth()), static_cast<float>(tex_diffuse->GetHeight()));
         UpdateUberBuffer();
 
-        m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
         m_cmd_list->SetConstantBuffer(2, Buffer_Global, m_buffer_light_gpu);
         m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
         m_cmd_list->ClearRenderTargets(render_targets, Vector4::Zero);
@@ -646,7 +655,6 @@ namespace Spartan
         };
 
 		// Setup command list
-        m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
 		m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
 		m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
 		m_cmd_list->SetBlendState(m_blend_disabled);
@@ -792,7 +800,6 @@ namespace Spartan
         m_cmd_list->SetShaderPixel(shader_pixel);
         m_cmd_list->SetTexture(0, tex_in);
         m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
-        m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
         m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
         m_cmd_list->End();
         m_cmd_list->Submit();
@@ -821,7 +828,6 @@ namespace Spartan
         m_cmd_list->SetShaderPixel(shader_pixel);
         m_cmd_list->SetTexture(0, tex_in);
         m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
-        m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
         m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
         m_cmd_list->End();
         m_cmd_list->Submit();
@@ -890,7 +896,6 @@ namespace Spartan
 			m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
 			m_cmd_list->SetRenderTarget(tex_out);
 			m_cmd_list->SetTexture(0, tex_in);
-            m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
 			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
             m_cmd_list->Submit();
 		}
@@ -959,7 +964,6 @@ namespace Spartan
 			m_cmd_list->ClearTextures(); // avoids d3d11 warning where render target is also bound as texture (from Pass_PreLight)
 			m_cmd_list->SetRenderTarget(tex_out);
 			m_cmd_list->SetTextures(0, textures, 3);
-            m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
 			m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
             m_cmd_list->Submit();
 		}
@@ -1060,7 +1064,6 @@ namespace Spartan
             m_cmd_list->SetViewport(m_render_tex_bloom[0]->GetViewport());
             m_cmd_list->SetShaderPixel(shader_bloomBright);
             m_cmd_list->SetTexture(0, tex_in);
-            m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
             m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
         }
         m_cmd_list->End();
@@ -1085,7 +1088,6 @@ namespace Spartan
                 m_cmd_list->SetViewport(tex_out->GetViewport());
                 m_cmd_list->SetShaderPixel(shader_upsample);
                 m_cmd_list->SetTexture(0, tex_in);
-                m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
                 m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
             }
             m_cmd_list->End();
@@ -1319,7 +1321,6 @@ namespace Spartan
         m_cmd_list->SetShaderPixel(shader);
         m_cmd_list->SetTexture(0, tex_in);
         m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
-        m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
         m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
         m_cmd_list->End();
         m_cmd_list->Submit();
@@ -1420,7 +1421,6 @@ namespace Spartan
                 m_buffer_uber_cpu.transform     = m_gizmo_grid->ComputeWorldMatrix(m_camera->GetTransform()) * m_buffer_frame_cpu.view_projection_unjittered;
                 UpdateUberBuffer();
 
-                m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
 				m_cmd_list->SetBufferIndex(m_gizmo_grid->GetIndexBuffer());
 				m_cmd_list->SetBufferVertex(m_gizmo_grid->GetVertexBuffer());
 				m_cmd_list->SetBlendState(m_blend_enabled);
@@ -1442,7 +1442,6 @@ namespace Spartan
 				copy(m_lines_list_depth_enabled.begin(), m_lines_list_depth_enabled.end(), buffer);
 				m_vertex_buffer_lines->Unmap();
 
-                m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
 				m_cmd_list->SetBufferVertex(m_vertex_buffer_lines);
 				m_cmd_list->Draw(line_vertex_buffer_size);
 
@@ -1582,7 +1581,6 @@ namespace Spartan
             m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle().GetTransform(Vector3::Right);
             m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle().GetColor(Vector3::Right);
             UpdateUberBuffer();
-            m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
 			m_cmd_list->DrawIndexed(m_gizmo_transform->GetIndexCount(), 0, 0);
             m_cmd_list->Submit();
 
@@ -1590,7 +1588,6 @@ namespace Spartan
             m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle().GetTransform(Vector3::Up);
             m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle().GetColor(Vector3::Up);
             UpdateUberBuffer();
-            m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
 			m_cmd_list->DrawIndexed(m_gizmo_transform->GetIndexCount(), 0, 0);
             m_cmd_list->Submit();
 
@@ -1598,7 +1595,6 @@ namespace Spartan
             m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle().GetTransform(Vector3::Forward);
             m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle().GetColor(Vector3::Forward);
             UpdateUberBuffer();
-            m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
 			m_cmd_list->DrawIndexed(m_gizmo_transform->GetIndexCount(), 0, 0);
             m_cmd_list->Submit();
 
@@ -1608,7 +1604,6 @@ namespace Spartan
                 m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle().GetTransform(Vector3::One);
                 m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle().GetColor(Vector3::One);
                 UpdateUberBuffer();
-                m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
 				m_cmd_list->DrawIndexed(m_gizmo_transform->GetIndexCount(), 0, 0);
 			}
 		}
@@ -1637,7 +1632,6 @@ namespace Spartan
         m_buffer_uber_cpu.color         = m_font->GetColor();
         UpdateUberBuffer();
 
-        m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
 		m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
 		m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
 		m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
@@ -1750,7 +1744,6 @@ namespace Spartan
         m_buffer_uber_cpu.transform     = m_buffer_frame_cpu.view_projection_ortho;
         UpdateUberBuffer();
 
-        m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
 		m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
 		m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
 		m_cmd_list->SetBlendState(m_blend_disabled);
@@ -1791,7 +1784,6 @@ namespace Spartan
         m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(texture->GetWidth()), static_cast<float>(texture->GetHeight()));
         UpdateUberBuffer();
 
-        m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
         m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
         m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
         m_cmd_list->SetBlendState(m_blend_disabled);
@@ -1826,7 +1818,6 @@ namespace Spartan
         m_buffer_uber_cpu.transform     = m_buffer_frame_cpu.view_projection_ortho;
         UpdateUberBuffer();
 
-        m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
         m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
         m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
         m_cmd_list->SetBlendState(m_blend_disabled);

@@ -19,15 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ============================
+//= INCLUDES =====================
 #include "Transform.h"
 #include "../World.h"
 #include "../Entity.h"
 #include "../../Core/Context.h"
 #include "../../Core/FileSystem.h"
 #include "../../IO/FileStream.h"
-#include "../../RHI/RHI_ConstantBuffer.h"
-//=======================================
+//================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -388,38 +387,6 @@ namespace Spartan
 			descendants->push_back(child);
 			child->GetDescendants(descendants);
 		}
-	}
-
-	void Transform::UpdateConstantBuffer(const shared_ptr<RHI_Device>& rhi_device, const Matrix& view_projection)
-	{
-		// Has to match GBuffer.hlsl
-		if (!m_cb_gbuffer_gpu)
-		{
-			m_cb_gbuffer_gpu = make_shared<RHI_ConstantBuffer>(rhi_device);
-			m_cb_gbuffer_gpu->Create<CB_Gbuffer>();
-		}
-
-		const auto mvp_current = m_matrix * view_projection;
-	
-		// Determine if the buffer needs to update
-		auto update	= false;
-		update						= m_cb_gbuffer_cpu.model		!= m_matrix	? true : update;
-		const auto new_input		= m_cb_gbuffer_cpu.mvp_current	!= mvp_current;
-		const auto non_zero_delta	= m_cb_gbuffer_cpu.mvp_current	!= m_cb_gbuffer_cpu.mvp_previous;
-		update = new_input || non_zero_delta ? true : update;
-		if (!update)
-			return;
-
-		// Update buffer
-		auto buffer = static_cast<CB_Gbuffer*>(m_cb_gbuffer_gpu->Map());
-
-		buffer->model			= m_cb_gbuffer_cpu.model		= m_matrix;
-		buffer->mvp_current		= m_cb_gbuffer_cpu.mvp_current	= mvp_current;
-		buffer->mvp_previous	= m_cb_gbuffer_cpu.mvp_previous	= m_wvp_previous;
-
-		m_cb_gbuffer_gpu->Unmap();
-
-		m_wvp_previous = mvp_current;
 	}
 
     Matrix Transform::GetParentTransformMatrix() const

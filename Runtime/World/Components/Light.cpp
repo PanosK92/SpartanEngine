@@ -279,7 +279,7 @@ namespace Spartan
 
         Camera* camera                        = m_renderer->GetCamera().get();
         const float clip_near                 = camera->GetNearPlane();
-        const float clip_far                    = camera->GetFarPlane();
+        const float clip_far                  = camera->GetFarPlane();
         const Matrix view_projection_inverted = Matrix::Invert(camera->GetViewMatrix() * camera->ComputeProjection(true));
 
         // Calculate split depths based on view camera frustum

@@ -84,11 +84,6 @@ namespace Spartan
 		auto HasShader()		const { return GetShader() != nullptr; }
 		//=============================================================================
 
-		//= CONSTANT BUFFER ===================================================
-		bool UpdateConstantBuffer();
-		const auto& GetConstantBuffer() const { return m_constant_buffer_gpu; }
-		//=====================================================================
-
 		//= PROPERTIES ==========================================================================================
 		auto GetCullMode() const											{ return m_cull_mode; }
 		void SetCullMode(const RHI_Cull_Mode cull_mode)						{ m_cull_mode = cull_mode; }
@@ -129,21 +124,5 @@ namespace Spartan
 		std::shared_ptr<ShaderVariation> m_shader;	
 		std::shared_ptr<RHI_Texture> m_texture_empty;
 		std::shared_ptr<RHI_Device> m_rhi_device;
-
-		// BUFFER
-		struct ConstantBufferData
-		{
-			Math::Vector4 mat_albedo	= Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f);
-			Math::Vector2 mat_tiling_uv	= Math::Vector2(1.0f, 1.0f);
-			Math::Vector2 mat_offset_uv	= Math::Vector2(0.0f, 0.0f);
-			float mat_roughness_mul		= 0.0f;
-			float mat_metallic_mul		= 0.0f;
-			float mat_normal_mul		= 0.0f;
-			float mat_height_mul		= 0.0f;
-			float mat_shading_mode		= 0.0f;
-			Math::Vector3 padding		= Math::Vector3::Zero;
-		};
-		ConstantBufferData m_constant_buffer_cpu;
-		std::shared_ptr<RHI_ConstantBuffer> m_constant_buffer_gpu;
 	};
 }

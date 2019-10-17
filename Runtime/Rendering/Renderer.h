@@ -450,7 +450,6 @@ namespace Spartan
         // Updates once every frame
         struct FrameBuffer
         {
-            Math::Matrix world;
             Math::Matrix view;
             Math::Matrix projection;
             Math::Matrix projection_ortho;
@@ -493,6 +492,21 @@ namespace Spartan
 		struct UberBuffer
 		{
             Math::Matrix transform;
+            Math::Matrix wvp_current;
+            Math::Matrix wvp_previous;
+
+            Math::Vector4 mat_albedo;
+
+            Math::Vector2 mat_tiling_uv;
+            Math::Vector2 mat_offset_uv;
+
+            float mat_roughness_mul;
+            float mat_metallic_mul;
+            float mat_normal_mul;
+            float mat_height_mul;
+
+            float mat_shading_mode;
+            Math::Vector3 padding;
 
             Math::Vector4 color;
 
@@ -505,12 +519,22 @@ namespace Spartan
             bool operator==(const UberBuffer& rhs)
             {
                 return
-                    transform       == rhs.transform        &&
-                    color           == rhs.color            &&
-                    transform_axis  == rhs.transform_axis   &&
-                    blur_sigma      == rhs.blur_sigma       &&
-                    blur_direction  == rhs.blur_direction   &&
-                    resolution      == rhs.resolution;
+                    transform           == rhs.transform            &&
+                    wvp_current         == rhs.wvp_current          &&
+                    wvp_previous        == rhs.wvp_previous         &&
+                    mat_albedo          == rhs.mat_albedo           &&
+                    mat_tiling_uv       == rhs.mat_tiling_uv        &&
+                    mat_offset_uv       == rhs.mat_offset_uv        &&
+                    mat_roughness_mul   == rhs.mat_roughness_mul    &&
+                    mat_metallic_mul    == rhs.mat_metallic_mul     &&
+                    mat_normal_mul      == rhs.mat_normal_mul       &&
+                    mat_height_mul      == rhs.mat_height_mul       &&
+                    mat_shading_mode    == rhs.mat_shading_mode     &&
+                    color               == rhs.color                &&
+                    transform_axis      == rhs.transform_axis       &&
+                    blur_sigma          == rhs.blur_sigma           &&
+                    blur_direction      == rhs.blur_direction       &&
+                    resolution          == rhs.resolution;
             }
 		};
         UberBuffer m_buffer_uber_cpu;
