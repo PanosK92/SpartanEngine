@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IO/XmlDocument.h"
 #include "../RHI/RHI_Texture2D.h"
 #include "../RHI/RHI_TextureCube.h"
+#include "../World/World.h"
 //====================================
 
 //= NAMESPACES ===============
@@ -248,7 +249,19 @@ namespace Spartan
 		return shader;
 	}
 
-	TextureType Material::TextureTypeFromString(const string& type)
+    void Material::SetColorAlbedo(const Math::Vector4& color)
+    {
+        // If an object switches from opaque to transparent or vice versa, make the world update so that the renderer
+        // goes through the entities and makes the ones that use this material, render in the correct mode.
+        if ((m_color_albedo.w != 1.0f && color.w == 1.0f) || (m_color_albedo.w == 1.0f && color.w != 1.0f))
+        {
+            m_context->GetSubsystem<World>()->MakeDirty();
+        }
+
+        m_color_albedo = color;
+    }
+
+    TextureType Material::TextureTypeFromString(const string& type)
 	{
 		if (type == "Albedo")		return TextureType_Albedo;
 		if (type == "Roughness")	return TextureType_Roughness;

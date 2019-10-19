@@ -423,14 +423,16 @@ namespace Spartan
 		bool m_initialized                      = false;
         bool m_reverse_z                        = true;
         uint32_t m_resolution_shadow            = 4096;
-        uint32_t m_resolution_shadow_min        = 128;
+        const uint32_t m_resolution_shadow_min  = 128;
         uint32_t m_anisotropy                   = 16;
         float m_near_plane                      = 0.0f;
         float m_far_plane                       = 0.0f;
         uint64_t m_frame_num                    = 0;
         bool m_is_odd_frame                     = false;
         bool m_is_rendering                     = false;
-        bool m_brdf_specular_lut_rendered       = false;
+        bool m_brdf_specular_lut_rendered       = false;      
+        const float m_gizmo_size_max            = 5.0f;
+        const float m_gizmo_size_min            = 0.1f;
         std::map<Renderer_Option_Value, float> m_options;
 		//=============================================================
 

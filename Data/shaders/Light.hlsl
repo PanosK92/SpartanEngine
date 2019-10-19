@@ -148,7 +148,7 @@ PixelOutputType mainPS(Pixel_PosUv input)
 		
 		#if SPOT
 			// Attunate
-			float cutoffAngle   = 1.0f - light.angle;      
+			float cutoffAngle   = 1.0f - light.angle;
 			float dist          = length(position_world - light.position);
 			float theta         = dot(direction[i].xyz, light.direction);
 			float epsilon       = cutoffAngle - cutoffAngle * 0.9f;
@@ -157,7 +157,7 @@ PixelOutputType mainPS(Pixel_PosUv input)
 			light.intensity 	*= attenuation * attenuation;
 			
 			// Erase light if there is no need to compute it
-			light.intensity *= step(theta, cutoffAngle);
+			light.intensity *= step(cutoffAngle, theta);
 		#endif
 		
 		// Accumulate total light amount hitting that pixel (used to modulate ssr later)

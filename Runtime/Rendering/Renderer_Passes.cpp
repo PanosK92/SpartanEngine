@@ -47,9 +47,6 @@ using namespace std;
 using namespace Spartan::Math;
 //============================
 
-static const float GIZMO_MAX_SIZE = 5.0f;
-static const float GIZMO_MIN_SIZE = 0.1f;
-
 namespace Spartan
 {
     void Renderer::Pass_Setup()
@@ -156,20 +153,29 @@ namespace Spartan
 			m_cmd_list->SetShaderVertex(shader_depth);
 			m_cmd_list->SetInputLayout(shader_depth->GetInputLayout());
 			m_cmd_list->SetViewport(shadow_map->GetViewport());
-            // "Pancaking" - https://www.gamedev.net/forums/topic/639036-shadow-mapping-and-high-up-objects/
-            // It's basically a way to capture the silhouettes of potential shadow casters behind the camera.
-            // Of course we also have to make sure that the light doesn't cull them in the first place (this is done automatically by the light)
-            m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid_no_clip);
+
+            // Set appropriate rasterizer state
+            if (light->GetLightType() == LightType_Directional)
+            {
+                // "Pancaking" - https://www.gamedev.net/forums/topic/639036-shadow-mapping-and-high-up-objects/
+                // It's basically a way to capture the silhouettes of potential shadow casters behind the light's view point.
+                // Of course we also have to make sure that the light doesn't cull them in the first place (this is done automatically by the light)
+                m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid_no_clip);
+            }
+            else
+            {
+                m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
+            }
 
 			// Tracking
 			uint32_t currently_bound_geometry = 0;
 
-			for (uint32_t cascade_index = 0; cascade_index < light->GetCascadeCount(); cascade_index++)
+			for (uint32_t i = 0; i < shadow_map->GetArraySize(); i++)
 			{
-				const auto cascade_depth_stencil    = shadow_map->GetResource_DepthStencil(cascade_index);
-                const Matrix& view_projection       = light->GetViewMatrix(cascade_index) * light->GetProjectionMatrix(cascade_index);
+				const auto cascade_depth_stencil    = shadow_map->GetResource_DepthStencil(i);
+                const Matrix& view_projection       = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
 
-				m_cmd_list->Begin("Array_" + to_string(cascade_index + 1));
+				m_cmd_list->Begin("Array_" + to_string(i + 1));
 				m_cmd_list->ClearDepthStencil(cascade_depth_stencil, Clear_Depth, GetClearDepth());
 				m_cmd_list->SetRenderTarget(nullptr, cascade_depth_stencil);
 
@@ -181,7 +187,7 @@ namespace Spartan
 						continue;
 
                     // Skip objects outside of the view frustum
-                    if (!light->IsInViewFrustrum(renderable, cascade_index))
+                    if (!light->IsInViewFrustrum(renderable, i))
                         continue;
 
 					// Acquire material
@@ -212,9 +218,7 @@ namespace Spartan
 
                     // Update uber buffer with cascade transform
                     m_buffer_uber_cpu.transform = entity->GetTransform_PtrRaw()->GetMatrix() * view_projection;
-
-                    // Only updates if needed
-                    UpdateUberBuffer();
+                    UpdateUberBuffer(); // only updates if needed
 
 					m_cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
                     m_cmd_list->Submit();
@@ -1330,8 +1334,9 @@ namespace Spartan
 		const bool draw_picking_ray = m_flags & Render_Debug_PickingRay;
 		const bool draw_aabb		= m_flags & Render_Debug_AABB;
 		const bool draw_grid		= m_flags & Render_Debug_Grid;
+        const bool draw_lights      = m_flags & Render_Debug_Lights;
 		const auto draw_lines		= !m_lines_list_depth_enabled.empty() || !m_lines_list_depth_disabled.empty(); // Any kind of lines, physics, user debug, etc.
-		const auto draw				= draw_picking_ray || draw_aabb || draw_grid || draw_lines;
+		const auto draw				= draw_picking_ray || draw_aabb || draw_grid || draw_lines || draw_lights;
 		if (!draw)
 			return;
 
@@ -1350,6 +1355,23 @@ namespace Spartan
 				const auto& ray = m_camera->GetPickingRay();
 				DrawLine(ray.GetStart(), ray.GetStart() + ray.GetDirection() * m_camera->GetFarPlane(), Vector4(0, 1, 0, 1));
 			}
+
+            // Lights
+            if (draw_lights)
+            {
+                auto& lights = m_entities[Renderer_Object_Light];
+                for (const auto& entity : lights)
+                {
+                    shared_ptr<Light>& light = entity->GetComponent<Light>();
+
+                    if (light->GetLightType() == LightType_Spot)
+                    {
+                        Vector3 start   = light->GetTransform()->GetPosition();
+                        Vector3 end     = light->GetTransform()->GetForward() * light->GetRange();
+                        DrawLine(start, start + end, Vector4(0, 1, 0, 1));
+                    }
+                }
+            }
 
 			// AABBs
 			if (draw_aabb)
@@ -1496,8 +1518,8 @@ namespace Spartan
 				// Compute light screen space position and scale (based on distance from the camera)
 				auto position_light_screen	= m_camera->WorldToScreenPoint(position_light_world);
 				auto distance				= (position_camera_world - position_light_world).Length() + M_EPSILON;
-				auto scale					= GIZMO_MAX_SIZE / distance;
-				scale						= Clamp(scale, GIZMO_MIN_SIZE, GIZMO_MAX_SIZE);
+				auto scale					= m_gizmo_size_max / distance;
+				scale						= Clamp(scale, m_gizmo_size_min, m_gizmo_size_max);
 
 				// Choose texture based on light type
 				shared_ptr<RHI_Texture> light_tex = nullptr;

@@ -46,7 +46,7 @@ namespace Spartan
 		LightType_Spot
 	};
 
-    struct Cascade
+    struct ShadowMap
     {
         Math::Vector3 min       = Math::Vector3::Zero;
         Math::Vector3 max       = Math::Vector3::Zero;
@@ -68,7 +68,7 @@ namespace Spartan
 		void Deserialize(FileStream* stream) override;
 		//============================================
 
-		auto GetLightType() { return m_light_type; }
+        const auto GetLightType() const { return m_light_type; }
 		void SetLightType(LightType type);
 
 		void SetColor(float r, float g, float b, float a)	{ m_color = Math::Vector4(r, g, b, a); }
@@ -98,8 +98,7 @@ namespace Spartan
 		const Math::Matrix& GetViewMatrix(uint32_t index = 0) const;
 		const Math::Matrix& GetProjectionMatrix(uint32_t index = 0) const;
 
-        const uint32_t GetCascadeCount() const { return static_cast<uint32_t>(m_cascades.size()); }
-		const auto& GetShadowMap() const { return m_shadow_map; }
+		const auto& GetShadowMap() const { return m_depth_texture; }
         void CreateShadowMap(bool force);
 
         bool IsInViewFrustrum(Renderable* renderable, uint32_t index) const;
@@ -123,10 +122,11 @@ namespace Spartan
 		Math::Quaternion m_lastRotLight;
 		Math::Vector3 m_lastPosLight;
 		Math::Matrix m_camera_last_view;
-        std::vector<Cascade> m_cascades;
-		
+       	
 		// Shadow map
-		std::shared_ptr<RHI_Texture> m_shadow_map;	
+        std::vector<ShadowMap> m_shadow_maps;
+		std::shared_ptr<RHI_Texture> m_depth_texture;
+
 		Renderer* m_renderer;
 	};
 }
