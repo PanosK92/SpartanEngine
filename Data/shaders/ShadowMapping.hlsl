@@ -176,7 +176,10 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, Light 
 	}
 	#elif SPOT
 	{
-		shadow = 1.0f;
+		float light_to_pixel_distance 	= length(position_world.xyz - light.position);
+		float2 uv 						= project(position_world, light_view_projection[light.index][0]);	
+		float compare 					= (light_to_pixel_distance / light.range) + light.bias;
+		return light_depth_spot.SampleCmpLevelZero(sampler_compare_depth, uv, compare).r;
 	}
 	#endif
 

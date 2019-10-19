@@ -67,7 +67,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 #endif
 
 #if PASS_TEXTURE
-	color = sourceTexture.Sample(sampler_point_clamp, texCoord);
+	color = sourceTexture.Sample(sampler_bilinear_clamp, texCoord);
 #endif
 
 #if PASS_FXAA

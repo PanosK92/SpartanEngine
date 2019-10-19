@@ -49,7 +49,6 @@ namespace Spartan
 		REGISTER_ATTRIBUTE_GET_SET(GetLightType, SetLightType, LightType);
 
 		m_renderer = m_context->GetSubsystem<Renderer>().get();
-        m_cascades = vector<Cascade>(g_cascade_count);
 	}
 
 	void Light::OnInitialize()
@@ -101,12 +100,16 @@ namespace Spartan
 		// Update shadow map(s)
         if (m_cast_shadows)
         {
-            ComputeCascadeSplits();
+            if (m_light_type == LightType_Directional)
+            {
+                ComputeCascadeSplits();
+            }
+
             ComputeViewMatrix();
 
-            if (m_shadow_map)
+            if (m_depth_texture)
             {
-                for (uint32_t i = 0; i < m_shadow_map->GetArraySize(); i++)
+                for (uint32_t i = 0; i < m_depth_texture->GetArraySize(); i++)
                 {
                     ComputeProjectionMatrix(i);
                 }
@@ -189,11 +192,11 @@ namespace Spartan
 		{
             for (uint32_t i = 0; i < g_cascade_count; i++)
             {
-                Cascade& cascade    = m_cascades[i];
-                Vector3 position    = cascade.center - GetDirection() * cascade.max.z;
-                Vector3 target      = cascade.center;
-                Vector3 up          = Vector3::Up;
-                m_matrix_view[i]    = Matrix::CreateLookAtLH(position, target, up);
+                ShadowMap& shadow_map   = m_shadow_maps[i];
+                Vector3 position        = shadow_map.center - GetDirection() * shadow_map.max.z;
+                Vector3 target          = shadow_map.center;
+                Vector3 up              = Vector3::Up;
+                m_matrix_view[i]        = Matrix::CreateLookAtLH(position, target, up);
             }
 		}
 		else if (m_light_type == LightType_Spot)
@@ -221,17 +224,17 @@ namespace Spartan
 
 	bool Light::ComputeProjectionMatrix(uint32_t index /*= 0*/)
 	{
-		if (index >= m_shadow_map->GetArraySize())
+		if (index >= m_depth_texture->GetArraySize())
         {
             LOG_ERROR_INVALID_PARAMETER();
             return false;
         }
 
+        ShadowMap& cascade = m_shadow_maps[index];
         const bool reverse_z = m_renderer ? m_renderer->GetReverseZ() : false;
 
 		if (m_light_type == LightType_Directional)
 		{
-            Cascade& cascade            = m_cascades[index];
             const float cascade_depth   = (cascade.max.z - cascade.min.z) * 10.0f;
             const float min_z           = reverse_z ? cascade_depth : 0.0f;
             const float max_z           = reverse_z ? 0.0f : cascade_depth;
@@ -240,13 +243,14 @@ namespace Spartan
 		}
 		else
 		{
-			const auto width			= static_cast<float>(m_shadow_map->GetWidth());
-			const auto height			= static_cast<float>(m_shadow_map->GetHeight());		
+			const float width			= static_cast<float>(m_depth_texture->GetWidth());
+			const float height			= static_cast<float>(m_depth_texture->GetHeight());
 			const auto aspect_ratio		= width / height;
 			const float fov				= (m_light_type == LightType_Spot) ? m_angle_rad : 1.57079633f; // 1.57079633 = 90 deg
 			const float near_plane		= reverse_z ? m_range : 0.0f;
 			const float far_plane		= reverse_z ? 0.0f : m_range;
 			m_matrix_projection[index]	= Matrix::CreatePerspectiveFieldOfViewLH(fov, aspect_ratio, near_plane, far_plane);
+            cascade.frustum             = Frustum(m_matrix_view[index], m_matrix_projection[index], far_plane);
 		}
 
 		return true;
@@ -347,7 +351,7 @@ namespace Spartan
                 // Since a sphere is rotational invariant it will keep the size of the orthographic
                 // projection frustum same independent of eye view direction, hence eliminating shimmering.
 
-                Cascade& cascade = m_cascades[i];
+                ShadowMap& cascade = m_shadow_maps[i];
 
                 // Compute center
                 cascade.center = Vector3::Zero;
@@ -378,7 +382,7 @@ namespace Spartan
 		if (!m_cast_shadows)
 			return;
 
-        if (m_shadow_map && !force)
+        if (m_depth_texture && !force)
             return;
 
  		uint32_t resolution = m_renderer->GetShadowResolution();
@@ -386,15 +390,18 @@ namespace Spartan
 
 		if (GetLightType() == LightType_Directional)
 		{
-			m_shadow_map = make_unique<RHI_Texture2D>(m_context, resolution, resolution, Format_D32_FLOAT, g_cascade_count);
+			m_depth_texture = make_unique<RHI_Texture2D>(m_context, resolution, resolution, Format_D32_FLOAT, g_cascade_count);
+            m_shadow_maps   = vector<ShadowMap>(g_cascade_count);
 		}
 		else if (GetLightType() == LightType_Point)
 		{
-			m_shadow_map = make_unique<RHI_TextureCube>(m_context, resolution, resolution, Format_D32_FLOAT);			
+			m_depth_texture = make_unique<RHI_TextureCube>(m_context, resolution, resolution, Format_D32_FLOAT);
+            m_shadow_maps   = vector<ShadowMap>(6);
 		}
 		else if (GetLightType() == LightType_Spot)
 		{
-			m_shadow_map = make_unique<RHI_Texture2D>(m_context, resolution, resolution, Format_D32_FLOAT, 1);
+			m_depth_texture = make_unique<RHI_Texture2D>(m_context, resolution, resolution, Format_D32_FLOAT, 1);
+            m_shadow_maps   = vector<ShadowMap>(1);
 		}
 	}
 
@@ -405,8 +412,8 @@ namespace Spartan
         const auto extents      = box.GetExtents();
 
         // ensure that potential shadow casters from behind the near plane are not rejected
-        bool ignore_near_plane = true; 
+        bool ignore_near_plane = (m_light_type == LightType_Directional) ? true : false; 
 
-        return m_cascades[index].frustum.IsVisible(center, extents, ignore_near_plane);
+        return m_shadow_maps[index].frustum.IsVisible(center, extents, ignore_near_plane);
     }
 }  

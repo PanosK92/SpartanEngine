@@ -92,7 +92,7 @@ namespace Spartan
 		void SetShadingMode(const ShadingMode shading_mode)					{ m_shading_mode = shading_mode; }
 
 		const auto& GetColorAlbedo() const									{ return m_color_albedo; }
-		void SetColorAlbedo(const Math::Vector4& color)						{ m_color_albedo = color; }
+        void SetColorAlbedo(const Math::Vector4& color);
 		
 		const auto& GetTiling() const										{ return m_uv_tiling; }
 		void SetTiling(const Math::Vector2& tiling)							{ m_uv_tiling = tiling; }

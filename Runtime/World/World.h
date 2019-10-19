@@ -59,6 +59,7 @@ namespace Spartan
 		bool SaveToFile(const std::string& filePath);
 		bool LoadFromFile(const std::string& file_path);
 		const auto& GetName() const { return m_name; }
+        void MakeDirty() { m_is_dirty = true; }
 
 		//= Entities ===========================================================================
 		std::shared_ptr<Entity>& EntityCreate(bool is_active = true);
