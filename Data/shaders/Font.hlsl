@@ -23,8 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common.hlsl"
 //====================
 
-Texture2D textureAtlas 	: register(t0);
-SamplerState texSampler : register(s0);
+Texture2D textureAtlas : register(t0);
 
 Pixel_PosUv mainVS(Vertex_PosUv input)
 {
@@ -42,7 +41,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 	float4 finalColor = float4(0.0f, 0.0f, 0.0f, 1.0f);
 	
 	// Sample text from texture atlas
-	finalColor.r = textureAtlas.Sample(texSampler, input.uv).r;
+	finalColor.r = textureAtlas.Sample(sampler_bilinear_wrap, input.uv).r;
 	finalColor.g = finalColor.r;
 	finalColor.b = finalColor.r;
 	finalColor.a = finalColor.r;

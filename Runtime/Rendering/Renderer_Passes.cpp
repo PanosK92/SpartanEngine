@@ -1088,6 +1088,7 @@ namespace Spartan
         };
 
 		// Upsample + blend
+        m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from some previous pass)
         for (int i = static_cast<int>(m_render_tex_bloom.size() - 1); i > 0; i--)
         {
             upsample(m_render_tex_bloom[i], m_render_tex_bloom[i - 1]);
