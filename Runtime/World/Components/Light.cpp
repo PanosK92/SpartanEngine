@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Transform.h"
 #include "Camera.h"
 #include "Renderable.h"
+#include "../World.h"
 #include "../../IO/FileStream.h"
 #include "../../Rendering/Renderer.h"
 #include "../../RHI/RHI_Texture2D.h"
@@ -63,17 +64,6 @@ namespace Spartan
 
 	void Light::OnTick(float delta_time)
 	{
-        CreateShadowMap(false);
-
-		// Position and rotation dirty check
-		if (m_lastPosLight != GetTransform()->GetPosition() || m_lastRotLight != GetTransform()->GetRotation())
-		{
-			m_lastPosLight = GetTransform()->GetPosition();
-			m_lastRotLight = GetTransform()->GetRotation();
-
-			m_is_dirty = true;
-		}
-
         // Used in many places, no point in continuing without it
         if (!m_renderer)
         {
@@ -81,14 +71,25 @@ namespace Spartan
             return;
         }
 
-		// Camera dirty check (need for directional light cascade computations
+        CreateShadowMap(false);
+
+		// Position and rotation dirty check
+		if (m_previous_pos != GetTransform()->GetPosition() || m_previous_rot != GetTransform()->GetRotation())
+		{
+			m_previous_pos = GetTransform()->GetPosition();
+			m_previous_rot = GetTransform()->GetRotation();
+
+			m_is_dirty = true;
+		}
+
+		// Camera dirty check (needed for directional light cascade computations)
 		if (m_light_type == LightType_Directional)
 		{
 			if (auto& camera = m_renderer->GetCamera())
 			{
-				if (m_camera_last_view != camera->GetViewMatrix())
+				if (m_previous_camera_view != camera->GetViewMatrix())
 				{
-                    m_camera_last_view = camera->GetViewMatrix();
+                    m_previous_camera_view = camera->GetViewMatrix();
 					m_is_dirty = true;
 				}
 			}
@@ -148,13 +149,14 @@ namespace Spartan
         if (m_light_type == type)
             return;
 
-		m_light_type    = type;
-		m_is_dirty      = true;
-
         if (m_cast_shadows)
         {
             CreateShadowMap(true);
         }
+
+        m_light_type    = type;
+        m_is_dirty      = true;
+        m_context->GetSubsystem<World>()->MakeDirty();
 	}
 
 	void Light::SetCastShadows(bool cast_shadows)
@@ -162,12 +164,13 @@ namespace Spartan
 		if (m_cast_shadows == cast_shadows)
 			return;
 
-		m_cast_shadows = cast_shadows;
-
-        if (m_cast_shadows)
+        if (cast_shadows)
         {
             CreateShadowMap(true);
         }
+
+        m_cast_shadows  = cast_shadows;
+        m_is_dirty      = true;
 	}
 
 	void Light::SetRange(float range)

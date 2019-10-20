@@ -119,9 +119,9 @@ namespace Spartan
 		Math::Vector4 m_color   = Math::Vector4(1.0f, 0.76f, 0.57f, 1.0f);
 		std::array<Math::Matrix, 6> m_matrix_view;
 		std::array<Math::Matrix, 6> m_matrix_projection;
-		Math::Quaternion m_lastRotLight;
-		Math::Vector3 m_lastPosLight;
-		Math::Matrix m_camera_last_view;
+        Math::Quaternion m_previous_rot     = Math::Quaternion::Identity;
+        Math::Vector3 m_previous_pos        = Math::Vector3::Infinity;
+        Math::Matrix m_previous_camera_view = Math::Matrix::Identity;
        	
 		// Shadow map
         std::vector<ShadowMap> m_shadow_maps;
