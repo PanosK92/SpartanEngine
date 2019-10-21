@@ -49,6 +49,7 @@ namespace Spartan
         // String operations
         static bool IsEmptyOrWhitespace(const std::string& var);
         static bool IsAlphanumeric(const std::string& var);
+        static std::string GetStringBeforeExpression(const std::string& str, const std::string& exp);
         static std::string GetStringAfterExpression(const std::string& str, const std::string& exp);
         static std::string GetStringBetweenExpressions(const std::string& str, const std::string& exp_a, const std::string& exp_b);
         static std::string ConvertToUppercase(const std::string& lower);

@@ -48,6 +48,56 @@ enum FileDialog_Filter
 	FileDialog_Filter_Model
 };
 
+class FileDialogDirectory
+{
+public:
+    bool Set(const std::string& directory)
+    {
+        if (!Spartan::FileSystem::IsDirectory(directory))
+            return false;
+
+        backward = current;
+        current  = directory;
+
+        tree_path.clear();
+        tree_label.clear();
+        std::string parent_dir = Spartan::FileSystem::GetParentDirectory(current);
+        if (!parent_dir.empty())
+        {
+            while (!parent_dir.empty())
+            {
+                tree_path.emplace_back(parent_dir);
+
+                std::string label = parent_dir.substr(0, parent_dir.length() - 1);  // remove last slash
+                label = Spartan::FileSystem::GetStringAfterExpression(label, "/");  // Get string after new last slash
+                if (!label.empty())
+                {
+                    tree_label.emplace_back(label);
+                }
+                else
+                {
+                    tree_label.emplace_back(parent_dir);
+                }
+
+                parent_dir = Spartan::FileSystem::GetParentDirectory(parent_dir);
+            }
+        }
+        else
+        {
+           tree_path.emplace_back(current);
+           tree_label.emplace_back(Spartan::FileSystem::GetStringBeforeExpression(current, "/"));
+        }
+
+        return true;
+    }
+
+    std::string current;
+    std::string backward;
+    std::string forward;
+    std::vector<std::string> tree_path;
+    std::vector<std::string> tree_label;
+};
+
 class FileDialogItem
 {
 public:
@@ -114,22 +164,35 @@ private:
 	void ItemContextMenu(FileDialogItem* item);
 
 	// Misc
-    bool DialogSetCurrentPath(const std::string& path);
     bool DialogUpdateFromDirectory(const std::string& path);
 	void EmptyAreaContextMenu();
 
-	FileDialog_Type m_type;
-	FileDialog_Operation m_operation;
-	FileDialog_Filter m_filter;
+    // Options
+    const bool m_drop_shadow    = true;
+    const float m_item_size_min = 50.0f;
+    const float m_item_size_max = 200.0f;
 
-	std::string m_title;
-	std::string m_current_directory;
-	std::string m_input_box;
-	std::vector<FileDialogItem> m_items;
-    Spartan::Math::Vector2 m_item_size;
+    // Flags
 	bool m_is_window;
 	bool m_selection_made;
 	bool m_is_dirty;
+    bool m_is_hovering_item;    
+    bool m_is_hovering_window;
+    std::string m_title;
+    FileDialogDirectory m_directory;
+    std::string m_input_box;
+    std::string m_hovered_item_path;
+    uint32_t m_displayed_item_count;
+
+    // Misc
+    mutable unsigned int m_context_menu_id;
+    mutable ImGuiEx::DragDropPayload m_drag_drop_payload;
+    FileDialog_Type m_type;
+    FileDialog_Operation m_operation;
+    FileDialog_Filter m_filter;
+    std::vector<FileDialogItem> m_items;
+    Spartan::Math::Vector2 m_item_size;
+    ImGuiTextFilter m_search_filter;
 	Spartan::Context* m_context;
 
 	// Callbacks
