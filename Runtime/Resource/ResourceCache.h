@@ -188,7 +188,7 @@ namespace Spartan
 		void SetProjectDirectory(const std::string& directory);
 		std::string GetProjectDirectoryAbsolute() const;
 		const auto& GetProjectDirectory() const	{ return m_project_directory; }
-        auto GetDataDirectory() const			{ return "Data//"; }
+        auto GetDataDirectory() const			{ return "Data/"; }
 		//=====================================================================
 
 		// Importers

@@ -206,20 +206,25 @@ namespace Spartan
         return true;
     }
 
-    string FileSystem::GetStringAfterExpression(const string& str, const string& expression)
+    string FileSystem::GetStringBeforeExpression(const string& str, const string& exp)
     {
-        // ("The quick brown fox", "brown") -> "brown fox"
-        auto position = str.find(expression);
-        auto remaining = position != string::npos ? str.substr(position + expression.length()) : str;
-
-        return remaining;
+        // ("The quick brown fox", "brown") -> "The quick "
+        size_t position = str.find(exp);
+        return position != string::npos ? str.substr(0, position) : "";
     }
 
-    string FileSystem::GetStringBetweenExpressions(const string& str, const string& firstExpression, const string& secondExpression)
+    string FileSystem::GetStringAfterExpression(const string& str, const string& exp)
+    {
+        // ("The quick brown fox", "brown") -> "fox"
+        size_t position = str.find(exp);
+        return position != string::npos ? str.substr(position + exp.length()) : "";
+    }
+
+    string FileSystem::GetStringBetweenExpressions(const string& str, const string& exp_a, const string& exp_b)
     {
         // ("The quick brown fox", "The ", " brown") -> "quick"
 
-        regex base_regex(firstExpression + "(.*)" + secondExpression);
+        regex base_regex(exp_a + "(.*)" + exp_b);
 
         smatch base_match;
         if (regex_search(str, base_match, base_regex))
@@ -863,8 +868,8 @@ namespace Spartan
 		auto result	= directory;
 
 		// If no slash was found, return provided string
-		if (found == string::npos)
-			return directory;
+        if (found == string::npos)
+            return "";
 
 		// If the slash was find at the last position, remove it and try again
 		if (found == directory.length() - 1)

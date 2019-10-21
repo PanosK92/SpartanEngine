@@ -75,6 +75,9 @@ void Widget_Assets::Tick()
 
 void Widget_Assets::OnPathClicked(const std::string& path)
 {
+    if (!FileSystem::IsFile(path))
+        return;
+
 	if (FileSystem::IsEngineMaterialFile(path))
 	{
 		const auto material = m_context->GetSubsystem<ResourceCache>()->Load<Material>(path);
