@@ -88,7 +88,7 @@ namespace Spartan
         // Acquire default settings
         Reflect();
 
-        if (FileSystem::FileExists(_Settings::file_name))
+        if (FileSystem::Exists(_Settings::file_name))
         {
             Load();
             Map();

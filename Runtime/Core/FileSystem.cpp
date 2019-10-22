@@ -30,10 +30,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <shellapi.h>
 //=========================
 
-//= NAMESPACES =================
+//= NAMESPACES =====
 using namespace std;
-using namespace std::filesystem;
-//==============================
+//==================
 
 namespace Spartan
 {
@@ -319,106 +318,89 @@ namespace Spartan
         return file_paths;
     }
 
+    void FileSystem::OpenDirectoryWindow(const string& directory)
+    {
+        ShellExecute(nullptr, nullptr, StringToWstring(directory).c_str(), nullptr, nullptr, SW_SHOW);
+    }
+
     bool FileSystem::CreateDirectory_(const string& path)
 	{
 		try
 		{
-			return create_directories(path);
+			return filesystem::create_directories(path);
 		}
-		catch (filesystem_error& e)
+		catch (filesystem::filesystem_error& e)
 		{
 			LOG_WARNING("%s, %s", e.what(), path.c_str());
 			return true;
 		}
 	}
 
-	bool FileSystem::DeleteDirectory(const string& directory)
+	bool FileSystem::DeleteDirectory(const string& path)
 	{
 		try
 		{
-			return remove_all(directory);
+			return filesystem::remove_all(path);
 		}
-		catch (filesystem_error& e)
+		catch (filesystem::filesystem_error& e)
 		{
-			LOG_WARNING("s, %s", e.what(), directory.c_str());
+			LOG_WARNING("s, %s", e.what(), path.c_str());
 			return true;
 		}
 	}
 
-	bool FileSystem::DirectoryExists(const string& directory)
+    bool FileSystem::Exists(const string& path)
 	{
 		try
 		{
-			return exists(directory);
+			return filesystem::exists(path);
 		}
-		catch (filesystem_error& e)
+		catch (filesystem::filesystem_error& e)
 		{
-			LOG_WARNING("%s, %s", e.what(), directory.c_str());
-			return true;
-		}
-	}
-
-	bool FileSystem::IsDirectory(const string& directory)
-	{
-        if (IsEmptyOrWhitespace(directory))
-            return false;
-
-		try
-		{
-			return is_directory(directory);
-		}
-		catch (filesystem_error& e)
-		{
-			LOG_WARNING("%s, %s", e.what(), directory.c_str());
+			LOG_WARNING("%s, %s", e.what(), path.c_str());
 			return false;
 		}
 	}
 
-	void FileSystem::OpenDirectoryWindow(const std::string& directory)
-	{
-		ShellExecute(nullptr, nullptr, StringToWstring(directory).c_str(), nullptr, nullptr, SW_SHOW);
-	}
-
-    bool FileSystem::FileExists(const string& file_path)
-	{
-		try
-		{
-			return exists(file_path);
-		}
-		catch (filesystem_error& e)
-		{
-			LOG_WARNING("%s, %s", e.what(), file_path.c_str());
-			return true;
-		}
-	}
-
-    bool FileSystem::IsFile(const string& file_path)
+    bool FileSystem::IsFile(const string& path)
     {
-        if (IsEmptyOrWhitespace(file_path))
+        try
+        {
+            return filesystem::is_regular_file(path);
+        }
+        catch (filesystem::filesystem_error & e)
+        {
+            LOG_WARNING("%s, %s", e.what(), path.c_str());
             return false;
-
-        if (IsDirectory(file_path))
-            return false;
-
-        if (IsEmptyOrWhitespace(GetExtensionFromFilePath(file_path)))
-            return false;
-
-        return true;
+        }
     }
 
-	bool FileSystem::DeleteFile_(const string& file_path)
+    bool FileSystem::IsDirectory(const string& path)
+    {
+        try
+        {
+            return filesystem::is_directory(path);
+        }
+        catch (filesystem::filesystem_error & e)
+        {
+            LOG_WARNING("%s, %s", e.what(), path.c_str());
+            return false;
+        }
+    }
+
+	bool FileSystem::DeleteFile_(const string& path)
 	{
 		// If this is a directory path, return
-		if (is_directory(file_path))
+		if (filesystem::is_directory(path))
 			return false;
 
 		try
 		{
-			return remove(file_path.c_str()) == 0;
+			return remove(path.c_str()) == 0;
 		}
-		catch (filesystem_error& e)
+		catch (filesystem::filesystem_error& e)
 		{
-			LOG_WARNING("%s, %s", e.what(), file_path.c_str());
+			LOG_WARNING("%s, %s", e.what(), path.c_str());
 			return true;
 		}
 	}
@@ -429,105 +411,111 @@ namespace Spartan
 			return true;
 
 		// In case the destination path doesn't exist, create it
-		if (!DirectoryExists(GetDirectoryFromFilePath(destination)))
+		if (!Exists(GetDirectoryFromFilePath(destination)))
 		{
 			CreateDirectory_(GetDirectoryFromFilePath(destination));
 		}
 
 		try 
 		{
-			return copy_file(source, destination, copy_options::overwrite_existing);
+			return filesystem::copy_file(source, destination, filesystem::copy_options::overwrite_existing);
 		}
-		catch (filesystem_error& e) 
+		catch (filesystem::filesystem_error& e)
 		{
 			LOG_WARNING("%s", e.what());
 			return true;
 		}
 	}
 
-    string FileSystem::GetFileNameFromFilePath(const string& file_path)
+    string FileSystem::GetFileNameFromFilePath(const string& path)
 	{
-        size_t last_index = file_path.find_last_of("\\/");
+        if (!Exists(path))
+        {
+            LOG_WARNING("\"%s\" is not a valid path", path.c_str());
+            return "";
+        }
 
-        if (last_index != string::npos)
-		    return file_path.substr(last_index + 1, file_path.length());
+        filesystem::path fs_path = path;
+        if (!fs_path.has_filename())
+        {
+            LOG_WARNING("Failed to extract file name from \"%s\"", path.c_str());
+            return "";
+        }
 
-        LOG_WARNING("Failed to extract file name from \"%s\"", file_path.c_str());
-		return "";
+        return fs_path.filename().generic_string();
 	}
 
-	string FileSystem::GetFileNameNoExtensionFromFilePath(const string& file_path)
+	string FileSystem::GetFileNameNoExtensionFromFilePath(const string& path)
 	{
-		auto file_name		= GetFileNameFromFilePath(file_path);
+		auto file_name		= GetFileNameFromFilePath(path);
         size_t last_index	= file_name.find_last_of('.');
 
         if (last_index != string::npos)
 		    return file_name.substr(0, last_index);
 
-        LOG_WARNING("Failed to extract file name from \"%s\"", file_path.c_str());
+        LOG_WARNING("Failed to extract file name from \"%s\"", path.c_str());
 		return "";
 	}
 
-    string FileSystem::GetDirectoryFromFilePath(const string& file_path)
+    string FileSystem::GetDirectoryFromFilePath(const string& path)
 	{
-        size_t last_index = file_path.find_last_of("\\/");
+        size_t last_index = path.find_last_of("\\/");
 
         if (last_index != string::npos)
-		    return file_path.substr(0, last_index + 1);
+		    return path.substr(0, last_index + 1);
 
-        LOG_WARNING("Failed to extract directory from \"%s\"", file_path.c_str());
+        LOG_WARNING("Failed to extract directory from \"%s\"", path.c_str());
 		return "";
 	}
 
-	string FileSystem::GetFilePathWithoutExtension(const string& file_path)
+	string FileSystem::GetFilePathWithoutExtension(const string& path)
 	{
-		auto directory		= GetDirectoryFromFilePath(file_path);
-		auto fileNameNoExt	= GetFileNameNoExtensionFromFilePath(file_path);
+		auto directory		= GetDirectoryFromFilePath(path);
+		auto fileNameNoExt	= GetFileNameNoExtensionFromFilePath(path);
 
 		return directory + fileNameNoExt;
 	}
 
-	string FileSystem::GetExtensionFromFilePath(const string& file_path)
+	string FileSystem::GetExtensionFromFilePath(const string& path)
 	{
-		if (IsEmptyOrWhitespace(file_path))
-			return "";
+        if (!IsFile(path))
+        {
+            LOG_WARNING("\"%s\" is not a file path", path.c_str());
+            return "";
+        }
 
-        size_t last_index = file_path.find_last_of('.');
-        if (last_index != string::npos)
-		{
-            string extention            = file_path.substr(last_index + 1, file_path.length());
-            string extention_with_dot   = file_path.substr(last_index, file_path.length());
+        filesystem::path fs_path = path;
 
-            // Try to ensure we didn't grab something totally random
-            if (IsAlphanumeric(extention))
-                return extention_with_dot;
-		}
+        if (!fs_path.has_extension())
+        {
+            LOG_WARNING("\"%s\" has no extension", path.c_str());
+            return "";   
+        }
 
-        LOG_WARNING("Failed to extract file format from \"%s\"", file_path.c_str());
-		return "";
+        return fs_path.extension().generic_string();
 	}
 
-    string FileSystem::NativizeFilePath(const string& file_path)
+    string FileSystem::NativizeFilePath(const string& path)
     {
-        string file_path_no_ext = GetFilePathWithoutExtension(file_path);
+        string file_path_no_ext = GetFilePathWithoutExtension(path);
 
-        if (IsSupportedAudioFile(file_path))    return file_path_no_ext + EXTENSION_AUDIO;
-        if (IsSupportedImageFile(file_path))    return file_path_no_ext + EXTENSION_TEXTURE;
-        if (IsSupportedModelFile(file_path))    return file_path_no_ext + EXTENSION_MODEL;
-        if (IsSupportedFontFile(file_path))     return file_path_no_ext + EXTENSION_FONT;
-        if (IsSupportedShaderFile(file_path))   return file_path_no_ext + EXTENSION_SHADER;
+        if (IsSupportedAudioFile(path))    return file_path_no_ext + EXTENSION_AUDIO;
+        if (IsSupportedImageFile(path))    return file_path_no_ext + EXTENSION_TEXTURE;
+        if (IsSupportedModelFile(path))    return file_path_no_ext + EXTENSION_MODEL;
+        if (IsSupportedFontFile(path))     return file_path_no_ext + EXTENSION_FONT;
+        if (IsSupportedShaderFile(path))   return file_path_no_ext + EXTENSION_SHADER;
 
         LOG_WARNING("Failed to nativize file path");
-        return file_path;
+        return path;
     }
 
-    vector<string> FileSystem::GetDirectoriesInDirectory(const string& directory)
+    vector<string> FileSystem::GetDirectoriesInDirectory(const string& path)
 	{
 		vector<string> directories;
-		directory_iterator it_end; // default construction yields past-the-end
-		for (directory_iterator it(directory); it != it_end; ++it)
+        filesystem::directory_iterator it_end; // default construction yields past-the-end
+		for (filesystem::directory_iterator it(path); it != it_end; ++it)
 		{
-			if (!is_directory(it->status()))
+			if (!filesystem::is_directory(it->status()))
 				continue;
 
             string path;
@@ -557,13 +545,13 @@ namespace Spartan
 		return directories;
 	}
 
-	vector<string> FileSystem::GetFilesInDirectory(const string& directory)
+	vector<string> FileSystem::GetFilesInDirectory(const string& path)
 	{
 		vector<string> file_paths;
-		directory_iterator it_end; // default construction yields past-the-end
-		for (directory_iterator it(directory); it != it_end; ++it)
+        filesystem::directory_iterator it_end; // default construction yields past-the-end
+		for (filesystem::directory_iterator it(path); it != it_end; ++it)
 		{
-			if (!is_regular_file(it->status()))
+			if (!filesystem::is_regular_file(it->status()))
 				continue;
 
             try
@@ -581,120 +569,14 @@ namespace Spartan
 		return file_paths;
 	}
 
-	vector<string> FileSystem::GetSupportedFilesInDirectory(const string& directory)
-	{
-		vector<string> filesInDirectory		= GetFilesInDirectory(directory);
-		vector<string> imagesInDirectory	= GetSupportedImageFilesFromPaths(filesInDirectory); // get all the images
-		vector<string> scriptsInDirectory	= GetSupportedScriptFilesFromPaths(filesInDirectory); // get all the scripts
-		vector<string> modelsInDirectory	= GetSupportedModelFilesFromPaths(filesInDirectory); // get all the models
-		vector<string> supportedFiles;
-
-		// get supported images
-		for (const auto& imageInDirectory : imagesInDirectory)
-		{
-			supportedFiles.emplace_back(imageInDirectory);
-		}
-
-		// get supported scripts
-		for (const auto& scriptInDirectory : scriptsInDirectory)
-		{
-			supportedFiles.emplace_back(scriptInDirectory);
-		}
-
-		// get supported models
-		for (const auto& modelInDirectory : modelsInDirectory)
-		{
-			supportedFiles.emplace_back(modelInDirectory);
-		}
-
-		return supportedFiles;
-	}
-
-	vector<string> FileSystem::GetSupportedImageFilesFromPaths(const vector<string>& paths)
-	{
-		vector<string> imageFiles;
-		for (const auto& path : paths)
-		{
-			if (!IsSupportedImageFile(path))
-				continue;
-
-			imageFiles.emplace_back(path);
-		}
-
-		return imageFiles;
-	}
-
-	vector<string> FileSystem::GetSupportedAudioFilesFromPaths(const vector<string>& paths)
-	{
-		vector<string> audioFiles;
-		for (const auto& path : paths)
-		{
-			if (!IsSupportedAudioFile(path))
-				continue;
-
-			audioFiles.emplace_back(path);
-		}
-
-		return audioFiles;
-	}
-
-	vector<string> FileSystem::GetSupportedScriptFilesFromPaths(const vector<string>& paths)
-	{
-		vector<string> scripts;
-		for (const auto& path : paths)
-		{
-			if (!IsEngineScriptFile(path))
-				continue;
-
-			scripts.emplace_back(path);
-		}
-
-		return scripts;
-	}
-
-	vector<string> FileSystem::GetSupportedModelFilesFromPaths(const vector<string>& paths)
-	{
-		vector<string> images;
-		for (const auto& path : paths)
-		{
-			if (!IsSupportedModelFile(path))
-				continue;
-
-			images.emplace_back(path);
-		}
-
-		return images;
-	}
-
-	vector<string> FileSystem::GetSupportedModelFilesInDirectory(const string& directory)
-	{
-		return GetSupportedModelFilesFromPaths(GetFilesInDirectory(directory));
-	}
-
-	vector<string> FileSystem::GetSupportedSceneFilesInDirectory(const string& directory)
-	{
-		vector<string> sceneFiles;
-
-		auto files = GetFilesInDirectory(directory);
-		for (const auto& file : files)
-		{
-			if (!IsEngineSceneFile(file))
-				continue;
-
-			sceneFiles.emplace_back(file);
-		}
-
-		return sceneFiles;
-	}
-
 	bool FileSystem::IsSupportedAudioFile(const string& path)
 	{
-		string fileExt = GetExtensionFromFilePath(path);
+		string extension = GetExtensionFromFilePath(path);
 
 		auto supportedFormats = GetSupportedAudioFormats();
 		for (const auto& format : supportedFormats)
 		{
-			if (fileExt == format || fileExt == ConvertToUppercase(format))
+			if (extension == format || extension == ConvertToUppercase(format))
 				return true;
 		}
 
@@ -703,12 +585,12 @@ namespace Spartan
 
 	bool FileSystem::IsSupportedImageFile(const string& path)
 	{
-		string fileExt = GetExtensionFromFilePath(path);
+		string extension = GetExtensionFromFilePath(path);
 
 		auto supportedFormats = GetSupportedImageFormats();
 		for (const auto& format : supportedFormats)
 		{
-			if (fileExt == format || fileExt == ConvertToUppercase(format))
+			if (extension == format || extension == ConvertToUppercase(format))
 				return true;
 		}
 		
@@ -720,12 +602,12 @@ namespace Spartan
 
 	bool FileSystem::IsSupportedModelFile(const string& path)
 	{
-		string fileExt = GetExtensionFromFilePath(path);
+		string extension = GetExtensionFromFilePath(path);
 
 		auto supportedFormats = GetSupportedModelFormats();
 		for (const auto& format : supportedFormats)
 		{
-			if (fileExt == format || fileExt == ConvertToUppercase(format))
+			if (extension == format || extension == ConvertToUppercase(format))
 				return true;
 		}
 
@@ -734,12 +616,12 @@ namespace Spartan
 
 	bool FileSystem::IsSupportedShaderFile(const string& path)
 	{
-		string fileExt = GetExtensionFromFilePath(path);
+		string extension = GetExtensionFromFilePath(path);
 
 		auto supportedFormats = GetSupportedShaderFormats();
 		for (const auto& format : supportedFormats)
 		{
-			if (fileExt == format || fileExt == ConvertToUppercase(format))
+			if (extension == format || extension == ConvertToUppercase(format))
 				return true;
 		}
 
@@ -748,12 +630,12 @@ namespace Spartan
 
 	bool FileSystem::IsSupportedFontFile(const string& path)
 	{
-		string fileExt = GetExtensionFromFilePath(path);
+		string extension = GetExtensionFromFilePath(path);
 
 		auto supportedFormats = GetSupportedFontFormats();
 		for (const auto& format : supportedFormats)
 		{
-			if (fileExt == format || fileExt == ConvertToUppercase(format))
+			if (extension == format || extension == ConvertToUppercase(format))
 				return true;
 		}
 
@@ -762,88 +644,196 @@ namespace Spartan
 
 	bool FileSystem::IsEngineScriptFile(const string& path)
 	{
-		string fileExt = GetExtensionFromFilePath(path);
+		string extension = GetExtensionFromFilePath(path);
 
 		auto supportedFormats = GetSupportedScriptFormats();
 		for (const auto& format : supportedFormats)
 		{
-			if (fileExt == format || fileExt == ConvertToUppercase(format))
+			if (extension == format || extension == ConvertToUppercase(format))
 				return true;
 		}
 
 		return false;
 	}
 
-	bool FileSystem::IsEnginePrefabFile(const string& filePath)
+	bool FileSystem::IsEnginePrefabFile(const string& path)
 	{
-		return GetExtensionFromFilePath(filePath) == EXTENSION_PREFAB;
+		return GetExtensionFromFilePath(path) == EXTENSION_PREFAB;
 	}
 
-	bool FileSystem::IsEngineModelFile(const string& filePath)
+	bool FileSystem::IsEngineModelFile(const string& path)
 	{
-		return GetExtensionFromFilePath(filePath) == EXTENSION_MODEL;
+		return GetExtensionFromFilePath(path) == EXTENSION_MODEL;
 	}
 
-	bool FileSystem::IsEngineMaterialFile(const string& filePath)
+	bool FileSystem::IsEngineMaterialFile(const string& path)
 	{
-		return GetExtensionFromFilePath(filePath) == EXTENSION_MATERIAL;
+		return GetExtensionFromFilePath(path) == EXTENSION_MATERIAL;
 	}
 
-	bool FileSystem::IsEngineMeshFile(const string& filePath)
+	bool FileSystem::IsEngineMeshFile(const string& path)
 	{
-		return GetExtensionFromFilePath(filePath) == EXTENSION_MESH;
+		return GetExtensionFromFilePath(path) == EXTENSION_MESH;
 	}
 
-	bool FileSystem::IsEngineSceneFile(const string& filePath)
+	bool FileSystem::IsEngineSceneFile(const string& path)
 	{
-		return GetExtensionFromFilePath(filePath) == EXTENSION_WORLD;
+		return GetExtensionFromFilePath(path) == EXTENSION_WORLD;
 	}
 
-	bool FileSystem::IsEngineTextureFile(const string& filePath)
+	bool FileSystem::IsEngineTextureFile(const string& path)
 	{
-		return GetExtensionFromFilePath(filePath) == EXTENSION_TEXTURE;
+		return GetExtensionFromFilePath(path) == EXTENSION_TEXTURE;
 	}
 
-    bool FileSystem::IsEngineAudioFile(const std::string& filePath)
+    bool FileSystem::IsEngineAudioFile(const std::string& path)
     {
-        return GetExtensionFromFilePath(filePath) == EXTENSION_AUDIO;
+        return GetExtensionFromFilePath(path) == EXTENSION_AUDIO;
     }
 
-    bool FileSystem::IsEngineShaderFile(const string& filePath)
+    bool FileSystem::IsEngineShaderFile(const string& path)
 	{
-		return GetExtensionFromFilePath(filePath) == EXTENSION_SHADER;
+		return GetExtensionFromFilePath(path) == EXTENSION_SHADER;
 	}
 
-    bool FileSystem::IsEngineFile(const string& file_path)
+    bool FileSystem::IsEngineFile(const string& path)
     {
-        return  IsEngineScriptFile(file_path)   ||
-                IsEnginePrefabFile(file_path)   ||
-                IsEngineModelFile(file_path)    ||
-                IsEngineMaterialFile(file_path) ||
-                IsEngineMeshFile(file_path)     ||
-                IsEngineSceneFile(file_path)    ||
-                IsEngineTextureFile(file_path)  ||
-                IsEngineAudioFile(file_path)    ||
-                IsEngineShaderFile(file_path);
+        return  IsEngineScriptFile(path)   ||
+                IsEnginePrefabFile(path)   ||
+                IsEngineModelFile(path)    ||
+                IsEngineMaterialFile(path) ||
+                IsEngineMeshFile(path)     ||
+                IsEngineSceneFile(path)    ||
+                IsEngineTextureFile(path)  ||
+                IsEngineAudioFile(path)    ||
+                IsEngineShaderFile(path);
     }
 
-    // Returns a file path which is relative to the engine's executable
-	string FileSystem::GetRelativeFilePath(const string& absoluteFilePath)
-	{		
+    vector<string> FileSystem::GetSupportedFilesInDirectory(const string& path)
+    {
+        vector<string> filesInDirectory = GetFilesInDirectory(path);
+        vector<string> imagesInDirectory = GetSupportedImageFilesFromPaths(filesInDirectory); // get all the images
+        vector<string> scriptsInDirectory = GetSupportedScriptFilesFromPaths(filesInDirectory); // get all the scripts
+        vector<string> modelsInDirectory = GetSupportedModelFilesFromPaths(filesInDirectory); // get all the models
+        vector<string> supportedFiles;
+
+        // get supported images
+        for (const auto& imageInDirectory : imagesInDirectory)
+        {
+            supportedFiles.emplace_back(imageInDirectory);
+        }
+
+        // get supported scripts
+        for (const auto& scriptInDirectory : scriptsInDirectory)
+        {
+            supportedFiles.emplace_back(scriptInDirectory);
+        }
+
+        // get supported models
+        for (const auto& modelInDirectory : modelsInDirectory)
+        {
+            supportedFiles.emplace_back(modelInDirectory);
+        }
+
+        return supportedFiles;
+    }
+
+    vector<string> FileSystem::GetSupportedImageFilesFromPaths(const vector<string>& paths)
+    {
+        vector<string> imageFiles;
+        for (const auto& path : paths)
+        {
+            if (!IsSupportedImageFile(path))
+                continue;
+
+            imageFiles.emplace_back(path);
+        }
+
+        return imageFiles;
+    }
+
+    vector<string> FileSystem::GetSupportedAudioFilesFromPaths(const vector<string>& paths)
+    {
+        vector<string> audioFiles;
+        for (const auto& path : paths)
+        {
+            if (!IsSupportedAudioFile(path))
+                continue;
+
+            audioFiles.emplace_back(path);
+        }
+
+        return audioFiles;
+    }
+
+    vector<string> FileSystem::GetSupportedScriptFilesFromPaths(const vector<string>& paths)
+    {
+        vector<string> scripts;
+        for (const auto& path : paths)
+        {
+            if (!IsEngineScriptFile(path))
+                continue;
+
+            scripts.emplace_back(path);
+        }
+
+        return scripts;
+    }
+
+    vector<string> FileSystem::GetSupportedModelFilesFromPaths(const vector<string>& paths)
+    {
+        vector<string> images;
+        for (const auto& path : paths)
+        {
+            if (!IsSupportedModelFile(path))
+                continue;
+
+            images.emplace_back(path);
+        }
+
+        return images;
+    }
+
+    vector<string> FileSystem::GetSupportedModelFilesInDirectory(const string& path)
+    {
+        return GetSupportedModelFilesFromPaths(GetFilesInDirectory(path));
+    }
+
+    vector<string> FileSystem::GetSupportedSceneFilesInDirectory(const string& path)
+    {
+        vector<string> sceneFiles;
+
+        auto files = GetFilesInDirectory(path);
+        for (const auto& file : files)
+        {
+            if (!IsEngineSceneFile(file))
+                continue;
+
+            sceneFiles.emplace_back(file);
+        }
+
+        return sceneFiles;
+    }
+
+	string FileSystem::GetRelativePath(const string& path)
+	{
+        if (filesystem::path(path).is_relative())
+            return path;
+
 		// create absolute paths
-		path p = absolute(absoluteFilePath);
-		path r = absolute(GetWorkingDirectory());
+        filesystem::path p = filesystem::absolute(path);
+        filesystem::path r = filesystem::absolute(GetWorkingDirectory());
 
 		// if root paths are different, return absolute path
 		if( p.root_path() != r.root_path())
 		    return p.generic_string();
 
 		// initialize relative path
-		path result;
+        filesystem::path result;
 
 		// find out where the two paths diverge
-		path::const_iterator itr_path = p.begin();
-		path::const_iterator itr_relative_to = r.begin();
+		filesystem::path::const_iterator itr_path = p.begin();
+		filesystem::path::const_iterator itr_relative_to = r.begin();
 		while( *itr_path == *itr_relative_to && itr_path != p.end() && itr_relative_to != r.end() ) 
 		{
 		    ++itr_path;
@@ -871,29 +861,18 @@ namespace Spartan
 		return result.generic_string();
 	}
 
-	// Returns a file path which is where the engine's executable is located
 	string FileSystem::GetWorkingDirectory()
 	{
-		return current_path().generic_string() + "/";
+		return filesystem::current_path().generic_string();
 	}
 
-	string FileSystem::GetParentDirectory(const string& directory)
+	string FileSystem::GetParentDirectory(const string& path)
 	{
-		auto found	= directory.find_last_of("/\\");
-		auto result	= directory;
-
-		// If no slash was found, return provided string
-        if (found == string::npos)
-            return "";
-
-		// If the slash was find at the last position, remove it and try again
-		if (found == directory.length() - 1)
-		{
-			result = result.substr(0, found - 1);
-			return GetParentDirectory(result);
-		}
-
-		// Return parent directory including a slash at the end
-		return result.substr(0, found) + "/";
+        return filesystem::path(path).parent_path().generic_string();
 	}
+
+    string FileSystem::GetRootDirectory(const std::string& path)
+    {
+        return filesystem::path(path).root_directory().generic_string();
+    }
 }
