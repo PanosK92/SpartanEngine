@@ -385,7 +385,7 @@ namespace Spartan
 	shared_ptr<Entity> World::CreateCamera()
 	{
 		auto resource_mng		= m_context->GetSubsystem<ResourceCache>();
-		const auto dir_scripts	= resource_mng->GetDataDirectory(Asset_Scripts);
+		const auto dir_scripts	= resource_mng->GetDataDirectory(Asset_Scripts) + "/";
 
 		auto entity = EntityCreate();
 		entity->SetName("Camera");

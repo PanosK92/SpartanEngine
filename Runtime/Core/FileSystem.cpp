@@ -429,16 +429,10 @@ namespace Spartan
 
     string FileSystem::GetFileNameFromFilePath(const string& path)
 	{
-        if (!Exists(path))
-        {
-            LOG_WARNING("\"%s\" is not a valid path", path.c_str());
-            return "";
-        }
-
         filesystem::path fs_path = path;
         if (!fs_path.has_filename())
         {
-            LOG_WARNING("Failed to extract file name from \"%s\"", path.c_str());
+            LOG_WARNING("\"%s\" has no file name", path.c_str());
             return "";
         }
 
@@ -478,14 +472,7 @@ namespace Spartan
 
 	string FileSystem::GetExtensionFromFilePath(const string& path)
 	{
-        if (!IsFile(path))
-        {
-            LOG_WARNING("\"%s\" is not a file path", path.c_str());
-            return "";
-        }
-
         filesystem::path fs_path = path;
-
         if (!fs_path.has_extension())
         {
             LOG_WARNING("\"%s\" has no extension", path.c_str());

@@ -243,7 +243,7 @@ namespace Spartan
 
 		// Create and compile shader
 		auto shader = make_shared<ShaderVariation>(m_rhi_device, m_context);
-		const auto dir_shaders = m_context->GetSubsystem<ResourceCache>()->GetDataDirectory(Asset_Shaders);
+		const auto dir_shaders = m_context->GetSubsystem<ResourceCache>()->GetDataDirectory(Asset_Shaders) + "/";
 		shader->Compile(dir_shaders + "GBuffer.hlsl", shader_flags);
 
 		return shader;

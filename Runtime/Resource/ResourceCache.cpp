@@ -43,16 +43,16 @@ namespace Spartan
 {
 	ResourceCache::ResourceCache(Context* context) : ISubsystem(context)
 	{
-		string data_dir = GetDataDirectory();
+		string data_dir = "Data/";
 
 		// Add engine standard resource directories
-		AddDataDirectory(Asset_Cubemaps,		data_dir + "environment/");
-		AddDataDirectory(Asset_Fonts,			data_dir + "fonts/");
-		AddDataDirectory(Asset_Icons,			data_dir + "icons/");
-		AddDataDirectory(Asset_Scripts,			data_dir + "scripts/");
-		AddDataDirectory(Asset_ShaderCompiler,	data_dir + "shader_compiler/");	
-		AddDataDirectory(Asset_Shaders,			data_dir + "shaders/");
-		AddDataDirectory(Asset_Textures,		data_dir + "textures/");
+		AddDataDirectory(Asset_Cubemaps,		data_dir + "environment");
+		AddDataDirectory(Asset_Fonts,			data_dir + "fonts");
+		AddDataDirectory(Asset_Icons,			data_dir + "icons");
+		AddDataDirectory(Asset_Scripts,			data_dir + "scripts");
+		AddDataDirectory(Asset_ShaderCompiler,	data_dir + "shader_compiler");	
+		AddDataDirectory(Asset_Shaders,			data_dir + "shaders");
+		AddDataDirectory(Asset_Textures,		data_dir + "textures");
 
 		// Create project directory
 		SetProjectDirectory("Project/");
