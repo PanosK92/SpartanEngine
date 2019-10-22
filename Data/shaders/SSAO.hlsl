@@ -117,6 +117,7 @@ float mainPS(Pixel_PosUv input) : SV_TARGET
 
     // Occlusion
 	float occlusion = 0.0f;
+	[unroll(sample_count)]
     for (int i = 0; i < sample_count; i++)
     {	
 		// Compute sample uv

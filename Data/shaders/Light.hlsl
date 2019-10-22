@@ -108,13 +108,16 @@ PixelOutputType mainPS(Pixel_PosUv input)
 		
 		// Shadow
 		float shadow = 1.0f;
+		[branch]
 		if (light.shadow_enabled)
 		{
+			[branch]
 			if (!is_sky)
 			{
 				shadow = Shadow_Map(uv, normal, depth_sample, position_world, light);
 			}
-	
+
+			[branch]
 			if (light.volumetric_enabled)
 			{
 				light_out.volumetric.rgb = VolumetricLighting(light, position_world, uv);
@@ -174,6 +177,7 @@ PixelOutputType mainPS(Pixel_PosUv input)
 		material.F0 				= lerp(0.04f, diffuse_color, material.metallic);
 	
 		// Reflectance equation
+		[branch]
 		if (light.intensity > 0.0f)
 		{
 			// Compute some stuff

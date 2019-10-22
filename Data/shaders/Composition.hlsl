@@ -79,6 +79,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 	light_ambient			= clamp(light_ambient, light_ambient_min, 1.0f);
 	
 	// Sky
+	[branch]
     if (is_sky)
     {
         color += tex_environment.Sample(sampler_bilinear_clamp, directionToSphereUV(camera_to_pixel)).rgb;
