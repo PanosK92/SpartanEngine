@@ -131,7 +131,7 @@ namespace Spartan
 	{
 		uint32_t size = 0;
 
-		if (type = Resource_Unknown)
+		if (type == Resource_Unknown)
 		{
 			for (const auto& group : m_resource_groups)
 			{
