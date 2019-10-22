@@ -91,6 +91,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 	float3 ray_step		= ray_dir * step_length;
 	
 	float2 ray_hit_uv = 0.0f;
+	[branch]
 	if (ray_march(ray_pos, ray_step, ray_hit_uv))
 	{
 		float2 edgeFactor = float2(1, 1) - pow(saturate(abs(ray_hit_uv - float2(0.5f, 0.5f)) * 2), 8);

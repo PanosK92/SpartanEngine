@@ -127,6 +127,8 @@ namespace Spartan
         // Get light entities
 		const auto& entities_light = m_entities[Renderer_Object_Light];
 
+        m_cmd_list->Begin("Pass_LightDepth");
+
         for (uint32_t light_index = 0; light_index < entities_light.size(); light_index++)
         {
 			const Light* light = entities_light[light_index]->GetComponent<Light>().get();
@@ -135,21 +137,17 @@ namespace Spartan
             if (!light)
                 break;
 
-			// Skip if it doesn't need to cast shadows
-			if (!light->GetCastShadows())
-				continue;
-
 			// Acquire light's shadow map
 			const auto& shadow_map = light->GetShadowMap();
 			if (!shadow_map)
 				continue;
 
-			// Begin command list
-			m_cmd_list->Begin("Pass_LightDepth");
-			m_cmd_list->SetShaderPixel(nullptr);
+            // Begin command list
+            m_cmd_list->Begin("Light");	
 			m_cmd_list->SetBlendState(m_blend_disabled);
 			m_cmd_list->SetDepthStencilState(m_depth_stencil_enabled);
 			m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+            m_cmd_list->SetShaderPixel(nullptr);
 			m_cmd_list->SetShaderVertex(shader_depth);
 			m_cmd_list->SetInputLayout(shader_depth->GetInputLayout());
 			m_cmd_list->SetViewport(shadow_map->GetViewport());
@@ -176,8 +174,15 @@ namespace Spartan
                 const Matrix& view_projection       = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
 
 				m_cmd_list->Begin("Array_" + to_string(i + 1));
+                m_cmd_list->SetRenderTarget(nullptr, cascade_depth_stencil);
 				m_cmd_list->ClearDepthStencil(cascade_depth_stencil, Clear_Depth, GetClearDepth());
-				m_cmd_list->SetRenderTarget(nullptr, cascade_depth_stencil);
+
+                // Skip if it doesn't need to cast shadows
+                if (!light->GetCastShadows())
+                {
+                    m_cmd_list->End(); // end of array
+                    continue;
+                }
 
 				for (const auto& entity : entities_opaque)
 				{
@@ -223,11 +228,13 @@ namespace Spartan
 					m_cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
                     m_cmd_list->Submit();
 				}
-				m_cmd_list->End(); // end of cascade
+				m_cmd_list->End(); // end of array
 			}
-			m_cmd_list->End();
-			m_cmd_list->Submit();
+            m_cmd_list->End(); // end light
 		}
+
+        m_cmd_list->End(); // end lights
+        m_cmd_list->Submit();
 	}
 
 	void Renderer::Pass_GBuffer()

@@ -81,7 +81,7 @@ bool FileDialog::Show(bool* is_visible, string* directory /*= nullptr*/, string*
 
 	if (m_is_dirty)
 	{
-		DialogUpdateFromDirectory(m_navigation.current);
+		DialogUpdateFromDirectory(m_navigation.m_path_current);
 		m_is_dirty = false;
 	}
 
@@ -89,12 +89,12 @@ bool FileDialog::Show(bool* is_visible, string* directory /*= nullptr*/, string*
 	{
 		if (directory)
 		{
-			(*directory) = m_navigation.current;
+			(*directory) = m_navigation.m_path_current;
 		}
 
 		if (file_path)
 		{
-			(*file_path) = m_navigation.current + "/" + string(m_input_box);
+			(*file_path) = m_navigation.m_path_current + "/" + string(m_input_box);
 		}
 	}
 
@@ -129,13 +129,12 @@ void FileDialog::ShowTop(bool* is_visible)
         }
 
         // Individual directories buttons
-        for (uint32_t i = 0; i < m_navigation.tree_path.size(); i++)
+        for (uint32_t i = 0; i < m_navigation.m_path_hierarchy.size(); i++)
         {
             ImGui::SameLine();
-            if (ImGui::Button(m_navigation.tree_label[i].c_str()))
+            if (ImGui::Button(m_navigation.m_path_hierarchy_labels[i].c_str()))
             {
-                m_navigation.Navigate(m_navigation.tree_path[i]);
-                m_is_dirty = true;
+                m_is_dirty = m_navigation.Navigate(m_navigation.m_path_hierarchy[i]);
             }
         }
     }
@@ -256,11 +255,8 @@ void FileDialog::ShowMiddle()
                             m_is_dirty = m_navigation.Navigate(item.GetPath());
                             m_selection_made = !item.IsDirectory();
 
-                            // Update navigation
-                            m_navigation.path_backward.emplace_back(m_navigation.current);
-
                             // Callback
-                            if (m_callback_on_item_double_clicked) m_callback_on_item_double_clicked(m_navigation.current);
+                            if (m_callback_on_item_double_clicked) m_callback_on_item_double_clicked(m_navigation.m_path_current);
                         }
                     }
 
@@ -507,14 +503,14 @@ void FileDialog::EmptyAreaContextMenu()
 
 	if (ImGui::MenuItem("Create folder"))
 	{
-		FileSystem::CreateDirectory_(m_navigation.current + "/New folder");
+		FileSystem::CreateDirectory_(m_navigation.m_path_current + "/New folder");
 		m_is_dirty = true;
 	}
 
     if (ImGui::MenuItem("Create material"))
     {
         Material material = Material(m_context);
-        string file_path = m_navigation.current + "/new_material" + EXTENSION_MATERIAL;
+        string file_path = m_navigation.m_path_current + "/new_material" + EXTENSION_MATERIAL;
         material.SetResourceFilePath(file_path);
         material.SaveToFile(file_path);
         m_is_dirty = true;
@@ -522,7 +518,7 @@ void FileDialog::EmptyAreaContextMenu()
 
 	if (ImGui::MenuItem("Open directory in explorer"))
 	{
-		FileSystem::OpenDirectoryWindow(m_navigation.current);
+		FileSystem::OpenDirectoryWindow(m_navigation.m_path_current);
 	}
 
 	ImGui::EndPopup();

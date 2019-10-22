@@ -19,15 +19,16 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-static const float g_vl_steps 		= 64;
-static const float g_vl_scattering 	= 0.998f;
-static const float g_vl_pow			= 0.4f;
+static const int g_vl_steps 			= 64;
+static const float g_vl_pow				= 0.4f;
+static const float g_vl_scattering 		= 0.998f;
+static const float g_vl_scattering_2 	= g_vl_scattering * g_vl_scattering;
 
 // Mie scaterring approximated with Henyey-Greenstein phase function.
 float ComputeScattering(float v_dot_l)
 {
-	float result = 1.0f - g_vl_scattering * g_vl_scattering;
-	float e = abs(1.0f + g_vl_scattering * g_vl_scattering - (2.0f * g_vl_scattering) * v_dot_l);
+	float result = 1.0f - g_vl_scattering_2;
+	float e = abs(1.0f + g_vl_scattering_2 - (2.0f * g_vl_scattering) * v_dot_l);
 	result /= pow(e, g_vl_pow);
 	return result;
 }
@@ -45,15 +46,12 @@ float3 vl_raymarch(Light light, float3 ray_pos, float3 ray_step, float ray_dot_l
 		float2 ray_uv = pos_light.xy * float2(0.5f, -0.5f) + 0.5f;
 		
 		// Check to see if the light can "see" the pixel
-		float depth_delta = light_depth_directional.SampleCmpLevelZero(sampler_compare_depth, float3(ray_uv, cascade), pos_light.z).r;		
-		if (depth_delta > 0.0f)
-		{
-			fog += ComputeScattering(ray_dot_light);
-		}
+		float depth_delta = light_depth_directional.SampleCmpLevelZero(sampler_compare_depth, float3(ray_uv, cascade), pos_light.z).r;
+		fog += ComputeScattering(ray_dot_light) * float(depth_delta > 0.0f);
 		
 		ray_pos += ray_step;
 	}
-	fog /= g_vl_steps;
+	fog /= (float)g_vl_steps;
 	
 	return fog;
 }

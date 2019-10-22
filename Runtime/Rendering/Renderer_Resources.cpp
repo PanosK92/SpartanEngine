@@ -161,7 +161,7 @@ namespace Spartan
         m_shaders[Shader_Quad_V] = make_shared<RHI_Shader>(m_rhi_device);
         m_shaders[Shader_Quad_V]->CompileAsync<RHI_Vertex_PosTex>(m_context, Shader_Vertex, dir_shaders + "Quad.hlsl");
 
-        // Depth
+        // Depth Vertex
         m_shaders[Shader_Depth_V] = make_shared<RHI_Shader>(m_rhi_device);
         m_shaders[Shader_Depth_V]->CompileAsync<RHI_Vertex_Pos>(m_context, Shader_Vertex, dir_shaders + "Depth.hlsl");
 

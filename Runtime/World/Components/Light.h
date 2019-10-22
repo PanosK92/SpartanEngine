@@ -46,12 +46,18 @@ namespace Spartan
 		LightType_Spot
 	};
 
-    struct ShadowMap
+    struct ShadowSlice
     {
         Math::Vector3 min       = Math::Vector3::Zero;
         Math::Vector3 max       = Math::Vector3::Zero;
         Math::Vector3 center    = Math::Vector3::Zero;
         Math::Frustum frustum;
+    };
+
+    struct ShadowMap
+    {
+        std::shared_ptr<RHI_Texture> texture;
+        std::vector<ShadowSlice> slices;
     };
 
 	class SPARTAN_CLASS Light : public IComponent
@@ -98,7 +104,7 @@ namespace Spartan
 		const Math::Matrix& GetViewMatrix(uint32_t index = 0) const;
 		const Math::Matrix& GetProjectionMatrix(uint32_t index = 0) const;
 
-		const auto& GetShadowMap() const { return m_depth_texture; }
+		const auto& GetShadowMap() const { return m_shadow_map.texture; }
         void CreateShadowMap(bool force);
 
         bool IsInViewFrustrum(Renderable* renderable, uint32_t index) const;
@@ -121,11 +127,8 @@ namespace Spartan
 		std::array<Math::Matrix, 6> m_matrix_projection;
         Math::Quaternion m_previous_rot     = Math::Quaternion::Identity;
         Math::Vector3 m_previous_pos        = Math::Vector3::Infinity;
-        Math::Matrix m_previous_camera_view = Math::Matrix::Identity;
-       	
-		// Shadow map
-        std::vector<ShadowMap> m_shadow_maps;
-		std::shared_ptr<RHI_Texture> m_depth_texture;
+        Math::Matrix m_previous_camera_view = Math::Matrix::Identity;    	
+        ShadowMap m_shadow_map;
 
 		Renderer* m_renderer;
 	};

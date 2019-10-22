@@ -52,28 +52,42 @@ enum FileDialog_Filter
 class FileDialogNavigation
 {
 public:
-    bool Navigate(std::string directory)
+    bool Navigate(std::string directory, bool update_history = true)
     {
         if (!Spartan::FileSystem::IsDirectory(directory))
             return false;
 
-        current = directory;
-        tree_path.clear();
-        tree_label.clear();
-
         // If the directory ends with a slash, remove it (simplifies things below)
-        if (current.back() == '/')
+        if (directory.back() == '/')
         {
-            current = current.substr(0, current.size() - 1);
+            directory = directory.substr(0, directory.size() - 1);
         }
 
+        // Don't re-navigate
+        if (m_path_current == directory)
+            return false;
+
+        // Update current path
+        m_path_current = directory;
+
+        // Update history
+        if (update_history)
+        {
+            m_path_history.emplace_back(m_path_current);
+            m_path_history_index++;
+        }
+
+        // Clear hierarchy
+        m_path_hierarchy.clear();
+        m_path_hierarchy_labels.clear();
+
         // Is there a slash ?
-        std::size_t pos = current.find('/');
+        std::size_t pos = m_path_current.find('/');
 
         // If there are no slashes then there is no nesting (and we are done)
         if (pos == std::string::npos)
         {
-            tree_path.emplace_back(current);
+            m_path_hierarchy.emplace_back(m_path_current);
         }
         // If there is a slash, get the individual directories between slashes
         else
@@ -82,33 +96,33 @@ public:
             while (true)
             {
                 // Save everything before the slash
-                tree_path.emplace_back(current.substr(0, pos));
+                m_path_hierarchy.emplace_back(m_path_current.substr(0, pos));
 
                 // Attempt to find a slash after the one we already found
                 pos_previous    = pos;
-                pos             = current.find('/', pos + 1);
+                pos             = m_path_current.find('/', pos + 1);
 
                 // If there are no more slashes
                 if (pos == std::string::npos)
                 {
                     // Save the complete path to this directory
-                    tree_path.emplace_back(current);
+                    m_path_hierarchy.emplace_back(m_path_current);
                     break;
                 }
             }
         }
 
         // Create a proper looking label (to show in the editor) for each path
-        for (const auto& path : tree_path)
+        for (const auto& path : m_path_hierarchy)
         {
             pos = path.find('/');
             if (pos == std::string::npos)
             {
-                tree_label.emplace_back(path + " >");
+                m_path_hierarchy_labels.emplace_back(path + " >");
             }
             else
             {
-                tree_label.emplace_back(path.substr(path.find_last_of('/') + 1) + " >");
+                m_path_hierarchy_labels.emplace_back(path.substr(path.find_last_of('/') + 1) + " >");
             }
         }
 
@@ -117,31 +131,29 @@ public:
 
     bool Backward()
     {
-        if (path_backward.empty())
+        if (m_path_history.empty() || (m_path_history_index - 1) < 0)
             return false;
 
-        path_forward.emplace_back(current);
-        Navigate(path_backward.back());
-        path_backward.pop_back();
+        Navigate(m_path_history[--m_path_history_index], false);
 
         return true;
     }
 
     bool Forward()
     {
-        if (path_forward.empty())
+        if (m_path_history.empty() || (m_path_history_index + 1) >= static_cast<int>(m_path_history.size()))
             return false;
 
-        Navigate(path_forward.back());
-        path_forward.pop_back();
+        Navigate(m_path_history[++m_path_history_index], false);
+
         return true;
     }
 
-    std::string current;
-    std::vector<std::string> path_backward;
-    std::vector<std::string> path_forward;
-    std::vector<std::string> tree_path;
-    std::vector<std::string> tree_label;
+    std::string m_path_current;
+    std::vector<std::string> m_path_hierarchy;
+    std::vector<std::string> m_path_hierarchy_labels;
+    std::vector<std::string> m_path_history;
+    int m_path_history_index = -1;
 };
 
 class FileDialogItem

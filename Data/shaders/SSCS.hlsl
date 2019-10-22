@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 static const uint g_sscs_steps 				= 32;
 static const float g_sscs_rejection_depth 	= 0.04f;
 static const float g_sscs_ray_max_distance 	= 0.2f;
-static const float g_sscs_bias 	= 0.005f;
+static const float g_sscs_bias 				= 0.005f;
 
 //= INLUCES =============
 #include "Dithering.hlsl"
@@ -55,6 +55,7 @@ float ScreenSpaceContactShadows(Texture2D tex_depth, float2 uv, float3 light_dir
         ray_pos 		+= ray_step;
 		float2 ray_uv 	= project(ray_pos, g_projection);
 
+		[branch]
 		if (!is_saturated(ray_uv))
 			break;
 
@@ -67,5 +68,5 @@ float ScreenSpaceContactShadows(Texture2D tex_depth, float2 uv, float3 light_dir
 			return 0;
     }
 
-    return 1;
+    return 1.0f;
 }
