@@ -155,7 +155,7 @@ namespace Spartan
     void Renderer::CreateShaders()
     {
         // Get standard shader directory
-        const auto dir_shaders = m_resource_cache->GetDataDirectory(Asset_Shaders);
+        const auto dir_shaders = m_resource_cache->GetDataDirectory(Asset_Shaders) + "/";
 
         // Quad - Used by almost everything
         m_shaders[Shader_Quad_V] = make_shared<RHI_Shader>(m_rhi_device);
@@ -337,7 +337,7 @@ namespace Spartan
     void Renderer::CreateFonts()
     {
         // Get standard font directory
-        const auto dir_font = m_resource_cache->GetDataDirectory(Asset_Fonts);
+        const auto dir_font = m_resource_cache->GetDataDirectory(Asset_Fonts) + "/";
 
         // Load a font (used for performance metrics)
         m_font = make_unique<Font>(m_context, dir_font + "CalibriBold.ttf", 14, Vector4(0.7f, 0.7f, 0.7f, 1.0f));
@@ -346,7 +346,7 @@ namespace Spartan
     void Renderer::CreateTextures()
     {
         // Get standard texture directory
-        const auto dir_texture = m_resource_cache->GetDataDirectory(Asset_Textures);
+        const auto dir_texture = m_resource_cache->GetDataDirectory(Asset_Textures) + "/";
 
         auto generate_mipmaps = false;
 

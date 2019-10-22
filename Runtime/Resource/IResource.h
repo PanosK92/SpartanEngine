@@ -63,7 +63,10 @@ namespace Spartan
 
 		void SetResourceFilePath(const std::string& file_path)
         {
-            if (!FileSystem::IsFile(file_path))
+            bool is_native_material = FileSystem::IsEngineMaterialFile(file_path);
+
+            // If this is an native material, don't do a file check as no actual foreign material exists
+            if (!is_native_material || !FileSystem::IsFile(file_path))
             {
                 LOG_ERROR("\"%s\" doesn't exist", file_path.c_str());
                 return;

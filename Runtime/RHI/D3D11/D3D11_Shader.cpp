@@ -83,14 +83,11 @@ namespace Spartan
 		}
 		defines.emplace_back(D3D_SHADER_MACRO{ nullptr, nullptr });
 
-		// Is file or source ?
-		const auto is_source = !FileSystem::IsSupportedShaderFile(shader);
-
 		// Compile from file
 		ID3DBlob* blob_error	= nullptr;
 		ID3DBlob* shader_blob	= nullptr;
 		HRESULT result;
-		if (!is_source)
+		if (FileSystem::IsFile(shader))
 		{
 			auto file_path = FileSystem::StringToWstring(shader);
 			result = D3DCompileFromFile

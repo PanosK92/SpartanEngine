@@ -259,7 +259,7 @@ namespace Spartan
 	{
 		m_material_default = true;
         ResourceCache* resource_cache = GetContext()->GetSubsystem<ResourceCache>().get();
-		auto data_dir = resource_cache->GetDataDirectory();
+		auto data_dir = resource_cache->GetDataDirectory() + "/";
 		FileSystem::CreateDirectory_(data_dir);
 
         // Create material
@@ -269,7 +269,7 @@ namespace Spartan
 		material->SetIsEditable(false);
 
         // Se default texture
-        shared_ptr<RHI_Texture2D> texture = resource_cache->Load<RHI_Texture2D>(resource_cache->GetDataDirectory(Asset_Textures) + "no_texture.png");
+        shared_ptr<RHI_Texture2D> texture = resource_cache->Load<RHI_Texture2D>(resource_cache->GetDataDirectory(Asset_Textures) + "/no_texture.png");
         material->SetTextureSlot(TextureType_Albedo, texture);
 
         // Set material
