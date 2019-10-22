@@ -360,6 +360,9 @@ namespace Spartan
 
 	bool FileSystem::IsDirectory(const string& directory)
 	{
+        if (IsEmptyOrWhitespace(directory))
+            return false;
+
 		try
 		{
 			return is_directory(directory);
@@ -527,17 +530,29 @@ namespace Spartan
 			if (!is_directory(it->status()))
 				continue;
 
+            string path;
+
+            // A system_error is possible if the characters are
+            // something that can't be converted, like Russian.
             try
             {
-                // a crash is possible if the characters are
-                // something that can't be converted, like Russian.
-                directories.emplace_back(it->path().string());
+                path = it->path().string();
             }
             catch (system_error& e)
             {
                 LOG_WARNING("Failed to read a directory path. %s", e.what());
             }
+
+            if (!path.empty())
+            {
+                // Replace double backward slashes with one backward slash
+                std::replace(path.begin(), path.end(), '\\', '/');
+
+                // finally, save
+                directories.emplace_back(path);
+            }
 		}
+
 
 		return directories;
 	}

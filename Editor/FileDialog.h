@@ -48,52 +48,98 @@ enum FileDialog_Filter
 	FileDialog_Filter_Model
 };
 
-class FileDialogDirectory
+// Keeps tracks of directory navigation
+class FileDialogNavigation
 {
 public:
-    bool Set(const std::string& directory)
+    bool Navigate(std::string directory)
     {
         if (!Spartan::FileSystem::IsDirectory(directory))
             return false;
 
-        backward = current;
-        current  = directory;
-
+        current = directory;
         tree_path.clear();
         tree_label.clear();
-        std::string parent_dir = Spartan::FileSystem::GetParentDirectory(current);
-        if (!parent_dir.empty())
+
+        // If the directory ends with a slash, remove it (simplifies things below)
+        if (current.back() == '/')
         {
-            while (!parent_dir.empty())
-            {
-                tree_path.emplace_back(parent_dir);
-
-                std::string label = parent_dir.substr(0, parent_dir.length() - 1);  // remove last slash
-                label = Spartan::FileSystem::GetStringAfterExpression(label, "/");  // Get string after new last slash
-                if (!label.empty())
-                {
-                    tree_label.emplace_back(label);
-                }
-                else
-                {
-                    tree_label.emplace_back(parent_dir);
-                }
-
-                parent_dir = Spartan::FileSystem::GetParentDirectory(parent_dir);
-            }
+            current = current.substr(0, current.size() - 1);
         }
+
+        // Is there a slash ?
+        std::size_t pos = current.find('/');
+
+        // If there are no slashes then there is no nesting (and we are done)
+        if (pos == std::string::npos)
+        {
+            tree_path.emplace_back(current);
+        }
+        // If there is a slash, get the individual directories between slashes
         else
         {
-           tree_path.emplace_back(current);
-           tree_label.emplace_back(Spartan::FileSystem::GetStringBeforeExpression(current, "/"));
+            std::size_t pos_previous = 0;
+            while (true)
+            {
+                // Save everything before the slash
+                tree_path.emplace_back(current.substr(0, pos));
+
+                // Attempt to find a slash after the one we already found
+                pos_previous    = pos;
+                pos             = current.find('/', pos + 1);
+
+                // If there are no more slashes
+                if (pos == std::string::npos)
+                {
+                    // Save the complete path to this directory
+                    tree_path.emplace_back(current);
+                    break;
+                }
+            }
+        }
+
+        // Create a proper looking label (to show in the editor) for each path
+        for (const auto& path : tree_path)
+        {
+            pos = path.find('/');
+            if (pos == std::string::npos)
+            {
+                tree_label.emplace_back(path + " >");
+            }
+            else
+            {
+                tree_label.emplace_back(path.substr(path.find_last_of('/') + 1) + " >");
+            }
         }
 
         return true;
     }
 
+    bool Backward()
+    {
+        if (path_backward.empty())
+            return false;
+
+        path_forward.emplace_back(current);
+        Navigate(path_backward.back());
+        path_backward.pop_back();
+
+        return true;
+    }
+
+    bool Forward()
+    {
+        if (path_forward.empty())
+            return false;
+
+        Navigate(path_forward.back());
+        path_forward.pop_back();
+        return true;
+    }
+
     std::string current;
-    std::string backward;
-    std::string forward;
+    std::vector<std::string> path_backward;
+    std::vector<std::string> path_forward;
     std::vector<std::string> tree_path;
     std::vector<std::string> tree_label;
 };
@@ -171,6 +217,7 @@ private:
     const bool m_drop_shadow    = true;
     const float m_item_size_min = 50.0f;
     const float m_item_size_max = 200.0f;
+    const Spartan::Math::Vector4 m_content_background_color = Spartan::Math::Vector4(0.0f, 0.0f, 0.0f, 50.0f);
 
     // Flags
 	bool m_is_window;
@@ -179,14 +226,15 @@ private:
     bool m_is_hovering_item;    
     bool m_is_hovering_window;
     std::string m_title;
-    FileDialogDirectory m_directory;
+    FileDialogNavigation m_navigation;
     std::string m_input_box;
     std::string m_hovered_item_path;
     uint32_t m_displayed_item_count;
 
-    // Misc
+    // Internal
     mutable unsigned int m_context_menu_id;
     mutable ImGuiEx::DragDropPayload m_drag_drop_payload;
+    float m_offset_bottom = 0.0f;
     FileDialog_Type m_type;
     FileDialog_Operation m_operation;
     FileDialog_Filter m_filter;

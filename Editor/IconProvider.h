@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 enum Icon_Type
 {
+    Icon_NotAssigned,
 	Icon_Component_Options,
 	Icon_Component_AudioListener,
 	Icon_Component_AudioSource,
@@ -75,12 +76,12 @@ struct Thumbnail
 	Thumbnail() = default;
 	Thumbnail(Icon_Type type, std::shared_ptr<Spartan::RHI_Texture> texture, const std::string& filePath)
 	{
-		this->type = type;
-		this->texture = texture;
-		this->filePath = filePath;
+		this->type      = type;
+		this->texture   = texture;
+		this->filePath  = filePath;
 	}
 
-	Icon_Type type;
+    Icon_Type type = Icon_NotAssigned;
 	std::shared_ptr<Spartan::RHI_Texture> texture;
 	std::string filePath;
 };

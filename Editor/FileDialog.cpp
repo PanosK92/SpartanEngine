@@ -49,7 +49,7 @@ FileDialog::FileDialog(Context* context, const bool standalone_window, const Fil
 	m_selection_made					= false;
 	m_callback_on_item_clicked			= nullptr;
 	m_callback_on_item_double_clicked	= nullptr;
-    m_directory.Set(m_context->GetSubsystem<ResourceCache>()->GetProjectDirectory());
+    m_navigation.Navigate(m_context->GetSubsystem<ResourceCache>()->GetProjectDirectory());
 }
 
 void FileDialog::SetOperation(const FileDialog_Operation operation)
@@ -81,7 +81,7 @@ bool FileDialog::Show(bool* is_visible, string* directory /*= nullptr*/, string*
 
 	if (m_is_dirty)
 	{
-		DialogUpdateFromDirectory(m_directory.current);
+		DialogUpdateFromDirectory(m_navigation.current);
 		m_is_dirty = false;
 	}
 
@@ -89,12 +89,12 @@ bool FileDialog::Show(bool* is_visible, string* directory /*= nullptr*/, string*
 	{
 		if (directory)
 		{
-			(*directory) = m_directory.current;
+			(*directory) = m_navigation.current;
 		}
 
 		if (file_path)
 		{
-			(*file_path) = m_directory.current + "/" + string(m_input_box);
+			(*file_path) = m_navigation.current + "/" + string(m_input_box);
 		}
 	}
 
@@ -118,33 +118,26 @@ void FileDialog::ShowTop(bool* is_visible)
         // Backwards
         if (ImGui::Button("<"))
         {
-            //m_directory.forward = m_directory.current;
-            //m_directory.Set(m_directory.backward);
-            m_directory.Set(FileSystem::GetParentDirectory(m_directory.current));
-            m_is_dirty = true;
+            m_is_dirty = m_navigation.Backward();
         }
 
-        /* Disable until fully debugged
         // Forwards
         ImGui::SameLine();
         if (ImGui::Button(">"))
         {
-            m_directory.Set(m_directory.forward);
-            m_is_dirty = true;
+            m_is_dirty = m_navigation.Forward();
         }
 
         // Individual directories buttons
-        for (uint32_t i = 0; i < m_directory.tree_path.size(); i++)
+        for (uint32_t i = 0; i < m_navigation.tree_path.size(); i++)
         {
             ImGui::SameLine();
-            if (ImGui::Button(m_directory.tree_label[i].c_str()))
+            if (ImGui::Button(m_navigation.tree_label[i].c_str()))
             {
-                m_directory.Set(m_directory.tree_path[i]);
+                m_navigation.Navigate(m_navigation.tree_path[i]);
                 m_is_dirty = true;
             }
-        }*/
-        ImGui::SameLine();
-        ImGui::Text(m_directory.current.c_str());
+        }
     }
 
     // Size slider
@@ -168,7 +161,7 @@ void FileDialog::ShowMiddle()
     // Compute some useful stuff
     const auto window           = ImGui::GetCurrentWindowRead();
     const auto content_width    = ImGui::GetContentRegionAvail().x;
-    const auto content_height   = ImGui::GetContentRegionAvail().y - (m_type != FileDialog_Type_Browser ? 30.0f : 0.0f);
+    const auto content_height   = ImGui::GetContentRegionAvail().y - m_offset_bottom;
     ImGuiContext& g             = *GImGui;
     ImGuiStyle& style           = ImGui::GetStyle();      
     const float font_height     = g.FontSize;
@@ -180,7 +173,14 @@ void FileDialog::ShowMiddle()
     ImRect rect_button;
     ImRect rect_label;
 
-    ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.0f); // Remove border
+    // Remove border
+    ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.0f);
+    // Make background slightly darker
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, IM_COL32(
+        static_cast<int>(m_content_background_color.x),
+        static_cast<int>(m_content_background_color.y),
+        static_cast<int>(m_content_background_color.z),
+        static_cast<int>(m_content_background_color.w)));
 	if (ImGui::BeginChild("##ContentRegion", ImVec2(content_width, content_height), true))
 	{
         m_is_hovering_window = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) ? true : m_is_hovering_window;
@@ -192,7 +192,7 @@ void FileDialog::ShowMiddle()
             auto& item = m_items[i];
 
             // Apply search filter
-            if (!m_search_filter.PassFilter(item.GetPath().c_str()))
+            if (!m_search_filter.PassFilter(item.GetLabel().c_str()))
                 continue;
 
             m_displayed_item_count++;
@@ -253,11 +253,14 @@ void FileDialog::ShowMiddle()
                         }
                         else // Double Click
                         {
-                            m_is_dirty = m_directory.Set(item.GetPath());
+                            m_is_dirty = m_navigation.Navigate(item.GetPath());
                             m_selection_made = !item.IsDirectory();
 
+                            // Update navigation
+                            m_navigation.path_backward.emplace_back(m_navigation.current);
+
                             // Callback
-                            if (m_callback_on_item_double_clicked) m_callback_on_item_double_clicked(m_directory.current);
+                            if (m_callback_on_item_double_clicked) m_callback_on_item_double_clicked(m_navigation.current);
                         }
                     }
 
@@ -327,6 +330,7 @@ void FileDialog::ShowMiddle()
             ImGui::EndGroup();
 	}
 	ImGui::EndChild();
+    ImGui::PopStyleColor();
     ImGui::PopStyleVar();
 }
 
@@ -335,7 +339,8 @@ void FileDialog::ShowBottom(bool* is_visible)
     if (m_type == FileDialog_Type_Browser)
     {
         // move to the bottom of the window
-        ImGui::SetCursorPosY(ImGui::GetWindowSize().y - 20.0f);
+        m_offset_bottom = 20.0f;
+        ImGui::SetCursorPosY(ImGui::GetWindowSize().y - m_offset_bottom);
 
         const char* text = (m_displayed_item_count == 1) ? "%d item" : "%d items";
         ImGui::Text(text, m_displayed_item_count);
@@ -343,7 +348,8 @@ void FileDialog::ShowBottom(bool* is_visible)
     else
     {
         // move to the bottom of the window
-        ImGui::SetCursorPosY(ImGui::GetWindowSize().y - 35.0f);
+        m_offset_bottom = 35.0f;
+        ImGui::SetCursorPosY(ImGui::GetWindowSize().y - m_offset_bottom);
 
         ImGui::PushItemWidth(ImGui::GetWindowSize().x - 235);
         ImGui::InputText("##InputBox", &m_input_box);
@@ -501,14 +507,14 @@ void FileDialog::EmptyAreaContextMenu()
 
 	if (ImGui::MenuItem("Create folder"))
 	{
-		FileSystem::CreateDirectory_(m_directory.current + "/New folder");
+		FileSystem::CreateDirectory_(m_navigation.current + "/New folder");
 		m_is_dirty = true;
 	}
 
     if (ImGui::MenuItem("Create material"))
     {
         Material material = Material(m_context);
-        string file_path = m_directory.current + "/new_material" + EXTENSION_MATERIAL;
+        string file_path = m_navigation.current + "/new_material" + EXTENSION_MATERIAL;
         material.SetResourceFilePath(file_path);
         material.SaveToFile(file_path);
         m_is_dirty = true;
@@ -516,7 +522,7 @@ void FileDialog::EmptyAreaContextMenu()
 
 	if (ImGui::MenuItem("Open directory in explorer"))
 	{
-		FileSystem::OpenDirectoryWindow(m_directory.current);
+		FileSystem::OpenDirectoryWindow(m_navigation.current);
 	}
 
 	ImGui::EndPopup();

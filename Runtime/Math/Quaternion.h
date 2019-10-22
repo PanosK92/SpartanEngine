@@ -175,7 +175,7 @@ namespace Spartan::Math
 				ret.FromAxes(right, up, forward);
 			}
 			else
-				ret.FromToRotation(Vector3::Forward, forward);
+                ret = Quaternion::FromToRotation(Vector3::Forward, forward);
 
 			return ret;
 		}
