@@ -267,7 +267,7 @@ namespace Spartan
 
 	void ResourceCache::SetProjectDirectory(const string& directory)
 	{
-		if (!FileSystem::DirectoryExists(directory))
+		if (!FileSystem::Exists(directory))
 		{
 			FileSystem::CreateDirectory_(directory);
 		}
@@ -277,6 +277,6 @@ namespace Spartan
 
 	string ResourceCache::GetProjectDirectoryAbsolute() const
 	{
-		return FileSystem::GetWorkingDirectory() + m_project_directory;
+		return FileSystem::GetWorkingDirectory() + "/" + m_project_directory;
 	}
 }

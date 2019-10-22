@@ -284,7 +284,7 @@ namespace Spartan
 		if (!m_document)
 			return false;
 
-		if (FileSystem::FileExists(filePath))
+		if (FileSystem::Exists(filePath))
 		{
 			FileSystem::DeleteFile_(filePath);
 		}

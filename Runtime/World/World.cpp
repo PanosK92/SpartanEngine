@@ -212,7 +212,7 @@ namespace Spartan
 
 	bool World::LoadFromFile(const string& file_path)
 	{
-		if (!FileSystem::FileExists(file_path))
+		if (!FileSystem::Exists(file_path))
 		{
 			LOG_ERROR("%s was not found.", file_path.c_str());
 			return false;

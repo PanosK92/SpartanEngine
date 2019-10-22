@@ -140,9 +140,9 @@ namespace Spartan
 		template <class T>
 		std::shared_ptr<T> Load(const std::string& file_path)
 		{
-			if (!FileSystem::FileExists(file_path))
+			if (!FileSystem::Exists(file_path))
 			{
-				LOG_ERROR("Path \"%s\" is invalid.", file_path.c_str());
+				LOG_ERROR("\"%s\" doesn't exist.", file_path.c_str());
 				return nullptr;
 			}
 

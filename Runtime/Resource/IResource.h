@@ -65,11 +65,11 @@ namespace Spartan
         {
             if (!FileSystem::IsFile(file_path))
             {
-                LOG_ERROR("File path is invalid.");
+                LOG_ERROR("\"%s\" doesn't exist", file_path.c_str());
                 return;
             }
 
-            std::string file_path_relative = FileSystem::GetRelativeFilePath(file_path);
+            std::string file_path_relative = FileSystem::GetRelativePath(file_path);
 
             // Foreign file
             if (!FileSystem::IsEngineFile(file_path))

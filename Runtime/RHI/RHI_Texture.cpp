@@ -49,7 +49,7 @@ namespace Spartan
 		// Check to see if the file already exists (if so, get the byte count)
 		uint32_t byte_count = 0;
 		{
-			if (FileSystem::FileExists(file_path))
+			if (FileSystem::Exists(file_path))
 			{
 				auto file = make_unique<FileStream>(file_path, FileStream_Read);
 				if (file->IsOpen())
@@ -110,7 +110,7 @@ namespace Spartan
 	bool RHI_Texture::LoadFromFile(const string& file_path)
 	{
 		// Validate file path
-		if (!FileSystem::FileExists(file_path))
+		if (!FileSystem::Exists(file_path))
 		{
 			LOG_ERROR("Path \"%s\" is invalid.", file_path.c_str());
 			return false;

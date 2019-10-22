@@ -92,7 +92,7 @@ namespace Spartan
 			return false;
 		}
 
-		if (!FileSystem::FileExists(file_path))
+		if (!FileSystem::Exists(file_path))
 		{
 			LOG_ERROR("Path \"%s\" is invalid.", file_path.c_str());
 			return false;

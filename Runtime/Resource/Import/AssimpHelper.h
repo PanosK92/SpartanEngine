@@ -182,12 +182,12 @@ namespace Spartan::AssimpHelper
 			auto new_file_path			= file_path_no_ext + supported_format;
 			auto new_file_path_upper	= file_path_no_ext + FileSystem::ConvertToUppercase(supported_format);
 
-			if (FileSystem::FileExists(new_file_path))
+			if (FileSystem::Exists(new_file_path))
 			{
 				return new_file_path;
 			}
 
-			if (FileSystem::FileExists(new_file_path_upper))
+			if (FileSystem::Exists(new_file_path_upper))
 			{
 				return new_file_path_upper;
 			}
@@ -196,21 +196,23 @@ namespace Spartan::AssimpHelper
 		return file_path;
 	}
 
-	inline std::string texture_validate_path(const std::string& original_texture_path, const std::string& model_path)
+	inline std::string texture_validate_path(std::string original_texture_path, const std::string& model_path)
 	{
+        std::replace(original_texture_path.begin(), original_texture_path.end(), '\\', '/');
+
 		// Models usually return a texture path which is relative to the model's directory.
 		// However, to load anything, we'll need an absolute path, so we construct it here.
 		const auto model_dir	= FileSystem::GetDirectoryFromFilePath(model_path);
-		auto full_texture_path	= model_dir + original_texture_path;
+        auto full_texture_path = model_dir + original_texture_path;
 
 		// 1. Check if the texture path is valid
-		if (FileSystem::FileExists(full_texture_path))
+		if (FileSystem::Exists(full_texture_path))
 			return full_texture_path;
 
 		// 2. Check the same texture path as previously but 
 		// this time with different file extensions (jpg, png and so on).
 		full_texture_path = texture_try_multiple_extensions(full_texture_path);
-		if (FileSystem::FileExists(full_texture_path))
+		if (FileSystem::Exists(full_texture_path))
 			return full_texture_path;
 
 		// At this point we know the provided path is wrong, we will make a few guesses.
@@ -218,13 +220,13 @@ namespace Spartan::AssimpHelper
 
 		// 3. Check if the texture is in the same folder as the model
 		full_texture_path = model_dir + FileSystem::GetFileNameFromFilePath(full_texture_path);
-		if (FileSystem::FileExists(full_texture_path))
+		if (FileSystem::Exists(full_texture_path))
 			return full_texture_path;
 
 		// 4. Check the same texture path as previously but 
 		// this time with different file extensions (jpg, png and so on).
 		full_texture_path = texture_try_multiple_extensions(full_texture_path);
-		if (FileSystem::FileExists(full_texture_path))
+		if (FileSystem::Exists(full_texture_path))
 			return full_texture_path;
 
 		// Give up, no valid texture path was found
