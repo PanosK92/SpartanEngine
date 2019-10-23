@@ -107,12 +107,12 @@ namespace Spartan
 		return true;
 	}
 
-	bool RHI_Texture::LoadFromFile(const string& file_path)
+	bool RHI_Texture::LoadFromFile(const string& path)
 	{
 		// Validate file path
-		if (!FileSystem::Exists(file_path))
+		if (!FileSystem::IsFile(path))
 		{
-			LOG_ERROR("Path \"%s\" is invalid.", file_path.c_str());
+			LOG_ERROR("\"%s\" is not a valid file path.", path.c_str());
 			return false;
 		}
 
@@ -122,18 +122,18 @@ namespace Spartan
 
 		// Load from disk
 		auto texture_data_loaded = false;		
-		if (FileSystem::IsEngineTextureFile(file_path)) // engine format (binary)
+		if (FileSystem::IsEngineTextureFile(path)) // engine format (binary)
 		{
-			texture_data_loaded = LoadFromFile_NativeFormat(file_path);
+			texture_data_loaded = LoadFromFile_NativeFormat(path);
 		}	
-		else if (FileSystem::IsSupportedImageFile(file_path)) // foreign format (most known image formats)
+		else if (FileSystem::IsSupportedImageFile(path)) // foreign format (most known image formats)
 		{
-			texture_data_loaded = LoadFromFile_ForeignFormat(file_path, m_generate_mipmaps_when_loading);
+			texture_data_loaded = LoadFromFile_ForeignFormat(path, m_generate_mipmaps_when_loading);
 		}
 
 		if (!texture_data_loaded)
 		{
-			LOG_ERROR("Failed to load \"%s\".", file_path.c_str());
+			LOG_ERROR("Failed to load \"%s\".", path.c_str());
 			m_load_state = LoadState_Failed;
 			return false;
 		}
@@ -147,7 +147,7 @@ namespace Spartan
 		}
 
 		// Only clear texture bytes if that's an engine texture, if not, it's not serialized yet.
-		if (FileSystem::IsEngineTextureFile(file_path))
+		if (FileSystem::IsEngineTextureFile(path))
 		{
 			m_data.clear();
 			m_data.shrink_to_fit();

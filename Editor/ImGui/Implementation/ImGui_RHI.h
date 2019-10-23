@@ -109,7 +109,7 @@ namespace ImGui::RHI
 			);
 
 			g_shader = make_shared<RHI_Shader>(g_rhi_device);
-			g_shader->Compile<RHI_Vertex_Pos2dTexCol8>(Shader_VertexPixel, g_context->GetSubsystem<ResourceCache>()->GetDataDirectory(Asset_Shaders) + "ImGui.hlsl");
+			g_shader->Compile<RHI_Vertex_Pos2dTexCol8>(Shader_VertexPixel, g_context->GetSubsystem<ResourceCache>()->GetDataDirectory(Asset_Shaders) + "/ImGui.hlsl");
 		}
 
 		// Font atlas

@@ -421,12 +421,12 @@ void FileDialog::ItemContextMenu(FileDialogItem* item)
 	{
 		if (item->IsDirectory())
 		{
-			FileSystem::DeleteDirectory(item->GetPath());
+			FileSystem::Delete(item->GetPath());
 			m_is_dirty = true;
 		}
 		else
 		{
-			FileSystem::DeleteFile_(item->GetPath());
+			FileSystem::Delete(item->GetPath());
 			m_is_dirty = true;
 		}
 	}

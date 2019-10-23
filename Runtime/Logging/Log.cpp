@@ -213,7 +213,7 @@ namespace Spartan
 		// Delete the previous log file (if it exists)
 		if (m_first_log)
 		{
-			FileSystem::DeleteFile_(m_log_file_name);
+			FileSystem::Delete(m_log_file_name);
 			m_first_log = false;
 		}
 

@@ -27,17 +27,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/EngineDefs.h"
 //=============================
 
-//========================================================
-static const char* EXTENSION_WORLD			= ".world";
-static const char* EXTENSION_MATERIAL		= ".material";
-static const char* EXTENSION_MODEL			= ".model";
-static const char* EXTENSION_PREFAB			= ".prefab";
-static const char* EXTENSION_SHADER			= ".shader";
-static const char* EXTENSION_FONT           = ".font";
-static const char* EXTENSION_TEXTURE		= ".texture";
-static const char* EXTENSION_MESH			= ".mesh";
-static const char* EXTENSION_AUDIO          = ".audio";
-//========================================================
+//====================================================
+static const char* EXTENSION_WORLD		= ".world";
+static const char* EXTENSION_MATERIAL	= ".material";
+static const char* EXTENSION_MODEL		= ".model";
+static const char* EXTENSION_PREFAB		= ".prefab";
+static const char* EXTENSION_SHADER		= ".shader";
+static const char* EXTENSION_FONT       = ".font";
+static const char* EXTENSION_TEXTURE	= ".texture";
+static const char* EXTENSION_MESH		= ".mesh";
+static const char* EXTENSION_AUDIO      = ".audio";
+//====================================================
 
 namespace Spartan
 {
@@ -60,11 +60,10 @@ namespace Spartan
         // Paths
         static void OpenDirectoryWindow(const std::string& path);
 		static bool CreateDirectory_(const std::string& path);
-		static bool DeleteDirectory(const std::string& path);	
+		static bool Delete(const std::string& path);	
 		static bool Exists(const std::string& path);
         static bool IsDirectory(const std::string& path);
         static bool IsFile(const std::string& path);
-		static bool DeleteFile_(const std::string& path);
 		static bool CopyFileFromTo(const std::string& source, const std::string& destination);
 		static std::string GetFileNameFromFilePath(const std::string& path);
 		static std::string GetFileNameNoExtensionFromFilePath(const std::string& path);
