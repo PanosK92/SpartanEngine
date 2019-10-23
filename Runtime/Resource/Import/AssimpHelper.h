@@ -176,8 +176,7 @@ namespace Spartan::AssimpHelper
 		const auto file_path_no_ext = FileSystem::GetFilePathWithoutExtension(file_path);
 
 		// Check if the file exists using all engine supported extensions
-		auto supported_formats = FileSystem::GetSupportedImageFormats();
-		for (const auto& supported_format : supported_formats)
+		for (const auto& supported_format : supported_formats_image)
 		{
 			auto new_file_path			= file_path_no_ext + supported_format;
 			auto new_file_path_upper	= file_path_no_ext + FileSystem::ConvertToUppercase(supported_format);
