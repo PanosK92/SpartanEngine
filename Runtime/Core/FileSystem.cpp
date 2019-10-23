@@ -36,145 +36,6 @@ using namespace std;
 
 namespace Spartan
 {
-	vector<string> FileSystem::m_supportedImageFormats;
-	vector<string> FileSystem::m_supportedAudioFormats;
-	vector<string> FileSystem::m_supportedModelFormats;
-	vector<string> FileSystem::m_supportedShaderFormats;
-	vector<string> FileSystem::m_supportedScriptFormats;
-	vector<string> FileSystem::m_supportedFontFormats;
-
-	void FileSystem::Initialize()
-	{
-		// Supported image formats
-		m_supportedImageFormats =
-		{
-			".jpg",
-			".png",
-			".bmp",
-			".tga",
-			".dds",
-			".exr",
-			".raw",
-			".gif",
-			".hdr",
-			".ico",
-			".iff",
-			".jng",
-			".jpeg",
-			".koala",
-			".kodak",
-			".mng",
-			".pcx",
-			".pbm",
-			".pgm",
-			".ppm",
-			".pfm",
-			".pict",
-			".psd",
-			".raw",
-			".sgi",
-			".targa",
-			".tiff",
-			".tif", // tiff can also be tif
-			".wbmp",
-			".webp",
-			".xbm",
-			".xpm"
-		};
-
-		// Supported audio formats
-		m_supportedAudioFormats =
-		{
-			".aiff",
-			".asf",
-			".asx",
-			".dls",
-			".flac",
-			".fsb",
-			".it",
-			".m3u",
-			".midi",
-			".mod",
-			".mp2",
-			".mp3",
-			".ogg",
-			".pls",
-			".s3m",
-			".vag", // PS2/PSP
-			".wav",
-			".wax",
-			".wma",
-			".xm",
-			".xma" // XBOX 360
-		};
-
-		// Supported model formats
-		m_supportedModelFormats =
-		{
-			".3ds",
-			".obj",
-			".fbx",
-			".blend",
-			".dae",
-            ".gltf",
-			".lwo",
-			".c4d",
-			".ase",
-			".dxf",
-			".hmp",
-			".md2",
-			".md3",
-			".md5",
-			".mdc",
-			".mdl",
-			".nff",
-			".ply",
-			".stl",
-			".x",
-			".smd",
-			".lxo",
-			".lws",
-			".ter",
-			".ac3d",
-			".ms3d",
-			".cob",
-			".q3bsp",
-			".xgl",
-			".csm",
-			".bvh",
-			".b3d",
-			".ndo"
-		};
-
-		// Supported shader formats
-		m_supportedShaderFormats =
-		{
-			".hlsl"
-		};
-
-		// Supported script formats
-		m_supportedScriptFormats = 
-		{
-			".as"
-		};
-
-		// Supported font formats
-		m_supportedFontFormats =
-		{
-			".ttf",
-			".ttc",
-			".cff",
-			".woff",
-			".otf",
-			".otc",
-			".pfa",
-			".pfb",
-			".fnt",
-			".bdf",
-			".pfr"
-		};
-	}
-
     bool FileSystem::IsEmptyOrWhitespace(const std::string& var)
     {
         // Check if it's empty
@@ -422,14 +283,7 @@ namespace Spartan
 
     string FileSystem::GetFileNameFromFilePath(const string& path)
 	{
-        filesystem::path fs_path = path;
-        if (!fs_path.has_filename())
-        {
-            LOG_WARNING("\"%s\" has no file name", path.c_str());
-            return "";
-        }
-
-        return fs_path.filename().generic_string();
+        return filesystem::path(path).filename().generic_string();
 	}
 
 	string FileSystem::GetFileNameNoExtensionFromFilePath(const string& path)
@@ -440,7 +294,6 @@ namespace Spartan
         if (last_index != string::npos)
 		    return file_name.substr(0, last_index);
 
-        LOG_WARNING("Failed to extract file name from \"%s\"", path.c_str());
 		return "";
 	}
 
@@ -451,28 +304,17 @@ namespace Spartan
         if (last_index != string::npos)
 		    return path.substr(0, last_index + 1);
 
-        LOG_WARNING("Failed to extract directory from \"%s\"", path.c_str());
 		return "";
 	}
 
 	string FileSystem::GetFilePathWithoutExtension(const string& path)
 	{
-		auto directory		= GetDirectoryFromFilePath(path);
-		auto fileNameNoExt	= GetFileNameNoExtensionFromFilePath(path);
-
-		return directory + fileNameNoExt;
+		return GetDirectoryFromFilePath(path) + GetFileNameNoExtensionFromFilePath(path);
 	}
 
 	string FileSystem::GetExtensionFromFilePath(const string& path)
 	{
-        filesystem::path fs_path = path;
-        if (!fs_path.has_extension())
-        {
-            LOG_WARNING("\"%s\" has no extension", path.c_str());
-            return "";   
-        }
-
-        return fs_path.extension().generic_string();
+        return filesystem::path(path).extension().generic_string();
 	}
 
     string FileSystem::NativizeFilePath(const string& path)
@@ -553,8 +395,7 @@ namespace Spartan
 	{
 		string extension = GetExtensionFromFilePath(path);
 
-		auto supportedFormats = GetSupportedAudioFormats();
-		for (const auto& format : supportedFormats)
+		for (const auto& format : supported_formats_audio)
 		{
 			if (extension == format || extension == ConvertToUppercase(format))
 				return true;
@@ -567,8 +408,7 @@ namespace Spartan
 	{
 		string extension = GetExtensionFromFilePath(path);
 
-		auto supportedFormats = GetSupportedImageFormats();
-		for (const auto& format : supportedFormats)
+		for (const auto& format : supported_formats_image)
 		{
 			if (extension == format || extension == ConvertToUppercase(format))
 				return true;
@@ -584,8 +424,7 @@ namespace Spartan
 	{
 		string extension = GetExtensionFromFilePath(path);
 
-		auto supportedFormats = GetSupportedModelFormats();
-		for (const auto& format : supportedFormats)
+		for (const auto& format : supported_formats_model)
 		{
 			if (extension == format || extension == ConvertToUppercase(format))
 				return true;
@@ -598,8 +437,7 @@ namespace Spartan
 	{
 		string extension = GetExtensionFromFilePath(path);
 
-		auto supportedFormats = GetSupportedShaderFormats();
-		for (const auto& format : supportedFormats)
+		for (const auto& format : supported_formats_shader)
 		{
 			if (extension == format || extension == ConvertToUppercase(format))
 				return true;
@@ -612,8 +450,7 @@ namespace Spartan
 	{
 		string extension = GetExtensionFromFilePath(path);
 
-		auto supportedFormats = GetSupportedFontFormats();
-		for (const auto& format : supportedFormats)
+		for (const auto& format : supported_formats_font)
 		{
 			if (extension == format || extension == ConvertToUppercase(format))
 				return true;
@@ -626,8 +463,7 @@ namespace Spartan
 	{
 		string extension = GetExtensionFromFilePath(path);
 
-		auto supportedFormats = GetSupportedScriptFormats();
-		for (const auto& format : supportedFormats)
+		for (const auto& format : supported_formats_script)
 		{
 			if (extension == format || extension == ConvertToUppercase(format))
 				return true;
@@ -691,10 +527,10 @@ namespace Spartan
 
     vector<string> FileSystem::GetSupportedFilesInDirectory(const string& path)
     {
-        vector<string> filesInDirectory = GetFilesInDirectory(path);
-        vector<string> imagesInDirectory = GetSupportedImageFilesFromPaths(filesInDirectory); // get all the images
-        vector<string> scriptsInDirectory = GetSupportedScriptFilesFromPaths(filesInDirectory); // get all the scripts
-        vector<string> modelsInDirectory = GetSupportedModelFilesFromPaths(filesInDirectory); // get all the models
+        vector<string> filesInDirectory     = GetFilesInDirectory(path);
+        vector<string> imagesInDirectory    = GetSupportedImageFilesFromPaths(filesInDirectory);    // get all the images
+        vector<string> scriptsInDirectory   = GetSupportedScriptFilesFromPaths(filesInDirectory);   // get all the scripts
+        vector<string> modelsInDirectory    = GetSupportedModelFilesFromPaths(filesInDirectory);    // get all the models
         vector<string> supportedFiles;
 
         // get supported images

@@ -27,25 +27,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/EngineDefs.h"
 //=============================
 
-//====================================================
-static const char* EXTENSION_WORLD		= ".world";
-static const char* EXTENSION_MATERIAL	= ".material";
-static const char* EXTENSION_MODEL		= ".model";
-static const char* EXTENSION_PREFAB		= ".prefab";
-static const char* EXTENSION_SHADER		= ".shader";
-static const char* EXTENSION_FONT       = ".font";
-static const char* EXTENSION_TEXTURE	= ".texture";
-static const char* EXTENSION_MESH		= ".mesh";
-static const char* EXTENSION_AUDIO      = ".audio";
-//====================================================
-
 namespace Spartan
 {
 	class SPARTAN_CLASS FileSystem
 	{
 	public:
-		static void Initialize();
-
         // Strings
         static bool IsEmptyOrWhitespace(const std::string& var);
         static bool IsAlphanumeric(const std::string& var);
@@ -103,21 +89,138 @@ namespace Spartan
         static std::vector<std::string> GetSupportedModelFilesFromPaths(const std::vector<std::string>& paths);
         static std::vector<std::string> GetSupportedModelFilesInDirectory(const std::string& path);
         static std::vector<std::string> GetSupportedSceneFilesInDirectory(const std::string& path);
-
-		// Lists of supported file formats
-		static const auto& GetSupportedImageFormats()	{ return m_supportedImageFormats; }
-		static const auto& GetSupportedAudioFormats()	{ return m_supportedAudioFormats; }
-		static const auto& GetSupportedModelFormats()	{ return m_supportedModelFormats; }
-		static const auto& GetSupportedShaderFormats()	{ return m_supportedShaderFormats; }
-		static const auto& GetSupportedScriptFormats()	{ return m_supportedScriptFormats; }
-		static const auto& GetSupportedFontFormats()	{ return m_supportedFontFormats; }
-
-	private:
-		static std::vector<std::string> m_supportedImageFormats;
-		static std::vector<std::string> m_supportedAudioFormats;
-		static std::vector<std::string> m_supportedModelFormats;
-		static std::vector<std::string> m_supportedShaderFormats;
-		static std::vector<std::string> m_supportedScriptFormats;
-		static std::vector<std::string> m_supportedFontFormats;
 	};
+
+    static const char* EXTENSION_WORLD     = ".world";
+    static const char* EXTENSION_MATERIAL   = ".material";
+    static const char* EXTENSION_MODEL     = ".model";
+    static const char* EXTENSION_PREFAB    = ".prefab";
+    static const char* EXTENSION_SHADER    = ".shader";
+    static const char* EXTENSION_FONT      = ".font";
+    static const char* EXTENSION_TEXTURE   = ".texture";
+    static const char* EXTENSION_MESH      = ".mesh";
+    static const char* EXTENSION_AUDIO     = ".audio";
+
+    static const std::vector<std::string> supported_formats_image
+    {
+            ".jpg",
+            ".png",
+            ".bmp",
+            ".tga",
+            ".dds",
+            ".exr",
+            ".raw",
+            ".gif",
+            ".hdr",
+            ".ico",
+            ".iff",
+            ".jng",
+            ".jpeg",
+            ".koala",
+            ".kodak",
+            ".mng",
+            ".pcx",
+            ".pbm",
+            ".pgm",
+            ".ppm",
+            ".pfm",
+            ".pict",
+            ".psd",
+            ".raw",
+            ".sgi",
+            ".targa",
+            ".tiff",
+            ".tif", // tiff can also be tif
+            ".wbmp",
+            ".webp",
+            ".xbm",
+            ".xpm"
+    };
+
+    static const std::vector<std::string> supported_formats_audio
+    {
+        ".aiff",
+        ".asf",
+        ".asx",
+        ".dls",
+        ".flac",
+        ".fsb",
+        ".it",
+        ".m3u",
+        ".midi",
+        ".mod",
+        ".mp2",
+        ".mp3",
+        ".ogg",
+        ".pls",
+        ".s3m",
+        ".vag", // PS2/PSP
+        ".wav",
+        ".wax",
+        ".wma",
+        ".xm",
+        ".xma" // XBOX 360
+    };
+
+    static const std::vector<std::string> supported_formats_model
+    {
+            ".3ds",
+            ".obj",
+            ".fbx",
+            ".blend",
+            ".dae",
+            ".gltf",
+            ".lwo",
+            ".c4d",
+            ".ase",
+            ".dxf",
+            ".hmp",
+            ".md2",
+            ".md3",
+            ".md5",
+            ".mdc",
+            ".mdl",
+            ".nff",
+            ".ply",
+            ".stl",
+            ".x",
+            ".smd",
+            ".lxo",
+            ".lws",
+            ".ter",
+            ".ac3d",
+            ".ms3d",
+            ".cob",
+            ".q3bsp",
+            ".xgl",
+            ".csm",
+            ".bvh",
+            ".b3d",
+            ".ndo"
+    };
+
+    static const std::vector<std::string> supported_formats_shader
+    {
+        ".hlsl"
+    };
+
+    static const std::vector<std::string> supported_formats_script
+    {
+        ".as"
+    };
+
+    static const std::vector<std::string> supported_formats_font
+    {
+        ".ttf",
+        ".ttc",
+        ".cff",
+        ".woff",
+        ".otf",
+        ".otc",
+        ".pfa",
+        ".pfb",
+        ".fnt",
+        ".bdf",
+        ".pfr"
+    };
 }

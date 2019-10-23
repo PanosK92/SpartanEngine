@@ -69,9 +69,6 @@ namespace Spartan
         m_context->RegisterSubsystem<Profiler>(Tick_Variable);
         m_context->RegisterSubsystem<Settings>(Tick_Variable);
              	
-        // Initialize global/static subsystems
-        FileSystem::Initialize();
-
 		// Initialize above subsystems
 		m_context->Initialize();
 	}
