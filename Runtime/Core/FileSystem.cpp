@@ -327,83 +327,76 @@ namespace Spartan
 	{
 		try
 		{
-			return filesystem::create_directories(path);
+            if (filesystem::create_directories(path))
+                return true;
 		}
 		catch (filesystem::filesystem_error& e)
 		{
 			LOG_WARNING("%s, %s", e.what(), path.c_str());
-			return true;
 		}
+
+        return false;
 	}
 
-	bool FileSystem::DeleteDirectory(const string& path)
+	bool FileSystem::Delete(const string& path)
 	{
 		try
 		{
-			return filesystem::remove_all(path);
+            if (filesystem::exists(path) && filesystem::remove_all(path))
+                return true;
 		}
 		catch (filesystem::filesystem_error& e)
 		{
 			LOG_WARNING("s, %s", e.what(), path.c_str());
-			return true;
 		}
+
+        return false;
 	}
 
     bool FileSystem::Exists(const string& path)
-	{
-		try
-		{
-			return filesystem::exists(path);
-		}
-		catch (filesystem::filesystem_error& e)
-		{
-			LOG_WARNING("%s, %s", e.what(), path.c_str());
-			return false;
-		}
-	}
-
-    bool FileSystem::IsFile(const string& path)
     {
         try
         {
-            return filesystem::is_regular_file(path);
+            if (filesystem::exists(path))
+                return true;
         }
-        catch (filesystem::filesystem_error & e)
+        catch (filesystem::filesystem_error& e)
         {
             LOG_WARNING("%s, %s", e.what(), path.c_str());
-            return false;
         }
+
+        return false;
     }
 
     bool FileSystem::IsDirectory(const string& path)
     {
         try
         {
-            return filesystem::is_directory(path);
+            if (filesystem::exists(path) && filesystem::is_directory(path))
+                return true;
         }
-        catch (filesystem::filesystem_error & e)
+        catch (filesystem::filesystem_error& e)
         {
             LOG_WARNING("%s, %s", e.what(), path.c_str());
-            return false;
         }
+
+        return false;
     }
 
-	bool FileSystem::DeleteFile_(const string& path)
-	{
-		// If this is a directory path, return
-		if (filesystem::is_directory(path))
-			return false;
+    bool FileSystem::IsFile(const string& path)
+    {
+        try
+        {
+            if (filesystem::exists(path) && filesystem::is_regular_file(path))
+                return true;
+        }
+        catch (filesystem::filesystem_error& e)
+        {
+            LOG_WARNING("%s, %s", e.what(), path.c_str());
+        }
 
-		try
-		{
-			return remove(path.c_str()) == 0;
-		}
-		catch (filesystem::filesystem_error& e)
-		{
-			LOG_WARNING("%s, %s", e.what(), path.c_str());
-			return true;
-		}
-	}
+        return false;
+    }
 
 	bool FileSystem::CopyFileFromTo(const string& source, const string& destination)
 	{

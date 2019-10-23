@@ -61,21 +61,24 @@ namespace Spartan
 		IResource(Context* context, Resource_Type type);
 		virtual ~IResource() = default;
 
-		void SetResourceFilePath(const std::string& file_path)
+		void SetResourceFilePath(const std::string& path)
         {
-            bool is_native_material = FileSystem::IsEngineMaterialFile(file_path);
+            bool is_native_material = FileSystem::IsEngineMaterialFile(path);
 
             // If this is an native material, don't do a file check as no actual foreign material exists
-            if (!is_native_material || !FileSystem::IsFile(file_path))
+            if (!is_native_material)
             {
-                LOG_ERROR("\"%s\" doesn't exist", file_path.c_str());
-                return;
+                if (!FileSystem::IsFile(path))
+                {
+                    LOG_ERROR("\"%s\" doesn't exist", path.c_str());
+                    return;
+                }
             }
 
-            std::string file_path_relative = FileSystem::GetRelativePath(file_path);
+            std::string file_path_relative = FileSystem::GetRelativePath(path);
 
             // Foreign file
-            if (!FileSystem::IsEngineFile(file_path))
+            if (!FileSystem::IsEngineFile(path))
             {
                 m_resource_file_path_foreign    = file_path_relative;
                 m_resource_file_path_native     = FileSystem::NativizeFilePath(file_path_relative);

@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/FileSystem.h"
 #include <d3dcompiler.h>
 #include <sstream> 
+#include <algorithm>
 //================================
 
 //= NAMESPACES =====
@@ -83,11 +84,11 @@ namespace Spartan
 		}
 		defines.emplace_back(D3D_SHADER_MACRO{ nullptr, nullptr });
 
-		// Compile from file
+		// Compile
 		ID3DBlob* blob_error	= nullptr;
 		ID3DBlob* shader_blob	= nullptr;
 		HRESULT result;
-		if (FileSystem::IsFile(shader))
+		if (FileSystem::IsFile(shader)) // From file ?
 		{
 			auto file_path = FileSystem::StringToWstring(shader);
 			result = D3DCompileFromFile
@@ -103,23 +104,28 @@ namespace Spartan
 				&blob_error
 			);
 		}
-		else // Compile from memory
+		else if(shader.find("return") != std::string::npos) // From source ?
 		{
-			result = D3DCompile
-			(
-				shader.c_str(),
-				shader.size(),
-				nullptr,
-				defines.data(),
-				nullptr,
-				GetEntryPoint().c_str(),
-				GetTargetProfile().c_str(),
-				compile_flags,
-				0,
-				&shader_blob,
-				&blob_error
-			);
-		}
+            result = D3DCompile
+            (
+                shader.c_str(),
+                shader.size(),
+                nullptr,
+                defines.data(),
+                nullptr,
+                GetEntryPoint().c_str(),
+                GetTargetProfile().c_str(),
+                compile_flags,
+                0,
+                &shader_blob,
+                &blob_error
+            );
+        }
+        else
+        {
+            LOG_ERROR("\"%s\" is not file or a source", shader.c_str());
+            return nullptr;
+        }
 
 		// Log any compilation possible warnings and/or errors
 		if (blob_error)

@@ -279,17 +279,17 @@ namespace Spartan
 		return true;
 	}
 
-	bool XmlDocument::Save(const string& filePath)
+	bool XmlDocument::Save(const string& path)
 	{
 		if (!m_document)
 			return false;
 
-		if (FileSystem::Exists(filePath))
+		if (FileSystem::Exists(path))
 		{
-			FileSystem::DeleteFile_(filePath);
+			FileSystem::Delete(path);
 		}
 
-		return m_document->save_file(filePath.c_str());
+		return m_document->save_file(path.c_str());
 	}
 
 	//= PRIVATE =======================================================

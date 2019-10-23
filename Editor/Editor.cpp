@@ -325,7 +325,7 @@ void Editor::ApplyStyle() const
 	style.Colors[ImGuiCol_DragDropTarget]			= background_light;
 
     // Font
-	string dir_fonts = m_context->GetSubsystem<ResourceCache>()->GetDataDirectory(Asset_Fonts);
+	string dir_fonts = m_context->GetSubsystem<ResourceCache>()->GetDataDirectory(Asset_Fonts) + "/";
 	io.Fonts->AddFontFromFileTTF((dir_fonts + "CalibriBold.ttf").c_str(), font_size);
     io.FontGlobalScale = font_scale;
 }
