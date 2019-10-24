@@ -80,7 +80,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     float2 uv				= input.uv;
 	float3 normal 			= get_normal(tex_normal, uv);
 	float depth  			= get_depth(tex_depth, uv);	
-    float3 position_world 	= get_world_position_from_depth(depth, g_viewProjectionInv, uv);
+    float3 position_world 	= get_position_from_depth(depth, uv);
 	float roughness 		= tex_material.Load(int3(uv * g_resolution, 0)).r;	
 
 	// Convert ray in view space
@@ -91,7 +91,6 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 	float3 ray_step		= ray_dir * step_length;
 	
 	float2 ray_hit_uv = 0.0f;
-	[branch]
 	if (ray_march(ray_pos, ray_step, ray_hit_uv))
 	{
 		float2 edgeFactor = float2(1, 1) - pow(saturate(abs(ray_hit_uv - float2(0.5f, 0.5f)) * 2), 8);

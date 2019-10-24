@@ -19,8 +19,9 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-float4 Blur_Box(float2 texCoord, float2 texelSize, int blurSize, Texture2D sourceTexture)
+float4 Blur_Box(float2 uv, Texture2D tex)
 {
+	float blurSize 	= g_blur_sigma;
 	float4 result 	= float4(0.0f, 0.0f, 0.0f, 0.0f);
 	float temp 		= float(-blurSize) * 0.5f + 0.5f;
 	float2 hlim 	= float2(temp, temp);
@@ -28,8 +29,8 @@ float4 Blur_Box(float2 texCoord, float2 texelSize, int blurSize, Texture2D sourc
 	{
 		for (int j = 0; j < blurSize; ++j) 
 		{
-			float2 offset = (hlim + float2(float(i), float(j))) * texelSize;
-			result += sourceTexture.SampleLevel(sampler_bilinear_clamp, texCoord + offset, 0);
+			float2 offset = (hlim + float2(float(i), float(j))) * g_texel_size;
+			result += tex.SampleLevel(sampler_bilinear_clamp, uv + offset, 0);
 		}
 	}
 		
@@ -39,24 +40,25 @@ float4 Blur_Box(float2 texCoord, float2 texelSize, int blurSize, Texture2D sourc
 }
 
 // Calculates the gaussian blur weight for a given distance and sigmas
-float CalcGaussianWeight(int sampleDist, float sigma)
+float CalcGaussianWeight(int sampleDist)
 {
-    float g = 1.0f / sqrt(2.0f * 3.14159f * sigma * sigma);
-    return (g * exp(-(sampleDist * sampleDist) / (2.0f * sigma * sigma)));
+	float sigma2 = g_blur_sigma * g_blur_sigma;
+    float g = 1.0f / sqrt(2.0f * 3.14159f * sigma2);
+    return (g * exp(-(sampleDist * sampleDist) / (2.0f * sigma2)));
 }
 
 // Performs a gaussian blur in one direction
-float4 Blur_Gaussian(float2 uv, Texture2D sourceTexture, float2 texelSize, float2 direction, float sigma)
+float4 Blur_Gaussian(float2 uv, Texture2D tex)
 {
 	// https://github.com/TheRealMJP/MSAAFilter/blob/master/MSAAFilter/PostProcessing.hlsl#L50
 	float weightSum = 0.0f;
     float4 color 	= 0;
     for (int i = -5; i < 5; i++)
     {
-        float2 texCoord = uv + (i * texelSize * direction);    
-		float weight 	= CalcGaussianWeight(i, sigma);
-        color 			+= sourceTexture.SampleLevel(sampler_bilinear_clamp, texCoord, 0) * weight;
-		weightSum 		+= weight;
+        float2 sample_uv	= uv + (i * g_texel_size * g_blur_direction);    
+		float weight 		= CalcGaussianWeight(i);
+        color 				+= tex.SampleLevel(sampler_bilinear_clamp, sample_uv, 0) * weight;
+		weightSum 			+= weight;
     }
 
     color /= weightSum;
@@ -65,7 +67,7 @@ float4 Blur_Gaussian(float2 uv, Texture2D sourceTexture, float2 texelSize, float
 }
 
 // Performs a bilateral gaussian blur (depth aware) in one direction
-float4 Blur_GaussianBilateral(float2 uv, Texture2D sourceTexture, Texture2D depthTexture, Texture2D normalTexture, float2 texelSize, float2 direction, float sigma)
+float4 Blur_GaussianBilateral(float2 uv, Texture2D tex, Texture2D depthTexture, Texture2D normalTexture)
 {
 	float weightSum 		= 0.0f;
     float4 color 			= 0.0f;
@@ -75,17 +77,17 @@ float4 Blur_GaussianBilateral(float2 uv, Texture2D sourceTexture, Texture2D dept
 
     for (int i = -5; i < 5; i++)
     {
-        float2 texCoord 		= uv + (i * texelSize * direction);    
-		float sample_depth 		= get_linear_depth(depthTexture.SampleLevel(sampler_bilinear_clamp, texCoord, 0).r);
-		float3 sample_normal	= normal_decode(normalTexture.SampleLevel(sampler_bilinear_clamp, texCoord, 0).xyz);
+        float2 sample_uv 		= uv + (i * g_texel_size * g_blur_direction);    
+		float sample_depth 		= get_linear_depth(depthTexture.SampleLevel(sampler_bilinear_clamp, sample_uv, 0).r);
+		float3 sample_normal	= normal_decode(normalTexture.SampleLevel(sampler_bilinear_clamp, sample_uv, 0).xyz);
 		
 		// Depth-awareness
 		float awareness_depth	= saturate(threshold - abs(center_depth - sample_depth));
 		float awareness_normal	= saturate(dot(center_normal, sample_normal));
 		float awareness			= awareness_normal * awareness_depth;
 
-		float weight 		= CalcGaussianWeight(i, sigma) * awareness;
-		color 				+= sourceTexture.SampleLevel(sampler_bilinear_clamp, texCoord, 0) * weight;
+		float weight 		= CalcGaussianWeight(i) * awareness;
+		color 				+= tex.SampleLevel(sampler_bilinear_clamp, sample_uv, 0) * weight;
 		weightSum 			+= weight; 
     }
     color /= weightSum;

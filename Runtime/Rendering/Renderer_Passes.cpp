@@ -1567,45 +1567,45 @@ namespace Spartan
 		if (render_transform && m_gizmo_transform->Update(m_camera.get(), m_gizmo_transform_size, m_gizmo_transform_speed))
 		{
 			auto const& shader_gizmo_transform = m_shaders[Shader_GizmoTransform_Vp];
-            if (!shader_gizmo_transform->IsCompiled())
-                return;
+            if (shader_gizmo_transform->IsCompiled())
+            { 
+			    m_cmd_list->SetShaderVertex(shader_gizmo_transform);
+			    m_cmd_list->SetShaderPixel(shader_gizmo_transform);
+			    m_cmd_list->SetInputLayout(shader_gizmo_transform->GetInputLayout());
+			    m_cmd_list->SetBufferIndex(m_gizmo_transform->GetIndexBuffer());
+			    m_cmd_list->SetBufferVertex(m_gizmo_transform->GetVertexBuffer());
 
-			m_cmd_list->SetShaderVertex(shader_gizmo_transform);
-			m_cmd_list->SetShaderPixel(shader_gizmo_transform);
-			m_cmd_list->SetInputLayout(shader_gizmo_transform->GetInputLayout());
-			m_cmd_list->SetBufferIndex(m_gizmo_transform->GetIndexBuffer());
-			m_cmd_list->SetBufferVertex(m_gizmo_transform->GetVertexBuffer());
-
-			// Axis - X
-            m_buffer_uber_cpu.resolution        = m_resolution;
-            m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle().GetTransform(Vector3::Right);
-            m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle().GetColor(Vector3::Right);
-            UpdateUberBuffer();
-			m_cmd_list->DrawIndexed(m_gizmo_transform->GetIndexCount(), 0, 0);
-            m_cmd_list->Submit();
-
-			// Axis - Y
-            m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle().GetTransform(Vector3::Up);
-            m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle().GetColor(Vector3::Up);
-            UpdateUberBuffer();
-			m_cmd_list->DrawIndexed(m_gizmo_transform->GetIndexCount(), 0, 0);
-            m_cmd_list->Submit();
-
-			// Axis - Z
-            m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle().GetTransform(Vector3::Forward);
-            m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle().GetColor(Vector3::Forward);
-            UpdateUberBuffer();
-			m_cmd_list->DrawIndexed(m_gizmo_transform->GetIndexCount(), 0, 0);
-            m_cmd_list->Submit();
-
-			// Axes - XYZ
-			if (m_gizmo_transform->DrawXYZ())
-			{
-                m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle().GetTransform(Vector3::One);
-                m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle().GetColor(Vector3::One);
+			    // Axis - X
+                m_buffer_uber_cpu.resolution        = m_resolution;
+                m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle().GetTransform(Vector3::Right);
+                m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle().GetColor(Vector3::Right);
                 UpdateUberBuffer();
-				m_cmd_list->DrawIndexed(m_gizmo_transform->GetIndexCount(), 0, 0);
-			}
+			    m_cmd_list->DrawIndexed(m_gizmo_transform->GetIndexCount(), 0, 0);
+                m_cmd_list->Submit();
+
+			    // Axis - Y
+                m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle().GetTransform(Vector3::Up);
+                m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle().GetColor(Vector3::Up);
+                UpdateUberBuffer();
+			    m_cmd_list->DrawIndexed(m_gizmo_transform->GetIndexCount(), 0, 0);
+                m_cmd_list->Submit();
+
+			    // Axis - Z
+                m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle().GetTransform(Vector3::Forward);
+                m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle().GetColor(Vector3::Forward);
+                UpdateUberBuffer();
+			    m_cmd_list->DrawIndexed(m_gizmo_transform->GetIndexCount(), 0, 0);
+                m_cmd_list->Submit();
+
+			    // Axes - XYZ
+			    if (m_gizmo_transform->DrawXYZ())
+			    {
+                    m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle().GetTransform(Vector3::One);
+                    m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle().GetColor(Vector3::One);
+                    UpdateUberBuffer();
+			    	m_cmd_list->DrawIndexed(m_gizmo_transform->GetIndexCount(), 0, 0);
+			    }
+            }
 		}
 
 		m_cmd_list->End();

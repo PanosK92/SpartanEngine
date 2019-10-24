@@ -69,9 +69,8 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     material.emissive   		= sample_material.b;
 	material.F0 				= lerp(0.04f, material.albedo, material.metallic);
 
-	// Compute common values  
-    float3 worldPos 		= get_world_position_from_depth(sample_depth, g_viewProjectionInv, uv);
-    float3 camera_to_pixel  = normalize(worldPos.xyz - g_camera_position.xyz);
+	// Get view direction
+    float3 camera_to_pixel  = get_view_direction(sample_depth, uv);
 
 	// Ambient light
 	float light_ambient_min = sample_ssao * g_directional_light_intensity * 0.025f; // no global illumination, so ambient light of the poor it is...
@@ -79,7 +78,6 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 	light_ambient			= clamp(light_ambient, light_ambient_min, 1.0f);
 	
 	// Sky
-	[branch]
     if (is_sky)
     {
         color += tex_environment.Sample(sampler_bilinear_clamp, directionToSphereUV(camera_to_pixel)).rgb;
