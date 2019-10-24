@@ -102,7 +102,7 @@ Vulkan      					| 60%           | Don't port it, re-architect the engine instea
 - Make editor more stylish.
 
 # Documentation
-- [Compiling](https://github.com/PanosK92/SpartanEngine/blob/master/Documentation/CompilingFromSource/CompilingFromSource.md) - A guide on how to compile from source.
+- [Compiling](https://github.com/PanosK92/SpartanEngine/blob/master/.github/documentation/compiling_from_source.md) - A guide on how to compile from source.
 - [Contributing](https://github.com/PanosK92/SpartanEngine/blob/master/.github/CONTRIBUTING.md) - Guidelines on how to contribute.
 
 # Dependencies
