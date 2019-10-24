@@ -46,7 +46,7 @@ namespace Spartan
 	public:
 		void ComputeHash()
 		{
-            if (!shader_vertex || !shader_vertex || !depth_stencil_state || !vertex_buffer || !sampler || !constant_buffer || !!swap_chain)
+            if (!shader_vertex || !shader_pixel || !depth_stencil_state || !vertex_buffer || !sampler || !constant_buffer || !swap_chain)
                 return;
 
 			// todo:: input layout, rasterizer state, blend state, swap chain, viewport, scissor
