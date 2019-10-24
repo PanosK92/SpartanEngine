@@ -27,7 +27,7 @@ jobs:
       - name: Clean up for artifact upload
         shell: cmd
         run: |
-          Scripts\clean.bat.bat
+          Scripts\clean.bat
  
       - uses: actions/upload-artifact@master  
         with:
