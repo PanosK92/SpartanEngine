@@ -103,7 +103,7 @@ Vulkan      					| 60%           | Don't port it, re-architect the engine instea
 
 # Documentation
 - [Compiling](https://github.com/PanosK92/SpartanEngine/blob/master/Documentation/CompilingFromSource/CompilingFromSource.md) - A guide on how to compile from source.
-- [Contributing](https://github.com/PanosK92/SpartanEngine/blob/master/CONTRIBUTING.md) - Guidelines on how to contribute.
+- [Contributing](https://github.com/PanosK92/SpartanEngine/blob/master/.github/CONTRIBUTING.md) - Guidelines on how to contribute.
 
 # Dependencies
 - [DirectX End-User Runtimes](https://www.microsoft.com/en-us/download/details.aspx?id=8109).
@@ -111,4 +111,4 @@ Vulkan      					| 60%           | Don't port it, re-architect the engine instea
 - Windows 10.
 
 # License
-- Licensed under the MIT license, see [LICENSE.txt](https://github.com/PanosK92/SpartanEngine/blob/master/LICENSE.txt) for details.
+- Licensed under the MIT license, see [LICENSE.txt](https://github.com/PanosK92/SpartanEngine/blob/master/.github/LICENSE.txt) for details.
