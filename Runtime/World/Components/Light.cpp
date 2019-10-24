@@ -54,12 +54,12 @@ namespace Spartan
 
 	void Light::OnInitialize()
 	{
-        CreateShadowMap(false);
+        
 	}
 
 	void Light::OnStart()
 	{
-		CreateShadowMap(false);
+		
 	}
 
 	void Light::OnTick(float delta_time)
@@ -69,6 +69,17 @@ namespace Spartan
         {
             LOG_ERROR_INVALID_INTERNALS();
             return;
+        }
+
+        // During engine startup, keep checking until the rhi device gets
+        // created so we can create potentially required shadow maps
+        if (!m_initialized)
+        {
+            if (m_renderer->GetRhiDevice())
+            {
+                CreateShadowMap();
+                m_initialized = true;
+            }
         }
 
 		// Position and rotation dirty check
@@ -152,7 +163,7 @@ namespace Spartan
 
         if (m_cast_shadows)
         {
-            CreateShadowMap(true);
+            CreateShadowMap();
         }
 
         
@@ -169,7 +180,7 @@ namespace Spartan
 
         if (m_cast_shadows)
         {
-            CreateShadowMap(true);
+            CreateShadowMap();
         }
 	}
 
@@ -380,16 +391,17 @@ namespace Spartan
         }
     }
 
-    void Light::CreateShadowMap(bool force)
-	{		
-		if (!m_cast_shadows)
-			return;
-
-        if (m_shadow_map.texture && !force)
+    void Light::CreateShadowMap()
+	{
+        if (!m_renderer)
             return;
 
- 		uint32_t resolution = m_renderer->GetShadowResolution();
-		auto rhi_device		= m_renderer->GetRhiDevice();
+        const uint32_t resolution       = m_renderer->GetShadowResolution();
+        const bool resolution_changed   = m_shadow_map.texture ? (resolution != m_shadow_map.texture->GetWidth()) : false;
+
+        // Early exit if there was no change or the light doesn't cast any shadows
+		if ((!m_is_dirty && !resolution_changed) || !m_cast_shadows)
+			return;
 
 		if (GetLightType() == LightType_Directional)
 		{

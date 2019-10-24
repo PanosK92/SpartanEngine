@@ -188,7 +188,7 @@ namespace Spartan
             auto& light = light_entity->GetComponent<Light>();
             if (light->GetCastShadows())
             {
-                light->CreateShadowMap(true);
+                light->CreateShadowMap();
             }
         }
     }
