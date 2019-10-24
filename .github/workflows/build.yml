@@ -14,8 +14,12 @@ jobs:
         with:
           fetch-depth: 1
    
-      - name: Build x64
+      - name: Generate project files
         shell: cmd
         run: |
           Generate_VS19_Project.bat
+          
+      - name: Build
+        shell: cmd
+        run: |
           "%MSBUILD_PATH%\MSBuild.exe" /p:Platform=x64 /p:Configuration=Release Spartan.sln
