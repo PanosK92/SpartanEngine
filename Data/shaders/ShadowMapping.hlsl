@@ -117,7 +117,6 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, Light 
 
 	#if DIRECTIONAL
 	{
-		[unroll(cascade_count)]
 		for (int cascade = 0; cascade < cascade_count; cascade++)
 		{
             // Compute clip space position and uv for primary cascade
@@ -185,7 +184,6 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, Light 
 	#endif
 
 	// Screen space contact shadow
-	[branch]
 	if (normalBias_shadow_volumetric_contact[light.index].w)
 	{
 		float sscs = ScreenSpaceContactShadows(tex_depth, uv, light.direction);

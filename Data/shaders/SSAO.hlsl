@@ -106,9 +106,8 @@ static const float3 sampleKernel[64] =
 float mainPS(Pixel_PosUv input) : SV_TARGET
 {
 	float2 uv				= input.uv;
-    float center_depth      = texDepth.SampleLevel(sampler_bilinear_clamp, uv, 0).r;
-    float3 center_pos       = get_world_position_from_depth(center_depth, uv / g_ssao_scale);
-    float3 center_normal    = get_normal(texNormal, uv / g_ssao_scale);		
+    float3 center_pos   	= get_position_from_depth(texDepth, uv / g_ssao_scale);
+    float3 center_normal	= get_normal(texNormal, uv / g_ssao_scale);		
 
 	// Construct TBN
 	float3 noise	= unpack(texNoise.Sample(sampler_bilinear_wrap, input.uv * noiseScale).xyz);		
@@ -117,7 +116,6 @@ float mainPS(Pixel_PosUv input) : SV_TARGET
 
     // Occlusion
 	float occlusion = 0.0f;
-	[unroll(sample_count)]
     for (int i = 0; i < sample_count; i++)
     {	
 		// Compute sample uv
@@ -127,7 +125,7 @@ float mainPS(Pixel_PosUv input) : SV_TARGET
 		float2 ray_uv 		= project(ray_pos, g_viewProjection);
 		
 		// Compute sample data
-        float3 sample_pos      			= get_world_position_from_depth(texDepth, ray_uv);
+        float3 sample_pos      			= get_position_from_depth(texDepth, ray_uv);
         float3 center_to_sample			= sample_pos - center_pos;
 		float center_to_sample_distance	= length(center_to_sample);
 		float3 center_to_sample_dir 	= normalize(center_to_sample);

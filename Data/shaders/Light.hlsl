@@ -81,7 +81,7 @@ PixelOutputType mainPS(Pixel_PosUv input)
     bool is_sky 	= material_sample.a == 0.0f;
 
 	// Compute camera to pixel vector
-    float3 position_world 	= get_world_position_from_depth(depth_sample, g_viewProjectionInv, input.uv);
+    float3 position_world 	= get_position_from_depth(depth_sample, input.uv);
     float3 camera_to_pixel  = normalize(position_world - g_camera_position.xyz);
 	
 	for (int i = 0; i < light_count; i++)
@@ -108,16 +108,13 @@ PixelOutputType mainPS(Pixel_PosUv input)
 		
 		// Shadow
 		float shadow = 1.0f;
-		[branch]
 		if (light.shadow_enabled)
 		{
-			[branch]
 			if (!is_sky)
 			{
 				shadow = Shadow_Map(uv, normal, depth_sample, position_world, light);
 			}
-
-			[branch]
+	
 			if (light.volumetric_enabled)
 			{
 				light_out.volumetric.rgb = VolumetricLighting(light, position_world, uv);
@@ -177,7 +174,6 @@ PixelOutputType mainPS(Pixel_PosUv input)
 		material.F0 				= lerp(0.04f, diffuse_color, material.metallic);
 	
 		// Reflectance equation
-		[branch]
 		if (light.intensity > 0.0f)
 		{
 			// Compute some stuff

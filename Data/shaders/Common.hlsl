@@ -94,9 +94,14 @@ float2 pack(float2 value)	{ return value * 0.5f + 0.5f; }
 /*------------------------------------------------------------------------------
 								[NORMALS]
 ------------------------------------------------------------------------------*/
+// No decoding required (just normalise)
+float3 normal_decode(float3 normal)	{ return normalize(normal); }
+// No encoding required (just normalise)
+float3 normal_encode(float3 normal)	{ return normalize(normal); }
+
 float3 get_normal(Texture2D _texture, float2 uv)
 {
-	return normalize(_texture.Load(int3(uv * g_resolution, 0)).rgb);
+	return normal_decode(_texture.Load(int3(uv * g_resolution, 0)).rgb);
 }
 
 float3x3 makeTBN(float3 n, float3 t)
@@ -108,10 +113,6 @@ float3x3 makeTBN(float3 n, float3 t)
 	// create matrix
 	return float3x3(t, b, n); 
 }
-// No decoding required
-float3 normal_decode(float3 normal)	{ return normalize(normal); }
-// No encoding required
-float3 normal_encode(float3 normal)	{ return normalize(normal); }
 
 /*------------------------------------------------------------------------------
 							[DEPTH/POS]
@@ -134,24 +135,31 @@ float get_linear_depth(Texture2D _texture, float2 uv)
 	return get_linear_depth(depth);
 }
 
-float3 get_world_position_from_depth(float z, matrix viewProjectionInverse, float2 uv)
+float3 get_position_from_depth(float z, float2 uv)
 {	
 	float x 			= uv.x * 2.0f - 1.0f;
 	float y 			= (1.0f - uv.y) * 2.0f - 1.0f;
     float4 pos_clip 	= float4(x, y, z, 1.0f);
-	float4 pos_world 	= mul(pos_clip, viewProjectionInverse);	
+	float4 pos_world 	= mul(pos_clip, g_viewProjectionInv);	
     return pos_world.xyz / pos_world.w;  
 }
 
-float3 get_world_position_from_depth(Texture2D _texture, float2 uv)
+float3 get_position_from_depth(Texture2D tex_depth, float2 uv)
 {
-	float depth = get_depth(_texture, uv);
-    return get_world_position_from_depth(depth, g_viewProjectionInv, uv);
+	float depth = get_depth(tex_depth, uv);
+    return get_position_from_depth(depth, uv);
 }
 
-float3 get_world_position_from_depth(float depth, float2 uv)
+float3 get_view_direction(float depth, float2 uv)
 {
-    return get_world_position_from_depth(depth, g_viewProjectionInv, uv);
+    float3 position_world = get_position_from_depth(depth, uv);
+    return normalize(position_world - g_camera_position.xyz); // camera to pixel
+}
+
+float3 get_view_direction(Texture2D tex_depth, float2 uv)
+{
+	float depth = get_depth(tex_depth, uv);
+    return get_view_direction(depth, uv);
 }
 
 /*------------------------------------------------------------------------------
