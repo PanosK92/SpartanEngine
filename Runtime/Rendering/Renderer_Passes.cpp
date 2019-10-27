@@ -1657,7 +1657,6 @@ namespace Spartan
 			    m_cmd_list->SetBufferVertex(m_gizmo_transform->GetVertexBuffer());
 
 			    // Axis - X
-                m_buffer_uber_cpu.resolution        = m_resolution;
                 m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle().GetTransform(Vector3::Right);
                 m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle().GetColor(Vector3::Right);
                 UpdateUberBuffer();
