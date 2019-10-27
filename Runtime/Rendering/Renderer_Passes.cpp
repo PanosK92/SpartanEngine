@@ -51,6 +51,13 @@ namespace Spartan
 {
     void Renderer::Pass_Setup()
     {
+#ifdef API_GRAPHICS_VULKAN
+        // For the time being, when using Vulkan, do simple stuff so I can debug
+        //m_cmd_list->End();
+        //m_cmd_list->Submit();
+        return;
+#endif
+
         m_cmd_list->Begin("Pass_Setup");
 
         // Bind the buffers we will be using thought the frame
@@ -84,6 +91,12 @@ namespace Spartan
         if (!m_rhi_device)
             return;
 
+#ifdef API_GRAPHICS_VULKAN
+        // For the time being, when using Vulkan, do simple stuff so I can debug
+        //m_cmd_list->End();
+        //m_cmd_list->Submit();
+        return;
+#endif
 		m_cmd_list->Begin("Pass_Main");
 
         // Update the frame buffer (doesn't change thought the frame)
@@ -92,16 +105,9 @@ namespace Spartan
             UpdateFrameBuffer();
         }
         m_cmd_list->End();
-
         Pass_BrdfSpecularLut(); // only happens once
-#ifdef API_GRAPHICS_VULKAN
-// For the time being, when using Vulkan, do simple stuff so I can debug
-        m_cmd_list->End();
-        m_cmd_list->Submit();
-        return;
-#endif
 		Pass_LightDepth();
-        if (GetOption(Render_DepthPrepass))
+        if (GetOptionValue(Render_DepthPrepass))
         {
             Pass_DepthPrePass();
         }
@@ -354,7 +360,7 @@ namespace Spartan
         m_cmd_list->ClearRenderTarget(tex_normal->GetResource_RenderTarget(),   clear_color);
         m_cmd_list->ClearRenderTarget(tex_material->GetResource_RenderTarget(), Vector4::Zero); // zeroed material buffer causes sky sphere to render
         m_cmd_list->ClearRenderTarget(tex_velocity->GetResource_RenderTarget(), clear_color);
-        if (!GetOption(Render_DepthPrepass))
+        if (!GetOptionValue(Render_DepthPrepass))
         {
             m_cmd_list->ClearDepthStencil(tex_depth->GetResource_DepthStencil(), Clear_Depth, GetClearDepth());
         }
@@ -363,7 +369,7 @@ namespace Spartan
         {
             m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
             m_cmd_list->SetBlendState(m_blend_disabled);
-            m_cmd_list->SetDepthStencilState(GetOption(Render_DepthPrepass) ? m_depth_stencil_enabled_no_write : m_depth_stencil_enabled_write);
+            m_cmd_list->SetDepthStencilState(GetOptionValue(Render_DepthPrepass) ? m_depth_stencil_enabled_no_write : m_depth_stencil_enabled_write);
             m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
             m_cmd_list->SetViewport(tex_albedo->GetViewport());
             m_cmd_list->SetRenderTargets(render_targets, 4, tex_depth->GetResource_DepthStencil());
@@ -402,7 +408,7 @@ namespace Spartan
                     return;
 
                 // Set face culling (changes only if required)
-                m_cmd_list->SetRasterizerState(GetRasterizerState(material->GetCullMode(), !GetOption(Render_Debug_Wireframe) ? Fill_Solid : Fill_Wireframe));
+                m_cmd_list->SetRasterizerState(GetRasterizerState(material->GetCullMode(), !GetOptionValue(Render_Debug_Wireframe) ? Fill_Solid : Fill_Wireframe));
 
                 // Bind geometry
                 if (currently_bound_geometry != model->GetId())
@@ -797,21 +803,21 @@ namespace Spartan
         const auto swap_targets_ldr = [this, &tex_in_ldr, &tex_out_ldr]() { m_cmd_list->Submit(); tex_in_ldr.swap(tex_out_ldr); };
 
 		// TAA	
-        if (GetOption(Render_AntiAliasing_TAA))
+        if (GetOptionValue(Render_AntiAliasing_TAA))
         {
             Pass_TAA(tex_in_hdr, tex_out_hdr);
             swap_targets_hdr();
         }
 
         // Motion Blur
-        if (GetOption(Render_MotionBlur))
+        if (GetOptionValue(Render_MotionBlur))
         {
             Pass_MotionBlur(tex_in_hdr, tex_out_hdr);
             swap_targets_hdr();
         }
 
 		// Bloom
-		if (GetOption(Render_Bloom))
+		if (GetOptionValue(Render_Bloom))
 		{
 			Pass_Bloom(tex_in_hdr, tex_out_hdr);
             swap_targets_hdr();
@@ -828,35 +834,35 @@ namespace Spartan
         }
 
         // Dithering
-        if (GetOption(Render_Dithering))
+        if (GetOptionValue(Render_Dithering))
         {
             Pass_Dithering(tex_in_ldr, tex_out_ldr);
             swap_targets_ldr();
         }
 
 		// FXAA
-		if (GetOption(Render_AntiAliasing_FXAA))
+		if (GetOptionValue(Render_AntiAliasing_FXAA))
 		{
 			Pass_FXAA(tex_in_ldr, tex_out_ldr);
             swap_targets_ldr();
 		}
 
         // Sharpening - TAA controlled
-        if (GetOption(Render_AntiAliasing_TAA))
+        if (GetOptionValue(Render_AntiAliasing_TAA))
         {
             Pass_TaaSharpen(tex_in_ldr, tex_out_ldr);
             swap_targets_ldr();
         }
 
 		// Sharpening - User controlled
-		if (GetOption(Render_Sharpening_LumaSharpen))
+		if (GetOptionValue(Render_Sharpening_LumaSharpen))
 		{
 			Pass_LumaSharpen(tex_in_ldr, tex_out_ldr);
             swap_targets_ldr();
 		}
 
 		// Chromatic aberration
-		if (GetOption(Render_ChromaticAberration))
+		if (GetOptionValue(Render_ChromaticAberration))
 		{
 			Pass_ChromaticAberration(tex_in_ldr, tex_out_ldr);
             swap_targets_ldr();

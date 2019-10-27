@@ -242,8 +242,8 @@ namespace Spartan
 		auto GetDebugBuffer() const				                { return m_debug_buffer; }
 
         // Depth
-        auto GetClearDepth()            { return GetOption(Render_ReverseZ) ? m_viewport.depth_min : m_viewport.depth_max; }
-        auto GetComparisonFunction()    { return GetOption(Render_ReverseZ) ? Comparison_GreaterEqual : Comparison_LessEqual; }
+        auto GetClearDepth()            { return GetOptionValue(Render_ReverseZ) ? m_viewport.depth_min : m_viewport.depth_max; }
+        auto GetComparisonFunction()    { return GetOptionValue(Render_ReverseZ) ? Comparison_GreaterEqual : Comparison_LessEqual; }
 
         // Environment
         const std::shared_ptr<RHI_Texture>& GetEnvironmentTexture();
@@ -255,13 +255,13 @@ namespace Spartan
         // Options
         auto GetOptions()                                   { return m_options; }
         void SetOptions(uint64_t flags)                     { m_options = flags; }
-        bool GetOption(Renderer_Option flag)                { return m_options & flag; }
-        void SetOption(Renderer_Option flag, bool enable)   { enable ? (m_options |= flag) : (m_options &= ~flag); }
+        bool GetOptionValue(Renderer_Option flag)                { return m_options & flag; }
+        void SetOptionValue(Renderer_Option flag, bool enable)   { enable ? (m_options |= flag) : (m_options &= ~flag); }
         
         // Options values
         template<typename T>
-        T GetOption(Renderer_Option_Value option) { return static_cast<T>(m_option_values[option]); }
-        void SetOption(Renderer_Option_Value option, float value, float min = std::numeric_limits<float>::lowest(), float max = std::numeric_limits<float>::max());
+        T GetOptionValue(Renderer_Option_Value option) { return static_cast<T>(m_option_values[option]); }
+        void SetOptionValue(Renderer_Option_Value option, float value, float min = std::numeric_limits<float>::lowest(), float max = std::numeric_limits<float>::max());
 
         // Misc
         const auto& GetRhiDevice()		const { return m_rhi_device; }

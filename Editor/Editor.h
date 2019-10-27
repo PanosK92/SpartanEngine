@@ -56,7 +56,7 @@ private:
 
 	// Editor
 	std::vector<std::unique_ptr<Widget>> m_widgets;
-	bool m_initialized = false;
+	bool m_initializing = false;
 
 	// Engine
 	std::unique_ptr<Spartan::Engine> m_engine;

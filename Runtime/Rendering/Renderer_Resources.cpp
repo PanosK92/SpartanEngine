@@ -76,7 +76,7 @@ namespace Spartan
 
     void Renderer::CreateSamplers()
     {
-        m_sampler_compare_depth     = make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_BILINEAR,  Sampler_Address_Clamp,  GetOption(Render_ReverseZ) ? Comparison_Greater : Comparison_Less, false, true);
+        m_sampler_compare_depth     = make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_BILINEAR,  Sampler_Address_Clamp,  GetOptionValue(Render_ReverseZ) ? Comparison_Greater : Comparison_Less, false, true);
         m_sampler_point_clamp       = make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_POINT,     Sampler_Address_Clamp,  Comparison_Always);
         m_sampler_bilinear_clamp    = make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_BILINEAR,  Sampler_Address_Clamp,  Comparison_Always);
         m_sampler_bilinear_wrap     = make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_BILINEAR,  Sampler_Address_Wrap,   Comparison_Always);

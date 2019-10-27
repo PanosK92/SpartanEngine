@@ -314,7 +314,7 @@ namespace Spartan
 
 			// Describe
 			VkPhysicalDeviceFeatures device_features	= {};
-			device_features.samplerAnisotropy			= m_context->GetSubsystem<Renderer>()->GetAnisotropy() != 0;
+			device_features.samplerAnisotropy			= m_context->GetSubsystem<Renderer>()->GetOptionValue<bool>(Option_Value_Anisotropy);
 
 			VkDeviceCreateInfo create_info	= {};
 			{

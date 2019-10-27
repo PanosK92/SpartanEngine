@@ -245,7 +245,7 @@ namespace Spartan
         }
 
         ShadowSlice& shadow_slice   = m_shadow_map.slices[index];
-        const bool reverse_z        = m_renderer ? m_renderer->GetOption(Render_ReverseZ) : false;
+        const bool reverse_z        = m_renderer ? m_renderer->GetOptionValue(Render_ReverseZ) : false;
 
 		if (m_light_type == LightType_Directional)
 		{
@@ -396,7 +396,7 @@ namespace Spartan
         if (!m_renderer)
             return;
 
-        const uint32_t resolution       = m_renderer->GetOption<uint32_t>(Option_Value_ShadowResolution);
+        const uint32_t resolution       = m_renderer->GetOptionValue<uint32_t>(Option_Value_ShadowResolution);
         const bool resolution_changed   = m_shadow_map.texture ? (resolution != m_shadow_map.texture->GetWidth()) : false;
 
         // Early exit if there was no change or the light doesn't cast any shadows
