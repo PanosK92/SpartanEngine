@@ -233,7 +233,7 @@ namespace Spartan
 		void ClearRenderTarget(void* render_target, const Math::Vector4& color);
 		void ClearDepthStencil(void* depth_stencil, uint32_t flags, float depth, uint32_t stencil = 0);
 
-		bool Submit();
+		bool Submit(bool profile = true);
 
 	private:
 		void Clear();
