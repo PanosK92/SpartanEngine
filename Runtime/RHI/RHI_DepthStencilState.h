@@ -33,15 +33,26 @@ namespace Spartan
 	class SPARTAN_CLASS RHI_DepthStencilState : public Spartan_Object
 	{
 	public:
-		RHI_DepthStencilState(const std::shared_ptr<RHI_Device>& rhi_device, const bool depth_enabled, const RHI_Comparison_Function comparison);
+		RHI_DepthStencilState(
+            const std::shared_ptr<RHI_Device>& rhi_device,
+            const bool depth_test                           = true,
+            const bool depth_write                          = true,
+            const RHI_Comparison_Function depth_function    = Comparison_LessEqual,
+            const bool stencil_enabled                      = false
+            
+        );
 		~RHI_DepthStencilState();
 
-		bool GetDepthEnabled() const	{ return m_depth_enabled; }
-		auto GetResource() const		{ return m_buffer; }
+		bool GetDepthTestEnabled() const	                { return m_depth_test_enabled; }
+        bool GetDepthWriteEnabled() const                   { return m_depth_write_enabled; }
+        RHI_Comparison_Function GetDepthFunction() const    { return m_depth_function; }
+		auto GetResource() const                            { return m_buffer; }
 
 	private:
-		bool m_depth_enabled	= false;
-		bool m_initialized		= false;
-		void* m_buffer			= nullptr;
+		bool m_depth_test_enabled	                = false;
+        bool m_depth_write_enabled                  = false;
+        RHI_Comparison_Function m_depth_function    = Comparison_Never;
+		bool m_initialized		                    = false;
+		void* m_buffer			                    = nullptr;
 	};
 }

@@ -50,8 +50,9 @@ namespace Spartan
 
     void Renderer::CreateDepthStencilStates()
     {
-        m_depth_stencil_enabled     = make_shared<RHI_DepthStencilState>(m_rhi_device, true,    GetComparisonFunction());
-        m_depth_stencil_disabled    = make_shared<RHI_DepthStencilState>(m_rhi_device, false,   GetComparisonFunction());
+        m_depth_stencil_enabled_write       = make_shared<RHI_DepthStencilState>(m_rhi_device, true,    true,   GetComparisonFunction(), false);
+        m_depth_stencil_enabled_no_write    = make_shared<RHI_DepthStencilState>(m_rhi_device, true,    false,  GetComparisonFunction(), false);
+        m_depth_stencil_disabled            = make_shared<RHI_DepthStencilState>(m_rhi_device, false,   false,  GetComparisonFunction(), false);
     }
 
     void Renderer::CreateRasterizerStates()
@@ -75,7 +76,7 @@ namespace Spartan
 
     void Renderer::CreateSamplers()
     {
-        m_sampler_compare_depth     = make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_BILINEAR,  Sampler_Address_Clamp,  GetReverseZ() ? Comparison_Greater : Comparison_Less, false, true);
+        m_sampler_compare_depth     = make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_BILINEAR,  Sampler_Address_Clamp,  GetOption(Render_ReverseZ) ? Comparison_Greater : Comparison_Less, false, true);
         m_sampler_point_clamp       = make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_POINT,     Sampler_Address_Clamp,  Comparison_Always);
         m_sampler_bilinear_clamp    = make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_BILINEAR,  Sampler_Address_Clamp,  Comparison_Always);
         m_sampler_bilinear_wrap     = make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_BILINEAR,  Sampler_Address_Wrap,   Comparison_Always);
@@ -124,7 +125,7 @@ namespace Spartan
         m_render_targets[RenderTarget_Composition_Ldr_2]            = make_unique<RHI_Texture2D>(m_context, width, height, m_render_targets[RenderTarget_Composition_Ldr]->GetFormat()); // Used for Post-Processing   
 
         // SSAO
-        float ssao_scale                                = m_options[Option_Value_Ssao_Scale];
+        float ssao_scale                                = m_option_values[Option_Value_Ssao_Scale];
         m_render_targets[RenderTarget_Ssao_Raw]         = make_unique<RHI_Texture2D>(m_context, static_cast<uint32_t>(width * ssao_scale), static_cast<uint32_t>(height * ssao_scale), Format_R8_UNORM);                                        // Raw
         m_render_targets[RenderTarget_Ssao_Blurred]     = make_unique<RHI_Texture2D>(m_context, static_cast<uint32_t>(width * ssao_scale), static_cast<uint32_t>(height * ssao_scale), m_render_targets[RenderTarget_Ssao_Raw]->GetFormat());   // Blurred
         m_render_targets[RenderTarget_Ssao]             = make_unique<RHI_Texture2D>(m_context, width, height, m_render_targets[RenderTarget_Ssao_Raw]->GetFormat());                                                                           // Upscaled

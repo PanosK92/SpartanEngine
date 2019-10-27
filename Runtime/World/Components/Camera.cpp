@@ -75,7 +75,7 @@ namespace Spartan
 
         m_mView         = ComputeViewMatrix();
         m_mProjection   = ComputeProjection();
-		m_frustrum      = Frustum(GetViewMatrix(), GetProjectionMatrix(), m_renderer->GetReverseZ() ? GetNearPlane() : GetFarPlane());
+		m_frustrum      = Frustum(GetViewMatrix(), GetProjectionMatrix(), m_renderer->GetOption(Render_ReverseZ) ? GetNearPlane() : GetFarPlane());
 
 		m_isDirty = false;
 	}
@@ -331,7 +331,7 @@ namespace Spartan
 
 	Matrix Camera::ComputeProjection(const bool force_non_reverse_z /*= false*/)
 	{
-        bool reverse_z      = (m_renderer ? m_renderer->GetReverseZ() : false) && !force_non_reverse_z;
+        bool reverse_z      = (m_renderer ? m_renderer->GetOption(Render_ReverseZ) : false) && !force_non_reverse_z;
 		float near_plane	= m_near_plane;
         float far_plane     = m_far_plane;
 

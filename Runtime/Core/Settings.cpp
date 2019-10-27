@@ -157,9 +157,9 @@ namespace Spartan
         m_fps_limit             = m_context->GetSubsystem<Timer>()->GetTargetFps();
         m_max_thread_count      = m_context->GetSubsystem<Threading>()->GetThreadCountMax();
         m_resolution            = renderer->GetResolution();   
-        m_shadow_map_resolution = renderer->GetShadowResolution();
-        m_anisotropy            = renderer->GetAnisotropy();
-        m_renderer_flags        = renderer->GetFlags();
+        m_shadow_map_resolution = renderer->GetOption<uint32_t>(Option_Value_ShadowResolution);
+        m_anisotropy            = renderer->GetOption<uint32_t>(Option_Value_Anisotropy);
+        m_renderer_flags        = renderer->GetOptions();
     }
 
     void Settings::Map()
@@ -167,8 +167,8 @@ namespace Spartan
         Renderer* renderer = m_context->GetSubsystem<Renderer>().get();
 
         m_context->GetSubsystem<Timer>()->SetTargetFps(m_fps_limit);
-        renderer->SetAnisotropy(m_anisotropy);
+        renderer->SetOption(Option_Value_Anisotropy, m_anisotropy, 0, 16);
         renderer->SetShadowResolution(m_shadow_map_resolution);
-        renderer->SetFlags(m_renderer_flags);
+        renderer->SetOptions(m_renderer_flags);
     }
 }

@@ -290,7 +290,7 @@ namespace Spartan
 		cmd.textures_start_slot = start_slot;
 		cmd.textures			= textures;
 		cmd.texture_count		= texture_count;
-		cmd.is_array			= is_array;
+		cmd.texture_is_array    = is_array;
 	}
 
 	void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture)
@@ -298,28 +298,15 @@ namespace Spartan
 		SetTextures(slot, texture ? texture->GetResource_Texture() : nullptr, 1, false);
 	}
 
-	void RHI_CommandList::SetRenderTargets(const vector<void*>& render_targets, void* depth_stencil /*= nullptr*/)
-	{
-		auto& cmd				= GetCmd();
-		cmd.type				= RHI_Cmd_SetRenderTargets;
-		cmd.render_targets		= render_targets;
-		cmd.render_target_count = static_cast<uint32_t>(render_targets.size());
-		cmd.depth_stencil		= depth_stencil;
-	}
-
-	void RHI_CommandList::SetRenderTarget(void* render_target, void* depth_stencil /*= nullptr*/)
-	{
-		auto& cmd									= GetCmd();
-		cmd.type									= RHI_Cmd_SetRenderTargets;	
-		cmd.depth_stencil							= depth_stencil;
-		cmd.render_targets[cmd.render_target_count] = render_target;
-		cmd.render_target_count++;
-	}
-
-	void RHI_CommandList::SetRenderTarget(const shared_ptr<RHI_Texture>& render_target, void* depth_stencil /*= nullptr*/)
-	{
-		SetRenderTarget(render_target->GetResource_RenderTarget(), depth_stencil);
-	}
+    void RHI_CommandList::SetRenderTargets(const void* render_targets, uint32_t render_target_count, void* depth_stencil /*= nullptr*/, bool is_array /*= true*/)
+    {
+        auto& cmd                   = GetCmd();
+        cmd.type                    = RHI_Cmd_SetRenderTargets;
+        cmd.render_targets          = render_targets;
+        cmd.render_target_count     = render_target_count;
+        cmd.depth_stencil           = depth_stencil;
+        cmd.render_target_is_array  = is_array;
+    }
 
 	void RHI_CommandList::ClearRenderTarget(void* render_target, const Vector4& color)
 	{
@@ -345,7 +332,7 @@ namespace Spartan
 		cmd.depth_clear_stencil = stencil;
 	}
 
-	bool RHI_CommandList::Submit(bool profile /*=true*/)
+	bool RHI_CommandList::Submit()
 	{
 		auto context		= m_rhi_device->GetContextRhi();
 		auto device_context	= m_rhi_device->GetContextRhi()->device_context;
@@ -358,7 +345,6 @@ namespace Spartan
 			{
 				case RHI_Cmd_Begin:
 				{
-                    if (profile) m_profiler->TimeBlockStart(cmd.pass_name, true, true);
 					#ifdef DEBUG
 					context->annotation->BeginEvent(FileSystem::StringToWstring(cmd.pass_name).c_str());
 					#endif
@@ -370,7 +356,6 @@ namespace Spartan
 					#ifdef DEBUG
 					context->annotation->EndEvent();
 					#endif
-					if (profile) m_profiler->TimeBlockEnd();
 					break;
 				}
 
@@ -553,7 +538,7 @@ namespace Spartan
 
 				case RHI_Cmd_SetTextures:
 				{
-					if (cmd.is_array)
+					if (cmd.texture_is_array)
 					{
 						device_context->PSSetShaderResources
 						(
@@ -579,12 +564,25 @@ namespace Spartan
 
 				case RHI_Cmd_SetRenderTargets:
 				{
-					device_context->OMSetRenderTargets
-					(
-						static_cast<UINT>(cmd.render_target_count),
-						reinterpret_cast<ID3D11RenderTargetView* const*>(cmd.render_targets.data()),
-						static_cast<ID3D11DepthStencilView*>(cmd.depth_stencil)
-					);
+                    if (cmd.render_target_is_array)
+                    {
+                        device_context->OMSetRenderTargets
+                        (
+                            static_cast<UINT>(cmd.render_target_count),
+                            reinterpret_cast<ID3D11RenderTargetView* const*>(cmd.render_targets),
+                            static_cast<ID3D11DepthStencilView*>(cmd.depth_stencil)
+                        );
+                    }
+                    else
+                    {
+                        const void* rt_array[1] = { cmd.render_targets };
+                        device_context->OMSetRenderTargets
+                        (
+                            static_cast<UINT>(cmd.render_target_count),
+                            reinterpret_cast<ID3D11RenderTargetView* const*>(&rt_array),
+                            static_cast<ID3D11DepthStencilView*>(cmd.depth_stencil)
+                        );
+                    }
 
 					m_profiler->m_rhi_bindings_render_target++;
 					break;

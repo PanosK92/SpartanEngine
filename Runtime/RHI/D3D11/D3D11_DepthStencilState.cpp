@@ -36,8 +36,14 @@ using namespace std;
 
 namespace Spartan
 {
-	RHI_DepthStencilState::RHI_DepthStencilState(const shared_ptr<RHI_Device>& rhi_device, const bool depth_enabled, const RHI_Comparison_Function comparison)
-	{
+    RHI_DepthStencilState::RHI_DepthStencilState(
+        const shared_ptr<RHI_Device>& rhi_device,
+        const bool depth_test                           /*= true*/,
+        const bool depth_write                          /*= true*/,
+        const RHI_Comparison_Function depth_function    /*= Comparison_LessEqual*/,
+        const bool stencil_enabled                      /*= false */
+    )
+    {
 		if (!rhi_device)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
@@ -52,39 +58,24 @@ namespace Spartan
 		}
 
 		// Save properties
-		m_depth_enabled = depth_enabled;
+		m_depth_test_enabled    = depth_test;
+        m_depth_write_enabled   = depth_write;
+        m_depth_function        = depth_function;
 
 		// Create description
 		D3D11_DEPTH_STENCIL_DESC desc;
-
-		if (!depth_enabled)
-		{
-			desc.DepthEnable					= false;
-			desc.DepthWriteMask					= D3D11_DEPTH_WRITE_MASK_ALL;
-			desc.DepthFunc						= d3d11_compare_operator[comparison];
-			desc.StencilEnable					= false;
-			desc.StencilReadMask				= D3D11_DEFAULT_STENCIL_READ_MASK;
-			desc.StencilWriteMask				= D3D11_DEFAULT_STENCIL_WRITE_MASK;
-			desc.FrontFace.StencilDepthFailOp	= D3D11_STENCIL_OP_KEEP;
-			desc.FrontFace.StencilFailOp		= D3D11_STENCIL_OP_KEEP;
-			desc.FrontFace.StencilPassOp		= D3D11_STENCIL_OP_KEEP;
-			desc.FrontFace.StencilFunc			= D3D11_COMPARISON_ALWAYS;
-			desc.BackFace						= desc.FrontFace;
-		}
-		else
-		{
-			desc.DepthEnable					= true;
-			desc.DepthWriteMask					= D3D11_DEPTH_WRITE_MASK_ALL;
-			desc.DepthFunc						= d3d11_compare_operator[comparison];
-			desc.StencilEnable					= false;
-			desc.StencilReadMask				= D3D11_DEFAULT_STENCIL_READ_MASK;
-			desc.StencilWriteMask				= D3D11_DEFAULT_STENCIL_WRITE_MASK;
-			desc.FrontFace.StencilDepthFailOp	= D3D11_STENCIL_OP_KEEP;
-			desc.FrontFace.StencilFailOp		= D3D11_STENCIL_OP_KEEP;
-			desc.FrontFace.StencilPassOp		= D3D11_STENCIL_OP_REPLACE;
-			desc.FrontFace.StencilFunc			= D3D11_COMPARISON_ALWAYS;
-			desc.BackFace						= desc.FrontFace;
-		
+        {
+		    desc.DepthEnable					= static_cast<BOOL>(depth_test);
+		    desc.DepthWriteMask					= depth_test ? D3D11_DEPTH_WRITE_MASK_ALL : D3D11_DEPTH_WRITE_MASK_ZERO;
+		    desc.DepthFunc						= d3d11_compare_operator[depth_function];
+		    desc.StencilEnable					= static_cast<BOOL>(stencil_enabled);
+		    desc.StencilReadMask				= D3D11_DEFAULT_STENCIL_READ_MASK;
+		    desc.StencilWriteMask				= D3D11_DEFAULT_STENCIL_WRITE_MASK;
+		    desc.FrontFace.StencilDepthFailOp	= D3D11_STENCIL_OP_KEEP;
+		    desc.FrontFace.StencilFailOp		= D3D11_STENCIL_OP_KEEP;
+		    desc.FrontFace.StencilPassOp		= D3D11_STENCIL_OP_KEEP;
+		    desc.FrontFace.StencilFunc			= D3D11_COMPARISON_ALWAYS;
+		    desc.BackFace						= desc.FrontFace;
 		}
 
 		// Create depth-stencil state

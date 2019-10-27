@@ -80,6 +80,10 @@ namespace Spartan
 
     void Renderer::Pass_Main()
 	{
+        // Validate RHI device as it's required almost everywhere
+        if (!m_rhi_device)
+            return;
+
 		m_cmd_list->Begin("Pass_Main");
 
         // Update the frame buffer (doesn't change thought the frame)
@@ -97,6 +101,10 @@ namespace Spartan
         return;
 #endif
 		Pass_LightDepth();
+        if (GetOption(Render_DepthPrepass))
+        {
+            Pass_DepthPrePass();
+        }
 		Pass_GBuffer();
 		Pass_Ssao();
         Pass_Ssr();
@@ -114,6 +122,9 @@ namespace Spartan
 
 	void Renderer::Pass_LightDepth()
 	{
+        // Description: All the opaque meshes are rendered (from the lights point of view),
+        // outputting just their depth information into a depth map.
+
 		// Acquire shader
 		const auto& shader_depth = m_shaders[Shader_Depth_V];
 		if (!shader_depth->IsCompiled())
@@ -145,7 +156,7 @@ namespace Spartan
             // Begin command list
             m_cmd_list->Begin("Light");	
 			m_cmd_list->SetBlendState(m_blend_disabled);
-			m_cmd_list->SetDepthStencilState(m_depth_stencil_enabled);
+			m_cmd_list->SetDepthStencilState(m_depth_stencil_enabled_write);
 			m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
             m_cmd_list->SetShaderPixel(nullptr);
 			m_cmd_list->SetShaderVertex(shader_depth);
@@ -237,160 +248,228 @@ namespace Spartan
         m_cmd_list->Submit();
 	}
 
+    void Renderer::Pass_DepthPrePass()
+    {
+        // Description: All the opaque meshes are rendered, outputting
+        // just their depth information into a depth map.
+
+        // Acquire required resources/data
+        const auto& shader_depth    = m_shaders[Shader_Depth_V];
+        const auto& tex_depth       = m_render_targets[RenderTarget_Gbuffer_Depth];
+        const auto& entities        = m_entities[Renderer_Object_Opaque];
+
+        // Ensure the shader has compiled
+        if (!shader_depth->IsCompiled())
+            return;
+
+        // Star command list
+        m_cmd_list->Begin("Pass_DepthPrePass");
+        m_cmd_list->ClearDepthStencil(tex_depth->GetResource_DepthStencil(), Clear_Depth, GetClearDepth());
+
+        if (!entities.empty())
+        {
+            m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
+            m_cmd_list->SetBlendState(m_blend_disabled);
+            m_cmd_list->SetDepthStencilState(m_depth_stencil_enabled_write);
+            m_cmd_list->SetViewport(tex_depth->GetViewport());
+            m_cmd_list->SetRenderTarget(nullptr, tex_depth->GetResource_DepthStencil());
+            m_cmd_list->SetShaderVertex(shader_depth);
+            m_cmd_list->SetShaderPixel(nullptr);
+            m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+            m_cmd_list->SetInputLayout(shader_depth->GetInputLayout());
+
+            // Variables that help reduce state changes
+            uint32_t currently_bound_geometry = 0;
+
+            // Draw opaque
+            for (const auto& entity : entities)
+            {
+                // Get renderable
+                const auto& renderable = entity->GetRenderable_PtrRaw();
+                if (!renderable)
+                    continue;
+
+                // Get geometry
+                const auto& model = renderable->GeometryModel();
+                if (!model || !model->GetVertexBuffer() || !model->GetIndexBuffer())
+                    continue;
+
+                // Skip objects outside of the view frustum
+                if (!m_camera->IsInViewFrustrum(renderable))
+                    continue;
+
+                // Bind geometry
+                if (currently_bound_geometry != model->GetId())
+                {
+                    m_cmd_list->SetBufferIndex(model->GetIndexBuffer());
+                    m_cmd_list->SetBufferVertex(model->GetVertexBuffer());
+                    currently_bound_geometry = model->GetId();
+                }
+
+                // Update uber buffer with entity transform
+                if (Transform* transform = entity->GetTransform_PtrRaw())
+                {
+                    // Update uber buffer with cascade transform
+                    m_buffer_uber_cpu.transform = transform->GetMatrix() * m_buffer_frame_cpu.view_projection;
+                    UpdateUberBuffer(); // only updates if needed
+                }
+
+                // Draw	
+                m_cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
+                m_cmd_list->Submit();
+            }
+        }
+
+        m_cmd_list->End();
+        m_cmd_list->Submit();
+    }
+
 	void Renderer::Pass_GBuffer()
 	{
-		if (!m_rhi_device)
-			return;
+        // Acquire required resources/shaders
+        const auto& tex_albedo      = m_render_targets[RenderTarget_Gbuffer_Albedo];
+        const auto& tex_normal      = m_render_targets[RenderTarget_Gbuffer_Normal];
+        const auto& tex_material    = m_render_targets[RenderTarget_Gbuffer_Material];
+        const auto& tex_velocity    = m_render_targets[RenderTarget_Gbuffer_Velocity];
+        const auto& tex_depth       = m_render_targets[RenderTarget_Gbuffer_Depth];
+        const auto& clear_color     = Vector4::Zero;
+        const auto& shader_gbuffer  = m_shaders[Shader_Gbuffer_V];
 
-		m_cmd_list->Begin("Pass_GBuffer");
-
-		const auto& clear_color= Vector4::Zero;
-
-        // Acquire render targets
-        auto& tex_albedo    = m_render_targets[RenderTarget_Gbuffer_Albedo];
-        auto& tex_normal    = m_render_targets[RenderTarget_Gbuffer_Normal];
-        auto& tex_material  = m_render_targets[RenderTarget_Gbuffer_Material];
-        auto& tex_velocity  = m_render_targets[RenderTarget_Gbuffer_Velocity];
-        auto& tex_depth     = m_render_targets[RenderTarget_Gbuffer_Depth];
-
-		// If there is nothing to render, just clear
-		if (m_entities[Renderer_Object_Opaque].empty())
-		{
-			m_cmd_list->ClearRenderTarget(tex_albedo->GetResource_RenderTarget(), clear_color);
-			m_cmd_list->ClearRenderTarget(tex_normal->GetResource_RenderTarget(), clear_color);
-			m_cmd_list->ClearRenderTarget(tex_material->GetResource_RenderTarget(), Vector4::Zero); // zeroed material buffer causes sky sphere to render
-			m_cmd_list->ClearRenderTarget(tex_velocity->GetResource_RenderTarget(), clear_color);
-			m_cmd_list->ClearDepthStencil(tex_depth->GetResource_DepthStencil(), Clear_Depth, GetClearDepth());
-			m_cmd_list->End();
-			m_cmd_list->Submit();
-			return;
-		}
-
-		const auto& shader_gbuffer = m_shaders[Shader_Gbuffer_V];
+        // Validate that the shader has compiled
         if (!shader_gbuffer->IsCompiled())
             return;
 
         // Pack render targets
-		const vector<void*> render_targets
-		{
+        void* render_targets[]
+        {
             tex_albedo->GetResource_RenderTarget(),
             tex_normal->GetResource_RenderTarget(),
             tex_material->GetResource_RenderTarget(),
             tex_velocity->GetResource_RenderTarget()
-		};
-
-		// Variables that help reduce state changes
-		uint32_t currently_bound_geometry	= 0;
-		uint32_t currently_bound_shader		= 0;
-		uint32_t currently_bound_material	= 0;
-
-        auto draw_entity = [this, &currently_bound_geometry, &currently_bound_shader, &currently_bound_material](Entity* entity)
-        {
-            // Get renderable
-            const auto& renderable = entity->GetRenderable_PtrRaw();
-            if (!renderable)
-                return;
-
-            // Get material
-            const auto& material = renderable->GetMaterial();
-            if (!material)
-                return;
-
-            // Get shader and geometry
-            const auto& shader  = material->GetShader();
-            const auto& model   = renderable->GeometryModel();
-
-            // Validate shader
-            if (!shader || !shader->IsCompiled())
-                return;
-
-            // Validate geometry
-            if (!model || !model->GetVertexBuffer() || !model->GetIndexBuffer())
-                return;
-
-            // Skip objects outside of the view frustum
-            if (!m_camera->IsInViewFrustrum(renderable))
-                return;
-
-            // Set face culling (changes only if required)
-            m_cmd_list->SetRasterizerState(GetRasterizerState(material->GetCullMode(), !IsFlagSet(Render_Debug_Wireframe) ? Fill_Solid : Fill_Wireframe));
-
-            // Bind geometry
-            if (currently_bound_geometry != model->GetId())
-            {
-                m_cmd_list->SetBufferIndex(model->GetIndexBuffer());
-                m_cmd_list->SetBufferVertex(model->GetVertexBuffer());
-                currently_bound_geometry = model->GetId();
-            }
-
-            // Bind shader
-            if (currently_bound_shader != shader->GetId())
-            {
-                m_cmd_list->SetShaderPixel(static_pointer_cast<RHI_Shader>(shader));
-                currently_bound_shader = shader->GetId();
-            }
-
-            // Bind material
-            if (currently_bound_material != material->GetId())
-            {
-                // Bind material textures		
-                m_cmd_list->SetTextures(0, material->GetResources(), 8);
-
-                // Update uber buffer with material properties
-               m_buffer_uber_cpu.mat_albedo          = material->GetColorAlbedo();
-               m_buffer_uber_cpu.mat_tiling_uv       = material->GetTiling();
-               m_buffer_uber_cpu.mat_offset_uv       = material->GetOffset();
-               m_buffer_uber_cpu.mat_roughness_mul   = material->GetMultiplier(TextureType_Roughness);
-               m_buffer_uber_cpu.mat_metallic_mul    = material->GetMultiplier(TextureType_Metallic);
-               m_buffer_uber_cpu.mat_normal_mul      = material->GetMultiplier(TextureType_Normal);
-               m_buffer_uber_cpu.mat_height_mul      = material->GetMultiplier(TextureType_Height);
-               m_buffer_uber_cpu.mat_shading_mode    = static_cast<float>(material->GetShadingMode());
-
-                currently_bound_material = material->GetId();
-            }
-
-            // Update uber buffer with entity transform
-            if (Transform* transform = entity->GetTransform_PtrRaw())
-            {
-                m_buffer_uber_cpu.transform     = transform->GetMatrix();
-                m_buffer_uber_cpu.wvp_current   = transform->GetMatrix() * m_buffer_frame_cpu.view_projection;
-                m_buffer_uber_cpu.wvp_previous  = transform->GetWvpLastFrame();
-                transform->SetWvpLastFrame(m_buffer_uber_cpu.wvp_current);
-            }
-
-            // Only happens if needed
-            UpdateUberBuffer();
-
-            // Render	
-            m_cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
-            m_profiler->m_renderer_meshes_rendered++;
-
-            m_cmd_list->Submit();
         };
 
         // Star command list
-        m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
-        m_cmd_list->SetBlendState(m_blend_disabled);
-        m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
-        m_cmd_list->SetDepthStencilState(m_depth_stencil_enabled);
-        m_cmd_list->SetViewport(tex_albedo->GetViewport());
-        m_cmd_list->SetRenderTargets(render_targets, tex_depth->GetResource_DepthStencil());
-        m_cmd_list->ClearRenderTargets(render_targets, clear_color);
-        m_cmd_list->ClearDepthStencil(tex_depth->GetResource_DepthStencil(), Clear_Depth, GetClearDepth());
-        m_cmd_list->SetShaderVertex(shader_gbuffer);
-        m_cmd_list->SetInputLayout(shader_gbuffer->GetInputLayout());
-
-        // Draw opaque
-		for (const auto& entity : m_entities[Renderer_Object_Opaque])
-		{
-			draw_entity(entity);
-		}
-
-        // Draw transparent (transparency of the poor)
-        m_cmd_list->SetBlendState(m_blend_enabled);
-        for (const auto& entity : m_entities[Renderer_Object_Transparent])
+        m_cmd_list->Begin("Pass_GBuffer");
+        m_cmd_list->ClearRenderTarget(tex_albedo->GetResource_RenderTarget(),   clear_color);
+        m_cmd_list->ClearRenderTarget(tex_normal->GetResource_RenderTarget(),   clear_color);
+        m_cmd_list->ClearRenderTarget(tex_material->GetResource_RenderTarget(), Vector4::Zero); // zeroed material buffer causes sky sphere to render
+        m_cmd_list->ClearRenderTarget(tex_velocity->GetResource_RenderTarget(), clear_color);
+        if (!GetOption(Render_DepthPrepass))
         {
-            draw_entity(entity);
+            m_cmd_list->ClearDepthStencil(tex_depth->GetResource_DepthStencil(), Clear_Depth, GetClearDepth());
+        }
+
+        if (!m_entities[Renderer_Object_Opaque].empty())
+        {
+            m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
+            m_cmd_list->SetBlendState(m_blend_disabled);
+            m_cmd_list->SetDepthStencilState(GetOption(Render_DepthPrepass) ? m_depth_stencil_enabled_no_write : m_depth_stencil_enabled_write);
+            m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+            m_cmd_list->SetViewport(tex_albedo->GetViewport());
+            m_cmd_list->SetRenderTargets(render_targets, 4, tex_depth->GetResource_DepthStencil());
+            m_cmd_list->SetShaderVertex(shader_gbuffer);
+            m_cmd_list->SetInputLayout(shader_gbuffer->GetInputLayout());
+
+            // Variables that help reduce state changes
+            uint32_t currently_bound_geometry   = 0;
+            uint32_t currently_bound_shader     = 0;
+            uint32_t currently_bound_material   = 0;
+
+            auto draw_entity = [this, &currently_bound_geometry, &currently_bound_shader, &currently_bound_material](Entity* entity)
+            {
+                // Get renderable
+                const auto& renderable = entity->GetRenderable_PtrRaw();
+                if (!renderable)
+                    return;
+
+                // Get material
+                const auto& material = renderable->GetMaterial();
+                if (!material)
+                    return;
+
+                // Get shader
+                const auto& shader = material->GetShader();
+                if (!shader || !shader->IsCompiled())
+                    return;
+
+                // Get geometry
+                const auto& model = renderable->GeometryModel();
+                if (!model || !model->GetVertexBuffer() || !model->GetIndexBuffer())
+                    return;
+
+                // Skip objects outside of the view frustum
+                if (!m_camera->IsInViewFrustrum(renderable))
+                    return;
+
+                // Set face culling (changes only if required)
+                m_cmd_list->SetRasterizerState(GetRasterizerState(material->GetCullMode(), !GetOption(Render_Debug_Wireframe) ? Fill_Solid : Fill_Wireframe));
+
+                // Bind geometry
+                if (currently_bound_geometry != model->GetId())
+                {
+                    m_cmd_list->SetBufferIndex(model->GetIndexBuffer());
+                    m_cmd_list->SetBufferVertex(model->GetVertexBuffer());
+                    currently_bound_geometry = model->GetId();
+                }
+
+                // Bind shader
+                if (currently_bound_shader != shader->GetId())
+                {
+                    m_cmd_list->SetShaderPixel(static_pointer_cast<RHI_Shader>(shader));
+                    currently_bound_shader = shader->GetId();
+                }
+
+                // Bind material
+                if (currently_bound_material != material->GetId())
+                {
+                    // Bind material textures		
+                    m_cmd_list->SetTextures(0, material->GetResources(), 8);
+
+                    // Update uber buffer with material properties
+                    m_buffer_uber_cpu.mat_albedo        = material->GetColorAlbedo();
+                    m_buffer_uber_cpu.mat_tiling_uv     = material->GetTiling();
+                    m_buffer_uber_cpu.mat_offset_uv     = material->GetOffset();
+                    m_buffer_uber_cpu.mat_roughness_mul = material->GetMultiplier(TextureType_Roughness);
+                    m_buffer_uber_cpu.mat_metallic_mul  = material->GetMultiplier(TextureType_Metallic);
+                    m_buffer_uber_cpu.mat_normal_mul    = material->GetMultiplier(TextureType_Normal);
+                    m_buffer_uber_cpu.mat_height_mul    = material->GetMultiplier(TextureType_Height);
+                    m_buffer_uber_cpu.mat_shading_mode  = static_cast<float>(material->GetShadingMode());
+
+                    currently_bound_material = material->GetId();
+                }
+
+                // Update uber buffer with entity transform
+                if (Transform* transform = entity->GetTransform_PtrRaw())
+                {
+                    m_buffer_uber_cpu.transform     = transform->GetMatrix();
+                    m_buffer_uber_cpu.wvp_current   = transform->GetMatrix() * m_buffer_frame_cpu.view_projection;
+                    m_buffer_uber_cpu.wvp_previous  = transform->GetWvpLastFrame();
+                    transform->SetWvpLastFrame(m_buffer_uber_cpu.wvp_current);
+                }
+
+                // Only happens if needed
+                UpdateUberBuffer();
+
+                // Render	
+                m_cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
+                m_profiler->m_renderer_meshes_rendered++;
+
+                m_cmd_list->Submit();
+            };
+
+            // Draw opaque
+            for (const auto& entity : m_entities[Renderer_Object_Opaque])
+            {
+                draw_entity(entity);
+            }
+
+            // Draw transparent (transparency of the poor)
+            m_cmd_list->SetBlendState(m_blend_enabled);
+            m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
+            for (const auto& entity : m_entities[Renderer_Object_Transparent])
+            {
+                draw_entity(entity);
+            }
         }
 
 		m_cmd_list->End();
@@ -414,7 +493,7 @@ namespace Spartan
 		m_cmd_list->ClearRenderTarget(tex_ssao_raw->GetResource_RenderTarget(), Vector4::One);
         m_cmd_list->ClearRenderTarget(tex_ssao->GetResource_RenderTarget(),     Vector4::One);
 
-		if (m_flags & Render_SSAO)
+		if (m_options & Render_SSAO)
 		{
             // Pack resources	
             void* textures[] =
@@ -450,7 +529,7 @@ namespace Spartan
             Pass_BlurBilateralGaussian(tex_ssao_raw, tex_ssao_blurred, sigma, pixel_stride);
 
             // Upscale to full size
-            float ssao_scale = m_options[Option_Value_Ssao_Scale];
+            float ssao_scale = m_option_values[Option_Value_Ssao_Scale];
             if (ssao_scale < 1.0f)
             {
                 Pass_Upsample(tex_ssao_blurred, tex_ssao);
@@ -483,7 +562,7 @@ namespace Spartan
 
         m_cmd_list->Begin("Pass_Ssr");
         
-        if (m_flags & Render_SSR)
+        if (m_options & Render_SSR)
         {
             // Pack textures
             void* textures[] =
@@ -545,7 +624,7 @@ namespace Spartan
         auto& tex_volumetric    = m_render_targets[RenderTarget_Light_Volumetric];
 
         // Pack render targets
-        const vector<void*> render_targets
+        void* render_targets[]
         {
             tex_diffuse->GetResource_RenderTarget(),
             tex_specular->GetResource_RenderTarget(),
@@ -558,10 +637,12 @@ namespace Spartan
         // Update uber buffer
         m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_diffuse->GetWidth()), static_cast<float>(tex_diffuse->GetHeight()));
         UpdateUberBuffer();
-        
+
+        m_cmd_list->ClearRenderTarget(render_targets[0], Vector4::Zero);
+        m_cmd_list->ClearRenderTarget(render_targets[1], Vector4::Zero);
+        m_cmd_list->ClearRenderTarget(render_targets[2], Vector4::Zero);
+        m_cmd_list->SetRenderTargets(render_targets, 3);
         m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
-        m_cmd_list->ClearRenderTargets(render_targets, Vector4::Zero);
-        m_cmd_list->SetRenderTargets(render_targets);
         m_cmd_list->SetViewport(tex_diffuse->GetViewport());
         m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);       
         m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
@@ -622,7 +703,7 @@ namespace Spartan
         m_cmd_list->Submit();
 
         // If we are doing volumetric lighting, blur it
-        if (m_flags & Render_VolumetricLighting)
+        if (m_options & Render_VolumetricLighting)
         {
             const auto sigma = 2.0f;
             const auto pixel_stride = 2.0f;
@@ -659,7 +740,7 @@ namespace Spartan
             m_render_targets[RenderTarget_Gbuffer_Material]->GetResource_Texture(),
             m_render_targets[RenderTarget_Light_Diffuse]->GetResource_Texture(),
             m_render_targets[RenderTarget_Light_Specular]->GetResource_Texture(),
-            (m_flags & Render_VolumetricLighting) ? m_render_targets[RenderTarget_Light_Volumetric_Blurred]->GetResource_Texture() : m_tex_black->GetResource_Texture(),
+            (m_options & Render_VolumetricLighting) ? m_render_targets[RenderTarget_Light_Volumetric_Blurred]->GetResource_Texture() : m_tex_black->GetResource_Texture(),
             m_render_targets[RenderTarget_Ssr_Blurred]->GetResource_Texture(),
             GetEnvironmentTexture_GpuResource(),
             m_render_targets[RenderTarget_Brdf_Specular_Lut]->GetResource_Texture(),
@@ -716,28 +797,28 @@ namespace Spartan
         const auto swap_targets_ldr = [this, &tex_in_ldr, &tex_out_ldr]() { m_cmd_list->Submit(); tex_in_ldr.swap(tex_out_ldr); };
 
 		// TAA	
-        if (IsFlagSet(Render_AntiAliasing_TAA))
+        if (GetOption(Render_AntiAliasing_TAA))
         {
             Pass_TAA(tex_in_hdr, tex_out_hdr);
             swap_targets_hdr();
         }
 
         // Motion Blur
-        if (IsFlagSet(Render_MotionBlur))
+        if (GetOption(Render_MotionBlur))
         {
             Pass_MotionBlur(tex_in_hdr, tex_out_hdr);
             swap_targets_hdr();
         }
 
 		// Bloom
-		if (IsFlagSet(Render_Bloom))
+		if (GetOption(Render_Bloom))
 		{
 			Pass_Bloom(tex_in_hdr, tex_out_hdr);
             swap_targets_hdr();
 		}
 
 		// Tone-Mapping
-		if (m_options[Option_Value_Tonemapping] != 0)
+		if (m_option_values[Option_Value_Tonemapping] != 0)
 		{
 			Pass_ToneMapping(tex_in_hdr, tex_in_ldr); // HDR -> LDR
 		}
@@ -747,35 +828,35 @@ namespace Spartan
         }
 
         // Dithering
-        if (IsFlagSet(Render_Dithering))
+        if (GetOption(Render_Dithering))
         {
             Pass_Dithering(tex_in_ldr, tex_out_ldr);
             swap_targets_ldr();
         }
 
 		// FXAA
-		if (IsFlagSet(Render_AntiAliasing_FXAA))
+		if (GetOption(Render_AntiAliasing_FXAA))
 		{
 			Pass_FXAA(tex_in_ldr, tex_out_ldr);
             swap_targets_ldr();
 		}
 
         // Sharpening - TAA controlled
-        if (IsFlagSet(Render_AntiAliasing_TAA))
+        if (GetOption(Render_AntiAliasing_TAA))
         {
             Pass_TaaSharpen(tex_in_ldr, tex_out_ldr);
             swap_targets_ldr();
         }
 
 		// Sharpening - User controlled
-		if (IsFlagSet(Render_Sharpening_LumaSharpen))
+		if (GetOption(Render_Sharpening_LumaSharpen))
 		{
 			Pass_LumaSharpen(tex_in_ldr, tex_out_ldr);
             swap_targets_ldr();
 		}
 
 		// Chromatic aberration
-		if (IsFlagSet(Render_ChromaticAberration))
+		if (GetOption(Render_ChromaticAberration))
 		{
 			Pass_ChromaticAberration(tex_in_ldr, tex_out_ldr);
             swap_targets_ldr();
@@ -1339,10 +1420,10 @@ namespace Spartan
 
 	void Renderer::Pass_Lines(shared_ptr<RHI_Texture>& tex_out)
 	{
-		const bool draw_picking_ray = m_flags & Render_Debug_PickingRay;
-		const bool draw_aabb		= m_flags & Render_Debug_AABB;
-		const bool draw_grid		= m_flags & Render_Debug_Grid;
-        const bool draw_lights      = m_flags & Render_Debug_Lights;
+		const bool draw_picking_ray = m_options & Render_Debug_PickingRay;
+		const bool draw_aabb		= m_options & Render_Debug_AABB;
+		const bool draw_grid		= m_options & Render_Debug_Grid;
+        const bool draw_lights      = m_options & Render_Debug_Lights;
 		const auto draw_lines		= !m_lines_list_depth_enabled.empty() || !m_lines_list_depth_disabled.empty(); // Any kind of lines, physics, user debug, etc.
 		const auto draw				= draw_picking_ray || draw_aabb || draw_grid || draw_lines || draw_lights;
 		if (!draw)
@@ -1412,7 +1493,7 @@ namespace Spartan
 		m_cmd_list->SetInputLayout(shader_color->GetInputLayout());
 
 		// Draw lines that require depth
-		m_cmd_list->SetDepthStencilState(m_depth_stencil_enabled);
+		m_cmd_list->SetDepthStencilState(m_depth_stencil_enabled_no_write);
 		m_cmd_list->SetRenderTarget(tex_out, m_render_targets[RenderTarget_Gbuffer_Depth]->GetResource_DepthStencil());
 		{
 			// Grid
@@ -1483,8 +1564,8 @@ namespace Spartan
 
 	void Renderer::Pass_Gizmos(shared_ptr<RHI_Texture>& tex_out)
 	{
-		bool render_lights		= m_flags & Render_Debug_Lights;
-		bool render_transform	= m_flags & Render_Debug_Transform;
+		bool render_lights		= m_options & Render_Debug_Lights;
+		bool render_transform	= m_options & Render_Debug_Transform;
 		auto render				= render_lights || render_transform;
 		if (!render)
 			return;
@@ -1615,7 +1696,7 @@ namespace Spartan
 	void Renderer::Pass_PerformanceMetrics(shared_ptr<RHI_Texture>& tex_out)
 	{
         // Early exit cases
-        const bool draw         = m_flags & Render_Debug_PerformanceMetrics;
+        const bool draw         = m_options & Render_Debug_PerformanceMetrics;
         const bool empty        = m_profiler->GetMetrics().empty();
         const auto& shader_font = m_shaders[Shader_Font_Vp];
         if (!draw || empty || !shader_font->IsCompiled())
@@ -1701,7 +1782,7 @@ namespace Spartan
 
 		if (m_debug_buffer == Renderer_Buffer_SSAO)
 		{
-			texture     = m_flags & Render_SSAO ? m_render_targets[RenderTarget_Ssao] : m_tex_white;
+			texture     = m_options & Render_SSAO ? m_render_targets[RenderTarget_Ssao] : m_tex_white;
 			shader_type = Shader_DebugChannelR_P;
 		}
 

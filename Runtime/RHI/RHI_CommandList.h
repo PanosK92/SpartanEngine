@@ -65,8 +65,6 @@ namespace Spartan
 		RHI_Command()
 		{
 			const uint32_t max_count = 10;
-			render_targets.reserve(max_count);
-			render_targets.resize(max_count);
 			samplers.reserve(max_count);
 			samplers.resize(max_count);
 			constant_buffers.reserve(max_count);
@@ -75,8 +73,9 @@ namespace Spartan
 		}
 
 		void Clear()
-		{
+		{  
 			render_target_count			= 0;
+            render_targets              = nullptr;
 			textures_start_slot			= 0;
 			texture_count				= 0;
 			textures					= nullptr;
@@ -109,15 +108,17 @@ namespace Spartan
 		RHI_Cmd_Type type;
 
 		// Render targets
-		uint32_t render_target_count = 0;
-		std::vector<void*> render_targets;
-		void* render_target_clear;
+		uint32_t render_target_count    = 0;
+        const void* render_targets      = nullptr;
+        bool render_target_is_array     = true;
+        void* render_target_clear       = nullptr;
 		Math::Vector4 render_target_clear_color;
 
 		// Texture
 		uint32_t textures_start_slot	= 0;
 		uint32_t texture_count			= 0;
 		const void* textures			= nullptr;
+        bool texture_is_array           = true;
 
 		// Samplers
 		uint32_t samplers_start_slot = 0;
@@ -138,7 +139,6 @@ namespace Spartan
 		uint32_t depth_clear_flags							= 0;
 
 		// Misc	
-		bool is_array                                   = true;
 		std::string pass_name                           = "N/A";
 		RHI_PrimitiveTopology_Mode primitive_topology	= PrimitiveTopology_NotAssigned;
 		uint32_t vertex_count							= 0;
@@ -227,20 +227,13 @@ namespace Spartan
 		void ClearTextures()																{ SetTextures(0, m_textures_empty.data(), static_cast<uint32_t>(m_textures_empty.size())); }
 
 		// Render targets
-		void SetRenderTargets(const std::vector<void*>& render_targets, void* depth_stencil = nullptr);
-		void SetRenderTarget(void* render_target, void* depth_stencil = nullptr);
-		void SetRenderTarget(const std::shared_ptr<RHI_Texture>&, void* depth_stencil = nullptr);
+		void SetRenderTargets(const void* render_targets, uint32_t render_target_count, void* depth_stencil = nullptr, bool is_array = true);
+		void SetRenderTarget(void* render_target, void* depth_stencil = nullptr)                                { SetRenderTargets(render_target, 1, depth_stencil, false); }
+		void SetRenderTarget(const std::shared_ptr<RHI_Texture>& render_target, void* depth_stencil = nullptr)  { SetRenderTargets(render_target ? render_target->GetResource_RenderTarget() : nullptr, 1, depth_stencil, false); }
 		void ClearRenderTarget(void* render_target, const Math::Vector4& color);
-		void ClearRenderTargets(const std::vector<void*>& render_targets, const Math::Vector4& color)
-		{
-			for (const auto& render_target : render_targets)
-			{
-				ClearRenderTarget(render_target, color);
-			}
-		}
 		void ClearDepthStencil(void* depth_stencil, uint32_t flags, float depth, uint32_t stencil = 0);
 
-		bool Submit(bool profile = true);
+		bool Submit();
 
 	private:
 		void Clear();
