@@ -51,34 +51,40 @@ namespace Spartan
 {
 	Renderer::Renderer(Context* context) : ISubsystem(context)
 	{
-		m_flags		|= Render_Debug_Transform;
-		m_flags		|= Render_Debug_Grid;
-		m_flags		|= Render_Debug_Lights;
-		m_flags		|= Render_Debug_Physics;
-		m_flags		|= Render_Bloom;
-        m_flags     |= Render_VolumetricLighting;
-		m_flags		|= Render_SSAO;
-        m_flags     |= Render_SSCS;
-		m_flags		|= Render_MotionBlur;
-		m_flags		|= Render_AntiAliasing_TAA;
-        m_flags     |= Render_SSR;
-		//m_flags	|= Render_PostProcess_FXAA;                 // Disabled by default: TAA is superior.
-		//m_flags	|= Render_PostProcess_Sharpening;		    // Disabled by default: TAA's blurring is taken core of with an always on sharpen pass specifically for it.
-		//m_flags	|= Render_PostProcess_Dithering;			// Disabled by default: It's only needed in very dark scenes to fix smooth color gradients.
-		//m_flags	|= Render_PostProcess_ChromaticAberration;	// Disabled by default: It doesn't improve the image quality, it's more of a stylistic effect.	
+        // Options
+        m_options |= Render_ReverseZ;
+        //m_options |= Render_DepthPrepass;
+		m_options |= Render_Debug_Transform;
+		m_options |= Render_Debug_Grid;
+		m_options |= Render_Debug_Lights;
+		m_options |= Render_Debug_Physics;
+		m_options |= Render_Bloom;
+        m_options |= Render_VolumetricLighting;
+		m_options |= Render_SSAO;
+        m_options |= Render_SSCS;
+		m_options |= Render_MotionBlur;
+		m_options |= Render_AntiAliasing_TAA;
+        m_options |= Render_SSR;
+		//m_flags |= Render_PostProcess_FXAA;                   // Disabled by default: TAA is superior.
+		//m_flags |= Render_PostProcess_Sharpening;		        // Disabled by default: TAA's blurring is taken core of with an always on sharpen pass specifically for it.
+		//m_flags |= Render_PostProcess_Dithering;			    // Disabled by default: It's only needed in very dark scenes to fix smooth color gradients.
+		//m_flags |= Render_PostProcess_ChromaticAberration;	// Disabled by default: It doesn't improve the image quality, it's more of a stylistic effect.	
 
-        m_options[Option_Value_Tonemapping]             = static_cast<float>(Renderer_ToneMapping_ACES);
-        m_options[Option_Value_Exposure]                = 0.0f;
-        m_options[Option_Value_Gamma]                   = 2.2f;
-        m_options[Option_Value_Fxaa_Sub_Pixel]          = 1.25f;
-        m_options[Option_Value_Fxaa_Edge_Threshold]     = 0.125f;
-        m_options[Option_Value_Fxaa_Edge_Threshold_Min] = 0.0312f;
-        m_options[Option_Value_Bloom_Intensity]         = 0.005f;
-        m_options[Option_Value_Sharpen_Strength]        = 1.0f;
-        m_options[Option_Value_Sharpen_Clamp]           = 0.35f;
-        m_options[Option_Value_Bloom_Intensity]         = 0.005f;
-        m_options[Option_Value_Motion_Blur_Intensity]   = 0.01f;
-        m_options[Option_Value_Ssao_Scale]              = 1.0f;
+        // Option values
+        m_option_values[Option_Value_Anisotropy]              = 16.0f;
+        m_option_values[Option_Value_ShadowResolution]        = 4098.0f;
+        m_option_values[Option_Value_Tonemapping]             = static_cast<float>(Renderer_ToneMapping_ACES);
+        m_option_values[Option_Value_Exposure]                = 0.0f;
+        m_option_values[Option_Value_Gamma]                   = 2.2f;
+        m_option_values[Option_Value_Fxaa_Sub_Pixel]          = 1.25f;
+        m_option_values[Option_Value_Fxaa_Edge_Threshold]     = 0.125f;
+        m_option_values[Option_Value_Fxaa_Edge_Threshold_Min] = 0.0312f;
+        m_option_values[Option_Value_Bloom_Intensity]         = 0.005f;
+        m_option_values[Option_Value_Sharpen_Strength]        = 1.0f;
+        m_option_values[Option_Value_Sharpen_Clamp]           = 0.35f;
+        m_option_values[Option_Value_Bloom_Intensity]         = 0.005f;
+        m_option_values[Option_Value_Motion_Blur_Intensity]   = 0.01f;
+        m_option_values[Option_Value_Ssao_Scale]              = 1.0f;
 
 		// Subscribe to events
 		SUBSCRIBE_TO_EVENT(Event_World_Resolve_Complete,    EVENT_HANDLER_VARIANT(RenderablesAcquire));
@@ -177,10 +183,10 @@ namespace Spartan
     {
         resolution = Clamp(resolution, m_resolution_shadow_min, m_max_resolution);
 
-        if (resolution == m_resolution_shadow)
+        if (resolution == GetOption<uint32_t>(Option_Value_ShadowResolution))
             return;
 
-        m_resolution_shadow = resolution;
+        SetOption(Option_Value_ShadowResolution, resolution);
 
         const auto& light_entities = m_entities[Renderer_Object_Light];
         for (const auto& light_entity : light_entities)
@@ -191,13 +197,6 @@ namespace Spartan
                 light->CreateShadowMap();
             }
         }
-    }
-
-    void Renderer::SetAnisotropy(uint32_t anisotropy)
-    {
-        uint32_t min = 0;
-        uint32_t max = 16;
-        m_anisotropy = Math::Clamp(anisotropy, min, max);
     }
 
     void Renderer::Tick(float delta_time)
@@ -235,7 +234,7 @@ namespace Spartan
             m_buffer_frame_cpu.view_projection_ortho    = Matrix::CreateLookAtLH(Vector3(0, 0, -m_near_plane), Vector3::Forward, Vector3::Up) * m_buffer_frame_cpu.projection_ortho;
 
 			// TAA - Generate jitter
-			if (IsFlagSet(Render_AntiAliasing_TAA))
+			if (GetOption(Render_AntiAliasing_TAA))
 			{
 				m_taa_jitter_previous = m_taa_jitter;
 
@@ -351,23 +350,23 @@ namespace Spartan
         m_buffer_frame_cpu.camera_near                  = m_camera->GetNearPlane();
         m_buffer_frame_cpu.camera_far                   = m_camera->GetFarPlane();
         m_buffer_frame_cpu.camera_position              = m_camera->GetTransform()->GetPosition();
-        m_buffer_frame_cpu.fxaa_sub_pixel               = m_options[Option_Value_Fxaa_Sub_Pixel];
-        m_buffer_frame_cpu.fxaa_edge_threshold          = m_options[Option_Value_Fxaa_Edge_Threshold];
-        m_buffer_frame_cpu.fxaa_edge_threshold_min      = m_options[Option_Value_Fxaa_Edge_Threshold_Min];
-        m_buffer_frame_cpu.bloom_intensity              = m_options[Option_Value_Bloom_Intensity];
-        m_buffer_frame_cpu.sharpen_strength             = m_options[Option_Value_Sharpen_Strength];
-        m_buffer_frame_cpu.sharpen_clamp                = m_options[Option_Value_Sharpen_Clamp];
+        m_buffer_frame_cpu.fxaa_sub_pixel               = m_option_values[Option_Value_Fxaa_Sub_Pixel];
+        m_buffer_frame_cpu.fxaa_edge_threshold          = m_option_values[Option_Value_Fxaa_Edge_Threshold];
+        m_buffer_frame_cpu.fxaa_edge_threshold_min      = m_option_values[Option_Value_Fxaa_Edge_Threshold_Min];
+        m_buffer_frame_cpu.bloom_intensity              = m_option_values[Option_Value_Bloom_Intensity];
+        m_buffer_frame_cpu.sharpen_strength             = m_option_values[Option_Value_Sharpen_Strength];
+        m_buffer_frame_cpu.sharpen_clamp                = m_option_values[Option_Value_Sharpen_Clamp];
         m_buffer_frame_cpu.taa_jitter_offset            = m_taa_jitter - m_taa_jitter_previous;
-        m_buffer_frame_cpu.motion_blur_strength         = m_options[Option_Value_Motion_Blur_Intensity];
+        m_buffer_frame_cpu.motion_blur_strength         = m_option_values[Option_Value_Motion_Blur_Intensity];
         m_buffer_frame_cpu.delta_time                   = static_cast<float>(m_context->GetSubsystem<Timer>()->GetDeltaTimeSmoothedSec());
         m_buffer_frame_cpu.time                         = static_cast<float>(m_context->GetSubsystem<Timer>()->GetTimeSec());
-        m_buffer_frame_cpu.tonemapping                  = m_options[Option_Value_Tonemapping];
-        m_buffer_frame_cpu.exposure                     = m_options[Option_Value_Exposure];
-        m_buffer_frame_cpu.gamma                        = m_options[Option_Value_Gamma];
+        m_buffer_frame_cpu.tonemapping                  = m_option_values[Option_Value_Tonemapping];
+        m_buffer_frame_cpu.exposure                     = m_option_values[Option_Value_Exposure];
+        m_buffer_frame_cpu.gamma                        = m_option_values[Option_Value_Gamma];
         m_buffer_frame_cpu.directional_light_intensity  = light_directional_intensity;
-        m_buffer_frame_cpu.ssr_enabled                  = IsFlagSet(Render_SSR) ? 1.0f : 0.0f;
-        m_buffer_frame_cpu.shadow_resolution            = static_cast<float>(m_resolution_shadow);
-        m_buffer_frame_cpu.ssao_scale                   = m_options[Option_Value_Ssao_Scale];
+        m_buffer_frame_cpu.ssr_enabled                  = GetOption(Render_SSR) ? 1.0f : 0.0f;
+        m_buffer_frame_cpu.shadow_resolution            = GetOption<uint32_t>(Option_Value_ShadowResolution);
+        m_buffer_frame_cpu.ssao_scale                   = m_option_values[Option_Value_Ssao_Scale];
         m_buffer_frame_cpu.padding                      = 0.0f;
 
         // Update
@@ -381,7 +380,7 @@ namespace Spartan
 	{
         // Only update if needed
         if (m_buffer_uber_cpu == m_buffer_uber_cpu_previous)
-            return true;
+            return false;
 
         // Map
         UberBuffer* buffer = static_cast<UberBuffer*>(m_buffer_uber_gpu->Map());
@@ -421,8 +420,8 @@ namespace Spartan
             if (Light* light = entities[i]->GetComponent<Light>().get())
             {
                 for (int j = 0; j < g_cascade_count; j++)                   { m_buffer_light_cpu.view_projection[i][j] = light->GetViewMatrix(j) * light->GetProjectionMatrix(j); }
-                m_buffer_light_cpu.intensity_range_angle_bias[i]            = Vector4(light->GetIntensity(), light->GetRange(), light->GetAngle(), GetReverseZ() ? light->GetBias() : -light->GetBias());
-                m_buffer_light_cpu.normalBias_shadow_volumetric_contact[i]  = Vector4(light->GetNormalBias(), light->GetCastShadows(), static_cast<float>(m_flags & Render_VolumetricLighting), static_cast<float>(m_flags & Render_SSCS));
+                m_buffer_light_cpu.intensity_range_angle_bias[i]            = Vector4(light->GetIntensity(), light->GetRange(), light->GetAngle(), GetOption(Render_ReverseZ) ? light->GetBias() : -light->GetBias());
+                m_buffer_light_cpu.normalBias_shadow_volumetric_contact[i]  = Vector4(light->GetNormalBias(), light->GetCastShadows(), static_cast<float>(m_options & Render_VolumetricLighting), static_cast<float>(m_options & Render_SSCS));
                 m_buffer_light_cpu.color[i]                                 = light->GetColor();
                 m_buffer_light_cpu.position[i]                              = light->GetTransform()->GetPosition();
                 m_buffer_light_cpu.direction[i]                             = light->GetDirection();
@@ -546,21 +545,22 @@ namespace Spartan
     {
         m_render_targets[RenderTarget_Brdf_Prefiltered_Environment] = texture;
     }
-
-    void Renderer::SetOption(Renderer_Option_Value option, float value)
+    void Renderer::SetOption(Renderer_Option_Value option, float value, float min /*= numeric_limits<float>::lowest()*/, float max /*= numeric_limits<float>::max()*/)
     {
-        if (m_options[option] == value)
+        value = Clamp(value, min, max);
+
+        if (m_option_values[option] == value)
             return;
 
         if (option == Option_Value_Ssao_Scale)
         {
             value = Clamp(value, 0.25f, 1.0f);
-            uint32_t width  = static_cast<uint32_t>(m_resolution.x * value);
+            uint32_t width = static_cast<uint32_t>(m_resolution.x * value);
             uint32_t height = static_cast<uint32_t>(m_resolution.y * value);
             m_render_targets[RenderTarget_Ssao_Raw] = make_unique<RHI_Texture2D>(m_context, width, height, m_render_targets[RenderTarget_Ssao_Raw]->GetFormat());
             m_render_targets[RenderTarget_Ssao_Blurred] = make_unique<RHI_Texture2D>(m_context, width, height, m_render_targets[RenderTarget_Ssao_Raw]->GetFormat());
         }
 
-        m_options[option] = value;
+        m_option_values[option] = value;
     }
 }

@@ -92,7 +92,7 @@ namespace Spartan
             m_gpu_memory_used = m_renderer->GetRhiDevice()->ProfilingGetGpuMemoryUsage();
 
             // Create a string version of the rhi metrics
-            if (m_renderer->GetFlags() & Render_Debug_PerformanceMetrics)
+            if (m_renderer->GetOptions() & Render_Debug_PerformanceMetrics)
             {
                 UpdateRhiMetricsString();
             }
