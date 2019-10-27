@@ -52,9 +52,6 @@ namespace _Editor
 
 Editor::~Editor()
 {
-	if (!m_initialized)
-		return;
-
 	m_widgets.clear();
 	m_widgets.shrink_to_fit();
 
@@ -66,8 +63,12 @@ Editor::~Editor()
 
 void Editor::OnWindowMessage(WindowData& window_data)
 {
-    if (!m_initialized)
+    // During window creation, Windows fire off a couple of messages,
+    // m_initializing is to prevent that spamming.
+    if (!m_engine && !m_initializing)
     {
+        m_initializing = true;
+
         // Create engine
         m_engine = make_unique<Engine>(window_data);
 
@@ -75,43 +76,44 @@ void Editor::OnWindowMessage(WindowData& window_data)
         m_context       = m_engine->GetContext();
         m_renderer      = m_context->GetSubsystem<Renderer>().get();
         m_rhi_device    = m_renderer->GetRhiDevice();
+        
+        if (m_renderer->IsInitialized())
+        {
+            // ImGui version validation
+            IMGUI_CHECKVERSION();
+            m_context->GetSubsystem<Settings>()->m_versionImGui = IMGUI_VERSION;
 
-        if (!m_renderer->IsInitialized())
+            // ImGui context creation
+            ImGui::CreateContext();
+
+            // ImGui configuration
+            auto& io = ImGui::GetIO();
+            io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+            io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+            io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+            io.ConfigWindowsResizeFromEdges = true;
+            io.ConfigViewportsNoTaskBarIcon = true;
+            ApplyStyle();
+
+            // ImGui backend setup
+            ImGui_ImplWin32_Init(window_data.handle);
+            ImGui::RHI::Initialize(m_context, static_cast<float>(window_data.width), static_cast<float>(window_data.height));
+
+            // Initialization of misc custom systems
+            IconProvider::Get().Initialize(m_context);
+            EditorHelper::Get().Initialize(m_context);
+
+            // Create all ImGui widgets
+            Widgets_Create();
+        }
+        else
         {
             LOG_ERROR("The engine failed to initialize the renderer subsystem, aborting editor creation.");
-            return;
         }
 
-        // ImGui version validation
-        IMGUI_CHECKVERSION();
-        m_context->GetSubsystem<Settings>()->m_versionImGui = IMGUI_VERSION;
-
-        // ImGui context creation
-        ImGui::CreateContext();
-
-        // ImGui configuration
-        auto& io = ImGui::GetIO();
-        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-        io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-        io.ConfigWindowsResizeFromEdges = true;
-        io.ConfigViewportsNoTaskBarIcon = true;
-        ApplyStyle();
-
-        // ImGui backend setup
-        ImGui_ImplWin32_Init(window_data.handle);
-        ImGui::RHI::Initialize(m_context, static_cast<float>(window_data.width), static_cast<float>(window_data.height));
-
-        // Initialization of misc custom systems
-        IconProvider::Get().Initialize(m_context);
-        EditorHelper::Get().Initialize(m_context);
-
-        // Create all ImGui widgets
-        Widgets_Create();
-
-        m_initialized = true;
+        m_initializing = false;
     }
-    else
+    else if (!m_initializing)
     {
         ImGui_ImplWin32_WndProcHandler(
             static_cast<HWND>(window_data.handle),
@@ -131,7 +133,7 @@ void Editor::OnWindowMessage(WindowData& window_data)
 
 void Editor::OnTick()
 {	
-	if (!m_initialized)
+	if (!m_engine)
 		return;
 
 	// Update engine (will simulate and render)

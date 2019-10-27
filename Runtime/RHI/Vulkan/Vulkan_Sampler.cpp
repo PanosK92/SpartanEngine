@@ -72,7 +72,7 @@ namespace Spartan
 		sampler_info.addressModeV			= vulkan_sampler_address_mode[sampler_address_mode];
 		sampler_info.addressModeW			= vulkan_sampler_address_mode[sampler_address_mode];
 		sampler_info.anisotropyEnable		= anisotropy_enabled;
-		sampler_info.maxAnisotropy			= static_cast<float>(m_rhi_device->GetContext()->GetSubsystem<Renderer>()->GetAnisotropy());
+        sampler_info.maxAnisotropy          = m_rhi_device->GetContext()->GetSubsystem<Renderer>()->GetOptionValue<float>(Option_Value_Anisotropy);
 		sampler_info.compareEnable			= comparison_enabled ? VK_TRUE : VK_FALSE;
 		sampler_info.compareOp				= vulkan_compare_operator[comparison_function];
 		sampler_info.borderColor			= VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;

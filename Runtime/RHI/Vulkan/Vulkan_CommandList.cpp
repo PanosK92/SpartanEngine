@@ -305,17 +305,7 @@ namespace Spartan
 		}
 	}
 
-	void RHI_CommandList::SetRenderTargets(const vector<void*>& render_targets, void* depth_stencil /*= nullptr*/)
-	{
-		SPARTAN_ASSERT(m_is_recording);
-	}
-
-	void RHI_CommandList::SetRenderTarget(void* render_target, void* depth_stencil /*= nullptr*/)
-	{
-		SPARTAN_ASSERT(m_is_recording);
-	}
-
-	void RHI_CommandList::SetRenderTarget(const shared_ptr<RHI_Texture>& render_target, void* depth_stencil /*= nullptr*/)
+	void RHI_CommandList::SetRenderTargets(const void* render_targets, uint32_t render_target_count, void* depth_stencil /*= nullptr*/, bool is_array /*= true*/)
 	{
 		SPARTAN_ASSERT(m_is_recording);
 	}

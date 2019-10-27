@@ -183,10 +183,10 @@ namespace Spartan
     {
         resolution = Clamp(resolution, m_resolution_shadow_min, m_max_resolution);
 
-        if (resolution == GetOption<uint32_t>(Option_Value_ShadowResolution))
+        if (resolution == GetOptionValue<uint32_t>(Option_Value_ShadowResolution))
             return;
 
-        SetOption(Option_Value_ShadowResolution, resolution);
+        SetOptionValue(Option_Value_ShadowResolution, static_cast<uint32_t>(resolution));
 
         const auto& light_entities = m_entities[Renderer_Object_Light];
         for (const auto& light_entity : light_entities)
@@ -234,7 +234,7 @@ namespace Spartan
             m_buffer_frame_cpu.view_projection_ortho    = Matrix::CreateLookAtLH(Vector3(0, 0, -m_near_plane), Vector3::Forward, Vector3::Up) * m_buffer_frame_cpu.projection_ortho;
 
 			// TAA - Generate jitter
-			if (GetOption(Render_AntiAliasing_TAA))
+			if (GetOptionValue(Render_AntiAliasing_TAA))
 			{
 				m_taa_jitter_previous = m_taa_jitter;
 
@@ -364,8 +364,8 @@ namespace Spartan
         m_buffer_frame_cpu.exposure                     = m_option_values[Option_Value_Exposure];
         m_buffer_frame_cpu.gamma                        = m_option_values[Option_Value_Gamma];
         m_buffer_frame_cpu.directional_light_intensity  = light_directional_intensity;
-        m_buffer_frame_cpu.ssr_enabled                  = GetOption(Render_SSR) ? 1.0f : 0.0f;
-        m_buffer_frame_cpu.shadow_resolution            = GetOption<uint32_t>(Option_Value_ShadowResolution);
+        m_buffer_frame_cpu.ssr_enabled                  = GetOptionValue(Render_SSR) ? 1.0f : 0.0f;
+        m_buffer_frame_cpu.shadow_resolution            = GetOptionValue<uint32_t>(Option_Value_ShadowResolution);
         m_buffer_frame_cpu.ssao_scale                   = m_option_values[Option_Value_Ssao_Scale];
         m_buffer_frame_cpu.padding                      = 0.0f;
 
@@ -420,7 +420,7 @@ namespace Spartan
             if (Light* light = entities[i]->GetComponent<Light>().get())
             {
                 for (int j = 0; j < g_cascade_count; j++)                   { m_buffer_light_cpu.view_projection[i][j] = light->GetViewMatrix(j) * light->GetProjectionMatrix(j); }
-                m_buffer_light_cpu.intensity_range_angle_bias[i]            = Vector4(light->GetIntensity(), light->GetRange(), light->GetAngle(), GetOption(Render_ReverseZ) ? light->GetBias() : -light->GetBias());
+                m_buffer_light_cpu.intensity_range_angle_bias[i]            = Vector4(light->GetIntensity(), light->GetRange(), light->GetAngle(), GetOptionValue(Render_ReverseZ) ? light->GetBias() : -light->GetBias());
                 m_buffer_light_cpu.normalBias_shadow_volumetric_contact[i]  = Vector4(light->GetNormalBias(), light->GetCastShadows(), static_cast<float>(m_options & Render_VolumetricLighting), static_cast<float>(m_options & Render_SSCS));
                 m_buffer_light_cpu.color[i]                                 = light->GetColor();
                 m_buffer_light_cpu.position[i]                              = light->GetTransform()->GetPosition();
@@ -545,7 +545,7 @@ namespace Spartan
     {
         m_render_targets[RenderTarget_Brdf_Prefiltered_Environment] = texture;
     }
-    void Renderer::SetOption(Renderer_Option_Value option, float value, float min /*= numeric_limits<float>::lowest()*/, float max /*= numeric_limits<float>::max()*/)
+    void Renderer::SetOptionValue(Renderer_Option_Value option, float value, float min /*= numeric_limits<float>::lowest()*/, float max /*= numeric_limits<float>::max()*/)
     {
         value = Clamp(value, min, max);
 
