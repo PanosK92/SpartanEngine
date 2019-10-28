@@ -62,14 +62,12 @@ namespace ImGui::RHI
 	static shared_ptr<RHI_RasterizerState>		g_rasterizer_state;
 	static shared_ptr<RHI_BlendState>			g_blend_state;
 	static shared_ptr<RHI_Shader>				g_shader;
-	static shared_ptr<RHI_PipelineCache>		g_pipeline_cache;
 	static RHI_Viewport							g_viewport;
 
 	inline bool Initialize(Context* context, const float width, const float height)
 	{
 		g_context			= context;
 		g_renderer			= context->GetSubsystem<Renderer>().get();
-		g_pipeline_cache	= g_renderer->GetPipelineCache();
 		g_cmd_list			= g_renderer->GetCmdList().get();
 		g_rhi_device		= g_renderer->GetRhiDevice();
 		
@@ -230,10 +228,11 @@ namespace ImGui::RHI
 			state.depth_stencil_state	= g_depth_stencil_state.get();
 			state.vertex_buffer			= g_vertex_buffer.get();
 			state.primitive_topology	= PrimitiveTopology_TriangleList;
+            state.viewport              = g_viewport;
 			state.swap_chain			= is_main_viewport ? g_renderer->GetSwapChain().get() : swap_chain_other;
 
 			// Start witting command list
-			g_cmd_list->Begin("Pass_ImGui", g_pipeline_cache->GetPipeline(state).get());
+			g_cmd_list->Begin("Pass_ImGui", &state);
 			g_cmd_list->SetRenderTarget(state.swap_chain->GetRenderTargetView());
 			if (clear) g_cmd_list->ClearRenderTarget(state.swap_chain->GetRenderTargetView(), Vector4(0, 0, 0, 1));
 			g_cmd_list->SetViewport(g_viewport);
