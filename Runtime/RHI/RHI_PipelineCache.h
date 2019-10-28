@@ -46,22 +46,19 @@ namespace Spartan
 	public:
 		void ComputeHash()
 		{
-            if (!shader_vertex || !shader_pixel || !depth_stencil_state || !vertex_buffer || !sampler || !constant_buffer || !swap_chain)
-                return;
-
-			// todo:: input layout, rasterizer state, blend state, swap chain, viewport, scissor
+			// todo: input layout, rasterizer state, blend state, swap chain, viewport, scissor
 			char buffer[1000];
 			sprintf_s
 			(
 				buffer,
 				"%d-%d-%d-%d-%d-%d-%d-%d",
-				shader_vertex->GetId(),
-				shader_pixel->GetId(),
-				depth_stencil_state->GetId(),
-				vertex_buffer->GetId(),
-				sampler->GetId(),
-				constant_buffer->GetId(),
-				swap_chain->GetId(),
+                shader_vertex       ? shader_vertex->GetId()        : 0,
+                shader_pixel        ? shader_pixel->GetId()         : 0,
+                depth_stencil_state ? depth_stencil_state->GetId()  : 0,
+                vertex_buffer       ? vertex_buffer->GetId()        : 0,
+                sampler             ? sampler->GetId()              : 0,
+                constant_buffer     ? constant_buffer->GetId()      : 0,
+                swap_chain          ? swap_chain->GetId()           : 0,
 				static_cast<uint32_t>(primitive_topology)
 			);
 

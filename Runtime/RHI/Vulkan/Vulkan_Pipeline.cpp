@@ -191,11 +191,8 @@ namespace Spartan
 
 		// Pipeline layout
 		auto pipeline_layout = reinterpret_cast<VkPipelineLayout*>(&m_pipeline_layout);
-		if (vkCreatePipelineLayout(m_rhi_device->GetContextRhi()->device, &pipeline_layout_info, nullptr, pipeline_layout) != VK_SUCCESS) 
-		{
-			LOG_ERROR("Failed to create pipeline layout");
+        if (!Vulkan_Common::check_result(vkCreatePipelineLayout(m_rhi_device->GetContextRhi()->device, &pipeline_layout_info, nullptr, pipeline_layout)))
 			return;
-		}
 
 		VkGraphicsPipelineCreateInfo pipeline_info	= {};
 		pipeline_info.sType							= VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -210,14 +207,9 @@ namespace Spartan
 		pipeline_info.pColorBlendState				= &color_blend_State;
 		pipeline_info.layout						= *pipeline_layout;
 		pipeline_info.renderPass					= static_cast<VkRenderPass>(m_state->swap_chain->GetRenderPass());
-		pipeline_info.subpass						= 0;
-		pipeline_info.basePipelineHandle			= nullptr;
 
-		auto pipeline = reinterpret_cast<VkPipeline*>(&m_pipeline);
-		if (vkCreateGraphicsPipelines(m_rhi_device->GetContextRhi()->device, nullptr, 1, &pipeline_info, nullptr, pipeline) != VK_SUCCESS) 
-		{
-			LOG_ERROR("Failed to create graphics pipeline");
-		}
+        auto pipeline = reinterpret_cast<VkPipeline*>(&m_pipeline);
+        Vulkan_Common::check_result(vkCreateGraphicsPipelines(m_rhi_device->GetContextRhi()->device, nullptr, 1, &pipeline_info, nullptr, pipeline));
 	}
 
 	RHI_Pipeline::~RHI_Pipeline()

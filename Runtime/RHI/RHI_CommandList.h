@@ -160,11 +160,11 @@ namespace Spartan
 	class SPARTAN_CLASS RHI_CommandList
 	{
 	public:
-		RHI_CommandList(const std::shared_ptr<RHI_Device>& rhi_device, Profiler* profiler);
+		RHI_CommandList(const std::shared_ptr<RHI_Device>& rhi_device, const std::shared_ptr<RHI_PipelineCache>& rhi_pipeline_cache, Profiler* profiler);
 		~RHI_CommandList();
 
 		// Markers
-		void Begin(const std::string& pass_name, RHI_Pipeline* pipeline = nullptr);
+		void Begin(const std::string& pass_name, RHI_PipelineState* pipeline = nullptr);
 		void End();
 
 		// Draw
@@ -239,8 +239,9 @@ namespace Spartan
 		void Clear();
 
 		// Dependencies
-		Profiler* m_profiler = nullptr;
 		std::shared_ptr<RHI_Device> m_rhi_device;
+        std::shared_ptr<RHI_PipelineCache> m_rhi_pipeline_cache;
+        Profiler* m_profiler = nullptr;
 		std::vector<void*> m_textures_empty = std::vector<void*>(10);
 
 		// API

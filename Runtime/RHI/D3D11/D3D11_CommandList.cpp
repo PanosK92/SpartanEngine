@@ -49,28 +49,29 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-	RHI_CommandList::RHI_CommandList(const shared_ptr<RHI_Device>& rhi_device, Profiler* profiler)
+	RHI_CommandList::RHI_CommandList(const shared_ptr<RHI_Device>& rhi_device, const shared_ptr<RHI_PipelineCache>& rhi_pipeline_cache, Profiler* profiler)
 	{
 		m_commands.reserve(m_initial_capacity);
 		m_commands.resize(m_initial_capacity);
-		m_rhi_device	= rhi_device;
-		m_profiler		= profiler;
+		m_rhi_device	        = rhi_device;
+        m_rhi_pipeline_cache    = rhi_pipeline_cache;
+		m_profiler		        = profiler;
 	}
 
 	RHI_CommandList::~RHI_CommandList() = default;
 
-	void RHI_CommandList::Begin(const string& pass_name, RHI_Pipeline* pipeline)
+	void RHI_CommandList::Begin(const string& pass_name, RHI_PipelineState* pipeline_state)
 	{
-		if (pipeline)
+		if (pipeline_state)
 		{
-			SetViewport(pipeline->GetState()->viewport);
-			SetBlendState(pipeline->GetState()->blend_state);
-			SetDepthStencilState(pipeline->GetState()->depth_stencil_state);
-			SetRasterizerState(pipeline->GetState()->rasterizer_state);
-			SetInputLayout(pipeline->GetState()->shader_vertex->GetInputLayout());
-			SetShaderVertex(pipeline->GetState()->shader_vertex);
-			SetShaderPixel(pipeline->GetState()->shader_pixel);
-			SetPrimitiveTopology(pipeline->GetState()->primitive_topology);
+			SetViewport(pipeline_state->viewport);
+			SetBlendState(pipeline_state->blend_state);
+			SetDepthStencilState(pipeline_state->depth_stencil_state);
+			SetRasterizerState(pipeline_state->rasterizer_state);
+			SetInputLayout(pipeline_state->shader_vertex->GetInputLayout());
+			SetShaderVertex(pipeline_state->shader_vertex);
+			SetShaderPixel(pipeline_state->shader_pixel);
+			SetPrimitiveTopology(pipeline_state->primitive_topology);
 		}
 
 		auto& cmd		= GetCmd();

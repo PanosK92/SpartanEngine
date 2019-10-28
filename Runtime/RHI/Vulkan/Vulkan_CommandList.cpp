@@ -51,10 +51,11 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-	RHI_CommandList::RHI_CommandList(const shared_ptr<RHI_Device>& rhi_device, Profiler* profiler)
+	RHI_CommandList::RHI_CommandList(const shared_ptr<RHI_Device>& rhi_device, const shared_ptr<RHI_PipelineCache>& rhi_pipeline_cache, Profiler* profiler)
 	{
-		m_rhi_device	= rhi_device;
-		m_profiler		= profiler;
+		m_rhi_device	        = rhi_device;
+        m_rhi_pipeline_cache    = rhi_pipeline_cache;
+		m_profiler		        = profiler;
 
 		Vulkan_Common::commands::cmd_pool(m_rhi_device, m_cmd_pool);
 
@@ -91,13 +92,13 @@ namespace Spartan
 		m_cmd_pool = nullptr;
 	}
 
-	void RHI_CommandList::Begin(const string& pass_name, RHI_Pipeline* pipeline)
+	void RHI_CommandList::Begin(const string& pass_name, RHI_PipelineState* pipeline_state)
 	{
 		// Ensure the command list is not recording
 		if (m_is_recording)
 			return;
 
-        if (!pipeline)
+        if (!pipeline_state)
         {
             LOG_WARNING("There is no pipeline");
             return;
@@ -107,14 +108,14 @@ namespace Spartan
 		if (m_sync_cpu_to_gpu)
 		{
 			Vulkan_Common::fence::wait_reset(m_rhi_device, FENCE_CMD_LIST_CONSUMED_VOID_PTR);
-			SPARTAN_ASSERT(vkResetCommandPool(m_rhi_device->GetContextRhi()->device, static_cast<VkCommandPool>(m_cmd_pool), 0) == VK_SUCCESS);
+			Vulkan_Common::assert_result(vkResetCommandPool(m_rhi_device->GetContextRhi()->device, static_cast<VkCommandPool>(m_cmd_pool), 0));
 			m_pipeline->OnCommandListConsumed();
 			m_sync_cpu_to_gpu = false;
 		}
 
 		// Update pipeline
-		m_pipeline = pipeline;
-		auto swap_chain = m_pipeline->GetState()->swap_chain;
+		m_pipeline = m_rhi_pipeline_cache->GetPipeline(*pipeline_state).get();
+		RHI_SwapChain* swap_chain = m_pipeline->GetState()->swap_chain;
 
 		// Acquire next swap chain image and update buffer index
 		SPARTAN_ASSERT(swap_chain->AcquireNextImage());
@@ -127,12 +128,8 @@ namespace Spartan
 		VkCommandBufferBeginInfo beginInfo	= {};
 		beginInfo.sType						= VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		beginInfo.flags						= VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-		const auto result = vkBeginCommandBuffer(CMD_LIST, &beginInfo);
-		if (result != VK_SUCCESS) 
-		{
-			LOG_ERROR("Failed to begin recording command buffer, %s.", Vulkan_Common::to_string(result));
+		if (!Vulkan_Common::check_result(vkBeginCommandBuffer(CMD_LIST, &beginInfo)))
 			return;
-		}
 
 		// Begin render pass
 		VkClearValue clear_color					= { 0.0f, 0.0f, 0.0f, 1.0f };
@@ -148,7 +145,7 @@ namespace Spartan
 		vkCmdBeginRenderPass(CMD_LIST, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 
 		// Bind pipeline
-		vkCmdBindPipeline(CMD_LIST, VK_PIPELINE_BIND_POINT_GRAPHICS, static_cast<VkPipeline>(pipeline->GetPipeline()));
+		vkCmdBindPipeline(CMD_LIST, VK_PIPELINE_BIND_POINT_GRAPHICS, static_cast<VkPipeline>(m_pipeline->GetPipeline()));
 
 		m_is_recording = true;
 	}
@@ -159,12 +156,8 @@ namespace Spartan
 
 		vkCmdEndRenderPass(CMD_LIST);
 
-		const auto result = vkEndCommandBuffer(CMD_LIST);
-		if (result != VK_SUCCESS)
-		{
-			LOG_ERROR("Failed to end command buffer, %s.", Vulkan_Common::to_string(result));
+		if (!Vulkan_Common::check_result(vkEndCommandBuffer(CMD_LIST)))
 			return;
-		}
 
 		m_is_recording = false;
 	}

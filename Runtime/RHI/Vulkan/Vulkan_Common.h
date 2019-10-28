@@ -74,6 +74,20 @@ namespace Spartan::Vulkan_Common
 		return "Unknown error code";
 	}
 
+    constexpr bool check_result(VkResult result)
+    {
+        if (result == VK_SUCCESS)
+            return true;
+
+        LOG_ERROR("%s", to_string(result));
+        return false;
+    }
+
+    constexpr void assert_result(VkResult result)
+    {
+        SPARTAN_ASSERT(result == VK_SUCCESS);
+    }
+
 	namespace memory
 	{
 		inline uint32_t get_type(const VkPhysicalDevice device, const VkMemoryPropertyFlags properties, const uint32_t type_bits)
@@ -239,4 +253,5 @@ namespace Spartan::Vulkan_Common
 		}
 	}
 }
+
 #endif

@@ -143,7 +143,7 @@ namespace Spartan
         m_pipeline_cache = make_shared<RHI_PipelineCache>(m_rhi_device);
 
         // Create command list
-        m_cmd_list = make_shared<RHI_CommandList>(m_rhi_device, m_profiler);
+        m_cmd_list = make_shared<RHI_CommandList>(m_rhi_device, m_pipeline_cache, m_profiler);
 
 		// Editor specific
 		m_gizmo_grid		= make_unique<Grid>(m_rhi_device);
@@ -186,7 +186,7 @@ namespace Spartan
         if (resolution == GetOptionValue<uint32_t>(Option_Value_ShadowResolution))
             return;
 
-        SetOptionValue(Option_Value_ShadowResolution, static_cast<uint32_t>(resolution));
+        SetOptionValue(Option_Value_ShadowResolution, static_cast<float>(resolution));
 
         const auto& light_entities = m_entities[Renderer_Object_Light];
         for (const auto& light_entity : light_entities)
@@ -365,7 +365,7 @@ namespace Spartan
         m_buffer_frame_cpu.gamma                        = m_option_values[Option_Value_Gamma];
         m_buffer_frame_cpu.directional_light_intensity  = light_directional_intensity;
         m_buffer_frame_cpu.ssr_enabled                  = GetOptionValue(Render_SSR) ? 1.0f : 0.0f;
-        m_buffer_frame_cpu.shadow_resolution            = GetOptionValue<uint32_t>(Option_Value_ShadowResolution);
+        m_buffer_frame_cpu.shadow_resolution            = GetOptionValue<float>(Option_Value_ShadowResolution);
         m_buffer_frame_cpu.ssao_scale                   = m_option_values[Option_Value_Ssao_Scale];
         m_buffer_frame_cpu.padding                      = 0.0f;
 
