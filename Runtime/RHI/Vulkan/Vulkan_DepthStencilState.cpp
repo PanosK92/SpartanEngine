@@ -47,14 +47,7 @@ namespace Spartan
         m_depth_test_enabled    = depth_test;
         m_depth_write_enabled   = depth_write;
         m_depth_function        = depth_function;
-
-		VkPipelineDepthStencilStateCreateInfo depth_stencil_state{};
-		depth_stencil_state.sType				= VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-		depth_stencil_state.depthTestEnable		= depth_test;
-		depth_stencil_state.depthWriteEnable	= depth_write;
-		depth_stencil_state.depthCompareOp		= vulkan_compare_operator[depth_function];
-		depth_stencil_state.front				= depth_stencil_state.back;
-		depth_stencil_state.back.compareOp		= VK_COMPARE_OP_ALWAYS;
+        m_stencil_enabled       = stencil_enabled;
 	}
 
 	RHI_DepthStencilState::~RHI_DepthStencilState()

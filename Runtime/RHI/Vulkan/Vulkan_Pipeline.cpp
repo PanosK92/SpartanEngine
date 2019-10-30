@@ -97,6 +97,12 @@ namespace Spartan
 		shader_vertex_stage_info.module								= static_cast<VkShaderModule>(m_state->shader_vertex->GetResource_Vertex());
 		shader_vertex_stage_info.pName								= m_state->shader_vertex->GetEntryPoint().c_str();
 
+        if (!shader_vertex_stage_info.module)
+        {
+            LOG_ERROR("Vertex shader is null, aborting pipeline creation");
+            return;
+        }
+
 		// Pixel shader
 		VkPipelineShaderStageCreateInfo shader_pixel_stage_info = {};
 		shader_pixel_stage_info.sType							= VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -127,89 +133,118 @@ namespace Spartan
 
 		// Vertex input state
 		VkPipelineVertexInputStateCreateInfo vertex_input_state = {};
-		vertex_input_state.sType								= VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-		vertex_input_state.vertexBindingDescriptionCount		= 1;
-		vertex_input_state.pVertexBindingDescriptions			= &binding_description;
-		vertex_input_state.vertexAttributeDescriptionCount		= static_cast<uint32_t>(vertex_attribute_descs.size());
-		vertex_input_state.pVertexAttributeDescriptions			= vertex_attribute_descs.data();
+        {
+		    vertex_input_state.sType								= VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+		    vertex_input_state.vertexBindingDescriptionCount		= 1;
+		    vertex_input_state.pVertexBindingDescriptions			= &binding_description;
+		    vertex_input_state.vertexAttributeDescriptionCount		= static_cast<uint32_t>(vertex_attribute_descs.size());
+		    vertex_input_state.pVertexAttributeDescriptions			= vertex_attribute_descs.data();
+        }
 
 		// Input assembly
 		VkPipelineInputAssemblyStateCreateInfo input_assembly_state = {};
-		input_assembly_state.sType									= VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-		input_assembly_state.topology								= vulkan_primitive_topology[m_state->primitive_topology];
-		input_assembly_state.primitiveRestartEnable					= VK_FALSE;
+        {
+		    input_assembly_state.sType					    = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+		    input_assembly_state.topology				    = vulkan_primitive_topology[m_state->primitive_topology];
+		    input_assembly_state.primitiveRestartEnable     = VK_FALSE;
+        }
 
 		// Rasterizer state
 		VkPipelineRasterizationStateCreateInfo rasterizer_state	= {};
-		rasterizer_state.sType									= VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-		rasterizer_state.depthClampEnable						= VK_FALSE;
-		rasterizer_state.rasterizerDiscardEnable				= VK_FALSE;
-		rasterizer_state.polygonMode							= vulkan_polygon_mode[m_state->rasterizer_state->GetFillMode()];
-		rasterizer_state.lineWidth								= 1.0f;
-		rasterizer_state.cullMode								= vulkan_cull_mode[m_state->rasterizer_state->GetCullMode()];
-		rasterizer_state.frontFace								= VK_FRONT_FACE_CLOCKWISE;
-		rasterizer_state.depthBiasEnable						= VK_FALSE;
-		rasterizer_state.depthBiasConstantFactor				= 0.0f;
-		rasterizer_state.depthBiasClamp							= 0.0f;
-		rasterizer_state.depthBiasSlopeFactor					= 0.0f;
+        {
+		    rasterizer_state.sType					    = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+		    rasterizer_state.depthClampEnable		    = VK_FALSE;
+		    rasterizer_state.rasterizerDiscardEnable    = VK_FALSE;
+		    rasterizer_state.polygonMode			    = vulkan_polygon_mode[m_state->rasterizer_state->GetFillMode()];
+		    rasterizer_state.lineWidth				    = 1.0f;
+		    rasterizer_state.cullMode				    = vulkan_cull_mode[m_state->rasterizer_state->GetCullMode()];
+		    rasterizer_state.frontFace				    = VK_FRONT_FACE_CLOCKWISE;
+		    rasterizer_state.depthBiasEnable		    = VK_FALSE;
+		    rasterizer_state.depthBiasConstantFactor    = 0.0f;
+		    rasterizer_state.depthBiasClamp			    = 0.0f;
+		    rasterizer_state.depthBiasSlopeFactor	    = 0.0f;
+        }
 
 		// Mutlisampling
-		VkPipelineMultisampleStateCreateInfo multisampling_state	= {};
-		multisampling_state.sType									= VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-		multisampling_state.sampleShadingEnable						= m_state->rasterizer_state->GetMultiSampleEnabled() ? VK_TRUE : VK_FALSE;
-		multisampling_state.rasterizationSamples					= VK_SAMPLE_COUNT_1_BIT;
+		VkPipelineMultisampleStateCreateInfo multisampling_state = {};
+        {
+		    multisampling_state.sType				    = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+		    multisampling_state.sampleShadingEnable	    = m_state->rasterizer_state->GetMultiSampleEnabled() ? VK_TRUE : VK_FALSE;
+		    multisampling_state.rasterizationSamples    = VK_SAMPLE_COUNT_1_BIT;
+        }
 
 		// Blend state
 		VkPipelineColorBlendAttachmentState blend_state_attachments = {};
-		blend_state_attachments.colorWriteMask						= VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-		blend_state_attachments.blendEnable							= m_state->blend_state->GetBlendEnabled() ? VK_TRUE : VK_FALSE;
-		blend_state_attachments.srcColorBlendFactor					= vulkan_blend_factor[m_state->blend_state->GetSourceBlend()];
-		blend_state_attachments.dstColorBlendFactor					= vulkan_blend_factor[m_state->blend_state->GetDestBlend()];
-		blend_state_attachments.colorBlendOp						= vulkan_blend_operation[m_state->blend_state->GetBlendOp()];
-		blend_state_attachments.srcAlphaBlendFactor					= vulkan_blend_factor[m_state->blend_state->GetSourceBlendAlpha()];
-		blend_state_attachments.dstAlphaBlendFactor					= vulkan_blend_factor[m_state->blend_state->GetDestBlendAlpha()];
-		blend_state_attachments.alphaBlendOp						= vulkan_blend_operation[m_state->blend_state->GetBlendOpAlpha()];
+        {
+		    blend_state_attachments.colorWriteMask	    = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+		    blend_state_attachments.blendEnable		    = m_state->blend_state->GetBlendEnabled() ? VK_TRUE : VK_FALSE;
+		    blend_state_attachments.srcColorBlendFactor = vulkan_blend_factor[m_state->blend_state->GetSourceBlend()];
+		    blend_state_attachments.dstColorBlendFactor = vulkan_blend_factor[m_state->blend_state->GetDestBlend()];
+		    blend_state_attachments.colorBlendOp	    = vulkan_blend_operation[m_state->blend_state->GetBlendOp()];
+		    blend_state_attachments.srcAlphaBlendFactor = vulkan_blend_factor[m_state->blend_state->GetSourceBlendAlpha()];
+		    blend_state_attachments.dstAlphaBlendFactor = vulkan_blend_factor[m_state->blend_state->GetDestBlendAlpha()];
+		    blend_state_attachments.alphaBlendOp	    = vulkan_blend_operation[m_state->blend_state->GetBlendOpAlpha()];
+        }
 
-		VkPipelineColorBlendStateCreateInfo color_blend_State	= {};
-		color_blend_State.sType									= VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-		color_blend_State.logicOpEnable							= VK_FALSE;
-		color_blend_State.logicOp								= VK_LOGIC_OP_COPY;
-		color_blend_State.attachmentCount						= 1;
-		color_blend_State.pAttachments							= &blend_state_attachments;
-		color_blend_State.blendConstants[0]						= 0.0f;
-		color_blend_State.blendConstants[1]						= 0.0f;
-		color_blend_State.blendConstants[2]						= 0.0f;
-		color_blend_State.blendConstants[3]						= 0.0f;
+		VkPipelineColorBlendStateCreateInfo color_blend_state = {};
+        {
+            color_blend_state.sType             = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+            color_blend_state.logicOpEnable     = VK_FALSE;
+            color_blend_state.logicOp           = VK_LOGIC_OP_COPY;
+            color_blend_state.attachmentCount   = 1;
+            color_blend_state.pAttachments      = &blend_state_attachments;
+		    color_blend_state.blendConstants[0] = 0.0f;
+		    color_blend_state.blendConstants[1] = 0.0f;
+		    color_blend_state.blendConstants[2] = 0.0f;
+		    color_blend_state.blendConstants[3] = 0.0f;
+        }
 
-		// Pipeline layout create info
-		auto vk_descriptor_set_layout					= static_cast<VkDescriptorSetLayout>(m_descriptor_set_layout);
+        // Depth-stencil state
+        VkPipelineDepthStencilStateCreateInfo depth_stencil_state = {};
+        {
+            depth_stencil_state.sType               = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+            depth_stencil_state.depthTestEnable     = m_state->depth_stencil_state->GetDepthTestEnabled();
+            depth_stencil_state.depthWriteEnable    = m_state->depth_stencil_state->GetDepthWriteEnabled();
+            depth_stencil_state.depthCompareOp      = vulkan_compare_operator[m_state->depth_stencil_state->GetDepthFunction()];
+            depth_stencil_state.front               = depth_stencil_state.back;
+            depth_stencil_state.back.compareOp      = VK_COMPARE_OP_ALWAYS;
+        }
+
+        // Pipeline layout
+        auto pipeline_layout = reinterpret_cast<VkPipelineLayout*>(&m_pipeline_layout);
 		VkPipelineLayoutCreateInfo pipeline_layout_info	= {};
-		pipeline_layout_info.sType						= VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-		pipeline_layout_info.pushConstantRangeCount		= 0;
-		pipeline_layout_info.setLayoutCount				= 1;		
-		pipeline_layout_info.pSetLayouts				= &vk_descriptor_set_layout;
+        {
+            auto vk_descriptor_set_layout = static_cast<VkDescriptorSetLayout>(m_descriptor_set_layout);
 
-		// Pipeline layout
-		auto pipeline_layout = reinterpret_cast<VkPipelineLayout*>(&m_pipeline_layout);
-        if (!Vulkan_Common::check_result(vkCreatePipelineLayout(m_rhi_device->GetContextRhi()->device, &pipeline_layout_info, nullptr, pipeline_layout)))
-			return;
+		    pipeline_layout_info.sType						= VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+		    pipeline_layout_info.pushConstantRangeCount		= 0;
+		    pipeline_layout_info.setLayoutCount				= 1;		
+		    pipeline_layout_info.pSetLayouts				= &vk_descriptor_set_layout;
 
-		VkGraphicsPipelineCreateInfo pipeline_info	= {};
-		pipeline_info.sType							= VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-		pipeline_info.stageCount					= static_cast<uint32_t>((sizeof(shader_stages) / sizeof(*shader_stages)));
-		pipeline_info.pStages						= shader_stages;
-		pipeline_info.pVertexInputState				= &vertex_input_state;
-		pipeline_info.pInputAssemblyState			= &input_assembly_state;
-		pipeline_info.pDynamicState					= dynamic_viewport_scissor ? &dynamic_state : nullptr;
-		pipeline_info.pViewportState				= dynamic_viewport_scissor ? &viewport_state : nullptr;
-		pipeline_info.pRasterizationState			= &rasterizer_state;
-		pipeline_info.pMultisampleState				= &multisampling_state;
-		pipeline_info.pColorBlendState				= &color_blend_State;
-		pipeline_info.layout						= *pipeline_layout;
-		pipeline_info.renderPass					= static_cast<VkRenderPass>(m_state->swap_chain->GetRenderPass());
+            if (!Vulkan_Common::check_result(vkCreatePipelineLayout(m_rhi_device->GetContextRhi()->device, &pipeline_layout_info, nullptr, pipeline_layout)))
+			    return;
+        }
 
-        auto pipeline = reinterpret_cast<VkPipeline*>(&m_pipeline);
-        Vulkan_Common::check_result(vkCreateGraphicsPipelines(m_rhi_device->GetContextRhi()->device, nullptr, 1, &pipeline_info, nullptr, pipeline));
+        // Pipeline
+		VkGraphicsPipelineCreateInfo pipeline_info = {};
+        {
+		    pipeline_info.sType							= VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+		    pipeline_info.stageCount					= static_cast<uint32_t>((sizeof(shader_stages) / sizeof(*shader_stages)));
+		    pipeline_info.pStages						= shader_stages;
+		    pipeline_info.pVertexInputState				= &vertex_input_state;
+		    pipeline_info.pInputAssemblyState			= &input_assembly_state;
+		    pipeline_info.pDynamicState					= dynamic_viewport_scissor ? &dynamic_state : nullptr;
+		    pipeline_info.pViewportState				= dynamic_viewport_scissor ? &viewport_state : nullptr;
+		    pipeline_info.pRasterizationState			= &rasterizer_state;
+		    pipeline_info.pMultisampleState				= &multisampling_state;
+		    pipeline_info.pColorBlendState				= &color_blend_state;
+            pipeline_info.pDepthStencilState            = &depth_stencil_state;
+		    pipeline_info.layout						= *pipeline_layout;
+		    pipeline_info.renderPass					= static_cast<VkRenderPass>(m_state->swap_chain->GetRenderPass());
+
+            auto pipeline = reinterpret_cast<VkPipeline*>(&m_pipeline);
+            Vulkan_Common::check_result(vkCreateGraphicsPipelines(m_rhi_device->GetContextRhi()->device, nullptr, 1, &pipeline_info, nullptr, pipeline));
+        }
 	}
 
 	RHI_Pipeline::~RHI_Pipeline()
