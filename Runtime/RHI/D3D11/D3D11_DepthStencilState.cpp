@@ -61,6 +61,7 @@ namespace Spartan
 		m_depth_test_enabled    = depth_test;
         m_depth_write_enabled   = depth_write;
         m_depth_function        = depth_function;
+        m_stencil_enabled       = stencil_enabled;
 
 		// Create description
 		D3D11_DEPTH_STENCIL_DESC desc;
