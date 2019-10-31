@@ -71,19 +71,19 @@ namespace Spartan
 		auto GetHash() const { return m_hash; }
 		bool operator==(const RHI_PipelineState& rhs) const { return GetHash() == rhs.GetHash(); }
 
-		RHI_Shader* shader_vertex						= nullptr;
-		RHI_Shader* shader_pixel						= nullptr;
-		RHI_InputLayout* input_layout					= nullptr;
-		RHI_RasterizerState* rasterizer_state			= nullptr;
-		RHI_BlendState* blend_state						= nullptr;
-		RHI_DepthStencilState* depth_stencil_state		= nullptr;
-		RHI_Sampler* sampler							= nullptr;
-		RHI_ConstantBuffer* constant_buffer				= nullptr;
-		RHI_VertexBuffer* vertex_buffer					= nullptr;
-		RHI_SwapChain* swap_chain						= nullptr;
-		RHI_PrimitiveTopology_Mode primitive_topology	= PrimitiveTopology_NotAssigned;
-		RHI_Viewport viewport;
-		Math::Rectangle scissor;
+		const RHI_Shader* shader_vertex						= nullptr;
+		const RHI_Shader* shader_pixel						= nullptr;
+		const RHI_InputLayout* input_layout					= nullptr;
+		const RHI_RasterizerState* rasterizer_state			= nullptr;
+		const RHI_BlendState* blend_state					= nullptr;
+		const RHI_DepthStencilState* depth_stencil_state	= nullptr;
+		const RHI_Sampler* sampler							= nullptr;
+		const RHI_ConstantBuffer* constant_buffer			= nullptr;
+		const RHI_VertexBuffer* vertex_buffer				= nullptr;
+		const RHI_SwapChain* swap_chain						= nullptr;
+		RHI_PrimitiveTopology_Mode primitive_topology	    = PrimitiveTopology_NotAssigned;
+		const RHI_Viewport viewport;
+		const Math::Rectangle scissor;
 
 	private:
 		uint32_t m_hash = 0;

@@ -51,7 +51,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-	RHI_CommandList::RHI_CommandList(const shared_ptr<RHI_Device>& rhi_device, const shared_ptr<RHI_PipelineCache>& rhi_pipeline_cache, Profiler* profiler)
+	RHI_CommandList::RHI_CommandList(const shared_ptr<RHI_Device>& rhi_device, RHI_PipelineCache* rhi_pipeline_cache, Profiler* profiler)
 	{
 		m_rhi_device	        = rhi_device;
         m_rhi_pipeline_cache    = rhi_pipeline_cache;
@@ -92,16 +92,16 @@ namespace Spartan
 		m_cmd_pool = nullptr;
 	}
 
-	void RHI_CommandList::Begin(const string& pass_name, RHI_PipelineState* pipeline_state)
+	void RHI_CommandList::Begin(const string& pass_name)
 	{
 		// Ensure the command list is not recording
 		if (m_is_recording)
 			return;
 
-        if (!pipeline_state)
+        // Update pipeline
+        if (!m_pipeline)
         {
-            LOG_WARNING("There is no pipeline");
-            return;
+            m_pipeline = m_rhi_pipeline_cache->GetPipeline(m_pipeline_state).get();
         }
 
 		// Sync CPU to GPU
@@ -109,12 +109,10 @@ namespace Spartan
 		{
 			Vulkan_Common::fence::wait_reset(m_rhi_device, FENCE_CMD_LIST_CONSUMED_VOID_PTR);
 			Vulkan_Common::assert_result(vkResetCommandPool(m_rhi_device->GetContextRhi()->device, static_cast<VkCommandPool>(m_cmd_pool), 0));
-			m_pipeline->OnCommandListConsumed();
+            m_pipeline->OnCommandListConsumed();
 			m_sync_cpu_to_gpu = false;
 		}
 
-		// Update pipeline
-		m_pipeline = m_rhi_pipeline_cache->GetPipeline(*pipeline_state).get();
 		RHI_SwapChain* swap_chain = m_pipeline->GetState()->swap_chain;
 
 		// Acquire next swap chain image and update buffer index
@@ -166,14 +164,27 @@ namespace Spartan
 	{
 		SPARTAN_ASSERT(m_is_recording);
 
-		vkCmdDraw(CMD_LIST, vertex_count, 1, 0, 0);
+		vkCmdDraw(
+            CMD_LIST,       // commandBuffer
+            vertex_count,   // vertexCount
+            1,              // instanceCount
+            0,              // firstVertex
+            0               // firstInstance
+        );
 	}
 
 	void RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset)
 	{
 		SPARTAN_ASSERT(m_is_recording);
 
-		vkCmdDrawIndexed(CMD_LIST, index_count, 1, index_offset, vertex_offset, 0);
+		vkCmdDrawIndexed(
+            CMD_LIST,       // commandBuffer
+            index_count,    // indexCount
+            1,              // instanceCount
+            index_offset,   // firstIndex
+            vertex_offset,  // vertexOffset
+            0               // firstInstance
+        );
 	}
 
 	void RHI_CommandList::SetViewport(const RHI_Viewport& viewport)
@@ -187,7 +198,13 @@ namespace Spartan
 		vk_viewport.height		= viewport.height;
 		vk_viewport.minDepth	= viewport.depth_min;
 		vk_viewport.maxDepth	= viewport.depth_max;
-		vkCmdSetViewport(CMD_LIST, 0, 1, &vk_viewport);
+
+		vkCmdSetViewport(
+            CMD_LIST,       // commandBuffer
+            0,              // firstViewport
+            1,              // viewportCount
+            &vk_viewport    // pViewports
+        );
 	}
 
 	void RHI_CommandList::SetScissorRectangle(const Math::Rectangle& scissor_rectangle)
@@ -199,41 +216,54 @@ namespace Spartan
 		vk_scissor.offset.y			= static_cast<int32_t>(scissor_rectangle.y);
 		vk_scissor.extent.width		= static_cast<uint32_t>(scissor_rectangle.width);
 		vk_scissor.extent.height	= static_cast<uint32_t>(scissor_rectangle.height);
-		vkCmdSetScissor(CMD_LIST, 0, 1, &vk_scissor);
+
+		vkCmdSetScissor(
+            CMD_LIST,   // commandBuffer
+            0,          // firstScissor
+            1,          // scissorCount
+            &vk_scissor // pScissors
+        );
 	}
 
 	void RHI_CommandList::SetPrimitiveTopology(const RHI_PrimitiveTopology_Mode primitive_topology)
 	{
-		SPARTAN_ASSERT(m_is_recording);
+        m_pipeline_state.primitive_topology = PrimitiveTopology_TriangleList;
 	}
 
 	void RHI_CommandList::SetInputLayout(const RHI_InputLayout* input_layout)
 	{
-		SPARTAN_ASSERT(m_is_recording);
+        m_pipeline_state.input_layout = input_layout;
 	}
 
 	void RHI_CommandList::SetDepthStencilState(const RHI_DepthStencilState* depth_stencil_state)
 	{
-		SPARTAN_ASSERT(m_is_recording);
+        m_pipeline_state.depth_stencil_state = depth_stencil_state;
 	}
 
 	void RHI_CommandList::SetRasterizerState(const RHI_RasterizerState* rasterizer_state)
 	{
-		SPARTAN_ASSERT(m_is_recording);
+        m_pipeline_state.rasterizer_state = rasterizer_state;
 	}
 
 	void RHI_CommandList::SetBlendState(const RHI_BlendState* blend_state)
 	{
-		SPARTAN_ASSERT(m_is_recording);
+        m_pipeline_state.blend_state = blend_state;
 	}
 
 	void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer)
 	{
-		SPARTAN_ASSERT(m_is_recording);
+        SPARTAN_ASSERT(m_is_recording);
 
 		VkBuffer vertex_buffers[]	= { static_cast<VkBuffer>(buffer->GetResource()) };
 		VkDeviceSize offsets[]		= { 0 };
-		vkCmdBindVertexBuffers(CMD_LIST, 0, 1, vertex_buffers, offsets);
+
+		vkCmdBindVertexBuffers(
+            CMD_LIST,       // commandBuffer
+            0,              // firstBinding
+            1,              // bindingCount
+            vertex_buffers, // pBuffers
+            offsets         // pOffsets
+        );
 	}
 
 	void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer)
@@ -241,46 +271,46 @@ namespace Spartan
 		SPARTAN_ASSERT(m_is_recording);
 
 		vkCmdBindIndexBuffer(
-			CMD_LIST,
+			CMD_LIST,                                                       // commandBuffer
 			static_cast<VkBuffer>(buffer->GetResource()),					// buffer
 			0,																// offset
-			buffer->Is16Bit() ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32 // index type
+			buffer->Is16Bit() ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32 // indexType
 		);
 	}
 
 	void RHI_CommandList::SetShaderVertex(const RHI_Shader* shader)
 	{
-		SPARTAN_ASSERT(m_is_recording);
+        m_pipeline_state.shader_vertex = shader;
 	}
 
 	void RHI_CommandList::SetShaderPixel(const RHI_Shader* shader)
 	{
-		SPARTAN_ASSERT(m_is_recording);
+        m_pipeline_state.shader_pixel = shader;
 	}
 
 	void RHI_CommandList::SetConstantBuffers(const uint32_t start_slot, const RHI_Buffer_Scope scope, const vector<void*>& constant_buffers)
 	{
-		SPARTAN_ASSERT(m_is_recording);
+
 	}
 
 	void RHI_CommandList::SetConstantBuffer(const uint32_t slot, const RHI_Buffer_Scope scope, const shared_ptr<RHI_ConstantBuffer>& constant_buffer)
 	{
-		SPARTAN_ASSERT(m_is_recording);
+
 	}
 
 	void RHI_CommandList::SetSamplers(const uint32_t start_slot, const vector<void*>& samplers)
 	{
-		SPARTAN_ASSERT(m_is_recording);
+
 	}
 
 	void RHI_CommandList::SetSampler(const uint32_t slot, const shared_ptr<RHI_Sampler>& sampler)
 	{
-		SPARTAN_ASSERT(m_is_recording);
+        
 	}
 
 	void RHI_CommandList::SetTextures(const uint32_t start_slot, const void* textures, uint32_t texture_count, bool is_array)
 	{
-		SPARTAN_ASSERT(m_is_recording);
+
 	}
 
 	void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture)
@@ -300,17 +330,17 @@ namespace Spartan
 
 	void RHI_CommandList::SetRenderTargets(const void* render_targets, uint32_t render_target_count, void* depth_stencil /*= nullptr*/, bool is_array /*= true*/)
 	{
-		SPARTAN_ASSERT(m_is_recording);
+
 	}
 
 	void RHI_CommandList::ClearRenderTarget(void* render_target, const Vector4& color)
 	{
-		SPARTAN_ASSERT(m_is_recording);
+
 	}
 
 	void RHI_CommandList::ClearDepthStencil(void* depth_stencil, const uint32_t flags, const float depth, const uint32_t stencil /*= 0*/)
 	{
-		SPARTAN_ASSERT(m_is_recording);
+
 	}
 
 	bool RHI_CommandList::Submit(bool profile/*=true*/)
@@ -337,16 +367,13 @@ namespace Spartan
 		submit_info.signalSemaphoreCount	= 1;
 		submit_info.pSignalSemaphores		= signal_semaphores;
 
-		const auto result = vkQueueSubmit(m_rhi_device->GetContextRhi()->queue_graphics, 1, &submit_info, FENCE_CMD_LIST_CONSUMED);
-		if (result != VK_SUCCESS)
-		{
-			LOG_ERROR("Failed to submit command buffer, %s.", Vulkan_Common::to_string(result));
-		}
+        if (!Vulkan_Common::check_result(vkQueueSubmit(m_rhi_device->GetContextRhi()->queue_graphics, 1, &submit_info, FENCE_CMD_LIST_CONSUMED)))
+            return false;
 		
 		// Wait for fence on the next Begin(), if we force it now, perfomance will not be as good
 		m_sync_cpu_to_gpu = true;
 
-		return result == VK_SUCCESS;
+        return true;
 	}
 
 	RHI_Command& RHI_CommandList::GetCmd()

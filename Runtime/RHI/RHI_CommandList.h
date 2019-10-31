@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Definition.h"
 #include "../Math/Vector4.h"
 #include "../Math/Rectangle.h"
+#include "RHI_PipelineCache.h"
 //============================
 
 namespace Spartan
@@ -152,7 +153,7 @@ namespace Spartan
 		const RHI_VertexBuffer* buffer_vertex			= nullptr;
 		const RHI_Shader* shader_vertex					= nullptr;
 		const RHI_Shader* shader_pixel					= nullptr;
-        const RHI_Shader* shader_compute            = nullptr;
+        const RHI_Shader* shader_compute                = nullptr;
 		RHI_Viewport viewport;
 		Math::Rectangle scissor_rectangle;
 	};
@@ -160,11 +161,11 @@ namespace Spartan
 	class SPARTAN_CLASS RHI_CommandList
 	{
 	public:
-		RHI_CommandList(const std::shared_ptr<RHI_Device>& rhi_device, const std::shared_ptr<RHI_PipelineCache>& rhi_pipeline_cache, Profiler* profiler);
+		RHI_CommandList(const std::shared_ptr<RHI_Device>& rhi_device, RHI_PipelineCache* rhi_pipeline_cache, Profiler* profiler);
 		~RHI_CommandList();
 
 		// Markers
-		void Begin(const std::string& pass_name, RHI_PipelineState* pipeline = nullptr);
+		void Begin(const std::string& pass_name);
 		void End();
 
 		// Draw
@@ -240,7 +241,8 @@ namespace Spartan
 
 		// Dependencies
 		std::shared_ptr<RHI_Device> m_rhi_device;
-        std::shared_ptr<RHI_PipelineCache> m_rhi_pipeline_cache;
+        RHI_PipelineState m_pipeline_state;
+        RHI_PipelineCache* m_rhi_pipeline_cache = nullptr;
         Profiler* m_profiler = nullptr;
 		std::vector<void*> m_textures_empty = std::vector<void*>(10);
 
