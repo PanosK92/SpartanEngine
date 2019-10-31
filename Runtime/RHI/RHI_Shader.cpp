@@ -63,50 +63,38 @@ namespace Spartan
 		}
 
 		// Compile
-		if (type == Shader_Vertex)
-		{
-			m_compilation_state = Shader_Compiling;
-			m_resource_vertex	= _Compile<T>(type, shader);
-			m_compilation_state = m_resource_vertex ? Shader_Compiled : Shader_Failed;
-		}
-		else if (type == Shader_Pixel)
-		{
-			m_compilation_state = Shader_Compiling;
-			m_resource_pixel    = _Compile(type, shader);
-			m_compilation_state = m_resource_pixel ? Shader_Compiled : Shader_Failed;
-		}
-        else if (type == Shader_Compute)
-        {
-            m_compilation_state = Shader_Compiling;
-            m_resource_compute  = _Compile(type, shader);
-            m_compilation_state = m_resource_compute ? Shader_Compiled : Shader_Failed;
-        }
-		else if (type == Shader_VertexPixel)
-		{
-			m_compilation_state = Shader_Compiling;
-            m_shader_type       = Shader_Vertex; // temp switch
-			m_resource_vertex	= _Compile<T>(Shader_Vertex, shader);
-            m_shader_type       = Shader_Pixel; // temp switch
-			m_resource_pixel	= _Compile(Shader_Pixel, shader);
-            m_shader_type       = Shader_VertexPixel; // revert to original
-			m_compilation_state = (m_resource_vertex && m_resource_pixel) ? Shader_Compiled : Shader_Failed;
-		}
+        m_compilation_state = Shader_Compilation_Compiling;
+        m_resource          = _Compile<T>(type, shader);
+        m_compilation_state = m_resource ? Shader_Compilation_Succeeded : Shader_Compilation_Failed;
 
 		// Log compilation result
         {
-            string shader_type;
-            shader_type = type == Shader_Vertex         ? "vertex shader"           : shader_type;
-            shader_type = type == Shader_Pixel          ? "pixel shader"            : shader_type;
-            shader_type = type == Shader_Compute        ? "compute shader"          : shader_type;
-            shader_type = type == Shader_VertexPixel    ? "vertex and pixel shader" : shader_type;
+            string type_str = "unknown";
+            type_str        = type == Shader_Vertex     ? "vertex"   : type_str;
+            type_str        = type == Shader_Pixel      ? "pixel"    : type_str;
+            type_str        = type == Shader_Compute    ? "compute"  : type_str;
 
-            if (m_compilation_state == Shader_Compiled)
+            if (m_compilation_state == Shader_Compilation_Succeeded)
             {
-                LOG_INFO("Successfully compiled %s from \"%s\"", shader_type.c_str(), shader.c_str());
+                if (m_defines.empty())
+                {
+                    LOG_INFO("Successfully compiled %s shader from \"%s\"", type_str.c_str(), shader.c_str());
+                }
+                else
+                {
+                    LOG_INFO("Successfully compiled %s shader from \"%s\" with \"%s\" defined", type_str.c_str(), shader.c_str(), m_defines.begin()->first.c_str());
+                }
             }
-            else if (m_compilation_state == Shader_Failed)
+            else if (m_compilation_state == Shader_Compilation_Failed)
             {
-                LOG_ERROR("Failed to compile %s from \"%s\"", shader_type.c_str(), shader.c_str());
+                if (m_defines.empty())
+                {
+                    LOG_ERROR("Failed to compile %s shader from \"%s\"", type_str.c_str(), shader.c_str());
+                }
+                else
+                {
+                    LOG_ERROR("Failed to compile %s shader from \"%s\" with \"%s\" defined", type_str.c_str(), shader.c_str(), m_defines.begin()->first.c_str());
+                }
             }
         }
 	}
@@ -120,30 +108,54 @@ namespace Spartan
 		});
 	}
 
-    string RHI_Shader::GetEntryPoint() const
+    const char* RHI_Shader::GetEntryPoint() const
     {
-        if (m_shader_type == Shader_Vertex)     return "mainVS";
-        if (m_shader_type == Shader_Pixel)      return "mainPS";
-        if (m_shader_type == Shader_Compute)    return "mainCS";
+        static const char* entry_point_empty = nullptr;
 
-        return "";
+        static const char* entry_point_vs = "mainVS";
+        static const char* entry_point_ps = "mainPS";
+        static const char* entry_point_cs = "mainCS";
+
+        if (m_shader_type == Shader_Vertex)     return entry_point_vs;
+        if (m_shader_type == Shader_Pixel)      return entry_point_ps;
+        if (m_shader_type == Shader_Compute)    return entry_point_cs;
+
+        return entry_point_empty;
     }
 
-    string RHI_Shader::GetTargetProfile() const
+    const char* RHI_Shader::GetTargetProfile() const
     {
-        if (m_shader_type == Shader_Vertex)     return "vs_" + GetShaderModel();
-        if (m_shader_type == Shader_Pixel)      return "ps_" + GetShaderModel();
-        if (m_shader_type == Shader_Compute)    return "cs_" + GetShaderModel();
+        static const char* target_profile_empty = nullptr;
 
-        return "";
+        #if defined(API_GRAPHICS_D3D11)
+        static const char* target_profile_vs = "vs_5_0";
+        static const char* target_profile_ps = "ps_5_0";
+        static const char* target_profile_cs = "cs_5_0";
+        #elif defined(API_GRAPHICS_D3D12)
+        static const char* target_profile_vs = "vs_6_0";
+        static const char* target_profile_ps = "ps_6_0";
+        static const char* target_profile_cs = "cs_6_0";
+        #elif defined(API_GRAPHICS_VULKAN)
+        static const char* target_profile_vs = "vs_6_0";
+        static const char* target_profile_ps = "ps_6_0";
+        static const char* target_profile_cs = "cs_6_0";
+        #endif
+
+        if (m_shader_type == Shader_Vertex)     return target_profile_vs;
+        if (m_shader_type == Shader_Pixel)      return target_profile_ps;
+        if (m_shader_type == Shader_Compute)    return target_profile_cs;
+
+        return target_profile_empty;
     }
 
-    const std::string& RHI_Shader::GetShaderModel() const
+    const char* RHI_Shader::GetShaderModel() const
     {
         #if defined(API_GRAPHICS_D3D11)
-        static const std::string shader_model = "5_0";
+        static const char* shader_model = "5_0";
+        #elif defined(API_GRAPHICS_D3D12)
+        static const char* shader_model = "6_0";
         #elif defined(API_GRAPHICS_VULKAN)
-        static const std::string shader_model = "6_0";
+        static const char* shader_model = "6_0";
         #endif
 
         return shader_model;

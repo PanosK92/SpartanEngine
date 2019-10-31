@@ -95,11 +95,17 @@ namespace Spartan
 		shader_vertex_stage_info.sType								= VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		shader_vertex_stage_info.stage								= VK_SHADER_STAGE_VERTEX_BIT;
 		shader_vertex_stage_info.module								= static_cast<VkShaderModule>(m_state->shader_vertex->GetResource_Vertex());
-		shader_vertex_stage_info.pName								= m_state->shader_vertex->GetEntryPoint().c_str();
+		shader_vertex_stage_info.pName								= m_state->shader_vertex->GetEntryPoint();
 
         if (!shader_vertex_stage_info.module)
         {
-            LOG_ERROR("Vertex shader is null, aborting pipeline creation");
+            LOG_ERROR("Vertex shader is null");
+            return;
+        }
+
+        if (!shader_vertex_stage_info.pName)
+        {
+            LOG_ERROR("Vertex shader entry point is null");
             return;
         }
 
@@ -108,7 +114,13 @@ namespace Spartan
 		shader_pixel_stage_info.sType							= VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		shader_pixel_stage_info.stage							= VK_SHADER_STAGE_FRAGMENT_BIT;
 		shader_pixel_stage_info.module							= static_cast<VkShaderModule>(m_state->shader_pixel->GetResource_Pixel());
-		shader_pixel_stage_info.pName							= m_state->shader_pixel->GetEntryPoint().c_str();
+		shader_pixel_stage_info.pName							= m_state->shader_pixel->GetEntryPoint();
+
+        if (!shader_pixel_stage_info.pName)
+        {
+            LOG_ERROR("Pixel shader entry point is null");
+            return;
+        }
 
 		// Shader stages
 		VkPipelineShaderStageCreateInfo shader_stages[2] = { shader_vertex_stage_info, shader_pixel_stage_info };
@@ -432,7 +444,7 @@ namespace Spartan
 		m_shader_resources.clear();
 
 		// Wait for shaders to finish compilation
-		while (m_state->shader_vertex->GetCompilationState() == Shader_Compiling || m_state->shader_pixel->GetCompilationState() == Shader_Compiling) {}
+		while (m_state->shader_vertex->GetCompilationState() == Shader_Compilation_Compiling || m_state->shader_pixel->GetCompilationState() == Shader_Compilation_Compiling) {}
 
 		// Merge vertex & index shader resources into map (to ensure unique values)
 		for (const auto& resource : m_state->shader_vertex->GetResources())	m_shader_resources[resource.name] = resource;

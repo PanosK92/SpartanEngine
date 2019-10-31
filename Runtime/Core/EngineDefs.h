@@ -26,6 +26,7 @@ constexpr auto engine_version = "v0.31 WIP";
 
 // APIs
 #define API_GRAPHICS_D3D11
+//#define API_GRAPHICS_D3D12
 //#define API_GRAPHICS_VULKAN
 #define API_INPUT_WINDOWS
 

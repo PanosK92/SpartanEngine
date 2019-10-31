@@ -319,20 +319,26 @@ namespace Spartan
         m_shaders[Shader_Ssr_P]->CompileAsync(m_context, Shader_Pixel, dir_shaders + "SSR.hlsl");
 
         // Transform gizmo
-        m_shaders[Shader_GizmoTransform_Vp] = make_shared<RHI_Shader>(m_rhi_device);
-        m_shaders[Shader_GizmoTransform_Vp]->CompileAsync<RHI_Vertex_PosTexNorTan>(m_context, Shader_VertexPixel, dir_shaders + "TransformGizmo.hlsl");
+        m_shaders[Shader_GizmoTransform_V] = make_shared<RHI_Shader>(m_rhi_device);
+        m_shaders[Shader_GizmoTransform_V]->CompileAsync<RHI_Vertex_PosTexNorTan>(m_context, Shader_Vertex, dir_shaders + "TransformGizmo.hlsl");
+        m_shaders[Shader_GizmoTransform_P] = make_shared<RHI_Shader>(m_rhi_device);
+        m_shaders[Shader_GizmoTransform_P]->CompileAsync(m_context, Shader_Pixel, dir_shaders + "TransformGizmo.hlsl");
 
         // Composition
         m_shaders[Shader_Composition_P] = make_shared<RHI_Shader>(m_rhi_device);
         m_shaders[Shader_Composition_P]->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Composition.hlsl");
 
         // Font
-        m_shaders[Shader_Font_Vp] = make_shared<RHI_Shader>(m_rhi_device);
-        m_shaders[Shader_Font_Vp]->CompileAsync<RHI_Vertex_PosTex>(m_context, Shader_VertexPixel, dir_shaders + "Font.hlsl");
+        m_shaders[Shader_Font_V] = make_shared<RHI_Shader>(m_rhi_device);
+        m_shaders[Shader_Font_V]->CompileAsync<RHI_Vertex_PosTex>(m_context, Shader_Vertex, dir_shaders + "Font.hlsl");
+        m_shaders[Shader_Font_P] = make_shared<RHI_Shader>(m_rhi_device);
+        m_shaders[Shader_Font_P]->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Font.hlsl");
 
         // Color
-        m_shaders[Shader_Color_Vp] = make_shared<RHI_Shader>(m_rhi_device);
-        m_shaders[Shader_Color_Vp]->CompileAsync<RHI_Vertex_PosCol>(m_context, Shader_VertexPixel, dir_shaders + "Color.hlsl");
+        m_shaders[Shader_Color_V] = make_shared<RHI_Shader>(m_rhi_device);
+        m_shaders[Shader_Color_V]->CompileAsync<RHI_Vertex_PosCol>(m_context, Shader_Vertex, dir_shaders + "Color.hlsl");
+        m_shaders[Shader_Color_P] = make_shared<RHI_Shader>(m_rhi_device);
+        m_shaders[Shader_Color_P]->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Color.hlsl");
     }
 
     void Renderer::CreateFonts()

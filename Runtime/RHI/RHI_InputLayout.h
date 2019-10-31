@@ -21,13 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
+//= INCLUDES ======================
 #include <memory>
 #include <vector>
 #include "RHI_Definition.h"
 #include "RHI_Vertex.h"
-#include "../Core/EngineDefs.h"
-//=============================
+#include "../Core/Spartan_Object.h"
+//=================================
 
 namespace Spartan
 {
@@ -49,7 +49,7 @@ namespace Spartan
 		uint32_t offset;
 	};
 
-	class SPARTAN_CLASS RHI_InputLayout
+	class SPARTAN_CLASS RHI_InputLayout : public Spartan_Object
 	{
 	public:
 		RHI_InputLayout(const std::shared_ptr<RHI_Device>& rhi_device)
