@@ -42,6 +42,7 @@ using namespace Spartan;
 //=======================
  
 #define DOCKING_ENABLED ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable
+
 namespace _Editor
 {
 	Widget* widget_menu_bar		= nullptr;
@@ -221,16 +222,17 @@ void Editor::DockSpace_Begin()
 	const auto dockspace_id = ImGui::GetID(_Editor::dockspace_name);
 	if (!ImGui::DockBuilderGetNode(dockspace_id))
 	{
-		// Reset/clear current docking state
+		// Reset current docking state
 		ImGui::DockBuilderRemoveNode(dockspace_id);
 		ImGui::DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_None);
+        ImGui::DockBuilderSetNodeSize(dockspace_id, ImGui::GetMainViewport()->Size);
 
 		// DockBuilderSplitNode(ImGuiID node_id, ImGuiDir split_dir, float size_ratio_for_node_at_dir, ImGuiID* out_id_dir, ImGuiID* out_id_other);
-		auto dock_main_id				= dockspace_id;
-		auto dock_right_id				= ImGui::DockBuilderSplitNode(dock_main_id,		ImGuiDir_Right, 0.2f, nullptr, &dock_main_id);
-		const auto dock_right_down_id	= ImGui::DockBuilderSplitNode(dock_right_id,	ImGuiDir_Down,	0.6f, nullptr, &dock_right_id);
-		auto dock_down_id				= ImGui::DockBuilderSplitNode(dock_main_id,		ImGuiDir_Down,	0.25f, nullptr, &dock_main_id);
-		const auto dock_down_right_id	= ImGui::DockBuilderSplitNode(dock_down_id,		ImGuiDir_Right, 0.6f, nullptr, &dock_down_id);
+        ImGuiID dock_main_id		= dockspace_id;
+        ImGuiID dock_right_id		= ImGui::DockBuilderSplitNode(dock_main_id,		ImGuiDir_Right, 0.2f,   nullptr, &dock_main_id);
+        ImGuiID dock_right_down_id	= ImGui::DockBuilderSplitNode(dock_right_id,	ImGuiDir_Down,	0.6f,   nullptr, &dock_right_id);
+        ImGuiID dock_down_id		= ImGui::DockBuilderSplitNode(dock_main_id,		ImGuiDir_Down,	0.25f,  nullptr, &dock_main_id);
+        ImGuiID dock_down_right_id	= ImGui::DockBuilderSplitNode(dock_down_id,		ImGuiDir_Right, 0.6f,   nullptr, &dock_down_id);
 
 		// Dock windows	
 		ImGui::DockBuilderDockWindow("World",		dock_right_id);
