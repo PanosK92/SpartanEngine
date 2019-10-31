@@ -51,13 +51,6 @@ namespace Spartan
 {
     void Renderer::Pass_Setup()
     {
-#ifdef API_GRAPHICS_VULKAN
-        // For the time being, when using Vulkan, do simple stuff so I can debug
-        //m_cmd_list->End();
-        //m_cmd_list->Submit();
-        return;
-#endif
-
         m_cmd_list->Begin("Pass_Setup");
 
         // Bind the buffers we will be using thought the frame

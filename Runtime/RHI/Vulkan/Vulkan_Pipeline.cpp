@@ -137,10 +137,11 @@ namespace Spartan
 		binding_description.stride		= m_state->vertex_buffer->GetStride();
 
 		// Vertex attributes description
-		vector<VkVertexInputAttributeDescription> vertex_attribute_descs;
+        vector<VkVertexInputAttributeDescription> vertex_attribute_descs;
+        vertex_attribute_descs.reserve(m_state->input_layout->GetAttributeDescriptions().size());
 		for (const auto& desc : m_state->input_layout->GetAttributeDescriptions())
 		{	
-			vertex_attribute_descs.emplace_back(VkVertexInputAttributeDescription{ desc.location, desc.binding, vulkan_format[desc.format], desc.offset });
+			vertex_attribute_descs.push_back({ desc.location, desc.binding, vulkan_format[desc.format], desc.offset });
 		}
 
 		// Vertex input state
@@ -301,43 +302,63 @@ namespace Spartan
 			allocate_info.pSetLayouts					= &descriptor_set_layout;
 
 			// Allocate		
-			const auto result = vkAllocateDescriptorSets(m_rhi_device->GetContextRhi()->device, &allocate_info, &descriptor_set);
-			if (result != VK_SUCCESS)
-			{
-				LOG_ERROR("Failed to allocate descriptor set, %s", Vulkan_Common::to_string(result));
+			if (!Vulkan_Common::check_result(vkAllocateDescriptorSets(m_rhi_device->GetContextRhi()->device, &allocate_info, &descriptor_set)))
 				return;
-			}
 		}
 
 		// Update descriptor sets
-		{
-			VkDescriptorImageInfo image_info	= {};
-			image_info.imageLayout				= VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            image_info.imageView                = texture ? static_cast<VkImageView>(texture->GetResource_Texture()) : nullptr;
-			image_info.sampler					= m_state->sampler ? static_cast<VkSampler>(m_state->sampler->GetResource()) : nullptr;
+        {
+            vector<VkDescriptorImageInfo> image_infos;          image_infos.reserve(m_shader_resources.size());
+            vector<VkDescriptorBufferInfo> buffer_infos;        buffer_infos.reserve(m_shader_resources.size());
+            vector<VkWriteDescriptorSet> write_descriptor_sets; write_descriptor_sets.reserve(m_shader_resources.size());
 
-			VkDescriptorBufferInfo buffer_info	= {};
-			buffer_info.buffer					= m_state->constant_buffer ? static_cast<VkBuffer>(m_state->constant_buffer->GetResource()) : nullptr;
-			buffer_info.offset					= 0;
-			buffer_info.range					= m_state->constant_buffer ? m_state->constant_buffer->GetSize() : 0;
-
-			vector<VkWriteDescriptorSet> write_descriptor_sets;
 			for (const auto& resource : m_shader_resources)
 			{
+                const Shader_Resource& srv                      = resource.second;
+                const VkDescriptorImageInfo* image_info_ptr     = nullptr;
+                const VkDescriptorBufferInfo* buffer_info_ptr   = nullptr;
+
+                // Texture or Sampler
+                if (srv.type == Descriptor_Texture || srv.type == Descriptor_Sampler)
+                {
+                    image_infos.push_back
+                    ({
+                        (srv.type == Descriptor_Sampler && m_state->sampler)    ? static_cast<VkSampler>(m_state->sampler->GetResource())   : nullptr,  // sampler
+                        (srv.type == Descriptor_Texture && texture)             ? static_cast<VkImageView>(texture->GetResource_Texture())  : nullptr,  // imageView
+                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL                                                                                        // imageLayout
+                    });
+
+                    image_info_ptr = &image_infos.back();
+                }
+
+                // Constant/Uniform buffer
+                if (srv.type == Descriptor_ConstantBuffer)
+                {
+                    buffer_infos.push_back
+                    ({
+                        m_state->constant_buffer ? static_cast<VkBuffer>(m_state->constant_buffer->GetResource()) : nullptr,           // buffer
+                        0,                                                                                                             // offset
+                        (srv.type == Descriptor_ConstantBuffer && m_state->constant_buffer) ? m_state->constant_buffer->GetSize() : 0, // range                
+                    });
+
+                    buffer_info_ptr = &buffer_infos.back();
+                }
+
 				write_descriptor_sets.push_back
 				({
-					VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,			// sType
-					nullptr,										// pNext
-					descriptor_set,									// dstSet
-					resource.second.slot,							// dstBinding
-					0,												// dstArrayElement
-					1,												// descriptorCount
-					vulkan_descriptor_type[resource.second.type],	// descriptorType
-					&image_info,									// pImageInfo 
-					&buffer_info,									// pBufferInfo
-					nullptr											// pTexelBufferView
+					VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,	// sType
+					nullptr,								// pNext
+					descriptor_set,							// dstSet
+                    srv.slot,							    // dstBinding
+                    0,									    // dstArrayElement
+                    1,									    // descriptorCount
+					vulkan_descriptor_type[srv.type],	    // descriptorType
+                    image_info_ptr,                         // pImageInfo 
+                    buffer_info_ptr,                        // pBufferInfo
+					nullptr									// pTexelBufferView
 				});
 			}
+
 			vkUpdateDescriptorSets(m_rhi_device->GetContextRhi()->device, static_cast<uint32_t>(write_descriptor_sets.size()), write_descriptor_sets.data(), 0, nullptr);
 		}
 
@@ -389,12 +410,8 @@ namespace Spartan
 		
 		// Pool
 		const auto descriptor_pool = reinterpret_cast<VkDescriptorPool*>(&m_descriptor_pool);
-		const auto result = vkCreateDescriptorPool(m_rhi_device->GetContextRhi()->device, &pool_create_info, nullptr, descriptor_pool);
-		if (result != VK_SUCCESS)
-		{
-			LOG_ERROR("Failed to create descriptor pool, %s", Vulkan_Common::to_string(result));
-			return false;
-		}
+        if (!Vulkan_Common::check_result(vkCreateDescriptorPool(m_rhi_device->GetContextRhi()->device, &pool_create_info, nullptr, descriptor_pool)))
+            return false;
 
 		return true;
 	}
@@ -406,7 +423,10 @@ namespace Spartan
 		{
 			for (const auto& resource : m_shader_resources)
 			{
-				const VkShaderStageFlags stage_flags = (resource.second.shader_stage == Shader_Vertex) ? VK_SHADER_STAGE_VERTEX_BIT : VK_SHADER_STAGE_FRAGMENT_BIT;
+                VkShaderStageFlags stage_flags = 0;
+                stage_flags = (resource.second.shader_stage == Shader_Vertex)   ? VK_SHADER_STAGE_VERTEX_BIT    : stage_flags;
+                stage_flags = (resource.second.shader_stage == Shader_Pixel)    ? VK_SHADER_STAGE_FRAGMENT_BIT  : stage_flags;
+                stage_flags = (resource.second.shader_stage == Shader_Compute)  ? VK_SHADER_STAGE_COMPUTE_BIT   : stage_flags;
 
 				layout_bindings.push_back
 				({
@@ -429,12 +449,8 @@ namespace Spartan
 
 		// Descriptor set layout
 		auto descriptor_set_layout = reinterpret_cast<VkDescriptorSetLayout*>(&m_descriptor_set_layout);
-		const auto result = vkCreateDescriptorSetLayout(m_rhi_device->GetContextRhi()->device, &create_info, nullptr, descriptor_set_layout);
-		if (result != VK_SUCCESS)
-		{
-			LOG_ERROR("Failed to create descriptor layout, %s", Vulkan_Common::to_string(result));
+        if (!Vulkan_Common::check_result(vkCreateDescriptorSetLayout(m_rhi_device->GetContextRhi()->device, &create_info, nullptr, descriptor_set_layout)))
 			return false;
-		}
 
 		return true;
 	}

@@ -223,23 +223,21 @@ namespace ImGui::RHI
 			g_viewport.width	= draw_data->DisplaySize.x;
 			g_viewport.height	= draw_data->DisplaySize.y;
 
-			// Setup pipeline
-			RHI_PipelineState state		= {};
-			state.shader_vertex			= g_shader_vertex.get();
-			state.shader_pixel			= g_shader_pixel.get();
-			state.input_layout			= g_shader_vertex->GetInputLayout().get();
-			state.rasterizer_state		= g_rasterizer_state.get();
-			state.blend_state			= g_blend_state.get();
-			state.depth_stencil_state	= g_depth_stencil_state.get();
-			state.vertex_buffer			= g_vertex_buffer.get();
-			state.primitive_topology	= PrimitiveTopology_TriangleList;
-            state.viewport              = g_viewport;
-			state.swap_chain			= is_main_viewport ? g_renderer->GetSwapChain().get() : swap_chain_other;
+            // Get window swap-chain
+            RHI_SwapChain* swap_chain = is_main_viewport ? g_renderer->GetSwapChain().get() : swap_chain_other;
 
 			// Start witting command list
-			g_cmd_list->Begin("Pass_ImGui", &state);
-			g_cmd_list->SetRenderTarget(state.swap_chain->GetRenderTargetView());
-			if (clear) g_cmd_list->ClearRenderTarget(state.swap_chain->GetRenderTargetView(), Vector4(0, 0, 0, 1));
+			g_cmd_list->Begin("Pass_ImGui");
+            if (clear) g_cmd_list->ClearRenderTarget(swap_chain->GetRenderTargetView(), Vector4(0, 0, 0, 1));
+            g_cmd_list->SetRenderTarget(swap_chain->GetRenderTargetView());
+            g_cmd_list->SetRasterizerState(g_rasterizer_state);
+            g_cmd_list->SetBlendState(g_blend_state);
+            g_cmd_list->SetDepthStencilState(g_depth_stencil_state);
+            g_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+            g_cmd_list->SetViewport(g_viewport);
+            g_cmd_list->SetShaderVertex(g_shader_vertex);
+            g_cmd_list->SetShaderPixel(g_shader_pixel);
+            g_cmd_list->SetInputLayout(g_shader_vertex->GetInputLayout());
 			g_cmd_list->SetViewport(g_viewport);
 			g_cmd_list->SetBufferVertex(g_vertex_buffer);
 			g_cmd_list->SetBufferIndex(g_index_buffer);
