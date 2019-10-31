@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Settings.h"
 #include "../Profiling/Profiler.h"
 #include "../Rendering/Renderer.h"
-#pragma warning(push, 0) // Hide warnings which belong to Bullet
+#pragma warning(push, 0) // Hide warnings belonging to Bullet
 #include <BulletCollision/BroadphaseCollision/btDbvtBroadphase.h>
 #include <BulletCollision/CollisionDispatch/btDefaultCollisionConfiguration.h>
 #include <BulletDynamics/ConstraintSolver/btSequentialImpulseConstraintSolver.h>

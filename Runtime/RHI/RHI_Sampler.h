@@ -58,16 +58,18 @@ namespace Spartan
 		auto GetResource()				const { return m_resource; }
 
 	private:	
-		RHI_Filter m_filter_min;
-		RHI_Filter m_filter_mag;
-		RHI_Sampler_Mipmap_Mode m_filter_mipmap;	
-		RHI_Sampler_Address_Mode m_sampler_address_mode;
-		RHI_Comparison_Function m_comparison_function;
-		bool m_anisotropy_enabled;
-		bool m_comparison_enabled;
-		std::shared_ptr<RHI_Device> m_rhi_device;
+        RHI_Filter m_filter_min                             = Filter_Nearest;
+        RHI_Filter m_filter_mag                             = Filter_Nearest;
+        RHI_Sampler_Mipmap_Mode m_filter_mipmap             = Sampler_Mipmap_Nearest;
+        RHI_Sampler_Address_Mode m_sampler_address_mode     = Sampler_Address_Wrap;
+        RHI_Comparison_Function m_comparison_function       = Comparison_Always;
+        bool m_anisotropy_enabled                           = false;
+        bool m_comparison_enabled                           = false;
 
 		// API
 		void* m_resource = nullptr;
+
+        // Dependencies
+        std::shared_ptr<RHI_Device> m_rhi_device;
 	};
 }

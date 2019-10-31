@@ -22,10 +22,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ======================
 #include "RHI_Shader.h"
 #include "RHI_InputLayout.h"
-#include <spirv_hlsl.hpp>
 #include "../Core/Context.h"
 #include "../Threading/Threading.h"
 #include "../Core/FileSystem.h"
+#pragma warning(push, 0) // Hide warnings belonging SPIRV-Cross 
+#include <spirv_hlsl.hpp>
+#pragma warning(pop)
 //=================================
 
 //= NAMESPACES =====
