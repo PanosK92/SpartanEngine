@@ -38,10 +38,10 @@ namespace Spartan
 
 	enum Shader_Type
 	{
+        Shader_Unknown,
 		Shader_Vertex,
 		Shader_Pixel,
-        Shader_Compute,
-		Shader_VertexPixel
+        Shader_Compute
 	};
 
 	struct Shader_Resource
@@ -63,10 +63,10 @@ namespace Spartan
 
 	enum Compilation_State
 	{
-		Shader_Uninitialized,
-		Shader_Compiling,
-		Shader_Compiled,
-		Shader_Failed
+		Shader_Compilation_Unknown,
+		Shader_Compilation_Compiling,
+		Shader_Compilation_Succeeded,
+		Shader_Compilation_Failed
 	};
 
 	class SPARTAN_CLASS RHI_Shader : public Spartan_Object
@@ -93,24 +93,21 @@ namespace Spartan
 		}
 	
 		// Properties
-		auto GetResource_Vertex() const										        { return m_resource_vertex; }
-		auto GetResource_Pixel() const										        { return m_resource_pixel; }
-        auto GetResource_Compute() const                                            { return m_resource_compute; }
-		auto HasVertexShader() const												{ return m_resource_vertex != nullptr; }
-		auto HasPixelShader() const													{ return m_resource_pixel != nullptr; }
-		const auto& GetResources() const											{ return m_resources; }
-		const auto& GetInputLayout() const											{ return m_input_layout; }
-		auto GetCompilationState() const											{ return m_compilation_state; }
-		auto IsCompiled() const														{ return m_compilation_state == Shader_Compiled; }
-		const auto& GetName() const													{ return m_name; }
+		auto GetResource()              const										{ return m_resource; }
+		auto HasResource()              const										{ return m_resource != nullptr; }
+		const auto& GetResources()      const										{ return m_resources; }
+		const auto& GetInputLayout()    const										{ return m_input_layout; } // only valid for vertex shader
+		auto GetCompilationState()      const										{ return m_compilation_state; }
+		auto IsCompiled()               const										{ return m_compilation_state == Shader_Compilation_Succeeded; }
+		const auto& GetName()           const										{ return m_name; }
 		void SetName(const std::string& name)										{ m_name = name; }
 		void AddDefine(const std::string& define, const std::string& value = "1")	{ m_defines[define] = value; }
-        auto& GetDefines() const                                                    { return m_defines; }
-        const auto& GetFilePath() const                                             { return m_file_path; }
-        auto GetShaderStage() const                                                 { return m_shader_type; }
-        std::string GetEntryPoint() const;
-        std::string GetTargetProfile() const;
-        const std::string& GetShaderModel() const;
+        auto& GetDefines()              const                                       { return m_defines; }
+        const auto& GetFilePath()       const                                       { return m_file_path; }
+        auto GetShaderStage()           const                                       { return m_shader_type; }
+        const char* GetEntryPoint()     const;
+        const char* GetTargetProfile()  const;
+        const char* GetShaderModel()    const;
 
 	protected:
 		std::shared_ptr<RHI_Device> m_rhi_device;
@@ -126,13 +123,11 @@ namespace Spartan
 		std::map<std::string, std::string> m_defines;
 		std::vector<Shader_Resource> m_resources;
 		std::shared_ptr<RHI_InputLayout> m_input_layout;
-		Compilation_State m_compilation_state = Shader_Uninitialized;
-        Shader_Type m_shader_type;
+		Compilation_State m_compilation_state   = Shader_Compilation_Unknown;
+        Shader_Type m_shader_type               = Shader_Unknown;
 
 		// API 
-		void* m_resource_vertex	    = nullptr;
-		void* m_resource_pixel    = nullptr;
-        void* m_resource_compute  = nullptr;
+		void* m_resource = nullptr;
 	};
 
 	//= Explicit template instantiation =============================================================================

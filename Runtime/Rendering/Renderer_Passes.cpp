@@ -1435,9 +1435,10 @@ namespace Spartan
 		if (!draw)
 			return;
 
-        // Acquire color shader
-        const auto& shader_color = m_shaders[Shader_Color_Vp];
-        if (!shader_color->IsCompiled())
+        // Acquire color shaders
+        const auto& shader_color_v = m_shaders[Shader_Color_V];
+        const auto& shader_color_p = m_shaders[Shader_Color_P];
+        if (!shader_color_v->IsCompiled() || !shader_color_p->IsCompiled())
             return;
 
 		m_cmd_list->Begin("Pass_Lines");
@@ -1494,9 +1495,9 @@ namespace Spartan
 		m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_wireframe);
 		m_cmd_list->SetBlendState(m_blend_disabled);
 		m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_LineList);
-		m_cmd_list->SetShaderVertex(shader_color);
-		m_cmd_list->SetShaderPixel(shader_color);
-		m_cmd_list->SetInputLayout(shader_color->GetInputLayout());
+		m_cmd_list->SetShaderVertex(shader_color_v);
+		m_cmd_list->SetShaderPixel(shader_color_p);
+		m_cmd_list->SetInputLayout(shader_color_v->GetInputLayout());
 
 		// Draw lines that require depth
 		m_cmd_list->SetDepthStencilState(m_depth_stencil_enabled_no_write);
@@ -1653,12 +1654,13 @@ namespace Spartan
 		// Transform
 		if (render_transform && m_gizmo_transform->Update(m_camera.get(), m_gizmo_transform_size, m_gizmo_transform_speed))
 		{
-			auto const& shader_gizmo_transform = m_shaders[Shader_GizmoTransform_Vp];
-            if (shader_gizmo_transform->IsCompiled())
+			auto const& shader_gizmo_transform_v = m_shaders[Shader_GizmoTransform_V];
+            auto const& shader_gizmo_transform_p = m_shaders[Shader_GizmoTransform_P];
+            if (shader_gizmo_transform_v->IsCompiled() && shader_gizmo_transform_p->IsCompiled())
             { 
-			    m_cmd_list->SetShaderVertex(shader_gizmo_transform);
-			    m_cmd_list->SetShaderPixel(shader_gizmo_transform);
-			    m_cmd_list->SetInputLayout(shader_gizmo_transform->GetInputLayout());
+			    m_cmd_list->SetShaderVertex(shader_gizmo_transform_v);
+			    m_cmd_list->SetShaderPixel(shader_gizmo_transform_p);
+			    m_cmd_list->SetInputLayout(shader_gizmo_transform_v->GetInputLayout());
 			    m_cmd_list->SetBufferIndex(m_gizmo_transform->GetIndexBuffer());
 			    m_cmd_list->SetBufferVertex(m_gizmo_transform->GetVertexBuffer());
 
@@ -1701,10 +1703,11 @@ namespace Spartan
 	void Renderer::Pass_PerformanceMetrics(shared_ptr<RHI_Texture>& tex_out)
 	{
         // Early exit cases
-        const bool draw         = m_options & Render_Debug_PerformanceMetrics;
-        const bool empty        = m_profiler->GetMetrics().empty();
-        const auto& shader_font = m_shaders[Shader_Font_Vp];
-        if (!draw || empty || !shader_font->IsCompiled())
+        const bool draw             = m_options & Render_Debug_PerformanceMetrics;
+        const bool empty            = m_profiler->GetMetrics().empty();
+        const auto& shader_font_v   = m_shaders[Shader_Font_V];
+        const auto& shader_font_p   = m_shaders[Shader_Font_P];
+        if (!draw || empty || !shader_font_v->IsCompiled() || !shader_font_p->IsCompiled())
             return;
 
 		m_cmd_list->Begin("Pass_PerformanceMetrics");
@@ -1725,9 +1728,9 @@ namespace Spartan
 		m_cmd_list->SetViewport(tex_out->GetViewport());
 		m_cmd_list->SetBlendState(m_blend_enabled);	
 		m_cmd_list->SetTexture(0, m_font->GetAtlas());
-		m_cmd_list->SetShaderVertex(shader_font);
-		m_cmd_list->SetShaderPixel(shader_font);
-		m_cmd_list->SetInputLayout(shader_font->GetInputLayout());	
+		m_cmd_list->SetShaderVertex(shader_font_v);
+		m_cmd_list->SetShaderPixel(shader_font_p);
+		m_cmd_list->SetInputLayout(shader_font_v->GetInputLayout());
 		m_cmd_list->SetBufferIndex(m_font->GetIndexBuffer());
 		m_cmd_list->SetBufferVertex(m_font->GetVertexBuffer());
 		m_cmd_list->DrawIndexed(m_font->GetIndexCount(), 0, 0);

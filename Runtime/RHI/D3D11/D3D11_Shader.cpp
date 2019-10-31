@@ -44,9 +44,7 @@ namespace Spartan
 {
 	RHI_Shader::~RHI_Shader()
 	{
-		safe_release(static_cast<ID3D11VertexShader*>(m_resource_vertex));
-		safe_release(static_cast<ID3D11PixelShader*>(m_resource_pixel));
-        safe_release(static_cast<ID3D11ComputeShader*>(m_resource_compute));
+		safe_release(static_cast<ID3D11VertexShader*>(m_resource));
 	}
 
 	template <typename T>
@@ -66,10 +64,12 @@ namespace Spartan
 		}
 
 		// Compile flags
-		uint32_t compile_flags = D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
+        uint32_t compile_flags = 0;
 		#ifdef DEBUG
 		compile_flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_PREFER_FLOW_CONTROL;
-		#endif
+        #elif NDEBUG
+        compile_flags |= D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
+        #endif
 
 		// Defines
 		vector<D3D_SHADER_MACRO> defines =
@@ -96,8 +96,8 @@ namespace Spartan
 				file_path.c_str(),
 				defines.data(),
 				D3D_COMPILE_STANDARD_FILE_INCLUDE,
-				GetEntryPoint().c_str(),
-                GetTargetProfile().c_str(),
+				GetEntryPoint(),
+                GetTargetProfile(),
 				compile_flags,
 				0,
 				&shader_blob,
@@ -109,12 +109,12 @@ namespace Spartan
             result = D3DCompile
             (
                 shader.c_str(),
-                shader.size(),
+                static_cast<SIZE_T>(shader.size()),
                 nullptr,
                 defines.data(),
                 nullptr,
-                GetEntryPoint().c_str(),
-                GetTargetProfile().c_str(),
+                GetEntryPoint(),
+                GetTargetProfile(),
                 compile_flags,
                 0,
                 &shader_blob,
@@ -181,6 +181,10 @@ namespace Spartan
 						LOG_ERROR("Failed to create input layout for %s", FileSystem::GetFileNameFromFilePath(m_file_path).c_str());
 					}
 				}
+                else
+                {
+                    LOG_ERROR("No vertx input type provided for \"%s\"", FileSystem::GetFileNameFromFilePath(m_file_path).c_str());
+                }
 			}
 			else if (type == Shader_Pixel)
 			{

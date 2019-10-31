@@ -61,7 +61,8 @@ namespace ImGui::RHI
 	static shared_ptr<RHI_DepthStencilState>	g_depth_stencil_state;
 	static shared_ptr<RHI_RasterizerState>		g_rasterizer_state;
 	static shared_ptr<RHI_BlendState>			g_blend_state;
-	static shared_ptr<RHI_Shader>				g_shader;
+	static shared_ptr<RHI_Shader>				g_shader_vertex;
+    static shared_ptr<RHI_Shader>				g_shader_pixel;
 	static RHI_Viewport							g_viewport;
 
 	inline bool Initialize(Context* context, const float width, const float height)
@@ -106,8 +107,12 @@ namespace ImGui::RHI
 			    Blend_Operation_Add		// destination op alpha
 			);
 
-			g_shader = make_shared<RHI_Shader>(g_rhi_device);
-			g_shader->Compile<RHI_Vertex_Pos2dTexCol8>(Shader_VertexPixel, g_context->GetSubsystem<ResourceCache>()->GetDataDirectory(Asset_Shaders) + "/ImGui.hlsl");
+            // Compile shaders
+            std::string shader_path = g_context->GetSubsystem<ResourceCache>()->GetDataDirectory(Asset_Shaders) + "/ImGui.hlsl";
+            g_shader_vertex = make_shared<RHI_Shader>(g_rhi_device);
+            g_shader_vertex->Compile<RHI_Vertex_Pos2dTexCol8>(Shader_Vertex, shader_path);
+            g_shader_pixel = make_shared<RHI_Shader>(g_rhi_device);
+            g_shader_pixel->Compile(Shader_Pixel, shader_path);
 		}
 
 		// Font atlas
@@ -220,9 +225,9 @@ namespace ImGui::RHI
 
 			// Setup pipeline
 			RHI_PipelineState state		= {};
-			state.shader_vertex			= g_shader.get();
-			state.shader_pixel			= g_shader.get();
-			state.input_layout			= g_shader->GetInputLayout().get();
+			state.shader_vertex			= g_shader_vertex.get();
+			state.shader_pixel			= g_shader_pixel.get();
+			state.input_layout			= g_shader_vertex->GetInputLayout().get();
 			state.rasterizer_state		= g_rasterizer_state.get();
 			state.blend_state			= g_blend_state.get();
 			state.depth_stencil_state	= g_depth_stencil_state.get();

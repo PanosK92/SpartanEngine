@@ -21,10 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
+//= INCLUDES ======================
 #include "RHI_Definition.h"
 #include "../Core/Spartan_Object.h"
-//=============================
+//=================================
 
 namespace Spartan
 {

@@ -46,12 +46,14 @@ namespace Spartan
 	public:
 		void ComputeHash()
 		{
-			// todo: input layout, rasterizer state, blend state, swap chain, viewport, scissor
 			char buffer[1000];
 			sprintf_s
 			(
 				buffer,
-				"%d-%d-%d-%d-%d-%d-%d-%d",
+				"%d-%d-%d-%d-%d-%d-%d-%d-%d-%d-%d",
+                input_layout        ? input_layout->GetId()         : 0,
+                rasterizer_state    ? rasterizer_state->GetId()     : 0,
+                blend_state         ? blend_state->GetId()          : 0,
                 shader_vertex       ? shader_vertex->GetId()        : 0,
                 shader_pixel        ? shader_pixel->GetId()         : 0,
                 depth_stencil_state ? depth_stencil_state->GetId()  : 0,

@@ -202,8 +202,8 @@ namespace Spartan
 
 	void RHI_CommandList::SetShaderVertex(const RHI_Shader* shader)
 	{
-		// Null shaders are allowed, but if a shader is valid, it must have a valid resource
-		if (shader && !shader->GetResource_Vertex())
+		// Vertex shader can never be null
+		if (!shader || !shader->GetResource())
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return;
@@ -216,7 +216,7 @@ namespace Spartan
 
 	void RHI_CommandList::SetShaderPixel(const RHI_Shader* shader)
 	{
-		if (shader && !shader->GetResource_Pixel())
+		if (shader && !shader->GetResource())
 		{
 			LOG_WARNING("%s hasn't compiled", shader->GetName().c_str());
 			return;
@@ -229,7 +229,7 @@ namespace Spartan
 
     void RHI_CommandList::SetShaderCompute(const RHI_Shader* shader)
     {
-        if (shader && !shader->GetResource_Compute())
+        if (shader && !shader->GetResource())
         {
             LOG_WARNING("%s hasn't compiled", shader->GetName().c_str());
             return;
@@ -480,7 +480,7 @@ namespace Spartan
 
 				case RHI_Cmd_SetVertexShader:
 				{
-					const auto ptr = static_cast<ID3D11VertexShader*>(cmd.shader_vertex->GetResource_Vertex());
+					const auto ptr = static_cast<ID3D11VertexShader*>(cmd.shader_vertex->GetResource());
 					device_context->VSSetShader(ptr, nullptr, 0);
 
 					m_profiler->m_rhi_bindings_shader_vertex++;
@@ -489,7 +489,7 @@ namespace Spartan
 
 				case RHI_Cmd_SetPixelShader:
 				{
-					const auto ptr = static_cast<ID3D11PixelShader*>(cmd.shader_pixel ? cmd.shader_pixel->GetResource_Pixel() : nullptr);
+					const auto ptr = static_cast<ID3D11PixelShader*>(cmd.shader_pixel ? cmd.shader_pixel->GetResource() : nullptr);
 					device_context->PSSetShader(ptr, nullptr, 0);
 
 					m_profiler->m_rhi_bindings_shader_pixel++;
@@ -498,7 +498,7 @@ namespace Spartan
 
                 case RHI_Cmd_SetComputeShader:
                 {
-                    const auto ptr = static_cast<ID3D11ComputeShader*>(cmd.shader_compute ? cmd.shader_compute->GetResource_Compute() : nullptr);
+                    const auto ptr = static_cast<ID3D11ComputeShader*>(cmd.shader_compute ? cmd.shader_compute->GetResource() : nullptr);
                     device_context->CSSetShader(ptr, nullptr, 0);
 
                     m_profiler->m_rhi_bindings_shader_compute++;
