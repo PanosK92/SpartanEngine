@@ -94,7 +94,7 @@ namespace Spartan
 		VkPipelineShaderStageCreateInfo shader_vertex_stage_info	= {};
 		shader_vertex_stage_info.sType								= VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		shader_vertex_stage_info.stage								= VK_SHADER_STAGE_VERTEX_BIT;
-		shader_vertex_stage_info.module								= static_cast<VkShaderModule>(m_state->shader_vertex->GetResource_Vertex());
+		shader_vertex_stage_info.module								= static_cast<VkShaderModule>(m_state->shader_vertex->GetResource());
 		shader_vertex_stage_info.pName								= m_state->shader_vertex->GetEntryPoint();
 
         if (!shader_vertex_stage_info.module)
@@ -113,7 +113,7 @@ namespace Spartan
 		VkPipelineShaderStageCreateInfo shader_pixel_stage_info = {};
 		shader_pixel_stage_info.sType							= VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		shader_pixel_stage_info.stage							= VK_SHADER_STAGE_FRAGMENT_BIT;
-		shader_pixel_stage_info.module							= static_cast<VkShaderModule>(m_state->shader_pixel->GetResource_Pixel());
+		shader_pixel_stage_info.module							= static_cast<VkShaderModule>(m_state->shader_pixel->GetResource());
 		shader_pixel_stage_info.pName							= m_state->shader_pixel->GetEntryPoint();
 
         if (!shader_pixel_stage_info.pName)

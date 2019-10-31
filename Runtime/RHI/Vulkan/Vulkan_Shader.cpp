@@ -47,16 +47,10 @@ namespace Spartan
 	{
         const auto rhi_context = m_rhi_device->GetContextRhi();
 
-		if (HasVertexShader())
+		if (HasResource())
 		{
-			vkDestroyShaderModule(rhi_context->device, static_cast<VkShaderModule>(m_resource_vertex), nullptr);
-			m_resource_vertex = nullptr;
-		}
-
-		if (HasPixelShader())
-		{
-			vkDestroyShaderModule(rhi_context->device, static_cast<VkShaderModule>(m_resource_pixel), nullptr);
-			m_resource_pixel = nullptr;
+			vkDestroyShaderModule(rhi_context->device, static_cast<VkShaderModule>(m_resource), nullptr);
+            m_resource = nullptr;
 		}
 	}
 

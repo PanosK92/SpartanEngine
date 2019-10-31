@@ -74,26 +74,35 @@ namespace Spartan
             type_str        = type == Shader_Pixel      ? "pixel"    : type_str;
             type_str        = type == Shader_Compute    ? "compute"  : type_str;
 
+            string defines;
+            for (const auto& define : m_defines)
+            {
+                if (!defines.empty())
+                    defines += ", ";
+
+                defines += define.first + " = " + define.second;
+            }
+
             if (m_compilation_state == Shader_Compilation_Succeeded)
             {
-                if (m_defines.empty())
+                if (defines.empty())
                 {
                     LOG_INFO("Successfully compiled %s shader from \"%s\"", type_str.c_str(), shader.c_str());
                 }
                 else
                 {
-                    LOG_INFO("Successfully compiled %s shader from \"%s\" with \"%s\" defined", type_str.c_str(), shader.c_str(), m_defines.begin()->first.c_str());
+                    LOG_INFO("Successfully compiled %s shader from \"%s\" with definitions \"%s\"", type_str.c_str(), shader.c_str(), defines.c_str());
                 }
             }
             else if (m_compilation_state == Shader_Compilation_Failed)
             {
-                if (m_defines.empty())
+                if (defines.empty())
                 {
                     LOG_ERROR("Failed to compile %s shader from \"%s\"", type_str.c_str(), shader.c_str());
                 }
                 else
                 {
-                    LOG_ERROR("Failed to compile %s shader from \"%s\" with \"%s\" defined", type_str.c_str(), shader.c_str(), m_defines.begin()->first.c_str());
+                    LOG_ERROR("Failed to compile %s shader from \"%s\" with definitions \"%s\"", type_str.c_str(), shader.c_str(), defines.c_str());
                 }
             }
         }
