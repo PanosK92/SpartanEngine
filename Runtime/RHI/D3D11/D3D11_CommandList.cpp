@@ -63,17 +63,14 @@ namespace Spartan
 
 	void RHI_CommandList::Begin(const string& pass_name)
 	{
-        if (m_pipeline_state.shader_vertex)
-        {
-            SetViewport(m_pipeline_state.viewport);
-            SetBlendState(m_pipeline_state.blend_state);
-            SetDepthStencilState(m_pipeline_state.depth_stencil_state);
-            SetRasterizerState(m_pipeline_state.rasterizer_state);
-            SetInputLayout(m_pipeline_state.shader_vertex->GetInputLayout());
-            SetShaderVertex(m_pipeline_state.shader_vertex);
-            SetShaderPixel(m_pipeline_state.shader_pixel);
-            SetPrimitiveTopology(m_pipeline_state.primitive_topology);
-        }
+        if (m_pipeline_state.blend_state)                                       SetBlendState(m_pipeline_state.blend_state);
+        if (m_pipeline_state.depth_stencil_state)                               SetDepthStencilState(m_pipeline_state.depth_stencil_state);
+        if (m_pipeline_state.rasterizer_state)                                  SetRasterizerState(m_pipeline_state.rasterizer_state);
+        if (m_pipeline_state.shader_vertex)                                     SetInputLayout(m_pipeline_state.shader_vertex->GetInputLayout());
+        if (m_pipeline_state.shader_vertex)                                     SetShaderVertex(m_pipeline_state.shader_vertex);
+        if (m_pipeline_state.shader_pixel)                                      SetShaderPixel(m_pipeline_state.shader_pixel);
+        if (m_pipeline_state.viewport.IsDefined())                              SetViewport(m_pipeline_state.viewport);
+        if (m_pipeline_state.primitive_topology != PrimitiveTopology_Unknown)   SetPrimitiveTopology(m_pipeline_state.primitive_topology);
 
 		auto& cmd		= GetCmd();
 		cmd.type		= RHI_Cmd_Begin;
@@ -241,73 +238,45 @@ namespace Spartan
         cmd.shader_compute  = shader;
     }
 
-	void RHI_CommandList::SetConstantBuffers(const uint32_t start_slot, const RHI_Buffer_Scope scope, const vector<void*>& constant_buffers)
-	{
+    void RHI_CommandList::SetConstantBuffers(uint32_t start_slot, RHI_Buffer_Scope scope, const void* constant_buffers, uint32_t constant_buffer_count, bool is_array /*= true*/)
+    {
 		auto& cmd						= GetCmd();
 		cmd.type						= RHI_Cmd_SetConstantBuffers;
-		cmd.constant_buffers_start_slot = start_slot;
-		cmd.constant_buffers_scope		= scope;
+		cmd.constant_buffer_start_slot  = start_slot;
+		cmd.constant_buffer_scope		= scope;
 		cmd.constant_buffers			= constant_buffers;
-		cmd.constant_buffer_count		= static_cast<uint32_t>(constant_buffers.size());
+		cmd.constant_buffer_count		= constant_buffer_count;
+        cmd.is_array                    = is_array;
 	}
 
-	void RHI_CommandList::SetConstantBuffer(const uint32_t start_slot, const RHI_Buffer_Scope scope, const shared_ptr<RHI_ConstantBuffer>& constant_buffer)
-	{
-		auto& cmd										= GetCmd();
-		cmd.type										= RHI_Cmd_SetConstantBuffers;
-		cmd.constant_buffers_start_slot					= start_slot;
-		cmd.constant_buffers_scope						= scope;
-		cmd.constant_buffers[cmd.constant_buffer_count] = constant_buffer->GetResource();
-		cmd.constant_buffer_count++;
-	}
-
-	void RHI_CommandList::SetSamplers(const uint32_t start_slot, const vector<void*>& samplers)
-	{
+    void RHI_CommandList::SetSamplers(uint32_t start_slot, const void* samplers, uint32_t sampler_count, bool is_array /*= true*/)
+    {
 		auto& cmd				= GetCmd();
 		cmd.type				= RHI_Cmd_SetSamplers;
-		cmd.samplers_start_slot = start_slot;
+		cmd.sampler_start_slot  = start_slot;
 		cmd.samplers			= samplers;
-		cmd.sampler_count		= static_cast<uint32_t>(samplers.size());
+		cmd.sampler_count		= sampler_count;
+        cmd.is_array            = is_array;
 	}
 
-	void RHI_CommandList::SetSampler(const uint32_t start_slot, const shared_ptr<RHI_Sampler>& sampler)
-	{
-		if (!sampler || !sampler->GetResource())
-		{
-			LOG_ERROR_INVALID_PARAMETER();
-			return;
-		}
-
-		auto& cmd						= GetCmd();
-		cmd.type						= RHI_Cmd_SetSamplers;
-		cmd.samplers_start_slot			= start_slot;
-		cmd.samplers[cmd.sampler_count] = sampler->GetResource();
-		cmd.sampler_count++;
-	}
-
-	void RHI_CommandList::SetTextures(const uint32_t start_slot, const void* textures, const uint32_t texture_count, const bool is_array)
+	void RHI_CommandList::SetTextures(const uint32_t start_slot, const void* textures, const uint32_t texture_count, bool is_array /*= true*/)
 	{
 		auto& cmd				= GetCmd();
 		cmd.type				= RHI_Cmd_SetTextures;
-		cmd.textures_start_slot = start_slot;
+		cmd.texture_start_slot  = start_slot;
 		cmd.textures			= textures;
 		cmd.texture_count		= texture_count;
-		cmd.texture_is_array    = is_array;
-	}
-
-	void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture)
-	{
-		SetTextures(slot, texture ? texture->GetResource_Texture() : nullptr, 1, false);
+		cmd.is_array            = is_array;
 	}
 
     void RHI_CommandList::SetRenderTargets(const void* render_targets, uint32_t render_target_count, void* depth_stencil /*= nullptr*/, bool is_array /*= true*/)
     {
-        auto& cmd                   = GetCmd();
-        cmd.type                    = RHI_Cmd_SetRenderTargets;
-        cmd.render_targets          = render_targets;
-        cmd.render_target_count     = render_target_count;
-        cmd.depth_stencil           = depth_stencil;
-        cmd.render_target_is_array  = is_array;
+        auto& cmd               = GetCmd();
+        cmd.type                = RHI_Cmd_SetRenderTargets;
+        cmd.render_targets      = render_targets;
+        cmd.render_target_count = render_target_count;
+        cmd.depth_stencil       = depth_stencil;
+        cmd.is_array            = is_array;
     }
 
 	void RHI_CommandList::ClearRenderTarget(void* render_target, const Vector4& color)
@@ -508,33 +477,77 @@ namespace Spartan
 
 				case RHI_Cmd_SetConstantBuffers:
 				{
-					const auto start_slot	= static_cast<UINT>(cmd.constant_buffers_start_slot);
-					const auto buffer_count = static_cast<UINT>(cmd.constant_buffer_count);
-					const auto buffer		= reinterpret_cast<ID3D11Buffer*const*>(cmd.constant_buffers.data());
-					const auto scope		= cmd.constant_buffers_scope;
-
-					if (scope == Buffer_VertexShader || scope == Buffer_Global)
+					if (cmd.constant_buffer_scope == Buffer_VertexShader || cmd.constant_buffer_scope == Buffer_Global)
 					{
-						device_context->VSSetConstantBuffers(start_slot, buffer_count, buffer);
+                        if (cmd.is_array)
+                        {
+                            device_context->VSSetConstantBuffers
+                            (
+                                static_cast<UINT>(cmd.constant_buffer_start_slot),
+                                static_cast<UINT>(cmd.constant_buffer_count),
+                                reinterpret_cast<ID3D11Buffer* const*>(cmd.constant_buffers)
+                            );
+                        }
+                        else
+                        {
+                            const void* buffer_array[1] = { cmd.constant_buffers };
+                            device_context->VSSetConstantBuffers
+                            (
+                                static_cast<UINT>(cmd.constant_buffer_start_slot),
+                                static_cast<UINT>(cmd.constant_buffer_count),
+                                reinterpret_cast<ID3D11Buffer* const*>(&buffer_array)
+                            );
+                        }
 					}
 
-					if (scope == Buffer_PixelShader || scope == Buffer_Global)
+					if (cmd.constant_buffer_scope == Buffer_PixelShader || cmd.constant_buffer_scope == Buffer_Global)
 					{
-						device_context->PSSetConstantBuffers(start_slot, buffer_count, buffer);
+                        if (cmd.is_array)
+                        {
+                            device_context->PSSetConstantBuffers
+                            (
+                                static_cast<UINT>(cmd.constant_buffer_start_slot),
+                                static_cast<UINT>(cmd.constant_buffer_count),
+                                reinterpret_cast<ID3D11Buffer* const*>(cmd.constant_buffers)
+                            );
+                        }
+                        else
+                        {
+                            const void* buffer_array[1] = { cmd.constant_buffers };
+                            device_context->PSSetConstantBuffers
+                            (
+                                static_cast<UINT>(cmd.constant_buffer_start_slot),
+                                static_cast<UINT>(cmd.constant_buffer_count),
+                                reinterpret_cast<ID3D11Buffer* const*>(&buffer_array)
+                            );
+                        }
 					}
 
-					m_profiler->m_rhi_bindings_buffer_constant += (cmd.constant_buffers_scope == Buffer_Global) ? 2 : 1;
+					m_profiler->m_rhi_bindings_buffer_constant += (cmd.constant_buffer_scope == Buffer_Global) ? 2 : 1;
 					break;
 				}
 
 				case RHI_Cmd_SetSamplers:
 				{
-					device_context->PSSetSamplers
-					(
-						static_cast<UINT>(cmd.samplers_start_slot),
-						static_cast<UINT>(cmd.sampler_count),
-						reinterpret_cast<ID3D11SamplerState* const*>(cmd.samplers.data())
-					);
+                    if (cmd.is_array)
+                    {
+                        device_context->PSSetSamplers
+                        (
+                            static_cast<UINT>(cmd.sampler_start_slot),
+                            static_cast<UINT>(cmd.sampler_count),
+                            reinterpret_cast<ID3D11SamplerState* const*>(cmd.samplers)
+                        );
+                    }
+                    else
+                    {
+                        const void* buffer_array[1] = { cmd.samplers };
+                        device_context->PSSetSamplers
+                        (
+                            static_cast<UINT>(cmd.sampler_start_slot),
+                            static_cast<UINT>(cmd.sampler_count),
+                            reinterpret_cast<ID3D11SamplerState* const*>(&buffer_array)
+                        );
+                    }
 
 					m_profiler->m_rhi_bindings_sampler++;
 					break;
@@ -542,23 +555,23 @@ namespace Spartan
 
 				case RHI_Cmd_SetTextures:
 				{
-					if (cmd.texture_is_array)
+					if (cmd.is_array)
 					{
 						device_context->PSSetShaderResources
 						(
-							static_cast<UINT>(cmd.textures_start_slot),
+							static_cast<UINT>(cmd.texture_start_slot),
 							static_cast<UINT>(cmd.texture_count),
 							reinterpret_cast<ID3D11ShaderResourceView* const*>(cmd.textures)
 						);
 					}
 					else
 					{
-						const void* srv_array[1] = { cmd.textures };
+						const void* buffer_array[1] = { cmd.textures };
 						device_context->PSSetShaderResources
 						(
-							static_cast<UINT>(cmd.textures_start_slot),
+							static_cast<UINT>(cmd.texture_start_slot),
 							static_cast<UINT>(cmd.texture_count),
-							reinterpret_cast<ID3D11ShaderResourceView* const*>(&srv_array)
+							reinterpret_cast<ID3D11ShaderResourceView* const*>(&buffer_array)
 						);
 					}
 
@@ -568,7 +581,7 @@ namespace Spartan
 
 				case RHI_Cmd_SetRenderTargets:
 				{
-                    if (cmd.render_target_is_array)
+                    if (cmd.is_array)
                     {
                         device_context->OMSetRenderTargets
                         (
@@ -579,11 +592,11 @@ namespace Spartan
                     }
                     else
                     {
-                        const void* rt_array[1] = { cmd.render_targets };
+                        const void* view_array[1] = { cmd.render_targets };
                         device_context->OMSetRenderTargets
                         (
                             static_cast<UINT>(cmd.render_target_count),
-                            reinterpret_cast<ID3D11RenderTargetView* const*>(&rt_array),
+                            reinterpret_cast<ID3D11RenderTargetView* const*>(&view_array),
                             static_cast<ID3D11DepthStencilView*>(cmd.depth_stencil)
                         );
                     }
@@ -605,8 +618,8 @@ namespace Spartan
 				case RHI_Cmd_ClearDepthStencil:
 				{
 					UINT clear_flags = 0;
-					clear_flags |= (cmd.depth_clear_flags & Clear_Depth)	? D3D11_CLEAR_DEPTH : 0;
-					clear_flags |= (cmd.depth_clear_flags & Clear_Stencil)	? D3D11_CLEAR_STENCIL : 0;
+					clear_flags |= (cmd.depth_clear_flags & Clear_Depth)	? D3D11_CLEAR_DEPTH     : 0;
+					clear_flags |= (cmd.depth_clear_flags & Clear_Stencil)	? D3D11_CLEAR_STENCIL   : 0;
 
 					device_context->ClearDepthStencilView
 					(

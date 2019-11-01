@@ -44,7 +44,7 @@ namespace Spartan
         Shader_Compute  = 1 << 3,
 	};
 
-	struct Shader_Resource
+	struct Shader_Resource_Description
 	{
         RHI_Descriptor_Type type    = Descriptor_Unknown;
         uint32_t slot               = 0;
@@ -85,7 +85,7 @@ namespace Spartan
 		// Properties
 		auto GetResource()              const										{ return m_resource; }
 		auto HasResource()              const										{ return m_resource != nullptr; }
-		const auto& GetResources()      const										{ return m_resources; }
+		const auto& GetResources()      const										{ return m_resource_descriptions; }
 		const auto& GetInputLayout()    const										{ return m_input_layout; } // only valid for vertex shader
 		auto GetCompilationState()      const										{ return m_compilation_state; }
 		auto IsCompiled()               const										{ return m_compilation_state == Shader_Compilation_Succeeded; }
@@ -111,10 +111,10 @@ namespace Spartan
 		std::string m_name;
 		std::string m_file_path;
 		std::map<std::string, std::string> m_defines;
-		std::map<std::string, Shader_Resource> m_resources;
+		std::map<std::string, Shader_Resource_Description> m_resource_descriptions;
 		std::shared_ptr<RHI_InputLayout> m_input_layout;
-		Shader_Compilation_State m_compilation_state   = Shader_Compilation_Unknown;
-        Shader_Type m_shader_type               = Shader_Unknown;
+		Shader_Compilation_State m_compilation_state    = Shader_Compilation_Unknown;
+        Shader_Type m_shader_type                       = Shader_Unknown;
 
 		// API 
 		void* m_resource = nullptr;

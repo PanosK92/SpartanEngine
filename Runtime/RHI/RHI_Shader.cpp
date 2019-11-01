@@ -181,28 +181,28 @@ namespace Spartan
 		// Get samplers
 		for (const auto& _resource : resources.separate_samplers)
 		{
-            Shader_Resource& resource   = m_resources[_resource.name];
-            resource.type               = Descriptor_Sampler;
-            resource.slot               = compiler.get_decoration(_resource.id, spv::DecorationBinding);
-            resource.stage              = type;
+            Shader_Resource_Description& resource   = m_resource_descriptions[_resource.name];
+            resource.type                           = Descriptor_Sampler;
+            resource.slot                           = compiler.get_decoration(_resource.id, spv::DecorationBinding);
+            resource.stage                          = type;
 		}
 
 		// Get textures
 		for (const auto& _resource : resources.separate_images)
 		{
-            Shader_Resource& resource   = m_resources[_resource.name];
-            resource.type               = Descriptor_Texture;
-            resource.slot               = compiler.get_decoration(_resource.id, spv::DecorationBinding);
-            resource.stage              = type;
+            Shader_Resource_Description& resource   = m_resource_descriptions[_resource.name];
+            resource.type                           = Descriptor_Texture;
+            resource.slot                           = compiler.get_decoration(_resource.id, spv::DecorationBinding);
+            resource.stage                          = type;
 		}
 
 		// Get constant buffers
 		for (const auto& _resource : resources.uniform_buffers)
 		{
-            Shader_Resource& resource   = m_resources[_resource.name];
-            resource.type               = Descriptor_ConstantBuffer;
-            resource.slot               = compiler.get_decoration(_resource.id, spv::DecorationBinding);
-            resource.stage              = type;
+            Shader_Resource_Description& resource   = m_resource_descriptions[_resource.name];
+            resource.type                           = Descriptor_ConstantBuffer;
+            resource.slot                           = compiler.get_decoration(_resource.id, spv::DecorationBinding);
+            resource.stage                          = type;
 		}
 	}
 }

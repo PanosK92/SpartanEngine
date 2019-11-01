@@ -51,22 +51,28 @@ namespace Spartan
 {
     void Renderer::Pass_Setup()
     {
-#ifdef API_GRAPHICS_VULKAN
-        return;
-#endif
-
         m_cmd_list->Begin("Pass_Setup");
 
         // Bind the buffers we will be using thought the frame
         {
-            m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_frame_gpu);
-            m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
-            m_cmd_list->SetConstantBuffer(2, Buffer_PixelShader, m_buffer_light_gpu);
+            void* cb_global[]
+            {
+                m_buffer_frame_gpu->GetResource(),
+                m_buffer_uber_gpu->GetResource(),
+            };
+
+            void* cb_pixel[]
+            {
+                m_buffer_light_gpu->GetResource()
+            };
+
+            m_cmd_list->SetConstantBuffers(0, Buffer_Global,        cb_global, 2);
+            m_cmd_list->SetConstantBuffers(2, Buffer_PixelShader,   cb_pixel, 1);
         }
-        
+
         // Set the samplers we will be using thought the frame
         {
-            vector<void*> samplers =
+            void* samplers[]
             {
                 m_sampler_compare_depth->GetResource(),
                 m_sampler_point_clamp->GetResource(),
@@ -75,7 +81,7 @@ namespace Spartan
                 m_sampler_trilinear_clamp->GetResource(),
                 m_sampler_anisotropic_wrap->GetResource(),
             };
-            m_cmd_list->SetSamplers(0, samplers);
+            m_cmd_list->SetSamplers(0, samplers, 6);
         }
 
         m_cmd_list->End();
