@@ -63,6 +63,18 @@ namespace Spartan
 
 	void RHI_CommandList::Begin(const string& pass_name)
 	{
+        if (m_pipeline_state.shader_vertex)
+        {
+            SetViewport(m_pipeline_state.viewport);
+            SetBlendState(m_pipeline_state.blend_state);
+            SetDepthStencilState(m_pipeline_state.depth_stencil_state);
+            SetRasterizerState(m_pipeline_state.rasterizer_state);
+            SetInputLayout(m_pipeline_state.shader_vertex->GetInputLayout());
+            SetShaderVertex(m_pipeline_state.shader_vertex);
+            SetShaderPixel(m_pipeline_state.shader_pixel);
+            SetPrimitiveTopology(m_pipeline_state.primitive_topology);
+        }
+
 		auto& cmd		= GetCmd();
 		cmd.type		= RHI_Cmd_Begin;
 		cmd.pass_name	= pass_name;
@@ -636,6 +648,7 @@ namespace Spartan
 			cmd.Clear();
 		}
 
+        m_pipeline_state.Clear();
 		m_command_count = 0;
 	}
 }

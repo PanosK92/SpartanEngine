@@ -68,22 +68,39 @@ namespace Spartan
 			m_hash = static_cast<uint32_t>(hasher(buffer));
 		}
 
+        void Clear()
+        {
+            shader_vertex       = nullptr;
+            shader_pixel        = nullptr;
+            input_layout        = nullptr;
+            rasterizer_state    = nullptr;
+            blend_state         = nullptr;
+            depth_stencil_state = nullptr;
+            sampler             = nullptr;
+            constant_buffer     = nullptr;
+            vertex_buffer       = nullptr;
+            swap_chain          = nullptr;
+            primitive_topology  = PrimitiveTopology_NotAssigned;
+            viewport            = RHI_Viewport(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+            scissor             = Math::Rectangle(0.0f, 0.0f, 0.0f, 0.0f);
+        }
+
 		auto GetHash() const { return m_hash; }
 		bool operator==(const RHI_PipelineState& rhs) const { return GetHash() == rhs.GetHash(); }
 
-		const RHI_Shader* shader_vertex						= nullptr;
-		const RHI_Shader* shader_pixel						= nullptr;
-		const RHI_InputLayout* input_layout					= nullptr;
-		const RHI_RasterizerState* rasterizer_state			= nullptr;
-		const RHI_BlendState* blend_state					= nullptr;
-		const RHI_DepthStencilState* depth_stencil_state	= nullptr;
-		const RHI_Sampler* sampler							= nullptr;
-		const RHI_ConstantBuffer* constant_buffer			= nullptr;
-		const RHI_VertexBuffer* vertex_buffer				= nullptr;
-		const RHI_SwapChain* swap_chain						= nullptr;
-		RHI_PrimitiveTopology_Mode primitive_topology	    = PrimitiveTopology_NotAssigned;
-		const RHI_Viewport viewport;
-		const Math::Rectangle scissor;
+		RHI_Shader* shader_vertex						= nullptr;
+		RHI_Shader* shader_pixel						= nullptr;
+		RHI_InputLayout* input_layout					= nullptr;
+		RHI_RasterizerState* rasterizer_state			= nullptr;
+		RHI_BlendState* blend_state					    = nullptr;
+		RHI_DepthStencilState* depth_stencil_state	    = nullptr;
+		RHI_Sampler* sampler							= nullptr;
+		RHI_ConstantBuffer* constant_buffer			    = nullptr;
+		RHI_VertexBuffer* vertex_buffer				    = nullptr;
+		RHI_SwapChain* swap_chain						= nullptr;
+		RHI_PrimitiveTopology_Mode primitive_topology	= PrimitiveTopology_NotAssigned;
+        RHI_Viewport viewport                           = RHI_Viewport(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+        Math::Rectangle scissor                         = Math::Rectangle(0.0f, 0.0f, 0.0f, 0.0f);
 
 	private:
 		uint32_t m_hash = 0;

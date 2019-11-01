@@ -187,6 +187,7 @@ namespace Spartan
 	{
 		Descriptor_Sampler,
 		Descriptor_Texture,
-		Descriptor_ConstantBuffer
+		Descriptor_ConstantBuffer,
+        Descriptor_Unknown
 	};
 }

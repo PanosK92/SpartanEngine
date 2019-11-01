@@ -217,29 +217,29 @@ namespace ImGui::RHI
             g_renderer->SetShaderTransform(wvp);
 		}
 
+        // Compute viewport
+        g_viewport.width    = draw_data->DisplaySize.x;
+        g_viewport.height   = draw_data->DisplaySize.y;
+
 		// Set render state
 		{
-			// Compute viewport
-			g_viewport.width	= draw_data->DisplaySize.x;
-			g_viewport.height	= draw_data->DisplaySize.y;
-
-            // Get window swap-chain
-            RHI_SwapChain* swap_chain = is_main_viewport ? g_renderer->GetSwapChain().get() : swap_chain_other;
-
+            RHI_PipelineState& pipeline_state   = g_cmd_list->GetPipelineState();
+            pipeline_state.shader_vertex        = g_shader_vertex.get();
+            pipeline_state.shader_pixel         = g_shader_pixel.get();
+            pipeline_state.input_layout         = g_shader_vertex->GetInputLayout().get();
+            pipeline_state.rasterizer_state     = g_rasterizer_state.get();
+            pipeline_state.blend_state          = g_blend_state.get();
+            pipeline_state.depth_stencil_state  = g_depth_stencil_state.get();
+            pipeline_state.vertex_buffer        = g_vertex_buffer.get();
+            pipeline_state.swap_chain           = is_main_viewport ? g_renderer->GetSwapChain().get() : swap_chain_other;
+            pipeline_state.primitive_topology   = PrimitiveTopology_TriangleList;
+            pipeline_state.viewport             = g_viewport;
+            
 			// Start witting command list
 			g_cmd_list->Begin("Pass_ImGui");
-            if (clear) g_cmd_list->ClearRenderTarget(swap_chain->GetRenderTargetView(), Vector4(0, 0, 0, 1));
-            g_cmd_list->SetRenderTarget(swap_chain->GetRenderTargetView());
-            g_cmd_list->SetRasterizerState(g_rasterizer_state);
-            g_cmd_list->SetBlendState(g_blend_state);
-            g_cmd_list->SetDepthStencilState(g_depth_stencil_state);
-            g_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
-            g_cmd_list->SetViewport(g_viewport);
-            g_cmd_list->SetShaderVertex(g_shader_vertex);
-            g_cmd_list->SetShaderPixel(g_shader_pixel);
-            g_cmd_list->SetInputLayout(g_shader_vertex->GetInputLayout());
-			g_cmd_list->SetViewport(g_viewport);
-			g_cmd_list->SetBufferVertex(g_vertex_buffer);
+            if (clear) g_cmd_list->ClearRenderTarget(pipeline_state.swap_chain->GetRenderTargetView(), Vector4(0, 0, 0, 1));
+            g_cmd_list->SetRenderTarget(pipeline_state.swap_chain->GetRenderTargetView());
+            g_cmd_list->SetBufferVertex(g_vertex_buffer);
 			g_cmd_list->SetBufferIndex(g_index_buffer);
 		}
 		
