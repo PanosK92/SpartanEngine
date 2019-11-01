@@ -172,33 +172,37 @@ namespace Spartan
 
     void RHI_Shader::_Reflect(const Shader_Type type, const uint32_t* ptr, const uint32_t size)
 	{
-		using namespace spirv_cross;
-
 		// Initialize compiler with SPIR-V data
-		const auto compiler = CompilerHLSL(ptr, size);
+		const auto compiler = spirv_cross::CompilerHLSL(ptr, size);
 
 		// The SPIR-V is now parsed, and we can perform reflection on it
-		auto resources = compiler.get_shader_resources();
+        spirv_cross::ShaderResources resources = compiler.get_shader_resources();
 
 		// Get samplers
-		for (const auto& sampler : resources.separate_samplers)
+		for (const auto& _resource : resources.separate_samplers)
 		{
-			auto slot = compiler.get_decoration(sampler.id, spv::DecorationBinding);
-			m_resources.emplace_back(sampler.name, Descriptor_Sampler, slot, type);
+            Shader_Resource& resource   = m_resources[_resource.name];
+            resource.type               = Descriptor_Sampler;
+            resource.slot               = compiler.get_decoration(_resource.id, spv::DecorationBinding);
+            resource.stage              = type;
 		}
 
 		// Get textures
-		for (const auto& image : resources.separate_images)
+		for (const auto& _resource : resources.separate_images)
 		{
-			auto slot = compiler.get_decoration(image.id, spv::DecorationBinding);
-			m_resources.emplace_back(image.name, Descriptor_Texture, slot, type);
+            Shader_Resource& resource   = m_resources[_resource.name];
+            resource.type               = Descriptor_Texture;
+            resource.slot               = compiler.get_decoration(_resource.id, spv::DecorationBinding);
+            resource.stage              = type;
 		}
 
 		// Get constant buffers
-		for (const auto& buffer : resources.uniform_buffers)
+		for (const auto& _resource : resources.uniform_buffers)
 		{
-			auto slot = compiler.get_decoration(buffer.id, spv::DecorationBinding);
-			m_resources.emplace_back(buffer.name, Descriptor_ConstantBuffer, slot, type);
+            Shader_Resource& resource   = m_resources[_resource.name];
+            resource.type               = Descriptor_ConstantBuffer;
+            resource.slot               = compiler.get_decoration(_resource.id, spv::DecorationBinding);
+            resource.stage              = type;
 		}
 	}
 }

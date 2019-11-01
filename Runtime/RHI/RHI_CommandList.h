@@ -35,6 +35,14 @@ namespace Spartan
 {
 	class Profiler;
 
+    enum RHI_Cmd_List_State
+    {
+        RHI_Cmd_List_Idle,
+        RHI_Cmd_List_Idle_Sync_Cpu_To_Gpu,
+        RHI_Cmd_List_Recording,
+        RHI_Cmd_List_Ended
+    };
+
 	enum RHI_Cmd_Type
 	{
 		RHI_Cmd_Begin,
@@ -234,6 +242,12 @@ namespace Spartan
 		void ClearRenderTarget(void* render_target, const Math::Vector4& color);
 		void ClearDepthStencil(void* depth_stencil, uint32_t flags, float depth, uint32_t stencil = 0);
 
+        RHI_PipelineState& GetPipelineState()
+        {
+            m_pipeline_state.Clear();
+            return m_pipeline_state;
+        }
+
 		bool Submit(bool profile = true);
 
 	private:
@@ -253,12 +267,11 @@ namespace Spartan
 		std::vector<void*> m_cmd_buffers;
 		std::vector<void*> m_semaphores_cmd_list_consumed;
 		std::vector<void*> m_fences_in_flight;
-		uint32_t m_initial_capacity = 6000;
-		uint32_t m_command_count	= 0;	
-		RHI_Pipeline* m_pipeline	= nullptr;
-		void* m_cmd_pool			= nullptr;
-		uint32_t m_buffer_index		= 0;
-		bool m_is_recording			= false;
-		bool m_sync_cpu_to_gpu		= false;
+		uint32_t m_initial_capacity     = 6000;
+		uint32_t m_command_count	    = 0;	
+		RHI_Pipeline* m_pipeline	    = nullptr;
+		void* m_cmd_pool			    = nullptr;
+		uint32_t m_buffer_index		    = 0;
+        RHI_Cmd_List_State m_cmd_state  = RHI_Cmd_List_Idle;
 	};
 }

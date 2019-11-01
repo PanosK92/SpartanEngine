@@ -47,17 +47,17 @@ namespace Spartan
 	private:
 		bool CreateDescriptorPool();
 		bool CreateDescriptorSetLayout();
-		void ReflectShaders();
-		
+        void ReflectShaders();
+
 		// API
 		void* m_pipeline					= nullptr;
 		void* m_pipeline_layout				= nullptr;
 		void* m_descriptor_pool				= nullptr;
 		void* m_descriptor_set_layout		= nullptr;
+        const RHI_PipelineState* m_state    = nullptr;
+        uint32_t m_descriptor_set_capacity  = 20;
 		std::map<uint32_t, void*> m_descriptor_set_cache;
-		uint32_t m_descriptor_set_capacity	= 20;
-		const RHI_PipelineState* m_state	= nullptr;
-		std::map<std::string, Shader_Resource> m_shader_resources;
+        std::map<std::string, Shader_Resource> m_shader_resources;
 		std::shared_ptr<RHI_Device> m_rhi_device;
 	};
 }

@@ -284,9 +284,9 @@ namespace Spartan
 		#endif
 
 		static const uint32_t max_frames_in_flight = 2;
-		static const uint32_t pool_max_constant_buffers_per_stage = 2;
-		static const uint32_t pool_max_textures_per_stage = 2;
-		static const uint32_t pool_max_samplers_per_stage = 2;
+		static const uint32_t pool_max_constant_buffers_per_stage   = 10;
+		static const uint32_t pool_max_textures_per_stage           = 10;
+		static const uint32_t pool_max_samplers_per_stage           = 10;
 	};
 }
 #include "Vulkan/Vulkan_Common.h"

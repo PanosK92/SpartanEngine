@@ -36,32 +36,22 @@ namespace Spartan
 	// Forward declarations
 	class Context;
 
-	enum Shader_Type
+	enum Shader_Type : uint32_t
 	{
-        Shader_Unknown,
-		Shader_Vertex,
-		Shader_Pixel,
-        Shader_Compute
+        Shader_Unknown  = 1 << 0,
+		Shader_Vertex   = 1 << 1,
+		Shader_Pixel    = 1 << 2,
+        Shader_Compute  = 1 << 3,
 	};
 
 	struct Shader_Resource
 	{
-		Shader_Resource() = default;
-		Shader_Resource(const std::string& name, const RHI_Descriptor_Type type, const uint32_t slot, const Shader_Type shader_stage)
-		{
-			this->name			= name;
-			this->type			= type;
-			this->slot			= slot;
-			this->shader_stage	= shader_stage;
-		}
-	
-		std::string name;
-		RHI_Descriptor_Type type;
-		uint32_t slot;
-		Shader_Type shader_stage;
+        RHI_Descriptor_Type type    = Descriptor_Unknown;
+        uint32_t slot               = 0;
+        uint32_t stage              = 0;
 	};
 
-	enum Compilation_State
+	enum Shader_Compilation_State
 	{
 		Shader_Compilation_Unknown,
 		Shader_Compilation_Compiling,
@@ -121,9 +111,9 @@ namespace Spartan
 		std::string m_name;
 		std::string m_file_path;
 		std::map<std::string, std::string> m_defines;
-		std::vector<Shader_Resource> m_resources;
+		std::map<std::string, Shader_Resource> m_resources;
 		std::shared_ptr<RHI_InputLayout> m_input_layout;
-		Compilation_State m_compilation_state   = Shader_Compilation_Unknown;
+		Shader_Compilation_State m_compilation_state   = Shader_Compilation_Unknown;
         Shader_Type m_shader_type               = Shader_Unknown;
 
 		// API 

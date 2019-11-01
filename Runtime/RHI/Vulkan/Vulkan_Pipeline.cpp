@@ -90,6 +90,12 @@ namespace Spartan
 		viewport_state.scissorCount							= 1;
 		viewport_state.pScissors							= &scissor;
 
+        if (!m_state->shader_vertex)
+        {
+            LOG_ERROR("Vertex shader is null");
+            return;
+        }
+
 		// Vertex shader
 		VkPipelineShaderStageCreateInfo shader_vertex_stage_info	= {};
 		shader_vertex_stage_info.sType								= VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -97,15 +103,9 @@ namespace Spartan
 		shader_vertex_stage_info.module								= static_cast<VkShaderModule>(m_state->shader_vertex->GetResource());
 		shader_vertex_stage_info.pName								= m_state->shader_vertex->GetEntryPoint();
 
-        if (!shader_vertex_stage_info.module)
+        if (!shader_vertex_stage_info.module || !shader_vertex_stage_info.pName)
         {
-            LOG_ERROR("Vertex shader is null");
-            return;
-        }
-
-        if (!shader_vertex_stage_info.pName)
-        {
-            LOG_ERROR("Vertex shader entry point is null");
+            LOG_ERROR("Vertex shader is invalid");
             return;
         }
 
@@ -118,7 +118,7 @@ namespace Spartan
 
         if (!shader_pixel_stage_info.pName)
         {
-            LOG_ERROR("Pixel shader entry point is null");
+            LOG_ERROR("Pixel shader shader is invalid");
             return;
         }
 
@@ -127,7 +127,7 @@ namespace Spartan
 
 		// Create descriptor pool and descriptor set layout
 		CreateDescriptorPool();
-		ReflectShaders();
+        ReflectShaders();
 		CreateDescriptorSetLayout();
 
 		// Binding description
@@ -314,49 +314,47 @@ namespace Spartan
 
 			for (const auto& resource : m_shader_resources)
 			{
-                const Shader_Resource& srv                      = resource.second;
-                const VkDescriptorImageInfo* image_info_ptr     = nullptr;
-                const VkDescriptorBufferInfo* buffer_info_ptr   = nullptr;
+                const Shader_Resource& srv = resource.second;
 
                 // Texture or Sampler
-                if (srv.type == Descriptor_Texture || srv.type == Descriptor_Sampler)
-                {
-                    image_infos.push_back
-                    ({
-                        (srv.type == Descriptor_Sampler && m_state->sampler)    ? static_cast<VkSampler>(m_state->sampler->GetResource())   : nullptr,  // sampler
-                        (srv.type == Descriptor_Texture && texture)             ? static_cast<VkImageView>(texture->GetResource_Texture())  : nullptr,  // imageView
-                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL                                                                                        // imageLayout
-                    });
-
-                    image_info_ptr = &image_infos.back();
-                }
+                image_infos.push_back
+                ({
+                    (srv.type == Descriptor_Sampler && m_state->sampler)    ? static_cast<VkSampler>(m_state->sampler->GetResource())   : nullptr,  // sampler
+                    (srv.type == Descriptor_Texture && texture)             ? static_cast<VkImageView>(texture->GetResource_Texture())  : nullptr,  // imageView
+                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL                                                                                        // imageLayout
+                });
 
                 // Constant/Uniform buffer
-                if (srv.type == Descriptor_ConstantBuffer)
-                {
-                    buffer_infos.push_back
-                    ({
-                        m_state->constant_buffer ? static_cast<VkBuffer>(m_state->constant_buffer->GetResource()) : nullptr,           // buffer
-                        0,                                                                                                             // offset
-                        (srv.type == Descriptor_ConstantBuffer && m_state->constant_buffer) ? m_state->constant_buffer->GetSize() : 0, // range                
-                    });
+                buffer_infos.push_back
+                ({
+                    m_state->constant_buffer ? static_cast<VkBuffer>(m_state->constant_buffer->GetResource()) : nullptr,           // buffer
+                    0,                                                                                                             // offset
+                    (srv.type == Descriptor_ConstantBuffer && m_state->constant_buffer) ? m_state->constant_buffer->GetSize() : 0, // range                
+                });
 
-                    buffer_info_ptr = &buffer_infos.back();
+                VkDescriptorImageInfo* image_info   = &image_infos.back();
+                VkDescriptorBufferInfo* buffer_info = &buffer_infos.back();
+
+                // If something went wrong and everything is null, don't bother creating a descriptor set
+                if (!image_info->sampler && !image_info->imageView && !buffer_info->buffer)
+                {
+                    LOG_ERROR("Failed to create VkWriteDescriptorSet");
+                    continue;
                 }
 
-				write_descriptor_sets.push_back
-				({
-					VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,	// sType
-					nullptr,								// pNext
-					descriptor_set,							// dstSet
+                write_descriptor_sets.push_back
+                ({
+                    VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,	// sType
+                    nullptr,								// pNext
+                    descriptor_set,							// dstSet
                     srv.slot,							    // dstBinding
                     0,									    // dstArrayElement
                     1,									    // descriptorCount
-					vulkan_descriptor_type[srv.type],	    // descriptorType
-                    image_info_ptr,                         // pImageInfo 
-                    buffer_info_ptr,                        // pBufferInfo
-					nullptr									// pTexelBufferView
-				});
+                    vulkan_descriptor_type[srv.type],	    // descriptorType
+                    image_info,                             // pImageInfo 
+                    buffer_info,                            // pBufferInfo
+                    nullptr									// pTexelBufferView
+                });
 			}
 
 			vkUpdateDescriptorSets(m_rhi_device->GetContextRhi()->device, static_cast<uint32_t>(write_descriptor_sets.size()), write_descriptor_sets.data(), 0, nullptr);
@@ -368,7 +366,6 @@ namespace Spartan
 	void RHI_Pipeline::OnCommandListConsumed()
 	{
 		// If the descriptor pool is full, re-allocate with double size
-
 		if (m_descriptor_set_cache.size() < m_descriptor_set_capacity)
 			return;
 	
@@ -421,20 +418,23 @@ namespace Spartan
 		// Layout bindings
 		vector<VkDescriptorSetLayoutBinding> layout_bindings;
 		{
-			for (const auto& resource : m_shader_resources)
+			for (const auto& _resource : m_shader_resources)
 			{
+                const Shader_Resource& resource = _resource.second;
+
+                // Stage flags
                 VkShaderStageFlags stage_flags = 0;
-                stage_flags = (resource.second.shader_stage == Shader_Vertex)   ? VK_SHADER_STAGE_VERTEX_BIT    : stage_flags;
-                stage_flags = (resource.second.shader_stage == Shader_Pixel)    ? VK_SHADER_STAGE_FRAGMENT_BIT  : stage_flags;
-                stage_flags = (resource.second.shader_stage == Shader_Compute)  ? VK_SHADER_STAGE_COMPUTE_BIT   : stage_flags;
+                stage_flags |= (resource.stage & Shader_Vertex)   ? VK_SHADER_STAGE_VERTEX_BIT    : 0;
+                stage_flags |= (resource.stage & Shader_Pixel)    ? VK_SHADER_STAGE_FRAGMENT_BIT  : 0;
+                stage_flags |= (resource.stage & Shader_Compute)  ? VK_SHADER_STAGE_COMPUTE_BIT   : 0;
 
 				layout_bindings.push_back
 				({
-					resource.second.slot,							// binding
-					vulkan_descriptor_type[resource.second.type],	// descriptorType
-					1,												// descriptorCount
-					stage_flags,									// stageFlags
-					nullptr											// pImmutableSamplers
+					resource.slot,							// binding
+					vulkan_descriptor_type[resource.type],	// descriptorType
+					1,										// descriptorCount
+					stage_flags,							// stageFlags
+					nullptr									// pImmutableSamplers
 				});
 			}
 		}
@@ -455,16 +455,40 @@ namespace Spartan
 		return true;
 	}
 
-	void RHI_Pipeline::ReflectShaders()
-	{
-		m_shader_resources.clear();
+    void RHI_Pipeline::ReflectShaders()
+    {
+        m_shader_resources.clear();
 
-		// Wait for shaders to finish compilation
-		while (m_state->shader_vertex->GetCompilationState() == Shader_Compilation_Compiling || m_state->shader_pixel->GetCompilationState() == Shader_Compilation_Compiling) {}
+        if (!m_state->shader_vertex)
+        {
+            LOG_ERROR("Vertex shader is invalid");
+            return;
+        }
 
-		// Merge vertex & index shader resources into map (to ensure unique values)
-		for (const auto& resource : m_state->shader_vertex->GetResources())	m_shader_resources[resource.name] = resource;
-		for (const auto& resource : m_state->shader_pixel->GetResources())	m_shader_resources[resource.name] = resource;
-	}
+        // Get vertex shader resources
+        while (m_state->shader_vertex->GetCompilationState() == Shader_Compilation_Compiling) {}
+        for (const auto& _resource : m_state->shader_vertex->GetResources())
+        {
+            m_shader_resources[_resource.first] = _resource.second;
+        }
+      
+        // If there is a pixel shader, merge it's resources into our map as well
+        if (m_state->shader_pixel)
+        {
+            while (m_state->shader_pixel->GetCompilationState() == Shader_Compilation_Compiling) {}
+            for (const auto& _resource : m_state->shader_pixel->GetResources())
+            {
+                // If the resource already showed up in the vertex shader, only update the stage
+                if (m_shader_resources.find(_resource.first) != m_shader_resources.end())
+                {
+                    m_shader_resources[_resource.first].stage |= _resource.second.stage;    
+                }
+                else
+                {
+                    m_shader_resources[_resource.first] = _resource.second;
+                }
+            }
+        }
+    }
 }
 #endif
