@@ -86,14 +86,14 @@ namespace Spartan
 		Buffer_VertexShader,
 		Buffer_PixelShader,
 		Buffer_Global,
-		Buffer_NotAssigned
+		Buffer_Unknown
 	};
 
 	enum RHI_PrimitiveTopology_Mode
 	{
 		PrimitiveTopology_TriangleList,
 		PrimitiveTopology_LineList,
-		PrimitiveTopology_NotAssigned
+		PrimitiveTopology_Unknown
 	};
 
 	enum RHI_Cull_Mode

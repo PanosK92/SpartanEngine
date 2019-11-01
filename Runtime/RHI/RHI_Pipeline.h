@@ -34,8 +34,12 @@ namespace Spartan
 		RHI_Pipeline() = default;
 		RHI_Pipeline(const std::shared_ptr<RHI_Device>& rhi_device, const RHI_PipelineState& pipeline_state);
 		~RHI_Pipeline();
-	
-		void UpdateDescriptorSets(RHI_Texture* texture = nullptr);
+
+        void SetConstantBuffers(uint32_t start_slot, const void* constant_buffers, uint32_t constant_buffer_count);
+        void SetTextures(uint32_t start_slot, const void* textures, uint32_t texture_count);
+        void SetSamplers(uint32_t start_slot, const void* samplers, uint32_t sampler_count);
+
+		void UpdateDescriptorSet();
 		void OnCommandListConsumed();
 
 		auto GetPipeline() const					{ return m_pipeline; }
@@ -57,7 +61,8 @@ namespace Spartan
         const RHI_PipelineState* m_state    = nullptr;
         uint32_t m_descriptor_set_capacity  = 20;
 		std::map<uint32_t, void*> m_descriptor_set_cache;
-        std::map<std::string, Shader_Resource> m_shader_resources;
 		std::shared_ptr<RHI_Device> m_rhi_device;
-	};
+
+        std::map<std::string, Shader_Resource_Description> m_shader_resources;
+    };
 }
