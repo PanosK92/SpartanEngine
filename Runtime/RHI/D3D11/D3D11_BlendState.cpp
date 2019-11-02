@@ -89,13 +89,13 @@ namespace Spartan
 		desc.RenderTarget[0].BlendEnable = blend_enabled;
 
 		// Create blend state
-		auto blend_state	= static_cast<ID3D11BlendState*>(m_buffer);
+		auto blend_state	= static_cast<ID3D11BlendState*>(m_resource);
 		const auto result	= rhi_device->GetContextRhi()->device->CreateBlendState(&desc, &blend_state);
 
 		// Handle result
 		if (SUCCEEDED(result))
 		{
-			m_buffer		= static_cast<void*>(blend_state);
+			m_resource		= static_cast<void*>(blend_state);
 			m_initialized	= true;	
 		}
 		else
@@ -107,7 +107,7 @@ namespace Spartan
 
 	RHI_BlendState::~RHI_BlendState()
 	{
-		safe_release(static_cast<ID3D11BlendState*>(m_buffer));
+		safe_release(static_cast<ID3D11BlendState*>(m_resource));
 	}
 }
 #endif
