@@ -72,59 +72,45 @@ namespace Spartan
 
 	struct RHI_Command
 	{
-		RHI_Command()
-		{
-			const uint32_t max_count = 10;
-			samplers.reserve(max_count);
-			samplers.resize(max_count);
-			constant_buffers.reserve(max_count);
-			constant_buffers.resize(max_count);
-			Clear();
-		}
+        RHI_Command() { Clear(); }
 
 		void Clear()
 		{
-            type                            = RHI_Cmd_Unknown;
-            pass_name                       = "N/A";
-            resource_start_slot             = 0;
-            resource_count                  = 0;
-            resource_ptr                    = nullptr;
-            _float                          = 0.0f;
-            _uint8_t                        = 0;
-			depth_stencil				    = nullptr;
-			depth_clear					    = 0;
-			depth_clear_stencil			    = 0;
-			depth_clear_flags			    = 0;
-			vertex_count				    = 0;
-			vertex_offset				    = 0;
-			index_count					    = 0;
-			index_offset				    = 0;
-			buffer_index				    = nullptr;
-			buffer_vertex				    = nullptr;
+            type                = RHI_Cmd_Type::RHI_Cmd_Unknown;
+            pass_name           = "N/A";
+            resource_start_slot = 0;
+            resource_count      = 0;
+            resource_ptr        = nullptr;
+            _float              = 0.0f;
+            _uint8              = 0;
+            _uint32             = 0;
+			depth_stencil		= nullptr;
+			vertex_count		= 0;
+			vertex_offset		= 0;
+			index_count			= 0;
+			index_offset		= 0;
+			buffer_index		= nullptr;
+			buffer_vertex		= nullptr;
 		}
 
-        RHI_Cmd_Type type                                   = RHI_Cmd_Unknown;
-        std::string pass_name                               = "N/A";
-        uint32_t resource_start_slot                        = 0;
-        uint32_t resource_count                             = 0;
-        const void* resource_ptr                            = nullptr;
-        float _float                                        = 0.0f;
-        uint8_t _uint8_t                                    = 0;
-		void* depth_stencil									= nullptr;
-		float depth_clear									= 0;
-		uint32_t depth_clear_stencil						= 0;
-		uint32_t depth_clear_flags							= 0;
-		uint32_t vertex_count							    = 0;
-		uint32_t vertex_offset							    = 0;
-		uint32_t index_count							    = 0;
-		uint32_t index_offset							    = 0;
-		const RHI_IndexBuffer* buffer_index				    = nullptr;
-		const RHI_VertexBuffer* buffer_vertex			    = nullptr;
+        RHI_Cmd_Type type;
+        std::string pass_name;
+        uint32_t resource_start_slot;
+        uint32_t resource_count;
+        const void* resource_ptr;
+        float _float;
+        uint8_t _uint8;
+        uint32_t _uint32;
+        void* depth_stencil;
+        uint32_t vertex_count;
+        uint32_t vertex_offset;
+        uint32_t index_count;
+        uint32_t index_offset;
+        const RHI_IndexBuffer* buffer_index;
+        const RHI_VertexBuffer* buffer_vertex;
 		RHI_Viewport viewport;
 		Math::Rectangle scissor_rectangle;
         Math::Vector4 render_target_clear_color;
-        std::vector<void*> samplers;
-        std::vector<void*> constant_buffers;
 	};
 
 	class SPARTAN_CLASS RHI_CommandList
@@ -183,25 +169,25 @@ namespace Spartan
         void SetShaderCompute(const std::shared_ptr<RHI_Shader>& shader) { SetShaderCompute(shader.get()); }
 
 		// Constant buffer
-		void SetConstantBuffers(uint32_t start_slot, RHI_Buffer_Scope scope, const std::vector<void*>& constant_buffers);
-		void SetConstantBuffer(uint32_t slot, RHI_Buffer_Scope scope, const std::shared_ptr<RHI_ConstantBuffer>& constant_buffer);
+		void SetConstantBuffers(const uint32_t start_slot, RHI_Buffer_Scope scope, const void* constant_buffers, uint32_t sampler_count);
+		void SetConstantBuffer(const uint32_t start_slot, RHI_Buffer_Scope scope, const std::shared_ptr<RHI_ConstantBuffer>& constant_buffer) { SetConstantBuffers(start_slot, scope, constant_buffer ? constant_buffer->GetResource() : nullptr, 1); }
 
 		// Sampler
-		void SetSamplers(uint32_t start_slot, const std::vector<void*>& samplers);
-		void SetSampler(uint32_t slot, const std::shared_ptr<RHI_Sampler>& sampler);
+		void SetSamplers(const uint32_t start_slot, const void* samplers, uint32_t sampler_count);
+		void SetSampler(const uint32_t start_slot, const std::shared_ptr<RHI_Sampler>& sampler) { SetSamplers(start_slot, sampler ? sampler->GetResource() : nullptr, 1); }
 
 		// Texture
 		void SetTextures(const uint32_t start_slot, const void* textures, uint32_t texture_count);
-		void SetTexture(const uint32_t slot, RHI_Texture* texture);
-		void SetTexture(const uint32_t slot, const std::shared_ptr<RHI_Texture>& texture)	{ SetTextures(slot, texture ? texture->GetResource_Texture() : nullptr, 1); }
-		void ClearTextures()																{ SetTextures(0, m_textures_empty.data(), static_cast<uint32_t>(m_textures_empty.size())); }
+		void SetTexture(const uint32_t start_slot, RHI_Texture* texture);
+		void SetTexture(const uint32_t start_slot, const std::shared_ptr<RHI_Texture>& texture)	{ SetTextures(start_slot, texture ? texture->GetResource_Texture() : nullptr, 1); }
+		void ClearTextures()																    { SetTextures(0, m_textures_empty.data(), static_cast<uint32_t>(m_textures_empty.size())); }
 
 		// Render targets
 		void SetRenderTargets(const void* render_targets, uint32_t render_target_count, void* depth_stencil = nullptr);
 		void SetRenderTarget(void* render_target, void* depth_stencil = nullptr)                                { SetRenderTargets(render_target, 1, depth_stencil); }
 		void SetRenderTarget(const std::shared_ptr<RHI_Texture>& render_target, void* depth_stencil = nullptr)  { SetRenderTargets(render_target ? render_target->GetResource_RenderTarget() : nullptr, 1, depth_stencil); }
 		void ClearRenderTarget(void* render_target, const Math::Vector4& color);
-		void ClearDepthStencil(void* depth_stencil, uint32_t flags, float depth, uint32_t stencil = 0);
+		void ClearDepthStencil(void* depth_stencil, uint32_t flags, float depth, uint8_t stencil = 0);
 
         RHI_PipelineState& GetPipelineState()
         {

@@ -50,7 +50,7 @@ namespace Spartan
 		auto GetSourceBlendAlpha()	const { return m_source_blend_alpha; }
 		auto GetDestBlendAlpha()	const { return m_dest_blend_alpha; }
 		auto GetBlendOpAlpha()		const { return m_blend_op_alpha; }
-		auto GetResource()			const { return m_buffer; }
+		auto GetResource()			const { return m_resource; }
         auto GetBlendFactor()       const { return m_blend_factor; }
 
 		bool operator==(const RHI_BlendState& rhs) const
@@ -75,7 +75,7 @@ namespace Spartan
 		RHI_Blend_Operation m_blend_op_alpha	= Blend_Operation_Add;
         float m_blend_factor                    = 0.0f;
 	
-		void* m_buffer		= nullptr;
+		void* m_resource	= nullptr;
 		bool m_initialized	= false;
 	};
 }
