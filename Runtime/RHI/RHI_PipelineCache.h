@@ -80,7 +80,7 @@ namespace Spartan
             constant_buffer     = nullptr;
             vertex_buffer       = nullptr;
             swap_chain          = nullptr;
-            primitive_topology  = PrimitiveTopology_NotAssigned;
+            primitive_topology  = PrimitiveTopology_Unknown;
             viewport            = RHI_Viewport(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
             scissor             = Math::Rectangle(0.0f, 0.0f, 0.0f, 0.0f);
         }
@@ -98,7 +98,7 @@ namespace Spartan
 		RHI_ConstantBuffer* constant_buffer			    = nullptr;
 		RHI_VertexBuffer* vertex_buffer				    = nullptr;
 		RHI_SwapChain* swap_chain						= nullptr;
-		RHI_PrimitiveTopology_Mode primitive_topology	= PrimitiveTopology_NotAssigned;
+		RHI_PrimitiveTopology_Mode primitive_topology	= PrimitiveTopology_Unknown;
         RHI_Viewport viewport                           = RHI_Viewport(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
         Math::Rectangle scissor                         = Math::Rectangle(0.0f, 0.0f, 0.0f, 0.0f);
 

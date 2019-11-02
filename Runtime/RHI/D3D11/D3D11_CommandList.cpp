@@ -118,9 +118,9 @@ namespace Spartan
 
 	void RHI_CommandList::SetPrimitiveTopology(const RHI_PrimitiveTopology_Mode primitive_topology)
 	{
-		auto& cmd				= GetCmd();
-		cmd.type				= RHI_Cmd_SetPrimitiveTopology;
-		cmd.primitive_topology	= primitive_topology;
+		auto& cmd		= GetCmd();
+		cmd.type	    = RHI_Cmd_SetPrimitiveTopology;
+		cmd._uint8_t    = static_cast<uint8_t>(primitive_topology);
 	}
 
 	void RHI_CommandList::SetInputLayout(const RHI_InputLayout* input_layout)
@@ -131,9 +131,9 @@ namespace Spartan
 			return;
 		}
 
-		auto& cmd			= GetCmd();
-		cmd.type			= RHI_Cmd_SetInputLayout;
-		cmd.input_layout	= input_layout;
+		auto& cmd		    = GetCmd();
+		cmd.type		    = RHI_Cmd_SetInputLayout;
+		cmd.resource_ptr    = input_layout->GetResource();
 	}
 
 	void RHI_CommandList::SetDepthStencilState(const RHI_DepthStencilState* depth_stencil_state)
@@ -144,9 +144,9 @@ namespace Spartan
 			return;
 		}
 
-		auto& cmd				= GetCmd();
-		cmd.type				= RHI_Cmd_SetDepthStencilState;
-		cmd.depth_stencil_state = depth_stencil_state;
+		auto& cmd			= GetCmd();
+		cmd.type			= RHI_Cmd_SetDepthStencilState;
+		cmd.resource_ptr    = depth_stencil_state->GetResource();
 	}
 
 	void RHI_CommandList::SetRasterizerState(const RHI_RasterizerState* rasterizer_state)
@@ -157,9 +157,9 @@ namespace Spartan
 			return;
 		}
 
-		auto& cmd				= GetCmd();
-		cmd.type				= RHI_Cmd_SetRasterizerState;
-		cmd.rasterizer_state	= rasterizer_state;
+		auto& cmd			= GetCmd();
+		cmd.type		    = RHI_Cmd_SetRasterizerState;
+		cmd.resource_ptr    = rasterizer_state->GetResource();
 	}
 
 	void RHI_CommandList::SetBlendState(const RHI_BlendState* blend_state)
@@ -172,7 +172,7 @@ namespace Spartan
 
 		auto& cmd			= GetCmd();
 		cmd.type			= RHI_Cmd_SetBlendState;
-		cmd.blend_state		= blend_state;
+		cmd.resource_ptr    = blend_state->GetResource();
 	}
 
 	void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer)
@@ -212,20 +212,14 @@ namespace Spartan
 
 		auto& cmd			= GetCmd();
 		cmd.type			= RHI_Cmd_SetVertexShader;
-		cmd.shader_vertex	= shader;
+		cmd.resource_ptr    = shader->GetResource();
 	}
 
 	void RHI_CommandList::SetShaderPixel(const RHI_Shader* shader)
 	{
-		if (shader && !shader->GetResource())
-		{
-			LOG_WARNING("%s hasn't compiled", shader->GetName().c_str());
-			return;
-		}
-
-		auto& cmd			= GetCmd();
-		cmd.type			= RHI_Cmd_SetPixelShader;
-		cmd.shader_pixel	= shader;
+		auto& cmd		    = GetCmd();
+		cmd.type		    = RHI_Cmd_SetPixelShader;
+		cmd.resource_ptr    = shader ? shader->GetResource() : nullptr;
 	}
 
     void RHI_CommandList::SetShaderCompute(const RHI_Shader* shader)
@@ -238,36 +232,36 @@ namespace Spartan
 
         auto& cmd           = GetCmd();
         cmd.type            = RHI_Cmd_SetComputeShader;
-        cmd.shader_compute  = shader;
+        cmd.resource_ptr    = shader->GetResource();
     }
 
 	void RHI_CommandList::SetConstantBuffers(const uint32_t start_slot, const RHI_Buffer_Scope scope, const vector<void*>& constant_buffers)
 	{
 		auto& cmd						= GetCmd();
 		cmd.type						= RHI_Cmd_SetConstantBuffers;
-		cmd.constant_buffers_start_slot = start_slot;
-		cmd.constant_buffers_scope		= scope;
+		cmd.resource_start_slot         = start_slot;
+        cmd._uint8_t                    = static_cast<uint8_t>(scope);
 		cmd.constant_buffers			= constant_buffers;
-		cmd.constant_buffer_count		= static_cast<uint32_t>(constant_buffers.size());
+		cmd.resource_count              = static_cast<uint32_t>(constant_buffers.size());
 	}
 
 	void RHI_CommandList::SetConstantBuffer(const uint32_t start_slot, const RHI_Buffer_Scope scope, const shared_ptr<RHI_ConstantBuffer>& constant_buffer)
 	{
-		auto& cmd										= GetCmd();
-		cmd.type										= RHI_Cmd_SetConstantBuffers;
-		cmd.constant_buffers_start_slot					= start_slot;
-		cmd.constant_buffers_scope						= scope;
-		cmd.constant_buffers[cmd.constant_buffer_count] = constant_buffer->GetResource();
-		cmd.constant_buffer_count++;
+		auto& cmd									= GetCmd();
+		cmd.type									= RHI_Cmd_SetConstantBuffers;
+		cmd.resource_start_slot                     = start_slot;
+        cmd._uint8_t                                = static_cast<uint8_t>(scope);
+		cmd.constant_buffers[cmd.resource_count]    = constant_buffer->GetResource();
+		cmd.resource_count++;
 	}
 
 	void RHI_CommandList::SetSamplers(const uint32_t start_slot, const vector<void*>& samplers)
 	{
 		auto& cmd				= GetCmd();
 		cmd.type				= RHI_Cmd_SetSamplers;
-		cmd.samplers_start_slot = start_slot;
+		cmd.resource_start_slot = start_slot;
 		cmd.samplers			= samplers;
-		cmd.sampler_count		= static_cast<uint32_t>(samplers.size());
+		cmd.resource_count      = static_cast<uint32_t>(samplers.size());
 	}
 
 	void RHI_CommandList::SetSampler(const uint32_t start_slot, const shared_ptr<RHI_Sampler>& sampler)
@@ -278,43 +272,41 @@ namespace Spartan
 			return;
 		}
 
-		auto& cmd						= GetCmd();
-		cmd.type						= RHI_Cmd_SetSamplers;
-		cmd.samplers_start_slot			= start_slot;
-		cmd.samplers[cmd.sampler_count] = sampler->GetResource();
-		cmd.sampler_count++;
+		auto& cmd						    = GetCmd();
+		cmd.type						    = RHI_Cmd_SetSamplers;
+		cmd.resource_start_slot             = start_slot;
+		cmd.samplers[cmd.resource_count]    = sampler->GetResource();
+		cmd.resource_count++;
 	}
 
-	void RHI_CommandList::SetTextures(const uint32_t start_slot, const void* textures, const uint32_t texture_count, const bool is_array)
+	void RHI_CommandList::SetTextures(const uint32_t start_slot, const void* textures, const uint32_t texture_count)
 	{
 		auto& cmd				= GetCmd();
 		cmd.type				= RHI_Cmd_SetTextures;
-		cmd.textures_start_slot = start_slot;
-		cmd.textures			= textures;
-		cmd.texture_count		= texture_count;
-		cmd.texture_is_array    = is_array;
+		cmd.resource_start_slot = start_slot;
+		cmd.resource_ptr        = textures;
+		cmd.resource_count      = texture_count;
 	}
 
 	void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture)
 	{
-		SetTextures(slot, texture ? texture->GetResource_Texture() : nullptr, 1, false);
+		SetTextures(slot, texture ? texture->GetResource_Texture() : nullptr, 1);
 	}
 
-    void RHI_CommandList::SetRenderTargets(const void* render_targets, uint32_t render_target_count, void* depth_stencil /*= nullptr*/, bool is_array /*= true*/)
+    void RHI_CommandList::SetRenderTargets(const void* render_targets, uint32_t render_target_count, void* depth_stencil /*= nullptr*/)
     {
         auto& cmd                   = GetCmd();
         cmd.type                    = RHI_Cmd_SetRenderTargets;
-        cmd.render_targets          = render_targets;
-        cmd.render_target_count     = render_target_count;
+        cmd.resource_ptr            = render_targets;
+        cmd.resource_count          = render_target_count;
         cmd.depth_stencil           = depth_stencil;
-        cmd.render_target_is_array  = is_array;
     }
 
 	void RHI_CommandList::ClearRenderTarget(void* render_target, const Vector4& color)
 	{
 		auto& cmd						= GetCmd();
 		cmd.type						= RHI_Cmd_ClearRenderTarget;
-		cmd.render_target_clear			= render_target;
+		cmd.resource_ptr                = render_target;
 		cmd.render_target_clear_color	= color;
 	}
 
@@ -414,40 +406,36 @@ namespace Spartan
 
 				case RHI_Cmd_SetPrimitiveTopology:
 				{
-					device_context->IASetPrimitiveTopology(d3d11_primitive_topology[cmd.primitive_topology]);
+					device_context->IASetPrimitiveTopology(d3d11_primitive_topology[static_cast<RHI_PrimitiveTopology_Mode>(cmd._uint8_t)]);
 					break;
 				}
 
 				case RHI_Cmd_SetInputLayout:
 				{
-					device_context->IASetInputLayout(static_cast<ID3D11InputLayout*>(cmd.input_layout->GetResource()));
+					device_context->IASetInputLayout(static_cast<ID3D11InputLayout*>(const_cast<void*>(cmd.resource_ptr)));
 					break;
 				}
 
 				case RHI_Cmd_SetDepthStencilState:
 				{
-					device_context->OMSetDepthStencilState(
-						static_cast<ID3D11DepthStencilState*>(cmd.depth_stencil_state->GetResource()), 1
-					);
+					device_context->OMSetDepthStencilState(static_cast<ID3D11DepthStencilState*>(const_cast<void*>(cmd.resource_ptr)), 1);
 					break;
 				}
 
 				case RHI_Cmd_SetRasterizerState:
 				{
-					device_context->RSSetState(
-						static_cast<ID3D11RasterizerState*>(cmd.rasterizer_state->GetResource())
-					);
+					device_context->RSSetState(static_cast<ID3D11RasterizerState*>(const_cast<void*>(cmd.resource_ptr)));
 
 					break;
 				}
 
 				case RHI_Cmd_SetBlendState:
 				{
-                    float factor = cmd.blend_state->GetBlendFactor();
-					FLOAT blend_factor[4] = { factor, factor, factor, factor };
+					FLOAT blend_factor[4] = { cmd._float, cmd._float, cmd._float, cmd._float };
 
-					device_context->OMSetBlendState(
-						static_cast<ID3D11BlendState*>(cmd.blend_state->GetResource()),
+					device_context->OMSetBlendState
+                    (
+						static_cast<ID3D11BlendState*>(const_cast<void*>(cmd.resource_ptr)),
 						blend_factor,
 						0xffffffff
 					);
@@ -459,7 +447,8 @@ namespace Spartan
 				{
 					auto ptr			= static_cast<ID3D11Buffer*>(cmd.buffer_vertex->GetResource());
 					auto stride			= cmd.buffer_vertex->GetStride();
-					uint32_t offset = 0;
+					uint32_t offset     = 0;
+
 					device_context->IASetVertexBuffers(0, 1, &ptr, &stride, &offset);
 
 					m_profiler->m_rhi_bindings_buffer_vertex++;
@@ -481,7 +470,7 @@ namespace Spartan
 
 				case RHI_Cmd_SetVertexShader:
 				{
-					const auto ptr = static_cast<ID3D11VertexShader*>(cmd.shader_vertex->GetResource());
+					const auto ptr = static_cast<ID3D11VertexShader*>(const_cast<void*>(cmd.resource_ptr));
 					device_context->VSSetShader(ptr, nullptr, 0);
 
 					m_profiler->m_rhi_bindings_shader_vertex++;
@@ -490,7 +479,7 @@ namespace Spartan
 
 				case RHI_Cmd_SetPixelShader:
 				{
-					const auto ptr = static_cast<ID3D11PixelShader*>(cmd.shader_pixel ? cmd.shader_pixel->GetResource() : nullptr);
+					const auto ptr = static_cast<ID3D11PixelShader*>(const_cast<void*>(cmd.resource_ptr));
 					device_context->PSSetShader(ptr, nullptr, 0);
 
 					m_profiler->m_rhi_bindings_shader_pixel++;
@@ -499,7 +488,7 @@ namespace Spartan
 
                 case RHI_Cmd_SetComputeShader:
                 {
-                    const auto ptr = static_cast<ID3D11ComputeShader*>(cmd.shader_compute ? cmd.shader_compute->GetResource() : nullptr);
+                    const auto ptr = static_cast<ID3D11ComputeShader*>(const_cast<void*>(cmd.resource_ptr));
                     device_context->CSSetShader(ptr, nullptr, 0);
 
                     m_profiler->m_rhi_bindings_shader_compute++;
@@ -508,10 +497,10 @@ namespace Spartan
 
 				case RHI_Cmd_SetConstantBuffers:
 				{
-					const auto start_slot	= static_cast<UINT>(cmd.constant_buffers_start_slot);
-					const auto buffer_count = static_cast<UINT>(cmd.constant_buffer_count);
+					const auto start_slot	= static_cast<UINT>(cmd.resource_start_slot);
+					const auto buffer_count = static_cast<UINT>(cmd.resource_count);
 					const auto buffer		= reinterpret_cast<ID3D11Buffer*const*>(cmd.constant_buffers.data());
-					const auto scope		= cmd.constant_buffers_scope;
+                    const auto scope        = static_cast<RHI_Buffer_Scope>(cmd._uint8_t);
 
 					if (scope == Buffer_VertexShader || scope == Buffer_Global)
 					{
@@ -523,7 +512,7 @@ namespace Spartan
 						device_context->PSSetConstantBuffers(start_slot, buffer_count, buffer);
 					}
 
-					m_profiler->m_rhi_bindings_buffer_constant += (cmd.constant_buffers_scope == Buffer_Global) ? 2 : 1;
+					m_profiler->m_rhi_bindings_buffer_constant += (scope == Buffer_Global) ? 2 : 1;
 					break;
 				}
 
@@ -531,8 +520,8 @@ namespace Spartan
 				{
 					device_context->PSSetSamplers
 					(
-						static_cast<UINT>(cmd.samplers_start_slot),
-						static_cast<UINT>(cmd.sampler_count),
+						static_cast<UINT>(cmd.resource_start_slot),
+						static_cast<UINT>(cmd.resource_count),
 						reinterpret_cast<ID3D11SamplerState* const*>(cmd.samplers.data())
 					);
 
@@ -542,22 +531,22 @@ namespace Spartan
 
 				case RHI_Cmd_SetTextures:
 				{
-					if (cmd.texture_is_array)
+					if (cmd.resource_count > 1)
 					{
 						device_context->PSSetShaderResources
 						(
-							static_cast<UINT>(cmd.textures_start_slot),
-							static_cast<UINT>(cmd.texture_count),
-							reinterpret_cast<ID3D11ShaderResourceView* const*>(cmd.textures)
+							static_cast<UINT>(cmd.resource_start_slot),
+							static_cast<UINT>(cmd.resource_count),
+							reinterpret_cast<ID3D11ShaderResourceView* const*>(cmd.resource_ptr)
 						);
 					}
 					else
 					{
-						const void* srv_array[1] = { cmd.textures };
+						const void* srv_array[1] = { cmd.resource_ptr };
 						device_context->PSSetShaderResources
 						(
-							static_cast<UINT>(cmd.textures_start_slot),
-							static_cast<UINT>(cmd.texture_count),
+							static_cast<UINT>(cmd.resource_start_slot),
+							static_cast<UINT>(cmd.resource_count),
 							reinterpret_cast<ID3D11ShaderResourceView* const*>(&srv_array)
 						);
 					}
@@ -568,21 +557,21 @@ namespace Spartan
 
 				case RHI_Cmd_SetRenderTargets:
 				{
-                    if (cmd.render_target_is_array)
+                    if (cmd.resource_count > 1)
                     {
                         device_context->OMSetRenderTargets
                         (
-                            static_cast<UINT>(cmd.render_target_count),
-                            reinterpret_cast<ID3D11RenderTargetView* const*>(cmd.render_targets),
+                            static_cast<UINT>(cmd.resource_count),
+                            reinterpret_cast<ID3D11RenderTargetView* const*>(cmd.resource_ptr),
                             static_cast<ID3D11DepthStencilView*>(cmd.depth_stencil)
                         );
                     }
                     else
                     {
-                        const void* rt_array[1] = { cmd.render_targets };
+                        const void* rt_array[1] = { cmd.resource_ptr };
                         device_context->OMSetRenderTargets
                         (
-                            static_cast<UINT>(cmd.render_target_count),
+                            static_cast<UINT>(cmd.resource_count),
                             reinterpret_cast<ID3D11RenderTargetView* const*>(&rt_array),
                             static_cast<ID3D11DepthStencilView*>(cmd.depth_stencil)
                         );
@@ -596,7 +585,7 @@ namespace Spartan
 				{
 					device_context->ClearRenderTargetView
 					(
-						static_cast<ID3D11RenderTargetView*>(cmd.render_target_clear),
+						static_cast<ID3D11RenderTargetView*>(const_cast<void*>(cmd.resource_ptr)),
 						cmd.render_target_clear_color.Data()
 					);
 					break;
