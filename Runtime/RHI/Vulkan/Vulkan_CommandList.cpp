@@ -332,23 +332,25 @@ namespace Spartan
 
 	}
 
-	void RHI_CommandList::SetSamplers(const uint32_t start_slot, const vector<void*>& samplers)
+	void RHI_CommandList::SetSamplers(uint32_t start_slot, const void* samplers, uint32_t sampler_count, bool is_array /*= true*/)
 	{
+        /*
+        // Set samplers and update descriptor set
+        m_pipeline->SetSamplers(samplers, sampler_count);
+        m_pipeline->UpdateDescriptorSet();
 
+        // Bind descriptor set
+        if (const auto descriptor_set = m_pipeline->GetDescriptorSet(texture->GetId()))
+        {
+            VkDescriptorSet descriptor_sets[1] = { static_cast<VkDescriptorSet>(descriptor_set) };
+            vkCmdBindDescriptorSets(CMD_BUFFER, VK_PIPELINE_BIND_POINT_GRAPHICS, static_cast<VkPipelineLayout>(m_pipeline->GetPipelineLayout()), 0, 1, descriptor_sets, 0, nullptr);
+        }
+        */
 	}
 
-	void RHI_CommandList::SetSampler(const uint32_t slot, const shared_ptr<RHI_Sampler>& sampler)
+	void RHI_CommandList::SetTextures(const uint32_t start_slot, const void* textures, uint32_t texture_count, bool is_array /*= true*/)
 	{
-        
-	}
-
-	void RHI_CommandList::SetTextures(const uint32_t start_slot, const void* textures, uint32_t texture_count, bool is_array)
-	{
-
-	}
-
-	void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture)
-	{
+        /*
         if (m_cmd_state != RHI_Cmd_List_Recording)
         {
             LOG_ERROR("Can't record command");
@@ -358,12 +360,17 @@ namespace Spartan
 		if (!texture)
 			return;
 
-		m_pipeline->UpdateDescriptorSets(texture);
+        // Set texture and update descriptor set
+        m_pipeline->SetTexture(texture);
+		m_pipeline->UpdateDescriptorSet();
+
+        // Bind descriptor set
 		if (const auto descriptor_set = m_pipeline->GetDescriptorSet(texture->GetId()))
 		{
 			VkDescriptorSet descriptor_sets[1] = { static_cast<VkDescriptorSet>(descriptor_set) };
 			vkCmdBindDescriptorSets(CMD_BUFFER, VK_PIPELINE_BIND_POINT_GRAPHICS, static_cast<VkPipelineLayout>(m_pipeline->GetPipelineLayout()), 0, 1, descriptor_sets, 0, nullptr);
 		}
+        */
 	}
 
 	void RHI_CommandList::SetRenderTargets(const void* render_targets, uint32_t render_target_count, void* depth_stencil /*= nullptr*/, bool is_array /*= true*/)

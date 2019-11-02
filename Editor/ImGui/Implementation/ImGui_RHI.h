@@ -233,7 +233,6 @@ namespace ImGui::RHI
             pipeline_state.vertex_buffer        = g_vertex_buffer.get();
             pipeline_state.swap_chain           = is_main_viewport ? g_renderer->GetSwapChain().get() : swap_chain_other;
             pipeline_state.primitive_topology   = PrimitiveTopology_TriangleList;
-            pipeline_state.viewport             = g_viewport;
             
 			// Start witting command list
 			g_cmd_list->Begin("Pass_ImGui");
@@ -241,6 +240,7 @@ namespace ImGui::RHI
             g_cmd_list->SetRenderTarget(pipeline_state.swap_chain->GetRenderTargetView());
             g_cmd_list->SetBufferVertex(g_vertex_buffer);
 			g_cmd_list->SetBufferIndex(g_index_buffer);
+            g_cmd_list->SetViewport(g_viewport);
 		}
 		
 		// Render command lists

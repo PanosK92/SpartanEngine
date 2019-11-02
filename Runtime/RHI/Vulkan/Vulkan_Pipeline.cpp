@@ -125,11 +125,6 @@ namespace Spartan
 		// Shader stages
 		VkPipelineShaderStageCreateInfo shader_stages[2] = { shader_vertex_stage_info, shader_pixel_stage_info };
 
-		// Create descriptor pool and descriptor set layout
-		CreateDescriptorPool();
-        ReflectShaders();
-		CreateDescriptorSetLayout();
-
 		// Binding description
 		VkVertexInputBindingDescription binding_description = {};
 		binding_description.binding		= 0;
@@ -141,7 +136,13 @@ namespace Spartan
         vertex_attribute_descs.reserve(m_state->input_layout->GetAttributeDescriptions().size());
 		for (const auto& desc : m_state->input_layout->GetAttributeDescriptions())
 		{	
-			vertex_attribute_descs.push_back({ desc.location, desc.binding, vulkan_format[desc.format], desc.offset });
+			vertex_attribute_descs.push_back
+            ({
+                desc.location,              // location
+                desc.binding,               // binding
+                vulkan_format[desc.format], // format
+                desc.offset                 // offset
+            });
 		}
 
 		// Vertex input state
@@ -227,6 +228,11 @@ namespace Spartan
         auto pipeline_layout = reinterpret_cast<VkPipelineLayout*>(&m_pipeline_layout);
 		VkPipelineLayoutCreateInfo pipeline_layout_info	= {};
         {
+            // Create descriptor pool and descriptor set layout
+            CreateDescriptorPool();
+            ReflectShaders();
+            CreateDescriptorSetLayout();
+
             auto vk_descriptor_set_layout = static_cast<VkDescriptorSetLayout>(m_descriptor_set_layout);
 
 		    pipeline_layout_info.sType						= VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -275,11 +281,23 @@ namespace Spartan
 		m_descriptor_pool = nullptr;
 	}
 
-	void RHI_Pipeline::UpdateDescriptorSets(RHI_Texture* texture /*= nullptr*/)
-	{
-		if (!texture || !texture->GetResource_Texture())
-			return;
+    void RHI_Pipeline::SetConstantBuffers(uint32_t start_slot, const void* constant_buffers, uint32_t constant_buffer_count)
+    {
 
+    }
+
+    void RHI_Pipeline::SetTextures(uint32_t start_slot, const void* textures, uint32_t texture_count)
+    {
+
+    }
+
+    void RHI_Pipeline::SetSamplers(uint32_t sampler_slot, const void* samplers, uint32_t sampler_count)
+    {
+
+    }
+
+	void RHI_Pipeline::UpdateDescriptorSet()
+	{
 		// Early exit if descriptor set already exists
 		if (m_descriptor_set_cache.count(texture->GetId()))
 			return;
@@ -314,7 +332,7 @@ namespace Spartan
 
 			for (const auto& resource : m_shader_resources)
 			{
-                const Shader_Resource& srv = resource.second;
+                const Shader_Resource_Description& srv = resource.second;
 
                 // Texture or Sampler
                 image_infos.push_back
@@ -335,10 +353,20 @@ namespace Spartan
                 VkDescriptorImageInfo* image_info   = &image_infos.back();
                 VkDescriptorBufferInfo* buffer_info = &buffer_infos.back();
 
-                // If something went wrong and everything is null, don't bother creating a descriptor set
-                if (!image_info->sampler && !image_info->imageView && !buffer_info->buffer)
+                // Ensure that what the shader requires, has been provided
+                if (srv.type == Descriptor_Sampler && !image_info->sampler)
                 {
-                    LOG_ERROR("Failed to create VkWriteDescriptorSet");
+                    LOG_ERROR("The shader requires a sampler at binding slot %d but none has been provided", srv.slot);
+                    continue;
+                }
+                else if (srv.type == Descriptor_Texture && !image_info->imageView)
+                {
+                    LOG_ERROR("The shader requires a texture at binding slot %d but none has been provided", srv.slot);
+                    continue;
+                }
+                else if (srv.type == Descriptor_ConstantBuffer && !buffer_info->buffer)
+                {
+                    LOG_ERROR("The shader requires a constant buffer at binding slot %d but none has been provided", srv.slot);
                     continue;
                 }
 
@@ -363,7 +391,7 @@ namespace Spartan
 		m_descriptor_set_cache[texture->GetId()] = static_cast<void*>(descriptor_set);
 	}
 
-	void RHI_Pipeline::OnCommandListConsumed()
+    void RHI_Pipeline::OnCommandListConsumed()
 	{
 		// If the descriptor pool is full, re-allocate with double size
 		if (m_descriptor_set_cache.size() < m_descriptor_set_capacity)
@@ -420,7 +448,7 @@ namespace Spartan
 		{
 			for (const auto& _resource : m_shader_resources)
 			{
-                const Shader_Resource& resource = _resource.second;
+                const Shader_Resource_Description& resource = _resource.second;
 
                 // Stage flags
                 VkShaderStageFlags stage_flags = 0;
