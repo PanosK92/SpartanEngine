@@ -84,13 +84,16 @@ namespace Spartan
             _float              = 0.0f;
             _uint8              = 0;
             _uint32             = 0;
-			depth_stencil		= nullptr;
-			vertex_count		= 0;
-			vertex_offset		= 0;
-			index_count			= 0;
-			index_offset		= 0;
-			buffer_index		= nullptr;
-			buffer_vertex		= nullptr;
+            _viewport           = RHI_Viewport(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+            _rectangle          = Math::Rectangle(0.0f, 0.0f, 0.0f, 0.0f);
+            _vector4            = Math::Vector4(0.0f, 0.0f, 0.0f, 0.0f);
+            depth_stencil       = nullptr;
+            vertex_count        = 0;
+            vertex_offset       = 0;
+            index_count         = 0;
+            index_offset        = 0;
+            buffer_index        = nullptr;
+            buffer_vertex       = nullptr;
 		}
 
         RHI_Cmd_Type type;
@@ -101,6 +104,9 @@ namespace Spartan
         float _float;
         uint8_t _uint8;
         uint32_t _uint32;
+		RHI_Viewport _viewport;
+		Math::Rectangle _rectangle;
+        Math::Vector4 _vector4;
         void* depth_stencil;
         uint32_t vertex_count;
         uint32_t vertex_offset;
@@ -108,9 +114,6 @@ namespace Spartan
         uint32_t index_offset;
         const RHI_IndexBuffer* buffer_index;
         const RHI_VertexBuffer* buffer_vertex;
-		RHI_Viewport viewport;
-		Math::Rectangle scissor_rectangle;
-        Math::Vector4 render_target_clear_color;
 	};
 
 	class SPARTAN_CLASS RHI_CommandList
@@ -169,8 +172,8 @@ namespace Spartan
         void SetShaderCompute(const std::shared_ptr<RHI_Shader>& shader) { SetShaderCompute(shader.get()); }
 
 		// Constant buffer
-		void SetConstantBuffers(const uint32_t start_slot, RHI_Buffer_Scope scope, const void* constant_buffers, uint32_t sampler_count);
-		void SetConstantBuffer(const uint32_t start_slot, RHI_Buffer_Scope scope, const std::shared_ptr<RHI_ConstantBuffer>& constant_buffer) { SetConstantBuffers(start_slot, scope, constant_buffer ? constant_buffer->GetResource() : nullptr, 1); }
+		void SetConstantBuffers(const uint32_t start_slot, uint8_t scope, const void* constant_buffers, uint32_t constant_buffer_count);
+		void SetConstantBuffer(const uint32_t start_slot, uint8_t scope, const std::shared_ptr<RHI_ConstantBuffer>& constant_buffer) { SetConstantBuffers(start_slot, scope, constant_buffer ? constant_buffer->GetResource() : nullptr, 1); }
 
 		// Sampler
 		void SetSamplers(const uint32_t start_slot, const void* samplers, uint32_t sampler_count);
@@ -178,7 +181,7 @@ namespace Spartan
 
 		// Texture
 		void SetTextures(const uint32_t start_slot, const void* textures, uint32_t texture_count);
-		void SetTexture(const uint32_t start_slot, RHI_Texture* texture);
+        void SetTexture(const uint32_t start_slot, RHI_Texture* texture)                        { SetTextures(start_slot, texture ? texture->GetResource_Texture() : nullptr, 1); }
 		void SetTexture(const uint32_t start_slot, const std::shared_ptr<RHI_Texture>& texture)	{ SetTextures(start_slot, texture ? texture->GetResource_Texture() : nullptr, 1); }
 		void ClearTextures()																    { SetTextures(0, m_textures_empty.data(), static_cast<uint32_t>(m_textures_empty.size())); }
 

@@ -59,14 +59,19 @@ namespace Spartan
 
         // Set the buffers we will be using thought the frame
         {
-            m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_frame_gpu);
-            m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_buffer_uber_gpu);
+            static const void* cb_vertex[] =
+            {
+                m_buffer_frame_gpu->GetResource(),
+                m_buffer_uber_gpu->GetResource()
+            };
+
+            m_cmd_list->SetConstantBuffers(0, Buffer_VertexShader | Buffer_PixelShader, cb_vertex, 2);
             m_cmd_list->SetConstantBuffer(2, Buffer_PixelShader, m_buffer_light_gpu);
         }
         
         // Set the samplers we will be using thought the frame
         {
-            void* samplers[] =
+            static const void* samplers[] =
             {
                 m_sampler_compare_depth->GetResource(),
                 m_sampler_point_clamp->GetResource(),

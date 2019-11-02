@@ -81,12 +81,10 @@ namespace Spartan
 		Clear_Stencil	= 1 << 1
 	};
 
-	enum RHI_Buffer_Scope
+	enum RHI_Buffer_Scope : uint8_t
 	{
-		Buffer_VertexShader,
-		Buffer_PixelShader,
-		Buffer_Global,
-		Buffer_Unknown
+		Buffer_VertexShader = 1 << 0,
+		Buffer_PixelShader  = 1 << 1,
 	};
 
 	enum RHI_PrimitiveTopology_Mode
