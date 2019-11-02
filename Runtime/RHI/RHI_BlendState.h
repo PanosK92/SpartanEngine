@@ -73,7 +73,7 @@ namespace Spartan
 		RHI_Blend m_source_blend_alpha			= Blend_One;
 		RHI_Blend m_dest_blend_alpha			= Blend_One;
 		RHI_Blend_Operation m_blend_op_alpha	= Blend_Operation_Add;
-        float m_blend_factor                      = 0.0f;
+        float m_blend_factor                    = 0.0f;
 	
 		void* m_buffer		= nullptr;
 		bool m_initialized	= false;
