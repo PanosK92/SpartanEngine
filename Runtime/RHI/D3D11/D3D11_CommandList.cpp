@@ -106,14 +106,14 @@ namespace Spartan
 	{
 		auto& cmd		= GetCmd();
 		cmd.type		= RHI_Cmd_SetViewport;
-		cmd.viewport	= viewport;
+		cmd._viewport	= viewport;
 	}
 
 	void RHI_CommandList::SetScissorRectangle(const Math::Rectangle& scissor_rectangle)
 	{
-		auto& cmd				= GetCmd();
-		cmd.type				= RHI_Cmd_SetScissorRectangle;
-		cmd.scissor_rectangle	= scissor_rectangle;
+		auto& cmd		= GetCmd();
+		cmd.type		= RHI_Cmd_SetScissorRectangle;
+		cmd._rectangle	= scissor_rectangle;
 	}
 
 	void RHI_CommandList::SetPrimitiveTopology(const RHI_PrimitiveTopology_Mode primitive_topology)
@@ -235,15 +235,14 @@ namespace Spartan
         cmd.resource_ptr    = shader->GetResource();
     }
 
-
-    void RHI_CommandList::SetConstantBuffers(const uint32_t start_slot, RHI_Buffer_Scope scope, const void* constant_buffers, uint32_t sampler_count)
+    void RHI_CommandList::SetConstantBuffers(const uint32_t start_slot, uint8_t scope, const void* constant_buffers, uint32_t constant_buffer_count)
     {
         auto& cmd               = GetCmd();
         cmd.type                = RHI_Cmd_SetConstantBuffers;
         cmd.resource_start_slot = start_slot;
-        cmd._uint8            = static_cast<uint8_t>(scope);
+        cmd._uint8              = scope;
         cmd.resource_ptr        = constant_buffers;
-        cmd.resource_count      = sampler_count;
+        cmd.resource_count      = constant_buffer_count;
     }
 
     void RHI_CommandList::SetSamplers(const uint32_t start_slot, const void* samplers, uint32_t sampler_count)
@@ -264,11 +263,6 @@ namespace Spartan
 		cmd.resource_count      = texture_count;
 	}
 
-	void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture)
-	{
-		SetTextures(slot, texture ? texture->GetResource_Texture() : nullptr, 1);
-	}
-
     void RHI_CommandList::SetRenderTargets(const void* render_targets, uint32_t render_target_count, void* depth_stencil /*= nullptr*/)
     {
         auto& cmd                   = GetCmd();
@@ -280,10 +274,10 @@ namespace Spartan
 
 	void RHI_CommandList::ClearRenderTarget(void* render_target, const Vector4& color)
 	{
-		auto& cmd						= GetCmd();
-		cmd.type						= RHI_Cmd_ClearRenderTarget;
-		cmd.resource_ptr                = render_target;
-		cmd.render_target_clear_color	= color;
+		auto& cmd			= GetCmd();
+		cmd.type			= RHI_Cmd_ClearRenderTarget;
+		cmd.resource_ptr    = render_target;
+		cmd._vector4	    = color;
 	}
 
 	void RHI_CommandList::ClearDepthStencil(void* depth_stencil, const uint32_t flags, const float depth, const uint8_t stencil /*= 0*/)
@@ -355,12 +349,12 @@ namespace Spartan
 				case RHI_Cmd_SetViewport:
 				{
 					D3D11_VIEWPORT d3d11_viewport;
-					d3d11_viewport.TopLeftX	= cmd.viewport.x;
-					d3d11_viewport.TopLeftY	= cmd.viewport.y;
-					d3d11_viewport.Width	= cmd.viewport.width;
-					d3d11_viewport.Height	= cmd.viewport.height;
-					d3d11_viewport.MinDepth	= cmd.viewport.depth_min;
-					d3d11_viewport.MaxDepth	= cmd.viewport.depth_max;
+					d3d11_viewport.TopLeftX	= cmd._viewport.x;
+					d3d11_viewport.TopLeftY	= cmd._viewport.y;
+					d3d11_viewport.Width	= cmd._viewport.width;
+					d3d11_viewport.Height	= cmd._viewport.height;
+					d3d11_viewport.MinDepth	= cmd._viewport.depth_min;
+					d3d11_viewport.MaxDepth	= cmd._viewport.depth_max;
 
 					device_context->RSSetViewports(1, &d3d11_viewport);
 
@@ -369,10 +363,10 @@ namespace Spartan
 
 				case RHI_Cmd_SetScissorRectangle:
 				{
-					const auto left		= cmd.scissor_rectangle.x;
-					const auto top		= cmd.scissor_rectangle.y;
-					const auto right	= cmd.scissor_rectangle.x + cmd.scissor_rectangle.width;
-					const auto bottom	= cmd.scissor_rectangle.y + cmd.scissor_rectangle.height;
+					const auto left		= cmd._rectangle.x;
+					const auto top		= cmd._rectangle.y;
+					const auto right	= cmd._rectangle.x + cmd._rectangle.width;
+					const auto bottom	= cmd._rectangle.y + cmd._rectangle.height;
 					const D3D11_RECT d3d11_rectangle = { static_cast<LONG>(left), static_cast<LONG>(top), static_cast<LONG>(right), static_cast<LONG>(bottom) };
 
 					device_context->RSSetScissorRects(1, &d3d11_rectangle);
@@ -446,79 +440,49 @@ namespace Spartan
 
 				case RHI_Cmd_SetVertexShader:
 				{
-					const auto ptr = static_cast<ID3D11VertexShader*>(const_cast<void*>(cmd.resource_ptr));
-					device_context->VSSetShader(ptr, nullptr, 0);
-
+					device_context->VSSetShader(static_cast<ID3D11VertexShader*>(const_cast<void*>(cmd.resource_ptr)), nullptr, 0);
 					m_profiler->m_rhi_bindings_shader_vertex++;
 					break;
 				}
 
 				case RHI_Cmd_SetPixelShader:
 				{
-					const auto ptr = static_cast<ID3D11PixelShader*>(const_cast<void*>(cmd.resource_ptr));
-					device_context->PSSetShader(ptr, nullptr, 0);
-
+					device_context->PSSetShader(static_cast<ID3D11PixelShader*>(const_cast<void*>(cmd.resource_ptr)), nullptr, 0);
 					m_profiler->m_rhi_bindings_shader_pixel++;
 					break;
 				}
 
                 case RHI_Cmd_SetComputeShader:
                 {
-                    const auto ptr = static_cast<ID3D11ComputeShader*>(const_cast<void*>(cmd.resource_ptr));
-                    device_context->CSSetShader(ptr, nullptr, 0);
-
+                    device_context->CSSetShader(static_cast<ID3D11ComputeShader*>(const_cast<void*>(cmd.resource_ptr)), nullptr, 0);
                     m_profiler->m_rhi_bindings_shader_compute++;
                     break;
                 }
 
 				case RHI_Cmd_SetConstantBuffers:
 				{
-                    const auto scope = static_cast<RHI_Buffer_Scope>(cmd._uint8);
+                    const void* resource_array[1] = { cmd.resource_ptr };
 
-                    if (cmd.resource_count > 1)
+                    if (cmd._uint8 & Buffer_VertexShader)
                     {
-                        if (scope == Buffer_VertexShader || scope == Buffer_Global)
-                        {
-                            device_context->VSSetConstantBuffers(
-                                static_cast<UINT>(cmd.resource_start_slot),
-                                static_cast<UINT>(cmd.resource_count),
-                                reinterpret_cast<ID3D11Buffer* const*>(cmd.resource_ptr)
-                            );
-                        }
-
-                        if (scope == Buffer_PixelShader || scope == Buffer_Global)
-                        {
-                            device_context->PSSetConstantBuffers(
-                                static_cast<UINT>(cmd.resource_start_slot),
-                                static_cast<UINT>(cmd.resource_count),
-                                reinterpret_cast<ID3D11Buffer* const*>(cmd.resource_ptr)
-                            );
-                        }
-                    }
-                    else
-                    {
-                        const void* resource_array[1] = { cmd.resource_ptr };
-
-                        if (scope == Buffer_VertexShader || scope == Buffer_Global)
-                        {
-                            device_context->VSSetConstantBuffers(
-                                static_cast<UINT>(cmd.resource_start_slot),
-                                static_cast<UINT>(cmd.resource_count),
-                                reinterpret_cast<ID3D11Buffer* const*>(&resource_array)
-                            );
-                        }
-
-                        if (scope == Buffer_PixelShader || scope == Buffer_Global)
-                        {
-                            device_context->PSSetConstantBuffers(
-                                static_cast<UINT>(cmd.resource_start_slot),
-                                static_cast<UINT>(cmd.resource_count),
-                                reinterpret_cast<ID3D11Buffer* const*>(&resource_array)
-                            );
-                        }
+                        device_context->VSSetConstantBuffers(
+                            static_cast<UINT>(cmd.resource_start_slot),
+                            static_cast<UINT>(cmd.resource_count),
+                            reinterpret_cast<ID3D11Buffer* const*>(cmd.resource_count > 1 ? cmd.resource_ptr : &resource_array)
+                        );
                     }
 
-					m_profiler->m_rhi_bindings_buffer_constant += (scope == Buffer_Global) ? 2 : 1;
+                    if (cmd._uint8 & Buffer_PixelShader)
+                    {
+                        device_context->PSSetConstantBuffers(
+                            static_cast<UINT>(cmd.resource_start_slot),
+                            static_cast<UINT>(cmd.resource_count),
+                            reinterpret_cast<ID3D11Buffer* const*>(cmd.resource_count > 1 ? cmd.resource_ptr : &resource_array)
+                        );
+                    }
+
+                    m_profiler->m_rhi_bindings_buffer_constant += cmd._uint8 & Buffer_VertexShader  ? 1 : 0;
+                    m_profiler->m_rhi_bindings_buffer_constant += cmd._uint8 & Buffer_PixelShader   ? 1 : 0;
 					break;
 				}
 
@@ -605,7 +569,7 @@ namespace Spartan
 					device_context->ClearRenderTargetView
 					(
 						static_cast<ID3D11RenderTargetView*>(const_cast<void*>(cmd.resource_ptr)),
-						cmd.render_target_clear_color.Data()
+						cmd._vector4.Data()
 					);
 					break;
 				}

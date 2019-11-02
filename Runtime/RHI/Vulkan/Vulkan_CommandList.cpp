@@ -322,17 +322,12 @@ namespace Spartan
 
 	}
 
-	void RHI_CommandList::SetConstantBuffers(const uint32_t start_slot, const RHI_Buffer_Scope scope, const vector<void*>& constant_buffers)
-	{
+    void RHI_CommandList::SetConstantBuffers(const uint32_t start_slot, uint8_t scope, const void* constant_buffers, uint32_t sampler_count)
+    {
 
 	}
 
-	void RHI_CommandList::SetConstantBuffer(const uint32_t slot, const RHI_Buffer_Scope scope, const shared_ptr<RHI_ConstantBuffer>& constant_buffer)
-	{
-
-	}
-
-	void RHI_CommandList::SetSamplers(uint32_t start_slot, const void* samplers, uint32_t sampler_count, bool is_array /*= true*/)
+	void RHI_CommandList::SetSamplers(uint32_t start_slot, const void* samplers, uint32_t sampler_count)
 	{
         /*
         // Set samplers and update descriptor set
@@ -348,7 +343,7 @@ namespace Spartan
         */
 	}
 
-	void RHI_CommandList::SetTextures(const uint32_t start_slot, const void* textures, uint32_t texture_count, bool is_array /*= true*/)
+	void RHI_CommandList::SetTextures(const uint32_t start_slot, const void* textures, uint32_t texture_count)
 	{
         /*
         if (m_cmd_state != RHI_Cmd_List_Recording)
@@ -373,7 +368,7 @@ namespace Spartan
         */
 	}
 
-	void RHI_CommandList::SetRenderTargets(const void* render_targets, uint32_t render_target_count, void* depth_stencil /*= nullptr*/, bool is_array /*= true*/)
+	void RHI_CommandList::SetRenderTargets(const void* render_targets, uint32_t render_target_count, void* depth_stencil /*= nullptr*/)
 	{
 
 	}
@@ -383,8 +378,8 @@ namespace Spartan
 
 	}
 
-	void RHI_CommandList::ClearDepthStencil(void* depth_stencil, const uint32_t flags, const float depth, const uint32_t stencil /*= 0*/)
-	{
+    void RHI_CommandList::ClearDepthStencil(void* depth_stencil, const uint32_t flags, const float depth, const uint8_t stencil /*= 0*/)
+    {
 
 	}
 
