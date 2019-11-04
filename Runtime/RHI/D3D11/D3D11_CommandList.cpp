@@ -63,21 +63,19 @@ namespace Spartan
 
 	void RHI_CommandList::Begin(const string& pass_name)
 	{
-        if (m_pipeline_state.shader_vertex)
-        {
-            SetViewport(m_pipeline_state.viewport);
-            SetBlendState(m_pipeline_state.blend_state);
-            SetDepthStencilState(m_pipeline_state.depth_stencil_state);
-            SetRasterizerState(m_pipeline_state.rasterizer_state);
-            SetInputLayout(m_pipeline_state.shader_vertex->GetInputLayout());
-            SetShaderVertex(m_pipeline_state.shader_vertex);
-            SetShaderPixel(m_pipeline_state.shader_pixel);
-            SetPrimitiveTopology(m_pipeline_state.primitive_topology);
-        }
+        auto& cmd       = GetCmd();
+        cmd.type        = RHI_Cmd_Begin;
+        cmd.pass_name   = pass_name;
 
-		auto& cmd		= GetCmd();
-		cmd.type		= RHI_Cmd_Begin;
-		cmd.pass_name	= pass_name;
+        if (m_pipeline_state.swap_chain)                                        SetRenderTarget(m_pipeline_state.swap_chain->GetRenderTargetView());
+        if (m_pipeline_state.blend_state)                                       SetBlendState(m_pipeline_state.blend_state);
+        if (m_pipeline_state.depth_stencil_state)                               SetDepthStencilState(m_pipeline_state.depth_stencil_state);
+        if (m_pipeline_state.rasterizer_state)                                  SetRasterizerState(m_pipeline_state.rasterizer_state);
+        if (m_pipeline_state.shader_vertex)                                     SetInputLayout(m_pipeline_state.shader_vertex->GetInputLayout());
+        if (m_pipeline_state.shader_vertex)                                     SetShaderVertex(m_pipeline_state.shader_vertex);
+        if (m_pipeline_state.shader_pixel)                                      SetShaderPixel(m_pipeline_state.shader_pixel);
+        if (m_pipeline_state.viewport.IsDefined())                              SetViewport(m_pipeline_state.viewport);
+        if (m_pipeline_state.primitive_topology != PrimitiveTopology_Unknown)   SetPrimitiveTopology(m_pipeline_state.primitive_topology);
 	}
 
 	void RHI_CommandList::End()

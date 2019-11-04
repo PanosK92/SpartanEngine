@@ -192,12 +192,7 @@ namespace Spartan
 		void ClearRenderTarget(void* render_target, const Math::Vector4& color);
 		void ClearDepthStencil(void* depth_stencil, uint32_t flags, float depth, uint8_t stencil = 0);
 
-        RHI_PipelineState& GetPipelineState()
-        {
-            m_pipeline_state.Clear();
-            return m_pipeline_state;
-        }
-
+        RHI_PipelineState& GetPipelineState() { return m_pipeline_state; }
 		bool Submit(bool profile = true);
 
 	private:

@@ -35,20 +35,19 @@ namespace Spartan
 		RHI_Pipeline(const std::shared_ptr<RHI_Device>& rhi_device, const RHI_PipelineState& pipeline_state);
 		~RHI_Pipeline();
 
-        void SetConstantBuffers(uint32_t start_slot, const void* constant_buffers, uint32_t constant_buffer_count);
-        void SetTextures(uint32_t start_slot, const void* textures, uint32_t texture_count);
-        void SetSamplers(uint32_t start_slot, const void* samplers, uint32_t sampler_count);
+        void OnCommandListConsumed();
 
-		void UpdateDescriptorSet();
-		void OnCommandListConsumed();
-
-		auto GetPipeline() const					{ return m_pipeline; }
-		auto GetPipelineLayout() const				{ return m_pipeline_layout; }
-		auto GetState() const						{ return m_state; }
-		auto GetDescriptorSet(const uint32_t id) 	{ return m_descriptor_set_cache.count(id) ? m_descriptor_set_cache[id] : nullptr; }
-		auto GetDescriptorSet()						{ return !m_descriptor_set_cache.empty() ? m_descriptor_set_cache.begin()->second : nullptr; }
+        void SetConstantBuffers(const uint32_t start_slot, const void* constant_buffers, const uint32_t count)  { m_shader_resource_constant_buffers[start_slot] = constant_buffers; UpdateDescriptorSet(); }
+        void SetTextures(const uint32_t start_slot, const void* textures, const uint32_t count)                 { m_shader_resource_textures[start_slot] = textures;                 UpdateDescriptorSet(); }
+        void SetSamplers(const uint32_t start_slot, const void* samplers, const uint32_t count)                 { m_shader_resource_samplers[start_slot] = samplers;                 UpdateDescriptorSet(); }
+		auto GetPipeline() const					                                                            { return m_pipeline; }
+		auto GetPipelineLayout() const				                                                            { return m_pipeline_layout; }
+		auto GetState() const						                                                            { return m_state; }
+		auto GetDescriptorSet(const uint32_t id) 	                                                            { return m_descriptor_set_cache.count(id) ? m_descriptor_set_cache[id] : nullptr; }
+		auto GetDescriptorSet()						                                                            { return !m_descriptor_set_cache.empty() ? m_descriptor_set_cache.begin()->second : nullptr; }
 
 	private:
+        void UpdateDescriptorSet();
 		bool CreateDescriptorPool();
 		bool CreateDescriptorSetLayout();
         void ReflectShaders();
@@ -59,10 +58,19 @@ namespace Spartan
 		void* m_descriptor_pool				= nullptr;
 		void* m_descriptor_set_layout		= nullptr;
         const RHI_PipelineState* m_state    = nullptr;
-        uint32_t m_descriptor_set_capacity  = 20;
-		std::map<uint32_t, void*> m_descriptor_set_cache;
-		std::shared_ptr<RHI_Device> m_rhi_device;
+		
+        // Descriptor sets
+        const uint32_t m_constant_buffer_max = 10;
+        const uint32_t m_sampler_max = 10;
+        const uint32_t m_texture_max = 10;
+        uint32_t m_descriptor_set_capacity = 20;
+        std::map<uint32_t, void*> m_descriptor_set_cache;
+        std::map<std::string, Shader_Resource_Description> m_shader_resource_descriptions;
+        std::map<uint8_t, const void*> m_shader_resource_textures;
+        std::map<uint8_t, const void*> m_shader_resource_samplers;
+        std::map<uint8_t, const void*> m_shader_resource_constant_buffers;
 
-        std::map<std::string, Shader_Resource_Description> m_shader_resources;
+        // Dependencies
+        std::shared_ptr<RHI_Device> m_rhi_device;
     };
 }

@@ -281,21 +281,6 @@ namespace Spartan
 		m_descriptor_pool = nullptr;
 	}
 
-    void RHI_Pipeline::SetConstantBuffers(uint32_t start_slot, const void* constant_buffers, uint32_t constant_buffer_count)
-    {
-
-    }
-
-    void RHI_Pipeline::SetTextures(uint32_t start_slot, const void* textures, uint32_t texture_count)
-    {
-
-    }
-
-    void RHI_Pipeline::SetSamplers(uint32_t sampler_slot, const void* samplers, uint32_t sampler_count)
-    {
-
-    }
-
 	void RHI_Pipeline::UpdateDescriptorSet()
 	{
 		// Early exit if descriptor set already exists
@@ -326,11 +311,11 @@ namespace Spartan
 
 		// Update descriptor sets
         {
-            vector<VkDescriptorImageInfo> image_infos;          image_infos.reserve(m_shader_resources.size());
-            vector<VkDescriptorBufferInfo> buffer_infos;        buffer_infos.reserve(m_shader_resources.size());
-            vector<VkWriteDescriptorSet> write_descriptor_sets; write_descriptor_sets.reserve(m_shader_resources.size());
+            vector<VkDescriptorImageInfo> image_infos;          image_infos.reserve(m_shader_resource_descriptions.size());
+            vector<VkDescriptorBufferInfo> buffer_infos;        buffer_infos.reserve(m_shader_resource_descriptions.size());
+            vector<VkWriteDescriptorSet> write_descriptor_sets; write_descriptor_sets.reserve(m_shader_resource_descriptions.size());
 
-			for (const auto& resource : m_shader_resources)
+			for (const auto& resource : m_shader_resource_descriptions)
 			{
                 const Shader_Resource_Description& srv = resource.second;
 
@@ -419,11 +404,11 @@ namespace Spartan
 		// Pool sizes
 		VkDescriptorPoolSize pool_sizes[3]	= {};
 		pool_sizes[0].type					= VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		pool_sizes[0].descriptorCount		= m_rhi_device->GetContextRhi()->pool_max_constant_buffers_per_stage;
+        pool_sizes[0].descriptorCount       = m_constant_buffer_max;
 		pool_sizes[1].type					= VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-		pool_sizes[1].descriptorCount		= m_rhi_device->GetContextRhi()->pool_max_textures_per_stage;
+        pool_sizes[1].descriptorCount       = m_texture_max;
 		pool_sizes[2].type					= VK_DESCRIPTOR_TYPE_SAMPLER;
-		pool_sizes[2].descriptorCount		= m_rhi_device->GetContextRhi()->pool_max_samplers_per_stage;
+        pool_sizes[2].descriptorCount       = m_sampler_max;
 		
 		// Create info
 		VkDescriptorPoolCreateInfo pool_create_info = {};
@@ -446,7 +431,7 @@ namespace Spartan
 		// Layout bindings
 		vector<VkDescriptorSetLayoutBinding> layout_bindings;
 		{
-			for (const auto& _resource : m_shader_resources)
+			for (const auto& _resource : m_shader_resource_descriptions)
 			{
                 const Shader_Resource_Description& resource = _resource.second;
 
@@ -485,7 +470,7 @@ namespace Spartan
 
     void RHI_Pipeline::ReflectShaders()
     {
-        m_shader_resources.clear();
+        m_shader_resource_descriptions.clear();
 
         if (!m_state->shader_vertex)
         {
@@ -497,7 +482,7 @@ namespace Spartan
         while (m_state->shader_vertex->GetCompilationState() == Shader_Compilation_Compiling) {}
         for (const auto& _resource : m_state->shader_vertex->GetResources())
         {
-            m_shader_resources[_resource.first] = _resource.second;
+            m_shader_resource_descriptions[_resource.first] = _resource.second;
         }
       
         // If there is a pixel shader, merge it's resources into our map as well
@@ -507,13 +492,13 @@ namespace Spartan
             for (const auto& _resource : m_state->shader_pixel->GetResources())
             {
                 // If the resource already showed up in the vertex shader, only update the stage
-                if (m_shader_resources.find(_resource.first) != m_shader_resources.end())
+                if (m_shader_resource_descriptions.find(_resource.first) != m_shader_resource_descriptions.end())
                 {
-                    m_shader_resources[_resource.first].stage |= _resource.second.stage;    
+                    m_shader_resource_descriptions[_resource.first].stage |= _resource.second.stage;    
                 }
                 else
                 {
-                    m_shader_resources[_resource.first] = _resource.second;
+                    m_shader_resource_descriptions[_resource.first] = _resource.second;
                 }
             }
         }

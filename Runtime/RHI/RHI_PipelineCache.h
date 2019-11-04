@@ -44,13 +44,15 @@ namespace Spartan
 	class RHI_PipelineState
 	{
 	public:
+        RHI_PipelineState() { Clear(); }
+
 		void ComputeHash()
 		{
 			char buffer[1000];
 			sprintf_s
 			(
 				buffer,
-				"%d-%d-%d-%d-%d-%d-%d-%d-%d-%d-%d",
+				"%d-%d-%d-%d-%d-%d-%d-%d-%d-%d",
                 input_layout        ? input_layout->GetId()         : 0,
                 rasterizer_state    ? rasterizer_state->GetId()     : 0,
                 blend_state         ? blend_state->GetId()          : 0,
@@ -58,7 +60,6 @@ namespace Spartan
                 shader_pixel        ? shader_pixel->GetId()         : 0,
                 depth_stencil_state ? depth_stencil_state->GetId()  : 0,
                 vertex_buffer       ? vertex_buffer->GetId()        : 0,
-                sampler             ? sampler->GetId()              : 0,
                 constant_buffer     ? constant_buffer->GetId()      : 0,
                 swap_chain          ? swap_chain->GetId()           : 0,
 				static_cast<uint32_t>(primitive_topology)
@@ -68,6 +69,9 @@ namespace Spartan
 			m_hash = static_cast<uint32_t>(hasher(buffer));
 		}
 
+        auto GetHash() const { return m_hash; }
+        bool operator==(const RHI_PipelineState& rhs) const { return GetHash() == rhs.GetHash(); }
+
         void Clear()
         {
             shader_vertex       = nullptr;
@@ -76,7 +80,6 @@ namespace Spartan
             rasterizer_state    = nullptr;
             blend_state         = nullptr;
             depth_stencil_state = nullptr;
-            sampler             = nullptr;
             constant_buffer     = nullptr;
             vertex_buffer       = nullptr;
             swap_chain          = nullptr;
@@ -85,22 +88,18 @@ namespace Spartan
             scissor             = Math::Rectangle(0.0f, 0.0f, 0.0f, 0.0f);
         }
 
-		auto GetHash() const { return m_hash; }
-		bool operator==(const RHI_PipelineState& rhs) const { return GetHash() == rhs.GetHash(); }
-
-		RHI_Shader* shader_vertex						= nullptr;
-		RHI_Shader* shader_pixel						= nullptr;
-		RHI_InputLayout* input_layout					= nullptr;
-		RHI_RasterizerState* rasterizer_state			= nullptr;
-		RHI_BlendState* blend_state					    = nullptr;
-		RHI_DepthStencilState* depth_stencil_state	    = nullptr;
-		RHI_Sampler* sampler							= nullptr;
-		RHI_ConstantBuffer* constant_buffer			    = nullptr;
-		RHI_VertexBuffer* vertex_buffer				    = nullptr;
-		RHI_SwapChain* swap_chain						= nullptr;
-		RHI_PrimitiveTopology_Mode primitive_topology	= PrimitiveTopology_Unknown;
-        RHI_Viewport viewport                           = RHI_Viewport(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
-        Math::Rectangle scissor                         = Math::Rectangle(0.0f, 0.0f, 0.0f, 0.0f);
+        RHI_Shader* shader_vertex;
+        RHI_Shader* shader_pixel;
+        RHI_InputLayout* input_layout;
+        RHI_RasterizerState* rasterizer_state;
+        RHI_BlendState* blend_state;
+        RHI_DepthStencilState* depth_stencil_state;
+        RHI_ConstantBuffer* constant_buffer;
+        RHI_VertexBuffer* vertex_buffer;
+        RHI_SwapChain* swap_chain;
+        RHI_PrimitiveTopology_Mode primitive_topology;
+        RHI_Viewport viewport;
+        Math::Rectangle scissor;
 
 	private:
 		uint32_t m_hash = 0;

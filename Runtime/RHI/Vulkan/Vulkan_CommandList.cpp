@@ -253,27 +253,27 @@ namespace Spartan
 
 	void RHI_CommandList::SetPrimitiveTopology(const RHI_PrimitiveTopology_Mode primitive_topology)
 	{
-
+        // part of pipeline
 	}
 
 	void RHI_CommandList::SetInputLayout(const RHI_InputLayout* input_layout)
 	{
-
+        // part of pipeline
 	}
 
 	void RHI_CommandList::SetDepthStencilState(const RHI_DepthStencilState* depth_stencil_state)
 	{
-
+        // part of pipeline
 	}
 
 	void RHI_CommandList::SetRasterizerState(const RHI_RasterizerState* rasterizer_state)
 	{
-
+        // part of pipeline
 	}
 
 	void RHI_CommandList::SetBlendState(const RHI_BlendState* blend_state)
 	{
-
+        // part of pipeline
 	}
 
 	void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer)
@@ -314,25 +314,24 @@ namespace Spartan
 
 	void RHI_CommandList::SetShaderVertex(const RHI_Shader* shader)
 	{
-
+        // part of pipeline
 	}
 
 	void RHI_CommandList::SetShaderPixel(const RHI_Shader* shader)
 	{
-
+        // part of pipeline
 	}
 
     void RHI_CommandList::SetConstantBuffers(const uint32_t start_slot, uint8_t scope, const void* constant_buffers, uint32_t sampler_count)
     {
+        if (m_cmd_state != RHI_Cmd_List_Recording)
+        {
+            LOG_ERROR("Can't record command");
+            return;
+        }
 
-	}
-
-	void RHI_CommandList::SetSamplers(uint32_t start_slot, const void* samplers, uint32_t sampler_count)
-	{
-        /*
-        // Set samplers and update descriptor set
-        m_pipeline->SetSamplers(samplers, sampler_count);
-        m_pipeline->UpdateDescriptorSet();
+        // Set constant buffers
+        m_pipeline->SetSamplers(start_slot, constant_buffers, sampler_count);
 
         // Bind descriptor set
         if (const auto descriptor_set = m_pipeline->GetDescriptorSet(texture->GetId()))
@@ -340,50 +339,62 @@ namespace Spartan
             VkDescriptorSet descriptor_sets[1] = { static_cast<VkDescriptorSet>(descriptor_set) };
             vkCmdBindDescriptorSets(CMD_BUFFER, VK_PIPELINE_BIND_POINT_GRAPHICS, static_cast<VkPipelineLayout>(m_pipeline->GetPipelineLayout()), 0, 1, descriptor_sets, 0, nullptr);
         }
-        */
 	}
 
-	void RHI_CommandList::SetTextures(const uint32_t start_slot, const void* textures, uint32_t texture_count)
+	void RHI_CommandList::SetSamplers(uint32_t start_slot, const void* samplers, uint32_t sampler_count)
 	{
-        /*
         if (m_cmd_state != RHI_Cmd_List_Recording)
         {
             LOG_ERROR("Can't record command");
             return;
         }
 
-		if (!texture)
-			return;
+        // Set samplers
+        m_pipeline->SetSamplers(start_slot, samplers, sampler_count);
 
-        // Set texture and update descriptor set
-        m_pipeline->SetTexture(texture);
-		m_pipeline->UpdateDescriptorSet();
+        // Bind descriptor set
+        if (const auto descriptor_set = m_pipeline->GetDescriptorSet(texture->GetId()))
+        {
+            VkDescriptorSet descriptor_sets[1] = { static_cast<VkDescriptorSet>(descriptor_set) };
+            vkCmdBindDescriptorSets(CMD_BUFFER, VK_PIPELINE_BIND_POINT_GRAPHICS, static_cast<VkPipelineLayout>(m_pipeline->GetPipelineLayout()), 0, 1, descriptor_sets, 0, nullptr);
+        }
+	}
+
+	void RHI_CommandList::SetTextures(const uint32_t start_slot, const void* textures, uint32_t texture_count)
+	{     
+        if (m_cmd_state != RHI_Cmd_List_Recording)
+        {
+            LOG_ERROR("Can't record command");
+            return;
+        }
+
+        // Set texture
+        m_pipeline->SetTextures(start_slot, textures, texture_count);
 
         // Bind descriptor set
 		if (const auto descriptor_set = m_pipeline->GetDescriptorSet(texture->GetId()))
 		{
 			VkDescriptorSet descriptor_sets[1] = { static_cast<VkDescriptorSet>(descriptor_set) };
 			vkCmdBindDescriptorSets(CMD_BUFFER, VK_PIPELINE_BIND_POINT_GRAPHICS, static_cast<VkPipelineLayout>(m_pipeline->GetPipelineLayout()), 0, 1, descriptor_sets, 0, nullptr);
-		}
-        */
+		}    
 	}
 
 	void RHI_CommandList::SetRenderTargets(const void* render_targets, uint32_t render_target_count, void* depth_stencil /*= nullptr*/)
 	{
-
+        // part of pipeline
 	}
 
 	void RHI_CommandList::ClearRenderTarget(void* render_target, const Vector4& color)
 	{
-
+        // part of pipeline
 	}
 
     void RHI_CommandList::ClearDepthStencil(void* depth_stencil, const uint32_t flags, const float depth, const uint8_t stencil /*= 0*/)
     {
-
+        // part of pipeline
 	}
 
-	bool RHI_CommandList::Submit(bool profile/*=true*/)
+	bool RHI_CommandList::Submit(bool profile /*= true*/)
 	{
         if (m_cmd_state != RHI_Cmd_List_Ended)
         {
