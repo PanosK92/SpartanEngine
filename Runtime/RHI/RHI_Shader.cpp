@@ -170,7 +170,7 @@ namespace Spartan
         return shader_model;
     }
 
-    void RHI_Shader::_Reflect(const Shader_Type type, const uint32_t* ptr, const uint32_t size)
+    void RHI_Shader::_Reflect(const Shader_Type shader_type, const uint32_t* ptr, const uint32_t size)
 	{
 		// Initialize compiler with SPIR-V data
 		const auto compiler = spirv_cross::CompilerHLSL(ptr, size);
@@ -179,30 +179,36 @@ namespace Spartan
         spirv_cross::ShaderResources resources = compiler.get_shader_resources();
 
 		// Get samplers
-		for (const auto& _resource : resources.separate_samplers)
+		for (const auto& resource : resources.separate_samplers)
 		{
-            Shader_Resource_Description& resource   = m_resource_descriptions[_resource.name];
-            resource.type                           = Descriptor_Sampler;
-            resource.slot                           = compiler.get_decoration(_resource.id, spv::DecorationBinding);
-            resource.stage                          = type;
+            m_descriptors.emplace_back
+            (
+                RHI_Descriptor_Type::Descriptor_Sampler,                        // Type
+                compiler.get_decoration(resource.id, spv::DecorationBinding),   // Slot
+                shader_type                                                     // Stage
+            );
 		}
 
 		// Get textures
-		for (const auto& _resource : resources.separate_images)
+		for (const auto& resource : resources.separate_images)
 		{
-            Shader_Resource_Description& resource   = m_resource_descriptions[_resource.name];
-            resource.type                           = Descriptor_Texture;
-            resource.slot                           = compiler.get_decoration(_resource.id, spv::DecorationBinding);
-            resource.stage                          = type;
+            m_descriptors.emplace_back
+            (
+                RHI_Descriptor_Type::Descriptor_Texture,                        // Type
+                compiler.get_decoration(resource.id, spv::DecorationBinding),   // Slot
+                shader_type                                                     // Stage
+            );
 		}
 
 		// Get constant buffers
-		for (const auto& _resource : resources.uniform_buffers)
+		for (const auto& resource : resources.uniform_buffers)
 		{
-            Shader_Resource_Description& resource   = m_resource_descriptions[_resource.name];
-            resource.type                           = Descriptor_ConstantBuffer;
-            resource.slot                           = compiler.get_decoration(_resource.id, spv::DecorationBinding);
-            resource.stage                          = type;
+            m_descriptors.emplace_back
+            (
+                RHI_Descriptor_Type::Descriptor_ConstantBuffer,                 // Type
+                compiler.get_decoration(resource.id, spv::DecorationBinding),   // Slot
+                shader_type                                                     // Stage
+            );
 		}
 	}
 }

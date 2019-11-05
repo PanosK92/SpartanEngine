@@ -188,4 +188,26 @@ namespace Spartan
 		Descriptor_ConstantBuffer,
         Descriptor_Unknown
 	};
+
+    struct RHI_Descriptor
+    {
+        RHI_Descriptor(const RHI_Descriptor& descriptor)
+        {
+            type    = descriptor.type;
+            slot    = descriptor.slot;
+            stage   = descriptor.stage;
+        }
+
+        RHI_Descriptor(RHI_Descriptor_Type type, uint32_t slot, uint32_t stage)
+        {
+            this->type  = type;
+            this->slot  = slot;
+            this->stage = stage;
+        }
+
+        RHI_Descriptor_Type type    = Descriptor_Unknown;
+        uint32_t slot               = 0;
+        uint32_t stage              = 0;
+        void* resource              = nullptr;
+    };
 }

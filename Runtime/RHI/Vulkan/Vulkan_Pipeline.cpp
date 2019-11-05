@@ -281,15 +281,22 @@ namespace Spartan
 		m_descriptor_pool = nullptr;
 	}
 
-	void RHI_Pipeline::UpdateDescriptorSet()
+	void* RHI_Pipeline::UpdateDescriptorSet(RHI_Descriptor_Type type, const uint32_t slot, const void* resource)
 	{
+        // Generate hash
+        static const std::hash<uint32_t> hasher;
+        uint32_t a      = static_cast<uint32_t>(hasher(static_cast<uint32_t>(type)));
+        uint32_t b      = static_cast<uint32_t>(hasher(static_cast<uint32_t>(slot)));
+        uint32_t c      = static_cast<uint32_t>(hasher(reinterpret_cast<uint32_t>(resource)));
+        uint32_t hash   = static_cast<uint32_t>(hasher(a + b + c));
+
 		// Early exit if descriptor set already exists
-		if (m_descriptor_set_cache.count(texture->GetId()))
-			return;
+        if (m_descriptors_cache.find(hash) != m_descriptors_cache.end())
+            return m_descriptors_cache[hash];
 
 		// Early exit if the descriptor cache is full
-		if (m_descriptor_set_cache.size() == m_descriptor_set_capacity)
-			return;
+		if (m_descriptors_cache.size() == m_descriptor_capacity)
+			return nullptr;
 
 		const auto descriptor_pool	= static_cast<VkDescriptorPool>(m_descriptor_pool);
 		auto descriptor_set_layout	= static_cast<VkDescriptorSetLayout>(m_descriptor_set_layout);
@@ -306,80 +313,85 @@ namespace Spartan
 
 			// Allocate		
 			if (!Vulkan_Common::check_result(vkAllocateDescriptorSets(m_rhi_device->GetContextRhi()->device, &allocate_info, &descriptor_set)))
-				return;
+				return nullptr;
 		}
 
 		// Update descriptor sets
         {
-            vector<VkDescriptorImageInfo> image_infos;          image_infos.reserve(m_shader_resource_descriptions.size());
-            vector<VkDescriptorBufferInfo> buffer_infos;        buffer_infos.reserve(m_shader_resource_descriptions.size());
-            vector<VkWriteDescriptorSet> write_descriptor_sets; write_descriptor_sets.reserve(m_shader_resource_descriptions.size());
+            const auto& resource_blueprints = m_descriptors_blueprint[type];
 
-			for (const auto& resource : m_shader_resource_descriptions)
-			{
-                const Shader_Resource_Description& srv = resource.second;
+            vector<VkDescriptorImageInfo> image_infos;          image_infos.reserve(resource_blueprints.size());
+            vector<VkDescriptorBufferInfo> buffer_infos;        buffer_infos.reserve(resource_blueprints.size());
+            vector<VkWriteDescriptorSet> write_descriptor_sets; write_descriptor_sets.reserve(resource_blueprints.size());
 
+            for (const RHI_Descriptor& resource_blueprint : resource_blueprints)
+            {
                 // Texture or Sampler
                 image_infos.push_back
                 ({
-                    (srv.type == Descriptor_Sampler && m_state->sampler)    ? static_cast<VkSampler>(m_state->sampler->GetResource())   : nullptr,  // sampler
-                    (srv.type == Descriptor_Texture && texture)             ? static_cast<VkImageView>(texture->GetResource_Texture())  : nullptr,  // imageView
-                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL                                                                                        // imageLayout
+                    (type == Descriptor_Sampler && resource) ? static_cast<VkSampler>(const_cast<void*>(resource)) : nullptr,       // sampler
+                    (type == Descriptor_Texture && resource) ? static_cast<VkImageView>(const_cast<void*>(resource)) : nullptr,     // imageView
+                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL                                                                        // imageLayout
                 });
 
                 // Constant/Uniform buffer
                 buffer_infos.push_back
                 ({
-                    m_state->constant_buffer ? static_cast<VkBuffer>(m_state->constant_buffer->GetResource()) : nullptr,           // buffer
-                    0,                                                                                                             // offset
-                    (srv.type == Descriptor_ConstantBuffer && m_state->constant_buffer) ? m_state->constant_buffer->GetSize() : 0, // range                
+                    m_state->constant_buffer ? static_cast<VkBuffer>(m_state->constant_buffer->GetResource()) : nullptr,                            // buffer
+                    0,                                                                                                                              // offset
+                    (resource_blueprint.type == Descriptor_ConstantBuffer && m_state->constant_buffer) ? m_state->constant_buffer->GetSize() : 0,   // range                
                 });
 
-                VkDescriptorImageInfo* image_info   = &image_infos.back();
+                VkDescriptorImageInfo* image_info = &image_infos.back();
                 VkDescriptorBufferInfo* buffer_info = &buffer_infos.back();
 
                 // Ensure that what the shader requires, has been provided
-                if (srv.type == Descriptor_Sampler && !image_info->sampler)
+                if (type == Descriptor_Sampler && !image_info->sampler)
                 {
-                    LOG_ERROR("The shader requires a sampler at binding slot %d but none has been provided", srv.slot);
+                    LOG_ERROR("The shader requires a sampler at binding slot %d but none has been provided", resource_blueprint.slot);
                     continue;
                 }
-                else if (srv.type == Descriptor_Texture && !image_info->imageView)
+                else if (type == Descriptor_Texture && !image_info->imageView)
                 {
-                    LOG_ERROR("The shader requires a texture at binding slot %d but none has been provided", srv.slot);
+                    LOG_ERROR("The shader requires a texture at binding slot %d but none has been provided", resource_blueprint.slot);
                     continue;
                 }
-                else if (srv.type == Descriptor_ConstantBuffer && !buffer_info->buffer)
+                else if (type == Descriptor_ConstantBuffer && !buffer_info->buffer)
                 {
-                    LOG_ERROR("The shader requires a constant buffer at binding slot %d but none has been provided", srv.slot);
+                    LOG_ERROR("The shader requires a constant buffer at binding slot %d but none has been provided", resource_blueprint.slot);
                     continue;
                 }
 
                 write_descriptor_sets.push_back
                 ({
-                    VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,	// sType
-                    nullptr,								// pNext
-                    descriptor_set,							// dstSet
-                    srv.slot,							    // dstBinding
-                    0,									    // dstArrayElement
-                    1,									    // descriptorCount
-                    vulkan_descriptor_type[srv.type],	    // descriptorType
-                    image_info,                             // pImageInfo 
-                    buffer_info,                            // pBufferInfo
-                    nullptr									// pTexelBufferView
-                });
-			}
+                    VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,	            // sType
+                    nullptr,								            // pNext
+                    descriptor_set,							            // dstSet
+                    resource_blueprint.slot,				            // dstBinding
+                    0,									                // dstArrayElement
+                    1,									                // descriptorCount
+                    vulkan_descriptor_type[resource_blueprint.type],	// descriptorType
+                    image_info,                                         // pImageInfo 
+                    buffer_info,                                        // pBufferInfo
+                    nullptr									            // pTexelBufferView
+                    });
+            }
 
-			vkUpdateDescriptorSets(m_rhi_device->GetContextRhi()->device, static_cast<uint32_t>(write_descriptor_sets.size()), write_descriptor_sets.data(), 0, nullptr);
+            vkUpdateDescriptorSets(m_rhi_device->GetContextRhi()->device, static_cast<uint32_t>(write_descriptor_sets.size()), write_descriptor_sets.data(), 0, nullptr);
 		}
 
-		m_descriptor_set_cache[texture->GetId()] = static_cast<void*>(descriptor_set);
+        // Save descriptor
+        void* descriptor            = static_cast<void*>(descriptor_set);
+        m_descriptors_cache[hash]   = descriptor; // cache
+        m_descriptors_current[type] = descriptor; // last used
+
+        return descriptor;
 	}
 
     void RHI_Pipeline::OnCommandListConsumed()
 	{
 		// If the descriptor pool is full, re-allocate with double size
-		if (m_descriptor_set_cache.size() < m_descriptor_set_capacity)
+		if (m_descriptors_cache.size() < m_descriptor_capacity)
 			return;
 	
 		// Destroy layout
@@ -391,10 +403,10 @@ namespace Spartan
 		m_descriptor_pool = nullptr;
 
 		// Clear cache (as it holds sets belonging to the destroyed pool)
-		m_descriptor_set_cache.clear();
+        m_descriptors_cache.clear();
 
 		// Re-allocate everything with double size
-		m_descriptor_set_capacity *= 2;
+		m_descriptor_capacity *= 2;
 		CreateDescriptorPool();
 		CreateDescriptorSetLayout();
 	}
@@ -416,7 +428,7 @@ namespace Spartan
 		pool_create_info.flags						= 0;
 		pool_create_info.poolSizeCount				= static_cast<uint32_t>((sizeof(pool_sizes) / sizeof(*pool_sizes)));
 		pool_create_info.pPoolSizes					= pool_sizes;
-		pool_create_info.maxSets					= m_descriptor_set_capacity;
+		pool_create_info.maxSets					= m_descriptor_capacity;
 		
 		// Pool
 		const auto descriptor_pool = reinterpret_cast<VkDescriptorPool*>(&m_descriptor_pool);
@@ -431,24 +443,25 @@ namespace Spartan
 		// Layout bindings
 		vector<VkDescriptorSetLayoutBinding> layout_bindings;
 		{
-			for (const auto& _resource : m_shader_resource_descriptions)
+			for (const auto& it : m_descriptors_blueprint)
 			{
-                const Shader_Resource_Description& resource = _resource.second;
+                for (const RHI_Descriptor& resource : it.second)
+                {
+                    // Stage flags
+                    VkShaderStageFlags stage_flags = 0;
+                    stage_flags |= (resource.stage & Shader_Vertex)     ? VK_SHADER_STAGE_VERTEX_BIT    : 0;
+                    stage_flags |= (resource.stage & Shader_Pixel)      ? VK_SHADER_STAGE_FRAGMENT_BIT  : 0;
+                    stage_flags |= (resource.stage & Shader_Compute)    ? VK_SHADER_STAGE_COMPUTE_BIT   : 0;
 
-                // Stage flags
-                VkShaderStageFlags stage_flags = 0;
-                stage_flags |= (resource.stage & Shader_Vertex)   ? VK_SHADER_STAGE_VERTEX_BIT    : 0;
-                stage_flags |= (resource.stage & Shader_Pixel)    ? VK_SHADER_STAGE_FRAGMENT_BIT  : 0;
-                stage_flags |= (resource.stage & Shader_Compute)  ? VK_SHADER_STAGE_COMPUTE_BIT   : 0;
-
-				layout_bindings.push_back
-				({
-					resource.slot,							// binding
-					vulkan_descriptor_type[resource.type],	// descriptorType
-					1,										// descriptorCount
-					stage_flags,							// stageFlags
-					nullptr									// pImmutableSamplers
-				});
+                    layout_bindings.push_back
+                    ({
+                        resource.slot,							// binding
+                        vulkan_descriptor_type[resource.type],	// descriptorType
+                        1,										// descriptorCount
+                        stage_flags,							// stageFlags
+                        nullptr									// pImmutableSamplers
+                    });
+                }
 			}
 		}
 
@@ -470,7 +483,7 @@ namespace Spartan
 
     void RHI_Pipeline::ReflectShaders()
     {
-        m_shader_resource_descriptions.clear();
+        m_descriptors_blueprint.clear();
 
         if (!m_state->shader_vertex)
         {
@@ -480,25 +493,37 @@ namespace Spartan
 
         // Get vertex shader resources
         while (m_state->shader_vertex->GetCompilationState() == Shader_Compilation_Compiling) {}
-        for (const auto& _resource : m_state->shader_vertex->GetResources())
+        for (const RHI_Descriptor& descriptor : m_state->shader_vertex->GetDescriptors())
         {
-            m_shader_resource_descriptions[_resource.first] = _resource.second;
+            m_descriptors_blueprint[descriptor.type].emplace_back(descriptor);
         }
       
         // If there is a pixel shader, merge it's resources into our map as well
         if (m_state->shader_pixel)
         {
             while (m_state->shader_pixel->GetCompilationState() == Shader_Compilation_Compiling) {}
-            for (const auto& _resource : m_state->shader_pixel->GetResources())
+            for (const RHI_Descriptor& descriptor : m_state->shader_pixel->GetDescriptors())
             {
-                // If the resource already showed up in the vertex shader, only update the stage
-                if (m_shader_resource_descriptions.find(_resource.first) != m_shader_resource_descriptions.end())
+                // Assume that the descriptor has been created in the vertex shader and only try to update it's shader stage
+                bool updated_existing = false;
+                for (RHI_Descriptor& descriptor_existing : m_descriptors_blueprint[descriptor.type])
                 {
-                    m_shader_resource_descriptions[_resource.first].stage |= _resource.second.stage;    
+                    bool is_same_rsource =
+                        (descriptor_existing.type == descriptor.type) &&
+                        (descriptor_existing.slot == descriptor.slot);
+
+                    if ((descriptor_existing.type == descriptor.type) && (descriptor_existing.slot == descriptor.slot))
+                    {
+                        descriptor_existing.stage |= descriptor.stage;
+                        updated_existing = true;
+                        break;
+                    }
                 }
-                else
+
+                // If no updating took place, this descriptor is new, so add it
+                if (!updated_existing)
                 {
-                    m_shader_resource_descriptions[_resource.first] = _resource.second;
+                    m_descriptors_blueprint[descriptor.type].emplace_back(descriptor);
                 }
             }
         }

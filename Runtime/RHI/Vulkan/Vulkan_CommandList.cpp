@@ -110,6 +110,8 @@ namespace Spartan
         }
 
         // Temp shit
+        if (!m_pipeline_state.shader_vertex)
+            return;
         m_pipeline = m_rhi_pipeline_cache->GetPipeline(m_pipeline_state).get();
 	
 		// Acquire next swap chain image and update buffer index
@@ -330,18 +332,26 @@ namespace Spartan
             return;
         }
 
-        // Set constant buffers
-        m_pipeline->SetSamplers(start_slot, constant_buffers, sampler_count);
-
-        // Bind descriptor set
-        if (const auto descriptor_set = m_pipeline->GetDescriptorSet(texture->GetId()))
+        // Set texture
+        if (void* descriptor_set = m_pipeline->UpdateDescriptorSet(Descriptor_ConstantBuffer, start_slot, constant_buffers))
         {
+            // Bind descriptor set
             VkDescriptorSet descriptor_sets[1] = { static_cast<VkDescriptorSet>(descriptor_set) };
-            vkCmdBindDescriptorSets(CMD_BUFFER, VK_PIPELINE_BIND_POINT_GRAPHICS, static_cast<VkPipelineLayout>(m_pipeline->GetPipelineLayout()), 0, 1, descriptor_sets, 0, nullptr);
+            vkCmdBindDescriptorSets
+            (
+                CMD_BUFFER,                                                     // commandBuffer
+                VK_PIPELINE_BIND_POINT_GRAPHICS,                                // pipelineBindPoint
+                static_cast<VkPipelineLayout>(m_pipeline->GetPipelineLayout()), // layout
+                0,                                                              // firstSet
+                1,                                                              // descriptorSetCount
+                descriptor_sets,                                                // pDescriptorSets
+                0,                                                              // dynamicOffsetCount
+                nullptr                                                         // pDynamicOffsets
+            );
         }
 	}
 
-	void RHI_CommandList::SetSamplers(uint32_t start_slot, const void* samplers, uint32_t sampler_count)
+	void RHI_CommandList::SetSamplers(const uint32_t start_slot, const void* samplers, uint32_t sampler_count)
 	{
         if (m_cmd_state != RHI_Cmd_List_Recording)
         {
@@ -349,14 +359,22 @@ namespace Spartan
             return;
         }
 
-        // Set samplers
-        m_pipeline->SetSamplers(start_slot, samplers, sampler_count);
-
-        // Bind descriptor set
-        if (const auto descriptor_set = m_pipeline->GetDescriptorSet(texture->GetId()))
+        // Set texture
+        if (void* descriptor_set = m_pipeline->UpdateDescriptorSet(Descriptor_Texture, start_slot, samplers))
         {
+            // Bind descriptor set
             VkDescriptorSet descriptor_sets[1] = { static_cast<VkDescriptorSet>(descriptor_set) };
-            vkCmdBindDescriptorSets(CMD_BUFFER, VK_PIPELINE_BIND_POINT_GRAPHICS, static_cast<VkPipelineLayout>(m_pipeline->GetPipelineLayout()), 0, 1, descriptor_sets, 0, nullptr);
+            vkCmdBindDescriptorSets
+            (
+                CMD_BUFFER,                                                     // commandBuffer
+                VK_PIPELINE_BIND_POINT_GRAPHICS,                                // pipelineBindPoint
+                static_cast<VkPipelineLayout>(m_pipeline->GetPipelineLayout()), // layout
+                1,                                                              // firstSet
+                1,                                                              // descriptorSetCount
+                descriptor_sets,                                                // pDescriptorSets
+                0,                                                              // dynamicOffsetCount
+                nullptr                                                         // pDynamicOffsets
+            );
         }
 	}
 
@@ -369,13 +387,21 @@ namespace Spartan
         }
 
         // Set texture
-        m_pipeline->SetTextures(start_slot, textures, texture_count);
-
-        // Bind descriptor set
-		if (const auto descriptor_set = m_pipeline->GetDescriptorSet(texture->GetId()))
+		if (void* descriptor_set = m_pipeline->UpdateDescriptorSet(Descriptor_Texture, start_slot, textures))
 		{
+            // Bind descriptor set
 			VkDescriptorSet descriptor_sets[1] = { static_cast<VkDescriptorSet>(descriptor_set) };
-			vkCmdBindDescriptorSets(CMD_BUFFER, VK_PIPELINE_BIND_POINT_GRAPHICS, static_cast<VkPipelineLayout>(m_pipeline->GetPipelineLayout()), 0, 1, descriptor_sets, 0, nullptr);
+			vkCmdBindDescriptorSets
+            (
+                CMD_BUFFER,                                                     // commandBuffer
+                VK_PIPELINE_BIND_POINT_GRAPHICS,                                // pipelineBindPoint
+                static_cast<VkPipelineLayout>(m_pipeline->GetPipelineLayout()), // layout
+                2,                                                              // firstSet
+                1,                                                              // descriptorSetCount
+                descriptor_sets,                                                // pDescriptorSets
+                0,                                                              // dynamicOffsetCount
+                nullptr                                                         // pDynamicOffsets
+            );
 		}    
 	}
 
