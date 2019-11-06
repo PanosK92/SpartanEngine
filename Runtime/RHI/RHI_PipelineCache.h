@@ -52,7 +52,7 @@ namespace Spartan
 			sprintf_s
 			(
 				buffer,
-				"%d-%d-%d-%d-%d-%d-%d-%d-%d-%d",
+				"%d-%d-%d-%d-%d-%d-%d-%d-%d",
                 input_layout        ? input_layout->GetId()         : 0,
                 rasterizer_state    ? rasterizer_state->GetId()     : 0,
                 blend_state         ? blend_state->GetId()          : 0,
@@ -60,7 +60,6 @@ namespace Spartan
                 shader_pixel        ? shader_pixel->GetId()         : 0,
                 depth_stencil_state ? depth_stencil_state->GetId()  : 0,
                 vertex_buffer       ? vertex_buffer->GetId()        : 0,
-                constant_buffer     ? constant_buffer->GetId()      : 0,
                 swap_chain          ? swap_chain->GetId()           : 0,
 				static_cast<uint32_t>(primitive_topology)
 			);
@@ -80,7 +79,6 @@ namespace Spartan
             rasterizer_state    = nullptr;
             blend_state         = nullptr;
             depth_stencil_state = nullptr;
-            constant_buffer     = nullptr;
             vertex_buffer       = nullptr;
             swap_chain          = nullptr;
             primitive_topology  = PrimitiveTopology_Unknown;
@@ -94,7 +92,6 @@ namespace Spartan
         RHI_RasterizerState* rasterizer_state;
         RHI_BlendState* blend_state;
         RHI_DepthStencilState* depth_stencil_state;
-        RHI_ConstantBuffer* constant_buffer;
         RHI_VertexBuffer* vertex_buffer;
         RHI_SwapChain* swap_chain;
         RHI_PrimitiveTopology_Mode primitive_topology;

@@ -331,7 +331,6 @@ namespace Spartan
         void RenderablesAcquire(const Variant& renderables);
         void RenderablesSort(std::vector<Entity*>* renderables);
         std::shared_ptr<RHI_RasterizerState>& GetRasterizerState(RHI_Cull_Mode cull_mode, RHI_Fill_Mode fill_mode);
-        void* GetEnvironmentTexture_GpuResource();
         void ClearEntities() { m_entities.clear(); }
 
         // Render textures
