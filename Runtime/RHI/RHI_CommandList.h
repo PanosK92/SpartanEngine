@@ -137,61 +137,67 @@ namespace Spartan
 
 		// Input layout
 		void SetInputLayout(const RHI_InputLayout* input_layout);
-		void SetInputLayout(const std::shared_ptr<RHI_InputLayout>& input_layout) { SetInputLayout(input_layout.get()); }
+        inline void SetInputLayout(const std::shared_ptr<RHI_InputLayout>& input_layout) { SetInputLayout(input_layout.get()); }
 
 		// Depth-stencil state
 		void SetDepthStencilState(const RHI_DepthStencilState* depth_stencil_state);
-		void SetDepthStencilState(const std::shared_ptr<RHI_DepthStencilState>& depth_stencil_state) { SetDepthStencilState(depth_stencil_state.get()); }
+        inline void SetDepthStencilState(const std::shared_ptr<RHI_DepthStencilState>& depth_stencil_state) { SetDepthStencilState(depth_stencil_state.get()); }
 
 		// Rasterizer state
 		void SetRasterizerState(const RHI_RasterizerState* rasterizer_state);
-		void SetRasterizerState(const std::shared_ptr<RHI_RasterizerState>& rasterizer_state) { SetRasterizerState(rasterizer_state.get()); }
+        inline void SetRasterizerState(const std::shared_ptr<RHI_RasterizerState>& rasterizer_state) { SetRasterizerState(rasterizer_state.get()); }
 
 		// Blend state
 		void SetBlendState(const RHI_BlendState* blend_state);
-		void SetBlendState(const std::shared_ptr<RHI_BlendState>& blend_state) { SetBlendState(blend_state.get()); }
+        inline void SetBlendState(const std::shared_ptr<RHI_BlendState>& blend_state) { SetBlendState(blend_state.get()); }
 
 		// Vertex buffer
 		void SetBufferVertex(const RHI_VertexBuffer* buffer);
-		void SetBufferVertex(const std::shared_ptr<RHI_VertexBuffer>& buffer) { SetBufferVertex(buffer.get()); }
+        inline void SetBufferVertex(const std::shared_ptr<RHI_VertexBuffer>& buffer) { SetBufferVertex(buffer.get()); }
 
 		// Index buffer
 		void SetBufferIndex(const RHI_IndexBuffer* buffer);
-		void SetBufferIndex(const std::shared_ptr<RHI_IndexBuffer>& buffer) { SetBufferIndex(buffer.get()); }
+        inline void SetBufferIndex(const std::shared_ptr<RHI_IndexBuffer>& buffer) { SetBufferIndex(buffer.get()); }
 
 		// Vertex shader
 		void SetShaderVertex(const RHI_Shader* shader);
-		void SetShaderVertex(const std::shared_ptr<RHI_Shader>& shader) { SetShaderVertex(shader.get()); }
+        inline void SetShaderVertex(const std::shared_ptr<RHI_Shader>& shader) { SetShaderVertex(shader.get()); }
 
 		// Pixel shader
 		void SetShaderPixel(const RHI_Shader* shader);
-		void SetShaderPixel(const std::shared_ptr<RHI_Shader>& shader) { SetShaderPixel(shader.get()); }
+        inline void SetShaderPixel(const std::shared_ptr<RHI_Shader>& shader) { SetShaderPixel(shader.get()); }
 
         // Compute shader
         void SetShaderCompute(const RHI_Shader* shader);
-        void SetShaderCompute(const std::shared_ptr<RHI_Shader>& shader) { SetShaderCompute(shader.get()); }
+        inline void SetShaderCompute(const std::shared_ptr<RHI_Shader>& shader) { SetShaderCompute(shader.get()); }
 
 		// Constant buffer
-		void SetConstantBuffers(const uint32_t start_slot, uint8_t scope, const void* constant_buffers, uint32_t constant_buffer_count);
-		void SetConstantBuffer(const uint32_t start_slot, uint8_t scope, const std::shared_ptr<RHI_ConstantBuffer>& constant_buffer) { SetConstantBuffers(start_slot, scope, constant_buffer ? constant_buffer->GetResource() : nullptr, 1); }
+        void SetConstantBuffer(const uint32_t slot, uint8_t scope, RHI_ConstantBuffer* constant_buffer);
+        inline void SetConstantBuffer(const uint32_t slot, uint8_t scope, const std::shared_ptr<RHI_ConstantBuffer>& constant_buffer) { SetConstantBuffer(slot, scope, constant_buffer.get()); }
 
 		// Sampler
-		void SetSamplers(const uint32_t start_slot, const void* samplers, uint32_t sampler_count);
-		void SetSampler(const uint32_t start_slot, const std::shared_ptr<RHI_Sampler>& sampler) { SetSamplers(start_slot, sampler ? sampler->GetResource() : nullptr, 1); }
+        void SetSampler(const uint32_t slot, RHI_Sampler* sampler);
+        inline void SetSampler(const uint32_t slot, const std::shared_ptr<RHI_Sampler>& sampler) { SetSampler(slot, sampler.get()); }
 
 		// Texture
-		void SetTextures(const uint32_t start_slot, const void* textures, uint32_t texture_count);
-        void SetTexture(const uint32_t start_slot, RHI_Texture* texture)                        { SetTextures(start_slot, texture ? texture->GetResource_Texture() : nullptr, 1); }
-		void SetTexture(const uint32_t start_slot, const std::shared_ptr<RHI_Texture>& texture)	{ SetTextures(start_slot, texture ? texture->GetResource_Texture() : nullptr, 1); }
-		void ClearTextures()																    { SetTextures(0, m_textures_empty.data(), static_cast<uint32_t>(m_textures_empty.size())); }
-
+        void SetTexture(const uint32_t slot, RHI_Texture* texture);
+        inline void SetTexture(const uint32_t slot, const std::shared_ptr<RHI_Texture>& texture) { SetTexture(slot, texture.get()); }
+        
 		// Render targets
 		void SetRenderTargets(const void* render_targets, uint32_t render_target_count, void* depth_stencil = nullptr);
-		void SetRenderTarget(void* render_target, void* depth_stencil = nullptr)                                { SetRenderTargets(render_target, 1, depth_stencil); }
-		void SetRenderTarget(const std::shared_ptr<RHI_Texture>& render_target, void* depth_stencil = nullptr)  { SetRenderTargets(render_target ? render_target->GetResource_RenderTarget() : nullptr, 1, depth_stencil); }
+        inline void SetRenderTarget(void* render_target, void* depth_stencil = nullptr)                                { SetRenderTargets(render_target, 1, depth_stencil); }
+        inline void SetRenderTarget(const std::shared_ptr<RHI_Texture>& render_target, void* depth_stencil = nullptr)  { SetRenderTargets(render_target ? render_target->GetResource_RenderTarget() : nullptr, 1, depth_stencil); }
 		void ClearRenderTarget(void* render_target, const Math::Vector4& color);
 		void ClearDepthStencil(void* depth_stencil, uint32_t flags, float depth, uint8_t stencil = 0);
 
+        // Misc
+        inline void ClearTextures()
+        {
+            for (uint32_t i = 0; i < 10; i++)
+            {
+                SetTexture(i, nullptr);
+            }
+        }
         RHI_PipelineState& GetPipelineState() { return m_pipeline_state; }
 		bool Submit(bool profile = true);
 
@@ -203,7 +209,6 @@ namespace Spartan
         RHI_PipelineState m_pipeline_state;
         RHI_PipelineCache* m_rhi_pipeline_cache = nullptr;
         Profiler* m_profiler = nullptr;
-		std::vector<void*> m_textures_empty = std::vector<void*>(10);
 
 		// API
 		RHI_Command& GetCmd();

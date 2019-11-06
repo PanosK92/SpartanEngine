@@ -191,6 +191,8 @@ namespace Spartan
 
     struct RHI_Descriptor
     {
+        RHI_Descriptor() = default;
+
         RHI_Descriptor(const RHI_Descriptor& descriptor)
         {
             type    = descriptor.type;
@@ -208,6 +210,8 @@ namespace Spartan
         RHI_Descriptor_Type type    = Descriptor_Unknown;
         uint32_t slot               = 0;
         uint32_t stage              = 0;
-        void* resource              = nullptr;
+        uint32_t id                 = 0;
+        uint64_t size               = 0;
+        const void* resource        = nullptr;
     };
 }

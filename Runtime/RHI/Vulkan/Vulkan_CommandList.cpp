@@ -324,7 +324,7 @@ namespace Spartan
         // part of pipeline
 	}
 
-    void RHI_CommandList::SetConstantBuffers(const uint32_t start_slot, uint8_t scope, const void* constant_buffers, uint32_t sampler_count)
+    void RHI_CommandList::SetConstantBuffer(const uint32_t slot, uint8_t scope, RHI_ConstantBuffer* constant_buffer)
     {
         if (m_cmd_state != RHI_Cmd_List_Recording)
         {
@@ -333,7 +333,7 @@ namespace Spartan
         }
 
         // Set texture
-        if (void* descriptor_set = m_pipeline->UpdateDescriptorSet(Descriptor_ConstantBuffer, start_slot, constant_buffers))
+        if (void* descriptor_set = m_pipeline->SetConstantBuffer(slot, constant_buffer))
         {
             // Bind descriptor set
             VkDescriptorSet descriptor_sets[1] = { static_cast<VkDescriptorSet>(descriptor_set) };
@@ -349,10 +349,10 @@ namespace Spartan
                 nullptr                                                         // pDynamicOffsets
             );
         }
-	}
+    }
 
-	void RHI_CommandList::SetSamplers(const uint32_t start_slot, const void* samplers, uint32_t sampler_count)
-	{
+    void RHI_CommandList::SetSampler(const uint32_t slot, RHI_Sampler* sampler)
+    {
         if (m_cmd_state != RHI_Cmd_List_Recording)
         {
             LOG_ERROR("Can't record command");
@@ -360,7 +360,7 @@ namespace Spartan
         }
 
         // Set texture
-        if (void* descriptor_set = m_pipeline->UpdateDescriptorSet(Descriptor_Texture, start_slot, samplers))
+        if (void* descriptor_set = m_pipeline->SetSampler(slot, sampler))
         {
             // Bind descriptor set
             VkDescriptorSet descriptor_sets[1] = { static_cast<VkDescriptorSet>(descriptor_set) };
@@ -369,17 +369,17 @@ namespace Spartan
                 CMD_BUFFER,                                                     // commandBuffer
                 VK_PIPELINE_BIND_POINT_GRAPHICS,                                // pipelineBindPoint
                 static_cast<VkPipelineLayout>(m_pipeline->GetPipelineLayout()), // layout
-                1,                                                              // firstSet
+                0,                                                              // firstSet
                 1,                                                              // descriptorSetCount
                 descriptor_sets,                                                // pDescriptorSets
                 0,                                                              // dynamicOffsetCount
                 nullptr                                                         // pDynamicOffsets
             );
         }
-	}
+    }
 
-	void RHI_CommandList::SetTextures(const uint32_t start_slot, const void* textures, uint32_t texture_count)
-	{     
+    void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture)
+    {
         if (m_cmd_state != RHI_Cmd_List_Recording)
         {
             LOG_ERROR("Can't record command");
@@ -387,23 +387,23 @@ namespace Spartan
         }
 
         // Set texture
-		if (void* descriptor_set = m_pipeline->UpdateDescriptorSet(Descriptor_Texture, start_slot, textures))
-		{
+        if (void* descriptor_set = m_pipeline->SetTexture(slot, texture))
+        {
             // Bind descriptor set
-			VkDescriptorSet descriptor_sets[1] = { static_cast<VkDescriptorSet>(descriptor_set) };
-			vkCmdBindDescriptorSets
+            VkDescriptorSet descriptor_sets[1] = { static_cast<VkDescriptorSet>(descriptor_set) };
+            vkCmdBindDescriptorSets
             (
                 CMD_BUFFER,                                                     // commandBuffer
                 VK_PIPELINE_BIND_POINT_GRAPHICS,                                // pipelineBindPoint
                 static_cast<VkPipelineLayout>(m_pipeline->GetPipelineLayout()), // layout
-                2,                                                              // firstSet
+                0,                                                              // firstSet
                 1,                                                              // descriptorSetCount
                 descriptor_sets,                                                // pDescriptorSets
                 0,                                                              // dynamicOffsetCount
                 nullptr                                                         // pDynamicOffsets
             );
-		}    
-	}
+        }
+    }
 
 	void RHI_CommandList::SetRenderTargets(const void* render_targets, uint32_t render_target_count, void* depth_stencil /*= nullptr*/)
 	{

@@ -165,7 +165,7 @@ namespace Spartan
 		if (!m_initialized)
 		{
 			// Log on-screen as the renderer is ready
-			LOG_TO_FILE(false);
+			//LOG_TO_FILE(false);
 			m_initialized = true;
 		}
 
@@ -522,16 +522,6 @@ namespace Spartan
 
 		return m_rasterizer_cull_back_solid;
 	}
-
-    void* Renderer::GetEnvironmentTexture_GpuResource()
-    {
-        if (const shared_ptr<RHI_Texture>& environment_texture = GetEnvironmentTexture())
-        {
-            return environment_texture->GetResource_Texture();
-        }
-
-        return m_tex_white->GetResource_Texture();
-    }
 
     const shared_ptr<Spartan::RHI_Texture>& Renderer::GetEnvironmentTexture()
     {

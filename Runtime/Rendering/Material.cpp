@@ -47,7 +47,6 @@ namespace Spartan
 		SetMultiplier(TextureType_Normal, 0.0f);
 		SetMultiplier(TextureType_Height, 0.0f);
 		AcquireShader();
-		UpdateResourceArray();
 	}
 
 	Material::~Material()
@@ -146,7 +145,6 @@ namespace Spartan
 
 		SetMultiplier(type, 1.0f);
 		AcquireShader();
-		UpdateResourceArray();
 	}
 
 	void Material::SetTextureSlot(const TextureType type, const std::shared_ptr<RHI_Texture2D>& texture)
@@ -273,18 +271,5 @@ namespace Spartan
 		if (type == "Mask")			return TextureType_Mask;
 
 		return TextureType_Unknown;
-	}
-
-	void Material::UpdateResourceArray()
-	{
-		// They must match the order with which the GBuffer shader defines them
-		m_resources[0] = HasTexture(TextureType_Albedo)		? m_textures[TextureType_Albedo]->GetResource_Texture()		: nullptr;
-		m_resources[1] = HasTexture(TextureType_Roughness)	? m_textures[TextureType_Roughness]->GetResource_Texture()	: nullptr;
-		m_resources[2] = HasTexture(TextureType_Metallic)	? m_textures[TextureType_Metallic]->GetResource_Texture()	: nullptr;
-		m_resources[3] = HasTexture(TextureType_Normal)		? m_textures[TextureType_Normal]->GetResource_Texture()		: nullptr;
-		m_resources[4] = HasTexture(TextureType_Height)		? m_textures[TextureType_Height]->GetResource_Texture()		: nullptr;
-		m_resources[5] = HasTexture(TextureType_Occlusion)	? m_textures[TextureType_Occlusion]->GetResource_Texture()	: nullptr;
-		m_resources[6] = HasTexture(TextureType_Emission)	? m_textures[TextureType_Emission]->GetResource_Texture()	: nullptr;
-		m_resources[7] = HasTexture(TextureType_Mask)		? m_textures[TextureType_Mask]->GetResource_Texture()		: nullptr;
 	}
 }

@@ -36,13 +36,16 @@ namespace Spartan
 		~RHI_Pipeline();
 
         void OnCommandListConsumed();
-        void* UpdateDescriptorSet(RHI_Descriptor_Type type, const uint32_t slot, const void* resource);
-
+        void* SetConstantBuffer(uint32_t slot, RHI_ConstantBuffer* constant_buffer);
+        void* SetSampler(uint32_t slot, RHI_Sampler* sampler);
+        void* SetTexture(uint32_t slot, RHI_Texture* texture);
 		auto GetPipeline()          const { return m_pipeline; }
 		auto GetPipelineLayout()    const { return m_pipeline_layout; }
 		auto GetState()             const { return m_state; }
 
 	private:
+        uint32_t GetDescriptorBlueprintHash(const std::vector<RHI_Descriptor>& descriptor_blueprint);
+        void* UpdateDescriptorSet();
 		bool CreateDescriptorPool();
 		bool CreateDescriptorSetLayout();
         void ReflectShaders();
@@ -52,12 +55,10 @@ namespace Spartan
         const uint32_t m_sampler_max            = 10;
         const uint32_t m_texture_max            = 10;
         uint32_t m_descriptor_capacity          = 20;
-        // Type > Descriptors - Acts as a blueprint and it's left untouched after being filled by ReflectShaders().
-        std::map<RHI_Descriptor_Type, std::vector<RHI_Descriptor>> m_descriptors_blueprint;
-        // Hash(type, slot, ptr/id) > Descriptor - Acts as a the API's descriptor cache.
+        // Descriptors - Acts as a blueprint and is left untouched after being filled by ReflectShaders().
+        std::vector<RHI_Descriptor> m_descriptors_blueprint;
+        // Hash(type, slot, id) > Descriptor - Acts as a the API's descriptor cache.
         std::map<uint32_t, void*> m_descriptors_cache;
-        // Type > Descriptor - Acts a a state machine, holding the last returned/created descriptors.
-        std::map<RHI_Descriptor_Type, void*> m_descriptors_current;
 
 		// API
 		void* m_pipeline					= nullptr;

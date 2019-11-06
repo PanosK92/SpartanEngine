@@ -45,9 +45,9 @@ namespace Spartan
 
 	}
 
-	void* RHI_Pipeline::UpdateDescriptorSet(RHI_Descriptor_Type type, const uint32_t slot, const void* resource)
-	{
-        return nullptr;
+    void RHI_Pipeline::UpdateDescriptorSet()
+    {
+
 	}
 }
 #endif

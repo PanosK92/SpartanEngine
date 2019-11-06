@@ -69,7 +69,6 @@ namespace Spartan
 		void SetTextureSlot(const TextureType type, const std::shared_ptr<RHI_Texture>& texture);
 		void SetTextureSlot(const TextureType type, const std::shared_ptr<RHI_Texture2D>& texture);
 		void SetTextureSlot(const TextureType type, const std::shared_ptr<RHI_TextureCube>& texture);
-		auto GetResources() const { return m_resources; }
 		bool HasTexture(const std::string& path);
         bool HasTexture(const TextureType type);
 		std::string GetTexturePathByType(TextureType type);
@@ -110,15 +109,12 @@ namespace Spartan
 		//=======================================================================================================
 
 	private:
-		void UpdateResourceArray();
-
 		RHI_Cull_Mode m_cull_mode		= Cull_Back;
 		ShadingMode m_shading_mode		= Shading_PBR;
 		Math::Vector4 m_color_albedo	= Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f);
 		Math::Vector2 m_uv_tiling		= Math::Vector2(1.0f, 1.0f);
 		Math::Vector2 m_uv_offset		= Math::Vector2(0.0f, 0.0f);
 		bool m_is_editable				= true;
-		const void* m_resources[8]		= {};
 		std::map<TextureType, std::shared_ptr<RHI_Texture>> m_textures;
 		std::map<TextureType, float> m_multipliers;
 		std::shared_ptr<ShaderVariation> m_shader;	

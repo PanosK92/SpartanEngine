@@ -233,32 +233,32 @@ namespace Spartan
         cmd.resource_ptr    = shader->GetResource();
     }
 
-    void RHI_CommandList::SetConstantBuffers(const uint32_t start_slot, uint8_t scope, const void* constant_buffers, uint32_t constant_buffer_count)
+    void RHI_CommandList::SetConstantBuffer(const uint32_t slot, uint8_t scope, RHI_ConstantBuffer* constant_buffer)
     {
         auto& cmd               = GetCmd();
         cmd.type                = RHI_Cmd_SetConstantBuffers;
-        cmd.resource_start_slot = start_slot;
+        cmd.resource_start_slot = slot;
         cmd._uint8              = scope;
-        cmd.resource_ptr        = constant_buffers;
-        cmd.resource_count      = constant_buffer_count;
+        cmd.resource_ptr        = constant_buffer ? constant_buffer->GetResource() : nullptr;
+        cmd.resource_count      = 1;
     }
 
-    void RHI_CommandList::SetSamplers(const uint32_t start_slot, const void* samplers, uint32_t sampler_count)
+    void RHI_CommandList::SetSampler(const uint32_t slot, RHI_Sampler* sampler)
     {
         auto& cmd               = GetCmd();
         cmd.type                = RHI_Cmd_SetSamplers;
-        cmd.resource_start_slot = start_slot;
-        cmd.resource_ptr        = samplers;
-        cmd.resource_count      = sampler_count;
+        cmd.resource_start_slot = slot;
+        cmd.resource_ptr        = sampler ? sampler->GetResource() : nullptr;
+        cmd.resource_count      = 1;
     }
 
-	void RHI_CommandList::SetTextures(const uint32_t start_slot, const void* textures, const uint32_t texture_count)
-	{
+    void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture)
+    {
 		auto& cmd				= GetCmd();
 		cmd.type				= RHI_Cmd_SetTextures;
-		cmd.resource_start_slot = start_slot;
-		cmd.resource_ptr        = textures;
-		cmd.resource_count      = texture_count;
+		cmd.resource_start_slot = slot;
+		cmd.resource_ptr        = texture ? texture->GetResource_Texture() : nullptr;
+		cmd.resource_count      = 1;
 	}
 
     void RHI_CommandList::SetRenderTargets(const void* render_targets, uint32_t render_target_count, void* depth_stencil /*= nullptr*/)

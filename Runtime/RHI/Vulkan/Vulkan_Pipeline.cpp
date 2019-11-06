@@ -281,19 +281,8 @@ namespace Spartan
 		m_descriptor_pool = nullptr;
 	}
 
-	void* RHI_Pipeline::UpdateDescriptorSet(RHI_Descriptor_Type type, const uint32_t slot, const void* resource)
+	void* RHI_Pipeline::UpdateDescriptorSet()
 	{
-        // Generate hash
-        static const std::hash<uint32_t> hasher;
-        uint32_t a      = static_cast<uint32_t>(hasher(static_cast<uint32_t>(type)));
-        uint32_t b      = static_cast<uint32_t>(hasher(static_cast<uint32_t>(slot)));
-        uint32_t c      = static_cast<uint32_t>(hasher(reinterpret_cast<uint32_t>(resource)));
-        uint32_t hash   = static_cast<uint32_t>(hasher(a + b + c));
-
-		// Early exit if descriptor set already exists
-        if (m_descriptors_cache.find(hash) != m_descriptors_cache.end())
-            return m_descriptors_cache[hash];
-
 		// Early exit if the descriptor cache is full
 		if (m_descriptors_cache.size() == m_descriptor_capacity)
 			return nullptr;
@@ -318,45 +307,43 @@ namespace Spartan
 
 		// Update descriptor sets
         {
-            const auto& resource_blueprints = m_descriptors_blueprint[type];
+            vector<VkDescriptorImageInfo> image_infos;
+            vector<VkDescriptorBufferInfo> buffer_infos;
+            vector<VkWriteDescriptorSet> write_descriptor_sets;
 
-            vector<VkDescriptorImageInfo> image_infos;          image_infos.reserve(resource_blueprints.size());
-            vector<VkDescriptorBufferInfo> buffer_infos;        buffer_infos.reserve(resource_blueprints.size());
-            vector<VkWriteDescriptorSet> write_descriptor_sets; write_descriptor_sets.reserve(resource_blueprints.size());
-
-            for (const RHI_Descriptor& resource_blueprint : resource_blueprints)
+            for (const RHI_Descriptor& resource_blueprint : m_descriptors_blueprint)
             {
                 // Texture or Sampler
                 image_infos.push_back
                 ({
-                    (type == Descriptor_Sampler && resource) ? static_cast<VkSampler>(const_cast<void*>(resource)) : nullptr,       // sampler
-                    (type == Descriptor_Texture && resource) ? static_cast<VkImageView>(const_cast<void*>(resource)) : nullptr,     // imageView
-                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL                                                                        // imageLayout
+                    (resource_blueprint.type == Descriptor_Sampler) ? static_cast<VkSampler>(const_cast<void*>(resource_blueprint.resource))    : nullptr,  // sampler
+                    (resource_blueprint.type == Descriptor_Texture) ? static_cast<VkImageView>(const_cast<void*>(resource_blueprint.resource))  : nullptr,  // imageView
+                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL                                                                                                // imageLayout
                 });
 
                 // Constant/Uniform buffer
                 buffer_infos.push_back
                 ({
-                    m_state->constant_buffer ? static_cast<VkBuffer>(m_state->constant_buffer->GetResource()) : nullptr,                            // buffer
-                    0,                                                                                                                              // offset
-                    (resource_blueprint.type == Descriptor_ConstantBuffer && m_state->constant_buffer) ? m_state->constant_buffer->GetSize() : 0,   // range                
+                    (resource_blueprint.type == Descriptor_ConstantBuffer) ? static_cast<VkBuffer>(const_cast<void*>(resource_blueprint.resource)) : nullptr,   // buffer
+                    0,                                                                                                                                          // offset
+                    (resource_blueprint.type == Descriptor_ConstantBuffer) ? resource_blueprint.size : 0,                                                       // range                
                 });
 
-                VkDescriptorImageInfo* image_info = &image_infos.back();
+                VkDescriptorImageInfo* image_info   = &image_infos.back();
                 VkDescriptorBufferInfo* buffer_info = &buffer_infos.back();
 
                 // Ensure that what the shader requires, has been provided
-                if (type == Descriptor_Sampler && !image_info->sampler)
+                if (resource_blueprint.type == Descriptor_Sampler && !image_info->sampler)
                 {
                     LOG_ERROR("The shader requires a sampler at binding slot %d but none has been provided", resource_blueprint.slot);
                     continue;
                 }
-                else if (type == Descriptor_Texture && !image_info->imageView)
+                else if (resource_blueprint.type == Descriptor_Texture && !image_info->imageView)
                 {
                     LOG_ERROR("The shader requires a texture at binding slot %d but none has been provided", resource_blueprint.slot);
                     continue;
                 }
-                else if (type == Descriptor_ConstantBuffer && !buffer_info->buffer)
+                else if (resource_blueprint.type == Descriptor_ConstantBuffer && !buffer_info->buffer)
                 {
                     LOG_ERROR("The shader requires a constant buffer at binding slot %d but none has been provided", resource_blueprint.slot);
                     continue;
@@ -380,11 +367,10 @@ namespace Spartan
             vkUpdateDescriptorSets(m_rhi_device->GetContextRhi()->device, static_cast<uint32_t>(write_descriptor_sets.size()), write_descriptor_sets.data(), 0, nullptr);
 		}
 
-        // Save descriptor
-        void* descriptor            = static_cast<void*>(descriptor_set);
-        m_descriptors_cache[hash]   = descriptor; // cache
-        m_descriptors_current[type] = descriptor; // last used
-
+        void* descriptor = static_cast<void*>(descriptor_set);
+        // Cache descriptor
+        m_descriptors_cache[GetDescriptorBlueprintHash(m_descriptors_blueprint)] = descriptor;
+        // Return it as well
         return descriptor;
 	}
 
@@ -443,25 +429,22 @@ namespace Spartan
 		// Layout bindings
 		vector<VkDescriptorSetLayoutBinding> layout_bindings;
 		{
-			for (const auto& it : m_descriptors_blueprint)
+			for (const RHI_Descriptor& descriptor_blueprint : m_descriptors_blueprint)
 			{
-                for (const RHI_Descriptor& resource : it.second)
-                {
-                    // Stage flags
-                    VkShaderStageFlags stage_flags = 0;
-                    stage_flags |= (resource.stage & Shader_Vertex)     ? VK_SHADER_STAGE_VERTEX_BIT    : 0;
-                    stage_flags |= (resource.stage & Shader_Pixel)      ? VK_SHADER_STAGE_FRAGMENT_BIT  : 0;
-                    stage_flags |= (resource.stage & Shader_Compute)    ? VK_SHADER_STAGE_COMPUTE_BIT   : 0;
+                // Stage flags
+                VkShaderStageFlags stage_flags = 0;
+                stage_flags |= (descriptor_blueprint.stage & Shader_Vertex)     ? VK_SHADER_STAGE_VERTEX_BIT    : 0;
+                stage_flags |= (descriptor_blueprint.stage & Shader_Pixel)      ? VK_SHADER_STAGE_FRAGMENT_BIT  : 0;
+                stage_flags |= (descriptor_blueprint.stage & Shader_Compute)    ? VK_SHADER_STAGE_COMPUTE_BIT   : 0;
 
-                    layout_bindings.push_back
-                    ({
-                        resource.slot,							// binding
-                        vulkan_descriptor_type[resource.type],	// descriptorType
-                        1,										// descriptorCount
-                        stage_flags,							// stageFlags
-                        nullptr									// pImmutableSamplers
-                    });
-                }
+                layout_bindings.push_back
+                ({
+                    descriptor_blueprint.slot,							// binding
+                    vulkan_descriptor_type[descriptor_blueprint.type],	// descriptorType
+                    1,										            // descriptorCount
+                    stage_flags,							            // stageFlags
+                    nullptr									            // pImmutableSamplers
+                });
 			}
 		}
 
@@ -495,7 +478,7 @@ namespace Spartan
         while (m_state->shader_vertex->GetCompilationState() == Shader_Compilation_Compiling) {}
         for (const RHI_Descriptor& descriptor : m_state->shader_vertex->GetDescriptors())
         {
-            m_descriptors_blueprint[descriptor.type].emplace_back(descriptor);
+            m_descriptors_blueprint.emplace_back(descriptor);
         }
       
         // If there is a pixel shader, merge it's resources into our map as well
@@ -506,15 +489,15 @@ namespace Spartan
             {
                 // Assume that the descriptor has been created in the vertex shader and only try to update it's shader stage
                 bool updated_existing = false;
-                for (RHI_Descriptor& descriptor_existing : m_descriptors_blueprint[descriptor.type])
+                for (RHI_Descriptor& descriptor_blueprint : m_descriptors_blueprint)
                 {
-                    bool is_same_rsource =
-                        (descriptor_existing.type == descriptor.type) &&
-                        (descriptor_existing.slot == descriptor.slot);
+                    bool is_same_resource =
+                        (descriptor_blueprint.type == descriptor.type) &&
+                        (descriptor_blueprint.slot == descriptor.slot);
 
-                    if ((descriptor_existing.type == descriptor.type) && (descriptor_existing.slot == descriptor.slot))
+                    if ((descriptor_blueprint.type == descriptor.type) && (descriptor_blueprint.slot == descriptor.slot))
                     {
-                        descriptor_existing.stage |= descriptor.stage;
+                        descriptor_blueprint.stage |= descriptor.stage;
                         updated_existing = true;
                         break;
                     }
@@ -523,7 +506,7 @@ namespace Spartan
                 // If no updating took place, this descriptor is new, so add it
                 if (!updated_existing)
                 {
-                    m_descriptors_blueprint[descriptor.type].emplace_back(descriptor);
+                    m_descriptors_blueprint.emplace_back(descriptor);
                 }
             }
         }
