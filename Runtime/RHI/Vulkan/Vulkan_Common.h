@@ -26,12 +26,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifdef API_GRAPHICS_VULKAN
 //================================
 
-//= INCLUDES =====================
+//= INCLUDES =================
 #include <optional>
 #include <set>
 #include "../../Logging/Log.h"
 #include "../RHI_Device.h"
-//================================
+//============================
 
 namespace Spartan::Vulkan_Common
 {

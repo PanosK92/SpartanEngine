@@ -49,10 +49,8 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    void Renderer::Pass_Setup()
+    void Renderer::SetGlobalSamplersAndConstantBuffers()
     {
-        m_cmd_list->Begin("Pass_Setup");
-
         // Set the buffers we will be using thought the frame
         m_cmd_list->SetConstantBuffer(0, Buffer_VertexShader | Buffer_PixelShader, m_buffer_frame_gpu);
         m_cmd_list->SetConstantBuffer(1, Buffer_VertexShader | Buffer_PixelShader, m_buffer_uber_gpu);
@@ -65,9 +63,6 @@ namespace Spartan
         m_cmd_list->SetSampler(3, m_sampler_bilinear_wrap);
         m_cmd_list->SetSampler(4, m_sampler_trilinear_clamp);
         m_cmd_list->SetSampler(5, m_sampler_anisotropic_wrap);
-
-        m_cmd_list->End();
-        m_cmd_list->Submit();
     }
 
     void Renderer::Pass_Main()

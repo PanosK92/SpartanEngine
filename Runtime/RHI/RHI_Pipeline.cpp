@@ -19,10 +19,11 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ============
+//= INCLUDES ==================
 #include "RHI_Pipeline.h"
 #include "RHI_Texture.h"
-//=======================
+#include "RHI_Implementation.h"
+//=============================
 
 //= NAMESPACES =====
 using namespace std;
@@ -30,117 +31,65 @@ using namespace std;
 
 namespace Spartan
 {
-    void* RHI_Pipeline::SetConstantBuffer(uint32_t slot, RHI_ConstantBuffer* constant_buffer)
+    void RHI_Pipeline::SetConstantBuffer(uint32_t slot, RHI_ConstantBuffer* constant_buffer)
     {
-        for (RHI_Descriptor& descriptor : m_descriptors_blueprint)
+        for (RHI_Descriptor& descriptor : m_descriptor_blueprint)
         {
-            bool is_dirty =
-                (descriptor.slot    == slot)                &&
-                (descriptor.type    == Descriptor_Sampler)  &&
-                (descriptor.id      != constant_buffer->GetId());
-
-            if (is_dirty)
+            if (descriptor.type == Descriptor_ConstantBuffer && descriptor.slot == slot + m_rhi_device->GetContextRhi()->shader_shift_buffer)
             {
-                // Update with new data
                 descriptor.id       = constant_buffer->GetId();
                 descriptor.resource = constant_buffer->GetResource();
                 descriptor.size     = constant_buffer->GetSize();
-
-                // Get the hash now
-                uint32_t hash = GetDescriptorBlueprintHash(m_descriptors_blueprint);
-
-                // If we already have a descriptor set cached for this hash, return that
-                if (m_descriptors_cache.find(hash) != m_descriptors_cache.end())
-                {
-                    m_descriptors_cache[hash];
-                }
-                // Otherwise generate a new one and return that
-                else
-                {
-                    return UpdateDescriptorSet();
-                }
+                break;
             }
         }
-
-        return nullptr;
     }
 
-    void* RHI_Pipeline::SetSampler(uint32_t slot, RHI_Sampler* sampler)
+    void RHI_Pipeline::SetSampler(uint32_t slot, RHI_Sampler* sampler)
     {
-        for (RHI_Descriptor& descriptor : m_descriptors_blueprint)
+        for (RHI_Descriptor& descriptor : m_descriptor_blueprint)
         {
-
-            bool is_dirty =
-                (descriptor.slot    == slot)                &&
-                (descriptor.type    == Descriptor_Sampler)  &&
-                (descriptor.id      != sampler->GetId());
-
-            if (is_dirty)
+            if (descriptor.type == Descriptor_Sampler && descriptor.slot == slot + m_rhi_device->GetContextRhi()->shader_shift_sampler)
             {
-                // Update with new data
                 descriptor.id       = sampler->GetId();
                 descriptor.resource = sampler->GetResource();
-
-                // Get the hash now
-                uint32_t hash = GetDescriptorBlueprintHash(m_descriptors_blueprint);
-
-                // If we already have a descriptor set cached for this hash, return that
-                if (m_descriptors_cache.find(hash) != m_descriptors_cache.end())
-                {
-                    m_descriptors_cache[hash];
-                }
-                // Otherwise generate a new one and return that
-                else
-                {
-                    return UpdateDescriptorSet();
-                }
+                break;
             }
         }
-
-        return nullptr;
     }
 
-    void* RHI_Pipeline::SetTexture(uint32_t slot, RHI_Texture* texture)
+    void RHI_Pipeline::SetTexture(uint32_t slot, RHI_Texture* texture)
     {
-        for (RHI_Descriptor& descriptor : m_descriptors_blueprint)
+        for (RHI_Descriptor& descriptor : m_descriptor_blueprint)
         {
-
-            bool is_dirty =
-                (descriptor.slot    == slot)               &&
-                (descriptor.type    == Descriptor_Texture) &&
-                (descriptor.id      != texture->GetId());
-
-            if (is_dirty)
+            if (descriptor.type == Descriptor_Texture && descriptor.slot == slot + m_rhi_device->GetContextRhi()->shader_shift_texture)
             {
-                // Update with new data
                 descriptor.id       = texture->GetId();
                 descriptor.resource = texture->GetResource_Texture();
-
-                // Get the hash now
-                uint32_t hash = GetDescriptorBlueprintHash(m_descriptors_blueprint);
-
-                // If we already have a descriptor set cached for this hash, return that
-                if (m_descriptors_cache.find(hash) != m_descriptors_cache.end())
-                {
-                    m_descriptors_cache[hash];
-                }
-                // Otherwise generate a new one and return that
-                else
-                {
-                    return UpdateDescriptorSet();
-                }
+                break;
             }
         }
+    }
 
-        return nullptr;
+    void* RHI_Pipeline::GetDescriptorPendingUpdate()
+    {
+        // Get the hash of the current descriptor blueprint
+        uint32_t hash = GetDescriptorBlueprintHash(m_descriptor_blueprint);
+
+        // If the has is already present, then we don't need to update
+        if (m_descriptors_cache.find(hash) != m_descriptors_cache.end())
+            return nullptr;
+
+        // Otherwise generate a new one and return that
+        return UpdateDescriptorSet();
     }
 
     uint32_t RHI_Pipeline::GetDescriptorBlueprintHash(const std::vector<RHI_Descriptor>& descriptor_blueprint)
     {
         // Create a hash for each descriptor
         std::vector<uint32_t> hashes;
-        hashes.reserve(m_descriptors_blueprint.size());
-        for (const RHI_Descriptor& descriptor : m_descriptors_blueprint)
+        hashes.reserve(m_descriptor_blueprint.size());
+        for (const RHI_Descriptor& descriptor : m_descriptor_blueprint)
         {
             uint32_t a = static_cast<uint32_t>(descriptor.type);
             uint32_t b = descriptor.slot;
