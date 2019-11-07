@@ -37,6 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_InputLayout.h"
 #include "../RHI_VertexBuffer.h"
 #include "../../Logging/Log.h"
+#include "../../Rendering/Renderer.h"
 //=================================
 
 //= NAMESPACES =====
@@ -45,9 +46,10 @@ using namespace std;
 
 namespace Spartan
 {
-	RHI_Pipeline::RHI_Pipeline(const shared_ptr<RHI_Device>& rhi_device, const RHI_PipelineState& pipeline_state)
+	RHI_Pipeline::RHI_Pipeline(Renderer* renderer, const RHI_PipelineState& pipeline_state)
 	{
-		m_rhi_device	= rhi_device;
+        m_renderer      = renderer;
+		m_rhi_device	= renderer->GetRhiDevice();
 		m_state			= &pipeline_state;
 
 		// State deduction
@@ -308,43 +310,44 @@ namespace Spartan
 		// Update descriptor sets
         {
             vector<VkDescriptorImageInfo> image_infos;
-            vector<VkDescriptorBufferInfo> buffer_infos;
-            vector<VkWriteDescriptorSet> write_descriptor_sets;
+            image_infos.reserve(m_descriptor_blueprint.size());
 
-            for (const RHI_Descriptor& resource_blueprint : m_descriptor_blueprint)
+            vector<VkDescriptorBufferInfo> buffer_infos;
+            buffer_infos.reserve(m_descriptor_blueprint.size());
+
+            vector<VkWriteDescriptorSet> write_descriptor_sets;
+            write_descriptor_sets.reserve(m_descriptor_blueprint.size());
+
+            for (RHI_Descriptor& resource_blueprint : m_descriptor_blueprint)
             {
-                // Ensure that what the shader requires, has been provided
-                if (resource_blueprint.type == Descriptor_Sampler && !resource_blueprint.resource)
+                // Null texture are allowed, and they are replaced with a black texture here
+                if (resource_blueprint.type == Descriptor_Texture && !resource_blueprint.resource)
                 {
-                    continue;
+                    resource_blueprint.resource = m_renderer->GetBlackTexture()->GetResource_Texture();
                 }
-                else if (resource_blueprint.type == Descriptor_Texture && !resource_blueprint.resource)
+
+                // Ignore rest of resources
+                if (!resource_blueprint.resource)
                 {
-                    continue;
-                }
-                else if (resource_blueprint.type == Descriptor_ConstantBuffer && !resource_blueprint.resource)
-                {
+                    LOG_WARNING("Null resource detected");
                     continue;
                 }
 
                 // Texture or Sampler
                 image_infos.push_back
                 ({
-                    (resource_blueprint.type == Descriptor_Sampler) ? static_cast<VkSampler>(const_cast<void*>(resource_blueprint.resource))    : nullptr,  // sampler
-                    (resource_blueprint.type == Descriptor_Texture) ? static_cast<VkImageView>(const_cast<void*>(resource_blueprint.resource))  : nullptr,  // imageView
-                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL                                                                                                // imageLayout
+                    (resource_blueprint.type == Descriptor_Sampler) ? static_cast<VkSampler>(resource_blueprint.resource)    : nullptr,  // sampler
+                    (resource_blueprint.type == Descriptor_Texture) ? static_cast<VkImageView>(resource_blueprint.resource)  : nullptr,  // imageView
+                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL                                                                             // imageLayout
                 });
 
                 // Constant/Uniform buffer
                 buffer_infos.push_back
                 ({
-                    (resource_blueprint.type == Descriptor_ConstantBuffer) ? static_cast<VkBuffer>(const_cast<void*>(resource_blueprint.resource)) : nullptr,   // buffer
-                    0,                                                                                                                                          // offset
-                    (resource_blueprint.type == Descriptor_ConstantBuffer) ? resource_blueprint.size : 0,                                                       // range                
+                    (resource_blueprint.type == Descriptor_ConstantBuffer) ? static_cast<VkBuffer>(resource_blueprint.resource) : nullptr,   // buffer
+                    0,                                                                                                                       // offset
+                    (resource_blueprint.type == Descriptor_ConstantBuffer) ? resource_blueprint.size : 0,                                    // range                
                 });
-
-                VkDescriptorImageInfo* image_info   = (resource_blueprint.type == Descriptor_Sampler || (resource_blueprint.type == Descriptor_Texture)) ? &image_infos.back() : nullptr;
-                VkDescriptorBufferInfo* buffer_info = (resource_blueprint.type == Descriptor_ConstantBuffer) ? &buffer_infos.back() : nullptr;
 
                 write_descriptor_sets.push_back
                 ({
@@ -355,10 +358,10 @@ namespace Spartan
                     0,									                // dstArrayElement
                     1,									                // descriptorCount
                     vulkan_descriptor_type[resource_blueprint.type],	// descriptorType
-                    image_info,                                         // pImageInfo 
-                    buffer_info,                                        // pBufferInfo
+                    &image_infos.back(),                                // pImageInfo 
+                    &buffer_infos.back(),                               // pBufferInfo
                     nullptr									            // pTexelBufferView
-                    });
+                });
             }
 
             vkUpdateDescriptorSets(m_rhi_device->GetContextRhi()->device, static_cast<uint32_t>(write_descriptor_sets.size()), write_descriptor_sets.data(), 0, nullptr);

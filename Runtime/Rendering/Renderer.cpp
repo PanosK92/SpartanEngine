@@ -140,7 +140,7 @@ namespace Spartan
         }
 
         // Create pipeline cache
-        m_pipeline_cache = make_shared<RHI_PipelineCache>(m_rhi_device);
+        m_pipeline_cache = make_shared<RHI_PipelineCache>(this);
 
         // Create command list
         m_cmd_list = make_shared<RHI_CommandList>(m_rhi_device, m_pipeline_cache.get(), m_profiler);
@@ -165,7 +165,7 @@ namespace Spartan
 		if (!m_initialized)
 		{
 			// Log on-screen as the renderer is ready
-			//LOG_TO_FILE(false);
+			LOG_TO_FILE(false);
 			m_initialized = true;
 		}
 

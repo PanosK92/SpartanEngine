@@ -212,6 +212,6 @@ namespace Spartan
         uint32_t stage              = 0;
         uint32_t id                 = 0;
         uint64_t size               = 0;
-        const void* resource        = nullptr;
+        void* resource              = nullptr;
     };
 }
