@@ -32,7 +32,7 @@ namespace Spartan
 	{
 	public:
 		RHI_Pipeline() = default;
-		RHI_Pipeline(Renderer* renderer, const RHI_PipelineState& pipeline_state);
+		RHI_Pipeline(const std::shared_ptr<RHI_Device>& rhi_device, const RHI_PipelineState& pipeline_state);
 		~RHI_Pipeline();
 
         void OnCommandListConsumed();
@@ -46,7 +46,7 @@ namespace Spartan
 
 	private:
         uint32_t GetDescriptorBlueprintHash(const std::vector<RHI_Descriptor>& descriptor_blueprint);
-        void* UpdateDescriptorSet();
+        void* CreateDescriptorSet(uint32_t hash);
 		bool CreateDescriptorPool();
 		bool CreateDescriptorSetLayout();
         void ReflectShaders();
@@ -62,7 +62,6 @@ namespace Spartan
         std::map<uint32_t, void*> m_descriptors_cache;
 
         // Dependencies
-        Renderer* m_renderer = nullptr;
         std::shared_ptr<RHI_Device> m_rhi_device;
         const RHI_PipelineState* m_state = nullptr;
 
