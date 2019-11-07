@@ -32,7 +32,7 @@ namespace Spartan
 	{
 	public:
 		RHI_Pipeline() = default;
-		RHI_Pipeline(const std::shared_ptr<RHI_Device>& rhi_device, const RHI_PipelineState& pipeline_state);
+		RHI_Pipeline(Renderer* renderer, const RHI_PipelineState& pipeline_state);
 		~RHI_Pipeline();
 
         void OnCommandListConsumed();
@@ -61,12 +61,15 @@ namespace Spartan
         // Hash(type, slot, id) > Descriptor - Acts as a the API's descriptor cache.
         std::map<uint32_t, void*> m_descriptors_cache;
 
+        // Dependencies
+        Renderer* m_renderer = nullptr;
+        std::shared_ptr<RHI_Device> m_rhi_device;
+        const RHI_PipelineState* m_state = nullptr;
+
 		// API
 		void* m_pipeline					= nullptr;
 		void* m_pipeline_layout				= nullptr;
 		void* m_descriptor_pool				= nullptr;
 		void* m_descriptor_set_layout		= nullptr;
-        const RHI_PipelineState* m_state    = nullptr;
-        std::shared_ptr<RHI_Device> m_rhi_device;
     };
 }

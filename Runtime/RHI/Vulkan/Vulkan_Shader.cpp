@@ -355,20 +355,26 @@ namespace Spartan
 			file_directory = FileSystem::GetDirectoryFromFilePath(shader);
 		}
 
+        // Get resource shifts
+        wstring shift_buffer    = to_wstring(m_rhi_device->GetContextRhi()->shader_shift_buffer);
+        wstring shift_texture   = to_wstring(m_rhi_device->GetContextRhi()->shader_shift_texture);
+        wstring shift_sampler   = to_wstring(m_rhi_device->GetContextRhi()->shader_shift_sampler);
+        wstring shift_rw_buffer = to_wstring(m_rhi_device->GetContextRhi()->shader_shift_rw_buffer);
+
         vector<LPCWSTR> arguments =
         {
-            L"-spirv",                          // Generate SPIR-V code
-            L"-fspv-reflect",                   // Emit additional SPIR-V instructions to aid reflection
-            L"-fspv-target-env=vulkan1.1",      // Specify the target environment: vulkan1.0 (default) or vulkan1.1
-            L"-fvk-b-shift", L"100", L"all",    // Specify Vulkan binding number shift for b-type (buffer) register
-            L"-fvk-t-shift", L"200", L"all",    // Specify Vulkan binding number shift for t-type (texture) register
-            L"-fvk-s-shift", L"300", L"all",    // Specify Vulkan binding number shift for s-type (sampler) register
-            L"-fvk-u-shift", L"400", L"all",    // Specify Vulkan binding number shift for u-type (uniform) register
-            L"-fvk-use-dx-layout",              // Use DirectX memory layout for Vulkan resources
-            L"-flegacy-macro-expansion",        // Expand the operands before performing token-pasting operation (fxc behavior)
+            L"-spirv",                                          // Generate SPIR-V code
+            L"-fspv-reflect",                                   // Emit additional SPIR-V instructions to aid reflection
+            L"-fspv-target-env=vulkan1.1",                      // Specify the target environment: vulkan1.0 (default) or vulkan1.1
+            L"-fvk-b-shift", shift_buffer.c_str(), L"all",      // Specify Vulkan binding number shift for b-type (buffer) register
+            L"-fvk-t-shift", shift_texture.c_str(), L"all",     // Specify Vulkan binding number shift for t-type (texture) register
+            L"-fvk-s-shift", shift_sampler.c_str(), L"all",     // Specify Vulkan binding number shift for s-type (sampler) register
+            L"-fvk-u-shift", shift_rw_buffer.c_str(), L"all",   // Specify Vulkan binding number shift for u-type (read/write buffer) register
+            L"-fvk-use-dx-layout",                              // Use DirectX memory layout for Vulkan resources
+            L"-flegacy-macro-expansion",                        // Expand the operands before performing token-pasting operation (fxc behavior)
             #ifdef DEBUG
-            L"-Od",                             // Disable optimizations
-			L"-Zi"                              // Enable debug information
+            L"-Od",                                             // Disable optimizations
+			L"-Zi"                                              // Enable debug information
 			#endif
 		};
 

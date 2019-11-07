@@ -1,6 +1,6 @@
 #include "Common.hlsl"
 
-Texture2D texture0;
+Texture2D texture0 : register (t0);
 
 struct PS_INPUT
 {

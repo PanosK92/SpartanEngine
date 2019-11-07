@@ -167,10 +167,14 @@ namespace Spartan
 
 		vkCmdEndRenderPass(CMD_BUFFER);
 
-		if (!Vulkan_Common::check_result(vkEndCommandBuffer(CMD_BUFFER)))
-			return;
+        if (Vulkan_Common::check_result(vkEndCommandBuffer(CMD_BUFFER)))
+        {
+            m_cmd_state = RHI_Cmd_List_Ended;
+        }
 
-        m_cmd_state = RHI_Cmd_List_Ended;
+        //#ifdef DEBUG
+        //m_profiler->TimeBlockEnd();
+        //#endif
 	}
 
 	void RHI_CommandList::Draw(const uint32_t vertex_count)

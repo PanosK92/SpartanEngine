@@ -34,9 +34,10 @@ using namespace std;
 
 namespace Spartan
 {
-	RHI_Pipeline::RHI_Pipeline(const shared_ptr<RHI_Device>& rhi_device, const RHI_PipelineState& pipeline_state)
+	RHI_Pipeline::RHI_Pipeline(Renderer* renderer, const RHI_PipelineState& pipeline_state)
 	{
-		m_rhi_device	= rhi_device;
+        m_renderer      = renderer;
+		m_rhi_device	= renderer->GetRhiDevice();
 		m_state			= &pipeline_state;
 	}
 

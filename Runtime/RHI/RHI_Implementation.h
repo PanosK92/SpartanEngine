@@ -272,10 +272,10 @@ namespace Spartan
 		QueueFamilyIndices indices;
         VkSurfaceFormatKHR surface_format;
 
-        uint32_t shader_shift_buffer    = 100;
-        uint32_t shader_shift_texture   = 200;
-        uint32_t shader_shift_sampler   = 300;
-        uint32_t shader_shift_uniform   = 400;
+        uint32_t shader_shift_buffer    = 1000;
+        uint32_t shader_shift_texture   = 2000;
+        uint32_t shader_shift_sampler   = 3000;
+        uint32_t shader_shift_rw_buffer = 4000;
 		
 		std::vector<const char*> extensions_device = { "VK_KHR_swapchain" };
 		#ifdef DEBUG
