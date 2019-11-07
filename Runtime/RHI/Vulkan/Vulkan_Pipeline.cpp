@@ -37,7 +37,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_InputLayout.h"
 #include "../RHI_VertexBuffer.h"
 #include "../../Logging/Log.h"
-#include "../../Rendering/Renderer.h"
 //=================================
 
 //= NAMESPACES =====
@@ -46,10 +45,9 @@ using namespace std;
 
 namespace Spartan
 {
-	RHI_Pipeline::RHI_Pipeline(Renderer* renderer, const RHI_PipelineState& pipeline_state)
+	RHI_Pipeline::RHI_Pipeline(const std::shared_ptr<RHI_Device>& rhi_device, const RHI_PipelineState& pipeline_state)
 	{
-        m_renderer      = renderer;
-		m_rhi_device	= renderer->GetRhiDevice();
+		m_rhi_device	= rhi_device;
 		m_state			= &pipeline_state;
 
 		// State deduction
@@ -283,7 +281,7 @@ namespace Spartan
 		m_descriptor_pool = nullptr;
 	}
 
-	void* RHI_Pipeline::UpdateDescriptorSet()
+	void* RHI_Pipeline::CreateDescriptorSet(uint32_t hash)
 	{
 		// Early exit if the descriptor cache is full
 		if (m_descriptors_cache.size() == m_descriptor_capacity)
@@ -320,13 +318,7 @@ namespace Spartan
 
             for (RHI_Descriptor& resource_blueprint : m_descriptor_blueprint)
             {
-                // Null texture are allowed, and they are replaced with a black texture here
-                if (resource_blueprint.type == Descriptor_Texture && !resource_blueprint.resource)
-                {
-                    resource_blueprint.resource = m_renderer->GetBlackTexture()->GetResource_Texture();
-                }
-
-                // Ignore rest of resources
+                // Ignore null resources
                 if (!resource_blueprint.resource)
                 {
                     LOG_WARNING("Null resource detected");
@@ -366,11 +358,12 @@ namespace Spartan
 
             vkUpdateDescriptorSets(m_rhi_device->GetContextRhi()->device, static_cast<uint32_t>(write_descriptor_sets.size()), write_descriptor_sets.data(), 0, nullptr);
 		}
-
+        
         void* descriptor = static_cast<void*>(descriptor_set);
+
         // Cache descriptor
-        m_descriptors_cache[GetDescriptorBlueprintHash(m_descriptor_blueprint)] = descriptor;
-        // Return it as well
+        m_descriptors_cache[hash] = descriptor;
+
         return descriptor;
 	}
 

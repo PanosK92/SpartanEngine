@@ -36,6 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_ConstantBuffer.h"
 #include "../../Profiling/Profiler.h"
 #include "../../Logging/Log.h"
+#include "../../Rendering/Renderer.h"
 //===================================
 
 //= NAMESPACES ================
@@ -51,10 +52,11 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-	RHI_CommandList::RHI_CommandList(const shared_ptr<RHI_Device>& rhi_device, RHI_PipelineCache* rhi_pipeline_cache, Profiler* profiler)
+	RHI_CommandList::RHI_CommandList(Renderer* renderer, Profiler* profiler)
 	{
-		m_rhi_device	        = rhi_device;
-        m_rhi_pipeline_cache    = rhi_pipeline_cache;
+        m_renderer              = renderer;
+		m_rhi_device	        = renderer->GetRhiDevice();
+        m_rhi_pipeline_cache    = renderer->GetPipelineCache().get();
 		m_profiler		        = profiler;
 
 		Vulkan_Common::commands::cmd_pool(m_rhi_device, m_cmd_pool);
@@ -63,11 +65,11 @@ namespace Spartan
 		{
 			VkCommandBuffer cmd_buffer;
 			auto cmd_pool = static_cast<VkCommandPool>(m_cmd_pool);
-			Vulkan_Common::commands::cmd_buffer(rhi_device, cmd_buffer, cmd_pool, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+			Vulkan_Common::commands::cmd_buffer(m_rhi_device, cmd_buffer, cmd_pool, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 			m_cmd_buffers.push_back(static_cast<void*>(cmd_buffer));
 
-			m_semaphores_cmd_list_consumed.emplace_back(Vulkan_Common::semaphore::create(rhi_device));
-			m_fences_in_flight.emplace_back(Vulkan_Common::fence::create(rhi_device));
+			m_semaphores_cmd_list_consumed.emplace_back(Vulkan_Common::semaphore::create(m_rhi_device));
+			m_fences_in_flight.emplace_back(Vulkan_Common::fence::create(m_rhi_device));
 		}
 	}
 
@@ -395,6 +397,12 @@ namespace Spartan
         {
             LOG_ERROR("Can't record command");
             return;
+        }
+
+        // Null textures are allowed, and they are replaced with a black texture here
+        if (!texture)
+        {
+            texture = m_renderer->GetBlackTexture();
         }
 
         // Set

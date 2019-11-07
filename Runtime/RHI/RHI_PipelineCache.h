@@ -120,9 +120,9 @@ namespace Spartan
 	class RHI_PipelineCache
 	{
 	public:
-		RHI_PipelineCache(Renderer* renderer)
+		RHI_PipelineCache(const std::shared_ptr<RHI_Device>& rhi_device)
 		{
-            m_renderer = renderer;
+            m_rhi_device = rhi_device;
 		}
 
 		auto& GetPipeline(RHI_PipelineState& pipeline_state)
@@ -136,7 +136,7 @@ namespace Spartan
 			if (m_cache.find(pipeline_state) == m_cache.end())
 			{
 				m_cache[pipeline_state]; // Create key first so we can pass a reference to each value
-				m_cache[pipeline_state] = std::make_shared<RHI_Pipeline>(m_renderer, m_cache.find(pipeline_state)->first);
+				m_cache[pipeline_state] = std::make_shared<RHI_Pipeline>(m_rhi_device, m_cache.find(pipeline_state)->first);
 			}
 
 			return m_cache[pipeline_state];
@@ -144,6 +144,6 @@ namespace Spartan
 
 	private:
 		std::unordered_map<RHI_PipelineState, std::shared_ptr<RHI_Pipeline>> m_cache;
-        Renderer* m_renderer;
+        std::shared_ptr<RHI_Device> m_rhi_device;
 	};
 }

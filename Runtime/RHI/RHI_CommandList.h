@@ -119,7 +119,7 @@ namespace Spartan
 	class SPARTAN_CLASS RHI_CommandList
 	{
 	public:
-		RHI_CommandList(const std::shared_ptr<RHI_Device>& rhi_device, RHI_PipelineCache* rhi_pipeline_cache, Profiler* profiler);
+		RHI_CommandList(Renderer* renderer, Profiler* profiler);
 		~RHI_CommandList();
 
 		// Markers
@@ -219,6 +219,7 @@ namespace Spartan
         RHI_Cmd_List_State m_cmd_state  = RHI_Cmd_List_Idle;
 
         // Dependencies
+        Renderer* m_renderer = nullptr;
         std::shared_ptr<RHI_Device> m_rhi_device;
         RHI_PipelineState m_pipeline_state;
         RHI_PipelineCache* m_rhi_pipeline_cache = nullptr;

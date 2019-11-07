@@ -140,10 +140,10 @@ namespace Spartan
         }
 
         // Create pipeline cache
-        m_pipeline_cache = make_shared<RHI_PipelineCache>(this);
+        m_pipeline_cache = make_shared<RHI_PipelineCache>(m_rhi_device);
 
         // Create command list
-        m_cmd_list = make_shared<RHI_CommandList>(m_rhi_device, m_pipeline_cache.get(), m_profiler);
+        m_cmd_list = make_shared<RHI_CommandList>(this, m_profiler);
 
 		// Editor specific
 		m_gizmo_grid		= make_unique<Grid>(m_rhi_device);

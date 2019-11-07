@@ -19,11 +19,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==================
+//= INCLUDES =====================
 #include "RHI_Pipeline.h"
 #include "RHI_Texture.h"
 #include "RHI_Implementation.h"
-//=============================
+#include "..\Rendering\Renderer.h"
+//================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -78,34 +79,23 @@ namespace Spartan
 
         // If the has is already present, then we don't need to update
         if (m_descriptors_cache.find(hash) != m_descriptors_cache.end())
-            return nullptr;
+            return m_descriptors_cache[hash]; // why bind at every draw ? must fix
 
         // Otherwise generate a new one and return that
-        return UpdateDescriptorSet();
+        return CreateDescriptorSet(hash);
     }
 
     uint32_t RHI_Pipeline::GetDescriptorBlueprintHash(const std::vector<RHI_Descriptor>& descriptor_blueprint)
     {
-        // Create a hash for each descriptor
-        std::vector<uint32_t> hashes;
-        hashes.reserve(m_descriptor_blueprint.size());
+        std::hash<uint32_t> hasher;
+        uint32_t hash = 0;
         for (const RHI_Descriptor& descriptor : m_descriptor_blueprint)
         {
-            uint32_t a = static_cast<uint32_t>(descriptor.type);
-            uint32_t b = descriptor.slot;
-            uint32_t c = descriptor.id;
-
-            // Szudzik's function - where a, b >= 0
-            hashes.emplace_back(a >= b ? a * a + a + b : a + b * b);
+            hash = hash * 31 + static_cast<uint32_t>(hasher(static_cast<uint32_t>(descriptor.type)));
+            hash = hash * 31 + static_cast<uint32_t>(hasher(descriptor.slot));
+            hash = hash * 31 + static_cast<uint32_t>(hasher(descriptor.id));
         }
 
-        // Create a hash from the hashes
-        uint32_t uber_hash = 0;
-        for (uint32_t hash : hashes)
-        {
-            uber_hash ^= hash + 0x9e3779b9 + (uber_hash << 6) + (uber_hash >> 2);
-        }
-
-        return uber_hash;
+        return hash;
     }
 }
