@@ -311,8 +311,22 @@ namespace Spartan
             vector<VkDescriptorBufferInfo> buffer_infos;
             vector<VkWriteDescriptorSet> write_descriptor_sets;
 
-            for (const RHI_Descriptor& resource_blueprint : m_descriptors_blueprint)
+            for (const RHI_Descriptor& resource_blueprint : m_descriptor_blueprint)
             {
+                // Ensure that what the shader requires, has been provided
+                if (resource_blueprint.type == Descriptor_Sampler && !resource_blueprint.resource)
+                {
+                    continue;
+                }
+                else if (resource_blueprint.type == Descriptor_Texture && !resource_blueprint.resource)
+                {
+                    continue;
+                }
+                else if (resource_blueprint.type == Descriptor_ConstantBuffer && !resource_blueprint.resource)
+                {
+                    continue;
+                }
+
                 // Texture or Sampler
                 image_infos.push_back
                 ({
@@ -329,25 +343,8 @@ namespace Spartan
                     (resource_blueprint.type == Descriptor_ConstantBuffer) ? resource_blueprint.size : 0,                                                       // range                
                 });
 
-                VkDescriptorImageInfo* image_info   = &image_infos.back();
-                VkDescriptorBufferInfo* buffer_info = &buffer_infos.back();
-
-                // Ensure that what the shader requires, has been provided
-                if (resource_blueprint.type == Descriptor_Sampler && !image_info->sampler)
-                {
-                    LOG_ERROR("The shader requires a sampler at binding slot %d but none has been provided", resource_blueprint.slot);
-                    continue;
-                }
-                else if (resource_blueprint.type == Descriptor_Texture && !image_info->imageView)
-                {
-                    LOG_ERROR("The shader requires a texture at binding slot %d but none has been provided", resource_blueprint.slot);
-                    continue;
-                }
-                else if (resource_blueprint.type == Descriptor_ConstantBuffer && !buffer_info->buffer)
-                {
-                    LOG_ERROR("The shader requires a constant buffer at binding slot %d but none has been provided", resource_blueprint.slot);
-                    continue;
-                }
+                VkDescriptorImageInfo* image_info   = (resource_blueprint.type == Descriptor_Sampler || (resource_blueprint.type == Descriptor_Texture)) ? &image_infos.back() : nullptr;
+                VkDescriptorBufferInfo* buffer_info = (resource_blueprint.type == Descriptor_ConstantBuffer) ? &buffer_infos.back() : nullptr;
 
                 write_descriptor_sets.push_back
                 ({
@@ -369,7 +366,7 @@ namespace Spartan
 
         void* descriptor = static_cast<void*>(descriptor_set);
         // Cache descriptor
-        m_descriptors_cache[GetDescriptorBlueprintHash(m_descriptors_blueprint)] = descriptor;
+        m_descriptors_cache[GetDescriptorBlueprintHash(m_descriptor_blueprint)] = descriptor;
         // Return it as well
         return descriptor;
 	}
@@ -429,7 +426,7 @@ namespace Spartan
 		// Layout bindings
 		vector<VkDescriptorSetLayoutBinding> layout_bindings;
 		{
-			for (const RHI_Descriptor& descriptor_blueprint : m_descriptors_blueprint)
+			for (const RHI_Descriptor& descriptor_blueprint : m_descriptor_blueprint)
 			{
                 // Stage flags
                 VkShaderStageFlags stage_flags = 0;
@@ -466,7 +463,7 @@ namespace Spartan
 
     void RHI_Pipeline::ReflectShaders()
     {
-        m_descriptors_blueprint.clear();
+        m_descriptor_blueprint.clear();
 
         if (!m_state->shader_vertex)
         {
@@ -478,7 +475,7 @@ namespace Spartan
         while (m_state->shader_vertex->GetCompilationState() == Shader_Compilation_Compiling) {}
         for (const RHI_Descriptor& descriptor : m_state->shader_vertex->GetDescriptors())
         {
-            m_descriptors_blueprint.emplace_back(descriptor);
+            m_descriptor_blueprint.emplace_back(descriptor);
         }
       
         // If there is a pixel shader, merge it's resources into our map as well
@@ -489,7 +486,7 @@ namespace Spartan
             {
                 // Assume that the descriptor has been created in the vertex shader and only try to update it's shader stage
                 bool updated_existing = false;
-                for (RHI_Descriptor& descriptor_blueprint : m_descriptors_blueprint)
+                for (RHI_Descriptor& descriptor_blueprint : m_descriptor_blueprint)
                 {
                     bool is_same_resource =
                         (descriptor_blueprint.type == descriptor.type) &&
@@ -506,7 +503,7 @@ namespace Spartan
                 // If no updating took place, this descriptor is new, so add it
                 if (!updated_existing)
                 {
-                    m_descriptors_blueprint.emplace_back(descriptor);
+                    m_descriptor_blueprint.emplace_back(descriptor);
                 }
             }
         }

@@ -256,8 +256,8 @@ namespace Spartan
         void SetShadowResolution(uint32_t resolution);
 
         // Options
-        auto GetOptions()                                   { return m_options; }
-        void SetOptions(uint64_t flags)                     { m_options = flags; }
+        auto GetOptions()                                       { return m_options; }
+        void SetOptions(uint64_t flags)                         { m_options = flags; }
         bool GetOptionValue(Renderer_Option flag)                { return m_options & flag; }
         void SetOptionValue(Renderer_Option flag, bool enable)   { enable ? (m_options |= flag) : (m_options &= ~flag); }
         
@@ -278,7 +278,12 @@ namespace Spartan
         auto& GetShaders()              const { return m_shaders; }
         const auto GetMaxResolution()   const { return m_max_resolution; }
         const auto IsRendering()        const { return m_is_rendering; }
+
+        // Globals
         void SetShaderTransform(const Math::Matrix& transform) { m_buffer_uber_cpu.transform = transform; UpdateUberBuffer(); }
+        void SetGlobalSamplersAndConstantBuffers();
+        RHI_Texture* GetBlackTexture() { return m_tex_black.get(); }
+
 	private:
         // Resource creation
         void CreateConstantBuffers();
@@ -292,7 +297,6 @@ namespace Spartan
 		void CreateRenderTextures();
 
 		// Passes
-        void Pass_Setup();
 		void Pass_Main();
 		void Pass_LightDepth();
         void Pass_DepthPrePass();

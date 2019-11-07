@@ -204,12 +204,6 @@ namespace Spartan
 	private:
 		void Clear();
 
-		// Dependencies
-		std::shared_ptr<RHI_Device> m_rhi_device;
-        RHI_PipelineState m_pipeline_state;
-        RHI_PipelineCache* m_rhi_pipeline_cache = nullptr;
-        Profiler* m_profiler = nullptr;
-
 		// API
 		RHI_Command& GetCmd();
 		RHI_Command m_empty_cmd; // for GetCmd()
@@ -223,5 +217,11 @@ namespace Spartan
 		void* m_cmd_pool			    = nullptr;
 		uint32_t m_buffer_index		    = 0;
         RHI_Cmd_List_State m_cmd_state  = RHI_Cmd_List_Idle;
+
+        // Dependencies
+        std::shared_ptr<RHI_Device> m_rhi_device;
+        RHI_PipelineState m_pipeline_state;
+        RHI_PipelineCache* m_rhi_pipeline_cache = nullptr;
+        Profiler* m_profiler = nullptr;
 	};
 }

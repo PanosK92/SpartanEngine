@@ -109,9 +109,10 @@ namespace Spartan
             return;
         }
 
-        // Temp shit
-        if (!m_pipeline_state.shader_vertex)
+        bool has_pipeline = !m_pipeline_state.shader_vertex;
+        if (has_pipeline)
             return;
+
         m_pipeline = m_rhi_pipeline_cache->GetPipeline(m_pipeline_state).get();
 	
 		// Acquire next swap chain image and update buffer index
@@ -180,6 +181,24 @@ namespace Spartan
             return;
         }
 
+        // Update descriptor set (if needed)
+        if (void* descriptor = m_pipeline->GetDescriptorPendingUpdate())
+        {
+            // Bind descriptor set
+            VkDescriptorSet descriptor_sets[1] = { static_cast<VkDescriptorSet>(descriptor) };
+            vkCmdBindDescriptorSets
+            (
+                CMD_BUFFER,                                                     // commandBuffer
+                VK_PIPELINE_BIND_POINT_GRAPHICS,                                // pipelineBindPoint
+                static_cast<VkPipelineLayout>(m_pipeline->GetPipelineLayout()), // layout
+                0,                                                              // firstSet
+                1,                                                              // descriptorSetCount
+                descriptor_sets,                                                // pDescriptorSets
+                0,                                                              // dynamicOffsetCount
+                nullptr                                                         // pDynamicOffsets
+            );
+        }
+
 		vkCmdDraw(
             CMD_BUFFER,     // commandBuffer
             vertex_count,   // vertexCount
@@ -195,6 +214,24 @@ namespace Spartan
         {
             LOG_ERROR("Can't record command");
             return;
+        }
+
+        // Update descriptor set (if needed)
+        if (void* descriptor = m_pipeline->GetDescriptorPendingUpdate())
+        {
+            // Bind descriptor set
+            VkDescriptorSet descriptor_sets[1] = { static_cast<VkDescriptorSet>(descriptor) };
+            vkCmdBindDescriptorSets
+            (
+                CMD_BUFFER,                                                     // commandBuffer
+                VK_PIPELINE_BIND_POINT_GRAPHICS,                                // pipelineBindPoint
+                static_cast<VkPipelineLayout>(m_pipeline->GetPipelineLayout()), // layout
+                0,                                                              // firstSet
+                1,                                                              // descriptorSetCount
+                descriptor_sets,                                                // pDescriptorSets
+                0,                                                              // dynamicOffsetCount
+                nullptr                                                         // pDynamicOffsets
+            );
         }
 
 		vkCmdDrawIndexed(
@@ -332,23 +369,8 @@ namespace Spartan
             return;
         }
 
-        // Set texture
-        if (void* descriptor_set = m_pipeline->SetConstantBuffer(slot, constant_buffer))
-        {
-            // Bind descriptor set
-            VkDescriptorSet descriptor_sets[1] = { static_cast<VkDescriptorSet>(descriptor_set) };
-            vkCmdBindDescriptorSets
-            (
-                CMD_BUFFER,                                                     // commandBuffer
-                VK_PIPELINE_BIND_POINT_GRAPHICS,                                // pipelineBindPoint
-                static_cast<VkPipelineLayout>(m_pipeline->GetPipelineLayout()), // layout
-                0,                                                              // firstSet
-                1,                                                              // descriptorSetCount
-                descriptor_sets,                                                // pDescriptorSets
-                0,                                                              // dynamicOffsetCount
-                nullptr                                                         // pDynamicOffsets
-            );
-        }
+        // Set
+        m_pipeline->SetConstantBuffer(slot, constant_buffer);
     }
 
     void RHI_CommandList::SetSampler(const uint32_t slot, RHI_Sampler* sampler)
@@ -359,23 +381,8 @@ namespace Spartan
             return;
         }
 
-        // Set texture
-        if (void* descriptor_set = m_pipeline->SetSampler(slot, sampler))
-        {
-            // Bind descriptor set
-            VkDescriptorSet descriptor_sets[1] = { static_cast<VkDescriptorSet>(descriptor_set) };
-            vkCmdBindDescriptorSets
-            (
-                CMD_BUFFER,                                                     // commandBuffer
-                VK_PIPELINE_BIND_POINT_GRAPHICS,                                // pipelineBindPoint
-                static_cast<VkPipelineLayout>(m_pipeline->GetPipelineLayout()), // layout
-                0,                                                              // firstSet
-                1,                                                              // descriptorSetCount
-                descriptor_sets,                                                // pDescriptorSets
-                0,                                                              // dynamicOffsetCount
-                nullptr                                                         // pDynamicOffsets
-            );
-        }
+        // Set
+        m_pipeline->SetSampler(slot, sampler);
     }
 
     void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture)
@@ -386,23 +393,8 @@ namespace Spartan
             return;
         }
 
-        // Set texture
-        if (void* descriptor_set = m_pipeline->SetTexture(slot, texture))
-        {
-            // Bind descriptor set
-            VkDescriptorSet descriptor_sets[1] = { static_cast<VkDescriptorSet>(descriptor_set) };
-            vkCmdBindDescriptorSets
-            (
-                CMD_BUFFER,                                                     // commandBuffer
-                VK_PIPELINE_BIND_POINT_GRAPHICS,                                // pipelineBindPoint
-                static_cast<VkPipelineLayout>(m_pipeline->GetPipelineLayout()), // layout
-                0,                                                              // firstSet
-                1,                                                              // descriptorSetCount
-                descriptor_sets,                                                // pDescriptorSets
-                0,                                                              // dynamicOffsetCount
-                nullptr                                                         // pDynamicOffsets
-            );
-        }
+        // Set
+        m_pipeline->SetTexture(slot, texture);
     }
 
 	void RHI_CommandList::SetRenderTargets(const void* render_targets, uint32_t render_target_count, void* depth_stencil /*= nullptr*/)

@@ -236,6 +236,7 @@ namespace ImGui::RHI
 
 			// Start witting command list
 			g_cmd_list->Begin("Pass_ImGui");
+            g_renderer->SetGlobalSamplersAndConstantBuffers();
             if (clear) g_cmd_list->ClearRenderTarget(pipeline_state.swap_chain->GetRenderTargetView(), Vector4(0, 0, 0, 1));
             g_cmd_list->SetBufferVertex(g_vertex_buffer);
 			g_cmd_list->SetBufferIndex(g_index_buffer);

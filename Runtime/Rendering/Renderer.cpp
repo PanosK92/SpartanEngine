@@ -169,8 +169,6 @@ namespace Spartan
 			m_initialized = true;
 		}
 
-        Pass_Setup();
-
 		return true;
 	}
 
