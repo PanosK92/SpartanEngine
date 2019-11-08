@@ -32,46 +32,6 @@ using namespace std;
 
 namespace Spartan
 {
-    void RHI_Pipeline::SetConstantBuffer(uint32_t slot, RHI_ConstantBuffer* constant_buffer)
-    {
-        for (RHI_Descriptor& descriptor : m_descriptor_blueprint)
-        {
-            if (descriptor.type == Descriptor_ConstantBuffer && descriptor.slot == slot + m_rhi_device->GetContextRhi()->shader_shift_buffer)
-            {
-                descriptor.id       = constant_buffer->GetId();
-                descriptor.resource = constant_buffer->GetResource();
-                descriptor.size     = constant_buffer->GetSize();
-                break;
-            }
-        }
-    }
-
-    void RHI_Pipeline::SetSampler(uint32_t slot, RHI_Sampler* sampler)
-    {
-        for (RHI_Descriptor& descriptor : m_descriptor_blueprint)
-        {
-            if (descriptor.type == Descriptor_Sampler && descriptor.slot == slot + m_rhi_device->GetContextRhi()->shader_shift_sampler)
-            {
-                descriptor.id       = sampler->GetId();
-                descriptor.resource = sampler->GetResource();
-                break;
-            }
-        }
-    }
-
-    void RHI_Pipeline::SetTexture(uint32_t slot, RHI_Texture* texture)
-    {
-        for (RHI_Descriptor& descriptor : m_descriptor_blueprint)
-        {
-            if (descriptor.type == Descriptor_Texture && descriptor.slot == slot + m_rhi_device->GetContextRhi()->shader_shift_texture)
-            {
-                descriptor.id       = texture->GetId();
-                descriptor.resource = texture->GetResource_Texture();
-                break;
-            }
-        }
-    }
-
     void* RHI_Pipeline::GetDescriptorPendingUpdate()
     {
         // Get the hash of the current descriptor blueprint
