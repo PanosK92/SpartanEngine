@@ -40,6 +40,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_DepthStencilState.h"
 #include "../RHI_RasterizerState.h"
 #include "../RHI_InputLayout.h"
+#include "../../Rendering/Renderer.h"
 //===================================
 
 //= NAMESPACES ===============
@@ -49,13 +50,13 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-	RHI_CommandList::RHI_CommandList(const shared_ptr<RHI_Device>& rhi_device, RHI_PipelineCache* rhi_pipeline_cache, Profiler* profiler)
+	RHI_CommandList::RHI_CommandList(Renderer* renderer, Profiler* profiler)
 	{
 		m_commands.reserve(m_initial_capacity);
 		m_commands.resize(m_initial_capacity);
 
-		m_rhi_device	        = rhi_device;
-        m_rhi_pipeline_cache    = rhi_pipeline_cache;
+		m_rhi_device	        = renderer->GetRhiDevice();
+        m_rhi_pipeline_cache    = renderer->GetPipelineCache().get();
 		m_profiler		        = profiler;
 	}
 

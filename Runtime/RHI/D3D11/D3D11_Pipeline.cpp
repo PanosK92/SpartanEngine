@@ -34,10 +34,9 @@ using namespace std;
 
 namespace Spartan
 {
-	RHI_Pipeline::RHI_Pipeline(Renderer* renderer, const RHI_PipelineState& pipeline_state)
+	RHI_Pipeline::RHI_Pipeline(const shared_ptr<RHI_Device>& device, const RHI_PipelineState& pipeline_state)
 	{
-        m_renderer      = renderer;
-		m_rhi_device	= renderer->GetRhiDevice();
+		m_rhi_device	= device;
 		m_state			= &pipeline_state;
 	}
 
@@ -46,9 +45,24 @@ namespace Spartan
 
 	}
 
-    void RHI_Pipeline::UpdateDescriptorSet()
+    void RHI_Pipeline::SetConstantBuffer(uint32_t slot, RHI_ConstantBuffer* constant_buffer)
     {
 
+    }
+
+    void RHI_Pipeline::SetSampler(uint32_t slot, RHI_Sampler* sampler)
+    {
+
+    }
+
+    void RHI_Pipeline::SetTexture(uint32_t slot, RHI_Texture* texture)
+    {
+
+    }
+
+    void* RHI_Pipeline::CreateDescriptorSet(uint32_t hash)
+    {
+        return nullptr;
 	}
 }
 #endif
