@@ -59,17 +59,22 @@ namespace Spartan
         m_rhi_pipeline_cache    = renderer->GetPipelineCache().get();
 		m_profiler		        = profiler;
 
-		Vulkan_Common::commands::cmd_pool(m_rhi_device, m_cmd_pool);
+        auto cmd_pool_vk = static_cast<VkCommandPool>(m_cmd_pool);
+		Vulkan_Common::command::create_pool(m_rhi_device, cmd_pool_vk);
+        m_cmd_pool = static_cast<void*>(cmd_pool_vk);
 
-		for (uint32_t i = 0; i < m_rhi_device->GetContextRhi()->max_frames_in_flight; i++)
+        uint32_t frames_in_flight = m_rhi_device->GetContextRhi()->max_frames_in_flight;
+        m_cmd_buffers.reserve(frames_in_flight);
+        m_cmd_buffers.resize(frames_in_flight);
+		for (uint32_t i = 0; i < frames_in_flight; i++)
 		{
-			VkCommandBuffer cmd_buffer;
-			auto cmd_pool = static_cast<VkCommandPool>(m_cmd_pool);
-			Vulkan_Common::commands::cmd_buffer(m_rhi_device, cmd_buffer, cmd_pool, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-			m_cmd_buffers.push_back(static_cast<void*>(cmd_buffer));
-
-			m_semaphores_cmd_list_consumed.emplace_back(Vulkan_Common::semaphore::create(m_rhi_device));
-			m_fences_in_flight.emplace_back(Vulkan_Common::fence::create(m_rhi_device));
+            auto cmd_buffer_vk = static_cast<VkCommandBuffer>(m_cmd_buffers[i]);
+            if (Vulkan_Common::command::create_buffer(m_rhi_device, cmd_pool_vk, cmd_buffer_vk, VK_COMMAND_BUFFER_LEVEL_PRIMARY))
+            {
+                m_cmd_buffers[i] = static_cast<void*>(cmd_buffer_vk);
+                m_semaphores_cmd_list_consumed.emplace_back(Vulkan_Common::semaphore::create(m_rhi_device));
+                m_fences_in_flight.emplace_back(Vulkan_Common::fence::create(m_rhi_device));
+            }
 		}
 	}
 

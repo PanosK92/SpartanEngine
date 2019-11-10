@@ -58,10 +58,7 @@ namespace Spartan
 		VkBuffer buffer					= nullptr;
 		VkDeviceMemory buffer_memory	= nullptr;
 		if (!Vulkan_Common::buffer::create(m_rhi_device, buffer, buffer_memory, m_size, VK_BUFFER_USAGE_INDEX_BUFFER_BIT))
-		{
-			LOG_ERROR("Failed to create buffer");
 			return false;
-		}
 
 		// Save
 		m_buffer		= static_cast<void*>(buffer);
