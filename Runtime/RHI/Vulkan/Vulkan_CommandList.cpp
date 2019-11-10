@@ -100,7 +100,7 @@ namespace Spartan
         if (m_cmd_state == RHI_Cmd_List_Idle_Sync_Cpu_To_Gpu)
         {
             Vulkan_Common::fence::wait_reset(m_rhi_device, FENCE_CMD_BUFFER_CONSUMED_VOID_PTR);
-            Vulkan_Common::assert_result(vkResetCommandPool(m_rhi_device->GetContextRhi()->device, static_cast<VkCommandPool>(m_cmd_pool), 0));
+            Vulkan_Common::error::assert_result(vkResetCommandPool(m_rhi_device->GetContextRhi()->device, static_cast<VkCommandPool>(m_cmd_pool), 0));
             m_pipeline->OnCommandListConsumed();
             m_cmd_state = RHI_Cmd_List_Idle;
         }
@@ -128,7 +128,7 @@ namespace Spartan
 		VkCommandBufferBeginInfo begin_info	    = {};
 		begin_info.sType						= VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		begin_info.flags						= VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-		if (!Vulkan_Common::check_result(vkBeginCommandBuffer(CMD_BUFFER, &begin_info)))
+		if (!Vulkan_Common::error::check_result(vkBeginCommandBuffer(CMD_BUFFER, &begin_info)))
 			return;
 
 		// Begin render pass
@@ -157,6 +157,11 @@ namespace Spartan
 
         // At this point, it's safe to allow for command recording
         m_cmd_state = RHI_Cmd_List_Recording;
+
+        // Debug marker - Begin
+        #ifdef DEBUG
+        Vulkan_Common::debug_marker::begin(CMD_BUFFER, pass_name.c_str(), Vector4::One);
+        #endif
 	}
 
 	void RHI_CommandList::End()
@@ -169,14 +174,15 @@ namespace Spartan
 
 		vkCmdEndRenderPass(CMD_BUFFER);
 
-        if (Vulkan_Common::check_result(vkEndCommandBuffer(CMD_BUFFER)))
+        if (Vulkan_Common::error::check_result(vkEndCommandBuffer(CMD_BUFFER)))
         {
             m_cmd_state = RHI_Cmd_List_Ended;
         }
 
-        //#ifdef DEBUG
-        //m_profiler->TimeBlockEnd();
-        //#endif
+        // Debug marker - End
+        #ifdef DEBUG
+        Vulkan_Common::debug_marker::end(CMD_BUFFER);
+        #endif
 	}
 
 	void RHI_CommandList::Draw(const uint32_t vertex_count)
@@ -450,7 +456,7 @@ namespace Spartan
 		submit_info.signalSemaphoreCount	= 1;
 		submit_info.pSignalSemaphores		= signal_semaphores;
 
-        if (!Vulkan_Common::check_result(vkQueueSubmit(m_rhi_device->GetContextRhi()->queue_graphics, 1, &submit_info, FENCE_CMD_BUFFER_CONSUMED)))
+        if (!Vulkan_Common::error::check_result(vkQueueSubmit(m_rhi_device->GetContextRhi()->queue_graphics, 1, &submit_info, FENCE_CMD_BUFFER_CONSUMED)))
             return false;
 		
 		// Wait for fence on the next Begin(), if we force it now, perfomance will not be as good

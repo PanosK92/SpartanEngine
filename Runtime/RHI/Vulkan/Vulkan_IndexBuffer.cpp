@@ -78,13 +78,20 @@ namespace Spartan
 			return nullptr;
 		}
 
-		void* ptr	= nullptr;
-		auto result = vkMapMemory(m_rhi_device->GetContextRhi()->device, static_cast<VkDeviceMemory>(m_buffer_memory), 0, m_size, 0, reinterpret_cast<void**>(&ptr));
-		if (result != VK_SUCCESS)
-		{
-			LOG_ERROR("Failed to map memory, %s.", Vulkan_Common::to_string(result));
-			return nullptr;
-		}
+		void* ptr = nullptr;
+
+        Vulkan_Common::error::check_result
+        (
+            vkMapMemory
+            (
+                m_rhi_device->GetContextRhi()->device,
+                static_cast<VkDeviceMemory>(m_buffer_memory),
+                0,
+                m_size,
+                0,
+                reinterpret_cast<void**>(&ptr)
+            )
+        );
 
 		return ptr;
 	}
