@@ -46,27 +46,20 @@ namespace Spartan
 	public:
         RHI_PipelineState() { Clear(); }
 
-		void ComputeHash()
-		{
-			char buffer[1000];
-			sprintf_s
-			(
-				buffer,
-				"%d-%d-%d-%d-%d-%d-%d-%d-%d",
-                input_layout        ? input_layout->GetId()         : 0,
-                rasterizer_state    ? rasterizer_state->GetId()     : 0,
-                blend_state         ? blend_state->GetId()          : 0,
-                shader_vertex       ? shader_vertex->GetId()        : 0,
-                shader_pixel        ? shader_pixel->GetId()         : 0,
-                depth_stencil_state ? depth_stencil_state->GetId()  : 0,
-                vertex_buffer       ? vertex_buffer->GetId()        : 0,
-                swap_chain          ? swap_chain->GetId()           : 0,
-				static_cast<uint32_t>(primitive_topology)
-			);
+        void ComputeHash()
+        {
+            static std::hash<uint32_t> hasher;
 
-			const std::hash<std::string> hasher;
-			m_hash = static_cast<uint32_t>(hasher(buffer));
-		}
+            m_hash = m_hash * 31 + static_cast<uint32_t>(hasher(input_layout->GetId()));
+            m_hash = m_hash * 31 + static_cast<uint32_t>(hasher(rasterizer_state->GetId()));
+            m_hash = m_hash * 31 + static_cast<uint32_t>(hasher(blend_state->GetId()));
+            m_hash = m_hash * 31 + static_cast<uint32_t>(hasher(shader_vertex->GetId()));
+            m_hash = m_hash * 31 + static_cast<uint32_t>(hasher(shader_pixel->GetId()));
+            m_hash = m_hash * 31 + static_cast<uint32_t>(hasher(depth_stencil_state->GetId()));
+            m_hash = m_hash * 31 + static_cast<uint32_t>(hasher(vertex_buffer->GetId()));
+            m_hash = m_hash * 31 + static_cast<uint32_t>(hasher(swap_chain->GetId()));
+            m_hash = m_hash * 31 + static_cast<uint32_t>(hasher(static_cast<uint32_t>(primitive_topology)));
+        }
 
         auto GetHash() const { return m_hash; }
         bool operator==(const RHI_PipelineState& rhs) const { return GetHash() == rhs.GetHash(); }

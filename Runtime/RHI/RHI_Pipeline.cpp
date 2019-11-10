@@ -39,7 +39,7 @@ namespace Spartan
 
         // If the has is already present, then we don't need to update
         if (m_descriptors_cache.find(hash) != m_descriptors_cache.end())
-            return m_descriptors_cache[hash]; // why bind at every draw ? must fix
+            return m_descriptors_cache[hash];
 
         // Otherwise generate a new one and return that
         return CreateDescriptorSet(hash);

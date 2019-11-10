@@ -141,6 +141,25 @@ namespace Spartan::Vulkan_Common
             return error::check_result(vkAllocateCommandBuffers(rhi_device->GetContextRhi()->device, &allocate_info, &command_buffer));
 		}
 
+        inline bool flush(VkCommandBuffer& command_buffer, VkQueue& queue)
+        {
+            if (!command_buffer)
+                return false;
+
+            if (!error::check_result(vkEndCommandBuffer(command_buffer)))
+                return false;
+
+            VkSubmitInfo submitInfo         = {};
+            submitInfo.sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+            submitInfo.commandBufferCount   = 1;
+            submitInfo.pCommandBuffers      = &command_buffer;
+
+            if (!error::check_result(vkQueueSubmit(queue, 1, &submitInfo, nullptr)))
+                return false;
+
+            return error::check_result(vkQueueWaitIdle(queue));
+        }
+
         inline bool begin(const std::shared_ptr<RHI_Device>& rhi_device, VkCommandPool& command_pool, VkCommandBuffer& command_buffer)
         {
             // Create command pool
@@ -160,20 +179,7 @@ namespace Spartan::Vulkan_Common
 
         inline bool end(const std::shared_ptr<RHI_Device>& rhi_device, VkCommandPool& command_pool, VkCommandBuffer& command_buffer)
         {
-            if (!error::check_result(vkEndCommandBuffer(command_buffer)))
-                return false;
-
-            VkSubmitInfo submit_info = {};
-            submit_info.sType               = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-            submit_info.commandBufferCount  = 1;
-            submit_info.pCommandBuffers     = &command_buffer;
-
-            auto queue = rhi_device->GetContextRhi()->queue_copy;
-
-            if (!error::check_result(vkQueueSubmit(queue, 1, &submit_info, nullptr)))
-                return false;
-
-            if (!error::check_result(vkQueueWaitIdle(queue)))
+            if (!flush(command_buffer, rhi_device->GetContextRhi()->queue_graphics))
                 return false;
 
             vkFreeCommandBuffers(rhi_device->GetContextRhi()->device, command_pool, 1, &command_buffer);
