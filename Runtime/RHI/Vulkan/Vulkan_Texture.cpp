@@ -82,42 +82,28 @@ namespace Spartan
 		VkCommandBufferBeginInfo begin_info	= {};
 		begin_info.sType					= VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		begin_info.flags					= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-		if (vkBeginCommandBuffer(command_buffer, &begin_info) != VK_SUCCESS)
-		{
-			LOG_ERROR("Failed to begin command buffer.");
+
+		if (!Vulkan_Common::error::check_result(vkBeginCommandBuffer(command_buffer, &begin_info)))
 			return nullptr;
-		}
 
 		return command_buffer;
 	}
 
 	inline bool EndSingleTimeCommands(const shared_ptr<RHI_Device>& rhi_device, VkCommandPool& command_pool, VkQueue& queue, VkCommandBuffer& command_buffer)
 	{
-		auto result = vkEndCommandBuffer(command_buffer);
-		if (result != VK_SUCCESS)
-		{
-			LOG_ERROR(Vulkan_Common::to_string(result));
+		if (!Vulkan_Common::error::check_result(vkEndCommandBuffer(command_buffer)))
 			return false;
-		}
 
 		VkSubmitInfo submit_info		= {};
 		submit_info.sType				= VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		submit_info.commandBufferCount	= 1;
 		submit_info.pCommandBuffers		= &command_buffer;
 
-		result = vkQueueSubmit(queue, 1, &submit_info, nullptr);
-		if (result != VK_SUCCESS)
-		{
-			LOG_ERROR(Vulkan_Common::to_string(result));
+		if (!Vulkan_Common::error::check_result(vkQueueSubmit(queue, 1, &submit_info, nullptr)))
 			return false;
-		}
 
-		result = vkQueueWaitIdle(queue);
-		if (result != VK_SUCCESS)
-		{
-			LOG_ERROR(Vulkan_Common::to_string(result));
+		if (!Vulkan_Common::error::check_result(vkQueueWaitIdle(queue)))
 			return false;
-		}
 
 		vkFreeCommandBuffers(rhi_device->GetContextRhi()->device, command_pool, 1, &command_buffer);
 
@@ -402,7 +388,7 @@ namespace Spartan
 			);
 		if (result != VK_SUCCESS)
 		{
-			LOG_ERROR("Failed to create image, %s", Vulkan_Common::to_string(result));
+			LOG_ERROR("Failed to create image, %s", Vulkan_Common::error::to_string(result));
 			return false;
 		}
 
@@ -429,7 +415,7 @@ namespace Spartan
             result = CreateImageView(m_rhi_device, image, reinterpret_cast<VkImageView*>(&m_resource_render_target), image_format, m_bind_flags);
             if (result != VK_SUCCESS)
             {
-                LOG_ERROR("Failed to create render target view, %s", Vulkan_Common::to_string(result));
+                LOG_ERROR("Failed to create render target view, %s", Vulkan_Common::error::to_string(result));
                 return false;
             }
         }
@@ -441,7 +427,7 @@ namespace Spartan
             result = CreateImageView(m_rhi_device, image, reinterpret_cast<VkImageView*>(&depth_stencil), image_format, m_bind_flags);
             if (result != VK_SUCCESS)
             {
-                LOG_ERROR("Failed to create depth stencil view, %s", Vulkan_Common::to_string(result));
+                LOG_ERROR("Failed to create depth stencil view, %s", Vulkan_Common::error::to_string(result));
                 return false;
             }
         }
@@ -452,7 +438,7 @@ namespace Spartan
             result = CreateImageView(m_rhi_device, image, reinterpret_cast<VkImageView*>(&m_resource_texture), image_format, m_bind_flags);
             if (result != VK_SUCCESS)
             {
-                LOG_ERROR("Failed to create sampled image view, %s", Vulkan_Common::to_string(result));
+                LOG_ERROR("Failed to create sampled image view, %s", Vulkan_Common::error::to_string(result));
                 return false;
             }
         }

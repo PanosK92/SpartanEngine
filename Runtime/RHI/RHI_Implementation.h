@@ -138,8 +138,8 @@ namespace Spartan
 #define VK_USE_PLATFORM_WIN32_KHR
 #pragma warning(push, 0) // Hide warnings which belong to Vulkan
 #include <vulkan/vulkan.h>
-#include <vulkan/vulkan.hpp>
 #pragma warning(pop)
+#include <vector>
 #include <optional>
 
 static const VkPolygonMode vulkan_polygon_mode[] =
@@ -272,23 +272,25 @@ namespace Spartan
 		QueueFamilyIndices indices;
         VkSurfaceFormatKHR surface_format;
 
-        uint32_t shader_shift_buffer    = 1000;
-        uint32_t shader_shift_texture   = 2000;
-        uint32_t shader_shift_sampler   = 3000;
-        uint32_t shader_shift_rw_buffer = 4000;
+        static const uint32_t max_frames_in_flight      = 2;
+        static const uint32_t shader_shift_buffer       = 100;
+        static const uint32_t shader_shift_texture      = 200;
+        static const uint32_t shader_shift_sampler      = 300;
+        static const uint32_t shader_shift_rw_buffer    = 400;
 		
-		std::vector<const char*> extensions_device = { "VK_KHR_swapchain" };
 		#ifdef DEBUG
-            std::vector<const char*> validation_layers = { "VK_LAYER_KHRONOS_validation" };
-			std::vector<const char*> extensions_instance = { "VK_KHR_surface", "VK_KHR_win32_surface", "VK_EXT_debug_utils" };
-			bool validation_enabled = true;
+        std::vector<const char*> extensions_device      = { VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_EXT_DEBUG_MARKER_EXTENSION_NAME };
+        std::vector<const char*> validation_layers      = { "VK_LAYER_KHRONOS_validation" };
+		std::vector<const char*> extensions_instance    = { VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WIN32_SURFACE_EXTENSION_NAME, VK_EXT_DEBUG_REPORT_EXTENSION_NAME, VK_EXT_DEBUG_UTILS_EXTENSION_NAME };
+		bool validation_enabled     = true;
+        bool debug_markers_enabled  = true;
 		#else
-            std::vector<const char*> validation_layers;
-			std::vector<const char*> extensions_instance = { "VK_KHR_surface", "VK_KHR_win32_surface" };
-			bool validation_enabled = false;
+        std::vector<const char*> extensions_device      = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+        std::vector<const char*> validation_layers      = { };
+        std::vector<const char*> extensions_instance    = { VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WIN32_SURFACE_EXTENSION_NAME };
+        bool validation_enabled     = false;
+        bool debug_markers_enabled  = false;
 		#endif
-
-		static const uint32_t max_frames_in_flight = 2;
 	};
 }
 #include "Vulkan/Vulkan_Common.h"

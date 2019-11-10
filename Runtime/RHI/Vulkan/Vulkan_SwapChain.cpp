@@ -144,21 +144,14 @@ namespace Spartan
                 create_info.hwnd                        = static_cast<HWND>(window_handle);
                 create_info.hinstance                   = GetModuleHandle(nullptr);
 
-                auto result = vkCreateWin32SurfaceKHR(rhi_context->instance, &create_info, nullptr, &surface);
-                if (result != VK_SUCCESS)
-                {
-                    LOG_ERROR("Failed to create Win32 surface, %s.", Vulkan_Common::to_string(result));
+                if (!Vulkan_Common::error::check_result(vkCreateWin32SurfaceKHR(rhi_context->instance, &create_info, nullptr, &surface)))
                     return false;
-                }
 
                 VkBool32 present_support = false;
-                result = vkGetPhysicalDeviceSurfaceSupportKHR(device_physical, rhi_context->indices.graphics_family.value(), surface, &present_support);
-                if (result != VK_SUCCESS)
-                {
-                    LOG_ERROR("Failed to check for surface support by the device, %s.", Vulkan_Common::to_string(result));
+                if (!Vulkan_Common::error::check_result(vkGetPhysicalDeviceSurfaceSupportKHR(device_physical, rhi_context->indices.graphics_family.value(), surface, &present_support)))
                     return false;
-                }
-                else if (!present_support)
+
+                if (!present_support)
                 {
                     LOG_ERROR("The device does not support this kind of surface.");
                     return false;
@@ -216,12 +209,8 @@ namespace Spartan
                 create_info.clipped         = VK_TRUE;
                 create_info.oldSwapchain    = nullptr;
 
-                auto result = vkCreateSwapchainKHR(device, &create_info, nullptr, &swap_chain);
-                if (result != VK_SUCCESS)
-                {
-                    LOG_ERROR("Failed to create swap chain, %s.", Vulkan_Common::to_string(result));
+                if (!Vulkan_Common::error::check_result(vkCreateSwapchainKHR(device, &create_info, nullptr, &swap_chain)))
                     return false;
-                }
             }
 
             // Images
@@ -287,12 +276,8 @@ namespace Spartan
                 framebufferInfo.height                  = extent.height;
                 framebufferInfo.layers                  = 1;
 
-                auto result = vkCreateFramebuffer(device, &framebufferInfo, nullptr, &frame_buffers[i]);
-                if (result != VK_SUCCESS)
-                {
-                    LOG_ERROR("Failed to create frame buffer(s), %s.", Vulkan_Common::to_string(result));
+                if (!Vulkan_Common::error::check_result(vkCreateFramebuffer(device, &framebufferInfo, nullptr, &frame_buffers[i])))
                     return false;
-                }
             }
 
             surface_out         = static_cast<void*>(surface);
@@ -458,24 +443,24 @@ namespace Spartan
 		const auto index = !image_acquired ? 0 : (m_image_index + 1) % m_buffer_count;
 
 		// Acquire next image
-		const auto result = vkAcquireNextImageKHR
-		(
-			m_rhi_device->GetContextRhi()->device,
-			static_cast<VkSwapchainKHR>(m_swap_chain_view),
-			0xFFFFFFFFFFFFFFFF,
-			static_cast<VkSemaphore>(m_semaphores_image_acquired[index]),
-			nullptr,
-			&m_image_index
-		);
+        if (Vulkan_Common::error::check_result
+        (
+            vkAcquireNextImageKHR
+            (
+                m_rhi_device->GetContextRhi()->device,
+                static_cast<VkSwapchainKHR>(m_swap_chain_view),
+                0xFFFFFFFFFFFFFFFF,
+                static_cast<VkSemaphore>(m_semaphores_image_acquired[index]),
+                nullptr,
+                &m_image_index
+            )
+        ))
+        {
+            image_acquired = true;
+            return true;
+        }
 
-		if (result != VK_SUCCESS)
-		{
-			LOG_ERROR("Failed to acquire next image, %s.", Vulkan_Common::to_string(result));
-			return false;
-		}
-
-		image_acquired = true;
-		return true;
+        return false;
 	}
 
 	bool RHI_SwapChain::Present() const
@@ -493,13 +478,7 @@ namespace Spartan
 		present_info.pSwapchains		= swap_chains;
 		present_info.pImageIndices		= &m_image_index;
 
-		const auto result = vkQueuePresentKHR(m_rhi_device->GetContextRhi()->queue_present, &present_info);
-		if (result != VK_SUCCESS)
-		{
-			LOG_ERROR("Failed to present, %s.", Vulkan_Common::to_string(result));
-		}
-
-		return result == VK_SUCCESS;
+		return Vulkan_Common::error::check_result(vkQueuePresentKHR(m_rhi_device->GetContextRhi()->queue_present, &present_info));
 	}
 
 	bool RHI_SwapChain::CreateRenderPass()
