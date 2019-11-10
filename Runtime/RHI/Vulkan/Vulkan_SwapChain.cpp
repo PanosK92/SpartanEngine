@@ -222,42 +222,14 @@ namespace Spartan
                 vkGetSwapchainImagesKHR(device, swap_chain, &image_count, swap_chain_images.data());
             }
 
-            // Create image view lambda
-            auto create_image_view = [](const std::shared_ptr<RHI_Device>& rhi_device, VkImage& _image, VkImageView& image_view, VkFormat format, bool swizzle = false)
-            {
-                VkImageViewCreateInfo create_info           = {};
-                create_info.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-                create_info.image                           = _image;
-                create_info.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
-                create_info.format                          = format;
-                create_info.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-                create_info.subresourceRange.baseMipLevel   = 0;
-                create_info.subresourceRange.levelCount     = 1;
-                create_info.subresourceRange.baseArrayLayer = 0;
-                create_info.subresourceRange.layerCount     = 1;
-                if (swizzle)
-                {
-                    create_info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-                    create_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-                    create_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-                    create_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-                }
-
-                return vkCreateImageView(rhi_device->GetContextRhi()->device, &create_info, nullptr, &image_view) == VK_SUCCESS;
-            };
-
             // Image views
-            auto swizzle = true;
             vector<VkImageView> swap_chain_image_views;
             {
                 swap_chain_image_views.resize(swap_chain_images.size());
                 for (size_t i = 0; i < swap_chain_image_views.size(); i++)
                 {
-                    if (!create_image_view(rhi_device, swap_chain_images[i], swap_chain_image_views[i], rhi_context->surface_format.format, swizzle))
-                    {
-                        LOG_ERROR("Failed to create image view");
+                    if (!Vulkan_Common::image::create_view(rhi_device, swap_chain_images[i], &swap_chain_image_views[i], rhi_context->surface_format.format, VK_IMAGE_ASPECT_COLOR_BIT))
                         return false;
-                    }
                 }
             }
 
@@ -265,18 +237,9 @@ namespace Spartan
             vector<VkFramebuffer> frame_buffers(swap_chain_image_views.size());
             for (auto i = 0; i < swap_chain_image_views.size(); i++)
             {
-                VkImageView attachments[1] = { swap_chain_image_views[i] };
+                vector<VkImageView> attachments = { swap_chain_image_views[i] };
 
-                VkFramebufferCreateInfo framebufferInfo = {};
-                framebufferInfo.sType                   = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-                framebufferInfo.renderPass              = static_cast<VkRenderPass>(render_pass);
-                framebufferInfo.attachmentCount         = 1;
-                framebufferInfo.pAttachments            = attachments;
-                framebufferInfo.width                   = extent.width;
-                framebufferInfo.height                  = extent.height;
-                framebufferInfo.layers                  = 1;
-
-                if (!Vulkan_Common::error::check_result(vkCreateFramebuffer(device, &framebufferInfo, nullptr, &frame_buffers[i])))
+                if (!Vulkan_Common::image::create_frame_buffer(rhi_device, static_cast<VkRenderPass>(render_pass), attachments, extent.width, extent.height, &frame_buffers[i]))
                     return false;
             }
 

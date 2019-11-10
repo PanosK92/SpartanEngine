@@ -32,6 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Logging/Log.h"
 #include "../RHI_Device.h"
 #include "../../Math/Vector4.h"
+#include "../RHI_Texture.h"
 //============================
 
 namespace Spartan::Vulkan_Common
@@ -42,42 +43,44 @@ namespace Spartan::Vulkan_Common
         {
             switch (result)
             {
-            case VK_NOT_READY:											return "VK_NOT_READY";
-            case VK_TIMEOUT:											return "VK_TIMEOUT";
-            case VK_EVENT_SET:											return "VK_EVENT_SET";
-            case VK_EVENT_RESET:										return "VK_EVENT_RESET";
-            case VK_INCOMPLETE:											return "VK_INCOMPLETE";
-            case VK_ERROR_OUT_OF_HOST_MEMORY:							return "VK_ERROR_OUT_OF_HOST_MEMORY";
-            case VK_ERROR_OUT_OF_DEVICE_MEMORY:							return "VK_ERROR_OUT_OF_DEVICE_MEMORY";
-            case VK_ERROR_INITIALIZATION_FAILED:						return "VK_ERROR_INITIALIZATION_FAILED";
-            case VK_ERROR_DEVICE_LOST:									return "VK_ERROR_DEVICE_LOST";
-            case VK_ERROR_MEMORY_MAP_FAILED:							return "VK_ERROR_MEMORY_MAP_FAILED";
-            case VK_ERROR_LAYER_NOT_PRESENT:							return "VK_ERROR_LAYER_NOT_PRESENT";
-            case VK_ERROR_EXTENSION_NOT_PRESENT:						return "VK_ERROR_EXTENSION_NOT_PRESENT";
-            case VK_ERROR_FEATURE_NOT_PRESENT:							return "VK_ERROR_FEATURE_NOT_PRESENT";
-            case VK_ERROR_INCOMPATIBLE_DRIVER:							return "VK_ERROR_INCOMPATIBLE_DRIVER";
-            case VK_ERROR_TOO_MANY_OBJECTS:								return "VK_ERROR_TOO_MANY_OBJECTS";
-            case VK_ERROR_FORMAT_NOT_SUPPORTED:							return "VK_ERROR_FORMAT_NOT_SUPPORTED";
-            case VK_ERROR_FRAGMENTED_POOL:								return "VK_ERROR_FRAGMENTED_POOL";
-            case VK_ERROR_OUT_OF_POOL_MEMORY:							return "VK_ERROR_OUT_OF_POOL_MEMORY";
-            case VK_ERROR_INVALID_EXTERNAL_HANDLE:						return "VK_ERROR_INVALID_EXTERNAL_HANDLE";
-            case VK_ERROR_SURFACE_LOST_KHR:								return "VK_ERROR_SURFACE_LOST_KHR";
-            case VK_ERROR_NATIVE_WINDOW_IN_USE_KHR:						return "VK_ERROR_NATIVE_WINDOW_IN_USE_KHR";
-            case VK_SUBOPTIMAL_KHR:										return "VK_SUBOPTIMAL_KHR";
-            case VK_ERROR_OUT_OF_DATE_KHR:								return "VK_ERROR_OUT_OF_DATE_KHR";
-            case VK_ERROR_INCOMPATIBLE_DISPLAY_KHR:						return "VK_ERROR_INCOMPATIBLE_DISPLAY_KHR";
-            case VK_ERROR_VALIDATION_FAILED_EXT:						return "VK_ERROR_VALIDATION_FAILED_EXT";
-            case VK_ERROR_INVALID_SHADER_NV:							return "VK_ERROR_INVALID_SHADER_NV";
-            case VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT: return "VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT";
-            case VK_ERROR_FRAGMENTATION_EXT:							return "VK_ERROR_FRAGMENTATION_EXT";
-            case VK_ERROR_NOT_PERMITTED_EXT:							return "VK_ERROR_NOT_PERMITTED_EXT";
-            case VK_ERROR_INVALID_DEVICE_ADDRESS_EXT:					return "VK_ERROR_INVALID_DEVICE_ADDRESS_EXT";
+                case VK_SUCCESS:                                            return "VK_SUCCESS";
+                case VK_NOT_READY:											return "VK_NOT_READY";
+                case VK_TIMEOUT:											return "VK_TIMEOUT";
+                case VK_EVENT_SET:											return "VK_EVENT_SET";
+                case VK_EVENT_RESET:										return "VK_EVENT_RESET";
+                case VK_INCOMPLETE:											return "VK_INCOMPLETE";
+                case VK_ERROR_OUT_OF_HOST_MEMORY:							return "VK_ERROR_OUT_OF_HOST_MEMORY";
+                case VK_ERROR_OUT_OF_DEVICE_MEMORY:							return "VK_ERROR_OUT_OF_DEVICE_MEMORY";
+                case VK_ERROR_INITIALIZATION_FAILED:						return "VK_ERROR_INITIALIZATION_FAILED";
+                case VK_ERROR_DEVICE_LOST:									return "VK_ERROR_DEVICE_LOST";
+                case VK_ERROR_MEMORY_MAP_FAILED:							return "VK_ERROR_MEMORY_MAP_FAILED";
+                case VK_ERROR_LAYER_NOT_PRESENT:							return "VK_ERROR_LAYER_NOT_PRESENT";
+                case VK_ERROR_EXTENSION_NOT_PRESENT:						return "VK_ERROR_EXTENSION_NOT_PRESENT";
+                case VK_ERROR_FEATURE_NOT_PRESENT:							return "VK_ERROR_FEATURE_NOT_PRESENT";
+                case VK_ERROR_INCOMPATIBLE_DRIVER:							return "VK_ERROR_INCOMPATIBLE_DRIVER";
+                case VK_ERROR_TOO_MANY_OBJECTS:								return "VK_ERROR_TOO_MANY_OBJECTS";
+                case VK_ERROR_FORMAT_NOT_SUPPORTED:							return "VK_ERROR_FORMAT_NOT_SUPPORTED";
+                case VK_ERROR_FRAGMENTED_POOL:								return "VK_ERROR_FRAGMENTED_POOL";
+                case VK_ERROR_OUT_OF_POOL_MEMORY:							return "VK_ERROR_OUT_OF_POOL_MEMORY";
+                case VK_ERROR_INVALID_EXTERNAL_HANDLE:						return "VK_ERROR_INVALID_EXTERNAL_HANDLE";
+                case VK_ERROR_SURFACE_LOST_KHR:								return "VK_ERROR_SURFACE_LOST_KHR";
+                case VK_ERROR_NATIVE_WINDOW_IN_USE_KHR:						return "VK_ERROR_NATIVE_WINDOW_IN_USE_KHR";
+                case VK_SUBOPTIMAL_KHR:										return "VK_SUBOPTIMAL_KHR";
+                case VK_ERROR_OUT_OF_DATE_KHR:								return "VK_ERROR_OUT_OF_DATE_KHR";
+                case VK_ERROR_INCOMPATIBLE_DISPLAY_KHR:						return "VK_ERROR_INCOMPATIBLE_DISPLAY_KHR";
+                case VK_ERROR_VALIDATION_FAILED_EXT:						return "VK_ERROR_VALIDATION_FAILED_EXT";
+                case VK_ERROR_INVALID_SHADER_NV:							return "VK_ERROR_INVALID_SHADER_NV";
+                case VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT: return "VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT";
+                case VK_ERROR_FRAGMENTATION_EXT:							return "VK_ERROR_FRAGMENTATION_EXT";
+                case VK_ERROR_NOT_PERMITTED_EXT:							return "VK_ERROR_NOT_PERMITTED_EXT";
+                case VK_ERROR_INVALID_DEVICE_ADDRESS_EXT:					return "VK_ERROR_INVALID_DEVICE_ADDRESS_EXT";
+                case VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT:			return "VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT";
             }
 
             return "Unknown error code";
         }
 
-        constexpr bool check_result(VkResult result)
+        inline bool check_result(VkResult result)
         {
             if (result == VK_SUCCESS)
                 return true;
@@ -86,7 +89,7 @@ namespace Spartan::Vulkan_Common
             return false;
         }
 
-        constexpr void assert_result(VkResult result)
+        inline void assert_result(VkResult result)
         {
             SPARTAN_ASSERT(result == VK_SUCCESS);
         }
@@ -115,29 +118,67 @@ namespace Spartan::Vulkan_Common
 		}
 	}
 
-	namespace commands
+	namespace command
 	{
-		inline void cmd_buffer(const std::shared_ptr<RHI_Device>& rhi_device, VkCommandBuffer& cmd_buffer, VkCommandPool& cmd_pool, const VkCommandBufferLevel level)
+        inline bool create_pool(const std::shared_ptr<RHI_Device>& rhi_device, VkCommandPool& command_pool)
+        {
+            VkCommandPoolCreateInfo cmd_pool_info   = {};
+            cmd_pool_info.sType                     = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+            cmd_pool_info.queueFamilyIndex          = rhi_device->GetContextRhi()->indices.graphics_family.value();
+            cmd_pool_info.flags                     = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+
+            return error::check_result(vkCreateCommandPool(rhi_device->GetContextRhi()->device, &cmd_pool_info, nullptr, &command_pool));
+        }
+
+		inline bool create_buffer(const std::shared_ptr<RHI_Device>& rhi_device, VkCommandPool& cmd_pool, VkCommandBuffer& command_buffer, const VkCommandBufferLevel level)
 		{
 			VkCommandBufferAllocateInfo allocate_info	= {};
 			allocate_info.sType							= VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 			allocate_info.commandPool					= cmd_pool;
 			allocate_info.level							= level;
-			allocate_info.commandBufferCount			= 1;
+            allocate_info.commandBufferCount            = 1;
 
-			SPARTAN_ASSERT(vkAllocateCommandBuffers(rhi_device->GetContextRhi()->device, &allocate_info, &cmd_buffer) == VK_SUCCESS);
+            return error::check_result(vkAllocateCommandBuffers(rhi_device->GetContextRhi()->device, &allocate_info, &command_buffer));
 		}
 
-		inline void cmd_pool(const std::shared_ptr<RHI_Device>& rhi_device, void*& cmd_pool)
-		{
-			VkCommandPoolCreateInfo cmd_pool_info	= {};
-			cmd_pool_info.sType						= VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-			cmd_pool_info.queueFamilyIndex			= rhi_device->GetContextRhi()->indices.graphics_family.value();
-			cmd_pool_info.flags						= VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        inline bool begin(const std::shared_ptr<RHI_Device>& rhi_device, VkCommandPool& command_pool, VkCommandBuffer& command_buffer)
+        {
+            // Create command pool
+            if (!create_pool(rhi_device, command_pool))
+                return false;
 
-            const auto cmd_pool_temp = reinterpret_cast<VkCommandPool*>(&cmd_pool);
-			SPARTAN_ASSERT(vkCreateCommandPool(rhi_device->GetContextRhi()->device, &cmd_pool_info, nullptr, cmd_pool_temp) == VK_SUCCESS);
-		}
+            // Create command buffer
+            if (!create_buffer(rhi_device, command_pool, command_buffer, VK_COMMAND_BUFFER_LEVEL_PRIMARY))
+                return false;
+
+            VkCommandBufferBeginInfo begin_info = {};
+            begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+            begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+            return error::check_result(vkBeginCommandBuffer(command_buffer, &begin_info));
+        }
+
+        inline bool end(const std::shared_ptr<RHI_Device>& rhi_device, VkCommandPool& command_pool, VkCommandBuffer& command_buffer)
+        {
+            if (!error::check_result(vkEndCommandBuffer(command_buffer)))
+                return false;
+
+            VkSubmitInfo submit_info = {};
+            submit_info.sType               = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+            submit_info.commandBufferCount  = 1;
+            submit_info.pCommandBuffers     = &command_buffer;
+
+            auto queue = rhi_device->GetContextRhi()->queue_copy;
+
+            if (!error::check_result(vkQueueSubmit(queue, 1, &submit_info, nullptr)))
+                return false;
+
+            if (!error::check_result(vkQueueWaitIdle(queue)))
+                return false;
+
+            vkFreeCommandBuffers(rhi_device->GetContextRhi()->device, command_pool, 1, &command_buffer);
+            return true;
+        }
 	}
 
 	namespace semaphore
@@ -244,6 +285,61 @@ namespace Spartan::Vulkan_Common
 			_buffer = nullptr;
 		}
 	}
+
+    namespace image
+    {
+        inline VkImageAspectFlags bind_flags_to_aspect_mask(const uint16_t bind_flags)
+        {
+            // Resolve aspect mask
+            VkImageAspectFlags aspect_mask = 0;
+            if (bind_flags & RHI_Texture_DepthStencil)
+            {
+                // Depth-only image formats can have only the VK_IMAGE_ASPECT_DEPTH_BIT set
+                aspect_mask = VK_IMAGE_ASPECT_DEPTH_BIT;
+            }
+            else
+            {
+                aspect_mask |= (bind_flags & RHI_Texture_Sampled)       ? VK_IMAGE_ASPECT_COLOR_BIT : 0;
+                aspect_mask |= (bind_flags & RHI_Texture_RenderTarget)  ? VK_IMAGE_ASPECT_COLOR_BIT : 0;
+            }
+
+            return aspect_mask;
+        }
+
+        inline bool create_view(const std::shared_ptr<RHI_Device>& rhi_device, VkImage& image, VkImageView* image_view, const VkFormat format, const VkImageAspectFlags aspect_flags)
+        {
+            VkImageViewCreateInfo create_info = {};
+            create_info.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+            create_info.image                           = image;
+            create_info.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
+            create_info.format                          = format;
+            create_info.subresourceRange.aspectMask     = aspect_flags;
+            create_info.subresourceRange.baseMipLevel   = 0;
+            create_info.subresourceRange.levelCount     = 1;
+            create_info.subresourceRange.baseArrayLayer = 0;
+            create_info.subresourceRange.layerCount     = 1;
+            create_info.components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+            create_info.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+            create_info.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+            create_info.components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+
+            return error::check_result(vkCreateImageView(rhi_device->GetContextRhi()->device, &create_info, nullptr, image_view));
+        }
+
+        inline bool create_frame_buffer(const std::shared_ptr<RHI_Device>& rhi_device, const VkRenderPass& render_pass, const std::vector<VkImageView> attachments, const uint32_t width, const uint32_t height, VkFramebuffer* frame_buffer)
+        {
+            VkFramebufferCreateInfo create_info = {};
+            create_info.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+            create_info.renderPass      = render_pass;
+            create_info.attachmentCount = static_cast<uint32_t>(attachments.size());
+            create_info.pAttachments    = attachments.data();
+            create_info.width           = width;
+            create_info.height          = height;
+            create_info.layers          = 1;
+
+            return error::check_result(vkCreateFramebuffer(rhi_device->GetContextRhi()->device, &create_info, nullptr, frame_buffer));
+        }
+    }
 
     namespace extension
     {
