@@ -60,15 +60,15 @@ namespace Spartan
 		m_options |= Render_Debug_Physics;
 		m_options |= Render_Bloom;
         m_options |= Render_VolumetricLighting;
+        m_options |= Render_MotionBlur;
 		m_options |= Render_SSAO;
         m_options |= Render_SSCS;
-		m_options |= Render_MotionBlur;
+        m_options |= Render_SSR;	
 		m_options |= Render_AntiAliasing_TAA;
-        m_options |= Render_SSR;
-		//m_flags |= Render_PostProcess_FXAA;                   // Disabled by default: TAA is superior.
-		//m_flags |= Render_PostProcess_Sharpening;		        // Disabled by default: TAA's blurring is taken core of with an always on sharpen pass specifically for it.
-		//m_flags |= Render_PostProcess_Dithering;			    // Disabled by default: It's only needed in very dark scenes to fix smooth color gradients.
-		//m_flags |= Render_PostProcess_ChromaticAberration;	// Disabled by default: It doesn't improve the image quality, it's more of a stylistic effect.	
+        m_options |= Render_Sharpening_LumaSharpen;             // Helps with TAA induced blurring
+		//m_options |= Render_PostProcess_FXAA;                 // Disabled by default: TAA is superior.
+		//m_options |= Render_PostProcess_Dithering;            // Disabled by default: It's only needed in very dark scenes to fix smooth color gradients.
+		//m_options |= Render_PostProcess_ChromaticAberration;	// Disabled by default: It doesn't improve the image quality, it's more of a stylistic effect.	
 
         // Option values
         m_option_values[Option_Value_Anisotropy]              = 16.0f;

@@ -808,14 +808,7 @@ namespace Spartan
             swap_targets_ldr();
 		}
 
-        // Sharpening - TAA controlled
-        if (GetOptionValue(Render_AntiAliasing_TAA))
-        {
-            Pass_TaaSharpen(tex_in_ldr, tex_out_ldr);
-            swap_targets_ldr();
-        }
-
-		// Sharpening - User controlled
+		// Sharpening
 		if (GetOptionValue(Render_Sharpening_LumaSharpen))
 		{
 			Pass_LumaSharpen(tex_in_ldr, tex_out_ldr);
@@ -1318,30 +1311,6 @@ namespace Spartan
 		m_cmd_list->End();
 		m_cmd_list->Submit();
 	}
-
-    void Renderer::Pass_TaaSharpen(std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out)
-    {
-        // Acquire shader
-        const auto& shader = m_shaders[Shader_Sharpen_Taa_P];
-        if (!shader->IsCompiled())
-            return;
-
-        m_cmd_list->Begin("Pass_TaaSharpen");
-
-        // Update uber buffer
-        m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-        UpdateUberBuffer();
-
-        m_cmd_list->UnsetTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
-        m_cmd_list->SetRenderTarget(tex_out);
-        m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
-        m_cmd_list->SetViewport(tex_out->GetViewport());
-        m_cmd_list->SetShaderPixel(shader);
-        m_cmd_list->SetTexture(0, tex_in);
-        m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
-        m_cmd_list->End();
-        m_cmd_list->Submit();
-    }
 
 	void Renderer::Pass_LumaSharpen(shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
