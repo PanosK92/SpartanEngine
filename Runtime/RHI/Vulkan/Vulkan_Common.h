@@ -189,15 +189,12 @@ namespace Spartan::Vulkan_Common
 
 	namespace semaphore
 	{
-		inline void* create(const std::shared_ptr<RHI_Device>& rhi_device)
+		inline bool create(const std::shared_ptr<RHI_Device>& rhi_device, VkSemaphore& semaphore_out)
 		{
 			VkSemaphoreCreateInfo semaphore_info	= {};
 			semaphore_info.sType					= VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-			VkSemaphore semaphore_out;
-			SPARTAN_ASSERT(vkCreateSemaphore(rhi_device->GetContextRhi()->device, &semaphore_info, nullptr, &semaphore_out) == VK_SUCCESS);
-
-			return static_cast<void*>(semaphore_out);
+            return error::check_result(vkCreateSemaphore(rhi_device->GetContextRhi()->device, &semaphore_info, nullptr, &semaphore_out));
 		}
 
 		inline void destroy(const std::shared_ptr<RHI_Device>& rhi_device, void*& semaphore_in)
@@ -212,15 +209,12 @@ namespace Spartan::Vulkan_Common
 
 	namespace fence
 	{
-		inline void* create(const std::shared_ptr<RHI_Device>& rhi_device)
+		inline bool create(const std::shared_ptr<RHI_Device>& rhi_device, VkFence& fence_out)
 		{
 			VkFenceCreateInfo fence_info	= {};
 			fence_info.sType				= VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 	
-			VkFence fence_out;
-			SPARTAN_ASSERT(vkCreateFence(rhi_device->GetContextRhi()->device, &fence_info, nullptr, &fence_out) == VK_SUCCESS);
-
-			return static_cast<void*>(fence_out);
+            return error::check_result(vkCreateFence(rhi_device->GetContextRhi()->device, &fence_info, nullptr, &fence_out));
 		}
 
 		inline void destroy(const std::shared_ptr<RHI_Device>& rhi_device, void*& fence_in)

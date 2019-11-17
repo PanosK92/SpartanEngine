@@ -250,7 +250,9 @@ namespace Spartan
 
             for (uint32_t i = 0; i < buffer_count; i++)
             {
-                semaphores_image_acquired_out.emplace_back(Vulkan_Common::semaphore::create(rhi_device));
+                VkSemaphore semaphore;
+                Vulkan_Common::semaphore::create(rhi_device, semaphore);
+                semaphores_image_acquired_out.emplace_back(static_cast<void*>(semaphore));
             }
 
             return true;

@@ -71,9 +71,18 @@ namespace Spartan
             auto cmd_buffer_vk = static_cast<VkCommandBuffer>(m_cmd_buffers[i]);
             if (Vulkan_Common::command::create_buffer(m_rhi_device, cmd_pool_vk, cmd_buffer_vk, VK_COMMAND_BUFFER_LEVEL_PRIMARY))
             {
+                // Cmd buffer
                 m_cmd_buffers[i] = static_cast<void*>(cmd_buffer_vk);
-                m_semaphores_cmd_list_consumed.emplace_back(Vulkan_Common::semaphore::create(m_rhi_device));
-                m_fences_in_flight.emplace_back(Vulkan_Common::fence::create(m_rhi_device));
+
+                // Semaphore
+                VkSemaphore semaphore;
+                Vulkan_Common::semaphore::create(m_rhi_device, semaphore);
+                m_semaphores_cmd_list_consumed.emplace_back(static_cast<void*>(semaphore));
+
+                // Fence
+                VkFence fence;
+                Vulkan_Common::fence::create(m_rhi_device, fence);
+                m_fences_in_flight.emplace_back(static_cast<void*>(fence));
             }
 		}
 	}
