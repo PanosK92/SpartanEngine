@@ -145,7 +145,6 @@ namespace Spartan
 		Shader_Taa_P,
 		Shader_MotionBlur_P,
 		Shader_Sharpen_Luma_P,
-        Shader_Sharpen_Taa_P,
 		Shader_ChromaticAberration_P,	
 		Shader_BloomDownsampleLuminance_P,
         Shader_BloomDownsample_P,
@@ -311,7 +310,6 @@ namespace Spartan
 		void Pass_ToneMapping(std::shared_ptr<RHI_Texture>& tex_in,				std::shared_ptr<RHI_Texture>& tex_out);
 		void Pass_GammaCorrection(std::shared_ptr<RHI_Texture>& tex_in,			std::shared_ptr<RHI_Texture>& tex_out);
 		void Pass_FXAA(std::shared_ptr<RHI_Texture>& tex_in,					std::shared_ptr<RHI_Texture>& tex_out);
-		void Pass_TaaSharpen(std::shared_ptr<RHI_Texture>& tex_in,				std::shared_ptr<RHI_Texture>& tex_out);
         void Pass_LumaSharpen(std::shared_ptr<RHI_Texture>& tex_in,             std::shared_ptr<RHI_Texture>& tex_out);
 		void Pass_ChromaticAberration(std::shared_ptr<RHI_Texture>& tex_in,		std::shared_ptr<RHI_Texture>& tex_out);
 		void Pass_MotionBlur(std::shared_ptr<RHI_Texture>& tex_in,				std::shared_ptr<RHI_Texture>& tex_out);

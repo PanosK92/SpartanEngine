@@ -210,11 +210,6 @@ namespace Spartan
         m_shaders[Shader_Sharpen_Luma_P]->AddDefine("PASS_LUMA_SHARPEN");
         m_shaders[Shader_Sharpen_Luma_P]->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
 
-        // Sharpening - TAA sharpen
-        m_shaders[Shader_Sharpen_Taa_P] = make_shared<RHI_Shader>(m_rhi_device);
-        m_shaders[Shader_Sharpen_Taa_P]->AddDefine("PASS_TAA_SHARPEN");
-        m_shaders[Shader_Sharpen_Taa_P]->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
-
         // Chromatic aberration
         m_shaders[Shader_ChromaticAberration_P] = make_shared<RHI_Shader>(m_rhi_device);
         m_shaders[Shader_ChromaticAberration_P]->AddDefine("PASS_CHROMATIC_ABERRATION");
