@@ -24,10 +24,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // Version
 constexpr auto engine_version = "v0.31 WIP";
 
-// APIs
+// APIs - Commented as they are expected to be predefined by the project generation scripts
 //#define API_GRAPHICS_D3D11
 //#define API_GRAPHICS_D3D12
-#define API_GRAPHICS_VULKAN
+//#define API_GRAPHICS_VULKAN
 #define API_INPUT_WINDOWS
 
 // Class

@@ -1,7 +1,5 @@
 @echo off
 
-cd /D "%~dp0"
-
 echo 1. Deleting intermediate folder and lib files (from the binary directory)...
 call "Scripts\clean.bat"
 echo:
@@ -23,4 +21,6 @@ xcopy "ThirdParty\libraries\fmod64.dll" "Binaries\Release\" /E /I /y
 echo:
 
 echo 5. Generating Visual Studio 2019 solution...
-Scripts\premake5.exe --file=scripts\premake.lua vs2019
+Scripts\premake5.exe --file=scripts\premake.lua %*
+
+exit /b

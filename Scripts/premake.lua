@@ -27,6 +27,15 @@ DEBUG_FORMAT		= "c7"
 TARGET_DIR_RELEASE 	= "../Binaries/Release"
 TARGET_DIR_DEBUG 	= "../Binaries/Debug"
 INTERMEDIATE_DIR 	= "../Binaries/Intermediate"
+GRAPHICS_API		= "3D_API"
+
+if _ARGS[1] == "d3d11" then
+	GRAPHICS_API = "API_GRAPHICS_D3D11"
+elseif _ARGS[1] == "d3d12" then
+	GRAPHICS_API = "API_GRAPHICS_D3D12"
+elseif _ARGS[1] == "vulkan" then
+	GRAPHICS_API = "API_GRAPHICS_VULKAN"
+end
 
 -- Solution
 solution (SOLUTION_NAME)
@@ -67,7 +76,7 @@ project (RUNTIME_NAME)
 	objdir (INTERMEDIATE_DIR)
 	kind "StaticLib"
 	staticruntime "On"
-	defines{ "SPARTAN_RUNTIME" }
+	defines{ "SPARTAN_RUNTIME", GRAPHICS_API }
 	
 	-- Files
 	files 
@@ -130,7 +139,7 @@ project (EDITOR_NAME)
 	objdir (INTERMEDIATE_DIR)
 	kind "WindowedApp"
 	staticruntime "On"
-	defines{ "SPARTAN_EDITOR" }
+	defines{ "SPARTAN_EDITOR", GRAPHICS_API }
 	
 	-- Files
 	files 
