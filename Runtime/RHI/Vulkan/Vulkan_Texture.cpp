@@ -92,7 +92,7 @@ namespace Spartan
 		VkPipelineStageFlags source_stage;
 		VkPipelineStageFlags destination_stage;
 
-		if (layout_old == VK_IMAGE_LAYOUT_UNDEFINED && layout_new == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) 
+		if (layout_old == VK_IMAGE_LAYOUT_PREINITIALIZED && layout_new == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
 		{
 			barrier.srcAccessMask	= 0;
 			barrier.dstAccessMask	= VK_ACCESS_TRANSFER_WRITE_BIT;
@@ -210,8 +210,8 @@ namespace Spartan
 	{
         // In case of a render target or a depth-stencil buffer, ensure the requested format is supported by the device
         VkFormat image_format       = vulkan_format[m_format];
-        VkImageLayout image_layout  = VK_IMAGE_LAYOUT_UNDEFINED;    // The Vulkan spec states: initialLayout must be VK_IMAGE_LAYOUT_UNDEFINED or VK_IMAGE_LAYOUT_PREINITIALIZED
-        VkImageTiling image_tiling  = VK_IMAGE_TILING_LINEAR;       // VK_IMAGE_TILING_OPTIMAL is not supported with VK_FORMAT_R32G32B32_SFLOAT
+        VkImageLayout image_layout  = VK_IMAGE_LAYOUT_PREINITIALIZED;
+        VkImageTiling image_tiling  = VK_IMAGE_TILING_LINEAR; // VK_IMAGE_TILING_OPTIMAL is not supported with VK_FORMAT_R32G32B32_SFLOAT
 
         if (m_bind_flags & RHI_Texture_RenderTarget)
         {
