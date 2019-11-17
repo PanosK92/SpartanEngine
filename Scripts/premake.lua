@@ -17,24 +17,25 @@
 -- IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 -- CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+API_GRAPHICS		= _ARGS[1]
 SOLUTION_NAME 		= "Spartan"
 EDITOR_NAME 		= "Editor"
 RUNTIME_NAME 		= "Runtime"
+DEBUG_FORMAT		= "c7"
 EDITOR_DIR			= "../" .. EDITOR_NAME
 RUNTIME_DIR			= "../" .. RUNTIME_NAME
 LIBRARY_DIR 		= "../ThirdParty/libraries"
-DEBUG_FORMAT		= "c7"
-TARGET_DIR_RELEASE 	= "../Binaries/Release"
-TARGET_DIR_DEBUG 	= "../Binaries/Debug"
-INTERMEDIATE_DIR 	= "../Binaries/Intermediate"
-GRAPHICS_API		= "3D_API"
+INTERMEDIATE_DIR 	= "../Binaries/intermediate"
+TARGET_DIR_RELEASE 	= "../Binaries/release_" .. API_GRAPHICS
+TARGET_DIR_DEBUG 	= "../Binaries/debug_" .. API_GRAPHICS
 
-if _ARGS[1] == "d3d11" then
-	GRAPHICS_API = "API_GRAPHICS_D3D11"
-elseif _ARGS[1] == "d3d12" then
-	GRAPHICS_API = "API_GRAPHICS_D3D12"
-elseif _ARGS[1] == "vulkan" then
-	GRAPHICS_API = "API_GRAPHICS_VULKAN"
+-- Convert graphics api var to the corresponding project define
+if API_GRAPHICS == "d3d11" then
+	API_GRAPHICS = "API_GRAPHICS_D3D11"
+elseif API_GRAPHICS == "d3d12" then
+	API_GRAPHICS = "API_GRAPHICS_D3D12"
+elseif API_GRAPHICS == "vulkan" then
+	API_GRAPHICS = "API_GRAPHICS_VULKAN"
 end
 
 -- Solution
@@ -76,7 +77,7 @@ project (RUNTIME_NAME)
 	objdir (INTERMEDIATE_DIR)
 	kind "StaticLib"
 	staticruntime "On"
-	defines{ "SPARTAN_RUNTIME", GRAPHICS_API }
+	defines{ "SPARTAN_RUNTIME", API_GRAPHICS }
 	
 	-- Files
 	files 
@@ -139,7 +140,7 @@ project (EDITOR_NAME)
 	objdir (INTERMEDIATE_DIR)
 	kind "WindowedApp"
 	staticruntime "On"
-	defines{ "SPARTAN_EDITOR", GRAPHICS_API }
+	defines{ "SPARTAN_EDITOR", API_GRAPHICS }
 	
 	-- Files
 	files 
