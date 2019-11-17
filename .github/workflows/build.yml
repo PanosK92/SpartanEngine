@@ -27,7 +27,7 @@ jobs:
  
       - uses: actions/upload-artifact@master  
         with:
-          name: release_x64
+          name: release_d3d11
           path: Binaries\release_d3d11
           
   job_vs2019_vulkan:
@@ -54,6 +54,6 @@ jobs:
  
       - uses: actions/upload-artifact@master  
         with:
-          name: release_x64
+          name: release_vulkan
           path: Binaries\release_vulkan
     
