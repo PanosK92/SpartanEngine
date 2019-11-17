@@ -28,7 +28,7 @@ jobs:
       - uses: actions/upload-artifact@master  
         with:
           name: release_x64
-          path: Binaries\Release
+          path: Binaries\release_d3d11
           
   job_vs2019_vulkan:
     runs-on: [windows-2019]
@@ -55,5 +55,5 @@ jobs:
       - uses: actions/upload-artifact@master  
         with:
           name: release_x64
-          path: Binaries\Release
+          path: Binaries\release_vulkan
     
