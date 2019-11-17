@@ -182,6 +182,17 @@ namespace Spartan
 		// Texture
         void SetTexture(const uint32_t slot, RHI_Texture* texture);
         inline void SetTexture(const uint32_t slot, const std::shared_ptr<RHI_Texture>& texture) { SetTexture(slot, texture.get()); }
+        inline void UnsetTexture(const uint32_t slot) { SetTexture(slot, nullptr); }
+        inline void UnsetTextures()
+        {
+            static const uint32_t count                 = 10;
+            static const void* resource_array[count]    = { nullptr };
+            auto& cmd                                   = GetCmd();
+            cmd.type                                    = RHI_Cmd_SetTextures;
+            cmd.resource_start_slot                     = 0;
+            cmd.resource_ptr                            = resource_array;
+            cmd.resource_count                          = count;
+        }
         
 		// Render targets
 		void SetRenderTargets(const void* render_targets, uint32_t render_target_count, void* depth_stencil = nullptr);
@@ -190,16 +201,11 @@ namespace Spartan
 		void ClearRenderTarget(void* render_target, const Math::Vector4& color);
 		void ClearDepthStencil(void* depth_stencil, uint32_t flags, float depth, uint8_t stencil = 0);
 
-        // Misc
-        inline void ClearTextures()
-        {
-            for (uint32_t i = 0; i < 10; i++)
-            {
-                SetTexture(i, nullptr);
-            }
-        }
-        RHI_PipelineState& GetPipelineState() { return m_pipeline_state; }
+        // Submit
 		bool Submit(bool profile = true);
+
+        // Misc
+        RHI_PipelineState& GetPipelineState() { return m_pipeline_state; }
 
 	private:
 		void Clear();
@@ -212,7 +218,8 @@ namespace Spartan
 		std::vector<void*> m_semaphores_cmd_list_consumed;
 		std::vector<void*> m_fences_in_flight;
 		uint32_t m_initial_capacity     = 10000;
-		uint32_t m_command_count	    = 0;	
+		uint32_t m_command_count	    = 0;
+        uint32_t m_texture_slot_max     = 0;
 		RHI_Pipeline* m_pipeline	    = nullptr;
 		void* m_cmd_pool			    = nullptr;
 		uint32_t m_buffer_index		    = 0;

@@ -489,7 +489,8 @@ namespace Spartan
             m_buffer_uber_cpu.resolution = Vector2(tex_ssao_raw->GetWidth(), tex_ssao_raw->GetHeight());
             UpdateUberBuffer();
 
-            m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from some previous pass)
+            m_cmd_list->UnsetTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from some previous pass)
+            m_cmd_list->SetRenderTarget(tex_ssao_raw);
             m_cmd_list->SetTexture(0, m_render_targets[RenderTarget_Gbuffer_Depth]);
             m_cmd_list->SetTexture(1, m_render_targets[RenderTarget_Gbuffer_Normal]);
             m_cmd_list->SetTexture(2, m_tex_noise_normal);
@@ -499,7 +500,6 @@ namespace Spartan
             m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
             m_cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
             m_cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
-            m_cmd_list->SetRenderTarget(tex_ssao_raw);
             m_cmd_list->SetViewport(tex_ssao_raw->GetViewport());
             m_cmd_list->SetShaderVertex(shader_quad);
             m_cmd_list->SetInputLayout(shader_quad->GetInputLayout());
@@ -552,7 +552,7 @@ namespace Spartan
             m_buffer_uber_cpu.resolution = Vector2(tex_ssr->GetWidth(), tex_ssr->GetHeight());
             UpdateUberBuffer();
 
-            m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from some previous pass)
+            m_cmd_list->UnsetTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from some previous pass)
             m_cmd_list->SetTexture(0, m_render_targets[RenderTarget_Gbuffer_Normal]);
             m_cmd_list->SetTexture(1, m_render_targets[RenderTarget_Gbuffer_Depth]);
             m_cmd_list->SetTexture(2, m_render_targets[RenderTarget_Gbuffer_Material]);
@@ -704,6 +704,8 @@ namespace Spartan
         UpdateUberBuffer();
 
 		// Setup command list
+        m_cmd_list->UnsetTextures();
+        m_cmd_list->SetRenderTarget(tex_out);
         m_cmd_list->SetTexture(0, m_render_targets[RenderTarget_Gbuffer_Albedo]);
         m_cmd_list->SetTexture(1, m_render_targets[RenderTarget_Gbuffer_Normal]);
         m_cmd_list->SetTexture(2, m_render_targets[RenderTarget_Gbuffer_Depth]);
@@ -720,7 +722,6 @@ namespace Spartan
 		m_cmd_list->SetBlendState(m_blend_disabled);
 		m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 		m_cmd_list->SetViewport(tex_out->GetViewport());
-		m_cmd_list->SetRenderTarget(tex_out);
 		m_cmd_list->SetShaderVertex(shader_quad);
 		m_cmd_list->SetInputLayout(shader_quad->GetInputLayout());
         m_cmd_list->SetShaderPixel(shader_composition);
@@ -945,7 +946,7 @@ namespace Spartan
             m_buffer_uber_cpu.blur_sigma        = sigma;
             UpdateUberBuffer();
 
-			m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
+			m_cmd_list->UnsetTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
 			m_cmd_list->SetRenderTarget(tex_out);
 			m_cmd_list->SetTexture(0, tex_in);
 			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
@@ -958,7 +959,7 @@ namespace Spartan
             m_buffer_uber_cpu.blur_sigma        = sigma;
             UpdateUberBuffer();
 
-			m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
+			m_cmd_list->UnsetTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
 			m_cmd_list->SetRenderTarget(tex_in);
 			m_cmd_list->SetTexture(0, tex_out);
 			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
@@ -1008,11 +1009,11 @@ namespace Spartan
             m_buffer_uber_cpu.blur_sigma        = sigma;
             UpdateUberBuffer();
 
-			m_cmd_list->ClearTextures(); // avoids d3d11 warning where render target is also bound as texture (from Pass_PreLight)
+			m_cmd_list->UnsetTextures(); // avoids d3d11 warning where render target is also bound as texture (from Pass_PreLight)
+            m_cmd_list->SetRenderTarget(tex_out);
             m_cmd_list->SetTexture(0, tex_in);
             m_cmd_list->SetTexture(1, tex_depth);
             m_cmd_list->SetTexture(2, tex_normal);
-			m_cmd_list->SetRenderTarget(tex_out);
 			m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
             m_cmd_list->Submit();
 		}
@@ -1024,14 +1025,11 @@ namespace Spartan
             m_buffer_uber_cpu.blur_sigma        = sigma;
             UpdateUberBuffer();
 
-            // Pack textures
-			void* textures[] = { tex_out->GetResource_Texture(), tex_depth->GetResource_Texture(), tex_normal->GetResource_Texture() };
-
-			m_cmd_list->ClearTextures(); // avoids d3d11 warning where render target is also bound as texture (from above pass)
-            m_cmd_list->SetTexture(0, tex_in);
+            m_cmd_list->UnsetTexture(0); // avoids d3d11 warning where render target is also bound as texture (from horizontal pass)
+            m_cmd_list->SetRenderTarget(tex_in);
+            m_cmd_list->SetTexture(0, tex_out);
             m_cmd_list->SetTexture(1, tex_depth);
             m_cmd_list->SetTexture(2, tex_normal);
-			m_cmd_list->SetRenderTarget(tex_in);
 			m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
             m_cmd_list->Submit();
 		}
@@ -1053,31 +1051,29 @@ namespace Spartan
         auto& tex_history_2 = m_render_targets[RenderTarget_Composition_Hdr_History_2];
 
 		m_cmd_list->Begin("Pass_TAA");
-        m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
-
 		// Resolve and accumulate to history texture
 		{
             // Update uber buffer
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             UpdateUberBuffer();
 
-			m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from some previous pass)
+			m_cmd_list->UnsetTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from some previous pass)
+            m_cmd_list->SetRenderTarget(tex_history_2);
+            m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
             m_cmd_list->SetTexture(0, tex_history);
             m_cmd_list->SetTexture(1, tex_in);
             m_cmd_list->SetTexture(2, m_render_targets[RenderTarget_Gbuffer_Velocity]);
             m_cmd_list->SetTexture(3, m_render_targets[RenderTarget_Gbuffer_Depth]);
-			m_cmd_list->SetRenderTarget(tex_history_2);
 			m_cmd_list->SetViewport(tex_out->GetViewport());
 			m_cmd_list->SetShaderPixel(shader_taa);
 			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
+            m_cmd_list->Submit();
 		}
 
 		// Copy
         Pass_Copy(tex_history_2, tex_out);
-
 		m_cmd_list->End();
-		m_cmd_list->Submit();
-
+		
 		// Swap history texture so the above works again in the next frame
         tex_history.swap(tex_history_2);
 	}
@@ -1137,7 +1133,7 @@ namespace Spartan
         };
 
 		// Upsample + blend
-        m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from some previous pass)
+        m_cmd_list->UnsetTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from some previous pass)
         for (int i = static_cast<int>(m_render_tex_bloom.size() - 1); i > 0; i--)
         {
             upsample(m_render_tex_bloom[i], m_render_tex_bloom[i - 1]);
@@ -1149,10 +1145,10 @@ namespace Spartan
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             UpdateUberBuffer();
 
+            m_cmd_list->SetRenderTarget(tex_out);
             m_cmd_list->SetTexture(0, tex_in);
             m_cmd_list->SetTexture(1, m_render_tex_bloom.front());
             m_cmd_list->SetBlendState(m_blend_disabled);
-			m_cmd_list->SetRenderTarget(tex_out);
 			m_cmd_list->SetViewport(tex_out->GetViewport());
 			m_cmd_list->SetShaderPixel(shader_bloomBlend);
 			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
@@ -1176,10 +1172,10 @@ namespace Spartan
         m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
         UpdateUberBuffer();
 
-		m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
+		m_cmd_list->UnsetTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
+        m_cmd_list->SetRenderTarget(tex_out);
         m_cmd_list->SetTexture(0, tex_in);
         m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
-		m_cmd_list->SetRenderTarget(tex_out);
 		m_cmd_list->SetViewport(tex_out->GetViewport());
 		m_cmd_list->SetShaderPixel(shader_toneMapping);
 		m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
@@ -1200,10 +1196,10 @@ namespace Spartan
         m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
         UpdateUberBuffer();
 
-		m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
+		m_cmd_list->UnsetTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)#
+        m_cmd_list->SetRenderTarget(tex_out);
         m_cmd_list->SetTexture(0, tex_in);
         m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
-		m_cmd_list->SetRenderTarget(tex_out);
 		m_cmd_list->SetViewport(tex_out->GetViewport());
 		m_cmd_list->SetShaderPixel(shader_gammaCorrection);
 		m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
@@ -1225,9 +1221,9 @@ namespace Spartan
         m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
         UpdateUberBuffer();
 
-		m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
+		m_cmd_list->UnsetTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
+        m_cmd_list->SetRenderTarget(tex_out);
         m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
-		m_cmd_list->SetRenderTarget(tex_out);
 		m_cmd_list->SetViewport(tex_out->GetViewport());
 
 		// Luma
@@ -1262,9 +1258,9 @@ namespace Spartan
         m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
         UpdateUberBuffer();
 
-		m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
-        m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
+		m_cmd_list->UnsetTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
 		m_cmd_list->SetRenderTarget(tex_out);
+        m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
 		m_cmd_list->SetViewport(tex_out->GetViewport());
 		m_cmd_list->SetShaderPixel(shader_chromaticAberration);
 		m_cmd_list->SetTexture(0, tex_in);
@@ -1286,12 +1282,12 @@ namespace Spartan
         m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
         UpdateUberBuffer();
 
-		m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
+        m_cmd_list->UnsetTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
+        m_cmd_list->SetRenderTarget(tex_out);
         m_cmd_list->SetTexture(0, tex_in);
         m_cmd_list->SetTexture(1, m_render_targets[RenderTarget_Gbuffer_Velocity]);
         m_cmd_list->SetTexture(2, m_render_targets[RenderTarget_Gbuffer_Depth]);
         m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
-		m_cmd_list->SetRenderTarget(tex_out);
 		m_cmd_list->SetViewport(tex_out->GetViewport());
 		m_cmd_list->SetShaderPixel(shader_motionBlur);
 		m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
@@ -1312,9 +1308,9 @@ namespace Spartan
         m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
         UpdateUberBuffer();
 
-		m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
-        m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
+		m_cmd_list->UnsetTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)  
 		m_cmd_list->SetRenderTarget(tex_out);
+        m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
 		m_cmd_list->SetViewport(tex_out->GetViewport());
 		m_cmd_list->SetShaderPixel(shader_dithering);
 		m_cmd_list->SetTexture(0, tex_in);
@@ -1336,9 +1332,9 @@ namespace Spartan
         m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
         UpdateUberBuffer();
 
-        m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
-        m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
+        m_cmd_list->UnsetTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
         m_cmd_list->SetRenderTarget(tex_out);
+        m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
         m_cmd_list->SetViewport(tex_out->GetViewport());
         m_cmd_list->SetShaderPixel(shader);
         m_cmd_list->SetTexture(0, tex_in);
@@ -1360,9 +1356,9 @@ namespace Spartan
         m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
         UpdateUberBuffer();
 	
-		m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
-        m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
+		m_cmd_list->UnsetTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
 		m_cmd_list->SetRenderTarget(tex_out);
+        m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
 		m_cmd_list->SetViewport(tex_out->GetViewport());		
 		m_cmd_list->SetShaderPixel(shader);
 		m_cmd_list->SetTexture(0, tex_in);
@@ -1852,6 +1848,7 @@ namespace Spartan
         m_buffer_uber_cpu.transform     = m_buffer_frame_cpu.view_projection_ortho;
         UpdateUberBuffer();
 
+        m_cmd_list->UnsetTextures();
         m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
         m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
         m_cmd_list->SetBlendState(m_blend_disabled);
