@@ -424,7 +424,7 @@ namespace Spartan
 		{
 			if (is_two_sided != 0)
 			{
-				material->SetCullMode(Cull_None);
+				material->SetCullMode(RHI_Cull_None);
 			}
 		}
 

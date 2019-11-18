@@ -68,7 +68,7 @@ namespace Spartan
 			{
 				m_vertex_attributes =
 				{
-					{ "POSITION", 0, binding, Format_R32G32B32_FLOAT,	offsetof(RHI_Vertex_Pos, pos) }
+					{ "POSITION", 0, binding, RHI_Format_R32G32B32_Float,	offsetof(RHI_Vertex_Pos, pos) }
 				};
 			}
 
@@ -76,8 +76,8 @@ namespace Spartan
 			{
 				m_vertex_attributes =
 				{
-					{ "POSITION", 0, binding, Format_R32G32B32_FLOAT,	offsetof(RHI_Vertex_PosTex, pos) },
-					{ "TEXCOORD", 1, binding, Format_R32G32_FLOAT,		offsetof(RHI_Vertex_PosTex, tex) }
+					{ "POSITION", 0, binding, RHI_Format_R32G32B32_Float,	offsetof(RHI_Vertex_PosTex, pos) },
+					{ "TEXCOORD", 1, binding, RHI_Format_R32G32_Float,		offsetof(RHI_Vertex_PosTex, tex) }
 				};
 			}
 
@@ -85,8 +85,8 @@ namespace Spartan
 			{
 				m_vertex_attributes =
 				{
-					{ "POSITION",	0, binding, Format_R32G32B32_FLOAT,		offsetof(RHI_Vertex_PosCol, pos) },
-					{ "COLOR",		1, binding, Format_R32G32B32A32_FLOAT,	offsetof(RHI_Vertex_PosCol, col) }
+					{ "POSITION",	0, binding, RHI_Format_R32G32B32_Float,		offsetof(RHI_Vertex_PosCol, pos) },
+					{ "COLOR",		1, binding, RHI_Format_R32G32B32A32_Float,	offsetof(RHI_Vertex_PosCol, col) }
 				};
 			}
 
@@ -94,9 +94,9 @@ namespace Spartan
 			{
 				m_vertex_attributes =
 				{
-					{ "POSITION",	0, binding, Format_R32G32_FLOAT,	offsetof(RHI_Vertex_Pos2dTexCol8, pos) },
-					{ "TEXCOORD",	1, binding, Format_R32G32_FLOAT,	offsetof(RHI_Vertex_Pos2dTexCol8, tex) },
-					{ "COLOR",		2, binding, Format_R8G8B8A8_UNORM,	offsetof(RHI_Vertex_Pos2dTexCol8, col) }
+					{ "POSITION",	0, binding, RHI_Format_R32G32_Float,	offsetof(RHI_Vertex_Pos2dTexCol8, pos) },
+					{ "TEXCOORD",	1, binding, RHI_Format_R32G32_Float,	offsetof(RHI_Vertex_Pos2dTexCol8, tex) },
+					{ "COLOR",		2, binding, RHI_Format_R8G8B8A8_Unorm,	offsetof(RHI_Vertex_Pos2dTexCol8, col) }
 				};
 			}
 
@@ -104,10 +104,10 @@ namespace Spartan
 			{
 				m_vertex_attributes =
 				{
-					{ "POSITION",	0, binding, Format_R32G32B32_FLOAT,	offsetof(RHI_Vertex_PosTexNorTan, pos) },
-					{ "TEXCOORD",	1, binding, Format_R32G32_FLOAT,	offsetof(RHI_Vertex_PosTexNorTan, tex) },
-					{ "NORMAL",		2, binding, Format_R32G32B32_FLOAT,	offsetof(RHI_Vertex_PosTexNorTan, nor) },
-					{ "TANGENT",	3, binding, Format_R32G32B32_FLOAT,	offsetof(RHI_Vertex_PosTexNorTan, tan) }
+					{ "POSITION",	0, binding, RHI_Format_R32G32B32_Float,	offsetof(RHI_Vertex_PosTexNorTan, pos) },
+					{ "TEXCOORD",	1, binding, RHI_Format_R32G32_Float,	offsetof(RHI_Vertex_PosTexNorTan, tex) },
+					{ "NORMAL",		2, binding, RHI_Format_R32G32B32_Float,	offsetof(RHI_Vertex_PosTexNorTan, nor) },
+					{ "TANGENT",	3, binding, RHI_Format_R32G32B32_Float,	offsetof(RHI_Vertex_PosTexNorTan, tan) }
 				};
 			}
 

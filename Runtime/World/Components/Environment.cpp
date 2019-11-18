@@ -172,11 +172,15 @@ namespace Spartan
 
         // Skysphere
         auto texture = make_shared<RHI_Texture2D>(GetContext(), generate_mipmaps);
-        texture->LoadFromFile(file_path);
-
-        // Apply sky sphere to renderer
-        SetTexture(static_pointer_cast<RHI_Texture>(texture));
-
-        LOG_INFO("Sky sphere has been created successfully");
+        if (texture->LoadFromFile(file_path))
+        {
+            // Set sky sphere to renderer
+            SetTexture(static_pointer_cast<RHI_Texture>(texture));
+            LOG_INFO("Sky sphere has been created successfully");
+        }
+        else
+        {
+            LOG_ERROR("Sky sphere creation failed");
+        }
 	}
 }

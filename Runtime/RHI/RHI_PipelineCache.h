@@ -74,7 +74,7 @@ namespace Spartan
             depth_stencil_state = nullptr;
             vertex_buffer       = nullptr;
             swap_chain          = nullptr;
-            primitive_topology  = PrimitiveTopology_Unknown;
+            primitive_topology  = RHI_PrimitiveTopology_Unknown;
             viewport            = RHI_Viewport(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
             scissor             = Math::Rectangle(0.0f, 0.0f, 0.0f, 0.0f);
         }

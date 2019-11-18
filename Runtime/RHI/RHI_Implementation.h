@@ -242,6 +242,14 @@ static const VkDescriptorType vulkan_descriptor_type[] =
 	VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
 };
 
+static const VkImageLayout vulkan_image_layout[] =
+{
+    VK_IMAGE_LAYOUT_PREINITIALIZED,
+    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+    VK_IMAGE_LAYOUT_UNDEFINED
+};
+
 struct SwapChainSupportDetails
 {
 	VkSurfaceCapabilitiesKHR capabilities = {};

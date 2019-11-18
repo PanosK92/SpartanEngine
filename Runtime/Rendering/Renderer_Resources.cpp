@@ -57,31 +57,31 @@ namespace Spartan
 
     void Renderer::CreateRasterizerStates()
     {
-        m_rasterizer_cull_back_solid            = make_shared<RHI_RasterizerState>(m_rhi_device, Cull_Back,     Fill_Solid,     true,   false, false, false);
-        m_rasterizer_cull_back_solid_no_clip    = make_shared<RHI_RasterizerState>(m_rhi_device, Cull_Back,     Fill_Solid,     false,  false, false, false);
-        m_rasterizer_cull_front_solid           = make_shared<RHI_RasterizerState>(m_rhi_device, Cull_Front,    Fill_Solid,     true,   false, false, false);
-        m_rasterizer_cull_none_solid            = make_shared<RHI_RasterizerState>(m_rhi_device, Cull_None,     Fill_Solid,     true,   false, false, false);
-        m_rasterizer_cull_back_wireframe        = make_shared<RHI_RasterizerState>(m_rhi_device, Cull_Back,     Fill_Wireframe, true,   false, false, true);
-        m_rasterizer_cull_front_wireframe       = make_shared<RHI_RasterizerState>(m_rhi_device, Cull_Front,    Fill_Wireframe, true,   false, false, true);
-        m_rasterizer_cull_none_wireframe        = make_shared<RHI_RasterizerState>(m_rhi_device, Cull_None,     Fill_Wireframe, true,   false, false, true);
+        m_rasterizer_cull_back_solid            = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_Cull_Back,     RHI_Fill_Solid,     true,   false, false, false);
+        m_rasterizer_cull_back_solid_no_clip    = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_Cull_Back,     RHI_Fill_Solid,     false,  false, false, false);
+        m_rasterizer_cull_front_solid           = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_Cull_Front,    RHI_Fill_Solid,     true,   false, false, false);
+        m_rasterizer_cull_none_solid            = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_Cull_None,     RHI_Fill_Solid,     true,   false, false, false);
+        m_rasterizer_cull_back_wireframe        = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_Cull_Back,     RHI_Fill_Wireframe, true,   false, false, true);
+        m_rasterizer_cull_front_wireframe       = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_Cull_Front,    RHI_Fill_Wireframe, true,   false, false, true);
+        m_rasterizer_cull_none_wireframe        = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_Cull_None,     RHI_Fill_Wireframe, true,   false, false, true);
     }
 
     void Renderer::CreateBlendStates()
     {
         m_blend_disabled    = make_shared<RHI_BlendState>(m_rhi_device, false);
         m_blend_enabled     = make_shared<RHI_BlendState>(m_rhi_device, true);
-        m_blend_color_add   = make_shared<RHI_BlendState>(m_rhi_device, true, Blend_One, Blend_One, Blend_Operation_Add);
-        m_blend_bloom       = make_shared<RHI_BlendState>(m_rhi_device, true, Blend_One, Blend_One, Blend_Operation_Add, Blend_One, Blend_One, Blend_Operation_Add, 0.5f);
+        m_blend_color_add   = make_shared<RHI_BlendState>(m_rhi_device, true, RHI_Blend_One, RHI_Blend_One, RHI_Blend_Operation_Add);
+        m_blend_bloom       = make_shared<RHI_BlendState>(m_rhi_device, true, RHI_Blend_One, RHI_Blend_One, RHI_Blend_Operation_Add, RHI_Blend_One, RHI_Blend_One, RHI_Blend_Operation_Add, 0.5f);
     }
 
     void Renderer::CreateSamplers()
     {
-        m_sampler_compare_depth     = make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_BILINEAR,  Sampler_Address_Clamp,  GetOptionValue(Render_ReverseZ) ? Comparison_Greater : Comparison_Less, false, true);
-        m_sampler_point_clamp       = make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_POINT,     Sampler_Address_Clamp,  Comparison_Always);
-        m_sampler_bilinear_clamp    = make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_BILINEAR,  Sampler_Address_Clamp,  Comparison_Always);
-        m_sampler_bilinear_wrap     = make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_BILINEAR,  Sampler_Address_Wrap,   Comparison_Always);
-        m_sampler_trilinear_clamp   = make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_TRILINEAR, Sampler_Address_Clamp,  Comparison_Always);
-        m_sampler_anisotropic_wrap  = make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_TRILINEAR, Sampler_Address_Wrap,   Comparison_Always, true);
+        m_sampler_compare_depth     = make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_BILINEAR,  RHI_Sampler_Address_Clamp,  GetOptionValue(Render_ReverseZ) ? RHI_Comparison_Greater : RHI_Comparison_Less, false, true);
+        m_sampler_point_clamp       = make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_POINT,     RHI_Sampler_Address_Clamp,  RHI_Comparison_Always);
+        m_sampler_bilinear_clamp    = make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_BILINEAR,  RHI_Sampler_Address_Clamp,  RHI_Comparison_Always);
+        m_sampler_bilinear_wrap     = make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_BILINEAR,  RHI_Sampler_Address_Wrap,   RHI_Comparison_Always);
+        m_sampler_trilinear_clamp   = make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_TRILINEAR, RHI_Sampler_Address_Clamp,  RHI_Comparison_Always);
+        m_sampler_anisotropic_wrap  = make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_TRILINEAR, RHI_Sampler_Address_Wrap,   RHI_Comparison_Always, true);
     }
 
     void Renderer::CreateRenderTextures()
@@ -100,25 +100,25 @@ namespace Spartan
         m_quad.CreateBuffers(this);
 
         // G-Buffer
-        m_render_targets[RenderTarget_Gbuffer_Albedo]   = make_shared<RHI_Texture2D>(m_context, width, height, Format_R8G8B8A8_UNORM);
-        m_render_targets[RenderTarget_Gbuffer_Normal]   = make_shared<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT); // At Texture_Format_R8G8B8A8_UNORM, normals have noticeable banding
-        m_render_targets[RenderTarget_Gbuffer_Material] = make_shared<RHI_Texture2D>(m_context, width, height, Format_R8G8B8A8_UNORM);
-        m_render_targets[RenderTarget_Gbuffer_Velocity] = make_shared<RHI_Texture2D>(m_context, width, height, Format_R16G16_FLOAT);
-        m_render_targets[RenderTarget_Gbuffer_Depth]    = make_shared<RHI_Texture2D>(m_context, width, height, Format_D32_FLOAT);
+        m_render_targets[RenderTarget_Gbuffer_Albedo]   = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R8G8B8A8_Unorm);
+        m_render_targets[RenderTarget_Gbuffer_Normal]   = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float); // At Texture_Format_R8G8B8A8_UNORM, normals have noticeable banding
+        m_render_targets[RenderTarget_Gbuffer_Material] = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R8G8B8A8_Unorm);
+        m_render_targets[RenderTarget_Gbuffer_Velocity] = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16_Float);
+        m_render_targets[RenderTarget_Gbuffer_Depth]    = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_D32_Float);
 
         // Light
-        m_render_targets[RenderTarget_Light_Diffuse]            = make_unique<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT);
-        m_render_targets[RenderTarget_Light_Specular]           = make_unique<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT);
-        m_render_targets[RenderTarget_Light_Volumetric]         = make_unique<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT);
-        m_render_targets[RenderTarget_Light_Volumetric_Blurred] = make_unique<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT);
+        m_render_targets[RenderTarget_Light_Diffuse]            = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float);
+        m_render_targets[RenderTarget_Light_Specular]           = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float);
+        m_render_targets[RenderTarget_Light_Volumetric]         = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float);
+        m_render_targets[RenderTarget_Light_Volumetric_Blurred] = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float);
 
         // BRDF Specular Lut
-        m_render_targets[RenderTarget_Brdf_Specular_Lut] = make_unique<RHI_Texture2D>(m_context, 400, 400, Format_R8G8_UNORM);
+        m_render_targets[RenderTarget_Brdf_Specular_Lut] = make_unique<RHI_Texture2D>(m_context, 400, 400, RHI_Format_R8G8_Unorm);
         m_brdf_specular_lut_rendered = false;
 
         // Composition
-        m_render_targets[RenderTarget_Composition_Hdr]              = make_unique<RHI_Texture2D>(m_context, width, height, Format_R32G32B32A32_FLOAT);
-        m_render_targets[RenderTarget_Composition_Ldr]              = make_unique<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT);
+        m_render_targets[RenderTarget_Composition_Hdr]              = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R32G32B32A32_Float);
+        m_render_targets[RenderTarget_Composition_Ldr]              = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float);
         m_render_targets[RenderTarget_Composition_Hdr_2]            = make_unique<RHI_Texture2D>(m_context, width, height, m_render_targets[RenderTarget_Composition_Hdr]->GetFormat()); // Used for Post-Processing   
         m_render_targets[RenderTarget_Composition_Hdr_History]      = make_unique<RHI_Texture2D>(m_context, width, height, m_render_targets[RenderTarget_Composition_Hdr]->GetFormat()); // Used by TAA and SSR
         m_render_targets[RenderTarget_Composition_Hdr_History_2]    = make_unique<RHI_Texture2D>(m_context, width, height, m_render_targets[RenderTarget_Composition_Hdr]->GetFormat()); // Used by TAA
@@ -126,19 +126,19 @@ namespace Spartan
 
         // SSAO
         float ssao_scale                                = m_option_values[Option_Value_Ssao_Scale];
-        m_render_targets[RenderTarget_Ssao_Raw]         = make_unique<RHI_Texture2D>(m_context, static_cast<uint32_t>(width * ssao_scale), static_cast<uint32_t>(height * ssao_scale), Format_R8_UNORM);                                        // Raw
+        m_render_targets[RenderTarget_Ssao_Raw]         = make_unique<RHI_Texture2D>(m_context, static_cast<uint32_t>(width * ssao_scale), static_cast<uint32_t>(height * ssao_scale), RHI_Format_R8_Unorm);                                    // Raw
         m_render_targets[RenderTarget_Ssao_Blurred]     = make_unique<RHI_Texture2D>(m_context, static_cast<uint32_t>(width * ssao_scale), static_cast<uint32_t>(height * ssao_scale), m_render_targets[RenderTarget_Ssao_Raw]->GetFormat());   // Blurred
         m_render_targets[RenderTarget_Ssao]             = make_unique<RHI_Texture2D>(m_context, width, height, m_render_targets[RenderTarget_Ssao_Raw]->GetFormat());                                                                           // Upscaled
 
         // SSR
-        m_render_targets[RenderTarget_Ssr]          = make_shared<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT);
+        m_render_targets[RenderTarget_Ssr]          = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float);
         m_render_targets[RenderTarget_Ssr_Blurred]  = make_shared<RHI_Texture2D>(m_context, width, height, m_render_targets[RenderTarget_Ssr]->GetFormat());
 
         // Bloom
         {
             // Create as many bloom textures as required to scale down to or below 16px (in any dimension)
             m_render_tex_bloom.clear();
-            m_render_tex_bloom.emplace_back(make_unique<RHI_Texture2D>(m_context, width / 2, height / 2, Format_R16G16B16A16_FLOAT));
+            m_render_tex_bloom.emplace_back(make_unique<RHI_Texture2D>(m_context, width / 2, height / 2, RHI_Format_R16G16B16A16_Float));
             while (m_render_tex_bloom.back()->GetWidth() > 16 && m_render_tex_bloom.back()->GetHeight() > 16)
             {
                 m_render_tex_bloom.emplace_back(
@@ -146,7 +146,7 @@ namespace Spartan
                         m_context,
                         m_render_tex_bloom.back()->GetWidth() / 2,
                         m_render_tex_bloom.back()->GetHeight() / 2,
-                        Format_R16G16B16A16_FLOAT
+                        RHI_Format_R16G16B16A16_Float
                         )
                 );
             }

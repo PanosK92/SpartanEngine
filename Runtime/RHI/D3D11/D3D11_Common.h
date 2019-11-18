@@ -159,7 +159,7 @@ namespace Spartan::D3D11_Common
 			const auto adapter = static_cast<IDXGIAdapter*>(display_adapter.data);
 
 			// Adapters are ordered by memory (descending), so stop on the first success
-			auto format = Format_R8G8B8A8_UNORM; // TODO: This must come from the swapchain
+			auto format = RHI_Format_R8G8B8A8_Unorm; // TODO: This must come from the swapchain
 			if (get_display_modes(adapter, format))
 			{
 				device->SetPrimaryAdapter(&display_adapter);
@@ -210,12 +210,12 @@ namespace Spartan::D3D11_Common
 		inline uint32_t validate_flags(RHI_Device* device, uint32_t flags)
 		{
 			// If SwapChain_Allow_Tearing was requested
-			if (flags & Present_Immediate)
+			if (flags & RHI_Present_Immediate)
 			{
 				// Check if the adapter supports it, if not, disable it (tends to fail with Intel adapters)
 				if (!D3D11_Common::CheckTearingSupport(device))
 				{
-					flags &= ~Present_Immediate;
+					flags &= ~RHI_Present_Immediate;
                     LOG_WARNING("Present_Immediate was requested but it's not supported by the adapter.");
 				}
 			}
@@ -227,8 +227,8 @@ namespace Spartan::D3D11_Common
 		{
 			UINT d3d11_flags = 0;
 
-			d3d11_flags |= flags & SwapChain_Allow_Mode_Switch	? DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH    : 0;
-			d3d11_flags |= flags & Present_Immediate            ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING        : 0;
+			d3d11_flags |= flags & RHI_SwapChain_Allow_Mode_Switch	? DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH    : 0;
+			d3d11_flags |= flags & RHI_Present_Immediate            ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING        : 0;
 
 			return d3d11_flags;
 		}
@@ -236,24 +236,24 @@ namespace Spartan::D3D11_Common
 		inline DXGI_SWAP_EFFECT get_swap_effect(RHI_Device* device, uint32_t flags)
 		{
 			#if !defined(_WIN32_WINNT_WIN10)
-			if (flags & Swap_Flip_Discard)
+			if (flags & RHI_Swap_Flip_Discard)
 			{
 				LOG_WARNING("Swap_Flip_Discard was requested but it's only supported in Windows 10, using Swap_Discard instead.");
-                flags &= ~Swap_Flip_Discard;
-				flags |= Swap_Discard;
+                flags &= ~RHI_Swap_Flip_Discard;
+				flags |= RHI_Swap_Discard;
 			}
 			#endif
 
-            if (flags & Swap_Flip_Discard && device->GetPrimaryAdapter()->IsIntel())
+            if (flags & RHI_Swap_Flip_Discard && device->GetPrimaryAdapter()->IsIntel())
             {
                 LOG_WARNING("Swap_Flip_Discard was requested but it's not supported by Intel adapters, using Swap_Discard instead.");
-                flags &= ~Swap_Flip_Discard;
-                flags |= Swap_Discard;
+                flags &= ~RHI_Swap_Flip_Discard;
+                flags |= RHI_Swap_Discard;
 			}
 
-            if (flags & Swap_Sequential)      return DXGI_SWAP_EFFECT_SEQUENTIAL;
-            if (flags & Swap_Flip_Sequential) return DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
-            if (flags & Swap_Flip_Discard)    return DXGI_SWAP_EFFECT_FLIP_DISCARD;
+            if (flags & RHI_Swap_Sequential)      return DXGI_SWAP_EFFECT_SEQUENTIAL;
+            if (flags & RHI_Swap_Flip_Sequential) return DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
+            if (flags & RHI_Swap_Flip_Discard)    return DXGI_SWAP_EFFECT_FLIP_DISCARD;
 			return DXGI_SWAP_EFFECT_DISCARD;
 		}
 	}
@@ -265,14 +265,14 @@ namespace Spartan::D3D11_Common
             if (anisotropy_enabled)
                 return !comparison_enabled ? D3D11_FILTER_ANISOTROPIC : D3D11_FILTER_COMPARISON_ANISOTROPIC;
 
-            if ((filter_min == Filter_Nearest)          && (filter_mag == Filter_Nearest)           && (filter_mipmap == Filter_Nearest))			return !comparison_enabled ? D3D11_FILTER_MIN_MAG_MIP_POINT                 : D3D11_FILTER_COMPARISON_MIN_MAG_MIP_POINT;
-            if ((filter_min == Filter_Nearest)          && (filter_mag == Filter_Nearest)           && (filter_mipmap == Sampler_Mipmap_Linear))	return !comparison_enabled ? D3D11_FILTER_MIN_MAG_POINT_MIP_LINEAR          : D3D11_FILTER_COMPARISON_MIN_MAG_POINT_MIP_LINEAR;
-            if ((filter_min == Filter_Nearest)          && (filter_mag == Sampler_Mipmap_Linear)    && (filter_mipmap == Filter_Nearest))			return !comparison_enabled ? D3D11_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT    : D3D11_FILTER_COMPARISON_MIN_POINT_MAG_LINEAR_MIP_POINT;
-            if ((filter_min == Filter_Nearest)          && (filter_mag == Sampler_Mipmap_Linear)    && (filter_mipmap == Sampler_Mipmap_Linear))	return !comparison_enabled ? D3D11_FILTER_MIN_POINT_MAG_MIP_LINEAR          : D3D11_FILTER_COMPARISON_MIN_POINT_MAG_MIP_LINEAR;
-            if ((filter_min == Sampler_Mipmap_Linear)   && (filter_mag == Filter_Nearest)           && (filter_mipmap == Filter_Nearest))			return !comparison_enabled ? D3D11_FILTER_MIN_LINEAR_MAG_MIP_POINT          : D3D11_FILTER_COMPARISON_MIN_LINEAR_MAG_MIP_POINT;
-            if ((filter_min == Sampler_Mipmap_Linear)   && (filter_mag == Filter_Nearest)           && (filter_mipmap == Sampler_Mipmap_Linear))	return !comparison_enabled ? D3D11_FILTER_MIN_LINEAR_MAG_POINT_MIP_LINEAR   : D3D11_FILTER_COMPARISON_MIN_LINEAR_MAG_POINT_MIP_LINEAR;
-            if ((filter_min == Sampler_Mipmap_Linear)   && (filter_mag == Sampler_Mipmap_Linear)    && (filter_mipmap == Filter_Nearest))			return !comparison_enabled ? D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT          : D3D11_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT;
-            if ((filter_min == Sampler_Mipmap_Linear)   && (filter_mag == Sampler_Mipmap_Linear)    && (filter_mipmap == Sampler_Mipmap_Linear))	return !comparison_enabled ? D3D11_FILTER_MIN_MAG_MIP_LINEAR                : D3D11_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR;
+            if ((filter_min == RHI_Filter_Nearest)          && (filter_mag == RHI_Filter_Nearest)           && (filter_mipmap == RHI_Filter_Nearest))			return !comparison_enabled ? D3D11_FILTER_MIN_MAG_MIP_POINT                 : D3D11_FILTER_COMPARISON_MIN_MAG_MIP_POINT;
+            if ((filter_min == RHI_Filter_Nearest)          && (filter_mag == RHI_Filter_Nearest)           && (filter_mipmap == RHI_Sampler_Mipmap_Linear))	return !comparison_enabled ? D3D11_FILTER_MIN_MAG_POINT_MIP_LINEAR          : D3D11_FILTER_COMPARISON_MIN_MAG_POINT_MIP_LINEAR;
+            if ((filter_min == RHI_Filter_Nearest)          && (filter_mag == RHI_Sampler_Mipmap_Linear)    && (filter_mipmap == RHI_Filter_Nearest))			return !comparison_enabled ? D3D11_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT    : D3D11_FILTER_COMPARISON_MIN_POINT_MAG_LINEAR_MIP_POINT;
+            if ((filter_min == RHI_Filter_Nearest)          && (filter_mag == RHI_Sampler_Mipmap_Linear)    && (filter_mipmap == RHI_Sampler_Mipmap_Linear))	return !comparison_enabled ? D3D11_FILTER_MIN_POINT_MAG_MIP_LINEAR          : D3D11_FILTER_COMPARISON_MIN_POINT_MAG_MIP_LINEAR;
+            if ((filter_min == RHI_Sampler_Mipmap_Linear)   && (filter_mag == RHI_Filter_Nearest)           && (filter_mipmap == RHI_Filter_Nearest))			return !comparison_enabled ? D3D11_FILTER_MIN_LINEAR_MAG_MIP_POINT          : D3D11_FILTER_COMPARISON_MIN_LINEAR_MAG_MIP_POINT;
+            if ((filter_min == RHI_Sampler_Mipmap_Linear)   && (filter_mag == RHI_Filter_Nearest)           && (filter_mipmap == RHI_Sampler_Mipmap_Linear))	return !comparison_enabled ? D3D11_FILTER_MIN_LINEAR_MAG_POINT_MIP_LINEAR   : D3D11_FILTER_COMPARISON_MIN_LINEAR_MAG_POINT_MIP_LINEAR;
+            if ((filter_min == RHI_Sampler_Mipmap_Linear)   && (filter_mag == RHI_Sampler_Mipmap_Linear)    && (filter_mipmap == RHI_Filter_Nearest))			return !comparison_enabled ? D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT          : D3D11_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT;
+            if ((filter_min == RHI_Sampler_Mipmap_Linear)   && (filter_mag == RHI_Sampler_Mipmap_Linear)    && (filter_mipmap == RHI_Sampler_Mipmap_Linear))	return !comparison_enabled ? D3D11_FILTER_MIN_MAG_MIP_LINEAR                : D3D11_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR;
 
             SPARTAN_ASSERT(false && "D3D11_Sampler filter not supported.");
             return D3D11_FILTER_MIN_MAG_MIP_POINT;

@@ -109,7 +109,7 @@ namespace Spartan
 		//=======================================================================================================
 
 	private:
-		RHI_Cull_Mode m_cull_mode		= Cull_Back;
+		RHI_Cull_Mode m_cull_mode		= RHI_Cull_Back;
 		ShadingMode m_shading_mode		= Shading_PBR;
 		Math::Vector4 m_color_albedo	= Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f);
 		Math::Vector2 m_uv_tiling		= Math::Vector2(1.0f, 1.0f);

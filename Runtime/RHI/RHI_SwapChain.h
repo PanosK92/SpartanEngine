@@ -40,9 +40,9 @@ namespace Spartan
 			const std::shared_ptr<RHI_Device>& rhi_device,
 			uint32_t width,
 			uint32_t height,
-			RHI_Format format		= Format_R8G8B8A8_UNORM,       
+			RHI_Format format		= RHI_Format_R8G8B8A8_Unorm,       
 			uint32_t buffer_count	= 1,
-            uint32_t flags          = Present_Immediate
+            uint32_t flags          = RHI_Present_Immediate
 		);
 		~RHI_SwapChain();
 
@@ -73,7 +73,7 @@ namespace Spartan
 		uint32_t m_width			= 0;
 		uint32_t m_height			= 0;
 		uint32_t m_flags			= 0;
-		RHI_Format m_format			= Format_R8G8B8A8_UNORM;
+		RHI_Format m_format			= RHI_Format_R8G8B8A8_Unorm;
 		
 		// API
 		std::shared_ptr<RHI_Device> m_rhi_device;

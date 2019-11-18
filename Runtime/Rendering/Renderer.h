@@ -245,7 +245,7 @@ namespace Spartan
 
         // Depth
         auto GetClearDepth()            { return GetOptionValue(Render_ReverseZ) ? m_viewport.depth_min : m_viewport.depth_max; }
-        auto GetComparisonFunction()    { return GetOptionValue(Render_ReverseZ) ? Comparison_GreaterEqual : Comparison_LessEqual; }
+        auto GetComparisonFunction()    { return GetOptionValue(Render_ReverseZ) ? RHI_Comparison_GreaterEqual : RHI_Comparison_LessEqual; }
 
         // Environment
         const std::shared_ptr<RHI_Texture>& GetEnvironmentTexture();

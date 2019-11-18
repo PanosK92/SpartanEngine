@@ -328,17 +328,17 @@ namespace Spartan
                 // Texture or Sampler
                 image_infos.push_back
                 ({
-                    (resource_blueprint.type == Descriptor_Sampler) ? static_cast<VkSampler>(resource_blueprint.resource)    : nullptr,  // sampler
-                    (resource_blueprint.type == Descriptor_Texture) ? static_cast<VkImageView>(resource_blueprint.resource)  : nullptr,  // imageView
-                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL                                                                             // imageLayout
+                    (resource_blueprint.type == RHI_Descriptor_Sampler) ? static_cast<VkSampler>(resource_blueprint.resource)    : nullptr, // sampler
+                    (resource_blueprint.type == RHI_Descriptor_Texture) ? static_cast<VkImageView>(resource_blueprint.resource)  : nullptr, // imageView
+                    vulkan_image_layout[resource_blueprint.layout]                                                                          // imageLayout
                 });
 
                 // Constant/Uniform buffer
                 buffer_infos.push_back
                 ({
-                    (resource_blueprint.type == Descriptor_ConstantBuffer) ? static_cast<VkBuffer>(resource_blueprint.resource) : nullptr,   // buffer
-                    0,                                                                                                                       // offset
-                    (resource_blueprint.type == Descriptor_ConstantBuffer) ? resource_blueprint.size : 0,                                    // range                
+                    (resource_blueprint.type == RHI_Descriptor_ConstantBuffer) ? static_cast<VkBuffer>(resource_blueprint.resource) : nullptr,  // buffer
+                    0,                                                                                                                          // offset
+                    (resource_blueprint.type == RHI_Descriptor_ConstantBuffer) ? resource_blueprint.size : 0,                                   // range                
                 });
 
                 write_descriptor_sets.push_back
@@ -394,7 +394,7 @@ namespace Spartan
     {
         for (RHI_Descriptor& descriptor : m_descriptor_blueprint)
         {
-            if (descriptor.type == Descriptor_ConstantBuffer && descriptor.slot == slot + m_rhi_device->GetContextRhi()->shader_shift_buffer)
+            if (descriptor.type == RHI_Descriptor_ConstantBuffer && descriptor.slot == slot + m_rhi_device->GetContextRhi()->shader_shift_buffer)
             {
                 descriptor.id       = constant_buffer->GetId();
                 descriptor.resource = constant_buffer->GetResource();
@@ -408,7 +408,7 @@ namespace Spartan
     {
         for (RHI_Descriptor& descriptor : m_descriptor_blueprint)
         {
-            if (descriptor.type == Descriptor_Sampler && descriptor.slot == slot + m_rhi_device->GetContextRhi()->shader_shift_sampler)
+            if (descriptor.type == RHI_Descriptor_Sampler && descriptor.slot == slot + m_rhi_device->GetContextRhi()->shader_shift_sampler)
             {
                 descriptor.id       = sampler->GetId();
                 descriptor.resource = sampler->GetResource();
@@ -421,10 +421,11 @@ namespace Spartan
     {
         for (RHI_Descriptor& descriptor : m_descriptor_blueprint)
         {
-            if (descriptor.type == Descriptor_Texture && descriptor.slot == slot + m_rhi_device->GetContextRhi()->shader_shift_texture)
+            if (descriptor.type == RHI_Descriptor_Texture && descriptor.slot == slot + m_rhi_device->GetContextRhi()->shader_shift_texture)
             {
                 descriptor.id       = texture->GetId();
                 descriptor.resource = texture->GetResource_Texture();
+                descriptor.layout   = texture->GetLayout();
                 break;
             }
         }

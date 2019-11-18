@@ -76,7 +76,7 @@ namespace Spartan
         if (m_pipeline_state.shader_vertex)                                     SetShaderVertex(m_pipeline_state.shader_vertex);
         if (m_pipeline_state.shader_pixel)                                      SetShaderPixel(m_pipeline_state.shader_pixel);
         if (m_pipeline_state.viewport.IsDefined())                              SetViewport(m_pipeline_state.viewport);
-        if (m_pipeline_state.primitive_topology != PrimitiveTopology_Unknown)   SetPrimitiveTopology(m_pipeline_state.primitive_topology);
+        if (m_pipeline_state.primitive_topology != RHI_PrimitiveTopology_Unknown)   SetPrimitiveTopology(m_pipeline_state.primitive_topology);
 	}
 
 	void RHI_CommandList::End()
@@ -462,7 +462,7 @@ namespace Spartan
 				{
                     const void* resource_array[1] = { cmd.resource_ptr };
 
-                    if (cmd._uint8 & Buffer_VertexShader)
+                    if (cmd._uint8 & RHI_Buffer_VertexShader)
                     {
                         device_context->VSSetConstantBuffers(
                             static_cast<UINT>(cmd.resource_start_slot),
@@ -471,7 +471,7 @@ namespace Spartan
                         );
                     }
 
-                    if (cmd._uint8 & Buffer_PixelShader)
+                    if (cmd._uint8 & RHI_Buffer_PixelShader)
                     {
                         device_context->PSSetConstantBuffers(
                             static_cast<UINT>(cmd.resource_start_slot),
@@ -480,8 +480,8 @@ namespace Spartan
                         );
                     }
 
-                    m_profiler->m_rhi_bindings_buffer_constant += cmd._uint8 & Buffer_VertexShader  ? 1 : 0;
-                    m_profiler->m_rhi_bindings_buffer_constant += cmd._uint8 & Buffer_PixelShader   ? 1 : 0;
+                    m_profiler->m_rhi_bindings_buffer_constant += cmd._uint8 & RHI_Buffer_VertexShader  ? 1 : 0;
+                    m_profiler->m_rhi_bindings_buffer_constant += cmd._uint8 & RHI_Buffer_PixelShader   ? 1 : 0;
 					break;
 				}
 
@@ -576,8 +576,8 @@ namespace Spartan
 				case RHI_Cmd_ClearDepthStencil:
 				{
 					UINT clear_flags = 0;
-					clear_flags |= (cmd._uint32 & Clear_Depth)	    ? D3D11_CLEAR_DEPTH : 0;
-					clear_flags |= (cmd._uint32 & Clear_Stencil)	? D3D11_CLEAR_STENCIL : 0;
+					clear_flags |= (cmd._uint32 & RHI_Clear_Depth)	    ? D3D11_CLEAR_DEPTH : 0;
+					clear_flags |= (cmd._uint32 & RHI_Clear_Stencil)	? D3D11_CLEAR_STENCIL : 0;
 
 					device_context->ClearDepthStencilView
 					(

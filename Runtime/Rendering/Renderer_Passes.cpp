@@ -52,9 +52,9 @@ namespace Spartan
     void Renderer::SetGlobalSamplersAndConstantBuffers()
     {
         // Set the buffers we will be using thought the frame
-        m_cmd_list->SetConstantBuffer(0, Buffer_VertexShader | Buffer_PixelShader, m_buffer_frame_gpu);
-        m_cmd_list->SetConstantBuffer(1, Buffer_VertexShader | Buffer_PixelShader, m_buffer_uber_gpu);
-        m_cmd_list->SetConstantBuffer(2, Buffer_PixelShader, m_buffer_light_gpu);
+        m_cmd_list->SetConstantBuffer(0, RHI_Buffer_VertexShader | RHI_Buffer_PixelShader, m_buffer_frame_gpu);
+        m_cmd_list->SetConstantBuffer(1, RHI_Buffer_VertexShader | RHI_Buffer_PixelShader, m_buffer_uber_gpu);
+        m_cmd_list->SetConstantBuffer(2, RHI_Buffer_PixelShader, m_buffer_light_gpu);
         
         // Set the samplers we will be using thought the frame
         m_cmd_list->SetSampler(0, m_sampler_compare_depth);
@@ -140,7 +140,7 @@ namespace Spartan
             m_cmd_list->Begin("Light");	
 			m_cmd_list->SetBlendState(m_blend_disabled);
 			m_cmd_list->SetDepthStencilState(m_depth_stencil_enabled_write);
-			m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+			m_cmd_list->SetPrimitiveTopology(RHI_PrimitiveTopology_TriangleList);
             m_cmd_list->SetShaderPixel(nullptr);
 			m_cmd_list->SetShaderVertex(shader_depth);
 			m_cmd_list->SetInputLayout(shader_depth->GetInputLayout());
@@ -169,7 +169,7 @@ namespace Spartan
 
 				m_cmd_list->Begin("Array_" + to_string(i + 1));
                 m_cmd_list->SetRenderTarget(nullptr, cascade_depth_stencil);
-				m_cmd_list->ClearDepthStencil(cascade_depth_stencil, Clear_Depth, GetClearDepth());
+				m_cmd_list->ClearDepthStencil(cascade_depth_stencil, RHI_Clear_Depth, GetClearDepth());
 
                 // Skip if it doesn't need to cast shadows
                 if (!light->GetCastShadows())
@@ -247,7 +247,7 @@ namespace Spartan
 
         // Star command list
         m_cmd_list->Begin("Pass_DepthPrePass");
-        m_cmd_list->ClearDepthStencil(tex_depth->GetResource_DepthStencil(), Clear_Depth, GetClearDepth());
+        m_cmd_list->ClearDepthStencil(tex_depth->GetResource_DepthStencil(), RHI_Clear_Depth, GetClearDepth());
 
         if (!entities.empty())
         {
@@ -258,7 +258,7 @@ namespace Spartan
             m_cmd_list->SetRenderTarget(nullptr, tex_depth->GetResource_DepthStencil());
             m_cmd_list->SetShaderVertex(shader_depth);
             m_cmd_list->SetShaderPixel(nullptr);
-            m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+            m_cmd_list->SetPrimitiveTopology(RHI_PrimitiveTopology_TriangleList);
             m_cmd_list->SetInputLayout(shader_depth->GetInputLayout());
 
             // Variables that help reduce state changes
@@ -339,7 +339,7 @@ namespace Spartan
         m_cmd_list->ClearRenderTarget(tex_velocity->GetResource_RenderTarget(), clear_color);
         if (!GetOptionValue(Render_DepthPrepass))
         {
-            m_cmd_list->ClearDepthStencil(tex_depth->GetResource_DepthStencil(), Clear_Depth, GetClearDepth());
+            m_cmd_list->ClearDepthStencil(tex_depth->GetResource_DepthStencil(), RHI_Clear_Depth, GetClearDepth());
         }
 
         if (!m_entities[Renderer_Object_Opaque].empty())
@@ -347,7 +347,7 @@ namespace Spartan
             m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
             m_cmd_list->SetBlendState(m_blend_disabled);
             m_cmd_list->SetDepthStencilState(GetOptionValue(Render_DepthPrepass) ? m_depth_stencil_enabled_no_write : m_depth_stencil_enabled_write);
-            m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+            m_cmd_list->SetPrimitiveTopology(RHI_PrimitiveTopology_TriangleList);
             m_cmd_list->SetViewport(tex_albedo->GetViewport());
             m_cmd_list->SetRenderTargets(render_targets, 4, tex_depth->GetResource_DepthStencil());
             m_cmd_list->SetShaderVertex(shader_gbuffer);
@@ -385,7 +385,7 @@ namespace Spartan
                     return;
 
                 // Set face culling (changes only if required)
-                m_cmd_list->SetRasterizerState(GetRasterizerState(material->GetCullMode(), !GetOptionValue(Render_Debug_Wireframe) ? Fill_Solid : Fill_Wireframe));
+                m_cmd_list->SetRasterizerState(GetRasterizerState(material->GetCullMode(), !GetOptionValue(Render_Debug_Wireframe) ? RHI_Fill_Solid : RHI_Fill_Wireframe));
 
                 // Bind geometry
                 if (currently_bound_geometry != model->GetId())
@@ -497,7 +497,7 @@ namespace Spartan
             m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
             m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
             m_cmd_list->SetBlendState(m_blend_disabled);
-            m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+            m_cmd_list->SetPrimitiveTopology(RHI_PrimitiveTopology_TriangleList);
             m_cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
             m_cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
             m_cmd_list->SetViewport(tex_ssao_raw->GetViewport());
@@ -560,7 +560,7 @@ namespace Spartan
             m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
             m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
             m_cmd_list->SetBlendState(m_blend_disabled);
-            m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+            m_cmd_list->SetPrimitiveTopology(RHI_PrimitiveTopology_TriangleList);
             m_cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
             m_cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
             m_cmd_list->SetRenderTarget(tex_ssr);
@@ -623,7 +623,7 @@ namespace Spartan
         m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
         m_cmd_list->SetViewport(tex_diffuse->GetViewport());
         m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);       
-        m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+        m_cmd_list->SetPrimitiveTopology(RHI_PrimitiveTopology_TriangleList);
         m_cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
         m_cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
         m_cmd_list->SetShaderVertex(shader_quad);
@@ -720,7 +720,7 @@ namespace Spartan
 		m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
 		m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
 		m_cmd_list->SetBlendState(m_blend_disabled);
-		m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+		m_cmd_list->SetPrimitiveTopology(RHI_PrimitiveTopology_TriangleList);
 		m_cmd_list->SetViewport(tex_out->GetViewport());
 		m_cmd_list->SetShaderVertex(shader_quad);
 		m_cmd_list->SetInputLayout(shader_quad->GetInputLayout());
@@ -747,7 +747,7 @@ namespace Spartan
 		m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
 		m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
 		m_cmd_list->SetBlendState(m_blend_disabled);
-		m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+		m_cmd_list->SetPrimitiveTopology(RHI_PrimitiveTopology_TriangleList);
 		m_cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
 		m_cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
 		m_cmd_list->SetShaderVertex(shader_quad);
@@ -1406,7 +1406,7 @@ namespace Spartan
 		m_cmd_list->SetViewport(tex_out->GetViewport());
 		m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_wireframe);
 		m_cmd_list->SetBlendState(m_blend_disabled);
-		m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_LineList);
+		m_cmd_list->SetPrimitiveTopology(RHI_PrimitiveTopology_LineList);
 		m_cmd_list->SetShaderVertex(shader_color_v);
 		m_cmd_list->SetShaderPixel(shader_color_p);
 		m_cmd_list->SetInputLayout(shader_color_v->GetInputLayout());
@@ -1498,7 +1498,7 @@ namespace Spartan
 		m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
 		m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
 		m_cmd_list->SetBlendState(m_blend_enabled);
-		m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+		m_cmd_list->SetPrimitiveTopology(RHI_PrimitiveTopology_TriangleList);
 		m_cmd_list->SetViewport(tex_out->GetViewport());	
 		m_cmd_list->SetRenderTarget(tex_out);
 
@@ -1635,7 +1635,7 @@ namespace Spartan
 
 		m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
 		m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
-		m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+		m_cmd_list->SetPrimitiveTopology(RHI_PrimitiveTopology_TriangleList);
 		m_cmd_list->SetRenderTarget(tex_out);	
 		m_cmd_list->SetViewport(tex_out->GetViewport());
 		m_cmd_list->SetBlendState(m_blend_enabled);	
@@ -1747,7 +1747,7 @@ namespace Spartan
 		m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
 		m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
 		m_cmd_list->SetBlendState(m_blend_disabled);
-		m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+		m_cmd_list->SetPrimitiveTopology(RHI_PrimitiveTopology_TriangleList);
 		m_cmd_list->SetRenderTarget(tex_out);
 		m_cmd_list->SetViewport(tex_out->GetViewport());
 		m_cmd_list->SetShaderVertex(shader_quad);
@@ -1786,7 +1786,7 @@ namespace Spartan
         m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
         m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
         m_cmd_list->SetBlendState(m_blend_disabled);
-        m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+        m_cmd_list->SetPrimitiveTopology(RHI_PrimitiveTopology_TriangleList);
         m_cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
         m_cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
         m_cmd_list->SetRenderTarget(texture);
@@ -1821,7 +1821,7 @@ namespace Spartan
         m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
         m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
         m_cmd_list->SetBlendState(m_blend_disabled);
-        m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+        m_cmd_list->SetPrimitiveTopology(RHI_PrimitiveTopology_TriangleList);
         m_cmd_list->SetRenderTarget(tex_out);
         m_cmd_list->SetViewport(tex_out->GetViewport());
         m_cmd_list->SetShaderVertex(shader_quad);

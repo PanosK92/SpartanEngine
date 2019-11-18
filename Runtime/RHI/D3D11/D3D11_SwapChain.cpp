@@ -188,7 +188,7 @@ namespace Spartan
 		// Set this flag to enable an application to switch modes by calling IDXGISwapChain::ResizeTarget.
 		// When switching from windowed to full-screen mode, the display mode (or monitor resolution)
 		// will be changed to match the dimensions of the application window.
-		if (m_flags & SwapChain_Allow_Mode_Switch)
+		if (m_flags & RHI_SwapChain_Allow_Mode_Switch)
 		{		
 			DisplayMode display_mode;
 			if (!m_rhi_device->GetDisplayModeFastest(&display_mode))
@@ -256,7 +256,7 @@ namespace Spartan
 		}
 
         // Build flags
-		const bool tearing_allowed	= m_flags & Present_Immediate;
+		const bool tearing_allowed	= m_flags & RHI_Present_Immediate;
         const UINT sync_interval    = tearing_allowed ? 0 : 1; // sync interval can go up to 4, so this could be improved
 		const UINT flags			= (tearing_allowed && m_windowed) ? DXGI_PRESENT_ALLOW_TEARING : 0;	
 

@@ -127,9 +127,9 @@ namespace Spartan
                 m_rhi_device,
                 static_cast<uint32_t>(window_data.width),
                 static_cast<uint32_t>(window_data.height),
-                Format_R8G8B8A8_UNORM,
+                RHI_Format_R8G8B8A8_Unorm,
                 2,
-                Present_Immediate | Swap_Flip_Discard
+                RHI_Present_Immediate | RHI_Swap_Flip_Discard
             );
 
             if (!m_swap_chain->IsInitialized())
@@ -514,9 +514,9 @@ namespace Spartan
 
 	shared_ptr<RHI_RasterizerState>& Renderer::GetRasterizerState(const RHI_Cull_Mode cull_mode, const RHI_Fill_Mode fill_mode)
 	{
-		if (cull_mode == Cull_Back)		return (fill_mode == Fill_Solid) ? m_rasterizer_cull_back_solid		: m_rasterizer_cull_back_wireframe;
-		if (cull_mode == Cull_Front)	return (fill_mode == Fill_Solid) ? m_rasterizer_cull_front_solid	: m_rasterizer_cull_front_wireframe;
-		if (cull_mode == Cull_None)		return (fill_mode == Fill_Solid) ? m_rasterizer_cull_none_solid		: m_rasterizer_cull_none_wireframe;
+		if (cull_mode == RHI_Cull_Back)		return (fill_mode == RHI_Fill_Solid) ? m_rasterizer_cull_back_solid		: m_rasterizer_cull_back_wireframe;
+		if (cull_mode == RHI_Cull_Front)	return (fill_mode == RHI_Fill_Solid) ? m_rasterizer_cull_front_solid	: m_rasterizer_cull_front_wireframe;
+		if (cull_mode == RHI_Cull_None)		return (fill_mode == RHI_Fill_Solid) ? m_rasterizer_cull_none_solid		: m_rasterizer_cull_none_wireframe;
 
 		return m_rasterizer_cull_back_solid;
 	}
