@@ -74,12 +74,12 @@ namespace Spartan
 		Vulkan_Common::memory::free(m_rhi_device, m_texture_memory);
 	}
 
-	inline bool TransitionImageLayout(VkCommandBuffer& cmd_buffer, VkImage& image, const VkImageLayout layout_old, const VkImageLayout layout_new) 
+	inline bool TransitionImageLayout(VkCommandBuffer& cmd_buffer, VkImage& image, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new)
 	{
 		VkImageMemoryBarrier barrier			= {};
 		barrier.sType							= VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		barrier.oldLayout						= layout_old;
-		barrier.newLayout						= layout_new;
+		barrier.oldLayout						= vulkan_image_layout[layout_old];
+		barrier.newLayout						= vulkan_image_layout[layout_new];
 		barrier.srcQueueFamilyIndex				= VK_QUEUE_FAMILY_IGNORED;
 		barrier.dstQueueFamilyIndex				= VK_QUEUE_FAMILY_IGNORED;
 		barrier.image							= image;
@@ -92,14 +92,14 @@ namespace Spartan
 		VkPipelineStageFlags source_stage;
 		VkPipelineStageFlags destination_stage;
 
-		if (layout_old == VK_IMAGE_LAYOUT_PREINITIALIZED && layout_new == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+		if (barrier.oldLayout == VK_IMAGE_LAYOUT_PREINITIALIZED && barrier.newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
 		{
 			barrier.srcAccessMask	= 0;
 			barrier.dstAccessMask	= VK_ACCESS_TRANSFER_WRITE_BIT;
 			source_stage			= VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 			destination_stage		= VK_PIPELINE_STAGE_TRANSFER_BIT;
 		}
-		else if (layout_old == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && layout_new == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) 
+		else if (barrier.oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && barrier.newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
 		{
 			barrier.srcAccessMask	= VK_ACCESS_TRANSFER_WRITE_BIT;
 			barrier.dstAccessMask	= VK_ACCESS_SHADER_READ_BIT;
@@ -125,15 +125,16 @@ namespace Spartan
 		return true;
 	}
 
-    inline bool CopyBufferToImage(const shared_ptr<RHI_Device>& rhi_device, const uint32_t width, const uint32_t height, VkImage& image, VkImageLayout& layout, VkBuffer& staging_buffer)
+    inline bool CopyBufferToImage(const shared_ptr<RHI_Device>& rhi_device, const uint32_t width, const uint32_t height, VkImage& image, RHI_Image_Layout& layout, VkBuffer& staging_buffer)
     {
+        // Create command buffer
         VkCommandPool command_pool          = nullptr;
         VkCommandBuffer command_buffer[1]   = { nullptr };
-
 		if (!Vulkan_Common::command::begin(rhi_device, command_pool, command_buffer[0]))
 			return false;
 
-		if (!TransitionImageLayout(command_buffer[0], image, layout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL))
+        // Transition layout to RHI_Image_Transfer_Dst_Optimal
+		if (!TransitionImageLayout(command_buffer[0], image, layout, RHI_Image_Transfer_Dst_Optimal))
 			return false;
 		
 		// Copy buffer to texture	
@@ -148,14 +149,15 @@ namespace Spartan
 		region.imageOffset						= { 0, 0, 0 };
 		region.imageExtent						= { width, height, 1 };
 
-		vkCmdCopyBufferToImage(command_buffer[0], staging_buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
-	
-		if (!TransitionImageLayout(command_buffer[0], image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))
+        // Transition layout to RHI_Image_Shader_Read_Only_Optimal
+		vkCmdCopyBufferToImage(command_buffer[0], staging_buffer, image, vulkan_image_layout[RHI_Image_Transfer_Dst_Optimal], 1, &region);
+		if (!TransitionImageLayout(command_buffer[0], image, RHI_Image_Transfer_Dst_Optimal, RHI_Image_Shader_Read_Only_Optimal))
 			return false;
 
-        layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        layout = RHI_Image_Shader_Read_Only_Optimal;
 
-		return Vulkan_Common::command::end(rhi_device, command_pool, command_buffer[0]);
+        // Flush and free command buffer
+		return Vulkan_Common::command::flush_and_free(rhi_device, command_pool, command_buffer[0]);
 	}
 
 	inline bool CreateImage(
@@ -166,7 +168,7 @@ namespace Spartan
 		const uint32_t height,
 		const VkFormat format,
 		const VkImageTiling tiling,
-        const VkImageLayout layout,
+        const RHI_Image_Layout layout,
 		const VkImageUsageFlags usage,
 		const VkMemoryPropertyFlags properties
 	)
@@ -181,7 +183,7 @@ namespace Spartan
 		create_info.arrayLayers			= 1;
 		create_info.format				= format;
 		create_info.tiling				= tiling;
-		create_info.initialLayout		= layout;
+		create_info.initialLayout		= vulkan_image_layout[layout];
 		create_info.usage				= usage;
 		create_info.samples				= VK_SAMPLE_COUNT_1_BIT;
 		create_info.sharingMode			= VK_SHARING_MODE_EXCLUSIVE;
@@ -210,26 +212,37 @@ namespace Spartan
 	{
         // In case of a render target or a depth-stencil buffer, ensure the requested format is supported by the device
         VkFormat image_format       = vulkan_format[m_format];
-        VkImageLayout image_layout  = VK_IMAGE_LAYOUT_PREINITIALIZED;
-        VkImageTiling image_tiling  = VK_IMAGE_TILING_LINEAR; // VK_IMAGE_TILING_OPTIMAL is not supported with VK_FORMAT_R32G32B32_SFLOAT
+        m_layout                    = RHI_Image_Preinitialized;
+        VkImageTiling image_tiling  = VK_IMAGE_TILING_LINEAR;
 
-        if (m_bind_flags & RHI_Texture_RenderTarget)
+        // Work on this later
+        //bool use_staging = true;
+
+        // Get format properties
+        VkFormatProperties format_properties;
+        vkGetPhysicalDeviceFormatProperties(m_rhi_device->GetContextRhi()->device_physical, image_format, &format_properties);
+
+        // Check tiling support
         {
-            LOG_WARNING("Format is not supported as a render target, falling back to supported surface format");
-            image_format = m_rhi_device->GetContextRhi()->surface_format.format;
-            image_tiling = VK_IMAGE_TILING_OPTIMAL;
+            if (m_bind_flags & RHI_Texture_RenderTarget)
+            {
+                image_tiling = ((format_properties.optimalTilingFeatures & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT) != 0) ? VK_IMAGE_TILING_OPTIMAL : VK_IMAGE_TILING_LINEAR;
+            }
+
+            if (m_bind_flags & RHI_Texture_DepthStencil)
+            {
+                image_tiling = ((format_properties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) != 0) ? VK_IMAGE_TILING_OPTIMAL : VK_IMAGE_TILING_LINEAR;
+            }
         }
 
-        if (m_bind_flags & RHI_Texture_DepthStencil)
+        if (image_tiling != VK_IMAGE_TILING_OPTIMAL)
         {
-            LOG_WARNING("Format is not supported as depth-stencil, falling back to supported surface format");
-            image_format = VK_FORMAT_D32_SFLOAT; // fix that shit
-            image_tiling = VK_IMAGE_TILING_OPTIMAL;
+            LOG_WARNING("Format %s does not support optimal tiling, considering switching to a more efficient format.", rhi_format_to_string(m_format));
         }
 
 		// Copy data to a buffer (if there are any)
-		VkBuffer staging_buffer = nullptr;
-		VkDeviceMemory staging_buffer_memory = nullptr;
+		VkBuffer staging_buffer                 = nullptr;
+		VkDeviceMemory staging_buffer_memory    = nullptr;
 		if (!m_data.empty())
 		{
 			VkDeviceSize buffer_size = static_cast<uint64_t>(m_width) * static_cast<uint64_t>(m_height) * static_cast<uint64_t>(m_channels);
@@ -267,7 +280,7 @@ namespace Spartan
             m_height,
             image_format,
             image_tiling,
-            image_layout,
+            m_layout,
             usage_flags,
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
 		))
@@ -279,7 +292,7 @@ namespace Spartan
 		if (staging_buffer)
 		{
 			lock_guard<mutex> lock(m_mutex); // Mutex prevents this error: THREADING ERROR : object of type VkQueue is simultaneously used in thread 0xfe0 and thread 0xe18
-			if (!CopyBufferToImage(m_rhi_device, static_cast<uint32_t>(m_width), static_cast<uint32_t>(m_height), *image, image_layout, staging_buffer))
+			if (!CopyBufferToImage(m_rhi_device, static_cast<uint32_t>(m_width), static_cast<uint32_t>(m_height), *image, m_layout, staging_buffer))
 			{
 				LOG_ERROR("Failed to copy buffer to image");
 				return false;

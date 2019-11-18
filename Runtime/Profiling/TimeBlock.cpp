@@ -64,9 +64,9 @@ namespace Spartan
 			// Create required queries
 			if (!m_query)
 			{
-				rhi_device->ProfilingCreateQuery(&m_query, Query_Timestamp_Disjoint);
-				rhi_device->ProfilingCreateQuery(&m_query_start, Query_Timestamp);
-				rhi_device->ProfilingCreateQuery(&m_query_end, Query_Timestamp);
+				rhi_device->ProfilingCreateQuery(&m_query, RHI_Query_Timestamp_Disjoint);
+				rhi_device->ProfilingCreateQuery(&m_query_start, RHI_Query_Timestamp);
+				rhi_device->ProfilingCreateQuery(&m_query_end, RHI_Query_Timestamp);
 			}
 
 			// Get time stamp

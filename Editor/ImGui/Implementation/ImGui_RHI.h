@@ -87,8 +87,8 @@ namespace ImGui::RHI
 			g_rasterizer_state = make_shared<RHI_RasterizerState>
 			(
 			    g_rhi_device,
-			    Cull_None,
-			    Fill_Solid,
+			    RHI_Cull_None,
+			    RHI_Fill_Solid,
 			    true,	// depth clip
 			    true,	// scissor
 			    false,	// multi-sample
@@ -99,12 +99,12 @@ namespace ImGui::RHI
 			(
 			    g_rhi_device,
 			    true,
-			    Blend_Src_Alpha,		// source blend
-			    Blend_Inv_Src_Alpha,	// destination blend
-			    Blend_Operation_Add,	// blend op
-			    Blend_Inv_Src_Alpha,	// source blend alpha
-			    Blend_Zero,				// destination blend alpha
-			    Blend_Operation_Add		// destination op alpha
+			    RHI_Blend_Src_Alpha,		// source blend
+			    RHI_Blend_Inv_Src_Alpha,	// destination blend
+			    RHI_Blend_Operation_Add,	// blend op
+			    RHI_Blend_Inv_Src_Alpha,	// source blend alpha
+			    RHI_Blend_Zero,				// destination blend alpha
+			    RHI_Blend_Operation_Add		// destination op alpha
 			);
 
             // Compile shaders
@@ -129,7 +129,7 @@ namespace ImGui::RHI
 			memcpy(&data[0], reinterpret_cast<std::byte*>(pixels), size);
 
 			// Upload texture to graphics system
-			g_texture = make_shared<RHI_Texture2D>(g_context, atlas_width, atlas_height, Format_R8G8B8A8_UNORM, data);
+			g_texture = make_shared<RHI_Texture2D>(g_context, atlas_width, atlas_height, RHI_Format_R8G8B8A8_Unorm, data);
 			io.Fonts->TexID = static_cast<ImTextureID>(g_texture.get());
 		}
 
@@ -232,7 +232,7 @@ namespace ImGui::RHI
             pipeline_state.depth_stencil_state  = g_depth_stencil_state.get();
             pipeline_state.vertex_buffer        = g_vertex_buffer.get();
             pipeline_state.swap_chain           = is_main_viewport ? g_renderer->GetSwapChain().get() : swap_chain_other;
-            pipeline_state.primitive_topology   = PrimitiveTopology_TriangleList;
+            pipeline_state.primitive_topology   = RHI_PrimitiveTopology_TriangleList;
 
 			// Start witting command list
 			g_cmd_list->Begin("Pass_ImGui");
@@ -307,9 +307,9 @@ namespace ImGui::RHI
 			g_rhi_device,
 			static_cast<uint32_t>(viewport->Size.x),
 			static_cast<uint32_t>(viewport->Size.y),
-			Format_R8G8B8A8_UNORM,
+			RHI_Format_R8G8B8A8_Unorm,
 			2,
-            Present_Immediate | Swap_Flip_Discard
+            RHI_Present_Immediate | RHI_Swap_Flip_Discard
 		);
 	}
 

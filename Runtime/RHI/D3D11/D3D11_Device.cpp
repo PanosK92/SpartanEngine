@@ -202,7 +202,7 @@ namespace Spartan
 
 		D3D11_QUERY_DESC desc;
 		ZeroMemory(&desc, sizeof(desc));
-		desc.Query			= (type == Query_Timestamp_Disjoint) ? D3D11_QUERY_TIMESTAMP_DISJOINT : D3D11_QUERY_TIMESTAMP;
+		desc.Query			= (type == RHI_Query_Timestamp_Disjoint) ? D3D11_QUERY_TIMESTAMP_DISJOINT : D3D11_QUERY_TIMESTAMP;
 		desc.MiscFlags		= 0;
 		const auto result	= m_rhi_context->device->CreateQuery(&desc, reinterpret_cast<ID3D11Query**>(query));
 		if (FAILED(result))

@@ -257,20 +257,20 @@ namespace Spartan
 	{
 		switch (format)
 		{
-			case Format_R8_UNORM:			return 1;
-			case Format_R16_UINT:			return 1;
-			case Format_R16_FLOAT:			return 1;
-			case Format_R32_UINT:			return 1;
-			case Format_R32_FLOAT:			return 1;
-			case Format_D32_FLOAT:			return 1;
-			case Format_R32_FLOAT_TYPELESS:	return 1;
-			case Format_R8G8_UNORM:			return 2;
-			case Format_R16G16_FLOAT:		return 2;
-			case Format_R32G32_FLOAT:		return 2;
-			case Format_R32G32B32_FLOAT:	return 3;
-			case Format_R8G8B8A8_UNORM:		return 4;
-			case Format_R16G16B16A16_FLOAT:	return 4;
-			case Format_R32G32B32A32_FLOAT:	return 4;
+			case RHI_Format_R8_Unorm:			return 1;
+			case RHI_Format_R16_Uint:			return 1;
+			case RHI_Format_R16_Float:			return 1;
+			case RHI_Format_R32_Uint:			return 1;
+			case RHI_Format_R32_Float:			return 1;
+			case RHI_Format_D32_Float:			return 1;
+			case RHI_Format_R32_Float_Typeless:	return 1;
+			case RHI_Format_R8G8_Unorm:			return 2;
+			case RHI_Format_R16G16_Float:		return 2;
+			case RHI_Format_R32G32_Float:		return 2;
+			case RHI_Format_R32G32B32_Float:	return 3;
+			case RHI_Format_R8G8B8A8_Unorm:		return 4;
+			case RHI_Format_R16G16B16A16_Float:	return 4;
+			case RHI_Format_R32G32B32A32_Float:	return 4;
 			default:						return 0;
 		}
 	}

@@ -26,14 +26,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifdef API_GRAPHICS_VULKAN
 //================================
 
-//= INCLUDES =================
+//= INCLUDES ==================
 #include <optional>
 #include <set>
-#include "../../Logging/Log.h"
 #include "../RHI_Device.h"
-#include "../../Math/Vector4.h"
 #include "../RHI_Texture.h"
-//============================
+#include "../../Logging/Log.h"
+#include "../../Math/Vector4.h"
+//=============================
 
 namespace Spartan::Vulkan_Common
 {
@@ -105,7 +105,8 @@ namespace Spartan::Vulkan_Common
 				if ((prop.memoryTypes[i].propertyFlags & properties) == properties && type_bits & (1 << i))
 					return i;
 
-			return 0xFFFFFFFF; // Unable to find memoryType
+            // Unable to find memoryType
+			return std::numeric_limits<uint32_t>::max(); 
 		}
 
 		inline void free(const std::shared_ptr<RHI_Device>& rhi_device, void*& device_memory)
@@ -177,7 +178,7 @@ namespace Spartan::Vulkan_Common
             return error::check_result(vkBeginCommandBuffer(command_buffer, &begin_info));
         }
 
-        inline bool end(const std::shared_ptr<RHI_Device>& rhi_device, VkCommandPool& command_pool, VkCommandBuffer& command_buffer)
+        inline bool flush_and_free(const std::shared_ptr<RHI_Device>& rhi_device, VkCommandPool& command_pool, VkCommandBuffer& command_buffer)
         {
             if (!flush(command_buffer, rhi_device->GetContextRhi()->queue_graphics))
                 return false;
@@ -228,21 +229,21 @@ namespace Spartan::Vulkan_Common
 
 		inline void wait(const std::shared_ptr<RHI_Device>&rhi_device, void*& fence_in)
 		{
-            const auto fence_temp = reinterpret_cast<VkFence*>(&fence_in);
-			SPARTAN_ASSERT(vkWaitForFences(rhi_device->GetContextRhi()->device, 1, fence_temp, true, 0xFFFFFFFFFFFFFFFF) == VK_SUCCESS);
+            const auto vk_fence = reinterpret_cast<VkFence*>(&fence_in);
+			error::assert_result(vkWaitForFences(rhi_device->GetContextRhi()->device, 1, vk_fence, true, std::numeric_limits<uint64_t>::max()));
 		}
 
 		inline void reset(const std::shared_ptr<RHI_Device>& rhi_device, void*& fence_in)
 		{
-            const auto fence_temp = reinterpret_cast<VkFence*>(&fence_in);
-			SPARTAN_ASSERT(vkResetFences(rhi_device->GetContextRhi()->device, 1, fence_temp) == VK_SUCCESS);
+            const auto vk_fence = reinterpret_cast<VkFence*>(&fence_in);
+            error::assert_result(vkResetFences(rhi_device->GetContextRhi()->device, 1, vk_fence));
 		}
 
 		inline void wait_reset(const std::shared_ptr<RHI_Device>& rhi_device, void*& fence_in)
 		{
-			const auto fence_temp = reinterpret_cast<VkFence*>(&fence_in);
-			SPARTAN_ASSERT(vkWaitForFences(rhi_device->GetContextRhi()->device, 1, fence_temp, true, 0xFFFFFFFFFFFFFFFF) == VK_SUCCESS);
-			SPARTAN_ASSERT(vkResetFences(rhi_device->GetContextRhi()->device, 1, fence_temp) == VK_SUCCESS);
+			const auto vk_fence = reinterpret_cast<VkFence*>(&fence_in);
+            error::assert_result(vkWaitForFences(rhi_device->GetContextRhi()->device, 1, vk_fence, true, std::numeric_limits<uint64_t>::max()));
+            error::assert_result(vkResetFences(rhi_device->GetContextRhi()->device, 1, vk_fence));
 		}
 	}
 

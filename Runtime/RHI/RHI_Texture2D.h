@@ -79,7 +79,7 @@ namespace Spartan
 			m_viewport			= RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
 			m_format			= format;
 			m_array_size		= array_size;
-			m_bind_flags		= (format == Format_D32_FLOAT) ? RHI_Texture_DepthStencil | RHI_Texture_Sampled : RHI_Texture_RenderTarget | RHI_Texture_Sampled;
+			m_bind_flags		= (format == RHI_Format_D32_Float) ? RHI_Texture_DepthStencil | RHI_Texture_Sampled : RHI_Texture_RenderTarget | RHI_Texture_Sampled;
 
 			RHI_Texture2D::CreateResourceGpu();
 		}

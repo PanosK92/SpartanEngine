@@ -200,11 +200,11 @@ namespace Spartan
 		auto format		= m_format;
 		auto format_dsv	= m_format;
 		auto format_srv	= m_format;
-		if (m_format == Format_D32_FLOAT)
+		if (m_format == RHI_Format_D32_Float)
 		{
-			format			= Format_R32_FLOAT_TYPELESS;
-			format_dsv		= Format_D32_FLOAT;
-			format_srv		= Format_R32_FLOAT;
+			format			= RHI_Format_R32_Float_Typeless;
+			format_dsv		= RHI_Format_D32_Float;
+			format_srv		= RHI_Format_R32_Float;
 		}
 
 		// TEXTURE
@@ -399,15 +399,15 @@ namespace Spartan
             return false;
         }
 
-		auto format_buffer	= Format_R32_FLOAT_TYPELESS;
-		auto format_dsv		= Format_D32_FLOAT;
-		auto format_srv		= Format_R32_FLOAT;
+		auto format_buffer	= RHI_Format_R32_Float_Typeless;
+		auto format_dsv		= RHI_Format_D32_Float;
+		auto format_srv		= RHI_Format_R32_Float;
 
-		if (format == Format_D32_FLOAT)
+		if (format == RHI_Format_D32_Float)
 		{
-			format_buffer	= Format_R32_FLOAT_TYPELESS;
-			format_dsv		 = Format_D32_FLOAT;
-			format_srv		 = Format_R32_FLOAT;
+			format_buffer	= RHI_Format_R32_Float_Typeless;
+			format_dsv		 = RHI_Format_D32_Float;
+			format_srv		 = RHI_Format_R32_Float;
 		}
 
 		// TEX

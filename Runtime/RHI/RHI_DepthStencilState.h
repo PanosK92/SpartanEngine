@@ -37,7 +37,7 @@ namespace Spartan
             const std::shared_ptr<RHI_Device>& rhi_device,
             const bool depth_test                           = true,
             const bool depth_write                          = true,
-            const RHI_Comparison_Function depth_function    = Comparison_LessEqual,
+            const RHI_Comparison_Function depth_function    = RHI_Comparison_LessEqual,
             const bool stencil_enabled                      = false
             
         );
@@ -52,7 +52,7 @@ namespace Spartan
 	private:
 		bool m_depth_test_enabled	                = false;
         bool m_depth_write_enabled                  = false;
-        RHI_Comparison_Function m_depth_function    = Comparison_Never;
+        RHI_Comparison_Function m_depth_function    = RHI_Comparison_Never;
         bool m_stencil_enabled                      = false;
 		bool m_initialized		                    = false;
 		void* m_buffer			                    = nullptr;

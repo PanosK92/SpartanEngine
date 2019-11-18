@@ -79,6 +79,7 @@ namespace Spartan
         bool HasMipmaps()                                               { return !m_data.empty();  }
         std::vector<std::byte>* GetData(uint32_t mipmap_index);
         std::vector<std::byte> GetMipmap(uint32_t index);
+        RHI_Image_Layout GetLayout() const                              { return m_layout; }
 
 		// GPU resources
 		auto GetResource_Texture() const								{ return m_resource_texture; }
@@ -100,7 +101,7 @@ namespace Spartan
 		uint32_t m_channels		= 4;
 		bool m_is_grayscale		= false;
 		bool m_is_transparent	= false;
-		RHI_Format m_format		= Format_R8G8B8A8_UNORM;
+		RHI_Format m_format		= RHI_Format_R8G8B8A8_Unorm;
 		uint16_t m_bind_flags	= 0;
 		bool m_generate_mipmaps_when_loading = false;
 		RHI_Viewport m_viewport;
@@ -114,6 +115,7 @@ namespace Spartan
 		void* m_resource_render_target	= nullptr;
 		void* m_texture					= nullptr;
 		void* m_texture_memory			= nullptr;
+        RHI_Image_Layout m_layout       = RHI_Image_Undefined;
 		uint32_t m_array_size			= 1;	
 		std::vector<void*> m_resource_depth_stencils;
         void* m_render_pass     = nullptr;

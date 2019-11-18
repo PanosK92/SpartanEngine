@@ -405,17 +405,17 @@ namespace Spartan
 
 		if (GetLightType() == LightType_Directional)
 		{
-            m_shadow_map.texture    = make_unique<RHI_Texture2D>(m_context, resolution, resolution, Format_D32_FLOAT, g_cascade_count);
+            m_shadow_map.texture    = make_unique<RHI_Texture2D>(m_context, resolution, resolution, RHI_Format_D32_Float, g_cascade_count);
             m_shadow_map.slices     = vector<ShadowSlice>(g_cascade_count);
 		}
 		else if (GetLightType() == LightType_Point)
 		{
-            m_shadow_map.texture    = make_unique<RHI_TextureCube>(m_context, resolution, resolution, Format_D32_FLOAT);
+            m_shadow_map.texture    = make_unique<RHI_TextureCube>(m_context, resolution, resolution, RHI_Format_D32_Float);
             m_shadow_map.slices     = vector<ShadowSlice>(6);
 		}
 		else if (GetLightType() == LightType_Spot)
 		{
-            m_shadow_map.texture    = make_unique<RHI_Texture2D>(m_context, resolution, resolution, Format_D32_FLOAT, 1);
+            m_shadow_map.texture    = make_unique<RHI_Texture2D>(m_context, resolution, resolution, RHI_Format_D32_Float, 1);
             m_shadow_map.slices     = vector<ShadowSlice>(1);
 		}
 	}
