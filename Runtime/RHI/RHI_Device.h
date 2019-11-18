@@ -98,8 +98,8 @@ namespace Spartan
 		bool GetDisplayModeFastest(DisplayMode* display_mode);
 		void AddAdapter(const std::string& name, uint32_t memory, uint32_t vendor_id, void* adapter);
 		void SetPrimaryAdapter(const DisplayAdapter* primary_adapter);
-		const std::vector<DisplayAdapter>& GetAdapters()	const { return m_displayAdapters; }
-		const DisplayAdapter* GetPrimaryAdapter()			const { return m_primaryAdapter; }
+		const std::vector<DisplayAdapter>& GetAdapters()	const { return m_display_adapters; }
+		const DisplayAdapter* GetPrimaryAdapter()			const { return m_primary_adapter; }
 		//=======================================================================================================================
 
 		auto IsInitialized()            const { return m_initialized; }
@@ -111,8 +111,8 @@ namespace Spartan
 		Context* m_context = nullptr;
 
 		bool m_initialized = false;
-		const DisplayAdapter* m_primaryAdapter = nullptr;
+		const DisplayAdapter* m_primary_adapter = nullptr;
 		std::vector<DisplayMode> m_displayModes;
-		std::vector<DisplayAdapter> m_displayAdapters;	
+		std::vector<DisplayAdapter> m_display_adapters;	
 	};
 }

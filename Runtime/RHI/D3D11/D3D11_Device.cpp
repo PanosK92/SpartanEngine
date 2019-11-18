@@ -78,7 +78,7 @@ namespace Spartan
                 D3D_FEATURE_LEVEL_9_1
             };
 
-            auto adapter = static_cast<IDXGIAdapter*>(m_primaryAdapter->data);
+            auto adapter = static_cast<IDXGIAdapter*>(m_primary_adapter->data);
             auto driver_type = adapter ? D3D_DRIVER_TYPE_UNKNOWN : D3D_DRIVER_TYPE_HARDWARE;
 
             auto create_device = [this, &adapter, &driver_type, &device_flags, &feature_levels]()
@@ -290,7 +290,7 @@ namespace Spartan
 
 	uint32_t RHI_Device::ProfilingGetGpuMemory()
 	{
-		if (auto adapter = static_cast<IDXGIAdapter3*>(m_primaryAdapter->data))
+		if (auto adapter = static_cast<IDXGIAdapter3*>(m_primary_adapter->data))
 		{
             DXGI_ADAPTER_DESC adapter_desc = {};
             auto result = adapter->GetDesc(&adapter_desc);
@@ -306,7 +306,7 @@ namespace Spartan
 
 	uint32_t RHI_Device::ProfilingGetGpuMemoryUsage()
 	{
-		if (auto adapter = static_cast<IDXGIAdapter3*>(m_primaryAdapter->data))
+		if (auto adapter = static_cast<IDXGIAdapter3*>(m_primary_adapter->data))
 		{
 			DXGI_QUERY_VIDEO_MEMORY_INFO info = {};
             auto result = adapter->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &info);

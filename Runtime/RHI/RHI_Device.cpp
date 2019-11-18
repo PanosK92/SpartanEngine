@@ -61,8 +61,8 @@ namespace Spartan
 
 	void RHI_Device::AddAdapter(const string& name, uint32_t memory, uint32_t vendor_id, void* adapter)
 	{
-		m_displayAdapters.emplace_back(name, memory, vendor_id, adapter);
-		sort(m_displayAdapters.begin(), m_displayAdapters.end(), [](const DisplayAdapter& adapter1, const DisplayAdapter& adapter2)
+		m_display_adapters.emplace_back(name, memory, vendor_id, adapter);
+		sort(m_display_adapters.begin(), m_display_adapters.end(), [](const DisplayAdapter& adapter1, const DisplayAdapter& adapter2)
 		{
 			return adapter1.memory > adapter2.memory;
 		});
@@ -78,7 +78,7 @@ namespace Spartan
 			return;
 		}
 
-		m_primaryAdapter = primary_adapter;
+		m_primary_adapter = primary_adapter;
 		LOG_INFO("%s (%d MB)", primary_adapter->name.c_str(), primary_adapter->memory);
 	}
 }
