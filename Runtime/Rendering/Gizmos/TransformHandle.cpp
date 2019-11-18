@@ -267,7 +267,7 @@ namespace Spartan
 		m_handle_z.position		= aabb_center + forward * handle_distance;
 		m_handle_xyz.position	= aabb_center;
 		m_handle_x.rotation		= Quaternion::FromEulerAngles(0.0f, 0.0f, -90.0f);
-		m_handle_y.rotation		= Quaternion::FromLookRotation(up, up);
+		m_handle_y.rotation		= Quaternion::FromEulerAngles(0.0f, 90.0f, 0.0f);
 		m_handle_z.rotation		= Quaternion::FromEulerAngles(90.0f, 0.0f, 0.0f);	
 		m_handle_x.scale		= handle_scale;
 		m_handle_y.scale		= handle_scale;
