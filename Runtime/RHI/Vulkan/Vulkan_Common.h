@@ -292,6 +292,27 @@ namespace Spartan::Vulkan_Common
 
     namespace image
     {
+        inline VkImageTiling is_format_supported(const RHI_Context* rhi_context, const RHI_Format format, VkFormatFeatureFlags flag)
+        {
+            // Get format properties
+            VkFormatProperties format_properties;
+            vkGetPhysicalDeviceFormatProperties(rhi_context->device_physical, vulkan_format[format], &format_properties);
+
+            // Check for optimal support
+            if (format_properties.optimalTilingFeatures & flag)
+            {
+                return VK_IMAGE_TILING_OPTIMAL;
+            }
+
+            // Check for linear support
+            if (format_properties.linearTilingFeatures & flag)
+            {
+                return VK_IMAGE_TILING_LINEAR;
+            }
+
+            return VK_IMAGE_TILING_MAX_ENUM;
+        }
+
         inline bool allocate_bind(const RHI_Context* rhi_context, const VkImage& image, VkDeviceMemory* memory, VkDeviceSize* memory_size = nullptr)
         {
             VkMemoryRequirements memory_requirements;
