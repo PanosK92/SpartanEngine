@@ -49,26 +49,26 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-	Renderer::Renderer(Context* context) : ISubsystem(context)
-	{
+    Renderer::Renderer(Context* context) : ISubsystem(context)
+    {
         // Options
         m_options |= Render_ReverseZ;
         //m_options |= Render_DepthPrepass;
-		m_options |= Render_Debug_Transform;
-		m_options |= Render_Debug_Grid;
-		m_options |= Render_Debug_Lights;
-		m_options |= Render_Debug_Physics;
-		m_options |= Render_Bloom;
+        m_options |= Render_Debug_Transform;
+        m_options |= Render_Debug_Grid;
+        m_options |= Render_Debug_Lights;
+        m_options |= Render_Debug_Physics;
+        m_options |= Render_Bloom;
         m_options |= Render_VolumetricLighting;
         m_options |= Render_MotionBlur;
-		m_options |= Render_SSAO;
+        m_options |= Render_SSAO;
         m_options |= Render_SSCS;
         m_options |= Render_SSR;	
-		m_options |= Render_AntiAliasing_TAA;
+        m_options |= Render_AntiAliasing_TAA;
         m_options |= Render_Sharpening_LumaSharpen;             // Helps with TAA induced blurring
-		//m_options |= Render_PostProcess_FXAA;                 // Disabled by default: TAA is superior.
-		//m_options |= Render_PostProcess_Dithering;            // Disabled by default: It's only needed in very dark scenes to fix smooth color gradients.
-		//m_options |= Render_PostProcess_ChromaticAberration;	// Disabled by default: It doesn't improve the image quality, it's more of a stylistic effect.	
+        //m_options |= Render_PostProcess_FXAA;                 // Disabled by default: TAA is superior.
+        //m_options |= Render_PostProcess_Dithering;            // Disabled by default: It's only needed in very dark scenes to fix smooth color gradients.
+        //m_options |= Render_PostProcess_ChromaticAberration;	// Disabled by default: It doesn't improve the image quality, it's more of a stylistic effect.	
 
         // Option values
         m_option_values[Option_Value_Anisotropy]              = 16.0f;

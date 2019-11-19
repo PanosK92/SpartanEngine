@@ -38,8 +38,8 @@ namespace Spartan
 {
 	RHI_IndexBuffer::~RHI_IndexBuffer()
 	{
-		Vulkan_Common::buffer::destroy(m_rhi_device, m_buffer);
-		Vulkan_Common::memory::free(m_rhi_device, m_buffer_memory);
+		Vulkan_Common::buffer::destroy(m_rhi_device->GetContextRhi(), m_buffer);
+		Vulkan_Common::memory::free(m_rhi_device->GetContextRhi(), m_buffer_memory);
 	}
 
 	bool RHI_IndexBuffer::_Create(const void* indices)
@@ -51,13 +51,13 @@ namespace Spartan
 		}
 
 		// Clear previous buffer
-		Vulkan_Common::buffer::destroy(m_rhi_device, m_buffer);
-		Vulkan_Common::memory::free(m_rhi_device, m_buffer_memory);
+		Vulkan_Common::buffer::destroy(m_rhi_device->GetContextRhi(), m_buffer);
+		Vulkan_Common::memory::free(m_rhi_device->GetContextRhi(), m_buffer_memory);
 
 		// Create buffer
 		VkBuffer buffer					= nullptr;
 		VkDeviceMemory buffer_memory	= nullptr;
-		if (!Vulkan_Common::buffer::create(m_rhi_device, buffer, buffer_memory, m_size, VK_BUFFER_USAGE_INDEX_BUFFER_BIT))
+		if (!Vulkan_Common::buffer::create_allocate_bind(m_rhi_device->GetContextRhi(), buffer, buffer_memory, m_size, VK_BUFFER_USAGE_INDEX_BUFFER_BIT))
 			return false;
 
 		// Save
