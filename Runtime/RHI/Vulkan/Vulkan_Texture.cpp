@@ -164,27 +164,21 @@ namespace Spartan
 	{
         const RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
 
-        // Get format properties
-        VkFormatProperties format_properties;
-        vkGetPhysicalDeviceFormatProperties(rhi_context->device_physical, vulkan_format[m_format], &format_properties);
+        // Get format support
+        VkFormatFeatureFlags feature_flag = (m_bind_flags & RHI_Texture_DepthStencil) ? VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT : VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
+        VkImageTiling image_tiling = Vulkan_Common::image::is_format_supported(rhi_context, m_format, feature_flag);
 
-        // Check tiling support
-        VkImageTiling image_tiling = VK_IMAGE_TILING_OPTIMAL;
+        // If the format is not supported, early exit
+        if (image_tiling == VK_IMAGE_TILING_MAX_ENUM)
         {
-            if ((m_bind_flags & RHI_Texture_RenderTarget) && !(format_properties.optimalTilingFeatures & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT))
-            {
-                image_tiling = VK_IMAGE_TILING_LINEAR;
-            }
+            LOG_ERROR("Format %s is not supported by the GPU.", rhi_format_to_string(m_format));
+            return false;
+        }
 
-            if ((m_bind_flags & RHI_Texture_DepthStencil) && !(format_properties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT))
-            {
-                image_tiling = VK_IMAGE_TILING_LINEAR;
-            }
-
-            if (image_tiling != VK_IMAGE_TILING_OPTIMAL)
-            {
-                LOG_WARNING("Format %s does not support optimal tiling, considering switching to a more efficient format.", rhi_format_to_string(m_format));
-            }
+        // If the format is not optimal, let the user know
+        if (image_tiling != VK_IMAGE_TILING_OPTIMAL)
+        {
+            LOG_WARNING("Format %s does not support optimal tiling, considering switching to a more efficient format.", rhi_format_to_string(m_format));
         }
 
         // Resolve usage flags
@@ -220,7 +214,7 @@ namespace Spartan
                 void* data = nullptr;
                 if (Vulkan_Common::error::check_result(vkMapMemory(rhi_context->device, staging_buffer_memory, 0, buffer_size, 0, &data)))
                 {
-                    memcpy(data, m_data.front().data(), static_cast<size_t>(m_data.front().size()));
+                    memcpy(data, m_data.front().data(), static_cast<size_t>(buffer_size));
                     vkUnmapMemory(rhi_context->device, staging_buffer_memory);
                 }
             }
@@ -283,7 +277,8 @@ namespace Spartan
             void* data = nullptr;
             if (Vulkan_Common::error::check_result(vkMapMemory(rhi_context->device, *image_memory, 0, memory_size, 0, &data)))
             {
-                memcpy(data, m_data.front().data(), static_cast<size_t>(m_data.front().size()));
+                VkDeviceSize buffer_size = static_cast<uint64_t>(m_width)* static_cast<uint64_t>(m_height)* static_cast<uint64_t>(m_channels);
+                memcpy(data, m_data.front().data(), static_cast<size_t>(buffer_size));
                 vkUnmapMemory(rhi_context->device, *image_memory);
             }
         }
