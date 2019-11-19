@@ -23,10 +23,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widget_RenderOptions.h"
 #include "Rendering/Renderer.h"
 #include "Core/Context.h"
+#include "Core/Timer.h"
 #include "Math/MathHelper.h"
-#include <Core\Timer.h>
-#include "../ImGui_Extension.h"
 #include "Rendering/Model.h"
+#include "../ImGui_Extension.h"
 //===============================
 
 //= NAMESPACES ===============
@@ -39,7 +39,7 @@ Widget_RenderOptions::Widget_RenderOptions(Context* context) : Widget(context)
 {
     m_title         = "Renderer Options";
     m_flags         |= ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoScrollbar;
-    m_is_visible	= false;
+    m_is_visible    = false;
     m_renderer      = context->GetSubsystem<Renderer>().get();
     m_alpha         = 1.0f;
 }

@@ -228,7 +228,7 @@ namespace Spartan
                 swap_chain_image_views.resize(swap_chain_images.size());
                 for (size_t i = 0; i < swap_chain_image_views.size(); i++)
                 {
-                    if (!Vulkan_Common::image::create_view(rhi_device, swap_chain_images[i], &swap_chain_image_views[i], rhi_context->surface_format.format, VK_IMAGE_ASPECT_COLOR_BIT))
+                    if (!Vulkan_Common::image::create_view(rhi_device->GetContextRhi(), swap_chain_images[i], swap_chain_image_views[i], rhi_context->surface_format.format, VK_IMAGE_ASPECT_COLOR_BIT))
                         return false;
                 }
             }
@@ -239,7 +239,7 @@ namespace Spartan
             {
                 vector<VkImageView> attachments = { swap_chain_image_views[i] };
 
-                if (!Vulkan_Common::image::create_frame_buffer(rhi_device, static_cast<VkRenderPass>(render_pass), attachments, extent.width, extent.height, &frame_buffers[i]))
+                if (!Vulkan_Common::image::create_frame_buffer(rhi_device->GetContextRhi(), static_cast<VkRenderPass>(render_pass), attachments, extent.width, extent.height, &frame_buffers[i]))
                     return false;
             }
 

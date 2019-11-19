@@ -38,8 +38,8 @@ namespace Spartan
 {
 	RHI_ConstantBuffer::~RHI_ConstantBuffer()
 	{
-		Vulkan_Common::buffer::destroy(m_rhi_device, m_buffer);
-		Vulkan_Common::memory::free(m_rhi_device, m_buffer_memory);
+		Vulkan_Common::buffer::destroy(m_rhi_device->GetContextRhi(), m_buffer);
+		Vulkan_Common::memory::free(m_rhi_device->GetContextRhi(), m_buffer_memory);
 	}
 
 	void* RHI_ConstantBuffer::Map() const
@@ -91,13 +91,13 @@ namespace Spartan
 		}
 
 		// Clear previous buffer
-		Vulkan_Common::buffer::destroy(m_rhi_device, m_buffer);
-		Vulkan_Common::memory::free(m_rhi_device, m_buffer_memory);
+		Vulkan_Common::buffer::destroy(m_rhi_device->GetContextRhi(), m_buffer);
+		Vulkan_Common::memory::free(m_rhi_device->GetContextRhi(), m_buffer_memory);
 
 		// Create buffer
 		VkBuffer buffer					= nullptr;
 		VkDeviceMemory buffer_memory	= nullptr;
-		if (!Vulkan_Common::buffer::create(m_rhi_device, buffer, buffer_memory, m_size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT))
+		if (!Vulkan_Common::buffer::create_allocate_bind(m_rhi_device->GetContextRhi(), buffer, buffer_memory, m_size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT))
 			return false;
 
 		// Save

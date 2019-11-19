@@ -97,24 +97,27 @@ namespace Spartan::Vulkan_Common
 
 	namespace memory
 	{
-		inline uint32_t get_type(const VkPhysicalDevice device, const VkMemoryPropertyFlags properties, const uint32_t type_bits)
+		inline uint32_t get_type(const RHI_Context* rhi_context, const VkMemoryPropertyFlags properties, const uint32_t type_bits)
 		{
 			VkPhysicalDeviceMemoryProperties prop;
-			vkGetPhysicalDeviceMemoryProperties(device, &prop);
-			for (uint32_t i = 0; i < prop.memoryTypeCount; i++)
-				if ((prop.memoryTypes[i].propertyFlags & properties) == properties && type_bits & (1 << i))
-					return i;
+			vkGetPhysicalDeviceMemoryProperties(rhi_context->device_physical, &prop);
+
+            for (uint32_t i = 0; i < prop.memoryTypeCount; i++)
+            {
+                if ((prop.memoryTypes[i].propertyFlags & properties) == properties && type_bits & (1 << i))
+                    return i;
+            }
 
             // Unable to find memoryType
 			return std::numeric_limits<uint32_t>::max(); 
 		}
 
-		inline void free(const std::shared_ptr<RHI_Device>& rhi_device, void*& device_memory)
+		inline void free(const RHI_Context* rhi_context, void*& device_memory)
 		{
 			if (!device_memory)
 				return;
 
-			vkFreeMemory(rhi_device->GetContextRhi()->device, static_cast<VkDeviceMemory>(device_memory), nullptr);
+			vkFreeMemory(rhi_context->device, static_cast<VkDeviceMemory>(device_memory), nullptr);
 			device_memory = nullptr;
 		}
 	}
@@ -249,7 +252,7 @@ namespace Spartan::Vulkan_Common
 
 	namespace buffer
 	{
-		inline bool create(const std::shared_ptr<RHI_Device>& rhi_device, VkBuffer& _buffer, VkDeviceMemory& buffer_memory, VkDeviceSize& size, VkBufferUsageFlags usage)
+		inline bool create_allocate_bind(const RHI_Context* rhi_context, VkBuffer& _buffer, VkDeviceMemory& buffer_memory, VkDeviceSize& size, VkBufferUsageFlags usage)
 		{
 			VkBufferCreateInfo buffer_info	= {};
 			buffer_info.sType				= VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -257,38 +260,62 @@ namespace Spartan::Vulkan_Common
 			buffer_info.usage				= usage;
 			buffer_info.sharingMode			= VK_SHARING_MODE_EXCLUSIVE;
 
-			if (!error::check_result(vkCreateBuffer(rhi_device->GetContextRhi()->device, &buffer_info, nullptr, &_buffer)))
+			if (!error::check_result(vkCreateBuffer(rhi_context->device, &buffer_info, nullptr, &_buffer)))
 				return false;
 
 			VkMemoryRequirements memory_requirements;
-			vkGetBufferMemoryRequirements(rhi_device->GetContextRhi()->device, _buffer, &memory_requirements);
+			vkGetBufferMemoryRequirements(rhi_context->device, _buffer, &memory_requirements);
 
 			VkMemoryAllocateInfo alloc_info = {};			
 			alloc_info.sType				= VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 			alloc_info.allocationSize		= memory_requirements.size;
-			alloc_info.memoryTypeIndex		= memory::get_type(rhi_device->GetContextRhi()->device_physical, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memory_requirements.memoryTypeBits);
+			alloc_info.memoryTypeIndex		= memory::get_type(rhi_context, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memory_requirements.memoryTypeBits);
 
-            if (!error::check_result(vkAllocateMemory(rhi_device->GetContextRhi()->device, &alloc_info, nullptr, &buffer_memory)))
+            if (!error::check_result(vkAllocateMemory(rhi_context->device, &alloc_info, nullptr, &buffer_memory)))
                 return false;
 
-            if (!error::check_result(vkBindBufferMemory(rhi_device->GetContextRhi()->device, _buffer, buffer_memory, 0)))
+            if (!error::check_result(vkBindBufferMemory(rhi_context->device, _buffer, buffer_memory, 0)))
                 return false;
 
 			return true;
 		}
 
-		inline void destroy(const std::shared_ptr<RHI_Device>& rhi_device, void*& _buffer)
+		inline void destroy(const RHI_Context* rhi_context, void*& _buffer)
 		{
 			if (!_buffer)
 				return;
 
-			vkDestroyBuffer(rhi_device->GetContextRhi()->device, static_cast<VkBuffer>(_buffer), nullptr);
+			vkDestroyBuffer(rhi_context->device, static_cast<VkBuffer>(_buffer), nullptr);
 			_buffer = nullptr;
 		}
 	}
 
     namespace image
     {
+        inline bool allocate_bind(const RHI_Context* rhi_context, const VkImage& image, VkDeviceMemory* memory, VkDeviceSize* memory_size = nullptr)
+        {
+            VkMemoryRequirements memory_requirements;
+            vkGetImageMemoryRequirements(rhi_context->device, image, &memory_requirements);
+
+            VkMemoryAllocateInfo allocate_info  = {};
+            allocate_info.sType                 = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+            allocate_info.allocationSize        = memory_requirements.size;
+            allocate_info.memoryTypeIndex       = Vulkan_Common::memory::get_type(rhi_context, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memory_requirements.memoryTypeBits);
+
+            if (!error::check_result(vkAllocateMemory(rhi_context->device, &allocate_info, nullptr, memory)))
+                return false;
+
+            if (!error::check_result(vkBindImageMemory(rhi_context->device, image, *memory, 0)))
+                return false;
+
+            if (memory_size)
+            {
+                *memory_size = memory_requirements.size;
+            }
+
+            return true;
+        }
+
         inline VkImageAspectFlags bind_flags_to_aspect_mask(const uint16_t bind_flags)
         {
             // Resolve aspect mask
@@ -307,9 +334,29 @@ namespace Spartan::Vulkan_Common
             return aspect_mask;
         }
 
-        inline bool create_view(const std::shared_ptr<RHI_Device>& rhi_device, VkImage& image, VkImageView* image_view, const VkFormat format, const VkImageAspectFlags aspect_flags)
+        inline bool create_image(const RHI_Context* rhi_context, VkImage& image, const uint32_t width, const uint32_t height, const VkFormat format, const VkImageTiling tiling, const RHI_Image_Layout layout, const VkImageUsageFlags usage)
         {
-            VkImageViewCreateInfo create_info = {};
+            VkImageCreateInfo create_info   = {};
+            create_info.sType               = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+            create_info.imageType           = VK_IMAGE_TYPE_2D;
+            create_info.extent.width        = width;
+            create_info.extent.height       = height;
+            create_info.extent.depth        = 1;
+            create_info.mipLevels           = 1;
+            create_info.arrayLayers         = 1;
+            create_info.format              = format;
+            create_info.tiling              = tiling;
+            create_info.initialLayout       = vulkan_image_layout[layout];
+            create_info.usage               = usage;
+            create_info.samples             = VK_SAMPLE_COUNT_1_BIT;
+            create_info.sharingMode         = VK_SHARING_MODE_EXCLUSIVE;
+
+            return Vulkan_Common::error::check_result(vkCreateImage(rhi_context->device, &create_info, nullptr, &image));
+        }
+
+        inline bool create_view(const RHI_Context* rhi_context, const VkImage& image, VkImageView& image_view, const VkFormat format, const VkImageAspectFlags aspect_flags)
+        {
+            VkImageViewCreateInfo create_info           = {};
             create_info.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
             create_info.image                           = image;
             create_info.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
@@ -324,21 +371,21 @@ namespace Spartan::Vulkan_Common
             create_info.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;
             create_info.components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY;
 
-            return error::check_result(vkCreateImageView(rhi_device->GetContextRhi()->device, &create_info, nullptr, image_view));
+            return error::check_result(vkCreateImageView(rhi_context->device, &create_info, nullptr, &image_view));
         }
 
-        inline bool create_frame_buffer(const std::shared_ptr<RHI_Device>& rhi_device, const VkRenderPass& render_pass, const std::vector<VkImageView> attachments, const uint32_t width, const uint32_t height, VkFramebuffer* frame_buffer)
+        inline bool create_frame_buffer(const RHI_Context* rhi_context, const VkRenderPass& render_pass, const std::vector<VkImageView> attachments, const uint32_t width, const uint32_t height, VkFramebuffer* frame_buffer)
         {
             VkFramebufferCreateInfo create_info = {};
-            create_info.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-            create_info.renderPass      = render_pass;
-            create_info.attachmentCount = static_cast<uint32_t>(attachments.size());
-            create_info.pAttachments    = attachments.data();
-            create_info.width           = width;
-            create_info.height          = height;
-            create_info.layers          = 1;
+            create_info.sType                   = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+            create_info.renderPass              = render_pass;
+            create_info.attachmentCount         = static_cast<uint32_t>(attachments.size());
+            create_info.pAttachments            = attachments.data();
+            create_info.width                   = width;
+            create_info.height                  = height;
+            create_info.layers                  = 1;
 
-            return error::check_result(vkCreateFramebuffer(rhi_device->GetContextRhi()->device, &create_info, nullptr, frame_buffer));
+            return error::check_result(vkCreateFramebuffer(rhi_context->device, &create_info, nullptr, frame_buffer));
         }
     }
 

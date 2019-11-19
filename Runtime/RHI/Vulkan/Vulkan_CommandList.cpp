@@ -420,7 +420,7 @@ namespace Spartan
         }
 
         // Null textures are allowed, and they are replaced with a black texture here
-        if (!texture)
+        if (!texture || !texture->GetResource_Texture())
         {
             texture = m_renderer->GetBlackTexture();
         }
