@@ -124,17 +124,17 @@ namespace Spartan::Vulkan_Common
 
 	namespace command
 	{
-        inline bool create_pool(const std::shared_ptr<RHI_Device>& rhi_device, VkCommandPool& command_pool)
+        inline bool create_pool(const RHI_Context* rhi_context, VkCommandPool& command_pool)
         {
             VkCommandPoolCreateInfo cmd_pool_info   = {};
             cmd_pool_info.sType                     = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-            cmd_pool_info.queueFamilyIndex          = rhi_device->GetContextRhi()->indices.graphics_family.value();
+            cmd_pool_info.queueFamilyIndex          = rhi_context->indices.graphics_family.value();
             cmd_pool_info.flags                     = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
-            return error::check_result(vkCreateCommandPool(rhi_device->GetContextRhi()->device, &cmd_pool_info, nullptr, &command_pool));
+            return error::check_result(vkCreateCommandPool(rhi_context->device, &cmd_pool_info, nullptr, &command_pool));
         }
 
-		inline bool create_buffer(const std::shared_ptr<RHI_Device>& rhi_device, VkCommandPool& cmd_pool, VkCommandBuffer& command_buffer, const VkCommandBufferLevel level)
+		inline bool create_buffer(const RHI_Context* rhi_context, VkCommandPool& cmd_pool, VkCommandBuffer& command_buffer, const VkCommandBufferLevel level)
 		{
 			VkCommandBufferAllocateInfo allocate_info	= {};
 			allocate_info.sType							= VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -142,10 +142,10 @@ namespace Spartan::Vulkan_Common
 			allocate_info.level							= level;
             allocate_info.commandBufferCount            = 1;
 
-            return error::check_result(vkAllocateCommandBuffers(rhi_device->GetContextRhi()->device, &allocate_info, &command_buffer));
+            return error::check_result(vkAllocateCommandBuffers(rhi_context->device, &allocate_info, &command_buffer));
 		}
 
-        inline bool flush(VkCommandBuffer& command_buffer, VkQueue& queue)
+        inline bool flush(VkCommandBuffer& command_buffer, const VkQueue& queue)
         {
             if (!command_buffer)
                 return false;
@@ -164,14 +164,14 @@ namespace Spartan::Vulkan_Common
             return error::check_result(vkQueueWaitIdle(queue));
         }
 
-        inline bool begin(const std::shared_ptr<RHI_Device>& rhi_device, VkCommandPool& command_pool, VkCommandBuffer& command_buffer)
+        inline bool begin(const RHI_Context* rhi_context, VkCommandPool& command_pool, VkCommandBuffer& command_buffer)
         {
             // Create command pool
-            if (!create_pool(rhi_device, command_pool))
+            if (!create_pool(rhi_context, command_pool))
                 return false;
 
             // Create command buffer
-            if (!create_buffer(rhi_device, command_pool, command_buffer, VK_COMMAND_BUFFER_LEVEL_PRIMARY))
+            if (!create_buffer(rhi_context, command_pool, command_buffer, VK_COMMAND_BUFFER_LEVEL_PRIMARY))
                 return false;
 
             VkCommandBufferBeginInfo begin_info = {};
@@ -181,72 +181,72 @@ namespace Spartan::Vulkan_Common
             return error::check_result(vkBeginCommandBuffer(command_buffer, &begin_info));
         }
 
-        inline bool flush_and_free(const std::shared_ptr<RHI_Device>& rhi_device, VkCommandPool& command_pool, VkCommandBuffer& command_buffer)
+        inline bool flush_and_free(const RHI_Context* rhi_context, VkCommandPool& command_pool, VkCommandBuffer& command_buffer)
         {
-            if (!flush(command_buffer, rhi_device->GetContextRhi()->queue_graphics))
+            if (!flush(command_buffer, rhi_context->queue_graphics))
                 return false;
 
-            vkFreeCommandBuffers(rhi_device->GetContextRhi()->device, command_pool, 1, &command_buffer);
+            vkFreeCommandBuffers(rhi_context->device, command_pool, 1, &command_buffer);
             return true;
         }
 	}
 
 	namespace semaphore
 	{
-		inline bool create(const std::shared_ptr<RHI_Device>& rhi_device, VkSemaphore& semaphore_out)
+		inline bool create(const RHI_Context* rhi_context, VkSemaphore& semaphore_out)
 		{
 			VkSemaphoreCreateInfo semaphore_info	= {};
 			semaphore_info.sType					= VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-            return error::check_result(vkCreateSemaphore(rhi_device->GetContextRhi()->device, &semaphore_info, nullptr, &semaphore_out));
+            return error::check_result(vkCreateSemaphore(rhi_context->device, &semaphore_info, nullptr, &semaphore_out));
 		}
 
-		inline void destroy(const std::shared_ptr<RHI_Device>& rhi_device, void*& semaphore_in)
+		inline void destroy(const RHI_Context* rhi_context, void*& semaphore_in)
 		{
 			if (!semaphore_in)
 				return;
 
-			vkDestroySemaphore(rhi_device->GetContextRhi()->device, static_cast<VkSemaphore>(semaphore_in), nullptr);
+			vkDestroySemaphore(rhi_context->device, static_cast<VkSemaphore>(semaphore_in), nullptr);
 			semaphore_in = nullptr;
 		}
 	}
 
 	namespace fence
 	{
-		inline bool create(const std::shared_ptr<RHI_Device>& rhi_device, VkFence& fence_out)
+		inline bool create(const RHI_Context* rhi_context, VkFence& fence_out)
 		{
 			VkFenceCreateInfo fence_info	= {};
 			fence_info.sType				= VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 	
-            return error::check_result(vkCreateFence(rhi_device->GetContextRhi()->device, &fence_info, nullptr, &fence_out));
+            return error::check_result(vkCreateFence(rhi_context->device, &fence_info, nullptr, &fence_out));
 		}
 
-		inline void destroy(const std::shared_ptr<RHI_Device>& rhi_device, void*& fence_in)
+		inline void destroy(const RHI_Context* rhi_context, void*& fence_in)
 		{
 			if (!fence_in)
 				return;
 
-			vkDestroyFence(rhi_device->GetContextRhi()->device, static_cast<VkFence>(fence_in), nullptr);
+			vkDestroyFence(rhi_context->device, static_cast<VkFence>(fence_in), nullptr);
 			fence_in = nullptr;
 		}
 
-		inline void wait(const std::shared_ptr<RHI_Device>&rhi_device, void*& fence_in)
+		inline void wait(const RHI_Context* rhi_context, void*& fence_in)
 		{
             const auto vk_fence = reinterpret_cast<VkFence*>(&fence_in);
-			error::assert_result(vkWaitForFences(rhi_device->GetContextRhi()->device, 1, vk_fence, true, std::numeric_limits<uint64_t>::max()));
+			error::assert_result(vkWaitForFences(rhi_context->device, 1, vk_fence, true, std::numeric_limits<uint64_t>::max()));
 		}
 
-		inline void reset(const std::shared_ptr<RHI_Device>& rhi_device, void*& fence_in)
+		inline void reset(const RHI_Context* rhi_context, void*& fence_in)
 		{
             const auto vk_fence = reinterpret_cast<VkFence*>(&fence_in);
-            error::assert_result(vkResetFences(rhi_device->GetContextRhi()->device, 1, vk_fence));
+            error::assert_result(vkResetFences(rhi_context->device, 1, vk_fence));
 		}
 
-		inline void wait_reset(const std::shared_ptr<RHI_Device>& rhi_device, void*& fence_in)
+		inline void wait_reset(const RHI_Context* rhi_context, void*& fence_in)
 		{
 			const auto vk_fence = reinterpret_cast<VkFence*>(&fence_in);
-            error::assert_result(vkWaitForFences(rhi_device->GetContextRhi()->device, 1, vk_fence, true, std::numeric_limits<uint64_t>::max()));
-            error::assert_result(vkResetFences(rhi_device->GetContextRhi()->device, 1, vk_fence));
+            error::assert_result(vkWaitForFences(rhi_context->device, 1, vk_fence, true, std::numeric_limits<uint64_t>::max()));
+            error::assert_result(vkResetFences(rhi_context->device, 1, vk_fence));
 		}
 	}
 

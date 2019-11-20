@@ -125,12 +125,12 @@ namespace Spartan
 		return true;
 	}
 
-    inline bool CopyBufferToImage(const shared_ptr<RHI_Device>& rhi_device, const uint32_t width, const uint32_t height, VkImage& image, RHI_Image_Layout& layout, VkBuffer& staging_buffer)
+    inline bool CopyBufferToImage(const RHI_Context* rhi_context, const uint32_t width, const uint32_t height, VkImage& image, RHI_Image_Layout& layout, VkBuffer& staging_buffer)
     {
         // Create command buffer
         VkCommandPool command_pool          = nullptr;
         VkCommandBuffer command_buffer[1]   = { nullptr };
-		if (!Vulkan_Common::command::begin(rhi_device, command_pool, command_buffer[0]))
+		if (!Vulkan_Common::command::begin(rhi_context, command_pool, command_buffer[0]))
 			return false;
 
         // Transition layout to RHI_Image_Transfer_Dst_Optimal
@@ -157,7 +157,7 @@ namespace Spartan
         layout = RHI_Image_Shader_Read_Only_Optimal;
 
         // Flush and free command buffer
-		return Vulkan_Common::command::flush_and_free(rhi_device, command_pool, command_buffer[0]);
+		return Vulkan_Common::command::flush_and_free(rhi_context, command_pool, command_buffer[0]);
 	}
 
 	bool RHI_Texture2D::CreateResourceGpu()
@@ -237,7 +237,7 @@ namespace Spartan
             if (staging_buffer)
             {
                 lock_guard<mutex> lock(m_mutex); // Mutex prevents this error: THREADING ERROR : object of type VkQueue is simultaneously used in thread 0xfe0 and thread 0xe18
-                if (!CopyBufferToImage(m_rhi_device, static_cast<uint32_t>(m_width), static_cast<uint32_t>(m_height), *image, m_layout, staging_buffer))
+                if (!CopyBufferToImage(rhi_context, static_cast<uint32_t>(m_width), static_cast<uint32_t>(m_height), *image, m_layout, staging_buffer))
                 {
                     LOG_ERROR("Failed to copy buffer to image");
                     return false;

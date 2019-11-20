@@ -29,6 +29,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_SwapChain.h"
 #include "../RHI_Device.h"
 #include "../../Logging/Log.h"
+#include "../RHI_CommandList.h"
+#include "../../Rendering/Renderer.h"
+#include "../../Profiling/Profiler.h"
 //=============================
 
 //= NAMESPACES ===============
@@ -40,27 +43,27 @@ namespace Spartan
 {
     namespace _Vulkan_SwapChain
     {
-        inline SwapChainSupportDetails check_surface_compatibility(RHI_Device* rhi_device, const VkSurfaceKHR surface)
+        inline SwapChainSupportDetails check_surface_compatibility(const RHI_Context* rhi_context, const VkSurfaceKHR surface)
         {
             SwapChainSupportDetails details;
-            vkGetPhysicalDeviceSurfaceCapabilitiesKHR(rhi_device->GetContextRhi()->device_physical, surface, &details.capabilities);
+            vkGetPhysicalDeviceSurfaceCapabilitiesKHR(rhi_context->device_physical, surface, &details.capabilities);
 
             uint32_t format_count;
-            vkGetPhysicalDeviceSurfaceFormatsKHR(rhi_device->GetContextRhi()->device_physical, surface, &format_count, nullptr);
+            vkGetPhysicalDeviceSurfaceFormatsKHR(rhi_context->device_physical, surface, &format_count, nullptr);
 
             if (format_count != 0)
             {
                 details.formats.resize(format_count);
-                vkGetPhysicalDeviceSurfaceFormatsKHR(rhi_device->GetContextRhi()->device_physical, surface, &format_count, details.formats.data());
+                vkGetPhysicalDeviceSurfaceFormatsKHR(rhi_context->device_physical, surface, &format_count, details.formats.data());
             }
 
             uint32_t present_mode_count;
-            vkGetPhysicalDeviceSurfacePresentModesKHR(rhi_device->GetContextRhi()->device_physical, surface, &present_mode_count, nullptr);
+            vkGetPhysicalDeviceSurfacePresentModesKHR(rhi_context->device_physical, surface, &present_mode_count, nullptr);
 
             if (present_mode_count != 0)
             {
                 details.present_modes.resize(present_mode_count);
-                vkGetPhysicalDeviceSurfacePresentModesKHR(rhi_device->GetContextRhi()->device_physical, surface, &present_mode_count, details.present_modes.data());
+                vkGetPhysicalDeviceSurfacePresentModesKHR(rhi_context->device_physical, surface, &present_mode_count, details.present_modes.data());
             }
 
             return details;
@@ -117,7 +120,7 @@ namespace Spartan
 
         inline bool create
         (
-            const std::shared_ptr<RHI_Device>& rhi_device,
+            RHI_Context* rhi_context,
             uint32_t width,
             uint32_t height,
             uint32_t buffer_count,
@@ -132,10 +135,6 @@ namespace Spartan
             vector<void*>& semaphores_image_acquired_out
         )
         {
-            auto rhi_context        = rhi_device->GetContextRhi();
-            auto device             = rhi_device->GetContextRhi()->device;
-            auto device_physical    = rhi_device->GetContextRhi()->device_physical;
-
             // Create surface
             VkSurfaceKHR surface = nullptr;
             {
@@ -148,7 +147,7 @@ namespace Spartan
                     return false;
 
                 VkBool32 present_support = false;
-                if (!Vulkan_Common::error::check_result(vkGetPhysicalDeviceSurfaceSupportKHR(device_physical, rhi_context->indices.graphics_family.value(), surface, &present_support)))
+                if (!Vulkan_Common::error::check_result(vkGetPhysicalDeviceSurfaceSupportKHR(rhi_context->device_physical, rhi_context->indices.graphics_family.value(), surface, &present_support)))
                     return false;
 
                 if (!present_support)
@@ -159,7 +158,7 @@ namespace Spartan
             }
 
             // Ensure device compatibility
-            auto surface_support = check_surface_compatibility(rhi_device.get(), surface);
+            auto surface_support = check_surface_compatibility(rhi_context, surface);
             if (!surface_support.IsCompatible())
             {
                 LOG_ERROR("Device is not surface compatible.");
@@ -209,7 +208,7 @@ namespace Spartan
                 create_info.clipped         = VK_TRUE;
                 create_info.oldSwapchain    = nullptr;
 
-                if (!Vulkan_Common::error::check_result(vkCreateSwapchainKHR(device, &create_info, nullptr, &swap_chain)))
+                if (!Vulkan_Common::error::check_result(vkCreateSwapchainKHR(rhi_context->device, &create_info, nullptr, &swap_chain)))
                     return false;
             }
 
@@ -217,9 +216,9 @@ namespace Spartan
             vector<VkImage> swap_chain_images;
             {
                 uint32_t image_count;
-                vkGetSwapchainImagesKHR(device, swap_chain, &image_count, nullptr);
+                vkGetSwapchainImagesKHR(rhi_context->device, swap_chain, &image_count, nullptr);
                 swap_chain_images.resize(image_count);
-                vkGetSwapchainImagesKHR(device, swap_chain, &image_count, swap_chain_images.data());
+                vkGetSwapchainImagesKHR(rhi_context->device, swap_chain, &image_count, swap_chain_images.data());
             }
 
             // Image views
@@ -228,7 +227,7 @@ namespace Spartan
                 swap_chain_image_views.resize(swap_chain_images.size());
                 for (size_t i = 0; i < swap_chain_image_views.size(); i++)
                 {
-                    if (!Vulkan_Common::image::create_view(rhi_device->GetContextRhi(), swap_chain_images[i], swap_chain_image_views[i], rhi_context->surface_format.format, VK_IMAGE_ASPECT_COLOR_BIT))
+                    if (!Vulkan_Common::image::create_view(rhi_context, swap_chain_images[i], swap_chain_image_views[i], rhi_context->surface_format.format, VK_IMAGE_ASPECT_COLOR_BIT))
                         return false;
                 }
             }
@@ -239,7 +238,7 @@ namespace Spartan
             {
                 vector<VkImageView> attachments = { swap_chain_image_views[i] };
 
-                if (!Vulkan_Common::image::create_frame_buffer(rhi_device->GetContextRhi(), static_cast<VkRenderPass>(render_pass), attachments, extent.width, extent.height, &frame_buffers[i]))
+                if (!Vulkan_Common::image::create_frame_buffer(rhi_context, static_cast<VkRenderPass>(render_pass), attachments, extent.width, extent.height, &frame_buffers[i]))
                     return false;
             }
 
@@ -251,7 +250,7 @@ namespace Spartan
             for (uint32_t i = 0; i < buffer_count; i++)
             {
                 VkSemaphore semaphore;
-                Vulkan_Common::semaphore::create(rhi_device, semaphore);
+                Vulkan_Common::semaphore::create(rhi_context, semaphore);
                 semaphores_image_acquired_out.emplace_back(static_cast<void*>(semaphore));
             }
 
@@ -259,7 +258,7 @@ namespace Spartan
         }
 
         inline void destroy(
-            const std::shared_ptr<RHI_Device>& rhi_device,
+            const RHI_Context* rhi_context,
             void*& surface,
             void*& swap_chain_view,
             vector<void*>& image_views,
@@ -269,25 +268,25 @@ namespace Spartan
         {
             for (auto& semaphore : semaphores_image_acquired)
             {
-                Vulkan_Common::semaphore::destroy(rhi_device, semaphore);
+                Vulkan_Common::semaphore::destroy(rhi_context, semaphore);
             }
             semaphores_image_acquired.clear();
 
-            for (auto frame_buffer : frame_buffers) { vkDestroyFramebuffer(rhi_device->GetContextRhi()->device, static_cast<VkFramebuffer>(frame_buffer), nullptr); }
+            for (auto frame_buffer : frame_buffers) { vkDestroyFramebuffer(rhi_context->device, static_cast<VkFramebuffer>(frame_buffer), nullptr); }
             frame_buffers.clear();
 
-            for (auto& image_view : image_views) { vkDestroyImageView(rhi_device->GetContextRhi()->device, static_cast<VkImageView>(image_view), nullptr); }
+            for (auto& image_view : image_views) { vkDestroyImageView(rhi_context->device, static_cast<VkImageView>(image_view), nullptr); }
             image_views.clear();
 
             if (swap_chain_view)
             {
-                vkDestroySwapchainKHR(rhi_device->GetContextRhi()->device, static_cast<VkSwapchainKHR>(swap_chain_view), nullptr);
+                vkDestroySwapchainKHR(rhi_context->device, static_cast<VkSwapchainKHR>(swap_chain_view), nullptr);
                 swap_chain_view = nullptr;
             }
 
             if (surface)
             {
-                vkDestroySurfaceKHR(rhi_device->GetContextRhi()->instance, static_cast<VkSurfaceKHR>(surface), nullptr);
+                vkDestroySurfaceKHR(rhi_context->instance, static_cast<VkSurfaceKHR>(surface), nullptr);
                 surface = nullptr;
             }
         }
@@ -295,7 +294,7 @@ namespace Spartan
 
 	RHI_SwapChain::RHI_SwapChain(
 		void* window_handle,
-		const std::shared_ptr<RHI_Device>& rhi_device,
+        shared_ptr<RHI_Device> rhi_device,
 		const uint32_t width,
 		const uint32_t height,
         const RHI_Format format		/*= Format_R8G8B8A8_UNORM */,
@@ -303,16 +302,31 @@ namespace Spartan
         const uint32_t flags		/*= Present_Immediate */
 	)
 	{
-		const auto hwnd = static_cast<HWND>(window_handle);
-		if (!hwnd || !rhi_device || !IsWindow(hwnd))
-		{
-			LOG_ERROR_INVALID_PARAMETER();
-			return;
-		}
+        // Validate device
+        if (!rhi_device || !rhi_device->GetContextRhi()->device)
+        {
+            LOG_ERROR("Invalid device.");
+            return;
+        }
+
+        // Validate window handle
+        const auto hwnd = static_cast<HWND>(window_handle);
+        if (!hwnd || !IsWindow(hwnd))
+        {
+            LOG_ERROR_INVALID_PARAMETER();
+            return;
+        }
+
+        // Validate resolution
+        if (width == 0 || width > m_max_resolution || height == 0 || height > m_max_resolution)
+        {
+            LOG_WARNING("%dx%d is an invalid resolution", width, height);
+            return;
+        }
 
 		// Copy parameters
 		m_format		= format;
-		m_rhi_device	= rhi_device;
+		m_rhi_device	= rhi_device.get();
 		m_buffer_count	= buffer_count;
 		m_width			= width;
 		m_height		= height;
@@ -324,7 +338,7 @@ namespace Spartan
 
 		m_initialized = _Vulkan_SwapChain::create
 		(
-			m_rhi_device,
+            rhi_device->GetContextRhi(),
 			m_width,
 			m_height,
 			m_buffer_count,
@@ -338,13 +352,16 @@ namespace Spartan
 			m_frame_buffers,
 			m_semaphores_image_acquired
 		);
+
+        // Create command list
+        m_cmd_list = make_shared<RHI_CommandList>(this, rhi_device->GetContext());
 	}
 
 	RHI_SwapChain::~RHI_SwapChain()
 	{
 		_Vulkan_SwapChain::destroy
 		(
-			m_rhi_device,
+            m_rhi_device->GetContextRhi(),
 			m_surface,
 			m_swap_chain_view,
 			m_image_views,
@@ -372,7 +389,7 @@ namespace Spartan
 		// Destroy previous swap chain
 		_Vulkan_SwapChain::destroy
 		(
-			m_rhi_device,
+            m_rhi_device->GetContextRhi(),
 			m_surface,
 			m_swap_chain_view,
 			m_image_views,
@@ -383,7 +400,7 @@ namespace Spartan
 		// Create the swap chain with the new dimensions
 		m_initialized = _Vulkan_SwapChain::create
 		(
-			m_rhi_device,
+            m_rhi_device->GetContextRhi(),
 			m_width,
 			m_height,
 			m_buffer_count,

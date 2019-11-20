@@ -24,12 +24,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifdef API_GRAPHICS_D3D11
 //================================
 
-//= INCLUDES ===================
+//= INCLUDES ========================
 #include "../RHI_SwapChain.h"
 #include "../RHI_Device.h"
 #include "../../Logging/Log.h"
 #include "../../Math/Vector4.h"
-//==============================
+#include "../RHI_CommandList.h"
+#include "../../Rendering/Renderer.h"
+#include "../../Profiling/Profiler.h"
+//===================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -40,7 +43,7 @@ namespace Spartan
 {
 	RHI_SwapChain::RHI_SwapChain(
 		void* window_handle,
-		const std::shared_ptr<RHI_Device>& device,
+        shared_ptr<RHI_Device> rhi_device,
 		const uint32_t width,
 		const uint32_t height,
 		const RHI_Format format	    /*= Format_R8G8B8A8_UNORM*/,	
@@ -48,30 +51,31 @@ namespace Spartan
         const uint32_t flags	    /*= Present_Immediate */
 	)
 	{
+        // Validate device
+        if (!rhi_device || !rhi_device->GetContextRhi()->device)
+        {
+            LOG_ERROR("Invalid device.");
+            return;
+        }
+
+        // Validate window handle
 		const auto hwnd	= static_cast<HWND>(window_handle);
-		if (!hwnd || !device || !IsWindow(hwnd))
+		if (!hwnd|| !IsWindow(hwnd))
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return;
 		}
 
-		// Return if resolution is invalid
+		// Validate resolution
 		if (width == 0 || width > m_max_resolution || height == 0 || height > m_max_resolution)
 		{
 			LOG_WARNING("%dx%d is an invalid resolution", width, height);
 			return;
 		}
 
-		// Get device
-		if (!device->GetContextRhi()->device)
-		{
-			LOG_ERROR("Invalid device.");
-			return;
-		}
-
 		// Get factory
 		IDXGIFactory* dxgi_factory = nullptr;
-		if (const auto& adapter = device->GetPrimaryAdapter())
+		if (const auto& adapter = rhi_device->GetPrimaryAdapter())
 		{
 			auto dxgi_adapter = static_cast<IDXGIAdapter*>(adapter->data);
 			dxgi_adapter->GetParent(IID_PPV_ARGS(&dxgi_factory));
@@ -90,12 +94,12 @@ namespace Spartan
 
 		// Save parameters
 		m_format		= format;
-		m_rhi_device	= device;
+        m_rhi_device    = rhi_device.get();
 		m_buffer_count	= buffer_count;
 		m_windowed		= true;
 		m_width			= width;
 		m_height		= height;
-		m_flags			= D3D11_Common::swap_chain::validate_flags(m_rhi_device.get(), flags);
+		m_flags			= D3D11_Common::swap_chain::validate_flags(m_rhi_device, flags);
 
 		// Create swap chain
 		{
@@ -112,7 +116,7 @@ namespace Spartan
 			desc.Windowed						= m_windowed ? TRUE : FALSE;
 			desc.BufferDesc.ScanlineOrdering	= DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
 			desc.BufferDesc.Scaling				= DXGI_MODE_SCALING_UNSPECIFIED;
-			desc.SwapEffect						= D3D11_Common::swap_chain::get_swap_effect(m_rhi_device.get(), m_flags);
+			desc.SwapEffect						= D3D11_Common::swap_chain::get_swap_effect(m_rhi_device, m_flags);
 			desc.Flags							= D3D11_Common::swap_chain::get_flags(m_flags);
 
 			auto swap_chain		= static_cast<IDXGISwapChain*>(m_swap_chain_view);
@@ -137,7 +141,7 @@ namespace Spartan
 			}
 
 			auto render_target_view = static_cast<ID3D11RenderTargetView*>(m_render_target_view);
-			result = m_rhi_device->GetContextRhi()->device->CreateRenderTargetView(backbuffer, nullptr, &render_target_view);
+			result = rhi_device->GetContextRhi()->device->CreateRenderTargetView(backbuffer, nullptr, &render_target_view);
 			backbuffer->Release();
 			if (FAILED(result))
 			{
@@ -146,6 +150,9 @@ namespace Spartan
 			}
 			m_render_target_view = static_cast<void*>(render_target_view);
 		}
+
+        // Create command list
+        m_cmd_list = make_shared<RHI_CommandList>(this, rhi_device->GetContext());
 
 		m_initialized = true;
 	}
@@ -217,7 +224,7 @@ namespace Spartan
 		}
 	
 		// Resize swapchain buffers
-		const UINT d3d11_flags = D3D11_Common::swap_chain::get_flags(D3D11_Common::swap_chain::validate_flags(m_rhi_device.get(), m_flags));
+		const UINT d3d11_flags = D3D11_Common::swap_chain::get_flags(D3D11_Common::swap_chain::validate_flags(m_rhi_device, m_flags));
 		auto result = swap_chain->ResizeBuffers(m_buffer_count, static_cast<UINT>(width), static_cast<UINT>(height), d3d11_format[m_format], d3d11_flags);
 		if (FAILED(result))
 		{

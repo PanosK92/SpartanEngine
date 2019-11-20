@@ -269,7 +269,6 @@ namespace Spartan
         const auto& GetRhiDevice()		const { return m_rhi_device; }
         const auto& GetSwapChain()      const { return m_swap_chain; }
         const auto& GetPipelineCache()	const { return m_pipeline_cache; }
-        const auto& GetCmdList()		const { return m_cmd_list; }
         const auto& GetFrameTexture()         { return m_render_targets[RenderTarget_Composition_Ldr]; }
         const auto GetFrameNum()        const { return m_frame_num; }
         const auto& GetCamera()         const { return m_camera; }
@@ -280,7 +279,7 @@ namespace Spartan
 
         // Globals
         void SetShaderTransform(const Math::Matrix& transform) { m_buffer_uber_cpu.transform = transform; UpdateUberBuffer(); }
-        void SetGlobalSamplersAndConstantBuffers();
+        void SetGlobalSamplersAndConstantBuffers(RHI_CommandList* cmd_list);
         RHI_Texture* GetBlackTexture() { return m_tex_black.get(); }
 
 	private:
@@ -296,35 +295,35 @@ namespace Spartan
 		void CreateRenderTextures();
 
 		// Passes
-		void Pass_Main();
-		void Pass_LightDepth();
-        void Pass_DepthPrePass();
-		void Pass_GBuffer();
-		void Pass_Ssao();
-        void Pass_Ssr();
-        void Pass_Light();
-		void Pass_Composition();
-		void Pass_PostProcess();
-		void Pass_TAA(std::shared_ptr<RHI_Texture>& tex_in,						std::shared_ptr<RHI_Texture>& tex_out);
-		bool Pass_DebugBuffer(std::shared_ptr<RHI_Texture>& tex_out);
-		void Pass_ToneMapping(std::shared_ptr<RHI_Texture>& tex_in,				std::shared_ptr<RHI_Texture>& tex_out);
-		void Pass_GammaCorrection(std::shared_ptr<RHI_Texture>& tex_in,			std::shared_ptr<RHI_Texture>& tex_out);
-		void Pass_FXAA(std::shared_ptr<RHI_Texture>& tex_in,					std::shared_ptr<RHI_Texture>& tex_out);
-        void Pass_LumaSharpen(std::shared_ptr<RHI_Texture>& tex_in,             std::shared_ptr<RHI_Texture>& tex_out);
-		void Pass_ChromaticAberration(std::shared_ptr<RHI_Texture>& tex_in,		std::shared_ptr<RHI_Texture>& tex_out);
-		void Pass_MotionBlur(std::shared_ptr<RHI_Texture>& tex_in,				std::shared_ptr<RHI_Texture>& tex_out);
-		void Pass_Dithering(std::shared_ptr<RHI_Texture>& tex_in,				std::shared_ptr<RHI_Texture>& tex_out);
-		void Pass_Bloom(std::shared_ptr<RHI_Texture>& tex_in,					std::shared_ptr<RHI_Texture>& tex_out);
-        void Pass_Upsample(std::shared_ptr<RHI_Texture>& tex_in,                std::shared_ptr<RHI_Texture>& tex_out);
-        void Pass_Downsample(std::shared_ptr<RHI_Texture>& tex_in,              std::shared_ptr<RHI_Texture>& tex_out, Renderer_Shader_Type pixel_shader);
-		void Pass_BlurBox(std::shared_ptr<RHI_Texture>& tex_in,					std::shared_ptr<RHI_Texture>& tex_out, float sigma);
-		void Pass_BlurGaussian(std::shared_ptr<RHI_Texture>& tex_in,			std::shared_ptr<RHI_Texture>& tex_out, float sigma, float pixel_stride = 1.0f);
-		void Pass_BlurBilateralGaussian(std::shared_ptr<RHI_Texture>& tex_in,	std::shared_ptr<RHI_Texture>& tex_out, float sigma, float pixel_stride = 1.0f);
-		void Pass_Lines(std::shared_ptr<RHI_Texture>& tex_out);
-		void Pass_Gizmos(std::shared_ptr<RHI_Texture>& tex_out);
-		void Pass_PerformanceMetrics(std::shared_ptr<RHI_Texture>& tex_out);
-        void Pass_BrdfSpecularLut();
-        void Pass_Copy(std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
+		void Pass_Main(RHI_CommandList* cmd_list);
+		void Pass_LightDepth(RHI_CommandList* cmd_list);
+        void Pass_DepthPrePass(RHI_CommandList* cmd_list);
+		void Pass_GBuffer(RHI_CommandList* cmd_list);
+		void Pass_Ssao(RHI_CommandList* cmd_list);
+        void Pass_Ssr(RHI_CommandList* cmd_list);
+        void Pass_Light(RHI_CommandList* cmd_list);
+		void Pass_Composition(RHI_CommandList* cmd_list);
+		void Pass_PostProcess(RHI_CommandList* cmd_list);
+		void Pass_TAA(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
+		bool Pass_DebugBuffer(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_out);
+		void Pass_ToneMapping(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
+		void Pass_GammaCorrection(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
+		void Pass_FXAA(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in,	std::shared_ptr<RHI_Texture>& tex_out);
+        void Pass_LumaSharpen(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
+		void Pass_ChromaticAberration(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
+		void Pass_MotionBlur(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
+		void Pass_Dithering(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
+		void Pass_Bloom(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
+        void Pass_Upsample(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
+        void Pass_Downsample(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out, Renderer_Shader_Type pixel_shader);
+		void Pass_BlurBox(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out, float sigma);
+		void Pass_BlurGaussian(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out, float sigma, float pixel_stride = 1.0f);
+		void Pass_BlurBilateralGaussian(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out, float sigma, float pixel_stride = 1.0f);
+		void Pass_Lines(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_out);
+		void Pass_Gizmos(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_out);
+		void Pass_PerformanceMetrics(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_out);
+        void Pass_BrdfSpecularLut(RHI_CommandList* cmd_list);
+        void Pass_Copy(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
 
         // Misc
         bool UpdateFrameBuffer();
@@ -401,7 +400,6 @@ namespace Spartan
         std::shared_ptr<RHI_Device> m_rhi_device;
         std::shared_ptr<RHI_SwapChain> m_swap_chain;
         std::shared_ptr<RHI_PipelineCache> m_pipeline_cache;
-        std::shared_ptr<RHI_CommandList> m_cmd_list;
 		Math::Rectangle m_quad;
 		std::unique_ptr<Font> m_font;
 		Math::Vector2 m_taa_jitter;
