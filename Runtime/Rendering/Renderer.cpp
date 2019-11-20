@@ -40,6 +40,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_ConstantBuffer.h"
 #include "../RHI/RHI_CommandList.h"
 #include "../RHI/RHI_Texture2D.h"
+#include "../RHI/RHI_SwapChain.h"
 //=========================================
 
 //= NAMESPACES ===============
@@ -142,9 +143,6 @@ namespace Spartan
         // Create pipeline cache
         m_pipeline_cache = make_shared<RHI_PipelineCache>(m_rhi_device);
 
-        // Create command list
-        m_cmd_list = make_shared<RHI_CommandList>(this, m_profiler);
-
 		// Editor specific
 		m_gizmo_grid		= make_unique<Grid>(m_rhi_device);
 		m_gizmo_transform	= make_unique<Transform_Gizmo>(m_context);
@@ -205,17 +203,19 @@ namespace Spartan
 		if (!m_rhi_device || !m_rhi_device->IsInitialized())
 			return;
 
+        RHI_CommandList* cmd_list = m_swap_chain->GetCmdList().get();
+
 		// If there is no camera, do nothing
 		if (!m_camera)
 		{
-			m_cmd_list->ClearRenderTarget(m_render_targets[RenderTarget_Composition_Ldr]->GetResource_RenderTarget(), Vector4(0.0f, 0.0f, 0.0f, 1.0f));
+            cmd_list->ClearRenderTarget(m_render_targets[RenderTarget_Composition_Ldr]->GetResource_RenderTarget(), Vector4(0.0f, 0.0f, 0.0f, 1.0f));
 			return;
 		}
 
 		// If there is nothing to render clear to camera's color and present
 		if (m_entities.empty())
 		{
-			m_cmd_list->ClearRenderTarget(m_render_targets[RenderTarget_Composition_Ldr]->GetResource_RenderTarget(), m_camera->GetClearColor());
+            cmd_list->ClearRenderTarget(m_render_targets[RenderTarget_Composition_Ldr]->GetResource_RenderTarget(), m_camera->GetClearColor());
 			return;
 		}
 
@@ -257,7 +257,7 @@ namespace Spartan
 		}
 
 		m_is_rendering = true;
-		Pass_Main();
+		Pass_Main(cmd_list);
 		m_is_rendering = false;
 	}
 

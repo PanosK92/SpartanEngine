@@ -29,7 +29,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Shader.h"
 #include "RHI_Sampler.h"
 #include "RHI_Viewport.h"
-#include "RHI_SwapChain.h"
 #include "RHI_Definition.h"
 #include "RHI_BlendState.h"
 #include "RHI_InputLayout.h"
@@ -57,7 +56,6 @@ namespace Spartan
             m_hash = m_hash * 31 + static_cast<uint32_t>(hasher(shader_pixel->GetId()));
             m_hash = m_hash * 31 + static_cast<uint32_t>(hasher(depth_stencil_state->GetId()));
             m_hash = m_hash * 31 + static_cast<uint32_t>(hasher(vertex_buffer->GetId()));
-            m_hash = m_hash * 31 + static_cast<uint32_t>(hasher(swap_chain->GetId()));
             m_hash = m_hash * 31 + static_cast<uint32_t>(hasher(static_cast<uint32_t>(primitive_topology)));
         }
 
@@ -73,7 +71,6 @@ namespace Spartan
             blend_state         = nullptr;
             depth_stencil_state = nullptr;
             vertex_buffer       = nullptr;
-            swap_chain          = nullptr;
             primitive_topology  = RHI_PrimitiveTopology_Unknown;
             viewport            = RHI_Viewport(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
             scissor             = Math::Rectangle(0.0f, 0.0f, 0.0f, 0.0f);
@@ -86,7 +83,6 @@ namespace Spartan
         RHI_BlendState* blend_state;
         RHI_DepthStencilState* depth_stencil_state;
         RHI_VertexBuffer* vertex_buffer;
-        RHI_SwapChain* swap_chain;
         RHI_PrimitiveTopology_Mode primitive_topology;
         RHI_Viewport viewport;
         Math::Rectangle scissor;

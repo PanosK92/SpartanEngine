@@ -37,7 +37,7 @@ namespace Spartan
 	public:
 		RHI_SwapChain(
 			void* window_handle,
-			const std::shared_ptr<RHI_Device>& rhi_device,
+			std::shared_ptr<RHI_Device> rhi_device,
 			uint32_t width,
 			uint32_t height,
 			RHI_Format format		= RHI_Format_R8G8B8A8_Unorm,       
@@ -50,17 +50,25 @@ namespace Spartan
 		bool AcquireNextImage();
 		bool Present() const;
 
-		auto GetWidth()				const									{ return m_width; }
-		auto GetHeight()			const									{ return m_height; }
-		auto IsInitialized()		const									{ return m_initialized; }
-		auto GetSwapChainView()		const									{ return m_swap_chain_view; }
-		auto GetRenderTargetView()	const									{ return m_render_target_view; }
-		auto GetRenderPass()		const									{ return m_render_pass; }
-		auto GetBufferCount()		const									{ return m_buffer_count; }
-		auto GetFrameBuffer()												{ return m_frame_buffers[m_image_index]; }
-		auto GetSemaphoreImageAcquired()									{ return m_semaphores_image_acquired[m_image_index]; }
-		auto GetImageIndex()												{ return m_image_index; }
+        uint32_t GetWidth()				        const { return m_width; }
+        uint32_t GetHeight()			        const { return m_height; }
+        uint32_t GetBufferCount()		        const { return m_buffer_count; }
+        uint32_t GetImageIndex()                const { return m_image_index; }
+		bool IsInitialized()		            const { return m_initialized; }
+        void* GetSwapChainView()		        const { return m_swap_chain_view; }
+        void* GetRenderTargetView()	            const { return m_render_target_view; }
+        void* GetRenderPass()		            const { return m_render_pass; }
+        void* GetFrameBuffer()                  const { return m_frame_buffers[m_image_index]; }
+		void* GetSemaphoreImageAcquired()       const { return m_semaphores_image_acquired[m_image_index]; }
+        void* GetFenceCmdBufferConsumed()       const { return m_fences_in_flight[m_image_index]; }
+        void* GetSemaphoreCmdBufferConsumed()   const { return m_semaphores_cmd_list_consumed[m_image_index]; }
+        const auto& GetCmdList()	            const { return m_cmd_list; }
+
+
 		void SetSemaphoreRenderFinished(void* semaphore_cmd_list_consumed)	{ m_semaphore_cmd_list_consumed = semaphore_cmd_list_consumed; }
+
+        // Let the swapchain know when the this command list is submitted and consumed
+        m_swap_chain->SetSemaphoreRenderFinished(m_semaphores_cmd_list_consumed[m_swap_chain->GetImageIndex()]);
 
 	private:
 		bool CreateRenderPass();
@@ -76,7 +84,8 @@ namespace Spartan
 		RHI_Format m_format			= RHI_Format_R8G8B8A8_Unorm;
 		
 		// API
-		std::shared_ptr<RHI_Device> m_rhi_device;
+        RHI_Device* m_rhi_device            = nullptr;
+        std::shared_ptr<RHI_CommandList> m_cmd_list;
 		void* m_swap_chain_view				= nullptr;
 		void* m_render_target_view			= nullptr;
 		void* m_surface						= nullptr;	
@@ -86,6 +95,8 @@ namespace Spartan
 		uint32_t m_image_index				= 0;
         bool image_acquired                 = false;
 		std::vector<void*> m_semaphores_image_acquired;
+        std::vector<void*> m_semaphores_cmd_list_consumed;
+        std::vector<void*> m_fences_in_flight;
 		std::vector<void*> m_image_views;
 		std::vector<void*> m_frame_buffers;
 	};

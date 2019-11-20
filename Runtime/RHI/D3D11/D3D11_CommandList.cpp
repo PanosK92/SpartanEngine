@@ -41,6 +41,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_RasterizerState.h"
 #include "../RHI_InputLayout.h"
 #include "../../Rendering/Renderer.h"
+#include "../RHI_SwapChain.h"
 //===================================
 
 //= NAMESPACES ===============
@@ -50,14 +51,16 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-	RHI_CommandList::RHI_CommandList(Renderer* renderer, Profiler* profiler)
+	RHI_CommandList::RHI_CommandList(RHI_SwapChain* swap_chain, Context* context)
 	{
 		m_commands.reserve(m_initial_capacity);
 		m_commands.resize(m_initial_capacity);
 
-		m_rhi_device	        = renderer->GetRhiDevice();
-        m_rhi_pipeline_cache    = renderer->GetPipelineCache().get();
-		m_profiler		        = profiler;
+        m_swap_chain            = swap_chain;
+        m_renderer              = context->GetSubsystem<Renderer>().get();
+        m_profiler              = context->GetSubsystem<Profiler>().get();
+        m_rhi_device            = m_renderer->GetRhiDevice().get();
+        m_rhi_pipeline_cache    = m_renderer->GetPipelineCache().get();
 	}
 
 	RHI_CommandList::~RHI_CommandList() = default;
@@ -68,14 +71,13 @@ namespace Spartan
         cmd.type        = RHI_Cmd_Begin;
         cmd.pass_name   = pass_name;
 
-        if (m_pipeline_state.swap_chain)                                        SetRenderTarget(m_pipeline_state.swap_chain->GetRenderTargetView());
-        if (m_pipeline_state.blend_state)                                       SetBlendState(m_pipeline_state.blend_state);
-        if (m_pipeline_state.depth_stencil_state)                               SetDepthStencilState(m_pipeline_state.depth_stencil_state);
-        if (m_pipeline_state.rasterizer_state)                                  SetRasterizerState(m_pipeline_state.rasterizer_state);
-        if (m_pipeline_state.shader_vertex)                                     SetInputLayout(m_pipeline_state.shader_vertex->GetInputLayout());
-        if (m_pipeline_state.shader_vertex)                                     SetShaderVertex(m_pipeline_state.shader_vertex);
-        if (m_pipeline_state.shader_pixel)                                      SetShaderPixel(m_pipeline_state.shader_pixel);
-        if (m_pipeline_state.viewport.IsDefined())                              SetViewport(m_pipeline_state.viewport);
+        if (m_pipeline_state.blend_state)                                           SetBlendState(m_pipeline_state.blend_state);
+        if (m_pipeline_state.depth_stencil_state)                                   SetDepthStencilState(m_pipeline_state.depth_stencil_state);
+        if (m_pipeline_state.rasterizer_state)                                      SetRasterizerState(m_pipeline_state.rasterizer_state);
+        if (m_pipeline_state.shader_vertex)                                         SetInputLayout(m_pipeline_state.shader_vertex->GetInputLayout());
+        if (m_pipeline_state.shader_vertex)                                         SetShaderVertex(m_pipeline_state.shader_vertex);
+        if (m_pipeline_state.shader_pixel)                                          SetShaderPixel(m_pipeline_state.shader_pixel);
+        if (m_pipeline_state.viewport.IsDefined())                                  SetViewport(m_pipeline_state.viewport);
         if (m_pipeline_state.primitive_topology != RHI_PrimitiveTopology_Unknown)   SetPrimitiveTopology(m_pipeline_state.primitive_topology);
 	}
 

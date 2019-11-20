@@ -51,7 +51,6 @@ namespace ImGui::RHI
 	// Engine subsystems
 	Context*	g_context		= nullptr;
 	Renderer*	g_renderer		= nullptr;
-	RHI_CommandList* g_cmd_list	= nullptr;
 
 	// RHI Data	
 	static shared_ptr<RHI_Device>				g_rhi_device;
@@ -67,10 +66,9 @@ namespace ImGui::RHI
 
 	inline bool Initialize(Context* context, const float width, const float height)
 	{
-		g_context			= context;
-		g_renderer			= context->GetSubsystem<Renderer>().get();
-		g_cmd_list			= g_renderer->GetCmdList().get();
-		g_rhi_device		= g_renderer->GetRhiDevice();
+		g_context	    = context;
+		g_renderer	    = context->GetSubsystem<Renderer>().get();
+		g_rhi_device    = g_renderer->GetRhiDevice();
 		
 		if (!g_context || !g_rhi_device || !g_rhi_device->IsInitialized())
 		{
@@ -159,7 +157,10 @@ namespace ImGui::RHI
 		if (fb_width <= 0 || fb_height <= 0 || draw_data->TotalVtxCount == 0)
 			return;
 
+        // Grab the swap chain we will be working with
 		const auto is_main_viewport = (swap_chain_other == nullptr);
+        RHI_SwapChain* swap_chain   = is_main_viewport ? g_renderer->GetSwapChain().get() : swap_chain_other;
+        RHI_CommandList* cmd_list   = swap_chain->GetCmdList().get();
 
 		// Updated vertex and index buffers
 		{
@@ -223,7 +224,7 @@ namespace ImGui::RHI
 
 		// Set render state
 		{
-            RHI_PipelineState& pipeline_state   = g_cmd_list->GetPipelineState();
+            RHI_PipelineState& pipeline_state   = swap_chain->GetCmdList()->GetPipelineState();
             pipeline_state.shader_vertex        = g_shader_vertex.get();
             pipeline_state.shader_pixel         = g_shader_pixel.get();
             pipeline_state.input_layout         = g_shader_vertex->GetInputLayout().get();
@@ -231,16 +232,16 @@ namespace ImGui::RHI
             pipeline_state.blend_state          = g_blend_state.get();
             pipeline_state.depth_stencil_state  = g_depth_stencil_state.get();
             pipeline_state.vertex_buffer        = g_vertex_buffer.get();
-            pipeline_state.swap_chain           = is_main_viewport ? g_renderer->GetSwapChain().get() : swap_chain_other;
             pipeline_state.primitive_topology   = RHI_PrimitiveTopology_TriangleList;
 
 			// Start witting command list
-			g_cmd_list->Begin("Pass_ImGui");
-            g_renderer->SetGlobalSamplersAndConstantBuffers();
-            if (clear) g_cmd_list->ClearRenderTarget(pipeline_state.swap_chain->GetRenderTargetView(), Vector4(0, 0, 0, 1));
-            g_cmd_list->SetBufferVertex(g_vertex_buffer);
-			g_cmd_list->SetBufferIndex(g_index_buffer);
-            g_cmd_list->SetViewport(g_viewport);
+            cmd_list->Begin("Pass_ImGui");
+            g_renderer->SetGlobalSamplersAndConstantBuffers(cmd_list);
+            cmd_list->SetRenderTarget(swap_chain->GetRenderTargetView());
+            if (clear) cmd_list->ClearRenderTarget(swap_chain->GetRenderTargetView(), Vector4(0, 0, 0, 1));
+            cmd_list->SetBufferVertex(g_vertex_buffer);
+            cmd_list->SetBufferIndex(g_index_buffer);
+            cmd_list->SetViewport(g_viewport);
 		}
 		
 		// Render command lists
@@ -249,13 +250,13 @@ namespace ImGui::RHI
 		const auto& clip_off = draw_data->DisplayPos;
 		for (auto i = 0; i < draw_data->CmdListsCount; i++)
 		{
-			auto cmd_list = draw_data->CmdLists[i];
-			for (auto cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++)
+			auto cmd_list_imgui = draw_data->CmdLists[i];
+			for (auto cmd_i = 0; cmd_i < cmd_list_imgui->CmdBuffer.Size; cmd_i++)
 			{
-				auto pcmd = &cmd_list->CmdBuffer[cmd_i];
+				auto pcmd = &cmd_list_imgui->CmdBuffer[cmd_i];
 				if (pcmd->UserCallback != nullptr)
 				{
-					pcmd->UserCallback(cmd_list, pcmd);
+					pcmd->UserCallback(cmd_list_imgui, pcmd);
 				}
 				else
 				{
@@ -265,18 +266,18 @@ namespace ImGui::RHI
 					scissor_rect.height -= scissor_rect.y;
 					
 					// Apply scissor rectangle, bind texture and draw
-					g_cmd_list->SetScissorRectangle(scissor_rect);
-					g_cmd_list->SetTexture(0, static_cast<RHI_Texture*>(pcmd->TextureId));
-					g_cmd_list->DrawIndexed(pcmd->ElemCount, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset);
+					cmd_list->SetScissorRectangle(scissor_rect);
+					cmd_list->SetTexture(0, static_cast<RHI_Texture*>(pcmd->TextureId));
+					cmd_list->DrawIndexed(pcmd->ElemCount, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset);
 				}
 				
 			}
-			global_idx_offset += cmd_list->IdxBuffer.Size;
-			global_vtx_offset += cmd_list->VtxBuffer.Size;
+			global_idx_offset += cmd_list_imgui->IdxBuffer.Size;
+			global_vtx_offset += cmd_list_imgui->VtxBuffer.Size;
 		}
 
-		g_cmd_list->End();
-		if (g_cmd_list->Submit() && is_main_viewport)
+		cmd_list->End();
+		if (cmd_list->Submit() && is_main_viewport)
 		{
             g_renderer->GetSwapChain()->Present();
 		}
