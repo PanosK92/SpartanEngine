@@ -119,7 +119,7 @@ namespace Spartan
 	class SPARTAN_CLASS RHI_CommandList
 	{
 	public:
-		RHI_CommandList(RHI_SwapChain* swap_chain, Context* context);
+		RHI_CommandList(uint32_t index, RHI_SwapChain* swap_chain, Context* context);
 		~RHI_CommandList();
 
 		// Markers
@@ -203,8 +203,7 @@ namespace Spartan
 
         // Submit
 		bool Submit(bool profile = true);
-
-        // Misc
+        void Flush();
         RHI_PipelineState& GetPipelineState() { return m_pipeline_state; }
 
 	private:
@@ -214,20 +213,18 @@ namespace Spartan
 		RHI_Command& GetCmd();
 		RHI_Command m_empty_cmd; // for GetCmd()
 		std::vector<RHI_Command> m_commands;
-		std::vector<void*> m_cmd_buffers;
-		uint32_t m_initial_capacity     = 10000;
-		uint32_t m_command_count	    = 0;
-        uint32_t m_texture_slot_max     = 0;
-		RHI_Pipeline* m_pipeline	    = nullptr;
-		void* m_cmd_pool			    = nullptr;
-        RHI_Cmd_List_State m_cmd_state  = RHI_Cmd_List_Idle;
-
-        // Dependencies
+        RHI_PipelineState m_pipeline_state;
+		uint32_t m_initial_capacity             = 10000;
+		uint32_t m_command_count	            = 0;
+        uint32_t m_texture_slot_max             = 0;
+        RHI_Cmd_List_State m_cmd_state          = RHI_Cmd_List_Idle;
+		RHI_Pipeline* m_pipeline	            = nullptr; 
         RHI_SwapChain* m_swap_chain             = nullptr;
         Renderer* m_renderer                    = nullptr;
         RHI_PipelineCache* m_rhi_pipeline_cache = nullptr;
         RHI_Device* m_rhi_device                = nullptr;
         Profiler* m_profiler                    = nullptr;
-        RHI_PipelineState m_pipeline_state;
+        void* m_cmd_buffer                      = nullptr;
+        void* m_cmd_list_consumed_fence         = nullptr;
 	};
 }

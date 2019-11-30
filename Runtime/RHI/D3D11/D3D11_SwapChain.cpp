@@ -151,8 +151,11 @@ namespace Spartan
 			m_render_target_view = static_cast<void*>(render_target_view);
 		}
 
-        // Create command list
-        m_cmd_list = make_shared<RHI_CommandList>(this, rhi_device->GetContext());
+        // Create command lists
+        for (uint32_t i = 0; i < m_buffer_count; i++)
+        {
+            m_cmd_lists.emplace_back(make_shared<RHI_CommandList>(i, this, rhi_device->GetContext()));
+        }
 
 		m_initialized = true;
 	}
@@ -166,6 +169,8 @@ namespace Spartan
 		{
 			swap_chain->SetFullscreenState(false, nullptr);
 		}
+
+        m_cmd_lists.clear();
 
 		safe_release(swap_chain);
 		safe_release(static_cast<ID3D11RenderTargetView*>(m_render_target_view));
@@ -254,7 +259,7 @@ namespace Spartan
 		return true;
 	}
 
-	bool RHI_SwapChain::Present() const
+	bool RHI_SwapChain::Present()
 	{
 		if (!m_swap_chain_view)
 		{

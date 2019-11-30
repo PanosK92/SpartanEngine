@@ -259,7 +259,7 @@ namespace Spartan
 		    pipeline_info.pColorBlendState				= &color_blend_state;
             pipeline_info.pDepthStencilState            = &depth_stencil_state;
 		    pipeline_info.layout						= *pipeline_layout;
-		    pipeline_info.renderPass					= static_cast<VkRenderPass>(m_state->swap_chain->GetRenderPass());
+		    pipeline_info.renderPass					= static_cast<VkRenderPass>(m_state->swapchain->GetRenderPass());
 
             auto pipeline = reinterpret_cast<VkPipeline*>(&m_pipeline);
             Vulkan_Common::error::check_result(vkCreateGraphicsPipelines(m_rhi_device->GetContextRhi()->device, nullptr, 1, &pipeline_info, nullptr, pipeline));

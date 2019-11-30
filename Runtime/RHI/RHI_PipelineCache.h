@@ -36,6 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_ConstantBuffer.h"
 #include "RHI_RasterizerState.h"
 #include "RHI_DepthStencilState.h"
+#include "RHI_SwapChain.h"
 //================================
 
 namespace Spartan
@@ -56,6 +57,7 @@ namespace Spartan
             m_hash = m_hash * 31 + static_cast<uint32_t>(hasher(shader_pixel->GetId()));
             m_hash = m_hash * 31 + static_cast<uint32_t>(hasher(depth_stencil_state->GetId()));
             m_hash = m_hash * 31 + static_cast<uint32_t>(hasher(vertex_buffer->GetId()));
+            m_hash = m_hash * 31 + static_cast<uint32_t>(hasher(swapchain->GetId()));
             m_hash = m_hash * 31 + static_cast<uint32_t>(hasher(static_cast<uint32_t>(primitive_topology)));
         }
 
@@ -71,6 +73,7 @@ namespace Spartan
             blend_state         = nullptr;
             depth_stencil_state = nullptr;
             vertex_buffer       = nullptr;
+            swapchain           = nullptr;
             primitive_topology  = RHI_PrimitiveTopology_Unknown;
             viewport            = RHI_Viewport(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
             scissor             = Math::Rectangle(0.0f, 0.0f, 0.0f, 0.0f);
@@ -85,6 +88,7 @@ namespace Spartan
         RHI_VertexBuffer* vertex_buffer;
         RHI_PrimitiveTopology_Mode primitive_topology;
         RHI_Viewport viewport;
+        RHI_SwapChain* swapchain;
         Math::Rectangle scissor;
 
 	private:

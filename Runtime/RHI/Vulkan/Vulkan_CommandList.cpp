@@ -44,12 +44,11 @@ using namespace std;
 using namespace Spartan::Math;
 //=============================
 
-#define CMD_BUFFER		reinterpret_cast<VkCommandBuffer>(m_cmd_buffers[m_swap_chain->GetImageIndex()])
-#define CMD_BUFFER_PTR  reinterpret_cast<VkCommandBuffer*>(&m_cmd_buffers[m_swap_chain->GetImageIndex()])
+#define CMD_BUFFER reinterpret_cast<VkCommandBuffer>(m_cmd_buffer)
 
 namespace Spartan
 {
-	RHI_CommandList::RHI_CommandList(RHI_SwapChain* swap_chain, Context* context)
+    RHI_CommandList::RHI_CommandList(uint32_t index, RHI_SwapChain* swap_chain, Context* context)
 	{
         m_swap_chain            = swap_chain;
         m_renderer              = context->GetSubsystem<Renderer>().get();
@@ -59,31 +58,17 @@ namespace Spartan
 
         RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
 
-        auto cmd_pool_vk = static_cast<VkCommandPool>(m_cmd_pool);
-		Vulkan_Common::command::create_pool(rhi_context, cmd_pool_vk);
-        m_cmd_pool = static_cast<void*>(cmd_pool_vk);
+        // Command buffer
+        auto cmd_buffer_vk = static_cast<VkCommandBuffer>(m_cmd_buffer);
+        if (Vulkan_Common::command::create_buffer(rhi_context, reinterpret_cast<VkCommandPool>(m_swap_chain->GetCmdPool()), cmd_buffer_vk, VK_COMMAND_BUFFER_LEVEL_PRIMARY))
+        {
+            m_cmd_buffer = static_cast<void*>(cmd_buffer_vk);
+        }
 
-        m_cmd_buffers.reserve(m_swap_chain->GetBufferCount());
-        m_cmd_buffers.resize(m_swap_chain->GetBufferCount());
-		for (uint32_t i = 0; i < frames_in_flight; i++)
-		{
-            auto cmd_buffer_vk = static_cast<VkCommandBuffer>(m_cmd_buffers[i]);
-            if (Vulkan_Common::command::create_buffer(rhi_context, cmd_pool_vk, cmd_buffer_vk, VK_COMMAND_BUFFER_LEVEL_PRIMARY))
-            {
-                // Cmd buffer
-                m_cmd_buffers[i] = static_cast<void*>(cmd_buffer_vk);
-
-                // Semaphore
-                VkSemaphore semaphore;
-                Vulkan_Common::semaphore::create(rhi_context, semaphore);
-                m_semaphores_cmd_list_consumed.emplace_back(static_cast<void*>(semaphore));
-
-                // Fence
-                VkFence fence;
-                Vulkan_Common::fence::create(rhi_context, fence);
-                m_fences_in_flight.emplace_back(static_cast<void*>(fence));
-            }
-		}
+        // Fence
+        VkFence fence;
+        Vulkan_Common::fence::create(rhi_context, fence);
+        m_cmd_list_consumed_fence = static_cast<void*>(fence);
 	}
 
 	RHI_CommandList::~RHI_CommandList()
@@ -91,22 +76,15 @@ namespace Spartan
         RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
 
 		// Wait in case the command buffer is still in use by the graphics queue
-		vkQueueWaitIdle(m_rhi_device->GetContextRhi()->queue_graphics);
+		vkQueueWaitIdle(rhi_context->queue_graphics);
 
-		const auto cmd_pool_vk = static_cast<VkCommandPool>(m_cmd_pool);
-		for (uint32_t i = 0; i < m_rhi_device->GetContextRhi()->max_frames_in_flight; i++)
-		{
-			Vulkan_Common::fence::destroy(rhi_context, m_fences_in_flight[i]);
-			Vulkan_Common::semaphore::destroy(rhi_context, m_semaphores_cmd_list_consumed[i]);
-			auto cmd_buffer = static_cast<VkCommandBuffer>(m_cmd_buffers[i]);
-			vkFreeCommandBuffers(m_rhi_device->GetContextRhi()->device, cmd_pool_vk, 1, &cmd_buffer);
-		}
-		m_cmd_buffers.clear();
-		m_semaphores_cmd_list_consumed.clear();
-		m_fences_in_flight.clear();
+		// Fence
+        VkFence fence = reinterpret_cast<VkFence>(m_cmd_list_consumed_fence);
+        Vulkan_Common::fence::destroy(rhi_context, fence);
+        m_cmd_list_consumed_fence = nullptr;
 
-		vkDestroyCommandPool(m_rhi_device->GetContextRhi()->device, cmd_pool_vk, nullptr);
-		m_cmd_pool = nullptr;
+        // Command buffer
+        vkFreeCommandBuffers(m_rhi_device->GetContextRhi()->device, static_cast<VkCommandPool>(m_swap_chain->GetCmdPool()), 1, reinterpret_cast<VkCommandBuffer*>(&m_cmd_buffer));
 	}
 
 	void RHI_CommandList::Begin(const string& pass_name)
@@ -116,8 +94,7 @@ namespace Spartan
         // Sync CPU to GPU
         if (m_cmd_state == RHI_Cmd_List_Idle_Sync_Cpu_To_Gpu)
         {
-            Vulkan_Common::fence::wait_reset(rhi_context, m_swap_chain->FENCE_CMD_BUFFER_CONSUMED_VOID_PTR());
-            Vulkan_Common::error::assert_result(vkResetCommandPool(rhi_context->device, static_cast<VkCommandPool>(m_cmd_pool), 0));
+            Flush();
             m_pipeline->OnCommandListConsumed();
             m_cmd_state = RHI_Cmd_List_Idle;
         }
@@ -135,10 +112,11 @@ namespace Spartan
         m_pipeline = m_rhi_pipeline_cache->GetPipeline(m_pipeline_state).get();
 	
 		// Acquire next swap chain image and update buffer index
-		SPARTAN_ASSERT(m_swap_chain->AcquireNextImage());
-
-		// Let the swapchain know when the this command list is submitted and consumed
-        m_swap_chain->SetSemaphoreRenderFinished(m_semaphores_cmd_list_consumed[m_swap_chain->GetImageIndex()]);
+        if (!m_swap_chain->AcquireNextImage())
+        {
+            LOG_ERROR("Failed to acquire next swap chain image");
+            return;
+        }
 
 		// Begin command buffer
 		VkCommandBufferBeginInfo begin_info	    = {};
@@ -456,7 +434,7 @@ namespace Spartan
 
 		// Prepare semaphores
 		VkSemaphore wait_semaphores[]		= { static_cast<VkSemaphore>(m_swap_chain->GetSemaphoreImageAcquired()) };
-		VkSemaphore signal_semaphores[]		= { reinterpret_cast<VkSemaphore>(m_swap_chain->GetSemaphoreCmdBufferConsumed()) };
+		VkSemaphore signal_semaphores[]		= { nullptr };
 		VkPipelineStageFlags wait_flags[]	= { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
 		VkSubmitInfo submit_info			= {};
@@ -465,11 +443,11 @@ namespace Spartan
 		submit_info.pWaitSemaphores			= wait_semaphores;
 		submit_info.pWaitDstStageMask		= wait_flags;
 		submit_info.commandBufferCount		= 1;
-		submit_info.pCommandBuffers			= CMD_BUFFER_PTR;
-		submit_info.signalSemaphoreCount	= 1;
+		submit_info.pCommandBuffers			= reinterpret_cast<VkCommandBuffer*>(&m_cmd_buffer);
+		submit_info.signalSemaphoreCount	= 0;
 		submit_info.pSignalSemaphores		= signal_semaphores;
 
-        if (!Vulkan_Common::error::check_result(vkQueueSubmit(m_rhi_device->GetContextRhi()->queue_graphics, 1, &submit_info, reinterpret_cast<VkFence>(m_swap_chain->GetFenceCmdBufferConsumed()))))
+        if (!Vulkan_Common::error::check_result(vkQueueSubmit(m_rhi_device->GetContextRhi()->queue_compute, 1, &submit_info, reinterpret_cast<VkFence>(m_cmd_list_consumed_fence))))
             return false;
 		
 		// Wait for fence on the next Begin(), if we force it now, perfomance will not be as good
@@ -477,6 +455,12 @@ namespace Spartan
 
         return true;
 	}
+
+    void RHI_CommandList::Flush()
+    {
+        VkFence fence = static_cast<VkFence>(m_cmd_list_consumed_fence);
+        Vulkan_Common::fence::wait_reset(m_rhi_device->GetContextRhi(), fence);
+    }
 
 	RHI_Command& RHI_CommandList::GetCmd()
 	{

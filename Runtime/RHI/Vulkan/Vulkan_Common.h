@@ -95,6 +95,79 @@ namespace Spartan::Vulkan_Common
         }
     }
 
+    namespace device
+    {
+        inline bool get_family_indices(RHI_Context* rhi_context, const VkPhysicalDevice& physical_device)
+        {
+            uint32_t queue_family_count = 0;
+            vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, nullptr);
+
+            std::vector<VkQueueFamilyProperties> queue_families_properties(queue_family_count);
+            vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, queue_families_properties.data());
+
+            bool queue_graphics_available = false;
+            bool queue_compute_available = false;
+            bool queue_transfer_available = false;
+
+            for (int i = 0; i < static_cast<int>(queue_families_properties.size()); i++)
+            {
+                VkQueueFamilyProperties& queue_family_properties = queue_families_properties[i];
+
+                if (queue_family_properties.queueCount > 0 && queue_family_properties.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+                {
+                    rhi_context->queue_graphics_family_index = i;
+                    queue_graphics_available = true;
+                }
+
+                if (queue_family_properties.queueCount > 0 && queue_family_properties.queueFlags & VK_QUEUE_COMPUTE_BIT)
+                {
+                    rhi_context->queue_compute_family_index = i;
+                    queue_compute_available = true;
+                }
+
+                if (queue_family_properties.queueCount > 0 && queue_family_properties.queueFlags & VK_QUEUE_TRANSFER_BIT)
+                {
+                    rhi_context->queue_transfer_family_index = i;
+                    queue_transfer_available = true;
+                }
+
+                if (queue_graphics_available && queue_compute_available && queue_transfer_available)
+                    return true;
+            }
+
+            return false;
+        }
+
+        inline bool choose_physical_device(RHI_Context* rhi_context, void* window_handle)
+        {
+            uint32_t device_count = 0;
+            if (!error::check_result(vkEnumeratePhysicalDevices(rhi_context->instance, &device_count, nullptr)))
+                return false;
+
+            if (device_count == 0)
+            {
+                LOG_ERROR("There are no available devices.");
+                return false;
+            }
+
+            std::vector<VkPhysicalDevice> physical_devices(device_count);
+            if (!error::check_result(vkEnumeratePhysicalDevices(rhi_context->instance, &device_count, physical_devices.data())))
+                return false;
+
+            for (const auto& device : physical_devices)
+            {
+                // Get the first device that has a graphics, a compute and a transfer queue
+                if (get_family_indices(rhi_context, device))
+                {
+                    rhi_context->device_physical = device;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+    }
+
 	namespace memory
 	{
 		inline uint32_t get_type(const RHI_Context* rhi_context, const VkMemoryPropertyFlags properties, const uint32_t type_bits)
@@ -128,13 +201,13 @@ namespace Spartan::Vulkan_Common
         {
             VkCommandPoolCreateInfo cmd_pool_info   = {};
             cmd_pool_info.sType                     = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-            cmd_pool_info.queueFamilyIndex          = rhi_context->indices.graphics_family.value();
+            cmd_pool_info.queueFamilyIndex          = rhi_context->queue_compute_family_index;
             cmd_pool_info.flags                     = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
             return error::check_result(vkCreateCommandPool(rhi_context->device, &cmd_pool_info, nullptr, &command_pool));
         }
 
-		inline bool create_buffer(const RHI_Context* rhi_context, VkCommandPool& cmd_pool, VkCommandBuffer& command_buffer, const VkCommandBufferLevel level)
+		inline bool create_buffer(const RHI_Context* rhi_context, const VkCommandPool& cmd_pool, VkCommandBuffer& command_buffer, const VkCommandBufferLevel level)
 		{
 			VkCommandBufferAllocateInfo allocate_info	= {};
 			allocate_info.sType							= VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -193,21 +266,20 @@ namespace Spartan::Vulkan_Common
 
 	namespace semaphore
 	{
-		inline bool create(const RHI_Context* rhi_context, VkSemaphore& semaphore_out)
+		inline bool create(const RHI_Context* rhi_context, VkSemaphore& semaphore)
 		{
 			VkSemaphoreCreateInfo semaphore_info	= {};
 			semaphore_info.sType					= VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-            return error::check_result(vkCreateSemaphore(rhi_context->device, &semaphore_info, nullptr, &semaphore_out));
+            return error::check_result(vkCreateSemaphore(rhi_context->device, &semaphore_info, nullptr, &semaphore));
 		}
 
-		inline void destroy(const RHI_Context* rhi_context, void*& semaphore_in)
+		inline void destroy(const RHI_Context* rhi_context, VkSemaphore& semaphore)
 		{
-			if (!semaphore_in)
+			if (!semaphore)
 				return;
 
-			vkDestroySemaphore(rhi_context->device, static_cast<VkSemaphore>(semaphore_in), nullptr);
-			semaphore_in = nullptr;
+			vkDestroySemaphore(rhi_context->device, semaphore, nullptr);
 		}
 	}
 
@@ -221,32 +293,28 @@ namespace Spartan::Vulkan_Common
             return error::check_result(vkCreateFence(rhi_context->device, &fence_info, nullptr, &fence_out));
 		}
 
-		inline void destroy(const RHI_Context* rhi_context, void*& fence_in)
+		inline void destroy(const RHI_Context* rhi_context, VkFence& fence)
 		{
-			if (!fence_in)
+			if (!fence)
 				return;
 
-			vkDestroyFence(rhi_context->device, static_cast<VkFence>(fence_in), nullptr);
-			fence_in = nullptr;
+			vkDestroyFence(rhi_context->device, fence, nullptr);
 		}
 
-		inline void wait(const RHI_Context* rhi_context, void*& fence_in)
+		inline void wait(const RHI_Context* rhi_context, VkFence& fence)
 		{
-            const auto vk_fence = reinterpret_cast<VkFence*>(&fence_in);
-			error::assert_result(vkWaitForFences(rhi_context->device, 1, vk_fence, true, std::numeric_limits<uint64_t>::max()));
+			error::assert_result(vkWaitForFences(rhi_context->device, 1, &fence, true, std::numeric_limits<uint64_t>::max()));
 		}
 
-		inline void reset(const RHI_Context* rhi_context, void*& fence_in)
+		inline void reset(const RHI_Context* rhi_context, VkFence& fence)
 		{
-            const auto vk_fence = reinterpret_cast<VkFence*>(&fence_in);
-            error::assert_result(vkResetFences(rhi_context->device, 1, vk_fence));
+            error::assert_result(vkResetFences(rhi_context->device, 1, &fence));
 		}
 
-		inline void wait_reset(const RHI_Context* rhi_context, void*& fence_in)
+		inline void wait_reset(const RHI_Context* rhi_context, VkFence& fence)
 		{
-			const auto vk_fence = reinterpret_cast<VkFence*>(&fence_in);
-            error::assert_result(vkWaitForFences(rhi_context->device, 1, vk_fence, true, std::numeric_limits<uint64_t>::max()));
-            error::assert_result(vkResetFences(rhi_context->device, 1, vk_fence));
+            error::assert_result(vkWaitForFences(rhi_context->device, 1, &fence, true, std::numeric_limits<uint64_t>::max()));
+            error::assert_result(vkResetFences(rhi_context->device, 1, &fence));
 		}
 	}
 
