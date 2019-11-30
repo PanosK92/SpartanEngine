@@ -147,7 +147,7 @@ namespace Spartan
                     return false;
 
                 VkBool32 present_support = false;
-                if (!Vulkan_Common::error::check_result(vkGetPhysicalDeviceSurfaceSupportKHR(rhi_context->device_physical, rhi_context->indices.graphics_family.value(), surface, &present_support)))
+                if (!Vulkan_Common::error::check_result(vkGetPhysicalDeviceSurfaceSupportKHR(rhi_context->device_physical, rhi_context->queue_compute_family_index, surface, &present_support)))
                     return false;
 
                 if (!present_support)
@@ -188,8 +188,8 @@ namespace Spartan
                 create_info.imageArrayLayers            = 1;
                 create_info.imageUsage                  = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-                uint32_t queueFamilyIndices[] = { rhi_context->indices.graphics_family.value(), rhi_context->indices.present_family.value() };
-                if (rhi_context->indices.graphics_family != rhi_context->indices.present_family)
+                uint32_t queueFamilyIndices[] = { rhi_context->queue_compute_family_index, rhi_context->queue_graphics_family_index };
+                if (rhi_context->queue_compute_family_index != rhi_context->queue_graphics_family_index)
                 {
                     create_info.imageSharingMode        = VK_SHARING_MODE_CONCURRENT;
                     create_info.queueFamilyIndexCount   = 2;
@@ -266,24 +266,36 @@ namespace Spartan
             vector<void*>& semaphores_image_acquired
         )
         {
+            // Semaphores
             for (auto& semaphore : semaphores_image_acquired)
             {
-                Vulkan_Common::semaphore::destroy(rhi_context, semaphore);
+                VkSemaphore _semaphore = static_cast<VkSemaphore>(semaphore);
+                Vulkan_Common::semaphore::destroy(rhi_context, _semaphore);
             }
             semaphores_image_acquired.clear();
 
-            for (auto frame_buffer : frame_buffers) { vkDestroyFramebuffer(rhi_context->device, static_cast<VkFramebuffer>(frame_buffer), nullptr); }
+            // Frame buffers
+            for (auto frame_buffer : frame_buffers)
+            {
+                vkDestroyFramebuffer(rhi_context->device, static_cast<VkFramebuffer>(frame_buffer), nullptr);
+            }
             frame_buffers.clear();
 
-            for (auto& image_view : image_views) { vkDestroyImageView(rhi_context->device, static_cast<VkImageView>(image_view), nullptr); }
+            // Image views
+            for (auto& image_view : image_views)
+            {
+                vkDestroyImageView(rhi_context->device, static_cast<VkImageView>(image_view), nullptr);
+            }
             image_views.clear();
 
+            // Swap chain view
             if (swap_chain_view)
             {
                 vkDestroySwapchainKHR(rhi_context->device, static_cast<VkSwapchainKHR>(swap_chain_view), nullptr);
                 swap_chain_view = nullptr;
             }
 
+            // Surface
             if (surface)
             {
                 vkDestroySurfaceKHR(rhi_context->instance, static_cast<VkSurfaceKHR>(surface), nullptr);
@@ -350,11 +362,19 @@ namespace Spartan
 			m_swap_chain_view,
 			m_image_views,
 			m_frame_buffers,
-			m_semaphores_image_acquired
+			m_image_acquired_semaphores
 		);
 
-        // Create command list
-        m_cmd_list = make_shared<RHI_CommandList>(this, rhi_device->GetContext());
+        // Create command pool
+        auto cmd_pool_vk = static_cast<VkCommandPool>(m_cmd_pool);
+        Vulkan_Common::command::create_pool(rhi_device->GetContextRhi(), cmd_pool_vk);
+        m_cmd_pool = static_cast<void*>(cmd_pool_vk);
+
+        // Create command lists
+        for (uint32_t i = 0; i < m_buffer_count; i++)
+        {
+            m_cmd_lists.emplace_back(make_shared<RHI_CommandList>(i, this, rhi_device->GetContext()));
+        }
 	}
 
 	RHI_SwapChain::~RHI_SwapChain()
@@ -366,9 +386,16 @@ namespace Spartan
 			m_swap_chain_view,
 			m_image_views,
 			m_frame_buffers,
-			m_semaphores_image_acquired
+			m_image_acquired_semaphores
 		);
 
+        // Clear command buffers
+        m_cmd_lists.clear();
+
+        // Command pool
+        vkDestroyCommandPool(m_rhi_device->GetContextRhi()->device, static_cast<VkCommandPool>(m_cmd_pool), nullptr);
+
+        // Render pass
 		if (m_render_pass)
 		{
 			vkDestroyRenderPass(m_rhi_device->GetContextRhi()->device, static_cast<VkRenderPass>(m_render_pass), nullptr);
@@ -394,7 +421,7 @@ namespace Spartan
 			m_swap_chain_view,
 			m_image_views,
 			m_frame_buffers,
-			m_semaphores_image_acquired
+			m_image_acquired_semaphores
 		);
 
 		// Create the swap chain with the new dimensions
@@ -412,7 +439,7 @@ namespace Spartan
 			m_swap_chain_view,
 			m_image_views,
 			m_frame_buffers,
-			m_semaphores_image_acquired
+			m_image_acquired_semaphores
 		);
 
 		return m_initialized;
@@ -420,47 +447,52 @@ namespace Spartan
 
 	bool RHI_SwapChain::AcquireNextImage()
 	{
-		// Make index that always matches the m_image_index after vkAcquireNextImageKHR.
-		// This is so getting semaphores and fences can be done by using m_image_index.
-		const auto index = !image_acquired ? 0 : (m_image_index + 1) % m_buffer_count;
+        // If we used all of our buffers, reset the command pool
+        if (m_image_index + 1 > m_buffer_count)
+        {
+            VkCommandPool command_pool = static_cast<VkCommandPool>(m_cmd_pool);
+            Vulkan_Common::error::check_result(vkResetCommandPool(m_rhi_device->GetContextRhi()->device, command_pool, 0));
+        }
 
-		// Acquire next image
-        if (Vulkan_Common::error::check_result
-        (
-            vkAcquireNextImageKHR
-            (
+		// Make index that always matches the m_image_index after vkAcquireNextImageKHR.
+		// This is so getting semaphores and fences can be done by also simply using m_image_index.
+		const uint32_t index = !m_image_acquired ? 0 : (m_image_index + 1) % m_buffer_count;
+        
+        // Acquire next image
+        m_image_acquired = Vulkan_Common::error::check_result(
+            vkAcquireNextImageKHR(
                 m_rhi_device->GetContextRhi()->device,
                 static_cast<VkSwapchainKHR>(m_swap_chain_view),
-                0xFFFFFFFFFFFFFFFF,
-                static_cast<VkSemaphore>(m_semaphores_image_acquired[index]),
+                numeric_limits<uint64_t>::max(),
+                static_cast<VkSemaphore>(m_image_acquired_semaphores[index]),
                 nullptr,
                 &m_image_index
             )
-        ))
-        {
-            image_acquired = true;
-            return true;
-        }
+        );
 
-        return false;
+        return m_image_acquired;
 	}
 
-	bool RHI_SwapChain::Present() const
+	bool RHI_SwapChain::Present()
 	{	
-		SPARTAN_ASSERT(image_acquired);
+        if (!m_image_acquired)
+        {
+            LOG_ERROR("Image has not been acquired");
+            return false;
+        }
 
-		VkSwapchainKHR swap_chains[]	= { static_cast<VkSwapchainKHR>(m_swap_chain_view) };
-		VkSemaphore semaphores_wait[]	= { static_cast<VkSemaphore>(m_semaphore_cmd_list_consumed) };
+        VkSemaphore wait_semaphores[]   = { nullptr };
+        VkSwapchainKHR swap_chains[]    = { static_cast<VkSwapchainKHR>(m_swap_chain_view) };
 
 		VkPresentInfoKHR present_info	= {};
 		present_info.sType				= VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-		present_info.waitSemaphoreCount = 1;
-		present_info.pWaitSemaphores	= semaphores_wait;
+		present_info.waitSemaphoreCount = 0;
+		present_info.pWaitSemaphores	= wait_semaphores;
 		present_info.swapchainCount		= 1;
 		present_info.pSwapchains		= swap_chains;
 		present_info.pImageIndices		= &m_image_index;
 
-		return Vulkan_Common::error::check_result(vkQueuePresentKHR(m_rhi_device->GetContextRhi()->queue_present, &present_info));
+		return Vulkan_Common::error::check_result(vkQueuePresentKHR(m_rhi_device->GetContextRhi()->queue_compute, &present_info));
 	}
 
 	bool RHI_SwapChain::CreateRenderPass()

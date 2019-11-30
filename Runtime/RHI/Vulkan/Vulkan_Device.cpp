@@ -41,79 +41,6 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    namespace _Vulkan_Device
-    {
-        inline QueueFamilyIndices get_family_indices(RHI_Device* rhi_device, VkSurfaceKHR& surface, const VkPhysicalDevice& _physical_device)
-        {
-            QueueFamilyIndices indices;
-
-            uint32_t queue_family_count = 0;
-            vkGetPhysicalDeviceQueueFamilyProperties(_physical_device, &queue_family_count, nullptr);
-
-            std::vector<VkQueueFamilyProperties> queue_family_properties(queue_family_count);
-            vkGetPhysicalDeviceQueueFamilyProperties(_physical_device, &queue_family_count, queue_family_properties.data());
-
-            int i = 0;
-            for (const auto& queue_family_property : queue_family_properties)
-            {
-                VkBool32 present_support = false;
-                vkGetPhysicalDeviceSurfaceSupportKHR(_physical_device, i, surface, &present_support);
-                if (queue_family_property.queueCount > 0)
-                {
-                    indices.present_family = i;
-                }
-
-                if (queue_family_property.queueCount > 0 && queue_family_property.queueFlags & VK_QUEUE_GRAPHICS_BIT)
-                {
-                    indices.graphics_family = i;
-                }
-
-                if (queue_family_property.queueCount > 0 && queue_family_property.queueFlags & VK_QUEUE_TRANSFER_BIT)
-                {
-                    indices.copy_family = i;
-                }
-
-                if (indices.IsComplete())
-                    break;
-
-                i++;
-            }
-
-            return indices;
-        }
-
-        inline bool choose_physical_device(RHI_Device* rhi_device, void* window_handle, const std::vector<VkPhysicalDevice>& physical_devices)
-        {
-            // Temporarily create a surface just to check compatibility
-            VkSurfaceKHR surface_temp = nullptr;
-            {
-                VkWin32SurfaceCreateInfoKHR create_info = {};
-                create_info.sType                       = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-                create_info.hwnd                        = static_cast<HWND>(window_handle);
-                create_info.hinstance                   = GetModuleHandle(nullptr);
-
-                if (!Vulkan_Common::error::check_result(vkCreateWin32SurfaceKHR(rhi_device->GetContextRhi()->instance, &create_info, nullptr, &surface_temp)))
-                    return false;
-            }
-
-            for (const auto& device : physical_devices)
-            {
-                auto indices = get_family_indices(rhi_device, surface_temp, device);
-                if (indices.IsComplete())
-                {
-                    rhi_device->GetContextRhi()->device_physical   = device;
-                    rhi_device->GetContextRhi()->indices           = indices;
-                    return true;
-                }
-            }
-
-            // Destroy the surface
-            vkDestroySurfaceKHR(rhi_device->GetContextRhi()->instance, surface_temp, nullptr);
-
-            return false;
-        }
-    }
-
 	RHI_Device::RHI_Device(Context* context)
 	{
         m_context       = context;
@@ -169,38 +96,26 @@ namespace Spartan
 		}
 
 		// Device Physical
-		{
-			uint32_t device_count = 0;
-			vkEnumeratePhysicalDevices(m_rhi_context->instance, &device_count, nullptr);
-			if (device_count == 0) 
-			{
-				LOG_ERROR("Failed to enumerate any physical devices.");
-				return;
-			}
-
-			std::vector<VkPhysicalDevice> physical_devices(device_count);
-			vkEnumeratePhysicalDevices(m_rhi_context->instance, &device_count, physical_devices.data());
-			
-			if (!_Vulkan_Device::choose_physical_device(this, context->m_engine->GetWindowData().handle, physical_devices))
-			{
-				LOG_ERROR("Failed to find a suitable device.");
-				return;
-			}
-		}
+        if (!Vulkan_Common::device::choose_physical_device(m_rhi_context.get(), context->m_engine->GetWindowData().handle))
+        {
+            LOG_ERROR("Failed to find a suitable physical device.");
+            return;
+        }
 
 		// Device
 		{
-			// Queue info
+			// Queue create info
 			vector<VkDeviceQueueCreateInfo> queue_create_infos;
 			{
-				set<uint32_t> unique_queue_families =
+				vector<uint32_t> unique_queue_families =
 				{
-					m_rhi_context->indices.graphics_family.value(),
-					m_rhi_context->indices.present_family.value(),
-					m_rhi_context->indices.copy_family.value()
+					m_rhi_context->queue_graphics_family_index,
+					m_rhi_context->queue_transfer_family_index,
+					m_rhi_context->queue_compute_family_index
 				};
+
 				float queue_priority = 1.0f;
-				for (auto queue_family : unique_queue_families)
+				for (const uint32_t& queue_family : unique_queue_families)
 				{
 					VkDeviceQueueCreateInfo queue_create_info	= {};
 					queue_create_info.sType						= VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
@@ -215,7 +130,7 @@ namespace Spartan
 			VkPhysicalDeviceFeatures device_features	= {};
 			device_features.samplerAnisotropy			= m_context->GetSubsystem<Renderer>()->GetOptionValue<bool>(Option_Value_Anisotropy);
 
-			VkDeviceCreateInfo create_info	= {};
+			VkDeviceCreateInfo create_info = {};
 			{
 				create_info.sType					= VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 				create_info.queueCreateInfoCount	= static_cast<uint32_t>(queue_create_infos.size());
@@ -223,6 +138,7 @@ namespace Spartan
 				create_info.pEnabledFeatures		= &device_features;
 				create_info.enabledExtensionCount	= static_cast<uint32_t>(m_rhi_context->extensions_device.size());
 				create_info.ppEnabledExtensionNames = m_rhi_context->extensions_device.data();
+
 				if (m_rhi_context->validation_enabled)
 				{
 					create_info.enabledLayerCount	= static_cast<uint32_t>(m_rhi_context->validation_layers.size());
@@ -237,6 +153,11 @@ namespace Spartan
 			// Create
 			if (!Vulkan_Common::error::check_result(vkCreateDevice(m_rhi_context->device_physical, &create_info, nullptr, &m_rhi_context->device)))
 				return;
+
+            // Create queues
+            vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->queue_graphics_family_index, 0, &m_rhi_context->queue_graphics);
+            vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->queue_compute_family_index,  0, &m_rhi_context->queue_compute);
+            vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->queue_transfer_family_index, 0, &m_rhi_context->queue_transfer);
 		}
 
         // Debug markers
@@ -244,13 +165,6 @@ namespace Spartan
         {
             Vulkan_Common::debug_marker::setup(m_rhi_context->device);
         }
-
-		// Queues
-		{
-			vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->indices.graphics_family.value(), 0, &m_rhi_context->queue_graphics);
-			vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->indices.present_family.value(), 0, &m_rhi_context->queue_present);
-			vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->indices.copy_family.value(), 0, &m_rhi_context->queue_copy);
-		}
 
 		// Detect and log version
 		auto version_major	= to_string(VK_VERSION_MAJOR(app_info.apiVersion));

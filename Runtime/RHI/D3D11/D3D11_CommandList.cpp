@@ -51,7 +51,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-	RHI_CommandList::RHI_CommandList(RHI_SwapChain* swap_chain, Context* context)
+	RHI_CommandList::RHI_CommandList(uint32_t index, RHI_SwapChain* swap_chain, Context* context)
 	{
 		m_commands.reserve(m_initial_capacity);
 		m_commands.resize(m_initial_capacity);
@@ -597,6 +597,11 @@ namespace Spartan
 		Clear();
 		return true;
 	}
+
+    void RHI_CommandList::Flush()
+    {
+        
+    }
 
 	RHI_Command& RHI_CommandList::GetCmd()
 	{

@@ -140,7 +140,6 @@ namespace Spartan
 #include <vulkan/vulkan.h>
 #pragma warning(pop)
 #include <vector>
-#include <optional>
 
 static const VkPolygonMode vulkan_polygon_mode[] =
 {
@@ -258,14 +257,6 @@ struct SwapChainSupportDetails
 	bool IsCompatible() const { return !formats.empty() && !present_modes.empty(); }
 };
 
-struct QueueFamilyIndices
-{
-	std::optional<uint32_t> graphics_family;
-	std::optional<uint32_t> present_family;
-	std::optional<uint32_t> copy_family;
-	bool IsComplete() const { return graphics_family.has_value() && present_family.has_value() && copy_family.has_value(); }
-};
-
 namespace Spartan
 {
 	struct RHI_Context
@@ -273,12 +264,18 @@ namespace Spartan
 		VkInstance instance							= nullptr;
 		VkPhysicalDevice device_physical			= nullptr;
 		VkDevice device								= nullptr;
-		VkQueue queue_graphics						= nullptr;
-		VkQueue queue_present						= nullptr;
-		VkQueue queue_copy							= nullptr;
 		VkDebugUtilsMessengerEXT callback_handle	= nullptr;
-		QueueFamilyIndices indices;
         VkSurfaceFormatKHR surface_format;
+
+        // Queue family indices
+        uint32_t queue_graphics_family_index    = 0;
+        uint32_t queue_compute_family_index     = 0;
+        uint32_t queue_transfer_family_index    = 0;
+
+        // Queues
+        VkQueue queue_graphics  = nullptr;
+        VkQueue queue_compute   = nullptr;
+        VkQueue queue_transfer  = nullptr;
 
         static const uint32_t shader_shift_buffer       = 100;
         static const uint32_t shader_shift_texture      = 200;

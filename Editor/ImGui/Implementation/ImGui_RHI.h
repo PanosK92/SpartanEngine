@@ -160,7 +160,7 @@ namespace ImGui::RHI
         // Grab the swap chain we will be working with
 		const auto is_main_viewport = (swap_chain_other == nullptr);
         RHI_SwapChain* swap_chain   = is_main_viewport ? g_renderer->GetSwapChain().get() : swap_chain_other;
-        RHI_CommandList* cmd_list   = swap_chain->GetCmdList().get();
+        RHI_CommandList* cmd_list   = swap_chain->GetCmdList();
 
 		// Updated vertex and index buffers
 		{
@@ -232,6 +232,7 @@ namespace ImGui::RHI
             pipeline_state.blend_state          = g_blend_state.get();
             pipeline_state.depth_stencil_state  = g_depth_stencil_state.get();
             pipeline_state.vertex_buffer        = g_vertex_buffer.get();
+            pipeline_state.swapchain            = swap_chain;
             pipeline_state.primitive_topology   = RHI_PrimitiveTopology_TriangleList;
 
 			// Start witting command list

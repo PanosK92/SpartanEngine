@@ -118,6 +118,9 @@ namespace Spartan
             return false;
         }
 
+        // Create pipeline cache
+        m_pipeline_cache = make_shared<RHI_PipelineCache>(m_rhi_device);
+
         // Create swap chain
         {
             const WindowData& window_data = m_context->m_engine->GetWindowData();
@@ -139,9 +142,6 @@ namespace Spartan
                 return false;
             }
         }
-
-        // Create pipeline cache
-        m_pipeline_cache = make_shared<RHI_PipelineCache>(m_rhi_device);
 
 		// Editor specific
 		m_gizmo_grid		= make_unique<Grid>(m_rhi_device);
@@ -203,7 +203,7 @@ namespace Spartan
 		if (!m_rhi_device || !m_rhi_device->IsInitialized())
 			return;
 
-        RHI_CommandList* cmd_list = m_swap_chain->GetCmdList().get();
+        RHI_CommandList* cmd_list = m_swap_chain->GetCmdList();
 
 		// If there is no camera, do nothing
 		if (!m_camera)
