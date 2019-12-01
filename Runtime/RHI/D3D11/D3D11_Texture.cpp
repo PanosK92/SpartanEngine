@@ -223,6 +223,32 @@ namespace Spartan
 			m_rhi_device
 		);
 
+        // SHADER RESOURCE VIEW
+        if (m_bind_flags & RHI_Texture_Sampled)
+        {
+            result_srv = CreateShaderResourceView(
+                texture,
+                m_resource_texture,
+                format_srv,
+                m_array_size,
+                m_data,
+                m_rhi_device
+            );
+        }
+
+        // DEPTH-STENCIL VIEW
+        if (m_bind_flags & RHI_Texture_DepthStencil)
+        {
+            result_ds = CreateDepthStencilView
+            (
+                texture,
+                m_resource_depth_stencils,
+                m_array_size,
+                format_dsv,
+                m_rhi_device
+            );
+        }
+
 		// RENDER TARGET VIEW
 		if (m_bind_flags & RHI_Texture_RenderTarget)
 		{
@@ -232,32 +258,6 @@ namespace Spartan
 				m_resource_render_target,
 				format,
 				m_array_size,
-				m_rhi_device
-			);
-		}
-
-		// DEPTH-STENCIL VIEW
-		if (m_bind_flags & RHI_Texture_DepthStencil)
-		{
-			result_ds = CreateDepthStencilView
-			(
-				texture,
-				m_resource_depth_stencils,
-				m_array_size,
-				format_dsv,
-				m_rhi_device
-			);
-		}
-
-		// SHADER RESOURCE VIEW
-		if (m_bind_flags & RHI_Texture_Sampled)
-		{
-			result_srv = CreateShaderResourceView(
-				texture,
-				m_resource_texture,
-				format_srv,
-				m_array_size,
-				m_data,
 				m_rhi_device
 			);
 		}

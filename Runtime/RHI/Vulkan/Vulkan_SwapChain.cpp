@@ -131,7 +131,7 @@ namespace Spartan
             void*& surface_out,
             void*& swap_chain_view_out,
             vector<void*>& image_views_out,
-            vector<void*>& frame_buffers_out,
+            vector<void*>& frame_buffers,
             vector<void*>& semaphores_image_acquired_out
         )
         {
@@ -213,39 +213,38 @@ namespace Spartan
             }
 
             // Images
+            uint32_t image_count;
             vector<VkImage> swap_chain_images;
             {
-                uint32_t image_count;
                 vkGetSwapchainImagesKHR(rhi_context->device, swap_chain, &image_count, nullptr);
                 swap_chain_images.resize(image_count);
                 vkGetSwapchainImagesKHR(rhi_context->device, swap_chain, &image_count, swap_chain_images.data());
             }
 
             // Image views
-            vector<VkImageView> swap_chain_image_views;
             {
-                swap_chain_image_views.resize(swap_chain_images.size());
-                for (size_t i = 0; i < swap_chain_image_views.size(); i++)
+                image_views_out.reserve(image_count);
+                image_views_out.resize(image_count);
+                for (uint32_t i = 0; i < image_count; i++)
                 {
-                    if (!vulkan_common::image::create_view(rhi_context, swap_chain_images[i], swap_chain_image_views[i], rhi_context->surface_format.format, VK_IMAGE_ASPECT_COLOR_BIT))
+                    if (!vulkan_common::image_view::create(rhi_context, swap_chain_images[i], image_views_out[i], rhi_context->surface_format.format, VK_IMAGE_ASPECT_COLOR_BIT))
                         return false;
                 }
             }
 
             // Frame buffers
-            vector<VkFramebuffer> frame_buffers(swap_chain_image_views.size());
-            for (auto i = 0; i < swap_chain_image_views.size(); i++)
+            frame_buffers.reserve(image_count);
+            frame_buffers.resize(image_count);
+            for (uint32_t i = 0; i < image_count; i++)
             {
-                vector<VkImageView> attachments = { swap_chain_image_views[i] };
+                vector<void*> attachments = { image_views_out[i] };
 
-                if (!vulkan_common::image::create_frame_buffer(rhi_context, static_cast<VkRenderPass>(render_pass), attachments, extent.width, extent.height, &frame_buffers[i]))
+                if (!vulkan_common::frame_buffer::create(rhi_context, render_pass, attachments, extent.width, extent.height, frame_buffers[i]))
                     return false;
             }
 
             surface_out         = static_cast<void*>(surface);
             swap_chain_view_out = static_cast<void*>(swap_chain);
-            image_views_out     = vector<void*>(swap_chain_image_views.begin(), swap_chain_image_views.end());
-            frame_buffers_out   = vector<void*>(frame_buffers.begin(), frame_buffers.end());
 
             for (uint32_t i = 0; i < buffer_count; i++)
             {
@@ -274,16 +273,12 @@ namespace Spartan
             // Frame buffers
             for (auto frame_buffer : frame_buffers)
             {
-                vkDestroyFramebuffer(rhi_context->device, static_cast<VkFramebuffer>(frame_buffer), nullptr);
+                vulkan_common::frame_buffer::destroy(rhi_context, frame_buffer);
             }
             frame_buffers.clear();
 
             // Image views
-            for (auto& image_view : image_views)
-            {
-                vkDestroyImageView(rhi_context->device, static_cast<VkImageView>(image_view), nullptr);
-            }
-            image_views.clear();
+            vulkan_common::image_view::destroy(rhi_context, image_views);
 
             // Swap chain view
             if (swap_chain_view)

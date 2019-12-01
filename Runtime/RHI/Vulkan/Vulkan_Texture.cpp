@@ -43,34 +43,14 @@ namespace Spartan
     RHI_Texture2D::~RHI_Texture2D()
     {
         m_data.clear();
+        auto rhi_context = m_rhi_device->GetContextRhi();
 
-        auto vk_device = m_rhi_device->GetContextRhi()->device;
-
-        if (m_resource_texture)
-        {
-            vkDestroyImageView(vk_device, reinterpret_cast<VkImageView>(m_resource_texture), nullptr);
-        }
-
-        if (m_resource_render_target)
-        {
-            vkDestroyImageView(vk_device, reinterpret_cast<VkImageView>(m_resource_render_target), nullptr);
-        }
-
-        for (auto& depth_stencil : m_resource_depth_stencils)
-        {
-            vkDestroyImageView(vk_device, reinterpret_cast<VkImageView>(depth_stencil), nullptr);
-        }
-
-        if (m_frame_buffer)
-        {
-            vkDestroyFramebuffer(vk_device, reinterpret_cast<VkFramebuffer>(m_frame_buffer), nullptr);
-        }
-
-        if (m_texture)
-        {
-            vkDestroyImage(vk_device, reinterpret_cast<VkImage>(m_texture), nullptr);
-        }
-
+        vulkan_common::image_view::destroy(rhi_context, m_resource_texture);
+        vulkan_common::image_view::destroy(rhi_context, m_resource_render_target);
+        vulkan_common::image_view::destroy(rhi_context, m_resource_depth_stencils);
+        vulkan_common::frame_buffer::destroy(rhi_context, m_frame_buffer);
+        vulkan_common::render_pass::destroy(m_rhi_device->GetContextRhi(), m_render_pass);
+        vulkan_common::image::destroy(rhi_context, m_texture);
 		vulkan_common::memory::free(m_rhi_device->GetContextRhi(), m_texture_memory);
 	}
 
@@ -224,7 +204,7 @@ namespace Spartan
             }
 
             // Create image
-            if (!vulkan_common::image::create_image(rhi_context, *image, m_width, m_height, vulkan_format[m_format], image_tiling, m_layout, usage_flags))
+            if (!vulkan_common::image::create(rhi_context, *image, m_width, m_height, vulkan_format[m_format], image_tiling, m_layout, usage_flags))
             {
                 LOG_ERROR("Failed to create image");
                 return false;
@@ -262,7 +242,7 @@ namespace Spartan
             return false;
 
             // Create image
-            if (!vulkan_common::image::create_image(rhi_context, *image, m_width, m_height, vulkan_format[m_format], image_tiling, m_layout, usage_flags))
+            if (!vulkan_common::image::create(rhi_context, *image, m_width, m_height, vulkan_format[m_format], image_tiling, m_layout, usage_flags))
             {
                 LOG_ERROR("Failed to create image");
                 return false;
@@ -291,25 +271,31 @@ namespace Spartan
         {
             VkImageAspectFlags aspect_flags = vulkan_common::image::bind_flags_to_aspect_mask(m_bind_flags);
 
-            // RENDER TARGET
-            if (m_bind_flags & RHI_Texture_RenderTarget)
+            // SHADER RESOURCE VIEW
+            if (m_bind_flags & RHI_Texture_Sampled)
             {
-                if (!vulkan_common::image::create_view(rhi_context, *image, *reinterpret_cast<VkImageView*>(&m_resource_render_target), vulkan_format[m_format], aspect_flags))
+                if (!vulkan_common::image_view::create(rhi_context, *image, m_resource_texture, vulkan_format[m_format], aspect_flags))
                     return false;
             }
 
-            // DEPTH-STENCIL
+            // DEPTH-STENCIL VIEW
             if (m_bind_flags & RHI_Texture_DepthStencil)
             {
                 auto depth_stencil = m_resource_depth_stencils.emplace_back(nullptr);
-                if (!vulkan_common::image::create_view(rhi_context, *image, *reinterpret_cast<VkImageView*>(&depth_stencil), vulkan_format[m_format], aspect_flags))
+                if (!vulkan_common::image_view::create(rhi_context, *image, depth_stencil, vulkan_format[m_format], aspect_flags))
                     return false;
             }
 
-            // SAMPLED
-            if (m_bind_flags & RHI_Texture_Sampled)
+            // RENDER TARGET VIEW
+            if (m_bind_flags & RHI_Texture_RenderTarget)
             {
-                if (!vulkan_common::image::create_view(rhi_context, *image, *reinterpret_cast<VkImageView*>(&m_resource_texture), vulkan_format[m_format], aspect_flags))
+                // Render pass
+                if (!vulkan_common::render_pass::create(rhi_context, m_format, m_render_pass))
+                    return false;
+
+                // Frame buffer
+                vector<void*> attachments = { m_resource_texture };
+                if (!vulkan_common::frame_buffer::create(rhi_context, m_render_pass, attachments, m_width, m_height, m_frame_buffer))
                     return false;
             }
         }
