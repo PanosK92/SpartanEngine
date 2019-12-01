@@ -143,11 +143,11 @@ namespace Spartan
                 create_info.hwnd                        = static_cast<HWND>(window_handle);
                 create_info.hinstance                   = GetModuleHandle(nullptr);
 
-                if (!Vulkan_Common::error::check_result(vkCreateWin32SurfaceKHR(rhi_context->instance, &create_info, nullptr, &surface)))
+                if (!vulkan_common::error::check_result(vkCreateWin32SurfaceKHR(rhi_context->instance, &create_info, nullptr, &surface)))
                     return false;
 
                 VkBool32 present_support = false;
-                if (!Vulkan_Common::error::check_result(vkGetPhysicalDeviceSurfaceSupportKHR(rhi_context->device_physical, rhi_context->queue_graphics_family_index, surface, &present_support)))
+                if (!vulkan_common::error::check_result(vkGetPhysicalDeviceSurfaceSupportKHR(rhi_context->device_physical, rhi_context->queue_graphics_family_index, surface, &present_support)))
                     return false;
 
                 if (!present_support)
@@ -208,7 +208,7 @@ namespace Spartan
                 create_info.clipped         = VK_TRUE;
                 create_info.oldSwapchain    = nullptr;
 
-                if (!Vulkan_Common::error::check_result(vkCreateSwapchainKHR(rhi_context->device, &create_info, nullptr, &swap_chain)))
+                if (!vulkan_common::error::check_result(vkCreateSwapchainKHR(rhi_context->device, &create_info, nullptr, &swap_chain)))
                     return false;
             }
 
@@ -227,7 +227,7 @@ namespace Spartan
                 swap_chain_image_views.resize(swap_chain_images.size());
                 for (size_t i = 0; i < swap_chain_image_views.size(); i++)
                 {
-                    if (!Vulkan_Common::image::create_view(rhi_context, swap_chain_images[i], swap_chain_image_views[i], rhi_context->surface_format.format, VK_IMAGE_ASPECT_COLOR_BIT))
+                    if (!vulkan_common::image::create_view(rhi_context, swap_chain_images[i], swap_chain_image_views[i], rhi_context->surface_format.format, VK_IMAGE_ASPECT_COLOR_BIT))
                         return false;
                 }
             }
@@ -238,7 +238,7 @@ namespace Spartan
             {
                 vector<VkImageView> attachments = { swap_chain_image_views[i] };
 
-                if (!Vulkan_Common::image::create_frame_buffer(rhi_context, static_cast<VkRenderPass>(render_pass), attachments, extent.width, extent.height, &frame_buffers[i]))
+                if (!vulkan_common::image::create_frame_buffer(rhi_context, static_cast<VkRenderPass>(render_pass), attachments, extent.width, extent.height, &frame_buffers[i]))
                     return false;
             }
 
@@ -249,9 +249,7 @@ namespace Spartan
 
             for (uint32_t i = 0; i < buffer_count; i++)
             {
-                VkSemaphore semaphore;
-                Vulkan_Common::semaphore::create(rhi_context, semaphore);
-                semaphores_image_acquired_out.emplace_back(static_cast<void*>(semaphore));
+                vulkan_common::semaphore::create(rhi_context, semaphores_image_acquired_out.emplace_back(nullptr));
             }
 
             return true;
@@ -269,8 +267,7 @@ namespace Spartan
             // Semaphores
             for (auto& semaphore : semaphores_image_acquired)
             {
-                VkSemaphore _semaphore = static_cast<VkSemaphore>(semaphore);
-                Vulkan_Common::semaphore::destroy(rhi_context, _semaphore);
+                vulkan_common::semaphore::destroy(rhi_context, semaphore);
             }
             semaphores_image_acquired.clear();
 
@@ -336,7 +333,7 @@ namespace Spartan
             return;
         }
 
-		// Copy parameters
+		// Save parameters
 		m_format		= format;
 		m_rhi_device	= rhi_device.get();
 		m_buffer_count	= buffer_count;
@@ -345,7 +342,7 @@ namespace Spartan
 		m_window_handle	= window_handle;
         m_flags         = flags;
 
-		if (!CreateRenderPass())
+		if (!vulkan_common::render_pass::create(rhi_device->GetContextRhi(), format, m_render_pass))
 			return;
 
 		m_initialized = _Vulkan_SwapChain::create
@@ -366,9 +363,7 @@ namespace Spartan
 		);
 
         // Create command pool
-        auto cmd_pool_vk = static_cast<VkCommandPool>(m_cmd_pool);
-        Vulkan_Common::command::create_pool(rhi_device->GetContextRhi(), cmd_pool_vk, rhi_device->GetContextRhi()->queue_graphics_family_index);
-        m_cmd_pool = static_cast<void*>(cmd_pool_vk);
+        vulkan_common::command::create_pool(rhi_device->GetContextRhi(), m_cmd_pool, rhi_device->GetContextRhi()->queue_graphics_family_index);
 
         // Create command lists
         for (uint32_t i = 0; i < m_buffer_count; i++)
@@ -393,14 +388,10 @@ namespace Spartan
         m_cmd_lists.clear();
 
         // Command pool
-        vkDestroyCommandPool(m_rhi_device->GetContextRhi()->device, static_cast<VkCommandPool>(m_cmd_pool), nullptr);
+        vulkan_common::command::destroy(m_rhi_device->GetContextRhi(), m_cmd_pool);
 
         // Render pass
-		if (m_render_pass)
-		{
-			vkDestroyRenderPass(m_rhi_device->GetContextRhi()->device, static_cast<VkRenderPass>(m_render_pass), nullptr);
-			m_render_pass = nullptr;
-		}
+        vulkan_common::render_pass::destroy(m_rhi_device->GetContextRhi(), m_render_pass);
 	}
 
 	bool RHI_SwapChain::Resize(const uint32_t width, const uint32_t height)
@@ -451,7 +442,7 @@ namespace Spartan
         if (m_image_index + 1 > m_buffer_count)
         {
             VkCommandPool command_pool = static_cast<VkCommandPool>(m_cmd_pool);
-            Vulkan_Common::error::check_result(vkResetCommandPool(m_rhi_device->GetContextRhi()->device, command_pool, 0));
+            vulkan_common::error::check_result(vkResetCommandPool(m_rhi_device->GetContextRhi()->device, command_pool, 0));
         }
 
 		// Make index that always matches the m_image_index after vkAcquireNextImageKHR.
@@ -459,7 +450,7 @@ namespace Spartan
 		const uint32_t index = !m_image_acquired ? 0 : (m_image_index + 1) % m_buffer_count;
         
         // Acquire next image
-        m_image_acquired = Vulkan_Common::error::check_result(
+        m_image_acquired = vulkan_common::error::check_result(
             vkAcquireNextImageKHR(
                 m_rhi_device->GetContextRhi()->device,
                 static_cast<VkSwapchainKHR>(m_swap_chain_view),
@@ -492,72 +483,7 @@ namespace Spartan
 		present_info.pSwapchains		= swap_chains;
 		present_info.pImageIndices		= &m_image_index;
 
-		return Vulkan_Common::error::check_result(vkQueuePresentKHR(m_rhi_device->GetContextRhi()->queue_graphics, &present_info));
-	}
-
-	bool RHI_SwapChain::CreateRenderPass()
-	{
-		VkAttachmentDescription color_attachment	= {};
-		color_attachment.format						= VK_FORMAT_B8G8R8A8_UNORM; // this has to come from the swapchain
-		color_attachment.samples					= VK_SAMPLE_COUNT_1_BIT;
-		color_attachment.loadOp						= VK_ATTACHMENT_LOAD_OP_CLEAR;
-		color_attachment.storeOp					= VK_ATTACHMENT_STORE_OP_STORE;
-		color_attachment.stencilLoadOp				= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-		color_attachment.stencilStoreOp				= VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		color_attachment.initialLayout				= VK_IMAGE_LAYOUT_UNDEFINED;
-		color_attachment.finalLayout				= VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-		VkAttachmentReference color_attachment_ref	= {};
-		color_attachment_ref.attachment				= 0;
-		color_attachment_ref.layout					= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-		VkSubpassDescription subpass	= {};
-		subpass.pipelineBindPoint		= VK_PIPELINE_BIND_POINT_GRAPHICS;
-		subpass.colorAttachmentCount	= 1;
-		subpass.pColorAttachments		= &color_attachment_ref;
-
-		// Sub-pass dependencies for layout transitions
-		vector<VkSubpassDependency> dependencies
-		{
-			VkSubpassDependency
-			{
-				VK_SUBPASS_EXTERNAL,														// uint32_t srcSubpass;
-				0,																			// uint32_t dstSubpass;
-				VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,										// PipelineStageFlags srcStageMask;
-				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,								// PipelineStageFlags dstStageMask;
-				VK_ACCESS_MEMORY_READ_BIT,													// AccessFlags srcAccessMask;
-				VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,	// AccessFlags dstAccessMask;
-				VK_DEPENDENCY_BY_REGION_BIT													// DependencyFlags dependencyFlags;
-			},
-
-			VkSubpassDependency
-			{
-				0,																			// uint32_t srcSubpass;
-				VK_SUBPASS_EXTERNAL,														// uint32_t dstSubpass;
-				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,								// PipelineStageFlags srcStageMask;
-				VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,										// PipelineStageFlags dstStageMask;
-				VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,	// AccessFlags srcAccessMask;
-				VK_ACCESS_MEMORY_READ_BIT,													// AccessFlags dstAccessMask;
-				VK_DEPENDENCY_BY_REGION_BIT													// DependencyFlags dependencyFlags;
-			},
-		};
-
-		VkRenderPassCreateInfo render_pass_info = {};
-		render_pass_info.sType					= VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-		render_pass_info.attachmentCount		= 1;
-		render_pass_info.pAttachments			= &color_attachment;
-		render_pass_info.subpassCount			= 1;
-		render_pass_info.pSubpasses				= &subpass;
-		render_pass_info.dependencyCount		= static_cast<uint32_t>(dependencies.size());
-		render_pass_info.pDependencies			= dependencies.data();
-
-		const auto render_pass = reinterpret_cast<VkRenderPass*>(&m_render_pass);
-		if (vkCreateRenderPass(m_rhi_device->GetContextRhi()->device, &render_pass_info, nullptr, render_pass) != VK_SUCCESS)
-		{
-			LOG_ERROR("Failed to create render pass");
-			return false;
-		}
-		return true;
+		return vulkan_common::error::check_result(vkQueuePresentKHR(m_rhi_device->GetContextRhi()->queue_graphics, &present_info));
 	}
 }
 #endif

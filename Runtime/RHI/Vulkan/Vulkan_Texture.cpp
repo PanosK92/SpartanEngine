@@ -71,7 +71,7 @@ namespace Spartan
             vkDestroyImage(vk_device, reinterpret_cast<VkImage>(m_texture), nullptr);
         }
 
-		Vulkan_Common::memory::free(m_rhi_device->GetContextRhi(), m_texture_memory);
+		vulkan_common::memory::free(m_rhi_device->GetContextRhi(), m_texture_memory);
 	}
 
 	inline bool TransitionImageLayout(VkCommandBuffer& cmd_buffer, VkImage& image, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new)
@@ -128,13 +128,15 @@ namespace Spartan
     inline bool CopyBufferToImage(const RHI_Context* rhi_context, const uint32_t width, const uint32_t height, VkImage& image, RHI_Image_Layout& layout, VkBuffer& staging_buffer)
     {
         // Create command buffer
-        VkCommandPool command_pool          = nullptr;
-        VkCommandBuffer command_buffer[1]   = { nullptr };
-		if (!Vulkan_Common::command::begin(rhi_context, rhi_context->queue_graphics_family_index, command_pool, command_buffer[0]))
+        void* command_pool      = nullptr;
+        void* command_buffer[1] = { nullptr };
+		if (!vulkan_common::command::begin(rhi_context, rhi_context->queue_graphics_family_index, command_pool, command_buffer[0]))
 			return false;
 
+        VkCommandBuffer cmd_buffer = static_cast<VkCommandBuffer>(command_buffer[0]);
+
         // Transition layout to RHI_Image_Transfer_Dst_Optimal
-		if (!TransitionImageLayout(command_buffer[0], image, layout, RHI_Image_Transfer_Dst_Optimal))
+		if (!TransitionImageLayout(cmd_buffer, image, layout, RHI_Image_Transfer_Dst_Optimal))
 			return false;
 		
 		// Copy buffer to texture	
@@ -150,14 +152,16 @@ namespace Spartan
 		region.imageExtent						= { width, height, 1 };
 
         // Transition layout to RHI_Image_Shader_Read_Only_Optimal
-		vkCmdCopyBufferToImage(command_buffer[0], staging_buffer, image, vulkan_image_layout[RHI_Image_Transfer_Dst_Optimal], 1, &region);
-		if (!TransitionImageLayout(command_buffer[0], image, RHI_Image_Transfer_Dst_Optimal, RHI_Image_Shader_Read_Only_Optimal))
+		vkCmdCopyBufferToImage(cmd_buffer, staging_buffer, image, vulkan_image_layout[RHI_Image_Transfer_Dst_Optimal], 1, &region);
+		if (!TransitionImageLayout(cmd_buffer, image, RHI_Image_Transfer_Dst_Optimal, RHI_Image_Shader_Read_Only_Optimal))
 			return false;
 
         layout = RHI_Image_Shader_Read_Only_Optimal;
 
         // Flush and free command buffer
-		return Vulkan_Common::command::flush_and_free(rhi_context, command_pool, command_buffer[0]);
+        bool result = vulkan_common::command::flush(command_buffer[0], rhi_context->queue_graphics);
+        vulkan_common::command::free(rhi_context, command_pool, command_buffer[0]);
+		return result;
 	}
 
 	bool RHI_Texture2D::CreateResourceGpu()
@@ -166,7 +170,7 @@ namespace Spartan
 
         // Get format support
         VkFormatFeatureFlags feature_flag = (m_bind_flags & RHI_Texture_DepthStencil) ? VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT : VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
-        VkImageTiling image_tiling = Vulkan_Common::image::is_format_supported(rhi_context, m_format, feature_flag);
+        VkImageTiling image_tiling = vulkan_common::image::is_format_supported(rhi_context, m_format, feature_flag);
 
         // If the format is not supported, early exit
         if (image_tiling == VK_IMAGE_TILING_MAX_ENUM)
@@ -207,12 +211,12 @@ namespace Spartan
                 VkDeviceSize buffer_size = static_cast<uint64_t>(m_width)* static_cast<uint64_t>(m_height)* static_cast<uint64_t>(m_channels);
 
                 // Create buffer
-                if (!Vulkan_Common::buffer::create_allocate_bind(rhi_context, staging_buffer, staging_buffer_memory, buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT))
+                if (!vulkan_common::buffer::create_allocate_bind(rhi_context, staging_buffer, staging_buffer_memory, buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT))
                     return false;
 
                 // Copy to buffer
                 void* data = nullptr;
-                if (Vulkan_Common::error::check_result(vkMapMemory(rhi_context->device, staging_buffer_memory, 0, buffer_size, 0, &data)))
+                if (vulkan_common::error::check_result(vkMapMemory(rhi_context->device, staging_buffer_memory, 0, buffer_size, 0, &data)))
                 {
                     memcpy(data, m_data.front().data(), static_cast<size_t>(buffer_size));
                     vkUnmapMemory(rhi_context->device, staging_buffer_memory);
@@ -220,14 +224,14 @@ namespace Spartan
             }
 
             // Create image
-            if (!Vulkan_Common::image::create_image(rhi_context, *image, m_width, m_height, vulkan_format[m_format], image_tiling, m_layout, usage_flags))
+            if (!vulkan_common::image::create_image(rhi_context, *image, m_width, m_height, vulkan_format[m_format], image_tiling, m_layout, usage_flags))
             {
                 LOG_ERROR("Failed to create image");
                 return false;
             }
 
             // Allocate memory and bind it
-            if (!Vulkan_Common::image::allocate_bind(rhi_context, *image, image_memory))
+            if (!vulkan_common::image::allocate_bind(rhi_context, *image, image_memory))
             {
                 LOG_ERROR("Failed to allocate and bind image memory");
                 return false;
@@ -258,7 +262,7 @@ namespace Spartan
             return false;
 
             // Create image
-            if (!Vulkan_Common::image::create_image(rhi_context, *image, m_width, m_height, vulkan_format[m_format], image_tiling, m_layout, usage_flags))
+            if (!vulkan_common::image::create_image(rhi_context, *image, m_width, m_height, vulkan_format[m_format], image_tiling, m_layout, usage_flags))
             {
                 LOG_ERROR("Failed to create image");
                 return false;
@@ -267,7 +271,7 @@ namespace Spartan
             // Allocate memory
             VkDeviceSize memory_size = 0;
             // Allocate memory and bind it
-            if (!Vulkan_Common::image::allocate_bind(rhi_context, *image, image_memory, &memory_size))
+            if (!vulkan_common::image::allocate_bind(rhi_context, *image, image_memory, &memory_size))
             {
                 LOG_ERROR("Failed to allocate and bind image memory");
                 return false;
@@ -275,7 +279,7 @@ namespace Spartan
 
             // Map image memory
             void* data = nullptr;
-            if (Vulkan_Common::error::check_result(vkMapMemory(rhi_context->device, *image_memory, 0, memory_size, 0, &data)))
+            if (vulkan_common::error::check_result(vkMapMemory(rhi_context->device, *image_memory, 0, memory_size, 0, &data)))
             {
                 VkDeviceSize buffer_size = static_cast<uint64_t>(m_width)* static_cast<uint64_t>(m_height)* static_cast<uint64_t>(m_channels);
                 memcpy(data, m_data.front().data(), static_cast<size_t>(buffer_size));
@@ -285,12 +289,12 @@ namespace Spartan
 
         // Create image views
         {
-            VkImageAspectFlags aspect_flags = Vulkan_Common::image::bind_flags_to_aspect_mask(m_bind_flags);
+            VkImageAspectFlags aspect_flags = vulkan_common::image::bind_flags_to_aspect_mask(m_bind_flags);
 
             // RENDER TARGET
             if (m_bind_flags & RHI_Texture_RenderTarget)
             {
-                if (!Vulkan_Common::image::create_view(rhi_context, *image, *reinterpret_cast<VkImageView*>(&m_resource_render_target), vulkan_format[m_format], aspect_flags))
+                if (!vulkan_common::image::create_view(rhi_context, *image, *reinterpret_cast<VkImageView*>(&m_resource_render_target), vulkan_format[m_format], aspect_flags))
                     return false;
             }
 
@@ -298,14 +302,14 @@ namespace Spartan
             if (m_bind_flags & RHI_Texture_DepthStencil)
             {
                 auto depth_stencil = m_resource_depth_stencils.emplace_back(nullptr);
-                if (!Vulkan_Common::image::create_view(rhi_context, *image, *reinterpret_cast<VkImageView*>(&depth_stencil), vulkan_format[m_format], aspect_flags))
+                if (!vulkan_common::image::create_view(rhi_context, *image, *reinterpret_cast<VkImageView*>(&depth_stencil), vulkan_format[m_format], aspect_flags))
                     return false;
             }
 
             // SAMPLED
             if (m_bind_flags & RHI_Texture_Sampled)
             {
-                if (!Vulkan_Common::image::create_view(rhi_context, *image, *reinterpret_cast<VkImageView*>(&m_resource_texture), vulkan_format[m_format], aspect_flags))
+                if (!vulkan_common::image::create_view(rhi_context, *image, *reinterpret_cast<VkImageView*>(&m_resource_texture), vulkan_format[m_format], aspect_flags))
                     return false;
             }
         }
@@ -320,7 +324,7 @@ namespace Spartan
 		m_data.clear();
         vkDestroyImageView(m_rhi_device->GetContextRhi()->device, reinterpret_cast<VkImageView>(m_resource_texture), nullptr);
 		vkDestroyImage(m_rhi_device->GetContextRhi()->device, reinterpret_cast<VkImage>(m_texture), nullptr);
-		Vulkan_Common::memory::free(m_rhi_device->GetContextRhi(), m_texture_memory);
+		vulkan_common::memory::free(m_rhi_device->GetContextRhi(), m_texture_memory);
 	}
 
 	bool RHI_TextureCube::CreateResourceGpu()

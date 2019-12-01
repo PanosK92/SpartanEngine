@@ -65,7 +65,7 @@ namespace Spartan
 
 			if (m_rhi_context->validation_enabled)
 			{
-				if (Vulkan_Common::extension::is_present(m_rhi_context->validation_layers.front()))
+				if (vulkan_common::extension::is_present(m_rhi_context->validation_layers.front()))
 				{
 					create_info.enabledLayerCount	= static_cast<uint32_t>(m_rhi_context->validation_layers.size());
 					create_info.ppEnabledLayerNames = m_rhi_context->validation_layers.data();
@@ -76,7 +76,7 @@ namespace Spartan
 				}
 			}
 
-			if (!Vulkan_Common::error::check_result(vkCreateInstance(&create_info, nullptr, &m_rhi_context->instance)))
+			if (!vulkan_common::error::check_result(vkCreateInstance(&create_info, nullptr, &m_rhi_context->instance)))
                 return;
 		}
 
@@ -87,16 +87,16 @@ namespace Spartan
 			create_info.sType								= VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
 			create_info.messageSeverity						= VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
 			create_info.messageType							= VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-			create_info.pfnUserCallback						= Vulkan_Common::debug::callback;
+			create_info.pfnUserCallback						= vulkan_common::debug::callback;
 
-			if (Vulkan_Common::debug::create(this, &create_info) != VK_SUCCESS)
+			if (vulkan_common::debug::create(this, &create_info) != VK_SUCCESS)
 			{
 				LOG_ERROR("Failed to setup debug callback");
 			}
 		}
 
 		// Device Physical
-        if (!Vulkan_Common::device::choose_physical_device(m_rhi_context.get(), context->m_engine->GetWindowData().handle))
+        if (!vulkan_common::device::choose_physical_device(m_rhi_context.get(), context->m_engine->GetWindowData().handle))
         {
             LOG_ERROR("Failed to find a suitable physical device.");
             return;
@@ -151,7 +151,7 @@ namespace Spartan
 			}
 
 			// Create
-			if (!Vulkan_Common::error::check_result(vkCreateDevice(m_rhi_context->device_physical, &create_info, nullptr, &m_rhi_context->device)))
+			if (!vulkan_common::error::check_result(vkCreateDevice(m_rhi_context->device_physical, &create_info, nullptr, &m_rhi_context->device)))
 				return;
 
             // Create queues
@@ -163,7 +163,7 @@ namespace Spartan
         // Debug markers
         if (m_rhi_context->debug_markers_enabled)
         {
-            Vulkan_Common::debug_marker::setup(m_rhi_context->device);
+            vulkan_common::debug_marker::setup(m_rhi_context->device);
         }
 
 		// Detect and log version
@@ -180,10 +180,10 @@ namespace Spartan
 	RHI_Device::~RHI_Device()
 	{	
         // Wait for GPU
-		if (Vulkan_Common::error::check_result(vkQueueWaitIdle(m_rhi_context->queue_graphics)))
+		if (vulkan_common::error::check_result(vkQueueWaitIdle(m_rhi_context->queue_graphics)))
 		{
             // Release resources
-            Vulkan_Common::debug::destroy(m_rhi_context.get());
+            vulkan_common::debug::destroy(m_rhi_context.get());
 			vkDestroyDevice(m_rhi_context->device, nullptr);
 			vkDestroyInstance(m_rhi_context->instance, nullptr);
 		}

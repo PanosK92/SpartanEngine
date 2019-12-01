@@ -59,12 +59,10 @@ namespace Spartan
         void* GetRenderPass()		            const   { return m_render_pass; }
         void* GetFrameBuffer()                  const   { return m_frame_buffers[m_image_index]; }
 		void* GetSemaphoreImageAcquired()       const   { return m_image_acquired_semaphores[m_image_index]; }
-        void* GetCmdPool()                      const   { return m_cmd_pool; }
+        void*& GetCmdPool()                             { return m_cmd_pool; }
         RHI_CommandList* GetCmdList()                   { return m_cmd_lists[m_image_index].get(); }
 
 	private:
-		bool CreateRenderPass();
-
         // Properties
 		bool m_initialized			= false;
 		bool m_windowed				= false;

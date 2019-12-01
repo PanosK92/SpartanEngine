@@ -240,7 +240,7 @@ namespace Spartan
 		    pipeline_layout_info.setLayoutCount				= 1;		
 		    pipeline_layout_info.pSetLayouts				= &vk_descriptor_set_layout;
 
-            if (!Vulkan_Common::error::check_result(vkCreatePipelineLayout(m_rhi_device->GetContextRhi()->device, &pipeline_layout_info, nullptr, pipeline_layout)))
+            if (!vulkan_common::error::check_result(vkCreatePipelineLayout(m_rhi_device->GetContextRhi()->device, &pipeline_layout_info, nullptr, pipeline_layout)))
 			    return;
         }
 
@@ -262,7 +262,7 @@ namespace Spartan
 		    pipeline_info.renderPass					= static_cast<VkRenderPass>(m_state->swapchain->GetRenderPass());
 
             auto pipeline = reinterpret_cast<VkPipeline*>(&m_pipeline);
-            Vulkan_Common::error::check_result(vkCreateGraphicsPipelines(m_rhi_device->GetContextRhi()->device, nullptr, 1, &pipeline_info, nullptr, pipeline));
+            vulkan_common::error::check_result(vkCreateGraphicsPipelines(m_rhi_device->GetContextRhi()->device, nullptr, 1, &pipeline_info, nullptr, pipeline));
         }
 	}
 
@@ -301,7 +301,7 @@ namespace Spartan
 			allocate_info.pSetLayouts					= &descriptor_set_layout;
 
 			// Allocate		
-			if (!Vulkan_Common::error::check_result(vkAllocateDescriptorSets(m_rhi_device->GetContextRhi()->device, &allocate_info, &descriptor_set)))
+			if (!vulkan_common::error::check_result(vkAllocateDescriptorSets(m_rhi_device->GetContextRhi()->device, &allocate_info, &descriptor_set)))
 				return nullptr;
 		}
 
@@ -452,7 +452,7 @@ namespace Spartan
 		
 		// Pool
 		const auto descriptor_pool = reinterpret_cast<VkDescriptorPool*>(&m_descriptor_pool);
-        if (!Vulkan_Common::error::check_result(vkCreateDescriptorPool(m_rhi_device->GetContextRhi()->device, &pool_create_info, nullptr, descriptor_pool)))
+        if (!vulkan_common::error::check_result(vkCreateDescriptorPool(m_rhi_device->GetContextRhi()->device, &pool_create_info, nullptr, descriptor_pool)))
             return false;
 
 		return true;
@@ -492,7 +492,7 @@ namespace Spartan
 
 		// Descriptor set layout
 		auto descriptor_set_layout = reinterpret_cast<VkDescriptorSetLayout*>(&m_descriptor_set_layout);
-        if (!Vulkan_Common::error::check_result(vkCreateDescriptorSetLayout(m_rhi_device->GetContextRhi()->device, &create_info, nullptr, descriptor_set_layout)))
+        if (!vulkan_common::error::check_result(vkCreateDescriptorSetLayout(m_rhi_device->GetContextRhi()->device, &create_info, nullptr, descriptor_set_layout)))
 			return false;
 
 		return true;

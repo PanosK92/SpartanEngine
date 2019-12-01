@@ -59,16 +59,10 @@ namespace Spartan
         RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
 
         // Command buffer
-        auto cmd_buffer_vk = static_cast<VkCommandBuffer>(m_cmd_buffer);
-        if (Vulkan_Common::command::create_buffer(rhi_context, reinterpret_cast<VkCommandPool>(m_swap_chain->GetCmdPool()), cmd_buffer_vk, VK_COMMAND_BUFFER_LEVEL_PRIMARY))
-        {
-            m_cmd_buffer = static_cast<void*>(cmd_buffer_vk);
-        }
+        vulkan_common::command::create_buffer(rhi_context, m_swap_chain->GetCmdPool(), m_cmd_buffer, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
         // Fence
-        VkFence fence;
-        Vulkan_Common::fence::create(rhi_context, fence);
-        m_cmd_list_consumed_fence = static_cast<void*>(fence);
+        vulkan_common::fence::create(rhi_context, m_cmd_list_consumed_fence);
 	}
 
 	RHI_CommandList::~RHI_CommandList()
@@ -79,12 +73,10 @@ namespace Spartan
 		vkQueueWaitIdle(rhi_context->queue_graphics);
 
 		// Fence
-        VkFence fence = reinterpret_cast<VkFence>(m_cmd_list_consumed_fence);
-        Vulkan_Common::fence::destroy(rhi_context, fence);
-        m_cmd_list_consumed_fence = nullptr;
+        vulkan_common::fence::destroy(rhi_context, m_cmd_list_consumed_fence);
 
         // Command buffer
-        vkFreeCommandBuffers(m_rhi_device->GetContextRhi()->device, static_cast<VkCommandPool>(m_swap_chain->GetCmdPool()), 1, reinterpret_cast<VkCommandBuffer*>(&m_cmd_buffer));
+        vulkan_common::command::free(m_rhi_device->GetContextRhi(), m_swap_chain->GetCmdPool(), m_cmd_buffer);
 	}
 
 	void RHI_CommandList::Begin(const string& pass_name)
@@ -122,7 +114,7 @@ namespace Spartan
 		VkCommandBufferBeginInfo begin_info	    = {};
 		begin_info.sType						= VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		begin_info.flags						= VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-		if (!Vulkan_Common::error::check_result(vkBeginCommandBuffer(CMD_BUFFER, &begin_info)))
+		if (!vulkan_common::error::check_result(vkBeginCommandBuffer(CMD_BUFFER, &begin_info)))
 			return;
 
 		// Begin render pass
@@ -154,7 +146,7 @@ namespace Spartan
 
         // Debug marker - Begin
         #ifdef DEBUG
-        Vulkan_Common::debug_marker::begin(CMD_BUFFER, pass_name.c_str(), Vector4::One);
+        vulkan_common::debug_marker::begin(CMD_BUFFER, pass_name.c_str(), Vector4::One);
         #endif
 	}
 
@@ -168,14 +160,14 @@ namespace Spartan
 
 		vkCmdEndRenderPass(CMD_BUFFER);
 
-        if (Vulkan_Common::error::check_result(vkEndCommandBuffer(CMD_BUFFER)))
+        if (vulkan_common::error::check_result(vkEndCommandBuffer(CMD_BUFFER)))
         {
             m_cmd_state = RHI_Cmd_List_Ended;
         }
 
         // Debug marker - End
         #ifdef DEBUG
-        Vulkan_Common::debug_marker::end(CMD_BUFFER);
+        vulkan_common::debug_marker::end(CMD_BUFFER);
         #endif
 	}
 
@@ -447,7 +439,7 @@ namespace Spartan
 		submit_info.signalSemaphoreCount	= 0;
 		submit_info.pSignalSemaphores		= signal_semaphores;
 
-        if (!Vulkan_Common::error::check_result(vkQueueSubmit(m_rhi_device->GetContextRhi()->queue_graphics, 1, &submit_info, reinterpret_cast<VkFence>(m_cmd_list_consumed_fence))))
+        if (!vulkan_common::error::check_result(vkQueueSubmit(m_rhi_device->GetContextRhi()->queue_graphics, 1, &submit_info, reinterpret_cast<VkFence>(m_cmd_list_consumed_fence))))
             return false;
 		
 		// Wait for fence on the next Begin(), if we force it now, perfomance will not be as good
@@ -458,8 +450,7 @@ namespace Spartan
 
     void RHI_CommandList::Flush()
     {
-        VkFence fence = static_cast<VkFence>(m_cmd_list_consumed_fence);
-        Vulkan_Common::fence::wait_reset(m_rhi_device->GetContextRhi(), fence);
+        vulkan_common::fence::wait_reset(m_rhi_device->GetContextRhi(), m_cmd_list_consumed_fence);
     }
 
 	RHI_Command& RHI_CommandList::GetCmd()

@@ -35,7 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/Vector4.h"
 //=============================
 
-namespace Spartan::Vulkan_Common
+namespace Spartan::vulkan_common
 {
     namespace error
     {
@@ -227,39 +227,45 @@ namespace Spartan::Vulkan_Common
 
 	namespace command
 	{
-        inline bool create_pool(const RHI_Context* rhi_context, VkCommandPool& command_pool, uint32_t queue_family_index)
+        inline bool create_pool(const RHI_Context* rhi_context, void*& cmd_pool, uint32_t queue_family_index)
         {
             VkCommandPoolCreateInfo cmd_pool_info   = {};
             cmd_pool_info.sType                     = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
             cmd_pool_info.queueFamilyIndex          = queue_family_index;
             cmd_pool_info.flags                     = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
-            return error::check_result(vkCreateCommandPool(rhi_context->device, &cmd_pool_info, nullptr, &command_pool));
+            VkCommandPool* cmd_pool_vk = reinterpret_cast<VkCommandPool*>(&cmd_pool);
+            return error::check_result(vkCreateCommandPool(rhi_context->device, &cmd_pool_info, nullptr, cmd_pool_vk));
         }
 
-		inline bool create_buffer(const RHI_Context* rhi_context, const VkCommandPool& cmd_pool, VkCommandBuffer& command_buffer, const VkCommandBufferLevel level)
+		inline bool create_buffer(const RHI_Context* rhi_context, void*& cmd_pool, void*& cmd_buffer, const VkCommandBufferLevel level)
 		{
+            VkCommandPool cmd_pool_vk       = static_cast<VkCommandPool>(cmd_pool);
+            VkCommandBuffer* cmd_buffer_vk  = reinterpret_cast<VkCommandBuffer*>(&cmd_buffer);
+
 			VkCommandBufferAllocateInfo allocate_info	= {};
 			allocate_info.sType							= VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-			allocate_info.commandPool					= cmd_pool;
+			allocate_info.commandPool					= cmd_pool_vk;
 			allocate_info.level							= level;
             allocate_info.commandBufferCount            = 1;
 
-            return error::check_result(vkAllocateCommandBuffers(rhi_context->device, &allocate_info, &command_buffer));
+            return error::check_result(vkAllocateCommandBuffers(rhi_context->device, &allocate_info, cmd_buffer_vk));
 		}
 
-        inline bool flush(VkCommandBuffer& command_buffer, const VkQueue& queue)
+        inline bool flush(void*& cmd_buffer, const VkQueue& queue)
         {
-            if (!command_buffer)
+            if (!cmd_buffer)
                 return false;
 
-            if (!error::check_result(vkEndCommandBuffer(command_buffer)))
+            VkCommandBuffer cmd_buffer_vk = static_cast<VkCommandBuffer>(cmd_buffer);
+
+            if (!error::check_result(vkEndCommandBuffer(cmd_buffer_vk)))
                 return false;
 
             VkSubmitInfo submitInfo         = {};
             submitInfo.sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO;
             submitInfo.commandBufferCount   = 1;
-            submitInfo.pCommandBuffers      = &command_buffer;
+            submitInfo.pCommandBuffers      = &cmd_buffer_vk;
 
             if (!error::check_result(vkQueueSubmit(queue, 1, &submitInfo, nullptr)))
                 return false;
@@ -267,84 +273,99 @@ namespace Spartan::Vulkan_Common
             return error::check_result(vkQueueWaitIdle(queue));
         }
 
-        inline bool begin(const RHI_Context* rhi_context, uint32_t queue_family_index, VkCommandPool& command_pool, VkCommandBuffer& command_buffer)
+        inline bool begin(const RHI_Context* rhi_context, uint32_t queue_family_index, void*& cmd_pool, void*& cmd_buffer)
         {
             // Create command pool
-            if (!create_pool(rhi_context, command_pool, queue_family_index))
+            if (!create_pool(rhi_context, cmd_pool, queue_family_index))
                 return false;
 
             // Create command buffer
-            if (!create_buffer(rhi_context, command_pool, command_buffer, VK_COMMAND_BUFFER_LEVEL_PRIMARY))
+            if (!create_buffer(rhi_context, cmd_pool, cmd_buffer, VK_COMMAND_BUFFER_LEVEL_PRIMARY))
                 return false;
 
             VkCommandBufferBeginInfo begin_info = {};
             begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
             begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-            return error::check_result(vkBeginCommandBuffer(command_buffer, &begin_info));
+            VkCommandBuffer cmd_buffer_vk = static_cast<VkCommandBuffer>(cmd_buffer);
+            return error::check_result(vkBeginCommandBuffer(cmd_buffer_vk, &begin_info));
         }
 
-        inline bool flush_and_free(const RHI_Context* rhi_context, VkCommandPool& command_pool, VkCommandBuffer& command_buffer)
+        inline void free(const RHI_Context* rhi_context, void*& cmd_pool, void*& cmd_buffer)
         {
-            if (!flush(command_buffer, rhi_context->queue_graphics))
-                return false;
+            VkCommandPool cmd_pool_vk       = static_cast<VkCommandPool>(cmd_pool);
+            VkCommandBuffer* cmd_buffer_vk  = reinterpret_cast<VkCommandBuffer*>(&cmd_buffer);
+            vkFreeCommandBuffers(rhi_context->device, cmd_pool_vk, 1, cmd_buffer_vk);
+        }
 
-            vkFreeCommandBuffers(rhi_context->device, command_pool, 1, &command_buffer);
-            return true;
+        inline void destroy(const RHI_Context* rhi_context, void*& cmd_pool)
+        {
+            VkCommandPool cmd_pool_vk = static_cast<VkCommandPool>(cmd_pool);
+            vkDestroyCommandPool(rhi_context->device, cmd_pool_vk, nullptr);
+            cmd_pool = nullptr;
         }
 	}
 
 	namespace semaphore
 	{
-		inline bool create(const RHI_Context* rhi_context, VkSemaphore& semaphore)
+		inline bool create(const RHI_Context* rhi_context, void*& semaphore)
 		{
 			VkSemaphoreCreateInfo semaphore_info	= {};
 			semaphore_info.sType					= VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-            return error::check_result(vkCreateSemaphore(rhi_context->device, &semaphore_info, nullptr, &semaphore));
+            VkSemaphore* semaphore_vk = reinterpret_cast<VkSemaphore*>(&semaphore);
+            return error::check_result(vkCreateSemaphore(rhi_context->device, &semaphore_info, nullptr, semaphore_vk));
 		}
 
-		inline void destroy(const RHI_Context* rhi_context, VkSemaphore& semaphore)
+		inline void destroy(const RHI_Context* rhi_context, void*& semaphore)
 		{
 			if (!semaphore)
 				return;
 
-			vkDestroySemaphore(rhi_context->device, semaphore, nullptr);
+            VkSemaphore semaphore_vk = static_cast<VkSemaphore>(semaphore);
+			vkDestroySemaphore(rhi_context->device, semaphore_vk, nullptr);
+            semaphore = nullptr;
 		}
 	}
 
 	namespace fence
 	{
-		inline bool create(const RHI_Context* rhi_context, VkFence& fence_out)
+		inline bool create(const RHI_Context* rhi_context, void*& fence)
 		{
 			VkFenceCreateInfo fence_info	= {};
 			fence_info.sType				= VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-	
-            return error::check_result(vkCreateFence(rhi_context->device, &fence_info, nullptr, &fence_out));
+
+            VkFence* fence_vk = reinterpret_cast<VkFence*>(&fence);
+            return error::check_result(vkCreateFence(rhi_context->device, &fence_info, nullptr, fence_vk));
 		}
 
-		inline void destroy(const RHI_Context* rhi_context, VkFence& fence)
+		inline void destroy(const RHI_Context* rhi_context, void*& fence)
 		{
 			if (!fence)
 				return;
 
-			vkDestroyFence(rhi_context->device, fence, nullptr);
+            VkFence fence_vk = static_cast<VkFence>(fence);
+			vkDestroyFence(rhi_context->device, fence_vk, nullptr);
+            fence = nullptr;
 		}
 
-		inline void wait(const RHI_Context* rhi_context, VkFence& fence)
+		inline void wait(const RHI_Context* rhi_context, void*& fence)
 		{
-			error::assert_result(vkWaitForFences(rhi_context->device, 1, &fence, true, std::numeric_limits<uint64_t>::max()));
+            VkFence* fence_vk = reinterpret_cast<VkFence*>(&fence);
+			error::assert_result(vkWaitForFences(rhi_context->device, 1, fence_vk, true, std::numeric_limits<uint64_t>::max()));
 		}
 
-		inline void reset(const RHI_Context* rhi_context, VkFence& fence)
+		inline void reset(const RHI_Context* rhi_context, void*& fence)
 		{
-            error::assert_result(vkResetFences(rhi_context->device, 1, &fence));
+            VkFence* fence_vk = reinterpret_cast<VkFence*>(&fence);
+            error::assert_result(vkResetFences(rhi_context->device, 1, fence_vk));
 		}
 
-		inline void wait_reset(const RHI_Context* rhi_context, VkFence& fence)
+		inline void wait_reset(const RHI_Context* rhi_context, void*& fence)
 		{
-            error::assert_result(vkWaitForFences(rhi_context->device, 1, &fence, true, std::numeric_limits<uint64_t>::max()));
-            error::assert_result(vkResetFences(rhi_context->device, 1, &fence));
+            VkFence* fence_vk = reinterpret_cast<VkFence*>(&fence);
+            error::assert_result(vkWaitForFences(rhi_context->device, 1, fence_vk, true, std::numeric_limits<uint64_t>::max()));
+            error::assert_result(vkResetFences(rhi_context->device, 1, fence_vk));
 		}
 	}
 
@@ -419,7 +440,7 @@ namespace Spartan::Vulkan_Common
             VkMemoryAllocateInfo allocate_info  = {};
             allocate_info.sType                 = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
             allocate_info.allocationSize        = memory_requirements.size;
-            allocate_info.memoryTypeIndex       = Vulkan_Common::memory::get_type(rhi_context, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memory_requirements.memoryTypeBits);
+            allocate_info.memoryTypeIndex       = vulkan_common::memory::get_type(rhi_context, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memory_requirements.memoryTypeBits);
 
             if (!error::check_result(vkAllocateMemory(rhi_context->device, &allocate_info, nullptr, memory)))
                 return false;
@@ -470,7 +491,7 @@ namespace Spartan::Vulkan_Common
             create_info.samples             = VK_SAMPLE_COUNT_1_BIT;
             create_info.sharingMode         = VK_SHARING_MODE_EXCLUSIVE;
 
-            return Vulkan_Common::error::check_result(vkCreateImage(rhi_context->device, &create_info, nullptr, &image));
+            return vulkan_common::error::check_result(vkCreateImage(rhi_context->device, &create_info, nullptr, &image));
         }
 
         inline bool create_view(const RHI_Context* rhi_context, const VkImage& image, VkImageView& image_view, const VkFormat format, const VkImageAspectFlags aspect_flags)
@@ -505,6 +526,79 @@ namespace Spartan::Vulkan_Common
             create_info.layers                  = 1;
 
             return error::check_result(vkCreateFramebuffer(rhi_context->device, &create_info, nullptr, frame_buffer));
+        }
+    }
+
+    namespace render_pass
+    {
+        inline bool create(const RHI_Context* rhi_context, const RHI_Format format, void*& render_pass)
+        {
+            VkAttachmentDescription color_attachment    = {};
+            color_attachment.format                     = vulkan_format[format];
+            color_attachment.samples                    = VK_SAMPLE_COUNT_1_BIT;
+            color_attachment.loadOp                     = VK_ATTACHMENT_LOAD_OP_CLEAR;
+            color_attachment.storeOp                    = VK_ATTACHMENT_STORE_OP_STORE;
+            color_attachment.stencilLoadOp              = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+            color_attachment.stencilStoreOp             = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            color_attachment.initialLayout              = VK_IMAGE_LAYOUT_UNDEFINED;
+            color_attachment.finalLayout                = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+            VkAttachmentReference color_attachment_ref  = {};
+            color_attachment_ref.attachment             = 0;
+            color_attachment_ref.layout                 = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+            VkSubpassDescription subpass    = {};
+            subpass.pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS;
+            subpass.colorAttachmentCount    = 1;
+            subpass.pColorAttachments       = &color_attachment_ref;
+
+            // Sub-pass dependencies for layout transitions
+            std::vector<VkSubpassDependency> dependencies
+            {
+                VkSubpassDependency
+                {
+                    VK_SUBPASS_EXTERNAL,														// uint32_t srcSubpass;
+                    0,																			// uint32_t dstSubpass;
+                    VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,										// PipelineStageFlags srcStageMask;
+                    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,								// PipelineStageFlags dstStageMask;
+                    VK_ACCESS_MEMORY_READ_BIT,													// AccessFlags srcAccessMask;
+                    VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,	// AccessFlags dstAccessMask;
+                    VK_DEPENDENCY_BY_REGION_BIT													// DependencyFlags dependencyFlags;
+                },
+
+                VkSubpassDependency
+                {
+                    0,																			// uint32_t srcSubpass;
+                    VK_SUBPASS_EXTERNAL,														// uint32_t dstSubpass;
+                    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,								// PipelineStageFlags srcStageMask;
+                    VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,										// PipelineStageFlags dstStageMask;
+                    VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,	// AccessFlags srcAccessMask;
+                    VK_ACCESS_MEMORY_READ_BIT,													// AccessFlags dstAccessMask;
+                    VK_DEPENDENCY_BY_REGION_BIT													// DependencyFlags dependencyFlags;
+                },
+            };
+
+            VkRenderPassCreateInfo render_pass_info = {};
+            render_pass_info.sType                  = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+            render_pass_info.attachmentCount        = 1;
+            render_pass_info.pAttachments           = &color_attachment;
+            render_pass_info.subpassCount           = 1;
+            render_pass_info.pSubpasses             = &subpass;
+            render_pass_info.dependencyCount        = static_cast<uint32_t>(dependencies.size());
+            render_pass_info.pDependencies          = dependencies.data();
+
+            VkRenderPass* render_pass_vk = reinterpret_cast<VkRenderPass*>(&render_pass);
+            return error::check_result(vkCreateRenderPass(rhi_context->device, &render_pass_info, nullptr, render_pass_vk));
+        }
+
+        inline void destroy(const RHI_Context* rhi_context, void*& render_pass)
+        {
+            if (!render_pass)
+                return;
+
+            VkRenderPass render_pass_vk = static_cast<VkRenderPass>(render_pass);
+            vkDestroyRenderPass(rhi_context->device, render_pass_vk, nullptr);
+            render_pass = nullptr;
         }
     }
 

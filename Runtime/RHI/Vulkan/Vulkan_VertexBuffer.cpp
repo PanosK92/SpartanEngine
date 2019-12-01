@@ -39,8 +39,8 @@ namespace Spartan
 {
 	RHI_VertexBuffer::~RHI_VertexBuffer()
 	{	
-		Vulkan_Common::buffer::destroy(m_rhi_device->GetContextRhi(), m_buffer);
-		Vulkan_Common::memory::free(m_rhi_device->GetContextRhi(), m_buffer_memory);
+		vulkan_common::buffer::destroy(m_rhi_device->GetContextRhi(), m_buffer);
+		vulkan_common::memory::free(m_rhi_device->GetContextRhi(), m_buffer_memory);
 	}
 
 	bool RHI_VertexBuffer::_Create(const void* vertices)
@@ -52,14 +52,14 @@ namespace Spartan
 		}
 
 		// Clear previous buffer
-		Vulkan_Common::buffer::destroy(m_rhi_device->GetContextRhi(), m_buffer);
-		Vulkan_Common::memory::free(m_rhi_device->GetContextRhi(), m_buffer_memory);
+		vulkan_common::buffer::destroy(m_rhi_device->GetContextRhi(), m_buffer);
+		vulkan_common::memory::free(m_rhi_device->GetContextRhi(), m_buffer_memory);
 
 		// Create buffer
 		VkBuffer buffer					= nullptr;
 		VkDeviceMemory buffer_memory	= nullptr;
 		m_size							= m_stride * m_vertex_count;
-		if (!Vulkan_Common::buffer::create_allocate_bind(m_rhi_device->GetContextRhi(), buffer, buffer_memory, m_size, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT))
+		if (!vulkan_common::buffer::create_allocate_bind(m_rhi_device->GetContextRhi(), buffer, buffer_memory, m_size, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT))
 			return false;
 
 		// Save
@@ -74,7 +74,7 @@ namespace Spartan
 		void* ptr = nullptr;
 
         // Map
-        Vulkan_Common::error::check_result
+        vulkan_common::error::check_result
         (
             vkMapMemory
             (
