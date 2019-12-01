@@ -130,7 +130,7 @@ namespace Spartan
         // Create command buffer
         VkCommandPool command_pool          = nullptr;
         VkCommandBuffer command_buffer[1]   = { nullptr };
-		if (!Vulkan_Common::command::begin(rhi_context, command_pool, command_buffer[0]))
+		if (!Vulkan_Common::command::begin(rhi_context, rhi_context->queue_graphics_family_index, command_pool, command_buffer[0]))
 			return false;
 
         // Transition layout to RHI_Image_Transfer_Dst_Optimal

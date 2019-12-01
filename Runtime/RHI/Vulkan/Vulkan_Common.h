@@ -97,7 +97,50 @@ namespace Spartan::Vulkan_Common
 
     namespace device
     {
-        inline bool get_family_indices(RHI_Context* rhi_context, const VkPhysicalDevice& physical_device)
+        inline uint32_t get_queue_family_index(VkQueueFlagBits queue_flags, const std::vector<VkQueueFamilyProperties>& queue_family_properties, uint32_t* index)
+        {
+            // Dedicated queue for compute
+            // Try to find a queue family index that supports compute but not graphics
+            if (queue_flags & VK_QUEUE_COMPUTE_BIT)
+            {
+                for (uint32_t i = 0; i < static_cast<uint32_t>(queue_family_properties.size()); i++)
+                {
+                    if ((queue_family_properties[i].queueFlags & queue_flags) && ((queue_family_properties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0))
+                    {
+                        *index = i;
+                        return true;
+                    }
+                }
+            }
+
+            // Dedicated queue for transfer
+            // Try to find a queue family index that supports transfer but not graphics and compute
+            if (queue_flags & VK_QUEUE_TRANSFER_BIT)
+            {
+                for (uint32_t i = 0; i < static_cast<uint32_t>(queue_family_properties.size()); i++)
+                {
+                    if ((queue_family_properties[i].queueFlags & queue_flags) && ((queue_family_properties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0) && ((queue_family_properties[i].queueFlags & VK_QUEUE_COMPUTE_BIT) == 0))
+                    {
+                        *index = i;
+                        return true;
+                    }
+                }
+            }
+
+            // For other queue types or if no separate compute queue is present, return the first one to support the requested flags
+            for (uint32_t i = 0; i < static_cast<uint32_t>(queue_family_properties.size()); i++)
+            {
+                if (queue_family_properties[i].queueFlags & queue_flags)
+                {
+                    *index = i;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        inline bool get_queue_family_indices(RHI_Context* rhi_context, const VkPhysicalDevice& physical_device)
         {
             uint32_t queue_family_count = 0;
             vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, nullptr);
@@ -105,37 +148,24 @@ namespace Spartan::Vulkan_Common
             std::vector<VkQueueFamilyProperties> queue_families_properties(queue_family_count);
             vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, queue_families_properties.data());
 
-            bool queue_graphics_available = false;
-            bool queue_compute_available = false;
-            bool queue_transfer_available = false;
+            if (!get_queue_family_index(VK_QUEUE_GRAPHICS_BIT, queue_families_properties, &rhi_context->queue_graphics_family_index))
+                return false;
 
-            for (int i = 0; i < static_cast<int>(queue_families_properties.size()); i++)
+            if (!get_queue_family_index(VK_QUEUE_TRANSFER_BIT, queue_families_properties, &rhi_context->queue_transfer_family_index))
             {
-                VkQueueFamilyProperties& queue_family_properties = queue_families_properties[i];
-
-                if (queue_family_properties.queueCount > 0 && queue_family_properties.queueFlags & VK_QUEUE_GRAPHICS_BIT)
-                {
-                    rhi_context->queue_graphics_family_index = i;
-                    queue_graphics_available = true;
-                }
-
-                if (queue_family_properties.queueCount > 0 && queue_family_properties.queueFlags & VK_QUEUE_COMPUTE_BIT)
-                {
-                    rhi_context->queue_compute_family_index = i;
-                    queue_compute_available = true;
-                }
-
-                if (queue_family_properties.queueCount > 0 && queue_family_properties.queueFlags & VK_QUEUE_TRANSFER_BIT)
-                {
-                    rhi_context->queue_transfer_family_index = i;
-                    queue_transfer_available = true;
-                }
-
-                if (queue_graphics_available && queue_compute_available && queue_transfer_available)
-                    return true;
+                LOG_WARNING("Transfer queue not suported, using graphics instead.");
+                rhi_context->queue_transfer_family_index = rhi_context->queue_graphics_family_index;
+                return true;
             }
 
-            return false;
+            if (!get_queue_family_index(VK_QUEUE_COMPUTE_BIT, queue_families_properties, &rhi_context->queue_compute_family_index))
+            {
+                LOG_WARNING("Compute queue not suported, using graphics instead.");
+                rhi_context->queue_compute_family_index = rhi_context->queue_graphics_family_index;
+                return true;
+            }
+
+            return true;
         }
 
         inline bool choose_physical_device(RHI_Context* rhi_context, void* window_handle)
@@ -157,7 +187,7 @@ namespace Spartan::Vulkan_Common
             for (const auto& device : physical_devices)
             {
                 // Get the first device that has a graphics, a compute and a transfer queue
-                if (get_family_indices(rhi_context, device))
+                if (get_queue_family_indices(rhi_context, device))
                 {
                     rhi_context->device_physical = device;
                     return true;
@@ -197,11 +227,11 @@ namespace Spartan::Vulkan_Common
 
 	namespace command
 	{
-        inline bool create_pool(const RHI_Context* rhi_context, VkCommandPool& command_pool)
+        inline bool create_pool(const RHI_Context* rhi_context, VkCommandPool& command_pool, uint32_t queue_family_index)
         {
             VkCommandPoolCreateInfo cmd_pool_info   = {};
             cmd_pool_info.sType                     = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-            cmd_pool_info.queueFamilyIndex          = rhi_context->queue_compute_family_index;
+            cmd_pool_info.queueFamilyIndex          = queue_family_index;
             cmd_pool_info.flags                     = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
             return error::check_result(vkCreateCommandPool(rhi_context->device, &cmd_pool_info, nullptr, &command_pool));
@@ -237,10 +267,10 @@ namespace Spartan::Vulkan_Common
             return error::check_result(vkQueueWaitIdle(queue));
         }
 
-        inline bool begin(const RHI_Context* rhi_context, VkCommandPool& command_pool, VkCommandBuffer& command_buffer)
+        inline bool begin(const RHI_Context* rhi_context, uint32_t queue_family_index, VkCommandPool& command_pool, VkCommandBuffer& command_buffer)
         {
             // Create command pool
-            if (!create_pool(rhi_context, command_pool))
+            if (!create_pool(rhi_context, command_pool, queue_family_index))
                 return false;
 
             // Create command buffer
