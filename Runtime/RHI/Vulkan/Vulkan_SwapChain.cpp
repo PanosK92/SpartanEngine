@@ -147,7 +147,7 @@ namespace Spartan
                     return false;
 
                 VkBool32 present_support = false;
-                if (!Vulkan_Common::error::check_result(vkGetPhysicalDeviceSurfaceSupportKHR(rhi_context->device_physical, rhi_context->queue_compute_family_index, surface, &present_support)))
+                if (!Vulkan_Common::error::check_result(vkGetPhysicalDeviceSurfaceSupportKHR(rhi_context->device_physical, rhi_context->queue_graphics_family_index, surface, &present_support)))
                     return false;
 
                 if (!present_support)
@@ -367,7 +367,7 @@ namespace Spartan
 
         // Create command pool
         auto cmd_pool_vk = static_cast<VkCommandPool>(m_cmd_pool);
-        Vulkan_Common::command::create_pool(rhi_device->GetContextRhi(), cmd_pool_vk);
+        Vulkan_Common::command::create_pool(rhi_device->GetContextRhi(), cmd_pool_vk, rhi_device->GetContextRhi()->queue_graphics_family_index);
         m_cmd_pool = static_cast<void*>(cmd_pool_vk);
 
         // Create command lists
@@ -492,7 +492,7 @@ namespace Spartan
 		present_info.pSwapchains		= swap_chains;
 		present_info.pImageIndices		= &m_image_index;
 
-		return Vulkan_Common::error::check_result(vkQueuePresentKHR(m_rhi_device->GetContextRhi()->queue_compute, &present_info));
+		return Vulkan_Common::error::check_result(vkQueuePresentKHR(m_rhi_device->GetContextRhi()->queue_graphics, &present_info));
 	}
 
 	bool RHI_SwapChain::CreateRenderPass()

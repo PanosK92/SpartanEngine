@@ -447,7 +447,7 @@ namespace Spartan
 		submit_info.signalSemaphoreCount	= 0;
 		submit_info.pSignalSemaphores		= signal_semaphores;
 
-        if (!Vulkan_Common::error::check_result(vkQueueSubmit(m_rhi_device->GetContextRhi()->queue_compute, 1, &submit_info, reinterpret_cast<VkFence>(m_cmd_list_consumed_fence))))
+        if (!Vulkan_Common::error::check_result(vkQueueSubmit(m_rhi_device->GetContextRhi()->queue_graphics, 1, &submit_info, reinterpret_cast<VkFence>(m_cmd_list_consumed_fence))))
             return false;
 		
 		// Wait for fence on the next Begin(), if we force it now, perfomance will not be as good

@@ -269,9 +269,9 @@ namespace Spartan
 
         // Queue family indices
         uint32_t queue_graphics_family_index    = 0;
-        uint32_t queue_compute_family_index     = 0;
         uint32_t queue_transfer_family_index    = 0;
-
+        uint32_t queue_compute_family_index     = 0;
+        
         // Queues
         VkQueue queue_graphics  = nullptr;
         VkQueue queue_compute   = nullptr;
