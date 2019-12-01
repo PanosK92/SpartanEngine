@@ -71,9 +71,6 @@ namespace Spartan
         if (!m_rhi_device)
             return;
 
-#ifdef API_GRAPHICS_VULKAN
-        return;
-#endif
         cmd_list->Begin("Pass_Main");
 
         // Update the frame buffer (doesn't change thought the frame)
@@ -82,7 +79,13 @@ namespace Spartan
             UpdateFrameBuffer();
         }
         cmd_list->End();
+
         Pass_BrdfSpecularLut(cmd_list); // only happens once
+
+#ifdef API_GRAPHICS_VULKAN
+        return;
+#endif
+
 		Pass_LightDepth(cmd_list);
         if (GetOptionValue(Render_DepthPrepass))
         {
