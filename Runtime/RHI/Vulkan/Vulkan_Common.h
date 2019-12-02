@@ -549,10 +549,10 @@ namespace Spartan::vulkan_common
 
     namespace render_pass
     {
-        inline bool create(const RHI_Context* rhi_context, const RHI_Format format, void*& render_pass)
+        inline bool create(const RHI_Context* rhi_context, const VkFormat format, void*& render_pass)
         {
             VkAttachmentDescription color_attachment    = {};
-            color_attachment.format                     = vulkan_format[format];
+            color_attachment.format                     = format;
             color_attachment.samples                    = VK_SAMPLE_COUNT_1_BIT;
             color_attachment.loadOp                     = VK_ATTACHMENT_LOAD_OP_CLEAR;
             color_attachment.storeOp                    = VK_ATTACHMENT_STORE_OP_STORE;
@@ -644,6 +644,110 @@ namespace Spartan::vulkan_common
 
             vkDestroyFramebuffer(rhi_context->device, static_cast<VkFramebuffer>(frame_buffer), nullptr);
             frame_buffer = nullptr;
+        }
+    }
+
+    namespace surface
+    {
+        inline VkSurfaceCapabilitiesKHR capabilities(const RHI_Context* rhi_context, const VkSurfaceKHR surface)
+        {
+            VkSurfaceCapabilitiesKHR surface_capabilities;
+            vkGetPhysicalDeviceSurfaceCapabilitiesKHR(rhi_context->device_physical, surface, &surface_capabilities);
+            return surface_capabilities;
+        }
+
+        inline std::vector<VkPresentModeKHR> present_modes(const RHI_Context* rhi_context, const VkSurfaceKHR surface)
+        {
+            uint32_t present_mode_count;
+            vkGetPhysicalDeviceSurfacePresentModesKHR(rhi_context->device_physical, surface, &present_mode_count, nullptr);
+
+            std::vector<VkPresentModeKHR> surface_present_modes(present_mode_count);
+            vkGetPhysicalDeviceSurfacePresentModesKHR(rhi_context->device_physical, surface, &present_mode_count, &surface_present_modes[0]);
+            return surface_present_modes;
+        }
+
+        inline std::vector<VkSurfaceFormatKHR> formats(const RHI_Context* rhi_context, const VkSurfaceKHR surface)
+        {
+            uint32_t format_count;
+            vkGetPhysicalDeviceSurfaceFormatsKHR(rhi_context->device_physical, surface, &format_count, nullptr);
+
+            std::vector<VkSurfaceFormatKHR> surface_formats(format_count);
+            error::check_result(vkGetPhysicalDeviceSurfaceFormatsKHR(rhi_context->device_physical, surface, &format_count, &surface_formats[0]));
+
+            return surface_formats;
+        }
+
+        inline void detect_format_and_color_space(const RHI_Context* rhi_context, const VkSurfaceKHR surface, VkFormat* format, VkColorSpaceKHR* color_space)
+        {
+            std::vector<VkSurfaceFormatKHR> surface_formats = formats(rhi_context, surface);
+
+            // If the surface format list only includes one entry with VK_FORMAT_UNDEFINED,
+            // there is no preferred format, so we assume VK_FORMAT_B8G8R8A8_UNORM
+            if ((surface_formats.size() == 1) && (surface_formats[0].format == VK_FORMAT_UNDEFINED))
+            {
+                *format = VK_FORMAT_B8G8R8A8_UNORM;
+                *color_space = surface_formats[0].colorSpace;
+            }
+            else
+            {
+                // iterate over the list of available surface format and
+                // check for the presence of VK_FORMAT_B8G8R8A8_UNORM
+                bool found_B8G8R8A8_UNORM = false;
+                for (auto&& surfaceFormat : surface_formats)
+                {
+                    if (surfaceFormat.format == VK_FORMAT_B8G8R8A8_UNORM)
+                    {
+                        *format = surfaceFormat.format;
+                        *color_space = surfaceFormat.colorSpace;
+                        found_B8G8R8A8_UNORM = true;
+                        break;
+                    }
+                }
+
+                // in case VK_FORMAT_B8G8R8A8_UNORM is not available
+                // select the first available color format
+                if (!found_B8G8R8A8_UNORM)
+                {
+                    *format         = surface_formats[0].format;
+                    *color_space    = surface_formats[0].colorSpace;
+                }
+            }
+        }
+
+        inline VkPresentModeKHR set_present_mode(const RHI_Context* rhi_context, const VkSurfaceKHR surface, const VkPresentModeKHR prefered_present_mode)
+        {
+            // The VK_PRESENT_MODE_FIFO_KHR mode must always be present as per spec
+            // This mode waits for the vertical blank ("v-sync")
+            VkPresentModeKHR present_mode = VK_PRESENT_MODE_FIFO_KHR;
+
+            std::vector<VkPresentModeKHR>& surface_present_modes = present_modes(rhi_context, surface);
+
+            // Check if the preferred mode is supported
+            for (const auto& supported_present_mode : surface_present_modes)
+            {
+                if (prefered_present_mode == supported_present_mode)
+                {
+                    present_mode = prefered_present_mode;
+                    break;
+                }
+            }
+
+            // Select a mode from the supported present modes
+            for (const auto& supported_present_mode : surface_present_modes)
+            {
+                if (supported_present_mode == VK_PRESENT_MODE_MAILBOX_KHR)
+                {
+                    present_mode = supported_present_mode;
+                    break;
+                }
+
+                if ((present_mode != VK_PRESENT_MODE_MAILBOX_KHR) && (supported_present_mode == VK_PRESENT_MODE_IMMEDIATE_KHR))
+                {
+                    present_mode = supported_present_mode;
+                }
+            }
+
+            return present_mode;
         }
     }
 

@@ -46,10 +46,9 @@ namespace Spartan
         auto rhi_context = m_rhi_device->GetContextRhi();
 
         vulkan_common::image_view::destroy(rhi_context, m_resource_texture);
-        vulkan_common::image_view::destroy(rhi_context, m_resource_render_target);
         vulkan_common::image_view::destroy(rhi_context, m_resource_depth_stencils);
-        vulkan_common::frame_buffer::destroy(rhi_context, m_frame_buffer);
-        vulkan_common::render_pass::destroy(m_rhi_device->GetContextRhi(), m_render_pass);
+        vulkan_common::frame_buffer::destroy(rhi_context, m_resource_render_target);
+        vulkan_common::render_pass::destroy(m_rhi_device->GetContextRhi(), m_resource_render_pass);
         vulkan_common::image::destroy(rhi_context, m_texture);
 		vulkan_common::memory::free(m_rhi_device->GetContextRhi(), m_texture_memory);
 	}
@@ -290,12 +289,12 @@ namespace Spartan
             if (m_bind_flags & RHI_Texture_RenderTarget)
             {
                 // Render pass
-                if (!vulkan_common::render_pass::create(rhi_context, m_format, m_render_pass))
+                if (!vulkan_common::render_pass::create(rhi_context, vulkan_format[m_format], m_resource_render_pass))
                     return false;
 
                 // Frame buffer
                 vector<void*> attachments = { m_resource_texture };
-                if (!vulkan_common::frame_buffer::create(rhi_context, m_render_pass, attachments, m_width, m_height, m_frame_buffer))
+                if (!vulkan_common::frame_buffer::create(rhi_context, m_resource_render_pass, attachments, m_width, m_height, m_resource_render_target))
                     return false;
             }
         }

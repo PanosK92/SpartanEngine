@@ -249,14 +249,6 @@ static const VkImageLayout vulkan_image_layout[] =
     VK_IMAGE_LAYOUT_UNDEFINED
 };
 
-struct SwapChainSupportDetails
-{
-	VkSurfaceCapabilitiesKHR capabilities = {};
-	std::vector<VkSurfaceFormatKHR> formats;
-	std::vector<VkPresentModeKHR> present_modes;
-	bool IsCompatible() const { return !formats.empty() && !present_modes.empty(); }
-};
-
 namespace Spartan
 {
 	struct RHI_Context
@@ -265,7 +257,8 @@ namespace Spartan
 		VkPhysicalDevice device_physical			= nullptr;
 		VkDevice device								= nullptr;
 		VkDebugUtilsMessengerEXT callback_handle	= nullptr;
-        VkSurfaceFormatKHR surface_format;
+        VkFormat surface_format;
+        VkColorSpaceKHR surface_color_space;
 
         // Queue family indices
         uint32_t queue_graphics_family_index    = 0;

@@ -43,81 +43,6 @@ namespace Spartan
 {
     namespace _Vulkan_SwapChain
     {
-        inline SwapChainSupportDetails check_surface_compatibility(const RHI_Context* rhi_context, const VkSurfaceKHR surface)
-        {
-            SwapChainSupportDetails details;
-            vkGetPhysicalDeviceSurfaceCapabilitiesKHR(rhi_context->device_physical, surface, &details.capabilities);
-
-            uint32_t format_count;
-            vkGetPhysicalDeviceSurfaceFormatsKHR(rhi_context->device_physical, surface, &format_count, nullptr);
-
-            if (format_count != 0)
-            {
-                details.formats.resize(format_count);
-                vkGetPhysicalDeviceSurfaceFormatsKHR(rhi_context->device_physical, surface, &format_count, details.formats.data());
-            }
-
-            uint32_t present_mode_count;
-            vkGetPhysicalDeviceSurfacePresentModesKHR(rhi_context->device_physical, surface, &present_mode_count, nullptr);
-
-            if (present_mode_count != 0)
-            {
-                details.present_modes.resize(present_mode_count);
-                vkGetPhysicalDeviceSurfacePresentModesKHR(rhi_context->device_physical, surface, &present_mode_count, details.present_modes.data());
-            }
-
-            return details;
-        }
-
-        inline VkPresentModeKHR choose_present_mode(const VkPresentModeKHR prefered_mode, const std::vector<VkPresentModeKHR>& supported_present_modes)
-        {
-            // Check if the preferred mode is supported
-            for (const auto& supported_present_mode : supported_present_modes)
-            {
-                if (prefered_mode == supported_present_mode)
-                {
-                    return prefered_mode;
-                }
-            }
-
-            // Select a mode from the supported present modes
-            VkPresentModeKHR present_mode = VK_PRESENT_MODE_FIFO_KHR;
-            for (const auto& supported_present_mode : supported_present_modes)
-            {
-                if (supported_present_mode == VK_PRESENT_MODE_MAILBOX_KHR)
-                {
-                    return supported_present_mode;
-                }
-                else if (supported_present_mode == VK_PRESENT_MODE_IMMEDIATE_KHR)
-                {
-                    present_mode = supported_present_mode;
-                }
-            }
-
-            return present_mode;
-        }
-
-        inline VkSurfaceFormatKHR choose_format(const VkFormat prefered_format, const std::vector<VkSurfaceFormatKHR>& available_formats)
-        {
-            const VkColorSpaceKHR color_space = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
-
-            if (available_formats.size() == 1 && available_formats[0].format == VK_FORMAT_UNDEFINED)
-            {
-                LOG_ERROR("Failed to find format");
-                return { prefered_format, color_space };
-            }
-
-            for (const auto& available_format : available_formats)
-            {
-                if (available_format.format == prefered_format && available_format.colorSpace == color_space)
-                {
-                    return available_format;
-                }
-            }
-
-            return available_formats.front();
-        }
-
         inline bool create
         (
             RHI_Context* rhi_context,
@@ -127,7 +52,7 @@ namespace Spartan
             RHI_Format format,
             uint32_t flags,
             void* window_handle,
-            void* render_pass,
+            void*& render_pass,
             void*& surface_out,
             void*& swap_chain_view_out,
             vector<void*>& image_views_out,
@@ -157,23 +82,16 @@ namespace Spartan
                 }
             }
 
-            // Ensure device compatibility
-            auto surface_support = check_surface_compatibility(rhi_context, surface);
-            if (!surface_support.IsCompatible())
-            {
-                LOG_ERROR("Device is not surface compatible.");
-                return false;
-            }
-
             // Compute extent
+            VkSurfaceCapabilitiesKHR capabilities = vulkan_common::surface::capabilities(rhi_context, surface);
             VkExtent2D extent =
             {
-                Math::Clamp(width, surface_support.capabilities.minImageExtent.width, surface_support.capabilities.maxImageExtent.width),
-                Math::Clamp(height, surface_support.capabilities.minImageExtent.height, surface_support.capabilities.maxImageExtent.height)
+                Math::Clamp(width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
+                Math::Clamp(height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height)
             };
 
-            // Choose format
-            rhi_context->surface_format = choose_format(vulkan_format[format], surface_support.formats);
+            // Detect surface format and color space
+            vulkan_common::surface::detect_format_and_color_space(rhi_context, surface, &rhi_context->surface_format, &rhi_context->surface_color_space);
 
             // Swap chain
             VkSwapchainKHR swap_chain;
@@ -182,8 +100,8 @@ namespace Spartan
                 create_info.sType                       = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
                 create_info.surface                     = surface;
                 create_info.minImageCount               = buffer_count;
-                create_info.imageFormat                 = rhi_context->surface_format.format;
-                create_info.imageColorSpace             = rhi_context->surface_format.colorSpace;
+                create_info.imageFormat                 = rhi_context->surface_format;
+                create_info.imageColorSpace             = rhi_context->surface_color_space;
                 create_info.imageExtent                 = extent;
                 create_info.imageArrayLayers            = 1;
                 create_info.imageUsage                  = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
@@ -202,9 +120,9 @@ namespace Spartan
                     create_info.pQueueFamilyIndices     = nullptr;
                 }
 
-                create_info.preTransform    = surface_support.capabilities.currentTransform;
+                create_info.preTransform    = capabilities.currentTransform;
                 create_info.compositeAlpha  = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-                create_info.presentMode     = choose_present_mode(static_cast<VkPresentModeKHR>(flags), surface_support.present_modes);
+                create_info.presentMode     = vulkan_common::surface::set_present_mode(rhi_context, surface, static_cast<VkPresentModeKHR>(flags));
                 create_info.clipped         = VK_TRUE;
                 create_info.oldSwapchain    = nullptr;
 
@@ -227,10 +145,13 @@ namespace Spartan
                 image_views_out.resize(image_count);
                 for (uint32_t i = 0; i < image_count; i++)
                 {
-                    if (!vulkan_common::image_view::create(rhi_context, swap_chain_images[i], image_views_out[i], rhi_context->surface_format.format, VK_IMAGE_ASPECT_COLOR_BIT))
+                    if (!vulkan_common::image_view::create(rhi_context, swap_chain_images[i], image_views_out[i], rhi_context->surface_format, VK_IMAGE_ASPECT_COLOR_BIT))
                         return false;
                 }
             }
+
+            if (!vulkan_common::render_pass::create(rhi_context, rhi_context->surface_format, render_pass))
+                return false;
 
             // Frame buffers
             frame_buffers.reserve(image_count);
@@ -336,9 +257,6 @@ namespace Spartan
 		m_height		= height;
 		m_window_handle	= window_handle;
         m_flags         = flags;
-
-		if (!vulkan_common::render_pass::create(rhi_device->GetContextRhi(), format, m_render_pass))
-			return;
 
 		m_initialized = _Vulkan_SwapChain::create
 		(

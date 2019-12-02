@@ -85,6 +85,7 @@ namespace Spartan
 		auto GetResource_Texture() const								{ return m_resource_texture; }
 		auto GetResource_RenderTarget()	const							{ return m_resource_render_target; }
 		auto GetResource_DepthStencil(const uint32_t index = 0) const	{ return index < m_resource_depth_stencils.size() ? m_resource_depth_stencils[index] : nullptr; }
+        auto GetResource_RenderPass() const                             { return m_resource_render_pass; }
 		auto GetArraySize() const										{ return m_array_size; }
 		const auto& GetViewport() const									{ return m_viewport; }
 
@@ -113,13 +114,12 @@ namespace Spartan
 		// API
 		void* m_resource_texture		= nullptr;
 		void* m_resource_render_target	= nullptr;
+        void* m_resource_render_pass    = nullptr;
 		void* m_texture					= nullptr;
 		void* m_texture_memory			= nullptr;
         RHI_Image_Layout m_layout       = RHI_Image_Undefined;
 		uint32_t m_array_size			= 1;	
-		std::vector<void*> m_resource_depth_stencils;
-        void* m_render_pass     = nullptr;
-        void* m_frame_buffer    = nullptr;
+		std::vector<void*> m_resource_depth_stencils; 
 		static std::mutex m_mutex;
 
 	private:
