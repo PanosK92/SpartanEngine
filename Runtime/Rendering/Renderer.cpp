@@ -163,7 +163,7 @@ namespace Spartan
 		if (!m_initialized)
 		{
 			// Log on-screen as the renderer is ready
-			//LOG_TO_FILE(false);
+			LOG_TO_FILE(false);
 			m_initialized = true;
 		}
 
@@ -197,9 +197,6 @@ namespace Spartan
 
     void Renderer::Tick(float delta_time)
 	{
-#ifdef API_GRAPHICS_VULKAN
-		return;
-#endif
 		if (!m_rhi_device || !m_rhi_device->IsInitialized())
 			return;
 

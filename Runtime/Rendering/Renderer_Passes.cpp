@@ -67,6 +67,10 @@ namespace Spartan
 
     void Renderer::Pass_Main(RHI_CommandList* cmd_list)
 	{
+#ifdef API_GRAPHICS_VULKAN
+        return;
+#endif
+
         // Validate RHI device as it's required almost everywhere
         if (!m_rhi_device)
             return;
@@ -81,10 +85,6 @@ namespace Spartan
         cmd_list->End();
 
         Pass_BrdfSpecularLut(cmd_list); // only happens once
-
-#ifdef API_GRAPHICS_VULKAN
-        return;
-#endif
 
 		Pass_LightDepth(cmd_list);
         if (GetOptionValue(Render_DepthPrepass))
