@@ -332,12 +332,9 @@ namespace Spartan
 
             for (RHI_Descriptor& resource_blueprint : m_descriptor_blueprint)
             {
-                // Ignore null resources
+                // Ignore null resources (this is legal, as a render pass can choose to not use one or more resources)
                 if (!resource_blueprint.resource)
-                {
-                    LOG_WARNING("Null resource detected");
                     continue;
-                }
 
                 // Texture or Sampler
                 image_infos.push_back
