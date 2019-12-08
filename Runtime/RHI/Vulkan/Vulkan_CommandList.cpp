@@ -69,7 +69,7 @@ namespace Spartan
 	{
         RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
 
-		// Wait in case the command buffer is still in use by the graphics queue
+		// Wait in case the buffer is still in use by the graphics queue
 		vkQueueWaitIdle(rhi_context->queue_graphics);
 
 		// Fence

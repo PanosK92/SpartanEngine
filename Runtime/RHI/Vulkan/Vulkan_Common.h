@@ -91,7 +91,6 @@ namespace Spartan::vulkan_common
 
         inline void assert_result(VkResult result)
         {
-            LOG_ERROR("%s", to_string(result));
             SPARTAN_ASSERT(result == VK_SUCCESS);
         }
     }

@@ -38,48 +38,11 @@ namespace Spartan
 {
 	RHI_ConstantBuffer::~RHI_ConstantBuffer()
 	{
+        // Wait in case the buffer is still in use by the graphics queue
+        vkQueueWaitIdle(m_rhi_device->GetContextRhi()->queue_graphics);
+
 		vulkan_common::buffer::destroy(m_rhi_device->GetContextRhi(), m_buffer);
 		vulkan_common::memory::free(m_rhi_device->GetContextRhi(), m_buffer_memory);
-	}
-
-	void* RHI_ConstantBuffer::Map() const
-	{
-		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device || !m_buffer_memory)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return nullptr;
-		}
-
-        // Map
-		void* ptr = nullptr;
-        vulkan_common::error::check_result
-        (
-            vkMapMemory
-            (
-                m_rhi_device->GetContextRhi()->device,
-                static_cast<VkDeviceMemory>(m_buffer_memory),
-                0,
-                m_size,
-                0,
-                reinterpret_cast<void**>(&ptr)
-            )
-        );
-
-        return ptr;
-	}
-
-	bool RHI_ConstantBuffer::Unmap() const
-	{
-		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device || !m_buffer_memory)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return false;
-		}
-
-        // Unmap
-		vkUnmapMemory(m_rhi_device->GetContextRhi()->device, static_cast<VkDeviceMemory>(m_buffer_memory));
-
-		return true;
 	}
 
 	bool RHI_ConstantBuffer::_Create()
@@ -106,5 +69,45 @@ namespace Spartan
 
 		return true;
 	}
+
+    void* RHI_ConstantBuffer::Map() const
+    {
+        if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device || !m_buffer_memory)
+        {
+            LOG_ERROR_INVALID_INTERNALS();
+            return nullptr;
+        }
+
+        // Map
+        void* ptr = nullptr;
+        vulkan_common::error::check_result
+        (
+            vkMapMemory
+            (
+                m_rhi_device->GetContextRhi()->device,
+                static_cast<VkDeviceMemory>(m_buffer_memory),
+                0,
+                m_size,
+                0,
+                reinterpret_cast<void**>(&ptr)
+            )
+        );
+
+        return ptr;
+    }
+
+    bool RHI_ConstantBuffer::Unmap() const
+    {
+        if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device || !m_buffer_memory)
+        {
+            LOG_ERROR_INVALID_INTERNALS();
+            return false;
+        }
+
+        // Unmap
+        vkUnmapMemory(m_rhi_device->GetContextRhi()->device, static_cast<VkDeviceMemory>(m_buffer_memory));
+
+        return true;
+    }
 }
 #endif
