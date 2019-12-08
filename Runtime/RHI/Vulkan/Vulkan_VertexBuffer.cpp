@@ -38,7 +38,10 @@ using namespace std;
 namespace Spartan
 {
 	RHI_VertexBuffer::~RHI_VertexBuffer()
-	{	
+	{
+        // Wait in case the buffer is still in use by the graphics queue
+        vkQueueWaitIdle(m_rhi_device->GetContextRhi()->queue_graphics);
+
 		vulkan_common::buffer::destroy(m_rhi_device->GetContextRhi(), m_buffer);
 		vulkan_common::memory::free(m_rhi_device->GetContextRhi(), m_buffer_memory);
 	}
