@@ -46,6 +46,7 @@ namespace Spartan
 	enum RHI_Cmd_Type : uint8_t
 	{
 		RHI_Cmd_Begin,
+        RHI_Cmd_Marker,
 		RHI_Cmd_End,
 		RHI_Cmd_Draw,
 		RHI_Cmd_DrawIndexed,
@@ -122,8 +123,8 @@ namespace Spartan
 		RHI_CommandList(uint32_t index, RHI_SwapChain* swap_chain, Context* context);
 		~RHI_CommandList();
 
-		// Markers
-		void Begin(const std::string& pass_name);
+		// Render pass
+		bool Begin(const std::string& pass_name, RHI_Cmd_Type type = RHI_Cmd_Begin);
 		void End();
 
 		// Draw
@@ -204,7 +205,7 @@ namespace Spartan
         // Submit
 		bool Submit(bool profile = true);
         void Flush();
-        RHI_PipelineState& GetPipelineState() { return m_pipeline_state; }
+        RHI_PipelineState& GetPipelineState() { m_pipeline_state.Clear(); return m_pipeline_state; }
 
 	private:
 		void Clear();
@@ -213,6 +214,7 @@ namespace Spartan
 		RHI_Command& GetCmd();
 		RHI_Command m_empty_cmd; // for GetCmd()
 		std::vector<RHI_Command> m_commands;
+        std::vector<RHI_Cmd_Type> m_begin_types;
         RHI_PipelineState m_pipeline_state;
 		uint32_t m_initial_capacity             = 10000;
 		uint32_t m_command_count	            = 0;

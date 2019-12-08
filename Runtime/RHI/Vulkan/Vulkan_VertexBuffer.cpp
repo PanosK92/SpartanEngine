@@ -62,9 +62,19 @@ namespace Spartan
 		if (!vulkan_common::buffer::create_allocate_bind(m_rhi_device->GetContextRhi(), buffer, buffer_memory, m_size, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT))
 			return false;
 
-		// Save
-		m_buffer		= static_cast<void*>(buffer);
-		m_buffer_memory	= static_cast<void*>(buffer_memory);
+        // Save
+        m_buffer = static_cast<void*>(buffer);
+        m_buffer_memory = static_cast<void*>(buffer_memory);
+
+        // Initial data
+        if (vertices != nullptr)
+        {
+            if (void* data = Map())
+            {
+                memcpy(data, vertices, m_size);
+                Unmap();
+            }
+        }
 
 		return true;
 	}

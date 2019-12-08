@@ -21,10 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
+//= INCLUDES ======================
 #include <vector>
 #include "../Core/Spartan_Object.h"
-//=============================
+//=================================
 
 namespace Spartan
 {
@@ -42,7 +42,6 @@ namespace Spartan
 		template<typename T>
 		bool Create(const std::vector<T>& vertices)
 		{
-			m_is_dynamic	= false;
 			m_stride        = static_cast<uint32_t>(sizeof(T));
 			m_vertex_count	= static_cast<uint32_t>(vertices.size());
 			m_size          = static_cast<uint64_t>(m_stride * m_vertex_count);
@@ -52,7 +51,6 @@ namespace Spartan
 		template<typename T>
 		bool Create(const T* vertices, const uint32_t vertex_count)
 		{
-			m_is_dynamic	= false;
 			m_stride        = static_cast<uint32_t>(sizeof(T));
 			m_vertex_count	= vertex_count;
 			m_size          = static_cast<uint64_t>(m_stride * m_vertex_count);
@@ -62,7 +60,6 @@ namespace Spartan
 		template<typename T>
 		bool CreateDynamic(const uint32_t vertex_count)
 		{
-			m_is_dynamic    = true;		
 			m_stride        = static_cast<uint32_t>(sizeof(T));
 			m_vertex_count  = vertex_count;
 			m_size          = static_cast<uint64_t>(m_stride * m_vertex_count);
@@ -82,7 +79,6 @@ namespace Spartan
 
 		uint32_t m_stride			= 0;
 		uint32_t m_vertex_count		= 0;
-		bool m_is_dynamic			= false;	
 
 		// API
 		std::shared_ptr<RHI_Device> m_rhi_device;

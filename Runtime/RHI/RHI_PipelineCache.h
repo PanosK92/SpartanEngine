@@ -37,6 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_RasterizerState.h"
 #include "RHI_DepthStencilState.h"
 #include "RHI_SwapChain.h"
+#include "RHI_Texture.h"
 //================================
 
 namespace Spartan
@@ -50,33 +51,112 @@ namespace Spartan
         {
             static std::hash<uint32_t> hasher;
 
-            m_hash = m_hash * 31 + static_cast<uint32_t>(hasher(input_layout->GetId()));
-            m_hash = m_hash * 31 + static_cast<uint32_t>(hasher(rasterizer_state->GetId()));
-            m_hash = m_hash * 31 + static_cast<uint32_t>(hasher(blend_state->GetId()));
-            m_hash = m_hash * 31 + static_cast<uint32_t>(hasher(shader_vertex->GetId()));
-            m_hash = m_hash * 31 + static_cast<uint32_t>(hasher(shader_pixel->GetId()));
-            m_hash = m_hash * 31 + static_cast<uint32_t>(hasher(depth_stencil_state->GetId()));
-            m_hash = m_hash * 31 + static_cast<uint32_t>(hasher(vertex_buffer->GetId()));
-            m_hash = m_hash * 31 + static_cast<uint32_t>(hasher(swapchain->GetId()));
-            m_hash = m_hash * 31 + static_cast<uint32_t>(hasher(static_cast<uint32_t>(primitive_topology)));
+            hash = 10;
+            hash *= 31 + static_cast<uint32_t>(hasher(input_layout->GetId()));
+            hash *= 31 + static_cast<uint32_t>(hasher(rasterizer_state->GetId()));
+            hash *= 31 + static_cast<uint32_t>(hasher(blend_state->GetId()));
+            hash *= 31 + static_cast<uint32_t>(hasher(shader_vertex->GetId()));
+            hash *= 31 + static_cast<uint32_t>(hasher(shader_pixel->GetId()));
+            hash *= 31 + static_cast<uint32_t>(hasher(depth_stencil_state->GetId()));
+            hash *= 31 + static_cast<uint32_t>(hasher(vertex_buffer_stride));
+            hash *= 31 + static_cast<uint32_t>(hasher(static_cast<uint32_t>(primitive_topology)));
+            hash *= 31 + static_cast<uint32_t>(hasher(static_cast<uint32_t>(scissor_dynamic)));
+            hash *= 31 + static_cast<uint32_t>(hasher(GetRenderTargetId()));
         }
 
-        auto GetHash() const { return m_hash; }
-        bool operator==(const RHI_PipelineState& rhs) const { return GetHash() == rhs.GetHash(); }
+        auto GetHash() const { return hash; }
+        bool operator==(const RHI_PipelineState& rhs) const { return hash == rhs.GetHash(); }
+
+        bool IsDefined()
+        {
+            // Pixel shader can be null
+            // Viewport and scissor can be undefined as they can also be set dynamically
+
+            return  shader_vertex       != nullptr &&
+                    input_layout        != nullptr &&
+                    rasterizer_state    != nullptr &&
+                    blend_state         != nullptr &&
+                    depth_stencil_state != nullptr &&
+                    primitive_topology  != RHI_PrimitiveTopology_Unknown &&
+                    (render_target_swapchain != nullptr || render_target_texture != nullptr);
+        }
+
+        void* GetRenderPass() const
+        {
+            if (render_target_swapchain)
+                return render_target_swapchain->GetRenderPass();
+
+            if (render_target_texture)
+                return render_target_texture->GetResource_RenderPass();
+
+            return nullptr;
+        }
+
+        void* GetFrameBuffer() const
+        {
+            if (render_target_swapchain)
+                return render_target_swapchain->GetFrameBuffer();
+
+            if (render_target_texture)
+                return render_target_texture->GetResource_RenderTarget();
+
+            return nullptr;
+        }
+
+        uint32_t GetWidth() const
+        {
+            if (render_target_swapchain)
+                return render_target_swapchain->GetWidth();
+
+            if (render_target_texture)
+                return render_target_texture->GetWidth();
+
+            return 0;
+        }
+
+        uint32_t GetHeight() const
+        {
+            if (render_target_swapchain)
+                return render_target_swapchain->GetHeight();
+
+            if (render_target_texture)
+                return render_target_texture->GetHeight();
+
+            return 0;
+        }
+
+        bool AcquireNextImage()
+        {
+            return render_target_swapchain ? render_target_swapchain->AcquireNextImage() : true;
+        }
+
+        uint32_t GetRenderTargetId()
+        {
+            if (render_target_swapchain)
+                return render_target_swapchain->GetId();
+
+            if (render_target_texture)
+                return render_target_texture->GetId();
+
+            return 0;
+        }
 
         void Clear()
         {
-            shader_vertex       = nullptr;
-            shader_pixel        = nullptr;
-            input_layout        = nullptr;
-            rasterizer_state    = nullptr;
-            blend_state         = nullptr;
-            depth_stencil_state = nullptr;
-            vertex_buffer       = nullptr;
-            swapchain           = nullptr;
-            primitive_topology  = RHI_PrimitiveTopology_Unknown;
-            viewport            = RHI_Viewport(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
-            scissor             = Math::Rectangle(0.0f, 0.0f, 0.0f, 0.0f);
+            shader_vertex               = nullptr;
+            shader_pixel                = nullptr;
+            input_layout                = nullptr;
+            rasterizer_state            = nullptr;
+            blend_state                 = nullptr;
+            depth_stencil_state         = nullptr;
+            render_target_swapchain     = nullptr;
+            render_target_texture       = nullptr;
+            primitive_topology          = RHI_PrimitiveTopology_Unknown;
+            viewport                    = RHI_Viewport(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+            scissor                     = Math::Rectangle(0.0f, 0.0f, 0.0f, 0.0f);
+            scissor_dynamic             = false;
+            vertex_buffer_stride        = 0;
+            hash                        = 0;
         }
 
         RHI_Shader* shader_vertex;
@@ -85,14 +165,16 @@ namespace Spartan
         RHI_RasterizerState* rasterizer_state;
         RHI_BlendState* blend_state;
         RHI_DepthStencilState* depth_stencil_state;
-        RHI_VertexBuffer* vertex_buffer;
         RHI_PrimitiveTopology_Mode primitive_topology;
-        RHI_Viewport viewport;
-        RHI_SwapChain* swapchain;
+        RHI_Viewport viewport;     
         Math::Rectangle scissor;
-
+        RHI_SwapChain* render_target_swapchain;
+        RHI_Texture* render_target_texture;
+        bool scissor_dynamic;
+        uint32_t vertex_buffer_stride;
+       
 	private:
-		uint32_t m_hash = 0;
+		uint32_t hash = 0;
 	};
 }
 

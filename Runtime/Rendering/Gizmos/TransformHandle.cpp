@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Transform_Gizmo.h"
 #include "../Model.h"
 #include "../Renderer.h"
-#include "../Utilities/Geometry.h"
+#include "../../Utilities/Geometry.h"
 #include "../../Input/Input.h"
 #include "../../World/Entity.h"
 #include "../../World/Components/Camera.h"

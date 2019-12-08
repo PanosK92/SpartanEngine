@@ -73,11 +73,19 @@ namespace Spartan
 			bool operator!=(const Rectangle& rhs) const
 			{
 				return
-					x		!= rhs.x ||
-					y		!= rhs.y ||
-					width	!= rhs.width ||
+					x		!= rhs.x        ||
+					y		!= rhs.y        ||
+					width	!= rhs.width    ||
 					height	!= rhs.height;
 			}
+
+            bool IsDefined() const
+            {
+                return  x       != 0.0f ||
+                        y       != 0.0f ||
+                        width   != 0.0f ||
+                        height  != 0.0f;
+            }
 
 			bool CreateBuffers(Renderer* renderer);
 			static int GetIndexCount()			{ return 6; }

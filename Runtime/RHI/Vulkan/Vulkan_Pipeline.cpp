@@ -35,7 +35,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Texture.h"
 #include "../RHI_Sampler.h"
 #include "../RHI_InputLayout.h"
-#include "../RHI_VertexBuffer.h"
 #include "../../Logging/Log.h"
 //=================================
 
@@ -50,45 +49,60 @@ namespace Spartan
 		m_rhi_device	= rhi_device;
 		m_state			= &pipeline_state;
 
-		// State deduction
-		auto dynamic_viewport_scissor = !m_state->viewport.IsDefined();
+        // Viewport & Scissor
+        vector<VkDynamicState> dynamic_states;
+        VkPipelineDynamicStateCreateInfo dynamic_state = {};
+        VkPipelineViewportStateCreateInfo viewport_state = {};
+        {
+            // If no viewport has been provided, assume dynamic
+            if (!m_state->viewport.IsDefined())
+            {
+                dynamic_states.emplace_back(VK_DYNAMIC_STATE_VIEWPORT);
+            }
 
-		// Dynamic viewport and scissor states
-		vector<VkDynamicState> dynamic_states =
-		{
-			VK_DYNAMIC_STATE_VIEWPORT,
-			VK_DYNAMIC_STATE_SCISSOR
-		};
+            if (m_state->scissor_dynamic)
+            {
+                dynamic_states.emplace_back(VK_DYNAMIC_STATE_SCISSOR);
+            }
 
-		VkPipelineDynamicStateCreateInfo dynamic_state;
-		dynamic_state.sType				= VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-		dynamic_state.pNext				= nullptr;
-		dynamic_state.flags				= 0;
-		dynamic_state.dynamicStateCount = static_cast<uint32_t>(dynamic_states.size());
-		dynamic_state.pDynamicStates	= dynamic_states.data();
+            // Dynamic states
+		    dynamic_state.sType				= VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+		    dynamic_state.pNext				= nullptr;
+		    dynamic_state.flags				= 0;
+		    dynamic_state.dynamicStateCount = static_cast<uint32_t>(dynamic_states.size());
+		    dynamic_state.pDynamicStates	= dynamic_states.data();
 
-		// Viewport
-		VkViewport vkViewport	= {};
-		vkViewport.x			= m_state->viewport.x;
-		vkViewport.y			= m_state->viewport.y;
-		vkViewport.width		= m_state->viewport.width;
-		vkViewport.height		= m_state->viewport.height;
-		vkViewport.minDepth		= m_state->viewport.depth_min;
-		vkViewport.maxDepth		= m_state->viewport.depth_max;
+		    // Viewport
+		    VkViewport vkViewport	= {};
+		    vkViewport.x			= m_state->viewport.x;
+		    vkViewport.y			= m_state->viewport.y;
+		    vkViewport.width		= m_state->viewport.width;
+		    vkViewport.height		= m_state->viewport.height;
+		    vkViewport.minDepth		= m_state->viewport.depth_min;
+		    vkViewport.maxDepth		= m_state->viewport.depth_max;
 
-		// Scissor
-		VkRect2D scissor		= {};
-		scissor.offset			= { 0, 0 };
-		scissor.extent.width	= static_cast<uint32_t>(vkViewport.width);
-		scissor.extent.height	= static_cast<uint32_t>(vkViewport.height);
+		    // Scissor
+		    VkRect2D scissor = {};
+            if (!m_state->scissor.IsDefined())
+            {
+                scissor.offset          = { 0, 0 };
+                scissor.extent.width    = static_cast<uint32_t>(vkViewport.width);
+                scissor.extent.height   = static_cast<uint32_t>(vkViewport.height);
+            }
+            else
+            {
+                scissor.offset          = { static_cast<int32_t>(m_state->scissor.x), static_cast<int32_t>(m_state->scissor.y) };
+                scissor.extent.width    = static_cast<uint32_t>(m_state->scissor.width);
+                scissor.extent.height   = static_cast<uint32_t>(m_state->scissor.height);
+            }
 
-		// Viewport state
-		VkPipelineViewportStateCreateInfo viewport_state	= {};
-		viewport_state.sType								= VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-		viewport_state.viewportCount						= 1;
-		viewport_state.pViewports							= &vkViewport;
-		viewport_state.scissorCount							= 1;
-		viewport_state.pScissors							= &scissor;
+		    // Viewport state
+		    viewport_state.sType		    = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+		    viewport_state.viewportCount    = 1;
+		    viewport_state.pViewports	    = &vkViewport;
+		    viewport_state.scissorCount	    = 1;
+		    viewport_state.pScissors	    = &scissor;
+        }
 
         if (!m_state->shader_vertex)
         {
@@ -129,7 +143,7 @@ namespace Spartan
 		VkVertexInputBindingDescription binding_description = {};
 		binding_description.binding		= 0;
 		binding_description.inputRate	= VK_VERTEX_INPUT_RATE_VERTEX;
-		binding_description.stride		= m_state->vertex_buffer->GetStride();
+		binding_description.stride		= m_state->vertex_buffer_stride;
 
 		// Vertex attributes description
         vector<VkVertexInputAttributeDescription> vertex_attribute_descs;
@@ -245,21 +259,21 @@ namespace Spartan
         }
 
         // Pipeline
-		VkGraphicsPipelineCreateInfo pipeline_info = {};
+        VkGraphicsPipelineCreateInfo pipeline_info = {};
         {
 		    pipeline_info.sType							= VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 		    pipeline_info.stageCount					= static_cast<uint32_t>((sizeof(shader_stages) / sizeof(*shader_stages)));
 		    pipeline_info.pStages						= shader_stages;
 		    pipeline_info.pVertexInputState				= &vertex_input_state;
 		    pipeline_info.pInputAssemblyState			= &input_assembly_state;
-		    pipeline_info.pDynamicState					= dynamic_viewport_scissor ? &dynamic_state : nullptr;
-		    pipeline_info.pViewportState				= dynamic_viewport_scissor ? &viewport_state : nullptr;
+		    pipeline_info.pDynamicState					= dynamic_states.empty() ? nullptr : &dynamic_state;
+		    pipeline_info.pViewportState				= &viewport_state;
 		    pipeline_info.pRasterizationState			= &rasterizer_state;
 		    pipeline_info.pMultisampleState				= &multisampling_state;
 		    pipeline_info.pColorBlendState				= &color_blend_state;
             pipeline_info.pDepthStencilState            = &depth_stencil_state;
 		    pipeline_info.layout						= *pipeline_layout;
-		    pipeline_info.renderPass					= static_cast<VkRenderPass>(m_state->swapchain->GetRenderPass());
+		    pipeline_info.renderPass					= static_cast<VkRenderPass>(m_state->GetRenderPass());
 
             auto pipeline = reinterpret_cast<VkPipeline*>(&m_pipeline);
             vulkan_common::error::check_result(vkCreateGraphicsPipelines(m_rhi_device->GetContextRhi()->device, nullptr, 1, &pipeline_info, nullptr, pipeline));

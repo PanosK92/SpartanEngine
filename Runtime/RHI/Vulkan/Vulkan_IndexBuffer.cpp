@@ -64,6 +64,16 @@ namespace Spartan
 		m_buffer		= static_cast<void*>(buffer);
 		m_buffer_memory = static_cast<void*>(buffer_memory);
 
+        // Initial data
+        if (indices != nullptr)
+        {
+            if (void* data = Map())
+            {
+                memcpy(data, indices, m_size);
+                Unmap();
+            }
+        }
+
 		return true;
 	}
 

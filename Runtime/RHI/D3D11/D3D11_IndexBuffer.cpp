@@ -50,20 +50,15 @@ namespace Spartan
 			return false;
 		}
 
-		if (!m_is_dynamic && !indices)
-		{
-			LOG_ERROR_INVALID_PARAMETER();
-			return false;
-		}
-
+        bool is_dynamic = indices == nullptr;
 		safe_release(static_cast<ID3D11Buffer*>(m_buffer));
 		m_buffer = nullptr;
 
 		D3D11_BUFFER_DESC buffer_desc;
 		ZeroMemory(&buffer_desc, sizeof(buffer_desc));
 		buffer_desc.ByteWidth			= m_stride * m_index_count;
-		buffer_desc.Usage				= m_is_dynamic ? D3D11_USAGE_DYNAMIC : D3D11_USAGE_IMMUTABLE;
-		buffer_desc.CPUAccessFlags		= m_is_dynamic ? D3D11_CPU_ACCESS_WRITE : 0;
+		buffer_desc.Usage				= is_dynamic ? D3D11_USAGE_DYNAMIC : D3D11_USAGE_IMMUTABLE;
+		buffer_desc.CPUAccessFlags		= is_dynamic ? D3D11_CPU_ACCESS_WRITE : 0;
 		buffer_desc.BindFlags			= D3D11_BIND_INDEX_BUFFER;	
 		buffer_desc.MiscFlags			= 0;
 		buffer_desc.StructureByteStride = 0;
@@ -74,7 +69,7 @@ namespace Spartan
 		init_data.SysMemSlicePitch	= 0;
 
 		const auto ptr = reinterpret_cast<ID3D11Buffer**>(&m_buffer);
-		const auto result = m_rhi_device->GetContextRhi()->device->CreateBuffer(&buffer_desc, m_is_dynamic ? nullptr : &init_data, ptr);
+		const auto result = m_rhi_device->GetContextRhi()->device->CreateBuffer(&buffer_desc, is_dynamic ? nullptr : &init_data, ptr);
 		if FAILED(result)
 		{
 			LOG_ERROR(" Failed to create index buffer");
