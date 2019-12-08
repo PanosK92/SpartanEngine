@@ -109,7 +109,7 @@ namespace Spartan
 
     void Log::WriteFInfo(const string text, ...)
     {
-        char buffer[1024];
+        char buffer[2048];
         va_list args;
         va_start(args, text);
         auto w = vsnprintf(buffer, sizeof(buffer), text.c_str(), args);
@@ -120,7 +120,7 @@ namespace Spartan
 
     void Log::WriteFWarning(const string text, ...)
     {
-        char buffer[1024];
+        char buffer[2048];
         va_list args;
         va_start(args, text);
         auto w = vsnprintf(buffer, sizeof(buffer), text.c_str(), args);
@@ -131,7 +131,7 @@ namespace Spartan
 
     void Log::WriteFError(const string text, ...)
     {
-        char buffer[1024];
+        char buffer[2048];
         va_list args;
         va_start(args, text);
         auto w = vsnprintf(buffer, sizeof(buffer), text.c_str(), args);
