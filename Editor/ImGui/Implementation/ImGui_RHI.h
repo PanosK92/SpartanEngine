@@ -223,65 +223,66 @@ namespace ImGui::RHI
         g_viewport.height   = draw_data->DisplaySize.y;
 
 		// Set render state
-		{
-            RHI_PipelineState& pipeline_state   = swap_chain->GetCmdList()->GetPipelineState();
-            pipeline_state.shader_vertex        = g_shader_vertex.get();
-            pipeline_state.shader_pixel         = g_shader_pixel.get();
-            pipeline_state.input_layout         = g_shader_vertex->GetInputLayout().get();
-            pipeline_state.rasterizer_state     = g_rasterizer_state.get();
-            pipeline_state.blend_state          = g_blend_state.get();
-            pipeline_state.depth_stencil_state  = g_depth_stencil_state.get();
-            pipeline_state.vertex_buffer        = g_vertex_buffer.get();
-            pipeline_state.swapchain            = swap_chain;
-            pipeline_state.primitive_topology   = RHI_PrimitiveTopology_TriangleList;
-
-			// Start witting command list
-            cmd_list->Begin("Pass_ImGui");
+        RHI_PipelineState& pipeline_state       = cmd_list->GetPipelineState();
+        pipeline_state.shader_vertex            = g_shader_vertex.get();
+        pipeline_state.shader_pixel             = g_shader_pixel.get();
+        pipeline_state.input_layout             = g_shader_vertex->GetInputLayout().get();
+        pipeline_state.rasterizer_state         = g_rasterizer_state.get();
+        pipeline_state.blend_state              = g_blend_state.get();
+        pipeline_state.depth_stencil_state      = g_depth_stencil_state.get();
+        pipeline_state.vertex_buffer_stride     = g_vertex_buffer->GetStride();
+        pipeline_state.render_target_swapchain  = swap_chain;
+        pipeline_state.viewport                 = g_viewport;
+        pipeline_state.primitive_topology       = RHI_PrimitiveTopology_TriangleList;
+        pipeline_state.scissor_dynamic          = true;
+        
+        // Start witting command list
+        if (cmd_list->Begin("Pass_ImGui"))
+        {
             g_renderer->SetGlobalSamplersAndConstantBuffers(cmd_list);
             cmd_list->SetRenderTarget(swap_chain->GetRenderTargetView());
             if (clear) cmd_list->ClearRenderTarget(swap_chain->GetRenderTargetView(), Vector4(0, 0, 0, 1));
             cmd_list->SetBufferVertex(g_vertex_buffer);
             cmd_list->SetBufferIndex(g_index_buffer);
-            cmd_list->SetViewport(g_viewport);
-		}
-		
-		// Render command lists
-		int global_vtx_offset = 0;
-		int global_idx_offset = 0;
-		const auto& clip_off = draw_data->DisplayPos;
-		for (auto i = 0; i < draw_data->CmdListsCount; i++)
-		{
-			auto cmd_list_imgui = draw_data->CmdLists[i];
-			for (auto cmd_i = 0; cmd_i < cmd_list_imgui->CmdBuffer.Size; cmd_i++)
-			{
-				auto pcmd = &cmd_list_imgui->CmdBuffer[cmd_i];
-				if (pcmd->UserCallback != nullptr)
-				{
-					pcmd->UserCallback(cmd_list_imgui, pcmd);
-				}
-				else
-				{
-					// Compute scissor rectangle
-					auto scissor_rect	 = Math::Rectangle(pcmd->ClipRect.x - clip_off.x, pcmd->ClipRect.y - clip_off.y, pcmd->ClipRect.z - clip_off.x, pcmd->ClipRect.w - clip_off.y);
-					scissor_rect.width	-= scissor_rect.x;
-					scissor_rect.height -= scissor_rect.y;
-					
-					// Apply scissor rectangle, bind texture and draw
-					cmd_list->SetScissorRectangle(scissor_rect);
-					cmd_list->SetTexture(0, static_cast<RHI_Texture*>(pcmd->TextureId));
-					cmd_list->DrawIndexed(pcmd->ElemCount, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset);
-				}
-				
-			}
-			global_idx_offset += cmd_list_imgui->IdxBuffer.Size;
-			global_vtx_offset += cmd_list_imgui->VtxBuffer.Size;
-		}
 
-		cmd_list->End();
-		if (cmd_list->Submit() && is_main_viewport)
-		{
-            g_renderer->GetSwapChain()->Present();
-		}
+            // Render command lists
+            int global_vtx_offset = 0;
+            int global_idx_offset = 0;
+            const auto& clip_off = draw_data->DisplayPos;
+            for (auto i = 0; i < draw_data->CmdListsCount; i++)
+            {
+                auto cmd_list_imgui = draw_data->CmdLists[i];
+                for (auto cmd_i = 0; cmd_i < cmd_list_imgui->CmdBuffer.Size; cmd_i++)
+                {
+                    auto pcmd = &cmd_list_imgui->CmdBuffer[cmd_i];
+                    if (pcmd->UserCallback != nullptr)
+                    {
+                        pcmd->UserCallback(cmd_list_imgui, pcmd);
+                    }
+                    else
+                    {
+                        // Compute scissor rectangle
+                        auto scissor_rect = Math::Rectangle(pcmd->ClipRect.x - clip_off.x, pcmd->ClipRect.y - clip_off.y, pcmd->ClipRect.z - clip_off.x, pcmd->ClipRect.w - clip_off.y);
+                        scissor_rect.width -= scissor_rect.x;
+                        scissor_rect.height -= scissor_rect.y;
+
+                        // Apply scissor rectangle, bind texture and draw
+                        cmd_list->SetScissorRectangle(scissor_rect);
+                        cmd_list->SetTexture(0, static_cast<RHI_Texture*>(pcmd->TextureId));
+                        cmd_list->DrawIndexed(pcmd->ElemCount, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset);
+                    }
+
+                }
+                global_idx_offset += cmd_list_imgui->IdxBuffer.Size;
+                global_vtx_offset += cmd_list_imgui->VtxBuffer.Size;
+            }
+
+            cmd_list->End();
+            if (cmd_list->Submit() && is_main_viewport)
+            {
+                g_renderer->GetSwapChain()->Present();
+            }
+        }
 	}
 
 	inline void OnResize(const float width, const float height)

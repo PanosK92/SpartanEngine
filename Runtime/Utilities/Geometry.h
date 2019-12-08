@@ -21,10 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ========================
+//= INCLUDES =====================
 #include <vector>
-#include "../../RHI/RHI_Definition.h"
-//===================================
+#include "../RHI/RHI_Definition.h"
+//================================
 
 namespace Spartan::Utility::Geometry
 {

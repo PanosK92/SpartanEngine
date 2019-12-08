@@ -67,43 +67,41 @@ namespace Spartan
 
     void Renderer::Pass_Main(RHI_CommandList* cmd_list)
 	{
-#ifdef API_GRAPHICS_VULKAN
-        return;
-#endif
-
         // Validate RHI device as it's required almost everywhere
         if (!m_rhi_device)
             return;
 
-        cmd_list->Begin("Pass_Main");
-
-        // Update the frame buffer (doesn't change thought the frame)
-        cmd_list->Begin("UpdateFrameBuffer");
+        if (cmd_list->Begin("Pass_Main", RHI_Cmd_Marker))
         {
-            UpdateFrameBuffer();
+            // Update the frame buffer
+            if (cmd_list->Begin("UpdateFrameBuffer", RHI_Cmd_Marker))
+            {
+                UpdateFrameBuffer();
+                cmd_list->End();
+            }
+
+            Pass_BrdfSpecularLut(cmd_list); // only happens once
+
+#ifdef API_GRAPHICS_D3D11
+            Pass_LightDepth(cmd_list);
+            if (GetOptionValue(Render_DepthPrepass))
+            {
+                Pass_DepthPrePass(cmd_list);
+            }
+            Pass_GBuffer(cmd_list);
+            Pass_Ssao(cmd_list);
+            Pass_Ssr(cmd_list);
+            Pass_Light(cmd_list);
+            Pass_Composition(cmd_list);
+            Pass_PostProcess(cmd_list);
+            Pass_Lines(cmd_list, m_render_targets[RenderTarget_Composition_Ldr]);
+            Pass_Gizmos(cmd_list, m_render_targets[RenderTarget_Composition_Ldr]);
+            Pass_DebugBuffer(cmd_list, m_render_targets[RenderTarget_Composition_Ldr]);
+            Pass_PerformanceMetrics(cmd_list, m_render_targets[RenderTarget_Composition_Ldr]);
+#endif
+
+            cmd_list->End();
         }
-        cmd_list->End();
-
-        Pass_BrdfSpecularLut(cmd_list); // only happens once
-
-		Pass_LightDepth(cmd_list);
-        if (GetOptionValue(Render_DepthPrepass))
-        {
-            Pass_DepthPrePass(cmd_list);
-        }
-		Pass_GBuffer(cmd_list);
-		Pass_Ssao(cmd_list);
-        Pass_Ssr(cmd_list);
-        Pass_Light(cmd_list);
-        Pass_Composition(cmd_list);
-		Pass_PostProcess(cmd_list);
-        Pass_Lines(cmd_list, m_render_targets[RenderTarget_Composition_Ldr]);
-        Pass_Gizmos(cmd_list, m_render_targets[RenderTarget_Composition_Ldr]);
-		Pass_DebugBuffer(cmd_list, m_render_targets[RenderTarget_Composition_Ldr]);
-		Pass_PerformanceMetrics(cmd_list, m_render_targets[RenderTarget_Composition_Ldr]);
-
-        cmd_list->End();
-        cmd_list->Submit();
 	}
 
 	void Renderer::Pass_LightDepth(RHI_CommandList* cmd_list)
@@ -1778,28 +1776,35 @@ namespace Spartan
             return;
 
         // Acquire render target
-        const auto& texture = m_render_targets[RenderTarget_Brdf_Specular_Lut];
+        const auto& render_target = m_render_targets[RenderTarget_Brdf_Specular_Lut];
 
-        cmd_list->Begin("Pass_BrdfSpecularLut");
+        // Set render state
+        RHI_PipelineState& pipeline_state       = cmd_list->GetPipelineState();
+        pipeline_state.shader_vertex            = shader_quad.get();
+        pipeline_state.shader_pixel             = shader_brdf_specular_lut.get();
+        pipeline_state.input_layout             = shader_quad->GetInputLayout().get();
+        pipeline_state.rasterizer_state         = m_rasterizer_cull_back_solid.get();
+        pipeline_state.blend_state              = m_blend_disabled.get();
+        pipeline_state.depth_stencil_state      = m_depth_stencil_disabled.get();
+        pipeline_state.vertex_buffer_stride     = m_quad.GetVertexBuffer()->GetStride();
+        pipeline_state.render_target_texture    = render_target.get();
+        pipeline_state.primitive_topology       = RHI_PrimitiveTopology_TriangleList;
+        pipeline_state.viewport                 = render_target->GetViewport();
 
-        // Update uber buffer
-        m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(texture->GetWidth()), static_cast<float>(texture->GetHeight()));
-        UpdateUberBuffer();
+        if (cmd_list->Begin("Pass_BrdfSpecularLut"))
+        {
+            SetGlobalSamplersAndConstantBuffers(cmd_list);
 
-        cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
-        cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
-        cmd_list->SetBlendState(m_blend_disabled);
-        cmd_list->SetPrimitiveTopology(RHI_PrimitiveTopology_TriangleList);
-        cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
-        cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
-        cmd_list->SetRenderTarget(texture);
-        cmd_list->SetViewport(texture->GetViewport());
-        cmd_list->SetShaderVertex(shader_quad);
-        cmd_list->SetInputLayout(shader_quad->GetInputLayout());
-        cmd_list->SetShaderPixel(shader_brdf_specular_lut);
-        cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
-        cmd_list->End();
-        cmd_list->Submit();
+            // Update uber buffer
+            m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(render_target->GetWidth()), static_cast<float>(render_target->GetHeight()));
+            UpdateUberBuffer();
+
+            cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
+            cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
+            cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
+            cmd_list->End();
+            cmd_list->Submit();
+        }
 
         m_brdf_specular_lut_rendered = true;
     }

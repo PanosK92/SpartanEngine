@@ -21,10 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
+//= INCLUDES ======================
 #include <vector>
 #include "../Core/Spartan_Object.h"
-//=============================
+//=================================
 
 namespace Spartan
 {
@@ -41,7 +41,6 @@ namespace Spartan
 		template<typename T>
 		bool Create(const std::vector<T>& indices)
 		{
-			m_is_dynamic	= false;
 			m_stride        = sizeof(T);
 			m_index_count	= static_cast<uint32_t>(indices.size());
 			m_size          = static_cast<uint64_t>(m_stride * m_index_count);
@@ -51,7 +50,6 @@ namespace Spartan
 		template<typename T>
 		bool Create(const T* indices, const uint32_t index_count)
 		{
-			m_is_dynamic	= false;
 			m_stride        = sizeof(T);
 			m_index_count	= index_count;
 			m_size          = static_cast<uint64_t>(m_stride * m_index_count);
@@ -61,7 +59,6 @@ namespace Spartan
 		template<typename T>
 		bool CreateDynamic(const uint32_t index_count)
 		{
-			m_is_dynamic	= true;
 			m_stride        = sizeof(T);
 			m_index_count	= index_count;
 			m_size          = static_cast<uint64_t>(m_stride * m_index_count);
@@ -79,7 +76,6 @@ namespace Spartan
 	protected:
 		bool _Create(const void* indices);
 
-		bool m_is_dynamic			= false;
 		uint32_t m_stride		= 0;
 		uint32_t m_index_count	= 0;
 		std::shared_ptr<RHI_Device> m_rhi_device;

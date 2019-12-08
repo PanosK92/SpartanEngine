@@ -79,96 +79,119 @@ namespace Spartan
         vulkan_common::command::free(m_rhi_device->GetContextRhi(), m_swap_chain->GetCmdPool(), m_cmd_buffer);
 	}
 
-	void RHI_CommandList::Begin(const string& pass_name)
+	bool RHI_CommandList::Begin(const string& pass_name, RHI_Cmd_Type type /*= RHI_Cmd_Begin*/)
 	{
         RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
+        m_begin_types.push_back(type);
 
-        // Sync CPU to GPU
-        if (m_cmd_state == RHI_Cmd_List_Idle_Sync_Cpu_To_Gpu)
+        if (type == RHI_Cmd_Begin)
         {
-            Flush();
-            m_pipeline->OnCommandListConsumed();
-            m_cmd_state = RHI_Cmd_List_Idle;
-        }
+            // Sync CPU to GPU
+            if (m_cmd_state == RHI_Cmd_List_Idle_Sync_Cpu_To_Gpu)
+            {
+                Flush();
+                m_pipeline->OnCommandListConsumed();
+                m_cmd_state = RHI_Cmd_List_Idle;
+            }
 
-        if (m_cmd_state != RHI_Cmd_List_Idle)
-        {
-            LOG_ERROR("Previous command list is still being used");
-            return;
-        }
+            if (m_cmd_state != RHI_Cmd_List_Idle)
+            {
+                LOG_ERROR("Previous command list is still being used");
+                return false;
+            }
 
-        bool has_pipeline = !m_pipeline_state.shader_vertex;
-        if (has_pipeline)
-            return;
+            if (!m_pipeline_state.IsDefined())
+            {
+                LOG_ERROR("Pipeline state is not defined");
+                return false;
+            }
 
-        m_pipeline = m_rhi_pipeline_cache->GetPipeline(m_pipeline_state).get();
+            m_pipeline = m_rhi_pipeline_cache->GetPipeline(m_pipeline_state).get();
+            if (!m_pipeline)
+            {
+                LOG_ERROR("Failed to get pipeline");
+                return false;
+            }
 	
-		// Acquire next swap chain image and update buffer index
-        if (!m_swap_chain->AcquireNextImage())
-        {
-            LOG_ERROR("Failed to acquire next swap chain image");
-            return;
+		    // Acquire next image (in case the render target is a swapchain)
+            if (!m_pipeline_state.AcquireNextImage())
+                return false;
+
+		    // Begin command buffer
+		    VkCommandBufferBeginInfo begin_info	    = {};
+		    begin_info.sType						= VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		    begin_info.flags						= VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+		    if (!vulkan_common::error::check_result(vkBeginCommandBuffer(CMD_BUFFER, &begin_info)))
+		    	return false;
+
+		    // Begin render pass
+		    VkClearValue clear_color					= { 0.0f, 0.0f, 0.0f, 1.0f };
+		    VkRenderPassBeginInfo render_pass_info		= {};
+		    render_pass_info.sType						= VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		    render_pass_info.renderPass					= static_cast<VkRenderPass>(m_pipeline_state.GetRenderPass());
+		    render_pass_info.framebuffer				= static_cast<VkFramebuffer>(m_pipeline_state.GetFrameBuffer());
+		    render_pass_info.renderArea.offset			= { 0, 0 };
+            render_pass_info.renderArea.extent.width    = m_pipeline_state.GetWidth();
+		    render_pass_info.renderArea.extent.height	= m_pipeline_state.GetHeight();
+		    render_pass_info.clearValueCount			= 1;
+		    render_pass_info.pClearValues				= &clear_color;
+		    vkCmdBeginRenderPass(CMD_BUFFER, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
+
+            // Bind pipeline
+            if (VkPipeline pipeline = static_cast<VkPipeline>(m_pipeline->GetPipeline()))
+            {
+                vkCmdBindPipeline(CMD_BUFFER, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+            }
+            else
+            {
+                LOG_ERROR("Invalid pipeline");
+                return false;
+            }
+
+            // At this point, it's safe to allow for command recording
+            m_cmd_state = RHI_Cmd_List_Recording;
         }
 
-		// Begin command buffer
-		VkCommandBufferBeginInfo begin_info	    = {};
-		begin_info.sType						= VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		begin_info.flags						= VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-		if (!vulkan_common::error::check_result(vkBeginCommandBuffer(CMD_BUFFER, &begin_info)))
-			return;
-
-		// Begin render pass
-		VkClearValue clear_color					= { 0.0f, 0.0f, 0.0f, 1.0f };
-		VkRenderPassBeginInfo render_pass_info		= {};
-		render_pass_info.sType						= VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		render_pass_info.renderPass					= static_cast<VkRenderPass>(m_swap_chain->GetRenderPass());
-		render_pass_info.framebuffer				= static_cast<VkFramebuffer>(m_swap_chain->GetFrameBuffer());
-		render_pass_info.renderArea.offset			= { 0, 0 };
-		render_pass_info.renderArea.extent.width	= static_cast<uint32_t>(m_swap_chain->GetWidth());
-		render_pass_info.renderArea.extent.height	= static_cast<uint32_t>(m_swap_chain->GetHeight());
-		render_pass_info.clearValueCount			= 1;
-		render_pass_info.pClearValues				= &clear_color;
-		vkCmdBeginRenderPass(CMD_BUFFER, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
-
-        // Bind pipeline
-        if (VkPipeline pipeline = static_cast<VkPipeline>(m_pipeline->GetPipeline()))
-        {
-            vkCmdBindPipeline(CMD_BUFFER, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-        }
-        else
-        {
-            LOG_ERROR("Invalid pipeline");
-            return;
-        }
-
-        // At this point, it's safe to allow for command recording
-        m_cmd_state = RHI_Cmd_List_Recording;
-
-        // Debug marker - Begin
+        // Debug marker
         #ifdef DEBUG
-        vulkan_common::debug_marker::begin(CMD_BUFFER, pass_name.c_str(), Vector4::One);
+        if (type == RHI_Cmd_Begin || type == RHI_Cmd_Marker)
+        {
+            vulkan_common::debug_marker::begin(CMD_BUFFER, pass_name.c_str(), Vector4::One);
+        }
         #endif
+
+        return true;
 	}
 
 	void RHI_CommandList::End()
 	{
-        if (m_cmd_state != RHI_Cmd_List_Recording)
-        {
-            LOG_ERROR("Can't record command");
-            return;
-        }
+        RHI_Cmd_Type begin_type = m_begin_types.back();
 
-		vkCmdEndRenderPass(CMD_BUFFER);
-
-        if (vulkan_common::error::check_result(vkEndCommandBuffer(CMD_BUFFER)))
+        if (begin_type == RHI_Cmd_Begin)
         {
-            m_cmd_state = RHI_Cmd_List_Ended;
+            if (m_cmd_state != RHI_Cmd_List_Recording)
+            {
+                LOG_ERROR("Can't record command");
+                return;
+            }
+
+            vkCmdEndRenderPass(CMD_BUFFER);
+
+            if (vulkan_common::error::check_result(vkEndCommandBuffer(CMD_BUFFER)))
+            {
+                m_cmd_state = RHI_Cmd_List_Ended;
+            }
         }
 
         // Debug marker - End
         #ifdef DEBUG
-        vulkan_common::debug_marker::end(CMD_BUFFER);
+        if (begin_type == RHI_Cmd_Begin || begin_type == RHI_Cmd_Marker)
+        {
+            vulkan_common::debug_marker::end(CMD_BUFFER);
+        }
         #endif
+
+        m_begin_types.pop_back();
 	}
 
 	void RHI_CommandList::Draw(const uint32_t vertex_count)
@@ -424,14 +447,20 @@ namespace Spartan
             return false;
         }
 
-		// Prepare semaphores
-		VkSemaphore wait_semaphores[]		= { static_cast<VkSemaphore>(m_swap_chain->GetSemaphoreImageAcquired()) };
-		VkSemaphore signal_semaphores[]		= { nullptr };
-		VkPipelineStageFlags wait_flags[]	= { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+		// Wait
+		VkSemaphore wait_semaphores[] = { nullptr };
+        if (m_pipeline_state.render_target_swapchain)
+        {
+            wait_semaphores[0] = static_cast<VkSemaphore>(m_pipeline_state.render_target_swapchain->GetSemaphoreImageAcquired());
+        }
+        VkPipelineStageFlags wait_flags[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
+        // Signal
+		VkSemaphore signal_semaphores[]		= { nullptr };
+		
 		VkSubmitInfo submit_info			= {};
 		submit_info.sType					= VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		submit_info.waitSemaphoreCount		= 1;
+		submit_info.waitSemaphoreCount		= m_pipeline_state.render_target_swapchain ? 1 : 0;
 		submit_info.pWaitSemaphores			= wait_semaphores;
 		submit_info.pWaitDstStageMask		= wait_flags;
 		submit_info.commandBufferCount		= 1;

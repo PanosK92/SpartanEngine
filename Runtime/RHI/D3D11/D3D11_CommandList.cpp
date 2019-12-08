@@ -65,7 +65,7 @@ namespace Spartan
 
 	RHI_CommandList::~RHI_CommandList() = default;
 
-	void RHI_CommandList::Begin(const string& pass_name)
+	bool RHI_CommandList::Begin(const string& pass_name, RHI_Cmd_Type type /*= RHI_Cmd_Begin*/)
 	{
         auto& cmd       = GetCmd();
         cmd.type        = RHI_Cmd_Begin;
@@ -79,6 +79,8 @@ namespace Spartan
         if (m_pipeline_state.shader_pixel)                                          SetShaderPixel(m_pipeline_state.shader_pixel);
         if (m_pipeline_state.viewport.IsDefined())                                  SetViewport(m_pipeline_state.viewport);
         if (m_pipeline_state.primitive_topology != RHI_PrimitiveTopology_Unknown)   SetPrimitiveTopology(m_pipeline_state.primitive_topology);
+
+        return true;
 	}
 
 	void RHI_CommandList::End()

@@ -115,6 +115,7 @@ namespace Spartan
 			{
 				return _CreateResource(vertex_shader_blob);
 			}
+
 			return true;
 		}
 

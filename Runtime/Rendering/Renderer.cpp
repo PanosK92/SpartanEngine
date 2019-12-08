@@ -23,9 +23,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Renderer.h"
 #include "Model.h"
 #include "Font/Font.h"
-#include "Utilities/Sampling.h"
 #include "Gizmos/Grid.h"
 #include "Gizmos/Transform_Gizmo.h"
+#include "../Utilities/Sampling.h"
 #include "../Profiling/Profiler.h"
 #include "../Resource/ResourceCache.h"
 #include "../Core/Engine.h"
@@ -163,7 +163,7 @@ namespace Spartan
 		if (!m_initialized)
 		{
 			// Log on-screen as the renderer is ready
-			LOG_TO_FILE(false);
+			//LOG_TO_FILE(false);
 			m_initialized = true;
 		}
 
@@ -530,6 +530,7 @@ namespace Spartan
     {
         m_render_targets[RenderTarget_Brdf_Prefiltered_Environment] = texture;
     }
+
     void Renderer::SetOptionValue(Renderer_Option_Value option, float value, float min /*= numeric_limits<float>::lowest()*/, float max /*= numeric_limits<float>::max()*/)
     {
         value = Clamp(value, min, max);
