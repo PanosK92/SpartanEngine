@@ -38,8 +38,6 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    mutex RHI_Texture::m_mutex;
-
     RHI_Texture2D::~RHI_Texture2D()
     {
         m_data.clear();
@@ -219,7 +217,10 @@ namespace Spartan
             // Copy buffer to image
             if (staging_buffer)
             {
-                lock_guard<mutex> lock(m_mutex); // Mutex prevents this error: THREADING ERROR : object of type VkQueue is simultaneously used in thread 0xfe0 and thread 0xe18
+                // Mutex prevents this error: THREADING ERROR : object of type VkQueue is simultaneously used in thread A and thread B
+                // Todo: Reduces possibility of error, but it can still occur, todo
+                static mutex _mutex;
+                lock_guard lock(_mutex);
                 if (!CopyBufferToImage(rhi_context, static_cast<uint32_t>(m_width), static_cast<uint32_t>(m_height), *image, m_layout, staging_buffer))
                 {
                     LOG_ERROR("Failed to copy buffer to image");
