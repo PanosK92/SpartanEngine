@@ -51,8 +51,10 @@ namespace Spartan
 
         // Viewport & Scissor
         vector<VkDynamicState> dynamic_states;
-        VkPipelineDynamicStateCreateInfo dynamic_state = {};
-        VkPipelineViewportStateCreateInfo viewport_state = {};
+        VkPipelineDynamicStateCreateInfo dynamic_state      = {};   
+        VkViewport vkViewport                               = {};
+        VkRect2D scissor                                    = {};
+        VkPipelineViewportStateCreateInfo viewport_state    = {};
         {
             // If no viewport has been provided, assume dynamic
             if (!m_state->viewport.IsDefined())
@@ -72,8 +74,7 @@ namespace Spartan
 		    dynamic_state.dynamicStateCount = static_cast<uint32_t>(dynamic_states.size());
 		    dynamic_state.pDynamicStates	= dynamic_states.data();
 
-		    // Viewport
-		    VkViewport vkViewport	= {};
+		    // Viewport 
 		    vkViewport.x			= m_state->viewport.x;
 		    vkViewport.y			= m_state->viewport.y;
 		    vkViewport.width		= m_state->viewport.width;
@@ -81,8 +82,7 @@ namespace Spartan
 		    vkViewport.minDepth		= m_state->viewport.depth_min;
 		    vkViewport.maxDepth		= m_state->viewport.depth_max;
 
-		    // Scissor
-		    VkRect2D scissor = {};
+		    // Scissor	   
             if (!m_state->scissor.IsDefined())
             {
                 scissor.offset          = { 0, 0 };

@@ -1806,7 +1806,7 @@ namespace Spartan
             cmd_list->Submit();
         }
 
-        //m_brdf_specular_lut_rendered = true;
+        m_brdf_specular_lut_rendered = true;
     }
 
     void Renderer::Pass_Copy(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)

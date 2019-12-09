@@ -120,7 +120,6 @@ namespace Spartan
         RHI_Image_Layout m_layout       = RHI_Image_Undefined;
 		uint32_t m_array_size			= 1;	
 		std::vector<void*> m_resource_depth_stencils; 
-		static std::mutex m_mutex;
 
 	private:
 		uint32_t GetByteCount();
