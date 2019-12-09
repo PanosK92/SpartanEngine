@@ -84,6 +84,15 @@ namespace Spartan
         RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
         m_begin_types.push_back(type);
 
+        // Profiling - Start
+        if (type == RHI_Cmd_Begin || type == RHI_Cmd_Marker)
+        {
+            if (m_profiler) m_profiler->TimeBlockStart(pass_name, true, true);
+            #ifdef DEBUG
+                vulkan_common::debug_marker::begin(CMD_BUFFER, pass_name.c_str(), Vector4::One);
+            #endif
+        }
+
         if (type == RHI_Cmd_Begin)
         {
             // Sync CPU to GPU
@@ -150,15 +159,10 @@ namespace Spartan
 
             // At this point, it's safe to allow for command recording
             m_cmd_state = RHI_Cmd_List_Recording;
-        }
 
-        // Debug marker
-        #ifdef DEBUG
-        if (type == RHI_Cmd_Begin || type == RHI_Cmd_Marker)
-        {
-            vulkan_common::debug_marker::begin(CMD_BUFFER, pass_name.c_str(), Vector4::One);
+            // Temp hack until I implement some method to have one time set global resources
+            m_renderer->SetGlobalSamplersAndConstantBuffers(this);
         }
-        #endif
 
         return true;
 	}
@@ -166,6 +170,15 @@ namespace Spartan
 	void RHI_CommandList::End()
 	{
         RHI_Cmd_Type begin_type = m_begin_types.back();
+
+        // Profiling - End
+        if (begin_type == RHI_Cmd_Begin || begin_type == RHI_Cmd_Marker)
+        {
+            #ifdef DEBUG
+                vulkan_common::debug_marker::end(CMD_BUFFER);
+            #endif
+            if (m_profiler) m_profiler->TimeBlockEnd();
+        }
 
         if (begin_type == RHI_Cmd_Begin)
         {
@@ -182,14 +195,6 @@ namespace Spartan
                 m_cmd_state = RHI_Cmd_List_Ended;
             }
         }
-
-        // Debug marker - End
-        #ifdef DEBUG
-        if (begin_type == RHI_Cmd_Begin || begin_type == RHI_Cmd_Marker)
-        {
-            vulkan_common::debug_marker::end(CMD_BUFFER);
-        }
-        #endif
 
         m_begin_types.pop_back();
 	}
