@@ -79,6 +79,8 @@ namespace Spartan
         if (m_pipeline_state.shader_pixel)                                          SetShaderPixel(m_pipeline_state.shader_pixel);
         if (m_pipeline_state.viewport.IsDefined())                                  SetViewport(m_pipeline_state.viewport);
         if (m_pipeline_state.primitive_topology != RHI_PrimitiveTopology_Unknown)   SetPrimitiveTopology(m_pipeline_state.primitive_topology);
+        if (m_pipeline_state.render_target_swapchain)                               SetRenderTarget(m_pipeline_state.render_target_swapchain->GetRenderTargetView());
+        if (m_pipeline_state.render_target_texture)                                 SetRenderTarget(m_pipeline_state.render_target_texture->GetResource_RenderTarget());
 
         return true;
 	}
