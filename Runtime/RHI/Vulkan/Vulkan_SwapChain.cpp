@@ -150,7 +150,7 @@ namespace Spartan
                 }
             }
 
-            if (!vulkan_common::render_pass::create(rhi_context, rhi_context->surface_format, render_pass))
+            if (!vulkan_common::render_pass::create(rhi_context, rhi_context->surface_format, render_pass, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR))
                 return false;
 
             // Frame buffers

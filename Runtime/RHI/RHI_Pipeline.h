@@ -39,10 +39,12 @@ namespace Spartan
         void SetConstantBuffer(uint32_t slot, RHI_ConstantBuffer* constant_buffer);
         void SetSampler(uint32_t slot, RHI_Sampler* sampler);
         void SetTexture(uint32_t slot, RHI_Texture* texture);
-		auto GetPipeline()          const { return m_pipeline; }
-		auto GetPipelineLayout()    const { return m_pipeline_layout; }
-		auto GetState()             const { return m_state; }
-        void* GetDescriptorPendingUpdate();
+        void* GetDescriptorSet();
+        void MakeDirty() { m_descriptor_dirty = true; }
+
+        auto GetPipeline()          const { return m_pipeline; }
+        auto GetPipelineLayout()    const { return m_pipeline_layout; }
+        auto GetState()             const { return m_state; }
 
 	private:
         uint32_t GetDescriptorBlueprintHash(const std::vector<RHI_Descriptor>& descriptor_blueprint);
@@ -56,6 +58,7 @@ namespace Spartan
         const uint32_t m_sampler_max            = 10;
         const uint32_t m_texture_max            = 10;
         uint32_t m_descriptor_capacity          = 20;
+        bool m_descriptor_dirty                 = false;
         // Descriptors - Acts as a blueprint and is left untouched after being filled by ReflectShaders().
         std::vector<RHI_Descriptor> m_descriptor_blueprint;
         // Hash(type, slot, id) > Descriptor - Acts as a the API's descriptor cache.

@@ -290,7 +290,7 @@ namespace Spartan
             if (m_bind_flags & RHI_Texture_RenderTarget)
             {
                 // Render pass
-                if (!vulkan_common::render_pass::create(rhi_context, vulkan_format[m_format], m_resource_render_pass))
+                if (!vulkan_common::render_pass::create(rhi_context, vulkan_format[m_format], m_resource_render_pass, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))
                     return false;
 
                 // Frame buffer
