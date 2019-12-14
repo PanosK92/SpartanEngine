@@ -45,21 +45,6 @@ namespace Spartan
 
 	}
 
-    void RHI_Pipeline::SetConstantBuffer(uint32_t slot, RHI_ConstantBuffer* constant_buffer)
-    {
-
-    }
-
-    void RHI_Pipeline::SetSampler(uint32_t slot, RHI_Sampler* sampler)
-    {
-
-    }
-
-    void RHI_Pipeline::SetTexture(uint32_t slot, RHI_Texture* texture)
-    {
-
-    }
-
     void* RHI_Pipeline::CreateDescriptorSet(uint32_t hash)
     {
         return nullptr;

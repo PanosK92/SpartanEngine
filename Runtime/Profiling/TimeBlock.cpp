@@ -59,6 +59,11 @@ namespace Spartan
 			m_profiling_cpu = true;
 		}
 
+        // TODO
+        #ifdef API_GRAPHICS_VULKAN
+        profile_gpu = false;
+        #endif
+
 		if (profile_gpu)
 		{
 			// Create required queries

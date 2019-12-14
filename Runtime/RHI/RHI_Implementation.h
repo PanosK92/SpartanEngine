@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // RUNTIME
 #if defined(SPARTAN_RUNTIME) || (SPARTAN_RUNTIME_STATIC == 1)
 
-// DirectX 11
+// Definition - DirectX 11
 #if defined(API_GRAPHICS_D3D11)
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -117,21 +117,9 @@ static const D3D11_BLEND_OP d3d11_blend_operation[] =
 	D3D11_BLEND_OP_MIN,
 	D3D11_BLEND_OP_MAX
 };
-
-namespace Spartan
-{
-	struct RHI_Context
-	{
-		ID3D11Device* device					= nullptr;
-		ID3D11DeviceContext* device_context		= nullptr;
-		ID3DUserDefinedAnnotation* annotation	= nullptr;
-	};
-}
-#include "D3D11/D3D11_Common.h"
 #endif 
-// DirectX 11
 
-// VULKAN
+// Definition - Vulkan
 #if defined(API_GRAPHICS_VULKAN) 
 #pragma comment(lib, "vulkan-1.lib")
 #pragma comment(lib, "VkLayer_utils.lib")
@@ -139,7 +127,6 @@ namespace Spartan
 #pragma warning(push, 0) // Hide warnings which belong to Vulkan
 #include <vulkan/vulkan.h>
 #pragma warning(pop)
-#include <vector>
 
 static const VkPolygonMode vulkan_polygon_mode[] =
 {
@@ -248,49 +235,76 @@ static const VkImageLayout vulkan_image_layout[] =
     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
     VK_IMAGE_LAYOUT_UNDEFINED
 };
+#endif
 
+// HEADER DEPENDENCIES
+#if defined (API_GRAPHICS_D3D11)
+    #include <stdint.h>
+#elif defined (API_GRAPHICS_VULKAN)
+    #include <vector>
+#endif
+
+// RHI CONTEXT - All
 namespace Spartan
 {
-	struct RHI_Context
-	{
-		VkInstance instance							= nullptr;
-		VkPhysicalDevice device_physical			= nullptr;
-		VkDevice device								= nullptr;
-		VkDebugUtilsMessengerEXT callback_handle	= nullptr;
-        VkFormat surface_format;
-        VkColorSpaceKHR surface_color_space;
+    struct RHI_Context
+    {
+        #if defined(API_GRAPHICS_D3D11)
+            ID3D11Device* device                    = nullptr;
+            ID3D11DeviceContext* device_context     = nullptr;
+            ID3DUserDefinedAnnotation* annotation   = nullptr;
+        #endif
 
-        // Queue family indices
-        uint32_t queue_graphics_family_index    = 0;
-        uint32_t queue_transfer_family_index    = 0;
-        uint32_t queue_compute_family_index     = 0;
-        
-        // Queues
-        VkQueue queue_graphics  = nullptr;
-        VkQueue queue_compute   = nullptr;
-        VkQueue queue_transfer  = nullptr;
+        #if defined(API_GRAPHICS_VULKAN)
+            VkInstance instance                         = nullptr;
+            VkPhysicalDevice device_physical            = nullptr;
+            VkDevice device                             = nullptr;
+            VkDebugUtilsMessengerEXT callback_handle    = nullptr;
+            VkFormat surface_format                     = VK_FORMAT_UNDEFINED;
+            VkColorSpaceKHR surface_color_space         = VK_COLOR_SPACE_MAX_ENUM_KHR;
+            // Queues
+            VkQueue queue_graphics                      = nullptr;
+            VkQueue queue_compute                       = nullptr;
+            VkQueue queue_transfer                      = nullptr;
+            // Queue family indices
+            uint32_t queue_graphics_family_index        = 0;
+            uint32_t queue_transfer_family_index        = 0;
+            uint32_t queue_compute_family_index         = 0;
+            
+            // Extensions
+            #ifdef DEBUG
+                std::vector<const char*> extensions_device      = { VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_EXT_DEBUG_MARKER_EXTENSION_NAME };
+                std::vector<const char*> validation_layers      = { "VK_LAYER_KHRONOS_validation" };
+                std::vector<const char*> extensions_instance    = { VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WIN32_SURFACE_EXTENSION_NAME, VK_EXT_DEBUG_REPORT_EXTENSION_NAME, VK_EXT_DEBUG_UTILS_EXTENSION_NAME };
+            #else
+                std::vector<const char*> extensions_device      = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+                std::vector<const char*> validation_layers      = { };
+                std::vector<const char*> extensions_instance    = { VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WIN32_SURFACE_EXTENSION_NAME };
+            #endif
+        #endif
 
+        // Debugging
+        #ifdef DEBUG
+            const bool validation_enabled     = true;
+            const bool debug_markers_enabled  = true;
+        #else
+            const bool validation_enabled     = false;
+            const bool debug_markers_enabled  = false;
+        #endif
+
+        // Shader resource slot shifts
         static const uint32_t shader_shift_buffer       = 100;
         static const uint32_t shader_shift_texture      = 200;
         static const uint32_t shader_shift_sampler      = 300;
         static const uint32_t shader_shift_rw_buffer    = 400;
-		
-		#ifdef DEBUG
-        std::vector<const char*> extensions_device      = { VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_EXT_DEBUG_MARKER_EXTENSION_NAME };
-        std::vector<const char*> validation_layers      = { "VK_LAYER_KHRONOS_validation" };
-		std::vector<const char*> extensions_instance    = { VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WIN32_SURFACE_EXTENSION_NAME, VK_EXT_DEBUG_REPORT_EXTENSION_NAME, VK_EXT_DEBUG_UTILS_EXTENSION_NAME };
-		bool validation_enabled     = true;
-        bool debug_markers_enabled  = true;
-		#else
-        std::vector<const char*> extensions_device      = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
-        std::vector<const char*> validation_layers      = { };
-        std::vector<const char*> extensions_instance    = { VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WIN32_SURFACE_EXTENSION_NAME };
-        bool validation_enabled     = false;
-        bool debug_markers_enabled  = false;
-		#endif
-	};
+    };
 }
-#include "Vulkan/Vulkan_Common.h"
-#endif // VULKAN
+
+// HELPERS
+#if defined(API_GRAPHICS_D3D11)
+    #include "D3D11/D3D11_Common.h"
+#elif defined (API_GRAPHICS_VULKAN)
+    #include "Vulkan/Vulkan_Common.h"
+#endif
 
 #endif // RUNTIME

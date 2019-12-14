@@ -27,8 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //================================
 
 //= INCLUDES ==================
-#include <optional>
-#include <set>
 #include "../RHI_Device.h"
 #include "../RHI_Texture.h"
 #include "../../Logging/Log.h"
@@ -549,7 +547,7 @@ namespace Spartan::vulkan_common
 
     namespace render_pass
     {
-        inline bool create(const RHI_Context* rhi_context, const VkFormat format, void*& render_pass)
+        inline bool create(const RHI_Context* rhi_context, const VkFormat format, void*& render_pass, const VkImageLayout layout_final)
         {
             VkAttachmentDescription color_attachment    = {};
             color_attachment.format                     = format;
@@ -559,7 +557,7 @@ namespace Spartan::vulkan_common
             color_attachment.stencilLoadOp              = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
             color_attachment.stencilStoreOp             = VK_ATTACHMENT_STORE_OP_DONT_CARE;
             color_attachment.initialLayout              = VK_IMAGE_LAYOUT_UNDEFINED;
-            color_attachment.finalLayout                = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+            color_attachment.finalLayout                = layout_final;
 
             VkAttachmentReference color_attachment_ref  = {};
             color_attachment_ref.attachment             = 0;

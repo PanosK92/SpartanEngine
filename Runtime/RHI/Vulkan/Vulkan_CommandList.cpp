@@ -44,7 +44,7 @@ using namespace std;
 using namespace Spartan::Math;
 //=============================
 
-#define CMD_BUFFER reinterpret_cast<VkCommandBuffer>(m_cmd_buffer)
+#define CMD_BUFFER static_cast<VkCommandBuffer>(m_cmd_buffer)
 
 namespace Spartan
 {
@@ -116,6 +116,7 @@ namespace Spartan
             }
 
             m_pipeline = m_rhi_pipeline_cache->GetPipeline(m_pipeline_state).get();
+            m_pipeline->MakeDirty();
             if (!m_pipeline)
             {
                 LOG_ERROR("Failed to get pipeline");
@@ -184,7 +185,7 @@ namespace Spartan
         {
             if (m_cmd_state != RHI_Cmd_List_Recording)
             {
-                LOG_ERROR("Can't record command");
+                LOG_WARNING("Can't record command");
                 return;
             }
 
@@ -203,12 +204,12 @@ namespace Spartan
 	{
         if (m_cmd_state != RHI_Cmd_List_Recording)
         {
-            LOG_ERROR("Can't record command");
+            LOG_WARNING("Can't record command");
             return;
         }
 
         // Update descriptor set (if needed)
-        if (void* descriptor = m_pipeline->GetDescriptorPendingUpdate())
+        if (void* descriptor = m_pipeline->GetDescriptorSet())
         {
             // Bind descriptor set
             VkDescriptorSet descriptor_sets[1] = { static_cast<VkDescriptorSet>(descriptor) };
@@ -238,12 +239,12 @@ namespace Spartan
 	{
         if (m_cmd_state != RHI_Cmd_List_Recording)
         {
-            LOG_ERROR("Can't record command");
+            LOG_WARNING("Can't record command");
             return;
         }
 
         // Update descriptor set (if needed)
-        if (void* descriptor = m_pipeline->GetDescriptorPendingUpdate())
+        if (void* descriptor = m_pipeline->GetDescriptorSet())
         {
             // Bind descriptor set
             VkDescriptorSet descriptor_sets[1] = { static_cast<VkDescriptorSet>(descriptor) };
@@ -274,7 +275,7 @@ namespace Spartan
 	{
         if (m_cmd_state != RHI_Cmd_List_Recording)
         {
-            LOG_ERROR("Can't record command");
+            LOG_WARNING("Can't record command");
             return;
         }
 
@@ -298,7 +299,7 @@ namespace Spartan
 	{
         if (m_cmd_state != RHI_Cmd_List_Recording)
         {
-            LOG_ERROR("Can't record command");
+            LOG_WARNING("Can't record command");
             return;
         }
 
@@ -345,7 +346,7 @@ namespace Spartan
 	{
         if (m_cmd_state != RHI_Cmd_List_Recording)
         {
-            LOG_ERROR("Can't record command");
+            LOG_WARNING("Can't record command");
             return;
         }
 
@@ -365,7 +366,7 @@ namespace Spartan
 	{
         if (m_cmd_state != RHI_Cmd_List_Recording)
         {
-            LOG_ERROR("Can't record command");
+            LOG_WARNING("Can't record command");
             return;
         }
 
@@ -391,7 +392,7 @@ namespace Spartan
     {
         if (m_cmd_state != RHI_Cmd_List_Recording)
         {
-            LOG_ERROR("Can't record command");
+            LOG_WARNING("Can't record command");
             return;
         }
 
@@ -403,7 +404,7 @@ namespace Spartan
     {
         if (m_cmd_state != RHI_Cmd_List_Recording)
         {
-            LOG_ERROR("Can't record command");
+            LOG_WARNING("Can't record command");
             return;
         }
 
@@ -415,7 +416,7 @@ namespace Spartan
     {
         if (m_cmd_state != RHI_Cmd_List_Recording)
         {
-            LOG_ERROR("Can't record command");
+            LOG_WARNING("Can't record command");
             return;
         }
 

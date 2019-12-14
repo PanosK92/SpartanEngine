@@ -52,16 +52,16 @@ namespace Spartan
             static std::hash<uint32_t> hasher;
 
             hash = 10;
-            hash *= 31 + static_cast<uint32_t>(hasher(input_layout->GetId()));
-            hash *= 31 + static_cast<uint32_t>(hasher(rasterizer_state->GetId()));
-            hash *= 31 + static_cast<uint32_t>(hasher(blend_state->GetId()));
-            hash *= 31 + static_cast<uint32_t>(hasher(shader_vertex->GetId()));
-            hash *= 31 + static_cast<uint32_t>(hasher(shader_pixel->GetId()));
-            hash *= 31 + static_cast<uint32_t>(hasher(depth_stencil_state->GetId()));
-            hash *= 31 + static_cast<uint32_t>(hasher(vertex_buffer_stride));
-            hash *= 31 + static_cast<uint32_t>(hasher(static_cast<uint32_t>(primitive_topology)));
-            hash *= 31 + static_cast<uint32_t>(hasher(static_cast<uint32_t>(scissor_dynamic)));
-            hash *= 31 + static_cast<uint32_t>(hasher(GetRenderTargetId()));
+            hash += 31 * static_cast<uint32_t>(hasher(input_layout->GetId()));
+            hash += 31 * static_cast<uint32_t>(hasher(rasterizer_state->GetId()));
+            hash += 31 * static_cast<uint32_t>(hasher(blend_state->GetId()));
+            hash += 31 * static_cast<uint32_t>(hasher(shader_vertex->GetId()));
+            hash += 31 * static_cast<uint32_t>(hasher(shader_pixel->GetId()));
+            hash += 31 * static_cast<uint32_t>(hasher(depth_stencil_state->GetId()));
+            hash += 31 * static_cast<uint32_t>(hasher(vertex_buffer_stride));
+            hash += 31 * static_cast<uint32_t>(hasher(static_cast<uint32_t>(primitive_topology)));
+            hash += 31 * static_cast<uint32_t>(hasher(static_cast<uint32_t>(scissor_dynamic)));
+            hash += 31 * static_cast<uint32_t>(hasher(GetRenderTargetId()));
         }
 
         auto GetHash() const { return hash; }
