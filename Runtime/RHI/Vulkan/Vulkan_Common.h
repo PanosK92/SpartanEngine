@@ -549,10 +549,12 @@ namespace Spartan::vulkan_common
     {
         inline bool create(const RHI_Context* rhi_context, const VkFormat format, void*& render_pass, const VkImageLayout layout_final)
         {
+            bool clear_on_set = false;
+
             VkAttachmentDescription color_attachment    = {};
             color_attachment.format                     = format;
             color_attachment.samples                    = VK_SAMPLE_COUNT_1_BIT;
-            color_attachment.loadOp                     = VK_ATTACHMENT_LOAD_OP_CLEAR;
+            color_attachment.loadOp                     = clear_on_set ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
             color_attachment.storeOp                    = VK_ATTACHMENT_STORE_OP_STORE;
             color_attachment.stencilLoadOp              = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
             color_attachment.stencilStoreOp             = VK_ATTACHMENT_STORE_OP_DONT_CARE;

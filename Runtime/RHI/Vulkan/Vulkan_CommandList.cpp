@@ -87,10 +87,15 @@ namespace Spartan
         // Profiling - Start
         if (type == RHI_Cmd_Begin || type == RHI_Cmd_Marker)
         {
-            if (m_profiler) m_profiler->TimeBlockStart(pass_name, true, true);
-            #ifdef DEBUG
+            if (m_profiler)
+            {
+                m_profiler->TimeBlockStart(pass_name, true, true);
+            }
+
+            if (m_rhi_device->GetContextRhi()->debug_markers_enabled)
+            {
                 vulkan_common::debug_marker::begin(CMD_BUFFER, pass_name.c_str(), Vector4::One);
-            #endif
+            }
         }
 
         if (type == RHI_Cmd_Begin)
@@ -135,7 +140,7 @@ namespace Spartan
 		    	return false;
 
 		    // Begin render pass
-		    VkClearValue clear_color					= { 0.0f, 0.0f, 0.0f, 1.0f };
+		    VkClearValue clear_color					= { 1.0f, 0.0f, 0.0f, 1.0f };
 		    VkRenderPassBeginInfo render_pass_info		= {};
 		    render_pass_info.sType						= VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		    render_pass_info.renderPass					= static_cast<VkRenderPass>(m_pipeline_state.GetRenderPass());
@@ -175,10 +180,15 @@ namespace Spartan
         // Profiling - End
         if (begin_type == RHI_Cmd_Begin || begin_type == RHI_Cmd_Marker)
         {
-            #ifdef DEBUG
+            if (m_rhi_device->GetContextRhi()->debug_markers_enabled)
+            {
                 vulkan_common::debug_marker::end(CMD_BUFFER);
-            #endif
-            if (m_profiler) m_profiler->TimeBlockEnd();
+            }
+
+            if (m_profiler)
+            {
+                m_profiler->TimeBlockEnd();
+            }
         }
 
         if (begin_type == RHI_Cmd_Begin)
@@ -319,27 +329,27 @@ namespace Spartan
 
 	void RHI_CommandList::SetPrimitiveTopology(const RHI_PrimitiveTopology_Mode primitive_topology)
 	{
-        // part of pipeline
+        LOG_WARNING("Part of pipeline, ignored.");
 	}
 
 	void RHI_CommandList::SetInputLayout(const RHI_InputLayout* input_layout)
 	{
-        // part of pipeline
+        LOG_WARNING("Part of pipeline, ignored.");
 	}
 
 	void RHI_CommandList::SetDepthStencilState(const RHI_DepthStencilState* depth_stencil_state)
 	{
-        // part of pipeline
+        LOG_WARNING("Part of pipeline, ignored.");
 	}
 
 	void RHI_CommandList::SetRasterizerState(const RHI_RasterizerState* rasterizer_state)
 	{
-        // part of pipeline
+        LOG_WARNING("Part of pipeline, ignored.");
 	}
 
 	void RHI_CommandList::SetBlendState(const RHI_BlendState* blend_state)
 	{
-        // part of pipeline
+        LOG_WARNING("Part of pipeline, ignored.");
 	}
 
 	void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer)
@@ -432,20 +442,39 @@ namespace Spartan
 
 	void RHI_CommandList::SetRenderTargets(const void* render_targets, uint32_t render_target_count, void* depth_stencil /*= nullptr*/)
 	{
-        // part of pipeline
+        LOG_WARNING("Part of pipeline, ignored.");
 	}
 
 	void RHI_CommandList::ClearRenderTarget(void* render_target, const Vector4& color)
 	{
-        // part of pipeline
+        // https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/vkspec.html#clears-outside
+        //if (m_cmd_state != RHI_Cmd_List_Idle)
+        //{
+        //    LOG_WARNING("Explicit clearing can only happen outside of a render pass instance");
+        //    return;
+        //}
+
+        //vkBeginCommandBuffer(presentCommandBuffers[i], &beginInfo);
+        //vkCmdPipelineBarrier(presentCommandBuffers[i], VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &presentToClearBarrier);
+        //VkClearColorValue clear_color = { { color.x, color.x, color.y, color.w } };
+        //vkCmdClearColorImage(presentCommandBuffers[i], static_cast<VkImage>(render_target), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clear_color, 1, &subResourceRange);
+        //vkCmdPipelineBarrier(presentCommandBuffers[i], VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 1, &clearToPresentBarrier);
+        //vkEndCommandBuffer(presentCommandBuffers[i]);
 	}
 
     void RHI_CommandList::ClearDepthStencil(void* depth_stencil, const uint32_t flags, const float depth, const uint8_t stencil /*= 0*/)
     {
-        // part of pipeline
+        // https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/vkspec.html#clears-outside
+        //if (m_cmd_state != RHI_Cmd_List_Idle)
+        //{
+        //    LOG_WARNING("Explicit clearing can only happen outside of a render pass instance");
+        //    return;
+        //}
+
+        // vkCmdClearDepthStencilImage
 	}
 
-	bool RHI_CommandList::Submit(bool profile /*= true*/)
+	bool RHI_CommandList::Submit()
 	{
         if (m_cmd_state != RHI_Cmd_List_Ended)
         {
@@ -487,15 +516,5 @@ namespace Spartan
     {
         vulkan_common::fence::wait_reset(m_rhi_device->GetContextRhi(), m_cmd_list_consumed_fence);
     }
-
-	RHI_Command& RHI_CommandList::GetCmd()
-	{
-		return m_empty_cmd;
-	}
-
-	void RHI_CommandList::Clear()
-	{
-
-	}
 }
 #endif

@@ -126,16 +126,22 @@ namespace Spartan
 				}
 			}
 
-			// Describe
-			VkPhysicalDeviceFeatures device_features	= {};
-			device_features.samplerAnisotropy			= m_context->GetSubsystem<Renderer>()->GetOptionValue<bool>(Option_Value_Anisotropy);
+			// Get device features
+			VkPhysicalDeviceFeatures device_features_supported = {};
+            vkGetPhysicalDeviceFeatures(m_rhi_context->device_physical, &device_features_supported);
 
+            // Set enabled device features
+            VkPhysicalDeviceFeatures device_features_enabled = {};
+            device_features_enabled.samplerAnisotropy   = m_context->GetSubsystem<Renderer>()->GetOptionValue<bool>(Option_Value_Anisotropy);
+            device_features_enabled.fillModeNonSolid    = device_features_supported.fillModeNonSolid; // required for line rendering
+
+            // Device create info
 			VkDeviceCreateInfo create_info = {};
 			{
 				create_info.sType					= VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 				create_info.queueCreateInfoCount	= static_cast<uint32_t>(queue_create_infos.size());
 				create_info.pQueueCreateInfos		= queue_create_infos.data();
-				create_info.pEnabledFeatures		= &device_features;
+				create_info.pEnabledFeatures		= &device_features_enabled;
 				create_info.enabledExtensionCount	= static_cast<uint32_t>(m_rhi_context->extensions_device.size());
 				create_info.ppEnabledExtensionNames = m_rhi_context->extensions_device.data();
 
