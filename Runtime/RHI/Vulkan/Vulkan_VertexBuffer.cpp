@@ -54,6 +54,9 @@ namespace Spartan
 			return false;
 		}
 
+        // Wait in case the buffer is still in use by the graphics queue
+        vkQueueWaitIdle(m_rhi_device->GetContextRhi()->queue_graphics);
+
 		// Clear previous buffer
 		vulkan_common::buffer::destroy(m_rhi_device->GetContextRhi(), m_buffer);
 		vulkan_common::memory::free(m_rhi_device->GetContextRhi(), m_buffer_memory);

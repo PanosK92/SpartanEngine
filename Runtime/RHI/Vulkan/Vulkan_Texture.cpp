@@ -267,6 +267,9 @@ namespace Spartan
             }
         }
 
+        // Name the image
+        vulkan_common::debug_marker::set_object_name(rhi_context->device, reinterpret_cast<uint64_t>(image), VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, "texture");
+
         // Create image views
         {
             VkImageAspectFlags aspect_flags = vulkan_common::image::bind_flags_to_aspect_mask(m_bind_flags);

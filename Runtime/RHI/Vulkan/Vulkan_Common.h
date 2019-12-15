@@ -769,7 +769,7 @@ namespace Spartan::vulkan_common
         }
     }
 
-    namespace debug
+    namespace debug_message
     {
         static VKAPI_ATTR VkBool32 VKAPI_CALL callback(
             VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
@@ -822,17 +822,19 @@ namespace Spartan::vulkan_common
         static bool active = false;
 
         // The debug marker extension is not part of the core, so function pointers need to be loaded manually
-        static PFN_vkCmdDebugMarkerBeginEXT pfnCmdDebugMarkerBegin  = VK_NULL_HANDLE;
-        static PFN_vkCmdDebugMarkerEndEXT pfnCmdDebugMarkerEnd      = VK_NULL_HANDLE;
-
+        static PFN_vkDebugMarkerSetObjectNameEXT vkDebugMarkerSetObjectName = VK_NULL_HANDLE;
+        static PFN_vkCmdDebugMarkerBeginEXT pfnCmdDebugMarkerBegin          = VK_NULL_HANDLE;
+        static PFN_vkCmdDebugMarkerEndEXT pfnCmdDebugMarkerEnd              = VK_NULL_HANDLE;
+        
         inline void setup(VkDevice device)
         {
             bool is_extension_present = extension::is_present(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
 
             if (is_extension_present)
             {
-                pfnCmdDebugMarkerBegin  = reinterpret_cast<PFN_vkCmdDebugMarkerBeginEXT>(vkGetDeviceProcAddr(device, "vkCmdDebugMarkerBeginEXT"));
-                pfnCmdDebugMarkerEnd    = reinterpret_cast<PFN_vkCmdDebugMarkerEndEXT>(vkGetDeviceProcAddr(device, "vkCmdDebugMarkerEndEXT"));
+                vkDebugMarkerSetObjectName  = reinterpret_cast<PFN_vkDebugMarkerSetObjectNameEXT>(vkGetDeviceProcAddr(device, "vkDebugMarkerSetObjectNameEXT"));
+                pfnCmdDebugMarkerBegin      = reinterpret_cast<PFN_vkCmdDebugMarkerBeginEXT>(vkGetDeviceProcAddr(device, "vkCmdDebugMarkerBeginEXT"));
+                pfnCmdDebugMarkerEnd        = reinterpret_cast<PFN_vkCmdDebugMarkerEndEXT>(vkGetDeviceProcAddr(device, "vkCmdDebugMarkerEndEXT"));
             }
             else
             {
@@ -840,7 +842,10 @@ namespace Spartan::vulkan_common
                 LOG_INFO("Try running from inside a Vulkan graphics debugger (e.g. RenderDoc)");
             }
 
-            active = (pfnCmdDebugMarkerBegin != VK_NULL_HANDLE) && (pfnCmdDebugMarkerEnd != VK_NULL_HANDLE);
+            active =
+                (vkDebugMarkerSetObjectName != VK_NULL_HANDLE)  &&
+                (pfnCmdDebugMarkerBegin != VK_NULL_HANDLE)      &&
+                (pfnCmdDebugMarkerEnd != VK_NULL_HANDLE);
         }
 
         inline void begin(VkCommandBuffer cmd_buffer, const char* name, const Math::Vector4& color)
@@ -849,7 +854,7 @@ namespace Spartan::vulkan_common
                 return;
 
             VkDebugMarkerMarkerInfoEXT marker_info = {};
-            marker_info.sType       = VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT;
+            marker_info.sType = VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT;
             memcpy(marker_info.color, color.Data(), sizeof(float) * 4);
             marker_info.pMarkerName = name;
             pfnCmdDebugMarkerBegin(cmd_buffer, &marker_info);
@@ -861,6 +866,19 @@ namespace Spartan::vulkan_common
                 return;
 
             pfnCmdDebugMarkerEnd(cmdBuffer);
+        }
+
+        inline void set_object_name(VkDevice device, uint64_t object, VkDebugReportObjectTypeEXT object_type, const char* name)
+        {
+            if (!active)
+                return;
+
+            VkDebugMarkerObjectNameInfoEXT name_info    = {};
+            name_info.sType                             = VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT;
+            name_info.objectType                        = object_type;
+            name_info.object                            = object;
+            name_info.pObjectName                       = name;
+            vkDebugMarkerSetObjectName(device, &name_info);
         }
     };
 }
