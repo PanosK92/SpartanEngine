@@ -768,14 +768,14 @@ namespace Spartan
                 Pass_MotionBlur(cmd_list, tex_in_hdr, tex_out_hdr);
                 tex_in_hdr.swap(tex_out_hdr);
             }
-#ifdef API_GRAPHICS_D3D11
+
             // Bloom
             if (GetOptionValue(Render_Bloom))
             {
                 Pass_Bloom(cmd_list, tex_in_hdr, tex_out_hdr);
                 tex_in_hdr.swap(tex_out_hdr);
             }
-#endif
+
             // Tone-Mapping
             if (m_option_values[Option_Value_Tonemapping] != 0)
             {
@@ -792,14 +792,14 @@ namespace Spartan
                 Pass_Dithering(cmd_list, tex_in_ldr, tex_out_ldr);
                 tex_in_ldr.swap(tex_out_ldr);
             }
-#ifdef API_GRAPHICS_D3D11
+
             // FXAA
             if (GetOptionValue(Render_AntiAliasing_FXAA))
             {
                 Pass_FXAA(cmd_list, tex_in_ldr, tex_out_ldr);
                 tex_in_ldr.swap(tex_out_ldr);
             }
-#endif
+
             // Sharpening
             if (GetOptionValue(Render_Sharpening_LumaSharpen))
             {
@@ -851,28 +851,37 @@ namespace Spartan
     void Renderer::Pass_Downsample(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out, Renderer_Shader_Type pixel_shader)
     {
         // Acquire shader
-        const auto& shader_vertex   = m_shaders[Shader_Quad_V];
-        const auto& shader_pixel    = m_shaders[pixel_shader];
-        if (!shader_vertex->IsCompiled() || !shader_pixel->IsCompiled())
+        const auto& shader_v = m_shaders[Shader_Quad_V];
+        const auto& shader_p = m_shaders[pixel_shader];
+        if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
-        cmd_list->Begin("Pass_Downsample");
-
-        // Update uber buffer
-        m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-        UpdateUberBuffer();
-
-        cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
-        cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
-        cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
-        cmd_list->SetRenderTarget(tex_out);
-        cmd_list->SetViewport(tex_out->GetViewport());
-        cmd_list->SetShaderVertex(shader_vertex);
-        cmd_list->SetShaderPixel(shader_pixel);
-        cmd_list->SetTexture(0, tex_in);
-        cmd_list->DrawIndexed(m_quad.GetIndexCount());
-        cmd_list->End();
-        cmd_list->Submit();
+        // Set render state
+        RHI_PipelineState& pipeline_state           = cmd_list->GetPipelineState();
+        pipeline_state.shader_vertex                = shader_v.get();
+        pipeline_state.shader_pixel                 = shader_p.get();
+        pipeline_state.input_layout                 = shader_v->GetInputLayout().get();
+        pipeline_state.rasterizer_state             = m_rasterizer_cull_back_solid.get();
+        pipeline_state.blend_state                  = m_blend_disabled.get();
+        pipeline_state.depth_stencil_state          = m_depth_stencil_disabled.get();
+        pipeline_state.vertex_buffer_stride         = m_font->GetVertexBuffer()->GetStride();
+        pipeline_state.render_target_color_texture  = tex_out.get();  
+        pipeline_state.viewport                     = tex_out->GetViewport();
+        pipeline_state.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
+        
+        if (cmd_list->Begin("Pass_Downsample"))
+        {
+            // Update uber buffer
+            m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+            UpdateUberBuffer();
+        
+            cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
+            cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
+            cmd_list->SetTexture(0, tex_in);
+            cmd_list->DrawIndexed(m_quad.GetIndexCount());
+            cmd_list->End();
+            cmd_list->Submit();
+        }
     }
 
 	void Renderer::Pass_BlurBox(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out, const float sigma)
@@ -1074,83 +1083,120 @@ namespace Spartan
 
 	void Renderer::Pass_Bloom(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
-		// Acquire shaders		
-		const auto& shader_bloomBright	= m_shaders[Shader_BloomDownsampleLuminance_P];
-		const auto& shader_bloomBlend	= m_shaders[Shader_BloomBlend_P];
-		const auto& shader_downsample	= m_shaders[Shader_BloomDownsample_P];
-		const auto& shader_upsample		= m_shaders[Shader_Upsample_P];
-		if (!shader_downsample->IsCompiled() || !shader_bloomBright->IsCompiled() || !shader_upsample->IsCompiled() || !shader_downsample->IsCompiled())
+		// Acquire shaders
+        const auto& shader_v                    = m_shaders[Shader_Quad_V];
+		const auto& shader_p_bloom_luminance	= m_shaders[Shader_BloomDownsampleLuminance_P];
+		const auto& shader_p_bloom_blend	    = m_shaders[Shader_BloomBlend_P];
+		const auto& shader_p_downsample	        = m_shaders[Shader_BloomDownsample_P];
+		const auto& shader_p_upsample		    = m_shaders[Shader_Upsample_P];
+		if (!shader_p_downsample->IsCompiled() || !shader_p_bloom_luminance->IsCompiled() || !shader_p_upsample->IsCompiled() || !shader_p_downsample->IsCompiled())
 			return;
 
-		cmd_list->Begin("Pass_Bloom");
-        cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
-        cmd_list->SetBlendState(m_blend_disabled);
-
-        cmd_list->Begin("Downsample_And_Luminance");
+        if (cmd_list->Begin("Pass_Bloom", RHI_Cmd_Marker))
         {
-            // Update uber buffer
-            m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(m_render_tex_bloom[0]->GetWidth()), static_cast<float>(m_render_tex_bloom[0]->GetHeight()));
-            UpdateUberBuffer();
-
-            cmd_list->SetRenderTarget(m_render_tex_bloom[0]);
-            cmd_list->SetViewport(m_render_tex_bloom[0]->GetViewport());
-            cmd_list->SetShaderPixel(shader_bloomBright);
-            cmd_list->SetTexture(0, tex_in);
-            cmd_list->DrawIndexed(Rectangle::GetIndexCount());
-        }
-        cmd_list->End();
-
-        // Downsample
-        // The last bloom texture is the same size as the previous one (it's used for the Gaussian pass below), so we skip it
-        for (int i = 0; i < static_cast<int>(m_render_tex_bloom.size() - 1); i++)
-        {
-            Pass_Downsample(cmd_list, m_render_tex_bloom[i], m_render_tex_bloom[i + 1], Shader_BloomDownsample_P);
-        }
-
-        auto upsample = [this, &cmd_list, &shader_upsample](shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
-        {
-            cmd_list->Begin("Upsample");
+            // Luminance
             {
-                // Update uber buffer
-                m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-                UpdateUberBuffer();
+                // Set render state
+                RHI_PipelineState& pipeline_state           = cmd_list->GetPipelineState();
+                pipeline_state.shader_vertex                = shader_v.get();
+                pipeline_state.shader_pixel                 = shader_p_bloom_luminance.get();
+                pipeline_state.input_layout                 = shader_v->GetInputLayout().get();
+                pipeline_state.rasterizer_state             = m_rasterizer_cull_back_solid.get();
+                pipeline_state.blend_state                  = m_blend_disabled.get();
+                pipeline_state.depth_stencil_state          = m_depth_stencil_disabled.get();
+                pipeline_state.vertex_buffer_stride         = m_font->GetVertexBuffer()->GetStride();
+                pipeline_state.render_target_color_texture  = m_render_tex_bloom[0].get();  
+                pipeline_state.viewport                     = m_render_tex_bloom[0]->GetViewport();
+                pipeline_state.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
 
-                cmd_list->SetBlendState(m_blend_bloom); // blend with previous
-                cmd_list->SetRenderTarget(tex_out);
-                cmd_list->SetViewport(tex_out->GetViewport());
-                cmd_list->SetShaderPixel(shader_upsample);
-                cmd_list->SetTexture(0, tex_in);
-                cmd_list->DrawIndexed(Rectangle::GetIndexCount());
+                // Submit command list
+                if (cmd_list->Begin("Luminance"))
+                {
+                    // Update uber buffer
+                    m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(m_render_tex_bloom[0]->GetWidth()), static_cast<float>(m_render_tex_bloom[0]->GetHeight()));
+                    UpdateUberBuffer();
+
+                    cmd_list->SetTexture(0, tex_in);
+                    cmd_list->DrawIndexed(Rectangle::GetIndexCount());
+                    cmd_list->End();
+                    cmd_list->Submit();
+                }
             }
+            
+            // Downsample
+            // The last bloom texture is the same size as the previous one (it's used for the Gaussian pass below), so we skip it
+            for (int i = 0; i < static_cast<int>(m_render_tex_bloom.size() - 1); i++)
+            {
+                Pass_Downsample(cmd_list, m_render_tex_bloom[i], m_render_tex_bloom[i + 1], Shader_BloomDownsample_P);
+            }
+
+            auto upsample = [this, &cmd_list, &shader_v, &shader_p_upsample](shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+            {
+                // Set render state
+                RHI_PipelineState& pipeline_state           = cmd_list->GetPipelineState();
+                pipeline_state.shader_vertex                = shader_v.get();
+                pipeline_state.shader_pixel                 = shader_p_upsample.get();
+                pipeline_state.input_layout                 = shader_v->GetInputLayout().get();
+                pipeline_state.rasterizer_state             = m_rasterizer_cull_back_solid.get();
+                pipeline_state.blend_state                  = m_blend_bloom.get(); // blend with previous
+                pipeline_state.depth_stencil_state          = m_depth_stencil_disabled.get();
+                pipeline_state.vertex_buffer_stride         = m_font->GetVertexBuffer()->GetStride();
+                pipeline_state.render_target_color_texture  = tex_out.get();  
+                pipeline_state.viewport                     = tex_out->GetViewport();
+                pipeline_state.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
+
+                if (cmd_list->Begin("Upsample"))
+                {
+                    // Update uber buffer
+                    m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+                    UpdateUberBuffer();
+
+                    cmd_list->SetTexture(0, tex_in);
+                    cmd_list->DrawIndexed(Rectangle::GetIndexCount());
+                    cmd_list->End();
+                    cmd_list->Submit(); // we have to submit because all upsample passes are using the uber buffer
+                }
+            };
+
+            // Upsample + blend
+            cmd_list->UnsetTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from some previous pass)
+            for (int i = static_cast<int>(m_render_tex_bloom.size() - 1); i > 0; i--)
+            {
+                upsample(m_render_tex_bloom[i], m_render_tex_bloom[i - 1]);
+            }
+
+            // Additive blending
+            {
+                // Set render state
+                RHI_PipelineState& pipeline_state           = cmd_list->GetPipelineState();
+                pipeline_state.shader_vertex                = shader_v.get();
+                pipeline_state.shader_pixel                 = shader_p_bloom_blend.get();
+                pipeline_state.input_layout                 = shader_v->GetInputLayout().get();
+                pipeline_state.rasterizer_state             = m_rasterizer_cull_back_solid.get();
+                pipeline_state.blend_state                  = m_blend_disabled.get();
+                pipeline_state.depth_stencil_state          = m_depth_stencil_disabled.get();
+                pipeline_state.vertex_buffer_stride         = m_font->GetVertexBuffer()->GetStride();
+                pipeline_state.render_target_color_texture  = tex_out.get();  
+                pipeline_state.viewport                     = tex_out->GetViewport();
+                pipeline_state.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
+
+                // Submit command list
+                if (cmd_list->Begin("Additive_Blending"))
+                {
+                    // Update uber buffer
+                    m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+                    UpdateUberBuffer();
+
+                    cmd_list->SetTexture(0, tex_in);
+                    cmd_list->SetTexture(1, m_render_tex_bloom.front());
+                    cmd_list->DrawIndexed(Rectangle::GetIndexCount());
+                    cmd_list->End();
+                    cmd_list->Submit();
+                }
+            }
+            
             cmd_list->End();
-            cmd_list->Submit(); // we have to submit because all upsample passes are using the same buffer
-        };
-
-		// Upsample + blend
-        cmd_list->UnsetTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from some previous pass)
-        for (int i = static_cast<int>(m_render_tex_bloom.size() - 1); i > 0; i--)
-        {
-            upsample(m_render_tex_bloom[i], m_render_tex_bloom[i - 1]);
         }
-		
-		cmd_list->Begin("Additive_Blending");
-		{
-            // Update uber buffer
-            m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-            UpdateUberBuffer();
-
-            cmd_list->SetRenderTarget(tex_out);
-            cmd_list->SetTexture(0, tex_in);
-            cmd_list->SetTexture(1, m_render_tex_bloom.front());
-            cmd_list->SetBlendState(m_blend_disabled);
-			cmd_list->SetViewport(tex_out->GetViewport());
-			cmd_list->SetShaderPixel(shader_bloomBlend);
-			cmd_list->DrawIndexed(Rectangle::GetIndexCount());
-		}
-		cmd_list->End();
-
-		cmd_list->End();
-		cmd_list->Submit();
 	}
 
 	void Renderer::Pass_ToneMapping(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
@@ -1227,39 +1273,72 @@ namespace Spartan
 	void Renderer::Pass_FXAA(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
 		// Acquire shaders
-		const auto& shader_luma = m_shaders[Shader_Luma_P];
-		const auto& shader_fxaa = m_shaders[Shader_Fxaa_P];
-		if (!shader_luma->IsCompiled() || !shader_fxaa->IsCompiled())
+        const auto& shader_v        = m_shaders[Shader_Quad_V];
+		const auto& shader_p_luma   = m_shaders[Shader_Luma_P];
+		const auto& shader_p_fxaa   = m_shaders[Shader_Fxaa_P];
+		if (!shader_v->IsCompiled() || !shader_p_luma->IsCompiled() || !shader_p_fxaa->IsCompiled())
 			return;
 
-		cmd_list->Begin("Pass_FXAA");
+        if (cmd_list->Begin("Pass_FXAA", RHI_Cmd_Marker))
+        {
+            // Update uber buffer
+            m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+            UpdateUberBuffer();
 
-        // Update uber buffer
-        m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-        UpdateUberBuffer();
+            // Luminance
+            {
+                // Set render state
+                RHI_PipelineState& pipeline_state           = cmd_list->GetPipelineState();
+                pipeline_state.shader_vertex                = shader_v.get();
+                pipeline_state.shader_pixel                 = shader_p_luma.get();
+                pipeline_state.input_layout                 = shader_v->GetInputLayout().get();
+                pipeline_state.rasterizer_state             = m_rasterizer_cull_back_solid.get();
+                pipeline_state.blend_state                  = m_blend_disabled.get();
+                pipeline_state.depth_stencil_state          = m_depth_stencil_disabled.get();
+                pipeline_state.vertex_buffer_stride         = m_font->GetVertexBuffer()->GetStride();
+                pipeline_state.render_target_color_texture  = tex_out.get();    
+                pipeline_state.viewport                     = tex_out->GetViewport();
+                pipeline_state.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
 
-		cmd_list->UnsetTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
-        cmd_list->SetRenderTarget(tex_out);
-        cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
-		cmd_list->SetViewport(tex_out->GetViewport());
+                // Submit command list
+                if (cmd_list->Begin("Luminance"))
+                {
+                    cmd_list->SetTexture(0, tex_in);
+                    cmd_list->DrawIndexed(Rectangle::GetIndexCount());
+                    cmd_list->End();
+                    cmd_list->Submit();
+                }
+            }
 
-		// Luma
-		cmd_list->SetRenderTarget(tex_out);	
-		cmd_list->SetShaderPixel(shader_luma);
-		cmd_list->SetTexture(0, tex_in);
-		cmd_list->DrawIndexed(Rectangle::GetIndexCount());
+            // FXAA
+            {
+                // Set render state
+                RHI_PipelineState& pipeline_state           = cmd_list->GetPipelineState();
+                pipeline_state.shader_vertex                = shader_v.get();
+                pipeline_state.shader_pixel                 = shader_p_fxaa.get();
+                pipeline_state.input_layout                 = shader_v->GetInputLayout().get();
+                pipeline_state.rasterizer_state             = m_rasterizer_cull_back_solid.get();
+                pipeline_state.blend_state                  = m_blend_disabled.get();
+                pipeline_state.depth_stencil_state          = m_depth_stencil_disabled.get();
+                pipeline_state.vertex_buffer_stride         = m_font->GetVertexBuffer()->GetStride();
+                pipeline_state.render_target_color_texture  = tex_in.get();
+                pipeline_state.viewport                     = tex_in->GetViewport();
+                pipeline_state.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
 
-		// FXAA
-		cmd_list->SetRenderTarget(tex_in);
-		cmd_list->SetShaderPixel(shader_fxaa);
-		cmd_list->SetTexture(0, tex_out);
-		cmd_list->DrawIndexed(Rectangle::GetIndexCount());
+                if (cmd_list->Begin("FXAA"))
+                {
+                    cmd_list->SetTexture(0, tex_out);
+                    cmd_list->DrawIndexed(Rectangle::GetIndexCount());
+                    cmd_list->End();
+                    cmd_list->Submit();
+                }
+            }
 
-		cmd_list->End();
-		cmd_list->Submit();
+            // Swap the textures
+            tex_in.swap(tex_out);
 
-		// Swap the textures
-		tex_in.swap(tex_out);
+            cmd_list->End();
+        }
 	}
 
 	void Renderer::Pass_ChromaticAberration(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)

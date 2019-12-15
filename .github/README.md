@@ -73,7 +73,7 @@ Screen space contact shadows 	| 100%          | -
 Parallax Mapping 				| 100%          | -
 Shader Editor 					| 100%          | Real-time shader editing tool.
 Shadows 						| 90%          	| Enable point & spot light shadows.
-Vulkan      					| 60%           | Don't port it, re-architect the engine instead.
+Vulkan      					| 80%           | Don't port it, re-architect the engine instead.
 
 ###### v0.32
 - C# scripting (Replace AngelScript).
