@@ -87,9 +87,9 @@ namespace Spartan
 			create_info.sType								= VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
 			create_info.messageSeverity						= VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
 			create_info.messageType							= VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-			create_info.pfnUserCallback						= vulkan_common::debug::callback;
+			create_info.pfnUserCallback						= vulkan_common::debug_message::callback;
 
-			if (vulkan_common::debug::create(this, &create_info) != VK_SUCCESS)
+			if (vulkan_common::debug_message::create(this, &create_info) != VK_SUCCESS)
 			{
 				LOG_ERROR("Failed to setup debug callback");
 			}
@@ -171,8 +171,9 @@ namespace Spartan
 		auto version_minor	= to_string(VK_VERSION_MINOR(app_info.apiVersion));
 		auto version_path	= to_string(VK_VERSION_PATCH(app_info.apiVersion));
         auto& settings      = m_context->GetSubsystem<Settings>();
-        settings->m_versionGraphicsAPI = version_major + "." + version_minor + "." + version_path;
-		LOG_INFO("Vulkan " + settings->m_versionGraphicsAPI);
+        string version = version_major + "." + version_minor + "." + version_path;
+        settings->RegisterThirdPartyLib("Vulkan", version_major + "." + version_minor + "." + version_path, "https://vulkan.lunarg.com/");
+		LOG_INFO("Vulkan %s", version.c_str());
 
 		m_initialized = true;
 	}
@@ -183,7 +184,7 @@ namespace Spartan
 		if (vulkan_common::error::check_result(vkQueueWaitIdle(m_rhi_context->queue_graphics)))
 		{
             // Release resources
-            vulkan_common::debug::destroy(m_rhi_context.get());
+            vulkan_common::debug_message::destroy(m_rhi_context.get());
 			vkDestroyDevice(m_rhi_context->device, nullptr);
 			vkDestroyInstance(m_rhi_context->instance, nullptr);
 		}

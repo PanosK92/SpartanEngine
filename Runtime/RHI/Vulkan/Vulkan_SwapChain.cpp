@@ -145,6 +145,15 @@ namespace Spartan
                 image_views_out.resize(image_count);
                 for (uint32_t i = 0; i < image_count; i++)
                 {
+                    // Name the image
+                    vulkan_common::debug_marker::set_object_name
+                    (
+                        rhi_context->device,
+                        reinterpret_cast<uint64_t>(swap_chain_images[i]),
+                        VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT,
+                        string(string("swapchain_image_") + to_string(0)).c_str()
+                    );
+
                     if (!vulkan_common::image_view::create(rhi_context, swap_chain_images[i], image_views_out[i], rhi_context->surface_format, VK_IMAGE_ASPECT_COLOR_BIT))
                         return false;
                 }

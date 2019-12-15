@@ -71,10 +71,13 @@ namespace Spartan
     {
         m_context = context;
 
-        // Get PugiXml version
+        // Register pugixml
         const auto major = to_string(PUGIXML_VERSION / 1000);
         const auto minor = to_string(PUGIXML_VERSION).erase(0, 1).erase(1, 1);
-        m_versionPugiXML = major + "." + minor;
+        RegisterThirdPartyLib("pugixml", major + "." + minor, "https://github.com/zeux/pugixml");
+
+        // Register SPIRV-Cross
+        RegisterThirdPartyLib("SPIRV-Cross", "2019-11-01", "https://github.com/KhronosGroup/SPIRV-Cross");
     }
 
     Settings::~Settings()
@@ -105,6 +108,11 @@ namespace Spartan
         LOG_INFO("Max threads: %d", m_max_thread_count);
 
         return true;
+    }
+
+    void Settings::RegisterThirdPartyLib(const std::string& name, const std::string& version, const std::string& url)
+    {
+        m_third_party_libs.emplace_back(name, version, url);
     }
 
     void Settings::Save() const

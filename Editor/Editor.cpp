@@ -82,7 +82,7 @@ void Editor::OnWindowMessage(WindowData& window_data)
         {
             // ImGui version validation
             IMGUI_CHECKVERSION();
-            m_context->GetSubsystem<Settings>()->m_versionImGui = IMGUI_VERSION;
+            m_context->GetSubsystem<Settings>()->RegisterThirdPartyLib("Dear ImGui", IMGUI_VERSION, "https://github.com/ocornut/imgui");
 
             // ImGui context creation
             ImGui::CreateContext();

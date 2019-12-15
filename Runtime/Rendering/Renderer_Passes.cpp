@@ -100,8 +100,8 @@ namespace Spartan
             Pass_PostProcess(cmd_list);
             Pass_Lines(cmd_list, m_render_targets[RenderTarget_Composition_Ldr]);
             Pass_Gizmos(cmd_list, m_render_targets[RenderTarget_Composition_Ldr]);
-            Pass_DebugBuffer(cmd_list, m_render_targets[RenderTarget_Composition_Ldr]);
 #endif
+            Pass_DebugBuffer(cmd_list, m_render_targets[RenderTarget_Composition_Ldr]);
             Pass_PerformanceMetrics(cmd_list, m_render_targets[RenderTarget_Composition_Ldr]);
 
             cmd_list->End();
@@ -1488,18 +1488,15 @@ namespace Spartan
 
 	void Renderer::Pass_Gizmos(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_out)
 	{
-		bool render_lights		= m_options & Render_Debug_Lights;
-		bool render_transform	= m_options & Render_Debug_Transform;
-		auto render				= render_lights || render_transform;
-		if (!render)
-			return;
-
-		// Acquire shaders
+        // Early exit cases
+		bool render_lights		                = m_options & Render_Debug_Lights;
+		bool render_transform	                = m_options & Render_Debug_Transform;
+        bool render				                = render_lights || render_transform;
 		const auto& shader_quad_v               = m_shaders[Shader_Quad_V];
         const auto& shader_texture_p            = m_shaders[Shader_Texture_P];
         auto const& shader_gizmo_transform_v    = m_shaders[Shader_GizmoTransform_V];
         auto const& shader_gizmo_transform_p    = m_shaders[Shader_GizmoTransform_P];
-		if (!shader_quad_v->IsCompiled() || !shader_texture_p->IsCompiled() || !shader_gizmo_transform_v->IsCompiled() || !shader_gizmo_transform_p->IsCompiled())
+		if (!render || !shader_quad_v->IsCompiled() || !shader_texture_p->IsCompiled() || !shader_gizmo_transform_v->IsCompiled() || !shader_gizmo_transform_p->IsCompiled())
 			return;
 
         // Submit command list
@@ -1508,22 +1505,22 @@ namespace Spartan
 		    auto& lights = m_entities[Renderer_Object_Light];
 		    if (render_lights && !lights.empty())
 		    {
+                // Set render state
+                RHI_PipelineState& pipeline_state       = cmd_list->GetPipelineState();
+                pipeline_state.shader_vertex            = shader_quad_v.get();
+                pipeline_state.shader_pixel             = shader_texture_p.get();
+                pipeline_state.input_layout             = shader_quad_v->GetInputLayout().get();
+                pipeline_state.rasterizer_state         = m_rasterizer_cull_back_solid.get();
+                pipeline_state.blend_state              = m_blend_enabled.get();
+                pipeline_state.depth_stencil_state      = m_depth_stencil_disabled.get();
+                pipeline_state.vertex_buffer_stride     = m_quad.GetVertexBuffer()->GetStride(); // stride matches rect
+                pipeline_state.render_target_texture    = tex_out.get();
+                pipeline_state.primitive_topology       = RHI_PrimitiveTopology_TriangleList;
+                pipeline_state.viewport                 = tex_out->GetViewport();
+
+                // Create and submit command list
 		    	if (cmd_list->Begin("Lights"))
                 {
-                    // Set render state
-                    RHI_PipelineState& pipeline_state       = cmd_list->GetPipelineState();
-                    pipeline_state.shader_vertex            = shader_quad_v.get();
-                    pipeline_state.shader_pixel             = shader_texture_p.get();
-                    pipeline_state.input_layout             = shader_quad_v->GetInputLayout().get();
-                    pipeline_state.rasterizer_state         = m_rasterizer_cull_back_solid.get();
-                    pipeline_state.blend_state              = m_blend_enabled.get();
-                    pipeline_state.depth_stencil_state      = m_depth_stencil_disabled.get();
-                    pipeline_state.vertex_buffer_stride     = m_quad.GetVertexBuffer()->GetStride(); // stride matches rect
-                    pipeline_state.render_target_texture    = tex_out.get();
-                    pipeline_state.primitive_topology       = RHI_PrimitiveTopology_TriangleList;
-                    pipeline_state.viewport                 = tex_out->GetViewport();
-
-                    // Create and submit command list
 		    	    for (const auto& entity : lights)
 		    	    {
                         shared_ptr<Light>& light = entity->GetComponent<Light>();
@@ -1581,22 +1578,23 @@ namespace Spartan
 		    // Transform
 		    if (render_transform && m_gizmo_transform->Update(m_camera.get(), m_gizmo_transform_size, m_gizmo_transform_speed))
 		    {
+                // Set render state
+                RHI_PipelineState& pipeline_state       = cmd_list->GetPipelineState();
+                pipeline_state.shader_vertex            = shader_gizmo_transform_v.get();
+                pipeline_state.shader_pixel             = shader_gizmo_transform_p.get();
+                pipeline_state.input_layout             = shader_gizmo_transform_v->GetInputLayout().get();
+                pipeline_state.rasterizer_state         = m_rasterizer_cull_back_solid.get();
+                pipeline_state.blend_state              = m_blend_enabled.get();
+                pipeline_state.depth_stencil_state      = m_depth_stencil_disabled.get();
+                pipeline_state.vertex_buffer_stride     = m_gizmo_transform->GetVertexBuffer()->GetStride();
+                pipeline_state.render_target_texture    = tex_out.get();
+                pipeline_state.primitive_topology       = RHI_PrimitiveTopology_TriangleList;
+                pipeline_state.viewport                 = tex_out->GetViewport();
+
+                // Create and submit command list
                 if (cmd_list->Begin("Transform"))
                 {
-                    // Set render state
-                    RHI_PipelineState& pipeline_state       = cmd_list->GetPipelineState();
-                    pipeline_state.shader_vertex            = shader_gizmo_transform_v.get();
-                    pipeline_state.shader_pixel             = shader_gizmo_transform_p.get();
-                    pipeline_state.input_layout             = shader_gizmo_transform_v->GetInputLayout().get();
-                    pipeline_state.rasterizer_state         = m_rasterizer_cull_back_solid.get();
-                    pipeline_state.blend_state              = m_blend_enabled.get();
-                    pipeline_state.depth_stencil_state      = m_depth_stencil_disabled.get();
-                    pipeline_state.vertex_buffer_stride     = m_gizmo_transform->GetVertexBuffer()->GetStride();
-                    pipeline_state.render_target_texture    = tex_out.get();
-                    pipeline_state.primitive_topology       = RHI_PrimitiveTopology_TriangleList;
-                    pipeline_state.viewport                 = tex_out->GetViewport();
-
-                    // Create and submit command list
+                    // Mesh
                     cmd_list->SetBufferIndex(m_gizmo_transform->GetIndexBuffer());
                     cmd_list->SetBufferVertex(m_gizmo_transform->GetVertexBuffer());
                     
@@ -1629,9 +1627,10 @@ namespace Spartan
                         UpdateUberBuffer();
                     	cmd_list->DrawIndexed(m_gizmo_transform->GetIndexCount(), 0, 0);
                     }
+
+                    cmd_list->End();
+                    cmd_list->Submit();
                 }
-                cmd_list->End();
-                cmd_list->Submit();
 		    }
 
 		    cmd_list->End();

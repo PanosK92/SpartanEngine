@@ -120,8 +120,8 @@ namespace Spartan
 			auto log_feature_level = [this](const std::string& level)
 			{
                 auto& settings = m_context->GetSubsystem<Settings>();
-                settings->m_versionGraphicsAPI = level;
-				LOG_INFO("DirectX " + settings->m_versionGraphicsAPI, Log_Info);
+                settings->RegisterThirdPartyLib("DirectX", level, "https://www.microsoft.com/en-us/download/details.aspx?id=17431");
+				LOG_INFO("DirectX %s", level.c_str());
 			};
 
 			switch (m_rhi_context->device->GetFeatureLevel())

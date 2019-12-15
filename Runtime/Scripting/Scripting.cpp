@@ -74,7 +74,7 @@ namespace Spartan
         string major = to_string(ANGELSCRIPT_VERSION).erase(1, 4);
         string minor = to_string(ANGELSCRIPT_VERSION).erase(0, 1).erase(2, 2);
         string rev = to_string(ANGELSCRIPT_VERSION).erase(0, 3);
-        m_context->GetSubsystem<Settings>()->m_versionAngelScript = major + "." + minor + "." + rev;
+        m_context->GetSubsystem<Settings>()->RegisterThirdPartyLib("AngelScript", major + "." + minor + "." + rev, "https://www.angelcode.com/angelscript/downloads.html");
 
         return true;
     }
