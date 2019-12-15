@@ -62,7 +62,7 @@ namespace Spartan
 
 		// Draw
 		void Draw(uint32_t vertex_count);
-		void DrawIndexed(uint32_t index_count, uint32_t index_offset, uint32_t vertex_offset);
+		void DrawIndexed(uint32_t index_count, uint32_t index_offset = 0, uint32_t vertex_offset = 0);
 
 		// Misc
 		void SetViewport(const RHI_Viewport& viewport);

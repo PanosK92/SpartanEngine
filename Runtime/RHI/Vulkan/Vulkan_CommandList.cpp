@@ -454,12 +454,40 @@ namespace Spartan
         //    return;
         //}
 
-        //vkBeginCommandBuffer(presentCommandBuffers[i], &beginInfo);
-        //vkCmdPipelineBarrier(presentCommandBuffers[i], VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &presentToClearBarrier);
+        //VkImageSubresourceRange subResourceRange    = {};
+        //subResourceRange.aspectMask                 = VK_IMAGE_ASPECT_COLOR_BIT;
+        //subResourceRange.baseMipLevel               = 0;
+        //subResourceRange.levelCount                 = 1;
+        //subResourceRange.baseArrayLayer             = 0;
+        //subResourceRange.layerCount                 = 1;
+
+        //VkImageMemoryBarrier presentToClearBarrier  = {};
+        //presentToClearBarrier.sType                 = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        //presentToClearBarrier.srcAccessMask         = VK_ACCESS_MEMORY_READ_BIT;
+        //presentToClearBarrier.dstAccessMask         = VK_ACCESS_TRANSFER_WRITE_BIT;
+        //presentToClearBarrier.oldLayout             = VK_IMAGE_LAYOUT_UNDEFINED;
+        //presentToClearBarrier.newLayout             = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        //presentToClearBarrier.srcQueueFamilyIndex   = presentQueueFamily;
+        //presentToClearBarrier.dstQueueFamilyIndex   = presentQueueFamily;
+        //presentToClearBarrier.image                 = swapChainImages[i];
+        //presentToClearBarrier.subresourceRange      = subResourceRange;
+
+        //// Change layout of image to be optimal for presenting
+        //VkImageMemoryBarrier clearToPresentBarrier  = {};
+        //clearToPresentBarrier.sType                 = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        //clearToPresentBarrier.srcAccessMask         = VK_ACCESS_TRANSFER_WRITE_BIT;
+        //clearToPresentBarrier.dstAccessMask         = VK_ACCESS_MEMORY_READ_BIT;
+        //clearToPresentBarrier.oldLayout             = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        //clearToPresentBarrier.newLayout             = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        //clearToPresentBarrier.srcQueueFamilyIndex   = presentQueueFamily;
+        //clearToPresentBarrier.dstQueueFamilyIndex   = presentQueueFamily;
+        //clearToPresentBarrier.image                 = swapChainImages[i];
+        //clearToPresentBarrier.subresourceRange      = subResourceRange;
+
+        //vkCmdPipelineBarrier(CMD_BUFFER, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &presentToClearBarrier);
         //VkClearColorValue clear_color = { { color.x, color.x, color.y, color.w } };
-        //vkCmdClearColorImage(presentCommandBuffers[i], static_cast<VkImage>(render_target), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clear_color, 1, &subResourceRange);
-        //vkCmdPipelineBarrier(presentCommandBuffers[i], VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 1, &clearToPresentBarrier);
-        //vkEndCommandBuffer(presentCommandBuffers[i]);
+        //vkCmdClearColorImage(CMD_BUFFER, static_cast<VkImage>(render_target), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clear_color, 1, &subResourceRange);
+        //vkCmdPipelineBarrier(CMD_BUFFER, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 1, &clearToPresentBarrier);
 	}
 
     void RHI_CommandList::ClearDepthStencil(void* depth_stencil, const uint32_t flags, const float depth, const uint8_t stencil /*= 0*/)
