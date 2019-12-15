@@ -51,7 +51,7 @@ namespace Spartan
 		auto GetDestBlendAlpha()	const { return m_dest_blend_alpha; }
 		auto GetBlendOpAlpha()		const { return m_blend_op_alpha; }
 		auto GetResource()			const { return m_resource; }
-        auto GetBlendFactor()       const { return m_blend_factor; }
+        float GetBlendFactor()      const { return m_blend_factor; }
 
 		bool operator==(const RHI_BlendState& rhs) const
 		{

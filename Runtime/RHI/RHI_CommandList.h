@@ -47,74 +47,7 @@ namespace Spartan
 	{
 		RHI_Cmd_Begin,
         RHI_Cmd_Marker,
-		RHI_Cmd_End,
-		RHI_Cmd_Draw,
-		RHI_Cmd_DrawIndexed,
-		RHI_Cmd_SetViewport,
-		RHI_Cmd_SetScissorRectangle,
-		RHI_Cmd_SetPrimitiveTopology,
-		RHI_Cmd_SetInputLayout,
-		RHI_Cmd_SetDepthStencilState,
-		RHI_Cmd_SetRasterizerState,
-		RHI_Cmd_SetBlendState,
-		RHI_Cmd_SetVertexBuffer,
-		RHI_Cmd_SetIndexBuffer,	
-		RHI_Cmd_SetVertexShader,
-		RHI_Cmd_SetPixelShader,
-        RHI_Cmd_SetComputeShader,
-		RHI_Cmd_SetConstantBuffers,
-		RHI_Cmd_SetSamplers,
-		RHI_Cmd_SetTextures,
-		RHI_Cmd_SetRenderTargets,
-		RHI_Cmd_ClearRenderTarget,
-		RHI_Cmd_ClearDepthStencil,
         RHI_Cmd_Unknown
-	};
-
-	struct RHI_Command
-	{
-        RHI_Command() { Clear(); }
-
-		void Clear()
-		{
-            type                = RHI_Cmd_Type::RHI_Cmd_Unknown;
-            pass_name           = "N/A";
-            resource_start_slot = 0;
-            resource_count      = 0;
-            resource_ptr        = nullptr;
-            _float              = 0.0f;
-            _uint8              = 0;
-            _uint32             = 0;
-            _viewport           = RHI_Viewport(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
-            _rectangle          = Math::Rectangle(0.0f, 0.0f, 0.0f, 0.0f);
-            _vector4            = Math::Vector4(0.0f, 0.0f, 0.0f, 0.0f);
-            depth_stencil       = nullptr;
-            vertex_count        = 0;
-            vertex_offset       = 0;
-            index_count         = 0;
-            index_offset        = 0;
-            buffer_index        = nullptr;
-            buffer_vertex       = nullptr;
-		}
-
-        RHI_Cmd_Type type;
-        std::string pass_name;
-        uint32_t resource_start_slot;
-        uint32_t resource_count;
-        const void* resource_ptr;
-        float _float;
-        uint8_t _uint8;
-        uint32_t _uint32;
-		RHI_Viewport _viewport;
-		Math::Rectangle _rectangle;
-        Math::Vector4 _vector4;
-        void* depth_stencil;
-        uint32_t vertex_count;
-        uint32_t vertex_offset;
-        uint32_t index_count;
-        uint32_t index_offset;
-        const RHI_IndexBuffer* buffer_index;
-        const RHI_VertexBuffer* buffer_vertex;
 	};
 
 	class SPARTAN_CLASS RHI_CommandList
@@ -186,13 +119,10 @@ namespace Spartan
         inline void UnsetTexture(const uint32_t slot) { SetTexture(slot, nullptr); }
         inline void UnsetTextures()
         {
-            static const uint32_t count                 = 10;
-            static const void* resource_array[count]    = { nullptr };
-            auto& cmd                                   = GetCmd();
-            cmd.type                                    = RHI_Cmd_SetTextures;
-            cmd.resource_start_slot                     = 0;
-            cmd.resource_ptr                            = resource_array;
-            cmd.resource_count                          = count;
+            for (uint32_t i = 0; i < 10; i++)
+            {
+                SetTexture(i, nullptr);
+            }
         }
         
 		// Render targets
@@ -203,22 +133,13 @@ namespace Spartan
 		void ClearDepthStencil(void* depth_stencil, uint32_t flags, float depth, uint8_t stencil = 0);
 
         // Submit
-		bool Submit(bool profile = true);
+		bool Submit();
         void Flush();
         RHI_PipelineState& GetPipelineState() { m_pipeline_state.Clear(); return m_pipeline_state; }
 
 	private:
-		void Clear();
-
-		// API
-		RHI_Command& GetCmd();
-		RHI_Command m_empty_cmd; // for GetCmd()
-		std::vector<RHI_Command> m_commands;
         std::vector<RHI_Cmd_Type> m_begin_types;
         RHI_PipelineState m_pipeline_state;
-		uint32_t m_initial_capacity             = 10000;
-		uint32_t m_command_count	            = 0;
-        uint32_t m_texture_slot_max             = 0;
         RHI_Cmd_List_State m_cmd_state          = RHI_Cmd_List_Idle;
 		RHI_Pipeline* m_pipeline	            = nullptr; 
         RHI_SwapChain* m_swap_chain             = nullptr;

@@ -51,7 +51,7 @@ namespace Spartan
         {
             static std::hash<uint32_t> hasher;
 
-            hash = 10;
+            hash = 11;
             hash += 31 * static_cast<uint32_t>(hasher(input_layout->GetId()));
             hash += 31 * static_cast<uint32_t>(hasher(rasterizer_state->GetId()));
             hash += 31 * static_cast<uint32_t>(hasher(blend_state->GetId()));
@@ -61,7 +61,8 @@ namespace Spartan
             hash += 31 * static_cast<uint32_t>(hasher(vertex_buffer_stride));
             hash += 31 * static_cast<uint32_t>(hasher(static_cast<uint32_t>(primitive_topology)));
             hash += 31 * static_cast<uint32_t>(hasher(static_cast<uint32_t>(scissor_dynamic)));
-            hash += 31 * static_cast<uint32_t>(hasher(GetRenderTargetId()));
+            hash += 31 * static_cast<uint32_t>(hasher(GetRenderTargetColorId()));
+            hash += 31 * static_cast<uint32_t>(hasher(GetRenderTargetDepthId()));
         }
 
         auto GetHash() const { return hash; }
@@ -78,7 +79,7 @@ namespace Spartan
                     blend_state         != nullptr &&
                     depth_stencil_state != nullptr &&
                     primitive_topology  != RHI_PrimitiveTopology_Unknown &&
-                    (render_target_swapchain != nullptr || render_target_texture != nullptr);
+                    (render_target_swapchain != nullptr || render_target_color_texture != nullptr);
         }
 
         void* GetRenderPass() const
@@ -86,8 +87,8 @@ namespace Spartan
             if (render_target_swapchain)
                 return render_target_swapchain->GetRenderPass();
 
-            if (render_target_texture)
-                return render_target_texture->GetResource_RenderPass();
+            if (render_target_color_texture)
+                return render_target_color_texture->GetResource_RenderPass();
 
             return nullptr;
         }
@@ -97,8 +98,8 @@ namespace Spartan
             if (render_target_swapchain)
                 return render_target_swapchain->GetFrameBuffer();
 
-            if (render_target_texture)
-                return render_target_texture->GetResource_RenderTarget();
+            if (render_target_color_texture)
+                return render_target_color_texture->GetResource_RenderTarget();
 
             return nullptr;
         }
@@ -108,8 +109,8 @@ namespace Spartan
             if (render_target_swapchain)
                 return render_target_swapchain->GetWidth();
 
-            if (render_target_texture)
-                return render_target_texture->GetWidth();
+            if (render_target_color_texture)
+                return render_target_color_texture->GetWidth();
 
             return 0;
         }
@@ -119,8 +120,8 @@ namespace Spartan
             if (render_target_swapchain)
                 return render_target_swapchain->GetHeight();
 
-            if (render_target_texture)
-                return render_target_texture->GetHeight();
+            if (render_target_color_texture)
+                return render_target_color_texture->GetHeight();
 
             return 0;
         }
@@ -130,13 +131,21 @@ namespace Spartan
             return render_target_swapchain ? render_target_swapchain->AcquireNextImage() : true;
         }
 
-        uint32_t GetRenderTargetId()
+        uint32_t GetRenderTargetColorId()
         {
             if (render_target_swapchain)
                 return render_target_swapchain->GetId();
 
-            if (render_target_texture)
-                return render_target_texture->GetId();
+            if (render_target_color_texture)
+                return render_target_color_texture->GetId();
+
+            return 0;
+        }
+
+        uint32_t GetRenderTargetDepthId()
+        {
+            if (render_target_depth_texture)
+                return render_target_depth_texture->GetId();
 
             return 0;
         }
@@ -150,7 +159,8 @@ namespace Spartan
             blend_state                 = nullptr;
             depth_stencil_state         = nullptr;
             render_target_swapchain     = nullptr;
-            render_target_texture       = nullptr;
+            render_target_color_texture = nullptr;
+            render_target_depth_texture = nullptr;
             primitive_topology          = RHI_PrimitiveTopology_Unknown;
             viewport                    = RHI_Viewport(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
             scissor                     = Math::Rectangle(0.0f, 0.0f, 0.0f, 0.0f);
@@ -169,7 +179,8 @@ namespace Spartan
         RHI_Viewport viewport;     
         Math::Rectangle scissor;
         RHI_SwapChain* render_target_swapchain;
-        RHI_Texture* render_target_texture;
+        RHI_Texture* render_target_color_texture;
+        RHI_Texture* render_target_depth_texture;
         bool scissor_dynamic;
         uint32_t vertex_buffer_stride;
        

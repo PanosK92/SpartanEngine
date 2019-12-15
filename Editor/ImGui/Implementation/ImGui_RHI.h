@@ -235,11 +235,15 @@ namespace ImGui::RHI
         pipeline_state.viewport                 = g_viewport;
         pipeline_state.primitive_topology       = RHI_PrimitiveTopology_TriangleList;
         pipeline_state.scissor_dynamic          = true;
-        
+
+        if (clear)
+        {
+            cmd_list->ClearRenderTarget(swap_chain->GetRenderTargetView(), Vector4(0, 0, 0, 1));
+        }
+
         // Start witting command list
         if (cmd_list->Begin("Pass_ImGui"))
         {
-            if (clear) cmd_list->ClearRenderTarget(swap_chain->GetRenderTargetView(), Vector4(0, 0, 0, 1));
             cmd_list->SetBufferVertex(g_vertex_buffer);
             cmd_list->SetBufferIndex(g_index_buffer);
 
