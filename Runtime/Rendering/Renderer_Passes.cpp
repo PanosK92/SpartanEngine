@@ -80,12 +80,7 @@ namespace Spartan
                 cmd_list->End();
             }
 
-            if (!m_brdf_specular_lut_rendered)
-            {
-                Pass_BrdfSpecularLut(cmd_list);
-                m_brdf_specular_lut_rendered = true;
-            }
-
+            Pass_BrdfSpecularLut(cmd_list);
 #ifdef API_GRAPHICS_D3D11
             Pass_LightDepth(cmd_list);
             if (GetOptionValue(Render_DepthPrepass))
@@ -722,6 +717,8 @@ namespace Spartan
             UpdateUberBuffer();
 
             // Setup command list
+            cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
+            cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
             cmd_list->SetTexture(0, m_render_targets[RenderTarget_Gbuffer_Albedo]);
             cmd_list->SetTexture(1, m_render_targets[RenderTarget_Gbuffer_Normal]);
             cmd_list->SetTexture(2, m_render_targets[RenderTarget_Gbuffer_Depth]);
@@ -1116,6 +1113,8 @@ namespace Spartan
                     m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(m_render_tex_bloom[0]->GetWidth()), static_cast<float>(m_render_tex_bloom[0]->GetHeight()));
                     UpdateUberBuffer();
 
+                    cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
+                    cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
                     cmd_list->SetTexture(0, tex_in);
                     cmd_list->DrawIndexed(Rectangle::GetIndexCount());
                     cmd_list->End();
@@ -1151,6 +1150,8 @@ namespace Spartan
                     m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
                     UpdateUberBuffer();
 
+                    cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
+                    cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
                     cmd_list->SetTexture(0, tex_in);
                     cmd_list->DrawIndexed(Rectangle::GetIndexCount());
                     cmd_list->End();
@@ -1159,7 +1160,6 @@ namespace Spartan
             };
 
             // Upsample + blend
-            cmd_list->UnsetTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from some previous pass)
             for (int i = static_cast<int>(m_render_tex_bloom.size() - 1); i > 0; i--)
             {
                 upsample(m_render_tex_bloom[i], m_render_tex_bloom[i - 1]);
@@ -1187,6 +1187,8 @@ namespace Spartan
                     m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
                     UpdateUberBuffer();
 
+                    cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
+                    cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
                     cmd_list->SetTexture(0, tex_in);
                     cmd_list->SetTexture(1, m_render_tex_bloom.front());
                     cmd_list->DrawIndexed(Rectangle::GetIndexCount());
@@ -1226,6 +1228,8 @@ namespace Spartan
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             UpdateUberBuffer();
 
+            cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
+            cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
             cmd_list->SetTexture(0, tex_in);
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
             cmd_list->End();
@@ -1303,6 +1307,8 @@ namespace Spartan
                 // Submit command list
                 if (cmd_list->Begin("Luminance"))
                 {
+                    cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
+                    cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
                     cmd_list->SetTexture(0, tex_in);
                     cmd_list->DrawIndexed(Rectangle::GetIndexCount());
                     cmd_list->End();
@@ -1327,6 +1333,8 @@ namespace Spartan
 
                 if (cmd_list->Begin("FXAA"))
                 {
+                    cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
+                    cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
                     cmd_list->SetTexture(0, tex_out);
                     cmd_list->DrawIndexed(Rectangle::GetIndexCount());
                     cmd_list->End();
@@ -1368,6 +1376,8 @@ namespace Spartan
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             UpdateUberBuffer();
 
+            cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
+            cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
             cmd_list->SetTexture(0, tex_in);
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
             cmd_list->End();
@@ -1402,6 +1412,8 @@ namespace Spartan
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             UpdateUberBuffer();
 
+            cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
+            cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
             cmd_list->SetTexture(0, tex_in);
             cmd_list->SetTexture(1, m_render_targets[RenderTarget_Gbuffer_Velocity]);
             cmd_list->SetTexture(2, m_render_targets[RenderTarget_Gbuffer_Depth]);
@@ -1438,6 +1450,8 @@ namespace Spartan
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             UpdateUberBuffer();
 
+            cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
+            cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
             cmd_list->SetTexture(0, tex_in);
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
             cmd_list->End();
@@ -1472,6 +1486,8 @@ namespace Spartan
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             UpdateUberBuffer();
 
+            cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
+            cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
             cmd_list->SetTexture(0, tex_in);
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
             cmd_list->End();
@@ -1558,8 +1574,8 @@ namespace Spartan
                 pipeline_state.vertex_buffer_stride         = m_quad.GetVertexBuffer()->GetStride(); // stride matches rect
                 pipeline_state.render_target_color_texture  = tex_out.get();
                 pipeline_state.render_target_depth_texture  = m_render_targets[RenderTarget_Gbuffer_Depth].get();
-                pipeline_state.primitive_topology           = RHI_PrimitiveTopology_LineList;
                 pipeline_state.viewport                     = tex_out->GetViewport();
+                pipeline_state.primitive_topology           = RHI_PrimitiveTopology_LineList;
 
                 // Create and submit command list
                 if (cmd_list->Begin("Lines_With_Depth", RHI_Cmd_Marker))
@@ -1624,9 +1640,9 @@ namespace Spartan
                 pipeline_state.blend_state                  = m_blend_disabled.get();
                 pipeline_state.depth_stencil_state          = m_depth_stencil_disabled.get();
                 pipeline_state.vertex_buffer_stride         = m_quad.GetVertexBuffer()->GetStride(); // stride matches rect
-                pipeline_state.render_target_color_texture  = tex_out.get();
-                pipeline_state.primitive_topology           = RHI_PrimitiveTopology_LineList;
+                pipeline_state.render_target_color_texture  = tex_out.get();  
                 pipeline_state.viewport                     = tex_out->GetViewport();
+                pipeline_state.primitive_topology           = RHI_PrimitiveTopology_LineList;
 
                 // Create and submit command list
                 if (cmd_list->Begin("Lines_No_Depth", RHI_Cmd_Begin))
@@ -1996,6 +2012,9 @@ namespace Spartan
 
     void Renderer::Pass_BrdfSpecularLut(RHI_CommandList* cmd_list)
     {
+        if (m_brdf_specular_lut_rendered)
+            return;
+
         // Acquire shaders
         const auto& shader_v = m_shaders[Shader_Quad_V];
         const auto& shader_p = m_shaders[Shader_BrdfSpecularLut];
@@ -2031,6 +2050,8 @@ namespace Spartan
             cmd_list->End();
             cmd_list->Submit();
         }
+
+        m_brdf_specular_lut_rendered = true;
     }
 
     void Renderer::Pass_Copy(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
