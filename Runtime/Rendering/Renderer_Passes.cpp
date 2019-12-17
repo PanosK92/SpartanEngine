@@ -468,50 +468,53 @@ namespace Spartan
 
 	void Renderer::Pass_Ssao(RHI_CommandList* cmd_list)
 	{
-        // Acquire shaders
-        const auto& shader_quad = m_shaders[Shader_Quad_V];
-        const auto& shader_ssao = m_shaders[Shader_Ssao_P];
-        if (!shader_quad->IsCompiled() || !shader_ssao->IsCompiled())
+        if ((m_options & Render_SSAO) == 0)
             return;
 
+        // Acquire shaders
+        const auto& shader_v = m_shaders[Shader_Quad_V];
+        const auto& shader_p = m_shaders[Shader_Ssao_P];
+        if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
+            return;
+        
         // Acquire render targets
         auto& tex_ssao_raw      = m_render_targets[RenderTarget_Ssao_Raw];
         auto& tex_ssao_blurred  = m_render_targets[RenderTarget_Ssao_Blurred];
         auto& tex_ssao          = m_render_targets[RenderTarget_Ssao];
 
-		cmd_list->Begin("Pass_Ssao");
-		cmd_list->ClearRenderTarget(tex_ssao_raw->GetResource_RenderTarget(), Vector4::One);
-        cmd_list->ClearRenderTarget(tex_ssao->GetResource_RenderTarget(),     Vector4::One);
+        // Set render state
+        RHI_PipelineState& pipeline_state           = cmd_list->GetPipelineState();
+        pipeline_state.shader_vertex                = shader_v.get();
+        pipeline_state.shader_pixel                 = shader_p.get();
+        pipeline_state.input_layout                 = shader_v->GetInputLayout().get();
+        pipeline_state.rasterizer_state             = m_rasterizer_cull_back_solid.get();
+        pipeline_state.blend_state                  = m_blend_disabled.get();
+        pipeline_state.depth_stencil_state          = m_depth_stencil_disabled.get();
+        pipeline_state.vertex_buffer_stride         = m_font->GetVertexBuffer()->GetStride();
+        pipeline_state.render_target_color_texture  = tex_ssao_raw.get();
+        pipeline_state.viewport                     = tex_ssao_raw->GetViewport();
+        pipeline_state.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
 
-		if (m_options & Render_SSAO)
-		{
+        if (cmd_list->Begin("Pass_Ssao"))
+        {
             // Update uber buffer
             m_buffer_uber_cpu.resolution = Vector2(tex_ssao_raw->GetWidth(), tex_ssao_raw->GetHeight());
             UpdateUberBuffer();
-
-            cmd_list->UnsetTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from some previous pass)
-            cmd_list->SetRenderTarget(tex_ssao_raw);
+        
+            cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
+            cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
             cmd_list->SetTexture(0, m_render_targets[RenderTarget_Gbuffer_Depth]);
             cmd_list->SetTexture(1, m_render_targets[RenderTarget_Gbuffer_Normal]);
             cmd_list->SetTexture(2, m_tex_noise_normal);
-            cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
-            cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
-            cmd_list->SetBlendState(m_blend_disabled);
-            cmd_list->SetPrimitiveTopology(RHI_PrimitiveTopology_TriangleList);
-            cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
-            cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
-            cmd_list->SetViewport(tex_ssao_raw->GetViewport());
-            cmd_list->SetShaderVertex(shader_quad);
-            cmd_list->SetInputLayout(shader_quad->GetInputLayout());
-            cmd_list->SetShaderPixel(shader_ssao);
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
+            cmd_list->End();
             cmd_list->Submit();
-
+        
             // Bilateral blur
             const auto sigma = 2.0f;
             const auto pixel_stride = 2.0f;
             Pass_BlurBilateralGaussian(cmd_list, tex_ssao_raw, tex_ssao_blurred, sigma, pixel_stride);
-
+        
             // Upscale to full size
             float ssao_scale = m_option_values[Option_Value_Ssao_Scale];
             if (ssao_scale < 1.0f)
@@ -526,64 +529,58 @@ namespace Spartan
             {
                 tex_ssao_blurred.swap(tex_ssao);
             }
-		}
-
-		cmd_list->End();
-        cmd_list->Submit();
+        }
 	}
 
     void Renderer::Pass_Ssr(RHI_CommandList* cmd_list)
     {
+        if ((m_options & Render_SSR) == 0)
+            return;
+
         // Acquire shaders
         const auto& shader_v = m_shaders[Shader_Quad_V];
         const auto& shader_p = m_shaders[Shader_Ssr_P];
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
-
-        // Acquire render targets
-        auto& tex_ssr         = m_render_targets[RenderTarget_Ssr];
-        auto& tex_ssr_blurred = m_render_targets[RenderTarget_Ssr_Blurred];
-
-        cmd_list->Begin("Pass_Ssr");
         
-        if (m_options & Render_SSR)
+        // Acquire render targets
+        auto& tex_ssr           = m_render_targets[RenderTarget_Ssr];
+        auto& tex_ssr_blurred   = m_render_targets[RenderTarget_Ssr_Blurred];
+
+        // Set render state
+        RHI_PipelineState& pipeline_state           = cmd_list->GetPipelineState();
+        pipeline_state.shader_vertex                = shader_v.get();
+        pipeline_state.shader_pixel                 = shader_p.get();
+        pipeline_state.input_layout                 = shader_v->GetInputLayout().get();
+        pipeline_state.rasterizer_state             = m_rasterizer_cull_back_solid.get();
+        pipeline_state.blend_state                  = m_blend_disabled.get();
+        pipeline_state.depth_stencil_state          = m_depth_stencil_disabled.get();
+        pipeline_state.vertex_buffer_stride         = m_font->GetVertexBuffer()->GetStride();
+        pipeline_state.render_target_color_texture  = tex_ssr.get();
+        pipeline_state.viewport                     = tex_ssr->GetViewport();
+        pipeline_state.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
+
+        if (cmd_list->Begin("Pass_Ssr"))
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution = Vector2(tex_ssr->GetWidth(), tex_ssr->GetHeight());
             UpdateUberBuffer();
-
-            cmd_list->UnsetTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from some previous pass)
+        
+            cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
+            cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
             cmd_list->SetTexture(0, m_render_targets[RenderTarget_Gbuffer_Normal]);
             cmd_list->SetTexture(1, m_render_targets[RenderTarget_Gbuffer_Depth]);
             cmd_list->SetTexture(2, m_render_targets[RenderTarget_Gbuffer_Material]);
             cmd_list->SetTexture(3, m_render_targets[RenderTarget_Composition_Ldr_2]);
-            cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
-            cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
-            cmd_list->SetBlendState(m_blend_disabled);
-            cmd_list->SetPrimitiveTopology(RHI_PrimitiveTopology_TriangleList);
-            cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
-            cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
-            cmd_list->SetRenderTarget(tex_ssr);
-            cmd_list->SetViewport(tex_ssr->GetViewport());
-            cmd_list->SetShaderVertex(shader_v);
-            cmd_list->SetInputLayout(shader_v->GetInputLayout());
-            cmd_list->SetShaderPixel(shader_p);
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
+            cmd_list->End();
             cmd_list->Submit();
-
+        
             // Bilateral blur
             const auto sigma = 1.0f;
             const auto pixel_stride = 1.0f;
             Pass_BlurGaussian(cmd_list, tex_ssr, tex_ssr_blurred, sigma, pixel_stride);
         }
-        else
-        {
-            cmd_list->ClearRenderTarget(tex_ssr->GetResource_RenderTarget(), Vector4(0.0f, 0.0f, 0.0f, 1.0f));
-            cmd_list->ClearRenderTarget(tex_ssr_blurred->GetResource_RenderTarget(), Vector4(0.0f, 0.0f, 0.0f, 1.0f));
-            cmd_list->Submit();
-        }
-
-        cmd_list->End();
     }
 
     void Renderer::Pass_Light(RHI_CommandList* cmd_list)
@@ -655,7 +652,7 @@ namespace Spartan
                         cmd_list->SetTexture(0, m_render_targets[RenderTarget_Gbuffer_Normal]);
                         cmd_list->SetTexture(1, m_render_targets[RenderTarget_Gbuffer_Material]);
                         cmd_list->SetTexture(2, m_render_targets[RenderTarget_Gbuffer_Depth]);
-                        cmd_list->SetTexture(3, m_render_targets[RenderTarget_Ssao]);
+                        cmd_list->SetTexture(3, (m_options & Render_SSAO) ? m_render_targets[RenderTarget_Ssao] : m_tex_white);
                         cmd_list->SetTexture(4, light->GetCastShadows() ? (light->GetLightType() == LightType_Directional ? shadow_map : nullptr) : nullptr);
                         cmd_list->SetTexture(5, light->GetCastShadows() ? (light->GetLightType() == LightType_Point       ? shadow_map : nullptr) : nullptr);
                         cmd_list->SetTexture(6, light->GetCastShadows() ? (light->GetLightType() == LightType_Spot        ? shadow_map : nullptr) : nullptr);
@@ -726,10 +723,10 @@ namespace Spartan
             cmd_list->SetTexture(4, m_render_targets[RenderTarget_Light_Diffuse]);
             cmd_list->SetTexture(5, m_render_targets[RenderTarget_Light_Specular]);
             cmd_list->SetTexture(6, (m_options & Render_VolumetricLighting) ? m_render_targets[RenderTarget_Light_Volumetric_Blurred] : m_tex_black);
-            cmd_list->SetTexture(7, m_render_targets[RenderTarget_Ssr_Blurred]);
+            cmd_list->SetTexture(7, (m_options & Render_SSR) ? m_render_targets[RenderTarget_Ssr_Blurred] : m_tex_black);
             cmd_list->SetTexture(8, GetEnvironmentTexture());
             cmd_list->SetTexture(9, m_render_targets[RenderTarget_Brdf_Specular_Lut]);
-            cmd_list->SetTexture(10, m_render_targets[RenderTarget_Ssao]);
+            cmd_list->SetTexture(10, (m_options & Render_SSAO)? m_render_targets[RenderTarget_Ssao] : m_tex_white);
             cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
             cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
@@ -821,33 +818,42 @@ namespace Spartan
 
     void Renderer::Pass_Upsample(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
-        // Acquire shader
-        const auto& shader_vertex   = m_shaders[Shader_Quad_V];
-        const auto& shader_pixel    = m_shaders[Shader_Upsample_P];
-        if (!shader_vertex->IsCompiled() || !shader_pixel->IsCompiled())
+        // Acquire shaders
+        const auto& shader_v = m_shaders[Shader_Quad_V];
+        const auto& shader_p = m_shaders[Shader_Upsample_P];
+        if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
-        cmd_list->Begin("Pass_Upsample");
+        // Set render state
+        RHI_PipelineState& pipeline_state           = cmd_list->GetPipelineState();
+        pipeline_state.shader_vertex                = shader_v.get();
+        pipeline_state.shader_pixel                 = shader_p.get();
+        pipeline_state.input_layout                 = shader_v->GetInputLayout().get();
+        pipeline_state.rasterizer_state             = m_rasterizer_cull_back_solid.get();
+        pipeline_state.blend_state                  = m_blend_disabled.get();
+        pipeline_state.depth_stencil_state          = m_depth_stencil_disabled.get();
+        pipeline_state.vertex_buffer_stride         = m_font->GetVertexBuffer()->GetStride();
+        pipeline_state.render_target_color_texture  = tex_out.get();  
+        pipeline_state.viewport                     = tex_out->GetViewport();
+        pipeline_state.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
 
-        m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-        UpdateUberBuffer();
+        if (cmd_list->Begin("Pass_Upsample"))
+        {
+            m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+            UpdateUberBuffer();
 
-        cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
-        cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
-        cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
-        cmd_list->SetRenderTarget(tex_out);
-        cmd_list->SetViewport(tex_out->GetViewport());
-        cmd_list->SetShaderVertex(shader_vertex);
-        cmd_list->SetShaderPixel(shader_pixel);
-        cmd_list->SetTexture(0, tex_in);
-        cmd_list->DrawIndexed(m_quad.GetIndexCount());
-        cmd_list->End();
-        cmd_list->Submit();
+            cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
+            cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
+            cmd_list->SetTexture(0, tex_in);
+            cmd_list->DrawIndexed(m_quad.GetIndexCount());
+            cmd_list->End();
+            cmd_list->Submit();
+        }
     }
 
     void Renderer::Pass_Downsample(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out, Renderer_Shader_Type pixel_shader)
     {
-        // Acquire shader
+        // Acquire shaders
         const auto& shader_v = m_shaders[Shader_Quad_V];
         const auto& shader_p = m_shaders[pixel_shader];
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
@@ -883,27 +889,38 @@ namespace Spartan
 
 	void Renderer::Pass_BlurBox(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out, const float sigma)
 	{
-		// Acquire shader
-		const auto& shader_blurBox = m_shaders[Shader_BlurBox_P];
-		if (!shader_blurBox->IsCompiled())
-			return;
+        // Acquire shaders
+        const auto& shader_v = m_shaders[Shader_Quad_V];
+        const auto& shader_p = m_shaders[Shader_BlurBox_P];
+        if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
+            return;
 
-		cmd_list->Begin("Pass_BlurBox");
+        // Set render state
+        RHI_PipelineState& pipeline_state           = cmd_list->GetPipelineState();
+        pipeline_state.shader_vertex                = shader_v.get();
+        pipeline_state.shader_pixel                 = shader_p.get();
+        pipeline_state.input_layout                 = shader_v->GetInputLayout().get();
+        pipeline_state.rasterizer_state             = m_rasterizer_cull_back_solid.get();
+        pipeline_state.blend_state                  = m_blend_disabled.get();
+        pipeline_state.depth_stencil_state          = m_depth_stencil_disabled.get();
+        pipeline_state.vertex_buffer_stride         = m_font->GetVertexBuffer()->GetStride();
+        pipeline_state.render_target_color_texture  = tex_out.get();  
+        pipeline_state.viewport                     = tex_out->GetViewport();
+        pipeline_state.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
 
-        // Update uber buffer
-        m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-		UpdateUberBuffer();
+        if (cmd_list->Begin("Pass_BlurBox"))
+        {
+            // Update uber buffer
+            m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+            UpdateUberBuffer();
 
-        cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
-        cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
-		cmd_list->SetRenderTarget(tex_out);
-        cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
-		cmd_list->SetViewport(tex_out->GetViewport());
-		cmd_list->SetShaderPixel(shader_blurBox);
-		cmd_list->SetTexture(0, tex_in); // Shadows are in the alpha channel
-		cmd_list->DrawIndexed(m_quad.GetIndexCount());
-		cmd_list->End();
-		cmd_list->Submit();
+            cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
+            cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
+            cmd_list->SetTexture(0, tex_in); // Shadows are in the alpha channel
+            cmd_list->DrawIndexed(m_quad.GetIndexCount());
+            cmd_list->End();
+            cmd_list->Submit();
+        }
 	}
 
 	void Renderer::Pass_BlurGaussian(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out, const float sigma, const float pixel_stride)
@@ -915,50 +932,69 @@ namespace Spartan
 		}
 
         // Acquire shaders
-        const auto& shader_quad     = m_shaders[Shader_Quad_V];
-        const auto& shader_gaussian = m_shaders[Shader_BlurGaussian_P];
-        if (!shader_quad->IsCompiled() || !shader_gaussian->IsCompiled())
+        const auto& shader_v = m_shaders[Shader_Quad_V];
+        const auto& shader_p = m_shaders[Shader_BlurGaussian_P];
+        if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
-		// Start command list
-		cmd_list->Begin("Pass_BlurGaussian");
-        cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
-        cmd_list->SetBlendState(m_blend_disabled);
-        cmd_list->SetViewport(tex_out->GetViewport());
-        cmd_list->SetShaderVertex(shader_quad);
-        cmd_list->SetInputLayout(shader_quad->GetInputLayout());
-        cmd_list->SetShaderPixel(shader_gaussian);
+        // Start command list
+        if (cmd_list->Begin("Pass_BlurGaussian", RHI_Cmd_Marker))
+        {
+            // Set render state
+            RHI_PipelineState& pipeline_state           = cmd_list->GetPipelineState();
+            pipeline_state.shader_vertex                = shader_v.get();
+            pipeline_state.shader_pixel                 = shader_p.get();
+            pipeline_state.input_layout                 = shader_v->GetInputLayout().get();
+            pipeline_state.rasterizer_state             = m_rasterizer_cull_back_solid.get();
+            pipeline_state.blend_state                  = m_blend_disabled.get();
+            pipeline_state.depth_stencil_state          = m_depth_stencil_disabled.get();
+            pipeline_state.vertex_buffer_stride         = m_font->GetVertexBuffer()->GetStride();
+            pipeline_state.render_target_color_texture  = tex_out.get();
+            pipeline_state.viewport                     = tex_out->GetViewport();
+            pipeline_state.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
    
-		// Horizontal Gaussian blur	
-		{
-            // Update uber buffer
-            m_buffer_uber_cpu.resolution        = Vector2(static_cast<float>(tex_in->GetWidth()), static_cast<float>(tex_in->GetHeight()));
-            m_buffer_uber_cpu.blur_direction    = Vector2(pixel_stride, 0.0f);
-            m_buffer_uber_cpu.blur_sigma        = sigma;
-            UpdateUberBuffer();
+            if (cmd_list->Begin("Horizontal"))
+		    {
+                // Update uber buffer
+                m_buffer_uber_cpu.resolution        = Vector2(static_cast<float>(tex_in->GetWidth()), static_cast<float>(tex_in->GetHeight()));
+                m_buffer_uber_cpu.blur_direction    = Vector2(pixel_stride, 0.0f);
+                m_buffer_uber_cpu.blur_sigma        = sigma;
+                UpdateUberBuffer();
 
-			cmd_list->UnsetTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
-			cmd_list->SetRenderTarget(tex_out);
-			cmd_list->SetTexture(0, tex_in);
-			cmd_list->DrawIndexed(Rectangle::GetIndexCount());
-            cmd_list->Submit();
-		}
+		    	cmd_list->SetTexture(0, tex_in);
+		    	cmd_list->DrawIndexed(Rectangle::GetIndexCount());
+                cmd_list->End();
+                cmd_list->Submit();
+		    }
 
-		// Vertical Gaussian blur
-		{
-            m_buffer_uber_cpu.blur_direction    = Vector2(0.0f, pixel_stride);
-            m_buffer_uber_cpu.blur_sigma        = sigma;
-            UpdateUberBuffer();
+            // Set render state
+            pipeline_state                              = cmd_list->GetPipelineState();
+            pipeline_state.shader_vertex                = shader_v.get();
+            pipeline_state.shader_pixel                 = shader_p.get();
+            pipeline_state.input_layout                 = shader_v->GetInputLayout().get();
+            pipeline_state.rasterizer_state             = m_rasterizer_cull_back_solid.get();
+            pipeline_state.blend_state                  = m_blend_disabled.get();
+            pipeline_state.depth_stencil_state          = m_depth_stencil_disabled.get();
+            pipeline_state.vertex_buffer_stride         = m_font->GetVertexBuffer()->GetStride();
+            pipeline_state.render_target_color_texture  = tex_in.get();
+            pipeline_state.viewport                     = tex_in->GetViewport();
+            pipeline_state.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
 
-			cmd_list->UnsetTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
-			cmd_list->SetRenderTarget(tex_in);
-            cmd_list->SetTexture(0, tex_out);
-            cmd_list->DrawIndexed(Rectangle::GetIndexCount());
-            cmd_list->Submit();
-		}
+            if (cmd_list->Begin("Vertical"))
+		    {
+                m_buffer_uber_cpu.blur_direction    = Vector2(0.0f, pixel_stride);
+                m_buffer_uber_cpu.blur_sigma        = sigma;
+                UpdateUberBuffer();
 
-		cmd_list->End();
-		
+                cmd_list->SetTexture(0, tex_out);
+                cmd_list->DrawIndexed(Rectangle::GetIndexCount());
+                cmd_list->End();
+                cmd_list->Submit();
+		    }
+
+            cmd_list->End();
+        }
+
 		// Swap textures
 		tex_in.swap(tex_out);
 	}
@@ -972,9 +1008,9 @@ namespace Spartan
 		}
 
 		// Acquire shaders
-		const auto& shader_quad                 = m_shaders[Shader_Quad_V];
-        const auto& shader_gaussianBilateral    = m_shaders[Shader_BlurGaussianBilateral_P];
-		if (!shader_quad->IsCompiled() || !shader_gaussianBilateral->IsCompiled())
+		const auto& shader_v = m_shaders[Shader_Quad_V];
+        const auto& shader_p = m_shaders[Shader_BlurGaussianBilateral_P];
+		if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
 			return;
 
         // Acquire render targets
@@ -982,50 +1018,72 @@ namespace Spartan
         auto& tex_normal    = m_render_targets[RenderTarget_Gbuffer_Normal];
 
 		// Start command list
-        cmd_list->Begin("Pass_BlurBilateralGaussian");
-        cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
-        cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
-        cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
-        cmd_list->SetBlendState(m_blend_disabled);
-		cmd_list->SetViewport(tex_out->GetViewport());	
-		cmd_list->SetShaderVertex(shader_quad);
-		cmd_list->SetInputLayout(shader_quad->GetInputLayout());
-		cmd_list->SetShaderPixel(shader_gaussianBilateral);	
+        if (cmd_list->Begin("Pass_BlurBilateralGaussian", RHI_Cmd_Marker))
+        {
+            // Set render state
+            RHI_PipelineState& pipeline_state           = cmd_list->GetPipelineState();
+            pipeline_state.shader_vertex                = shader_v.get();
+            pipeline_state.shader_pixel                 = shader_p.get();
+            pipeline_state.input_layout                 = shader_v->GetInputLayout().get();
+            pipeline_state.rasterizer_state             = m_rasterizer_cull_back_solid.get();
+            pipeline_state.blend_state                  = m_blend_disabled.get();
+            pipeline_state.depth_stencil_state          = m_depth_stencil_disabled.get();
+            pipeline_state.vertex_buffer_stride         = m_font->GetVertexBuffer()->GetStride();
+            pipeline_state.render_target_color_texture  = tex_out.get();
+            pipeline_state.viewport                     = tex_out->GetViewport();
+            pipeline_state.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
 
-		// Horizontal Gaussian blur
-		{
-            // Update uber buffer
-            m_buffer_uber_cpu.resolution        = Vector2(static_cast<float>(tex_in->GetWidth()), static_cast<float>(tex_in->GetHeight()));
-            m_buffer_uber_cpu.blur_direction    = Vector2(pixel_stride, 0.0f);
-            m_buffer_uber_cpu.blur_sigma        = sigma;
-            UpdateUberBuffer();
+            if (cmd_list->Begin("Horizontal"))
+            {
+                // Update uber buffer
+                m_buffer_uber_cpu.resolution        = Vector2(static_cast<float>(tex_in->GetWidth()), static_cast<float>(tex_in->GetHeight()));
+                m_buffer_uber_cpu.blur_direction    = Vector2(pixel_stride, 0.0f);
+                m_buffer_uber_cpu.blur_sigma        = sigma;
+                UpdateUberBuffer();
 
-			cmd_list->UnsetTextures(); // avoids d3d11 warning where render target is also bound as texture (from Pass_PreLight)
-            cmd_list->SetRenderTarget(tex_out);
-            cmd_list->SetTexture(0, tex_in);
-            cmd_list->SetTexture(1, tex_depth);
-            cmd_list->SetTexture(2, tex_normal);
-			cmd_list->DrawIndexed(m_quad.GetIndexCount());
-            cmd_list->Submit();
-		}
+                cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
+                cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
+                cmd_list->SetTexture(0, tex_in);
+                cmd_list->SetTexture(1, tex_depth);
+                cmd_list->SetTexture(2, tex_normal);
+                cmd_list->DrawIndexed(m_quad.GetIndexCount());
+                cmd_list->End();
+                cmd_list->Submit();
+            }
 
-		// Vertical Gaussian blur
-		{
-            // Update uber
-            m_buffer_uber_cpu.blur_direction    = Vector2(0.0f, pixel_stride);
-            m_buffer_uber_cpu.blur_sigma        = sigma;
-            UpdateUberBuffer();
+            // Set render state
+            pipeline_state                              = cmd_list->GetPipelineState();
+            pipeline_state.shader_vertex                = shader_v.get();
+            pipeline_state.shader_pixel                 = shader_p.get();
+            pipeline_state.input_layout                 = shader_v->GetInputLayout().get();
+            pipeline_state.rasterizer_state             = m_rasterizer_cull_back_solid.get();
+            pipeline_state.blend_state                  = m_blend_disabled.get();
+            pipeline_state.depth_stencil_state          = m_depth_stencil_disabled.get();
+            pipeline_state.vertex_buffer_stride         = m_font->GetVertexBuffer()->GetStride();
+            pipeline_state.render_target_color_texture  = tex_in.get();
+            pipeline_state.viewport                     = tex_in->GetViewport();
+            pipeline_state.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
 
-            cmd_list->UnsetTexture(0); // avoids d3d11 warning where render target is also bound as texture (from horizontal pass)
-            cmd_list->SetRenderTarget(tex_in);
-            cmd_list->SetTexture(0, tex_out);
-            cmd_list->SetTexture(1, tex_depth);
-            cmd_list->SetTexture(2, tex_normal);
-			cmd_list->DrawIndexed(m_quad.GetIndexCount());
-            cmd_list->Submit();
-		}
+            if (cmd_list->Begin("Vertical"))
+            {
+                // Update uber buffer
+                m_buffer_uber_cpu.blur_direction    = Vector2(0.0f, pixel_stride);
+                m_buffer_uber_cpu.blur_sigma        = sigma;
+                UpdateUberBuffer();
 
-		cmd_list->End();	
+                cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
+                cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
+                cmd_list->SetTexture(0, tex_out);
+                cmd_list->SetTexture(1, tex_depth);
+                cmd_list->SetTexture(2, tex_normal);
+                cmd_list->DrawIndexed(m_quad.GetIndexCount());
+                cmd_list->End();
+                cmd_list->Submit();
+            }
+
+            cmd_list->End();
+        }
+
 		tex_in.swap(tex_out);
 	}
 
