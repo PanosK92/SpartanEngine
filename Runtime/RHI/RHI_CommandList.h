@@ -116,14 +116,6 @@ namespace Spartan
 		// Texture
         void SetTexture(const uint32_t slot, RHI_Texture* texture);
         inline void SetTexture(const uint32_t slot, const std::shared_ptr<RHI_Texture>& texture) { SetTexture(slot, texture.get()); }
-        inline void UnsetTexture(const uint32_t slot) { SetTexture(slot, nullptr); }
-        inline void UnsetTextures()
-        {
-            for (uint32_t i = 0; i < 10; i++)
-            {
-                SetTexture(i, nullptr);
-            }
-        }
         
 		// Render targets
 		void SetRenderTargets(const void* render_targets, uint32_t render_target_count, void* depth_stencil = nullptr);
