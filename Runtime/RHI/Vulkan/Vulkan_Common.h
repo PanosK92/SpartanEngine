@@ -766,6 +766,8 @@ namespace Spartan::vulkan_common
                 if (strcmp(extension_name, layer_properties.layerName) == 0)
                     return true;
             }
+
+            return false;
         }
     }
 
