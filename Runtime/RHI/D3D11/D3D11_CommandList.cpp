@@ -72,7 +72,7 @@ namespace Spartan
 
         // Mark
         RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
-        if (rhi_context->debug_markers_enabled)
+        if (rhi_context->debug)
         {
             m_rhi_device->GetContextRhi()->annotation->BeginEvent(FileSystem::StringToWstring(pass_name).c_str());
         }
@@ -95,7 +95,7 @@ namespace Spartan
 	{
         // Mark
         RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
-        if (rhi_context->debug_markers_enabled)
+        if (rhi_context->debug)
         {
             rhi_context->annotation->EndEvent();
         }
