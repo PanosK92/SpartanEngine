@@ -63,7 +63,7 @@ namespace Spartan
 			create_info.ppEnabledExtensionNames	= m_rhi_context->extensions_instance.data();
 			create_info.enabledLayerCount		= 0;
 
-			if (m_rhi_context->validation_enabled)
+			if (m_rhi_context->debug)
 			{
 				if (vulkan_common::extension::is_present(m_rhi_context->validation_layers.front()))
 				{
@@ -80,19 +80,10 @@ namespace Spartan
                 return;
 		}
 
-		// Debug callback
-		if (m_rhi_context->validation_enabled)
+		// Debug
+		if (m_rhi_context->debug)
 		{
-			VkDebugUtilsMessengerCreateInfoEXT create_info	= {};
-			create_info.sType								= VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-			create_info.messageSeverity						= VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-			create_info.messageType							= VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-			create_info.pfnUserCallback						= vulkan_common::debug_message::callback;
-
-			if (vulkan_common::debug_message::create(this, &create_info) != VK_SUCCESS)
-			{
-				LOG_ERROR("Failed to setup debug callback");
-			}
+            vulkan_common::debug::initialize(m_rhi_context->instance);
 		}
 
 		// Device Physical
@@ -145,7 +136,7 @@ namespace Spartan
 				create_info.enabledExtensionCount	= static_cast<uint32_t>(m_rhi_context->extensions_device.size());
 				create_info.ppEnabledExtensionNames = m_rhi_context->extensions_device.data();
 
-				if (m_rhi_context->validation_enabled)
+				if (m_rhi_context->debug)
 				{
 					create_info.enabledLayerCount	= static_cast<uint32_t>(m_rhi_context->validation_layers.size());
 					create_info.ppEnabledLayerNames = m_rhi_context->validation_layers.data();
@@ -166,12 +157,6 @@ namespace Spartan
             vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->queue_transfer_family_index, 0, &m_rhi_context->queue_transfer);
 		}
 
-        // Debug markers
-        if (m_rhi_context->debug_markers_enabled)
-        {
-            vulkan_common::debug_marker::setup(m_rhi_context->device);
-        }
-
 		// Detect and log version
 		auto version_major	= to_string(VK_VERSION_MAJOR(app_info.apiVersion));
 		auto version_minor	= to_string(VK_VERSION_MINOR(app_info.apiVersion));
@@ -186,11 +171,13 @@ namespace Spartan
 
 	RHI_Device::~RHI_Device()
 	{	
-        // Wait for GPU
+        // Release resources
 		if (vulkan_common::error::check_result(vkQueueWaitIdle(m_rhi_context->queue_graphics)))
 		{
-            // Release resources
-            vulkan_common::debug_message::destroy(m_rhi_context.get());
+            if (m_rhi_context->debug)
+            {
+                vulkan_common::debug::shutdown(m_rhi_context->instance);
+            }
 			vkDestroyDevice(m_rhi_context->device, nullptr);
 			vkDestroyInstance(m_rhi_context->instance, nullptr);
 		}

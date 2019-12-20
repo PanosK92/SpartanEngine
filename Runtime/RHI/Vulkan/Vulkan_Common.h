@@ -766,122 +766,186 @@ namespace Spartan::vulkan_common
                 if (strcmp(extension_name, layer_properties.layerName) == 0)
                     return true;
             }
-
-            return false;
         }
     }
 
-    namespace debug_message
+    class debug
     {
-        static VKAPI_ATTR VkBool32 VKAPI_CALL callback(
-            VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
-            VkDebugUtilsMessageTypeFlagsEXT message_type,
-            const VkDebugUtilsMessengerCallbackDataEXT* p_callback_data,
-            void* p_user_data
-        ) {
-            if (message_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
-            {
-                LOG_INFO(p_callback_data->pMessage);
-            }
-            else if (message_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
-            {
-                LOG_INFO(p_callback_data->pMessage);
-            }
-            else if (message_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
-            {
-                LOG_WARNING(p_callback_data->pMessage);
-            }
-            else if (message_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
-            {
-                LOG_ERROR(p_callback_data->pMessage);
-            }
+    public:
+        debug() = default;
+        ~debug() = default;
 
-            return VK_FALSE;
-        }
+        static void initialize(VkInstance instance);
 
-        inline VkResult create(RHI_Device* rhi_device, const VkDebugUtilsMessengerCreateInfoEXT* create_info)
+        static void shutdown(VkInstance instance)
         {
-            if (const auto func = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(rhi_device->GetContextRhi()->instance, "vkCreateDebugUtilsMessengerEXT")))
-                return func(rhi_device->GetContextRhi()->instance, create_info, nullptr, &rhi_device->GetContextRhi()->callback_handle);
-
-            return VK_ERROR_EXTENSION_NOT_PRESENT;
-        }
-
-        inline void destroy(RHI_Context* context)
-        {
-            if (!context->validation_enabled)
+            if (!m_fn_destroy_messenger)
                 return;
 
-            if (const auto func = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(context->instance, "vkDestroyDebugUtilsMessengerEXT")))
-            {
-                func(context->instance, context->callback_handle, nullptr);
-            }
-        }
-    }
-
-    namespace debug_marker
-    {
-        static bool active = false;
-
-        // The debug marker extension is not part of the core, so function pointers need to be loaded manually
-        static PFN_vkDebugMarkerSetObjectNameEXT vkDebugMarkerSetObjectName = VK_NULL_HANDLE;
-        static PFN_vkCmdDebugMarkerBeginEXT pfnCmdDebugMarkerBegin          = VK_NULL_HANDLE;
-        static PFN_vkCmdDebugMarkerEndEXT pfnCmdDebugMarkerEnd              = VK_NULL_HANDLE;
-        
-        inline void setup(VkDevice device)
-        {
-            bool is_extension_present = extension::is_present(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
-
-            if (is_extension_present)
-            {
-                vkDebugMarkerSetObjectName  = reinterpret_cast<PFN_vkDebugMarkerSetObjectNameEXT>(vkGetDeviceProcAddr(device, "vkDebugMarkerSetObjectNameEXT"));
-                pfnCmdDebugMarkerBegin      = reinterpret_cast<PFN_vkCmdDebugMarkerBeginEXT>(vkGetDeviceProcAddr(device, "vkCmdDebugMarkerBeginEXT"));
-                pfnCmdDebugMarkerEnd        = reinterpret_cast<PFN_vkCmdDebugMarkerEndEXT>(vkGetDeviceProcAddr(device, "vkCmdDebugMarkerEndEXT"));
-            }
-            else
-            {
-                LOG_WARNING("Extension \"%s\" not present, debug markers are disabled.", VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
-                LOG_INFO("Try running from inside a Vulkan graphics debugger (e.g. RenderDoc)");
-            }
-
-            active =
-                (vkDebugMarkerSetObjectName != VK_NULL_HANDLE)  &&
-                (pfnCmdDebugMarkerBegin != VK_NULL_HANDLE)      &&
-                (pfnCmdDebugMarkerEnd != VK_NULL_HANDLE);
+            m_fn_destroy_messenger(instance, m_messenger, nullptr);
         }
 
-        inline void begin(VkCommandBuffer cmd_buffer, const char* name, const Math::Vector4& color)
+        static void set_object_name(VkDevice device, uint64_t object, VkObjectType object_type, const char* name)
         {
-            if (!active)
+            if (!m_fn_set_object_name)
                 return;
 
-            VkDebugMarkerMarkerInfoEXT marker_info = {};
-            marker_info.sType = VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT;
-            memcpy(marker_info.color, color.Data(), sizeof(float) * 4);
-            marker_info.pMarkerName = name;
-            pfnCmdDebugMarkerBegin(cmd_buffer, &marker_info);
+            VkDebugUtilsObjectNameInfoEXT name_info = {};
+            name_info.sType                         = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+            name_info.pNext                         = nullptr;
+            name_info.objectType                    = object_type;
+            name_info.objectHandle                  = object;
+            name_info.pObjectName                   = name;
+            m_fn_set_object_name(device, &name_info);
         }
 
-        inline void end(VkCommandBuffer cmdBuffer)
+        static void set_object_tag(VkDevice device, uint64_t object, VkObjectType objectType, uint64_t name, size_t tagSize, const void* tag)
         {
-            if (!active)
+            if (!m_fn_set_object_tag)
                 return;
 
-            pfnCmdDebugMarkerEnd(cmdBuffer);
+            VkDebugUtilsObjectTagInfoEXT tag_info    = {};
+            tag_info.sType                           = VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_TAG_INFO_EXT;
+            tag_info.pNext                           = nullptr;
+            tag_info.objectType                      = objectType;
+            tag_info.objectHandle                    = object;
+            tag_info.tagName                         = name;
+            tag_info.tagSize                         = tagSize;
+            tag_info.pTag                            = tag;
+            m_fn_set_object_tag(device, &tag_info);
         }
 
-        inline void set_object_name(VkDevice device, uint64_t object, VkDebugReportObjectTypeEXT object_type, const char* name)
+        static void begin(VkCommandBuffer cmd_buffer, const char* name, const Math::Vector4& color)
         {
-            if (!active)
+            if (!m_fn_marker_begin)
                 return;
 
-            VkDebugMarkerObjectNameInfoEXT name_info    = {};
-            name_info.sType                             = VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT;
-            name_info.objectType                        = object_type;
-            name_info.object                            = object;
-            name_info.pObjectName                       = name;
-            vkDebugMarkerSetObjectName(device, &name_info);
+            VkDebugUtilsLabelEXT label  = {};
+            label.sType                 = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+            label.pNext                 = nullptr;
+            label.pLabelName            = name;
+            label.color[0]              = color.x;
+            label.color[1]              = color.y;
+            label.color[2]              = color.z;
+            label.color[3]              = color.w;
+            m_fn_marker_begin(cmd_buffer, &label);
         }
+
+        static void end(VkCommandBuffer cmd_buffer)
+        {
+            if (!m_fn_marker_end)
+                return;
+
+            m_fn_marker_end(cmd_buffer);
+        }
+
+        static void set_command_pool_name(VkDevice device, VkCommandPool cmd_pool, const char* name)
+        {
+            set_object_name(device, (uint64_t)cmd_pool, VK_OBJECT_TYPE_COMMAND_POOL, name);
+        }
+
+        static void set_command_buffer_name(VkDevice device, VkCommandBuffer cmd_buffer, const char* name)
+        {
+            set_object_name(device, (uint64_t)cmd_buffer, VK_OBJECT_TYPE_COMMAND_BUFFER, name);
+        }
+
+        static void set_queue_name(VkDevice device, VkQueue queue, const char* name)
+        {
+            set_object_name(device, (uint64_t)queue, VK_OBJECT_TYPE_QUEUE, name);
+        }
+
+        static void set_image_name(VkDevice device, VkImage image, const char* name)
+        {
+            set_object_name(device, (uint64_t)image, VK_OBJECT_TYPE_IMAGE, name);
+        }
+
+        static void set_image_view_name(VkDevice device, VkImageView image_view, const char* name)
+        {
+            set_object_name(device, (uint64_t)image_view, VK_OBJECT_TYPE_IMAGE_VIEW, name);
+        }
+
+        static void set_sampler_name(VkDevice device, VkSampler sampler, const char* name)
+        {
+            set_object_name(device, (uint64_t)sampler, VK_OBJECT_TYPE_SAMPLER, name);
+        }
+
+        static void set_buffer_name(VkDevice device, VkBuffer buffer, const char* name)
+        {
+            set_object_name(device, (uint64_t)buffer, VK_OBJECT_TYPE_BUFFER, name);
+        }
+
+        static void set_buffer_view_name(VkDevice device, VkBufferView bufferView, const char* name)
+        {
+            set_object_name(device, (uint64_t)bufferView, VK_OBJECT_TYPE_BUFFER_VIEW, name);
+        }
+
+        static void set_device_memory_name(VkDevice device, VkDeviceMemory memory, const char* name)
+        {
+            set_object_name(device, (uint64_t)memory, VK_OBJECT_TYPE_DEVICE_MEMORY, name);
+        }
+
+        static void set_shader_module_name(VkDevice device, VkShaderModule shaderModule, const char* name)
+        {
+            set_object_name(device, (uint64_t)shaderModule, VK_OBJECT_TYPE_SHADER_MODULE, name);
+        }
+
+        static void set_pipeline_name(VkDevice device, VkPipeline pipeline, const char* name)
+        {
+            set_object_name(device, (uint64_t)pipeline, VK_OBJECT_TYPE_PIPELINE, name);
+        }
+
+        static void set_pipeline_layout_name(VkDevice device, VkPipelineLayout pipelineLayout, const char* name)
+        {
+            set_object_name(device, (uint64_t)pipelineLayout, VK_OBJECT_TYPE_PIPELINE_LAYOUT, name);
+        }
+
+        static void set_render_pass_name(VkDevice device, VkRenderPass renderPass, const char* name)
+        {
+            set_object_name(device, (uint64_t)renderPass, VK_OBJECT_TYPE_RENDER_PASS, name);
+        }
+
+        static void set_framebuffer_name(VkDevice device, VkFramebuffer framebuffer, const char* name)
+        {
+            set_object_name(device, (uint64_t)framebuffer, VK_OBJECT_TYPE_FRAMEBUFFER, name);
+        }
+
+        static void set_descriptor_set_layout_name(VkDevice device, VkDescriptorSetLayout descriptorSetLayout, const char* name)
+        {
+            set_object_name(device, (uint64_t)descriptorSetLayout, VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT, name);
+        }
+
+        static void set_descriptor_set_name(VkDevice device, VkDescriptorSet descriptorSet, const char* name)
+        {
+            set_object_name(device, (uint64_t)descriptorSet, VK_OBJECT_TYPE_DESCRIPTOR_SET, name);
+        }
+
+        static void set_descriptor_pool_name(VkDevice device, VkDescriptorPool descriptorPool, const char* name)
+        {
+            set_object_name(device, (uint64_t)descriptorPool, VK_OBJECT_TYPE_DESCRIPTOR_POOL, name);
+        }
+
+        static void set_semaphore_name(VkDevice device, VkSemaphore semaphore, const char* name)
+        {
+            set_object_name(device, (uint64_t)semaphore, VK_OBJECT_TYPE_SEMAPHORE, name);
+        }
+
+        static void set_fence_name(VkDevice device, VkFence fence, const char* name)
+        {
+            set_object_name(device, (uint64_t)fence, VK_OBJECT_TYPE_FENCE, name);
+        }
+
+        static void set_event_name(VkDevice device, VkEvent _event, const char* name)
+        {
+            set_object_name(device, (uint64_t)_event, VK_OBJECT_TYPE_EVENT, name);
+        }
+
+    private:
+        static VkDebugUtilsMessengerEXT             m_messenger;
+        static PFN_vkDestroyDebugUtilsMessengerEXT  m_fn_destroy_messenger;
+        static PFN_vkSetDebugUtilsObjectTagEXT      m_fn_set_object_tag;
+        static PFN_vkSetDebugUtilsObjectNameEXT     m_fn_set_object_name;
+        static PFN_vkCmdBeginDebugUtilsLabelEXT     m_fn_marker_begin;
+        static PFN_vkCmdEndDebugUtilsLabelEXT       m_fn_marker_end;
     };
 }
 

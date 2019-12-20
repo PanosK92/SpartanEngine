@@ -259,7 +259,6 @@ namespace Spartan
             VkInstance instance                         = nullptr;
             VkPhysicalDevice device_physical            = nullptr;
             VkDevice device                             = nullptr;
-            VkDebugUtilsMessengerEXT callback_handle    = nullptr;
             VkFormat surface_format                     = VK_FORMAT_UNDEFINED;
             VkColorSpaceKHR surface_color_space         = VK_COLOR_SPACE_MAX_ENUM_KHR;
             // Queues
@@ -270,10 +269,26 @@ namespace Spartan
             uint32_t queue_graphics_family_index        = 0;
             uint32_t queue_transfer_family_index        = 0;
             uint32_t queue_compute_family_index         = 0;
-            
+
             // Extensions
             #ifdef DEBUG
-                std::vector<const char*> extensions_device      = { VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_EXT_DEBUG_MARKER_EXTENSION_NAME };
+                /*
+                https://vulkan.lunarg.com/doc/view/1.1.108.0/mac/validation_layers.html
+
+                VK_LAYER_KHRONOS_validation
+                ===================================
+                The main, comprehensive Khronos validation layer -- this layer encompasses the entire
+                functionality of the layers listed below, and supersedes them. As the other layers
+                are deprecated this layer should be used for all validation going forward.
+
+                VK_EXT_debug_utils
+                ==================
+                Create a debug messenger which will pass along debug messages to an application supplied callback.
+                Identify specific Vulkan objects using a name or tag to improve tracking.
+                Identify specific sections within a VkQueue or VkCommandBuffer using labels to aid organization and offline analysis in external tools.
+
+                */
+                std::vector<const char*> extensions_device      = { VK_KHR_SWAPCHAIN_EXTENSION_NAME }; 
                 std::vector<const char*> validation_layers      = { "VK_LAYER_KHRONOS_validation" };
                 std::vector<const char*> extensions_instance    = { VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WIN32_SURFACE_EXTENSION_NAME, VK_EXT_DEBUG_REPORT_EXTENSION_NAME, VK_EXT_DEBUG_UTILS_EXTENSION_NAME };
             #else
@@ -285,11 +300,9 @@ namespace Spartan
 
         // Debugging
         #ifdef DEBUG
-            const bool validation_enabled     = true;
-            const bool debug_markers_enabled  = true;
+            const bool debug = true;
         #else
-            const bool validation_enabled     = false;
-            const bool debug_markers_enabled  = false;
+            const bool debug = false;
         #endif
 
         // Shader resource slot shifts
