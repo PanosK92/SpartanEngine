@@ -268,7 +268,7 @@ namespace Spartan
         }
 
         // Name the image
-        vulkan_common::debug_marker::set_object_name(rhi_context->device, reinterpret_cast<uint64_t>(image), VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, "texture");
+        vulkan_common::debug::set_image_name(rhi_context->device, *image, "texture");
 
         // Create image views
         {

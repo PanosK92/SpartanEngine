@@ -146,11 +146,10 @@ namespace Spartan
                 for (uint32_t i = 0; i < image_count; i++)
                 {
                     // Name the image
-                    vulkan_common::debug_marker::set_object_name
+                    vulkan_common::debug::set_image_name
                     (
                         rhi_context->device,
-                        reinterpret_cast<uint64_t>(swap_chain_images[i]),
-                        VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT,
+                        swap_chain_images[i],
                         string(string("swapchain_image_") + to_string(0)).c_str()
                     );
 

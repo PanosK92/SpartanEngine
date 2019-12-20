@@ -92,10 +92,7 @@ namespace Spartan
                 m_profiler->TimeBlockStart(pass_name, true, true);
             }
 
-            if (m_rhi_device->GetContextRhi()->debug_markers_enabled)
-            {
-                vulkan_common::debug_marker::begin(CMD_BUFFER, pass_name.c_str(), Vector4::One);
-            }
+            vulkan_common::debug::begin(CMD_BUFFER, pass_name.c_str(), Vector4::One);
         }
 
         if (type == RHI_Cmd_Begin)
@@ -180,10 +177,7 @@ namespace Spartan
         // Profiling - End
         if (begin_type == RHI_Cmd_Begin || begin_type == RHI_Cmd_Marker)
         {
-            if (m_rhi_device->GetContextRhi()->debug_markers_enabled)
-            {
-                vulkan_common::debug_marker::end(CMD_BUFFER);
-            }
+            vulkan_common::debug::end(CMD_BUFFER);
 
             if (m_profiler)
             {
