@@ -191,13 +191,15 @@ namespace Spartan
 
     enum RHI_Image_Layout
     {
+        RHI_Image_Undefined,
+        RHI_Image_General,
         RHI_Image_Preinitialized,
         RHI_Image_Color_Attachment_Optimal,
         RHI_Image_Depth_Stencil_Attachment_Optimal,
-        RHI_Image_Present_Src,
+        RHI_Image_Depth_Stencil_Read_Only_Optimal,    
         RHI_Image_Shader_Read_Only_Optimal,
         RHI_Image_Transfer_Dst_Optimal,
-        RHI_Image_Undefined
+        RHI_Image_Present_Src
     };
 
     struct RHI_Descriptor

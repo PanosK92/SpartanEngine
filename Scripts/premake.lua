@@ -18,17 +18,17 @@
 -- CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-SOLUTION_NAME 		= "Spartan"
-EDITOR_NAME 		= "Editor"
-RUNTIME_NAME 		= "Runtime"
-DEBUG_FORMAT		= "c7"
-EDITOR_DIR			= "../" .. EDITOR_NAME
-RUNTIME_DIR			= "../" .. RUNTIME_NAME
-LIBRARY_DIR 		= "../ThirdParty/libraries"
-INTERMEDIATE_DIR 	= "../Binaries/Intermediate"
+SOLUTION_NAME 			= "Spartan"
+EDITOR_NAME 				= "Editor"
+RUNTIME_NAME 			= "Runtime"
+DEBUG_FORMAT			= "c7"
+EDITOR_DIR					= "../" .. EDITOR_NAME
+RUNTIME_DIR				= "../" .. RUNTIME_NAME
+LIBRARY_DIR 				= "../ThirdParty/libraries"
+INTERMEDIATE_DIR 		= "../Binaries/Intermediate"
 TARGET_DIR_RELEASE 	= "../Binaries/Release"
 TARGET_DIR_DEBUG 	= "../Binaries/Debug"
-API_GRAPHICS		= _ARGS[1]
+API_GRAPHICS				= _ARGS[1]
 
 -- Convert graphics api var to the corresponding project define
 if API_GRAPHICS == "d3d11" then
@@ -92,7 +92,7 @@ project (RUNTIME_NAME)
 	-- Includes
 	includedirs { "../ThirdParty/DirectXShaderCompiler" }
 	includedirs { "../ThirdParty/SPIRV-Cross" }
-	includedirs { "../ThirdParty/Vulkan_1.1.126.0" }
+	includedirs { "../ThirdParty/Vulkan_1.1.130.0" }
 	includedirs { "../ThirdParty/AngelScript_2.33.0" }
 	includedirs { "../ThirdParty/Assimp_5.0.0" }
 	includedirs { "../ThirdParty/Bullet_2.88" }

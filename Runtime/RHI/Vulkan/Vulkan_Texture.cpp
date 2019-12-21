@@ -267,17 +267,18 @@ namespace Spartan
             }
         }
 
-        // Name the image
-        vulkan_common::debug::set_image_name(rhi_context->device, *image, "texture");
+        string name = GetResourceName();
 
         // Create image views
         {
             VkImageAspectFlags aspect_flags = vulkan_common::image::bind_flags_to_aspect_mask(m_bind_flags);
 
+            m_layout = RHI_Image_Shader_Read_Only_Optimal;
+
             // SHADER RESOURCE VIEW
             if (m_bind_flags & RHI_Texture_Sampled)
             {
-                m_layout = RHI_Image_Shader_Read_Only_Optimal;
+                name += "-sampled";
 
                 if (!vulkan_common::image_view::create(rhi_context, *image, m_resource_texture, vulkan_format[m_format], aspect_flags))
                     return false;
@@ -286,7 +287,8 @@ namespace Spartan
             // DEPTH-STENCIL VIEW
             if (m_bind_flags & RHI_Texture_DepthStencil)
             {
-                m_layout = RHI_Image_Depth_Stencil_Attachment_Optimal;
+                name += "-depth_stencil";
+                m_layout = RHI_Image_Depth_Stencil_Read_Only_Optimal;
 
                 auto depth_stencil = m_resource_depth_stencils.emplace_back(nullptr);
                 if (!vulkan_common::image_view::create(rhi_context, *image, depth_stencil, vulkan_format[m_format], aspect_flags))
@@ -296,7 +298,7 @@ namespace Spartan
             // RENDER TARGET VIEW
             if (m_bind_flags & RHI_Texture_RenderTarget)
             {
-                m_layout = RHI_Image_Color_Attachment_Optimal;
+                name += "-render_target";
 
                 // Render pass
                 if (!vulkan_common::render_pass::create(rhi_context, vulkan_format[m_format], m_resource_render_pass, m_layout))
@@ -308,6 +310,10 @@ namespace Spartan
                     return false;
             }
         }
+
+        // Name the image and image view
+        vulkan_common::debug::set_image_name(rhi_context->device, *image, name.c_str());
+        vulkan_common::debug::set_image_view_name(rhi_context->device, static_cast<VkImageView>(m_resource_texture), name.c_str());
 
 		return true;
 	}
