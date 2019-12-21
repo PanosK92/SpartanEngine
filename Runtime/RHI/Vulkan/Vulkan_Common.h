@@ -547,7 +547,7 @@ namespace Spartan::vulkan_common
 
     namespace render_pass
     {
-        inline bool create(const RHI_Context* rhi_context, const VkFormat format, void*& render_pass, const VkImageLayout layout_final)
+        inline bool create(const RHI_Context* rhi_context, const VkFormat format, void*& render_pass, const RHI_Image_Layout layout_final)
         {
             bool clear_on_set = false;
 
@@ -559,7 +559,7 @@ namespace Spartan::vulkan_common
             color_attachment.stencilLoadOp              = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
             color_attachment.stencilStoreOp             = VK_ATTACHMENT_STORE_OP_DONT_CARE;
             color_attachment.initialLayout              = VK_IMAGE_LAYOUT_UNDEFINED;
-            color_attachment.finalLayout                = layout_final;
+            color_attachment.finalLayout                = vulkan_image_layout[layout_final];
 
             VkAttachmentReference color_attachment_ref  = {};
             color_attachment_ref.attachment             = 0;

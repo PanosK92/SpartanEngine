@@ -43,6 +43,6 @@ namespace Spartan
 
 	protected:
 		uint64_t m_size = 0;
-		uint32_t m_id	= 0;	
+		uint32_t m_id	= 0;
 	};
 }
