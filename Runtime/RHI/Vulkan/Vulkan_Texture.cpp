@@ -127,9 +127,9 @@ namespace Spartan
 		region.imageSubresource.layerCount		= 1;
 		region.imageOffset						= { 0, 0, 0 };
 		region.imageExtent						= { width, height, 1 };
+		vkCmdCopyBufferToImage(cmd_buffer, staging_buffer, image, vulkan_image_layout[RHI_Image_Transfer_Dst_Optimal], 1, &region);
 
         // Transition layout to RHI_Image_Shader_Read_Only_Optimal
-		vkCmdCopyBufferToImage(cmd_buffer, staging_buffer, image, vulkan_image_layout[RHI_Image_Transfer_Dst_Optimal], 1, &region);
 		if (!TransitionImageLayout(cmd_buffer, image, RHI_Image_Transfer_Dst_Optimal, RHI_Image_Shader_Read_Only_Optimal))
 			return false;
 
@@ -277,6 +277,8 @@ namespace Spartan
             // SHADER RESOURCE VIEW
             if (m_bind_flags & RHI_Texture_Sampled)
             {
+                m_layout = RHI_Image_Shader_Read_Only_Optimal;
+
                 if (!vulkan_common::image_view::create(rhi_context, *image, m_resource_texture, vulkan_format[m_format], aspect_flags))
                     return false;
             }
@@ -284,6 +286,8 @@ namespace Spartan
             // DEPTH-STENCIL VIEW
             if (m_bind_flags & RHI_Texture_DepthStencil)
             {
+                m_layout = RHI_Image_Depth_Stencil_Attachment_Optimal;
+
                 auto depth_stencil = m_resource_depth_stencils.emplace_back(nullptr);
                 if (!vulkan_common::image_view::create(rhi_context, *image, depth_stencil, vulkan_format[m_format], aspect_flags))
                     return false;
@@ -292,8 +296,10 @@ namespace Spartan
             // RENDER TARGET VIEW
             if (m_bind_flags & RHI_Texture_RenderTarget)
             {
+                m_layout = RHI_Image_Color_Attachment_Optimal;
+
                 // Render pass
-                if (!vulkan_common::render_pass::create(rhi_context, vulkan_format[m_format], m_resource_render_pass, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))
+                if (!vulkan_common::render_pass::create(rhi_context, vulkan_format[m_format], m_resource_render_pass, m_layout))
                     return false;
 
                 // Frame buffer
