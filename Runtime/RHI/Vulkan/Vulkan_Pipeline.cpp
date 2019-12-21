@@ -317,6 +317,9 @@ namespace Spartan
 			// Allocate		
 			if (!vulkan_common::error::check_result(vkAllocateDescriptorSets(m_rhi_device->GetContextRhi()->device, &allocate_info, &descriptor_set)))
 				return nullptr;
+
+            string name = (m_state->shader_vertex ? m_state->shader_vertex->GetName() : "null") + "-" + (m_state->shader_pixel ? m_state->shader_pixel->GetName() : "null");
+            vulkan_common::debug::set_descriptor_set_name(m_rhi_device->GetContextRhi()->device, descriptor_set, name.c_str());
 		}
 
 		// Update descriptor sets
@@ -464,6 +467,9 @@ namespace Spartan
 		auto descriptor_set_layout = reinterpret_cast<VkDescriptorSetLayout*>(&m_descriptor_set_layout);
         if (!vulkan_common::error::check_result(vkCreateDescriptorSetLayout(m_rhi_device->GetContextRhi()->device, &create_info, nullptr, descriptor_set_layout)))
 			return false;
+
+        string name = (m_state->shader_vertex ? m_state->shader_vertex->GetName() : "null") + "-" + (m_state->shader_pixel ? m_state->shader_pixel->GetName() : "null");
+        vulkan_common::debug::set_descriptor_set_layout_name(m_rhi_device->GetContextRhi()->device, *descriptor_set_layout, name.c_str());
 
 		return true;
 	}
