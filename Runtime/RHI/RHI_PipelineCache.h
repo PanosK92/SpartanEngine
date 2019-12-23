@@ -45,7 +45,8 @@ namespace Spartan
 	class RHI_PipelineState
 	{
 	public:
-        RHI_PipelineState() { Clear(); }
+        RHI_PipelineState() = default;
+        ~RHI_PipelineState() = default;
 
         void ComputeHash()
         {
@@ -150,39 +151,20 @@ namespace Spartan
             return 0;
         }
 
-        void Clear()
-        {
-            shader_vertex               = nullptr;
-            shader_pixel                = nullptr;
-            input_layout                = nullptr;
-            rasterizer_state            = nullptr;
-            blend_state                 = nullptr;
-            depth_stencil_state         = nullptr;
-            render_target_swapchain     = nullptr;
-            render_target_color_texture = nullptr;
-            render_target_depth_texture = nullptr;
-            primitive_topology          = RHI_PrimitiveTopology_Unknown;
-            viewport                    = RHI_Viewport(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
-            scissor                     = Math::Rectangle(0.0f, 0.0f, 0.0f, 0.0f);
-            scissor_dynamic             = false;
-            vertex_buffer_stride        = 0;
-            hash                        = 0;
-        }
-
-        RHI_Shader* shader_vertex;
-        RHI_Shader* shader_pixel;
-        RHI_InputLayout* input_layout;
-        RHI_RasterizerState* rasterizer_state;
-        RHI_BlendState* blend_state;
-        RHI_DepthStencilState* depth_stencil_state;
-        RHI_PrimitiveTopology_Mode primitive_topology;
-        RHI_Viewport viewport;     
-        Math::Rectangle scissor;
-        RHI_SwapChain* render_target_swapchain;
-        RHI_Texture* render_target_color_texture;
-        RHI_Texture* render_target_depth_texture;
-        bool scissor_dynamic;
-        uint32_t vertex_buffer_stride;
+        RHI_Shader* shader_vertex                       = nullptr;
+        RHI_Shader * shader_pixel                       = nullptr;
+        RHI_InputLayout * input_layout                  = nullptr;
+        RHI_RasterizerState* rasterizer_state           = nullptr;
+        RHI_BlendState* blend_state                     = nullptr;
+        RHI_DepthStencilState* depth_stencil_state      = nullptr;
+        RHI_SwapChain* render_target_swapchain          = nullptr;
+        RHI_Texture* render_target_color_texture        = nullptr;
+        RHI_Texture* render_target_depth_texture        = nullptr;
+        RHI_PrimitiveTopology_Mode primitive_topology   = RHI_PrimitiveTopology_Unknown;
+        RHI_Viewport viewport                           = RHI_Viewport(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+        Math::Rectangle scissor                         = Math::Rectangle(0.0f, 0.0f, 0.0f, 0.0f);
+        bool scissor_dynamic                            = false;
+        uint32_t vertex_buffer_stride                   = 0;
        
 	private:
 		uint32_t hash = 0;

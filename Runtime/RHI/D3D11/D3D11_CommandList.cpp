@@ -62,8 +62,8 @@ namespace Spartan
 
 	RHI_CommandList::~RHI_CommandList() = default;
 
-	bool RHI_CommandList::Begin(const string& pass_name, RHI_Cmd_Type type /*= RHI_Cmd_Begin*/)
-	{
+    bool RHI_CommandList::Begin(const std::string& pass_name)
+    {
         // Profile
         if (m_profiler)
         {
@@ -77,22 +77,32 @@ namespace Spartan
             m_rhi_device->GetContextRhi()->annotation->BeginEvent(FileSystem::StringToWstring(pass_name).c_str());
         }
 
-        if (m_pipeline_state.blend_state)                                           SetBlendState(m_pipeline_state.blend_state);
-        if (m_pipeline_state.depth_stencil_state)                                   SetDepthStencilState(m_pipeline_state.depth_stencil_state);
-        if (m_pipeline_state.rasterizer_state)                                      SetRasterizerState(m_pipeline_state.rasterizer_state);
-        if (m_pipeline_state.shader_vertex)                                         SetInputLayout(m_pipeline_state.shader_vertex->GetInputLayout());
-        if (m_pipeline_state.shader_vertex)                                         SetShaderVertex(m_pipeline_state.shader_vertex);
-        if (m_pipeline_state.shader_pixel)                                          SetShaderPixel(m_pipeline_state.shader_pixel);
-        if (m_pipeline_state.viewport.IsDefined())                                  SetViewport(m_pipeline_state.viewport);
-        if (m_pipeline_state.primitive_topology != RHI_PrimitiveTopology_Unknown)   SetPrimitiveTopology(m_pipeline_state.primitive_topology);
-        if (m_pipeline_state.render_target_swapchain)                               SetRenderTarget(m_pipeline_state.render_target_swapchain->GetRenderTargetView(), m_pipeline_state.render_target_depth_texture ? m_pipeline_state.render_target_depth_texture->GetResource_DepthStencil() : nullptr);
-        if (m_pipeline_state.render_target_color_texture)                           SetRenderTarget(m_pipeline_state.render_target_color_texture->GetResource_RenderTarget(), m_pipeline_state.render_target_depth_texture ? m_pipeline_state.render_target_depth_texture->GetResource_DepthStencil() : nullptr);
+        m_marker_begun.emplace_back(true);
+
+        return true;
+    }
+
+    bool RHI_CommandList::Begin(RHI_PipelineState& pipeline_state)
+    {
+        if (pipeline_state.blend_state)                                           SetBlendState(pipeline_state.blend_state);
+        if (pipeline_state.depth_stencil_state)                                   SetDepthStencilState(pipeline_state.depth_stencil_state);
+        if (pipeline_state.rasterizer_state)                                      SetRasterizerState(pipeline_state.rasterizer_state);
+        if (pipeline_state.shader_vertex)                                         SetInputLayout(pipeline_state.shader_vertex->GetInputLayout());
+        if (pipeline_state.shader_vertex)                                         SetShaderVertex(pipeline_state.shader_vertex);
+        if (pipeline_state.shader_pixel)                                          SetShaderPixel(pipeline_state.shader_pixel);
+        if (pipeline_state.viewport.IsDefined())                                  SetViewport(pipeline_state.viewport);
+        if (pipeline_state.primitive_topology != RHI_PrimitiveTopology_Unknown)   SetPrimitiveTopology(pipeline_state.primitive_topology);
+        if (pipeline_state.render_target_swapchain)                               SetRenderTarget(pipeline_state.render_target_swapchain->GetRenderTargetView(), pipeline_state.render_target_depth_texture ? pipeline_state.render_target_depth_texture->GetResource_DepthStencil() : nullptr);
+        if (pipeline_state.render_target_color_texture)                           SetRenderTarget(pipeline_state.render_target_color_texture->GetResource_RenderTarget(), pipeline_state.render_target_depth_texture ? pipeline_state.render_target_depth_texture->GetResource_DepthStencil() : nullptr);
 
         return true;
 	}
 
-	void RHI_CommandList::End()
+	bool RHI_CommandList::End()
 	{
+        if (!m_marker_begun.back())
+            return false;
+
         // Mark
         RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
         if (rhi_context->debug)
@@ -105,6 +115,10 @@ namespace Spartan
         {
             m_profiler->TimeBlockEnd();
         }
+
+        m_marker_begun.pop_back();
+
+        return true;
 	}
 
 	void RHI_CommandList::Draw(const uint32_t vertex_count)
@@ -420,7 +434,6 @@ namespace Spartan
 
 	bool RHI_CommandList::Submit()
 	{
-        m_pipeline_state.Clear();
 		return true;
 	}
 

@@ -79,130 +79,138 @@ namespace Spartan
         vulkan_common::command_buffer::free(m_rhi_device->GetContextRhi(), m_swap_chain->GetCmdPool(), m_cmd_buffer);
 	}
 
-	bool RHI_CommandList::Begin(const string& pass_name, RHI_Cmd_Type type /*= RHI_Cmd_Begin*/)
+    bool RHI_CommandList::Begin(const std::string& pass_name)
+    {
+        bool result = true;
+
+        // Profile
+        if (m_profiler)
+        {
+            result = m_profiler->TimeBlockStart(pass_name, true, true);
+        }
+
+        // Mark
+        vulkan_common::debug::begin(CMD_BUFFER, pass_name.c_str(), Vector4::One);
+
+        m_marker_begun.emplace_back(true);
+
+        return result;
+    }
+
+    bool RHI_CommandList::Begin(RHI_PipelineState& pipeline_state)
 	{
+        m_pipeline_state = &pipeline_state;
         RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
-        m_begin_types.push_back(type);
 
-        // Profiling - Start
-        if (type == RHI_Cmd_Begin || type == RHI_Cmd_Marker)
+        // Sync CPU to GPU
+        if (m_cmd_state == RHI_Cmd_List_Idle_Sync_Cpu_To_Gpu)
         {
-            if (m_profiler)
-            {
-                m_profiler->TimeBlockStart(pass_name, true, true);
-            }
-
-            vulkan_common::debug::begin(CMD_BUFFER, pass_name.c_str(), Vector4::One);
+            Flush();
+            m_pipeline->OnCommandListConsumed();
+            m_cmd_state = RHI_Cmd_List_Idle;
         }
 
-        if (type == RHI_Cmd_Begin)
+        if (m_cmd_state != RHI_Cmd_List_Idle)
         {
-            // Sync CPU to GPU
-            if (m_cmd_state == RHI_Cmd_List_Idle_Sync_Cpu_To_Gpu)
-            {
-                Flush();
-                m_pipeline->OnCommandListConsumed();
-                m_cmd_state = RHI_Cmd_List_Idle;
-            }
+            LOG_ERROR("Previous command list is still being used");
+            return false;
+        }
 
-            if (m_cmd_state != RHI_Cmd_List_Idle)
-            {
-                LOG_ERROR("Previous command list is still being used");
-                return false;
-            }
+        if (!m_pipeline_state || !m_pipeline_state->IsDefined())
+        {
+            LOG_ERROR("Pipeline state is not defined");
+            return false;
+        }
 
-            if (!m_pipeline_state.IsDefined())
-            {
-                LOG_ERROR("Pipeline state is not defined");
-                return false;
-            }
-
-            m_pipeline = m_rhi_pipeline_cache->GetPipeline(m_pipeline_state).get();
-            m_pipeline->MakeDirty();
-            if (!m_pipeline)
-            {
-                LOG_ERROR("Failed to get pipeline");
-                return false;
-            }
+        m_pipeline = m_rhi_pipeline_cache->GetPipeline(*m_pipeline_state).get();
+        m_pipeline->MakeDirty();
+        if (!m_pipeline)
+        {
+            LOG_ERROR("Failed to get pipeline");
+            return false;
+        }
 	
-		    // Acquire next image (in case the render target is a swapchain)
-            if (!m_pipeline_state.AcquireNextImage())
-                return false;
+		// Acquire next image (in case the render target is a swapchain)
+        if (!m_pipeline_state->AcquireNextImage())
+            return false;
 
-		    // Begin command buffer
-		    VkCommandBufferBeginInfo begin_info	    = {};
-		    begin_info.sType						= VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		    begin_info.flags						= VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-		    if (!vulkan_common::error::check_result(vkBeginCommandBuffer(CMD_BUFFER, &begin_info)))
-		    	return false;
+		// Begin command buffer
+		VkCommandBufferBeginInfo begin_info	    = {};
+		begin_info.sType						= VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		begin_info.flags						= VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+		if (!vulkan_common::error::check_result(vkBeginCommandBuffer(CMD_BUFFER, &begin_info)))
+			return false;
 
-		    // Begin render pass
-		    VkClearValue clear_color					= { 1.0f, 0.0f, 0.0f, 1.0f };
-		    VkRenderPassBeginInfo render_pass_info		= {};
-		    render_pass_info.sType						= VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		    render_pass_info.renderPass					= static_cast<VkRenderPass>(m_pipeline_state.GetRenderPass());
-		    render_pass_info.framebuffer				= static_cast<VkFramebuffer>(m_pipeline_state.GetFrameBuffer());
-		    render_pass_info.renderArea.offset			= { 0, 0 };
-            render_pass_info.renderArea.extent.width    = m_pipeline_state.GetWidth();
-		    render_pass_info.renderArea.extent.height	= m_pipeline_state.GetHeight();
-		    render_pass_info.clearValueCount			= 1;
-		    render_pass_info.pClearValues				= &clear_color;
-		    vkCmdBeginRenderPass(CMD_BUFFER, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
+		// Begin render pass
+		VkClearValue clear_color					= { 1.0f, 0.0f, 0.0f, 1.0f };
+		VkRenderPassBeginInfo render_pass_info		= {};
+		render_pass_info.sType						= VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		render_pass_info.renderPass					= static_cast<VkRenderPass>(m_pipeline_state->GetRenderPass());
+		render_pass_info.framebuffer				= static_cast<VkFramebuffer>(m_pipeline_state->GetFrameBuffer());
+		render_pass_info.renderArea.offset			= { 0, 0 };
+        render_pass_info.renderArea.extent.width    = m_pipeline_state->GetWidth();
+		render_pass_info.renderArea.extent.height	= m_pipeline_state->GetHeight();
+		render_pass_info.clearValueCount			= 1;
+		render_pass_info.pClearValues				= &clear_color;
+		vkCmdBeginRenderPass(CMD_BUFFER, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 
-            // Bind pipeline
-            if (VkPipeline pipeline = static_cast<VkPipeline>(m_pipeline->GetPipeline()))
-            {
-                vkCmdBindPipeline(CMD_BUFFER, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-            }
-            else
-            {
-                LOG_ERROR("Invalid pipeline");
-                return false;
-            }
-
-            // At this point, it's safe to allow for command recording
-            m_cmd_state = RHI_Cmd_List_Recording;
-
-            // Temp hack until I implement some method to have one time set global resources
-            m_renderer->SetGlobalSamplersAndConstantBuffers(this);
+        // Bind pipeline
+        if (VkPipeline pipeline = static_cast<VkPipeline>(m_pipeline->GetPipeline()))
+        {
+            vkCmdBindPipeline(CMD_BUFFER, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
         }
+        else
+        {
+            LOG_ERROR("Invalid pipeline");
+            return false;
+        }
+
+        // At this point, it's safe to allow for command recording
+        m_cmd_state = RHI_Cmd_List_Recording;
+
+        // Temp hack until I implement some method to have one time set global resources
+        m_renderer->SetGlobalSamplersAndConstantBuffers(this);
 
         return true;
 	}
 
-	void RHI_CommandList::End()
-	{
-        RHI_Cmd_Type begin_type = m_begin_types.back();
 
-        // Profiling - End
-        if (begin_type == RHI_Cmd_Begin || begin_type == RHI_Cmd_Marker)
+    bool RHI_CommandList::End()
+    {
+        // Pass
+        if (m_cmd_state == RHI_Cmd_List_Recording)
         {
-            vulkan_common::debug::end(CMD_BUFFER);
-
-            if (m_profiler)
-            {
-                m_profiler->TimeBlockEnd();
-            }
-        }
-
-        if (begin_type == RHI_Cmd_Begin)
-        {
-            if (m_cmd_state != RHI_Cmd_List_Recording)
-            {
-                LOG_WARNING("Can't record command");
-                return;
-            }
-
             vkCmdEndRenderPass(CMD_BUFFER);
-
             if (vulkan_common::error::check_result(vkEndCommandBuffer(CMD_BUFFER)))
             {
                 m_cmd_state = RHI_Cmd_List_Ended;
             }
         }
+        else if (!m_marker_begun.back())
+        {
+            // Log error in case not even the marker will follow
+            LOG_WARNING("Can't record command");
+            return false;
+        }
 
-        m_begin_types.pop_back();
-	}
+        // Marker
+        if (m_marker_begun.back())
+        {
+            // Mark
+            vulkan_common::debug::end(CMD_BUFFER);
+
+            // Profile
+            if (m_profiler)
+            {
+                if (!m_profiler->TimeBlockEnd())
+                    return false;
+            }
+
+            m_marker_begun.pop_back();
+        }
+
+        return true;
+    }
 
 	void RHI_CommandList::Draw(const uint32_t vertex_count)
 	{
@@ -506,9 +514,9 @@ namespace Spartan
 
 		// Wait
 		VkSemaphore wait_semaphores[] = { nullptr };
-        if (m_pipeline_state.render_target_swapchain)
+        if (m_pipeline_state->render_target_swapchain)
         {
-            wait_semaphores[0] = static_cast<VkSemaphore>(m_pipeline_state.render_target_swapchain->GetSemaphoreImageAcquired());
+            wait_semaphores[0] = static_cast<VkSemaphore>(m_pipeline_state->render_target_swapchain->GetSemaphoreImageAcquired());
         }
         VkPipelineStageFlags wait_flags[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
@@ -517,7 +525,7 @@ namespace Spartan
 		
 		VkSubmitInfo submit_info			= {};
 		submit_info.sType					= VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		submit_info.waitSemaphoreCount		= m_pipeline_state.render_target_swapchain ? 1 : 0;
+		submit_info.waitSemaphoreCount		= m_pipeline_state->render_target_swapchain ? 1 : 0;
 		submit_info.pWaitSemaphores			= wait_semaphores;
 		submit_info.pWaitDstStageMask		= wait_flags;
 		submit_info.commandBufferCount		= 1;

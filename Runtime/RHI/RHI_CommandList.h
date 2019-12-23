@@ -43,30 +43,36 @@ namespace Spartan
         RHI_Cmd_List_Ended
     };
 
-	enum RHI_Cmd_Type : uint8_t
-	{
-		RHI_Cmd_Begin,
-        RHI_Cmd_Marker,
-        RHI_Cmd_Unknown
-	};
-
 	class SPARTAN_CLASS RHI_CommandList
 	{
 	public:
 		RHI_CommandList(uint32_t index, RHI_SwapChain* swap_chain, Context* context);
 		~RHI_CommandList();
 
-		// Render pass
-		bool Begin(const std::string& pass_name, RHI_Cmd_Type type = RHI_Cmd_Begin);
-		void End();
+        // Passes
+        bool Begin(const std::string& pass_name);                                           // Marker
+		bool Begin(RHI_PipelineState& pipeline_state);                                      // Pass
+        inline bool Begin(const std::string& pass_name, RHI_PipelineState& pipeline_state)  // Pass & Marker
+        {
+            if (Begin(pass_name))
+                if (Begin(pipeline_state))
+                    return true;
+
+            return false;
+        }
+        bool End();
 
 		// Draw
 		void Draw(uint32_t vertex_count);
 		void DrawIndexed(uint32_t index_count, uint32_t index_offset = 0, uint32_t vertex_offset = 0);
 
-		// Misc
+		// Viewport
 		void SetViewport(const RHI_Viewport& viewport);
+
+        // Scissor
 		void SetScissorRectangle(const Math::Rectangle& scissor_rectangle);
+
+        // Primitive topology
 		void SetPrimitiveTopology(RHI_PrimitiveTopology_Mode primitive_topology);
 
 		// Input layout
@@ -124,22 +130,20 @@ namespace Spartan
 		void ClearRenderTarget(void* render_target, const Math::Vector4& color);
 		void ClearDepthStencil(void* depth_stencil, uint32_t flags, float depth, uint8_t stencil = 0);
 
-        // Submit
 		bool Submit();
         void Flush();
-        RHI_PipelineState& GetPipelineState() { m_pipeline_state.Clear(); return m_pipeline_state; }
 
 	private:
-        std::vector<RHI_Cmd_Type> m_begin_types;
-        RHI_PipelineState m_pipeline_state;
-        RHI_Cmd_List_State m_cmd_state          = RHI_Cmd_List_Idle;
-		RHI_Pipeline* m_pipeline	            = nullptr; 
-        RHI_SwapChain* m_swap_chain             = nullptr;
-        Renderer* m_renderer                    = nullptr;
-        RHI_PipelineCache* m_rhi_pipeline_cache = nullptr;
-        RHI_Device* m_rhi_device                = nullptr;
-        Profiler* m_profiler                    = nullptr;
-        void* m_cmd_buffer                      = nullptr;
-        void* m_cmd_list_consumed_fence         = nullptr;
+        std::vector<bool> m_marker_begun;
+        RHI_Cmd_List_State m_cmd_state              = RHI_Cmd_List_Idle;
+        RHI_PipelineState* m_pipeline_state         = nullptr;
+		RHI_Pipeline* m_pipeline	                = nullptr; 
+        RHI_SwapChain* m_swap_chain                 = nullptr;
+        Renderer* m_renderer                        = nullptr;
+        RHI_PipelineCache* m_rhi_pipeline_cache     = nullptr;
+        RHI_Device* m_rhi_device                    = nullptr;
+        Profiler* m_profiler                        = nullptr;
+        void* m_cmd_buffer                          = nullptr;
+        void* m_cmd_list_consumed_fence             = nullptr;
 	};
 }
