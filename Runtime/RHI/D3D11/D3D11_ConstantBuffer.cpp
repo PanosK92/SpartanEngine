@@ -98,5 +98,10 @@ namespace Spartan
 
 		return true;
 	}
+
+    bool RHI_ConstantBuffer::Flush() const
+    {
+        return true;
+    }
 }
 #endif

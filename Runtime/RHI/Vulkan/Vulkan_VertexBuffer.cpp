@@ -54,31 +54,81 @@ namespace Spartan
 			return false;
 		}
 
+        RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
+
         // Wait in case the buffer is still in use by the graphics queue
-        vkQueueWaitIdle(m_rhi_device->GetContextRhi()->queue_graphics);
+        vkQueueWaitIdle(rhi_context->queue_graphics);
 
 		// Clear previous buffer
-		vulkan_common::buffer::destroy(m_rhi_device->GetContextRhi(), m_buffer);
-		vulkan_common::memory::free(m_rhi_device->GetContextRhi(), m_buffer_memory);
+		vulkan_common::buffer::destroy(rhi_context, m_buffer);
+		vulkan_common::memory::free(rhi_context, m_buffer_memory);
 
-		// Create buffer
-		VkBuffer buffer					= nullptr;
-		VkDeviceMemory buffer_memory	= nullptr;
-		m_size							= m_stride * m_vertex_count;
-		if (!vulkan_common::buffer::create_allocate_bind(m_rhi_device->GetContextRhi(), buffer, buffer_memory, m_size, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT))
-			return false;
+        bool use_staging = vertices != nullptr;
+        m_mappable = !use_staging;
 
-        // Save
-        m_buffer = static_cast<void*>(buffer);
-        m_buffer_memory = static_cast<void*>(buffer_memory);
+        // The reason we use staging is because VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT is the most optimal memory property.
+        // At the same time, local memory cannot use Map() and Unamap(), so we disable that.
 
-        // Initial data
-        if (vertices != nullptr)
+        if (!use_staging)
         {
-            if (void* data = Map())
+            if (!vulkan_common::buffer::create(
+                    rhi_context,
+                    m_buffer,
+                    m_buffer_memory,
+                    m_size,
+                    VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,                                          // usage
+                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT  // memory
+                )
+            ) return false;
+        }
+        else
+        { 
+		    // Create staging/source buffer and copy the vertices to it
+            void* staging_buffer        = nullptr;
+            void* staging_buffer_memory = nullptr;
+		    if (!vulkan_common::buffer::create(
+                    rhi_context,
+                    staging_buffer,
+                    staging_buffer_memory,
+                    m_size,
+                    VK_BUFFER_USAGE_TRANSFER_SRC_BIT,                                               // usage
+                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,     // memory
+                    vertices
+                )
+            ) return false;
+
+            // Create destination buffer
+            if (!vulkan_common::buffer::create(
+                    rhi_context,
+                    m_buffer,
+                    m_buffer_memory,
+                    m_size,
+                    VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,   // usage
+                    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,                                    // memory
+                    nullptr
+                )
+            ) return false;
+
+            // Copy from staging buffer
             {
-                memcpy(data, vertices, m_size);
-                Unmap();
+                // Create command buffer
+                VkCommandBuffer cmd_buffer = vulkan_common::command_buffer::begin(rhi_context, rhi_context->queue_transfer_family_index);
+
+                VkBuffer* buffer_vk         = reinterpret_cast<VkBuffer*>(&m_buffer);
+                VkBuffer* buffer_staging_vk = reinterpret_cast<VkBuffer*>(&staging_buffer);
+
+                // Copy
+                VkBufferCopy copy_region = {};
+                copy_region.size         = m_size;
+                vkCmdCopyBuffer(cmd_buffer, *buffer_staging_vk, *buffer_vk, 1, &copy_region);
+
+                // Flush and free command buffer
+                if (!vulkan_common::command_buffer::flush(rhi_context, rhi_context->queue_transfer))
+                    return false;
+
+                // Destroy staging resources
+                vulkan_common::buffer::destroy(rhi_context, staging_buffer);
+                vulkan_common::memory::free(rhi_context, staging_buffer_memory);
             }
         }
 
@@ -87,6 +137,18 @@ namespace Spartan
 
 	void* RHI_VertexBuffer::Map() const
 	{
+        if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device || !m_buffer_memory)
+        {
+            LOG_ERROR_INVALID_INTERNALS();
+            return nullptr;
+        }
+
+        if (!m_mappable)
+        {
+            LOG_ERROR("This buffer can only be updated via staging");
+            return nullptr;
+        }
+
 		void* ptr = nullptr;
 
         // Map
@@ -114,8 +176,24 @@ namespace Spartan
 			return false;
 		}
 
+        if (!m_mappable)
+        {
+            LOG_ERROR("This buffer can only be updated via staging");
+            return false;
+        }
+
 		vkUnmapMemory(m_rhi_device->GetContextRhi()->device, static_cast<VkDeviceMemory>(m_buffer_memory));
 		return true;
 	}
+
+    bool RHI_VertexBuffer::Flush() const
+    {
+        VkMappedMemoryRange mapped_memory_range = {};
+        mapped_memory_range.sType               = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+        mapped_memory_range.memory              = static_cast<VkDeviceMemory>(m_buffer_memory);
+        mapped_memory_range.offset              = 0;
+        mapped_memory_range.size                = VK_WHOLE_SIZE;
+        return vulkan_common::error::check_result(vkFlushMappedMemoryRanges(m_rhi_device->GetContextRhi()->device, 1, &mapped_memory_range));
+    }
 }
 #endif

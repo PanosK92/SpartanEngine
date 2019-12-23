@@ -284,7 +284,7 @@ namespace Spartan
 		);
 
         // Create command pool
-        vulkan_common::command::create_pool(rhi_device->GetContextRhi(), m_cmd_pool, rhi_device->GetContextRhi()->queue_graphics_family_index);
+        vulkan_common::command_pool::create(rhi_device->GetContextRhi(), m_cmd_pool, rhi_device->GetContextRhi()->queue_graphics_family_index);
 
         // Create command lists
         for (uint32_t i = 0; i < m_buffer_count; i++)
@@ -309,7 +309,7 @@ namespace Spartan
         m_cmd_lists.clear();
 
         // Command pool
-        vulkan_common::command::destroy(m_rhi_device->GetContextRhi(), m_cmd_pool);
+        vulkan_common::command_pool::destroy(m_rhi_device->GetContextRhi(), m_cmd_pool);
 
         // Render pass
         vulkan_common::render_pass::destroy(m_rhi_device->GetContextRhi(), m_render_pass);

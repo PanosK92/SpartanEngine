@@ -68,6 +68,7 @@ namespace Spartan
 
 		void* Map() const;
 		bool Unmap() const;
+        bool Flush() const;
 
 		auto GetResource()      const { return m_buffer; }
 		auto& GetSize()         const { return m_size; }
@@ -84,5 +85,6 @@ namespace Spartan
 		std::shared_ptr<RHI_Device> m_rhi_device;
 		void* m_buffer			= nullptr;
 		void* m_buffer_memory	= nullptr;
+        bool m_mappable         = false;
 	};
 }

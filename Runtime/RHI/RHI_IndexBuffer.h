@@ -67,6 +67,7 @@ namespace Spartan
 
 		void* Map() const;
 		bool Unmap() const;
+        bool Flush() const;
 
         void* GetResource()		    const { return m_buffer; }
         uint32_t GetIndexCount()	const { return m_index_count; }
@@ -82,6 +83,7 @@ namespace Spartan
 
 		// API
 		void* m_buffer			= nullptr;
-		void* m_buffer_memory	= nullptr;		
+		void* m_buffer_memory	= nullptr;
+        bool m_mappable         = false;
 	};
 }

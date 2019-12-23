@@ -77,8 +77,8 @@ namespace Spartan
 				// Become more transparent, the further out we go
 				const auto alphaWidth	= 1.0f - static_cast<float>(Abs(j)) / static_cast<float>(halfSizeH);
 				const auto alphaHeight	= 1.0f - static_cast<float>(Abs(i)) / static_cast<float>(halfSizeW);
-				auto alpha			= (alphaWidth + alphaHeight) * 0.5f;
-				alpha				= Pow(alpha, 10.0f);
+				auto alpha			    = (alphaWidth + alphaHeight) * 0.5f;
+				alpha				    = Pow(alpha, 10.0f);
 
 				// LINE 1
 				// Upper left.

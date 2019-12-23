@@ -51,69 +51,15 @@ namespace Spartan
 		vulkan_common::memory::free(m_rhi_device->GetContextRhi(), m_texture_memory);
 	}
 
-	inline bool TransitionImageLayout(VkCommandBuffer& cmd_buffer, VkImage& image, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new)
-	{
-		VkImageMemoryBarrier barrier			= {};
-		barrier.sType							= VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		barrier.oldLayout						= vulkan_image_layout[layout_old];
-		barrier.newLayout						= vulkan_image_layout[layout_new];
-		barrier.srcQueueFamilyIndex				= VK_QUEUE_FAMILY_IGNORED;
-		barrier.dstQueueFamilyIndex				= VK_QUEUE_FAMILY_IGNORED;
-		barrier.image							= image;
-		barrier.subresourceRange.aspectMask		= VK_IMAGE_ASPECT_COLOR_BIT;
-		barrier.subresourceRange.baseMipLevel	= 0;
-		barrier.subresourceRange.levelCount		= 1;
-		barrier.subresourceRange.baseArrayLayer = 0;
-		barrier.subresourceRange.layerCount		= 1;
-
-		VkPipelineStageFlags source_stage;
-		VkPipelineStageFlags destination_stage;
-
-		if (barrier.oldLayout == VK_IMAGE_LAYOUT_PREINITIALIZED && barrier.newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-		{
-			barrier.srcAccessMask	= 0;
-			barrier.dstAccessMask	= VK_ACCESS_TRANSFER_WRITE_BIT;
-			source_stage			= VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-			destination_stage		= VK_PIPELINE_STAGE_TRANSFER_BIT;
-		}
-		else if (barrier.oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && barrier.newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-		{
-			barrier.srcAccessMask	= VK_ACCESS_TRANSFER_WRITE_BIT;
-			barrier.dstAccessMask	= VK_ACCESS_SHADER_READ_BIT;
-			source_stage			= VK_PIPELINE_STAGE_TRANSFER_BIT;
-			destination_stage		= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-		}
-		else 
-		{
-			LOG_ERROR("Unsupported layout transition");
-			return false;
-		}
-
-		vkCmdPipelineBarrier
-		(
-			cmd_buffer,
-			source_stage, destination_stage,
-			0,
-			0, nullptr,
-			0, nullptr,
-			1, &barrier
-		);
-
-		return true;
-	}
-
-    inline bool CopyBufferToImage(const RHI_Context* rhi_context, const uint32_t width, const uint32_t height, VkImage& image, RHI_Image_Layout& layout, VkBuffer& staging_buffer)
+    inline bool CopyBufferToImage(const RHI_Device* rhi_device, const uint32_t width, const uint32_t height, VkImage& image, const RHI_Image_Layout layout, VkBuffer* staging_buffer)
     {
+        RHI_Context* rhi_context = rhi_device->GetContextRhi();
+
         // Create command buffer
-        void* command_pool      = nullptr;
-        void* command_buffer[1] = { nullptr };
-		if (!vulkan_common::command::begin(rhi_context, rhi_context->queue_graphics_family_index, command_pool, command_buffer[0]))
-			return false;
+        VkCommandBuffer cmd_buffer = vulkan_common::command_buffer::begin(rhi_context, rhi_context->queue_graphics_family_index);
 
-        VkCommandBuffer cmd_buffer = static_cast<VkCommandBuffer>(command_buffer[0]);
-
-        // Transition layout to RHI_Image_Transfer_Dst_Optimal
-		if (!TransitionImageLayout(cmd_buffer, image, layout, RHI_Image_Transfer_Dst_Optimal))
+        // Transition to RHI_Image_Transfer_Dst_Optimal
+		if (!vulkan_common::image::transition_layout(rhi_device, cmd_buffer, image, layout, RHI_Image_Transfer_Dst_Optimal))
 			return false;
 		
 		// Copy buffer to texture	
@@ -127,18 +73,14 @@ namespace Spartan
 		region.imageSubresource.layerCount		= 1;
 		region.imageOffset						= { 0, 0, 0 };
 		region.imageExtent						= { width, height, 1 };
-		vkCmdCopyBufferToImage(cmd_buffer, staging_buffer, image, vulkan_image_layout[RHI_Image_Transfer_Dst_Optimal], 1, &region);
+		vkCmdCopyBufferToImage(cmd_buffer, *staging_buffer, image, vulkan_image_layout[RHI_Image_Transfer_Dst_Optimal], 1, &region);
 
-        // Transition layout to RHI_Image_Shader_Read_Only_Optimal
-		if (!TransitionImageLayout(cmd_buffer, image, RHI_Image_Transfer_Dst_Optimal, RHI_Image_Shader_Read_Only_Optimal))
+        // Transition to RHI_Image_Shader_Read_Only_Optimal
+		if (!vulkan_common::image::transition_layout(rhi_device, cmd_buffer, image, RHI_Image_Transfer_Dst_Optimal, RHI_Image_Shader_Read_Only_Optimal))
 			return false;
 
-        layout = RHI_Image_Shader_Read_Only_Optimal;
-
         // Flush and free command buffer
-        bool result = vulkan_common::command::flush(command_buffer[0], rhi_context->queue_graphics);
-        vulkan_common::command::free(rhi_context, command_pool, command_buffer[0]);
-		return result;
+		return vulkan_common::command_buffer::flush(rhi_context, rhi_context->queue_graphics);
 	}
 
 	bool RHI_Texture2D::CreateResourceGpu()
@@ -146,8 +88,8 @@ namespace Spartan
         const RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
 
         // Get format support
-        VkFormatFeatureFlags feature_flag = (m_bind_flags & RHI_Texture_DepthStencil) ? VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT : VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
-        VkImageTiling image_tiling = vulkan_common::image::is_format_supported(rhi_context, m_format, feature_flag);
+        VkFormatFeatureFlags feature_flag   = (m_bind_flags & RHI_Texture_DepthStencil) ? VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT : VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
+        VkImageTiling image_tiling          = vulkan_common::image::is_format_supported(rhi_context, m_format, feature_flag);
 
         // If the format is not supported, early exit
         if (image_tiling == VK_IMAGE_TILING_MAX_ENUM)
@@ -181,22 +123,22 @@ namespace Spartan
             usage_flags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT; // specifies that the image can be used as the destination of a transfer command.
 
             // Copy data to a buffer (if there are any)
-            VkBuffer staging_buffer = nullptr;
-            VkDeviceMemory staging_buffer_memory = nullptr;
+            void* staging_buffer = nullptr;
+            void* staging_buffer_memory = nullptr;
             if (!m_data.empty())
             {
                 VkDeviceSize buffer_size = static_cast<uint64_t>(m_width)* static_cast<uint64_t>(m_height)* static_cast<uint64_t>(m_channels);
 
                 // Create buffer
-                if (!vulkan_common::buffer::create_allocate_bind(rhi_context, staging_buffer, staging_buffer_memory, buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT))
+                if (!vulkan_common::buffer::create(rhi_context, static_cast<void*>(staging_buffer), staging_buffer_memory, buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
                     return false;
 
                 // Copy to buffer
                 void* data = nullptr;
-                if (vulkan_common::error::check_result(vkMapMemory(rhi_context->device, staging_buffer_memory, 0, buffer_size, 0, &data)))
+                if (vulkan_common::error::check_result(vkMapMemory(rhi_context->device, static_cast<VkDeviceMemory>(staging_buffer_memory), 0, buffer_size, 0, &data)))
                 {
                     memcpy(data, m_data.front().data(), static_cast<size_t>(buffer_size));
-                    vkUnmapMemory(rhi_context->device, staging_buffer_memory);
+                    vkUnmapMemory(rhi_context->device, static_cast<VkDeviceMemory>(staging_buffer_memory));
                 }
             }
 
@@ -221,7 +163,7 @@ namespace Spartan
                 // Todo: Reduces possibility of error, but it can still occur, todo
                 static mutex _mutex;
                 lock_guard lock(_mutex);
-                if (!CopyBufferToImage(rhi_context, static_cast<uint32_t>(m_width), static_cast<uint32_t>(m_height), *image, m_layout, staging_buffer))
+                if (!CopyBufferToImage(m_rhi_device.get(), static_cast<uint32_t>(m_width), static_cast<uint32_t>(m_height), *image, m_layout, reinterpret_cast<VkBuffer*>(&staging_buffer)))
                 {
                     LOG_ERROR("Failed to copy buffer to image");
                     return false;
@@ -231,8 +173,8 @@ namespace Spartan
             // Release staging buffer
             if (staging_buffer && staging_buffer_memory)
             {
-                vkDestroyBuffer(rhi_context->device, staging_buffer, nullptr);
-                vkFreeMemory(rhi_context->device, staging_buffer_memory, nullptr);
+                vulkan_common::buffer::destroy(rhi_context, staging_buffer);
+                vulkan_common::memory::free(rhi_context, staging_buffer_memory);
             }
         }
         else
