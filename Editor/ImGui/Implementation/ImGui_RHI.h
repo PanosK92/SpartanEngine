@@ -223,7 +223,7 @@ namespace ImGui::RHI
         g_viewport.height   = draw_data->DisplaySize.y;
 
 		// Set render state
-        RHI_PipelineState& pipeline_state       = cmd_list->GetPipelineState();
+        RHI_PipelineState pipeline_state;
         pipeline_state.shader_vertex            = g_shader_vertex.get();
         pipeline_state.shader_pixel             = g_shader_pixel.get();
         pipeline_state.input_layout             = g_shader_vertex->GetInputLayout().get();
@@ -242,7 +242,7 @@ namespace ImGui::RHI
         }
 
         // Start witting command list
-        if (cmd_list->Begin("Pass_ImGui"))
+        if (cmd_list->Begin("Pass_ImGui", pipeline_state))
         {
             cmd_list->SetBufferVertex(g_vertex_buffer);
             cmd_list->SetBufferIndex(g_index_buffer);
