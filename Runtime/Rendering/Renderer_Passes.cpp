@@ -1621,26 +1621,26 @@ namespace Spartan
 
             // Draw lines with depth
             {
-                // Set render state
-                RHI_PipelineState& pipeline_state           = cmd_list->GetPipelineState();
-                pipeline_state.shader_vertex                = shader_color_v.get();
-                pipeline_state.shader_pixel                 = shader_color_p.get();
-                pipeline_state.input_layout                 = shader_color_v->GetInputLayout().get();
-                pipeline_state.rasterizer_state             = m_rasterizer_cull_back_wireframe.get();
-                pipeline_state.blend_state                  = m_blend_enabled.get();
-                pipeline_state.depth_stencil_state          = m_depth_stencil_enabled_no_write.get();
-                pipeline_state.vertex_buffer_stride         = m_quad.GetVertexBuffer()->GetStride(); // stride matches rect
-                pipeline_state.render_target_color_texture  = tex_out.get();
-                pipeline_state.render_target_depth_texture  = m_render_targets[RenderTarget_Gbuffer_Depth].get();
-                pipeline_state.viewport                     = tex_out->GetViewport();
-                pipeline_state.primitive_topology           = RHI_PrimitiveTopology_LineList;
-
                 // Create and submit command list
                 if (cmd_list->Begin("Lines_With_Depth", RHI_Cmd_Marker))
                 {
                     // Grid
                     if (draw_grid)
                     {
+                        // Set render state
+                        RHI_PipelineState& pipeline_state           = cmd_list->GetPipelineState();
+                        pipeline_state.shader_vertex                = shader_color_v.get();
+                        pipeline_state.shader_pixel                 = shader_color_p.get();
+                        pipeline_state.input_layout                 = shader_color_v->GetInputLayout().get();
+                        pipeline_state.rasterizer_state             = m_rasterizer_cull_back_wireframe.get();
+                        pipeline_state.blend_state                  = m_blend_enabled.get();
+                        pipeline_state.depth_stencil_state          = m_depth_stencil_enabled_no_write.get();
+                        pipeline_state.vertex_buffer_stride         = m_gizmo_grid->GetVertexBuffer()->GetStride();
+                        pipeline_state.render_target_color_texture  = tex_out.get();
+                        pipeline_state.render_target_depth_texture  = m_render_targets[RenderTarget_Gbuffer_Depth].get();
+                        pipeline_state.viewport                     = tex_out->GetViewport();
+                        pipeline_state.primitive_topology           = RHI_PrimitiveTopology_LineList;
+
                         // Create and submit command list
                         if (cmd_list->Begin("Grid", RHI_Cmd_Begin))
                         {
@@ -1673,6 +1673,20 @@ namespace Spartan
                         m_vertex_buffer_lines->Unmap();
                         m_lines_list_depth_enabled.clear();
 
+                        // Set render state
+                        RHI_PipelineState& pipeline_state           = cmd_list->GetPipelineState();
+                        pipeline_state.shader_vertex                = shader_color_v.get();
+                        pipeline_state.shader_pixel                 = shader_color_p.get();
+                        pipeline_state.input_layout                 = shader_color_v->GetInputLayout().get();
+                        pipeline_state.rasterizer_state             = m_rasterizer_cull_back_wireframe.get();
+                        pipeline_state.blend_state                  = m_blend_enabled.get();
+                        pipeline_state.depth_stencil_state          = m_depth_stencil_enabled_no_write.get();
+                        pipeline_state.vertex_buffer_stride         = m_vertex_buffer_lines->GetStride();
+                        pipeline_state.render_target_color_texture  = tex_out.get();
+                        pipeline_state.render_target_depth_texture  = m_render_targets[RenderTarget_Gbuffer_Depth].get();
+                        pipeline_state.viewport                     = tex_out->GetViewport();
+                        pipeline_state.primitive_topology           = RHI_PrimitiveTopology_LineList;
+
                         // Create and submit command list
                         if (cmd_list->Begin("Lines", RHI_Cmd_Begin))
                         {
@@ -1697,7 +1711,7 @@ namespace Spartan
                 pipeline_state.rasterizer_state             = m_rasterizer_cull_back_wireframe.get();
                 pipeline_state.blend_state                  = m_blend_disabled.get();
                 pipeline_state.depth_stencil_state          = m_depth_stencil_disabled.get();
-                pipeline_state.vertex_buffer_stride         = m_quad.GetVertexBuffer()->GetStride(); // stride matches rect
+                pipeline_state.vertex_buffer_stride         = m_vertex_buffer_lines->GetStride();
                 pipeline_state.render_target_color_texture  = tex_out.get();  
                 pipeline_state.viewport                     = tex_out->GetViewport();
                 pipeline_state.primitive_topology           = RHI_PrimitiveTopology_LineList;
