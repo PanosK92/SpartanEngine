@@ -58,14 +58,8 @@ namespace Spartan
 		vulkan_common::memory::free(m_rhi_device->GetContextRhi(), m_buffer_memory);
 
 		// Create buffer
-		VkBuffer buffer					= nullptr;
-		VkDeviceMemory buffer_memory	= nullptr;
-		if (!vulkan_common::buffer::create_allocate_bind(m_rhi_device->GetContextRhi(), buffer, buffer_memory, m_size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT))
+		if (!vulkan_common::buffer::create(m_rhi_device->GetContextRhi(), m_buffer, m_buffer_memory, m_size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
 			return false;
-
-		// Save
-		m_buffer		= static_cast<void*>(buffer);
-		m_buffer_memory = static_cast<void*>(buffer_memory);
 
 		return true;
 	}
@@ -78,7 +72,6 @@ namespace Spartan
             return nullptr;
         }
 
-        // Map
         void* ptr = nullptr;
         vulkan_common::error::check_result
         (
@@ -104,10 +97,19 @@ namespace Spartan
             return false;
         }
 
-        // Unmap
         vkUnmapMemory(m_rhi_device->GetContextRhi()->device, static_cast<VkDeviceMemory>(m_buffer_memory));
 
         return true;
+    }
+
+    bool RHI_ConstantBuffer::Flush() const
+    {
+        VkMappedMemoryRange mapped_memory_range = {};
+        mapped_memory_range.sType               = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+        mapped_memory_range.memory              = static_cast<VkDeviceMemory>(m_buffer_memory);
+        mapped_memory_range.offset              = 0;
+        mapped_memory_range.size                = VK_WHOLE_SIZE;
+        return vulkan_common::error::check_result(vkFlushMappedMemoryRanges(m_rhi_device->GetContextRhi()->device, 1, &mapped_memory_range));
     }
 }
 #endif

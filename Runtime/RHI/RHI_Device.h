@@ -102,9 +102,10 @@ namespace Spartan
 		const DisplayAdapter* GetPrimaryAdapter()			const { return m_primary_adapter; }
 		//=======================================================================================================================
 
-		auto IsInitialized()            const { return m_initialized; }
-        RHI_Context* GetContextRhi()	const { return m_rhi_context.get(); }
-        Context* GetContext()           const { return m_context; }
+		auto IsInitialized()                const { return m_initialized; }
+        RHI_Context* GetContextRhi()	    const { return m_rhi_context.get(); }
+        Context* GetContext()               const { return m_context; }
+        uint32_t GetEnabledGraphicsStages() const { return m_enabled_graphics_shader_stages; }
 
 	private:
 		std::shared_ptr<RHI_Context> m_rhi_context;
@@ -113,6 +114,7 @@ namespace Spartan
 		bool m_initialized = false;
 		const DisplayAdapter* m_primary_adapter = nullptr;
 		std::vector<DisplayMode> m_displayModes;
-		std::vector<DisplayAdapter> m_display_adapters;	
+		std::vector<DisplayAdapter> m_display_adapters;
+        uint32_t m_enabled_graphics_shader_stages = 0;
 	};
 }

@@ -118,13 +118,36 @@ namespace Spartan
 			}
 
 			// Get device features
-			VkPhysicalDeviceFeatures device_features_supported = {};
-            vkGetPhysicalDeviceFeatures(m_rhi_context->device_physical, &device_features_supported);
-
-            // Set enabled device features
             VkPhysicalDeviceFeatures device_features_enabled = {};
-            device_features_enabled.samplerAnisotropy   = m_context->GetSubsystem<Renderer>()->GetOptionValue<bool>(Option_Value_Anisotropy);
-            device_features_enabled.fillModeNonSolid    = device_features_supported.fillModeNonSolid; // required for line rendering
+            {
+                VkPhysicalDeviceFeatures device_features_supported = {};
+                vkGetPhysicalDeviceFeatures(m_rhi_context->device_physical, &device_features_supported);
+
+                #define ENABLE_FEATURE(feature)                                                                    \
+                if (device_features_supported.feature)                                                             \
+                {                                                                                                  \
+                        device_features_enabled.feature = VK_TRUE;                                                 \
+                }                                                                                                  \
+                else                                                                                               \
+                {                                                                                                  \
+                    LOG_WARNING("Requested device feature " #feature " is not supported by the physical device");  \
+                    device_features_enabled.feature = false;                                                       \
+                }
+
+                ENABLE_FEATURE(samplerAnisotropy)
+                ENABLE_FEATURE(fillModeNonSolid)
+            }
+
+            // Determine enabled graphics shader stages
+            m_enabled_graphics_shader_stages = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+            if (device_features_enabled.geometryShader)
+            {
+                m_enabled_graphics_shader_stages = VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT;
+            }
+            if (device_features_enabled.tessellationShader)
+            {
+                m_enabled_graphics_shader_stages = VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT | VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT;
+            }
 
             // Device create info
 			VkDeviceCreateInfo create_info = {};

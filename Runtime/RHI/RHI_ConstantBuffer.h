@@ -47,8 +47,10 @@ namespace Spartan
 
 		void* Map() const;
 		bool Unmap() const;
-		auto GetResource() const	{ return m_buffer; }
-		auto GetSize()	const		{ return m_size; }
+        bool Flush() const;
+
+		auto GetResource()  const { return m_buffer; }
+		auto GetSize()      const { return m_size; }
 
 	private:
 		bool _Create();

@@ -109,5 +109,10 @@ namespace Spartan
 		m_rhi_device->GetContextRhi()->device_context->Unmap(static_cast<ID3D11Resource*>(m_buffer), 0);
 		return true;
 	}
+
+    bool RHI_IndexBuffer::Flush() const
+    {
+        return true;
+    }
 }
 #endif

@@ -36,75 +36,7 @@ namespace Spartan::vulkan_common
     PFN_vkSetDebugUtilsObjectNameEXT    debug::m_fn_set_object_name     = nullptr;
     PFN_vkCmdBeginDebugUtilsLabelEXT    debug::m_fn_marker_begin        = nullptr;
     PFN_vkCmdEndDebugUtilsLabelEXT      debug::m_fn_marker_end          = nullptr;
-
-    static VKAPI_ATTR VkBool32 VKAPI_CALL callback(VkDebugUtilsMessageSeverityFlagBitsEXT msg_severity, VkDebugUtilsMessageTypeFlagsEXT msg_type, const VkDebugUtilsMessengerCallbackDataEXT* p_callback_data, void* p_user_data)
-    {
-        if (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
-        {
-            LOG_INFO(p_callback_data->pMessage);
-        }
-        else if (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
-        {
-            LOG_INFO(p_callback_data->pMessage);
-        }
-        else if (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
-        {
-            LOG_WARNING(p_callback_data->pMessage);
-        }
-        else if (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
-        {
-            LOG_ERROR(p_callback_data->pMessage);
-        }
-
-        return VK_FALSE;
-    }
-
-    void debug::initialize(VkInstance instance)
-    {
-        if (const auto func = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT")))
-        {
-            VkDebugUtilsMessengerCreateInfoEXT create_info  = {};
-            create_info.sType                               = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-            create_info.messageSeverity                     = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-            create_info.messageType                         = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-            create_info.pfnUserCallback                     = callback;
-
-            func(instance, &create_info, nullptr, &m_messenger);
-        }
-        else
-        {
-            LOG_ERROR("Failed to get function pointer for vkCreateDebugUtilsMessengerEXT");
-        }
-
-        m_fn_destroy_messenger = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT"));
-        if (!m_fn_destroy_messenger)
-        {
-            LOG_ERROR("Failed to get function pointer for vkDestroyDebugUtilsMessengerEXT");
-        }
-
-        m_fn_set_object_tag = reinterpret_cast<PFN_vkSetDebugUtilsObjectTagEXT>(vkGetInstanceProcAddr(instance, "vkSetDebugUtilsObjectTagEXT"));
-        if (!m_fn_set_object_tag)
-        {
-            LOG_ERROR("Failed to get function pointer for vkSetDebugUtilsObjectTagEXT");
-        }
-
-        m_fn_set_object_name = reinterpret_cast<PFN_vkSetDebugUtilsObjectNameEXT>(vkGetInstanceProcAddr(instance, "vkSetDebugUtilsObjectNameEXT"));
-        if (!m_fn_set_object_name)
-        {
-            LOG_ERROR("Failed to get function pointer for vkSetDebugUtilsObjectNameEXT");
-        }
-
-        m_fn_marker_begin = reinterpret_cast<PFN_vkCmdBeginDebugUtilsLabelEXT>(vkGetInstanceProcAddr(instance, "vkCmdBeginDebugUtilsLabelEXT"));
-        if (!m_fn_marker_begin)
-        {
-            LOG_ERROR("Failed to get function pointer for vkCmdBeginDebugUtilsLabelEXT");
-        }
-
-        m_fn_marker_end = reinterpret_cast<PFN_vkCmdEndDebugUtilsLabelEXT>(vkGetInstanceProcAddr(instance, "vkCmdEndDebugUtilsLabelEXT"));
-        if (!m_fn_marker_end)
-        {
-            LOG_ERROR("Failed to get function pointer for vkCmdEndDebugUtilsLabelEXT");
-        }
-    }
+    void*                               command_buffer::m_cmd_pool      = nullptr;
+    void*                               command_buffer::m_cmd_buffer    = nullptr;
 }
 #endif

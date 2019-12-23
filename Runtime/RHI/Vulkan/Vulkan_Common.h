@@ -223,9 +223,9 @@ namespace Spartan::vulkan_common
 		}
 	}
 
-	namespace command
-	{
-        inline bool create_pool(const RHI_Context* rhi_context, void*& cmd_pool, uint32_t queue_family_index)
+    namespace command_pool
+    {
+        inline bool create(const RHI_Context* rhi_context, void*& cmd_pool, uint32_t queue_family_index)
         {
             VkCommandPoolCreateInfo cmd_pool_info   = {};
             cmd_pool_info.sType                     = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -236,26 +236,68 @@ namespace Spartan::vulkan_common
             return error::check_result(vkCreateCommandPool(rhi_context->device, &cmd_pool_info, nullptr, cmd_pool_vk));
         }
 
-		inline bool create_buffer(const RHI_Context* rhi_context, void*& cmd_pool, void*& cmd_buffer, const VkCommandBufferLevel level)
-		{
+        inline void destroy(const RHI_Context* rhi_context, void*& cmd_pool)
+        {
+            VkCommandPool cmd_pool_vk = static_cast<VkCommandPool>(cmd_pool);
+            vkDestroyCommandPool(rhi_context->device, cmd_pool_vk, nullptr);
+            cmd_pool = nullptr;
+        }
+    }
+
+    class command_buffer
+    {
+    public:
+        command_buffer() = default;
+        ~command_buffer() = default;
+
+        static bool create(const RHI_Context* rhi_context, void*& cmd_pool, void*& cmd_buffer, const VkCommandBufferLevel level)
+        {
             VkCommandPool cmd_pool_vk       = static_cast<VkCommandPool>(cmd_pool);
             VkCommandBuffer* cmd_buffer_vk  = reinterpret_cast<VkCommandBuffer*>(&cmd_buffer);
 
-			VkCommandBufferAllocateInfo allocate_info	= {};
-			allocate_info.sType							= VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-			allocate_info.commandPool					= cmd_pool_vk;
-			allocate_info.level							= level;
+            VkCommandBufferAllocateInfo allocate_info   = {};
+            allocate_info.sType                         = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            allocate_info.commandPool                   = cmd_pool_vk;
+            allocate_info.level                         = level;
             allocate_info.commandBufferCount            = 1;
 
             return error::check_result(vkAllocateCommandBuffers(rhi_context->device, &allocate_info, cmd_buffer_vk));
-		}
+        }
 
-        inline bool flush(void*& cmd_buffer, const VkQueue& queue)
+        static void free(const RHI_Context* rhi_context, void*& cmd_pool, void*& cmd_buffer)
         {
-            if (!cmd_buffer)
+            VkCommandPool cmd_pool_vk       = static_cast<VkCommandPool>(cmd_pool);
+            VkCommandBuffer* cmd_buffer_vk  = reinterpret_cast<VkCommandBuffer*>(&cmd_buffer);
+            vkFreeCommandBuffers(rhi_context->device, cmd_pool_vk, 1, cmd_buffer_vk);
+        }
+
+        static VkCommandBuffer begin(const RHI_Context* rhi_context, const uint32_t queue_family_index)
+        {
+            // Create command pool
+            if (!command_pool::create(rhi_context, m_cmd_pool, queue_family_index))
+                return nullptr;
+
+            // Create command buffer
+            if (!create(rhi_context, VK_COMMAND_BUFFER_LEVEL_PRIMARY))
+                return nullptr;
+
+            VkCommandBufferBeginInfo begin_info = {};
+            begin_info.sType                    = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+            begin_info.flags                    = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+            VkCommandBuffer cmd_buffer_vk = reinterpret_cast<VkCommandBuffer>(m_cmd_buffer);
+            if (!error::check_result(vkBeginCommandBuffer(cmd_buffer_vk, &begin_info)))
+                return nullptr;
+
+            return cmd_buffer_vk;
+        }
+
+        static bool flush(const RHI_Context* rhi_context, const VkQueue& queue)
+        {
+            if (!m_cmd_buffer)
                 return false;
 
-            VkCommandBuffer cmd_buffer_vk = static_cast<VkCommandBuffer>(cmd_buffer);
+            VkCommandBuffer cmd_buffer_vk = static_cast<VkCommandBuffer>(m_cmd_buffer);
 
             if (!error::check_result(vkEndCommandBuffer(cmd_buffer_vk)))
                 return false;
@@ -268,41 +310,40 @@ namespace Spartan::vulkan_common
             if (!error::check_result(vkQueueSubmit(queue, 1, &submitInfo, nullptr)))
                 return false;
 
-            return error::check_result(vkQueueWaitIdle(queue));
-        }
-
-        inline bool begin(const RHI_Context* rhi_context, uint32_t queue_family_index, void*& cmd_pool, void*& cmd_buffer)
-        {
-            // Create command pool
-            if (!create_pool(rhi_context, cmd_pool, queue_family_index))
+            if (!error::check_result(vkQueueWaitIdle(queue)))
                 return false;
 
-            // Create command buffer
-            if (!create_buffer(rhi_context, cmd_pool, cmd_buffer, VK_COMMAND_BUFFER_LEVEL_PRIMARY))
-                return false;
+            free(rhi_context, m_cmd_pool, m_cmd_buffer);
+            command_pool::destroy(rhi_context, m_cmd_pool);
 
-            VkCommandBufferBeginInfo begin_info = {};
-            begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-            begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-            VkCommandBuffer cmd_buffer_vk = static_cast<VkCommandBuffer>(cmd_buffer);
-            return error::check_result(vkBeginCommandBuffer(cmd_buffer_vk, &begin_info));
+            return true;
         }
 
-        inline void free(const RHI_Context* rhi_context, void*& cmd_pool, void*& cmd_buffer)
+    private:
+        static bool command_buffer::create_pool(const RHI_Context* rhi_context, uint32_t queue_family_index)
         {
-            VkCommandPool cmd_pool_vk       = static_cast<VkCommandPool>(cmd_pool);
-            VkCommandBuffer* cmd_buffer_vk  = reinterpret_cast<VkCommandBuffer*>(&cmd_buffer);
-            vkFreeCommandBuffers(rhi_context->device, cmd_pool_vk, 1, cmd_buffer_vk);
+            VkCommandPoolCreateInfo cmd_pool_info   = {};
+            cmd_pool_info.sType                     = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+            cmd_pool_info.queueFamilyIndex          = queue_family_index;
+            cmd_pool_info.flags                     = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+
+            return error::check_result(vkCreateCommandPool(rhi_context->device, &cmd_pool_info, nullptr, reinterpret_cast<VkCommandPool*>(&m_cmd_pool)));
         }
 
-        inline void destroy(const RHI_Context* rhi_context, void*& cmd_pool)
+        static bool command_buffer::create(const RHI_Context* rhi_context, const VkCommandBufferLevel level)
         {
-            VkCommandPool cmd_pool_vk = static_cast<VkCommandPool>(cmd_pool);
-            vkDestroyCommandPool(rhi_context->device, cmd_pool_vk, nullptr);
-            cmd_pool = nullptr;
-        }
-	}
+            VkCommandBufferAllocateInfo allocate_info = {};
+            allocate_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            allocate_info.commandPool = static_cast<VkCommandPool>(m_cmd_pool);
+            allocate_info.level = level;
+            allocate_info.commandBufferCount = 1;
+
+            return error::check_result(vkAllocateCommandBuffers(rhi_context->device, &allocate_info, reinterpret_cast<VkCommandBuffer*>(&m_cmd_buffer)));
+    }
+
+        static void* m_cmd_pool;
+        static void* m_cmd_buffer;
+    };
 
 	namespace semaphore
 	{
@@ -369,29 +410,57 @@ namespace Spartan::vulkan_common
 
 	namespace buffer
 	{
-		inline bool create_allocate_bind(const RHI_Context* rhi_context, VkBuffer& _buffer, VkDeviceMemory& buffer_memory, VkDeviceSize& size, VkBufferUsageFlags usage)
+		inline bool create(const RHI_Context* rhi_context, void*& buffer, void*& device_memory, const uint64_t size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memory_property_flags, const void* data = nullptr)
 		{
+            VkBuffer* buffer_vk              = reinterpret_cast<VkBuffer*>(&buffer);
+            VkDeviceMemory* buffer_memory_vk = reinterpret_cast<VkDeviceMemory*>(&device_memory);
+
 			VkBufferCreateInfo buffer_info	= {};
 			buffer_info.sType				= VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 			buffer_info.size				= size;
 			buffer_info.usage				= usage;
 			buffer_info.sharingMode			= VK_SHARING_MODE_EXCLUSIVE;
 
-			if (!error::check_result(vkCreateBuffer(rhi_context->device, &buffer_info, nullptr, &_buffer)))
+			if (!error::check_result(vkCreateBuffer(rhi_context->device, &buffer_info, nullptr, buffer_vk)))
 				return false;
 
 			VkMemoryRequirements memory_requirements;
-			vkGetBufferMemoryRequirements(rhi_context->device, _buffer, &memory_requirements);
+			vkGetBufferMemoryRequirements(rhi_context->device, *buffer_vk, &memory_requirements);
 
 			VkMemoryAllocateInfo alloc_info = {};			
 			alloc_info.sType				= VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 			alloc_info.allocationSize		= memory_requirements.size;
-			alloc_info.memoryTypeIndex		= memory::get_type(rhi_context, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memory_requirements.memoryTypeBits);
+			alloc_info.memoryTypeIndex		= memory::get_type(rhi_context, memory_property_flags, memory_requirements.memoryTypeBits);
 
-            if (!error::check_result(vkAllocateMemory(rhi_context->device, &alloc_info, nullptr, &buffer_memory)))
+            if (!error::check_result(vkAllocateMemory(rhi_context->device, &alloc_info, nullptr, buffer_memory_vk)))
                 return false;
 
-            if (!error::check_result(vkBindBufferMemory(rhi_context->device, _buffer, buffer_memory, 0)))
+            // If a pointer to the buffer data has been passed, map the buffer and copy over the data
+            if (data != nullptr)
+            {
+                void* mapped;
+                if (error::check_result(vkMapMemory(rhi_context->device, *buffer_memory_vk, 0, size, 0, &mapped)))
+                {
+                    memcpy(mapped, data, size);
+
+                    // If host coherency hasn't been requested, do a manual flush to make writes visible
+                    if ((memory_property_flags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == 0)
+                    {
+                        VkMappedMemoryRange mappedRange = {};
+                        mappedRange.memory              = *buffer_memory_vk;
+                        mappedRange.offset              = 0;
+                        mappedRange.size                = size;
+
+                        if (!error::check_result(vkFlushMappedMemoryRanges(rhi_context->device, 1, &mappedRange)))
+                            return false;
+                    }
+
+                    vkUnmapMemory(rhi_context->device, *buffer_memory_vk);
+                }
+            }
+
+            // Attach the memory to the buffer object
+            if (!error::check_result(vkBindBufferMemory(rhi_context->device, *buffer_vk, *buffer_memory_vk, 0)))
                 return false;
 
 			return true;
@@ -500,6 +569,227 @@ namespace Spartan::vulkan_common
             vkDestroyImage(rhi_context->device, static_cast<VkImage>(image), nullptr);
             image = nullptr;
         }
+
+        inline VkPipelineStageFlags access_flags_to_pipeline_stage(VkAccessFlags access_flags, const VkPipelineStageFlags enabled_graphics_shader_stages)
+        {
+            VkPipelineStageFlags stages = 0;
+
+            while (access_flags != 0)
+            {
+                VkAccessFlagBits AccessFlag = static_cast<VkAccessFlagBits>(access_flags & (~(access_flags - 1)));
+                SPARTAN_ASSERT(AccessFlag != 0 && (AccessFlag & (AccessFlag - 1)) == 0);
+                access_flags &= ~AccessFlag;
+
+                switch (AccessFlag)
+                {
+                case VK_ACCESS_INDIRECT_COMMAND_READ_BIT:
+                    stages |= VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
+                    break;
+
+                case VK_ACCESS_INDEX_READ_BIT:
+                    stages |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+                    break;
+
+                case VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT:
+                    stages |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+                    break;
+
+                case VK_ACCESS_UNIFORM_READ_BIT:
+                    stages |= enabled_graphics_shader_stages | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+                    break;
+
+                case VK_ACCESS_INPUT_ATTACHMENT_READ_BIT:
+                    stages |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+                    break;
+
+                case VK_ACCESS_SHADER_READ_BIT:
+                    stages |= enabled_graphics_shader_stages | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+                    break;
+
+                case VK_ACCESS_SHADER_WRITE_BIT:
+                    stages |= enabled_graphics_shader_stages | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+                    break;
+
+                case VK_ACCESS_COLOR_ATTACHMENT_READ_BIT:
+                    stages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+                    break;
+
+                case VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT:
+                    stages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+                    break;
+
+                case VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT:
+                    stages |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+                    break;
+
+                case VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT:
+                    stages |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+                    break;
+
+                case VK_ACCESS_TRANSFER_READ_BIT:
+                    stages |= VK_PIPELINE_STAGE_TRANSFER_BIT;
+                    break;
+
+                case VK_ACCESS_TRANSFER_WRITE_BIT:
+                    stages |= VK_PIPELINE_STAGE_TRANSFER_BIT;
+                    break;
+
+                case VK_ACCESS_HOST_READ_BIT:
+                    stages |= VK_PIPELINE_STAGE_HOST_BIT;
+                    break;
+
+                case VK_ACCESS_HOST_WRITE_BIT:
+                    stages |= VK_PIPELINE_STAGE_HOST_BIT;
+                    break;
+
+                case VK_ACCESS_MEMORY_READ_BIT:
+                    break;
+
+                case VK_ACCESS_MEMORY_WRITE_BIT:
+                    break;
+
+                default:
+                    LOG_ERROR("Unknown memory access flag");
+                    break;
+                }
+            }
+            return stages;
+        }
+
+        inline VkPipelineStageFlags layout_to_access_mask(VkImageLayout layout, bool is_destination_mask)
+        {
+            VkPipelineStageFlags access_mask = 0;
+
+            switch (layout)
+            {
+            case VK_IMAGE_LAYOUT_UNDEFINED:
+                if (is_destination_mask)
+                {
+                    LOG_ERROR("The new layout used in a transition must not be VK_IMAGE_LAYOUT_UNDEFINED.");
+                }
+                break;
+
+            case VK_IMAGE_LAYOUT_GENERAL:
+                access_mask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+                break;
+
+            case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+                access_mask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+                break;
+
+            case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
+                access_mask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+                break;
+
+            case VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL:
+                access_mask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+                break;
+
+            case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
+                access_mask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
+                break;
+
+            case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
+                access_mask = VK_ACCESS_TRANSFER_READ_BIT;
+                break;
+
+            case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
+                access_mask = VK_ACCESS_TRANSFER_WRITE_BIT;
+                break;
+
+            case VK_IMAGE_LAYOUT_PREINITIALIZED:
+                if (!is_destination_mask)
+                {
+                    access_mask = VK_ACCESS_HOST_WRITE_BIT;
+                }
+                else
+                {
+                    LOG_ERROR("The new layout used in a transition must not be VK_IMAGE_LAYOUT_PREINITIALIZED.");
+                }
+                break;
+
+            case VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL:
+                access_mask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+                break;
+
+            case VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL:
+                access_mask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+                break;
+
+            case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
+                access_mask = VK_ACCESS_MEMORY_READ_BIT;
+                break;
+
+            default:
+                LOG_ERROR("Unexpected image layout");
+                break;
+            }
+
+            return access_mask;
+        }
+
+        inline bool transition_layout(const RHI_Device* rhi_device, VkCommandBuffer& cmd_buffer, VkImage& image, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new)
+	    {
+            VkImageMemoryBarrier image_barrier              = {};
+            image_barrier.sType                             = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            image_barrier.pNext                             = nullptr;
+            image_barrier.oldLayout                         = vulkan_image_layout[layout_old];
+            image_barrier.newLayout                         = vulkan_image_layout[layout_new];
+            image_barrier.srcQueueFamilyIndex               = VK_QUEUE_FAMILY_IGNORED;
+            image_barrier.dstQueueFamilyIndex               = VK_QUEUE_FAMILY_IGNORED;
+            image_barrier.image                             = image;
+            image_barrier.subresourceRange.aspectMask       = VK_IMAGE_ASPECT_COLOR_BIT;
+            image_barrier.subresourceRange.baseMipLevel     = 0;
+            image_barrier.subresourceRange.levelCount       = 1;
+            image_barrier.subresourceRange.baseArrayLayer   = 0;
+            image_barrier.subresourceRange.layerCount       = 1;
+            image_barrier.srcAccessMask                     = layout_to_access_mask(image_barrier.oldLayout, false);
+            image_barrier.dstAccessMask                     = layout_to_access_mask(image_barrier.newLayout, true);
+
+            VkPipelineStageFlags source_stage = 0;
+            {
+                if (image_barrier.oldLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+                {
+                    source_stage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+                }
+                else if (image_barrier.srcAccessMask != 0)
+                {
+                    source_stage = vulkan_common::image::access_flags_to_pipeline_stage(image_barrier.srcAccessMask, rhi_device->GetEnabledGraphicsStages());
+                }
+                else
+                {
+                    source_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+                }
+            }
+
+            VkPipelineStageFlags destination_stage = 0;
+            {
+                if (image_barrier.newLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+                {
+                    destination_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+                }
+                else if (image_barrier.dstAccessMask != 0)
+                {
+                    destination_stage = vulkan_common::image::access_flags_to_pipeline_stage(image_barrier.dstAccessMask, rhi_device->GetEnabledGraphicsStages());
+                }
+                else
+                {
+                    destination_stage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+                }
+            }
+
+	    	vkCmdPipelineBarrier
+	    	(
+	    		cmd_buffer,
+	    		source_stage, destination_stage,
+	    		0,
+	    		0, nullptr,
+	    		0, nullptr,
+	    		1, &image_barrier
+	    	);
+
+	    	return true;
+	    }
     }
 
     namespace image_view
@@ -777,7 +1067,75 @@ namespace Spartan::vulkan_common
         debug() = default;
         ~debug() = default;
 
-        static void initialize(VkInstance instance);
+        static VKAPI_ATTR VkBool32 VKAPI_CALL callback(VkDebugUtilsMessageSeverityFlagBitsEXT msg_severity, VkDebugUtilsMessageTypeFlagsEXT msg_type, const VkDebugUtilsMessengerCallbackDataEXT* p_callback_data, void* p_user_data)
+        {
+            if (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
+            {
+                LOG_INFO(p_callback_data->pMessage);
+            }
+            else if (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
+            {
+                LOG_INFO(p_callback_data->pMessage);
+            }
+            else if (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+            {
+                LOG_WARNING(p_callback_data->pMessage);
+            }
+            else if (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+            {
+                LOG_ERROR(p_callback_data->pMessage);
+            }
+
+            return VK_FALSE;
+        }
+
+        static void debug::initialize(VkInstance instance)
+        {
+            if (const auto func = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT")))
+            {
+                VkDebugUtilsMessengerCreateInfoEXT create_info  = {};
+                create_info.sType                               = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+                create_info.messageSeverity                     = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+                create_info.messageType                         = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+                create_info.pfnUserCallback                     = callback;
+
+                func(instance, &create_info, nullptr, &m_messenger);
+            }
+            else
+            {
+                LOG_ERROR("Failed to get function pointer for vkCreateDebugUtilsMessengerEXT");
+            }
+
+            m_fn_destroy_messenger = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT"));
+            if (!m_fn_destroy_messenger)
+            {
+                LOG_ERROR("Failed to get function pointer for vkDestroyDebugUtilsMessengerEXT");
+            }
+
+            m_fn_set_object_tag = reinterpret_cast<PFN_vkSetDebugUtilsObjectTagEXT>(vkGetInstanceProcAddr(instance, "vkSetDebugUtilsObjectTagEXT"));
+            if (!m_fn_set_object_tag)
+            {
+                LOG_ERROR("Failed to get function pointer for vkSetDebugUtilsObjectTagEXT");
+            }
+
+            m_fn_set_object_name = reinterpret_cast<PFN_vkSetDebugUtilsObjectNameEXT>(vkGetInstanceProcAddr(instance, "vkSetDebugUtilsObjectNameEXT"));
+            if (!m_fn_set_object_name)
+            {
+                LOG_ERROR("Failed to get function pointer for vkSetDebugUtilsObjectNameEXT");
+            }
+
+            m_fn_marker_begin = reinterpret_cast<PFN_vkCmdBeginDebugUtilsLabelEXT>(vkGetInstanceProcAddr(instance, "vkCmdBeginDebugUtilsLabelEXT"));
+            if (!m_fn_marker_begin)
+            {
+                LOG_ERROR("Failed to get function pointer for vkCmdBeginDebugUtilsLabelEXT");
+            }
+
+            m_fn_marker_end = reinterpret_cast<PFN_vkCmdEndDebugUtilsLabelEXT>(vkGetInstanceProcAddr(instance, "vkCmdEndDebugUtilsLabelEXT"));
+            if (!m_fn_marker_end)
+            {
+                LOG_ERROR("Failed to get function pointer for vkCmdEndDebugUtilsLabelEXT");
+            }
+        }
 
         static void shutdown(VkInstance instance)
         {

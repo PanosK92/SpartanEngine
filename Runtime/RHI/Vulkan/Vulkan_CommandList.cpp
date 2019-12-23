@@ -59,7 +59,7 @@ namespace Spartan
         RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
 
         // Command buffer
-        vulkan_common::command::create_buffer(rhi_context, m_swap_chain->GetCmdPool(), m_cmd_buffer, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+        vulkan_common::command_buffer::create(rhi_context, m_swap_chain->GetCmdPool(), m_cmd_buffer, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
         // Fence
         vulkan_common::fence::create(rhi_context, m_cmd_list_consumed_fence);
@@ -76,7 +76,7 @@ namespace Spartan
         vulkan_common::fence::destroy(rhi_context, m_cmd_list_consumed_fence);
 
         // Command buffer
-        vulkan_common::command::free(m_rhi_device->GetContextRhi(), m_swap_chain->GetCmdPool(), m_cmd_buffer);
+        vulkan_common::command_buffer::free(m_rhi_device->GetContextRhi(), m_swap_chain->GetCmdPool(), m_cmd_buffer);
 	}
 
 	bool RHI_CommandList::Begin(const string& pass_name, RHI_Cmd_Type type /*= RHI_Cmd_Begin*/)
