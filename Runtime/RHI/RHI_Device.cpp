@@ -35,7 +35,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-	void RHI_Device::AddDisplayMode(uint32_t width, uint32_t height, uint32_t refresh_rate_numerator, uint32_t refresh_rate_denominator)
+void RHI_Device::AddDisplayMode(uint32_t width, uint32_t height, uint32_t refresh_rate_numerator, uint32_t refresh_rate_denominator)
 	{
 		auto& mode = m_displayModes.emplace_back(width, height, refresh_rate_numerator, refresh_rate_denominator);
         // Let the timer know about the refresh rates this monitor is capable of (will result in low latency/smooth ticking)

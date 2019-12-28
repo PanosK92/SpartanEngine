@@ -41,8 +41,6 @@ using namespace std;
 using namespace Spartan;
 //=======================
  
-#define DOCKING_ENABLED ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable
-
 namespace _Editor
 {
 	Widget* widget_menu_bar		= nullptr;
@@ -152,7 +150,7 @@ void Editor::OnTick()
 	ImGui::RHI::RenderDrawData(ImGui::GetDrawData());
 
 	// Update and Render additional Platform Windows
-	if (DOCKING_ENABLED)
+	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable)
 	{
 		ImGui::UpdatePlatformWindows();
 		ImGui::RenderPlatformWindowsDefault();
@@ -173,7 +171,10 @@ void Editor::Widgets_Create()
 
 void Editor::Widgets_Tick()
 {
-	if (DOCKING_ENABLED) { DockSpace_Begin(); }
+	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable)
+    {
+        DockSpace_Begin();
+    }
 
 	for (auto& widget : m_widgets)
 	{
@@ -182,7 +183,10 @@ void Editor::Widgets_Tick()
 		widget->End();
 	}
 
-	if (DOCKING_ENABLED) { DockSpace_End(); }
+	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable)
+    {
+        DockSpace_End();
+    }
 }
 
 void Editor::DockSpace_Begin()

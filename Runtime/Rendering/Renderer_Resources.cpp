@@ -19,15 +19,18 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========================
+//= INCLUDES ============================
 #include "Renderer.h"
 #include "Font/Font.h"
 #include "../Resource/ResourceCache.h"
 #include "../RHI/RHI_Texture2D.h"
-#include "../RHI/RHI_PipelineCache.h"
-#include "../RHI/RHI_ConstantBuffer.h"
+#include "../RHI/RHI_Shader.h"
 #include "../RHI/RHI_Sampler.h"
-//====================================
+#include "../RHI/RHI_BlendState.h"
+#include "../RHI/RHI_ConstantBuffer.h"
+#include "../RHI/RHI_RasterizerState.h"
+#include "../RHI/RHI_DepthStencilState.h"
+//=======================================
 
 //= NAMESPACES ===============
 using namespace std;

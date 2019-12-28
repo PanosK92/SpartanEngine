@@ -32,7 +32,7 @@ namespace Spartan
 {
 	namespace Math { class Vector4; }
 
-	class RHI_SwapChain : public Spartan_Object
+	class SPARTAN_CLASS RHI_SwapChain : public Spartan_Object
 	{
 	public:
 		RHI_SwapChain(
@@ -50,17 +50,16 @@ namespace Spartan
 		bool AcquireNextImage();
 		bool Present();
 
-        uint32_t GetWidth()				        const   { return m_width; }
-        uint32_t GetHeight()			        const   { return m_height; }
-        uint32_t GetBufferCount()		        const   { return m_buffer_count; }
-        uint32_t GetImageIndex()                const   { return m_image_index; }
-		bool IsInitialized()		            const   { return m_initialized; }
-        void* GetRenderTargetView()	            const   { return m_render_target_view; }
-        void* GetRenderPass()		            const   { return m_render_pass; }
-        void* GetFrameBuffer()                  const   { return m_frame_buffers[m_image_index]; }
-		void* GetSemaphoreImageAcquired()       const   { return m_image_acquired_semaphores[m_image_index]; }
-        void*& GetCmdPool()                             { return m_cmd_pool; }
-        RHI_CommandList* GetCmdList()                   { return m_cmd_lists[m_image_index].get(); }
+        uint32_t GetWidth()				            const { return m_width; }
+        uint32_t GetHeight()			            const { return m_height; }
+        uint32_t GetBufferCount()		            const { return m_buffer_count; }
+        uint32_t GetImageIndex()                    const { return m_image_index; }
+		bool IsInitialized()		                const { return m_initialized; }
+        void* GetResource_Texture(uint32_t i = 0)   const { return m_image_views[i]; }
+        void* GetResource_RenderTarget()	        const { return m_render_target_view; }
+		void* GetSemaphoreImageAcquired()           const { return m_image_acquired_semaphores[m_image_index]; }
+        void*& GetCmdPool()                               { return m_cmd_pool; }
+        RHI_CommandList* GetCmdList()                     { return m_cmd_lists[m_image_index].get(); }
 
 	private:
         // Properties
@@ -79,13 +78,11 @@ namespace Spartan
 		void* m_surface				= nullptr;	
 		void* m_window_handle		= nullptr;
         void* m_cmd_pool            = nullptr;
-        void* m_render_pass         = nullptr;
         bool m_image_acquired       = false;
         uint32_t m_image_index      = 0;
         RHI_Device* m_rhi_device    = nullptr;
         std::vector<std::shared_ptr<RHI_CommandList>> m_cmd_lists;
 		std::vector<void*> m_image_acquired_semaphores;
 		std::vector<void*> m_image_views;
-		std::vector<void*> m_frame_buffers;
 	};
 }

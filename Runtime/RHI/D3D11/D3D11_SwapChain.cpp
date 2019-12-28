@@ -259,6 +259,11 @@ namespace Spartan
 		return true;
 	}
 
+    bool RHI_SwapChain::AcquireNextImage()
+    {
+        return true;
+    }
+
 	bool RHI_SwapChain::Present()
 	{
 		if (!m_swap_chain_view)

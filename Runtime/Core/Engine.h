@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Spartan
 {
 	class Context;
+    class Timer;
 
     struct WindowData
     {
@@ -76,7 +77,8 @@ namespace Spartan
 
 	private:
         WindowData m_window_data;
-        uint32_t m_flags = 0;
+        uint32_t m_flags    = 0;
+        Timer* m_timer      = nullptr;
 		std::shared_ptr<Context> m_context;
 	};
 }

@@ -19,25 +19,25 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#pragma once
+//= IMPLEMENTATION ===============
+#include "../RHI_Implementation.h"
+#ifdef API_GRAPHICS_D3D11
+//================================
 
-//= INCLUDES ==============
-#include <memory>
-#include <unordered_map>
-#include "RHI_Definition.h"
-//=========================
+//= INCLUDES ====================
+#include "../RHI_PipelineState.h"
+//===============================
 
 namespace Spartan
 {
-	class RHI_PipelineCache
-	{
-	public:
-        RHI_PipelineCache(const std::shared_ptr<RHI_Device>& rhi_device) { m_rhi_device = rhi_device; }
-        RHI_Pipeline* GetPipeline(RHI_PipelineState& pipeline_state);
+    bool RHI_PipelineState::CreateFrameResources(RHI_Context* rhi_context)
+    {
+        return true;
+    }
 
-	private:
-        // <hash of pipeline state, pipeline state object>
-        std::unordered_map<std::size_t, std::shared_ptr<RHI_Pipeline>> m_cache;
-        std::shared_ptr<RHI_Device> m_rhi_device;
-	};
+    void RHI_PipelineState::DestroyFrameResources()
+    {
+
+    }
 }
+#endif

@@ -21,9 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include "RHI_Pipeline.h"
+#include "RHI_Device.h"
 #include "RHI_Texture.h"
+#include "RHI_Sampler.h"
+#include "RHI_PipelineState.h"
+#include "RHI_ConstantBuffer.h"
+#include "RHI_Shader.h"
 #include "RHI_Implementation.h"
 #include "..\Rendering\Renderer.h"
+#include "..\Utilities\Hash.h"
 //================================
 
 //= NAMESPACES =====
@@ -86,7 +92,7 @@ namespace Spartan
     void* RHI_Pipeline::GetDescriptorSet()
     {
         // Get the hash of the current descriptor blueprint
-        uint32_t hash = GetDescriptorBlueprintHash(m_descriptor_blueprint);
+        size_t hash = GetDescriptorBlueprintHash(m_descriptor_blueprint);
 
         // If the has is already present, then we don't need to update
         if (m_descriptors_cache.find(hash) != m_descriptors_cache.end())
@@ -104,21 +110,18 @@ namespace Spartan
         return CreateDescriptorSet(hash);
     }
 
-    uint32_t RHI_Pipeline::GetDescriptorBlueprintHash(const std::vector<RHI_Descriptor>& descriptor_blueprint)
+    size_t RHI_Pipeline::GetDescriptorBlueprintHash(const std::vector<RHI_Descriptor>& descriptor_blueprint)
     {
-        static std::hash<uint32_t> hasher;
-
-        // Seed
-        uint32_t hash = static_cast<uint32_t>(m_descriptor_blueprint.size()) * 6;
+        size_t hash = 0;
 
         for (const RHI_Descriptor& descriptor : m_descriptor_blueprint)
         {
-            hash += 31 + static_cast<uint32_t>(hasher(descriptor.slot));
-            hash += 31 + static_cast<uint32_t>(hasher(descriptor.stage));
-            hash += 31 + static_cast<uint32_t>(hasher(descriptor.id));
-            hash += 31 + static_cast<uint32_t>(hasher(descriptor.size));
-            hash += 31 + static_cast<uint32_t>(hasher(static_cast<uint32_t>(descriptor.type)));
-            hash += 31 + static_cast<uint32_t>(hasher(static_cast<uint32_t>(descriptor.layout)));
+            Utility::Hash::hash_combine(hash, descriptor.slot);
+            Utility::Hash::hash_combine(hash, descriptor.stage);
+            Utility::Hash::hash_combine(hash, descriptor.id);
+            Utility::Hash::hash_combine(hash, descriptor.size);
+            Utility::Hash::hash_combine(hash, static_cast<uint32_t>(descriptor.type));
+            Utility::Hash::hash_combine(hash, static_cast<uint32_t>(descriptor.layout));
         }
 
         return hash;
@@ -128,24 +131,24 @@ namespace Spartan
     {
         m_descriptor_blueprint.clear();
 
-        if (!m_state->shader_vertex)
+        if (!m_state.shader_vertex)
         {
             LOG_ERROR("Vertex shader is invalid");
             return;
         }
 
         // Get vertex shader resources
-        while (m_state->shader_vertex->GetCompilationState() == Shader_Compilation_Compiling) {}
-        for (const RHI_Descriptor& descriptor : m_state->shader_vertex->GetDescriptors())
+        while (m_state.shader_vertex->GetCompilationState() == Shader_Compilation_Compiling) {}
+        for (const RHI_Descriptor& descriptor : m_state.shader_vertex->GetDescriptors())
         {
             m_descriptor_blueprint.emplace_back(descriptor);
         }
 
         // If there is a pixel shader, merge it's resources into our map as well
-        if (m_state->shader_pixel)
+        if (m_state.shader_pixel)
         {
-            while (m_state->shader_pixel->GetCompilationState() == Shader_Compilation_Compiling) {}
-            for (const RHI_Descriptor& descriptor : m_state->shader_pixel->GetDescriptors())
+            while (m_state.shader_pixel->GetCompilationState() == Shader_Compilation_Compiling) {}
+            for (const RHI_Descriptor& descriptor : m_state.shader_pixel->GetDescriptors())
             {
                 // Assume that the descriptor has been created in the vertex shader and only try to update it's shader stage
                 bool updated_existing = false;

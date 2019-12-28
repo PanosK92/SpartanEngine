@@ -34,10 +34,10 @@ using namespace std;
 
 namespace Spartan
 {
-	RHI_Pipeline::RHI_Pipeline(const shared_ptr<RHI_Device>& device, const RHI_PipelineState& pipeline_state)
-	{
-		m_rhi_device	= device;
-		m_state			= &pipeline_state;
+    RHI_Pipeline::RHI_Pipeline(const std::shared_ptr<RHI_Device>& rhi_device, RHI_PipelineState& pipeline_state)
+    {
+		m_rhi_device	= rhi_device;
+		m_state			= pipeline_state;
 	}
 
 	RHI_Pipeline::~RHI_Pipeline()
@@ -45,7 +45,7 @@ namespace Spartan
 
 	}
 
-    void* RHI_Pipeline::CreateDescriptorSet(uint32_t hash)
+    void* RHI_Pipeline::CreateDescriptorSet(std::size_t hash)
     {
         return nullptr;
 	}

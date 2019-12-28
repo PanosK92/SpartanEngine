@@ -21,21 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====
-#include <vector>
-//===============
-
 namespace Spartan::Utility::Hash
 {
-    inline uint32_t vector_uint32t(const std::vector<uint32_t>& vec)
+    template <class T>
+    constexpr void hash_combine(size_t& seed, const T& v)
     {
-        uint32_t hash = static_cast<uint32_t>(vec.size());
-
-        for (const auto& i : vec)
-        {
-            hash ^= i + 0x9e3779b9 + (hash << 6) + (hash >> 2);
-        }
-
-        return hash;
+        std::hash<T> hasher;
+        seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
     }
 }
