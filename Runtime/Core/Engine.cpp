@@ -57,11 +57,11 @@ namespace Spartan
         m_context->m_engine = this;
 
 		// Register subsystems     
-        m_context->RegisterSubsystem<Timer>(Tick_Variable);
+        m_context->RegisterSubsystem<Timer>(Tick_Variable);         // must be first so it ticks first
 		m_context->RegisterSubsystem<ResourceCache>(Tick_Variable);		
 		m_context->RegisterSubsystem<Threading>(Tick_Variable);			
 		m_context->RegisterSubsystem<Audio>(Tick_Variable);
-        m_context->RegisterSubsystem<Physics>(Tick_Variable); // integrates internally
+        m_context->RegisterSubsystem<Physics>(Tick_Variable);       // integrates internally
         m_context->RegisterSubsystem<Input>(Tick_Smoothed);
 		m_context->RegisterSubsystem<Scripting>(Tick_Smoothed);
 		m_context->RegisterSubsystem<World>(Tick_Smoothed);
@@ -71,6 +71,8 @@ namespace Spartan
              	
 		// Initialize above subsystems
 		m_context->Initialize();
+
+        m_timer = m_context->GetSubsystem<Timer>().get();
 	}
 
 	Engine::~Engine()
@@ -80,9 +82,8 @@ namespace Spartan
 
 	void Engine::Tick()
 	{
-        Timer* timer = m_context->GetSubsystem<Timer>().get();
-        m_context->Tick(Tick_Variable, static_cast<float>(timer->GetDeltaTimeSec()));
-        m_context->Tick(Tick_Smoothed, static_cast<float>(timer->GetDeltaTimeSmoothedSec()));
+        m_context->Tick(Tick_Variable, static_cast<float>(m_timer->GetDeltaTimeSec()));
+        m_context->Tick(Tick_Smoothed, static_cast<float>(m_timer->GetDeltaTimeSmoothedSec()));
 	}
 
     void Engine::SetWindowData(WindowData& window_data)

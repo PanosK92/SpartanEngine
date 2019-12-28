@@ -50,15 +50,19 @@ namespace Spartan
 		~RHI_CommandList();
 
         // Passes
-        bool Begin(const std::string& pass_name);                                           // Marker
-		bool Begin(RHI_PipelineState& pipeline_state);                                      // Pass
-        inline bool Begin(const std::string& pass_name, RHI_PipelineState& pipeline_state)  // Pass & Marker
+        bool Begin(const std::string& pass_name);                                               // Marker
+        bool Begin(RHI_PipelineState& pipeline_state);                                          // Pass
+        inline bool Begin(const std::string& pass_name, RHI_PipelineState& pipeline_state)      // Pass & Marker
         {
-            if (Begin(pass_name))
-                if (Begin(pipeline_state))
-                    return true;
+            Begin(pass_name);
 
-            return false;
+            if (!Begin(pipeline_state))
+            {
+                End(); // end the marker pass
+                return false;
+            }
+
+            return true;
         }
         bool End();
 
@@ -134,9 +138,9 @@ namespace Spartan
         void Flush();
 
 	private:
-        std::vector<bool> m_marker_begun;
+        std::vector<bool> m_passes_active;
+        uint32_t m_pass_index                       = 0;
         RHI_Cmd_List_State m_cmd_state              = RHI_Cmd_List_Idle;
-        RHI_PipelineState* m_pipeline_state         = nullptr;
 		RHI_Pipeline* m_pipeline	                = nullptr; 
         RHI_SwapChain* m_swap_chain                 = nullptr;
         Renderer* m_renderer                        = nullptr;

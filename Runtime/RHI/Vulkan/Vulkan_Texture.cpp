@@ -40,13 +40,13 @@ namespace Spartan
 {
     RHI_Texture2D::~RHI_Texture2D()
     {
+        m_rhi_device->Flush();
+
         m_data.clear();
         auto rhi_context = m_rhi_device->GetContextRhi();
-
         vulkan_common::image_view::destroy(rhi_context, m_resource_texture);
         vulkan_common::image_view::destroy(rhi_context, m_resource_depth_stencils);
         vulkan_common::frame_buffer::destroy(rhi_context, m_resource_render_target);
-        vulkan_common::render_pass::destroy(m_rhi_device->GetContextRhi(), m_resource_render_pass);
         vulkan_common::image::destroy(rhi_context, m_texture);
 		vulkan_common::memory::free(m_rhi_device->GetContextRhi(), m_texture_memory);
 	}
@@ -220,7 +220,7 @@ namespace Spartan
             // SHADER RESOURCE VIEW
             if (m_bind_flags & RHI_Texture_Sampled)
             {
-                name += "-sampled";
+                name += name.empty() ? "sampled" : "-sampled";
 
                 if (!vulkan_common::image_view::create(rhi_context, *image, m_resource_texture, vulkan_format[m_format], aspect_flags))
                     return false;
@@ -229,7 +229,7 @@ namespace Spartan
             // DEPTH-STENCIL VIEW
             if (m_bind_flags & RHI_Texture_DepthStencil)
             {
-                name += "-depth_stencil";
+                name += name.empty() ? "depth_stencil" : "-depth_stencil";
                 m_layout = RHI_Image_Depth_Stencil_Read_Only_Optimal;
 
                 auto depth_stencil = m_resource_depth_stencils.emplace_back(nullptr);
@@ -240,16 +240,7 @@ namespace Spartan
             // RENDER TARGET VIEW
             if (m_bind_flags & RHI_Texture_RenderTarget)
             {
-                name += "-render_target";
-
-                // Render pass
-                if (!vulkan_common::render_pass::create(rhi_context, vulkan_format[m_format], m_resource_render_pass, m_layout))
-                    return false;
-
-                // Frame buffer
-                vector<void*> attachments = { m_resource_texture };
-                if (!vulkan_common::frame_buffer::create(rhi_context, m_resource_render_pass, attachments, m_width, m_height, m_resource_render_target))
-                    return false;
+                name += name.empty() ? "render_target" : "-render_target";
             }
         }
 

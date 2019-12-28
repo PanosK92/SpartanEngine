@@ -21,11 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
+//= INCLUDES ======================
 #include <memory>
 #include "RHI_Definition.h"
 #include "../Core/Spartan_Object.h"
-//=============================
+//=================================
 
 namespace Spartan
 {
@@ -55,12 +55,12 @@ namespace Spartan
 		bool operator==(const RHI_RasterizerState& rhs) const
 		{
 			return
-				m_cull_mode == rhs.GetCullMode() &&
-				m_fill_mode == rhs.GetFillMode() &&
-				m_depth_clip_enabled == rhs.GetDepthClipEnabled() &&
-				m_scissor_enabled == rhs.GetScissorEnabled() &&
-				m_multi_sample_enabled == rhs.GetMultiSampleEnabled() &&
-				m_antialised_line_enabled == rhs.GetAntialisedLineEnabled();
+				m_cull_mode                 == rhs.GetCullMode()            &&
+				m_fill_mode                 == rhs.GetFillMode()            &&
+				m_depth_clip_enabled        == rhs.GetDepthClipEnabled()    &&
+				m_scissor_enabled           == rhs.GetScissorEnabled()      &&
+				m_multi_sample_enabled      == rhs.GetMultiSampleEnabled()  &&
+				m_antialised_line_enabled   == rhs.GetAntialisedLineEnabled();
 		}
 
 	private:

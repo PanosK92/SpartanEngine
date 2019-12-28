@@ -52,7 +52,8 @@ enum Event_Type
 	Event_World_Resolve_Pending,	// The world should resolve
 	Event_World_Resolve_Complete,	// The world has finished resolving
 	Event_World_Stop,		        // The world should stop ticking
-	Event_World_Start		        // The world should start ticking
+	Event_World_Start,		        // The world should start ticking
+    Event_Frame_Resolution_Changed
 };
 
 //= MACROS ====================================================================================================

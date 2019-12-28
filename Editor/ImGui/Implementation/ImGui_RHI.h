@@ -26,17 +26,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ImGui_RHI.h"
 #include "../Source/imgui.h"
 #include "Rendering/Renderer.h"
-#include "RHI/RHI_Texture2D.h"
 #include "RHI/RHI_Device.h"
-#include "RHI/RHI_VertexBuffer.h"
-#include "RHI/RHI_IndexBuffer.h"
-#include "RHI/RHI_DepthStencilState.h"
-#include "RHI/RHI_RasterizerState.h"
-#include "RHI/RHI_BlendState.h"
 #include "RHI/RHI_Shader.h"
+#include "RHI/RHI_Texture2D.h"
 #include "RHI/RHI_SwapChain.h"
+#include "RHI/RHI_BlendState.h"
 #include "RHI/RHI_CommandList.h"
+#include "RHI/RHI_IndexBuffer.h"
+#include "RHI/RHI_VertexBuffer.h"
 #include "RHI/RHI_PipelineCache.h"
+#include "RHI/RHI_PipelineState.h"
+#include "RHI/RHI_RasterizerState.h"
+#include "RHI/RHI_DepthStencilState.h"
 //====================================
 
 namespace ImGui::RHI
@@ -63,6 +64,7 @@ namespace ImGui::RHI
 	static shared_ptr<RHI_Shader>				g_shader_vertex;
     static shared_ptr<RHI_Shader>				g_shader_pixel;
 	static RHI_Viewport							g_viewport;
+    static RHI_PipelineState                    g_pipeline_state;
 
 	inline bool Initialize(Context* context, const float width, const float height)
 	{
@@ -223,26 +225,25 @@ namespace ImGui::RHI
         g_viewport.height   = draw_data->DisplaySize.y;
 
 		// Set render state
-        RHI_PipelineState pipeline_state;
-        pipeline_state.shader_vertex            = g_shader_vertex.get();
-        pipeline_state.shader_pixel             = g_shader_pixel.get();
-        pipeline_state.input_layout             = g_shader_vertex->GetInputLayout().get();
-        pipeline_state.rasterizer_state         = g_rasterizer_state.get();
-        pipeline_state.blend_state              = g_blend_state.get();
-        pipeline_state.depth_stencil_state      = g_depth_stencil_state.get();
-        pipeline_state.vertex_buffer_stride     = g_vertex_buffer->GetStride();
-        pipeline_state.render_target_swapchain  = swap_chain;
-        pipeline_state.viewport                 = g_viewport;
-        pipeline_state.primitive_topology       = RHI_PrimitiveTopology_TriangleList;
-        pipeline_state.scissor_dynamic          = true;
+        g_pipeline_state.shader_vertex            = g_shader_vertex.get();
+        g_pipeline_state.shader_pixel             = g_shader_pixel.get();
+        g_pipeline_state.input_layout             = g_shader_vertex->GetInputLayout().get();
+        g_pipeline_state.rasterizer_state         = g_rasterizer_state.get();
+        g_pipeline_state.blend_state              = g_blend_state.get();
+        g_pipeline_state.depth_stencil_state      = g_depth_stencil_state.get();
+        g_pipeline_state.vertex_buffer_stride     = g_vertex_buffer->GetStride();
+        g_pipeline_state.render_target_swapchain  = swap_chain;
+        g_pipeline_state.viewport                 = g_viewport;
+        g_pipeline_state.scissor_dynamic          = true;
+        g_pipeline_state.primitive_topology       = RHI_PrimitiveTopology_TriangleList;
 
         if (clear)
         {
-            cmd_list->ClearRenderTarget(swap_chain->GetRenderTargetView(), Vector4(0, 0, 0, 1));
+            cmd_list->ClearRenderTarget(swap_chain->GetResource_RenderTarget(), Vector4(0, 0, 0, 1));
         }
 
         // Start witting command list
-        if (cmd_list->Begin("Pass_ImGui", pipeline_state))
+        if (cmd_list->Begin("Pass_ImGui", g_pipeline_state))
         {
             cmd_list->SetBufferVertex(g_vertex_buffer);
             cmd_list->SetBufferIndex(g_index_buffer);

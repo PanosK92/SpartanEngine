@@ -91,6 +91,7 @@ namespace Spartan
 		void ProfilingReleaseQuery(void* query_object);
 		uint32_t ProfilingGetGpuMemory();
 		uint32_t ProfilingGetGpuMemoryUsage();
+        bool Flush();
 		//=========================================================================================
 
 		//= ADAPTERS ============================================================================================================

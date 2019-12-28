@@ -19,28 +19,23 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==============================
+//= INCLUDES ===============================
 #include "Renderer.h"
-#include "Material.h"
 #include "Model.h"
 #include "Font/Font.h"
 #include "../Profiling/Profiler.h"
-#include "../Resource/IResource.h"
 #include "ShaderVariation.h"
 #include "Gizmos/Grid.h"
 #include "Gizmos/Transform_Gizmo.h"
-#include "../RHI/RHI_VertexBuffer.h"
-#include "../RHI/RHI_ConstantBuffer.h"
-#include "../RHI/RHI_Texture.h"
-#include "../RHI/RHI_Sampler.h"
 #include "../RHI/RHI_CommandList.h"
+#include "../RHI/RHI_VertexBuffer.h"
+#include "../RHI/RHI_PipelineState.h"
 #include "../World/Entity.h"
-#include "../World/Components/Renderable.h"
-#include "../World/Components/Transform.h"
-#include "../World/Components/Environment.h"
 #include "../World/Components/Light.h"
 #include "../World/Components/Camera.h"
-//=========================================
+#include "../World/Components/Transform.h"
+#include "../World/Components/Renderable.h"
+//==========================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -88,8 +83,10 @@ namespace Spartan
                 Pass_DepthPrePass(cmd_list);
             }
             Pass_GBuffer(cmd_list);
+#endif
             Pass_Ssao(cmd_list);
             Pass_Ssr(cmd_list);
+#ifdef API_GRAPHICS_D3D11
             Pass_Light(cmd_list);
 #endif
             Pass_Composition(cmd_list);
@@ -491,17 +488,17 @@ namespace Spartan
         auto& tex_ssao          = m_render_targets[RenderTarget_Ssao];
 
         // Set render state
-        RHI_PipelineState pipeline_state;
-        pipeline_state.shader_vertex                = shader_v.get();
-        pipeline_state.shader_pixel                 = shader_p.get();
-        pipeline_state.input_layout                 = shader_v->GetInputLayout().get();
-        pipeline_state.rasterizer_state             = m_rasterizer_cull_back_solid.get();
-        pipeline_state.blend_state                  = m_blend_disabled.get();
-        pipeline_state.depth_stencil_state          = m_depth_stencil_disabled.get();
-        pipeline_state.vertex_buffer_stride         = m_font->GetVertexBuffer()->GetStride();
-        pipeline_state.render_target_color_texture  = tex_ssao_raw.get();
-        pipeline_state.viewport                     = tex_ssao_raw->GetViewport();
-        pipeline_state.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
+        static RHI_PipelineState pipeline_state;
+        pipeline_state.shader_vertex                    = shader_v.get();
+        pipeline_state.shader_pixel                     = shader_p.get();
+        pipeline_state.input_layout                     = shader_v->GetInputLayout().get();
+        pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
+        pipeline_state.blend_state                      = m_blend_disabled.get();
+        pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
+        pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
+        pipeline_state.render_target_color_textures[0]  = tex_ssao_raw.get();
+        pipeline_state.viewport                         = tex_ssao_raw->GetViewport();
+        pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
 
         if (cmd_list->Begin("Pass_Ssao", pipeline_state))
         {
@@ -556,17 +553,17 @@ namespace Spartan
         auto& tex_ssr_blurred   = m_render_targets[RenderTarget_Ssr_Blurred];
 
         // Set render state
-        RHI_PipelineState pipeline_state;
-        pipeline_state.shader_vertex                = shader_v.get();
-        pipeline_state.shader_pixel                 = shader_p.get();
-        pipeline_state.input_layout                 = shader_v->GetInputLayout().get();
-        pipeline_state.rasterizer_state             = m_rasterizer_cull_back_solid.get();
-        pipeline_state.blend_state                  = m_blend_disabled.get();
-        pipeline_state.depth_stencil_state          = m_depth_stencil_disabled.get();
-        pipeline_state.vertex_buffer_stride         = m_font->GetVertexBuffer()->GetStride();
-        pipeline_state.render_target_color_texture  = tex_ssr.get();
-        pipeline_state.viewport                     = tex_ssr->GetViewport();
-        pipeline_state.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
+        static RHI_PipelineState pipeline_state;
+        pipeline_state.shader_vertex                    = shader_v.get();
+        pipeline_state.shader_pixel                     = shader_p.get();
+        pipeline_state.input_layout                     = shader_v->GetInputLayout().get();
+        pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
+        pipeline_state.blend_state                      = m_blend_disabled.get();
+        pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
+        pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
+        pipeline_state.render_target_color_textures[0]  = tex_ssr.get();
+        pipeline_state.viewport                         = tex_ssr->GetViewport();
+        pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
 
         if (cmd_list->Begin("Pass_Ssr", pipeline_state))
         {
@@ -703,17 +700,17 @@ namespace Spartan
         auto& tex_out = m_render_targets[RenderTarget_Composition_Hdr];
 
         // Set render state
-        RHI_PipelineState pipeline_state;
-        pipeline_state.shader_vertex                = shader_v.get();
-        pipeline_state.shader_pixel                 = shader_p.get();
-        pipeline_state.input_layout                 = shader_v->GetInputLayout().get();
-        pipeline_state.rasterizer_state             = m_rasterizer_cull_back_solid.get();
-        pipeline_state.blend_state                  = m_blend_disabled.get();
-        pipeline_state.depth_stencil_state          = m_depth_stencil_disabled.get();
-        pipeline_state.vertex_buffer_stride         = m_quad.GetVertexBuffer()->GetStride();
-        pipeline_state.render_target_color_texture  = tex_out.get();
-        pipeline_state.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
-        pipeline_state.viewport                     = tex_out->GetViewport();
+        static RHI_PipelineState pipeline_state;
+        pipeline_state.shader_vertex                    = shader_v.get();
+        pipeline_state.shader_pixel                     = shader_p.get();
+        pipeline_state.input_layout                     = shader_v->GetInputLayout().get();
+        pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
+        pipeline_state.blend_state                      = m_blend_disabled.get();
+        pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
+        pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
+        pipeline_state.render_target_color_textures[0]  = tex_out.get();
+        pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
+        pipeline_state.viewport                         = tex_out->GetViewport();
 
         // Begin command list
         if (cmd_list->Begin("Pass_Composition", pipeline_state))
@@ -834,17 +831,17 @@ namespace Spartan
             return;
 
         // Set render state
-        RHI_PipelineState pipeline_state;
-        pipeline_state.shader_vertex                = shader_v.get();
-        pipeline_state.shader_pixel                 = shader_p.get();
-        pipeline_state.input_layout                 = shader_v->GetInputLayout().get();
-        pipeline_state.rasterizer_state             = m_rasterizer_cull_back_solid.get();
-        pipeline_state.blend_state                  = m_blend_disabled.get();
-        pipeline_state.depth_stencil_state          = m_depth_stencil_disabled.get();
-        pipeline_state.vertex_buffer_stride         = m_font->GetVertexBuffer()->GetStride();
-        pipeline_state.render_target_color_texture  = tex_out.get();  
-        pipeline_state.viewport                     = tex_out->GetViewport();
-        pipeline_state.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
+        static RHI_PipelineState pipeline_state;
+        pipeline_state.shader_vertex                    = shader_v.get();
+        pipeline_state.shader_pixel                     = shader_p.get();
+        pipeline_state.input_layout                     = shader_v->GetInputLayout().get();
+        pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
+        pipeline_state.blend_state                      = m_blend_disabled.get();
+        pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
+        pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
+        pipeline_state.render_target_color_textures[0]  = tex_out.get();
+        pipeline_state.viewport                         = tex_out->GetViewport();
+        pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
 
         if (cmd_list->Begin("Pass_Upsample", pipeline_state))
         {
@@ -869,17 +866,17 @@ namespace Spartan
             return;
 
         // Set render state
-        RHI_PipelineState pipeline_state;
-        pipeline_state.shader_vertex                = shader_v.get();
-        pipeline_state.shader_pixel                 = shader_p.get();
-        pipeline_state.input_layout                 = shader_v->GetInputLayout().get();
-        pipeline_state.rasterizer_state             = m_rasterizer_cull_back_solid.get();
-        pipeline_state.blend_state                  = m_blend_disabled.get();
-        pipeline_state.depth_stencil_state          = m_depth_stencil_disabled.get();
-        pipeline_state.vertex_buffer_stride         = m_font->GetVertexBuffer()->GetStride();
-        pipeline_state.render_target_color_texture  = tex_out.get();  
-        pipeline_state.viewport                     = tex_out->GetViewport();
-        pipeline_state.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
+        static RHI_PipelineState pipeline_state;
+        pipeline_state.shader_vertex                    = shader_v.get();
+        pipeline_state.shader_pixel                     = shader_p.get();
+        pipeline_state.input_layout                     = shader_v->GetInputLayout().get();
+        pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
+        pipeline_state.blend_state                      = m_blend_disabled.get();
+        pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
+        pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
+        pipeline_state.render_target_color_textures[0]  = tex_out.get();
+        pipeline_state.viewport                         = tex_out->GetViewport();
+        pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
         
         if (cmd_list->Begin("Pass_Downsample", pipeline_state))
         {
@@ -905,17 +902,17 @@ namespace Spartan
             return;
 
         // Set render state
-        RHI_PipelineState pipeline_state;
-        pipeline_state.shader_vertex                = shader_v.get();
-        pipeline_state.shader_pixel                 = shader_p.get();
-        pipeline_state.input_layout                 = shader_v->GetInputLayout().get();
-        pipeline_state.rasterizer_state             = m_rasterizer_cull_back_solid.get();
-        pipeline_state.blend_state                  = m_blend_disabled.get();
-        pipeline_state.depth_stencil_state          = m_depth_stencil_disabled.get();
-        pipeline_state.vertex_buffer_stride         = m_font->GetVertexBuffer()->GetStride();
-        pipeline_state.render_target_color_texture  = tex_out.get();  
-        pipeline_state.viewport                     = tex_out->GetViewport();
-        pipeline_state.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
+        static RHI_PipelineState pipeline_state;
+        pipeline_state.shader_vertex                    = shader_v.get();
+        pipeline_state.shader_pixel                     = shader_p.get();
+        pipeline_state.input_layout                     = shader_v->GetInputLayout().get();
+        pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
+        pipeline_state.blend_state                      = m_blend_disabled.get();
+        pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
+        pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
+        pipeline_state.render_target_color_textures[0]  = tex_out.get();
+        pipeline_state.viewport                         = tex_out->GetViewport();
+        pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
 
         if (cmd_list->Begin("Pass_BlurBox", pipeline_state))
         {
@@ -950,17 +947,17 @@ namespace Spartan
         if (cmd_list->Begin("Pass_BlurGaussian"))
         {
             // Set render state
-            RHI_PipelineState pipeline_state_horizontal;
-            pipeline_state_horizontal.shader_vertex                = shader_v.get();
-            pipeline_state_horizontal.shader_pixel                 = shader_p.get();
-            pipeline_state_horizontal.input_layout                 = shader_v->GetInputLayout().get();
-            pipeline_state_horizontal.rasterizer_state             = m_rasterizer_cull_back_solid.get();
-            pipeline_state_horizontal.blend_state                  = m_blend_disabled.get();
-            pipeline_state_horizontal.depth_stencil_state          = m_depth_stencil_disabled.get();
-            pipeline_state_horizontal.vertex_buffer_stride         = m_font->GetVertexBuffer()->GetStride();
-            pipeline_state_horizontal.render_target_color_texture  = tex_out.get();
-            pipeline_state_horizontal.viewport                     = tex_out->GetViewport();
-            pipeline_state_horizontal.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
+            static RHI_PipelineState pipeline_state_horizontal;
+            pipeline_state_horizontal.shader_vertex                     = shader_v.get();
+            pipeline_state_horizontal.shader_pixel                      = shader_p.get();
+            pipeline_state_horizontal.input_layout                      = shader_v->GetInputLayout().get();
+            pipeline_state_horizontal.rasterizer_state                  = m_rasterizer_cull_back_solid.get();
+            pipeline_state_horizontal.blend_state                       = m_blend_disabled.get();
+            pipeline_state_horizontal.depth_stencil_state               = m_depth_stencil_disabled.get();
+            pipeline_state_horizontal.vertex_buffer_stride              = m_quad.GetVertexBuffer()->GetStride();
+            pipeline_state_horizontal.render_target_color_textures[0]   = tex_out.get();
+            pipeline_state_horizontal.viewport                          = tex_out->GetViewport();
+            pipeline_state_horizontal.primitive_topology                = RHI_PrimitiveTopology_TriangleList;
    
             if (cmd_list->Begin("Horizontal", pipeline_state_horizontal))
 		    {
@@ -970,6 +967,8 @@ namespace Spartan
                 m_buffer_uber_cpu.blur_sigma        = sigma;
                 UpdateUberBuffer();
 
+                cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
+                cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
 		    	cmd_list->SetTexture(0, tex_in);
 		    	cmd_list->DrawIndexed(Rectangle::GetIndexCount());
                 cmd_list->End();
@@ -977,17 +976,17 @@ namespace Spartan
 		    }
 
             // Set render state
-            RHI_PipelineState pipeline_state_vertical;
-            pipeline_state_vertical.shader_vertex                = shader_v.get();
-            pipeline_state_vertical.shader_pixel                 = shader_p.get();
-            pipeline_state_vertical.input_layout                 = shader_v->GetInputLayout().get();
-            pipeline_state_vertical.rasterizer_state             = m_rasterizer_cull_back_solid.get();
-            pipeline_state_vertical.blend_state                  = m_blend_disabled.get();
-            pipeline_state_vertical.depth_stencil_state          = m_depth_stencil_disabled.get();
-            pipeline_state_vertical.vertex_buffer_stride         = m_font->GetVertexBuffer()->GetStride();
-            pipeline_state_vertical.render_target_color_texture  = tex_in.get();
-            pipeline_state_vertical.viewport                     = tex_in->GetViewport();
-            pipeline_state_vertical.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
+            static RHI_PipelineState pipeline_state_vertical;
+            pipeline_state_vertical.shader_vertex                   = shader_v.get();
+            pipeline_state_vertical.shader_pixel                    = shader_p.get();
+            pipeline_state_vertical.input_layout                    = shader_v->GetInputLayout().get();
+            pipeline_state_vertical.rasterizer_state                = m_rasterizer_cull_back_solid.get();
+            pipeline_state_vertical.blend_state                     = m_blend_disabled.get();
+            pipeline_state_vertical.depth_stencil_state             = m_depth_stencil_disabled.get();
+            pipeline_state_vertical.vertex_buffer_stride            = m_quad.GetVertexBuffer()->GetStride();
+            pipeline_state_vertical.render_target_color_textures[0] = tex_in.get();
+            pipeline_state_vertical.viewport                        = tex_in->GetViewport();
+            pipeline_state_vertical.primitive_topology              = RHI_PrimitiveTopology_TriangleList;
 
             if (cmd_list->Begin("Vertical", pipeline_state_vertical))
 		    {
@@ -995,6 +994,8 @@ namespace Spartan
                 m_buffer_uber_cpu.blur_sigma        = sigma;
                 UpdateUberBuffer();
 
+                cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
+                cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
                 cmd_list->SetTexture(0, tex_out);
                 cmd_list->DrawIndexed(Rectangle::GetIndexCount());
                 cmd_list->End();
@@ -1030,17 +1031,17 @@ namespace Spartan
         if (cmd_list->Begin("Pass_BlurBilateralGaussian"))
         {
             // Set render state
-            RHI_PipelineState pipeline_state_horizontal;
-            pipeline_state_horizontal.shader_vertex                = shader_v.get();
-            pipeline_state_horizontal.shader_pixel                 = shader_p.get();
-            pipeline_state_horizontal.input_layout                 = shader_v->GetInputLayout().get();
-            pipeline_state_horizontal.rasterizer_state             = m_rasterizer_cull_back_solid.get();
-            pipeline_state_horizontal.blend_state                  = m_blend_disabled.get();
-            pipeline_state_horizontal.depth_stencil_state          = m_depth_stencil_disabled.get();
-            pipeline_state_horizontal.vertex_buffer_stride         = m_font->GetVertexBuffer()->GetStride();
-            pipeline_state_horizontal.render_target_color_texture  = tex_out.get();
-            pipeline_state_horizontal.viewport                     = tex_out->GetViewport();
-            pipeline_state_horizontal.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
+            static RHI_PipelineState pipeline_state_horizontal;
+            pipeline_state_horizontal.shader_vertex                     = shader_v.get();
+            pipeline_state_horizontal.shader_pixel                      = shader_p.get();
+            pipeline_state_horizontal.input_layout                      = shader_v->GetInputLayout().get();
+            pipeline_state_horizontal.rasterizer_state                  = m_rasterizer_cull_back_solid.get();
+            pipeline_state_horizontal.blend_state                       = m_blend_disabled.get();
+            pipeline_state_horizontal.depth_stencil_state               = m_depth_stencil_disabled.get();
+            pipeline_state_horizontal.vertex_buffer_stride              = m_quad.GetVertexBuffer()->GetStride();
+            pipeline_state_horizontal.render_target_color_textures[0]   = tex_out.get();
+            pipeline_state_horizontal.viewport                          = tex_out->GetViewport();
+            pipeline_state_horizontal.primitive_topology                = RHI_PrimitiveTopology_TriangleList;
 
             if (cmd_list->Begin("Horizontal", pipeline_state_horizontal))
             {
@@ -1061,17 +1062,17 @@ namespace Spartan
             }
 
             // Set render state
-            RHI_PipelineState pipeline_state_vertical;
-            pipeline_state_vertical.shader_vertex                = shader_v.get();
-            pipeline_state_vertical.shader_pixel                 = shader_p.get();
-            pipeline_state_vertical.input_layout                 = shader_v->GetInputLayout().get();
-            pipeline_state_vertical.rasterizer_state             = m_rasterizer_cull_back_solid.get();
-            pipeline_state_vertical.blend_state                  = m_blend_disabled.get();
-            pipeline_state_vertical.depth_stencil_state          = m_depth_stencil_disabled.get();
-            pipeline_state_vertical.vertex_buffer_stride         = m_font->GetVertexBuffer()->GetStride();
-            pipeline_state_vertical.render_target_color_texture  = tex_in.get();
-            pipeline_state_vertical.viewport                     = tex_in->GetViewport();
-            pipeline_state_vertical.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
+            static RHI_PipelineState pipeline_state_vertical;
+            pipeline_state_vertical.shader_vertex                   = shader_v.get();
+            pipeline_state_vertical.shader_pixel                    = shader_p.get();
+            pipeline_state_vertical.input_layout                    = shader_v->GetInputLayout().get();
+            pipeline_state_vertical.rasterizer_state                = m_rasterizer_cull_back_solid.get();
+            pipeline_state_vertical.blend_state                     = m_blend_disabled.get();
+            pipeline_state_vertical.depth_stencil_state             = m_depth_stencil_disabled.get();
+            pipeline_state_vertical.vertex_buffer_stride            = m_quad.GetVertexBuffer()->GetStride();
+            pipeline_state_vertical.render_target_color_textures[0] = tex_in.get();
+            pipeline_state_vertical.viewport                        = tex_in->GetViewport();
+            pipeline_state_vertical.primitive_topology              = RHI_PrimitiveTopology_TriangleList;
 
             if (cmd_list->Begin("Vertical", pipeline_state_vertical))
             {
@@ -1109,17 +1110,17 @@ namespace Spartan
         auto& tex_history_2 = m_render_targets[RenderTarget_Composition_Hdr_History_2];
 
         // Set render state
-        RHI_PipelineState pipeline_state;
-        pipeline_state.shader_vertex                = shader_v.get();
-        pipeline_state.shader_pixel                 = shader_p.get();
-        pipeline_state.input_layout                 = shader_v->GetInputLayout().get();
-        pipeline_state.rasterizer_state             = m_rasterizer_cull_back_solid.get();
-        pipeline_state.blend_state                  = m_blend_disabled.get();
-        pipeline_state.depth_stencil_state          = m_depth_stencil_disabled.get();
-        pipeline_state.vertex_buffer_stride         = m_font->GetVertexBuffer()->GetStride();
-        pipeline_state.render_target_color_texture  = tex_history_2.get();
-        pipeline_state.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
-        pipeline_state.viewport                     = tex_history_2->GetViewport();
+        static RHI_PipelineState pipeline_state;
+        pipeline_state.shader_vertex                    = shader_v.get();
+        pipeline_state.shader_pixel                     = shader_p.get();
+        pipeline_state.input_layout                     = shader_v->GetInputLayout().get();
+        pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
+        pipeline_state.blend_state                      = m_blend_disabled.get();
+        pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
+        pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
+        pipeline_state.render_target_color_textures[0]  = tex_history_2.get();
+        pipeline_state.viewport                         = tex_history_2->GetViewport();
+        pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
 
 		if (cmd_list->Begin("Pass_TAA", pipeline_state))
 		{
@@ -1161,17 +1162,17 @@ namespace Spartan
             // Luminance
             {
                 // Set render state
-                RHI_PipelineState pipeline_state;
-                pipeline_state.shader_vertex                = shader_v.get();
-                pipeline_state.shader_pixel                 = shader_p_bloom_luminance.get();
-                pipeline_state.input_layout                 = shader_v->GetInputLayout().get();
-                pipeline_state.rasterizer_state             = m_rasterizer_cull_back_solid.get();
-                pipeline_state.blend_state                  = m_blend_disabled.get();
-                pipeline_state.depth_stencil_state          = m_depth_stencil_disabled.get();
-                pipeline_state.vertex_buffer_stride         = m_font->GetVertexBuffer()->GetStride();
-                pipeline_state.render_target_color_texture  = m_render_tex_bloom[0].get();  
-                pipeline_state.viewport                     = m_render_tex_bloom[0]->GetViewport();
-                pipeline_state.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
+                static RHI_PipelineState pipeline_state;
+                pipeline_state.shader_vertex                    = shader_v.get();
+                pipeline_state.shader_pixel                     = shader_p_bloom_luminance.get();
+                pipeline_state.input_layout                     = shader_v->GetInputLayout().get();
+                pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
+                pipeline_state.blend_state                      = m_blend_disabled.get();
+                pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
+                pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
+                pipeline_state.render_target_color_textures[0]  = m_render_tex_bloom[0].get();
+                pipeline_state.viewport                         = m_render_tex_bloom[0]->GetViewport();
+                pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
 
                 // Submit command list
                 if (cmd_list->Begin("Luminance", pipeline_state))
@@ -1199,17 +1200,17 @@ namespace Spartan
             auto upsample = [this, &cmd_list, &shader_v, &shader_p_upsample](shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
             {
                 // Set render state
-                RHI_PipelineState pipeline_state;
-                pipeline_state.shader_vertex                = shader_v.get();
-                pipeline_state.shader_pixel                 = shader_p_upsample.get();
-                pipeline_state.input_layout                 = shader_v->GetInputLayout().get();
-                pipeline_state.rasterizer_state             = m_rasterizer_cull_back_solid.get();
-                pipeline_state.blend_state                  = m_blend_bloom.get(); // blend with previous
-                pipeline_state.depth_stencil_state          = m_depth_stencil_disabled.get();
-                pipeline_state.vertex_buffer_stride         = m_font->GetVertexBuffer()->GetStride();
-                pipeline_state.render_target_color_texture  = tex_out.get();  
-                pipeline_state.viewport                     = tex_out->GetViewport();
-                pipeline_state.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
+                static RHI_PipelineState pipeline_state;
+                pipeline_state.shader_vertex                    = shader_v.get();
+                pipeline_state.shader_pixel                     = shader_p_upsample.get();
+                pipeline_state.input_layout                     = shader_v->GetInputLayout().get();
+                pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
+                pipeline_state.blend_state                      = m_blend_bloom.get(); // blend with previous
+                pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
+                pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
+                pipeline_state.render_target_color_textures[0]  = tex_out.get();  
+                pipeline_state.viewport                         = tex_out->GetViewport();
+                pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
 
                 if (cmd_list->Begin("Upsample", pipeline_state))
                 {
@@ -1235,17 +1236,17 @@ namespace Spartan
             // Additive blending
             {
                 // Set render state
-                RHI_PipelineState pipeline_state;
-                pipeline_state.shader_vertex                = shader_v.get();
-                pipeline_state.shader_pixel                 = shader_p_bloom_blend.get();
-                pipeline_state.input_layout                 = shader_v->GetInputLayout().get();
-                pipeline_state.rasterizer_state             = m_rasterizer_cull_back_solid.get();
-                pipeline_state.blend_state                  = m_blend_disabled.get();
-                pipeline_state.depth_stencil_state          = m_depth_stencil_disabled.get();
-                pipeline_state.vertex_buffer_stride         = m_font->GetVertexBuffer()->GetStride();
-                pipeline_state.render_target_color_texture  = tex_out.get();  
-                pipeline_state.viewport                     = tex_out->GetViewport();
-                pipeline_state.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
+                static RHI_PipelineState pipeline_state;
+                pipeline_state.shader_vertex                    = shader_v.get();
+                pipeline_state.shader_pixel                     = shader_p_bloom_blend.get();
+                pipeline_state.input_layout                     = shader_v->GetInputLayout().get();
+                pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
+                pipeline_state.blend_state                      = m_blend_disabled.get();
+                pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
+                pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
+                pipeline_state.render_target_color_textures[0]  = tex_out.get();
+                pipeline_state.viewport                         = tex_out->GetViewport();
+                pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
 
                 // Submit command list
                 if (cmd_list->Begin("Additive_Blending", pipeline_state))
@@ -1277,17 +1278,17 @@ namespace Spartan
             return;
 
         // Set render state
-        RHI_PipelineState pipeline_state;
-        pipeline_state.shader_vertex                = shader_v.get();
-        pipeline_state.shader_pixel                 = shader_p.get();
-        pipeline_state.input_layout                 = shader_v->GetInputLayout().get();
-        pipeline_state.rasterizer_state             = m_rasterizer_cull_back_solid.get();
-        pipeline_state.blend_state                  = m_blend_disabled.get();
-        pipeline_state.depth_stencil_state          = m_depth_stencil_disabled.get();
-        pipeline_state.vertex_buffer_stride         = m_font->GetVertexBuffer()->GetStride();
-        pipeline_state.render_target_color_texture  = tex_out.get();
-        pipeline_state.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
-        pipeline_state.viewport                     = tex_out->GetViewport();
+        static RHI_PipelineState pipeline_state;
+        pipeline_state.shader_vertex                    = shader_v.get();
+        pipeline_state.shader_pixel                     = shader_p.get();
+        pipeline_state.input_layout                     = shader_v->GetInputLayout().get();
+        pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
+        pipeline_state.blend_state                      = m_blend_disabled.get();
+        pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
+        pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
+        pipeline_state.render_target_color_textures[0]  = tex_out.get();
+        pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
+        pipeline_state.viewport                         = tex_out->GetViewport();
 
         if (cmd_list->Begin("Pass_ToneMapping", pipeline_state))
         {
@@ -1313,17 +1314,17 @@ namespace Spartan
 			return;
 
         // Set render state
-        RHI_PipelineState pipeline_state;
-        pipeline_state.shader_vertex                = shader_v.get();
-        pipeline_state.shader_pixel                 = shader_p.get();
-        pipeline_state.input_layout                 = shader_v->GetInputLayout().get();
-        pipeline_state.rasterizer_state             = m_rasterizer_cull_back_solid.get();
-        pipeline_state.blend_state                  = m_blend_disabled.get();
-        pipeline_state.depth_stencil_state          = m_depth_stencil_disabled.get();
-        pipeline_state.vertex_buffer_stride         = m_font->GetVertexBuffer()->GetStride();
-        pipeline_state.render_target_color_texture  = tex_out.get();
-        pipeline_state.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
-        pipeline_state.viewport                     = tex_out->GetViewport();
+        static RHI_PipelineState pipeline_state;
+        pipeline_state.shader_vertex                    = shader_v.get();
+        pipeline_state.shader_pixel                     = shader_p.get();
+        pipeline_state.input_layout                     = shader_v->GetInputLayout().get();
+        pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
+        pipeline_state.blend_state                      = m_blend_disabled.get();
+        pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
+        pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
+        pipeline_state.render_target_color_textures[0]  = tex_out.get();
+        pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
+        pipeline_state.viewport                         = tex_out->GetViewport();
 
         // Submit command list
         if (cmd_list->Begin("Pass_GammaCorrection", pipeline_state))
@@ -1359,17 +1360,17 @@ namespace Spartan
             // Luminance
             {
                 // Set render state
-                RHI_PipelineState pipeline_state;
-                pipeline_state.shader_vertex                = shader_v.get();
-                pipeline_state.shader_pixel                 = shader_p_luma.get();
-                pipeline_state.input_layout                 = shader_v->GetInputLayout().get();
-                pipeline_state.rasterizer_state             = m_rasterizer_cull_back_solid.get();
-                pipeline_state.blend_state                  = m_blend_disabled.get();
-                pipeline_state.depth_stencil_state          = m_depth_stencil_disabled.get();
-                pipeline_state.vertex_buffer_stride         = m_font->GetVertexBuffer()->GetStride();
-                pipeline_state.render_target_color_texture  = tex_out.get();    
-                pipeline_state.viewport                     = tex_out->GetViewport();
-                pipeline_state.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
+                static RHI_PipelineState pipeline_state;
+                pipeline_state.shader_vertex                    = shader_v.get();
+                pipeline_state.shader_pixel                     = shader_p_luma.get();
+                pipeline_state.input_layout                     = shader_v->GetInputLayout().get();
+                pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
+                pipeline_state.blend_state                      = m_blend_disabled.get();
+                pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
+                pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
+                pipeline_state.render_target_color_textures[0]  = tex_out.get();
+                pipeline_state.viewport                         = tex_out->GetViewport();
+                pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
 
                 // Submit command list
                 if (cmd_list->Begin("Luminance", pipeline_state))
@@ -1386,17 +1387,17 @@ namespace Spartan
             // FXAA
             {
                 // Set render state
-                RHI_PipelineState pipeline_state;
-                pipeline_state.shader_vertex                = shader_v.get();
-                pipeline_state.shader_pixel                 = shader_p_fxaa.get();
-                pipeline_state.input_layout                 = shader_v->GetInputLayout().get();
-                pipeline_state.rasterizer_state             = m_rasterizer_cull_back_solid.get();
-                pipeline_state.blend_state                  = m_blend_disabled.get();
-                pipeline_state.depth_stencil_state          = m_depth_stencil_disabled.get();
-                pipeline_state.vertex_buffer_stride         = m_font->GetVertexBuffer()->GetStride();
-                pipeline_state.render_target_color_texture  = tex_in.get();
-                pipeline_state.viewport                     = tex_in->GetViewport();
-                pipeline_state.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
+                static RHI_PipelineState pipeline_state;
+                pipeline_state.shader_vertex                    = shader_v.get();
+                pipeline_state.shader_pixel                     = shader_p_fxaa.get();
+                pipeline_state.input_layout                     = shader_v->GetInputLayout().get();
+                pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
+                pipeline_state.blend_state                      = m_blend_disabled.get();
+                pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
+                pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
+                pipeline_state.render_target_color_textures[0]  = tex_in.get();
+                pipeline_state.viewport                         = tex_in->GetViewport();
+                pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
 
                 if (cmd_list->Begin("FXAA", pipeline_state))
                 {
@@ -1425,17 +1426,17 @@ namespace Spartan
 			return;
 
         // Set render state
-        RHI_PipelineState pipeline_state;
-        pipeline_state.shader_vertex                = shader_v.get();
-        pipeline_state.shader_pixel                 = shader_p.get();
-        pipeline_state.input_layout                 = shader_v->GetInputLayout().get();
-        pipeline_state.rasterizer_state             = m_rasterizer_cull_back_solid.get();
-        pipeline_state.blend_state                  = m_blend_disabled.get();
-        pipeline_state.depth_stencil_state          = m_depth_stencil_disabled.get();
-        pipeline_state.vertex_buffer_stride         = m_font->GetVertexBuffer()->GetStride();
-        pipeline_state.render_target_color_texture  = tex_out.get();
-        pipeline_state.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
-        pipeline_state.viewport                     = tex_out->GetViewport();
+        static RHI_PipelineState pipeline_state;
+        pipeline_state.shader_vertex                    = shader_v.get();
+        pipeline_state.shader_pixel                     = shader_p.get();
+        pipeline_state.input_layout                     = shader_v->GetInputLayout().get();
+        pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
+        pipeline_state.blend_state                      = m_blend_disabled.get();
+        pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
+        pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
+        pipeline_state.render_target_color_textures[0]  = tex_out.get();
+        pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
+        pipeline_state.viewport                         = tex_out->GetViewport();
 
         if (cmd_list->Begin("Pass_ChromaticAberration", pipeline_state))
         {
@@ -1461,17 +1462,17 @@ namespace Spartan
 			return;
 
         // Set render state
-        RHI_PipelineState pipeline_state;
-        pipeline_state.shader_vertex                = shader_v.get();
-        pipeline_state.shader_pixel                 = shader_p.get();
-        pipeline_state.input_layout                 = shader_v->GetInputLayout().get();
-        pipeline_state.rasterizer_state             = m_rasterizer_cull_back_solid.get();
-        pipeline_state.blend_state                  = m_blend_disabled.get();
-        pipeline_state.depth_stencil_state          = m_depth_stencil_disabled.get();
-        pipeline_state.vertex_buffer_stride         = m_font->GetVertexBuffer()->GetStride();
-        pipeline_state.render_target_color_texture  = tex_out.get();
-        pipeline_state.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
-        pipeline_state.viewport                     = tex_out->GetViewport();
+        static RHI_PipelineState pipeline_state;
+        pipeline_state.shader_vertex                    = shader_v.get();
+        pipeline_state.shader_pixel                     = shader_p.get();
+        pipeline_state.input_layout                     = shader_v->GetInputLayout().get();
+        pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
+        pipeline_state.blend_state                      = m_blend_disabled.get();
+        pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
+        pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
+        pipeline_state.render_target_color_textures[0]  = tex_out.get();
+        pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
+        pipeline_state.viewport                         = tex_out->GetViewport();
 
         if (cmd_list->Begin("Pass_MotionBlur", pipeline_state))
         {
@@ -1499,17 +1500,17 @@ namespace Spartan
             return;
 
         // Set render state
-        RHI_PipelineState pipeline_state;
-        pipeline_state.shader_vertex                = shader_v.get();
-        pipeline_state.shader_pixel                 = shader_p.get();
-        pipeline_state.input_layout                 = shader_v->GetInputLayout().get();
-        pipeline_state.rasterizer_state             = m_rasterizer_cull_back_solid.get();
-        pipeline_state.blend_state                  = m_blend_disabled.get();
-        pipeline_state.depth_stencil_state          = m_depth_stencil_disabled.get();
-        pipeline_state.vertex_buffer_stride         = m_font->GetVertexBuffer()->GetStride();
-        pipeline_state.render_target_color_texture  = tex_out.get();
-        pipeline_state.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
-        pipeline_state.viewport                     = tex_out->GetViewport();
+        static RHI_PipelineState pipeline_state;
+        pipeline_state.shader_vertex                    = shader_v.get();
+        pipeline_state.shader_pixel                     = shader_p.get();
+        pipeline_state.input_layout                     = shader_v->GetInputLayout().get();
+        pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
+        pipeline_state.blend_state                      = m_blend_disabled.get();
+        pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
+        pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
+        pipeline_state.render_target_color_textures[0]  = tex_out.get();
+        pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
+        pipeline_state.viewport                         = tex_out->GetViewport();
 
         if (cmd_list->Begin("Pass_Dithering", pipeline_state))
         {
@@ -1535,17 +1536,17 @@ namespace Spartan
             return;
 
         // Set render state
-        RHI_PipelineState pipeline_state;
-        pipeline_state.shader_vertex                = shader_v.get();
-        pipeline_state.shader_pixel                 = shader_p.get();
-        pipeline_state.input_layout                 = shader_v->GetInputLayout().get();
-        pipeline_state.rasterizer_state             = m_rasterizer_cull_back_solid.get();
-        pipeline_state.blend_state                  = m_blend_disabled.get();
-        pipeline_state.depth_stencil_state          = m_depth_stencil_disabled.get();
-        pipeline_state.vertex_buffer_stride         = m_font->GetVertexBuffer()->GetStride();
-        pipeline_state.render_target_color_texture  = tex_out.get();
-        pipeline_state.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
-        pipeline_state.viewport                     = tex_out->GetViewport();
+        static RHI_PipelineState pipeline_state;
+        pipeline_state.shader_vertex                    = shader_v.get();
+        pipeline_state.shader_pixel                     = shader_p.get();
+        pipeline_state.input_layout                     = shader_v->GetInputLayout().get();
+        pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
+        pipeline_state.blend_state                      = m_blend_disabled.get();
+        pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
+        pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
+        pipeline_state.render_target_color_textures[0]  = tex_out.get();
+        pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
+        pipeline_state.viewport                         = tex_out->GetViewport();
 
         if (cmd_list->Begin("Pass_LumaSharpen", pipeline_state))
         {
@@ -1637,18 +1638,18 @@ namespace Spartan
                     if (draw_grid)
                     {
                         // Set render state
-                        RHI_PipelineState pipeline_state;
-                        pipeline_state.shader_vertex                = shader_color_v.get();
-                        pipeline_state.shader_pixel                 = shader_color_p.get();
-                        pipeline_state.input_layout                 = shader_color_v->GetInputLayout().get();
-                        pipeline_state.rasterizer_state             = m_rasterizer_cull_back_wireframe.get();
-                        pipeline_state.blend_state                  = m_blend_enabled.get();
-                        pipeline_state.depth_stencil_state          = m_depth_stencil_enabled_no_write.get();
-                        pipeline_state.vertex_buffer_stride         = m_gizmo_grid->GetVertexBuffer()->GetStride();
-                        pipeline_state.render_target_color_texture  = tex_out.get();
-                        pipeline_state.render_target_depth_texture  = m_render_targets[RenderTarget_Gbuffer_Depth].get();
-                        pipeline_state.viewport                     = tex_out->GetViewport();
-                        pipeline_state.primitive_topology           = RHI_PrimitiveTopology_LineList;
+                        static RHI_PipelineState pipeline_state;
+                        pipeline_state.shader_vertex                    = shader_color_v.get();
+                        pipeline_state.shader_pixel                     = shader_color_p.get();
+                        pipeline_state.input_layout                     = shader_color_v->GetInputLayout().get();
+                        pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_wireframe.get();
+                        pipeline_state.blend_state                      = m_blend_enabled.get();
+                        pipeline_state.depth_stencil_state              = m_depth_stencil_enabled_no_write.get();
+                        pipeline_state.vertex_buffer_stride             = m_gizmo_grid->GetVertexBuffer()->GetStride();
+                        pipeline_state.render_target_color_textures[0]  = tex_out.get();
+                        pipeline_state.render_target_depth_texture      = m_render_targets[RenderTarget_Gbuffer_Depth].get();
+                        pipeline_state.viewport                         = tex_out->GetViewport();
+                        pipeline_state.primitive_topology               = RHI_PrimitiveTopology_LineList;
 
                         // Create and submit command list
                         if (cmd_list->Begin("Grid", pipeline_state))
@@ -1683,18 +1684,18 @@ namespace Spartan
                         m_lines_list_depth_enabled.clear();
 
                         // Set render state
-                        RHI_PipelineState pipeline_state;
-                        pipeline_state.shader_vertex                = shader_color_v.get();
-                        pipeline_state.shader_pixel                 = shader_color_p.get();
-                        pipeline_state.input_layout                 = shader_color_v->GetInputLayout().get();
-                        pipeline_state.rasterizer_state             = m_rasterizer_cull_back_wireframe.get();
-                        pipeline_state.blend_state                  = m_blend_enabled.get();
-                        pipeline_state.depth_stencil_state          = m_depth_stencil_enabled_no_write.get();
-                        pipeline_state.vertex_buffer_stride         = m_vertex_buffer_lines->GetStride();
-                        pipeline_state.render_target_color_texture  = tex_out.get();
-                        pipeline_state.render_target_depth_texture  = m_render_targets[RenderTarget_Gbuffer_Depth].get();
-                        pipeline_state.viewport                     = tex_out->GetViewport();
-                        pipeline_state.primitive_topology           = RHI_PrimitiveTopology_LineList;
+                        static RHI_PipelineState pipeline_state;
+                        pipeline_state.shader_vertex                    = shader_color_v.get();
+                        pipeline_state.shader_pixel                     = shader_color_p.get();
+                        pipeline_state.input_layout                     = shader_color_v->GetInputLayout().get();
+                        pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_wireframe.get();
+                        pipeline_state.blend_state                      = m_blend_enabled.get();
+                        pipeline_state.depth_stencil_state              = m_depth_stencil_enabled_no_write.get();
+                        pipeline_state.vertex_buffer_stride             = m_vertex_buffer_lines->GetStride();
+                        pipeline_state.render_target_color_textures[0]  = tex_out.get();
+                        pipeline_state.render_target_depth_texture      = m_render_targets[RenderTarget_Gbuffer_Depth].get();
+                        pipeline_state.viewport                         = tex_out->GetViewport();
+                        pipeline_state.primitive_topology               = RHI_PrimitiveTopology_LineList;
 
                         // Create and submit command list
                         if (cmd_list->Begin("Lines", pipeline_state))
@@ -1713,17 +1714,17 @@ namespace Spartan
             // Draw lines without depth
             {
                 // Set render state
-                RHI_PipelineState pipeline_state;
-                pipeline_state.shader_vertex                = shader_color_v.get();
-                pipeline_state.shader_pixel                 = shader_color_p.get();
-                pipeline_state.input_layout                 = shader_color_v->GetInputLayout().get();
-                pipeline_state.rasterizer_state             = m_rasterizer_cull_back_wireframe.get();
-                pipeline_state.blend_state                  = m_blend_disabled.get();
-                pipeline_state.depth_stencil_state          = m_depth_stencil_disabled.get();
-                pipeline_state.vertex_buffer_stride         = m_vertex_buffer_lines->GetStride();
-                pipeline_state.render_target_color_texture  = tex_out.get();  
-                pipeline_state.viewport                     = tex_out->GetViewport();
-                pipeline_state.primitive_topology           = RHI_PrimitiveTopology_LineList;
+                static RHI_PipelineState pipeline_state;
+                pipeline_state.shader_vertex                    = shader_color_v.get();
+                pipeline_state.shader_pixel                     = shader_color_p.get();
+                pipeline_state.input_layout                     = shader_color_v->GetInputLayout().get();
+                pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_wireframe.get();
+                pipeline_state.blend_state                      = m_blend_disabled.get();
+                pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
+                pipeline_state.vertex_buffer_stride             = m_vertex_buffer_lines->GetStride();
+                pipeline_state.render_target_color_textures[0]  = tex_out.get();
+                pipeline_state.viewport                         = tex_out->GetViewport();
+                pipeline_state.primitive_topology               = RHI_PrimitiveTopology_LineList;
 
                 // Create and submit command list
                 if (cmd_list->Begin("Lines_No_Depth", pipeline_state))
@@ -1777,17 +1778,17 @@ namespace Spartan
 		    if (render_lights && !lights.empty())
 		    {
                 // Set render state
-                RHI_PipelineState pipeline_state;
-                pipeline_state.shader_vertex                = shader_quad_v.get();
-                pipeline_state.shader_pixel                 = shader_texture_p.get();
-                pipeline_state.input_layout                 = shader_quad_v->GetInputLayout().get();
-                pipeline_state.rasterizer_state             = m_rasterizer_cull_back_solid.get();
-                pipeline_state.blend_state                  = m_blend_enabled.get();
-                pipeline_state.depth_stencil_state          = m_depth_stencil_disabled.get();
-                pipeline_state.vertex_buffer_stride         = m_quad.GetVertexBuffer()->GetStride(); // stride matches rect
-                pipeline_state.render_target_color_texture  = tex_out.get();
-                pipeline_state.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
-                pipeline_state.viewport                     = tex_out->GetViewport();
+                static RHI_PipelineState pipeline_state;
+                pipeline_state.shader_vertex                    = shader_quad_v.get();
+                pipeline_state.shader_pixel                     = shader_texture_p.get();
+                pipeline_state.input_layout                     = shader_quad_v->GetInputLayout().get();
+                pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
+                pipeline_state.blend_state                      = m_blend_enabled.get();
+                pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
+                pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride(); // stride matches rect
+                pipeline_state.render_target_color_textures[0]  = tex_out.get();
+                pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
+                pipeline_state.viewport                         = tex_out->GetViewport();
 
                 // Create and submit command list
 		    	if (cmd_list->Begin("Lights"))
@@ -1853,17 +1854,17 @@ namespace Spartan
 		    if (render_transform && m_gizmo_transform->Update(m_camera.get(), m_gizmo_transform_size, m_gizmo_transform_speed))
 		    {
                 // Set render state
-                RHI_PipelineState pipeline_state;
-                pipeline_state.shader_vertex                = shader_gizmo_transform_v.get();
-                pipeline_state.shader_pixel                 = shader_gizmo_transform_p.get();
-                pipeline_state.input_layout                 = shader_gizmo_transform_v->GetInputLayout().get();
-                pipeline_state.rasterizer_state             = m_rasterizer_cull_back_solid.get();
-                pipeline_state.blend_state                  = m_blend_enabled.get();
-                pipeline_state.depth_stencil_state          = m_depth_stencil_disabled.get();
-                pipeline_state.vertex_buffer_stride         = m_gizmo_transform->GetVertexBuffer()->GetStride();
-                pipeline_state.render_target_color_texture  = tex_out.get();
-                pipeline_state.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
-                pipeline_state.viewport                     = tex_out->GetViewport();
+                static RHI_PipelineState pipeline_state;
+                pipeline_state.shader_vertex                    = shader_gizmo_transform_v.get();
+                pipeline_state.shader_pixel                     = shader_gizmo_transform_p.get();
+                pipeline_state.input_layout                     = shader_gizmo_transform_v->GetInputLayout().get();
+                pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
+                pipeline_state.blend_state                      = m_blend_enabled.get();
+                pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
+                pipeline_state.vertex_buffer_stride             = m_gizmo_transform->GetVertexBuffer()->GetStride();
+                pipeline_state.render_target_color_textures[0]  = tex_out.get();
+                pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
+                pipeline_state.viewport                         = tex_out->GetViewport();
 
                 // Create and submit command list
                 if (cmd_list->Begin("Transform"))
@@ -1940,17 +1941,17 @@ namespace Spartan
             return;
 
         // Set render state
-        RHI_PipelineState pipeline_state;
-        pipeline_state.shader_vertex                = shader_v.get();
-        pipeline_state.shader_pixel                 = shader_p.get();
-        pipeline_state.input_layout                 = shader_v->GetInputLayout().get();
-        pipeline_state.rasterizer_state             = m_rasterizer_cull_back_solid.get();
-        pipeline_state.blend_state                  = m_blend_enabled.get();
-        pipeline_state.depth_stencil_state          = m_depth_stencil_disabled.get();
-        pipeline_state.vertex_buffer_stride         = m_font->GetVertexBuffer()->GetStride();
-        pipeline_state.render_target_color_texture  = tex_out.get();
-        pipeline_state.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
-        pipeline_state.viewport                     = tex_out->GetViewport();
+        static RHI_PipelineState pipeline_state;
+        pipeline_state.shader_vertex                    = shader_v.get();
+        pipeline_state.shader_pixel                     = shader_p.get();
+        pipeline_state.input_layout                     = shader_v->GetInputLayout().get();
+        pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
+        pipeline_state.blend_state                      = m_blend_enabled.get();
+        pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
+        pipeline_state.vertex_buffer_stride             = m_font->GetVertexBuffer()->GetStride();
+        pipeline_state.render_target_color_textures[0]  = tex_out.get();
+        pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
+        pipeline_state.viewport                         = tex_out->GetViewport();
 
         // Submit command list
         if (cmd_list->Begin("Pass_PerformanceMetrics", pipeline_state))
@@ -2060,17 +2061,17 @@ namespace Spartan
             return false;
 
         // Set render state
-        RHI_PipelineState pipeline_state;
-        pipeline_state.shader_vertex                = shader_v.get();
-        pipeline_state.shader_pixel                 = shader_p.get();
-        pipeline_state.input_layout                 = shader_v->GetInputLayout().get();
-        pipeline_state.rasterizer_state             = m_rasterizer_cull_back_solid.get();
-        pipeline_state.blend_state                  = m_blend_disabled.get();
-        pipeline_state.depth_stencil_state          = m_depth_stencil_disabled.get();
-        pipeline_state.vertex_buffer_stride         = m_quad.GetVertexBuffer()->GetStride();
-        pipeline_state.render_target_color_texture  = tex_out.get();
-        pipeline_state.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
-        pipeline_state.viewport                     = tex_out->GetViewport();
+        static RHI_PipelineState pipeline_state;
+        pipeline_state.shader_vertex                    = shader_v.get();
+        pipeline_state.shader_pixel                     = shader_p.get();
+        pipeline_state.input_layout                     = shader_v->GetInputLayout().get();
+        pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
+        pipeline_state.blend_state                      = m_blend_disabled.get();
+        pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
+        pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
+        pipeline_state.render_target_color_textures[0]  = tex_out.get();
+        pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
+        pipeline_state.viewport                         = tex_out->GetViewport();
 
         // // Submit command list
         if (cmd_list->Begin("Pass_DebugBuffer", pipeline_state))
@@ -2106,17 +2107,17 @@ namespace Spartan
         const auto& render_target = m_render_targets[RenderTarget_Brdf_Specular_Lut];
 
         // Set render state
-        RHI_PipelineState pipeline_state;
-        pipeline_state.shader_vertex                = shader_v.get();
-        pipeline_state.shader_pixel                 = shader_p.get();
-        pipeline_state.input_layout                 = shader_v->GetInputLayout().get();
-        pipeline_state.rasterizer_state             = m_rasterizer_cull_back_solid.get();
-        pipeline_state.blend_state                  = m_blend_disabled.get();
-        pipeline_state.depth_stencil_state          = m_depth_stencil_disabled.get();
-        pipeline_state.vertex_buffer_stride         = m_quad.GetVertexBuffer()->GetStride();
-        pipeline_state.render_target_color_texture  = render_target.get();
-        pipeline_state.viewport                     = render_target->GetViewport();
-        pipeline_state.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
+        static RHI_PipelineState pipeline_state;
+        pipeline_state.shader_vertex                    = shader_v.get();
+        pipeline_state.shader_pixel                     = shader_p.get();
+        pipeline_state.input_layout                     = shader_v->GetInputLayout().get();
+        pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
+        pipeline_state.blend_state                      = m_blend_disabled.get();
+        pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
+        pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
+        pipeline_state.render_target_color_textures[0]  = render_target.get();
+        pipeline_state.viewport                         = render_target->GetViewport();
+        pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
 
         // Submit command list
         if (cmd_list->Begin("Pass_BrdfSpecularLut", pipeline_state))
@@ -2144,17 +2145,17 @@ namespace Spartan
             return;
 
         // Set render state
-        RHI_PipelineState pipeline_state;
-        pipeline_state.shader_vertex                = shader_v.get();
-        pipeline_state.shader_pixel                 = shader_p.get();
-        pipeline_state.input_layout                 = shader_v->GetInputLayout().get();
-        pipeline_state.rasterizer_state             = m_rasterizer_cull_back_solid.get();
-        pipeline_state.blend_state                  = m_blend_disabled.get();
-        pipeline_state.depth_stencil_state          = m_depth_stencil_disabled.get();
-        pipeline_state.vertex_buffer_stride         = m_font->GetVertexBuffer()->GetStride();
-        pipeline_state.render_target_color_texture  = tex_out.get();
-        pipeline_state.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
-        pipeline_state.viewport                     = tex_out->GetViewport();
+        static RHI_PipelineState pipeline_state;
+        pipeline_state.shader_vertex                    = shader_v.get();
+        pipeline_state.shader_pixel                     = shader_p.get();
+        pipeline_state.input_layout                     = shader_v->GetInputLayout().get();
+        pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
+        pipeline_state.blend_state                      = m_blend_disabled.get();
+        pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
+        pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
+        pipeline_state.render_target_color_textures[0]  = tex_out.get();
+        pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
+        pipeline_state.viewport                         = tex_out->GetViewport();
 
         // Draw
         if (cmd_list->Begin("Pass_Copy", pipeline_state))

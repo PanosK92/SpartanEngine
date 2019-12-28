@@ -19,25 +19,40 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#pragma once
+//= INCLUDES =================
+#include "RHI_PipelineCache.h"
+#include "RHI_Device.h"
+#include "RHI_Pipeline.h"
+#include "RHI_PipelineState.h"
+#include "..\Logging\Log.h"
+//============================
 
-//= INCLUDES ==============
-#include <memory>
-#include <unordered_map>
-#include "RHI_Definition.h"
-//=========================
+//= NAMESPACES =====
+using namespace std;
+//==================
 
 namespace Spartan
 {
-	class RHI_PipelineCache
-	{
-	public:
-        RHI_PipelineCache(const std::shared_ptr<RHI_Device>& rhi_device) { m_rhi_device = rhi_device; }
-        RHI_Pipeline* GetPipeline(RHI_PipelineState& pipeline_state);
+    RHI_Pipeline* RHI_PipelineCache::GetPipeline(RHI_PipelineState& pipeline_state)
+    {
+        // Validate it
+        if (!pipeline_state.IsValid())
+        {
+            LOG_ERROR("Invalid pipeline state");
+            return nullptr;
+        }
 
-	private:
-        // <hash of pipeline state, pipeline state object>
-        std::unordered_map<std::size_t, std::shared_ptr<RHI_Pipeline>> m_cache;
-        std::shared_ptr<RHI_Device> m_rhi_device;
-	};
+        // Compute a hash for it
+        pipeline_state.ComputeHash();
+        size_t hash = pipeline_state.GetHash();
+
+        // If no pipeline exists for this state, create one
+        if (m_cache.find(hash) == m_cache.end())
+        {
+            // Cache a new pipeline
+            m_cache.emplace(make_pair(hash, move(make_shared<RHI_Pipeline>(m_rhi_device, pipeline_state))));
+        }
+
+        return m_cache[hash].get();
+    }
 }

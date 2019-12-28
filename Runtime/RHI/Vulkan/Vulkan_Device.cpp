@@ -240,5 +240,10 @@ namespace Spartan
 	{
 		return 0;
 	}
+
+    bool RHI_Device::Flush()
+    {
+        return vulkan_common::error::check_result(vkQueueWaitIdle(m_rhi_context->queue_graphics));
+    }
 }
 #endif

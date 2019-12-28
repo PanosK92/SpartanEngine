@@ -22,8 +22,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =================
-#include "RHI_Shader.h"
-#include "RHI_PipelineCache.h"
+#include "RHI_Definition.h"
+#include <map>
+#include <vector>
+#include <memory>
+#include "RHI_PipelineState.h"
 //============================
 
 namespace Spartan
@@ -32,7 +35,7 @@ namespace Spartan
 	{
 	public:
 		RHI_Pipeline() = default;
-		RHI_Pipeline(const std::shared_ptr<RHI_Device>& rhi_device, const RHI_PipelineState& pipeline_state);
+		RHI_Pipeline(const std::shared_ptr<RHI_Device>& rhi_device, RHI_PipelineState& pipeline_state);
 		~RHI_Pipeline();
 
         void OnCommandListConsumed();
@@ -40,15 +43,15 @@ namespace Spartan
         void SetSampler(uint32_t slot, RHI_Sampler* sampler);
         void SetTexture(uint32_t slot, RHI_Texture* texture);
         void* GetDescriptorSet();
-        void MakeDirty() { m_descriptor_dirty = true; }
 
-        auto GetPipeline()          const { return m_pipeline; }
-        auto GetPipelineLayout()    const { return m_pipeline_layout; }
-        auto GetState()             const { return m_state; }
+        void MakeDirty()            { m_descriptor_dirty = true; }
+        auto GetPipeline()          { return m_pipeline; }
+        auto GetPipelineLayout()    { return m_pipeline_layout; }
+        auto GetPipelineState()     { return &m_state; }
 
 	private:
-        uint32_t GetDescriptorBlueprintHash(const std::vector<RHI_Descriptor>& descriptor_blueprint);
-        void* CreateDescriptorSet(uint32_t hash);
+        std::size_t GetDescriptorBlueprintHash(const std::vector<RHI_Descriptor>& descriptor_blueprint);
+        void* CreateDescriptorSet(std::size_t hash);
 		bool CreateDescriptorPool();
 		bool CreateDescriptorSetLayout();
         void ReflectShaders();
@@ -62,11 +65,11 @@ namespace Spartan
         // Descriptors - Acts as a blueprint and is left untouched after being filled by ReflectShaders().
         std::vector<RHI_Descriptor> m_descriptor_blueprint;
         // Hash(type, slot, id) > Descriptor - Acts as a the API's descriptor cache.
-        std::map<uint32_t, void*> m_descriptors_cache;
+        std::map<std::size_t, void*> m_descriptors_cache;
 
         // Dependencies
         std::shared_ptr<RHI_Device> m_rhi_device;
-        const RHI_PipelineState* m_state = nullptr;
+        RHI_PipelineState m_state;
 
 		// API
 		void* m_pipeline					= nullptr;

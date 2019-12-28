@@ -23,6 +23,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // RHI (Rendering Hardware Interface)
 
+//= INCLUDES ======
+#include <stdint.h>
+//=================
+
 // Declarations
 namespace Spartan
 {
@@ -220,7 +224,6 @@ namespace Spartan
             this->stage = stage;
         }
 
-        
         uint32_t slot               = 0;
         uint32_t stage              = 0;
         uint32_t id                 = 0;
@@ -228,7 +231,6 @@ namespace Spartan
         RHI_Descriptor_Type type    = RHI_Descriptor_Undefined;
         RHI_Image_Layout layout     = RHI_Image_Undefined;
         void* resource              = nullptr;
-
     };
 
     inline const char* rhi_format_to_string(const RHI_Format result)

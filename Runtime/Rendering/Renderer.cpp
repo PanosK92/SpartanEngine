@@ -36,11 +36,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Camera.h"
 #include "../World/Components/Light.h"
 #include "../RHI/RHI_Device.h"
+#include "../RHI/RHI_Pipeline.h"
 #include "../RHI/RHI_PipelineCache.h"
 #include "../RHI/RHI_ConstantBuffer.h"
 #include "../RHI/RHI_CommandList.h"
 #include "../RHI/RHI_Texture2D.h"
 #include "../RHI/RHI_SwapChain.h"
+#include "../RHI/RHI_VertexBuffer.h"
 //=========================================
 
 //= NAMESPACES ===============
@@ -283,6 +285,8 @@ namespace Spartan
 
 		// Re-create render textures
 		CreateRenderTextures();
+
+        FIRE_EVENT(Event_Frame_Resolution_Changed);
 
 		// Log
 		LOG_INFO("Resolution set to %dx%d", width, height);

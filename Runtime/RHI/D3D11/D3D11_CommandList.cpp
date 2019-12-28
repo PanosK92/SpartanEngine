@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include "../../Profiling/Profiler.h"
 #include "../../Logging/Log.h"
+#include "../../Rendering/Renderer.h"
 #include "../RHI_CommandList.h"
 #include "../RHI_Pipeline.h"
 #include "../RHI_Device.h"
@@ -40,8 +41,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_DepthStencilState.h"
 #include "../RHI_RasterizerState.h"
 #include "../RHI_InputLayout.h"
-#include "../../Rendering/Renderer.h"
 #include "../RHI_SwapChain.h"
+#include "../RHI_PipelineState.h"
 //===================================
 
 //= NAMESPACES ===============
@@ -58,6 +59,8 @@ namespace Spartan
         m_profiler              = context->GetSubsystem<Profiler>().get();
         m_rhi_device            = m_renderer->GetRhiDevice().get();
         m_rhi_pipeline_cache    = m_renderer->GetPipelineCache().get();
+        m_passes_active.reserve(100);
+        m_passes_active.resize(100);
 	}
 
 	RHI_CommandList::~RHI_CommandList() = default;
@@ -77,7 +80,7 @@ namespace Spartan
             m_rhi_device->GetContextRhi()->annotation->BeginEvent(FileSystem::StringToWstring(pass_name).c_str());
         }
 
-        m_marker_begun.emplace_back(true);
+        m_passes_active[m_pass_index++] = true;
 
         return true;
     }
@@ -92,15 +95,26 @@ namespace Spartan
         if (pipeline_state.shader_pixel)                                          SetShaderPixel(pipeline_state.shader_pixel);
         if (pipeline_state.viewport.IsDefined())                                  SetViewport(pipeline_state.viewport);
         if (pipeline_state.primitive_topology != RHI_PrimitiveTopology_Unknown)   SetPrimitiveTopology(pipeline_state.primitive_topology);
-        if (pipeline_state.render_target_swapchain)                               SetRenderTarget(pipeline_state.render_target_swapchain->GetRenderTargetView(), pipeline_state.render_target_depth_texture ? pipeline_state.render_target_depth_texture->GetResource_DepthStencil() : nullptr);
-        if (pipeline_state.render_target_color_texture)                           SetRenderTarget(pipeline_state.render_target_color_texture->GetResource_RenderTarget(), pipeline_state.render_target_depth_texture ? pipeline_state.render_target_depth_texture->GetResource_DepthStencil() : nullptr);
+        if (pipeline_state.render_target_swapchain)                               SetRenderTarget(pipeline_state.render_target_swapchain->GetResource_RenderTarget(), pipeline_state.render_target_depth_texture ? pipeline_state.render_target_depth_texture->GetResource_DepthStencil() : nullptr);
+
+        for (auto i = 0; i < RHI_PipelineState::max_render_target_count; i++)
+        {
+            if (pipeline_state.render_target_color_textures[i])
+            {
+                SetRenderTarget
+                (
+                    pipeline_state.render_target_color_textures[i]->GetResource_RenderTarget(),
+                    pipeline_state.render_target_depth_texture ? pipeline_state.render_target_depth_texture->GetResource_DepthStencil() : nullptr
+                );
+            }
+        }
 
         return true;
 	}
 
 	bool RHI_CommandList::End()
 	{
-        if (!m_marker_begun.back())
+        if (!m_passes_active[m_pass_index - 1])
             return false;
 
         // Mark
@@ -116,7 +130,7 @@ namespace Spartan
             m_profiler->TimeBlockEnd();
         }
 
-        m_marker_begun.pop_back();
+        m_passes_active[--m_pass_index] = false;
 
         return true;
 	}

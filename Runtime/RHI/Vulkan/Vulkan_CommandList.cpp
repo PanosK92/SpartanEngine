@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Texture.h"
 #include "../RHI_VertexBuffer.h"
 #include "../RHI_IndexBuffer.h"
+#include "../RHI_PipelineState.h"
 #include "../RHI_ConstantBuffer.h"
 #include "../../Profiling/Profiler.h"
 #include "../../Logging/Log.h"
@@ -55,6 +56,8 @@ namespace Spartan
         m_profiler              = context->GetSubsystem<Profiler>().get();
 		m_rhi_device	        = m_renderer->GetRhiDevice().get();
         m_rhi_pipeline_cache    = m_renderer->GetPipelineCache().get();
+        m_passes_active.reserve(100);
+        m_passes_active.resize(100);
 
         RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
 
@@ -81,25 +84,25 @@ namespace Spartan
 
     bool RHI_CommandList::Begin(const std::string& pass_name)
     {
-        bool result = true;
-
         // Profile
         if (m_profiler)
         {
-            result = m_profiler->TimeBlockStart(pass_name, true, true);
+            m_profiler->TimeBlockStart(pass_name, true, true);
         }
 
         // Mark
-        vulkan_common::debug::begin(CMD_BUFFER, pass_name.c_str(), Vector4::One);
+        if (m_rhi_device->GetContextRhi()->debug)
+        {
+            vulkan_common::debug::begin(CMD_BUFFER, pass_name.c_str(), Vector4::One);
+        }
 
-        m_marker_begun.emplace_back(true);
+        m_passes_active[m_pass_index++] = true;
 
-        return result;
+        return true;
     }
 
     bool RHI_CommandList::Begin(RHI_PipelineState& pipeline_state)
 	{
-        m_pipeline_state = &pipeline_state;
         RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
 
         // Sync CPU to GPU
@@ -116,22 +119,16 @@ namespace Spartan
             return false;
         }
 
-        if (!m_pipeline_state || !m_pipeline_state->IsDefined())
-        {
-            LOG_ERROR("Pipeline state is not defined");
-            return false;
-        }
-
-        m_pipeline = m_rhi_pipeline_cache->GetPipeline(*m_pipeline_state).get();
-        m_pipeline->MakeDirty();
+        m_pipeline = m_rhi_pipeline_cache->GetPipeline(pipeline_state);
         if (!m_pipeline)
         {
-            LOG_ERROR("Failed to get pipeline");
+            LOG_ERROR("Failed to acquire appropriate pipeline");
             return false;
         }
-	
+        m_pipeline->MakeDirty();
+
 		// Acquire next image (in case the render target is a swapchain)
-        if (!m_pipeline_state->AcquireNextImage())
+        if (!m_pipeline->GetPipelineState()->AcquireNextImage())
             return false;
 
 		// Begin command buffer
@@ -145,11 +142,11 @@ namespace Spartan
 		VkClearValue clear_color					= { 1.0f, 0.0f, 0.0f, 1.0f };
 		VkRenderPassBeginInfo render_pass_info		= {};
 		render_pass_info.sType						= VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		render_pass_info.renderPass					= static_cast<VkRenderPass>(m_pipeline_state->GetRenderPass());
-		render_pass_info.framebuffer				= static_cast<VkFramebuffer>(m_pipeline_state->GetFrameBuffer());
+		render_pass_info.renderPass					= static_cast<VkRenderPass>(m_pipeline->GetPipelineState()->GetRenderPass());
+		render_pass_info.framebuffer				= static_cast<VkFramebuffer>(m_pipeline->GetPipelineState()->GetFrameBuffer());
 		render_pass_info.renderArea.offset			= { 0, 0 };
-        render_pass_info.renderArea.extent.width    = m_pipeline_state->GetWidth();
-		render_pass_info.renderArea.extent.height	= m_pipeline_state->GetHeight();
+        render_pass_info.renderArea.extent.width    = m_pipeline->GetPipelineState()->GetWidth();
+		render_pass_info.renderArea.extent.height	= m_pipeline->GetPipelineState()->GetHeight();
 		render_pass_info.clearValueCount			= 1;
 		render_pass_info.pClearValues				= &clear_color;
 		vkCmdBeginRenderPass(CMD_BUFFER, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
@@ -174,42 +171,37 @@ namespace Spartan
         return true;
 	}
 
-
     bool RHI_CommandList::End()
     {
-        // Pass
+        bool result = true;
+
+        // End render pass and command buffer
         if (m_cmd_state == RHI_Cmd_List_Recording)
         {
             vkCmdEndRenderPass(CMD_BUFFER);
-            if (vulkan_common::error::check_result(vkEndCommandBuffer(CMD_BUFFER)))
-            {
-                m_cmd_state = RHI_Cmd_List_Ended;
-            }
-        }
-        else if (!m_marker_begun.back())
-        {
-            // Log error in case not even the marker will follow
-            LOG_WARNING("Can't record command");
-            return false;
+            result = vulkan_common::error::check_result(vkEndCommandBuffer(CMD_BUFFER));
+            m_cmd_state = RHI_Cmd_List_Ended;
         }
 
-        // Marker
-        if (m_marker_begun.back())
+        if (m_passes_active[m_pass_index - 1])
         {
+            m_passes_active[--m_pass_index] = false;
+
             // Mark
-            vulkan_common::debug::end(CMD_BUFFER);
+            if (m_rhi_device->GetContextRhi()->debug)
+            {
+                vulkan_common::debug::end(CMD_BUFFER);
+            }
 
             // Profile
             if (m_profiler)
             {
                 if (!m_profiler->TimeBlockEnd())
-                    return false;
+                    result = result ? false : result;
             }
-
-            m_marker_begun.pop_back();
         }
 
-        return true;
+        return result;
     }
 
 	void RHI_CommandList::Draw(const uint32_t vertex_count)
@@ -512,11 +504,13 @@ namespace Spartan
             return false;
         }
 
+        RHI_PipelineState* state = m_pipeline->GetPipelineState();
+
 		// Wait
 		VkSemaphore wait_semaphores[] = { nullptr };
-        if (m_pipeline_state->render_target_swapchain)
+        if (state->render_target_swapchain)
         {
-            wait_semaphores[0] = static_cast<VkSemaphore>(m_pipeline_state->render_target_swapchain->GetSemaphoreImageAcquired());
+            wait_semaphores[0] = static_cast<VkSemaphore>(state->render_target_swapchain->GetSemaphoreImageAcquired());
         }
         VkPipelineStageFlags wait_flags[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
@@ -525,7 +519,7 @@ namespace Spartan
 		
 		VkSubmitInfo submit_info			= {};
 		submit_info.sType					= VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		submit_info.waitSemaphoreCount		= m_pipeline_state->render_target_swapchain ? 1 : 0;
+		submit_info.waitSemaphoreCount		= state->render_target_swapchain ? 1 : 0;
 		submit_info.pWaitSemaphores			= wait_semaphores;
 		submit_info.pWaitDstStageMask		= wait_flags;
 		submit_info.commandBufferCount		= 1;

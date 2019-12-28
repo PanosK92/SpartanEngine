@@ -21,18 +21,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= IMPLEMENTATION ===============
 #include "../RHI_Implementation.h"
-#include "../../Math/MathHelper.h"
 #ifdef API_GRAPHICS_VULKAN
 //================================
 
-//= INCLUDES ==================
+//= INCLUDES ========================
 #include "../RHI_SwapChain.h"
 #include "../RHI_Device.h"
-#include "../../Logging/Log.h"
 #include "../RHI_CommandList.h"
-#include "../../Rendering/Renderer.h"
+#include "../RHI_Pipeline.h"
+#include "../../Logging/Log.h"
+#include "../../Math/MathHelper.h"
 #include "../../Profiling/Profiler.h"
-//=============================
+#include "../../Rendering/Renderer.h"
+//===================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -46,17 +47,15 @@ namespace Spartan
         inline bool create
         (
             RHI_Context* rhi_context,
-            uint32_t width,
-            uint32_t height,
+            uint32_t* width,
+            uint32_t* height,
             uint32_t buffer_count,
             RHI_Format format,
             uint32_t flags,
             void* window_handle,
-            void*& render_pass,
             void*& surface_out,
             void*& swap_chain_view_out,
             vector<void*>& image_views_out,
-            vector<void*>& frame_buffers,
             vector<void*>& semaphores_image_acquired_out
         )
         {
@@ -82,13 +81,13 @@ namespace Spartan
                 }
             }
 
-            // Compute extent
+            // Get surface capabilities
             VkSurfaceCapabilitiesKHR capabilities = vulkan_common::surface::capabilities(rhi_context, surface);
-            VkExtent2D extent =
-            {
-                Math::Clamp(width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
-                Math::Clamp(height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height)
-            };
+
+            // Compute extent
+            *width              = Math::Clamp(*width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
+            *height             = Math::Clamp(*height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
+            VkExtent2D extent   = { *width, *height };
 
             // Detect surface format and color space
             vulkan_common::surface::detect_format_and_color_space(rhi_context, surface, &rhi_context->surface_format, &rhi_context->surface_color_space);
@@ -158,20 +157,6 @@ namespace Spartan
                 }
             }
 
-            if (!vulkan_common::render_pass::create(rhi_context, rhi_context->surface_format, render_pass, RHI_Image_Present_Src))
-                return false;
-
-            // Frame buffers
-            frame_buffers.reserve(image_count);
-            frame_buffers.resize(image_count);
-            for (uint32_t i = 0; i < image_count; i++)
-            {
-                vector<void*> attachments = { image_views_out[i] };
-
-                if (!vulkan_common::frame_buffer::create(rhi_context, render_pass, attachments, extent.width, extent.height, frame_buffers[i]))
-                    return false;
-            }
-
             surface_out         = static_cast<void*>(surface);
             swap_chain_view_out = static_cast<void*>(swap_chain);
 
@@ -188,7 +173,6 @@ namespace Spartan
             void*& surface,
             void*& swap_chain_view,
             vector<void*>& image_views,
-            vector<void*>& frame_buffers,
             vector<void*>& semaphores_image_acquired
         )
         {
@@ -198,13 +182,6 @@ namespace Spartan
                 vulkan_common::semaphore::destroy(rhi_context, semaphore);
             }
             semaphores_image_acquired.clear();
-
-            // Frame buffers
-            for (auto frame_buffer : frame_buffers)
-            {
-                vulkan_common::frame_buffer::destroy(rhi_context, frame_buffer);
-            }
-            frame_buffers.clear();
 
             // Image views
             vulkan_common::image_view::destroy(rhi_context, image_views);
@@ -257,7 +234,7 @@ namespace Spartan
             return;
         }
 
-		// Save parameters
+		// Copy parameters
 		m_format		= format;
 		m_rhi_device	= rhi_device.get();
 		m_buffer_count	= buffer_count;
@@ -269,17 +246,15 @@ namespace Spartan
 		m_initialized = _Vulkan_SwapChain::create
 		(
             rhi_device->GetContextRhi(),
-			m_width,
-			m_height,
+			&m_width,
+			&m_height,
 			m_buffer_count,
 			m_format,
             m_flags,
 			m_window_handle,
-			m_render_pass,
 			m_surface,
 			m_swap_chain_view,
 			m_image_views,
-			m_frame_buffers,
 			m_image_acquired_semaphores
 		);
 
@@ -301,7 +276,6 @@ namespace Spartan
 			m_surface,
 			m_swap_chain_view,
 			m_image_views,
-			m_frame_buffers,
 			m_image_acquired_semaphores
 		);
 
@@ -310,9 +284,6 @@ namespace Spartan
 
         // Command pool
         vulkan_common::command_pool::destroy(m_rhi_device->GetContextRhi(), m_cmd_pool);
-
-        // Render pass
-        vulkan_common::render_pass::destroy(m_rhi_device->GetContextRhi(), m_render_pass);
 	}
 
 	bool RHI_SwapChain::Resize(const uint32_t width, const uint32_t height)
@@ -332,7 +303,6 @@ namespace Spartan
 			m_surface,
 			m_swap_chain_view,
 			m_image_views,
-			m_frame_buffers,
 			m_image_acquired_semaphores
 		);
 
@@ -340,17 +310,15 @@ namespace Spartan
 		m_initialized = _Vulkan_SwapChain::create
 		(
             m_rhi_device->GetContextRhi(),
-			m_width,
-			m_height,
+			&m_width,
+			&m_height,
 			m_buffer_count,
 			m_format,
 			m_flags,
 			m_window_handle,
-			m_render_pass,
 			m_surface,
 			m_swap_chain_view,
 			m_image_views,
-			m_frame_buffers,
 			m_image_acquired_semaphores
 		);
 
