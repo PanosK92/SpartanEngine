@@ -838,7 +838,16 @@ namespace Spartan::vulkan_common
 
     namespace render_pass
     {
-        inline bool create(const RHI_Context* rhi_context, RHI_Texture** render_target_color_textures, uint32_t render_target_color_texture_count, RHI_Texture* render_target_depth_texture, bool is_swapchain, void*& render_pass)
+        inline bool create(
+            const RHI_Context* rhi_context,
+            RHI_Texture** render_target_color_textures,
+            Math::Vector4 render_target_color_clear[],
+            uint32_t render_target_color_texture_count,
+            RHI_Texture* render_target_depth_texture,
+            float render_target_depth_clear,
+            bool is_swapchain,
+            void*& render_pass
+        )
         {
             // Attachment descriptions
             uint32_t attachment_count = render_target_color_texture_count + static_cast<uint32_t>(render_target_depth_texture ? 1 : 0);
@@ -850,7 +859,7 @@ namespace Spartan::vulkan_common
                     // Attachment descriptions
                     attachment_descriptions[0].format          = rhi_context->surface_format;
                     attachment_descriptions[0].samples         = VK_SAMPLE_COUNT_1_BIT;
-                    attachment_descriptions[0].loadOp          = VK_ATTACHMENT_LOAD_OP_CLEAR;
+                    attachment_descriptions[0].loadOp          = (render_target_color_clear[0] == state_dont_clear_color) ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR;
                     attachment_descriptions[0].storeOp         = VK_ATTACHMENT_STORE_OP_STORE;
                     attachment_descriptions[0].stencilLoadOp   = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
                     attachment_descriptions[0].stencilStoreOp  = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -859,14 +868,12 @@ namespace Spartan::vulkan_common
                 }
                 else if (render_target_color_textures) // Texture
                 {
-                    bool clear_on_set = false;
-
                     // Color
                     for (uint32_t i = 0; i < render_target_color_texture_count; i++)
                     {
                         attachment_descriptions[i].format           = vulkan_format[render_target_color_textures[i]->GetFormat()];
                         attachment_descriptions[i].samples          = VK_SAMPLE_COUNT_1_BIT;
-                        attachment_descriptions[i].loadOp           = clear_on_set ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
+                        attachment_descriptions[i].loadOp           = (render_target_color_clear[i] == state_dont_clear_color) ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR;
                         attachment_descriptions[i].storeOp          = VK_ATTACHMENT_STORE_OP_STORE;
                         attachment_descriptions[i].stencilLoadOp    = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
                         attachment_descriptions[i].stencilStoreOp   = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -883,7 +890,7 @@ namespace Spartan::vulkan_common
                     VkAttachmentDescription& attachment_description = attachment_descriptions.back();
                     attachment_description.format                   = vulkan_format[render_target_depth_texture->GetFormat()];
                     attachment_description.samples                  = VK_SAMPLE_COUNT_1_BIT;
-                    attachment_description.loadOp                   = clear_on_set ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
+                    attachment_description.loadOp                   = (render_target_depth_clear == state_dont_clear_depth) ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR;
                     attachment_description.storeOp                  = VK_ATTACHMENT_STORE_OP_STORE;
                     attachment_description.stencilLoadOp            = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
                     attachment_description.stencilStoreOp           = VK_ATTACHMENT_STORE_OP_DONT_CARE;

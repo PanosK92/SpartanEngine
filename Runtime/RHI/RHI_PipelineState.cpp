@@ -48,7 +48,7 @@ namespace Spartan
         }
     }
 
-    bool RHI_PipelineState::IsValid() const
+    bool RHI_PipelineState::IsValid()
     {
         // Ensure that only one render target is active at a time
         if (render_target_swapchain && render_target_color_textures[0])
@@ -56,7 +56,6 @@ namespace Spartan
 
         // Ensure that the required members are set
         return  shader_vertex       != nullptr &&
-                input_layout        != nullptr &&
                 rasterizer_state    != nullptr &&
                 blend_state         != nullptr &&
                 depth_stencil_state != nullptr &&
@@ -110,7 +109,6 @@ namespace Spartan
         Utility::Hash::hash_combine(m_hash, primitive_topology);
         Utility::Hash::hash_combine(m_hash, scissor_dynamic);
         Utility::Hash::hash_combine(m_hash, vertex_buffer_stride);
-        Utility::Hash::hash_combine(m_hash, input_layout->GetId());
         Utility::Hash::hash_combine(m_hash, rasterizer_state->GetId());
         Utility::Hash::hash_combine(m_hash, blend_state->GetId());
         Utility::Hash::hash_combine(m_hash, depth_stencil_state->GetId());

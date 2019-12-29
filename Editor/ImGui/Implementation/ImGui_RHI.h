@@ -227,7 +227,6 @@ namespace ImGui::RHI
 		// Set render state
         g_pipeline_state.shader_vertex                  = g_shader_vertex.get();
         g_pipeline_state.shader_pixel                   = g_shader_pixel.get();
-        g_pipeline_state.input_layout                   = g_shader_vertex->GetInputLayout().get();
         g_pipeline_state.rasterizer_state               = g_rasterizer_state.get();
         g_pipeline_state.blend_state                    = g_blend_state.get();
         g_pipeline_state.depth_stencil_state            = g_depth_stencil_state.get();

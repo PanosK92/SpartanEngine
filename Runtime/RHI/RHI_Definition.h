@@ -23,9 +23,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // RHI (Rendering Hardware Interface)
 
-//= INCLUDES ======
+//= INCLUDES ===============
 #include <stdint.h>
-//=================
+#include "..\Math\Vector4.h"
+//==========================
 
 // Declarations
 namespace Spartan
@@ -255,4 +256,8 @@ namespace Spartan
 
         return "Unknown format";
     }
+
+    static const Math::Vector4 state_dont_clear_color   = Math::Vector4::Infinity;
+    static const float state_dont_clear_depth           = std::numeric_limits<float>::infinity();
+    static const uint8_t state_max_render_target_count  = 8;
 }
