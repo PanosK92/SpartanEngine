@@ -38,6 +38,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Profiling/Profiler.h"
 #include "../../Logging/Log.h"
 #include "../../Rendering/Renderer.h"
+#include <array>
 //===================================
 
 //= NAMESPACES ===============
@@ -58,8 +59,6 @@ namespace Spartan
         m_rhi_pipeline_cache    = m_renderer->GetPipelineCache().get();
         m_passes_active.reserve(100);
         m_passes_active.resize(100);
-        m_clear_values.reserve(state_max_render_target_count);
-        m_clear_values.resize(state_max_render_target_count);
 
         RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
 
@@ -143,15 +142,23 @@ namespace Spartan
         RHI_PipelineState* state = m_pipeline->GetPipelineState();
 
         // Clear values
+        array<VkClearValue, state_max_render_target_count + 1> clear_values; // +1 for depth      
         uint32_t clear_value_count = 0;
         {
-            // Detect used render targets
+            // Render target(s)
             for (auto i = 0; i < state_max_render_target_count; i++)
             {
                 if (state->render_target_color_clear[i] != state_dont_clear_color)
                 {
-                    m_clear_values[i] = state->render_target_color_clear[i];
+                    Vector4& color = state->render_target_color_clear[i];
+                    clear_values[clear_value_count++].color = { {color.x, color.y, color.z, color.w} };
                 }
+            }
+
+            // Depth
+            if (state->render_target_depth_clear != state_dont_clear_depth)
+            {
+                clear_values[clear_value_count++].depthStencil = { state->render_target_depth_clear, 0 };
             }
         }
 
@@ -163,8 +170,8 @@ namespace Spartan
 		render_pass_info.renderArea.offset			= { 0, 0 };
         render_pass_info.renderArea.extent.width    = m_pipeline->GetPipelineState()->GetWidth();
 		render_pass_info.renderArea.extent.height	= m_pipeline->GetPipelineState()->GetHeight();
-		render_pass_info.clearValueCount			= clear_value_count != 0 ? clear_value_count : 1;
-		render_pass_info.pClearValues				= clear_value_count != 0 ? reinterpret_cast<const VkClearValue*>(m_clear_values.data()) : reinterpret_cast<const VkClearValue*>(&Math::Vector4::Zero);
+		render_pass_info.clearValueCount			= static_cast<uint32_t>(clear_values.size());
+		render_pass_info.pClearValues				= clear_values.data();
 		vkCmdBeginRenderPass(CMD_BUFFER, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 
         // Bind pipeline

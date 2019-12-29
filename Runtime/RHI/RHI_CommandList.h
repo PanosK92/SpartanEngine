@@ -119,6 +119,5 @@ namespace Spartan
         Profiler* m_profiler                        = nullptr;
         void* m_cmd_buffer                          = nullptr;
         void* m_cmd_list_consumed_fence             = nullptr;
-        std::vector<Math::Vector4> m_clear_values;
 	};
 }

@@ -61,7 +61,7 @@ namespace Spartan
                 blend_state         != nullptr &&
                 depth_stencil_state != nullptr &&
                 primitive_topology  != RHI_PrimitiveTopology_Unknown &&
-                (render_target_swapchain != nullptr || render_target_color_textures[0] != nullptr);
+                (render_target_swapchain != nullptr || render_target_color_textures[0] != nullptr || render_target_depth_texture != nullptr);
 
         // Notes
         // - Pixel shader can be null
@@ -95,7 +95,7 @@ namespace Spartan
         return 0;
     }
 
-    void RHI_PipelineState::ComputeHash()
+	void RHI_PipelineState::ComputeHash()
     {
         m_hash = 0;
 

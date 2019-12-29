@@ -441,7 +441,8 @@ namespace Spartan
                         pipeline_state.render_target_color_clear[1] = state_dont_clear_color;
                         pipeline_state.render_target_color_clear[2] = state_dont_clear_color;
                         pipeline_state.render_target_color_clear[3] = state_dont_clear_color;
-                        pipeline_state.render_target_depth_clear = state_dont_clear_depth;
+                        pipeline_state.render_target_depth_clear    = state_dont_clear_depth;
+
                     }
                     cmd_list->End(); // Opaque
                     cmd_list->Submit();
