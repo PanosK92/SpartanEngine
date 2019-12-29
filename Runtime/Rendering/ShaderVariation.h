@@ -62,6 +62,7 @@ namespace Spartan
 
 		// Variation cache
 		static const std::shared_ptr<ShaderVariation>& GetMatchingShader(unsigned long flags);
+        static const auto& GetVariations() { return m_variations; }
 
 	private:
 		void AddDefinesBasedOnMaterial();

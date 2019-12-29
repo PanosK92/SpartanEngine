@@ -128,19 +128,26 @@ namespace Spartan
 
 		// Pixel shader
 		VkPipelineShaderStageCreateInfo shader_pixel_stage_info = {};
-		shader_pixel_stage_info.sType							= VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-		shader_pixel_stage_info.stage							= VK_SHADER_STAGE_FRAGMENT_BIT;
-		shader_pixel_stage_info.module							= static_cast<VkShaderModule>(m_state.shader_pixel->GetResource());
-		shader_pixel_stage_info.pName							= m_state.shader_pixel->GetEntryPoint();
+        if (m_state.shader_pixel)
+        { 
+		    shader_pixel_stage_info.sType	= VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		    shader_pixel_stage_info.stage	= VK_SHADER_STAGE_FRAGMENT_BIT;
+		    shader_pixel_stage_info.module	= static_cast<VkShaderModule>(m_state.shader_pixel->GetResource());
+		    shader_pixel_stage_info.pName	= m_state.shader_pixel->GetEntryPoint();
 
-        if (!shader_pixel_stage_info.pName)
-        {
-            LOG_ERROR("Pixel shader shader is invalid");
-            return;
+            if (!shader_pixel_stage_info.pName)
+            {
+                LOG_ERROR("Pixel shader shader is invalid");
+                return;
+            }
         }
 
 		// Shader stages
-		VkPipelineShaderStageCreateInfo shader_stages[2] = { shader_vertex_stage_info, shader_pixel_stage_info };
+        vector<VkPipelineShaderStageCreateInfo> shader_stages = { shader_vertex_stage_info };
+        if (m_state.shader_pixel)
+        {
+            shader_stages.push_back(shader_pixel_stage_info);
+        }
 
 		// Binding description
 		VkVertexInputBindingDescription binding_description = {};
@@ -265,8 +272,8 @@ namespace Spartan
         VkGraphicsPipelineCreateInfo pipeline_info = {};
         {
 		    pipeline_info.sType							= VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-		    pipeline_info.stageCount					= static_cast<uint32_t>((sizeof(shader_stages) / sizeof(*shader_stages)));
-		    pipeline_info.pStages						= shader_stages;
+		    pipeline_info.stageCount					= static_cast<uint32_t>(shader_stages.size());
+		    pipeline_info.pStages						= shader_stages.data();
 		    pipeline_info.pVertexInputState				= &vertex_input_state;
 		    pipeline_info.pInputAssemblyState			= &input_assembly_state;
 		    pipeline_info.pDynamicState					= dynamic_states.empty() ? nullptr : &dynamic_state;

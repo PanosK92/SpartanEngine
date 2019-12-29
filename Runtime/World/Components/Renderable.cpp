@@ -265,7 +265,6 @@ namespace Spartan
         // Create material
 		auto material = make_shared<Material>(GetContext());
         material->SetResourceFilePath(resource_cache->GetProjectDirectory() + "standard" + EXTENSION_MATERIAL); // Set resource file path so it can be used by the resource cache
-		material->SetCullMode(RHI_Cull_Back);
 		material->SetIsEditable(false);
 
         // Se default texture

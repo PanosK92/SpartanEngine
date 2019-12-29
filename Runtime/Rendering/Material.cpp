@@ -63,7 +63,6 @@ namespace Spartan
 
 		SetResourceFilePath(file_path);
 
-        xml->GetAttribute("Material", "Cull_Mode",              reinterpret_cast<uint32_t*>(&m_cull_mode));
         xml->GetAttribute("Material", "Shading_Mode",           reinterpret_cast<uint32_t*>(&m_shading_mode));
         xml->GetAttribute("Material", "Color",                  &m_color_albedo);
 		xml->GetAttribute("Material", "Roughness_Multiplier",	&GetMultiplier(TextureType_Roughness));
@@ -103,7 +102,6 @@ namespace Spartan
 
 		auto xml = make_unique<XmlDocument>();
 		xml->AddNode("Material");
-		xml->AddAttribute("Material", "Cull_Mode",				uint32_t(m_cull_mode));	
 		xml->AddAttribute("Material", "Shading_Mode",			uint32_t(m_shading_mode));
 		xml->AddAttribute("Material", "Color",					m_color_albedo);
 		xml->AddAttribute("Material", "Roughness_Multiplier",	GetMultiplier(TextureType_Roughness));

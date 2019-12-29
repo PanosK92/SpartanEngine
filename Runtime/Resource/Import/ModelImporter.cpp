@@ -415,19 +415,6 @@ namespace Spartan
         // Set a resource file path so it can be used by the resource cache
 		material->SetResourceFilePath(FileSystem::GetDirectoryFromFilePath(params.file_path) + string(name.C_Str()) + EXTENSION_MATERIAL);
 
-		// CULL MODE
-		// Specifies whether meshes using this material must be rendered 
-		// without back face CullMode. 0 for false, !0 for true.
-		auto is_two_sided	= 0;
-		uint32_t max	= 1;
-		if (AI_SUCCESS == aiGetMaterialIntegerArray(assimp_material, AI_MATKEY_TWOSIDED, &is_two_sided, &max))
-		{
-			if (is_two_sided != 0)
-			{
-				material->SetCullMode(RHI_Cull_None);
-			}
-		}
-
 		// DIFFUSE COLOR
 		aiColor4D color_diffuse(1.0f, 1.0f, 1.0f, 1.0f);
 		aiGetMaterialColor(assimp_material, AI_MATKEY_COLOR_DIFFUSE, &color_diffuse);

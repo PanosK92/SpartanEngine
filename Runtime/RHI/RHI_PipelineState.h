@@ -25,16 +25,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Definition.h"
 #include "RHI_Viewport.h"
 #include "..\Math\Rectangle.h"
+#include "..\Math\Vector4.h"
 //============================
 
 namespace Spartan
 {
+    static const Math::Vector4 state_dont_clear_color   = Math::Vector4::Infinity;
+    static const float state_dont_clear_depth           = std::numeric_limits<float>::infinity();
+    static const uint8_t state_max_render_target_count  = 8;
+
     class SPARTAN_CLASS RHI_PipelineState
     {
     public:
-        static const uint8_t max_render_target_count = 8;
-
-        RHI_PipelineState() = default;
+        RHI_PipelineState();
         ~RHI_PipelineState() { DestroyFrameResources(); }
 
         bool IsValid() const;
@@ -48,28 +51,33 @@ namespace Spartan
         void* GetRenderPass()                           const { return m_render_pass; }
         bool operator==(const RHI_PipelineState& rhs)   const { return m_hash == rhs.GetHash(); }
 
-        // State
-        RHI_Shader* shader_vertex                                           = nullptr;
-        RHI_Shader* shader_pixel                                            = nullptr;
-        RHI_InputLayout* input_layout                                       = nullptr;
-        RHI_RasterizerState* rasterizer_state                               = nullptr;
-        RHI_BlendState* blend_state                                         = nullptr;
-        RHI_DepthStencilState* depth_stencil_state                          = nullptr;
-        RHI_SwapChain* render_target_swapchain                              = nullptr;
-        RHI_PrimitiveTopology_Mode primitive_topology                       = RHI_PrimitiveTopology_Unknown;
-        RHI_Viewport viewport                                               = RHI_Viewport(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
-        Math::Rectangle scissor                                             = Math::Rectangle(0.0f, 0.0f, 0.0f, 0.0f);
-        bool scissor_dynamic                                                = false;
-        uint32_t vertex_buffer_stride                                       = 0;
-        RHI_Texture* render_target_depth_texture                            = nullptr;
-        RHI_Texture* render_target_color_textures[max_render_target_count]  = { nullptr };
+        // State (more specifically, things that if changed, will cause a new pipeline to be generated)
+        RHI_Shader* shader_vertex                                                   = nullptr;
+        RHI_Shader* shader_pixel                                                    = nullptr;
+        RHI_InputLayout* input_layout                                               = nullptr;
+        RHI_RasterizerState* rasterizer_state                                       = nullptr;
+        RHI_BlendState* blend_state                                                 = nullptr;
+        RHI_DepthStencilState* depth_stencil_state                                  = nullptr;
+        RHI_SwapChain* render_target_swapchain                                      = nullptr;
+        RHI_PrimitiveTopology_Mode primitive_topology                               = RHI_PrimitiveTopology_Unknown;
+        RHI_Viewport viewport                                                       = RHI_Viewport(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+        Math::Rectangle scissor                                                     = Math::Rectangle(0.0f, 0.0f, 0.0f, 0.0f);
+        bool scissor_dynamic                                                        = false;
+        uint32_t vertex_buffer_stride                                               = 0;
+        RHI_Texture* render_target_depth_texture                                    = nullptr;    
+        RHI_Texture* render_target_color_textures[state_max_render_target_count];
+
+        // Clear values
+        float render_target_depth_clear             = state_dont_clear_depth;
+        uint32_t render_target_depth_array_index    = 0;
+        Math::Vector4 render_target_color_clear[state_max_render_target_count];
 
     private:
         void DestroyFrameResources();
 
-        RHI_Context* m_rhi_context                      = nullptr;
-        std::size_t m_hash                              = 0;
-        void* m_render_pass                             = nullptr;
-        void* m_frame_buffers[max_render_target_count]  = { nullptr };
+        RHI_Context* m_rhi_context  = nullptr;
+        std::size_t m_hash          = 0;
+        void* m_render_pass         = nullptr;
+        void* m_frame_buffers[state_max_render_target_count];
     };
 }
