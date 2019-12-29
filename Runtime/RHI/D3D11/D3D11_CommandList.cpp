@@ -103,11 +103,14 @@ namespace Spartan
         m_profiler->m_rhi_bindings_shader_pixel++;
 
         // Input layout
-        if (pipeline_state.input_layout)
+        if (pipeline_state.shader_vertex)
         {
-            if (void* resource = pipeline_state.input_layout->GetResource())
+            if (RHI_InputLayout* input_layout = pipeline_state.shader_vertex->GetInputLayout().get())
             {
-                m_rhi_device->GetContextRhi()->device_context->IASetInputLayout(static_cast<ID3D11InputLayout*>(const_cast<void*>(resource)));
+                if (void* resource = input_layout->GetResource())
+                {
+                    m_rhi_device->GetContextRhi()->device_context->IASetInputLayout(static_cast<ID3D11InputLayout*>(const_cast<void*>(resource)));
+                }
             }
         }
 

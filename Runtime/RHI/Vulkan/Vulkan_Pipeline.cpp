@@ -159,17 +159,23 @@ namespace Spartan
 
 		// Vertex attributes description
         vector<VkVertexInputAttributeDescription> vertex_attribute_descs;
-        vertex_attribute_descs.reserve(m_state.input_layout->GetAttributeDescriptions().size());
-		for (const auto& desc : m_state.input_layout->GetAttributeDescriptions())
-		{	
-			vertex_attribute_descs.push_back
-            ({
-                desc.location,              // location
-                desc.binding,               // binding
-                vulkan_format[desc.format], // format
-                desc.offset                 // offset
-            });
-		}
+        if (m_state.shader_vertex)
+        {
+            if (RHI_InputLayout* input_layout = m_state.shader_vertex->GetInputLayout().get())
+            {
+                vertex_attribute_descs.reserve(input_layout->GetAttributeDescriptions().size());
+                for (const auto& desc : input_layout->GetAttributeDescriptions())
+                {
+                    vertex_attribute_descs.push_back
+                    ({
+                        desc.location,              // location
+                        desc.binding,               // binding
+                        vulkan_format[desc.format], // format
+                        desc.offset                 // offset
+                        });
+                }
+            }
+        }
 
 		// Vertex input state
 		VkPipelineVertexInputStateCreateInfo vertex_input_state = {};

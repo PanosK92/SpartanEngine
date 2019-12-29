@@ -30,17 +30,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    static const Math::Vector4 state_dont_clear_color   = Math::Vector4::Infinity;
-    static const float state_dont_clear_depth           = std::numeric_limits<float>::infinity();
-    static const uint8_t state_max_render_target_count  = 8;
-
     class SPARTAN_CLASS RHI_PipelineState
     {
     public:
         RHI_PipelineState();
         ~RHI_PipelineState() { DestroyFrameResources(); }
 
-        bool IsValid() const;
+        bool IsValid();
         bool AcquireNextImage();      
         bool CreateFrameResources(RHI_Context* rhi_context);
         void* GetFrameBuffer() const;
@@ -54,7 +50,6 @@ namespace Spartan
         // State (more specifically, things that if changed, will cause a new pipeline to be generated)
         RHI_Shader* shader_vertex                                                   = nullptr;
         RHI_Shader* shader_pixel                                                    = nullptr;
-        RHI_InputLayout* input_layout                                               = nullptr;
         RHI_RasterizerState* rasterizer_state                                       = nullptr;
         RHI_BlendState* blend_state                                                 = nullptr;
         RHI_DepthStencilState* depth_stencil_state                                  = nullptr;
