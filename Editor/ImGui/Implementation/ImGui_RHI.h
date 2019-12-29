@@ -225,22 +225,18 @@ namespace ImGui::RHI
         g_viewport.height   = draw_data->DisplaySize.y;
 
 		// Set render state
-        g_pipeline_state.shader_vertex            = g_shader_vertex.get();
-        g_pipeline_state.shader_pixel             = g_shader_pixel.get();
-        g_pipeline_state.input_layout             = g_shader_vertex->GetInputLayout().get();
-        g_pipeline_state.rasterizer_state         = g_rasterizer_state.get();
-        g_pipeline_state.blend_state              = g_blend_state.get();
-        g_pipeline_state.depth_stencil_state      = g_depth_stencil_state.get();
-        g_pipeline_state.vertex_buffer_stride     = g_vertex_buffer->GetStride();
-        g_pipeline_state.render_target_swapchain  = swap_chain;
-        g_pipeline_state.viewport                 = g_viewport;
-        g_pipeline_state.scissor_dynamic          = true;
-        g_pipeline_state.primitive_topology       = RHI_PrimitiveTopology_TriangleList;
-
-        if (clear)
-        {
-            cmd_list->ClearRenderTarget(swap_chain->GetResource_RenderTarget(), Vector4(0, 0, 0, 1));
-        }
+        g_pipeline_state.shader_vertex                  = g_shader_vertex.get();
+        g_pipeline_state.shader_pixel                   = g_shader_pixel.get();
+        g_pipeline_state.input_layout                   = g_shader_vertex->GetInputLayout().get();
+        g_pipeline_state.rasterizer_state               = g_rasterizer_state.get();
+        g_pipeline_state.blend_state                    = g_blend_state.get();
+        g_pipeline_state.depth_stencil_state            = g_depth_stencil_state.get();
+        g_pipeline_state.vertex_buffer_stride           = g_vertex_buffer->GetStride();
+        g_pipeline_state.render_target_swapchain        = swap_chain;
+        g_pipeline_state.render_target_color_clear[0]   = clear ? Vector4(0.0f, 0.0f, 0.0f, 1.0f) : state_dont_clear_color;
+        g_pipeline_state.viewport                       = g_viewport;
+        g_pipeline_state.scissor_dynamic                = true;
+        g_pipeline_state.primitive_topology             = RHI_PrimitiveTopology_TriangleList;
 
         // Start witting command list
         if (cmd_list->Begin("Pass_ImGui", g_pipeline_state))

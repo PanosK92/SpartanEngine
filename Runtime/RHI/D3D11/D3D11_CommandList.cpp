@@ -87,24 +87,143 @@ namespace Spartan
 
     bool RHI_CommandList::Begin(RHI_PipelineState& pipeline_state)
     {
-        if (pipeline_state.blend_state)                                           SetBlendState(pipeline_state.blend_state);
-        if (pipeline_state.depth_stencil_state)                                   SetDepthStencilState(pipeline_state.depth_stencil_state);
-        if (pipeline_state.rasterizer_state)                                      SetRasterizerState(pipeline_state.rasterizer_state);
-        if (pipeline_state.shader_vertex)                                         SetInputLayout(pipeline_state.shader_vertex->GetInputLayout());
-        if (pipeline_state.shader_vertex)                                         SetShaderVertex(pipeline_state.shader_vertex);
-        if (pipeline_state.shader_pixel)                                          SetShaderPixel(pipeline_state.shader_pixel);
-        if (pipeline_state.viewport.IsDefined())                                  SetViewport(pipeline_state.viewport);
-        if (pipeline_state.primitive_topology != RHI_PrimitiveTopology_Unknown)   SetPrimitiveTopology(pipeline_state.primitive_topology);
-        if (pipeline_state.render_target_swapchain)                               SetRenderTarget(pipeline_state.render_target_swapchain->GetResource_RenderTarget(), pipeline_state.render_target_depth_texture ? pipeline_state.render_target_depth_texture->GetResource_DepthStencil() : nullptr);
-
-        for (auto i = 0; i < RHI_PipelineState::max_render_target_count; i++)
+        // Vertex shader
+        if (pipeline_state.shader_vertex)
         {
-            if (pipeline_state.render_target_color_textures[i])
+            if (void* resource = pipeline_state.shader_vertex->GetResource())
             {
-                SetRenderTarget
+                m_rhi_device->GetContextRhi()->device_context->VSSetShader(static_cast<ID3D11VertexShader*>(const_cast<void*>(resource)), nullptr, 0);
+                m_profiler->m_rhi_bindings_shader_vertex++;
+            }
+        }
+
+        // Pixel shader
+        void* pixel_shader = pipeline_state.shader_pixel ? pipeline_state.shader_pixel->GetResource() : nullptr;
+        m_rhi_device->GetContextRhi()->device_context->PSSetShader(static_cast<ID3D11PixelShader*>(const_cast<void*>(pixel_shader)), nullptr, 0);
+        m_profiler->m_rhi_bindings_shader_pixel++;
+
+        // Input layout
+        if (pipeline_state.input_layout)
+        {
+            if (void* resource = pipeline_state.input_layout->GetResource())
+            {
+                m_rhi_device->GetContextRhi()->device_context->IASetInputLayout(static_cast<ID3D11InputLayout*>(const_cast<void*>(resource)));
+            }
+        }
+
+        // Viewport
+        if (pipeline_state.viewport.IsDefined())
+        {
+            SetViewport(pipeline_state.viewport);
+        }
+        
+        // Blend state
+        if (pipeline_state.blend_state)
+        {
+            if (void* resource = pipeline_state.blend_state->GetResource())
+            {
+                float blendFactor       = pipeline_state.blend_state->GetBlendFactor();
+                FLOAT blend_factor[4]   = { blendFactor, blendFactor, blendFactor, blendFactor };
+
+                m_rhi_device->GetContextRhi()->device_context->OMSetBlendState
                 (
-                    pipeline_state.render_target_color_textures[i]->GetResource_RenderTarget(),
-                    pipeline_state.render_target_depth_texture ? pipeline_state.render_target_depth_texture->GetResource_DepthStencil() : nullptr
+                    static_cast<ID3D11BlendState*>(const_cast<void*>(resource)),
+                    blend_factor,
+                    0xffffffff
+                );
+            }
+        }
+
+        // Depth stencil state
+        if (pipeline_state.depth_stencil_state)
+        {
+            if (void* resource = pipeline_state.depth_stencil_state->GetResource())
+            {
+                m_rhi_device->GetContextRhi()->device_context->OMSetDepthStencilState(static_cast<ID3D11DepthStencilState*>(const_cast<void*>(resource)), 1);
+            }
+        }
+
+        // Rasterizer state
+        if (pipeline_state.rasterizer_state)
+        {
+            if (void* resource = pipeline_state.rasterizer_state->GetResource())
+            {
+                m_rhi_device->GetContextRhi()->device_context->RSSetState(static_cast<ID3D11RasterizerState*>(const_cast<void*>(resource)));
+            }
+        }
+
+        // Primitive topology
+        if (pipeline_state.primitive_topology != RHI_PrimitiveTopology_Unknown)
+        {
+            m_rhi_device->GetContextRhi()->device_context->IASetPrimitiveTopology(d3d11_primitive_topology[pipeline_state.primitive_topology]);
+        }
+
+        // Render target(s)
+        if (pipeline_state.render_target_swapchain)
+        {
+            const void* resource_array[1] = { pipeline_state.render_target_swapchain->GetResource_RenderTarget() };
+            m_rhi_device->GetContextRhi()->device_context->OMSetRenderTargets
+            (
+                static_cast<UINT>(1),
+                reinterpret_cast<ID3D11RenderTargetView* const*>(&resource_array),
+                static_cast<ID3D11DepthStencilView*>(pipeline_state.render_target_depth_texture ? pipeline_state.render_target_depth_texture->GetResource_DepthStencil(pipeline_state.render_target_depth_array_index) : nullptr)
+            );
+        }
+        else
+        {
+            static vector<void*> render_targets(state_max_render_target_count);
+            uint32_t render_target_count = 0;
+
+            // Detect used render targets
+            for (auto i = 0; i < state_max_render_target_count; i++)
+            {
+                if (pipeline_state.render_target_color_textures[i])
+                {
+                    render_targets[render_target_count++] = pipeline_state.render_target_color_textures[i]->GetResource_RenderTarget();
+                }
+            }
+
+            // Set them
+            m_rhi_device->GetContextRhi()->device_context->OMSetRenderTargets
+            (
+                static_cast<UINT>(render_target_count),
+                reinterpret_cast<ID3D11RenderTargetView* const*>(render_targets.data()),
+                static_cast<ID3D11DepthStencilView*>(pipeline_state.render_target_depth_texture ? pipeline_state.render_target_depth_texture->GetResource_DepthStencil(pipeline_state.render_target_depth_array_index) : nullptr)
+            );
+        }
+
+        // Clear render target(s)
+        {
+            for (auto i = 0; i < state_max_render_target_count; i++)
+            {
+                if (pipeline_state.render_target_color_clear[i] != state_dont_clear_color)
+                {
+                    if (pipeline_state.render_target_swapchain)
+                    {
+                        ClearRenderTarget
+                        (
+                            pipeline_state.render_target_swapchain->GetResource_RenderTarget(),
+                            pipeline_state.render_target_color_clear[i]
+                        );
+                    }
+                    else if (pipeline_state.render_target_color_textures[i])
+                    {
+                        ClearRenderTarget
+                        (
+                            pipeline_state.render_target_color_textures[i]->GetResource_RenderTarget(),
+                            pipeline_state.render_target_color_clear[i]
+                        );
+                    }
+                }
+            }
+
+            if (pipeline_state.render_target_depth_clear != state_dont_clear_depth)
+            {
+                ClearDepthStencil
+                (
+                    pipeline_state.render_target_depth_texture->GetResource_DepthStencil(pipeline_state.render_target_depth_array_index),
+                    RHI_Clear_Depth,
+                    pipeline_state.render_target_depth_clear
                 );
             }
         }
@@ -177,63 +296,6 @@ namespace Spartan
         m_rhi_device->GetContextRhi()->device_context->RSSetScissorRects(1, &d3d11_rectangle);
 	}
 
-	void RHI_CommandList::SetPrimitiveTopology(const RHI_PrimitiveTopology_Mode primitive_topology)
-	{
-        m_rhi_device->GetContextRhi()->device_context->IASetPrimitiveTopology(d3d11_primitive_topology[primitive_topology]);
-	}
-
-	void RHI_CommandList::SetInputLayout(const RHI_InputLayout* input_layout)
-	{
-		if (!input_layout || !input_layout->GetResource())
-		{
-			LOG_ERROR_INVALID_PARAMETER();
-			return;
-		}
-
-        m_rhi_device->GetContextRhi()->device_context->IASetInputLayout(static_cast<ID3D11InputLayout*>(const_cast<void*>(input_layout->GetResource())));
-	}
-
-	void RHI_CommandList::SetDepthStencilState(const RHI_DepthStencilState* depth_stencil_state)
-	{
-		if (!depth_stencil_state || !depth_stencil_state->GetResource())
-		{
-			LOG_ERROR_INVALID_PARAMETER();
-			return;
-		}
-
-        m_rhi_device->GetContextRhi()->device_context->OMSetDepthStencilState(static_cast<ID3D11DepthStencilState*>(const_cast<void*>(depth_stencil_state->GetResource())), 1);
-	}
-
-	void RHI_CommandList::SetRasterizerState(const RHI_RasterizerState* rasterizer_state)
-	{
-		if (!rasterizer_state || !rasterizer_state->GetResource())
-		{
-			LOG_ERROR_INVALID_PARAMETER();
-			return;
-		}
-
-        m_rhi_device->GetContextRhi()->device_context->RSSetState(static_cast<ID3D11RasterizerState*>(const_cast<void*>(rasterizer_state->GetResource())));
-	}
-
-	void RHI_CommandList::SetBlendState(const RHI_BlendState* blend_state)
-	{
-		if (!blend_state || !blend_state->GetResource())
-		{
-			LOG_ERROR_INVALID_PARAMETER();
-			return;
-		}
-
-        float blendFactor = blend_state->GetBlendFactor();
-        FLOAT blend_factor[4] = { blendFactor, blendFactor, blendFactor, blendFactor };
-
-        m_rhi_device->GetContextRhi()->device_context->OMSetBlendState
-        (
-            static_cast<ID3D11BlendState*>(const_cast<void*>(blend_state->GetResource())),
-            blend_factor,
-            0xffffffff
-        );
-	}
-
 	void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer)
 	{
 		if (!buffer || !buffer->GetResource())
@@ -266,25 +328,6 @@ namespace Spartan
         );
 
         m_profiler->m_rhi_bindings_buffer_index++;
-	}
-
-	void RHI_CommandList::SetShaderVertex(const RHI_Shader* shader)
-	{
-		if (!shader || !shader->GetResource())
-		{
-			LOG_ERROR_INVALID_PARAMETER();
-			return;
-		}
-
-        m_rhi_device->GetContextRhi()->device_context->VSSetShader(static_cast<ID3D11VertexShader*>(const_cast<void*>(shader->GetResource())), nullptr, 0);
-        m_profiler->m_rhi_bindings_shader_vertex++;
-	}
-
-	void RHI_CommandList::SetShaderPixel(const RHI_Shader* shader)
-	{
-        void* resource = shader ? shader->GetResource() : nullptr;
-        m_rhi_device->GetContextRhi()->device_context->PSSetShader(static_cast<ID3D11PixelShader*>(const_cast<void*>(resource)), nullptr, 0);
-        m_profiler->m_rhi_bindings_shader_pixel++;
 	}
 
     void RHI_CommandList::SetShaderCompute(const RHI_Shader* shader)
@@ -384,31 +427,6 @@ namespace Spartan
 
         m_profiler->m_rhi_bindings_texture++;
 	}
-
-    void RHI_CommandList::SetRenderTargets(const void* render_targets, uint32_t render_target_count, void* depth_stencil /*= nullptr*/)
-    {
-        if (render_target_count > 1)
-        {
-            m_rhi_device->GetContextRhi()->device_context->OMSetRenderTargets
-            (
-                static_cast<UINT>(render_target_count),
-                reinterpret_cast<ID3D11RenderTargetView* const*>(render_targets),
-                static_cast<ID3D11DepthStencilView*>(depth_stencil)
-            );
-        }
-        else
-        {
-            const void* resource_array[1] = { render_targets };
-            m_rhi_device->GetContextRhi()->device_context->OMSetRenderTargets
-            (
-                static_cast<UINT>(render_target_count),
-                reinterpret_cast<ID3D11RenderTargetView* const*>(&resource_array),
-                static_cast<ID3D11DepthStencilView*>(depth_stencil)
-            );
-        }
-
-        m_profiler->m_rhi_bindings_render_target++;
-    }
 
 	void RHI_CommandList::ClearRenderTarget(void* render_target, const Vector4& color)
 	{

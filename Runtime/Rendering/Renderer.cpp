@@ -515,15 +515,6 @@ namespace Spartan
 		});
 	}
 
-	shared_ptr<RHI_RasterizerState>& Renderer::GetRasterizerState(const RHI_Cull_Mode cull_mode, const RHI_Fill_Mode fill_mode)
-	{
-		if (cull_mode == RHI_Cull_Back)		return (fill_mode == RHI_Fill_Solid) ? m_rasterizer_cull_back_solid		: m_rasterizer_cull_back_wireframe;
-		if (cull_mode == RHI_Cull_Front)	return (fill_mode == RHI_Fill_Solid) ? m_rasterizer_cull_front_solid	: m_rasterizer_cull_front_wireframe;
-		if (cull_mode == RHI_Cull_None)		return (fill_mode == RHI_Fill_Solid) ? m_rasterizer_cull_none_solid		: m_rasterizer_cull_none_wireframe;
-
-		return m_rasterizer_cull_back_solid;
-	}
-
     const shared_ptr<Spartan::RHI_Texture>& Renderer::GetEnvironmentTexture()
     {
         if (m_render_targets.find(RenderTarget_Brdf_Prefiltered_Environment) != m_render_targets.end())

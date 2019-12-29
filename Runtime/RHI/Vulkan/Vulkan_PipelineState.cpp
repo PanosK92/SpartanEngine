@@ -52,7 +52,7 @@ namespace Spartan
 
         // Detect all used render target color textures
         vector<RHI_Texture*> used_render_target_color;
-        for (uint8_t i = 0; i < max_render_target_count; i++)
+        for (uint8_t i = 0; i < state_max_render_target_count; i++)
         {
             if (render_target_color_textures[i])
             {

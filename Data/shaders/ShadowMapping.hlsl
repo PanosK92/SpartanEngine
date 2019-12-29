@@ -191,7 +191,7 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, Light 
 	}
 	
 	// Self shadow
-	float self_shadow_contrast = 15.0f;
+	float self_shadow_contrast = 1.0f;
 	float self_shadow = 1.0f - pow(1.0f - saturate(n_dot_l), self_shadow_contrast);
 	shadow = min(shadow, self_shadow);
 

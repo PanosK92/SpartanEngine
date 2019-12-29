@@ -76,25 +76,6 @@ namespace Spartan
         // Scissor
 		void SetScissorRectangle(const Math::Rectangle& scissor_rectangle);
 
-        // Primitive topology
-		void SetPrimitiveTopology(RHI_PrimitiveTopology_Mode primitive_topology);
-
-		// Input layout
-		void SetInputLayout(const RHI_InputLayout* input_layout);
-        inline void SetInputLayout(const std::shared_ptr<RHI_InputLayout>& input_layout) { SetInputLayout(input_layout.get()); }
-
-		// Depth-stencil state
-		void SetDepthStencilState(const RHI_DepthStencilState* depth_stencil_state);
-        inline void SetDepthStencilState(const std::shared_ptr<RHI_DepthStencilState>& depth_stencil_state) { SetDepthStencilState(depth_stencil_state.get()); }
-
-		// Rasterizer state
-		void SetRasterizerState(const RHI_RasterizerState* rasterizer_state);
-        inline void SetRasterizerState(const std::shared_ptr<RHI_RasterizerState>& rasterizer_state) { SetRasterizerState(rasterizer_state.get()); }
-
-		// Blend state
-		void SetBlendState(const RHI_BlendState* blend_state);
-        inline void SetBlendState(const std::shared_ptr<RHI_BlendState>& blend_state) { SetBlendState(blend_state.get()); }
-
 		// Vertex buffer
 		void SetBufferVertex(const RHI_VertexBuffer* buffer);
         inline void SetBufferVertex(const std::shared_ptr<RHI_VertexBuffer>& buffer) { SetBufferVertex(buffer.get()); }
@@ -102,14 +83,6 @@ namespace Spartan
 		// Index buffer
 		void SetBufferIndex(const RHI_IndexBuffer* buffer);
         inline void SetBufferIndex(const std::shared_ptr<RHI_IndexBuffer>& buffer) { SetBufferIndex(buffer.get()); }
-
-		// Vertex shader
-		void SetShaderVertex(const RHI_Shader* shader);
-        inline void SetShaderVertex(const std::shared_ptr<RHI_Shader>& shader) { SetShaderVertex(shader.get()); }
-
-		// Pixel shader
-		void SetShaderPixel(const RHI_Shader* shader);
-        inline void SetShaderPixel(const std::shared_ptr<RHI_Shader>& shader) { SetShaderPixel(shader.get()); }
 
         // Compute shader
         void SetShaderCompute(const RHI_Shader* shader);
@@ -128,10 +101,7 @@ namespace Spartan
         inline void SetTexture(const uint32_t slot, const std::shared_ptr<RHI_Texture>& texture) { SetTexture(slot, texture.get()); }
         
 		// Render targets
-		void SetRenderTargets(const void* render_targets, uint32_t render_target_count, void* depth_stencil = nullptr);
-        inline void SetRenderTarget(void* render_target, void* depth_stencil = nullptr)                                { SetRenderTargets(render_target, 1, depth_stencil); }
-        inline void SetRenderTarget(const std::shared_ptr<RHI_Texture>& render_target, void* depth_stencil = nullptr)  { SetRenderTargets(render_target ? render_target->GetResource_RenderTarget() : nullptr, 1, depth_stencil); }
-		void ClearRenderTarget(void* render_target, const Math::Vector4& color);
+        void ClearRenderTarget(void* render_target, const Math::Vector4& color);
 		void ClearDepthStencil(void* depth_stencil, uint32_t flags, float depth, uint8_t stencil = 0);
 
 		bool Submit();
@@ -149,5 +119,6 @@ namespace Spartan
         Profiler* m_profiler                        = nullptr;
         void* m_cmd_buffer                          = nullptr;
         void* m_cmd_list_consumed_fence             = nullptr;
+        std::vector<Math::Vector4> m_clear_values;
 	};
 }

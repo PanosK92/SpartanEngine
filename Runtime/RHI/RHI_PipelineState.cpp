@@ -37,6 +37,17 @@ using namespace std;
 
 namespace Spartan
 {
+
+    RHI_PipelineState::RHI_PipelineState()
+    {
+        for (uint32_t i = 0; i < state_max_render_target_count; i++)
+        {
+            render_target_color_textures[i] = nullptr;
+            render_target_color_clear[i]    = state_dont_clear_color;
+            m_frame_buffers[i]              = nullptr;
+        }
+    }
+
     bool RHI_PipelineState::IsValid() const
     {
         // Ensure that only one render target is active at a time
@@ -104,9 +115,13 @@ namespace Spartan
         Utility::Hash::hash_combine(m_hash, blend_state->GetId());
         Utility::Hash::hash_combine(m_hash, depth_stencil_state->GetId());
         Utility::Hash::hash_combine(m_hash, shader_vertex->GetId());
-        Utility::Hash::hash_combine(m_hash, shader_pixel->GetId());
 
-        for (auto i = 0; i < max_render_target_count; i++)
+        if (shader_pixel)
+        {
+            Utility::Hash::hash_combine(m_hash, shader_pixel->GetId());
+        }
+
+        for (auto i = 0; i < state_max_render_target_count; i++)
         {
             if (render_target_color_textures[i])
             {

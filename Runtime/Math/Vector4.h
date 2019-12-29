@@ -136,5 +136,7 @@ namespace Spartan::Math
 
 		static const Vector4 One;
 		static const Vector4 Zero;
+        static const Vector4 Infinity;
+        static const Vector4 InfinityNeg;
 	};
 }

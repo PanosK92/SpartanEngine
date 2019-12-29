@@ -40,10 +40,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Rendering/Renderer.h"
 //===================================
 
-//= NAMESPACES ================
+//= NAMESPACES ===============
 using namespace std;
 using namespace Spartan::Math;
-//=============================
+//============================
 
 #define CMD_BUFFER static_cast<VkCommandBuffer>(m_cmd_buffer)
 
@@ -58,6 +58,8 @@ namespace Spartan
         m_rhi_pipeline_cache    = m_renderer->GetPipelineCache().get();
         m_passes_active.reserve(100);
         m_passes_active.resize(100);
+        m_clear_values.reserve(state_max_render_target_count);
+        m_clear_values.resize(state_max_render_target_count);
 
         RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
 
@@ -138,8 +140,22 @@ namespace Spartan
 		if (!vulkan_common::error::check_result(vkBeginCommandBuffer(CMD_BUFFER, &begin_info)))
 			return false;
 
+        RHI_PipelineState* state = m_pipeline->GetPipelineState();
+
+        // Clear values
+        uint32_t clear_value_count = 0;
+        {
+            // Detect used render targets
+            for (auto i = 0; i < state_max_render_target_count; i++)
+            {
+                if (state->render_target_color_clear[i] != state_dont_clear_color)
+                {
+                    m_clear_values[i] = state->render_target_color_clear[i];
+                }
+            }
+        }
+
 		// Begin render pass
-		VkClearValue clear_color					= { 1.0f, 0.0f, 0.0f, 1.0f };
 		VkRenderPassBeginInfo render_pass_info		= {};
 		render_pass_info.sType						= VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		render_pass_info.renderPass					= static_cast<VkRenderPass>(m_pipeline->GetPipelineState()->GetRenderPass());
@@ -147,8 +163,8 @@ namespace Spartan
 		render_pass_info.renderArea.offset			= { 0, 0 };
         render_pass_info.renderArea.extent.width    = m_pipeline->GetPipelineState()->GetWidth();
 		render_pass_info.renderArea.extent.height	= m_pipeline->GetPipelineState()->GetHeight();
-		render_pass_info.clearValueCount			= 1;
-		render_pass_info.pClearValues				= &clear_color;
+		render_pass_info.clearValueCount			= clear_value_count != 0 ? clear_value_count : 1;
+		render_pass_info.pClearValues				= clear_value_count != 0 ? reinterpret_cast<const VkClearValue*>(m_clear_values.data()) : reinterpret_cast<const VkClearValue*>(&Math::Vector4::Zero);
 		vkCmdBeginRenderPass(CMD_BUFFER, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 
         // Bind pipeline
@@ -321,31 +337,6 @@ namespace Spartan
         );
 	}
 
-	void RHI_CommandList::SetPrimitiveTopology(const RHI_PrimitiveTopology_Mode primitive_topology)
-	{
-        LOG_WARNING("Part of pipeline, ignored.");
-	}
-
-	void RHI_CommandList::SetInputLayout(const RHI_InputLayout* input_layout)
-	{
-        LOG_WARNING("Part of pipeline, ignored.");
-	}
-
-	void RHI_CommandList::SetDepthStencilState(const RHI_DepthStencilState* depth_stencil_state)
-	{
-        LOG_WARNING("Part of pipeline, ignored.");
-	}
-
-	void RHI_CommandList::SetRasterizerState(const RHI_RasterizerState* rasterizer_state)
-	{
-        LOG_WARNING("Part of pipeline, ignored.");
-	}
-
-	void RHI_CommandList::SetBlendState(const RHI_BlendState* blend_state)
-	{
-        LOG_WARNING("Part of pipeline, ignored.");
-	}
-
 	void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer)
 	{
         if (m_cmd_state != RHI_Cmd_List_Recording)
@@ -380,16 +371,6 @@ namespace Spartan
 			0,																// offset
 			buffer->Is16Bit() ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32 // indexType
 		);
-	}
-
-	void RHI_CommandList::SetShaderVertex(const RHI_Shader* shader)
-	{
-        // part of pipeline
-	}
-
-	void RHI_CommandList::SetShaderPixel(const RHI_Shader* shader)
-	{
-        // part of pipeline
 	}
 
     void RHI_CommandList::SetConstantBuffer(const uint32_t slot, uint8_t scope, RHI_ConstantBuffer* constant_buffer)
@@ -433,11 +414,6 @@ namespace Spartan
         // Set
         m_pipeline->SetTexture(slot, texture);
     }
-
-	void RHI_CommandList::SetRenderTargets(const void* render_targets, uint32_t render_target_count, void* depth_stencil /*= nullptr*/)
-	{
-        LOG_WARNING("Part of pipeline, ignored.");
-	}
 
 	void RHI_CommandList::ClearRenderTarget(void* render_target, const Vector4& color)
 	{

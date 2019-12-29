@@ -84,9 +84,6 @@ namespace Spartan
 		//=============================================================================
 
 		//= PROPERTIES ==========================================================================================
-		auto GetCullMode() const											{ return m_cull_mode; }
-		void SetCullMode(const RHI_Cull_Mode cull_mode)						{ m_cull_mode = cull_mode; }
-
 		auto GetShadingMode() const											{ return m_shading_mode; }
 		void SetShadingMode(const ShadingMode shading_mode)					{ m_shading_mode = shading_mode; }
 
@@ -109,7 +106,6 @@ namespace Spartan
 		//=======================================================================================================
 
 	private:
-		RHI_Cull_Mode m_cull_mode		= RHI_Cull_Back;
 		ShadingMode m_shading_mode		= Shading_PBR;
 		Math::Vector4 m_color_albedo	= Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f);
 		Math::Vector2 m_uv_tiling		= Math::Vector2(1.0f, 1.0f);
