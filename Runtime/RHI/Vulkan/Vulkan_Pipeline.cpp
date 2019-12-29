@@ -107,45 +107,47 @@ namespace Spartan
 		    viewport_state.pScissors	    = &scissor;
         }
 
-        if (!m_state.shader_vertex)
-        {
-            LOG_ERROR("Vertex shader is null");
-            return;
-        }
+        // Shader stages
+        vector<VkPipelineShaderStageCreateInfo> shader_stages;
 
 		// Vertex shader
-		VkPipelineShaderStageCreateInfo shader_vertex_stage_info	= {};
-		shader_vertex_stage_info.sType								= VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-		shader_vertex_stage_info.stage								= VK_SHADER_STAGE_VERTEX_BIT;
-		shader_vertex_stage_info.module								= static_cast<VkShaderModule>(m_state.shader_vertex->GetResource());
-		shader_vertex_stage_info.pName								= m_state.shader_vertex->GetEntryPoint();
+        if (m_state.shader_vertex)
+        {
+            VkPipelineShaderStageCreateInfo shader_vertex_stage_info    = {};
+		    shader_vertex_stage_info.sType	                            = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		    shader_vertex_stage_info.stage	                            = VK_SHADER_STAGE_VERTEX_BIT;
+		    shader_vertex_stage_info.module	                            = static_cast<VkShaderModule>(m_state.shader_vertex->GetResource());
+		    shader_vertex_stage_info.pName	                            = m_state.shader_vertex->GetEntryPoint();
 
-        if (!shader_vertex_stage_info.module || !shader_vertex_stage_info.pName)
+            if (!shader_vertex_stage_info.module || !shader_vertex_stage_info.pName)
+            {
+                LOG_ERROR("Vertex shader is invalid");
+                return;
+            }
+
+            shader_stages.push_back(shader_vertex_stage_info);
+        }
+        else
         {
             LOG_ERROR("Vertex shader is invalid");
             return;
         }
 
 		// Pixel shader
-		VkPipelineShaderStageCreateInfo shader_pixel_stage_info = {};
-        if (m_state.shader_pixel)
-        { 
-		    shader_pixel_stage_info.sType	= VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-		    shader_pixel_stage_info.stage	= VK_SHADER_STAGE_FRAGMENT_BIT;
-		    shader_pixel_stage_info.module	= static_cast<VkShaderModule>(m_state.shader_pixel->GetResource());
-		    shader_pixel_stage_info.pName	= m_state.shader_pixel->GetEntryPoint();
-
-            if (!shader_pixel_stage_info.pName)
-            {
-                LOG_ERROR("Pixel shader shader is invalid");
-                return;
-            }
-        }
-
-		// Shader stages
-        vector<VkPipelineShaderStageCreateInfo> shader_stages = { shader_vertex_stage_info };
         if (m_state.shader_pixel)
         {
+            VkPipelineShaderStageCreateInfo shader_pixel_stage_info = {};
+		    shader_pixel_stage_info.sType	                        = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		    shader_pixel_stage_info.stage	                        = VK_SHADER_STAGE_FRAGMENT_BIT;
+		    shader_pixel_stage_info.module	                        = static_cast<VkShaderModule>(m_state.shader_pixel->GetResource());
+		    shader_pixel_stage_info.pName	                        = m_state.shader_pixel->GetEntryPoint();
+
+            if (!shader_pixel_stage_info.module || !shader_pixel_stage_info.pName)
+            {
+                LOG_ERROR("Pixel shader is invalid");
+                return;
+            }
+
             shader_stages.push_back(shader_pixel_stage_info);
         }
 
@@ -172,19 +174,19 @@ namespace Spartan
 		// Vertex input state
 		VkPipelineVertexInputStateCreateInfo vertex_input_state = {};
         {
-		    vertex_input_state.sType								= VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-		    vertex_input_state.vertexBindingDescriptionCount		= 1;
-		    vertex_input_state.pVertexBindingDescriptions			= &binding_description;
-		    vertex_input_state.vertexAttributeDescriptionCount		= static_cast<uint32_t>(vertex_attribute_descs.size());
-		    vertex_input_state.pVertexAttributeDescriptions			= vertex_attribute_descs.data();
+		    vertex_input_state.sType							= VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+		    vertex_input_state.vertexBindingDescriptionCount	= 1;
+		    vertex_input_state.pVertexBindingDescriptions		= &binding_description;
+		    vertex_input_state.vertexAttributeDescriptionCount  = static_cast<uint32_t>(vertex_attribute_descs.size());
+		    vertex_input_state.pVertexAttributeDescriptions		= vertex_attribute_descs.data();
         }
 
 		// Input assembly
 		VkPipelineInputAssemblyStateCreateInfo input_assembly_state = {};
         {
-		    input_assembly_state.sType					    = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-		    input_assembly_state.topology				    = vulkan_primitive_topology[m_state.primitive_topology];
-		    input_assembly_state.primitiveRestartEnable     = VK_FALSE;
+		    input_assembly_state.sType					= VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+		    input_assembly_state.topology				= vulkan_primitive_topology[m_state.primitive_topology];
+		    input_assembly_state.primitiveRestartEnable = VK_FALSE;
         }
 
 		// Rasterizer state
@@ -211,30 +213,47 @@ namespace Spartan
 		    multisampling_state.rasterizationSamples    = VK_SAMPLE_COUNT_1_BIT;
         }
 
-		// Blend state
-		VkPipelineColorBlendAttachmentState blend_state_attachments = {};
-        {
-		    blend_state_attachments.colorWriteMask	    = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-		    blend_state_attachments.blendEnable		    = m_state.blend_state->GetBlendEnabled() ? VK_TRUE : VK_FALSE;
-		    blend_state_attachments.srcColorBlendFactor = vulkan_blend_factor[m_state.blend_state->GetSourceBlend()];
-		    blend_state_attachments.dstColorBlendFactor = vulkan_blend_factor[m_state.blend_state->GetDestBlend()];
-		    blend_state_attachments.colorBlendOp	    = vulkan_blend_operation[m_state.blend_state->GetBlendOp()];
-		    blend_state_attachments.srcAlphaBlendFactor = vulkan_blend_factor[m_state.blend_state->GetSourceBlendAlpha()];
-		    blend_state_attachments.dstAlphaBlendFactor = vulkan_blend_factor[m_state.blend_state->GetDestBlendAlpha()];
-		    blend_state_attachments.alphaBlendOp	    = vulkan_blend_operation[m_state.blend_state->GetBlendOpAlpha()];
-        }
-
 		VkPipelineColorBlendStateCreateInfo color_blend_state = {};
+        vector<VkPipelineColorBlendAttachmentState> blend_state_attachments;
         {
+            // Blend state attachments
+            {
+                // Same blend state for all
+                VkPipelineColorBlendAttachmentState blend_state_attachment  = {};
+                blend_state_attachment.colorWriteMask	                    = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+                blend_state_attachment.blendEnable		                    = m_state.blend_state->GetBlendEnabled() ? VK_TRUE : VK_FALSE;
+                blend_state_attachment.srcColorBlendFactor                  = vulkan_blend_factor[m_state.blend_state->GetSourceBlend()];
+                blend_state_attachment.dstColorBlendFactor                  = vulkan_blend_factor[m_state.blend_state->GetDestBlend()];
+                blend_state_attachment.colorBlendOp                         = vulkan_blend_operation[m_state.blend_state->GetBlendOp()];
+                blend_state_attachment.srcAlphaBlendFactor                  = vulkan_blend_factor[m_state.blend_state->GetSourceBlendAlpha()];
+                blend_state_attachment.dstAlphaBlendFactor                  = vulkan_blend_factor[m_state.blend_state->GetDestBlendAlpha()];
+                blend_state_attachment.alphaBlendOp                         = vulkan_blend_operation[m_state.blend_state->GetBlendOpAlpha()];
+
+                // Swapchain
+                if (m_state.render_target_swapchain)
+                {
+                    blend_state_attachments.push_back(blend_state_attachment);
+                }
+
+                // Render target(s)
+                for (uint32_t i = 0; i < state_max_render_target_count; i++)
+                {
+                    if (m_state.render_target_color_textures[i] != nullptr)
+                    {
+                        blend_state_attachments.push_back(blend_state_attachment);
+                    }
+                }
+            }
+            
             color_blend_state.sType             = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
             color_blend_state.logicOpEnable     = VK_FALSE;
             color_blend_state.logicOp           = VK_LOGIC_OP_COPY;
-            color_blend_state.attachmentCount   = 1;
-            color_blend_state.pAttachments      = &blend_state_attachments;
-		    color_blend_state.blendConstants[0] = 0.0f;
-		    color_blend_state.blendConstants[1] = 0.0f;
-		    color_blend_state.blendConstants[2] = 0.0f;
-		    color_blend_state.blendConstants[3] = 0.0f;
+            color_blend_state.attachmentCount   = static_cast<uint32_t>(blend_state_attachments.size());
+            color_blend_state.pAttachments      = blend_state_attachments.data();
+		    color_blend_state.blendConstants[0] = m_state.blend_state->GetBlendFactor();
+		    color_blend_state.blendConstants[1] = m_state.blend_state->GetBlendFactor();
+		    color_blend_state.blendConstants[2] = m_state.blend_state->GetBlendFactor();
+		    color_blend_state.blendConstants[3] = m_state.blend_state->GetBlendFactor();
         }
 
         // Depth-stencil state

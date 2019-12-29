@@ -838,10 +838,8 @@ namespace Spartan::vulkan_common
 
     namespace render_pass
     {
-        inline bool create(const RHI_Context* rhi_context, RHI_Texture** render_target_color_textures, uint32_t render_target_color_texture_count, RHI_Texture* render_target_depth_texture, void*& render_pass)
+        inline bool create(const RHI_Context* rhi_context, RHI_Texture** render_target_color_textures, uint32_t render_target_color_texture_count, RHI_Texture* render_target_depth_texture, bool is_swapchain, void*& render_pass)
         {
-            bool is_swapchain = render_target_color_textures == nullptr;
-
             // Attachment descriptions
             uint32_t attachment_count = render_target_color_texture_count + static_cast<uint32_t>(render_target_depth_texture ? 1 : 0);
             std::vector<VkAttachmentDescription> attachment_descriptions(attachment_count, VkAttachmentDescription());
@@ -859,7 +857,7 @@ namespace Spartan::vulkan_common
                     attachment_descriptions[0].initialLayout   = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
                     attachment_descriptions[0].finalLayout     = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
                 }
-                else // Texture
+                else if (render_target_color_textures) // Texture
                 {
                     bool clear_on_set = false;
 
@@ -875,21 +873,22 @@ namespace Spartan::vulkan_common
                         attachment_descriptions[i].initialLayout    = vulkan_image_layout[render_target_color_textures[i]->GetLayout()];
                         attachment_descriptions[i].finalLayout      = vulkan_image_layout[render_target_color_textures[i]->GetLayout()];
                     }
+                }
 
-                    // Depth
-                    if (render_target_depth_texture)
-                    {
-                        VkAttachmentDescription& attachment_description = attachment_descriptions.back();
+                // Depth
+                if (render_target_depth_texture)
+                {
+                    bool clear_on_set = false;
 
-                        attachment_description.format           = vulkan_format[render_target_depth_texture->GetFormat()];
-                        attachment_description.samples          = VK_SAMPLE_COUNT_1_BIT;
-                        attachment_description.loadOp           = clear_on_set ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
-                        attachment_description.storeOp          = VK_ATTACHMENT_STORE_OP_STORE;
-                        attachment_description.stencilLoadOp    = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-                        attachment_description.stencilStoreOp   = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-                        attachment_description.initialLayout    = vulkan_image_layout[render_target_depth_texture->GetLayout()];
-                        attachment_description.finalLayout      = vulkan_image_layout[render_target_depth_texture->GetLayout()];
-                    }
+                    VkAttachmentDescription& attachment_description = attachment_descriptions.back();
+                    attachment_description.format                   = vulkan_format[render_target_depth_texture->GetFormat()];
+                    attachment_description.samples                  = VK_SAMPLE_COUNT_1_BIT;
+                    attachment_description.loadOp                   = clear_on_set ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
+                    attachment_description.storeOp                  = VK_ATTACHMENT_STORE_OP_STORE;
+                    attachment_description.stencilLoadOp            = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+                    attachment_description.stencilStoreOp           = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+                    attachment_description.initialLayout            = vulkan_image_layout[render_target_depth_texture->GetLayout()];
+                    attachment_description.finalLayout              = vulkan_image_layout[render_target_depth_texture->GetLayout()];
                 }
             }
 

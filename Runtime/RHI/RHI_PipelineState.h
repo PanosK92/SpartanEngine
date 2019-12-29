@@ -62,10 +62,10 @@ namespace Spartan
         RHI_PrimitiveTopology_Mode primitive_topology                               = RHI_PrimitiveTopology_Unknown;
         RHI_Viewport viewport                                                       = RHI_Viewport(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
         Math::Rectangle scissor                                                     = Math::Rectangle(0.0f, 0.0f, 0.0f, 0.0f);
-        bool scissor_dynamic                                                        = false;
         uint32_t vertex_buffer_stride                                               = 0;
         RHI_Texture* render_target_depth_texture                                    = nullptr;    
         RHI_Texture* render_target_color_textures[state_max_render_target_count];
+        bool scissor_dynamic = false;
 
         // Clear values
         float render_target_depth_clear             = state_dont_clear_depth;
