@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==========
 #include "ISubsystem.h"
 #include <chrono>
-#include <deque>
 //=====================
 
 namespace Spartan
@@ -48,14 +47,12 @@ namespace Spartan
 		void Tick(float delta_time) override;
         //===================================
 
-        //= FPS =======================================================
+        //= FPS ============================================
         void SetTargetFps(double fps);
         auto GetTargetFps() const   { return m_fps_target; }
         auto GetMinFps() const      { return m_fps_min; }
         auto GetFpsPolicy() const   { return m_fps_policy; }
-        void AddMonitorRefreshRate(double refresh_rate);
-        auto GetMonitorRefreshRate() { return m_monitor_refresh_rate; }
-        //=============================================================
+        //==================================================
 
         auto GetTimeMs()                const { return m_time_ms; }
         auto GetTimeSec()               const { return static_cast<float>(m_time_ms / 1000.0); }
@@ -77,7 +74,6 @@ namespace Spartan
         double m_fps_min                = 25.0;
         double m_fps_max                = 200.0;
         double m_fps_target             = m_fps_max; // ideal scenario
-        double m_monitor_refresh_rate   = 60.0;
         bool m_user_selected_fps_target = false;
         FPS_Policy m_fps_policy         = Fps_Unlocked;
 	};

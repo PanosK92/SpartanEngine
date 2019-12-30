@@ -43,8 +43,10 @@ namespace Spartan
 
     RHI_Texture2D::~RHI_Texture2D()
     {
-        m_rhi_device->Flush();
+        if (!m_rhi_device->IsInitialized())
+            return;
 
+        m_rhi_device->Flush();
         m_data.clear();
         auto rhi_context = m_rhi_device->GetContextRhi();
         vulkan_common::image_view::destroy(rhi_context, m_resource_texture);

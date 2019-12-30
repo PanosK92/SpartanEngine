@@ -193,7 +193,10 @@ namespace Spartan
 	}
 
 	RHI_Device::~RHI_Device()
-	{	
+	{
+        if (!m_rhi_context || !m_rhi_context->queue_graphics)
+            return;
+
         // Release resources
 		if (vulkan_common::error::check_result(vkQueueWaitIdle(m_rhi_context->queue_graphics)))
 		{
@@ -243,6 +246,9 @@ namespace Spartan
 
     bool RHI_Device::Flush()
     {
+        if (!m_rhi_context || !m_rhi_context->queue_graphics)
+            return false;
+
         return vulkan_common::error::check_result(vkQueueWaitIdle(m_rhi_context->queue_graphics));
     }
 }

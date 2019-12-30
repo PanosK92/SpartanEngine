@@ -171,50 +171,53 @@ namespace Spartan::vulkan_common
         {
             RHI_Context* rhi_context = rhi_device->GetContextRhi();
 
-            uint32_t device_count = 0;
-            if (!error::check_result(vkEnumeratePhysicalDevices(rhi_context->instance, &device_count, nullptr)))
-                return false;
-
-            if (device_count == 0)
+            // Register all physical devices
             {
-                LOG_ERROR("There are no available devices.");
-                return false;
+                uint32_t device_count = 0;
+                if (!error::check_result(vkEnumeratePhysicalDevices(rhi_context->instance, &device_count, nullptr)))
+                    return false;
+
+                if (device_count == 0)
+                {
+                    LOG_ERROR("There are no available devices.");
+                    return false;
+                }
+
+                std::vector<VkPhysicalDevice> physical_devices(device_count);
+                if (!error::check_result(vkEnumeratePhysicalDevices(rhi_context->instance, &device_count, physical_devices.data())))
+                    return false;
+
+                // Go through all the devices
+                for (const VkPhysicalDevice& device_physical : physical_devices)
+                {
+                    // Get device properties
+                    VkPhysicalDeviceProperties device_properties = {};
+                    vkGetPhysicalDeviceProperties(device_physical, &device_properties);
+
+                    VkPhysicalDeviceMemoryProperties device_memory_properties = {};
+                    vkGetPhysicalDeviceMemoryProperties(device_physical, &device_memory_properties);
+
+                    RHI_PhysicalDevice_Type type = RHI_PhysicalDevice_Unknown;
+                    if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) type = RHI_PhysicalDevice_Integrated;
+                    if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)   type = RHI_PhysicalDevice_Discrete;
+                    if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU)    type = RHI_PhysicalDevice_Virtual;
+                    if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU)            type = RHI_PhysicalDevice_Cpu;
+
+                    // Let the engine know about it as it will sort all of the devices from best to worst
+                    rhi_device->RegisterPhysicalDevice(PhysicalDevice
+                    (
+                        device_properties.apiVersion,                                                       // api version
+                        device_properties.driverVersion,                                                    // driver version
+                        device_properties.vendorID,                                                         // vendor id
+                        type,                                                                               // type
+                        std::string(device_properties.deviceName),                                          // name
+                        static_cast<uint32_t>(device_memory_properties.memoryHeaps[0].size / 1024 / 1024),  // memory (MBs)
+                        static_cast<void*>(device_physical)                                                 // data
+                    ));
+                }
             }
 
-            std::vector<VkPhysicalDevice> physical_devices(device_count);
-            if (!error::check_result(vkEnumeratePhysicalDevices(rhi_context->instance, &device_count, physical_devices.data())))
-                return false;
-
-            // Go through all the devices
-            for (const VkPhysicalDevice& device_physical : physical_devices)
-            {
-                // Get device properties
-                VkPhysicalDeviceProperties device_properties = {};
-                vkGetPhysicalDeviceProperties(device_physical, &device_properties);
-
-                VkPhysicalDeviceMemoryProperties device_memory_properties = {};
-                vkGetPhysicalDeviceMemoryProperties(device_physical, &device_memory_properties);
-
-                RHI_PhysicalDevice_Type type = RHI_PhysicalDevice_Unknown;
-                if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) type = RHI_PhysicalDevice_Integrated;
-                if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)   type = RHI_PhysicalDevice_Discrete;
-                if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU)    type = RHI_PhysicalDevice_Virtual;
-                if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU)            type = RHI_PhysicalDevice_Cpu;
-
-                // Let the engine know about it as it will sort all of the devices from best to worst
-                rhi_device->RegisterPhysicalDevice(PhysicalDevice
-                (
-                    device_properties.apiVersion,                                                       // api version
-                    device_properties.driverVersion,                                                    // driver version
-                    device_properties.vendorID,                                                         // vendor id
-                    type,                                                                               // type
-                    std::string(device_properties.deviceName),                                          // name
-                    static_cast<uint32_t>(device_memory_properties.memoryHeaps[0].size / 1024 / 1024),  // memory (MBs)
-                    static_cast<void*>(device_physical)                                                 // data
-                ));
-            }
-
-            // Go through all the devices (are sorted from best to worst based on their properties)
+            // Go through all the devices (sorted from best to worst based on their properties)
             for (uint32_t device_index = 0; device_index < rhi_device->GetPhysicalDevices().size(); device_index++)
             {
                 const PhysicalDevice& physical_device_engine = rhi_device->GetPhysicalDevices()[device_index];
@@ -225,11 +228,11 @@ namespace Spartan::vulkan_common
                 {
                     rhi_device->SetPrimaryPhysicalDevice(device_index);
                     rhi_context->device_physical = physical_device_vk;
-                    return true;
+                    break;
                 }
             }
 
-            return false;
+            return true;
         }
     }
 

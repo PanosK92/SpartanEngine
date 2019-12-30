@@ -54,10 +54,13 @@ Editor::~Editor()
 	m_widgets.clear();
 	m_widgets.shrink_to_fit();
 
-	// ImGui implementation - shutdown
-	ImGui::RHI::Shutdown();
-	ImGui_ImplWin32_Shutdown();
-	ImGui::DestroyContext();
+	// Shutdown ImGui (unless the renderer was never initialized and ImGui was no initialized to begin with)
+    if (m_renderer->IsInitialized())
+    {
+        ImGui::RHI::Shutdown();
+	    ImGui_ImplWin32_Shutdown();
+        ImGui::DestroyContext();
+    }
 }
 
 void Editor::OnWindowMessage(WindowData& window_data)
@@ -137,6 +140,10 @@ void Editor::OnTick()
 
 	// Update engine (will simulate and render)
 	m_engine->Tick();
+
+    // Ensure that rendering can take place
+    if (!m_renderer || !m_renderer->IsInitialized())
+        return;
 
 	// ImGui implementation - start frame
 	ImGui_ImplWin32_NewFrame();
