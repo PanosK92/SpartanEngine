@@ -55,8 +55,9 @@ namespace Spartan
             void* window_handle,
             void*& surface_out,
             void*& swap_chain_view_out,
-            vector<void*>& image_views_out,
-            vector<void*>& semaphores_image_acquired_out
+            vector<void*>& resource_textures,
+            vector<void*>& resource_views,
+            vector<void*>& resource_views_acquiredSemaphore
         )
         {
             // Create surface
@@ -140,10 +141,14 @@ namespace Spartan
 
             // Image views
             {
-                image_views_out.reserve(image_count);
-                image_views_out.resize(image_count);
+                resource_textures.reserve(image_count);
+                resource_textures.resize(image_count);
+                resource_views.reserve(image_count);
+                resource_views.resize(image_count);
                 for (uint32_t i = 0; i < image_count; i++)
                 {
+                    resource_textures[i] = static_cast<void*>(swap_chain_images[i]);
+
                     // Name the image
                     vulkan_common::debug::set_image_name
                     (
@@ -152,7 +157,7 @@ namespace Spartan
                         string(string("swapchain_image_") + to_string(0)).c_str()
                     );
 
-                    if (!vulkan_common::image_view::create(rhi_context, swap_chain_images[i], image_views_out[i], rhi_context->surface_format, VK_IMAGE_ASPECT_COLOR_BIT))
+                    if (!vulkan_common::image_view::create(rhi_context, swap_chain_images[i], resource_views[i], rhi_context->surface_format, VK_IMAGE_ASPECT_COLOR_BIT))
                         return false;
                 }
             }
@@ -162,7 +167,7 @@ namespace Spartan
 
             for (uint32_t i = 0; i < buffer_count; i++)
             {
-                vulkan_common::semaphore::create(rhi_context, semaphores_image_acquired_out.emplace_back(nullptr));
+                vulkan_common::semaphore::create(rhi_context, resource_views_acquiredSemaphore.emplace_back(nullptr));
             }
 
             return true;
@@ -254,8 +259,9 @@ namespace Spartan
 			m_window_handle,
 			m_surface,
 			m_swap_chain_view,
-			m_image_views,
-			m_image_acquired_semaphores
+            m_resource_texture,
+			m_resource_view,
+			m_resource_view_acquired_semaphore
 		);
 
         // Create command pool
@@ -275,8 +281,8 @@ namespace Spartan
             m_rhi_device->GetContextRhi(),
 			m_surface,
 			m_swap_chain_view,
-			m_image_views,
-			m_image_acquired_semaphores
+			m_resource_view,
+			m_resource_view_acquired_semaphore
 		);
 
         // Clear command buffers
@@ -302,8 +308,8 @@ namespace Spartan
             m_rhi_device->GetContextRhi(),
 			m_surface,
 			m_swap_chain_view,
-			m_image_views,
-			m_image_acquired_semaphores
+			m_resource_view,
+			m_resource_view_acquired_semaphore
 		);
 
 		// Create the swap chain with the new dimensions
@@ -318,8 +324,9 @@ namespace Spartan
 			m_window_handle,
 			m_surface,
 			m_swap_chain_view,
-			m_image_views,
-			m_image_acquired_semaphores
+            m_resource_texture,
+			m_resource_view,
+			m_resource_view_acquired_semaphore
 		);
 
 		return m_initialized;
@@ -344,7 +351,7 @@ namespace Spartan
                 m_rhi_device->GetContextRhi()->device,
                 static_cast<VkSwapchainKHR>(m_swap_chain_view),
                 numeric_limits<uint64_t>::max(),
-                static_cast<VkSemaphore>(m_image_acquired_semaphores[index]),
+                static_cast<VkSemaphore>(m_resource_view_acquired_semaphore[index]),
                 nullptr,
                 &m_image_index
             )
@@ -374,5 +381,30 @@ namespace Spartan
 
 		return vulkan_common::error::check_result(vkQueuePresentKHR(m_rhi_device->GetContextRhi()->queue_graphics, &present_info));
 	}
+
+    void RHI_SwapChain::SetLayout(RHI_Image_Layout layout, RHI_CommandList* command_list /*= nullptr*/)
+    {
+        if (m_layout == layout)
+            return;
+
+        if (command_list)
+        {
+            for (uint32_t i = 0; i < m_buffer_count; i++)
+            {
+                vulkan_common::image::transition_layout
+                (
+                    m_rhi_device,
+                    static_cast<VkCommandBuffer>(command_list->GetResource_CommandBuffer()),
+                    static_cast<VkImage>(m_resource_texture[i]),
+                    m_width,
+                    m_height,
+                    m_layout,
+                    layout
+                );
+            }
+        }
+
+        m_layout = layout;
+    }
 }
 #endif

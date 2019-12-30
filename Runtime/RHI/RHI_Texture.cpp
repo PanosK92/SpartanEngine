@@ -209,6 +209,14 @@ namespace Spartan
         return data;
     }
 
+	bool RHI_Texture::IsDepthFormat() const
+	{
+        if (m_format == RHI_Format_D32_Float)
+            return true;
+
+        return false;
+	}
+
     bool RHI_Texture::LoadFromFile_ForeignFormat(const string& file_path, const bool generate_mipmaps)
 	{
 		// Load texture

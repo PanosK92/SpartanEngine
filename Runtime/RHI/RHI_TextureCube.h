@@ -56,7 +56,7 @@ namespace Spartan
 			m_viewport		= RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
 			m_format		= format;
 			m_array_size	= 6;
-			m_bind_flags	= RHI_Texture_DepthStencil;
+			m_bind_flags	= RHI_Texture_RenderTarget_DepthStencil;
 
 			RHI_TextureCube::CreateResourceGpu();
 		}

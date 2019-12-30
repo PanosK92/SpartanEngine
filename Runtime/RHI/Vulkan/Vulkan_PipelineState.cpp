@@ -83,7 +83,7 @@ namespace Spartan
             // Create one frame buffer per image
             for (uint32_t i = 0; i < render_target_swapchain->GetBufferCount(); i++)
             {
-                vector<void*> attachments = { render_target_swapchain->GetResource_Texture(i) };
+                vector<void*> attachments = { render_target_swapchain->GetResource_View(i) };
                 if (!vulkan_common::frame_buffer::create(m_rhi_context, m_render_pass, attachments, render_target_width, render_target_height, m_frame_buffers[i]))
                     return false;
 
@@ -100,13 +100,13 @@ namespace Spartan
             // Color
             for (uint32_t i = 0; i < render_target_color_count; i++)
             {
-                attachments[i] = used_render_target_color[i]->GetResource_Texture();
+                attachments[i] = used_render_target_color[i]->GetResource_View();
             }
             
             // Depth
             if (render_target_depth_texture)
             {
-                attachments.back() = render_target_depth_texture->GetResource_Texture();
+                attachments.back() = render_target_depth_texture->GetResource_View();
             }
 
             // Create a frame buffer

@@ -336,7 +336,7 @@ namespace Spartan
 	void* RHI_Pipeline::CreateDescriptorSet(std::size_t hash)
 	{
 		// Early exit if the descriptor cache is full
-		if (m_descriptors_cache.size() == m_descriptor_capacity)
+		if (m_descriptor_resources.size() == m_descriptor_capacity)
 			return nullptr;
 
 		const auto descriptor_pool	= static_cast<VkDescriptorPool>(m_descriptor_pool);
@@ -363,15 +363,15 @@ namespace Spartan
 		// Update descriptor sets
         {
             vector<VkDescriptorImageInfo> image_infos;
-            image_infos.reserve(m_descriptor_blueprint.size());
+            image_infos.reserve(m_descriptors.size());
 
             vector<VkDescriptorBufferInfo> buffer_infos;
-            buffer_infos.reserve(m_descriptor_blueprint.size());
+            buffer_infos.reserve(m_descriptors.size());
 
             vector<VkWriteDescriptorSet> write_descriptor_sets;
-            write_descriptor_sets.reserve(m_descriptor_blueprint.size());
+            write_descriptor_sets.reserve(m_descriptors.size());
 
-            for (RHI_Descriptor& resource_blueprint : m_descriptor_blueprint)
+            for (RHI_Descriptor& resource_blueprint : m_descriptors)
             {
                 // Ignore null resources (this is legal, as a render pass can choose to not use one or more resources)
                 if (!resource_blueprint.resource)
@@ -414,7 +414,7 @@ namespace Spartan
         void* descriptor = static_cast<void*>(descriptor_set);
 
         // Cache descriptor
-        m_descriptors_cache[hash] = descriptor;
+        m_descriptor_resources[hash] = descriptor;
 
         return descriptor;
 	}
@@ -422,7 +422,7 @@ namespace Spartan
     void RHI_Pipeline::OnCommandListConsumed()
 	{
 		// If the descriptor pool is full, re-allocate with double size
-		if (m_descriptors_cache.size() < m_descriptor_capacity)
+		if (m_descriptor_resources.size() < m_descriptor_capacity)
 			return;
 
         if (!m_rhi_device || !m_rhi_device->GetContextRhi())
@@ -440,7 +440,7 @@ namespace Spartan
 		m_descriptor_pool = nullptr;
 
 		// Clear cache (as it holds sets belonging to the destroyed pool)
-        m_descriptors_cache.clear();
+        m_descriptor_resources.clear();
 
 		// Re-allocate everything with double size
 		m_descriptor_capacity *= 2;
@@ -480,7 +480,7 @@ namespace Spartan
 		// Layout bindings
 		vector<VkDescriptorSetLayoutBinding> layout_bindings;
 		{
-			for (const RHI_Descriptor& descriptor_blueprint : m_descriptor_blueprint)
+			for (const RHI_Descriptor& descriptor_blueprint : m_descriptors)
 			{
                 // Stage flags
                 VkShaderStageFlags stage_flags = 0;

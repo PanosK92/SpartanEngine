@@ -50,16 +50,24 @@ namespace Spartan
 		bool AcquireNextImage();
 		bool Present();
 
+        // Misc
         uint32_t GetWidth()				            const { return m_width; }
         uint32_t GetHeight()			            const { return m_height; }
         uint32_t GetBufferCount()		            const { return m_buffer_count; }
         uint32_t GetImageIndex()                    const { return m_image_index; }
-		bool IsInitialized()		                const { return m_initialized; }
-        void* GetResource_Texture(uint32_t i = 0)   const { return m_image_views[i]; }
-        void* GetResource_RenderTarget()	        const { return m_render_target_view; }
-		void* GetSemaphoreImageAcquired()           const { return m_image_acquired_semaphores[m_image_index]; }
-        void*& GetCmdPool()                               { return m_cmd_pool; }
+        bool IsInitialized()		                const { return m_initialized; }
         RHI_CommandList* GetCmdList()                     { return m_cmd_lists[m_image_index].get(); }
+
+        // Layout
+        const RHI_Image_Layout GetLayout()          const { return m_layout; }
+        void SetLayout(RHI_Image_Layout layout, RHI_CommandList* command_list = nullptr);
+
+        // GPU Resources
+        void* GetResource_View(uint32_t i = 0)      const { return m_resource_view[i]; }
+        void* GetResource_RenderTarget()	        const { return m_resource_render_target; }
+        void* GetResource_Texture(uint32_t i = 0)   const { return m_resource_texture[i]; }
+        void* GetResource_View_AcquiredSemaphore()  const { return m_resource_view_acquired_semaphore[m_image_index]; }
+        void*& GetCmdPool()                               { return m_cmd_pool; }
 
 	private:
         // Properties
@@ -73,16 +81,18 @@ namespace Spartan
 		RHI_Format m_format			= RHI_Format_R8G8B8A8_Unorm;
 		
 		// API  
-		void* m_swap_chain_view		= nullptr;
-		void* m_render_target_view	= nullptr;
-		void* m_surface				= nullptr;	
-		void* m_window_handle		= nullptr;
-        void* m_cmd_pool            = nullptr;
-        bool m_image_acquired       = false;
-        uint32_t m_image_index      = 0;
-        RHI_Device* m_rhi_device    = nullptr;
+		void* m_swap_chain_view		    = nullptr;
+		void* m_resource_render_target	= nullptr;
+		void* m_surface				    = nullptr;	
+		void* m_window_handle		    = nullptr;
+        void* m_cmd_pool                = nullptr;
+        bool m_image_acquired           = false;
+        uint32_t m_image_index          = 0;
+        RHI_Device* m_rhi_device        = nullptr;
+        RHI_Image_Layout m_layout       = RHI_Image_Undefined;
         std::vector<std::shared_ptr<RHI_CommandList>> m_cmd_lists;
-		std::vector<void*> m_image_acquired_semaphores;
-		std::vector<void*> m_image_views;
+		std::vector<void*> m_resource_view_acquired_semaphore;
+		std::vector<void*> m_resource_view;
+        std::vector<void*> m_resource_texture;
 	};
 }

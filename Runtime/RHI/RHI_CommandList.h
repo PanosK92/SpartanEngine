@@ -106,6 +106,7 @@ namespace Spartan
 
 		bool Submit();
         void Flush();
+        void* GetResource_CommandBuffer() { return m_cmd_buffer; }
 
 	private:
         std::vector<bool> m_passes_active;

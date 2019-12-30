@@ -241,6 +241,7 @@ namespace Spartan
         RHI_Descriptor_Type type    = RHI_Descriptor_Undefined;
         RHI_Image_Layout layout     = RHI_Image_Undefined;
         void* resource              = nullptr;
+        void* user_data             = nullptr;
     };
 
     inline const char* rhi_format_to_string(const RHI_Format result)

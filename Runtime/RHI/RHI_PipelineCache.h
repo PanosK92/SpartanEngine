@@ -33,7 +33,7 @@ namespace Spartan
 	{
 	public:
         RHI_PipelineCache(const std::shared_ptr<RHI_Device>& rhi_device) { m_rhi_device = rhi_device; }
-        RHI_Pipeline* GetPipeline(RHI_PipelineState& pipeline_state);
+        RHI_Pipeline* GetPipeline(RHI_PipelineState& pipeline_state, RHI_CommandList* cmd_list);
 
 	private:
         // <hash of pipeline state, pipeline state object>

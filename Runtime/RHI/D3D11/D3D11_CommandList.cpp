@@ -405,7 +405,7 @@ namespace Spartan
     void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture)
     {
 		uint32_t resource_start_slot    = slot;
-		void* resource_ptr              = texture ? texture->GetResource_Texture() : nullptr;
+		void* resource_ptr              = texture ? texture->GetResource_View() : nullptr;
 		uint32_t resource_count         = 1;
 
         if (resource_count > 1)
