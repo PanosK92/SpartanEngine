@@ -86,8 +86,8 @@ namespace Spartan
             vulkan_common::debug::initialize(m_rhi_context->instance);
 		}
 
-		// Device Physical
-        if (!vulkan_common::device::choose_physical_device(m_rhi_context.get(), context->m_engine->GetWindowData().handle))
+		// Find a physical device
+        if (!vulkan_common::device::choose_physical_device(this, context->m_engine->GetWindowData().handle))
         {
             LOG_ERROR("Failed to find a suitable physical device.");
             return;

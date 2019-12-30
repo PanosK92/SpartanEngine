@@ -38,6 +38,9 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
+    // Images can be loaded in parallel but will be consumed by a single queue, so fifo.
+    static mutex g_mutex;
+
     RHI_Texture2D::~RHI_Texture2D()
     {
         m_rhi_device->Flush();
@@ -53,6 +56,8 @@ namespace Spartan
 
     inline bool CopyBufferToImage(const RHI_Device* rhi_device, const uint32_t width, const uint32_t height, VkImage& image, const RHI_Image_Layout layout, VkBuffer* staging_buffer)
     {
+        lock_guard lock(g_mutex);
+
         RHI_Context* rhi_context = rhi_device->GetContextRhi();
 
         // Create command buffer
@@ -122,8 +127,8 @@ namespace Spartan
             usage_flags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT; // specifies that the image can be used as the source of a transfer command.
             usage_flags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT; // specifies that the image can be used as the destination of a transfer command.
 
-            // Copy data to a buffer (if there are any)
-            void* staging_buffer = nullptr;
+            // Copy data to staging buffer (if there are any)
+            void* staging_buffer        = nullptr;
             void* staging_buffer_memory = nullptr;
             if (!m_data.empty())
             {
@@ -159,10 +164,6 @@ namespace Spartan
             // Copy buffer to image
             if (staging_buffer)
             {
-                // Mutex prevents this error: THREADING ERROR : object of type VkQueue is simultaneously used in thread A and thread B
-                // Todo: Reduces possibility of error, but it can still occur, todo
-                static mutex _mutex;
-                lock_guard lock(_mutex);
                 if (!CopyBufferToImage(m_rhi_device.get(), static_cast<uint32_t>(m_width), static_cast<uint32_t>(m_height), *image, m_layout, reinterpret_cast<VkBuffer*>(&staging_buffer)))
                 {
                     LOG_ERROR("Failed to copy buffer to image");
@@ -179,34 +180,9 @@ namespace Spartan
         }
         else
         {
-            // HAVE TO COMPLETE THIS BRANCH
+            // Should I support this ?
             LOG_ERROR("Non staged images not supported yet");
             return false;
-
-            // Create image
-            if (!vulkan_common::image::create(rhi_context, *image, m_width, m_height, vulkan_format[m_format], image_tiling, m_layout, usage_flags))
-            {
-                LOG_ERROR("Failed to create image");
-                return false;
-            }
-
-            // Allocate memory
-            VkDeviceSize memory_size = 0;
-            // Allocate memory and bind it
-            if (!vulkan_common::image::allocate_bind(rhi_context, *image, image_memory, &memory_size))
-            {
-                LOG_ERROR("Failed to allocate and bind image memory");
-                return false;
-            }
-
-            // Map image memory
-            void* data = nullptr;
-            if (vulkan_common::error::check_result(vkMapMemory(rhi_context->device, *image_memory, 0, memory_size, 0, &data)))
-            {
-                VkDeviceSize buffer_size = static_cast<uint64_t>(m_width)* static_cast<uint64_t>(m_height)* static_cast<uint64_t>(m_channels);
-                memcpy(data, m_data.front().data(), static_cast<size_t>(buffer_size));
-                vkUnmapMemory(rhi_context->device, *image_memory);
-            }
         }
 
         string name = GetResourceName();

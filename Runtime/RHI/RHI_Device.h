@@ -41,40 +41,64 @@ namespace Spartan
 	struct DisplayMode
 	{
 		DisplayMode() = default;
-		DisplayMode(const uint32_t width, const uint32_t height, const uint32_t refresh_rate_numerator, const uint32_t refresh_rate_denominator)
+		DisplayMode(const uint32_t width, const uint32_t height, const uint32_t numerator, const uint32_t denominator)
 		{
-			this->width						= width;
-			this->height					= height;
-			this->refreshRateNumerator		= refresh_rate_numerator;
-			this->refreshRateDenominator	= refresh_rate_denominator;
-			this->refreshRate				= static_cast<float>(refresh_rate_numerator) / static_cast<float>(refresh_rate_denominator);
+			this->width			= width;
+			this->height		= height;
+			this->numerator     = numerator;
+            this->denominator   = denominator;
+            this->refresh_rate  = static_cast<double>(numerator) / static_cast<double>(denominator);
 		}
 
-		uint32_t width					= 0;
-		uint32_t height					= 0;
-		uint32_t refreshRateNumerator	= 0;
-		uint32_t refreshRateDenominator = 0;
-		float refreshRate				= 0;
+        DisplayMode(const uint32_t width, const uint32_t height, const double refresh_rate)
+        {
+            this->width         = width;
+            this->height        = height;
+            this->refresh_rate  = refresh_rate;
+        }
+
+		uint32_t width		    = 0;
+		uint32_t height		    = 0;   
+        uint32_t numerator      = 0;
+        uint32_t denominator    = 0;
+        double refresh_rate     = 0;
 	};
 
-	struct DisplayAdapter
+	struct PhysicalDevice
 	{
-		DisplayAdapter(const std::string& name, const uint32_t memory, const uint32_t vendor_id, void* data)
+		PhysicalDevice(const uint32_t api_version, const uint32_t driver_version, const uint32_t vendor_id, const RHI_PhysicalDevice_Type type, std::string& name, const uint32_t memory, void* data)
 		{
-			this->name		= name;
-			this->memory	= memory;
-			this->vendorID	= vendor_id;
-			this->data		= data;
+            this->api_version       = api_version;
+            this->driver_version    = driver_version;
+            this->vendor_id         = vendor_id;
+            this->type              = type;
+			this->name		        = name;
+			this->memory	        = memory;
+			this->data		        = data;
 		}
 
-		bool IsNvidia() const	{ return vendorID == 0x10DE || name.find("NVIDIA") != std::string::npos; }
-		bool IsAmd() const		{ return vendorID == 0x1002 || vendorID == 0x1022 || name.find("AMD") != std::string::npos; }
-		bool IsIntel() const	{ return vendorID == 0x163C || vendorID == 0x8086 || vendorID == 0x8087 || name.find("Intel") != std::string::npos;}
+        /*
+            0x10DE - Nvidia
+            0x8086 - Intel
+            0x1002 - Amd
+            0x13B5 - ARM
+            0x5143 - Qualcomm
+            0x1010 - ImgTec
+            
+        */
+		bool IsNvidia() const	{ return vendor_id == 0x10DE || name.find("Nvidia") != std::string::npos; }
+		bool IsAmd() const		{ return vendor_id == 0x1002 || vendor_id == 0x1022 || name.find("Amd") != std::string::npos; }
+		bool IsIntel() const	{ return vendor_id == 0x8086 || vendor_id == 0x163C || vendor_id == 0x8087 || name.find("Intel") != std::string::npos;}
+        bool IsArm() const      { return vendor_id == 0x13B5 || name.find("Arm,") != std::string::npos; }
+        bool IsQualcomm() const { return vendor_id == 0x5143 || name.find("Qualcomm") != std::string::npos; }
 
-		std::string name		= "Unknown";
-		uint32_t vendorID	= 0;
-		uint32_t memory		= 0;
-		void* data				= nullptr;
+        uint32_t api_version            = 0; // version of Vulkan supported by the device
+        uint32_t driver_version         = 0; // vendor-specified version of the driver.
+		uint32_t vendor_id	            = 0; // unique identifier of the vendor
+        RHI_PhysicalDevice_Type type    = RHI_PhysicalDevice_Unknown;
+        std::string name                = "Unknown";
+		uint32_t memory		            = 0;
+		void* data                      = nullptr;
 	};
 
 	class SPARTAN_CLASS RHI_Device
@@ -94,28 +118,30 @@ namespace Spartan
         bool Flush();
 		//=========================================================================================
 
-		//= ADAPTERS ============================================================================================================
-		void AddDisplayMode(uint32_t width, uint32_t height, uint32_t refresh_rate_numerator, uint32_t refresh_rate_denominator);
-		bool GetDisplayModeFastest(DisplayMode* display_mode);
-		void AddAdapter(const std::string& name, uint32_t memory, uint32_t vendor_id, void* adapter);
-		void SetPrimaryAdapter(const DisplayAdapter* primary_adapter);
-		const std::vector<DisplayAdapter>& GetAdapters()	const { return m_display_adapters; }
-		const DisplayAdapter* GetPrimaryAdapter()			const { return m_primary_adapter; }
-		//=======================================================================================================================
+        // Physical device
+        void RegisterPhysicalDevice(const PhysicalDevice& physical_device);    
+        const PhysicalDevice* GetPrimaryPhysicalDevice();
+        void SetPrimaryPhysicalDevice(const uint32_t index);
+        const std::vector<PhysicalDevice>& GetPhysicalDevices() const { return m_physical_devices; }
 
+        // Display mode
+        void RegisterDisplayMode(const DisplayMode& display_mode);
+        const DisplayMode* GetPrimaryDisplayMode();
+        
+        // Misc
 		auto IsInitialized()                const { return m_initialized; }
         RHI_Context* GetContextRhi()	    const { return m_rhi_context.get(); }
         Context* GetContext()               const { return m_context; }
         uint32_t GetEnabledGraphicsStages() const { return m_enabled_graphics_shader_stages; }
 
-	private:
-		std::shared_ptr<RHI_Context> m_rhi_context;
-		Context* m_context = nullptr;
-
-		bool m_initialized = false;
-		const DisplayAdapter* m_primary_adapter = nullptr;
-		std::vector<DisplayMode> m_displayModes;
-		std::vector<DisplayAdapter> m_display_adapters;
-        uint32_t m_enabled_graphics_shader_stages = 0;
+	private:	
+		std::vector<PhysicalDevice> m_physical_devices;
+        std::vector<DisplayMode> m_display_modes;
+        uint32_t m_physical_device_index            = 0;
+        uint32_t m_display_mode_index               = 0;
+        uint32_t m_enabled_graphics_shader_stages   = 0;
+        bool m_initialized                          = false;
+        Context* m_context                          = nullptr;
+        std::shared_ptr<RHI_Context> m_rhi_context;
 	};
 }

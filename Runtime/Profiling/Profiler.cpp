@@ -53,9 +53,9 @@ namespace Spartan
 		m_renderer			= m_context->GetSubsystem<Renderer>().get();
 
 		// Get available memory
-		if (const DisplayAdapter* adapter = m_renderer->GetRhiDevice()->GetPrimaryAdapter())
+		if (const PhysicalDevice* physical_device = m_renderer->GetRhiDevice()->GetPrimaryPhysicalDevice())
 		{
-			m_gpu_name				= adapter->name;
+			m_gpu_name				= physical_device->name;
 			m_gpu_memory_available	= m_renderer->GetRhiDevice()->ProfilingGetGpuMemory();
 		}
 

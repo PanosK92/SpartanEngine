@@ -35,50 +35,56 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-void RHI_Device::AddDisplayMode(uint32_t width, uint32_t height, uint32_t refresh_rate_numerator, uint32_t refresh_rate_denominator)
+    void RHI_Device::RegisterPhysicalDevice(const PhysicalDevice& physical_device)
+    {
+        m_physical_devices.emplace_back(physical_device);
+
+        // Keep devices sorted, based on memory (from highest to lowest)
+        sort(m_physical_devices.begin(), m_physical_devices.end(), [](const PhysicalDevice& adapter1, const PhysicalDevice& adapter2)
+        {
+            return adapter1.memory > adapter2.memory;
+        });
+
+        LOG_INFO("%s (%d MB)", physical_device.name.c_str(), physical_device.memory);
+    }
+
+    const PhysicalDevice* RHI_Device::GetPrimaryPhysicalDevice()
+    {
+        if (m_physical_device_index >= m_physical_devices.size())
+            return nullptr;
+
+        return &m_physical_devices[m_physical_device_index];
+    }
+
+    void RHI_Device::SetPrimaryPhysicalDevice(const uint32_t index)
 	{
-		auto& mode = m_displayModes.emplace_back(width, height, refresh_rate_numerator, refresh_rate_denominator);
+        m_physical_device_index = index;
+
+        if (const PhysicalDevice* physical_device = GetPrimaryPhysicalDevice())
+        {
+            LOG_INFO("%s (%d MB)", physical_device->name.c_str(), physical_device->memory);
+        }
+	}
+
+    void RHI_Device::RegisterDisplayMode(const DisplayMode& display_mode)
+    {
+        DisplayMode& mode = m_display_modes.emplace_back(display_mode);
+
+        // Keep display modes sorted, based on refresh rate (from highest to lowest)
+        sort(m_display_modes.begin(), m_display_modes.end(), [](const DisplayMode& display_mode_a, const DisplayMode& display_mode_b)
+        {
+            return display_mode_a.refresh_rate > display_mode_b.refresh_rate;
+        });
+
         // Let the timer know about the refresh rates this monitor is capable of (will result in low latency/smooth ticking)
-		m_context->GetSubsystem<Timer>()->AddMonitorRefreshRate(static_cast<double>(mode.refreshRate));
-	}
+        m_context->GetSubsystem<Timer>()->AddMonitorRefreshRate(static_cast<double>(mode.refresh_rate));
+    }
 
-	bool RHI_Device::GetDisplayModeFastest(DisplayMode* display_mode)
-	{
-		if (m_displayModes.empty())
-			return false;
+    const DisplayMode* RHI_Device::GetPrimaryDisplayMode()
+    {
+        if (m_display_mode_index >= m_display_modes.size())
+            return nullptr;
 
-		display_mode = &m_displayModes[0];
-		for (auto& mode : m_displayModes)
-		{
-			if (display_mode->refreshRate < mode.refreshRate)
-			{
-				display_mode = &mode;
-			}
-		}
-
-		return true;
-	}
-
-	void RHI_Device::AddAdapter(const string& name, uint32_t memory, uint32_t vendor_id, void* adapter)
-	{
-		m_display_adapters.emplace_back(name, memory, vendor_id, adapter);
-		sort(m_display_adapters.begin(), m_display_adapters.end(), [](const DisplayAdapter& adapter1, const DisplayAdapter& adapter2)
-		{
-			return adapter1.memory > adapter2.memory;
-		});
-
-		LOG_INFO("%s (%d MB)", name.c_str(), memory);
-	}
-
-	void RHI_Device::SetPrimaryAdapter(const DisplayAdapter* primary_adapter)
-	{
-		if (!primary_adapter)
-		{
-			LOG_ERROR_INVALID_PARAMETER();
-			return;
-		}
-
-		m_primary_adapter = primary_adapter;
-		LOG_INFO("%s (%d MB)", primary_adapter->name.c_str(), primary_adapter->memory);
-	}
+        return &m_display_modes[m_display_mode_index];
+    }
 }

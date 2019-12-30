@@ -64,7 +64,7 @@ namespace Spartan
 		m_comparison_enabled	= comparison_enabled;
 
 		D3D11_SAMPLER_DESC sampler_desc;
-		sampler_desc.Filter			= D3D11_Common::sampler::get_filter(filter_min, filter_mag, filter_mipmap, anisotropy_enabled, comparison_enabled);
+		sampler_desc.Filter			= d3d11_common::sampler::get_filter(filter_min, filter_mag, filter_mipmap, anisotropy_enabled, comparison_enabled);
 		sampler_desc.AddressU		= d3d11_sampler_address_mode[sampler_address_mode];
 		sampler_desc.AddressV		= d3d11_sampler_address_mode[sampler_address_mode];
 		sampler_desc.AddressW		= d3d11_sampler_address_mode[sampler_address_mode];
