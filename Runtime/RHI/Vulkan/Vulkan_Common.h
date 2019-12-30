@@ -32,6 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_SwapChain.h"
 #include "../../Logging/Log.h"
 #include "../../Math/Vector4.h"
+#include <array>
 //=============================
 
 namespace Spartan::vulkan_common
@@ -372,11 +373,11 @@ namespace Spartan::vulkan_common
 
         static bool command_buffer::create(const RHI_Context* rhi_context, const VkCommandBufferLevel level)
         {
-            VkCommandBufferAllocateInfo allocate_info = {};
-            allocate_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-            allocate_info.commandPool = static_cast<VkCommandPool>(m_cmd_pool);
-            allocate_info.level = level;
-            allocate_info.commandBufferCount = 1;
+            VkCommandBufferAllocateInfo allocate_info   = {};
+            allocate_info.sType                         = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            allocate_info.commandPool                   = static_cast<VkCommandPool>(m_cmd_pool);
+            allocate_info.level                         = level;
+            allocate_info.commandBufferCount            = 1;
 
             return error::check_result(vkAllocateCommandBuffers(rhi_context->device, &allocate_info, reinterpret_cast<VkCommandBuffer*>(&m_cmd_buffer)));
     }
@@ -567,15 +568,15 @@ namespace Spartan::vulkan_common
         {
             // Resolve aspect mask
             VkImageAspectFlags aspect_mask = 0;
-            if (bind_flags & RHI_Texture_DepthStencil)
+            if (bind_flags & RHI_Texture_RenderTarget_DepthStencil)
             {
                 // Depth-only image formats can have only the VK_IMAGE_ASPECT_DEPTH_BIT set
                 aspect_mask = VK_IMAGE_ASPECT_DEPTH_BIT;
             }
             else
             {
-                aspect_mask |= (bind_flags & RHI_Texture_Sampled)       ? VK_IMAGE_ASPECT_COLOR_BIT : 0;
-                aspect_mask |= (bind_flags & RHI_Texture_RenderTarget)  ? VK_IMAGE_ASPECT_COLOR_BIT : 0;
+                aspect_mask |= (bind_flags & RHI_Texture_Sampled)               ? VK_IMAGE_ASPECT_COLOR_BIT : 0;
+                aspect_mask |= (bind_flags & RHI_Texture_RenderTarget_Color)    ? VK_IMAGE_ASPECT_COLOR_BIT : 0;
             }
 
             return aspect_mask;
@@ -768,12 +769,12 @@ namespace Spartan::vulkan_common
             return access_mask;
         }
 
-        inline bool transition_layout(const RHI_Device* rhi_device, VkCommandBuffer& cmd_buffer, VkImage& image, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new)
+        inline bool transition_layout(const RHI_Device* rhi_device, VkCommandBuffer cmd_buffer, const VkImage image, const uint32_t width, const uint32_t height, const RHI_Image_Layout layout_current, const RHI_Image_Layout layout_new)
 	    {
             VkImageMemoryBarrier image_barrier              = {};
             image_barrier.sType                             = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
             image_barrier.pNext                             = nullptr;
-            image_barrier.oldLayout                         = vulkan_image_layout[layout_old];
+            image_barrier.oldLayout                         = vulkan_image_layout[layout_current];
             image_barrier.newLayout                         = vulkan_image_layout[layout_new];
             image_barrier.srcQueueFamilyIndex               = VK_QUEUE_FAMILY_IGNORED;
             image_barrier.dstQueueFamilyIndex               = VK_QUEUE_FAMILY_IGNORED;
@@ -912,7 +913,7 @@ namespace Spartan::vulkan_common
                     {
                         attachment_descriptions[i].format           = vulkan_format[render_target_color_textures[i]->GetFormat()];
                         attachment_descriptions[i].samples          = VK_SAMPLE_COUNT_1_BIT;
-                        attachment_descriptions[i].loadOp           = (render_target_color_clear[i] == state_dont_clear_color) ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR;
+                        attachment_descriptions[i].loadOp           = (render_target_color_clear[i] == state_dont_clear_color) ? VK_ATTACHMENT_LOAD_OP_DONT_CARE: VK_ATTACHMENT_LOAD_OP_CLEAR;
                         attachment_descriptions[i].storeOp          = VK_ATTACHMENT_STORE_OP_STORE;
                         attachment_descriptions[i].stencilLoadOp    = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
                         attachment_descriptions[i].stencilStoreOp   = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -929,7 +930,7 @@ namespace Spartan::vulkan_common
                     VkAttachmentDescription& attachment_description = attachment_descriptions.back();
                     attachment_description.format                   = vulkan_format[render_target_depth_texture->GetFormat()];
                     attachment_description.samples                  = VK_SAMPLE_COUNT_1_BIT;
-                    attachment_description.loadOp                   = (render_target_depth_clear == state_dont_clear_depth) ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR;
+                    attachment_description.loadOp                   = (render_target_depth_clear == state_dont_clear_depth) ? VK_ATTACHMENT_LOAD_OP_DONT_CARE : VK_ATTACHMENT_LOAD_OP_CLEAR;
                     attachment_description.storeOp                  = VK_ATTACHMENT_STORE_OP_STORE;
                     attachment_description.stencilLoadOp            = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
                     attachment_description.stencilStoreOp           = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -961,29 +962,29 @@ namespace Spartan::vulkan_common
             }
 
             // Sub-pass dependencies for layout transitions
-            std::vector<VkSubpassDependency> dependencies
+            std::array<VkSubpassDependency, 0> dependencies
             {
-                VkSubpassDependency
-                {
-                    VK_SUBPASS_EXTERNAL,														// uint32_t srcSubpass;
-                    0,																			// uint32_t dstSubpass;
-                    VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,										// PipelineStageFlags srcStageMask;
-                    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,								// PipelineStageFlags dstStageMask;
-                    VK_ACCESS_MEMORY_READ_BIT,													// AccessFlags srcAccessMask;
-                    VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,	// AccessFlags dstAccessMask;
-                    VK_DEPENDENCY_BY_REGION_BIT													// DependencyFlags dependencyFlags;
-                },
+                //VkSubpassDependency
+                //{
+                //    VK_SUBPASS_EXTERNAL,														// uint32_t srcSubpass;
+                //    0,																			// uint32_t dstSubpass;
+                //    VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,										// PipelineStageFlags srcStageMask;
+                //    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,								// PipelineStageFlags dstStageMask;
+                //    VK_ACCESS_MEMORY_READ_BIT,													// AccessFlags srcAccessMask;
+                //    VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,	// AccessFlags dstAccessMask;
+                //    VK_DEPENDENCY_BY_REGION_BIT													// DependencyFlags dependencyFlags;
+                //},
 
-                VkSubpassDependency
-                {
-                    0,																			// uint32_t srcSubpass;
-                    VK_SUBPASS_EXTERNAL,														// uint32_t dstSubpass;
-                    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,								// PipelineStageFlags srcStageMask;
-                    VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,										// PipelineStageFlags dstStageMask;
-                    VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,	// AccessFlags srcAccessMask;
-                    VK_ACCESS_MEMORY_READ_BIT,													// AccessFlags dstAccessMask;
-                    VK_DEPENDENCY_BY_REGION_BIT													// DependencyFlags dependencyFlags;
-                },
+                //VkSubpassDependency
+                //{
+                //    0,																			// uint32_t srcSubpass;
+                //    VK_SUBPASS_EXTERNAL,														// uint32_t dstSubpass;
+                //    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,								// PipelineStageFlags srcStageMask;
+                //    VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,										// PipelineStageFlags dstStageMask;
+                //    VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,	// AccessFlags srcAccessMask;
+                //    VK_ACCESS_MEMORY_READ_BIT,													// AccessFlags dstAccessMask;
+                //    VK_DEPENDENCY_BY_REGION_BIT													// DependencyFlags dependencyFlags;
+                //},
             };
 
             VkRenderPassCreateInfo render_pass_info = {};

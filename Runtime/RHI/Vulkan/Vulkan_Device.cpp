@@ -59,6 +59,7 @@ namespace Spartan
 			VkInstanceCreateInfo create_info	= {};
 			create_info.sType					= VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 			create_info.pApplicationInfo		= &app_info;
+            
 			create_info.enabledExtensionCount	= static_cast<uint32_t>(m_rhi_context->extensions_instance.size());
 			create_info.ppEnabledExtensionNames	= m_rhi_context->extensions_instance.data();
 			create_info.enabledLayerCount		= 0;
@@ -67,8 +68,17 @@ namespace Spartan
 			{
 				if (vulkan_common::extension::is_present(m_rhi_context->validation_layers.front()))
 				{
+                    // Validation layers
 					create_info.enabledLayerCount	= static_cast<uint32_t>(m_rhi_context->validation_layers.size());
 					create_info.ppEnabledLayerNames = m_rhi_context->validation_layers.data();
+
+                    // Validation features
+                    VkValidationFeatureEnableEXT enabled_validation_features[]  = { VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT };
+                    VkValidationFeaturesEXT validation_features                 = {};
+                    validation_features.sType                                   = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
+                    validation_features.enabledValidationFeatureCount           = 1;
+                    validation_features.pEnabledValidationFeatures              = enabled_validation_features;
+                    create_info.pNext = &validation_features;
 				}
 				else
 				{

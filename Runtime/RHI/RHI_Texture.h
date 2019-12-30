@@ -32,9 +32,9 @@ namespace Spartan
 {
 	enum RHI_Texture_Bind : uint16_t
 	{
-		RHI_Texture_Sampled			= 1 << 0,
-		RHI_Texture_RenderTarget	= 1 << 1,
-		RHI_Texture_DepthStencil	= 1 << 2,
+		RHI_Texture_Sampled			            = 1 << 0,
+		RHI_Texture_RenderTarget_Color	        = 1 << 1,
+		RHI_Texture_RenderTarget_DepthStencil	= 1 << 2,
 	};
 
 	class SPARTAN_CLASS RHI_Texture : public IResource
@@ -79,14 +79,29 @@ namespace Spartan
         bool HasMipmaps()                                               { return !m_data.empty();  }
         std::vector<std::byte>* GetData(uint32_t mipmap_index);
         std::vector<std::byte> GetMipmap(uint32_t index);
-        RHI_Image_Layout GetLayout() const                              { return m_layout; }
+
+        // Binding
+        bool IsSampled()                    const { return m_bind_flags & RHI_Texture_Sampled; }
+        bool IsRenderTargetDepthStencil()   const { return m_bind_flags & RHI_Texture_RenderTarget_DepthStencil; }
+        bool IsRenderTargetColor()          const { return m_bind_flags & RHI_Texture_RenderTarget_Color; }
+
+        // Format type
+        bool IsDepthFormat() const;
+        bool IsColorFormat() const { return !IsDepthFormat(); }
+        
+        // Layout
+        void SetLayout(const RHI_Image_Layout layout, RHI_CommandList* command_list = nullptr);
+        const RHI_Image_Layout GetLayout() const { return m_layout; }
+
+        // Misc
+        auto GetArraySize()         const { return m_array_size; }
+        const auto& GetViewport()   const { return m_viewport; }
 
 		// GPU resources
-		auto GetResource_Texture() const								{ return m_resource_texture; }
-		auto GetResource_RenderTarget()	const							{ return m_resource_render_target; }
-		auto GetResource_DepthStencil(const uint32_t index = 0) const	{ return index < m_resource_depth_stencils.size() ? m_resource_depth_stencils[index] : nullptr; }
-		auto GetArraySize() const										{ return m_array_size; }
-		const auto& GetViewport() const									{ return m_viewport; }
+		auto GetResource_View()                             const { return m_resource_view; }
+		auto GetResource_DepthStencil(const uint32_t i = 0) const { return i < m_resource_depth_stencil.size() ? m_resource_depth_stencil[i] : nullptr; }
+        auto GetResource_RenderTarget()	                    const { return m_resource_render_target; }
+        auto GetResource_Texture()                          const { return m_resource_texture; }
 
 	protected:
 		bool LoadFromFile_NativeFormat(const std::string& file_path);
@@ -107,17 +122,15 @@ namespace Spartan
 		RHI_Viewport m_viewport;
 		std::vector<std::vector<std::byte>> m_data;
 		
-		// Dependencies
-		std::shared_ptr<RHI_Device> m_rhi_device;
-
 		// API
-		void* m_resource_texture		= nullptr;
-		void* m_resource_render_target	= nullptr;
-		void* m_texture					= nullptr;
-		void* m_texture_memory			= nullptr;
-        RHI_Image_Layout m_layout       = RHI_Image_Undefined;
-		uint32_t m_array_size			= 1;	
-		std::vector<void*> m_resource_depth_stencils; 
+		void* m_resource_view		        = nullptr;
+		void* m_resource_render_target	    = nullptr;
+		void* m_resource_texture		    = nullptr;
+		void* m_resource_memory			    = nullptr;
+        RHI_Image_Layout m_layout           = RHI_Image_Undefined;
+		uint32_t m_array_size			    = 1;	
+		std::vector<void*> m_resource_depth_stencil;
+        std::shared_ptr<RHI_Device> m_rhi_device;
 
 	private:
 		uint32_t GetByteCount();

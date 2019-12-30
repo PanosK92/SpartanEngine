@@ -44,8 +44,8 @@ namespace Spartan
 
 	RHI_Texture2D::~RHI_Texture2D()
 	{
-		safe_release(static_cast<ID3D11ShaderResourceView*>(m_resource_texture));
-		m_resource_texture = nullptr;
+		safe_release(static_cast<ID3D11ShaderResourceView*>(m_resource_view));
+		m_resource_view = nullptr;
 	}
 
 	inline bool CreateTexture(
@@ -191,9 +191,9 @@ namespace Spartan
 		// Resolve bind flags
 		UINT bind_flags = 0;
 		{
-			bind_flags |= (m_bind_flags & RHI_Texture_Sampled)		? D3D11_BIND_SHADER_RESOURCE	: 0;
-			bind_flags |= (m_bind_flags & RHI_Texture_DepthStencil) ? D3D11_BIND_DEPTH_STENCIL		: 0;
-			bind_flags |= (m_bind_flags & RHI_Texture_RenderTarget) ? D3D11_BIND_RENDER_TARGET		: 0;
+			bind_flags |= (m_bind_flags & RHI_Texture_Sampled)		                ? D3D11_BIND_SHADER_RESOURCE	: 0;
+			bind_flags |= (m_bind_flags & RHI_Texture_RenderTarget_DepthStencil)    ? D3D11_BIND_DEPTH_STENCIL		: 0;
+			bind_flags |= (m_bind_flags & RHI_Texture_RenderTarget_Color)           ? D3D11_BIND_RENDER_TARGET		: 0;
 		}
 
 		// Resolve formats
@@ -202,9 +202,9 @@ namespace Spartan
 		auto format_srv	= m_format;
 		if (m_format == RHI_Format_D32_Float)
 		{
-			format			= RHI_Format_R32_Float_Typeless;
-			format_dsv		= RHI_Format_D32_Float;
-			format_srv		= RHI_Format_R32_Float;
+			format		= RHI_Format_R32_Float_Typeless;
+			format_dsv	= RHI_Format_D32_Float;
+			format_srv	= RHI_Format_R32_Float;
 		}
 
 		// TEXTURE
@@ -228,7 +228,7 @@ namespace Spartan
         {
             result_srv = CreateShaderResourceView(
                 texture,
-                m_resource_texture,
+                m_resource_view,
                 format_srv,
                 m_array_size,
                 m_data,
@@ -237,12 +237,12 @@ namespace Spartan
         }
 
         // DEPTH-STENCIL VIEW
-        if (m_bind_flags & RHI_Texture_DepthStencil)
+        if (m_bind_flags & RHI_Texture_RenderTarget_DepthStencil)
         {
             result_ds = CreateDepthStencilView
             (
                 texture,
-                m_resource_depth_stencils,
+                m_resource_depth_stencil,
                 m_array_size,
                 format_dsv,
                 m_rhi_device
@@ -250,7 +250,7 @@ namespace Spartan
         }
 
 		// RENDER TARGET VIEW
-		if (m_bind_flags & RHI_Texture_RenderTarget)
+		if (m_bind_flags & RHI_Texture_RenderTarget_Color)
 		{
 			result_rt = CreateRenderTargetView
 			(
@@ -270,8 +270,8 @@ namespace Spartan
 
 	RHI_TextureCube::~RHI_TextureCube()
 	{
-		safe_release(static_cast<ID3D11ShaderResourceView*>(m_resource_texture));
-		m_resource_texture = nullptr;
+		safe_release(static_cast<ID3D11ShaderResourceView*>(m_resource_view));
+		m_resource_view = nullptr;
 	}
 
 	inline bool TextureCube_Sampled
@@ -405,9 +405,9 @@ namespace Spartan
 
 		if (format == RHI_Format_D32_Float)
 		{
-			format_buffer	= RHI_Format_R32_Float_Typeless;
-			format_dsv		 = RHI_Format_D32_Float;
-			format_srv		 = RHI_Format_R32_Float;
+			format_buffer   = RHI_Format_R32_Float_Typeless;
+			format_dsv      = RHI_Format_D32_Float;
+			format_srv      = RHI_Format_R32_Float;
 		}
 
 		// TEX
@@ -481,12 +481,12 @@ namespace Spartan
 	{
 		auto result = true;
 
-		if (m_bind_flags & RHI_Texture_DepthStencil)
+		if (m_bind_flags & RHI_Texture_RenderTarget_DepthStencil)
 		{
 			result = TextureCube_DepthStencil
 			(
-				m_resource_texture,
-				m_resource_depth_stencils,
+				m_resource_view,
+				m_resource_depth_stencil,
 				m_width,
 				m_height,
 				m_array_size,
@@ -498,7 +498,7 @@ namespace Spartan
 		{
 			result = TextureCube_Sampled
 			(
-				m_resource_texture,
+				m_resource_view,
 				m_width,
 				m_height,
 				m_channels,

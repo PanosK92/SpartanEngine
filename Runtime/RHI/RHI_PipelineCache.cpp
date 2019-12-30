@@ -21,10 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================
 #include "RHI_PipelineCache.h"
-#include "RHI_Device.h"
+#include "RHI_Texture.h"
 #include "RHI_Pipeline.h"
-#include "RHI_PipelineState.h"
-#include "..\Logging\Log.h"
+#include "RHI_SwapChain.h"
 //============================
 
 //= NAMESPACES =====
@@ -33,13 +32,37 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_Pipeline* RHI_PipelineCache::GetPipeline(RHI_PipelineState& pipeline_state)
+    RHI_Pipeline* RHI_PipelineCache::GetPipeline(RHI_PipelineState& pipeline_state, RHI_CommandList* cmd_list)
     {
         // Validate it
         if (!pipeline_state.IsValid())
         {
             LOG_ERROR("Invalid pipeline state");
             return nullptr;
+        }
+
+        // Render target layout transitions
+        {
+            // Color
+            for (auto i = 0; i < state_max_render_target_count; i++)
+            {
+                if (RHI_Texture* texture = pipeline_state.render_target_color_textures[i])
+                {
+                    texture->SetLayout(RHI_Image_Shader_Read_Only_Optimal, cmd_list);
+                }
+            }
+
+            // Depth
+            if (RHI_Texture* texture = pipeline_state.render_target_depth_texture)
+            {
+                texture->SetLayout(RHI_Image_Depth_Stencil_Attachment_Optimal, cmd_list);
+            }
+
+            // Swapchain
+            if (RHI_SwapChain* swapchain = pipeline_state.render_target_swapchain)
+            {
+                swapchain->SetLayout(RHI_Image_Present_Src, cmd_list);
+            }
         }
 
         // Compute a hash for it
@@ -53,6 +76,9 @@ namespace Spartan
             m_cache.emplace(make_pair(hash, move(make_shared<RHI_Pipeline>(m_rhi_device, pipeline_state))));
         }
 
-        return m_cache[hash].get();
+        RHI_Pipeline* pipeline = m_cache[hash].get();
+        pipeline->MakeDirty();
+        
+        return pipeline;
     }
 }

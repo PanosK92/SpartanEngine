@@ -38,7 +38,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Profiling/Profiler.h"
 #include "../../Logging/Log.h"
 #include "../../Rendering/Renderer.h"
-#include <array>
 //===================================
 
 //= NAMESPACES ===============
@@ -120,18 +119,6 @@ namespace Spartan
             return false;
         }
 
-        m_pipeline = m_rhi_pipeline_cache->GetPipeline(pipeline_state);
-        if (!m_pipeline)
-        {
-            LOG_ERROR("Failed to acquire appropriate pipeline");
-            return false;
-        }
-        m_pipeline->MakeDirty();
-
-		// Acquire next image (in case the render target is a swapchain)
-        if (!m_pipeline->GetPipelineState()->AcquireNextImage())
-            return false;
-
 		// Begin command buffer
 		VkCommandBufferBeginInfo begin_info	    = {};
 		begin_info.sType						= VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -139,13 +126,33 @@ namespace Spartan
 		if (!vulkan_common::error::check_result(vkBeginCommandBuffer(CMD_BUFFER, &begin_info)))
 			return false;
 
+        // At this point, it's safe to allow for command recording
+        m_cmd_state = RHI_Cmd_List_Recording;
+
+        // Get pipeline
+        m_pipeline = m_rhi_pipeline_cache->GetPipeline(pipeline_state, this);
+        if (!m_pipeline)
+        {
+            LOG_ERROR("Failed to acquire appropriate pipeline");
+            End();
+            return false;
+        }
+
+        // Acquire next image (in case the render target is a swapchain)
+        if (!m_pipeline->GetPipelineState()->AcquireNextImage())
+        {
+            LOG_ERROR("Failed to acquire next image");
+            End();
+            return false;
+        }
+
         RHI_PipelineState* state = m_pipeline->GetPipelineState();
 
         // Clear values
         array<VkClearValue, state_max_render_target_count + 1> clear_values; // +1 for depth      
         uint32_t clear_value_count = 0;
         {
-            // Render target(s)
+            // Color
             for (auto i = 0; i < state_max_render_target_count; i++)
             {
                 if (state->render_target_color_clear[i] != state_dont_clear_color)
@@ -160,6 +167,8 @@ namespace Spartan
             {
                 clear_values[clear_value_count++].depthStencil = { state->render_target_depth_clear, 0 };
             }
+
+            // Swapchain
         }
 
 		// Begin render pass
@@ -185,9 +194,6 @@ namespace Spartan
             return false;
         }
 
-        // At this point, it's safe to allow for command recording
-        m_cmd_state = RHI_Cmd_List_Recording;
-
         // Temp hack until I implement some method to have one time set global resources
         m_renderer->SetGlobalSamplersAndConstantBuffers(this);
 
@@ -198,19 +204,27 @@ namespace Spartan
     {
         bool result = true;
 
-        // End render pass and command buffer
+        // End pass
         if (m_cmd_state == RHI_Cmd_List_Recording)
         {
+            // End render pass
             vkCmdEndRenderPass(CMD_BUFFER);
+
+            // Transition shader view textures back to their original layout (if they had one)
+            m_pipeline->RevertTextureLayouts(this);
+
+            // End command buffer
             result = vulkan_common::error::check_result(vkEndCommandBuffer(CMD_BUFFER));
+
             m_cmd_state = RHI_Cmd_List_Ended;
         }
 
+        // End marker/profiler
         if (m_passes_active[m_pass_index - 1])
         {
             m_passes_active[--m_pass_index] = false;
 
-            // Mark
+            // Marker
             if (m_rhi_device->GetContextRhi()->debug)
             {
                 vulkan_common::debug::end(CMD_BUFFER);
@@ -413,7 +427,7 @@ namespace Spartan
         }
 
         // Null textures are allowed, and they are replaced with a black texture here
-        if (!texture || !texture->GetResource_Texture())
+        if (!texture || !texture->GetResource_View())
         {
             texture = m_renderer->GetBlackTexture();
         }
@@ -493,7 +507,7 @@ namespace Spartan
 		VkSemaphore wait_semaphores[] = { nullptr };
         if (state->render_target_swapchain)
         {
-            wait_semaphores[0] = static_cast<VkSemaphore>(state->render_target_swapchain->GetSemaphoreImageAcquired());
+            wait_semaphores[0] = static_cast<VkSemaphore>(state->render_target_swapchain->GetResource_View_AcquiredSemaphore());
         }
         VkPipelineStageFlags wait_flags[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
@@ -512,7 +526,7 @@ namespace Spartan
 
         if (!vulkan_common::error::check_result(vkQueueSubmit(m_rhi_device->GetContextRhi()->queue_graphics, 1, &submit_info, reinterpret_cast<VkFence>(m_cmd_list_consumed_fence))))
             return false;
-		
+
 		// Wait for fence on the next Begin(), if we force it now, perfomance will not be as good
         m_cmd_state = RHI_Cmd_List_Idle_Sync_Cpu_To_Gpu;
 

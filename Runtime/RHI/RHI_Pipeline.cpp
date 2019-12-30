@@ -40,7 +40,7 @@ namespace Spartan
 {
     void RHI_Pipeline::SetConstantBuffer(uint32_t slot, RHI_ConstantBuffer* constant_buffer)
     {
-        for (RHI_Descriptor& descriptor : m_descriptor_blueprint)
+        for (RHI_Descriptor& descriptor : m_descriptors)
         {
             if (descriptor.type == RHI_Descriptor_ConstantBuffer && descriptor.slot == slot + m_rhi_device->GetContextRhi()->shader_shift_buffer)
             {
@@ -58,7 +58,7 @@ namespace Spartan
 
     void RHI_Pipeline::SetSampler(uint32_t slot, RHI_Sampler* sampler)
     {
-        for (RHI_Descriptor& descriptor : m_descriptor_blueprint)
+        for (RHI_Descriptor& descriptor : m_descriptors)
         {
             if (descriptor.type == RHI_Descriptor_Sampler && descriptor.slot == slot + m_rhi_device->GetContextRhi()->shader_shift_sampler)
             {
@@ -67,6 +67,7 @@ namespace Spartan
                 // Update
                 descriptor.id       = sampler->GetId();
                 descriptor.resource = sampler->GetResource();
+
                 break;
             }
         }
@@ -74,16 +75,24 @@ namespace Spartan
 
     void RHI_Pipeline::SetTexture(uint32_t slot, RHI_Texture* texture)
     {
-        for (RHI_Descriptor& descriptor : m_descriptor_blueprint)
+        for (RHI_Descriptor& descriptor : m_descriptors)
         {
             if (descriptor.type == RHI_Descriptor_Texture && descriptor.slot == slot + m_rhi_device->GetContextRhi()->shader_shift_texture)
             {
+                if (!texture->IsSampled())
+                {
+                    LOG_ERROR("This texture can be sampled");
+                    return;
+                }
+
                 m_descriptor_dirty = descriptor.id != texture->GetId() ? true : m_descriptor_dirty;
 
                 // Update
-                descriptor.id       = texture->GetId();
-                descriptor.resource = texture->GetResource_Texture();
-                descriptor.layout   = texture->GetLayout();
+                descriptor.id           = texture->GetId();
+                descriptor.resource     = texture->GetResource_View();
+                descriptor.layout       = texture->GetLayout();
+                descriptor.user_data    = static_cast<void*>(texture);
+
                 break;
             }
         }
@@ -92,15 +101,15 @@ namespace Spartan
     void* RHI_Pipeline::GetDescriptorSet()
     {
         // Get the hash of the current descriptor blueprint
-        size_t hash = GetDescriptorBlueprintHash(m_descriptor_blueprint);
+        size_t hash = GetDescriptorBlueprintHash(m_descriptors);
 
         // If the has is already present, then we don't need to update
-        if (m_descriptors_cache.find(hash) != m_descriptors_cache.end())
+        if (m_descriptor_resources.find(hash) != m_descriptor_resources.end())
         {
             if (m_descriptor_dirty)
             {
                 m_descriptor_dirty = false;
-                return m_descriptors_cache[hash];
+                return m_descriptor_resources[hash];
             }
 
             return nullptr;
@@ -114,7 +123,7 @@ namespace Spartan
     {
         size_t hash = 0;
 
-        for (const RHI_Descriptor& descriptor : m_descriptor_blueprint)
+        for (const RHI_Descriptor& descriptor : m_descriptors)
         {
             Utility::Hash::hash_combine(hash, descriptor.slot);
             Utility::Hash::hash_combine(hash, descriptor.stage);
@@ -129,7 +138,7 @@ namespace Spartan
 
     void RHI_Pipeline::ReflectShaders()
     {
-        m_descriptor_blueprint.clear();
+        m_descriptors.clear();
 
         if (!m_state.shader_vertex)
         {
@@ -141,26 +150,26 @@ namespace Spartan
         while (m_state.shader_vertex->GetCompilationState() == Shader_Compilation_Compiling) {}
         for (const RHI_Descriptor& descriptor : m_state.shader_vertex->GetDescriptors())
         {
-            m_descriptor_blueprint.emplace_back(descriptor);
+            m_descriptors.emplace_back(descriptor);
         }
 
         // If there is a pixel shader, merge it's resources into our map as well
         if (m_state.shader_pixel)
         {
             while (m_state.shader_pixel->GetCompilationState() == Shader_Compilation_Compiling) {}
-            for (const RHI_Descriptor& descriptor : m_state.shader_pixel->GetDescriptors())
+            for (const RHI_Descriptor& descriptor_reflected : m_state.shader_pixel->GetDescriptors())
             {
                 // Assume that the descriptor has been created in the vertex shader and only try to update it's shader stage
                 bool updated_existing = false;
-                for (RHI_Descriptor& descriptor_blueprint : m_descriptor_blueprint)
+                for (RHI_Descriptor& descriptor : m_descriptors)
                 {
                     bool is_same_resource =
-                        (descriptor_blueprint.type == descriptor.type) &&
-                        (descriptor_blueprint.slot == descriptor.slot);
+                        (descriptor.type == descriptor_reflected.type) &&
+                        (descriptor.slot == descriptor_reflected.slot);
 
-                    if ((descriptor_blueprint.type == descriptor.type) && (descriptor_blueprint.slot == descriptor.slot))
+                    if ((descriptor.type == descriptor_reflected.type) && (descriptor.slot == descriptor_reflected.slot))
                     {
-                        descriptor_blueprint.stage |= descriptor.stage;
+                        descriptor.stage |= descriptor_reflected.stage;
                         updated_existing = true;
                         break;
                     }
@@ -169,9 +178,31 @@ namespace Spartan
                 // If no updating took place, this descriptor is new, so add it
                 if (!updated_existing)
                 {
-                    m_descriptor_blueprint.emplace_back(descriptor);
+                    m_descriptors.emplace_back(descriptor_reflected);
                 }
             }
         }
+    }
+
+    void RHI_Pipeline::RevertTextureLayouts(RHI_CommandList* cmd_list)
+    {
+        /*for (RHI_Descriptor& descriptor : m_descriptors)
+        {
+            if (descriptor.revert_layout)
+            {
+                if (RHI_Texture* texture = static_cast<RHI_Texture*>(descriptor.user_data))
+                {
+                    if (descriptor.type == RHI_Descriptor_Texture && descriptor.id == texture->GetId())
+                    {
+                        if (texture->GetLayout() != previous_layout)
+                        {
+                            texture->SetLayout(previous_layout, cmd_list);
+                        }
+                    }
+                }
+
+                descriptor.revert_layout = false;
+            }
+        }*/
     }
 }

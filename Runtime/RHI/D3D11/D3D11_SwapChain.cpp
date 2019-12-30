@@ -140,7 +140,7 @@ namespace Spartan
 				return;
 			}
 
-			auto render_target_view = static_cast<ID3D11RenderTargetView*>(m_render_target_view);
+			auto render_target_view = static_cast<ID3D11RenderTargetView*>(m_resource_render_target);
 			result = rhi_device->GetContextRhi()->device->CreateRenderTargetView(backbuffer, nullptr, &render_target_view);
 			backbuffer->Release();
 			if (FAILED(result))
@@ -148,7 +148,7 @@ namespace Spartan
 				LOG_ERROR("%s", d3d11_common::dxgi_error_to_string(result));
 				return;
 			}
-			m_render_target_view = static_cast<void*>(render_target_view);
+			m_resource_render_target = static_cast<void*>(render_target_view);
 		}
 
         // Create command lists
@@ -173,7 +173,7 @@ namespace Spartan
         m_cmd_lists.clear();
 
 		safe_release(swap_chain);
-		safe_release(static_cast<ID3D11RenderTargetView*>(m_render_target_view));
+		safe_release(static_cast<ID3D11RenderTargetView*>(m_resource_render_target));
 	}
 
 	bool RHI_SwapChain::Resize(const uint32_t width, const uint32_t height)
@@ -192,7 +192,7 @@ namespace Spartan
 		}
 
 		auto swap_chain			= static_cast<IDXGISwapChain*>(m_swap_chain_view);
-		auto render_target_view	= static_cast<ID3D11RenderTargetView*>(m_render_target_view);
+		auto render_target_view	= static_cast<ID3D11RenderTargetView*>(m_resource_render_target);
 
 		// Release previous stuff
 		safe_release(render_target_view);
@@ -255,7 +255,7 @@ namespace Spartan
 			LOG_ERROR("Failed to create render target view, %s.", d3d11_common::dxgi_error_to_string(result));
 			return false;
 		}
-		m_render_target_view = static_cast<void*>(render_target_view);
+		m_resource_render_target = static_cast<void*>(render_target_view);
 
 		return true;
 	}
