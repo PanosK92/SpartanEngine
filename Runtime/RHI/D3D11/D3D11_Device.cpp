@@ -56,15 +56,24 @@ namespace Spartan
 		const static auto multithread_protection = false;
 
 		// Detect adapters
-		D3D11_Common::DetectAdapters(this);
+		d3d11_common::DetectAdapters(this);
+
+        const PhysicalDevice* physical_device = GetPrimaryPhysicalDevice();
+        if (!physical_device)
+        {
+            LOG_ERROR("Failed to detect any devices");
+            return;
+        }
 
 		// Create device
 		{
             // Flags
             UINT device_flags = 0;
-            #ifdef DEBUG // Enable debug layer
-            device_flags |= D3D11_CREATE_DEVICE_DEBUG;
-            #endif
+            // Enable debug layer
+            if (m_rhi_context->debug)
+            {
+                device_flags |= D3D11_CREATE_DEVICE_DEBUG;
+            }
 
             // The order of the feature levels that we'll try to create a device with
             vector<D3D_FEATURE_LEVEL> feature_levels =
@@ -78,7 +87,8 @@ namespace Spartan
                 D3D_FEATURE_LEVEL_9_1
             };
 
-            auto adapter = static_cast<IDXGIAdapter*>(m_primary_adapter->data);
+            
+            auto adapter = static_cast<IDXGIAdapter*>(physical_device->data);
             auto driver_type = adapter ? D3D_DRIVER_TYPE_UNKNOWN : D3D_DRIVER_TYPE_HARDWARE;
 
             auto create_device = [this, &adapter, &driver_type, &device_flags, &feature_levels]()
@@ -110,7 +120,7 @@ namespace Spartan
 
 			if (FAILED(result))
 			{
-				LOG_ERROR("Failed to create device, %s.", D3D11_Common::dxgi_error_to_string(result));
+				LOG_ERROR("Failed to create device, %s.", d3d11_common::dxgi_error_to_string(result));
 				return;
 			}
 		}
@@ -175,12 +185,15 @@ namespace Spartan
 		}
 
 		// Annotations
-		const auto result = m_rhi_context->device_context->QueryInterface(IID_PPV_ARGS(&m_rhi_context->annotation));
-		if (FAILED(result))
-		{
-			LOG_ERROR("Failed to create ID3DUserDefinedAnnotation for event reporting, %s.", D3D11_Common::dxgi_error_to_string(result));
-			return;
-		}
+        if (m_rhi_context->debug)
+        {
+            const auto result = m_rhi_context->device_context->QueryInterface(IID_PPV_ARGS(&m_rhi_context->annotation));
+            if (FAILED(result))
+            {
+                LOG_ERROR("Failed to create ID3DUserDefinedAnnotation for event reporting, %s.", d3d11_common::dxgi_error_to_string(result));
+                return;
+            }
+        }
 
 		m_initialized = true;
 	}
@@ -290,33 +303,39 @@ namespace Spartan
 
 	uint32_t RHI_Device::ProfilingGetGpuMemory()
 	{
-		if (auto adapter = static_cast<IDXGIAdapter3*>(m_primary_adapter->data))
-		{
-            DXGI_ADAPTER_DESC adapter_desc = {};
-            auto result = adapter->GetDesc(&adapter_desc);
-			if (FAILED(result))
-			{
-                LOG_ERROR("Failed to get adapter description, %s", D3D11_Common::dxgi_error_to_string(result));
-				return 0;
-			}
-			return static_cast<uint32_t>(adapter_desc.DedicatedVideoMemory / 1024 / 1024); // convert to MBs
-		}
+        if (const PhysicalDevice* physical_device = GetPrimaryPhysicalDevice())
+        {
+            if (auto adapter = static_cast<IDXGIAdapter3*>(physical_device->data))
+            {
+                DXGI_ADAPTER_DESC adapter_desc = {};
+                auto result = adapter->GetDesc(&adapter_desc);
+                if (FAILED(result))
+                {
+                    LOG_ERROR("Failed to get adapter description, %s", d3d11_common::dxgi_error_to_string(result));
+                    return 0;
+                }
+                return static_cast<uint32_t>(adapter_desc.DedicatedVideoMemory / 1024 / 1024); // convert to MBs
+            }
+        }
 		return 0;
 	}
 
 	uint32_t RHI_Device::ProfilingGetGpuMemoryUsage()
 	{
-		if (auto adapter = static_cast<IDXGIAdapter3*>(m_primary_adapter->data))
-		{
-			DXGI_QUERY_VIDEO_MEMORY_INFO info = {};
-            auto result = adapter->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &info);
-			if (FAILED(result))
-			{
-                LOG_ERROR("Failed to get adapter memory info, %s", D3D11_Common::dxgi_error_to_string(result));
-				return 0;
-			}
-			return static_cast<uint32_t>(info.CurrentUsage / 1024 / 1024); // convert to MBs
-		}
+        if (const PhysicalDevice* physical_device = GetPrimaryPhysicalDevice())
+        {
+            if (auto adapter = static_cast<IDXGIAdapter3*>(physical_device->data))
+            {
+                DXGI_QUERY_VIDEO_MEMORY_INFO info = {};
+                auto result = adapter->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &info);
+                if (FAILED(result))
+                {
+                    LOG_ERROR("Failed to get adapter memory info, %s", d3d11_common::dxgi_error_to_string(result));
+                    return 0;
+                }
+                return static_cast<uint32_t>(info.CurrentUsage / 1024 / 1024); // convert to MBs
+            }
+        }
 		return 0;
 	}
 }

@@ -34,7 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/EngineDefs.h"
 //================================
 
-namespace Spartan::D3D11_Common
+namespace Spartan::d3d11_common
 { 
 	inline const char* dxgi_error_to_string(const HRESULT error_code)
 	{
@@ -113,12 +113,21 @@ namespace Spartan::D3D11_Common
 				continue;
 			}
 
-			const auto memory_mb = static_cast<uint32_t>(adapter_desc.DedicatedVideoMemory / 1024 / 1024);
+            // Of course it wouldn't be simple, lets convert the device name
 			char name[128];
 			auto def_char = ' ';
 			WideCharToMultiByte(CP_ACP, 0, adapter_desc.Description, -1, name, 128, &def_char, nullptr);
 
-			device->AddAdapter(name, memory_mb, adapter_desc.VendorId, static_cast<void*>(display_adapter));
+			device->RegisterPhysicalDevice(PhysicalDevice
+            (
+                0,                                                                      // api version
+                0,                                                                      // driver version
+                adapter_desc.VendorId,                                                  // vendor id
+                RHI_PhysicalDevice_Unknown,                                             // type
+                std::string(name),                                                      // name
+                static_cast<uint32_t>(adapter_desc.DedicatedVideoMemory / 1024 / 1024), // memory (MBs)
+                static_cast<void*>(display_adapter))                                    // data
+            );
 		}
 
 		// DISPLAY MODES
@@ -143,7 +152,7 @@ namespace Spartan::D3D11_Common
 						// Save all the display modes
 						for (const auto& mode : display_modes)
 						{
-							device->AddDisplayMode(mode.Width, mode.Height, mode.RefreshRate.Numerator, mode.RefreshRate.Denominator);
+							device->RegisterDisplayMode(DisplayMode(mode.Width, mode.Height, mode.RefreshRate.Numerator, mode.RefreshRate.Denominator));
 						}
 					}
 				}
@@ -154,29 +163,29 @@ namespace Spartan::D3D11_Common
 		};
 
 		// Get display modes and set primary adapter
-		for (const auto& display_adapter : device->GetAdapters())
+		for (uint32_t device_index = 0; device_index < device->GetPhysicalDevices().size(); device_index++)
 		{
-			const auto adapter = static_cast<IDXGIAdapter*>(display_adapter.data);
+            const PhysicalDevice& physical_device = device->GetPhysicalDevices()[device_index];
+			const auto dx_adapter = static_cast<IDXGIAdapter*>(physical_device.data);
 
 			// Adapters are ordered by memory (descending), so stop on the first success
 			auto format = RHI_Format_R8G8B8A8_Unorm; // TODO: This must come from the swapchain
-			if (get_display_modes(adapter, format))
+			if (get_display_modes(dx_adapter, format))
 			{
-				device->SetPrimaryAdapter(&display_adapter);
-				break;
+				device->SetPrimaryPhysicalDevice(device_index);
+                return;
 			}
 			else
 			{
-				LOG_ERROR("Failed to get display modes for \"%s\".", display_adapter.name.c_str());
+				LOG_ERROR("Failed to get display modes for \"%s\".", physical_device.name.c_str());
 			}
 		}
 
 		// If we failed to detect any display modes but we have at least one adapter, use it.
-		if (!device->GetPrimaryAdapter() && device->GetAdapters().size() != 0)
+		if (device->GetPhysicalDevices().size() != 0)
 		{
-			auto& adapter = device->GetAdapters().front();
-			LOG_ERROR("Failed to detect display modes for all adapters, using %s, unexpected results may occur.", adapter.name.c_str());
-			device->SetPrimaryAdapter(&adapter);
+			LOG_ERROR("Failed to detect display modes for all physical devices, falling back to first available.");
+			device->SetPrimaryPhysicalDevice(0);
 		}
 	}
 
@@ -200,7 +209,7 @@ namespace Spartan::D3D11_Common
 		}
 
 		bool fullscreen_borderless_support	= SUCCEEDED(resut) && allowTearing;
-		bool vendor_support					= !device->GetPrimaryAdapter()->IsIntel(); // Intel, bad
+		bool vendor_support					= !device->GetPrimaryPhysicalDevice()->IsIntel(); // Intel, bad
 
 		return fullscreen_borderless_support && vendor_support;
 	}
@@ -213,7 +222,7 @@ namespace Spartan::D3D11_Common
 			if (flags & RHI_Present_Immediate)
 			{
 				// Check if the adapter supports it, if not, disable it (tends to fail with Intel adapters)
-				if (!D3D11_Common::CheckTearingSupport(device))
+				if (!d3d11_common::CheckTearingSupport(device))
 				{
 					flags &= ~RHI_Present_Immediate;
                     LOG_WARNING("Present_Immediate was requested but it's not supported by the adapter.");
@@ -244,7 +253,7 @@ namespace Spartan::D3D11_Common
 			}
 			#endif
 
-            if (flags & RHI_Swap_Flip_Discard && device->GetPrimaryAdapter()->IsIntel())
+            if (flags & RHI_Swap_Flip_Discard && device->GetPrimaryPhysicalDevice()->IsIntel())
             {
                 LOG_WARNING("Swap_Flip_Discard was requested but it's not supported by Intel adapters, using Swap_Discard instead.");
                 flags &= ~RHI_Swap_Flip_Discard;

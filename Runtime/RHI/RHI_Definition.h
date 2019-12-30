@@ -57,6 +57,15 @@ namespace Spartan
 	struct RHI_Vertex_PosUvCol;
 	struct RHI_Vertex_PosTexNorTan;
 
+    enum RHI_PhysicalDevice_Type
+    {
+        RHI_PhysicalDevice_Unknown,
+        RHI_PhysicalDevice_Integrated,
+        RHI_PhysicalDevice_Discrete,
+        RHI_PhysicalDevice_Virtual,
+        RHI_PhysicalDevice_Cpu
+    };
+
 	enum RHI_Present_Mode : uint32_t
 	{
 		RHI_Present_Immediate                   = 1 << 0,
