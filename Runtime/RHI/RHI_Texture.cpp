@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ================================
 #include "RHI_Texture.h"
+#include "RHI_Device.h"
 #include "../IO/FileStream.h"
 #include "../Rendering/Renderer.h"
 #include "../Resource/ResourceCache.h"
@@ -131,6 +132,7 @@ namespace Spartan
 			texture_data_loaded = LoadFromFile_ForeignFormat(path, m_generate_mipmaps_when_loading);
 		}
 
+        // Ensure that we have the data
 		if (!texture_data_loaded)
 		{
 			LOG_ERROR("Failed to load \"%s\".", path.c_str());
@@ -139,12 +141,12 @@ namespace Spartan
 		}
 
 		// Create GPU resource
-		if (!CreateResourceGpu())
-		{
-			LOG_ERROR("Failed to create shader resource for \"%s\".", GetResourceFilePathNative().c_str());
-			m_load_state = LoadState_Failed;
-			return false;
-		}
+        if (!m_context->GetSubsystem<Renderer>()->GetRhiDevice()->IsInitialized() || !CreateResourceGpu())
+        {
+            LOG_ERROR("Failed to create shader resource for \"%s\".", GetResourceFilePathNative().c_str());
+            m_load_state = LoadState_Failed;
+            return false;
+        }
 
 		// Only clear texture bytes if that's an engine texture, if not, it's not serialized yet.
 		if (FileSystem::IsEngineTextureFile(path))

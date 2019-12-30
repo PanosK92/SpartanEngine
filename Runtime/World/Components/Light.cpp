@@ -75,11 +75,8 @@ namespace Spartan
         // created so we can create potentially required shadow maps
         if (!m_initialized)
         {
-            if (m_renderer->GetRhiDevice())
-            {
-                CreateShadowMap();
-                m_initialized = true;
-            }
+            CreateShadowMap();
+            m_initialized = true;
         }
 
 		// Position and rotation dirty check
@@ -204,13 +201,16 @@ namespace Spartan
 	{
 		if (m_light_type == LightType_Directional)
 		{
-            for (uint32_t i = 0; i < g_cascade_count; i++)
-            {
-                ShadowSlice& shadow_map = m_shadow_map.slices[i];
-                Vector3 position        = shadow_map.center - GetDirection() * shadow_map.max.z;
-                Vector3 target          = shadow_map.center;
-                Vector3 up              = Vector3::Up;
-                m_matrix_view[i]        = Matrix::CreateLookAtLH(position, target, up);
+            if (!m_shadow_map.slices.empty())
+            { 
+                for (uint32_t i = 0; i < g_cascade_count; i++)
+                {
+                    ShadowSlice& shadow_map = m_shadow_map.slices[i];
+                    Vector3 position        = shadow_map.center - GetDirection() * shadow_map.max.z;
+                    Vector3 target          = shadow_map.center;
+                    Vector3 up              = Vector3::Up;
+                    m_matrix_view[i]        = Matrix::CreateLookAtLH(position, target, up);
+                }
             }
 		}
 		else if (m_light_type == LightType_Spot)
@@ -294,6 +294,9 @@ namespace Spartan
 
     void Light::ComputeCascadeSplits()
     {
+        if (m_shadow_map.slices.empty())
+            return;
+
         // Can happen during the first frame, don't log error
         if (!m_renderer->GetCamera())
             return;
@@ -393,7 +396,7 @@ namespace Spartan
 
     void Light::CreateShadowMap()
 	{
-        if (!m_renderer)
+        if (!m_renderer || !m_renderer->IsInitialized())
             return;
 
         const uint32_t resolution       = m_renderer->GetOptionValue<uint32_t>(Option_Value_ShadowResolution);

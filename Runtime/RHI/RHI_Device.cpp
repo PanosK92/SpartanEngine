@@ -77,7 +77,7 @@ namespace Spartan
         });
 
         // Let the timer know about the refresh rates this monitor is capable of (will result in low latency/smooth ticking)
-        m_context->GetSubsystem<Timer>()->AddMonitorRefreshRate(static_cast<double>(mode.refresh_rate));
+        m_context->GetSubsystem<Timer>()->SetTargetFps(m_display_modes.front().refresh_rate);
     }
 
     const DisplayMode* RHI_Device::GetPrimaryDisplayMode()
