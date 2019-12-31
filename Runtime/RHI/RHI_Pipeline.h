@@ -43,7 +43,6 @@ namespace Spartan
         void SetSampler(uint32_t slot, RHI_Sampler* sampler);
         void SetTexture(uint32_t slot, RHI_Texture* texture);
         void* GetDescriptorSet();
-        void RevertTextureLayouts(RHI_CommandList* cmd_list);
 
         void MakeDirty()            { m_descriptor_dirty = true; }
         auto GetPipeline()          { return m_pipeline; }

@@ -333,7 +333,7 @@ namespace Spartan::vulkan_common
             return cmd_buffer_vk;
         }
 
-        static bool flush(const RHI_Context* rhi_context, const VkQueue& queue)
+        static bool flush_and_free(const RHI_Context* rhi_context, const VkQueue& queue)
         {
             if (!m_cmd_buffer)
                 return false;
@@ -564,19 +564,17 @@ namespace Spartan::vulkan_common
             return true;
         }
 
-        inline VkImageAspectFlags bind_flags_to_aspect_mask(const uint16_t bind_flags)
+        inline VkImageAspectFlags bind_flags_to_aspect_mask(const RHI_Texture* texture)
         {
-            // Resolve aspect mask
             VkImageAspectFlags aspect_mask = 0;
-            if (bind_flags & RHI_Texture_RenderTarget_DepthStencil)
+
+            if (texture->IsDepthFormat())
             {
-                // Depth-only image formats can have only the VK_IMAGE_ASPECT_DEPTH_BIT set
                 aspect_mask = VK_IMAGE_ASPECT_DEPTH_BIT;
             }
-            else
+            else if (texture->IsColorFormat())
             {
-                aspect_mask |= (bind_flags & RHI_Texture_Sampled)               ? VK_IMAGE_ASPECT_COLOR_BIT : 0;
-                aspect_mask |= (bind_flags & RHI_Texture_RenderTarget_Color)    ? VK_IMAGE_ASPECT_COLOR_BIT : 0;
+                aspect_mask = VK_IMAGE_ASPECT_COLOR_BIT;
             }
 
             return aspect_mask;
@@ -769,17 +767,17 @@ namespace Spartan::vulkan_common
             return access_mask;
         }
 
-        inline bool transition_layout(const RHI_Device* rhi_device, VkCommandBuffer cmd_buffer, const VkImage image, const uint32_t width, const uint32_t height, const RHI_Image_Layout layout_current, const RHI_Image_Layout layout_new)
+        inline bool transition_layout(const RHI_Device* rhi_device, void* cmd_buffer, void* image, const VkImageAspectFlags aspect_mask, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new)
 	    {
             VkImageMemoryBarrier image_barrier              = {};
             image_barrier.sType                             = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
             image_barrier.pNext                             = nullptr;
-            image_barrier.oldLayout                         = vulkan_image_layout[layout_current];
+            image_barrier.oldLayout                         = vulkan_image_layout[layout_old];
             image_barrier.newLayout                         = vulkan_image_layout[layout_new];
             image_barrier.srcQueueFamilyIndex               = VK_QUEUE_FAMILY_IGNORED;
             image_barrier.dstQueueFamilyIndex               = VK_QUEUE_FAMILY_IGNORED;
-            image_barrier.image                             = image;
-            image_barrier.subresourceRange.aspectMask       = VK_IMAGE_ASPECT_COLOR_BIT;
+            image_barrier.image                             = static_cast<VkImage>(image);
+            image_barrier.subresourceRange.aspectMask       = aspect_mask;
             image_barrier.subresourceRange.baseMipLevel     = 0;
             image_barrier.subresourceRange.levelCount       = 1;
             image_barrier.subresourceRange.baseArrayLayer   = 0;
@@ -821,7 +819,7 @@ namespace Spartan::vulkan_common
 
 	    	vkCmdPipelineBarrier
 	    	(
-	    		cmd_buffer,
+	    		static_cast<VkCommandBuffer>(cmd_buffer),
 	    		source_stage, destination_stage,
 	    		0,
 	    		0, nullptr,
@@ -831,51 +829,65 @@ namespace Spartan::vulkan_common
 
 	    	return true;
 	    }
-    }
 
-    namespace image_view
-    {
-        inline bool create(const RHI_Context* rhi_context, void* image, void*& image_view, const VkFormat format, const VkImageAspectFlags aspect_flags)
+        inline bool transition_layout(const RHI_Device* rhi_device, void* cmd_buffer, const RHI_Texture* texture, const RHI_Image_Layout layout_new)
         {
-            VkImageViewCreateInfo create_info           = {};
-            create_info.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-            create_info.image                           = static_cast<VkImage>(image);
-            create_info.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
-            create_info.format                          = format;
-            create_info.subresourceRange.aspectMask     = aspect_flags;
-            create_info.subresourceRange.baseMipLevel   = 0;
-            create_info.subresourceRange.levelCount     = 1;
-            create_info.subresourceRange.baseArrayLayer = 0;
-            create_info.subresourceRange.layerCount     = 1;
-            create_info.components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-            create_info.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-            create_info.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-            create_info.components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-
-            VkImageView* image_view_vk = reinterpret_cast<VkImageView*>(&image_view);
-            return error::check_result(vkCreateImageView(rhi_context->device, &create_info, nullptr, image_view_vk));
+            return transition_layout(rhi_device, cmd_buffer, texture->GetResource_Texture(), bind_flags_to_aspect_mask(texture), texture->GetLayout(), layout_new);
         }
 
-        inline void destroy(const RHI_Context* rhi_context, void*& image_view)
+        inline bool transition_layout(const RHI_Device* rhi_device, void* cmd_buffer, void* image, const RHI_SwapChain* swapchain, const RHI_Image_Layout layout_new)
         {
-            if (!image_view)
-                return;
-
-            vkDestroyImageView(rhi_context->device, static_cast<VkImageView>(image_view), nullptr);
-            image_view = nullptr;
+            return transition_layout(rhi_device, cmd_buffer, image, VK_IMAGE_ASPECT_COLOR_BIT, swapchain->GetLayout(), layout_new);
         }
 
-        inline void destroy(const RHI_Context* rhi_context, std::vector<void*>& image_views)
+        namespace view
         {
-            for (auto& image_view : image_views)
+            inline bool create(const RHI_Context* rhi_context, void* image, void*& image_view, const VkFormat format, const VkImageAspectFlags aspect_mask)
             {
-                vkDestroyImageView(rhi_context->device, static_cast<VkImageView>(image_view), nullptr);
+                VkImageViewCreateInfo create_info           = {};
+                create_info.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+                create_info.image                           = static_cast<VkImage>(image);
+                create_info.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
+                create_info.format                          = format;
+                create_info.subresourceRange.aspectMask     = aspect_mask;
+                create_info.subresourceRange.baseMipLevel   = 0;
+                create_info.subresourceRange.levelCount     = 1;
+                create_info.subresourceRange.baseArrayLayer = 0;
+                create_info.subresourceRange.layerCount     = 1;
+                create_info.components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+                create_info.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+                create_info.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+                create_info.components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+
+                VkImageView* image_view_vk = reinterpret_cast<VkImageView*>(&image_view);
+                return error::check_result(vkCreateImageView(rhi_context->device, &create_info, nullptr, image_view_vk));
             }
-            image_views.clear();
-            image_views.shrink_to_fit();
+
+            inline bool create(const RHI_Context* rhi_context, void* image, void*& image_view, const RHI_Texture* texture)
+            {
+                return create(rhi_context, image, image_view, vulkan_format[texture->GetFormat()], bind_flags_to_aspect_mask(texture));
+            }
+
+            inline void destroy(const RHI_Context* rhi_context, void*& image_view)
+            {
+                if (!image_view)
+                    return;
+
+                vkDestroyImageView(rhi_context->device, static_cast<VkImageView>(image_view), nullptr);
+                image_view = nullptr;
+            }
+
+            inline void destroy(const RHI_Context* rhi_context, std::vector<void*>& image_views)
+            {
+                for (auto& image_view : image_views)
+                {
+                    vkDestroyImageView(rhi_context->device, static_cast<VkImageView>(image_view), nullptr);
+                }
+                image_views.clear();
+                image_views.shrink_to_fit();
+            }
         }
     }
-
     namespace render_pass
     {
         inline bool create(

@@ -123,7 +123,7 @@ namespace Spartan
                 vkCmdCopyBuffer(cmd_buffer, *buffer_staging_vk, *buffer_vk, 1, &copy_region);
 
                 // Flush and free command buffer
-                if (!vulkan_common::command_buffer::flush(rhi_context, rhi_context->queue_transfer))
+                if (!vulkan_common::command_buffer::flush_and_free(rhi_context, rhi_context->queue_transfer))
                     return false;
 
                 // Destroy staging resources
