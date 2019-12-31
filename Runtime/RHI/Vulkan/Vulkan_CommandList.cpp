@@ -96,7 +96,15 @@ namespace Spartan
             vulkan_common::debug::begin(CMD_BUFFER, pass_name.c_str(), Vector4::One);
         }
 
-        m_passes_active[m_pass_index++] = true;
+        if (m_pass_index < m_passes_active.size())
+        {
+            m_passes_active[m_pass_index++] = true;
+        }
+        else
+        {
+            LOG_ERROR("End() was not called for previous pass");
+            return false;
+        }
 
         return true;
     }
@@ -209,9 +217,6 @@ namespace Spartan
         {
             // End render pass
             vkCmdEndRenderPass(CMD_BUFFER);
-
-            // Transition shader view textures back to their original layout (if they had one)
-            m_pipeline->RevertTextureLayouts(this);
 
             // End command buffer
             result = vulkan_common::error::check_result(vkEndCommandBuffer(CMD_BUFFER));
@@ -426,8 +431,14 @@ namespace Spartan
             return;
         }
 
-        // Null textures are allowed, and they are replaced with a black texture here
+        // Null textures are allowed, and get replaced with a black texture here
         if (!texture || !texture->GetResource_View())
+        {
+            texture = m_renderer->GetBlackTexture();
+        }
+
+        // If the image has an invalid layout (can happen for a few frames during staging), replace with black
+        if (texture->GetLayout() == RHI_Image_Undefined || texture->GetLayout() == RHI_Image_Preinitialized)
         {
             texture = m_renderer->GetBlackTexture();
         }

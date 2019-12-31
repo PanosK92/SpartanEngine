@@ -75,23 +75,28 @@ namespace Spartan
 
     void RHI_Pipeline::SetTexture(uint32_t slot, RHI_Texture* texture)
     {
+        if (!texture->IsSampled())
+        {
+            LOG_ERROR("Texture can't be used for sampling");
+            return;
+        }
+
+        if (texture->GetLayout() == RHI_Image_Undefined || texture->GetLayout() == RHI_Image_Preinitialized)
+        {
+            LOG_ERROR("Texture has an invalid layout");
+            return;
+        }
+
         for (RHI_Descriptor& descriptor : m_descriptors)
         {
             if (descriptor.type == RHI_Descriptor_Texture && descriptor.slot == slot + m_rhi_device->GetContextRhi()->shader_shift_texture)
             {
-                if (!texture->IsSampled())
-                {
-                    LOG_ERROR("This texture can be sampled");
-                    return;
-                }
-
                 m_descriptor_dirty = descriptor.id != texture->GetId() ? true : m_descriptor_dirty;
 
                 // Update
-                descriptor.id           = texture->GetId();
-                descriptor.resource     = texture->GetResource_View();
-                descriptor.layout       = texture->GetLayout();
-                descriptor.user_data    = static_cast<void*>(texture);
+                descriptor.id       = texture->GetId();
+                descriptor.resource = texture->GetResource_View();
+                descriptor.layout   = texture->GetLayout();
 
                 break;
             }
@@ -182,27 +187,5 @@ namespace Spartan
                 }
             }
         }
-    }
-
-    void RHI_Pipeline::RevertTextureLayouts(RHI_CommandList* cmd_list)
-    {
-        /*for (RHI_Descriptor& descriptor : m_descriptors)
-        {
-            if (descriptor.revert_layout)
-            {
-                if (RHI_Texture* texture = static_cast<RHI_Texture*>(descriptor.user_data))
-                {
-                    if (descriptor.type == RHI_Descriptor_Texture && descriptor.id == texture->GetId())
-                    {
-                        if (texture->GetLayout() != previous_layout)
-                        {
-                            texture->SetLayout(previous_layout, cmd_list);
-                        }
-                    }
-                }
-
-                descriptor.revert_layout = false;
-            }
-        }*/
     }
 }

@@ -150,14 +150,9 @@ namespace Spartan
                     resource_textures[i] = static_cast<void*>(swap_chain_images[i]);
 
                     // Name the image
-                    vulkan_common::debug::set_image_name
-                    (
-                        rhi_context->device,
-                        swap_chain_images[i],
-                        string(string("swapchain_image_") + to_string(0)).c_str()
-                    );
+                    vulkan_common::debug::set_image_name(rhi_context->device, swap_chain_images[i], string(string("swapchain_image_") + to_string(0)).c_str());
 
-                    if (!vulkan_common::image_view::create(rhi_context, swap_chain_images[i], resource_views[i], rhi_context->surface_format, VK_IMAGE_ASPECT_COLOR_BIT))
+                    if (!vulkan_common::image::view::create(rhi_context, static_cast<void*>(swap_chain_images[i]), resource_views[i], rhi_context->surface_format, VK_IMAGE_ASPECT_COLOR_BIT))
                         return false;
                 }
             }
@@ -189,7 +184,7 @@ namespace Spartan
             semaphores_image_acquired.clear();
 
             // Image views
-            vulkan_common::image_view::destroy(rhi_context, image_views);
+            vulkan_common::image::view::destroy(rhi_context, image_views);
 
             // Swap chain view
             if (swap_chain_view)
@@ -391,16 +386,7 @@ namespace Spartan
         {
             for (uint32_t i = 0; i < m_buffer_count; i++)
             {
-                vulkan_common::image::transition_layout
-                (
-                    m_rhi_device,
-                    static_cast<VkCommandBuffer>(command_list->GetResource_CommandBuffer()),
-                    static_cast<VkImage>(m_resource_texture[i]),
-                    m_width,
-                    m_height,
-                    m_layout,
-                    layout
-                );
+                vulkan_common::image::transition_layout(m_rhi_device, command_list->GetResource_CommandBuffer(), m_resource_texture[i], this, layout);
             }
         }
 
