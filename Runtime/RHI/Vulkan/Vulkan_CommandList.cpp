@@ -559,12 +559,31 @@ namespace Spartan
 
     uint32_t RHI_CommandList::Gpu_GetMemory(RHI_Device* rhi_device)
     {
-        return 0;
+        if (!rhi_device || !rhi_device->GetContextRhi())
+            return 0;
+
+        VkPhysicalDeviceMemoryProperties device_memory_properties = {};
+        vkGetPhysicalDeviceMemoryProperties(static_cast<VkPhysicalDevice>(rhi_device->GetContextRhi()->device_physical), &device_memory_properties);
+
+        return static_cast<uint32_t>(device_memory_properties.memoryHeaps[0].size / 1024 / 1024); // memory (MBs)
     }
 
     uint32_t RHI_CommandList::Gpu_GetMemoryUsed(RHI_Device* rhi_device)
     {
-        return 0;
+        if (!rhi_device || !rhi_device->GetContextRhi() || !vulkan_common::functions::get_physical_device_memory_properties_2)
+            return 0;
+
+        VkPhysicalDeviceMemoryBudgetPropertiesEXT device_memory_budget_properties = {};
+        device_memory_budget_properties.sType                                     = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT;
+        device_memory_budget_properties.pNext                                     = nullptr;
+
+        VkPhysicalDeviceMemoryProperties2 device_memory_properties = {};
+        device_memory_properties.sType                             = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2;
+        device_memory_properties.pNext                             = &device_memory_budget_properties;
+
+        vulkan_common::functions::get_physical_device_memory_properties_2(static_cast<VkPhysicalDevice>(rhi_device->GetContextRhi()->device_physical), &device_memory_properties);
+
+        return static_cast<uint32_t>(device_memory_budget_properties.heapUsage[0] / 1024 / 1024);
     }
 
     bool RHI_CommandList::Gpu_CreateQuery(RHI_Device* rhi_device, void** query, const RHI_Query_Type type)

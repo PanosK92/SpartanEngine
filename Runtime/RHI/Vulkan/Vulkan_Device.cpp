@@ -90,6 +90,9 @@ namespace Spartan
                 return;
 		}
 
+        // Get function pointers (from extensions)
+        vulkan_common::functions::initialize(this);
+
 		// Debug
 		if (m_rhi_context->debug)
 		{
