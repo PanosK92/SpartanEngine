@@ -19,11 +19,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =================
+//= INCLUDES ======================
 #include "TimeBlock.h"
 #include "../Logging/Log.h"
 #include "../RHI/RHI_Device.h"
-//============================
+#include "../RHI/RHI_CommandList.h"
+//=================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -35,9 +36,9 @@ namespace Spartan
 	{
 		if (m_query)
 		{
-			m_rhi_device->ProfilingReleaseQuery(m_query);
-			m_rhi_device->ProfilingReleaseQuery(m_query_start);
-			m_rhi_device->ProfilingReleaseQuery(m_query_end);
+			RHI_CommandList::Gpu_ReleaseQuery(m_query);
+			RHI_CommandList::Gpu_ReleaseQuery(m_query_start);
+			RHI_CommandList::Gpu_ReleaseQuery(m_query_end);
 		}
 
 		Clear();
@@ -69,14 +70,14 @@ namespace Spartan
 			// Create required queries
 			if (!m_query)
 			{
-				rhi_device->ProfilingCreateQuery(&m_query, RHI_Query_Timestamp_Disjoint);
-				rhi_device->ProfilingCreateQuery(&m_query_start, RHI_Query_Timestamp);
-				rhi_device->ProfilingCreateQuery(&m_query_end, RHI_Query_Timestamp);
+				RHI_CommandList::Gpu_CreateQuery(m_rhi_device, &m_query, RHI_Query_Timestamp_Disjoint);
+				RHI_CommandList::Gpu_CreateQuery(m_rhi_device, &m_query_start, RHI_Query_Timestamp);
+				RHI_CommandList::Gpu_CreateQuery(m_rhi_device, &m_query_end, RHI_Query_Timestamp);
 			}
 
 			// Get time stamp
-			rhi_device->ProfilingQueryStart(m_query);
-			rhi_device->ProfilingGetTimeStamp(m_query_start);
+			RHI_CommandList::Gpu_QueryStart(m_rhi_device, m_query);
+			RHI_CommandList::Gpu_GetTimeStamp(m_rhi_device, m_query_start);
 
 			m_profiling_gpu = true;
 		}
@@ -105,8 +106,8 @@ namespace Spartan
 			if (m_query)
 			{
 				// Get time stamp
-				rhi_device->ProfilingGetTimeStamp(m_query_end);
-				rhi_device->ProfilingGetTimeStamp(m_query);
+				RHI_CommandList::Gpu_GetTimeStamp(m_rhi_device, m_query_end);
+				RHI_CommandList::Gpu_GetTimeStamp(m_rhi_device, m_query);
 			}
 			else
 			{
@@ -123,7 +124,7 @@ namespace Spartan
 		if (!m_query)
 			return;
 
-		m_duration_gpu = rhi_device->ProfilingGetDuration(m_query, m_query_start, m_query_end);
+		m_duration_gpu = RHI_CommandList::Gpu_GetDuration(m_rhi_device, m_query, m_query_start, m_query_end);
 	}
 
 	void TimeBlock::Clear()

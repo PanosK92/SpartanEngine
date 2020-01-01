@@ -429,23 +429,23 @@ namespace Spartan::vulkan_common
             fence = nullptr;
 		}
 
-		inline void wait(const RHI_Context* rhi_context, void*& fence)
+		inline bool wait(const RHI_Context* rhi_context, void*& fence)
 		{
             VkFence* fence_vk = reinterpret_cast<VkFence*>(&fence);
-			error::assert_result(vkWaitForFences(rhi_context->device, 1, fence_vk, true, std::numeric_limits<uint64_t>::max()));
+            return error::check_result(vkWaitForFences(rhi_context->device, 1, fence_vk, true, std::numeric_limits<uint64_t>::max()));
 		}
 
-		inline void reset(const RHI_Context* rhi_context, void*& fence)
+		inline bool reset(const RHI_Context* rhi_context, void*& fence)
 		{
             VkFence* fence_vk = reinterpret_cast<VkFence*>(&fence);
-            error::assert_result(vkResetFences(rhi_context->device, 1, fence_vk));
+            return error::check_result(vkResetFences(rhi_context->device, 1, fence_vk));
 		}
 
-		inline void wait_reset(const RHI_Context* rhi_context, void*& fence)
+		inline bool wait_reset(const RHI_Context* rhi_context, void*& fence)
 		{
             VkFence* fence_vk = reinterpret_cast<VkFence*>(&fence);
-            error::assert_result(vkWaitForFences(rhi_context->device, 1, fence_vk, true, std::numeric_limits<uint64_t>::max()));
-            error::assert_result(vkResetFences(rhi_context->device, 1, fence_vk));
+            return error::check_result(vkWaitForFences(rhi_context->device, 1, fence_vk, true, std::numeric_limits<uint64_t>::max())) &&
+            error::check_result(vkResetFences(rhi_context->device, 1, fence_vk));
 		}
 	}
 

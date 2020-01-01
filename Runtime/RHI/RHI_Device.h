@@ -107,17 +107,6 @@ namespace Spartan
 		RHI_Device(Context* context);
 		~RHI_Device();
 
-		//= API ===================================================================================
-		bool ProfilingCreateQuery(void** query, RHI_Query_Type type) const;
-		bool ProfilingQueryStart(void* query_object) const;
-		bool ProfilingGetTimeStamp(void* query_object) const;
-		float ProfilingGetDuration(void* query_disjoint, void* query_start, void* query_end) const;
-		void ProfilingReleaseQuery(void* query_object);
-		uint32_t ProfilingGetGpuMemory();
-		uint32_t ProfilingGetGpuMemoryUsage();
-        bool Flush();
-		//=========================================================================================
-
         // Physical device
         void RegisterPhysicalDevice(const PhysicalDevice& physical_device);    
         const PhysicalDevice* GetPrimaryPhysicalDevice();

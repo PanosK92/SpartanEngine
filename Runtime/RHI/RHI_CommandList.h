@@ -104,21 +104,34 @@ namespace Spartan
         void ClearRenderTarget(void* render_target, const Math::Vector4& color);
 		void ClearDepthStencil(void* depth_stencil, uint32_t flags, float depth, uint8_t stencil = 0);
 
+        // Submit/Flush
 		bool Submit();
-        void Flush();
+        bool Flush();
+
+        // GPU - RHI_CommandList instance not required
+        static bool Gpu_Flush(RHI_Device* rhi_device);
+        static uint32_t Gpu_GetMemory(RHI_Device* rhi_device);
+        static uint32_t Gpu_GetMemoryUsed(RHI_Device* rhi_device);
+        static bool Gpu_CreateQuery(RHI_Device* rhi_device, void** query, RHI_Query_Type type);
+        static bool Gpu_QueryStart(RHI_Device* rhi_device, void* query_object);
+        static bool Gpu_GetTimeStamp(RHI_Device* rhi_device, void* query_object);
+        static float Gpu_GetDuration(RHI_Device* rhi_device, void* query_disjoint, void* query_start, void* query_end);
+        static void Gpu_ReleaseQuery(void* query_object);
+
+        // Misc
         void* GetResource_CommandBuffer() { return m_cmd_buffer; }
 
 	private:
         std::vector<bool> m_passes_active;
-        uint32_t m_pass_index                       = 0;
-        RHI_Cmd_List_State m_cmd_state              = RHI_Cmd_List_Idle;
-		RHI_Pipeline* m_pipeline	                = nullptr; 
-        RHI_SwapChain* m_swap_chain                 = nullptr;
-        Renderer* m_renderer                        = nullptr;
-        RHI_PipelineCache* m_rhi_pipeline_cache     = nullptr;
-        RHI_Device* m_rhi_device                    = nullptr;
-        Profiler* m_profiler                        = nullptr;
-        void* m_cmd_buffer                          = nullptr;
-        void* m_cmd_list_consumed_fence             = nullptr;
+        uint32_t m_pass_index                   = 0;
+        RHI_Cmd_List_State m_cmd_state          = RHI_Cmd_List_Idle;
+		RHI_Pipeline* m_pipeline	            = nullptr; 
+        RHI_SwapChain* m_swap_chain             = nullptr;
+        Renderer* m_renderer                    = nullptr;
+        RHI_PipelineCache* m_rhi_pipeline_cache = nullptr;
+        RHI_Device* m_rhi_device                = nullptr;
+        Profiler* m_profiler                    = nullptr;
+        void* m_cmd_buffer                      = nullptr;
+        void* m_cmd_list_consumed_fence         = nullptr;
 	};
 }

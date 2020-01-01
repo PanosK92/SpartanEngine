@@ -47,7 +47,7 @@ namespace Spartan
         if (!m_rhi_device->IsInitialized())
             return;
 
-        m_rhi_device->Flush();
+        RHI_CommandList::Gpu_Flush(m_rhi_device.get());
         m_data.clear();
         auto rhi_context = m_rhi_device->GetContextRhi();
         vulkan_common::image::view::destroy(rhi_context, m_resource_view);

@@ -472,10 +472,155 @@ namespace Spartan
 		return true;
 	}
 
-    void RHI_CommandList::Flush()
+    bool RHI_CommandList::Flush()
     {
-        
+        return true;
+    }
+
+    bool RHI_CommandList::Gpu_Flush(RHI_Device* rhi_device)
+    {
+        return true;
+    }
+
+    uint32_t RHI_CommandList::Gpu_GetMemory(RHI_Device* rhi_device)
+    {
+        if (const PhysicalDevice* physical_device = rhi_device->GetPrimaryPhysicalDevice())
+        {
+            if (auto adapter = static_cast<IDXGIAdapter3*>(physical_device->data))
+            {
+                DXGI_ADAPTER_DESC adapter_desc = {};
+                auto result = adapter->GetDesc(&adapter_desc);
+                if (FAILED(result))
+                {
+                    LOG_ERROR("Failed to get adapter description, %s", d3d11_common::dxgi_error_to_string(result));
+                    return 0;
+                }
+                return static_cast<uint32_t>(adapter_desc.DedicatedVideoMemory / 1024 / 1024); // convert to MBs
+            }
+        }
+        return 0;
+    }
+
+    uint32_t RHI_CommandList::Gpu_GetMemoryUsed(RHI_Device* rhi_device)
+    {
+        if (const PhysicalDevice* physical_device = rhi_device->GetPrimaryPhysicalDevice())
+        {
+            if (auto adapter = static_cast<IDXGIAdapter3*>(physical_device->data))
+            {
+                DXGI_QUERY_VIDEO_MEMORY_INFO info = {};
+                auto result = adapter->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &info);
+                if (FAILED(result))
+                {
+                    LOG_ERROR("Failed to get adapter memory info, %s", d3d11_common::dxgi_error_to_string(result));
+                    return 0;
+                }
+                return static_cast<uint32_t>(info.CurrentUsage / 1024 / 1024); // convert to MBs
+            }
+        }
+        return 0;
+    }
+
+    bool RHI_CommandList::Gpu_CreateQuery(RHI_Device* rhi_device, void** query, const RHI_Query_Type type)
+    {
+        RHI_Context* rhi_context = rhi_device->GetContextRhi();
+
+        if (!rhi_context->device)
+        {
+            LOG_ERROR_INVALID_INTERNALS();
+            return false;
+        }
+
+        D3D11_QUERY_DESC desc   = {};
+        desc.Query              = (type == RHI_Query_Timestamp_Disjoint) ? D3D11_QUERY_TIMESTAMP_DISJOINT : D3D11_QUERY_TIMESTAMP;
+        desc.MiscFlags          = 0;
+        const auto result = rhi_context->device->CreateQuery(&desc, reinterpret_cast<ID3D11Query**>(query));
+        if (FAILED(result))
+        {
+            LOG_ERROR("Failed to create ID3D11Query");
+            return false;
+        }
+
+        return true;
+    }
+
+    bool RHI_CommandList::Gpu_QueryStart(RHI_Device* rhi_device, void* query_object)
+    {
+        if (!query_object)
+        {
+            LOG_ERROR_INVALID_PARAMETER();
+            return false;
+        }
+
+        RHI_Context* rhi_context = rhi_device->GetContextRhi();
+
+        if (!rhi_context->device_context)
+        {
+            LOG_ERROR_INVALID_INTERNALS();
+            return false;
+        }
+
+        rhi_context->device_context->Begin(static_cast<ID3D11Query*>(query_object));
+        return true;
+    }
+
+    bool RHI_CommandList::Gpu_GetTimeStamp(RHI_Device* rhi_device, void* query_object)
+    {
+        if (!query_object)
+        {
+            LOG_ERROR_INVALID_PARAMETER();
+            return false;
+        }
+
+        RHI_Context* rhi_context = rhi_device->GetContextRhi();
+
+        if (!rhi_context->device_context)
+        {
+            LOG_ERROR_INVALID_INTERNALS();
+            return false;
+        }
+
+        rhi_context->device_context->End(static_cast<ID3D11Query*>(query_object));
+        return true;
+    }
+
+    float RHI_CommandList::Gpu_GetDuration(RHI_Device* rhi_device, void* query_disjoint, void* query_start, void* query_end)
+    {
+        RHI_Context* rhi_context = rhi_device->GetContextRhi();
+
+        if (!rhi_context->device_context)
+        {
+            LOG_ERROR_INVALID_INTERNALS();
+            return 0.0f;
+        }
+
+        // Wait for data to be available	
+        while (rhi_context->device_context->GetData(static_cast<ID3D11Query*>(query_disjoint), nullptr, 0, 0) == S_FALSE) {}
+
+        // Check whether timestamps were disjoint during the last frame
+        D3D10_QUERY_DATA_TIMESTAMP_DISJOINT disjoint_data = {};
+        rhi_context->device_context->GetData(static_cast<ID3D11Query*>(query_disjoint), &disjoint_data, sizeof(disjoint_data), 0);
+        if (disjoint_data.Disjoint)
+            return 0.0f;
+
+        // Get the query data		
+        UINT64 start_time   = 0;
+        UINT64 end_time     = 0;
+        rhi_context->device_context->GetData(static_cast<ID3D11Query*>(query_start), &start_time, sizeof(start_time), 0);
+        rhi_context->device_context->GetData(static_cast<ID3D11Query*>(query_end), &end_time, sizeof(end_time), 0);
+
+        // Convert to real time
+        const auto delta        = end_time - start_time;
+        const auto duration_ms  = (delta * 1000.0f) / static_cast<float>(disjoint_data.Frequency);
+
+        return duration_ms;
+    }
+
+    void RHI_CommandList::Gpu_ReleaseQuery(void* query_object)
+    {
+        if (!query_object)
+            return;
+
+        safe_release(static_cast<ID3D11Query*>(query_object));
     }
 }
-
 #endif
