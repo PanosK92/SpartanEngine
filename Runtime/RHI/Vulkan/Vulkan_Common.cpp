@@ -30,13 +30,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan::vulkan_common
 {
-    VkDebugUtilsMessengerEXT            debug::m_messenger              = nullptr;
-    PFN_vkDestroyDebugUtilsMessengerEXT debug::m_fn_destroy_messenger   = nullptr;
-    PFN_vkSetDebugUtilsObjectTagEXT     debug::m_fn_set_object_tag      = nullptr;
-    PFN_vkSetDebugUtilsObjectNameEXT    debug::m_fn_set_object_name     = nullptr;
-    PFN_vkCmdBeginDebugUtilsLabelEXT    debug::m_fn_marker_begin        = nullptr;
-    PFN_vkCmdEndDebugUtilsLabelEXT      debug::m_fn_marker_end          = nullptr;
-    void*                               command_buffer::m_cmd_pool      = nullptr;
-    void*                               command_buffer::m_cmd_buffer    = nullptr;
+    PFN_vkCreateDebugUtilsMessengerEXT          functions::create_messenger                             = nullptr;
+    VkDebugUtilsMessengerEXT                    functions::messenger                                    = nullptr;
+    PFN_vkDestroyDebugUtilsMessengerEXT         functions::destroy_messenger                            = nullptr;
+    PFN_vkSetDebugUtilsObjectTagEXT             functions::set_object_tag                               = nullptr;
+    PFN_vkSetDebugUtilsObjectNameEXT            functions::set_object_name                              = nullptr;
+    PFN_vkCmdBeginDebugUtilsLabelEXT            functions::marker_begin                                 = nullptr;
+    PFN_vkCmdEndDebugUtilsLabelEXT              functions::marker_end                                   = nullptr;
+    PFN_vkGetPhysicalDeviceMemoryProperties2KHR functions::get_physical_device_memory_properties_2   = nullptr;
+    void*                                       command_buffer::m_cmd_pool                              = nullptr;
+    void*                                       command_buffer::m_cmd_buffer                            = nullptr;
 }
 #endif

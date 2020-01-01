@@ -1174,6 +1174,44 @@ namespace Spartan::vulkan_common
         }
     }
 
+    class functions
+    {
+    public:
+        functions() = default;
+        ~functions() = default;
+
+        static void functions::initialize(RHI_Device* device)
+        {
+            #define get_func(var, def)\
+            var = reinterpret_cast<PFN_##def>(vkGetInstanceProcAddr(static_cast<VkInstance>(device->GetContextRhi()->instance), #def));\
+            if (!var) LOG_ERROR("Failed to get function pointer");\
+
+            get_func(get_physical_device_memory_properties_2, vkGetPhysicalDeviceMemoryProperties2);
+
+            if (device->GetContextRhi()->debug)
+            { 
+                /* VK_EXT_debug_utils */
+                get_func(create_messenger,  vkCreateDebugUtilsMessengerEXT);
+                get_func(destroy_messenger, vkDestroyDebugUtilsMessengerEXT);
+                get_func(marker_begin,      vkCmdBeginDebugUtilsLabelEXT);
+                get_func(marker_end,        vkCmdEndDebugUtilsLabelEXT);
+
+                /* VK_EXT_debug_marker */
+                get_func(set_object_tag,    vkSetDebugUtilsObjectTagEXT);
+                get_func(set_object_name,   vkSetDebugUtilsObjectNameEXT);
+            }
+        }
+
+        static PFN_vkCreateDebugUtilsMessengerEXT           create_messenger;
+        static VkDebugUtilsMessengerEXT                     messenger;
+        static PFN_vkDestroyDebugUtilsMessengerEXT          destroy_messenger;
+        static PFN_vkSetDebugUtilsObjectTagEXT              set_object_tag;
+        static PFN_vkSetDebugUtilsObjectNameEXT             set_object_name;
+        static PFN_vkCmdBeginDebugUtilsLabelEXT             marker_begin;
+        static PFN_vkCmdEndDebugUtilsLabelEXT               marker_end;
+        static PFN_vkGetPhysicalDeviceMemoryProperties2KHR  get_physical_device_memory_properties_2;
+    };
+
     class debug
     {
     public:
@@ -1204,7 +1242,7 @@ namespace Spartan::vulkan_common
 
         static void debug::initialize(VkInstance instance)
         {
-            if (const auto func = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT")))
+            if (functions::create_messenger)
             {
                 VkDebugUtilsMessengerCreateInfoEXT create_info  = {};
                 create_info.sType                               = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
@@ -1212,55 +1250,21 @@ namespace Spartan::vulkan_common
                 create_info.messageType                         = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
                 create_info.pfnUserCallback                     = callback;
 
-                func(instance, &create_info, nullptr, &m_messenger);
-            }
-            else
-            {
-                LOG_ERROR("Failed to get function pointer for vkCreateDebugUtilsMessengerEXT");
-            }
-
-            m_fn_destroy_messenger = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT"));
-            if (!m_fn_destroy_messenger)
-            {
-                LOG_ERROR("Failed to get function pointer for vkDestroyDebugUtilsMessengerEXT");
-            }
-
-            m_fn_set_object_tag = reinterpret_cast<PFN_vkSetDebugUtilsObjectTagEXT>(vkGetInstanceProcAddr(instance, "vkSetDebugUtilsObjectTagEXT"));
-            if (!m_fn_set_object_tag)
-            {
-                LOG_ERROR("Failed to get function pointer for vkSetDebugUtilsObjectTagEXT");
-            }
-
-            m_fn_set_object_name = reinterpret_cast<PFN_vkSetDebugUtilsObjectNameEXT>(vkGetInstanceProcAddr(instance, "vkSetDebugUtilsObjectNameEXT"));
-            if (!m_fn_set_object_name)
-            {
-                LOG_ERROR("Failed to get function pointer for vkSetDebugUtilsObjectNameEXT");
-            }
-
-            m_fn_marker_begin = reinterpret_cast<PFN_vkCmdBeginDebugUtilsLabelEXT>(vkGetInstanceProcAddr(instance, "vkCmdBeginDebugUtilsLabelEXT"));
-            if (!m_fn_marker_begin)
-            {
-                LOG_ERROR("Failed to get function pointer for vkCmdBeginDebugUtilsLabelEXT");
-            }
-
-            m_fn_marker_end = reinterpret_cast<PFN_vkCmdEndDebugUtilsLabelEXT>(vkGetInstanceProcAddr(instance, "vkCmdEndDebugUtilsLabelEXT"));
-            if (!m_fn_marker_end)
-            {
-                LOG_ERROR("Failed to get function pointer for vkCmdEndDebugUtilsLabelEXT");
+                functions::create_messenger(instance, &create_info, nullptr, &functions::messenger);
             }
         }
 
         static void shutdown(VkInstance instance)
         {
-            if (!m_fn_destroy_messenger)
+            if (!functions::destroy_messenger)
                 return;
 
-            m_fn_destroy_messenger(instance, m_messenger, nullptr);
+            functions::destroy_messenger(instance, functions::messenger, nullptr);
         }
 
         static void set_object_name(VkDevice device, uint64_t object, VkObjectType object_type, const char* name)
         {
-            if (!m_fn_set_object_name)
+            if (!functions::set_object_name)
                 return;
 
             VkDebugUtilsObjectNameInfoEXT name_info = {};
@@ -1269,12 +1273,12 @@ namespace Spartan::vulkan_common
             name_info.objectType                    = object_type;
             name_info.objectHandle                  = object;
             name_info.pObjectName                   = name;
-            m_fn_set_object_name(device, &name_info);
+            functions::set_object_name(device, &name_info);
         }
 
         static void set_object_tag(VkDevice device, uint64_t object, VkObjectType objectType, uint64_t name, size_t tagSize, const void* tag)
         {
-            if (!m_fn_set_object_tag)
+            if (!functions::set_object_tag)
                 return;
 
             VkDebugUtilsObjectTagInfoEXT tag_info    = {};
@@ -1285,12 +1289,12 @@ namespace Spartan::vulkan_common
             tag_info.tagName                         = name;
             tag_info.tagSize                         = tagSize;
             tag_info.pTag                            = tag;
-            m_fn_set_object_tag(device, &tag_info);
+            functions::set_object_tag(device, &tag_info);
         }
 
         static void begin(VkCommandBuffer cmd_buffer, const char* name, const Math::Vector4& color)
         {
-            if (!m_fn_marker_begin)
+            if (!functions::marker_begin)
                 return;
 
             VkDebugUtilsLabelEXT label  = {};
@@ -1301,15 +1305,15 @@ namespace Spartan::vulkan_common
             label.color[1]              = color.y;
             label.color[2]              = color.z;
             label.color[3]              = color.w;
-            m_fn_marker_begin(cmd_buffer, &label);
+            functions::marker_begin(cmd_buffer, &label);
         }
 
         static void end(VkCommandBuffer cmd_buffer)
         {
-            if (!m_fn_marker_end)
+            if (!functions::marker_end)
                 return;
 
-            m_fn_marker_end(cmd_buffer);
+            functions::marker_end(cmd_buffer);
         }
 
         static void set_command_pool_name(VkDevice device, VkCommandPool cmd_pool, const char* name)
@@ -1411,14 +1415,6 @@ namespace Spartan::vulkan_common
         {
             set_object_name(device, (uint64_t)_event, VK_OBJECT_TYPE_EVENT, name);
         }
-
-    private:
-        static VkDebugUtilsMessengerEXT             m_messenger;
-        static PFN_vkDestroyDebugUtilsMessengerEXT  m_fn_destroy_messenger;
-        static PFN_vkSetDebugUtilsObjectTagEXT      m_fn_set_object_tag;
-        static PFN_vkSetDebugUtilsObjectNameEXT     m_fn_set_object_name;
-        static PFN_vkCmdBeginDebugUtilsLabelEXT     m_fn_marker_begin;
-        static PFN_vkCmdEndDebugUtilsLabelEXT       m_fn_marker_end;
     };
 }
 
