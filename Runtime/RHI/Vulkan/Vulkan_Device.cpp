@@ -218,48 +218,5 @@ namespace Spartan
 			vkDestroyInstance(m_rhi_context->instance, nullptr);
 		}
 	}
-
-	bool RHI_Device::ProfilingCreateQuery(void** query, const RHI_Query_Type type) const
-	{
-		return true;
-	}
-
-	bool RHI_Device::ProfilingQueryStart(void* query_object) const
-	{
-		return true;
-	}
-
-	bool RHI_Device::ProfilingGetTimeStamp(void* query_object) const
-	{
-		return true;
-	}
-
-	float RHI_Device::ProfilingGetDuration(void* query_disjoint, void* query_start, void* query_end) const
-	{
-		return 0.0f;
-	}
-
-	void RHI_Device::ProfilingReleaseQuery(void* query_object)
-	{
-
-	}
-
-	uint32_t RHI_Device::ProfilingGetGpuMemory()
-	{
-		return 0;
-	}
-
-	uint32_t RHI_Device::ProfilingGetGpuMemoryUsage()
-	{
-		return 0;
-	}
-
-    bool RHI_Device::Flush()
-    {
-        if (!m_rhi_context || !m_rhi_context->queue_graphics)
-            return false;
-
-        return vulkan_common::error::check_result(vkQueueWaitIdle(m_rhi_context->queue_graphics));
-    }
 }
 #endif

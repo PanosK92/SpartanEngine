@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Device.h"
 #include "../Core/EventSystem.h"
 #include "../Rendering/Renderer.h"
+#include "../RHI/RHI_CommandList.h"
 #include "../Resource/ResourceCache.h"
 //====================================
 
@@ -56,7 +57,7 @@ namespace Spartan
 		if (const PhysicalDevice* physical_device = m_renderer->GetRhiDevice()->GetPrimaryPhysicalDevice())
 		{
 			m_gpu_name				= physical_device->name;
-			m_gpu_memory_available	= m_renderer->GetRhiDevice()->ProfilingGetGpuMemory();
+			m_gpu_memory_available	= RHI_CommandList::Gpu_GetMemory(m_renderer->GetRhiDevice().get());
 		}
 
 		return true;
@@ -89,7 +90,7 @@ namespace Spartan
         if (m_profile)
         {
             // Get GPU memory usage
-            m_gpu_memory_used = m_renderer->GetRhiDevice()->ProfilingGetGpuMemoryUsage();
+            m_gpu_memory_used = RHI_CommandList::Gpu_GetMemoryUsed(m_renderer->GetRhiDevice().get());
 
             // Create a string version of the rhi metrics
             if (m_renderer->GetOptions() & Render_Debug_PerformanceMetrics)

@@ -544,9 +544,52 @@ namespace Spartan
         return true;
 	}
 
-    void RHI_CommandList::Flush()
+    bool RHI_CommandList::Flush()
     {
-        vulkan_common::fence::wait_reset(m_rhi_device->GetContextRhi(), m_cmd_list_consumed_fence);
+        return vulkan_common::fence::wait_reset(m_rhi_device->GetContextRhi(), m_cmd_list_consumed_fence);
+    }
+
+    bool RHI_CommandList::Gpu_Flush(RHI_Device* rhi_device)
+    {
+        if (!rhi_device || !rhi_device->GetContextRhi() || !rhi_device->GetContextRhi()->queue_graphics)
+            return false;
+
+        return vulkan_common::error::check_result(vkQueueWaitIdle(rhi_device->GetContextRhi()->queue_graphics));
+    }
+
+    uint32_t RHI_CommandList::Gpu_GetMemory(RHI_Device* rhi_device)
+    {
+        return 0;
+    }
+
+    uint32_t RHI_CommandList::Gpu_GetMemoryUsed(RHI_Device* rhi_device)
+    {
+        return 0;
+    }
+
+    bool RHI_CommandList::Gpu_CreateQuery(RHI_Device* rhi_device, void** query, const RHI_Query_Type type)
+    {
+        return true;
+    }
+
+    bool RHI_CommandList::Gpu_QueryStart(RHI_Device* rhi_device, void* query_object)
+    {
+        return true;
+    }
+
+    bool RHI_CommandList::Gpu_GetTimeStamp(RHI_Device* rhi_device, void* query_object)
+    {
+        return true;
+    }
+
+    float RHI_CommandList::Gpu_GetDuration(RHI_Device* rhi_device, void* query_disjoint, void* query_start, void* query_end)
+    {
+        return 0.0f;
+    }
+
+    void RHI_CommandList::Gpu_ReleaseQuery(void* query_object)
+    {
+
     }
 }
 #endif
