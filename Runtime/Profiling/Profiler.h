@@ -91,6 +91,8 @@ namespace Spartan
 		uint32_t m_rhi_bindings_shader_pixel	= 0;
         uint32_t m_rhi_bindings_shader_compute  = 0;
 		uint32_t m_rhi_bindings_render_target	= 0;
+        uint32_t m_rhi_bindings_descriptor_set  = 0;
+        uint32_t m_rhi_bindings_pipeline        = 0;
 
 		// Metrics - Renderer
 		uint32_t m_renderer_meshes_rendered = 0;
@@ -114,6 +116,8 @@ namespace Spartan
             m_rhi_bindings_shader_pixel     = 0;
             m_rhi_bindings_shader_compute   = 0;
             m_rhi_bindings_render_target    = 0;
+            m_rhi_bindings_descriptor_set   = 0;
+            m_rhi_bindings_pipeline         = 0;
         }
 
 		TimeBlock* GetNewTimeBlock();

@@ -257,35 +257,38 @@ namespace Spartan
 		const auto texture_count	= m_resource_manager->GetResourceCount(Resource_Texture) + m_resource_manager->GetResourceCount(Resource_Texture2d) + m_resource_manager->GetResourceCount(Resource_TextureCube);
 		const auto material_count	= m_resource_manager->GetResourceCount(Resource_Material);
 
-		static char buffer[1000]; // real usage is around 700
+        static const char* text =
+            // Performance
+            "FPS:\t\t\t\t\t\t\t%.2f\n"
+            "Frame time:\t\t\t\t\t%.2f\n"
+            "CPU time:\t\t\t\t\t%.2f\n"
+            "GPU time:\t\t\t\t\t%.2f\n"
+            "GPU:\t\t\t\t\t\t\t%s\n"
+            "VRAM:\t\t\t\t\t\t%d/%d MB\n"
+            // Renderer
+            "Resolution:\t\t\t\t\t%dx%d\n"
+            "Meshes rendered:\t\t\t\t%d\n"
+            "Textures:\t\t\t\t\t%d\n"
+            "Materials:\t\t\t\t\t%d\n"
+            // RHI
+            "RHI Draw calls:\t\t\t\t%d\n"
+            "RHI Index buffer bindings:\t\t%d\n"
+            "RHI Vertex buffer bindings:\t\t%d\n"
+            "RHI Constant buffer bindings:\t%d\n"
+            "RHI Sampler bindings:\t\t\t%d\n"
+            "RHI Texture bindings:\t\t\t%d\n"
+            "RHI Vertex Shader bindings:\t\t%d\n"
+            "RHI Pixel Shader bindings:\t\t%d\n"
+            "RHI Compute Shader bindings:\t%d\n"
+            "RHI Render Target bindings:\t\t%d\n"
+            "RHI Pipeline bindings:\t\t\t%d\n"
+            "RHI Descriptor Set bindings:\t\t%d";
+
+		static char buffer[1024]; // real usage is around 800
 		sprintf_s
 		(
-			buffer,
+			buffer, text,
 
-			// Performance
-			"FPS:\t\t\t\t\t\t\t%.2f\n"
-			"Frame time:\t\t\t\t\t%.2f\n"
-			"CPU time:\t\t\t\t\t%.2f\n"
-			"GPU time:\t\t\t\t\t%.2f\n"
-			"GPU:\t\t\t\t\t\t\t%s\n"
-			"VRAM:\t\t\t\t\t\t%d/%d MB\n"
-			// Renderer
-			"Resolution:\t\t\t\t\t%dx%d\n"
-			"Meshes rendered:\t\t\t\t%d\n"
-			"Textures:\t\t\t\t\t%d\n"
-			"Materials:\t\t\t\t\t%d\n"
-			// RHI
-			"RHI Draw calls:\t\t\t\t%d\n"
-			"RHI Index buffer bindings:\t\t%d\n"
-			"RHI Vertex buffer bindings:\t\t%d\n"
-			"RHI Constant buffer bindings:\t%d\n"
-			"RHI Sampler bindings:\t\t\t%d\n"
-			"RHI Texture bindings:\t\t\t%d\n"
-			"RHI Vertex Shader bindings:\t\t%d\n"
-			"RHI Pixel Shader bindings:\t\t%d\n"
-            "RHI Compute Shader bindings:\t%d\n"
-			"RHI Render Target bindings:\t\t%d",
-			
 			// Performance
 			m_fps,
 			m_time_frame_ms,
@@ -294,11 +297,13 @@ namespace Spartan
 			m_gpu_name.c_str(),
 			m_gpu_memory_used,
 			m_gpu_memory_available,
+
 			// Renderer
 			static_cast<int>(m_renderer->GetResolution().x), static_cast<int>(m_renderer->GetResolution().y),
 			m_renderer_meshes_rendered,
 			texture_count,
 			material_count,
+
 			// RHI
 			m_rhi_draw_calls,
 			m_rhi_bindings_buffer_index,
@@ -309,7 +314,9 @@ namespace Spartan
 			m_rhi_bindings_shader_vertex,
 			m_rhi_bindings_shader_pixel,
             m_rhi_bindings_shader_compute,
-			m_rhi_bindings_render_target
+			m_rhi_bindings_render_target,
+            m_rhi_bindings_pipeline,
+            m_rhi_bindings_descriptor_set
 		);
 
 		m_metrics = string(buffer);
