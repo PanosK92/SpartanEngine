@@ -106,6 +106,7 @@ namespace Spartan
             Flush();
             m_pipeline->OnCommandListConsumed();
             m_cmd_state = RHI_Cmd_List_Idle;
+            m_render_pass_and_pipeline_bound = false;
         }
 
         if (m_cmd_state != RHI_Cmd_List_Idle)
@@ -147,52 +148,6 @@ namespace Spartan
         // Start marker and profiler (if used)
         MarkAndProfileStart(m_pipeline_state);
 
-        // Clear values
-        array<VkClearValue, state_max_render_target_count + 1> clear_values; // +1 for depth      
-        uint32_t clear_value_count = 0;
-        {
-            // Color
-            for (auto i = 0; i < state_max_render_target_count; i++)
-            {
-                if (m_pipeline_state->render_target_color_clear[i] != state_dont_clear_color)
-                {
-                    Vector4& color = m_pipeline_state->render_target_color_clear[i];
-                    clear_values[clear_value_count++].color = { {color.x, color.y, color.z, color.w} };
-                }
-            }
-
-            // Depth
-            if (m_pipeline_state->render_target_depth_clear != state_dont_clear_depth)
-            {
-                clear_values[clear_value_count++].depthStencil = { m_pipeline_state->render_target_depth_clear, 0 };
-            }
-
-            // Swapchain
-        }
-
-		// Begin render pass
-		VkRenderPassBeginInfo render_pass_info		= {};
-		render_pass_info.sType						= VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		render_pass_info.renderPass					= static_cast<VkRenderPass>(m_pipeline->GetPipelineState()->GetRenderPass());
-		render_pass_info.framebuffer				= static_cast<VkFramebuffer>(m_pipeline->GetPipelineState()->GetFrameBuffer());
-		render_pass_info.renderArea.offset			= { 0, 0 };
-        render_pass_info.renderArea.extent.width    = m_pipeline->GetPipelineState()->GetWidth();
-		render_pass_info.renderArea.extent.height	= m_pipeline->GetPipelineState()->GetHeight();
-		render_pass_info.clearValueCount			= static_cast<uint32_t>(clear_values.size());
-		render_pass_info.pClearValues				= clear_values.data();
-		vkCmdBeginRenderPass(CMD_BUFFER, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
-
-        // Bind pipeline
-        if (VkPipeline pipeline = static_cast<VkPipeline>(m_pipeline->GetPipeline()))
-        {
-            vkCmdBindPipeline(CMD_BUFFER, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-        }
-        else
-        {
-            LOG_ERROR("Invalid pipeline");
-            return false;
-        }
-
         // Temp hack until I implement some method to have one time set global resources
         m_renderer->SetGlobalSamplersAndConstantBuffers(this);
 
@@ -208,7 +163,10 @@ namespace Spartan
         }
 
         // End render pass
-        vkCmdEndRenderPass(CMD_BUFFER);
+        if (m_render_pass_and_pipeline_bound)
+        {
+            vkCmdEndRenderPass(CMD_BUFFER);
+        }
 
         // End marker and profiler (if enabled)
         MarkAndProfileEnd(m_pipeline_state);
@@ -231,23 +189,9 @@ namespace Spartan
             return;
         }
 
-        // Update descriptor set (if needed)
-        if (void* descriptor = m_pipeline->GetDescriptorSet())
-        {
-            // Bind descriptor set
-            VkDescriptorSet descriptor_sets[1] = { static_cast<VkDescriptorSet>(descriptor) };
-            vkCmdBindDescriptorSets
-            (
-                CMD_BUFFER,                                                     // commandBuffer
-                VK_PIPELINE_BIND_POINT_GRAPHICS,                                // pipelineBindPoint
-                static_cast<VkPipelineLayout>(m_pipeline->GetPipelineLayout()), // layout
-                0,                                                              // firstSet
-                1,                                                              // descriptorSetCount
-                descriptor_sets,                                                // pDescriptorSets
-                0,                                                              // dynamicOffsetCount
-                nullptr                                                         // pDynamicOffsets
-            );
-        }
+        // Ensure correct state before attempting to draw
+        if (!OnDraw())
+            return;
 
 		vkCmdDraw(
             CMD_BUFFER,     // commandBuffer
@@ -256,6 +200,8 @@ namespace Spartan
             0,              // firstVertex
             0               // firstInstance
         );
+
+        m_profiler->m_rhi_draw_calls++;
 	}
 
 	void RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset)
@@ -266,23 +212,9 @@ namespace Spartan
             return;
         }
 
-        // Update descriptor set (if needed)
-        if (void* descriptor = m_pipeline->GetDescriptorSet())
-        {
-            // Bind descriptor set
-            VkDescriptorSet descriptor_sets[1] = { static_cast<VkDescriptorSet>(descriptor) };
-            vkCmdBindDescriptorSets
-            (
-                CMD_BUFFER,                                                     // commandBuffer
-                VK_PIPELINE_BIND_POINT_GRAPHICS,                                // pipelineBindPoint
-                static_cast<VkPipelineLayout>(m_pipeline->GetPipelineLayout()), // layout
-                0,                                                              // firstSet
-                1,                                                              // descriptorSetCount
-                descriptor_sets,                                                // pDescriptorSets
-                0,                                                              // dynamicOffsetCount
-                nullptr                                                         // pDynamicOffsets
-            );
-        }
+        // Ensure correct state before attempting to draw
+        if (!OnDraw())
+            return;
 
 		vkCmdDrawIndexed(
             CMD_BUFFER,     // commandBuffer
@@ -292,6 +224,8 @@ namespace Spartan
             vertex_offset,  // vertexOffset
             0               // firstInstance
         );
+
+        m_profiler->m_rhi_draw_calls++;
 	}
 
 	void RHI_CommandList::SetViewport(const RHI_Viewport& viewport)
@@ -358,6 +292,8 @@ namespace Spartan
             vertex_buffers, // pBuffers
             offsets         // pOffsets
         );
+
+        m_profiler->m_rhi_bindings_buffer_vertex++;
 	}
 
 	void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer)
@@ -374,6 +310,8 @@ namespace Spartan
 			0,																// offset
 			buffer->Is16Bit() ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32 // indexType
 		);
+
+        m_profiler->m_rhi_bindings_buffer_index++;
 	}
 
     void RHI_CommandList::SetConstantBuffer(const uint32_t slot, uint8_t scope, RHI_ConstantBuffer* constant_buffer)
@@ -418,6 +356,19 @@ namespace Spartan
         if (texture->GetLayout() == RHI_Image_Undefined || texture->GetLayout() == RHI_Image_Preinitialized)
         {
             texture = m_renderer->GetBlackTexture();
+        }
+
+        // Transition to appropriate layout (if needed)
+        {
+            if (texture->IsColorFormat() && texture->GetLayout() != RHI_Image_Shader_Read_Only_Optimal)
+            {
+                texture->SetLayout(RHI_Image_Shader_Read_Only_Optimal, this);
+            }
+
+            if (texture->IsDepthFormat() && texture->GetLayout() != RHI_Image_Depth_Stencil_Read_Only_Optimal)
+            {
+                texture->SetLayout(RHI_Image_Depth_Stencil_Read_Only_Optimal, this);
+            }
         }
 
         // Set
@@ -690,6 +641,84 @@ namespace Spartan
                 m_profiler->TimeBlockEnd(); // gpu
             }
         }
+    }
+
+    bool RHI_CommandList::OnDraw()
+    {
+        // Begin render pass and bind pipeline (if not done yet)
+        if (!m_render_pass_and_pipeline_bound)
+        {
+            // Clear values
+            array<VkClearValue, state_max_render_target_count + 1> clear_values; // +1 for depth      
+            uint32_t clear_value_count = 0;
+            {
+                // Color
+                for (auto i = 0; i < state_max_render_target_count; i++)
+                {
+                    if (m_pipeline_state->render_target_color_clear[i] != state_dont_clear_color)
+                    {
+                        Vector4& color = m_pipeline_state->render_target_color_clear[i];
+                        clear_values[clear_value_count++].color = { {color.x, color.y, color.z, color.w} };
+                    }
+                }
+
+                // Depth
+                if (m_pipeline_state->render_target_depth_clear != state_dont_clear_depth)
+                {
+                    clear_values[clear_value_count++].depthStencil = { m_pipeline_state->render_target_depth_clear, 0 };
+                }
+
+                // Swapchain
+            }
+
+            // Begin render pass
+		    VkRenderPassBeginInfo render_pass_info		= {};
+		    render_pass_info.sType						= VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		    render_pass_info.renderPass					= static_cast<VkRenderPass>(m_pipeline->GetPipelineState()->GetRenderPass());
+		    render_pass_info.framebuffer				= static_cast<VkFramebuffer>(m_pipeline->GetPipelineState()->GetFrameBuffer());
+		    render_pass_info.renderArea.offset			= { 0, 0 };
+            render_pass_info.renderArea.extent.width    = m_pipeline->GetPipelineState()->GetWidth();
+		    render_pass_info.renderArea.extent.height	= m_pipeline->GetPipelineState()->GetHeight();
+		    render_pass_info.clearValueCount			= static_cast<uint32_t>(clear_values.size());
+		    render_pass_info.pClearValues				= clear_values.data();
+		    vkCmdBeginRenderPass(CMD_BUFFER, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
+
+            // Bind pipeline
+            if (VkPipeline vk_pipeline = static_cast<VkPipeline>(m_pipeline->GetPipeline()))
+            {
+                vkCmdBindPipeline(CMD_BUFFER, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline);
+                m_profiler->m_rhi_bindings_pipeline++;
+            }
+            else
+            {
+                LOG_ERROR("Invalid pipeline");
+                return false;
+            }
+
+            m_render_pass_and_pipeline_bound = true;
+        }
+
+        // Update descriptor set (if not done yet)
+        if (void* descriptor = m_pipeline->GetDescriptorSet())
+        {
+            // Bind descriptor set
+            VkDescriptorSet descriptor_sets[1] = { static_cast<VkDescriptorSet>(descriptor) };
+            vkCmdBindDescriptorSets
+            (
+                CMD_BUFFER,                                                     // commandBuffer
+                VK_PIPELINE_BIND_POINT_GRAPHICS,                                // pipelineBindPoint
+                static_cast<VkPipelineLayout>(m_pipeline->GetPipelineLayout()), // layout
+                0,                                                              // firstSet
+                1,                                                              // descriptorSetCount
+                descriptor_sets,                                                // pDescriptorSets
+                0,                                                              // dynamicOffsetCount
+                nullptr                                                         // pDynamicOffsets
+            );
+
+            m_profiler->m_rhi_bindings_descriptor_set++;
+        }
+
+        return true;
     }
 }
 #endif

@@ -659,5 +659,10 @@ namespace Spartan
 
         m_passes_active[--m_pass_index] = false;
     }
+
+    bool RHI_CommandList::OnDraw()
+    {
+        return true;
+    }
 }
 #endif

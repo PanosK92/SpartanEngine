@@ -113,6 +113,7 @@ namespace Spartan
 	private:
         void MarkAndProfileStart(const RHI_PipelineState* pipeline_state);
         void MarkAndProfileEnd(const RHI_PipelineState* pipeline_state);
+        bool OnDraw();
 
         std::vector<bool> m_passes_active;
         uint32_t m_pass_index                   = 0;
@@ -127,6 +128,7 @@ namespace Spartan
         void* m_cmd_buffer                      = nullptr;
         void* m_cmd_list_consumed_fence         = nullptr;
         void* m_query_pool                      = nullptr;
+        bool m_render_pass_and_pipeline_bound   = false;
         std::vector<uint64_t> m_timestamps;
 	};
 }

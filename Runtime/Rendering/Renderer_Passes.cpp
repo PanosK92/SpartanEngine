@@ -1666,7 +1666,21 @@ namespace Spartan
         }
 
         // Draw lines without depth
+        const auto line_vertex_buffer_size = static_cast<uint32_t>(m_lines_list_depth_disabled.size());
+        if (line_vertex_buffer_size != 0)
         {
+            // Grow vertex buffer (if needed)
+            if (line_vertex_buffer_size > m_vertex_buffer_lines->GetVertexCount())
+            {
+                m_vertex_buffer_lines->CreateDynamic<RHI_Vertex_PosCol>(line_vertex_buffer_size);
+            }
+
+            // Update vertex buffer
+            const auto buffer = static_cast<RHI_Vertex_PosCol*>(m_vertex_buffer_lines->Map());
+            copy(m_lines_list_depth_disabled.begin(), m_lines_list_depth_disabled.end(), buffer);
+            m_vertex_buffer_lines->Unmap();
+            m_lines_list_depth_disabled.clear();
+
             // Set render state
             static RHI_PipelineState pipeline_state;
             pipeline_state.shader_vertex                    = shader_color_v.get();
@@ -1683,26 +1697,8 @@ namespace Spartan
             // Create and submit command list
             if (cmd_list->Begin(pipeline_state))
             {
-                // Lines
-                const auto line_vertex_buffer_size = static_cast<uint32_t>(m_lines_list_depth_disabled.size());
-                if (line_vertex_buffer_size != 0)
-                {
-                    // Grow vertex buffer (if needed)
-                    if (line_vertex_buffer_size > m_vertex_buffer_lines->GetVertexCount())
-                    {
-                        m_vertex_buffer_lines->CreateDynamic<RHI_Vertex_PosCol>(line_vertex_buffer_size);
-                    }
-
-                    // Update vertex buffer
-                    const auto buffer = static_cast<RHI_Vertex_PosCol*>(m_vertex_buffer_lines->Map());
-                    copy(m_lines_list_depth_disabled.begin(), m_lines_list_depth_disabled.end(), buffer);
-                    m_vertex_buffer_lines->Unmap();
-                    m_lines_list_depth_disabled.clear();
-
-                    cmd_list->SetBufferVertex(m_vertex_buffer_lines);
-                    cmd_list->Draw(line_vertex_buffer_size);
-                }
-
+                cmd_list->SetBufferVertex(m_vertex_buffer_lines);
+                cmd_list->Draw(line_vertex_buffer_size);
                 cmd_list->End();
                 cmd_list->Submit();
             }
