@@ -29,8 +29,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/ISubsystem.h"
 //=============================
 
-#define TIME_BLOCK_START_CPU_NAMED(profiler, name)  profiler->TimeBlockStart(name, true, false);
-#define TIME_BLOCK_START_CPU(profiler)		        profiler->TimeBlockStart(__FUNCTION__, true, false);
+#define TIME_BLOCK_START_CPU_NAMED(profiler, name)  profiler->TimeBlockStart(name, Spartan::TimeBlock_Type::TimeBlock_Cpu);
+#define TIME_BLOCK_START_CPU(profiler)		        profiler->TimeBlockStart(__FUNCTION__, Spartan::TimeBlock_Type::TimeBlock_Cpu);
 #define TIME_BLOCK_END_CPU(profiler)			    profiler->TimeBlockEnd();
 
 namespace Spartan
@@ -57,7 +57,7 @@ namespace Spartan
         void OnFrameEnd();
 
 		// Time block
-		void TimeBlockStart(const std::string& func_name, bool profile_cpu = true, bool profile_gpu = false, RHI_CommandList* cmd_list = nullptr);
+		void TimeBlockStart(const char* func_name, TimeBlock_Type type, RHI_CommandList* cmd_list = nullptr);
 		void TimeBlockEnd();
 
         // Stutter detection
@@ -116,9 +116,8 @@ namespace Spartan
             m_rhi_bindings_render_target    = 0;
         }
 
-		TimeBlock* GetNextTimeBlock();
-		TimeBlock* GetLastIncompleteTimeBlock();
-		TimeBlock* GetSecondLastIncompleteTimeBlock();
+		TimeBlock* GetNewTimeBlock();
+		TimeBlock* GetLastIncompleteTimeBlock(TimeBlock_Type type = TimeBlock_Undefined);
 		void ComputeFps(float delta_time);
         void ComputeCpuAndGpuTime(float* time_cpu, float* time_gpu);
 		void UpdateRhiMetricsString();
@@ -156,7 +155,7 @@ namespace Spartan
 
 		// Misc
 		std::string m_metrics;
-		bool m_profile = false;
+		bool m_profile = true;
 	
 		// Dependencies
 		ResourceCache* m_resource_manager	= nullptr;

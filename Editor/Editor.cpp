@@ -77,6 +77,7 @@ void Editor::OnWindowMessage(WindowData& window_data)
         // Acquire useful engine subsystems
         m_context       = m_engine->GetContext();
         m_renderer      = m_context->GetSubsystem<Renderer>().get();
+        m_profiler      = m_context->GetSubsystem<Profiler>().get();
         m_rhi_device    = m_renderer->GetRhiDevice();
         
         if (m_renderer->IsInitialized())
@@ -138,30 +139,35 @@ void Editor::OnTick()
 	if (!m_engine)
 		return;
 
-	// Update engine (will simulate and render)
+	// Engine
 	m_engine->Tick();
 
-    // Ensure that rendering can take place
-    if (!m_renderer || !m_renderer->IsInitialized())
-        return;
+    // Editor
+    m_profiler->TimeBlockStart("Editor", TimeBlock_Cpu);
+    {
+        // Ensure that rendering can take place
+        if (!m_renderer || !m_renderer->IsInitialized())
+            return;
 
-	// ImGui implementation - start frame
-	ImGui_ImplWin32_NewFrame();
-	ImGui::NewFrame();
+        // ImGui implementation - start frame
+        ImGui_ImplWin32_NewFrame();
+        ImGui::NewFrame();
 
-	// Editor update
-	Widgets_Tick();
+        // Editor update
+        Widgets_Tick();
 
-	// ImGui implementation - end frame
-	ImGui::Render();
-	ImGui::RHI::RenderDrawData(ImGui::GetDrawData());
+        // ImGui implementation - end frame
+        ImGui::Render();
+        ImGui::RHI::RenderDrawData(ImGui::GetDrawData());
 
-	// Update and Render additional Platform Windows
-	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable)
-	{
-		ImGui::UpdatePlatformWindows();
-		ImGui::RenderPlatformWindowsDefault();
-	}
+        // Update and Render additional Platform Windows
+        if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable)
+        {
+            ImGui::UpdatePlatformWindows();
+            ImGui::RenderPlatformWindowsDefault();
+        }
+    }
+    m_profiler->TimeBlockEnd();
 }
 
 void Editor::Widgets_Create()
