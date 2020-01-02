@@ -122,7 +122,7 @@ namespace Spartan
 		m_world->stepSimulation(delta_time_sec, max_substeps, internal_time_step);
 		m_simulating = false;
 
-		TIME_BLOCK_END(m_profiler);
+		TIME_BLOCK_END_CPU(m_profiler);
 	}
 
 	Vector3 Physics::GetGravity() const

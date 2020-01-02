@@ -180,7 +180,7 @@ namespace Spartan
 		}
 		//=============================================================
 
-		TIME_BLOCK_END(m_profiler);
+		TIME_BLOCK_END_CPU(m_profiler);
 	}
 
     void Audio::SetListenerTransform(Transform* transform)

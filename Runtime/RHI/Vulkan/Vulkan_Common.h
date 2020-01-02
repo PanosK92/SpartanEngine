@@ -80,7 +80,7 @@ namespace Spartan::vulkan_common
             return "Unknown error code";
         }
 
-        inline bool check_result(VkResult result)
+        inline bool check(VkResult result)
         {
             if (result == VK_SUCCESS)
                 return true;
@@ -89,7 +89,7 @@ namespace Spartan::vulkan_common
             return false;
         }
 
-        inline void assert_result(VkResult result)
+        inline void _assert(VkResult result)
         {
             SPARTAN_ASSERT(result == VK_SUCCESS);
         }
@@ -175,7 +175,7 @@ namespace Spartan::vulkan_common
             // Register all physical devices
             {
                 uint32_t device_count = 0;
-                if (!error::check_result(vkEnumeratePhysicalDevices(rhi_context->instance, &device_count, nullptr)))
+                if (!error::check(vkEnumeratePhysicalDevices(rhi_context->instance, &device_count, nullptr)))
                     return false;
 
                 if (device_count == 0)
@@ -185,7 +185,7 @@ namespace Spartan::vulkan_common
                 }
 
                 std::vector<VkPhysicalDevice> physical_devices(device_count);
-                if (!error::check_result(vkEnumeratePhysicalDevices(rhi_context->instance, &device_count, physical_devices.data())))
+                if (!error::check(vkEnumeratePhysicalDevices(rhi_context->instance, &device_count, physical_devices.data())))
                     return false;
 
                 // Go through all the devices
@@ -274,7 +274,7 @@ namespace Spartan::vulkan_common
             cmd_pool_info.flags                     = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
             VkCommandPool* cmd_pool_vk = reinterpret_cast<VkCommandPool*>(&cmd_pool);
-            return error::check_result(vkCreateCommandPool(rhi_context->device, &cmd_pool_info, nullptr, cmd_pool_vk));
+            return error::check(vkCreateCommandPool(rhi_context->device, &cmd_pool_info, nullptr, cmd_pool_vk));
         }
 
         inline void destroy(const RHI_Context* rhi_context, void*& cmd_pool)
@@ -302,7 +302,7 @@ namespace Spartan::vulkan_common
             allocate_info.level                         = level;
             allocate_info.commandBufferCount            = 1;
 
-            return error::check_result(vkAllocateCommandBuffers(rhi_context->device, &allocate_info, cmd_buffer_vk));
+            return error::check(vkAllocateCommandBuffers(rhi_context->device, &allocate_info, cmd_buffer_vk));
         }
 
         static void free(const RHI_Context* rhi_context, void*& cmd_pool, void*& cmd_buffer)
@@ -327,7 +327,7 @@ namespace Spartan::vulkan_common
             begin_info.flags                    = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
             VkCommandBuffer cmd_buffer_vk = reinterpret_cast<VkCommandBuffer>(m_cmd_buffer);
-            if (!error::check_result(vkBeginCommandBuffer(cmd_buffer_vk, &begin_info)))
+            if (!error::check(vkBeginCommandBuffer(cmd_buffer_vk, &begin_info)))
                 return nullptr;
 
             return cmd_buffer_vk;
@@ -340,7 +340,7 @@ namespace Spartan::vulkan_common
 
             VkCommandBuffer cmd_buffer_vk = static_cast<VkCommandBuffer>(m_cmd_buffer);
 
-            if (!error::check_result(vkEndCommandBuffer(cmd_buffer_vk)))
+            if (!error::check(vkEndCommandBuffer(cmd_buffer_vk)))
                 return false;
 
             VkSubmitInfo submitInfo         = {};
@@ -348,10 +348,10 @@ namespace Spartan::vulkan_common
             submitInfo.commandBufferCount   = 1;
             submitInfo.pCommandBuffers      = &cmd_buffer_vk;
 
-            if (!error::check_result(vkQueueSubmit(queue, 1, &submitInfo, nullptr)))
+            if (!error::check(vkQueueSubmit(queue, 1, &submitInfo, nullptr)))
                 return false;
 
-            if (!error::check_result(vkQueueWaitIdle(queue)))
+            if (!error::check(vkQueueWaitIdle(queue)))
                 return false;
 
             free(rhi_context, m_cmd_pool, m_cmd_buffer);
@@ -368,7 +368,7 @@ namespace Spartan::vulkan_common
             cmd_pool_info.queueFamilyIndex          = queue_family_index;
             cmd_pool_info.flags                     = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
-            return error::check_result(vkCreateCommandPool(rhi_context->device, &cmd_pool_info, nullptr, reinterpret_cast<VkCommandPool*>(&m_cmd_pool)));
+            return error::check(vkCreateCommandPool(rhi_context->device, &cmd_pool_info, nullptr, reinterpret_cast<VkCommandPool*>(&m_cmd_pool)));
         }
 
         static bool command_buffer::create(const RHI_Context* rhi_context, const VkCommandBufferLevel level)
@@ -379,7 +379,7 @@ namespace Spartan::vulkan_common
             allocate_info.level                         = level;
             allocate_info.commandBufferCount            = 1;
 
-            return error::check_result(vkAllocateCommandBuffers(rhi_context->device, &allocate_info, reinterpret_cast<VkCommandBuffer*>(&m_cmd_buffer)));
+            return error::check(vkAllocateCommandBuffers(rhi_context->device, &allocate_info, reinterpret_cast<VkCommandBuffer*>(&m_cmd_buffer)));
     }
 
         static void* m_cmd_pool;
@@ -394,7 +394,7 @@ namespace Spartan::vulkan_common
 			semaphore_info.sType					= VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
             VkSemaphore* semaphore_vk = reinterpret_cast<VkSemaphore*>(&semaphore);
-            return error::check_result(vkCreateSemaphore(rhi_context->device, &semaphore_info, nullptr, semaphore_vk));
+            return error::check(vkCreateSemaphore(rhi_context->device, &semaphore_info, nullptr, semaphore_vk));
 		}
 
 		inline void destroy(const RHI_Context* rhi_context, void*& semaphore)
@@ -416,7 +416,7 @@ namespace Spartan::vulkan_common
 			fence_info.sType				= VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 
             VkFence* fence_vk = reinterpret_cast<VkFence*>(&fence);
-            return error::check_result(vkCreateFence(rhi_context->device, &fence_info, nullptr, fence_vk));
+            return error::check(vkCreateFence(rhi_context->device, &fence_info, nullptr, fence_vk));
 		}
 
 		inline void destroy(const RHI_Context* rhi_context, void*& fence)
@@ -432,20 +432,20 @@ namespace Spartan::vulkan_common
 		inline bool wait(const RHI_Context* rhi_context, void*& fence)
 		{
             VkFence* fence_vk = reinterpret_cast<VkFence*>(&fence);
-            return error::check_result(vkWaitForFences(rhi_context->device, 1, fence_vk, true, std::numeric_limits<uint64_t>::max()));
+            return error::check(vkWaitForFences(rhi_context->device, 1, fence_vk, true, std::numeric_limits<uint64_t>::max()));
 		}
 
 		inline bool reset(const RHI_Context* rhi_context, void*& fence)
 		{
             VkFence* fence_vk = reinterpret_cast<VkFence*>(&fence);
-            return error::check_result(vkResetFences(rhi_context->device, 1, fence_vk));
+            return error::check(vkResetFences(rhi_context->device, 1, fence_vk));
 		}
 
 		inline bool wait_reset(const RHI_Context* rhi_context, void*& fence)
 		{
             VkFence* fence_vk = reinterpret_cast<VkFence*>(&fence);
-            return error::check_result(vkWaitForFences(rhi_context->device, 1, fence_vk, true, std::numeric_limits<uint64_t>::max())) &&
-            error::check_result(vkResetFences(rhi_context->device, 1, fence_vk));
+            return error::check(vkWaitForFences(rhi_context->device, 1, fence_vk, true, std::numeric_limits<uint64_t>::max())) &&
+            error::check(vkResetFences(rhi_context->device, 1, fence_vk));
 		}
 	}
 
@@ -462,7 +462,7 @@ namespace Spartan::vulkan_common
 			buffer_info.usage				= usage;
 			buffer_info.sharingMode			= VK_SHARING_MODE_EXCLUSIVE;
 
-			if (!error::check_result(vkCreateBuffer(rhi_context->device, &buffer_info, nullptr, buffer_vk)))
+			if (!error::check(vkCreateBuffer(rhi_context->device, &buffer_info, nullptr, buffer_vk)))
 				return false;
 
 			VkMemoryRequirements memory_requirements;
@@ -473,14 +473,14 @@ namespace Spartan::vulkan_common
 			alloc_info.allocationSize		= memory_requirements.size;
 			alloc_info.memoryTypeIndex		= memory::get_type(rhi_context, memory_property_flags, memory_requirements.memoryTypeBits);
 
-            if (!error::check_result(vkAllocateMemory(rhi_context->device, &alloc_info, nullptr, buffer_memory_vk)))
+            if (!error::check(vkAllocateMemory(rhi_context->device, &alloc_info, nullptr, buffer_memory_vk)))
                 return false;
 
             // If a pointer to the buffer data has been passed, map the buffer and copy over the data
             if (data != nullptr)
             {
                 void* mapped;
-                if (error::check_result(vkMapMemory(rhi_context->device, *buffer_memory_vk, 0, size, 0, &mapped)))
+                if (error::check(vkMapMemory(rhi_context->device, *buffer_memory_vk, 0, size, 0, &mapped)))
                 {
                     memcpy(mapped, data, size);
 
@@ -492,7 +492,7 @@ namespace Spartan::vulkan_common
                         mappedRange.offset              = 0;
                         mappedRange.size                = size;
 
-                        if (!error::check_result(vkFlushMappedMemoryRanges(rhi_context->device, 1, &mappedRange)))
+                        if (!error::check(vkFlushMappedMemoryRanges(rhi_context->device, 1, &mappedRange)))
                             return false;
                     }
 
@@ -501,7 +501,7 @@ namespace Spartan::vulkan_common
             }
 
             // Attach the memory to the buffer object
-            if (!error::check_result(vkBindBufferMemory(rhi_context->device, *buffer_vk, *buffer_memory_vk, 0)))
+            if (!error::check(vkBindBufferMemory(rhi_context->device, *buffer_vk, *buffer_memory_vk, 0)))
                 return false;
 
 			return true;
@@ -550,10 +550,10 @@ namespace Spartan::vulkan_common
             allocate_info.allocationSize        = memory_requirements.size;
             allocate_info.memoryTypeIndex       = vulkan_common::memory::get_type(rhi_context, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memory_requirements.memoryTypeBits);
 
-            if (!error::check_result(vkAllocateMemory(rhi_context->device, &allocate_info, nullptr, memory)))
+            if (!error::check(vkAllocateMemory(rhi_context->device, &allocate_info, nullptr, memory)))
                 return false;
 
-            if (!error::check_result(vkBindImageMemory(rhi_context->device, image, *memory, 0)))
+            if (!error::check(vkBindImageMemory(rhi_context->device, image, *memory, 0)))
                 return false;
 
             if (memory_size)
@@ -597,7 +597,7 @@ namespace Spartan::vulkan_common
             create_info.samples             = VK_SAMPLE_COUNT_1_BIT;
             create_info.sharingMode         = VK_SHARING_MODE_EXCLUSIVE;
 
-            return vulkan_common::error::check_result(vkCreateImage(rhi_context->device, &create_info, nullptr, &image));
+            return vulkan_common::error::check(vkCreateImage(rhi_context->device, &create_info, nullptr, &image));
         }
 
         inline void destroy(const RHI_Context* rhi_context, void*& image)
@@ -860,7 +860,7 @@ namespace Spartan::vulkan_common
                 create_info.components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY;
 
                 VkImageView* image_view_vk = reinterpret_cast<VkImageView*>(&image_view);
-                return error::check_result(vkCreateImageView(rhi_context->device, &create_info, nullptr, image_view_vk));
+                return error::check(vkCreateImageView(rhi_context->device, &create_info, nullptr, image_view_vk));
             }
 
             inline bool create(const RHI_Context* rhi_context, void* image, void*& image_view, const RHI_Texture* texture)
@@ -1009,7 +1009,7 @@ namespace Spartan::vulkan_common
             render_pass_info.pDependencies          = dependencies.data();
 
             VkRenderPass* render_pass_vk = reinterpret_cast<VkRenderPass*>(&render_pass);
-            return error::check_result(vkCreateRenderPass(rhi_context->device, &render_pass_info, nullptr, render_pass_vk));
+            return error::check(vkCreateRenderPass(rhi_context->device, &render_pass_info, nullptr, render_pass_vk));
         }
 
         inline void destroy(const RHI_Context* rhi_context, void*& render_pass)
@@ -1037,7 +1037,7 @@ namespace Spartan::vulkan_common
             create_info.layers                  = 1;
 
             VkFramebuffer* frame_buffer_vk = reinterpret_cast<VkFramebuffer*>(&frame_buffer);
-            return error::check_result(vkCreateFramebuffer(rhi_context->device, &create_info, nullptr, frame_buffer_vk));
+            return error::check(vkCreateFramebuffer(rhi_context->device, &create_info, nullptr, frame_buffer_vk));
         }
 
         inline void destroy(const RHI_Context* rhi_context, void*& frame_buffer)
@@ -1075,7 +1075,7 @@ namespace Spartan::vulkan_common
             vkGetPhysicalDeviceSurfaceFormatsKHR(rhi_context->device_physical, surface, &format_count, nullptr);
 
             std::vector<VkSurfaceFormatKHR> surface_formats(format_count);
-            error::check_result(vkGetPhysicalDeviceSurfaceFormatsKHR(rhi_context->device_physical, surface, &format_count, &surface_formats[0]));
+            error::check(vkGetPhysicalDeviceSurfaceFormatsKHR(rhi_context->device_physical, surface, &format_count, &surface_formats[0]));
 
             return surface_formats;
         }
@@ -1184,7 +1184,7 @@ namespace Spartan::vulkan_common
         {
             #define get_func(var, def)\
             var = reinterpret_cast<PFN_##def>(vkGetInstanceProcAddr(static_cast<VkInstance>(device->GetContextRhi()->instance), #def));\
-            if (!var) LOG_ERROR("Failed to get function pointer");\
+            if (!var) LOG_ERROR("Failed to get function pointer for %s", #def);\
 
             get_func(get_physical_device_memory_properties_2, vkGetPhysicalDeviceMemoryProperties2);
 

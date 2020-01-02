@@ -86,7 +86,7 @@ namespace Spartan
 				}
 			}
 
-			if (!vulkan_common::error::check_result(vkCreateInstance(&create_info, nullptr, &m_rhi_context->instance)))
+			if (!vulkan_common::error::check(vkCreateInstance(&create_info, nullptr, &m_rhi_context->instance)))
                 return;
 		}
 
@@ -130,14 +130,24 @@ namespace Spartan
 				}
 			}
 
+            // Get device properties
+            vkGetPhysicalDeviceProperties(static_cast<VkPhysicalDevice>(m_rhi_context->device_physical), &m_rhi_context->device_properties);
+
+            // Disable profiler if timestamps are not supported
+            if (m_rhi_context->profiler && !m_rhi_context->device_properties.limits.timestampComputeAndGraphics)
+            {
+                LOG_WARNING("Device doesn't support timestamps, disabling profiler...");
+                m_rhi_context->profiler = false;
+            }
+
 			// Get device features
             VkPhysicalDeviceFeatures device_features_enabled = {};
             {
-                VkPhysicalDeviceFeatures device_features_supported = {};
-                vkGetPhysicalDeviceFeatures(m_rhi_context->device_physical, &device_features_supported);
+                m_rhi_context->device_features = {};
+                vkGetPhysicalDeviceFeatures(m_rhi_context->device_physical, &m_rhi_context->device_features);
 
                 #define ENABLE_FEATURE(feature)                                                                    \
-                if (device_features_supported.feature)                                                             \
+                if (m_rhi_context->device_features.feature)                                                        \
                 {                                                                                                  \
                         device_features_enabled.feature = VK_TRUE;                                                 \
                 }                                                                                                  \
@@ -184,7 +194,7 @@ namespace Spartan
 			}
 
 			// Create
-			if (!vulkan_common::error::check_result(vkCreateDevice(m_rhi_context->device_physical, &create_info, nullptr, &m_rhi_context->device)))
+			if (!vulkan_common::error::check(vkCreateDevice(m_rhi_context->device_physical, &create_info, nullptr, &m_rhi_context->device)))
 				return;
 
             // Create queues
@@ -211,7 +221,7 @@ namespace Spartan
             return;
 
         // Release resources
-		if (vulkan_common::error::check_result(vkQueueWaitIdle(m_rhi_context->queue_graphics)))
+		if (vulkan_common::error::check(vkQueueWaitIdle(m_rhi_context->queue_graphics)))
 		{
             if (m_rhi_context->debug)
             {

@@ -137,7 +137,7 @@ namespace Spartan
             m_is_dirty = false;
         }
 
-        TIME_BLOCK_END(m_profiler);
+        TIME_BLOCK_END_CPU(m_profiler);
 	}
 
 	void World::Unload()

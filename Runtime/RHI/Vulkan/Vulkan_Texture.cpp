@@ -147,7 +147,7 @@ namespace Spartan
 
             // Copy data to buffer
             void* data = nullptr;
-            if (vulkan_common::error::check_result(vkMapMemory(rhi_context->device, static_cast<VkDeviceMemory>(staging_buffer_memory), 0, buffer_size, 0, &data)))
+            if (vulkan_common::error::check(vkMapMemory(rhi_context->device, static_cast<VkDeviceMemory>(staging_buffer_memory), 0, buffer_size, 0, &data)))
             {
                 memcpy(data, m_data.front().data(), static_cast<size_t>(buffer_size));
                 vkUnmapMemory(rhi_context->device, static_cast<VkDeviceMemory>(staging_buffer_memory));
