@@ -67,6 +67,11 @@ namespace Spartan
         uint32_t render_target_depth_array_index    = 0;
         Math::Vector4 render_target_color_clear[state_max_render_target_count];
 
+        // Profiling
+        const char* pass_name   = nullptr;
+        bool mark               = false;
+        bool profile            = false;
+
     private:
         void DestroyFrameResources();
 

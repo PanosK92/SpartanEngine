@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Rendering/Renderer.h"
 #include "../RHI/RHI_CommandList.h"
 #include "../Resource/ResourceCache.h"
+#include "../RHI/RHI_Implementation.h"
 //====================================
 
 //= NAMESPACES =====
@@ -36,14 +37,14 @@ namespace Spartan
 {
 	Profiler::Profiler(Context* context) : ISubsystem(context)
 	{
-		m_time_blocks.reserve(m_time_block_capacity);
-		m_time_blocks.resize(m_time_block_capacity);
+		m_time_blocks_write.reserve(m_time_block_capacity);
+		m_time_blocks_write.resize(m_time_block_capacity);
 	}
 
     Profiler::~Profiler()
     {
         if (m_profile) OnFrameEnd();
-        m_time_blocks.clear();
+        m_time_blocks_write.clear();
         m_time_blocks_read.clear();
         ClearRhiMetrics();
     }
@@ -65,6 +66,9 @@ namespace Spartan
 
     void Profiler::Tick(float delta_time)
     {
+        if (!m_renderer || !m_renderer->GetRhiDevice()->GetContextRhi()->profiler)
+            return;
+
         // End previous frame
         if (m_profile)
         {
@@ -72,8 +76,7 @@ namespace Spartan
         }
 
         // Compute some stuff
-        m_time_cpu_ms   = m_time_blocks[0].GetDurationCpu(); // This assumes that that first time block is the frame time
-        m_time_gpu_ms   = m_time_blocks[0].GetDurationGpu(); // This assumes that that first time block is the frame time
+        ComputeCpuAndGpuTime(&m_time_cpu_ms, &m_time_gpu_ms);
         m_time_frame_ms = m_time_cpu_ms + m_time_gpu_ms;
         ComputeFps(delta_time);
         
@@ -110,67 +113,50 @@ namespace Spartan
         // Discard previous frame data
         for (uint32_t i = 0; i < m_time_block_count; i++)
         {
-            TimeBlock& time_block = m_time_blocks[i];
+            TimeBlock& time_block = m_time_blocks_write[i];
             if (!time_block.IsComplete())
             {
                 LOG_WARNING("Ensure that TimeBlockEnd() is called for %s", time_block.GetName().c_str());
             }
-            time_block.Clear();
+            time_block.OnFrameStart();
         }
 
         m_time_block_count = 0;
-
-        // Start frame time block
-        TimeBlockStart("Frame", true, true);
     }
 
     void Profiler::OnFrameEnd()
     {
-        TimeBlockEnd();
-
-        for (auto& time_block : m_time_blocks)
-        {
-            if (!time_block.IsProfilingGpu())
-                continue;
-
-            time_block.OnFrameEnd(m_renderer->GetRhiDevice());
-        }
-
-        m_time_blocks_read = m_time_blocks;
+        m_time_blocks_read = m_time_blocks_write;
         DetectStutter();
     }
 
-    bool Profiler::TimeBlockStart(const string& func_name, bool profile_cpu /*= true*/, bool profile_gpu /*= false*/)
+    void Profiler::TimeBlockStart(const string& func_name, bool profile_cpu /*= true*/, bool profile_gpu /*= false*/, RHI_CommandList* cmd_list /*= nullptr*/)
 	{
 		if (!m_profile)
-			return false;
+			return;
 
 		bool can_profile_cpu = profile_cpu && m_profile_cpu_enabled;
 		bool can_profile_gpu = profile_gpu && m_profile_gpu_enabled;
 
 		if (!can_profile_cpu && !can_profile_gpu)
-			return false;
+			return;
 
 		if (auto time_block = GetNextTimeBlock())
 		{
 			auto time_block_parent = GetSecondLastIncompleteTimeBlock();
-			time_block->Begin(func_name, can_profile_cpu, can_profile_gpu, time_block_parent, m_renderer->GetRhiDevice());
+			time_block->Begin(func_name, can_profile_cpu, can_profile_gpu, time_block_parent, cmd_list, m_renderer->GetRhiDevice());
 		}
-
-		return true;
 	}
 
-	bool Profiler::TimeBlockEnd()
+	void Profiler::TimeBlockEnd()
 	{
 		if (!m_profile || m_time_block_count == 0)
-			return false;
+			return;
 
 		if (auto time_block = GetLastIncompleteTimeBlock())
 		{
-			time_block->End(m_renderer->GetRhiDevice());
+			time_block->End();
 		}
-
-		return true;
 	}
 
     void Profiler::DetectStutter()
@@ -188,24 +174,24 @@ namespace Spartan
     TimeBlock* Profiler::GetNextTimeBlock()
 	{
 		// Grow capacity if needed
-		if (m_time_block_count >= static_cast<uint32_t>(m_time_blocks.size()))
+		if (m_time_block_count >= static_cast<uint32_t>(m_time_blocks_write.size()))
 		{
 			uint32_t new_size = m_time_block_count + 100;
-			m_time_blocks.reserve(new_size);
-			m_time_blocks.resize(new_size);
+			m_time_blocks_write.reserve(new_size);
+			m_time_blocks_write.resize(new_size);
 			LOG_WARNING("Time block list has grown to fit %d commands. Consider making the capacity larger to avoid re-allocations.", m_time_block_count + 1);
 		}
 
 		// Return a time block
 		m_time_block_count++;
-		return &m_time_blocks[m_time_block_count - 1];
+		return &m_time_blocks_write[m_time_block_count - 1];
 	}
 
 	TimeBlock* Profiler::GetLastIncompleteTimeBlock()
 	{
 		for (int i = m_time_block_count - 1; i >= 0; i--)
 		{
-			TimeBlock& time_block = m_time_blocks[i];
+			TimeBlock& time_block = m_time_blocks_write[i];
 			if (!time_block.IsComplete())
 				return &time_block;
 		}
@@ -218,7 +204,7 @@ namespace Spartan
 		bool first_found = false;
 		for (int i = m_time_block_count - 1; i >= 0; i--)
 		{
-			TimeBlock& time_block = m_time_blocks[i];
+			TimeBlock& time_block = m_time_blocks_write[i];
 			if (!time_block.IsComplete())
 			{
 				if (first_found)
@@ -245,7 +231,36 @@ namespace Spartan
 		}
 	}
 
-	void Profiler::UpdateRhiMetricsString()
+    void Profiler::ComputeCpuAndGpuTime(float* time_cpu, float* time_gpu)
+    {
+        if (!time_cpu && !time_gpu)
+            return;
+
+        *time_cpu = 0;
+        *time_gpu = 0;
+
+        for (const TimeBlock& time_block : m_time_blocks_read)
+        {
+            if (!time_block.IsComplete())
+                break;
+
+            // Sum up the root time blocks but take into account the time block type to determine that (e.g. compare cpu with cpu, etc)
+
+            bool has_cpu_parent = time_block.GetParent() ? time_block.GetParent()->IsProfilingCpu() : false;
+            if (time_block.IsProfilingCpu() && !has_cpu_parent)
+            {
+                *time_cpu += time_block.GetDurationCpu();
+            }
+
+            bool has_gpu_parent = time_block.GetParent() ? time_block.GetParent()->IsProfilingGpu() : false;
+            if (time_block.IsProfilingGpu() && !has_gpu_parent)
+            {
+                *time_gpu += time_block.GetDurationGpu();
+            }
+        }
+    }
+
+    void Profiler::UpdateRhiMetricsString()
 	{
 		const auto texture_count	= m_resource_manager->GetResourceCount(Resource_Texture) + m_resource_manager->GetResourceCount(Resource_Texture2d) + m_resource_manager->GetResourceCount(Resource_TextureCube);
 		const auto material_count	= m_resource_manager->GetResourceCount(Resource_Material);

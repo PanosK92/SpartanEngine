@@ -73,7 +73,7 @@ namespace Spartan
         }
 
         void* ptr = nullptr;
-        vulkan_common::error::check_result
+        vulkan_common::error::check
         (
             vkMapMemory
             (
@@ -109,7 +109,7 @@ namespace Spartan
         mapped_memory_range.memory              = static_cast<VkDeviceMemory>(m_buffer_memory);
         mapped_memory_range.offset              = 0;
         mapped_memory_range.size                = VK_WHOLE_SIZE;
-        return vulkan_common::error::check_result(vkFlushMappedMemoryRanges(m_rhi_device->GetContextRhi()->device, 1, &mapped_memory_range));
+        return vulkan_common::error::check(vkFlushMappedMemoryRanges(m_rhi_device->GetContextRhi()->device, 1, &mapped_memory_range));
     }
 }
 #endif

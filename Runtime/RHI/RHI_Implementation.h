@@ -261,11 +261,13 @@ namespace Spartan
         #endif
 
         #if defined(API_GRAPHICS_VULKAN)
-            VkInstance instance                         = nullptr;
-            VkPhysicalDevice device_physical            = nullptr;
-            VkDevice device                             = nullptr;
-            VkFormat surface_format                     = VK_FORMAT_UNDEFINED;
-            VkColorSpaceKHR surface_color_space         = VK_COLOR_SPACE_MAX_ENUM_KHR;
+            VkInstance instance                             = nullptr;
+            VkPhysicalDevice device_physical                = nullptr;
+            VkDevice device                                 = nullptr;
+            VkPhysicalDeviceProperties device_properties    = {};
+            VkPhysicalDeviceFeatures device_features        = {};
+            VkFormat surface_format                         = VK_FORMAT_UNDEFINED;
+            VkColorSpaceKHR surface_color_space             = VK_COLOR_SPACE_MAX_ENUM_KHR;
             // Queues
             VkQueue queue_graphics                      = nullptr;
             VkQueue queue_compute                       = nullptr;
@@ -305,9 +307,13 @@ namespace Spartan
 
         // Debugging
         #ifdef DEBUG
-            const bool debug = true;
+            bool debug    = true;
+            bool markers  = true;
+            bool profiler = true;
         #else
-            const bool debug = false;
+            bool debug    = false;
+            bool markers  = false;
+            bool profiler = true;
         #endif
 
         // Shader resource slot shifts

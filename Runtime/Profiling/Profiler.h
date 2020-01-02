@@ -29,11 +29,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/ISubsystem.h"
 //=============================
 
-#define TIME_BLOCK_START_MULTI(profiler)	        profiler->TimeBlockStart(__FUNCTION__, true, true);
 #define TIME_BLOCK_START_CPU_NAMED(profiler, name)  profiler->TimeBlockStart(name, true, false);
 #define TIME_BLOCK_START_CPU(profiler)		        profiler->TimeBlockStart(__FUNCTION__, true, false);
-#define TIME_BLOCK_START_GPU(profiler)		        profiler->TimeBlockStart(__FUNCTION__, false, true);
-#define TIME_BLOCK_END(profiler)			        profiler->TimeBlockEnd();
+#define TIME_BLOCK_END_CPU(profiler)			    profiler->TimeBlockEnd();
 
 namespace Spartan
 {
@@ -59,8 +57,8 @@ namespace Spartan
         void OnFrameEnd();
 
 		// Time block
-		bool TimeBlockStart(const std::string& func_name, bool profile_cpu = true, bool profile_gpu = false);
-		bool TimeBlockEnd();
+		void TimeBlockStart(const std::string& func_name, bool profile_cpu = true, bool profile_gpu = false, RHI_CommandList* cmd_list = nullptr);
+		void TimeBlockEnd();
 
         // Stutter detection
         void DetectStutter();
@@ -122,6 +120,7 @@ namespace Spartan
 		TimeBlock* GetLastIncompleteTimeBlock();
 		TimeBlock* GetSecondLastIncompleteTimeBlock();
 		void ComputeFps(float delta_time);
+        void ComputeCpuAndGpuTime(float* time_cpu, float* time_gpu);
 		void UpdateRhiMetricsString();
 
 		// Profiling options
@@ -133,7 +132,7 @@ namespace Spartan
 		// Time blocks
 		uint32_t m_time_block_capacity	= 200;
 		uint32_t m_time_block_count		= 0;
-		std::vector<TimeBlock> m_time_blocks;
+		std::vector<TimeBlock> m_time_blocks_write;
         std::vector<TimeBlock> m_time_blocks_read;
 
 		// FPS

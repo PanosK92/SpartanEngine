@@ -50,6 +50,10 @@ namespace Spartan
 
     bool RHI_PipelineState::IsValid()
     {
+        // Deduce if marking and profiling should occur
+        profile = pass_name != nullptr;
+        mark    = pass_name != nullptr;
+
         // Ensure that only one render target is active at a time
         if (render_target_swapchain && render_target_color_textures[0])
             return false;

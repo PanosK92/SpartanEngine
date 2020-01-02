@@ -158,7 +158,7 @@ void Widget_Profiler::ShowPlot(vector<float>& data, Metric& metric, float time_v
 	data.emplace_back(time_value);
 
     if (ImGui::Button("Clear")) { metric.Clear(); }
-    ImGui::SameLine();  ImGui::Text("Avg:%.2f, Min:%.2f, Max:%.2f", metric.m_avg, metric.m_min, metric.m_max);
+    ImGui::SameLine();  ImGui::Text("Cur:%.2f, Avg:%.2f, Min:%.2f, Max:%.2f", time_value, metric.m_avg, metric.m_min, metric.m_max);
     ImGui::SameLine();  ImGui::TextColored(ImVec4(is_stuttering ? 1.0f : 0.0f, is_stuttering ? 0.0f : 1.0f, 0.0f, 1.0f), is_stuttering ? "Stuttering: Yes" : "Stuttering: No");
 
 	// Plot data

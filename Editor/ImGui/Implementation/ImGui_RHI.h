@@ -236,9 +236,10 @@ namespace ImGui::RHI
         g_pipeline_state.viewport                       = g_viewport;
         g_pipeline_state.scissor_dynamic                = true;
         g_pipeline_state.primitive_topology             = RHI_PrimitiveTopology_TriangleList;
+        g_pipeline_state.pass_name                      = "Pass_ImGui";
 
-        // Start witting command list
-        if (cmd_list->Begin("Pass_ImGui", g_pipeline_state))
+        // Submit commands
+        if (cmd_list->Begin(g_pipeline_state))
         {
             cmd_list->SetBufferVertex(g_vertex_buffer);
             cmd_list->SetBufferIndex(g_index_buffer);

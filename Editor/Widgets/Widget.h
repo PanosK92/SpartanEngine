@@ -124,7 +124,7 @@ public:
         ImGui::PopStyleVar(m_var_pushes);
 		m_window_begun = false;
 
-        TIME_BLOCK_END(m_profiler);
+        TIME_BLOCK_END_CPU(m_profiler);
 
 		return true;
 	}

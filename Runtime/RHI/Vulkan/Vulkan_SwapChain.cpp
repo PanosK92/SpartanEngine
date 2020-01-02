@@ -68,11 +68,11 @@ namespace Spartan
                 create_info.hwnd                        = static_cast<HWND>(window_handle);
                 create_info.hinstance                   = GetModuleHandle(nullptr);
 
-                if (!vulkan_common::error::check_result(vkCreateWin32SurfaceKHR(rhi_context->instance, &create_info, nullptr, &surface)))
+                if (!vulkan_common::error::check(vkCreateWin32SurfaceKHR(rhi_context->instance, &create_info, nullptr, &surface)))
                     return false;
 
                 VkBool32 present_support = false;
-                if (!vulkan_common::error::check_result(vkGetPhysicalDeviceSurfaceSupportKHR(rhi_context->device_physical, rhi_context->queue_graphics_family_index, surface, &present_support)))
+                if (!vulkan_common::error::check(vkGetPhysicalDeviceSurfaceSupportKHR(rhi_context->device_physical, rhi_context->queue_graphics_family_index, surface, &present_support)))
                     return false;
 
                 if (!present_support)
@@ -126,7 +126,7 @@ namespace Spartan
                 create_info.clipped         = VK_TRUE;
                 create_info.oldSwapchain    = nullptr;
 
-                if (!vulkan_common::error::check_result(vkCreateSwapchainKHR(rhi_context->device, &create_info, nullptr, &swap_chain)))
+                if (!vulkan_common::error::check(vkCreateSwapchainKHR(rhi_context->device, &create_info, nullptr, &swap_chain)))
                     return false;
             }
 
@@ -333,7 +333,7 @@ namespace Spartan
         if (m_image_index + 1 > m_buffer_count)
         {
             VkCommandPool command_pool = static_cast<VkCommandPool>(m_cmd_pool);
-            vulkan_common::error::check_result(vkResetCommandPool(m_rhi_device->GetContextRhi()->device, command_pool, 0));
+            vulkan_common::error::check(vkResetCommandPool(m_rhi_device->GetContextRhi()->device, command_pool, 0));
         }
 
 		// Make index that always matches the m_image_index after vkAcquireNextImageKHR.
@@ -341,7 +341,7 @@ namespace Spartan
 		const uint32_t index = !m_image_acquired ? 0 : (m_image_index + 1) % m_buffer_count;
         
         // Acquire next image
-        m_image_acquired = vulkan_common::error::check_result(
+        m_image_acquired = vulkan_common::error::check(
             vkAcquireNextImageKHR(
                 m_rhi_device->GetContextRhi()->device,
                 static_cast<VkSwapchainKHR>(m_swap_chain_view),
@@ -374,7 +374,7 @@ namespace Spartan
 		present_info.pSwapchains		= swap_chains;
 		present_info.pImageIndices		= &m_image_index;
 
-		return vulkan_common::error::check_result(vkQueuePresentKHR(m_rhi_device->GetContextRhi()->queue_graphics, &present_info));
+		return vulkan_common::error::check(vkQueuePresentKHR(m_rhi_device->GetContextRhi()->queue_graphics, &present_info));
 	}
 
     void RHI_SwapChain::SetLayout(RHI_Image_Layout layout, RHI_CommandList* command_list /*= nullptr*/)

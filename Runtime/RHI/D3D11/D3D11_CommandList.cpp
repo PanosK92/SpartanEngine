@@ -65,28 +65,20 @@ namespace Spartan
 
 	RHI_CommandList::~RHI_CommandList() = default;
 
-    bool RHI_CommandList::Begin(const std::string& pass_name)
-    {
-        // Profile
-        if (m_profiler)
-        {
-            m_profiler->TimeBlockStart(pass_name, true, true);
-        }
-
-        // Mark
-        RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
-        if (rhi_context->debug)
-        {
-            m_rhi_device->GetContextRhi()->annotation->BeginEvent(FileSystem::StringToWstring(pass_name).c_str());
-        }
-
-        m_passes_active[m_pass_index++] = true;
-
-        return true;
-    }
-
     bool RHI_CommandList::Begin(RHI_PipelineState& pipeline_state)
     {
+        if (!pipeline_state.IsValid())
+        {
+            LOG_ERROR("Invalid pipeline state");
+            return false;
+        }
+
+        // Keep a local pointer for convenience 
+        m_pipeline_state = &pipeline_state;
+
+        // Start marker and profiler (if enabled)
+        MarkAndProfileStart(m_pipeline_state);
+
         // Vertex shader
         if (pipeline_state.shader_vertex)
         {
@@ -236,24 +228,8 @@ namespace Spartan
 
 	bool RHI_CommandList::End()
 	{
-        if (!m_passes_active[m_pass_index - 1])
-            return false;
-
-        // Mark
-        RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
-        if (rhi_context->debug)
-        {
-            rhi_context->annotation->EndEvent();
-        }
-
-        // Profile
-        if (m_profiler)
-        {
-            m_profiler->TimeBlockEnd();
-        }
-
-        m_passes_active[--m_pass_index] = false;
-
+        // End marker and profiler (if enabled)
+        MarkAndProfileEnd(m_pipeline_state);
         return true;
 	}
 
@@ -482,6 +458,88 @@ namespace Spartan
         return true;
     }
 
+    bool RHI_CommandList::Timestamp_Start(void* query_disjoint /*= nullptr*/, void* query_start /*= nullptr*/)
+    {
+        if (!query_disjoint || !query_start)
+        {
+            LOG_ERROR_INVALID_PARAMETER();
+            return false;
+        }
+
+        RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
+
+        if (!rhi_context->device_context)
+        {
+            LOG_ERROR_INVALID_INTERNALS();
+            return false;
+        }
+
+        rhi_context->device_context->Begin(static_cast<ID3D11Query*>(query_disjoint));
+        rhi_context->device_context->End(static_cast<ID3D11Query*>(query_start));
+
+        return true;
+    }
+
+    bool RHI_CommandList::Timestamp_End(void* query_disjoint /*= nullptr*/, void* query_end /*= nullptr*/)
+    {
+        if (!query_disjoint || !query_end)
+        {
+            LOG_ERROR_INVALID_PARAMETER();
+            return false;
+        }
+
+        RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
+
+        if (!rhi_context->device_context)
+        {
+            LOG_ERROR_INVALID_INTERNALS();
+            return false;
+        }
+
+        rhi_context->device_context->End(static_cast<ID3D11Query*>(query_end));
+        rhi_context->device_context->End(static_cast<ID3D11Query*>(query_disjoint));
+
+        return true;
+    }
+
+    float RHI_CommandList::Timestamp_GetDuration(void* query_disjoint /*= nullptr*/, void* query_start /*= nullptr*/, void* query_end /*= nullptr*/)
+    {
+        if (!query_disjoint || !query_start || !query_end)
+        {
+            LOG_ERROR_INVALID_PARAMETER();
+            return 0.0f;
+        }
+
+        RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
+
+        if (!rhi_context->device_context)
+        {
+            LOG_ERROR_INVALID_INTERNALS();
+            return 0.0f;
+        }
+
+        // Wait for data to be available	
+        while (rhi_context->device_context->GetData(static_cast<ID3D11Query*>(query_disjoint), nullptr, 0, 0) == S_FALSE) {}
+
+        // Check whether timestamps were disjoint during the last frame
+        D3D10_QUERY_DATA_TIMESTAMP_DISJOINT disjoint_data = {};
+        rhi_context->device_context->GetData(static_cast<ID3D11Query*>(query_disjoint), &disjoint_data, sizeof(disjoint_data), 0);
+        if (disjoint_data.Disjoint)
+            return 0.0f;
+
+        // Get the query data		
+        UINT64 start_time   = 0;
+        UINT64 end_time     = 0;
+        rhi_context->device_context->GetData(static_cast<ID3D11Query*>(query_start), &start_time, sizeof(start_time), 0);
+        rhi_context->device_context->GetData(static_cast<ID3D11Query*>(query_end), &end_time, sizeof(end_time), 0);
+
+        // Convert to real time
+        const auto delta        = end_time - start_time;
+        const auto duration_ms  = (delta * 1000.0f) / static_cast<float>(disjoint_data.Frequency);
+
+        return duration_ms;
+    }
+
     uint32_t RHI_CommandList::Gpu_GetMemory(RHI_Device* rhi_device)
     {
         if (const PhysicalDevice* physical_device = rhi_device->GetPrimaryPhysicalDevice())
@@ -520,7 +578,7 @@ namespace Spartan
         return 0;
     }
 
-    bool RHI_CommandList::Gpu_CreateQuery(RHI_Device* rhi_device, void** query, const RHI_Query_Type type)
+    bool RHI_CommandList::Gpu_QueryCreate(RHI_Device* rhi_device, void** query, const RHI_Query_Type type)
     {
         RHI_Context* rhi_context = rhi_device->GetContextRhi();
 
@@ -543,84 +601,61 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_CommandList::Gpu_QueryStart(RHI_Device* rhi_device, void* query_object)
-    {
-        if (!query_object)
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return false;
-        }
-
-        RHI_Context* rhi_context = rhi_device->GetContextRhi();
-
-        if (!rhi_context->device_context)
-        {
-            LOG_ERROR_INVALID_INTERNALS();
-            return false;
-        }
-
-        rhi_context->device_context->Begin(static_cast<ID3D11Query*>(query_object));
-        return true;
-    }
-
-    bool RHI_CommandList::Gpu_GetTimeStamp(RHI_Device* rhi_device, void* query_object)
-    {
-        if (!query_object)
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return false;
-        }
-
-        RHI_Context* rhi_context = rhi_device->GetContextRhi();
-
-        if (!rhi_context->device_context)
-        {
-            LOG_ERROR_INVALID_INTERNALS();
-            return false;
-        }
-
-        rhi_context->device_context->End(static_cast<ID3D11Query*>(query_object));
-        return true;
-    }
-
-    float RHI_CommandList::Gpu_GetDuration(RHI_Device* rhi_device, void* query_disjoint, void* query_start, void* query_end)
-    {
-        RHI_Context* rhi_context = rhi_device->GetContextRhi();
-
-        if (!rhi_context->device_context)
-        {
-            LOG_ERROR_INVALID_INTERNALS();
-            return 0.0f;
-        }
-
-        // Wait for data to be available	
-        while (rhi_context->device_context->GetData(static_cast<ID3D11Query*>(query_disjoint), nullptr, 0, 0) == S_FALSE) {}
-
-        // Check whether timestamps were disjoint during the last frame
-        D3D10_QUERY_DATA_TIMESTAMP_DISJOINT disjoint_data = {};
-        rhi_context->device_context->GetData(static_cast<ID3D11Query*>(query_disjoint), &disjoint_data, sizeof(disjoint_data), 0);
-        if (disjoint_data.Disjoint)
-            return 0.0f;
-
-        // Get the query data		
-        UINT64 start_time   = 0;
-        UINT64 end_time     = 0;
-        rhi_context->device_context->GetData(static_cast<ID3D11Query*>(query_start), &start_time, sizeof(start_time), 0);
-        rhi_context->device_context->GetData(static_cast<ID3D11Query*>(query_end), &end_time, sizeof(end_time), 0);
-
-        // Convert to real time
-        const auto delta        = end_time - start_time;
-        const auto duration_ms  = (delta * 1000.0f) / static_cast<float>(disjoint_data.Frequency);
-
-        return duration_ms;
-    }
-
-    void RHI_CommandList::Gpu_ReleaseQuery(void* query_object)
+    void RHI_CommandList::Gpu_QueryRelease(void* query_object)
     {
         if (!query_object)
             return;
 
         safe_release(static_cast<ID3D11Query*>(query_object));
+    }
+
+    void RHI_CommandList::MarkAndProfileStart(const RHI_PipelineState* pipeline_state)
+    {
+        if (!pipeline_state || !pipeline_state->pass_name)
+            return;
+
+        RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
+
+        // Allowed to profile ?
+        if (rhi_context->profiler && pipeline_state->profile)
+        {
+            if (m_profiler)
+            {
+                m_profiler->TimeBlockStart(pipeline_state->pass_name, true, true, this);
+            }
+        }
+
+        // Allowed to mark ?
+        if (rhi_context->markers && pipeline_state->mark)
+        {
+            m_rhi_device->GetContextRhi()->annotation->BeginEvent(FileSystem::StringToWstring(pipeline_state->pass_name).c_str());
+        }
+
+        m_passes_active[m_pass_index++] = true;
+    }
+
+    void RHI_CommandList::MarkAndProfileEnd(const RHI_PipelineState* pipeline_state)
+    {
+        if (!pipeline_state || !m_passes_active[m_pass_index - 1])
+            return;
+
+        // Allowed to mark ?
+        RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
+        if (rhi_context->markers && pipeline_state->mark)
+        {
+            rhi_context->annotation->EndEvent();
+        }
+
+        // Allowed to profile ?
+        if (rhi_context->profiler && pipeline_state->profile)
+        {
+            if (m_profiler)
+            {
+                m_profiler->TimeBlockEnd();
+            }
+        }
+
+        m_passes_active[--m_pass_index] = false;
     }
 }
 #endif

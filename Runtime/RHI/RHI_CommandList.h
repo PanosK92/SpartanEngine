@@ -50,20 +50,7 @@ namespace Spartan
 		~RHI_CommandList();
 
         // Passes
-        bool Begin(const std::string& pass_name);                                               // Marker
-        bool Begin(RHI_PipelineState& pipeline_state);                                          // Pass
-        inline bool Begin(const std::string& pass_name, RHI_PipelineState& pipeline_state)      // Pass & Marker
-        {
-            Begin(pass_name);
-
-            if (!Begin(pipeline_state))
-            {
-                End(); // end the marker pass
-                return false;
-            }
-
-            return true;
-        }
+        bool Begin(RHI_PipelineState& pipeline_state);
         bool End();
 
 		// Draw
@@ -108,20 +95,25 @@ namespace Spartan
 		bool Submit();
         bool Flush();
 
+        // Timestamps
+        bool Timestamp_Start(void* query_disjoint = nullptr, void* query_start = nullptr);
+        bool Timestamp_End(void* query_disjoint = nullptr, void* query_end = nullptr);
+        float Timestamp_GetDuration(void* query_disjoint = nullptr, void* query_start = nullptr, void* query_end = nullptr);
+
         // GPU - RHI_CommandList instance not required
         static bool Gpu_Flush(RHI_Device* rhi_device);
         static uint32_t Gpu_GetMemory(RHI_Device* rhi_device);
         static uint32_t Gpu_GetMemoryUsed(RHI_Device* rhi_device);
-        static bool Gpu_CreateQuery(RHI_Device* rhi_device, void** query, RHI_Query_Type type);
-        static bool Gpu_QueryStart(RHI_Device* rhi_device, void* query_object);
-        static bool Gpu_GetTimeStamp(RHI_Device* rhi_device, void* query_object);
-        static float Gpu_GetDuration(RHI_Device* rhi_device, void* query_disjoint, void* query_start, void* query_end);
-        static void Gpu_ReleaseQuery(void* query_object);
-
+        static bool Gpu_QueryCreate(RHI_Device* rhi_device, void** query = nullptr, RHI_Query_Type type = RHI_Query_Timestamp);
+        static void Gpu_QueryRelease(void* query_object);
+        
         // Misc
         void* GetResource_CommandBuffer() { return m_cmd_buffer; }
 
 	private:
+        void MarkAndProfileStart(const RHI_PipelineState* pipeline_state);
+        void MarkAndProfileEnd(const RHI_PipelineState* pipeline_state);
+
         std::vector<bool> m_passes_active;
         uint32_t m_pass_index                   = 0;
         RHI_Cmd_List_State m_cmd_state          = RHI_Cmd_List_Idle;
@@ -129,9 +121,12 @@ namespace Spartan
         RHI_SwapChain* m_swap_chain             = nullptr;
         Renderer* m_renderer                    = nullptr;
         RHI_PipelineCache* m_rhi_pipeline_cache = nullptr;
+        RHI_PipelineState* m_pipeline_state     = nullptr;
         RHI_Device* m_rhi_device                = nullptr;
         Profiler* m_profiler                    = nullptr;
         void* m_cmd_buffer                      = nullptr;
         void* m_cmd_list_consumed_fence         = nullptr;
+        void* m_query_pool                      = nullptr;
+        std::vector<uint64_t> m_timestamps;
 	};
 }

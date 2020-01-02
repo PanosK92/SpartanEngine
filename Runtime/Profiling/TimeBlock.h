@@ -21,11 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====
+//= INCLUDES =====================
 #include <chrono>
 #include <memory>
 #include <string>
-//===============
+#include "..\RHI\RHI_Definition.h"
+//================================
 
 namespace Spartan
 {
@@ -37,22 +38,22 @@ namespace Spartan
 		TimeBlock() = default;
 		~TimeBlock();
 
-		void Begin(const std::string& name, bool profile_cpu = false, bool profile_gpu = false, const TimeBlock* parent = nullptr, const std::shared_ptr<RHI_Device>& rhi_device = nullptr);
-		void End(const std::shared_ptr<RHI_Device>& rhi_device = nullptr);
-		void OnFrameEnd(const std::shared_ptr<RHI_Device>& rhi_device);
-		void Clear();
-
-		const bool IsProfilingCpu() const	{ return m_profiling_cpu; }
-		const bool IsProfilingGpu() const	{ return m_profiling_gpu; }
-		const bool IsComplete() const		{ return m_is_complete; }
-		const auto& GetName() const	        { return m_name; }
-		const auto GetParent() const	    { return m_parent; }
-		auto GetTreeDepth()	const	        { return m_tree_depth; }
-		auto GetDurationCpu() const		    { return m_duration_cpu; }
-		auto GetDurationGpu() const		    { return m_duration_gpu; }
+		void Begin(const std::string& name, bool profile_cpu = false, bool profile_gpu = false, const TimeBlock* parent = nullptr, RHI_CommandList* cmd_list = nullptr, const std::shared_ptr<RHI_Device>& rhi_device = nullptr);
+		void End();
+        void OnFrameStart();
+		bool IsProfilingCpu()       const { return m_profiling_cpu; }
+		bool IsProfilingGpu()       const { return m_profiling_gpu; }
+		bool IsComplete()           const { return m_is_complete; }
+		const auto& GetName()       const { return m_name; }
+		auto GetParent()            const { return m_parent; }
+		auto GetTreeDepth()	        const { return m_tree_depth; }
+        uint32_t GetTreeDepthMax()  const { return m_max_tree_depth; }
+		auto GetDurationCpu()       const { return m_duration_cpu; }
+		auto GetDurationGpu()       const { return m_duration_gpu; }
 
 	private:	
 		static uint32_t FindTreeDepth(const TimeBlock* time_block, uint32_t depth = 0);
+        static uint32_t m_max_tree_depth;
 
 		std::string m_name;
 		RHI_Device* m_rhi_device    = nullptr;
@@ -70,10 +71,11 @@ namespace Spartan
 		std::chrono::steady_clock::time_point end;
 	
 		// GPU timing
-		bool m_profiling_gpu	= false;
-		float m_duration_gpu	= 0.0f;
-		void* m_query			= nullptr;
-		void* m_query_start		= nullptr;
-		void* m_query_end		= nullptr;
+		bool m_profiling_gpu	    = false;
+		float m_duration_gpu	    = 0.0f;
+		void* m_query_disjoint	    = nullptr;
+		void* m_query_start		    = nullptr;
+		void* m_query_end		    = nullptr;
+        RHI_CommandList* m_cmd_list = nullptr;
 	};
 }

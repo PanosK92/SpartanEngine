@@ -482,7 +482,7 @@ namespace Spartan
 		RenderablesSort(&m_entities[Renderer_Object_Opaque]);
 		RenderablesSort(&m_entities[Renderer_Object_Transparent]);
 
-		TIME_BLOCK_END(m_profiler);
+		TIME_BLOCK_END_CPU(m_profiler);
 	}
 
 	void Renderer::RenderablesSort(vector<Entity*>* renderables)
