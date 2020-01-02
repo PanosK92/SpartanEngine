@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include <chrono>
 #include <memory>
-#include <string>
 #include "..\RHI\RHI_Definition.h"
 //================================
 
@@ -32,47 +31,49 @@ namespace Spartan
 {
 	class RHI_Device;
 
+    enum TimeBlock_Type
+    {
+        TimeBlock_Cpu,
+        TimeBlock_Gpu,
+        TimeBlock_Undefined
+    };
+
 	class TimeBlock
 	{
 	public:
 		TimeBlock() = default;
 		~TimeBlock();
 
-		void Begin(const std::string& name, bool profile_cpu = false, bool profile_gpu = false, const TimeBlock* parent = nullptr, RHI_CommandList* cmd_list = nullptr, const std::shared_ptr<RHI_Device>& rhi_device = nullptr);
+		void Begin(const char* name, TimeBlock_Type type, const TimeBlock* parent = nullptr, RHI_CommandList* cmd_list = nullptr, const std::shared_ptr<RHI_Device>& rhi_device = nullptr);
 		void End();
         void OnFrameStart();
-		bool IsProfilingCpu()       const { return m_profiling_cpu; }
-		bool IsProfilingGpu()       const { return m_profiling_gpu; }
+        TimeBlock_Type GetType()    const { return m_type; }
 		bool IsComplete()           const { return m_is_complete; }
 		const auto& GetName()       const { return m_name; }
 		auto GetParent()            const { return m_parent; }
 		auto GetTreeDepth()	        const { return m_tree_depth; }
         uint32_t GetTreeDepthMax()  const { return m_max_tree_depth; }
-		auto GetDurationCpu()       const { return m_duration_cpu; }
-		auto GetDurationGpu()       const { return m_duration_gpu; }
+		auto GetDuration()          const { return m_duration; }
 
 	private:	
 		static uint32_t FindTreeDepth(const TimeBlock* time_block, uint32_t depth = 0);
         static uint32_t m_max_tree_depth;
 
-		std::string m_name;
+		const char* m_name          = nullptr;
 		RHI_Device* m_rhi_device    = nullptr;
         bool m_has_started          = false;
         bool m_is_complete          = false;
-
-		// Hierarchy
+        TimeBlock_Type m_type       = TimeBlock_Undefined;
+        bool m_profiling            = false;
+        float m_duration            = 0.0f;
 		const TimeBlock* m_parent	= nullptr;
 		uint32_t m_tree_depth	    = 0;
 
 		// CPU timing
-		bool m_profiling_cpu	= false;
-		float m_duration_cpu	= 0.0f;
 		std::chrono::steady_clock::time_point start;
 		std::chrono::steady_clock::time_point end;
 	
 		// GPU timing
-		bool m_profiling_gpu	    = false;
-		float m_duration_gpu	    = 0.0f;
 		void* m_query_disjoint	    = nullptr;
 		void* m_query_start		    = nullptr;
 		void* m_query_end		    = nullptr;

@@ -75,26 +75,14 @@ void Widget_Profiler::ShowCPU()
 	const auto& time_blocks		= m_profiler->GetTimeBlocks();
 	const auto time_block_count = static_cast<unsigned int>(time_blocks.size());
 	const auto time_cpu			= m_profiler->GetTimeCpu();	
-	const auto& color			= ImGui::GetStyle().Colors[ImGuiCol_FrameBgActive];
 
 	// Time blocks	
 	for (unsigned int i = 0; i < time_block_count; i++)
 	{
-		auto& time_block = time_blocks[i];
+        if (time_blocks[i].GetType() != TimeBlock_Cpu)
+            continue;
 
-		if (!time_block.IsProfilingCpu())
-			continue;
-
-		const auto name		= string(time_block.GetTreeDepth(), '+') + time_block.GetName();
-		const auto duration	= time_block.GetDurationCpu();
-		const auto fraction	= duration / time_cpu;
-		const auto width	= fraction * ImGui::GetWindowContentRegionWidth();
-
-		// Draw
-        ImVec2 pos_min = ImGui::GetCursorScreenPos();
-        float text_height = ImGui::CalcTextSize(name.c_str(), nullptr, true).y;
-		ImGui::GetWindowDrawList()->AddRectFilled(pos_min, ImVec2(pos_min.x + width, pos_min.y + text_height), IM_COL32(color.x * 255, color.y * 255, color.z * 255, 255));
-		ImGui::Text("%s - %.2f ms", name.c_str(), duration);
+        ShowTimeBlock(time_blocks[i], time_cpu);
 	}
 
 	ImGui::Separator();
@@ -107,26 +95,14 @@ void Widget_Profiler::ShowGPU()
 	const auto& time_blocks		= m_profiler->GetTimeBlocks();
 	const auto time_block_count	= static_cast<unsigned int>(time_blocks.size());
 	const auto time_gpu			= m_profiler->GetTimeGpu();
-	const auto& color			= ImGui::GetStyle().Colors[ImGuiCol_FrameBgActive];
 
 	// Time blocks
 	for (unsigned int i = 0; i < time_block_count; i++)
 	{
-		auto& time_block = time_blocks[i];
-
-		if (!time_block.IsProfilingGpu())
+		if (time_blocks[i].GetType() != TimeBlock_Gpu)
 			continue;
 
-		const auto name			= string(time_block.GetTreeDepth(), '+') + time_block.GetName();
-		const auto duration		= time_block.GetDurationGpu();
-		const auto fraction		= duration / time_gpu;
-		const auto width		= fraction * ImGui::GetWindowContentRegionWidth();
-		
-		// Draw
-        ImVec2 pos_min = ImGui::GetCursorScreenPos();
-        float text_height = ImGui::CalcTextSize(name.c_str(), nullptr, true).y;
-		ImGui::GetWindowDrawList()->AddRectFilled(pos_min, ImVec2(pos_min.x + width, pos_min.y + text_height), IM_COL32(color.x * 255, color.y * 255, color.z * 255, 255));
-		ImGui::Text("%s - %.2f ms", name.c_str(), duration);
+        ShowTimeBlock(time_blocks[i], time_gpu);
 	}
 
 	// Plot
@@ -139,6 +115,27 @@ void Widget_Profiler::ShowGPU()
 	unsigned int memory_available	= m_profiler->GpuGetMemoryAvailable();
 	string overlay					= "Memory " + to_string(memory_used) + "/" + to_string(memory_available) + " MB";
 	ImGui::ProgressBar((float)memory_used / (float)memory_available, ImVec2(-1, 0), overlay.c_str());
+}
+
+void Widget_Profiler::ShowTimeBlock(const TimeBlock& time_block, float total_time)
+{
+    if (!time_block.IsComplete())
+        return;
+
+    const char* name        = time_block.GetName();
+    const float duration    = time_block.GetDuration();
+    const float fraction    = duration / total_time;
+    const float width       = fraction * ImGui::GetWindowContentRegionWidth();
+    const auto& color       = ImGui::GetStyle().Colors[ImGuiCol_FrameBgActive];
+    ImVec2 pos_screen       = ImGui::GetCursorScreenPos();
+    ImVec2 pos              = ImGui::GetCursorPos();
+    float text_height       = ImGui::CalcTextSize(name, nullptr, true).y;
+
+    // Rectangle
+    ImGui::GetWindowDrawList()->AddRectFilled(pos_screen, ImVec2(pos_screen.x + width, pos_screen.y + text_height), IM_COL32(color.x * 255, color.y * 255, color.z * 255, 255));
+    // Text
+    ImGui::SetCursorPos(ImVec2(pos.x + m_tree_depth_stride * time_block.GetTreeDepth(), pos.y));
+    ImGui::Text("%s - %.2f ms", name, duration);
 }
 
 void Widget_Profiler::ShowPlot(vector<float>& data, Metric& metric, float time_value, bool is_stuttering)

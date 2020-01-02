@@ -75,18 +75,25 @@ namespace Spartan
             OnFrameEnd();
         }
 
-        // Compute some stuff
+        // Compute cpu and gpu times
         ComputeCpuAndGpuTime(&m_time_cpu_ms, &m_time_gpu_ms);
+
+        // Compute frame time
         m_time_frame_ms = m_time_cpu_ms + m_time_gpu_ms;
+
+        // Compute fps
         ComputeFps(delta_time);
         
         // Check whether we should profile or not
-        m_profile                   = false;
-        m_time_since_profiling_sec  += delta_time;   
+        m_time_since_profiling_sec += delta_time;
         if (m_time_since_profiling_sec >= m_profiling_interval_sec)
         {
             m_time_since_profiling_sec  = 0.0f;
             m_profile                   = true;
+        }
+        else
+        {
+            m_profile = false;
         }
 
         // Updating every m_profiling_interval_sec
@@ -116,7 +123,7 @@ namespace Spartan
             TimeBlock& time_block = m_time_blocks_write[i];
             if (!time_block.IsComplete())
             {
-                LOG_WARNING("Ensure that TimeBlockEnd() is called for %s", time_block.GetName().c_str());
+                LOG_WARNING("Ensure that TimeBlockEnd() is called for %s", time_block.GetName());
             }
             time_block.OnFrameStart();
         }
@@ -130,21 +137,23 @@ namespace Spartan
         DetectStutter();
     }
 
-    void Profiler::TimeBlockStart(const string& func_name, bool profile_cpu /*= true*/, bool profile_gpu /*= false*/, RHI_CommandList* cmd_list /*= nullptr*/)
+    void Profiler::TimeBlockStart(const char* func_name, TimeBlock_Type type, RHI_CommandList* cmd_list /*= nullptr*/)
 	{
 		if (!m_profile)
 			return;
 
-		bool can_profile_cpu = profile_cpu && m_profile_cpu_enabled;
-		bool can_profile_gpu = profile_gpu && m_profile_gpu_enabled;
+		bool can_profile_cpu = (type == TimeBlock_Cpu) && m_profile_cpu_enabled;
+		bool can_profile_gpu = (type == TimeBlock_Gpu) && m_profile_gpu_enabled;
 
 		if (!can_profile_cpu && !can_profile_gpu)
 			return;
 
-		if (auto time_block = GetNextTimeBlock())
+        // Last incomplete block of the same type, is the parent
+        TimeBlock* time_block_parent = GetLastIncompleteTimeBlock(type);
+
+		if (auto time_block = GetNewTimeBlock())
 		{
-			auto time_block_parent = GetSecondLastIncompleteTimeBlock();
-			time_block->Begin(func_name, can_profile_cpu, can_profile_gpu, time_block_parent, cmd_list, m_renderer->GetRhiDevice());
+			time_block->Begin(func_name, type, time_block_parent, cmd_list, m_renderer->GetRhiDevice());
 		}
 	}
 
@@ -171,7 +180,7 @@ namespace Spartan
         m_gpu_avg_ms = m_gpu_avg_ms * (1.0 - delta_feedback) + m_time_gpu_ms * delta_feedback;
     }
 
-    TimeBlock* Profiler::GetNextTimeBlock()
+    TimeBlock* Profiler::GetNewTimeBlock()
 	{
 		// Grow capacity if needed
 		if (m_time_block_count >= static_cast<uint32_t>(m_time_blocks_write.size()))
@@ -187,32 +196,17 @@ namespace Spartan
 		return &m_time_blocks_write[m_time_block_count - 1];
 	}
 
-	TimeBlock* Profiler::GetLastIncompleteTimeBlock()
+	TimeBlock* Profiler::GetLastIncompleteTimeBlock(TimeBlock_Type type /*= TimeBlock_Undefined*/)
 	{
 		for (int i = m_time_block_count - 1; i >= 0; i--)
 		{
 			TimeBlock& time_block = m_time_blocks_write[i];
-			if (!time_block.IsComplete())
-				return &time_block;
-		}
 
-		return nullptr;
-	}
-
-	TimeBlock* Profiler::GetSecondLastIncompleteTimeBlock()
-	{
-		bool first_found = false;
-		for (int i = m_time_block_count - 1; i >= 0; i--)
-		{
-			TimeBlock& time_block = m_time_blocks_write[i];
-			if (!time_block.IsComplete())
-			{
-				if (first_found)
-				{
-					return &time_block;
-				}
-				first_found = true;		
-			}
+            if (type == time_block.GetType() || type == TimeBlock_Undefined)
+            {
+                if (!time_block.IsComplete())
+                    return &time_block;
+            }
 		}
 
 		return nullptr;
@@ -239,23 +233,21 @@ namespace Spartan
         *time_cpu = 0;
         *time_gpu = 0;
 
-        for (const TimeBlock& time_block : m_time_blocks_read)
+        for (uint32_t i = 0; i < m_time_block_count; i++)
         {
+            const TimeBlock& time_block = m_time_blocks_read[i];
+
             if (!time_block.IsComplete())
                 break;
 
-            // Sum up the root time blocks but take into account the time block type to determine that (e.g. compare cpu with cpu, etc)
-
-            bool has_cpu_parent = time_block.GetParent() ? time_block.GetParent()->IsProfilingCpu() : false;
-            if (time_block.IsProfilingCpu() && !has_cpu_parent)
+            if (!time_block.GetParent() && time_block.GetType() == TimeBlock_Cpu)
             {
-                *time_cpu += time_block.GetDurationCpu();
+                *time_cpu += time_block.GetDuration();
             }
 
-            bool has_gpu_parent = time_block.GetParent() ? time_block.GetParent()->IsProfilingGpu() : false;
-            if (time_block.IsProfilingGpu() && !has_gpu_parent)
+            if (!time_block.GetParent() && time_block.GetType() == TimeBlock_Gpu)
             {
-                *time_gpu += time_block.GetDurationGpu();
+                *time_gpu += time_block.GetDuration();
             }
         }
     }

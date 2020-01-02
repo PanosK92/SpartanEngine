@@ -34,6 +34,7 @@ namespace Spartan
 	class Context; 
 	class Engine;
 	class Renderer;
+    class Profiler;
     struct WindowData;
 }
 //========================
@@ -62,5 +63,6 @@ private:
 	std::unique_ptr<Spartan::Engine> m_engine;
 	std::shared_ptr<Spartan::RHI_Device> m_rhi_device;
 	Spartan::Context* m_context	    = nullptr;
-	Spartan::Renderer* m_renderer	= nullptr;	
+	Spartan::Renderer* m_renderer	= nullptr;
+    Spartan::Profiler* m_profiler   = nullptr;
 };

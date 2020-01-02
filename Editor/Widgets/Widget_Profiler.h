@@ -67,6 +67,7 @@ public:
 private:
 	void ShowCPU();
 	void ShowGPU();
+    void ShowTimeBlock(const Spartan::TimeBlock& time_block, float total_time);
 	void ShowPlot(std::vector<float>& data, Metric& metric, float time_value, bool is_stuttering);
 
 	std::vector<float> m_plot_times_cpu;
@@ -75,4 +76,5 @@ private:
 	Metric m_metric_cpu;
 	Metric m_metric_gpu;
 	Spartan::Profiler* m_profiler;
+    float m_tree_depth_stride = 10;
 };

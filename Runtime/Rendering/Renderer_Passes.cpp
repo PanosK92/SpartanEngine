@@ -63,11 +63,11 @@ namespace Spartan
 
     void Renderer::Pass_Main(RHI_CommandList* cmd_list)
 	{
-        TIME_BLOCK_START_CPU(m_profiler);
-
         // Validate RHI device as it's required almost everywhere
         if (!m_rhi_device)
             return;
+
+        TIME_BLOCK_START_CPU(m_profiler);
 
         // Updates onces, used almost everywhere
         UpdateFrameBuffer();

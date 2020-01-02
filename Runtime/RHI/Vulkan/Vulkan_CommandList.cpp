@@ -651,7 +651,8 @@ namespace Spartan
         {
             if (m_profiler && pipeline_state->profile)
             {
-                m_profiler->TimeBlockStart(pipeline_state->pass_name, true, true, this);
+                m_profiler->TimeBlockStart(pipeline_state->pass_name, TimeBlock_Cpu, this);
+                m_profiler->TimeBlockStart(pipeline_state->pass_name, TimeBlock_Gpu, this);
             }
         }
 
@@ -685,7 +686,8 @@ namespace Spartan
         {
             if (m_profiler)
             {
-                m_profiler->TimeBlockEnd();
+                m_profiler->TimeBlockEnd(); // cpu
+                m_profiler->TimeBlockEnd(); // gpu
             }
         }
     }
