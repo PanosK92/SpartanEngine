@@ -86,6 +86,11 @@ namespace Spartan
             {
                 m_rhi_device->GetContextRhi()->device_context->VSSetShader(static_cast<ID3D11VertexShader*>(const_cast<void*>(resource)), nullptr, 0);
                 m_profiler->m_rhi_bindings_shader_vertex++;
+
+                // D3D11 assumes vertex & index buffers are part of the vertex shader context.
+                // So we have to reset the ideas of the set buffers here.
+                m_set_id_vertex_buffer  = 0;
+                m_set_id_index_buffer   = 0;
             }
         }
 
@@ -283,7 +288,7 @@ namespace Spartan
 			return;
 		}
 
-        if (m_id_vertex_buffer == buffer->GetId())
+        if (m_set_id_vertex_buffer == buffer->GetId())
             return;
 
         auto ptr        = static_cast<ID3D11Buffer*>(buffer->GetResource());
@@ -292,7 +297,7 @@ namespace Spartan
         m_rhi_device->GetContextRhi()->device_context->IASetVertexBuffers(0, 1, &ptr, &stride, &offset);
 
         m_profiler->m_rhi_bindings_buffer_vertex++;
-        m_id_vertex_buffer = buffer->GetId();
+        m_set_id_vertex_buffer = buffer->GetId();
 	}
 
 	void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer)
@@ -303,7 +308,7 @@ namespace Spartan
 			return;
 		}
 
-        if (m_id_index_buffer == buffer->GetId())
+        if (m_set_id_index_buffer == buffer->GetId())
             return;
 
         m_rhi_device->GetContextRhi()->device_context->IASetIndexBuffer
@@ -314,7 +319,7 @@ namespace Spartan
         );
 
         m_profiler->m_rhi_bindings_buffer_index++;
-        m_id_index_buffer = buffer->GetId();
+        m_set_id_index_buffer = buffer->GetId();
 	}
 
     void RHI_CommandList::SetShaderCompute(const RHI_Shader* shader)

@@ -18,25 +18,29 @@
 -- CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-SOLUTION_NAME 			= "Spartan"
-EDITOR_NAME 				= "Editor"
-RUNTIME_NAME 			= "Runtime"
-DEBUG_FORMAT			= "c7"
-EDITOR_DIR					= "../" .. EDITOR_NAME
-RUNTIME_DIR				= "../" .. RUNTIME_NAME
-LIBRARY_DIR 				= "../ThirdParty/libraries"
-INTERMEDIATE_DIR 		= "../Binaries/Intermediate"
-TARGET_DIR_RELEASE 	= "../Binaries/Release"
-TARGET_DIR_DEBUG 	= "../Binaries/Debug"
-API_GRAPHICS				= _ARGS[1]
+SOLUTION_NAME           = "Spartan"
+EDITOR_NAME             = "Editor"
+RUNTIME_NAME            = "Runtime"
+TARGET_NAME             = "Spartan" -- Name of executable
+DEBUG_FORMAT            = "c7"
+EDITOR_DIR              = "../" .. EDITOR_NAME
+RUNTIME_DIR             = "../" .. RUNTIME_NAME
+LIBRARY_DIR             = "../ThirdParty/libraries"
+INTERMEDIATE_DIR        = "../Binaries/Intermediate"
+TARGET_DIR_RELEASE      = "../Binaries/Release"
+TARGET_DIR_DEBUG        = "../Binaries/Debug"
+API_GRAPHICS            = _ARGS[1]
 
 -- Convert graphics api var to the corresponding project define
 if API_GRAPHICS == "d3d11" then
-	API_GRAPHICS = "API_GRAPHICS_D3D11"
+	API_GRAPHICS    = "API_GRAPHICS_D3D11"
+    TARGET_NAME     = "Spartan_d3d11"
 elseif API_GRAPHICS == "d3d12" then
-	API_GRAPHICS = "API_GRAPHICS_D3D12"
+	API_GRAPHICS    = "API_GRAPHICS_D3D12"
+    TARGET_NAME     = "Spartan_d3d12"
 elseif API_GRAPHICS == "vulkan" then
-	API_GRAPHICS = "API_GRAPHICS_VULKAN"
+	API_GRAPHICS    = "API_GRAPHICS_VULKAN"
+    TARGET_NAME     = "Spartan_vk"
 end
 
 -- Solution
@@ -138,6 +142,7 @@ project (EDITOR_NAME)
 	location (EDITOR_DIR)
 	links { RUNTIME_NAME }
 	dependson { RUNTIME_NAME }
+    targetname ( TARGET_NAME )
 	objdir (INTERMEDIATE_DIR)
 	kind "WindowedApp"
 	staticruntime "On"
