@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_SwapChain.h"
 #include "../RHI_BlendState.h"
 #include "../RHI_InputLayout.h"
+#include "../RHI_CommandList.h"
 #include "../RHI_PipelineState.h"
 #include "../RHI_ConstantBuffer.h"
 #include "../RHI_RasterizerState.h"
@@ -312,13 +313,17 @@ namespace Spartan
 
             auto pipeline = reinterpret_cast<VkPipeline*>(&m_pipeline);
             vulkan_common::error::check(vkCreateGraphicsPipelines(m_rhi_device->GetContextRhi()->device, nullptr, 1, &pipeline_info, nullptr, pipeline));
+
+            // Set pipeline name
+            string name = (m_state.shader_vertex ? m_state.shader_vertex->GetName() : "null") + "-" + (m_state.shader_pixel ? m_state.shader_pixel->GetName() : "null");
+            vulkan_common::debug::set_pipeline_name(m_rhi_device->GetContextRhi()->device, *pipeline, name.c_str());
         }
 	}
 
 	RHI_Pipeline::~RHI_Pipeline()
 	{
-        // Wait in case the buffer is still in use by the graphics queue
-        vkQueueWaitIdle(m_rhi_device->GetContextRhi()->queue_graphics);
+        // Wait in case the buffer is still in use
+        RHI_CommandList::Gpu_Flush(m_rhi_device.get());
 
 		vkDestroyPipeline(m_rhi_device->GetContextRhi()->device, static_cast<VkPipeline>(m_pipeline), nullptr);
 		m_pipeline = nullptr;

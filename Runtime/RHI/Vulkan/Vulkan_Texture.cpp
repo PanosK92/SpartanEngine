@@ -122,8 +122,10 @@ namespace Spartan
             }
         }
 
-        // Lock to avoid using same queue from multiple threads
+        // Textures can load from many threads, in parallel, but at this point they can have race
+        // conditions with the queue we will be using, so we have to serialize them for this bit.
         lock_guard lock(g_mutex);
+        vulkan_common::error::check(vkQueueWaitIdle(rhi_context->queue_graphics));
 
         // Create command buffer (for later layout transitioning) - TODO: in case of early exit due to failure, free this buffer
         VkCommandBuffer cmd_buffer = vulkan_common::command_buffer::begin(rhi_context, rhi_context->queue_graphics_family_index);
@@ -135,33 +137,37 @@ namespace Spartan
         {
             // Create buffer copy structs for each mip level
             vector<VkBufferImageCopy> buffer_image_copies(m_mip_levels);
-            vector<uint64_t> mip_memory(m_mip_levels);
+            vector<uint64_t> mip_memory(m_array_size * m_mip_levels);
             VkDeviceSize buffer_size = 0;
             uint64_t offset = 0;
-            for (uint32_t mip_level = 0; mip_level < m_mip_levels; mip_level++)
+            for (uint32_t array_index = 0; array_index < m_array_size; array_index++)
             {
-                uint32_t mip_width  = m_width >> mip_level;
-                uint32_t mip_height = m_height >> mip_level;
+                for (uint32_t mip_index = 0; mip_index < m_mip_levels; mip_index++)
+                {
+                    uint32_t mip_width  = m_width >> mip_index;
+                    uint32_t mip_height = m_height >> mip_index;
 
-                VkBufferImageCopy region				= {};
-                region.bufferOffset						= offset;
-                region.bufferRowLength					= 0;
-                region.bufferImageHeight				= 0;
-                region.imageSubresource.aspectMask		= VK_IMAGE_ASPECT_COLOR_BIT;
-                region.imageSubresource.mipLevel		= mip_level;
-                region.imageSubresource.baseArrayLayer	= 0;
-                region.imageSubresource.layerCount		= m_array_size;
-                region.imageOffset						= { 0, 0, 0 };
-                region.imageExtent						= { mip_width, mip_height, 1 };
+                    VkBufferImageCopy region				= {};
+                    region.bufferOffset						= offset;
+                    region.bufferRowLength					= 0;
+                    region.bufferImageHeight				= 0;
+                    region.imageSubresource.aspectMask		= IsColorFormat() ? VK_IMAGE_ASPECT_COLOR_BIT : VK_IMAGE_ASPECT_DEPTH_BIT;
+                    region.imageSubresource.mipLevel		= mip_index;
+                    region.imageSubresource.baseArrayLayer	= array_index;
+                    region.imageSubresource.layerCount		= m_array_size;
+                    region.imageOffset						= { 0, 0, 0 };
+                    region.imageExtent						= { mip_width, mip_height, 1 };
 
-                buffer_image_copies[mip_level] = region;
+                    buffer_image_copies[mip_index] = region;
 
-                // Update offset
-                offset += static_cast<uint32_t>(m_data[mip_level].size());
+                    // Update offset
+                    offset += static_cast<uint32_t>(m_data[mip_index].size());
 
-                // Update size
-                mip_memory[mip_level] = mip_width * mip_height * m_channels * (m_bpc / 8);
-                buffer_size += mip_memory[mip_level];
+                    // Update memory requirements
+                    uint64_t memory_required = mip_width * mip_height * m_channels * (m_bpc / 8);
+                    mip_memory[array_index + mip_index] = memory_required;
+                    buffer_size += memory_required;
+                }
             }
             
             // Create staging buffer
@@ -179,10 +185,14 @@ namespace Spartan
             offset = 0;
             if (vulkan_common::error::check(vkMapMemory(rhi_context->device, static_cast<VkDeviceMemory>(staging_buffer_memory), 0, buffer_size, 0, &data)))
             {
-                for (uint32_t mip_level = 0; mip_level < m_mip_levels; mip_level++)
+                for (uint32_t array_index = 0; array_index < m_array_size; array_index++)
                 {
-                    memcpy(static_cast<byte*>(data) + offset, m_data[mip_level].data(), mip_memory[mip_level]);
-                    offset += mip_memory[mip_level];
+                    for (uint32_t mip_level = 0; mip_level < m_mip_levels; mip_level++)
+                    {
+                        uint32_t index = array_index + mip_level;
+                        memcpy(static_cast<byte*>(data) + offset, m_data[index].data(), mip_memory[index]);
+                        offset += mip_memory[index];
+                    }
                 }
 
                 vkUnmapMemory(rhi_context->device, static_cast<VkDeviceMemory>(staging_buffer_memory));
