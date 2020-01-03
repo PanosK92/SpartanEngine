@@ -428,16 +428,6 @@ namespace Spartan
                 }
                 cmd_list->End(); // Opaque
                 cmd_list->Submit();
-
-                // After the first pass, update state to not clear again
-                if (pipeline_state.render_target_color_clear[0] != state_dont_clear_color)
-                {
-                    pipeline_state.render_target_color_clear[0] = state_dont_clear_color;
-                    pipeline_state.render_target_color_clear[1] = state_dont_clear_color;
-                    pipeline_state.render_target_color_clear[2] = state_dont_clear_color;
-                    pipeline_state.render_target_color_clear[3] = state_dont_clear_color;
-                    pipeline_state.render_target_depth_clear = state_dont_clear_depth;
-                }
             }
         }
 	}
@@ -642,10 +632,6 @@ namespace Spartan
                 cmd_list->End();
                 cmd_list->Submit();
             }
-
-            pipeline_state.render_target_color_clear[0] = state_dont_clear_color;
-            pipeline_state.render_target_color_clear[1] = state_dont_clear_color;
-            pipeline_state.render_target_color_clear[2] = state_dont_clear_color;
         };
 
         // Draw lights

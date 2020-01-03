@@ -98,6 +98,15 @@ namespace Spartan
         return 0;
     }
 
+	void RHI_PipelineState::ResetClearValues()
+	{
+        for (uint32_t i = 0; i < state_max_render_target_count; i++)
+        {
+            render_target_color_clear[i] = state_dont_clear_color;
+        }
+        render_target_depth_clear = state_dont_clear_depth;
+	}
+
 	void RHI_PipelineState::ComputeHash()
     {
         m_hash = 0;
