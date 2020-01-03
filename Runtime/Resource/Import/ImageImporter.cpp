@@ -307,12 +307,12 @@ namespace Spartan
         }
 		else if (channels == 3)
 		{
-			if (bytes_per_channel == 32)	return RHI_Format_R32G32B32_Float;
+			if (bytes_per_channel == 32) return RHI_Format_R32G32B32_Float;
 		}
 		else if (channels == 4)
 		{
 			if (bytes_per_channel == 8)     return RHI_Format_R8G8B8A8_Unorm;
-			if (bytes_per_channel == 16)	return RHI_Format_R16G16B16A16_Float;
+			if (bytes_per_channel == 16)    return RHI_Format_R16G16B16A16_Float;
 			if (bytes_per_channel == 32)    return RHI_Format_R32G32B32A32_Float;
 		}
 		

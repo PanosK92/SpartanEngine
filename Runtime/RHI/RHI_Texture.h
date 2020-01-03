@@ -76,7 +76,8 @@ namespace Spartan
 		const auto& GetData() const										{ return m_data; }		
         void SetData(const std::vector<std::vector<std::byte>>& data)   { m_data = data; }
         auto AddMipmap()                                                { return &m_data.emplace_back(std::vector<std::byte>()); }
-        bool HasMipmaps()                                               { return !m_data.empty();  }
+        bool HasMipmaps() const                                         { return !m_data.empty();  }
+        uint32_t GetMiplevels() const                                   { return m_mip_levels; }
         std::vector<std::byte>* GetData(uint32_t mipmap_index);
         std::vector<std::byte> GetMipmap(uint32_t index);
 
@@ -114,9 +115,11 @@ namespace Spartan
 		uint32_t m_width		= 0;
 		uint32_t m_height		= 0;
 		uint32_t m_channels		= 4;
+        uint32_t m_array_size   = 1;
+        uint32_t m_mip_levels   = 1;
 		bool m_is_grayscale		= false;
 		bool m_is_transparent	= false;
-		RHI_Format m_format		= RHI_Format_R8G8B8A8_Unorm;
+		RHI_Format m_format		= RHI_Format_Undefined;
 		uint16_t m_bind_flags	= 0;
 		bool m_generate_mipmaps_when_loading = false;
 		RHI_Viewport m_viewport;
@@ -128,7 +131,7 @@ namespace Spartan
 		void* m_resource_texture		    = nullptr;
 		void* m_resource_memory			    = nullptr;
         RHI_Image_Layout m_layout           = RHI_Image_Undefined;
-		uint32_t m_array_size			    = 1;	
+		
 		std::vector<void*> m_resource_depth_stencil;
         std::shared_ptr<RHI_Device> m_rhi_device;
 

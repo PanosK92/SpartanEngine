@@ -64,7 +64,7 @@ namespace Spartan
 
         if (command_list)
         {
-            if (!vulkan_common::image::transition_layout(m_rhi_device.get(), static_cast<VkCommandBuffer>(command_list->GetResource_CommandBuffer()), this, layout))
+            if (!vulkan_common::image::set_layout(m_rhi_device.get(), static_cast<VkCommandBuffer>(command_list->GetResource_CommandBuffer()), this, layout))
                 return;
         }
 
@@ -109,7 +109,7 @@ namespace Spartan
 
         // Create image
         {
-            if (!vulkan_common::image::create(rhi_context, *image, m_width, m_height, vulkan_format[m_format], image_tiling, m_layout, usage_flags))
+            if (!vulkan_common::image::create(rhi_context, *image, m_width, m_height, m_mip_levels, m_array_size, vulkan_format[m_format], image_tiling, m_layout, usage_flags))
             {
                 LOG_ERROR("Failed to create image");
                 return false;
@@ -133,9 +133,38 @@ namespace Spartan
         void* staging_buffer_memory = nullptr;
         if (use_staging)
         {
-            // Create staging buffer
-            VkDeviceSize buffer_size = static_cast<uint64_t>(m_width)* static_cast<uint64_t>(m_height)* static_cast<uint64_t>(m_channels);
+            // Create buffer copy structs for each mip level
+            vector<VkBufferImageCopy> buffer_image_copies(m_mip_levels);
+            vector<uint64_t> mip_memory(m_mip_levels);
+            VkDeviceSize buffer_size = 0;
+            uint64_t offset = 0;
+            for (uint32_t mip_level = 0; mip_level < m_mip_levels; mip_level++)
+            {
+                uint32_t mip_width  = m_width >> mip_level;
+                uint32_t mip_height = m_height >> mip_level;
 
+                VkBufferImageCopy region				= {};
+                region.bufferOffset						= offset;
+                region.bufferRowLength					= 0;
+                region.bufferImageHeight				= 0;
+                region.imageSubresource.aspectMask		= VK_IMAGE_ASPECT_COLOR_BIT;
+                region.imageSubresource.mipLevel		= mip_level;
+                region.imageSubresource.baseArrayLayer	= 0;
+                region.imageSubresource.layerCount		= m_array_size;
+                region.imageOffset						= { 0, 0, 0 };
+                region.imageExtent						= { mip_width, mip_height, 1 };
+
+                buffer_image_copies[mip_level] = region;
+
+                // Update offset
+                offset += static_cast<uint32_t>(m_data[mip_level].size());
+
+                // Update size
+                mip_memory[mip_level] = mip_width * mip_height * m_channels * (m_bpc / 8);
+                buffer_size += mip_memory[mip_level];
+            }
+            
+            // Create staging buffer
             if (!vulkan_common::buffer::create(
                 rhi_context,
                 static_cast<void*>(stating_buffer),
@@ -145,34 +174,37 @@ namespace Spartan
                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
             )) return false;
 
-            // Copy data to buffer
+            // Copy mip levels to buffer
             void* data = nullptr;
+            offset = 0;
             if (vulkan_common::error::check(vkMapMemory(rhi_context->device, static_cast<VkDeviceMemory>(staging_buffer_memory), 0, buffer_size, 0, &data)))
             {
-                memcpy(data, m_data.front().data(), static_cast<size_t>(buffer_size));
+                for (uint32_t mip_level = 0; mip_level < m_mip_levels; mip_level++)
+                {
+                    memcpy(static_cast<byte*>(data) + offset, m_data[mip_level].data(), mip_memory[mip_level]);
+                    offset += mip_memory[mip_level];
+                }
+
                 vkUnmapMemory(rhi_context->device, static_cast<VkDeviceMemory>(staging_buffer_memory));
             }
 
             // Transition to RHI_Image_Transfer_Dst_Optimal
             RHI_Image_Layout copy_layout = RHI_Image_Transfer_Dst_Optimal;
-            if (!vulkan_common::image::transition_layout(m_rhi_device.get(), cmd_buffer, this, copy_layout))
+            if (!vulkan_common::image::set_layout(m_rhi_device.get(), cmd_buffer, this, copy_layout))
                 return false;
 
             // Update layout
             m_layout = copy_layout;
 
-            // Copy buffer to texture	
-            VkBufferImageCopy region				= {};
-            region.bufferOffset						= 0;
-            region.bufferRowLength					= 0;
-            region.bufferImageHeight				= 0;
-            region.imageSubresource.aspectMask		= VK_IMAGE_ASPECT_COLOR_BIT;
-            region.imageSubresource.mipLevel		= 0;
-            region.imageSubresource.baseArrayLayer	= 0;
-            region.imageSubresource.layerCount		= 1;
-            region.imageOffset						= { 0, 0, 0 };
-            region.imageExtent						= { m_width, m_height, 1 };
-            vkCmdCopyBufferToImage(cmd_buffer, *reinterpret_cast<VkBuffer*>(&stating_buffer), static_cast<VkImage>(GetResource_Texture()), vulkan_image_layout[copy_layout], 1, &region);
+            // Copy buffer to texture
+            vkCmdCopyBufferToImage(
+                cmd_buffer,
+                *reinterpret_cast<VkBuffer*>(&stating_buffer),
+                static_cast<VkImage>(GetResource_Texture()),
+                vulkan_image_layout[copy_layout],
+                static_cast<uint32_t>(buffer_image_copies.size()),
+                buffer_image_copies.data()
+            );
         }
 
         // Transition to target layout
@@ -190,7 +222,7 @@ namespace Spartan
                 target_layout = RHI_Image_Depth_Stencil_Attachment_Optimal;
 
             // Transition
-            if (!vulkan_common::image::transition_layout(m_rhi_device.get(), cmd_buffer, this, target_layout))
+            if (!vulkan_common::image::set_layout(m_rhi_device.get(), cmd_buffer, this, target_layout))
                 return false;
 
             // Flush

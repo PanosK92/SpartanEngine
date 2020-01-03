@@ -76,24 +76,18 @@ namespace Spartan
 
 		// Fill subresource data
 		vector<D3D11_SUBRESOURCE_DATA> vec_subresource_data;
-		auto mip_width	= width;
-		auto mip_height = height;
-		for (uint32_t i = 0; i < static_cast<uint32_t>(data.size()); i++)
+		for (uint32_t mip_level = 0; mip_level < static_cast<uint32_t>(data.size()); mip_level++)
 		{
-			if (data[i].empty())
+			if (data[mip_level].empty())
 			{
-				LOG_ERROR("Mipmap %d has invalid data.", i);
+				LOG_ERROR("Mipmap %d has invalid data.", mip_level);
 				return false;
 			}
 
 			auto& subresource_data				= vec_subresource_data.emplace_back(D3D11_SUBRESOURCE_DATA{});
-			subresource_data.pSysMem			= data[i].data();					// Data pointer		
-			subresource_data.SysMemPitch		= mip_width * channels * (bpc / 8);	// Line width in bytes
-			subresource_data.SysMemSlicePitch	= 0;								// This is only used for 3D textures
-
-			// Compute size of next mip-map
-			mip_width	= Max(mip_width / 2, static_cast<uint32_t>(1));
-			mip_height	= Max(mip_height / 2, static_cast<uint32_t>(1));
+			subresource_data.pSysMem			= data[mip_level].data();					    // Data pointer		
+			subresource_data.SysMemPitch		= (width >> mip_level) * channels * (bpc / 8);	// Line width in bytes
+			subresource_data.SysMemSlicePitch	= 0;								            // This is only used for 3D textures
 		}
 
 		// Create
@@ -321,27 +315,21 @@ namespace Spartan
 			texture_desc.MiscFlags			= D3D11_RESOURCE_MISC_TEXTURECUBE;
 			texture_desc.CPUAccessFlags		= 0;
 
-			auto mip_width	= width;
-			auto mip_height = height;
-			for (const auto& mip : side)
+			for (uint32_t mip_level = 0; mip_level < static_cast<uint32_t>(side.size()); mip_level++)
 			{
+                auto& mip = side[mip_level];
+
 				if (mip.empty())
 				{
 					LOG_ERROR("A mip-map contains invalid data.");
 					continue;
 				}
 
-				auto row_bytes = mip_width * channels * (bpc / 8);
-
 				// D3D11_SUBRESOURCE_DATA
 				auto & subresource_data				= vec_subresource_data.emplace_back(D3D11_SUBRESOURCE_DATA{});
-				subresource_data.pSysMem			= mip.data();	// Data pointer		
-				subresource_data.SysMemPitch		= row_bytes;	// Line width in bytes
-				subresource_data.SysMemSlicePitch	= 0;			// This is only used for 3D textures
-
-				// Compute size of next mip-map
-				mip_width	= Max(mip_width / 2, static_cast<uint32_t>(1));
-				mip_height	= Max(mip_height / 2, static_cast<uint32_t>(1));
+				subresource_data.pSysMem			= mip.data();	                                // Data pointer		
+				subresource_data.SysMemPitch		= (width >> mip_level) * channels * (bpc / 8);	// Line width in bytes
+				subresource_data.SysMemSlicePitch	= 0;			                                // This is only used for 3D textures
 			}
 
 			vec_texture_desc.emplace_back(texture_desc);

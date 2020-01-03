@@ -152,7 +152,7 @@ namespace Spartan
                     // Name the image
                     vulkan_common::debug::set_image_name(rhi_context->device, swap_chain_images[i], string(string("swapchain_image_") + to_string(0)).c_str());
 
-                    if (!vulkan_common::image::view::create(rhi_context, static_cast<void*>(swap_chain_images[i]), resource_views[i], rhi_context->surface_format, VK_IMAGE_ASPECT_COLOR_BIT))
+                    if (!vulkan_common::image::view::create(rhi_context, static_cast<void*>(swap_chain_images[i]), resource_views[i], VK_IMAGE_VIEW_TYPE_2D, rhi_context->surface_format, VK_IMAGE_ASPECT_COLOR_BIT, 1, 1))
                         return false;
                 }
             }
@@ -386,7 +386,7 @@ namespace Spartan
         {
             for (uint32_t i = 0; i < m_buffer_count; i++)
             {
-                vulkan_common::image::transition_layout(m_rhi_device, command_list->GetResource_CommandBuffer(), m_resource_texture[i], this, layout);
+                vulkan_common::image::set_layout(m_rhi_device, command_list->GetResource_CommandBuffer(), m_resource_texture[i], this, layout);
             }
         }
 
