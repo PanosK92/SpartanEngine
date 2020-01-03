@@ -43,6 +43,7 @@ namespace Spartan
         void ComputeHash();
         uint32_t GetWidth() const;
         uint32_t GetHeight() const;
+        void ResetClearValues();
         auto GetHash()                                  const { return m_hash; }
         void* GetRenderPass()                           const { return m_render_pass; }
         bool operator==(const RHI_PipelineState& rhs)   const { return m_hash == rhs.GetHash(); }

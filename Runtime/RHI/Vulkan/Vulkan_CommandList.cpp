@@ -466,6 +466,13 @@ namespace Spartan
         if (!vulkan_common::error::check(vkQueueSubmit(m_rhi_device->GetContextRhi()->queue_graphics, 1, &submit_info, reinterpret_cast<VkFence>(m_cmd_list_consumed_fence))))
             return false;
 
+        // If the render pass has been bound then it cleared to whatever values was requested (or not)
+        // So at this point we reset the values as we don't want to clear again.
+        if (m_render_pass_and_pipeline_bound)
+        {
+            m_pipeline_state->ResetClearValues();
+        }
+
 		// Wait for fence on the next Begin(), if we force it now, perfomance will not be as good
         m_cmd_state = RHI_Cmd_List_Idle_Sync_Cpu_To_Gpu;
 
@@ -679,7 +686,7 @@ namespace Spartan
 		    render_pass_info.renderArea.offset			= { 0, 0 };
             render_pass_info.renderArea.extent.width    = m_pipeline->GetPipelineState()->GetWidth();
 		    render_pass_info.renderArea.extent.height	= m_pipeline->GetPipelineState()->GetHeight();
-		    render_pass_info.clearValueCount			= static_cast<uint32_t>(clear_values.size());
+		    render_pass_info.clearValueCount			= clear_value_count;
 		    render_pass_info.pClearValues				= clear_values.data();
 		    vkCmdBeginRenderPass(CMD_BUFFER, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 
