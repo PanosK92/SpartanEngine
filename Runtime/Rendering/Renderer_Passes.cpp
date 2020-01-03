@@ -140,9 +140,6 @@ namespace Spartan
             pipeline_state.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
             pipeline_state.pass_name                    = "Pass_LightDepth";
 
-            // Tracking
-            uint32_t currently_bound_geometry = 0;
-
             for (uint32_t i = 0; i < shadow_map->GetArraySize(); i++)
             {
                 const Matrix& view_projection = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
@@ -196,12 +193,8 @@ namespace Spartan
                             continue;
 
                         // Bind geometry
-                        if (currently_bound_geometry != model->GetId())
-                        {
-                            cmd_list->SetBufferIndex(model->GetIndexBuffer());
-                            cmd_list->SetBufferVertex(model->GetVertexBuffer());
-                            currently_bound_geometry = model->GetId();
-                        }
+                        cmd_list->SetBufferIndex(model->GetIndexBuffer());
+                        cmd_list->SetBufferVertex(model->GetVertexBuffer());
 
                         // Update uber buffer with cascade transform
                         m_buffer_uber_cpu.transform = entity->GetTransform_PtrRaw()->GetMatrix() * view_projection;
@@ -308,10 +301,6 @@ namespace Spartan
         if (!shader_v->IsCompiled())
             return;
       
-        // Variables that help reduce state changes
-        uint32_t currently_bound_geometry = 0;
-        uint32_t currently_bound_material = 0;
-
         // Set render state
         static RHI_PipelineState pipeline_state;
         pipeline_state.shader_vertex                    = shader_v.get();
@@ -331,6 +320,9 @@ namespace Spartan
         pipeline_state.render_target_depth_clear        = !GetOptionValue(Render_DepthPrepass) ? GetClearDepth() : state_dont_clear_depth;
         pipeline_state.viewport                         = tex_albedo->GetViewport();
         pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
+
+        // Only useful to minimize D3D11 state changes (Vulkan backend is smarter)
+        uint32_t m_set_material_id = 0;
         
         // Iterate through all the G-Buffer shader variations
         for (const shared_ptr<ShaderVariation>& resource : ShaderVariation::GetVariations())
@@ -373,16 +365,12 @@ namespace Spartan
                         if (!m_camera->IsInViewFrustrum(renderable))
                             continue;
 
-                        // Bind geometry
-                        if (currently_bound_geometry != model->GetId())
-                        {
-                            cmd_list->SetBufferIndex(model->GetIndexBuffer());
-                            cmd_list->SetBufferVertex(model->GetVertexBuffer());
-                            currently_bound_geometry = model->GetId();
-                        }
+                        // Set geometry (will only happen if not already set)
+                        cmd_list->SetBufferIndex(model->GetIndexBuffer());
+                        cmd_list->SetBufferVertex(model->GetVertexBuffer());
 
                         // Bind material
-                        if (currently_bound_material != material->GetId())
+                        if (m_set_material_id != material->GetId())
                         {
                             // Bind material textures		
                             cmd_list->SetTexture(0, material->GetTexture(TextureType_Albedo).get());
@@ -403,8 +391,8 @@ namespace Spartan
                             m_buffer_uber_cpu.mat_normal_mul    = material->GetMultiplier(TextureType_Normal);
                             m_buffer_uber_cpu.mat_height_mul    = material->GetMultiplier(TextureType_Height);
                             m_buffer_uber_cpu.mat_shading_mode  = static_cast<float>(material->GetShadingMode());
-                        
-                            currently_bound_material = material->GetId();
+
+                            m_set_material_id = material->GetId();
                         }
                         
                         // Update uber buffer with entity transform
@@ -1813,7 +1801,9 @@ namespace Spartan
                 m_buffer_uber_cpu.transform = m_gizmo_transform->GetHandle().GetTransform(Vector3::Up);
                 m_buffer_uber_cpu.transform_axis = m_gizmo_transform->GetHandle().GetColor(Vector3::Up);
                 UpdateUberBuffer();
-            
+
+                cmd_list->SetBufferIndex(m_gizmo_transform->GetIndexBuffer());
+                cmd_list->SetBufferVertex(m_gizmo_transform->GetVertexBuffer());
                 cmd_list->DrawIndexed(m_gizmo_transform->GetIndexCount());
                 cmd_list->End();
                 cmd_list->Submit();
@@ -1826,7 +1816,9 @@ namespace Spartan
                 m_buffer_uber_cpu.transform = m_gizmo_transform->GetHandle().GetTransform(Vector3::Forward);
                 m_buffer_uber_cpu.transform_axis = m_gizmo_transform->GetHandle().GetColor(Vector3::Forward);
                 UpdateUberBuffer();
-            
+
+                cmd_list->SetBufferIndex(m_gizmo_transform->GetIndexBuffer());
+                cmd_list->SetBufferVertex(m_gizmo_transform->GetVertexBuffer());
                 cmd_list->DrawIndexed(m_gizmo_transform->GetIndexCount());
                 cmd_list->End();
                 cmd_list->Submit();
@@ -1841,7 +1833,9 @@ namespace Spartan
                     m_buffer_uber_cpu.transform = m_gizmo_transform->GetHandle().GetTransform(Vector3::One);
                     m_buffer_uber_cpu.transform_axis = m_gizmo_transform->GetHandle().GetColor(Vector3::One);
                     UpdateUberBuffer();
-            
+
+                    cmd_list->SetBufferIndex(m_gizmo_transform->GetIndexBuffer());
+                    cmd_list->SetBufferVertex(m_gizmo_transform->GetVertexBuffer());
                     cmd_list->DrawIndexed(m_gizmo_transform->GetIndexCount());
                     cmd_list->End();
                     cmd_list->Submit();

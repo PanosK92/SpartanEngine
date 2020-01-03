@@ -161,14 +161,14 @@ namespace Spartan
             return false;
         }
 
-        // End render pass
-        if (m_render_pass_and_pipeline_bound)
+        if (m_render_pass_and_pipeline_set)
         {
+            // End render pass
             vkCmdEndRenderPass(CMD_BUFFER);
-            m_render_pass_and_pipeline_bound = false;
+            m_render_pass_and_pipeline_set = false;
         }
 
-        // End marker and profiler (if enabled)
+        // End marker and profiler
         MarkAndProfileEnd(m_pipeline_state);
 
         // End command buffer
@@ -282,6 +282,9 @@ namespace Spartan
             return;
         }
 
+        if (m_id_vertex_buffer == buffer->GetId())
+            return;
+
 		VkBuffer vertex_buffers[]	= { static_cast<VkBuffer>(buffer->GetResource()) };
 		VkDeviceSize offsets[]		= { 0 };
 
@@ -294,6 +297,7 @@ namespace Spartan
         );
 
         m_profiler->m_rhi_bindings_buffer_vertex++;
+        m_id_vertex_buffer = buffer->GetId();
 	}
 
 	void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer)
@@ -304,6 +308,9 @@ namespace Spartan
             return;
         }
 
+        if (m_id_index_buffer == buffer->GetId())
+            return;
+
 		vkCmdBindIndexBuffer(
 			CMD_BUFFER,                                                     // commandBuffer
 			static_cast<VkBuffer>(buffer->GetResource()),					// buffer
@@ -312,6 +319,7 @@ namespace Spartan
 		);
 
         m_profiler->m_rhi_bindings_buffer_index++;
+        m_id_index_buffer = buffer->GetId();
 	}
 
     void RHI_CommandList::SetConstantBuffer(const uint32_t slot, uint8_t scope, RHI_ConstantBuffer* constant_buffer)
@@ -322,7 +330,7 @@ namespace Spartan
             return;
         }
 
-        // Set
+        // Set (will only happen if it's not already set)
         m_pipeline->SetConstantBuffer(slot, constant_buffer);
     }
 
@@ -334,7 +342,7 @@ namespace Spartan
             return;
         }
 
-        // Set
+        // Set (will only happen if it's not already set)
         m_pipeline->SetSampler(slot, sampler);
     }
 
@@ -371,7 +379,7 @@ namespace Spartan
             }
         }
 
-        // Set
+        // Set (will only happen if it's not already set)
         m_pipeline->SetTexture(slot, texture);
     }
 
@@ -468,7 +476,7 @@ namespace Spartan
 
         // If the render pass has been bound then it cleared to whatever values was requested (or not)
         // So at this point we reset the values as we don't want to clear again.
-        if (m_render_pass_and_pipeline_bound)
+        if (m_render_pass_and_pipeline_set)
         {
             m_pipeline_state->ResetClearValues();
         }
@@ -489,7 +497,9 @@ namespace Spartan
         if (!rhi_device || !rhi_device->GetContextRhi() || !rhi_device->GetContextRhi()->queue_graphics)
             return false;
 
-        return vulkan_common::error::check(vkQueueWaitIdle(rhi_device->GetContextRhi()->queue_graphics));
+        return  vulkan_common::error::check(vkQueueWaitIdle(rhi_device->GetContextRhi()->queue_graphics)) &&
+                vulkan_common::error::check(vkQueueWaitIdle(rhi_device->GetContextRhi()->queue_transfer)) &&
+                vulkan_common::error::check(vkQueueWaitIdle(rhi_device->GetContextRhi()->queue_compute));
     }
 
     uint32_t RHI_CommandList::Gpu_GetMemory(RHI_Device* rhi_device)
@@ -575,7 +585,9 @@ namespace Spartan
         uint32_t query_count    = static_cast<uint32_t>(m_timestamps.size());
         size_t stride           = sizeof(uint64_t);
 
-        if (!vulkan_common::error::check(vkGetQueryPoolResults(
+        // During engine startup, this can return VK_NOT_READY.
+        // Instead of waiting on the results reutrn 0 for a frame or two.
+        if (vkGetQueryPoolResults(
                 m_rhi_device->GetContextRhi()->device,  // device
                 static_cast<VkQueryPool>(m_query_pool), // queryPool
                 0,                                      // firstQuery
@@ -583,8 +595,8 @@ namespace Spartan
                 query_count * stride,                   // dataSize
                 m_timestamps.data(),                    // pData
                 stride,                                 // stride
-                VK_QUERY_RESULT_64_BIT))                // flags
-        ) return 0.0f;
+                VK_QUERY_RESULT_64_BIT                  // flags
+        ) != VK_SUCCESS) return 0.0f;
 
         return static_cast<float>(m_timestamps[1] - m_timestamps[0]) * m_rhi_device->GetContextRhi()->device_properties.limits.timestampPeriod * 1e-6f;
     }
@@ -653,7 +665,7 @@ namespace Spartan
     bool RHI_CommandList::OnDraw()
     {
         // Begin render pass and bind pipeline (if not done yet)
-        if (!m_render_pass_and_pipeline_bound)
+        if (!m_render_pass_and_pipeline_set)
         {
             // Clear values
             array<VkClearValue, state_max_render_target_count + 1> clear_values; // +1 for depth      
@@ -702,7 +714,7 @@ namespace Spartan
                 return false;
             }
 
-            m_render_pass_and_pipeline_bound = true;
+            m_render_pass_and_pipeline_set = true;
         }
 
         // Update descriptor set (if not done yet)
@@ -723,6 +735,11 @@ namespace Spartan
             );
 
             m_profiler->m_rhi_bindings_descriptor_set++;
+
+            // Upon setting a new descriptor, resources have to be set again.
+            // Note: I could optimize this further and see if the descriptor happens to contain them.
+            m_id_vertex_buffer  = 0;
+            m_id_index_buffer   = 0;
         }
 
         return true;

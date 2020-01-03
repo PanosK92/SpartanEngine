@@ -39,6 +39,7 @@ namespace Spartan
 		~RHI_Pipeline();
 
         void OnCommandListConsumed();
+
         void SetConstantBuffer(uint32_t slot, RHI_ConstantBuffer* constant_buffer);
         void SetSampler(uint32_t slot, RHI_Sampler* sampler);
         void SetTexture(uint32_t slot, RHI_Texture* texture);

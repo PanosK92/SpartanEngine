@@ -128,7 +128,10 @@ namespace Spartan
         void* m_cmd_buffer                      = nullptr;
         void* m_cmd_list_consumed_fence         = nullptr;
         void* m_query_pool                      = nullptr;
-        bool m_render_pass_and_pipeline_bound   = false;
+        bool m_render_pass_and_pipeline_set     = false;
+        uint32_t m_id_vertex_buffer             = 0;
+        uint32_t m_id_index_buffer              = 0;
         std::vector<uint64_t> m_timestamps;
+       
 	};
 }

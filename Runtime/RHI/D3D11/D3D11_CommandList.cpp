@@ -283,12 +283,16 @@ namespace Spartan
 			return;
 		}
 
+        if (m_id_vertex_buffer == buffer->GetId())
+            return;
+
         auto ptr        = static_cast<ID3D11Buffer*>(buffer->GetResource());
         auto stride     = buffer->GetStride();
         uint32_t offset = 0;
-
         m_rhi_device->GetContextRhi()->device_context->IASetVertexBuffers(0, 1, &ptr, &stride, &offset);
+
         m_profiler->m_rhi_bindings_buffer_vertex++;
+        m_id_vertex_buffer = buffer->GetId();
 	}
 
 	void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer)
@@ -299,6 +303,9 @@ namespace Spartan
 			return;
 		}
 
+        if (m_id_index_buffer == buffer->GetId())
+            return;
+
         m_rhi_device->GetContextRhi()->device_context->IASetIndexBuffer
         (
             static_cast<ID3D11Buffer*>(buffer->GetResource()),
@@ -307,6 +314,7 @@ namespace Spartan
         );
 
         m_profiler->m_rhi_bindings_buffer_index++;
+        m_id_index_buffer = buffer->GetId();
 	}
 
     void RHI_CommandList::SetShaderCompute(const RHI_Shader* shader)
