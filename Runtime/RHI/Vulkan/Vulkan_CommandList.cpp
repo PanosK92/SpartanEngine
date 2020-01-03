@@ -282,7 +282,7 @@ namespace Spartan
             return;
         }
 
-        if (m_id_vertex_buffer == buffer->GetId())
+        if (m_set_id_vertex_buffer == buffer->GetId())
             return;
 
 		VkBuffer vertex_buffers[]	= { static_cast<VkBuffer>(buffer->GetResource()) };
@@ -297,7 +297,7 @@ namespace Spartan
         );
 
         m_profiler->m_rhi_bindings_buffer_vertex++;
-        m_id_vertex_buffer = buffer->GetId();
+        m_set_id_vertex_buffer = buffer->GetId();
 	}
 
 	void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer)
@@ -308,7 +308,7 @@ namespace Spartan
             return;
         }
 
-        if (m_id_index_buffer == buffer->GetId())
+        if (m_set_id_index_buffer == buffer->GetId())
             return;
 
 		vkCmdBindIndexBuffer(
@@ -319,7 +319,7 @@ namespace Spartan
 		);
 
         m_profiler->m_rhi_bindings_buffer_index++;
-        m_id_index_buffer = buffer->GetId();
+        m_set_id_index_buffer = buffer->GetId();
 	}
 
     void RHI_CommandList::SetConstantBuffer(const uint32_t slot, uint8_t scope, RHI_ConstantBuffer* constant_buffer)
@@ -738,8 +738,8 @@ namespace Spartan
 
             // Upon setting a new descriptor, resources have to be set again.
             // Note: I could optimize this further and see if the descriptor happens to contain them.
-            m_id_vertex_buffer  = 0;
-            m_id_index_buffer   = 0;
+            m_set_id_vertex_buffer  = 0;
+            m_set_id_index_buffer   = 0;
         }
 
         return true;
