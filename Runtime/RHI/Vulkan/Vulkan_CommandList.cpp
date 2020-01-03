@@ -106,7 +106,6 @@ namespace Spartan
             Flush();
             m_pipeline->OnCommandListConsumed();
             m_cmd_state = RHI_Cmd_List_Idle;
-            m_render_pass_and_pipeline_bound = false;
         }
 
         if (m_cmd_state != RHI_Cmd_List_Idle)
@@ -166,6 +165,7 @@ namespace Spartan
         if (m_render_pass_and_pipeline_bound)
         {
             vkCmdEndRenderPass(CMD_BUFFER);
+            m_render_pass_and_pipeline_bound = false;
         }
 
         // End marker and profiler (if enabled)
@@ -177,7 +177,7 @@ namespace Spartan
 
         // Update state
         m_cmd_state = RHI_Cmd_List_Ended;
-
+       
         return true;
     }
 

@@ -580,7 +580,18 @@ namespace Spartan::vulkan_common
             return aspect_mask;
         }
 
-        inline bool create(const RHI_Context* rhi_context, VkImage& image, const uint32_t width, const uint32_t height, const VkFormat format, const VkImageTiling tiling, const RHI_Image_Layout layout, const VkImageUsageFlags usage)
+        inline bool create(
+            const RHI_Context* rhi_context,
+            VkImage& image,
+            const uint32_t width,
+            const uint32_t height,
+            const uint32_t mip_levels,
+            const uint32_t array_layers,
+            const VkFormat format,
+            const VkImageTiling tiling,
+            const RHI_Image_Layout layout,
+            const VkImageUsageFlags usage
+        )
         {
             VkImageCreateInfo create_info   = {};
             create_info.sType               = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -588,8 +599,8 @@ namespace Spartan::vulkan_common
             create_info.extent.width        = width;
             create_info.extent.height       = height;
             create_info.extent.depth        = 1;
-            create_info.mipLevels           = 1;
-            create_info.arrayLayers         = 1;
+            create_info.mipLevels           = mip_levels;
+            create_info.arrayLayers         = array_layers;
             create_info.format              = format;
             create_info.tiling              = tiling;
             create_info.initialLayout       = vulkan_image_layout[layout];
@@ -767,7 +778,7 @@ namespace Spartan::vulkan_common
             return access_mask;
         }
 
-        inline bool transition_layout(const RHI_Device* rhi_device, void* cmd_buffer, void* image, const VkImageAspectFlags aspect_mask, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new)
+        inline bool set_layout(const RHI_Device* rhi_device, void* cmd_buffer, void* image, const VkImageAspectFlags aspect_mask, const uint32_t level_count, const uint32_t layer_count, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new)
 	    {
             VkImageMemoryBarrier image_barrier              = {};
             image_barrier.sType                             = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -779,9 +790,9 @@ namespace Spartan::vulkan_common
             image_barrier.image                             = static_cast<VkImage>(image);
             image_barrier.subresourceRange.aspectMask       = aspect_mask;
             image_barrier.subresourceRange.baseMipLevel     = 0;
-            image_barrier.subresourceRange.levelCount       = 1;
+            image_barrier.subresourceRange.levelCount       = level_count;
             image_barrier.subresourceRange.baseArrayLayer   = 0;
-            image_barrier.subresourceRange.layerCount       = 1;
+            image_barrier.subresourceRange.layerCount       = layer_count;
             image_barrier.srcAccessMask                     = layout_to_access_mask(image_barrier.oldLayout, false);
             image_barrier.dstAccessMask                     = layout_to_access_mask(image_barrier.newLayout, true);
 
@@ -830,30 +841,30 @@ namespace Spartan::vulkan_common
 	    	return true;
 	    }
 
-        inline bool transition_layout(const RHI_Device* rhi_device, void* cmd_buffer, const RHI_Texture* texture, const RHI_Image_Layout layout_new)
+        inline bool set_layout(const RHI_Device* rhi_device, void* cmd_buffer, const RHI_Texture* texture, const RHI_Image_Layout layout_new)
         {
-            return transition_layout(rhi_device, cmd_buffer, texture->GetResource_Texture(), bind_flags_to_aspect_mask(texture), texture->GetLayout(), layout_new);
+            return set_layout(rhi_device, cmd_buffer, texture->GetResource_Texture(), bind_flags_to_aspect_mask(texture), texture->GetMiplevels(), texture->GetArraySize(), texture->GetLayout(), layout_new);
         }
 
-        inline bool transition_layout(const RHI_Device* rhi_device, void* cmd_buffer, void* image, const RHI_SwapChain* swapchain, const RHI_Image_Layout layout_new)
+        inline bool set_layout(const RHI_Device* rhi_device, void* cmd_buffer, void* image, const RHI_SwapChain* swapchain, const RHI_Image_Layout layout_new)
         {
-            return transition_layout(rhi_device, cmd_buffer, image, VK_IMAGE_ASPECT_COLOR_BIT, swapchain->GetLayout(), layout_new);
+            return set_layout(rhi_device, cmd_buffer, image, VK_IMAGE_ASPECT_COLOR_BIT, 1, 1, swapchain->GetLayout(), layout_new);
         }
 
         namespace view
         {
-            inline bool create(const RHI_Context* rhi_context, void* image, void*& image_view, const VkFormat format, const VkImageAspectFlags aspect_mask)
+            inline bool create(const RHI_Context* rhi_context, void* image, void*& image_view, VkImageViewType type, const VkFormat format, const VkImageAspectFlags aspect_mask, const uint32_t level_count, const uint32_t layer_count)
             {
                 VkImageViewCreateInfo create_info           = {};
                 create_info.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
                 create_info.image                           = static_cast<VkImage>(image);
-                create_info.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
+                create_info.viewType                        = type;
                 create_info.format                          = format;
                 create_info.subresourceRange.aspectMask     = aspect_mask;
                 create_info.subresourceRange.baseMipLevel   = 0;
-                create_info.subresourceRange.levelCount     = 1;
+                create_info.subresourceRange.levelCount     = level_count;
                 create_info.subresourceRange.baseArrayLayer = 0;
-                create_info.subresourceRange.layerCount     = 1;
+                create_info.subresourceRange.layerCount     = layer_count;
                 create_info.components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY;
                 create_info.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY;
                 create_info.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;
@@ -865,7 +876,18 @@ namespace Spartan::vulkan_common
 
             inline bool create(const RHI_Context* rhi_context, void* image, void*& image_view, const RHI_Texture* texture)
             {
-                return create(rhi_context, image, image_view, vulkan_format[texture->GetFormat()], bind_flags_to_aspect_mask(texture));
+                VkImageViewType type = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+
+                if (texture->GetResourceType() == Resource_Texture2d)
+                {
+                    type = (texture->GetArraySize() == 1) ? VK_IMAGE_VIEW_TYPE_2D : VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+                }
+                else if (texture->GetResourceType() == Resource_TextureCube)
+                {
+                    type = (texture->GetArraySize() == 1) ? VK_IMAGE_VIEW_TYPE_CUBE : VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
+                }
+
+                return create(rhi_context, image, image_view, type, vulkan_format[texture->GetFormat()], bind_flags_to_aspect_mask(texture), texture->GetMiplevels(), texture->GetArraySize());
             }
 
             inline void destroy(const RHI_Context* rhi_context, void*& image_view)
@@ -888,6 +910,7 @@ namespace Spartan::vulkan_common
             }
         }
     }
+
     namespace render_pass
     {
         inline bool create(

@@ -42,6 +42,7 @@ namespace Spartan
 			m_format		= format;		
 			m_data			= data;
 			m_bind_flags	= RHI_Texture_Sampled;
+            m_mip_levels    = static_cast<uint32_t>(data.size());
 
 			RHI_Texture2D::CreateResourceGpu();
 		}
@@ -49,6 +50,8 @@ namespace Spartan
 		// Creates a texture from data
 		RHI_Texture2D(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const std::vector<std::byte>& data) : RHI_Texture(context)
 		{
+            m_data.emplace_back(data);
+
 			m_resource_type = Resource_Texture2d;
 			m_width			= width;
 			m_height		= height;
@@ -56,7 +59,7 @@ namespace Spartan
 			m_channels		= GetChannelCountFromFormat(format);
 			m_format		= format;
 			m_bind_flags	= RHI_Texture_Sampled;
-			m_data.emplace_back(data);
+            m_mip_levels    = 1;
 
 			RHI_Texture2D::CreateResourceGpu();
 		}
@@ -81,6 +84,7 @@ namespace Spartan
 			m_array_size		= array_size;
             m_bind_flags        = RHI_Texture_Sampled;
 			m_bind_flags		|= (format == RHI_Format_D32_Float) ? RHI_Texture_RenderTarget_DepthStencil : RHI_Texture_RenderTarget_Color;
+            m_mip_levels        = 1;
 
 			RHI_Texture2D::CreateResourceGpu();
 		}

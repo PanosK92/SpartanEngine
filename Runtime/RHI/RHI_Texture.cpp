@@ -99,6 +99,7 @@ namespace Spartan
 		file->Write(m_bpp);
 		file->Write(m_width);
 		file->Write(m_height);
+        file->Write(static_cast<uint8_t>(m_format));
 		file->Write(m_channels);
 		file->Write(m_is_grayscale);
 		file->Write(m_is_transparent);
@@ -139,6 +140,8 @@ namespace Spartan
 			m_load_state = LoadState_Failed;
 			return false;
 		}
+
+        m_mip_levels = static_cast<uint32_t>(m_data.size());
 
 		// Create GPU resource
         if (!m_context->GetSubsystem<Renderer>()->GetRhiDevice()->IsInitialized() || !CreateResourceGpu())
@@ -254,6 +257,7 @@ namespace Spartan
 		file->Read(&m_bpp);
 		file->Read(&m_width);
 		file->Read(&m_height);
+        m_format = static_cast<RHI_Format>(file->ReadAs<uint8_t>());
 		file->Read(&m_channels);
 		file->Read(&m_is_grayscale);
 		file->Read(&m_is_transparent);
@@ -281,7 +285,7 @@ namespace Spartan
 			case RHI_Format_R8G8B8A8_Unorm:		return 4;
 			case RHI_Format_R16G16B16A16_Float:	return 4;
 			case RHI_Format_R32G32B32A32_Float:	return 4;
-			default:						return 0;
+			default:						    return 0;
 		}
 	}
 
