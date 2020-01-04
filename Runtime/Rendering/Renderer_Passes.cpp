@@ -330,6 +330,9 @@ namespace Spartan
         // Iterate through all the G-Buffer shader variations
         for (const shared_ptr<ShaderVariation>& resource : ShaderVariation::GetVariations())
         {
+            if (!resource->IsCompiled())
+                continue;
+
             // Set pixel shader
             pipeline_state.shader_pixel = static_cast<RHI_Shader*>(resource.get());
 
