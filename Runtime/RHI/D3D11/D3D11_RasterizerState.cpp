@@ -44,7 +44,8 @@ namespace Spartan
 		const bool depth_clip_enabled,
 		const bool scissor_enabled,
 		const bool multi_sample_enabled,
-		const bool antialised_line_enabled)
+		const bool antialised_line_enabled,
+        const float line_width /*= 1.0f */)
 	{
 		if (!rhi_device)
 		{
@@ -65,6 +66,7 @@ namespace Spartan
 		m_scissor_enabled			= scissor_enabled;
 		m_multi_sample_enabled		= multi_sample_enabled;
 		m_antialised_line_enabled	= antialised_line_enabled;
+        m_line_width                = line_width;
 
 		// Create rasterizer description
 		D3D11_RASTERIZER_DESC desc;

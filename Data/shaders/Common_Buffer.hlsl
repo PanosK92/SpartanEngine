@@ -19,8 +19,8 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-// Updates once per frame
-cbuffer FrameBuffer : register(b0)
+// Low frequency - Updates once per frame
+cbuffer BufferFrame : register(b0)
 {
 	matrix g_view;
 	matrix g_projection;
@@ -58,13 +58,11 @@ cbuffer FrameBuffer : register(b0)
 	float g_padding;
 };
 
-// Updates multiple times per frame
-cbuffer UberBuffer : register(b1)
+// Medium frequency - Updates multiple times per frame
+cbuffer BufferUber : register(b1)
 {
-	matrix g_transform; // can be anything	
-	matrix g_wvp_current;
-	matrix g_wvp_previous;
-
+	matrix g_transform;
+    
 	float4 materialAlbedoColor;	
 
 	float2 materialTiling;
@@ -85,4 +83,28 @@ cbuffer UberBuffer : register(b1)
 	
 	float2 g_blur_direction;
 	float2 g_resolution;
+};
+
+// High frequency - Updates per object
+cbuffer BufferObject : register(b2)
+{
+	matrix g_object_transform;
+	matrix g_object_wvp_current;
+	matrix g_object_wvp_previous;
+};
+
+// Low frequency - Updates once per frame
+#define cascade_count 4
+#define lights_max 100
+cbuffer LightBuffer : register(b3)
+{
+	matrix light_view_projection[lights_max][cascade_count];	
+	float4 intensity_range_angle_bias[lights_max];
+	float4 normalBias_shadow_volumetric_contact[lights_max];
+	float4 color[lights_max];
+	float4 position[lights_max];
+	float4 direction[lights_max];
+	
+	float light_count;
+	float3 g_padding3;
 };

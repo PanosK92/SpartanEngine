@@ -28,7 +28,7 @@ Pixel_Pos mainVS(Vertex_Pos input)
 	Pixel_Pos output;
 
 	input.position.w 	= 1.0f;	
-    output.position 	= mul(input.position, g_transform);
+    output.position 	= mul(input.position, g_object_transform);
 
 	return output;
 }

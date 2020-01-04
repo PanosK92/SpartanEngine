@@ -228,6 +228,8 @@ namespace Spartan
             }
         }
 
+        m_pipeline_state->ResetClearValues();
+
         return true;
 	}
 
@@ -241,6 +243,7 @@ namespace Spartan
 	void RHI_CommandList::Draw(const uint32_t vertex_count)
 	{
         m_rhi_device->GetContextRhi()->device_context->Draw(static_cast<UINT>(vertex_count), 0);
+
         m_profiler->m_rhi_draw_calls++;
 	}
 

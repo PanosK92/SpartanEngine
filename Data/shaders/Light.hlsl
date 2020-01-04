@@ -29,23 +29,6 @@ TextureCube light_depth_point 			: register(t5);
 Texture2D light_depth_spot 				: register(t6);
 //=====================================================
 
-//= BUFFERS ================================================
-#define cascade_count 4
-#define lights_max 100
-cbuffer LightBuffer : register(b2)
-{
-	matrix light_view_projection[lights_max][cascade_count];	
-	float4 intensity_range_angle_bias[lights_max];
-	float4 normalBias_shadow_volumetric_contact[lights_max];
-	float4 color[lights_max];
-	float4 position[lights_max];
-	float4 direction[lights_max];
-	
-	float light_count;
-	float3 g_padding3;
-};
-//==========================================================
-
 //= INCLUDES =====================      
 #include "BRDF.hlsl"              
 #include "ShadowMapping.hlsl"

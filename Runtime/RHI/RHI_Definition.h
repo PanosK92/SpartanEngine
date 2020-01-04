@@ -112,13 +112,17 @@ namespace Spartan
 	{
 		RHI_Cull_None,
 		RHI_Cull_Front,
-		RHI_Cull_Back
+		RHI_Cull_Back,
+
+        RHI_Cull_Undefined
 	};
 
 	enum RHI_Fill_Mode
 	{
 		RHI_Fill_Solid,
-		RHI_Fill_Wireframe
+		RHI_Fill_Wireframe,
+
+        RHI_Fill_Undefined
 	};
 
 	enum RHI_Filter
@@ -154,7 +158,7 @@ namespace Spartan
 		RHI_Comparison_Always
 	};
 
-	enum RHI_Format
+	enum RHI_Format : uint32_t // gets serialized so better be explicit
 	{
 		// R
 		RHI_Format_R8_Unorm,
@@ -240,6 +244,7 @@ namespace Spartan
         uint32_t stage              = 0;
         uint32_t id                 = 0;
         uint64_t size               = 0;
+        uint32_t offset             = 0;
         RHI_Descriptor_Type type    = RHI_Descriptor_Undefined;
         RHI_Image_Layout layout     = RHI_Image_Undefined;
         void* resource              = nullptr;

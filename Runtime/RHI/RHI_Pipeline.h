@@ -45,6 +45,7 @@ namespace Spartan
         void SetTexture(uint32_t slot, RHI_Texture* texture);
         void* GetDescriptorSet();
 
+        uint32_t GetDynamicOffset() { return m_dynamic_offset; }
         void MakeDirty()            { m_descriptor_dirty = true; }
         auto GetPipeline()          { return m_pipeline; }
         auto GetPipelineLayout()    { return m_pipeline_layout; }
@@ -58,6 +59,7 @@ namespace Spartan
         void ReflectShaders();
 
         // Descriptors
+        uint32_t m_dynamic_offset               = 0;
         const uint32_t m_constant_buffer_max    = 10;
         const uint32_t m_sampler_max            = 10;
         const uint32_t m_texture_max            = 10;

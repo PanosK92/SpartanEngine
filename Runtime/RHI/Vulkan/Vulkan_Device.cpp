@@ -154,11 +154,12 @@ namespace Spartan
                 else                                                                                               \
                 {                                                                                                  \
                     LOG_WARNING("Requested device feature " #feature " is not supported by the physical device");  \
-                    device_features_enabled.feature = false;                                                       \
+                    device_features_enabled.feature = VK_FALSE;                                                       \
                 }
 
                 ENABLE_FEATURE(samplerAnisotropy)
                 ENABLE_FEATURE(fillModeNonSolid)
+                ENABLE_FEATURE(wideLines)
             }
 
             // Determine enabled graphics shader stages

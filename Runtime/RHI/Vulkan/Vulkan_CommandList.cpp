@@ -720,6 +720,8 @@ namespace Spartan
         // Update descriptor set (if not done yet)
         if (void* descriptor = m_pipeline->GetDescriptorSet())
         {
+            const uint32_t dynamic_offsets[] = { m_pipeline->GetDynamicOffset() };
+
             // Bind descriptor set
             VkDescriptorSet descriptor_sets[1] = { static_cast<VkDescriptorSet>(descriptor) };
             vkCmdBindDescriptorSets
@@ -730,8 +732,8 @@ namespace Spartan
                 0,                                                              // firstSet
                 1,                                                              // descriptorSetCount
                 descriptor_sets,                                                // pDescriptorSets
-                0,                                                              // dynamicOffsetCount
-                nullptr                                                         // pDynamicOffsets
+                dynamic_offsets[0] != 0 ? 1 : 0,                                // dynamicOffsetCount
+                dynamic_offsets[0] != 0 ? dynamic_offsets : nullptr             // pDynamicOffsets
             );
 
             m_profiler->m_rhi_bindings_descriptor_set++;

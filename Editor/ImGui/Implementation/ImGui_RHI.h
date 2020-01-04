@@ -217,7 +217,7 @@ namespace ImGui::RHI
 				0.0f,			0.0f,			0.0f,	1.0f
 			);
 
-            g_renderer->SetShaderTransform(wvp);
+            g_renderer->SetGlobalShaderObjectTransform(wvp);
 		}
 
         // Compute viewport

@@ -39,21 +39,30 @@ namespace Spartan
 		~RHI_ConstantBuffer();
 
 		template<typename T>
-		bool Create()
+		bool Create(const uint32_t instance_count = 1)
 		{
-			m_size = static_cast<uint32_t>(sizeof(T));
+            m_stride        = static_cast<uint32_t>(sizeof(T));
+            m_offset_count  = instance_count;
+            m_size          = static_cast<uint64_t>(m_stride * instance_count);
 			return _Create();
 		}
 
-		void* Map() const;
+		void* Map(uint32_t offset_index = 0);
 		bool Unmap() const;
-        bool Flush() const;
+        bool Flush(uint32_t offset_index = 0);
 
-		auto GetResource()  const { return m_buffer; }
-		auto GetSize()      const { return m_size; }
+        uint32_t GetOffsetCount()   const { return m_offset_count; }
+        uint32_t GetOffsetIndex()   const { return m_offset_index; }
+        uint32_t GetOffset()        const { return m_offset_index * m_stride; }
+		auto GetResource()          const { return m_buffer; }
+		auto GetSize()              const { return m_size; }
 
 	private:
 		bool _Create();
+
+        uint32_t m_stride       = 0;
+        uint32_t m_offset_count = 0;
+        uint32_t m_offset_index = 0;
 
 		std::shared_ptr<RHI_Device> m_rhi_device;
 
