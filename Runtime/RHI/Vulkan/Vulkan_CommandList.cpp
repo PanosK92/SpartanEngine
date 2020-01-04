@@ -732,8 +732,8 @@ namespace Spartan
                 0,                                                              // firstSet
                 1,                                                              // descriptorSetCount
                 descriptor_sets,                                                // pDescriptorSets
-                dynamic_offsets[0] != 0 ? 1 : 0,                                // dynamicOffsetCount
-                dynamic_offsets[0] != 0 ? dynamic_offsets : nullptr             // pDynamicOffsets
+                0,                                                              // dynamicOffsetCount
+                nullptr                                                         // pDynamicOffsets
             );
 
             m_profiler->m_rhi_bindings_descriptor_set++;
