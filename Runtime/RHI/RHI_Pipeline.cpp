@@ -44,12 +44,21 @@ namespace Spartan
         {
             if (descriptor.type == RHI_Descriptor_ConstantBuffer && descriptor.slot == slot + m_rhi_device->GetContextRhi()->shader_shift_buffer)
             {
-                m_descriptor_dirty = descriptor.id != constant_buffer->GetId() ? true : m_descriptor_dirty;
+                bool different_id = descriptor.id != constant_buffer->GetId();
+
+                // different offset needs to rebind the descriptor set with the actual offset, so we detect
+                // it and mark it as dirty here, so it triggers a descriptor set bind in the command list
+                bool different_offset  = descriptor.offset != constant_buffer->GetOffset(); 
+
+                m_descriptor_dirty = (different_id || different_offset) ? true : m_descriptor_dirty;
 
                 // Update
                 descriptor.id       = constant_buffer->GetId();
                 descriptor.resource = constant_buffer->GetResource();
                 descriptor.size     = constant_buffer->GetSize();
+                descriptor.offset   = constant_buffer->GetOffset();
+
+                m_dynamic_offset = descriptor.offset;
                 
                 break;
             }

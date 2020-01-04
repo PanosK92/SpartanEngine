@@ -75,7 +75,9 @@ static const DXGI_FORMAT d3d11_format[] =
     // RGBA
 	DXGI_FORMAT_R8G8B8A8_UNORM,
 	DXGI_FORMAT_R16G16B16A16_FLOAT,
-	DXGI_FORMAT_R32G32B32A32_FLOAT
+	DXGI_FORMAT_R32G32B32A32_FLOAT,
+
+    DXGI_FORMAT_UNKNOWN
 };
 
 static const D3D11_TEXTURE_ADDRESS_MODE d3d11_sampler_address_mode[] =
@@ -131,14 +133,18 @@ static const D3D11_BLEND_OP d3d11_blend_operation[] =
 static const VkPolygonMode vulkan_polygon_mode[] =
 {
 	VK_POLYGON_MODE_FILL,
-	VK_POLYGON_MODE_LINE
+	VK_POLYGON_MODE_LINE,
+
+    VK_POLYGON_MODE_MAX_ENUM
 };
 
 static const VkCullModeFlags vulkan_cull_mode[] =
 {	
 	VK_CULL_MODE_NONE,
 	VK_CULL_MODE_FRONT_BIT,
-	VK_CULL_MODE_BACK_BIT
+	VK_CULL_MODE_BACK_BIT,
+
+    VK_CULL_MODE_FLAG_BITS_MAX_ENUM
 };
 
 static const VkPrimitiveTopology vulkan_primitive_topology[] =

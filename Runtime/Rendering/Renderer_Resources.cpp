@@ -42,13 +42,16 @@ namespace Spartan
     void Renderer::CreateConstantBuffers()
     {
         m_buffer_frame_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device);
-        m_buffer_frame_gpu->Create<FrameBuffer>();
+        m_buffer_frame_gpu->Create<BufferFrame>();
 
         m_buffer_uber_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device);
-        m_buffer_uber_gpu->Create<UberBuffer>();
+        m_buffer_uber_gpu->Create<BufferUber>();
+
+        m_buffer_object_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device);
+        m_buffer_object_gpu->Create<BufferObject>();
 
         m_buffer_light_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device);
-        m_buffer_light_gpu->Create<LightBuffer>();
+        m_buffer_light_gpu->Create<BufferLight>();
     }
 
     void Renderer::CreateDepthStencilStates()

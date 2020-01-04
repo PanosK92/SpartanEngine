@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==================
 #include "../RHI_Device.h"
 #include "../RHI_IndexBuffer.h"
+#include "../RHI_CommandList.h"
 #include "../../Logging/Log.h"
 //=============================
 
@@ -38,6 +39,9 @@ namespace Spartan
 {
 	RHI_IndexBuffer::~RHI_IndexBuffer()
 	{
+        // Wait in case the buffer is still in use
+        RHI_CommandList::Gpu_Flush(m_rhi_device);
+
 		vulkan_common::buffer::destroy(m_rhi_device->GetContextRhi(), m_buffer);
 		vulkan_common::memory::free(m_rhi_device->GetContextRhi(), m_buffer_memory);
 	}
@@ -51,6 +55,9 @@ namespace Spartan
 		}
 
         RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
+
+        // Wait in case the buffer is still in use
+        RHI_CommandList::Gpu_Flush(m_rhi_device);
 
 		// Clear previous buffer
 		vulkan_common::buffer::destroy(m_rhi_device->GetContextRhi(), m_buffer);

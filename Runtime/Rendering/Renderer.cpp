@@ -167,7 +167,7 @@ namespace Spartan
 		if (!m_initialized)
 		{
 			// Log on-screen as the renderer is ready
-			LOG_TO_FILE(false);
+			//LOG_TO_FILE(false);
 			m_initialized = true;
 		}
 
@@ -328,7 +328,7 @@ namespace Spartan
     bool Renderer::UpdateFrameBuffer()
     {
         // Map
-        FrameBuffer* buffer = static_cast<FrameBuffer*>(m_buffer_frame_gpu->Map());
+        BufferFrame* buffer = static_cast<BufferFrame*>(m_buffer_frame_gpu->Map());
         if (!buffer)
         {
             LOG_ERROR("Failed to map buffer");
@@ -384,7 +384,7 @@ namespace Spartan
             return false;
 
         // Map
-        UberBuffer* buffer = static_cast<UberBuffer*>(m_buffer_uber_gpu->Map());
+        BufferUber* buffer = static_cast<BufferUber*>(m_buffer_uber_gpu->Map());
 		if (!buffer)
 		{
 			LOG_ERROR("Failed to map buffer");
@@ -399,6 +399,30 @@ namespace Spartan
 		return m_buffer_uber_gpu->Unmap();
 	}
 
+    bool Renderer::UpdateObjectBuffer(uint32_t instance_index /*= 0*/)
+    {
+        // Only update if needed
+        bool same_content   = m_buffer_object_cpu == m_buffer_object_cpu_previous;
+        bool same_instance  = m_buffer_object_gpu->GetOffsetIndex() == instance_index;
+        if (same_content && same_instance)
+            return false;
+
+        // Map
+        BufferObject* buffer = static_cast<BufferObject*>(m_buffer_object_gpu->Map(instance_index));
+        if (!buffer)
+        {
+            LOG_ERROR("Failed to map buffer");
+            return false;
+        }
+
+        // Update
+        *buffer = m_buffer_object_cpu;
+        m_buffer_object_cpu_previous = m_buffer_object_cpu;
+
+        // Unmap
+        return m_buffer_object_gpu->Unmap();
+    }
+
     bool Renderer::UpdateLightBuffer(const vector<Entity*>& entities)
     {
         if (entities.empty())
@@ -409,7 +433,7 @@ namespace Spartan
             return true;
 
         // Map
-        LightBuffer* buffer = static_cast<LightBuffer*>(m_buffer_light_gpu->Map());
+        BufferLight* buffer = static_cast<BufferLight*>(m_buffer_light_gpu->Map());
         if (!buffer)
         {
             LOG_ERROR("Failed to map buffer");

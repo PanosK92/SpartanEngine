@@ -99,7 +99,7 @@ namespace Spartan
 		file->Write(m_bpp);
 		file->Write(m_width);
 		file->Write(m_height);
-        file->Write(static_cast<uint8_t>(m_format));
+        file->Write(static_cast<uint32_t>(m_format));
 		file->Write(m_channels);
 		file->Write(m_is_grayscale);
 		file->Write(m_is_transparent);
@@ -257,7 +257,7 @@ namespace Spartan
 		file->Read(&m_bpp);
 		file->Read(&m_width);
 		file->Read(&m_height);
-        m_format = static_cast<RHI_Format>(file->ReadAs<uint8_t>());
+        file->Read(reinterpret_cast<uint32_t*>(&m_format));
 		file->Read(&m_channels);
 		file->Read(&m_is_grayscale);
 		file->Read(&m_is_transparent);

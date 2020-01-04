@@ -32,14 +32,15 @@ namespace Spartan
 	class SPARTAN_CLASS RHI_RasterizerState : public Spartan_Object
 	{
 	public:
-		RHI_RasterizerState(
-			const std::shared_ptr<RHI_Device>& rhi_device,
-			RHI_Cull_Mode cull_mode,
-			RHI_Fill_Mode fill_mode,
-			bool depth_clip_enabled,
-			bool scissor_enabled,
-			bool multi_sample_enabled, 
-			bool antialised_line_enabled
+        RHI_RasterizerState(
+            const std::shared_ptr<RHI_Device>& rhi_device,
+            const RHI_Cull_Mode cull_mode,
+            const RHI_Fill_Mode fill_mode,
+            const bool depth_clip_enabled,
+            const bool scissor_enabled,
+            const bool multi_sample_enabled,
+            const bool antialised_line_enabled,
+            const float line_width = 1.0f
 		);
 		~RHI_RasterizerState();
 
@@ -51,6 +52,7 @@ namespace Spartan
 		auto GetAntialisedLineEnabled() const { return m_antialised_line_enabled; }
 		auto IsInitialized()			const { return m_initialized; }
 		auto GetResource()				const { return m_buffer; }
+        auto GetLineWidth()             const { return m_line_width; }
 
 		bool operator==(const RHI_RasterizerState& rhs) const
 		{
@@ -65,12 +67,13 @@ namespace Spartan
 
 	private:
 		// Properties
-		RHI_Cull_Mode m_cull_mode;
-		RHI_Fill_Mode m_fill_mode;
-		bool m_depth_clip_enabled;
-		bool m_scissor_enabled;
-		bool m_multi_sample_enabled;
-		bool m_antialised_line_enabled;
+        RHI_Cull_Mode m_cull_mode       = RHI_Cull_Undefined;
+        RHI_Fill_Mode m_fill_mode       = RHI_Fill_Undefined;
+		bool m_depth_clip_enabled       = false;
+		bool m_scissor_enabled          = false;
+        bool m_multi_sample_enabled     = false;
+        bool m_antialised_line_enabled  = false;
+        float m_line_width              = 1.0f;
 
 		// Initialized
 		bool m_initialized = false;

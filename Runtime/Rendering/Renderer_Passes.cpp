@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_CommandList.h"
 #include "../RHI/RHI_VertexBuffer.h"
 #include "../RHI/RHI_PipelineState.h"
+#include "../RHI/RHI_ConstantBuffer.h"
 #include "../World/Entity.h"
 #include "../World/Components/Light.h"
 #include "../World/Components/Camera.h"
@@ -50,7 +51,8 @@ namespace Spartan
         // Set the buffers we will be using thought the frame
         cmd_list->SetConstantBuffer(0, RHI_Buffer_VertexShader | RHI_Buffer_PixelShader, m_buffer_frame_gpu);
         cmd_list->SetConstantBuffer(1, RHI_Buffer_VertexShader | RHI_Buffer_PixelShader, m_buffer_uber_gpu);
-        cmd_list->SetConstantBuffer(2, RHI_Buffer_PixelShader, m_buffer_light_gpu);
+        cmd_list->SetConstantBuffer(2, RHI_Buffer_VertexShader, m_buffer_object_gpu);
+        cmd_list->SetConstantBuffer(3, RHI_Buffer_PixelShader, m_buffer_light_gpu);
         
         // Set the samplers we will be using thought the frame
         cmd_list->SetSampler(0, m_sampler_compare_depth);
@@ -135,13 +137,15 @@ namespace Spartan
             pipeline_state.blend_state                  = m_blend_disabled.get();
             pipeline_state.depth_stencil_state          = m_depth_stencil_enabled_write.get();
             pipeline_state.render_target_depth_texture  = shadow_map.get();
-            pipeline_state.render_target_depth_clear    = GetClearDepth();
             pipeline_state.viewport                     = shadow_map->GetViewport();
             pipeline_state.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
             pipeline_state.pass_name                    = "Pass_LightDepth";
 
             for (uint32_t i = 0; i < shadow_map->GetArraySize(); i++)
             {
+                // Clear every shadow map
+                pipeline_state.render_target_depth_clear = GetClearDepth();
+
                 const Matrix& view_projection = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
 
                 // Set appropriate array index
@@ -159,7 +163,6 @@ namespace Spartan
                 {
                     pipeline_state.rasterizer_state = m_rasterizer_cull_back_solid.get();
                 }
-
 
                 if (cmd_list->Begin(pipeline_state))
                 {
@@ -197,8 +200,8 @@ namespace Spartan
                         cmd_list->SetBufferVertex(model->GetVertexBuffer());
 
                         // Update uber buffer with cascade transform
-                        m_buffer_uber_cpu.transform = entity->GetTransform_PtrRaw()->GetMatrix() * view_projection;
-                        UpdateUberBuffer(); // only updates if needed
+                        m_buffer_object_cpu.object = entity->GetTransform_PtrRaw()->GetMatrix() * view_projection;
+                        UpdateObjectBuffer();
 
                         cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
 
@@ -336,8 +339,21 @@ namespace Spartan
             // Submit command list
             if (cmd_list->Begin(pipeline_state))
             {
-                for (const auto& entity : m_entities[Renderer_Object_Opaque])
+                auto& entities = m_entities[Renderer_Object_Opaque];
+                const uint32_t entity_count = static_cast<uint32_t>(entities.size());
+
+                // Enlarge constant buffer (if needed)
+                if (entity_count > m_buffer_object_gpu->GetOffsetCount())
                 {
+                    const uint32_t new_size = m_buffer_object_gpu->GetOffsetCount() * 2;
+                    if (!m_buffer_object_gpu->Create<BufferObject>(new_size))
+                        return;
+                }
+
+                for (uint32_t i = 0; i < static_cast<uint32_t>(entities.size()); i++)
+                {
+                    Entity* entity = entities[i];
+
                     // Get renderable
                     const auto& renderable = entity->GetRenderable_PtrRaw();
                     if (!renderable)
@@ -353,14 +369,14 @@ namespace Spartan
                     if (!shader || !shader->IsCompiled())
                         continue;
 
+                    // Get geometry
+                    const auto& model = renderable->GeometryModel();
+                    if (!model || !model->GetVertexBuffer() || !model->GetIndexBuffer())
+                        continue;
+
                     // Draw matching shader entities
                     if (pipeline_state.shader_pixel->GetId() == shader->GetId())
                     {
-                        // Get geometry
-                        const auto& model = renderable->GeometryModel();
-                        if (!model || !model->GetVertexBuffer() || !model->GetIndexBuffer())
-                            continue;
-
                         // Skip objects outside of the view frustum
                         if (!m_camera->IsInViewFrustrum(renderable))
                             continue;
@@ -392,29 +408,33 @@ namespace Spartan
                             m_buffer_uber_cpu.mat_height_mul    = material->GetMultiplier(TextureType_Height);
                             m_buffer_uber_cpu.mat_shading_mode  = static_cast<float>(material->GetShadingMode());
 
+                            // Update constant buffer
+                            UpdateUberBuffer();
+
                             m_set_material_id = material->GetId();
                         }
                         
                         // Update uber buffer with entity transform
                         if (Transform* transform = entity->GetTransform_PtrRaw())
                         {
-                            m_buffer_uber_cpu.transform     = transform->GetMatrix();
-                            m_buffer_uber_cpu.wvp_current   = transform->GetMatrix() * m_buffer_frame_cpu.view_projection;
-                            m_buffer_uber_cpu.wvp_previous  = transform->GetWvpLastFrame();
+                            m_buffer_object_cpu.object          = transform->GetMatrix();
+                            m_buffer_object_cpu.wvp_current     = transform->GetMatrix() * m_buffer_frame_cpu.view_projection;
+                            m_buffer_object_cpu.wvp_previous    = transform->GetWvpLastFrame();
+
+                            // Update constant buffer
+                            UpdateObjectBuffer(i);
+                            cmd_list->SetConstantBuffer(2, RHI_Buffer_VertexShader, m_buffer_object_gpu);
 
                             // Save matrix for velocity computation
-                            transform->SetWvpLastFrame(m_buffer_uber_cpu.wvp_current);
+                            transform->SetWvpLastFrame(m_buffer_object_cpu.wvp_current);
                         }
-
-                        // Only happens if needed
-                        UpdateUberBuffer();
                         
                         // Render	
                         cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
                         m_profiler->m_renderer_meshes_rendered++;
                     }
                 }
-                cmd_list->End(); // Opaque
+                cmd_list->End();
                 cmd_list->Submit();
             }
         }
@@ -1798,8 +1818,8 @@ namespace Spartan
             pipeline_state.pass_name = "Pass_Gizmos_Axis_Y";
             if (cmd_list->Begin(pipeline_state))
             {
-                m_buffer_uber_cpu.transform = m_gizmo_transform->GetHandle().GetTransform(Vector3::Up);
-                m_buffer_uber_cpu.transform_axis = m_gizmo_transform->GetHandle().GetColor(Vector3::Up);
+                m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle().GetTransform(Vector3::Up);
+                m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle().GetColor(Vector3::Up);
                 UpdateUberBuffer();
 
                 cmd_list->SetBufferIndex(m_gizmo_transform->GetIndexBuffer());

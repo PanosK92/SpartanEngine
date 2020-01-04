@@ -21,25 +21,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================
-#include <memory>
-#include <vector>
-#include <atomic>
+//= INCLUDES ========================
 #include <map>
 #include <unordered_map>
 #include "../Core/ISubsystem.h"
 #include "../RHI/RHI_Definition.h"
 #include "../RHI/RHI_Viewport.h"
-#include "../Math/Matrix.h"
-#include "../Math/Vector2.h"
 #include "../Math/Rectangle.h"
-//================================
+#include "Renderer_ConstantBuffers.h"
+//===================================
 
 namespace Spartan
 {
-    // Global properties
-    static const int g_cascade_count = 4;
-
     // Forward declarations
 	class Entity;
 	class Camera;
@@ -278,7 +271,7 @@ namespace Spartan
         const auto IsRendering()        const { return m_is_rendering; }
 
         // Globals
-        void SetShaderTransform(const Math::Matrix& transform) { m_buffer_uber_cpu.transform = transform; UpdateUberBuffer(); }
+        void SetGlobalShaderObjectTransform(const Math::Matrix& transform) { m_buffer_object_cpu.object = transform; UpdateObjectBuffer(); }
         void SetGlobalSamplersAndConstantBuffers(RHI_CommandList* cmd_list);
         RHI_Texture* GetBlackTexture() { return m_tex_black.get(); }
 
@@ -325,10 +318,13 @@ namespace Spartan
         void Pass_BrdfSpecularLut(RHI_CommandList* cmd_list);
         void Pass_Copy(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
 
-        // Misc
+        // Constant buffers
         bool UpdateFrameBuffer();
         bool UpdateUberBuffer();
+        bool UpdateObjectBuffer(uint32_t instance_index = 0);
         bool UpdateLightBuffer(const std::vector<Entity*>& entities);
+
+        // Misc
         void RenderablesAcquire(const Variant& renderables);
         void RenderablesSort(std::vector<Entity*>* renderables);
         void ClearEntities() { m_entities.clear(); }
@@ -395,14 +391,11 @@ namespace Spartan
         uint64_t m_options = 0;
         std::map<Renderer_Option_Value, float> m_option_values;
 
-		//= CORE ======================================================
-        std::shared_ptr<RHI_Device> m_rhi_device;
-        std::shared_ptr<RHI_SwapChain> m_swap_chain;
-        std::shared_ptr<RHI_PipelineCache> m_pipeline_cache;
+        // Misc
 		Math::Rectangle m_quad;
 		std::unique_ptr<Font> m_font;
-		Math::Vector2 m_taa_jitter;
-		Math::Vector2 m_taa_jitter_previous;
+        Math::Vector2 m_taa_jitter              = Math::Vector2::Zero;
+		Math::Vector2 m_taa_jitter_previous     = Math::Vector2::Zero;
 		Renderer_Buffer_Type m_debug_buffer     = Renderer_Buffer_None;
 		bool m_initialized                      = false;
         const uint32_t m_resolution_shadow_min  = 128;
@@ -414,135 +407,32 @@ namespace Spartan
         bool m_brdf_specular_lut_rendered       = false;      
         const float m_gizmo_size_max            = 5.0f;
         const float m_gizmo_size_min            = 0.1f;
-		//=============================================================
                                                                       
-		// Entities & Components
-		std::unordered_map<Renderer_Object_Type, std::vector<Entity*>> m_entities;
-		std::shared_ptr<Camera> m_camera;
-
-        // Updates once every frame
-        struct FrameBuffer
-        {
-            Math::Matrix view;
-            Math::Matrix projection;
-            Math::Matrix projection_ortho;
-            Math::Matrix view_projection;
-            Math::Matrix view_projection_inv;
-            Math::Matrix view_projection_ortho;
-            Math::Matrix view_projection_unjittered;
-
-            float delta_time;
-            float time;
-            float camera_near;
-            float camera_far;
-
-            Math::Vector3 camera_position;
-            float fxaa_sub_pixel;
-
-            float fxaa_edge_threshold;
-            float fxaa_edge_threshold_min;
-            float bloom_intensity;
-            float sharpen_strength;
-
-            float sharpen_clamp;
-            float motion_blur_strength;
-            float gamma;
-            float tonemapping;
-
-            Math::Vector2 taa_jitter_offset;
-            float exposure;
-            float directional_light_intensity;
-
-            float ssr_enabled;
-            float shadow_resolution;
-            float ssao_scale;
-            float padding;
-        };
-        FrameBuffer m_buffer_frame_cpu;
+        //= BUFFERS ============================================
+        BufferFrame m_buffer_frame_cpu;
         std::shared_ptr<RHI_ConstantBuffer> m_buffer_frame_gpu;
 
-		// Updates multiple times per frame
-		struct UberBuffer
-		{
-            Math::Matrix transform;
-            Math::Matrix wvp_current;
-            Math::Matrix wvp_previous;
+        BufferUber m_buffer_uber_cpu;
+        BufferUber m_buffer_uber_cpu_previous;
+        std::shared_ptr<RHI_ConstantBuffer> m_buffer_uber_gpu;
 
-            Math::Vector4 mat_albedo;
+        BufferObject m_buffer_object_cpu;
+        BufferObject m_buffer_object_cpu_previous;
+        std::shared_ptr<RHI_ConstantBuffer> m_buffer_object_gpu;
 
-            Math::Vector2 mat_tiling_uv;
-            Math::Vector2 mat_offset_uv;
-
-            float mat_roughness_mul;
-            float mat_metallic_mul;
-            float mat_normal_mul;
-            float mat_height_mul;
-
-            float mat_shading_mode;
-            Math::Vector3 padding;
-
-            Math::Vector4 color;
-
-            Math::Vector3 transform_axis;
-            float blur_sigma;
-
-            Math::Vector2 blur_direction;
-            Math::Vector2 resolution;
-
-            bool operator==(const UberBuffer& rhs)
-            {
-                return
-                    transform           == rhs.transform            &&
-                    wvp_current         == rhs.wvp_current          &&
-                    wvp_previous        == rhs.wvp_previous         &&
-                    mat_albedo          == rhs.mat_albedo           &&
-                    mat_tiling_uv       == rhs.mat_tiling_uv        &&
-                    mat_offset_uv       == rhs.mat_offset_uv        &&
-                    mat_roughness_mul   == rhs.mat_roughness_mul    &&
-                    mat_metallic_mul    == rhs.mat_metallic_mul     &&
-                    mat_normal_mul      == rhs.mat_normal_mul       &&
-                    mat_height_mul      == rhs.mat_height_mul       &&
-                    mat_shading_mode    == rhs.mat_shading_mode     &&
-                    color               == rhs.color                &&
-                    transform_axis      == rhs.transform_axis       &&
-                    blur_sigma          == rhs.blur_sigma           &&
-                    blur_direction      == rhs.blur_direction       &&
-                    resolution          == rhs.resolution;
-            }
-		};
-        UberBuffer m_buffer_uber_cpu;
-        UberBuffer m_buffer_uber_cpu_previous;
-		std::shared_ptr<RHI_ConstantBuffer> m_buffer_uber_gpu;
-
-        // Light buffer
-        static const int g_max_lights = 100;
-        struct LightBuffer
-        {
-            Math::Matrix view_projection[g_max_lights][g_cascade_count];
-            Math::Vector4 intensity_range_angle_bias[g_max_lights];
-            Math::Vector4 normalBias_shadow_volumetric_contact[g_max_lights];
-            Math::Vector4 color[g_max_lights];
-            Math::Vector4 position[g_max_lights];
-            Math::Vector4 direction[g_max_lights];
-
-            float light_count;
-            Math::Vector3 g_padding2;
-
-            bool operator==(const LightBuffer& rhs)
-            {
-                return
-                    view_projection                         == rhs.view_projection                      &&
-                    intensity_range_angle_bias              == rhs.intensity_range_angle_bias           &&
-                    normalBias_shadow_volumetric_contact    == rhs.normalBias_shadow_volumetric_contact &&
-                    color                                   == rhs.color                                &&
-                    position                                == rhs.position                             &&
-                    direction                               == rhs.direction                            &&
-                    light_count                             == rhs.light_count;
-            }
-        };
-        LightBuffer m_buffer_light_cpu;
-        LightBuffer m_buffer_light_cpu_previous;
+        BufferLight m_buffer_light_cpu;
+        BufferLight m_buffer_light_cpu_previous;
         std::shared_ptr<RHI_ConstantBuffer> m_buffer_light_gpu;
+        //======================================================
+
+        // Entities & Components
+        std::unordered_map<Renderer_Object_Type, std::vector<Entity*>> m_entities;
+        std::shared_ptr<Camera> m_camera;
+
+        // Core
+        std::shared_ptr<RHI_Device> m_rhi_device;
+        std::shared_ptr<RHI_SwapChain> m_swap_chain;
+        std::shared_ptr<RHI_PipelineCache> m_pipeline_cache;
 
         // Dependencies
         Profiler* m_profiler            = nullptr;

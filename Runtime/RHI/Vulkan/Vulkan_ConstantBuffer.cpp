@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include "../RHI_ConstantBuffer.h"
 #include "../RHI_Device.h"
+#include "../RHI_CommandList.h"
 #include "../../Logging/Log.h"
 //================================
 
@@ -38,8 +39,8 @@ namespace Spartan
 {
 	RHI_ConstantBuffer::~RHI_ConstantBuffer()
 	{
-        // Wait in case the buffer is still in use by the graphics queue
-        vkQueueWaitIdle(m_rhi_device->GetContextRhi()->queue_graphics);
+        // Wait in case the buffer is still in use
+        RHI_CommandList::Gpu_Flush(m_rhi_device);
 
 		vulkan_common::buffer::destroy(m_rhi_device->GetContextRhi(), m_buffer);
 		vulkan_common::memory::free(m_rhi_device->GetContextRhi(), m_buffer_memory);
@@ -53,6 +54,9 @@ namespace Spartan
 			return false;
 		}
 
+        // Wait in case the buffer is still in use
+        RHI_CommandList::Gpu_Flush(m_rhi_device);
+
 		// Clear previous buffer
 		vulkan_common::buffer::destroy(m_rhi_device->GetContextRhi(), m_buffer);
 		vulkan_common::memory::free(m_rhi_device->GetContextRhi(), m_buffer_memory);
@@ -64,7 +68,7 @@ namespace Spartan
 		return true;
 	}
 
-    void* RHI_ConstantBuffer::Map() const
+    void* RHI_ConstantBuffer::Map(uint32_t offset_index /*= 0*/)
     {
         if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device || !m_buffer_memory)
         {
@@ -79,12 +83,14 @@ namespace Spartan
             (
                 m_rhi_device->GetContextRhi()->device,
                 static_cast<VkDeviceMemory>(m_buffer_memory),
-                0,
-                m_size,
-                0,
+                static_cast<uint64_t>(offset_index * m_stride), // offset
+                m_stride,                                       // size
+                0,                                              // flags
                 reinterpret_cast<void**>(&ptr)
             )
         );
+
+        m_offset_index = offset_index;
 
         return ptr;
     }
@@ -102,13 +108,13 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_ConstantBuffer::Flush() const
+    bool RHI_ConstantBuffer::Flush(uint32_t offset_index /*= 0*/)
     {
         VkMappedMemoryRange mapped_memory_range = {};
         mapped_memory_range.sType               = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
         mapped_memory_range.memory              = static_cast<VkDeviceMemory>(m_buffer_memory);
-        mapped_memory_range.offset              = 0;
-        mapped_memory_range.size                = VK_WHOLE_SIZE;
+        mapped_memory_range.offset              = static_cast<uint64_t>(offset_index * m_stride);
+        mapped_memory_range.size                = m_stride;
         return vulkan_common::error::check(vkFlushMappedMemoryRanges(m_rhi_device->GetContextRhi()->device, 1, &mapped_memory_range));
     }
 }

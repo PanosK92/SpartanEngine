@@ -39,9 +39,10 @@ namespace Spartan
 	RHI_ConstantBuffer::~RHI_ConstantBuffer()
 	{
 		safe_release(static_cast<ID3D11Buffer*>(m_buffer));
+        m_buffer = nullptr;
 	}
 
-	void* RHI_ConstantBuffer::Map() const
+	void* RHI_ConstantBuffer::Map(uint32_t offset_index /*= 0*/)
 	{
 		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device_context || !m_buffer)
 		{
@@ -56,6 +57,8 @@ namespace Spartan
 			LOG_ERROR("Failed to map constant buffer.");
 			return nullptr;
 		}
+
+        m_offset_index = offset_index;
 
 		return mapped_resource.pData;
 	}
@@ -80,9 +83,12 @@ namespace Spartan
 			return false;
 		}
 
+        safe_release(static_cast<ID3D11Buffer*>(m_buffer));
+        m_buffer = nullptr;
+
 		D3D11_BUFFER_DESC buffer_desc;
 		ZeroMemory(&buffer_desc, sizeof(buffer_desc));
-		buffer_desc.ByteWidth			= static_cast<UINT>(m_size);
+		buffer_desc.ByteWidth			= static_cast<UINT>(m_stride); // because d3d11 doesn't use buffer offset, we use the stride
 		buffer_desc.Usage				= D3D11_USAGE_DYNAMIC;
 		buffer_desc.BindFlags			= D3D11_BIND_CONSTANT_BUFFER;
 		buffer_desc.CPUAccessFlags		= D3D11_CPU_ACCESS_WRITE;
@@ -99,7 +105,7 @@ namespace Spartan
 		return true;
 	}
 
-    bool RHI_ConstantBuffer::Flush() const
+    bool RHI_ConstantBuffer::Flush(uint32_t offset_index /*= 0*/)
     {
         return true;
     }
