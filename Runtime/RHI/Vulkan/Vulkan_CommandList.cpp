@@ -35,6 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_IndexBuffer.h"
 #include "../RHI_PipelineState.h"
 #include "../RHI_ConstantBuffer.h"
+#include "../RHI_DescriptorSet.h"
 #include "../../Profiling/Profiler.h"
 #include "../../Logging/Log.h"
 #include "../../Rendering/Renderer.h"
@@ -161,9 +162,9 @@ namespace Spartan
             return false;
         }
 
+        // End render pass
         if (m_render_pass_and_pipeline_set)
         {
-            // End render pass
             vkCmdEndRenderPass(CMD_BUFFER);
             m_render_pass_and_pipeline_set = false;
         }
@@ -331,7 +332,7 @@ namespace Spartan
         }
 
         // Set (will only happen if it's not already set)
-        m_pipeline->SetConstantBuffer(slot, constant_buffer);
+        m_pipeline->GetDescriptorSet()->SetConstantBuffer(slot, constant_buffer);
     }
 
     void RHI_CommandList::SetSampler(const uint32_t slot, RHI_Sampler* sampler)
@@ -343,7 +344,7 @@ namespace Spartan
         }
 
         // Set (will only happen if it's not already set)
-        m_pipeline->SetSampler(slot, sampler);
+        m_pipeline->GetDescriptorSet()->SetSampler(slot, sampler);
     }
 
     void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture)
@@ -380,7 +381,7 @@ namespace Spartan
         }
 
         // Set (will only happen if it's not already set)
-        m_pipeline->SetTexture(slot, texture);
+        m_pipeline->GetDescriptorSet()->SetTexture(slot, texture);
     }
 
 	void RHI_CommandList::ClearRenderTarget(void* render_target, const Vector4& color)
@@ -718,12 +719,15 @@ namespace Spartan
         }
 
         // Update descriptor set (if not done yet)
-        if (void* descriptor = m_pipeline->GetDescriptorSet())
+        RHI_DescriptorSet* descriptor_set = m_pipeline->GetDescriptorSet();
+        if (void* vk_descriptor_set = descriptor_set->GetResource_Set())
         {
-            const uint32_t dynamic_offsets[] = { m_pipeline->GetDynamicOffset() };
+            const vector<uint32_t>& _dynamic_offsets    = descriptor_set->GetDynamicOffsets();
+            uint32_t dynamic_offset_count               = !_dynamic_offsets.empty() ? static_cast<uint32_t>(_dynamic_offsets.size()) : 0;
+            const uint32_t* dynamic_offsets             = !_dynamic_offsets.empty() ? _dynamic_offsets.data() : nullptr;
 
             // Bind descriptor set
-            VkDescriptorSet descriptor_sets[1] = { static_cast<VkDescriptorSet>(descriptor) };
+            VkDescriptorSet descriptor_sets[1] = { static_cast<VkDescriptorSet>(vk_descriptor_set) };
             vkCmdBindDescriptorSets
             (
                 CMD_BUFFER,                                                     // commandBuffer
@@ -732,8 +736,8 @@ namespace Spartan
                 0,                                                              // firstSet
                 1,                                                              // descriptorSetCount
                 descriptor_sets,                                                // pDescriptorSets
-                0,                                                              // dynamicOffsetCount
-                nullptr                                                         // pDynamicOffsets
+                dynamic_offset_count,                                           // dynamicOffsetCount
+                dynamic_offsets                                                 // pDynamicOffsets
             );
 
             m_profiler->m_rhi_bindings_descriptor_set++;

@@ -424,12 +424,12 @@ namespace Spartan
                             m_buffer_object_cpu.wvp_current     = transform->GetMatrix() * m_buffer_frame_cpu.view_projection;
                             m_buffer_object_cpu.wvp_previous    = transform->GetWvpLastFrame();
 
+                            // Save matrix for velocity computation
+                            transform->SetWvpLastFrame(m_buffer_object_cpu.wvp_current);
+
                             // Update constant buffer
                             UpdateObjectBuffer(i);
                             cmd_list->SetConstantBuffer(2, RHI_Buffer_VertexShader, m_buffer_object_gpu);
-
-                            // Save matrix for velocity computation
-                            transform->SetWvpLastFrame(m_buffer_object_cpu.wvp_current);
                         }
                         
                         // Render	
