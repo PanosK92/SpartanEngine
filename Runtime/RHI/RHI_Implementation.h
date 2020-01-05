@@ -134,7 +134,6 @@ static const VkPolygonMode vulkan_polygon_mode[] =
 {
 	VK_POLYGON_MODE_FILL,
 	VK_POLYGON_MODE_LINE,
-
     VK_POLYGON_MODE_MAX_ENUM
 };
 
@@ -143,7 +142,6 @@ static const VkCullModeFlags vulkan_cull_mode[] =
 	VK_CULL_MODE_NONE,
 	VK_CULL_MODE_FRONT_BIT,
 	VK_CULL_MODE_BACK_BIT,
-
     VK_CULL_MODE_FLAG_BITS_MAX_ENUM
 };
 
@@ -173,7 +171,6 @@ static const VkFormat vulkan_format[] =
 	VK_FORMAT_R8G8B8A8_UNORM,
 	VK_FORMAT_R16G16B16A16_SFLOAT,
 	VK_FORMAT_R32G32B32A32_SFLOAT,
-
     VK_FORMAT_MAX_ENUM
 };
 
@@ -233,7 +230,9 @@ static const VkDescriptorType vulkan_descriptor_type[] =
 {
 	VK_DESCRIPTOR_TYPE_SAMPLER,
 	VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-	VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
+	VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+    VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+    VK_DESCRIPTOR_TYPE_MAX_ENUM
 };
 
 static const VkImageLayout vulkan_image_layout[] =

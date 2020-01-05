@@ -51,6 +51,7 @@ namespace Spartan
 		bool Unmap() const;
         bool Flush(uint32_t offset_index = 0);
 
+        bool IsDynamic()            const { return m_offset_count > 1; }
         uint32_t GetOffsetCount()   const { return m_offset_count; }
         uint32_t GetOffsetIndex()   const { return m_offset_index; }
         uint32_t GetOffset()        const { return m_offset_index * m_stride; }

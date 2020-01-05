@@ -44,10 +44,5 @@ namespace Spartan
 	{
 
 	}
-
-    void* RHI_Pipeline::CreateDescriptorSet(std::size_t hash)
-    {
-        return nullptr;
-	}
 }
 #endif

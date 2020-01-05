@@ -37,6 +37,7 @@ namespace Spartan
 	class RHI_PipelineState;
 	class RHI_PipelineCache;
 	class RHI_Pipeline;
+    class RHI_DescriptorSet;
 	class RHI_SwapChain;
 	class RHI_RasterizerState;
 	class RHI_BlendState;
@@ -113,7 +114,6 @@ namespace Spartan
 		RHI_Cull_None,
 		RHI_Cull_Front,
 		RHI_Cull_Back,
-
         RHI_Cull_Undefined
 	};
 
@@ -121,7 +121,6 @@ namespace Spartan
 	{
 		RHI_Fill_Solid,
 		RHI_Fill_Wireframe,
-
         RHI_Fill_Undefined
 	};
 
@@ -178,7 +177,6 @@ namespace Spartan
 		RHI_Format_R8G8B8A8_Unorm,
 		RHI_Format_R16G16B16A16_Float,
 		RHI_Format_R32G32B32A32_Float,
-
         RHI_Format_Undefined
 	};
 
@@ -206,6 +204,7 @@ namespace Spartan
 		RHI_Descriptor_Sampler,
 		RHI_Descriptor_Texture,
 		RHI_Descriptor_ConstantBuffer,
+        RHI_Descriptor_ConstantBufferDynamic,
         RHI_Descriptor_Undefined
 	};
 
