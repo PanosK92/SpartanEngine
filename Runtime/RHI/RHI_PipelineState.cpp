@@ -120,12 +120,12 @@ namespace Spartan
         Utility::Hash::hash_combine(m_hash, viewport.width);
         Utility::Hash::hash_combine(m_hash, viewport.height);
         Utility::Hash::hash_combine(m_hash, primitive_topology);
-        Utility::Hash::hash_combine(m_hash, scissor_dynamic);
         Utility::Hash::hash_combine(m_hash, vertex_buffer_stride);
         Utility::Hash::hash_combine(m_hash, rasterizer_state->GetId());
         Utility::Hash::hash_combine(m_hash, blend_state->GetId());
         Utility::Hash::hash_combine(m_hash, depth_stencil_state->GetId());
         Utility::Hash::hash_combine(m_hash, shader_vertex->GetId());
+        Utility::Hash::hash_combine(m_hash, dynamic_scissor);
 
         if (shader_pixel)
         {

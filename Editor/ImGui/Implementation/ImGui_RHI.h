@@ -234,7 +234,7 @@ namespace ImGui::RHI
         g_pipeline_state.render_target_swapchain        = swap_chain;
         g_pipeline_state.render_target_color_clear[0]   = clear ? Vector4(0.0f, 0.0f, 0.0f, 1.0f) : state_dont_clear_color;
         g_pipeline_state.viewport                       = g_viewport;
-        g_pipeline_state.scissor_dynamic                = true;
+        g_pipeline_state.dynamic_scissor                = true;
         g_pipeline_state.primitive_topology             = RHI_PrimitiveTopology_TriangleList;
         g_pipeline_state.pass_name                      = "Pass_ImGui";
 

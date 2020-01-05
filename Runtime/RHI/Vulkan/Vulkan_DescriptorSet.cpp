@@ -95,13 +95,13 @@ namespace Spartan
         // Pool sizes
         vector<VkDescriptorPoolSize> pool_sizes(4);
         pool_sizes[0].type              = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        pool_sizes[0].descriptorCount   = m_constant_buffer_max;
+        pool_sizes[0].descriptorCount   = m_max_constant_buffer;
         pool_sizes[1].type              = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-        pool_sizes[1].descriptorCount   = m_constant_buffer_dynamic_max;
+        pool_sizes[1].descriptorCount   = m_max_constantbuffer_dynamic;
         pool_sizes[2].type              = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-        pool_sizes[2].descriptorCount   = m_texture_max;
+        pool_sizes[2].descriptorCount   = m_max_texture;
         pool_sizes[3].type              = VK_DESCRIPTOR_TYPE_SAMPLER;
-        pool_sizes[3].descriptorCount   = m_sampler_max;
+        pool_sizes[3].descriptorCount   = m_max_sampler;
 
         // Create info
         VkDescriptorPoolCreateInfo pool_create_info = {};
@@ -128,9 +128,9 @@ namespace Spartan
             {
                 // Stage flags
                 VkShaderStageFlags stage_flags = 0;
-                stage_flags |= (descriptor_blueprint.stage & Shader_Vertex) ? VK_SHADER_STAGE_VERTEX_BIT : 0;
-                stage_flags |= (descriptor_blueprint.stage & Shader_Pixel) ? VK_SHADER_STAGE_FRAGMENT_BIT : 0;
-                stage_flags |= (descriptor_blueprint.stage & Shader_Compute) ? VK_SHADER_STAGE_COMPUTE_BIT : 0;
+                stage_flags |= (descriptor_blueprint.stage & Shader_Vertex)     ? VK_SHADER_STAGE_VERTEX_BIT    : 0;
+                stage_flags |= (descriptor_blueprint.stage & Shader_Pixel)      ? VK_SHADER_STAGE_FRAGMENT_BIT  : 0;
+                stage_flags |= (descriptor_blueprint.stage & Shader_Compute)    ? VK_SHADER_STAGE_COMPUTE_BIT   : 0;
 
                 layout_bindings.push_back
                 ({
@@ -139,7 +139,7 @@ namespace Spartan
                     1,										            // descriptorCount
                     stage_flags,							            // stageFlags
                     nullptr									            // pImmutableSamplers
-                    });
+                });
             }
         }
 
@@ -162,7 +162,7 @@ namespace Spartan
         return true;
     }
 
-    void* RHI_DescriptorSet::CreateDescriptorSet(std::size_t hash)
+    void* RHI_DescriptorSet::CreateDescriptorSet(size_t hash)
     {
         // Early exit if the descriptor cache is full
         if (m_descriptor_sets.size() == m_descriptor_capacity)
@@ -211,10 +211,10 @@ namespace Spartan
                 // Texture or Sampler
                 image_infos.push_back
                 ({
-                    resource_blueprint.type == RHI_Descriptor_Sampler ? static_cast<VkSampler>(resource_blueprint.resource) : nullptr,   // sampler
-                    resource_blueprint.type == RHI_Descriptor_Texture ? static_cast<VkImageView>(resource_blueprint.resource) : nullptr,   // imageView
+                    resource_blueprint.type == RHI_Descriptor_Sampler ? static_cast<VkSampler>(resource_blueprint.resource) : nullptr,      // sampler
+                    resource_blueprint.type == RHI_Descriptor_Texture ? static_cast<VkImageView>(resource_blueprint.resource) : nullptr,    // imageView
                     vulkan_image_layout[resource_blueprint.layout]                                                                          // imageLayout
-                    });
+                });
 
                 // Constant/Uniform buffer
                 bool is_constant_buffer = resource_blueprint.type == RHI_Descriptor_ConstantBuffer || resource_blueprint.type == RHI_Descriptor_ConstantBufferDynamic;
@@ -223,7 +223,7 @@ namespace Spartan
                     is_constant_buffer ? static_cast<VkBuffer>(resource_blueprint.resource) : nullptr,    // buffer
                     0,                                                                                    // offset
                     is_constant_buffer ? resource_blueprint.size : 0,                                     // range                
-                    });
+                });
 
                 write_descriptor_sets.push_back
                 ({

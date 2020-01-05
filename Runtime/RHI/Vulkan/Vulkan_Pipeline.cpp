@@ -67,7 +67,7 @@ namespace Spartan
                 dynamic_states.emplace_back(VK_DYNAMIC_STATE_VIEWPORT);
             }
 
-            if (m_state.scissor_dynamic)
+            if (m_state.dynamic_scissor)
             {
                 dynamic_states.emplace_back(VK_DYNAMIC_STATE_SCISSOR);
             }
@@ -280,7 +280,12 @@ namespace Spartan
 		VkPipelineLayoutCreateInfo pipeline_layout_info	= {};
         {
             // Create descriptor set out of the shader
-            m_descriptor_set = make_shared<RHI_DescriptorSet>(m_rhi_device, m_state.shader_vertex, m_state.shader_pixel);
+            std::vector<uint32_t> constant_buffer_dynamic_slots = {};
+            if (m_state.dynamic_constant_buffer_slot != -1)
+            {
+                constant_buffer_dynamic_slots.emplace_back(m_state.dynamic_constant_buffer_slot);
+            }
+            m_descriptor_set = make_shared<RHI_DescriptorSet>(m_rhi_device, constant_buffer_dynamic_slots, m_state.shader_vertex, m_state.shader_pixel);
 
             // Get the layout
             auto vk_descriptor_set_layout = static_cast<VkDescriptorSetLayout>(m_descriptor_set->GetResource_Layout());

@@ -35,11 +35,12 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_DescriptorSet::RHI_DescriptorSet(const std::shared_ptr<RHI_Device> rhi_device, const RHI_Shader* shader_vertex, const RHI_Shader* shader_pixel /*= nullptr*/)
+    RHI_DescriptorSet::RHI_DescriptorSet(const std::shared_ptr<RHI_Device> rhi_device, std::vector<uint32_t> constant_buffer_dynamic_slots, const RHI_Shader* shader_vertex, const RHI_Shader* shader_pixel /*= nullptr*/)
     {
-        m_rhi_device    = rhi_device;
-        m_shader_vertex = shader_vertex;
-        m_shader_pixel  = shader_pixel;
+        m_rhi_device                    = rhi_device;
+        m_constant_buffer_dynamic_slots = constant_buffer_dynamic_slots;
+        m_shader_vertex                 = shader_vertex;
+        m_shader_pixel                  = shader_pixel;
 
         ReflectShaders();
         SetDescriptorCapacity(m_descriptor_capacity);
@@ -49,32 +50,30 @@ namespace Spartan
     {
         for (RHI_Descriptor& descriptor : m_descriptors)
         {
-            if ((descriptor.type == RHI_Descriptor_ConstantBuffer || descriptor.type == RHI_Descriptor_ConstantBufferDynamic) && descriptor.slot == slot + m_rhi_device->GetContextRhi()->shader_shift_buffer)
+            bool is_dynamic     = constant_buffer->IsDynamic();
+            bool is_same_type   = (!is_dynamic && descriptor.type == RHI_Descriptor_ConstantBuffer) || (is_dynamic && descriptor.type == RHI_Descriptor_ConstantBufferDynamic);
+
+            if (is_same_type && descriptor.slot == slot + m_rhi_device->GetContextRhi()->shader_shift_buffer)
             {
-                bool different_id = descriptor.id != constant_buffer->GetId();
-
-                // different offset needs to rebind the descriptor set with the actual offset, so we detect
-                // it and mark it as dirty here, so it triggers a descriptor set bind in the command list
-                bool different_offset = descriptor.offset != constant_buffer->GetOffset();
-
-                m_descriptor_dirty = (different_id || different_offset) ? true : m_descriptor_dirty;
+                // Determine if dirty
+                m_descriptor_dirty = descriptor.id      != constant_buffer->GetId()     ? true : m_descriptor_dirty;
+                m_descriptor_dirty = descriptor.offset  != constant_buffer->GetOffset() ? true : m_descriptor_dirty;
 
                 // Update
                 descriptor.id       = constant_buffer->GetId();
                 descriptor.resource = constant_buffer->GetResource();
                 descriptor.size     = constant_buffer->GetSize();
-                descriptor.type     = constant_buffer->IsDynamic() ? RHI_Descriptor_ConstantBufferDynamic : RHI_Descriptor_ConstantBuffer;
-                descriptor.offset   = constant_buffer->GetOffset();
 
-                if (constant_buffer->IsDynamic())
+                // Dynamic offset
+                if (is_dynamic)
                 {
-                    if (m_dynamic_offsets.empty())
+                    if (m_constant_buffer_dynamic_offsets.empty())
                     {
-                        m_dynamic_offsets.emplace_back(constant_buffer->GetOffset());
+                        m_constant_buffer_dynamic_offsets.emplace_back(constant_buffer->GetOffset());
                     }
                     else
                     {
-                        m_dynamic_offsets[0] = constant_buffer->GetOffset();
+                        m_constant_buffer_dynamic_offsets[0] = constant_buffer->GetOffset();
                     }
                 }
 
@@ -161,7 +160,6 @@ namespace Spartan
             Utility::Hash::hash_combine(hash, descriptor.stage);
             Utility::Hash::hash_combine(hash, descriptor.id);
             Utility::Hash::hash_combine(hash, descriptor.size);
-            Utility::Hash::hash_combine(hash, descriptor.offset);
             Utility::Hash::hash_combine(hash, static_cast<uint32_t>(descriptor.type));
             Utility::Hash::hash_combine(hash, static_cast<uint32_t>(descriptor.layout));
         }
@@ -211,6 +209,21 @@ namespace Spartan
                 if (!updated_existing)
                 {
                     m_descriptors.emplace_back(descriptor_reflected);
+                }
+            }
+        }
+
+        // Change constant buffers to dynamic (if requested)
+        for (uint32_t constant_buffer_dynamic_slot : m_constant_buffer_dynamic_slots)
+        {
+            for (RHI_Descriptor& descriptor : m_descriptors)
+            {
+                if (descriptor.type == RHI_Descriptor_ConstantBuffer)
+                {
+                    if (descriptor.slot == constant_buffer_dynamic_slot + m_rhi_device->GetContextRhi()->shader_shift_buffer)
+                    {
+                        descriptor.type = RHI_Descriptor_ConstantBufferDynamic;
+                    }
                 }
             }
         }

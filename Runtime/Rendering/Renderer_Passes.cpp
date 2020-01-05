@@ -201,7 +201,10 @@ namespace Spartan
 
                         // Update uber buffer with cascade transform
                         m_buffer_object_cpu.object = entity->GetTransform_PtrRaw()->GetMatrix() * view_projection;
-                        UpdateObjectBuffer();
+                        if (UpdateObjectBuffer())
+                        {
+                            cmd_list->SetConstantBuffer(2, RHI_Buffer_VertexShader, m_buffer_object_gpu);
+                        }
 
                         cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
 
@@ -428,8 +431,10 @@ namespace Spartan
                             transform->SetWvpLastFrame(m_buffer_object_cpu.wvp_current);
 
                             // Update constant buffer
-                            UpdateObjectBuffer(i);
-                            cmd_list->SetConstantBuffer(2, RHI_Buffer_VertexShader, m_buffer_object_gpu);
+                            if (UpdateObjectBuffer(i))
+                            {
+                                cmd_list->SetConstantBuffer(2, RHI_Buffer_VertexShader, m_buffer_object_gpu);
+                            }
                         }
                         
                         // Render	

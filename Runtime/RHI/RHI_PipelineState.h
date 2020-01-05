@@ -48,7 +48,7 @@ namespace Spartan
         void* GetRenderPass()                           const { return m_render_pass; }
         bool operator==(const RHI_PipelineState& rhs)   const { return m_hash == rhs.GetHash(); }
 
-        // State (more specifically, things that if changed, will cause a new pipeline to be generated)
+        //= State (things that if changed, will cause a new pipeline to be generated) =================================================
         RHI_Shader* shader_vertex                                                   = nullptr;
         RHI_Shader* shader_pixel                                                    = nullptr;
         RHI_RasterizerState* rasterizer_state                                       = nullptr;
@@ -60,8 +60,12 @@ namespace Spartan
         Math::Rectangle scissor                                                     = Math::Rectangle(0.0f, 0.0f, 0.0f, 0.0f);
         uint32_t vertex_buffer_stride                                               = 0;
         RHI_Texture* render_target_depth_texture                                    = nullptr;    
-        RHI_Texture* render_target_color_textures[state_max_render_target_count];
-        bool scissor_dynamic = false;
+        RHI_Texture* render_target_color_textures[state_max_render_target_count]    = { nullptr };
+        bool dynamic_scissor                                                        = false;
+        //=============================================================================================================================
+
+        // Dynamic constant buffers
+        int dynamic_constant_buffer_slot = 2; // such a hack, must fix
 
         // Clear values
         float render_target_depth_clear             = state_dont_clear_depth;

@@ -587,7 +587,7 @@ namespace Spartan
         size_t stride           = sizeof(uint64_t);
 
         // During engine startup, this can return VK_NOT_READY.
-        // Instead of waiting on the results reutrn 0 for a frame or two.
+        // Instead of waiting on the results return 0 for a frame or two.
         if (vkGetQueryPoolResults(
                 m_rhi_device->GetContextRhi()->device,  // device
                 static_cast<VkQueryPool>(m_query_pool), // queryPool
@@ -617,7 +617,7 @@ namespace Spartan
         if (!pipeline_state || !pipeline_state->pass_name)
             return;
 
-        // Allowed to profile ?
+        // Allowed profileR ?
         if (m_rhi_device->GetContextRhi()->profiler)
         {
             if (m_profiler && pipeline_state->profile)
@@ -627,7 +627,7 @@ namespace Spartan
             }
         }
 
-        // Allowed to mark ?
+        // Allowed to markers ?
         if (m_rhi_device->GetContextRhi()->markers && pipeline_state->mark)
         {
             vulkan_common::debug::begin(CMD_BUFFER, pipeline_state->pass_name, Vector4::One);
@@ -646,13 +646,13 @@ namespace Spartan
 
         m_passes_active[--m_pass_index] = false;
 
-        // Allowed to mark ?
+        // Allowed markers ?
         if (m_rhi_device->GetContextRhi()->markers && pipeline_state->mark)
         {
             vulkan_common::debug::end(CMD_BUFFER);
         }
 
-        // Allowed to profile ?
+        // Allowed profiler ?
         if (m_rhi_device->GetContextRhi()->profiler && pipeline_state->profile)
         {
             if (m_profiler)
