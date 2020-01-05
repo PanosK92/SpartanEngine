@@ -33,7 +33,7 @@ namespace Spartan
     class RHI_DescriptorSet
     {
     public:
-        RHI_DescriptorSet(const std::shared_ptr<RHI_Device> rhi_device, const RHI_Shader* shader_vertex, const RHI_Shader* shader_pixel = nullptr);
+        RHI_DescriptorSet(const std::shared_ptr<RHI_Device> rhi_device, std::vector<uint32_t> constant_buffer_dynamic_slots, const RHI_Shader* shader_vertex, const RHI_Shader* shader_pixel = nullptr);
         ~RHI_DescriptorSet();
 
         // Descriptor resource updating
@@ -51,7 +51,7 @@ namespace Spartan
         // Properties
         void* GetResource_Set();
         void* GetResource_Layout()                          const { return m_descriptor_set_layout; }
-        const std::vector<uint32_t>& GetDynamicOffsets()    const { return m_dynamic_offsets; }
+        const std::vector<uint32_t>& GetDynamicOffsets()    const { return m_constant_buffer_dynamic_offsets; }
 
     private:
         void SetDescriptorCapacity(uint32_t descriptor_capacity);
@@ -62,18 +62,17 @@ namespace Spartan
         void ReflectShaders();
 
         // Descriptors
-        const uint32_t m_constant_buffer_max            = 10;
-        const uint32_t m_constant_buffer_dynamic_max    = 10;
-        const uint32_t m_sampler_max                    = 10;
-        const uint32_t m_texture_max                    = 10;
-        uint32_t m_descriptor_capacity                  = 20;
-        bool m_descriptor_dirty                         = false;
-        std::vector<uint32_t> m_dynamic_offsets;
-
-        // Descriptors - Acts as a blueprint, and while it's data gets updated, it's structure remains as reflected by the shaders.
+        const uint32_t m_max_constant_buffer        = 10;
+        const uint32_t m_max_constantbuffer_dynamic = 10;
+        const uint32_t m_max_sampler                = 10;
+        const uint32_t m_max_texture                = 10;
+        uint32_t m_descriptor_capacity              = 20;
+        bool m_descriptor_dirty                     = false;
         std::vector<RHI_Descriptor> m_descriptors;
-        // API descriptors
-        std::map<std::size_t, void*> m_descriptor_sets;
+
+        // Dynamic constant buffers
+        std::vector<uint32_t> m_constant_buffer_dynamic_slots;
+        std::vector<uint32_t> m_constant_buffer_dynamic_offsets;
 
         // Dependencies
         std::shared_ptr<RHI_Device> m_rhi_device;
@@ -83,5 +82,6 @@ namespace Spartan
 		// API
 		void* m_descriptor_pool         = nullptr;
 		void* m_descriptor_set_layout   = nullptr;
+        std::map<std::size_t, void*> m_descriptor_sets;
     };
 }
