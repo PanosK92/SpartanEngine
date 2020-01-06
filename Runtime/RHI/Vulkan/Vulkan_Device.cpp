@@ -56,29 +56,32 @@ namespace Spartan
 			app_info.applicationVersion	= VK_MAKE_VERSION(1, 0, 0);
 			app_info.apiVersion			= VK_API_VERSION_1_1;
 
+            // Get the supported extensions out of the requested extensions
+            vector<const char*> extensions_supported = vulkan_common::extension::get_supported_instance(m_rhi_context->extensions_instance);
+
 			VkInstanceCreateInfo create_info	= {};
 			create_info.sType					= VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 			create_info.pApplicationInfo		= &app_info;
-            
-			create_info.enabledExtensionCount	= static_cast<uint32_t>(m_rhi_context->extensions_instance.size());
-			create_info.ppEnabledExtensionNames	= m_rhi_context->extensions_instance.data();
+			create_info.enabledExtensionCount	= static_cast<uint32_t>(extensions_supported.size());
+			create_info.ppEnabledExtensionNames	= extensions_supported.data();
 			create_info.enabledLayerCount		= 0;
 
 			if (m_rhi_context->debug)
 			{
-				if (vulkan_common::extension::is_present(m_rhi_context->validation_layers.front()))
+                // Enable validation layer
+				if (vulkan_common::layer::is_present(m_rhi_context->validation_layers.front()))
 				{
-                    // Validation layers
-					create_info.enabledLayerCount	= static_cast<uint32_t>(m_rhi_context->validation_layers.size());
-					create_info.ppEnabledLayerNames = m_rhi_context->validation_layers.data();
-
                     // Validation features
                     VkValidationFeatureEnableEXT enabled_validation_features[]  = { VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT };
                     VkValidationFeaturesEXT validation_features                 = {};
                     validation_features.sType                                   = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
                     validation_features.enabledValidationFeatureCount           = 1;
                     validation_features.pEnabledValidationFeatures              = enabled_validation_features;
-                    create_info.pNext = &validation_features;
+
+                    // Validation layers
+                    create_info.enabledLayerCount   = static_cast<uint32_t>(m_rhi_context->validation_layers.size());
+                    create_info.ppEnabledLayerNames = m_rhi_context->validation_layers.data();
+                    create_info.pNext               = &validation_features;
 				}
 				else
 				{
@@ -154,7 +157,7 @@ namespace Spartan
                 else                                                                                               \
                 {                                                                                                  \
                     LOG_WARNING("Requested device feature " #feature " is not supported by the physical device");  \
-                    device_features_enabled.feature = VK_FALSE;                                                       \
+                    device_features_enabled.feature = VK_FALSE;                                                    \
                 }
 
                 ENABLE_FEATURE(samplerAnisotropy)
@@ -173,6 +176,9 @@ namespace Spartan
                 m_enabled_graphics_shader_stages = VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT | VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT;
             }
 
+            // Get the supported extensions out of the requested extensions
+            vector<const char*> extensions_supported = vulkan_common::extension::get_supported_device(m_rhi_context->extensions_device, m_rhi_context->device_physical);
+
             // Device create info
 			VkDeviceCreateInfo create_info = {};
 			{
@@ -180,8 +186,8 @@ namespace Spartan
 				create_info.queueCreateInfoCount	= static_cast<uint32_t>(queue_create_infos.size());
 				create_info.pQueueCreateInfos		= queue_create_infos.data();
 				create_info.pEnabledFeatures		= &device_features_enabled;
-				create_info.enabledExtensionCount	= static_cast<uint32_t>(m_rhi_context->extensions_device.size());
-				create_info.ppEnabledExtensionNames = m_rhi_context->extensions_device.data();
+				create_info.enabledExtensionCount	= static_cast<uint32_t>(extensions_supported.size());
+				create_info.ppEnabledExtensionNames = extensions_supported.data();
 
 				if (m_rhi_context->debug)
 				{

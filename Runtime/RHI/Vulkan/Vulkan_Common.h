@@ -1177,23 +1177,117 @@ namespace Spartan::vulkan_common
         }
     }
 
-    namespace extension
+    namespace layer
     {
         inline bool is_present(const char* extension_name)
         {
             uint32_t layer_count;
             vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
 
-            std::vector<VkLayerProperties> available_layers(layer_count);
-            vkEnumerateInstanceLayerProperties(&layer_count, available_layers.data());
+            std::vector<VkLayerProperties> layers(layer_count);
+            vkEnumerateInstanceLayerProperties(&layer_count, layers.data());
 
-            for (const auto& layer_properties : available_layers)
+            for (const auto& layer : layers)
             {
-                if (strcmp(extension_name, layer_properties.layerName) == 0)
+                if (strcmp(extension_name, layer.layerName) == 0)
                     return true;
             }
 
             return false;
+        }
+
+        inline std::vector<const char*> get_supported(const std::vector<const char*>& extensions)
+        {
+            std::vector<const char*> extensions_supported;
+
+            for (const auto& extension : extensions)
+            {
+                if (is_present(extension))
+                {
+                    extensions_supported.emplace_back(extension);
+                }
+                else
+                {
+                    LOG_ERROR("Layer \"%s\" is not supported", extension);
+                }
+            }
+
+            return extensions_supported;
+        }
+    }
+
+    namespace extension
+    {
+        inline bool is_present_device(const char* extension_name, VkPhysicalDevice device_physical)
+        {
+            uint32_t extension_count = 0;
+            vkEnumerateDeviceExtensionProperties(device_physical, nullptr, &extension_count, nullptr);
+
+            std::vector<VkExtensionProperties> extensions(extension_count);
+            vkEnumerateDeviceExtensionProperties(device_physical, nullptr, &extension_count, extensions.data());
+
+            for (const auto& extension : extensions)
+            {
+                if (strcmp(extension_name, extension.extensionName) == 0)
+                    return true;
+            }
+
+            return false;
+        }
+
+        inline std::vector<const char*> get_supported_device(const std::vector<const char*>& extensions, VkPhysicalDevice device_physical)
+        {
+            std::vector<const char*> extensions_supported;
+
+            for (const auto& extension : extensions)
+            {
+                if (is_present_device(extension, device_physical))
+                {
+                    extensions_supported.emplace_back(extension);
+                }
+                else
+                {
+                    LOG_ERROR("Device extension \"%s\" is not supported", extension);
+                }
+            }
+
+            return extensions_supported;
+        }
+
+        inline bool is_present_instance(const char* extension_name)
+        {
+            uint32_t extension_count = 0;
+            vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, nullptr);
+
+            std::vector<VkExtensionProperties> extensions(extension_count);
+            vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, extensions.data());
+
+            for (const auto& extension : extensions)
+            {
+                if (strcmp(extension_name, extension.extensionName) == 0)
+                    return true;
+            }
+
+            return false;
+        }
+
+        inline std::vector<const char*> get_supported_instance(const std::vector<const char*>& extensions)
+        {
+            std::vector<const char*> extensions_supported;
+
+            for (const auto& extension : extensions)
+            {
+                if (is_present_instance(extension))
+                {
+                    extensions_supported.emplace_back(extension);
+                }
+                else
+                {
+                    LOG_ERROR("Instance extension \"%s\" is not supported", extension);
+                }
+            }
+
+            return extensions_supported;
         }
     }
 
