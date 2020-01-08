@@ -46,9 +46,9 @@ namespace Spartan
 
 		void Begin(const char* name, TimeBlock_Type type, const TimeBlock* parent = nullptr, RHI_CommandList* cmd_list = nullptr, const std::shared_ptr<RHI_Device>& rhi_device = nullptr);
 		void End();
-        void OnFrameStart();
+        void Reset();
         TimeBlock_Type GetType()    const { return m_type; }
-		bool IsComplete()           const { return m_is_complete; }
+		bool IsComplete()           const { return !m_has_started; }
 		const auto& GetName()       const { return m_name; }
 		auto GetParent()            const { return m_parent; }
 		auto GetTreeDepth()	        const { return m_tree_depth; }
@@ -62,16 +62,14 @@ namespace Spartan
 		const char* m_name          = nullptr;
 		RHI_Device* m_rhi_device    = nullptr;
         bool m_has_started          = false;
-        bool m_is_complete          = false;
         TimeBlock_Type m_type       = TimeBlock_Undefined;
-        bool m_profiling            = false;
         float m_duration            = 0.0f;
 		const TimeBlock* m_parent	= nullptr;
 		uint32_t m_tree_depth	    = 0;
 
 		// CPU timing
-		std::chrono::steady_clock::time_point start;
-		std::chrono::steady_clock::time_point end;
+		std::chrono::steady_clock::time_point m_start;
+		std::chrono::steady_clock::time_point m_end;
 	
 		// GPU timing
 		void* m_query_disjoint	    = nullptr;

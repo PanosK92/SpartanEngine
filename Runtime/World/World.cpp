@@ -82,7 +82,7 @@ namespace Spartan
 		if (m_state != Ticking)
 			return;
 
-        TIME_BLOCK_START_CPU(m_profiler);
+        SCOPED_TIME_BLOCK(m_profiler);
 
         // Tick entities
 		{
@@ -136,8 +136,6 @@ namespace Spartan
             FIRE_EVENT_DATA(Event_World_Resolve_Complete, m_entities);
             m_is_dirty = false;
         }
-
-        TIME_BLOCK_END_CPU(m_profiler);
 	}
 
 	void World::Unload()

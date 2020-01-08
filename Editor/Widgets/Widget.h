@@ -54,7 +54,7 @@ public:
 		if (!m_is_window || !m_is_visible)
 			return false;
 
-        TIME_BLOCK_START_CPU_NAMED(m_profiler, m_title.c_str());
+        TIME_BLOCK_START_NAMED(m_profiler, m_title.c_str());
 
         // Reset
         m_var_pushes = 0;
@@ -124,7 +124,7 @@ public:
         ImGui::PopStyleVar(m_var_pushes);
 		m_window_begun = false;
 
-        TIME_BLOCK_END_CPU(m_profiler);
+        TIME_BLOCK_END(m_profiler);
 
 		return true;
 	}

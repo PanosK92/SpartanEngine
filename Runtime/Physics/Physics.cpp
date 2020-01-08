@@ -102,7 +102,7 @@ namespace Spartan
 		if (!m_context->m_engine->EngineMode_IsSet(Engine_Physics) || !m_context->m_engine->EngineMode_IsSet(Engine_Game))
 			return;
 
-		TIME_BLOCK_START_CPU(m_profiler);
+        SCOPED_TIME_BLOCK(m_profiler);
 
 		// This equation must be met: timeStep < maxSubSteps * fixedTimeStep
 		auto internal_time_step	= 1.0f / m_internal_fps;
@@ -121,8 +121,6 @@ namespace Spartan
 		m_simulating = true;
 		m_world->stepSimulation(delta_time_sec, max_substeps, internal_time_step);
 		m_simulating = false;
-
-		TIME_BLOCK_END_CPU(m_profiler);
 	}
 
 	Vector3 Physics::GetGravity() const

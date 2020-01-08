@@ -38,7 +38,7 @@ namespace Spartan
 {
 	RHI_InputLayout::~RHI_InputLayout()
 	{
-		safe_release(reinterpret_cast<ID3D11InputLayout*>(m_resource));
+		safe_release(*reinterpret_cast<ID3D11InputLayout**>(&m_resource));
 	}
 
 	bool RHI_InputLayout::_CreateResource(void* vertex_shader_blob)

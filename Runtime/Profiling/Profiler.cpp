@@ -73,17 +73,11 @@ namespace Spartan
         if (m_profile)
         {
             OnFrameEnd();
+
+            // Compute fps
+            ComputeFps(delta_time);
         }
 
-        // Compute cpu and gpu times
-        ComputeCpuAndGpuTime(&m_time_cpu_ms, &m_time_gpu_ms);
-
-        // Compute frame time
-        m_time_frame_ms = m_time_cpu_ms + m_time_gpu_ms;
-
-        // Compute fps
-        ComputeFps(delta_time);
-        
         // Check whether we should profile or not
         m_time_since_profiling_sec += delta_time;
         if (m_time_since_profiling_sec >= m_profiling_interval_sec)
@@ -91,9 +85,10 @@ namespace Spartan
             m_time_since_profiling_sec  = 0.0f;
             m_profile                   = true;
         }
-        else
+        else if (m_profile)
         {
             m_profile = false;
+            ClearTimeBlocks();
         }
 
         // Updating every m_profiling_interval_sec
@@ -107,34 +102,53 @@ namespace Spartan
             {
                 UpdateRhiMetricsString();
             }
-
-            // Start a new frame
-            OnFrameStart(delta_time);
         }
 
         ClearRhiMetrics();
     }
 
-    void Profiler::OnFrameStart(float delta_time)
-    {
-        // Discard previous frame data
-        for (uint32_t i = 0; i < m_time_block_count; i++)
-        {
-            TimeBlock& time_block = m_time_blocks_write[i];
-            if (!time_block.IsComplete())
-            {
-                LOG_WARNING("Ensure that TimeBlockEnd() is called for %s", time_block.GetName());
-            }
-            time_block.OnFrameStart();
-        }
-
-        m_time_block_count = 0;
-    }
-
     void Profiler::OnFrameEnd()
     {
+        // Copy time blocks for reading
         m_time_blocks_read = m_time_blocks_write;
-        DetectStutter();
+
+        ClearTimeBlocks();
+
+        // Compute cpu, gpu and frame time
+        {
+            m_time_cpu_ms = 0;
+            m_time_gpu_ms = 0;
+
+            for (const TimeBlock& time_block : m_time_blocks_read)
+            {
+                if (!time_block.IsComplete())
+                    continue;
+
+                if (!time_block.GetParent() && time_block.GetType() == TimeBlock_Cpu)
+                {
+                    m_time_cpu_ms += time_block.GetDuration();
+                }
+
+                if (!time_block.GetParent() && time_block.GetType() == TimeBlock_Gpu)
+                {
+                    m_time_gpu_ms += time_block.GetDuration();
+                }
+            }
+
+            m_time_frame_ms = m_time_cpu_ms + m_time_gpu_ms;
+        }
+
+        // Detect stutters
+        {
+            // Detect
+            m_is_stuttering_cpu = m_time_cpu_ms > (m_cpu_avg_ms + m_stutter_delta_ms);
+            m_is_stuttering_gpu = m_time_gpu_ms > (m_gpu_avg_ms + m_stutter_delta_ms);
+
+            // Accumulate
+            double delta_feedback = 1.0 / m_frames_to_accumulate;
+            m_cpu_avg_ms = m_cpu_avg_ms * (1.0 - delta_feedback) + m_time_cpu_ms * delta_feedback;
+            m_gpu_avg_ms = m_gpu_avg_ms * (1.0 - delta_feedback) + m_time_gpu_ms * delta_feedback;
+        }
     }
 
     void Profiler::TimeBlockStart(const char* func_name, TimeBlock_Type type, RHI_CommandList* cmd_list /*= nullptr*/)
@@ -159,25 +173,24 @@ namespace Spartan
 
 	void Profiler::TimeBlockEnd()
 	{
-		if (!m_profile || m_time_block_count == 0)
-			return;
-
 		if (auto time_block = GetLastIncompleteTimeBlock())
 		{
 			time_block->End();
 		}
 	}
 
-    void Profiler::DetectStutter()
+    void Profiler::ClearTimeBlocks()
     {
-        // Detect
-        m_is_stuttering_cpu = m_time_cpu_ms > (m_cpu_avg_ms + m_stutter_delta_ms);
-        m_is_stuttering_gpu = m_time_gpu_ms > (m_gpu_avg_ms + m_stutter_delta_ms);
-
-        // Accumulate
-        double delta_feedback = 1.0 / m_frames_to_accumulate;
-        m_cpu_avg_ms = m_cpu_avg_ms * (1.0 - delta_feedback) + m_time_cpu_ms * delta_feedback;
-        m_gpu_avg_ms = m_gpu_avg_ms * (1.0 - delta_feedback) + m_time_gpu_ms * delta_feedback;
+        for (uint32_t i = 0; i < m_time_block_count; i++)
+        {
+            TimeBlock& time_block = m_time_blocks_write[i];
+            if (!time_block.IsComplete())
+            {
+                LOG_WARNING("Ensure that TimeBlockEnd() is called for %s", time_block.GetName());
+            }
+            time_block.Reset();
+        }
+        m_time_block_count = 0;
     }
 
     TimeBlock* Profiler::GetNewTimeBlock()
@@ -192,8 +205,7 @@ namespace Spartan
 		}
 
 		// Return a time block
-		m_time_block_count++;
-		return &m_time_blocks_write[m_time_block_count - 1];
+		return &m_time_blocks_write[m_time_block_count++];
 	}
 
 	TimeBlock* Profiler::GetLastIncompleteTimeBlock(TimeBlock_Type type /*= TimeBlock_Undefined*/)
@@ -224,33 +236,6 @@ namespace Spartan
 			m_time_passed = 0;
 		}
 	}
-
-    void Profiler::ComputeCpuAndGpuTime(float* time_cpu, float* time_gpu)
-    {
-        if (!time_cpu && !time_gpu)
-            return;
-
-        *time_cpu = 0;
-        *time_gpu = 0;
-
-        for (uint32_t i = 0; i < m_time_block_count; i++)
-        {
-            const TimeBlock& time_block = m_time_blocks_read[i];
-
-            if (!time_block.IsComplete())
-                break;
-
-            if (!time_block.GetParent() && time_block.GetType() == TimeBlock_Cpu)
-            {
-                *time_cpu += time_block.GetDuration();
-            }
-
-            if (!time_block.GetParent() && time_block.GetType() == TimeBlock_Gpu)
-            {
-                *time_gpu += time_block.GetDuration();
-            }
-        }
-    }
 
     void Profiler::UpdateRhiMetricsString()
 	{

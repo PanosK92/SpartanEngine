@@ -74,7 +74,7 @@ namespace Spartan
     }
 
 	template <typename T>
-	constexpr void safe_release(T* ptr)
+	constexpr void safe_release(T*& ptr)
 	{
 		if (ptr)
 		{

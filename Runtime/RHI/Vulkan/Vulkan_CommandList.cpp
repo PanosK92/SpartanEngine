@@ -607,7 +607,7 @@ namespace Spartan
         return true;
     }
 
-    void RHI_CommandList::Gpu_QueryRelease(void* query_object)
+    void RHI_CommandList::Gpu_QueryRelease(void*& query_object)
     {
         // Not needed
     }

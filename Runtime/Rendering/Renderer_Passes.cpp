@@ -69,7 +69,7 @@ namespace Spartan
         if (!m_rhi_device)
             return;
 
-        TIME_BLOCK_START_CPU(m_profiler);
+        SCOPED_TIME_BLOCK(m_profiler);
 
         // Updates onces, used almost everywhere
         UpdateFrameBuffer();
@@ -91,8 +91,6 @@ namespace Spartan
         Pass_Gizmos(cmd_list, m_render_targets[RenderTarget_Composition_Ldr]);
         Pass_DebugBuffer(cmd_list, m_render_targets[RenderTarget_Composition_Ldr]);
         Pass_PerformanceMetrics(cmd_list, m_render_targets[RenderTarget_Composition_Ldr]);
-
-        TIME_BLOCK_END_CPU(m_profiler);
 	}
 
 	void Renderer::Pass_LightDepth(RHI_CommandList* cmd_list)

@@ -173,7 +173,7 @@ namespace Spartan
         m_cmd_lists.clear();
 
 		safe_release(swap_chain);
-		safe_release(static_cast<ID3D11RenderTargetView*>(m_resource_render_target));
+		safe_release(*reinterpret_cast<ID3D11RenderTargetView**>(&m_resource_render_target));
 	}
 
 	bool RHI_SwapChain::Resize(const uint32_t width, const uint32_t height)

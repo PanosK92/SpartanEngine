@@ -146,7 +146,7 @@ namespace Spartan
 		if (!m_initialized)
 			return;
 
-		TIME_BLOCK_START_CPU(m_profiler);
+        SCOPED_TIME_BLOCK(m_profiler);
 
 		// Update FMOD
 		m_result_fmod = m_system_fmod->update();
@@ -156,7 +156,6 @@ namespace Spartan
 			return;
 		}
 
-		//= 3D Attributes =============================================
 		if (m_listener)
 		{
 			auto position = m_listener->GetPosition();
@@ -178,9 +177,6 @@ namespace Spartan
 				return;
 			}
 		}
-		//=============================================================
-
-		TIME_BLOCK_END_CPU(m_profiler);
 	}
 
     void Audio::SetListenerTransform(Transform* transform)

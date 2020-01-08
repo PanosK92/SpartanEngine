@@ -36,17 +36,10 @@ namespace Spartan
 
 	TimeBlock::~TimeBlock()
 	{
-		if (m_query_disjoint)
-		{
-			RHI_CommandList::Gpu_QueryRelease(m_query_disjoint);
-			RHI_CommandList::Gpu_QueryRelease(m_query_start);
-			RHI_CommandList::Gpu_QueryRelease(m_query_end);
-		}
-
-		OnFrameStart();
-		m_query_disjoint    = nullptr;
-		m_query_start	    = nullptr;
-		m_query_end		    = nullptr;
+        RHI_CommandList::Gpu_QueryRelease(m_query_disjoint);
+        RHI_CommandList::Gpu_QueryRelease(m_query_start);
+        RHI_CommandList::Gpu_QueryRelease(m_query_end);
+		Reset();
 	}
 
 	void TimeBlock::Begin(const char* name, TimeBlock_Type type, const TimeBlock* parent /*= nullptr*/, RHI_CommandList* cmd_list /*= nullptr*/, const shared_ptr<RHI_Device>& rhi_device /*= nullptr*/)
@@ -62,8 +55,7 @@ namespace Spartan
 
 		if (type == TimeBlock_Cpu)
 		{
-			start = chrono::high_resolution_clock::now();
-			m_profiling = true;
+			m_start = chrono::high_resolution_clock::now();
 		}
 		else if (type == TimeBlock_Gpu)
 		{
@@ -79,11 +71,8 @@ namespace Spartan
             {
                 cmd_list->Timestamp_Start(m_query_disjoint, m_query_start);
             }
-
-            m_profiling = true;
 		}
 
-		m_is_complete = false;
 		m_has_started = true;
 	}
 
@@ -97,8 +86,8 @@ namespace Spartan
 
 		if (m_type == TimeBlock_Cpu)
 		{
-			end = chrono::high_resolution_clock::now();
-			chrono::duration<double, milli> ms = end - start;
+			m_end = chrono::high_resolution_clock::now();
+			chrono::duration<double, milli> ms = m_end - m_start;
 			m_duration = static_cast<float>(ms.count());
 		}
 		else if (m_type == TimeBlock_Gpu)
@@ -110,22 +99,22 @@ namespace Spartan
             }
 		}
 
-		m_is_complete = true;
 		m_has_started = false;
 	}
 
-    void TimeBlock::OnFrameStart()
+    void TimeBlock::Reset()
 	{
-        // Reset
         m_name              = nullptr;
 		m_parent		    = nullptr;
 		m_tree_depth	    = 0;
-		m_is_complete	    = false;
 		m_has_started	    = false;
 		m_duration	        = 0.0f;
-		m_profiling         = false;
         m_max_tree_depth    = 0;
         m_type              = TimeBlock_Undefined;
+        m_duration          = 0;
+        RHI_CommandList::Gpu_QueryRelease(m_query_disjoint);
+        RHI_CommandList::Gpu_QueryRelease(m_query_start);
+        RHI_CommandList::Gpu_QueryRelease(m_query_end);
 	}
 
 	uint32_t TimeBlock::FindTreeDepth(const TimeBlock* time_block, uint32_t depth /*= 0*/)

@@ -39,8 +39,7 @@ namespace Spartan
 {
 	RHI_VertexBuffer::~RHI_VertexBuffer()
 	{
-		safe_release(static_cast<ID3D11Buffer*>(m_buffer));
-		m_buffer = nullptr;
+		safe_release(*reinterpret_cast<ID3D11Buffer**>(&m_buffer));
 	}
 
 	bool RHI_VertexBuffer::_Create(const void* vertices)
@@ -52,8 +51,7 @@ namespace Spartan
 		}
 
         bool is_dynamic = vertices == nullptr;
-		safe_release(static_cast<ID3D11Buffer*>(m_buffer));
-		m_buffer = nullptr;
+		safe_release(*reinterpret_cast<ID3D11Buffer**>(&m_buffer));
 
 		// fill in a buffer description.
         D3D11_BUFFER_DESC buffer_desc   = {};
