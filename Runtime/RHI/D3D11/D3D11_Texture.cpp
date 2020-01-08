@@ -44,8 +44,7 @@ namespace Spartan
 
 	RHI_Texture2D::~RHI_Texture2D()
 	{
-		safe_release(static_cast<ID3D11ShaderResourceView*>(m_resource_view));
-		m_resource_view = nullptr;
+		safe_release(*reinterpret_cast<ID3D11ShaderResourceView**>(&m_resource_view));
 	}
 
 	inline bool CreateTexture(
@@ -256,7 +255,7 @@ namespace Spartan
 			);
 		}
 
-		safe_release(reinterpret_cast<ID3D11Texture2D*>(texture));	
+		safe_release(*reinterpret_cast<ID3D11Texture2D**>(&texture));	
 		return result_tex && result_srv && result_rt && result_ds;
 	}
 
@@ -264,8 +263,7 @@ namespace Spartan
 
 	RHI_TextureCube::~RHI_TextureCube()
 	{
-		safe_release(static_cast<ID3D11ShaderResourceView*>(m_resource_view));
-		m_resource_view = nullptr;
+		safe_release(*reinterpret_cast<ID3D11ShaderResourceView**>(&m_resource_view));
 	}
 
 	inline bool TextureCube_Sampled

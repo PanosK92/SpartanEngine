@@ -29,9 +29,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/ISubsystem.h"
 //=============================
 
-#define TIME_BLOCK_START_CPU_NAMED(profiler, name)  profiler->TimeBlockStart(name, Spartan::TimeBlock_Type::TimeBlock_Cpu);
-#define TIME_BLOCK_START_CPU(profiler)		        profiler->TimeBlockStart(__FUNCTION__, Spartan::TimeBlock_Type::TimeBlock_Cpu);
-#define TIME_BLOCK_END_CPU(profiler)			    profiler->TimeBlockEnd();
+#define TIME_BLOCK_START_NAMED(profiler, name)  profiler->TimeBlockStart(name, Spartan::TimeBlock_Type::TimeBlock_Cpu);
+#define TIME_BLOCK_END(profiler)			    profiler->TimeBlockEnd();
+#define SCOPED_TIME_BLOCK(profiler)             ScopedTimeBlock time_block = ScopedTimeBlock(profiler, __FUNCTION__)
 
 namespace Spartan
 {
@@ -52,16 +52,9 @@ namespace Spartan
         void Tick(float delta_time) override;
 		//===================================
 
-        // Events
-        void OnFrameStart(float delta_time);
         void OnFrameEnd();
-
-		// Time block
 		void TimeBlockStart(const char* func_name, TimeBlock_Type type, RHI_CommandList* cmd_list = nullptr);
 		void TimeBlockEnd();
-
-        // Stutter detection
-        void DetectStutter();
 
         // Properties
 		void SetProfilingEnabledCpu(const bool enabled)	{ m_profile_cpu_enabled = enabled; }
@@ -120,10 +113,10 @@ namespace Spartan
             m_rhi_bindings_pipeline         = 0;
         }
 
+        void ClearTimeBlocks();
 		TimeBlock* GetNewTimeBlock();
 		TimeBlock* GetLastIncompleteTimeBlock(TimeBlock_Type type = TimeBlock_Undefined);
 		void ComputeFps(float delta_time);
-        void ComputeCpuAndGpuTime(float* time_cpu, float* time_gpu);
 		void UpdateRhiMetricsString();
 
 		// Profiling options
@@ -165,4 +158,22 @@ namespace Spartan
 		ResourceCache* m_resource_manager	= nullptr;
 		Renderer* m_renderer				= nullptr;
 	};
+
+    class ScopedTimeBlock
+    {
+    public:
+        ScopedTimeBlock(Profiler* profiler, const char* name = nullptr)
+        {
+            this->profiler = profiler;
+            profiler->TimeBlockStart(name, Spartan::TimeBlock_Type::TimeBlock_Cpu);
+        }
+
+        ~ScopedTimeBlock()
+        {
+            profiler->TimeBlockEnd();
+        }
+
+    private:
+        Profiler* profiler = nullptr;
+    };
 }

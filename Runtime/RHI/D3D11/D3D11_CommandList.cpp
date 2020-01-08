@@ -617,12 +617,12 @@ namespace Spartan
         return true;
     }
 
-    void RHI_CommandList::Gpu_QueryRelease(void* query_object)
+    void RHI_CommandList::Gpu_QueryRelease(void*& query_object)
     {
         if (!query_object)
             return;
 
-        safe_release(static_cast<ID3D11Query*>(query_object));
+        safe_release(*reinterpret_cast<ID3D11Query**>(&query_object));
     }
 
     void RHI_CommandList::MarkAndProfileStart(const RHI_PipelineState* pipeline_state)

@@ -464,7 +464,7 @@ namespace Spartan
 
 	void Renderer::RenderablesAcquire(const Variant& entities_variant)
 	{
-		TIME_BLOCK_START_CPU(m_profiler);
+        SCOPED_TIME_BLOCK(m_profiler);
 
 		// Clear previous state
 		m_entities.clear();
@@ -505,8 +505,6 @@ namespace Spartan
 
 		RenderablesSort(&m_entities[Renderer_Object_Opaque]);
 		RenderablesSort(&m_entities[Renderer_Object_Transparent]);
-
-		TIME_BLOCK_END_CPU(m_profiler);
 	}
 
 	void Renderer::RenderablesSort(vector<Entity*>* renderables)

@@ -100,7 +100,7 @@ namespace Spartan
 
 	RHI_RasterizerState::~RHI_RasterizerState()
 	{
-		safe_release(static_cast<ID3D11RasterizerState*>(m_buffer));
+        safe_release(*reinterpret_cast<ID3D11RasterizerState**>(&m_buffer));
 	}
 }
 #endif

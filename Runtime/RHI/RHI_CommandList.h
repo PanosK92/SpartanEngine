@@ -107,7 +107,7 @@ namespace Spartan
         static uint32_t Gpu_GetMemory(RHI_Device* rhi_device);
         static uint32_t Gpu_GetMemoryUsed(RHI_Device* rhi_device);
         static bool Gpu_QueryCreate(RHI_Device* rhi_device, void** query = nullptr, RHI_Query_Type type = RHI_Query_Timestamp);
-        static void Gpu_QueryRelease(void* query_object);
+        static void Gpu_QueryRelease(void*& query_object);
         
         // Misc
         void* GetResource_CommandBuffer() { return m_cmd_buffer; }

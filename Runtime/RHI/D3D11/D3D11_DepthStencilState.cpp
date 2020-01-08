@@ -98,7 +98,7 @@ namespace Spartan
 
 	RHI_DepthStencilState::~RHI_DepthStencilState()
 	{
-		safe_release(static_cast<ID3D11DepthStencilState*>(m_buffer));
+		safe_release(*reinterpret_cast<ID3D11DepthStencilState**>(&m_buffer));
 	}
 }
 #endif

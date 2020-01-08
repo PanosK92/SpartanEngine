@@ -38,8 +38,7 @@ namespace Spartan
 {
 	RHI_ConstantBuffer::~RHI_ConstantBuffer()
 	{
-		safe_release(static_cast<ID3D11Buffer*>(m_buffer));
-        m_buffer = nullptr;
+		safe_release(*reinterpret_cast<ID3D11Buffer**>(&m_buffer));
 	}
 
 	void* RHI_ConstantBuffer::Map(uint32_t offset_index /*= 0*/)
@@ -83,8 +82,7 @@ namespace Spartan
 			return false;
 		}
 
-        safe_release(static_cast<ID3D11Buffer*>(m_buffer));
-        m_buffer = nullptr;
+        safe_release(*reinterpret_cast<ID3D11Buffer**>(&m_buffer));
 
 		D3D11_BUFFER_DESC buffer_desc;
 		ZeroMemory(&buffer_desc, sizeof(buffer_desc));

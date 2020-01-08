@@ -38,8 +38,7 @@ namespace Spartan
 {
 	RHI_IndexBuffer::~RHI_IndexBuffer()
 	{
-		safe_release(static_cast<ID3D11Buffer*>(m_buffer));
-		m_buffer = nullptr;
+		safe_release(*reinterpret_cast<ID3D11Buffer**>(&m_buffer));
 	}
 
 	bool RHI_IndexBuffer::_Create(const void* indices)
@@ -51,8 +50,7 @@ namespace Spartan
 		}
 
         bool is_dynamic = indices == nullptr;
-		safe_release(static_cast<ID3D11Buffer*>(m_buffer));
-		m_buffer = nullptr;
+		safe_release(*reinterpret_cast<ID3D11Buffer**>(&m_buffer));
 
 		D3D11_BUFFER_DESC buffer_desc;
 		ZeroMemory(&buffer_desc, sizeof(buffer_desc));

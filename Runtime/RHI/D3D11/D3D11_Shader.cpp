@@ -44,7 +44,7 @@ namespace Spartan
 {
 	RHI_Shader::~RHI_Shader()
 	{
-		safe_release(static_cast<ID3D11VertexShader*>(m_resource));
+		safe_release(*reinterpret_cast<ID3D11VertexShader**>(&m_resource));
 	}
 
 	template <typename T>
