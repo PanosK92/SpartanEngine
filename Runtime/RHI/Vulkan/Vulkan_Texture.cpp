@@ -76,13 +76,13 @@ namespace Spartan
         const RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
 
         // Get format support
-        VkFormatFeatureFlags feature_flag   = (m_bind_flags & RHI_Texture_RenderTarget_DepthStencil) ? VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT : VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
+        VkFormatFeatureFlags feature_flag   = IsRenderTargetDepthStencil() ? VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT : VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
         VkImageTiling image_tiling          = vulkan_common::image::is_format_supported(rhi_context, m_format, feature_flag);
 
         // If the format is not supported, early exit
         if (image_tiling == VK_IMAGE_TILING_MAX_ENUM)
         {
-            LOG_ERROR("Format %s is not supported by the GPU.", rhi_format_to_string(m_format));
+            LOG_ERROR("GPU does not support the usage of %s as a %s.", rhi_format_to_string(m_format), IsRenderTargetDepthStencil() ? "depth-stencil attachment" : "color attachment");
             return false;
         }
 
@@ -101,11 +101,16 @@ namespace Spartan
 
         // Deduce usage flags
         VkImageUsageFlags usage_flags = 0;
-        usage_flags |= (m_bind_flags & RHI_Texture_Sampled)                     ? VK_IMAGE_USAGE_SAMPLED_BIT                    : 0;
-        usage_flags |= (m_bind_flags & RHI_Texture_RenderTarget_DepthStencil)   ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT   : 0;
-        usage_flags |= (m_bind_flags & RHI_Texture_RenderTarget_Color)          ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT           : 0;
-        usage_flags |= use_staging                                              ? VK_IMAGE_USAGE_TRANSFER_SRC_BIT               : 0; // source of a transfer command.
-        usage_flags |= use_staging                                              ? VK_IMAGE_USAGE_TRANSFER_DST_BIT               : 0; // destination of a transfer command.
+        {
+            usage_flags |= (m_bind_flags & RHI_Texture_Sampled)                     ? VK_IMAGE_USAGE_SAMPLED_BIT                    : 0;
+            usage_flags |= (m_bind_flags & RHI_Texture_RenderTarget_DepthStencil)   ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT   : 0;
+            usage_flags |= (m_bind_flags & RHI_Texture_RenderTarget_Color)          ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT           : 0;
+            if (use_staging)
+            {
+                usage_flags |= use_staging ? VK_IMAGE_USAGE_TRANSFER_SRC_BIT : 0; // source of a transfer command.
+                usage_flags |= use_staging ? VK_IMAGE_USAGE_TRANSFER_DST_BIT : 0; // destination of a transfer command.
+            }
+        }
 
         // Create image
         {

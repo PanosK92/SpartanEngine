@@ -113,7 +113,6 @@ namespace Spartan
             m_rhi_bindings_pipeline         = 0;
         }
 
-        void ClearTimeBlocks();
 		TimeBlock* GetNewTimeBlock();
 		TimeBlock* GetLastIncompleteTimeBlock(TimeBlock_Type type = TimeBlock_Undefined);
 		void ComputeFps(float delta_time);
@@ -125,7 +124,7 @@ namespace Spartan
 		float m_profiling_interval_sec		= 0.3f;
 		float m_time_since_profiling_sec	= m_profiling_interval_sec;
 
-		// Time blocks
+		// Time blocks (double buffered)
 		uint32_t m_time_block_capacity	= 200;
 		uint32_t m_time_block_count		= 0;
 		std::vector<TimeBlock> m_time_blocks_write;

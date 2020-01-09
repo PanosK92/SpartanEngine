@@ -43,6 +43,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Texture2D.h"
 #include "../RHI/RHI_SwapChain.h"
 #include "../RHI/RHI_VertexBuffer.h"
+#include "../RHI/RHI_Implementation.h"
 //=========================================
 
 //= NAMESPACES ===============
@@ -181,7 +182,7 @@ namespace Spartan
 
     void Renderer::SetShadowResolution(uint32_t resolution)
     {
-        resolution = Clamp(resolution, m_resolution_shadow_min, m_max_resolution);
+        resolution = Clamp(resolution, m_resolution_shadow_min, GetMaxResolution());
 
         if (resolution == GetOptionValue<uint32_t>(Option_Value_ShadowResolution))
             return;
@@ -265,7 +266,7 @@ namespace Spartan
 	void Renderer::SetResolution(uint32_t width, uint32_t height)
 	{
 		// Return if resolution is invalid
-		if (width == 0 || width > m_max_resolution || height == 0 || height > m_max_resolution)
+		if (width == 0 || width > GetMaxResolution() || height == 0 || height > GetMaxResolution())
 		{
 			LOG_WARNING("%dx%d is an invalid resolution", width, height);
 			return;
@@ -567,5 +568,10 @@ namespace Spartan
         }
 
         m_option_values[option] = value;
+    }
+
+    const uint32_t Renderer::GetMaxResolution() const
+    {
+        return m_rhi_device->GetContextRhi()->max_texture_dimension_2d;
     }
 }

@@ -37,6 +37,8 @@ namespace Spartan
 {
 	Profiler::Profiler(Context* context) : ISubsystem(context)
 	{
+        m_time_blocks_read.reserve(m_time_block_capacity);
+        m_time_blocks_read.resize(m_time_block_capacity);
 		m_time_blocks_write.reserve(m_time_block_capacity);
 		m_time_blocks_write.resize(m_time_block_capacity);
 	}
@@ -88,7 +90,6 @@ namespace Spartan
         else if (m_profile)
         {
             m_profile = false;
-            ClearTimeBlocks();
         }
 
         // Updating every m_profiling_interval_sec
@@ -109,10 +110,26 @@ namespace Spartan
 
     void Profiler::OnFrameEnd()
     {
-        // Copy time blocks for reading
-        m_time_blocks_read = m_time_blocks_write;
+        // Clear time blocks
+        {
+            for (uint32_t i = 0; i < m_time_block_count; i++)
+            {
+                TimeBlock& time_block = m_time_blocks_write[i];
 
-        ClearTimeBlocks();
+                if (time_block.IsComplete())
+                {
+                    m_time_blocks_read[i] = time_block;
+                }
+                else
+                {
+                    LOG_WARNING("TimeBlockEnd() was not called for time block \"%s\"", time_block.GetName());
+                }
+                
+                time_block.Reset();
+            }
+
+            m_time_block_count = 0;
+        }
 
         // Compute cpu, gpu and frame time
         {
@@ -176,22 +193,9 @@ namespace Spartan
 		if (auto time_block = GetLastIncompleteTimeBlock())
 		{
 			time_block->End();
+            time_block->ComputeDuration(); // must move this to OnFrameEnd() because D3D11 waits too much
 		}
 	}
-
-    void Profiler::ClearTimeBlocks()
-    {
-        for (uint32_t i = 0; i < m_time_block_count; i++)
-        {
-            TimeBlock& time_block = m_time_blocks_write[i];
-            if (!time_block.IsComplete())
-            {
-                LOG_WARNING("Ensure that TimeBlockEnd() is called for %s", time_block.GetName());
-            }
-            time_block.Reset();
-        }
-        m_time_block_count = 0;
-    }
 
     TimeBlock* Profiler::GetNewTimeBlock()
 	{
@@ -199,6 +203,8 @@ namespace Spartan
 		if (m_time_block_count >= static_cast<uint32_t>(m_time_blocks_write.size()))
 		{
 			uint32_t new_size = m_time_block_count + 100;
+            m_time_blocks_read.reserve(new_size);
+            m_time_blocks_read.resize(new_size);
 			m_time_blocks_write.reserve(new_size);
 			m_time_blocks_write.resize(new_size);
 			LOG_WARNING("Time block list has grown to fit %d commands. Consider making the capacity larger to avoid re-allocations.", m_time_block_count + 1);

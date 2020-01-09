@@ -94,7 +94,14 @@ namespace Spartan
         vulkan_common::fence::destroy(rhi_context, m_cmd_list_consumed_fence);
 
         // Command buffer
-        vulkan_common::command_buffer::free(m_rhi_device->GetContextRhi(), m_swap_chain->GetCmdPool(), m_cmd_buffer);
+        vulkan_common::command_buffer::free(rhi_context, m_swap_chain->GetCmdPool(), m_cmd_buffer);
+
+        // Query pool
+        if (m_query_pool)
+        {
+            vkDestroyQueryPool(rhi_context->device, static_cast<VkQueryPool>(m_query_pool), nullptr);
+            m_query_pool = nullptr;
+        }
 	}
 
     bool RHI_CommandList::Begin(RHI_PipelineState& pipeline_state)
@@ -511,7 +518,7 @@ namespace Spartan
         VkPhysicalDeviceMemoryProperties device_memory_properties = {};
         vkGetPhysicalDeviceMemoryProperties(static_cast<VkPhysicalDevice>(rhi_device->GetContextRhi()->device_physical), &device_memory_properties);
 
-        return static_cast<uint32_t>(device_memory_properties.memoryHeaps[0].size / 1024 / 1024); // memory (MBs)
+        return static_cast<uint32_t>(device_memory_properties.memoryHeaps[0].size / 1024 / 1024); // MBs
     }
 
     uint32_t RHI_CommandList::Gpu_GetMemoryUsed(RHI_Device* rhi_device)
@@ -529,7 +536,7 @@ namespace Spartan
 
         vulkan_common::functions::get_physical_device_memory_properties_2(static_cast<VkPhysicalDevice>(rhi_device->GetContextRhi()->device_physical), &device_memory_properties);
 
-        return static_cast<uint32_t>(device_memory_budget_properties.heapUsage[0] / 1024 / 1024);
+        return static_cast<uint32_t>(device_memory_budget_properties.heapUsage[0] / 1024 / 1024); // MBs
     }
 
     bool RHI_CommandList::Timestamp_Start(void* query_disjoint /*= nullptr*/, void* query_start /*= nullptr*/)
@@ -586,8 +593,6 @@ namespace Spartan
         uint32_t query_count    = static_cast<uint32_t>(m_timestamps.size());
         size_t stride           = sizeof(uint64_t);
 
-        // During engine startup, this can return VK_NOT_READY.
-        // Instead of waiting on the results return 0 for a frame or two.
         if (vkGetQueryPoolResults(
                 m_rhi_device->GetContextRhi()->device,  // device
                 static_cast<VkQueryPool>(m_query_pool), // queryPool
@@ -599,11 +604,12 @@ namespace Spartan
                 VK_QUERY_RESULT_64_BIT                  // flags
         ) != VK_SUCCESS) return 0.0f;
 
-        return static_cast<float>(m_timestamps[1] - m_timestamps[0]) * m_rhi_device->GetContextRhi()->device_properties.limits.timestampPeriod * 1e-6f;
+        return static_cast<float>((m_timestamps[1] - m_timestamps[0]) * m_rhi_device->GetContextRhi()->device_properties.limits.timestampPeriod * 1e-6f);
     }
 
     bool RHI_CommandList::Gpu_QueryCreate(RHI_Device* rhi_device, void** query /*= nullptr*/, RHI_Query_Type type /*= RHI_Query_Timestamp*/)
     {
+        // Not needed
         return true;
     }
 
@@ -617,7 +623,7 @@ namespace Spartan
         if (!pipeline_state || !pipeline_state->pass_name)
             return;
 
-        // Allowed profileR ?
+        // Allowed profiler ?
         if (m_rhi_device->GetContextRhi()->profiler)
         {
             if (m_profiler && pipeline_state->profile)

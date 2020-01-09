@@ -136,6 +136,9 @@ namespace Spartan
             // Get device properties
             vkGetPhysicalDeviceProperties(static_cast<VkPhysicalDevice>(m_rhi_context->device_physical), &m_rhi_context->device_properties);
 
+            // Resource limits
+            m_rhi_context->max_texture_dimension_2d = m_rhi_context->device_properties.limits.maxImageDimension2D;
+
             // Disable profiler if timestamps are not supported
             if (m_rhi_context->profiler && !m_rhi_context->device_properties.limits.timestampComputeAndGraphics)
             {

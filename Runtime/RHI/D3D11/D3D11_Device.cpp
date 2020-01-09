@@ -58,6 +58,9 @@ namespace Spartan
 		// Detect adapters
 		d3d11_common::DetectAdapters(this);
 
+        // Resource limits
+        m_rhi_context->max_texture_dimension_2d = D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION;
+
         const PhysicalDevice* physical_device = GetPrimaryPhysicalDevice();
         if (!physical_device)
         {

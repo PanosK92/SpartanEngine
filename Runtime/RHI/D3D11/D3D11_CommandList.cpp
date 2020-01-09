@@ -466,11 +466,13 @@ namespace Spartan
 
     bool RHI_CommandList::Flush()
     {
+        m_rhi_device->GetContextRhi()->device_context->Flush();
         return true;
     }
 
     bool RHI_CommandList::Gpu_Flush(RHI_Device* rhi_device)
     {
+        rhi_device->GetContextRhi()->device_context->Flush();
         return true;
     }
 
@@ -483,7 +485,6 @@ namespace Spartan
         }
 
         RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
-
         if (!rhi_context->device_context)
         {
             LOG_ERROR_INVALID_INTERNALS();
@@ -534,26 +535,25 @@ namespace Spartan
             return 0.0f;
         }
 
-        // Wait for data to be available	
-        while (rhi_context->device_context->GetData(static_cast<ID3D11Query*>(query_disjoint), nullptr, 0, 0) == S_FALSE) {}
-
         // Check whether timestamps were disjoint during the last frame
         D3D10_QUERY_DATA_TIMESTAMP_DISJOINT disjoint_data = {};
-        rhi_context->device_context->GetData(static_cast<ID3D11Query*>(query_disjoint), &disjoint_data, sizeof(disjoint_data), 0);
+        while (rhi_context->device_context->GetData(static_cast<ID3D11Query*>(query_disjoint), &disjoint_data, sizeof(disjoint_data), 0) != S_OK);
         if (disjoint_data.Disjoint)
             return 0.0f;
 
-        // Get the query data		
-        UINT64 start_time   = 0;
-        UINT64 end_time     = 0;
+        // Get start time
+        uint64_t start_time = 0; 
         rhi_context->device_context->GetData(static_cast<ID3D11Query*>(query_start), &start_time, sizeof(start_time), 0);
+
+        // Get end time
+        uint64_t end_time = 0;
         rhi_context->device_context->GetData(static_cast<ID3D11Query*>(query_end), &end_time, sizeof(end_time), 0);
 
-        // Convert to real time
-        const auto delta        = end_time - start_time;
-        const auto duration_ms  = (delta * 1000.0f) / static_cast<float>(disjoint_data.Frequency);
+        // Compute duration in ms
+        const uint64_t delta        = end_time - start_time;
+        const double duration_ms    = (delta * 1000.0) / static_cast<double>(disjoint_data.Frequency);
 
-        return duration_ms;
+        return static_cast<float>(duration_ms);
     }
 
     uint32_t RHI_CommandList::Gpu_GetMemory(RHI_Device* rhi_device)
