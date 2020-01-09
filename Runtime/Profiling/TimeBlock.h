@@ -46,26 +46,27 @@ namespace Spartan
 
 		void Begin(const char* name, TimeBlock_Type type, const TimeBlock* parent = nullptr, RHI_CommandList* cmd_list = nullptr, const std::shared_ptr<RHI_Device>& rhi_device = nullptr);
 		void End();
+        void ComputeDuration();
         void Reset();
-        TimeBlock_Type GetType()    const { return m_type; }
-		bool IsComplete()           const { return !m_has_started; }
+        TimeBlock_Type GetType()    const { return m_type; }	
 		const auto& GetName()       const { return m_name; }
 		auto GetParent()            const { return m_parent; }
 		auto GetTreeDepth()	        const { return m_tree_depth; }
         uint32_t GetTreeDepthMax()  const { return m_max_tree_depth; }
 		auto GetDuration()          const { return m_duration; }
+        bool IsComplete()           const { return m_is_complete; }
 
 	private:	
 		static uint32_t FindTreeDepth(const TimeBlock* time_block, uint32_t depth = 0);
         static uint32_t m_max_tree_depth;
 
 		const char* m_name          = nullptr;
-		RHI_Device* m_rhi_device    = nullptr;
-        bool m_has_started          = false;
         TimeBlock_Type m_type       = TimeBlock_Undefined;
         float m_duration            = 0.0f;
 		const TimeBlock* m_parent	= nullptr;
 		uint32_t m_tree_depth	    = 0;
+        bool m_is_complete          = false;
+        RHI_Device* m_rhi_device    = nullptr;
 
 		// CPU timing
 		std::chrono::steady_clock::time_point m_start;

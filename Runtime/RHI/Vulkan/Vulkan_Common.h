@@ -519,23 +519,19 @@ namespace Spartan::vulkan_common
 
     namespace image
     {
-        inline VkImageTiling is_format_supported(const RHI_Context* rhi_context, const RHI_Format format, VkFormatFeatureFlags flag)
+        inline VkImageTiling is_format_supported(const RHI_Context* rhi_context, const RHI_Format format, VkFormatFeatureFlags feature_flags)
         {
             // Get format properties
             VkFormatProperties format_properties;
             vkGetPhysicalDeviceFormatProperties(rhi_context->device_physical, vulkan_format[format], &format_properties);
 
             // Check for optimal support
-            if (format_properties.optimalTilingFeatures & flag)
-            {
+            if (format_properties.optimalTilingFeatures & feature_flags)
                 return VK_IMAGE_TILING_OPTIMAL;
-            }
 
             // Check for linear support
-            if (format_properties.linearTilingFeatures & flag)
-            {
+            if (format_properties.linearTilingFeatures & feature_flags)
                 return VK_IMAGE_TILING_LINEAR;
-            }
 
             return VK_IMAGE_TILING_MAX_ENUM;
         }

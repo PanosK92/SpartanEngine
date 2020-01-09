@@ -44,14 +44,13 @@ namespace Spartan
 
 	void TimeBlock::Begin(const char* name, TimeBlock_Type type, const TimeBlock* parent /*= nullptr*/, RHI_CommandList* cmd_list /*= nullptr*/, const shared_ptr<RHI_Device>& rhi_device /*= nullptr*/)
 	{
-		m_name			= name;
-		m_parent		= parent;
-		m_tree_depth	= FindTreeDepth(this);
-		m_rhi_device	= rhi_device.get();
-        m_cmd_list      = cmd_list;
-        m_type          = type;
-
-        m_max_tree_depth = Math::Max(m_max_tree_depth, m_tree_depth);
+		m_name			    = name;
+		m_parent		    = parent;
+		m_tree_depth	    = FindTreeDepth(this);
+		m_rhi_device	    = rhi_device.get();
+        m_cmd_list          = cmd_list;
+        m_type              = type;
+        m_max_tree_depth    = Math::Max(m_max_tree_depth, m_tree_depth);
 
 		if (type == TimeBlock_Cpu)
 		{
@@ -72,46 +71,56 @@ namespace Spartan
                 cmd_list->Timestamp_Start(m_query_disjoint, m_query_start);
             }
 		}
-
-		m_has_started = true;
 	}
 
 	void TimeBlock::End()
 	{
-		if (!m_has_started)
-		{
-			LOG_WARNING("TimeBlock::Start() hasn't been called, ignoring time block.");
-			return;
-		}
-
 		if (m_type == TimeBlock_Cpu)
 		{
 			m_end = chrono::high_resolution_clock::now();
-			chrono::duration<double, milli> ms = m_end - m_start;
-			m_duration = static_cast<float>(ms.count());
 		}
 		else if (m_type == TimeBlock_Gpu)
 		{
             if (m_cmd_list)
             {
                 m_cmd_list->Timestamp_End(m_query_disjoint, m_query_end);
-                m_duration = m_cmd_list->Timestamp_GetDuration(m_query_disjoint, m_query_start, m_query_end);
             }
 		}
 
-		m_has_started = false;
+        m_is_complete = true;
 	}
+
+    void TimeBlock::ComputeDuration()
+    {
+        if (!m_is_complete)
+        {
+            LOG_WARNING("TimeBlock::Start() hasn't been called, ignoring time block %s.", m_name);
+            return;
+        }
+
+        if (m_type == TimeBlock_Cpu)
+        {
+            chrono::duration<double, milli> ms = m_end - m_start;
+            m_duration = static_cast<float>(ms.count());
+        }
+        else if (m_type == TimeBlock_Gpu)
+        {
+            if (m_cmd_list)
+            {
+                m_duration = m_cmd_list->Timestamp_GetDuration(m_query_disjoint, m_query_start, m_query_end);
+            }
+        }
+    }
 
     void TimeBlock::Reset()
 	{
         m_name              = nullptr;
 		m_parent		    = nullptr;
 		m_tree_depth	    = 0;
-		m_has_started	    = false;
 		m_duration	        = 0.0f;
         m_max_tree_depth    = 0;
         m_type              = TimeBlock_Undefined;
-        m_duration          = 0;
+        m_is_complete       = false;
         RHI_CommandList::Gpu_QueryRelease(m_query_disjoint);
         RHI_CommandList::Gpu_QueryRelease(m_query_start);
         RHI_CommandList::Gpu_QueryRelease(m_query_end);

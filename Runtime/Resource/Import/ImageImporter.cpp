@@ -203,7 +203,7 @@ namespace Spartan
 	
 		// Create a RescaleJob for every mip that we need
 		vector<_ImagImporter::RescaleJob> jobs;
-		while (width > 1 || height > 1)
+		while (width > 1 && height > 1)
 		{
 			width	= Math::Max(width / 2, static_cast<uint32_t>(1));
 			height	= Math::Max(height / 2, static_cast<uint32_t>(1));
@@ -307,7 +307,7 @@ namespace Spartan
         }
 		else if (channels == 3)
 		{
-			if (bytes_per_channel == 32) return RHI_Format_R32G32B32_Float;
+            if (bytes_per_channel == 32) return RHI_Format_R32G32B32A32_Float;
 		}
 		else if (channels == 4)
 		{
@@ -316,8 +316,8 @@ namespace Spartan
 			if (bytes_per_channel == 32)    return RHI_Format_R32G32B32A32_Float;
 		}
 		
-		LOG_ERROR_INVALID_PARAMETER();
-		return RHI_Format_R8_Unorm;
+        LOG_ERROR("Could not deduce format");
+		return RHI_Format_Undefined;
 	}
 
 	FIBITMAP* ImageImporter::ApplyBitmapCorrections(FIBITMAP* bitmap) const
@@ -333,7 +333,7 @@ namespace Spartan
         FREE_IMAGE_TYPE type = FreeImage_GetImageType(bitmap);
         if (type != FIT_BITMAP)
         {
-            // FreeImage can't convert that
+            // FreeImage can't convert FIT_RGBF
             if (type != FIT_RGBF)
             {
                 auto previous_bitmap = bitmap;
@@ -348,13 +348,26 @@ namespace Spartan
 			bitmap = _FreeImage_ConvertTo32Bits(bitmap);
 		}
 
+        // Most GPUs can't use a 32 bit RGB texture as a color attachment.
+        // Vulkan tells you your GPU doesn't support it.
+        // D3D11 seems to be doing some sort of emulation under the hood while throwing some warnings regarding sampling it.
+        // So to prevent that, we maintain the 32 bits and convert to an RGBA format.
+        const uint32_t image_bytes_per_channel  = ComputeBitsPerChannel(bitmap) * 8;
+        const uint32_t image_channels           = ComputeChannelCount(bitmap);
+        bool is_r32g32b32_float                 = image_channels == 3 && image_bytes_per_channel == 32;
+        if (is_r32g32b32_float)
+        {
+            auto previous_bitmap = bitmap;
+            bitmap = FreeImage_ConvertToRGBAF(bitmap);
+            FreeImage_Unload(previous_bitmap);
+        }
+
 		// Convert BGR to RGB (if needed)
 		if (FreeImage_GetBPP(bitmap) == 32)
 		{
             if (FreeImage_GetRedMask(bitmap) == 0xff0000 && ComputeChannelCount(bitmap) >= 2)
             {
-                const bool swapped = SwapRedBlue32(bitmap);
-                if (!swapped)
+                if (!SwapRedBlue32(bitmap))
                 {
                     LOG_ERROR("Failed to swap red with blue channel");
                 }

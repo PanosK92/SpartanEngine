@@ -250,8 +250,8 @@ namespace Spartan
         // Options
         auto GetOptions()                                       { return m_options; }
         void SetOptions(uint64_t flags)                         { m_options = flags; }
-        bool GetOptionValue(Renderer_Option flag)                { return m_options & flag; }
-        void SetOptionValue(Renderer_Option flag, bool enable)   { enable ? (m_options |= flag) : (m_options &= ~flag); }
+        bool GetOptionValue(Renderer_Option flag)               { return m_options & flag; }
+        void SetOptionValue(Renderer_Option flag, bool enable)  { enable ? (m_options |= flag) : (m_options &= ~flag); }
         
         // Options values
         template<typename T>
@@ -259,16 +259,16 @@ namespace Spartan
         void SetOptionValue(Renderer_Option_Value option, float value, float min = std::numeric_limits<float>::lowest(), float max = std::numeric_limits<float>::max());
 
         // Misc
-        const auto& GetRhiDevice()		const { return m_rhi_device; }
-        const auto& GetSwapChain()      const { return m_swap_chain; }
-        const auto& GetPipelineCache()	const { return m_pipeline_cache; }
-        const auto& GetFrameTexture()         { return m_render_targets[RenderTarget_Composition_Ldr]; }
-        const auto GetFrameNum()        const { return m_frame_num; }
-        const auto& GetCamera()         const { return m_camera; }
-        const  auto IsInitialized()     const { return m_initialized; }
-        auto& GetShaders()              const { return m_shaders; }
-        const auto GetMaxResolution()   const { return m_max_resolution; }
-        const auto IsRendering()        const { return m_is_rendering; }
+        const auto& GetRhiDevice()		        const { return m_rhi_device; }
+        const auto& GetSwapChain()              const { return m_swap_chain; }
+        const auto& GetPipelineCache()	        const { return m_pipeline_cache; }
+        RHI_Texture* GetFrameTexture()                { return m_render_targets[RenderTarget_Composition_Ldr].get(); }
+        const auto GetFrameNum()                const { return m_frame_num; }
+        const auto& GetCamera()                 const { return m_camera; }
+        const  auto IsInitialized()             const { return m_initialized; }
+        auto& GetShaders()                      const { return m_shaders; } 
+        const auto IsRendering()                const { return m_is_rendering; }
+        const uint32_t GetMaxResolution()       const;
 
         // Globals
         void SetGlobalShaderObjectTransform(const Math::Matrix& transform) { m_buffer_object_cpu.object = transform; UpdateObjectBuffer(); }
@@ -385,7 +385,6 @@ namespace Spartan
         // Resolution & Viewport
 		Math::Vector2 m_resolution	= Math::Vector2(1920, 1080);
 		RHI_Viewport m_viewport		= RHI_Viewport(0, 0, 1920, 1080);
-		uint32_t m_max_resolution	= 16384;
 
         // Options
         uint64_t m_options = 0;

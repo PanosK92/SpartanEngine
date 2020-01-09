@@ -328,6 +328,9 @@ namespace Spartan
         static const uint32_t shader_shift_texture      = 200;
         static const uint32_t shader_shift_sampler      = 300;
         static const uint32_t shader_shift_rw_buffer    = 400;
+
+        // Resource limits
+        uint32_t max_texture_dimension_2d = 16384;
     };
 }
 
