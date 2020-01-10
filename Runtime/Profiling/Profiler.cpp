@@ -75,10 +75,10 @@ namespace Spartan
         if (m_profile)
         {
             OnFrameEnd();
-
-            // Compute fps
-            ComputeFps(delta_time);
         }
+
+        // Compute fps
+        ComputeFps(delta_time);
 
         // Check whether we should profile or not
         m_time_since_profiling_sec += delta_time;
