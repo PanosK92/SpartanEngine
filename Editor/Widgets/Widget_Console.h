@@ -27,8 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <functional>
 #include <deque>
 #include "Logging/ILogger.h"
-#include "type_traits"        // for forward, move
-#include "xstring"            // for string
 //==========================
 
 struct LogPackage
@@ -68,9 +66,19 @@ public:
 	void Clear();
 
 private:
-	std::shared_ptr<EngineLogger> m_logger;
-	std::deque<LogPackage> m_logs;
-    bool m_visibility[3]        = { true, true, true };
-    uint32_t m_count[3]         = { 0, 0, 0 };
-    uint32_t m_max_log_entries  = 1000;
+    bool m_scroll_to_bottom         = false;
+    uint32_t m_log_max_count        = 1000;
+    float m_log_type_max_width[3]   = { 0, 0, 0 };
+    bool m_log_type_visibility[3]   = { true, true, true };
+    uint32_t m_log_type_count[3]    = { 0, 0, 0 };
+    const std::vector<Spartan::Math::Vector4> m_log_type_color =
+    {
+        Spartan::Math::Vector4(0.76f, 0.77f, 0.8f, 1.0f),	// Info
+        Spartan::Math::Vector4(0.7f, 0.75f, 0.0f, 1.0f),	// Warning
+        Spartan::Math::Vector4(0.7f, 0.0f, 0.0f, 1.0f)	    // Error
+    };
+
+    std::shared_ptr<EngineLogger> m_logger;
+    std::deque<LogPackage> m_logs;
+    ImGuiTextFilter m_log_filter;
 };
