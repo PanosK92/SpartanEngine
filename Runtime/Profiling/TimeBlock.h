@@ -48,13 +48,13 @@ namespace Spartan
 		void End();
         void ComputeDuration();
         void Reset();
-        TimeBlock_Type GetType()    const { return m_type; }	
-		const auto& GetName()       const { return m_name; }
-		auto GetParent()            const { return m_parent; }
-		auto GetTreeDepth()	        const { return m_tree_depth; }
-        uint32_t GetTreeDepthMax()  const { return m_max_tree_depth; }
-		auto GetDuration()          const { return m_duration; }
-        bool IsComplete()           const { return m_is_complete; }
+        TimeBlock_Type GetType()        const { return m_type; }	
+		const char* GetName()           const { return m_name; }
+        const TimeBlock* GetParent()    const { return m_parent; }
+        uint32_t GetTreeDepth()         const { return m_tree_depth; }
+        uint32_t GetTreeDepthMax()      const { return m_max_tree_depth; }
+        float GetDuration()             const { return m_duration; }
+        bool IsComplete()               const { return m_is_complete; }
 
 	private:	
 		static uint32_t FindTreeDepth(const TimeBlock* time_block, uint32_t depth = 0);
