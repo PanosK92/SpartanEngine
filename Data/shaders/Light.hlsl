@@ -116,7 +116,7 @@ PixelOutputType mainPS(Pixel_PosUv input)
 			
 		#if DIRECTIONAL
 			// Save shadows in the diffuse's alpha channel (used to modulate IBL later)
-			light_out.diffuse.a = shadow;
+			light_out.diffuse.a = shadow; // no longer used, changed texture format or use alpha for something else?
 		#endif
 		
 		#if POINT

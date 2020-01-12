@@ -87,6 +87,9 @@ float Technique_PCF_2d(int cascade, float2 uv, float2 texel, float compare)
 {
 	float shadow = 0.0f;
 
+    // If TAA is enabled, apply dithering so we can capture a bit more detail over time
+	float2 dither_value = dither(uv).xy * 1.0f * any(g_taa_jitterOffset);
+
 	[unroll]
 	for (float y = -g_pcf_filter_size; y <= g_pcf_filter_size; y++)
 	{
@@ -108,12 +111,11 @@ float Technique_PCF_2d(int cascade, float2 uv, float2 texel, float compare)
 
 float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, Light light)
 {
-    float n_dot_l               = dot(normal, normalize(-light.direction));
-    float cos_angle             = saturate(1.0f - n_dot_l);
-    float3 scaled_normal_offset = normal * cos_angle * g_shadow_texel_size * light.normal_bias * 10;
-	float4 position_world   	= float4(world_pos + scaled_normal_offset, 1.0f);
-	float shadow 				= 1.0f;
-	float2 dither_value 		= dither(uv).xy * 0.1f;
+    float n_dot_l                             = dot(normal, normalize(-light.direction));
+    float cos_angle                         = saturate(1.0f - n_dot_l);
+    float3 scaled_normal_offset = normal * light.normal_bias * cos_angle * g_shadow_texel_size  * 10;
+	float4 position_world             = float4(world_pos + scaled_normal_offset, 1.0f);
+	float shadow                             = 1.0f;
 
 	#if DIRECTIONAL
 	{
@@ -129,7 +131,7 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, Light 
 			{	
 				// Sample primary cascade
 				float compare_depth 	= pos.z + (light.bias * (cascade + 1));
-				float shadow_primary 	= Technique_PCF_2d(cascade, uv.xy + dither_value, g_shadow_texel_size + dither_value, compare_depth);
+				float shadow_primary 	= Technique_PCF_2d(cascade, uv.xy, g_shadow_texel_size, compare_depth);
 				float cascade_lerp 		= (max2(abs(pos.xy)) - 0.9f) * 10.0f;
 
 				// If we are close to the edge of the primary cascade and a secondary cascade exists, lerp with it.
@@ -144,7 +146,7 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, Light 
 
                     // Sample secondary cascade
                     compare_depth           = pos.z + (light.bias * (cacade_secondary + 1));
-					float shadow_secondary  = Technique_PCF_2d(cacade_secondary, uv.xy, g_shadow_texel_size + dither_value, compare_depth);
+					float shadow_secondary  = Technique_PCF_2d(cacade_secondary, uv.xy, g_shadow_texel_size, compare_depth);
 
 					// Blend cascades	
 					shadow = lerp(shadow_primary, shadow_secondary, cascade_lerp);
@@ -190,10 +192,5 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, Light 
 		shadow = min(shadow, sscs);	
 	}
 	
-	// Self shadow
-	float self_shadow_contrast = 1.0f;
-	float self_shadow = pow(1.0f - pow(1.0f - saturate(n_dot_l), self_shadow_contrast), 0.5f);
-	shadow = min(shadow, self_shadow);
-
 	return shadow;
 }
