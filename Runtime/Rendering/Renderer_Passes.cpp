@@ -321,7 +321,7 @@ namespace Spartan
         pipeline_state.render_target_color_textures[3]  = tex_velocity.get();
         pipeline_state.render_target_color_clear[3]     = Vector4::Zero;
         pipeline_state.render_target_depth_texture      = tex_depth.get();
-        pipeline_state.render_target_depth_clear        = !GetOptionValue(Render_DepthPrepass) ? GetClearDepth() : state_dont_clear_depth;
+        pipeline_state.render_target_depth_clear        = GetOptionValue(Render_DepthPrepass) ? state_dont_clear_depth : GetClearDepth();
         pipeline_state.viewport                         = tex_albedo->GetViewport();
         pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
 

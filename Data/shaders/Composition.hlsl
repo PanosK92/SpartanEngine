@@ -56,7 +56,6 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 	// Post-process samples
     float4 albedo				= degamma(sample_albedo);  
 	float3 normal				= normal_decode(sample_normal.xyz);	
-	float directional_shadow 	= sample_diffuse.a;
 	float light_received 		= sample_specular.a;
 	bool ssr_available			= sample_ssr.a != 0.0f;
 	bool is_sky 				= sample_material.a == 0.0f;
@@ -72,10 +71,10 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 	// Get view direction
     float3 camera_to_pixel  = get_view_direction(sample_depth, uv);
 
-	// Ambient light
-	float light_ambient_min = sample_ssao * g_directional_light_intensity * 0.025f; // no global illumination, so ambient light of the poor it is...
-	float light_ambient		= g_directional_light_intensity * directional_shadow;
-	light_ambient			= clamp(light_ambient, light_ambient_min, 1.0f);
+	// Ambient light - No global illumination yet, so hackerman !!!
+	float light_ambient_min = sample_ssao * g_directional_light_intensity * 0.2f;
+	float light_ambient		  = g_directional_light_intensity;
+	light_ambient                    = clamp(light_ambient / 10.0f, light_ambient_min, 1.0f);
 	
 	// Sky
     if (is_sky)

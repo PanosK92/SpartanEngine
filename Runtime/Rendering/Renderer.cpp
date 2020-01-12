@@ -83,10 +83,9 @@ namespace Spartan
         m_option_values[Option_Value_Fxaa_Sub_Pixel]          = 1.25f;
         m_option_values[Option_Value_Fxaa_Edge_Threshold]     = 0.125f;
         m_option_values[Option_Value_Fxaa_Edge_Threshold_Min] = 0.0312f;
-        m_option_values[Option_Value_Bloom_Intensity]         = 0.005f;
         m_option_values[Option_Value_Sharpen_Strength]        = 1.0f;
         m_option_values[Option_Value_Sharpen_Clamp]           = 0.35f;
-        m_option_values[Option_Value_Bloom_Intensity]         = 0.005f;
+        m_option_values[Option_Value_Bloom_Intensity]         = 0.03f;
         m_option_values[Option_Value_Motion_Blur_Intensity]   = 0.01f;
         m_option_values[Option_Value_Ssao_Scale]              = 1.0f;
 

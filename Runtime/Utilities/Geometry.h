@@ -110,7 +110,7 @@ namespace Spartan::Utility::Geometry
 		indices->emplace_back(1);
 	}
 
-	static void CreateSphere(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, float radius = 1.0f, int slices = 50, int stacks = 50)
+	static void CreateSphere(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, float radius = 1.0f, int slices = 20, int stacks = 20)
 	{
 		using namespace Math;
 
@@ -118,7 +118,7 @@ namespace Spartan::Utility::Geometry
 		Vector3 tangent = Vector3(1, 0, 0);
 		vertices->emplace_back(Vector3(0, radius, 0), Vector2::Zero, normal, tangent);
 
-		float phiStep = PI / stacks;
+		float phiStep   = PI / stacks;
 		float thetaStep = 2.0f * PI / slices;
 
 		for (int i = 1; i <= stacks - 1; i++)

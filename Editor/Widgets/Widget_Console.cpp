@@ -86,6 +86,7 @@ void Widget_Console::Tick()
         max_log_width = m_log_type_visibility[0] ? Math::Max(max_log_width, m_log_type_max_width[0]) : max_log_width;
         max_log_width = m_log_type_visibility[1] ? Math::Max(max_log_width, m_log_type_max_width[1]) : max_log_width;
         max_log_width = m_log_type_visibility[2] ? Math::Max(max_log_width, m_log_type_max_width[2]) : max_log_width;
+        max_log_width = Math::Max(max_log_width, ImGui::GetWindowContentRegionWidth());
         ImGui::PushItemWidth(max_log_width);
 
         uint32_t index = 0;
@@ -137,7 +138,7 @@ void Widget_Console::AddLogPackage(const LogPackage& package)
     else
     {
         // During startup, the font can be null, so compute a poor man's width
-        width = package.text.size() * 23;
+        width = Math::Max(width, package.text.size() * 23.0f);
     }
 
     // If the user is displaying this type of messages, scroll to bottom
