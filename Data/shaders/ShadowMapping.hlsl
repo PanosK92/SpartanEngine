@@ -19,8 +19,9 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-static const float g_pcf_taps 			= 5.0f;
-static const float g_pcf_filter_size 	= (g_pcf_taps - 1.0f) / 2.0f;
+static const float g_pcf_taps 		   = 2.0f;
+static const float g_pcf_filter_size  = (g_pcf_taps - 1.0f) / 2.0f;
+static const float g_pcf_dither         = 700.0f;
 
 static const float2 poisson_disk[8] = 
 {
@@ -60,19 +61,19 @@ float random(float2 seed2)
     return frac(sin(dot_product) * 43758.5453);
 }
 
-float Technique_Poisson(int cascade, float3 uv, float compare)
+float Technique_Poisson(int cascade, float2 uv, float2 texel, float compare)
 {
-	float packing	= 700.0f; // how close together are the samples
-	uint samples	= 16;
+	float packing	= 1000.0f; // how close together are the samples
+	uint samples	= 8;
 	float shadow 	= 0.0f;
-	
+
 	[unroll]
 	for (uint i = 0; i < samples; i++)
 	{
-		uint index 	= uint(samples * random(uv.xy * i)) % samples; // A pseudo-random number between 0 and 15, different for each pixel and each index
+		uint index 	= uint(samples * random(uv * i)) % samples; // A pseudo-random number between 0 and 15, different for each pixel and each index
 
 		#if DIRECTIONAL
-		shadow += DepthTest_Directional(cascade, uv.xy + (poisson_disk[index] / packing), compare);
+		shadow += DepthTest_Directional(cascade, uv + (poisson_disk[index] / packing), compare);
 		#elif POINT
 		shadow += DepthTest_Point(uv, compare);
 		#elif SPOT
@@ -87,17 +88,18 @@ float Technique_PCF_2d(int cascade, float2 uv, float2 texel, float compare)
 {
 	float shadow = 0.0f;
 
-    // If TAA is enabled, apply dithering so we can capture a bit more detail over time
-	float2 dither_value = dither(uv).xy * 1.0f * any(g_taa_jitterOffset);
+	// If TAA is enabled, apply dithering so we can capture a bit more detail over time
+	float dither_value = max(1.0f, dither(uv).x * g_pcf_dither * any(g_taa_jitterOffset));
+	float filter_size = g_pcf_filter_size * dither_value;
 
 	[unroll]
-	for (float y = -g_pcf_filter_size; y <= g_pcf_filter_size; y++)
+	for (float y = -filter_size; y <= filter_size; y++)
 	{
 		[unroll]
-		for (float x = -g_pcf_filter_size; x <= g_pcf_filter_size; x++)
+		for (float x = -filter_size; x <= filter_size; x++)
 		{
 			float2 uv_offset = float2(x, y) * texel;
-			
+
 			#if DIRECTIONAL
 			shadow += DepthTest_Directional(cascade, uv + uv_offset, compare);
 			#elif SPOT
