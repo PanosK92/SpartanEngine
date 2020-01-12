@@ -75,7 +75,7 @@ float Technique_Poisson(int cascade, float2 uv, float2 texel, float compare)
 		#if DIRECTIONAL
 		shadow += DepthTest_Directional(cascade, uv + (poisson_disk[index] / packing), compare);
 		#elif POINT
-		shadow += DepthTest_Point(uv, compare);
+		shadow += DepthTest_Point(float3(uv, 1.0f), compare);
 		#elif SPOT
 		shadow += DepthTest_Spot(uv.xy + (poisson_disk[index] / packing), compare);
 		#endif
