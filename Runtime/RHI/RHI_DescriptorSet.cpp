@@ -61,9 +61,9 @@ namespace Spartan
 
                 // Update
                 descriptor.id       = constant_buffer->GetId();
-                descriptor.resource = constant_buffer->GetResource();
-                descriptor.size     = constant_buffer->GetSize();
-
+                descriptor.resource = constant_buffer->GetResource();     
+                descriptor.offset   = constant_buffer->GetOffset();
+    
                 // Dynamic offset
                 if (is_dynamic)
                 {
@@ -134,7 +134,7 @@ namespace Spartan
         // Get the hash of the current descriptor blueprint
         size_t hash = GetDescriptorBlueprintHash(m_descriptors);
 
-        // If the has is already present, then we don't need to update
+        // If the hash is already present, then we don't need to update
         if (m_descriptor_sets.find(hash) != m_descriptor_sets.end())
         {
             if (m_descriptor_dirty)
@@ -159,7 +159,7 @@ namespace Spartan
             Utility::Hash::hash_combine(hash, descriptor.slot);
             Utility::Hash::hash_combine(hash, descriptor.stage);
             Utility::Hash::hash_combine(hash, descriptor.id);
-            Utility::Hash::hash_combine(hash, descriptor.size);
+            Utility::Hash::hash_combine(hash, descriptor.offset);
             Utility::Hash::hash_combine(hash, static_cast<uint32_t>(descriptor.type));
             Utility::Hash::hash_combine(hash, static_cast<uint32_t>(descriptor.layout));
         }

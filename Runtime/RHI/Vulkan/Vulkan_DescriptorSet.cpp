@@ -220,9 +220,9 @@ namespace Spartan
                 bool is_constant_buffer = resource_blueprint.type == RHI_Descriptor_ConstantBuffer || resource_blueprint.type == RHI_Descriptor_ConstantBufferDynamic;
                 buffer_infos.push_back
                 ({
-                    is_constant_buffer ? static_cast<VkBuffer>(resource_blueprint.resource) : nullptr,    // buffer
-                    0,                                                                                    // offset
-                    is_constant_buffer ? resource_blueprint.size : 0,                                     // range                
+                    is_constant_buffer ? static_cast<VkBuffer>(resource_blueprint.resource) : nullptr,  // buffer
+                    uint64_t(0),                                                                        // offset
+                    is_constant_buffer ? VK_WHOLE_SIZE : 0                                              // range                
                 });
 
                 write_descriptor_sets.push_back

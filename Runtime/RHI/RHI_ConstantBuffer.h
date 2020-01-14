@@ -57,6 +57,7 @@ namespace Spartan
         uint32_t GetOffset()        const { return m_offset_index * m_stride; }
 		auto GetResource()          const { return m_buffer; }
 		auto GetSize()              const { return m_size; }
+        auto GetStride()            const { return m_stride; }
 
 	private:
 		bool _Create();
