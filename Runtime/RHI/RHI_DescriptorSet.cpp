@@ -55,9 +55,9 @@ namespace Spartan
 
             if (is_same_type && descriptor.slot == slot + m_rhi_device->GetContextRhi()->shader_shift_buffer)
             {
-                // Determine if dirty
-                m_descriptor_dirty = descriptor.id      != constant_buffer->GetId()     ? true : m_descriptor_dirty;
-                m_descriptor_dirty = descriptor.offset  != constant_buffer->GetOffset() ? true : m_descriptor_dirty;
+                // Determine if the descriptor set needs bind
+                m_needs_to_bind = descriptor.id      != constant_buffer->GetId()     ? true : m_needs_to_bind;
+                m_needs_to_bind = descriptor.offset  != constant_buffer->GetOffset() ? true : m_needs_to_bind;
 
                 // Update
                 descriptor.id       = constant_buffer->GetId();
@@ -88,7 +88,8 @@ namespace Spartan
         {
             if (descriptor.type == RHI_Descriptor_Sampler && descriptor.slot == slot + m_rhi_device->GetContextRhi()->shader_shift_sampler)
             {
-                m_descriptor_dirty = descriptor.id != sampler->GetId() ? true : m_descriptor_dirty;
+                // Determine if the descriptor set needs bind
+                m_needs_to_bind = descriptor.id != sampler->GetId() ? true : m_needs_to_bind;
 
                 // Update
                 descriptor.id       = sampler->GetId();
@@ -117,7 +118,8 @@ namespace Spartan
         {
             if (descriptor.type == RHI_Descriptor_Texture && descriptor.slot == slot + m_rhi_device->GetContextRhi()->shader_shift_texture)
             {
-                m_descriptor_dirty = descriptor.id != texture->GetId() ? true : m_descriptor_dirty;
+                // Determine if the descriptor set needs bind
+                m_needs_to_bind = descriptor.id != texture->GetId() ? true : m_needs_to_bind;
 
                 // Update
                 descriptor.id       = texture->GetId();
@@ -131,26 +133,30 @@ namespace Spartan
 
     void* RHI_DescriptorSet::GetResource_Set()
     {
+        void* descriptor_set = nullptr;
+
         // Get the hash of the current descriptor blueprint
         size_t hash = GetDescriptorBlueprintHash(m_descriptors);
 
-        // If the hash is already present, then we don't need to update
-        if (m_descriptor_sets.find(hash) != m_descriptor_sets.end())
+        if (m_descriptor_sets.find(hash) == m_descriptor_sets.end())
         {
-            if (m_descriptor_dirty)
+            // If the descriptor set doesn't exist, create one
+            descriptor_set = CreateDescriptorSet(hash);
+        }
+        else
+        {
+            // If the descriptor set exists but needs to be bound, return it
+            if (m_needs_to_bind)
             {
-                m_descriptor_dirty = false;
-                return m_descriptor_sets[hash];
+                descriptor_set = m_descriptor_sets[hash];
+                m_needs_to_bind = false;
             }
-
-            return nullptr;
         }
 
-        // Otherwise generate a new one and return that
-        return CreateDescriptorSet(hash);
+        return descriptor_set;
     }
 
-    size_t RHI_DescriptorSet::GetDescriptorBlueprintHash(const std::vector<RHI_Descriptor>& descriptor_blueprint)
+    size_t RHI_DescriptorSet::GetDescriptorBlueprintHash(const vector<RHI_Descriptor>& descriptor_blueprint)
     {
         size_t hash = 0;
 
@@ -160,6 +166,7 @@ namespace Spartan
             Utility::Hash::hash_combine(hash, descriptor.stage);
             Utility::Hash::hash_combine(hash, descriptor.id);
             Utility::Hash::hash_combine(hash, descriptor.offset);
+            Utility::Hash::hash_combine(hash, descriptor.resource); // ideally, i should detect when a dynamic constant buffer re-allocates and update the descriptor set, instead of hashing the same buffer with different resource pointers.
             Utility::Hash::hash_combine(hash, static_cast<uint32_t>(descriptor.type));
             Utility::Hash::hash_combine(hash, static_cast<uint32_t>(descriptor.layout));
         }

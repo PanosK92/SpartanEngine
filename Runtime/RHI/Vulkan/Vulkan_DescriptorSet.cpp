@@ -172,7 +172,7 @@ namespace Spartan
         auto descriptor_set_layout = static_cast<VkDescriptorSetLayout>(m_descriptor_set_layout);
 
         // Allocate descriptor set
-        VkDescriptorSet descriptor_set;
+        void* descriptor_set = nullptr;
         {
             // Allocate info
             VkDescriptorSetAllocateInfo allocate_info   = {};
@@ -182,73 +182,76 @@ namespace Spartan
             allocate_info.pSetLayouts                   = &descriptor_set_layout;
 
             // Allocate		
-            if (!vulkan_common::error::check(vkAllocateDescriptorSets(m_rhi_device->GetContextRhi()->device, &allocate_info, &descriptor_set)))
+            if (!vulkan_common::error::check(vkAllocateDescriptorSets(m_rhi_device->GetContextRhi()->device, &allocate_info, reinterpret_cast<VkDescriptorSet*>(&descriptor_set))))
                 return nullptr;
 
             string name = (m_shader_vertex ? m_shader_vertex->GetName() : "null") + "-" + (m_shader_pixel ? m_shader_pixel->GetName() : "null");
-            vulkan_common::debug::set_descriptor_set_name(m_rhi_device->GetContextRhi()->device, descriptor_set, name.c_str());
+            vulkan_common::debug::set_descriptor_set_name(m_rhi_device->GetContextRhi()->device, *reinterpret_cast<VkDescriptorSet*>(&descriptor_set), name.c_str());
         }
 
-        // Update descriptor sets
-        {
-            uint32_t descriptor_count = static_cast<uint32_t>(m_descriptors.size());
-
-            vector<VkDescriptorImageInfo> image_infos;
-            image_infos.reserve(descriptor_count);
-
-            vector<VkDescriptorBufferInfo> buffer_infos;
-            buffer_infos.reserve(descriptor_count);
-
-            vector<VkWriteDescriptorSet> write_descriptor_sets;
-            write_descriptor_sets.reserve(descriptor_count);
-
-            for (RHI_Descriptor& resource_blueprint : m_descriptors)
-            {
-                // Ignore null resources (this is legal, as a render pass can choose to not use one or more resources)
-                if (!resource_blueprint.resource)
-                    continue;
-
-                // Texture or Sampler
-                image_infos.push_back
-                ({
-                    resource_blueprint.type == RHI_Descriptor_Sampler ? static_cast<VkSampler>(resource_blueprint.resource) : nullptr,      // sampler
-                    resource_blueprint.type == RHI_Descriptor_Texture ? static_cast<VkImageView>(resource_blueprint.resource) : nullptr,    // imageView
-                    vulkan_image_layout[resource_blueprint.layout]                                                                          // imageLayout
-                });
-
-                // Constant/Uniform buffer
-                bool is_constant_buffer = resource_blueprint.type == RHI_Descriptor_ConstantBuffer || resource_blueprint.type == RHI_Descriptor_ConstantBufferDynamic;
-                buffer_infos.push_back
-                ({
-                    is_constant_buffer ? static_cast<VkBuffer>(resource_blueprint.resource) : nullptr,  // buffer
-                    uint64_t(0),                                                                        // offset
-                    is_constant_buffer ? VK_WHOLE_SIZE : 0                                              // range                
-                });
-
-                write_descriptor_sets.push_back
-                ({
-                    VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,	            // sType
-                    nullptr,								            // pNext
-                    descriptor_set,							            // dstSet
-                    resource_blueprint.slot,				            // dstBinding
-                    0,									                // dstArrayElement
-                    1,									                // descriptorCount
-                    vulkan_descriptor_type[resource_blueprint.type],	// descriptorType
-                    &image_infos.back(),                                // pImageInfo 
-                    &buffer_infos.back(),                               // pBufferInfo
-                    nullptr									            // pTexelBufferView
-                    });
-            }
-
-            vkUpdateDescriptorSets(m_rhi_device->GetContextRhi()->device, static_cast<uint32_t>(write_descriptor_sets.size()), write_descriptor_sets.data(), 0, nullptr);
-        }
-
-        void* descriptor = static_cast<void*>(descriptor_set);
+        UpdateDescriptorSet(descriptor_set);
 
         // Cache descriptor
-        m_descriptor_sets[hash] = descriptor;
+        m_descriptor_sets[hash] = descriptor_set;
 
-        return descriptor;
+        return descriptor_set;
+    }
+
+    void RHI_DescriptorSet::UpdateDescriptorSet(void* descriptor_set)
+    {
+        if (!descriptor_set)
+            return;
+
+        uint32_t descriptor_count = static_cast<uint32_t>(m_descriptors.size());
+        
+        vector<VkDescriptorImageInfo> image_infos;
+        image_infos.reserve(descriptor_count);
+        
+        vector<VkDescriptorBufferInfo> buffer_infos;
+        buffer_infos.reserve(descriptor_count);
+        
+        vector<VkWriteDescriptorSet> write_descriptor_sets;
+        write_descriptor_sets.reserve(descriptor_count);
+        
+        for (RHI_Descriptor& resource_blueprint : m_descriptors)
+        {
+            // Ignore null resources (this is legal, as a render pass can choose to not use one or more resources)
+            if (!resource_blueprint.resource)
+                continue;
+        
+            // Texture or Sampler
+            image_infos.push_back
+            ({
+                resource_blueprint.type == RHI_Descriptor_Sampler ? static_cast<VkSampler>(resource_blueprint.resource) : nullptr,      // sampler
+                resource_blueprint.type == RHI_Descriptor_Texture ? static_cast<VkImageView>(resource_blueprint.resource) : nullptr,    // imageView
+                vulkan_image_layout[resource_blueprint.layout]                                                                          // imageLayout
+            });
+        
+            // Constant/Uniform buffer
+            bool is_constant_buffer = resource_blueprint.type == RHI_Descriptor_ConstantBuffer || resource_blueprint.type == RHI_Descriptor_ConstantBufferDynamic;
+            buffer_infos.push_back
+            ({
+                is_constant_buffer ? static_cast<VkBuffer>(resource_blueprint.resource) : nullptr,  // buffer
+                uint64_t(0),                                                                        // offset
+                is_constant_buffer ? VK_WHOLE_SIZE : 0                                              // range                
+            });
+        
+            write_descriptor_sets.push_back
+            ({
+                VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,	            // sType
+                nullptr,								            // pNext
+                static_cast<VkDescriptorSet>(descriptor_set),       // dstSet
+                resource_blueprint.slot,				            // dstBinding
+                0,									                // dstArrayElement
+                1,									                // descriptorCount
+                vulkan_descriptor_type[resource_blueprint.type],	// descriptorType
+                &image_infos.back(),                                // pImageInfo 
+                &buffer_infos.back(),                               // pBufferInfo
+                nullptr									            // pTexelBufferView
+            });
+        }
+        
+        vkUpdateDescriptorSets(m_rhi_device->GetContextRhi()->device, static_cast<uint32_t>(write_descriptor_sets.size()), write_descriptor_sets.data(), 0, nullptr);
     }
 }
 #endif

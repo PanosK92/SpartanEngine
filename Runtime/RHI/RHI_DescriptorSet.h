@@ -46,7 +46,7 @@ namespace Spartan
         bool HashEnoughCapacity() { return m_descriptor_sets.size() < m_descriptor_capacity; }
 
         // Misc
-        void MakeDirty() { m_descriptor_dirty = true; }
+        void MakeDirty() { m_needs_to_bind = true; }
 
         // Properties
         void* GetResource_Set();
@@ -59,6 +59,7 @@ namespace Spartan
         bool CreateDescriptorPool(uint32_t descriptor_set_capacity);
         bool CreateDescriptorSetLayout();
         void* CreateDescriptorSet(std::size_t hash);
+        void UpdateDescriptorSet(void* descriptor_set);
         void ReflectShaders();
 
         // Descriptors
@@ -67,7 +68,7 @@ namespace Spartan
         const uint32_t m_max_sampler                = 10;
         const uint32_t m_max_texture                = 10;
         uint32_t m_descriptor_capacity              = 20;
-        bool m_descriptor_dirty                     = false;
+        bool m_needs_to_bind                        = false;
         std::vector<RHI_Descriptor> m_descriptors;
 
         // Dynamic constant buffers

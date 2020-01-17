@@ -58,6 +58,11 @@ namespace Spartan
     {
         return nullptr;
     }
+
+    void RHI_DescriptorSet::UpdateDescriptorSet(void* descriptor_set)
+    {
+
+    }
 }
 
 #endif

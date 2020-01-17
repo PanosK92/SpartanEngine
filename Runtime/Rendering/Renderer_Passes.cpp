@@ -340,20 +340,23 @@ namespace Spartan
             // Set pass name
             pipeline_state.pass_name = pipeline_state.shader_pixel->GetName().c_str();
 
+            auto& entities = m_entities[Renderer_Object_Opaque];
+            const uint32_t entity_count = static_cast<uint32_t>(entities.size());
+
+            // Enlarge constant buffer (if needed)
+            bool buffer_reallocated = false;
+            if (entity_count > m_buffer_object_gpu->GetOffsetCount())
+            {
+                const uint32_t new_size = m_buffer_object_gpu->GetOffsetCount() * 2;
+                if (!m_buffer_object_gpu->Create<BufferObject>(new_size))
+                    return;
+
+                buffer_reallocated = true;
+            }
+
             // Submit command list
             if (cmd_list->Begin(pipeline_state))
             {
-                auto& entities = m_entities[Renderer_Object_Opaque];
-                const uint32_t entity_count = static_cast<uint32_t>(entities.size());
-
-                // Enlarge constant buffer (if needed)
-                if (entity_count > m_buffer_object_gpu->GetOffsetCount())
-                {
-                    const uint32_t new_size = m_buffer_object_gpu->GetOffsetCount() * 2;
-                    if (!m_buffer_object_gpu->Create<BufferObject>(new_size))
-                        return;
-                }
-
                 for (uint32_t i = 0; i < static_cast<uint32_t>(entities.size()); i++)
                 {
                     Entity* entity = entities[i];
@@ -429,7 +432,7 @@ namespace Spartan
                             transform->SetWvpLastFrame(m_buffer_object_cpu.wvp_current);
 
                             // Update constant buffer
-                            if (UpdateObjectBuffer(i))
+                            if (UpdateObjectBuffer(i) || buffer_reallocated)
                             {
                                 cmd_list->SetConstantBuffer(2, RHI_Buffer_VertexShader, m_buffer_object_gpu);
                             }
