@@ -73,8 +73,7 @@ namespace Spartan
         // Properties
 		bool m_initialized			= false;
 		bool m_windowed				= false;
-		uint32_t m_buffer_count		= 0;		
-		uint32_t m_max_resolution	= 16384;
+		uint32_t m_buffer_count		= 0;
 		uint32_t m_width			= 0;
 		uint32_t m_height			= 0;
 		uint32_t m_flags			= 0;
@@ -87,6 +86,7 @@ namespace Spartan
 		void* m_window_handle		    = nullptr;
         void* m_cmd_pool                = nullptr;
         bool m_image_acquired           = false;
+        bool m_present                  = true;
         uint32_t m_image_index          = 0;
         RHI_Device* m_rhi_device        = nullptr;
         RHI_Image_Layout m_layout       = RHI_Image_Undefined;

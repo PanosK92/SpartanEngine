@@ -647,7 +647,7 @@ namespace Spartan
 
     void RHI_CommandList::MarkAndProfileEnd(const RHI_PipelineState* pipeline_state)
     {
-        if (!pipeline_state || !m_passes_active[m_pass_index - 1])
+        if (!pipeline_state || m_pass_index == 0 || !m_passes_active[m_pass_index - 1])
             return;
 
         m_passes_active[--m_pass_index] = false;

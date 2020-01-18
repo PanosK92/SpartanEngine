@@ -139,15 +139,15 @@ namespace Spartan
             pipeline_state.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
             pipeline_state.pass_name                    = "Pass_LightDepth";
 
-            for (uint32_t i = 0; i < shadow_map->GetArraySize(); i++)
+            for (uint32_t shadow_array_index = 0; shadow_array_index < shadow_map->GetArraySize(); shadow_array_index++)
             {
                 // Clear every shadow map
                 pipeline_state.render_target_depth_clear = GetClearDepth();
 
-                const Matrix& view_projection = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
+                const Matrix& view_projection = light->GetViewMatrix(shadow_array_index) * light->GetProjectionMatrix(shadow_array_index);
 
                 // Set appropriate array index
-                pipeline_state.render_target_depth_array_index = i;
+                pipeline_state.render_target_depth_array_index = shadow_array_index;
 
                 // Set appropriate rasterizer state
                 if (light->GetLightType() == LightType_Directional)
@@ -164,15 +164,17 @@ namespace Spartan
 
                 if (cmd_list->Begin(pipeline_state))
                 {
-                    for (const auto& entity : entities_opaque)
+                    for (uint32_t entity_index = 0; entity_index < static_cast<uint32_t>(entities_opaque.size()); entity_index++)
                     {
+                        Entity* entity = entities_opaque[entity_index];
+
                         // Acquire renderable component
                         const auto& renderable = entity->GetRenderable_PtrRaw();
                         if (!renderable)
                             continue;
 
                         // Skip objects outside of the view frustum
-                        if (!light->IsInViewFrustrum(renderable, i))
+                        if (!light->IsInViewFrustrum(renderable, shadow_array_index))
                             continue;
 
                         // Acquire material
@@ -199,7 +201,7 @@ namespace Spartan
 
                         // Update uber buffer with cascade transform
                         m_buffer_object_cpu.object = entity->GetTransform_PtrRaw()->GetMatrix() * view_projection;
-                        if (UpdateObjectBuffer())
+                        if (UpdateObjectBuffer(shadow_array_index))
                         {
                             cmd_list->SetConstantBuffer(2, RHI_Buffer_VertexShader, m_buffer_object_gpu);
                         }
@@ -341,18 +343,6 @@ namespace Spartan
             pipeline_state.pass_name = pipeline_state.shader_pixel->GetName().c_str();
 
             auto& entities = m_entities[Renderer_Object_Opaque];
-            const uint32_t entity_count = static_cast<uint32_t>(entities.size());
-
-            // Enlarge constant buffer (if needed)
-            bool buffer_reallocated = false;
-            if (entity_count > m_buffer_object_gpu->GetOffsetCount())
-            {
-                const uint32_t new_size = m_buffer_object_gpu->GetOffsetCount() * 2;
-                if (!m_buffer_object_gpu->Create<BufferObject>(new_size))
-                    return;
-
-                buffer_reallocated = true;
-            }
 
             // Submit command list
             if (cmd_list->Begin(pipeline_state))
@@ -432,7 +422,7 @@ namespace Spartan
                             transform->SetWvpLastFrame(m_buffer_object_cpu.wvp_current);
 
                             // Update constant buffer
-                            if (UpdateObjectBuffer(i) || buffer_reallocated)
+                            if (UpdateObjectBuffer(i))
                             {
                                 cmd_list->SetConstantBuffer(2, RHI_Buffer_VertexShader, m_buffer_object_gpu);
                             }
