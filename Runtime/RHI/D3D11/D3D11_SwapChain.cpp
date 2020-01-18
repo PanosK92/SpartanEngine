@@ -66,12 +66,12 @@ namespace Spartan
 			return;
 		}
 
-		// Validate resolution
-		if (width == 0 || width > m_max_resolution || height == 0 || height > m_max_resolution)
-		{
-			LOG_WARNING("%dx%d is an invalid resolution", width, height);
-			return;
-		}
+        // Validate resolution
+        if (!rhi_device->ValidateResolution(width, height))
+        {
+            LOG_WARNING("%dx%d is an invalid resolution", width, height);
+            return;
+        }
 
 		// Get factory
 		IDXGIFactory* dxgi_factory = nullptr;
@@ -184,12 +184,14 @@ namespace Spartan
 			return false;
 		}
 
-		// Return if resolution is invalid
-		if (width == 0 || width > m_max_resolution || height == 0 || height > m_max_resolution)
-		{
-			LOG_WARNING("%dx%d is an invalid resolution", width, height);
-			return false;
-		}
+        // Validate resolution
+        m_present = m_rhi_device->ValidateResolution(width, height);
+        if (!m_present)
+        {
+            // Return true as when minimizing, a resolution
+            // of 0,0 can be passed in, and this is fine.
+            return true;
+        }
 
 		auto swap_chain			= static_cast<IDXGISwapChain*>(m_swap_chain_view);
 		auto render_target_view	= static_cast<ID3D11RenderTargetView*>(m_resource_render_target);
@@ -267,6 +269,9 @@ namespace Spartan
 
 	bool RHI_SwapChain::Present()
 	{
+        if (!m_present)
+            return true;
+
 		if (!m_swap_chain_view)
 		{
 			LOG_ERROR_INVALID_INTERNALS();

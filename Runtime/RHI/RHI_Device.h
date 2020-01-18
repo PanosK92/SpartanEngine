@@ -116,6 +116,7 @@ namespace Spartan
         // Display mode
         void RegisterDisplayMode(const DisplayMode& display_mode);
         const DisplayMode* GetPrimaryDisplayMode();
+        bool ValidateResolution(const uint32_t width, const uint32_t height);
         
         // Misc
 		auto IsInitialized()                const { return m_initialized; }

@@ -228,7 +228,7 @@ namespace Spartan
         }
 
         // Validate resolution
-        if (width == 0 || width > m_max_resolution || height == 0 || height > m_max_resolution)
+        if (!rhi_device->ValidateResolution(width, height))
         {
             LOG_WARNING("%dx%d is an invalid resolution", width, height);
             return;
@@ -288,7 +288,16 @@ namespace Spartan
 	}
 
 	bool RHI_SwapChain::Resize(const uint32_t width, const uint32_t height)
-	{	
+	{
+        // Validate resolution
+        m_present = m_rhi_device->ValidateResolution(width, height);
+        if (!m_present)
+        {
+            // Return true as when minimizing, a resolution
+            // of 0,0 can be passed in, and this is fine.
+            return true;
+        }
+
 		// Only resize if needed
 		if (m_width == width && m_height == height)
 			return true;
@@ -329,6 +338,9 @@ namespace Spartan
 
 	bool RHI_SwapChain::AcquireNextImage()
 	{
+        if (!m_present)
+            return true;
+
         // If we used all of our buffers, reset the command pool
         if (m_image_index + 1 > m_buffer_count)
         {
@@ -356,7 +368,10 @@ namespace Spartan
 	}
 
 	bool RHI_SwapChain::Present()
-	{	
+	{
+        if (!m_present)
+            return true;
+
         if (!m_image_acquired)
         {
             LOG_ERROR("Image has not been acquired");

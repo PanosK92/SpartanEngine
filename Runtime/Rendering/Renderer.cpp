@@ -167,7 +167,7 @@ namespace Spartan
 		if (!m_initialized)
 		{
 			// Log on-screen as the renderer is ready
-			LOG_TO_FILE(false);
+			//LOG_TO_FILE(false);
 			m_initialized = true;
 		}
 
@@ -401,10 +401,24 @@ namespace Spartan
 
     bool Renderer::UpdateObjectBuffer(uint32_t instance_index /*= 0*/)
     {
+        // Re-allocate buffer with double size (if needed)
+        bool buffer_reallocated = false;
+        if (instance_index > m_buffer_object_gpu->GetOffsetCount())
+        {
+            const uint32_t new_size = m_buffer_object_gpu->GetOffsetCount() * 2;
+            if (!m_buffer_object_gpu->Create<BufferObject>(new_size))
+            {
+                LOG_ERROR("Failed to re-allocate buffer");
+                return false;
+            }
+
+            buffer_reallocated = true;
+        }
+
         // Only update if needed
         bool same_content   = m_buffer_object_cpu == m_buffer_object_cpu_previous;
         bool same_instance  = m_buffer_object_gpu->GetOffsetIndex() == instance_index;
-        if (same_content && same_instance)
+        if (!buffer_reallocated && same_content && same_instance)
             return false;
 
         // Map
