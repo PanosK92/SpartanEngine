@@ -88,7 +88,7 @@ namespace Spartan
         RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
 
 		// Wait in case the buffer is still in use by the graphics queue
-		vkQueueWaitIdle(rhi_context->queue_graphics);
+        m_rhi_device->Queue_Wait(RHI_Queue_Graphics);
 
 		// Fence
         vulkan_common::fence::destroy(rhi_context, m_cmd_list_consumed_fence);
@@ -133,7 +133,7 @@ namespace Spartan
         m_cmd_state = RHI_Cmd_List_Recording;
 
         // Get pipeline
-        m_pipeline = m_rhi_pipeline_cache->GetPipeline(pipeline_state, this);
+        m_pipeline = m_rhi_pipeline_cache->GetPipeline(pipeline_state, this); 
         if (!m_pipeline)
         {
             LOG_ERROR("Failed to acquire appropriate pipeline");
@@ -155,8 +155,15 @@ namespace Spartan
         // Start marker and profiler (if used)
         MarkAndProfileStart(m_pipeline_state);
 
-        // Temp hack until I implement some method to have one time set global resources
-        m_renderer->SetGlobalSamplersAndConstantBuffers(this);
+        // Shader resources
+        {
+            // If the pipeline changed, we are using new descriptors, so the resources have to be set again
+            m_set_id_vertex_buffer  = 0;
+            m_set_id_index_buffer   = 0;
+
+            // Temp hack until I implement some method to have one time set global resources
+            m_renderer->SetGlobalSamplersAndConstantBuffers(this);
+        }
 
         return true;
 	}
@@ -458,29 +465,14 @@ namespace Spartan
 
         RHI_PipelineState* state = m_pipeline->GetPipelineState();
 
-		// Wait
-		VkSemaphore wait_semaphores[] = { nullptr };
-        if (state->render_target_swapchain)
-        {
-            wait_semaphores[0] = static_cast<VkSemaphore>(state->render_target_swapchain->GetResource_View_AcquiredSemaphore());
-        }
-        VkPipelineStageFlags wait_flags[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-
-        // Signal
-		VkSemaphore signal_semaphores[]		= { nullptr };
-		
-		VkSubmitInfo submit_info			= {};
-		submit_info.sType					= VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		submit_info.waitSemaphoreCount		= state->render_target_swapchain ? 1 : 0;
-		submit_info.pWaitSemaphores			= wait_semaphores;
-		submit_info.pWaitDstStageMask		= wait_flags;
-		submit_info.commandBufferCount		= 1;
-		submit_info.pCommandBuffers			= reinterpret_cast<VkCommandBuffer*>(&m_cmd_buffer);
-		submit_info.signalSemaphoreCount	= 0;
-		submit_info.pSignalSemaphores		= signal_semaphores;
-
-        if (!vulkan_common::error::check(vkQueueSubmit(m_rhi_device->GetContextRhi()->queue_graphics, 1, &submit_info, reinterpret_cast<VkFence>(m_cmd_list_consumed_fence))))
-            return false;
+        if (!m_rhi_device->Queue_Submit(
+            RHI_Queue_Graphics,                                                                                                                         // queue
+            m_cmd_buffer,                                                                                                                               // cmd buffer
+            state->render_target_swapchain ? static_cast<VkSemaphore>(state->render_target_swapchain->GetResource_View_AcquiredSemaphore()) : nullptr,  // wait semaphore
+            m_cmd_list_consumed_fence,                                                                                                                  // wait fence
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)                                                                                              // wait flags
+        )
+        return false;
 
         // If the render pass has been bound then it cleared to whatever values was requested (or not)
         // So at this point we reset the values as we don't want to clear again.
@@ -498,16 +490,6 @@ namespace Spartan
     bool RHI_CommandList::Flush()
     {
         return vulkan_common::fence::wait_reset(m_rhi_device->GetContextRhi(), m_cmd_list_consumed_fence);
-    }
-
-    bool RHI_CommandList::Gpu_Flush(RHI_Device* rhi_device)
-    {
-        if (!rhi_device || !rhi_device->GetContextRhi() || !rhi_device->GetContextRhi()->queue_graphics)
-            return false;
-
-        return  vulkan_common::error::check(vkQueueWaitIdle(rhi_device->GetContextRhi()->queue_graphics)) &&
-                vulkan_common::error::check(vkQueueWaitIdle(rhi_device->GetContextRhi()->queue_transfer)) &&
-                vulkan_common::error::check(vkQueueWaitIdle(rhi_device->GetContextRhi()->queue_compute));
     }
 
     uint32_t RHI_CommandList::Gpu_GetMemory(RHI_Device* rhi_device)
@@ -636,7 +618,7 @@ namespace Spartan
         // Allowed to markers ?
         if (m_rhi_device->GetContextRhi()->markers && pipeline_state->mark)
         {
-            vulkan_common::debug::begin(CMD_BUFFER, pipeline_state->pass_name, Vector4::One);
+            vulkan_common::debug::begin(CMD_BUFFER, pipeline_state->pass_name, Vector4::Zero);
         }
 
         if (m_pass_index < m_passes_active.size())

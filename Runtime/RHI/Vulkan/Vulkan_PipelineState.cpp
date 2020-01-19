@@ -46,9 +46,10 @@ namespace Spartan
         return m_frame_buffers[0];
     }
 
-    bool RHI_PipelineState::CreateFrameResources(RHI_Context* rhi_context)
+    bool RHI_PipelineState::CreateFrameResources(RHI_Device* rhi_device)
     {
-        m_rhi_context = rhi_context;
+        m_rhi_device                = rhi_device;
+        RHI_Context* rhi_context    = rhi_device->GetContextRhi();
 
         // Detect all used render target color textures
         vector<RHI_Texture*> used_render_target_color;
@@ -71,11 +72,11 @@ namespace Spartan
         DestroyFrameResources();
 
         // Create a render pass
-        if (!vulkan_common::render_pass::create(m_rhi_context, target_array, render_target_color_clear, render_target_color_count, render_target_depth_texture, render_target_depth_clear, is_swapchain, m_render_pass))
+        if (!vulkan_common::render_pass::create(rhi_context, target_array, render_target_color_clear, render_target_color_count, render_target_depth_texture, render_target_depth_clear, is_swapchain, m_render_pass))
             return false;
 
         // Name the render pass
-        vulkan_common::debug::set_render_pass_name(m_rhi_context->device, static_cast<VkRenderPass>(m_render_pass), is_swapchain ? "swapchain" : "texture");
+        vulkan_common::debug::set_render_pass_name(rhi_context->device, static_cast<VkRenderPass>(m_render_pass), is_swapchain ? "swapchain" : "texture");
 
         // Create frame buffer
         if (is_swapchain)
@@ -84,11 +85,11 @@ namespace Spartan
             for (uint32_t i = 0; i < render_target_swapchain->GetBufferCount(); i++)
             {
                 vector<void*> attachments = { render_target_swapchain->GetResource_View(i) };
-                if (!vulkan_common::frame_buffer::create(m_rhi_context, m_render_pass, attachments, render_target_width, render_target_height, m_frame_buffers[i]))
+                if (!vulkan_common::frame_buffer::create(rhi_context, m_render_pass, attachments, render_target_width, render_target_height, m_frame_buffers[i]))
                     return false;
 
                 // Name the frame buffer
-                vulkan_common::debug::set_framebuffer_name(m_rhi_context->device, static_cast<VkFramebuffer>(m_frame_buffers[i]), "swapchain");
+                vulkan_common::debug::set_framebuffer_name(rhi_context->device, static_cast<VkFramebuffer>(m_frame_buffers[i]), "swapchain");
             }
 
             return true;
@@ -110,11 +111,11 @@ namespace Spartan
             }
 
             // Create a frame buffer
-            if (!vulkan_common::frame_buffer::create(m_rhi_context, m_render_pass, attachments, render_target_width, render_target_height, m_frame_buffers[0]))
+            if (!vulkan_common::frame_buffer::create(rhi_context, m_render_pass, attachments, render_target_width, render_target_height, m_frame_buffers[0]))
                 return false;
             
             // Name the frame buffer
-            vulkan_common::debug::set_framebuffer_name(m_rhi_context->device, static_cast<VkFramebuffer>(m_frame_buffers[0]), "texture");
+            vulkan_common::debug::set_framebuffer_name(rhi_context->device, static_cast<VkFramebuffer>(m_frame_buffers[0]), "texture");
             
             return true;
         }
@@ -124,17 +125,17 @@ namespace Spartan
 
     void RHI_PipelineState::DestroyFrameResources()
     {
-        if (!m_rhi_context)
+        if (!m_rhi_device)
             return;
 
         // Wait in case the buffer is still in use by the graphics queue
-        vkQueueWaitIdle(m_rhi_context->queue_graphics);
+        m_rhi_device->Queue_Wait(RHI_Queue_Graphics);
 
         for (auto& frame_buffer : m_frame_buffers)
         {
-            vulkan_common::frame_buffer::destroy(m_rhi_context, frame_buffer);
+            vulkan_common::frame_buffer::destroy(m_rhi_device->GetContextRhi(), frame_buffer);
         }
-        vulkan_common::render_pass::destroy(m_rhi_context, m_render_pass);
+        vulkan_common::render_pass::destroy(m_rhi_device->GetContextRhi(), m_render_pass);
     }
 }
 #endif

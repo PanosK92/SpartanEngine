@@ -39,15 +39,12 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    // Images can be loaded in parallel but will be consumed by a single queue, so fifo.
-    static mutex g_mutex;
-
     RHI_Texture2D::~RHI_Texture2D()
     {
         if (!m_rhi_device->IsInitialized())
             return;
 
-        RHI_CommandList::Gpu_Flush(m_rhi_device.get());
+        m_rhi_device->Queue_WaitAll();
         m_data.clear();
         auto rhi_context = m_rhi_device->GetContextRhi();
         vulkan_common::image::view::destroy(rhi_context, m_resource_view);
@@ -127,13 +124,8 @@ namespace Spartan
             }
         }
 
-        // Textures can load from many threads, in parallel, but at this point they can have race
-        // conditions with the queue we will be using, so we have to serialize them for this bit.
-        lock_guard lock(g_mutex);
-        vulkan_common::error::check(vkQueueWaitIdle(rhi_context->queue_graphics));
-
-        // Create command buffer (for later layout transitioning) - TODO: in case of early exit due to failure, free this buffer
-        VkCommandBuffer cmd_buffer = vulkan_common::command_buffer::begin(rhi_context, rhi_context->queue_graphics_family_index);
+        // Create command buffer (for later layout transitioning)
+        VkCommandBuffer cmd_buffer = vulkan_common::command_buffer_immediate::begin(m_rhi_device.get(), RHI_Queue_Graphics);
 
         // Use staging if needed
         void* stating_buffer        = nullptr;
@@ -241,7 +233,7 @@ namespace Spartan
                 return false;
 
             // Flush
-            if (!vulkan_common::command_buffer::flush_and_free(rhi_context, rhi_context->queue_graphics))
+            if (!vulkan_common::command_buffer_immediate::end(RHI_Queue_Graphics))
                 return false;
 
             // Update layout

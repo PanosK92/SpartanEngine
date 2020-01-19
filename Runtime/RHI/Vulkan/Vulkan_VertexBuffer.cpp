@@ -41,7 +41,7 @@ namespace Spartan
 	RHI_VertexBuffer::~RHI_VertexBuffer()
 	{
         // Wait in case the buffer is still in use
-        RHI_CommandList::Gpu_Flush(m_rhi_device);
+        m_rhi_device->Queue_WaitAll();
 
 		vulkan_common::buffer::destroy(m_rhi_device->GetContextRhi(), m_buffer);
 		vulkan_common::memory::free(m_rhi_device->GetContextRhi(), m_buffer_memory);
@@ -58,7 +58,7 @@ namespace Spartan
         RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
 
         // Wait in case the buffer is still in use
-        RHI_CommandList::Gpu_Flush(m_rhi_device);
+        m_rhi_device->Queue_WaitAll();
 
 		// Clear previous buffer
 		vulkan_common::buffer::destroy(rhi_context, m_buffer);
@@ -113,7 +113,7 @@ namespace Spartan
             // Copy from staging buffer
             {
                 // Create command buffer
-                VkCommandBuffer cmd_buffer = vulkan_common::command_buffer::begin(rhi_context, rhi_context->queue_transfer_family_index);
+                VkCommandBuffer cmd_buffer = vulkan_common::command_buffer_immediate::begin(m_rhi_device.get(), RHI_Queue_Transfer);
 
                 VkBuffer* buffer_vk         = reinterpret_cast<VkBuffer*>(&m_buffer);
                 VkBuffer* buffer_staging_vk = reinterpret_cast<VkBuffer*>(&staging_buffer);
@@ -124,7 +124,7 @@ namespace Spartan
                 vkCmdCopyBuffer(cmd_buffer, *buffer_staging_vk, *buffer_vk, 1, &copy_region);
 
                 // Flush and free command buffer
-                if (!vulkan_common::command_buffer::flush_and_free(rhi_context, rhi_context->queue_transfer))
+                if (!vulkan_common::command_buffer_immediate::end(RHI_Queue_Transfer))
                     return false;
 
                 // Destroy staging resources
@@ -132,6 +132,10 @@ namespace Spartan
                 vulkan_common::memory::free(rhi_context, staging_buffer_memory);
             }
         }
+
+        // Set debug names
+        vulkan_common::debug::set_buffer_name(m_rhi_device->GetContextRhi()->device, static_cast<VkBuffer>(m_buffer), "vertex_buffer");
+        vulkan_common::debug::set_device_memory_name(m_rhi_device->GetContextRhi()->device, static_cast<VkDeviceMemory>(m_buffer_memory), "vertex_buffer");
 
 		return true;
 	}

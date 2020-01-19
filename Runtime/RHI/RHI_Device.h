@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 #include "RHI_Definition.h"
 #include "../Core/EngineDefs.h"
+#include <mutex>
 //=============================
 
 namespace Spartan
@@ -117,7 +118,14 @@ namespace Spartan
         void RegisterDisplayMode(const DisplayMode& display_mode);
         const DisplayMode* GetPrimaryDisplayMode();
         bool ValidateResolution(const uint32_t width, const uint32_t height);
-        
+
+        // Queue
+        bool Queue_Submit(const RHI_Queue_Type type, void* cmd_buffer, void* wait_semaphore = nullptr, void* wait_fence = nullptr, const uint32_t wait_flags = 0);
+        bool Queue_Wait(const RHI_Queue_Type type);
+        bool Queue_WaitAll();
+        void* Queue_Get(const RHI_Queue_Type type) const;
+        uint32_t Queue_Index(const RHI_Queue_Type type) const;
+
         // Misc
 		auto IsInitialized()                const { return m_initialized; }
         RHI_Context* GetContextRhi()	    const { return m_rhi_context.get(); }
@@ -132,6 +140,8 @@ namespace Spartan
         uint32_t m_enabled_graphics_shader_stages   = 0;
         bool m_initialized                          = false;
         Context* m_context                          = nullptr;
+        std::mutex m_mutex_submit;
+        std::mutex m_mutex_wait;  
         std::shared_ptr<RHI_Context> m_rhi_context;
 	};
 }

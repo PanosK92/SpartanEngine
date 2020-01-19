@@ -100,10 +100,6 @@ namespace Spartan
         bool Timestamp_End(void* query_disjoint = nullptr, void* query_end = nullptr);
         float Timestamp_GetDuration(void* query_disjoint = nullptr, void* query_start = nullptr, void* query_end = nullptr);
 
-        // GPU - RHI_CommandList instance not required
-        static bool Gpu_Flush(RHI_Device* rhi_device);
-        static inline bool Gpu_Flush(const std::shared_ptr<RHI_Device>& rhi_device) { return Gpu_Flush( rhi_device.get()); }
-
         static uint32_t Gpu_GetMemory(RHI_Device* rhi_device);
         static uint32_t Gpu_GetMemoryUsed(RHI_Device* rhi_device);
         static bool Gpu_QueryCreate(RHI_Device* rhi_device, void** query = nullptr, RHI_Query_Type type = RHI_Query_Timestamp);

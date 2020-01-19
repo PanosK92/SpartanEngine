@@ -470,12 +470,6 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_CommandList::Gpu_Flush(RHI_Device* rhi_device)
-    {
-        rhi_device->GetContextRhi()->device_context->Flush();
-        return true;
-    }
-
     bool RHI_CommandList::Timestamp_Start(void* query_disjoint /*= nullptr*/, void* query_start /*= nullptr*/)
     {
         if (!query_disjoint || !query_start)

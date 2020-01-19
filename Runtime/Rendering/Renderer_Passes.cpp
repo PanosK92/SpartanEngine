@@ -621,18 +621,33 @@ namespace Spartan
                 cmd_list->SetTexture(2, m_render_targets[RenderTarget_Gbuffer_Depth]);
                 cmd_list->SetTexture(3, (m_options & Render_SSAO) ? m_render_targets[RenderTarget_Ssao] : m_tex_white);
 
-                // Draw
+                // Iterate through all the light entities
                 for (const auto& entity : entities)
                 {
                     if (Light* light = entity->GetComponent<Light>().get())
                     {
+                        // Set shadow map
                         if (RHI_Texture* shadow_map = light->GetShadowMap().get())
                         {
-                            cmd_list->SetTexture(4, light->GetCastShadows() ? (light->GetLightType() == LightType_Directional   ? shadow_map : nullptr) : nullptr);
-                            cmd_list->SetTexture(5, light->GetCastShadows() ? (light->GetLightType() == LightType_Point         ? shadow_map : nullptr) : nullptr);
-                            cmd_list->SetTexture(6, light->GetCastShadows() ? (light->GetLightType() == LightType_Spot          ? shadow_map : nullptr) : nullptr);
-                            cmd_list->DrawIndexed(Rectangle::GetIndexCount());
+                            if (light->GetCastShadows())
+                            {
+                                if (light->GetLightType() == LightType_Directional)
+                                {
+                                    cmd_list->SetTexture(4, shadow_map);
+                                }
+                                else if (light->GetLightType() == LightType_Point)
+                                {
+                                    cmd_list->SetTexture(5, shadow_map);
+                                }
+                                else if (light->GetLightType() == LightType_Spot)
+                                {
+                                    cmd_list->SetTexture(6, shadow_map);
+                                }
+                            }
                         }
+
+                        // Draw
+                        cmd_list->DrawIndexed(Rectangle::GetIndexCount());
                     }
                 }
 

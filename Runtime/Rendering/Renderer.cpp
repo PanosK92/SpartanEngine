@@ -403,7 +403,7 @@ namespace Spartan
     {
         // Re-allocate buffer with double size (if needed)
         bool buffer_reallocated = false;
-        if (instance_index > m_buffer_object_gpu->GetOffsetCount())
+        if (instance_index >= m_buffer_object_gpu->GetOffsetCount())
         {
             const uint32_t new_size = m_buffer_object_gpu->GetOffsetCount() * 2;
             if (!m_buffer_object_gpu->Create<BufferObject>(new_size))
