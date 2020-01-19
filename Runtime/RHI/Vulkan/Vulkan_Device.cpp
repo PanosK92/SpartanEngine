@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include <string>
 #include "../RHI_Device.h"
+#include "../RHI_CommandList.h"
 #include "../../Logging/Log.h"
 #include "../../Core/Settings.h"
 #include "../../Core/Context.h"
@@ -116,9 +117,9 @@ namespace Spartan
 			{
 				vector<uint32_t> unique_queue_families =
 				{
-					m_rhi_context->queue_graphics_family_index,
-					m_rhi_context->queue_transfer_family_index,
-					m_rhi_context->queue_compute_family_index
+					m_rhi_context->queue_graphics_index,
+					m_rhi_context->queue_transfer_index,
+					m_rhi_context->queue_compute_index
 				};
 
 				float queue_priority = 1.0f;
@@ -208,9 +209,9 @@ namespace Spartan
 				return;
 
             // Create queues
-            vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->queue_graphics_family_index, 0, &m_rhi_context->queue_graphics);
-            vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->queue_compute_family_index,  0, &m_rhi_context->queue_compute);
-            vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->queue_transfer_family_index, 0, &m_rhi_context->queue_transfer);
+            vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->queue_graphics_index, 0, reinterpret_cast<VkQueue*>(&m_rhi_context->queue_graphics));
+            vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->queue_compute_index,  0, reinterpret_cast<VkQueue*>(&m_rhi_context->queue_compute));
+            vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->queue_transfer_index, 0, reinterpret_cast<VkQueue*>(&m_rhi_context->queue_transfer));
 		}
 
 		// Detect and log version
@@ -231,7 +232,7 @@ namespace Spartan
             return;
 
         // Release resources
-		if (vulkan_common::error::check(vkQueueWaitIdle(m_rhi_context->queue_graphics)))
+		if (Queue_Wait(RHI_Queue_Graphics))
 		{
             if (m_rhi_context->debug)
             {
@@ -241,5 +242,36 @@ namespace Spartan
 			vkDestroyInstance(m_rhi_context->instance, nullptr);
 		}
 	}
+
+    bool RHI_Device::Queue_Submit(const RHI_Queue_Type type, void* cmd_buffer, void* wait_semaphore /*= nullptr*/, void* wait_fence /*= nullptr*/, uint32_t wait_flags /*= 0*/)
+    {
+        lock_guard<mutex> lock(m_mutex_submit);
+
+        VkCommandBuffer _cmd_buffer         = static_cast<VkCommandBuffer>(cmd_buffer);
+        VkSemaphore wait_semaphores[]       = { static_cast<VkSemaphore>(wait_semaphore) };
+        VkPipelineStageFlags _wait_flags[]  = { wait_flags };
+
+        VkSubmitInfo submit_info            = {};
+        submit_info.sType                   = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submit_info.waitSemaphoreCount      = wait_semaphore ? 1 : 0;
+        submit_info.pWaitSemaphores         = wait_semaphores;
+        submit_info.pWaitDstStageMask       = _wait_flags;
+        submit_info.commandBufferCount      = 1;
+        submit_info.pCommandBuffers         = reinterpret_cast<VkCommandBuffer*>(&_cmd_buffer);
+        submit_info.signalSemaphoreCount    = 0;
+        submit_info.pSignalSemaphores       = nullptr;
+
+        return vulkan_common::error::check(vkQueueSubmit(static_cast<VkQueue>(Queue_Get(type)), 1, &submit_info, static_cast<VkFence>(wait_fence)));
+    }
+
+    bool RHI_Device::Queue_Wait(const RHI_Queue_Type type)
+    {
+        lock_guard<mutex> lock(m_mutex_wait);
+
+        if (!vulkan_common::error::check(vkQueueWaitIdle(static_cast<VkQueue>(Queue_Get(type)))))
+            return false;
+
+        return true;
+    }
 }
 #endif

@@ -72,7 +72,7 @@ namespace Spartan
                     return false;
 
                 VkBool32 present_support = false;
-                if (!vulkan_common::error::check(vkGetPhysicalDeviceSurfaceSupportKHR(rhi_context->device_physical, rhi_context->queue_graphics_family_index, surface, &present_support)))
+                if (!vulkan_common::error::check(vkGetPhysicalDeviceSurfaceSupportKHR(rhi_context->device_physical, rhi_context->queue_graphics_index, surface, &present_support)))
                     return false;
 
                 if (!present_support)
@@ -106,8 +106,8 @@ namespace Spartan
                 create_info.imageArrayLayers            = 1;
                 create_info.imageUsage                  = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-                uint32_t queueFamilyIndices[] = { rhi_context->queue_compute_family_index, rhi_context->queue_graphics_family_index };
-                if (rhi_context->queue_compute_family_index != rhi_context->queue_graphics_family_index)
+                uint32_t queueFamilyIndices[] = { rhi_context->queue_compute_index, rhi_context->queue_graphics_index };
+                if (rhi_context->queue_compute_index != rhi_context->queue_graphics_index)
                 {
                     create_info.imageSharingMode        = VK_SHARING_MODE_CONCURRENT;
                     create_info.queueFamilyIndexCount   = 2;
@@ -260,7 +260,7 @@ namespace Spartan
 		);
 
         // Create command pool
-        vulkan_common::command_pool::create(rhi_device->GetContextRhi(), m_cmd_pool, rhi_device->GetContextRhi()->queue_graphics_family_index);
+        vulkan_common::command_pool::create(rhi_device.get(), m_cmd_pool, RHI_Queue_Graphics);
 
         // Create command lists
         for (uint32_t i = 0; i < m_buffer_count; i++)
@@ -389,7 +389,7 @@ namespace Spartan
 		present_info.pSwapchains		= swap_chains;
 		present_info.pImageIndices		= &m_image_index;
 
-		return vulkan_common::error::check(vkQueuePresentKHR(m_rhi_device->GetContextRhi()->queue_graphics, &present_info));
+        return vulkan_common::error::check(vkQueuePresentKHR(static_cast<VkQueue>(m_rhi_device->GetContextRhi()->queue_graphics), &present_info));
 	}
 
     void RHI_SwapChain::SetLayout(RHI_Image_Layout layout, RHI_CommandList* command_list /*= nullptr*/)

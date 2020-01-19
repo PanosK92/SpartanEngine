@@ -38,7 +38,7 @@ namespace Spartan
 
         bool IsValid();
         bool AcquireNextImage();      
-        bool CreateFrameResources(RHI_Context* rhi_context);
+        bool CreateFrameResources(RHI_Device* rhi_device);
         void* GetFrameBuffer() const;
         void ComputeHash();
         uint32_t GetWidth() const;
@@ -80,7 +80,7 @@ namespace Spartan
     private:
         void DestroyFrameResources();
 
-        RHI_Context* m_rhi_context  = nullptr;
+        RHI_Device* m_rhi_device    = nullptr;
         std::size_t m_hash          = 0;
         void* m_render_pass         = nullptr;
         void* m_frame_buffers[state_max_render_target_count];

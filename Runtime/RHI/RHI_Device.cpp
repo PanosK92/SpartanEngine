@@ -94,4 +94,45 @@ namespace Spartan
         return  width  > 0 && width  <= m_rhi_context->max_texture_dimension_2d &&
                 height > 0 && height <= m_rhi_context->max_texture_dimension_2d;
 	}
+
+	bool RHI_Device::Queue_WaitAll()
+	{
+        return Queue_Wait(RHI_Queue_Graphics) && Queue_Wait(RHI_Queue_Transfer) && Queue_Wait(RHI_Queue_Compute);
+	}
+
+    void* RHI_Device::Queue_Get(const RHI_Queue_Type type) const
+    {
+        if (type == RHI_Queue_Graphics)
+        {
+            return m_rhi_context->queue_graphics;
+        }
+        else if (type == RHI_Queue_Transfer)
+        {
+            return m_rhi_context->queue_transfer;
+        }
+        else if (type == RHI_Queue_Compute)
+        {
+            return m_rhi_context->queue_compute;
+        }
+
+        return nullptr;
+    }
+
+    uint32_t RHI_Device::Queue_Index(const RHI_Queue_Type type) const
+    {
+        if (type == RHI_Queue_Graphics)
+        {
+            return m_rhi_context->queue_graphics_index;
+        }
+        else if (type == RHI_Queue_Transfer)
+        {
+            return m_rhi_context->queue_transfer_index;
+        }
+        else if (type == RHI_Queue_Compute)
+        {
+            return m_rhi_context->queue_compute_index;
+        }
+
+        return 0;
+    }
 }

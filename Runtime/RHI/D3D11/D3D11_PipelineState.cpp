@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    bool RHI_PipelineState::CreateFrameResources(RHI_Context* rhi_context)
+    bool RHI_PipelineState::CreateFrameResources(RHI_Device* rhi_device)
     {
         return true;
     }

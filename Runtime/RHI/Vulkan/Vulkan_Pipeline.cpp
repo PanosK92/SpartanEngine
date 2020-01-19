@@ -52,7 +52,7 @@ namespace Spartan
 	{
 		m_rhi_device    = rhi_device;
 		m_state         = pipeline_state;
-        m_state.CreateFrameResources(rhi_device->GetContextRhi());
+        m_state.CreateFrameResources(rhi_device.get());
 
         // Viewport & Scissor
         vector<VkDynamicState> dynamic_states;
@@ -328,7 +328,7 @@ namespace Spartan
 	RHI_Pipeline::~RHI_Pipeline()
 	{
         // Wait in case the buffer is still in use
-        RHI_CommandList::Gpu_Flush(m_rhi_device.get());
+        m_rhi_device->Queue_WaitAll();
 
 		vkDestroyPipeline(m_rhi_device->GetContextRhi()->device, static_cast<VkPipeline>(m_pipeline), nullptr);
 		m_pipeline = nullptr;

@@ -84,6 +84,14 @@ namespace Spartan
         RHI_SwapChain_Allow_Mode_Switch = 1 << 10
 	};
 
+    enum RHI_Queue_Type
+    {
+        RHI_Queue_Graphics,
+        RHI_Queue_Transfer,
+        RHI_Queue_Compute,
+        RHI_Queue_Undefined
+    };
+
 	enum RHI_Query_Type
 	{
 		RHI_Query_Timestamp,

@@ -124,7 +124,6 @@ static const D3D11_BLEND_OP d3d11_blend_operation[] =
 // Definition - Vulkan
 #if defined(API_GRAPHICS_VULKAN) 
 #pragma comment(lib, "vulkan-1.lib")
-#pragma comment(lib, "VkLayer_utils.lib")
 #define VK_USE_PLATFORM_WIN32_KHR
 #pragma warning(push, 0) // Hide warnings which belong to Vulkan
 #include <vulkan/vulkan.h>
@@ -275,14 +274,6 @@ namespace Spartan
             VkPhysicalDeviceFeatures device_features        = {};
             VkFormat surface_format                         = VK_FORMAT_UNDEFINED;
             VkColorSpaceKHR surface_color_space             = VK_COLOR_SPACE_MAX_ENUM_KHR;
-            // Queues
-            VkQueue queue_graphics                      = nullptr;
-            VkQueue queue_compute                       = nullptr;
-            VkQueue queue_transfer                      = nullptr;
-            // Queue family indices
-            uint32_t queue_graphics_family_index        = 0;
-            uint32_t queue_transfer_family_index        = 0;
-            uint32_t queue_compute_family_index         = 0;
 
             // Extensions
             #ifdef DEBUG
@@ -331,6 +322,14 @@ namespace Spartan
 
         // Resource limits
         uint32_t max_texture_dimension_2d = 16384;
+
+        // Queues
+        void* queue_graphics                    = nullptr;
+        void* queue_compute                     = nullptr;
+        void* queue_transfer                    = nullptr;
+        uint32_t queue_graphics_index           = 0;
+        uint32_t queue_transfer_index           = 0;
+        uint32_t queue_compute_index            = 0;
     };
 }
 

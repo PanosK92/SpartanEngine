@@ -28,17 +28,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Vulkan_Common.h"
 //========================
 
+//= NAMESPACES =====
+using namespace std;
+//==================
+
 namespace Spartan::vulkan_common
 {
-    PFN_vkCreateDebugUtilsMessengerEXT          functions::create_messenger                             = nullptr;
-    VkDebugUtilsMessengerEXT                    functions::messenger                                    = nullptr;
-    PFN_vkDestroyDebugUtilsMessengerEXT         functions::destroy_messenger                            = nullptr;
-    PFN_vkSetDebugUtilsObjectTagEXT             functions::set_object_tag                               = nullptr;
-    PFN_vkSetDebugUtilsObjectNameEXT            functions::set_object_name                              = nullptr;
-    PFN_vkCmdBeginDebugUtilsLabelEXT            functions::marker_begin                                 = nullptr;
-    PFN_vkCmdEndDebugUtilsLabelEXT              functions::marker_end                                   = nullptr;
-    PFN_vkGetPhysicalDeviceMemoryProperties2KHR functions::get_physical_device_memory_properties_2   = nullptr;
-    void*                                       command_buffer::m_cmd_pool                              = nullptr;
-    void*                                       command_buffer::m_cmd_buffer                            = nullptr;
+    PFN_vkCreateDebugUtilsMessengerEXT                          functions::create_messenger                         = nullptr;
+    VkDebugUtilsMessengerEXT                                    functions::messenger                                = nullptr;
+    PFN_vkDestroyDebugUtilsMessengerEXT                         functions::destroy_messenger                        = nullptr;
+    PFN_vkSetDebugUtilsObjectTagEXT                             functions::set_object_tag                           = nullptr;
+    PFN_vkSetDebugUtilsObjectNameEXT                            functions::set_object_name                          = nullptr;
+    PFN_vkCmdBeginDebugUtilsLabelEXT                            functions::marker_begin                             = nullptr;
+    PFN_vkCmdEndDebugUtilsLabelEXT                              functions::marker_end                               = nullptr;
+    PFN_vkGetPhysicalDeviceMemoryProperties2KHR                 functions::get_physical_device_memory_properties_2  = nullptr;
+    mutex                                                       command_buffer_immediate::m_mutex_begin;
+    mutex                                                       command_buffer_immediate::m_mutex_end;
+    map<RHI_Queue_Type, command_buffer_immediate::cmdbi_object> command_buffer_immediate::m_objects;
 }
 #endif

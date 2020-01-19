@@ -40,7 +40,7 @@ namespace Spartan
 	RHI_ConstantBuffer::~RHI_ConstantBuffer()
 	{
         // Wait in case the buffer is still in use
-        RHI_CommandList::Gpu_Flush(m_rhi_device);
+        m_rhi_device->Queue_WaitAll();
 
 		vulkan_common::buffer::destroy(m_rhi_device->GetContextRhi(), m_buffer);
 		vulkan_common::memory::free(m_rhi_device->GetContextRhi(), m_buffer_memory);
@@ -55,7 +55,7 @@ namespace Spartan
 		}
 
         // Wait in case the buffer is still in use
-        RHI_CommandList::Gpu_Flush(m_rhi_device);
+        m_rhi_device->Queue_WaitAll();
 
 		// Clear previous buffer
 		vulkan_common::buffer::destroy(m_rhi_device->GetContextRhi(), m_buffer);
@@ -72,6 +72,10 @@ namespace Spartan
 		// Create buffer
 		if (!vulkan_common::buffer::create(m_rhi_device->GetContextRhi(), m_buffer, m_buffer_memory, m_size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
 			return false;
+
+        // Set debug names
+        vulkan_common::debug::set_buffer_name(m_rhi_device->GetContextRhi()->device, static_cast<VkBuffer>(m_buffer), "constant_buffer");
+        vulkan_common::debug::set_device_memory_name(m_rhi_device->GetContextRhi()->device, static_cast<VkDeviceMemory>(m_buffer_memory), "constant_buffer");
 
 		return true;
 	}
