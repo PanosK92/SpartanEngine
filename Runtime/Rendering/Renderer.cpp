@@ -167,7 +167,7 @@ namespace Spartan
 		if (!m_initialized)
 		{
 			// Log on-screen as the renderer is ready
-			//LOG_TO_FILE(false);
+			LOG_TO_FILE(false);
 			m_initialized = true;
 		}
 
