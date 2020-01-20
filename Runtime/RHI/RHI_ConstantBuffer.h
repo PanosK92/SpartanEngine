@@ -47,17 +47,19 @@ namespace Spartan
 			return _Create();
 		}
 
-		void* Map(uint32_t offset_index = 0);
+		void* Map();
 		bool Unmap() const;
         bool Flush(uint32_t offset_index = 0);
 
-        bool IsDynamic()            const { return m_offset_count > 1; }
-        uint32_t GetOffsetCount()   const { return m_offset_count; }
-        uint32_t GetOffsetIndex()   const { return m_offset_index; }
-        uint32_t GetOffset()        const { return m_offset_index * m_stride; }
 		auto GetResource()          const { return m_buffer; }
 		auto GetSize()              const { return m_size; }
         auto GetStride()            const { return m_stride; }
+        bool IsDynamic()            const { return m_offset_count > 1; }
+        uint32_t GetOffsetCount()   const { return m_offset_count; }
+        uint32_t GetOffset()        const { return m_offset_index * m_stride; }
+
+        uint32_t GetOffsetIndex() const                     { return m_offset_index; }
+        void SetOffsetIndex(const uint32_t offset_index)    { m_offset_index = offset_index; }
 
 	private:
 		bool _Create();

@@ -46,7 +46,7 @@ namespace Spartan
         SetDescriptorCapacity(m_descriptor_capacity);
     }
 
-    void RHI_DescriptorSet::SetConstantBuffer(uint32_t slot, RHI_ConstantBuffer* constant_buffer)
+    void RHI_DescriptorSet::SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer)
     {
         for (RHI_Descriptor& descriptor : m_descriptors)
         {
@@ -82,7 +82,7 @@ namespace Spartan
         }
     }
 
-    void RHI_DescriptorSet::SetSampler(uint32_t slot, RHI_Sampler* sampler)
+    void RHI_DescriptorSet::SetSampler(const uint32_t slot, RHI_Sampler* sampler)
     {
         for (RHI_Descriptor& descriptor : m_descriptors)
         {
@@ -100,7 +100,7 @@ namespace Spartan
         }
     }
 
-    void RHI_DescriptorSet::SetTexture(uint32_t slot, RHI_Texture* texture)
+    void RHI_DescriptorSet::SetTexture(const uint32_t slot, RHI_Texture* texture)
     {
         if (!texture->IsSampled())
         {

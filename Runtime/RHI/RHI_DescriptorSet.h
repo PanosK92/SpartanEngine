@@ -37,9 +37,9 @@ namespace Spartan
         ~RHI_DescriptorSet();
 
         // Descriptor resource updating
-        void SetConstantBuffer(uint32_t slot, RHI_ConstantBuffer* constant_buffer);
-        void SetSampler(uint32_t slot, RHI_Sampler* sampler);
-        void SetTexture(uint32_t slot, RHI_Texture* texture);
+        void SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer);
+        void SetSampler(const uint32_t slot, RHI_Sampler* sampler);
+        void SetTexture(const uint32_t slot, RHI_Texture* texture);
 
         // Capacity
         void DoubleCapacity();

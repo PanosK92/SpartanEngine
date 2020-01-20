@@ -399,30 +399,36 @@ namespace Spartan
 		return m_buffer_uber_gpu->Unmap();
 	}
 
-    bool Renderer::UpdateObjectBuffer(uint32_t instance_index /*= 0*/)
+    bool Renderer::UpdateObjectBuffer(RHI_CommandList* cmd_list, const uint32_t offset_index /*= 0*/)
     {
+        // Only update if needed
+        bool same_content   = m_buffer_object_cpu == m_buffer_object_cpu_previous;
+        bool same_offset    = m_buffer_object_gpu->GetOffsetIndex() == offset_index;
+        if (same_content && same_offset)
+            return false;
+
         // Re-allocate buffer with double size (if needed)
-        bool buffer_reallocated = false;
-        if (instance_index >= m_buffer_object_gpu->GetOffsetCount())
+        if (offset_index >= m_buffer_object_gpu->GetOffsetCount())
         {
             const uint32_t new_size = m_buffer_object_gpu->GetOffsetCount() * 2;
             if (!m_buffer_object_gpu->Create<BufferObject>(new_size))
             {
-                LOG_ERROR("Failed to re-allocate buffer");
+                LOG_ERROR("Failed to re-allocate buffer with %d offsets", new_size);
                 return false;
             }
-
-            buffer_reallocated = true;
         }
 
-        // Only update if needed
-        bool same_content   = m_buffer_object_cpu == m_buffer_object_cpu_previous;
-        bool same_instance  = m_buffer_object_gpu->GetOffsetIndex() == instance_index;
-        if (!buffer_reallocated && same_content && same_instance)
-            return false;
+        // Set new buffer offset
+        m_buffer_object_gpu->SetOffsetIndex(offset_index);
 
-        // Map
-        BufferObject* buffer = static_cast<BufferObject*>(m_buffer_object_gpu->Map(instance_index));
+        // Dynamic buffers with offsets have to be rebound whenever the offset changes
+        if (cmd_list)
+        {
+            cmd_list->SetConstantBuffer(2, RHI_Buffer_VertexShader, m_buffer_object_gpu);
+        }
+
+        // Map  
+        BufferObject* buffer = static_cast<BufferObject*>(m_buffer_object_gpu->Map());
         if (!buffer)
         {
             LOG_ERROR("Failed to map buffer");
