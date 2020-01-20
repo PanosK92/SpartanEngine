@@ -59,6 +59,7 @@ constexpr auto engine_version = "v0.31 WIP";
 
 //= INCLUDES ======
 #include <assert.h>
+#include <cstdint>
 //=================
 
 namespace Spartan

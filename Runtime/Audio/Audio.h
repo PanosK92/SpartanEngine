@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================
 #include "../Core/ISubsystem.h"
-#include <cstdint>
 //=============================
 
 //= FORWARD DECLARATIONS =

@@ -80,7 +80,7 @@ namespace Spartan
 		return true;
 	}
 
-    void* RHI_ConstantBuffer::Map(uint32_t offset_index /*= 0*/)
+    void* RHI_ConstantBuffer::Map()
     {
         if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device || !m_buffer_memory)
         {
@@ -95,14 +95,12 @@ namespace Spartan
             (
                 m_rhi_device->GetContextRhi()->device,
                 static_cast<VkDeviceMemory>(m_buffer_memory),
-                static_cast<uint64_t>(offset_index * m_stride), // offset
-                m_stride,                                       // size
-                0,                                              // flags
+                static_cast<uint64_t>(m_offset_index * m_stride),   // offset
+                m_stride,                                           // size
+                0,                                                  // flags
                 reinterpret_cast<void**>(&ptr)
             )
         );
-
-        m_offset_index = offset_index;
 
         return ptr;
     }

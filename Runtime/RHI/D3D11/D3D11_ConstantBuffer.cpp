@@ -41,7 +41,7 @@ namespace Spartan
 		safe_release(*reinterpret_cast<ID3D11Buffer**>(&m_buffer));
 	}
 
-	void* RHI_ConstantBuffer::Map(uint32_t offset_index /*= 0*/)
+	void* RHI_ConstantBuffer::Map()
 	{
 		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device_context || !m_buffer)
 		{
@@ -56,8 +56,6 @@ namespace Spartan
 			LOG_ERROR("Failed to map constant buffer.");
 			return nullptr;
 		}
-
-        m_offset_index = offset_index;
 
 		return mapped_resource.pData;
 	}
