@@ -129,7 +129,7 @@ namespace Spartan
 		m_handle_xyz.box	= m_handle_x.box;
 	}
 
-	bool TransformHandle::Update(const TransformHandle_Space space, const shared_ptr<Entity>& entity, Camera* camera, const float handle_size, const float handle_speed)
+	bool TransformHandle::Update(const TransformHandle_Space space, Entity* entity, Camera* camera, const float handle_size, const float handle_speed)
 	{
 		if (!entity || !camera)
 		{
@@ -243,7 +243,7 @@ namespace Spartan
 		return m_model->GetIndexBuffer();
 	}
 
-	void TransformHandle::SnapToTransform(const TransformHandle_Space space, const shared_ptr<Entity>& entity, Camera* camera, const float handle_size)
+	void TransformHandle::SnapToTransform(const TransformHandle_Space space, Entity* entity, Camera* camera, const float handle_size)
 	{
 		// Get entity's components
 		auto entity_transform	= entity->GetTransform_PtrRaw();		// Transform alone is not enough

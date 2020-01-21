@@ -230,7 +230,7 @@ namespace Spartan
 		float m_gizmo_transform_size    = 0.015f;
 		float m_gizmo_transform_speed   = 12.0f;
         Math::Vector2 viewport_editor_offset;
-        const std::shared_ptr<Entity>& SnapTransformGizmoTo(const std::shared_ptr<Entity>& entity) const;
+        std::weak_ptr<Spartan::Entity> SnapTransformGizmoTo(const std::shared_ptr<Entity>& entity) const;
 
 		// Debug
 		void SetDebugBuffer(const Renderer_Buffer_Type buffer)	{ m_debug_buffer = buffer; }
