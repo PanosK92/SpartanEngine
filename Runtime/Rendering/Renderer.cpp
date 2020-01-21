@@ -174,7 +174,7 @@ namespace Spartan
 		return true;
 	}
 
-	const shared_ptr<Entity>& Renderer::SnapTransformGizmoTo(const shared_ptr<Entity>& entity) const
+    std::weak_ptr<Spartan::Entity> Renderer::SnapTransformGizmoTo(const shared_ptr<Entity>& entity) const
 	{
 		return m_gizmo_transform->SetSelectedEntity(entity);
 	}

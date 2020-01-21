@@ -53,7 +53,7 @@ namespace Spartan
 		m_handle_scale.Initialize(TransformHandle_Scale, context);
 	}
 
-	const shared_ptr<Entity>& Transform_Gizmo::SetSelectedEntity(const shared_ptr<Entity>& entity)
+    std::weak_ptr<Spartan::Entity> Transform_Gizmo::SetSelectedEntity(const shared_ptr<Entity>& entity)
 	{
 		// Update picked entity only when it's not being edited
 		if (!m_is_editing && !m_just_finished_editing)
@@ -68,15 +68,17 @@ namespace Spartan
 	{
 		m_just_finished_editing = false;
 
+        Entity* selected_entity = m_entity_selected.lock().get();
+
 		// If there is no camera, don't even bother
-		if (!camera || !m_entity_selected)
+		if (!camera || !selected_entity)
 		{
 			m_is_editing = false;
 			return false;
 		}
 
         // If the selected entity is the actual viewport camera, ignore the input
-        if (m_entity_selected->GetId() == camera->GetTransform()->GetEntity_PtrRaw()->GetId())
+        if (selected_entity->GetId() == camera->GetTransform()->GetEntity_PtrRaw()->GetId())
         {
             m_is_editing = false;
             return false;
@@ -101,15 +103,15 @@ namespace Spartan
 		// Update appropriate handle
 		if (m_type == TransformHandle_Position)
 		{
-			m_is_editing = m_handle_position.Update(m_space, m_entity_selected, camera, handle_size, handle_speed);
+			m_is_editing = m_handle_position.Update(m_space, selected_entity, camera, handle_size, handle_speed);
 		}
 		else if (m_type == TransformHandle_Scale)
 		{
-			m_is_editing = m_handle_scale.Update(m_space, m_entity_selected, camera, handle_size, handle_speed);
+			m_is_editing = m_handle_scale.Update(m_space, selected_entity, camera, handle_size, handle_speed);
 		}
 		else if (m_type == TransformHandle_Rotation)
 		{
-			m_is_editing = m_handle_rotation.Update(m_space, m_entity_selected, camera, handle_size, handle_speed);
+			m_is_editing = m_handle_rotation.Update(m_space, selected_entity, camera, handle_size, handle_speed);
 		}
 
 		m_just_finished_editing = was_editing && !m_is_editing;
