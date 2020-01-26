@@ -324,12 +324,12 @@ namespace Spartan
         uint32_t max_texture_dimension_2d = 16384;
 
         // Queues
-        void* queue_graphics                    = nullptr;
-        void* queue_compute                     = nullptr;
-        void* queue_transfer                    = nullptr;
-        uint32_t queue_graphics_index           = 0;
-        uint32_t queue_transfer_index           = 0;
-        uint32_t queue_compute_index            = 0;
+        void* queue_graphics            = nullptr;
+        void* queue_compute             = nullptr;
+        void* queue_transfer            = nullptr;
+        uint32_t queue_graphics_index   = 0;
+        uint32_t queue_transfer_index   = 0;
+        uint32_t queue_compute_index    = 0;
     };
 }
 

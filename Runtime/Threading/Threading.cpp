@@ -32,13 +32,15 @@ namespace Spartan
 {
 	Threading::Threading(Context* context) : ISubsystem(context)
 	{
-		m_stopping	    = false;
-        m_thread_max    = thread::hardware_concurrency();
-		m_thread_count  = m_thread_max - 1; // exclude the main (this) thread
+		m_stopping	                            = false;
+        m_thread_max                            = thread::hardware_concurrency();
+		m_thread_count                          = m_thread_max - 1; // exclude the main (this) thread
+        m_thread_names[this_thread::get_id()]   = "main";
 
 		for (uint32_t i = 0; i < m_thread_count; i++)
 		{
 			m_threads.emplace_back(thread(&Threading::Invoke, this));
+            m_thread_names[m_threads.back().get_id()] = "worker_" + to_string(i);
 		}
 
 		LOG_INFO("%d threads have been created", m_thread_count);
