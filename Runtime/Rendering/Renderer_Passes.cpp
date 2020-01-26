@@ -48,13 +48,13 @@ namespace Spartan
 {
     void Renderer::SetGlobalSamplersAndConstantBuffers(RHI_CommandList* cmd_list)
     {
-        // Set the buffers we will be using thought the frame
+        // Constant buffers
         cmd_list->SetConstantBuffer(0, RHI_Buffer_VertexShader | RHI_Buffer_PixelShader, m_buffer_frame_gpu);
         cmd_list->SetConstantBuffer(1, RHI_Buffer_VertexShader | RHI_Buffer_PixelShader, m_buffer_uber_gpu);
         cmd_list->SetConstantBuffer(2, RHI_Buffer_VertexShader, m_buffer_object_gpu);
         cmd_list->SetConstantBuffer(3, RHI_Buffer_PixelShader, m_buffer_light_gpu);
         
-        // Set the samplers we will be using thought the frame
+        // Samplers
         cmd_list->SetSampler(0, m_sampler_compare_depth);
         cmd_list->SetSampler(1, m_sampler_point_clamp);
         cmd_list->SetSampler(2, m_sampler_bilinear_clamp);
@@ -88,9 +88,10 @@ namespace Spartan
         Pass_Composition(cmd_list);
         Pass_PostProcess(cmd_list);
         Pass_Lines(cmd_list, m_render_targets[RenderTarget_Composition_Ldr]);
-        Pass_Gizmos(cmd_list, m_render_targets[RenderTarget_Composition_Ldr]);
+        Pass_Icons(cmd_list, m_render_targets[RenderTarget_Composition_Ldr].get());
+        Pass_TransformHandle(cmd_list, m_render_targets[RenderTarget_Composition_Ldr].get());
         Pass_DebugBuffer(cmd_list, m_render_targets[RenderTarget_Composition_Ldr]);
-        Pass_PerformanceMetrics(cmd_list, m_render_targets[RenderTarget_Composition_Ldr]);
+        Pass_PerformanceMetrics(cmd_list, m_render_targets[RenderTarget_Composition_Ldr].get());
 	}
 
 	void Renderer::Pass_LightDepth(RHI_CommandList* cmd_list)
@@ -294,36 +295,39 @@ namespace Spartan
 	void Renderer::Pass_GBuffer(RHI_CommandList* cmd_list)
 	{
         // Acquire required resources/shaders
-        const auto& tex_albedo      = m_render_targets[RenderTarget_Gbuffer_Albedo];
-        const auto& tex_normal      = m_render_targets[RenderTarget_Gbuffer_Normal];
-        const auto& tex_material    = m_render_targets[RenderTarget_Gbuffer_Material];
-        const auto& tex_velocity    = m_render_targets[RenderTarget_Gbuffer_Velocity];
-        const auto& tex_depth       = m_render_targets[RenderTarget_Gbuffer_Depth];
-        const auto& shader_v        = m_shaders[Shader_Gbuffer_V];
+        RHI_Texture* tex_albedo       = m_render_targets[RenderTarget_Gbuffer_Albedo].get();
+        RHI_Texture* tex_normal       = m_render_targets[RenderTarget_Gbuffer_Normal].get();
+        RHI_Texture* tex_material     = m_render_targets[RenderTarget_Gbuffer_Material].get();
+        RHI_Texture* tex_velocity     = m_render_targets[RenderTarget_Gbuffer_Velocity].get();
+        RHI_Texture* tex_depth        = m_render_targets[RenderTarget_Gbuffer_Depth].get();
+        RHI_Shader* shader_v          = m_shaders[Shader_Gbuffer_V].get();
 
         // Validate that the shader has compiled
         if (!shader_v->IsCompiled())
             return;
       
         // Set render state
-        static RHI_PipelineState pipeline_state;
-        pipeline_state.shader_vertex                    = shader_v.get();
+        RHI_PipelineState pipeline_state;
+        pipeline_state.shader_vertex                    = shader_v;
         pipeline_state.vertex_buffer_stride             = static_cast<uint32_t>(sizeof(RHI_Vertex_PosTexNorTan)); // assume all vertex buffers have the same stride
         pipeline_state.blend_state                      = m_blend_disabled.get();
         pipeline_state.rasterizer_state                 = GetOptionValue(Render_Debug_Wireframe)    ? m_rasterizer_cull_back_wireframe.get() : m_rasterizer_cull_back_solid.get();
         pipeline_state.depth_stencil_state              = GetOptionValue(Render_DepthPrepass)       ? m_depth_stencil_enabled_no_write.get() : m_depth_stencil_enabled_write.get();
-        pipeline_state.render_target_color_textures[0]  = tex_albedo.get();
+        pipeline_state.render_target_color_textures[0]  = tex_albedo;
         pipeline_state.render_target_color_clear[0]     = Vector4::Zero;
-        pipeline_state.render_target_color_textures[1]  = tex_normal.get();
+        pipeline_state.render_target_color_textures[1]  = tex_normal;
         pipeline_state.render_target_color_clear[1]     = Vector4::Zero;
-        pipeline_state.render_target_color_textures[2]  = tex_material.get();
+        pipeline_state.render_target_color_textures[2]  = tex_material;
         pipeline_state.render_target_color_clear[2]     = Vector4::Zero; // zeroed material buffer causes sky sphere to render
-        pipeline_state.render_target_color_textures[3]  = tex_velocity.get();
+        pipeline_state.render_target_color_textures[3]  = tex_velocity;
         pipeline_state.render_target_color_clear[3]     = Vector4::Zero;
-        pipeline_state.render_target_depth_texture      = tex_depth.get();
+        pipeline_state.render_target_depth_texture      = tex_depth;
         pipeline_state.render_target_depth_clear        = GetOptionValue(Render_DepthPrepass) ? state_dont_clear_depth : GetClearDepth();
         pipeline_state.viewport                         = tex_albedo->GetViewport();
         pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
+
+        // Clear
+        cmd_list->Clear(pipeline_state);
 
         // Only useful to minimize D3D11 state changes (Vulkan backend is smarter)
         uint32_t m_set_material_id = 0;
@@ -1709,93 +1713,100 @@ namespace Spartan
         }
 	}
 
-	void Renderer::Pass_Gizmos(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_out)
+	void Renderer::Pass_Icons(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
 	{
-        // Early exit cases
-		bool render_lights		                = m_options & Render_Debug_Lights;
-		bool render_transform	                = m_options & Render_Debug_Transform;
-        bool render				                = render_lights || render_transform;
-		const auto& shader_quad_v               = m_shaders[Shader_Quad_V];
-        const auto& shader_texture_p            = m_shaders[Shader_Texture_P];
-        auto const& shader_gizmo_transform_v    = m_shaders[Shader_GizmoTransform_V];
-        auto const& shader_gizmo_transform_p    = m_shaders[Shader_GizmoTransform_P];
-		if (!render || !shader_quad_v->IsCompiled() || !shader_texture_p->IsCompiled() || !shader_gizmo_transform_v->IsCompiled() || !shader_gizmo_transform_p->IsCompiled())
+        if (!(m_options & Render_Debug_Lights))
+            return;
+
+        // Acquire resources
+        auto& lights                    = m_entities[Renderer_Object_Light];
+		const auto& shader_quad_v       = m_shaders[Shader_Quad_V];
+        const auto& shader_texture_p    = m_shaders[Shader_Texture_P];
+		if (lights.empty() || !shader_quad_v->IsCompiled() || !shader_texture_p->IsCompiled())
 			return;
 
-        auto& lights = m_entities[Renderer_Object_Light];
-        if (render_lights && !lights.empty())
-        {
-            // Set render state
-            static RHI_PipelineState pipeline_state;
-            pipeline_state.shader_vertex                    = shader_quad_v.get();
-            pipeline_state.shader_pixel                     = shader_texture_p.get();
-            pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
-            pipeline_state.blend_state                      = m_blend_enabled.get();
-            pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
-            pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride(); // stride matches rect
-            pipeline_state.render_target_color_textures[0]  = tex_out.get();
-            pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
-            pipeline_state.viewport                         = tex_out->GetViewport();
-            pipeline_state.pass_name                        = "Pass_Gizmos_Lights";
+        // Set render state
+        static RHI_PipelineState pipeline_state;
+        pipeline_state.shader_vertex                    = shader_quad_v.get();
+        pipeline_state.shader_pixel                     = shader_texture_p.get();
+        pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
+        pipeline_state.blend_state                      = m_blend_enabled.get();
+        pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
+        pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride(); // stride matches rect
+        pipeline_state.render_target_color_textures[0]  = tex_out;
+        pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
+        pipeline_state.viewport                         = tex_out->GetViewport();
+        pipeline_state.pass_name                        = "Pass_Gizmos_Lights";
 
-            // For each light
-        	for (const auto& entity : lights)
-        	{
-                if (cmd_list->Begin(pipeline_state))
+        // For each light
+        for (const auto& entity : lights)
+        {
+            if (cmd_list->Begin(pipeline_state))
+            {
+                // Light can be null if it just got removed and our buffer doesn't update till the next frame
+                if (Light* light = entity->GetComponent<Light>().get())
                 {
-                    // Light can be null if it just got removed and our buffer doesn't update till the next frame
-                    if (Light* light = entity->GetComponent<Light>().get())
+                    auto position_light_world       = entity->GetTransform_PtrRaw()->GetPosition();
+                    auto position_camera_world      = m_camera->GetTransform()->GetPosition();
+                    auto direction_camera_to_light  = (position_light_world - position_camera_world).Normalized();
+                    auto v_dot_l                    = Vector3::Dot(m_camera->GetTransform()->GetForward(), direction_camera_to_light);
+        
+                    // Only draw if it's inside our view
+                    if (v_dot_l > 0.5f)
                     {
-                        auto position_light_world       = entity->GetTransform_PtrRaw()->GetPosition();
-                        auto position_camera_world      = m_camera->GetTransform()->GetPosition();
-                        auto direction_camera_to_light  = (position_light_world - position_camera_world).Normalized();
-                        auto v_dot_l                    = Vector3::Dot(m_camera->GetTransform()->GetForward(), direction_camera_to_light);
+                        // Compute light screen space position and scale (based on distance from the camera)
+                        auto position_light_screen = m_camera->WorldToScreenPoint(position_light_world);
+                        auto distance = (position_camera_world - position_light_world).Length() + M_EPSILON;
+                        auto scale = m_gizmo_size_max / distance;
+                        scale = Clamp(scale, m_gizmo_size_min, m_gizmo_size_max);
         
-                        // Only draw if it's inside our view
-                        if (v_dot_l > 0.5f)
+                        // Choose texture based on light type
+                        shared_ptr<RHI_Texture> light_tex = nullptr;
+                        auto type = light->GetLightType();
+                        if (type == LightType_Directional)	light_tex = m_gizmo_tex_light_directional;
+                        else if (type == LightType_Point)	light_tex = m_gizmo_tex_light_point;
+                        else if (type == LightType_Spot)	light_tex = m_gizmo_tex_light_spot;
+        
+                        // Construct appropriate rectangle
+                        auto tex_width = light_tex->GetWidth() * scale;
+                        auto tex_height = light_tex->GetHeight() * scale;
+                        auto rectangle = Math::Rectangle(position_light_screen.x - tex_width * 0.5f, position_light_screen.y - tex_height * 0.5f, tex_width, tex_height);
+                        if (rectangle != m_gizmo_light_rect)
                         {
-                            // Compute light screen space position and scale (based on distance from the camera)
-                            auto position_light_screen = m_camera->WorldToScreenPoint(position_light_world);
-                            auto distance = (position_camera_world - position_light_world).Length() + M_EPSILON;
-                            auto scale = m_gizmo_size_max / distance;
-                            scale = Clamp(scale, m_gizmo_size_min, m_gizmo_size_max);
-        
-                            // Choose texture based on light type
-                            shared_ptr<RHI_Texture> light_tex = nullptr;
-                            auto type = light->GetLightType();
-                            if (type == LightType_Directional)	light_tex = m_gizmo_tex_light_directional;
-                            else if (type == LightType_Point)	light_tex = m_gizmo_tex_light_point;
-                            else if (type == LightType_Spot)	light_tex = m_gizmo_tex_light_spot;
-        
-                            // Construct appropriate rectangle
-                            auto tex_width = light_tex->GetWidth() * scale;
-                            auto tex_height = light_tex->GetHeight() * scale;
-                            auto rectangle = Math::Rectangle(position_light_screen.x - tex_width * 0.5f, position_light_screen.y - tex_height * 0.5f, tex_width, tex_height);
-                            if (rectangle != m_gizmo_light_rect)
-                            {
-                                m_gizmo_light_rect = rectangle;
-                                m_gizmo_light_rect.CreateBuffers(this);
-                            }
-        
-                            // Update uber buffer
-                            m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_width), static_cast<float>(tex_width));
-                            m_buffer_uber_cpu.transform = m_buffer_frame_cpu.view_projection_ortho;
-                            UpdateUberBuffer();
-        
-                            cmd_list->SetTexture(0, light_tex);
-                            cmd_list->SetBufferIndex(m_gizmo_light_rect.GetIndexBuffer());
-                            cmd_list->SetBufferVertex(m_gizmo_light_rect.GetVertexBuffer());
-                            cmd_list->DrawIndexed(Rectangle::GetIndexCount());
+                            m_gizmo_light_rect = rectangle;
+                            m_gizmo_light_rect.CreateBuffers(this);
                         }
-                    }
-                    cmd_list->End();
-                    cmd_list->Submit();
-                }
-        	}
-        }
         
+                        // Update uber buffer
+                        m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_width), static_cast<float>(tex_width));
+                        m_buffer_uber_cpu.transform = m_buffer_frame_cpu.view_projection_ortho;
+                        UpdateUberBuffer();
+        
+                        cmd_list->SetTexture(0, light_tex);
+                        cmd_list->SetBufferIndex(m_gizmo_light_rect.GetIndexBuffer());
+                        cmd_list->SetBufferVertex(m_gizmo_light_rect.GetVertexBuffer());
+                        cmd_list->DrawIndexed(Rectangle::GetIndexCount());
+                    }
+                }
+                cmd_list->End();
+                cmd_list->Submit();
+            }
+        }  
+	}
+
+    void Renderer::Pass_TransformHandle(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
+	{
+        if (!(m_options & Render_Debug_Transform))
+            return;
+
+        // Acquire resources
+        auto const& shader_gizmo_transform_v    = m_shaders[Shader_GizmoTransform_V];
+        auto const& shader_gizmo_transform_p    = m_shaders[Shader_GizmoTransform_P];
+        if (!shader_gizmo_transform_v->IsCompiled() || !shader_gizmo_transform_p->IsCompiled())
+            return;
+
         // Transform
-        if (render_transform && m_gizmo_transform->Update(m_camera.get(), m_gizmo_transform_size, m_gizmo_transform_speed))
+        if (m_gizmo_transform->Update(m_camera.get(), m_gizmo_transform_size, m_gizmo_transform_speed))
         {
             // Set render state
             static RHI_PipelineState pipeline_state;
@@ -1805,7 +1816,7 @@ namespace Spartan
             pipeline_state.blend_state                      = m_blend_enabled.get();
             pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
             pipeline_state.vertex_buffer_stride             = m_gizmo_transform->GetVertexBuffer()->GetStride();
-            pipeline_state.render_target_color_textures[0]  = tex_out.get();
+            pipeline_state.render_target_color_textures[0]  = tex_out;
             pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
             pipeline_state.viewport                         = tex_out->GetViewport();
 
@@ -1813,8 +1824,8 @@ namespace Spartan
             pipeline_state.pass_name = "Pass_Gizmos_Axis_X";
             if (cmd_list->Begin(pipeline_state))
             {
-                m_buffer_uber_cpu.transform = m_gizmo_transform->GetHandle().GetTransform(Vector3::Right);
-                m_buffer_uber_cpu.transform_axis = m_gizmo_transform->GetHandle().GetColor(Vector3::Right);
+                m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle().GetTransform(Vector3::Right);
+                m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle().GetColor(Vector3::Right);
                 UpdateUberBuffer();
             
                 cmd_list->SetBufferIndex(m_gizmo_transform->GetIndexBuffer());
@@ -1843,8 +1854,8 @@ namespace Spartan
             pipeline_state.pass_name = "Pass_Gizmos_Axis_Z";
             if (cmd_list->Begin(pipeline_state))
             {
-                m_buffer_uber_cpu.transform = m_gizmo_transform->GetHandle().GetTransform(Vector3::Forward);
-                m_buffer_uber_cpu.transform_axis = m_gizmo_transform->GetHandle().GetColor(Vector3::Forward);
+                m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle().GetTransform(Vector3::Forward);
+                m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle().GetColor(Vector3::Forward);
                 UpdateUberBuffer();
 
                 cmd_list->SetBufferIndex(m_gizmo_transform->GetIndexBuffer());
@@ -1860,8 +1871,8 @@ namespace Spartan
                 pipeline_state.pass_name = "Pass_Gizmos_Axis_XYZ";
                 if (cmd_list->Begin(pipeline_state))
                 {
-                    m_buffer_uber_cpu.transform = m_gizmo_transform->GetHandle().GetTransform(Vector3::One);
-                    m_buffer_uber_cpu.transform_axis = m_gizmo_transform->GetHandle().GetColor(Vector3::One);
+                    m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle().GetTransform(Vector3::One);
+                    m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle().GetColor(Vector3::One);
                     UpdateUberBuffer();
 
                     cmd_list->SetBufferIndex(m_gizmo_transform->GetIndexBuffer());
@@ -1874,7 +1885,12 @@ namespace Spartan
         }
 	}
 
-	void Renderer::Pass_PerformanceMetrics(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_out)
+    void Renderer::Pass_Outline(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_out)
+    {
+
+    }
+
+	void Renderer::Pass_PerformanceMetrics(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
 	{
         // Early exit cases
         const bool draw         = m_options & Render_Debug_PerformanceMetrics;
@@ -1892,7 +1908,7 @@ namespace Spartan
         pipeline_state.blend_state                      = m_blend_enabled.get();
         pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
         pipeline_state.vertex_buffer_stride             = m_font->GetVertexBuffer()->GetStride();
-        pipeline_state.render_target_color_textures[0]  = tex_out.get();
+        pipeline_state.render_target_color_textures[0]  = tex_out;
         pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
         pipeline_state.viewport                         = tex_out->GetViewport();
         pipeline_state.pass_name                        = "Pass_PerformanceMetrics";

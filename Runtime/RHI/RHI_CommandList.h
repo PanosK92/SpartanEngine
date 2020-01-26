@@ -53,6 +53,9 @@ namespace Spartan
         bool Begin(RHI_PipelineState& pipeline_state);
         bool End();
 
+        // Clear
+        void Clear(RHI_PipelineState& pipeline_state);
+
 		// Draw
 		void Draw(uint32_t vertex_count);
 		void DrawIndexed(uint32_t index_count, uint32_t index_offset = 0, uint32_t vertex_offset = 0);
@@ -87,10 +90,6 @@ namespace Spartan
         void SetTexture(const uint32_t slot, RHI_Texture* texture);
         inline void SetTexture(const uint32_t slot, const std::shared_ptr<RHI_Texture>& texture) { SetTexture(slot, texture.get()); }
         
-		// Render targets
-        void ClearRenderTarget(void* render_target, const Math::Vector4& color);
-		void ClearDepthStencil(void* depth_stencil, uint32_t flags, float depth, uint8_t stencil = 0);
-
         // Submit/Flush
 		bool Submit();
         bool Flush();
@@ -111,6 +110,8 @@ namespace Spartan
 	private:
         void MarkAndProfileStart(const RHI_PipelineState* pipeline_state);
         void MarkAndProfileEnd(const RHI_PipelineState* pipeline_state);
+        void BeginRenderPass();
+        void BindDescriptorSet();
         bool OnDraw();
 
         std::vector<bool> m_passes_active;
@@ -126,7 +127,7 @@ namespace Spartan
         void* m_cmd_buffer                      = nullptr;
         void* m_cmd_list_consumed_fence         = nullptr;
         void* m_query_pool                      = nullptr;
-        bool m_render_pass_and_pipeline_set     = false;
+        bool m_render_pass_begun_pipeline_bound     = false;
         uint32_t m_set_id_vertex_buffer         = 0;
         uint32_t m_set_id_index_buffer          = 0;
         std::vector<uint64_t> m_timestamps;

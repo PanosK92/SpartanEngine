@@ -177,10 +177,10 @@ namespace Spartan
         }
 
         // End render pass
-        if (m_render_pass_and_pipeline_set)
+        if (m_render_pass_begun_pipeline_bound)
         {
             vkCmdEndRenderPass(CMD_BUFFER);
-            m_render_pass_and_pipeline_set = false;
+            m_render_pass_begun_pipeline_bound = false;
         }
 
         // End marker and profiler
@@ -194,6 +194,17 @@ namespace Spartan
         m_cmd_state = RHI_Cmd_List_Ended;
        
         return true;
+    }
+
+    void RHI_CommandList::Clear(RHI_PipelineState& pipeline_state)
+    {
+        if (Begin(pipeline_state))
+        {
+            OnDraw();
+            End();
+            Submit();
+            pipeline_state.ResetClearValues();
+        }
     }
 
 	void RHI_CommandList::Draw(const uint32_t vertex_count)
@@ -398,63 +409,6 @@ namespace Spartan
         m_pipeline->GetDescriptorSet()->SetTexture(slot, texture);
     }
 
-	void RHI_CommandList::ClearRenderTarget(void* render_target, const Vector4& color)
-	{
-        // https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/vkspec.html#clears-outside
-        //if (m_cmd_state != RHI_Cmd_List_Idle)
-        //{
-        //    LOG_WARNING("Explicit clearing can only happen outside of a render pass instance");
-        //    return;
-        //}
-
-        //VkImageSubresourceRange subResourceRange    = {};
-        //subResourceRange.aspectMask                 = VK_IMAGE_ASPECT_COLOR_BIT;
-        //subResourceRange.baseMipLevel               = 0;
-        //subResourceRange.levelCount                 = 1;
-        //subResourceRange.baseArrayLayer             = 0;
-        //subResourceRange.layerCount                 = 1;
-
-        //VkImageMemoryBarrier presentToClearBarrier  = {};
-        //presentToClearBarrier.sType                 = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        //presentToClearBarrier.srcAccessMask         = VK_ACCESS_MEMORY_READ_BIT;
-        //presentToClearBarrier.dstAccessMask         = VK_ACCESS_TRANSFER_WRITE_BIT;
-        //presentToClearBarrier.oldLayout             = VK_IMAGE_LAYOUT_UNDEFINED;
-        //presentToClearBarrier.newLayout             = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        //presentToClearBarrier.srcQueueFamilyIndex   = presentQueueFamily;
-        //presentToClearBarrier.dstQueueFamilyIndex   = presentQueueFamily;
-        //presentToClearBarrier.image                 = swapChainImages[i];
-        //presentToClearBarrier.subresourceRange      = subResourceRange;
-
-        //// Change layout of image to be optimal for presenting
-        //VkImageMemoryBarrier clearToPresentBarrier  = {};
-        //clearToPresentBarrier.sType                 = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        //clearToPresentBarrier.srcAccessMask         = VK_ACCESS_TRANSFER_WRITE_BIT;
-        //clearToPresentBarrier.dstAccessMask         = VK_ACCESS_MEMORY_READ_BIT;
-        //clearToPresentBarrier.oldLayout             = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        //clearToPresentBarrier.newLayout             = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-        //clearToPresentBarrier.srcQueueFamilyIndex   = presentQueueFamily;
-        //clearToPresentBarrier.dstQueueFamilyIndex   = presentQueueFamily;
-        //clearToPresentBarrier.image                 = swapChainImages[i];
-        //clearToPresentBarrier.subresourceRange      = subResourceRange;
-
-        //vkCmdPipelineBarrier(CMD_BUFFER, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &presentToClearBarrier);
-        //VkClearColorValue clear_color = { { color.x, color.x, color.y, color.w } };
-        //vkCmdClearColorImage(CMD_BUFFER, static_cast<VkImage>(render_target), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clear_color, 1, &subResourceRange);
-        //vkCmdPipelineBarrier(CMD_BUFFER, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 1, &clearToPresentBarrier);
-	}
-
-    void RHI_CommandList::ClearDepthStencil(void* depth_stencil, const uint32_t flags, const float depth, const uint8_t stencil /*= 0*/)
-    {
-        // https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/vkspec.html#clears-outside
-        //if (m_cmd_state != RHI_Cmd_List_Idle)
-        //{
-        //    LOG_WARNING("Explicit clearing can only happen outside of a render pass instance");
-        //    return;
-        //}
-
-        // vkCmdClearDepthStencilImage
-	}
-
 	bool RHI_CommandList::Submit()
 	{
         if (m_cmd_state != RHI_Cmd_List_Ended)
@@ -476,7 +430,7 @@ namespace Spartan
 
         // If the render pass has been bound then it cleared to whatever values was requested (or not)
         // So at this point we reset the values as we don't want to clear again.
-        if (m_render_pass_and_pipeline_set)
+        if (m_render_pass_begun_pipeline_bound)
         {
             m_pipeline_state->ResetClearValues();
         }
@@ -651,62 +605,46 @@ namespace Spartan
         }
     }
 
-    bool RHI_CommandList::OnDraw()
+    void RHI_CommandList::BeginRenderPass()
     {
-        // Begin render pass and bind pipeline (if not done yet)
-        if (!m_render_pass_and_pipeline_set)
+        // Clear values
+        array<VkClearValue, state_max_render_target_count + 1> clear_values; // +1 for depth      
+        uint32_t clear_value_count = 0;
         {
-            // Clear values
-            array<VkClearValue, state_max_render_target_count + 1> clear_values; // +1 for depth      
-            uint32_t clear_value_count = 0;
+            // Color
+            for (auto i = 0; i < state_max_render_target_count; i++)
             {
-                // Color
-                for (auto i = 0; i < state_max_render_target_count; i++)
+                if (m_pipeline_state->render_target_color_clear[i] != state_dont_clear_color)
                 {
-                    if (m_pipeline_state->render_target_color_clear[i] != state_dont_clear_color)
-                    {
-                        Vector4& color = m_pipeline_state->render_target_color_clear[i];
-                        clear_values[clear_value_count++].color = { {color.x, color.y, color.z, color.w} };
-                    }
+                    Vector4& color = m_pipeline_state->render_target_color_clear[i];
+                    clear_values[clear_value_count++].color = { {color.x, color.y, color.z, color.w} };
                 }
-
-                // Depth
-                if (m_pipeline_state->render_target_depth_clear != state_dont_clear_depth)
-                {
-                    clear_values[clear_value_count++].depthStencil = { m_pipeline_state->render_target_depth_clear, 0 };
-                }
-
-                // Swapchain
             }
 
-            // Begin render pass
-		    VkRenderPassBeginInfo render_pass_info		= {};
-		    render_pass_info.sType						= VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		    render_pass_info.renderPass					= static_cast<VkRenderPass>(m_pipeline->GetPipelineState()->GetRenderPass());
-		    render_pass_info.framebuffer				= static_cast<VkFramebuffer>(m_pipeline->GetPipelineState()->GetFrameBuffer());
-		    render_pass_info.renderArea.offset			= { 0, 0 };
-            render_pass_info.renderArea.extent.width    = m_pipeline->GetPipelineState()->GetWidth();
-		    render_pass_info.renderArea.extent.height	= m_pipeline->GetPipelineState()->GetHeight();
-		    render_pass_info.clearValueCount			= clear_value_count;
-		    render_pass_info.pClearValues				= clear_values.data();
-		    vkCmdBeginRenderPass(CMD_BUFFER, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
-
-            // Bind pipeline
-            if (VkPipeline vk_pipeline = static_cast<VkPipeline>(m_pipeline->GetPipeline()))
+            // Depth
+            if (m_pipeline_state->render_target_depth_clear != state_dont_clear_depth)
             {
-                vkCmdBindPipeline(CMD_BUFFER, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline);
-                m_profiler->m_rhi_bindings_pipeline++;
-            }
-            else
-            {
-                LOG_ERROR("Invalid pipeline");
-                return false;
+                clear_values[clear_value_count++].depthStencil = { m_pipeline_state->render_target_depth_clear, 0 };
             }
 
-            m_render_pass_and_pipeline_set = true;
+            // Swapchain
         }
 
-        // Update descriptor set (if not done yet)
+        // Begin render pass
+        VkRenderPassBeginInfo render_pass_info      = {};
+        render_pass_info.sType                      = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        render_pass_info.renderPass                 = static_cast<VkRenderPass>(m_pipeline->GetPipelineState()->GetRenderPass());
+        render_pass_info.framebuffer                = static_cast<VkFramebuffer>(m_pipeline->GetPipelineState()->GetFrameBuffer());
+        render_pass_info.renderArea.offset          = { 0, 0 };
+        render_pass_info.renderArea.extent.width    = m_pipeline->GetPipelineState()->GetWidth();
+        render_pass_info.renderArea.extent.height   = m_pipeline->GetPipelineState()->GetHeight();
+        render_pass_info.clearValueCount            = clear_value_count;
+        render_pass_info.pClearValues               = clear_values.data();
+        vkCmdBeginRenderPass(CMD_BUFFER, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
+    }
+
+    void RHI_CommandList::BindDescriptorSet()
+    {
         RHI_DescriptorSet* descriptor_set = m_pipeline->GetDescriptorSet();
         if (void* vk_descriptor_set = descriptor_set->GetResource_Set())
         {
@@ -735,6 +673,32 @@ namespace Spartan
             m_set_id_vertex_buffer  = 0;
             m_set_id_index_buffer   = 0;
         }
+    }
+
+    bool RHI_CommandList::OnDraw()
+    {
+        if (!m_render_pass_begun_pipeline_bound)
+        {
+            // Begin render pass
+            BeginRenderPass();
+
+            // Bind pipeline
+            if (VkPipeline vk_pipeline = static_cast<VkPipeline>(m_pipeline->GetPipeline()))
+            {
+                vkCmdBindPipeline(CMD_BUFFER, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline);
+                m_profiler->m_rhi_bindings_pipeline++;
+            }
+            else
+            {
+                LOG_ERROR("Invalid pipeline");
+                return false;
+            }
+
+            m_render_pass_begun_pipeline_bound = true;
+        }
+
+        // Bind descriptor set
+        BindDescriptorSet();
 
         return true;
     }

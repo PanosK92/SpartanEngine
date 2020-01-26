@@ -329,6 +329,10 @@ namespace Spartan
         m_shaders[Shader_Composition_P] = make_shared<RHI_Shader>(m_rhi_device);
         m_shaders[Shader_Composition_P]->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Composition.hlsl");
 
+        // Outline
+        m_shaders[Shader_Outline_P] = make_shared<RHI_Shader>(m_rhi_device);
+        m_shaders[Shader_Outline_P]->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Outline.hlsl");
+
         // Font
         m_shaders[Shader_Font_V] = make_shared<RHI_Shader>(m_rhi_device);
         m_shaders[Shader_Font_V]->CompileAsync<RHI_Vertex_PosTex>(m_context, Shader_Vertex, dir_shaders + "Font.hlsl");

@@ -19,8 +19,11 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-// Downsample with a 4x4 box filter
-float4 Downsample_Box(float2 uv, Texture2D tex_normal)
+//= INCLUDES =========
+#include "Common.hlsl"
+//====================
+
+float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
-	float3 normal = get_normal(tex_normal, uv);
+	return float4(1.0f, 0.0f, 0.0f, 1.0f);
 }

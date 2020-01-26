@@ -246,6 +246,9 @@ namespace Spartan
 
     bool FileSystem::IsFile(const string& path)
     {
+        if (path.empty())
+            return false;
+
         try
         {
             if (filesystem::exists(path) && filesystem::is_regular_file(path))
@@ -314,7 +317,21 @@ namespace Spartan
 
 	string FileSystem::GetExtensionFromFilePath(const string& path)
 	{
-        return filesystem::path(path).extension().generic_string();
+        string extension;
+
+        // A system_error is possible if the characters are
+        // something that can't be converted, like Russian.
+        try
+        {
+            extension = filesystem::path(path).extension().generic_string();
+        }
+        catch (system_error & e)
+        {
+            LOG_WARNING("Failed. %s", e.what());
+            
+        }
+
+        return extension;
 	}
 
     string FileSystem::NativizeFilePath(const string& path)
