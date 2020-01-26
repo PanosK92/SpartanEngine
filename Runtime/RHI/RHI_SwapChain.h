@@ -66,7 +66,7 @@ namespace Spartan
         void* GetResource_View(uint32_t i = 0)      const { return m_resource_view[i]; }
         void* GetResource_RenderTarget()	        const { return m_resource_render_target; }
         void* GetResource_Texture(uint32_t i = 0)   const { return m_resource_texture[i]; }
-        void* GetResource_View_AcquiredSemaphore()  const { return m_resource_view_acquired_semaphore[m_image_index]; }
+        void* GetResource_View_AcquiredSemaphore()  const { return m_present ? m_resource_view_acquired_semaphore[m_image_index] : nullptr; }
         void*& GetCmdPool()                               { return m_cmd_pool; }
 
 	private:

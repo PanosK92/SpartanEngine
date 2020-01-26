@@ -378,18 +378,7 @@ namespace Spartan
             return false;
         }
 
-        VkSemaphore wait_semaphores[]   = { nullptr };
-        VkSwapchainKHR swap_chains[]    = { static_cast<VkSwapchainKHR>(m_swap_chain_view) };
-
-		VkPresentInfoKHR present_info	= {};
-		present_info.sType				= VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-		present_info.waitSemaphoreCount = 0;
-		present_info.pWaitSemaphores	= wait_semaphores;
-		present_info.swapchainCount		= 1;
-		present_info.pSwapchains		= swap_chains;
-		present_info.pImageIndices		= &m_image_index;
-
-        return vulkan_common::error::check(vkQueuePresentKHR(static_cast<VkQueue>(m_rhi_device->GetContextRhi()->queue_graphics), &present_info));
+        return m_rhi_device->Queue_Present(m_swap_chain_view, &m_image_index);
 	}
 
     void RHI_SwapChain::SetLayout(RHI_Image_Layout layout, RHI_CommandList* command_list /*= nullptr*/)

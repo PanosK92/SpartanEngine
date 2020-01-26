@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <thread>
 #include <mutex>
 #include <deque>
+#include <map>
 #include <functional>
 #include "../Logging/Log.h"
 #include "../Core/ISubsystem.h"
@@ -124,6 +125,7 @@ namespace Spartan
 		std::deque<std::shared_ptr<Task>> m_tasks;
 		std::mutex m_mutex_tasks;
 		std::condition_variable m_condition_var;
+        std::map<std::thread::id, std::string> m_thread_names;
 		bool m_stopping;
 	};
 }
