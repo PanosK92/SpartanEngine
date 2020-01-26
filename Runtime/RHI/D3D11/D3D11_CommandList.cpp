@@ -193,42 +193,7 @@ namespace Spartan
         }
 
         // Clear render target(s)
-        {
-            for (auto i = 0; i < state_max_render_target_count; i++)
-            {
-                if (pipeline_state.render_target_color_clear[i] != state_dont_clear_color)
-                {
-                    if (pipeline_state.render_target_swapchain)
-                    {
-                        ClearRenderTarget
-                        (
-                            pipeline_state.render_target_swapchain->GetResource_RenderTarget(),
-                            pipeline_state.render_target_color_clear[i]
-                        );
-                    }
-                    else if (pipeline_state.render_target_color_textures[i])
-                    {
-                        ClearRenderTarget
-                        (
-                            pipeline_state.render_target_color_textures[i]->GetResource_RenderTarget(),
-                            pipeline_state.render_target_color_clear[i]
-                        );
-                    }
-                }
-            }
-
-            if (pipeline_state.render_target_depth_clear != state_dont_clear_depth)
-            {
-                ClearDepthStencil
-                (
-                    pipeline_state.render_target_depth_texture->GetResource_DepthStencil(pipeline_state.render_target_depth_array_index),
-                    RHI_Clear_Depth,
-                    pipeline_state.render_target_depth_clear
-                );
-            }
-        }
-
-        m_pipeline_state->ResetClearValues();
+        Clear(pipeline_state);
 
         return true;
 	}
@@ -239,6 +204,52 @@ namespace Spartan
         MarkAndProfileEnd(m_pipeline_state);
         return true;
 	}
+
+    void RHI_CommandList::Clear(RHI_PipelineState& pipeline_state)
+    {
+        for (auto i = 0; i < state_max_render_target_count; i++)
+        {
+            if (pipeline_state.render_target_color_clear[i] != state_dont_clear_color)
+            {
+                if (pipeline_state.render_target_swapchain)
+                {
+                    m_rhi_device->GetContextRhi()->device_context->ClearRenderTargetView
+                    (
+                        static_cast<ID3D11RenderTargetView*>(const_cast<void*>(pipeline_state.render_target_swapchain->GetResource_RenderTarget())),
+                        pipeline_state.render_target_color_clear[i].Data()
+                    );
+                }
+                else if (pipeline_state.render_target_color_textures[i])
+                {
+                    m_rhi_device->GetContextRhi()->device_context->ClearRenderTargetView
+                    (
+                        static_cast<ID3D11RenderTargetView*>(const_cast<void*>(pipeline_state.render_target_color_textures[i]->GetResource_RenderTarget())),
+                        pipeline_state.render_target_color_clear[i].Data()
+                    );
+                }
+            }
+        }
+
+        if (pipeline_state.render_target_depth_clear != state_dont_clear_depth)
+        {
+            uint32_t flags  = RHI_Clear_Depth;
+            uint8_t stencil = 0;
+
+            UINT clear_flags = 0;
+            clear_flags |= (flags & RHI_Clear_Depth)    ? D3D11_CLEAR_DEPTH : 0;
+            clear_flags |= (flags & RHI_Clear_Stencil)  ? D3D11_CLEAR_STENCIL : 0;
+
+            m_rhi_device->GetContextRhi()->device_context->ClearDepthStencilView
+            (
+                static_cast<ID3D11DepthStencilView*>(pipeline_state.render_target_depth_texture->GetResource_DepthStencil(pipeline_state.render_target_depth_array_index)),
+                clear_flags,
+                static_cast<FLOAT>(pipeline_state.render_target_depth_clear),
+                static_cast<UINT8>(stencil)
+            );
+        }
+
+        pipeline_state.ResetClearValues();
+    }
 
 	void RHI_CommandList::Draw(const uint32_t vertex_count)
 	{
@@ -421,42 +432,6 @@ namespace Spartan
         }
 
         m_profiler->m_rhi_bindings_texture++;
-	}
-
-	void RHI_CommandList::ClearRenderTarget(void* render_target, const Vector4& color)
-	{
-        if (!render_target)
-        {
-            LOG_ERROR("Provided render_target is null");
-            return;
-        }
-
-        m_rhi_device->GetContextRhi()->device_context->ClearRenderTargetView
-        (
-            static_cast<ID3D11RenderTargetView*>(const_cast<void*>(render_target)),
-            color.Data()
-        );
-	}
-
-	void RHI_CommandList::ClearDepthStencil(void* depth_stencil, const uint32_t flags, const float depth, const uint8_t stencil /*= 0*/)
-	{
-		if (!depth_stencil)
-		{
-			LOG_ERROR("Provided depth stencil is null");
-			return;
-		}
-
-        UINT clear_flags = 0;
-        clear_flags |= (flags & RHI_Clear_Depth)    ? D3D11_CLEAR_DEPTH     : 0;
-        clear_flags |= (flags & RHI_Clear_Stencil)  ? D3D11_CLEAR_STENCIL   : 0;
-
-        m_rhi_device->GetContextRhi()->device_context->ClearDepthStencilView
-        (
-            static_cast<ID3D11DepthStencilView*>(depth_stencil),
-            clear_flags,
-            static_cast<FLOAT>(depth),
-            static_cast<UINT8>(stencil)
-        );
 	}
 
 	bool RHI_CommandList::Submit()

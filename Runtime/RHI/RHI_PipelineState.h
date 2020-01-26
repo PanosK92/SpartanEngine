@@ -68,9 +68,9 @@ namespace Spartan
         int dynamic_constant_buffer_slot = 2; // such a hack, must fix
 
         // Clear values
-        float render_target_depth_clear             = state_dont_clear_depth;
-        uint32_t render_target_depth_array_index    = 0;
-        Math::Vector4 render_target_color_clear[state_max_render_target_count];
+        float render_target_depth_clear                                         = state_dont_clear_depth;
+        uint32_t render_target_depth_array_index                                = 0;
+        Math::Vector4 render_target_color_clear[state_max_render_target_count]  = { state_dont_clear_color };
 
         // Profiling
         const char* pass_name   = nullptr;

@@ -209,14 +209,14 @@ namespace Spartan
 		// If there is no camera, do nothing
 		if (!m_camera)
 		{
-            cmd_list->ClearRenderTarget(m_render_targets[RenderTarget_Composition_Ldr]->GetResource_RenderTarget(), Vector4(0.0f, 0.0f, 0.0f, 1.0f));
+            //cmd_list->ClearRenderTarget(m_render_targets[RenderTarget_Composition_Ldr]->GetResource_RenderTarget(), Vector4(0.0f, 0.0f, 0.0f, 1.0f));
 			return;
 		}
 
 		// If there is nothing to render clear to camera's color and present
 		if (m_entities.empty())
 		{
-            cmd_list->ClearRenderTarget(m_render_targets[RenderTarget_Composition_Ldr]->GetResource_RenderTarget(), m_camera->GetClearColor());
+            //cmd_list->ClearRenderTarget(m_render_targets[RenderTarget_Composition_Ldr]->GetResource_RenderTarget(), m_camera->GetClearColor());
 			return;
 		}
 
@@ -325,7 +325,7 @@ namespace Spartan
 		DrawLine(Vector3(min.x, max.y, max.z), Vector3(min.x, min.y, max.z), color, depth);
 	}
 
-    bool Renderer::UpdateFrameBuffer()
+	bool Renderer::UpdateFrameBuffer()
     {
         // Map
         BufferFrame* buffer = static_cast<BufferFrame*>(m_buffer_frame_gpu->Map());
@@ -405,7 +405,7 @@ namespace Spartan
         bool same_content   = m_buffer_object_cpu == m_buffer_object_cpu_previous;
         bool same_offset    = m_buffer_object_gpu->GetOffsetIndex() == offset_index;
         if (same_content && same_offset)
-            return false;
+            return true;
 
         // Re-allocate buffer with double size (if needed)
         if (offset_index >= m_buffer_object_gpu->GetOffsetCount())

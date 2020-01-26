@@ -167,7 +167,8 @@ namespace Spartan
         Shader_GizmoTransform_P,
 		Shader_BlurBox_P,
 		Shader_BlurGaussian_P,
-		Shader_BlurGaussianBilateral_P
+		Shader_BlurGaussianBilateral_P,
+        Shader_Outline_P
 	};
 
     enum Renderer_RenderTarget_Type
@@ -313,8 +314,10 @@ namespace Spartan
 		void Pass_BlurGaussian(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out, float sigma, float pixel_stride = 1.0f);
 		void Pass_BlurBilateralGaussian(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out, float sigma, float pixel_stride = 1.0f);
 		void Pass_Lines(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_out);
-		void Pass_Gizmos(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_out);
-		void Pass_PerformanceMetrics(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_out);
+        void Pass_Outline(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_out);
+		void Pass_Icons(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
+        void Pass_TransformHandle(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
+		void Pass_PerformanceMetrics(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         void Pass_BrdfSpecularLut(RHI_CommandList* cmd_list);
         void Pass_Copy(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
 
