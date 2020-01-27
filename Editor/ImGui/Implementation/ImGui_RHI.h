@@ -262,8 +262,6 @@ namespace ImGui::RHI
                     {
                         // Compute scissor rectangle
                         auto scissor_rect = Math::Rectangle(pcmd->ClipRect.x - clip_off.x, pcmd->ClipRect.y - clip_off.y, pcmd->ClipRect.z - clip_off.x, pcmd->ClipRect.w - clip_off.y);
-                        scissor_rect.width -= scissor_rect.x;
-                        scissor_rect.height -= scissor_rect.y;
 
                         // Apply scissor rectangle, bind texture and draw
                         cmd_list->SetScissorRectangle(scissor_rect);

@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include <memory>
 #include "../RHI/RHI_Definition.h"
+#include "Vector2.h"
 //================================
 
 namespace Spartan
@@ -37,26 +38,26 @@ namespace Spartan
 		public:
 			Rectangle()
 			{
-				x		= 0;
-				y		= 0;
-				width	= 0;
-				height	= 0;
+				left	= 0;
+                top     = 0;
+				right	= 0;
+                bottom  = 0;
 			}
 
-			Rectangle(const float x, const float y, const float width, const float height)
+			Rectangle(const float left, const float top, const float right, const float bottom)
 			{
-				this->x			= x;
-				this->y			= y;
-				this->width		= width;
-				this->height	= height;
+                this->left      = left;
+                this->top       = top;
+                this->right     = right;
+                this->bottom    = bottom;
 			}
 
 			Rectangle(const Rectangle& rectangle)
 			{
-				x		= rectangle.x;
-				y		= rectangle.y;
-				width	= rectangle.width;
-				height	= rectangle.height;
+                left    = rectangle.left;
+                top     = rectangle.top;
+                right   = rectangle.right;
+                bottom  = rectangle.bottom;
 			}
 
 			~Rectangle() = default;
@@ -64,27 +65,39 @@ namespace Spartan
 			bool operator==(const Rectangle& rhs) const
 			{
 				return
-					x		== rhs.x &&
-					y		== rhs.y &&
-					width	== rhs.width &&
-					height	== rhs.height;
+                    left    == rhs.left     &&
+                    top     == rhs.top      &&
+					right   == rhs.right    &&
+                    bottom  == rhs.bottom;
 			}
 
 			bool operator!=(const Rectangle& rhs) const
 			{
 				return
-					x		!= rhs.x        ||
-					y		!= rhs.y        ||
-					width	!= rhs.width    ||
-					height	!= rhs.height;
+                    left    != rhs.left     ||
+                    top     != rhs.top      ||
+                    right   != rhs.right    ||
+                    bottom  != rhs.bottom;
 			}
 
             bool IsDefined() const
             {
-                return  x       != 0.0f ||
-                        y       != 0.0f ||
-                        width   != 0.0f ||
-                        height  != 0.0f;
+                return  left    != 0.0f ||
+                        top     != 0.0f ||
+                        right   != 0.0f ||
+                        bottom  != 0.0f;
+            }
+
+            float Width() const { return right - left; }
+            float Height() const { return bottom - top; }
+
+            // Merge a point.
+            void Merge(const Vector2& point)
+            {
+                left    = Min(left,     point.x);
+                top     = Min(top,      point.y);
+                right   = Max(right,    point.x);
+                bottom  = Max(bottom,   point.y);
             }
 
 			bool CreateBuffers(Renderer* renderer);
@@ -92,10 +105,12 @@ namespace Spartan
 			const auto&	GetIndexBuffer() const	{ return m_indexBuffer; }
 			const auto& GetVertexBuffer() const	{ return m_vertexBuffer; }
 
-			float x;
-			float y;
-			float width;
-			float height;
+			float left;
+			float top;
+			float right;
+			float bottom;
+
+            static const Rectangle Zero;
 
 		private:
 			std::shared_ptr<RHI_VertexBuffer> m_vertexBuffer;

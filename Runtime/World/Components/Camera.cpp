@@ -47,8 +47,8 @@ namespace Spartan
 
 	void Camera::OnInitialize()
 	{
-        m_mView         = ComputeViewMatrix();
-        m_mProjection   = ComputeProjection();
+        m_view       = ComputeViewMatrix();
+        m_projection = ComputeProjection(m_renderer->GetOptionValue(Render_ReverseZ));
 	}
 
 	void Camera::OnTick(float delta_time)
@@ -73,9 +73,9 @@ namespace Spartan
 		if (!m_isDirty)
 			return;
 
-        m_mView         = ComputeViewMatrix();
-        m_mProjection   = ComputeProjection();
-		m_frustrum      = Frustum(GetViewMatrix(), GetProjectionMatrix(), m_renderer->GetOptionValue(Render_ReverseZ) ? GetNearPlane() : GetFarPlane());
+        m_view       = ComputeViewMatrix();
+        m_projection = ComputeProjection(m_renderer->GetOptionValue(Render_ReverseZ));
+		m_frustrum   = Frustum(GetViewMatrix(), GetProjectionMatrix(), m_renderer->GetOptionValue(Render_ReverseZ) ? GetNearPlane() : GetFarPlane());
 
 		m_isDirty = false;
 	}
@@ -97,11 +97,11 @@ namespace Spartan
 		stream->Read(&m_near_plane);
 		stream->Read(&m_far_plane);
 
-		m_mView         = ComputeViewMatrix();
-		m_mProjection   = ComputeProjection();
+        m_view       = ComputeViewMatrix();
+        m_projection = ComputeProjection(m_renderer->GetOptionValue(Render_ReverseZ));
 	}
 
-	void Camera::SetNearPlane(const float near_plane)
+    void Camera::SetNearPlane(const float near_plane)
 	{
 		m_near_plane = Max(0.01f, near_plane);
 		m_isDirty = true;
@@ -142,9 +142,9 @@ namespace Spartan
 
     bool Camera::IsInViewFrustrum(Renderable* renderable)
 	{
-		const auto box		= renderable->GetAabb();
-		const auto center	= box.GetCenter();
-		const auto extents	= box.GetExtents();
+		const BoundingBox& box  = renderable->GetAabb();
+		const Vector3 center	= box.GetCenter();
+		const Vector3 extents	= box.GetExtents();
 
 		return m_frustrum.IsVisible(center, extents);
 	}
@@ -193,13 +193,13 @@ namespace Spartan
 				continue;
 
             // Score this hit
-            auto& obb = hit.m_entity->GetComponent<Renderable>()->GetAabb();
-            float distance_obb = Vector3::DistanceSquared(hit.m_position, obb.GetCenter());
+            const BoundingBox& aabb = hit.m_entity->GetComponent<Renderable>()->GetAabb();
+            float distance_abb      = Vector3::DistanceSquared(hit.m_position, aabb.GetCenter());
             m_scored.emplace_back
             (
                 hit.m_entity,
                 1.0f - hit.m_distance / m_ray.GetLength(),          // normalized ray distance score
-                1.0f - (distance_obb / obb.GetExtents().Length())   // normalized obb center distance score
+                1.0f - (distance_abb / aabb.GetExtents().Length())  // normalized aabb center distance score
             );
 		}
         m_scored.shrink_to_fit();
@@ -227,9 +227,7 @@ namespace Spartan
 		const auto& viewport = m_renderer->GetViewport();
 
 		// Convert world space position to clip space position
-		const auto vfov_rad			= 2.0f * atan(tan(m_fov_horizontal_rad / 2.0f) * (viewport.height / viewport.width));
-		const auto projection		= Matrix::CreatePerspectiveFieldOfViewLH(vfov_rad, viewport.AspectRatio(), m_near_plane, m_far_plane); // compute non reverse z projection
-		const auto position_clip	= position_world * m_mView * projection;
+		const auto position_clip = position_world * m_view * m_projection;
 
 		// Convert clip space position to screen space position
 		Vector2 position_screen;
@@ -250,7 +248,7 @@ namespace Spartan
 		position_clip.z = 1.0f;
 
 		// Compute world space position
-		const auto view_projection_inverted	= (m_mView * m_mProjection).Inverted();
+		const auto view_projection_inverted	= (m_view * m_projection).Inverted();
 		auto position_world					= position_clip * view_projection_inverted;
 
 		return position_world;
@@ -329,18 +327,10 @@ namespace Spartan
 		return Matrix::CreateLookAtLH(position, look_at, up);
 	}
 
-	Matrix Camera::ComputeProjection(const bool force_non_reverse_z /*= false*/)
+	Matrix Camera::ComputeProjection(const bool reverse_z)
 	{
-        bool reverse_z      = (m_renderer ? m_renderer->GetOptionValue(Render_ReverseZ) : false) && !force_non_reverse_z;
-		float near_plane	= m_near_plane;
-        float far_plane     = m_far_plane;
-
-        // Swap planes if reverse Z is enabled
-        if (reverse_z)
-        {
-            near_plane  = m_far_plane;
-            far_plane   = m_near_plane;
-        }
+		float near_plane	= !reverse_z ? m_near_plane : m_far_plane;
+        float far_plane     = !reverse_z ? m_far_plane  : m_near_plane;
 
 		if (m_projection_type == Projection_Perspective)
 		{

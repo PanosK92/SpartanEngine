@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================
 #include "MathHelper.h"
 #include "Vector3.h"
+#include "Rectangle.h"
 #include "../RHI/RHI_Vertex.h"
 #include <vector>
 //============================
@@ -31,6 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Spartan
 {
 	class Mesh;
+
 	namespace Math
 	{
 		class Matrix;
@@ -43,6 +45,9 @@ namespace Spartan
 
 			// Construct from minimum and maximum vectors.
 			BoundingBox(const Vector3& min, const Vector3& max);
+
+            // Construct from points
+            BoundingBox(const std::vector<Vector3>& points);
 
 			// Construct from vertices
 			BoundingBox(const std::vector<RHI_Vertex_PosTexNorTan>& vertices);
@@ -73,10 +78,10 @@ namespace Spartan
 			Intersection IsInside (const BoundingBox& box) const;
 
 			// Returns a transformed bounding box
-			BoundingBox TransformToAabb(const Matrix& transform);
+			BoundingBox Transform(const Matrix& transform) const;
 
-            // Returns a transformed bounding box
-            BoundingBox TransformToOobb(const Matrix& transform);
+            // Returns a project bounding box
+            Rectangle Projected(const Matrix& projection, float camera_near) const;
 
 			// Merge with another bounding box
 			void Merge(const BoundingBox& box);

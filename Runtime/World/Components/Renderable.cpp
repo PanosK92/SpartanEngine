@@ -215,7 +215,7 @@ namespace Spartan
 
 		if (m_is_dirty)
 		{
-			m_aabb = m_bounding_box.TransformToAabb(GetTransform()->GetMatrix());
+			m_aabb = m_bounding_box.Transform(GetTransform()->GetMatrix());
             m_last_transform = GetTransform()->GetMatrix();
 		}
 

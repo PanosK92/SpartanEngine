@@ -54,7 +54,7 @@ namespace Spartan
 		void UpdateTransform()
 		{
 			transform		= Math::Matrix(position, rotation, scale);
-			box_transformed	= box.TransformToAabb(transform);
+			box_transformed	= box.Transform(transform);
 		}
 
 		void UpdateInput(TransformHandle_Type type, Transform* transform, Input* input);

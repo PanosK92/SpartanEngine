@@ -73,14 +73,15 @@ namespace Spartan
         void GeometryClear();
         void GeometrySet(Geometry_Type type);
 		void GeometryGet(std::vector<uint32_t>* indices, std::vector<RHI_Vertex_PosTexNorTan>* vertices) const;
-		auto GeometryIndexOffset()	const { return m_geometryIndexOffset; }
-		auto GeometryIndexCount()	const { return m_geometryIndexCount; }		
-		auto GeometryVertexOffset() const { return m_geometryVertexOffset; }
-		auto GeometryVertexCount()	const { return m_geometryVertexCount; }
-		auto GeometryType()			const { return m_geometry_type; }
-		const auto& GeometryName()	const { return m_geometryName; }
-		const auto& GeometryModel() const { return m_model; }
-		const Math::BoundingBox& GetAabb();
+		auto GeometryIndexOffset()	                const { return m_geometryIndexOffset; }
+		auto GeometryIndexCount()	                const { return m_geometryIndexCount; }		
+		auto GeometryVertexOffset()                 const { return m_geometryVertexOffset; }
+		auto GeometryVertexCount()	                const { return m_geometryVertexCount; }
+		auto GeometryType()			                const { return m_geometry_type; }
+		const auto& GeometryName()	                const { return m_geometryName; }
+		const auto& GeometryModel()                 const { return m_model; }
+        const Math::BoundingBox& GetBoundingBox()   const { return m_bounding_box; }
+        const Math::BoundingBox& GetAabb();
 		//=====================================================================================================
 
 		//= MATERIAL ============================================================
@@ -113,7 +114,6 @@ namespace Spartan
 		Geometry_Type m_geometry_type;
 		Math::BoundingBox m_bounding_box;
 		Math::BoundingBox m_aabb;
-        Math::BoundingBox m_oobb;
         Math::Matrix m_last_transform   = Math::Matrix::Identity;
         bool m_is_dirty                 = true;
         bool m_castShadows              = true;

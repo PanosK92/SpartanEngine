@@ -195,6 +195,8 @@ namespace Spartan
         // Clear render target(s)
         Clear(pipeline_state);
 
+        m_renderer->SetGlobalSamplersAndConstantBuffers(this);
+
         return true;
 	}
 
@@ -285,11 +287,7 @@ namespace Spartan
 
 	void RHI_CommandList::SetScissorRectangle(const Math::Rectangle& scissor_rectangle)
 	{
-        const auto left                     = scissor_rectangle.x;
-        const auto top                      = scissor_rectangle.y;
-        const auto right                    = scissor_rectangle.x + scissor_rectangle.width;
-        const auto bottom                   = scissor_rectangle.y + scissor_rectangle.height;
-        const D3D11_RECT d3d11_rectangle    = { static_cast<LONG>(left), static_cast<LONG>(top), static_cast<LONG>(right), static_cast<LONG>(bottom) };
+        const D3D11_RECT d3d11_rectangle = { static_cast<LONG>(scissor_rectangle.left), static_cast<LONG>(scissor_rectangle.top), static_cast<LONG>(scissor_rectangle.right), static_cast<LONG>(scissor_rectangle.bottom) };
 
         m_rhi_device->GetContextRhi()->device_context->RSSetScissorRects(1, &d3d11_rectangle);
 	}

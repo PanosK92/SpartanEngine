@@ -111,10 +111,10 @@ namespace Spartan
 
     void Environment::SetTexture(const shared_ptr<RHI_Texture>& texture)
     {
-        m_context->GetSubsystem<Renderer>()->SetEnvironmentTexture(static_pointer_cast<RHI_Texture>(texture));
+        m_context->GetSubsystem<Renderer>()->SetEnvironmentTexture(texture);
 
         // Save file path for serialization/deserialization
-        m_file_paths = { texture->GetResourceFilePath() };
+        m_file_paths = { texture ? texture->GetResourceFilePath() : "" };
     }
 
     void Environment::SetFromTextureArray(const vector<string>& file_paths)

@@ -96,9 +96,9 @@ namespace Spartan
             }
             else
             {
-                scissor.offset          = { static_cast<int32_t>(m_state.scissor.x), static_cast<int32_t>(m_state.scissor.y) };
-                scissor.extent.width    = static_cast<uint32_t>(m_state.scissor.width);
-                scissor.extent.height   = static_cast<uint32_t>(m_state.scissor.height);
+                scissor.offset          = { static_cast<int32_t>(m_state.scissor.left), static_cast<int32_t>(m_state.scissor.top) };
+                scissor.extent.width    = static_cast<uint32_t>(m_state.scissor.Width());
+                scissor.extent.height   = static_cast<uint32_t>(m_state.scissor.Height());
             }
 
 		    // Viewport state

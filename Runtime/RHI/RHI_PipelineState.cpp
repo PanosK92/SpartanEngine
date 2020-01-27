@@ -111,10 +111,10 @@ namespace Spartan
     {
         m_hash = 0;
 
-        Utility::Hash::hash_combine(m_hash, scissor.x);
-        Utility::Hash::hash_combine(m_hash, scissor.y);
-        Utility::Hash::hash_combine(m_hash, scissor.width);
-        Utility::Hash::hash_combine(m_hash, scissor.height);
+        Utility::Hash::hash_combine(m_hash, scissor.left);
+        Utility::Hash::hash_combine(m_hash, scissor.top);
+        Utility::Hash::hash_combine(m_hash, scissor.right);
+        Utility::Hash::hash_combine(m_hash, scissor.bottom);
         Utility::Hash::hash_combine(m_hash, viewport.x);
         Utility::Hash::hash_combine(m_hash, viewport.y);
         Utility::Hash::hash_combine(m_hash, viewport.width);

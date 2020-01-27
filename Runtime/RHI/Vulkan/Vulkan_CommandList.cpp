@@ -161,7 +161,7 @@ namespace Spartan
             m_set_id_vertex_buffer  = 0;
             m_set_id_index_buffer   = 0;
 
-            // Temp hack until I implement some method to have one time set global resources
+            // Vulkan doesn't have a persistent state so global resources have to be set
             m_renderer->SetGlobalSamplersAndConstantBuffers(this);
         }
 
@@ -287,10 +287,10 @@ namespace Spartan
         }
 
 		VkRect2D vk_scissor;
-		vk_scissor.offset.x			= static_cast<int32_t>(scissor_rectangle.x);
-		vk_scissor.offset.y			= static_cast<int32_t>(scissor_rectangle.y);
-		vk_scissor.extent.width		= static_cast<uint32_t>(scissor_rectangle.width);
-		vk_scissor.extent.height	= static_cast<uint32_t>(scissor_rectangle.height);
+		vk_scissor.offset.x			= static_cast<int32_t>(scissor_rectangle.left);
+		vk_scissor.offset.y			= static_cast<int32_t>(scissor_rectangle.top);
+		vk_scissor.extent.width		= static_cast<uint32_t>(scissor_rectangle.Width());
+		vk_scissor.extent.height	= static_cast<uint32_t>(scissor_rectangle.Height());
 
 		vkCmdSetScissor(
             CMD_BUFFER, // commandBuffer

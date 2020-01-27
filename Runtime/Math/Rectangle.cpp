@@ -34,6 +34,8 @@ using namespace std;
 
 namespace Spartan::Math
 {
+    const Rectangle Rectangle::Zero(0.0f, 0.0f, 0.0f, 0.0f);
+
 	bool Rectangle::CreateBuffers(Renderer* renderer)
 	{
 		if (!renderer)
@@ -44,10 +46,10 @@ namespace Spartan::Math
 
 		// Compute screen coordinates
 		const auto viewport		= renderer->GetViewport();
-		const auto sc_left		= -(viewport.width * 0.5f) + x;
-		const auto sc_right		= sc_left + width;
-		const auto sc_top		= (viewport.height * 0.5f) - y;
-		const auto sc_bottom	= sc_top - height;
+		const auto sc_left		= -(viewport.width * 0.5f) + left;
+		const auto sc_right		= sc_left + Width();
+		const auto sc_top		= (viewport.height * 0.5f) - top;
+		const auto sc_bottom	= sc_top - Height();
 
 		// Create vertex buffer
 		const RHI_Vertex_PosTex vertices[6] = 
