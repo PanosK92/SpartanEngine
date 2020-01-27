@@ -59,10 +59,10 @@ namespace Spartan
 		void Deserialize(FileStream* stream) override;
 		//============================================
 
-		//= MATRICES ============================================================
-		const Math::Matrix& GetViewMatrix() const		{ return m_mView; }
-		const Math::Matrix& GetProjectionMatrix() const { return m_mProjection; }
-		//=======================================================================
+		//= MATRICES =============================================================
+		const Math::Matrix& GetViewMatrix()         const { return m_view; }
+        const Math::Matrix& GetProjectionMatrix()   const { return m_projection; }
+		//========================================================================
 
 		//= RAYCASTING =================================================================
 		// Returns the ray the camera uses to do picking
@@ -78,14 +78,14 @@ namespace Spartan
 		Math::Vector3 ScreenToWorldPoint(const Math::Vector2& position_screen) const;
 		//==============================================================================
 
-		//= PLANES/PROJECTION =================================================================
+		//= PLANES/PROJECTION =================================================
 		void SetNearPlane(float near_plane);		
 		void SetFarPlane(float far_plane);	
 		void SetProjection(ProjectionType projection);
-		float GetNearPlane() const			{ return m_near_plane; }
-		float GetFarPlane() const			{ return m_far_plane; }
-		ProjectionType GetProjectionType()	{ ComputeProjection();  return m_projection_type; }
-		//=====================================================================================
+		float GetNearPlane()                const { return m_near_plane; }
+		float GetFarPlane()                 const { return m_far_plane; }
+		ProjectionType GetProjectionType()  const { return m_projection_type; }
+		//=====================================================================
 
 		//= FOV ==========================================================
 		float GetFovHorizontalRad() const { return m_fov_horizontal_rad; }
@@ -103,7 +103,7 @@ namespace Spartan
 		//===============================================================================
 
         Math::Matrix ComputeViewMatrix();
-        Math::Matrix ComputeProjection(const bool force_non_reverse_z = false);
+        Math::Matrix ComputeProjection(const bool reverse_z);
 
 	private:
         void FpsControl(float delta_time);
@@ -113,8 +113,8 @@ namespace Spartan
         float m_far_plane                   = 1000.0f;	
         ProjectionType m_projection_type    = Projection_Perspective;
 		Math::Vector4 m_clear_color         = Math::Vector4(0.396f, 0.611f, 0.937f, 1.0f); // A nice cornflower blue 
-		Math::Matrix m_mView                = Math::Matrix::Identity;
-		Math::Matrix m_mProjection          = Math::Matrix::Identity;
+		Math::Matrix m_view                 = Math::Matrix::Identity;
+        Math::Matrix m_projection           = Math::Matrix::Identity;
 		Math::Vector3 m_position            = Math::Vector3::Zero;
         Math::Quaternion m_rotation         = Math::Quaternion::Identity;
         bool m_isDirty                      = false;

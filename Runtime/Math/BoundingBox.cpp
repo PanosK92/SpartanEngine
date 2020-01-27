@@ -22,6 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===========
 #include "BoundingBox.h"
 #include "Matrix.h"
+#include <vector>
+#include "Rectangle.h"
 //======================
 
 namespace Spartan::Math
@@ -39,6 +41,23 @@ namespace Spartan::Math
 		this->m_min = min;
 		this->m_max = max;
 	}
+
+    BoundingBox::BoundingBox(const std::vector<Vector3>& points)
+    {
+        m_min = Vector3::Infinity;
+        m_max = Vector3::InfinityNeg;
+
+        for (const auto& point : points)
+        {
+            m_max.x = Max(m_max.x, point.x);
+            m_max.y = Max(m_max.y, point.y);
+            m_max.z = Max(m_max.z, point.z);
+
+            m_min.x = Min(m_min.x, point.x);
+            m_min.y = Min(m_min.y, point.y);
+            m_min.z = Min(m_min.z, point.z);
+        }
+    }
 
 	BoundingBox::BoundingBox(const std::vector<RHI_Vertex_PosTexNorTan>& vertices)
 	{
@@ -92,10 +111,10 @@ namespace Spartan::Math
 		}
 	}
 
-	BoundingBox BoundingBox::TransformToAabb(const Matrix& transform)
+	BoundingBox BoundingBox::Transform(const Matrix& transform) const
 	{
 		Vector3 center_new = transform * GetCenter();
-		Vector3 extent_old = GetSize() * 0.5f;
+		Vector3 extent_old = GetExtents();
 		Vector3 extend_new = Vector3
 		(
 			Abs(transform.m00) * extent_old.x + Abs(transform.m10) * extent_old.y + Abs(transform.m20) * extent_old.z,
@@ -106,21 +125,40 @@ namespace Spartan::Math
 		return BoundingBox(center_new - extend_new, center_new + extend_new);
 	}
 
-    BoundingBox BoundingBox::TransformToOobb(const Matrix& transform)
+    Rectangle BoundingBox::Projected(const Matrix& projection, float camera_near) const
     {
-        Vector3 center_new = transform * GetCenter();
-        Vector3 extent_old = GetSize() * 0.5f;
- 
-        return BoundingBox(center_new - extent_old, center_new + extent_old);
+        Vector3 proj_min = m_min;
+        Vector3 proj_max = m_max;
+
+        proj_min.z = Max(proj_min.z, camera_near);
+        proj_max.z = Max(proj_max.z, camera_near);
+
+        Vector3 corners[8];
+        corners[0] = projection * proj_min;
+        corners[1] = projection * Vector3(proj_max.x, proj_min.y, proj_min.z);
+        corners[2] = projection * Vector3(proj_min.x, proj_max.y, proj_min.z);
+        corners[3] = projection * Vector3(proj_max.x, proj_max.y, proj_min.z);
+        corners[4] = projection * Vector3(proj_min.x, proj_min.y, proj_max.z);
+        corners[5] = projection * Vector3(proj_max.x, proj_min.y, proj_max.z);
+        corners[6] = projection * Vector3(proj_min.x, proj_max.y, proj_max.z);
+        corners[7] = projection * proj_max;
+
+        Rectangle rectangle;
+        for (const auto& corner : corners)
+        {
+            rectangle.Merge(Vector2(corner.x, corner.y));
+        }
+
+        return rectangle;
     }
 
-	void BoundingBox::Merge(const BoundingBox& box)
-	{
-		m_min.x = Min(m_min.x, box.m_min.x);
-		m_min.y = Min(m_min.y, box.m_min.y);
-		m_min.z = Min(m_min.z, box.m_min.z);
-		m_max.x = Max(m_max.x, box.m_max.x);
-		m_max.y = Max(m_max.x, box.m_max.x);
-		m_max.z = Max(m_max.x, box.m_max.x);
-	}
+    void BoundingBox::Merge(const BoundingBox& box)
+    {
+        m_min.x = Min(m_min.x, box.m_min.x);
+        m_min.y = Min(m_min.y, box.m_min.y);
+        m_min.z = Min(m_min.z, box.m_min.z);
+        m_max.x = Max(m_max.x, box.m_max.x);
+        m_max.y = Max(m_max.x, box.m_max.x);
+        m_max.z = Max(m_max.x, box.m_max.x);
+    }
 }

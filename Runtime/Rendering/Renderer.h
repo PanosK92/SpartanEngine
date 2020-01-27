@@ -217,6 +217,7 @@ namespace Spartan
 
 		#define DebugColor Math::Vector4(0.41f, 0.86f, 1.0f, 1.0f)
 		void DrawLine(const Math::Vector3& from, const Math::Vector3& to, const Math::Vector4& color_from = DebugColor, const Math::Vector4& color_to = DebugColor, bool depth = true);
+        void DrawRectangle(const Math::Rectangle& rectangle, const Math::Vector4& color = DebugColor, bool depth = true);
 		void DrawBox(const Math::BoundingBox& box, const Math::Vector4& color = DebugColor, bool depth = true);
 
 		// Viewport

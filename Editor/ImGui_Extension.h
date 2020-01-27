@@ -268,11 +268,11 @@ namespace ImGuiEx
         const std::shared_ptr<Spartan::RHI_Texture>& image,
         const std::function<void(const std::shared_ptr<Spartan::RHI_Texture>&)>& setter,
         float offset_from_start_x   = 0.0f,
-        bool label_align_vertically       = false
+        bool label_align_vertically = false
     )
     {
-        const auto slot_size        = ImVec2(80, 80);
-        const auto x_button_size    = 15.0f;
+        const ImVec2 slot_size  = ImVec2(80, 80);
+        const float button_size = 15.0f;
 
         // Text
         if (name)
@@ -287,24 +287,38 @@ namespace ImGuiEx
         // Image
         ImGui::BeginGroup();
         {
+            Spartan::RHI_Texture* texture   = image.get();
+            ImVec2 pos_image                = ImGui::GetCursorPos();
+            ImVec2 pos_button               = ImVec2(ImGui::GetCursorPosX() + slot_size.x - button_size * 2.0f + 6.0f, ImGui::GetCursorPosY() + 1.0f);
+
+            // Remove button
+            if (image != nullptr)
+            {
+                ImGui::SetCursorPos(pos_button);
+                ImGui::PushID(static_cast<int>(pos_button.x + pos_button.y));
+                if (ImGuiEx::ImageButton("", Icon_Component_Material_RemoveTexture, button_size))
+                {
+                    texture = nullptr;
+                    setter(nullptr);
+                }
+                ImGui::PopID();
+            }
+
+            // Image
+            ImGui::SetCursorPos(pos_image);
             ImGuiEx::Image
             (
-                image.get(),
+                texture,
                 slot_size,
                 ImColor(255, 255, 255, 255),
                 ImColor(255, 255, 255, 128)
             );
 
-            // Remove button
-            if (image != nullptr)
+            // Remove button - Does nothing, drawn again just to be visible
+            if (texture != nullptr)
             {
-                ImGui::SameLine(); ImGui::SetCursorPosX(ImGui::GetCursorPosX() - x_button_size * 2.0f);
-                ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
-                if (ImGuiEx::ImageButton("", Icon_Component_Material_RemoveTexture, x_button_size))
-                {
-                    setter(nullptr);
-                }
-                ImGui::PopID();
+                ImGui::SetCursorPos(pos_button);
+                ImGuiEx::ImageButton("", Icon_Component_Material_RemoveTexture, button_size);
             }
         }
         ImGui::EndGroup();

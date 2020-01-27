@@ -52,7 +52,7 @@ namespace Spartan::Math
 		const auto& entities = context->GetSubsystem<World>()->EntityGetAll();
 		for (const auto& entity : entities)
 		{
-			// Make sure there entity has renderable
+			// Make sure there entity has a renderable
 			if (!entity->HasComponent<Renderable>())
 				continue;
 
