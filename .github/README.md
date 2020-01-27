@@ -4,13 +4,12 @@
 
 # Spartan Engine
 
-<p>Spartan is a game engine that started as a hobby project and evolved into something bigger. The goal is to target high-end machines and deliver advanced graphical capabilities at high frame rates with minimum input latency. Then wrap all that in a nice editor.</p>
+<p>Spartan game engine is the result of my never-ending quest to understand how things work and has become my go-to place for research.</p>
 
 <img align="right" width="300" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/rotating_gun.gif"/>
-<p>The project is at an early development stage and there is a lot experimentation going on, regarding what works best. However a lot of effort is being put into building and maintaining a clean, modern and overall high quality architecture, an architecture that will ensure continuous development over the years. This means that while you shouldn't expect to make games with it yet, you might find it to be a helpful study resource.</p>
+<p>If you're also seeking knowledge, then you might find this engine to be a helpful study resource. This is because a lot of effort is being put into building and maintaining a clean, modern and overall high quality architecture, an architecture that will ensure continuous development over the years. You'll also find the the engine is quite comprehensive for a one-man project. Have a look at the source ;-) </p> 
 
-<p>For more updates regarding the project's development, you can
-<a href="https://twitter.com/intent/follow?screen_name=panoskarabelas1"><img src="https://img.shields.io/twitter/follow/panoskarabelas1.svg"></a> me on twitter.</p>
+<p>Twitter: For more updates regarding the project's development, you can follow me on twitter. <a href="https://twitter.com/intent/follow?screen_name=panoskarabelas1"><img src="https://img.shields.io/twitter/follow/panoskarabelas1.svg"></a></p>
 
 <p>License: Embracing the open source ethos and respecting the MIT license is greatly appreciated. This means that you can copy all the code you want as long as you include a copy of the original license.</p>
 
