@@ -7,7 +7,7 @@
 <p>Spartan game engine is the result of my never-ending quest to understand how things work and has become my go-to place for research.</p>
 
 <img align="right" width="300" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/rotating_gun.gif"/>
-<p>If you're also seeking knowledge, then you might find this engine to be a helpful study resource. This is because a lot of effort is being put into building and maintaining a clean, modern and overall high quality architecture, an architecture that will ensure continuous development over the years. You'll also find the the engine is quite comprehensive for a one-man project. Have a look at the source ;-) </p> 
+<p>If you're also seeking knowledge, then you might find this engine to be a helpful study resource. This is because a lot of effort is being put into building and maintaining a clean, modern and overall high quality architecture, an architecture that will ensure continuous development over the years. You'll also find that the engine is quite comprehensive for a one-man project. Have a look at the source ;-) </p> 
 
 <p>Twitter: For more updates regarding the project's development, you can follow me on twitter. <a href="https://twitter.com/intent/follow?screen_name=panoskarabelas1"><img src="https://img.shields.io/twitter/follow/panoskarabelas1.svg"></a></p>
 
