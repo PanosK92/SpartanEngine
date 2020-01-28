@@ -306,7 +306,7 @@ namespace Spartan
 
 	void Renderer::DrawRectangle(const Math::Rectangle& rectangle, const Math::Vector4& color /*= DebugColor*/, bool depth /*= true*/)
 	{
-        float cam_z = m_camera->GetTransform()->GetPosition().z + m_camera->GetNearPlane() + 10.0f;
+        float cam_z = m_camera->GetTransform()->GetPosition().z + m_camera->GetNearPlane() + 5.0f;
 
         DrawLine(Vector3(rectangle.left,    rectangle.top,      cam_z), Vector3(rectangle.right,    rectangle.top,      cam_z), color, color, depth);
         DrawLine(Vector3(rectangle.right,   rectangle.top,      cam_z), Vector3(rectangle.right,    rectangle.bottom,   cam_z), color, color, depth);

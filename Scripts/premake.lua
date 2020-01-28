@@ -18,29 +18,29 @@
 -- CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-SOLUTION_NAME           = "Spartan"
-EDITOR_NAME             = "Editor"
-RUNTIME_NAME            = "Runtime"
-TARGET_NAME             = "Spartan" -- Name of executable
-DEBUG_FORMAT            = "c7"
-EDITOR_DIR              = "../" .. EDITOR_NAME
-RUNTIME_DIR             = "../" .. RUNTIME_NAME
-LIBRARY_DIR             = "../ThirdParty/libraries"
-INTERMEDIATE_DIR        = "../Binaries/Intermediate"
-TARGET_DIR_RELEASE      = "../Binaries/Release"
-TARGET_DIR_DEBUG        = "../Binaries/Debug"
-API_GRAPHICS            = _ARGS[1]
+SOLUTION_NAME			= "Spartan"
+EDITOR_NAME				= "Editor"
+RUNTIME_NAME			= "Runtime"
+TARGET_NAME				= "Spartan" -- Name of executable
+DEBUG_FORMAT			= "c7"
+EDITOR_DIR				    = "../" .. EDITOR_NAME
+RUNTIME_DIR				= "../" .. RUNTIME_NAME
+LIBRARY_DIR				= "../ThirdParty/libraries"
+INTERMEDIATE_DIR		= "../Binaries/Intermediate"
+TARGET_DIR_RELEASE  = "../Binaries/Release"
+TARGET_DIR_DEBUG    = "../Binaries/Debug"
+API_GRAPHICS			    = _ARGS[1]
 
 -- Convert graphics api var to the corresponding project define
 if API_GRAPHICS == "d3d11" then
-	API_GRAPHICS    = "API_GRAPHICS_D3D11"
-    TARGET_NAME     = "Spartan_d3d11"
+	API_GRAPHICS	    = "API_GRAPHICS_D3D11"
+	TARGET_NAME		= "Spartan_d3d11"
 elseif API_GRAPHICS == "d3d12" then
-	API_GRAPHICS    = "API_GRAPHICS_D3D12"
-    TARGET_NAME     = "Spartan_d3d12"
+	API_GRAPHICS	    = "API_GRAPHICS_D3D12"
+	TARGET_NAME		= "Spartan_d3d12"
 elseif API_GRAPHICS == "vulkan" then
-	API_GRAPHICS    = "API_GRAPHICS_VULKAN"
-    TARGET_NAME     = "Spartan_vk"
+	API_GRAPHICS	    = "API_GRAPHICS_VULKAN"
+	TARGET_NAME		= "Spartan_vk"
 end
 
 -- Solution
@@ -63,13 +63,13 @@ solution (SOLUTION_NAME)
 		system "Windows"
 		architecture "x64"
 		
-	-- 	"Debug"
+	--	"Debug"
 	filter "configurations:Debug"
 		defines { "DEBUG" }
 		flags { "MultiProcessorCompile", "LinkTimeOptimization" }
 		symbols "On"			
 		
-	-- 	"Release"	
+	--	"Release"	
 	filter "configurations:Release"
 		defines { "NDEBUG" }
 		flags { "MultiProcessorCompile" }
@@ -96,7 +96,7 @@ project (RUNTIME_NAME)
 	-- Includes
 	includedirs { "../ThirdParty/DirectXShaderCompiler" }
 	includedirs { "../ThirdParty/SPIRV-Cross" }
-	includedirs { "../ThirdParty/Vulkan_1.1.130.0" }
+	includedirs { "../ThirdParty/Vulkan_1.2.131.1" }
 	includedirs { "../ThirdParty/AngelScript_2.33.0" }
 	includedirs { "../ThirdParty/Assimp_5.0.0" }
 	includedirs { "../ThirdParty/Bullet_2.88" }
@@ -108,7 +108,7 @@ project (RUNTIME_NAME)
 	-- Libraries
 	libdirs (LIBRARY_DIR)
 
-	-- 	"Debug"
+	--	"Debug"
 	filter "configurations:Debug"
 		targetdir (TARGET_DIR_DEBUG)
 		debugdir (TARGET_DIR_DEBUG)
@@ -123,7 +123,7 @@ project (RUNTIME_NAME)
 		links { "pugixml_debug" }
 		links { "IrrXML_debug" }
 			
-	-- 	"Release"
+	--	"Release"
 	filter "configurations:Release"
 		targetdir (TARGET_DIR_RELEASE)
 		debugdir (TARGET_DIR_RELEASE)
@@ -142,7 +142,7 @@ project (EDITOR_NAME)
 	location (EDITOR_DIR)
 	links { RUNTIME_NAME }
 	dependson { RUNTIME_NAME }
-    targetname ( TARGET_NAME )
+	targetname ( TARGET_NAME )
 	objdir (INTERMEDIATE_DIR)
 	kind "WindowedApp"
 	staticruntime "On"

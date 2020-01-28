@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================
 #include "MathHelper.h"
 #include "Vector3.h"
-#include "Rectangle.h"
 #include "../RHI/RHI_Vertex.h"
 #include <vector>
 //============================
@@ -79,9 +78,6 @@ namespace Spartan
 
 			// Returns a transformed bounding box
 			BoundingBox Transform(const Matrix& transform) const;
-
-            // Returns a project bounding box
-            Rectangle Projected(const Matrix& projection, float camera_near) const;
 
 			// Merge with another bounding box
 			void Merge(const BoundingBox& box);

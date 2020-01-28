@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Input/Input.h"
 #include "../../IO/FileStream.h"
 #include "../../Rendering/Renderer.h"
+#include "../../Math/MathHelper.h"
 //===================================
 
 //= NAMESPACES ===============
@@ -47,8 +48,9 @@ namespace Spartan
 
 	void Camera::OnInitialize()
 	{
-        m_view       = ComputeViewMatrix();
-        m_projection = ComputeProjection(m_renderer->GetOptionValue(Render_ReverseZ));
+        m_view              = ComputeViewMatrix();
+        m_projection        = ComputeProjection(m_renderer->GetOptionValue(Render_ReverseZ));
+        m_view_projection   = m_view * m_projection;
 	}
 
 	void Camera::OnTick(float delta_time)
@@ -73,9 +75,10 @@ namespace Spartan
 		if (!m_isDirty)
 			return;
 
-        m_view       = ComputeViewMatrix();
-        m_projection = ComputeProjection(m_renderer->GetOptionValue(Render_ReverseZ));
-		m_frustrum   = Frustum(GetViewMatrix(), GetProjectionMatrix(), m_renderer->GetOptionValue(Render_ReverseZ) ? GetNearPlane() : GetFarPlane());
+        m_view              = ComputeViewMatrix();
+        m_projection        = ComputeProjection(m_renderer->GetOptionValue(Render_ReverseZ));
+        m_view_projection   = m_view * m_projection;
+		m_frustrum          = Frustum(GetViewMatrix(), GetProjectionMatrix(), m_renderer->GetOptionValue(Render_ReverseZ) ? GetNearPlane() : GetFarPlane());
 
 		m_isDirty = false;
 	}
@@ -97,8 +100,9 @@ namespace Spartan
 		stream->Read(&m_near_plane);
 		stream->Read(&m_far_plane);
 
-        m_view       = ComputeViewMatrix();
-        m_projection = ComputeProjection(m_renderer->GetOptionValue(Render_ReverseZ));
+        m_view              = ComputeViewMatrix();
+        m_projection        = ComputeProjection(m_renderer->GetOptionValue(Render_ReverseZ));
+        m_view_projection   = m_view * m_projection;
 	}
 
     void Camera::SetNearPlane(const float near_plane)
@@ -167,7 +171,7 @@ namespace Spartan
 			return false;
 
 		// Trace ray
-		m_ray		= Ray(GetTransform()->GetPosition(), ScreenToWorldPoint(mouse_position_relative));
+		m_ray		= Ray(GetTransform()->GetPosition(), Unproject(mouse_position_relative));
 		auto hits	= m_ray.Trace(m_context);
 
         // Create a struct to hold hit related data
@@ -222,12 +226,12 @@ namespace Spartan
 		return true;
 	}
 
-	Vector2 Camera::WorldToScreenPoint(const Vector3& position_world) const
+	Vector2 Camera::Project(const Vector3& position_world) const
 	{
 		const auto& viewport = m_renderer->GetViewport();
 
 		// Convert world space position to clip space position
-		const auto position_clip = position_world * m_view * m_projection;
+		const auto position_clip = position_world * m_view_projection;
 
 		// Convert clip space position to screen space position
 		Vector2 position_screen;
@@ -237,7 +241,31 @@ namespace Spartan
 		return position_screen;
 	}
 
-	Vector3 Camera::ScreenToWorldPoint(const Vector2& position_screen) const
+    Rectangle Camera::Project(const BoundingBox& bounding_box) const
+    {
+        Vector3 min = bounding_box.GetMin();
+        Vector3 max = bounding_box.GetMax();
+
+        Vector3 corners[8];
+        corners[0] = min;
+        corners[1] = Vector3(max.x, min.y, min.z);
+        corners[2] = Vector3(min.x, max.y, min.z);
+        corners[3] = Vector3(max.x, max.y, min.z);
+        corners[4] = Vector3(min.x, min.y, max.z);
+        corners[5] = Vector3(max.x, min.y, max.z);
+        corners[6] = Vector3(min.x, max.y, max.z);
+        corners[7] = max;
+
+        Rectangle rectangle;
+        for (Vector3& corner : corners)
+        {
+            rectangle.Merge(Project(corner));
+        }
+
+        return rectangle;
+    }
+
+    Vector3 Camera::Unproject(const Vector2& position_screen) const
 	{
 		const auto& viewport = m_renderer->GetViewport();
 
@@ -248,7 +276,7 @@ namespace Spartan
 		position_clip.z = 1.0f;
 
 		// Compute world space position
-		const auto view_projection_inverted	= (m_view * m_projection).Inverted();
+		const auto view_projection_inverted	= m_view_projection.Inverted();
 		auto position_world					= position_clip * view_projection_inverted;
 
 		return position_world;

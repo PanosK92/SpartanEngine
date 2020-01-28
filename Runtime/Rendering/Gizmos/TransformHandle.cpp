@@ -149,7 +149,7 @@ namespace Spartan
 			const auto editor_offset		= m_context->GetSubsystem<Renderer>()->viewport_editor_offset;
 			const auto mouse_pos_relative	= mouse_pos - editor_offset;
 			const auto ray_start			= camera->GetTransform()->GetPosition();
-			auto ray_end					= camera->ScreenToWorldPoint(mouse_pos_relative);
+			auto ray_end					= camera->Unproject(mouse_pos_relative);
 			auto ray						= Ray(ray_start, ray_end);
 
 			// Test if ray intersects any of the handles

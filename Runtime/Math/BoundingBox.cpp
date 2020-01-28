@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "BoundingBox.h"
 #include "Matrix.h"
 #include <vector>
-#include "Rectangle.h"
 //======================
 
 namespace Spartan::Math
@@ -124,33 +123,6 @@ namespace Spartan::Math
 
 		return BoundingBox(center_new - extend_new, center_new + extend_new);
 	}
-
-    Rectangle BoundingBox::Projected(const Matrix& projection, float camera_near) const
-    {
-        Vector3 proj_min = m_min;
-        Vector3 proj_max = m_max;
-
-        proj_min.z = Max(proj_min.z, camera_near);
-        proj_max.z = Max(proj_max.z, camera_near);
-
-        Vector3 corners[8];
-        corners[0] = projection * proj_min;
-        corners[1] = projection * Vector3(proj_max.x, proj_min.y, proj_min.z);
-        corners[2] = projection * Vector3(proj_min.x, proj_max.y, proj_min.z);
-        corners[3] = projection * Vector3(proj_max.x, proj_max.y, proj_min.z);
-        corners[4] = projection * Vector3(proj_min.x, proj_min.y, proj_max.z);
-        corners[5] = projection * Vector3(proj_max.x, proj_min.y, proj_max.z);
-        corners[6] = projection * Vector3(proj_min.x, proj_max.y, proj_max.z);
-        corners[7] = projection * proj_max;
-
-        Rectangle rectangle;
-        for (const auto& corner : corners)
-        {
-            rectangle.Merge(Vector2(corner.x, corner.y));
-        }
-
-        return rectangle;
-    }
 
     void BoundingBox::Merge(const BoundingBox& box)
     {
