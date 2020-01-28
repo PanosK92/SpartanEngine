@@ -55,7 +55,7 @@ namespace Spartan
 			app_info.pEngineName		= engine_version;
 			app_info.engineVersion		= VK_MAKE_VERSION(1, 0, 0);
 			app_info.applicationVersion	= VK_MAKE_VERSION(1, 0, 0);
-			app_info.apiVersion			= VK_API_VERSION_1_1;
+			app_info.apiVersion			= VK_API_VERSION_1_2;
 
             // Get the supported extensions out of the requested extensions
             vector<const char*> extensions_supported = vulkan_common::extension::get_supported_instance(m_rhi_context->extensions_instance);

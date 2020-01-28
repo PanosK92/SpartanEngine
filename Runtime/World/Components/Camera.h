@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/Ray.h"
 #include "../../Math/Frustum.h"
 #include "../../Math/Vector2.h"
+#include "../../Math/Rectangle.h"
 //===================================
 
 namespace Spartan
@@ -59,10 +60,11 @@ namespace Spartan
 		void Deserialize(FileStream* stream) override;
 		//============================================
 
-		//= MATRICES =============================================================
-		const Math::Matrix& GetViewMatrix()         const { return m_view; }
-        const Math::Matrix& GetProjectionMatrix()   const { return m_projection; }
-		//========================================================================
+		//= MATRICES ======================================================================
+		const Math::Matrix& GetViewMatrix()             const { return m_view; }
+        const Math::Matrix& GetProjectionMatrix()       const { return m_projection; }
+        const Math::Matrix& GetViewProjectionMatrix()   const { return m_view_projection; }
+		//=================================================================================
 
 		//= RAYCASTING =================================================================
 		// Returns the ray the camera uses to do picking
@@ -72,10 +74,13 @@ namespace Spartan
 		bool Pick(const Math::Vector2& mouse_position, std::shared_ptr<Entity>& entity);
 
 		// Converts a world point to a screen point
-		Math::Vector2 WorldToScreenPoint(const Math::Vector3& position_world) const;
+		Math::Vector2 Project(const Math::Vector3& position_world) const;
+
+        // Converts a world bounding box to a screen rectangle
+        Math::Rectangle Project(const Math::BoundingBox& bounding_box) const;
 
 		// Converts a screen point to a world point
-		Math::Vector3 ScreenToWorldPoint(const Math::Vector2& position_screen) const;
+		Math::Vector3 Unproject(const Math::Vector2& position_screen) const;
 		//==============================================================================
 
 		//= PLANES/PROJECTION =================================================
@@ -115,6 +120,7 @@ namespace Spartan
 		Math::Vector4 m_clear_color         = Math::Vector4(0.396f, 0.611f, 0.937f, 1.0f); // A nice cornflower blue 
 		Math::Matrix m_view                 = Math::Matrix::Identity;
         Math::Matrix m_projection           = Math::Matrix::Identity;
+        Math::Matrix m_view_projection      = Math::Matrix::Identity;
 		Math::Vector3 m_position            = Math::Vector3::Zero;
         Math::Quaternion m_rotation         = Math::Quaternion::Identity;
         bool m_isDirty                      = false;

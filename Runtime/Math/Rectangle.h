@@ -38,10 +38,10 @@ namespace Spartan
 		public:
 			Rectangle()
 			{
-				left	= 0;
-                top     = 0;
-				right	= 0;
-                bottom  = 0;
+                left    = std::numeric_limits<float>::max();
+                top     = std::numeric_limits<float>::max();
+                right   = std::numeric_limits<float>::lowest();
+                bottom  = std::numeric_limits<float>::lowest();
 			}
 
 			Rectangle(const float left, const float top, const float right, const float bottom)
@@ -105,10 +105,10 @@ namespace Spartan
 			const auto&	GetIndexBuffer() const	{ return m_indexBuffer; }
 			const auto& GetVertexBuffer() const	{ return m_vertexBuffer; }
 
-			float left;
-			float top;
-			float right;
-			float bottom;
+            float left;
+            float top;
+            float right;
+            float bottom;
 
             static const Rectangle Zero;
 
