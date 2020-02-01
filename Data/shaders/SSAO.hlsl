@@ -105,9 +105,9 @@ static const float3 sampleKernel[64] =
 
 float mainPS(Pixel_PosUv input) : SV_TARGET
 {
-	float2 uv                         = input.uv;
-    float3 center_pos         = get_position_from_depth(texDepth, uv / g_ssao_scale);
-    float3 center_normal  = get_normal(texNormal, uv / g_ssao_scale);		
+	float2 uv               = input.uv;
+    float3 center_pos       = get_position_from_depth(texDepth, uv / g_ssao_scale);
+    float3 center_normal    = get_normal(texNormal, uv / g_ssao_scale);		
 
 	// Construct TBN
 	float3 noise	= unpack(texNoise.Sample(sampler_bilinear_wrap, input.uv * noiseScale).xyz);		
@@ -118,24 +118,24 @@ float mainPS(Pixel_PosUv input) : SV_TARGET
 	float occlusion = 0.0f;
     for (int i = 0; i < sample_count; i++)
     {	
-        // If TAA is enabled, apply dithering so we can capture a bit more detail over time
-        float3 dither_value = max(1.0f, dither(uv) * 500.0f * any(g_taa_jitterOffset));
+        // Apply dithering
+        float3 dither_value = dither_temporal(uv, 500.0f);
 
 		// Compute sample uv
-		float3 offset     = mul(sampleKernel[i], TBN) * dither_value;
-		float3 ray_pos = center_pos + offset * radius;
+		float3 offset   = mul(sampleKernel[i], TBN) * dither_value;
+		float3 ray_pos  = center_pos + offset * radius;
 		float2 ray_uv   = project(ray_pos, g_viewProjection);
 		
 		// Compute sample data
-        float3 sample_pos                           = get_position_from_depth(texDepth, ray_uv);
-        float3 center_to_sample                = sample_pos - center_pos;
+        float3 sample_pos               = get_position_from_depth(texDepth, ray_uv);
+        float3 center_to_sample         = sample_pos - center_pos;
 		float center_to_sample_distance = length(center_to_sample);
-		float3 center_to_sample_dir         = normalize(center_to_sample);
+		float3 center_to_sample_dir     = normalize(center_to_sample);
 		
 		// Accumulate
-		float occlusion_factor   = dot(center_normal, center_to_sample_dir);
-		float range_check          = smoothstep(0.0f, 1.0f, radius / center_to_sample_distance);
-		occlusion                         += occlusion_factor * range_check * intensity;
+		float occlusion_factor  = dot(center_normal, center_to_sample_dir);
+		float range_check       = smoothstep(0.0f, 1.0f, radius / center_to_sample_distance);
+		occlusion               += occlusion_factor * range_check * intensity;
     }
     occlusion /= (float)sample_count;
 

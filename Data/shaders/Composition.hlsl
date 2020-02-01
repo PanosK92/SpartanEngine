@@ -48,7 +48,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 	float4 sample_material  	= tex_material.Sample(sampler_point_clamp, uv);
 	float4 sample_diffuse 		= tex_lightDiffuse.Sample(sampler_point_clamp, uv);
 	float4 sample_specular 		= tex_lightSpecular.Sample(sampler_point_clamp, uv);
-	float4 sample_ssr 			= tex_ssr.Sample(sampler_point_clamp, uv);
+	float4 sample_ssr 			= tex_ssr.Sample(sampler_point_clamp, uv );
 	float sample_depth  		= tex_depth.Sample(sampler_point_clamp, uv).r;
 	float sample_ssao			= tex_ssao.Sample(sampler_point_clamp, uv).r;
 	float3 light_volumetric 	= tex_lightVolumetric.Sample(sampler_point_clamp, uv).rgb;
