@@ -19,10 +19,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-static const uint g_sscs_steps                           = 32;
-static const float g_sscs_rejection_depth      = 0.02f;
+static const uint g_sscs_steps              = 32;
+static const float g_sscs_rejection_depth   = 0.02f;
 static const float g_sscs_ray_max_distance  = 0.1f;
-static const float g_sscs_bias                            = 0.005f;
+static const float g_sscs_bias              = 0.005f;
 
 //= INLUCES =============
 #include "Dithering.hlsl"
@@ -43,23 +43,22 @@ float ScreenSpaceContactShadows(Texture2D tex_depth, float2 uv, float3 light_dir
 	float step_length	= g_sscs_ray_max_distance / (float)g_sscs_steps;
 	float3 ray_step		= ray_dir * step_length;
 
-	// If TAA is enabled, apply dithering so we can capture a bit more detail over time
-	float3 dither_value = dither(uv) * any(g_taa_jitterOffset);
-	ray_pos += ray_dir * dither_value;
+	// Apply dithering
+	ray_pos += ray_dir * dither_temporal_else_zero(uv, 1.0f);
 
     // Ray march towards the light
     for (uint i = 0; i < g_sscs_steps; i++)
     {
         // Step ray
-        ray_pos           += ray_step;
-		float2 ray_uv  = project(ray_pos, g_projection);
+        ray_pos         += ray_step;
+		float2 ray_uv   = project(ray_pos, g_projection);
 
 		if (!is_saturated(ray_uv))
 			break;
 
 		// Compare depth
 		float depth_sampled = get_linear_depth(tex_depth, ray_uv);
-		float depth_delta       = ray_pos.z - depth_sampled - g_sscs_bias;
+		float depth_delta   = ray_pos.z - depth_sampled - g_sscs_bias;
 
         // Occlusion test
         if (depth_delta > 0.0f && depth_delta < g_sscs_rejection_depth)

@@ -57,15 +57,17 @@ namespace Spartan
         float motion_blur_strength;
         float gamma;
         float tonemapping;
-    
+
+        Math::Vector2 taa_jitter_offset_previous;
         Math::Vector2 taa_jitter_offset;
+
         float exposure;
         float directional_light_intensity;
-    
         float ssr_enabled;
         float shadow_resolution;
+
         float ssao_scale;
-        float padding;
+        Math::Vector3 padding;
     };
     
     // Medium frequency - Updates a few dozen times

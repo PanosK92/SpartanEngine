@@ -89,7 +89,7 @@ PixelOutputType mainPS(PixelInputType input)
 	float2 position_current 	= (input.positionCS_Current.xy / input.positionCS_Current.w);
 	float2 position_previous 	= (input.positionCS_Previous.xy / input.positionCS_Previous.w);
 	float2 position_delta		= position_current - position_previous;
-    float2 velocity 			= (position_delta - g_taa_jitterOffset) * float2(0.5f, -0.5f);
+    float2 velocity 			= (position_delta - g_taa_jitter_offset) * float2(0.5f, -0.5f);
 	//=========================================================================================
 
 	// Make TBN

@@ -48,14 +48,16 @@ cbuffer BufferFrame : register(b0)
 	float g_gamma;
 	float g_toneMapping;
 	
-	float2 g_taa_jitterOffset;
+    float2 g_taa_jitter_offset_previous;
+	float2 g_taa_jitter_offset;
+    
 	float g_exposure;	
 	float g_directional_light_intensity;
-	
 	float g_ssr_enabled;
 	float g_shadow_resolution;
+    
 	float g_ssao_scale;
-	float g_padding;
+	float3 g_padding;
 };
 
 // Medium frequency - Updates multiple times per frame

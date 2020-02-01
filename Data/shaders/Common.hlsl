@@ -192,11 +192,17 @@ float2 directionToSphereUV(float3 direction)
 }
 
 /*------------------------------------------------------------------------------
-								[RANDOM]
+								[RANDOM/SAMPLING]
 ------------------------------------------------------------------------------*/
-float randomize(float2 uv)
+float random(float2 uv)
 {
 	return frac(sin(dot(uv ,float2(12.9898,78.233))) * 43758.5453);
+}
+
+float interleaved_gradient_noise(float2 position_screen)
+{
+  float3 magic = float3(0.06711056f, 0.00583715f, 52.9829189f);
+  return frac(magic.z * frac(dot(position_screen, magic.xy)));
 }
 
 /*------------------------------------------------------------------------------
