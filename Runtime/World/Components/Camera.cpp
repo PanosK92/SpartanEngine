@@ -128,7 +128,7 @@ namespace Spartan
 		return RadiansToDegrees(m_fov_horizontal_rad);
 	}
 
-    float Camera::GetFovVerticalRad()
+    float Camera::GetFovVerticalRad() const
     {
         return 2.0f * atan(tan(m_fov_horizontal_rad / 2.0f) * (GetViewport().height / GetViewport().width));
     }
@@ -139,9 +139,9 @@ namespace Spartan
 		m_isDirty = true;
 	}
 
-    const Spartan::RHI_Viewport& Camera::GetViewport()
+    const RHI_Viewport& Camera::GetViewport() const
     {
-        return m_renderer->GetViewport();
+        return m_renderer ? m_renderer->GetViewport() : RHI_Viewport::Undefined;
     }
 
     bool Camera::IsInViewFrustrum(Renderable* renderable)
@@ -228,10 +228,13 @@ namespace Spartan
 
 	Vector2 Camera::Project(const Vector3& position_world) const
 	{
-		const auto& viewport = m_renderer->GetViewport();
+		const auto& viewport = GetViewport();
+
+        // A non reverse-z projection matrix is need, if it we don't have it, we create it
+        const auto projection = m_renderer->GetOptionValue(Render_ReverseZ) ? Matrix::CreatePerspectiveFieldOfViewLH(GetFovVerticalRad(), viewport.AspectRatio(), m_near_plane, m_far_plane) : m_projection;
 
 		// Convert world space position to clip space position
-		const auto position_clip = position_world * m_view_projection;
+		const auto position_clip = position_world * m_view * projection;
 
 		// Convert clip space position to screen space position
 		Vector2 position_screen;

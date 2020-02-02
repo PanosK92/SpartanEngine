@@ -133,11 +133,10 @@ namespace Spartan
     };
     
     // Light buffer
-    static const int g_cascade_count    = 4;
-    static const int g_max_lights       = 100;
+    static const int g_max_lights = 100;
     struct BufferLight
     {
-        Math::Matrix view_projection[g_max_lights][g_cascade_count];
+        Math::Matrix view_projection[g_max_lights][6];
         Math::Vector4 intensity_range_angle_bias[g_max_lights];
         Math::Vector4 normalBias_shadow_volumetric_contact[g_max_lights];
         Math::Vector4 color[g_max_lights];

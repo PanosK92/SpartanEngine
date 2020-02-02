@@ -94,10 +94,10 @@ namespace Spartan
 
 		//= FOV ==========================================================
 		float GetFovHorizontalRad() const { return m_fov_horizontal_rad; }
-        float GetFovVerticalRad();
+        float GetFovVerticalRad() const;
 		float GetFovHorizontalDeg() const;    
 		void SetFovHorizontalDeg(float fov);
-        const RHI_Viewport& GetViewport();
+        const RHI_Viewport& GetViewport() const;
 		//================================================================
 
 		//= MISC ========================================================================

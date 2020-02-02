@@ -85,5 +85,7 @@ namespace Spartan
 		float height	= 0.0f;
 		float depth_min	= 0.0f;
 		float depth_max	= 0.0f;
+
+        static const RHI_Viewport Undefined;
 	};
 }

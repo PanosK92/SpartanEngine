@@ -50,22 +50,21 @@ void Widget_RenderOptions::Tick()
 
     if (ImGui::CollapsingHeader("Graphics", ImGuiTreeNodeFlags_DefaultOpen))
     {
-        // Read from engine
+        // Reflect from engine
         static vector<char*> tonemapping_options    = { "Off", "ACES", "Reinhard", "Uncharted 2" };
         const char* tonemapping_selection           = tonemapping_options[m_renderer->GetOptionValue<uint32_t>(Option_Value_Tonemapping)];
 
         auto do_bloom                   = m_renderer->GetOptionValue(Render_Bloom);
         auto do_volumetric_lighting     = m_renderer->GetOptionValue(Render_VolumetricLighting);
         auto do_fxaa                    = m_renderer->GetOptionValue(Render_AntiAliasing_FXAA);
-        auto do_ssao                    = m_renderer->GetOptionValue(Render_SSAO);
-        auto do_sscs                    = m_renderer->GetOptionValue(Render_SSCS);
-        auto do_ssr                     = m_renderer->GetOptionValue(Render_SSR);
+        auto do_ssao                    = m_renderer->GetOptionValue(Render_ScreenSpaceAmbientOcclusion);
+        auto do_sss                     = m_renderer->GetOptionValue(Render_ScreenSpaceShadows);
+        auto do_ssr                     = m_renderer->GetOptionValue(Render_ScreenSpaceReflections);
         auto do_taa                     = m_renderer->GetOptionValue(Render_AntiAliasing_TAA);
         auto do_motion_blur             = m_renderer->GetOptionValue(Render_MotionBlur);
         auto do_sharperning             = m_renderer->GetOptionValue(Render_Sharpening_LumaSharpen);
         auto do_chromatic_aberration    = m_renderer->GetOptionValue(Render_ChromaticAberration);
         auto do_dithering               = m_renderer->GetOptionValue(Render_Dithering);  
-        auto do_depth_prepass           = m_renderer->GetOptionValue(Render_DepthPrepass);
         auto resolution_shadow          = m_renderer->GetOptionValue<int>(Option_Value_ShadowResolution);
 
         // Display
@@ -122,8 +121,8 @@ void Widget_RenderOptions::Tick()
             ImGuiEx::Tooltip("Requires a light with shadows enabled");
             ImGui::Separator();
 
-            // Screen space contact shadows
-            ImGui::Checkbox("SSCS - Screen Space Contact Shadows", &do_sscs);
+            // Screen space shadows
+            ImGui::Checkbox("SSS - Screen Space Shadows", &do_sss);
             ImGuiEx::Tooltip("Requires a light with shadows enabled");
             ImGui::Separator();
 
@@ -170,20 +169,16 @@ void Widget_RenderOptions::Tick()
 
             // Shadow resolution
             ImGui::InputInt("Shadow Resolution", &resolution_shadow, 1);
-
-            // Depth-PrePass
-            ImGui::Checkbox("Depth-PrePass", &do_depth_prepass);
         }
 
         // Map back to engine
         m_renderer->SetShadowResolution(static_cast<uint32_t>(resolution_shadow));
-        m_renderer->SetOptionValue(Render_DepthPrepass,            do_depth_prepass);
         m_renderer->SetOptionValue(Render_Bloom,                   do_bloom);
         m_renderer->SetOptionValue(Render_VolumetricLighting,      do_volumetric_lighting);
         m_renderer->SetOptionValue(Render_AntiAliasing_FXAA,       do_fxaa);
-        m_renderer->SetOptionValue(Render_SSAO,                    do_ssao);
-        m_renderer->SetOptionValue(Render_SSCS,                    do_sscs);
-        m_renderer->SetOptionValue(Render_SSR,                     do_ssr);
+        m_renderer->SetOptionValue(Render_ScreenSpaceAmbientOcclusion,                    do_ssao);
+        m_renderer->SetOptionValue(Render_ScreenSpaceShadows,                    do_sss);
+        m_renderer->SetOptionValue(Render_ScreenSpaceReflections,                     do_ssr);
         m_renderer->SetOptionValue(Render_AntiAliasing_TAA,        do_taa);
         m_renderer->SetOptionValue(Render_MotionBlur,              do_motion_blur);
         m_renderer->SetOptionValue(Render_Sharpening_LumaSharpen,  do_sharperning);
@@ -191,50 +186,8 @@ void Widget_RenderOptions::Tick()
         m_renderer->SetOptionValue(Render_Dithering,               do_dithering);
     }
 
-    if (ImGui::CollapsingHeader("Debug", ImGuiTreeNodeFlags_None))
+    if (ImGui::CollapsingHeader("Widgets", ImGuiTreeNodeFlags_None))
     {
-        // Buffer
-        {
-            static vector<string> buffer_options =
-            {
-                "None",
-                "Albedo",
-                "Normal",
-                "Material",
-                "Diffuse",
-                "Specular",
-                "Velocity",
-                "Depth",
-                "SSAO",
-                "SSR",
-                "Bloom",
-                "Volumetric Lighting",
-                "Shadows"
-            };
-            static int buffer_selection = 0;
-            static string buffer_selection_str = buffer_options[0];
-
-            if (ImGui::BeginCombo("Buffer", buffer_selection_str.c_str()))
-            {
-                for (auto i = 0; i < buffer_options.size(); i++)
-                {
-                    const auto is_selected = (buffer_selection_str == buffer_options[i]);
-                    if (ImGui::Selectable(buffer_options[i].c_str(), is_selected))
-                    {
-                        buffer_selection_str = buffer_options[i];
-                        buffer_selection = i;
-                    }
-                    if (is_selected)
-                    {
-                        ImGui::SetItemDefaultFocus();
-                    }
-                }
-                ImGui::EndCombo();
-            }
-            m_renderer->SetDebugBuffer(static_cast<Renderer_Buffer_Type>(buffer_selection));
-        }
-        ImGui::Separator();
-
         // FPS
         {
             auto& timer = m_context->GetSubsystem<Timer>();
@@ -279,5 +232,66 @@ void Widget_RenderOptions::Tick()
             m_renderer->SetOptionValue(Render_Debug_PerformanceMetrics,    debug_performance_metrics);
             m_renderer->SetOptionValue(Render_Debug_Wireframe,             debug_wireframe);
         }
+    }
+
+    if (ImGui::CollapsingHeader("Debug", ImGuiTreeNodeFlags_None))
+    {
+        // Reflect from engine
+        auto do_depth_prepass   = m_renderer->GetOptionValue(Render_DepthPrepass);
+        auto do_reverse_z       = m_renderer->GetOptionValue(Render_ReverseZ);
+
+        {
+            // Buffer
+            {
+                static vector<string> buffer_options =
+                {
+                    "None",
+                    "Albedo",
+                    "Normal",
+                    "Material",
+                    "Diffuse",
+                    "Specular",
+                    "Velocity",
+                    "Depth",
+                    "SSAO",
+                    "SSR",
+                    "Bloom",
+                    "Volumetric Lighting",
+                    "Shadows"
+                };
+                static int buffer_selection = 0;
+                static string buffer_selection_str = buffer_options[0];
+
+                if (ImGui::BeginCombo("Buffer", buffer_selection_str.c_str()))
+                {
+                    for (auto i = 0; i < buffer_options.size(); i++)
+                    {
+                        const auto is_selected = (buffer_selection_str == buffer_options[i]);
+                        if (ImGui::Selectable(buffer_options[i].c_str(), is_selected))
+                        {
+                            buffer_selection_str = buffer_options[i];
+                            buffer_selection = i;
+                        }
+                        if (is_selected)
+                        {
+                            ImGui::SetItemDefaultFocus();
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
+                m_renderer->SetDebugBuffer(static_cast<Renderer_Buffer_Type>(buffer_selection));
+            }
+            ImGui::Separator();
+
+            // Depth-PrePass
+            ImGui::Checkbox("Depth-PrePass", &do_depth_prepass);
+
+            // Reverse-Z
+            ImGui::Checkbox("Reverse-Z", &do_reverse_z);
+        }
+
+        // Map back to engine
+        m_renderer->SetOptionValue(Render_DepthPrepass, do_depth_prepass);
+        m_renderer->SetOptionValue(Render_ReverseZ, do_reverse_z);
     }
 }

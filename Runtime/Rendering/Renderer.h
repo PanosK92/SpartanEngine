@@ -51,27 +51,27 @@ namespace Spartan
 
 	enum Renderer_Option : uint64_t
 	{
-		Render_Debug_AABB				= 1 << 0,
-		Render_Debug_PickingRay			= 1 << 1,
-		Render_Debug_Grid				= 1 << 2,
-		Render_Debug_Transform			= 1 << 3,
-		Render_Debug_Lights				= 1 << 4,
-		Render_Debug_PerformanceMetrics	= 1 << 5,
-		Render_Debug_Physics			= 1 << 6,
-        Render_Debug_Wireframe          = 1 << 7,
-		Render_Bloom				    = 1 << 8,
-        Render_VolumetricLighting       = 1 << 9,
-		Render_AntiAliasing_FXAA	    = 1 << 10,
-        Render_AntiAliasing_TAA         = 1 << 11,
-		Render_SSAO					    = 1 << 12,
-        Render_SSCS                     = 1 << 13,
-		Render_SSR					    = 1 << 14,
-		Render_MotionBlur			    = 1 << 15,
-		Render_Sharpening_LumaSharpen	= 1 << 16,
-		Render_ChromaticAberration	    = 1 << 17,
-		Render_Dithering			    = 1 << 18,
-        Render_ReverseZ                 = 1 << 19,
-        Render_DepthPrepass             = 1 << 20
+		Render_Debug_AABB				    = 1 << 0,
+		Render_Debug_PickingRay			    = 1 << 1,
+		Render_Debug_Grid				    = 1 << 2,
+		Render_Debug_Transform			    = 1 << 3,
+		Render_Debug_Lights				    = 1 << 4,
+		Render_Debug_PerformanceMetrics	    = 1 << 5,
+		Render_Debug_Physics			    = 1 << 6,
+        Render_Debug_Wireframe              = 1 << 7,
+		Render_Bloom				        = 1 << 8,
+        Render_VolumetricLighting           = 1 << 9,
+		Render_AntiAliasing_FXAA	        = 1 << 10,
+        Render_AntiAliasing_TAA             = 1 << 11,
+		Render_ScreenSpaceAmbientOcclusion  = 1 << 12,
+        Render_ScreenSpaceShadows           = 1 << 13,
+		Render_ScreenSpaceReflections		= 1 << 14,
+		Render_MotionBlur			        = 1 << 15,
+		Render_Sharpening_LumaSharpen	    = 1 << 16,
+		Render_ChromaticAberration	        = 1 << 17,
+		Render_Dithering			        = 1 << 18,
+        Render_ReverseZ                     = 1 << 19,
+        Render_DepthPrepass                 = 1 << 20
 	};
 
     enum Renderer_Option_Value

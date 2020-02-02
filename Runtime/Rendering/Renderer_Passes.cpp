@@ -118,11 +118,11 @@ namespace Spartan
 
             // Light can be null if it just got removed and our buffer doesn't update till the next frame
             if (!light)
-                break;
+                continue;
 
             // Skip if it doesn't need to cast shadows
-            if (!light->GetCastShadows())
-                break;
+            if (!light->GetShadowsEnabled())
+                continue;
 
             // Acquire light's shadow map
             const auto& shadow_map = light->GetShadowMap();
@@ -441,7 +441,7 @@ namespace Spartan
 
 	void Renderer::Pass_Ssao(RHI_CommandList* cmd_list)
 	{
-        if ((m_options & Render_SSAO) == 0)
+        if ((m_options & Render_ScreenSpaceAmbientOcclusion) == 0)
             return;
 
         // Acquire shaders
@@ -508,7 +508,7 @@ namespace Spartan
 
     void Renderer::Pass_Ssr(RHI_CommandList* cmd_list)
     {
-        if ((m_options & Render_SSR) == 0)
+        if ((m_options & Render_ScreenSpaceReflections) == 0)
             return;
 
         // Acquire shaders
@@ -619,7 +619,7 @@ namespace Spartan
                 cmd_list->SetTexture(0, m_render_targets[RenderTarget_Gbuffer_Normal]);
                 cmd_list->SetTexture(1, m_render_targets[RenderTarget_Gbuffer_Material]);
                 cmd_list->SetTexture(2, m_render_targets[RenderTarget_Gbuffer_Depth]);
-                cmd_list->SetTexture(3, (m_options & Render_SSAO) ? m_render_targets[RenderTarget_Ssao] : m_tex_white);
+                cmd_list->SetTexture(3, (m_options & Render_ScreenSpaceAmbientOcclusion) ? m_render_targets[RenderTarget_Ssao] : m_tex_white);
 
                 // Iterate through all the light entities
                 for (const auto& entity : entities)
@@ -629,7 +629,7 @@ namespace Spartan
                         // Set shadow map
                         if (RHI_Texture* shadow_map = light->GetShadowMap().get())
                         {
-                            if (light->GetCastShadows())
+                            if (light->GetShadowsEnabled())
                             {
                                 if (light->GetLightType() == LightType_Directional)
                                 {
@@ -711,10 +711,10 @@ namespace Spartan
             cmd_list->SetTexture(4, m_render_targets[RenderTarget_Light_Diffuse]);
             cmd_list->SetTexture(5, m_render_targets[RenderTarget_Light_Specular]);
             cmd_list->SetTexture(6, (m_options & Render_VolumetricLighting) ? m_render_targets[RenderTarget_Light_Volumetric_Blurred] : m_tex_black);
-            cmd_list->SetTexture(7, (m_options & Render_SSR) ? m_render_targets[RenderTarget_Ssr_Blurred] : m_tex_black);
+            cmd_list->SetTexture(7, (m_options & Render_ScreenSpaceReflections) ? m_render_targets[RenderTarget_Ssr_Blurred] : m_tex_black);
             cmd_list->SetTexture(8, GetEnvironmentTexture());
             cmd_list->SetTexture(9, m_render_targets[RenderTarget_Brdf_Specular_Lut]);
-            cmd_list->SetTexture(10, (m_options & Render_SSAO)? m_render_targets[RenderTarget_Ssao] : m_tex_white);
+            cmd_list->SetTexture(10, (m_options & Render_ScreenSpaceAmbientOcclusion)? m_render_targets[RenderTarget_Ssao] : m_tex_white);
             cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
             cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
@@ -1755,10 +1755,10 @@ namespace Spartan
                     if (v_dot_l > 0.5f)
                     {
                         // Compute light screen space position and scale (based on distance from the camera)
-                        auto position_light_screen = m_camera->Project(position_light_world);
-                        auto distance = (position_camera_world - position_light_world).Length() + M_EPSILON;
-                        auto scale = m_gizmo_size_max / distance;
-                        scale = Clamp(scale, m_gizmo_size_min, m_gizmo_size_max);
+                        auto position_light_screen  = m_camera->Project(position_light_world);
+                        auto distance               = (position_camera_world - position_light_world).Length() + M_EPSILON;
+                        auto scale                  = m_gizmo_size_max / distance;
+                        scale                       = Clamp(scale, m_gizmo_size_min, m_gizmo_size_max);
         
                         // Choose texture based on light type
                         shared_ptr<RHI_Texture> light_tex = nullptr;
@@ -1770,7 +1770,13 @@ namespace Spartan
                         // Construct appropriate rectangle
                         auto tex_width = light_tex->GetWidth() * scale;
                         auto tex_height = light_tex->GetHeight() * scale;
-                        auto rectangle = Math::Rectangle(position_light_screen.x, position_light_screen.y, position_light_screen.x + tex_width, position_light_screen.y + tex_height);
+                        auto rectangle = Math::Rectangle
+                        (
+                            position_light_screen.x - tex_width * 0.5f,
+                            position_light_screen.y - tex_height * 0.5f,
+                            position_light_screen.x + tex_width,
+                            position_light_screen.y + tex_height
+                        );
                         if (rectangle != m_gizmo_light_rect)
                         {
                             m_gizmo_light_rect = rectangle;
@@ -1986,7 +1992,7 @@ namespace Spartan
 
 		if (m_debug_buffer == Renderer_Buffer_SSAO)
 		{
-			texture     = m_options & Render_SSAO ? m_render_targets[RenderTarget_Ssao] : m_tex_white;
+			texture     = m_options & Render_ScreenSpaceAmbientOcclusion ? m_render_targets[RenderTarget_Ssao] : m_tex_white;
 			shader_type = Shader_DebugChannelR_P;
 		}
 
