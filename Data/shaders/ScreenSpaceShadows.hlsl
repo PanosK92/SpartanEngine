@@ -28,7 +28,7 @@ static const float g_sscs_bias              = 0.005f;
 #include "Dithering.hlsl"
 //=======================
 
-float ScreenSpaceContactShadows(Texture2D tex_depth, float2 uv, float3 light_dir)
+float ScreenSpaceShadows(Texture2D tex_depth, float2 uv, float3 light_dir)
 {
     // Origin view space position
     float3 temp  		= get_position_from_depth(tex_depth, uv);
@@ -44,14 +44,14 @@ float ScreenSpaceContactShadows(Texture2D tex_depth, float2 uv, float3 light_dir
 	float3 ray_step		= ray_dir * step_length;
 
 	// Apply dithering
-	ray_pos += ray_dir * dither_temporal_else_zero(uv, 1.0f);
+	ray_pos += ray_dir * dither_temporal_fallback(uv, 0.0f, 1.0f);
 
     // Ray march towards the light
     for (uint i = 0; i < g_sscs_steps; i++)
     {
         // Step ray
         ray_pos         += ray_step;
-		float2 ray_uv   = project(ray_pos, g_projection);
+		float2 ray_uv   = project_uv(ray_pos, g_projection);
 
 		if (!is_saturated(ray_uv))
 			break;

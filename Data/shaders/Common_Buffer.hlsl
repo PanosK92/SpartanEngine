@@ -96,11 +96,10 @@ cbuffer BufferObject : register(b2)
 };
 
 // Low frequency - Updates once per frame
-#define cascade_count 4
 #define lights_max 100
 cbuffer LightBuffer : register(b3)
 {
-	matrix light_view_projection[lights_max][cascade_count];	
+	matrix light_view_projection[lights_max][6];
 	float4 intensity_range_angle_bias[lights_max];
 	float4 normalBias_shadow_volumetric_contact[lights_max];
 	float4 color[lights_max];

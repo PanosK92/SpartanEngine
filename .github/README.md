@@ -71,7 +71,7 @@ Volumetric Lighting				| 100%          | -
 Screen space contact shadows 	| 100%          | -
 Parallax Mapping 				| 100%          | -
 Shader Editor 					| 100%          | Real-time shader editing tool.
-Shadows 						| 90%          	| Enable point & spot light shadows.
+Shadows 						| 98%           | Enable point & spot light shadows.
 Vulkan      					| 90%           | Don't port it, re-architect the engine instead.
 
 ###### v0.32

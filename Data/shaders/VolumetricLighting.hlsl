@@ -32,20 +32,16 @@ float ComputeScattering(float v_dot_l)
 	return result;
 }
 
-float3 vl_raymarch(Light light, float3 ray_pos, float3 ray_step, float ray_dot_light, int cascade)
+float3 vl_raymarch(Light light, float3 ray_pos, float3 ray_step, float ray_dot_light, int array_index)
 {
 	float3 fog = 0.0f;
 	for (int i = 0; i < g_vl_steps; i++)
 	{
-		// Compute position in light space
-		float4 pos_light = mul(float4(ray_pos, 1.0f), light_view_projection[light.index][cascade]);
-		pos_light /= pos_light.w;	
-		
-		// Compute ray uv
-		float2 ray_uv = pos_light.xy * float2(0.5f, -0.5f) + 0.5f;
-		
+		// Compute position in clip space
+        float3 pos = project(ray_pos, light_view_projection[light.index][array_index]);
+        
 		// Check to see if the light can "see" the pixel
-		float depth_delta = light_depth_directional.SampleCmpLevelZero(sampler_compare_depth, float3(ray_uv, cascade), pos_light.z).r;		
+		float depth_delta = compare_depth(float3(pos.xy, array_index), pos.z);		
 		if (depth_delta > 0.0f)
 		{
 			fog += ComputeScattering(ray_dot_light);
@@ -61,50 +57,42 @@ float3 vl_raymarch(Light light, float3 ray_pos, float3 ray_step, float ray_dot_l
 float3 VolumetricLighting(Light light, float3 pos_world, float2 uv)
 {
 	float3 pixel_to_camera 			= g_camera_position.xyz - pos_world;
-	float pixel_to_cameral_length 	= length(pixel_to_camera);
-	float3 ray_dir					= pixel_to_camera / pixel_to_cameral_length;
-	float step_length 				= pixel_to_cameral_length / g_vl_steps;
+	float pixel_to_camera_length 	= length(pixel_to_camera);
+	float3 ray_dir					= pixel_to_camera / pixel_to_camera_length;
+	float step_length 				= pixel_to_camera_length / g_vl_steps;
 	float3 ray_step 				= ray_dir * step_length;
 	float3 ray_pos 					= pos_world;
 	float ray_dot_light				= dot(ray_dir, light.direction);
 	float3 fog 						= 0.0f;
-
+    
 	// Apply dithering as it will allows us to get away with a crazy low sample count ;-)
 	float3 dither_value = dither(uv) * 100;
 	ray_pos += ray_step * dither_value;
 	
-	// Find closest shadow cascade
-	int cascade = 0;
-	for (int cascade_index = 0; cascade_index < cascade_count; cascade_index++)
+    [unroll(6)]
+	for (uint array_index = 0; array_index < light.array_size; array_index++)
 	{
-		// Compute clip space position and uv for our ray
-		float3 pos 	= mul(float4(ray_pos, 1.0f), light_view_projection[light.index][cascade_index]).xyz;
-		float3 uv 	= pos * float3(0.5f, -0.5f, 0.5f) + 0.5f;	
-		
+        // Compute position in clip space
+        float3 pos = project(ray_pos, light_view_projection[light.index][array_index]);
+        
 		[branch]
-		if (is_saturated(uv))
+		if (is_saturated(pos.xy))
 		{
-			// Ray-march using the primary cascade
-			float3 fog_primary 		= vl_raymarch(light, ray_pos, ray_step, ray_dot_light, cascade_index);
-			float cascade_lerp 		= (max3(abs(pos)) - 0.9f) * 10.0f;
-			
-			// If we are close to the edge of the primary cascade and a secondary cascade exists, lerp with it.
-			[branch]
-			if (cascade_lerp > 0.0f && cascade < cascade_count - 1)
-			{
-				// Ray-march using the secondary cascade
-				int cacade_secondary = cascade + 1;
-				float3 fog_secondary = vl_raymarch(light, ray_pos, ray_step, ray_dot_light, cacade_secondary);
-				
-				// Blend cascades	
-				fog = lerp(fog_primary, fog_secondary, cascade_lerp);
-			}
-			else
-			{
-				fog = fog_primary;
-			}
-			
-			break;
+			// Ray-march
+			fog += vl_raymarch(light, ray_pos, ray_step, ray_dot_light, array_index);
+            
+            // If we are close to the edge of the primary cascade and a next cascade exists, lerp with it.
+            float cascade_lerp = (max3(abs(pos)) - 0.9f) * 10.0f;
+            [branch]
+            if (light.is_directional && cascade_lerp > 0.0f && array_index < cascade_count - 1)
+            {
+                // Ray-march using the next cascade
+                float3 fog_secondary = vl_raymarch(light, ray_pos, ray_step, ray_dot_light, array_index + 1);
+                
+                // Blend cascades	
+                fog = lerp(fog, fog_secondary, cascade_lerp);
+                break;
+            }
 		}
 	}
 	

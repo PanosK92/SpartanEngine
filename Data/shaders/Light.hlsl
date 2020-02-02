@@ -29,6 +29,8 @@ TextureCube light_depth_point 			: register(t5);
 Texture2D light_depth_spot 				: register(t6);
 //=====================================================
 
+#define cascade_count 4
+
 //= INCLUDES =====================      
 #include "BRDF.hlsl"              
 #include "ShadowMapping.hlsl"
@@ -71,34 +73,47 @@ PixelOutputType mainPS(Pixel_PosUv input)
 	{
 		// Fill in light struct with default values
 		Light light;
-		light.index		= i;
-		light.color 	= color[i].xyz;
-		light.position 	= position[i].xyz;
-		#if DIRECTIONAL
-		light.direction	= direction[i].xyz;
-		#elif POINT
-		light.direction	= normalize(position_world - light.position);
-		#elif SPOT
-		light.direction	= normalize(position_world - light.position);
-		#endif
-		light.intensity 			= intensity_range_angle_bias[i].x;
+		light.index		            = i;
+		light.color 	            = color[i].xyz;
+		light.position 	            = position[i].xyz;
+        light.intensity 			= intensity_range_angle_bias[i].x;
 		light.range 				= intensity_range_angle_bias[i].y;
 		light.angle 				= intensity_range_angle_bias[i].z;
 		light.bias					= intensity_range_angle_bias[i].w;
 		light.normal_bias 			= normalBias_shadow_volumetric_contact[i].x;
-		light.shadow_enabled 		= normalBias_shadow_volumetric_contact[i].y;
-		light.volumetric_enabled 	= normalBias_shadow_volumetric_contact[i].z;
-		
+		light.cast_shadows 		    = normalBias_shadow_volumetric_contact[i].y;
+		light.cast_contact_shadows 	= normalBias_shadow_volumetric_contact[i].z;
+        light.is_volumetric 	    = normalBias_shadow_volumetric_contact[i].w;
+		#if DIRECTIONAL
+        light.is_directional    = true;
+        light.is_point          = false;
+        light.is_spot           = false;
+		light.direction	        = direction[i].xyz;
+        light.array_size        = cascade_count;
+		#elif POINT
+        light.is_directional    = false;
+        light.is_point          = true;
+        light.is_spot           = false;
+		light.direction	        = normalize(position_world - light.position);
+        light.array_size        = 6;
+		#elif SPOT
+        light.is_directional    = false;
+        light.is_point          = false;
+        light.is_spot           = true;
+		light.direction	        = normalize(position_world - light.position);
+        light.array_size        = 1;
+		#endif
+
 		// Shadow
 		float shadow = 1.0f;
-		if (light.shadow_enabled)
+		if (light.cast_shadows)
 		{
 			if (!is_sky)
 			{
 				shadow = Shadow_Map(uv, normal, depth_sample, position_world, light);
 			}
 	
-			if (light.volumetric_enabled)
+			if (light.is_volumetric)
 			{
 				light_out.volumetric.rgb = VolumetricLighting(light, position_world, uv);
 			}

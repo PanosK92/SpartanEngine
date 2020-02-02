@@ -84,8 +84,14 @@ namespace Spartan
 		void SetIntensity(float value)	{ m_intensity = value; }
 		auto GetIntensity()				{ return m_intensity; }
 
-		bool GetCastShadows() const { return m_cast_shadows; }
-		void SetCastShadows(bool castShadows);
+		bool GetShadowsEnabled() const { return m_shadows_enabled; }
+		void SetShadowsEnabled(bool cast_shadows);
+
+        bool GetScreenSpaceShadowsEnabled() const                      { return m_shadows_screen_space_enabled; }
+        void SetScreenSpaceShadowsEnabled(bool cast_contact_shadows)   { m_shadows_screen_space_enabled = cast_contact_shadows; }
+
+        bool GetVolumetricEnabled() const               { return m_volumetric_enabled; }
+        void SetVolumetricEnabled(bool is_volumetric)   { m_volumetric_enabled = is_volumetric; }
 
 		void SetRange(float range);
 		auto GetRange() { return m_range; }
@@ -105,6 +111,7 @@ namespace Spartan
 		const Math::Matrix& GetProjectionMatrix(uint32_t index = 0) const;
 
 		const auto& GetShadowMap() const { return m_shadow_map.texture; }
+        uint32_t GetShadowArraySize() const;
         void CreateShadowMap();
 
         bool IsInViewFrustrum(Renderable* renderable, uint32_t index) const;
@@ -114,16 +121,19 @@ namespace Spartan
 		bool ComputeProjectionMatrix(uint32_t index = 0);
         void ComputeCascadeSplits();
 		
-		LightType m_light_type	    = LightType_Directional;
-		bool m_cast_shadows		    = true;
-		float m_range			    = 10.0f;
-		float m_intensity		    = 10.0f;
-		float m_angle_rad		    = 0.5f; // about 30 degrees
-		float m_bias			    = 0.0001f;
-		float m_normal_bias		    = 15.0f;
-        bool m_initialized          = false;
-		bool m_is_dirty			    = true;
-		Math::Vector4 m_color   = Math::Vector4(1.0f, 0.76f, 0.57f, 1.0f);
+		LightType m_light_type	            = LightType_Directional;
+		bool m_shadows_enabled		        = true;
+        bool m_shadows_screen_space_enabled = true;
+        bool m_volumetric_enabled           = true;
+		float m_range			            = 10.0f;
+		float m_intensity		            = 10.0f;
+		float m_angle_rad		            = 0.5f; // about 30 degrees
+		float m_bias			            = 0.0001f;
+		float m_normal_bias		            = 15.0f;
+        bool m_initialized                  = false;
+		bool m_is_dirty			            = true;
+        uint32_t m_cascade_count            = 4;
+		Math::Vector4 m_color               = Math::Vector4(1.0f, 0.76f, 0.57f, 1.0f);
 		std::array<Math::Matrix, 6> m_matrix_view;
 		std::array<Math::Matrix, 6> m_matrix_projection;
         Math::Quaternion m_previous_rot     = Math::Quaternion::Identity;

@@ -124,7 +124,7 @@ float mainPS(Pixel_PosUv input) : SV_TARGET
 		// Compute sample uv
 		float3 offset   = mul(sampleKernel[i], TBN) * dither_value;
 		float3 ray_pos  = center_pos + offset * radius;
-		float2 ray_uv   = project(ray_pos, g_viewProjection);
+		float2 ray_uv   = project_uv(ray_pos, g_viewProjection);
 		
 		// Compute sample data
         float3 sample_pos               = get_position_from_depth(texDepth, ray_uv);

@@ -45,7 +45,7 @@ bool binary_search(float3 ray_dir, inout float3 ray_pos, inout float2 ray_uv)
     {    
 		ray_dir  *= 0.5f;
 		ray_pos += -sign(depth_delta) * ray_dir;
-        ray_uv    = project(ray_pos, g_projection);
+        ray_uv    = project_uv(ray_pos, g_projection);
 
         depth_buffer_z  = get_linear_depth(tex_depth, ray_uv);
         depth_delta     = ray_pos.z - depth_buffer_z;
@@ -63,7 +63,7 @@ bool ray_march(float3 ray_pos, float3 ray_dir, inout float2 ray_uv)
     {
         // Step ray
         ray_pos += ray_dir;
-        ray_uv  = project(ray_pos, g_projection);
+        ray_uv  = project_uv(ray_pos, g_projection);
 
         float depth_buffer_z = get_linear_depth(tex_depth, ray_uv);
 
@@ -92,7 +92,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     float3 ray_step     = ray_dir * step_length;
 
 	// Apply dithering
-	ray_pos += ray_step * dither_temporal_else_zero(uv, 10.0f);
+	ray_pos += ray_step * dither_temporal_fallback(uv, 0.0f, 10.0f);
     
     float2 ray_hit_uv = 0.0f;
     if (ray_march(ray_pos, ray_step, ray_hit_uv))

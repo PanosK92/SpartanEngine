@@ -65,9 +65,9 @@ namespace Spartan
         m_options |= Render_Bloom;
         m_options |= Render_VolumetricLighting;
         m_options |= Render_MotionBlur;
-        m_options |= Render_SSAO;
-        m_options |= Render_SSCS;
-        m_options |= Render_SSR;	
+        m_options |= Render_ScreenSpaceAmbientOcclusion;
+        m_options |= Render_ScreenSpaceShadows;
+        m_options |= Render_ScreenSpaceReflections;	
         m_options |= Render_AntiAliasing_TAA;
         m_options |= Render_Sharpening_LumaSharpen;             // Helps with TAA induced blurring
         //m_options |= Render_PostProcess_FXAA;                 // Disabled by default: TAA is superior.
@@ -190,7 +190,7 @@ namespace Spartan
         for (const auto& light_entity : light_entities)
         {
             auto& light = light_entity->GetComponent<Light>();
-            if (light->GetCastShadows())
+            if (light->GetShadowsEnabled())
             {
                 light->CreateShadowMap();
             }
@@ -374,7 +374,7 @@ namespace Spartan
         m_buffer_frame_cpu.exposure                     = m_option_values[Option_Value_Exposure];
         m_buffer_frame_cpu.gamma                        = m_option_values[Option_Value_Gamma];
         m_buffer_frame_cpu.directional_light_intensity  = light_directional_intensity;
-        m_buffer_frame_cpu.ssr_enabled                  = GetOptionValue(Render_SSR) ? 1.0f : 0.0f;
+        m_buffer_frame_cpu.ssr_enabled                  = GetOptionValue(Render_ScreenSpaceReflections) ? 1.0f : 0.0f;
         m_buffer_frame_cpu.shadow_resolution            = GetOptionValue<float>(Option_Value_ShadowResolution);
         m_buffer_frame_cpu.ssao_scale                   = m_option_values[Option_Value_Ssao_Scale];
         m_buffer_frame_cpu.padding                      = 0.0f;
@@ -469,13 +469,15 @@ namespace Spartan
             return false;
         }
 
+        bool volumetric         = static_cast<float>(m_options & Render_VolumetricLighting);
+        bool contact_shadows    = static_cast<float>(m_options & Render_ScreenSpaceShadows);
         for (uint32_t i = 0; i < entities.size(); i++)
         {
             if (Light* light = entities[i]->GetComponent<Light>().get())
             {
-                for (int j = 0; j < g_cascade_count; j++)                   { m_buffer_light_cpu.view_projection[i][j] = light->GetViewMatrix(j) * light->GetProjectionMatrix(j); }
+                for (int j = 0; j < light->GetShadowArraySize(); j++)       { m_buffer_light_cpu.view_projection[i][j] = light->GetViewMatrix(j) * light->GetProjectionMatrix(j); }
                 m_buffer_light_cpu.intensity_range_angle_bias[i]            = Vector4(light->GetIntensity(), light->GetRange(), light->GetAngle(), GetOptionValue(Render_ReverseZ) ? light->GetBias() : -light->GetBias());
-                m_buffer_light_cpu.normalBias_shadow_volumetric_contact[i]  = Vector4(light->GetNormalBias(), light->GetCastShadows(), static_cast<float>(m_options & Render_VolumetricLighting), static_cast<float>(m_options & Render_SSCS));
+                m_buffer_light_cpu.normalBias_shadow_volumetric_contact[i]  = Vector4(light->GetNormalBias(), light->GetShadowsEnabled(), contact_shadows && light->GetScreenSpaceShadowsEnabled(), volumetric && light->GetVolumetricEnabled());
                 m_buffer_light_cpu.color[i]                                 = light->GetColor();
                 m_buffer_light_cpu.position[i]                              = light->GetTransform()->GetPosition();
                 m_buffer_light_cpu.direction[i]                             = light->GetDirection();

@@ -59,7 +59,7 @@ namespace _Widget_Properties
 namespace ComponentProperty
 {
 	static string g_contex_menu_id;
-	static float g_column = 140.0f;
+	static float g_column = 180.0f;
 	static const float g_max_width = 100.0f;
 	static shared_ptr<IComponent> g_copied;
 
@@ -306,7 +306,9 @@ void Widget_Properties::ShowLight(shared_ptr<Light>& light) const
 		const char* type_char_ptr	= types[static_cast<int>(light->GetLightType())];
 		auto intensity				= light->GetIntensity();
 		auto angle					= light->GetAngle() * 179.0f;
-		auto casts_shadows			= light->GetCastShadows();
+		auto shadows			    = light->GetShadowsEnabled();
+        auto shadows_screen_space   = light->GetScreenSpaceShadowsEnabled();
+        auto volumetric             = light->GetVolumetricEnabled();
 		auto bias					= light->GetBias();
 		auto normal_bias			= light->GetNormalBias();
 		auto range					= light->GetRange();
@@ -344,9 +346,20 @@ void Widget_Properties::ShowLight(shared_ptr<Light>& light) const
 		ImGui::SameLine(ComponentProperty::g_column);
 		ImGui::PushItemWidth(300); ImGui::DragFloat("##lightIntensity", &intensity, 0.01f, 0.0f, 100.0f); ImGui::PopItemWidth();
 
-		// Cast shadows
+		// Shadows
 		ImGui::Text("Shadows");
-		ImGui::SameLine(ComponentProperty::g_column); ImGui::Checkbox("##lightShadows", &casts_shadows);
+		ImGui::SameLine(ComponentProperty::g_column); ImGui::Checkbox("##light_shadows", &shadows);
+
+        // Screen space shadows
+        ImGui::Text("Screen Space Shadows");
+        ImGui::SameLine(ComponentProperty::g_column); ImGui::Checkbox("##light_shadows_screen_space", &shadows_screen_space);
+
+        // Volumetric
+        if (shadows)
+        {
+            ImGui::Text("Volumetric");
+            ImGui::SameLine(ComponentProperty::g_column); ImGui::Checkbox("##light_volumetric", &volumetric);
+        }
 
 		// Bias
 		ImGui::Text("Bias");
@@ -374,15 +387,17 @@ void Widget_Properties::ShowLight(shared_ptr<Light>& light) const
 			ImGui::PushItemWidth(300); ImGui::DragFloat("##lightAngle", &angle, 0.01f, 1.0f, 179.0f); ImGui::PopItemWidth();
 		}
 
-		//= MAP =====================================================================================================
-		if (intensity != light->GetIntensity())						light->SetIntensity(intensity);
-		if (casts_shadows != light->GetCastShadows())				light->SetCastShadows(casts_shadows);
-		if (bias != light->GetBias())								light->SetBias(bias);
-		if (normal_bias != light->GetNormalBias())					light->SetNormalBias(normal_bias);
-		if (angle / 179.0f != light->GetAngle())					light->SetAngle(angle / 179.0f);
-		if (range != light->GetRange())								light->SetRange(range);
-		if (m_colorPicker_light->GetColor() != light->GetColor())	light->SetColor(m_colorPicker_light->GetColor());
-		//===========================================================================================================
+		//= MAP ======================================================================================================================
+        if (intensity != light->GetIntensity())						        light->SetIntensity(intensity);
+        if (shadows != light->GetShadowsEnabled())				            light->SetShadowsEnabled(shadows);
+        if (shadows_screen_space != light->GetScreenSpaceShadowsEnabled())  light->SetScreenSpaceShadowsEnabled(shadows_screen_space);
+        if (volumetric != light->GetVolumetricEnabled())				    light->SetVolumetricEnabled(volumetric);
+		if (bias != light->GetBias())								        light->SetBias(bias);
+		if (normal_bias != light->GetNormalBias())					        light->SetNormalBias(normal_bias);
+		if (angle / 179.0f != light->GetAngle())					        light->SetAngle(angle / 179.0f);
+		if (range != light->GetRange())								        light->SetRange(range);
+		if (m_colorPicker_light->GetColor() != light->GetColor())	        light->SetColor(m_colorPicker_light->GetColor());
+		//============================================================================================================================
 	}
 	ComponentProperty::End();
 }
