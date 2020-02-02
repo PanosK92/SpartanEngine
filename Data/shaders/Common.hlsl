@@ -26,17 +26,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //============================
 
 /*------------------------------------------------------------------------------
-                                [GLOBALS]
+GLOBALS
 ------------------------------------------------------------------------------*/
 static const float PI       = 3.14159265f;
-static const float PI2    = PI * 2;
+static const float PI2      = PI * 2;
 static const float INV_PI   = 0.31830988f;
 static const float EPSILON  = 0.00000001f;
 #define g_texel_size        float2(1.0f / g_resolution.x, 1.0f / g_resolution.y)
 #define g_shadow_texel_size (1.0f / g_shadow_resolution)
 
 /*------------------------------------------------------------------------------
-                            [STRUCTS]
+    STRUCTS
 ------------------------------------------------------------------------------*/
 struct Material
 {
@@ -69,7 +69,7 @@ struct Light
 };
 
 /*------------------------------------------------------------------------------
-                            [GAMMA CORRECTION]
+    GAMMA CORRECTION
 ------------------------------------------------------------------------------*/
 inline float4 degamma(float4 color) { return pow(abs(color), g_gamma); }
 inline float3 degamma(float3 color) { return pow(abs(color), g_gamma); }
@@ -77,7 +77,7 @@ inline float4 gamma(float4 color)   { return pow(abs(color), 1.0f / g_gamma); }
 inline float3 gamma(float3 color)   { return pow(abs(color), 1.0f / g_gamma); }
 
 /*------------------------------------------------------------------------------
-                                [PROJECT]
+    PROJECT
 ------------------------------------------------------------------------------*/
 inline float3 project(float3 position, matrix transform)
 {
@@ -99,7 +99,7 @@ inline float project_depth(float3 position, matrix transform)
 }
 
 /*------------------------------------------------------------------------------
-                                [PACKING]
+    PACKING
 ------------------------------------------------------------------------------*/
 inline float3 unpack(float3 value)  { return value * 2.0f - 1.0f; }
 inline float3 pack(float3 value)    { return value * 0.5f + 0.5f; }
@@ -107,7 +107,7 @@ inline float2 unpack(float2 value)  { return value * 2.0f - 1.0f; }
 inline float2 pack(float2 value)    { return value * 0.5f + 0.5f; }
 
 /*------------------------------------------------------------------------------
-                                [NORMALS]
+    NORMAL
 ------------------------------------------------------------------------------*/
 // No decoding required (just normalise)
 inline float3 normal_decode(float3 normal)  { return normalize(normal); }
@@ -130,7 +130,42 @@ inline float3x3 makeTBN(float3 n, float3 t)
 }
 
 /*------------------------------------------------------------------------------
-                            [DEPTH/POS]
+    DEPTH LIGHT
+------------------------------------------------------------------------------*/
+float compare_depth(float3 uv, float compare)
+{
+    #if DIRECTIONAL
+    // float3 -> uv, slice
+    return light_depth_directional.SampleCmpLevelZero(sampler_compare_depth, uv, compare).r;
+    #elif POINT
+    // float3 -> direction
+    return light_depth_point.SampleCmpLevelZero(sampler_compare_depth, uv, compare).r;
+    #elif SPOT
+    // float3 -> uv, 0
+    return light_depth_spot.SampleCmpLevelZero(sampler_compare_depth, uv.xy, compare).r;
+    #endif
+
+    return 0.0f;
+}
+
+float sample_depth(float3 uv)
+{
+    #if DIRECTIONAL
+    // float3 -> uv, slice
+    return light_depth_directional.SampleLevel(sampler_point_clamp, uv, 0).r;
+    #elif POINT
+    // float3 -> direction
+    return light_depth_point.SampleLevel(sampler_point_clamp, uv, 0).r;
+    #elif SPOT
+    // float3 -> uv, 0
+    return light_depth_spot.SampleLevel(sampler_point_clamp, uv.xy, 0).r;
+    #endif
+
+    return 0.0f;
+}
+
+/*------------------------------------------------------------------------------
+    DEPTH CAMERA
 ------------------------------------------------------------------------------*/
 inline float get_depth(Texture2D _texture, float2 uv)
 {
@@ -183,7 +218,7 @@ inline float3 get_view_direction(Texture2D tex_depth, float2 uv)
 }
 
 /*------------------------------------------------------------------------------
-                                [LUMINANCE]
+    LUMINANCE
 ------------------------------------------------------------------------------*/
 static const float3 lumCoeff = float3(0.299f, 0.587f, 0.114f);
 
@@ -198,7 +233,7 @@ inline float luminance(float4 color)
 }
 
 /*------------------------------------------------------------------------------
-                                [DIRECTION TO UV]
+    DIRECTION TO UV
 ------------------------------------------------------------------------------*/
 inline float2 direction_sphere_uv(float3 direction)
 {
@@ -232,7 +267,7 @@ inline uint direction_to_cube_face_index(const float3 direction)
 }
 
 /*------------------------------------------------------------------------------
-                                [RANDOM/SAMPLING]
+    RANDOM/SAMPLING
 ------------------------------------------------------------------------------*/
 inline float random(float2 uv)
 {
@@ -247,7 +282,7 @@ inline float interleaved_gradient_noise(float2 position_screen)
 
 
 /*------------------------------------------------------------------------------
-                                [MISC]
+    MISC
 ------------------------------------------------------------------------------*/
 // The Technical Art of Uncharted 4 - http://advances.realtimerendering.com/other/2016/naughty_dog/index.html
 float micro_shadow(float ao, float3 N, float3 L, float shadow)

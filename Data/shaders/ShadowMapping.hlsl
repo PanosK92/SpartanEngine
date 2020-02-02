@@ -43,41 +43,6 @@ static const float g_shadow_poisson_filter_size = 5.0f;
 static const float g_pcf_filter_size = (sqrt((float)g_shadow_samples) - 1.0f) / 2.0f;
 
 /*------------------------------------------------------------------------------
-    DEPTH
-------------------------------------------------------------------------------*/
-float compare_depth(float3 uv, float compare)
-{
-    #if DIRECTIONAL
-    // float3 -> uv, slice
-    return light_depth_directional.SampleCmpLevelZero(sampler_compare_depth, uv, compare).r;
-    #elif POINT
-    // float3 -> direction
-    return light_depth_point.SampleCmpLevelZero(sampler_compare_depth, uv, compare).r;
-    #elif SPOT
-    // float3 -> uv, 0
-    return light_depth_spot.SampleCmpLevelZero(sampler_compare_depth, uv.xy, compare).r;
-    #endif
-
-    return 0.0f;
-}
-
-float sample_depth(float3 uv)
-{
-    #if DIRECTIONAL
-    // float3 -> uv, slice
-    return light_depth_directional.SampleLevel(sampler_point_clamp, uv, 0).r;
-    #elif POINT
-    // float3 -> direction
-    return light_depth_point.SampleLevel(sampler_point_clamp, uv, 0).r;
-    #elif SPOT
-    // float3 -> uv, 0
-    return light_depth_spot.SampleLevel(sampler_point_clamp, uv.xy, 0).r;
-    #endif
-
-    return 0.0f;
-}
-
-/*------------------------------------------------------------------------------
     PENUMBRA
 ------------------------------------------------------------------------------*/
 float2 vogel_disk_sample(uint sample_index, uint sample_count, float angle)
@@ -280,16 +245,16 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, Light 
             
             // If the position exists within the cascade, sample it
             [branch]
-            if (is_saturated(pos.xy))
+            if (is_saturated(pos))
             {   
                 // Sample primary cascade
-                float compare_depth     = pos.z + (light.bias * (cascade + 1));
-                float shadow_primary    = SampleShadowMap(float3(pos.xy, cascade), compare_depth);
-                float cascade_lerp      = (max2(abs(pos.xy)) - 0.9f) * 10.0f;
+                float compare_depth = pos.z + (light.bias * (cascade + 1));
+                shadow              = SampleShadowMap(float3(pos.xy, cascade), compare_depth);
+                float cascade_lerp  = (max3(abs(pos)) - 0.9f);
 
                 // If we are close to the edge of the primary cascade and a secondary cascade exists, lerp with it.
                 [branch]
-                if (cascade_lerp > 0.0f && cascade < cascade_count - 1)
+                if (cascade_lerp > 0.0f && cascade < light.array_size - 1)
                 {
                     int cacade_secondary = cascade + 1;
 
@@ -301,11 +266,7 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, Light 
                     float shadow_secondary  = SampleShadowMap(float3(pos.xy, cacade_secondary), compare_depth);
 
                     // Blend cascades   
-                    shadow = lerp(shadow_primary, shadow_secondary, cascade_lerp);
-                }
-                else
-                {
-                    shadow = shadow_primary;
+                    shadow = lerp(shadow, shadow_secondary, cascade_lerp);
                 }
 
                 break;
@@ -334,14 +295,6 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, Light 
         }
     }
     #endif
-    
-    // Screen space shadows
-    [branch]
-    if (light.cast_contact_shadows)
-    {
-        float sscs = ScreenSpaceShadows(tex_depth, uv, light.direction);
-        shadow = min(shadow, sscs); 
-    }
     
     return shadow;
 }

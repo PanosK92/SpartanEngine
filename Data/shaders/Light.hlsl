@@ -29,8 +29,6 @@ TextureCube light_depth_point 			: register(t5);
 Texture2D light_depth_spot 				: register(t6);
 //=====================================================
 
-#define cascade_count 4
-
 //= INCLUDES =====================      
 #include "BRDF.hlsl"              
 #include "ShadowMapping.hlsl"
@@ -89,7 +87,7 @@ PixelOutputType mainPS(Pixel_PosUv input)
         light.is_point          = false;
         light.is_spot           = false;
 		light.direction	        = direction[i].xyz;
-        light.array_size        = cascade_count;
+        light.array_size        = 4;
 		#elif POINT
         light.is_directional    = false;
         light.is_point          = true;
@@ -104,30 +102,42 @@ PixelOutputType mainPS(Pixel_PosUv input)
         light.array_size        = 1;
 		#endif
 
-		// Shadow
-		float shadow = 1.0f;
-		if (light.cast_shadows)
-		{
-			if (!is_sky)
-			{
-				shadow = Shadow_Map(uv, normal, depth_sample, position_world, light);
-			}
-	
-			if (light.is_volumetric)
-			{
-				light_out.volumetric.rgb = VolumetricLighting(light, position_world, uv);
-			}
-		}
-	
+        // Volumetric lighting (requires shadow maps)
+        [branch]
+        if (light.cast_shadows && light.is_volumetric)
+        {
+            light_out.volumetric.rgb = VolumetricLighting(light, position_world, uv);
+        }
+        
 		// Ignore sky (but after we have allowed for the volumetric light to affect it)
 		if (is_sky)
 		{
 			return light_out;
 		}
-	
-		// Mix shadow with ssao and modulate light's intensity
-		shadow = min(shadow, occlusion);
-		light.intensity *= shadow;
+        
+        // Shadow
+        float shadow = 1.0f;
+        {
+            // Shadow mapping
+            [branch]
+            if (light.cast_shadows)
+            {
+                shadow = Shadow_Map(uv, normal, depth_sample, position_world, light);
+            }
+            
+            // Screen space shadows
+            [branch]
+            if (light.cast_contact_shadows)
+            {
+                shadow = min(shadow, ScreenSpaceShadows(light, position_world, uv)); 
+            }
+        
+            // Occlusion texture + SSAO
+            shadow = min(shadow, occlusion);
+            
+            // Modulate light intensity
+            light.intensity *= shadow;
+        }
 			
 		#if DIRECTIONAL
 			// Save shadows in the diffuse's alpha channel (used to modulate IBL later)
