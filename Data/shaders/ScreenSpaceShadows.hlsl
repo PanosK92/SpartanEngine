@@ -19,51 +19,46 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-static const uint g_sscs_steps              = 32;
-static const float g_sscs_rejection_depth   = 0.02f;
-static const float g_sscs_ray_max_distance  = 0.1f;
-static const float g_sscs_bias              = 0.005f;
+static const uint g_sss_steps              = 32;
+static const float g_sss_rejection_depth   = 0.02f;
+static const float g_sss_ray_max_distance  = 0.1f;
+static const float g_sss_bias              = 0.005f;
 
 //= INLUCES =============
 #include "Dithering.hlsl"
 //=======================
 
-float ScreenSpaceShadows(Texture2D tex_depth, float2 uv, float3 light_dir)
+float ScreenSpaceShadows(Light light, float3 position_world, float2 uv)
 {
-    // Origin view space position
-    float3 temp  		= get_position_from_depth(tex_depth, uv);
-    float3 origin_pos	= mul(float4(temp, 1.0f), g_view).xyz;
-
-	// Compute vector that points to the light
-	float3 light_dir_view = mul(float4(-light_dir, 0.0f), g_view).xyz;
-
 	// Compute ray
-	float3 ray_pos 		= origin_pos;
-	float3 ray_dir 		= light_dir_view;
-	float step_length	= g_sscs_ray_max_distance / (float)g_sscs_steps;
+	float3 ray_pos 		= mul(float4(position_world, 1.0f), g_view).xyz;
+	float3 ray_dir 		= mul(float4(-light.direction, 0.0f), g_view).xyz;
+	float step_length	= g_sss_ray_max_distance / (float)g_sss_steps;
 	float3 ray_step		= ray_dir * step_length;
+    float2 ray_uv       = 0.0f;
+    float shadow        = 1.0f;
 
 	// Apply dithering
 	ray_pos += ray_dir * dither_temporal_fallback(uv, 0.0f, 1.0f);
 
     // Ray march towards the light
-    for (uint i = 0; i < g_sscs_steps; i++)
+    for (uint i = 0; i < g_sss_steps; i++)
     {
         // Step ray
-        ray_pos         += ray_step;
-		float2 ray_uv   = project_uv(ray_pos, g_projection);
-
-		if (!is_saturated(ray_uv))
-			break;
-
-		// Compare depth
-		float depth_sampled = get_linear_depth(tex_depth, ray_uv);
-		float depth_delta   = ray_pos.z - depth_sampled - g_sscs_bias;
-
+        ray_pos += ray_step;
+        ray_uv  = project_uv(ray_pos, g_projection);
+    
+        if (!is_saturated(ray_uv))
+            break;
+    
+        // Compare depth
+        float depth_sampled = get_linear_depth(tex_depth, ray_uv);
+        float depth_delta   = ray_pos.z - depth_sampled - g_sss_bias;
+    
         // Occlusion test
-        if (depth_delta > 0.0f && depth_delta < g_sscs_rejection_depth)
-			return 0;
+        if (depth_delta > 0.0f && depth_delta < g_sss_rejection_depth)
+            return 0;
     }
-
+    
     return 1;
 }
