@@ -287,8 +287,8 @@ namespace Spartan
 
     void Camera::FpsControl(float delta_time)
     {
-        static const float mouse_sensitivity        = 20.0f;
-        static const float mouse_smoothing          = 2.5f;
+        static const float mouse_sensitivity        = 0.13f;
+        static const float mouse_smoothing          = 0.2f;
         static const float movement_speed_max       = 40.0f;
         static const float movement_acceleration    = 0.8f;
         static const float movement_drag            = 0.08f;
@@ -297,14 +297,22 @@ namespace Spartan
         {
             // Mouse look
             {
+                // Snap to initial camera rotation (if this is the first time running)
+                if (mouse_rotation == Vector2::Zero)
+                {
+                    Quaternion rotation = m_transform->GetRotation();
+                    mouse_rotation.x    = rotation.Yaw();
+                    mouse_rotation.y  = rotation.Pitch();
+                }
+
                 // Get mouse delta
                 Vector2 mouse_delta = m_input->GetMouseDelta() * mouse_sensitivity;
 
                 // Lerp to it
-                mouse_smoothed = Math::Lerp(mouse_smoothed, mouse_delta, 1.0f / mouse_smoothing);
+                mouse_smoothed = Math::Lerp(mouse_smoothed, mouse_delta, Clamp(1.0f - mouse_smoothing, 0.0f, 1.0f));
 
                 // Accumulate rotation
-                mouse_rotation += mouse_smoothed * delta_time;
+                mouse_rotation += mouse_smoothed;
 
                 // Clamp rotation along the x-axis
                 mouse_rotation.y = Clamp(mouse_rotation.y, -90.0f, 90.0f);

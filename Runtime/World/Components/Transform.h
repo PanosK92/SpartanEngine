@@ -56,12 +56,12 @@ namespace Spartan
 		void SetPositionLocal(const Math::Vector3& position);
 		//===========================================================================
 
-		//= ROTATION =============================================================
-		auto GetRotation()						{ return m_matrix.GetRotation(); }
-		const auto& GetRotationLocal() const	{ return m_rotationLocal; }
+		//= ROTATION ===========================================================
+		Math::Quaternion GetRotation()  const { return m_matrix.GetRotation(); }
+		const auto& GetRotationLocal()  const { return m_rotationLocal; }
 		void SetRotation(const Math::Quaternion& rotation);
 		void SetRotationLocal(const Math::Quaternion& rotation);
-		//========================================================================
+		//======================================================================
 
 		//= SCALE =========================================================
 		auto GetScale()						{ return m_matrix.GetScale(); }
