@@ -44,6 +44,13 @@ struct Vertex_PosUvNorTan
     float3 tangent		: TANGENT0;
 };
 
+struct Vertex_Pos2dUvColor
+{
+    float2 position     : POSITION0;
+    float2 uv           : TEXCOORD0;
+    float4 color        : COLOR0;
+};
+
 struct Pixel_Pos
 {
     float4 position : SV_POSITION;
@@ -59,11 +66,4 @@ struct Pixel_PosColor
 {
     float4 position : SV_POSITION;
     float4 color 	: COLOR;
-};
-
-struct Vertex_Pos2dUvColor
-{
-    float2 position     : POSITION0;
-    float2 uv           : TEXCOORD0;
-    float4 color        : COLOR0;
 };

@@ -37,14 +37,12 @@ Texture2D texMask 		: register (t7);
 
 struct PixelInputType
 {
-    float4 positionCS 			: SV_POSITION;
+    float4 position 			: SV_POSITION;
     float2 uv 					: TEXCOORD;
     float3 normal 				: NORMAL;
     float3 tangent 				: TANGENT;
-	float4 positionVS 			: POSITIONT0;
-    float4 positionWS 			: POSITIONT1;
-	float4 positionCS_Current 	: SCREEN_POS;
-	float4 positionCS_Previous 	: SCREEN_POS_PREVIOUS;
+	float4 position_ss_current	: SCREEN_POS;
+	float4 position_ss_previous : SCREEN_POS_PREVIOUS;
 };
 
 struct PixelOutputType
@@ -59,12 +57,11 @@ PixelInputType mainVS(Vertex_PosUvNorTan input)
 {
     PixelInputType output;
     
-    input.position.w 			= 1.0f;	
-	output.positionWS 			= mul(input.position, g_object_transform);
-    output.positionVS   		= mul(output.positionWS, g_view);
-    output.positionCS   		= mul(output.positionVS, g_projection);
-	output.positionCS_Current 	= mul(input.position, g_object_wvp_current);
-	output.positionCS_Previous 	= mul(input.position, g_object_wvp_previous);
+    input.position.w 			= 1.0f;		
+	output.position_ss_previous = mul(input.position, g_object_wvp_previous);
+    output.position 			= mul(input.position, g_object_transform);
+    output.position   		    = mul(output.position, g_viewProjection);
+    output.position_ss_current 	= output.position;
 	output.normal 				= normalize(mul(input.normal, (float3x3)g_object_transform)).xyz;	
 	output.tangent 				= normalize(mul(input.tangent, (float3x3)g_object_transform)).xyz;
     output.uv 					= input.uv;
@@ -85,12 +82,12 @@ PixelOutputType mainPS(PixelInputType input)
 	float emission			= 0.0f;
 	float occlusion			= 1.0f;	
 	
-	//= VELOCITY ==============================================================================
-	float2 position_current 	= (input.positionCS_Current.xy / input.positionCS_Current.w);
-	float2 position_previous 	= (input.positionCS_Previous.xy / input.positionCS_Previous.w);
+	//= VELOCITY ================================================================================
+	float2 position_current 	= (input.position_ss_current.xy / input.position_ss_current.w);
+	float2 position_previous 	= (input.position_ss_previous.xy / input.position_ss_previous.w);
 	float2 position_delta		= position_current - position_previous;
     float2 velocity 			= (position_delta - g_taa_jitter_offset) * float2(0.5f, -0.5f);
-	//=========================================================================================
+	//===========================================================================================
 
 	// Make TBN
 	float3x3 TBN = makeTBN(input.normal, input.tangent);

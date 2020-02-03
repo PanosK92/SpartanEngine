@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-static const int MAX_SAMPLES = 16;
+static const uint g_mb_samples = 16;
 
 float4 MotionBlur(float2 texCoord, Texture2D texture_color, Texture2D texture_velocity, Texture2D texture_depth)
 {	
@@ -34,16 +34,11 @@ float4 MotionBlur(float2 texCoord, Texture2D texture_color, Texture2D texture_ve
 	if (abs(velocity.x) + abs(velocity.y) < EPSILON)
 		return color;
 	
-	// Improve performance by adapting sample count to velocity
-	float speed = length(velocity / g_texel_size);
-	int samples = clamp(int(speed), 1, MAX_SAMPLES);
-		
-	for (int i = 1; i < samples; ++i) 
+	for (int i = 1; i < g_mb_samples; ++i) 
 	{
-		float2 offset 	= velocity * (float(i) / float(samples - 1) - 0.5f);
+		float2 offset 	= velocity * (float(i) / float(g_mb_samples - 1) - 0.5f);
 		color 			+= texture_color.SampleLevel(sampler_bilinear_clamp, texCoord + offset, 0);
 	}
-	color /= float(samples);
 
-	return color;
+	return color / float(g_mb_samples);
 }
