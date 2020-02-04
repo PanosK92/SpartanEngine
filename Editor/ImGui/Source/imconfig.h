@@ -22,7 +22,7 @@
 //#define IMGUI_API __declspec( dllexport )
 //#define IMGUI_API __declspec( dllimport )
 
-//---- Don't define obsolete functions/enums names. Consider enabling from time to time after updating to avoid using soon-to-be obsolete function/names.
+//---- Don't define obsolete functions/enums/behaviors. Consider enabling from time to time after updating to avoid using soon-to-be obsolete function/names.
 #define IMGUI_DISABLE_OBSOLETE_FUNCTIONS
 
 //---- Don't implement demo windows functionality (ShowDemoWindow()/ShowStyleEditor()/ShowUserGuide() methods will be empty)
@@ -53,6 +53,10 @@
 //#define IMGUI_DISABLE_STB_TRUETYPE_IMPLEMENTATION
 //#define IMGUI_DISABLE_STB_RECT_PACK_IMPLEMENTATION
 
+//---- Unless IMGUI_DISABLE_DEFAULT_FORMAT_FUNCTIONS is defined, use the much faster STB sprintf library implementation of vsnprintf instead of the one from the default C library.
+// Note that stb_sprintf.h is meant to be provided by the user and available in the include path at compile time. Also, the compatibility checks of the arguments and formats done by clang and GCC will be disabled in order to support the extra formats provided by STB sprintf.
+// #define IMGUI_USE_STB_SPRINTF
+
 //---- Define constructor and implicit cast operators to convert back<>forth between your math types and ImVec2/ImVec4.
 // This will be inlined as part of ImVec2 and ImVec4 class declarations.
 #include "Math/Vector2.h"
@@ -78,13 +82,18 @@
 //typedef void (*MyImDrawCallback)(const ImDrawList* draw_list, const ImDrawCmd* cmd, void* my_renderer_user_data);
 //#define ImDrawCallback MyImDrawCallback
 
-//---- Debug Tools
-// Use 'Metrics->Tools->Item Picker' to pick widgets with the mouse and break into them for easy debugging.
+//---- Debug Tools: Macro to break in Debugger
+// (use 'Metrics->Tools->Item Picker' to pick widgets with the mouse and break into them for easy debugging.)
 //#define IM_DEBUG_BREAK  IM_ASSERT(0)
 //#define IM_DEBUG_BREAK  __debugbreak()
-// Have the Item Picker break in the ItemAdd() function instead of ItemHoverable() - which is earlier in the code, will catch a few extra items, allow picking items other than Hovered one.
+
+//---- Debug Tools: Have the Item Picker break in the ItemAdd() function instead of ItemHoverable(),
+// (which comes earlier in the code, will catch a few extra items, allow picking items other than Hovered one.)
 // This adds a small runtime cost which is why it is not enabled by default.
 //#define IMGUI_DEBUG_TOOL_ITEM_PICKER_EX
+
+//---- Debug Tools: Enable slower asserts
+//#define IMGUI_DEBUG_PARANOID
 
 //---- Tip: You can add extra functions within the ImGui:: namespace, here or in your own headers files.
 /*

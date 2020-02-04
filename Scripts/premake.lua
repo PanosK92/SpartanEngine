@@ -95,11 +95,11 @@ project (RUNTIME_NAME)
 
 	-- Includes
 	includedirs { "../ThirdParty/DirectXShaderCompiler" }
-	includedirs { "../ThirdParty/SPIRV-Cross" }
+	includedirs { "../ThirdParty/SPIRV-Cross_2020-01-16" }
 	includedirs { "../ThirdParty/Vulkan_1.2.131.1" }
 	includedirs { "../ThirdParty/AngelScript_2.33.0" }
 	includedirs { "../ThirdParty/Assimp_5.0.0" }
-	includedirs { "../ThirdParty/Bullet_2.88" }
+	includedirs { "../ThirdParty/Bullet_2.89" }
 	includedirs { "../ThirdParty/FMOD_1.10.10" }
 	includedirs { "../ThirdParty/FreeImage_3.18.0" }
 	includedirs { "../ThirdParty/FreeType_2.10.0" }
