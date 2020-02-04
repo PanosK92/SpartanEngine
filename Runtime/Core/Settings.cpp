@@ -77,7 +77,7 @@ namespace Spartan
         RegisterThirdPartyLib("pugixml", major + "." + minor, "https://github.com/zeux/pugixml");
 
         // Register SPIRV-Cross
-        RegisterThirdPartyLib("SPIRV-Cross", "2019-11-01", "https://github.com/KhronosGroup/SPIRV-Cross");
+        RegisterThirdPartyLib("SPIRV-Cross", "2020-01-16", "https://github.com/KhronosGroup/SPIRV-Cross");
     }
 
     Settings::~Settings()

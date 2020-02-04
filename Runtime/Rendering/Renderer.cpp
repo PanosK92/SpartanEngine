@@ -475,7 +475,7 @@ namespace Spartan
         {
             if (Light* light = entities[i]->GetComponent<Light>().get())
             {
-                for (int j = 0; j < light->GetShadowArraySize(); j++)       { m_buffer_light_cpu.view_projection[i][j] = light->GetViewMatrix(j) * light->GetProjectionMatrix(j); }
+                for (uint32_t j = 0; j < light->GetShadowArraySize(); j++)  { m_buffer_light_cpu.view_projection[i][j] = light->GetViewMatrix(j) * light->GetProjectionMatrix(j); }
                 m_buffer_light_cpu.intensity_range_angle_bias[i]            = Vector4(light->GetIntensity(), light->GetRange(), light->GetAngle(), GetOptionValue(Render_ReverseZ) ? light->GetBias() : -light->GetBias());
                 m_buffer_light_cpu.normalBias_shadow_volumetric_contact[i]  = Vector4(light->GetNormalBias(), light->GetShadowsEnabled(), contact_shadows && light->GetScreenSpaceShadowsEnabled(), volumetric && light->GetVolumetricEnabled());
                 m_buffer_light_cpu.color[i]                                 = light->GetColor();
