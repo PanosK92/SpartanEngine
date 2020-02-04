@@ -302,7 +302,7 @@ namespace Spartan
                 {
                     Quaternion rotation = m_transform->GetRotation();
                     mouse_rotation.x    = rotation.Yaw();
-                    mouse_rotation.y  = rotation.Pitch();
+                    mouse_rotation.y    = rotation.Pitch();
                 }
 
                 // Get mouse delta

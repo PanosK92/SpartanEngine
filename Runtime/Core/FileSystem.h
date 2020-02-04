@@ -35,6 +35,7 @@ namespace Spartan
         // Strings
         static bool IsEmptyOrWhitespace(const std::string& var);
         static bool IsAlphanumeric(const std::string& var);
+        static std::string RemoveIllegalCharacters(const std::string& path, bool is_path = false);
         static std::string GetStringBeforeExpression(const std::string& str, const std::string& exp);
         static std::string GetStringAfterExpression(const std::string& str, const std::string& exp);
         static std::string GetStringBetweenExpressions(const std::string& str, const std::string& exp_a, const std::string& exp_b);

@@ -70,7 +70,7 @@ namespace Spartan
             {
                 if (!FileSystem::IsFile(path))
                 {
-                    LOG_ERROR("\"%s\" doesn't exist", path.c_str());
+                    LOG_ERROR("\"%s\" is not a valid file path", path.c_str());
                     return;
                 }
             }
