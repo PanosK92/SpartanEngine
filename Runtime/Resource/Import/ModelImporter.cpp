@@ -413,7 +413,7 @@ namespace Spartan
 		aiString name;
 		aiGetMaterialString(assimp_material, AI_MATKEY_NAME, &name);
         // Set a resource file path so it can be used by the resource cache
-		material->SetResourceFilePath(FileSystem::GetDirectoryFromFilePath(params.file_path) + string(name.C_Str()) + EXTENSION_MATERIAL);
+		material->SetResourceFilePath(FileSystem::RemoveIllegalCharacters(FileSystem::GetDirectoryFromFilePath(params.file_path) + string(name.C_Str()) + EXTENSION_MATERIAL, true));
 
 		// DIFFUSE COLOR
 		aiColor4D color_diffuse(1.0f, 1.0f, 1.0f, 1.0f);

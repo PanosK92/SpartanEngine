@@ -66,6 +66,29 @@ namespace Spartan
         return true;
     }
 
+    string FileSystem::RemoveIllegalCharacters(const string& path, bool is_path /*= false*/)
+    {
+        string illegal = ":?\"<>|";
+
+        // Add slashes to the illegal characters if this is not a path
+        if (!is_path)
+        {
+            illegal += "\\/";
+        }
+
+        string path_legal = path;
+
+        for (auto it = path_legal.begin(); it < path_legal.end(); ++it)
+        {
+            if (illegal.find(*it) != string::npos)
+            {
+                *it = '_';
+            }
+        }
+
+        return path_legal;
+    }
+
     string FileSystem::GetStringBeforeExpression(const string& str, const string& exp)
     {
         // ("The quick brown fox", "brown") -> "The quick "

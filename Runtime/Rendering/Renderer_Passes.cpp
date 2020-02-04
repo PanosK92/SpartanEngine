@@ -174,8 +174,8 @@ namespace Spartan
                         if (!renderable)
                             continue;
 
-                        // Skip objects outside of the view frustum
-                        if (!light->IsInViewFrustrum(renderable, shadow_array_index))
+                        // Skip meshes that don't cast shadows
+                        if (!renderable->GetCastShadows())
                             continue;
 
                         // Acquire material
@@ -183,17 +183,17 @@ namespace Spartan
                         if (!material)
                             continue;
 
+                        // Skip transparent meshes (for now)
+                        if (material->GetColorAlbedo().w < 1.0f)
+                            continue;
+
+                        // Skip objects outside of the view frustum
+                        if (!light->IsInViewFrustrum(renderable, shadow_array_index))
+                            continue;
+
                         // Acquire geometry
                         const auto& model = renderable->GeometryModel();
                         if (!model || !model->GetVertexBuffer() || !model->GetIndexBuffer())
-                            continue;
-
-                        // Skip meshes that don't cast shadows
-                        if (!renderable->GetCastShadows())
-                            continue;
-
-                        // Skip transparent meshes (for now)
-                        if (material->GetColorAlbedo().w < 1.0f)
                             continue;
 
                         // Bind geometry
