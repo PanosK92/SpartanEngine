@@ -73,14 +73,18 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 #if PASS_FXAA
 	FxaaTex fxaa_tex 			= { sampler_bilinear_clamp, tex };
     float2 fxaaQualityRcpFrame	= g_texel_size;
-  
+
+    float fxaa_subPix           = 0.75f;
+	float fxaa_edgeThreshold    = 0.166f;
+	float fxaa_edgeThresholdMin = 0.0833f;
+    
 	color.rgb = FxaaPixelShader
 	( 
 		uv, 0, fxaa_tex, fxaa_tex, fxaa_tex,
 		fxaaQualityRcpFrame, 0, 0, 0,
-		g_fxaa_subPix,
-		g_fxaa_edgeThreshold,
-		g_fxaa_edgeThresholdMin,
+		fxaa_subPix,
+		fxaa_edgeThreshold,
+		fxaa_edgeThresholdMin,
 		0, 0, 0, 0
 	).rgb;
 	color.a = 1.0f;
@@ -111,7 +115,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 #endif
 
 #if PASS_BLUR_BOX
-	color = Blur_Box(uv, tex);
+	color = Blur_Box(uv, tex, g_blur_sigma);
 #endif
 
 #if PASS_BLUR_GAUSSIAN

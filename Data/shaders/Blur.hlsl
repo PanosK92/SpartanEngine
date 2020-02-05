@@ -19,24 +19,22 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-float4 Blur_Box(float2 uv, Texture2D tex)
+float4 Blur_Box(float2 uv, Texture2D tex, uint blur_size, uint stride = 1.0f)
 {
-	float blurSize 	= g_blur_sigma;
 	float4 result 	= float4(0.0f, 0.0f, 0.0f, 0.0f);
-	float temp 		= float(-blurSize) * 0.5f + 0.5f;
+	float temp 		= float(-int(blur_size)) * 0.5f + 0.5f;
 	float2 hlim 	= float2(temp, temp);
-	for (int i = 0; i < blurSize; ++i)
+    
+	for (uint i = 0; i < blur_size; i += stride)
 	{
-		for (int j = 0; j < blurSize; ++j) 
+		for (uint j = 0; j < blur_size; j += stride) 
 		{
 			float2 offset = (hlim + float2(float(i), float(j))) * g_texel_size;
 			result += tex.SampleLevel(sampler_bilinear_clamp, uv + offset, 0);
 		}
 	}
-		
-	result = result / float(blurSize * blurSize);
-	   
-	return result;
+
+	return result / float(blur_size * blur_size);
 }
 
 // Calculates the gaussian blur weight for a given distance and sigmas

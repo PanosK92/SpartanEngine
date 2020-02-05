@@ -26,11 +26,12 @@ Texture2D tex_depth             : register(t2);
 Texture2D tex_material          : register(t3);
 Texture2D tex_lightDiffuse      : register(t4);
 Texture2D tex_lightSpecular     : register(t5);
-Texture2D tex_lightVolumetric   : register(t6);
-Texture2D tex_ssr               : register(t7);
-Texture2D tex_environment       : register(t8);
-Texture2D tex_lutIbl            : register(t9);
-Texture2D tex_ssao              : register(t10);
+Texture2D tex_lutIbl            : register(t6);
+Texture2D tex_lightVolumetric   : register(t7);
+Texture2D tex_ssr               : register(t8);
+Texture2D tex_ssao              : register(t9);
+Texture2D tex_environment       : register(t10);
+Texture2D tex_frame             : register(t11);
 //==============================================
 
 // = INCLUDES ======
@@ -48,25 +49,24 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     float4 sample_material      = tex_material.Sample(sampler_point_clamp, uv);
     float4 sample_diffuse       = tex_lightDiffuse.Sample(sampler_point_clamp, uv);
     float4 sample_specular      = tex_lightSpecular.Sample(sampler_point_clamp, uv);
-    float4 sample_ssr           = tex_ssr.Sample(sampler_point_clamp, uv );
+    float2 sample_ssr           = tex_ssr.Sample(sampler_point_clamp, uv).xy;
     float sample_depth          = tex_depth.Sample(sampler_point_clamp, uv).r;
     float sample_ssao           = tex_ssao.Sample(sampler_point_clamp, uv).r;
     float3 light_volumetric     = tex_lightVolumetric.Sample(sampler_point_clamp, uv).rgb;
 
     // Post-process samples
-    float4 albedo               = degamma(sample_albedo);  
-    float3 normal               = normal_decode(sample_normal.xyz); 
-    float light_received        = sample_specular.a;
-    bool ssr_available          = sample_ssr.a != 0.0f;
-    bool is_sky                 = sample_material.a == 0.0f;
+    float4 albedo           = degamma(sample_albedo);  
+    float3 normal           = normal_decode(sample_normal.xyz); 
+    float light_received    = sample_specular.a;
+    bool is_sky             = sample_material.a == 0.0f;
 
     // Create material
     Material material;
-    material.albedo             = albedo.rgb;
-    material.roughness          = sample_material.r;
-    material.metallic           = sample_material.g;
-    material.emissive           = sample_material.b;
-    material.F0                 = lerp(0.04f, material.albedo, material.metallic);
+    material.albedo     = albedo.rgb;
+    material.roughness  = sample_material.r;
+    material.metallic   = sample_material.g;
+    material.emissive   = sample_material.b;
+    material.F0         = lerp(0.04f, material.albedo, material.metallic);
 
     // Get view direction
     float3 camera_to_pixel  = get_view_direction(sample_depth, uv);
@@ -76,7 +76,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     float light_ambient     = g_directional_light_intensity;
     light_ambient           = clamp(light_ambient / 10.0f, light_ambient_min, 1.0f);
     
-    // Sky
+    [branch]
     if (is_sky)
     {
         color += tex_environment.Sample(sampler_bilinear_clamp, direction_sphere_uv(camera_to_pixel)).rgb;
@@ -89,11 +89,16 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         color += light_volumetric;
 
         // IBL
-        float3 reflectivity = 0.0f;
-        float3 light_image_based = ImageBasedLighting(material, normal, camera_to_pixel, tex_environment, tex_lutIbl, reflectivity) * light_ambient;
+        float3 reflectivity         = 0.0f;
+        float3 light_image_based    = ImageBasedLighting(material, normal, camera_to_pixel, tex_environment, tex_lutIbl, reflectivity) * light_ambient;
     
         // SSR
-        color += sample_ssr.rgb * reflectivity * light_received;
+        [branch]
+        if (g_ssr_enabled && sample_ssr.x != 0.0f && sample_ssr.y != 0.0f)
+        {
+            float3 reflection_color = tex_frame.Sample(sampler_bilinear_clamp, sample_ssr.xy).rgb;
+            color += saturate(reflection_color) * reflectivity * light_received;
+        }
         
         // Emissive
         sample_specular.rgb += material.emissive * 200.0f;
@@ -103,5 +108,5 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         color += light_sources + light_image_based; 
     }
     
-    return  float4(color, 1.0f);
+    return float4(color, 1.0f);
 }

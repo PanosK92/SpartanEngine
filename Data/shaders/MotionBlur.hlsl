@@ -34,7 +34,8 @@ float4 MotionBlur(float2 texCoord, Texture2D texture_color, Texture2D texture_ve
 	if (abs(velocity.x) + abs(velocity.y) < EPSILON)
 		return color;
 	
-	for (int i = 1; i < g_mb_samples; ++i) 
+    [unroll]
+	for (uint i = 1; i < g_mb_samples; ++i) 
 	{
 		float2 offset 	= velocity * (float(i) / float(g_mb_samples - 1) - 0.5f);
 		color 			+= texture_color.SampleLevel(sampler_bilinear_clamp, texCoord + offset, 0);

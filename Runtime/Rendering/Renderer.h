@@ -81,12 +81,9 @@ namespace Spartan
         Option_Value_Tonemapping,
         Option_Value_Exposure,
         Option_Value_Gamma,
-        Option_Value_Fxaa_Sub_Pixel,          // The amount of sub-pixel aliasing removal														- Algorithm's default: 0.75f
-        Option_Value_Fxaa_Edge_Threshold,     // Edge detection threshold. The minimum amount of local contrast required to apply algorithm.    - Algorithm's default: 0.166f
-        Option_Value_Fxaa_Edge_Threshold_Min, // Darkness threshold. Trims the algorithm from processing darks								    - Algorithm's default: 0.0833f
         Option_Value_Bloom_Intensity,
         Option_Value_Sharpen_Strength,
-        Option_Value_Sharpen_Clamp,           // Limits maximum amount of sharpening a pixel receives - Algorithm's default: 0.035f
+        Option_Value_Sharpen_Clamp, // Limits maximum amount of sharpening a pixel receives - Algorithm's default: 0.035f
         Option_Value_Motion_Blur_Intensity,
         Option_Value_Ssao_Scale
     };
@@ -193,15 +190,14 @@ namespace Spartan
         RenderTarget_Composition_Hdr_2,
         RenderTarget_Composition_Ldr,
         RenderTarget_Composition_Ldr_2,
-        RenderTarget_Composition_Hdr_History,
-        RenderTarget_Composition_Hdr_History_2,
         // SSAO
         RenderTarget_Ssao_Raw,
         RenderTarget_Ssao_Blurred,
         RenderTarget_Ssao,
         // SSR
         RenderTarget_Ssr,
-        RenderTarget_Ssr_Blurred
+        // Frame
+        RenderTarget_TaaHistory
     };
 
 	class SPARTAN_CLASS Renderer : public ISubsystem
@@ -297,7 +293,7 @@ namespace Spartan
 		void Pass_Ssao(RHI_CommandList* cmd_list);
         void Pass_Ssr(RHI_CommandList* cmd_list);
         void Pass_Light(RHI_CommandList* cmd_list);
-		void Pass_Composition(RHI_CommandList* cmd_list);
+		void Pass_Composition(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_out);
 		void Pass_PostProcess(RHI_CommandList* cmd_list);
 		void Pass_TAA(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
 		bool Pass_DebugBuffer(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_out);

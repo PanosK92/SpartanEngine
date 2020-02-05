@@ -150,10 +150,7 @@ void Widget_RenderOptions::Tick()
             ImGui::Separator();
 
             // FXAA
-            ImGui::Checkbox("FXAA - Fast Approximate Anti-Aliasing",   &do_fxaa);
-            ImGui::SameLine(); render_option_float("##fxaa_option_1", "Sub-Pixel",          Option_Value_Fxaa_Sub_Pixel,            "The amount of sub-pixel aliasing removal");
-            ImGui::SameLine(); render_option_float("##fxaa_option_2", "Edge Threshold",     Option_Value_Fxaa_Edge_Threshold,       "The minimum amount of local contrast required to apply algorithm");
-            ImGui::SameLine(); render_option_float("##fxaa_option_3", "Edge Threshold Min", Option_Value_Fxaa_Edge_Threshold_Min,   "Trims the algorithm from processing darks");
+            ImGui::Checkbox("FXAA - Fast Approximate Anti-Aliasing", &do_fxaa);
             ImGui::Separator();
 
             // Sharpen
@@ -173,17 +170,17 @@ void Widget_RenderOptions::Tick()
 
         // Map back to engine
         m_renderer->SetShadowResolution(static_cast<uint32_t>(resolution_shadow));
-        m_renderer->SetOptionValue(Render_Bloom,                   do_bloom);
-        m_renderer->SetOptionValue(Render_VolumetricLighting,      do_volumetric_lighting);
-        m_renderer->SetOptionValue(Render_AntiAliasing_FXAA,       do_fxaa);
-        m_renderer->SetOptionValue(Render_ScreenSpaceAmbientOcclusion,                    do_ssao);
-        m_renderer->SetOptionValue(Render_ScreenSpaceShadows,                    do_sss);
-        m_renderer->SetOptionValue(Render_ScreenSpaceReflections,                     do_ssr);
-        m_renderer->SetOptionValue(Render_AntiAliasing_TAA,        do_taa);
-        m_renderer->SetOptionValue(Render_MotionBlur,              do_motion_blur);
-        m_renderer->SetOptionValue(Render_Sharpening_LumaSharpen,  do_sharperning);
-        m_renderer->SetOptionValue(Render_ChromaticAberration,     do_chromatic_aberration);
-        m_renderer->SetOptionValue(Render_Dithering,               do_dithering);
+        m_renderer->SetOptionValue(Render_Bloom,                        do_bloom);
+        m_renderer->SetOptionValue(Render_VolumetricLighting,           do_volumetric_lighting);
+        m_renderer->SetOptionValue(Render_AntiAliasing_FXAA,            do_fxaa);
+        m_renderer->SetOptionValue(Render_ScreenSpaceAmbientOcclusion,  do_ssao);
+        m_renderer->SetOptionValue(Render_ScreenSpaceShadows,           do_sss);
+        m_renderer->SetOptionValue(Render_ScreenSpaceReflections,       do_ssr);
+        m_renderer->SetOptionValue(Render_AntiAliasing_TAA,             do_taa);
+        m_renderer->SetOptionValue(Render_MotionBlur,                   do_motion_blur);
+        m_renderer->SetOptionValue(Render_Sharpening_LumaSharpen,       do_sharperning);
+        m_renderer->SetOptionValue(Render_ChromaticAberration,          do_chromatic_aberration);
+        m_renderer->SetOptionValue(Render_Dithering,                    do_dithering);
     }
 
     if (ImGui::CollapsingHeader("Widgets", ImGuiTreeNodeFlags_None))
