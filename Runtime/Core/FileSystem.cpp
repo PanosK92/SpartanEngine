@@ -66,19 +66,13 @@ namespace Spartan
         return true;
     }
 
-    string FileSystem::RemoveIllegalCharacters(const string& path, bool is_path /*= false*/)
+    string FileSystem::RemoveIllegalCharacters(const string& text)
     {
+        string text_legal = text;
+
+        // Remove characters which are illegal for both names and paths
         string illegal = ":?\"<>|";
-
-        // Add slashes to the illegal characters if this is not a path
-        if (!is_path)
-        {
-            illegal += "\\/";
-        }
-
-        string path_legal = path;
-
-        for (auto it = path_legal.begin(); it < path_legal.end(); ++it)
+        for (auto it = text_legal.begin(); it < text_legal.end(); ++it)
         {
             if (illegal.find(*it) != string::npos)
             {
@@ -86,7 +80,21 @@ namespace Spartan
             }
         }
 
-        return path_legal;
+        // If this is a valid path, return it (otherwise it's a name)
+        if (IsDirectory(text_legal))
+            return text_legal;
+
+        // Remove slashes which are illegal characters for names
+        illegal = "\\/";
+        for (auto it = text_legal.begin(); it < text_legal.end(); ++it)
+        {
+            if (illegal.find(*it) != string::npos)
+            {
+                *it = '_';
+            }
+        }
+
+        return text_legal;
     }
 
     string FileSystem::GetStringBeforeExpression(const string& str, const string& exp)

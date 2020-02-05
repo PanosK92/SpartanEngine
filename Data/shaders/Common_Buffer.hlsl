@@ -36,25 +36,23 @@ cbuffer BufferFrame : register(b0)
     float g_camera_far;
 	
 	float3 g_camera_position;
-	float g_fxaa_subPix;
-	
-	float g_fxaa_edgeThreshold;
-    float g_fxaa_edgeThresholdMin;
 	float g_bloom_intensity;
-	float g_sharpen_strength;
-	
+    
+	float g_sharpen_strength;	
+    float3 g_camera_direction;
+    
 	float g_sharpen_clamp;
 	float g_motionBlur_strength;
 	float g_gamma;
 	float g_toneMapping;
-	
+    
+	float g_exposure;
+    float g_directional_light_intensity;
+	float g_ssr_enabled;
+    float g_shadow_resolution;
+    
     float2 g_taa_jitter_offset_previous;
 	float2 g_taa_jitter_offset;
-    
-	float g_exposure;	
-	float g_directional_light_intensity;
-	float g_ssr_enabled;
-	float g_shadow_resolution;
     
 	float g_ssao_scale;
 	float3 g_padding;

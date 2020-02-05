@@ -123,12 +123,15 @@ namespace Spartan
         m_brdf_specular_lut_rendered = false;
 
         // Composition
-        m_render_targets[RenderTarget_Composition_Hdr]              = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R32G32B32A32_Float);
-        m_render_targets[RenderTarget_Composition_Ldr]              = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float);
-        m_render_targets[RenderTarget_Composition_Hdr_2]            = make_unique<RHI_Texture2D>(m_context, width, height, m_render_targets[RenderTarget_Composition_Hdr]->GetFormat()); // Used for Post-Processing   
-        m_render_targets[RenderTarget_Composition_Hdr_History]      = make_unique<RHI_Texture2D>(m_context, width, height, m_render_targets[RenderTarget_Composition_Hdr]->GetFormat()); // Used by TAA and SSR
-        m_render_targets[RenderTarget_Composition_Hdr_History_2]    = make_unique<RHI_Texture2D>(m_context, width, height, m_render_targets[RenderTarget_Composition_Hdr]->GetFormat()); // Used by TAA
-        m_render_targets[RenderTarget_Composition_Ldr_2]            = make_unique<RHI_Texture2D>(m_context, width, height, m_render_targets[RenderTarget_Composition_Ldr]->GetFormat()); // Used for Post-Processing   
+        {
+            m_render_targets[RenderTarget_Composition_Hdr] = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R32G32B32A32_Float);
+            m_render_targets[RenderTarget_Composition_Ldr] = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float);
+            // 2nd copies
+            m_render_targets[RenderTarget_Composition_Hdr_2] = make_unique<RHI_Texture2D>(m_context, width, height, m_render_targets[RenderTarget_Composition_Hdr]->GetFormat()); // Used for ping-ponging between effects during post-Processing
+            m_render_targets[RenderTarget_Composition_Ldr_2] = make_unique<RHI_Texture2D>(m_context, width, height, m_render_targets[RenderTarget_Composition_Ldr]->GetFormat()); // Used for ping-ponging between effects during post-Processing
+            // 3rd copies
+            m_render_targets[RenderTarget_TaaHistory] = make_unique<RHI_Texture2D>(m_context, width, height, m_render_targets[RenderTarget_Composition_Hdr]->GetFormat()); // Used for TAA accumulation
+        }
 
         // SSAO
         float ssao_scale                                = m_option_values[Option_Value_Ssao_Scale];
@@ -137,8 +140,7 @@ namespace Spartan
         m_render_targets[RenderTarget_Ssao]             = make_unique<RHI_Texture2D>(m_context, width, height, m_render_targets[RenderTarget_Ssao_Raw]->GetFormat());                                                                           // Upscaled
 
         // SSR
-        m_render_targets[RenderTarget_Ssr]          = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float);
-        m_render_targets[RenderTarget_Ssr_Blurred]  = make_shared<RHI_Texture2D>(m_context, width, height, m_render_targets[RenderTarget_Ssr]->GetFormat());
+        m_render_targets[RenderTarget_Ssr] = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16_Float);
 
         // Bloom
         {

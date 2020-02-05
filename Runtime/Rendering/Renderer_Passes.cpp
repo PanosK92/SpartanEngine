@@ -85,7 +85,7 @@ namespace Spartan
         Pass_Ssao(cmd_list);
         Pass_Ssr(cmd_list);
         Pass_Light(cmd_list);
-        Pass_Composition(cmd_list);
+        Pass_Composition(cmd_list, m_render_targets[RenderTarget_Composition_Hdr]);
         Pass_PostProcess(cmd_list);
         Pass_Lines(cmd_list, m_render_targets[RenderTarget_Composition_Ldr]);
         Pass_Icons(cmd_list, m_render_targets[RenderTarget_Composition_Ldr].get());
@@ -518,8 +518,7 @@ namespace Spartan
             return;
         
         // Acquire render targets
-        auto& tex_ssr           = m_render_targets[RenderTarget_Ssr];
-        auto& tex_ssr_blurred   = m_render_targets[RenderTarget_Ssr_Blurred];
+        auto& tex_ssr = m_render_targets[RenderTarget_Ssr];
 
         // Set render state
         static RHI_PipelineState pipeline_state;
@@ -545,16 +544,9 @@ namespace Spartan
             cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
             cmd_list->SetTexture(0, m_render_targets[RenderTarget_Gbuffer_Normal]);
             cmd_list->SetTexture(1, m_render_targets[RenderTarget_Gbuffer_Depth]);
-            cmd_list->SetTexture(2, m_render_targets[RenderTarget_Gbuffer_Material]);
-            cmd_list->SetTexture(3, m_render_targets[RenderTarget_Composition_Ldr_2]);
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
             cmd_list->End();
             cmd_list->Submit();
-        
-            // Bilateral blur
-            const auto sigma = 1.0f;
-            const auto pixel_stride = 1.0f;
-            Pass_BlurGaussian(cmd_list, tex_ssr, tex_ssr_blurred, sigma, pixel_stride);
         }
     }
 
@@ -670,16 +662,13 @@ namespace Spartan
         }
     }
 
-	void Renderer::Pass_Composition(RHI_CommandList* cmd_list)
+	void Renderer::Pass_Composition(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_out)
 	{
         // Acquire shaders
         const auto& shader_v = m_shaders[Shader_Quad_V];
 		const auto& shader_p = m_shaders[Shader_Composition_P];
 		if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
 			return;
-
-        // Acquire render target
-        auto& tex_out = m_render_targets[RenderTarget_Composition_Hdr];
 
         // Set render state
         static RHI_PipelineState pipeline_state;
@@ -690,8 +679,8 @@ namespace Spartan
         pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
         pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
         pipeline_state.render_target_color_textures[0]  = tex_out.get();
-        pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
         pipeline_state.viewport                         = tex_out->GetViewport();
+        pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
         pipeline_state.pass_name                        = "Pass_Composition";
 
         // Begin commands
@@ -710,11 +699,12 @@ namespace Spartan
             cmd_list->SetTexture(3, m_render_targets[RenderTarget_Gbuffer_Material]);
             cmd_list->SetTexture(4, m_render_targets[RenderTarget_Light_Diffuse]);
             cmd_list->SetTexture(5, m_render_targets[RenderTarget_Light_Specular]);
-            cmd_list->SetTexture(6, (m_options & Render_VolumetricLighting) ? m_render_targets[RenderTarget_Light_Volumetric_Blurred] : m_tex_black);
-            cmd_list->SetTexture(7, (m_options & Render_ScreenSpaceReflections) ? m_render_targets[RenderTarget_Ssr_Blurred] : m_tex_black);
-            cmd_list->SetTexture(8, GetEnvironmentTexture());
-            cmd_list->SetTexture(9, m_render_targets[RenderTarget_Brdf_Specular_Lut]);
-            cmd_list->SetTexture(10, (m_options & Render_ScreenSpaceAmbientOcclusion)? m_render_targets[RenderTarget_Ssao] : m_tex_white);
+            cmd_list->SetTexture(6, m_render_targets[RenderTarget_Brdf_Specular_Lut]);
+            cmd_list->SetTexture(7, (m_options & Render_VolumetricLighting)             ? m_render_targets[RenderTarget_Light_Volumetric_Blurred] : m_tex_black);
+            cmd_list->SetTexture(8, (m_options & Render_ScreenSpaceReflections)         ? m_render_targets[RenderTarget_Ssr] : m_tex_black);  
+            cmd_list->SetTexture(9, (m_options & Render_ScreenSpaceAmbientOcclusion)    ? m_render_targets[RenderTarget_Ssao] : m_tex_white);
+            cmd_list->SetTexture(10, GetEnvironmentTexture());
+            cmd_list->SetTexture(11, m_render_targets[RenderTarget_Composition_Hdr_2]); // previous frame before post-processing
             cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
             cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
@@ -1079,9 +1069,8 @@ namespace Spartan
 		if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
 			return;
 
-        // Acquire render targets
-        auto& tex_history   = m_render_targets[RenderTarget_Composition_Hdr_History];
-        auto& tex_history_2 = m_render_targets[RenderTarget_Composition_Hdr_History_2];
+        // Acquire history render target
+        auto& tex_history = m_render_targets[RenderTarget_TaaHistory];
 
         // Set render state
         static RHI_PipelineState pipeline_state;
@@ -1091,8 +1080,8 @@ namespace Spartan
         pipeline_state.blend_state                      = m_blend_disabled.get();
         pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
         pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
-        pipeline_state.render_target_color_textures[0]  = tex_history_2.get();
-        pipeline_state.viewport                         = tex_history_2->GetViewport();
+        pipeline_state.render_target_color_textures[0]  = tex_out.get();
+        pipeline_state.viewport                         = tex_out->GetViewport();
         pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
         pipeline_state.pass_name                        = "Pass_TAA";
 
@@ -1114,11 +1103,8 @@ namespace Spartan
             cmd_list->Submit();
 		}
 
-		// Copy
-        Pass_Copy(cmd_list, tex_history_2, tex_out);
-
-		// Swap history texture so the above works again in the next frame
-        tex_history.swap(tex_history_2);
+		// Copy result
+        Pass_Copy(cmd_list, tex_out, tex_history);
 	}
 
 	void Renderer::Pass_Bloom(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
@@ -1998,7 +1984,7 @@ namespace Spartan
 
         if (m_debug_buffer == Renderer_Buffer_SSR)
         {
-            texture     = m_render_targets[RenderTarget_Ssr_Blurred];
+            texture     = m_render_targets[RenderTarget_Ssr];
             shader_type = Shader_DebugChannelRgbGammaCorrect_P;
         }
 

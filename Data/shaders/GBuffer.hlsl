@@ -95,7 +95,7 @@ PixelOutputType mainPS(PixelInputType input)
 	#if HEIGHT_MAP
 		// Parallax Mapping
 		float height_scale 		= materialHeight * 0.04f;
-		float3 camera_to_pixel 	= normalize(g_camera_position - input.positionWS.xyz);
+		float3 camera_to_pixel 	= normalize(g_camera_position - input.position.xyz);
 		texCoords 				= ParallaxMapping(texHeight, sampler_anisotropic_wrap, texCoords, camera_to_pixel, TBN, height_scale);
 	#endif
 	

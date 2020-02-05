@@ -46,25 +46,23 @@ namespace Spartan
         float camera_far;
     
         Math::Vector3 camera_position;
-        float fxaa_sub_pixel;
-    
-        float fxaa_edge_threshold;
-        float fxaa_edge_threshold_min;
         float bloom_intensity;
+
         float sharpen_strength;
-    
+        Math::Vector3 camera_direction;
+
         float sharpen_clamp;
         float motion_blur_strength;
         float gamma;
         float tonemapping;
 
-        Math::Vector2 taa_jitter_offset_previous;
-        Math::Vector2 taa_jitter_offset;
-
         float exposure;
         float directional_light_intensity;
         float ssr_enabled;
         float shadow_resolution;
+
+        Math::Vector2 taa_jitter_offset_previous;
+        Math::Vector2 taa_jitter_offset;
 
         float ssao_scale;
         Math::Vector3 padding;

@@ -80,9 +80,6 @@ namespace Spartan
         m_option_values[Option_Value_Tonemapping]             = static_cast<float>(Renderer_ToneMapping_ACES);
         m_option_values[Option_Value_Exposure]                = 0.0f;
         m_option_values[Option_Value_Gamma]                   = 2.2f;
-        m_option_values[Option_Value_Fxaa_Sub_Pixel]          = 1.25f;
-        m_option_values[Option_Value_Fxaa_Edge_Threshold]     = 0.125f;
-        m_option_values[Option_Value_Fxaa_Edge_Threshold_Min] = 0.0312f;
         m_option_values[Option_Value_Sharpen_Strength]        = 1.0f;
         m_option_values[Option_Value_Sharpen_Clamp]           = 0.35f;
         m_option_values[Option_Value_Bloom_Intensity]         = 0.01f;
@@ -359,9 +356,7 @@ namespace Spartan
         m_buffer_frame_cpu.camera_near                  = m_camera->GetNearPlane();
         m_buffer_frame_cpu.camera_far                   = m_camera->GetFarPlane();
         m_buffer_frame_cpu.camera_position              = m_camera->GetTransform()->GetPosition();
-        m_buffer_frame_cpu.fxaa_sub_pixel               = m_option_values[Option_Value_Fxaa_Sub_Pixel];
-        m_buffer_frame_cpu.fxaa_edge_threshold          = m_option_values[Option_Value_Fxaa_Edge_Threshold];
-        m_buffer_frame_cpu.fxaa_edge_threshold_min      = m_option_values[Option_Value_Fxaa_Edge_Threshold_Min];
+        m_buffer_frame_cpu.camera_direction             = m_camera->GetTransform()->GetForward();
         m_buffer_frame_cpu.bloom_intensity              = m_option_values[Option_Value_Bloom_Intensity];
         m_buffer_frame_cpu.sharpen_strength             = m_option_values[Option_Value_Sharpen_Strength];
         m_buffer_frame_cpu.sharpen_clamp                = m_option_values[Option_Value_Sharpen_Clamp];
