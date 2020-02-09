@@ -48,6 +48,7 @@ namespace Spartan
 		ComponentType_Light,
 		ComponentType_Renderable,
 		ComponentType_RigidBody,
+        ComponentType_SoftBody,
 		ComponentType_Script,
 		ComponentType_Environment,
 		ComponentType_Transform,

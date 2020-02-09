@@ -35,7 +35,7 @@ namespace Spartan
 	PhysicsDebugDraw::PhysicsDebugDraw(Renderer* renderer)
 	{
 		m_renderer	= renderer;
-		m_debugMode = DBG_DrawWireframe | DBG_DrawContactPoints | DBG_DrawConstraints | DBG_DrawConstraintLimits | DBG_DrawNormals | DBG_DrawFrames;
+		m_debugMode = DBG_DrawWireframe | DBG_DrawContactPoints | DBG_DrawConstraints | DBG_DrawConstraintLimits;
 	}
 
 	void PhysicsDebugDraw::drawLine(const btVector3& from, const btVector3& to, const btVector3& fromColor, const btVector3& toColor)

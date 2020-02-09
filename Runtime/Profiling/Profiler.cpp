@@ -77,6 +77,8 @@ namespace Spartan
             OnFrameEnd();
         }
 
+        m_timer.Start();
+
         // Compute fps
         ComputeFps(delta_time);
 
@@ -118,6 +120,10 @@ namespace Spartan
 
                 if (time_block.IsComplete())
                 {
+                    // Must not happen when TimeBlockEnd() ends as D3D11 waits
+                    // too much for the results to be ready, which increases CPU time.
+                    time_block.ComputeDuration();
+
                     m_time_blocks_read[i] = time_block;
                 }
                 else
@@ -131,7 +137,7 @@ namespace Spartan
             m_time_block_count = 0;
         }
 
-        // Compute cpu, gpu and frame time
+        // Compute cpu and gpu times
         {
             m_time_cpu_ms = 0;
             m_time_gpu_ms = 0;
@@ -152,7 +158,7 @@ namespace Spartan
                 }
             }
 
-            m_time_frame_ms = m_time_cpu_ms + m_time_gpu_ms;
+            m_time_frame_ms = Math::Min(m_timer.GetElapsedTimeMs(), m_time_cpu_ms + m_time_gpu_ms);
         }
 
         // Detect stutters
@@ -193,7 +199,6 @@ namespace Spartan
 		if (auto time_block = GetLastIncompleteTimeBlock())
 		{
 			time_block->End();
-            time_block->ComputeDuration(); // must move this to OnFrameEnd() because D3D11 waits too much
 		}
 	}
 

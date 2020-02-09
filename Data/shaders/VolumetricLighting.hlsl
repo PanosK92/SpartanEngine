@@ -76,7 +76,6 @@ float3 VolumetricLighting(Light light, float3 pos_world, float2 uv)
 	float3 dither_value = dither(uv) * 100;
 	ray_pos += ray_step * dither_value;
 	
-    [unroll(6)]
 	for (uint array_index = 0; array_index < light.array_size; array_index++)
 	{
         // Compute position in clip space

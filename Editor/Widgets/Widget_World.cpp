@@ -32,6 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/AudioSource.h"
 #include "World/Components/AudioListener.h"
 #include "World/Components/RigidBody.h"
+#include "World/Components/SoftBody.h"
 #include "World/Components/Collider.h"
 #include "World/Components/Constraint.h"
 #include "World/Components/Renderable.h"
@@ -387,6 +388,10 @@ void Widget_World::PopupContextMenu()
 		{
 			ActionEntityCreateRigidBody();
 		}
+        else if (ImGui::MenuItem("Soft Body"))
+        {
+            ActionEntityCreateSoftBody();
+        }
 		else if (ImGui::MenuItem("Collider"))
 		{
 			ActionEntityCreateCollider();
@@ -578,6 +583,13 @@ void Widget_World::ActionEntityCreateRigidBody()
 	auto entity = ActionEntityCreateEmpty();
 	entity->AddComponent<RigidBody>();
 	entity->SetName("RigidBody");
+}
+
+void Widget_World::ActionEntityCreateSoftBody()
+{
+    auto entity = ActionEntityCreateEmpty();
+    entity->AddComponent<SoftBody>();
+    entity->SetName("SoftBody");
 }
 
 void Widget_World::ActionEntityCreateCollider()

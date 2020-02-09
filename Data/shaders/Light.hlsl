@@ -182,6 +182,7 @@ PixelOutputType mainPS(Pixel_PosUv input)
 		material.F0 				= lerp(0.04f, diffuse_color, material.metallic);
 	
 		// Reflectance equation
+        [branch]
 		if (light.intensity > 0.0f)
 		{
 			// Compute some stuff
