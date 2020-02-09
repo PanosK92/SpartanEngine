@@ -153,9 +153,9 @@ namespace Spartan
 			auto ray						= Ray(ray_start, ray_end);
 
 			// Test if ray intersects any of the handles
-			const auto hovered_x	= ray.HitDistance(m_handle_x.box_transformed) != INFINITY;
-			const auto hovered_y	= ray.HitDistance(m_handle_y.box_transformed) != INFINITY;
-			const auto hovered_z	= ray.HitDistance(m_handle_z.box_transformed) != INFINITY;
+			const auto hovered_x	= ray.HitDistance(m_handle_x.box_transformed)   != INFINITY;
+			const auto hovered_y	= ray.HitDistance(m_handle_y.box_transformed)   != INFINITY;
+			const auto hovered_z	= ray.HitDistance(m_handle_z.box_transformed)   != INFINITY;
 			const auto hovered_xyz	= ray.HitDistance(m_handle_xyz.box_transformed) != INFINITY;
 
 			// Mark a handle as hovered, only if it's the only hovered handle (during the previous frame

@@ -31,13 +31,25 @@ namespace Spartan
 	class SPARTAN_CLASS Stopwatch
 	{
 	public:
-		Stopwatch();
-		~Stopwatch();
+        Stopwatch() { Start(); }
+        ~Stopwatch() = default;
 
-		void Start();
+        void Stopwatch::Start()
+        {
+            m_start = std::chrono::high_resolution_clock::now();
+        }
 
-		float GetElapsedTimeSec();
-		float GetElapsedTimeMs();
+        float Stopwatch::GetElapsedTimeSec()
+        {
+            std::chrono::duration<double, std::milli> ms = std::chrono::high_resolution_clock::now() - m_start;
+            return static_cast<float>(ms.count() / 1000);
+        }
+
+        float Stopwatch::GetElapsedTimeMs()
+        {
+            std::chrono::duration<double, std::milli> ms = std::chrono::high_resolution_clock::now() - m_start;
+            return static_cast<float>(ms.count());
+        }
 
 	private:
 		std::chrono::time_point<std::chrono::high_resolution_clock> m_start;

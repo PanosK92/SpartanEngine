@@ -26,13 +26,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Vector3.h"
 //=============================
 
-//= FORWARD DECLARATIONS =============
+//= FORWARD DECLARATIONS =================
 class btBroadphaseInterface;
 class btCollisionDispatcher;
-class btConstraintSolver;
+class btSequentialImpulseConstraintSolver;
 class btDefaultCollisionConfiguration;
+class btCollisionObject;
 class btDiscreteDynamicsWorld;
-//====================================
+class btRigidBody;
+class btSoftBody;
+class btTypedConstraint;
+struct btSoftBodyWorldInfo;
+//========================================
 
 namespace Spartan
 {
@@ -51,21 +56,37 @@ namespace Spartan
 		bool Initialize() override;
 		void Tick(float delta_time) override;
 		//===================================
-	
+
+        // Rigid body
+        void AddBody(btRigidBody* body);
+        void RemoveBody(btRigidBody*& body);
+
+        // Soft body
+        void AddBody(btSoftBody* body);
+        void RemoveBody(btSoftBody*& body);
+
+        // Constraint
+        void AddConstraint(btTypedConstraint* constraint, bool collision_with_linked_body = true);
+        void RemoveConstraint(btTypedConstraint*& constraint);
+
+        // Properties
 		Math::Vector3 GetGravity()  const;
-		auto GetWorld()             const { return m_world; }
+        auto& GetSoftWorldInfo()    const { return *m_world_info; }
         auto GetPhysicsDebugDraw()  const { return m_debug_draw; }
 		bool IsSimulating()         const { return m_simulating; }
 
 	private:
-		btBroadphaseInterface* m_broadphase                         = nullptr;
-		btCollisionDispatcher* m_dispatcher                         = nullptr;
-		btConstraintSolver* m_constraint_solver                     = nullptr;
-		btDefaultCollisionConfiguration* m_collision_configuration  = nullptr;
-		btDiscreteDynamicsWorld* m_world                            = nullptr;
-		PhysicsDebugDraw* m_debug_draw                              = nullptr;
-        Renderer* m_renderer                                        = nullptr;
-        Profiler* m_profiler                                        = nullptr;
+        btBroadphaseInterface* m_broadphase                         = nullptr;
+        btCollisionDispatcher* m_collision_dispatcher               = nullptr;
+        btSequentialImpulseConstraintSolver* m_constraint_solver    = nullptr;
+        btDefaultCollisionConfiguration* m_collision_configuration  = nullptr;
+        btDiscreteDynamicsWorld* m_world                            = nullptr;
+        btSoftBodyWorldInfo* m_world_info                           = nullptr;
+        PhysicsDebugDraw* m_debug_draw                              = nullptr;
+
+        // Misc
+        Renderer* m_renderer = nullptr;
+        Profiler* m_profiler = nullptr;
 
 		//= PROPERTIES =================================================
         int m_max_sub_steps         = 1;

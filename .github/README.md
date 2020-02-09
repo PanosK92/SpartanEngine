@@ -30,18 +30,15 @@ Platform | API | Status | Quality | Binaries | :+1:
 - 20+ audio file formats support (FMOD)
 - 30+ image file formats support (FreeImage)
 - 40+ model file formats support (Assimp)
-- XML files
-- Keyboard
-- Mouse
-- Xbox controller
+- DirectX 11 and Vulkan
+- Input (Keyboard, Mouse, Xbox controller)
 - Bloom (Based on a study of Resident Evil 2's RE Engine)
-- Shadows (Cascaded shadow mapping with smooth, clean and stable shadows)
 - Custom mip chain generation (Higher texture fidelity using Lanczos3 scaling)
 - Debug rendering (Transform gizmo, scene grid, bounding boxes, colliders, raycasts, g-buffer visualization etc)
 - Deferred rendering
-- DirectX 11 backend
 - Lights (Directional, point and spot lights)
-- Font Rendering
+- Shadows (Cascaded and omnidirectional shadow mapping with vogel filtering)
+- Font rendering
 - Frustum culling
 - Per-Pixel motion blur
 - Physically based rendering
@@ -50,9 +47,7 @@ Platform | API | Status | Quality | Binaries | :+1:
 - SSR (Screen space reflections)
 - SSS (Screen space shadows)
 - TAA (Temporal anti-aliasing based on Uncharted 4)
-- Constraints
-- Rigid bodies
-- Colliders
+- Physics (Rigid bodies, Constraints, Colliders)
 - Entity-component system
 - Event system
 - Easy to build (Single click project generation which includes editor and runtime)
@@ -60,6 +55,7 @@ Platform | API | Status | Quality | Binaries | :+1:
 - Engine rendered platform agnostic editor
 - Profiling (CPU & GPU)
 - C/C++ (Using AngelScript)
+- XML files
 - Windows 10 and a modern/dedicated GPU (The target is high-end machines, old setups or mobile devices are not officially supported)
 
 # Roadmap

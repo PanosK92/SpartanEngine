@@ -67,11 +67,11 @@ namespace Spartan
 		D3D11_DEPTH_STENCIL_DESC desc;
         {
 		    desc.DepthEnable					= static_cast<BOOL>(depth_test);
-		    desc.DepthWriteMask					= depth_test ? D3D11_DEPTH_WRITE_MASK_ALL : D3D11_DEPTH_WRITE_MASK_ZERO;
+		    desc.DepthWriteMask					= depth_write ? D3D11_DEPTH_WRITE_MASK_ALL : D3D11_DEPTH_WRITE_MASK_ZERO;
 		    desc.DepthFunc						= d3d11_compare_operator[depth_function];
 		    desc.StencilEnable					= static_cast<BOOL>(stencil_enabled);
-		    desc.StencilReadMask				= D3D11_DEFAULT_STENCIL_READ_MASK;
-		    desc.StencilWriteMask				= D3D11_DEFAULT_STENCIL_WRITE_MASK;
+		    desc.StencilReadMask				= m_stencil_enabled ? D3D11_DEFAULT_STENCIL_READ_MASK   : 0;
+		    desc.StencilWriteMask				= m_stencil_enabled ? D3D11_DEFAULT_STENCIL_WRITE_MASK  : 0;
 		    desc.FrontFace.StencilDepthFailOp	= D3D11_STENCIL_OP_KEEP;
 		    desc.FrontFace.StencilFailOp		= D3D11_STENCIL_OP_KEEP;
 		    desc.FrontFace.StencilPassOp		= D3D11_STENCIL_OP_KEEP;

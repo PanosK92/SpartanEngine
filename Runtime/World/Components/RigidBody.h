@@ -24,8 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==================
 #include "IComponent.h"
 #include <memory>
-#include "../../Math/Vector3.h"
 #include <vector>
+#include "../../Math/Vector3.h"
 //=============================
 
 class btRigidBody;
@@ -70,7 +70,7 @@ namespace Spartan
 		//========================================
 
 		//= ANGULAR DRAG =======================================
-		float GetFrictionRolling() { return m_frictionRolling; }
+		float GetFrictionRolling() { return m_friction_rolling; }
 		void SetFrictionRolling(float frictionRolling);
 		//======================================================
 
@@ -81,19 +81,19 @@ namespace Spartan
 
 		//= GRAVITY =======================================
 		void SetUseGravity(bool gravity);
-		bool GetUseGravity() { return m_useGravity; };
+		bool GetUseGravity() { return m_use_gravity; };
 		Math::Vector3 GetGravity() { return m_gravity; }
 		void SetGravity(const Math::Vector3& acceleration);
 		//=================================================
 
 		//= KINEMATIC ===============================
 		void SetIsKinematic(bool kinematic);
-		bool GetIsKinematic() { return m_isKinematic; }
+		bool GetIsKinematic() { return m_is_kinematic; }
 		//===========================================
 
 		//= VELOCITY/FORCE/TORQUE ==========================================================================
-		void SetLinearVelocity(const Math::Vector3& velocity) const;
-		void SetAngularVelocity(const Math::Vector3& velocity);
+		void SetLinearVelocity(const Math::Vector3& velocity, const bool activate = true);
+		void SetAngularVelocity(const Math::Vector3& velocity, const bool activate = true);
 		void ApplyForce(const Math::Vector3& force, ForceMode mode) const;
 		void ApplyForceAtPosition(const Math::Vector3& force, Math::Vector3 position, ForceMode mode) const;
 		void ApplyTorque(const Math::Vector3& torque, ForceMode mode) const;
@@ -102,36 +102,36 @@ namespace Spartan
 		//= POSITION LOCK ========================================
 		void SetPositionLock(bool lock);
 		void SetPositionLock(const Math::Vector3& lock);
-		Math::Vector3 GetPositionLock() { return m_positionLock; }
+		Math::Vector3 GetPositionLock() { return m_position_lock; }
 		//========================================================
 
 		//= ROTATION LOCK ========================================
 		void SetRotationLock(bool lock);
 		void SetRotationLock(const Math::Vector3& lock);
-		Math::Vector3 GetRotationLock() { return m_rotationLock; }
+		Math::Vector3 GetRotationLock() { return m_rotation_lock; }
 		//========================================================
 
 		//= CENTER OF MASS ==============================================
 		void SetCenterOfMass(const Math::Vector3& centerOfMass);
-		const Math::Vector3& GetCenterOfMass() { return m_centerOfMass; }
+		const Math::Vector3& GetCenterOfMass() { return m_center_of_mass; }
 		//===============================================================
 
-		//= POSITION =======================================
-		Math::Vector3 GetPosition() const;
-		void SetPosition(const Math::Vector3& position);
-		//==================================================
+        //= POSITION ===============================================================
+        Math::Vector3 GetPosition() const;
+        void SetPosition(const Math::Vector3& position, const bool activate = true);
+        //==========================================================================
 
-		//= ROTATION ======================================
-		Math::Quaternion GetRotation() const;
-		void SetRotation(const Math::Quaternion& rotation);
-		//=================================================
+        //= ROTATION ==================================================================
+        Math::Quaternion GetRotation() const;
+        void SetRotation(const Math::Quaternion& rotation, const bool activate = true);
+        //=============================================================================
 
 		//= MISC ============================================
 		void ClearForces() const;
 		void Activate() const;
 		void Deactivate() const;
 		btRigidBody* GetBtRigidBody() { return m_rigidBody; }
-		bool IsInWorld() { return m_inWorld; }
+		bool IsInWorld() { return m_in_world; }
 		//===================================================
 
 		// Communication with other physics components
@@ -148,23 +148,21 @@ namespace Spartan
 		void Flags_UpdateGravity();
 		bool IsActivated() const;
 
-		float m_mass;
-		float m_friction;
-		float m_frictionRolling;
-		float m_restitution;
-		bool m_useGravity;
-		bool m_isKinematic;
-		Math::Vector3 m_gravity;
-		Math::Vector3 m_positionLock;
-		Math::Vector3 m_rotationLock;
-		Math::Vector3 m_centerOfMass;
+		float m_mass                    = 0.0f;
+		float m_friction                = 0.0f;
+		float m_friction_rolling        = 0.0f;
+		float m_restitution             = 0.0f;
+		bool m_use_gravity              = false;
+        bool m_is_kinematic             = false;
+		Math::Vector3 m_gravity         = Math::Vector3::Zero;
+		Math::Vector3 m_position_lock   = Math::Vector3::Zero;
+		Math::Vector3 m_rotation_lock   = Math::Vector3::Zero;
+        Math::Vector3 m_center_of_mass  = Math::Vector3::Zero;
 
-		btRigidBody* m_rigidBody;
-		btCollisionShape* m_collisionShape;
-		std::vector<Constraint*> m_constraints;
-		bool m_inWorld;
-		Physics* m_physics;
-	public:
-		bool m_hasSimulated;
+        btRigidBody* m_rigidBody            = nullptr;
+		btCollisionShape* m_collision_shape = nullptr;
+        bool m_in_world                     = false;
+		Physics* m_physics                  = nullptr;
+        std::vector<Constraint*> m_constraints;
 	};
 }

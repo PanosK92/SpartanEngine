@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ====
 #include <cmath>
 #include <limits>
+#include <random>
 //===============
 
 namespace Spartan::Math
@@ -99,6 +100,14 @@ namespace Spartan::Math
 
     template <class T>
     constexpr T Saturate(T x) { return Clamp(x, static_cast<T>(0), static_cast<T>(1)); }
+
+    inline float Random(float from = 0.0f, float to = 1.0f)
+    {
+        std::random_device rd;                              // obtain a random number from hardware
+        std::mt19937 eng(rd());                             // seed the generator
+        std::uniform_int_distribution<> distr(from, to);    // define the range
+        return distr(eng);
+    }
 
 	// Reduces a given angle to a value between PI and -PI
 	// The angle to reduce, in radians

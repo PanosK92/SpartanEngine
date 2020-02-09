@@ -59,6 +59,7 @@ void IconProvider::Initialize(Context* context)
 	Thumbnail_Load(data_dir + "Icons/component_meshCollider.png",			Icon_Component_MeshCollider);	
 	Thumbnail_Load(data_dir + "Icons/component_renderable.png",			    Icon_Component_Renderable);	
 	Thumbnail_Load(data_dir + "Icons/component_rigidBody.png",				Icon_Component_RigidBody);
+    Thumbnail_Load(data_dir + "Icons/component_softBody.png",               Icon_Component_SoftBody);
 	Thumbnail_Load(data_dir + "Icons/component_script.png",				    Icon_Component_Script);	
 	Thumbnail_Load(data_dir + "Icons/component_transform.png",				Icon_Component_Transform);
     Thumbnail_Load(data_dir + "Icons/component_terrain.png",                Icon_Component_Terrain);

@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Transform.h"
 #include "World/Components/Renderable.h"
 #include "World/Components/RigidBody.h"
+#include "World/Components/SoftBody.h"
 #include "World/Components/Collider.h"
 #include "World/Components/Constraint.h"
 #include "World/Components/Light.h"
@@ -156,35 +157,24 @@ void Widget_Properties::Tick()
 
 	if (!m_inspected_entity.expired())
 	{
-		auto entity_ptr = m_inspected_entity.lock().get();
+		auto entity_ptr     = m_inspected_entity.lock().get();
+		auto& renderable	= entity_ptr->GetComponent<Renderable>();
+		auto material		= renderable ? renderable->GetMaterial() : nullptr;
 
-		auto& transform		    = entity_ptr->GetComponent<Transform>();
-		auto& light			    = entity_ptr->GetComponent<Light>();
-		auto& camera			= entity_ptr->GetComponent<Camera>();
-        auto& terrain           = entity_ptr->GetComponent<Terrain>();
-        auto& environment       = entity_ptr->GetComponent<Environment>();
-		auto& audio_source	    = entity_ptr->GetComponent<AudioSource>();
-		auto& audio_listener	= entity_ptr->GetComponent<AudioListener>();
-		auto& renderable		= entity_ptr->GetComponent<Renderable>();
-		auto material		    = renderable ? renderable->GetMaterial() : nullptr;
-		auto& rigid_body		= entity_ptr->GetComponent<RigidBody>();
-		auto& collider		    = entity_ptr->GetComponent<Collider>();
-		auto& constraint		= entity_ptr->GetComponent<Constraint>();
-		auto& scripts		    = entity_ptr->GetComponents<Script>();
-
-		ShowTransform(transform);
-		ShowLight(light);
-		ShowCamera(camera);
-        ShowTerrain(terrain);
-        ShowEnvironment(environment);
-		ShowAudioSource(audio_source);
-		ShowAudioListener(audio_listener);
+		ShowTransform(entity_ptr->GetComponent<Transform>());
+		ShowLight(entity_ptr->GetComponent<Light>());
+		ShowCamera(entity_ptr->GetComponent<Camera>());
+        ShowTerrain(entity_ptr->GetComponent<Terrain>());
+        ShowEnvironment(entity_ptr->GetComponent<Environment>());
+		ShowAudioSource(entity_ptr->GetComponent<AudioSource>());
+		ShowAudioListener(entity_ptr->GetComponent<AudioListener>());
 		ShowRenderable(renderable);
 		ShowMaterial(material);
-		ShowRigidBody(rigid_body);
-		ShowCollider(collider);
-		ShowConstraint(constraint);
-		for (auto& script : scripts)
+		ShowRigidBody(entity_ptr->GetComponent<RigidBody>());
+        ShowSoftBody(entity_ptr->GetComponent<SoftBody>());
+		ShowCollider(entity_ptr->GetComponent<Collider>());
+		ShowConstraint(entity_ptr->GetComponent<Constraint>());
+		for (auto& script : entity_ptr->GetComponents<Script>())
 		{
 			ShowScript(script);
 		}
@@ -535,6 +525,22 @@ void Widget_Properties::ShowRigidBody(shared_ptr<RigidBody>& rigid_body) const
 		//==========================================================================================================================================================================================================
 	}
 	ComponentProperty::End();
+}
+
+void Widget_Properties::ShowSoftBody(shared_ptr<SoftBody>& soft_body) const
+{
+    if (!soft_body)
+        return;
+
+    if (ComponentProperty::Begin("SoftBody", Icon_Component_SoftBody, soft_body))
+    {
+        //= REFLECT ===============================================================
+        //=========================================================================
+
+        //= MAP ===================================================================
+        //=========================================================================
+    }
+    ComponentProperty::End();
 }
 
 void Widget_Properties::ShowCollider(shared_ptr<Collider>& collider) const
@@ -1093,6 +1099,10 @@ void Widget_Properties::ComponentContextMenu_Add() const
 				{
 					entity->AddComponent<RigidBody>();
 				}
+                else if (ImGui::MenuItem("Soft Body"))
+                {
+                    entity->AddComponent<SoftBody>();
+                }
 				else if (ImGui::MenuItem("Collider"))
 				{
 					entity->AddComponent<Collider>();

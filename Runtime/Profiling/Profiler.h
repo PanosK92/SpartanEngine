@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "TimeBlock.h"
 #include "../Core/EngineDefs.h"
 #include "../Core/ISubsystem.h"
+#include "../Core/Stopwatch.h"
 //=============================
 
 #define TIME_BLOCK_START_NAMED(profiler, name)  profiler->TimeBlockStart(name, Spartan::TimeBlock_Type::TimeBlock_Cpu);
@@ -151,6 +152,7 @@ namespace Spartan
 
 		// Misc
 		std::string m_metrics;
+        Stopwatch m_timer;
 		bool m_profile = true;
 	
 		// Dependencies

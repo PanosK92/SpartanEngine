@@ -116,6 +116,7 @@ float mainPS(Pixel_PosUv input) : SV_TARGET
 
     // Occlusion
 	float occlusion = 0.0f;
+	[unroll]
     for (int i = 0; i < sample_count; i++)
     {	
         // Apply dithering
@@ -137,7 +138,6 @@ float mainPS(Pixel_PosUv input) : SV_TARGET
 		float range_check       = smoothstep(0.0f, 1.0f, radius / center_to_sample_distance);
 		occlusion               += occlusion_factor * range_check * intensity;
     }
-    occlusion /= (float)sample_count;
 
-	return saturate(1.0f - occlusion);
+	return 1.0f - saturate(occlusion / (float)sample_count);
 }

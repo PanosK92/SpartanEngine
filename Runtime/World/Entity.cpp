@@ -19,24 +19,25 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =================================
+//= INCLUDES ========================
 #include "Entity.h"
 #include "World.h"
+#include "Components/Camera.h"
+#include "Components/Collider.h"
+#include "Components/Transform.h"
+#include "Components/Constraint.h"
+#include "Components/Light.h"
+#include "Components/Renderable.h"
+#include "Components/RigidBody.h"
+#include "Components/SoftBody.h"
+#include "Components/Environment.h"
+#include "Components/Script.h"
+#include "Components/AudioSource.h"
+#include "Components/AudioListener.h"
+#include "Components/Terrain.h"
 #include "../IO/FileStream.h"
 #include "../Core/Context.h"
-#include "../World/Components/Camera.h"
-#include "../World/Components/Collider.h"
-#include "../World/Components/Transform.h"
-#include "../World/Components/Constraint.h"
-#include "../World/Components/Light.h"
-#include "../World/Components/Renderable.h"
-#include "../World/Components/RigidBody.h"
-#include "../World/Components/Environment.h"
-#include "../World/Components/Script.h"
-#include "../World/Components/AudioSource.h"
-#include "../World/Components/AudioListener.h"
-#include "../World/Components/Terrain.h"
-//============================================
+//===================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -289,6 +290,7 @@ namespace Spartan
             case ComponentType_Light:			component = AddComponent<Light>(id);		    break;
             case ComponentType_Renderable:		component = AddComponent<Renderable>(id);	    break;
             case ComponentType_RigidBody:		component = AddComponent<RigidBody>(id);	    break;
+            case ComponentType_SoftBody:		component = AddComponent<SoftBody>(id);	        break;
             case ComponentType_Script:			component = AddComponent<Script>(id);		    break;
             case ComponentType_Environment:		component = AddComponent<Environment>(id);		break;
             case ComponentType_Transform:		component = AddComponent<Transform>(id);	    break;

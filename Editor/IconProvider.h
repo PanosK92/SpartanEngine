@@ -42,6 +42,7 @@ enum Icon_Type
 	Icon_Component_MeshCollider,
 	Icon_Component_Renderable,
 	Icon_Component_RigidBody,
+    Icon_Component_SoftBody,
 	Icon_Component_Script,
     Icon_Component_Terrain,
     Icon_Component_Environment,
