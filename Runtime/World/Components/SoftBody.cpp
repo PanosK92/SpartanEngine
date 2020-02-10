@@ -51,62 +51,10 @@ namespace Spartan
 
     void SoftBody::OnInitialize()
     {
-        // Box
-        const btVector3 position    = btVector3(0, 0, 0);
-        const btVector3 size        = btVector3(1, 1, 1);
-        const btVector3 extent      = size * 0.5f;
-        const btVector3 vertices[]  =
-        {
-            position + extent * btVector3(-1, -1, -1),
-            position + extent * btVector3(+1, -1, -1),
-            position + extent * btVector3(-1, +1, -1),
-            position + extent * btVector3(+1, +1, -1),
-            position + extent * btVector3(-1, -1, +1),
-            position + extent * btVector3(+1, -1, +1),
-            position + extent * btVector3(-1, +1, +1),
-            position + extent * btVector3(+1, +1, +1)
-        };
-
-        m_soft_body = btSoftBodyHelpers::CreateFromConvexHull(m_physics->GetSoftWorldInfo(), vertices, 8);
-        m_soft_body->generateBendingConstraints(2);
-
-        //TRACEDEMO
-        //const btScalar s = 5;
-        //const int segments = 10;
-        //const int count = 5;
-        //btVector3 pos(-s * segments, 0, 0);
-        //btScalar gap = 0.5;
-        //btSoftBody* psb = btSoftBodyHelpers::CreatePatch(m_physics->GetSoftWorldInfo(), btVector3(-s, 0, -s * 3),
-        //    btVector3(+s, 0, -s * 3),
-        //    btVector3(-s, 0, +s),
-        //    btVector3(+s, 0, +s),
-        //    segments, segments * 3,
-        //    1 + 2, true);
-        //psb->getCollisionShape()->setMargin(0.5);
-        //btSoftBody::Material* pm = psb->appendMaterial();
-        //pm->m_kLST = 0.0004;
-        //pm->m_flags -= btSoftBody::fMaterial::DebugDraw;
-        //psb->generateBendingConstraints(2, pm);
-        //psb->m_cfg.kLF = 0.05;
-        //psb->m_cfg.kDG = 0.01;
-        //psb->m_cfg.piterations = 2;
-        //psb->m_cfg.aeromodel = btSoftBody::eAeroModel::V_TwoSidedLiftDrag;
-        //psb->setWindVelocity(btVector3(4, -12.0, -25.0));
-        //btTransform trs;
-        //btQuaternion rot;
-        //pos += btVector3(s * 2 + gap, 0, 0);
-        //rot.setRotation(btVector3(1, 0, 0), btScalar(SIMD_PI / 2));
-        //trs.setIdentity();
-        //trs.setOrigin(pos);
-        //trs.setRotation(rot);
-        //psb->transform(trs);
-        //psb->setTotalMass(2.0);
-        ////this could help performance in some cases
-        //btSoftBodyHelpers::ReoptimizeLinkOrder(psb);
-        //m_physics->AddBody(psb);
-
+        // Test
         m_mass = 30.0f;
-        Body_AddToWorld();
+        CreateBox();
+        CreateAeroCloth();
     }
 
     void SoftBody::OnRemove()
@@ -200,6 +148,88 @@ namespace Spartan
         {
             m_soft_body->activate(true);
         }
+    }
+
+    void SoftBody::CreateBox()
+    {
+        const btVector3 position = btVector3(0, 0, 0);
+        const btVector3 size = btVector3(1, 1, 1);
+        const btVector3 extent = size * 0.5f;
+        const btVector3 vertices[] =
+        {
+            position + extent * btVector3(-1, -1, -1),
+            position + extent * btVector3(+1, -1, -1),
+            position + extent * btVector3(-1, +1, -1),
+            position + extent * btVector3(+1, +1, -1),
+            position + extent * btVector3(-1, -1, +1),
+            position + extent * btVector3(+1, -1, +1),
+            position + extent * btVector3(-1, +1, +1),
+            position + extent * btVector3(+1, +1, +1)
+        };
+
+        m_soft_body = btSoftBodyHelpers::CreateFromConvexHull(m_physics->GetSoftWorldInfo(), vertices, 8);
+        m_soft_body->generateBendingConstraints(2);
+
+        m_physics->AddBody(m_soft_body);
+    }
+
+    void SoftBody::CreateAeroCloth()
+    {
+        const btScalar s = 5;
+        const int segments = 10;
+        const int count = 5;
+        btVector3 pos(-s * segments, 0, 0);
+        btScalar gap = 0.5;
+        btSoftBody* psb = btSoftBodyHelpers::CreatePatch(m_physics->GetSoftWorldInfo(), btVector3(-s, 0, -s * 3),
+            btVector3(+s, 0, -s * 3),
+            btVector3(-s, 0, +s),
+            btVector3(+s, 0, +s),
+            segments, segments * 3,
+            1 + 2, true);
+        psb->getCollisionShape()->setMargin(0.5);
+        btSoftBody::Material* pm = psb->appendMaterial();
+        psb->m_cfg.aeromodel = btSoftBody::eAeroModel::V_TwoSidedLiftDrag;
+        pm->m_kLST              = 0.9f; // Linear stiffness coefficient [0,1]
+        pm->m_kAST              = 0.9f; // Area/Angular stiffness coefficient [0,1]
+        pm->m_kVST              = 0.9f; // Volume stiffness coefficient [0,1]
+
+        psb->m_cfg.kVCF         = 1.0;  // Velocities correction factor (Baumgarte)
+        psb->m_cfg.kDP          = 0.0;  // Damping coefficient [0,1]
+        psb->m_cfg.kDG          = 0.01; // Drag coefficient [0,+inf]
+        psb->m_cfg.kLF          = 0.1; // Lift coefficient [0,+inf]
+        psb->m_cfg.kPR          = 0.0;  // Pressure coefficient [-inf,+inf]
+        psb->m_cfg.kVC          = 0.0;  // Volume conversation coefficient [0,+inf]
+        psb->m_cfg.kDF          = 0.2;  // Dynamic friction coefficient [0,1]
+        psb->m_cfg.kMT          = 0.0;  // Pose matching coefficient [0,1]
+        psb->m_cfg.kCHR         = 0.1;  // Rigid contacts hardness [0,1]
+        psb->m_cfg.kKHR         = 0.0;  // Kinetic contacts hardness [0,1]
+        psb->m_cfg.kSHR         = 1.0;  // Soft contacts hardness [0,1]
+        psb->m_cfg.kAHR         = 0.7;  // Anchors hardness [0,1]
+
+        psb->m_cfg.kSRHR_CL     = 0.0;  // Soft vs rigid hardness [0,1] (cluster only)
+        psb->m_cfg.kSKHR_CL     = 0.0;  // Soft vs kinetic hardness [0,1] (cluster only)
+        psb->m_cfg.kSSHR_CL     = 0.0;  // Soft vs soft hardness [0,1] (cluster only)
+        psb->m_cfg.kSR_SPLT_CL  = 0.0;  // Soft vs rigid impulse split [0,1] (cluster only)
+        psb->m_cfg.kSK_SPLT_CL  = 0.0;  // Soft vs rigid impulse split [0,1] (cluster only)
+        psb->m_cfg.kSS_SPLT_CL  = 0.0;  // Soft vs rigid impulse split [0,1] (cluster only)
+
+        pm->m_flags -= btSoftBody::fMaterial::DebugDraw;
+        psb->m_cfg.piterations = 2;
+        psb->generateBendingConstraints(2, pm);
+        psb->setWindVelocity(btVector3(4, -12.0, -25.0));
+        btTransform trs;
+        btQuaternion rot;
+        pos += btVector3(s * 2 + gap, 0, 0);
+        rot.setRotation(btVector3(1, 0, 0), btScalar(SIMD_PI / 2));
+        trs.setIdentity();
+        trs.setOrigin(pos);
+        trs.setRotation(rot);
+        psb->transform(trs);
+        psb->setTotalMass(2.0);
+        //this could help performance in some cases
+        btSoftBodyHelpers::ReoptimizeLinkOrder(psb);
+        psb->setPose(true, true);
+        m_physics->AddBody(psb);
     }
 
     void SoftBody::Body_Release()

@@ -66,6 +66,9 @@ namespace Spartan
         const Math::Vector3& GetCenterOfMass() const { return m_center_of_mass; }
 
     private:
+        void CreateBox();
+        void CreateAeroCloth();
+
         void Body_Release();
         void Body_AddToWorld();
         void Body_RemoveFromWorld();
