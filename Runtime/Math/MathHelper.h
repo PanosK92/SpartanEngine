@@ -101,11 +101,12 @@ namespace Spartan::Math
     template <class T>
     constexpr T Saturate(T x) { return Clamp(x, static_cast<T>(0), static_cast<T>(1)); }
 
-    inline float Random(float from = 0.0f, float to = 1.0f)
+    template <class T>
+    inline float Random(T from = 0.0f, T to = 1.0f)
     {
         std::random_device rd;                              // obtain a random number from hardware
         std::mt19937 eng(rd());                             // seed the generator
-        std::uniform_int_distribution<> distr(from, to);    // define the range
+        std::uniform_real_distribution<T> distr(from, to);  // define the range
         return distr(eng);
     }
 

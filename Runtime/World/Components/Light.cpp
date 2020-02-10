@@ -218,7 +218,7 @@ namespace Spartan
             }
 		}
 		else if (m_light_type == LightType_Spot)
-		{
+		{   
             const Vector3 position  = GetTransform()->GetPosition();
             const Vector3 forward	= GetTransform()->GetForward();
             const Vector3 up		= GetTransform()->GetUp();
