@@ -573,7 +573,7 @@ namespace Spartan
         static RHI_PipelineState pipeline_state;
         pipeline_state.shader_vertex                    = shader_v.get();
         pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
-        pipeline_state.blend_state                      = m_blend_color_add.get(); // light accumulation
+        pipeline_state.blend_state                      = m_blend_light.get();
         pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
         pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
         pipeline_state.render_target_color_textures[0]  = tex_diffuse.get();
@@ -603,9 +603,6 @@ namespace Spartan
 
             if (cmd_list->Begin(pipeline_state))
             {
-                // Update light buffer   
-                UpdateLightBuffer(entities);
-
                 cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
                 cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
                 cmd_list->SetTexture(0, m_render_targets[RenderTarget_Gbuffer_Normal]);
@@ -618,6 +615,9 @@ namespace Spartan
                 {
                     if (Light* light = entity->GetComponent<Light>().get())
                     {
+                        // Update light buffer   
+                        UpdateLightBuffer(light);
+
                         // Set shadow map
                         if (RHI_Texture* shadow_map = light->GetShadowMap().get())
                         {

@@ -74,9 +74,10 @@ namespace Spartan
 
     void Renderer::CreateBlendStates()
     {
+        // blend_enabled, source_blend, dest_blend, blend_op, source_blend_alpha, dest_blend_alpha, blend_op_alpha, blend_factor
         m_blend_disabled    = make_shared<RHI_BlendState>(m_rhi_device, false);
         m_blend_enabled     = make_shared<RHI_BlendState>(m_rhi_device, true);
-        m_blend_color_add   = make_shared<RHI_BlendState>(m_rhi_device, true, RHI_Blend_One, RHI_Blend_One, RHI_Blend_Operation_Add, RHI_Blend_One, RHI_Blend_One, RHI_Blend_Operation_Add);
+        m_blend_light       = make_shared<RHI_BlendState>(m_rhi_device, true, RHI_Blend_One, RHI_Blend_One, RHI_Blend_Operation_Add, RHI_Blend_One, RHI_Blend_One, RHI_Blend_Operation_Add);
         m_blend_bloom       = make_shared<RHI_BlendState>(m_rhi_device, true, RHI_Blend_One, RHI_Blend_One, RHI_Blend_Operation_Add, RHI_Blend_One, RHI_Blend_One, RHI_Blend_Operation_Add, 0.5f);
     }
 

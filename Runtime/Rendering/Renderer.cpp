@@ -447,9 +447,9 @@ namespace Spartan
         return m_buffer_object_gpu->Unmap();
     }
 
-    bool Renderer::UpdateLightBuffer(const vector<Entity*>& entities)
+    bool Renderer::UpdateLightBuffer(const Light* light)
     {
-        if (entities.empty())
+        if (!light)
             return false;
 
         // Only update if needed
@@ -466,19 +466,13 @@ namespace Spartan
 
         bool volumetric         = static_cast<float>(m_options & Render_VolumetricLighting);
         bool contact_shadows    = static_cast<float>(m_options & Render_ScreenSpaceShadows);
-        for (uint32_t i = 0; i < entities.size(); i++)
-        {
-            if (Light* light = entities[i]->GetComponent<Light>().get())
-            {
-                for (uint32_t j = 0; j < light->GetShadowArraySize(); j++)  { m_buffer_light_cpu.view_projection[i][j] = light->GetViewMatrix(j) * light->GetProjectionMatrix(j); }
-                m_buffer_light_cpu.intensity_range_angle_bias[i]            = Vector4(light->GetIntensity(), light->GetRange(), light->GetAngle(), GetOptionValue(Render_ReverseZ) ? light->GetBias() : -light->GetBias());
-                m_buffer_light_cpu.normalBias_shadow_volumetric_contact[i]  = Vector4(light->GetNormalBias(), light->GetShadowsEnabled(), contact_shadows && light->GetScreenSpaceShadowsEnabled(), volumetric && light->GetVolumetricEnabled());
-                m_buffer_light_cpu.color[i]                                 = light->GetColor();
-                m_buffer_light_cpu.position[i]                              = light->GetTransform()->GetPosition();
-                m_buffer_light_cpu.direction[i]                             = light->GetDirection();
-            }
-        }
-        m_buffer_light_cpu.light_count = static_cast<float>(entities.size());
+
+        for (uint32_t j = 0; j < light->GetShadowArraySize(); j++) { m_buffer_light_cpu.view_projection[j] = light->GetViewMatrix(j) * light->GetProjectionMatrix(j); }
+        m_buffer_light_cpu.intensity_range_angle_bias            = Vector4(light->GetIntensity(), light->GetRange(), light->GetAngle(), GetOptionValue(Render_ReverseZ) ? light->GetBias() : -light->GetBias());
+        m_buffer_light_cpu.normalBias_shadow_volumetric_contact  = Vector4(light->GetNormalBias(), light->GetShadowsEnabled(), contact_shadows && light->GetScreenSpaceShadowsEnabled(), volumetric && light->GetVolumetricEnabled());
+        m_buffer_light_cpu.color                                 = light->GetColor();
+        m_buffer_light_cpu.position                              = light->GetTransform()->GetPosition();
+        m_buffer_light_cpu.direction                             = light->GetDirection();
 
         // Update
         *buffer = m_buffer_light_cpu;
