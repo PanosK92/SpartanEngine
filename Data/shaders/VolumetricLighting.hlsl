@@ -39,7 +39,7 @@ float3 vl_raymarch(Light light, float3 ray_pos, float3 ray_step, float ray_dot_l
 	for (uint i = 0; i < g_vl_steps; i++)
 	{
 		// Compute position in clip space
-        float3 pos = project(ray_pos, light_view_projection[light.index][array_index]);
+        float3 pos = project(ray_pos, light_view_projection[array_index]);
         
 		// Check to see if the light can "see" the pixel
         #ifdef DIRECTIONAL
@@ -69,38 +69,82 @@ float3 VolumetricLighting(Light light, float3 pos_world, float2 uv)
 	float step_length 				= pixel_to_camera_length / (float)g_vl_steps;
 	float3 ray_step 				= ray_dir * step_length;
 	float3 ray_pos 					= pos_world;
+    #ifdef DIRECTIONAL
 	float ray_dot_light				= dot(ray_dir, light.direction);
+    #else
+    float ray_dot_light				= dot(ray_dir, -light.direction);
+    #endif
 	float3 fog 						= 0.0f;
     
 	// Apply dithering as it will allows us to get away with a crazy low sample count ;-)
-	float3 dither_value = dither(uv) * 100;
+	float3 dither_value = dither(uv) * 200;
 	ray_pos += ray_step * dither_value;
-	
-	for (uint array_index = 0; array_index < light.array_size; array_index++)
-	{
-        // Compute position in clip space
-        float3 pos = project(ray_pos, light_view_projection[light.index][array_index]);
-        
-		[branch]
-		if (is_saturated(pos))
-		{
-			// Ray-march
-			fog += vl_raymarch(light, ray_pos, ray_step, ray_dot_light, array_index);
+    
+	#if DIRECTIONAL
+    {
+        [loop]
+        for (uint array_index = 0; array_index < light.array_size; array_index++)
+        {
+            // Compute position in clip space
+            float3 pos = project(ray_pos, light_view_projection[array_index]);
             
-            // If we are close to the edge of the primary cascade and a next cascade exists, lerp with it.
-            float cascade_lerp = (max3(abs(pos)) - 0.9f);
             [branch]
-            if (light.is_directional && cascade_lerp > 0.0f && array_index < light.array_size - 1)
+            if (is_saturated(pos))
             {
-                // Ray-march using the next cascade
-                float3 fog_secondary = vl_raymarch(light, ray_pos, ray_step, ray_dot_light, array_index + 1);
+                // Ray-march
+                fog += vl_raymarch(light, ray_pos, ray_step, ray_dot_light, array_index);
                 
-                // Blend cascades	
-                fog = lerp(fog, fog_secondary, cascade_lerp);
+                // If we are close to the edge of the primary cascade and a next cascade exists, lerp with it.
+                float cascade_lerp = (max3(abs(pos)) - 0.9f);
+                [branch]
+                if (light.is_directional && cascade_lerp > 0.0f && array_index < light.array_size - 1)
+                {
+                    // Ray-march using the next cascade
+                    float3 fog_secondary = vl_raymarch(light, ray_pos, ray_step, ray_dot_light, array_index + 1);
+                    
+                    // Blend cascades	
+                    fog = lerp(fog, fog_secondary, cascade_lerp);    
+                }
+                
                 break;
             }
-		}
-	}
+        }
+    }
+    #elif POINT
+    {
+        [branch]
+        if (light.distance_to_pixel < light.range)
+        {
+            uint projection_index = direction_to_cube_face_index(light.direction);
+            
+            // Compute position in clip space
+            float3 pos = project(ray_pos, light_view_projection[projection_index]);
+            
+            // Ray-march
+			[branch]
+            if (is_saturated(pos))
+            {
+                fog = vl_raymarch(light, ray_pos, ray_step, ray_dot_light, projection_index);
+            }
+        }
+    }
+    #elif SPOT
+    {
+        [branch]
+        if (light.distance_to_pixel < light.range)
+        {
+            // Compute position in clip space
+            float3 pos = project(ray_pos, light_view_projection[0]);
+            
+            // Ray-march
+			[branch]
+            if (is_saturated(pos))
+            {
+                fog = vl_raymarch(light, ray_pos, ray_step, ray_dot_light, 0);
+            }
+        }
+    }
+    #endif
 	
 	return fog * light.color * light.intensity;
 }

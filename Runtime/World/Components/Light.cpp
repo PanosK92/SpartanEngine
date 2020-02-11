@@ -176,8 +176,8 @@ namespace Spartan
 		if (m_shadows_enabled == cast_shadows)
 			return;
 
-        m_shadows_enabled  = cast_shadows;
-        m_is_dirty      = true;
+        m_shadows_enabled   = cast_shadows;
+        m_is_dirty          = true;
 
         if (m_shadows_enabled)
         {

@@ -42,17 +42,20 @@ float3 GetSpecularDominantDir(float3 normal, float3 reflection, float roughness)
 {
 	const float smoothness = 1.0f - roughness;
 	const float lerpFactor = smoothness * (sqrt(smoothness) + roughness);
+    
 	return lerp(normal, reflection, lerpFactor);
 }
 
 // https://www.unrealengine.com/blog/physically-based-shading-on-mobile
 float3 EnvBRDFApprox(float3 specColor, float roughness, float NdV)
 {
+    // [ Lazarov 2013, "Getting More Physical in Call of Duty: Black Ops II" ]
     const float4 c0 = float4(-1.0f, -0.0275f, -0.572f, 0.022f );
     const float4 c1 = float4(1.0f, 0.0425f, 1.0f, -0.04f );
     float4 r 		= roughness * c0 + c1;
     float a004 		= min(r.x * r.x, exp2(-9.28f * NdV)) * r.x + r.y;
     float2 AB 		= float2(-1.04f, 1.04f) * a004 + r.zw;
+   
     return specColor * AB.x + AB.y;
 }
 

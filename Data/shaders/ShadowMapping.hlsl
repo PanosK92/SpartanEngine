@@ -227,21 +227,18 @@ float Technique_Pcf(float3 uv, float compare)
 ------------------------------------------------------------------------------*/
 float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, Light light)
 {
-    float n_dot_l                   = dot(normal, normalize(-light.direction));
-    float cos_angle                 = saturate(1.0f - n_dot_l);
-    float3 scaled_normal_offset     = normal * light.normal_bias * cos_angle * g_shadow_texel_size  * 10;
-    float3 position_world           = world_pos + scaled_normal_offset;
-    float3 light_to_pixel           = position_world.xyz - light.position;
-    float light_to_pixel_distance   = length(light_to_pixel);
-    float3 light_to_pixel_direction = normalize(light_to_pixel);
-    float shadow                    = 1.0f;
+    float n_dot_l               = dot(normal, normalize(-light.direction));
+    float cos_angle             = saturate(1.0f - n_dot_l);
+    float3 scaled_normal_offset = normal * light.normal_bias * cos_angle * g_shadow_texel_size  * 10;
+    float3 position_world       = world_pos + scaled_normal_offset;
+    float shadow                = 1.0f;
         
     #if DIRECTIONAL
     {
         for (uint cascade = 0; cascade < light.array_size; cascade++)
         {
             // Compute position in clip space for primary cascade
-            float3 pos = project(position_world, light_view_projection[light.index][cascade]);
+            float3 pos = project(position_world, light_view_projection[cascade]);
             
             // If the position exists within the cascade, sample it
             [branch]
@@ -259,7 +256,7 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, Light 
                     int cacade_secondary = cascade + 1;
 
                     // Compute position in clip space for secondary cascade
-                    pos = project(position_world, light_view_projection[light.index][cacade_secondary]);
+                    pos = project(position_world, light_view_projection[cacade_secondary]);
 
                     // Sample secondary cascade
                     compare_depth           = pos.z + (light.bias * (cacade_secondary + 1));
@@ -276,20 +273,20 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, Light 
     #elif POINT
     {
         [branch]
-        if (light_to_pixel_distance < light.range)
+        if (light.distance_to_pixel < light.range)
         {
-			float projection_index  = direction_to_cube_face_index(light_to_pixel_direction);
-            float pos_z             = project_depth(position_world, light_view_projection[light.index][projection_index]);   
+			uint projection_index   = direction_to_cube_face_index(light.direction);
+            float pos_z             = project_depth(position_world, light_view_projection[projection_index]);   
             float compare_depth     = pos_z + light.bias;
-            return SampleShadowMap(light_to_pixel_direction, compare_depth);
+            return SampleShadowMap(light.direction, compare_depth);
         }
     }
     #elif SPOT
     {
         [branch]
-        if (light_to_pixel_distance < light.range)
+        if (light.distance_to_pixel < light.range)
         {
-            float3 pos_clip     = project(position_world, light_view_projection[light.index][0]);   
+            float3 pos_clip     = project(position_world, light_view_projection[0]);
             float compare_depth = pos_clip.z + light.bias;
             return SampleShadowMap(float3(pos_clip.xy, 0.0f), compare_depth);
         }

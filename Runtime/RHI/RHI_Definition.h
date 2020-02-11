@@ -195,7 +195,18 @@ namespace Spartan
 		RHI_Blend_Src_Color,
 		RHI_Blend_Inv_Src_Color,
 		RHI_Blend_Src_Alpha,
-		RHI_Blend_Inv_Src_Alpha
+		RHI_Blend_Inv_Src_Alpha,
+        RHI_Blend_Dest_Alpha,
+        RHI_Blend_Inv_Dest_Alpha,
+        RHI_Blend_Dest_Color,
+        RHI_Blend_Inv_Dest_Color,
+        RHI_Blend_Src_Alpha_Sat,
+        RHI_Blend_Blend_Factor,
+        RHI_Blend_Inv_Blend_Factor,
+        RHI_Blend_Src1_Color,
+        RHI_Blend_Inv_Src1_Color,
+        RHI_Blend_Src1_Alpha,
+        RHI_Blend_Inv_Src1_Alpha
 	};
 
 	enum RHI_Blend_Operation

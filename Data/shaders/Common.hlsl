@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //============================
 
 /*------------------------------------------------------------------------------
-GLOBALS
+    CONSTANTS
 ------------------------------------------------------------------------------*/
 static const float PI       = 3.14159265f;
 static const float PI2      = PI * 2;
@@ -50,7 +50,6 @@ struct Material
 
 struct Light
 {
-    float   index;
     bool    is_directional;
     bool    is_point;
     bool    is_spot;
@@ -62,11 +61,26 @@ struct Light
     float3  position;
     float   range;
     float3  direction;
+    float   distance_to_pixel;
     float   angle;
     float   bias;
     float   normal_bias;
     uint    array_size;
 };
+
+/*------------------------------------------------------------------------------
+    MATH
+------------------------------------------------------------------------------*/
+inline float min2(float2 value) { return min(value.x, value.y); }
+inline float min3(float3 value) { return min(min(value.x, value.y), value.z); }
+
+inline float max2(float2 value) { return max(value.x, value.y); }
+inline float max3(float3 value) { return max(max(value.x, value.y), value.z); }
+
+inline bool is_saturated(float value)   { return value == saturate(value); }
+inline bool is_saturated(float2 value)  { return is_saturated(value.x) && is_saturated(value.y); }
+inline bool is_saturated(float3 value)  { return is_saturated(value.x) && is_saturated(value.y) && is_saturated(value.z); }
+inline bool is_saturated(float4 value)  { return is_saturated(value.x) && is_saturated(value.y) && is_saturated(value.z) && is_saturated(value.w); }
 
 /*------------------------------------------------------------------------------
     GAMMA CORRECTION
@@ -75,6 +89,14 @@ inline float4 degamma(float4 color) { return pow(abs(color), g_gamma); }
 inline float3 degamma(float3 color) { return pow(abs(color), g_gamma); }
 inline float4 gamma(float4 color)   { return pow(abs(color), 1.0f / g_gamma); }
 inline float3 gamma(float3 color)   { return pow(abs(color), 1.0f / g_gamma); }
+
+/*------------------------------------------------------------------------------
+    PACKING
+------------------------------------------------------------------------------*/
+inline float3 unpack(float3 value)  { return value * 2.0f - 1.0f; }
+inline float3 pack(float3 value)    { return value * 0.5f + 0.5f; }
+inline float2 unpack(float2 value)  { return value * 2.0f - 1.0f; }
+inline float2 pack(float2 value)    { return value * 0.5f + 0.5f; }
 
 /*------------------------------------------------------------------------------
     PROJECT
@@ -97,14 +119,6 @@ inline float project_depth(float3 position, matrix transform)
 {
     return project(position, transform).z;
 }
-
-/*------------------------------------------------------------------------------
-    PACKING
-------------------------------------------------------------------------------*/
-inline float3 unpack(float3 value)  { return value * 2.0f - 1.0f; }
-inline float3 pack(float3 value)    { return value * 0.5f + 0.5f; }
-inline float2 unpack(float2 value)  { return value * 2.0f - 1.0f; }
-inline float2 pack(float2 value)    { return value * 0.5f + 0.5f; }
 
 /*------------------------------------------------------------------------------
     NORMAL
@@ -249,18 +263,19 @@ inline float2 direction_sphere_uv(float3 direction)
 inline uint direction_to_cube_face_index(const float3 direction)
 {
 	float3 direction_abs = abs(direction);
+    float max_coordinate = max3(direction_abs);
 
-	if(direction_abs.z >= direction_abs.x && direction_abs.z >= direction_abs.y)
+	if (max_coordinate == direction_abs.x)
 	{
-		return direction.z < 0.0 ? 5.0 : 4.0;
+		return direction_abs.x == direction.x ? 0 : 1;
 	}
-	else if(direction_abs.y >= direction_abs.x)
+	else if (max_coordinate == direction_abs.y)
 	{
-		return direction.y < 0.0 ? 3.0 : 2.0;
+		return direction_abs.y == direction.y ? 2 : 3;
 	}
 	else
 	{
-		return direction.x < 0.0 ? 1.0 : 0.0;
+		return direction_abs.z == direction.z ? 4 : 5;
 	}
     
 	return 0;
@@ -280,7 +295,6 @@ inline float interleaved_gradient_noise(float2 position_screen)
   return frac(magic.z * frac(dot(position_screen, magic.xy)));
 }
 
-
 /*------------------------------------------------------------------------------
     MISC
 ------------------------------------------------------------------------------*/
@@ -291,14 +305,3 @@ float micro_shadow(float ao, float3 N, float3 L, float shadow)
     float microShadow   = saturate(abs(dot(L, N)) + aperture - 1.0f);
     return shadow * microShadow;
 }
-
-inline float min2(float2 value) { return min(value.x, value.y); }
-inline float min3(float3 value) { return min(min(value.x, value.y), value.z); }
-
-inline float max2(float2 value) { return max(value.x, value.y); }
-inline float max3(float3 value) { return max(max(value.x, value.y), value.z); }
-
-inline bool is_saturated(float value)   { return value == saturate(value); }
-inline bool is_saturated(float2 value)  { return is_saturated(value.x) && is_saturated(value.y); }
-inline bool is_saturated(float3 value)  { return is_saturated(value.x) && is_saturated(value.y) && is_saturated(value.z); }
-inline bool is_saturated(float4 value)  { return is_saturated(value.x) && is_saturated(value.y) && is_saturated(value.z) && is_saturated(value.w); }

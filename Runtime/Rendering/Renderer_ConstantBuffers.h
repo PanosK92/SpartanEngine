@@ -131,18 +131,14 @@ namespace Spartan
     };
     
     // Light buffer
-    static const int g_max_lights = 100;
     struct BufferLight
     {
-        Math::Matrix view_projection[g_max_lights][6];
-        Math::Vector4 intensity_range_angle_bias[g_max_lights];
-        Math::Vector4 normalBias_shadow_volumetric_contact[g_max_lights];
-        Math::Vector4 color[g_max_lights];
-        Math::Vector4 position[g_max_lights];
-        Math::Vector4 direction[g_max_lights];
-    
-        float light_count;
-        Math::Vector3 g_padding2;
+        Math::Matrix view_projection[6];
+        Math::Vector4 intensity_range_angle_bias;
+        Math::Vector4 normalBias_shadow_volumetric_contact;
+        Math::Vector4 color;
+        Math::Vector4 position;
+        Math::Vector4 direction;
     
         bool operator==(const BufferLight& rhs)
         {
@@ -152,8 +148,7 @@ namespace Spartan
                 normalBias_shadow_volumetric_contact    == rhs.normalBias_shadow_volumetric_contact &&
                 color                                   == rhs.color                                &&
                 position                                == rhs.position                             &&
-                direction                               == rhs.direction                            &&
-                light_count                             == rhs.light_count;
+                direction                               == rhs.direction;
         }
     };
 }

@@ -93,17 +93,13 @@ cbuffer BufferObject : register(b2)
 	matrix g_object_wvp_previous;
 };
 
-// Low frequency - Updates once per frame
-#define lights_max 100
+// Updates as many times as there are lights
 cbuffer LightBuffer : register(b3)
 {
-	matrix light_view_projection[lights_max][6];
-	float4 intensity_range_angle_bias[lights_max];
-	float4 normalBias_shadow_volumetric_contact[lights_max];
-	float4 color[lights_max];
-	float4 position[lights_max];
-	float4 direction[lights_max];
-	
-	float light_count;
-	float3 g_padding3;
+	matrix light_view_projection[6];
+	float4 intensity_range_angle_bias;
+	float4 normalBias_shadow_volumetric_contact;
+	float4 color;
+	float4 position;
+	float4 direction;
 };

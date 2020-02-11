@@ -322,7 +322,7 @@ namespace Spartan
         bool UpdateFrameBuffer();
         bool UpdateUberBuffer();
         bool UpdateObjectBuffer(RHI_CommandList* cmd_list, const uint32_t offset_index = 0);
-        bool UpdateLightBuffer(const std::vector<Entity*>& entities);
+        bool UpdateLightBuffer(const Light* light);
 
         // Misc
         void RenderablesAcquire(const Variant& renderables);
@@ -352,7 +352,7 @@ namespace Spartan
         // Blend states
         std::shared_ptr<RHI_BlendState> m_blend_enabled;
         std::shared_ptr<RHI_BlendState> m_blend_disabled;
-        std::shared_ptr<RHI_BlendState> m_blend_color_add;
+        std::shared_ptr<RHI_BlendState> m_blend_light;
         std::shared_ptr<RHI_BlendState> m_blend_bloom;
 
         // Rasterizer states

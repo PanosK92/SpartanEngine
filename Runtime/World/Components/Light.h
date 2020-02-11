@@ -79,10 +79,10 @@ namespace Spartan
 
 		void SetColor(float r, float g, float b, float a)	{ m_color = Math::Vector4(r, g, b, a); }
 		void SetColor(const Math::Vector4& color)			{ m_color = color; }
-		const auto& GetColor()								{ return m_color; }
+		const auto& GetColor() const                        { return m_color; }
 
 		void SetIntensity(float value)	{ m_intensity = value; }
-		auto GetIntensity()				{ return m_intensity; }
+		auto GetIntensity()	const		{ return m_intensity; }
 
 		bool GetShadowsEnabled() const { return m_shadows_enabled; }
 		void SetShadowsEnabled(bool cast_shadows);
@@ -94,16 +94,16 @@ namespace Spartan
         void SetVolumetricEnabled(bool is_volumetric)   { m_volumetric_enabled = is_volumetric; }
 
 		void SetRange(float range);
-		auto GetRange() { return m_range; }
+		auto GetRange() const { return m_range; }
 
 		void SetAngle(float angle);
-		auto GetAngle() { return m_angle_rad; }
+		auto GetAngle() const { return m_angle_rad; }
 
 		void SetBias(float value)	{ m_bias = value; }
-		float GetBias()				{ return m_bias; }
+		float GetBias() const       { return m_bias; }
 
 		void SetNormalBias(float value) { m_normal_bias = value; }
-		auto GetNormalBias()			{ return m_normal_bias; }
+		auto GetNormalBias() const { return m_normal_bias; }
 
 		Math::Vector3 GetDirection() const;
 
