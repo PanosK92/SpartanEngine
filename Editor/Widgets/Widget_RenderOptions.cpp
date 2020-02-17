@@ -246,6 +246,8 @@ void Widget_RenderOptions::Tick()
                     "Albedo",
                     "Normal",
                     "Material",
+                    "Diffuse",
+                    "Specular",
                     "Velocity",
                     "Depth",
                     "SSAO",
