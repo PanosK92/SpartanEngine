@@ -467,7 +467,7 @@ namespace Spartan
         bool volumetric         = static_cast<float>(m_options & Render_VolumetricLighting);
         bool contact_shadows    = static_cast<float>(m_options & Render_ScreenSpaceShadows);
 
-        for (uint32_t j = 0; j < light->GetShadowArraySize(); j++) { m_buffer_light_cpu.view_projection[j] = light->GetViewMatrix(j) * light->GetProjectionMatrix(j); }
+        for (uint32_t i = 0; i < light->GetShadowArraySize(); i++) { m_buffer_light_cpu.view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix(i); }
         m_buffer_light_cpu.intensity_range_angle_bias            = Vector4(light->GetIntensity(), light->GetRange(), light->GetAngle(), GetOptionValue(Render_ReverseZ) ? light->GetBias() : -light->GetBias());
         m_buffer_light_cpu.normalBias_shadow_volumetric_contact  = Vector4(light->GetNormalBias(), light->GetShadowsEnabled(), contact_shadows && light->GetScreenSpaceShadowsEnabled(), volumetric && light->GetVolumetricEnabled());
         m_buffer_light_cpu.color                                 = light->GetColor();

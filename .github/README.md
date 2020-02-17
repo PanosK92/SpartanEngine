@@ -30,12 +30,10 @@ Platform | API | Status | Quality | Binaries | :+1:
 - 20+ audio file formats support (FMOD)
 - 30+ image file formats support (FreeImage)
 - 40+ model file formats support (Assimp)
-- DirectX 11 and Vulkan
-- Input (Keyboard, Mouse, Xbox controller)
+- Deferred rendering with transparency.
+- Vulkan and DirectX 11.
 - Bloom (Based on a study of Resident Evil 2's RE Engine)
 - Custom mip chain generation (Higher texture fidelity using Lanczos3 scaling)
-- Debug rendering (Transform gizmo, scene grid, bounding boxes, colliders, raycasts, g-buffer visualization etc)
-- Deferred rendering
 - Lights (Directional, point and spot lights)
 - Shadows (Cascaded and omnidirectional shadow mapping with vogel filtering)
 - Font rendering
@@ -50,13 +48,15 @@ Platform | API | Status | Quality | Binaries | :+1:
 - Physics (Rigid bodies, Constraints, Colliders)
 - Entity-component system
 - Event system
-- Easy to build (Single click project generation which includes editor and runtime)
+- Input (Keyboard, Mouse, Xbox controller)
+- Debug rendering (Transform gizmo, scene grid, bounding boxes, colliders, raycasts, g-buffer visualization etc)
 - Thread pool
 - Engine rendered platform agnostic editor
 - Profiling (CPU & GPU)
 - C/C++ (Using AngelScript)
 - XML files
 - Windows 10 and a modern/dedicated GPU (The target is high-end machines, old setups or mobile devices are not officially supported)
+- Easy to build (Single click project generation which includes editor and runtime)
 
 # Roadmap
 

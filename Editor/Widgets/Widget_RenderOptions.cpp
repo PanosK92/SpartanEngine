@@ -246,15 +246,12 @@ void Widget_RenderOptions::Tick()
                     "Albedo",
                     "Normal",
                     "Material",
-                    "Diffuse",
-                    "Specular",
                     "Velocity",
                     "Depth",
                     "SSAO",
                     "SSR",
                     "Bloom",
-                    "Volumetric Lighting",
-                    "Shadows"
+                    "Volumetric Lighting"
                 };
                 static int buffer_selection = 0;
                 static string buffer_selection_str = buffer_options[0];

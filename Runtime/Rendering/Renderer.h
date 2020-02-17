@@ -184,7 +184,6 @@ namespace Spartan
         RenderTarget_Light_Specular,
         // Volumetric light
         RenderTarget_Light_Volumetric,
-        RenderTarget_Light_Volumetric_Blurred,
         // Composition
         RenderTarget_Composition_Hdr,
         RenderTarget_Composition_Hdr_2,
@@ -289,11 +288,12 @@ namespace Spartan
 		void Pass_Main(RHI_CommandList* cmd_list);
 		void Pass_LightDepth(RHI_CommandList* cmd_list);
         void Pass_DepthPrePass(RHI_CommandList* cmd_list);
-		void Pass_GBuffer(RHI_CommandList* cmd_list);
+		void Pass_GBuffer(RHI_CommandList* cmd_list, Renderer_Object_Type object_type);
 		void Pass_Ssao(RHI_CommandList* cmd_list);
-        void Pass_Ssr(RHI_CommandList* cmd_list);
-        void Pass_Light(RHI_CommandList* cmd_list);
-		void Pass_Composition(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_out);
+        void Pass_Ssr(RHI_CommandList* cmd_list, bool use_stencil);
+        void Pass_Light(RHI_CommandList* cmd_list, bool use_stencil);
+		void Pass_Composition(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_out, bool use_stencil);
+        void Pass_AlphaBlend(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, bool use_stencil);
 		void Pass_PostProcess(RHI_CommandList* cmd_list);
 		void Pass_TAA(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
 		bool Pass_DebugBuffer(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_out);
@@ -345,15 +345,16 @@ namespace Spartan
 		std::map<Renderer_Shader_Type, std::shared_ptr<RHI_Shader>> m_shaders;
 
 		// Depth-stencil states
-		std::shared_ptr<RHI_DepthStencilState> m_depth_stencil_enabled_write;
-        std::shared_ptr<RHI_DepthStencilState> m_depth_stencil_enabled_no_write;
-		std::shared_ptr<RHI_DepthStencilState> m_depth_stencil_disabled;
+        std::shared_ptr<RHI_DepthStencilState> m_depth_stencil_disabled;
+        std::shared_ptr<RHI_DepthStencilState> m_depth_stencil_disabled_enabled_read;
+		std::shared_ptr<RHI_DepthStencilState> m_depth_stencil_enabled_disabled_write;
+        std::shared_ptr<RHI_DepthStencilState> m_depth_stencil_enabled_disabled_read;
+        std::shared_ptr<RHI_DepthStencilState> m_depth_stencil_enabled_enabled_write;
 
-        // Blend states
-        std::shared_ptr<RHI_BlendState> m_blend_enabled;
+        // Blend states 
         std::shared_ptr<RHI_BlendState> m_blend_disabled;
-        std::shared_ptr<RHI_BlendState> m_blend_light;
-        std::shared_ptr<RHI_BlendState> m_blend_bloom;
+        std::shared_ptr<RHI_BlendState> m_blend_alpha;
+        std::shared_ptr<RHI_BlendState> m_blend_additive;
 
         // Rasterizer states
 		std::shared_ptr<RHI_RasterizerState> m_rasterizer_cull_back_solid;

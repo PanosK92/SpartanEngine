@@ -98,12 +98,6 @@ namespace Spartan
 		RHI_Query_Timestamp_Disjoint
 	};
 
-	enum RHI_Clear_Buffer
-	{
-		RHI_Clear_Depth		= 1 << 0,
-		RHI_Clear_Stencil	= 1 << 1
-	};
-
 	enum RHI_Buffer_Scope : uint8_t
 	{
 		RHI_Buffer_VertexShader = 1 << 0,
@@ -173,8 +167,6 @@ namespace Spartan
 		RHI_Format_R16_Float,
 		RHI_Format_R32_Uint,
 		RHI_Format_R32_Float,
-		RHI_Format_D32_Float,
-		RHI_Format_R32_Float_Typeless,
 		// RG
 		RHI_Format_R8G8_Unorm,
 		RHI_Format_R16G16_Float,
@@ -184,7 +176,11 @@ namespace Spartan
 		// RGBA
 		RHI_Format_R8G8B8A8_Unorm,
 		RHI_Format_R16G16B16A16_Float,
-		RHI_Format_R32G32B32A32_Float,
+		RHI_Format_R32G32B32A32_Float,   
+        // DEPTH
+        RHI_Format_D32_Float,
+        RHI_Format_D32_Float_S8X24_Uint,
+
         RHI_Format_Undefined
 	};
 
@@ -271,20 +267,20 @@ namespace Spartan
     {
         switch (result)
         {
-        case RHI_Format_R8_Unorm:           return "RHI_Format_R8_Unorm";
-        case RHI_Format_R16_Uint:			return "RHI_Format_R16_Uint";
-        case RHI_Format_R16_Float:			return "RHI_Format_R16_Float";
-        case RHI_Format_R32_Uint:			return "RHI_Format_R32_Uint";
-        case RHI_Format_R32_Float:			return "RHI_Format_R32_Float";
-        case RHI_Format_D32_Float:			return "RHI_Format_D32_Float";
-        case RHI_Format_R32_Float_Typeless: return "RHI_Format_R32_Float_Typeless";
-        case RHI_Format_R8G8_Unorm:			return "RHI_Format_R8G8_Unorm";
-        case RHI_Format_R16G16_Float:		return "RHI_Format_R16G16_Float";
-        case RHI_Format_R32G32_Float:		return "RHI_Format_R32G32_Float";
-        case RHI_Format_R32G32B32_Float:	return "RHI_Format_R32G32B32_Float";
-        case RHI_Format_R8G8B8A8_Unorm:		return "RHI_Format_R8G8B8A8_Unorm";
-        case RHI_Format_R16G16B16A16_Float:	return "RHI_Format_R16G16B16A16_Float";
-        case RHI_Format_R32G32B32A32_Float:	return "RHI_Format_R32G32B32A32_Float";
+        case RHI_Format_R8_Unorm:               return "RHI_Format_R8_Unorm";
+        case RHI_Format_R16_Uint:			    return "RHI_Format_R16_Uint";
+        case RHI_Format_R16_Float:			    return "RHI_Format_R16_Float";
+        case RHI_Format_R32_Uint:			    return "RHI_Format_R32_Uint";
+        case RHI_Format_R32_Float:			    return "RHI_Format_R32_Float";
+        case RHI_Format_R8G8_Unorm:			    return "RHI_Format_R8G8_Unorm";
+        case RHI_Format_R16G16_Float:		    return "RHI_Format_R16G16_Float";
+        case RHI_Format_R32G32_Float:		    return "RHI_Format_R32G32_Float";
+        case RHI_Format_R32G32B32_Float:	    return "RHI_Format_R32G32B32_Float";
+        case RHI_Format_R8G8B8A8_Unorm:		    return "RHI_Format_R8G8B8A8_Unorm";
+        case RHI_Format_R16G16B16A16_Float:	    return "RHI_Format_R16G16B16A16_Float";
+        case RHI_Format_R32G32B32A32_Float:	    return "RHI_Format_R32G32B32A32_Float";
+        case RHI_Format_D32_Float:	            return "RHI_Format_D32_Float";
+        case RHI_Format_D32_Float_S8X24_Uint:	return "RHI_Format_D32_Float_S8X24_Uint";
         }
 
         return "Unknown format";
@@ -292,5 +288,6 @@ namespace Spartan
 
     static const Math::Vector4 state_dont_clear_color   = Math::Vector4::Infinity;
     static const float state_dont_clear_depth           = std::numeric_limits<float>::infinity();
+    static const uint8_t state_dont_clear_stencil       = 255;
     static const uint8_t state_max_render_target_count  = 8;
 }

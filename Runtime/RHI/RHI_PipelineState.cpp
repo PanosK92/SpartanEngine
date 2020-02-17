@@ -104,7 +104,8 @@ namespace Spartan
         {
             render_target_color_clear[i] = state_dont_clear_color;
         }
-        render_target_depth_clear = state_dont_clear_depth;
+        render_target_depth_clear   = state_dont_clear_depth;
+        render_target_stencil_clear = state_dont_clear_stencil;
 	}
 
 	void RHI_PipelineState::ComputeHash()

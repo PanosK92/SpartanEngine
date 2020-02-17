@@ -69,6 +69,7 @@ namespace Spartan
 
         // Clear values
         float render_target_depth_clear                                         = state_dont_clear_depth;
+        uint8_t render_target_stencil_clear                                     = state_dont_clear_stencil;
         uint32_t render_target_depth_array_index                                = 0;
         Math::Vector4 render_target_color_clear[state_max_render_target_count]  = { state_dont_clear_color };
 

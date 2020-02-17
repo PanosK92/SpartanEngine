@@ -54,7 +54,7 @@ namespace Spartan
 		const uint32_t channels,
 		const uint32_t bpc,
 		const uint32_t array_size,
-		const RHI_Format format,
+		const DXGI_FORMAT format,
 		const UINT bind_flags,
 		std::vector<std::vector<std::byte>>& data,
 		const shared_ptr<RHI_Device>& rhi_device
@@ -65,7 +65,7 @@ namespace Spartan
 		texture_desc.Height					= static_cast<UINT>(height);
 		texture_desc.MipLevels				= data.empty() ? 1 : static_cast<UINT>(data.size());
 		texture_desc.ArraySize				= static_cast<UINT>(array_size);
-		texture_desc.Format					= d3d11_format[format];
+		texture_desc.Format					= format;
 		texture_desc.SampleDesc.Count		= 1;
 		texture_desc.SampleDesc.Quality		= 0;
 		texture_desc.Usage					= (bind_flags & D3D11_BIND_RENDER_TARGET) || (bind_flags & D3D11_BIND_DEPTH_STENCIL) ? D3D11_USAGE_DEFAULT : D3D11_USAGE_IMMUTABLE;
@@ -101,10 +101,10 @@ namespace Spartan
 		return true;
 	}
 
-	inline bool CreateRenderTargetView(void* resource, void*& resource_render_target, const RHI_Format format, const unsigned array_size, const shared_ptr<RHI_Device>& rhi_device)
+	inline bool CreateRenderTargetView(void* resource, void*& resource_render_target, const DXGI_FORMAT format, const unsigned array_size, const shared_ptr<RHI_Device>& rhi_device)
 	{
 		D3D11_RENDER_TARGET_VIEW_DESC view_desc		= {};
-		view_desc.Format							= d3d11_format[format];
+		view_desc.Format							= format;
 		view_desc.ViewDimension						= (array_size == 1) ? D3D11_RTV_DIMENSION_TEXTURE2D : D3D11_RTV_DIMENSION_TEXTURE2DARRAY;
 		view_desc.Texture2DArray.MipSlice			= 0;
 		view_desc.Texture2DArray.ArraySize			= array_size;
@@ -120,11 +120,11 @@ namespace Spartan
 		return true;
 	}
 
-	inline bool CreateDepthStencilView(void* resource, vector<void*>& depth_stencil_views, const uint32_t array_size, const RHI_Format format, const shared_ptr<RHI_Device>& rhi_device)
+	inline bool CreateDepthStencilView(void* resource, vector<void*>& depth_stencil_views, const uint32_t array_size, const DXGI_FORMAT format, const shared_ptr<RHI_Device>& rhi_device)
 	{
 		// DSV
 		D3D11_DEPTH_STENCIL_VIEW_DESC dsv_desc	= {};
-		dsv_desc.Format							= d3d11_format[format];
+		dsv_desc.Format							= format;
 		dsv_desc.ViewDimension					= (array_size == 1) ? D3D11_DSV_DIMENSION_TEXTURE2D : D3D11_DSV_DIMENSION_TEXTURE2DARRAY;
 		dsv_desc.Texture2DArray.MipSlice		= 0;
 		dsv_desc.Texture2DArray.ArraySize		= 1;
@@ -145,11 +145,11 @@ namespace Spartan
 		return true;
 	}
 
-	inline bool CreateShaderResourceView(void* resource, void*& shader_resource_view, RHI_Format format, uint32_t array_size, std::vector<std::vector<std::byte>>& data, const shared_ptr<RHI_Device>& rhi_device)
+	inline bool CreateShaderResourceView(void* resource, void*& shader_resource_view, DXGI_FORMAT format, uint32_t array_size, std::vector<std::vector<std::byte>>& data, const shared_ptr<RHI_Device>& rhi_device)
 	{
 		// Describe
 		D3D11_SHADER_RESOURCE_VIEW_DESC shader_resource_view_desc	= {};
-		shader_resource_view_desc.Format							= d3d11_format[format];
+		shader_resource_view_desc.Format							= format;
 		shader_resource_view_desc.ViewDimension						= (array_size == 1) ? D3D11_SRV_DIMENSION_TEXTURE2D : D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
 		shader_resource_view_desc.Texture2DArray.FirstArraySlice	= 0;
 		shader_resource_view_desc.Texture2DArray.MostDetailedMip	= 0;
@@ -190,14 +190,20 @@ namespace Spartan
 		}
 
 		// Resolve formats
-		auto format		= m_format;
-		auto format_dsv	= m_format;
-		auto format_srv	= m_format;
-		if (m_format == RHI_Format_D32_Float)
+        DXGI_FORMAT format		= d3d11_format[m_format];
+		DXGI_FORMAT format_dsv	= d3d11_format[m_format];
+		DXGI_FORMAT format_srv	= d3d11_format[m_format];
+        if (m_format == RHI_Format_D32_Float_S8X24_Uint)
+        {
+            format      = DXGI_FORMAT_R32G8X24_TYPELESS;
+            format_srv  = DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS;
+            format_dsv  = DXGI_FORMAT_D32_FLOAT_S8X24_UINT;
+        }
+		else if (m_format == RHI_Format_D32_Float)
 		{
-			format		= RHI_Format_R32_Float_Typeless;
-			format_dsv	= RHI_Format_D32_Float;
-			format_srv	= RHI_Format_R32_Float;
+			format		= DXGI_FORMAT_R32_TYPELESS;
+            format_srv  = DXGI_FORMAT_R32_FLOAT;
+			format_dsv	= DXGI_FORMAT_D32_FLOAT;
 		}
 
 		// TEXTURE
@@ -375,7 +381,7 @@ namespace Spartan
 		uint32_t width,
 		uint32_t height,
 		uint32_t array_size,
-		RHI_Format format,
+		RHI_Format _format,
 		const shared_ptr<RHI_Device>& rhi_device
 	)
 	{
@@ -385,16 +391,22 @@ namespace Spartan
             return false;
         }
 
-		auto format_buffer	= RHI_Format_R32_Float_Typeless;
-		auto format_dsv		= RHI_Format_D32_Float;
-		auto format_srv		= RHI_Format_R32_Float;
-
-		if (format == RHI_Format_D32_Float)
-		{
-			format_buffer   = RHI_Format_R32_Float_Typeless;
-			format_dsv      = RHI_Format_D32_Float;
-			format_srv      = RHI_Format_R32_Float;
-		}
+        // Resolve formats
+        DXGI_FORMAT format      = DXGI_FORMAT_UNKNOWN;
+        DXGI_FORMAT format_dsv  = DXGI_FORMAT_UNKNOWN;
+        DXGI_FORMAT format_srv  = DXGI_FORMAT_UNKNOWN;
+        if (_format == RHI_Format_D32_Float_S8X24_Uint)
+        {
+            format      = DXGI_FORMAT_R32G8X24_TYPELESS;
+            format_srv  = DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS;
+            format_dsv  = DXGI_FORMAT_D32_FLOAT_S8X24_UINT;
+        }
+        else if (_format == RHI_Format_D32_Float)
+        {
+            format      = DXGI_FORMAT_R32_TYPELESS;
+            format_srv  = DXGI_FORMAT_R32_FLOAT;
+            format_dsv  = DXGI_FORMAT_D32_FLOAT;
+        }
 
 		// TEX
 		D3D11_TEXTURE2D_DESC depth_buffer_desc	= {};
@@ -402,7 +414,7 @@ namespace Spartan
 		depth_buffer_desc.Height				= static_cast<UINT>(height);
 		depth_buffer_desc.MipLevels				= 1;
 		depth_buffer_desc.ArraySize				= array_size;
-		depth_buffer_desc.Format				= d3d11_format[format_buffer];
+		depth_buffer_desc.Format				= format;
 		depth_buffer_desc.SampleDesc.Count		= 1;
 		depth_buffer_desc.SampleDesc.Quality	= 0;
 		depth_buffer_desc.Usage					= D3D11_USAGE_DEFAULT;
@@ -420,7 +432,7 @@ namespace Spartan
 
 		// DSV
 		D3D11_DEPTH_STENCIL_VIEW_DESC dsv_desc	= {};
-		dsv_desc.Format							= d3d11_format[format_dsv];
+		dsv_desc.Format							= format_dsv;
 		dsv_desc.ViewDimension					= D3D11_DSV_DIMENSION_TEXTURE2DARRAY;
 		dsv_desc.Texture2DArray.MipSlice		= 0;
 		dsv_desc.Texture2DArray.ArraySize		= 1;
@@ -442,7 +454,7 @@ namespace Spartan
 		// SRV
 		{
 			D3D11_SHADER_RESOURCE_VIEW_DESC srv_desc;
-			srv_desc.Format							= d3d11_format[format_srv];
+			srv_desc.Format							= format_srv;
 			srv_desc.ViewDimension					= D3D11_SRV_DIMENSION_TEXTURECUBE;
 			srv_desc.Texture2DArray.FirstArraySlice = 0;
 			srv_desc.Texture2DArray.MostDetailedMip = 0;

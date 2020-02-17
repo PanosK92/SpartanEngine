@@ -89,7 +89,7 @@ float4 ResolveTAA(float2 texCoord, Texture2D tex_history, Texture2D tex_current,
 
 	// Combine blend factors
 	float blend_factor	= (factor_contrast + factor_subpixel + factor_history) / 3.0f;
-	blend_factor 			= lerp(g_blendMin, g_blendMax, blend_factor);
+	blend_factor 		= lerp(g_blendMin, g_blendMax, blend_factor);
 	
 	// Use max blend if the re-projected texcoord is out of screen
 	blend_factor = is_saturated(texCoord_history) ? blend_factor : 1.0f;

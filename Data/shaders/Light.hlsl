@@ -20,13 +20,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 							 
 //= TEXTURES ==========================================
-Texture2D tex_normal 					: register(t0);
-Texture2D tex_material 					: register(t1);
-Texture2D tex_depth 					: register(t2);
-Texture2D tex_ssao 						: register(t3);
-Texture2DArray light_depth_directional 	: register(t4);
-TextureCube light_depth_point 			: register(t5);
-Texture2D light_depth_spot 				: register(t6);
+Texture2D tex_albedo 					: register(t0);
+Texture2D tex_normal 					: register(t1);
+Texture2D tex_material 					: register(t2);
+Texture2D tex_depth 					: register(t3);
+Texture2D tex_ssao 						: register(t4);
+Texture2D tex_ssr                       : register(t5);
+Texture2D tex_frame                     : register(t6);
+Texture2DArray light_depth_directional 	: register(t7);
+TextureCube light_depth_point 			: register(t8);
+Texture2D light_depth_spot 				: register(t9);
 //=====================================================
 
 //= INCLUDES =====================      
@@ -45,29 +48,32 @@ struct PixelOutputType
 PixelOutputType mainPS(Pixel_PosUv input)
 {
 	PixelOutputType light_out;
-	light_out.diffuse 		= 0.0f;
-	light_out.specular 		= 0.0f;
-	light_out.volumetric 	= 0.0f;
-	float2 uv 				= input.uv;
-	
-	// Sample textures
+    light_out.diffuse       = float4(0.0f, 0.0f, 0.0f, 1.0f);
+	light_out.specular 		= float4(0.0f, 0.0f, 0.0f, 1.0f);
+    light_out.volumetric    = float4(0.0f, 0.0f, 0.0f, 1.0f);
+
+    float2 uv = input.uv;
+    
+    // Sample textures
+    float4 albedo_sample    = tex_albedo.Sample(sampler_point_clamp, uv);
 	float4 normal_sample 	= tex_normal.Sample(sampler_point_clamp, uv);
 	float4 material_sample  = tex_material.Sample(sampler_point_clamp, uv);
 	float depth_sample   	= tex_depth.Sample(sampler_point_clamp, uv).r;
 	float ssao_sample 		= tex_ssao.Sample(sampler_point_clamp, uv).r;
-	
-	// Post-proces samples	
-	float3 normal	= normal_decode(normal_sample.xyz);
-	float occlusion = normal_sample.w;
-	occlusion 		= min(occlusion, ssao_sample);
-	float metallic 	= material_sample.g;
-    bool is_sky 	= material_sample.a == 0.0f;
+    float2 sample_ssr       = tex_ssr.Sample(sampler_point_clamp, uv).xy;
 
+	// Post-process samples	
+	float3 normal	= normal_decode(normal_sample.xyz);
+    float metallic 	= material_sample.g;
+	float occlusion = normal_sample.a;
+	occlusion 		= min(occlusion, ssao_sample);
+    bool is_sky 	= material_sample.a == 0.0f;
+    
 	// Compute camera to pixel vector
-    float3 position_world 	= get_position_from_depth(depth_sample, input.uv);
+    float3 position_world   = get_position_from_depth(depth_sample, uv);
     float3 camera_to_pixel  = normalize(position_world - g_camera_position.xyz);
 	
-    // Fill in light struct with default values
+    // Fill light struct
     Light light;
     light.color 	            = color.xyz;
     light.position 	            = position.xyz;
@@ -81,24 +87,23 @@ PixelOutputType mainPS(Pixel_PosUv input)
     light.is_volumetric 	    = normalBias_shadow_volumetric_contact.w;
     light.distance_to_pixel     = length(position_world - light.position);
     #if DIRECTIONAL
-    light.is_directional    = true;
-    light.is_point          = false;
-    light.is_spot           = false;
-    light.direction	        = direction.xyz;
-    light.array_size        = 4;
+    light.array_size    = 4;
+    light.direction	    = direction.xyz; 
+    light.attenuation   = 1.0f;
     #elif POINT
-    light.is_directional    = false;
-    light.is_point          = true;
-    light.is_spot           = false;
-    light.direction	        = normalize(position_world - light.position);
-    light.array_size        = 6;
+    light.array_size    = 1;
+    light.direction	    = normalize(position_world - light.position);
+    light.attenuation   = saturate(1.0f - (light.distance_to_pixel / light.range)); light.attenuation *= light.attenuation;    
     #elif SPOT
-    light.is_directional    = false;
-    light.is_point          = false;
-    light.is_spot           = true;
-    light.direction	        = normalize(position_world - light.position);
-    light.array_size        = 1;
+    light.array_size    = 1;
+    light.direction	    = normalize(position_world - light.position);
+    float cutoffAngle   = 1.0f - light.angle;
+    float theta         = dot(direction.xyz, light.direction);
+    float epsilon       = cutoffAngle - cutoffAngle * 0.9f;
+    light.attenuation   = saturate((theta - cutoffAngle) / epsilon); // attenuate when approaching the outer cone
+    light.attenuation   *= saturate(1.0f - light.distance_to_pixel / light.range); light.attenuation *= light.attenuation;
     #endif
+    light.intensity     *= light.attenuation;
     
     // Volumetric lighting (requires shadow maps)
     [branch]
@@ -113,9 +118,10 @@ PixelOutputType mainPS(Pixel_PosUv input)
         return light_out;
     }
     
-    // Shadow
-    float shadow = 1.0f;
+    // Shadow 
     {
+        float shadow = 1.0f;
+        
         // Shadow mapping
         [branch]
         if (light.cast_shadows)
@@ -130,51 +136,26 @@ PixelOutputType mainPS(Pixel_PosUv input)
             shadow = min(shadow, ScreenSpaceShadows(light, position_world, uv)); 
         }
     
-        // Occlusion texture + SSAO
+        // Occlusion from texture and ssao
         shadow = min(shadow, occlusion);
         
+light_out.diffuse.rgb   = shadow;
+        light_out.specular.rgb	=shadow;
+return light_out;
+
+	return light_out;
         // Modulate light intensity
         light.intensity *= shadow;
     }
-        
-    // Save shadows in the diffuse's alpha channel (used to modulate IBL later)
-    light_out.diffuse.a = shadow; // no longer used, changed texture format or use alpha for something else?
-        
-    #if POINT
-        // Attunate
-        float dist         = length(position_world - light.position);
-        float attenuation  = saturate(1.0f - dist / light.range);
-        light.intensity    *= attenuation * attenuation;
-        
-        // Erase light if there is no need to compute it
-        light.intensity *= step(dist, light.range);
-    #elif SPOT
-        // Attunate
-        float cutoffAngle   = 1.0f - light.angle;
-        float dist          = length(position_world - light.position);
-        float theta         = dot(direction.xyz, light.direction);
-        float epsilon       = cutoffAngle - cutoffAngle * 0.9f;
-        float attenuation 	= saturate((theta - cutoffAngle) / epsilon); // atteunate when approaching the outer cone
-        attenuation         *= saturate(1.0f - dist / light.range);
-        light.intensity 	*= attenuation * attenuation;
-        
-        // Erase light if there is no need to compute it
-        light.intensity *= step(cutoffAngle, theta);
-    #endif
-    
-    // Accumulate total light amount hitting that pixel (used to modulate ssr later)
-    light_out.specular.a = light.intensity;
-    
-    // Diffuse color for BRDFs which will allow for diffuse and specular light to be multiplied by albedo later
-    float3 diffuse_color = float3(1,1,1);
-    
+
     // Create material
     Material material;
-    material.roughness  		= material_sample.r;
-    material.metallic   		= material_sample.g;
-    material.emissive   		= material_sample.b;
-    material.F0 				= lerp(0.04f, diffuse_color, material.metallic);
-    
+	material.albedo		= albedo_sample.rgb;
+    material.roughness  = material_sample.r;
+    material.metallic   = material_sample.g;
+    material.emissive   = material_sample.b;
+    material.F0         = lerp(0.04f, material.albedo, material.metallic);
+
     // Reflectance equation
     [branch]
     if (light.intensity > 0.0f)
@@ -191,18 +172,20 @@ PixelOutputType mainPS(Pixel_PosUv input)
     
         // BRDF components
         float3 F 			= 0.0f;
-        float3 cDiffuse 	= BRDF_Diffuse(diffuse_color, material, n_dot_v, n_dot_l, v_dot_h);	
+        float3 cDiffuse 	= BRDF_Diffuse(material, n_dot_v, n_dot_l, v_dot_h);	
         float3 cSpecular 	= BRDF_Specular(material, n_dot_v, n_dot_l, n_dot_h, v_dot_h, F);
-                
-        // Ensure energy conservation
-        float3 kS 	= F;							// The energy of light that gets reflected - Equal to Fresnel
-        float3 kD 	= 1.0f - kS; 					// Remaining energy, light that gets refracted			
-        kD 			*= 1.0f - material.metallic; 	// Multiply kD by the inverse metalness such that only non-metals have diffuse lighting		
-        
-        light_out.diffuse.rgb	= kD * cDiffuse * radiance;
-        light_out.specular.rgb	= cSpecular * radiance;
-    }
+
+        // SSR
+        float3 light_reflection = 0.0f;
+        [branch]
+        if (g_ssr_enabled && sample_ssr.x != 0.0f && sample_ssr.y != 0.0f)
+        {
+            light_reflection = tex_frame.Sample(sampler_bilinear_clamp, sample_ssr.xy).rgb * F;
+        }
     
+        light_out.diffuse.rgb   = cDiffuse * radiance * energy_conservation(F, material.metallic);
+        light_out.specular.rgb	= cSpecular * radiance + light_reflection;
+    }
 
 	return light_out;
 }

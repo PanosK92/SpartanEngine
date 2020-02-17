@@ -126,7 +126,7 @@ namespace Spartan
         bool m_shadows_screen_space_enabled = true;
         bool m_volumetric_enabled           = true;
 		float m_range			            = 10.0f;
-		float m_intensity		            = 10.0f;
+		float m_intensity		            = 5.0f;
 		float m_angle_rad		            = 0.5f; // about 30 degrees
 		float m_bias			            = 0.0001f;
 		float m_normal_bias		            = 15.0f;

@@ -19,8 +19,8 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-static const uint g_vl_steps 		= 64;
-static const float g_vl_scattering 	= 0.998f;
+static const uint g_vl_steps 		= 64; // below 64, detail loss starts to become easily observable
+static const float g_vl_scattering 	= 0.996f;
 static const float g_vl_pow			= 0.4f;
 
 // Mie scaterring approximated with Henyey-Greenstein phase function.
@@ -77,8 +77,7 @@ float3 VolumetricLighting(Light light, float3 pos_world, float2 uv)
 	float3 fog 						= 0.0f;
     
 	// Apply dithering as it will allows us to get away with a crazy low sample count ;-)
-	float3 dither_value = dither(uv) * 200;
-	ray_pos += ray_step * dither_value;
+	ray_pos += ray_step * dither_temporal(uv, 150.0f);
     
 	#if DIRECTIONAL
     {
@@ -97,7 +96,7 @@ float3 VolumetricLighting(Light light, float3 pos_world, float2 uv)
                 // If we are close to the edge of the primary cascade and a next cascade exists, lerp with it.
                 float cascade_lerp = (max3(abs(pos)) - 0.9f);
                 [branch]
-                if (light.is_directional && cascade_lerp > 0.0f && array_index < light.array_size - 1)
+                if (cascade_lerp > 0.0f && array_index < light.array_size - 1)
                 {
                     // Ray-march using the next cascade
                     float3 fog_secondary = vl_raymarch(light, ray_pos, ray_step, ray_dot_light, array_index + 1);

@@ -38,14 +38,16 @@ namespace Spartan
             const bool depth_test                           = true,
             const bool depth_write                          = true,
             const RHI_Comparison_Function depth_function    = RHI_Comparison_LessEqual,
-            const bool stencil_enabled                      = false
+            const bool stencil_test                         = false,
+            const bool stencil_write                        = false,
+            const RHI_Comparison_Function stencil_function  = RHI_Comparison_Always
             
         );
 		~RHI_DepthStencilState();
 
 		bool GetDepthTestEnabled() const	                { return m_depth_test_enabled; }
         bool GetDepthWriteEnabled() const                   { return m_depth_write_enabled; }
-        bool GetStencilEnabled() const                      { return m_stencil_enabled; }
+        bool GetStencilEnabled() const                      { return m_stencil_test_enabled || m_stencil_write_enabled; }
         RHI_Comparison_Function GetDepthFunction() const    { return m_depth_function; }
 		auto GetResource() const                            { return m_buffer; }
 
@@ -53,7 +55,9 @@ namespace Spartan
 		bool m_depth_test_enabled	                = false;
         bool m_depth_write_enabled                  = false;
         RHI_Comparison_Function m_depth_function    = RHI_Comparison_Never;
-        bool m_stencil_enabled                      = false;
+        bool m_stencil_test_enabled                 = false;
+        bool m_stencil_write_enabled                = false;
+        RHI_Comparison_Function m_stencil_function  = RHI_Comparison_Never;
 		bool m_initialized		                    = false;
 		void* m_buffer			                    = nullptr;
 	};

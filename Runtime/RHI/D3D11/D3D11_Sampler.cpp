@@ -70,7 +70,7 @@ namespace Spartan
 		sampler_desc.AddressW		= d3d11_sampler_address_mode[sampler_address_mode];
 		sampler_desc.MipLODBias		= 0.0f;
         sampler_desc.MaxAnisotropy  = rhi_device->GetContext()->GetSubsystem<Renderer>()->GetOptionValue<UINT>(Option_Value_Anisotropy);
-		sampler_desc.ComparisonFunc	= d3d11_compare_operator[comparison_function];
+		sampler_desc.ComparisonFunc	= d3d11_comparison_function[comparison_function];
 		sampler_desc.BorderColor[0]	= 0;
 		sampler_desc.BorderColor[1]	= 0;
 		sampler_desc.BorderColor[2]	= 0;
