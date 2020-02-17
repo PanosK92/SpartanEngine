@@ -11,7 +11,7 @@
 
 <p>If you're also on the lookout for knowledge, then you might find this engine to be a helpful study resource. This is because a lot of effort is being put into building and maintaining a clean, modern and overall high quality architecture, an architecture that will ensure continuous development over the years. Have a look at the source ;-) </p> 
 
-<p><img align="left" width="32" src="https://lh3.googleusercontent.com/proxy/iR9xv1V7mIlZktGu_ZxIyiuzr40dXr_6i0_GfV_QnCP6BALUyrGrN2M1_VSEGQCTeHww4H7ProXdrtHsNp4lsKknff8sPcdpX8kjs5B-k-BL5PAN4JP5ZbZbfmDhOu-BrQ"/>For occasional updates regarding the project's development, you can follow me on <a href="https://twitter.com/panoskarabelas1?ref_src=twsrc%5Etfw">twitter</a>.</p> 
+<p><img align="left" width="32" src="https://lh3.googleusercontent.com/proxy/BpzpNQcLm2l4LKi66bUvrJypLzmKAdx0S_9PERj1RLLhvm-84pRDXc3hKkVnmXEsovzRw82pO_xMqsFiA5ghGwPNhfeFbbzE27m78ipiMR9yT7y3a2P3hfiYpY7k-6Y_Iw"/>For occasional updates regarding the project's development, you can follow me on <a href="https://twitter.com/panoskarabelas1?ref_src=twsrc%5Etfw">twitter</a>.</p> 
 
 <img align="left" width="32" src="https://www.freepnglogos.com/uploads/discord-logo-png/discord-logo-vector-download-0.png">For questions, suggestions, help and any kind of general discussion join the [discord server](https://discord.gg/TG5r2BS).
 
