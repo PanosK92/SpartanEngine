@@ -2028,6 +2028,18 @@ namespace Spartan
 			shader_type = Shader_Texture_P;
 		}
 
+        if (m_debug_buffer == Renderer_Buffer_Diffuse)
+        {
+            texture = m_render_targets[RenderTarget_Light_Diffuse];
+            shader_type = Shader_Texture_P;
+        }
+
+        if (m_debug_buffer == Renderer_Buffer_Specular)
+        {
+            texture = m_render_targets[RenderTarget_Light_Specular];
+            shader_type = Shader_Texture_P;
+        }
+
 		if (m_debug_buffer == Renderer_Buffer_Velocity)
 		{
 			texture     = m_render_targets[RenderTarget_Gbuffer_Velocity];

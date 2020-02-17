@@ -139,11 +139,6 @@ PixelOutputType mainPS(Pixel_PosUv input)
         // Occlusion from texture and ssao
         shadow = min(shadow, occlusion);
         
-light_out.diffuse.rgb   = shadow;
-        light_out.specular.rgb	=shadow;
-return light_out;
-
-	return light_out;
         // Modulate light intensity
         light.intensity *= shadow;
     }
