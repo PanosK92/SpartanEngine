@@ -106,12 +106,13 @@ PixelOutputType mainPS(PixelInputType input)
 		if (maskSample.r <= mask_threshold && maskSample.g <= mask_threshold && maskSample.b <= mask_threshold)
 			discard;
 	#endif
-	
+
 	#if ALBEDO_MAP
-		float4 albedo_sample = texAlbedo.Sample(sampler_anisotropic_wrap, texCoords);
+		float4 albedo_sample = texAlbedo.Sample(sampler_anisotropic_wrap, texCoords);	
 		if (albedo_sample.a <= mask_threshold)
 			discard;
-			
+
+        albedo_sample.rgb = degamma(albedo_sample.rgb);
 		albedo *= albedo_sample;
 	#endif
 	
@@ -141,7 +142,7 @@ PixelOutputType mainPS(PixelInputType input)
 	// Write to G-Buffer
 	g_buffer.albedo		= albedo;
 	g_buffer.normal 	= float4(normal_encode(normal), occlusion);
-	g_buffer.material	= float4(roughness, metallic, emission, materialShadingMode);
+	g_buffer.material	= float4(roughness, metallic, emission, 1.0f);
 	g_buffer.velocity	= velocity;
 
     return g_buffer;

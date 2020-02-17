@@ -73,9 +73,6 @@ cbuffer BufferUber : register(b1)
     float materialNormalStrength;
 	float materialHeight;
 
-	float materialShadingMode;
-	float3 g_padding2;
-
 	float4 g_color;
 	
 	float3 g_transform_axis;

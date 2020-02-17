@@ -59,30 +59,21 @@ float3 EnvBRDFApprox(float3 specColor, float roughness, float NdV)
     return specColor * AB.x + AB.y;
 }
 
-float3 ImageBasedLighting(Material material, float3 normal, float3 camera_to_pixel, Texture2D tex_environment, Texture2D tex_lutIBL, out float3 reflectivity)
+float3 Brdf_Diffuse_Ibl(Material material, float3 normal, Texture2D tex_environment)
 {
-	float3 reflection 	= reflect(camera_to_pixel, normal);
-	// From Sebastien Lagarde Moving Frostbite to PBR page 69
-	reflection	= GetSpecularDominantDir(normal, reflection, material.roughness);
+    return SampleEnvironment(tex_environment, direction_sphere_uv(normal), mip_max) * material.albedo;
+}
 
-	float NdV 	= saturate(dot(-camera_to_pixel, normal));
-	float3 F 	= Fresnel_Schlick_Roughness(NdV, material.F0, material.roughness);
-
-	float3 kS 	= F; 			// The energy of light that gets reflected
-	float3 kD 	= 1.0f - kS;	// Remaining energy, light that gets refracted
-	kD 			*= 1.0f - material.metallic;	
-
-	// Diffuse
-	float3 irradiance	= SampleEnvironment(tex_environment, direction_sphere_uv(normal), mip_max);
-	float3 cDiffuse		= irradiance * material.albedo;
-
-	// Specular
+float3 Brdf_Specular_Ibl(Material material, float3 normal, float3 camera_to_pixel, Texture2D tex_environment, Texture2D tex_lutIBL, out float3 F)
+{
+	float3 reflection 	    = reflect(camera_to_pixel, normal);	
+    reflection              = GetSpecularDominantDir(normal, reflect(camera_to_pixel, normal), material.roughness); // From Sebastien Lagarde Moving Frostbite to PBR page 69
+    float NdV               = saturate(dot(-camera_to_pixel, normal));
+    F                       = Fresnel_Schlick_Roughness(NdV, material.F0, material.roughness);
 	float alpha 			= max(EPSILON, material.roughness * material.roughness);
-	float mip_level 		= lerp(0, mip_max, material.roughness);
+    float mip_level         = lerp(0, mip_max, alpha);
 	float3 prefilteredColor	= SampleEnvironment(tex_environment, direction_sphere_uv(reflection), mip_level);
 	float2 envBRDF  		= tex_lutIBL.Sample(sampler_bilinear_clamp, float2(NdV, material.roughness)).xy;
-	reflectivity			= F * envBRDF.x + envBRDF.y;
-	float3 cSpecular 		= prefilteredColor * reflectivity;
-
-	return kD * cDiffuse + cSpecular; 
+	float3 reflectivity		= F * envBRDF.x + envBRDF.y;
+    return prefilteredColor * reflectivity;
 }

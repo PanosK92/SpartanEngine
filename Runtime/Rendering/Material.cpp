@@ -63,7 +63,6 @@ namespace Spartan
 
 		SetResourceFilePath(file_path);
 
-        xml->GetAttribute("Material", "Shading_Mode",           reinterpret_cast<uint32_t*>(&m_shading_mode));
         xml->GetAttribute("Material", "Color",                  &m_color_albedo);
 		xml->GetAttribute("Material", "Roughness_Multiplier",	&GetMultiplier(TextureType_Roughness));
 		xml->GetAttribute("Material", "Metallic_Multiplier",	&GetMultiplier(TextureType_Metallic));
@@ -102,7 +101,6 @@ namespace Spartan
 
 		auto xml = make_unique<XmlDocument>();
 		xml->AddNode("Material");
-		xml->AddAttribute("Material", "Shading_Mode",			uint32_t(m_shading_mode));
 		xml->AddAttribute("Material", "Color",					m_color_albedo);
 		xml->AddAttribute("Material", "Roughness_Multiplier",	GetMultiplier(TextureType_Roughness));
 		xml->AddAttribute("Material", "Metallic_Multiplier",	GetMultiplier(TextureType_Metallic));
@@ -155,7 +153,7 @@ namespace Spartan
 		SetTextureSlot(type, static_pointer_cast<RHI_Texture>(texture));
 	}
 
-	bool Material::HasTexture(const string& path)
+	bool Material::HasTexture(const string& path) const
 	{
 		for (const auto& texture : m_textures)
 		{
@@ -169,7 +167,7 @@ namespace Spartan
 		return false;
 	}
 
-    bool Material::HasTexture(const TextureType type)
+    bool Material::HasTexture(const TextureType type) const
     {
         if (m_textures.empty())
             return false;

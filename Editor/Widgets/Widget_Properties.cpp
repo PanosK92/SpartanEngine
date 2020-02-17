@@ -755,7 +755,7 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material) const
                 {
                     ImGuiEx::ImageSlot(
                         texture_name,
-                        material->GetTexture(texture_type),
+                        material->GetTexture_PtrShared(texture_type),
                         [&material, &texture_type](const shared_ptr<RHI_Texture>& texture)  { material->SetTextureSlot(texture_type, texture); },
                         offset_from_pos_x
                     );

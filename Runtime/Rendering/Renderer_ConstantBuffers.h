@@ -83,9 +83,6 @@ namespace Spartan
         float mat_normal_mul;
         float mat_height_mul;
     
-        float mat_shading_mode;
-        Math::Vector3 padding;
-    
         Math::Vector4 color;
     
         Math::Vector3 transform_axis;
@@ -93,7 +90,7 @@ namespace Spartan
     
         Math::Vector2 blur_direction;
         Math::Vector2 resolution;
-    
+
         bool operator==(const BufferUber& rhs)
         {
             return
@@ -105,7 +102,6 @@ namespace Spartan
                 mat_metallic_mul    == rhs.mat_metallic_mul     &&
                 mat_normal_mul      == rhs.mat_normal_mul       &&
                 mat_height_mul      == rhs.mat_height_mul       &&
-                mat_shading_mode    == rhs.mat_shading_mode     &&
                 color               == rhs.color                &&
                 transform_axis      == rhs.transform_axis       &&
                 blur_sigma          == rhs.blur_sigma           &&

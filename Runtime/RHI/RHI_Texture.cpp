@@ -214,7 +214,7 @@ namespace Spartan
 
 	bool RHI_Texture::IsDepthFormat() const
 	{
-        if (m_format == RHI_Format_D32_Float)
+        if (m_format == RHI_Format_D32_Float || m_format == RHI_Format_D32_Float_S8X24_Uint)
             return true;
 
         return false;
@@ -271,21 +271,21 @@ namespace Spartan
 	{
 		switch (format)
 		{
-			case RHI_Format_R8_Unorm:			return 1;
-			case RHI_Format_R16_Uint:			return 1;
-			case RHI_Format_R16_Float:			return 1;
-			case RHI_Format_R32_Uint:			return 1;
-			case RHI_Format_R32_Float:			return 1;
-			case RHI_Format_D32_Float:			return 1;
-			case RHI_Format_R32_Float_Typeless:	return 1;
-			case RHI_Format_R8G8_Unorm:			return 2;
-			case RHI_Format_R16G16_Float:		return 2;
-			case RHI_Format_R32G32_Float:		return 2;
-			case RHI_Format_R32G32B32_Float:	return 3;
-			case RHI_Format_R8G8B8A8_Unorm:		return 4;
-			case RHI_Format_R16G16B16A16_Float:	return 4;
-			case RHI_Format_R32G32B32A32_Float:	return 4;
-			default:						    return 0;
+			case RHI_Format_R8_Unorm:			    return 1;
+			case RHI_Format_R16_Uint:			    return 1;
+			case RHI_Format_R16_Float:			    return 1;
+			case RHI_Format_R32_Uint:			    return 1;
+			case RHI_Format_R32_Float:			    return 1;
+			case RHI_Format_R8G8_Unorm:			    return 2;
+			case RHI_Format_R16G16_Float:		    return 2;
+			case RHI_Format_R32G32_Float:		    return 2;
+			case RHI_Format_R32G32B32_Float:	    return 3;
+			case RHI_Format_R8G8B8A8_Unorm:		    return 4;
+			case RHI_Format_R16G16B16A16_Float:	    return 4;
+			case RHI_Format_R32G32B32A32_Float:	    return 4;
+            case RHI_Format_D32_Float:			    return 1;
+            case RHI_Format_D32_Float_S8X24_Uint:   return 2;
+			default:						        return 0;
 		}
 	}
 

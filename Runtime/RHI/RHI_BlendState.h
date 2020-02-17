@@ -43,15 +43,16 @@ namespace Spartan
 		);
 		~RHI_BlendState();
 
-		auto GetBlendEnabled()		const { return m_blend_enabled; }
-		auto GetSourceBlend()		const { return m_source_blend; }
-		auto GetDestBlend()			const { return m_dest_blend; }
-		auto GetBlendOp()			const { return m_blend_op; }
-		auto GetSourceBlendAlpha()	const { return m_source_blend_alpha; }
-		auto GetDestBlendAlpha()	const { return m_dest_blend_alpha; }
-		auto GetBlendOpAlpha()		const { return m_blend_op_alpha; }
-		auto GetResource()			const { return m_resource; }
-        float GetBlendFactor()      const { return m_blend_factor; }
+        auto GetBlendEnabled()		                    const { return m_blend_enabled; }
+        auto GetSourceBlend()		                    const { return m_source_blend; }
+        auto GetDestBlend()			                    const { return m_dest_blend; }
+        auto GetBlendOp()			                    const { return m_blend_op; }
+        auto GetSourceBlendAlpha()	                    const { return m_source_blend_alpha; }
+        auto GetDestBlendAlpha()	                    const { return m_dest_blend_alpha; }
+        auto GetBlendOpAlpha()		                    const { return m_blend_op_alpha; }
+        auto GetResource()			                    const { return m_resource; }
+        void SetBlendFactor(const float blend_factor)         { m_blend_factor = blend_factor; }
+        float GetBlendFactor()                          const { return m_blend_factor; }
 
 		bool operator==(const RHI_BlendState& rhs) const
 		{
@@ -73,7 +74,7 @@ namespace Spartan
 		RHI_Blend m_source_blend_alpha			= RHI_Blend_One;
 		RHI_Blend m_dest_blend_alpha			= RHI_Blend_One;
 		RHI_Blend_Operation m_blend_op_alpha	= RHI_Blend_Operation_Add;
-        float m_blend_factor                    = 0.0f;
+        float m_blend_factor                    = 1.0f;
 	
 		void* m_resource	= nullptr;
 		bool m_initialized	= false;

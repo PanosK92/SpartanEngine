@@ -56,9 +56,12 @@ namespace Spartan
 
     void Renderer::CreateDepthStencilStates()
     {
-        m_depth_stencil_enabled_write       = make_shared<RHI_DepthStencilState>(m_rhi_device, true,    true,   GetComparisonFunction(), false);
-        m_depth_stencil_enabled_no_write    = make_shared<RHI_DepthStencilState>(m_rhi_device, true,    false,  GetComparisonFunction(), false);
-        m_depth_stencil_disabled            = make_shared<RHI_DepthStencilState>(m_rhi_device, false,   false,  GetComparisonFunction(), false);
+        // depth_test, depth_write, depth_function, stencil_test, stencil_write
+        m_depth_stencil_disabled                = make_shared<RHI_DepthStencilState>(m_rhi_device, false,   false,  GetComparisonFunction(), false, false);                         // nothing
+        m_depth_stencil_enabled_disabled_write  = make_shared<RHI_DepthStencilState>(m_rhi_device, true,    true,   GetComparisonFunction(), false, false);                         // depth
+        m_depth_stencil_enabled_disabled_read   = make_shared<RHI_DepthStencilState>(m_rhi_device, true,    false,  GetComparisonFunction(), false, false);                         // depth
+        m_depth_stencil_disabled_enabled_read   = make_shared<RHI_DepthStencilState>(m_rhi_device, false,   false,  GetComparisonFunction(), true,  false,  RHI_Comparison_Equal);  // depth + stencil
+        m_depth_stencil_enabled_enabled_write   = make_shared<RHI_DepthStencilState>(m_rhi_device, true,    true,   GetComparisonFunction(), true,  true,   RHI_Comparison_Always); // depth + stencil
     }
 
     void Renderer::CreateRasterizerStates()
@@ -76,9 +79,8 @@ namespace Spartan
     {
         // blend_enabled, source_blend, dest_blend, blend_op, source_blend_alpha, dest_blend_alpha, blend_op_alpha, blend_factor
         m_blend_disabled    = make_shared<RHI_BlendState>(m_rhi_device, false);
-        m_blend_enabled     = make_shared<RHI_BlendState>(m_rhi_device, true);
-        m_blend_light       = make_shared<RHI_BlendState>(m_rhi_device, true, RHI_Blend_One, RHI_Blend_One, RHI_Blend_Operation_Add, RHI_Blend_One, RHI_Blend_One, RHI_Blend_Operation_Add);
-        m_blend_bloom       = make_shared<RHI_BlendState>(m_rhi_device, true, RHI_Blend_One, RHI_Blend_One, RHI_Blend_Operation_Add, RHI_Blend_One, RHI_Blend_One, RHI_Blend_Operation_Add, 0.5f);
+        m_blend_alpha       = make_shared<RHI_BlendState>(m_rhi_device, true, RHI_Blend_Src_Alpha,  RHI_Blend_Inv_Src_Alpha,    RHI_Blend_Operation_Add, RHI_Blend_One, RHI_Blend_One, RHI_Blend_Operation_Max);
+        m_blend_additive    = make_shared<RHI_BlendState>(m_rhi_device, true, RHI_Blend_One,        RHI_Blend_One,              RHI_Blend_Operation_Add, RHI_Blend_One, RHI_Blend_One, RHI_Blend_Operation_Add);
     }
 
     void Renderer::CreateSamplers()
@@ -108,16 +110,15 @@ namespace Spartan
 
         // G-Buffer
         m_render_targets[RenderTarget_Gbuffer_Albedo]   = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R8G8B8A8_Unorm);
-        m_render_targets[RenderTarget_Gbuffer_Normal]   = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float); // At Texture_Format_R8G8B8A8_UNORM, normals have noticeable banding
+        m_render_targets[RenderTarget_Gbuffer_Normal]   = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float);      // At Texture_Format_R8G8B8A8_UNORM, normals have noticeable banding
         m_render_targets[RenderTarget_Gbuffer_Material] = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R8G8B8A8_Unorm);
         m_render_targets[RenderTarget_Gbuffer_Velocity] = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16_Float);
-        m_render_targets[RenderTarget_Gbuffer_Depth]    = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_D32_Float);
+        m_render_targets[RenderTarget_Gbuffer_Depth]    = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_D32_Float_S8X24_Uint);    // Stencil is used to mask transparent objects
 
         // Light
-        m_render_targets[RenderTarget_Light_Diffuse]            = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float);
-        m_render_targets[RenderTarget_Light_Specular]           = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float);
-        m_render_targets[RenderTarget_Light_Volumetric]         = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float);
-        m_render_targets[RenderTarget_Light_Volumetric_Blurred] = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float);
+        m_render_targets[RenderTarget_Light_Diffuse]    = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float);
+        m_render_targets[RenderTarget_Light_Specular]   = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float);
+        m_render_targets[RenderTarget_Light_Volumetric] = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float);
 
         // BRDF Specular Lut
         m_render_targets[RenderTarget_Brdf_Specular_Lut] = make_unique<RHI_Texture2D>(m_context, 400, 400, RHI_Format_R8G8_Unorm);
@@ -128,7 +129,7 @@ namespace Spartan
             m_render_targets[RenderTarget_Composition_Hdr] = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R32G32B32A32_Float);
             m_render_targets[RenderTarget_Composition_Ldr] = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float);
             // 2nd copies
-            m_render_targets[RenderTarget_Composition_Hdr_2] = make_unique<RHI_Texture2D>(m_context, width, height, m_render_targets[RenderTarget_Composition_Hdr]->GetFormat()); // Used for ping-ponging between effects during post-Processing
+            m_render_targets[RenderTarget_Composition_Hdr_2] = make_unique<RHI_Texture2D>(m_context, width, height, m_render_targets[RenderTarget_Composition_Hdr]->GetFormat()); // Used for ping-ponging between effects during post-processing
             m_render_targets[RenderTarget_Composition_Ldr_2] = make_unique<RHI_Texture2D>(m_context, width, height, m_render_targets[RenderTarget_Composition_Ldr]->GetFormat()); // Used for ping-ponging between effects during post-Processing
             // 3rd copies
             m_render_targets[RenderTarget_TaaHistory] = make_unique<RHI_Texture2D>(m_context, width, height, m_render_targets[RenderTarget_Composition_Hdr]->GetFormat()); // Used for TAA accumulation

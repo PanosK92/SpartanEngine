@@ -40,14 +40,18 @@ namespace Spartan
         const bool depth_test                           /*= true*/,
         const bool depth_write                          /*= true*/,
         const RHI_Comparison_Function depth_function    /*= Comparison_LessEqual*/,
-        const bool stencil_enabled                      /*= false */
+        const bool stencil_test                         /*= false */,
+        const bool stencil_write                        /*= false */,
+        const RHI_Comparison_Function stencil_function  /*= RHI_Comparison_Equal */
     )
     {
-        // Save properties
-        m_depth_test_enabled    = depth_test;
+		// Save properties
+		m_depth_test_enabled    = depth_test;
         m_depth_write_enabled   = depth_write;
         m_depth_function        = depth_function;
-        m_stencil_enabled       = stencil_enabled;
+        m_stencil_test_enabled  = stencil_test;
+        m_stencil_write_enabled = stencil_write;
+        m_stencil_function      = stencil_function;
 	}
 
 	RHI_DepthStencilState::~RHI_DepthStencilState()

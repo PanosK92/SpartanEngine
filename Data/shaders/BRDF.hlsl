@@ -111,7 +111,7 @@ float3 BRDF_Specular(Material material, float n_dot_v, float n_dot_l, float n_do
 	return nominator / max(EPSILON, denominator);
 }
 
-float3 BRDF_Diffuse(float3 diffuse_color, Material material, float n_dot_v, float n_dot_l, float v_dot_h)
+float3 BRDF_Diffuse(Material material, float n_dot_v, float n_dot_l, float v_dot_h)
 {
-	return Diffuse_Burley(diffuse_color, material.roughness, n_dot_v, n_dot_l, v_dot_h);
+	return Diffuse_Burley(material.albedo, material.roughness, n_dot_v, n_dot_l, v_dot_h);
 }

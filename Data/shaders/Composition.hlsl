@@ -22,16 +22,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= TEXTURES ===================================
 Texture2D tex_albedo            : register(t0);
 Texture2D tex_normal            : register(t1);
-Texture2D tex_depth             : register(t2);
-Texture2D tex_material          : register(t3);
-Texture2D tex_lightDiffuse      : register(t4);
-Texture2D tex_lightSpecular     : register(t5);
-Texture2D tex_lutIbl            : register(t6);
+Texture2D tex_material          : register(t2);
+Texture2D tex_depth             : register(t3);
+Texture2D tex_ssao              : register(t4);
+Texture2D tex_light_diffuse     : register(t5);
+Texture2D tex_light_specular    : register(t6);
 Texture2D tex_lightVolumetric   : register(t7);
 Texture2D tex_ssr               : register(t8);
-Texture2D tex_ssao              : register(t9);
-Texture2D tex_environment       : register(t10);
-Texture2D tex_frame             : register(t11);
+Texture2D tex_frame             : register(t9);
+Texture2D tex_lutIbl            : register(t10);
+Texture2D tex_environment       : register(t11);
 //==============================================
 
 // = INCLUDES ======
@@ -41,72 +41,65 @@ Texture2D tex_frame             : register(t11);
 float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
     float2 uv       = input.uv;
-    float3 color    = float3(0, 0, 0);
+    float3 color    = 0.0f;
     
     // Sample from textures
-    float4 sample_albedo        = tex_albedo.Sample(sampler_point_clamp, uv);
-    float4 sample_normal        = tex_normal.Sample(sampler_point_clamp, uv);
-    float4 sample_material      = tex_material.Sample(sampler_point_clamp, uv);
-    float4 sample_diffuse       = tex_lightDiffuse.Sample(sampler_point_clamp, uv);
-    float4 sample_specular      = tex_lightSpecular.Sample(sampler_point_clamp, uv);
-    float2 sample_ssr           = tex_ssr.Sample(sampler_point_clamp, uv).xy;
-    float sample_depth          = tex_depth.Sample(sampler_point_clamp, uv).r;
-    float sample_ssao           = tex_ssao.Sample(sampler_point_clamp, uv).r;
-    float3 light_volumetric     = tex_lightVolumetric.Sample(sampler_point_clamp, uv).rgb;
-
-    // Post-process samples
-    float4 albedo           = degamma(sample_albedo);  
-    float3 normal           = normal_decode(sample_normal.xyz); 
-    float light_received    = sample_specular.a;
-    bool is_sky             = sample_material.a == 0.0f;
-
-    // Create material
-    Material material;
-    material.albedo     = albedo.rgb;
-    material.roughness  = sample_material.r;
-    material.metallic   = sample_material.g;
-    material.emissive   = sample_material.b;
-    material.F0         = lerp(0.04f, material.albedo, material.metallic);
-
-    // Get view direction
-    float3 camera_to_pixel  = get_view_direction(sample_depth, uv);
-
-    // Ambient light - No global illumination yet, so hackerman !!!
-    float light_ambient_min = sample_ssao * g_directional_light_intensity * 0.2f;
-    float light_ambient     = g_directional_light_intensity;
-    light_ambient           = clamp(light_ambient / 10.0f, light_ambient_min, 1.0f);
+    float4 sample_material  = tex_material.Sample(sampler_point_clamp, uv);
+    float3 light_volumetric = tex_lightVolumetric.Sample(sampler_point_clamp, uv).rgb;
+    float3 normal           = tex_normal.Sample(sampler_point_clamp, uv).xyz;
+    float depth             = tex_depth.Sample(sampler_point_clamp, uv).r;
+    float2 sample_ssr       = tex_ssr.Sample(sampler_point_clamp, uv).xy;
+    float sample_ssao       = tex_ssao.Sample(sampler_point_clamp, uv).r;   
+    float3 camera_to_pixel  = get_view_direction(depth, uv);
+    
+    // Volumetric lighting
+    color += light_volumetric;
     
     [branch]
-    if (is_sky)
+    if (sample_material.a != 1.0f)
     {
         color += tex_environment.Sample(sampler_bilinear_clamp, direction_sphere_uv(camera_to_pixel)).rgb;
         color *= clamp(g_directional_light_intensity / 5.0f, 0.01f, 1.0f);
-        color += light_volumetric;
+        return float4(color, 1.0f);
     }
     else
     {
-        // Volumetric lighting
-        color += light_volumetric;
-
-        // IBL
-        float3 reflectivity         = 0.0f;
-        float3 light_image_based    = ImageBasedLighting(material, normal, camera_to_pixel, tex_environment, tex_lutIbl, reflectivity) * light_ambient;
+        // Sample from textures
+        float4 sample_albedo    = tex_albedo.Sample(sampler_point_clamp, uv);
+        float4 light_diffuse    = tex_light_diffuse.Sample(sampler_point_clamp, uv);
+        float4 light_specular   = tex_light_specular.Sample(sampler_point_clamp, uv);
     
-        // SSR
+        // Create material
+        Material material;
+        material.albedo     = sample_albedo.rgb;
+        material.roughness  = sample_material.r;
+        material.metallic   = sample_material.g;
+        material.emissive   = sample_material.b;
+        material.F0         = lerp(0.04f, material.albedo, material.metallic);
+    
+        // Light - Ambient (Hacked together because there is no GI yet and I'm hackerman)
+        float light_ambient_min     = g_directional_light_intensity * sample_ssao * 0.04f;
+        float light_ambient         = g_directional_light_intensity;
+        light_ambient               = clamp(light_ambient / 100.0f, light_ambient_min, 0.5f);
+        
+        // Light - Image based
+        float3 F                    = 0.0f;   
+        float3 light_ibl_specular   = Brdf_Specular_Ibl(material, normal, camera_to_pixel, tex_environment, tex_lutIbl, F) * light_ambient;
+        float3 light_ibl_diffuse    = Brdf_Diffuse_Ibl(material, normal, tex_environment) * energy_conservation(F, material.metallic) * light_ambient;
+        
+        // Light - SSR
+        float3 light_reflection = 0.0f;
         [branch]
         if (g_ssr_enabled && sample_ssr.x != 0.0f && sample_ssr.y != 0.0f)
         {
-            float3 reflection_color = tex_frame.Sample(sampler_bilinear_clamp, sample_ssr.xy).rgb;
-            color += saturate(reflection_color) * reflectivity * light_received;
+            light_reflection = tex_frame.Sample(sampler_bilinear_clamp, sample_ssr.xy).rgb * F * light_ambient;
         }
-        
-        // Emissive
-        sample_specular.rgb += material.emissive * 200.0f;
     
-        // Combine
-        float3 light_sources = (sample_diffuse.rgb + sample_specular.rgb) * material.albedo;
-        color += light_sources + light_image_based; 
+        // Light - Emissive
+        float3 light_emissive = material.emissive * material.albedo * 50.0f;
+    
+        // Combine and return
+        color += light_diffuse.rgb + light_ibl_diffuse + light_specular.rgb + light_ibl_specular + light_reflection + light_emissive;
+        return float4(color, sample_albedo.a);
     }
-    
-    return float4(color, 1.0f);
 }

@@ -83,7 +83,7 @@ namespace Spartan
 			m_format			= format;
 			m_array_size		= array_size;
             m_bind_flags        = RHI_Texture_Sampled;
-			m_bind_flags		|= (format == RHI_Format_D32_Float) ? RHI_Texture_RenderTarget_DepthStencil : RHI_Texture_RenderTarget_Color;
+			m_bind_flags		|= IsDepthFormat() ? RHI_Texture_RenderTarget_DepthStencil : RHI_Texture_RenderTarget_Color;
             m_mip_levels        = 1;
 
 			RHI_Texture2D::CreateResourceGpu();

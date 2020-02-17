@@ -448,7 +448,7 @@ namespace Spartan
 						// auto textureType others pass a height map as a normal map, we try to fix that.
 						if (type_spartan == TextureType_Normal || type_spartan == TextureType_Height)
 						{
-                            if (const auto texture = material->GetTexture(type_spartan))
+                            if (const auto texture = material->GetTexture_PtrShared(type_spartan))
                             {
                                 auto proper_type = type_spartan;
                                 proper_type = (proper_type == TextureType_Normal && texture->GetGrayscale()) ? TextureType_Height : proper_type;

@@ -48,12 +48,6 @@ namespace Spartan
 		TextureType_Mask
 	};
 
-	enum ShadingMode
-	{
-		Shading_Sky,
-		Shading_PBR
-	};
-
 	class SPARTAN_CLASS Material : public IResource
 	{
 	public:
@@ -69,11 +63,12 @@ namespace Spartan
 		void SetTextureSlot(const TextureType type, const std::shared_ptr<RHI_Texture>& texture);
 		void SetTextureSlot(const TextureType type, const std::shared_ptr<RHI_Texture2D>& texture);
 		void SetTextureSlot(const TextureType type, const std::shared_ptr<RHI_TextureCube>& texture);
-		bool HasTexture(const std::string& path);
-        bool HasTexture(const TextureType type);
+		bool HasTexture(const std::string& path) const;
+        bool HasTexture(const TextureType type) const;
 		std::string GetTexturePathByType(TextureType type);
 		std::vector<std::string> GetTexturePaths();
-		const auto& GetTexture(const TextureType type) { return HasTexture(type) ? m_textures[type] : m_texture_empty; }
+		RHI_Texture* GetTexture_PtrRaw(const TextureType type)                      { return HasTexture(type) ? m_textures[type].get() : m_texture_empty.get(); }
+        std::shared_ptr<RHI_Texture>& GetTexture_PtrShared(const TextureType type)  { return HasTexture(type) ? m_textures[type] : m_texture_empty; }
 		//==============================================================================================================
 
 		//= SHADER ====================================================================
@@ -84,9 +79,6 @@ namespace Spartan
 		//=============================================================================
 
 		//= PROPERTIES ==========================================================================================
-		auto GetShadingMode() const											{ return m_shading_mode; }
-		void SetShadingMode(const ShadingMode shading_mode)					{ m_shading_mode = shading_mode; }
-
 		const auto& GetColorAlbedo() const									{ return m_color_albedo; }
         void SetColorAlbedo(const Math::Vector4& color);
 		
@@ -106,7 +98,6 @@ namespace Spartan
 		//=======================================================================================================
 
 	private:
-		ShadingMode m_shading_mode		= Shading_PBR;
 		Math::Vector4 m_color_albedo	= Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f);
 		Math::Vector2 m_uv_tiling		= Math::Vector2(1.0f, 1.0f);
 		Math::Vector2 m_uv_offset		= Math::Vector2(0.0f, 0.0f);

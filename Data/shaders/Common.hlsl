@@ -50,9 +50,6 @@ struct Material
 
 struct Light
 {
-    bool    is_directional;
-    bool    is_point;
-    bool    is_spot;
     bool    cast_shadows;
     bool    cast_contact_shadows;
     bool    is_volumetric;
@@ -62,6 +59,7 @@ struct Light
     float   range;
     float3  direction;
     float   distance_to_pixel;
+    float   attenuation;
     float   angle;
     float   bias;
     float   normal_bias;
@@ -304,4 +302,13 @@ float micro_shadow(float ao, float3 N, float3 L, float shadow)
     float aperture      = 2.0f * ao * ao;
     float microShadow   = saturate(abs(dot(L, N)) + aperture - 1.0f);
     return shadow * microShadow;
+}
+
+inline float3 energy_conservation(float3 F, float metallic)
+{
+    // Energy conservation
+    float3 kS = F; // The energy of light that gets reflected - Equal to Fresnel
+    float3 kD = 1.0f - kS; // Remaining energy, light that gets refracted			
+    kD *= 1.0f - metallic; // Multiply kD by the inverse metalness such that only non-metals have diffuse lighting
+    return kD;
 }
