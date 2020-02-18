@@ -26,9 +26,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Texture.h"
 #include "RHI_Viewport.h"
 #include "RHI_Definition.h"
+#include "RHI_PipelineCache.h"
 #include "../Math/Vector4.h"
 #include "../Math/Rectangle.h"
-#include "RHI_PipelineCache.h"
 //============================
 
 namespace Spartan
@@ -43,7 +43,7 @@ namespace Spartan
         RHI_Cmd_List_Ended
     };
 
-	class SPARTAN_CLASS RHI_CommandList
+	class SPARTAN_CLASS RHI_CommandList : public RHI_Object
 	{
 	public:
 		RHI_CommandList(uint32_t index, RHI_SwapChain* swap_chain, Context* context);
@@ -56,9 +56,10 @@ namespace Spartan
         // Clear
         void Clear(RHI_PipelineState& pipeline_state);
 
-		// Draw
+		// Draw/Dispatch
 		void Draw(uint32_t vertex_count);
 		void DrawIndexed(uint32_t index_count, uint32_t index_offset = 0, uint32_t vertex_offset = 0);
+        void Dispatch(uint32_t x, uint32_t y, uint32_t z = 1);
 
 		// Viewport
 		void SetViewport(const RHI_Viewport& viewport);

@@ -78,9 +78,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         material.F0         = lerp(0.04f, material.albedo, material.metallic);
     
         // Light - Ambient (Hacked together because there is no GI yet and I'm hackerman)
-        float light_ambient_min     = g_directional_light_intensity * sample_ssao * 0.04f;
-        float light_ambient         = g_directional_light_intensity;
-        light_ambient               = clamp(light_ambient / 100.0f, light_ambient_min, 0.5f);
+        float light_ambient = clamp(g_directional_light_intensity * 0.12f, 0.0f, 1.0f) * sample_ssao;
         
         // Light - Image based
         float3 F                    = 0.0f;   

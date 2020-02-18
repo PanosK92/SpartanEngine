@@ -21,15 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ======================
+//= INCLUDES ==========
 #include <memory>
-#include "../Core/EngineDefs.h"
-#include "../Core/Spartan_Object.h"
-//=================================
+#include "RHI_Object.h"
+//=====================
 
 namespace Spartan
 {
-	class SPARTAN_CLASS RHI_ConstantBuffer : public Spartan_Object
+	class SPARTAN_CLASS RHI_ConstantBuffer : public RHI_Object
 	{
 	public:
 		RHI_ConstantBuffer(const std::shared_ptr<RHI_Device>& rhi_device)
@@ -43,7 +42,7 @@ namespace Spartan
 		{
             m_stride        = static_cast<uint32_t>(sizeof(T));
             m_offset_count  = instance_count;
-            m_size          = static_cast<uint64_t>(m_stride * instance_count);
+            m_size_gpu      = static_cast<uint64_t>(m_stride * instance_count);
 			return _Create();
 		}
 
@@ -52,7 +51,6 @@ namespace Spartan
         bool Flush(uint32_t offset_index = 0);
 
 		auto GetResource()          const { return m_buffer; }
-		auto GetSize()              const { return m_size; }
         auto GetStride()            const { return m_stride; }
         bool IsDynamic()            const { return m_offset_count > 1; }
         uint32_t GetOffsetCount()   const { return m_offset_count; }

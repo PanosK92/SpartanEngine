@@ -76,7 +76,7 @@ namespace Spartan
                 m_rhi_device->GetContextRhi(),
                 m_buffer,
                 m_buffer_memory,
-                m_size,
+                m_size_gpu,
                 VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
                 )
@@ -91,7 +91,7 @@ namespace Spartan
                 rhi_context,
                 staging_buffer,
                 staging_buffer_memory,
-                m_size,
+                m_size_gpu,
                 VK_BUFFER_USAGE_TRANSFER_SRC_BIT,                                               // usage
                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,     // memory
                 indices
@@ -103,7 +103,7 @@ namespace Spartan
                 rhi_context,
                 m_buffer,
                 m_buffer_memory,
-                m_size,
+                m_size_gpu,
                 VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,    // usage
                 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT                                     // memory
                 )
@@ -119,7 +119,7 @@ namespace Spartan
 
                 // Copy
                 VkBufferCopy copy_region = {};
-                copy_region.size = m_size;
+                copy_region.size = m_size_gpu;
                 vkCmdCopyBuffer(cmd_buffer, *buffer_staging_vk, *buffer_vk, 1, &copy_region);
 
                 // Flush and free command buffer
@@ -162,7 +162,7 @@ namespace Spartan
                 m_rhi_device->GetContextRhi()->device,
                 static_cast<VkDeviceMemory>(m_buffer_memory),
                 0,
-                m_size,
+                m_size_gpu,
                 0,
                 reinterpret_cast<void**>(&ptr)
             )

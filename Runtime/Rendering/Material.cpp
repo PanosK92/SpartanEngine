@@ -92,6 +92,8 @@ namespace Spartan
 
 		AcquireShader();
 
+        m_size_cpu = sizeof(*this);
+
 		return true;
 	}
 

@@ -21,14 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ======================
+//= INCLUDES ==========
 #include <vector>
-#include "../Core/Spartan_Object.h"
-//=================================
+#include "RHI_Object.h"
+//=====================
 
 namespace Spartan
 {
-	class RHI_IndexBuffer : public Spartan_Object
+	class RHI_IndexBuffer : public RHI_Object
 	{
 	public:
 		RHI_IndexBuffer(const std::shared_ptr<RHI_Device>& rhi_device)
@@ -43,7 +43,7 @@ namespace Spartan
 		{
 			m_stride        = sizeof(T);
 			m_index_count	= static_cast<uint32_t>(indices.size());
-			m_size          = static_cast<uint64_t>(m_stride * m_index_count);
+            m_size_gpu      = static_cast<uint64_t>(m_stride * m_index_count);
 			return _Create(static_cast<const void*>(indices.data()));
 		}
 
@@ -52,7 +52,7 @@ namespace Spartan
 		{
 			m_stride        = sizeof(T);
 			m_index_count	= index_count;
-			m_size          = static_cast<uint64_t>(m_stride * m_index_count);
+			m_size_gpu      = static_cast<uint64_t>(m_stride * m_index_count);
 			return _Create(static_cast<const void*>(indices));
 		}
 
@@ -61,7 +61,7 @@ namespace Spartan
 		{
 			m_stride        = sizeof(T);
 			m_index_count	= index_count;
-			m_size          = static_cast<uint64_t>(m_stride * m_index_count);
+            m_size_gpu      = static_cast<uint64_t>(m_stride * m_index_count);
 			return _Create(nullptr);
 		}
 

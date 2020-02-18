@@ -73,7 +73,7 @@ namespace Spartan
 		}
 
 		// Creates a texture without any data (intended for usage as a render target)
-		RHI_Texture2D(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const uint32_t array_size = 1) : RHI_Texture(context)
+		RHI_Texture2D(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const uint32_t array_size = 1, uint16_t flags = 0) : RHI_Texture(context)
 		{
 			m_resource_type		= Resource_Texture2d;
 			m_width				= width;
@@ -82,7 +82,8 @@ namespace Spartan
 			m_viewport			= RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
 			m_format			= format;
 			m_array_size		= array_size;
-            m_bind_flags        = RHI_Texture_Sampled;
+            m_bind_flags        = flags;
+            m_bind_flags        |= RHI_Texture_Sampled;
 			m_bind_flags		|= IsDepthFormat() ? RHI_Texture_RenderTarget_DepthStencil : RHI_Texture_RenderTarget_Color;
             m_mip_levels        = 1;
 

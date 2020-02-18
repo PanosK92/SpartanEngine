@@ -24,13 +24,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================
 #include "RHI_Definition.h"
 #include "RHI_Viewport.h"
+#include "RHI_Object.h"
 #include "..\Math\Rectangle.h"
-#include "..\Math\Vector4.h"
 //============================
 
 namespace Spartan
 {
-    class SPARTAN_CLASS RHI_PipelineState
+    class SPARTAN_CLASS RHI_PipelineState : public RHI_Object
     {
     public:
         RHI_PipelineState();
@@ -49,8 +49,7 @@ namespace Spartan
         bool operator==(const RHI_PipelineState& rhs)   const { return m_hash == rhs.GetHash(); }
 
         //= State (things that if changed, will cause a new pipeline to be generated) =================================================
-        RHI_Shader* shader_vertex                                                   = nullptr;
-        RHI_Shader* shader_pixel                                                    = nullptr;
+        RHI_Shader* shader_vertex                                                   = nullptr; 
         RHI_RasterizerState* rasterizer_state                                       = nullptr;
         RHI_BlendState* blend_state                                                 = nullptr;
         RHI_DepthStencilState* depth_stencil_state                                  = nullptr;
@@ -63,6 +62,9 @@ namespace Spartan
         RHI_Texture* render_target_color_textures[state_max_render_target_count]    = { nullptr };
         bool dynamic_scissor                                                        = false;
         //=============================================================================================================================
+        RHI_Shader* shader_pixel                                                    = nullptr;
+        RHI_Shader* shader_compute                                                  = nullptr;
+        void* unordered_access_view                                                 = nullptr;
 
         // Dynamic constant buffers
         int dynamic_constant_buffer_slot = 2; // such a hack, must fix

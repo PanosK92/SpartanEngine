@@ -547,6 +547,9 @@ namespace Spartan
         if ((m_options & Render_ScreenSpaceReflections) == 0)
             return;
 
+                if ((m_options & Render_ScreenSpaceReflections) == 0)
+            return;
+
         // Acquire shaders
         const auto& shader_v = m_shaders[Shader_Quad_V];
         const auto& shader_p = m_shaders[Shader_Ssr_P];
@@ -587,6 +590,36 @@ namespace Spartan
             cmd_list->End();
             cmd_list->Submit();
         }
+        //// Acquire shader
+        //const auto& shader_c = m_shaders[Shader_Ssr_C];
+        //if (!shader_c->IsCompiled())
+        //    return;
+        //
+        //// Acquire render targets
+        //RHI_Texture* tex_ssr    = m_render_targets[RenderTarget_Ssr].get();
+        //RHI_Texture* tex_normal = m_render_targets[RenderTarget_Gbuffer_Normal].get();
+        //RHI_Texture* tex_depth  = m_render_targets[RenderTarget_Gbuffer_Depth].get();
+
+        //// Update uber buffer
+        //m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_ssr->GetWidth()), static_cast<float>(tex_ssr->GetHeight()));
+        //UpdateUberBuffer();
+
+        //// Set render state
+        //static RHI_PipelineState pipeline_state;
+        //pipeline_state.shader_compute           = shader_c.get();
+        //pipeline_state.unordered_access_view    = tex_ssr->GetResource_UnorderedAccessView();
+        //pipeline_state.pass_name                = "Pass_Ssr";
+
+        //// Submit commands
+        //if (cmd_list->Begin(pipeline_state))
+        //{
+        //    cmd_list->SetTexture(0, tex_normal);
+        //    cmd_list->SetTexture(1, tex_depth);
+        //    cmd_list->Dispatch(32, 21, 1);
+        //    cmd_list->End();
+        //    cmd_list->Submit();
+        //    cmd_list->Flush();
+        //}
     }
 
     void Renderer::Pass_Light(RHI_CommandList* cmd_list, bool use_stencil)
@@ -2013,7 +2046,7 @@ namespace Spartan
 		if (m_debug_buffer == Renderer_Buffer_Albedo)
 		{
 			texture     = m_render_targets[RenderTarget_Gbuffer_Albedo];
-			shader_type = Shader_Texture_P;
+			shader_type = Shader_DebugChannelRgbGammaCorrect_P;
 		}
 
 		if (m_debug_buffer == Renderer_Buffer_Normal)
@@ -2031,13 +2064,13 @@ namespace Spartan
         if (m_debug_buffer == Renderer_Buffer_Diffuse)
         {
             texture = m_render_targets[RenderTarget_Light_Diffuse];
-            shader_type = Shader_Texture_P;
+            shader_type = Shader_DebugChannelRgbGammaCorrect_P;
         }
 
         if (m_debug_buffer == Renderer_Buffer_Specular)
         {
             texture = m_render_targets[RenderTarget_Light_Specular];
-            shader_type = Shader_Texture_P;
+            shader_type = Shader_DebugChannelRgbGammaCorrect_P;
         }
 
 		if (m_debug_buffer == Renderer_Buffer_Velocity)

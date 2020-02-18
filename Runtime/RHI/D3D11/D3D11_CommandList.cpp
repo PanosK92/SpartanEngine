@@ -82,22 +82,59 @@ namespace Spartan
         // Vertex shader
         if (pipeline_state.shader_vertex)
         {
-            if (void* resource = pipeline_state.shader_vertex->GetResource())
+            if (void* shader_new = pipeline_state.shader_vertex->GetResource())
             {
-                m_rhi_device->GetContextRhi()->device_context->VSSetShader(static_cast<ID3D11VertexShader*>(const_cast<void*>(resource)), nullptr, 0);
-                m_profiler->m_rhi_bindings_shader_vertex++;
+                // Get current shader
+                UINT                 instances_count = 256;
+                ID3D11ClassInstance* instances[256] = {};
+                ID3D11VertexShader* shader_current = nullptr;
+                m_rhi_device->GetContextRhi()->device_context->VSGetShader(&shader_current, instances, &instances_count);
 
-                // D3D11 assumes vertex & index buffers are part of the vertex shader context.
-                // So we have to reset the ideas of the set buffers here.
-                m_set_id_vertex_buffer  = 0;
-                m_set_id_index_buffer   = 0;
+                if (shader_current != shader_new)
+                {
+                    m_rhi_device->GetContextRhi()->device_context->VSSetShader(static_cast<ID3D11VertexShader*>(const_cast<void*>(shader_new)), nullptr, 0);
+                    m_profiler->m_rhi_bindings_shader_vertex++;
+
+                    // D3D11 assumes vertex & index buffers are part of the vertex shader context.
+                    // So we have to reset the ideas of the set buffers here.
+                    m_set_id_vertex_buffer  = 0;
+                    m_set_id_index_buffer   = 0;
+                }
             }
         }
 
         // Pixel shader
-        void* pixel_shader = pipeline_state.shader_pixel ? pipeline_state.shader_pixel->GetResource() : nullptr;
-        m_rhi_device->GetContextRhi()->device_context->PSSetShader(static_cast<ID3D11PixelShader*>(const_cast<void*>(pixel_shader)), nullptr, 0);
-        m_profiler->m_rhi_bindings_shader_pixel++;
+        {
+            // Get current shader
+            UINT                 instances_count = 256;
+            ID3D11ClassInstance* instances[256];
+            ID3D11PixelShader* shader_current = nullptr;
+            m_rhi_device->GetContextRhi()->device_context->PSGetShader(&shader_current, instances, &instances_count);
+
+            void* shader_new = pipeline_state.shader_pixel ? pipeline_state.shader_pixel->GetResource() : nullptr;
+            if (shader_current != shader_new)
+            {
+                m_rhi_device->GetContextRhi()->device_context->PSSetShader(static_cast<ID3D11PixelShader*>(const_cast<void*>(shader_new)), nullptr, 0);
+                m_profiler->m_rhi_bindings_shader_pixel++;
+            }
+        }
+
+        // Compute shader
+        {
+            // Get current shader
+            UINT instances_count = 256;
+            ID3D11ClassInstance* instances[256]; // 256 is max according to PSSetShader documentation
+            ID3D11ComputeShader* shader_current = nullptr;
+            m_rhi_device->GetContextRhi()->device_context->CSGetShader(&shader_current, instances, &instances_count);
+
+            // Compute shader
+            void* shader_new = pipeline_state.shader_compute ? pipeline_state.shader_compute->GetResource() : nullptr;
+            if (shader_current != shader_new)
+            {
+                m_rhi_device->GetContextRhi()->device_context->CSSetShader(static_cast<ID3D11ComputeShader*>(const_cast<void*>(shader_new)), nullptr, 0);
+                m_profiler->m_rhi_bindings_shader_compute++;
+            }
+        }
 
         // Input layout
         if (pipeline_state.shader_vertex)
@@ -159,7 +196,12 @@ namespace Spartan
         }
 
         // Render target(s)
-        if (pipeline_state.render_target_swapchain)
+        if (pipeline_state.unordered_access_view)
+        {
+            const void* resource_array[1] = { pipeline_state.unordered_access_view };
+            m_rhi_device->GetContextRhi()->device_context->CSSetUnorderedAccessViews(0, 1, reinterpret_cast<ID3D11UnorderedAccessView* const*>(&resource_array), nullptr);
+        }
+        else if (pipeline_state.render_target_swapchain)
         {
             const void* resource_array[1] = { pipeline_state.render_target_swapchain->GetResource_RenderTarget() };
             m_rhi_device->GetContextRhi()->device_context->OMSetRenderTargets
@@ -269,6 +311,11 @@ namespace Spartan
 
         m_profiler->m_rhi_draw_calls++;
 	}
+
+    void RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z /*= 1*/)
+    {
+        m_rhi_device->GetContextRhi()->device_context->Dispatch(x, y, z);
+    }
 
 	void RHI_CommandList::SetViewport(const RHI_Viewport& viewport)
 	{
@@ -406,25 +453,50 @@ namespace Spartan
 		uint32_t resource_start_slot    = slot;
 		void* resource_ptr              = texture ? texture->GetResource_View() : nullptr;
 		uint32_t resource_count         = 1;
+        bool is_compute                 = m_pipeline_state->unordered_access_view != nullptr;
 
         if (resource_count > 1)
         {
-            m_rhi_device->GetContextRhi()->device_context->PSSetShaderResources
-            (
-                static_cast<UINT>(resource_start_slot),
-                static_cast<UINT>(resource_count),
-                reinterpret_cast<ID3D11ShaderResourceView* const*>(resource_ptr)
-            );
+            if (is_compute)
+            {
+                m_rhi_device->GetContextRhi()->device_context->CSSetShaderResources
+                (
+                    static_cast<UINT>(resource_start_slot),
+                    static_cast<UINT>(resource_count),
+                    reinterpret_cast<ID3D11ShaderResourceView* const*>(resource_ptr)
+                );
+            }
+            else
+            {
+                m_rhi_device->GetContextRhi()->device_context->PSSetShaderResources
+                (
+                    static_cast<UINT>(resource_start_slot),
+                    static_cast<UINT>(resource_count),
+                    reinterpret_cast<ID3D11ShaderResourceView* const*>(resource_ptr)
+                );
+            }
         }
         else
         {
             const void* resource_array[1] = { resource_ptr };
-            m_rhi_device->GetContextRhi()->device_context->PSSetShaderResources
-            (
-                static_cast<UINT>(resource_start_slot),
-                static_cast<UINT>(resource_count),
-                reinterpret_cast<ID3D11ShaderResourceView* const*>(&resource_array)
-            );
+            if (is_compute)
+            {
+                m_rhi_device->GetContextRhi()->device_context->CSSetShaderResources
+                (
+                    static_cast<UINT>(resource_start_slot),
+                    static_cast<UINT>(resource_count),
+                    reinterpret_cast<ID3D11ShaderResourceView* const*>(&resource_array)
+                );
+            }
+            else
+            {
+                m_rhi_device->GetContextRhi()->device_context->PSSetShaderResources
+                (
+                    static_cast<UINT>(resource_start_slot),
+                    static_cast<UINT>(resource_count),
+                    reinterpret_cast<ID3D11ShaderResourceView* const*>(&resource_array)
+                );
+            }
         }
 
         m_profiler->m_rhi_bindings_texture++;

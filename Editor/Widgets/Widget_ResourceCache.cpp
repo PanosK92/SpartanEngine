@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widget_ResourceCache.h"
 #include "Resource/ResourceCache.h"
 #include "../ImGui/Source/imgui.h"
+#include <Core\Spartan_Object.h>
 //=================================
 
 //= NAMESPACES ==========
@@ -40,15 +41,32 @@ Widget_ResourceCache::Widget_ResourceCache(Context* context) : Widget(context)
 	m_is_visible	= false;
 }
 
+inline void print_memory(uint64_t memory)
+{
+    if (memory == 0)
+    {
+        ImGui::Text("0 Mb");
+    }
+    else if (memory < 1024)
+    {
+        ImGui::Text("%.4f Mb", static_cast<float>(memory) / 1000.0f / 1000.0f);
+    }
+    else
+    {
+        ImGui::Text("%.1f Mb", static_cast<float>(memory) / 1000.0f / 1000.0f);
+    }
+}
+
 void Widget_ResourceCache::Tick()
 {
 	auto resource_cache		= m_context->GetSubsystem<ResourceCache>();
 	auto resources			= resource_cache->GetByType();
-	auto totalMemoryUsage	= resource_cache->GetMemoryUsage() / 1000.0f / 1000.0f;
+	auto memory_usage_cpu	= resource_cache->GetMemoryUsageCpu() / 1000.0f / 1000.0f;
+    auto memory_usage_gpu   = resource_cache->GetMemoryUsageGpu() / 1000.0f / 1000.0f;
 
-	ImGui::Text("Resource count: %d, Total memory usage: %d Mb", static_cast<uint32_t>(resources.size()), static_cast<uint32_t>(totalMemoryUsage));
+	ImGui::Text("Resource count: %d, Memory usage cpu: %d Mb, Memory usage gpu: %d Mb", static_cast<uint32_t>(resources.size()), static_cast<uint32_t>(memory_usage_cpu), static_cast<uint32_t>(memory_usage_gpu));
 	ImGui::Separator();
-	ImGui::Columns(6, "##Widget_ResourceCache");
+	ImGui::Columns(7, "##Widget_ResourceCache");
 
     // Set column width - Has to be done only once in order to allow for the user to resize them
     if (!m_column_width_set)
@@ -68,36 +86,30 @@ void Widget_ResourceCache::Tick()
 	ImGui::Text("Name");            ImGui::NextColumn();
     ImGui::Text("Path");            ImGui::NextColumn();
 	ImGui::Text("Path (native)");   ImGui::NextColumn();
-	ImGui::Text("Size");            ImGui::NextColumn();
+	ImGui::Text("Size CPU");        ImGui::NextColumn();
+    ImGui::Text("Size GPU");        ImGui::NextColumn();
 	ImGui::Separator();
 
     // Fill rows with resource information
 	for (const shared_ptr<IResource>& resource : resources)
 	{
-		if (!resource)
-			continue;
-
-		// Type
-		ImGui::Text(resource->GetResourceTypeCstr());					ImGui::NextColumn();
-		// ID
-		ImGui::Text(to_string(resource->GetId()).c_str());		        ImGui::NextColumn();
-		// Name
-        ImGui::Text(resource->GetResourceName().c_str());				ImGui::NextColumn();
-        // Path
-        ImGui::Text(resource->GetResourceFilePath().c_str());		    ImGui::NextColumn();
-		// Path (native)
-		ImGui::Text(resource->GetResourceFilePathNative().c_str());		ImGui::NextColumn();
-		// Memory
-		uint32_t memory = static_cast<uint32_t>(resource->GetMemoryUsage() / 1000.0f); // default in Kb
-		if (memory <= 1024)
-		{
-			ImGui::Text((to_string(memory) + string(" Kb")).c_str());	ImGui::NextColumn();
-		}
-		else
-		{
-            memory = static_cast<uint32_t>(memory / 1000.0f); // turn into Mb
-			ImGui::Text((to_string(memory) + string(" Mb")).c_str());	ImGui::NextColumn();
-		}
+		if (Spartan_Object* object = dynamic_cast<Spartan_Object*>(resource.get()))
+        {
+		    // Type
+		    ImGui::Text(resource->GetResourceTypeCstr());					ImGui::NextColumn();
+		    // ID
+		    ImGui::Text(to_string(object->GetId()).c_str());		        ImGui::NextColumn();
+		    // Name
+            ImGui::Text(resource->GetResourceName().c_str());				ImGui::NextColumn();
+            // Path
+            ImGui::Text(resource->GetResourceFilePath().c_str());		    ImGui::NextColumn();
+		    // Path (native)
+		    ImGui::Text(resource->GetResourceFilePathNative().c_str());		ImGui::NextColumn();
+		    // Memory CPU
+            print_memory(object->GetSizeCpu());                             ImGui::NextColumn();
+            // Memory GPU
+            print_memory(object->GetSizeGpu());                             ImGui::NextColumn();
+        }
 	}
 	ImGui::Columns(1);
 }

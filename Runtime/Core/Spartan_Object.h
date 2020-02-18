@@ -36,13 +36,14 @@ namespace Spartan
 
 		const uint32_t GetId() const	{ return m_id; }
 		void SetId(const uint32_t id)	{ m_id = id; }
+        static uint32_t GenerateId() { return ++g_id; }
 
-        const uint64_t GetSize() const { return m_size; }
-
-		static uint32_t GenerateId() { return ++g_id;}
+        const uint64_t GetSizeCpu() const { return m_size_cpu; }
+        const uint64_t GetSizeGpu() const { return m_size_gpu; }
 
 	protected:
-		uint64_t m_size = 0;
-		uint32_t m_id	= 0;
+		uint32_t m_id	    = 0;
+        uint64_t m_size_cpu = 0;
+        uint64_t m_size_gpu = 0;
 	};
 }

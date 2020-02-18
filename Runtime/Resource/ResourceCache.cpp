@@ -127,34 +127,6 @@ namespace Spartan
 		return resources;
 	}
 
-	uint32_t ResourceCache::GetMemoryUsage(Resource_Type type /*= Resource_Unknown*/)
-	{
-		uint32_t size = 0;
-
-		if (type == Resource_Unknown)
-		{
-			for (const auto& group : m_resource_groups)
-			{
-				for (const auto& resource : group.second)
-				{
-					if (!resource)
-						continue;
-
-					size += resource->GetMemoryUsage();
-				}
-			}
-		}
-		else
-		{
-			for (const auto& resource : m_resource_groups[type])
-			{
-				size += resource->GetMemoryUsage();
-			}
-		}
-
-		return size;
-	}
-
 	void ResourceCache::SaveResourcesToFiles()
 	{
 		// Start progress report
@@ -244,7 +216,69 @@ namespace Spartan
 		}
 	}
 
-	uint32_t ResourceCache::GetResourceCount(const Resource_Type type)
+    uint64_t ResourceCache::GetMemoryUsageCpu(Resource_Type type /*= Resource_Unknown*/)
+    {
+        uint64_t size = 0;
+
+        if (type == Resource_Unknown)
+        {
+            for (const auto& group : m_resource_groups)
+            {
+                for (const auto& resource : group.second)
+                {
+                    if (Spartan_Object* object = dynamic_cast<Spartan_Object*>(resource.get()))
+                    {
+                        size += object->GetSizeCpu();
+                    }
+                }
+            }
+        }
+        else
+        {
+            for (const auto& resource : m_resource_groups[type])
+            {
+                if (Spartan_Object* object = dynamic_cast<Spartan_Object*>(resource.get()))
+                {
+                    size += object->GetSizeCpu();
+                }
+            }
+        }
+
+        return size;
+    }
+
+    uint64_t ResourceCache::GetMemoryUsageGpu(Resource_Type type /*= Resource_Unknown*/)
+    {
+        uint64_t size = 0;
+
+        if (type == Resource_Unknown)
+        {
+            for (const auto& group : m_resource_groups)
+            {
+                for (const auto& resource : group.second)
+                {
+                    if (Spartan_Object* object = dynamic_cast<Spartan_Object*>(resource.get()))
+                    {
+                        size += object->GetSizeGpu();
+                    }
+                }
+            }
+        }
+        else
+        {
+            for (const auto& resource : m_resource_groups[type])
+            {
+                if (Spartan_Object* object = dynamic_cast<Spartan_Object*>(resource.get()))
+                {
+                    size += object->GetSizeGpu();
+                }
+            }
+        }
+
+        return size;
+    }
+
+    uint32_t ResourceCache::GetResourceCount(const Resource_Type type)
 	{
 		return static_cast<uint32_t>(GetByType(type).size());
 	}

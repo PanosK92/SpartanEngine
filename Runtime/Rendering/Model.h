@@ -37,7 +37,7 @@ namespace Spartan
 	class Mesh;
 	namespace Math{ class BoundingBox; }
 
-	class SPARTAN_CLASS Model : public IResource, public std::enable_shared_from_this<Model>
+	class SPARTAN_CLASS Model : public Spartan_Object, public IResource, public std::enable_shared_from_this<Model>
 	{
 	public:
 		Model(Context* context);
@@ -85,7 +85,6 @@ namespace Spartan
 		// Geometry
 		bool GeometryCreateBuffers();
 		float GeometryComputeNormalizedScale() const;
-		uint32_t GeometryComputeMemoryUsage() const;
 
 		// Misc
 		std::weak_ptr<Entity> m_root_entity;
