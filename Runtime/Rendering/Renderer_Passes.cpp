@@ -644,21 +644,22 @@ namespace Spartan
 
          // Set render state
         static RHI_PipelineState pipeline_state;
-        pipeline_state.shader_vertex                    = shader_v.get();
-        pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
-        pipeline_state.blend_state                      = m_blend_additive.get();
-        pipeline_state.depth_stencil_state              = use_stencil ? m_depth_stencil_disabled_enabled_read.get() : m_depth_stencil_disabled.get();
-        pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
-        pipeline_state.render_target_color_textures[0]  = tex_diffuse.get();
-        pipeline_state.render_target_color_clear[0]     = Vector4::Zero;
-        pipeline_state.render_target_color_textures[1]  = tex_specular.get();
-        pipeline_state.render_target_color_clear[1]     = Vector4::Zero;
-        pipeline_state.render_target_color_textures[2]  = tex_volumetric.get();
-        pipeline_state.render_target_color_clear[2]     = Vector4::Zero;
-        pipeline_state.render_target_depth_texture      = use_stencil ? tex_depth.get() : nullptr;
-        pipeline_state.viewport                         = tex_diffuse->GetViewport();
-        pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
-        pipeline_state.pass_name                        = "Pass_Light";
+        pipeline_state.shader_vertex                            = shader_v.get();
+        pipeline_state.rasterizer_state                         = m_rasterizer_cull_back_solid.get();
+        pipeline_state.blend_state                              = m_blend_additive.get();
+        pipeline_state.depth_stencil_state                      = use_stencil ? m_depth_stencil_disabled_enabled_read.get() : m_depth_stencil_disabled.get();
+        pipeline_state.vertex_buffer_stride                     = m_quad.GetVertexBuffer()->GetStride();
+        pipeline_state.render_target_color_textures[0]          = tex_diffuse.get();
+        pipeline_state.render_target_color_clear[0]             = Vector4::Zero;
+        pipeline_state.render_target_color_textures[1]          = tex_specular.get();
+        pipeline_state.render_target_color_clear[1]             = Vector4::Zero;
+        pipeline_state.render_target_color_textures[2]          = tex_volumetric.get();
+        pipeline_state.render_target_color_clear[2]             = Vector4::Zero;
+        pipeline_state.render_target_depth_texture              = use_stencil ? tex_depth.get() : nullptr;
+        pipeline_state.render_target_depth_texture_read_only    = use_stencil;
+        pipeline_state.viewport                                 = tex_diffuse->GetViewport();
+        pipeline_state.primitive_topology                       = RHI_PrimitiveTopology_TriangleList;
+        pipeline_state.pass_name                                = "Pass_Light";
 
         auto draw_lights = [this, &cmd_list, &shader_v, &shader_p_directional, &shader_p_point, &shader_p_spot, &tex_diffuse, &tex_specular, &tex_volumetric](Renderer_Object_Type type)
         {

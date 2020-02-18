@@ -65,6 +65,7 @@ namespace Spartan
         RHI_Shader* shader_pixel                                                    = nullptr;
         RHI_Shader* shader_compute                                                  = nullptr;
         void* unordered_access_view                                                 = nullptr;
+        bool render_target_depth_texture_read_only                                  = false;
 
         // Dynamic constant buffers
         int dynamic_constant_buffer_slot = 2; // such a hack, must fix
