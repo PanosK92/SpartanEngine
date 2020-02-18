@@ -23,8 +23,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include <memory>
-#include "RHI_Definition.h"
+#include "RHI_Object.h"
 #include "RHI_Viewport.h"
+#include "RHI_Definition.h"
 #include "../Resource/IResource.h"
 //================================
 
@@ -33,11 +34,12 @@ namespace Spartan
 	enum RHI_Texture_Bind : uint16_t
 	{
 		RHI_Texture_Sampled			            = 1 << 0,
-		RHI_Texture_RenderTarget_Color	        = 1 << 1,
-		RHI_Texture_RenderTarget_DepthStencil	= 1 << 2,
+        RHI_Texture_RenderTarget_Compute        = 1 << 1,
+		RHI_Texture_RenderTarget_Color	        = 1 << 2,
+		RHI_Texture_RenderTarget_DepthStencil	= 1 << 3,
 	};
 
-	class SPARTAN_CLASS RHI_Texture : public IResource
+	class SPARTAN_CLASS RHI_Texture : public RHI_Object, public IResource
 	{
 	public:
 		RHI_Texture(Context* context);
@@ -83,6 +85,7 @@ namespace Spartan
 
         // Binding
         bool IsSampled()                    const { return m_bind_flags & RHI_Texture_Sampled; }
+        bool IsRenderTargetCompute()        const { return m_bind_flags & RHI_Texture_RenderTarget_Compute; }
         bool IsRenderTargetDepthStencil()   const { return m_bind_flags & RHI_Texture_RenderTarget_DepthStencil; }
         bool IsRenderTargetColor()          const { return m_bind_flags & RHI_Texture_RenderTarget_Color; }
 
@@ -100,6 +103,7 @@ namespace Spartan
 
 		// GPU resources
 		auto GetResource_View()                             const { return m_resource_view; }
+        auto GetResource_UnorderedAccessView()	            const { return m_resource_unordered_access_view; }
 		auto GetResource_DepthStencil(const uint32_t i = 0) const { return i < m_resource_depth_stencil.size() ? m_resource_depth_stencil[i] : nullptr; }
         auto GetResource_RenderTarget()	                    const { return m_resource_render_target; }
         auto GetResource_Texture()                          const { return m_resource_texture; }
@@ -110,8 +114,8 @@ namespace Spartan
 		static uint32_t GetChannelCountFromFormat(RHI_Format format);
         virtual bool CreateResourceGpu() { LOG_ERROR("Call to empty virtual function"); return false; }
 
-		uint32_t m_bpp			= 0;
-		uint32_t m_bpc			= 8;
+		uint32_t m_bpp			= 0; // bits per pixel
+		uint32_t m_bpc			= 8; // bytes per channel
 		uint32_t m_width		= 0;
 		uint32_t m_height		= 0;
 		uint32_t m_channels		= 4;
@@ -126,11 +130,12 @@ namespace Spartan
 		std::vector<std::vector<std::byte>> m_data;
 		
 		// API
-		void* m_resource_view		        = nullptr;
-		void* m_resource_render_target	    = nullptr;
-		void* m_resource_texture		    = nullptr;
-		void* m_resource_memory			    = nullptr;
-        RHI_Image_Layout m_layout           = RHI_Image_Undefined;
+		void* m_resource_view		            = nullptr;
+        void* m_resource_unordered_access_view  = nullptr;
+		void* m_resource_render_target	        = nullptr;
+		void* m_resource_texture		        = nullptr;
+		void* m_resource_memory			        = nullptr;
+        RHI_Image_Layout m_layout               = RHI_Image_Undefined;
 		
 		std::vector<void*> m_resource_depth_stencil;
         std::shared_ptr<RHI_Device> m_rhi_device;

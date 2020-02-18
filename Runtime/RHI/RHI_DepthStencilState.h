@@ -21,16 +21,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ======================
-#include "RHI_Definition.h"
+//= INCLUDES ================
 #include <memory>
+#include "RHI_Definition.h"
+#include "RHI_Object.h"
 #include "../Core/Settings.h"
-#include "../Core/Spartan_Object.h"
-//=================================
+//===========================
 
 namespace Spartan
 {
-	class SPARTAN_CLASS RHI_DepthStencilState : public Spartan_Object
+	class SPARTAN_CLASS RHI_DepthStencilState : public RHI_Object
 	{
 	public:
 		RHI_DepthStencilState(

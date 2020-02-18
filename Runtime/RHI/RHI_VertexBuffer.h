@@ -21,14 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ======================
+//= INCLUDES ==========
 #include <vector>
-#include "../Core/Spartan_Object.h"
-//=================================
+#include "RHI_Object.h"
+//=====================
 
 namespace Spartan
 {
-	class RHI_VertexBuffer : public Spartan_Object
+	class RHI_VertexBuffer : public RHI_Object
 	{
 	public:
 		RHI_VertexBuffer(const std::shared_ptr<RHI_Device>& rhi_device, const uint32_t stride = 0) 
@@ -44,7 +44,7 @@ namespace Spartan
 		{
 			m_stride        = static_cast<uint32_t>(sizeof(T));
 			m_vertex_count	= static_cast<uint32_t>(vertices.size());
-			m_size          = static_cast<uint64_t>(m_stride * m_vertex_count);
+            m_size_gpu      = static_cast<uint64_t>(m_stride * m_vertex_count);
 			return _Create(static_cast<const void*>(vertices.data()));
 		}
 
@@ -53,7 +53,7 @@ namespace Spartan
 		{
 			m_stride        = static_cast<uint32_t>(sizeof(T));
 			m_vertex_count	= vertex_count;
-			m_size          = static_cast<uint64_t>(m_stride * m_vertex_count);
+            m_size_gpu      = static_cast<uint64_t>(m_stride * m_vertex_count);
 			return _Create(static_cast<const void*>(vertices));
 		}
 
@@ -62,7 +62,7 @@ namespace Spartan
 		{
 			m_stride        = static_cast<uint32_t>(sizeof(T));
 			m_vertex_count  = vertex_count;
-			m_size          = static_cast<uint64_t>(m_stride * m_vertex_count);
+            m_size_gpu      = static_cast<uint64_t>(m_stride * m_vertex_count);
 			return _Create(nullptr);
 		}
 
@@ -71,7 +71,6 @@ namespace Spartan
         bool Flush() const;
 
 		auto GetResource()      const { return m_buffer; }
-		auto& GetSize()         const { return m_size; }
 		auto GetStride()        const { return m_stride; }
 		auto GetVertexCount()   const { return m_vertex_count; }
 

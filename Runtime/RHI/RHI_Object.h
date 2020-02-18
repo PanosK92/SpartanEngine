@@ -21,36 +21,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =================
-#include <map>
-#include <vector>
-#include <memory>
-#include "RHI_PipelineState.h"
-//============================
+//= INCLUDES ======================
+#include "../Core/Spartan_Object.h"
+//=================================
 
 namespace Spartan
 {
-	class RHI_Pipeline : public RHI_Object
-	{
-	public:
-		RHI_Pipeline() = default;
-		RHI_Pipeline(const std::shared_ptr<RHI_Device>& rhi_device, RHI_PipelineState& pipeline_state);
-		~RHI_Pipeline();
-
-        void OnCommandListConsumed();
-
-        void* GetPipeline()                     const { return m_pipeline; }
-        void* GetPipelineLayout()               const { return m_pipeline_layout; }
-        RHI_PipelineState* GetPipelineState()         { return &m_state; }
-        RHI_DescriptorSet* GetDescriptorSet()   const { return m_descriptor_set.get(); }
-       
-	private:
-        RHI_PipelineState m_state;
-        std::shared_ptr<RHI_DescriptorSet> m_descriptor_set;
-        std::shared_ptr<RHI_Device> m_rhi_device;
-        
-		// API
-		void* m_pipeline		= nullptr;
-		void* m_pipeline_layout = nullptr;
+    class SPARTAN_CLASS RHI_Object : public Spartan_Object
+    {
+    public:
+        RHI_Object() = default;
+        ~RHI_Object() = default;
     };
 }

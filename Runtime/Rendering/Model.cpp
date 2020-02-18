@@ -108,7 +108,19 @@ namespace Spartan
             }
         }
 
-		m_size = GeometryComputeMemoryUsage();
+        // Compute memory usage
+        {
+            // Cpu
+            m_size_cpu = !m_mesh ? 0 : m_mesh->Geometry_MemoryUsage();
+
+            // Gpu
+            if (m_vertex_buffer && m_index_buffer)
+            {
+                m_size_gpu = m_vertex_buffer->GetSizeGpu();
+                m_size_gpu += m_index_buffer->GetSizeGpu();
+            }
+        }
+
 		LOG_INFO("Loading \"%s\" took %d ms", FileSystem::GetFileNameFromFilePath(file_path).c_str(), static_cast<int>(timer.GetElapsedTimeMs()));
 
 		return true;
@@ -253,23 +265,5 @@ namespace Spartan
 
 		// Return normalized scale
 		return 1.0f / scale_offset;
-	}
-
-	uint32_t Model::GeometryComputeMemoryUsage() const
-	{
-        if (!m_vertex_buffer || !m_index_buffer)
-        {
-            LOG_ERROR_INVALID_INTERNALS();
-            return 0;
-        }
-
-		// Vertices & Indices
-		auto size = !m_mesh ? 0 : m_mesh->Geometry_MemoryUsage();
-
-		// Buffers
-		size += static_cast<uint32_t>(m_vertex_buffer->GetSize());
-		size += static_cast<uint32_t>(m_index_buffer->GetSize());
-
-		return size;
 	}
 }

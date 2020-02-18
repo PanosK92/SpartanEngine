@@ -158,6 +158,21 @@ namespace Spartan
 			m_data.shrink_to_fit();
 		}
 		m_load_state = LoadState_Completed;
+
+        // Compute memory usage
+        {
+            m_size_cpu = 0;
+            m_size_gpu = 0;
+            for (uint8_t mip_index = 0; mip_index < m_mip_levels; mip_index++)
+            {
+                uint32_t mip_width  = m_width >> mip_index;
+                uint32_t mip_height = m_height >> mip_index;
+
+                m_size_cpu += mip_index < m_data.size() ? m_data[mip_index].size() * sizeof(std::byte) : 0;
+                m_size_gpu += mip_width * mip_height * (m_bpp / 8);
+            }
+        }
+
 		return true;
 	}
 

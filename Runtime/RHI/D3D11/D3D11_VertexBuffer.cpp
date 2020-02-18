@@ -55,7 +55,7 @@ namespace Spartan
 
 		// fill in a buffer description.
         D3D11_BUFFER_DESC buffer_desc   = {};
-		buffer_desc.ByteWidth			= static_cast<UINT>(m_size);
+		buffer_desc.ByteWidth			= static_cast<UINT>(m_size_gpu);
 		buffer_desc.Usage				= is_dynamic ? D3D11_USAGE_DYNAMIC : D3D11_USAGE_IMMUTABLE;
 		buffer_desc.CPUAccessFlags		= is_dynamic ? D3D11_CPU_ACCESS_WRITE : 0;
 		buffer_desc.BindFlags			= D3D11_BIND_VERTEX_BUFFER;	

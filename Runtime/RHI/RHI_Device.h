@@ -21,14 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
+//= INCLUDES ==============
 #include <string>
 #include <vector>
 #include <memory>
-#include "RHI_Definition.h"
-#include "../Core/EngineDefs.h"
 #include <mutex>
-//=============================
+#include "RHI_Definition.h"
+#include "RHI_Object.h"
+//=========================
 
 namespace Spartan
 {
@@ -102,7 +102,7 @@ namespace Spartan
 		void* data                      = nullptr;
 	};
 
-	class SPARTAN_CLASS RHI_Device
+	class SPARTAN_CLASS RHI_Device : public RHI_Object
 	{
 	public:
 		RHI_Device(Context* context);

@@ -45,6 +45,9 @@ namespace Spartan
 	RHI_Texture2D::~RHI_Texture2D()
 	{
 		safe_release(*reinterpret_cast<ID3D11ShaderResourceView**>(&m_resource_view));
+        safe_release(*reinterpret_cast<ID3D11UnorderedAccessView**>(&m_resource_unordered_access_view));
+        safe_release(*reinterpret_cast<ID3D11RenderTargetView**>(&m_resource_render_target));
+        safe_release(*reinterpret_cast<ID3D11Texture2D**>(&m_resource_texture));
 	}
 
 	inline bool CreateTexture(
@@ -168,6 +171,25 @@ namespace Spartan
 		return true;
 	}
 
+    inline bool CreateUnorderedAccessView(void* resource, void*& unorderd_accesss_view, DXGI_FORMAT format, const shared_ptr<RHI_Device>& rhi_device)
+	{
+		// Describe
+        D3D11_UNORDERED_ACCESS_VIEW_DESC unorderd_access_view_desc	= {};
+        unorderd_access_view_desc.ViewDimension                     = D3D11_UAV_DIMENSION_TEXTURE2D;
+        unorderd_access_view_desc.Format                            = format;
+
+		// Create
+		auto ptr    = reinterpret_cast<ID3D11UnorderedAccessView**>(&unorderd_accesss_view);
+		auto result = rhi_device->GetContextRhi()->device->CreateUnorderedAccessView(static_cast<ID3D11Resource*>(resource), &unorderd_access_view_desc, ptr);
+		if (FAILED(result))
+		{
+			LOG_ERROR("Failed to create the ID3D11UnorderedAccessView, %s", d3d11_common::dxgi_error_to_string(result));
+			return false;
+		}
+
+		return true;
+	}
+
 	bool RHI_Texture2D::CreateResourceGpu()
 	{
 		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device)
@@ -176,15 +198,17 @@ namespace Spartan
 			return false;
 		}
 	
-		auto result_tex = true;
-		auto result_srv = true;
-		auto result_rt	= true;
-		auto result_ds	= true;
+		bool result_tex = true;
+		bool result_srv = true;
+        bool result_uav = true;
+		bool result_rt	= true;
+		bool result_ds	= true;
 
 		// Resolve bind flags
 		UINT bind_flags = 0;
 		{
 			bind_flags |= (m_bind_flags & RHI_Texture_Sampled)		                ? D3D11_BIND_SHADER_RESOURCE	: 0;
+            bind_flags |= (m_bind_flags & RHI_Texture_RenderTarget_Compute)         ? D3D11_BIND_UNORDERED_ACCESS   : 0;
 			bind_flags |= (m_bind_flags & RHI_Texture_RenderTarget_DepthStencil)    ? D3D11_BIND_DEPTH_STENCIL		: 0;
 			bind_flags |= (m_bind_flags & RHI_Texture_RenderTarget_Color)           ? D3D11_BIND_RENDER_TARGET		: 0;
 		}
@@ -222,7 +246,7 @@ namespace Spartan
 			m_rhi_device
 		);
 
-        // SHADER RESOURCE VIEW
+        // RESOURCE VIEW
         if (m_bind_flags & RHI_Texture_Sampled)
         {
             result_srv = CreateShaderResourceView(
@@ -233,6 +257,12 @@ namespace Spartan
                 m_data,
                 m_rhi_device
             );
+        }
+
+        // UNORDERED ACCESS VIEW
+        if (m_bind_flags & RHI_Texture_RenderTarget_Compute)
+        {
+            result_uav = CreateUnorderedAccessView(texture, m_resource_unordered_access_view, format, m_rhi_device);
         }
 
         // DEPTH-STENCIL VIEW
@@ -262,14 +292,17 @@ namespace Spartan
 		}
 
 		safe_release(*reinterpret_cast<ID3D11Texture2D**>(&texture));	
-		return result_tex && result_srv && result_rt && result_ds;
+		return result_tex && result_srv && result_uav && result_rt && result_ds;
 	}
 
 	// TEXTURE CUBE
 
 	RHI_TextureCube::~RHI_TextureCube()
 	{
-		safe_release(*reinterpret_cast<ID3D11ShaderResourceView**>(&m_resource_view));
+        safe_release(*reinterpret_cast<ID3D11ShaderResourceView**>(&m_resource_view));
+        safe_release(*reinterpret_cast<ID3D11UnorderedAccessView**>(&m_resource_unordered_access_view));
+        safe_release(*reinterpret_cast<ID3D11RenderTargetView**>(&m_resource_render_target));
+        safe_release(*reinterpret_cast<ID3D11Texture2D**>(&m_resource_texture));
 	}
 
 	inline bool TextureCube_Sampled

@@ -21,11 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ======================
+//= INCLUDES ==============
 #include <memory>
 #include "RHI_Definition.h"
-#include "../Core/Spartan_Object.h"
-//=================================
+#include "RHI_Object.h"
+//=========================
 
 namespace Spartan
 {
@@ -33,7 +33,7 @@ namespace Spartan
 	#define SAMPLER_BILINEAR	RHI_Filter_Linear,  RHI_Filter_Linear,  RHI_Sampler_Mipmap_Nearest
 	#define SAMPLER_TRILINEAR	RHI_Filter_Linear,  RHI_Filter_Linear,  RHI_Sampler_Mipmap_Linear
 
-	class RHI_Sampler : public Spartan_Object
+	class RHI_Sampler : public RHI_Object
 	{
 	public:
 		RHI_Sampler(

@@ -128,7 +128,7 @@ namespace Spartan
             auto& vector = m_resource_groups[resource->GetResourceType()];
             for (auto it = vector.begin(); it != vector.end(); it++)
             {
-                if ((*it)->GetId() == resource->GetId())
+                if (dynamic_cast<Spartan_Object*>((*it).get())->GetId() == resource->GetId())
                 {
                     vector.erase(it);
                     break;
@@ -175,7 +175,8 @@ namespace Spartan
 
 		//= MISC ========================================================
 		// Memory
-		uint32_t GetMemoryUsage(Resource_Type type = Resource_Unknown);
+        uint64_t GetMemoryUsageCpu(Resource_Type type = Resource_Unknown);
+        uint64_t GetMemoryUsageGpu(Resource_Type type = Resource_Unknown);
 		// Unloads all resources
 		void Clear() { m_resource_groups.clear(); }
 		// Returns all resources of a given type

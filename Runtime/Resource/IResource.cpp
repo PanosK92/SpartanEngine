@@ -36,7 +36,7 @@ using namespace std;
 using namespace Spartan;
 //=======================
 
-IResource::IResource(Context* context, const Resource_Type type) : Spartan_Object()
+IResource::IResource(Context* context, const Resource_Type type)
 {
 	m_context		= context;
 	m_resource_type	= type;

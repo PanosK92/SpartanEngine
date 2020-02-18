@@ -254,6 +254,11 @@ namespace Spartan
         m_profiler->m_rhi_draw_calls++;
 	}
 
+    void RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z /*= 1*/)
+    {
+        
+    }
+
 	void RHI_CommandList::SetViewport(const RHI_Viewport& viewport)
 	{
         if (m_cmd_state != RHI_Cmd_List_Recording)

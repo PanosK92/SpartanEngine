@@ -25,11 +25,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 #include <unordered_map>
 #include "RHI_Definition.h"
+#include "RHI_Object.h"
 //=========================
 
 namespace Spartan
 {
-	class RHI_PipelineCache
+	class RHI_PipelineCache : public RHI_Object
 	{
 	public:
         RHI_PipelineCache(const std::shared_ptr<RHI_Device>& rhi_device) { m_rhi_device = rhi_device; }

@@ -54,6 +54,10 @@ namespace Spartan
         profile = pass_name != nullptr;
         mark    = pass_name != nullptr;
 
+        // Check if this is a compute pipeline
+        if (unordered_access_view != nullptr && shader_compute != nullptr)
+            return true;
+
         // Ensure that only one render target is active at a time
         if (render_target_swapchain && render_target_color_textures[0])
             return false;

@@ -22,15 +22,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==============
-#include "RHI_Definition.h"
 #include <vector>
 #include <map>
 #include <memory>
+#include "RHI_Definition.h"
+#include "RHI_Object.h"
 //=========================
 
 namespace Spartan
 {
-    class RHI_DescriptorSet
+    class RHI_DescriptorSet : public RHI_Object
     {
     public:
         RHI_DescriptorSet(const std::shared_ptr<RHI_Device> rhi_device, std::vector<uint32_t> constant_buffer_dynamic_slots, const RHI_Shader* shader_vertex, const RHI_Shader* shader_pixel = nullptr);

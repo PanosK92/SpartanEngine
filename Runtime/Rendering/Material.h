@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Vector2.h"
 #include "../Math/Vector4.h"
 #include "../Math/Vector3.h"
+#include "../Core/Spartan_Object.h"
 //================================
 
 namespace Spartan
@@ -48,7 +49,7 @@ namespace Spartan
 		TextureType_Mask
 	};
 
-	class SPARTAN_CLASS Material : public IResource
+	class SPARTAN_CLASS Material : public Spartan_Object, public IResource
 	{
 	public:
 		Material(Context* context);
