@@ -196,42 +196,57 @@ namespace Spartan
         }
 
         // Render target(s)
-        if (pipeline_state.unordered_access_view)
         {
-            const void* resource_array[1] = { pipeline_state.unordered_access_view };
-            m_rhi_device->GetContextRhi()->device_context->CSSetUnorderedAccessViews(0, 1, reinterpret_cast<ID3D11UnorderedAccessView* const*>(&resource_array), nullptr);
-        }
-        else if (pipeline_state.render_target_swapchain)
-        {
-            const void* resource_array[1] = { pipeline_state.render_target_swapchain->GetResource_RenderTarget() };
-            m_rhi_device->GetContextRhi()->device_context->OMSetRenderTargets
-            (
-                static_cast<UINT>(1),
-                reinterpret_cast<ID3D11RenderTargetView* const*>(&resource_array),
-                static_cast<ID3D11DepthStencilView*>(pipeline_state.render_target_depth_texture ? pipeline_state.render_target_depth_texture->GetResource_DepthStencil(pipeline_state.render_target_depth_array_index) : nullptr)
-            );
-        }
-        else
-        {
-            static vector<void*> render_targets(state_max_render_target_count);
-            uint32_t render_target_count = 0;
-
-            // Detect used render targets
-            for (auto i = 0; i < state_max_render_target_count; i++)
+            // Get depth stencil (if any)
+            void* depth_stencil = nullptr;
+            if (pipeline_state.render_target_depth_texture_read_only)
             {
-                if (pipeline_state.render_target_color_textures[i])
-                {
-                    render_targets[render_target_count++] = pipeline_state.render_target_color_textures[i]->GetResource_RenderTarget();
-                }
+                depth_stencil = (pipeline_state.render_target_depth_texture ? pipeline_state.render_target_depth_texture->GetResource_DepthStencilReadOnly() : nullptr);
+            }
+            else
+            {
+                depth_stencil = (pipeline_state.render_target_depth_texture ? pipeline_state.render_target_depth_texture->GetResource_DepthStencil(pipeline_state.render_target_depth_array_index) : nullptr);
             }
 
-            // Set them
-            m_rhi_device->GetContextRhi()->device_context->OMSetRenderTargets
-            (
-                static_cast<UINT>(render_target_count),
-                reinterpret_cast<ID3D11RenderTargetView* const*>(render_targets.data()),
-                static_cast<ID3D11DepthStencilView*>(pipeline_state.render_target_depth_texture ? pipeline_state.render_target_depth_texture->GetResource_DepthStencil(pipeline_state.render_target_depth_array_index) : nullptr)
-            );
+            if (pipeline_state.unordered_access_view)
+            {
+                const void* resource_array[1] = { pipeline_state.unordered_access_view };
+                m_rhi_device->GetContextRhi()->device_context->CSSetUnorderedAccessViews(0, 1, reinterpret_cast<ID3D11UnorderedAccessView* const*>(&resource_array), nullptr);
+            }
+            else if (pipeline_state.render_target_swapchain)
+            {
+                const void* resource_array[1] = { pipeline_state.render_target_swapchain->GetResource_RenderTarget() };
+
+
+                m_rhi_device->GetContextRhi()->device_context->OMSetRenderTargets
+                (
+                    static_cast<UINT>(1),
+                    reinterpret_cast<ID3D11RenderTargetView* const*>(&resource_array),
+                    static_cast<ID3D11DepthStencilView*>(depth_stencil)
+                );
+            }
+            else
+            {
+                static vector<void*> render_targets(state_max_render_target_count);
+                uint32_t render_target_count = 0;
+
+                // Detect used render targets
+                for (auto i = 0; i < state_max_render_target_count; i++)
+                {
+                    if (pipeline_state.render_target_color_textures[i])
+                    {
+                        render_targets[render_target_count++] = pipeline_state.render_target_color_textures[i]->GetResource_RenderTarget();
+                    }
+                }
+
+                // Set them
+                m_rhi_device->GetContextRhi()->device_context->OMSetRenderTargets
+                (
+                    static_cast<UINT>(render_target_count),
+                    reinterpret_cast<ID3D11RenderTargetView* const*>(render_targets.data()),
+                    static_cast<ID3D11DepthStencilView*>(depth_stencil)
+                );
+            }
         }
 
         // Clear render target(s)

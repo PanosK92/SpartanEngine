@@ -31,12 +31,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-	enum RHI_Texture_Bind : uint16_t
+	enum RHI_Texture_Flags : uint16_t
 	{
 		RHI_Texture_Sampled			            = 1 << 0,
         RHI_Texture_RenderTarget_Compute        = 1 << 1,
 		RHI_Texture_RenderTarget_Color	        = 1 << 2,
 		RHI_Texture_RenderTarget_DepthStencil	= 1 << 3,
+        RHI_Texture_ReadOnlyDepthStencil        = 1 << 4
 	};
 
 	class SPARTAN_CLASS RHI_Texture : public RHI_Object, public IResource
@@ -102,11 +103,12 @@ namespace Spartan
         const auto& GetViewport()   const { return m_viewport; }
 
 		// GPU resources
-		auto GetResource_View()                             const { return m_resource_view; }
-        auto GetResource_UnorderedAccessView()	            const { return m_resource_unordered_access_view; }
-		auto GetResource_DepthStencil(const uint32_t i = 0) const { return i < m_resource_depth_stencil.size() ? m_resource_depth_stencil[i] : nullptr; }
-        auto GetResource_RenderTarget()	                    const { return m_resource_render_target; }
-        auto GetResource_Texture()                          const { return m_resource_texture; }
+		auto GetResource_View()                                     const { return m_resource_view; }
+        auto GetResource_UnorderedAccessView()	                    const { return m_resource_unordered_access_view; }
+		auto GetResource_DepthStencil(const uint32_t i = 0)         const { return i < m_resource_depth_stencil.size() ? m_resource_depth_stencil[i] : nullptr; }
+        auto GetResource_DepthStencilReadOnly(const uint32_t i = 0) const { return i < m_resource_depth_stencil_read_only.size() ? m_resource_depth_stencil_read_only[i] : nullptr; }
+        auto GetResource_RenderTarget()	                            const { return m_resource_render_target; }
+        auto GetResource_Texture()                                  const { return m_resource_texture; }
 
 	protected:
 		bool LoadFromFile_NativeFormat(const std::string& file_path);
@@ -135,9 +137,10 @@ namespace Spartan
 		void* m_resource_render_target	        = nullptr;
 		void* m_resource_texture		        = nullptr;
 		void* m_resource_memory			        = nullptr;
+        std::vector<void*> m_resource_depth_stencil;
+        std::vector<void*> m_resource_depth_stencil_read_only;
         RHI_Image_Layout m_layout               = RHI_Image_Undefined;
-		
-		std::vector<void*> m_resource_depth_stencil;
+				
         std::shared_ptr<RHI_Device> m_rhi_device;
 
 	private:

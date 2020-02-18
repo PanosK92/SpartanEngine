@@ -48,6 +48,14 @@ namespace Spartan
         safe_release(*reinterpret_cast<ID3D11UnorderedAccessView**>(&m_resource_unordered_access_view));
         safe_release(*reinterpret_cast<ID3D11RenderTargetView**>(&m_resource_render_target));
         safe_release(*reinterpret_cast<ID3D11Texture2D**>(&m_resource_texture));
+        for (void*& depth_stencil : m_resource_depth_stencil)
+        {
+            safe_release(*reinterpret_cast<ID3D11DepthStencilView**>(&depth_stencil));
+        }
+        for (void*& depth_stencil : m_resource_depth_stencil_read_only)
+        {
+            safe_release(*reinterpret_cast<ID3D11DepthStencilView**>(&depth_stencil));
+        }
 	}
 
 	inline bool CreateTexture(
@@ -123,7 +131,7 @@ namespace Spartan
 		return true;
 	}
 
-	inline bool CreateDepthStencilView(void* resource, vector<void*>& depth_stencil_views, const uint32_t array_size, const DXGI_FORMAT format, const shared_ptr<RHI_Device>& rhi_device)
+	inline bool CreateDepthStencilView(void* resource, vector<void*>& depth_stencil_views, const uint32_t array_size, const DXGI_FORMAT format, bool read_only, const shared_ptr<RHI_Device>& rhi_device)
 	{
 		// DSV
 		D3D11_DEPTH_STENCIL_VIEW_DESC dsv_desc	= {};
@@ -132,6 +140,7 @@ namespace Spartan
 		dsv_desc.Texture2DArray.MipSlice		= 0;
 		dsv_desc.Texture2DArray.ArraySize		= 1;
 		dsv_desc.Texture2DArray.FirstArraySlice	= 0;
+        dsv_desc.Flags                          = read_only ? D3D11_DSV_READ_ONLY_DEPTH | D3D11_DSV_READ_ONLY_STENCIL : 0;
 
 		for (uint32_t i = 0; i < array_size; i++)
 		{
@@ -274,8 +283,22 @@ namespace Spartan
                 m_resource_depth_stencil,
                 m_array_size,
                 format_dsv,
+                false,
                 m_rhi_device
             );
+
+            if (m_bind_flags & RHI_Texture_ReadOnlyDepthStencil)
+            {
+                result_ds = CreateDepthStencilView
+                (
+                    texture,
+                    m_resource_depth_stencil_read_only,
+                    m_array_size,
+                    format_dsv,
+                    true,
+                    m_rhi_device
+                );
+            }
         }
 
 		// RENDER TARGET VIEW
@@ -303,6 +326,14 @@ namespace Spartan
         safe_release(*reinterpret_cast<ID3D11UnorderedAccessView**>(&m_resource_unordered_access_view));
         safe_release(*reinterpret_cast<ID3D11RenderTargetView**>(&m_resource_render_target));
         safe_release(*reinterpret_cast<ID3D11Texture2D**>(&m_resource_texture));
+        for (void*& depth_stencil : m_resource_depth_stencil)
+        {
+            safe_release(*reinterpret_cast<ID3D11DepthStencilView**>(&depth_stencil));
+        }
+        for (void*& depth_stencil : m_resource_depth_stencil_read_only)
+        {
+            safe_release(*reinterpret_cast<ID3D11DepthStencilView**>(&depth_stencil));
+        }
 	}
 
 	inline bool TextureCube_Sampled
