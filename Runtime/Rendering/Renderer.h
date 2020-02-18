@@ -289,7 +289,7 @@ namespace Spartan
 		void Pass_LightDepth(RHI_CommandList* cmd_list);
         void Pass_DepthPrePass(RHI_CommandList* cmd_list);
 		void Pass_GBuffer(RHI_CommandList* cmd_list, Renderer_Object_Type object_type);
-		void Pass_Ssao(RHI_CommandList* cmd_list);
+		void Pass_Ssao(RHI_CommandList* cmd_list, bool use_stencil);
         void Pass_Ssr(RHI_CommandList* cmd_list, bool use_stencil);
         void Pass_Light(RHI_CommandList* cmd_list, bool use_stencil);
 		void Pass_Composition(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_out, bool use_stencil);
