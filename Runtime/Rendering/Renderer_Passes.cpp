@@ -172,7 +172,7 @@ namespace Spartan
             pipeline_state.shader_pixel                     = transparent_pass ? shader_p : nullptr;
             pipeline_state.blend_state                      = transparent_pass ? m_blend_alpha.get() : m_blend_disabled.get();
             pipeline_state.depth_stencil_state              = transparent_pass ? m_depth_stencil_enabled_disabled_read.get() : m_depth_stencil_enabled_disabled_write.get();
-            pipeline_state.render_target_color_textures[0]  = transparent_pass ? tex_color : nullptr;
+            pipeline_state.render_target_color_textures[0]  = tex_color; // always bind so we can clear to white (in case there are now transparent objects)
             pipeline_state.render_target_depth_texture      = tex_depth;
             pipeline_state.viewport                         = tex_depth->GetViewport();
             pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
@@ -185,7 +185,7 @@ namespace Spartan
                 pipeline_state.render_target_depth_stencil_texture_array_index  = array_index;
 
                 // Set clear values
-                pipeline_state.render_target_color_clear[0] = transparent_pass ? Vector4::One : state_dont_clear_color;
+                pipeline_state.render_target_color_clear[0] = Vector4::One;
                 pipeline_state.render_target_depth_clear    = transparent_pass ? state_dont_clear_depth : GetClearDepth();
 
                 const Matrix& view_projection = light->GetViewMatrix(array_index) * light->GetProjectionMatrix(array_index);
@@ -733,7 +733,7 @@ namespace Spartan
                         if (light->GetShadowsEnabled())
                         {
                             RHI_Texture* tex_depth = light->GetDepthTexture();
-                            RHI_Texture* tex_color = light->GetColorTexture();
+                            RHI_Texture* tex_color = light->GetShadowsTransparentEnabled() ? light->GetColorTexture() : m_tex_white.get();
 
                             if (light->GetLightType() == LightType_Directional)
                             {

@@ -144,8 +144,8 @@ PixelOutputType mainPS(Pixel_PosUv input)
         shadow.a = min(shadow.a, occlusion);
         
         // Modulate light intensity and color
-        light.intensity *= shadow.a;
-        light.color     *= shadow.rgb;
+        light.intensity  *= shadow.a;
+        light.color     	*= shadow.rgb;
     }
 
     // Create material
