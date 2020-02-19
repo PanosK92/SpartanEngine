@@ -1124,6 +1124,18 @@ namespace Spartan::vulkan_common
             vkDestroyFramebuffer(rhi_context->device, static_cast<VkFramebuffer>(frame_buffer), nullptr);
             frame_buffer = nullptr;
         }
+
+        inline void destroy(const RHI_Context* rhi_context, std::vector<void*>& frame_buffers)
+        {
+            for (auto& frame_buffer : frame_buffers)
+            {
+                if (!frame_buffer)
+                    return;
+
+                vkDestroyFramebuffer(rhi_context->device, static_cast<VkFramebuffer>(frame_buffer), nullptr);
+            }
+            frame_buffers.clear();
+        }
     }
 
     namespace surface

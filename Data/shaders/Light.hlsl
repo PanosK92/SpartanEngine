@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 							 
-//= TEXTURES ==========================================
+//= TEXTURES ===========================================
 Texture2D tex_albedo 					: register(t0);
 Texture2D tex_normal 					: register(t1);
 Texture2D tex_material 					: register(t2);
@@ -27,10 +27,13 @@ Texture2D tex_depth 					: register(t3);
 Texture2D tex_ssao 						: register(t4);
 Texture2D tex_ssr                       : register(t5);
 Texture2D tex_frame                     : register(t6);
-Texture2DArray light_depth_directional 	: register(t7);
-TextureCube light_depth_point 			: register(t8);
-Texture2D light_depth_spot 				: register(t9);
-//=====================================================
+Texture2DArray light_directional_depth 	: register(t7);
+Texture2DArray light_directional_color 	: register(t8);
+TextureCube light_point_depth 			: register(t9);
+TextureCube light_point_color 			: register(t10);
+Texture2D light_spot_depth 				: register(t11);
+Texture2D light_spot_color 				: register(t12);
+//======================================================
 
 //= INCLUDES =====================      
 #include "BRDF.hlsl"              
@@ -75,17 +78,18 @@ PixelOutputType mainPS(Pixel_PosUv input)
 	
     // Fill light struct
     Light light;
-    light.color 	            = color.xyz;
-    light.position 	            = position.xyz;
-    light.intensity 			= intensity_range_angle_bias.x;
-    light.range 				= intensity_range_angle_bias.y;
-    light.angle 				= intensity_range_angle_bias.z;
-    light.bias					= intensity_range_angle_bias.w;
-    light.normal_bias 			= normalBias_shadow_volumetric_contact.x;
-    light.cast_shadows 		    = normalBias_shadow_volumetric_contact.y;
-    light.cast_contact_shadows 	= normalBias_shadow_volumetric_contact.z;
-    light.is_volumetric 	    = normalBias_shadow_volumetric_contact.w;
-    light.distance_to_pixel     = length(position_world - light.position);
+    light.color 	                = color.xyz;
+    light.position 	                = position.xyz;
+    light.intensity 			    = intensity_range_angle_bias.x;
+    light.range 				    = intensity_range_angle_bias.y;
+    light.angle 				    = intensity_range_angle_bias.z;
+    light.bias					    = intensity_range_angle_bias.w;
+    light.normal_bias 			    = normalBias_shadow_volumetric_contact.x;
+    light.cast_shadows 		        = normalBias_shadow_volumetric_contact.y;
+    light.cast_contact_shadows 	    = normalBias_shadow_volumetric_contact.z;
+    light.cast_transparent_shadows  = color.w;
+    light.is_volumetric 	        = normalBias_shadow_volumetric_contact.w;
+    light.distance_to_pixel         = length(position_world - light.position);
     #if DIRECTIONAL
     light.array_size    = 4;
     light.direction	    = direction.xyz; 
@@ -120,27 +124,28 @@ PixelOutputType mainPS(Pixel_PosUv input)
     
     // Shadow 
     {
-        float shadow = 1.0f;
+        float4 shadow = 1.0f;
         
         // Shadow mapping
         [branch]
         if (light.cast_shadows)
         {
-            shadow = Shadow_Map(uv, normal, depth_sample, position_world, light);
+            shadow = Shadow_Map(uv, normal, depth_sample, position_world, light, albedo_sample.a != 1.0f);
         }
         
         // Screen space shadows
         [branch]
         if (light.cast_contact_shadows)
         {
-            shadow = min(shadow, ScreenSpaceShadows(light, position_world, uv)); 
+            shadow.a = min(shadow.a, ScreenSpaceShadows(light, position_world, uv)); 
         }
     
         // Occlusion from texture and ssao
-        shadow = min(shadow, occlusion);
+        shadow.a = min(shadow.a, occlusion);
         
-        // Modulate light intensity
-        light.intensity *= shadow;
+        // Modulate light intensity and color
+        light.intensity *= shadow.a;
+        light.color     *= shadow.rgb;
     }
 
     // Create material

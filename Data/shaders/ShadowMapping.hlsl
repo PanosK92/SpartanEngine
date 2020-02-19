@@ -43,6 +43,57 @@ static const float g_shadow_poisson_filter_size = 5.0f;
 static const float g_pcf_filter_size = (sqrt((float)g_shadow_samples) - 1.0f) / 2.0f;
 
 /*------------------------------------------------------------------------------
+    DEPTH SAMPLING
+------------------------------------------------------------------------------*/
+float compare_depth(float3 uv, float compare)
+{
+    #if DIRECTIONAL
+    // float3 -> uv, slice
+    return light_directional_depth.SampleCmpLevelZero(sampler_compare_depth, uv, compare).r;
+    #elif POINT
+    // float3 -> direction
+    return light_point_depth.SampleCmpLevelZero(sampler_compare_depth, uv, compare).r;
+    #elif SPOT
+    // float3 -> uv, 0
+    return light_spot_depth.SampleCmpLevelZero(sampler_compare_depth, uv.xy, compare).r;
+    #endif
+
+    return 0.0f;
+}
+
+float sample_depth(float3 uv)
+{
+    #if DIRECTIONAL
+    // float3 -> uv, slice
+    return light_directional_depth.SampleLevel(sampler_point_clamp, uv, 0).r;
+    #elif POINT
+    // float3 -> direction
+    return light_point_depth.SampleLevel(sampler_point_clamp, uv, 0).r;
+    #elif SPOT
+    // float3 -> uv, 0
+    return light_spot_depth.SampleLevel(sampler_point_clamp, uv.xy, 0).r;
+    #endif
+
+    return 0.0f;
+}
+
+float4 sample_color(float3 uv)
+{
+    #if DIRECTIONAL
+    // float3 -> uv, slice
+    return light_directional_color.SampleLevel(sampler_point_clamp, uv, 0);
+    #elif POINT
+    // float3 -> direction
+    return light_point_color.SampleLevel(sampler_point_clamp, uv, 0);
+    #elif SPOT
+    // float3 -> uv, 0
+    return light_spot_color.SampleLevel(sampler_point_clamp, uv.xy, 0);
+    #endif
+
+    return 0.0f;
+}
+
+/*------------------------------------------------------------------------------
     PENUMBRA
 ------------------------------------------------------------------------------*/
 float2 vogel_disk_sample(uint sample_index, uint sample_count, float angle)
@@ -109,6 +160,23 @@ float Technique_Vogel(float3 uv, float compare)
     {
         float2 offset   = vogel_disk_sample(i, g_shadow_samples, vogel_angle) * g_shadow_texel_size * g_shadow_vogel_filter_size;
         shadow          += compare_depth(uv + float3(offset, 0.0f), compare);
+    } 
+
+    return shadow / (float)g_shadow_samples;
+}
+
+float4 Technique_Vogel_Color(float3 uv)
+{
+    float4 shadow       = 0.0f;
+    float vogel_angle   = interleaved_gradient_noise(g_shadow_resolution * uv.xy) * PI2;
+    
+    //float penumbra = Penumbra(vogel_angle, uv, compare, cascade);
+
+    [unroll]
+    for (uint i = 0; i < g_shadow_samples; i++)
+    {
+        float2 offset   = vogel_disk_sample(i, g_shadow_samples, vogel_angle) * g_shadow_texel_size * g_shadow_vogel_filter_size;
+        shadow          += sample_color(uv + float3(offset, 0.0f));
     } 
 
     return shadow / (float)g_shadow_samples;
@@ -225,13 +293,13 @@ float Technique_Pcf(float3 uv, float compare)
 /*------------------------------------------------------------------------------
     ENTRYPOINT
 ------------------------------------------------------------------------------*/
-float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, Light light)
+float4 Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, Light light, bool transparent_pixel)
 {
     float n_dot_l               = dot(normal, normalize(-light.direction));
     float cos_angle             = saturate(1.0f - n_dot_l);
     float3 scaled_normal_offset = normal * light.normal_bias * cos_angle * g_shadow_texel_size  * 10;
     float3 position_world       = world_pos + scaled_normal_offset;
-    float shadow                = 1.0f;
+    float4 shadow               = 1.0f;
         
     #if DIRECTIONAL
     {
@@ -246,10 +314,15 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, Light 
             {   
                 // Sample primary cascade
                 float compare_depth = pos.z + (light.bias * (cascade + 1));
-                shadow              = SampleShadowMap(float3(pos.xy, cascade), compare_depth);
-                float cascade_lerp  = (max3(abs(pos)) - 0.9f);
+                shadow.a            = SampleShadowMap(float3(pos.xy, cascade), compare_depth);             
+                [branch]
+                if (light.cast_transparent_shadows && shadow.a == 1.0f && !transparent_pixel)
+                {
+                    shadow = Technique_Vogel_Color(float3(pos.xy, cascade));
+                }
 
                 // If we are close to the edge of the primary cascade and a secondary cascade exists, lerp with it.
+                float cascade_lerp  = (max3(abs(pos)) - 0.9f);
                 [branch]
                 if (cascade_lerp > 0.0f && cascade < light.array_size - 1)
                 {
@@ -263,7 +336,13 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, Light 
                     float shadow_secondary  = SampleShadowMap(float3(pos.xy, cacade_secondary), compare_depth);
 
                     // Blend cascades   
-                    shadow = lerp(shadow, shadow_secondary, cascade_lerp);
+                    shadow.a = lerp(shadow.a, shadow_secondary, cascade_lerp);
+                    
+                    [branch]
+                    if (light.cast_transparent_shadows && shadow.a == 1.0f && !transparent_pixel)
+                    {
+                        shadow = lerp(shadow, Technique_Vogel_Color(float3(pos.xy, cacade_secondary)), cascade_lerp);
+                    }
                 }
 
                 break;
@@ -278,7 +357,13 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, Light 
 			uint projection_index   = direction_to_cube_face_index(light.direction);
             float pos_z             = project_depth(position_world, light_view_projection[projection_index]);   
             float compare_depth     = pos_z + light.bias;
-            return SampleShadowMap(light.direction, compare_depth);
+            shadow.a                = SampleShadowMap(light.direction, compare_depth);
+            
+            [branch]
+            if (light.cast_transparent_shadows && shadow.a == 1.0f && !transparent_pixel)
+            {
+                shadow = Technique_Vogel_Color(light.direction);
+            }
         }
     }
     #elif SPOT
@@ -288,7 +373,13 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, Light 
         {
             float3 pos_clip     = project(position_world, light_view_projection[0]);
             float compare_depth = pos_clip.z + light.bias;
-            return SampleShadowMap(float3(pos_clip.xy, 0.0f), compare_depth);
+            shadow.a             = SampleShadowMap(float3(pos_clip.xy, 0.0f), compare_depth);
+            
+            [branch]
+            if (light.cast_transparent_shadows && shadow.a == 1.0f && !transparent_pixel)
+            {
+                shadow = Technique_Vogel_Color(float3(pos_clip.xy, 0.0f));
+            }
         }
     }
     #endif
