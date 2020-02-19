@@ -170,7 +170,7 @@ namespace Spartan
             static RHI_PipelineState pipeline_state;
             pipeline_state.shader_vertex                    = shader_v;
             pipeline_state.shader_pixel                     = transparent_pass ? shader_p : nullptr;
-            pipeline_state.blend_state                      = transparent_pass ? m_blend_multiply.get() : m_blend_disabled.get();
+            pipeline_state.blend_state                      = transparent_pass ? m_blend_alpha.get() : m_blend_disabled.get();
             pipeline_state.depth_stencil_state              = transparent_pass ? m_depth_stencil_enabled_disabled_read.get() : m_depth_stencil_enabled_disabled_write.get();
             pipeline_state.render_target_color_textures[0]  = transparent_pass ? tex_color : nullptr;
             pipeline_state.render_target_depth_texture      = tex_depth;
