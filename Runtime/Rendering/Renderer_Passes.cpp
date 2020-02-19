@@ -77,9 +77,16 @@ namespace Spartan
         // Runs only once
         Pass_BrdfSpecularLut(cmd_list);
 
+        bool draw_transparent_objects = !m_entities[Renderer_Object_Transparent].empty();
+
         // Depth
         {
-            Pass_LightDepth(cmd_list);
+            Pass_LightShadow(cmd_list, Renderer_Object_Opaque);
+            if (draw_transparent_objects)
+            {
+                Pass_LightShadow(cmd_list, Renderer_Object_Transparent);
+            }
+
             if (GetOptionValue(Render_DepthPrepass))
             {
                 Pass_DepthPrePass(cmd_list);
@@ -88,9 +95,7 @@ namespace Spartan
 
         // G-Buffer to Composition
         {
-            // SSR and SSAO need pixels outside of the stencil in the transparent pass, how to solve this ?
-
-            // Lighting for opaque objects
+            // Lighting
             Pass_GBuffer(cmd_list, Renderer_Object_Opaque);
             Pass_Ssao(cmd_list, false);
             Pass_Ssr(cmd_list, false);
@@ -98,9 +103,8 @@ namespace Spartan
             Pass_Composition(cmd_list, m_render_targets[RenderTarget_Composition_Hdr], false);
 
             // Lighting for transparent objects
-            if (!m_entities[Renderer_Object_Transparent].empty())
+            if (draw_transparent_objects)
             {
-                // Re-run passes
                 Pass_GBuffer(cmd_list, Renderer_Object_Transparent);
                 Pass_Ssao(cmd_list, true);
                 Pass_Ssr(cmd_list, true);
@@ -123,61 +127,68 @@ namespace Spartan
         }
 	}
 
-	void Renderer::Pass_LightDepth(RHI_CommandList* cmd_list)
+	void Renderer::Pass_LightShadow(RHI_CommandList* cmd_list, Renderer_Object_Type object_type)
 	{
-        // Description: All the opaque meshes are rendered (from the lights point of view),
-        // outputting just their depth information into a depth map.
+        // All opaque objects are rendered from the lights point of view.
+        // Opaque objects write their depth information to a depth buffer, using just a vertex shader.
+        // Transparent objects, read the opaque depth but don't write their own, instead, they write their color information using a pixel shader.
 
 		// Acquire shader
-		const auto& shader_depth = m_shaders[Shader_Depth_V];
-		if (!shader_depth->IsCompiled())
+		RHI_Shader* shader_v = m_shaders[Shader_Depth_V].get();
+        RHI_Shader* shader_p = m_shaders[Shader_Depth_P].get();
+		if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
 			return;
 
-        // Get opaque entities
-        const auto& entities_opaque = m_entities[Renderer_Object_Opaque];
-        if (entities_opaque.empty())
+        // Get entities
+        const auto& entities = m_entities[object_type];
+        if (entities.empty())
             return;
 
-        // Get light entities
-		const auto& entities_light = m_entities[Renderer_Object_Light];
+        bool transparent_pass = object_type == Renderer_Object_Transparent;
 
+        // Go through all of the lights
+		const auto& entities_light = m_entities[Renderer_Object_Light];
         for (uint32_t light_index = 0; light_index < entities_light.size(); light_index++)
         {
             const Light* light = entities_light[light_index]->GetComponent<Light>().get();
 
-            // Light can be null if it just got removed and our buffer doesn't update till the next frame
-            if (!light)
+            // Skip some obvious cases
+            if (!light || !light->GetShadowsEnabled())
                 continue;
 
-            // Skip if it doesn't need to cast shadows
-            if (!light->GetShadowsEnabled())
+            // Skip lights that don't cast transparent shadows (if this is a transparent pass)
+            if (transparent_pass && !light->GetShadowsTransparentEnabled())
                 continue;
 
-            // Acquire light's shadow map
-            const auto& shadow_map = light->GetShadowMap();
-            if (!shadow_map)
+            // Acquire light's shadow maps
+            RHI_Texture* tex_depth = light->GetDepthTexture();
+            RHI_Texture* tex_color = light->GetColorTexture();
+            if (!tex_depth)
                 continue;
 
             // Set render state
             static RHI_PipelineState pipeline_state;
-            pipeline_state.shader_vertex                = shader_depth.get();
-            pipeline_state.shader_pixel                 = nullptr;
-            pipeline_state.blend_state                  = m_blend_disabled.get();
-            pipeline_state.depth_stencil_state          = m_depth_stencil_enabled_disabled_write.get();
-            pipeline_state.render_target_depth_texture  = shadow_map.get();
-            pipeline_state.viewport                     = shadow_map->GetViewport();
-            pipeline_state.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
-            pipeline_state.pass_name                    = "Pass_LightDepth";
+            pipeline_state.shader_vertex                    = shader_v;
+            pipeline_state.shader_pixel                     = transparent_pass ? shader_p : nullptr;
+            pipeline_state.blend_state                      = transparent_pass ? m_blend_multiply.get() : m_blend_disabled.get();
+            pipeline_state.depth_stencil_state              = transparent_pass ? m_depth_stencil_enabled_disabled_read.get() : m_depth_stencil_enabled_disabled_write.get();
+            pipeline_state.render_target_color_textures[0]  = transparent_pass ? tex_color : nullptr;
+            pipeline_state.render_target_depth_texture      = tex_depth;
+            pipeline_state.viewport                         = tex_depth->GetViewport();
+            pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
+            pipeline_state.pass_name                        = transparent_pass ? "Pass_LightShadowTransparent" : "Pass_LightShadow";
 
-            for (uint32_t shadow_array_index = 0; shadow_array_index < shadow_map->GetArraySize(); shadow_array_index++)
+            for (uint32_t array_index = 0; array_index < tex_depth->GetArraySize(); array_index++)
             {
-                // Clear every shadow map
-                pipeline_state.render_target_depth_clear = GetClearDepth();
+                // Set render target texture array index
+                pipeline_state.render_target_color_texture_array_index          = array_index;
+                pipeline_state.render_target_depth_stencil_texture_array_index  = array_index;
 
-                const Matrix& view_projection = light->GetViewMatrix(shadow_array_index) * light->GetProjectionMatrix(shadow_array_index);
+                // Set clear values
+                pipeline_state.render_target_color_clear[0] = transparent_pass ? Vector4::One : state_dont_clear_color;
+                pipeline_state.render_target_depth_clear    = transparent_pass ? state_dont_clear_depth : GetClearDepth();
 
-                // Set appropriate array index
-                pipeline_state.render_target_depth_array_index = shadow_array_index;
+                const Matrix& view_projection = light->GetViewMatrix(array_index) * light->GetProjectionMatrix(array_index);
 
                 // Set appropriate rasterizer state
                 if (light->GetLightType() == LightType_Directional)
@@ -194,9 +205,12 @@ namespace Spartan
 
                 if (cmd_list->Begin(pipeline_state))
                 {
-                    for (uint32_t entity_index = 0; entity_index < static_cast<uint32_t>(entities_opaque.size()); entity_index++)
+                    // Only useful to minimize D3D11 state changes (Vulkan backend is smarter)
+                    uint32_t m_set_material_id = 0;
+
+                    for (uint32_t entity_index = 0; entity_index < static_cast<uint32_t>(entities.size()); entity_index++)
                     {
-                        Entity* entity = entities_opaque[entity_index];
+                        Entity* entity = entities[entity_index];
 
                         // Acquire renderable component
                         const auto& renderable = entity->GetRenderable_PtrRaw();
@@ -207,23 +221,37 @@ namespace Spartan
                         if (!renderable->GetCastShadows())
                             continue;
 
+                        // Acquire geometry
+                        const auto& model = renderable->GeometryModel();
+                        if (!model || !model->GetVertexBuffer() || !model->GetIndexBuffer())
+                            continue;
+
                         // Acquire material
                         const auto& material = renderable->GetMaterial();
                         if (!material)
                             continue;
 
-                        // Skip transparent meshes (for now)
-                        if (material->GetColorAlbedo().w < 1.0f)
-                            continue;
-
                         // Skip objects outside of the view frustum
-                        if (!light->IsInViewFrustrum(renderable, shadow_array_index))
+                        if (!light->IsInViewFrustrum(renderable, array_index))
                             continue;
 
-                        // Acquire geometry
-                        const auto& model = renderable->GeometryModel();
-                        if (!model || !model->GetVertexBuffer() || !model->GetIndexBuffer())
-                            continue;
+                        // Bind material
+                        if (m_set_material_id != material->GetId())
+                        {
+                            // Bind material textures
+                            RHI_Texture* tex_albedo = material->GetTexture_PtrRaw(TextureType_Albedo);
+                            cmd_list->SetTexture(0, tex_albedo ? tex_albedo : m_tex_white.get());
+
+                            // Update uber buffer with material properties
+                            m_buffer_uber_cpu.mat_albedo    = material->GetColorAlbedo();
+                            m_buffer_uber_cpu.mat_tiling_uv = material->GetTiling();
+                            m_buffer_uber_cpu.mat_offset_uv = material->GetOffset();
+
+                            // Update constant buffer
+                            UpdateUberBuffer();
+
+                            m_set_material_id = material->GetId();
+                        }
 
                         // Bind geometry
                         cmd_list->SetBufferIndex(model->GetIndexBuffer());
@@ -231,7 +259,7 @@ namespace Spartan
 
                         // Update uber buffer with cascade transform
                         m_buffer_object_cpu.object = entity->GetTransform_PtrRaw()->GetMatrix() * view_projection;
-                        if (!UpdateObjectBuffer(cmd_list, shadow_array_index))
+                        if (!UpdateObjectBuffer(cmd_list, array_index))
                             continue;
 
                         cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
@@ -702,22 +730,25 @@ namespace Spartan
                         UpdateLightBuffer(light);
 
                         // Set shadow map
-                        if (RHI_Texture* shadow_map = light->GetShadowMap().get())
+                        if (light->GetShadowsEnabled())
                         {
-                            if (light->GetShadowsEnabled())
+                            RHI_Texture* tex_depth = light->GetDepthTexture();
+                            RHI_Texture* tex_color = light->GetColorTexture();
+
+                            if (light->GetLightType() == LightType_Directional)
                             {
-                                if (light->GetLightType() == LightType_Directional)
-                                {
-                                    cmd_list->SetTexture(7, shadow_map);
-                                }
-                                else if (light->GetLightType() == LightType_Point)
-                                {
-                                    cmd_list->SetTexture(8, shadow_map);
-                                }
-                                else if (light->GetLightType() == LightType_Spot)
-                                {
-                                    cmd_list->SetTexture(9, shadow_map);
-                                }
+                                cmd_list->SetTexture(7, tex_depth);
+                                cmd_list->SetTexture(8, tex_color);
+                            }
+                            else if (light->GetLightType() == LightType_Point)
+                            {
+                                cmd_list->SetTexture(9, tex_depth);
+                                cmd_list->SetTexture(10, tex_color);
+                            }
+                            else if (light->GetLightType() == LightType_Spot)
+                            {
+                                cmd_list->SetTexture(11, tex_depth);
+                                cmd_list->SetTexture(12, tex_color);
                             }
                         }
 

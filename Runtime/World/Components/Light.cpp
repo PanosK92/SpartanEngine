@@ -41,6 +41,8 @@ namespace Spartan
 	Light::Light(Context* context, Entity* entity, uint32_t id /*= 0*/) : IComponent(context, entity, id)
 	{
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_shadows_enabled, bool);
+        REGISTER_ATTRIBUTE_VALUE_VALUE(m_shadows_screen_space_enabled, bool);
+        REGISTER_ATTRIBUTE_VALUE_VALUE(m_shadows_transparent_enabled, bool);
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_range, float);
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_intensity, float);
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_angle_rad, float);
@@ -114,9 +116,9 @@ namespace Spartan
 
             ComputeViewMatrix();
 
-            if (m_shadow_map.texture)
+            if (m_shadow_map.texture_depth)
             {
-                for (uint32_t i = 0; i < m_shadow_map.texture->GetArraySize(); i++)
+                for (uint32_t i = 0; i < m_shadow_map.texture_depth->GetArraySize(); i++)
                 {
                     ComputeProjectionMatrix(i);
                 }
@@ -131,6 +133,7 @@ namespace Spartan
 		stream->Write(static_cast<uint32_t>(m_light_type));
 		stream->Write(m_shadows_enabled);
         stream->Write(m_shadows_screen_space_enabled);
+        stream->Write(m_shadows_transparent_enabled);
         stream->Write(m_volumetric_enabled);
 		stream->Write(m_color);
 		stream->Write(m_range);
@@ -145,6 +148,7 @@ namespace Spartan
 		SetLightType(static_cast<LightType>(stream->ReadAs<uint32_t>()));
 		stream->Read(&m_shadows_enabled);
         stream->Read(&m_shadows_screen_space_enabled);
+        stream->Read(&m_shadows_transparent_enabled);
         stream->Read(&m_volumetric_enabled);
 		stream->Read(&m_color);
 		stream->Read(&m_range);
@@ -185,7 +189,20 @@ namespace Spartan
         }
 	}
 
-	void Light::SetRange(float range)
+    void Light::SetShadowsTransparentEnabled(bool cast_transparent_shadows)
+    {
+        if (m_shadows_transparent_enabled == cast_transparent_shadows)
+            return;
+
+        m_shadows_transparent_enabled = cast_transparent_shadows;
+
+        if (m_shadows_transparent_enabled)
+        {
+            CreateShadowMap();
+        }
+    }
+
+    void Light::SetRange(float range)
 	{
 		m_range = Clamp(range, 0.0f, INFINITY);
 	}
@@ -242,7 +259,7 @@ namespace Spartan
 
 	bool Light::ComputeProjectionMatrix(uint32_t index /*= 0*/)
 	{
-		if (index >= m_shadow_map.texture->GetArraySize())
+		if (index >= m_shadow_map.texture_depth->GetArraySize())
         {
             LOG_ERROR_INVALID_PARAMETER();
             return false;
@@ -261,8 +278,8 @@ namespace Spartan
 		}
 		else
 		{
-			const float width			= static_cast<float>(m_shadow_map.texture->GetWidth());
-			const float height			= static_cast<float>(m_shadow_map.texture->GetHeight());
+			const float width			= static_cast<float>(m_shadow_map.texture_depth->GetWidth());
+			const float height			= static_cast<float>(m_shadow_map.texture_depth->GetHeight());
 			const auto aspect_ratio		= width / height;
 			const float fov				= (m_light_type == LightType_Spot) ? m_angle_rad : 1.57079633f; // 1.57079633 = 90 deg
 			const float near_plane		= reverse_z ? m_range : 0.1f;
@@ -400,7 +417,7 @@ namespace Spartan
 
     uint32_t Light::GetShadowArraySize() const
     {
-        return m_shadow_map.texture ? m_shadow_map.texture->GetArraySize() : 0;
+        return m_shadow_map.texture_depth ? m_shadow_map.texture_depth->GetArraySize() : 0;
     }
 
     void Light::CreateShadowMap()
@@ -409,26 +426,56 @@ namespace Spartan
             return;
 
         const uint32_t resolution       = m_renderer->GetOptionValue<uint32_t>(Option_Value_ShadowResolution);
-        const bool resolution_changed   = m_shadow_map.texture ? (resolution != m_shadow_map.texture->GetWidth()) : false;
+        const bool resolution_changed   = m_shadow_map.texture_depth ? (resolution != m_shadow_map.texture_depth->GetWidth()) : false;
 
-        // Early exit if there was no change or the light doesn't cast any shadows
-		if ((!m_is_dirty && !resolution_changed) || !m_shadows_enabled)
+        // Early exit if there was no change
+		if ((!m_is_dirty && !resolution_changed))
 			return;
+
+        // Early exit if this light casts no shadows
+        if (!m_shadows_enabled)
+        {
+            m_shadow_map.texture_depth.reset();
+            return;
+        }
+
+        if (!m_shadows_transparent_enabled)
+        {
+            m_shadow_map.texture_color.reset();
+        }
 
 		if (GetLightType() == LightType_Directional)
 		{
-            m_shadow_map.texture    = make_unique<RHI_Texture2D>(m_context, resolution, resolution, RHI_Format_D32_Float, m_cascade_count);
-            m_shadow_map.slices     = vector<ShadowSlice>(m_cascade_count);
+            m_shadow_map.texture_depth = make_unique<RHI_Texture2D>(m_context, resolution, resolution, RHI_Format_D32_Float, m_cascade_count);
+
+            if (m_shadows_transparent_enabled)
+            {
+                m_shadow_map.texture_color = make_unique<RHI_Texture2D>(m_context, resolution, resolution, RHI_Format_R8G8B8A8_Unorm, m_cascade_count);
+            }
+
+            m_shadow_map.slices = vector<ShadowSlice>(m_cascade_count);
 		}
 		else if (GetLightType() == LightType_Point)
 		{
-            m_shadow_map.texture    = make_unique<RHI_TextureCube>(m_context, resolution, resolution, RHI_Format_D32_Float);
-            m_shadow_map.slices     = vector<ShadowSlice>(6);
+            m_shadow_map.texture_depth = make_unique<RHI_TextureCube>(m_context, resolution, resolution, RHI_Format_D32_Float);
+
+            if (m_shadows_transparent_enabled)
+            {
+                m_shadow_map.texture_color = make_unique<RHI_TextureCube>(m_context, resolution, resolution, RHI_Format_R8G8B8A8_Unorm);
+            }
+
+            m_shadow_map.slices = vector<ShadowSlice>(6);
 		}
 		else if (GetLightType() == LightType_Spot)
 		{
-            m_shadow_map.texture    = make_unique<RHI_Texture2D>(m_context, resolution, resolution, RHI_Format_D32_Float, 1);
-            m_shadow_map.slices     = vector<ShadowSlice>(1);
+            m_shadow_map.texture_depth  = make_unique<RHI_Texture2D>(m_context, resolution, resolution, RHI_Format_D32_Float, 1);
+
+            if (m_shadows_transparent_enabled)
+            {
+                m_shadow_map.texture_color = make_unique<RHI_Texture2D>(m_context, resolution, resolution, RHI_Format_R8G8B8A8_Unorm, 1);
+            }
+
+            m_shadow_map.slices = vector<ShadowSlice>(1);
 		}
 	}
 

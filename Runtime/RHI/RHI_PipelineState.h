@@ -67,13 +67,16 @@ namespace Spartan
         void* unordered_access_view                                                 = nullptr;
         bool render_target_depth_texture_read_only                                  = false;
 
+        // Texture array indices
+        uint32_t render_target_color_texture_array_index            = 0;
+        uint32_t render_target_depth_stencil_texture_array_index    = 0;
+
         // Dynamic constant buffers
         int dynamic_constant_buffer_slot = 2; // such a hack, must fix
 
         // Clear values
         float render_target_depth_clear                                         = state_dont_clear_depth;
         uint8_t render_target_stencil_clear                                     = state_dont_clear_stencil;
-        uint32_t render_target_depth_array_index                                = 0;
         Math::Vector4 render_target_color_clear[state_max_render_target_count]  = { state_dont_clear_color };
 
         // Profiling

@@ -39,7 +39,7 @@ Platform | API | Status | Quality | Binaries | :+1:
 - Bloom (Based on a study of Resident Evil 2's RE Engine)
 - Custom mip chain generation (Higher texture fidelity using Lanczos3 scaling)
 - Lights (Directional, point and spot lights)
-- Shadows (Cascaded and omnidirectional shadow mapping with vogel filtering)
+- Shadows with colored translucency (Cascaded and omnidirectional shadow mapping with vogel filtering)
 - Font rendering
 - Frustum culling
 - Per-Pixel motion blur

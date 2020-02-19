@@ -56,7 +56,8 @@ namespace Spartan
 
     struct ShadowMap
     {
-        std::shared_ptr<RHI_Texture> texture;
+        std::shared_ptr<RHI_Texture> texture_color;
+        std::shared_ptr<RHI_Texture> texture_depth;
         std::vector<ShadowSlice> slices;
     };
 
@@ -87,8 +88,11 @@ namespace Spartan
 		bool GetShadowsEnabled() const { return m_shadows_enabled; }
 		void SetShadowsEnabled(bool cast_shadows);
 
-        bool GetScreenSpaceShadowsEnabled() const                      { return m_shadows_screen_space_enabled; }
-        void SetScreenSpaceShadowsEnabled(bool cast_contact_shadows)   { m_shadows_screen_space_enabled = cast_contact_shadows; }
+        bool GetShadowsScreenSpaceEnabled() const                      { return m_shadows_screen_space_enabled; }
+        void SetShadowsScreenSpaceEnabled(bool cast_contact_shadows)   { m_shadows_screen_space_enabled = cast_contact_shadows; }
+
+        bool GetShadowsTransparentEnabled() const { return m_shadows_transparent_enabled; }
+        void SetShadowsTransparentEnabled(bool cast_transparent_shadows);
 
         bool GetVolumetricEnabled() const               { return m_volumetric_enabled; }
         void SetVolumetricEnabled(bool is_volumetric)   { m_volumetric_enabled = is_volumetric; }
@@ -110,7 +114,8 @@ namespace Spartan
 		const Math::Matrix& GetViewMatrix(uint32_t index = 0) const;
 		const Math::Matrix& GetProjectionMatrix(uint32_t index = 0) const;
 
-		const auto& GetShadowMap() const { return m_shadow_map.texture; }
+		RHI_Texture* GetDepthTexture() const { return m_shadow_map.texture_depth.get(); }
+        RHI_Texture* GetColorTexture() const { return m_shadow_map.texture_color.get(); }
         uint32_t GetShadowArraySize() const;
         void CreateShadowMap();
 
@@ -124,6 +129,7 @@ namespace Spartan
 		LightType m_light_type	            = LightType_Directional;
 		bool m_shadows_enabled		        = true;
         bool m_shadows_screen_space_enabled = true;
+        bool m_shadows_transparent_enabled  = true;
         bool m_volumetric_enabled           = true;
 		float m_range			            = 10.0f;
 		float m_intensity		            = 5.0f;

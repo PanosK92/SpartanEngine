@@ -199,24 +199,28 @@ namespace Spartan
         {
             // Get depth stencil (if any)
             void* depth_stencil = nullptr;
-            if (pipeline_state.render_target_depth_texture_read_only)
+            if (pipeline_state.render_target_depth_texture)
             {
-                depth_stencil = (pipeline_state.render_target_depth_texture ? pipeline_state.render_target_depth_texture->GetResource_DepthStencilReadOnly() : nullptr);
-            }
-            else
-            {
-                depth_stencil = (pipeline_state.render_target_depth_texture ? pipeline_state.render_target_depth_texture->GetResource_DepthStencil(pipeline_state.render_target_depth_array_index) : nullptr);
+                if (pipeline_state.render_target_depth_texture_read_only)
+                {
+                    depth_stencil = pipeline_state.render_target_depth_texture->GetResource_DepthStencilViewReadOnly(pipeline_state.render_target_depth_stencil_texture_array_index);
+                }
+                else
+                {
+                    depth_stencil = pipeline_state.render_target_depth_texture->GetResource_DepthStencilView(pipeline_state.render_target_depth_stencil_texture_array_index);
+                }
             }
 
+            // Unordered view
             if (pipeline_state.unordered_access_view)
             {
                 const void* resource_array[1] = { pipeline_state.unordered_access_view };
                 m_rhi_device->GetContextRhi()->device_context->CSSetUnorderedAccessViews(0, 1, reinterpret_cast<ID3D11UnorderedAccessView* const*>(&resource_array), nullptr);
             }
+            // Swapchain
             else if (pipeline_state.render_target_swapchain)
             {
-                const void* resource_array[1] = { pipeline_state.render_target_swapchain->GetResource_RenderTarget() };
-
+                const void* resource_array[1] = { pipeline_state.render_target_swapchain->GetResource_RenderTargetView() };
 
                 m_rhi_device->GetContextRhi()->device_context->OMSetRenderTargets
                 (
@@ -225,9 +229,10 @@ namespace Spartan
                     static_cast<ID3D11DepthStencilView*>(depth_stencil)
                 );
             }
+            // Textures
             else
             {
-                static vector<void*> render_targets(state_max_render_target_count);
+                void* render_targets[state_max_render_target_count];
                 uint32_t render_target_count = 0;
 
                 // Detect used render targets
@@ -235,7 +240,7 @@ namespace Spartan
                 {
                     if (pipeline_state.render_target_color_textures[i])
                     {
-                        render_targets[render_target_count++] = pipeline_state.render_target_color_textures[i]->GetResource_RenderTarget();
+                        render_targets[render_target_count++] = pipeline_state.render_target_color_textures[i]->GetResource_RenderTargetView(pipeline_state.render_target_color_texture_array_index);
                     }
                 }
 
@@ -243,7 +248,7 @@ namespace Spartan
                 m_rhi_device->GetContextRhi()->device_context->OMSetRenderTargets
                 (
                     static_cast<UINT>(render_target_count),
-                    reinterpret_cast<ID3D11RenderTargetView* const*>(render_targets.data()),
+                    reinterpret_cast<ID3D11RenderTargetView* const*>(render_targets),
                     static_cast<ID3D11DepthStencilView*>(depth_stencil)
                 );
             }
@@ -275,7 +280,7 @@ namespace Spartan
                 {
                     m_rhi_device->GetContextRhi()->device_context->ClearRenderTargetView
                     (
-                        static_cast<ID3D11RenderTargetView*>(const_cast<void*>(pipeline_state.render_target_swapchain->GetResource_RenderTarget())),
+                        static_cast<ID3D11RenderTargetView*>(const_cast<void*>(pipeline_state.render_target_swapchain->GetResource_RenderTargetView())),
                         pipeline_state.render_target_color_clear[i].Data()
                     );
                 }
@@ -283,7 +288,7 @@ namespace Spartan
                 {
                     m_rhi_device->GetContextRhi()->device_context->ClearRenderTargetView
                     (
-                        static_cast<ID3D11RenderTargetView*>(const_cast<void*>(pipeline_state.render_target_color_textures[i]->GetResource_RenderTarget())),
+                        static_cast<ID3D11RenderTargetView*>(const_cast<void*>(pipeline_state.render_target_color_textures[i]->GetResource_RenderTargetView(pipeline_state.render_target_color_texture_array_index))),
                         pipeline_state.render_target_color_clear[i].Data()
                     );
                 }
@@ -298,7 +303,7 @@ namespace Spartan
         {
             m_rhi_device->GetContextRhi()->device_context->ClearDepthStencilView
             (
-                static_cast<ID3D11DepthStencilView*>(pipeline_state.render_target_depth_texture->GetResource_DepthStencil(pipeline_state.render_target_depth_array_index)),
+                static_cast<ID3D11DepthStencilView*>(pipeline_state.render_target_depth_texture->GetResource_DepthStencilView(pipeline_state.render_target_depth_stencil_texture_array_index)),
                 clear_flags,
                 static_cast<FLOAT>(pipeline_state.render_target_depth_clear),
                 static_cast<UINT8>(pipeline_state.render_target_stencil_clear)
@@ -466,7 +471,7 @@ namespace Spartan
     void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture)
     {
 		uint32_t resource_start_slot    = slot;
-		void* resource_ptr              = texture ? texture->GetResource_View() : nullptr;
+		void* resource_ptr              = texture ? texture->GetResource_ShaderView() : nullptr;
 		uint32_t resource_count         = 1;
         bool is_compute                 = m_pipeline_state->unordered_access_view != nullptr;
 

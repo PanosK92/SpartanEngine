@@ -128,6 +128,7 @@ namespace Spartan
 	{
 		Shader_Gbuffer_V,
 		Shader_Depth_V,
+        Shader_Depth_P,
 		Shader_Quad_V,
 		Shader_Texture_P,
 		Shader_Fxaa_P,
@@ -286,7 +287,7 @@ namespace Spartan
 
 		// Passes
 		void Pass_Main(RHI_CommandList* cmd_list);
-		void Pass_LightDepth(RHI_CommandList* cmd_list);
+		void Pass_LightShadow(RHI_CommandList* cmd_list, Renderer_Object_Type object_type);
         void Pass_DepthPrePass(RHI_CommandList* cmd_list);
 		void Pass_GBuffer(RHI_CommandList* cmd_list, Renderer_Object_Type object_type);
 		void Pass_Ssao(RHI_CommandList* cmd_list, bool use_stencil);
@@ -354,6 +355,7 @@ namespace Spartan
         // Blend states 
         std::shared_ptr<RHI_BlendState> m_blend_disabled;
         std::shared_ptr<RHI_BlendState> m_blend_alpha;
+        std::shared_ptr<RHI_BlendState> m_blend_multiply;
         std::shared_ptr<RHI_BlendState> m_blend_additive;
 
         // Rasterizer states

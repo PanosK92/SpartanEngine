@@ -47,9 +47,9 @@ namespace Spartan
         m_rhi_device->Queue_WaitAll();
         m_data.clear();
         auto rhi_context = m_rhi_device->GetContextRhi();
-        vulkan_common::image::view::destroy(rhi_context, m_resource_view);
-        vulkan_common::image::view::destroy(rhi_context, m_resource_depth_stencil);
-        vulkan_common::frame_buffer::destroy(rhi_context, m_resource_render_target);
+        vulkan_common::image::view::destroy(rhi_context, m_resource_shader_view);
+        vulkan_common::image::view::destroy(rhi_context, m_resource_depth_stencil_view);
+        vulkan_common::frame_buffer::destroy(rhi_context, m_resource_render_target_view);
         vulkan_common::image::destroy(rhi_context, m_resource_texture);
 		vulkan_common::memory::free(m_rhi_device->GetContextRhi(), m_resource_memory);
 	}
@@ -99,9 +99,9 @@ namespace Spartan
         // Deduce usage flags
         VkImageUsageFlags usage_flags = 0;
         {
-            usage_flags |= (m_bind_flags & RHI_Texture_Sampled)                     ? VK_IMAGE_USAGE_SAMPLED_BIT                    : 0;
-            usage_flags |= (m_bind_flags & RHI_Texture_RenderTarget_DepthStencil)   ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT   : 0;
-            usage_flags |= (m_bind_flags & RHI_Texture_RenderTarget_Color)          ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT           : 0;
+            usage_flags |= (m_bind_flags & RHI_Texture_ShaderView)          ? VK_IMAGE_USAGE_SAMPLED_BIT                    : 0;
+            usage_flags |= (m_bind_flags & RHI_Texture_DepthStencilView)    ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT   : 0;
+            usage_flags |= (m_bind_flags & RHI_Texture_RenderTargetView)    ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT           : 0;
             if (use_staging)
             {
                 usage_flags |= use_staging ? VK_IMAGE_USAGE_TRANSFER_SRC_BIT : 0; // source of a transfer command.
@@ -253,7 +253,7 @@ namespace Spartan
             {
                 name += name.empty() ? "sampled" : "-sampled";
 
-                if (!vulkan_common::image::view::create(rhi_context, *image, m_resource_view, this))
+                if (!vulkan_common::image::view::create(rhi_context, *image, m_resource_shader_view, this))
                     return false;
             }
 
@@ -261,7 +261,7 @@ namespace Spartan
             if (IsRenderTargetDepthStencil())
             {
                 name += name.empty() ? "render_target_depth_stencil" : "-render_target_depth_stencil";
-                auto depth_stencil = m_resource_depth_stencil.emplace_back(nullptr);
+                auto depth_stencil = m_resource_depth_stencil_view.emplace_back(nullptr);
 
                 if (!vulkan_common::image::view::create(rhi_context, *image, depth_stencil, this))
                     return false;
@@ -276,7 +276,7 @@ namespace Spartan
 
             // Name the image and image view
             vulkan_common::debug::set_image_name(rhi_context->device, *image, name.c_str());
-            vulkan_common::debug::set_image_view_name(rhi_context->device, static_cast<VkImageView>(m_resource_view), name.c_str());
+            vulkan_common::debug::set_image_view_name(rhi_context->device, static_cast<VkImageView>(m_resource_shader_view), name.c_str());
         }
 
 		return true;
@@ -287,7 +287,7 @@ namespace Spartan
 	RHI_TextureCube::~RHI_TextureCube()
 	{
 		m_data.clear();
-        vkDestroyImageView(m_rhi_device->GetContextRhi()->device, reinterpret_cast<VkImageView>(m_resource_view), nullptr);
+        vkDestroyImageView(m_rhi_device->GetContextRhi()->device, reinterpret_cast<VkImageView>(m_resource_shader_view), nullptr);
 		vkDestroyImage(m_rhi_device->GetContextRhi()->device, reinterpret_cast<VkImage>(m_resource_texture), nullptr);
 		vulkan_common::memory::free(m_rhi_device->GetContextRhi(), m_resource_memory);
 	}

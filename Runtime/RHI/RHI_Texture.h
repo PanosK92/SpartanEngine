@@ -33,11 +33,11 @@ namespace Spartan
 {
 	enum RHI_Texture_Flags : uint16_t
 	{
-		RHI_Texture_Sampled			            = 1 << 0,
-        RHI_Texture_RenderTarget_Compute        = 1 << 1,
-		RHI_Texture_RenderTarget_Color	        = 1 << 2,
-		RHI_Texture_RenderTarget_DepthStencil	= 1 << 3,
-        RHI_Texture_ReadOnlyDepthStencil        = 1 << 4
+		RHI_Texture_ShaderView			        = 1 << 0,
+        RHI_Texture_UnorderedAccessView         = 1 << 1,
+		RHI_Texture_RenderTargetView	        = 1 << 2,
+		RHI_Texture_DepthStencilView	        = 1 << 3,
+        RHI_Texture_DepthStencilViewReadOnly    = 1 << 4
 	};
 
 	class SPARTAN_CLASS RHI_Texture : public RHI_Object, public IResource
@@ -85,10 +85,10 @@ namespace Spartan
         std::vector<std::byte> GetMipmap(uint32_t index);
 
         // Binding
-        bool IsSampled()                    const { return m_bind_flags & RHI_Texture_Sampled; }
-        bool IsRenderTargetCompute()        const { return m_bind_flags & RHI_Texture_RenderTarget_Compute; }
-        bool IsRenderTargetDepthStencil()   const { return m_bind_flags & RHI_Texture_RenderTarget_DepthStencil; }
-        bool IsRenderTargetColor()          const { return m_bind_flags & RHI_Texture_RenderTarget_Color; }
+        bool IsSampled()                    const { return m_bind_flags & RHI_Texture_ShaderView; }
+        bool IsRenderTargetCompute()        const { return m_bind_flags & RHI_Texture_UnorderedAccessView; }
+        bool IsRenderTargetDepthStencil()   const { return m_bind_flags & RHI_Texture_DepthStencilView; }
+        bool IsRenderTargetColor()          const { return m_bind_flags & RHI_Texture_RenderTargetView; }
 
         // Format type
         bool IsDepthFormat() const;
@@ -103,12 +103,12 @@ namespace Spartan
         const auto& GetViewport()   const { return m_viewport; }
 
 		// GPU resources
-		auto GetResource_View()                                     const { return m_resource_view; }
-        auto GetResource_UnorderedAccessView()	                    const { return m_resource_unordered_access_view; }
-		auto GetResource_DepthStencil(const uint32_t i = 0)         const { return i < m_resource_depth_stencil.size() ? m_resource_depth_stencil[i] : nullptr; }
-        auto GetResource_DepthStencilReadOnly(const uint32_t i = 0) const { return i < m_resource_depth_stencil_read_only.size() ? m_resource_depth_stencil_read_only[i] : nullptr; }
-        auto GetResource_RenderTarget()	                            const { return m_resource_render_target; }
-        auto GetResource_Texture()                                  const { return m_resource_texture; }
+		auto GetResource_ShaderView()                                   const { return m_resource_shader_view; }
+        auto GetResource_UnorderedAccessView()	                        const { return m_resource_unordered_access_view; }
+		auto GetResource_DepthStencilView(const uint32_t i = 0)         const { return i < m_resource_depth_stencil_view.size() ? m_resource_depth_stencil_view[i] : nullptr; }
+        auto GetResource_DepthStencilViewReadOnly(const uint32_t i = 0) const { return i < m_resource_depth_stencil_read_view_read_only.size() ? m_resource_depth_stencil_read_view_read_only[i] : nullptr; }
+        auto GetResource_RenderTargetView(const uint32_t i = 0)	        const { return i < m_resource_render_target_view.size() ? m_resource_render_target_view[i] : nullptr; }
+        auto GetResource_Texture()                                      const { return m_resource_texture; }
 
 	protected:
 		bool LoadFromFile_NativeFormat(const std::string& file_path);
@@ -132,13 +132,14 @@ namespace Spartan
 		std::vector<std::vector<std::byte>> m_data;
 		
 		// API
-		void* m_resource_view		            = nullptr;
+		void* m_resource_shader_view		            = nullptr;
         void* m_resource_unordered_access_view  = nullptr;
-		void* m_resource_render_target	        = nullptr;
+		
 		void* m_resource_texture		        = nullptr;
 		void* m_resource_memory			        = nullptr;
-        std::vector<void*> m_resource_depth_stencil;
-        std::vector<void*> m_resource_depth_stencil_read_only;
+        std::vector<void*> m_resource_render_target_view;
+        std::vector<void*> m_resource_depth_stencil_view;
+        std::vector<void*> m_resource_depth_stencil_read_view_read_only;
         RHI_Image_Layout m_layout               = RHI_Image_Undefined;
 				
         std::shared_ptr<RHI_Device> m_rhi_device;
