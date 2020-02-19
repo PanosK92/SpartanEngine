@@ -255,7 +255,7 @@ namespace Spartan
 			m_surface,
 			m_swap_chain_view,
             m_resource_texture,
-			m_resource_view,
+			m_resource_shader_view,
 			m_resource_view_acquired_semaphore
 		);
 
@@ -276,7 +276,7 @@ namespace Spartan
             m_rhi_device->GetContextRhi(),
 			m_surface,
 			m_swap_chain_view,
-			m_resource_view,
+			m_resource_shader_view,
 			m_resource_view_acquired_semaphore
 		);
 
@@ -312,7 +312,7 @@ namespace Spartan
             m_rhi_device->GetContextRhi(),
 			m_surface,
 			m_swap_chain_view,
-			m_resource_view,
+			m_resource_shader_view,
 			m_resource_view_acquired_semaphore
 		);
 
@@ -329,7 +329,7 @@ namespace Spartan
 			m_surface,
 			m_swap_chain_view,
             m_resource_texture,
-			m_resource_view,
+			m_resource_shader_view,
 			m_resource_view_acquired_semaphore
 		);
 

@@ -297,7 +297,8 @@ void Widget_Properties::ShowLight(shared_ptr<Light>& light) const
 		auto intensity				= light->GetIntensity();
 		auto angle					= light->GetAngle() * 179.0f;
 		auto shadows			    = light->GetShadowsEnabled();
-        auto shadows_screen_space   = light->GetScreenSpaceShadowsEnabled();
+        auto shadows_screen_space   = light->GetShadowsScreenSpaceEnabled();
+        auto shadows_transparent    = light->GetShadowsTransparentEnabled();
         auto volumetric             = light->GetVolumetricEnabled();
 		auto bias					= light->GetBias();
 		auto normal_bias			= light->GetNormalBias();
@@ -343,12 +344,19 @@ void Widget_Properties::ShowLight(shared_ptr<Light>& light) const
         // Screen space shadows
         ImGui::Text("Screen Space Shadows");
         ImGui::SameLine(ComponentProperty::g_column); ImGui::Checkbox("##light_shadows_screen_space", &shadows_screen_space);
+        ImGuiEx::Tooltip("Small scale shadows which add detail were surfaces meet, also known as contact shadows");
 
-        // Volumetric
         if (shadows)
         {
+            // Transparent shadows
+            ImGui::Text("Transparent Shadows");
+            ImGui::SameLine(ComponentProperty::g_column); ImGui::Checkbox("##light_shadows_transparent", &shadows_transparent);
+            ImGuiEx::Tooltip("Allows transparent objects to cast colored translucent shadows");
+
+            // Volumetric
             ImGui::Text("Volumetric");
             ImGui::SameLine(ComponentProperty::g_column); ImGui::Checkbox("##light_volumetric", &volumetric);
+            ImGuiEx::Tooltip("The shadow map is used to determine which parts of the \"air\" should be lit");
         }
 
 		// Bias
@@ -380,7 +388,8 @@ void Widget_Properties::ShowLight(shared_ptr<Light>& light) const
 		//= MAP ======================================================================================================================
         if (intensity != light->GetIntensity())						        light->SetIntensity(intensity);
         if (shadows != light->GetShadowsEnabled())				            light->SetShadowsEnabled(shadows);
-        if (shadows_screen_space != light->GetScreenSpaceShadowsEnabled())  light->SetScreenSpaceShadowsEnabled(shadows_screen_space);
+        if (shadows_screen_space != light->GetShadowsScreenSpaceEnabled())  light->SetShadowsScreenSpaceEnabled(shadows_screen_space);
+        if (shadows_transparent != light->GetShadowsTransparentEnabled())   light->SetShadowsTransparentEnabled(shadows_transparent);
         if (volumetric != light->GetVolumetricEnabled())				    light->SetVolumetricEnabled(volumetric);
 		if (bias != light->GetBias())								        light->SetBias(bias);
 		if (normal_bias != light->GetNormalBias())					        light->SetNormalBias(normal_bias);

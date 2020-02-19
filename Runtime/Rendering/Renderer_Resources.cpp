@@ -79,7 +79,8 @@ namespace Spartan
     {
         // blend_enabled, source_blend, dest_blend, blend_op, source_blend_alpha, dest_blend_alpha, blend_op_alpha, blend_factor
         m_blend_disabled    = make_shared<RHI_BlendState>(m_rhi_device, false);
-        m_blend_alpha       = make_shared<RHI_BlendState>(m_rhi_device, true, RHI_Blend_Src_Alpha,  RHI_Blend_Inv_Src_Alpha,    RHI_Blend_Operation_Add, RHI_Blend_One, RHI_Blend_One, RHI_Blend_Operation_Max);
+        m_blend_alpha       = make_shared<RHI_BlendState>(m_rhi_device, true, RHI_Blend_Src_Alpha,  RHI_Blend_Inv_Src_Alpha,    RHI_Blend_Operation_Add, RHI_Blend_One, RHI_Blend_One, RHI_Blend_Operation_Add);
+        m_blend_multiply    = make_shared<RHI_BlendState>(m_rhi_device, true, RHI_Blend_Dest_Color, RHI_Blend_Zero,             RHI_Blend_Operation_Add, RHI_Blend_One, RHI_Blend_One, RHI_Blend_Operation_Add);
         m_blend_additive    = make_shared<RHI_BlendState>(m_rhi_device, true, RHI_Blend_One,        RHI_Blend_One,              RHI_Blend_Operation_Add, RHI_Blend_One, RHI_Blend_One, RHI_Blend_Operation_Add);
     }
 
@@ -110,10 +111,10 @@ namespace Spartan
 
         // G-Buffer
         m_render_targets[RenderTarget_Gbuffer_Albedo]   = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R8G8B8A8_Unorm);
-        m_render_targets[RenderTarget_Gbuffer_Normal]   = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float);                                      // At Texture_Format_R8G8B8A8_UNORM, normals have noticeable banding
+        m_render_targets[RenderTarget_Gbuffer_Normal]   = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float);                                              // At Texture_Format_R8G8B8A8_UNORM, normals have noticeable banding
         m_render_targets[RenderTarget_Gbuffer_Material] = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R8G8B8A8_Unorm);
         m_render_targets[RenderTarget_Gbuffer_Velocity] = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16_Float);
-        m_render_targets[RenderTarget_Gbuffer_Depth]    = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_D32_Float_S8X24_Uint, RHI_Texture_ReadOnlyDepthStencil);  // Stencil is used to mask transparent objects and also has a read only version
+        m_render_targets[RenderTarget_Gbuffer_Depth]    = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_D32_Float_S8X24_Uint, 1, RHI_Texture_DepthStencilViewReadOnly);   // Stencil is used to mask transparent objects and also has a read only version
 
         // Light
         m_render_targets[RenderTarget_Light_Diffuse]    = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float);
@@ -142,7 +143,7 @@ namespace Spartan
         m_render_targets[RenderTarget_Ssao]             = make_unique<RHI_Texture2D>(m_context, width, height, m_render_targets[RenderTarget_Ssao_Raw]->GetFormat());                                                                           // Upscaled
 
         // SSR
-        m_render_targets[RenderTarget_Ssr] = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16_Float, 1, RHI_Texture_RenderTarget_Compute);
+        m_render_targets[RenderTarget_Ssr] = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16_Float, 1, RHI_Texture_UnorderedAccessView);
 
         // Bloom
         {
@@ -174,7 +175,9 @@ namespace Spartan
 
         // Depth Vertex
         m_shaders[Shader_Depth_V] = make_shared<RHI_Shader>(m_rhi_device);
-        m_shaders[Shader_Depth_V]->CompileAsync<RHI_Vertex_Pos>(m_context, Shader_Vertex, dir_shaders + "Depth.hlsl");
+        m_shaders[Shader_Depth_V]->CompileAsync<RHI_Vertex_PosTex>(m_context, Shader_Vertex, dir_shaders + "Depth.hlsl");
+        m_shaders[Shader_Depth_P] = make_shared<RHI_Shader>(m_rhi_device);
+        m_shaders[Shader_Depth_P]->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Depth.hlsl");
 
         // G-Buffer
         m_shaders[Shader_Gbuffer_V] = make_shared<RHI_Shader>(m_rhi_device);
