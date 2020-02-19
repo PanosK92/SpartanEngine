@@ -52,6 +52,7 @@ struct Light
 {
     bool    cast_shadows;
     bool    cast_contact_shadows;
+    bool    cast_transparent_shadows;
     bool    is_volumetric;
     float3  color;
     float   intensity;
@@ -139,41 +140,6 @@ inline float3x3 makeTBN(float3 n, float3 t)
     float3 b = cross(n, t);
     // create matrix
     return float3x3(t, b, n); 
-}
-
-/*------------------------------------------------------------------------------
-    DEPTH LIGHT
-------------------------------------------------------------------------------*/
-float compare_depth(float3 uv, float compare)
-{
-    #if DIRECTIONAL
-    // float3 -> uv, slice
-    return light_depth_directional.SampleCmpLevelZero(sampler_compare_depth, uv, compare).r;
-    #elif POINT
-    // float3 -> direction
-    return light_depth_point.SampleCmpLevelZero(sampler_compare_depth, uv, compare).r;
-    #elif SPOT
-    // float3 -> uv, 0
-    return light_depth_spot.SampleCmpLevelZero(sampler_compare_depth, uv.xy, compare).r;
-    #endif
-
-    return 0.0f;
-}
-
-float sample_depth(float3 uv)
-{
-    #if DIRECTIONAL
-    // float3 -> uv, slice
-    return light_depth_directional.SampleLevel(sampler_point_clamp, uv, 0).r;
-    #elif POINT
-    // float3 -> direction
-    return light_depth_point.SampleLevel(sampler_point_clamp, uv, 0).r;
-    #elif SPOT
-    // float3 -> uv, 0
-    return light_depth_spot.SampleLevel(sampler_point_clamp, uv.xy, 0).r;
-    #endif
-
-    return 0.0f;
 }
 
 /*------------------------------------------------------------------------------
