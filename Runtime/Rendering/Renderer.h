@@ -355,7 +355,6 @@ namespace Spartan
         // Blend states 
         std::shared_ptr<RHI_BlendState> m_blend_disabled;
         std::shared_ptr<RHI_BlendState> m_blend_alpha;
-        std::shared_ptr<RHI_BlendState> m_blend_multiply;
         std::shared_ptr<RHI_BlendState> m_blend_additive;
 
         // Rasterizer states

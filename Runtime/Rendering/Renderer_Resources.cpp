@@ -80,7 +80,6 @@ namespace Spartan
         // blend_enabled, source_blend, dest_blend, blend_op, source_blend_alpha, dest_blend_alpha, blend_op_alpha, blend_factor
         m_blend_disabled    = make_shared<RHI_BlendState>(m_rhi_device, false);
         m_blend_alpha       = make_shared<RHI_BlendState>(m_rhi_device, true, RHI_Blend_Src_Alpha,  RHI_Blend_Inv_Src_Alpha,    RHI_Blend_Operation_Add, RHI_Blend_One, RHI_Blend_One, RHI_Blend_Operation_Add);
-        m_blend_multiply    = make_shared<RHI_BlendState>(m_rhi_device, true, RHI_Blend_Dest_Color, RHI_Blend_Zero,             RHI_Blend_Operation_Add, RHI_Blend_One, RHI_Blend_One, RHI_Blend_Operation_Add);
         m_blend_additive    = make_shared<RHI_BlendState>(m_rhi_device, true, RHI_Blend_One,        RHI_Blend_One,              RHI_Blend_Operation_Add, RHI_Blend_One, RHI_Blend_One, RHI_Blend_Operation_Add);
     }
 
