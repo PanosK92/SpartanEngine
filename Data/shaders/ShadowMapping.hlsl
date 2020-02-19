@@ -316,9 +316,9 @@ float4 Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, Light
                 float compare_depth = pos.z + (light.bias * (cascade + 1));
                 shadow.a            = SampleShadowMap(float3(pos.xy, cascade), compare_depth);             
                 [branch]
-                if (light.cast_transparent_shadows && shadow.a == 1.0f && !transparent_pixel)
+                if (light.cast_transparent_shadows && !transparent_pixel)
                 {
-                    shadow = Technique_Vogel_Color(float3(pos.xy, cascade));
+                    shadow *= Technique_Vogel_Color(float3(pos.xy, cascade));
                 }
 
                 // If we are close to the edge of the primary cascade and a secondary cascade exists, lerp with it.
@@ -362,7 +362,7 @@ float4 Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, Light
             [branch]
             if (light.cast_transparent_shadows && shadow.a == 1.0f && !transparent_pixel)
             {
-                shadow = Technique_Vogel_Color(light.direction);
+                shadow *= Technique_Vogel_Color(light.direction);
             }
         }
     }
@@ -378,7 +378,7 @@ float4 Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, Light
             [branch]
             if (light.cast_transparent_shadows && shadow.a == 1.0f && !transparent_pixel)
             {
-                shadow = Technique_Vogel_Color(float3(pos_clip.xy, 0.0f));
+                shadow *= Technique_Vogel_Color(float3(pos_clip.xy, 0.0f));
             }
         }
     }
