@@ -136,10 +136,8 @@ namespace Spartan
         }
 
         // SSAO
-        float ssao_scale                                = m_option_values[Option_Value_Ssao_Scale];
-        m_render_targets[RenderTarget_Ssao_Raw]         = make_unique<RHI_Texture2D>(m_context, static_cast<uint32_t>(width * ssao_scale), static_cast<uint32_t>(height * ssao_scale), RHI_Format_R8_Unorm);                                    // Raw
-        m_render_targets[RenderTarget_Ssao_Blurred]     = make_unique<RHI_Texture2D>(m_context, static_cast<uint32_t>(width * ssao_scale), static_cast<uint32_t>(height * ssao_scale), m_render_targets[RenderTarget_Ssao_Raw]->GetFormat());   // Blurred
-        m_render_targets[RenderTarget_Ssao]             = make_unique<RHI_Texture2D>(m_context, width, height, m_render_targets[RenderTarget_Ssao_Raw]->GetFormat());                                                                           // Upscaled
+        m_render_targets[RenderTarget_Ssao_Noisy]   = make_unique<RHI_Texture2D>(m_context, static_cast<uint32_t>(width), static_cast<uint32_t>(height), RHI_Format_R8_Unorm);
+        m_render_targets[RenderTarget_Ssao]         = make_unique<RHI_Texture2D>(m_context, static_cast<uint32_t>(width), static_cast<uint32_t>(height), RHI_Format_R8_Unorm);
 
         // SSR
         m_render_targets[RenderTarget_Ssr] = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16_Float, 1, RHI_Texture_UnorderedAccessView);

@@ -84,8 +84,7 @@ namespace Spartan
         Option_Value_Bloom_Intensity,
         Option_Value_Sharpen_Strength,
         Option_Value_Sharpen_Clamp, // Limits maximum amount of sharpening a pixel receives - Algorithm's default: 0.035f
-        Option_Value_Motion_Blur_Intensity,
-        Option_Value_Ssao_Scale
+        Option_Value_Motion_Blur_Intensity
     };
 
     enum Renderer_ToneMapping_Type
@@ -191,8 +190,7 @@ namespace Spartan
         RenderTarget_Composition_Ldr,
         RenderTarget_Composition_Ldr_2,
         // SSAO
-        RenderTarget_Ssao_Raw,
-        RenderTarget_Ssao_Blurred,
+        RenderTarget_Ssao_Noisy,
         RenderTarget_Ssao,
         // SSR
         RenderTarget_Ssr,
@@ -308,9 +306,9 @@ namespace Spartan
 		void Pass_Bloom(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
         void Pass_Upsample(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
         void Pass_Downsample(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out, Renderer_Shader_Type pixel_shader);
-		void Pass_BlurBox(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out, float sigma);
-		void Pass_BlurGaussian(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out, float sigma, float pixel_stride = 1.0f);
-		void Pass_BlurBilateralGaussian(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out, float sigma, float pixel_stride = 1.0f);
+		void Pass_BlurBox(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out, const float sigma, const float pixel_stride, const bool use_stencil);
+		void Pass_BlurGaussian(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out, const float sigma, const float pixel_stride = 1.0f);
+		void Pass_BlurBilateralGaussian(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out, const float sigma, const float pixel_stride = 1.0f, const bool use_stencil = false);
 		void Pass_Lines(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_out);
         void Pass_Outline(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_out);
 		void Pass_Icons(RHI_CommandList* cmd_list, RHI_Texture* tex_out);

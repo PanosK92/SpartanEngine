@@ -115,7 +115,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 #endif
 
 #if PASS_BLUR_BOX
-	color = Blur_Box(uv, tex, g_blur_sigma);
+	color = Blur_Box(uv, tex);
 #endif
 
 #if PASS_BLUR_GAUSSIAN

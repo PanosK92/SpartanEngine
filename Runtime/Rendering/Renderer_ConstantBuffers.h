@@ -63,9 +63,6 @@ namespace Spartan
 
         Math::Vector2 taa_jitter_offset_previous;
         Math::Vector2 taa_jitter_offset;
-
-        float ssao_scale;
-        Math::Vector3 padding;
     };
     
     // Medium frequency - Updates a few dozen times

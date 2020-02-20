@@ -106,8 +106,8 @@ static const float3 sampleKernel[64] =
 float mainPS(Pixel_PosUv input) : SV_TARGET
 {
 	float2 uv               = input.uv;
-    float3 center_pos       = get_position_from_depth(texDepth, uv / g_ssao_scale);
-    float3 center_normal    = get_normal(texNormal, uv / g_ssao_scale);		
+    float3 center_pos       = get_position_from_depth(texDepth, uv);
+    float3 center_normal    = get_normal(texNormal, uv);		
 
 	// Construct TBN
 	float3 noise	= unpack(texNoise.Sample(sampler_bilinear_wrap, input.uv * noiseScale).xyz);		
