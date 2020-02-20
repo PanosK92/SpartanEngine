@@ -19,22 +19,35 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-float4 Blur_Box(float2 uv, Texture2D tex, uint blur_size, uint stride = 1.0f)
+float4 Blur_Box(float2 uv, Texture2D tex)
 {
 	float4 result 	= float4(0.0f, 0.0f, 0.0f, 0.0f);
-	float temp 		= float(-int(blur_size)) * 0.5f + 0.5f;
+	float temp 		= float(-int(g_blur_sigma)) * 0.5f + 0.5f;
 	float2 hlim 	= float2(temp, temp);
     
-	for (uint i = 0; i < blur_size; i += stride)
+	for (float i = 0; i < g_blur_sigma; i += g_blur_direction.x)
 	{
-		for (uint j = 0; j < blur_size; j += stride) 
+		for (float j = 0; j < g_blur_sigma; j += g_blur_direction.y) 
 		{
 			float2 offset = (hlim + float2(float(i), float(j))) * g_texel_size;
 			result += tex.SampleLevel(sampler_bilinear_clamp, uv + offset, 0);
 		}
 	}
 
-	return result / float(blur_size * blur_size);
+	return result / float(g_blur_sigma * g_blur_sigma);
+}
+
+float4 Blur_Gaussian_Fast(float2 uv, Texture2D tex)
+{
+  float4 color  = 0.0f;
+  float2 off1   = float2(1.3846153846, 1.3846153846) * g_blur_direction;
+  float2 off2   = float2(3.2307692308, 3.2307692308) * g_blur_direction;
+  color += tex.SampleLevel(sampler_bilinear_clamp, uv, 0) * 0.2270270270;
+  color += tex.SampleLevel(sampler_bilinear_clamp, uv + (off1 / g_resolution), 0) * 0.3162162162;
+  color += tex.SampleLevel(sampler_bilinear_clamp, uv - (off1 / g_resolution), 0) * 0.3162162162;
+  color += tex.SampleLevel(sampler_bilinear_clamp, uv + (off2 / g_resolution), 0) * 0.0702702703;
+  color += tex.SampleLevel(sampler_bilinear_clamp, uv - (off2 / g_resolution), 0) * 0.0702702703;
+  return color;
 }
 
 // Calculates the gaussian blur weight for a given distance and sigmas

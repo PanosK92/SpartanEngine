@@ -53,9 +53,6 @@ cbuffer BufferFrame : register(b0)
     
     float2 g_taa_jitter_offset_previous;
 	float2 g_taa_jitter_offset;
-    
-	float g_ssao_scale;
-	float3 g_padding;
 };
 
 // Medium frequency - Updates multiple times per frame

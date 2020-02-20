@@ -128,7 +128,6 @@ void Widget_RenderOptions::Tick()
 
             // Screen space ambient occlusion
             ImGui::Checkbox("SSAO - Screen Space Ambient Occlusion", &do_ssao);
-            ImGui::SameLine(); render_option_float("##ssao_option_1", "Scale", Option_Value_Ssao_Scale);
             ImGui::Separator();
 
             // Screen space reflections

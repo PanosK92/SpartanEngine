@@ -515,9 +515,8 @@ namespace Spartan
             return;
         
         // Acquire render targets
-        auto& tex_ssao_raw      = m_render_targets[RenderTarget_Ssao_Raw];
-        auto& tex_ssao_blurred  = m_render_targets[RenderTarget_Ssao_Blurred];
-        auto& tex_ssao          = m_render_targets[RenderTarget_Ssao];
+        auto& tex_ssao_noisy    = m_render_targets[RenderTarget_Ssao_Noisy];
+        auto& tex_ssao_blurred  = m_render_targets[RenderTarget_Ssao];
         auto& tex_depth         = m_render_targets[RenderTarget_Gbuffer_Depth];
 
         // Set render state
@@ -528,11 +527,10 @@ namespace Spartan
         pipeline_state.blend_state                              = m_blend_disabled.get();
         pipeline_state.depth_stencil_state                      = !use_stencil ? m_depth_stencil_disabled.get() : m_depth_stencil_disabled_enabled_read.get();
         pipeline_state.vertex_buffer_stride                     = m_quad.GetVertexBuffer()->GetStride();
-        pipeline_state.render_target_color_textures[0]          = tex_ssao_raw.get();
-        pipeline_state.render_target_color_clear[0]             = use_stencil ? state_dont_clear_color : Vector4::Zero;
+        pipeline_state.render_target_color_textures[0]          = use_stencil ? tex_ssao_blurred.get() : tex_ssao_noisy.get();
         pipeline_state.render_target_depth_texture              = use_stencil ? tex_depth.get() : nullptr;
         pipeline_state.render_target_depth_texture_read_only    = use_stencil;
-        pipeline_state.viewport                                 = tex_ssao_raw->GetViewport();
+        pipeline_state.viewport                                 = tex_ssao_noisy->GetViewport();
         pipeline_state.primitive_topology                       = RHI_PrimitiveTopology_TriangleList;
         pipeline_state.pass_name                                = "Pass_Ssao";
 
@@ -540,9 +538,9 @@ namespace Spartan
         if (cmd_list->Begin(pipeline_state))
         {
             // Update uber buffer
-            m_buffer_uber_cpu.resolution = Vector2(tex_ssao_raw->GetWidth(), tex_ssao_raw->GetHeight());
+            m_buffer_uber_cpu.resolution = Vector2(tex_ssao_noisy->GetWidth(), tex_ssao_noisy->GetHeight());
             UpdateUberBuffer();
-        
+
             cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
             cmd_list->SetTexture(0, m_render_targets[RenderTarget_Gbuffer_Depth]);
@@ -553,24 +551,16 @@ namespace Spartan
             cmd_list->Submit();
         
             // Bilateral blur
-            const auto sigma = 2.0f;
+            const auto sigma        = 2.0f;
             const auto pixel_stride = 2.0f;
-            Pass_BlurBilateralGaussian(cmd_list, tex_ssao_raw, tex_ssao_blurred, sigma, pixel_stride);
-        
-            // Upscale to full size
-            float ssao_scale = m_option_values[Option_Value_Ssao_Scale];
-            if (ssao_scale < 1.0f)
-            {
-                Pass_Upsample(cmd_list, tex_ssao_blurred, tex_ssao);
-            }
-            else if (ssao_scale > 1.0f)
-            {
-                Pass_Downsample(cmd_list, tex_ssao_blurred, tex_ssao, Shader_Downsample_P);
-            }
-            else
-            {
-                tex_ssao_blurred.swap(tex_ssao);
-            }
+            Pass_BlurBilateralGaussian(
+                cmd_list,
+                use_stencil ? tex_ssao_blurred : tex_ssao_noisy,
+                use_stencil ? tex_ssao_noisy : tex_ssao_blurred,
+                sigma,
+                pixel_stride,
+                use_stencil
+            );
         }
 	}
 
@@ -1009,7 +999,7 @@ namespace Spartan
         }
     }
 
-	void Renderer::Pass_BlurBox(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out, const float sigma)
+    void Renderer::Pass_BlurBox(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out, const float sigma, const float pixel_stride, const bool use_stencil)
 	{
         // Acquire shaders
         const auto& shader_v = m_shaders[Shader_Quad_V];
@@ -1023,9 +1013,10 @@ namespace Spartan
         pipeline_state.shader_pixel                     = shader_p.get();
         pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
         pipeline_state.blend_state                      = m_blend_disabled.get();
-        pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
+        pipeline_state.depth_stencil_state              = use_stencil ? m_depth_stencil_disabled_enabled_read.get() : m_depth_stencil_disabled.get();
         pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
         pipeline_state.render_target_color_textures[0]  = tex_out.get();
+        pipeline_state.render_target_depth_texture      = use_stencil ? m_render_targets[RenderTarget_Gbuffer_Depth].get() : nullptr;
         pipeline_state.viewport                         = tex_out->GetViewport();
         pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
         pipeline_state.pass_name                        = "Pass_BlurBox";
@@ -1034,12 +1025,14 @@ namespace Spartan
         if (cmd_list->Begin(pipeline_state))
         {
             // Update uber buffer
-            m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+            m_buffer_uber_cpu.resolution        = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+            m_buffer_uber_cpu.blur_direction    = Vector2(pixel_stride, 0.0f);
+            m_buffer_uber_cpu.blur_sigma        = sigma;
             UpdateUberBuffer();
 
             cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
-            cmd_list->SetTexture(0, tex_in); // Shadows are in the alpha channel
+            cmd_list->SetTexture(0, tex_in);
             cmd_list->DrawIndexed(m_quad.GetIndexCount());
             cmd_list->End();
             cmd_list->Submit();
@@ -1122,7 +1115,7 @@ namespace Spartan
 		tex_in.swap(tex_out);
 	}
 
-	void Renderer::Pass_BlurBilateralGaussian(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out, const float sigma, const float pixel_stride)
+	void Renderer::Pass_BlurBilateralGaussian(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out, const float sigma, const float pixel_stride, const bool use_stencil)
 	{
 		if (tex_in->GetWidth() != tex_out->GetWidth() || tex_in->GetHeight() != tex_out->GetHeight() || tex_in->GetFormat() != tex_out->GetFormat())
 		{
@@ -1146,9 +1139,10 @@ namespace Spartan
         pipeline_state_horizontal.shader_pixel                      = shader_p.get();
         pipeline_state_horizontal.rasterizer_state                  = m_rasterizer_cull_back_solid.get();
         pipeline_state_horizontal.blend_state                       = m_blend_disabled.get();
-        pipeline_state_horizontal.depth_stencil_state               = m_depth_stencil_disabled.get();
+        pipeline_state_horizontal.depth_stencil_state               = use_stencil ? m_depth_stencil_disabled_enabled_read.get() : m_depth_stencil_disabled.get();
         pipeline_state_horizontal.vertex_buffer_stride              = m_quad.GetVertexBuffer()->GetStride();
         pipeline_state_horizontal.render_target_color_textures[0]   = tex_out.get();
+        pipeline_state_horizontal.render_target_depth_texture       = use_stencil ? tex_depth.get() : nullptr;
         pipeline_state_horizontal.viewport                          = tex_out->GetViewport();
         pipeline_state_horizontal.primitive_topology                = RHI_PrimitiveTopology_TriangleList;
         pipeline_state_horizontal.pass_name                         = "Pass_BlurBilateralGaussian_Horizontal";
@@ -1178,9 +1172,10 @@ namespace Spartan
         pipeline_state_vertical.shader_pixel                    = shader_p.get();
         pipeline_state_vertical.rasterizer_state                = m_rasterizer_cull_back_solid.get();
         pipeline_state_vertical.blend_state                     = m_blend_disabled.get();
-        pipeline_state_vertical.depth_stencil_state             = m_depth_stencil_disabled.get();
+        pipeline_state_vertical.depth_stencil_state             = use_stencil ? m_depth_stencil_disabled_enabled_read.get() : m_depth_stencil_disabled.get();
         pipeline_state_vertical.vertex_buffer_stride            = m_quad.GetVertexBuffer()->GetStride();
         pipeline_state_vertical.render_target_color_textures[0] = tex_in.get();
+        pipeline_state_vertical.render_target_depth_texture     = use_stencil ? tex_depth.get() : nullptr;
         pipeline_state_vertical.viewport                        = tex_in->GetViewport();
         pipeline_state_vertical.primitive_topology              = RHI_PrimitiveTopology_TriangleList;
         pipeline_state_vertical.pass_name                       = "Pass_BlurBilateralGaussian_Vertical";

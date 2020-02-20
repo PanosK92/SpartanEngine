@@ -84,7 +84,6 @@ namespace Spartan
         m_option_values[Option_Value_Sharpen_Clamp]           = 0.35f;
         m_option_values[Option_Value_Bloom_Intensity]         = 0.003f;
         m_option_values[Option_Value_Motion_Blur_Intensity]   = 0.01f;
-        m_option_values[Option_Value_Ssao_Scale]              = 1.0f;
 
 		// Subscribe to events
 		SUBSCRIBE_TO_EVENT(Event_World_Resolve_Complete,    EVENT_HANDLER_VARIANT(RenderablesAcquire));
@@ -371,8 +370,6 @@ namespace Spartan
         m_buffer_frame_cpu.directional_light_intensity  = light_directional_intensity;
         m_buffer_frame_cpu.ssr_enabled                  = GetOptionValue(Render_ScreenSpaceReflections) ? 1.0f : 0.0f;
         m_buffer_frame_cpu.shadow_resolution            = GetOptionValue<float>(Option_Value_ShadowResolution);
-        m_buffer_frame_cpu.ssao_scale                   = m_option_values[Option_Value_Ssao_Scale];
-        m_buffer_frame_cpu.padding                      = 0.0f;
 
         // Update
         *buffer = m_buffer_frame_cpu;
@@ -576,15 +573,6 @@ namespace Spartan
 
         if (m_option_values[option] == value)
             return;
-
-        if (option == Option_Value_Ssao_Scale)
-        {
-            value = Clamp(value, 0.25f, 1.0f);
-            uint32_t width = static_cast<uint32_t>(m_resolution.x * value);
-            uint32_t height = static_cast<uint32_t>(m_resolution.y * value);
-            m_render_targets[RenderTarget_Ssao_Raw]     = make_unique<RHI_Texture2D>(m_context, width, height, m_render_targets[RenderTarget_Ssao_Raw]->GetFormat());
-            m_render_targets[RenderTarget_Ssao_Blurred] = make_unique<RHI_Texture2D>(m_context, width, height, m_render_targets[RenderTarget_Ssao_Raw]->GetFormat());
-        }
 
         m_option_values[option] = value;
     }
