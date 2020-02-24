@@ -126,7 +126,7 @@ namespace Spartan
             params.model->SetRootEntity(new_entity);
 
             // Update progress tracking
-            int job_count;
+            int job_count = 0;
             AssimpHelper::compute_node_count(scene->mRootNode, &job_count);
             ProgressReport::Get().SetJobCount(g_progress_model_importer, job_count);
 
@@ -352,7 +352,8 @@ namespace Spartan
 			// Get aiMaterial
 			const auto assimp_material = params.scene->mMaterials[assimp_mesh->mMaterialIndex];
 			// Convert it and add it to the model
-            params.model->AddMaterial(LoadMaterial(assimp_material, params), entity_parent->GetPtrShared());
+            shared_ptr<Material> material = LoadMaterial(assimp_material, params);
+            params.model->AddMaterial(material, entity_parent->GetPtrShared());
 		}
 
 		// Bones

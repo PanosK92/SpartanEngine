@@ -77,6 +77,9 @@ namespace Spartan::vulkan_common
                 case VK_ERROR_NOT_PERMITTED_EXT:							return "VK_ERROR_NOT_PERMITTED_EXT";
                 case VK_ERROR_INVALID_DEVICE_ADDRESS_EXT:					return "VK_ERROR_INVALID_DEVICE_ADDRESS_EXT";
                 case VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT:			return "VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT";
+                case VK_ERROR_UNKNOWN:                                      return "VK_ERROR_UNKNOWN";
+                case VK_RESULT_RANGE_SIZE:                                  return "VK_RESULT_RANGE_SIZE";
+                case VK_RESULT_MAX_ENUM:                                    return "VK_RESULT_MAX_ENUM";
             }
 
             return "Unknown error code";
@@ -213,7 +216,7 @@ namespace Spartan::vulkan_common
                         device_properties.driverVersion,                                                    // driver version
                         device_properties.vendorID,                                                         // vendor id
                         type,                                                                               // type
-                        std::string(device_properties.deviceName),                                          // name
+                        &device_properties.deviceName[0],                                                   // name
                         static_cast<uint32_t>(device_memory_properties.memoryHeaps[0].size / 1024 / 1024),  // memory (MBs)
                         static_cast<void*>(device_physical)                                                 // data
                     ));
@@ -617,17 +620,23 @@ namespace Spartan::vulkan_common
             return true;
         }
 
-        inline VkImageAspectFlags bind_flags_to_aspect_mask(const RHI_Texture* texture)
+        inline VkImageAspectFlags get_aspect_mask(const RHI_Texture* texture)
         {
             VkImageAspectFlags aspect_mask = 0;
 
             if (texture->IsDepthFormat())
             {
-                aspect_mask = VK_IMAGE_ASPECT_DEPTH_BIT;
+                aspect_mask |= VK_IMAGE_ASPECT_DEPTH_BIT;
             }
-            else if (texture->IsColorFormat())
+
+            if (texture->IsStencilFormat())
             {
-                aspect_mask = VK_IMAGE_ASPECT_COLOR_BIT;
+                aspect_mask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+            }
+
+            if (texture->IsColorFormat())
+            {
+                aspect_mask |= VK_IMAGE_ASPECT_COLOR_BIT;
             }
 
             return aspect_mask;
@@ -896,7 +905,7 @@ namespace Spartan::vulkan_common
 
         inline bool set_layout(const RHI_Device* rhi_device, void* cmd_buffer, const RHI_Texture* texture, const RHI_Image_Layout layout_new)
         {
-            return set_layout(rhi_device, cmd_buffer, texture->GetResource_Texture(), bind_flags_to_aspect_mask(texture), texture->GetMiplevels(), texture->GetArraySize(), texture->GetLayout(), layout_new);
+            return set_layout(rhi_device, cmd_buffer, texture->GetResource_Texture(), get_aspect_mask(texture), texture->GetMiplevels(), texture->GetArraySize(), texture->GetLayout(), layout_new);
         }
 
         inline bool set_layout(const RHI_Device* rhi_device, void* cmd_buffer, void* image, const RHI_SwapChain* swapchain, const RHI_Image_Layout layout_new)
@@ -940,7 +949,7 @@ namespace Spartan::vulkan_common
                     type = (texture->GetArraySize() == 1) ? VK_IMAGE_VIEW_TYPE_CUBE : VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
                 }
 
-                return create(rhi_context, image, image_view, type, vulkan_format[texture->GetFormat()], bind_flags_to_aspect_mask(texture), texture->GetMiplevels(), texture->GetArraySize());
+                return create(rhi_context, image, image_view, type, vulkan_format[texture->GetFormat()], get_aspect_mask(texture), texture->GetMiplevels(), texture->GetArraySize());
             }
 
             inline void destroy(const RHI_Context* rhi_context, void*& image_view)
@@ -1013,8 +1022,6 @@ namespace Spartan::vulkan_common
                 // Depth
                 if (render_target_depth_texture)
                 {
-                    bool clear_on_set = false;
-
                     VkAttachmentDescription& attachment_description = attachment_descriptions.back();
                     attachment_description.format                   = vulkan_format[render_target_depth_texture->GetFormat()];
                     attachment_description.samples                  = VK_SAMPLE_COUNT_1_BIT;
@@ -1211,7 +1218,7 @@ namespace Spartan::vulkan_common
             // This mode waits for the vertical blank ("v-sync")
             VkPresentModeKHR present_mode = VK_PRESENT_MODE_FIFO_KHR;
 
-            std::vector<VkPresentModeKHR>& surface_present_modes = present_modes(rhi_context, surface);
+            std::vector<VkPresentModeKHR> surface_present_modes = present_modes(rhi_context, surface);
 
             // Check if the preferred mode is supported
             for (const auto& supported_present_mode : surface_present_modes)

@@ -186,7 +186,7 @@ void Widget_RenderOptions::Tick()
     {
         // FPS
         {
-            auto& timer = m_context->GetSubsystem<Timer>();
+            auto timer = m_context->GetSubsystem<Timer>();
             auto fps_target = timer->GetTargetFps();
 
             ImGui::InputDouble("Target FPS", &fps_target);

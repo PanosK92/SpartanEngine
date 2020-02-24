@@ -48,7 +48,7 @@ namespace Spartan::AssimpHelper
 		);
 	}
 
-	constexpr void set_entity_transform(const aiNode* node, Entity* entity)
+	inline void set_entity_transform(const aiNode* node, Entity* entity)
 	{
 		if (!entity)
 			return;

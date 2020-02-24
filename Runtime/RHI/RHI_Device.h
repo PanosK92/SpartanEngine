@@ -67,7 +67,7 @@ namespace Spartan
 
 	struct PhysicalDevice
 	{
-		PhysicalDevice(const uint32_t api_version, const uint32_t driver_version, const uint32_t vendor_id, const RHI_PhysicalDevice_Type type, std::string& name, const uint32_t memory, void* data)
+		PhysicalDevice(const uint32_t api_version, const uint32_t driver_version, const uint32_t vendor_id, const RHI_PhysicalDevice_Type type, const char* name, const uint32_t memory, void* data)
 		{
             this->api_version       = api_version;
             this->driver_version    = driver_version;

@@ -102,6 +102,18 @@ static const D3D11_COMPARISON_FUNC d3d11_comparison_function[] =
 	D3D11_COMPARISON_ALWAYS
 };
 
+static const D3D11_STENCIL_OP d3d11_stencil_operation[] =
+{
+    D3D11_STENCIL_OP_KEEP,
+    D3D11_STENCIL_OP_ZERO,
+    D3D11_STENCIL_OP_REPLACE,
+    D3D11_STENCIL_OP_INCR_SAT,
+    D3D11_STENCIL_OP_DECR_SAT,
+    D3D11_STENCIL_OP_INVERT,
+    D3D11_STENCIL_OP_INCR,
+    D3D11_STENCIL_OP_DECR
+};
+
 static const D3D11_BLEND d3d11_blend_factor[] =
 {
 	D3D11_BLEND_ZERO,
@@ -205,6 +217,18 @@ static const VkCompareOp vulkan_compare_operator[] =
 	VK_COMPARE_OP_NOT_EQUAL,
 	VK_COMPARE_OP_GREATER_OR_EQUAL,
 	VK_COMPARE_OP_ALWAYS
+};
+
+static const VkStencilOp vulkan_stencil_operation[] =
+{
+    VK_STENCIL_OP_KEEP,
+    VK_STENCIL_OP_ZERO,
+    VK_STENCIL_OP_REPLACE,
+    VK_STENCIL_OP_INCREMENT_AND_CLAMP,
+    VK_STENCIL_OP_DECREMENT_AND_CLAMP,
+    VK_STENCIL_OP_INVERT,
+    VK_STENCIL_OP_INCREMENT_AND_WRAP,
+    VK_STENCIL_OP_DECREMENT_AND_WRAP
 };
 
 static const VkBlendFactor vulkan_blend_factor[] =

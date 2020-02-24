@@ -62,9 +62,9 @@ namespace ComponentProperty
 	static string g_contex_menu_id;
 	static float g_column = 180.0f;
 	static const float g_max_width = 100.0f;
-	static shared_ptr<IComponent> g_copied;
+	static IComponent* g_copied;
 
-	inline void ComponentContextMenu_Options(const string& id, const shared_ptr<IComponent>& component, const bool removable)
+	inline void ComponentContextMenu_Options(const string& id, IComponent* component, const bool removable)
 	{
 		if (ImGui::BeginPopup(id.c_str()))
 		{
@@ -99,7 +99,7 @@ namespace ComponentProperty
 		}
 	}
 
-	inline bool Begin(const string& name, const Icon_Type icon_enum, const shared_ptr<IComponent>& component_instance, bool options = true, const bool removable = true)
+	inline bool Begin(const string& name, const Icon_Type icon_enum, IComponent* component_instance, bool options = true, const bool removable = true)
 	{
 		// Collapsible contents
 		const auto collapsed = ImGui::CollapsingHeader(name.c_str(), ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_DefaultOpen);
@@ -157,26 +157,26 @@ void Widget_Properties::Tick()
 
 	if (!m_inspected_entity.expired())
 	{
-		auto entity_ptr     = m_inspected_entity.lock().get();
-		auto& renderable	= entity_ptr->GetComponent<Renderable>();
-		auto material		= renderable ? renderable->GetMaterial() : nullptr;
+		auto entity_ptr = m_inspected_entity.lock().get();
+		auto renderable	= entity_ptr->GetComponent<Renderable>();
+		auto material   = renderable ? renderable->GetMaterial() : nullptr;
 
-		ShowTransform(entity_ptr->GetComponent<Transform>());
-		ShowLight(entity_ptr->GetComponent<Light>());
-		ShowCamera(entity_ptr->GetComponent<Camera>());
-        ShowTerrain(entity_ptr->GetComponent<Terrain>());
-        ShowEnvironment(entity_ptr->GetComponent<Environment>());
-		ShowAudioSource(entity_ptr->GetComponent<AudioSource>());
-		ShowAudioListener(entity_ptr->GetComponent<AudioListener>());
-		ShowRenderable(renderable);
-		ShowMaterial(material);
-		ShowRigidBody(entity_ptr->GetComponent<RigidBody>());
-        ShowSoftBody(entity_ptr->GetComponent<SoftBody>());
-		ShowCollider(entity_ptr->GetComponent<Collider>());
-		ShowConstraint(entity_ptr->GetComponent<Constraint>());
+		ShowTransform(entity_ptr->GetComponent<Transform>().get());
+		ShowLight(entity_ptr->GetComponent<Light>().get());
+		ShowCamera(entity_ptr->GetComponent<Camera>().get());
+        ShowTerrain(entity_ptr->GetComponent<Terrain>().get());
+        ShowEnvironment(entity_ptr->GetComponent<Environment>().get());
+		ShowAudioSource(entity_ptr->GetComponent<AudioSource>().get());
+		ShowAudioListener(entity_ptr->GetComponent<AudioListener>().get());
+		ShowRenderable(renderable.get());
+		ShowMaterial(material.get());
+		ShowRigidBody(entity_ptr->GetComponent<RigidBody>().get());
+        ShowSoftBody(entity_ptr->GetComponent<SoftBody>().get());
+		ShowCollider(entity_ptr->GetComponent<Collider>().get());
+		ShowConstraint(entity_ptr->GetComponent<Constraint>().get());
 		for (auto& script : entity_ptr->GetComponents<Script>())
 		{
-			ShowScript(script);
+			ShowScript(script.get());
 		}
 
 		ShowAddComponentButton();
@@ -184,7 +184,7 @@ void Widget_Properties::Tick()
 	}
 	else if (!m_inspected_material.expired())
 	{
-		ShowMaterial(m_inspected_material.lock());
+		ShowMaterial(m_inspected_material.lock().get());
 	}
 
 	ImGui::PopItemWidth();
@@ -217,7 +217,7 @@ void Widget_Properties::Inspect(const weak_ptr<Material>& material)
 	m_inspected_material = material;
 }
 
-void Widget_Properties::ShowTransform(shared_ptr<Transform>& transform) const
+void Widget_Properties::ShowTransform(Transform* transform) const
 {
 	if (ComponentProperty::Begin("Transform", Icon_Component_Transform, transform, true, false))
 	{
@@ -233,7 +233,7 @@ void Widget_Properties::ShowTransform(shared_ptr<Transform>& transform) const
 		{
             const float label_float_spacing = 15.0f;
             const float step                = 0.01f;
-			char* format                    = "%.4f";
+			string format                   = "%.4f";
 
             // Label
             ImGui::TextUnformatted(label);
@@ -242,7 +242,7 @@ void Widget_Properties::ShowTransform(shared_ptr<Transform>& transform) const
             // Float
 			ImGui::PushItemWidth(128.0f);
 			ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
-            ImGui::DragFloat("##no_label", value, step, numeric_limits<float>::lowest(), numeric_limits<float>::max(), format);
+            ImGui::DragFloat("##no_label", value, step, numeric_limits<float>::lowest(), numeric_limits<float>::max(), format.c_str());
 			ImGui::PopID();
 			ImGui::PopItemWidth();
 		};
@@ -284,7 +284,7 @@ void Widget_Properties::ShowTransform(shared_ptr<Transform>& transform) const
 	ComponentProperty::End();
 }
 
-void Widget_Properties::ShowLight(shared_ptr<Light>& light) const
+void Widget_Properties::ShowLight(Light* light) const
 {
 	if (!light)
 		return;
@@ -401,7 +401,7 @@ void Widget_Properties::ShowLight(shared_ptr<Light>& light) const
 	ComponentProperty::End();
 }
 
-void Widget_Properties::ShowRenderable(shared_ptr<Renderable>& renderable) const
+void Widget_Properties::ShowRenderable(Renderable* renderable) const
 {
 	if (!renderable)
 		return;
@@ -448,7 +448,7 @@ void Widget_Properties::ShowRenderable(shared_ptr<Renderable>& renderable) const
 	ComponentProperty::End();
 }
 
-void Widget_Properties::ShowRigidBody(shared_ptr<RigidBody>& rigid_body) const
+void Widget_Properties::ShowRigidBody(RigidBody* rigid_body) const
 {
 	if (!rigid_body)
 		return;
@@ -536,7 +536,7 @@ void Widget_Properties::ShowRigidBody(shared_ptr<RigidBody>& rigid_body) const
 	ComponentProperty::End();
 }
 
-void Widget_Properties::ShowSoftBody(shared_ptr<SoftBody>& soft_body) const
+void Widget_Properties::ShowSoftBody(SoftBody* soft_body) const
 {
     if (!soft_body)
         return;
@@ -552,7 +552,7 @@ void Widget_Properties::ShowSoftBody(shared_ptr<SoftBody>& soft_body) const
     ComponentProperty::End();
 }
 
-void Widget_Properties::ShowCollider(shared_ptr<Collider>& collider) const
+void Widget_Properties::ShowCollider(Collider* collider) const
 {
 	if (!collider)
 		return;
@@ -560,7 +560,7 @@ void Widget_Properties::ShowCollider(shared_ptr<Collider>& collider) const
 	if (ComponentProperty::Begin("Collider", Icon_Component_Collider, collider))
 	{
 		//= REFLECT =======================================================================
-		static vector<char*> type = {
+		static vector<string> type = {
 			"Box",
 			"Sphere",
 			"Static Plane",
@@ -569,7 +569,7 @@ void Widget_Properties::ShowCollider(shared_ptr<Collider>& collider) const
 			"Cone",
 			"Mesh"
 		};
-		const char* shape_char_ptr		= type[static_cast<int>(collider->GetShapeType())];
+		const char* shape_char_ptr		= type[static_cast<int>(collider->GetShapeType())].c_str();
 		bool optimize					= collider->GetOptimize();
 		Vector3 collider_center			= collider->GetCenter();
 		Vector3 collider_bounding_box	= collider->GetBoundingBox();
@@ -588,9 +588,9 @@ void Widget_Properties::ShowCollider(shared_ptr<Collider>& collider) const
 			for (unsigned int i = 0; i < static_cast<unsigned int>(type.size()); i++)
 			{
 				const auto is_selected = (shape_char_ptr == type[i]);
-				if (ImGui::Selectable(type[i], is_selected))
+				if (ImGui::Selectable(type[i].c_str(), is_selected))
 				{
-					shape_char_ptr = type[i];
+					shape_char_ptr = type[i].c_str();
 					collider->SetShapeType(static_cast<ColliderShape>(i));
 				}
 				if (is_selected)
@@ -630,7 +630,7 @@ void Widget_Properties::ShowCollider(shared_ptr<Collider>& collider) const
 	ComponentProperty::End();
 }
 
-void Widget_Properties::ShowConstraint(shared_ptr<Constraint>& constraint) const
+void Widget_Properties::ShowConstraint(Constraint* constraint) const
 {
 	if (!constraint)
 		return;
@@ -737,7 +737,7 @@ void Widget_Properties::ShowConstraint(shared_ptr<Constraint>& constraint) const
 	ComponentProperty::End();
 }
 
-void Widget_Properties::ShowMaterial(shared_ptr<Material>& material) const
+void Widget_Properties::ShowMaterial(Material* material) const
 {
 	if (!material)
 		return;
@@ -821,7 +821,7 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material) const
 	ComponentProperty::End();
 }
 
-void Widget_Properties::ShowCamera(shared_ptr<Camera>& camera) const
+void Widget_Properties::ShowCamera(Camera* camera) const
 {
 	if (!camera)
 		return;
@@ -884,7 +884,7 @@ void Widget_Properties::ShowCamera(shared_ptr<Camera>& camera) const
 	ComponentProperty::End();
 }
 
-void Widget_Properties::ShowEnvironment(shared_ptr<Environment>& environment) const
+void Widget_Properties::ShowEnvironment(Environment* environment) const
 {
     if (!environment)
         return;
@@ -900,7 +900,7 @@ void Widget_Properties::ShowEnvironment(shared_ptr<Environment>& environment) co
     ComponentProperty::End();
 }
 
-void Widget_Properties::ShowTerrain(shared_ptr<Terrain>& terrain) const
+void Widget_Properties::ShowTerrain(Terrain* terrain) const
 {
     if (!terrain)
         return;
@@ -956,7 +956,7 @@ void Widget_Properties::ShowTerrain(shared_ptr<Terrain>& terrain) const
     ComponentProperty::End();
 }
 
-void Widget_Properties::ShowAudioSource(shared_ptr<AudioSource>& audio_source) const
+void Widget_Properties::ShowAudioSource(AudioSource* audio_source) const
 {
 	if (!audio_source)
 		return;
@@ -1025,7 +1025,7 @@ void Widget_Properties::ShowAudioSource(shared_ptr<AudioSource>& audio_source) c
 	ComponentProperty::End();
 }
 
-void Widget_Properties::ShowAudioListener(shared_ptr<AudioListener>& audio_listener) const
+void Widget_Properties::ShowAudioListener(AudioListener* audio_listener) const
 {
 	if (!audio_listener)
 		return;
@@ -1037,7 +1037,7 @@ void Widget_Properties::ShowAudioListener(shared_ptr<AudioListener>& audio_liste
 	ComponentProperty::End();
 }
 
-void Widget_Properties::ShowScript(shared_ptr<Script>& script) const
+void Widget_Properties::ShowScript(Script* script) const
 {
 	if (!script)
 		return;

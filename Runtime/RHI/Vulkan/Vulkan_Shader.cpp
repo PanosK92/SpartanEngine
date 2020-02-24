@@ -343,8 +343,7 @@ namespace Spartan
 		};
 	}
 	
-	template <typename T>
-	void* RHI_Shader::_Compile(const Shader_Type type, const string& shader)
+	void* RHI_Shader::_Compile(const string& shader)
 	{
 		// Deduce some things
         const auto is_file	    = FileSystem::IsSupportedShaderFile(shader);
@@ -378,7 +377,7 @@ namespace Spartan
 			#endif
 		};
 
-        if (type == Shader_Vertex)
+        if (m_shader_type == Shader_Vertex)
         {
             // Can only be used in VS/DS/GS
             arguments.emplace_back(L"-fvk-invert-y");
@@ -387,9 +386,9 @@ namespace Spartan
 		// Create standard defines
 		vector<DxcDefine> defines =
 		{
-			DxcDefine{ L"COMPILE_VS", type == Shader_Vertex     ? L"1" : L"0" },
-			DxcDefine{ L"COMPILE_PS", type == Shader_Pixel      ? L"1" : L"0" },
-            DxcDefine{ L"COMPILE_CS", type == Shader_Compute    ? L"1" : L"0" }
+			DxcDefine{ L"COMPILE_VS", m_shader_type == Shader_Vertex     ? L"1" : L"0" },
+			DxcDefine{ L"COMPILE_PS", m_shader_type == Shader_Pixel      ? L"1" : L"0" },
+            DxcDefine{ L"COMPILE_CS", m_shader_type == Shader_Compute    ? L"1" : L"0" }
 		};
 
 		// Convert defines to wstring...
@@ -469,20 +468,20 @@ namespace Spartan
 				// Reflect shader resources (so that descriptor sets can be created later)
 				_Reflect
 				(
-					type,
+                    m_shader_type,
 					reinterpret_cast<uint32_t*>(shader_compiled->GetBufferPointer()),
 					static_cast<uint32_t>(shader_compiled->GetBufferSize() / 4)
 				);
 
-				// Create input layout
-				if (RHI_Vertex_Type_To_Enum<T>() != RHI_Vertex_Type_Unknown)
-				{
-					if (!m_input_layout->Create<T>(nullptr))
-					{
-						LOG_ERROR("Failed to create input layout for %s", FileSystem::GetFileNameFromFilePath(shader).c_str());
+                // Create input layout
+                if (m_vertex_type != RHI_Vertex_Type_Unknown)
+                {
+                    if (!m_input_layout->Create(m_vertex_type, nullptr))
+                    {
+                        LOG_ERROR("Failed to create input layout for %s", FileSystem::GetFileNameFromFilePath(shader).c_str());
                         return nullptr;
-					}
-				}
+                    }
+                }
 			}
             else
             {

@@ -84,15 +84,16 @@ namespace Spartan
         std::vector<std::byte>* GetData(uint32_t mipmap_index);
         std::vector<std::byte> GetMipmap(uint32_t index);
 
-        // Binding
+        // Binding type
         bool IsSampled()                    const { return m_bind_flags & RHI_Texture_ShaderView; }
         bool IsRenderTargetCompute()        const { return m_bind_flags & RHI_Texture_UnorderedAccessView; }
         bool IsRenderTargetDepthStencil()   const { return m_bind_flags & RHI_Texture_DepthStencilView; }
         bool IsRenderTargetColor()          const { return m_bind_flags & RHI_Texture_RenderTargetView; }
 
         // Format type
-        bool IsDepthFormat() const;
-        bool IsColorFormat() const { return !IsDepthFormat(); }
+        bool IsDepthFormat()    const { return m_format == RHI_Format_D32_Float || m_format == RHI_Format_D32_Float_S8X24_Uint; }
+        bool IsStencilFormat()  const { return m_format == RHI_Format_D32_Float_S8X24_Uint; }
+        bool IsColorFormat()    const { return !IsDepthFormat(); }
         
         // Layout
         void SetLayout(const RHI_Image_Layout layout, RHI_CommandList* command_list = nullptr);
@@ -114,7 +115,7 @@ namespace Spartan
 		bool LoadFromFile_NativeFormat(const std::string& file_path);
 		bool LoadFromFile_ForeignFormat(const std::string& file_path, bool generate_mipmaps);
 		static uint32_t GetChannelCountFromFormat(RHI_Format format);
-        virtual bool CreateResourceGpu() { LOG_ERROR("Call to empty virtual function"); return false; }
+        virtual bool CreateResourceGpu() { LOG_ERROR("Function not implemented by API"); return false; }
 
 		uint32_t m_bpp			= 0; // bits per pixel
 		uint32_t m_bpc			= 8; // bytes per channel

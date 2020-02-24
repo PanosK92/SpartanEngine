@@ -218,7 +218,7 @@ namespace Spartan
 		auto version_major	= to_string(VK_VERSION_MAJOR(app_info.apiVersion));
 		auto version_minor	= to_string(VK_VERSION_MINOR(app_info.apiVersion));
 		auto version_path	= to_string(VK_VERSION_PATCH(app_info.apiVersion));
-        auto& settings      = m_context->GetSubsystem<Settings>();
+        auto settings       = m_context->GetSubsystem<Settings>();
         string version = version_major + "." + version_minor + "." + version_path;
         settings->RegisterThirdPartyLib("Vulkan", version_major + "." + version_minor + "." + version_path, "https://vulkan.lunarg.com/");
 		LOG_INFO("Vulkan %s", version.c_str());

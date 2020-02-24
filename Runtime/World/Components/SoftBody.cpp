@@ -196,7 +196,7 @@ namespace Spartan
         psb->m_cfg.kVCF         = 1.0;  // Velocities correction factor (Baumgarte)
         psb->m_cfg.kDP          = 0.0;  // Damping coefficient [0,1]
         psb->m_cfg.kDG          = 0.01; // Drag coefficient [0,+inf]
-        psb->m_cfg.kLF          = 0.1; // Lift coefficient [0,+inf]
+        psb->m_cfg.kLF          = 0.1;  // Lift coefficient [0,+inf]
         psb->m_cfg.kPR          = 0.0;  // Pressure coefficient [-inf,+inf]
         psb->m_cfg.kVC          = 0.0;  // Volume conversation coefficient [0,+inf]
         psb->m_cfg.kDF          = 0.2;  // Dynamic friction coefficient [0,1]

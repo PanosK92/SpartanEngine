@@ -47,8 +47,7 @@ namespace Spartan
 		safe_release(*reinterpret_cast<ID3D11VertexShader**>(&m_resource));
 	}
 
-	template <typename T>
-	void* RHI_Shader::_Compile(const Shader_Type type, const string& shader)
+	void* RHI_Shader::_Compile(const string& shader)
 	{
 		if (!m_rhi_device)
 		{
@@ -74,9 +73,9 @@ namespace Spartan
 		// Defines
 		vector<D3D_SHADER_MACRO> defines =
 		{
-			D3D_SHADER_MACRO{ "COMPILE_VS", type == Shader_Vertex   ? "1" : "0" },
-			D3D_SHADER_MACRO{ "COMPILE_PS", type == Shader_Pixel    ? "1" : "0" },
-            D3D_SHADER_MACRO{ "COMPILE_CS", type == Shader_Compute  ? "1" : "0" }
+			D3D_SHADER_MACRO{ "COMPILE_VS", m_shader_type == Shader_Vertex   ? "1" : "0" },
+			D3D_SHADER_MACRO{ "COMPILE_PS", m_shader_type == Shader_Pixel    ? "1" : "0" },
+            D3D_SHADER_MACRO{ "COMPILE_CS", m_shader_type == Shader_Compute  ? "1" : "0" }
 		};
 		for (const auto& define : m_defines)
 		{
@@ -166,7 +165,7 @@ namespace Spartan
 		void* shader_view = nullptr;
 		if (shader_blob)
 		{
-			if (type == Shader_Vertex)
+			if (m_shader_type == Shader_Vertex)
 			{
 				if (FAILED(d3d11_device->CreateVertexShader(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), nullptr, reinterpret_cast<ID3D11VertexShader**>(&shader_view))))
 				{
@@ -174,26 +173,19 @@ namespace Spartan
 				}
 
 				// Create input layout
-				if (RHI_Vertex_Type_To_Enum<T>() != RHI_Vertex_Type_Unknown)
-				{
-					if (!m_input_layout->Create<T>(shader_blob))
-					{
-						LOG_ERROR("Failed to create input layout for %s", FileSystem::GetFileNameFromFilePath(m_file_path).c_str());
-					}
-				}
-                else
+                if (!m_input_layout->Create(m_vertex_type, shader_blob))
                 {
-                    LOG_ERROR("No vertx input type provided for \"%s\"", FileSystem::GetFileNameFromFilePath(m_file_path).c_str());
+                    LOG_ERROR("Failed to create input layout for %s", FileSystem::GetFileNameFromFilePath(m_file_path).c_str());
                 }
 			}
-			else if (type == Shader_Pixel)
+			else if (m_shader_type == Shader_Pixel)
 			{
 				if (FAILED(d3d11_device->CreatePixelShader(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), nullptr, reinterpret_cast<ID3D11PixelShader**>(&shader_view))))
 				{
 					LOG_ERROR("Failed to create pixel shader, %s", d3d11_common::dxgi_error_to_string(result));
 				}
 			}
-            else if (type == Shader_Compute)
+            else if (m_shader_type == Shader_Compute)
             {
                 if (FAILED(d3d11_device->CreateComputeShader(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), nullptr, reinterpret_cast<ID3D11ComputeShader**>(&shader_view))))
                 {

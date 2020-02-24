@@ -69,7 +69,7 @@ namespace Spartan
 		result = m_scriptBuilder->AddSectionFromFile(filePath.c_str());
 		if (result < 0)
 		{
-			LOG_ERROR("Failed to load script \"%s\".", filePath);
+			LOG_ERROR("Failed to load script \"%s\".", filePath.c_str());
 			return false;
 		}
 
@@ -77,7 +77,7 @@ namespace Spartan
 		result = m_scriptBuilder->BuildModule();
 		if (result < 0)
 		{
-			LOG_ERROR("Failed to compile script \"%s\". Correct any errors and try again.", FileSystem::GetFileNameFromFilePath(filePath));
+			LOG_ERROR("Failed to compile script \"%s\". Correct any errors and try again.", FileSystem::GetFileNameFromFilePath(filePath).c_str());
 			return false;
 		}
 

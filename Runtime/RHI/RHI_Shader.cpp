@@ -46,6 +46,7 @@ namespace Spartan
 	void RHI_Shader::Compile(const Shader_Type type, const string& shader)
 	{
         m_shader_type = type;
+        m_vertex_type = RHI_Vertex_Type_To_Enum<T>();
 
         // Can also be the source
         bool is_file = FileSystem::IsFile(shader);
@@ -64,7 +65,7 @@ namespace Spartan
 
 		// Compile
         m_compilation_state = Shader_Compilation_Compiling;
-        m_resource          = _Compile<T>(type, shader);
+        m_resource          = _Compile(shader);
         m_compilation_state = m_resource ? Shader_Compilation_Succeeded : Shader_Compilation_Failed;
 
 		// Log compilation result
@@ -211,4 +212,13 @@ namespace Spartan
             );
 		}
 	}
+
+    //= Explicit template instantiation =============================================================================
+    template void RHI_Shader::CompileAsync<RHI_Vertex_Undefined>(Context*, const Shader_Type, const std::string&);
+    template void RHI_Shader::CompileAsync<RHI_Vertex_Pos>(Context*, const Shader_Type, const std::string&);
+    template void RHI_Shader::CompileAsync<RHI_Vertex_PosTex>(Context*, const Shader_Type, const std::string&);
+    template void RHI_Shader::CompileAsync<RHI_Vertex_PosCol>(Context*, const Shader_Type, const std::string&);
+    template void RHI_Shader::CompileAsync<RHI_Vertex_Pos2dTexCol8>(Context*, const Shader_Type, const std::string&);
+    template void RHI_Shader::CompileAsync<RHI_Vertex_PosTexNorTan>(Context*, const Shader_Type, const std::string&);
+    //===============================================================================================================
 }

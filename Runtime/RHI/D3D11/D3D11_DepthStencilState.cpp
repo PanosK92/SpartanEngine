@@ -38,12 +38,15 @@ namespace Spartan
 {
     RHI_DepthStencilState::RHI_DepthStencilState(
         const shared_ptr<RHI_Device>& rhi_device,
-        const bool depth_test                           /*= true*/,
-        const bool depth_write                          /*= true*/,
-        const RHI_Comparison_Function depth_function    /*= Comparison_LessEqual*/,
-        const bool stencil_test                         /*= false */,
-        const bool stencil_write                        /*= false */,
-        const RHI_Comparison_Function stencil_function  /*= RHI_Comparison_Equal */
+        const bool depth_test                               /*= true*/,
+        const bool depth_write                              /*= true*/,
+        const RHI_Comparison_Function depth_function        /*= Comparison_LessEqual*/,
+        const bool stencil_test                             /*= false */,
+        const bool stencil_write                            /*= false */,
+        const RHI_Comparison_Function stencil_function      /*= RHI_Comparison_Equal */,
+        const RHI_Stencil_Operation stencil_fail_op         /*= RHI_Stencil_Keep */,
+        const RHI_Stencil_Operation stencil_depth_fail_op   /*= RHI_Stencil_Keep */,
+        const RHI_Stencil_Operation stencil_pass_op         /*= RHI_Stencil_Replace */
     )
     {
 		if (!rhi_device)
@@ -66,6 +69,9 @@ namespace Spartan
         m_stencil_test_enabled  = stencil_test;
         m_stencil_write_enabled = stencil_write;
         m_stencil_function      = stencil_function;
+        m_stencil_fail_op       = stencil_fail_op;
+        m_stencil_depth_fail_op = stencil_depth_fail_op;
+        m_stencil_pass_op       = stencil_pass_op;
 
 		// Create description
 		D3D11_DEPTH_STENCIL_DESC desc;
@@ -79,9 +85,9 @@ namespace Spartan
 		    desc.StencilReadMask				= stencil_test  ? D3D11_DEFAULT_STENCIL_READ_MASK   : 0;
 		    desc.StencilWriteMask				= stencil_write ? D3D11_DEFAULT_STENCIL_WRITE_MASK  : 0;
             // Stencil operations if pixel is front-facing
-            desc.FrontFace.StencilFailOp        = D3D11_STENCIL_OP_KEEP;
-            desc.FrontFace.StencilDepthFailOp   = D3D11_STENCIL_OP_KEEP;
-            desc.FrontFace.StencilPassOp        = D3D11_STENCIL_OP_REPLACE;
+            desc.FrontFace.StencilFailOp        = d3d11_stencil_operation[m_stencil_fail_op];
+            desc.FrontFace.StencilDepthFailOp   = d3d11_stencil_operation[m_stencil_depth_fail_op];
+            desc.FrontFace.StencilPassOp        = d3d11_stencil_operation[m_stencil_pass_op];
             desc.FrontFace.StencilFunc          = d3d11_comparison_function[stencil_function];
             // Stencil operations if pixel is back-facing
             desc.BackFace                       = desc.FrontFace;
