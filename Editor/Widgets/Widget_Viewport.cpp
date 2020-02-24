@@ -38,8 +38,8 @@ Widget_Viewport::Widget_Viewport(Context* context) : Widget(context)
     m_size      = Vector2(400, 250);
 	m_flags     |= ImGuiWindowFlags_NoScrollbar;
     m_padding   = Vector2(4.0f);
-    m_renderer  = m_context->GetSubsystem<Renderer>().get();
-    m_world     = m_context->GetSubsystem<World>().get();
+    m_renderer  = m_context->GetSubsystem<Renderer>();
+    m_world     = m_context->GetSubsystem<World>();
 }
 
 void Widget_Viewport::Tick()

@@ -36,7 +36,7 @@ Widget_Profiler::Widget_Profiler(Context* context) : Widget(context)
 	m_flags         |= ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar;
 	m_title			= "Profiler";
 	m_is_visible	= false;
-	m_profiler		= m_context->GetSubsystem<Profiler>().get();
+	m_profiler		= m_context->GetSubsystem<Profiler>();
     m_size          = Vector2(1000, 715);
 
 	m_plot_times_cpu.resize(m_plot_size);

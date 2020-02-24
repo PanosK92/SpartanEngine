@@ -49,11 +49,11 @@ public:
 	void Initialize(Spartan::Context* context)
 	{
 		g_context			= context;
-		g_resource_cache	= context->GetSubsystem<Spartan::ResourceCache>().get();
-		g_world				= context->GetSubsystem<Spartan::World>().get();
-		g_threading			= context->GetSubsystem<Spartan::Threading>().get();
-		g_renderer			= context->GetSubsystem<Spartan::Renderer>().get();
-		g_input				= context->GetSubsystem<Spartan::Input>().get();
+		g_resource_cache	= context->GetSubsystem<Spartan::ResourceCache>();
+		g_world				= context->GetSubsystem<Spartan::World>();
+		g_threading			= context->GetSubsystem<Spartan::Threading>();
+		g_renderer			= context->GetSubsystem<Spartan::Renderer>();
+		g_input				= context->GetSubsystem<Spartan::Input>();
 	}
 
 	void LoadModel(const std::string& file_path) const

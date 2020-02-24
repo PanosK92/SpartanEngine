@@ -53,8 +53,8 @@ namespace Spartan
 
     bool Profiler::Initialize()
 	{
-		m_resource_manager	= m_context->GetSubsystem<ResourceCache>().get();
-		m_renderer			= m_context->GetSubsystem<Renderer>().get();
+		m_resource_manager	= m_context->GetSubsystem<ResourceCache>();
+		m_renderer			= m_context->GetSubsystem<Renderer>();
 
 		// Get available memory
 		if (const PhysicalDevice* physical_device = m_renderer->GetRhiDevice()->GetPrimaryPhysicalDevice())

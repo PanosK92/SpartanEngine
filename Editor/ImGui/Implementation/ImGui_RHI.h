@@ -69,7 +69,7 @@ namespace ImGui::RHI
 	inline bool Initialize(Context* context, const float width, const float height)
 	{
 		g_context	    = context;
-		g_renderer	    = context->GetSubsystem<Renderer>().get();
+		g_renderer	    = context->GetSubsystem<Renderer>();
 		g_rhi_device    = g_renderer->GetRhiDevice();
 		
 		if (!g_context || !g_rhi_device || !g_rhi_device->IsInitialized())

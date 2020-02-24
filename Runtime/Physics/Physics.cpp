@@ -103,8 +103,8 @@ namespace Spartan
 	bool Physics::Initialize()
 	{
         // Get dependencies
-		m_renderer = m_context->GetSubsystem<Renderer>().get();
-		m_profiler = m_context->GetSubsystem<Profiler>().get();
+		m_renderer = m_context->GetSubsystem<Renderer>();
+		m_profiler = m_context->GetSubsystem<Profiler>();
 
         // Get version
         const auto major = to_string(btGetVersion() / 100);

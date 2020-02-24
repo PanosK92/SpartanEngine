@@ -41,8 +41,8 @@ namespace Spartan
 	Transform_Gizmo::Transform_Gizmo(Context* context)
 	{
 		m_context		= context;
-		m_input			= m_context->GetSubsystem<Input>().get();
-		m_world			= m_context->GetSubsystem<World>().get();
+		m_input			= m_context->GetSubsystem<Input>();
+		m_world			= m_context->GetSubsystem<World>();
 		m_type			= TransformHandle_Position;
 		m_space			= TransformHandle_World;
 		m_is_editing	= false;
@@ -78,7 +78,7 @@ namespace Spartan
 		}
 
         // If the selected entity is the actual viewport camera, ignore the input
-        if (selected_entity->GetId() == camera->GetTransform()->GetEntity_PtrRaw()->GetId())
+        if (selected_entity->GetId() == camera->GetTransform()->GetEntity()->GetId())
         {
             m_is_editing = false;
             return false;

@@ -147,8 +147,8 @@ Widget_Properties::Widget_Properties(Context* context) : Widget(context)
 	m_colorPicker_material	= make_unique<ButtonColorPicker>("Material Color Picker");
 	m_colorPicker_camera	= make_unique<ButtonColorPicker>("Camera Color Picker");
 
-	_Widget_Properties::resource_cache	= m_context->GetSubsystem<ResourceCache>().get();
-	_Widget_Properties::scene			= m_context->GetSubsystem<World>().get();  
+	_Widget_Properties::resource_cache	= m_context->GetSubsystem<ResourceCache>();
+	_Widget_Properties::scene			= m_context->GetSubsystem<World>();  
 }
 
 void Widget_Properties::Tick()
@@ -161,22 +161,22 @@ void Widget_Properties::Tick()
 		auto renderable	= entity_ptr->GetComponent<Renderable>();
 		auto material   = renderable ? renderable->GetMaterial() : nullptr;
 
-		ShowTransform(entity_ptr->GetComponent<Transform>().get());
-		ShowLight(entity_ptr->GetComponent<Light>().get());
-		ShowCamera(entity_ptr->GetComponent<Camera>().get());
-        ShowTerrain(entity_ptr->GetComponent<Terrain>().get());
-        ShowEnvironment(entity_ptr->GetComponent<Environment>().get());
-		ShowAudioSource(entity_ptr->GetComponent<AudioSource>().get());
-		ShowAudioListener(entity_ptr->GetComponent<AudioListener>().get());
-		ShowRenderable(renderable.get());
+		ShowTransform(entity_ptr->GetComponent<Transform>());
+		ShowLight(entity_ptr->GetComponent<Light>());
+		ShowCamera(entity_ptr->GetComponent<Camera>());
+        ShowTerrain(entity_ptr->GetComponent<Terrain>());
+        ShowEnvironment(entity_ptr->GetComponent<Environment>());
+		ShowAudioSource(entity_ptr->GetComponent<AudioSource>());
+		ShowAudioListener(entity_ptr->GetComponent<AudioListener>());
+		ShowRenderable(renderable);
 		ShowMaterial(material.get());
-		ShowRigidBody(entity_ptr->GetComponent<RigidBody>().get());
-        ShowSoftBody(entity_ptr->GetComponent<SoftBody>().get());
-		ShowCollider(entity_ptr->GetComponent<Collider>().get());
-		ShowConstraint(entity_ptr->GetComponent<Constraint>().get());
+		ShowRigidBody(entity_ptr->GetComponent<RigidBody>());
+        ShowSoftBody(entity_ptr->GetComponent<SoftBody>());
+		ShowCollider(entity_ptr->GetComponent<Collider>());
+		ShowConstraint(entity_ptr->GetComponent<Constraint>());
 		for (auto& script : entity_ptr->GetComponents<Script>())
 		{
-			ShowScript(script.get());
+			ShowScript(script);
 		}
 
 		ShowAddComponentButton();
@@ -196,7 +196,7 @@ void Widget_Properties::Inspect(const weak_ptr<Entity>& entity)
 
 	if (const auto shared_ptr = entity.lock())
 	{
-		_Widget_Properties::rotation_hint = shared_ptr->GetTransform_PtrRaw()->GetRotationLocal().ToEulerAngles();
+		_Widget_Properties::rotation_hint = shared_ptr->GetTransform()->GetRotationLocal().ToEulerAngles();
 	}
 	else
 	{

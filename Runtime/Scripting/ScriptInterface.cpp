@@ -140,7 +140,7 @@ namespace Spartan
 	------------------------------------------------------------------------------*/
 	void ScriptInterface::RegisterInput()
 	{
-		m_scriptEngine->RegisterGlobalProperty("Input input", m_context->GetSubsystem<Input>().get());
+		m_scriptEngine->RegisterGlobalProperty("Input input", m_context->GetSubsystem<Input>());
 		m_scriptEngine->RegisterObjectMethod("Input", "Vector2 &GetMousePosition()", asMETHOD(Input, GetMousePosition), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("Input", "Vector2 &GetMouseDelta()", asMETHOD(Input, GetMouseDelta), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("Input", "bool GetKey(KeyCode key)", asMETHOD(Input, GetKey), asCALL_THISCALL);
@@ -158,7 +158,7 @@ namespace Spartan
 		m_scriptEngine->RegisterObjectMethod("Entity", "void SetName(string)", asMETHOD(Entity, SetName), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("Entity", "bool IsActive()", asMETHOD(Entity, IsActive), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("Entity", "void SetActive(bool)", asMETHOD(Entity, SetActive), asCALL_THISCALL);
-		m_scriptEngine->RegisterObjectMethod("Entity", "Transform &GetTransform()", asMETHOD(Entity, GetTransform_PtrRaw), asCALL_THISCALL);	
+		m_scriptEngine->RegisterObjectMethod("Entity", "Transform &GetTransform()", asMETHOD(Entity, GetTransform), asCALL_THISCALL);	
 		m_scriptEngine->RegisterObjectMethod("Entity", "Camera &GetCamera()", asMETHOD(Entity, GetComponent<Camera>), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("Entity", "RigidBody &GetRigidBody()", asMETHOD(Entity, GetComponent<RigidBody>), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("Entity", "Renderable &GetRenderable()", asMETHOD(Entity, GetComponent<Renderable>), asCALL_THISCALL);
@@ -191,7 +191,7 @@ namespace Spartan
 		r = m_scriptEngine->RegisterObjectMethod("Transform", "Transform &GetParent()",						asMETHOD(Transform, GetParent),										asCALL_THISCALL); SPARTAN_ASSERT(r >= 0);
 		r = m_scriptEngine->RegisterObjectMethod("Transform", "Transform &GetChildByIndex(int)",			asMETHOD(Transform, GetChildByIndex),								asCALL_THISCALL); SPARTAN_ASSERT(r >= 0);
 		r = m_scriptEngine->RegisterObjectMethod("Transform", "Transform &GetChildByName(string)",			asMETHOD(Transform, GetChildByName),								asCALL_THISCALL); SPARTAN_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterObjectMethod("Transform", "Entity &GetEntity()",						asMETHOD(Transform, GetEntity_PtrRaw),								asCALL_THISCALL); SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterObjectMethod("Transform", "Entity &GetEntity()",						asMETHOD(Transform, GetEntity),								        asCALL_THISCALL); SPARTAN_ASSERT(r >= 0);
 		r = m_scriptEngine->RegisterObjectMethod("Transform", "void Translate(const Vector3& in)",			asMETHOD(Transform, Translate),										asCALL_THISCALL); SPARTAN_ASSERT(r >= 0);
 		r = m_scriptEngine->RegisterObjectMethod("Transform", "void Rotate(const Quaternion& in)",			asMETHOD(Transform, Rotate),										asCALL_THISCALL); SPARTAN_ASSERT(r >= 0);
 	}

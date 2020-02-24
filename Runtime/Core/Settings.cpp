@@ -160,7 +160,7 @@ namespace Spartan
 
     void Settings::Reflect()
     {
-        Renderer* renderer = m_context->GetSubsystem<Renderer>().get();
+        Renderer* renderer = m_context->GetSubsystem<Renderer>();
 
         m_fps_limit             = m_context->GetSubsystem<Timer>()->GetTargetFps();
         m_max_thread_count      = m_context->GetSubsystem<Threading>()->GetThreadCountMax();
@@ -172,7 +172,7 @@ namespace Spartan
 
     void Settings::Map()
     {
-        Renderer* renderer = m_context->GetSubsystem<Renderer>().get();
+        Renderer* renderer = m_context->GetSubsystem<Renderer>();
 
         m_context->GetSubsystem<Timer>()->SetTargetFps(m_fps_limit);
         renderer->SetOptionValue(Option_Value_Anisotropy, static_cast<float>(m_anisotropy), 0, 16);

@@ -107,10 +107,10 @@ namespace Spartan
 			const auto clone_self = clone_entity(original);
 
 			// clone children make them call this lambda
-			for (const auto& child_transform : original->GetTransform_PtrRaw()->GetChildren())
+			for (const auto& child_transform : original->GetTransform()->GetChildren())
 			{
-				const auto clone_child = clone_entity_and_descendants(child_transform->GetEntity_PtrRaw());
-				clone_child->GetTransform_PtrRaw()->SetParent(clone_self->GetTransform_PtrRaw());
+				const auto clone_child = clone_entity_and_descendants(child_transform->GetEntity());
+				clone_child->GetTransform()->SetParent(clone_self->GetTransform());
 			}
 
 			// return self
@@ -178,7 +178,7 @@ namespace Spartan
 
         // CHILDREN
         {
-            auto children = GetTransform_PtrRaw()->GetChildren();
+            auto children = GetTransform()->GetChildren();
 
             // Children count
             stream->Write(static_cast<uint32_t>(children.size()));
@@ -192,9 +192,9 @@ namespace Spartan
             // Children
             for (const auto& child : children)
             {
-                if (child->GetEntity_PtrRaw())
+                if (child->GetEntity())
                 {
-                    child->GetEntity_PtrRaw()->Serialize(stream);
+                    child->GetEntity()->Serialize(stream);
                 }
                 else
                 {
@@ -262,7 +262,7 @@ namespace Spartan
             // Children
             for (const auto& child : children)
             {
-                child.lock()->Deserialize(stream, GetTransform_PtrRaw());
+                child.lock()->Deserialize(stream, GetTransform());
             }
 
             if (m_transform)
@@ -275,31 +275,31 @@ namespace Spartan
 		FIRE_EVENT(Event_World_Resolve_Pending);
 	}
 
-    shared_ptr<IComponent> Entity::AddComponent(const ComponentType type, uint32_t id /*= 0*/)
+    IComponent* Entity::AddComponent(const ComponentType type, uint32_t id /*= 0*/)
     {
         // This is the only hardcoded part regarding components. It's 
         // one function but it would be nice if that gets automated too, somehow...
-        shared_ptr<IComponent> component;
+
         switch (type)
         {
-            case ComponentType_AudioListener:	component = AddComponent<AudioListener>(id);    break;
-            case ComponentType_AudioSource:		component = AddComponent<AudioSource>(id);	    break;
-            case ComponentType_Camera:			component = AddComponent<Camera>(id);		    break;
-            case ComponentType_Collider:		component = AddComponent<Collider>(id);		    break;
-            case ComponentType_Constraint:		component = AddComponent<Constraint>(id);	    break;
-            case ComponentType_Light:			component = AddComponent<Light>(id);		    break;
-            case ComponentType_Renderable:		component = AddComponent<Renderable>(id);	    break;
-            case ComponentType_RigidBody:		component = AddComponent<RigidBody>(id);	    break;
-            case ComponentType_SoftBody:		component = AddComponent<SoftBody>(id);	        break;
-            case ComponentType_Script:			component = AddComponent<Script>(id);		    break;
-            case ComponentType_Environment:		component = AddComponent<Environment>(id);		break;
-            case ComponentType_Transform:		component = AddComponent<Transform>(id);	    break;
-            case ComponentType_Terrain:		    component = AddComponent<Terrain>(id);	        break;
-            case ComponentType_Unknown:														    break;
-            default:																		    break;
+            case ComponentType_AudioListener:	return AddComponent<AudioListener>(id);
+            case ComponentType_AudioSource:		return AddComponent<AudioSource>(id);
+            case ComponentType_Camera:			return AddComponent<Camera>(id);
+            case ComponentType_Collider:		return AddComponent<Collider>(id);
+            case ComponentType_Constraint:		return AddComponent<Constraint>(id);
+            case ComponentType_Light:			return AddComponent<Light>(id);
+            case ComponentType_Renderable:		return AddComponent<Renderable>(id);
+            case ComponentType_RigidBody:		return AddComponent<RigidBody>(id);
+            case ComponentType_SoftBody:		return AddComponent<SoftBody>(id);
+            case ComponentType_Script:			return AddComponent<Script>(id);
+            case ComponentType_Environment:		return AddComponent<Environment>(id);
+            case ComponentType_Transform:		return AddComponent<Transform>(id);
+            case ComponentType_Terrain:		    return AddComponent<Terrain>(id);
+            case ComponentType_Unknown:			return nullptr;
+            default:                            return nullptr;
         }
 
-        return component;
+        return nullptr;
     }
 
     void Entity::RemoveComponentById(const uint32_t id)

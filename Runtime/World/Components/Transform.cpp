@@ -65,7 +65,7 @@ namespace Spartan
 		stream->Write(m_rotationLocal);
 		stream->Write(m_scaleLocal);
 		stream->Write(m_lookAt);
-		stream->Write(m_parent ? m_parent->GetEntity_PtrRaw()->GetId() : 0);
+		stream->Write(m_parent ? m_parent->GetEntity()->GetId() : 0);
 	}
 
 	void Transform::Deserialize(FileStream* stream)
@@ -81,7 +81,7 @@ namespace Spartan
 		{
 			if (const auto parent = GetContext()->GetSubsystem<World>()->EntityGetById(parententity_id))
 			{
-				parent->GetTransform_PtrRaw()->AddChild(this);
+				parent->GetTransform()->AddChild(this);
 			}
 		}
 
@@ -347,7 +347,7 @@ namespace Spartan
 				continue;
 
 			// get the possible child
-			auto possible_child = entity->GetTransform_PtrRaw();
+			auto possible_child = entity->GetTransform();
 
 			// if it doesn't have a parent, forget about it.
 			if (!possible_child->HasParent())

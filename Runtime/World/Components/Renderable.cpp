@@ -258,7 +258,7 @@ namespace Spartan
 	void Renderable::UseDefaultMaterial()
 	{
 		m_material_default = true;
-        ResourceCache* resource_cache = GetContext()->GetSubsystem<ResourceCache>().get();
+        ResourceCache* resource_cache = GetContext()->GetSubsystem<ResourceCache>();
 		auto data_dir = resource_cache->GetDataDirectory() + "/";
 		FileSystem::CreateDirectory_(data_dir);
 

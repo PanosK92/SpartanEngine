@@ -44,7 +44,7 @@ namespace Spartan
 {
 	Model::Model(Context* context) : IResource(context, Resource_Model)
 	{
-		m_resource_manager	= m_context->GetSubsystem<ResourceCache>().get();
+		m_resource_manager	= m_context->GetSubsystem<ResourceCache>();
 		m_rhi_device		= m_context->GetSubsystem<Renderer>()->GetRhiDevice();
 		m_mesh				= make_unique<Mesh>();
 	}
@@ -186,8 +186,7 @@ namespace Spartan
 		material->SetResourceFilePath(spartan_asset_path);
 
 		// Create a Renderable and pass the material to it
-        auto renderable = entity->AddComponent<Renderable>();
-        renderable->SetMaterial(material);
+        entity->AddComponent<Renderable>()->SetMaterial(material);
 	}
 
 	void Model::AddTexture(shared_ptr<Material>& material, const TextureType texture_type, const string& file_path)

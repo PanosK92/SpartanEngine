@@ -60,8 +60,8 @@ namespace _Widget_World
 Widget_World::Widget_World(Context* context) : Widget(context)
 {
 	m_title					= "World";
-	_Widget_World::g_world	= m_context->GetSubsystem<World>().get();
-	_Widget_World::g_input	= m_context->GetSubsystem<Input>().get();
+	_Widget_World::g_world	= m_context->GetSubsystem<World>();
+	_Widget_World::g_input	= m_context->GetSubsystem<Input>();
 
 	m_flags |= ImGuiWindowFlags_HorizontalScrollbar;
 
@@ -105,7 +105,7 @@ void Widget_World::TreeShow()
 			const auto entity_id = get<unsigned int>(payload->data);
 			if (const auto dropped_entity = _Widget_World::g_world->EntityGetById(entity_id))
 			{
-				dropped_entity->GetTransform_PtrRaw()->SetParent(nullptr);
+				dropped_entity->GetTransform()->SetParent(nullptr);
 			}
 		}
 
@@ -146,10 +146,10 @@ void Widget_World::TreeAddEntity(Entity* entity)
 		return;
 
 	// Determine children visibility
-	auto children = entity->GetTransform_PtrRaw()->GetChildren();
+	auto children = entity->GetTransform()->GetChildren();
 	for (const auto& child : children)
 	{
-		if (child->GetEntity_PtrRaw()->IsVisibleInHierarchy())
+		if (child->GetEntity()->IsVisibleInHierarchy())
 		{
 			has_visible_children = true;
 			break;
@@ -172,7 +172,7 @@ void Widget_World::TreeAddEntity(Entity* entity)
 		if (m_expand_to_show_entity)
 		{
 			// If the selected entity is a descendant of the this entity, start expanding (this can happen if the user clicks on something in the 3D scene)
-			if (selected_entity->GetTransform_PtrRaw()->IsDescendantOf(entity->GetTransform_PtrRaw()))
+			if (selected_entity->GetTransform()->IsDescendantOf(entity->GetTransform()))
 			{
 				ImGui::SetNextItemOpen(true);
 
@@ -202,10 +202,10 @@ void Widget_World::TreeAddEntity(Entity* entity)
 		{
 			for (const auto& child : children)
 			{
-				if (!child->GetEntity_PtrRaw()->IsVisibleInHierarchy())
+				if (!child->GetEntity()->IsVisibleInHierarchy())
 					continue;
 
-				TreeAddEntity(child->GetEntity_PtrRaw());
+				TreeAddEntity(child->GetEntity());
 			}
 		}
 
@@ -266,7 +266,7 @@ void Widget_World::EntityHandleDragDrop(Entity* entity_ptr) const
 		{
 			if (dropped_entity->GetId() != entity_ptr->GetId())
 			{
-				dropped_entity->GetTransform_PtrRaw()->SetParent(entity_ptr->GetTransform_PtrRaw());
+				dropped_entity->GetTransform()->SetParent(entity_ptr->GetTransform());
 			}
 		}
 	}
@@ -492,7 +492,7 @@ Entity* Widget_World::ActionEntityCreateEmpty()
 	const auto entity = _Widget_World::g_world->EntityCreate().get();
 	if (const auto selected_entity = EditorHelper::Get().g_selected_entity.lock())
 	{
-		entity->GetTransform_PtrRaw()->SetParent(selected_entity->GetTransform_PtrRaw());
+		entity->GetTransform()->SetParent(selected_entity->GetTransform());
 	}
 
 	return entity;

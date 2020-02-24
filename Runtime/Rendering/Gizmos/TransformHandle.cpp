@@ -91,8 +91,8 @@ namespace Spartan
 	{
 		m_type		= type;
 		m_context	= context;
-		m_renderer	= context->GetSubsystem<Renderer>().get();
-		m_input		= context->GetSubsystem<Input>().get();
+		m_renderer	= context->GetSubsystem<Renderer>();
+		m_input		= context->GetSubsystem<Input>();
 
         m_handle_x      = TransformHandleAxis(Vector3::Right, m_context);
         m_handle_y      = TransformHandleAxis(Vector3::Up, m_context);
@@ -188,10 +188,10 @@ namespace Spartan
 			m_handle_xyz.delta	= m_handle_x.delta + m_handle_y.delta + m_handle_z.delta;
 
 			// Update input
-			m_handle_x.UpdateInput(m_type, entity->GetTransform_PtrRaw(), m_input);
-			m_handle_y.UpdateInput(m_type, entity->GetTransform_PtrRaw(), m_input);
-			m_handle_z.UpdateInput(m_type, entity->GetTransform_PtrRaw(), m_input);
-			m_handle_xyz.UpdateInput(m_type, entity->GetTransform_PtrRaw(), m_input);
+			m_handle_x.UpdateInput(m_type, entity->GetTransform(), m_input);
+			m_handle_y.UpdateInput(m_type, entity->GetTransform(), m_input);
+			m_handle_z.UpdateInput(m_type, entity->GetTransform(), m_input);
+			m_handle_xyz.UpdateInput(m_type, entity->GetTransform(), m_input);
 		}
 
 		return m_handle_x.isEditing || m_handle_y.isEditing || m_handle_z.isEditing || m_handle_xyz.isEditing;
@@ -246,7 +246,7 @@ namespace Spartan
 	void TransformHandle::SnapToTransform(const TransformHandle_Space space, Entity* entity, Camera* camera, const float handle_size)
 	{
 		// Get entity's components
-		auto entity_transform	= entity->GetTransform_PtrRaw();		// Transform alone is not enough
+		auto entity_transform	= entity->GetTransform();		// Transform alone is not enough
 		auto entity_renderable	= entity->GetComponent<Renderable>();	// Bounding box is also needed as some meshes are not defined around P(0,0,0)	
 
 		// Acquire entity's transformation data (local or world space)

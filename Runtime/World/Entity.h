@@ -59,7 +59,7 @@ namespace Spartan
 
 		// Adds a component of type T
 		template <class T>
-		std::shared_ptr<T> AddComponent(uint32_t id = 0)
+        T* AddComponent(uint32_t id = 0)
 		{
 			const ComponentType type = IComponent::TypeToEnum<T>();
 
@@ -85,15 +85,15 @@ namespace Spartan
 			// Make the scene resolve
 			FIRE_EVENT(Event_World_Resolve_Pending);
 
-            return component;
+            return component.get();
 		}
 
         // Adds a component of ComponentType 
-        std::shared_ptr<IComponent> AddComponent(ComponentType type, uint32_t id = 0);
+        IComponent* AddComponent(ComponentType type, uint32_t id = 0);
 
 		// Returns a component of type T (if it exists)
 		template <class T>
-		std::shared_ptr<T> GetComponent()
+        T* GetComponent()
 		{
             const ComponentType type = IComponent::TypeToEnum<T>();
 
@@ -103,7 +103,7 @@ namespace Spartan
 			for (const auto& component : m_components)
 			{
 				if (component->GetType() == type)
-					return std::static_pointer_cast<T>(component);
+					return static_cast<T*>(component.get());
 			}
 
 			return nullptr;
@@ -111,9 +111,9 @@ namespace Spartan
 
 		// Returns any components of type T (if they exist)
 		template <class T>
-		std::vector<std::shared_ptr<T>> GetComponents()
+		std::vector<T*> GetComponents()
 		{
-            std::vector<std::shared_ptr<T>> components;
+            std::vector<T*> components;
 			const ComponentType type = IComponent::TypeToEnum<T>();
 
             if (!HasComponent(type))
@@ -124,7 +124,7 @@ namespace Spartan
 				if (component->GetType() != type)
 					continue;
 
-				components.emplace_back(std::static_pointer_cast<T>(component));
+				components.emplace_back(static_cast<T*>(component.get()));
 			}
 
 			return components;
@@ -169,9 +169,9 @@ namespace Spartan
         bool IsPendingDestruction() const   { return m_destruction_pending; }
 
 		// Direct access for performance critical usage (not safe)
-		Transform* GetTransform_PtrRaw() const		{ return m_transform; }
-		Renderable* GetRenderable_PtrRaw() const	{ return m_renderable; }
-		std::shared_ptr<Entity> GetPtrShared()		{ return shared_from_this(); }
+		Transform* GetTransform() const		    { return m_transform; }
+		Renderable* GetRenderable() const	    { return m_renderable; }
+		std::shared_ptr<Entity> GetPtrShared()  { return shared_from_this(); }
 
 	private:
         constexpr uint32_t GetComponentMask(ComponentType type) { return static_cast<uint32_t>(1) << static_cast<uint32_t>(type); }

@@ -72,7 +72,7 @@ namespace Spartan
 		// Initialize above subsystems
 		m_context->Initialize();
 
-        m_timer = m_context->GetSubsystem<Timer>().get();
+        m_timer = m_context->GetSubsystem<Timer>();
 	}
 
 	Engine::~Engine()

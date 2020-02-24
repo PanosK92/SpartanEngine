@@ -40,7 +40,7 @@ Widget_RenderOptions::Widget_RenderOptions(Context* context) : Widget(context)
     m_title         = "Renderer Options";
     m_flags         |= ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoScrollbar;
     m_is_visible    = false;
-    m_renderer      = context->GetSubsystem<Renderer>().get();
+    m_renderer      = context->GetSubsystem<Renderer>();
     m_alpha         = 1.0f;
 }
 
@@ -51,8 +51,8 @@ void Widget_RenderOptions::Tick()
     if (ImGui::CollapsingHeader("Graphics", ImGuiTreeNodeFlags_DefaultOpen))
     {
         // Reflect from engine
-        static vector<char*> tonemapping_options    = { "Off", "ACES", "Reinhard", "Uncharted 2" };
-        const char* tonemapping_selection           = tonemapping_options[m_renderer->GetOptionValue<uint32_t>(Option_Value_Tonemapping)];
+        static vector<string> tonemapping_options   = { "Off", "ACES", "Reinhard", "Uncharted 2" };
+        string tonemapping_selection                = tonemapping_options[m_renderer->GetOptionValue<uint32_t>(Option_Value_Tonemapping)];
 
         auto do_bloom                   = m_renderer->GetOptionValue(Render_Bloom);
         auto do_volumetric_lighting     = m_renderer->GetOptionValue(Render_VolumetricLighting);
@@ -69,7 +69,7 @@ void Widget_RenderOptions::Tick()
 
         // Display
         {
-            const auto render_option_float = [this](const char* id, const char* text, Renderer_Option_Value render_option, char* tooltip = nullptr, float step = 0.1f)
+            const auto render_option_float = [this](const char* id, const char* text, Renderer_Option_Value render_option, string tooltip = "", float step = 0.1f)
             {
                 float value = m_renderer->GetOptionValue<float>(render_option);
 
@@ -86,18 +86,21 @@ void Widget_RenderOptions::Tick()
                     m_renderer->SetOptionValue(render_option, value);
                 }
 
-                ImGuiEx::Tooltip(tooltip);
+                if (!tooltip.empty())
+                {
+                    ImGuiEx::Tooltip(tooltip.c_str());
+                }
             };
 
             // Tonemapping
-            if (ImGui::BeginCombo("Tonemapping", tonemapping_selection))
+            if (ImGui::BeginCombo("Tonemapping", tonemapping_selection.c_str()))
             {
                 for (unsigned int i = 0; i < static_cast<unsigned int>(tonemapping_options.size()); i++)
                 {
                     const auto is_selected = (tonemapping_selection == tonemapping_options[i]);
-                    if (ImGui::Selectable(tonemapping_options[i], is_selected))
+                    if (ImGui::Selectable(tonemapping_options[i].c_str(), is_selected))
                     {
-                        tonemapping_selection = tonemapping_options[i];
+                        tonemapping_selection = tonemapping_options[i].c_str();
                         m_renderer->SetOptionValue(Option_Value_Tonemapping, static_cast<float>(i));
                     }
                     if (is_selected)

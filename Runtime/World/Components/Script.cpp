@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/Context.h"
 #include "../../Core/FileSystem.h"
 #include "../../IO/FileStream.h"
+#include "../Entity.h"
 //================================
 
 //= NAMESPACES =====
@@ -86,7 +87,7 @@ namespace Spartan
 	{
 		// Instantiate the script
 		m_scriptInstance = make_shared<ScriptInstance>();
-		m_scriptInstance->Instantiate(filePath, GetEntity_PtrWeak(), GetContext()->GetSubsystem<Scripting>());
+		m_scriptInstance->Instantiate(filePath, GetEntity()->GetPtrShared(), GetContext()->GetSubsystem<Scripting>());
 
 		// Check if the script has been instantiated successfully.
 		if (!m_scriptInstance->IsInstantiated())

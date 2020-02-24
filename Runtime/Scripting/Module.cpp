@@ -33,15 +33,15 @@ using namespace std;
 
 namespace Spartan
 {
-	Module::Module(const string& moduleName, weak_ptr<Scripting> scriptEngine)
+	Module::Module(const string& moduleName, Scripting* scriptEngine)
 	{
 		m_moduleName	= moduleName;
-		m_scriptEngine	= scriptEngine;
+		m_scripting	    = scriptEngine;
 	}
 
 	Module::~Module()
 	{
-		if (auto scriptEngine = m_scriptEngine.lock())
+		if (auto scriptEngine = m_scripting)
 		{
 			scriptEngine->DiscardModule(m_moduleName);
 		}
@@ -49,8 +49,7 @@ namespace Spartan
 
 	bool Module::LoadScript(const string& filePath)
 	{
-		auto scriptEngine = m_scriptEngine.lock();
-		if (!scriptEngine)
+		if (!m_scripting)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
@@ -58,7 +57,7 @@ namespace Spartan
 
 		// start new module
 		m_scriptBuilder = make_unique<CScriptBuilder>();
-		int result = m_scriptBuilder->StartNewModule(scriptEngine->GetAsIScriptEngine(), m_moduleName.c_str());
+		int result = m_scriptBuilder->StartNewModule(m_scripting->GetAsIScriptEngine(), m_moduleName.c_str());
 		if (result < 0)
 		{
 			LOG_ERROR("Failed to start new module, make sure there is enough memory for it to be allocated.");
@@ -89,7 +88,7 @@ namespace Spartan
 		if (!m_scriptBuilder)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
-			return false;
+			return nullptr;
 		}
 
 		return m_scriptBuilder->GetModule();

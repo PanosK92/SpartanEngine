@@ -62,7 +62,7 @@ namespace Spartan
 		std::function<void(std::any)> setter;
 	};
 
-	class SPARTAN_CLASS IComponent : public Spartan_Object
+	class SPARTAN_CLASS IComponent : public Spartan_Object, public std::enable_shared_from_this<IComponent>
 	{
 	public:
 		IComponent(Context* context, Entity* entity, uint32_t id = 0, Transform* transform = nullptr);
@@ -94,16 +94,14 @@ namespace Spartan
 		static constexpr ComponentType TypeToEnum();
 		//==========================================
 
-		//= PROPERTIES ============================================================================
-		Entity*						GetEntity_PtrRaw()		const{ return m_entity; }	
-		std::weak_ptr<Entity>		GetEntity_PtrWeak()		const { return GetEntity_PtrShared(); }
-		std::shared_ptr<Entity>		GetEntity_PtrShared()	const;
-		std::string GetEntityName() const;
+		//= PROPERTIES ===========================================================================
+		Transform* GetTransform() const		        { return m_transform; }
+		Context* GetContext() const			        { return m_context; }
+		ComponentType GetType() const	            { return m_type; }
+        void SetType(ComponentType type)            { m_type = type; }
 
-		Transform* GetTransform() const		{ return m_transform; }
-		Context* GetContext() const			{ return m_context; }
-		ComponentType GetType() const	    { return m_type; }
-        void SetType(ComponentType type)    { m_type = type; }
+        template <typename T>
+        std::shared_ptr<T> GetPtrShared() { return dynamic_pointer_cast<T>(shared_from_this()); }
 
 		const auto& GetAttributes() const { return m_attributes; }
 		void SetAttributes(const std::vector<Attribute>& attributes)
@@ -113,7 +111,11 @@ namespace Spartan
 				m_attributes[i].setter(attributes[i].getter());
 			}
 		}
-		//=========================================================================================
+
+        // Entity
+        Entity* GetEntity()	const { return m_entity; }
+        std::string GetEntityName() const;
+		//========================================================================================
 
 	protected:
 		#define REGISTER_ATTRIBUTE_GET_SET(getter, setter, type) RegisterAttribute(		\

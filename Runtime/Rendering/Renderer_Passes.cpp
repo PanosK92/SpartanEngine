@@ -150,7 +150,7 @@ namespace Spartan
 		const auto& entities_light = m_entities[Renderer_Object_Light];
         for (uint32_t light_index = 0; light_index < entities_light.size(); light_index++)
         {
-            const Light* light = entities_light[light_index]->GetComponent<Light>().get();
+            const Light* light = entities_light[light_index]->GetComponent<Light>();
 
             // Skip some obvious cases
             if (!light || !light->GetShadowsEnabled())
@@ -213,7 +213,7 @@ namespace Spartan
                         Entity* entity = entities[entity_index];
 
                         // Acquire renderable component
-                        const auto& renderable = entity->GetRenderable_PtrRaw();
+                        const auto& renderable = entity->GetRenderable();
                         if (!renderable)
                             continue;
 
@@ -258,7 +258,7 @@ namespace Spartan
                         cmd_list->SetBufferVertex(model->GetVertexBuffer());
 
                         // Update uber buffer with cascade transform
-                        m_buffer_object_cpu.object = entity->GetTransform_PtrRaw()->GetMatrix() * view_projection;
+                        m_buffer_object_cpu.object = entity->GetTransform()->GetMatrix() * view_projection;
                         if (!UpdateObjectBuffer(cmd_list, array_index))
                             continue;
 
@@ -311,7 +311,7 @@ namespace Spartan
                 for (const auto& entity : entities)
                 {
                     // Get renderable
-                    const auto& renderable = entity->GetRenderable_PtrRaw();
+                    const auto& renderable = entity->GetRenderable();
                     if (!renderable)
                         continue;
 
@@ -333,7 +333,7 @@ namespace Spartan
                     }
 
                     // Update uber buffer with entity transform
-                    if (Transform* transform = entity->GetTransform_PtrRaw())
+                    if (Transform* transform = entity->GetTransform())
                     {
                         // Update uber buffer with cascade transform
                         m_buffer_uber_cpu.transform = transform->GetMatrix() * m_buffer_frame_cpu.view_projection;
@@ -415,7 +415,7 @@ namespace Spartan
                     Entity* entity = entities[i];
 
                     // Get renderable
-                    const auto& renderable = entity->GetRenderable_PtrRaw();
+                    const auto& renderable = entity->GetRenderable();
                     if (!renderable)
                         continue;
 
@@ -478,7 +478,7 @@ namespace Spartan
                         }
                         
                         // Update uber buffer with entity transform
-                        if (Transform* transform = entity->GetTransform_PtrRaw())
+                        if (Transform* transform = entity->GetTransform())
                         {
                             m_buffer_object_cpu.object          = transform->GetMatrix();
                             m_buffer_object_cpu.wvp_current     = transform->GetMatrix() * m_buffer_frame_cpu.view_projection;
@@ -714,7 +714,7 @@ namespace Spartan
                 // Iterate through all the light entities
                 for (const auto& entity : entities)
                 {
-                    if (Light* light = entity->GetComponent<Light>().get())
+                    if (Light* light = entity->GetComponent<Light>())
                     {
                         // Update light buffer
                         UpdateLightBuffer(light);
@@ -1692,7 +1692,7 @@ namespace Spartan
                 auto& lights = m_entities[Renderer_Object_Light];
                 for (const auto& entity : lights)
                 {
-                    shared_ptr<Light> light = entity->GetComponent<Light>();
+                    Light* light = entity->GetComponent<Light>();
 
                     if (light->GetLightType() == LightType_Spot)
                     {
@@ -1708,7 +1708,7 @@ namespace Spartan
             {
                 for (const auto& entity : m_entities[Renderer_Object_Opaque])
                 {
-                    if (auto renderable = entity->GetRenderable_PtrRaw())
+                    if (auto renderable = entity->GetRenderable())
                     {
                         DrawBox(renderable->GetAabb(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
                     }
@@ -1716,7 +1716,7 @@ namespace Spartan
 
                 for (const auto& entity : m_entities[Renderer_Object_Transparent])
                 {
-                    if (auto renderable = entity->GetRenderable_PtrRaw())
+                    if (auto renderable = entity->GetRenderable())
                     {
                         DrawBox(renderable->GetAabb(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
                     }
@@ -1871,9 +1871,9 @@ namespace Spartan
             if (cmd_list->Begin(pipeline_state))
             {
                 // Light can be null if it just got removed and our buffer doesn't update till the next frame
-                if (Light* light = entity->GetComponent<Light>().get())
+                if (Light* light = entity->GetComponent<Light>())
                 {
-                    auto position_light_world       = entity->GetTransform_PtrRaw()->GetPosition();
+                    auto position_light_world       = entity->GetTransform()->GetPosition();
                     auto position_camera_world      = m_camera->GetTransform()->GetPosition();
                     auto direction_camera_to_light  = (position_light_world - position_camera_world).Normalized();
                     auto v_dot_l                    = Vector3::Dot(m_camera->GetTransform()->GetForward(), direction_camera_to_light);

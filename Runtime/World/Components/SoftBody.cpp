@@ -41,7 +41,7 @@ namespace Spartan
 {
     SoftBody::SoftBody(Context* context, Entity* entity, uint32_t id /*= 0*/) : IComponent(context, entity, id)
     {
-        m_physics = m_context->GetSubsystem<Physics>().get();
+        m_physics = m_context->GetSubsystem<Physics>();
     }
 
     SoftBody::~SoftBody()
