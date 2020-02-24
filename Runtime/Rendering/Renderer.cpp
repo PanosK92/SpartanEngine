@@ -105,8 +105,8 @@ namespace Spartan
 	bool Renderer::Initialize()
 	{
         // Get required systems		
-        m_resource_cache    = m_context->GetSubsystem<ResourceCache>().get();
-        m_profiler          = m_context->GetSubsystem<Profiler>().get();
+        m_resource_cache    = m_context->GetSubsystem<ResourceCache>();
+        m_profiler          = m_context->GetSubsystem<Profiler>();
 
         // Create device
         m_rhi_device = make_shared<RHI_Device>(m_context);
@@ -344,7 +344,7 @@ namespace Spartan
         {
             if (Entity* entity = m_entities[Renderer_Object_LightDirectional].front())
             {
-                if (shared_ptr<Light> light = entity->GetComponent<Light>())
+                if (Light* light = entity->GetComponent<Light>())
                 {
                     light_directional_intensity = light->GetIntensity();
                 }
@@ -494,8 +494,8 @@ namespace Spartan
 				continue;
 
 			// Get all the components we are interested in
-			auto renderable    = entity->GetComponent<Renderable>();
-			auto light		    = entity->GetComponent<Light>();
+			auto renderable = entity->GetComponent<Renderable>();
+			auto light      = entity->GetComponent<Light>();
 			auto camera		= entity->GetComponent<Camera>();
 
 			if (renderable)
@@ -516,7 +516,7 @@ namespace Spartan
 			if (camera)
 			{
 				m_entities[Renderer_Object_Camera].emplace_back(entity.get());
-				m_camera = camera;
+				m_camera = camera->GetPtrShared<Camera>();
 			}
 		}
 
@@ -532,7 +532,7 @@ namespace Spartan
 		auto render_hash = [this](Entity* entity)
 		{
 			// Get renderable
-			auto renderable = entity->GetRenderable_PtrRaw();
+			auto renderable = entity->GetRenderable();
 			if (!renderable)
 				return 0.0f;
 

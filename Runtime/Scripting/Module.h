@@ -37,7 +37,7 @@ namespace Spartan
 	class Module
 	{
 	public:
-		Module(const std::string& moduleName, std::weak_ptr<Scripting> scriptEngine);
+		Module(const std::string& moduleName, Scripting* scriptEngine);
 		~Module();
 
 		bool LoadScript(const std::string& filePath);
@@ -46,6 +46,6 @@ namespace Spartan
 	private:
 		std::string m_moduleName;
 		std::unique_ptr<CScriptBuilder> m_scriptBuilder;
-		std::weak_ptr<Scripting> m_scriptEngine;
+        Scripting* m_scripting;
 	};
 }

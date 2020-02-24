@@ -104,14 +104,14 @@ namespace Spartan
 
 		// Get a subsystem
 		template <class T> 
-		std::shared_ptr<T> GetSubsystem()
+        T* GetSubsystem()
 		{
             validate_subsystem_type<T>();
 
 			for (const auto& subsystem : m_subsystems)
 			{
                 if (typeid(T) == typeid(*subsystem.ptr))
-                    return std::static_pointer_cast<T>(subsystem.ptr);
+                    return static_cast<T*>(subsystem.ptr.get());
 			}
 
 			return nullptr;

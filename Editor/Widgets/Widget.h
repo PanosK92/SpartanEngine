@@ -38,7 +38,7 @@ public:
 	Widget(Spartan::Context* context)
     {
         m_context   = context;
-        m_profiler  = m_context->GetSubsystem<Spartan::Profiler>().get();
+        m_profiler  = m_context->GetSubsystem<Spartan::Profiler>();
         m_window    = nullptr;
     }
 	virtual ~Widget() = default;

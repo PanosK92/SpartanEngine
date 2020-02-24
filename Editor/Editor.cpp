@@ -76,8 +76,8 @@ void Editor::OnWindowMessage(WindowData& window_data)
 
         // Acquire useful engine subsystems
         m_context       = m_engine->GetContext();
-        m_renderer      = m_context->GetSubsystem<Renderer>().get();
-        m_profiler      = m_context->GetSubsystem<Profiler>().get();
+        m_renderer      = m_context->GetSubsystem<Renderer>();
+        m_profiler      = m_context->GetSubsystem<Profiler>();
         m_rhi_device    = m_renderer->GetRhiDevice();
         
         if (m_renderer->IsInitialized())

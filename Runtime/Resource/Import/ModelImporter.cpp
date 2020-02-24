@@ -46,7 +46,7 @@ namespace Spartan
 	ModelImporter::ModelImporter(Context* context)
 	{
 		m_context	= context;
-		m_world		= context->GetSubsystem<World>().get();
+		m_world		= context->GetSubsystem<World>();
 
 		// Get version
 		const int major	= aiGetVersionMajor();
@@ -160,8 +160,8 @@ namespace Spartan
 		ProgressReport::Get().SetStatus(g_progress_model_importer, "Creating entity for " + new_entity->GetName());
 
 		// Set the transform of parent_node as the parent of the new_entity's transform
-		const auto parent_trans = parent_node ? parent_node->GetTransform_PtrRaw() : nullptr;
-		new_entity->GetTransform_PtrRaw()->SetParent(parent_trans);
+		const auto parent_trans = parent_node ? parent_node->GetTransform() : nullptr;
+		new_entity->GetTransform()->SetParent(parent_trans);
 
 		// Set the transformation matrix of the Assimp node to the new node
 		AssimpHelper::set_entity_transform(assimp_node, new_entity);
@@ -193,7 +193,7 @@ namespace Spartan
             {
                 bool is_active = false;
                 entity = m_world->EntityCreate(is_active).get(); // create
-                entity->GetTransform_PtrRaw()->SetParent(new_entity->GetTransform_PtrRaw()); // set parent
+                entity->GetTransform()->SetParent(new_entity->GetTransform()); // set parent
                 _name += "_" + to_string(i + 1); // set name
             }
 

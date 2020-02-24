@@ -47,7 +47,7 @@ Widget_MenuBar::Widget_MenuBar(Context* context) : Widget(context)
 {
 	m_is_window				= false;
 	m_fileDialog			= make_unique<FileDialog>(m_context, true, FileDialog_Type_FileSelection, FileDialog_Op_Open, FileDialog_Filter_Scene);
-	_Widget_MenuBar::world	= m_context->GetSubsystem<World>().get();
+	_Widget_MenuBar::world	= m_context->GetSubsystem<World>();
 }
 
 void Widget_MenuBar::Tick()

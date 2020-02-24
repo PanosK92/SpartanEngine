@@ -61,8 +61,8 @@ namespace Spartan
 
 	bool World::Initialize()
 	{
-		m_input		= m_context->GetSubsystem<Input>().get();
-		m_profiler	= m_context->GetSubsystem<Profiler>().get();
+		m_input		= m_context->GetSubsystem<Input>();
+		m_profiler	= m_context->GetSubsystem<Profiler>();
 
 		CreateCamera();
 		CreateEnvironment();
@@ -307,7 +307,7 @@ namespace Spartan
 		vector<shared_ptr<Entity>> root_entities;
 		for (const auto& entity : m_entities)
 		{
-			if (entity->GetTransform_PtrRaw()->IsRoot())
+			if (entity->GetTransform()->IsRoot())
 			{
 				root_entities.emplace_back(entity);
 			}
@@ -344,14 +344,14 @@ namespace Spartan
     void World::_EntityRemove(const std::shared_ptr<Entity>& entity)
     {
         // Remove any descendants
-        auto children = entity->GetTransform_PtrRaw()->GetChildren();
+        auto children = entity->GetTransform()->GetChildren();
         for (const auto& child : children)
         {
-            EntityRemove(child->GetEntity_PtrShared());
+            EntityRemove(child->GetEntity()->GetPtrShared());
         }
 
         // Keep a reference to it's parent (in case it has one)
-        auto parent = entity->GetTransform_PtrRaw()->GetParent();
+        auto parent = entity->GetTransform()->GetParent();
 
         // Remove this entity
         for (auto it = m_entities.begin(); it < m_entities.end();)
@@ -391,7 +391,7 @@ namespace Spartan
 		entity->AddComponent<AudioListener>();
 		//entity->AddComponent<Script>()->SetScript(dir_scripts + "MouseLook.as");
 		//entity->AddComponent<Script>()->SetScript(dir_scripts + "FirstPersonController.as");
-		entity->GetTransform_PtrRaw()->SetPositionLocal(Vector3(0.0f, 1.0f, -5.0f));
+		entity->GetTransform()->SetPositionLocal(Vector3(0.0f, 1.0f, -5.0f));
 
 		return entity;
 	}
@@ -400,10 +400,10 @@ namespace Spartan
 	{
 		auto& light = EntityCreate();
 		light->SetName("DirectionalLight");
-		light->GetTransform_PtrRaw()->SetRotationLocal(Quaternion::FromEulerAngles(30.0f, 30.0, 0.0f));
-		light->GetTransform_PtrRaw()->SetPosition(Vector3(0.0f, 10.0f, 0.0f));
+		light->GetTransform()->SetRotationLocal(Quaternion::FromEulerAngles(30.0f, 30.0, 0.0f));
+		light->GetTransform()->SetPosition(Vector3(0.0f, 10.0f, 0.0f));
 
-		auto light_comp = light->AddComponent<Light>().get();
+		auto light_comp = light->AddComponent<Light>();
 		light_comp->SetLightType(LightType_Directional);
 
 		return light;

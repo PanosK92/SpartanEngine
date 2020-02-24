@@ -48,14 +48,9 @@ namespace Spartan
     {
         m_context   = context;
         m_entity    = entity;
-        m_transform = transform ? transform : entity->GetTransform_PtrRaw();
+        m_transform = transform ? transform : entity->GetTransform();
         m_enabled   = true;
     }
-
-    shared_ptr<Entity> IComponent::GetEntity_PtrShared() const
-	{
-		return m_entity->GetPtrShared();
-	}
 
 	string IComponent::GetEntityName() const
 	{

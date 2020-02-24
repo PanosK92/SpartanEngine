@@ -40,7 +40,7 @@ namespace Spartan
 		ScriptInstance();
 		~ScriptInstance();
 
-		bool Instantiate(const std::string& path, std::weak_ptr<Entity> entity, std::shared_ptr<Scripting> scriptEngine);
+		bool Instantiate(const std::string& path, std::weak_ptr<Entity> entity, Scripting* scriptEngine);
 		bool IsInstantiated()		{ return m_isInstantiated; }
 		const auto& GetScriptPath() { return m_scriptPath; }
 
@@ -60,7 +60,7 @@ namespace Spartan
 		asIScriptFunction* m_constructorFunction	= nullptr;
 		asIScriptFunction* m_startFunction			= nullptr;
 		asIScriptFunction* m_updateFunction			= nullptr;
-		std::shared_ptr<Scripting> m_scriptEngine	= nullptr;
+        Scripting* m_scripting	                    = nullptr;
 		bool m_isInstantiated						= false;
 	};
 }

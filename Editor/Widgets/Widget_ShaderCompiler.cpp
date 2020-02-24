@@ -42,7 +42,7 @@ Widget_ShaderEditor::Widget_ShaderEditor(Context* context) : Widget(context)
     m_is_visible	= false;
     m_size          = ImVec2(1366, 1000);
 
-    m_renderer = m_context->GetSubsystem<Renderer>().get();
+    m_renderer = m_context->GetSubsystem<Renderer>();
 }
 
 void Widget_ShaderEditor::Tick()

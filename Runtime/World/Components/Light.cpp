@@ -51,7 +51,7 @@ namespace Spartan
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_normal_bias, float);
 		REGISTER_ATTRIBUTE_GET_SET(GetLightType, SetLightType, LightType);
 
-		m_renderer = m_context->GetSubsystem<Renderer>().get();
+		m_renderer = m_context->GetSubsystem<Renderer>();
 	}
 
 	void Light::OnInitialize()

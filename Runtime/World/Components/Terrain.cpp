@@ -64,7 +64,7 @@ namespace Spartan
 
     void Terrain::Deserialize(FileStream* stream)
     {
-        ResourceCache* resource_cache = m_context->GetSubsystem<ResourceCache>().get();
+        ResourceCache* resource_cache = m_context->GetSubsystem<ResourceCache>();
         m_height_map    = resource_cache->GetByPath<RHI_Texture2D>(stream->ReadAs<string>());
         m_model         = resource_cache->GetByName<Model>(stream->ReadAs<string>());
         stream->Read(&m_min_y);
@@ -93,7 +93,7 @@ namespace Spartan
 
             m_context->GetSubsystem<ResourceCache>()->Remove(m_model);
             m_model.reset();
-            if (shared_ptr<Renderable>& renderable = m_entity->AddComponent<Renderable>())
+            if (Renderable* renderable = m_entity->AddComponent<Renderable>())
             {
                 renderable->GeometryClear();
             }
@@ -390,7 +390,7 @@ namespace Spartan
             return;
         }
 
-        if (shared_ptr<Renderable>& renderable = m_entity->AddComponent<Renderable>())
+        if (Renderable* renderable = m_entity->AddComponent<Renderable>())
         {
             renderable->GeometrySet(
                 "Terrain",
@@ -419,7 +419,7 @@ namespace Spartan
             m_model->UpdateGeometry();
 
             // Set a file path so the model can be used by the resource cache
-            ResourceCache* resource_cache = m_context->GetSubsystem<ResourceCache>().get();
+            ResourceCache* resource_cache = m_context->GetSubsystem<ResourceCache>();
             m_model->SetResourceFilePath(resource_cache->GetProjectDirectory() + m_entity->GetName() + "_terrain_" + to_string(m_id) + string(EXTENSION_MODEL));
             m_model = resource_cache->Cache(m_model);
         }

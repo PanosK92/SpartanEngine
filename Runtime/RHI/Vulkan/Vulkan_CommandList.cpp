@@ -53,8 +53,8 @@ namespace Spartan
     RHI_CommandList::RHI_CommandList(uint32_t index, RHI_SwapChain* swap_chain, Context* context)
 	{
         m_swap_chain            = swap_chain;
-        m_renderer              = context->GetSubsystem<Renderer>().get();
-        m_profiler              = context->GetSubsystem<Profiler>().get();
+        m_renderer              = context->GetSubsystem<Renderer>();
+        m_profiler              = context->GetSubsystem<Profiler>();
 		m_rhi_device	        = m_renderer->GetRhiDevice().get();
         m_rhi_pipeline_cache    = m_renderer->GetPipelineCache().get();
         m_passes_active.reserve(100);

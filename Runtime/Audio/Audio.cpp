@@ -129,7 +129,7 @@ namespace Spartan
         m_context->GetSubsystem<Settings>()->RegisterThirdPartyLib("FMOD", major + "." + minor + "." + rev, "https://www.fmod.com/download");
 
         // Get dependencies
-        m_profiler = m_context->GetSubsystem<Profiler>().get();
+        m_profiler = m_context->GetSubsystem<Profiler>();
 
         // Subscribe to events
         SUBSCRIBE_TO_EVENT(Event_World_Unload, [this](Variant) { m_listener = nullptr; });

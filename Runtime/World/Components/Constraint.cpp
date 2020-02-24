@@ -52,7 +52,7 @@ namespace Spartan
 		m_errorReduction			= 0.0f;
 		m_constraintForceMixing		= 0.0f;
 		m_constraintType			= ConstraintType_Point;
-		m_physics					= GetContext()->GetSubsystem<Physics>().get();
+		m_physics					= GetContext()->GetSubsystem<Physics>();
 
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_errorReduction, float);
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_constraintForceMixing, float);
@@ -206,8 +206,8 @@ namespace Spartan
 	{
 		if (m_constraint)
 		{
-			RigidBody* rigid_body_own	= m_entity->GetComponent<RigidBody>().get();
-			RigidBody* rigid_body_other	= !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<RigidBody>().get() : nullptr;
+			RigidBody* rigid_body_own	= m_entity->GetComponent<RigidBody>();
+			RigidBody* rigid_body_other	= !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<RigidBody>() : nullptr;
 
 			// Make both bodies aware of the removal of this constraint
 			if (rigid_body_own)	rigid_body_own->RemoveConstraint(this);
@@ -222,8 +222,8 @@ namespace Spartan
 		if (!m_constraint || m_bodyOther.expired())
 			return;
 
-		RigidBody* rigid_body_own   = m_entity->GetComponent<RigidBody>().get();
-		RigidBody* rigid_body_other = !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<RigidBody>().get() : nullptr;
+		RigidBody* rigid_body_own   = m_entity->GetComponent<RigidBody>();
+		RigidBody* rigid_body_other = !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<RigidBody>() : nullptr;
 		btRigidBody* bt_own_body    = rigid_body_own ? rigid_body_own->GetBtRigidBody() : nullptr;
 		btRigidBody* bt_other_body  = rigid_body_other ? rigid_body_other->GetBtRigidBody() : nullptr;
 
@@ -280,8 +280,8 @@ namespace Spartan
 		ReleaseConstraint();
 
 		// Make sure we have two bodies
-		RigidBody* rigid_body_own	= m_entity->GetComponent<RigidBody>().get();
-		RigidBody* rigid_body_other	= !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<RigidBody>().get() : nullptr;
+		RigidBody* rigid_body_own	= m_entity->GetComponent<RigidBody>();
+		RigidBody* rigid_body_other	= !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<RigidBody>() : nullptr;
 		if (!rigid_body_own || !rigid_body_other)
 		{
 			LOG_INFO("A RigidBody component is still initializing, deferring construction...");

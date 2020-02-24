@@ -21,10 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ======
+//= INCLUDES ====================
 #include "Widget.h"
 #include <memory>
-//=================
+#include "..\ButtonColorPicker.h"
+//===============================
 
 namespace Spartan
 {
@@ -45,8 +46,6 @@ namespace Spartan
     class Environment;
 	class IComponent;
 }
-
-class ButtonColorPicker;
 
 class Widget_Properties : public Widget
 {

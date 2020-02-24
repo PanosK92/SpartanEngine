@@ -39,7 +39,7 @@ namespace Spartan
 
 	void AudioListener::OnInitialize()
 	{
-		m_audio = GetContext()->GetSubsystem<Audio>().get();
+		m_audio = GetContext()->GetSubsystem<Audio>();
 	}
 
 	void AudioListener::OnTick(float delta_time)

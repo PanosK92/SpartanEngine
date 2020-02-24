@@ -57,9 +57,9 @@ namespace Spartan::AssimpHelper
 		auto matrix_engine = ai_matrix4_x4_to_matrix(node->mTransformation);
 
 		// Apply position, rotation and scale
-		entity->GetTransform_PtrRaw()->SetPositionLocal(matrix_engine.GetTranslation());
-		entity->GetTransform_PtrRaw()->SetRotationLocal(matrix_engine.GetRotation());
-		entity->GetTransform_PtrRaw()->SetScaleLocal(matrix_engine.GetScale());
+		entity->GetTransform()->SetPositionLocal(matrix_engine.GetTranslation());
+		entity->GetTransform()->SetRotationLocal(matrix_engine.GetRotation());
+		entity->GetTransform()->SetScaleLocal(matrix_engine.GetScale());
 	}
 
 	constexpr void compute_node_count(const aiNode* node, int* count)

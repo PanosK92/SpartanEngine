@@ -67,7 +67,7 @@ namespace Spartan
 	void Collider::OnInitialize()
 	{
 		// If there is a mesh, use it's bounding box
-		if (auto renderable = GetEntity_PtrRaw()->GetRenderable_PtrRaw())
+		if (auto renderable = GetEntity()->GetRenderable())
 		{
 			m_center	= Vector3::Zero;
 			m_size		= renderable->GetAabb().GetSize();
@@ -175,7 +175,7 @@ namespace Spartan
 
 		case ColliderShape_Mesh:
 			// Get Renderable
-			Renderable* renderable = GetEntity_PtrRaw()->GetComponent<Renderable>().get();
+			Renderable* renderable = GetEntity()->GetComponent<Renderable>();
 			if (!renderable)
 			{
 				LOG_WARNING("Can't construct mesh shape, there is no Renderable component attached.");

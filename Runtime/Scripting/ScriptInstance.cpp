@@ -50,16 +50,16 @@ namespace Spartan
 		m_constructorFunction	= nullptr;
 		m_startFunction			= nullptr;
 		m_updateFunction		= nullptr;
-		m_scriptEngine			= nullptr;
+		m_scripting			    = nullptr;
 		m_isInstantiated		= false;
 	}
 
-	bool ScriptInstance::Instantiate(const string& path, std::weak_ptr<Entity> entity, shared_ptr<Scripting> scriptEngine)
+	bool ScriptInstance::Instantiate(const string& path, std::weak_ptr<Entity> entity, Scripting* scriptEngine)
 	{
 		if (entity.expired())
 			return false;
 
-		m_scriptEngine = scriptEngine;
+		m_scripting = scriptEngine;
 
 		// Extract properties from path
 		m_scriptPath				= path;
@@ -76,43 +76,43 @@ namespace Spartan
 
 	void ScriptInstance::ExecuteStart()
 	{
-		if (!m_scriptEngine)
+		if (!m_scripting)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return;
 		}
 
-		m_scriptEngine->ExecuteCall(m_startFunction, m_scriptObject);
+		m_scripting->ExecuteCall(m_startFunction, m_scriptObject);
 	}
 
 	void ScriptInstance::ExecuteUpdate(float delta_time)
 	{
-		if (!m_scriptEngine)
+		if (!m_scripting)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return;
 		}
 
-		m_scriptEngine->ExecuteCall(m_updateFunction, m_scriptObject, delta_time);
+		m_scripting->ExecuteCall(m_updateFunction, m_scriptObject, delta_time);
 	}
 
 	bool ScriptInstance::CreateScriptObject()
 	{
-		if (!m_scriptEngine)
+		if (!m_scripting)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
 		}
 
 		// Create module
-		m_module	= make_shared<Module>(m_moduleName, m_scriptEngine);
+		m_module	= make_shared<Module>(m_moduleName, m_scripting);
 		bool result = m_module->LoadScript(m_scriptPath);
 		if (!result)
 			return false;
 
 		// Get type
 		auto type_id		= m_module->GetAsIScriptModule()->GetTypeIdByDecl(m_className.c_str());
-		asITypeInfo* type	= m_scriptEngine->GetAsIScriptEngine()->GetTypeInfoById(type_id);
+		asITypeInfo* type	= m_scripting->GetAsIScriptEngine()->GetTypeInfoById(type_id);
 		if (!type)
 			return false;
 
@@ -126,7 +126,7 @@ namespace Spartan
 			return false;
 		}
 
-		asIScriptContext* context = m_scriptEngine->RequestContext(); // request a context
+		asIScriptContext* context = m_scripting->RequestContext(); // request a context
 		int r = context->Prepare(m_constructorFunction); // prepare the context to call the factory function
 		if (r < 0) return false;
 
@@ -144,7 +144,7 @@ namespace Spartan
 		m_scriptObject->AddRef();
 
 		// return context
-		m_scriptEngine->ReturnContext(context);
+		m_scripting->ReturnContext(context);
 
 		return true;
 	}
