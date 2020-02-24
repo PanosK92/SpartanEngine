@@ -270,9 +270,13 @@ namespace Spartan
             depth_stencil_state.sType               = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
             depth_stencil_state.depthTestEnable     = m_state.depth_stencil_state->GetDepthTestEnabled();
             depth_stencil_state.depthWriteEnable    = m_state.depth_stencil_state->GetDepthWriteEnabled();
-            depth_stencil_state.depthCompareOp      = vulkan_compare_operator[m_state.depth_stencil_state->GetDepthFunction()];
-            depth_stencil_state.front               = depth_stencil_state.back;
-            depth_stencil_state.back.compareOp      = VK_COMPARE_OP_ALWAYS;
+            depth_stencil_state.depthCompareOp      = vulkan_compare_operator[m_state.depth_stencil_state->GetDepthFunction()];    
+            depth_stencil_state.stencilTestEnable   = m_state.depth_stencil_state->GetStencilTestEnabled();
+            depth_stencil_state.front.compareOp     = vulkan_compare_operator[m_state.depth_stencil_state->GetStencilFunction()];
+            depth_stencil_state.front.failOp        = vulkan_stencil_operation[m_state.depth_stencil_state->GetStencilFailOperation()];
+            depth_stencil_state.front.depthFailOp   = vulkan_stencil_operation[m_state.depth_stencil_state->GetStencilDepthFailOperation()];
+            depth_stencil_state.front.passOp        = vulkan_stencil_operation[m_state.depth_stencil_state->GetStencilPassOperation()];
+            depth_stencil_state.back                = depth_stencil_state.front;
         }
 
         // Pipeline layout

@@ -684,7 +684,7 @@ namespace Spartan
         pipeline_state.primitive_topology                       = RHI_PrimitiveTopology_TriangleList;
         pipeline_state.pass_name                                = "Pass_Light";
 
-        auto draw_lights = [this, &cmd_list, &shader_v, &shader_p_directional, &shader_p_point, &shader_p_spot, &tex_diffuse, &tex_specular, &tex_volumetric](Renderer_Object_Type type)
+        auto draw_lights = [this, &cmd_list, &shader_p_directional, &shader_p_point, &shader_p_spot](Renderer_Object_Type type)
         {
             const vector<Entity*>& entities = m_entities[type];
             if (entities.empty())
@@ -1692,7 +1692,7 @@ namespace Spartan
                 auto& lights = m_entities[Renderer_Object_Light];
                 for (const auto& entity : lights)
                 {
-                    shared_ptr<Light>& light = entity->GetComponent<Light>();
+                    shared_ptr<Light> light = entity->GetComponent<Light>();
 
                     if (light->GetLightType() == LightType_Spot)
                     {

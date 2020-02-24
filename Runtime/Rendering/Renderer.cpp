@@ -185,7 +185,7 @@ namespace Spartan
         const auto& light_entities = m_entities[Renderer_Object_Light];
         for (const auto& light_entity : light_entities)
         {
-            auto& light = light_entity->GetComponent<Light>();
+            auto light = light_entity->GetComponent<Light>();
             if (light->GetShadowsEnabled())
             {
                 light->CreateShadowMap();
@@ -344,7 +344,7 @@ namespace Spartan
         {
             if (Entity* entity = m_entities[Renderer_Object_LightDirectional].front())
             {
-                if (shared_ptr<Light>& light = entity->GetComponent<Light>())
+                if (shared_ptr<Light> light = entity->GetComponent<Light>())
                 {
                     light_directional_intensity = light->GetIntensity();
                 }
@@ -494,9 +494,9 @@ namespace Spartan
 				continue;
 
 			// Get all the components we are interested in
-			auto& renderable    = entity->GetComponent<Renderable>();
-			auto& light		    = entity->GetComponent<Light>();
-			auto& camera		= entity->GetComponent<Camera>();
+			auto renderable    = entity->GetComponent<Renderable>();
+			auto light		    = entity->GetComponent<Light>();
+			auto camera		= entity->GetComponent<Camera>();
 
 			if (renderable)
 			{

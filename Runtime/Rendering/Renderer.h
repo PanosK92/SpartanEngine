@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ========================
-#include <map>
 #include <unordered_map>
 #include "../Core/ISubsystem.h"
 #include "../RHI/RHI_Definition.h"
@@ -329,7 +328,7 @@ namespace Spartan
         void ClearEntities() { m_entities.clear(); }
 
         // Render textures
-        std::map<Renderer_RenderTarget_Type, std::shared_ptr<RHI_Texture>> m_render_targets;
+        std::unordered_map<Renderer_RenderTarget_Type, std::shared_ptr<RHI_Texture>> m_render_targets;
         std::vector<std::shared_ptr<RHI_Texture>> m_render_tex_bloom;
 
         // Standard textures
@@ -341,7 +340,7 @@ namespace Spartan
         std::shared_ptr<RHI_Texture> m_gizmo_tex_light_spot;
 
 		// Shaders
-		std::map<Renderer_Shader_Type, std::shared_ptr<RHI_Shader>> m_shaders;
+		std::unordered_map<Renderer_Shader_Type, std::shared_ptr<RHI_Shader>> m_shaders;
 
 		// Depth-stencil states
         std::shared_ptr<RHI_DepthStencilState> m_depth_stencil_disabled;
@@ -388,7 +387,7 @@ namespace Spartan
 
         // Options
         uint64_t m_options = 0;
-        std::map<Renderer_Option_Value, float> m_option_values;
+        std::unordered_map<Renderer_Option_Value, float> m_option_values;
 
         // Misc
 		Math::Rectangle m_quad;

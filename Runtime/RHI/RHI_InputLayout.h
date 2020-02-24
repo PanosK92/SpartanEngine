@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Definition.h"
 #include "RHI_Vertex.h"
 #include "RHI_Object.h"
+#include "..\Logging\Log.h"
 //=========================
 
 namespace Spartan
@@ -59,12 +60,17 @@ namespace Spartan
 
 		~RHI_InputLayout();
 
-		template<typename T>
-		bool Create(void* vertex_shader_blob = nullptr)
+		bool Create(const RHI_Vertex_Type vertex_type, void* vertex_shader_blob = nullptr)
 		{
+            if (vertex_type == RHI_Vertex_Type_Unknown)
+            {
+                LOG_ERROR("Unknown vertex type");
+                return false;
+            }
+
 			uint32_t binding = 0;
 
-			if (RHI_Vertex_Type_To_Enum<T>() == RHI_Vertex_Type_Position)
+			if (vertex_type == RHI_Vertex_Type_Position)
 			{
 				m_vertex_attributes =
 				{
@@ -72,7 +78,7 @@ namespace Spartan
 				};
 			}
 
-			if (RHI_Vertex_Type_To_Enum<T>() == RHI_Vertex_Type_PositionTexture)
+			if (vertex_type == RHI_Vertex_Type_PositionTexture)
 			{
 				m_vertex_attributes =
 				{
@@ -81,7 +87,7 @@ namespace Spartan
 				};
 			}
 
-			if (RHI_Vertex_Type_To_Enum<T>() == RHI_Vertex_Type_PositionColor)
+			if (vertex_type == RHI_Vertex_Type_PositionColor)
 			{
 				m_vertex_attributes =
 				{
@@ -90,7 +96,7 @@ namespace Spartan
 				};
 			}
 
-			if (RHI_Vertex_Type_To_Enum<T>() == RHI_Vertex_Type_Position2dTextureColor8)
+			if (vertex_type == RHI_Vertex_Type_Position2dTextureColor8)
 			{
 				m_vertex_attributes =
 				{
@@ -100,7 +106,7 @@ namespace Spartan
 				};
 			}
 
-			if (RHI_Vertex_Type_To_Enum<T>() == RHI_Vertex_Type_PositionTextureNormalTangent)
+			if (vertex_type == RHI_Vertex_Type_PositionTextureNormalTangent)
 			{
 				m_vertex_attributes =
 				{
@@ -119,9 +125,9 @@ namespace Spartan
 			return true;
 		}
 
-		auto GetVertexType()					const { return m_vertex_type; }
+        RHI_Vertex_Type GetVertexType()			const { return m_vertex_type; }
 		const auto& GetAttributeDescriptions()	const { return m_vertex_attributes; }
-		auto GetResource()						const { return m_resource; }
+        void* GetResource()						const { return m_resource; }
 
 		bool operator==(const RHI_InputLayout& rhs) const { return m_vertex_type == rhs.GetVertexType(); }
 

@@ -66,12 +66,11 @@ namespace Spartan::Math
 			if (distance == INFINITY)
 				continue;
 
-            auto& hit_position = m_start + distance * m_direction;
 			hits.emplace_back(
-                entity,          // Entity
-                hit_position,    // Position
-                distance,        // Distance
-                distance == 0.0f // Inside
+                entity,                             // Entity
+                m_start + distance * m_direction,   // Position
+                distance,                           // Distance
+                distance == 0.0f                    // Inside
             );
 		}
 

@@ -78,8 +78,16 @@ namespace Spartan
         }
 
         RHI_Pipeline* pipeline = m_cache[hash].get();
-        pipeline->GetDescriptorSet()->MakeDirty();
-        
+
+        if (RHI_DescriptorSet* descriptor_set = pipeline->GetDescriptorSet())
+        {
+            descriptor_set->MakeDirty();
+        }
+        else
+        {
+            LOG_ERROR("Pipeline has no descriptor set");
+        }
+
         return pipeline;
     }
 }

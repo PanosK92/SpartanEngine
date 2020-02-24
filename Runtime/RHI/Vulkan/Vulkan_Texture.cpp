@@ -148,7 +148,7 @@ namespace Spartan
                     region.bufferOffset						= offset;
                     region.bufferRowLength					= 0;
                     region.bufferImageHeight				= 0;
-                    region.imageSubresource.aspectMask		= IsColorFormat() ? VK_IMAGE_ASPECT_COLOR_BIT : VK_IMAGE_ASPECT_DEPTH_BIT;
+                    region.imageSubresource.aspectMask      = vulkan_common::image::get_aspect_mask(this);
                     region.imageSubresource.mipLevel		= mip_index;
                     region.imageSubresource.baseArrayLayer	= array_index;
                     region.imageSubresource.layerCount		= m_array_size;
@@ -170,7 +170,7 @@ namespace Spartan
             // Create staging buffer
             if (!vulkan_common::buffer::create(
                 rhi_context,
-                static_cast<void*>(stating_buffer),
+                stating_buffer,
                 staging_buffer_memory,
                 buffer_size,
                 VK_BUFFER_USAGE_TRANSFER_SRC_BIT,

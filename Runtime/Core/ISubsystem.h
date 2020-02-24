@@ -23,14 +23,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==========
 #include "EngineDefs.h"
+#include <type_traits>
 //=====================
 
 namespace Spartan
 {
 	class Context;
-
-    template<typename T>
-    constexpr void validate_subsystem_type() { static_assert(std::is_base_of<ISubsystem, T>::value, "Provided type does not implement ISubystem"); }
 
 	class SPARTAN_CLASS ISubsystem
 	{		
@@ -43,4 +41,7 @@ namespace Spartan
 	protected:
 		Context* m_context;
 	};
+
+    template<typename T>
+    constexpr void validate_subsystem_type() { static_assert(std::is_base_of<ISubsystem, T>::value, "Provided type does not implement ISubystem"); }
 }
