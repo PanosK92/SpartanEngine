@@ -116,7 +116,7 @@ void Widget_RenderOptions::Tick()
 
             // Bloom
             ImGui::Checkbox("Bloom", &do_bloom); ImGui::SameLine();
-            render_option_float("##bloom_option_1", "Intensity", Option_Value_Bloom_Intensity, nullptr, 0.001f);
+            render_option_float("##bloom_option_1", "Intensity", Option_Value_Bloom_Intensity, "", 0.001f);
             ImGui::Separator();
 
             // Volumetric lighting
