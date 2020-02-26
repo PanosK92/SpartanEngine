@@ -66,8 +66,8 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     {
         // Sample from textures
         float4 sample_albedo    = tex_albedo.Sample(sampler_point_clamp, uv);
-        float4 light_diffuse    = tex_light_diffuse.Sample(sampler_point_clamp, uv);
-        float4 light_specular   = tex_light_specular.Sample(sampler_point_clamp, uv);
+        float3 light_diffuse    = tex_light_diffuse.Sample(sampler_point_clamp, uv).rgb;
+        float3 light_specular   = tex_light_specular.Sample(sampler_point_clamp, uv).rgb;
     
         // Create material
         Material material;
@@ -97,7 +97,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         float3 light_emissive = material.emissive * material.albedo * 50.0f;
     
         // Combine and return
-        color += light_diffuse.rgb + light_ibl_diffuse + light_specular.rgb + light_ibl_specular + light_reflection + light_emissive;
+        color += light_diffuse + light_ibl_diffuse + light_specular + light_ibl_specular + light_reflection + light_emissive;
         return float4(color, sample_albedo.a);
     }
 }
