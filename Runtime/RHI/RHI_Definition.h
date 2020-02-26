@@ -184,6 +184,7 @@ namespace Spartan
 		RHI_Format_R16G16_Float,
 		RHI_Format_R32G32_Float,	
 		// RGB
+        RHI_Format_R11G11B10_Float,
 		RHI_Format_R32G32B32_Float,
 		// RGBA
 		RHI_Format_R8G8B8A8_Unorm,

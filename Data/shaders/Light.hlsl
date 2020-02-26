@@ -43,17 +43,17 @@ Texture2D light_spot_color 				: register(t12);
 
 struct PixelOutputType
 {
-	float4 diffuse		: SV_Target0;
-	float4 specular		: SV_Target1;
-	float4 volumetric	: SV_Target2;
+	float3 diffuse		: SV_Target0;
+	float3 specular		: SV_Target1;
+	float3 volumetric	: SV_Target2;
 };
 
 PixelOutputType mainPS(Pixel_PosUv input)
 {
 	PixelOutputType light_out;
-    light_out.diffuse       = float4(0.0f, 0.0f, 0.0f, 1.0f);
-	light_out.specular 		= float4(0.0f, 0.0f, 0.0f, 1.0f);
-    light_out.volumetric    = float4(0.0f, 0.0f, 0.0f, 1.0f);
+    light_out.diffuse       = 0.0f;
+	light_out.specular 		= 0.0f;
+    light_out.volumetric    = 0.0f;
 
     float2 uv = input.uv;
     
