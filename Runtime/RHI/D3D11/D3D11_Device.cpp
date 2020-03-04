@@ -126,6 +126,23 @@ namespace Spartan
 				LOG_ERROR("Failed to create device, %s.", d3d11_common::dxgi_error_to_string(result));
 				return;
 			}
+            
+            // Detect max msaa level
+            {
+                uint32_t sample_count = 0;
+                for (sample_count = D3D11_MAX_MULTISAMPLE_SAMPLE_COUNT; sample_count > 1; sample_count--)
+                {
+                    result = m_rhi_context->device->CheckMultisampleQualityLevels(DXGI_FORMAT_R8G8B8A8_UNORM, sample_count, &m_rhi_context->max_msaa_level);
+                    if (FAILED(result))
+                    {
+                        LOG_ERROR("Failed to detect max multisample samples, %s.", d3d11_common::dxgi_error_to_string(result));
+                        continue;
+                    }
+
+                    if (m_rhi_context->max_msaa_level > 0)
+                        break;
+                }
+            }
 		}
 
 		// Log feature level
