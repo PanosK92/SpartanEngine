@@ -90,7 +90,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         [branch]
         if (g_ssr_enabled && sample_ssr.x != 0.0f && sample_ssr.y != 0.0f)
         {
-            light_reflection = tex_frame.Sample(sampler_bilinear_clamp, sample_ssr.xy).rgb * F * light_ambient;
+            light_reflection = saturate(tex_frame.Sample(sampler_bilinear_clamp, sample_ssr.xy).rgb * F * light_ambient);
         }
     
         // Light - Emissive
