@@ -173,26 +173,6 @@ namespace Spartan
 		return m_gizmo_transform->SetSelectedEntity(entity);
 	}
 
-    void Renderer::SetShadowResolution(uint32_t resolution)
-    {
-        resolution = Clamp(resolution, m_resolution_shadow_min, GetMaxResolution());
-
-        if (resolution == GetOptionValue<uint32_t>(Option_Value_ShadowResolution))
-            return;
-
-        SetOptionValue(Option_Value_ShadowResolution, static_cast<float>(resolution));
-
-        const auto& light_entities = m_entities[Renderer_Object_Light];
-        for (const auto& light_entity : light_entities)
-        {
-            auto light = light_entity->GetComponent<Light>();
-            if (light->GetShadowsEnabled())
-            {
-                light->CreateShadowMap();
-            }
-        }
-    }
-
     void Renderer::Tick(float delta_time)
 	{
 		if (!m_rhi_device || !m_rhi_device->IsInitialized())
@@ -227,7 +207,7 @@ namespace Spartan
             m_buffer_frame_cpu.view_projection_ortho    = Matrix::CreateLookAtLH(Vector3(0, 0, -m_near_plane), Vector3::Forward, Vector3::Up) * m_buffer_frame_cpu.projection_ortho;
 
 			// TAA - Generate jitter
-			if (GetOptionValue(Render_AntiAliasing_TAA))
+			if (GetOption(Render_AntiAliasing_TAA))
 			{
 				m_taa_jitter_previous = m_taa_jitter;
 
@@ -368,7 +348,7 @@ namespace Spartan
         m_buffer_frame_cpu.exposure                     = m_option_values[Option_Value_Exposure];
         m_buffer_frame_cpu.gamma                        = m_option_values[Option_Value_Gamma];
         m_buffer_frame_cpu.directional_light_intensity  = light_directional_intensity;
-        m_buffer_frame_cpu.ssr_enabled                  = GetOptionValue(Render_ScreenSpaceReflections) ? 1.0f : 0.0f;
+        m_buffer_frame_cpu.ssr_enabled                  = GetOption(Render_ScreenSpaceReflections) ? 1.0f : 0.0f;
         m_buffer_frame_cpu.shadow_resolution            = GetOptionValue<float>(Option_Value_ShadowResolution);
 
         // Update
@@ -465,7 +445,7 @@ namespace Spartan
         bool contact_shadows    = static_cast<float>(m_options & Render_ScreenSpaceShadows);
 
         for (uint32_t i = 0; i < light->GetShadowArraySize(); i++) { m_buffer_light_cpu.view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix(i); }
-        m_buffer_light_cpu.intensity_range_angle_bias               = Vector4(light->GetIntensity(), light->GetRange(), light->GetAngle(), GetOptionValue(Render_ReverseZ) ? light->GetBias() : -light->GetBias());
+        m_buffer_light_cpu.intensity_range_angle_bias               = Vector4(light->GetIntensity(), light->GetRange(), light->GetAngle(), GetOption(Render_ReverseZ) ? light->GetBias() : -light->GetBias());
         m_buffer_light_cpu.normalBias_shadow_volumetric_contact     = Vector4(light->GetNormalBias(), light->GetShadowsEnabled(), contact_shadows && light->GetShadowsScreenSpaceEnabled(), volumetric && light->GetVolumetricEnabled());
         m_buffer_light_cpu.color                                    = light->GetColor(); m_buffer_light_cpu.color.w = light->GetShadowsTransparentEnabled() ? 1.0f : 0.0f;
         m_buffer_light_cpu.position                                 = light->GetTransform()->GetPosition();
@@ -567,17 +547,54 @@ namespace Spartan
         m_render_targets[RenderTarget_Brdf_Prefiltered_Environment] = texture;
     }
 
-    void Renderer::SetOptionValue(Renderer_Option_Value option, float value, float min /*= numeric_limits<float>::lowest()*/, float max /*= numeric_limits<float>::max()*/)
+	void Renderer::SetOption(Renderer_Option option, bool enable)
+	{
+        if (enable && !GetOption(option))
+        {
+            m_options |= option;
+        }
+        else if (!enable && GetOption(option))
+        {
+            m_options &= ~option;
+        }
+        else
+        {
+            return;
+        }
+	}
+
+    void Renderer::SetOptionValue(Renderer_Option_Value option, float value)
     {
-        value = Clamp(value, min, max);
+        if (option == Option_Value_Anisotropy)
+        {
+            value = Clamp(value, 0.0f, 16.0f);
+        }
+        else if (option == Option_Value_ShadowResolution)
+        {
+            value = Clamp(value, static_cast<float>(m_resolution_shadow_min), static_cast<float>(GetMaxResolution()));
+        }
 
         if (m_option_values[option] == value)
             return;
 
         m_option_values[option] = value;
+
+        // Shadow resolution handling
+        if (option == Option_Value_ShadowResolution)
+        {
+            const auto& light_entities = m_entities[Renderer_Object_Light];
+            for (const auto& light_entity : light_entities)
+            {
+                auto light = light_entity->GetComponent<Light>();
+                if (light->GetShadowsEnabled())
+                {
+                    light->CreateShadowMap();
+                }
+            }
+        }
     }
 
-    const uint32_t Renderer::GetMaxResolution() const
+	const uint32_t Renderer::GetMaxResolution() const
     {
         return m_rhi_device->GetContextRhi()->max_texture_dimension_2d;
     }

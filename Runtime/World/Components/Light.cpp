@@ -266,7 +266,7 @@ namespace Spartan
         }
 
         ShadowSlice& shadow_slice   = m_shadow_map.slices[index];
-        const bool reverse_z        = m_renderer ? m_renderer->GetOptionValue(Render_ReverseZ) : false;
+        const bool reverse_z        = m_renderer ? m_renderer->GetOption(Render_ReverseZ) : false;
 
 		if (m_light_type == LightType_Directional)
 		{

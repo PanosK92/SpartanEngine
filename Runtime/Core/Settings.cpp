@@ -175,8 +175,8 @@ namespace Spartan
         Renderer* renderer = m_context->GetSubsystem<Renderer>();
 
         m_context->GetSubsystem<Timer>()->SetTargetFps(m_fps_limit);
-        renderer->SetOptionValue(Option_Value_Anisotropy, static_cast<float>(m_anisotropy), 0, 16);
-        renderer->SetShadowResolution(m_shadow_map_resolution);
+        renderer->SetOptionValue(Option_Value_Anisotropy, static_cast<float>(m_anisotropy));
+        renderer->SetOptionValue(Option_Value_ShadowResolution, static_cast<float>(m_shadow_map_resolution));
         renderer->SetOptions(m_renderer_flags);
     }
 }
