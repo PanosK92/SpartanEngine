@@ -96,7 +96,7 @@ namespace Spartan::Math
         }
         else
         {
-            constexpr float z = numeric_limits<float>::infinity(); // reverse-z onle (but I must read form Renderer)
+            constexpr float z = numeric_limits<float>::infinity(); // reverse-z only (but I must read form Renderer)
             radius = Max3(extent.x, extent.y, z);
         }
 

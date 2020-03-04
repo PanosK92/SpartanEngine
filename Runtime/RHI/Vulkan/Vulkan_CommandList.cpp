@@ -158,8 +158,8 @@ namespace Spartan
         // Shader resources
         {
             // If the pipeline changed, we are using new descriptors, so the resources have to be set again
-            m_set_id_vertex_buffer  = 0;
-            m_set_id_index_buffer   = 0;
+            m_set_id_buffer_vertex  = 0;
+            m_set_id_buffer_pixel   = 0;
 
             // Vulkan doesn't have a persistent state so global resources have to be set
             m_renderer->SetGlobalSamplersAndConstantBuffers(this);
@@ -313,7 +313,7 @@ namespace Spartan
             return;
         }
 
-        if (m_set_id_vertex_buffer == buffer->GetId())
+        if (m_set_id_buffer_vertex == buffer->GetId())
             return;
 
 		VkBuffer vertex_buffers[]	= { static_cast<VkBuffer>(buffer->GetResource()) };
@@ -328,7 +328,7 @@ namespace Spartan
         );
 
         m_profiler->m_rhi_bindings_buffer_vertex++;
-        m_set_id_vertex_buffer = buffer->GetId();
+        m_set_id_buffer_vertex = buffer->GetId();
 	}
 
 	void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer)
@@ -339,7 +339,7 @@ namespace Spartan
             return;
         }
 
-        if (m_set_id_index_buffer == buffer->GetId())
+        if (m_set_id_buffer_pixel == buffer->GetId())
             return;
 
 		vkCmdBindIndexBuffer(
@@ -350,7 +350,7 @@ namespace Spartan
 		);
 
         m_profiler->m_rhi_bindings_buffer_index++;
-        m_set_id_index_buffer = buffer->GetId();
+        m_set_id_buffer_pixel = buffer->GetId();
 	}
 
     void RHI_CommandList::SetConstantBuffer(const uint32_t slot, uint8_t scope, RHI_ConstantBuffer* constant_buffer)
@@ -675,8 +675,8 @@ namespace Spartan
 
             // Upon setting a new descriptor, resources have to be set again.
             // Note: I could optimize this further and see if the descriptor happens to contain them.
-            m_set_id_vertex_buffer  = 0;
-            m_set_id_index_buffer   = 0;
+            m_set_id_buffer_vertex  = 0;
+            m_set_id_buffer_pixel   = 0;
         }
     }
 

@@ -101,16 +101,16 @@ namespace Spartan::Math
         // Returns the dot product
 		static float Dot(const Vector3& v1, const Vector3& v2)	{ return (v1.x * v2.x + v1.y * v2.y + v1.z * v2.z); }
         // Returns the dot product
-        [[nodiscard]] float Dot(const Vector3& rhs) const						{ return x * rhs.x + y * rhs.y + z * rhs.z; }
+        [[nodiscard]] float Dot(const Vector3& rhs) const       { return x * rhs.x + y * rhs.y + z * rhs.z; }
 
         // Returns the cross product
 		static Vector3 Cross(const Vector3& v1, const Vector3& v2)
-		{
-            const float x = v1.y * v2.z - v2.y * v1.z;
-            const float y = -(v1.x * v2.z - v2.x * v1.z);
-            const float z = v1.x * v2.y - v2.x * v1.y;
-
-			return Vector3(x, y, z);
+        {
+            return Vector3(
+                v1.y * v2.z - v2.y * v1.z,
+                -(v1.x * v2.z - v2.x * v1.z),
+                v1.x * v2.y - v2.x * v1.y
+            );
 		}
         // Returns the cross product
         [[nodiscard]] Vector3 Cross(const Vector3& v2) const { return Cross(*this, v2); }

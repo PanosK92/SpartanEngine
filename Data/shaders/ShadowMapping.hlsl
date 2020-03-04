@@ -316,7 +316,7 @@ float4 Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, Light
                 float compare_depth = pos.z + (light.bias * (cascade + 1));
                 shadow.a            = SampleShadowMap(float3(pos.xy, cascade), compare_depth);             
                 [branch]
-                if (light.cast_transparent_shadows && !transparent_pixel)
+                if (light.cast_transparent_shadows && shadow.a > 0.0f && !transparent_pixel)
                 {
                     shadow *= Technique_Vogel_Color(float3(pos.xy, cascade));
                 }
@@ -339,9 +339,9 @@ float4 Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, Light
                     shadow.a = lerp(shadow.a, shadow_secondary, cascade_lerp);
                     
                     [branch]
-                    if (light.cast_transparent_shadows && shadow.a == 1.0f && !transparent_pixel)
+                    if (light.cast_transparent_shadows && shadow.a > 0.0f && !transparent_pixel)
                     {
-                        shadow = lerp(shadow, Technique_Vogel_Color(float3(pos.xy, cacade_secondary)), cascade_lerp);
+                        shadow = min(shadow, Technique_Vogel_Color(float3(pos.xy, cacade_secondary)));
                     }
                 }
 
@@ -360,9 +360,9 @@ float4 Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, Light
             shadow.a                = SampleShadowMap(light.direction, compare_depth);
             
             [branch]
-            if (light.cast_transparent_shadows && shadow.a == 1.0f && !transparent_pixel)
+            if (light.cast_transparent_shadows && shadow.a > 0.0f && !transparent_pixel)
             {
-                shadow *= Technique_Vogel_Color(light.direction);
+                shadow *= sample_color(light.direction);
             }
         }
     }
@@ -376,9 +376,9 @@ float4 Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, Light
             shadow.a             = SampleShadowMap(float3(pos_clip.xy, 0.0f), compare_depth);
             
             [branch]
-            if (light.cast_transparent_shadows && shadow.a == 1.0f && !transparent_pixel)
+            if (light.cast_transparent_shadows && shadow.a > 0.0f  && !transparent_pixel)
             {
-                shadow *= Technique_Vogel_Color(float3(pos_clip.xy, 0.0f));
+                shadow *= sample_color(float3(pos_clip.xy, 0.0f));
             }
         }
     }
