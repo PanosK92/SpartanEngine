@@ -97,19 +97,18 @@ float4 ResolveTAA(float2 uv, Texture2D tex_history, Texture2D tex_current, Textu
 	// Clip history to the neighbourhood of the current sample
 	color_history = clip_aabb(color_min, color_max, clamp(color_avg, color_min, color_max), color_history);
 
-	// Increase blend factor when local contrast is low
-	float factor_contrast = 1.0 - abs(luminance(color_current) - luminance(color_history));
-
 	// Decrease blend factor when motion gets sub-pixel
-	float factor_subpixel = saturate(length(velocity * g_resolution));
+	float factor_subpixel = max(0.01f, saturate(length(velocity * g_resolution)));
+    
+    // Decrease blend factor when contrast is high
+    float lum0              = luminance(color_current);
+	float lum1              = luminance(color_history);
+    float factor_contrast   = 1.0f - (abs(lum0 - lum1) / max(lum0, max(lum1, 0.2)));
+	factor_contrast         = factor_contrast * factor_contrast;
 
-	// Decrease blend factor when history is near clamp
-	float factor_history = saturate(length(min(abs(color_history - color_min), abs(color_history - color_max))));
-
-	// Combine blend factors
-	float blend_factor	= (factor_contrast + factor_subpixel + factor_history) / 3.0f;
-	blend_factor 		= lerp(g_blendMin, g_blendMax, blend_factor);
-
+    // Compute blend factor
+    float blend_factor = factor_subpixel * factor_contrast;
+    
 	// Use max blend if the re-projected uv is out of screen
 	blend_factor = is_saturated(uv_reprojected) ? blend_factor : 1.0f;
 	
