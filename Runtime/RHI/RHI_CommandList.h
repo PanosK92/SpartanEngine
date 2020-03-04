@@ -130,5 +130,9 @@ namespace Spartan
         bool m_render_pass_begun_pipeline_bound = false;
         std::vector<uint64_t> m_timestamps;
         std::vector<bool> m_passes_active;
+
+        // Variables to minimise state changes
+        uint32_t m_set_id_buffer_vertex = 0;
+        uint32_t m_set_id_buffer_pixel  = 0;
 	};
 }
