@@ -54,18 +54,18 @@ void Widget_RenderOptions::Tick()
         static vector<string> tonemapping_options   = { "Off", "ACES", "Reinhard", "Uncharted 2" };
         string tonemapping_selection                = tonemapping_options[m_renderer->GetOptionValue<uint32_t>(Option_Value_Tonemapping)];
 
-        auto do_bloom                   = m_renderer->GetOptionValue(Render_Bloom);
-        auto do_volumetric_lighting     = m_renderer->GetOptionValue(Render_VolumetricLighting);
-        auto do_fxaa                    = m_renderer->GetOptionValue(Render_AntiAliasing_FXAA);
-        auto do_ssao                    = m_renderer->GetOptionValue(Render_ScreenSpaceAmbientOcclusion);
-        auto do_sss                     = m_renderer->GetOptionValue(Render_ScreenSpaceShadows);
-        auto do_ssr                     = m_renderer->GetOptionValue(Render_ScreenSpaceReflections);
-        auto do_taa                     = m_renderer->GetOptionValue(Render_AntiAliasing_TAA);
-        auto do_motion_blur             = m_renderer->GetOptionValue(Render_MotionBlur);
-        auto do_sharperning             = m_renderer->GetOptionValue(Render_Sharpening_LumaSharpen);
-        auto do_chromatic_aberration    = m_renderer->GetOptionValue(Render_ChromaticAberration);
-        auto do_dithering               = m_renderer->GetOptionValue(Render_Dithering);  
-        auto resolution_shadow          = m_renderer->GetOptionValue<int>(Option_Value_ShadowResolution);
+        bool do_bloom                   = m_renderer->GetOption(Render_Bloom);
+        bool do_volumetric_lighting     = m_renderer->GetOption(Render_VolumetricLighting);
+        bool do_fxaa                    = m_renderer->GetOption(Render_AntiAliasing_FXAA);
+        bool do_ssao                    = m_renderer->GetOption(Render_ScreenSpaceAmbientOcclusion);
+        bool do_sss                     = m_renderer->GetOption(Render_ScreenSpaceShadows);
+        bool do_ssr                     = m_renderer->GetOption(Render_ScreenSpaceReflections);
+        bool do_taa                     = m_renderer->GetOption(Render_AntiAliasing_TAA);
+        bool do_motion_blur             = m_renderer->GetOption(Render_MotionBlur);
+        bool do_sharperning             = m_renderer->GetOption(Render_Sharpening_LumaSharpen);
+        bool do_chromatic_aberration    = m_renderer->GetOption(Render_ChromaticAberration);
+        bool do_dithering               = m_renderer->GetOption(Render_Dithering);  
+        int resolution_shadow           = m_renderer->GetOptionValue<int>(Option_Value_ShadowResolution);
 
         // Display
         {
@@ -171,18 +171,18 @@ void Widget_RenderOptions::Tick()
         }
 
         // Map back to engine
-        m_renderer->SetShadowResolution(static_cast<uint32_t>(resolution_shadow));
-        m_renderer->SetOptionValue(Render_Bloom,                        do_bloom);
-        m_renderer->SetOptionValue(Render_VolumetricLighting,           do_volumetric_lighting);
-        m_renderer->SetOptionValue(Render_AntiAliasing_FXAA,            do_fxaa);
-        m_renderer->SetOptionValue(Render_ScreenSpaceAmbientOcclusion,  do_ssao);
-        m_renderer->SetOptionValue(Render_ScreenSpaceShadows,           do_sss);
-        m_renderer->SetOptionValue(Render_ScreenSpaceReflections,       do_ssr);
-        m_renderer->SetOptionValue(Render_AntiAliasing_TAA,             do_taa);
-        m_renderer->SetOptionValue(Render_MotionBlur,                   do_motion_blur);
-        m_renderer->SetOptionValue(Render_Sharpening_LumaSharpen,       do_sharperning);
-        m_renderer->SetOptionValue(Render_ChromaticAberration,          do_chromatic_aberration);
-        m_renderer->SetOptionValue(Render_Dithering,                    do_dithering);
+        m_renderer->SetOption(Render_Bloom,                         do_bloom);
+        m_renderer->SetOption(Render_VolumetricLighting,            do_volumetric_lighting);
+        m_renderer->SetOption(Render_AntiAliasing_FXAA,             do_fxaa);
+        m_renderer->SetOption(Render_ScreenSpaceAmbientOcclusion,   do_ssao);
+        m_renderer->SetOption(Render_ScreenSpaceShadows,            do_sss);
+        m_renderer->SetOption(Render_ScreenSpaceReflections,        do_ssr);
+        m_renderer->SetOption(Render_AntiAliasing_TAA,              do_taa);
+        m_renderer->SetOption(Render_MotionBlur,                    do_motion_blur);
+        m_renderer->SetOption(Render_Sharpening_LumaSharpen,        do_sharperning);
+        m_renderer->SetOption(Render_ChromaticAberration,           do_chromatic_aberration);
+        m_renderer->SetOption(Render_Dithering,                     do_dithering);
+        m_renderer->SetOptionValue(Option_Value_ShadowResolution,   static_cast<float>(resolution_shadow));
     }
 
     if (ImGui::CollapsingHeader("Widgets", ImGuiTreeNodeFlags_None))
@@ -200,14 +200,14 @@ void Widget_RenderOptions::Tick()
         ImGui::Separator();
 
         {
-            bool debug_physics               = m_renderer->GetOptionValue(Render_Debug_Physics);
-            bool debug_aabb                  = m_renderer->GetOptionValue(Render_Debug_AABB);
-            bool debug_light                 = m_renderer->GetOptionValue(Render_Debug_Lights);
-            bool debug_transform             = m_renderer->GetOptionValue(Render_Debug_Transform);
-            bool debug_picking_ray           = m_renderer->GetOptionValue(Render_Debug_PickingRay);
-            bool debug_grid                  = m_renderer->GetOptionValue(Render_Debug_Grid);
-            bool debug_performance_metrics   = m_renderer->GetOptionValue(Render_Debug_PerformanceMetrics);
-            bool debug_wireframe             = m_renderer->GetOptionValue(Render_Debug_Wireframe);
+            bool debug_physics               = m_renderer->GetOption(Render_Debug_Physics);
+            bool debug_aabb                  = m_renderer->GetOption(Render_Debug_AABB);
+            bool debug_light                 = m_renderer->GetOption(Render_Debug_Lights);
+            bool debug_transform             = m_renderer->GetOption(Render_Debug_Transform);
+            bool debug_picking_ray           = m_renderer->GetOption(Render_Debug_PickingRay);
+            bool debug_grid                  = m_renderer->GetOption(Render_Debug_Grid);
+            bool debug_performance_metrics   = m_renderer->GetOption(Render_Debug_PerformanceMetrics);
+            bool debug_wireframe             = m_renderer->GetOption(Render_Debug_Wireframe);
 
             ImGui::Checkbox("Transform", &debug_transform);
             {
@@ -222,22 +222,22 @@ void Widget_RenderOptions::Tick()
             ImGui::Checkbox("Performance Metrics",  &debug_performance_metrics);
             ImGui::Checkbox("Wireframe",            &debug_wireframe);
 
-            m_renderer->SetOptionValue(Render_Debug_Transform,             debug_transform);
-            m_renderer->SetOptionValue(Render_Debug_Physics,               debug_physics);
-            m_renderer->SetOptionValue(Render_Debug_AABB,                  debug_aabb);
-            m_renderer->SetOptionValue(Render_Debug_Lights,                debug_light);
-            m_renderer->SetOptionValue(Render_Debug_PickingRay,            debug_picking_ray);
-            m_renderer->SetOptionValue(Render_Debug_Grid,                  debug_grid);
-            m_renderer->SetOptionValue(Render_Debug_PerformanceMetrics,    debug_performance_metrics);
-            m_renderer->SetOptionValue(Render_Debug_Wireframe,             debug_wireframe);
+            m_renderer->SetOption(Render_Debug_Transform,             debug_transform);
+            m_renderer->SetOption(Render_Debug_Physics,               debug_physics);
+            m_renderer->SetOption(Render_Debug_AABB,                  debug_aabb);
+            m_renderer->SetOption(Render_Debug_Lights,                debug_light);
+            m_renderer->SetOption(Render_Debug_PickingRay,            debug_picking_ray);
+            m_renderer->SetOption(Render_Debug_Grid,                  debug_grid);
+            m_renderer->SetOption(Render_Debug_PerformanceMetrics,    debug_performance_metrics);
+            m_renderer->SetOption(Render_Debug_Wireframe,             debug_wireframe);
         }
     }
 
     if (ImGui::CollapsingHeader("Debug", ImGuiTreeNodeFlags_None))
     {
         // Reflect from engine
-        auto do_depth_prepass   = m_renderer->GetOptionValue(Render_DepthPrepass);
-        auto do_reverse_z       = m_renderer->GetOptionValue(Render_ReverseZ);
+        auto do_depth_prepass   = m_renderer->GetOption(Render_DepthPrepass);
+        auto do_reverse_z       = m_renderer->GetOption(Render_ReverseZ);
 
         {
             // Buffer
@@ -289,7 +289,7 @@ void Widget_RenderOptions::Tick()
         }
 
         // Map back to engine
-        m_renderer->SetOptionValue(Render_DepthPrepass, do_depth_prepass);
-        m_renderer->SetOptionValue(Render_ReverseZ, do_reverse_z);
+        m_renderer->SetOption(Render_DepthPrepass, do_depth_prepass);
+        m_renderer->SetOption(Render_ReverseZ, do_reverse_z);
     }
 }

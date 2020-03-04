@@ -87,7 +87,7 @@ namespace Spartan
                 Pass_LightShadow(cmd_list, Renderer_Object_Transparent);
             }
 
-            if (GetOptionValue(Render_DepthPrepass))
+            if (GetOption(Render_DepthPrepass))
             {
                 Pass_DepthPrePass(cmd_list);
             }
@@ -371,7 +371,7 @@ namespace Spartan
         pipeline_state.shader_vertex                    = shader_v;
         pipeline_state.vertex_buffer_stride             = static_cast<uint32_t>(sizeof(RHI_Vertex_PosTexNorTan)); // assume all vertex buffers have the same stride (which they do)
         pipeline_state.blend_state                      = m_blend_disabled.get();
-        pipeline_state.rasterizer_state                 = GetOptionValue(Render_Debug_Wireframe) ? m_rasterizer_cull_back_wireframe.get() : m_rasterizer_cull_back_solid.get();
+        pipeline_state.rasterizer_state                 = GetOption(Render_Debug_Wireframe) ? m_rasterizer_cull_back_wireframe.get() : m_rasterizer_cull_back_solid.get();
         pipeline_state.depth_stencil_state              = is_transparent ? m_depth_stencil_enabled_enabled_write.get() : m_depth_stencil_enabled_disabled_write.get(); // GetOptionValue(Render_DepthPrepass) is not accounted for anymore, have to fix
         pipeline_state.render_target_color_textures[0]  = tex_albedo;
         pipeline_state.render_target_color_clear[0]     = !is_transparent ? Vector4::Zero : state_dont_clear_color;
@@ -382,7 +382,7 @@ namespace Spartan
         pipeline_state.render_target_color_textures[3]  = tex_velocity;
         pipeline_state.render_target_color_clear[3]     = !is_transparent ? Vector4::Zero : state_dont_clear_color;
         pipeline_state.render_target_depth_texture      = tex_depth;
-        pipeline_state.render_target_depth_clear        = is_transparent || GetOptionValue(Render_DepthPrepass) ? state_dont_clear_depth : GetClearDepth();
+        pipeline_state.render_target_depth_clear        = is_transparent || GetOption(Render_DepthPrepass) ? state_dont_clear_depth : GetClearDepth();
         pipeline_state.render_target_stencil_clear      = 0;
         pipeline_state.viewport                         = tex_albedo->GetViewport();
         pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
@@ -861,21 +861,21 @@ namespace Spartan
         auto& tex_out_ldr   = m_render_targets[RenderTarget_Composition_Ldr_2];
 
         // TAA	
-        if (GetOptionValue(Render_AntiAliasing_TAA))
+        if (GetOption(Render_AntiAliasing_TAA))
         {
             Pass_TAA(cmd_list, tex_in_hdr, tex_out_hdr);
             tex_in_hdr.swap(tex_out_hdr);
         }
 
         // Motion Blur
-        if (GetOptionValue(Render_MotionBlur))
+        if (GetOption(Render_MotionBlur))
         {
             Pass_MotionBlur(cmd_list, tex_in_hdr, tex_out_hdr);
             tex_in_hdr.swap(tex_out_hdr);
         }
 
         // Bloom
-        if (GetOptionValue(Render_Bloom))
+        if (GetOption(Render_Bloom))
         {
             Pass_Bloom(cmd_list, tex_in_hdr, tex_out_hdr);
             tex_in_hdr.swap(tex_out_hdr);
@@ -892,28 +892,28 @@ namespace Spartan
         }
 
         // Dithering
-        if (GetOptionValue(Render_Dithering))
+        if (GetOption(Render_Dithering))
         {
             Pass_Dithering(cmd_list, tex_in_ldr, tex_out_ldr);
             tex_in_ldr.swap(tex_out_ldr);
         }
 
         // FXAA
-        if (GetOptionValue(Render_AntiAliasing_FXAA))
+        if (GetOption(Render_AntiAliasing_FXAA))
         {
             Pass_FXAA(cmd_list, tex_in_ldr, tex_out_ldr);
             tex_in_ldr.swap(tex_out_ldr);
         }
 
         // Sharpening
-        if (GetOptionValue(Render_Sharpening_LumaSharpen))
+        if (GetOption(Render_Sharpening_LumaSharpen))
         {
             Pass_LumaSharpen(cmd_list, tex_in_ldr, tex_out_ldr);
             tex_in_ldr.swap(tex_out_ldr);
         }
 
         // Chromatic aberration
-        if (GetOptionValue(Render_ChromaticAberration))
+        if (GetOption(Render_ChromaticAberration))
         {
             Pass_ChromaticAberration(cmd_list, tex_in_ldr, tex_out_ldr);
             tex_in_ldr.swap(tex_out_ldr);
