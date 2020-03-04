@@ -70,9 +70,9 @@ namespace Spartan
 		bool Unmap() const;
         bool Flush() const;
 
-		auto GetResource()      const { return m_buffer; }
-		auto GetStride()        const { return m_stride; }
-		auto GetVertexCount()   const { return m_vertex_count; }
+		void* GetResource()         const { return m_buffer; }
+        uint32_t GetStride()        const { return m_stride; }
+        uint32_t GetVertexCount()   const { return m_vertex_count; }
 
 	private:
 		bool _Create(const void* vertices);

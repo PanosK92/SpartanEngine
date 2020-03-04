@@ -369,7 +369,7 @@ namespace Spartan
         // Set render state
         RHI_PipelineState pipeline_state;
         pipeline_state.shader_vertex                    = shader_v;
-        pipeline_state.vertex_buffer_stride             = static_cast<uint32_t>(sizeof(RHI_Vertex_PosTexNorTan)); // assume all vertex buffers have the same stride
+        pipeline_state.vertex_buffer_stride             = static_cast<uint32_t>(sizeof(RHI_Vertex_PosTexNorTan)); // assume all vertex buffers have the same stride (which they do)
         pipeline_state.blend_state                      = m_blend_disabled.get();
         pipeline_state.rasterizer_state                 = GetOptionValue(Render_Debug_Wireframe) ? m_rasterizer_cull_back_wireframe.get() : m_rasterizer_cull_back_solid.get();
         pipeline_state.depth_stencil_state              = is_transparent ? m_depth_stencil_enabled_enabled_write.get() : m_depth_stencil_enabled_disabled_write.get(); // GetOptionValue(Render_DepthPrepass) is not accounted for anymore, have to fix

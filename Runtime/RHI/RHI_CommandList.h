@@ -115,7 +115,6 @@ namespace Spartan
         void BindDescriptorSet();
         bool OnDraw();
 
-        std::vector<bool> m_passes_active;
         uint32_t m_pass_index                   = 0;
         RHI_Cmd_List_State m_cmd_state          = RHI_Cmd_List_Idle;
 		RHI_Pipeline* m_pipeline	            = nullptr; 
@@ -129,8 +128,7 @@ namespace Spartan
         void* m_cmd_list_consumed_fence         = nullptr;
         void* m_query_pool                      = nullptr;
         bool m_render_pass_begun_pipeline_bound = false;
-        uint32_t m_set_id_vertex_buffer         = 0;
-        uint32_t m_set_id_index_buffer          = 0;
         std::vector<uint64_t> m_timestamps;
+        std::vector<bool> m_passes_active;
 	};
 }

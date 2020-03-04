@@ -94,7 +94,7 @@ namespace Spartan::Math
             const float num4	= rotation.z * rotation.x;
             const float num3	= rotation.y * rotation.w;
             const float num2	= rotation.y * rotation.z;
-            const float num	= rotation.x * rotation.w;
+            const float num	    = rotation.x * rotation.w;
 
 			return Matrix(
 				1.0f - (2.0f * (num8 + num7)),

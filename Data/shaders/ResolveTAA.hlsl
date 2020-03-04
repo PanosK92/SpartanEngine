@@ -26,27 +26,45 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 static const float g_blendMin = 0.0f;
 static const float g_blendMax = 0.5f;
 
+// From "Temporal Reprojection Anti-Aliasing"
+// https://github.com/playdeadgames/temporal
 float3 clip_aabb(float3 aabb_min, float3 aabb_max, float3 p, float3 q)
 {
+#if USE_OPTIMIZATIONS
+	// note: only clips towards aabb center (but fast!)
+	float3 p_clip = 0.5f * (aabb_max + aabb_min);
+	float3 e_clip = 0.5f * (aabb_max - aabb_min) + EPSILON;
+
+	float3 v_clip = q - p_clip;
+	float3 v_unit = v_clip.xyz / e_clip;
+	float3 a_unit = abs(v_unit);
+	float ma_unit = max(a_unit.x, max(a_unit.y, a_unit.z));
+
+	if (ma_unit > 1.0)
+		return p_clip + v_clip / ma_unit;
+	else
+		return q;// point inside aabb
+#else
 	float3 r = q - p;
-	float3 rmax = aabb_max - p;
-	float3 rmin = aabb_min - p;
-	
+	float3 rmax = aabb_max - p.xyz;
+	float3 rmin = aabb_min - p.xyz;
+
 	if (r.x > rmax.x + EPSILON)
 		r *= (rmax.x / r.x);
 	if (r.y > rmax.y + EPSILON)
 		r *= (rmax.y / r.y);
 	if (r.z > rmax.z + EPSILON)
 		r *= (rmax.z / r.z);
-	
+
 	if (r.x < rmin.x - EPSILON)
 		r *= (rmin.x / r.x);
 	if (r.y < rmin.y - EPSILON)
 		r *= (rmin.y / r.y);
 	if (r.z < rmin.z - EPSILON)
 		r *= (rmin.z / r.z);
-	
+
 	return p + r;
+#endif
 }
 
 float4 ResolveTAA(float2 uv, Texture2D tex_history, Texture2D tex_current, Texture2D tex_velocity, Texture2D tex_depth)
@@ -76,11 +94,11 @@ float4 ResolveTAA(float2 uv, Texture2D tex_history, Texture2D tex_current, Textu
 	float3 color_history    = Reinhard(tex_history.Sample(sampler_bilinear_clamp, uv_reprojected).rgb);
 	float3 color_current    = cmc;
 
-	// Clip to neighbourhood of current sample
+	// Clip history to the neighbourhood of the current sample
 	color_history = clip_aabb(color_min, color_max, clamp(color_avg, color_min, color_max), color_history);
 
 	// Increase blend factor when local contrast is low
-	float factor_contrast = 1.0f - abs(luminance(color_current) - luminance(color_history));
+	float factor_contrast = 1.0 - abs(luminance(color_current) - luminance(color_history));
 
 	// Decrease blend factor when motion gets sub-pixel
 	float factor_subpixel = saturate(length(velocity * g_resolution));
