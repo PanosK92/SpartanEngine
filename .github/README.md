@@ -12,6 +12,8 @@
 
 <img align="left" width="32" src="https://www.freepnglogos.com/uploads/discord-logo-png/discord-logo-vector-download-0.png">For questions, suggestions, help and any kind of general discussion join the [discord server](https://discord.gg/TG5r2BS).
 
+<img align="left" width="32" src="https://image.flaticon.com/icons/svg/25/25231.svg">For issues and anything directly related to the project, feel free to open an issue.
+
 <img align="left" width="32" src="https://opensource.org/files/OSIApproved_1.png">Embracing the open source ethos and respecting the <a href="https://en.wikipedia.org/wiki/MIT_License">MIT license</a> is greatly appreciated. This means that you can copy all the code you want as long as you include a copy of the original license.</p>
 
 ## Download
