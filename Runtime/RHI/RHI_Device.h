@@ -122,8 +122,8 @@ namespace Spartan
         // Queue
         bool Queue_Present(void* swapchain_view, uint32_t* image_index);
         bool Queue_Submit(const RHI_Queue_Type type, void* cmd_buffer, void* wait_semaphore = nullptr, void* wait_fence = nullptr, const uint32_t wait_flags = 0);
-        bool Queue_Wait(const RHI_Queue_Type type) const;
-        bool Queue_WaitAll() const;
+        bool Queue_Wait(const RHI_Queue_Type type);
+        bool Queue_WaitAll();
         void* Queue_Get(const RHI_Queue_Type type) const;
         uint32_t Queue_Index(const RHI_Queue_Type type) const;
 

@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Gizmos/Grid.h"
 #include "Gizmos/Transform_Gizmo.h"
 #include "../RHI/RHI_CommandList.h"
+#include "../RHI/RHI_Implementation.h"
 #include "../RHI/RHI_VertexBuffer.h"
 #include "../RHI/RHI_PipelineState.h"
 #include "../World/Entity.h"
@@ -44,6 +45,11 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
+    uint32_t Renderer::GetMaxResolution() const
+    {
+        return m_rhi_device->GetContextRhi()->max_texture_dimension_2d;
+    }
+
     void Renderer::SetGlobalSamplersAndConstantBuffers(RHI_CommandList* cmd_list) const
     {
         // Constant buffers

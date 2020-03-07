@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= IMPLEMENTATION ===============
 #ifdef API_GRAPHICS_VULKAN
+#include "../RHI_Implementation.h"
 //================================
 
 //= INCLUDES =====================
@@ -79,7 +80,7 @@ namespace Spartan
 		return true;
 	}
 
-    void* RHI_ConstantBuffer::Map()
+    void* RHI_ConstantBuffer::Map() const
     {
         if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device || !m_buffer_memory)
         {

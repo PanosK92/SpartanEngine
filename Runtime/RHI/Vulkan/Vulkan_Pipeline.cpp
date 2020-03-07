@@ -21,21 +21,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= IMPLEMENTATION ===============
 #ifdef API_GRAPHICS_VULKAN
+#include "../RHI_Implementation.h"
 //================================
 
 //= INCLUDES ========================
 #include "../RHI_Pipeline.h"
 #include "../RHI_Device.h"
 #include "../RHI_Shader.h"
-#include "../RHI_Texture.h"
-#include "../RHI_Sampler.h"
-#include "../RHI_SwapChain.h"
 #include "../RHI_BlendState.h"
 #include "../RHI_InputLayout.h"
 #include "../RHI_CommandList.h"
 #include "../RHI_DescriptorSet.h"
 #include "../RHI_PipelineState.h"
-#include "../RHI_ConstantBuffer.h"
 #include "../RHI_RasterizerState.h"
 #include "../RHI_DepthStencilState.h"
 #include "../../Logging/Log.h"

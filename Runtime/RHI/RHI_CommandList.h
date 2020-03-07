@@ -26,12 +26,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Texture.h"
 #include "RHI_Definition.h"
 #include "RHI_PipelineCache.h"
-#include "../Math/Rectangle.h"
 //============================
 
 namespace Spartan
 {
 	class Profiler;
+    class Renderer;
 
     enum RHI_Cmd_List_State
     {
@@ -52,11 +52,11 @@ namespace Spartan
         bool End();
 
         // Clear
-        void Clear(RHI_PipelineState& pipeline_state) const;
+        void Clear(RHI_PipelineState& pipeline_state);
 
 		// Draw/Dispatch
-		void Draw(uint32_t vertex_count) const;
-		void DrawIndexed(uint32_t index_count, uint32_t index_offset = 0, uint32_t vertex_offset = 0) const;
+		void Draw(uint32_t vertex_count);
+		void DrawIndexed(uint32_t index_count, uint32_t index_offset = 0, uint32_t vertex_offset = 0);
         void Dispatch(uint32_t x, uint32_t y, uint32_t z = 1) const;
 
 		// Viewport
@@ -66,12 +66,12 @@ namespace Spartan
 		void SetScissorRectangle(const Math::Rectangle& scissor_rectangle) const;
 
 		// Vertex buffer
-		void SetBufferVertex(const RHI_VertexBuffer* buffer) const;
-        inline void SetBufferVertex(const std::shared_ptr<RHI_VertexBuffer>& buffer) const { SetBufferVertex(buffer.get()); }
+		void SetBufferVertex(const RHI_VertexBuffer* buffer);
+        inline void SetBufferVertex(const std::shared_ptr<RHI_VertexBuffer>& buffer) { SetBufferVertex(buffer.get()); }
 
 		// Index buffer
-		void SetBufferIndex(const RHI_IndexBuffer* buffer) const;
-        inline void SetBufferIndex(const std::shared_ptr<RHI_IndexBuffer>& buffer) const { SetBufferIndex(buffer.get()); }
+		void SetBufferIndex(const RHI_IndexBuffer* buffer);
+        inline void SetBufferIndex(const std::shared_ptr<RHI_IndexBuffer>& buffer) { SetBufferIndex(buffer.get()); }
 
         // Compute shader
         void SetShaderCompute(const RHI_Shader* shader) const;
@@ -86,17 +86,17 @@ namespace Spartan
         inline void SetSampler(const uint32_t slot, const std::shared_ptr<RHI_Sampler>& sampler) const { SetSampler(slot, sampler.get()); }
 
 		// Texture
-        void SetTexture(const uint32_t slot, RHI_Texture* texture) const;
-        inline void SetTexture(const uint32_t slot, const std::shared_ptr<RHI_Texture>& texture) const { SetTexture(slot, texture.get()); }
+        void SetTexture(const uint32_t slot, RHI_Texture* texture);
+        inline void SetTexture(const uint32_t slot, const std::shared_ptr<RHI_Texture>& texture) { SetTexture(slot, texture.get()); }
         
         // Submit/Flush
 		bool Submit();
-        bool Flush() const;
+        bool Flush();
 
         // Timestamps
         bool Timestamp_Start(void* query_disjoint = nullptr, void* query_start = nullptr) const;
         bool Timestamp_End(void* query_disjoint = nullptr, void* query_end = nullptr) const;
-        float Timestamp_GetDuration(void* query_disjoint = nullptr, void* query_start = nullptr, void* query_end = nullptr) const;
+        float Timestamp_GetDuration(void* query_disjoint = nullptr, void* query_start = nullptr, void* query_end = nullptr);
 
         static uint32_t Gpu_GetMemory(RHI_Device* rhi_device);
         static uint32_t Gpu_GetMemoryUsed(RHI_Device* rhi_device);
