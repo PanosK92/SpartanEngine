@@ -49,10 +49,10 @@ namespace Spartan
 
 		//= PROPERTIES ===================================================================
         void SetAudioClip(const std::string& file_path);
-		std::string GetAudioClipName();
+		std::string GetAudioClipName() const;
 
-		bool Play();
-		bool Stop();
+		bool Play() const;
+		bool Stop() const;
 
 		bool GetMute() const { return m_mute; }
 		void SetMute(bool mute);

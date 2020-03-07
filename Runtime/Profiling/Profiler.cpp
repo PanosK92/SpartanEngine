@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =========================
 #include "Profiler.h"
 #include "../RHI/RHI_Device.h"
-#include "../Core/EventSystem.h"
 #include "../Rendering/Renderer.h"
 #include "../RHI/RHI_CommandList.h"
 #include "../Resource/ResourceCache.h"
@@ -168,7 +167,7 @@ namespace Spartan
             m_is_stuttering_gpu = m_time_gpu_ms > (m_gpu_avg_ms + m_stutter_delta_ms);
 
             // Accumulate
-            double delta_feedback = 1.0 / m_frames_to_accumulate;
+            const double delta_feedback = 1.0 / m_frames_to_accumulate;
             m_cpu_avg_ms = m_cpu_avg_ms * (1.0 - delta_feedback) + m_time_cpu_ms * delta_feedback;
             m_gpu_avg_ms = m_gpu_avg_ms * (1.0 - delta_feedback) + m_time_gpu_ms * delta_feedback;
         }
@@ -179,8 +178,8 @@ namespace Spartan
 		if (!m_profile)
 			return;
 
-		bool can_profile_cpu = (type == TimeBlock_Cpu) && m_profile_cpu_enabled;
-		bool can_profile_gpu = (type == TimeBlock_Gpu) && m_profile_gpu_enabled;
+        const bool can_profile_cpu = (type == TimeBlock_Cpu) && m_profile_cpu_enabled;
+        const bool can_profile_gpu = (type == TimeBlock_Gpu) && m_profile_gpu_enabled;
 
 		if (!can_profile_cpu && !can_profile_gpu)
 			return;
@@ -207,7 +206,7 @@ namespace Spartan
 		// Grow capacity if needed
 		if (m_time_block_count >= static_cast<uint32_t>(m_time_blocks_write.size()))
 		{
-			uint32_t new_size = m_time_block_count + 100;
+            const uint32_t new_size = m_time_block_count + 100;
             m_time_blocks_read.reserve(new_size);
             m_time_blocks_read.resize(new_size);
 			m_time_blocks_write.reserve(new_size);

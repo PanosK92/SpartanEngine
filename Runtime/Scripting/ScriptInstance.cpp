@@ -34,12 +34,7 @@ using namespace std;
 
 namespace Spartan
 {
-	ScriptInstance::ScriptInstance()
-	{
-
-	}
-
-	ScriptInstance::~ScriptInstance()
+    ScriptInstance::~ScriptInstance()
 	{
 		if (m_scriptObject)
 		{
@@ -54,7 +49,7 @@ namespace Spartan
 		m_isInstantiated		= false;
 	}
 
-	bool ScriptInstance::Instantiate(const string& path, std::weak_ptr<Entity> entity, Scripting* scriptEngine)
+	bool ScriptInstance::Instantiate(const string& path, const std::weak_ptr<Entity>& entity, Scripting* scriptEngine)
 	{
 		if (entity.expired())
 			return false;
@@ -74,8 +69,8 @@ namespace Spartan
 		return m_isInstantiated;
 	}
 
-	void ScriptInstance::ExecuteStart()
-	{
+	void ScriptInstance::ExecuteStart() const
+    {
 		if (!m_scripting)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
@@ -85,8 +80,8 @@ namespace Spartan
 		m_scripting->ExecuteCall(m_startFunction, m_scriptObject);
 	}
 
-	void ScriptInstance::ExecuteUpdate(float delta_time)
-	{
+	void ScriptInstance::ExecuteUpdate(float delta_time) const
+    {
 		if (!m_scripting)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
@@ -106,12 +101,12 @@ namespace Spartan
 
 		// Create module
 		m_module	= make_shared<Module>(m_moduleName, m_scripting);
-		bool result = m_module->LoadScript(m_scriptPath);
+        const bool result = m_module->LoadScript(m_scriptPath);
 		if (!result)
 			return false;
 
 		// Get type
-		auto type_id		= m_module->GetAsIScriptModule()->GetTypeIdByDecl(m_className.c_str());
+        const auto type_id		= m_module->GetAsIScriptModule()->GetTypeIdByDecl(m_className.c_str());
 		asITypeInfo* type	= m_scripting->GetAsIScriptEngine()->GetTypeInfoById(type_id);
 		if (!type)
 			return false;

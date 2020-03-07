@@ -281,7 +281,7 @@ namespace Spartan
 		return true;
 	}
 
-	bool AudioClip::SetRolloff(vector<Vector3> curve_points)
+	bool AudioClip::SetRolloff(const vector<Vector3>& curve_points)
 	{
 		if (!IsChannelValid())
 			return false;

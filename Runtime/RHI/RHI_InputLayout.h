@@ -68,7 +68,7 @@ namespace Spartan
                 return false;
             }
 
-			uint32_t binding = 0;
+            const uint32_t binding = 0;
 
 			if (vertex_type == RHI_Vertex_Type_Position)
 			{

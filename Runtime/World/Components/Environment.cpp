@@ -104,7 +104,7 @@ namespace Spartan
         m_is_dirty = true;
     }
 
-    const shared_ptr<RHI_Texture>& Environment::GetTexture()
+    const shared_ptr<RHI_Texture>& Environment::GetTexture() const
     {
         return m_context->GetSubsystem<Renderer>()->GetEnvironmentTexture();
     }

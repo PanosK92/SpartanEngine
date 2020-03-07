@@ -156,7 +156,7 @@ namespace Spartan
         {
             if (void* resource = pipeline_state.blend_state->GetResource())
             {
-                float blendFactor       = pipeline_state.blend_state->GetBlendFactor();
+                const float blendFactor       = pipeline_state.blend_state->GetBlendFactor();
                 FLOAT blend_factor[4]   = { blendFactor, blendFactor, blendFactor, blendFactor };
 
                 device_context->OMSetBlendState(static_cast<ID3D11BlendState*>(const_cast<void*>(resource)), blend_factor, 0xffffffff);
@@ -267,7 +267,7 @@ namespace Spartan
         return true;
 	}
 
-    void RHI_CommandList::Clear(RHI_PipelineState& pipeline_state)
+    void RHI_CommandList::Clear(RHI_PipelineState& pipeline_state) const
     {
         // Color
         for (auto i = 0; i < state_max_render_target_count; i++)
@@ -311,15 +311,15 @@ namespace Spartan
         pipeline_state.ResetClearValues();
     }
 
-	void RHI_CommandList::Draw(const uint32_t vertex_count)
-	{
+	void RHI_CommandList::Draw(const uint32_t vertex_count) const
+    {
         m_rhi_device->GetContextRhi()->device_context->Draw(static_cast<UINT>(vertex_count), 0);
 
         m_profiler->m_rhi_draw_calls++;
 	}
 
-	void RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset)
-	{
+	void RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset) const
+    {
         m_rhi_device->GetContextRhi()->device_context->DrawIndexed
         (
             static_cast<UINT>(index_count),
@@ -330,13 +330,13 @@ namespace Spartan
         m_profiler->m_rhi_draw_calls++;
 	}
 
-    void RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z /*= 1*/)
+    void RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z /*= 1*/) const
     {
         m_rhi_device->GetContextRhi()->device_context->Dispatch(x, y, z);
     }
 
-	void RHI_CommandList::SetViewport(const RHI_Viewport& viewport)
-	{
+	void RHI_CommandList::SetViewport(const RHI_Viewport& viewport) const
+    {
         D3D11_VIEWPORT d3d11_viewport   = {};
         d3d11_viewport.TopLeftX         = viewport.x;
         d3d11_viewport.TopLeftY         = viewport.y;
@@ -348,15 +348,15 @@ namespace Spartan
         m_rhi_device->GetContextRhi()->device_context->RSSetViewports(1, &d3d11_viewport);
 	}
 
-	void RHI_CommandList::SetScissorRectangle(const Math::Rectangle& scissor_rectangle)
-	{
+	void RHI_CommandList::SetScissorRectangle(const Math::Rectangle& scissor_rectangle) const
+    {
         const D3D11_RECT d3d11_rectangle = { static_cast<LONG>(scissor_rectangle.left), static_cast<LONG>(scissor_rectangle.top), static_cast<LONG>(scissor_rectangle.right), static_cast<LONG>(scissor_rectangle.bottom) };
 
         m_rhi_device->GetContextRhi()->device_context->RSSetScissorRects(1, &d3d11_rectangle);
 	}
 
-	void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer)
-	{
+	void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer) const
+    {
 		if (!buffer || !buffer->GetResource())
 		{
 			LOG_ERROR_INVALID_PARAMETER();
@@ -381,8 +381,8 @@ namespace Spartan
         m_profiler->m_rhi_bindings_buffer_vertex++;
 	}
 
-	void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer)
-	{
+	void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer) const
+    {
 		if (!buffer || !buffer->GetResource())
 		{
 			LOG_ERROR_INVALID_PARAMETER();
@@ -390,7 +390,7 @@ namespace Spartan
 		}
 
         ID3D11Buffer* index_buffer          = static_cast<ID3D11Buffer*>(buffer->GetResource());
-        DXGI_FORMAT format                  = buffer->Is16Bit() ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
+        const DXGI_FORMAT format                  = buffer->Is16Bit() ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
         ID3D11DeviceContext* device_context = m_rhi_device->GetContextRhi()->device_context;
 
         // Skip if already set
@@ -406,7 +406,7 @@ namespace Spartan
         m_profiler->m_rhi_bindings_buffer_index++;
 	}
 
-    void RHI_CommandList::SetShaderCompute(const RHI_Shader* shader)
+    void RHI_CommandList::SetShaderCompute(const RHI_Shader* shader) const
     {
         if (shader && !shader->GetResource())
         {
@@ -418,11 +418,11 @@ namespace Spartan
         m_profiler->m_rhi_bindings_shader_compute++;
     }
 
-    void RHI_CommandList::SetConstantBuffer(const uint32_t slot, uint8_t scope, RHI_ConstantBuffer* constant_buffer)
+    void RHI_CommandList::SetConstantBuffer(const uint32_t slot, uint8_t scope, RHI_ConstantBuffer* constant_buffer) const
     {
         void* buffer                        = static_cast<ID3D11Buffer*>(constant_buffer ? constant_buffer->GetResource() : nullptr);
         const void* buffer_array[1]         = { buffer };
-        UINT range                          = 1;
+        const UINT range                          = 1;
         ID3D11DeviceContext* device_context = m_rhi_device->GetContextRhi()->device_context;
 
         if (scope & RHI_Buffer_VertexShader)
@@ -451,10 +451,10 @@ namespace Spartan
         m_profiler->m_rhi_bindings_buffer_constant += scope & RHI_Buffer_PixelShader    ? 1 : 0;
     }
 
-    void RHI_CommandList::SetSampler(const uint32_t slot, RHI_Sampler* sampler)
+    void RHI_CommandList::SetSampler(const uint32_t slot, RHI_Sampler* sampler) const
     {
-        UINT start_slot                     = slot;
-        UINT range                          = 1;
+        const UINT start_slot                     = slot;
+        const UINT range                          = 1;
         void* resource_sampler              = sampler ? sampler->GetResource() : nullptr;
         ID3D11DeviceContext* device_context = m_rhi_device->GetContextRhi()->device_context;
 
@@ -477,12 +477,12 @@ namespace Spartan
         m_profiler->m_rhi_bindings_sampler++;
     }
 
-    void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture)
+    void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture) const
     {
-        UINT start_slot                     = slot;
-		UINT range                          = 1;
+        const UINT start_slot                     = slot;
+        const UINT range                          = 1;
         void* resource_texture              = texture ? texture->GetResource_ShaderView() : nullptr;
-        bool is_compute                     = m_pipeline_state->unordered_access_view != nullptr;
+        const bool is_compute                     = m_pipeline_state->unordered_access_view != nullptr;
         ID3D11DeviceContext* device_context = m_rhi_device->GetContextRhi()->device_context;
 
         // Skip if already set
@@ -524,13 +524,13 @@ namespace Spartan
 		return true;
 	}
 
-    bool RHI_CommandList::Flush()
+    bool RHI_CommandList::Flush() const
     {
         m_rhi_device->GetContextRhi()->device_context->Flush();
         return true;
     }
 
-    bool RHI_CommandList::Timestamp_Start(void* query_disjoint /*= nullptr*/, void* query_start /*= nullptr*/)
+    bool RHI_CommandList::Timestamp_Start(void* query_disjoint /*= nullptr*/, void* query_start /*= nullptr*/) const
     {
         if (!query_disjoint || !query_start)
         {
@@ -551,7 +551,7 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_CommandList::Timestamp_End(void* query_disjoint /*= nullptr*/, void* query_end /*= nullptr*/)
+    bool RHI_CommandList::Timestamp_End(void* query_disjoint /*= nullptr*/, void* query_end /*= nullptr*/) const
     {
         if (!query_disjoint || !query_end)
         {
@@ -573,7 +573,7 @@ namespace Spartan
         return true;
     }
 
-    float RHI_CommandList::Timestamp_GetDuration(void* query_disjoint /*= nullptr*/, void* query_start /*= nullptr*/, void* query_end /*= nullptr*/)
+    float RHI_CommandList::Timestamp_GetDuration(void* query_disjoint /*= nullptr*/, void* query_start /*= nullptr*/, void* query_end /*= nullptr*/) const
     {
         if (!query_disjoint || !query_start || !query_end)
         {
@@ -617,7 +617,7 @@ namespace Spartan
             if (auto adapter = static_cast<IDXGIAdapter3*>(physical_device->data))
             {
                 DXGI_ADAPTER_DESC adapter_desc = {};
-                auto result = adapter->GetDesc(&adapter_desc);
+                const auto result = adapter->GetDesc(&adapter_desc);
                 if (FAILED(result))
                 {
                     LOG_ERROR("Failed to get adapter description, %s", d3d11_common::dxgi_error_to_string(result));
@@ -636,7 +636,7 @@ namespace Spartan
             if (auto adapter = static_cast<IDXGIAdapter3*>(physical_device->data))
             {
                 DXGI_QUERY_VIDEO_MEMORY_INFO info = {};
-                auto result = adapter->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &info);
+                const auto result = adapter->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &info);
                 if (FAILED(result))
                 {
                     LOG_ERROR("Failed to get adapter memory info, %s", d3d11_common::dxgi_error_to_string(result));

@@ -71,7 +71,7 @@ namespace Spartan
 
 		// Add resources to the model
         void SetRootEntity(const std::shared_ptr<Entity>& entity) { m_root_entity = entity; }
-		void AddMaterial(std::shared_ptr<Material>& material, const std::shared_ptr<Entity>& entity);
+		void AddMaterial(std::shared_ptr<Material>& material, const std::shared_ptr<Entity>& entity) const;
 		void AddTexture(std::shared_ptr<Material>& material, TextureType texture_type, const std::string& file_path);
 
         // Misc

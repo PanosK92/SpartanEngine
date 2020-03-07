@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Audio/AudioClip.h"
 #include "../Rendering/Model.h"
 #include "../Rendering/Font/Font.h"
-#include "../Rendering/ShaderVariation.h"
 #include "../Rendering/Animation.h"
 #include "../RHI/RHI_Texture.h"
 #include "../RHI/RHI_Texture2D.h"

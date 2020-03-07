@@ -66,13 +66,13 @@ namespace Spartan
 		auto GetTimeGpu() const						    { return m_time_gpu_ms; }
 		auto GetTimeFrame() const						{ return m_time_frame_ms; }
 		auto GetFps() const							    { return m_fps; }
-		auto GetUpdateInterval()						{ return m_profiling_interval_sec; }
+		auto GetUpdateInterval() const { return m_profiling_interval_sec; }
 		void SetUpdateInterval(float internval)			{ m_profiling_interval_sec = internval; }
-		const auto& GpuGetName()					    { return m_gpu_name; }
-        auto GpuGetMemoryAvailable()			        { return m_gpu_memory_available; }
-        auto GpuGetMemoryUsed()					        { return m_gpu_memory_used; }
-        bool IsCpuStuttering()                          { return m_is_stuttering_cpu; }
-        bool IsGpuStuttering()                          { return m_is_stuttering_gpu; }
+		const auto& GpuGetName() const { return m_gpu_name; }
+        auto GpuGetMemoryAvailable() const { return m_gpu_memory_available; }
+        auto GpuGetMemoryUsed() const { return m_gpu_memory_used; }
+        bool IsCpuStuttering() const { return m_is_stuttering_cpu; }
+        bool IsGpuStuttering() const { return m_is_stuttering_gpu; }
 		
 		// Metrics - RHI
 		uint32_t m_rhi_draw_calls				= 0;

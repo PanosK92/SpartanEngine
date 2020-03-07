@@ -105,7 +105,7 @@ namespace Spartan
         return Math::Vector3::Zero;
     }
 
-    void SoftBody::SetPosition(const Math::Vector3& position)
+    void SoftBody::SetPosition(const Math::Vector3& position) const
     {
         if (!m_soft_body)
             return;
@@ -122,13 +122,13 @@ namespace Spartan
         return m_soft_body ? ToQuaternion(m_soft_body->getWorldTransform().getRotation()) : Math::Quaternion::Identity;
     }
 
-    void SoftBody::SetRotation(const Math::Quaternion& rotation)
+    void SoftBody::SetRotation(const Math::Quaternion& rotation) const
     {
         if (!m_soft_body)
             return;
 
         // Set rotation to world transform
-        Math::Vector3 oldPosition = GetPosition();
+        const Math::Vector3 oldPosition = GetPosition();
         btTransform& worldTrans = m_soft_body->getWorldTransform();
         worldTrans.setRotation(ToBtQuaternion(rotation));
         if (m_center_of_mass != Math::Vector3::Zero)
@@ -173,13 +173,13 @@ namespace Spartan
         m_physics->AddBody(m_soft_body);
     }
 
-    void SoftBody::CreateAeroCloth()
+    void SoftBody::CreateAeroCloth() const
     {
         const btScalar s = 5;
         const int segments = 10;
         const int count = 5;
         btVector3 pos(-s * segments, 0, 0);
-        btScalar gap = 0.5;
+        const btScalar gap = 0.5;
         btSoftBody* psb = btSoftBodyHelpers::CreatePatch(m_physics->GetSoftWorldInfo(), btVector3(-s, 0, -s * 3),
             btVector3(+s, 0, -s * 3),
             btVector3(-s, 0, +s),
@@ -193,25 +193,25 @@ namespace Spartan
         pm->m_kAST              = 0.9f; // Area/Angular stiffness coefficient [0,1]
         pm->m_kVST              = 0.9f; // Volume stiffness coefficient [0,1]
 
-        psb->m_cfg.kVCF         = 1.0;  // Velocities correction factor (Baumgarte)
-        psb->m_cfg.kDP          = 0.0;  // Damping coefficient [0,1]
-        psb->m_cfg.kDG          = 0.01; // Drag coefficient [0,+inf]
-        psb->m_cfg.kLF          = 0.1;  // Lift coefficient [0,+inf]
-        psb->m_cfg.kPR          = 0.0;  // Pressure coefficient [-inf,+inf]
-        psb->m_cfg.kVC          = 0.0;  // Volume conversation coefficient [0,+inf]
-        psb->m_cfg.kDF          = 0.2;  // Dynamic friction coefficient [0,1]
-        psb->m_cfg.kMT          = 0.0;  // Pose matching coefficient [0,1]
-        psb->m_cfg.kCHR         = 0.1;  // Rigid contacts hardness [0,1]
-        psb->m_cfg.kKHR         = 0.0;  // Kinetic contacts hardness [0,1]
-        psb->m_cfg.kSHR         = 1.0;  // Soft contacts hardness [0,1]
-        psb->m_cfg.kAHR         = 0.7;  // Anchors hardness [0,1]
+        psb->m_cfg.kVCF         = 1.0f;  // Velocities correction factor (Baumgarte)
+        psb->m_cfg.kDP          = 0.0f;  // Damping coefficient [0,1]
+        psb->m_cfg.kDG          = 0.01f; // Drag coefficient [0,+inf]
+        psb->m_cfg.kLF          = 0.1f;  // Lift coefficient [0,+inf]
+        psb->m_cfg.kPR          = 0.0f;  // Pressure coefficient [-inf,+inf]
+        psb->m_cfg.kVC          = 0.0f;  // Volume conversation coefficient [0,+inf]
+        psb->m_cfg.kDF          = 0.2f;  // Dynamic friction coefficient [0,1]
+        psb->m_cfg.kMT          = 0.0f;  // Pose matching coefficient [0,1]
+        psb->m_cfg.kCHR         = 0.1f;  // Rigid contacts hardness [0,1]
+        psb->m_cfg.kKHR         = 0.0f;  // Kinetic contacts hardness [0,1]
+        psb->m_cfg.kSHR         = 1.0f;  // Soft contacts hardness [0,1]
+        psb->m_cfg.kAHR         = 0.7f;  // Anchors hardness [0,1]
 
-        psb->m_cfg.kSRHR_CL     = 0.0;  // Soft vs rigid hardness [0,1] (cluster only)
-        psb->m_cfg.kSKHR_CL     = 0.0;  // Soft vs kinetic hardness [0,1] (cluster only)
-        psb->m_cfg.kSSHR_CL     = 0.0;  // Soft vs soft hardness [0,1] (cluster only)
-        psb->m_cfg.kSR_SPLT_CL  = 0.0;  // Soft vs rigid impulse split [0,1] (cluster only)
-        psb->m_cfg.kSK_SPLT_CL  = 0.0;  // Soft vs rigid impulse split [0,1] (cluster only)
-        psb->m_cfg.kSS_SPLT_CL  = 0.0;  // Soft vs rigid impulse split [0,1] (cluster only)
+        psb->m_cfg.kSRHR_CL     = 0.0f;  // Soft vs rigid hardness [0,1] (cluster only)
+        psb->m_cfg.kSKHR_CL     = 0.0f;  // Soft vs kinetic hardness [0,1] (cluster only)
+        psb->m_cfg.kSSHR_CL     = 0.0f;  // Soft vs soft hardness [0,1] (cluster only)
+        psb->m_cfg.kSR_SPLT_CL  = 0.0f;  // Soft vs rigid impulse split [0,1] (cluster only)
+        psb->m_cfg.kSK_SPLT_CL  = 0.0f;  // Soft vs rigid impulse split [0,1] (cluster only)
+        psb->m_cfg.kSS_SPLT_CL  = 0.0f;  // Soft vs rigid impulse split [0,1] (cluster only)
 
         pm->m_flags -= btSoftBody::fMaterial::DebugDraw;
         psb->m_cfg.piterations = 2;

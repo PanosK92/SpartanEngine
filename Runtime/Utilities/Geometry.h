@@ -118,15 +118,15 @@ namespace Spartan::Utility::Geometry
 		Vector3 tangent = Vector3(1, 0, 0);
 		vertices->emplace_back(Vector3(0, radius, 0), Vector2::Zero, normal, tangent);
 
-		float phiStep   = PI / stacks;
-		float thetaStep = 2.0f * PI / slices;
+        const float phiStep   = PI / stacks;
+        const float thetaStep = 2.0f * PI / slices;
 
 		for (int i = 1; i <= stacks - 1; i++)
 		{
-			float phi = i * phiStep;
+            const float phi = i * phiStep;
 			for (int j = 0; j <= slices; j++)
 			{
-				float theta = j * thetaStep;
+                const float theta = j * thetaStep;
 				Vector3 p = Vector3(
 					(radius * sin(phi) * cos(theta)),
 					(radius * cos(phi)),
@@ -151,7 +151,7 @@ namespace Spartan::Utility::Geometry
 			indices->emplace_back(i);
 		}
 		int baseIndex = 1;
-		int ringVertexCount = slices + 1;
+        const int ringVertexCount = slices + 1;
 		for (int i = 0; i < stacks - 2; i++)
 		{
 			for (int j = 0; j < slices; j++)
@@ -179,25 +179,25 @@ namespace Spartan::Utility::Geometry
 	{
 		using namespace Math;
 
-		float stackHeight = height / stacks;
-		float radiusStep = (radiusTop - radiusBottom) / stacks;
-		float ringCount = (float)(stacks + 1);
+        const float stackHeight = height / stacks;
+        const float radiusStep = (radiusTop - radiusBottom) / stacks;
+        const float ringCount = (float)(stacks + 1);
 
 		for (int i = 0; i < ringCount; i++)
 		{
-			float y = -0.5f * height + i * stackHeight;
-			float r = radiusBottom + i * radiusStep;
-			float dTheta = 2.0f * PI / slices;
+            const float y = -0.5f * height + i * stackHeight;
+            const float r = radiusBottom + i * radiusStep;
+            const float dTheta = 2.0f * PI / slices;
 			for (int j = 0; j <= slices; j++)
 			{
-				float c = cos(j * dTheta);
-				float s = sin(j * dTheta);
+                const float c = cos(j * dTheta);
+                const float s = sin(j * dTheta);
 
 				Vector3 v = Vector3(r*c, y, r*s);
 				Vector2 uv = Vector2((float)j / slices, 1.0f - (float)i / stacks);
 				Vector3 t = Vector3(-s, 0.0f, c);
 
-				float dr = radiusBottom - radiusTop;
+                const float dr = radiusBottom - radiusTop;
 				Vector3 bitangent = Vector3(dr*c, -height, dr*s);
 
 				Vector3 n = Vector3::Cross(t, bitangent).Normalized();
@@ -206,7 +206,7 @@ namespace Spartan::Utility::Geometry
 			}
 		}
 
-		int ringVertexCount = slices + 1;
+        const int ringVertexCount = slices + 1;
 		for (int i = 0; i < stacks; i++)
 		{
 			for (int j = 0; j < slices; j++)
@@ -224,17 +224,17 @@ namespace Spartan::Utility::Geometry
 		// Build top cap
 		int baseIndex = (int)vertices->size();
 		float y = 0.5f * height;
-		float dTheta = 2.0f * PI / slices;
+        const float dTheta = 2.0f * PI / slices;
 
 		Vector3 normal;
 		Vector3 tangent;
 
 		for (int i = 0; i <= slices; i++)
 		{
-			float x = radiusTop * cos(i*dTheta);
-			float z = radiusTop * sin(i*dTheta);
-			float u = x / height + 0.5f;
-			float v = z / height + 0.5f;
+            const float x = radiusTop * cos(i*dTheta);
+            const float z = radiusTop * sin(i*dTheta);
+            const float u = x / height + 0.5f;
+            const float v = z / height + 0.5f;
 
 			normal = Vector3(0, 1, 0);
 			tangent = Vector3(1, 0, 0);
@@ -259,10 +259,10 @@ namespace Spartan::Utility::Geometry
 
 		for (int i = 0; i <= slices; i++)
 		{
-			float x = radiusBottom * cos(i * dTheta);
-			float z = radiusBottom * sin(i * dTheta);
-			float u = x / height + 0.5f;
-			float v = z / height + 0.5f;
+            const float x = radiusBottom * cos(i * dTheta);
+            const float z = radiusBottom * sin(i * dTheta);
+            const float u = x / height + 0.5f;
+            const float v = z / height + 0.5f;
 
 			normal =	 Vector3(0, -1, 0);
 			tangent		= Vector3(1, 0, 0);

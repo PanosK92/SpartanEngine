@@ -55,12 +55,12 @@ void Widget_RenderOptions::Tick()
         string tonemapping_selection                = tonemapping_options[m_renderer->GetOptionValue<uint32_t>(Option_Value_Tonemapping)];
 
         bool do_bloom                   = m_renderer->GetOption(Render_Bloom);
-        bool do_volumetric_lighting     = m_renderer->GetOption(Render_VolumetricLighting);
-        bool do_fxaa                    = m_renderer->GetOption(Render_AntiAliasing_FXAA);
+        bool do_volumetric_lighting     = m_renderer->GetOption(Render_VolumetricLighting);    
         bool do_ssao                    = m_renderer->GetOption(Render_ScreenSpaceAmbientOcclusion);
         bool do_sss                     = m_renderer->GetOption(Render_ScreenSpaceShadows);
         bool do_ssr                     = m_renderer->GetOption(Render_ScreenSpaceReflections);
-        bool do_taa                     = m_renderer->GetOption(Render_AntiAliasing_TAA);
+        bool do_taa                     = m_renderer->GetOption(Render_AntiAliasing_Taa);
+        bool do_fxaa                    = m_renderer->GetOption(Render_AntiAliasing_Fxaa);
         bool do_motion_blur             = m_renderer->GetOption(Render_MotionBlur);
         bool do_sharperning             = m_renderer->GetOption(Render_Sharpening_LumaSharpen);
         bool do_chromatic_aberration    = m_renderer->GetOption(Render_ChromaticAberration);
@@ -69,7 +69,7 @@ void Widget_RenderOptions::Tick()
 
         // Display
         {
-            const auto render_option_float = [this](const char* id, const char* text, Renderer_Option_Value render_option, string tooltip = "", float step = 0.1f)
+            const auto render_option_float = [this](const char* id, const char* text, Renderer_Option_Value render_option, const string& tooltip = "", float step = 0.1f)
             {
                 float value = m_renderer->GetOptionValue<float>(render_option);
 
@@ -172,12 +172,12 @@ void Widget_RenderOptions::Tick()
 
         // Map back to engine
         m_renderer->SetOption(Render_Bloom,                         do_bloom);
-        m_renderer->SetOption(Render_VolumetricLighting,            do_volumetric_lighting);
-        m_renderer->SetOption(Render_AntiAliasing_FXAA,             do_fxaa);
+        m_renderer->SetOption(Render_VolumetricLighting,            do_volumetric_lighting); 
         m_renderer->SetOption(Render_ScreenSpaceAmbientOcclusion,   do_ssao);
         m_renderer->SetOption(Render_ScreenSpaceShadows,            do_sss);
         m_renderer->SetOption(Render_ScreenSpaceReflections,        do_ssr);
-        m_renderer->SetOption(Render_AntiAliasing_TAA,              do_taa);
+        m_renderer->SetOption(Render_AntiAliasing_Taa,              do_taa);
+        m_renderer->SetOption(Render_AntiAliasing_Fxaa,             do_fxaa);
         m_renderer->SetOption(Render_MotionBlur,                    do_motion_blur);
         m_renderer->SetOption(Render_Sharpening_LumaSharpen,        do_sharperning);
         m_renderer->SetOption(Render_ChromaticAberration,           do_chromatic_aberration);
@@ -201,7 +201,7 @@ void Widget_RenderOptions::Tick()
 
         {
             bool debug_physics               = m_renderer->GetOption(Render_Debug_Physics);
-            bool debug_aabb                  = m_renderer->GetOption(Render_Debug_AABB);
+            bool debug_aabb                  = m_renderer->GetOption(Render_Debug_Aabb);
             bool debug_light                 = m_renderer->GetOption(Render_Debug_Lights);
             bool debug_transform             = m_renderer->GetOption(Render_Debug_Transform);
             bool debug_picking_ray           = m_renderer->GetOption(Render_Debug_PickingRay);
@@ -224,7 +224,7 @@ void Widget_RenderOptions::Tick()
 
             m_renderer->SetOption(Render_Debug_Transform,             debug_transform);
             m_renderer->SetOption(Render_Debug_Physics,               debug_physics);
-            m_renderer->SetOption(Render_Debug_AABB,                  debug_aabb);
+            m_renderer->SetOption(Render_Debug_Aabb,                  debug_aabb);
             m_renderer->SetOption(Render_Debug_Lights,                debug_light);
             m_renderer->SetOption(Render_Debug_PickingRay,            debug_picking_ray);
             m_renderer->SetOption(Render_Debug_Grid,                  debug_grid);

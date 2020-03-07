@@ -57,8 +57,8 @@ namespace Spartan
 		// Update from engine, ENGINE -> BULLET
 		void getWorldTransform(btTransform& worldTrans) const override
 		{
-			Vector3 lastPos		= m_rigidBody->GetTransform()->GetPosition();
-			Quaternion lastRot	= m_rigidBody->GetTransform()->GetRotation();
+            const Vector3 lastPos		= m_rigidBody->GetTransform()->GetPosition();
+            const Quaternion lastRot	= m_rigidBody->GetTransform()->GetRotation();
 
 			worldTrans.setOrigin(ToBtVector3(lastPos + lastRot * m_rigidBody->GetCenterOfMass()));
 			worldTrans.setRotation(ToBtQuaternion(lastRot));
@@ -67,8 +67,8 @@ namespace Spartan
 		// Update from bullet, BULLET -> ENGINE
 		void setWorldTransform(const btTransform& worldTrans) override
 		{
-			Quaternion newWorldRot	= ToQuaternion(worldTrans.getRotation());
-			Vector3 newWorldPos		= ToVector3(worldTrans.getOrigin()) - newWorldRot * m_rigidBody->GetCenterOfMass();
+            const Quaternion newWorldRot	= ToQuaternion(worldTrans.getRotation());
+            const Vector3 newWorldPos		= ToVector3(worldTrans.getOrigin()) - newWorldRot * m_rigidBody->GetCenterOfMass();
 
 			m_rigidBody->GetTransform()->SetPosition(newWorldPos);
 			m_rigidBody->GetTransform()->SetRotation(newWorldRot);
@@ -243,8 +243,8 @@ namespace Spartan
 		Body_AddToWorld();
 	}
 
-	void RigidBody::SetLinearVelocity(const Vector3& velocity, const bool activate /*= true*/)
-	{
+	void RigidBody::SetLinearVelocity(const Vector3& velocity, const bool activate /*= true*/) const
+    {
 		if (!m_rigidBody)
 			return;
 
@@ -255,8 +255,8 @@ namespace Spartan
 		}
 	}
 
-	void RigidBody::SetAngularVelocity(const Vector3& velocity, const bool activate /*= true*/)
-	{
+	void RigidBody::SetAngularVelocity(const Vector3& velocity, const bool activate /*= true*/) const
+    {
 		if (!m_rigidBody)
 			return;
 
@@ -284,7 +284,7 @@ namespace Spartan
 		}
 	}
 
-	void RigidBody::ApplyForceAtPosition(const Vector3& force, Vector3 position, ForceMode mode) const
+	void RigidBody::ApplyForceAtPosition(const Vector3& force, const Vector3& position, ForceMode mode) const
 	{
 		if (!m_rigidBody)
 			return;
@@ -377,8 +377,8 @@ namespace Spartan
 		return Vector3::Zero;
 	}
 
-	void RigidBody::SetPosition(const Vector3& position, const bool activate /*= true*/)
-	{
+	void RigidBody::SetPosition(const Vector3& position, const bool activate /*= true*/) const
+    {
 		if (!m_rigidBody)
 			return;
 
@@ -402,13 +402,13 @@ namespace Spartan
 		return m_rigidBody ? ToQuaternion(m_rigidBody->getWorldTransform().getRotation()) : Quaternion::Identity;
 	}
 
-	void RigidBody::SetRotation(const Quaternion& rotation, const bool activate /*= true*/)
-	{
+	void RigidBody::SetRotation(const Quaternion& rotation, const bool activate /*= true*/) const
+    {
 		if (!m_rigidBody)
 			return;
 
         // Set rotation to world transform
-		Vector3 oldPosition = GetPosition();
+        const Vector3 oldPosition = GetPosition();
 		btTransform& transform_world = m_rigidBody->getWorldTransform();
 		transform_world.setRotation(ToBtQuaternion(rotation));
 		if (m_center_of_mass != Vector3::Zero)
@@ -517,7 +517,7 @@ namespace Spartan
 		// CONSTRUCTION
 		{
 			// Create a motion state (memory will be freed by the RigidBody)
-			auto motion_state = new MotionState(this);
+            const auto motion_state = new MotionState(this);
 			
 			// Info
 			btRigidBody::btRigidBodyConstructionInfo constructionInfo(m_mass, motion_state, m_collision_shape, local_intertia);
@@ -609,8 +609,8 @@ namespace Spartan
 		}
 	}
 
-	void RigidBody::Flags_UpdateKinematic()
-	{
+	void RigidBody::Flags_UpdateKinematic() const
+    {
 		int flags = m_rigidBody->getCollisionFlags();
 
 		if (m_is_kinematic)
@@ -627,8 +627,8 @@ namespace Spartan
 		m_rigidBody->setDeactivationTime(DEFAULT_DEACTIVATION_TIME);
 	}
 
-	void RigidBody::Flags_UpdateGravity()
-	{
+	void RigidBody::Flags_UpdateGravity() const
+    {
 		int flags = m_rigidBody->getFlags();
 
 		if (m_use_gravity)

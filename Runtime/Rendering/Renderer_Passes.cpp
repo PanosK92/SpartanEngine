@@ -30,13 +30,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_CommandList.h"
 #include "../RHI/RHI_VertexBuffer.h"
 #include "../RHI/RHI_PipelineState.h"
-#include "../RHI/RHI_ConstantBuffer.h"
 #include "../World/Entity.h"
 #include "../World/Components/Light.h"
 #include "../World/Components/Camera.h"
 #include "../World/Components/Transform.h"
 #include "../World/Components/Renderable.h"
-#include "../Resource/ResourceCache.h"
 //==========================================
 
 //= NAMESPACES ===============
@@ -46,7 +44,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    void Renderer::SetGlobalSamplersAndConstantBuffers(RHI_CommandList* cmd_list)
+    void Renderer::SetGlobalSamplersAndConstantBuffers(RHI_CommandList* cmd_list) const
     {
         // Constant buffers
         cmd_list->SetConstantBuffer(0, RHI_Buffer_VertexShader | RHI_Buffer_PixelShader, m_buffer_frame_gpu);
@@ -77,7 +75,7 @@ namespace Spartan
         // Runs only once
         Pass_BrdfSpecularLut(cmd_list);
 
-        bool draw_transparent_objects = !m_entities[Renderer_Object_Transparent].empty();
+        const bool draw_transparent_objects = !m_entities[Renderer_Object_Transparent].empty();
 
         // Depth
         {
@@ -127,7 +125,7 @@ namespace Spartan
         }
 	}
 
-	void Renderer::Pass_LightShadow(RHI_CommandList* cmd_list, Renderer_Object_Type object_type)
+	void Renderer::Pass_LightShadow(RHI_CommandList* cmd_list, const Renderer_Object_Type object_type)
 	{
         // All opaque objects are rendered from the lights point of view.
         // Opaque objects write their depth information to a depth buffer, using just a vertex shader.
@@ -144,7 +142,7 @@ namespace Spartan
         if (entities.empty())
             return;
 
-        bool transparent_pass = object_type == Renderer_Object_Transparent;
+        const bool transparent_pass = object_type == Renderer_Object_Transparent;
 
         // Go through all of the lights
 		const auto& entities_light = m_entities[Renderer_Object_Light];
@@ -349,7 +347,7 @@ namespace Spartan
         }
     }
 
-	void Renderer::Pass_GBuffer(RHI_CommandList* cmd_list, Renderer_Object_Type object_type)
+	void Renderer::Pass_GBuffer(RHI_CommandList* cmd_list, const Renderer_Object_Type object_type)
 	{
         // Acquire required resources/shaders
         RHI_Texture* tex_albedo       = m_render_targets[RenderTarget_Gbuffer_Albedo].get();
@@ -364,31 +362,31 @@ namespace Spartan
             return;
 
         // Clear values that depend on the objects being opaque or transparent
-        bool is_transparent = object_type == Renderer_Object_Transparent;
+        const bool is_transparent = object_type == Renderer_Object_Transparent;
 
         // Set render state
-        RHI_PipelineState pipeline_state;
-        pipeline_state.shader_vertex                    = shader_v;
-        pipeline_state.vertex_buffer_stride             = static_cast<uint32_t>(sizeof(RHI_Vertex_PosTexNorTan)); // assume all vertex buffers have the same stride (which they do)
-        pipeline_state.blend_state                      = m_blend_disabled.get();
-        pipeline_state.rasterizer_state                 = GetOption(Render_Debug_Wireframe) ? m_rasterizer_cull_back_wireframe.get() : m_rasterizer_cull_back_solid.get();
-        pipeline_state.depth_stencil_state              = is_transparent ? m_depth_stencil_enabled_enabled_write.get() : m_depth_stencil_enabled_disabled_write.get(); // GetOptionValue(Render_DepthPrepass) is not accounted for anymore, have to fix
-        pipeline_state.render_target_color_textures[0]  = tex_albedo;
-        pipeline_state.render_target_color_clear[0]     = !is_transparent ? Vector4::Zero : state_dont_clear_color;
-        pipeline_state.render_target_color_textures[1]  = tex_normal;
-        pipeline_state.render_target_color_clear[1]     = !is_transparent ? Vector4::Zero : state_dont_clear_color;
-        pipeline_state.render_target_color_textures[2]  = tex_material;
-        pipeline_state.render_target_color_clear[2]     = !is_transparent ? Vector4::Zero : state_dont_clear_color;
-        pipeline_state.render_target_color_textures[3]  = tex_velocity;
-        pipeline_state.render_target_color_clear[3]     = !is_transparent ? Vector4::Zero : state_dont_clear_color;
-        pipeline_state.render_target_depth_texture      = tex_depth;
-        pipeline_state.render_target_depth_clear        = is_transparent || GetOption(Render_DepthPrepass) ? state_dont_clear_depth : GetClearDepth();
-        pipeline_state.render_target_stencil_clear      = 0;
-        pipeline_state.viewport                         = tex_albedo->GetViewport();
-        pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
+        RHI_PipelineState pso;
+        pso.shader_vertex                    = shader_v;
+        pso.vertex_buffer_stride             = static_cast<uint32_t>(sizeof(RHI_Vertex_PosTexNorTan)); // assume all vertex buffers have the same stride (which they do)
+        pso.blend_state                      = m_blend_disabled.get();
+        pso.rasterizer_state                 = GetOption(Render_Debug_Wireframe) ? m_rasterizer_cull_back_wireframe.get() : m_rasterizer_cull_back_solid.get();
+        pso.depth_stencil_state              = is_transparent ? m_depth_stencil_enabled_enabled_write.get() : m_depth_stencil_enabled_disabled_write.get(); // GetOptionValue(Render_DepthPrepass) is not accounted for anymore, have to fix
+        pso.render_target_color_textures[0]  = tex_albedo;
+        pso.render_target_color_clear[0]     = !is_transparent ? Vector4::Zero : state_dont_clear_color;
+        pso.render_target_color_textures[1]  = tex_normal;
+        pso.render_target_color_clear[1]     = !is_transparent ? Vector4::Zero : state_dont_clear_color;
+        pso.render_target_color_textures[2]  = tex_material;
+        pso.render_target_color_clear[2]     = !is_transparent ? Vector4::Zero : state_dont_clear_color;
+        pso.render_target_color_textures[3]  = tex_velocity;
+        pso.render_target_color_clear[3]     = !is_transparent ? Vector4::Zero : state_dont_clear_color;
+        pso.render_target_depth_texture      = tex_depth;
+        pso.render_target_depth_clear        = is_transparent || GetOption(Render_DepthPrepass) ? state_dont_clear_depth : GetClearDepth();
+        pso.render_target_stencil_clear      = 0;
+        pso.viewport                         = tex_albedo->GetViewport();
+        pso.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
 
         // Clear
-        cmd_list->Clear(pipeline_state);
+        cmd_list->Clear(pso);
 
         // Only useful to minimize D3D11 state changes (Vulkan backend is smarter)
         uint32_t m_set_material_id = 0;
@@ -400,15 +398,15 @@ namespace Spartan
                 continue;
 
             // Set pixel shader
-            pipeline_state.shader_pixel = static_cast<RHI_Shader*>(resource.get());
+            pso.shader_pixel = static_cast<RHI_Shader*>(resource.get());
 
             // Set pass name
-            pipeline_state.pass_name = pipeline_state.shader_pixel->GetName().c_str();
+            pso.pass_name = pso.shader_pixel->GetName().c_str();
 
             auto& entities = m_entities[object_type];
 
             // Submit command list
-            if (cmd_list->Begin(pipeline_state))
+            if (cmd_list->Begin(pso))
             {
                 for (uint32_t i = 0; i < static_cast<uint32_t>(entities.size()); i++)
                 {
@@ -439,7 +437,7 @@ namespace Spartan
                         continue;
 
                     // Draw matching shader entities
-                    if (pipeline_state.shader_pixel->GetId() == shader->GetId())
+                    if (pso.shader_pixel->GetId() == shader->GetId())
                     {
                         // Skip objects outside of the view frustum
                         if (!m_camera->IsInViewFrustrum(renderable))
@@ -503,7 +501,7 @@ namespace Spartan
         }
 	}
 
-	void Renderer::Pass_Ssao(RHI_CommandList* cmd_list, bool use_stencil)
+	void Renderer::Pass_Ssao(RHI_CommandList* cmd_list, const bool use_stencil)
 	{
         if ((m_options & Render_ScreenSpaceAmbientOcclusion) == 0)
             return;
@@ -564,7 +562,7 @@ namespace Spartan
         }
 	}
 
-    void Renderer::Pass_Ssr(RHI_CommandList* cmd_list, bool use_stencil)
+    void Renderer::Pass_Ssr(RHI_CommandList* cmd_list, const bool use_stencil)
     {
         if ((m_options & Render_ScreenSpaceReflections) == 0)
             return;
@@ -645,7 +643,7 @@ namespace Spartan
         //}
     }
 
-    void Renderer::Pass_Light(RHI_CommandList* cmd_list, bool use_stencil)
+    void Renderer::Pass_Light(RHI_CommandList* cmd_list, const bool use_stencil)
     {
         // Acquire shaders
         const auto& shader_v                = m_shaders[Shader_Quad_V];
@@ -758,7 +756,7 @@ namespace Spartan
         draw_lights(Renderer_Object_LightSpot);
     }
 
-	void Renderer::Pass_Composition(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_out, bool use_stencil)
+	void Renderer::Pass_Composition(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_out, const bool use_stencil)
 	{
         // Acquire shaders
         const auto& shader_v = m_shaders[Shader_Quad_V];
@@ -811,7 +809,7 @@ namespace Spartan
         }
 	}
 
-    void Renderer::Pass_AlphaBlend(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, bool use_stencil)
+    void Renderer::Pass_AlphaBlend(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, const bool use_stencil)
     {
         // Acquire shaders
         const auto& shader_v    = m_shaders[Shader_Quad_V];
@@ -861,7 +859,7 @@ namespace Spartan
         auto& tex_out_ldr   = m_render_targets[RenderTarget_Composition_Ldr_2];
 
         // TAA	
-        if (GetOption(Render_AntiAliasing_TAA))
+        if (GetOption(Render_AntiAliasing_Taa))
         {
             Pass_TAA(cmd_list, tex_in_hdr, tex_out_hdr);
             tex_in_hdr.swap(tex_out_hdr);
@@ -899,7 +897,7 @@ namespace Spartan
         }
 
         // FXAA
-        if (GetOption(Render_AntiAliasing_FXAA))
+        if (GetOption(Render_AntiAliasing_Fxaa))
         {
             Pass_FXAA(cmd_list, tex_in_ldr, tex_out_ldr);
             tex_in_ldr.swap(tex_out_ldr);
@@ -962,7 +960,7 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_Downsample(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out, Renderer_Shader_Type pixel_shader)
+    void Renderer::Pass_Downsample(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out, const Renderer_Shader_Type pixel_shader)
     {
         // Acquire shaders
         const auto& shader_v = m_shaders[Shader_Quad_V];
@@ -1663,7 +1661,7 @@ namespace Spartan
 	void Renderer::Pass_Lines(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_out)
 	{
 		const bool draw_picking_ray = m_options & Render_Debug_PickingRay;
-		const bool draw_aabb		= m_options & Render_Debug_AABB;
+		const bool draw_aabb		= m_options & Render_Debug_Aabb;
 		const bool draw_grid		= m_options & Render_Debug_Grid;
         const bool draw_lights      = m_options & Render_Debug_Lights;
 		const auto draw_lines		= !m_lines_list_depth_enabled.empty() || !m_lines_list_depth_disabled.empty(); // Any kind of lines, physics, user debug, etc.
@@ -1876,27 +1874,27 @@ namespace Spartan
                     auto position_light_world       = entity->GetTransform()->GetPosition();
                     auto position_camera_world      = m_camera->GetTransform()->GetPosition();
                     auto direction_camera_to_light  = (position_light_world - position_camera_world).Normalized();
-                    auto v_dot_l                    = Vector3::Dot(m_camera->GetTransform()->GetForward(), direction_camera_to_light);
+                    const auto v_dot_l                    = Vector3::Dot(m_camera->GetTransform()->GetForward(), direction_camera_to_light);
         
                     // Only draw if it's inside our view
                     if (v_dot_l > 0.5f)
                     {
                         // Compute light screen space position and scale (based on distance from the camera)
-                        auto position_light_screen  = m_camera->Project(position_light_world);
-                        auto distance               = (position_camera_world - position_light_world).Length() + M_EPSILON;
+                        const auto position_light_screen  = m_camera->Project(position_light_world);
+                        const auto distance               = (position_camera_world - position_light_world).Length() + M_EPSILON;
                         auto scale                  = m_gizmo_size_max / distance;
                         scale                       = Clamp(scale, m_gizmo_size_min, m_gizmo_size_max);
         
                         // Choose texture based on light type
                         shared_ptr<RHI_Texture> light_tex = nullptr;
-                        auto type = light->GetLightType();
+                        const auto type = light->GetLightType();
                         if (type == LightType_Directional)	light_tex = m_gizmo_tex_light_directional;
                         else if (type == LightType_Point)	light_tex = m_gizmo_tex_light_point;
                         else if (type == LightType_Spot)	light_tex = m_gizmo_tex_light_spot;
         
                         // Construct appropriate rectangle
-                        auto tex_width = light_tex->GetWidth() * scale;
-                        auto tex_height = light_tex->GetHeight() * scale;
+                        const auto tex_width = light_tex->GetWidth() * scale;
+                        const auto tex_height = light_tex->GetHeight() * scale;
                         auto rectangle = Math::Rectangle
                         (
                             position_light_screen.x - tex_width * 0.5f,

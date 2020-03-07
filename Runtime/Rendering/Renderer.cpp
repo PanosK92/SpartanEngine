@@ -36,7 +36,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Camera.h"
 #include "../World/Components/Light.h"
 #include "../RHI/RHI_Device.h"
-#include "../RHI/RHI_Pipeline.h"
 #include "../RHI/RHI_PipelineCache.h"
 #include "../RHI/RHI_ConstantBuffer.h"
 #include "../RHI/RHI_CommandList.h"
@@ -68,7 +67,7 @@ namespace Spartan
         m_options |= Render_ScreenSpaceAmbientOcclusion;
         m_options |= Render_ScreenSpaceShadows;
         m_options |= Render_ScreenSpaceReflections;	
-        m_options |= Render_AntiAliasing_TAA;
+        m_options |= Render_AntiAliasing_Taa;
         m_options |= Render_Sharpening_LumaSharpen;             // Helps with TAA induced blurring
         //m_options |= Render_PostProcess_FXAA;                 // Disabled by default: TAA is superior.
         //m_options |= Render_PostProcess_Dithering;            // Disabled by default: It's only needed in very dark scenes to fix smooth color gradients.
@@ -207,7 +206,7 @@ namespace Spartan
             m_buffer_frame_cpu.view_projection_ortho    = Matrix::CreateLookAtLH(Vector3(0, 0, -m_near_plane), Vector3::Forward, Vector3::Up) * m_buffer_frame_cpu.projection_ortho;
 
 			// TAA - Generate jitter
-			if (GetOption(Render_AntiAliasing_TAA))
+			if (GetOption(Render_AntiAliasing_Taa))
 			{
 				m_taa_jitter_previous = m_taa_jitter;
 
@@ -239,7 +238,8 @@ namespace Spartan
 	void Renderer::SetResolution(uint32_t width, uint32_t height)
 	{
 		// Return if resolution is invalid
-		if (width == 0 || width > GetMaxResolution() || height == 0 || height > GetMaxResolution())
+        const uint32_t max_res = m_rhi_device->GetContextRhi()->max_texture_dimension_2d;
+		if (width == 0 || width > max_res || height == 0 || height > max_res)
 		{
 			LOG_WARNING("%dx%d is an invalid resolution", width, height);
 			return;
@@ -282,7 +282,7 @@ namespace Spartan
 
 	void Renderer::DrawRectangle(const Math::Rectangle& rectangle, const Math::Vector4& color /*= DebugColor*/, bool depth /*= true*/)
 	{
-        float cam_z = m_camera->GetTransform()->GetPosition().z + m_camera->GetNearPlane() + 5.0f;
+        const float cam_z = m_camera->GetTransform()->GetPosition().z + m_camera->GetNearPlane() + 5.0f;
 
         DrawLine(Vector3(rectangle.left,    rectangle.top,      cam_z), Vector3(rectangle.right,    rectangle.top,      cam_z), color, color, depth);
         DrawLine(Vector3(rectangle.right,   rectangle.top,      cam_z), Vector3(rectangle.right,    rectangle.bottom,   cam_z), color, color, depth);
@@ -309,7 +309,7 @@ namespace Spartan
         DrawLine(Vector3(min.x, max.y, max.z), Vector3(min.x, min.y, max.z), color, color, depth);
 	}
 
-	bool Renderer::UpdateFrameBuffer()
+    bool Renderer::UpdateFrameBuffer()
     {
         // Map
         BufferFrame* buffer = static_cast<BufferFrame*>(m_buffer_frame_gpu->Map());
@@ -383,8 +383,8 @@ namespace Spartan
     bool Renderer::UpdateObjectBuffer(RHI_CommandList* cmd_list, const uint32_t offset_index /*= 0*/)
     {
         // Only update if needed
-        bool same_content   = m_buffer_object_cpu == m_buffer_object_cpu_previous;
-        bool same_offset    = m_buffer_object_gpu->GetOffsetIndex() == offset_index;
+        const bool same_content   = m_buffer_object_cpu == m_buffer_object_cpu_previous;
+        const bool same_offset    = m_buffer_object_gpu->GetOffsetIndex() == offset_index;
         if (same_content && same_offset)
             return true;
 
@@ -441,8 +441,8 @@ namespace Spartan
             return false;
         }
 
-        bool volumetric         = static_cast<float>(m_options & Render_VolumetricLighting);
-        bool contact_shadows    = static_cast<float>(m_options & Render_ScreenSpaceShadows);
+        const bool volumetric         = static_cast<float>(m_options & Render_VolumetricLighting);
+        const bool contact_shadows    = static_cast<float>(m_options & Render_ScreenSpaceShadows);
 
         for (uint32_t i = 0; i < light->GetShadowArraySize(); i++) { m_buffer_light_cpu.view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix(i); }
         m_buffer_light_cpu.intensity_range_angle_bias               = Vector4(light->GetIntensity(), light->GetRange(), light->GetAngle(), GetOption(Render_ReverseZ) ? light->GetBias() : -light->GetBias());
@@ -474,8 +474,8 @@ namespace Spartan
 				continue;
 
 			// Get all the components we are interested in
-			auto renderable = entity->GetComponent<Renderable>();
-			auto light      = entity->GetComponent<Light>();
+            const auto renderable = entity->GetComponent<Renderable>();
+            const auto light      = entity->GetComponent<Light>();
 			auto camera		= entity->GetComponent<Camera>();
 
 			if (renderable)
@@ -571,7 +571,7 @@ namespace Spartan
         }
         else if (option == Option_Value_ShadowResolution)
         {
-            value = Clamp(value, static_cast<float>(m_resolution_shadow_min), static_cast<float>(GetMaxResolution()));
+            value = Clamp(value, static_cast<float>(m_resolution_shadow_min), static_cast<float>(m_rhi_device->GetContextRhi()->max_texture_dimension_2d));
         }
 
         if (m_option_values[option] == value)
@@ -592,10 +592,5 @@ namespace Spartan
                 }
             }
         }
-    }
-
-	const uint32_t Renderer::GetMaxResolution() const
-    {
-        return m_rhi_device->GetContextRhi()->max_texture_dimension_2d;
     }
 }

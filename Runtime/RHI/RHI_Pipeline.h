@@ -22,8 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =================
-#include <map>
-#include <vector>
 #include <memory>
 #include "RHI_PipelineState.h"
 //============================
@@ -37,7 +35,7 @@ namespace Spartan
 		RHI_Pipeline(const std::shared_ptr<RHI_Device>& rhi_device, RHI_PipelineState& pipeline_state);
 		~RHI_Pipeline();
 
-        void OnCommandListConsumed();
+        void OnCommandListConsumed() const;
 
         void* GetPipeline()                     const { return m_pipeline; }
         void* GetPipelineLayout()               const { return m_pipeline_layout; }

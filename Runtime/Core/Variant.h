@@ -42,7 +42,7 @@ namespace Spartan
 	char,											\
 	unsigned char,									\
 	int,											\
-	uint32_t,									\
+	uint32_t,									    \
 	bool,											\
 	float,											\
 	double,											\
@@ -67,10 +67,10 @@ namespace Spartan
 	{
 	public:
 		// Default
-		Variant() {}
-		~Variant() {}
+		Variant() = default;
+        ~Variant() = default;
 
-		// Copy constructor 1
+        // Copy constructor 1
 		Variant(const Variant& var){ m_variant = var.GetVariantRaw(); }
 		// Copy constructor 2
 		template <class T, class = std::enable_if<!std::is_same<T, Variant>::value>>

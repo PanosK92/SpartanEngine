@@ -49,7 +49,7 @@ namespace Spartan
         m_vertex_type = RHI_Vertex_Type_To_Enum<T>();
 
         // Can also be the source
-        bool is_file = FileSystem::IsFile(shader);
+        const bool is_file = FileSystem::IsFile(shader);
 
 		// Deduce name and file path
 		if (is_file)

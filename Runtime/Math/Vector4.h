@@ -92,7 +92,7 @@ namespace Spartan::Math
             w *= value;
         }
 
-        Vector4 operator /(const float rhs)
+        Vector4 operator /(const float rhs) const
         {
             return Vector4(x / rhs, y / rhs, z / rhs, w / rhs);
         }

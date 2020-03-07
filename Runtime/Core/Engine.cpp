@@ -33,7 +33,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Scripting/Scripting.h"
 #include "../Threading/Threading.h"
 #include "../World/World.h"
-#include "../Math/MathHelper.h"
 //====================================
 
 //= NAMESPACES ===============
@@ -80,8 +79,8 @@ namespace Spartan
 		EventSystem::Get().Clear(); // this must become a subsystem
 	}
 
-	void Engine::Tick()
-	{
+	void Engine::Tick() const
+    {
         m_context->Tick(Tick_Variable, static_cast<float>(m_timer->GetDeltaTimeSec()));
         m_context->Tick(Tick_Smoothed, static_cast<float>(m_timer->GetDeltaTimeSmoothedSec()));
 	}

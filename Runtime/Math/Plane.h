@@ -33,12 +33,12 @@ namespace Spartan::Math
 		Plane();
 		Plane(const Vector3& normal, float d);
 		Plane(const Vector3& a, const Vector3& b, const Vector3& c);
-		~Plane();
+		~Plane() = default;
 	
 		void Normalize();
 		static Plane Normalize(const Plane& plane);
 	
-		float DotCoordinate(const Vector3& v);
+		float DotCoordinate(const Vector3& v) const;
 		static float DotCoordinate(const Plane& p, const Vector3& v);
 	
 		float d;

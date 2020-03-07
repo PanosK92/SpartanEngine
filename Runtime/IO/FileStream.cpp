@@ -177,7 +177,7 @@ namespace Spartan
 		vec->clear();
 		vec->shrink_to_fit();
 
-		auto length = ReadAs<uint32_t>();
+        const auto length = ReadAs<uint32_t>();
 
 		vec->reserve(length);
 		vec->resize(length);
@@ -193,7 +193,7 @@ namespace Spartan
 		vec->clear();
 		vec->shrink_to_fit();
 
-		auto length = ReadAs<uint32_t>();
+        const auto length = ReadAs<uint32_t>();
 
 		vec->reserve(length);
 		vec->resize(length);
@@ -209,7 +209,7 @@ namespace Spartan
 		vec->clear();
 		vec->shrink_to_fit();
 
-		auto length = ReadAs<uint32_t>();
+        const auto length = ReadAs<uint32_t>();
 
 		vec->reserve(length);
 		vec->resize(length);

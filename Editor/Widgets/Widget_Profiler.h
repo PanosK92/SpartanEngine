@@ -67,8 +67,8 @@ public:
 private:
 	void ShowCPU();
 	void ShowGPU();
-    void ShowTimeBlock(const Spartan::TimeBlock& time_block, float total_time);
-	void ShowPlot(std::vector<float>& data, Metric& metric, float time_value, bool is_stuttering);
+    void ShowTimeBlock(const Spartan::TimeBlock& time_block, float total_time) const;
+	void ShowPlot(std::vector<float>& data, Metric& metric, float time_value, bool is_stuttering) const;
 
 	std::vector<float> m_plot_times_cpu;
 	std::vector<float> m_plot_times_gpu;

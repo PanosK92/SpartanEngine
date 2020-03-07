@@ -33,18 +33,18 @@ namespace Spartan
 		void Register(asIScriptEngine* scriptEngine, Context* context);
 
 	private:
-		void RegisterEnumerations();
-		void RegisterTypes();
-		void RegisterInput();
+		void RegisterEnumerations() const;
+		void RegisterTypes() const;
+		void RegisterInput() const;
 		void RegisterEntity();
-		void RegisterTransform();
-		void RegisterMaterial();
-		void RegisterRigidBody();
-		void RegisterVector2();
-		void RegisterVector3();
-		void RegisterQuaternion();
-		void RegisterMath();
-		void RegisterLog();
+		void RegisterTransform() const;
+		void RegisterMaterial() const;
+		void RegisterRigidBody() const;
+		void RegisterVector2() const;
+		void RegisterVector3() const;
+		void RegisterQuaternion() const;
+		void RegisterMath() const;
+		void RegisterLog() const;
 
 		asIScriptEngine* m_scriptEngine;
 		Context* m_context;

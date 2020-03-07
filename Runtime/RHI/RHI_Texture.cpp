@@ -165,8 +165,8 @@ namespace Spartan
             m_size_gpu = 0;
             for (uint8_t mip_index = 0; mip_index < m_mip_levels; mip_index++)
             {
-                uint32_t mip_width  = m_width >> mip_index;
-                uint32_t mip_height = m_height >> mip_index;
+                const uint32_t mip_width  = m_width >> mip_index;
+                const uint32_t mip_height = m_height >> mip_index;
 
                 m_size_cpu += mip_index < m_data.size() ? m_data[mip_index].size() * sizeof(std::byte) : 0;
                 m_size_gpu += mip_width * mip_height * (m_bpp / 8);
@@ -203,7 +203,7 @@ namespace Spartan
             if (file->IsOpen())
             {
                 auto byte_count = file->ReadAs<uint32_t>();
-                auto mip_count  = file->ReadAs<uint32_t>();
+                const auto mip_count  = file->ReadAs<uint32_t>();
 
                 if (index < mip_count)
                 {
@@ -251,7 +251,7 @@ namespace Spartan
 
 		// Read byte and mipmap count
 		auto byte_count = file->ReadAs<uint32_t>();
-        auto mip_count  = file->ReadAs<uint32_t>();
+        const auto mip_count  = file->ReadAs<uint32_t>();
 
 		// Read bytes
 		m_data.resize(mip_count);

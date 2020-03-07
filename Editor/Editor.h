@@ -51,7 +51,7 @@ public:
 private:
 	void Widgets_Create();
 	void Widgets_Tick();
-	void DockSpace_Begin();
+	void DockSpace_Begin() const;
 	void DockSpace_End();	
 	void ApplyStyle() const;
 

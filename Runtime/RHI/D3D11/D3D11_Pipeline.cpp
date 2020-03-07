@@ -41,8 +41,6 @@ namespace Spartan
 	}
 
 	RHI_Pipeline::~RHI_Pipeline()
-	{
-
-	}
+    = default;
 }
 #endif

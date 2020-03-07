@@ -61,8 +61,8 @@ void Widget_ResourceCache::Tick()
 {
 	auto resource_cache		= m_context->GetSubsystem<ResourceCache>();
 	auto resources			= resource_cache->GetByType();
-	auto memory_usage_cpu	= resource_cache->GetMemoryUsageCpu() / 1000.0f / 1000.0f;
-    auto memory_usage_gpu   = resource_cache->GetMemoryUsageGpu() / 1000.0f / 1000.0f;
+    const auto memory_usage_cpu	= resource_cache->GetMemoryUsageCpu() / 1000.0f / 1000.0f;
+    const auto memory_usage_gpu   = resource_cache->GetMemoryUsageGpu() / 1000.0f / 1000.0f;
 
 	ImGui::Text("Resource count: %d, Memory usage cpu: %d Mb, Memory usage gpu: %d Mb", static_cast<uint32_t>(resources.size()), static_cast<uint32_t>(memory_usage_cpu), static_cast<uint32_t>(memory_usage_gpu));
 	ImGui::Separator();

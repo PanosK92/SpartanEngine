@@ -43,7 +43,7 @@ namespace Spartan
 {
 	ResourceCache::ResourceCache(Context* context) : ISubsystem(context)
 	{
-		string data_dir = "Data/";
+        const string data_dir = "Data/";
 
 		// Add engine standard resource directories
 		AddDataDirectory(Asset_Cubemaps,		data_dir + "environment");
@@ -143,7 +143,7 @@ namespace Spartan
 			return;
 		}
 
-		auto resource_count = GetResourceCount();
+        const auto resource_count = GetResourceCount();
 		ProgressReport::Get().SetJobCount(g_progress_resource_cache, resource_count);
 
 		// Save resource count
@@ -182,7 +182,7 @@ namespace Spartan
 			return;
 		
 		// Load resource count
-		auto resource_count = file->ReadAs<uint32_t>();
+        const auto resource_count = file->ReadAs<uint32_t>();
 
 		for (uint32_t i = 0; i < resource_count; i++)
 		{
@@ -190,7 +190,7 @@ namespace Spartan
 			auto file_path = file->ReadAs<string>();
 
 			// Load resource type
-			auto type = static_cast<Resource_Type>(file->ReadAs<uint32_t>());
+            const auto type = static_cast<Resource_Type>(file->ReadAs<uint32_t>());
 
 			switch (type)
 			{

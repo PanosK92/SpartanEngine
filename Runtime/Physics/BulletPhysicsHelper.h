@@ -41,12 +41,12 @@ inline Spartan::Math::Vector4 ToVector4(const btVector3& vector)
 	return Spartan::Math::Vector4(vector.getX(), vector.getY(), vector.getZ(), 1.0f);
 }
 
-inline btVector3 ToBtVector3(Spartan::Math::Vector3 vector)
+inline btVector3 ToBtVector3(const Spartan::Math::Vector3& vector)
 {
 	return btVector3(vector.x, vector.y, vector.z);
 }
 
-inline btQuaternion ToBtQuaternion(Spartan::Math::Quaternion quaternion)
+inline btQuaternion ToBtQuaternion(const Spartan::Math::Quaternion& quaternion)
 {
 	return btQuaternion(quaternion.x, quaternion.y, quaternion.z, quaternion.w);
 }

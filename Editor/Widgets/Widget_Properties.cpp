@@ -115,7 +115,7 @@ namespace ComponentProperty
 		// Component Options - Top right
 		if (options)
 		{
-            float icon_width = 16.0f;
+            const float icon_width = 16.0f;
 			ImGui::SameLine(ImGui::GetWindowContentRegionWidth() - icon_width + 1.0f); ImGui::SetCursorPosY(original_pen_y);
 			if (ImGuiEx::ImageButton(name.c_str(), Icon_Component_Options, icon_width))
 			{
@@ -158,8 +158,8 @@ void Widget_Properties::Tick()
 	if (!m_inspected_entity.expired())
 	{
 		auto entity_ptr = m_inspected_entity.lock().get();
-		auto renderable	= entity_ptr->GetComponent<Renderable>();
-		auto material   = renderable ? renderable->GetMaterial() : nullptr;
+        const auto renderable	= entity_ptr->GetComponent<Renderable>();
+        const auto material   = renderable ? renderable->GetMaterial() : nullptr;
 
 		ShowTransform(entity_ptr->GetComponent<Transform>());
 		ShowLight(entity_ptr->GetComponent<Light>());
@@ -233,7 +233,7 @@ void Widget_Properties::ShowTransform(Transform* transform) const
 		{
             const float label_float_spacing = 15.0f;
             const float step                = 0.01f;
-			string format                   = "%.4f";
+            const string format                   = "%.4f";
 
             // Label
             ImGui::TextUnformatted(label);
@@ -649,9 +649,9 @@ void Widget_Properties::ShowConstraint(Constraint* constraint) const
 		string other_body_name	= other_body.expired() ? "N/A" : other_body.lock()->GetName();
 		//======================================================================================
 
-		auto inputTextFlags		= ImGuiInputTextFlags_CharsDecimal;
-		float step				= 0.1f;
-		float step_fast			= 0.1f;
+        const auto inputTextFlags		= ImGuiInputTextFlags_CharsDecimal;
+        const float step				= 0.1f;
+        const float step_fast			= 0.1f;
 		const char* precision	= "%.3f";
 
 		// Type
@@ -910,10 +910,10 @@ void Widget_Properties::ShowTerrain(Terrain* terrain) const
         //= REFLECT =================================
         float min_y         = terrain->GetMinY();
         float max_y         = terrain->GetMaxY();
-        float progress      = terrain->GetProgress();
+        const float progress      = terrain->GetProgress();
         //===========================================
 
-        float cursor_y = ImGui::GetCursorPosY();
+        const float cursor_y = ImGui::GetCursorPosY();
 
         ImGui::BeginGroup();
         {

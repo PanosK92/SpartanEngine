@@ -75,7 +75,7 @@ namespace Spartan
         // - Viewport and scissor can be undefined as they can also be set dynamically
     }
 
-    bool RHI_PipelineState::AcquireNextImage()
+    bool RHI_PipelineState::AcquireNextImage() const
     {
         return render_target_swapchain ? render_target_swapchain->AcquireNextImage() : true;
     }

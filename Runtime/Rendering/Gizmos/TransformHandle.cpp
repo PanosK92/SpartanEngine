@@ -150,7 +150,7 @@ namespace Spartan
 			const auto mouse_pos_relative	= mouse_pos - editor_offset;
 			const auto ray_start			= camera->GetTransform()->GetPosition();
 			auto ray_end					= camera->Unproject(mouse_pos_relative);
-			auto ray						= Ray(ray_start, ray_end);
+            const auto ray						= Ray(ray_start, ray_end);
 
 			// Test if ray intersects any of the handles
 			const auto hovered_x	= ray.HitDistance(m_handle_x.box_transformed)   != INFINITY;
@@ -173,7 +173,7 @@ namespace Spartan
 			// Track delta
 			m_ray_previous			= m_ray_current != Vector3::Zero ? m_ray_current : ray_end; // avoid big delta in the first run
 			m_ray_current			= ray_end;
-			auto delta				= m_ray_current - m_ray_previous;
+            const auto delta				= m_ray_current - m_ray_previous;
             const auto delta_xyz    = delta.Length();
 
             // If the delta reached infinity, ignore the input as it will result in NaN position.
@@ -246,7 +246,7 @@ namespace Spartan
 	void TransformHandle::SnapToTransform(const TransformHandle_Space space, Entity* entity, Camera* camera, const float handle_size)
 	{
 		// Get entity's components
-		auto entity_transform	= entity->GetTransform();		// Transform alone is not enough
+        const auto entity_transform	= entity->GetTransform();		// Transform alone is not enough
 		auto entity_renderable	= entity->GetComponent<Renderable>();	// Bounding box is also needed as some meshes are not defined around P(0,0,0)	
 
 		// Acquire entity's transformation data (local or world space)

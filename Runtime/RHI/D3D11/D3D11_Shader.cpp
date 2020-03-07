@@ -21,7 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= IMPLEMENTATION ===============
 #include "../RHI_Implementation.h"
-#include "../RHI_Vertex.h"
 #ifdef API_GRAPHICS_D3D11
 //================================
 
@@ -33,7 +32,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/FileSystem.h"
 #include <d3dcompiler.h>
 #include <sstream> 
-#include <algorithm>
 //================================
 
 //= NAMESPACES =====
@@ -89,7 +87,7 @@ namespace Spartan
 		HRESULT result;
 		if (FileSystem::IsFile(shader)) // From file ?
 		{
-			auto file_path = FileSystem::StringToWstring(shader);
+            const auto file_path = FileSystem::StringToWstring(shader);
 			result = D3DCompileFromFile
 			(
 				file_path.c_str(),
@@ -150,7 +148,7 @@ namespace Spartan
 		// Log compilation failure
 		if (FAILED(result) || !shader_blob)
 		{
-			auto shader_name = FileSystem::GetFileNameFromFilePath(shader);
+            const auto shader_name = FileSystem::GetFileNameFromFilePath(shader);
 			if (result == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
 			{
 				LOG_ERROR("Failed to find shader \"%s\" with path \"%s\".", shader_name.c_str(), shader.c_str());

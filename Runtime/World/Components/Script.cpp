@@ -38,12 +38,7 @@ namespace Spartan
 
 	}
 
-	Script::~Script()
-	{
-
-	}
-
-	//= ICOMPONENT ==================================================================
+    //= ICOMPONENT ==================================================================
 	void Script::OnStart()
 	{
 		if (!m_scriptInstance)
@@ -97,8 +92,8 @@ namespace Spartan
 		return true;
 	}
 
-	string Script::GetScriptPath()
-	{
+	string Script::GetScriptPath() const
+    {
 		return m_scriptInstance ? m_scriptInstance->GetScriptPath() : "";
 	}
 

@@ -50,7 +50,7 @@ namespace Spartan
 
 	enum Renderer_Option : uint64_t
 	{
-		Render_Debug_AABB				    = 1 << 0,
+		Render_Debug_Aabb				    = 1 << 0,
 		Render_Debug_PickingRay			    = 1 << 1,
 		Render_Debug_Grid				    = 1 << 2,
 		Render_Debug_Transform			    = 1 << 3,
@@ -60,8 +60,8 @@ namespace Spartan
         Render_Debug_Wireframe              = 1 << 7,
 		Render_Bloom				        = 1 << 8,
         Render_VolumetricLighting           = 1 << 9,
-		Render_AntiAliasing_FXAA	        = 1 << 10,
-        Render_AntiAliasing_TAA             = 1 << 11,
+        Render_AntiAliasing_Taa             = 1 << 10,
+		Render_AntiAliasing_Fxaa	        = 1 << 11,
 		Render_ScreenSpaceAmbientOcclusion  = 1 << 12,
         Render_ScreenSpaceShadows           = 1 << 13,
 		Render_ScreenSpaceReflections		= 1 << 14,
@@ -233,7 +233,7 @@ namespace Spartan
 
         // Depth
         auto GetClearDepth()            { return GetOption(Render_ReverseZ) ? m_viewport.depth_min : m_viewport.depth_max; }
-        auto GetComparisonFunction()    { return GetOption(Render_ReverseZ) ? RHI_Comparison_GreaterEqual : RHI_Comparison_LessEqual; }
+        auto GetComparisonFunction() const { return GetOption(Render_ReverseZ) ? RHI_Comparison_GreaterEqual : RHI_Comparison_LessEqual; }
 
         // Environment
         const std::shared_ptr<RHI_Texture>& GetEnvironmentTexture();
@@ -260,12 +260,11 @@ namespace Spartan
         const  auto IsInitialized()             const { return m_initialized; }
         auto& GetShaders()                      const { return m_shaders; } 
         const auto IsRendering()                const { return m_is_rendering; }
-        const uint32_t GetMaxResolution()       const;
 
         // Globals
         void SetGlobalShaderObjectTransform(const Math::Matrix& transform) { m_buffer_object_cpu.object = transform; UpdateObjectBuffer(nullptr); }
-        void SetGlobalSamplersAndConstantBuffers(RHI_CommandList* cmd_list);
-        RHI_Texture* GetBlackTexture() { return m_tex_black.get(); }
+        void SetGlobalSamplersAndConstantBuffers(RHI_CommandList* cmd_list) const;
+        RHI_Texture* GetBlackTexture() const { return m_tex_black.get(); }
 
 	private:
         // Resource creation
@@ -281,14 +280,14 @@ namespace Spartan
 
 		// Passes
 		void Pass_Main(RHI_CommandList* cmd_list);
-		void Pass_LightShadow(RHI_CommandList* cmd_list, Renderer_Object_Type object_type);
+		void Pass_LightShadow(RHI_CommandList* cmd_list, const Renderer_Object_Type object_type);
         void Pass_DepthPrePass(RHI_CommandList* cmd_list);
-		void Pass_GBuffer(RHI_CommandList* cmd_list, Renderer_Object_Type object_type);
-		void Pass_Ssao(RHI_CommandList* cmd_list, bool use_stencil);
-        void Pass_Ssr(RHI_CommandList* cmd_list, bool use_stencil);
-        void Pass_Light(RHI_CommandList* cmd_list, bool use_stencil);
-		void Pass_Composition(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_out, bool use_stencil);
-        void Pass_AlphaBlend(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, bool use_stencil);
+		void Pass_GBuffer(RHI_CommandList* cmd_list, const Renderer_Object_Type object_type);
+		void Pass_Ssao(RHI_CommandList* cmd_list, const bool use_stencil);
+        void Pass_Ssr(RHI_CommandList* cmd_list, const bool use_stencil);
+        void Pass_Light(RHI_CommandList* cmd_list, const bool use_stencil);
+		void Pass_Composition(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_out, const bool use_stencil);
+        void Pass_AlphaBlend(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, const bool use_stencil);
 		void Pass_PostProcess(RHI_CommandList* cmd_list);
 		void Pass_TAA(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
 		bool Pass_DebugBuffer(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_out);
@@ -301,7 +300,7 @@ namespace Spartan
 		void Pass_Dithering(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
 		void Pass_Bloom(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
         void Pass_Upsample(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
-        void Pass_Downsample(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out, Renderer_Shader_Type pixel_shader);
+        void Pass_Downsample(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out, const Renderer_Shader_Type pixel_shader);
 		void Pass_BlurBox(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out, const float sigma, const float pixel_stride, const bool use_stencil);
 		void Pass_BlurGaussian(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out, const float sigma, const float pixel_stride = 1.0f);
 		void Pass_BlurBilateralGaussian(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out, const float sigma, const float pixel_stride = 1.0f, const bool use_stencil = false);

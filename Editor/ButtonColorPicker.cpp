@@ -75,7 +75,7 @@ void ButtonColorPicker::ShowColorPicker()
 	ImGui::Begin(m_windowTitle.c_str(), &m_isVisible, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize);
 	ImGui::SetWindowFocus();
 
-	int misc_flags = 
+    const int misc_flags = 
 		(ButtonColorPicker_Settings::hdr ? ImGuiColorEditFlags_HDR : 0) | 
 		(ButtonColorPicker_Settings::alpha_half_preview ? ImGuiColorEditFlags_AlphaPreviewHalf :
 		(ButtonColorPicker_Settings::alpha_preview ? ImGuiColorEditFlags_AlphaPreview : 0)) | 

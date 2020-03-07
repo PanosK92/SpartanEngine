@@ -21,6 +21,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================
 #include "RHI_DescriptorSet.h"
+
+#include <utility>
 #include "RHI_Shader.h"
 #include "RHI_Sampler.h"
 #include "RHI_Texture.h"
@@ -35,10 +37,10 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_DescriptorSet::RHI_DescriptorSet(const std::shared_ptr<RHI_Device> rhi_device, std::vector<uint32_t> constant_buffer_dynamic_slots, const RHI_Shader* shader_vertex, const RHI_Shader* shader_pixel /*= nullptr*/)
+    RHI_DescriptorSet::RHI_DescriptorSet(const std::shared_ptr<RHI_Device>& rhi_device, std::vector<uint32_t> constant_buffer_dynamic_slots, const RHI_Shader* shader_vertex, const RHI_Shader* shader_pixel /*= nullptr*/)
     {
         m_rhi_device                    = rhi_device;
-        m_constant_buffer_dynamic_slots = constant_buffer_dynamic_slots;
+        m_constant_buffer_dynamic_slots = std::move(constant_buffer_dynamic_slots);
         m_shader_vertex                 = shader_vertex;
         m_shader_pixel                  = shader_pixel;
 
@@ -50,8 +52,8 @@ namespace Spartan
     {
         for (RHI_Descriptor& descriptor : m_descriptors)
         {
-            bool is_dynamic     = constant_buffer->IsDynamic();
-            bool is_same_type   = (!is_dynamic && descriptor.type == RHI_Descriptor_ConstantBuffer) || (is_dynamic && descriptor.type == RHI_Descriptor_ConstantBufferDynamic);
+            const bool is_dynamic     = constant_buffer->IsDynamic();
+            const bool is_same_type   = (!is_dynamic && descriptor.type == RHI_Descriptor_ConstantBuffer) || (is_dynamic && descriptor.type == RHI_Descriptor_ConstantBufferDynamic);
 
             if (is_same_type && descriptor.slot == slot + m_rhi_device->GetContextRhi()->shader_shift_buffer)
             {
@@ -136,7 +138,7 @@ namespace Spartan
         void* descriptor_set = nullptr;
 
         // Get the hash of the current descriptor blueprint
-        size_t hash = GetDescriptorBlueprintHash(m_descriptors);
+        const size_t hash = GetDescriptorBlueprintHash(m_descriptors);
 
         if (m_descriptor_sets.find(hash) == m_descriptor_sets.end())
         {

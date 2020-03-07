@@ -103,7 +103,7 @@ float4 ResolveTAA(float2 uv, Texture2D tex_history, Texture2D tex_current, Textu
     // Decrease blend factor when contrast is high
     float lum0              = luminance(color_current);
 	float lum1              = luminance(color_history);
-    float factor_contrast   = 1.0f - (abs(lum0 - lum1) / max(lum0, max(lum1, 0.2)));
+    float factor_contrast   = 1.0f - (abs(lum0 - lum1) / max(lum0, max(lum1, 0.7f)));
 	factor_contrast         = factor_contrast * factor_contrast;
 
     // Compute blend factor

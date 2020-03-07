@@ -100,7 +100,7 @@ namespace Spartan
 
         if (m_type == TimeBlock_Cpu)
         {
-            chrono::duration<double, milli> ms = m_end - m_start;
+            const chrono::duration<double, milli> ms = m_end - m_start;
             m_duration = static_cast<float>(ms.count());
         }
         else if (m_type == TimeBlock_Gpu)

@@ -55,13 +55,9 @@ namespace Spartan
 
 			// Assign from bounding box
 			BoundingBox& operator =(const BoundingBox& rhs)
-			{
-				m_min = rhs.m_min;
-				m_max = rhs.m_max;
-				return *this;
-			}
+            = default;
 
-			// Returns the center
+            // Returns the center
 			Vector3 GetCenter() const	{ return (m_max + m_min) * 0.5f; }
 
 			// Returns the size

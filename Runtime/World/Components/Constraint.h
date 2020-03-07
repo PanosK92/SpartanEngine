@@ -60,34 +60,34 @@ namespace Spartan
 		void Deserialize(FileStream* stream) override;
 		//============================================
 
-		ConstraintType GetConstraintType() { return m_constraintType; }
+		ConstraintType GetConstraintType() const { return m_constraintType; }
 		void SetConstraintType(ConstraintType type);
 
-		const Math::Vector2& GetHighLimit() { return m_highLimit; }
+		const Math::Vector2& GetHighLimit() const { return m_highLimit; }
 		// Set high limit. Interpretation is constraint type specific.
 		void SetHighLimit(const Math::Vector2& limit);
 
-		const Math::Vector2& GetLowLimit() { return m_lowLimit; }
+		const Math::Vector2& GetLowLimit() const { return m_lowLimit; }
 		// Set low limit. Interpretation is constraint type specific.
 		void SetLowLimit(const Math::Vector2& limit);
 
-		const Math::Vector3& GetPosition() { return m_position; }
+		const Math::Vector3& GetPosition() const { return m_position; }
 		// Set constraint position relative to own body.
     	void SetPosition(const Math::Vector3& position);
 
-		const Math::Quaternion& GetRotation() { return m_rotation; }
+		const Math::Quaternion& GetRotation() const { return m_rotation; }
 		// Set constraint rotation relative to own body.
 		void SetRotation(const Math::Quaternion& rotation);
 
-		const Math::Vector3& GetPositionOther() { return m_positionOther; }
+		const Math::Vector3& GetPositionOther() const { return m_positionOther; }
 		// Set constraint position relative to other body.
 		void SetPositionOther(const Math::Vector3& position);
 
-		const Math::Quaternion& GetRotationOther() { return m_rotationOther; }
+		const Math::Quaternion& GetRotationOther() const { return m_rotationOther; }
 		// Set constraint rotation relative to other body.
 		void SetRotationOther(const Math::Quaternion& rotation);
 		
-		std::weak_ptr<Entity> GetBodyOther() { return m_bodyOther; }
+		std::weak_ptr<Entity> GetBodyOther() const { return m_bodyOther; }
 		void SetBodyOther(const std::weak_ptr<Entity>& body_other);
 
 		void ReleaseConstraint();

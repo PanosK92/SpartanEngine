@@ -54,7 +54,7 @@ namespace Spartan::AssimpHelper
 			return;
 
 		// Convert to engine matrix
-		auto matrix_engine = ai_matrix4_x4_to_matrix(node->mTransformation);
+        const auto matrix_engine = ai_matrix4_x4_to_matrix(node->mTransformation);
 
 		// Apply position, rotation and scale
 		entity->GetTransform()->SetPositionLocal(matrix_engine.GetTranslation());

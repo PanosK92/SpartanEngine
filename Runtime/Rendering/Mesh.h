@@ -44,7 +44,7 @@ namespace Spartan
 			std::vector<uint32_t>* indices,
 			std::vector<RHI_Vertex_PosTexNorTan>* vertices
 		);
-		uint32_t Geometry_MemoryUsage();
+		uint32_t Geometry_MemoryUsage() const;
 
 		// Vertices
 		void Vertex_Add(const RHI_Vertex_PosTexNorTan& vertex);

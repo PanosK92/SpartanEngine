@@ -57,7 +57,7 @@ void Widget_Profiler::Tick()
 	ImGui::DragFloat("Update interval (The smaller the interval the higher the performance impact)", &interval, 0.001f, 0.0f, 0.5f);
 	m_profiler->SetUpdateInterval(interval);
 	ImGui::Separator();
-	bool show_cpu = (item_type == 0);
+    const bool show_cpu = (item_type == 0);
 
 	if (show_cpu)
 	{
@@ -111,13 +111,13 @@ void Widget_Profiler::ShowGPU()
 
 	// VRAM	
 	ImGui::Separator();
-	unsigned int memory_used		= m_profiler->GpuGetMemoryUsed();
-	unsigned int memory_available	= m_profiler->GpuGetMemoryAvailable();
-	string overlay					= "Memory " + to_string(memory_used) + "/" + to_string(memory_available) + " MB";
+    const unsigned int memory_used		= m_profiler->GpuGetMemoryUsed();
+    const unsigned int memory_available	= m_profiler->GpuGetMemoryAvailable();
+    const string overlay					= "Memory " + to_string(memory_used) + "/" + to_string(memory_available) + " MB";
 	ImGui::ProgressBar((float)memory_used / (float)memory_available, ImVec2(-1, 0), overlay.c_str());
 }
 
-void Widget_Profiler::ShowTimeBlock(const TimeBlock& time_block, float total_time)
+void Widget_Profiler::ShowTimeBlock(const TimeBlock& time_block, float total_time) const
 {
     if (!time_block.IsComplete())
         return;
@@ -127,9 +127,9 @@ void Widget_Profiler::ShowTimeBlock(const TimeBlock& time_block, float total_tim
     const float fraction    = duration / total_time;
     const float width       = fraction * ImGui::GetWindowContentRegionWidth();
     const auto& color       = ImGui::GetStyle().Colors[ImGuiCol_FrameBgActive];
-    ImVec2 pos_screen       = ImGui::GetCursorScreenPos();
-    ImVec2 pos              = ImGui::GetCursorPos();
-    float text_height       = ImGui::CalcTextSize(name, nullptr, true).y;
+    const ImVec2 pos_screen       = ImGui::GetCursorScreenPos();
+    const ImVec2 pos              = ImGui::GetCursorPos();
+    const float text_height       = ImGui::CalcTextSize(name, nullptr, true).y;
 
     // Rectangle
     ImGui::GetWindowDrawList()->AddRectFilled(pos_screen, ImVec2(pos_screen.x + width, pos_screen.y + text_height), IM_COL32(color.x * 255, color.y * 255, color.z * 255, 255));
@@ -138,7 +138,7 @@ void Widget_Profiler::ShowTimeBlock(const TimeBlock& time_block, float total_tim
     ImGui::Text("%s - %.2f ms", name, duration);
 }
 
-void Widget_Profiler::ShowPlot(vector<float>& data, Metric& metric, float time_value, bool is_stuttering)
+void Widget_Profiler::ShowPlot(vector<float>& data, Metric& metric, float time_value, bool is_stuttering) const
 {
 	if (time_value >= 0.0f)
 	{

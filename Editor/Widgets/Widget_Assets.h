@@ -35,7 +35,7 @@ public:
 	void Tick() override;
 
 private:
-	void OnPathClicked(const std::string& path);
+	void OnPathClicked(const std::string& path) const;
 
 	std::unique_ptr<FileDialog> m_fileDialogView;
 	std::unique_ptr<FileDialog> m_fileDialogLoad;

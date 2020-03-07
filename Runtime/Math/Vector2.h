@@ -67,11 +67,11 @@ namespace Spartan::Math
 			this->y = x;
 		}
 
-		~Vector2() {}
+		~Vector2() = default;
 
-		//= ADDITION ===============================
-		Vector2 operator+(const Vector2& b)
-		{
+        //= ADDITION ===============================
+		Vector2 operator+(const Vector2& b) const
+        {
 			return Vector2
 			(
 				this->x + b.x,
@@ -113,7 +113,7 @@ namespace Spartan::Math
 
 		//= SUBTRACTION ===============================================================
 		Vector2 operator-(const Vector2& b) const { return Vector2(x - b.x, y - b.y); }
-		Vector2 operator-(const float value) { return Vector2(x - value, y - value); }
+		Vector2 operator-(const float value) const { return Vector2(x - value, y - value); }
 
 		void operator-=(const Vector2& rhs)
 		{
@@ -124,7 +124,7 @@ namespace Spartan::Math
 
 		//= DIVISION ========================================================================
 		Vector2 operator/(const Vector2& rhs) const { return Vector2(x / rhs.x, y / rhs.y); }
-		Vector2 operator/(const float rhs) { return Vector2(x / rhs, y / rhs); }
+		Vector2 operator/(const float rhs) const { return Vector2(x / rhs, y / rhs); }
 
 		void operator/=(const Vector2& rhs)
 		{
@@ -133,13 +133,13 @@ namespace Spartan::Math
 		}
 		//===================================================================================
 
-		bool operator==(const Vector2& b)
-		{
+		bool operator==(const Vector2& b) const
+        {
 			return x == b.x && y == b.y;
 		}
 
-		bool operator!=(const Vector2& b)
-		{
+		bool operator!=(const Vector2& b) const
+        {
 			return x != b.x || y != b.y;
 		}
 

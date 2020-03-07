@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================
 #include "IComponent.h"
-#include <memory>
 #include "../../Math/Vector3.h"
 //=============================
 
@@ -48,7 +47,7 @@ namespace Spartan
 	{
 	public:
 		Collider(Context* context, Entity* entity, uint32_t id = 0);
-		~Collider();
+		~Collider() = default;
 
 		//= ICOMPONENT ===============================
 		void OnInitialize() override;
@@ -58,28 +57,28 @@ namespace Spartan
 		//============================================
 
 		// Bounding box
-		const Math::Vector3& GetBoundingBox() { return m_size; }
+		const Math::Vector3& GetBoundingBox() const { return m_size; }
 		void SetBoundingBox(const Math::Vector3& boundingBox);
 
 		// Collider center
-		const Math::Vector3& GetCenter() { return m_center; }
+		const Math::Vector3& GetCenter() const { return m_center; }
 		void SetCenter(const Math::Vector3& center);
 
 		// Collision shape type
-		ColliderShape GetShapeType() { return m_shapeType; }
+		ColliderShape GetShapeType() const { return m_shapeType; }
 		void SetShapeType(ColliderShape type);
 
 		// Collision shape
-		const auto& GetShape() { return m_shape; }
+		const auto& GetShape() const { return m_shape; }
 
-		bool GetOptimize() { return m_optimize; }
+		bool GetOptimize() const { return m_optimize; }
 		void SetOptimize(bool optimize);
 
 	private:
 		void Shape_Update();
 		void Shape_Release();
-		void RigidBody_SetShape(btCollisionShape* shape);
-		void RigidBody_SetCenterOfMass(const Math::Vector3& center);
+		void RigidBody_SetShape(btCollisionShape* shape) const;
+		void RigidBody_SetCenterOfMass(const Math::Vector3& center) const;
 
 		ColliderShape m_shapeType;
 		btCollisionShape* m_shape;

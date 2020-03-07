@@ -54,7 +54,7 @@ namespace Spartan
 
     void Terrain::Serialize(FileStream* stream)
     {
-        string no_path;
+        const string no_path;
 
         stream->Write(m_height_map ? m_height_map->GetResourceFilePathNative() : no_path);
         stream->Write(m_model ? m_model->GetResourceName() : no_path);
@@ -106,7 +106,7 @@ namespace Spartan
             m_is_generating = true;
 
             // Get height map data
-            vector<std::byte> height_map_data = m_height_map->GetMipmap(0);
+            const vector<std::byte> height_map_data = m_height_map->GetMipmap(0);
             if (height_map_data.empty())
             {
                 LOG_ERROR("Height map has no data");
@@ -171,10 +171,10 @@ namespace Spartan
             for (uint32_t x = 0; x < m_width; x++)
             {
                 // Read height and scale it to a [0, 1] range
-                float height = (static_cast<float>(height_map[k]) / 255.0f);
+                const float height = (static_cast<float>(height_map[k]) / 255.0f);
 
                 // Construct position
-                uint32_t index        = y * m_width + x;
+                const uint32_t index        = y * m_width + x;
                 positions[index].x    = static_cast<float>(x) - m_width * 0.5f;     // center on the X axis
                 positions[index].z    = static_cast<float>(y) - m_height * 0.5f;    // center on the Z axis
                 positions[index].y    = Lerp(m_min_y, m_max_y, height);
@@ -206,10 +206,10 @@ namespace Spartan
         {
             for (uint32_t x = 0; x < m_width - 1; x++)
             {
-                uint32_t index_bottom_left  = y * m_width + x;
-                uint32_t index_bottom_right = y * m_width + x + 1;
-                uint32_t index_top_left     = (y + 1) * m_width + x;
-                uint32_t index_top_right    = (y + 1) * m_width + x + 1;
+                const uint32_t index_bottom_left  = y * m_width + x;
+                const uint32_t index_bottom_right = y * m_width + x + 1;
+                const uint32_t index_top_left     = (y + 1) * m_width + x;
+                const uint32_t index_top_right    = (y + 1) * m_width + x + 1;
 
                 // Bottom right of quad
                 index           = index_bottom_right;
@@ -305,12 +305,12 @@ namespace Spartan
                 // Tangent
                 {
                     // find first texture coordinate edge 2d vector
-                    float tcU1 = vertices[indices[(i * 3)]].tex[0] - vertices[indices[(i * 3) + 1]].tex[0];
-                    float tcV1 = vertices[indices[(i * 3)]].tex[1] - vertices[indices[(i * 3) + 1]].tex[1];
+                    const float tcU1 = vertices[indices[(i * 3)]].tex[0] - vertices[indices[(i * 3) + 1]].tex[0];
+                    const float tcV1 = vertices[indices[(i * 3)]].tex[1] - vertices[indices[(i * 3) + 1]].tex[1];
 
                     // find second texture coordinate edge 2d vector
-                    float tcU2 = vertices[indices[(i * 3) + 1]].tex[0] - vertices[indices[(i * 3) + 2]].tex[0];
-                    float tcV2 = vertices[indices[(i * 3) + 1]].tex[1] - vertices[indices[(i * 3) + 2]].tex[1];
+                    const float tcU2 = vertices[indices[(i * 3) + 1]].tex[0] - vertices[indices[(i * 3) + 2]].tex[0];
+                    const float tcV2 = vertices[indices[(i * 3) + 1]].tex[1] - vertices[indices[(i * 3) + 2]].tex[1];
 
                     // find tangent using both tex coord edges and position edges
                     face_tangents[i].x = (tcV1 * edge_a.x - tcV2 * edge_b.x * (1.0f / (tcU1 * tcV2 - tcU2 * tcV1)));
@@ -382,7 +382,7 @@ namespace Spartan
         return true;
     }
 
-    void Terrain::UpdateFromModel(const shared_ptr<Model>& model)
+    void Terrain::UpdateFromModel(const shared_ptr<Model>& model) const
     {
         if (!model)
         {

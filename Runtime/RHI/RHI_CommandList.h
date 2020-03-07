@@ -24,10 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================
 #include <vector>
 #include "RHI_Texture.h"
-#include "RHI_Viewport.h"
 #include "RHI_Definition.h"
 #include "RHI_PipelineCache.h"
-#include "../Math/Vector4.h"
 #include "../Math/Rectangle.h"
 //============================
 
@@ -54,51 +52,51 @@ namespace Spartan
         bool End();
 
         // Clear
-        void Clear(RHI_PipelineState& pipeline_state);
+        void Clear(RHI_PipelineState& pipeline_state) const;
 
 		// Draw/Dispatch
-		void Draw(uint32_t vertex_count);
-		void DrawIndexed(uint32_t index_count, uint32_t index_offset = 0, uint32_t vertex_offset = 0);
-        void Dispatch(uint32_t x, uint32_t y, uint32_t z = 1);
+		void Draw(uint32_t vertex_count) const;
+		void DrawIndexed(uint32_t index_count, uint32_t index_offset = 0, uint32_t vertex_offset = 0) const;
+        void Dispatch(uint32_t x, uint32_t y, uint32_t z = 1) const;
 
 		// Viewport
-		void SetViewport(const RHI_Viewport& viewport);
+		void SetViewport(const RHI_Viewport& viewport) const;
 
         // Scissor
-		void SetScissorRectangle(const Math::Rectangle& scissor_rectangle);
+		void SetScissorRectangle(const Math::Rectangle& scissor_rectangle) const;
 
 		// Vertex buffer
-		void SetBufferVertex(const RHI_VertexBuffer* buffer);
-        inline void SetBufferVertex(const std::shared_ptr<RHI_VertexBuffer>& buffer) { SetBufferVertex(buffer.get()); }
+		void SetBufferVertex(const RHI_VertexBuffer* buffer) const;
+        inline void SetBufferVertex(const std::shared_ptr<RHI_VertexBuffer>& buffer) const { SetBufferVertex(buffer.get()); }
 
 		// Index buffer
-		void SetBufferIndex(const RHI_IndexBuffer* buffer);
-        inline void SetBufferIndex(const std::shared_ptr<RHI_IndexBuffer>& buffer) { SetBufferIndex(buffer.get()); }
+		void SetBufferIndex(const RHI_IndexBuffer* buffer) const;
+        inline void SetBufferIndex(const std::shared_ptr<RHI_IndexBuffer>& buffer) const { SetBufferIndex(buffer.get()); }
 
         // Compute shader
-        void SetShaderCompute(const RHI_Shader* shader);
-        inline void SetShaderCompute(const std::shared_ptr<RHI_Shader>& shader) { SetShaderCompute(shader.get()); }
+        void SetShaderCompute(const RHI_Shader* shader) const;
+        inline void SetShaderCompute(const std::shared_ptr<RHI_Shader>& shader) const { SetShaderCompute(shader.get()); }
 
 		// Constant buffer
-        void SetConstantBuffer(const uint32_t slot, const uint8_t scope, RHI_ConstantBuffer* constant_buffer);
-        inline void SetConstantBuffer(const uint32_t slot, const uint8_t scope, const std::shared_ptr<RHI_ConstantBuffer>& constant_buffer) { SetConstantBuffer(slot, scope, constant_buffer.get()); }
+        void SetConstantBuffer(const uint32_t slot, const uint8_t scope, RHI_ConstantBuffer* constant_buffer) const;
+        inline void SetConstantBuffer(const uint32_t slot, const uint8_t scope, const std::shared_ptr<RHI_ConstantBuffer>& constant_buffer) const { SetConstantBuffer(slot, scope, constant_buffer.get()); }
 
 		// Sampler
-        void SetSampler(const uint32_t slot, RHI_Sampler* sampler);
-        inline void SetSampler(const uint32_t slot, const std::shared_ptr<RHI_Sampler>& sampler) { SetSampler(slot, sampler.get()); }
+        void SetSampler(const uint32_t slot, RHI_Sampler* sampler) const;
+        inline void SetSampler(const uint32_t slot, const std::shared_ptr<RHI_Sampler>& sampler) const { SetSampler(slot, sampler.get()); }
 
 		// Texture
-        void SetTexture(const uint32_t slot, RHI_Texture* texture);
-        inline void SetTexture(const uint32_t slot, const std::shared_ptr<RHI_Texture>& texture) { SetTexture(slot, texture.get()); }
+        void SetTexture(const uint32_t slot, RHI_Texture* texture) const;
+        inline void SetTexture(const uint32_t slot, const std::shared_ptr<RHI_Texture>& texture) const { SetTexture(slot, texture.get()); }
         
         // Submit/Flush
 		bool Submit();
-        bool Flush();
+        bool Flush() const;
 
         // Timestamps
-        bool Timestamp_Start(void* query_disjoint = nullptr, void* query_start = nullptr);
-        bool Timestamp_End(void* query_disjoint = nullptr, void* query_end = nullptr);
-        float Timestamp_GetDuration(void* query_disjoint = nullptr, void* query_start = nullptr, void* query_end = nullptr);
+        bool Timestamp_Start(void* query_disjoint = nullptr, void* query_start = nullptr) const;
+        bool Timestamp_End(void* query_disjoint = nullptr, void* query_end = nullptr) const;
+        float Timestamp_GetDuration(void* query_disjoint = nullptr, void* query_start = nullptr, void* query_end = nullptr) const;
 
         static uint32_t Gpu_GetMemory(RHI_Device* rhi_device);
         static uint32_t Gpu_GetMemoryUsed(RHI_Device* rhi_device);
@@ -106,7 +104,7 @@ namespace Spartan
         static void Gpu_QueryRelease(void*& query_object);
         
         // Misc
-        void* GetResource_CommandBuffer() { return m_cmd_buffer; }
+        void* GetResource_CommandBuffer() const { return m_cmd_buffer; }
 
 	private:
         void MarkAndProfileStart(const RHI_PipelineState* pipeline_state);

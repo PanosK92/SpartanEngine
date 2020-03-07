@@ -133,7 +133,7 @@ namespace Spartan
 		if (texture)
 		{
             // In order for the material to guarantee serialization/deserialization we cache the texture
-            auto texture_cached = m_context->GetSubsystem<ResourceCache>()->Cache(texture);
+            const auto texture_cached = m_context->GetSubsystem<ResourceCache>()->Cache(texture);
 			m_textures[type] = texture_cached != nullptr ? texture_cached : texture;
 		}
 		else
@@ -174,7 +174,7 @@ namespace Spartan
         if (m_textures.empty())
             return false;
 
-        auto pair = m_textures.find(type);
+        const auto pair = m_textures.find(type);
         return pair != m_textures.end() && pair->second != nullptr;
     }
 

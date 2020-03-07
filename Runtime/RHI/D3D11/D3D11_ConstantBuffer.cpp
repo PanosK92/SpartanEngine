@@ -41,8 +41,8 @@ namespace Spartan
 		safe_release(*reinterpret_cast<ID3D11Buffer**>(&m_buffer));
 	}
 
-	void* RHI_ConstantBuffer::Map()
-	{
+	void* RHI_ConstantBuffer::Map() const
+    {
 		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device_context || !m_buffer)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
@@ -91,7 +91,7 @@ namespace Spartan
 		buffer_desc.MiscFlags			= 0;
 		buffer_desc.StructureByteStride = 0;
 
-		auto result = m_rhi_device->GetContextRhi()->device->CreateBuffer(&buffer_desc, nullptr, reinterpret_cast<ID3D11Buffer**>(&m_buffer));
+        const auto result = m_rhi_device->GetContextRhi()->device->CreateBuffer(&buffer_desc, nullptr, reinterpret_cast<ID3D11Buffer**>(&m_buffer));
 		if (FAILED(result))
 		{
 			LOG_ERROR("Failed to create constant buffer");

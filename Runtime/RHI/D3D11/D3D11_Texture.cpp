@@ -28,9 +28,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Texture2D.h"
 #include "../RHI_TextureCube.h"
 #include "../RHI_CommandList.h"
-#include "../../Math/MathHelper.h"
-#include "../../Math/Vector4.h"
-#include "../../Core/Settings.h"
 //================================
 
 //= NAMESPACES ===============
@@ -231,7 +228,7 @@ namespace Spartan
         unorderd_access_view_desc.Format                            = format;
 
 		// Create
-		auto result = rhi_device->GetContextRhi()->device->CreateUnorderedAccessView(static_cast<ID3D11Resource*>(texture), &unorderd_access_view_desc, reinterpret_cast<ID3D11UnorderedAccessView**>(&view));
+        const auto result = rhi_device->GetContextRhi()->device->CreateUnorderedAccessView(static_cast<ID3D11Resource*>(texture), &unorderd_access_view_desc, reinterpret_cast<ID3D11UnorderedAccessView**>(&view));
 		if (FAILED(result))
 		{
             LOG_ERROR("Failed, %s.", d3d11_common::dxgi_error_to_string(result));
@@ -275,12 +272,12 @@ namespace Spartan
 		bool result_ds	= true;
 
 		// Get texture flags
-		UINT flags = GetTextureFlags(m_bind_flags);
+        const UINT flags = GetTextureFlags(m_bind_flags);
 
 		// Resolve formats
-        DXGI_FORMAT format		= GetDepthFormat(m_format);
-		DXGI_FORMAT format_dsv	= GetDepthFormatDsv(m_format);
-		DXGI_FORMAT format_srv	= GetDepthFormatSrv(m_format);
+        const DXGI_FORMAT format		= GetDepthFormat(m_format);
+        const DXGI_FORMAT format_dsv	= GetDepthFormatDsv(m_format);
+        const DXGI_FORMAT format_srv	= GetDepthFormatSrv(m_format);
 
 		// TEXTURE
 		result_tex = CreateTexture2d
@@ -523,7 +520,7 @@ namespace Spartan
         unorderd_access_view_desc.Format                            = format;
 
 		// Create
-		auto result = rhi_device->GetContextRhi()->device->CreateUnorderedAccessView(static_cast<ID3D11Resource*>(texture), &unorderd_access_view_desc, reinterpret_cast<ID3D11UnorderedAccessView**>(&view));
+        const auto result = rhi_device->GetContextRhi()->device->CreateUnorderedAccessView(static_cast<ID3D11Resource*>(texture), &unorderd_access_view_desc, reinterpret_cast<ID3D11UnorderedAccessView**>(&view));
 		if (FAILED(result))
 		{
             LOG_ERROR("Failed, %s.", d3d11_common::dxgi_error_to_string(result));
@@ -567,12 +564,12 @@ namespace Spartan
         bool result_ds  = true;
 
         // Get texture flags
-        UINT flags = GetTextureFlags(m_bind_flags);
+        const UINT flags = GetTextureFlags(m_bind_flags);
 
         // Resolve formats
-        DXGI_FORMAT format      = GetDepthFormat(m_format);
-        DXGI_FORMAT format_dsv  = GetDepthFormatDsv(m_format);
-        DXGI_FORMAT format_srv  = GetDepthFormatSrv(m_format);
+        const DXGI_FORMAT format      = GetDepthFormat(m_format);
+        const DXGI_FORMAT format_dsv  = GetDepthFormatDsv(m_format);
+        const DXGI_FORMAT format_srv  = GetDepthFormatSrv(m_format);
 
         // TEXTURE
         result_tex = CreateTextureCube

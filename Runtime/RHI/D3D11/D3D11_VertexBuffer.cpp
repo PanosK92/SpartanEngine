@@ -27,7 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include "../RHI_Device.h"
 #include "../RHI_VertexBuffer.h"
-#include "../RHI_Vertex.h"
 #include "../../Logging/Log.h"
 //================================
 
@@ -50,7 +49,7 @@ namespace Spartan
 			return false;
 		}
 
-        bool is_dynamic = vertices == nullptr;
+        const bool is_dynamic = vertices == nullptr;
 		safe_release(*reinterpret_cast<ID3D11Buffer**>(&m_buffer));
 
 		// fill in a buffer description.

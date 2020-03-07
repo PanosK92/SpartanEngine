@@ -288,8 +288,8 @@ namespace ImGuiEx
         ImGui::BeginGroup();
         {
             Spartan::RHI_Texture* texture   = image.get();
-            ImVec2 pos_image                = ImGui::GetCursorPos();
-            ImVec2 pos_button               = ImVec2(ImGui::GetCursorPosX() + slot_size.x - button_size * 2.0f + 6.0f, ImGui::GetCursorPosY() + 1.0f);
+            const ImVec2 pos_image                = ImGui::GetCursorPos();
+            const ImVec2 pos_button               = ImVec2(ImGui::GetCursorPosX() + slot_size.x - button_size * 2.0f + 6.0f, ImGui::GetCursorPosY() + 1.0f);
 
             // Remove button
             if (image != nullptr)

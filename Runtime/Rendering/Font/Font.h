@@ -66,10 +66,10 @@ namespace Spartan
 		const auto& GetIndexBuffer() const							{ return m_index_buffer; }
 		const auto& GetVertexBuffer() const							{ return m_vertex_buffer; }
 		auto GetIndexCount() const									{ return static_cast<uint32_t>(m_indices.size()); }
-		auto GetSize()												{ return m_font_size; }
+		auto GetSize() const { return m_font_size; }
 		auto& GetGlyphs()											{ return m_glyphs; }
-		auto GetHinting()											{ return m_hinting; }
-		auto GetForceAutohint()										{ return m_force_autohint; }
+		auto GetHinting() const { return m_hinting; }
+		auto GetForceAutohint() const { return m_force_autohint; }
 			
 	private:	
 		bool UpdateBuffers(std::vector<RHI_Vertex_PosTex>& vertices, std::vector<uint32_t>& indices) const;

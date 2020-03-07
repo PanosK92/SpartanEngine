@@ -65,7 +65,7 @@ namespace Spartan
 	{
 	public:
 		Animation(Context* context);
-		~Animation();
+		~Animation() = default;
 
 		//= IResource ==========================================
 		bool LoadFromFile(const std::string& filePath) override;

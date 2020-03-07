@@ -93,7 +93,7 @@ namespace Spartan
 
 		//= IO ================================
 		bool Load(const std::string& filePath);
-		bool Save(const std::string& filePath);
+		bool Save(const std::string& filePath) const;
 		//=====================================
 
 	private:

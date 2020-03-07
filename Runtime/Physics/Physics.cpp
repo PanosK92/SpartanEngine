@@ -160,7 +160,7 @@ namespace Spartan
 		m_simulating = false;
 	}
 
-    void Physics::AddBody(btRigidBody* body)
+    void Physics::AddBody(btRigidBody* body) const
     {
         if (!m_world)
             return;
@@ -168,7 +168,7 @@ namespace Spartan
         m_world->addRigidBody(body);
     }
 
-    void Physics::RemoveBody(btRigidBody*& body)
+    void Physics::RemoveBody(btRigidBody*& body) const
     {
         if (!m_world)
             return;
@@ -178,7 +178,7 @@ namespace Spartan
         safe_delete(body);
     }
 
-    void Physics::AddConstraint(btTypedConstraint* constraint, bool collision_with_linked_body /*= true*/)
+    void Physics::AddConstraint(btTypedConstraint* constraint, bool collision_with_linked_body /*= true*/) const
     {
         if (!m_world)
             return;
@@ -186,7 +186,7 @@ namespace Spartan
         m_world->addConstraint(constraint, !collision_with_linked_body);
     }
 
-    void Physics::RemoveConstraint(btTypedConstraint*& constraint)
+    void Physics::RemoveConstraint(btTypedConstraint*& constraint) const
     {
         if (!m_world)
             return;
@@ -195,7 +195,7 @@ namespace Spartan
         safe_delete(constraint);
     }
 
-    void Physics::AddBody(btSoftBody* body)
+    void Physics::AddBody(btSoftBody* body) const
     {
         if (!m_world)
             return;
@@ -206,7 +206,7 @@ namespace Spartan
         }
     }
 
-    void Physics::RemoveBody(btSoftBody*& body)
+    void Physics::RemoveBody(btSoftBody*& body) const
     {
         if (btSoftRigidDynamicsWorld* world = static_cast<btSoftRigidDynamicsWorld*>(m_world))
         {

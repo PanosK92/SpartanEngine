@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include "IComponent.h"
 #include <vector>
-#include <memory>
 #include "../../Math/Vector3.h"
 #include "../../Math/Quaternion.h"
 #include "../../Math/Matrix.h"
@@ -50,7 +49,7 @@ namespace Spartan
 		void UpdateTransform();
 
 		//= POSITION ================================================================
-		auto GetPosition()						{ return m_matrix.GetTranslation(); }
+		auto GetPosition() const { return m_matrix.GetTranslation(); }
 		const auto& GetPositionLocal() const	{ return m_positionLocal; }
 		void SetPosition(const Math::Vector3& position);
 		void SetPositionLocal(const Math::Vector3& position);
@@ -64,7 +63,7 @@ namespace Spartan
 		//======================================================================
 
 		//= SCALE =========================================================
-		auto GetScale()						{ return m_matrix.GetScale(); }
+		auto GetScale() const { return m_matrix.GetScale(); }
 		const auto& GetScaleLocal() const	{ return m_scaleLocal; }
 		void SetScale(const Math::Vector3& scale);
 		void SetScaleLocal(const Math::Vector3& scale);

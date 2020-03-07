@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 #include "RHI_Definition.h"
 #include "RHI_Object.h"
-#include "../Core/Settings.h"
+
 //===========================
 
 namespace Spartan

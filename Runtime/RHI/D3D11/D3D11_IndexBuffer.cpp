@@ -49,7 +49,7 @@ namespace Spartan
 			return false;
 		}
 
-        bool is_dynamic = indices == nullptr;
+        const bool is_dynamic = indices == nullptr;
 		safe_release(*reinterpret_cast<ID3D11Buffer**>(&m_buffer));
 
 		D3D11_BUFFER_DESC buffer_desc;

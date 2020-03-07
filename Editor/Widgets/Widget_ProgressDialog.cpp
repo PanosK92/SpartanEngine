@@ -46,9 +46,9 @@ Widget_ProgressDialog::Widget_ProgressDialog(Context* contex) : Widget(contex)
     {
         // Determine if an operation is in progress
         ProgressReport& progressReport  = ProgressReport::Get();
-        bool is_loading_model           = progressReport.GetIsLoading(g_progress_model_importer);
-        bool is_loading_scene           = progressReport.GetIsLoading(g_progress_world);
-        bool in_progress                = is_loading_model || is_loading_scene;
+        const bool is_loading_model           = progressReport.GetIsLoading(g_progress_model_importer);
+        const bool is_loading_scene           = progressReport.GetIsLoading(g_progress_world);
+        const bool in_progress                = is_loading_model || is_loading_scene;
 
         // Acquire progress
         if (is_loading_model)

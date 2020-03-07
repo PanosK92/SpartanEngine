@@ -486,7 +486,7 @@ namespace Spartan
         const auto extents      = box.GetExtents();
 
         // ensure that potential shadow casters from behind the near plane are not rejected
-        bool ignore_near_plane = (m_light_type == LightType_Directional) ? true : false; 
+        const bool ignore_near_plane = (m_light_type == LightType_Directional) ? true : false; 
 
         return m_shadow_map.slices[index].frustum.IsVisible(center, extents, ignore_near_plane);
     }

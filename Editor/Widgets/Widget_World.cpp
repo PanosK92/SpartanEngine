@@ -291,12 +291,12 @@ void Widget_World::Popups()
 	PopupEntityRename();
 }
 
-void Widget_World::PopupContextMenu()
+void Widget_World::PopupContextMenu() const
 {
 	if (!ImGui::BeginPopup("##HierarchyContextMenu"))
 		return;
 
-	auto selected_entity	= EditorHelper::Get().g_selected_entity.lock();
+    const auto selected_entity	= EditorHelper::Get().g_selected_entity.lock();
 	const auto on_entity	= selected_entity != nullptr;
 
 	if (on_entity) if (ImGui::MenuItem("Copy"))

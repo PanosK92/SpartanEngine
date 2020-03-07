@@ -54,12 +54,12 @@ namespace Spartan
 
         //= POSITION =======================================
         Math::Vector3 GetPosition() const;
-        void SetPosition(const Math::Vector3& position);
+        void SetPosition(const Math::Vector3& position) const;
         //==================================================
 
         //= ROTATION ======================================
         Math::Quaternion GetRotation() const;
-        void SetRotation(const Math::Quaternion& rotation);
+        void SetRotation(const Math::Quaternion& rotation) const;
         //=================================================
 
         void Activate() const;
@@ -67,7 +67,7 @@ namespace Spartan
 
     private:
         void CreateBox();
-        void CreateAeroCloth();
+        void CreateAeroCloth() const;
 
         void Body_Release();
         void Body_AddToWorld();

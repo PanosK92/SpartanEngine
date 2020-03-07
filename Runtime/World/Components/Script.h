@@ -32,7 +32,7 @@ namespace Spartan
 	{
 	public:
 		Script(Context* context, Entity* entity, uint32_t id = 0);
-		~Script();
+		~Script() = default;
 
 		//= ICOMPONENT ===============================
 		void OnStart() override;
@@ -42,7 +42,7 @@ namespace Spartan
 		//============================================
 
 		bool SetScript(const std::string& filePath);
-		std::string GetScriptPath();
+		std::string GetScriptPath() const;
 		std::string GetName();
 
 	private:

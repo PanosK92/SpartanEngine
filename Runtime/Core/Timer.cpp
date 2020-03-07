@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Settings.h"
 #include "../Logging/Log.h"
 #include "../RHI/RHI_Device.h"
-#include "../Math/MathHelper.h"
 #include "../Rendering/Renderer.h"
 //================================
 
@@ -51,7 +50,7 @@ namespace Spartan
         m_time_ms = static_cast<double>((m_time_start - m_time_frame_start).count());
 
 		// Compute work time
-		duration<double, milli> time_work	= m_time_frame_start - m_time_frame_end;
+        const duration<double, milli> time_work	= m_time_frame_start - m_time_frame_end;
 		
 		// Compute sleep time
 		const double max_fps		= m_fps_target;
@@ -70,10 +69,10 @@ namespace Spartan
 		m_delta_time_ms								= (time_work + time_sleep).count();
 
         // Compute smoothed delta time
-        double frames_to_accumulate = 5;
-        double delta_feedback       = 1.0 / frames_to_accumulate;
+        const double frames_to_accumulate = 5;
+        const double delta_feedback       = 1.0 / frames_to_accumulate;
         double delta_max            = 1000.0 / m_fps_min;
-        double delta_clamped        = m_delta_time_ms > delta_max ? delta_max : m_delta_time_ms; // If frame time is too high/slow, clamp it   
+        const double delta_clamped        = m_delta_time_ms > delta_max ? delta_max : m_delta_time_ms; // If frame time is too high/slow, clamp it   
         m_delta_time_smoothed_ms    = m_delta_time_smoothed_ms * (1.0 - delta_feedback) + delta_clamped * delta_feedback;
 	}
 

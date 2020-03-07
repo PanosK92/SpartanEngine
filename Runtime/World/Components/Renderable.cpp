@@ -42,7 +42,7 @@ namespace Spartan
 		vector<RHI_Vertex_PosTexNorTan> vertices;
 		vector<uint32_t> indices;
 
-        string project_directory = renderable->GetContext()->GetSubsystem<ResourceCache>()->GetProjectDirectory();
+        const string project_directory = renderable->GetContext()->GetSubsystem<ResourceCache>()->GetProjectDirectory();
 
 		// Construct geometry
 		if (type == Geometry_Default_Cube)
@@ -259,7 +259,7 @@ namespace Spartan
 	{
 		m_material_default = true;
         ResourceCache* resource_cache = GetContext()->GetSubsystem<ResourceCache>();
-		auto data_dir = resource_cache->GetDataDirectory() + "/";
+        const auto data_dir = resource_cache->GetDataDirectory() + "/";
 		FileSystem::CreateDirectory_(data_dir);
 
         // Create material
@@ -268,7 +268,7 @@ namespace Spartan
 		material->SetIsEditable(false);
 
         // Se default texture
-        shared_ptr<RHI_Texture2D> texture = resource_cache->Load<RHI_Texture2D>(resource_cache->GetDataDirectory(Asset_Textures) + "/no_texture.png");
+        const shared_ptr<RHI_Texture2D> texture = resource_cache->Load<RHI_Texture2D>(resource_cache->GetDataDirectory(Asset_Textures) + "/no_texture.png");
         material->SetTextureSlot(TextureType_Albedo, texture);
 
         // Set material
@@ -276,8 +276,8 @@ namespace Spartan
         m_material_default = true;
 	}
 
-	string Renderable::GetMaterialName()
-	{
+	string Renderable::GetMaterialName() const
+    {
 		return m_material ? m_material->GetResourceName() : "";
 	}
 }

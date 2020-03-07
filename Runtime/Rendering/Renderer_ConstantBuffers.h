@@ -88,7 +88,7 @@ namespace Spartan
         Math::Vector2 blur_direction;
         Math::Vector2 resolution;
 
-        bool operator==(const BufferUber& rhs)
+        bool operator==(const BufferUber& rhs) const
         {
             return
                 transform           == rhs.transform            &&
@@ -114,7 +114,7 @@ namespace Spartan
         Math::Matrix wvp_current;
         Math::Matrix wvp_previous;
     
-        bool operator==(const BufferObject& rhs)
+        bool operator==(const BufferObject& rhs) const
         {
             return
                 object          == rhs.object       &&

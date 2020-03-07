@@ -47,16 +47,16 @@ namespace Spartan::Math
 			this->z = z;
 			this->w = w;
 		}
-		~Quaternion() {}
+		~Quaternion() = default;
 
-		// Creates a new Quaternion from the specified axis and angle.	
+        // Creates a new Quaternion from the specified axis and angle.	
 		// The angle in radians.
 		// The axis of rotation.
 		static Quaternion FromAngleAxis(float angle, const Vector3& axis)
 		{
-			float half	= angle * 0.5f;
-			float sin	= sinf(half);
-			float cos	= cosf(half);
+            const float half	= angle * 0.5f;
+            const float sin	= sinf(half);
+            const float cos	= cosf(half);
 			return Quaternion(axis.x * sin, axis.y * sin, axis.z * sin, cos);
 		}
 		void FromAxes(const Vector3& xAxis, const Vector3& yAxis, const Vector3& zAxis);
@@ -67,16 +67,16 @@ namespace Spartan::Math
 		// Roll around the z axis in radians.
 		static Quaternion FromYawPitchRoll(float yaw, float pitch, float roll)
 		{
-			float halfRoll	= roll * 0.5f;
-			float halfPitch = pitch * 0.5f;
-			float halfYaw	= yaw * 0.5f;
+            const float halfRoll	= roll * 0.5f;
+            const float halfPitch = pitch * 0.5f;
+            const float halfYaw	= yaw * 0.5f;
 
-			float sinRoll	= sin(halfRoll);
-			float cosRoll	= cos(halfRoll);
-			float sinPitch	= sin(halfPitch);
-			float cosPitch	= cos(halfPitch);
-			float sinYaw	= sin(halfYaw);
-			float cosYaw	= cos(halfYaw);
+            const float sinRoll	= sin(halfRoll);
+            const float cosRoll	= cos(halfRoll);
+            const float sinPitch	= sin(halfPitch);
+            const float cosPitch	= cos(halfPitch);
+            const float sinYaw	= sin(halfYaw);
+            const float cosYaw	= cos(halfYaw);
 
 			return Quaternion(
 				cosYaw * sinPitch * cosRoll + sinYaw * cosPitch * sinRoll,
@@ -94,7 +94,7 @@ namespace Spartan::Math
 		{
 			// Derivation from http://www.geometrictools.com/Documentation/EulerAngles.pdf
 			// Order of rotations: Z first, then X, then Y
-			float check = 2.0f * (-y * z + w * x);
+            const float check = 2.0f * (-y * z + w * x);
 
 			if (check < -0.995f)
 			{
@@ -133,15 +133,15 @@ namespace Spartan::Math
 
 		static Quaternion FromToRotation(const Vector3& start, const Vector3& end)
 		{
-			Vector3 normStart	= start.Normalized();
-			Vector3 normEnd		= end.Normalized();
-			float d				= normStart.Dot(normEnd);
+            const Vector3 normStart	= start.Normalized();
+            const Vector3 normEnd		= end.Normalized();
+            const float d				= normStart.Dot(normEnd);
 
 			if (d > -1.0f + M_EPSILON)
 			{
-				Vector3 c = normStart.Cross(normEnd);
-				float s = sqrtf((1.0f + d) * 2.0f);
-				float invS = 1.0f / s;
+                const Vector3 c = normStart.Cross(normEnd);
+                const float s = sqrtf((1.0f + d) * 2.0f);
+                const float invS = 1.0f / s;
 
 				return Quaternion(
 					c.x * invS,
@@ -170,8 +170,8 @@ namespace Spartan::Math
 			if (v.LengthSquared() >= M_EPSILON)
 			{
 				v.Normalize();
-				Vector3 up = v.Cross(forward);
-				Vector3 right = up.Cross(forward);
+                const Vector3 up = v.Cross(forward);
+                const Vector3 right = up.Cross(forward);
 				ret.FromAxes(right, up, forward);
 			}
 			else
@@ -191,10 +191,10 @@ namespace Spartan::Math
 		// Normalizes the quaternion
 		void Normalize()
 		{
-            auto length_squared = LengthSquared();
+            const auto length_squared = LengthSquared();
             if (!Equals(length_squared, 1.0f) && length_squared > 0.0f)
             {
-                auto length_inverted = 1.0f / Sqrt(length_squared);
+                const auto length_inverted = 1.0f / Sqrt(length_squared);
                 x *= length_inverted;
                 y *= length_inverted;
                 z *= length_inverted;
@@ -204,11 +204,11 @@ namespace Spartan::Math
 
 		// Returns a normalized version of the quaternion
 		Quaternion Normalized() const
-		{	
-            auto length_squared = LengthSquared();
+		{
+            const auto length_squared = LengthSquared();
             if (!Equals(length_squared, 1.0f) && length_squared > 0.0f)
             {
-                auto length_inverted = 1.0f / Sqrt(length_squared);
+                const auto length_inverted = 1.0f / Sqrt(length_squared);
                 return (*this) * length_inverted;
             }
             else
@@ -217,8 +217,8 @@ namespace Spartan::Math
 
         // Returns the inverse
 		Quaternion Inverse() const 
-		{ 
-            float length_squared = LengthSquared();
+		{
+            const float length_squared = LengthSquared();
             if (length_squared == 1.0f)
                 return Conjugate();
             else if (length_squared >= M_EPSILON)
@@ -228,29 +228,22 @@ namespace Spartan::Math
 		}
 
 		Quaternion& operator =(const Quaternion& rhs)
-		{			
-			x = rhs.x;
-			y = rhs.y;
-			z = rhs.z;
-            w = rhs.w;
-
-			return *this;
-		}
+        = default;
 
         static Quaternion Multiply(const Quaternion& Qa, const Quaternion& Qb)
-        {       
-            float x = Qa.x;
-            float y = Qa.y;
-            float z = Qa.z;
-            float w = Qa.w;
-            float num4 = Qb.x;
-            float num3 = Qb.y;
-            float num2 = Qb.z;
-            float num = Qb.w;
-            float num12 = (y * num2) - (z * num3);
-            float num11 = (z * num4) - (x * num2);
-            float num10 = (x * num3) - (y * num4);
-            float num9 = ((x * num4) + (y * num3)) + (z * num2);
+        {
+            const float x = Qa.x;
+            const float y = Qa.y;
+            const float z = Qa.z;
+            const float w = Qa.w;
+            const float num4 = Qb.x;
+            const float num3 = Qb.y;
+            const float num2 = Qb.z;
+            const float num = Qb.w;
+            const float num12 = (y * num2) - (z * num3);
+            const float num11 = (z * num4) - (x * num2);
+            const float num10 = (x * num3) - (y * num4);
+            const float num9 = ((x * num4) + (y * num3)) + (z * num2);
 
             return Quaternion(
                 ((x * num) + (num4 * w)) + num12,
@@ -272,9 +265,9 @@ namespace Spartan::Math
 
 		Vector3 operator*(const Vector3& rhs) const
 		{
-			Vector3 qVec(x, y, z);
-			Vector3 cross1(qVec.Cross(rhs));
-			Vector3 cross2(qVec.Cross(cross1));
+            const Vector3 qVec(x, y, z);
+            const Vector3 cross1(qVec.Cross(rhs));
+            const Vector3 cross2(qVec.Cross(cross1));
 
 			return rhs + 2.0f * (cross1 * w + cross2);
 		}

@@ -38,7 +38,7 @@ Widget_Console::Widget_Console(Context* context) : Widget(context)
 
 	// Create an implementation of EngineLogger
 	m_logger = make_shared<EngineLogger>();
-	m_logger->SetCallback([this](const LogPackage package) { AddLogPackage(package); });
+	m_logger->SetCallback([this](const LogPackage& package) { AddLogPackage(package); });
 
 	// Set the logger implementation for the engine to use
 	Log::SetLogger(m_logger);

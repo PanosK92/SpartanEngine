@@ -30,9 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Spartan
 {
     RHI_DescriptorSet::~RHI_DescriptorSet()
-    {
-
-    }
+    = default;
 
     void RHI_DescriptorSet::DoubleCapacity()
     {

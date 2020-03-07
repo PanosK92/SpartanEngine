@@ -59,10 +59,10 @@ namespace Spartan
 		~Engine();
 
 		// Performs a simulation cycle
-		void Tick();
+		void Tick() const;
 
 		//  Flags
-		auto EngineMode_GetAll()					        { return m_flags; }
+		auto EngineMode_GetAll() const { return m_flags; }
 		void EngineMode_SetAll(const uint32_t flags)	    { m_flags = flags; }
 		void EngineMode_Enable(const Engine_Mode flag)	    { m_flags |= flag; }
 		void EngineMode_Disable(const Engine_Mode flag)	    { m_flags &= ~flag; }
@@ -70,7 +70,7 @@ namespace Spartan
 		bool EngineMode_IsSet(const Engine_Mode flag) const	{ return m_flags & flag; }
 
         // Window
-        const auto& GetWindowData() { return m_window_data; }
+        const auto& GetWindowData() const { return m_window_data; }
         void SetWindowData(WindowData& window_data);
 
         auto GetContext() const { return m_context.get(); }
