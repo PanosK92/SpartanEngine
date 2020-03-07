@@ -29,7 +29,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/Vector3.h"
 #include "../../Math/Matrix.h"
 #include "../../RHI/RHI_Definition.h"
-#include "../../Math/Vector2.h"
 #include "../../Math/Frustum.h"
 //===================================
 

@@ -101,13 +101,13 @@ namespace Spartan
 		//================================================================
 
 		//= MISC ========================================================================
-		bool IsInViewFrustrum(Renderable* renderable);
-		bool IsInViewFrustrum(const Math::Vector3& center, const Math::Vector3& extents);
+		bool IsInViewFrustrum(Renderable* renderable) const;
+		bool IsInViewFrustrum(const Math::Vector3& center, const Math::Vector3& extents) const;
 		const Math::Vector4& GetClearColor() const		{ return m_clear_color; }
 		void SetClearColor(const Math::Vector4& color)	{ m_clear_color = color; }
 		//===============================================================================
 
-        Math::Matrix ComputeViewMatrix();
+        Math::Matrix ComputeViewMatrix() const;
         Math::Matrix ComputeProjection(const bool reverse_z);
 
 	private:

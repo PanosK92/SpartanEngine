@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= IMPLEMENTATION ===============
-#include "../RHI_Implementation.h"
 #ifdef API_GRAPHICS_D3D11
 //================================
 
@@ -169,7 +168,7 @@ namespace Spartan::d3d11_common
 			const auto dx_adapter = static_cast<IDXGIAdapter*>(physical_device.data);
 
 			// Adapters are ordered by memory (descending), so stop on the first success
-			auto format = RHI_Format_R8G8B8A8_Unorm; // TODO: This must come from the swapchain
+            const auto format = RHI_Format_R8G8B8A8_Unorm; // TODO: This must come from the swapchain
 			if (get_display_modes(dx_adapter, format))
 			{
 				device->SetPrimaryPhysicalDevice(device_index);
@@ -208,8 +207,8 @@ namespace Spartan::d3d11_common
 			}
 		}
 
-		bool fullscreen_borderless_support	= SUCCEEDED(resut) && allowTearing;
-		bool vendor_support					= !device->GetPrimaryPhysicalDevice()->IsIntel(); // Intel, bad
+        const bool fullscreen_borderless_support	= SUCCEEDED(resut) && allowTearing;
+        const bool vendor_support					= !device->GetPrimaryPhysicalDevice()->IsIntel(); // Intel, bad
 
 		return fullscreen_borderless_support && vendor_support;
 	}

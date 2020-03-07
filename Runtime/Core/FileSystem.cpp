@@ -100,14 +100,14 @@ namespace Spartan
     string FileSystem::GetStringBeforeExpression(const string& str, const string& exp)
     {
         // ("The quick brown fox", "brown") -> "The quick "
-        size_t position = str.find(exp);
+        const size_t position = str.find(exp);
         return position != string::npos ? str.substr(0, position) : "";
     }
 
     string FileSystem::GetStringAfterExpression(const string& str, const string& exp)
     {
         // ("The quick brown fox", "brown") -> "fox"
-        size_t position = str.find(exp);
+        const size_t position = str.find(exp);
         return position != string::npos ? str.substr(position + exp.length()) : "";
     }
 
@@ -115,7 +115,7 @@ namespace Spartan
     {
         // ("The quick brown fox", "The ", " brown") -> "quick"
 
-        regex base_regex(exp_a + "(.*)" + exp_b);
+        const regex base_regex(exp_a + "(.*)" + exp_b);
 
         smatch base_match;
         if (regex_search(str, base_match, base_regex))
@@ -133,7 +133,7 @@ namespace Spartan
 
     string FileSystem::ConvertToUppercase(const string& lower)
     {
-        locale loc;
+        const locale loc;
         string upper;
         for (const auto& character : lower)
         {
@@ -322,8 +322,8 @@ namespace Spartan
 
 	string FileSystem::GetFileNameNoExtensionFromFilePath(const string& path)
 	{
-		auto file_name		= GetFileNameFromFilePath(path);
-        size_t last_index	= file_name.find_last_of('.');
+        const auto file_name		= GetFileNameFromFilePath(path);
+        const size_t last_index	= file_name.find_last_of('.');
 
         if (last_index != string::npos)
 		    return file_name.substr(0, last_index);
@@ -333,7 +333,7 @@ namespace Spartan
 
     string FileSystem::GetDirectoryFromFilePath(const string& path)
 	{
-        size_t last_index = path.find_last_of("\\/");
+        const size_t last_index = path.find_last_of("\\/");
 
         if (last_index != string::npos)
 		    return path.substr(0, last_index + 1);
@@ -367,7 +367,7 @@ namespace Spartan
 
     string FileSystem::NativizeFilePath(const string& path)
     {
-        string file_path_no_ext = GetFilePathWithoutExtension(path);
+        const string file_path_no_ext = GetFilePathWithoutExtension(path);
 
         if (IsSupportedAudioFile(path))    return file_path_no_ext + EXTENSION_AUDIO;
         if (IsSupportedImageFile(path))    return file_path_no_ext + EXTENSION_TEXTURE;
@@ -382,7 +382,7 @@ namespace Spartan
     vector<string> FileSystem::GetDirectoriesInDirectory(const string& path)
 	{
 		vector<string> directories;
-        filesystem::directory_iterator it_end; // default construction yields past-the-end
+        const filesystem::directory_iterator it_end; // default construction yields past-the-end
 		for (filesystem::directory_iterator it(path); it != it_end; ++it)
 		{
 			if (!filesystem::is_directory(it->status()))
@@ -418,7 +418,7 @@ namespace Spartan
 	vector<string> FileSystem::GetFilesInDirectory(const string& path)
 	{
 		vector<string> file_paths;
-        filesystem::directory_iterator it_end; // default construction yields past-the-end
+        const filesystem::directory_iterator it_end; // default construction yields past-the-end
 		for (filesystem::directory_iterator it(path); it != it_end; ++it)
 		{
 			if (!filesystem::is_regular_file(it->status()))
@@ -441,7 +441,7 @@ namespace Spartan
 
 	bool FileSystem::IsSupportedAudioFile(const string& path)
 	{
-		string extension = GetExtensionFromFilePath(path);
+        const string extension = GetExtensionFromFilePath(path);
 
 		for (const auto& format : supported_formats_audio)
 		{
@@ -454,7 +454,7 @@ namespace Spartan
 
 	bool FileSystem::IsSupportedImageFile(const string& path)
 	{
-		string extension = GetExtensionFromFilePath(path);
+        const string extension = GetExtensionFromFilePath(path);
 
 		for (const auto& format : supported_formats_image)
 		{
@@ -470,7 +470,7 @@ namespace Spartan
 
 	bool FileSystem::IsSupportedModelFile(const string& path)
 	{
-		string extension = GetExtensionFromFilePath(path);
+        const string extension = GetExtensionFromFilePath(path);
 
 		for (const auto& format : supported_formats_model)
 		{
@@ -483,7 +483,7 @@ namespace Spartan
 
 	bool FileSystem::IsSupportedShaderFile(const string& path)
 	{
-		string extension = GetExtensionFromFilePath(path);
+        const string extension = GetExtensionFromFilePath(path);
 
 		for (const auto& format : supported_formats_shader)
 		{
@@ -496,7 +496,7 @@ namespace Spartan
 
 	bool FileSystem::IsSupportedFontFile(const string& path)
 	{
-		string extension = GetExtensionFromFilePath(path);
+        const string extension = GetExtensionFromFilePath(path);
 
 		for (const auto& format : supported_formats_font)
 		{
@@ -509,7 +509,7 @@ namespace Spartan
 
 	bool FileSystem::IsEngineScriptFile(const string& path)
 	{
-		string extension = GetExtensionFromFilePath(path);
+        const string extension = GetExtensionFromFilePath(path);
 
 		for (const auto& format : supported_formats_script)
 		{
@@ -575,7 +575,7 @@ namespace Spartan
 
     vector<string> FileSystem::GetSupportedFilesInDirectory(const string& path)
     {
-        vector<string> filesInDirectory     = GetFilesInDirectory(path);
+        const vector<string> filesInDirectory     = GetFilesInDirectory(path);
         vector<string> imagesInDirectory    = GetSupportedImageFilesFromPaths(filesInDirectory);    // get all the images
         vector<string> scriptsInDirectory   = GetSupportedScriptFilesFromPaths(filesInDirectory);   // get all the scripts
         vector<string> modelsInDirectory    = GetSupportedModelFilesFromPaths(filesInDirectory);    // get all the models
@@ -685,8 +685,8 @@ namespace Spartan
             return path;
 
 		// create absolute paths
-        filesystem::path p = filesystem::absolute(path);
-        filesystem::path r = filesystem::absolute(GetWorkingDirectory());
+        const filesystem::path p = filesystem::absolute(path);
+        const filesystem::path r = filesystem::absolute(GetWorkingDirectory());
 
 		// if root paths are different, return absolute path
 		if( p.root_path() != r.root_path())

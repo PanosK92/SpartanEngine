@@ -34,14 +34,14 @@ namespace Spartan::Math
     Frustum::Frustum(const Matrix& view, const Matrix& projection, float screen_depth)
 	{
 		// Calculate the minimum Z distance in the frustum.
-		float z_min                 = -projection.m32 / projection.m22;
-		float r                     = screen_depth / (screen_depth - z_min);
+        const float z_min                 = -projection.m32 / projection.m22;
+        const float r                     = screen_depth / (screen_depth - z_min);
 		Matrix projection_updated   = projection;
 		projection_updated.m22      = r;
 		projection_updated.m32      = -r * z_min;
 
 		// Create the frustum matrix from the view matrix and updated projection matrix.
-		Matrix view_projection = view * projection_updated;
+        const Matrix view_projection = view * projection_updated;
 
 		// Calculate near plane of frustum.
 		m_planes[0].normal.x = view_projection.m03 + view_projection.m02;
@@ -116,13 +116,13 @@ namespace Spartan::Math
 		Intersection result = Inside;
 		for (const auto& plane : m_planes)
 		{
-			Plane absolutePlane = Plane(plane.normal.Absolute(), plane.d);
+            const Plane absolutePlane = Plane(plane.normal.Absolute(), plane.d);
 
-			float d = center.x * plane.normal.x + center.y * plane.normal.y + center.z * plane.normal.z;
-			float r = extent.x * absolutePlane.normal.x + extent.y * absolutePlane.normal.y + extent.z * absolutePlane.normal.z;
+            const float d = center.x * plane.normal.x + center.y * plane.normal.y + center.z * plane.normal.z;
+            const float r = extent.x * absolutePlane.normal.x + extent.y * absolutePlane.normal.y + extent.z * absolutePlane.normal.z;
 
-			float d_p_r = d + r;
-			float d_m_r = d - r;
+            const float d_p_r = d + r;
+            const float d_m_r = d - r;
 
 			if (d_p_r < -plane.d)
 			{
@@ -145,7 +145,7 @@ namespace Spartan::Math
 		for (const auto& plane : m_planes)
 		{
 			// find the distance to this plane
-			float distance = Vector3::Dot(plane.normal, center) + plane.d;
+            const float distance = Vector3::Dot(plane.normal, center) + plane.d;
 
 			// if this distance is < -sphere.radius, we are outside
 			if (distance < -radius)

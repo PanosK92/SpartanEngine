@@ -78,10 +78,10 @@ namespace Window
 	inline bool Create(HINSTANCE instance, const std::string& title)
 	{
 		g_instance = instance;
-		std::wstring windowTitle	= Spartan::FileSystem::StringToWstring(title);
-		int windowWidth				= GetSystemMetrics(SM_CXSCREEN);
-		int windowHeight			= GetSystemMetrics(SM_CYSCREEN);
-		LPCWSTR className			= L"myWindowClass";
+        const std::wstring windowTitle	= Spartan::FileSystem::StringToWstring(title);
+        const int windowWidth				= GetSystemMetrics(SM_CXSCREEN);
+        const int windowHeight			= GetSystemMetrics(SM_CYSCREEN);
+        const LPCWSTR className			= L"myWindowClass";
 	
 		// Register the Window Class
 		WNDCLASSEX wc;

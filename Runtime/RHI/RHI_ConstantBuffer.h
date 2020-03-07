@@ -46,7 +46,7 @@ namespace Spartan
 			return _Create();
 		}
 
-		void* Map();
+		void* Map() const;
 		bool Unmap() const;
         bool Flush(uint32_t offset_index = 0);
 

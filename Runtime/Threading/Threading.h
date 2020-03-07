@@ -41,7 +41,7 @@ namespace Spartan
 
 		Task(function_type&& function)  { m_function = std::forward<function_type>(function); }
         void Execute()                  { m_is_executing = true; m_function(); m_is_executing = false; }
-        bool IsExecuting()              { return m_is_executing; }
+        bool IsExecuting() const { return m_is_executing; }
 
 	private:
         bool m_is_executing = false;
@@ -86,7 +86,7 @@ namespace Spartan
         {
             uint32_t available_threads  = GetThreadsAvailable();
             vector<bool> tasks_done     = vector<bool>(available_threads, false);
-            uint32_t task_count         = available_threads + 1; // plus one for the current thread
+            const uint32_t task_count         = available_threads + 1; // plus one for the current thread
 
             uint32_t start  = 0;
             uint32_t end    = 0;
@@ -114,8 +114,8 @@ namespace Spartan
             }
         }
 
-        uint32_t GetThreadCount()       { return m_thread_count; }
-        uint32_t GetThreadCountMax()    { return m_thread_max; }
+        uint32_t GetThreadCount() const { return m_thread_count; }
+        uint32_t GetThreadCountMax() const { return m_thread_max; }
         uint32_t GetThreadsAvailable();
 
 	private:

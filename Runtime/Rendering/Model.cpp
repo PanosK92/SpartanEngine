@@ -173,8 +173,8 @@ namespace Spartan
 		m_aabb				= BoundingBox(m_mesh->Vertices_Get());
 	}
 
-	void Model::AddMaterial(shared_ptr<Material>& material, const shared_ptr<Entity>& entity)
-	{
+	void Model::AddMaterial(shared_ptr<Material>& material, const shared_ptr<Entity>& entity) const
+    {
 		if (!material || !entity)
 		{
 			LOG_ERROR_INVALID_PARAMETER();
@@ -182,7 +182,7 @@ namespace Spartan
 		}
 
 		// Create a file path for this material
-        string spartan_asset_path = FileSystem::GetDirectoryFromFilePath(GetResourceFilePathNative()) + material->GetResourceName() + EXTENSION_MATERIAL;
+        const string spartan_asset_path = FileSystem::GetDirectoryFromFilePath(GetResourceFilePathNative()) + material->GetResourceName() + EXTENSION_MATERIAL;
 		material->SetResourceFilePath(spartan_asset_path);
 
 		// Create a Renderable and pass the material to it

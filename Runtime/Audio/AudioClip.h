@@ -85,7 +85,7 @@ namespace Spartan
 		bool SetPan(float pan);
 
 		// Sets the rolloff
-		bool SetRolloff(std::vector<Math::Vector3> curve_points);
+		bool SetRolloff(const std::vector<Math::Vector3>& curve_points);
 		bool SetRolloff(Rolloff rolloff);
 
 		// Makes the audio use the 3D attributes of the transform

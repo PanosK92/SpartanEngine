@@ -32,12 +32,7 @@ namespace Spartan
 		m_audio = nullptr;
 	}
 
-	AudioListener::~AudioListener()
-	{
-
-	}
-
-	void AudioListener::OnInitialize()
+    void AudioListener::OnInitialize()
 	{
 		m_audio = GetContext()->GetSubsystem<Audio>();
 	}

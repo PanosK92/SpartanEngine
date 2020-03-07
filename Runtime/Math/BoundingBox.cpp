@@ -112,9 +112,9 @@ namespace Spartan::Math
 
 	BoundingBox BoundingBox::Transform(const Matrix& transform) const
 	{
-		Vector3 center_new = transform * GetCenter();
-		Vector3 extent_old = GetExtents();
-		Vector3 extend_new = Vector3
+        const Vector3 center_new = transform * GetCenter();
+        const Vector3 extent_old = GetExtents();
+        const Vector3 extend_new = Vector3
 		(
 			Abs(transform.m00) * extent_old.x + Abs(transform.m10) * extent_old.y + Abs(transform.m20) * extent_old.z,
 			Abs(transform.m01) * extent_old.x + Abs(transform.m11) * extent_old.y + Abs(transform.m21) * extent_old.z,

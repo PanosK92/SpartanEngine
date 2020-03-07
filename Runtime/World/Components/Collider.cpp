@@ -59,12 +59,7 @@ namespace Spartan
 		REGISTER_ATTRIBUTE_VALUE_SET(m_shapeType, SetShapeType, ColliderShape);
 	}
 
-	Collider::~Collider()
-	{
-
-	}
-
-	void Collider::OnInitialize()
+    void Collider::OnInitialize()
 	{
 		// If there is a mesh, use it's bounding box
 		if (auto renderable = GetEntity()->GetRenderable())
@@ -140,7 +135,7 @@ namespace Spartan
 	void Collider::Shape_Update()
 	{
 		Shape_Release();
-		Vector3 worldScale = GetTransform()->GetScale();
+        const Vector3 worldScale = GetTransform()->GetScale();
 
 		switch (m_shapeType)
 		{
@@ -231,16 +226,16 @@ namespace Spartan
 		safe_delete(m_shape);
 	}
 
-	void Collider::RigidBody_SetShape(btCollisionShape* shape)
-	{
+	void Collider::RigidBody_SetShape(btCollisionShape* shape) const
+    {
 		if (const auto& rigidBody = m_entity->GetComponent<RigidBody>())
 		{
 			rigidBody->SetShape(shape);
 		}
 	}
 
-	void Collider::RigidBody_SetCenterOfMass(const Vector3& center)
-	{
+	void Collider::RigidBody_SetCenterOfMass(const Vector3& center) const
+    {
 		if (const auto& rigidBody = m_entity->GetComponent<RigidBody>())
 		{
 			rigidBody->SetCenterOfMass(center);

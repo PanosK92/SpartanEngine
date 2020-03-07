@@ -36,8 +36,8 @@ public:
 	void Tick() override;
 
 private:
-	void ShowFileDialog();
-	void ShowAboutWindow();
+	void ShowFileDialog() const;
+	void ShowAboutWindow() const;
 
 	std::unique_ptr<FileDialog> m_fileDialog;
 };

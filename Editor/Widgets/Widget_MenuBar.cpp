@@ -110,7 +110,7 @@ void Widget_MenuBar::Tick()
     ShowAboutWindow();
 }
 
-void Widget_MenuBar::ShowFileDialog()
+void Widget_MenuBar::ShowFileDialog() const
 {
     if (_Widget_MenuBar::g_fileDialogVisible)
     {
@@ -142,7 +142,7 @@ void Widget_MenuBar::ShowFileDialog()
 	}
 }
 
-void Widget_MenuBar::ShowAboutWindow()
+void Widget_MenuBar::ShowAboutWindow() const
 {
     if (!_Widget_MenuBar::g_showAboutWindow)
         return;

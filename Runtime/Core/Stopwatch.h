@@ -39,15 +39,15 @@ namespace Spartan
             m_start = std::chrono::high_resolution_clock::now();
         }
 
-        float Stopwatch::GetElapsedTimeSec()
+        float Stopwatch::GetElapsedTimeSec() const
         {
-            std::chrono::duration<double, std::milli> ms = std::chrono::high_resolution_clock::now() - m_start;
+            const std::chrono::duration<double, std::milli> ms = std::chrono::high_resolution_clock::now() - m_start;
             return static_cast<float>(ms.count() / 1000);
         }
 
-        float Stopwatch::GetElapsedTimeMs()
+        float Stopwatch::GetElapsedTimeMs() const
         {
-            std::chrono::duration<double, std::milli> ms = std::chrono::high_resolution_clock::now() - m_start;
+            const std::chrono::duration<double, std::milli> ms = std::chrono::high_resolution_clock::now() - m_start;
             return static_cast<float>(ms.count());
         }
 

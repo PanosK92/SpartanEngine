@@ -93,7 +93,7 @@ namespace Spartan
 		stream->Write(m_pitch);
 		stream->Write(m_pan);
 
-        bool has_audio_clip = m_audio_clip != nullptr;
+        const bool has_audio_clip = m_audio_clip != nullptr;
         stream->Write(has_audio_clip);
         if (has_audio_clip)
         {
@@ -128,13 +128,13 @@ namespace Spartan
         }
     }
 
-    string AudioSource::GetAudioClipName()
-	{
+    string AudioSource::GetAudioClipName() const
+    {
 		return m_audio_clip ? m_audio_clip->GetResourceName() : "";
 	}
 	
-	bool AudioSource::Play()
-	{
+	bool AudioSource::Play() const
+    {
 		if (!m_audio_clip)
 			return false;
 	
@@ -148,8 +148,8 @@ namespace Spartan
 		return true;
 	}
 	
-	bool AudioSource::Stop()
-	{
+	bool AudioSource::Stop() const
+    {
 		if (!m_audio_clip)
 			return false;
 	

@@ -169,8 +169,8 @@ namespace Spartan
 		return true;
 	}
 
-	bool ImageImporter::GetBitsFromFibitmap(vector<std::byte>* data, FIBITMAP* bitmap, const uint32_t width, const uint32_t height, const uint32_t channels)
-	{
+	bool ImageImporter::GetBitsFromFibitmap(vector<std::byte>* data, FIBITMAP* bitmap, const uint32_t width, const uint32_t height, const uint32_t channels) const
+    {
 		if (!data || width == 0 || height == 0 || channels == 0)
 		{
 			LOG_ERROR_INVALID_PARAMETER();
@@ -330,13 +330,13 @@ namespace Spartan
 
         // Convert to a standard bitmap. FIT_UINT16 and FIT_RGBA16 are processed without errors
         // but show up empty in the editor. For now, we convert everything to a standard bitmap.
-        FREE_IMAGE_TYPE type = FreeImage_GetImageType(bitmap);
+        const FREE_IMAGE_TYPE type = FreeImage_GetImageType(bitmap);
         if (type != FIT_BITMAP)
         {
             // FreeImage can't convert FIT_RGBF
             if (type != FIT_RGBF)
             {
-                auto previous_bitmap = bitmap;
+                const auto previous_bitmap = bitmap;
                 bitmap = FreeImage_ConvertToType(bitmap, FIT_BITMAP);
                 FreeImage_Unload(previous_bitmap);
             }
@@ -354,10 +354,10 @@ namespace Spartan
         // So to prevent that, we maintain the 32 bits and convert to an RGBA format.
         const uint32_t image_bytes_per_channel  = ComputeBitsPerChannel(bitmap) * 8;
         const uint32_t image_channels           = ComputeChannelCount(bitmap);
-        bool is_r32g32b32_float                 = image_channels == 3 && image_bytes_per_channel == 32;
+        const bool is_r32g32b32_float                 = image_channels == 3 && image_bytes_per_channel == 32;
         if (is_r32g32b32_float)
         {
-            auto previous_bitmap = bitmap;
+            const auto previous_bitmap = bitmap;
             bitmap = FreeImage_ConvertToRGBAF(bitmap);
             FreeImage_Unload(previous_bitmap);
         }

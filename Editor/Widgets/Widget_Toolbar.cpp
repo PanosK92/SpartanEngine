@@ -74,7 +74,7 @@ Widget_Toolbar::Widget_Toolbar(Context* context) : Widget(context)
 
 void Widget_Toolbar::Tick()
 {
-    auto show_button = [this](Icon_Type icon_type, function<bool()> get_visibility, function<void()> make_visible)
+    auto show_button = [this](Icon_Type icon_type, const function<bool()>& get_visibility, const function<void()>& make_visible)
     {
         ImGui::SameLine();
         ImGui::PushStyleColor(ImGuiCol_Button, get_visibility() ? ImGui::GetStyle().Colors[ImGuiCol_ButtonActive] : ImGui::GetStyle().Colors[ImGuiCol_Button]);
@@ -91,7 +91,7 @@ void Widget_Toolbar::Tick()
     for (auto& widget_it : m_widgets)
     {
         Widget* widget          = widget_it.second.get();
-        Icon_Type widget_icon   = widget_it.first;
+        const Icon_Type widget_icon   = widget_it.first;
 
         show_button(widget_icon, [this, &widget](){ return widget->GetVisible(); }, [this, &widget]() { widget->SetVisible(true); });
 

@@ -41,7 +41,7 @@ namespace Spartan
 		~Module();
 
 		bool LoadScript(const std::string& filePath);
-		asIScriptModule* GetAsIScriptModule();
+		asIScriptModule* GetAsIScriptModule() const;
 
 	private:
 		std::string m_moduleName;

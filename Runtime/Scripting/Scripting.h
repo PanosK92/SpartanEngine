@@ -53,7 +53,7 @@ namespace Spartan
         //=========================
 
 		void Clear();
-		asIScriptEngine* GetAsIScriptEngine();
+		asIScriptEngine* GetAsIScriptEngine() const;
 
 		// Contexts
 		asIScriptContext* RequestContext();
@@ -63,13 +63,13 @@ namespace Spartan
 		bool ExecuteCall(asIScriptFunction* scriptFunc, asIScriptObject* obj, float delta_time = -1.0f);
 
 		// Modules
-		void DiscardModule(std::string moduleName);
+		void DiscardModule(const std::string& moduleName) const;
 
 	private:
         asIScriptEngine* m_scriptEngine = nullptr;
 		std::vector<asIScriptContext*> m_contexts;
 
-		void LogExceptionInfo(asIScriptContext* ctx);
-		void message_callback(const asSMessageInfo& msg);
+		void LogExceptionInfo(asIScriptContext* ctx) const;
+		void message_callback(const asSMessageInfo& msg) const;
 	};
 }

@@ -342,8 +342,8 @@ namespace Spartan::Math
 		}
 		//================================================================================================
 
-		void Decompose(Vector3& scale, Quaternion& rotation, Vector3& translation)
-		{
+		void Decompose(Vector3& scale, Quaternion& rotation, Vector3& translation) const
+        {
 			translation = GetTranslation();
 			scale		= GetScale();
 			rotation	= GetRotation();

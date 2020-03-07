@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================
 #include <string>
+#include <utility>
 #include <vector>
 #include <memory>
 #include "RHI/RHI_Definition.h"
@@ -78,7 +79,7 @@ struct Thumbnail
 	Thumbnail(Icon_Type type, std::shared_ptr<Spartan::RHI_Texture> texture, const std::string& filePath)
 	{
 		this->type      = type;
-		this->texture   = texture;
+		this->texture   = std::move(texture);
 		this->filePath  = filePath;
 	}
 

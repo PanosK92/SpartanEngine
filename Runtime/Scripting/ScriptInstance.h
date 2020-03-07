@@ -37,15 +37,15 @@ namespace Spartan
 	class ScriptInstance
 	{
 	public:
-		ScriptInstance();
+		ScriptInstance() = default;
 		~ScriptInstance();
 
-		bool Instantiate(const std::string& path, std::weak_ptr<Entity> entity, Scripting* scriptEngine);
-		bool IsInstantiated()		{ return m_isInstantiated; }
-		const auto& GetScriptPath() { return m_scriptPath; }
+		bool Instantiate(const std::string& path, const std::weak_ptr<Entity>& entity, Scripting* scriptEngine);
+		bool IsInstantiated() const { return m_isInstantiated; }
+		const auto& GetScriptPath() const { return m_scriptPath; }
 
-		void ExecuteStart();
-		void ExecuteUpdate(float delta_time);
+		void ExecuteStart() const;
+		void ExecuteUpdate(float delta_time) const;
 
 	private:
 		bool CreateScriptObject();

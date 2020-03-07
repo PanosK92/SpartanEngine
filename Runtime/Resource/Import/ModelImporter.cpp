@@ -93,7 +93,7 @@ namespace Spartan
 		// Enable logging
 		DefaultLogger::set(new AssimpHelper::AssimpLogger());
 
-        auto importer_flags =
+        const auto importer_flags =
             aiProcess_CalcTangentSpace |
             aiProcess_GenSmoothNormals |
             aiProcess_JoinIdenticalVertices |
@@ -120,7 +120,7 @@ namespace Spartan
             params.has_animation    = scene->mNumAnimations != 0;
 
             // Create root entity to match Assimp's root node
-            bool is_active = false;
+            const bool is_active = false;
             shared_ptr<Entity> new_entity = m_world->EntityCreate(is_active);
             new_entity->SetName(params.name); // Set custom name, which is more descriptive than "RootNode"
             params.model->SetRootEntity(new_entity);
@@ -191,7 +191,7 @@ namespace Spartan
             // if this node has many meshes, then assign a new entity for each one of them
             if (assimp_node->mNumMeshes > 1)
             {
-                bool is_active = false;
+                const bool is_active = false;
                 entity = m_world->EntityCreate(is_active).get(); // create
                 entity->GetTransform()->SetParent(new_entity->GetTransform()); // set parent
                 _name += "_" + to_string(i + 1); // set name

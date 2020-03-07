@@ -40,8 +40,8 @@ namespace Spartan
 		m_indices.shrink_to_fit();
 	}
 
-	uint32_t Mesh::Geometry_MemoryUsage()
-	{
+	uint32_t Mesh::Geometry_MemoryUsage() const
+    {
 		uint32_t size = 0;
 		size += uint32_t(m_vertices.size()	* sizeof(RHI_Vertex_PosTexNorTan));
 		size += uint32_t(m_indices.size()	* sizeof(uint32_t));
@@ -58,13 +58,13 @@ namespace Spartan
 		}
 
 		// Indices
-		auto indexFirst	= m_indices.begin() + indexOffset;
-		auto indexLast	= m_indices.begin() + indexOffset + indexCount;
+        const auto indexFirst	= m_indices.begin() + indexOffset;
+        const auto indexLast	= m_indices.begin() + indexOffset + indexCount;
 		*indices		= vector<uint32_t>(indexFirst, indexLast);
 
 		// Vertices
-		auto vertexFirst	= m_vertices.begin() + vertexOffset;
-		auto vertexLast		= m_vertices.begin() + vertexOffset + vertexCount;
+        const auto vertexFirst	= m_vertices.begin() + vertexOffset;
+        const auto vertexLast		= m_vertices.begin() + vertexOffset + vertexCount;
 		*vertices			= vector<RHI_Vertex_PosTexNorTan>(vertexFirst, vertexLast);
 	}
 

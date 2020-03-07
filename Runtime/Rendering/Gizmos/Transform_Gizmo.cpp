@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ================================
 #include "Transform_Gizmo.h"
 #include "../Model.h"
-#include "../Renderer.h"
 #include "../../RHI/RHI_IndexBuffer.h"
 #include "../../Input/Input.h"
 #include "../../World/World.h"
@@ -98,7 +97,7 @@ namespace Spartan
 			m_type = TransformHandle_Rotation;
 		}
 
-		bool was_editing = m_is_editing;
+        const bool was_editing = m_is_editing;
 
 		// Update appropriate handle
 		if (m_type == TransformHandle_Position)
@@ -119,8 +118,8 @@ namespace Spartan
 		return true;
 	}
 
-	uint32_t Transform_Gizmo::GetIndexCount()
-	{
+	uint32_t Transform_Gizmo::GetIndexCount() const
+    {
 		if (m_type == TransformHandle_Position)
 		{
 			return m_handle_position.GetIndexBuffer()->GetIndexCount();
@@ -133,8 +132,8 @@ namespace Spartan
 		return m_handle_rotation.GetIndexBuffer()->GetIndexCount();
 	}
 
-	shared_ptr<RHI_VertexBuffer> Transform_Gizmo::GetVertexBuffer()
-	{
+	shared_ptr<RHI_VertexBuffer> Transform_Gizmo::GetVertexBuffer() const
+    {
 		if (m_type == TransformHandle_Position)
 		{
 			return m_handle_position.GetVertexBuffer();
@@ -147,8 +146,8 @@ namespace Spartan
 		return m_handle_rotation.GetVertexBuffer();
 	}
 
-	shared_ptr<RHI_IndexBuffer> Transform_Gizmo::GetIndexBuffer()
-	{
+	shared_ptr<RHI_IndexBuffer> Transform_Gizmo::GetIndexBuffer() const
+    {
 		if (m_type == TransformHandle_Position)
 		{
 			return m_handle_position.GetIndexBuffer();

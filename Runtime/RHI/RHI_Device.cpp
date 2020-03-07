@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Context.h"
 #include "../Core/Settings.h"
 #include "../Core/Timer.h"
-#include "../Math/MathHelper.h"
 #include <algorithm>
 #include "RHI_Implementation.h"
 //=============================
@@ -89,14 +88,14 @@ namespace Spartan
         return &m_display_modes[m_display_mode_index];
     }
 
-	bool RHI_Device::ValidateResolution(const uint32_t width, const uint32_t height)
-	{
+	bool RHI_Device::ValidateResolution(const uint32_t width, const uint32_t height) const
+    {
         return  width  > 0 && width  <= m_rhi_context->max_texture_dimension_2d &&
                 height > 0 && height <= m_rhi_context->max_texture_dimension_2d;
 	}
 
-	bool RHI_Device::Queue_WaitAll()
-	{
+	bool RHI_Device::Queue_WaitAll() const
+    {
         return Queue_Wait(RHI_Queue_Graphics) && Queue_Wait(RHI_Queue_Transfer) && Queue_Wait(RHI_Queue_Compute);
 	}
 

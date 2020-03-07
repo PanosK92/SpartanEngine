@@ -43,7 +43,7 @@ namespace Spartan
 		bool Load(const std::string& file_path, RHI_Texture* texture, bool generate_mipmaps = true);
 
 	private:	
-		bool GetBitsFromFibitmap(std::vector<std::byte>* data, FIBITMAP* bitmap, uint32_t width, uint32_t height, uint32_t channels);
+		bool GetBitsFromFibitmap(std::vector<std::byte>* data, FIBITMAP* bitmap, uint32_t width, uint32_t height, uint32_t channels) const;
 		void GenerateMipmaps(FIBITMAP* bitmap, RHI_Texture* texture, uint32_t width, uint32_t height, uint32_t channels);
 
 		uint32_t ComputeChannelCount(FIBITMAP* bitmap) const;

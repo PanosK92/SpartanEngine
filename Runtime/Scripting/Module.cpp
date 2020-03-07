@@ -83,8 +83,8 @@ namespace Spartan
 		return true;
 	}
 
-	asIScriptModule* Module::GetAsIScriptModule()
-	{
+	asIScriptModule* Module::GetAsIScriptModule() const
+    {
 		if (!m_scriptBuilder)
 		{
 			LOG_ERROR_INVALID_INTERNALS();

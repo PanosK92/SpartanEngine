@@ -73,7 +73,7 @@ void Widget_Assets::Tick()
 	}
 }
 
-void Widget_Assets::OnPathClicked(const std::string& path)
+void Widget_Assets::OnPathClicked(const std::string& path) const
 {
     if (!FileSystem::IsFile(path))
         return;

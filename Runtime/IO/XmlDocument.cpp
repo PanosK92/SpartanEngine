@@ -60,8 +60,8 @@ namespace Spartan
 	{
 		if (!m_document)
 			return;
-		
-		auto node = make_shared<xml_node>(m_document->append_child(nodeName.c_str()));
+
+        const auto node = make_shared<xml_node>(m_document->append_child(nodeName.c_str()));
 		m_nodes.push_back(node);
 	}
 
@@ -74,7 +74,7 @@ namespace Spartan
 			return false;
 		}
 
-		auto node = make_shared<xml_node>(parentNode->append_child(childNodeName.c_str()));
+        const auto node = make_shared<xml_node>(parentNode->append_child(childNodeName.c_str()));
 		m_nodes.push_back(node);
 
 		return true;
@@ -97,7 +97,7 @@ namespace Spartan
 
 	bool XmlDocument::AddAttribute(const string& nodeName, const string& attributeName, bool value)
 	{
-		string valueStr = value ? "true" : "false";
+        const string valueStr = value ? "true" : "false";
 		return AddAttribute(nodeName, attributeName, valueStr);
 	}
 
@@ -139,7 +139,7 @@ namespace Spartan
 	//= GET ATTRIBUTE ===================================================================================
 	bool XmlDocument::GetAttribute(const string& nodeName, const string& attributeName, string* value)
 	{
-		xml_attribute attribute = GetAttribute(nodeName, attributeName);
+        const xml_attribute attribute = GetAttribute(nodeName, attributeName);
 
 		if (!attribute)
 			return false;
@@ -152,7 +152,7 @@ namespace Spartan
 
 	bool XmlDocument::GetAttribute(const string& nodeName, const string& attributeName, int* value)
 	{
-		xml_attribute attribute = GetAttribute(nodeName, attributeName);
+        const xml_attribute attribute = GetAttribute(nodeName, attributeName);
 
 		if (!attribute)
 			return false;
@@ -165,7 +165,7 @@ namespace Spartan
 
 	bool XmlDocument::GetAttribute(const string& nodeName, const string&attributeName, uint32_t* value)
 	{
-		xml_attribute attribute = GetAttribute(nodeName, attributeName);
+        const xml_attribute attribute = GetAttribute(nodeName, attributeName);
 
 		if (!attribute)
 			return false;
@@ -178,7 +178,7 @@ namespace Spartan
 
 	bool XmlDocument::GetAttribute(const string& nodeName, const string& attributeName, bool* value)
 	{
-		xml_attribute attribute = GetAttribute(nodeName, attributeName);
+        const xml_attribute attribute = GetAttribute(nodeName, attributeName);
 
 		if (!attribute)
 			return false;
@@ -191,7 +191,7 @@ namespace Spartan
 
 	bool XmlDocument::GetAttribute(const string& nodeName, const string& attributeName, float* value)
 	{
-		xml_attribute attribute = GetAttribute(nodeName, attributeName);
+        const xml_attribute attribute = GetAttribute(nodeName, attributeName);
 
 		if (!attribute)
 			return false;
@@ -204,7 +204,7 @@ namespace Spartan
 
 	bool XmlDocument::GetAttribute(const string& nodeName, const string& attributeName, double* value)
 	{
-		xml_attribute attribute = GetAttribute(nodeName, attributeName);
+        const xml_attribute attribute = GetAttribute(nodeName, attributeName);
 
 		if (!attribute)
 			return false;
@@ -257,7 +257,7 @@ namespace Spartan
 	bool XmlDocument::Load(const string& filePath)
 	{
 		m_document = make_unique<xml_document>();
-		xml_parse_result result = m_document->load_file(filePath.c_str());
+        const xml_parse_result result = m_document->load_file(filePath.c_str());
 
 		if (result.status != status_ok)
 		{
@@ -279,8 +279,8 @@ namespace Spartan
 		return true;
 	}
 
-	bool XmlDocument::Save(const string& path)
-	{
+	bool XmlDocument::Save(const string& path) const
+    {
 		if (!m_document)
 			return false;
 
@@ -298,7 +298,7 @@ namespace Spartan
 		xml_attribute attribute;
 
 		// Make sure the nod exists
-		auto node = GetNodeByName(nodeName);
+        const auto node = GetNodeByName(nodeName);
 		if (!node)
 		{
 			LOG_WARNING("Can't get attribute \"%s\", node \"%s\" doesn't exist.", attributeName.c_str(), nodeName.c_str());

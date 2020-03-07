@@ -61,14 +61,14 @@ namespace Spartan
 		//============================================================
 
         void RegisterThirdPartyLib(const std::string& name, const std::string& version, const std::string& url);
-        const auto& GetThirdPartyLibs() { return m_third_party_libs; }
+        const auto& GetThirdPartyLibs() const { return m_third_party_libs; }
 
     private:
         void Save() const;
 		void Load();
 
         void Reflect();
-        void Map();
+        void Map() const;
 
 		bool m_is_fullscreen				= false;
 		bool m_is_mouse_visible				= true;

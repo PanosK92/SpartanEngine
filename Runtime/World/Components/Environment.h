@@ -48,7 +48,7 @@ namespace Spartan
 
         void LoadDefault();
 
-        const std::shared_ptr<RHI_Texture>& GetTexture();
+        const std::shared_ptr<RHI_Texture>& GetTexture() const;
         void SetTexture(const std::shared_ptr<RHI_Texture>& texture);
 
 	private:

@@ -33,7 +33,7 @@ namespace Spartan
 	{
 	public:
 		AudioListener(Context* context, Entity* entity, uint32_t id = 0);
-		~AudioListener();
+		~AudioListener() = default;
 
         //= COMPONENT =========================
         void OnInitialize() override;

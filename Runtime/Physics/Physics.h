@@ -58,16 +58,16 @@ namespace Spartan
 		//===================================
 
         // Rigid body
-        void AddBody(btRigidBody* body);
-        void RemoveBody(btRigidBody*& body);
+        void AddBody(btRigidBody* body) const;
+        void RemoveBody(btRigidBody*& body) const;
 
         // Soft body
-        void AddBody(btSoftBody* body);
-        void RemoveBody(btSoftBody*& body);
+        void AddBody(btSoftBody* body) const;
+        void RemoveBody(btSoftBody*& body) const;
 
         // Constraint
-        void AddConstraint(btTypedConstraint* constraint, bool collision_with_linked_body = true);
-        void RemoveConstraint(btTypedConstraint*& constraint);
+        void AddConstraint(btTypedConstraint* constraint, bool collision_with_linked_body = true) const;
+        void RemoveConstraint(btTypedConstraint*& constraint) const;
 
         // Properties
 		Math::Vector3 GetGravity()  const;

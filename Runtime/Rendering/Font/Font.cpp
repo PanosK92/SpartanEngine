@@ -86,8 +86,8 @@ namespace Spartan
 
 	void Font::SetText(const string& text, const Vector2& position)
 	{
-        bool same_text      = text == m_current_text;
-        bool has_buffers    = (m_vertex_buffer && m_index_buffer);
+        const bool same_text      = text == m_current_text;
+        const bool has_buffers    = (m_vertex_buffer && m_index_buffer);
 
 		if (same_text || !has_buffers)
 			return;

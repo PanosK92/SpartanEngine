@@ -40,7 +40,7 @@ namespace Spartan::Math
 	{
 		m_start                 = start;
 		m_end                   = end;
-        Vector3 start_to_end    = (end - start);
+        const Vector3 start_to_end    = (end - start);
         m_length                = start_to_end.Length();
 		m_direction             = start_to_end.Normalized();
 	}
@@ -98,7 +98,7 @@ namespace Spartan::Math
 		// Check for intersecting in the X-direction
 		if (m_start.x < box.GetMin().x && m_direction.x > 0.0f)
 		{
-			auto x = (box.GetMin().x - m_start.x) / m_direction.x;
+            const auto x = (box.GetMin().x - m_start.x) / m_direction.x;
 			if (x < dist)
 			{
 				const auto point = m_start + x * m_direction;

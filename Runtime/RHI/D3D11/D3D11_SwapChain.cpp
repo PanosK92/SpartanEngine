@@ -28,7 +28,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_SwapChain.h"
 #include "../RHI_Device.h"
 #include "../../Logging/Log.h"
-#include "../../Math/Vector4.h"
 #include "../RHI_CommandList.h"
 #include "../../Rendering/Renderer.h"
 #include "../../Profiling/Profiler.h"
@@ -43,7 +42,7 @@ namespace Spartan
 {
 	RHI_SwapChain::RHI_SwapChain(
 		void* window_handle,
-        shared_ptr<RHI_Device> rhi_device,
+        const shared_ptr<RHI_Device>& rhi_device,
 		const uint32_t width,
 		const uint32_t height,
 		const RHI_Format format	    /*= Format_R8G8B8A8_UNORM*/,	
@@ -267,8 +266,8 @@ namespace Spartan
         return true;
     }
 
-	bool RHI_SwapChain::Present()
-	{
+	bool RHI_SwapChain::Present() const
+    {
         if (!m_present)
             return true;
 
@@ -285,7 +284,7 @@ namespace Spartan
 
         // Present
         auto ptr_swap_chain = static_cast<IDXGISwapChain*>(m_swap_chain_view);
-		auto result = ptr_swap_chain->Present(sync_interval, flags);
+        const auto result = ptr_swap_chain->Present(sync_interval, flags);
         if (FAILED(result))
         {
             LOG_ERROR("Failed to present, %s.", d3d11_common::dxgi_error_to_string(result));

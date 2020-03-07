@@ -47,17 +47,17 @@ namespace Spartan
         void Deserialize(FileStream* stream) override;
         //============================================
 
-        const auto& GetHeightMap() { return m_height_map; }
+        const auto& GetHeightMap() const { return m_height_map; }
         void SetHeightMap(const std::shared_ptr<RHI_Texture2D>& height_map);
 
-        float GetMinY()             { return m_min_y; }
+        float GetMinY() const { return m_min_y; }
         void SetMinY(float min_z)   { m_min_y = min_z; }
 
-        float GetMaxY()             { return m_max_y; }
+        float GetMaxY() const { return m_max_y; }
         void SetMaxY(float max_z)   { m_max_y = max_z; }
 
-        float GetProgress() { return static_cast<float>(static_cast<double>(m_progress_jobs_done) / static_cast<double>(m_progress_job_count)); }
-        const auto& GetProgressDescription() { return m_progress_desc; }
+        float GetProgress() const { return static_cast<float>(static_cast<double>(m_progress_jobs_done) / static_cast<double>(m_progress_job_count)); }
+        const auto& GetProgressDescription() const { return m_progress_desc; }
 
         void GenerateAsync();
 
@@ -65,7 +65,7 @@ namespace Spartan
         bool GeneratePositions(std::vector<Math::Vector3>& positions, const std::vector<std::byte>& height_map);
         bool GenerateVerticesIndices(const std::vector<Math::Vector3>& positions, std::vector<uint32_t>& indices, std::vector<RHI_Vertex_PosTexNorTan>& vertices);
         bool GenerateNormalTangents(const std::vector<uint32_t>& indices, std::vector<RHI_Vertex_PosTexNorTan>& vertices);
-        void UpdateFromModel(const std::shared_ptr<Model>& model);
+        void UpdateFromModel(const std::shared_ptr<Model>& model) const;
         void UpdateFromVertices(const std::vector<uint32_t>& indices, std::vector<RHI_Vertex_PosTexNorTan>& vertices);
 
         uint32_t m_width                            = 0;

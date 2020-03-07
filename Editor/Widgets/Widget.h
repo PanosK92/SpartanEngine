@@ -133,12 +133,12 @@ public:
     void PushStyleVar(ImGuiStyleVar idx, T val) { ImGui::PushStyleVar(idx, val); m_var_pushes++; }
 
     // Properties
-	auto IsWindow()					   { return m_is_window; }
+	auto IsWindow() const { return m_is_window; }
 	auto& GetVisible()				   { return m_is_visible; }
 	void SetVisible(bool is_visible)   { m_is_visible = is_visible; }
-	auto GetHeight()				   { return m_height; }
-	auto GetWindow()		           { return m_window; }
-	const auto& GetTitle()	           { return m_title; }
+	auto GetHeight() const { return m_height; }
+	auto GetWindow() const { return m_window; }
+	const auto& GetTitle() const { return m_title; }
 
 protected:
 	bool m_is_visible	                                = true;

@@ -19,12 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==================
+//= INCLUDES ======================
 #include "Widget_Viewport.h"
 #include "../ImGui_Extension.h"
 #include "Core/Timer.h"
 #include "Rendering\Model.h"
-//=============================
+#include "RHI/RHI_Device.h"
+#include "RHI/RHI_Implementation.h"
+//=================================
 
 //= NAMESPACES =========
 using namespace std;
@@ -46,11 +48,11 @@ void Widget_Viewport::Tick()
 {
 	if (!m_renderer)
 		return;
-	
+
 	// Get current frame window resolution
 	uint32_t width			= static_cast<uint32_t>(ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x);
 	uint32_t height			= static_cast<uint32_t>(ImGui::GetWindowContentRegionMax().y - ImGui::GetWindowContentRegionMin().y);
-	const uint32_t max_res	= m_renderer->GetMaxResolution();
+    const uint32_t max_res  = m_renderer->GetRhiDevice()->GetContextRhi()->max_texture_dimension_2d;
 	if (width > max_res || height > max_res)
 		return;
 

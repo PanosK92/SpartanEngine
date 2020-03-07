@@ -170,7 +170,7 @@ namespace Spartan
         m_renderer_flags        = renderer->GetOptions();
     }
 
-    void Settings::Map()
+    void Settings::Map() const
     {
         Renderer* renderer = m_context->GetSubsystem<Renderer>();
 

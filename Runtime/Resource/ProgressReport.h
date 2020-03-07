@@ -60,9 +60,9 @@ namespace Spartan
 			return instance;
 		}
 
-		ProgressReport(){}
+		ProgressReport() = default;
 
-		void Reset(int progressID)
+        void Reset(int progressID)
 		{
 			m_reports[progressID].Clear();
 		}

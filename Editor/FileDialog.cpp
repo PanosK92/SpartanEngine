@@ -140,16 +140,16 @@ void FileDialog::ShowTop(bool* is_visible)
     }
 
     // Size slider
-    float slider_width = 200.0f;
+    const float slider_width = 200.0f;
     ImGui::SameLine(ImGui::GetWindowContentRegionWidth() - slider_width);
 	ImGui::PushItemWidth(slider_width);
-    float previous_width = m_item_size.x;
+    const float previous_width = m_item_size.x;
     ImGui::SliderFloat("##FileDialogSlider", &m_item_size.x, m_item_size_min, m_item_size_max);
     m_item_size.y += m_item_size.x - previous_width;
 	ImGui::PopItemWidth();
 
     // Search filter
-    float label_width = 37.0f; //ImGui::CalcTextSize("Filter", nullptr, true).x;
+    const float label_width = 37.0f; //ImGui::CalcTextSize("Filter", nullptr, true).x;
     m_search_filter.Draw("Filter", ImGui::GetWindowContentRegionWidth() - label_width);
 
 	ImGui::Separator();
@@ -510,7 +510,7 @@ void FileDialog::EmptyAreaContextMenu()
     if (ImGui::MenuItem("Create material"))
     {
         Material material = Material(m_context);
-        string file_path = m_navigation.m_path_current + "/new_material" + EXTENSION_MATERIAL;
+        const string file_path = m_navigation.m_path_current + "/new_material" + EXTENSION_MATERIAL;
         material.SetResourceFilePath(file_path);
         material.SaveToFile(file_path);
         m_is_dirty = true;

@@ -144,8 +144,8 @@ namespace Spartan
         return m_renderer ? m_renderer->GetViewport() : RHI_Viewport::Undefined;
     }
 
-    bool Camera::IsInViewFrustrum(Renderable* renderable)
-	{
+    bool Camera::IsInViewFrustrum(Renderable* renderable) const
+    {
 		const BoundingBox& box  = renderable->GetAabb();
 		const Vector3 center	= box.GetCenter();
 		const Vector3 extents	= box.GetExtents();
@@ -153,16 +153,16 @@ namespace Spartan
 		return m_frustrum.IsVisible(center, extents);
 	}
 
-	bool Camera::IsInViewFrustrum(const Vector3& center, const Vector3& extents)
-	{
+	bool Camera::IsInViewFrustrum(const Vector3& center, const Vector3& extents) const
+    {
 		return m_frustrum.IsVisible(center, extents);
 	}
 
 	bool Camera::Pick(const Vector2& mouse_position, shared_ptr<Entity>& picked)
 	{
-		const auto& viewport				= m_renderer->GetViewport();
-		const auto& offset					= m_renderer->viewport_editor_offset;
-		const auto mouse_position_relative	= mouse_position - offset;
+		const RHI_Viewport& viewport			= m_renderer->GetViewport();
+		const Vector2& offset					= m_renderer->viewport_editor_offset;
+		const Vector2 mouse_position_relative	= mouse_position - offset;
 
 		// Ensure the ray is inside the viewport
 		const auto x_outside = (mouse_position.x < offset.x) || (mouse_position.x > offset.x + viewport.width);
@@ -177,7 +177,7 @@ namespace Spartan
         // Create a struct to hold hit related data
         struct scored_entity
         {
-            scored_entity(const shared_ptr<Entity>& entity, float distance_ray, float distance_obb)
+            scored_entity(const shared_ptr<Entity>& entity, const float distance_ray, const float distance_obb)
             {
                 this->entity = entity;
                 score = distance_ray * 0.1f + distance_obb * 0.9f;
@@ -198,7 +198,7 @@ namespace Spartan
 
             // Score this hit
             const BoundingBox& aabb = hit.m_entity->GetComponent<Renderable>()->GetAabb();
-            float distance_abb      = Vector3::DistanceSquared(hit.m_position, aabb.GetCenter());
+            const float distance_abb      = Vector3::DistanceSquared(hit.m_position, aabb.GetCenter());
             m_scored.emplace_back
             (
                 hit.m_entity,
@@ -246,8 +246,8 @@ namespace Spartan
 
     Rectangle Camera::Project(const BoundingBox& bounding_box) const
     {
-        Vector3 min = bounding_box.GetMin();
-        Vector3 max = bounding_box.GetMax();
+        const Vector3& min = bounding_box.GetMin();
+        const Vector3& max = bounding_box.GetMax();
 
         Vector3 corners[8];
         corners[0] = min;
@@ -300,13 +300,13 @@ namespace Spartan
                 // Snap to initial camera rotation (if this is the first time running)
                 if (mouse_rotation == Vector2::Zero)
                 {
-                    Quaternion rotation = m_transform->GetRotation();
+                    const Quaternion rotation = m_transform->GetRotation();
                     mouse_rotation.x    = rotation.Yaw();
                     mouse_rotation.y    = rotation.Pitch();
                 }
 
                 // Get mouse delta
-                Vector2 mouse_delta = m_input->GetMouseDelta() * mouse_sensitivity;
+                const Vector2 mouse_delta = m_input->GetMouseDelta() * mouse_sensitivity;
 
                 // Lerp to it
                 mouse_smoothed = Math::Lerp(mouse_smoothed, mouse_delta, Clamp(1.0f - mouse_smoothing, 0.0f, 1.0f));
@@ -318,8 +318,8 @@ namespace Spartan
                 mouse_rotation.y = Clamp(mouse_rotation.y, -90.0f, 90.0f);
 
                 // Compute rotation
-                auto xQuaternion = Quaternion::FromAngleAxis(mouse_rotation.x * DEG_TO_RAD, Vector3::Up);
-                auto yQuaternion = Quaternion::FromAngleAxis(mouse_rotation.y * DEG_TO_RAD, Vector3::Right);
+                const auto xQuaternion = Quaternion::FromAngleAxis(mouse_rotation.x * DEG_TO_RAD, Vector3::Up);
+                const auto yQuaternion = Quaternion::FromAngleAxis(mouse_rotation.y * DEG_TO_RAD, Vector3::Right);
 
                 // Rotate
                 m_transform->SetRotationLocal(xQuaternion * yQuaternion);
@@ -353,8 +353,8 @@ namespace Spartan
         }
     }
 
-    Matrix Camera::ComputeViewMatrix()
-	{
+    Matrix Camera::ComputeViewMatrix() const
+    {
 		const auto position	= GetTransform()->GetPosition();
 		auto look_at		= GetTransform()->GetRotation() * Vector3::Forward;
 		const auto up		= GetTransform()->GetRotation() * Vector3::Up;
@@ -368,8 +368,8 @@ namespace Spartan
 
 	Matrix Camera::ComputeProjection(const bool reverse_z)
 	{
-		float near_plane	= !reverse_z ? m_near_plane : m_far_plane;
-        float far_plane     = !reverse_z ? m_far_plane  : m_near_plane;
+        const float near_plane	= !reverse_z ? m_near_plane : m_far_plane;
+        const float far_plane     = !reverse_z ? m_far_plane  : m_near_plane;
 
 		if (m_projection_type == Projection_Perspective)
 		{

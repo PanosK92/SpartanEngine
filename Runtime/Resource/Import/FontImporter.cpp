@@ -297,9 +297,9 @@ namespace Spartan
 			{
 				for (uint32_t x = 0; x < bitmap->width; x++)
 				{
-					uint32_t _x	= pen_x + x;
-					uint32_t _y	= pen_y + y;
-					auto atlas_pos	= _x + _y * atlas_width;
+                    const uint32_t _x	= pen_x + x;
+                    const uint32_t _y	= pen_y + y;
+                    const auto atlas_pos	= _x + _y * atlas_width;
 					SPARTAN_ASSERT(atlas_buffer.size() > atlas_pos);
 
 					switch (bitmap->pixel_mode) 

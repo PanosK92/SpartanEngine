@@ -46,7 +46,7 @@ namespace Spartan
 	void PhysicsDebugDraw::drawContactPoint(const btVector3& PointOnB, const btVector3& normalOnB, btScalar distance, int lifeTime, const btVector3& color)
 	{
 		const btVector3& from = PointOnB;
-		btVector3 to = PointOnB + normalOnB * distance;
+        const btVector3 to = PointOnB + normalOnB * distance;
 		drawLine(from, to, color);
 	}
 

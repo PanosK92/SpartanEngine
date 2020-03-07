@@ -57,8 +57,8 @@ namespace Spartan
 		RegisterLog();
 	}
 
-	void ScriptInterface::RegisterEnumerations()
-	{
+	void ScriptInterface::RegisterEnumerations() const
+    {
 		// Log
 		m_scriptEngine->RegisterEnum("LogType");
 		m_scriptEngine->RegisterEnumValue("LogType", "Info",	int(Log_Info));
@@ -118,8 +118,8 @@ namespace Spartan
 		m_scriptEngine->RegisterEnumValue("ForceMode", "Impulse",	int(Impulse));
 	}
 
-	void ScriptInterface::RegisterTypes()
-	{
+	void ScriptInterface::RegisterTypes() const
+    {
 		m_scriptEngine->RegisterObjectType("Settings", 0, asOBJ_REF | asOBJ_NOCOUNT);
 		m_scriptEngine->RegisterObjectType("Input", 0, asOBJ_REF | asOBJ_NOCOUNT);
 		m_scriptEngine->RegisterObjectType("Time", 0, asOBJ_REF | asOBJ_NOCOUNT);
@@ -138,8 +138,8 @@ namespace Spartan
 	/*------------------------------------------------------------------------------
 										[INPUT]
 	------------------------------------------------------------------------------*/
-	void ScriptInterface::RegisterInput()
-	{
+	void ScriptInterface::RegisterInput() const
+    {
 		m_scriptEngine->RegisterGlobalProperty("Input input", m_context->GetSubsystem<Input>());
 		m_scriptEngine->RegisterObjectMethod("Input", "Vector2 &GetMousePosition()", asMETHOD(Input, GetMousePosition), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("Input", "Vector2 &GetMouseDelta()", asMETHOD(Input, GetMouseDelta), asCALL_THISCALL);
@@ -167,8 +167,8 @@ namespace Spartan
 	/*------------------------------------------------------------------------------
 										[TRANSFORM]
 	------------------------------------------------------------------------------*/
-	void ScriptInterface::RegisterTransform()
-	{
+	void ScriptInterface::RegisterTransform() const
+    {
 		auto r = 0;
 
 		r = m_scriptEngine->RegisterObjectMethod("Transform", "Transform &opAssign(const Transform &in)",	asMETHODPR(Transform, operator =, (const Transform&), Transform&),	asCALL_THISCALL); SPARTAN_ASSERT(r >= 0);
@@ -199,16 +199,16 @@ namespace Spartan
 	/*------------------------------------------------------------------------------
 								[MATERIAL]
 	------------------------------------------------------------------------------*/
-	void ScriptInterface::RegisterMaterial()
-	{
+	void ScriptInterface::RegisterMaterial() const
+    {
 		m_scriptEngine->RegisterObjectMethod("Material", "void SetOffsetUV(Vector2)", asMETHOD(Material, SetOffset), asCALL_THISCALL);
 	}
 
 	/*------------------------------------------------------------------------------
 									[RIGIDBODY]
 	------------------------------------------------------------------------------*/
-	void ScriptInterface::RegisterRigidBody()
-	{
+	void ScriptInterface::RegisterRigidBody() const
+    {
 		m_scriptEngine->RegisterObjectMethod("RigidBody", "RigidBody &opAssign(const RigidBody &in)", asMETHODPR(RigidBody, operator =, (const RigidBody&), RigidBody&), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("RigidBody", "void ApplyForce(Vector3, ForceMode)", asMETHOD(RigidBody, ApplyForce), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("RigidBody", "void ApplyForceAtPosition(Vector3, Vector3, ForceMode)", asMETHOD(RigidBody, ApplyForceAtPosition), asCALL_THISCALL);
@@ -254,8 +254,8 @@ namespace Spartan
 		return *self = *self * value;
 	};
 
-	void ScriptInterface::RegisterVector2()
-	{
+	void ScriptInterface::RegisterVector2() const
+    {
 		auto r = 0;
 
 		r = m_scriptEngine->RegisterObjectBehaviour("Vector2", asBEHAVE_CONSTRUCT, "void f()",					asFUNCTION(ConstructorVector2),								asCALL_CDECL_OBJLAST); 	SPARTAN_ASSERT(r >= 0);
@@ -334,8 +334,8 @@ namespace Spartan
 		return *self * value;
 	}
 
-	void ScriptInterface::RegisterVector3()
-	{
+	void ScriptInterface::RegisterVector3() const
+    {
 		auto r = 0;
 
         // operator overloads http://www.angelcode.com/angelscript/sdk/docs/manual/doc_script_class_ops.html
@@ -390,8 +390,8 @@ namespace Spartan
 		return *self * other;
 	}
 
-	void ScriptInterface::RegisterQuaternion()
-	{
+	void ScriptInterface::RegisterQuaternion() const
+    {
         auto r = 0;
 
 		r = m_scriptEngine->RegisterObjectBehaviour("Quaternion", asBEHAVE_CONSTRUCT, "void f()", asFUNCTION(ConstructorQuaternion), asCALL_CDECL_OBJLAST);                                 SPARTAN_ASSERT(r >= 0);
@@ -418,8 +418,8 @@ namespace Spartan
 	/*------------------------------------------------------------------------------
 												[MATH]
 	------------------------------------------------------------------------------*/
-	void ScriptInterface::RegisterMath()
-	{
+	void ScriptInterface::RegisterMath() const
+    {
 		auto r = 0;
 
 		r = m_scriptEngine->RegisterGlobalFunction("float Lerp(float, float, float)",	asFUNCTIONPR(Lerp,				(float, float, float), float),	asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
@@ -434,8 +434,8 @@ namespace Spartan
 	/*------------------------------------------------------------------------------
 										[LOG]
 	------------------------------------------------------------------------------*/
-	void ScriptInterface::RegisterLog()
-	{
+	void ScriptInterface::RegisterLog() const
+    {
 		auto r = 0;
 
 		r = m_scriptEngine->RegisterGlobalFunction("void Log(const string& in, LogType)",		asFUNCTIONPR(Log::Write, (const string&, Log_Type), void),		asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);

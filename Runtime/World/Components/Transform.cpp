@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World.h"
 #include "../Entity.h"
 #include "../../Core/Context.h"
-#include "../../Core/FileSystem.h"
 #include "../../IO/FileStream.h"
 //================================
 

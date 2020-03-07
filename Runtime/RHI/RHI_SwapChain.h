@@ -37,7 +37,7 @@ namespace Spartan
 	public:
 		RHI_SwapChain(
 			void* window_handle,
-			std::shared_ptr<RHI_Device> rhi_device,
+            const std::shared_ptr<RHI_Device>& rhi_device,
 			uint32_t width,
 			uint32_t height,
 			RHI_Format format		= RHI_Format_R8G8B8A8_Unorm,       
@@ -48,7 +48,7 @@ namespace Spartan
 
 		bool Resize(uint32_t width, uint32_t height);
 		bool AcquireNextImage();
-		bool Present();
+		bool Present() const;
 
         // Misc
         uint32_t GetWidth()				            const { return m_width; }

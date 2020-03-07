@@ -31,7 +31,7 @@ public:
 	ButtonColorPicker(const std::string& windowTitle);
 	void Update();
 	void SetColor(const Spartan::Math::Vector4& color) { m_color = color; }
-	const Spartan::Math::Vector4& GetColor() { return m_color; }
+	const Spartan::Math::Vector4& GetColor() const { return m_color; }
 
 private:
 	void ShowColorPicker();
