@@ -225,41 +225,42 @@ namespace Spartan
 		float m_gizmo_transform_size    = 0.015f;
 		float m_gizmo_transform_speed   = 12.0f;
         Math::Vector2 viewport_editor_offset;
-        std::weak_ptr<Spartan::Entity> SnapTransformGizmoTo(const std::shared_ptr<Entity>& entity) const;
+        std::weak_ptr<Entity> SnapTransformGizmoTo(const std::shared_ptr<Entity>& entity) const;
 
 		// Debug
 		void SetDebugBuffer(const Renderer_Buffer_Type buffer)	{ m_debug_buffer = buffer; }
 		auto GetDebugBuffer() const				                { return m_debug_buffer; }
 
         // Depth
-        auto GetClearDepth()            { return GetOption(Render_ReverseZ) ? m_viewport.depth_min : m_viewport.depth_max; }
-        auto GetComparisonFunction() const { return GetOption(Render_ReverseZ) ? RHI_Comparison_GreaterEqual : RHI_Comparison_LessEqual; }
+        auto GetClearDepth()                { return GetOption(Render_ReverseZ) ? m_viewport.depth_min : m_viewport.depth_max; }
+        auto GetComparisonFunction() const  { return GetOption(Render_ReverseZ) ? RHI_Comparison_GreaterEqual : RHI_Comparison_LessEqual; }
 
         // Environment
         const std::shared_ptr<RHI_Texture>& GetEnvironmentTexture();
         void SetEnvironmentTexture(const std::shared_ptr<RHI_Texture>& texture);
 
         // Options
-        uint64_t GetOptions()                   const { return m_options; }
-        void SetOptions(uint64_t options)             { m_options = options; }
-        bool GetOption(Renderer_Option option)  const { return m_options & option; }
+        uint64_t GetOptions()                           const { return m_options; }
+        void SetOptions(const uint64_t options)               { m_options = options; }
+        bool GetOption(const Renderer_Option option)    const { return m_options & option; }
         void SetOption(Renderer_Option option, bool enable);
         
         // Options values
         template<typename T>
-        T GetOptionValue(Renderer_Option_Value option) { return static_cast<T>(m_option_values[option]); }
+        T GetOptionValue(const Renderer_Option_Value option) { return static_cast<T>(m_option_values[option]); }
         void SetOptionValue(Renderer_Option_Value option, float value);
 
         // Misc
-        const auto& GetRhiDevice()		        const { return m_rhi_device; }
-        const auto& GetSwapChain()              const { return m_swap_chain; }
-        const auto& GetPipelineCache()	        const { return m_pipeline_cache; }
-        RHI_Texture* GetFrameTexture()                { return m_render_targets[RenderTarget_Composition_Ldr].get(); }
-        const auto GetFrameNum()                const { return m_frame_num; }
-        const auto& GetCamera()                 const { return m_camera; }
-        const  auto IsInitialized()             const { return m_initialized; }
-        auto& GetShaders()                      const { return m_shaders; } 
-        const auto IsRendering()                const { return m_is_rendering; }
+        const auto& GetRhiDevice()	    const { return m_rhi_device; }
+        const auto& GetSwapChain()      const { return m_swap_chain; }
+        const auto& GetPipelineCache()  const { return m_pipeline_cache; }
+        RHI_Texture* GetFrameTexture()        { return m_render_targets[RenderTarget_Composition_Ldr].get(); }
+        auto GetFrameNum()              const { return m_frame_num; }
+        const auto& GetCamera()         const { return m_camera; }
+        auto IsInitialized()            const { return m_initialized; }
+        auto& GetShaders()              const { return m_shaders; }
+        auto IsRendering()              const { return m_is_rendering; }
+        uint32_t GetMaxResolution() const;
 
         // Globals
         void SetGlobalShaderObjectTransform(const Math::Matrix& transform) { m_buffer_object_cpu.object = transform; UpdateObjectBuffer(nullptr); }

@@ -266,7 +266,7 @@ namespace Spartan
         return true;
     }
 
-	bool RHI_SwapChain::Present() const
+	bool RHI_SwapChain::Present()
     {
         if (!m_present)
             return true;

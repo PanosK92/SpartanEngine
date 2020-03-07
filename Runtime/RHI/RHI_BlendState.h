@@ -31,7 +31,8 @@ namespace Spartan
 	class SPARTAN_CLASS RHI_BlendState : public RHI_Object
 	{
 	public:
-		RHI_BlendState(const std::shared_ptr<RHI_Device>& device,
+		RHI_BlendState(
+            const std::shared_ptr<RHI_Device>& device,
 			const bool blend_enabled					= false,
 			const RHI_Blend source_blend				= RHI_Blend_Src_Alpha,
 			const RHI_Blend dest_blend				    = RHI_Blend_Inv_Src_Alpha,
@@ -57,12 +58,12 @@ namespace Spartan
 		bool operator==(const RHI_BlendState& rhs) const
 		{
 			return
-				m_blend_enabled         == rhs.GetBlendEnabled() &&
-				m_source_blend          == rhs.GetSourceBlend() &&
-				m_dest_blend            == rhs.GetDestBlend() &&
-				m_blend_op              == rhs.GetBlendOp() &&
-				m_source_blend_alpha    == rhs.GetSourceBlendAlpha() &&
-				m_dest_blend_alpha      == rhs.GetDestBlendAlpha() &&
+				m_blend_enabled         == rhs.GetBlendEnabled()        &&
+				m_source_blend          == rhs.GetSourceBlend()         &&
+				m_dest_blend            == rhs.GetDestBlend()           &&
+				m_blend_op              == rhs.GetBlendOp()             &&
+				m_source_blend_alpha    == rhs.GetSourceBlendAlpha()    &&
+				m_dest_blend_alpha      == rhs.GetDestBlendAlpha()      &&
 				m_blend_op_alpha        == rhs.GetBlendOpAlpha();
 		}
 

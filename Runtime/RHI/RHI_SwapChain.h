@@ -48,7 +48,7 @@ namespace Spartan
 
 		bool Resize(uint32_t width, uint32_t height);
 		bool AcquireNextImage();
-		bool Present() const;
+		bool Present();
 
         // Misc
         uint32_t GetWidth()				            const { return m_width; }

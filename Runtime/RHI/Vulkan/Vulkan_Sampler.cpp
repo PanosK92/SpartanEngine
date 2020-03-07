@@ -21,13 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= IMPLEMENTATION ===============
 #ifdef API_GRAPHICS_VULKAN
+#include "../RHI_Implementation.h"
 //================================
 
 //= INCLUDES ========================
 #include "../RHI_Sampler.h"
 #include "../RHI_Device.h"
 #include "../../Logging/Log.h"
-#include "../../Core/Settings.h"
 #include "../../Core/Context.h"
 #include "../../Rendering/Renderer.h"
 //===================================

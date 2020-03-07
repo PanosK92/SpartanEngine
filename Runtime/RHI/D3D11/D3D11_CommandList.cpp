@@ -267,7 +267,7 @@ namespace Spartan
         return true;
 	}
 
-    void RHI_CommandList::Clear(RHI_PipelineState& pipeline_state) const
+    void RHI_CommandList::Clear(RHI_PipelineState& pipeline_state)
     {
         // Color
         for (auto i = 0; i < state_max_render_target_count; i++)
@@ -311,14 +311,14 @@ namespace Spartan
         pipeline_state.ResetClearValues();
     }
 
-	void RHI_CommandList::Draw(const uint32_t vertex_count) const
+	void RHI_CommandList::Draw(const uint32_t vertex_count)
     {
         m_rhi_device->GetContextRhi()->device_context->Draw(static_cast<UINT>(vertex_count), 0);
 
         m_profiler->m_rhi_draw_calls++;
 	}
 
-	void RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset) const
+	void RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset)
     {
         m_rhi_device->GetContextRhi()->device_context->DrawIndexed
         (
@@ -355,7 +355,7 @@ namespace Spartan
         m_rhi_device->GetContextRhi()->device_context->RSSetScissorRects(1, &d3d11_rectangle);
 	}
 
-	void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer) const
+	void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer)
     {
 		if (!buffer || !buffer->GetResource())
 		{
@@ -381,7 +381,7 @@ namespace Spartan
         m_profiler->m_rhi_bindings_buffer_vertex++;
 	}
 
-	void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer) const
+	void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer)
     {
 		if (!buffer || !buffer->GetResource())
 		{
@@ -477,7 +477,7 @@ namespace Spartan
         m_profiler->m_rhi_bindings_sampler++;
     }
 
-    void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture) const
+    void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture)
     {
         const UINT start_slot                     = slot;
         const UINT range                          = 1;
@@ -524,7 +524,7 @@ namespace Spartan
 		return true;
 	}
 
-    bool RHI_CommandList::Flush() const
+    bool RHI_CommandList::Flush()
     {
         m_rhi_device->GetContextRhi()->device_context->Flush();
         return true;
@@ -573,7 +573,7 @@ namespace Spartan
         return true;
     }
 
-    float RHI_CommandList::Timestamp_GetDuration(void* query_disjoint /*= nullptr*/, void* query_start /*= nullptr*/, void* query_end /*= nullptr*/) const
+    float RHI_CommandList::Timestamp_GetDuration(void* query_disjoint /*= nullptr*/, void* query_start /*= nullptr*/, void* query_end /*= nullptr*/)
     {
         if (!query_disjoint || !query_start || !query_end)
         {

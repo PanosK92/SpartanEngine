@@ -206,7 +206,7 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_Device::Queue_Wait(const RHI_Queue_Type type) const
+    bool RHI_Device::Queue_Wait(const RHI_Queue_Type type)
     {
         m_rhi_context->device_context->Flush();
         return true;

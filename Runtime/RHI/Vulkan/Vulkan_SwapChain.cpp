@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= IMPLEMENTATION ===============
 #ifdef API_GRAPHICS_VULKAN
+#include "../RHI_Implementation.h"
 //================================
 
 //= INCLUDES ========================
@@ -203,7 +204,7 @@ namespace Spartan
 
 	RHI_SwapChain::RHI_SwapChain(
 		void* window_handle,
-        shared_ptr<RHI_Device> rhi_device,
+        const shared_ptr<RHI_Device>& rhi_device,
 		const uint32_t width,
 		const uint32_t height,
         const RHI_Format format		/*= Format_R8G8B8A8_UNORM */,

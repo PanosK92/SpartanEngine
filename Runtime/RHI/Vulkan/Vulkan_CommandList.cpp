@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= IMPLEMENTATION ===============
 #ifdef API_GRAPHICS_VULKAN
+#include "../RHI_Implementation.h"
 //================================
 
 //= INCLUDES ========================
@@ -253,12 +254,12 @@ namespace Spartan
         m_profiler->m_rhi_draw_calls++;
 	}
 
-    void RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z /*= 1*/)
+    void RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z /*= 1*/) const
     {
         
     }
 
-	void RHI_CommandList::SetViewport(const RHI_Viewport& viewport)
+	void RHI_CommandList::SetViewport(const RHI_Viewport& viewport) const
 	{
         if (m_cmd_state != RHI_Cmd_List_Recording)
         {
@@ -282,7 +283,7 @@ namespace Spartan
         );
 	}
 
-	void RHI_CommandList::SetScissorRectangle(const Math::Rectangle& scissor_rectangle)
+	void RHI_CommandList::SetScissorRectangle(const Math::Rectangle& scissor_rectangle) const
 	{
         if (m_cmd_state != RHI_Cmd_List_Recording)
         {
@@ -352,7 +353,7 @@ namespace Spartan
         m_set_id_buffer_pixel = buffer->GetId();
 	}
 
-    void RHI_CommandList::SetConstantBuffer(const uint32_t slot, uint8_t scope, RHI_ConstantBuffer* constant_buffer)
+    void RHI_CommandList::SetConstantBuffer(const uint32_t slot, uint8_t scope, RHI_ConstantBuffer* constant_buffer) const
     {
         if (m_cmd_state != RHI_Cmd_List_Recording)
         {
@@ -364,7 +365,7 @@ namespace Spartan
         m_pipeline->GetDescriptorSet()->SetConstantBuffer(slot, constant_buffer);
     }
 
-    void RHI_CommandList::SetSampler(const uint32_t slot, RHI_Sampler* sampler)
+    void RHI_CommandList::SetSampler(const uint32_t slot, RHI_Sampler* sampler) const
     {
         if (m_cmd_state != RHI_Cmd_List_Recording)
         {
@@ -479,7 +480,7 @@ namespace Spartan
         return static_cast<uint32_t>(device_memory_budget_properties.heapUsage[0] / 1024 / 1024); // MBs
     }
 
-    bool RHI_CommandList::Timestamp_Start(void* query_disjoint /*= nullptr*/, void* query_start /*= nullptr*/)
+    bool RHI_CommandList::Timestamp_Start(void* query_disjoint /*= nullptr*/, void* query_start /*= nullptr*/) const
     {
         if (!m_rhi_device->GetContextRhi()->profiler)
             return true;
@@ -502,7 +503,7 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_CommandList::Timestamp_End(void* query_disjoint /*= nullptr*/, void* query_end /*= nullptr*/)
+    bool RHI_CommandList::Timestamp_End(void* query_disjoint /*= nullptr*/, void* query_end /*= nullptr*/) const
     {
         if (!m_rhi_device->GetContextRhi()->profiler)
             return true;
@@ -530,8 +531,8 @@ namespace Spartan
         if (!m_query_pool)
             return false;
 
-        uint32_t query_count    = static_cast<uint32_t>(m_timestamps.size());
-        size_t stride           = sizeof(uint64_t);
+        const uint32_t query_count    = static_cast<uint32_t>(m_timestamps.size());
+        const size_t stride           = sizeof(uint64_t);
 
         if (vkGetQueryPoolResults(
                 m_rhi_device->GetContextRhi()->device,  // device
