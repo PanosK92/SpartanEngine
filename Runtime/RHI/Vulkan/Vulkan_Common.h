@@ -604,7 +604,7 @@ namespace Spartan::vulkan_common
             VkMemoryAllocateInfo allocate_info  = {};
             allocate_info.sType                 = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
             allocate_info.allocationSize        = memory_requirements.size;
-            allocate_info.memoryTypeIndex       = vulkan_common::memory::get_type(rhi_context, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memory_requirements.memoryTypeBits);
+            allocate_info.memoryTypeIndex       = memory::get_type(rhi_context, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memory_requirements.memoryTypeBits);
 
             if (!error::check(vkAllocateMemory(rhi_context->device, &allocate_info, nullptr, memory)))
                 return false;
@@ -620,25 +620,33 @@ namespace Spartan::vulkan_common
             return true;
         }
 
-        inline VkImageAspectFlags get_aspect_mask(const RHI_Texture* texture)
+        inline VkImageAspectFlags get_aspect_mask(const RHI_Texture* texture, const bool only_depth = false, const bool only_stencil = false)
         {
             VkImageAspectFlags aspect_mask = 0;
 
-            if (texture->IsDepthFormat())
+            if (texture->IsColorFormat() && texture->IsDepthStencil())
             {
-                aspect_mask |= VK_IMAGE_ASPECT_DEPTH_BIT;
-            }
-
-            if (texture->IsStencilFormat())
-            {
-                aspect_mask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+                LOG_ERROR("Texture can't be both color and depth-stencil");
+                return aspect_mask;
             }
 
             if (texture->IsColorFormat())
             {
                 aspect_mask |= VK_IMAGE_ASPECT_COLOR_BIT;
             }
+            else
+            {
+                if (texture->IsDepthFormat() && !only_stencil)
+                {
+                    aspect_mask |= VK_IMAGE_ASPECT_DEPTH_BIT;
+                }
 
+                if (texture->IsStencilFormat() && !only_depth)
+                {
+                    aspect_mask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+                }
+            }
+            
             return aspect_mask;
         }
 
@@ -670,7 +678,7 @@ namespace Spartan::vulkan_common
             create_info.samples             = VK_SAMPLE_COUNT_1_BIT;
             create_info.sharingMode         = VK_SHARING_MODE_EXCLUSIVE;
 
-            return vulkan_common::error::check(vkCreateImage(rhi_context->device, &create_info, nullptr, &image));
+            return error::check(vkCreateImage(rhi_context->device, &create_info, nullptr, &image));
         }
 
         inline void destroy(const RHI_Context* rhi_context, void*& image)
@@ -768,7 +776,7 @@ namespace Spartan::vulkan_common
             return stages;
         }
 
-        inline VkPipelineStageFlags layout_to_access_mask(VkImageLayout layout, bool is_destination_mask)
+        inline VkPipelineStageFlags layout_to_access_mask(const VkImageLayout layout, const bool is_destination_mask)
         {
             VkPipelineStageFlags access_mask = 0;
 
@@ -866,7 +874,7 @@ namespace Spartan::vulkan_common
                 }
                 else if (image_barrier.srcAccessMask != 0)
                 {
-                    source_stage = vulkan_common::image::access_flags_to_pipeline_stage(image_barrier.srcAccessMask, rhi_device->GetEnabledGraphicsStages());
+                    source_stage = access_flags_to_pipeline_stage(image_barrier.srcAccessMask, rhi_device->GetEnabledGraphicsStages());
                 }
                 else
                 {
@@ -882,7 +890,7 @@ namespace Spartan::vulkan_common
                 }
                 else if (image_barrier.dstAccessMask != 0)
                 {
-                    destination_stage = vulkan_common::image::access_flags_to_pipeline_stage(image_barrier.dstAccessMask, rhi_device->GetEnabledGraphicsStages());
+                    destination_stage = access_flags_to_pipeline_stage(image_barrier.dstAccessMask, rhi_device->GetEnabledGraphicsStages());
                 }
                 else
                 {
@@ -905,7 +913,7 @@ namespace Spartan::vulkan_common
 
         inline bool set_layout(const RHI_Device* rhi_device, void* cmd_buffer, const RHI_Texture* texture, const RHI_Image_Layout layout_new)
         {
-            return set_layout(rhi_device, cmd_buffer, texture->GetResource_Texture(), get_aspect_mask(texture), texture->GetMiplevels(), texture->GetArraySize(), texture->GetLayout(), layout_new);
+            return set_layout(rhi_device, cmd_buffer, texture->Get_Texture(), get_aspect_mask(texture), texture->GetMiplevels(), texture->GetArraySize(), texture->GetLayout(), layout_new);
         }
 
         inline bool set_layout(const RHI_Device* rhi_device, void* cmd_buffer, void* image, const RHI_SwapChain* swapchain, const RHI_Image_Layout layout_new)
@@ -936,7 +944,7 @@ namespace Spartan::vulkan_common
                 return error::check(vkCreateImageView(rhi_context->device, &create_info, nullptr, image_view_vk));
             }
 
-            inline bool create(const RHI_Context* rhi_context, void* image, void*& image_view, const RHI_Texture* texture)
+            inline bool create(const RHI_Context* rhi_context, void* image, void*& image_view, const RHI_Texture* texture, const bool only_depth = false, const bool only_stencil = false)
             {
                 VkImageViewType type = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
 
@@ -949,7 +957,7 @@ namespace Spartan::vulkan_common
                     type = (texture->GetArraySize() == 1) ? VK_IMAGE_VIEW_TYPE_CUBE : VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
                 }
 
-                return create(rhi_context, image, image_view, type, vulkan_format[texture->GetFormat()], get_aspect_mask(texture), texture->GetMiplevels(), texture->GetArraySize());
+                return create(rhi_context, image, image_view, type, vulkan_format[texture->GetFormat()], get_aspect_mask(texture, only_depth, only_stencil), texture->GetMiplevels(), texture->GetArraySize());
             }
 
             inline void destroy(const RHI_Context* rhi_context, void*& image_view)
@@ -1429,7 +1437,7 @@ namespace Spartan::vulkan_common
             return VK_FALSE;
         }
 
-        static void debug::initialize(VkInstance instance)
+        static void initialize(VkInstance instance)
         {
             if (functions::create_messenger)
             {

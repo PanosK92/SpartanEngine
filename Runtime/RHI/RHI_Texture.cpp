@@ -101,8 +101,7 @@ namespace Spartan
 		file->Write(m_height);
         file->Write(static_cast<uint32_t>(m_format));
 		file->Write(m_channels);
-		file->Write(m_is_grayscale);
-		file->Write(m_is_transparent);
+		file->Write(m_flags);
 		file->Write(GetId());
 		file->Write(GetResourceFilePath());
 
@@ -130,7 +129,7 @@ namespace Spartan
 		}	
 		else if (FileSystem::IsSupportedImageFile(path)) // foreign format (most known image formats)
 		{
-			texture_data_loaded = LoadFromFile_ForeignFormat(path, m_generate_mipmaps_when_loading);
+			texture_data_loaded = LoadFromFile_ForeignFormat(path, m_flags & RHI_Texture_GenerateMipsWhenLoading);
 		}
 
         // Ensure that we have the data
@@ -187,7 +186,7 @@ namespace Spartan
 		return &m_data[index];
 	}
 
-    vector<std::byte> RHI_Texture::GetMipmap(uint32_t index)
+    vector<std::byte> RHI_Texture::GetMipmap(const uint32_t index)
     {
         vector<std::byte> data;
 
@@ -266,8 +265,7 @@ namespace Spartan
 		file->Read(&m_height);
         file->Read(reinterpret_cast<uint32_t*>(&m_format));
 		file->Read(&m_channels);
-		file->Read(&m_is_grayscale);
-		file->Read(&m_is_transparent);
+		file->Read(&m_flags);
 		SetId(file->ReadAs<uint32_t>());
 		SetResourceFilePath(file->ReadAs<string>());
 

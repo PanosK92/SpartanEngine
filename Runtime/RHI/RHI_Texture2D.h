@@ -41,7 +41,7 @@ namespace Spartan
 			m_channels		= GetChannelCountFromFormat(format);
 			m_format		= format;		
 			m_data			= data;
-			m_bind_flags	= RHI_Texture_ShaderView;
+			m_flags	        = RHI_Texture_ShaderView;
             m_mip_levels    = static_cast<uint32_t>(data.size());
 
 			RHI_Texture2D::CreateResourceGpu();
@@ -58,7 +58,7 @@ namespace Spartan
 			m_viewport		= RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
 			m_channels		= GetChannelCountFromFormat(format);
 			m_format		= format;
-			m_bind_flags	= RHI_Texture_ShaderView;
+			m_flags	        = RHI_Texture_ShaderView;
             m_mip_levels    = 1;
 
 			RHI_Texture2D::CreateResourceGpu();
@@ -67,25 +67,25 @@ namespace Spartan
 		// Creates an empty texture (intended for deferred loading)
 		RHI_Texture2D(Context* context, const bool generate_mipmaps = true) : RHI_Texture(context)
 		{
-			m_resource_type		            = Resource_Texture2d;
-			m_bind_flags		            = RHI_Texture_ShaderView;
-			m_generate_mipmaps_when_loading	= generate_mipmaps;
+			m_resource_type = Resource_Texture2d;
+			m_flags         = RHI_Texture_ShaderView;
+            m_flags         |= generate_mipmaps ? RHI_Texture_GenerateMipsWhenLoading : 0;
 		}
 
 		// Creates a texture without any data (intended for usage as a render target)
-		RHI_Texture2D(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const uint32_t array_size = 1, uint16_t flags = 0) : RHI_Texture(context)
+		RHI_Texture2D(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const uint32_t array_size = 1, const uint16_t flags = 0) : RHI_Texture(context)
 		{
-			m_resource_type		= Resource_Texture2d;
-			m_width				= width;
-			m_height			= height;
-			m_channels			= GetChannelCountFromFormat(format);
-			m_viewport			= RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
-			m_format			= format;
-			m_array_size		= array_size;
-            m_bind_flags        = flags;
-            m_bind_flags        |= RHI_Texture_ShaderView;
-			m_bind_flags		|= IsDepthFormat() ? RHI_Texture_DepthStencilView : RHI_Texture_RenderTargetView;
-            m_mip_levels        = 1;
+			m_resource_type	= Resource_Texture2d;
+			m_width			= width;
+			m_height		= height;
+			m_channels		= GetChannelCountFromFormat(format);
+			m_viewport		= RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
+			m_format		= format;
+			m_array_size	= array_size;
+            m_flags         = flags;
+            m_flags         |= RHI_Texture_ShaderView;
+			m_flags		    |= IsDepthFormat() ? RHI_Texture_DepthStencilView : RHI_Texture_RenderTargetView;
+            m_mip_levels    = 1;
 
 			RHI_Texture2D::CreateResourceGpu();
 		}

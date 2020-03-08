@@ -61,12 +61,12 @@ namespace Spartan
             }
         }
 
-        bool is_swapchain                   = render_target_swapchain != nullptr;
-        uint32_t render_target_color_count  = is_swapchain ? 1 : static_cast<uint32_t>(used_render_target_color.size());
-        uint32_t render_target_depth_count  = render_target_depth_texture ? 1 : 0;
-        uint32_t render_target_width        = is_swapchain ? render_target_swapchain->GetWidth()    : render_target_color_count != 0 ? used_render_target_color[0]->GetWidth()  : ( render_target_depth_texture ? render_target_depth_texture->GetWidth() : 0);
-        uint32_t render_target_height       = is_swapchain ? render_target_swapchain->GetHeight()   : render_target_color_count != 0 ? used_render_target_color[0]->GetHeight() : ( render_target_depth_texture ? render_target_depth_texture->GetHeight() : 0);
-        RHI_Texture** target_array          = is_swapchain ? nullptr : used_render_target_color.data();
+        const bool is_swapchain                     = render_target_swapchain != nullptr;
+        const uint32_t render_target_color_count    = is_swapchain ? 1 : static_cast<uint32_t>(used_render_target_color.size());
+        const uint32_t render_target_depth_count    = render_target_depth_texture ? 1 : 0;
+        const uint32_t render_target_width          = is_swapchain ? render_target_swapchain->GetWidth()    : render_target_color_count != 0 ? used_render_target_color[0]->GetWidth()  : ( render_target_depth_texture ? render_target_depth_texture->GetWidth() : 0);
+        const uint32_t render_target_height         = is_swapchain ? render_target_swapchain->GetHeight()   : render_target_color_count != 0 ? used_render_target_color[0]->GetHeight() : ( render_target_depth_texture ? render_target_depth_texture->GetHeight() : 0);
+        RHI_Texture** target_array                  = is_swapchain ? nullptr : used_render_target_color.data();
 
         // Destroy existing render pass and frame buffer (if any)
         DestroyFrameResources();
@@ -101,13 +101,13 @@ namespace Spartan
             // Color
             for (uint32_t i = 0; i < render_target_color_count; i++)
             {
-                attachments[i] = used_render_target_color[i]->GetResource_ShaderView();
+                attachments[i] = used_render_target_color[i]->Get_View_Texture();
             }
             
             // Depth
             if (render_target_depth_texture)
             {
-                attachments.back() = render_target_depth_texture->GetResource_ShaderView();
+                attachments.back() = render_target_depth_texture->Get_View_Texture();
             }
 
             // Create a frame buffer
