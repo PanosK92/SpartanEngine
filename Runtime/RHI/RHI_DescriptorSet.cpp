@@ -125,7 +125,7 @@ namespace Spartan
 
                 // Update
                 descriptor.id       = texture->GetId();
-                descriptor.resource = texture->GetResource_ShaderView();
+                descriptor.resource = texture->Get_View_Texture();
                 descriptor.layout   = texture->GetLayout();
 
                 break;

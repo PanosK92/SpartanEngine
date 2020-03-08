@@ -202,7 +202,7 @@ namespace Spartan
         if (!descriptor_set)
             return;
 
-        uint32_t descriptor_count = static_cast<uint32_t>(m_descriptors.size());
+        const uint32_t descriptor_count = static_cast<uint32_t>(m_descriptors.size());
         
         vector<VkDescriptorImageInfo> image_infos;
         image_infos.reserve(descriptor_count);
@@ -228,7 +228,7 @@ namespace Spartan
             });
         
             // Constant/Uniform buffer
-            bool is_constant_buffer = resource_blueprint.type == RHI_Descriptor_ConstantBuffer || resource_blueprint.type == RHI_Descriptor_ConstantBufferDynamic;
+            const bool is_constant_buffer = resource_blueprint.type == RHI_Descriptor_ConstantBuffer || resource_blueprint.type == RHI_Descriptor_ConstantBufferDynamic;
             buffer_infos.push_back
             ({
                 is_constant_buffer ? static_cast<VkBuffer>(resource_blueprint.resource) : nullptr,  // buffer
