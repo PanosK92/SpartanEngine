@@ -316,7 +316,7 @@ namespace Spartan
         // Constant buffers
         bool UpdateFrameBuffer();
         bool UpdateUberBuffer();
-        bool UpdateObjectBuffer(RHI_CommandList* cmd_list, const uint32_t offset_index = 0);
+        bool UpdateObjectBuffer(RHI_CommandList* cmd_list, const uint32_t entity_index = 0);
         bool UpdateLightBuffer(const Light* light);
 
         // Misc

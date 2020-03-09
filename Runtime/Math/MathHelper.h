@@ -99,6 +99,9 @@ namespace Spartan::Math
 	constexpr T Pow(T x, T y) { return pow(x, y); }
 
     template <class T>
+    constexpr T Log(T x) { return log(x); }
+
+    template <class T>
     constexpr T Saturate(T x) { return Clamp(x, static_cast<T>(0), static_cast<T>(1)); }
 
     template <class T>
@@ -108,5 +111,22 @@ namespace Spartan::Math
         std::mt19937 eng(rd());                             // seed the generator
         std::uniform_real_distribution<T> distr(from, to);  // define the range
         return distr(eng);
+    }
+
+    constexpr uint32_t NextPowerOfTwo(uint32_t n)
+    {
+        if (n < 2)
+            return 2;
+
+        if (n % 2 == 0)
+            return n << 1;
+
+        --n;
+        n |= n >> 1;
+        n |= n >> 2;
+        n |= n >> 4;
+        n |= n >> 8;
+        n |= n >> 16;
+        return n++;
     }
 }

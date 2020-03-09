@@ -41,7 +41,7 @@ namespace Spartan
 		safe_release(*reinterpret_cast<ID3D11Buffer**>(&m_buffer));
 	}
 
-	void* RHI_ConstantBuffer::Map() const
+	void* RHI_ConstantBuffer::Map(const uint32_t offset_index /*= 0*/) const
     {
 		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device_context || !m_buffer)
 		{
@@ -101,7 +101,7 @@ namespace Spartan
 		return true;
 	}
 
-    bool RHI_ConstantBuffer::Flush(uint32_t offset_index /*= 0*/)
+    bool RHI_ConstantBuffer::Flush(const uint32_t offset_index /*= 0*/)
     {
         return true;
     }

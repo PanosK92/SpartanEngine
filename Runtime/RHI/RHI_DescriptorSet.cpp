@@ -52,30 +52,35 @@ namespace Spartan
     {
         for (RHI_Descriptor& descriptor : m_descriptors)
         {
-            const bool is_dynamic     = constant_buffer->IsDynamic();
-            const bool is_same_type   = (!is_dynamic && descriptor.type == RHI_Descriptor_ConstantBuffer) || (is_dynamic && descriptor.type == RHI_Descriptor_ConstantBufferDynamic);
+            const bool is_dynamic   = constant_buffer->IsDynamic();
+            const bool is_same_type = (!is_dynamic && descriptor.type == RHI_Descriptor_ConstantBuffer) || (is_dynamic && descriptor.type == RHI_Descriptor_ConstantBufferDynamic);
+            const bool is_match     = is_same_type && descriptor.slot == slot + m_rhi_device->GetContextRhi()->shader_shift_buffer;
 
-            if (is_same_type && descriptor.slot == slot + m_rhi_device->GetContextRhi()->shader_shift_buffer)
+            if (is_match)
             {
-                // Determine if the descriptor set needs bind
-                m_needs_to_bind = descriptor.id      != constant_buffer->GetId()     ? true : m_needs_to_bind;
-                m_needs_to_bind = descriptor.offset  != constant_buffer->GetOffset() ? true : m_needs_to_bind;
+                // Determine if the descriptor set needs to bind
+                m_needs_to_bind = descriptor.id     != constant_buffer->GetId()     ? true : m_needs_to_bind;
+                m_needs_to_bind = descriptor.offset != constant_buffer->GetOffset() ? true : m_needs_to_bind;
+                m_needs_to_bind = descriptor.range  != constant_buffer->GetStride() ? true : m_needs_to_bind;
+                m_needs_to_bind = !m_constant_buffer_dynamic_offsets.empty() ? (m_constant_buffer_dynamic_offsets[0]  != constant_buffer->GetOffsetDynamic()  ? true : m_needs_to_bind) : m_needs_to_bind;
 
                 // Update
                 descriptor.id       = constant_buffer->GetId();
                 descriptor.resource = constant_buffer->GetResource();     
                 descriptor.offset   = constant_buffer->GetOffset();
-    
-                // Dynamic offset
+                descriptor.range    = constant_buffer->GetStride();
+
+                // Update the dynamic offset.
+                // Note: This is not directly related to the descriptor, it a value that gets set when vkCmdBindDescriptorSets is called, just before a draw call.
                 if (is_dynamic)
                 {
                     if (m_constant_buffer_dynamic_offsets.empty())
                     {
-                        m_constant_buffer_dynamic_offsets.emplace_back(constant_buffer->GetOffset());
+                        m_constant_buffer_dynamic_offsets.emplace_back(constant_buffer->GetOffsetDynamic());
                     }
                     else
                     {
-                        m_constant_buffer_dynamic_offsets[0] = constant_buffer->GetOffset();
+                        m_constant_buffer_dynamic_offsets[0] = constant_buffer->GetOffsetDynamic();
                     }
                 }
 
@@ -90,7 +95,7 @@ namespace Spartan
         {
             if (descriptor.type == RHI_Descriptor_Sampler && descriptor.slot == slot + m_rhi_device->GetContextRhi()->shader_shift_sampler)
             {
-                // Determine if the descriptor set needs bind
+                // Determine if the descriptor set needs to bind
                 m_needs_to_bind = descriptor.id != sampler->GetId() ? true : m_needs_to_bind;
 
                 // Update
@@ -120,7 +125,7 @@ namespace Spartan
         {
             if (descriptor.type == RHI_Descriptor_Texture && descriptor.slot == slot + m_rhi_device->GetContextRhi()->shader_shift_texture)
             {
-                // Determine if the descriptor set needs bind
+                // Determine if the descriptor set needs to bind
                 m_needs_to_bind = descriptor.id != texture->GetId() ? true : m_needs_to_bind;
 
                 // Update
@@ -168,7 +173,8 @@ namespace Spartan
             Utility::Hash::hash_combine(hash, descriptor.stage);
             Utility::Hash::hash_combine(hash, descriptor.id);
             Utility::Hash::hash_combine(hash, descriptor.offset);
-            Utility::Hash::hash_combine(hash, descriptor.resource); // ideally, i should detect when a dynamic constant buffer re-allocates and update the descriptor set, instead of hashing the same buffer with different resource pointers.
+            Utility::Hash::hash_combine(hash, descriptor.range);
+            Utility::Hash::hash_combine(hash, descriptor.resource);
             Utility::Hash::hash_combine(hash, static_cast<uint32_t>(descriptor.type));
             Utility::Hash::hash_combine(hash, static_cast<uint32_t>(descriptor.layout));
         }
