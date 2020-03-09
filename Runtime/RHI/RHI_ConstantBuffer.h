@@ -31,40 +31,49 @@ namespace Spartan
 	class SPARTAN_CLASS RHI_ConstantBuffer : public RHI_Object
 	{
 	public:
-		RHI_ConstantBuffer(const std::shared_ptr<RHI_Device>& rhi_device)
+		RHI_ConstantBuffer(const std::shared_ptr<RHI_Device>& rhi_device, bool is_dynamic = false)
 		{
 			m_rhi_device = rhi_device;
+            m_is_dynamic = is_dynamic;
 		}
 		~RHI_ConstantBuffer();
 
 		template<typename T>
-		bool Create(const uint32_t instance_count = 1)
+		bool Create(const uint32_t element_count = 1)
 		{
             m_stride        = static_cast<uint32_t>(sizeof(T));
-            m_offset_count  = instance_count;
-            m_size_gpu      = static_cast<uint64_t>(m_stride * instance_count);
+            m_element_count = element_count;
+            m_size_gpu      = static_cast<uint64_t>(m_stride * m_element_count);
 			return _Create();
 		}
 
-		void* Map() const;
+		void* Map(const uint32_t offset_index = 0) const;
 		bool Unmap() const;
-        bool Flush(uint32_t offset_index = 0);
+        bool Flush(const uint32_t offset_index = 0);
 
-		auto GetResource()          const { return m_buffer; }
-        auto GetStride()            const { return m_stride; }
-        bool IsDynamic()            const { return m_offset_count > 1; }
-        uint32_t GetOffsetCount()   const { return m_offset_count; }
-        uint32_t GetOffset()        const { return m_offset_index * m_stride; }
+		void* GetResource()         const { return m_buffer; }
+        uint32_t GetStride()        const { return m_stride; }
+        uint32_t GetElementCount()  const { return m_element_count; }
 
-        uint32_t GetOffsetIndex() const                     { return m_offset_index; }
-        void SetOffsetIndex(const uint32_t offset_index)    { m_offset_index = offset_index; }
+        // Static offset - The kind of offset that is used when updating the buffer
+        uint32_t GetOffset()                                const { return m_offset_index * m_stride; }
+        uint32_t GetOffsetInex()                                  { return m_offset_index; }
+        void SetOffsetIndex(const uint32_t offset_index)          { m_offset_index = offset_index; }
+        
+        // Dynamic offset - The kind of offset that is used before a draw call, it assumes the buffer is already updated, so it only works as pointer.
+        bool IsDynamic()                                        const { return m_is_dynamic; }
+        uint32_t GetOffsetDynamic()                             const { return m_offset_dynamic_index * m_stride; }
+        uint32_t GetOffsetIndexDynamic()                        const { return m_offset_dynamic_index; }
+        void SetOffsetIndexDynamic(const uint32_t offset_index)       { m_offset_dynamic_index = offset_index; }
 
 	private:
 		bool _Create();
 
-        uint32_t m_stride       = 0;
-        uint32_t m_offset_count = 0;
-        uint32_t m_offset_index = 0;
+        bool m_is_dynamic               = false;
+        uint32_t m_stride               = 0;
+        uint32_t m_element_count        = 1;
+        uint32_t m_offset_index         = 0;
+        uint32_t m_offset_dynamic_index = 0;
 
 		std::shared_ptr<RHI_Device> m_rhi_device;
 
