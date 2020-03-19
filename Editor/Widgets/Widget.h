@@ -105,7 +105,7 @@ public:
         {
             // Enters here if the window is hidden as part of an unselected tab.
             // ImGui::Begin() makes the window and but returns false, then ImGui still expects ImGui::End() to be called.
-            // So we make sure that when Widget::End() we call ImGui::End().
+            // So we make sure that when Widget::End() is called, ImGui::End() get's called as well.
             // Note: ImGui's docking is in beta, so maybe it's at fault here ?
             m_begun = true;
         }
