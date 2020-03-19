@@ -47,7 +47,7 @@ namespace _Editor
 	Widget* widget_menu_bar		= nullptr;
 	Widget* widget_toolbar		= nullptr;
 	Widget* widget_world		= nullptr;
-	const char* dockspace_name	= "EditorDockspace";
+	const char* editor_name	    = "SpartanEditor";
 }
 
 Editor::~Editor()
@@ -187,7 +187,7 @@ void Editor::Widgets_Tick()
 {
 	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable)
     {
-        DockSpace_Begin();
+        MainWindow_Begin();
     }
 
 	for (auto& widget : m_widgets)
@@ -199,106 +199,158 @@ void Editor::Widgets_Tick()
 
 	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable)
     {
-        DockSpace_End();
+        MainWindow_End();
     }
 }
 
-void Editor::DockSpace_Begin() const
+void Editor::MainWindow_Begin()
 {
-	auto open = true;
-
-	// Flags
+	// Set window flags
 	const auto window_flags =
-		ImGuiWindowFlags_MenuBar |
-		ImGuiWindowFlags_NoDocking |
-		ImGuiWindowFlags_NoTitleBar |
-		ImGuiWindowFlags_NoCollapse |
-		ImGuiWindowFlags_NoResize |
-		ImGuiWindowFlags_NoMove |
-		ImGuiWindowFlags_NoBringToFrontOnFocus |
+		ImGuiWindowFlags_MenuBar                |
+		ImGuiWindowFlags_NoDocking              |
+		ImGuiWindowFlags_NoTitleBar             |
+		ImGuiWindowFlags_NoCollapse             |
+		ImGuiWindowFlags_NoResize               |
+		ImGuiWindowFlags_NoMove                 |
+		ImGuiWindowFlags_NoBringToFrontOnFocus  |
 		ImGuiWindowFlags_NoNavFocus;
 
-	// Size, Pos
-	float offset_y = 0;
-    offset_y += _Editor::widget_menu_bar ? _Editor::widget_menu_bar->GetHeight() : 0;
-    offset_y += _Editor::widget_toolbar ? _Editor::widget_toolbar->GetHeight() : 0;
-	const auto viewport = ImGui::GetMainViewport();
+	// Set window position and size
+	float offset_y  = 0;
+    offset_y        += _Editor::widget_menu_bar ? _Editor::widget_menu_bar->GetHeight() : 0;
+    offset_y        += _Editor::widget_toolbar  ? _Editor::widget_toolbar->GetHeight()  : 0;
+	const ImGuiViewport* viewport = ImGui::GetMainViewport();
 	ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x, viewport->Pos.y + offset_y));
 	ImGui::SetNextWindowSize(ImVec2(viewport->Size.x, viewport->Size.y - offset_y));
 	ImGui::SetNextWindowViewport(viewport->ID);
 
-	// Style
+	// Set window style
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-	ImGui::SetNextWindowBgAlpha(0.0f);
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-	ImGui::Begin(_Editor::dockspace_name, &open, window_flags);
-	ImGui::PopStyleVar();
-	ImGui::PopStyleVar(2);
+    ImGui::SetNextWindowBgAlpha(0.0f);
 
-	// Dock space
-	const auto dockspace_id = ImGui::GetID(_Editor::dockspace_name);
-	if (!ImGui::DockBuilderGetNode(dockspace_id))
-	{
-		// Reset current docking state
-		ImGui::DockBuilderRemoveNode(dockspace_id);
-		ImGui::DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_None);
-        ImGui::DockBuilderSetNodeSize(dockspace_id, ImGui::GetMainViewport()->Size);
+    // Begin window
+    bool open = true;
+    m_editor_begun = ImGui::Begin(_Editor::editor_name, &open, window_flags);
+    ImGui::PopStyleVar(3);
 
-		// DockBuilderSplitNode(ImGuiID node_id, ImGuiDir split_dir, float size_ratio_for_node_at_dir, ImGuiID* out_id_dir, ImGuiID* out_id_other);
-        ImGuiID dock_main_id		= dockspace_id;
-        ImGuiID dock_right_id		= ImGui::DockBuilderSplitNode(dock_main_id,		ImGuiDir_Right, 0.2f,   nullptr, &dock_main_id);
-        const ImGuiID dock_right_down_id	= ImGui::DockBuilderSplitNode(dock_right_id,	ImGuiDir_Down,	0.6f,   nullptr, &dock_right_id);
-        ImGuiID dock_down_id		= ImGui::DockBuilderSplitNode(dock_main_id,		ImGuiDir_Down,	0.25f,  nullptr, &dock_main_id);
-        const ImGuiID dock_down_right_id	= ImGui::DockBuilderSplitNode(dock_down_id,		ImGuiDir_Right, 0.6f,   nullptr, &dock_down_id);
+    // Begin dock space
+	if (m_editor_begun)
+    {
+	    // Dock space
+	    const auto window_id = ImGui::GetID(_Editor::editor_name);
+	    if (!ImGui::DockBuilderGetNode(window_id))
+	    {
+	    	// Reset current docking state
+	    	ImGui::DockBuilderRemoveNode(window_id);
+	    	ImGui::DockBuilderAddNode(window_id, ImGuiDockNodeFlags_None);
+            ImGui::DockBuilderSetNodeSize(window_id, ImGui::GetMainViewport()->Size);
 
-		// Dock windows	
-		ImGui::DockBuilderDockWindow("World",		dock_right_id);
-		ImGui::DockBuilderDockWindow("Properties",	dock_right_down_id);
-		ImGui::DockBuilderDockWindow("Console",		dock_down_id);
-		ImGui::DockBuilderDockWindow("Assets",		dock_down_right_id);
-		ImGui::DockBuilderDockWindow("Viewport",	dock_main_id);
-		ImGui::DockBuilderFinish(dock_main_id);
-	}
+	    	// DockBuilderSplitNode(ImGuiID node_id, ImGuiDir split_dir, float size_ratio_for_node_at_dir, ImGuiID* out_id_dir, ImGuiID* out_id_other);
+            ImGuiID dock_main_id		        = window_id;
+            ImGuiID dock_right_id		        = ImGui::DockBuilderSplitNode(dock_main_id,		ImGuiDir_Right, 0.2f,   nullptr, &dock_main_id);
+            const ImGuiID dock_right_down_id	= ImGui::DockBuilderSplitNode(dock_right_id,	ImGuiDir_Down,	0.6f,   nullptr, &dock_right_id);
+            ImGuiID dock_down_id		        = ImGui::DockBuilderSplitNode(dock_main_id,		ImGuiDir_Down,	0.25f,  nullptr, &dock_main_id);
+            const ImGuiID dock_down_right_id	= ImGui::DockBuilderSplitNode(dock_down_id,		ImGuiDir_Right, 0.6f,   nullptr, &dock_down_id);
 
-	ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
+	    	// Dock windows	
+	    	ImGui::DockBuilderDockWindow("World",		dock_right_id);
+	    	ImGui::DockBuilderDockWindow("Properties",	dock_right_down_id);
+	    	ImGui::DockBuilderDockWindow("Console",		dock_down_id);
+	    	ImGui::DockBuilderDockWindow("Assets",		dock_down_right_id);
+	    	ImGui::DockBuilderDockWindow("Viewport",	dock_main_id);
+	    	ImGui::DockBuilderFinish(dock_main_id);
+	    }
+
+        ImGui::DockSpace(window_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
+    }
 }
 
-void Editor::DockSpace_End()
+void Editor::MainWindow_End()
 {
-	ImGui::End();
+    if (m_editor_begun)
+    {
+	    ImGui::End();
+    }
 }
 
 void Editor::ApplyStyle() const
 {
-	// Color settings
-	const auto text						= ImVec4(0.76f, 0.77f, 0.8f, 1.0f);
-	const auto white					= ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
-	const auto black					= ImVec4(0.0f, 0.0f, 0.0f, 1.0f);
-	const auto background_very_dark		= ImVec4(0.08f, 0.086f, 0.094f, 1.00f);
-	const auto background_dark			= ImVec4(0.117f, 0.121f, 0.145f, 1.00f);
-	const auto background_medium		= ImVec4(0.26f, 0.26f, 0.27f, 1.0f);
-	const auto background_light			= ImVec4(0.37f, 0.38f, 0.39f, 1.0f);
-	const auto highlight_blue			= ImVec4(0.172f, 0.239f, 0.341f, 1.0f);	
-	const auto highlight_blue_hovered	= ImVec4(0.29f, 0.42f, 0.65f, 1.0f); 
-	const auto highlight_blue_active	= ImVec4(0.382f, 0.449f, 0.561f, 1.0f);
-	const auto bar_background			= ImVec4(0.078f, 0.082f, 0.09f, 1.0f);
-	const auto bar						= ImVec4(0.164f, 0.180f, 0.231f, 1.0f);
-	const auto bar_hovered				= ImVec4(0.411f, 0.411f, 0.411f, 1.0f);
-	const auto bar_active				= ImVec4(0.337f, 0.337f, 0.368f, 1.0f);
+	// Color settings	
+	const auto color_text			        = ImVec4(0.810f, 0.810f, 0.810f, 1.000f);
+    const auto color_text_disabled			= ImVec4(color_text.x, color_text.y, color_text.z, 0.5f);
+    const auto color_interactive			= ImVec4(0.229f, 0.337f, 0.501f, 1.000f);
+    const auto color_interactive_hovered    = ImVec4(0.312f, 0.456f, 0.675f, 1.000f);
+    const auto color_interactive_clicked    = ImVec4(0.412f, 0.556f, 0.775f, 1.000f);
+	const auto color_background		        = ImVec4(50.0f  / 255.0f, 50.0f  / 255.0f, 50.0f  / 255.0f, 1.0f);
+    const auto color_background_content     = ImVec4(35.0f  / 255.0f, 35.0f  / 255.0f, 35.0f  / 255.0f, 1.0f);
+    const auto color_shadow                 = ImVec4(0.0f, 0.0f, 0.0f, 0.5f);
+
+    // Use default dark style as a base
+    ImGui::StyleColorsDark();
+
+	// Colors
+    ImVec4* colors                          = ImGui::GetStyle().Colors;
+    colors[ImGuiCol_Text]			        = color_text;
+    colors[ImGuiCol_TextDisabled]			= color_text_disabled;
+    colors[ImGuiCol_WindowBg]			    = color_background;             // Background of normal windows
+    colors[ImGuiCol_ChildBg]			    = color_background;             // Background of child windows
+    colors[ImGuiCol_PopupBg]			    = color_background;             // Background of popups, menus, tooltips windows
+    colors[ImGuiCol_Border]			        = color_interactive;
+    colors[ImGuiCol_BorderShadow]			= color_shadow;
+    colors[ImGuiCol_FrameBg]			    = color_background_content;     // Background of checkbox, radio button, plot, slider, text input
+    colors[ImGuiCol_FrameBgHovered]			= color_interactive;
+    colors[ImGuiCol_FrameBgActive]			= color_interactive_clicked;
+    colors[ImGuiCol_TitleBg]			    = color_background_content;
+    colors[ImGuiCol_TitleBgActive]			= color_interactive;
+    colors[ImGuiCol_TitleBgCollapsed]		= color_background;
+    colors[ImGuiCol_MenuBarBg]			    = color_background_content;
+    colors[ImGuiCol_ScrollbarBg]			= color_background_content;
+    colors[ImGuiCol_ScrollbarGrab]		    = color_interactive;
+    colors[ImGuiCol_ScrollbarGrabHovered]	= color_interactive_hovered;
+    colors[ImGuiCol_ScrollbarGrabActive]	= color_interactive_clicked;
+    colors[ImGuiCol_CheckMark]			    = color_text;
+    colors[ImGuiCol_SliderGrab]			    = color_interactive;
+    colors[ImGuiCol_SliderGrabActive]		= color_interactive_clicked;
+    colors[ImGuiCol_Button]			        = color_interactive;
+    colors[ImGuiCol_ButtonHovered]		    = color_interactive_hovered;
+    colors[ImGuiCol_ButtonActive]			= color_interactive_clicked;
+    colors[ImGuiCol_Header]			        = color_interactive;            // Header* colors are used for CollapsingHeader, TreeNode, Selectable, MenuItem
+    colors[ImGuiCol_HeaderHovered]			= color_interactive_hovered;
+    colors[ImGuiCol_HeaderActive]			= color_interactive_clicked;
+    colors[ImGuiCol_Separator]			    = color_interactive;
+    colors[ImGuiCol_SeparatorHovered]		= color_interactive_hovered;
+    colors[ImGuiCol_SeparatorActive]		= color_interactive_clicked;
+    colors[ImGuiCol_ResizeGrip]			    = color_interactive;
+    colors[ImGuiCol_ResizeGripHovered]		= color_interactive_hovered;
+    colors[ImGuiCol_ResizeGripActive]		= color_interactive_clicked;
+    colors[ImGuiCol_Tab]			        = color_interactive;
+    colors[ImGuiCol_TabHovered]			    = color_interactive_hovered;
+    colors[ImGuiCol_TabActive]			    = color_interactive_clicked;
+    colors[ImGuiCol_TabUnfocused]			= color_interactive;
+    colors[ImGuiCol_TabUnfocusedActive]		= color_interactive;            // Might be called active, but it's active only because it's it's the only tab available, the user didn't really activate it
+    colors[ImGuiCol_DockingPreview]			= color_background;             // Preview overlay color when about to docking something
+    colors[ImGuiCol_DockingEmptyBg]			= color_background;             // Background color for empty node (e.g. CentralNode with no window docked into it)
+    colors[ImGuiCol_PlotLines]			    = color_interactive;
+    colors[ImGuiCol_PlotLinesHovered]		= color_interactive_hovered;
+    colors[ImGuiCol_PlotHistogram]			= color_interactive;
+    colors[ImGuiCol_PlotHistogramHovered]	= color_interactive_hovered;
+    colors[ImGuiCol_TextSelectedBg]			= color_background;
+    colors[ImGuiCol_DragDropTarget]			= color_interactive_hovered;    // Color when hovering over target
+    colors[ImGuiCol_NavHighlight]			= color_background;             // Gamepad/keyboard: current highlighted item
+    colors[ImGuiCol_NavWindowingHighlight]  = color_background;             // Highlight window when using CTRL+TAB
+    colors[ImGuiCol_NavWindowingDimBg]		= color_background;             // Darken/colorize entire screen behind the CTRL+TAB window list, when active
+    colors[ImGuiCol_ModalWindowDimBg]		= color_background;             // Darken/colorize entire screen behind a modal window, when one is active
 
     // Spatial settings
     const auto font_size    = 24.0f;
     const auto font_scale   = 0.7f;
     const auto roundness    = 2.0f;
 
-    // Use default black style as a base
-    ImGui::StyleColorsDark();
-
-    ImGuiStyle& style   = ImGui::GetStyle();
-    auto& io            = ImGui::GetIO();
-
 	// Spatial
+    ImGuiStyle& style               = ImGui::GetStyle();
 	style.WindowBorderSize	        = 1.0f;
 	style.FrameBorderSize	        = 0.0f;
     style.ScrollbarSize             = 20.0f;
@@ -310,43 +362,10 @@ void Editor::ApplyStyle() const
 	style.PopupRounding		        = roundness;
 	style.GrabRounding		        = roundness;
     style.ScrollbarRounding         = roundness;
-    style.Alpha                     = 1.0f;	
-
-	// Colors
-	style.Colors[ImGuiCol_Text]						= text;
-	style.Colors[ImGuiCol_WindowBg]					= background_dark;
-	style.Colors[ImGuiCol_Border]					= black;
-	style.Colors[ImGuiCol_FrameBg]					= bar;
-	style.Colors[ImGuiCol_FrameBgHovered]			= highlight_blue;
-	style.Colors[ImGuiCol_FrameBgActive]			= highlight_blue_hovered;
-	style.Colors[ImGuiCol_TitleBg]					= background_very_dark;
-	style.Colors[ImGuiCol_TitleBgActive]			= bar;
-	style.Colors[ImGuiCol_MenuBarBg]				= background_very_dark;
-	style.Colors[ImGuiCol_ScrollbarBg]				= bar_background;
-	style.Colors[ImGuiCol_ScrollbarGrab]			= bar;
-	style.Colors[ImGuiCol_ScrollbarGrabHovered]		= bar_hovered;
-	style.Colors[ImGuiCol_ScrollbarGrabActive]		= bar_active;
-	style.Colors[ImGuiCol_CheckMark]				= highlight_blue_hovered;
-	style.Colors[ImGuiCol_SliderGrab]				= highlight_blue_hovered;
-	style.Colors[ImGuiCol_SliderGrabActive]			= highlight_blue_active;
-	style.Colors[ImGuiCol_Button]					= bar_active;
-	style.Colors[ImGuiCol_ButtonHovered]			= highlight_blue;
-	style.Colors[ImGuiCol_ButtonActive]				= highlight_blue_active;
-	style.Colors[ImGuiCol_Header]					= highlight_blue; // selected items (tree, menu bar etc.)
-	style.Colors[ImGuiCol_HeaderHovered]			= highlight_blue_hovered; // hovered items (tree, menu bar etc.)
-	style.Colors[ImGuiCol_HeaderActive]				= highlight_blue_active;
-	style.Colors[ImGuiCol_Separator]				= background_light;
-	style.Colors[ImGuiCol_ResizeGrip]				= background_medium;
-	style.Colors[ImGuiCol_ResizeGripHovered]		= highlight_blue;
-	style.Colors[ImGuiCol_ResizeGripActive]			= highlight_blue_hovered;
-	style.Colors[ImGuiCol_PlotLines]				= ImVec4(0.0f, 0.7f, 0.77f, 1.0f);
-	style.Colors[ImGuiCol_PlotHistogram]			= highlight_blue; // Also used for progress bar
-	style.Colors[ImGuiCol_PlotHistogramHovered]		= highlight_blue_hovered;
-	style.Colors[ImGuiCol_TextSelectedBg]			= highlight_blue;
-	style.Colors[ImGuiCol_PopupBg]					= background_dark;
-	style.Colors[ImGuiCol_DragDropTarget]			= background_light;
+    style.Alpha                     = 1.0f;
 
     // Font
+    auto& io = ImGui::GetIO();
     const string dir_fonts = m_context->GetSubsystem<ResourceCache>()->GetDataDirectory(Asset_Fonts) + "/";
 	io.Fonts->AddFontFromFileTTF((dir_fonts + "CalibriBold.ttf").c_str(), font_size);
     io.FontGlobalScale = font_scale;

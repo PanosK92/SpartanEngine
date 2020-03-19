@@ -53,8 +53,7 @@ void Widget_Console::Tick()
 	const auto button_log_type_visibility_toggle = [this](const Icon_Type icon, uint32_t index)
 	{
         bool& visibility = m_log_type_visibility[index];
-
-		ImGui::PushStyleColor(ImGuiCol_Button, visibility ? ImGui::GetStyle().Colors[ImGuiCol_ButtonActive] : ImGui::GetStyle().Colors[ImGuiCol_Button]);
+		ImGui::PushStyleColor(ImGuiCol_Button, visibility ? ImGui::GetStyle().Colors[ImGuiCol_Button] : ImGui::GetStyle().Colors[ImGuiCol_FrameBg]);
 		if (ImGuiEx::ImageButton(icon, 15.0f))
 		{
             visibility = !visibility;
@@ -72,7 +71,8 @@ void Widget_Console::Tick()
 	button_log_type_visibility_toggle(Icon_Console_Error,      2);
 
 	// Text filter
-	m_log_filter.Draw("Filter", -100.0f);
+    const float label_width = 37.0f; //ImGui::CalcTextSize("Filter", nullptr, true).x;
+	m_log_filter.Draw("Filter", ImGui::GetContentRegionAvail().x - label_width);
 	ImGui::Separator();
 
 	// Content

@@ -74,7 +74,6 @@ namespace Spartan
         uint32_t m_element_count        = 1;
         uint32_t m_offset_index         = 0;
         uint32_t m_offset_dynamic_index = 0;
-
 		std::shared_ptr<RHI_Device> m_rhi_device;
 
 		// API

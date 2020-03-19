@@ -42,7 +42,7 @@ Widget_ProgressDialog::Widget_ProgressDialog(Context* contex) : Widget(contex)
 	m_progress		            = 0.0f;
     m_size                      = Vector2(_Widget_ProgressDialog::width, 83.0f);
 	m_flags	                    |= ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoDocking;
-    m_callback_begin_visibility = [this]()
+    m_callback_on_start = [this]()
     {
         // Determine if an operation is in progress
         ProgressReport& progressReport  = ProgressReport::Get();

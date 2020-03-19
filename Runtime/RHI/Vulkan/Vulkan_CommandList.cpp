@@ -613,23 +613,25 @@ namespace Spartan
     void RHI_CommandList::BeginRenderPass()
     {
         // Clear values
-        array<VkClearValue, state_max_render_target_count + 1> clear_values; // +1 for depth      
+        array<VkClearValue, state_max_render_target_count + 1> clear_values; // +1 for depth-stencil
         uint32_t clear_value_count = 0;
         {
             // Color
             for (auto i = 0; i < state_max_render_target_count; i++)
             {
-                if (m_pipeline_state->render_target_color_clear[i] != state_dont_clear_color)
+                if (m_pipeline_state->clear_color[i] != state_dont_clear_color)
                 {
-                    Vector4& color = m_pipeline_state->render_target_color_clear[i];
+                    Vector4& color = m_pipeline_state->clear_color[i];
                     clear_values[clear_value_count++].color = { {color.x, color.y, color.z, color.w} };
                 }
             }
 
-            // Depth
-            if (m_pipeline_state->render_target_depth_clear != state_dont_clear_depth)
+            // Depth-stencil
+            bool clear_depth    = m_pipeline_state->clear_depth != state_dont_clear_depth;
+            bool clear_stencil  = m_pipeline_state->clear_stencil != state_dont_clear_stencil;
+            if (clear_depth || clear_stencil)
             {
-                clear_values[clear_value_count++].depthStencil = { m_pipeline_state->render_target_depth_clear, 0 };
+                clear_values[clear_value_count++].depthStencil = VkClearDepthStencilValue{ m_pipeline_state->clear_depth, m_pipeline_state->clear_stencil };
             }
 
             // Swapchain

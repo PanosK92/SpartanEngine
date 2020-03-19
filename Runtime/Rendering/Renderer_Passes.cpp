@@ -189,8 +189,8 @@ namespace Spartan
                 pipeline_state.render_target_depth_stencil_texture_array_index  = array_index;
 
                 // Set clear values
-                pipeline_state.render_target_color_clear[0] = Vector4::One;
-                pipeline_state.render_target_depth_clear    = transparent_pass ? state_dont_clear_depth : GetClearDepth();
+                pipeline_state.clear_color[0] = Vector4::One;
+                pipeline_state.clear_depth    = transparent_pass ? state_dont_clear_depth : GetClearDepth();
 
                 const Matrix& view_projection = light->GetViewMatrix(array_index) * light->GetProjectionMatrix(array_index);
 
@@ -298,7 +298,7 @@ namespace Spartan
         pipeline_state.blend_state                  = m_blend_disabled.get();
         pipeline_state.depth_stencil_state          = m_depth_stencil_enabled_disabled_write.get();
         pipeline_state.render_target_depth_texture  = tex_depth.get();
-        pipeline_state.render_target_depth_clear    = GetClearDepth();
+        pipeline_state.clear_depth                  = GetClearDepth();
         pipeline_state.viewport                     = tex_depth->GetViewport();
         pipeline_state.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
         pipeline_state.pass_name                    = "Pass_DepthPrePass";
@@ -372,22 +372,22 @@ namespace Spartan
 
         // Set render state
         RHI_PipelineState pso;
-        pso.shader_vertex                    = shader_v;
-        pso.vertex_buffer_stride             = static_cast<uint32_t>(sizeof(RHI_Vertex_PosTexNorTan)); // assume all vertex buffers have the same stride (which they do)
-        pso.blend_state                      = m_blend_disabled.get();
-        pso.rasterizer_state                 = GetOption(Render_Debug_Wireframe) ? m_rasterizer_cull_back_wireframe.get() : m_rasterizer_cull_back_solid.get();
-        pso.depth_stencil_state              = is_transparent ? m_depth_stencil_enabled_enabled_write.get() : m_depth_stencil_enabled_disabled_write.get(); // GetOptionValue(Render_DepthPrepass) is not accounted for anymore, have to fix
-        pso.render_target_color_textures[0]  = tex_albedo;
-        pso.render_target_color_clear[0]     = !is_transparent ? Vector4::Zero : state_dont_clear_color;
-        pso.render_target_color_textures[1]  = tex_normal;
-        pso.render_target_color_clear[1]     = !is_transparent ? Vector4::Zero : state_dont_clear_color;
-        pso.render_target_color_textures[2]  = tex_material;
-        pso.render_target_color_clear[2]     = !is_transparent ? Vector4::Zero : state_dont_clear_color;
-        pso.render_target_color_textures[3]  = tex_velocity;
-        pso.render_target_color_clear[3]     = !is_transparent ? Vector4::Zero : state_dont_clear_color;
-        pso.render_target_depth_texture      = tex_depth;
-        pso.render_target_depth_clear        = is_transparent || GetOption(Render_DepthPrepass) ? state_dont_clear_depth : GetClearDepth();
-        pso.render_target_stencil_clear      = 0;
+        pso.shader_vertex                   = shader_v;
+        pso.vertex_buffer_stride            = static_cast<uint32_t>(sizeof(RHI_Vertex_PosTexNorTan)); // assume all vertex buffers have the same stride (which they do)
+        pso.blend_state                     = m_blend_disabled.get();
+        pso.rasterizer_state                = GetOption(Render_Debug_Wireframe) ? m_rasterizer_cull_back_wireframe.get() : m_rasterizer_cull_back_solid.get();
+        pso.depth_stencil_state             = is_transparent ? m_depth_stencil_enabled_enabled_write.get() : m_depth_stencil_enabled_disabled_write.get(); // GetOptionValue(Render_DepthPrepass) is not accounted for anymore, have to fix
+        pso.render_target_color_textures[0] = tex_albedo;
+        pso.clear_color[0]                  = !is_transparent ? Vector4::Zero : state_dont_clear_color;
+        pso.render_target_color_textures[1] = tex_normal;
+        pso.clear_color[1]                  = !is_transparent ? Vector4::Zero : state_dont_clear_color;
+        pso.render_target_color_textures[2] = tex_material;
+        pso.clear_color[2]                  = !is_transparent ? Vector4::Zero : state_dont_clear_color;
+        pso.render_target_color_textures[3] = tex_velocity;
+        pso.clear_color[3]                  = !is_transparent ? Vector4::Zero : state_dont_clear_color;
+        pso.render_target_depth_texture     = tex_depth;
+        pso.clear_depth                     = is_transparent || GetOption(Render_DepthPrepass) ? state_dont_clear_depth : GetClearDepth();
+        pso.clear_stencil                   = 0;
         pso.viewport                         = tex_albedo->GetViewport();
         pso.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
 
@@ -532,6 +532,7 @@ namespace Spartan
         pipeline_state.depth_stencil_state                      = !use_stencil ? m_depth_stencil_disabled.get() : m_depth_stencil_disabled_enabled_read.get();
         pipeline_state.vertex_buffer_stride                     = m_quad.GetVertexBuffer()->GetStride();
         pipeline_state.render_target_color_textures[0]          = use_stencil ? tex_ssao_blurred.get() : tex_ssao_noisy.get();
+        pipeline_state.clear_color[0]                           = use_stencil ? state_dont_clear_color : Vector4::One;
         pipeline_state.render_target_depth_texture              = use_stencil ? tex_depth.get() : nullptr;
         pipeline_state.render_target_depth_texture_read_only    = use_stencil;
         pipeline_state.viewport                                 = tex_ssao_noisy->GetViewport();
@@ -595,7 +596,7 @@ namespace Spartan
         pipeline_state.depth_stencil_state                      = !use_stencil ? m_depth_stencil_disabled.get() : m_depth_stencil_disabled_enabled_read.get();
         pipeline_state.vertex_buffer_stride                     = m_quad.GetVertexBuffer()->GetStride();
         pipeline_state.render_target_color_textures[0]          = tex_ssr.get();
-        pipeline_state.render_target_color_clear[0]             = use_stencil ? state_dont_clear_color : Vector4::Zero;
+        pipeline_state.clear_color[0]                           = use_stencil ? state_dont_clear_color : Vector4::Zero;
         pipeline_state.render_target_depth_texture              = use_stencil ? tex_depth.get() : nullptr;
         pipeline_state.render_target_depth_texture_read_only    = use_stencil;
         pipeline_state.viewport                                 = tex_ssr->GetViewport();
@@ -677,11 +678,11 @@ namespace Spartan
         pipeline_state.depth_stencil_state                      = use_stencil ? m_depth_stencil_disabled_enabled_read.get() : m_depth_stencil_disabled.get();
         pipeline_state.vertex_buffer_stride                     = m_quad.GetVertexBuffer()->GetStride();
         pipeline_state.render_target_color_textures[0]          = tex_diffuse.get();
-        pipeline_state.render_target_color_clear[0]             = Vector4::Zero;
+        pipeline_state.clear_color[0]                           = Vector4::Zero;
         pipeline_state.render_target_color_textures[1]          = tex_specular.get();
-        pipeline_state.render_target_color_clear[1]             = Vector4::Zero;
+        pipeline_state.clear_color[1]                           = Vector4::Zero;
         pipeline_state.render_target_color_textures[2]          = tex_volumetric.get();
-        pipeline_state.render_target_color_clear[2]             = Vector4::Zero;
+        pipeline_state.clear_color[2]                           = Vector4::Zero;
         pipeline_state.render_target_depth_texture              = use_stencil ? tex_depth.get() : nullptr;
         pipeline_state.render_target_depth_texture_read_only    = use_stencil;
         pipeline_state.viewport                                 = tex_diffuse->GetViewport();
@@ -779,7 +780,7 @@ namespace Spartan
         pipeline_state.blend_state                      = m_blend_disabled.get();
         pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
         pipeline_state.render_target_color_textures[0]  = tex_out.get();
-        pipeline_state.render_target_color_clear[0]     = Vector4::Zero;
+        pipeline_state.clear_color[0]                   = Vector4::Zero;
         pipeline_state.render_target_depth_texture      = use_stencil ? m_render_targets[RenderTarget_Gbuffer_Depth].get() : nullptr;
         pipeline_state.viewport                         = tex_out->GetViewport();
         pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
@@ -836,6 +837,7 @@ namespace Spartan
         pipeline_state.depth_stencil_state              = use_stencil ? m_depth_stencil_disabled_enabled_read.get() : m_depth_stencil_disabled.get();
         pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
         pipeline_state.render_target_color_textures[0]  = tex_out;
+        pipeline_state.clear_color[0]                   = use_stencil ? state_dont_clear_color : Vector4::Zero;
         pipeline_state.render_target_depth_texture      = use_stencil ? m_render_targets[RenderTarget_Gbuffer_Depth].get() : nullptr;
         pipeline_state.viewport                         = tex_out->GetViewport();
         pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
@@ -947,6 +949,7 @@ namespace Spartan
         pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
         pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
         pipeline_state.render_target_color_textures[0]  = tex_out.get();
+        pipeline_state.clear_color[0]                   = Vector4::Zero;
         pipeline_state.viewport                         = tex_out->GetViewport();
         pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
         pipeline_state.pass_name                        = "Pass_Upsample";
@@ -983,6 +986,7 @@ namespace Spartan
         pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
         pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
         pipeline_state.render_target_color_textures[0]  = tex_out.get();
+        pipeline_state.clear_color[0]                   = Vector4::Zero;
         pipeline_state.viewport                         = tex_out->GetViewport();
         pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
         pipeline_state.pass_name                        = "Pass_Downsample";
@@ -1020,6 +1024,7 @@ namespace Spartan
         pipeline_state.depth_stencil_state              = use_stencil ? m_depth_stencil_disabled_enabled_read.get() : m_depth_stencil_disabled.get();
         pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
         pipeline_state.render_target_color_textures[0]  = tex_out.get();
+        pipeline_state.clear_color[0]                   = Vector4::Zero;
         pipeline_state.render_target_depth_texture      = use_stencil ? m_render_targets[RenderTarget_Gbuffer_Depth].get() : nullptr;
         pipeline_state.viewport                         = tex_out->GetViewport();
         pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
@@ -1274,6 +1279,7 @@ namespace Spartan
             pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
             pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
             pipeline_state.render_target_color_textures[0]  = m_render_tex_bloom[0].get();
+            pipeline_state.clear_color[0]                   = Vector4::Zero;
             pipeline_state.viewport                         = m_render_tex_bloom[0]->GetViewport();
             pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
             pipeline_state.pass_name                        = "Pass_Bloom_Luminance";
@@ -1311,7 +1317,8 @@ namespace Spartan
             pipeline_state.blend_state                      = m_blend_additive.get();
             pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
             pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
-            pipeline_state.render_target_color_textures[0]  = tex_out.get();  
+            pipeline_state.render_target_color_textures[0]  = tex_out.get();
+            pipeline_state.clear_color[0]                   = Vector4::Zero;
             pipeline_state.viewport                         = tex_out->GetViewport();
             pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
             pipeline_state.pass_name                        = "Pass_Bloom_Upsample";
@@ -1348,6 +1355,7 @@ namespace Spartan
             pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
             pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
             pipeline_state.render_target_color_textures[0]  = tex_out.get();
+            pipeline_state.clear_color[0]                   = Vector4::Zero;
             pipeline_state.viewport                         = tex_out->GetViewport();
             pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
             pipeline_state.pass_name                        = "Pass_Bloom_Additive_Blending";
@@ -1387,6 +1395,7 @@ namespace Spartan
         pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
         pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
         pipeline_state.render_target_color_textures[0]  = tex_out.get();
+        pipeline_state.clear_color[0]                   = Vector4::Zero;
         pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
         pipeline_state.viewport                         = tex_out->GetViewport();
         pipeline_state.pass_name                        = "Pass_ToneMapping";
@@ -1424,6 +1433,7 @@ namespace Spartan
         pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
         pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
         pipeline_state.render_target_color_textures[0]  = tex_out.get();
+        pipeline_state.clear_color[0]                   = Vector4::Zero;
         pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
         pipeline_state.viewport                         = tex_out->GetViewport();
         pipeline_state.pass_name                        = "Pass_GammaCorrection";
@@ -1468,6 +1478,7 @@ namespace Spartan
             pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
             pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
             pipeline_state.render_target_color_textures[0]  = tex_out.get();
+            pipeline_state.clear_color[0]                   = Vector4::Zero;
             pipeline_state.viewport                         = tex_out->GetViewport();
             pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
             pipeline_state.pass_name                        = "Pass_FXAA_Luminance";
@@ -1495,6 +1506,7 @@ namespace Spartan
             pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
             pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
             pipeline_state.render_target_color_textures[0]  = tex_in.get();
+            pipeline_state.clear_color[0]                   = Vector4::Zero;
             pipeline_state.viewport                         = tex_in->GetViewport();
             pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
             pipeline_state.pass_name                        = "Pass_FXAA_FXAA";
@@ -1531,6 +1543,7 @@ namespace Spartan
         pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
         pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
         pipeline_state.render_target_color_textures[0]  = tex_out.get();
+        pipeline_state.clear_color[0]                   = Vector4::Zero;
         pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
         pipeline_state.viewport                         = tex_out->GetViewport();
         pipeline_state.pass_name                        = "Pass_ChromaticAberration";
@@ -1568,6 +1581,7 @@ namespace Spartan
         pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
         pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
         pipeline_state.render_target_color_textures[0]  = tex_out.get();
+        pipeline_state.clear_color[0]                   = Vector4::Zero;
         pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
         pipeline_state.viewport                         = tex_out->GetViewport();
         pipeline_state.pass_name                        = "Pass_MotionBlur";
@@ -1607,6 +1621,7 @@ namespace Spartan
         pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
         pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
         pipeline_state.render_target_color_textures[0]  = tex_out.get();
+        pipeline_state.clear_color[0]                   = Vector4::Zero;
         pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
         pipeline_state.viewport                         = tex_out->GetViewport();
         pipeline_state.pass_name                        = "Pass_Dithering";
@@ -1643,7 +1658,8 @@ namespace Spartan
         pipeline_state.blend_state                      = m_blend_disabled.get();
         pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
         pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
-        pipeline_state.render_target_color_textures[0]  = tex_out.get();    
+        pipeline_state.render_target_color_textures[0]  = tex_out.get();
+        pipeline_state.clear_color[0]                   = Vector4::Zero;
         pipeline_state.viewport                         = tex_out->GetViewport();
         pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
         pipeline_state.pass_name                        = "Pass_LumaSharpen";
@@ -2206,6 +2222,7 @@ namespace Spartan
         pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
         pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
         pipeline_state.render_target_color_textures[0]  = render_target.get();
+        pipeline_state.clear_color[0]                   = Vector4::Zero;
         pipeline_state.viewport                         = render_target->GetViewport();
         pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
         pipeline_state.pass_name                        = "Pass_BrdfSpecularLut";
@@ -2244,6 +2261,7 @@ namespace Spartan
         pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
         pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
         pipeline_state.render_target_color_textures[0]  = tex_out.get();
+        pipeline_state.clear_color[0]                   = Vector4::Zero;
         pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
         pipeline_state.viewport                         = tex_out->GetViewport();
         pipeline_state.pass_name                        = "Pass_Copy";
