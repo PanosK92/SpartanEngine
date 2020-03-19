@@ -69,6 +69,7 @@ namespace Spartan
         double m_time_ms                = 0.0f;
 		double m_delta_time_ms          = 0.0f;
         double m_delta_time_smoothed_ms = 0.0f;
+        double m_sleep_overhead         = 0.0f;
 
         // FPS
         double m_fps_min                = 25.0;
