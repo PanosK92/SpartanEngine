@@ -95,33 +95,49 @@ public:
         }
 
         // Begin
-		m_window_begun = ImGui::Begin(m_title.c_str(), &m_is_visible, m_flags);
+		if (ImGui::Begin(m_title.c_str(), &m_is_visible, m_flags))
+        {
+            m_window    = ImGui::GetCurrentWindow();
+            m_height    = ImGui::GetWindowHeight();
+            m_begun     = true;
+        }
+        else if (m_window && m_window->Hidden)
+        {
+            // Enters here if the window is hidden as part of an unselected tab.
+            // ImGui::Begin() makes the window and but returns false, then ImGui still expects ImGui::End() to be called.
+            // So we make sure that when Widget::End() we call ImGui::End().
+            // Note: ImGui's docking is in beta, so maybe it's at fault here ?
+            m_begun = true;
+        }
 
-        if (m_callback_on_begin)
+        // Begin callback
+        if (m_begun && m_callback_on_begin)
         {
             m_callback_on_begin();
         }
 
-		return true;
+        return m_begun;
 	}
 
 	virtual void Tick() = 0;
 
 	bool End()
 	{
-        if (!m_window_begun)
-            return false;
-
-		m_window = ImGui::GetCurrentWindow();
-		m_height = ImGui::GetWindowHeight();
-
         // End
-		ImGui::End();
+        if (m_begun)
+        {
+		    ImGui::End();
+        }
+
+        // Pop style variables
         ImGui::PopStyleVar(m_var_pushes);
         m_var_pushes = 0;
-		m_window_begun = false;
-
+		
+        // End profiling
         TIME_BLOCK_END(m_profiler);
+
+        // Reset state
+        m_begun = false;
 
 		return true;
 	}
@@ -157,6 +173,6 @@ protected:
     std::string m_title;
 
 private:
-	bool m_window_begun     = false;
+	bool m_begun            = false;
     uint8_t m_var_pushes    = 0;
 };
