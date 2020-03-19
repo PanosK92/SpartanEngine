@@ -174,12 +174,14 @@ void FileDialog::ShowMiddle()
 
     // Remove border
     ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.0f);
+
     // Make background slightly darker
     ImGui::PushStyleColor(ImGuiCol_ChildBg, IM_COL32(
         static_cast<int>(m_content_background_color.x),
         static_cast<int>(m_content_background_color.y),
         static_cast<int>(m_content_background_color.z),
         static_cast<int>(m_content_background_color.w)));
+
 	if (ImGui::BeginChild("##ContentRegion", ImVec2(content_width, content_height), true))
 	{
         m_is_hovering_window = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) ? true : m_is_hovering_window;
@@ -335,7 +337,8 @@ void FileDialog::ShowMiddle()
         if (!new_line)
             ImGui::EndGroup();
 	}
-	ImGui::EndChild();
+
+	ImGui::EndChild(); // BeginChild() requires EndChild() to always be called
     ImGui::PopStyleColor();
     ImGui::PopStyleVar();
 }
