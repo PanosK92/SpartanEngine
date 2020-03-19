@@ -272,14 +272,14 @@ namespace Spartan
         // Color
         for (auto i = 0; i < state_max_render_target_count; i++)
         {
-            if (pipeline_state.render_target_color_clear[i] != state_dont_clear_color)
+            if (pipeline_state.clear_color[i] != state_dont_clear_color)
             {
                 if (pipeline_state.render_target_swapchain)
                 {
                     m_rhi_device->GetContextRhi()->device_context->ClearRenderTargetView
                     (
                         static_cast<ID3D11RenderTargetView*>(const_cast<void*>(pipeline_state.render_target_swapchain->GetResource_RenderTargetView())),
-                        pipeline_state.render_target_color_clear[i].Data()
+                        pipeline_state.clear_color[i].Data()
                     );
                 }
                 else if (pipeline_state.render_target_color_textures[i])
@@ -287,7 +287,7 @@ namespace Spartan
                     m_rhi_device->GetContextRhi()->device_context->ClearRenderTargetView
                     (
                         static_cast<ID3D11RenderTargetView*>(const_cast<void*>(pipeline_state.render_target_color_textures[i]->Get_View_Attachment_Color(pipeline_state.render_target_color_texture_array_index))),
-                        pipeline_state.render_target_color_clear[i].Data()
+                        pipeline_state.clear_color[i].Data()
                     );
                 }
             }
@@ -295,16 +295,16 @@ namespace Spartan
 
         // Depth-stencil
         UINT clear_flags = 0;
-        clear_flags |= (pipeline_state.render_target_depth_clear    != state_dont_clear_depth)      ? D3D11_CLEAR_DEPTH     : 0;
-        clear_flags |= (pipeline_state.render_target_stencil_clear  != state_dont_clear_stencil)    ? D3D11_CLEAR_STENCIL   : 0;
+        clear_flags |= (pipeline_state.clear_depth    != state_dont_clear_depth)      ? D3D11_CLEAR_DEPTH     : 0;
+        clear_flags |= (pipeline_state.clear_stencil  != state_dont_clear_stencil)    ? D3D11_CLEAR_STENCIL   : 0;
         if (clear_flags != 0)
         {
             m_rhi_device->GetContextRhi()->device_context->ClearDepthStencilView
             (
                 static_cast<ID3D11DepthStencilView*>(pipeline_state.render_target_depth_texture->Get_View_Attachment_DepthStencil(pipeline_state.render_target_depth_stencil_texture_array_index)),
                 clear_flags,
-                static_cast<FLOAT>(pipeline_state.render_target_depth_clear),
-                static_cast<UINT8>(pipeline_state.render_target_stencil_clear)
+                static_cast<FLOAT>(pipeline_state.clear_depth),
+                static_cast<UINT8>(pipeline_state.clear_stencil)
             );
         }
 

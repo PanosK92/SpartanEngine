@@ -51,13 +51,14 @@ public:
 private:
 	void Widgets_Create();
 	void Widgets_Tick();
-	void DockSpace_Begin() const;
-	void DockSpace_End();	
+	void MainWindow_Begin();
+	void MainWindow_End();	
 	void ApplyStyle() const;
 
 	// Editor
 	std::vector<std::unique_ptr<Widget>> m_widgets;
 	bool m_initializing = false;
+    bool m_editor_begun = false;
 
 	// Engine
 	std::unique_ptr<Spartan::Engine> m_engine;

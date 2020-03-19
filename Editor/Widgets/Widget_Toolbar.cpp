@@ -49,7 +49,7 @@ Widget_Toolbar::Widget_Toolbar(Context* context) : Widget(context)
 		ImGuiWindowFlags_NoTitleBar         |
         ImGuiWindowFlags_NoDocking;
 
-    m_callback_begin_pre = [this]()
+    m_callback_on_visible = [this]()
     {
         auto& ctx = *ImGui::GetCurrentContext();
         ctx.NextWindowData.MenuBarOffsetMinVal = ImVec2(ctx.Style.DisplaySafeAreaPadding.x, Max(ctx.Style.DisplaySafeAreaPadding.y - ctx.Style.FramePadding.y, 0.0f));
@@ -59,7 +59,7 @@ Widget_Toolbar::Widget_Toolbar(Context* context) : Widget(context)
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, Vector2(0, 5));
     };
 
-    m_callback_begin_post = [this]()
+    m_callback_on_begin = [this]()
     {
         ImGui::PopStyleVar();
     };

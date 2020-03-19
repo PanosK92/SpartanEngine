@@ -150,7 +150,7 @@ void FileDialog::ShowTop(bool* is_visible)
 
     // Search filter
     const float label_width = 37.0f; //ImGui::CalcTextSize("Filter", nullptr, true).x;
-    m_search_filter.Draw("Filter", ImGui::GetWindowContentRegionWidth() - label_width);
+    m_search_filter.Draw("Filter", ImGui::GetContentRegionAvail().x - label_width);
 
 	ImGui::Separator();
 }
@@ -162,7 +162,7 @@ void FileDialog::ShowMiddle()
     const auto content_width    = ImGui::GetContentRegionAvail().x;
     const auto content_height   = ImGui::GetContentRegionAvail().y - m_offset_bottom;
     ImGuiContext& g             = *GImGui;
-    ImGuiStyle& style           = ImGui::GetStyle();      
+    ImGuiStyle& style           = ImGui::GetStyle();
     const float font_height     = g.FontSize;
     const float label_height    = font_height;
     const float text_offset     = 3.0f;
@@ -183,6 +183,15 @@ void FileDialog::ShowMiddle()
 	if (ImGui::BeginChild("##ContentRegion", ImVec2(content_width, content_height), true))
 	{
         m_is_hovering_window = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) ? true : m_is_hovering_window;
+
+        // Add a starting offset
+        {
+            float offset = ImGui::GetStyle().ItemSpacing.x;
+            ImVec2 pos = ImGui::GetCursorScreenPos();
+            pos.x += offset;
+            pos.y += offset;
+            ImGui::SetCursorScreenPos(pos);
+        }
 
         // Go through all the items
 		for (int i = 0; i < m_items.size(); i++)
@@ -228,7 +237,8 @@ void FileDialog::ShowMiddle()
                 if (m_drop_shadow)
                 {
                     static const float shadow_thickness = 2.0f;
-                    ImGui::GetWindowDrawList()->AddRectFilled(rect_button.Min, ImVec2(rect_label.Max.x + shadow_thickness, rect_label.Max.y + shadow_thickness), IM_COL32(0, 0, 0, 150));
+                    ImVec4 color = ImGui::GetStyle().Colors[ImGuiCol_BorderShadow];
+                    ImGui::GetWindowDrawList()->AddRectFilled(rect_button.Min, ImVec2(rect_label.Max.x + shadow_thickness, rect_label.Max.y + shadow_thickness), IM_COL32(color.x * 255, color.y * 255, color.z * 255, color.w * 255));
                 }
 
                 // THUMBNAIL

@@ -84,7 +84,7 @@ namespace Spartan
 
 		D3D11_BUFFER_DESC buffer_desc;
 		ZeroMemory(&buffer_desc, sizeof(buffer_desc));
-		buffer_desc.ByteWidth			= static_cast<UINT>(m_stride); // because d3d11 doesn't use buffer offset, we use the stride
+		buffer_desc.ByteWidth			= static_cast<UINT>(m_stride);
 		buffer_desc.Usage				= D3D11_USAGE_DYNAMIC;
 		buffer_desc.BindFlags			= D3D11_BIND_CONSTANT_BUFFER;
 		buffer_desc.CPUAccessFlags		= D3D11_CPU_ACCESS_WRITE;

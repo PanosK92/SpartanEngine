@@ -46,9 +46,9 @@ public:
 	bool Begin()
 	{
         // Callback
-        if (m_callback_begin_visibility)
+        if (m_callback_on_start)
         {
-            m_callback_begin_visibility();
+            m_callback_on_start();
         }
 
 		if (!m_is_window || !m_is_visible)
@@ -56,13 +56,10 @@ public:
 
         TIME_BLOCK_START_NAMED(m_profiler, m_title.c_str());
 
-        // Reset
-        m_var_pushes = 0;
-
         // Callback
-        if (m_callback_begin_pre)
+        if (m_callback_on_visible)
         {
-            m_callback_begin_pre();
+            m_callback_on_visible();
         }
 
         // Position
@@ -98,12 +95,11 @@ public:
         }
 
         // Begin
-		ImGui::Begin(m_title.c_str(), &m_is_visible, m_flags);
-		m_window_begun = true;
+		m_window_begun = ImGui::Begin(m_title.c_str(), &m_is_visible, m_flags);
 
-        if (m_callback_begin_post)
+        if (m_callback_on_begin)
         {
-            m_callback_begin_post();
+            m_callback_on_begin();
         }
 
 		return true;
@@ -122,6 +118,7 @@ public:
         // End
 		ImGui::End();
         ImGui::PopStyleVar(m_var_pushes);
+        m_var_pushes = 0;
 		m_window_begun = false;
 
         TIME_BLOCK_END(m_profiler);
@@ -133,26 +130,26 @@ public:
     void PushStyleVar(ImGuiStyleVar idx, T val) { ImGui::PushStyleVar(idx, val); m_var_pushes++; }
 
     // Properties
-	auto IsWindow() const { return m_is_window; }
-	auto& GetVisible()				   { return m_is_visible; }
-	void SetVisible(bool is_visible)   { m_is_visible = is_visible; }
-	auto GetHeight() const { return m_height; }
-	auto GetWindow() const { return m_window; }
-	const auto& GetTitle() const { return m_title; }
+	bool IsWindow()                     const { return m_is_window; }
+	bool& GetVisible()				          { return m_is_visible; }
+	void SetVisible(bool is_visible)          { m_is_visible = is_visible; }
+	float GetHeight()                   const { return m_height; }
+	ImGuiWindow* GetWindow()            const { return m_window; }
+	const auto& GetTitle()              const { return m_title; }
 
 protected:
-	bool m_is_visible	                                = true;
-	bool m_is_window                                    = true;	
-	int m_flags	                                        = ImGuiWindowFlags_NoCollapse;
-	float m_height		                                = 0;
-    float m_alpha                                       = -1.0f;
-    Spartan::Math::Vector2 m_position                   = Spartan::Math::Vector2(-1.0f);
-    Spartan::Math::Vector2 m_size                       = Spartan::Math::Vector2(-1.0f);
-    Spartan::Math::Vector2 m_size_max                   = Spartan::Math::Vector2(FLT_MAX, FLT_MAX);
-    Spartan::Math::Vector2 m_padding                    = Spartan::Math::Vector2(-1.0f);
-    std::function<void()> m_callback_begin_visibility   = nullptr;
-    std::function<void()> m_callback_begin_pre          = nullptr;
-    std::function<void()> m_callback_begin_post         = nullptr;
+	bool m_is_visible	                        = true;
+	bool m_is_window                            = true;	
+	int m_flags	                                = ImGuiWindowFlags_NoCollapse;
+	float m_height		                        = 0;
+    float m_alpha                               = -1.0f;
+    Spartan::Math::Vector2 m_position           = Spartan::Math::Vector2(-1.0f);
+    Spartan::Math::Vector2 m_size               = Spartan::Math::Vector2(-1.0f);
+    Spartan::Math::Vector2 m_size_max           = Spartan::Math::Vector2(FLT_MAX, FLT_MAX);
+    Spartan::Math::Vector2 m_padding            = Spartan::Math::Vector2(-1.0f);
+    std::function<void()> m_callback_on_start   = nullptr;
+    std::function<void()> m_callback_on_visible = nullptr;
+    std::function<void()> m_callback_on_begin   = nullptr;
 
 	Spartan::Context* m_context     = nullptr;
     Spartan::Profiler* m_profiler   = nullptr;
