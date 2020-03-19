@@ -40,10 +40,10 @@ namespace Widget_Assets_Statics
 
 Widget_Assets::Widget_Assets(Context* context) : Widget(context)
 {
-	m_title = "Assets";
-	m_fileDialogView = make_unique<FileDialog>(m_context, false, FileDialog_Type_Browser, FileDialog_Op_Load, FileDialog_Filter_All);
-	m_fileDialogLoad = make_unique<FileDialog>(m_context, true, FileDialog_Type_FileSelection, FileDialog_Op_Load, FileDialog_Filter_Model);
-	m_flags |= ImGuiWindowFlags_NoScrollbar;
+	m_title             = "Assets";
+	m_fileDialogView    = make_unique<FileDialog>(m_context, false, FileDialog_Type_Browser,        FileDialog_Op_Load, FileDialog_Filter_All);
+	m_fileDialogLoad    = make_unique<FileDialog>(m_context, true,  FileDialog_Type_FileSelection,  FileDialog_Op_Load, FileDialog_Filter_Model);
+	m_flags             |= ImGuiWindowFlags_NoScrollbar;
 
 	// Just clicked, not selected (double clicked, end of dialog)
 	m_fileDialogView->SetCallbackOnItemClicked([this](const string& str) { OnPathClicked(str); });

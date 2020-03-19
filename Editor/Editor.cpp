@@ -331,8 +331,8 @@ void Editor::ApplyStyle() const
     colors[ImGuiCol_TabActive]			    = color_interactive_clicked;
     colors[ImGuiCol_TabUnfocused]			= color_interactive;
     colors[ImGuiCol_TabUnfocusedActive]		= color_interactive;            // Might be called active, but it's active only because it's it's the only tab available, the user didn't really activate it
-    colors[ImGuiCol_DockingPreview]			= color_background;             // Preview overlay color when about to docking something
-    colors[ImGuiCol_DockingEmptyBg]			= color_background;             // Background color for empty node (e.g. CentralNode with no window docked into it)
+    colors[ImGuiCol_DockingPreview]			= color_interactive_clicked;    // Preview overlay color when about to docking something
+    colors[ImGuiCol_DockingEmptyBg]			= color_interactive;            // Background color for empty node (e.g. CentralNode with no window docked into it)
     colors[ImGuiCol_PlotLines]			    = color_interactive;
     colors[ImGuiCol_PlotLinesHovered]		= color_interactive_hovered;
     colors[ImGuiCol_PlotHistogram]			= color_interactive;
