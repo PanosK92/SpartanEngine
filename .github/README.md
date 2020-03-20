@@ -110,4 +110,4 @@ Vulkan      					| 90%           | Don't port it, re-architect the engine instea
 - Windows 10.
 
 # License
-- Licensed under the MIT license, see [LICENSE.txt](https://github.com/PanosK92/SpartanEngine/blob/master/.github/LICENSE.txt) for details.
+- Licensed under the MIT license, see [LICENSE.txt](https://github.com/PanosK92/SpartanEngine/blob/master/LICENSE.txt) for details.
