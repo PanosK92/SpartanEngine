@@ -85,10 +85,10 @@ namespace Spartan
 
         // Depth
         {
-            Pass_LightShadow(cmd_list, Renderer_Object_Opaque);
+            Pass_LightDepth(cmd_list, Renderer_Object_Opaque);
             if (draw_transparent_objects)
             {
-                Pass_LightShadow(cmd_list, Renderer_Object_Transparent);
+                Pass_LightDepth(cmd_list, Renderer_Object_Transparent);
             }
 
             if (GetOption(Render_DepthPrepass))
@@ -131,7 +131,7 @@ namespace Spartan
         }
 	}
 
-	void Renderer::Pass_LightShadow(RHI_CommandList* cmd_list, const Renderer_Object_Type object_type)
+	void Renderer::Pass_LightDepth(RHI_CommandList* cmd_list, const Renderer_Object_Type object_type)
 	{
         // All opaque objects are rendered from the lights point of view.
         // Opaque objects write their depth information to a depth buffer, using just a vertex shader.

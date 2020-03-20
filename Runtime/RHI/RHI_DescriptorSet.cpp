@@ -54,9 +54,9 @@ namespace Spartan
         {
             const bool is_dynamic   = constant_buffer->IsDynamic();
             const bool is_same_type = (!is_dynamic && descriptor.type == RHI_Descriptor_ConstantBuffer) || (is_dynamic && descriptor.type == RHI_Descriptor_ConstantBufferDynamic);
-            const bool is_match     = is_same_type && descriptor.slot == slot + m_rhi_device->GetContextRhi()->shader_shift_buffer;
+            const bool is_same_slot = is_same_type && descriptor.slot == slot + m_rhi_device->GetContextRhi()->shader_shift_buffer;
 
-            if (is_match)
+            if (is_same_slot)
             {
                 // Determine if the descriptor set needs to bind
                 m_needs_to_bind = descriptor.id     != constant_buffer->GetId()     ? true : m_needs_to_bind;

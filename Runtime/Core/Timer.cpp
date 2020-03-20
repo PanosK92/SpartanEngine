@@ -48,16 +48,16 @@ namespace Spartan
         m_time_frame_start  = chrono::high_resolution_clock::now();
 
         // Compute durations
-        const chrono::duration<double, milli> time_elapsed           = m_time_start - m_time_frame_start;
-        chrono::duration<double, milli> time_delta                   = m_time_frame_start - m_time_frame_end;
-		const chrono::duration<double, milli> delta_time_over_limit  = chrono::duration<double, milli>(1000.0 / m_fps_target) - time_delta;
+        const chrono::duration<double, milli> time_elapsed      = m_time_start - m_time_frame_start;
+        chrono::duration<double, milli> time_delta              = m_time_frame_start - m_time_frame_end;
+		const chrono::duration<double, milli> time_remaining    = chrono::duration<double, milli>(1000.0 / m_fps_target) - time_delta;
 
         // Fps limiting
-		if (delta_time_over_limit.count() > 0)
+		if (time_remaining.count() > 0)
 		{
             // Compute sleep duration and account for the sleep overhead.
-            // The sleep overhead is the time the kernel takes to wake up the thread after the thread is ready to wake up.
-            chrono::duration<double, milli> sleep_duration_requested = chrono::duration<double, milli>(delta_time_over_limit.count() - m_sleep_overhead);
+            // The sleep overhead is the time the kernel takes to wake up the thread after the thread has finished sleeping.
+            chrono::duration<double, milli> sleep_duration_requested = chrono::duration<double, milli>(time_remaining.count() - m_sleep_overhead);
 
             // Put the thread to sleep
             this_thread::sleep_until(m_time_frame_start + sleep_duration_requested);
