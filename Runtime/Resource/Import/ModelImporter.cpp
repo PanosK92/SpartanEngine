@@ -427,8 +427,11 @@ namespace Spartan
 		material->SetColorAlbedo(Vector4(color_diffuse.r, color_diffuse.g, color_diffuse.b, opacity.r));
 
 		// TEXTURES
-		const auto load_mat_tex = [&params, &assimp_material, &material](const aiTextureType type_assimp, const TextureType type_spartan)
+		const auto load_mat_tex = [&params, &assimp_material, &material](const TextureType type_spartan, const aiTextureType type_assimp_pbr, const aiTextureType type_assimp_legacy)
 		{
+            aiTextureType type_assimp   = assimp_material->GetTextureCount(type_assimp_pbr)     > 0 ? type_assimp_pbr       : aiTextureType_NONE;
+            type_assimp                 = assimp_material->GetTextureCount(type_assimp_legacy)  > 0 ? type_assimp_legacy    : type_assimp;
+
 			aiString texture_path;
 			if (assimp_material->GetTextureCount(type_assimp) > 0)
 			{
@@ -439,7 +442,7 @@ namespace Spartan
 					{
                         params.model->AddTexture(material, type_spartan, AssimpHelper::texture_validate_path(texture_path.data, params.file_path));
 
-						if (type_assimp == aiTextureType_DIFFUSE)
+						if (type_assimp == aiTextureType_BASE_COLOR || type_assimp == aiTextureType_DIFFUSE)
 						{
 							// FIX: materials that have a diffuse texture should not be tinted black/gray
 							material->SetColorAlbedo(Vector4::One);
@@ -470,16 +473,17 @@ namespace Spartan
 				}
 			}
 		};
-		
-		load_mat_tex(aiTextureType_DIFFUSE,		TextureType_Albedo);
-		load_mat_tex(aiTextureType_SHININESS,	TextureType_Roughness); // Specular as roughness
-		load_mat_tex(aiTextureType_AMBIENT,		TextureType_Metallic);	// Ambient as metallic
-		load_mat_tex(aiTextureType_NORMALS,		TextureType_Normal);
-		load_mat_tex(aiTextureType_LIGHTMAP,	TextureType_Occlusion);
-		load_mat_tex(aiTextureType_EMISSIVE,	TextureType_Emission);
-		load_mat_tex(aiTextureType_LIGHTMAP,	TextureType_Occlusion);
-		load_mat_tex(aiTextureType_HEIGHT,		TextureType_Height);
-		load_mat_tex(aiTextureType_OPACITY,		TextureType_Mask);
+
+        // Engine texture,                  Assimp texture pbr,                 Assimp texture legacy (fallback)
+		load_mat_tex(TextureType_Albedo,    aiTextureType_BASE_COLOR,           aiTextureType_DIFFUSE);
+		load_mat_tex(TextureType_Roughness, aiTextureType_DIFFUSE_ROUGHNESS,    aiTextureType_SHININESS);   // Use specular as fallback
+		load_mat_tex(TextureType_Metallic,  aiTextureType_METALNESS,            aiTextureType_AMBIENT);     // Use ambient as fallback
+		load_mat_tex(TextureType_Normal,    aiTextureType_NORMAL_CAMERA,        aiTextureType_NORMALS);
+		load_mat_tex(TextureType_Occlusion, aiTextureType_AMBIENT_OCCLUSION,    aiTextureType_LIGHTMAP);
+        load_mat_tex(TextureType_Occlusion, aiTextureType_LIGHTMAP,             aiTextureType_LIGHTMAP);
+		load_mat_tex(TextureType_Emission,  aiTextureType_EMISSION_COLOR,       aiTextureType_EMISSIVE);
+		load_mat_tex(TextureType_Height,    aiTextureType_HEIGHT,               aiTextureType_NONE);
+		load_mat_tex(TextureType_Mask,      aiTextureType_OPACITY,              aiTextureType_NONE);
 
 		return material;
 	}
