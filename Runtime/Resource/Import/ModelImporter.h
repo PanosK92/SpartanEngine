@@ -48,9 +48,9 @@ namespace Spartan
         float max_tangent_smoothing_angle;
         std::string file_path;
         std::string name;
-        Model* model;
         bool has_animation;
-        const aiScene* scene;
+        Model* model            = nullptr;
+        const aiScene* scene    = nullptr;
     };
 
 	class SPARTAN_CLASS ModelImporter
