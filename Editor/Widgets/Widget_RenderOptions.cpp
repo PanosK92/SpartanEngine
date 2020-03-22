@@ -204,6 +204,7 @@ void Widget_RenderOptions::Tick()
             bool debug_aabb                  = m_renderer->GetOption(Render_Debug_Aabb);
             bool debug_light                 = m_renderer->GetOption(Render_Debug_Lights);
             bool debug_transform             = m_renderer->GetOption(Render_Debug_Transform);
+            bool debug_selection_outline     = m_renderer->GetOption(Render_Debug_SelectionOutline);
             bool debug_picking_ray           = m_renderer->GetOption(Render_Debug_PickingRay);
             bool debug_grid                  = m_renderer->GetOption(Render_Debug_Grid);
             bool debug_performance_metrics   = m_renderer->GetOption(Render_Debug_PerformanceMetrics);
@@ -214,6 +215,7 @@ void Widget_RenderOptions::Tick()
                 ImGui::SameLine(); ImGui::InputFloat("Size", &m_renderer->m_gizmo_transform_size, 0.0025f);
                 ImGui::SameLine(); ImGui::InputFloat("Speed", &m_renderer->m_gizmo_transform_speed, 1.0f);
             }
+            ImGui::Checkbox("Selection Outline",    &debug_selection_outline);
             ImGui::Checkbox("Physics",              &debug_physics);
             ImGui::Checkbox("AABB",                 &debug_aabb);
             ImGui::Checkbox("Lights",               &debug_light);
@@ -222,14 +224,15 @@ void Widget_RenderOptions::Tick()
             ImGui::Checkbox("Performance Metrics",  &debug_performance_metrics);
             ImGui::Checkbox("Wireframe",            &debug_wireframe);
 
-            m_renderer->SetOption(Render_Debug_Transform,             debug_transform);
-            m_renderer->SetOption(Render_Debug_Physics,               debug_physics);
-            m_renderer->SetOption(Render_Debug_Aabb,                  debug_aabb);
-            m_renderer->SetOption(Render_Debug_Lights,                debug_light);
-            m_renderer->SetOption(Render_Debug_PickingRay,            debug_picking_ray);
-            m_renderer->SetOption(Render_Debug_Grid,                  debug_grid);
-            m_renderer->SetOption(Render_Debug_PerformanceMetrics,    debug_performance_metrics);
-            m_renderer->SetOption(Render_Debug_Wireframe,             debug_wireframe);
+            m_renderer->SetOption(Render_Debug_Transform,           debug_transform);
+            m_renderer->SetOption(Render_Debug_SelectionOutline,    debug_selection_outline);
+            m_renderer->SetOption(Render_Debug_Physics,             debug_physics);
+            m_renderer->SetOption(Render_Debug_Aabb,                debug_aabb);
+            m_renderer->SetOption(Render_Debug_Lights,              debug_light);
+            m_renderer->SetOption(Render_Debug_PickingRay,          debug_picking_ray);
+            m_renderer->SetOption(Render_Debug_Grid,                debug_grid);
+            m_renderer->SetOption(Render_Debug_PerformanceMetrics,  debug_performance_metrics);
+            m_renderer->SetOption(Render_Debug_Wireframe,           debug_wireframe);
         }
     }
 

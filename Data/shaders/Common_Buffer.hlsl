@@ -50,7 +50,7 @@ cbuffer BufferFrame : register(b0)
     float g_directional_light_intensity;
 	float g_ssr_enabled;
     float g_shadow_resolution;
-    
+
     float2 g_taa_jitter_offset_previous;
 	float2 g_taa_jitter_offset;
 };

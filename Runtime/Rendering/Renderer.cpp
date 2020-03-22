@@ -58,6 +58,7 @@ namespace Spartan
         m_options |= Render_ReverseZ;
         //m_options |= Render_DepthPrepass;
         m_options |= Render_Debug_Transform;
+        //m_options |= Render_Debug_SelectionOutline;
         m_options |= Render_Debug_Grid;
         m_options |= Render_Debug_Lights;
         m_options |= Render_Debug_Physics;

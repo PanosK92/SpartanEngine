@@ -54,23 +54,24 @@ namespace Spartan
 		Render_Debug_PickingRay			    = 1 << 1,
 		Render_Debug_Grid				    = 1 << 2,
 		Render_Debug_Transform			    = 1 << 3,
-		Render_Debug_Lights				    = 1 << 4,
-		Render_Debug_PerformanceMetrics	    = 1 << 5,
-		Render_Debug_Physics			    = 1 << 6,
-        Render_Debug_Wireframe              = 1 << 7,
-		Render_Bloom				        = 1 << 8,
-        Render_VolumetricLighting           = 1 << 9,
-        Render_AntiAliasing_Taa             = 1 << 10,
-		Render_AntiAliasing_Fxaa	        = 1 << 11,
-		Render_ScreenSpaceAmbientOcclusion  = 1 << 12,
-        Render_ScreenSpaceShadows           = 1 << 13,
-		Render_ScreenSpaceReflections		= 1 << 14,
-		Render_MotionBlur			        = 1 << 15,
-		Render_Sharpening_LumaSharpen	    = 1 << 16,
-		Render_ChromaticAberration	        = 1 << 17,
-		Render_Dithering			        = 1 << 18,
-        Render_ReverseZ                     = 1 << 19,
-        Render_DepthPrepass                 = 1 << 20
+        Render_Debug_SelectionOutline       = 1 << 4,
+		Render_Debug_Lights				    = 1 << 5,
+		Render_Debug_PerformanceMetrics	    = 1 << 6,
+		Render_Debug_Physics			    = 1 << 7,
+        Render_Debug_Wireframe              = 1 << 8,
+		Render_Bloom				        = 1 << 9,
+        Render_VolumetricLighting           = 1 << 10,
+        Render_AntiAliasing_Taa             = 1 << 11,
+		Render_AntiAliasing_Fxaa	        = 1 << 12,
+		Render_ScreenSpaceAmbientOcclusion  = 1 << 13,
+        Render_ScreenSpaceShadows           = 1 << 14,
+		Render_ScreenSpaceReflections		= 1 << 15,
+		Render_MotionBlur			        = 1 << 16,
+		Render_Sharpening_LumaSharpen	    = 1 << 17,
+		Render_ChromaticAberration	        = 1 << 18,
+		Render_Dithering			        = 1 << 19,
+        Render_ReverseZ                     = 1 << 20,
+        Render_DepthPrepass                 = 1 << 21
 	};
 
     enum Renderer_Option_Value
@@ -159,12 +160,12 @@ namespace Spartan
         Shader_Font_P,
 		Shader_Ssao_P,
         Shader_Ssr_P,
-		Shader_GizmoTransform_V,
-        Shader_GizmoTransform_P,
+		Shader_Entity_V,
+        Shader_Entity_Transform_P,
 		Shader_BlurBox_P,
 		Shader_BlurGaussian_P,
 		Shader_BlurGaussianBilateral_P,
-        Shader_Outline_P
+        Shader_Entity_Outline_P
 	};
 
     enum Renderer_RenderTarget_Type

@@ -97,8 +97,8 @@ namespace Spartan
 		bool Update(TransformHandle_Space space, Entity* entity, Camera* camera, float handle_size, float handle_speed);
 		const Math::Matrix& GetTransform(const Math::Vector3& axis) const;
 		const Math::Vector3& GetColor(const Math::Vector3& axis) const;
-		std::shared_ptr<RHI_VertexBuffer> GetVertexBuffer() const;
-		std::shared_ptr<RHI_IndexBuffer> GetIndexBuffer() const;
+		const RHI_VertexBuffer* GetVertexBuffer() const;
+		const RHI_IndexBuffer* GetIndexBuffer() const;
 	
 	private:
 		void SnapToTransform(TransformHandle_Space space, Entity* entity, Camera* camera, float handle_size);

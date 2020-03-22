@@ -233,12 +233,12 @@ namespace Spartan
 		return m_handle_xyz.GetColor();
 	}
 
-	shared_ptr<RHI_VertexBuffer> TransformHandle::GetVertexBuffer() const
+	const RHI_VertexBuffer* TransformHandle::GetVertexBuffer() const
 	{
 		return m_model->GetVertexBuffer();
 	}
 
-	shared_ptr<RHI_IndexBuffer> TransformHandle::GetIndexBuffer() const
+	const RHI_IndexBuffer* TransformHandle::GetIndexBuffer() const
 	{
 		return m_model->GetIndexBuffer();
 	}
