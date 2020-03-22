@@ -2093,7 +2093,8 @@ namespace Spartan
                     UpdateUberBuffer();
                 }
 
-                cmd_list->SetTexture(0, tex_normal);
+                cmd_list->SetTexture(0, tex_depth);
+                cmd_list->SetTexture(1, tex_normal);
                 cmd_list->SetBufferVertex(model->GetVertexBuffer());
                 cmd_list->SetBufferIndex(model->GetIndexBuffer());
                 cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
