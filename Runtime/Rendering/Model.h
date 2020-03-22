@@ -75,11 +75,11 @@ namespace Spartan
 		void AddTexture(std::shared_ptr<Material>& material, TextureType texture_type, const std::string& file_path);
 
         // Misc
-		auto IsAnimated() const						{ return m_is_animated; }
-		void SetAnimated(const bool is_animated)	{ m_is_animated = is_animated; }
-		const auto& GetIndexBuffer() const			{ return m_index_buffer; }
-		const auto& GetVertexBuffer() const			{ return m_vertex_buffer; }
-		auto GetSharedPtr()							{ return shared_from_this(); }
+        bool IsAnimated()                           const { return m_is_animated; }
+		void SetAnimated(const bool is_animated)	      { m_is_animated = is_animated; }
+		const RHI_IndexBuffer* GetIndexBuffer()     const { return m_index_buffer.get(); }
+		const RHI_VertexBuffer* GetVertexBuffer()   const { return m_vertex_buffer.get(); }
+		auto GetSharedPtr()							      { return shared_from_this(); }
 
 	private:
 		// Geometry

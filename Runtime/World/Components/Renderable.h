@@ -79,7 +79,7 @@ namespace Spartan
 		auto GeometryVertexCount()	                const { return m_geometryVertexCount; }
 		auto GeometryType()			                const { return m_geometry_type; }
 		const auto& GeometryName()	                const { return m_geometryName; }
-		const auto& GeometryModel()                 const { return m_model; }
+		const Model* GeometryModel()                const { return m_model.get(); }
         const Math::BoundingBox& GetBoundingBox()   const { return m_bounding_box; }
         const Math::BoundingBox& GetAabb();
 		//=====================================================================================================

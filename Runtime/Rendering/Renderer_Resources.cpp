@@ -326,19 +326,23 @@ namespace Spartan
         m_shaders[Shader_Ssr_P] = make_shared<RHI_Shader>(m_rhi_device);
         m_shaders[Shader_Ssr_P]->CompileAsync(m_context, Shader_Pixel, dir_shaders + "SSR.hlsl");
 
-        // Transform gizmo
-        m_shaders[Shader_GizmoTransform_V] = make_shared<RHI_Shader>(m_rhi_device);
-        m_shaders[Shader_GizmoTransform_V]->CompileAsync<RHI_Vertex_PosTexNorTan>(m_context, Shader_Vertex, dir_shaders + "TransformGizmo.hlsl");
-        m_shaders[Shader_GizmoTransform_P] = make_shared<RHI_Shader>(m_rhi_device);
-        m_shaders[Shader_GizmoTransform_P]->CompileAsync(m_context, Shader_Pixel, dir_shaders + "TransformGizmo.hlsl");
+        // Entity
+        m_shaders[Shader_Entity_V] = make_shared<RHI_Shader>(m_rhi_device);
+        m_shaders[Shader_Entity_V]->CompileAsync<RHI_Vertex_PosTexNorTan>(m_context, Shader_Vertex, dir_shaders + "Entity.hlsl");
+
+        // Entity - Transform
+        m_shaders[Shader_Entity_Transform_P] = make_shared<RHI_Shader>(m_rhi_device);
+        m_shaders[Shader_Entity_Transform_P]->AddDefine("TRANSFORM");
+        m_shaders[Shader_Entity_Transform_P]->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Entity.hlsl");
+
+        // Entity - Outline
+        m_shaders[Shader_Entity_Outline_P] = make_shared<RHI_Shader>(m_rhi_device);
+        m_shaders[Shader_Entity_Outline_P]->AddDefine("OUTLINE");
+        m_shaders[Shader_Entity_Outline_P]->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Entity.hlsl");
 
         // Composition
         m_shaders[Shader_Composition_P] = make_shared<RHI_Shader>(m_rhi_device);
         m_shaders[Shader_Composition_P]->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Composition.hlsl");
-
-        // Outline
-        m_shaders[Shader_Outline_P] = make_shared<RHI_Shader>(m_rhi_device);
-        m_shaders[Shader_Outline_P]->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Outline.hlsl");
 
         // Font
         m_shaders[Shader_Font_V] = make_shared<RHI_Shader>(m_rhi_device);

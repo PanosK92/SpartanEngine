@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===============================
+//= INCLUDES ==============================
 #include "Renderer.h"
 #include "Model.h"
 #include "Font/Font.h"
@@ -36,7 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Camera.h"
 #include "../World/Components/Transform.h"
 #include "../World/Components/Renderable.h"
-//==========================================
+//=========================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -121,11 +121,12 @@ namespace Spartan
         }
 
         // Post-processing
-        {
+        {  
             Pass_PostProcess(cmd_list);
+            Pass_Outline(cmd_list, m_render_targets[RenderTarget_Composition_Ldr]);
             Pass_Lines(cmd_list, m_render_targets[RenderTarget_Composition_Ldr]);
-            Pass_Icons(cmd_list, m_render_targets[RenderTarget_Composition_Ldr].get());
             Pass_TransformHandle(cmd_list, m_render_targets[RenderTarget_Composition_Ldr].get());
+            Pass_Icons(cmd_list, m_render_targets[RenderTarget_Composition_Ldr].get());      
             Pass_DebugBuffer(cmd_list, m_render_targets[RenderTarget_Composition_Ldr]);
             Pass_PerformanceMetrics(cmd_list, m_render_targets[RenderTarget_Composition_Ldr].get());
         }
@@ -1949,12 +1950,9 @@ namespace Spartan
 
     void Renderer::Pass_TransformHandle(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
 	{
-        if (!(m_options & Render_Debug_Transform))
-            return;
-
         // Acquire resources
-        auto const& shader_gizmo_transform_v    = m_shaders[Shader_GizmoTransform_V];
-        auto const& shader_gizmo_transform_p    = m_shaders[Shader_GizmoTransform_P];
+        auto const& shader_gizmo_transform_v    = m_shaders[Shader_Entity_V];
+        auto const& shader_gizmo_transform_p    = m_shaders[Shader_Entity_Transform_P];
         if (!shader_gizmo_transform_v->IsCompiled() || !shader_gizmo_transform_p->IsCompiled())
             return;
 
@@ -2040,7 +2038,69 @@ namespace Spartan
 
     void Renderer::Pass_Outline(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_out)
     {
+        if (!GetOption(Render_Debug_SelectionOutline))
+            return;
 
+        if (const Entity* entity = m_gizmo_transform->GetSelectedEntity())
+        {
+            // Get renderable
+            const Renderable* renderable = entity->GetRenderable();
+            if (!renderable)
+                return;
+
+            // Get material
+            const Material* material = renderable->GetMaterial().get();
+            if (!material)
+                return;
+
+            // Get geometry
+            const Model* model = renderable->GeometryModel();
+            if (!model || !model->GetVertexBuffer() || !model->GetIndexBuffer())
+                return;
+
+            // Acquire shaders
+            const auto& shader_v = m_shaders[Shader_Entity_V];
+            const auto& shader_p = m_shaders[Shader_Entity_Outline_P];
+            if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
+                return;
+
+            RHI_Texture* tex_depth  = m_render_targets[RenderTarget_Gbuffer_Depth].get();
+            RHI_Texture* tex_normal = m_render_targets[RenderTarget_Gbuffer_Normal].get();
+
+            // Set render state
+            static RHI_PipelineState pipeline_state;
+            pipeline_state.shader_vertex                            = shader_v.get();
+            pipeline_state.shader_pixel                             = shader_p.get();
+            pipeline_state.rasterizer_state                         = m_rasterizer_cull_back_solid.get();
+            pipeline_state.blend_state                              = m_blend_alpha.get();
+            pipeline_state.depth_stencil_state                      = m_depth_stencil_enabled_disabled_read.get();
+            pipeline_state.vertex_buffer_stride                     = model->GetVertexBuffer()->GetStride();
+            pipeline_state.render_target_color_textures[0]          = tex_out.get();
+            pipeline_state.render_target_depth_texture              = tex_depth;
+            pipeline_state.render_target_depth_texture_read_only    = true;
+            pipeline_state.primitive_topology                       = RHI_PrimitiveTopology_TriangleList;
+            pipeline_state.viewport                                 = tex_out->GetViewport();
+            pipeline_state.pass_name                                = "Pass_Outline";
+
+            // Submit command list
+            if (cmd_list->Begin(pipeline_state))
+            {
+                 // Update uber buffer with entity transform
+                if (Transform* transform = entity->GetTransform())
+                {
+                    m_buffer_uber_cpu.transform     = transform->GetMatrix();
+                    m_buffer_uber_cpu.resolution    = Vector2(tex_out->GetWidth(), tex_out->GetHeight());
+                    UpdateUberBuffer();
+                }
+
+                cmd_list->SetTexture(0, tex_normal);
+                cmd_list->SetBufferVertex(model->GetVertexBuffer());
+                cmd_list->SetBufferIndex(model->GetIndexBuffer());
+                cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
+                cmd_list->End();
+                cmd_list->Submit();
+            }
+        }
     }
 
 	void Renderer::Pass_PerformanceMetrics(RHI_CommandList* cmd_list, RHI_Texture* tex_out)

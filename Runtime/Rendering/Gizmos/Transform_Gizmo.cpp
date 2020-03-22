@@ -132,7 +132,7 @@ namespace Spartan
 		return m_handle_rotation.GetIndexBuffer()->GetIndexCount();
 	}
 
-	shared_ptr<RHI_VertexBuffer> Transform_Gizmo::GetVertexBuffer() const
+	const RHI_VertexBuffer* Transform_Gizmo::GetVertexBuffer() const
     {
 		if (m_type == TransformHandle_Position)
 		{
@@ -146,7 +146,7 @@ namespace Spartan
 		return m_handle_rotation.GetVertexBuffer();
 	}
 
-	shared_ptr<RHI_IndexBuffer> Transform_Gizmo::GetIndexBuffer() const
+	const RHI_IndexBuffer* Transform_Gizmo::GetIndexBuffer() const
     {
 		if (m_type == TransformHandle_Position)
 		{
