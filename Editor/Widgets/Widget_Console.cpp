@@ -90,6 +90,7 @@ void Widget_Console::Tick()
         ImGui::PushItemWidth(max_log_width);
 
         uint32_t index = 0;
+        m_is_reading = true;
         for (LogPackage& log : m_logs)
         {
             if (m_log_filter.PassFilter(log.text.c_str()))
@@ -104,6 +105,7 @@ void Widget_Console::Tick()
                 }
             }
         }
+        m_is_reading = false;
 
         ImGui::PopItemWidth();
 
@@ -119,6 +121,9 @@ void Widget_Console::Tick()
 
 void Widget_Console::AddLogPackage(const LogPackage& package)
 {
+    // Wait for reading to finish
+    while (m_is_reading) {}
+
     // Save to deque
 	m_logs.push_back(package);
 	if (static_cast<uint32_t>(m_logs.size()) > m_log_max_count)
