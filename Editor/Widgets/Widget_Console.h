@@ -77,7 +77,7 @@ private:
         Spartan::Math::Vector4(0.7f, 0.75f, 0.0f, 1.0f),	// Warning
         Spartan::Math::Vector4(0.7f, 0.0f, 0.0f, 1.0f)	    // Error
     };
-
+    bool m_is_reading = false;
     std::shared_ptr<EngineLogger> m_logger;
     std::deque<LogPackage> m_logs;
     ImGuiTextFilter m_log_filter;
