@@ -19,21 +19,6 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= TEXTURES ===================================
-Texture2D tex_albedo            : register(t0);
-Texture2D tex_normal            : register(t1);
-Texture2D tex_material          : register(t2);
-Texture2D tex_depth             : register(t3);
-Texture2D tex_ssao              : register(t4);
-Texture2D tex_light_diffuse     : register(t5);
-Texture2D tex_light_specular    : register(t6);
-Texture2D tex_lightVolumetric   : register(t7);
-Texture2D tex_ssr               : register(t8);
-Texture2D tex_frame             : register(t9);
-Texture2D tex_lutIbl            : register(t10);
-Texture2D tex_environment       : register(t11);
-//==============================================
-
 // = INCLUDES ======
 #include "BRDF.hlsl"
 //==================

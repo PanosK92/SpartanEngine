@@ -35,11 +35,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "FXAA.hlsl"
 //=================================
 
-Texture2D tex 	: register(t0);
-Texture2D tex2	: register(t1);
-Texture2D tex3	: register(t2);
-Texture2D tex4	: register(t3);
-
 Pixel_PosUv mainVS(Vertex_PosUv input)
 {
     Pixel_PosUv output;
@@ -99,7 +94,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 #endif
 
 #if PASS_TAA_RESOLVE
-	color = ResolveTAA(uv, tex, tex2, tex3, tex4);
+	color = ResolveTAA(uv, tex, tex2);
 #endif
 
 #if PASS_TAA_SHARPEN
@@ -123,7 +118,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 #endif
 
 #if PASS_BLUR_BILATERAL_GAUSSIAN
-	color = Blur_GaussianBilateral(uv, tex, tex2, tex3);
+	color = Blur_GaussianBilateral(uv, tex);
 #endif
 
 #if PASS_BLOOM_DOWNSAMPLE
@@ -152,7 +147,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 #endif
 
 #if PASS_MOTION_BLUR
-	color = MotionBlur(uv, tex, tex2, tex3);
+	color = MotionBlur(uv, tex);
 #endif
 
 #if DEBUG_NORMAL

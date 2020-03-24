@@ -21,10 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 static const uint g_mb_samples = 16;
 
-float4 MotionBlur(float2 texCoord, Texture2D texture_color, Texture2D texture_velocity, Texture2D texture_depth)
+float4 MotionBlur(float2 texCoord, Texture2D tex)
 {	
-	float4 color 	= texture_color.Sample(sampler_point_clamp, texCoord);	
-	float2 velocity = GetVelocity_Dilate_Max(texCoord, texture_velocity, texture_depth);
+	float4 color 	= tex.Sample(sampler_point_clamp, texCoord);	
+	float2 velocity = GetVelocity_Dilate_Max(texCoord, tex_velocity, tex_depth);
 	
 	// Make velocity scale based on user preference instead of frame rate
 	float velocity_scale = g_motionBlur_strength / g_delta_time;
@@ -38,7 +38,7 @@ float4 MotionBlur(float2 texCoord, Texture2D texture_color, Texture2D texture_ve
 	for (uint i = 1; i < g_mb_samples; ++i) 
 	{
 		float2 offset 	= velocity * (float(i) / float(g_mb_samples - 1) - 0.5f);
-		color 			+= texture_color.SampleLevel(sampler_bilinear_clamp, texCoord + offset, 0);
+		color 			+= tex.SampleLevel(sampler_bilinear_clamp, texCoord + offset, 0);
 	}
 
 	return color / float(g_mb_samples);

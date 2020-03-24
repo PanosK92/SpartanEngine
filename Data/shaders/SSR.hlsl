@@ -24,15 +24,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Dithering.hlsl"
 //=======================
 
-//= TEXTURES ==========================
-Texture2D tex_normal    : register(t0);
-Texture2D tex_depth     : register(t1);
-//=====================================
-
-static const uint g_ssr_max_steps               = 64;
-static const uint g_ssr_binarySearchSteps       = 8;
-static const float g_ssr_binarySearchThreshold  = 0.01f;
-static const float g_ssr_ray_max_distance       = 20.0f;
+static const uint   g_ssr_max_steps              = 64;
+static const uint   g_ssr_binarySearchSteps      = 8;
+static const float  g_ssr_binarySearchThreshold  = 0.01f;
+static const float  g_ssr_ray_max_distance       = 20.0f;
 
 bool binary_search(float3 ray_dir, inout float3 ray_pos, inout float2 ray_uv)
 {
@@ -45,7 +40,7 @@ bool binary_search(float3 ray_dir, inout float3 ray_pos, inout float2 ray_uv)
 		ray_pos += -sign(depth_delta) * ray_dir;
         ray_uv    = project_uv(ray_pos, g_projection);
 
-        depth_buffer_z  = get_linear_depth(tex_depth, ray_uv);
+        depth_buffer_z  = get_linear_depth(ray_uv);
         depth_delta     = ray_pos.z - depth_buffer_z;
         
         if (abs(depth_delta) < g_ssr_binarySearchThreshold)
@@ -63,7 +58,7 @@ bool ray_march(float3 ray_pos, float3 ray_dir, inout float2 ray_uv)
         ray_pos += ray_dir;
         ray_uv  = project_uv(ray_pos, g_projection);
 
-        float depth_buffer_z = get_linear_depth(tex_depth, ray_uv);
+        float depth_buffer_z = get_linear_depth(ray_uv);
 
         [branch]
         if (ray_pos.z > depth_buffer_z)
@@ -75,15 +70,11 @@ bool ray_march(float3 ray_pos, float3 ray_dir, inout float2 ray_uv)
 
 float2 mainPS(Pixel_PosUv input) : SV_TARGET
 {
-    // Sample textures and compute world position
-    float2 uv               = input.uv;
-    float3 normal           = get_normal(tex_normal, uv);
-    float depth             = get_depth(tex_depth, uv);    
-    float3 position_world   = get_position_from_depth(depth, uv);
-    
-    // Compute reflection vector
-    float3 normal_view  = normalize(mul(float4(normal, 0.0f), g_view).xyz);
-    float3 ray_pos      = mul(float4(position_world, 1.0f), g_view).xyz;
+    float2 uv = input.uv;
+
+    // Compute ray direction (reflection vector)
+    float3 normal_view  = get_normal_view_space(uv);
+    float3 ray_pos      = get_position_view_space(uv);
     float3 ray_dir      = normalize(reflect(ray_pos, normal_view));
    
     // Reject if the reflection vector is pointing back at the viewer.

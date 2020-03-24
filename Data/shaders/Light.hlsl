@@ -18,22 +18,6 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
-							 
-//= TEXTURES ===========================================
-Texture2D tex_albedo 					: register(t0);
-Texture2D tex_normal 					: register(t1);
-Texture2D tex_material 					: register(t2);
-Texture2D tex_depth 					: register(t3);
-Texture2D tex_ssao 						: register(t4);
-Texture2D tex_ssr                       : register(t5);
-Texture2D tex_frame                     : register(t6);
-Texture2DArray light_directional_depth 	: register(t7);
-Texture2DArray light_directional_color 	: register(t8);
-TextureCube light_point_depth 			: register(t9);
-TextureCube light_point_color 			: register(t10);
-Texture2D light_spot_depth 				: register(t11);
-Texture2D light_spot_color 				: register(t12);
-//======================================================
 
 //= INCLUDES =====================      
 #include "BRDF.hlsl"              
@@ -73,7 +57,7 @@ PixelOutputType mainPS(Pixel_PosUv input)
     bool is_sky 	= material_sample.a == 0.0f;
     
 	// Compute camera to pixel vector
-    float3 position_world   = get_position_from_depth(depth_sample, uv);
+    float3 position_world   = get_position(depth_sample, uv);
     float3 camera_to_pixel  = normalize(position_world - g_camera_position.xyz);
 	
     // Fill light struct
