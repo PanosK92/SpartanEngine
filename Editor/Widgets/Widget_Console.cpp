@@ -89,6 +89,9 @@ void Widget_Console::Tick()
         max_log_width = Math::Max(max_log_width, ImGui::GetWindowContentRegionWidth());
         ImGui::PushItemWidth(max_log_width);
 
+        // Wait for reading to finish
+        while (m_is_reading) {}
+
         uint32_t index = 0;
         m_is_reading = true;
         for (LogPackage& log : m_logs)

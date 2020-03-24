@@ -804,8 +804,8 @@ namespace Spartan
             cmd_list->SetTexture(22, (m_options & Render_ScreenSpaceAmbientOcclusion) ? m_render_targets[RenderTarget_Ssao] : m_tex_white);
             cmd_list->SetTexture(23, m_render_targets[RenderTarget_Light_Diffuse]);
             cmd_list->SetTexture(24, m_render_targets[RenderTarget_Light_Specular]);
-            cmd_list->SetTexture(25, (m_options & Render_VolumetricLighting) ? m_render_targets[RenderTarget_Light_Volumetric] : m_tex_black);
-            cmd_list->SetTexture(26, (m_options & RenderTarget_Ssr) ? m_render_targets[RenderTarget_Ssr] : m_tex_black);
+            cmd_list->SetTexture(25, (m_options & Render_VolumetricLighting)        ? m_render_targets[RenderTarget_Light_Volumetric] : m_tex_black);
+            cmd_list->SetTexture(26, (m_options & Render_ScreenSpaceReflections)    ? m_render_targets[RenderTarget_Ssr] : m_tex_black);
             cmd_list->SetTexture(27, m_render_targets[RenderTarget_Composition_Hdr_2]); // previous frame before post-processing
             cmd_list->SetTexture(19, m_render_targets[RenderTarget_Brdf_Specular_Lut]);
             cmd_list->SetTexture(20, GetEnvironmentTexture());
@@ -1950,6 +1950,9 @@ namespace Spartan
 
     void Renderer::Pass_TransformHandle(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
 	{
+        if (!GetOption(Render_Debug_Transform))
+            return;
+
         // Acquire resources
         auto const& shader_gizmo_transform_v    = m_shaders[Shader_Entity_V];
         auto const& shader_gizmo_transform_p    = m_shaders[Shader_Entity_Transform_P];
