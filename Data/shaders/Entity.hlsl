@@ -44,11 +44,6 @@ PixelInputType mainVS(Vertex_PosUvNorTan input)
     return output;
 }
 
-#ifdef OUTLINE
-Texture2D tex_depth : register(t0);
-Texture2D tex_normal : register(t1);
-#endif
-
 float4 mainPS(PixelInputType input) : SV_TARGET
 {
 #ifdef TRANSFORM
@@ -93,7 +88,7 @@ float4 mainPS(PixelInputType input) : SV_TARGET
     float edge_normal = sqrt(dot(normalFiniteDifference0, normalFiniteDifference0) + dot(normalFiniteDifference1, normalFiniteDifference1));
 
 	// Compute view direction bias
-	float3 view 		= get_view_direction(tex_depth, uv);
+	float3 view 		= get_view_direction(uv);
 	float3 normal 		= tex_normal.Sample(sampler_point_clamp, uv).rgb;
 	float view_dir_bias = dot(view, normal) * 0.5f + 0.5f;
 

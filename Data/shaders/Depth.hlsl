@@ -23,10 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common.hlsl"
 //====================
 
-//= TEXTURES =======================
-Texture2D tex_albedo : register(t0);
-//==================================
-
 Pixel_PosUv mainVS(Vertex_PosUv input)
 {
 	Pixel_PosUv output;
@@ -41,5 +37,5 @@ Pixel_PosUv mainVS(Vertex_PosUv input)
 float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
     float2 uv = float2(input.uv.x * materialTiling.x + materialOffset.x, input.uv.y * materialTiling.y + materialOffset.y);
-    return degamma(tex_albedo.Sample(sampler_anisotropic_wrap, uv)) * materialAlbedoColor;	
+    return degamma(tex.Sample(sampler_anisotropic_wrap, uv)) * materialAlbedoColor;
 }

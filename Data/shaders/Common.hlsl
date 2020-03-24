@@ -20,9 +20,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =================
+#include "Common_Struct.hlsl"
 #include "Common_Vertex.hlsl"
 #include "Common_Buffer.hlsl"
 #include "Common_Sampler.hlsl"
+#include "Common_Texture.hlsl"
 //============================
 
 /*------------------------------------------------------------------------------
@@ -34,38 +36,6 @@ static const float INV_PI   = 0.31830988f;
 static const float EPSILON  = 0.00000001f;
 #define g_texel_size        float2(1.0f / g_resolution.x, 1.0f / g_resolution.y)
 #define g_shadow_texel_size (1.0f / g_shadow_resolution)
-
-/*------------------------------------------------------------------------------
-    STRUCTS
-------------------------------------------------------------------------------*/
-struct Material
-{
-    float3 albedo;
-    float roughness;
-    float metallic;
-    float3 padding;
-    float emissive;
-    float3 F0;
-};
-
-struct Light
-{
-    bool    cast_shadows;
-    bool    cast_contact_shadows;
-    bool    cast_transparent_shadows;
-    bool    is_volumetric;
-    float3  color;
-    float   intensity;
-    float3  position;
-    float   range;
-    float3  direction;
-    float   distance_to_pixel;
-    float   attenuation;
-    float   angle;
-    float   bias;
-    float   normal_bias;
-    uint    array_size;
-};
 
 /*------------------------------------------------------------------------------
     MATH
@@ -127,9 +97,15 @@ inline float3 normal_decode(float3 normal)  { return normalize(normal); }
 // No encoding required (just normalise)
 inline float3 normal_encode(float3 normal)  { return normalize(normal); }
 
-inline float3 get_normal(Texture2D _texture, float2 uv)
+inline float3 get_normal(float2 uv)
 {
-    return normal_decode(_texture.Load(int3(uv * g_resolution, 0)).rgb);
+    return normal_decode(tex_normal.Load(int3(uv * g_resolution, 0)).rgb);
+}
+
+inline float3 get_normal_view_space(float2 uv)
+{
+    float3 normal_world_space = get_normal(uv);
+    return normalize(mul(float4(normal_world_space, 0.0f), g_view).xyz);
 }
 
 inline float3x3 makeTBN(float3 n, float3 t)
@@ -143,11 +119,11 @@ inline float3x3 makeTBN(float3 n, float3 t)
 }
 
 /*------------------------------------------------------------------------------
-    DEPTH CAMERA
+    DEPTH
 ------------------------------------------------------------------------------*/
-inline float get_depth(Texture2D _texture, float2 uv)
+inline float get_depth(float2 uv)
 {
-    return _texture.Load(int3(uv * g_resolution, 0)).r;
+    return tex_depth.Load(int3(uv * g_resolution, 0)).r;
 }
 
 inline float get_linear_depth(float z, float near, float far)
@@ -162,14 +138,19 @@ inline float get_linear_depth(float z)
     return get_linear_depth(z, g_camera_near, g_camera_far);
 }
 
-inline float get_linear_depth(Texture2D _texture, float2 uv)
+inline float get_linear_depth(float2 uv)
 {
-    float depth = get_depth(_texture, uv);
+    float depth = get_depth( uv);
     return get_linear_depth(depth);
 }
 
-inline float3 get_position_from_depth(float z, float2 uv)
-{   
+/*------------------------------------------------------------------------------
+    POSITION
+------------------------------------------------------------------------------*/
+inline float3 get_position(float z, float2 uv)
+{
+    // Reconstruct position from depth
+
     float x             = uv.x * 2.0f - 1.0f;
     float y             = (1.0f - uv.y) * 2.0f - 1.0f;
     float4 pos_clip     = float4(x, y, z, 1.0f);
@@ -177,22 +158,66 @@ inline float3 get_position_from_depth(float z, float2 uv)
     return pos_world.xyz / pos_world.w;  
 }
 
-inline float3 get_position_from_depth(Texture2D tex_depth, float2 uv)
+inline float3 get_position(float2 uv)
 {
-    float depth = get_depth(tex_depth, uv);
-    return get_position_from_depth(depth, uv);
+    float depth = get_depth(uv);
+    return get_position(depth, uv);
 }
 
-inline float3 get_view_direction(float depth, float2 uv)
+inline float3 get_position_view_space(float2 uv)
 {
-    float3 position_world = get_position_from_depth(depth, uv);
-    return normalize(position_world - g_camera_position.xyz); // camera to pixel
+    float3 position_world_space = get_position(uv);
+    return mul(float4(position_world_space, 1.0f), g_view).xyz;
 }
 
-inline float3 get_view_direction(Texture2D tex_depth, float2 uv)
+/*------------------------------------------------------------------------------
+    VIEW DIRECTION
+------------------------------------------------------------------------------*/
+inline float3 get_view_direction( float depth, float2 uv)
 {
-    float depth = get_depth(tex_depth, uv);
+    float3 position_world = get_position(depth, uv);
+    return normalize(position_world - g_camera_position.xyz);
+}
+
+inline float3 get_view_direction(float2 uv)
+{
+    float depth = get_depth(uv);
     return get_view_direction(depth, uv);
+}
+
+/*------------------------------------------------------------------------------
+    DIRECTION TO UV
+------------------------------------------------------------------------------*/
+inline float2 direction_sphere_uv(float3 direction)
+{
+    float n = length(direction.xz);
+    float2 uv = float2((n > 0.0000001) ? direction.x / n : 0.0, direction.y);
+    uv = acos(uv) * INV_PI;
+    uv.x = (direction.z > 0.0) ? uv.x * 0.5 : 1.0 - (uv.x * 0.5);
+    uv.x = 1.0 - uv.x;
+    
+    return uv;
+}
+
+inline uint direction_to_cube_face_index(const float3 direction)
+{
+    float3 direction_abs = abs(direction);
+    float max_coordinate = max3(direction_abs);
+    
+    if (max_coordinate == direction_abs.x)
+    {
+        return direction_abs.x == direction.x ? 0 : 1;
+    }
+    else if (max_coordinate == direction_abs.y)
+    {
+        return direction_abs.y == direction.y ? 2 : 3;
+    }
+    else
+    {
+        return direction_abs.z == direction.z ? 4 : 5;
+    }
+    
+    return 0;
 }
 
 /*------------------------------------------------------------------------------
@@ -211,52 +236,17 @@ inline float luminance(float4 color)
 }
 
 /*------------------------------------------------------------------------------
-    DIRECTION TO UV
-------------------------------------------------------------------------------*/
-inline float2 direction_sphere_uv(float3 direction)
-{
-    float n     = length(direction.xz);
-    float2 uv   = float2((n > 0.0000001) ? direction.x / n : 0.0, direction.y);
-    uv          = acos(uv) * INV_PI;
-    uv.x        = (direction.z > 0.0) ? uv.x * 0.5 : 1.0 - (uv.x * 0.5);
-    uv.x        = 1.0 - uv.x;
-    
-    return uv;
-}
-
-inline uint direction_to_cube_face_index(const float3 direction)
-{
-	float3 direction_abs = abs(direction);
-    float max_coordinate = max3(direction_abs);
-
-	if (max_coordinate == direction_abs.x)
-	{
-		return direction_abs.x == direction.x ? 0 : 1;
-	}
-	else if (max_coordinate == direction_abs.y)
-	{
-		return direction_abs.y == direction.y ? 2 : 3;
-	}
-	else
-	{
-		return direction_abs.z == direction.z ? 4 : 5;
-	}
-    
-	return 0;
-}
-
-/*------------------------------------------------------------------------------
     RANDOM/SAMPLING
 ------------------------------------------------------------------------------*/
 inline float random(float2 uv)
 {
-    return frac(sin(dot(uv ,float2(12.9898,78.233))) * 43758.5453);
+    return frac(sin(dot(uv, float2(12.9898, 78.233))) * 43758.5453);
 }
 
 inline float interleaved_gradient_noise(float2 position_screen)
 {
-  float3 magic = float3(0.06711056f, 0.00583715f, 52.9829189f);
-  return frac(magic.z * frac(dot(position_screen, magic.xy)));
+    float3 magic = float3(0.06711056f, 0.00583715f, 52.9829189f);
+    return frac(magic.z * frac(dot(position_screen, magic.xy)));
 }
 
 /*------------------------------------------------------------------------------
@@ -265,8 +255,8 @@ inline float interleaved_gradient_noise(float2 position_screen)
 // The Technical Art of Uncharted 4 - http://advances.realtimerendering.com/other/2016/naughty_dog/index.html
 float micro_shadow(float ao, float3 N, float3 L, float shadow)
 {
-    float aperture      = 2.0f * ao * ao;
-    float microShadow   = saturate(abs(dot(L, N)) + aperture - 1.0f);
+    float aperture = 2.0f * ao * ao;
+    float microShadow = saturate(abs(dot(L, N)) + aperture - 1.0f);
     return shadow * microShadow;
 }
 

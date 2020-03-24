@@ -245,7 +245,7 @@ namespace Spartan
                         {
                             // Bind material textures
                             RHI_Texture* tex_albedo = material->GetTexture_PtrRaw(TextureType_Albedo);
-                            cmd_list->SetTexture(0, tex_albedo ? tex_albedo : m_tex_white.get());
+                            cmd_list->SetTexture(28, tex_albedo ? tex_albedo : m_tex_white.get());
 
                             // Update uber buffer with material properties
                             m_buffer_uber_cpu.mat_albedo    = material->GetColorAlbedo();
@@ -549,9 +549,9 @@ namespace Spartan
 
             cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
-            cmd_list->SetTexture(0, m_render_targets[RenderTarget_Gbuffer_Depth]);
-            cmd_list->SetTexture(1, m_render_targets[RenderTarget_Gbuffer_Normal]);
-            cmd_list->SetTexture(2, m_tex_noise_normal);
+            cmd_list->SetTexture(12, m_render_targets[RenderTarget_Gbuffer_Depth]);
+            cmd_list->SetTexture(9, m_render_targets[RenderTarget_Gbuffer_Normal]);
+            cmd_list->SetTexture(21, m_tex_noise_normal);
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
             cmd_list->End();
             cmd_list->Submit();
@@ -613,8 +613,8 @@ namespace Spartan
         
             cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
-            cmd_list->SetTexture(0, m_render_targets[RenderTarget_Gbuffer_Normal]);
-            cmd_list->SetTexture(1, m_render_targets[RenderTarget_Gbuffer_Depth]);
+            cmd_list->SetTexture(9, m_render_targets[RenderTarget_Gbuffer_Normal]);
+            cmd_list->SetTexture(12, m_render_targets[RenderTarget_Gbuffer_Depth]);
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
             cmd_list->End();
             cmd_list->Submit();
@@ -709,13 +709,13 @@ namespace Spartan
             {
                 cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
                 cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
-                cmd_list->SetTexture(0, m_render_targets[RenderTarget_Gbuffer_Albedo]);
-                cmd_list->SetTexture(1, m_render_targets[RenderTarget_Gbuffer_Normal]);
-                cmd_list->SetTexture(2, m_render_targets[RenderTarget_Gbuffer_Material]);
-                cmd_list->SetTexture(3, m_render_targets[RenderTarget_Gbuffer_Depth]); 
-                cmd_list->SetTexture(4, (m_options & Render_ScreenSpaceAmbientOcclusion)    ? m_render_targets[RenderTarget_Ssao]   : m_tex_white);
-                cmd_list->SetTexture(5, (m_options & Render_ScreenSpaceReflections)         ? m_render_targets[RenderTarget_Ssr]    : m_tex_black);
-                cmd_list->SetTexture(6, m_render_targets[RenderTarget_Composition_Hdr_2]); // previous frame before post-processing
+                cmd_list->SetTexture(8, m_render_targets[RenderTarget_Gbuffer_Albedo]);
+                cmd_list->SetTexture(9, m_render_targets[RenderTarget_Gbuffer_Normal]);
+                cmd_list->SetTexture(10, m_render_targets[RenderTarget_Gbuffer_Material]);
+                cmd_list->SetTexture(12, m_render_targets[RenderTarget_Gbuffer_Depth]); 
+                cmd_list->SetTexture(22, (m_options & Render_ScreenSpaceAmbientOcclusion)    ? m_render_targets[RenderTarget_Ssao]   : m_tex_white);
+                cmd_list->SetTexture(26, (m_options & Render_ScreenSpaceReflections)         ? m_render_targets[RenderTarget_Ssr]    : m_tex_black);
+                cmd_list->SetTexture(27, m_render_targets[RenderTarget_Composition_Hdr_2]); // previous frame before post-processing
 
                 // Iterate through all the light entities
                 for (const auto& entity : entities)
@@ -733,18 +733,18 @@ namespace Spartan
 
                             if (light->GetLightType() == LightType_Directional)
                             {
-                                cmd_list->SetTexture(7, tex_depth);
-                                cmd_list->SetTexture(8, tex_color);
+                                cmd_list->SetTexture(13, tex_depth);
+                                cmd_list->SetTexture(14, tex_color);
                             }
                             else if (light->GetLightType() == LightType_Point)
                             {
-                                cmd_list->SetTexture(9, tex_depth);
-                                cmd_list->SetTexture(10, tex_color);
+                                cmd_list->SetTexture(15, tex_depth);
+                                cmd_list->SetTexture(16, tex_color);
                             }
                             else if (light->GetLightType() == LightType_Spot)
                             {
-                                cmd_list->SetTexture(11, tex_depth);
-                                cmd_list->SetTexture(12, tex_color);
+                                cmd_list->SetTexture(17, tex_depth);
+                                cmd_list->SetTexture(18, tex_color);
                             }
                         }
 
@@ -797,18 +797,18 @@ namespace Spartan
             // Setup command list
             cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
-            cmd_list->SetTexture(0, m_render_targets[RenderTarget_Gbuffer_Albedo]);
-            cmd_list->SetTexture(1, m_render_targets[RenderTarget_Gbuffer_Normal]);
-            cmd_list->SetTexture(2, m_render_targets[RenderTarget_Gbuffer_Material]);
-            cmd_list->SetTexture(3, m_render_targets[RenderTarget_Gbuffer_Depth]);
-            cmd_list->SetTexture(4, (m_options & Render_ScreenSpaceAmbientOcclusion) ? m_render_targets[RenderTarget_Ssao] : m_tex_white);
-            cmd_list->SetTexture(5, m_render_targets[RenderTarget_Light_Diffuse]);
-            cmd_list->SetTexture(6, m_render_targets[RenderTarget_Light_Specular]);
-            cmd_list->SetTexture(7, (m_options & Render_VolumetricLighting) ? m_render_targets[RenderTarget_Light_Volumetric] : m_tex_black);
-            cmd_list->SetTexture(8, (m_options & RenderTarget_Ssr) ? m_render_targets[RenderTarget_Ssr] : m_tex_black);
-            cmd_list->SetTexture(9, m_render_targets[RenderTarget_Composition_Hdr_2]); // previous frame before post-processing
-            cmd_list->SetTexture(10, m_render_targets[RenderTarget_Brdf_Specular_Lut]);
-            cmd_list->SetTexture(11, GetEnvironmentTexture());
+            cmd_list->SetTexture(8, m_render_targets[RenderTarget_Gbuffer_Albedo]);
+            cmd_list->SetTexture(9, m_render_targets[RenderTarget_Gbuffer_Normal]);
+            cmd_list->SetTexture(10, m_render_targets[RenderTarget_Gbuffer_Material]);
+            cmd_list->SetTexture(12, m_render_targets[RenderTarget_Gbuffer_Depth]);
+            cmd_list->SetTexture(22, (m_options & Render_ScreenSpaceAmbientOcclusion) ? m_render_targets[RenderTarget_Ssao] : m_tex_white);
+            cmd_list->SetTexture(23, m_render_targets[RenderTarget_Light_Diffuse]);
+            cmd_list->SetTexture(24, m_render_targets[RenderTarget_Light_Specular]);
+            cmd_list->SetTexture(25, (m_options & Render_VolumetricLighting) ? m_render_targets[RenderTarget_Light_Volumetric] : m_tex_black);
+            cmd_list->SetTexture(26, (m_options & RenderTarget_Ssr) ? m_render_targets[RenderTarget_Ssr] : m_tex_black);
+            cmd_list->SetTexture(27, m_render_targets[RenderTarget_Composition_Hdr_2]); // previous frame before post-processing
+            cmd_list->SetTexture(19, m_render_targets[RenderTarget_Brdf_Specular_Lut]);
+            cmd_list->SetTexture(20, GetEnvironmentTexture());
             cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
             cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
@@ -849,7 +849,7 @@ namespace Spartan
         {
             cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
-            cmd_list->SetTexture(0, tex_in);
+            cmd_list->SetTexture(28, tex_in);
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
             cmd_list->End();
             cmd_list->Submit();
@@ -963,7 +963,7 @@ namespace Spartan
 
             cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
-            cmd_list->SetTexture(0, tex_in);
+            cmd_list->SetTexture(28, tex_in);
             cmd_list->DrawIndexed(m_quad.GetIndexCount());
             cmd_list->End();
             cmd_list->Submit();
@@ -1001,7 +1001,7 @@ namespace Spartan
         
             cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
-            cmd_list->SetTexture(0, tex_in);
+            cmd_list->SetTexture(28, tex_in);
             cmd_list->DrawIndexed(m_quad.GetIndexCount());
             cmd_list->End();
             cmd_list->Submit();
@@ -1042,7 +1042,7 @@ namespace Spartan
 
             cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
-            cmd_list->SetTexture(0, tex_in);
+            cmd_list->SetTexture(28, tex_in);
             cmd_list->DrawIndexed(m_quad.GetIndexCount());
             cmd_list->End();
             cmd_list->Submit();
@@ -1087,7 +1087,7 @@ namespace Spartan
         
             cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
-        	cmd_list->SetTexture(0, tex_in);
+        	cmd_list->SetTexture(28, tex_in);
         	cmd_list->DrawIndexed(Rectangle::GetIndexCount());
             cmd_list->End();
             cmd_list->Submit();
@@ -1115,7 +1115,7 @@ namespace Spartan
         
             cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
-            cmd_list->SetTexture(0, tex_out);
+            cmd_list->SetTexture(28, tex_out);
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
             cmd_list->End();
             cmd_list->Submit();
@@ -1168,9 +1168,9 @@ namespace Spartan
 
             cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
-            cmd_list->SetTexture(0, tex_in);
-            cmd_list->SetTexture(1, tex_depth);
-            cmd_list->SetTexture(2, tex_normal);
+            cmd_list->SetTexture(28, tex_in);
+            cmd_list->SetTexture(12, tex_depth);
+            cmd_list->SetTexture(9, tex_normal);
             cmd_list->DrawIndexed(m_quad.GetIndexCount());
             cmd_list->End();
             cmd_list->Submit();
@@ -1200,9 +1200,9 @@ namespace Spartan
 
             cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
-            cmd_list->SetTexture(0, tex_out);
-            cmd_list->SetTexture(1, tex_depth);
-            cmd_list->SetTexture(2, tex_normal);
+            cmd_list->SetTexture(28, tex_out);
+            cmd_list->SetTexture(12, tex_depth);
+            cmd_list->SetTexture(9, tex_normal);
             cmd_list->DrawIndexed(m_quad.GetIndexCount());
             cmd_list->End();
             cmd_list->Submit();
@@ -1245,10 +1245,10 @@ namespace Spartan
 
             cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
-            cmd_list->SetTexture(0, tex_history);
-            cmd_list->SetTexture(1, tex_in);
-            cmd_list->SetTexture(2, m_render_targets[RenderTarget_Gbuffer_Velocity]);
-            cmd_list->SetTexture(3, m_render_targets[RenderTarget_Gbuffer_Depth]);
+            cmd_list->SetTexture(28, tex_history);
+            cmd_list->SetTexture(29, tex_in);
+            cmd_list->SetTexture(11, m_render_targets[RenderTarget_Gbuffer_Velocity]);
+            cmd_list->SetTexture(12, m_render_targets[RenderTarget_Gbuffer_Depth]);
 			cmd_list->DrawIndexed(Rectangle::GetIndexCount());
             cmd_list->End();
             cmd_list->Submit();
@@ -1294,7 +1294,7 @@ namespace Spartan
         
                 cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
                 cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
-                cmd_list->SetTexture(0, tex_in);
+                cmd_list->SetTexture(28, tex_in);
                 cmd_list->DrawIndexed(Rectangle::GetIndexCount());
                 cmd_list->End();
                 cmd_list->Submit();
@@ -1332,7 +1332,7 @@ namespace Spartan
         
                 cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
                 cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
-                cmd_list->SetTexture(0, tex_in);
+                cmd_list->SetTexture(28, tex_in);
                 cmd_list->DrawIndexed(Rectangle::GetIndexCount());
                 cmd_list->End();
                 cmd_list->Submit(); // we have to submit because all upsample passes are using the uber buffer
@@ -1370,8 +1370,8 @@ namespace Spartan
         
                 cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
                 cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
-                cmd_list->SetTexture(0, tex_in);
-                cmd_list->SetTexture(1, m_render_tex_bloom.front());
+                cmd_list->SetTexture(28, tex_in);
+                cmd_list->SetTexture(29, m_render_tex_bloom.front());
                 cmd_list->DrawIndexed(Rectangle::GetIndexCount());
                 cmd_list->End();
                 cmd_list->Submit();
@@ -1410,7 +1410,7 @@ namespace Spartan
 
             cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
-            cmd_list->SetTexture(0, tex_in);
+            cmd_list->SetTexture(28, tex_in);
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
             cmd_list->End();
             cmd_list->Submit();
@@ -1448,7 +1448,7 @@ namespace Spartan
 
             cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
-            cmd_list->SetTexture(0, tex_in);
+            cmd_list->SetTexture(28, tex_in);
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
             cmd_list->End();
             cmd_list->Submit();
@@ -1489,7 +1489,7 @@ namespace Spartan
             {
                 cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
                 cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
-                cmd_list->SetTexture(0, tex_in);
+                cmd_list->SetTexture(28, tex_in);
                 cmd_list->DrawIndexed(Rectangle::GetIndexCount());
                 cmd_list->End();
                 cmd_list->Submit();
@@ -1516,7 +1516,7 @@ namespace Spartan
             {
                 cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
                 cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
-                cmd_list->SetTexture(0, tex_out);
+                cmd_list->SetTexture(28, tex_out);
                 cmd_list->DrawIndexed(Rectangle::GetIndexCount());
                 cmd_list->End();
                 cmd_list->Submit();
@@ -1558,7 +1558,7 @@ namespace Spartan
 
             cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
-            cmd_list->SetTexture(0, tex_in);
+            cmd_list->SetTexture(28, tex_in);
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
             cmd_list->End();
             cmd_list->Submit();
@@ -1596,9 +1596,9 @@ namespace Spartan
 
             cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
-            cmd_list->SetTexture(0, tex_in);
-            cmd_list->SetTexture(1, m_render_targets[RenderTarget_Gbuffer_Velocity]);
-            cmd_list->SetTexture(2, m_render_targets[RenderTarget_Gbuffer_Depth]);
+            cmd_list->SetTexture(28, tex_in);
+            cmd_list->SetTexture(11, m_render_targets[RenderTarget_Gbuffer_Velocity]);
+            cmd_list->SetTexture(12, m_render_targets[RenderTarget_Gbuffer_Depth]);
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
             cmd_list->End();
             cmd_list->Submit();
@@ -1636,7 +1636,7 @@ namespace Spartan
 
             cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
-            cmd_list->SetTexture(0, tex_in);
+            cmd_list->SetTexture(28, tex_in);
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
             cmd_list->End();
             cmd_list->Submit();
@@ -1674,7 +1674,7 @@ namespace Spartan
 
             cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
-            cmd_list->SetTexture(0, tex_in);
+            cmd_list->SetTexture(28, tex_in);
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
             cmd_list->End();
             cmd_list->Submit();
@@ -1936,7 +1936,7 @@ namespace Spartan
                         m_buffer_uber_cpu.transform = m_buffer_frame_cpu.view_projection_ortho;
                         UpdateUberBuffer();
         
-                        cmd_list->SetTexture(0, light_tex);
+                        cmd_list->SetTexture(28, light_tex);
                         cmd_list->SetBufferIndex(m_gizmo_light_rect.GetIndexBuffer());
                         cmd_list->SetBufferVertex(m_gizmo_light_rect.GetVertexBuffer());
                         cmd_list->DrawIndexed(Rectangle::GetIndexCount());
@@ -2093,8 +2093,8 @@ namespace Spartan
                     UpdateUberBuffer();
                 }
 
-                cmd_list->SetTexture(0, tex_depth);
-                cmd_list->SetTexture(1, tex_normal);
+                cmd_list->SetTexture(12, tex_depth);
+                cmd_list->SetTexture(9, tex_normal);
                 cmd_list->SetBufferVertex(model->GetVertexBuffer());
                 cmd_list->SetBufferIndex(model->GetIndexBuffer());
                 cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
@@ -2139,7 +2139,7 @@ namespace Spartan
             m_buffer_uber_cpu.color         = m_font->GetColor();
             UpdateUberBuffer();
 
-            cmd_list->SetTexture(0, m_font->GetAtlas());
+            cmd_list->SetTexture(30, m_font->GetAtlas());
             cmd_list->SetBufferIndex(m_font->GetIndexBuffer());
             cmd_list->SetBufferVertex(m_font->GetVertexBuffer());
             cmd_list->DrawIndexed(m_font->GetIndexCount());
@@ -2249,7 +2249,7 @@ namespace Spartan
             m_buffer_uber_cpu.transform     = m_buffer_frame_cpu.view_projection_ortho;
             UpdateUberBuffer();
 
-            cmd_list->SetTexture(0, texture);
+            cmd_list->SetTexture(28, texture);
             cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
@@ -2335,7 +2335,7 @@ namespace Spartan
             m_buffer_uber_cpu.transform     = m_buffer_frame_cpu.view_projection_ortho;
             UpdateUberBuffer();
 
-            cmd_list->SetTexture(0, tex_in);
+            cmd_list->SetTexture(28, tex_in);
             cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());

@@ -24,17 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ParallaxMapping.hlsl"
 //=============================
 
-//= TEXTURES ===========================
-Texture2D texAlbedo 	: register (t0);
-Texture2D texRoughness 	: register (t1);
-Texture2D texMetallic 	: register (t2);
-Texture2D texNormal 	: register (t3);
-Texture2D texHeight 	: register (t4);
-Texture2D texOcclusion 	: register (t5);
-Texture2D texEmission 	: register (t6);
-Texture2D texMask 		: register (t7);
-//======================================
-
 struct PixelInputType
 {
     float4 position 			: SV_POSITION;
@@ -96,19 +85,19 @@ PixelOutputType mainPS(PixelInputType input)
 		// Parallax Mapping
 		float height_scale 		= materialHeight * 0.04f;
 		float3 camera_to_pixel 	= normalize(g_camera_position - input.position.xyz);
-		texCoords 				= ParallaxMapping(texHeight, sampler_anisotropic_wrap, texCoords, camera_to_pixel, TBN, height_scale);
+		texCoords 				= ParallaxMapping(tex_material_height, sampler_anisotropic_wrap, texCoords, camera_to_pixel, TBN, height_scale);
 	#endif
 	
 	float mask_threshold = 0.6f;
 	
 	#if MASK_MAP
-		float3 maskSample = texMask.Sample(sampler_anisotropic_wrap, texCoords).rgb;
+		float3 maskSample = tex_material_mask.Sample(sampler_anisotropic_wrap, texCoords).rgb;
 		if (maskSample.r <= mask_threshold && maskSample.g <= mask_threshold && maskSample.b <= mask_threshold)
 			discard;
 	#endif
 
 	#if ALBEDO_MAP
-		float4 albedo_sample = texAlbedo.Sample(sampler_anisotropic_wrap, texCoords);	
+		float4 albedo_sample = tex_material_albedo.Sample(sampler_anisotropic_wrap, texCoords);
 		if (albedo_sample.a <= mask_threshold)
 			discard;
 
@@ -117,26 +106,26 @@ PixelOutputType mainPS(PixelInputType input)
 	#endif
 	
 	#if ROUGHNESS_MAP
-		roughness *= texRoughness.Sample(sampler_anisotropic_wrap, texCoords).r;
+		roughness *= tex_material_roughness.Sample(sampler_anisotropic_wrap, texCoords).r;
 	#endif
 	
 	#if METALLIC_MAP
-		metallic *= texMetallic.Sample(sampler_anisotropic_wrap, texCoords).r;
+		metallic *= tex_material_metallic.Sample(sampler_anisotropic_wrap, texCoords).r;
 	#endif
 	
 	#if NORMAL_MAP
 		// Get tangent space normal and apply intensity
-		float3 tangent_normal 	= normalize(unpack(texNormal.Sample(sampler_anisotropic_wrap, texCoords).rgb));
+		float3 tangent_normal 	= normalize(unpack(tex_material_normal.Sample(sampler_anisotropic_wrap, texCoords).rgb));
 		tangent_normal.xy 		*= saturate(normal_intensity);
 		normal 					= normalize(mul(tangent_normal, TBN).xyz); // Transform to world space
 	#endif
 
 	#if OCCLUSION_MAP
-		occlusion = texOcclusion.Sample(sampler_anisotropic_wrap, texCoords).r;
+		occlusion = tex_material_occlusion.Sample(sampler_anisotropic_wrap, texCoords).r;
 	#endif
 	
 	#if EMISSION_MAP
-		emission = texEmission.Sample(sampler_anisotropic_wrap, texCoords).r;
+		emission = tex_material_emission.Sample(sampler_anisotropic_wrap, texCoords).r;
 	#endif
 
 	// Write to G-Buffer

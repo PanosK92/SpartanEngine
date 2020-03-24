@@ -78,19 +78,19 @@ float4 Blur_Gaussian(float2 uv, Texture2D tex)
 }
 
 // Performs a bilateral gaussian blur (depth aware) in one direction
-float4 Blur_GaussianBilateral(float2 uv, Texture2D tex, Texture2D depthTexture, Texture2D normalTexture)
+float4 Blur_GaussianBilateral(float2 uv, Texture2D tex)
 {
 	float weightSum 		= 0.0f;
     float4 color 			= 0.0f;
-	float center_depth		= get_linear_depth(depthTexture.SampleLevel(sampler_point_clamp, uv, 0).r);
-	float3 center_normal	= normal_decode(normalTexture.SampleLevel(sampler_point_clamp, uv, 0).xyz);
+	float center_depth		= get_linear_depth(tex_depth.SampleLevel(sampler_point_clamp, uv, 0).r);
+	float3 center_normal	= normal_decode(tex_normal.SampleLevel(sampler_point_clamp, uv, 0).xyz);
 	float threshold 		= 0.1f;
 
     for (int i = -5; i < 5; i++)
     {
         float2 sample_uv 		= uv + (i * g_texel_size * g_blur_direction);    
-		float sample_depth 		= get_linear_depth(depthTexture.SampleLevel(sampler_bilinear_clamp, sample_uv, 0).r);
-		float3 sample_normal	= normal_decode(normalTexture.SampleLevel(sampler_bilinear_clamp, sample_uv, 0).xyz);
+		float sample_depth 		= get_linear_depth(tex_depth.SampleLevel(sampler_bilinear_clamp, sample_uv, 0).r);
+		float3 sample_normal	= normal_decode(tex_normal.SampleLevel(sampler_bilinear_clamp, sample_uv, 0).xyz);
 		
 		// Depth-awareness
 		float awareness_depth	= saturate(threshold - abs(center_depth - sample_depth));

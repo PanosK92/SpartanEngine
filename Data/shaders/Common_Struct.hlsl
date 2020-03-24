@@ -19,33 +19,31 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========
-#include "Common.hlsl"
-//====================
-
-Pixel_PosUv mainVS(Vertex_PosUv input)
+struct Material
 {
-    Pixel_PosUv output;
-	
-    input.position.w 	= 1.0f;
-    output.position 	= mul(input.position, g_viewProjectionOrtho);
-    output.uv 			= input.uv;
-	
-    return output;
-}
+    float3 albedo;
+    float roughness;
+    float metallic;
+    float3 padding;
+    float emissive;
+    float3 F0;
+};
 
-float4 mainPS(Pixel_PosUv input) : SV_TARGET
+struct Light
 {
-	float4 finalColor = float4(0.0f, 0.0f, 0.0f, 1.0f);
-	
-	// Sample text from texture atlas
-	finalColor.r = tex_font_atlas.Sample(sampler_bilinear_wrap, input.uv).r;
-	finalColor.g = finalColor.r;
-	finalColor.b = finalColor.r;
-	finalColor.a = finalColor.r;
-	
-	// Color it
-	finalColor *= g_color;
-	
-	return finalColor;
-}
+    bool    cast_shadows;
+    bool    cast_contact_shadows;
+    bool    cast_transparent_shadows;
+    bool    is_volumetric;
+    float3  color;
+    float   intensity;
+    float3  position;
+    float   range;
+    float3  direction;
+    float   distance_to_pixel;
+    float   attenuation;
+    float   angle;
+    float   bias;
+    float   normal_bias;
+    uint    array_size;
+};

@@ -52,7 +52,7 @@ float ScreenSpaceShadows(Light light, float3 position_world, float2 uv)
             break;
     
         // Compare depth
-        float depth_sampled = get_linear_depth(tex_depth, ray_uv);
+        float depth_sampled = get_linear_depth(ray_uv);
         float depth_delta   = ray_pos.z - depth_sampled - g_sss_bias;
     
         // Occlusion test

@@ -24,12 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Dithering.hlsl"
 //=======================
 
-//= TEXTURES ======================
-Texture2D texDepth  : register(t0);
-Texture2D texNormal : register(t1);
-Texture2D texNoise  : register(t2);
-//=================================
-
 static const int sample_count		= 16;
 static const float radius			= 3.0f;
 static const float intensity    	= 1.5f;
@@ -106,11 +100,11 @@ static const float3 sampleKernel[64] =
 float mainPS(Pixel_PosUv input) : SV_TARGET
 {
 	float2 uv               = input.uv;
-    float3 center_pos       = get_position_from_depth(texDepth, uv);
-    float3 center_normal    = get_normal(texNormal, uv);		
+    float3 center_pos       = get_position(uv);
+    float3 center_normal    = get_normal(uv);		
 
 	// Construct TBN
-	float3 noise	= unpack(texNoise.Sample(sampler_bilinear_wrap, input.uv * noiseScale).xyz);		
+	float3 noise	= unpack(tex_normal_noise.Sample(sampler_bilinear_wrap, input.uv * noiseScale).xyz);		
 	float3 tangent	= normalize(noise - center_normal * dot(noise, center_normal));
 	float3x3 TBN	= makeTBN(center_normal, tangent);
 
@@ -128,7 +122,7 @@ float mainPS(Pixel_PosUv input) : SV_TARGET
 		float2 ray_uv   = project_uv(ray_pos, g_viewProjection);
 		
 		// Compute sample data
-        float3 sample_pos               = get_position_from_depth(texDepth, ray_uv);
+        float3 sample_pos               = get_position(ray_uv);
         float3 center_to_sample         = sample_pos - center_pos;
 		float center_to_sample_distance = length(center_to_sample);
 		float3 center_to_sample_dir     = normalize(center_to_sample);

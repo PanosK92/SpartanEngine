@@ -19,7 +19,6 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-
 SamplerComparisonState	sampler_compare_depth   	: register(s0);
 SamplerState 			sampler_point_clamp     	: register(s1);
 SamplerState 			sampler_bilinear_clamp  	: register(s2);

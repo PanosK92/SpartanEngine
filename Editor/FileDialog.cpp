@@ -166,6 +166,7 @@ void FileDialog::ShowMiddle()
     const float font_height     = g.FontSize;
     const float label_height    = font_height;
     const float text_offset     = 3.0f;
+    float pen_x_min             = 0.0f;
     float pen_x                 = 0.0f;
     bool new_line               = true;
     m_displayed_item_count      = 0;
@@ -186,13 +187,11 @@ void FileDialog::ShowMiddle()
 	{
         m_is_hovering_window = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) ? true : m_is_hovering_window;
 
-        // Add a starting offset
+        // Set starting position
         {
-            float offset = ImGui::GetStyle().ItemSpacing.x;
-            ImVec2 pos = ImGui::GetCursorScreenPos();
-            pos.x += offset;
-            pos.y += offset;
-            ImGui::SetCursorScreenPos(pos);
+            float offset    = ImGui::GetStyle().ItemSpacing.x;
+            pen_x_min       = ImGui::GetCursorPosX() + offset;
+            ImGui::SetCursorPosX(pen_x_min);
         }
 
         // Go through all the items
@@ -325,7 +324,8 @@ void FileDialog::ShowMiddle()
             if (pen_x >= content_width - m_item_size.x)
             {
                 ImGui::EndGroup();
-                pen_x = 0;
+                pen_x = pen_x_min;
+                ImGui::SetCursorPosX(pen_x);
                 new_line = true;
             }
             else
