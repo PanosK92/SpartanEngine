@@ -143,7 +143,7 @@ namespace Spartan
         void* descriptor_set = nullptr;
 
         // Get the hash of the current descriptor blueprint
-        const size_t hash = GetDescriptorBlueprintHash(m_descriptors);
+        const size_t hash = GetDescriptorsHash(m_descriptors);
 
         if (m_descriptor_sets.find(hash) == m_descriptor_sets.end())
         {
@@ -163,7 +163,7 @@ namespace Spartan
         return descriptor_set;
     }
 
-    size_t RHI_DescriptorSet::GetDescriptorBlueprintHash(const vector<RHI_Descriptor>& descriptor_blueprint)
+    size_t RHI_DescriptorSet::GetDescriptorsHash(const vector<RHI_Descriptor>& descriptor_blueprint)
     {
         size_t hash = 0;
 

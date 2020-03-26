@@ -24,9 +24,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==============
 #include <vector>
 #include <map>
+#include <unordered_map>
 #include <memory>
-#include "RHI_Definition.h"
 #include "RHI_Object.h"
+#include "RHI_Definition.h"
 //=========================
 
 namespace Spartan
@@ -47,7 +48,7 @@ namespace Spartan
         bool HashEnoughCapacity() const { return m_descriptor_sets.size() < m_descriptor_capacity; }
 
         // Misc
-        void MakeDirty() { m_needs_to_bind = true; }
+        void NeedsToBind() { m_needs_to_bind = true; }
 
         // Properties
         void* GetResource_Set();
@@ -56,7 +57,7 @@ namespace Spartan
 
     private:
         void SetDescriptorCapacity(uint32_t descriptor_capacity);
-        std::size_t GetDescriptorBlueprintHash(const std::vector<RHI_Descriptor>& descriptor_blueprint);
+        std::size_t GetDescriptorsHash(const std::vector<RHI_Descriptor>& descriptor_blueprint);
         bool CreateDescriptorPool(uint32_t descriptor_set_capacity);
         bool CreateDescriptorSetLayout();
         void* CreateDescriptorSet(std::size_t hash);
@@ -64,12 +65,8 @@ namespace Spartan
         void ReflectShaders();
 
         // Descriptors
-        const uint32_t m_max_constant_buffer        = 10;
-        const uint32_t m_max_constantbuffer_dynamic = 10;
-        const uint32_t m_max_sampler                = 10;
-        const uint32_t m_max_texture                = 10;
-        uint32_t m_descriptor_capacity              = 20;
-        bool m_needs_to_bind                        = false;
+        uint32_t m_descriptor_capacity = 20;
+        bool m_needs_to_bind           = false;
         std::vector<RHI_Descriptor> m_descriptors;
 
         // Dynamic constant buffers
@@ -84,6 +81,6 @@ namespace Spartan
 		// API
 		void* m_descriptor_pool         = nullptr;
 		void* m_descriptor_set_layout   = nullptr;
-        std::map<std::size_t, void*> m_descriptor_sets;
+        std::unordered_map<std::size_t, void*> m_descriptor_sets;
     };
 }

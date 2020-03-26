@@ -95,13 +95,13 @@ namespace Spartan
         // Pool sizes
         vector<VkDescriptorPoolSize> pool_sizes(4);
         pool_sizes[0].type              = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        pool_sizes[0].descriptorCount   = m_max_constant_buffer;
+        pool_sizes[0].descriptorCount   = RHI_Context::descriptor_max_constant_buffers;
         pool_sizes[1].type              = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-        pool_sizes[1].descriptorCount   = m_max_constantbuffer_dynamic;
+        pool_sizes[1].descriptorCount   = RHI_Context::descriptor_max_constant_buffers_dynamic;
         pool_sizes[2].type              = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-        pool_sizes[2].descriptorCount   = m_max_texture;
+        pool_sizes[2].descriptorCount   = RHI_Context::descriptor_max_textures;
         pool_sizes[3].type              = VK_DESCRIPTOR_TYPE_SAMPLER;
-        pool_sizes[3].descriptorCount   = m_max_sampler;
+        pool_sizes[3].descriptorCount   = RHI_Context::descriptor_max_samplers;
 
         // Create info
         VkDescriptorPoolCreateInfo pool_create_info = {};
