@@ -81,7 +81,7 @@ namespace Spartan
 
         if (RHI_DescriptorSet* descriptor_set = pipeline->GetDescriptorSet())
         {
-            descriptor_set->MakeDirty();
+            descriptor_set->NeedsToBind();
         }
         else
         {

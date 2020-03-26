@@ -264,7 +264,7 @@ namespace ImGui::RHI
 
                         // Apply scissor rectangle, bind texture and draw
                         cmd_list->SetScissorRectangle(scissor_rect);
-                        cmd_list->SetTexture(0, static_cast<RHI_Texture*>(pcmd->TextureId));
+                        cmd_list->SetTexture(28, static_cast<RHI_Texture*>(pcmd->TextureId));
                         cmd_list->DrawIndexed(pcmd->ElemCount, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset);
                     }
 
