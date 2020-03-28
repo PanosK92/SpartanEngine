@@ -32,23 +32,21 @@ namespace Spartan
 	{
 	public:
 		RHI_Pipeline() = default;
-		RHI_Pipeline(const std::shared_ptr<RHI_Device>& rhi_device, RHI_PipelineState& pipeline_state);
+		RHI_Pipeline(const RHI_Device* rhi_device, RHI_PipelineState& pipeline_state, void* descriptor_set_layout);
 		~RHI_Pipeline();
 
-        void OnCommandListConsumed() const;
+        void* GetPipeline()                     const { return m_pipeline; }
+        void* GetPipelineLayout()               const { return m_pipeline_layout; }
+        RHI_PipelineState* GetPipelineState()         { return &m_state; }
 
-        void* GetPipeline()                         const { return m_pipeline; }
-        void* GetPipelineLayout()                   const { return m_pipeline_layout; }
-        RHI_PipelineState* GetPipelineState()             { return &m_state; }
-        RHI_DescriptorCache* GetDescriptorCache()   const { return m_descriptor_cache.get(); }
-       
 	private:
         RHI_PipelineState m_state;
-        std::shared_ptr<RHI_DescriptorCache> m_descriptor_cache;
-        std::shared_ptr<RHI_Device> m_rhi_device;
-        
+ 
 		// API
 		void* m_pipeline		= nullptr;
 		void* m_pipeline_layout = nullptr;
+
+        // Dependencies
+        const RHI_Device* m_rhi_device;
     };
 }

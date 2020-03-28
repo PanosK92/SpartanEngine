@@ -243,7 +243,7 @@ namespace Spartan
 		}
 	}
 
-    bool RHI_Device::Queue_Present(void* swapchain_view, uint32_t* image_index)
+    bool RHI_Device::Queue_Present(void* swapchain_view, uint32_t* image_index) const
     {
         VkSemaphore wait_semaphores[]   = { nullptr };
         VkSwapchainKHR swap_chains[]    = { static_cast<VkSwapchainKHR>(swapchain_view) };
@@ -260,7 +260,7 @@ namespace Spartan
         return vulkan_common::error::check(vkQueuePresentKHR(static_cast<VkQueue>(m_rhi_context->queue_graphics), &present_info));
     }
 
-    bool RHI_Device::Queue_Submit(const RHI_Queue_Type type, void* cmd_buffer, void* wait_semaphore /*= nullptr*/, void* wait_fence /*= nullptr*/, uint32_t wait_flags /*= 0*/)
+    bool RHI_Device::Queue_Submit(const RHI_Queue_Type type, void* cmd_buffer, void* wait_semaphore /*= nullptr*/, void* wait_fence /*= nullptr*/, uint32_t wait_flags /*= 0*/) const
     {
         VkCommandBuffer _cmd_buffer         = static_cast<VkCommandBuffer>(cmd_buffer);
         VkSemaphore wait_semaphores[]       = { static_cast<VkSemaphore>(wait_semaphore) };
@@ -280,7 +280,7 @@ namespace Spartan
         return vulkan_common::error::check(vkQueueSubmit(static_cast<VkQueue>(Queue_Get(type)), 1, &submit_info, static_cast<VkFence>(wait_fence)));
     }
 
-    bool RHI_Device::Queue_Wait(const RHI_Queue_Type type)
+    bool RHI_Device::Queue_Wait(const RHI_Queue_Type type) const
     {
         lock_guard<mutex> lock(m_queue_mutex);
         return vulkan_common::error::check(vkQueueWaitIdle(static_cast<VkQueue>(Queue_Get(type))));

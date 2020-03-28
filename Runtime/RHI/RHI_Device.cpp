@@ -94,7 +94,7 @@ namespace Spartan
                 height > 0 && height <= m_rhi_context->max_texture_dimension_2d;
 	}
 
-	bool RHI_Device::Queue_WaitAll()
+	bool RHI_Device::Queue_WaitAll() const
     {
         return Queue_Wait(RHI_Queue_Graphics) && Queue_Wait(RHI_Queue_Transfer) && Queue_Wait(RHI_Queue_Compute);
 	}

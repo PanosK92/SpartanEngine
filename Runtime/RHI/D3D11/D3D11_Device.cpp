@@ -201,12 +201,12 @@ namespace Spartan
 		safe_release(m_rhi_context->annotation);
 	}
 
-    bool RHI_Device::Queue_Submit(const RHI_Queue_Type type, void* cmd_buffer, void* wait_semaphore /*= nullptr*/, void* wait_fence /*= nullptr*/, uint32_t wait_flags /*= 0*/)
+    bool RHI_Device::Queue_Submit(const RHI_Queue_Type type, void* cmd_buffer, void* wait_semaphore /*= nullptr*/, void* wait_fence /*= nullptr*/, uint32_t wait_flags /*= 0*/) const
     {
         return true;
     }
 
-    bool RHI_Device::Queue_Wait(const RHI_Queue_Type type)
+    bool RHI_Device::Queue_Wait(const RHI_Queue_Type type) const
     {
         m_rhi_context->device_context->Flush();
         return true;

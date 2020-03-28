@@ -46,7 +46,7 @@ namespace Spartan
         return m_frame_buffers[0];
     }
 
-    bool RHI_PipelineState::CreateFrameResources(RHI_Device* rhi_device)
+    bool RHI_PipelineState::CreateFrameResources(const RHI_Device* rhi_device)
     {
         m_rhi_device                = rhi_device;
         RHI_Context* rhi_context    = rhi_device->GetContextRhi();

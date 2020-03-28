@@ -118,7 +118,8 @@ namespace Spartan
 		RHI_Pipeline* m_pipeline	            = nullptr; 
         RHI_SwapChain* m_swap_chain             = nullptr;
         Renderer* m_renderer                    = nullptr;
-        RHI_PipelineCache* m_rhi_pipeline_cache = nullptr;
+        RHI_PipelineCache* m_pipeline_cache     = nullptr;
+        std::shared_ptr<RHI_DescriptorCache> m_descriptor_cache;
         RHI_PipelineState* m_pipeline_state     = nullptr;
         RHI_Device* m_rhi_device                = nullptr;
         Profiler* m_profiler                    = nullptr;

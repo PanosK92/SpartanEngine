@@ -33,12 +33,14 @@ namespace Spartan
 	class RHI_PipelineCache : public RHI_Object
 	{
 	public:
-        RHI_PipelineCache(const std::shared_ptr<RHI_Device>& rhi_device) { m_rhi_device = rhi_device; }
-        RHI_Pipeline* GetPipeline(RHI_PipelineState& pipeline_state, RHI_CommandList* cmd_list);
+        RHI_PipelineCache(const RHI_Device* rhi_device) { m_rhi_device = rhi_device; }
+        RHI_Pipeline* GetPipeline(RHI_CommandList* cmd_list, RHI_PipelineState& pipeline_state, void* descriptor_set_layout);
 
 	private:
         // <hash of pipeline state, pipeline state object>
         std::unordered_map<std::size_t, std::shared_ptr<RHI_Pipeline>> m_cache;
-        std::shared_ptr<RHI_Device> m_rhi_device;
+
+        // Dependencies
+        const RHI_Device* m_rhi_device;
 	};
 }

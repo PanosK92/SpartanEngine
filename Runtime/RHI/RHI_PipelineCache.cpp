@@ -19,13 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =================
+//= INCLUDES ===================
 #include "RHI_PipelineCache.h"
 #include "RHI_Texture.h"
 #include "RHI_Pipeline.h"
 #include "RHI_SwapChain.h"
 #include "RHI_DescriptorCache.h"
-//============================
+//==============================
 
 //= NAMESPACES =====
 using namespace std;
@@ -33,7 +33,7 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_Pipeline* RHI_PipelineCache::GetPipeline(RHI_PipelineState& pipeline_state, RHI_CommandList* cmd_list)
+    RHI_Pipeline* RHI_PipelineCache::GetPipeline(RHI_CommandList* cmd_list, RHI_PipelineState& pipeline_state, void* descriptor_set_layout)
     {
         // Validate it
         if (!pipeline_state.IsValid())
@@ -74,20 +74,9 @@ namespace Spartan
         if (m_cache.find(hash) == m_cache.end())
         {
             // Cache a new pipeline
-            m_cache.emplace(make_pair(hash, move(make_shared<RHI_Pipeline>(m_rhi_device, pipeline_state))));
+            m_cache.emplace(make_pair(hash, move(make_shared<RHI_Pipeline>(m_rhi_device, pipeline_state, descriptor_set_layout))));
         }
 
-        RHI_Pipeline* pipeline = m_cache[hash].get();
-
-        if (RHI_DescriptorCache* descriptor_set = pipeline->GetDescriptorCache())
-        {
-            descriptor_set->NeedsToBind();
-        }
-        else
-        {
-            LOG_ERROR("Pipeline has no descriptor set");
-        }
-
-        return pipeline;
+        return m_cache[hash].get();
     }
 }
