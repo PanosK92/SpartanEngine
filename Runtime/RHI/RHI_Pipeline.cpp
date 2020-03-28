@@ -19,21 +19,18 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =================
+//= INCLUDES ===================
 #include "RHI_Pipeline.h"
-#include "RHI_DescriptorSet.h"
-//============================
+#include "RHI_DescriptorCache.h"
+//==============================
 
 namespace Spartan
 {
     void RHI_Pipeline::OnCommandListConsumed() const
     {
-        if (!m_descriptor_set)
+        if (!m_descriptor_cache)
             return;
 
-        if (!m_descriptor_set->HashEnoughCapacity())
-        {
-            m_descriptor_set->DoubleCapacity();
-        }
+        m_descriptor_cache->GrowIfNeeded();
     }
 }

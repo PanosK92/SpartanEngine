@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-	class RHI_Pipeline : public RHI_Object
+	class SPARTAN_CLASS RHI_Pipeline : public RHI_Object
 	{
 	public:
 		RHI_Pipeline() = default;
@@ -37,14 +37,14 @@ namespace Spartan
 
         void OnCommandListConsumed() const;
 
-        void* GetPipeline()                     const { return m_pipeline; }
-        void* GetPipelineLayout()               const { return m_pipeline_layout; }
-        RHI_PipelineState* GetPipelineState()         { return &m_state; }
-        RHI_DescriptorSet* GetDescriptorSet()   const { return m_descriptor_set.get(); }
+        void* GetPipeline()                         const { return m_pipeline; }
+        void* GetPipelineLayout()                   const { return m_pipeline_layout; }
+        RHI_PipelineState* GetPipelineState()             { return &m_state; }
+        RHI_DescriptorCache* GetDescriptorCache()   const { return m_descriptor_cache.get(); }
        
 	private:
         RHI_PipelineState m_state;
-        std::shared_ptr<RHI_DescriptorSet> m_descriptor_set;
+        std::shared_ptr<RHI_DescriptorCache> m_descriptor_cache;
         std::shared_ptr<RHI_Device> m_rhi_device;
         
 		// API
