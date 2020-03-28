@@ -30,7 +30,12 @@ namespace Spartan
     class SPARTAN_CLASS RHI_Object : public Spartan_Object
     {
     public:
-        RHI_Object() = default;
-        ~RHI_Object() = default;
+        RHI_Object()    = default;
+        ~RHI_Object()   = default;
+
+        const uint64_t GetSizeGpu() const { return m_size_gpu; }
+
+    protected:
+        uint64_t m_size_gpu = 0;
     };
 }

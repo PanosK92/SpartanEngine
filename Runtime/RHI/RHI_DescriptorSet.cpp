@@ -21,7 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================
 #include "RHI_DescriptorSet.h"
-
 #include <utility>
 #include "RHI_Shader.h"
 #include "RHI_Sampler.h"
@@ -37,14 +36,18 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_DescriptorSet::RHI_DescriptorSet(const std::shared_ptr<RHI_Device>& rhi_device, std::vector<uint32_t> constant_buffer_dynamic_slots, const RHI_Shader* shader_vertex, const RHI_Shader* shader_pixel /*= nullptr*/)
+    RHI_DescriptorSet::RHI_DescriptorSet(const std::shared_ptr<RHI_Device>& rhi_device)
     {
-        m_rhi_device                    = rhi_device;
-        m_constant_buffer_dynamic_slots = std::move(constant_buffer_dynamic_slots);
-        m_shader_vertex                 = shader_vertex;
-        m_shader_pixel                  = shader_pixel;
+        m_rhi_device = rhi_device;
+    }
 
-        ReflectShaders();
+    void RHI_DescriptorSet::Initialize(const std::vector<uint32_t>& constant_buffer_dynamic_slots, const RHI_Shader* shader_vertex, const RHI_Shader* shader_pixel /*= nullptr*/)
+    {
+        // Name this resource, very useful for Vulkan debugging
+        m_name = (shader_vertex ? shader_vertex->GetName() : "null") + "-" + (shader_pixel ? shader_pixel->GetName() : "null");
+
+        m_constant_buffer_dynamic_slots = constant_buffer_dynamic_slots;
+        ReflectShaders(shader_vertex, shader_pixel);
         SetDescriptorCapacity(m_descriptor_capacity);
     }
 
@@ -182,27 +185,27 @@ namespace Spartan
         return hash;
     }
 
-    void RHI_DescriptorSet::ReflectShaders()
+    void RHI_DescriptorSet::ReflectShaders(const RHI_Shader* shader_vertex, const RHI_Shader* shader_pixel /*= nullptr*/)
     {
         m_descriptors.clear();
 
-        if (!m_shader_vertex)
+        if (!shader_vertex)
         {
             LOG_ERROR("Vertex shader is invalid");
             return;
         }
 
         // Wait for shader to compile
-        while (m_shader_vertex->GetCompilationState() == Shader_Compilation_Compiling) {}
+        while (shader_vertex->GetCompilationState() == Shader_Compilation_Compiling) {}
 
         // Get vertex shader descriptors
-        m_descriptors = m_shader_vertex->GetDescriptors();
+        m_descriptors = shader_vertex->GetDescriptors();
 
         // If there is a pixel shader, merge it's resources into our map as well
-        if (m_shader_pixel)
+        if (shader_pixel)
         {
-            while (m_shader_pixel->GetCompilationState() == Shader_Compilation_Compiling) {}
-            for (const RHI_Descriptor& descriptor_reflected : m_shader_pixel->GetDescriptors())
+            while (shader_pixel->GetCompilationState() == Shader_Compilation_Compiling) {}
+            for (const RHI_Descriptor& descriptor_reflected : shader_pixel->GetDescriptors())
             {
                 // Assume that the descriptor has been created in the vertex shader and only try to update it's shader stage
                 bool updated_existing = false;

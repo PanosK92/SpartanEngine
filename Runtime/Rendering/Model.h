@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Definition.h"
 #include "../Resource/IResource.h"
 #include "../Math/BoundingBox.h"
+#include "../RHI/RHI_Object.h"
 //================================
 
 namespace Spartan
@@ -37,7 +38,7 @@ namespace Spartan
 	class Mesh;
 	namespace Math{ class BoundingBox; }
 
-	class SPARTAN_CLASS Model : public Spartan_Object, public IResource, public std::enable_shared_from_this<Model>
+	class SPARTAN_CLASS Model : public RHI_Object, public IResource, public std::enable_shared_from_this<Model>
 	{
 	public:
 		Model(Context* context);

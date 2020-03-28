@@ -21,8 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Common.hlsl"
 
-Texture2D texture0 : register (t0);
-
 struct PS_INPUT
 {
 	float4 position : SV_POSITION;
@@ -41,5 +39,5 @@ PS_INPUT mainVS(Vertex_Pos2dUvColor input)
 
 float4 mainPS(PS_INPUT input) : SV_Target
 {
-	return input.color * texture0.Sample(sampler_bilinear_wrap, input.uv);
+    return input.color * tex.Sample(sampler_bilinear_wrap, input.uv);
 }

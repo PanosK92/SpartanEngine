@@ -35,8 +35,10 @@ namespace Spartan
     class RHI_DescriptorSet : public RHI_Object
     {
     public:
-        RHI_DescriptorSet(const std::shared_ptr<RHI_Device>& rhi_device, std::vector<uint32_t> constant_buffer_dynamic_slots, const RHI_Shader* shader_vertex, const RHI_Shader* shader_pixel = nullptr);
+        RHI_DescriptorSet(const std::shared_ptr<RHI_Device>& rhi_device);
         ~RHI_DescriptorSet();
+
+        void Initialize(const std::vector<uint32_t>& constant_buffer_dynamic_slots, const RHI_Shader* shader_vertex, const RHI_Shader* shader_pixel = nullptr);
 
         // Descriptor resource updating
         void SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer);
@@ -62,7 +64,7 @@ namespace Spartan
         bool CreateDescriptorSetLayout();
         void* CreateDescriptorSet(std::size_t hash);
         void UpdateDescriptorSet(void* descriptor_set);
-        void ReflectShaders();
+        void ReflectShaders(const RHI_Shader* shader_vertex, const RHI_Shader* shader_pixel = nullptr);
 
         // Descriptors
         uint32_t m_descriptor_capacity = 20;
@@ -75,8 +77,6 @@ namespace Spartan
 
         // Dependencies
         std::shared_ptr<RHI_Device> m_rhi_device;
-        const RHI_Shader* m_shader_vertex   = nullptr;
-        const RHI_Shader* m_shader_pixel    = nullptr;
 
 		// API
 		void* m_descriptor_pool         = nullptr;
