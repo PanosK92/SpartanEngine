@@ -35,10 +35,10 @@ namespace Spartan
     class SPARTAN_CLASS RHI_DescriptorCache : public RHI_Object
     {
     public:
-        RHI_DescriptorCache(const std::shared_ptr<RHI_Device>& rhi_device);
+        RHI_DescriptorCache(const RHI_Device* rhi_device);
         ~RHI_DescriptorCache();
 
-        void Initialize(const std::vector<uint32_t>& constant_buffer_dynamic_slots, const RHI_Shader* shader_vertex, const RHI_Shader* shader_pixel = nullptr);
+        void SetPipelineState(RHI_PipelineState& pipeline_state);
 
         // Descriptor resource updating
         void SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer);
@@ -47,9 +47,6 @@ namespace Spartan
 
         // Capacity
         void GrowIfNeeded();
-
-        // Misc
-        void NeedsToBind() { m_needs_to_bind = true; }
 
         // Properties
         void* GetResource_DescriptorSet();
@@ -84,6 +81,6 @@ namespace Spartan
         void* m_descriptor_pool = nullptr;
 
         // Dependencies
-        std::shared_ptr<RHI_Device> m_rhi_device;
+        const RHI_Device* m_rhi_device;
     };
 }

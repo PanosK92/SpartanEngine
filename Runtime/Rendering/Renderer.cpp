@@ -117,7 +117,7 @@ namespace Spartan
         }
 
         // Create pipeline cache
-        m_pipeline_cache = make_shared<RHI_PipelineCache>(m_rhi_device);
+        m_pipeline_cache = make_shared<RHI_PipelineCache>(m_rhi_device.get());
 
         // Create swap chain
         {

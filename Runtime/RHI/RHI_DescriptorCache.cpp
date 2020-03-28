@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Shader.h"
 #include "RHI_Sampler.h"
 #include "RHI_Texture.h"
+#include "RHI_PipelineState.h"
 #include "RHI_ConstantBuffer.h"
 #include "RHI_Implementation.h"
 #include "..\Utilities\Hash.h"
@@ -35,19 +36,31 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_DescriptorCache::RHI_DescriptorCache(const std::shared_ptr<RHI_Device>& rhi_device)
+    RHI_DescriptorCache::RHI_DescriptorCache(const RHI_Device* rhi_device)
     {
         m_rhi_device = rhi_device;
     }
 
-    void RHI_DescriptorCache::Initialize(const std::vector<uint32_t>& constant_buffer_dynamic_slots, const RHI_Shader* shader_vertex, const RHI_Shader* shader_pixel /*= nullptr*/)
+    void RHI_DescriptorCache::SetPipelineState(RHI_PipelineState& pipeline_state)
     {
         // Name this resource, very useful for Vulkan debugging
-        m_name = (shader_vertex ? shader_vertex->GetName() : "null") + "-" + (shader_pixel ? shader_pixel->GetName() : "null");
+        m_name = (pipeline_state.shader_vertex ? pipeline_state.shader_vertex->GetName() : "null") + "-" + (pipeline_state.shader_pixel ? pipeline_state.shader_pixel->GetName() : "null");
 
-        m_constant_buffer_dynamic_slots = constant_buffer_dynamic_slots;
-        ReflectShaders(shader_vertex, shader_pixel);
+        // Update dynamic constant buffer slots
+        m_constant_buffer_dynamic_slots.clear();
+        if (pipeline_state.dynamic_constant_buffer_slot != -1)
+        {
+            m_constant_buffer_dynamic_slots.emplace_back(pipeline_state.dynamic_constant_buffer_slot);
+        }
+
+        // Generate descriptors by reflecting the shaders
+        ReflectShaders(pipeline_state.shader_vertex, pipeline_state.shader_pixel);
+
+        // Set descriptor set capacity
         SetDescriptorCapacity(m_descriptor_set_capacity);
+
+        // maybe we don't have to bind whenever the pipeline changes, have to investigate this
+        m_needs_to_bind = true;
     }
 
     void RHI_DescriptorCache::SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer)

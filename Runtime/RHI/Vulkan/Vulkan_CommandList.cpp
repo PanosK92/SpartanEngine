@@ -52,11 +52,12 @@ namespace Spartan
 {
     RHI_CommandList::RHI_CommandList(uint32_t index, RHI_SwapChain* swap_chain, Context* context)
 	{
-        m_swap_chain            = swap_chain;
-        m_renderer              = context->GetSubsystem<Renderer>();
-        m_profiler              = context->GetSubsystem<Profiler>();
-		m_rhi_device	        = m_renderer->GetRhiDevice().get();
-        m_rhi_pipeline_cache    = m_renderer->GetPipelineCache().get();
+        m_swap_chain        = swap_chain;
+        m_renderer          = context->GetSubsystem<Renderer>();
+        m_profiler          = context->GetSubsystem<Profiler>();
+		m_rhi_device	    = m_renderer->GetRhiDevice().get();
+        m_pipeline_cache    = m_renderer->GetPipelineCache().get();
+        m_descriptor_cache  = make_shared<RHI_DescriptorCache>(m_rhi_device);
         m_passes_active.reserve(100);
         m_passes_active.resize(100);
         m_timestamps.reserve(2);
@@ -112,7 +113,7 @@ namespace Spartan
         if (m_cmd_state == RHI_Cmd_List_Idle_Sync_Cpu_To_Gpu)
         {
             Flush();
-            m_pipeline->OnCommandListConsumed();
+            m_descriptor_cache->GrowIfNeeded();
             m_cmd_state = RHI_Cmd_List_Idle;
         }
 
@@ -132,8 +133,11 @@ namespace Spartan
         // At this point, it's safe to allow for command recording
         m_cmd_state = RHI_Cmd_List_Recording;
 
+        // Prepare descriptor cache for pipeline state
+        m_descriptor_cache->SetPipelineState(pipeline_state);
+
         // Get pipeline
-        m_pipeline = m_rhi_pipeline_cache->GetPipeline(pipeline_state, this); 
+        m_pipeline = m_pipeline_cache->GetPipeline(this, pipeline_state, m_descriptor_cache->GetResource_DescriptorSetLayout());
         if (!m_pipeline)
         {
             LOG_ERROR("Failed to acquire appropriate pipeline");
@@ -362,7 +366,7 @@ namespace Spartan
         }
 
         // Set (will only happen if it's not already set)
-        m_pipeline->GetDescriptorCache()->SetConstantBuffer(slot, constant_buffer);
+        m_descriptor_cache->SetConstantBuffer(slot, constant_buffer);
     }
 
     void RHI_CommandList::SetSampler(const uint32_t slot, RHI_Sampler* sampler) const
@@ -374,7 +378,7 @@ namespace Spartan
         }
 
         // Set (will only happen if it's not already set)
-        m_pipeline->GetDescriptorCache()->SetSampler(slot, sampler);
+        m_descriptor_cache->SetSampler(slot, sampler);
     }
 
     void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture)
@@ -411,7 +415,7 @@ namespace Spartan
         }
 
         // Set (will only happen if it's not already set)
-        m_pipeline->GetDescriptorCache()->SetTexture(slot, texture);
+        m_descriptor_cache->SetTexture(slot, texture);
     }
 
 	bool RHI_CommandList::Submit()
@@ -652,10 +656,9 @@ namespace Spartan
 
     void RHI_CommandList::BindDescriptorSet()
     {
-        RHI_DescriptorCache* descriptor_set = m_pipeline->GetDescriptorCache();
-        if (void* vk_descriptor_set = descriptor_set->GetResource_DescriptorSet())
+        if (void* vk_descriptor_set = m_descriptor_cache->GetResource_DescriptorSet())
         {
-            const vector<uint32_t>& _dynamic_offsets    = descriptor_set->GetDynamicOffsets();
+            const vector<uint32_t>& _dynamic_offsets    = m_descriptor_cache->GetDynamicOffsets();
             uint32_t dynamic_offset_count               = !_dynamic_offsets.empty() ? static_cast<uint32_t>(_dynamic_offsets.size()) : 0;
             const uint32_t* dynamic_offsets             = !_dynamic_offsets.empty() ? _dynamic_offsets.data() : nullptr;
 

@@ -44,11 +44,11 @@ using namespace std;
 
 namespace Spartan
 {
-	RHI_Pipeline::RHI_Pipeline(const std::shared_ptr<RHI_Device>& rhi_device, RHI_PipelineState& pipeline_state)
+	RHI_Pipeline::RHI_Pipeline(const RHI_Device* rhi_device, RHI_PipelineState& pipeline_state, void* descriptor_set_layout)
 	{
 		m_rhi_device    = rhi_device;
 		m_state         = pipeline_state;
-        m_state.CreateFrameResources(rhi_device.get());
+        m_state.CreateFrameResources(rhi_device);
 
         // Viewport & Scissor
         vector<VkDynamicState> dynamic_states;
@@ -278,23 +278,11 @@ namespace Spartan
         // Pipeline layout
         auto pipeline_layout = reinterpret_cast<VkPipelineLayout*>(&m_pipeline_layout);
 		VkPipelineLayoutCreateInfo pipeline_layout_info	= {};
-        {
-            // Create descriptor set out of the shader
-            std::vector<uint32_t> constant_buffer_dynamic_slots = {};
-            if (m_state.dynamic_constant_buffer_slot != -1)
-            {
-                constant_buffer_dynamic_slots.emplace_back(m_state.dynamic_constant_buffer_slot);
-            }
-            m_descriptor_cache = make_shared<RHI_DescriptorCache>(m_rhi_device);
-            m_descriptor_cache->Initialize(constant_buffer_dynamic_slots, m_state.shader_vertex, m_state.shader_pixel);
-
-            // Get the layout
-            auto vk_descriptor_set_layout = static_cast<VkDescriptorSetLayout>(m_descriptor_cache->GetResource_DescriptorSetLayout());
-
+        { 
 		    pipeline_layout_info.sType						= VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 		    pipeline_layout_info.pushConstantRangeCount		= 0;
 		    pipeline_layout_info.setLayoutCount				= 1;		
-		    pipeline_layout_info.pSetLayouts				= &vk_descriptor_set_layout;
+		    pipeline_layout_info.pSetLayouts				= reinterpret_cast<VkDescriptorSetLayout*>(&descriptor_set_layout);
 
             if (!vulkan_common::error::check(vkCreatePipelineLayout(m_rhi_device->GetContextRhi()->device, &pipeline_layout_info, nullptr, pipeline_layout)))
 			    return;

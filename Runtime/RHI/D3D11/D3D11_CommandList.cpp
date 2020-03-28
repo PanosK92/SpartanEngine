@@ -43,6 +43,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_InputLayout.h"
 #include "../RHI_SwapChain.h"
 #include "../RHI_PipelineState.h"
+#include "../RHI_DescriptorCache.h"
 //===================================
 
 //= NAMESPACES ===============
@@ -54,11 +55,12 @@ namespace Spartan
 {
 	RHI_CommandList::RHI_CommandList(uint32_t index, RHI_SwapChain* swap_chain, Context* context)
 	{
-        m_swap_chain            = swap_chain;
-        m_renderer              = context->GetSubsystem<Renderer>();
-        m_profiler              = context->GetSubsystem<Profiler>();
-        m_rhi_device            = m_renderer->GetRhiDevice().get();
-        m_rhi_pipeline_cache    = m_renderer->GetPipelineCache().get();
+        m_swap_chain        = swap_chain;
+        m_renderer          = context->GetSubsystem<Renderer>();
+        m_profiler          = context->GetSubsystem<Profiler>();
+        m_rhi_device        = m_renderer->GetRhiDevice().get();
+        m_pipeline_cache    = m_renderer->GetPipelineCache().get();
+        m_descriptor_cache  = make_shared<RHI_DescriptorCache>(m_rhi_device);
         m_passes_active.reserve(100);
         m_passes_active.resize(100);
 	}
