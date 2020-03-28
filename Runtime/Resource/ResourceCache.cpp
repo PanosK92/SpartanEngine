@@ -257,7 +257,7 @@ namespace Spartan
             {
                 for (const auto& resource : group.second)
                 {
-                    if (Spartan_Object* object = dynamic_cast<Spartan_Object*>(resource.get()))
+                    if (RHI_Object* object = dynamic_cast<RHI_Object*>(resource.get()))
                     {
                         size += object->GetSizeGpu();
                     }
@@ -268,7 +268,7 @@ namespace Spartan
         {
             for (const auto& resource : m_resource_groups[type])
             {
-                if (Spartan_Object* object = dynamic_cast<Spartan_Object*>(resource.get()))
+                if (RHI_Object* object = dynamic_cast<RHI_Object*>(resource.get()))
                 {
                     size += object->GetSizeGpu();
                 }

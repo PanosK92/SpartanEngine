@@ -285,7 +285,8 @@ namespace Spartan
             {
                 constant_buffer_dynamic_slots.emplace_back(m_state.dynamic_constant_buffer_slot);
             }
-            m_descriptor_set = make_shared<RHI_DescriptorSet>(m_rhi_device, constant_buffer_dynamic_slots, m_state.shader_vertex, m_state.shader_pixel);
+            m_descriptor_set = make_shared<RHI_DescriptorSet>(m_rhi_device);
+            m_descriptor_set->Initialize(constant_buffer_dynamic_slots, m_state.shader_vertex, m_state.shader_pixel);
 
             // Get the layout
             auto vk_descriptor_set_layout = static_cast<VkDescriptorSetLayout>(m_descriptor_set->GetResource_Layout());

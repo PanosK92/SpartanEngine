@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Resource/ResourceCache.h"
 #include "../ImGui/Source/imgui.h"
 #include <Core\Spartan_Object.h>
+#include "RHI/RHI_Object.h"
 //=================================
 
 //= NAMESPACES ==========
@@ -59,10 +60,10 @@ inline void print_memory(uint64_t memory)
 
 void Widget_ResourceCache::Tick()
 {
-	auto resource_cache		= m_context->GetSubsystem<ResourceCache>();
-	auto resources			= resource_cache->GetByType();
+	auto resource_cache		    = m_context->GetSubsystem<ResourceCache>();
+	auto resources			    = resource_cache->GetByType();
     const auto memory_usage_cpu	= resource_cache->GetMemoryUsageCpu() / 1000.0f / 1000.0f;
-    const auto memory_usage_gpu   = resource_cache->GetMemoryUsageGpu() / 1000.0f / 1000.0f;
+    const auto memory_usage_gpu = resource_cache->GetMemoryUsageGpu() / 1000.0f / 1000.0f;
 
 	ImGui::Text("Resource count: %d, Memory usage cpu: %d Mb, Memory usage gpu: %d Mb", static_cast<uint32_t>(resources.size()), static_cast<uint32_t>(memory_usage_cpu), static_cast<uint32_t>(memory_usage_gpu));
 	ImGui::Separator();
@@ -108,7 +109,14 @@ void Widget_ResourceCache::Tick()
 		    // Memory CPU
             print_memory(object->GetSizeCpu());                             ImGui::NextColumn();
             // Memory GPU
-            print_memory(object->GetSizeGpu());                             ImGui::NextColumn();
+            if (RHI_Object* rhi_object = dynamic_cast<RHI_Object*>(resource.get()))
+            {
+                print_memory(rhi_object->GetSizeGpu());                     ImGui::NextColumn();
+            }
+            else
+            {
+                print_memory(0);                                            ImGui::NextColumn();
+            }
         }
 	}
 	ImGui::Columns(1);
