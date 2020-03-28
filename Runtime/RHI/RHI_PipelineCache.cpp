@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Texture.h"
 #include "RHI_Pipeline.h"
 #include "RHI_SwapChain.h"
-#include "RHI_DescriptorSet.h"
+#include "RHI_DescriptorCache.h"
 //============================
 
 //= NAMESPACES =====
@@ -79,7 +79,7 @@ namespace Spartan
 
         RHI_Pipeline* pipeline = m_cache[hash].get();
 
-        if (RHI_DescriptorSet* descriptor_set = pipeline->GetDescriptorSet())
+        if (RHI_DescriptorCache* descriptor_set = pipeline->GetDescriptorCache())
         {
             descriptor_set->NeedsToBind();
         }

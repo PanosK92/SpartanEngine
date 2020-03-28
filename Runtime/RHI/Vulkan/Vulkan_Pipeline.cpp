@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_BlendState.h"
 #include "../RHI_InputLayout.h"
 #include "../RHI_CommandList.h"
-#include "../RHI_DescriptorSet.h"
+#include "../RHI_DescriptorCache.h"
 #include "../RHI_PipelineState.h"
 #include "../RHI_RasterizerState.h"
 #include "../RHI_DepthStencilState.h"
@@ -285,11 +285,11 @@ namespace Spartan
             {
                 constant_buffer_dynamic_slots.emplace_back(m_state.dynamic_constant_buffer_slot);
             }
-            m_descriptor_set = make_shared<RHI_DescriptorSet>(m_rhi_device);
-            m_descriptor_set->Initialize(constant_buffer_dynamic_slots, m_state.shader_vertex, m_state.shader_pixel);
+            m_descriptor_cache = make_shared<RHI_DescriptorCache>(m_rhi_device);
+            m_descriptor_cache->Initialize(constant_buffer_dynamic_slots, m_state.shader_vertex, m_state.shader_pixel);
 
             // Get the layout
-            auto vk_descriptor_set_layout = static_cast<VkDescriptorSetLayout>(m_descriptor_set->GetResource_Layout());
+            auto vk_descriptor_set_layout = static_cast<VkDescriptorSetLayout>(m_descriptor_cache->GetResource_DescriptorSetLayout());
 
 		    pipeline_layout_info.sType						= VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 		    pipeline_layout_info.pushConstantRangeCount		= 0;

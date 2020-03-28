@@ -32,11 +32,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    class RHI_DescriptorSet : public RHI_Object
+    class SPARTAN_CLASS RHI_DescriptorCache : public RHI_Object
     {
     public:
-        RHI_DescriptorSet(const std::shared_ptr<RHI_Device>& rhi_device);
-        ~RHI_DescriptorSet();
+        RHI_DescriptorCache(const std::shared_ptr<RHI_Device>& rhi_device);
+        ~RHI_DescriptorCache();
 
         void Initialize(const std::vector<uint32_t>& constant_buffer_dynamic_slots, const RHI_Shader* shader_vertex, const RHI_Shader* shader_pixel = nullptr);
 
@@ -46,15 +46,14 @@ namespace Spartan
         void SetTexture(const uint32_t slot, RHI_Texture* texture);
 
         // Capacity
-        void DoubleCapacity();
-        bool HashEnoughCapacity() const { return m_descriptor_sets.size() < m_descriptor_capacity; }
+        void GrowIfNeeded();
 
         // Misc
         void NeedsToBind() { m_needs_to_bind = true; }
 
         // Properties
-        void* GetResource_Set();
-        void* GetResource_Layout()                          const { return m_descriptor_set_layout; }
+        void* GetResource_DescriptorSet();
+        void* GetResource_DescriptorSetLayout()             const { return m_descriptor_set_layout; }
         const std::vector<uint32_t>& GetDynamicOffsets()    const { return m_constant_buffer_dynamic_offsets; }
 
     private:
@@ -66,21 +65,25 @@ namespace Spartan
         void UpdateDescriptorSet(void* descriptor_set);
         void ReflectShaders(const RHI_Shader* shader_vertex, const RHI_Shader* shader_pixel = nullptr);
 
-        // Descriptors
-        uint32_t m_descriptor_capacity = 20;
-        bool m_needs_to_bind           = false;
-        std::vector<RHI_Descriptor> m_descriptors;
-
         // Dynamic constant buffers
         std::vector<uint32_t> m_constant_buffer_dynamic_slots;
         std::vector<uint32_t> m_constant_buffer_dynamic_offsets;
 
+        // Descriptors
+        bool m_needs_to_bind = false;
+        std::vector<RHI_Descriptor> m_descriptors;
+
+        // Descriptor sets
+        uint32_t m_descriptor_set_capacity = 20;
+        std::unordered_map<std::size_t, void*> m_descriptor_sets;
+
+        // Descriptor set layout
+        void* m_descriptor_set_layout = nullptr;
+
+        // Descriptor pool
+        void* m_descriptor_pool = nullptr;
+
         // Dependencies
         std::shared_ptr<RHI_Device> m_rhi_device;
-
-		// API
-		void* m_descriptor_pool         = nullptr;
-		void* m_descriptor_set_layout   = nullptr;
-        std::unordered_map<std::size_t, void*> m_descriptor_sets;
     };
 }

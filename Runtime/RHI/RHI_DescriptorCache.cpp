@@ -19,16 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =================
-#include "RHI_DescriptorSet.h"
-#include <utility>
+//= INCLUDES ===================
+#include "RHI_DescriptorCache.h"
 #include "RHI_Shader.h"
 #include "RHI_Sampler.h"
-#include "RHI_Texture.h"
 #include "RHI_ConstantBuffer.h"
 #include "RHI_Implementation.h"
 #include "..\Utilities\Hash.h"
-//============================
+//==============================
 
 //= NAMESPACES =====
 using namespace std;
@@ -36,22 +34,22 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_DescriptorSet::RHI_DescriptorSet(const std::shared_ptr<RHI_Device>& rhi_device)
+    RHI_DescriptorCache::RHI_DescriptorCache(const std::shared_ptr<RHI_Device>& rhi_device)
     {
         m_rhi_device = rhi_device;
     }
 
-    void RHI_DescriptorSet::Initialize(const std::vector<uint32_t>& constant_buffer_dynamic_slots, const RHI_Shader* shader_vertex, const RHI_Shader* shader_pixel /*= nullptr*/)
+    void RHI_DescriptorCache::Initialize(const std::vector<uint32_t>& constant_buffer_dynamic_slots, const RHI_Shader* shader_vertex, const RHI_Shader* shader_pixel /*= nullptr*/)
     {
         // Name this resource, very useful for Vulkan debugging
         m_name = (shader_vertex ? shader_vertex->GetName() : "null") + "-" + (shader_pixel ? shader_pixel->GetName() : "null");
 
         m_constant_buffer_dynamic_slots = constant_buffer_dynamic_slots;
         ReflectShaders(shader_vertex, shader_pixel);
-        SetDescriptorCapacity(m_descriptor_capacity);
+        SetDescriptorCapacity(m_descriptor_set_capacity);
     }
 
-    void RHI_DescriptorSet::SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer)
+    void RHI_DescriptorCache::SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer)
     {
         for (RHI_Descriptor& descriptor : m_descriptors)
         {
@@ -92,7 +90,7 @@ namespace Spartan
         }
     }
 
-    void RHI_DescriptorSet::SetSampler(const uint32_t slot, RHI_Sampler* sampler)
+    void RHI_DescriptorCache::SetSampler(const uint32_t slot, RHI_Sampler* sampler)
     {
         for (RHI_Descriptor& descriptor : m_descriptors)
         {
@@ -110,7 +108,7 @@ namespace Spartan
         }
     }
 
-    void RHI_DescriptorSet::SetTexture(const uint32_t slot, RHI_Texture* texture)
+    void RHI_DescriptorCache::SetTexture(const uint32_t slot, RHI_Texture* texture)
     {
         if (!texture->IsSampled())
         {
@@ -141,7 +139,17 @@ namespace Spartan
         }
     }
 
-    void* RHI_DescriptorSet::GetResource_Set()
+    void RHI_DescriptorCache::GrowIfNeeded()
+    {
+        // If the descriptor pool is full, re-allocate with double size
+        if (m_descriptor_sets.size() < m_descriptor_set_capacity)
+            return;
+
+        m_descriptor_set_capacity *= 2;
+        SetDescriptorCapacity(m_descriptor_set_capacity);
+    }
+
+	void* RHI_DescriptorCache::GetResource_DescriptorSet()
     {
         void* descriptor_set = nullptr;
 
@@ -166,7 +174,7 @@ namespace Spartan
         return descriptor_set;
     }
 
-    size_t RHI_DescriptorSet::GetDescriptorsHash(const vector<RHI_Descriptor>& descriptor_blueprint)
+    size_t RHI_DescriptorCache::GetDescriptorsHash(const vector<RHI_Descriptor>& descriptor_blueprint)
     {
         size_t hash = 0;
 
@@ -185,7 +193,7 @@ namespace Spartan
         return hash;
     }
 
-    void RHI_DescriptorSet::ReflectShaders(const RHI_Shader* shader_vertex, const RHI_Shader* shader_pixel /*= nullptr*/)
+    void RHI_DescriptorCache::ReflectShaders(const RHI_Shader* shader_vertex, const RHI_Shader* shader_pixel /*= nullptr*/)
     {
         m_descriptors.clear();
 

@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //================================
 
 //= INCLUDES ====================
-#include "../RHI_DescriptorSet.h"
+#include "../RHI_DescriptorCache.h"
 #include "../RHI_Shader.h"
 //===============================
 
@@ -35,7 +35,7 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_DescriptorSet::~RHI_DescriptorSet()
+    RHI_DescriptorCache::~RHI_DescriptorCache()
     {
         if (m_descriptor_set_layout)
         {
@@ -50,17 +50,7 @@ namespace Spartan
         }
     }
 
-    void RHI_DescriptorSet::DoubleCapacity()
-    {
-        // If the descriptor pool is full, re-allocate with double size
-        if (m_descriptor_sets.size() < m_descriptor_capacity)
-            return;
-
-        m_descriptor_capacity *= 2;
-        SetDescriptorCapacity(m_descriptor_capacity);
-    }
-
-    void RHI_DescriptorSet::SetDescriptorCapacity(uint32_t descriptor_set_capacity)
+    void RHI_DescriptorCache::SetDescriptorCapacity(uint32_t descriptor_set_capacity)
     {
         if (!m_rhi_device || !m_rhi_device->GetContextRhi())
         {
@@ -90,7 +80,7 @@ namespace Spartan
         CreateDescriptorSetLayout();
     }
 
-    bool RHI_DescriptorSet::CreateDescriptorPool(uint32_t descriptor_set_capacity)
+    bool RHI_DescriptorCache::CreateDescriptorPool(uint32_t descriptor_set_capacity)
     {
         // Pool sizes
         vector<VkDescriptorPoolSize> pool_sizes(4);
@@ -119,7 +109,7 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_DescriptorSet::CreateDescriptorSetLayout()
+    bool RHI_DescriptorCache::CreateDescriptorSetLayout()
     {
         // Layout bindings
         vector<VkDescriptorSetLayoutBinding> layout_bindings;
@@ -161,10 +151,10 @@ namespace Spartan
         return true;
     }
 
-    void* RHI_DescriptorSet::CreateDescriptorSet(size_t hash)
+    void* RHI_DescriptorCache::CreateDescriptorSet(size_t hash)
     {
         // Early exit if the descriptor cache is full
-        if (m_descriptor_sets.size() == m_descriptor_capacity)
+        if (m_descriptor_sets.size() == m_descriptor_set_capacity)
             return nullptr;
 
         const auto descriptor_pool = static_cast<VkDescriptorPool>(m_descriptor_pool);
@@ -195,7 +185,7 @@ namespace Spartan
         return descriptor_set;
     }
 
-    void RHI_DescriptorSet::UpdateDescriptorSet(void* descriptor_set)
+    void RHI_DescriptorCache::UpdateDescriptorSet(void* descriptor_set)
     {
         if (!descriptor_set)
             return;

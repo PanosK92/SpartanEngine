@@ -37,7 +37,7 @@ namespace Spartan
 	class RHI_PipelineState;
 	class RHI_PipelineCache;
 	class RHI_Pipeline;
-    class RHI_DescriptorSet;
+    class RHI_DescriptorCache;
 	class RHI_SwapChain;
 	class RHI_RasterizerState;
 	class RHI_BlendState;

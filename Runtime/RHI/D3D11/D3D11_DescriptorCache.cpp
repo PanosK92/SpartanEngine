@@ -25,39 +25,34 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //================================
 
 //= INCLUDES ====================
-#include "../RHI_DescriptorSet.h"
+#include "../RHI_DescriptorCache.h"
 //===============================
 namespace Spartan
 {
-    RHI_DescriptorSet::~RHI_DescriptorSet()
+    RHI_DescriptorCache::~RHI_DescriptorCache()
     = default;
 
-    void RHI_DescriptorSet::DoubleCapacity()
+    void RHI_DescriptorCache::SetDescriptorCapacity(uint32_t descriptor_set_capacity)
     {
 
     }
 
-    void RHI_DescriptorSet::SetDescriptorCapacity(uint32_t descriptor_set_capacity)
-    {
-
-    }
-
-    bool RHI_DescriptorSet::CreateDescriptorPool(uint32_t descriptor_set_capacity)
+    bool RHI_DescriptorCache::CreateDescriptorPool(uint32_t descriptor_set_capacity)
     {
         return true;
     }
 
-    bool RHI_DescriptorSet::CreateDescriptorSetLayout()
+    bool RHI_DescriptorCache::CreateDescriptorSetLayout()
     {
         return true;
     }
 
-    void* RHI_DescriptorSet::CreateDescriptorSet(std::size_t hash)
+    void* RHI_DescriptorCache::CreateDescriptorSet(std::size_t hash)
     {
         return nullptr;
     }
 
-    void RHI_DescriptorSet::UpdateDescriptorSet(void* descriptor_set)
+    void RHI_DescriptorCache::UpdateDescriptorSet(void* descriptor_set)
     {
 
     }

@@ -35,7 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_IndexBuffer.h"
 #include "../RHI_PipelineState.h"
 #include "../RHI_ConstantBuffer.h"
-#include "../RHI_DescriptorSet.h"
+#include "../RHI_DescriptorCache.h"
 #include "../../Profiling/Profiler.h"
 #include "../../Logging/Log.h"
 #include "../../Rendering/Renderer.h"
@@ -362,7 +362,7 @@ namespace Spartan
         }
 
         // Set (will only happen if it's not already set)
-        m_pipeline->GetDescriptorSet()->SetConstantBuffer(slot, constant_buffer);
+        m_pipeline->GetDescriptorCache()->SetConstantBuffer(slot, constant_buffer);
     }
 
     void RHI_CommandList::SetSampler(const uint32_t slot, RHI_Sampler* sampler) const
@@ -374,7 +374,7 @@ namespace Spartan
         }
 
         // Set (will only happen if it's not already set)
-        m_pipeline->GetDescriptorSet()->SetSampler(slot, sampler);
+        m_pipeline->GetDescriptorCache()->SetSampler(slot, sampler);
     }
 
     void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture)
@@ -411,7 +411,7 @@ namespace Spartan
         }
 
         // Set (will only happen if it's not already set)
-        m_pipeline->GetDescriptorSet()->SetTexture(slot, texture);
+        m_pipeline->GetDescriptorCache()->SetTexture(slot, texture);
     }
 
 	bool RHI_CommandList::Submit()
@@ -652,8 +652,8 @@ namespace Spartan
 
     void RHI_CommandList::BindDescriptorSet()
     {
-        RHI_DescriptorSet* descriptor_set = m_pipeline->GetDescriptorSet();
-        if (void* vk_descriptor_set = descriptor_set->GetResource_Set())
+        RHI_DescriptorCache* descriptor_set = m_pipeline->GetDescriptorCache();
+        if (void* vk_descriptor_set = descriptor_set->GetResource_DescriptorSet())
         {
             const vector<uint32_t>& _dynamic_offsets    = descriptor_set->GetDynamicOffsets();
             uint32_t dynamic_offset_count               = !_dynamic_offsets.empty() ? static_cast<uint32_t>(_dynamic_offsets.size()) : 0;
