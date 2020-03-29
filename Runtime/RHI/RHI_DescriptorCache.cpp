@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===================
+//= INCLUDES =======================
 #include "RHI_DescriptorCache.h"
 #include "RHI_Shader.h"
 #include "RHI_Sampler.h"
@@ -27,8 +27,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_PipelineState.h"
 #include "RHI_ConstantBuffer.h"
 #include "RHI_Implementation.h"
+#include "RHI_DescriptorSetLayout.h"
 #include "..\Utilities\Hash.h"
-//==============================
+//==================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -39,6 +40,9 @@ namespace Spartan
     RHI_DescriptorCache::RHI_DescriptorCache(const RHI_Device* rhi_device)
     {
         m_rhi_device = rhi_device;
+
+        // Set the descriptor set capacity to an initial value
+        SetDescriptorSetCapacity(m_descriptor_set_capacity);
     }
 
     void RHI_DescriptorCache::SetPipelineState(RHI_PipelineState& pipeline_state)
@@ -46,192 +50,150 @@ namespace Spartan
         // Name this resource, very useful for Vulkan debugging
         m_name = (pipeline_state.shader_vertex ? pipeline_state.shader_vertex->GetName() : "null") + "-" + (pipeline_state.shader_pixel ? pipeline_state.shader_pixel->GetName() : "null");
 
-        // Update dynamic constant buffer slots
-        m_constant_buffer_dynamic_slots.clear();
-        if (pipeline_state.dynamic_constant_buffer_slot != -1)
-        {
-            m_constant_buffer_dynamic_slots.emplace_back(pipeline_state.dynamic_constant_buffer_slot);
-        }
+       // Compute shader hash (which defines the descriptor set layout)
+       size_t hash = 0;
+       Utility::Hash::hash_combine(hash, pipeline_state.shader_vertex->GetId());
+       if (pipeline_state.shader_pixel)
+       {
+           Utility::Hash::hash_combine(hash, pipeline_state.shader_pixel->GetId());
+       }
 
-        // Generate descriptors by reflecting the shaders
-        ReflectShaders(pipeline_state.shader_vertex, pipeline_state.shader_pixel);
+       // If there is no descriptor set layout for this particular hash, create one
+       if (m_descriptor_set_layouts.find(hash) == m_descriptor_set_layouts.end())
+       {
+           // Generate descriptors from the reflected shaders
+           vector<RHI_Descriptor> descriptors = GenerateDescriptors(pipeline_state);
 
-        // Set descriptor set capacity
-        SetDescriptorCapacity(m_descriptor_set_capacity);
+           // Emplace a new descriptor set layout
+           m_descriptor_set_layouts.emplace(make_pair(hash, make_shared<RHI_DescriptorSetLayout>(m_rhi_device, descriptors)));
+       }
 
-        // maybe we don't have to bind whenever the pipeline changes, have to investigate this
-        m_needs_to_bind = true;
+       // Get the descriptor set layout we will be using
+        m_descriptor_layout_current = m_descriptor_set_layouts.at(hash).get();
+        m_descriptor_layout_current->NeedsToBind();
     }
 
     void RHI_DescriptorCache::SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer)
     {
-        for (RHI_Descriptor& descriptor : m_descriptors)
+        if (!m_descriptor_layout_current)
         {
-            const bool is_dynamic   = constant_buffer->IsDynamic();
-            const bool is_same_type = (!is_dynamic && descriptor.type == RHI_Descriptor_ConstantBuffer) || (is_dynamic && descriptor.type == RHI_Descriptor_ConstantBufferDynamic);
-            const bool is_same_slot = is_same_type && descriptor.slot == slot + m_rhi_device->GetContextRhi()->shader_shift_buffer;
-
-            if (is_same_slot)
-            {
-                // Determine if the descriptor set needs to bind
-                m_needs_to_bind = descriptor.id     != constant_buffer->GetId()     ? true : m_needs_to_bind;
-                m_needs_to_bind = descriptor.offset != constant_buffer->GetOffset() ? true : m_needs_to_bind;
-                m_needs_to_bind = descriptor.range  != constant_buffer->GetStride() ? true : m_needs_to_bind;
-                m_needs_to_bind = !m_constant_buffer_dynamic_offsets.empty() ? (m_constant_buffer_dynamic_offsets[0]  != constant_buffer->GetOffsetDynamic()  ? true : m_needs_to_bind) : m_needs_to_bind;
-
-                // Update
-                descriptor.id       = constant_buffer->GetId();
-                descriptor.resource = constant_buffer->GetResource();     
-                descriptor.offset   = constant_buffer->GetOffset();
-                descriptor.range    = constant_buffer->GetStride();
-
-                // Update the dynamic offset.
-                // Note: This is not directly related to the descriptor, it a value that gets set when vkCmdBindDescriptorSets is called, just before a draw call.
-                if (is_dynamic)
-                {
-                    if (m_constant_buffer_dynamic_offsets.empty())
-                    {
-                        m_constant_buffer_dynamic_offsets.emplace_back(constant_buffer->GetOffsetDynamic());
-                    }
-                    else
-                    {
-                        m_constant_buffer_dynamic_offsets[0] = constant_buffer->GetOffsetDynamic();
-                    }
-                }
-
-                break;
-            }
+            LOG_ERROR("Invalid descriptor set layout");
+            return;
         }
+
+        m_descriptor_layout_current->SetConstantBuffer(slot, constant_buffer);
     }
 
     void RHI_DescriptorCache::SetSampler(const uint32_t slot, RHI_Sampler* sampler)
     {
-        for (RHI_Descriptor& descriptor : m_descriptors)
+        if (!m_descriptor_layout_current)
         {
-            if (descriptor.type == RHI_Descriptor_Sampler && descriptor.slot == slot + m_rhi_device->GetContextRhi()->shader_shift_sampler)
-            {
-                // Determine if the descriptor set needs to bind
-                m_needs_to_bind = descriptor.id != sampler->GetId() ? true : m_needs_to_bind;
-
-                // Update
-                descriptor.id       = sampler->GetId();
-                descriptor.resource = sampler->GetResource();
-
-                break;
-            }
+            LOG_ERROR("Invalid descriptor set layout");
+            return;
         }
+
+        m_descriptor_layout_current->SetSampler(slot, sampler);
     }
 
     void RHI_DescriptorCache::SetTexture(const uint32_t slot, RHI_Texture* texture)
     {
-        if (!texture->IsSampled())
+        if (!m_descriptor_layout_current)
         {
-            LOG_ERROR("Texture can't be used for sampling");
+            LOG_ERROR("Invalid descriptor set layout");
             return;
         }
 
-        if (texture->GetLayout() == RHI_Image_Undefined || texture->GetLayout() == RHI_Image_Preinitialized)
+        m_descriptor_layout_current->SetTexture(slot, texture);
+    }
+
+    void* RHI_DescriptorCache::GetResource_DescriptorSetLayout() const
+    {
+        if (!m_descriptor_layout_current)
         {
-            LOG_ERROR("Texture has an invalid layout");
-            return;
+            LOG_ERROR("Invalid descriptor set layout");
+            return nullptr;
         }
 
-        for (RHI_Descriptor& descriptor : m_descriptors)
+        return m_descriptor_layout_current->GetResource_DescriptorSetLayout();
+    }
+
+    void* RHI_DescriptorCache::GetResource_DescriptorSet()
+    {
+        if (!m_descriptor_layout_current)
         {
-            if (descriptor.type == RHI_Descriptor_Texture && descriptor.slot == slot + m_rhi_device->GetContextRhi()->shader_shift_texture)
-            {
-                // Determine if the descriptor set needs to bind
-                m_needs_to_bind = descriptor.id != texture->GetId() ? true : m_needs_to_bind;
-
-                // Update
-                descriptor.id       = texture->GetId();
-                descriptor.resource = texture->Get_View_Texture();
-                descriptor.layout   = texture->GetLayout();
-
-                break;
-            }
+            LOG_ERROR("Invalid descriptor set layout");
+            return nullptr;
         }
+
+        return m_descriptor_layout_current->GetResource_DescriptorSet(this);
+    }
+
+    const std::vector<uint32_t>& RHI_DescriptorCache::GetDynamicOffsets() const
+    {
+        if (!m_descriptor_layout_current)
+        {
+            LOG_ERROR("Invalid descriptor set layout");
+            return std::vector<uint32_t>();
+        }
+
+        return m_descriptor_layout_current->GetDynamicOffsets();
+    }
+
+    bool RHI_DescriptorCache::HasEnoughCapacity() const
+    {
+        return m_descriptor_set_capacity > GetDescriptorSetCount();
     }
 
     void RHI_DescriptorCache::GrowIfNeeded()
     {
-        // If the descriptor pool is full, re-allocate with double size
-        if (m_descriptor_sets.size() < m_descriptor_set_capacity)
-            return;
+        // If there is room for at least one more descriptor set (hence +1), we don't need to re-allocate yet
+        const uint32_t required_capacity = GetDescriptorSetCount() + 1;
 
-        m_descriptor_set_capacity *= 2;
-        SetDescriptorCapacity(m_descriptor_set_capacity);
+        // If we are over-budget, re-allocate the descriptor pool with double size
+        if (required_capacity > m_descriptor_set_capacity)
+        {
+            m_descriptor_set_capacity *= 2;
+            SetDescriptorSetCapacity(m_descriptor_set_capacity);
+            LOG_INFO("Capacity has been increased to %d elements", m_descriptor_set_capacity);
+        }
     }
 
-	void* RHI_DescriptorCache::GetResource_DescriptorSet()
+    uint32_t RHI_DescriptorCache::GetDescriptorSetCount() const
     {
-        void* descriptor_set = nullptr;
-
-        // Get the hash of the current descriptor blueprint
-        const size_t hash = GetDescriptorsHash(m_descriptors);
-
-        if (m_descriptor_sets.find(hash) == m_descriptor_sets.end())
+        uint32_t descriptor_set_count = 0;
+        for (const auto& it : m_descriptor_set_layouts)
         {
-            // If the descriptor set doesn't exist, create one
-            descriptor_set = CreateDescriptorSet(hash);
-        }
-        else
-        {
-            // If the descriptor set exists but needs to be bound, return it
-            if (m_needs_to_bind)
-            {
-                descriptor_set = m_descriptor_sets[hash];
-                m_needs_to_bind = false;
-            }
+            descriptor_set_count += it.second->GetDescriptorSetCount();
         }
 
-        return descriptor_set;
+        return descriptor_set_count;
     }
 
-    size_t RHI_DescriptorCache::GetDescriptorsHash(const vector<RHI_Descriptor>& descriptor_blueprint)
+    vector<RHI_Descriptor> RHI_DescriptorCache::GenerateDescriptors(RHI_PipelineState& pipeline_state)
     {
-        size_t hash = 0;
+        vector<RHI_Descriptor> descriptors;
 
-        for (const RHI_Descriptor& descriptor : m_descriptors)
-        {
-            Utility::Hash::hash_combine(hash, descriptor.slot);
-            Utility::Hash::hash_combine(hash, descriptor.stage);
-            Utility::Hash::hash_combine(hash, descriptor.id);
-            Utility::Hash::hash_combine(hash, descriptor.offset);
-            Utility::Hash::hash_combine(hash, descriptor.range);
-            Utility::Hash::hash_combine(hash, descriptor.resource);
-            Utility::Hash::hash_combine(hash, static_cast<uint32_t>(descriptor.type));
-            Utility::Hash::hash_combine(hash, static_cast<uint32_t>(descriptor.layout));
-        }
-
-        return hash;
-    }
-
-    void RHI_DescriptorCache::ReflectShaders(const RHI_Shader* shader_vertex, const RHI_Shader* shader_pixel /*= nullptr*/)
-    {
-        m_descriptors.clear();
-
-        if (!shader_vertex)
+        if (!pipeline_state.shader_vertex)
         {
             LOG_ERROR("Vertex shader is invalid");
-            return;
+            return descriptors;
         }
 
         // Wait for shader to compile
-        while (shader_vertex->GetCompilationState() == Shader_Compilation_Compiling) {}
+        while (pipeline_state.shader_vertex->GetCompilationState() == Shader_Compilation_Compiling) {}
 
         // Get vertex shader descriptors
-        m_descriptors = shader_vertex->GetDescriptors();
+        descriptors = pipeline_state.shader_vertex->GetDescriptors();
 
         // If there is a pixel shader, merge it's resources into our map as well
-        if (shader_pixel)
+        if (pipeline_state.shader_pixel)
         {
-            while (shader_pixel->GetCompilationState() == Shader_Compilation_Compiling) {}
-            for (const RHI_Descriptor& descriptor_reflected : shader_pixel->GetDescriptors())
+            while (pipeline_state.shader_pixel->GetCompilationState() == Shader_Compilation_Compiling) {}
+            for (const RHI_Descriptor& descriptor_reflected : pipeline_state.shader_pixel->GetDescriptors())
             {
                 // Assume that the descriptor has been created in the vertex shader and only try to update it's shader stage
                 bool updated_existing = false;
-                for (RHI_Descriptor& descriptor : m_descriptors)
+                for (RHI_Descriptor& descriptor : descriptors)
                 {
                     bool is_same_resource =
                         (descriptor.type == descriptor_reflected.type) &&
@@ -248,24 +210,26 @@ namespace Spartan
                 // If no updating took place, this descriptor is new, so add it
                 if (!updated_existing)
                 {
-                    m_descriptors.emplace_back(descriptor_reflected);
+                    descriptors.emplace_back(descriptor_reflected);
                 }
             }
         }
 
-        // Change constant buffers to dynamic (if requested)
-        for (uint32_t constant_buffer_dynamic_slot : m_constant_buffer_dynamic_slots)
+        // Change constant buffers to dynamic (if requested) - This is a hack and not flexible, must improve
+        if (pipeline_state.dynamic_constant_buffer_slot != -1)
         {
-            for (RHI_Descriptor& descriptor : m_descriptors)
+            for (RHI_Descriptor& descriptor : descriptors)
             {
                 if (descriptor.type == RHI_Descriptor_ConstantBuffer)
                 {
-                    if (descriptor.slot == constant_buffer_dynamic_slot + m_rhi_device->GetContextRhi()->shader_shift_buffer)
+                    if (descriptor.slot == pipeline_state.dynamic_constant_buffer_slot + m_rhi_device->GetContextRhi()->shader_shift_buffer)
                     {
                         descriptor.type = RHI_Descriptor_ConstantBufferDynamic;
                     }
                 }
             }
         }
+
+        return descriptors;
     }
 }
