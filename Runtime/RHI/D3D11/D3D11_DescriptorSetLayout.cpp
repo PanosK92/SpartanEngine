@@ -20,27 +20,38 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= IMPLEMENTATION ===============
-#include "../RHI_Implementation.h"
 #ifdef API_GRAPHICS_D3D11
+#include "../RHI_Implementation.h"
 //================================
 
-//= INCLUDES ====================
-#include "../RHI_DescriptorCache.h"
-//===============================
+//= INCLUDES ==========================
+#include "../RHI_DescriptorSetLayout.h"
+//=====================================
+
+//= NAMESPACES =====
+using namespace std;
+//==================
+
 namespace Spartan
 {
-    RHI_DescriptorCache::~RHI_DescriptorCache()
-    = default;
-
-    void RHI_DescriptorCache::SetDescriptorSetCapacity(uint32_t descriptor_set_capacity)
+    RHI_DescriptorSetLayout::~RHI_DescriptorSetLayout()
     {
 
     }
 
-    bool RHI_DescriptorCache::CreateDescriptorPool(uint32_t descriptor_set_capacity)
+    void* RHI_DescriptorSetLayout::CreateDescriptorSet(const size_t hash, const RHI_DescriptorCache* descriptor_cache)
     {
-        return true;
+        return nullptr;
+    }
+
+    void RHI_DescriptorSetLayout::UpdateDescriptorSet(void* descriptor_set, const vector<RHI_Descriptor>& descriptors)
+    {
+        
+    }
+
+    void* RHI_DescriptorSetLayout::CreateDescriptorSetLayout(const vector<RHI_Descriptor>& descriptors)
+    {
+        return nullptr;
     }
 }
-
 #endif

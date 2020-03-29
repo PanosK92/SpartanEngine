@@ -276,7 +276,6 @@ namespace Spartan
         }
 
         // Pipeline layout
-        auto pipeline_layout = reinterpret_cast<VkPipelineLayout*>(&m_pipeline_layout);
 		VkPipelineLayoutCreateInfo pipeline_layout_info	= {};
         { 
 		    pipeline_layout_info.sType						= VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -284,7 +283,7 @@ namespace Spartan
 		    pipeline_layout_info.setLayoutCount				= 1;		
 		    pipeline_layout_info.pSetLayouts				= reinterpret_cast<VkDescriptorSetLayout*>(&descriptor_set_layout);
 
-            if (!vulkan_common::error::check(vkCreatePipelineLayout(m_rhi_device->GetContextRhi()->device, &pipeline_layout_info, nullptr, pipeline_layout)))
+            if (!vulkan_common::error::check(vkCreatePipelineLayout(m_rhi_device->GetContextRhi()->device, &pipeline_layout_info, nullptr, reinterpret_cast<VkPipelineLayout*>(&m_pipeline_layout))))
 			    return;
         }
 
@@ -302,7 +301,7 @@ namespace Spartan
 		    pipeline_info.pMultisampleState				= &multisampling_state;
 		    pipeline_info.pColorBlendState				= &color_blend_state;
             pipeline_info.pDepthStencilState            = &depth_stencil_state;
-		    pipeline_info.layout						= *pipeline_layout;
+		    pipeline_info.layout						= static_cast<VkPipelineLayout>(m_pipeline_layout);
 		    pipeline_info.renderPass					= static_cast<VkRenderPass>(m_state.GetRenderPass());
 
             auto pipeline = reinterpret_cast<VkPipeline*>(&m_pipeline);

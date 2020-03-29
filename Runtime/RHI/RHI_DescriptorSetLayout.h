@@ -26,49 +26,48 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Definition.h"
 #include <unordered_map>
 #include <vector>
-#include <memory>
 //=========================
 
 namespace Spartan
 {
-    class SPARTAN_CLASS RHI_DescriptorCache : public RHI_Object
+    class SPARTAN_CLASS RHI_DescriptorSetLayout : public RHI_Object
     {
     public:
-        RHI_DescriptorCache(const RHI_Device* rhi_device);
-        ~RHI_DescriptorCache();
+        RHI_DescriptorSetLayout() = default;
+        RHI_DescriptorSetLayout(const RHI_Device* rhi_device, const std::vector<RHI_Descriptor>& descriptors);
+        ~RHI_DescriptorSetLayout();
 
-        void SetPipelineState(RHI_PipelineState& pipeline_state);
-
-        // Descriptor resource updating
         void SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer);
         void SetSampler(const uint32_t slot, RHI_Sampler* sampler);
         void SetTexture(const uint32_t slot, RHI_Texture* texture);
 
-        // Properties
-        void* GetResource_DescriptorSetPool() const { return m_descriptor_pool; }
-        void* GetResource_DescriptorSetLayout() const;
-        void* GetResource_DescriptorSet();
-        const std::vector<uint32_t>& GetDynamicOffsets() const;
+        void* GetResource_DescriptorSet(RHI_DescriptorCache* descriptor_cache);
+        void* GetResource_DescriptorSetLayout()             const { return m_descriptor_set_layout; }
+        const std::vector<uint32_t>& GetDynamicOffsets()    const { return m_constant_buffer_dynamic_offsets; }
+        uint32_t GetDescriptorSetCount()                    const { return static_cast<uint32_t>(m_descriptor_sets.size()); }
 
-        // Capacity
-        bool HasEnoughCapacity() const;
-        void GrowIfNeeded();
+        void NeedsToBind() { m_needs_to_bind = true; }
 
     private:
-        uint32_t GetDescriptorSetCount() const;
-        void SetDescriptorSetCapacity(uint32_t descriptor_capacity);
-        bool CreateDescriptorPool(uint32_t descriptor_set_capacity);
-        std::vector<RHI_Descriptor> GenerateDescriptors(RHI_PipelineState& pipeline_state);
+        std::size_t ComputeDescriptorSetHash(const std::vector<RHI_Descriptor>& descriptors);
+        void* CreateDescriptorSet(const std::size_t hash, const RHI_DescriptorCache* descriptor_cache);
+        void UpdateDescriptorSet(void* descriptor_set, const std::vector<RHI_Descriptor>& descriptors);
+        void* CreateDescriptorSetLayout(const std::vector<RHI_Descriptor>& descriptors);
 
-        // Descriptor set layouts 
-        std::unordered_map<std::size_t, std::shared_ptr<RHI_DescriptorSetLayout>> m_descriptor_set_layouts;
-        RHI_DescriptorSetLayout* m_descriptor_layout_current = nullptr;
+        // Misc
+        bool m_needs_to_bind = false;
+        std::vector<uint32_t> m_constant_buffer_dynamic_offsets;
 
-        // Descriptor pool
-        uint32_t m_descriptor_set_capacity = 16;
-        void* m_descriptor_pool = nullptr;
+        // Descriptors
+        std::vector<RHI_Descriptor> m_descriptors;
+
+        // Descriptor sets
+        std::unordered_map<std::size_t, void*> m_descriptor_sets;
+
+        // Descriptor set layout
+        void* m_descriptor_set_layout = nullptr;
 
         // Dependencies
-        const RHI_Device* m_rhi_device;
+        const RHI_Device* m_rhi_device = nullptr;
     };
 }
