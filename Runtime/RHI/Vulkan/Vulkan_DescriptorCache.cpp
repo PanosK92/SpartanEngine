@@ -52,6 +52,9 @@ namespace Spartan
             return;
         }
 
+        // Wait in case the pool is being used
+        m_rhi_device->Queue_WaitAll();
+
         // Destroy layouts (and descriptor sets)
         m_descriptor_set_layouts.clear();
         m_descriptor_layout_current = nullptr;

@@ -55,7 +55,10 @@ namespace Spartan
 		}
 
         // Wait in case the buffer is still in use
-        m_rhi_device->Queue_WaitAll();
+        if (m_buffer)
+        {
+            m_rhi_device->Queue_WaitAll();
+        }
 
 		// Clear previous buffer
 		vulkan_common::buffer::destroy(m_rhi_device->GetContextRhi(), m_buffer);

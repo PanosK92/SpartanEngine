@@ -270,7 +270,6 @@ namespace Spartan
 
         uint32_t slot               = 0;
         uint32_t stage              = 0;
-        uint32_t id                 = 0;
         uint64_t offset             = 0;
         uint64_t range              = 0;
         RHI_Descriptor_Type type    = RHI_Descriptor_Undefined;

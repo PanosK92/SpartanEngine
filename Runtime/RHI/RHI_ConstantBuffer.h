@@ -44,7 +44,8 @@ namespace Spartan
             m_stride        = static_cast<uint32_t>(sizeof(T));
             m_element_count = element_count;
             m_size_gpu      = static_cast<uint64_t>(m_stride * m_element_count);
-			return _Create();
+
+            return _Create();
 		}
 
 		void* Map(const uint32_t offset_index = 0) const;
@@ -74,10 +75,12 @@ namespace Spartan
         uint32_t m_element_count        = 1;
         uint32_t m_offset_index         = 0;
         uint32_t m_offset_dynamic_index = 0;
-		std::shared_ptr<RHI_Device> m_rhi_device;
 
 		// API
 		void* m_buffer			= nullptr;
 		void* m_buffer_memory	= nullptr;
+
+        // Dependencies
+        std::shared_ptr<RHI_Device> m_rhi_device;
 	};
 }
