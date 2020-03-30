@@ -36,6 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_PipelineState.h"
 #include "../RHI_ConstantBuffer.h"
 #include "../RHI_DescriptorCache.h"
+#include "../RHI_PipelineCache.h"
 #include "../../Profiling/Profiler.h"
 #include "../../Logging/Log.h"
 #include "../../Rendering/Renderer.h"
@@ -56,8 +57,8 @@ namespace Spartan
         m_renderer          = context->GetSubsystem<Renderer>();
         m_profiler          = context->GetSubsystem<Profiler>();
 		m_rhi_device	    = m_renderer->GetRhiDevice().get();
-        m_pipeline_cache    = m_renderer->GetPipelineCache().get();
-        m_descriptor_cache  = make_shared<RHI_DescriptorCache>(m_rhi_device);
+        m_pipeline_cache    = m_renderer->GetPipelineCache();
+        m_descriptor_cache  = m_renderer->GetDescriptorCache();
         m_passes_active.reserve(100);
         m_passes_active.resize(100);
         m_timestamps.reserve(2);

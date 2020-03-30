@@ -59,8 +59,8 @@ namespace Spartan
         m_renderer          = context->GetSubsystem<Renderer>();
         m_profiler          = context->GetSubsystem<Profiler>();
         m_rhi_device        = m_renderer->GetRhiDevice().get();
-        m_pipeline_cache    = m_renderer->GetPipelineCache().get();
-        m_descriptor_cache  = make_shared<RHI_DescriptorCache>(m_rhi_device);
+        m_pipeline_cache    = m_renderer->GetPipelineCache();
+        m_descriptor_cache  = m_renderer->GetDescriptorCache();
         m_passes_active.reserve(100);
         m_passes_active.resize(100);
 	}
