@@ -21,12 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =================
+//= INCLUDES ==============
 #include <vector>
-#include "RHI_Texture.h"
 #include "RHI_Definition.h"
-#include "RHI_PipelineCache.h"
-//============================
+//=========================
 
 namespace Spartan
 {
@@ -119,7 +117,7 @@ namespace Spartan
         RHI_SwapChain* m_swap_chain             = nullptr;
         Renderer* m_renderer                    = nullptr;
         RHI_PipelineCache* m_pipeline_cache     = nullptr;
-        std::shared_ptr<RHI_DescriptorCache> m_descriptor_cache;
+        RHI_DescriptorCache* m_descriptor_cache = nullptr;
         RHI_PipelineState* m_pipeline_state     = nullptr;
         RHI_Device* m_rhi_device                = nullptr;
         Profiler* m_profiler                    = nullptr;

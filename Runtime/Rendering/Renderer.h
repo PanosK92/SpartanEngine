@@ -252,15 +252,16 @@ namespace Spartan
         void SetOptionValue(Renderer_Option_Value option, float value);
 
         // Misc
-        const auto& GetRhiDevice()	    const { return m_rhi_device; }
-        const auto& GetSwapChain()      const { return m_swap_chain; }
-        const auto& GetPipelineCache()  const { return m_pipeline_cache; }
-        RHI_Texture* GetFrameTexture()        { return m_render_targets[RenderTarget_Composition_Ldr].get(); }
-        auto GetFrameNum()              const { return m_frame_num; }
-        const auto& GetCamera()         const { return m_camera; }
-        auto IsInitialized()            const { return m_initialized; }
-        auto& GetShaders()              const { return m_shaders; }
-        auto IsRendering()              const { return m_is_rendering; }
+        const auto& GetRhiDevice()	                const { return m_rhi_device; }
+        const auto& GetSwapChain()                  const { return m_swap_chain; }
+        RHI_PipelineCache* GetPipelineCache()       const { return m_pipeline_cache.get(); }
+        RHI_DescriptorCache* GetDescriptorCache()   const { return m_descriptor_cache.get(); }
+        RHI_Texture* GetFrameTexture()              const { return m_render_targets.at(RenderTarget_Composition_Ldr).get(); }
+        auto GetFrameNum()                          const { return m_frame_num; }
+        const auto& GetCamera()                     const { return m_camera; }
+        auto IsInitialized()                        const { return m_initialized; }
+        auto& GetShaders()                          const { return m_shaders; }
+        auto IsRendering()                          const { return m_is_rendering; }
         uint32_t GetMaxResolution() const;
 
         // Globals
@@ -425,10 +426,11 @@ namespace Spartan
         std::unordered_map<Renderer_Object_Type, std::vector<Entity*>> m_entities;
         std::shared_ptr<Camera> m_camera;
 
-        // Core
+        // RHI Core
         std::shared_ptr<RHI_Device> m_rhi_device;
         std::shared_ptr<RHI_SwapChain> m_swap_chain;
         std::shared_ptr<RHI_PipelineCache> m_pipeline_cache;
+        std::shared_ptr<RHI_DescriptorCache> m_descriptor_cache;
 
         // Dependencies
         Profiler* m_profiler            = nullptr;
