@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Implementation.h"
 #include "../RHI/RHI_VertexBuffer.h"
 #include "../RHI/RHI_PipelineState.h"
+#include "../RHI/RHI_Texture.h"
 #include "../World/Entity.h"
 #include "../World/Components/Light.h"
 #include "../World/Components/Camera.h"
@@ -45,11 +46,6 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    uint32_t Renderer::GetMaxResolution() const
-    {
-        return m_rhi_device->GetContextRhi()->max_texture_dimension_2d;
-    }
-
     void Renderer::SetGlobalSamplersAndConstantBuffers(RHI_CommandList* cmd_list) const
     {
         // Constant buffers
