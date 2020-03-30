@@ -110,7 +110,7 @@ namespace Spartan
         void MarkAndProfileStart(const RHI_PipelineState* pipeline_state);
         void MarkAndProfileEnd(const RHI_PipelineState* pipeline_state);
         void BeginRenderPass();
-        void BindDescriptorSet();
+        bool BindDescriptorSet();
         bool OnDraw();
 
         uint32_t m_pass_index                   = 0;

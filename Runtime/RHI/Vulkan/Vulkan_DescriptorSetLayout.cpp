@@ -96,9 +96,9 @@ namespace Spartan
             // Texture or Sampler
             image_infos.push_back
             ({
-                descriptor.type == RHI_Descriptor_Sampler ? static_cast<VkSampler>(descriptor.resource)     : nullptr,  // sampler
-                descriptor.type == RHI_Descriptor_Texture ? static_cast<VkImageView>(descriptor.resource)   : nullptr,  // imageView
-                vulkan_image_layout[descriptor.layout]                                                                  // imageLayout
+                descriptor.type == RHI_Descriptor_Sampler ? static_cast<VkSampler>(descriptor.resource)     : nullptr,                                  // sampler
+                descriptor.type == RHI_Descriptor_Texture ? static_cast<VkImageView>(descriptor.resource)   : nullptr,                                  // imageView
+                descriptor.type == RHI_Descriptor_Texture && descriptor.resource ? vulkan_image_layout[descriptor.layout] : VK_IMAGE_LAYOUT_UNDEFINED   // imageLayout
             });
         
             // Constant/Uniform buffer

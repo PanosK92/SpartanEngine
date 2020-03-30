@@ -117,7 +117,7 @@ namespace Spartan
         return m_descriptor_layout_current->GetResource_DescriptorSetLayout();
     }
 
-    void* RHI_DescriptorCache::GetResource_DescriptorSet()
+    bool RHI_DescriptorCache::GetResource_DescriptorSet(void*& descriptor_set)
     {
         if (!m_descriptor_layout_current)
         {
@@ -125,7 +125,7 @@ namespace Spartan
             return nullptr;
         }
 
-        return m_descriptor_layout_current->GetResource_DescriptorSet(this);
+        return m_descriptor_layout_current->GetResource_DescriptorSet(this, descriptor_set);
     }
 
     const std::vector<uint32_t>& RHI_DescriptorCache::GetDynamicOffsets() const

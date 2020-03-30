@@ -654,16 +654,23 @@ namespace Spartan
         vkCmdBeginRenderPass(CMD_BUFFER, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
     }
 
-    void RHI_CommandList::BindDescriptorSet()
+    bool RHI_CommandList::BindDescriptorSet()
     {
-        if (void* vk_descriptor_set = m_descriptor_cache->GetResource_DescriptorSet())
+        // Descriptor set != null, result = true    -> the descriptor set must be bound
+        // Descriptor set == null, result = true    -> the descriptor set is already bound
+        // Descriptor set == null, result = false   -> a new descriptor was needed but we are out of memory (allocates next frame)
+
+        void* descriptor_set = nullptr;
+        bool result = m_descriptor_cache->GetResource_DescriptorSet(descriptor_set);
+
+        if (result && descriptor_set != nullptr)
         {
             const vector<uint32_t>& _dynamic_offsets    = m_descriptor_cache->GetDynamicOffsets();
             uint32_t dynamic_offset_count               = !_dynamic_offsets.empty() ? static_cast<uint32_t>(_dynamic_offsets.size()) : 0;
             const uint32_t* dynamic_offsets             = !_dynamic_offsets.empty() ? _dynamic_offsets.data() : nullptr;
 
             // Bind descriptor set
-            VkDescriptorSet descriptor_sets[1] = { static_cast<VkDescriptorSet>(vk_descriptor_set) };
+            VkDescriptorSet descriptor_sets[1] = { static_cast<VkDescriptorSet>(descriptor_set) };
             vkCmdBindDescriptorSets
             (
                 CMD_BUFFER,                                                     // commandBuffer
@@ -683,6 +690,8 @@ namespace Spartan
             m_set_id_buffer_vertex  = 0;
             m_set_id_buffer_pixel   = 0;
         }
+
+        return result;
     }
 
     bool RHI_CommandList::OnDraw()
@@ -708,9 +717,7 @@ namespace Spartan
         }
 
         // Bind descriptor set
-        BindDescriptorSet();
-
-        return true;
+        return BindDescriptorSet();
     }
 }
 #endif

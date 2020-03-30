@@ -41,7 +41,7 @@ namespace Spartan
         void SetSampler(const uint32_t slot, RHI_Sampler* sampler);
         void SetTexture(const uint32_t slot, RHI_Texture* texture);
 
-        void* GetResource_DescriptorSet(RHI_DescriptorCache* descriptor_cache);
+        bool GetResource_DescriptorSet(RHI_DescriptorCache* descriptor_cache, void*& descriptor_set);
         void* GetResource_DescriptorSetLayout()             const { return m_descriptor_set_layout; }
         const std::vector<uint32_t>& GetDynamicOffsets()    const { return m_constant_buffer_dynamic_offsets; }
         uint32_t GetDescriptorSetCount()                    const { return static_cast<uint32_t>(m_descriptor_sets.size()); }
