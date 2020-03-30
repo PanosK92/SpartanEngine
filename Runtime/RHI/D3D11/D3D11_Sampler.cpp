@@ -74,7 +74,7 @@ namespace Spartan
 		sampler_desc.BorderColor[1]	= 0;
 		sampler_desc.BorderColor[2]	= 0;
 		sampler_desc.BorderColor[3]	= 0;
-		sampler_desc.MinLOD			= FLT_MIN;
+		sampler_desc.MinLOD			= 0;
 		sampler_desc.MaxLOD			= FLT_MAX;
 	
 		// Create sampler state.

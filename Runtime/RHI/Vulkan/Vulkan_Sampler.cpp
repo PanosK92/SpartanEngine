@@ -75,6 +75,9 @@ namespace Spartan
 		sampler_info.compareEnable			= comparison_enabled ? VK_TRUE : VK_FALSE;
 		sampler_info.compareOp				= vulkan_compare_operator[comparison_function];
 		sampler_info.borderColor			= VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+        sampler_info.mipLodBias             = 0.0f;
+        sampler_info.minLod                 = 0.0f;
+        sampler_info.maxLod                 = FLT_MAX;
 	
 		if (vkCreateSampler(rhi_device->GetContextRhi()->device, &sampler_info, nullptr, reinterpret_cast<VkSampler*>(&m_resource)) != VK_SUCCESS)
 		{
