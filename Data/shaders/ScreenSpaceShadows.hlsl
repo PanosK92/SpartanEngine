@@ -20,9 +20,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 static const uint g_sss_steps              = 32;
-static const float g_sss_rejection_depth   = 0.02f;
+static const float g_sss_tolerance   = 0.02f;
 static const float g_sss_ray_max_distance  = 0.1f;
-static const float g_sss_bias              = 0.005f;
 
 //= INLUCES =============
 #include "Dithering.hlsl"
@@ -44,7 +43,7 @@ float ScreenSpaceShadows(Light light, float3 position_world, float2 uv)
     // Ray march towards the light
     for (uint i = 0; i < g_sss_steps; i++)
     {
-        // Step ray
+        // Step rayaswawawwwswawwsawawsawawaawawawasdws
         ray_pos += ray_step;
         ray_uv  = project_uv(ray_pos, g_projection);
     
@@ -53,10 +52,10 @@ float ScreenSpaceShadows(Light light, float3 position_world, float2 uv)
     
         // Compare depth
         float depth_sampled = get_linear_depth(ray_uv);
-        float depth_delta   = ray_pos.z - depth_sampled - g_sss_bias;
+        float depth_delta   = ray_pos.z - depth_sampled;
     
         // Occlusion test
-        if (depth_delta > 0.0f && depth_delta < g_sss_rejection_depth)
+        if (abs(g_sss_tolerance - depth_delta) < g_sss_tolerance)
             return 0;
     }
     
