@@ -616,7 +616,7 @@ namespace Spartan
     {
         if (const PhysicalDevice* physical_device = rhi_device->GetPrimaryPhysicalDevice())
         {
-            if (auto adapter = static_cast<IDXGIAdapter3*>(physical_device->data))
+            if (auto adapter = static_cast<IDXGIAdapter3*>(physical_device->GetData()))
             {
                 DXGI_ADAPTER_DESC adapter_desc = {};
                 const auto result = adapter->GetDesc(&adapter_desc);
@@ -635,7 +635,7 @@ namespace Spartan
     {
         if (const PhysicalDevice* physical_device = rhi_device->GetPrimaryPhysicalDevice())
         {
-            if (auto adapter = static_cast<IDXGIAdapter3*>(physical_device->data))
+            if (auto adapter = static_cast<IDXGIAdapter3*>(physical_device->GetData()))
             {
                 DXGI_QUERY_VIDEO_MEMORY_INFO info = {};
                 const auto result = adapter->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &info);
