@@ -84,7 +84,7 @@ namespace Spartan
             };
 
             
-            auto adapter = static_cast<IDXGIAdapter*>(physical_device->data);
+            auto adapter = static_cast<IDXGIAdapter*>(physical_device->GetData());
             auto driver_type = adapter ? D3D_DRIVER_TYPE_UNKNOWN : D3D_DRIVER_TYPE_HARDWARE;
 
             auto create_device = [this, &adapter, &driver_type, &device_flags, &feature_levels]()

@@ -76,7 +76,7 @@ namespace Spartan
 		IDXGIFactory* dxgi_factory = nullptr;
 		if (const auto& adapter = rhi_device->GetPrimaryPhysicalDevice())
 		{
-			auto dxgi_adapter = static_cast<IDXGIAdapter*>(adapter->data);
+			auto dxgi_adapter = static_cast<IDXGIAdapter*>(adapter->GetData());
 			dxgi_adapter->GetParent(IID_PPV_ARGS(&dxgi_factory));
 
 			if (!dxgi_factory)

@@ -165,7 +165,7 @@ namespace Spartan::d3d11_common
 		for (uint32_t device_index = 0; device_index < device->GetPhysicalDevices().size(); device_index++)
 		{
             const PhysicalDevice& physical_device = device->GetPhysicalDevices()[device_index];
-			const auto dx_adapter = static_cast<IDXGIAdapter*>(physical_device.data);
+			const auto dx_adapter = static_cast<IDXGIAdapter*>(physical_device.GetData());
 
 			// Adapters are ordered by memory (descending), so stop on the first success
             const auto format = RHI_Format_R8G8B8A8_Unorm; // TODO: This must come from the swapchain
@@ -176,7 +176,7 @@ namespace Spartan::d3d11_common
 			}
 			else
 			{
-				LOG_ERROR("Failed to get display modes for \"%s\".", physical_device.name.c_str());
+				LOG_ERROR("Failed to get display modes for \"%s\".", physical_device.GetName().c_str());
 			}
 		}
 
