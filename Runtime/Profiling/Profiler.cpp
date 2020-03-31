@@ -58,7 +58,7 @@ namespace Spartan
 		// Get available memory
 		if (const PhysicalDevice* physical_device = m_renderer->GetRhiDevice()->GetPrimaryPhysicalDevice())
 		{
-			m_gpu_name				= physical_device->name;
+			m_gpu_name				= physical_device->GetName();
 			m_gpu_memory_available	= RHI_CommandList::Gpu_GetMemory(m_renderer->GetRhiDevice().get());
 		}
 

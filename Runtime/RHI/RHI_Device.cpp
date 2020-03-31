@@ -42,10 +42,10 @@ namespace Spartan
         // Keep devices sorted, based on memory (from highest to lowest)
         sort(m_physical_devices.begin(), m_physical_devices.end(), [](const PhysicalDevice& adapter1, const PhysicalDevice& adapter2)
         {
-            return adapter1.memory > adapter2.memory;
+            return adapter1.GetMemory() > adapter2.GetMemory();
         });
 
-        LOG_INFO("%s (%d MB)", physical_device.name.c_str(), physical_device.memory);
+        LOG_INFO("%s (%d MB)", physical_device.GetName().c_str(), physical_device.GetMemory());
     }
 
     const PhysicalDevice* RHI_Device::GetPrimaryPhysicalDevice()
@@ -62,7 +62,7 @@ namespace Spartan
 
         if (const PhysicalDevice* physical_device = GetPrimaryPhysicalDevice())
         {
-            LOG_INFO("%s (%d MB)", physical_device->name.c_str(), physical_device->memory);
+            LOG_INFO("%s (%d MB)", physical_device->GetName().c_str(), physical_device->GetMemory());
         }
 	}
 

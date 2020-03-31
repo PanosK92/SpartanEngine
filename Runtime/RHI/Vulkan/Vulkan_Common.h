@@ -212,13 +212,13 @@ namespace Spartan::vulkan_common
                     // Let the engine know about it as it will sort all of the devices from best to worst
                     rhi_device->RegisterPhysicalDevice(PhysicalDevice
                     (
-                        device_properties.apiVersion,                                                       // api version
-                        device_properties.driverVersion,                                                    // driver version
-                        device_properties.vendorID,                                                         // vendor id
-                        type,                                                                               // type
-                        &device_properties.deviceName[0],                                                   // name
-                        static_cast<uint32_t>(device_memory_properties.memoryHeaps[0].size / 1024 / 1024),  // memory (MBs)
-                        static_cast<void*>(device_physical)                                                 // data
+                        device_properties.apiVersion,                                           // api version
+                        device_properties.driverVersion,                                        // driver version
+                        device_properties.vendorID,                                             // vendor id
+                        type,                                                                   // type
+                        &device_properties.deviceName[0],                                       // name
+                        static_cast<uint32_t>(device_memory_properties.memoryHeaps[0].size),    // memory
+                        static_cast<void*>(device_physical)                                     // data
                     ));
                 }
             }
@@ -227,7 +227,7 @@ namespace Spartan::vulkan_common
             for (uint32_t device_index = 0; device_index < rhi_device->GetPhysicalDevices().size(); device_index++)
             {
                 const PhysicalDevice& physical_device_engine = rhi_device->GetPhysicalDevices()[device_index];
-                VkPhysicalDevice physical_device_vk = static_cast<VkPhysicalDevice>(physical_device_engine.data);
+                VkPhysicalDevice physical_device_vk = static_cast<VkPhysicalDevice>(physical_device_engine.GetData());
 
                 // Get the first device that has a graphics, a compute and a transfer queue
                 if (get_queue_family_indices(rhi_context, physical_device_vk))

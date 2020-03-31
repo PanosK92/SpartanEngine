@@ -119,13 +119,13 @@ namespace Spartan::d3d11_common
 
 			device->RegisterPhysicalDevice(PhysicalDevice
             (
-                0,                                                                      // api version
-                0,                                                                      // driver version
-                adapter_desc.VendorId,                                                  // vendor id
-                RHI_PhysicalDevice_Unknown,                                             // type
-                &name[0],                                                               // name
-                static_cast<uint32_t>(adapter_desc.DedicatedVideoMemory / 1024 / 1024), // memory (MBs)
-                static_cast<void*>(display_adapter))                                    // data
+                0,                                                          // api version
+                0,                                                          // driver version
+                adapter_desc.VendorId,                                      // vendor id
+                RHI_PhysicalDevice_Unknown,                                 // type
+                &name[0],                                                   // name
+                static_cast<uint32_t>(adapter_desc.DedicatedVideoMemory),   // memory
+                static_cast<void*>(display_adapter))                        // data
             );
 		}
 
