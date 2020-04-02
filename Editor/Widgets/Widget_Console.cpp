@@ -100,10 +100,24 @@ void Widget_Console::Tick()
             {
                 if (m_log_type_visibility[log.error_level])
                 {
-                    ImGui::PushStyleColor(ImGuiCol_Text, m_log_type_color[log.error_level]);            // text color
-                    ImGui::PushStyleColor(ImGuiCol_FrameBg, index % 2 != 0 ? color_odd : color_even);   // background color      
-                    ImGui::InputText("##log", &log.text, ImGuiInputTextFlags_ReadOnly);
-                    ImGui::PopStyleColor(2);
+                    // Log entry
+                    ImGui::BeginGroup();
+                    {
+                        ImGui::PushStyleColor(ImGuiCol_Text, m_log_type_color[log.error_level]);            // text color
+                        ImGui::PushStyleColor(ImGuiCol_FrameBg, index % 2 != 0 ? color_odd : color_even);   // background color      
+                        ImGui::InputText("##log", &log.text, ImGuiInputTextFlags_ReadOnly);
+                        ImGui::PopStyleColor(2);
+
+                        ImGui::EndGroup();
+
+                        // Trigger context menu
+                        if (ImGui::IsMouseClicked(1) && ImGui::IsItemHovered(ImGuiHoveredFlags_RectOnly))
+                        {
+                            m_log_selected = log;
+                            ImGui::OpenPopup("##ConsoleContextMenu");
+                        }
+                    }
+
                     index++;
                 }
             }
@@ -112,6 +126,27 @@ void Widget_Console::Tick()
 
         ImGui::PopItemWidth();
 
+        // Context menu (if requested)
+        if (ImGui::BeginPopup("##ConsoleContextMenu"))
+        {
+            if (ImGui::MenuItem("Copy"))
+            {
+                ImGui::LogToClipboard();
+                ImGui::LogText("%s", m_log_selected.text.c_str());
+                ImGui::LogFinish();
+            }
+
+            ImGui::Separator();
+
+            if (ImGui::MenuItem("Search"))
+            {
+                FileSystem::OpenDirectoryWindow("https://www.google.com/search?q=" + m_log_selected.text);
+            }
+
+            ImGui::EndPopup();
+        }
+
+        // Scroll to bottom (if requested)
         if (m_scroll_to_bottom)
         {
             ImGui::SetScrollHereY();
