@@ -253,11 +253,18 @@ inline float interleaved_gradient_noise(float2 position_screen)
     MISC
 ------------------------------------------------------------------------------*/
 // The Technical Art of Uncharted 4 - http://advances.realtimerendering.com/other/2016/naughty_dog/index.html
-float micro_shadow(float ao, float3 N, float3 L, float shadow)
+float microw_shadowing_nt(float n_dot_l, float ao)
 {
     float aperture = 2.0f * ao * ao;
-    float microShadow = saturate(abs(dot(L, N)) + aperture - 1.0f);
-    return shadow * microShadow;
+    return saturate(abs(n_dot_l) + aperture - 1.0f);
+}
+
+// Chan 2018, "Material Advances in Call of Duty: WWII"
+float microw_shadowing_cod(float n_dot_l, float visibility)
+{
+    float aperture      = rsqrt(1.0 - visibility);
+    float microShadow   = saturate(n_dot_l * aperture);
+    return microShadow * microShadow;
 }
 
 inline float3 energy_conservation(float3 F, float metallic)
@@ -267,4 +274,10 @@ inline float3 energy_conservation(float3 F, float metallic)
     float3 kD = 1.0f - kS; // Remaining energy, light that gets refracted			
     kD *= 1.0f - metallic; // Multiply kD by the inverse metalness such that only non-metals have diffuse lighting
     return kD;
+}
+
+inline float screen_fade(float2 uv)
+{
+    float2 fade = max(12.0f * abs(uv - 0.5f) - 5.0f, 0.0f);
+    return saturate(1.0 - dot(fade, fade));
 }

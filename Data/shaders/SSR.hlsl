@@ -96,8 +96,7 @@ float2 mainPS(Pixel_PosUv input) : SV_TARGET
     float fade_uv       = 0.0f;
     if (ray_march(ray_pos, ray_step, ray_hit_uv))
     {
-        float2 edge_factor = float2(1, 1) - pow(saturate(abs(ray_hit_uv - float2(0.5f, 0.5f)) * 2), 8);
-        fade_uv = ceil(saturate(min(edge_factor.x, edge_factor.y)));
+        fade_uv = screen_fade(ray_hit_uv);
     }
     
     // Reject if the reflection is pointing outside of the viewport
