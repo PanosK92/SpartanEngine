@@ -19,9 +19,9 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-static const uint g_sss_steps              = 32;
-static const float g_sss_tolerance   = 0.02f;
-static const float g_sss_ray_max_distance  = 0.1f;
+static const uint g_sss_steps               = 32;
+static const float g_sss_tolerance          = 0.02f;
+static const float g_sss_ray_max_distance   = 0.1f;
 
 //= INLUCES =============
 #include "Dithering.hlsl"
@@ -38,12 +38,13 @@ float ScreenSpaceShadows(Light light, float3 position_world, float2 uv)
     float shadow        = 1.0f;
 
 	// Apply dithering
-	ray_pos += ray_dir * dither_temporal_fallback(uv, 0.0f, 1.0f);
+	ray_pos += ray_dir * dither_temporal(uv);
 
     // Ray march towards the light
+	float occlusion = 0.0;
     for (uint i = 0; i < g_sss_steps; i++)
     {
-        // Step rayaswawawwwswawwsawawsawawaawawawasdws
+        // Step ray
         ray_pos += ray_step;
         ray_uv  = project_uv(ray_pos, g_projection);
     
@@ -56,8 +57,14 @@ float ScreenSpaceShadows(Light light, float3 position_world, float2 uv)
     
         // Occlusion test
         if (abs(g_sss_tolerance - depth_delta) < g_sss_tolerance)
-            return 0;
+		{
+            occlusion = 1.0f;
+			break;
+		}
     }
+
+	// fade when out of screen
+    occlusion *= screen_fade(ray_uv);
     
-    return 1;
+    return 1.0f - occlusion;
 }
