@@ -76,10 +76,11 @@ private:
     {
         Spartan::Math::Vector4(0.76f, 0.77f, 0.8f, 1.0f),	// Info
         Spartan::Math::Vector4(0.7f, 0.75f, 0.0f, 1.0f),	// Warning
-        Spartan::Math::Vector4(0.7f, 0.0f, 0.0f, 1.0f)	    // Error
+        Spartan::Math::Vector4(0.7f, 0.3f, 0.3f, 1.0f)	    // Error
     };
     std::atomic<bool> m_is_reading = false;
     std::shared_ptr<EngineLogger> m_logger;
     std::deque<LogPackage> m_logs;
     ImGuiTextFilter m_log_filter;
+    LogPackage m_log_selected;
 };
