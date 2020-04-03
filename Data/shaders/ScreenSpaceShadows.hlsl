@@ -38,7 +38,7 @@ float ScreenSpaceShadows(Light light, float3 position_world, float2 uv)
     float shadow        = 1.0f;
 
 	// Apply dithering
-	float3 dither = dither_temporal(uv, 500.0f);
+	float3 dither = dither_temporal_fallback(uv, 0.0f, 100.0f);
 	ray_pos += ray_step * dither;
 
     // Ray march towards the light
