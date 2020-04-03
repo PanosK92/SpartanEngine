@@ -27,45 +27,31 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 static const uint   g_ssr_max_steps              = 64;
 static const uint   g_ssr_binarySearchSteps      = 8;
 static const float  g_ssr_binarySearchThreshold  = 0.01f;
-static const float  g_ssr_ray_max_distance       = 20.0f;
+static const float  g_ssr_ray_max_distance       = 10.0f;
 
-bool binary_search(float3 ray_dir, inout float3 ray_pos, inout float2 ray_uv)
+inline float2 binary_search(float3 ray_dir, inout float3 ray_pos, inout float2 ray_uv)
 {
     float depth_buffer_z    = 0.0f;
     float depth_delta       = 1.0f;
+    float2 hit_uv           = 0.0f;
 
     for (uint i = 0; i < g_ssr_binarySearchSteps; i++)
     {    
-		ray_dir  *= 0.5f;
-		ray_pos += -sign(depth_delta) * ray_dir;
-        ray_uv    = project_uv(ray_pos, g_projection);
+		ray_dir     *= 0.5f;
+		ray_pos     += -sign(depth_delta) * ray_dir;
+        ray_uv      = project_uv(ray_pos, g_projection);
 
         depth_buffer_z  = get_linear_depth(ray_uv);
         depth_delta     = ray_pos.z - depth_buffer_z;
         
         if (abs(depth_delta) < g_ssr_binarySearchThreshold)
-             return true;
+        {
+            hit_uv = ray_uv;
+            break;
+        }
     }
 
-    return false;
-}
-
-bool ray_march(float3 ray_pos, float3 ray_dir, inout float2 ray_uv)
-{
-    for(uint i = 0; i < g_ssr_max_steps; i++)
-    {
-        // Step ray
-        ray_pos += ray_dir;
-        ray_uv  = project_uv(ray_pos, g_projection);
-
-        float depth_buffer_z = get_linear_depth(ray_uv);
-
-        [branch]
-        if (ray_pos.z > depth_buffer_z)
-            return binary_search(ray_dir, ray_pos, ray_uv);
-    }
-
-    return false;
+    return hit_uv;
 }
 
 float2 mainPS(Pixel_PosUv input) : SV_TARGET
@@ -76,31 +62,43 @@ float2 mainPS(Pixel_PosUv input) : SV_TARGET
     float3 normal_view  = get_normal_view_space(uv);
     float3 ray_pos      = get_position_view_space(uv);
     float3 ray_dir      = normalize(reflect(ray_pos, normal_view));
+    float2 ray_uv_hit   = 0.0f;
    
     // Reject if the reflection vector is pointing back at the viewer.
     // Attenuate reflections for angles between 60 degrees and 75 degrees, and drop all contribution beyond the (-60,60) degree range
 	float3 camera_direction = normalize(mul(float4(g_camera_direction, 0.0f), g_view).xyz);
     float fade_camera       = 1 - smoothstep(0.25, 0.5, dot(-camera_direction, ray_dir));
     [branch]
-	if (fade_camera <= 0)
-		return 0.0f;
-
-    // Compute ray step
-    float step_length   = g_ssr_ray_max_distance / (float)g_ssr_max_steps;
-    float3 ray_step     = ray_dir * step_length;
-    
-	// Apply dithering
-	ray_pos += ray_step * dither_temporal_fallback(uv, 0.0f, 10.0f);
-    
-    float2 ray_hit_uv   = 0.0f;
-    float fade_uv       = 0.0f;
-    if (ray_march(ray_pos, ray_step, ray_hit_uv))
+	if (fade_camera > 0)
     {
-        fade_uv = screen_fade(ray_hit_uv);
+        // Compute ray step
+        float step_length = g_ssr_ray_max_distance / (float) g_ssr_max_steps;
+        float3 ray_step = ray_dir * step_length;
+    
+	    // Apply dithering
+        ray_pos += ray_step * dither_temporal(uv, 50.0f);
+
+        // Ray-march
+        float2 ray_uv = 0.0f;
+        for (uint i = 0; i < g_ssr_max_steps; i++)
+        {
+            // Step ray
+            ray_pos += ray_step;
+            ray_uv  = project_uv(ray_pos, g_projection);
+
+            float depth_buffer_z = get_linear_depth(ray_uv);
+
+            [branch]
+            if (ray_pos.z > depth_buffer_z)
+            {
+                ray_uv_hit = binary_search(ray_dir, ray_pos, ray_uv);
+                break;
+            }
+        }
+
+        // Reject if the reflection is pointing outside of the viewport
+        ray_uv_hit *= is_saturated(ray_uv_hit);
     }
     
-    // Reject if the reflection is pointing outside of the viewport
-    ray_hit_uv *= fade_uv.x;
-    
-    return ray_hit_uv;
+    return ray_uv_hit;
 }
