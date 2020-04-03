@@ -102,7 +102,7 @@ float3 VolumetricLighting(Light light, float3 pos_world, float2 uv)
                     float3 fog_secondary = vl_raymarch(light, ray_pos, ray_step, ray_dot_light, array_index + 1);
                     
                     // Blend cascades	
-                    fog = lerp(fog, fog_secondary, cascade_lerp);    
+                    fog = lerp(fog, fog_secondary, cascade_lerp);
                 }
                 
                 break;
@@ -120,11 +120,7 @@ float3 VolumetricLighting(Light light, float3 pos_world, float2 uv)
             float3 pos = project(ray_pos, light_view_projection[projection_index]);
             
             // Ray-march
-			[branch]
-            if (is_saturated(pos))
-            {
-                fog = vl_raymarch(light, ray_pos, ray_step, ray_dot_light, projection_index);
-            }
+			fog = vl_raymarch(light, ray_pos, ray_step, ray_dot_light, projection_index);
         }
     }
     #elif SPOT

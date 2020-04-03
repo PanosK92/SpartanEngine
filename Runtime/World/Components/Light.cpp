@@ -205,11 +205,12 @@ namespace Spartan
     void Light::SetRange(float range)
 	{
 		m_range = Clamp(range, 0.0f, INFINITY);
+        m_is_dirty = true;
 	}
 
 	void Light::SetAngle(float angle)
 	{
-		m_angle_rad = Clamp(angle, 0.0f, 1.0f);
+		m_angle_rad = Clamp(angle, 0.0f, Math::PI_2);
 		m_is_dirty  = true;
 	}
 
@@ -281,7 +282,7 @@ namespace Spartan
 			const float width			= static_cast<float>(m_shadow_map.texture_depth->GetWidth());
 			const float height			= static_cast<float>(m_shadow_map.texture_depth->GetHeight());
 			const auto aspect_ratio		= width / height;
-			const float fov				= (m_light_type == LightType_Spot) ? m_angle_rad : 1.57079633f; // 1.57079633 = 90 deg
+			const float fov				= 1.57079633f; // 1.57079633 = 90 deg
 			const float near_plane		= reverse_z ? m_range : 0.1f;
 			const float far_plane		= reverse_z ? 0.1f : m_range;
 			m_matrix_projection[index]	= Matrix::CreatePerspectiveFieldOfViewLH(fov, aspect_ratio, near_plane, far_plane);
