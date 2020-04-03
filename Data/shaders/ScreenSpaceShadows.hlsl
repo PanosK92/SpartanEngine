@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 static const uint g_sss_steps               = 32;
-static const float g_sss_tolerance          = 0.02f;
+static const float g_sss_tolerance          = 0.005f;
 static const float g_sss_ray_max_distance   = 0.1f;
 
 //= INLUCES =============
@@ -38,7 +38,8 @@ float ScreenSpaceShadows(Light light, float3 position_world, float2 uv)
     float shadow        = 1.0f;
 
 	// Apply dithering
-	ray_pos += ray_dir * dither_temporal(uv);
+	float3 dither = dither_temporal(uv, 500.0f);
+	ray_pos += ray_step * dither;
 
     // Ray march towards the light
 	float occlusion = 0.0;
@@ -47,20 +48,21 @@ float ScreenSpaceShadows(Light light, float3 position_world, float2 uv)
         // Step ray
         ray_pos += ray_step;
         ray_uv  = project_uv(ray_pos, g_projection);
+
+        [branch]
+        if (is_saturated(ray_uv))
+        {
+            // Compare depth
+            float depth_z       = get_linear_depth(ray_uv);
+            float depth_delta   = ray_pos.z - depth_z;
     
-        if (!is_saturated(ray_uv))
-            break;
-    
-        // Compare depth
-        float depth_sampled = get_linear_depth(ray_uv);
-        float depth_delta   = ray_pos.z - depth_sampled;
-    
-        // Occlusion test
-        if (abs(g_sss_tolerance - depth_delta) < g_sss_tolerance)
-		{
-            occlusion = 1.0f;
-			break;
-		}
+            // Occlusion test
+            if (abs(g_sss_tolerance - depth_delta) < g_sss_tolerance)
+            {
+                occlusion = 1.0f;
+                break;
+            }
+        }
     }
 
 	// fade when out of screen
