@@ -126,7 +126,6 @@ void Widget_RenderOptions::Tick()
 
             // Screen space shadows
             ImGui::Checkbox("SSS - Screen Space Shadows", &do_sss);
-            ImGuiEx::Tooltip("Requires a light with shadows enabled");
             ImGui::Separator();
 
             // Screen space ambient occlusion

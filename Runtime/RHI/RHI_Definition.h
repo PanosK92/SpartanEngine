@@ -189,6 +189,7 @@ namespace Spartan
 		RHI_Format_R32G32B32_Float,
 		// RGBA
 		RHI_Format_R8G8B8A8_Unorm,
+        RHI_Format_R10G10B10A2_Unorm,
 		RHI_Format_R16G16B16A16_Float,
 		RHI_Format_R32G32B32A32_Float,   
         // DEPTH

@@ -20,8 +20,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 static const uint g_vl_steps 		= 64; // below 64, detail loss starts to become easily observable
-static const float g_vl_scattering 	= 0.996f;
-static const float g_vl_pow			= 0.4f;
+static const float g_vl_scattering 	= 0.994f;
+static const float g_vl_pow			= 0.5f;
 
 // Mie scaterring approximated with Henyey-Greenstein phase function.
 float vl_compute_scattering(float v_dot_l)
@@ -77,7 +77,7 @@ float3 VolumetricLighting(Light light, float3 pos_world, float2 uv)
 	float3 fog 						= 0.0f;
     
 	// Apply dithering as it will allows us to get away with a crazy low sample count ;-)
-	ray_pos += ray_step * dither_temporal(uv, 150.0f);
+	ray_pos += ray_step * dither_temporal_fallback(uv, 0.0f, 25.0f);
     
 	#if DIRECTIONAL
     {

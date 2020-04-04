@@ -79,7 +79,9 @@ PixelOutputType mainPS(PixelInputType input)
 	//===========================================================================================
 
 	// Make TBN
+    #if HEIGHT_MAP || NORMAL_MAP
 	float3x3 TBN = makeTBN(input.normal, input.tangent);
+    #endif
 
 	#if HEIGHT_MAP
 		// Parallax Mapping
