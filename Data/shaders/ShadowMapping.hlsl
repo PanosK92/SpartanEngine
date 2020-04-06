@@ -293,14 +293,14 @@ float Technique_Pcf(float3 uv, float compare)
 /*------------------------------------------------------------------------------
     BIAS
 ------------------------------------------------------------------------------*/
-inline float bias_sloped_scaled(float dist, float bias)
+inline float bias_sloped_scaled(float z, float bias)
 {
-    float ddistdx = ddx(dist);
-    float ddistdy = ddy(dist);
-    dist += bias * abs(ddistdx);
-    dist += bias* abs(ddistdy);
-
-    return dist;
+	const float dmax	= 0.001f;
+    float zdx   		= abs(ddx(z));
+    float zdy   		= abs(ddy(z));
+    float scale 		= clamp(max(zdx, zdy), 0.0f, dmax);
+    
+    return z + bias * scale;
 }
 
 inline float3 bias_normal_offset(Light light, float3 normal)
@@ -332,7 +332,7 @@ float4 Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, Light
             if (is_saturated(pos))
             {   
                 // Sample primary cascade
-                float compare_depth = bias_sloped_scaled(pos.z, light.bias);
+                float compare_depth = bias_sloped_scaled(pos.z, light.bias * (cascade + 1));
                 shadow.a            = SampleShadowMap(float3(pos.xy, cascade), compare_depth);             
                 [branch]
                 if (light.cast_transparent_shadows && shadow.a > 0.0f && !transparent_pixel)
@@ -351,7 +351,7 @@ float4 Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, Light
                     pos = project(position_world, light_view_projection[cacade_secondary]);
 
                     // Sample secondary cascade
-                    compare_depth           = bias_sloped_scaled(pos.z, light.bias);
+                    compare_depth           = bias_sloped_scaled(pos.z, light.bias * (cacade_secondary + 1));
                     float shadow_secondary  = SampleShadowMap(float3(pos.xy, cacade_secondary), compare_depth);
 
                     // Blend cascades   

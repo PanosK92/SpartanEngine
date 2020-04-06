@@ -206,7 +206,7 @@ namespace Spartan
 
                 if (cmd_list->Begin(pipeline_state))
                 {
-                    // Only useful to minimize D3D11 state changes (Vulkan backend is smarter)
+                    // Useful to avoid constant buffer updates
                     uint32_t m_set_material_id = 0;
 
                     for (uint32_t entity_index = 0; entity_index < static_cast<uint32_t>(entities.size()); entity_index++)
@@ -237,7 +237,7 @@ namespace Spartan
                             continue;
 
                         // Bind material
-                        if (m_set_material_id != material->GetId())
+                        if (transparent_pass && m_set_material_id != material->GetId())
                         {
                             // Bind material textures
                             RHI_Texture* tex_albedo = material->GetTexture_PtrRaw(TextureType_Albedo);

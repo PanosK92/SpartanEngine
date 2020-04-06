@@ -354,7 +354,7 @@ void Widget_Properties::ShowLight(Light* light) const
             ImGuiEx::Tooltip("Allows transparent objects to cast colored translucent shadows");
 
             // Volumetric
-            ImGui::Text("Volumetric");
+            ImGui::Text("Volumeric");
             ImGui::SameLine(ComponentProperty::g_column); ImGui::Checkbox("##light_volumetric", &volumetric);
             ImGuiEx::Tooltip("The shadow map is used to determine which parts of the \"air\" should be lit");
         }
