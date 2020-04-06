@@ -481,10 +481,10 @@ namespace Spartan
 
     void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture)
     {
-        const UINT start_slot                     = slot;
-        const UINT range                          = 1;
+        const UINT start_slot               = slot;
+        const UINT range                    = 1;
         void* resource_texture              = texture ? texture->Get_View_Texture() : nullptr;
-        const bool is_compute                     = m_pipeline_state->unordered_access_view != nullptr;
+        const bool is_compute               = m_pipeline_state->unordered_access_view != nullptr;
         ID3D11DeviceContext* device_context = m_rhi_device->GetContextRhi()->device_context;
 
         // Skip if already set
