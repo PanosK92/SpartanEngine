@@ -162,7 +162,7 @@ namespace Spartan
                     offset += static_cast<uint32_t>(m_data[mip_index].size());
 
                     // Update memory requirements
-                    uint64_t memory_required = mip_width * mip_height * m_channels * (m_bpc / 8);
+                    uint64_t memory_required = mip_width * mip_height * m_channels * (m_bytes_per_channel / 8);
                     mip_memory[array_index + mip_index] = memory_required;
                     buffer_size += memory_required;
                 }
