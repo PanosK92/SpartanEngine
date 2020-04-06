@@ -291,16 +291,35 @@ float Technique_Pcf(float3 uv, float compare)
 }
 
 /*------------------------------------------------------------------------------
-    ENTRYPOINT
+    BIAS
 ------------------------------------------------------------------------------*/
-float4 Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, Light light, bool transparent_pixel)
+inline float bias_sloped_scaled(float dist, float bias)
+{
+    float ddistdx = ddx(dist);
+    float ddistdy = ddy(dist);
+    dist += bias * abs(ddistdx);
+    dist += bias* abs(ddistdy);
+
+    return dist;
+}
+
+inline float3 bias_normal_offset(Light light, float3 normal)
 {
     float n_dot_l               = dot(normal, normalize(-light.direction));
     float cos_angle             = saturate(1.0f - n_dot_l);
-    float3 scaled_normal_offset = normal * light.normal_bias * cos_angle * g_shadow_texel_size  * 10;
-    float3 position_world       = world_pos + scaled_normal_offset;
-    float4 shadow               = 1.0f;
-        
+    float3 scaled_normal_offset = normal * light.normal_bias * cos_angle * g_shadow_texel_size * 10;
+
+    return scaled_normal_offset;
+}
+
+/*------------------------------------------------------------------------------
+    ENTRYPOINT
+------------------------------------------------------------------------------*/
+float4 Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, Light light, bool transparent_pixel)
+{ 
+    float3 position_world   = world_pos + bias_normal_offset(light, normal);
+    float4 shadow           = 1.0f;
+
     #if DIRECTIONAL
     {
         for (uint cascade = 0; cascade < light.array_size; cascade++)
@@ -313,7 +332,7 @@ float4 Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, Light
             if (is_saturated(pos))
             {   
                 // Sample primary cascade
-                float compare_depth = pos.z + (light.bias * (cascade + 1));
+                float compare_depth = bias_sloped_scaled(pos.z, light.bias);
                 shadow.a            = SampleShadowMap(float3(pos.xy, cascade), compare_depth);             
                 [branch]
                 if (light.cast_transparent_shadows && shadow.a > 0.0f && !transparent_pixel)
@@ -332,7 +351,7 @@ float4 Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, Light
                     pos = project(position_world, light_view_projection[cacade_secondary]);
 
                     // Sample secondary cascade
-                    compare_depth           = pos.z + (light.bias * (cacade_secondary + 1));
+                    compare_depth           = bias_sloped_scaled(pos.z, light.bias);
                     float shadow_secondary  = SampleShadowMap(float3(pos.xy, cacade_secondary), compare_depth);
 
                     // Blend cascades   
@@ -356,7 +375,7 @@ float4 Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, Light
         {
 			uint projection_index   = direction_to_cube_face_index(light.direction);
             float pos_z             = project_depth(position_world, light_view_projection[projection_index]);   
-            float compare_depth     = pos_z + light.bias;
+            float compare_depth     = bias_sloped_scaled(pos_z, light.bias);
             shadow.a                = SampleShadowMap(light.direction, compare_depth);
             
             [branch]
@@ -372,8 +391,8 @@ float4 Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, Light
         if (light.distance_to_pixel < light.range)
         {
             float3 pos_clip     = project(position_world, light_view_projection[0]);
-            float compare_depth = pos_clip.z + light.bias;
-            shadow.a             = SampleShadowMap(float3(pos_clip.xy, 0.0f), compare_depth);
+            float compare_depth = bias_sloped_scaled(pos_clip.z, light.bias);
+            shadow.a            = SampleShadowMap(float3(pos_clip.xy, 0.0f), compare_depth);
             
             [branch]
             if (light.cast_transparent_shadows && shadow.a > 0.0f  && !transparent_pixel)
