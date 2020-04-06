@@ -73,11 +73,11 @@ namespace Spartan
 		auto GetTransparency() const									{ return m_flags & RHI_Texture_Transparent; }
 		void SetTransparency(const bool is_transparent)					{ is_transparent ? m_flags |= RHI_Texture_Transparent : m_flags &= ~RHI_Texture_Transparent; }
 
-		auto GetBpp() const												{ return m_bpp; }
-		void SetBpp(const uint32_t bpp)									{ m_bpp = bpp; }
+		auto GetBpp() const												{ return m_bits_per_channel; }
+		void SetBpp(const uint32_t bpp)									{ m_bits_per_channel = bpp; }
 
-		auto GetBpc() const												{ return m_bpc; }
-		void SetBpc(const uint32_t bpc)									{ m_bpc = bpc; }
+		auto GetBpc() const												{ return m_bytes_per_channel; }
+		void SetBpc(const uint32_t bpc)									{ m_bytes_per_channel = bpc; }
 
 		auto GetChannels() const										{ return m_channels; }
 		void SetChannels(const uint32_t channels)						{ m_channels = channels; }
@@ -128,8 +128,8 @@ namespace Spartan
 		static uint32_t GetChannelCountFromFormat(RHI_Format format);
         virtual bool CreateResourceGpu() { LOG_ERROR("Function not implemented by API"); return false; }
 
-		uint32_t m_bpp			                = 0; // bits per pixel
-		uint32_t m_bpc			                = 8; // bytes per channel
+		uint32_t m_bits_per_channel			    = 0;
+		uint32_t m_bytes_per_channel			= 8;
 		uint32_t m_width		                = 0;
 		uint32_t m_height		                = 0;
 		uint32_t m_channels		                = 4;

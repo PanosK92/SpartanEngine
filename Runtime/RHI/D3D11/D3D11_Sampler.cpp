@@ -34,48 +34,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-	RHI_Sampler::RHI_Sampler(
-		const std::shared_ptr<RHI_Device>& rhi_device,
-		const RHI_Filter filter_min,							/*= Filter_Nearest*/
-		const RHI_Filter filter_mag,							/*= Filter_Nearest*/
-		const RHI_Sampler_Mipmap_Mode filter_mipmap,			/*= Sampler_Mipmap_Nearest*/
-		const RHI_Sampler_Address_Mode sampler_address_mode,	/*= Sampler_Address_Wrap*/
-		const RHI_Comparison_Function comparison_function,		/*= Texture_Comparison_Always*/
-		const bool anisotropy_enabled,							/*= false*/
-		const bool comparison_enabled							/*= false*/
-		)
+	void RHI_Sampler::CreateResource()
 	{	
-		if (!rhi_device || !rhi_device->GetContextRhi()->device)
-		{
-			LOG_ERROR_INVALID_PARAMETER();
-			return;
-		}
-
-		// Save properties
-		m_resource				= nullptr;
-		m_rhi_device			= rhi_device;
-		m_filter_min			= filter_min;
-		m_filter_mag			= filter_mag;
-		m_filter_mipmap			= filter_mipmap;	
-		m_sampler_address_mode	= sampler_address_mode;
-		m_comparison_function	= comparison_function;
-		m_anisotropy_enabled	= anisotropy_enabled;
-		m_comparison_enabled	= comparison_enabled;
-
-		D3D11_SAMPLER_DESC sampler_desc;
-		sampler_desc.Filter			= d3d11_common::sampler::get_filter(filter_min, filter_mag, filter_mipmap, anisotropy_enabled, comparison_enabled);
-		sampler_desc.AddressU		= d3d11_sampler_address_mode[sampler_address_mode];
-		sampler_desc.AddressV		= d3d11_sampler_address_mode[sampler_address_mode];
-		sampler_desc.AddressW		= d3d11_sampler_address_mode[sampler_address_mode];
-		sampler_desc.MipLODBias		= 0.0f;
-        sampler_desc.MaxAnisotropy  = rhi_device->GetContext()->GetSubsystem<Renderer>()->GetOptionValue<UINT>(Option_Value_Anisotropy);
-		sampler_desc.ComparisonFunc	= d3d11_comparison_function[comparison_function];
-		sampler_desc.BorderColor[0]	= 0;
-		sampler_desc.BorderColor[1]	= 0;
-		sampler_desc.BorderColor[2]	= 0;
-		sampler_desc.BorderColor[3]	= 0;
-		sampler_desc.MinLOD			= 0;
-		sampler_desc.MaxLOD			= FLT_MAX;
+        D3D11_SAMPLER_DESC sampler_desc = {};
+		sampler_desc.Filter			    = d3d11_common::sampler::get_filter(m_filter_min, m_filter_mag, m_filter_mipmap, m_anisotropy_enabled, m_comparison_enabled);
+		sampler_desc.AddressU		    = d3d11_sampler_address_mode[m_sampler_address_mode];
+		sampler_desc.AddressV		    = d3d11_sampler_address_mode[m_sampler_address_mode];
+		sampler_desc.AddressW		    = d3d11_sampler_address_mode[m_sampler_address_mode];
+		sampler_desc.MipLODBias		    = 0.0f;
+        sampler_desc.MaxAnisotropy      = m_rhi_device->GetContext()->GetSubsystem<Renderer>()->GetOptionValue<UINT>(Option_Value_Anisotropy);
+		sampler_desc.ComparisonFunc	    = d3d11_comparison_function[m_comparison_function];
+		sampler_desc.BorderColor[0]	    = 0;
+		sampler_desc.BorderColor[1]	    = 0;
+		sampler_desc.BorderColor[2]	    = 0;
+		sampler_desc.BorderColor[3]	    = 0;
+		sampler_desc.MinLOD			    = 0;
+		sampler_desc.MaxLOD			    = FLT_MAX;
 	
 		// Create sampler state.
 		if (FAILED(m_rhi_device->GetContextRhi()->device->CreateSamplerState(&sampler_desc, reinterpret_cast<ID3D11SamplerState**>(&m_resource))))

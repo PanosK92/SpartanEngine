@@ -23,8 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==============
 #include <memory>
-#include "RHI_Definition.h"
 #include "RHI_Object.h"
+#include "RHI_Definition.h"
 //=========================
 
 namespace Spartan
@@ -48,16 +48,18 @@ namespace Spartan
 			);
 		~RHI_Sampler();
 
-		auto GetFilterMin()				const { return m_filter_min; }
-		auto GetFilterMag()				const { return m_filter_mag; }
-		auto GetFilterMipmap()			const { return m_filter_mipmap; }	
-		auto GetAddressMode()			const { return m_sampler_address_mode; }
-		auto GetComparisonFunction()	const { return m_comparison_function; }
-		auto GetAnisotropyEnabled()		const { return m_anisotropy_enabled; }
-		auto GetComparisonEnabled()		const { return m_comparison_enabled; }
-		auto GetResource()				const { return m_resource; }
+        RHI_Filter GetFilterMin()				        const { return m_filter_min; }
+        RHI_Filter GetFilterMag()				        const { return m_filter_mag; }
+        RHI_Sampler_Mipmap_Mode GetFilterMipmap()		const { return m_filter_mipmap; }
+        RHI_Sampler_Address_Mode GetAddressMode()		const { return m_sampler_address_mode; }
+        RHI_Comparison_Function GetComparisonFunction()	const { return m_comparison_function; }
+        bool GetAnisotropyEnabled()		                const { return m_anisotropy_enabled; }
+        bool GetComparisonEnabled()		                const { return m_comparison_enabled; }
+		void* GetResource()				                const { return m_resource; }
 
-	private:	
+	private:
+        void CreateResource();
+
         RHI_Filter m_filter_min                             = RHI_Filter_Nearest;
         RHI_Filter m_filter_mag                             = RHI_Filter_Nearest;
         RHI_Sampler_Mipmap_Mode m_filter_mipmap             = RHI_Sampler_Mipmap_Nearest;
