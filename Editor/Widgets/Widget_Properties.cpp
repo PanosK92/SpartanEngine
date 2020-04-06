@@ -362,7 +362,7 @@ void Widget_Properties::ShowLight(Light* light) const
 		// Bias
 		ImGui::Text("Bias");
 		ImGui::SameLine(ComponentProperty::g_column);
-		ImGui::PushItemWidth(300); ImGui::InputFloat("##lightBias", &bias, 0.00001f, 0.00001f, "%.5f"); ImGui::PopItemWidth();
+		ImGui::PushItemWidth(300); ImGui::InputFloat("##lightBias", &bias, 0.1f, 0.1f, "%.1f"); ImGui::PopItemWidth();
 
 		// Normal Bias
 		ImGui::Text("Normal Bias");
