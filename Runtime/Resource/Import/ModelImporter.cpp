@@ -92,24 +92,29 @@ namespace Spartan
 		importer.SetProgressHandler(new AssimpHelper::AssimpProgress(file_path));
 		// Enable logging
 		DefaultLogger::set(new AssimpHelper::AssimpLogger());
-
+        
         const auto importer_flags =
+            aiProcess_MakeLeftHanded |              // directx style.
+            aiProcess_FlipUVs |                     // directx style.
+            aiProcess_FlipWindingOrder |            // directx style.
             aiProcess_CalcTangentSpace |
             aiProcess_GenSmoothNormals |
+            aiProcess_FixInfacingNormals |
             aiProcess_JoinIdenticalVertices |
-            aiProcess_OptimizeMeshes |
-            aiProcess_ImproveCacheLocality |
+            aiProcess_OptimizeMeshes |              // reduce the number of meshes
+            aiProcess_OptimizeGraph |               // nodes without animations, bones, lights or cameras assigned are collapsed and joined.
+            aiProcess_ImproveCacheLocality |        // re-order triangles for better vertex cache locality.
+            aiProcess_RemoveRedundantMaterials |    // remove redundant/unreferenced materials.
             aiProcess_LimitBoneWeights |
             aiProcess_SplitLargeMeshes |
             aiProcess_Triangulate |
             aiProcess_GenUVCoords |
-            aiProcess_SortByPType |
-            aiProcess_FindDegenerates |
+            aiProcess_SortByPType |                 // splits meshes with more than one primitive type in homogeneous sub-meshes.
+            aiProcess_FindDegenerates |             // convert degenerate primitives to proper lines or points.
             aiProcess_FindInvalidData |
             aiProcess_FindInstances |
             aiProcess_ValidateDataStructure |
-            aiProcess_Debone |
-            aiProcess_ConvertToLeftHanded;
+            aiProcess_Debone;
 
 		// Read the 3D model file from disk
 		if (const aiScene* scene = importer.ReadFile(file_path, importer_flags))
