@@ -27,10 +27,10 @@ static const float g_sss_ray_max_distance   = 0.1f;
 #include "Dithering.hlsl"
 //=======================
 
-float ScreenSpaceShadows(Light light, float3 position_world, float2 uv)
+float ScreenSpaceShadows(Surface surface, Light light)
 {
 	// Compute ray
-	float3 ray_pos 		= mul(float4(position_world, 1.0f), g_view).xyz;
+    float3 ray_pos      = mul(float4(surface.position, 1.0f), g_view).xyz;
 	float3 ray_dir 		= mul(float4(-light.direction, 0.0f), g_view).xyz;
 	float step_length	= g_sss_ray_max_distance / (float)g_sss_steps;
 	float3 ray_step		= ray_dir * step_length;
@@ -38,7 +38,7 @@ float ScreenSpaceShadows(Light light, float3 position_world, float2 uv)
     float shadow        = 1.0f;
 
 	// Apply dithering
-	float3 dither = dither_temporal_fallback(uv, 0.0f, 100.0f);
+    float3 dither = dither_temporal_fallback(surface.uv, 0.0f, 100.0f);
 	ray_pos += ray_step * dither;
 
     // Ray march towards the light

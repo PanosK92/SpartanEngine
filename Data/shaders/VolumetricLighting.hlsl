@@ -32,9 +32,9 @@ float vl_compute_scattering(float v_dot_l)
 	return result / pow(e, g_vl_pow);
 }
 
-float3 vl_raymarch(Light light, float3 ray_pos, float3 ray_step, float ray_dot_light, int array_index)
+float vl_raymarch(Light light, float3 ray_pos, float3 ray_step, float ray_dot_light, int array_index)
 {
-	float3 fog = 0.0f;
+	float fog = 0.0f;
     
 	for (uint i = 0; i < g_vl_steps; i++)
 	{
@@ -43,11 +43,11 @@ float3 vl_raymarch(Light light, float3 ray_pos, float3 ray_step, float ray_dot_l
         
 		// Check to see if the light can "see" the pixel
         #ifdef DIRECTIONAL
-		float depth_delta = compare_depth(float3(pos.xy, array_index), pos.z + light.bias);
+		float depth_delta = compare_depth(float3(pos.xy, array_index), pos.z);
         #elif POINT
-        float depth_delta = compare_depth(normalize(ray_pos - light.position), pos.z + light.bias);
+        float depth_delta = compare_depth(normalize(ray_pos - light.position), pos.z);
         #elif SPOT
-        float depth_delta = compare_depth(float3(pos.xy, array_index), pos.z + light.bias);
+        float depth_delta = compare_depth(float3(pos.xy, array_index), pos.z);
         #endif
        
 		if (depth_delta > 0.0f)
@@ -61,23 +61,21 @@ float3 vl_raymarch(Light light, float3 ray_pos, float3 ray_step, float ray_dot_l
 	return fog / (float)g_vl_steps;
 }
 
-float3 VolumetricLighting(Light light, float3 pos_world, float2 uv)
+float3 VolumetricLighting(Surface surface, Light light)
 {
-	float3 pixel_to_camera 			= g_camera_position.xyz - pos_world;
-	float pixel_to_camera_length 	= length(pixel_to_camera);
-	float3 ray_dir					= pixel_to_camera / pixel_to_camera_length;
-	float step_length 				= pixel_to_camera_length / (float)g_vl_steps;
-	float3 ray_step 				= ray_dir * step_length;
-	float3 ray_pos 					= pos_world;
+    float3 ray_pos      = surface.position;
+    float3 ray_dir      = -surface.camera_to_pixel;
+    float step_length   = surface.camera_to_pixel_length / (float)g_vl_steps;
+	float3 ray_step 	= ray_dir * step_length;   
     #ifdef DIRECTIONAL
-	float ray_dot_light				= dot(ray_dir, light.direction);
+	float ray_dot_light	= dot(ray_dir, light.direction);
     #else
-    float ray_dot_light				= dot(ray_dir, -light.direction);
+    float ray_dot_light	= dot(ray_dir, -light.direction);
     #endif
-	float3 fog 						= 0.0f;
+	float fog 			= 0.0f;
     
-	// Apply dithering as it will allows us to get away with a crazy low sample count ;-)
-	ray_pos += ray_step * dither_temporal_fallback(uv, 0.0f, 25.0f);
+	// Apply dithering as it will allow us to get away with a low sample count
+    ray_pos += ray_step * dither_temporal_fallback(surface.uv, 0.0f, 25.0f);
     
 	#if DIRECTIONAL
     {
@@ -99,7 +97,7 @@ float3 VolumetricLighting(Light light, float3 pos_world, float2 uv)
                 if (cascade_lerp > 0.0f && array_index < light.array_size - 1)
                 {
                     // Ray-march using the next cascade
-                    float3 fog_secondary = vl_raymarch(light, ray_pos, ray_step, ray_dot_light, array_index + 1);
+                    float fog_secondary = vl_raymarch(light, ray_pos, ray_step, ray_dot_light, array_index + 1);
                     
                     // Blend cascades	
                     fog = lerp(fog, fog_secondary, cascade_lerp);
