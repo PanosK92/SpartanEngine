@@ -63,7 +63,6 @@ typedef enum {
   shaderc_glsl_default_tess_control_shader,
   shaderc_glsl_default_tess_evaluation_shader,
   shaderc_spirv_assembly,
-#ifdef NV_EXTENSIONS
   shaderc_raygen_shader,
   shaderc_anyhit_shader,
   shaderc_closesthit_shader,
@@ -88,7 +87,6 @@ typedef enum {
   shaderc_glsl_mesh_shader = shaderc_mesh_shader,
   shaderc_glsl_default_task_shader,
   shaderc_glsl_default_mesh_shader,
-#endif
 } shaderc_shader_kind;
 
 typedef enum {
