@@ -305,19 +305,16 @@ inline float bias_sloped_scaled(float z, float bias)
 
 inline float3 bias_normal_offset(Light light, float3 normal)
 {
-    float n_dot_l               = dot(normal, normalize(-light.direction));
-    float cos_angle             = saturate(1.0f - n_dot_l);
-    float3 scaled_normal_offset = normal * light.normal_bias * cos_angle * g_shadow_texel_size * 10;
-
-    return scaled_normal_offset;
+    float n_dot_l = 1.0f - dot(normal, normalize(-light.direction));
+    return normal * n_dot_l * light.normal_bias * g_shadow_texel_size * 10;
 }
 
 /*------------------------------------------------------------------------------
     ENTRYPOINT
 ------------------------------------------------------------------------------*/
-float4 Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, Light light, bool transparent_pixel)
+float4 Shadow_Map(Surface surface, Light light, bool transparent_pixel)
 { 
-    float3 position_world   = world_pos + bias_normal_offset(light, normal);
+    float3 position_world   = surface.position + bias_normal_offset(light, surface.normal);
     float4 shadow           = 1.0f;
 
     #if DIRECTIONAL

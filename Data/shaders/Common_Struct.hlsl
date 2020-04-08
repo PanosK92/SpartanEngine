@@ -24,9 +24,12 @@ struct Material
     float3 albedo;
     float roughness;
     float metallic;
+    float occlusion;
     float3 padding;
     float emissive;
     float3 F0;
+    bool is_transparent;
+    bool is_sky;
 };
 
 struct Light
@@ -46,4 +49,14 @@ struct Light
     float   bias;
     float   normal_bias;
     uint    array_size;
+};
+
+struct Surface
+{
+    float2 uv;
+    float depth;
+    float3 position;
+    float3 normal;
+    float3 camera_to_pixel;         // camera to pixel
+    float camera_to_pixel_length;   // camera to pixel
 };

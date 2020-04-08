@@ -99,7 +99,6 @@ namespace Spartan
             aiProcess_FlipWindingOrder |            // directx style.
             aiProcess_CalcTangentSpace |
             aiProcess_GenSmoothNormals |
-            aiProcess_FixInfacingNormals |
             aiProcess_JoinIdenticalVertices |
             aiProcess_OptimizeMeshes |              // reduce the number of meshes
             aiProcess_OptimizeGraph |               // nodes without animations, bones, lights or cameras assigned are collapsed and joined.
