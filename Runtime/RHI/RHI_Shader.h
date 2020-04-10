@@ -45,16 +45,16 @@ namespace Spartan
 
         // Compilation
         template<typename T>
-        void Compile(const Shader_Type type, const std::string& shader);
-        void Compile(const Shader_Type type, const std::string& shader)
+        void Compile(const RHI_Shader_Type type, const std::string& shader);
+        void Compile(const RHI_Shader_Type type, const std::string& shader)
         {
             Compile<RHI_Vertex_Undefined>(type, shader);
         }
 
         // Asynchronous compilation
         template<typename T>
-        void CompileAsync(Context* context, const Shader_Type type, const std::string& shader);
-        void CompileAsync(Context* context, const Shader_Type type, const std::string& shader)
+        void CompileAsync(Context* context, const RHI_Shader_Type type, const std::string& shader);
+        void CompileAsync(Context* context, const RHI_Shader_Type type, const std::string& shader)
         {
             CompileAsync<RHI_Vertex_Undefined>(context, type, shader);
         }
@@ -82,7 +82,7 @@ namespace Spartan
 	private:
         // All compile functions resolve to this, and this is the underlying API implements
 		void* _Compile(const std::string& shader);
-		void _Reflect(const Shader_Type shader_type, const uint32_t* ptr, uint32_t size);
+		void _Reflect(const RHI_Shader_Type shader_type, const uint32_t* ptr, uint32_t size);
 
 		std::string m_name;
 		std::string m_file_path;
@@ -90,7 +90,7 @@ namespace Spartan
 		std::vector<RHI_Descriptor> m_descriptors;
 		std::shared_ptr<RHI_InputLayout> m_input_layout;
 		Shader_Compilation_State m_compilation_state    = Shader_Compilation_Unknown;
-        Shader_Type m_shader_type                       = Shader_Unknown;
+        RHI_Shader_Type m_shader_type                       = RHI_Shader_Unknown;
         RHI_Vertex_Type m_vertex_type                   = RHI_Vertex_Type_Unknown;
 
 		// API 

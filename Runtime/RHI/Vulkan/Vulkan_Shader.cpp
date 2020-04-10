@@ -377,7 +377,7 @@ namespace Spartan
 			#endif
 		};
 
-        if (m_shader_type == Shader_Vertex)
+        if (m_shader_type == RHI_Shader_Vertex)
         {
             // Can only be used in VS/DS/GS
             arguments.emplace_back(L"-fvk-invert-y");
@@ -386,9 +386,9 @@ namespace Spartan
 		// Create standard defines
 		vector<DxcDefine> defines =
 		{
-			DxcDefine{ L"COMPILE_VS", m_shader_type == Shader_Vertex     ? L"1" : L"0" },
-			DxcDefine{ L"COMPILE_PS", m_shader_type == Shader_Pixel      ? L"1" : L"0" },
-            DxcDefine{ L"COMPILE_CS", m_shader_type == Shader_Compute    ? L"1" : L"0" }
+			DxcDefine{ L"COMPILE_VS", m_shader_type == RHI_Shader_Vertex     ? L"1" : L"0" },
+			DxcDefine{ L"COMPILE_PS", m_shader_type == RHI_Shader_Pixel      ? L"1" : L"0" },
+            DxcDefine{ L"COMPILE_CS", m_shader_type == RHI_Shader_Compute    ? L"1" : L"0" }
 		};
 
 		// Convert defines to wstring...

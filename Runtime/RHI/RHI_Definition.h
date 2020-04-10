@@ -99,12 +99,6 @@ namespace Spartan
 		RHI_Query_Timestamp_Disjoint
 	};
 
-	enum RHI_Buffer_Scope : uint8_t
-	{
-		RHI_Buffer_VertexShader = 1 << 0,
-		RHI_Buffer_PixelShader  = 1 << 1,
-	};
-
 	enum RHI_PrimitiveTopology_Mode
 	{
 		RHI_PrimitiveTopology_TriangleList,
@@ -307,12 +301,12 @@ namespace Spartan
     static const uint8_t state_dont_clear_stencil       = 255;
     static const uint8_t state_max_render_target_count  = 8;
 
-    enum Shader_Type : uint32_t
+    enum RHI_Shader_Type : uint32_t
 	{
-        Shader_Unknown  = 1 << 0,
-		Shader_Vertex   = 1 << 1,
-		Shader_Pixel    = 1 << 2,
-        Shader_Compute  = 1 << 3,
+        RHI_Shader_Unknown  = 1 << 0,
+		RHI_Shader_Vertex   = 1 << 1,
+		RHI_Shader_Pixel    = 1 << 2,
+        RHI_Shader_Compute  = 1 << 3,
 	};
 
 	enum Shader_Compilation_State

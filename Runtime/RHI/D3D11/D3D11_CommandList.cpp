@@ -44,6 +44,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_SwapChain.h"
 #include "../RHI_PipelineState.h"
 #include "../RHI_DescriptorCache.h"
+#include <array>
 //===================================
 
 //= NAMESPACES ===============
@@ -83,16 +84,32 @@ namespace Spartan
 
         ID3D11DeviceContext* device_context = m_rhi_device->GetContextRhi()->device_context;
 
-        // Vertex shader
-        if (pipeline_state.shader_vertex && pipeline_state.shader_vertex->GetResource())
+        // Input layout
         {
-            ID3D11VertexShader* shader = static_cast<ID3D11VertexShader*>(pipeline_state.shader_vertex->GetResource());
+            // New state
+            ID3D11InputLayout* input_layout = static_cast<ID3D11InputLayout*>(pipeline_state.shader_vertex ? pipeline_state.shader_vertex->GetInputLayout()->GetResource() : nullptr);
 
-            // Set only if not set
-            ID3D11VertexShader* set_shader  = nullptr;
-            UINT instance_count             = 256;
-            ID3D11ClassInstance* instances[256];
+            // Current state
+            ID3D11InputLayout* input_layout_set = nullptr;
+            device_context->IAGetInputLayout(&input_layout_set);
+
+            // Set if dirty
+            if (input_layout_set != input_layout)
+            {
+                device_context->IASetInputLayout(input_layout);
+            }
+        }
+
+        // Vertex shader
+        {
+            // New state
+            ID3D11VertexShader* shader = static_cast<ID3D11VertexShader*>(pipeline_state.shader_vertex ? pipeline_state.shader_vertex->GetResource() : nullptr);
+
+            // Current state
+            ID3D11VertexShader* set_shader = nullptr; UINT instance_count = 256; ID3D11ClassInstance* instances[256];
             device_context->VSGetShader(&set_shader, instances, &instance_count);
+
+            // Set if dirty
             if (set_shader != shader)
             {
                 device_context->VSSetShader(shader, nullptr, 0);
@@ -103,13 +120,14 @@ namespace Spartan
 
         // Pixel shader
         {
+            // New state
             ID3D11PixelShader* shader = static_cast<ID3D11PixelShader*>(pipeline_state.shader_pixel ? pipeline_state.shader_pixel->GetResource() : nullptr);
 
-            // Set only if not set
-            ID3D11PixelShader* set_shader   = nullptr;
-            UINT instance_count             = 256;
-            ID3D11ClassInstance* instances[256];
+            // Current state
+            ID3D11PixelShader* set_shader = nullptr; UINT instance_count = 256; ID3D11ClassInstance* instances[256];
             device_context->PSGetShader(&set_shader, instances, &instance_count);
+
+            // Set if dirty
             if (set_shader != shader)
             {
                 device_context->PSSetShader(shader, nullptr, 0);
@@ -120,13 +138,14 @@ namespace Spartan
 
         // Compute shader
         {
+            // New state
             ID3D11ComputeShader* shader = static_cast<ID3D11ComputeShader*>(pipeline_state.shader_compute ? pipeline_state.shader_compute->GetResource() : nullptr);
 
-            // Set only if not set
-            ID3D11ComputeShader* set_shader = nullptr;
-            UINT instance_count             = 256;
-            ID3D11ClassInstance* instances[256];
+            // Current state
+            ID3D11ComputeShader* set_shader = nullptr; UINT instance_count = 256; ID3D11ClassInstance* instances[256];
             device_context->CSGetShader(&set_shader, instances, &instance_count);
+
+            // Set if dirty
             if (set_shader != shader)
             {
                 device_context->CSSetShader(shader, nullptr, 0);
@@ -135,121 +154,157 @@ namespace Spartan
             }
         }
 
-        // Input layout
-        if (pipeline_state.shader_vertex)
+        // Blend state
         {
-            if (RHI_InputLayout* input_layout = pipeline_state.shader_vertex->GetInputLayout().get())
+            // New state
+            ID3D11BlendState* blend_state_set       = nullptr;
+            std::array<FLOAT, 4> blend_factor_set   = { 0.0f };
+            UINT mask_set                           = 0;
+            device_context->OMGetBlendState(&blend_state_set, blend_factor_set.data(), &mask_set);
+
+            // Current state
+            ID3D11BlendState* blend_state       = static_cast<ID3D11BlendState*>(pipeline_state.blend_state ? pipeline_state.blend_state->GetResource() : nullptr);
+            const float blendFactor             = pipeline_state.blend_state->GetBlendFactor();
+            std::array<FLOAT, 4> blend_factor   = { blendFactor, blendFactor, blendFactor, blendFactor };
+            UINT mask                           = 0;
+
+            // Set if dirty
+            if (blend_state_set != blend_state || blend_factor_set != blend_factor || mask_set != mask)
             {
-                if (void* resource = input_layout->GetResource())
+                device_context->OMSetBlendState(blend_state, blend_factor.data(), 0xffffffff);
+            }
+        }
+
+        // Depth stencil state
+        {
+            // New state
+            ID3D11DepthStencilState* depth_stencil_state = static_cast<ID3D11DepthStencilState*>(pipeline_state.depth_stencil_state ? pipeline_state.depth_stencil_state->GetResource() : nullptr);
+
+            // Current state
+            ID3D11DepthStencilState* depth_stencil_state_set = nullptr;
+            UINT stencil_ref = 0;
+            device_context->OMGetDepthStencilState(&depth_stencil_state_set, &stencil_ref);
+
+            // Set if dirty
+            if (depth_stencil_state_set != depth_stencil_state)
+            {
+                device_context->OMSetDepthStencilState(depth_stencil_state, 1);
+            }
+        }
+
+        // Rasterizer state
+        {
+            // New state
+            ID3D11RasterizerState* rasterizer_state = static_cast<ID3D11RasterizerState*>(pipeline_state.rasterizer_state ? pipeline_state.rasterizer_state->GetResource() : nullptr);
+
+            // Current state
+            ID3D11RasterizerState* rasterizer_state_set = nullptr;
+
+            // Set if dirty
+            device_context->RSGetState(&rasterizer_state_set);
+            if (rasterizer_state_set != rasterizer_state)
+            {
+                device_context->RSSetState(rasterizer_state);
+            }
+        }
+
+        // Primitive topology
+        {
+            // New state
+            D3D11_PRIMITIVE_TOPOLOGY topology = d3d11_primitive_topology[pipeline_state.primitive_topology];
+
+            // Current state
+            D3D11_PRIMITIVE_TOPOLOGY topology_set;
+            device_context->IAGetPrimitiveTopology(&topology_set);
+
+            // Set if dirty
+            if (topology_set != topology)
+            {
+                device_context->IASetPrimitiveTopology(d3d11_primitive_topology[pipeline_state.primitive_topology]);
+            }
+        }
+
+        // Render target(s)
+        {
+            // Detect depth stencil targets
+            ID3D11DepthStencilView* depth_stencil = nullptr;
+            if (pipeline_state.render_target_depth_texture)
+            {
+                if (pipeline_state.render_target_depth_texture_read_only)
                 {
-                    device_context->IASetInputLayout(static_cast<ID3D11InputLayout*>(const_cast<void*>(resource)));
+                    depth_stencil = static_cast<ID3D11DepthStencilView*>(pipeline_state.render_target_depth_texture->Get_View_Attachment_DepthStencil_ReadOnly(pipeline_state.render_target_depth_stencil_texture_array_index));
+                }
+                else
+                {
+                    depth_stencil = static_cast<ID3D11DepthStencilView*>(pipeline_state.render_target_depth_texture->Get_View_Attachment_DepthStencil(pipeline_state.render_target_depth_stencil_texture_array_index));
                 }
             }
+
+            // Detect color targets
+            std::array<ID3D11RenderTargetView*, state_max_render_target_count> render_targets = { nullptr };
+            {
+                // Swapchain
+                if (pipeline_state.render_target_swapchain)
+                {
+                    render_targets[0] = { static_cast<ID3D11RenderTargetView*>(pipeline_state.render_target_swapchain->GetResource_RenderTargetView()) };
+                }
+                // Textures
+                else
+                {
+                    for (auto i = 0; i < state_max_render_target_count; i++)
+                    {
+                        if (pipeline_state.render_target_color_textures[i])
+                        {
+                            ID3D11RenderTargetView* rt = static_cast<ID3D11RenderTargetView*>(pipeline_state.render_target_color_textures[i]->Get_View_Attachment_Color(pipeline_state.render_target_color_texture_array_index));
+                            render_targets[i] = rt;
+                        }
+                    }
+                }
+            }
+
+            // Set render targets
+            {
+                // Current state
+                std::array<ID3D11RenderTargetView*, state_max_render_target_count> set_render_target_views = { nullptr };
+                ID3D11DepthStencilView* set_depth_stencil_view = nullptr;
+                device_context->OMGetRenderTargets(state_max_render_target_count, set_render_target_views.data(), &set_depth_stencil_view);
+
+                // Set if dirty
+                if (render_targets != set_render_target_views || depth_stencil != set_depth_stencil_view)
+                {
+                    UINT render_target_count = 0;
+                    for (ID3D11RenderTargetView* rt : render_targets)
+                    {
+                        if (rt)
+                        {
+                            render_target_count++;
+                        }
+                    }
+
+                    device_context->OMSetRenderTargets
+                    (
+                        render_target_count,
+                        reinterpret_cast<ID3D11RenderTargetView* const*>(render_targets.data()),
+                        depth_stencil
+                    );
+
+                    m_profiler->m_rhi_bindings_render_target++;
+                }
+            }
+        }
+
+        // Unordered access view(s)
+        if (pipeline_state.unordered_access_view)
+        {
+            const void* resource_array[1] = { pipeline_state.unordered_access_view->Get_View_UnorderedAccess() };
+            device_context->CSSetUnorderedAccessViews(0, 1, reinterpret_cast<ID3D11UnorderedAccessView* const*>(&resource_array), nullptr);
+            m_profiler->m_rhi_bindings_render_target++;
         }
 
         // Viewport
         if (pipeline_state.viewport.IsDefined())
         {
             SetViewport(pipeline_state.viewport);
-        }
-        
-        // Blend state
-        if (pipeline_state.blend_state)
-        {
-            if (void* resource = pipeline_state.blend_state->GetResource())
-            {
-                const float blendFactor       = pipeline_state.blend_state->GetBlendFactor();
-                FLOAT blend_factor[4]   = { blendFactor, blendFactor, blendFactor, blendFactor };
-
-                device_context->OMSetBlendState(static_cast<ID3D11BlendState*>(const_cast<void*>(resource)), blend_factor, 0xffffffff);
-            }
-        }
-
-        // Depth stencil state
-        if (pipeline_state.depth_stencil_state)
-        {
-            if (void* resource = pipeline_state.depth_stencil_state->GetResource())
-            {
-                device_context->OMSetDepthStencilState(static_cast<ID3D11DepthStencilState*>(const_cast<void*>(resource)), 1);
-            }
-        }
-
-        // Rasterizer state
-        if (pipeline_state.rasterizer_state)
-        {
-            if (void* resource = pipeline_state.rasterizer_state->GetResource())
-            {
-                device_context->RSSetState(static_cast<ID3D11RasterizerState*>(const_cast<void*>(resource)));
-            }
-        }
-
-        // Primitive topology
-        if (pipeline_state.primitive_topology != RHI_PrimitiveTopology_Unknown)
-        {
-            device_context->IASetPrimitiveTopology(d3d11_primitive_topology[pipeline_state.primitive_topology]);
-        }
-
-        // Render target(s)
-        {
-            // Get depth stencil (if any)
-            void* depth_stencil = nullptr;
-            if (pipeline_state.render_target_depth_texture)
-            {
-                if (pipeline_state.render_target_depth_texture_read_only)
-                {
-                    depth_stencil = pipeline_state.render_target_depth_texture->Get_View_Attachment_DepthStencil_ReadOnly(pipeline_state.render_target_depth_stencil_texture_array_index);
-                }
-                else
-                {
-                    depth_stencil = pipeline_state.render_target_depth_texture->Get_View_Attachment_DepthStencil(pipeline_state.render_target_depth_stencil_texture_array_index);
-                }
-            }
-
-            // Unordered view
-            if (pipeline_state.unordered_access_view)
-            {
-                const void* resource_array[1] = { pipeline_state.unordered_access_view };
-                device_context->CSSetUnorderedAccessViews(0, 1, reinterpret_cast<ID3D11UnorderedAccessView* const*>(&resource_array), nullptr);
-            }
-            // Swapchain
-            else if (pipeline_state.render_target_swapchain)
-            {
-                const void* resource_array[1] = { pipeline_state.render_target_swapchain->GetResource_RenderTargetView() };
-
-                device_context->OMSetRenderTargets
-                (
-                    static_cast<UINT>(1),
-                    reinterpret_cast<ID3D11RenderTargetView* const*>(&resource_array),
-                    static_cast<ID3D11DepthStencilView*>(depth_stencil)
-                );
-
-                m_profiler->m_rhi_bindings_render_target++;
-            }
-            // Textures
-            else
-            {
-                void* render_targets[state_max_render_target_count];
-                uint32_t render_target_count = 0;
-
-                // Detect used render targets
-                for (auto i = 0; i < state_max_render_target_count; i++)
-                {
-                    if (pipeline_state.render_target_color_textures[i])
-                    {
-                        render_targets[render_target_count++] = pipeline_state.render_target_color_textures[i]->Get_View_Attachment_Color(pipeline_state.render_target_color_texture_array_index);
-                    }
-                }
-
-                // Set them
-                device_context->OMSetRenderTargets
-                (
-                    static_cast<UINT>(render_target_count),
-                    reinterpret_cast<ID3D11RenderTargetView* const*>(render_targets),
-                    static_cast<ID3D11DepthStencilView*>(depth_stencil)
-                );
-
-                m_profiler->m_rhi_bindings_render_target++;
-            }
         }
 
         // Clear render target(s)
@@ -408,26 +463,14 @@ namespace Spartan
         m_profiler->m_rhi_bindings_buffer_index++;
 	}
 
-    void RHI_CommandList::SetShaderCompute(const RHI_Shader* shader) const
-    {
-        if (shader && !shader->GetResource())
-        {
-            LOG_WARNING("%s hasn't compiled", shader->GetName().c_str());
-            return;
-        }
-
-        m_rhi_device->GetContextRhi()->device_context->CSSetShader(static_cast<ID3D11ComputeShader*>(const_cast<void*>(shader->GetResource())), nullptr, 0);
-        m_profiler->m_rhi_bindings_shader_compute++;
-    }
-
-    void RHI_CommandList::SetConstantBuffer(const uint32_t slot, uint8_t scope, RHI_ConstantBuffer* constant_buffer) const
+    void RHI_CommandList::SetConstantBuffer(const uint32_t slot, const uint8_t scope, RHI_ConstantBuffer* constant_buffer) const
     {
         void* buffer                        = static_cast<ID3D11Buffer*>(constant_buffer ? constant_buffer->GetResource() : nullptr);
         const void* buffer_array[1]         = { buffer };
-        const UINT range                          = 1;
+        const UINT range                    = 1;
         ID3D11DeviceContext* device_context = m_rhi_device->GetContextRhi()->device_context;
 
-        if (scope & RHI_Buffer_VertexShader)
+        if (scope & RHI_Shader_Vertex)
         {
             // Set only if not set
             ID3D11Buffer* set_buffer = nullptr;
@@ -438,7 +481,7 @@ namespace Spartan
             }
         }
 
-        if (scope & RHI_Buffer_PixelShader)
+        if (scope & RHI_Shader_Pixel)
         {
             // Set only if not set
             ID3D11Buffer* set_buffer = nullptr;
@@ -449,14 +492,26 @@ namespace Spartan
             }
         }
 
-        m_profiler->m_rhi_bindings_buffer_constant += scope & RHI_Buffer_VertexShader   ? 1 : 0;
-        m_profiler->m_rhi_bindings_buffer_constant += scope & RHI_Buffer_PixelShader    ? 1 : 0;
+        if (scope & RHI_Shader_Compute)
+        {
+            // Set only if not set
+            ID3D11Buffer* set_buffer = nullptr;
+            device_context->CSGetConstantBuffers(slot, range, &set_buffer);
+            if (set_buffer != buffer)
+            {
+                device_context->CSSetConstantBuffers(slot, range, reinterpret_cast<ID3D11Buffer* const*>(range > 1 ? buffer : &buffer_array));
+            }
+        }
+
+        m_profiler->m_rhi_bindings_buffer_constant += scope & RHI_Shader_Vertex   ? 1 : 0;
+        m_profiler->m_rhi_bindings_buffer_constant += scope & RHI_Shader_Pixel    ? 1 : 0;
+        m_profiler->m_rhi_bindings_buffer_constant += scope & RHI_Shader_Compute  ? 1 : 0;
     }
 
     void RHI_CommandList::SetSampler(const uint32_t slot, RHI_Sampler* sampler) const
     {
-        const UINT start_slot                     = slot;
-        const UINT range                          = 1;
+        const UINT start_slot               = slot;
+        const UINT range                    = 1;
         void* resource_sampler              = sampler ? sampler->GetResource() : nullptr;
         ID3D11DeviceContext* device_context = m_rhi_device->GetContextRhi()->device_context;
 
@@ -479,12 +534,11 @@ namespace Spartan
         m_profiler->m_rhi_bindings_sampler++;
     }
 
-    void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture)
+    void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const uint8_t scope /*= RHI_Shader_Pixel*/)
     {
         const UINT start_slot               = slot;
         const UINT range                    = 1;
         void* resource_texture              = texture ? texture->Get_View_Texture() : nullptr;
-        const bool is_compute               = m_pipeline_state->unordered_access_view != nullptr;
         ID3D11DeviceContext* device_context = m_rhi_device->GetContextRhi()->device_context;
 
         // Skip if already set
@@ -495,26 +549,26 @@ namespace Spartan
 
         if (range > 1)
         {
-            if (is_compute)
-            {
-                device_context->CSSetShaderResources(start_slot, range, reinterpret_cast<ID3D11ShaderResourceView* const*>(resource_texture));
-            }
-            else
+            if (scope & RHI_Shader_Pixel)
             {
                 device_context->PSSetShaderResources(start_slot, range, reinterpret_cast<ID3D11ShaderResourceView* const*>(resource_texture));
+            }
+            else if (scope & RHI_Shader_Compute)
+            {
+                device_context->CSSetShaderResources(start_slot, range, reinterpret_cast<ID3D11ShaderResourceView* const*>(resource_texture));
             }
         }
         else
         {
             const void* resource_array[1] = { resource_texture };
 
-            if (is_compute)
+            if (scope & RHI_Shader_Pixel)
+            {
+                device_context->PSSetShaderResources(start_slot, range, reinterpret_cast<ID3D11ShaderResourceView* const*>(&resource_array)); 
+            }
+            else if (scope & RHI_Shader_Compute)
             {
                 device_context->CSSetShaderResources(start_slot, range, reinterpret_cast<ID3D11ShaderResourceView* const*>(&resource_array));
-            }
-            else
-            {
-                device_context->PSSetShaderResources(start_slot, range, reinterpret_cast<ID3D11ShaderResourceView* const*>(&resource_array));
             }
         }
 

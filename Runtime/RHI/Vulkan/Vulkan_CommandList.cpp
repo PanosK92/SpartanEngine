@@ -358,7 +358,7 @@ namespace Spartan
         m_set_id_buffer_pixel = buffer->GetId();
 	}
 
-    void RHI_CommandList::SetConstantBuffer(const uint32_t slot, uint8_t scope, RHI_ConstantBuffer* constant_buffer) const
+    void RHI_CommandList::SetConstantBuffer(const uint32_t slot, const uint8_t scope, RHI_ConstantBuffer* constant_buffer) const
     {
         if (m_cmd_state != RHI_Cmd_List_Recording)
         {
@@ -382,7 +382,7 @@ namespace Spartan
         m_descriptor_cache->SetSampler(slot, sampler);
     }
 
-    void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture)
+    void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const uint8_t scope /*= RHI_Shader_Pixel*/)
     {
         if (m_cmd_state != RHI_Cmd_List_Recording)
         {

@@ -130,6 +130,7 @@ namespace Spartan
         Shader_Depth_P,
 		Shader_Quad_V,
 		Shader_Texture_P,
+        Shader_Copy_C,
 		Shader_Fxaa_P,
 		Shader_Luma_P,
 		Shader_Taa_P,

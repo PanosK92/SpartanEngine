@@ -412,7 +412,7 @@ namespace Spartan
         // Dynamic buffers with offsets have to be rebound whenever the offset changes
         if (cmd_list)
         {
-            cmd_list->SetConstantBuffer(2, RHI_Buffer_VertexShader, m_buffer_object_gpu);
+            cmd_list->SetConstantBuffer(2, RHI_Shader_Vertex, m_buffer_object_gpu);
         }
 
         // Map  

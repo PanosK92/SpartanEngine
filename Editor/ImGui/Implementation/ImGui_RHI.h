@@ -109,9 +109,9 @@ namespace ImGui::RHI
             // Compile shaders
             const std::string shader_path = g_context->GetSubsystem<ResourceCache>()->GetDataDirectory(Asset_Shaders) + "/ImGui.hlsl";
             g_shader_vertex = make_shared<RHI_Shader>(g_rhi_device);
-            g_shader_vertex->Compile<RHI_Vertex_Pos2dTexCol8>(Shader_Vertex, shader_path);
+            g_shader_vertex->Compile<RHI_Vertex_Pos2dTexCol8>(RHI_Shader_Vertex, shader_path);
             g_shader_pixel = make_shared<RHI_Shader>(g_rhi_device);
-            g_shader_pixel->Compile(Shader_Pixel, shader_path);
+            g_shader_pixel->Compile(RHI_Shader_Pixel, shader_path);
 		}
 
 		// Font atlas

@@ -55,7 +55,7 @@ namespace Spartan
 
 		// Load and compile the pixel shader
 		AddDefinesBasedOnMaterial();
-		CompileAsync(m_context, Shader_Pixel, file_path);
+		CompileAsync(m_context, RHI_Shader_Pixel, file_path);
 
 		m_variations.emplace_back(shared_from_this());
 	}

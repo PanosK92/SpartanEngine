@@ -84,7 +84,7 @@ namespace Spartan
 			m_array_size	= array_size;
             m_flags         = flags;
             m_flags         |= RHI_Texture_ShaderView;
-			m_flags		    |= IsDepthFormat() ? RHI_Texture_DepthStencilView : RHI_Texture_RenderTargetView;
+			m_flags		    |= IsDepthFormat() ? RHI_Texture_DepthStencilView : (RHI_Texture_RenderTargetView | RHI_Texture_UnorderedAccessView); // Need to optimize that, not every rt is used in a compute shader
             m_mip_levels    = 1;
 
 			RHI_Texture2D::CreateResourceGpu();

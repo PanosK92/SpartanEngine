@@ -49,10 +49,10 @@ namespace Spartan
     void Renderer::SetGlobalSamplersAndConstantBuffers(RHI_CommandList* cmd_list) const
     {
         // Constant buffers
-        cmd_list->SetConstantBuffer(0, RHI_Buffer_VertexShader | RHI_Buffer_PixelShader, m_buffer_frame_gpu);
-        cmd_list->SetConstantBuffer(1, RHI_Buffer_VertexShader | RHI_Buffer_PixelShader, m_buffer_uber_gpu);
-        cmd_list->SetConstantBuffer(2, RHI_Buffer_VertexShader, m_buffer_object_gpu);
-        cmd_list->SetConstantBuffer(3, RHI_Buffer_PixelShader, m_buffer_light_gpu);
+        cmd_list->SetConstantBuffer(0, RHI_Shader_Vertex | RHI_Shader_Pixel, m_buffer_frame_gpu);
+        cmd_list->SetConstantBuffer(1, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, m_buffer_uber_gpu);
+        cmd_list->SetConstantBuffer(2, RHI_Shader_Vertex, m_buffer_object_gpu);
+        cmd_list->SetConstantBuffer(3, RHI_Shader_Pixel, m_buffer_light_gpu);
         
         // Samplers
         cmd_list->SetSampler(0, m_sampler_compare_depth);
@@ -569,9 +569,6 @@ namespace Spartan
     void Renderer::Pass_Ssr(RHI_CommandList* cmd_list, const bool use_stencil)
     {
         if ((m_options & Render_ScreenSpaceReflections) == 0)
-            return;
-
-                if ((m_options & Render_ScreenSpaceReflections) == 0)
             return;
 
         // Acquire shaders
@@ -2342,4 +2339,31 @@ namespace Spartan
             cmd_list->Submit();
         }
     }
+
+    //void Renderer::Pass_Copy_CS(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    //{
+    //    // Acquire shaders
+    //    const auto& shader_c = m_shaders[Shader_Copy_C];
+    //    if (!shader_c->IsCompiled())
+    //        return;
+
+    //    // Set render state
+    //    static RHI_PipelineState pipeline_state;
+    //    pipeline_state.shader_compute           = shader_c.get();
+    //    pipeline_state.unordered_access_view    = tex_out.get();
+    //    pipeline_state.pass_name                = "Pass_Copy";
+
+    //    // Draw
+    //    if (cmd_list->Begin(pipeline_state))
+    //    {
+    //        // Update uber buffer
+    //        m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+    //        UpdateUberBuffer();
+
+    //        cmd_list->SetTexture(31, tex_in, true);
+    //        cmd_list->Dispatch(Ceil(m_buffer_uber_cpu.resolution.x / 32.0f), Ceil(m_buffer_uber_cpu.resolution.y / 32.0f));
+    //        cmd_list->End();
+    //        cmd_list->Submit();
+    //    }
+    //}
 }

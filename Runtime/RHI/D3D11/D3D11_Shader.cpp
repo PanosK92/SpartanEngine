@@ -71,9 +71,9 @@ namespace Spartan
 		// Defines
 		vector<D3D_SHADER_MACRO> defines =
 		{
-			D3D_SHADER_MACRO{ "COMPILE_VS", m_shader_type == Shader_Vertex   ? "1" : "0" },
-			D3D_SHADER_MACRO{ "COMPILE_PS", m_shader_type == Shader_Pixel    ? "1" : "0" },
-            D3D_SHADER_MACRO{ "COMPILE_CS", m_shader_type == Shader_Compute  ? "1" : "0" }
+			D3D_SHADER_MACRO{ "COMPILE_VS", m_shader_type == RHI_Shader_Vertex   ? "1" : "0" },
+			D3D_SHADER_MACRO{ "COMPILE_PS", m_shader_type == RHI_Shader_Pixel    ? "1" : "0" },
+            D3D_SHADER_MACRO{ "COMPILE_CS", m_shader_type == RHI_Shader_Compute  ? "1" : "0" }
 		};
 		for (const auto& define : m_defines)
 		{
@@ -163,7 +163,7 @@ namespace Spartan
 		void* shader_view = nullptr;
 		if (shader_blob)
 		{
-			if (m_shader_type == Shader_Vertex)
+			if (m_shader_type == RHI_Shader_Vertex)
 			{
 				if (FAILED(d3d11_device->CreateVertexShader(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), nullptr, reinterpret_cast<ID3D11VertexShader**>(&shader_view))))
 				{
@@ -176,14 +176,14 @@ namespace Spartan
                     LOG_ERROR("Failed to create input layout for %s", FileSystem::GetFileNameFromFilePath(m_file_path).c_str());
                 }
 			}
-			else if (m_shader_type == Shader_Pixel)
+			else if (m_shader_type == RHI_Shader_Pixel)
 			{
 				if (FAILED(d3d11_device->CreatePixelShader(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), nullptr, reinterpret_cast<ID3D11PixelShader**>(&shader_view))))
 				{
 					LOG_ERROR("Failed to create pixel shader, %s", d3d11_common::dxgi_error_to_string(result));
 				}
 			}
-            else if (m_shader_type == Shader_Compute)
+            else if (m_shader_type == RHI_Shader_Compute)
             {
                 if (FAILED(d3d11_device->CreateComputeShader(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), nullptr, reinterpret_cast<ID3D11ComputeShader**>(&shader_view))))
                 {
