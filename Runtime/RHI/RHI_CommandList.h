@@ -71,10 +71,6 @@ namespace Spartan
 		void SetBufferIndex(const RHI_IndexBuffer* buffer);
         inline void SetBufferIndex(const std::shared_ptr<RHI_IndexBuffer>& buffer) { SetBufferIndex(buffer.get()); }
 
-        // Compute shader
-        void SetShaderCompute(const RHI_Shader* shader) const;
-        inline void SetShaderCompute(const std::shared_ptr<RHI_Shader>& shader) const { SetShaderCompute(shader.get()); }
-
 		// Constant buffer
         void SetConstantBuffer(const uint32_t slot, const uint8_t scope, RHI_ConstantBuffer* constant_buffer) const;
         inline void SetConstantBuffer(const uint32_t slot, const uint8_t scope, const std::shared_ptr<RHI_ConstantBuffer>& constant_buffer) const { SetConstantBuffer(slot, scope, constant_buffer.get()); }
@@ -84,8 +80,8 @@ namespace Spartan
         inline void SetSampler(const uint32_t slot, const std::shared_ptr<RHI_Sampler>& sampler) const { SetSampler(slot, sampler.get()); }
 
 		// Texture
-        void SetTexture(const uint32_t slot, RHI_Texture* texture);
-        inline void SetTexture(const uint32_t slot, const std::shared_ptr<RHI_Texture>& texture) { SetTexture(slot, texture.get()); }
+        void SetTexture(const uint32_t slot, RHI_Texture* texture, const uint8_t scope = RHI_Shader_Pixel);
+        inline void SetTexture(const uint32_t slot, const std::shared_ptr<RHI_Texture>& texture, const uint8_t scope = RHI_Shader_Pixel) { SetTexture(slot, texture.get(), scope); }
         
         // Submit/Flush
 		bool Submit();

@@ -48,23 +48,23 @@ namespace Spartan
         void* GetRenderPass()                           const { return m_render_pass; }
         bool operator==(const RHI_PipelineState& rhs)   const { return m_hash == rhs.GetHash(); }
 
-        //= State (things that if changed, will cause a new pipeline to be generated) =================================================
+        //= State (things that if changed, will cause a new pipeline to be generated) ==============================
         RHI_Shader* shader_vertex                                                   = nullptr; 
         RHI_RasterizerState* rasterizer_state                                       = nullptr;
         RHI_BlendState* blend_state                                                 = nullptr;
         RHI_DepthStencilState* depth_stencil_state                                  = nullptr;
         RHI_SwapChain* render_target_swapchain                                      = nullptr;
         RHI_PrimitiveTopology_Mode primitive_topology                               = RHI_PrimitiveTopology_Unknown;
-        RHI_Viewport viewport                                                       = RHI_Viewport(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+        RHI_Viewport viewport                                                       = RHI_Viewport::Undefined;
         Math::Rectangle scissor                                                     = Math::Rectangle::Zero;
         uint32_t vertex_buffer_stride                                               = 0;
         RHI_Texture* render_target_depth_texture                                    = nullptr;    
         RHI_Texture* render_target_color_textures[state_max_render_target_count]    = { nullptr };
         bool dynamic_scissor                                                        = false;
-        //=============================================================================================================================
+        //==========================================================================================================
         RHI_Shader* shader_pixel                                                    = nullptr;
         RHI_Shader* shader_compute                                                  = nullptr;
-        void* unordered_access_view                                                 = nullptr;
+        RHI_Texture* unordered_access_view                                          = nullptr;
         bool render_target_depth_texture_read_only                                  = false;
 
         // Texture array indices

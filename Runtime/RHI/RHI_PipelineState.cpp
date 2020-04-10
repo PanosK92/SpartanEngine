@@ -50,29 +50,42 @@ namespace Spartan
 
     bool RHI_PipelineState::IsValid()
     {
+        bool is_valid = true;
+
         // Deduce if marking and profiling should occur
         profile = pass_name != nullptr;
         mark    = pass_name != nullptr;
 
-        // Check if this is a compute pipeline
-        if (unordered_access_view != nullptr && shader_compute != nullptr)
-            return true;
+        // Vertex shader
+        if (shader_vertex)
+        {
+            // Ensure that no more than one render targets are active
+            if (render_target_swapchain && render_target_color_textures[0])
+            {
+                is_valid = false;
+            }
 
-        // Ensure that only one render target is active at a time
-        if (render_target_swapchain && render_target_color_textures[0])
-            return false;
+            if (!rasterizer_state || !blend_state || !depth_stencil_state || primitive_topology == RHI_PrimitiveTopology_Unknown || (!render_target_swapchain && !render_target_color_textures[0]))
+            {
+                is_valid = false;
+            }
+        }
 
-        // Ensure that the required members are set
-        return  shader_vertex       != nullptr &&
-                rasterizer_state    != nullptr &&
-                blend_state         != nullptr &&
-                depth_stencil_state != nullptr &&
-                primitive_topology  != RHI_PrimitiveTopology_Unknown &&
-                (render_target_swapchain != nullptr || render_target_color_textures[0] != nullptr || render_target_depth_texture != nullptr);
+        // Compute shader
+        if (shader_compute)
+        {
+            if (!unordered_access_view)
+            {
+                is_valid = false;
+            }
+        }
 
-        // Notes
-        // - Pixel shader can be null
-        // - Viewport and scissor can be undefined as they can also be set dynamically
+        if (!is_valid)
+        {
+            LOG_ERROR("Invalid pipeline state");
+        }
+
+        return is_valid;
     }
 
     bool RHI_PipelineState::AcquireNextImage() const
