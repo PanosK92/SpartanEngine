@@ -164,7 +164,7 @@ namespace Spartan
 
             // Current state
             ID3D11BlendState* blend_state       = static_cast<ID3D11BlendState*>(pipeline_state.blend_state ? pipeline_state.blend_state->GetResource() : nullptr);
-            const float blendFactor             = pipeline_state.blend_state->GetBlendFactor();
+            const float blendFactor             = pipeline_state.blend_state ? pipeline_state.blend_state->GetBlendFactor() : nullptr;
             std::array<FLOAT, 4> blend_factor   = { blendFactor, blendFactor, blendFactor, blendFactor };
             UINT mask                           = 0;
 
@@ -389,7 +389,23 @@ namespace Spartan
 
     void RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z /*= 1*/) const
     {
-        m_rhi_device->GetContextRhi()->device_context->Dispatch(x, y, z);
+        ID3D11DeviceContext* device_context = m_rhi_device->GetContextRhi()->device_context;
+
+        // Dispatch
+        device_context->Dispatch(x, y, z);
+
+        // Wait (until I figure out something better)     
+        D3D11_QUERY_DESC query_desc = { D3D11_QUERY_EVENT, 0 };
+        ID3D11Query* query = nullptr;
+        if (SUCCEEDED(m_rhi_device->GetContextRhi()->device->CreateQuery(&query_desc, &query)))
+        {
+            device_context->Flush();
+            device_context->End(query);
+
+            while (device_context->GetData(query, nullptr, 0, 0) != S_OK) {}
+
+            query->Release();
+        }
     }
 
 	void RHI_CommandList::SetViewport(const RHI_Viewport& viewport) const
