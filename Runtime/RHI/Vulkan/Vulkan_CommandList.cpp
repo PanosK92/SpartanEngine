@@ -125,9 +125,9 @@ namespace Spartan
         }
 
 		// Begin command buffer
-		VkCommandBufferBeginInfo begin_info	    = {};
-		begin_info.sType						= VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		begin_info.flags						= VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+		VkCommandBufferBeginInfo begin_info = {};
+		begin_info.sType					= VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		begin_info.flags					= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 		if (!vulkan_common::error::check(vkBeginCommandBuffer(CMD_BUFFER, &begin_info)))
 			return false;
 
