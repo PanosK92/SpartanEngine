@@ -50,15 +50,27 @@ namespace Spartan
 		// Create instance
 		VkApplicationInfo app_info = {};
 		{
-            // Get sdk version
-            uint32_t sdk_version = VK_HEADER_VERSION_COMPLETE;
+            // Deduce API version to use
+            uint32_t api_version = 0;
+            {
+                // Get sdk version
+                uint32_t sdk_version = VK_HEADER_VERSION_COMPLETE;
 
-            // Get driver version
-            uint32_t driver_version = 0;
-            vkEnumerateInstanceVersion(&driver_version);
+                // Get driver version
+                uint32_t driver_version = 0;
+                vkEnumerateInstanceVersion(&driver_version);
 
-            // Choose the version which is supported by both the sdk and the driver
-            uint32_t api_version = Min(sdk_version, driver_version);
+                // Choose the version which is supported by both the sdk and the driver
+                api_version = Min(sdk_version, driver_version);
+
+                // In case the SDK is not supported by driver, prompt the user to update
+                if (sdk_version > driver_version)
+                {
+                    // Detect and log version
+                    string version = to_string(VK_VERSION_MAJOR(api_version)) + "." + to_string(VK_VERSION_MINOR(api_version)) + "." + to_string(VK_VERSION_PATCH(api_version));
+                    LOG_WARNING("Falling back to Vulkan %s. Please update your graphics drivers.", version.c_str());
+                }
+            }
 
 			app_info.sType				= VK_STRUCTURE_TYPE_APPLICATION_INFO;
 			app_info.pApplicationName	= engine_version;		
@@ -229,7 +241,7 @@ namespace Spartan
 		string version_minor	= to_string(VK_VERSION_MINOR(app_info.apiVersion));
 		string version_patch	= to_string(VK_VERSION_PATCH(app_info.apiVersion));
         Settings* settings      = m_context->GetSubsystem<Settings>();
-        string version = version_major + "." + version_minor + "." + version_patch;
+        string version          = version_major + "." + version_minor + "." + version_patch;
         settings->RegisterThirdPartyLib("Vulkan", version_major + "." + version_minor + "." + version_patch, "https://vulkan.lunarg.com/");
 		LOG_INFO("Vulkan %s", version.c_str());
 

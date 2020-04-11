@@ -164,7 +164,7 @@ namespace Spartan
 
             // Current state
             ID3D11BlendState* blend_state       = static_cast<ID3D11BlendState*>(pipeline_state.blend_state ? pipeline_state.blend_state->GetResource() : nullptr);
-            const float blendFactor             = pipeline_state.blend_state ? pipeline_state.blend_state->GetBlendFactor() : nullptr;
+            const float blendFactor             = pipeline_state.blend_state ? pipeline_state.blend_state->GetBlendFactor() : 0.0f;
             std::array<FLOAT, 4> blend_factor   = { blendFactor, blendFactor, blendFactor, blendFactor };
             UINT mask                           = 0;
 
