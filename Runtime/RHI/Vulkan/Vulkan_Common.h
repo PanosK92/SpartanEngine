@@ -1418,21 +1418,23 @@ namespace Spartan::vulkan_common
 
         static VKAPI_ATTR VkBool32 VKAPI_CALL callback(VkDebugUtilsMessageSeverityFlagBitsEXT msg_severity, VkDebugUtilsMessageTypeFlagsEXT msg_type, const VkDebugUtilsMessengerCallbackDataEXT* p_callback_data, void* p_user_data)
         {
+            std::string msg = "Vulkan: " + std::string(p_callback_data->pMessage);
+
             if (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
             {
-                LOG_INFO(p_callback_data->pMessage);
+                Log::Write(msg.c_str(), Log_Info);
             }
             else if (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
             {
-                LOG_INFO(p_callback_data->pMessage);
+                Log::Write(msg.c_str(), Log_Info);
             }
             else if (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
             {
-                LOG_WARNING(p_callback_data->pMessage);
+                Log::Write(msg.c_str(), Log_Warning);
             }
             else if (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
             {
-                LOG_ERROR(p_callback_data->pMessage);
+                Log::Write(msg.c_str(), Log_Error);
             }
 
             return VK_FALSE;

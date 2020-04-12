@@ -67,8 +67,9 @@ namespace Spartan
                 if (sdk_version > driver_version)
                 {
                     // Detect and log version
-                    string version = to_string(VK_VERSION_MAJOR(api_version)) + "." + to_string(VK_VERSION_MINOR(api_version)) + "." + to_string(VK_VERSION_PATCH(api_version));
-                    LOG_WARNING("Falling back to Vulkan %s. Please update your graphics drivers.", version.c_str());
+                    string driver_version_str   = to_string(VK_VERSION_MAJOR(driver_version)) + "." + to_string(VK_VERSION_MINOR(driver_version)) + "." + to_string(VK_VERSION_PATCH(driver_version));
+                    string sdk_version_str      = to_string(VK_VERSION_MAJOR(sdk_version)) + "." + to_string(VK_VERSION_MINOR(sdk_version)) + "." + to_string(VK_VERSION_PATCH(sdk_version));
+                    LOG_WARNING("Falling back to Vulkan %s. Please update your graphics drivers to support Vulkan %s.", driver_version_str.c_str(), sdk_version_str.c_str());
                 }
             }
 
