@@ -36,16 +36,16 @@ Pixel_PosUv mainVS(Vertex_PosUv input)
 
 float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
-	float4 finalColor = float4(0.0f, 0.0f, 0.0f, 1.0f);
+    float4 color = float4(0.0f, 0.0f, 0.0f, 1.0f);
 	
 	// Sample text from texture atlas
-	finalColor.r = tex_font_atlas.Sample(sampler_bilinear_wrap, input.uv).r;
-	finalColor.g = finalColor.r;
-	finalColor.b = finalColor.r;
-	finalColor.a = finalColor.r;
+    color.r = tex_font_atlas.Sample(sampler_bilinear_wrap, input.uv).r;
+    color.g = color.r;
+    color.b = color.r;
+    color.a = color.r;
 	
 	// Color it
-	finalColor *= g_color;
+    color *= g_color;
 	
-	return finalColor;
+    return color;
 }

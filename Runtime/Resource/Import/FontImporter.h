@@ -26,7 +26,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 //================================
 
+//= FORWARD DECLARATIONS =
 struct FT_LibraryRec_;
+struct FT_StrokerRec_;
+//========================
 
 namespace Spartan
 {
@@ -44,5 +47,6 @@ namespace Spartan
 	private:
 		Context* m_context			= nullptr;
 		FT_LibraryRec_* m_library	= nullptr;
+        FT_StrokerRec_* m_stroker   = nullptr;
 	};
 }

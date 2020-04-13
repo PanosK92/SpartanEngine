@@ -312,7 +312,7 @@ namespace Spartan
         void Pass_Outline(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_out);
 		void Pass_Icons(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         void Pass_TransformHandle(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
-		void Pass_PerformanceMetrics(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
+		void Pass_Text(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         void Pass_BrdfSpecularLut(RHI_CommandList* cmd_list);
         void Pass_Copy(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
 

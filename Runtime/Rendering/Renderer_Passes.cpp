@@ -124,7 +124,7 @@ namespace Spartan
             Pass_TransformHandle(cmd_list, m_render_targets[RenderTarget_Composition_Ldr].get());
             Pass_Icons(cmd_list, m_render_targets[RenderTarget_Composition_Ldr].get());      
             Pass_DebugBuffer(cmd_list, m_render_targets[RenderTarget_Composition_Ldr]);
-            Pass_PerformanceMetrics(cmd_list, m_render_targets[RenderTarget_Composition_Ldr].get());
+            Pass_Text(cmd_list, m_render_targets[RenderTarget_Composition_Ldr].get());
         }
 	}
 
@@ -2100,7 +2100,7 @@ namespace Spartan
         }
     }
 
-	void Renderer::Pass_PerformanceMetrics(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
+	void Renderer::Pass_Text(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
 	{
         // Early exit cases
         const bool draw         = m_options & Render_Debug_PerformanceMetrics;
@@ -2121,23 +2121,42 @@ namespace Spartan
         pipeline_state.render_target_color_textures[0]  = tex_out;
         pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
         pipeline_state.viewport                         = tex_out->GetViewport();
-        pipeline_state.pass_name                        = "Pass_PerformanceMetrics";
+        pipeline_state.pass_name                        = "Pass_Text";
 
-        // Submit command list
+        // Update text
+        const auto text_pos = Vector2(-static_cast<int>(m_viewport.width) * 0.5f + 1.0f, static_cast<int>(m_viewport.height) * 0.5f);
+        m_font->SetText(m_profiler->GetMetrics(), text_pos);
+
+        // Draw outline
+        if (m_font->GetOutline() != Font_Outline_None && m_font->GetOutlineSize() != 0)
+        { 
+            if (cmd_list->Begin(pipeline_state))
+            {
+                // Update uber buffer
+                m_buffer_uber_cpu.resolution    = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+                m_buffer_uber_cpu.color         = m_font->GetColorOutline();
+                UpdateUberBuffer();
+
+                cmd_list->SetBufferIndex(m_font->GetIndexBuffer());
+                cmd_list->SetBufferVertex(m_font->GetVertexBuffer());
+                cmd_list->SetTexture(30, m_font->GetAtlasOutline());
+                cmd_list->DrawIndexed(m_font->GetIndexCount());
+                cmd_list->End();
+                cmd_list->Submit();
+            }
+        }
+
+        // Draw 
         if (cmd_list->Begin(pipeline_state))
         {
-            // Update text
-            const auto text_pos = Vector2(-static_cast<int>(m_viewport.width) * 0.5f + 1.0f, static_cast<int>(m_viewport.height) * 0.5f);
-            m_font->SetText(m_profiler->GetMetrics(), text_pos);
-
             // Update uber buffer
             m_buffer_uber_cpu.resolution    = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             m_buffer_uber_cpu.color         = m_font->GetColor();
             UpdateUberBuffer();
 
-            cmd_list->SetTexture(30, m_font->GetAtlas());
             cmd_list->SetBufferIndex(m_font->GetIndexBuffer());
             cmd_list->SetBufferVertex(m_font->GetVertexBuffer());
+            cmd_list->SetTexture(30, m_font->GetAtlas());
             cmd_list->DrawIndexed(m_font->GetIndexCount());
             cmd_list->End();
             cmd_list->Submit();

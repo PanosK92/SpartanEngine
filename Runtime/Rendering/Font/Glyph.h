@@ -25,48 +25,17 @@ namespace Spartan
 {
 	struct Glyph
 	{
-		int xLeft;
-		int xRight;
-		int yTop;
-		int yBottom;
-		int width;
-		int height;
-		float uvXLeft;
-		float uvXRight;
-		float uvYTop;
-		float uvYBottom;
-		int descent;
-		int horizontalOffset;
+		uint32_t x_left;
+		uint32_t x_right;
+		uint32_t y_top;
+		uint32_t y_bottom;
+		uint32_t width;
+		uint32_t height;
+        uint32_t descent;
+        uint32_t horizontal_offset;
+		float uv_x_left;
+		float uv_x_right;
+		float uv_y_top;
+		float uv_y_bottom;
 	};
 }
-
-// Glyph metrics:
-// --------------
-//
-//                       xmin                     xmax
-//                        |                         |
-//                        |<-------- width -------->|
-//                        |                         |
-//              |         +-------------------------+----------------- ymax
-//              |         |    ggggggggg   ggggg    |     ^        ^
-//              |         |   g:::::::::ggg::::g    |     |        |
-//              |         |  g:::::::::::::::::g    |     |        |
-//              |         | g::::::ggggg::::::gg    |     |        |
-//              |         | g:::::g     g:::::g     |     |        |
-//    offsetX  -|-------->| g:::::g     g:::::g     |  offsetY     |
-//              |         | g:::::g     g:::::g     |     |        |
-//              |         | g::::::g    g:::::g     |     |        |
-//              |         | g:::::::ggggg:::::g     |     |        |
-//              |         |  g::::::::::::::::g     |     |      height
-//              |         |   gg::::::::::::::g     |     |        |
-//  baseline ---*---------|---- gggggggg::::::g-----*--------      |
-//            / |         |             g:::::g     |              |
-//     origin   |         | gggggg      g:::::g     |              |
-//              |         | g:::::gg   gg:::::g     |              |
-//              |         |  g::::::ggg:::::::g     |              |
-//              |         |   gg:::::::::::::g      |              |
-//              |         |     ggg::::::ggg        |              |
-//              |         |         gggggg          |              v
-//              |         +-------------------------+----------------- ymin
-//              |                                   |
-//              |------------- advanceX ----------->|

@@ -254,30 +254,30 @@ namespace Spartan
 
         static const char* text =
             // Performance
-            "FPS:\t\t\t\t\t\t\t%.2f\n"
-            "Frame time:\t\t\t\t\t%.2f\n"
-            "CPU time:\t\t\t\t\t%.2f\n"
-            "GPU time:\t\t\t\t\t%.2f\n"
-            "GPU:\t\t\t\t\t\t\t%s\n"
-            "VRAM:\t\t\t\t\t\t%d/%d MB\n"
+            "FPS:\t\t\t\t\t\t\t\t\t%.2f\n"
+            "Frame time:\t\t\t\t\t\t\t%.2f\n"
+            "CPU time:\t\t\t\t\t\t\t%.2f\n"
+            "GPU time:\t\t\t\t\t\t\t%.2f\n"
+            "GPU:\t\t\t\t\t\t\t\t\t%s\n"
+            "VRAM:\t\t\t\t\t\t\t\t%d/%d MB\n"
             // Renderer
-            "Resolution:\t\t\t\t\t%dx%d\n"
+            "Resolution:\t\t\t\t\t\t\t%dx%d\n"
             "Meshes rendered:\t\t\t\t%d\n"
-            "Textures:\t\t\t\t\t%d\n"
-            "Materials:\t\t\t\t\t%d\n"
+            "Textures:\t\t\t\t\t\t\t%d\n"
+            "Materials:\t\t\t\t\t\t\t%d\n"
             // RHI
-            "RHI Draw calls:\t\t\t\t%d\n"
+            "RHI Draw calls:\t\t\t\t\t\t%d\n"
             "RHI Index buffer bindings:\t\t%d\n"
-            "RHI Vertex buffer bindings:\t\t%d\n"
+            "RHI Vertex buffer bindings:\t%d\n"
             "RHI Constant buffer bindings:\t%d\n"
             "RHI Sampler bindings:\t\t\t%d\n"
             "RHI Texture bindings:\t\t\t%d\n"
-            "RHI Vertex Shader bindings:\t\t%d\n"
+            "RHI Vertex Shader bindings:\t%d\n"
             "RHI Pixel Shader bindings:\t\t%d\n"
             "RHI Compute Shader bindings:\t%d\n"
-            "RHI Render Target bindings:\t\t%d\n"
+            "RHI Render Target bindings:\t%d\n"
             "RHI Pipeline bindings:\t\t\t%d\n"
-            "RHI Descriptor Set bindings:\t\t%d";
+            "RHI Descriptor Set bindings:\t%d";
 
 		static char buffer[1024]; // real usage is around 800
 		sprintf_s
