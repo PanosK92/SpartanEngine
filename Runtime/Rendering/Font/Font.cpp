@@ -103,7 +103,7 @@ namespace Spartan
 
 			if (text_char == ASCII_TAB)
 			{
-				const auto space_offset		= m_glyphs[ASCII_SPACE].horizontal_offset;
+				const auto space_offset		= m_glyphs[ASCII_SPACE].advance_horizontal;
 				const auto space_count		= 8; // spaces in a typical terminal
 				const auto tab_spacing		= space_offset * space_count;
 				const auto column_header	= int(pen.x - position.x); // -position.x because it has to be zero based so we can do the mod below
@@ -121,18 +121,18 @@ namespace Spartan
 
 			if (text_char == ASCII_SPACE)
 			{
-				pen.x += glyph.horizontal_offset;
+				pen.x += glyph.advance_horizontal;
 				continue;
 			}
 
 			// First triangle in quad.		
-			m_vertices.emplace_back(pen.x,					pen.y - glyph.descent,					0.0f, glyph.uv_x_left, glyph.uv_y_top);		// Top left
-			m_vertices.emplace_back((pen.x + glyph.width),	(pen.y - glyph.height - glyph.descent), 0.0f, glyph.uv_x_right, glyph.uv_y_bottom);	// Bottom right
-			m_vertices.emplace_back(pen.x,					(pen.y - glyph.height - glyph.descent), 0.0f, glyph.uv_x_left, glyph.uv_y_bottom);	// Bottom left
+			m_vertices.emplace_back(pen.x,					pen.y - glyph.descend,					0.0f, glyph.uv_x_left, glyph.uv_y_top);		// Top left
+			m_vertices.emplace_back((pen.x + glyph.width),	(pen.y - glyph.height - glyph.descend), 0.0f, glyph.uv_x_right, glyph.uv_y_bottom);	// Bottom right
+			m_vertices.emplace_back(pen.x,					(pen.y - glyph.height - glyph.descend), 0.0f, glyph.uv_x_left, glyph.uv_y_bottom);	// Bottom left
 			// Second triangle in quad.
-			m_vertices.emplace_back(pen.x,					pen.y - glyph.descent,					0.0f, glyph.uv_x_left, glyph.uv_y_top);		// Top left
-			m_vertices.emplace_back((pen.x	+ glyph.width),	pen.y - glyph.descent,					0.0f, glyph.uv_x_right, glyph.uv_y_top);	// Top right
-			m_vertices.emplace_back((pen.x	+ glyph.width),	(pen.y - glyph.height - glyph.descent), 0.0f, glyph.uv_x_right, glyph.uv_y_bottom);	// Bottom right
+			m_vertices.emplace_back(pen.x,					pen.y - glyph.descend,					0.0f, glyph.uv_x_left, glyph.uv_y_top);		// Top left
+			m_vertices.emplace_back((pen.x	+ glyph.width),	pen.y - glyph.descend,					0.0f, glyph.uv_x_right, glyph.uv_y_top);	// Top right
+			m_vertices.emplace_back((pen.x	+ glyph.width),	(pen.y - glyph.height - glyph.descend), 0.0f, glyph.uv_x_right, glyph.uv_y_bottom);	// Bottom right
 
 			// Update the x location for drawing by the size of the letter and one pixel.
 			pen.x = pen.x + glyph.width;

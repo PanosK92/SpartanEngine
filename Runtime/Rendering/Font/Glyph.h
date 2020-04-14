@@ -25,14 +25,10 @@ namespace Spartan
 {
 	struct Glyph
 	{
-		uint32_t x_left;
-		uint32_t x_right;
-		uint32_t y_top;
-		uint32_t y_bottom;
 		uint32_t width;
 		uint32_t height;
-        uint32_t descent;
-        uint32_t horizontal_offset;
+        uint32_t descend;            // Offset from top so that the glyph feels better positioned
+        uint32_t advance_horizontal; // Offset to advance to next glyph
 		float uv_x_left;
 		float uv_x_right;
 		float uv_y_top;
