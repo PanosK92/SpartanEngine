@@ -97,10 +97,10 @@ namespace Spartan
 		bool UpdateBuffers(std::vector<RHI_Vertex_PosTex>& vertices, std::vector<uint32_t>& indices) const;
 
 		uint32_t m_font_size	        = 14;
+        uint32_t m_outline_size         = 2;
+        bool m_force_autohint           = true;
 		Font_Hinting_Type m_hinting     = Font_Hinting_Normal;
-		bool m_force_autohint		    = true;
         Font_Outline_Type m_outline     = Font_Outline_Positive;
-        uint32_t m_outline_size         = 2; // for optimal visual result, prefer outlines sizes which are divisible by two
 		Math::Vector4 m_color           = Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f);
         Math::Vector4 m_color_outline   = Math::Vector4(0.0f, 0.0f, 0.0f, 1.0f);
 		std::string m_current_text;
