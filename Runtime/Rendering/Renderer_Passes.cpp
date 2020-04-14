@@ -2124,7 +2124,7 @@ namespace Spartan
         pipeline_state.pass_name                        = "Pass_Text";
 
         // Update text
-        const auto text_pos = Vector2(-static_cast<int>(m_viewport.width) * 0.5f + 1.0f, static_cast<int>(m_viewport.height) * 0.5f);
+        const auto text_pos = Vector2(-m_viewport.width * 0.5f + 5.0f, m_viewport.height * 0.5f + 5.0f);
         m_font->SetText(m_profiler->GetMetrics(), text_pos);
 
         // Draw outline
