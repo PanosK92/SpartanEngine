@@ -48,7 +48,7 @@ namespace Spartan
 		m_index_buffer		= make_shared<RHI_IndexBuffer>(m_rhi_device);
 		m_char_max_width	= 0;
 		m_char_max_height	= 0;
-		m_color			= color;
+		m_color             = color;
 		
 		SetSize(font_size);
 		Font::LoadFromFile(file_path);
@@ -128,15 +128,15 @@ namespace Spartan
             // Any other char
             {
 			    // First triangle in quad.		
-			    m_vertices.emplace_back(pen.x + glyph.offset_x,                 pen.y + glyph.offset_y,                  0.0f, glyph.uv_x_left,  glyph.uv_y_top);       // Top left
-			    m_vertices.emplace_back(pen.x + glyph.offset_x  + glyph.width,  pen.y + glyph.offset_y - glyph.height,   0.0f, glyph.uv_x_right, glyph.uv_y_bottom);    // Bottom right
-			    m_vertices.emplace_back(pen.x + glyph.offset_x,                 pen.y + glyph.offset_y - glyph.height,   0.0f, glyph.uv_x_left,  glyph.uv_y_bottom);    // Bottom left
+			    m_vertices.emplace_back(pen.x + glyph.offset_x,                 pen.y + glyph.offset_y,                  0.0f, glyph.uv_x_left,  glyph.uv_y_top);       // top left
+			    m_vertices.emplace_back(pen.x + glyph.offset_x  + glyph.width,  pen.y + glyph.offset_y - glyph.height,   0.0f, glyph.uv_x_right, glyph.uv_y_bottom);    // bottom right
+			    m_vertices.emplace_back(pen.x + glyph.offset_x,                 pen.y + glyph.offset_y - glyph.height,   0.0f, glyph.uv_x_left,  glyph.uv_y_bottom);    // bottom left
 			    // Second triangle in quad.
-			    m_vertices.emplace_back(pen.x + glyph.offset_x,                 pen.y + glyph.offset_y,                  0.0f, glyph.uv_x_left,  glyph.uv_y_top);       // Top left
-			    m_vertices.emplace_back(pen.x + glyph.offset_x	+ glyph.width,	pen.y + glyph.offset_y,                  0.0f, glyph.uv_x_right, glyph.uv_y_top);       // Top right
-			    m_vertices.emplace_back(pen.x + glyph.offset_x	+ glyph.width,	pen.y + glyph.offset_y - glyph.height,   0.0f, glyph.uv_x_right, glyph.uv_y_bottom);    // Bottom right
+			    m_vertices.emplace_back(pen.x + glyph.offset_x,                 pen.y + glyph.offset_y,                  0.0f, glyph.uv_x_left,  glyph.uv_y_top);       // top left
+			    m_vertices.emplace_back(pen.x + glyph.offset_x	+ glyph.width,	pen.y + glyph.offset_y,                  0.0f, glyph.uv_x_right, glyph.uv_y_top);       // top right
+			    m_vertices.emplace_back(pen.x + glyph.offset_x	+ glyph.width,	pen.y + glyph.offset_y - glyph.height,   0.0f, glyph.uv_x_right, glyph.uv_y_bottom);    // bottom right
 
-			    // Update the x location for drawing by the size of the letter and one pixel.
+			    // Advance
 			    pen.x += glyph.horizontal_advance;
             }
 		}
