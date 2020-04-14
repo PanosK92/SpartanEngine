@@ -341,21 +341,22 @@ namespace Spartan
             }
         }
 
-        inline Glyph get_glyph(const FT_Face& ft_font, const uint32_t char_code, const Vector2& pen, const uint32_t atlas_width, const uint32_t atlas_height, const uint32_t atlas_cell_height, const uint32_t outline_size)
+        inline Glyph get_glyph(const FT_Face& ft_font, const uint32_t char_code, const Vector2& pen, const uint32_t atlas_width, const uint32_t atlas_height, const uint32_t outline_size)
         {
             // The glyph metrics refer to whatever the last loaded glyph was, this is up to the caller of the function
             FT_Glyph_Metrics& metrics = ft_font->glyph->metrics; 
 
             Glyph glyph                 = {};
-            glyph.width                 = (metrics.width >> 6)  + outline_size * 2;
+            glyph.offset_x              = metrics.horiBearingX >> 6;
+            glyph.offset_y              = metrics.horiBearingY >> 6;
+            glyph.width                 = (metrics.width >> 6) + outline_size * 2;
             glyph.height                = (metrics.height >> 6) + outline_size * 2;
-            glyph.descend               = atlas_cell_height - (metrics.horiBearingY >> 6);
-            glyph.advance_horizontal    = (metrics.horiAdvance >> 6);
+            glyph.horizontal_advance    = metrics.horiAdvance >> 6;
             glyph.uv_x_left             = static_cast<float>(pen.x)                 / static_cast<float>(atlas_width);
             glyph.uv_x_right            = static_cast<float>(pen.x + glyph.width)   / static_cast<float>(atlas_width);
             glyph.uv_y_top              = static_cast<float>(pen.y)                 / static_cast<float>(atlas_height);
             glyph.uv_y_bottom           = static_cast<float>(pen.y + glyph.height)  / static_cast<float>(atlas_height);
-            
+
             // Kerning is the process of adjusting the position of two subsequent glyph images 
             // in a string of text in order to improve the general appearance of text. 
             // For example, if a glyph for an uppercase ‘A’ is followed by a glyph for an 
@@ -365,7 +366,7 @@ namespace Spartan
             {
             	FT_Vector kerningVec;
             	FT_Get_Kerning(ft_font, char_code - 1, char_code, FT_KERNING_DEFAULT, &kerningVec);
-            	glyph.advance_horizontal += kerningVec.x >> 6;
+            	glyph.horizontal_advance += kerningVec.x >> 6;
             }
 
             return glyph;
@@ -494,7 +495,7 @@ namespace Spartan
             }
 
 			// Get glyph
-            font->SetGlyph(char_code, ft_helper::get_glyph(ft_font, char_code, pen, atlas_width, atlas_height, atlas_cell_height, outline_size));
+            font->SetGlyph(char_code, ft_helper::get_glyph(ft_font, char_code, pen, atlas_width, atlas_height, outline_size));
 		}
 
 		// Free face

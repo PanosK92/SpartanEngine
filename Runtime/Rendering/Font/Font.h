@@ -96,7 +96,7 @@ namespace Spartan
 	private:	
 		bool UpdateBuffers(std::vector<RHI_Vertex_PosTex>& vertices, std::vector<uint32_t>& indices) const;
 
-		uint32_t m_font_size	        = 10;
+		uint32_t m_font_size	        = 14;
 		Font_Hinting_Type m_hinting     = Font_Hinting_Normal;
 		bool m_force_autohint		    = true;
         Font_Outline_Type m_outline     = Font_Outline_Positive;
