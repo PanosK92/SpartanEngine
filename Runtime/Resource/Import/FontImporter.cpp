@@ -23,8 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "FontImporter.h"
 #include "freetype/ftstroke.h"
 #include "../../Core/Settings.h"
-#include "../../Rendering/Font/Font.h"
 #include "../../RHI/RHI_Texture2D.h"
+#include "../../Rendering/Font/Font.h"
 //====================================
 
 //= NAMESPACES ===============
@@ -38,7 +38,6 @@ namespace Spartan
 	static const uint32_t GLYPH_START	= 32;
 	static const uint32_t GLYPH_END		= 127;
 	static const uint32_t ATLAS_WIDTH	= 512;
-    static const uint32_t ATLAS_SPACING = 1;
 
     static FT_UInt32 g_glyph_load_flags = 0;
 
@@ -224,27 +223,26 @@ namespace Spartan
 			*max_height = height + outline_size * 2;
 		}
 
-		inline void get_texture_atlas_dimensions(uint32_t* atlas_width, uint32_t* atlas_height, uint32_t* atlas_row_height, FT_Face& face, const uint32_t outline_size)
+		inline void get_texture_atlas_dimensions(uint32_t* atlas_width, uint32_t* atlas_height, uint32_t* atlas_cell_width, uint32_t* atlas_cell_height, FT_Face& face, const uint32_t outline_size)
 		{
             uint32_t max_width  = 0;
             uint32_t max_height = 0;
 			get_character_max_dimensions(&max_width, &max_height, face, outline_size);
 
-            uint32_t glyph_count                = GLYPH_END - GLYPH_START;
-            uint32_t total_horizontal_spacing   = ATLAS_SPACING * (glyph_count + 1);
-            uint32_t glyphs_per_row             = (ATLAS_WIDTH + total_horizontal_spacing) % glyph_count;
-            uint32_t row_count                  = Ceil(float(glyph_count) / float(glyphs_per_row));
-            uint32_t total_vertical_spacing     = ATLAS_SPACING * (row_count + 1);
+            uint32_t glyph_count    = GLYPH_END - GLYPH_START;
+            uint32_t glyphs_per_row = ATLAS_WIDTH / max_width;
+            uint32_t row_count      = Ceil(float(glyph_count) / float(glyphs_per_row));
 
             *atlas_width        = ATLAS_WIDTH;
-            *atlas_height       = (max_height + total_vertical_spacing) * row_count;
-            *atlas_row_height   = max_height + ATLAS_SPACING * 2;
+            *atlas_height       = max_height * row_count;
+            *atlas_cell_width   = max_width;
+            *atlas_cell_height  = max_height;
 		}
 
-        inline void get_bitmap(ft_bitmap* bitmap, const Font* font, const FT_Stroker& stroker, FT_Face& face, const uint32_t char_code)
+        inline void get_bitmap(ft_bitmap* bitmap, const Font* font, const FT_Stroker& stroker, FT_Face& ft_font, const uint32_t char_code)
         {
             // Load glyph
-            if (!load_glyph(face, char_code, stroker ? FT_LOAD_NO_BITMAP : g_glyph_load_flags))
+            if (!load_glyph(ft_font, char_code, stroker ? FT_LOAD_NO_BITMAP : g_glyph_load_flags))
                 return;
 
             FT_Bitmap* bitmap_temp = nullptr; // will deallocate it's buffer the moment will load another glyph
@@ -252,14 +250,14 @@ namespace Spartan
             // Get bitmap
             if (!stroker)
             {
-                bitmap_temp = &face->glyph->bitmap;
+                bitmap_temp = &ft_font->glyph->bitmap;
             }
             else
             {
-                if (face->glyph->format == FT_GLYPH_FORMAT_OUTLINE)
+                if (ft_font->glyph->format == FT_GLYPH_FORMAT_OUTLINE)
                 {
                     FT_Glyph glyph;
-                    if (handle_error(FT_Get_Glyph(face->glyph, &glyph)))
+                    if (handle_error(FT_Get_Glyph(ft_font->glyph, &glyph)))
                     {
                         bool stroked = false;
 
@@ -288,7 +286,7 @@ namespace Spartan
                 else
                 {
                     LOG_ERROR("Can't apply outline as the glyph doesn't have an outline format");
-                    bitmap_temp = &face->glyph->bitmap;
+                    bitmap_temp = &ft_font->glyph->bitmap;
                 }
             }
 
@@ -341,6 +339,36 @@ namespace Spartan
                     }
                 }
             }
+        }
+
+        inline Glyph get_glyph(const FT_Face& ft_font, const uint32_t char_code, const Vector2& pen, const uint32_t atlas_width, const uint32_t atlas_height, const uint32_t atlas_cell_height, const uint32_t outline_size)
+        {
+            // The glyph metrics refer to whatever the last loaded glyph was, this is up to the caller of the function
+            FT_Glyph_Metrics& metrics = ft_font->glyph->metrics; 
+
+            Glyph glyph                 = {};
+            glyph.width                 = (metrics.width >> 6)  + outline_size * 2;
+            glyph.height                = (metrics.height >> 6) + outline_size * 2;
+            glyph.descend               = atlas_cell_height - (metrics.horiBearingY >> 6);
+            glyph.advance_horizontal    = (metrics.horiAdvance >> 6);
+            glyph.uv_x_left             = static_cast<float>(pen.x)                 / static_cast<float>(atlas_width);
+            glyph.uv_x_right            = static_cast<float>(pen.x + glyph.width)   / static_cast<float>(atlas_width);
+            glyph.uv_y_top              = static_cast<float>(pen.y)                 / static_cast<float>(atlas_height);
+            glyph.uv_y_bottom           = static_cast<float>(pen.y + glyph.height)  / static_cast<float>(atlas_height);
+            
+            // Kerning is the process of adjusting the position of two subsequent glyph images 
+            // in a string of text in order to improve the general appearance of text. 
+            // For example, if a glyph for an uppercase ‘A’ is followed by a glyph for an 
+            // uppercase ‘V’, the space between the two glyphs can be slightly reduced to 
+            // avoid extra ‘diagonal whitespace’.
+            if (char_code >= 1 && FT_HAS_KERNING(ft_font))
+            {
+            	FT_Vector kerningVec;
+            	FT_Get_Kerning(ft_font, char_code - 1, char_code, FT_KERNING_DEFAULT, &kerningVec);
+            	glyph.advance_horizontal += kerningVec.x >> 6;
+            }
+
+            return glyph;
         }
 	}
 
@@ -405,8 +433,9 @@ namespace Spartan
         // Get the size of the font atlas texture (if an outline is requested, it accounts for a big enough atlas)
         uint32_t atlas_width        = 0;
         uint32_t atlas_height       = 0;
-        uint32_t atlas_row_height   = 0; // includes atlas spacing
-        ft_helper::get_texture_atlas_dimensions(&atlas_width, &atlas_height, &atlas_row_height, ft_font, outline_size);
+        uint32_t atlas_cell_width   = 0;
+        uint32_t atlas_cell_height  = 0;
+        ft_helper::get_texture_atlas_dimensions(&atlas_width, &atlas_height, &atlas_cell_width, &atlas_cell_height, ft_font, outline_size);
 
         // Atlas for text
         vector<std::byte> atlas_text(atlas_width * atlas_height);
@@ -421,15 +450,13 @@ namespace Spartan
         }
 
 		// Go through each glyph
-        Vector2 pen = Vector2(ATLAS_SPACING, ATLAS_SPACING);
+        Vector2 pen = 0.0f;
+        bool writting_started = false;
         for (uint32_t char_code = GLYPH_START; char_code < GLYPH_END; char_code++)
         {
             // Load text bitmap
             ft_helper::ft_bitmap bitmap_text;
             ft_helper::get_bitmap(&bitmap_text, font, nullptr, ft_font, char_code);
-
-            // Whitespace characters don't have a bitmap
-            bool is_whitespace = !bitmap_text.buffer;
 
             // Load glyph bitmap (if needeD)
             ft_helper::ft_bitmap bitmap_outline;
@@ -438,12 +465,19 @@ namespace Spartan
                 ft_helper::get_bitmap(&bitmap_outline, font, m_stroker, ft_font, char_code);
             }
 
-            // Switch atlas row (if needed)
-            uint32_t bitmap_width = Max(bitmap_text.width, bitmap_outline.width);
-            if (pen.x + bitmap_width + ATLAS_SPACING > atlas_width)
+            // Advance pen
+            // Whitespace characters don't have a buffer and don't write on the atlas, hence no need to advance the pen in these cases.
+            if (bitmap_text.buffer && writting_started)
             {
-                pen.x = outline_size + ATLAS_SPACING;
-                pen.y += atlas_row_height;
+                // Advance column
+                pen.x += atlas_cell_width;
+
+                // Advance row
+                if (pen.x + atlas_cell_width > atlas_width)
+                {
+                    pen.x = 0;
+                    pen.y += atlas_cell_height;
+                }
             }
 
             // Copy to atlas buffers
@@ -455,40 +489,12 @@ namespace Spartan
                 {
                     ft_helper::copy_to_atlas(atlas_outline, bitmap_outline, pen, atlas_width, 0);
                 }
+
+                writting_started = true;
             }
 
-			//  Compute glyph metrics
-            Glyph& glyph = font->GetGlyphs()[char_code];
-            {
-                FT_Glyph_Metrics& metrics = ft_font->glyph->metrics; // they come from the last loaded glyph (text or outline)
-
-                glyph.width                 = (metrics.width >> 6) + outline_size * 2;
-                glyph.height                = (metrics.height >> 6) + outline_size * 2;
-			    glyph.descend               = atlas_row_height - (metrics.horiBearingY >> 6);
-			    glyph.advance_horizontal    = (metrics.horiAdvance >> 6);
-                glyph.uv_x_left             = static_cast<float>(pen.x)                 / static_cast<float>(atlas_width);
-			    glyph.uv_x_right            = static_cast<float>(pen.x + glyph.width)   / static_cast<float>(atlas_width);
-			    glyph.uv_y_top              = static_cast<float>(pen.y)                 / static_cast<float>(atlas_height);
-			    glyph.uv_y_bottom           = static_cast<float>(pen.y + glyph.height)  / static_cast<float>(atlas_height);
-
-			    // Kerning is the process of adjusting the position of two subsequent glyph images 
-			    // in a string of text in order to improve the general appearance of text. 
-			    // For example, if a glyph for an uppercase ‘A’ is followed by a glyph for an 
-			    // uppercase ‘V’, the space between the two glyphs can be slightly reduced to 
-			    // avoid extra ‘diagonal whitespace’.
-			    if (char_code >= 1 && FT_HAS_KERNING(ft_font))
-			    {
-			    	FT_Vector kerningVec;
-			    	FT_Get_Kerning(ft_font, char_code - 1, char_code, FT_KERNING_DEFAULT, &kerningVec);
-			    	glyph.advance_horizontal += kerningVec.x >> 6;
-			    }
-			}
-
-            // Advance pen (in case of whitespace, there is no need to do so, nothing has been written to the atlas)
-            if (!is_whitespace)
-            {
-                pen.x += glyph.width + ATLAS_SPACING; // glyph.width already contains outline_size
-            }
+			// Get glyph
+            font->SetGlyph(char_code, ft_helper::get_glyph(ft_font, char_code, pen, atlas_width, atlas_height, atlas_cell_height, outline_size));
 		}
 
 		// Free face

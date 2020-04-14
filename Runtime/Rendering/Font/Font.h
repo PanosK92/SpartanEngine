@@ -89,14 +89,14 @@ namespace Spartan
 		const auto& GetVertexBuffer()                                   const { return m_vertex_buffer; }
         uint32_t GetIndexCount()                                        const { return static_cast<uint32_t>(m_indices.size()); }
         uint32_t GetSize()                                              const { return m_font_size; }
-		auto& GetGlyphs()											          { return m_glyphs; }
+		void SetGlyph(const uint32_t char_code, const Glyph& glyph)			  { m_glyphs[char_code] = glyph; }
         Font_Hinting_Type GetHinting()                                  const { return m_hinting; }
 		auto GetForceAutohint()                                         const { return m_force_autohint; }
 			
 	private:	
 		bool UpdateBuffers(std::vector<RHI_Vertex_PosTex>& vertices, std::vector<uint32_t>& indices) const;
 
-		uint32_t m_font_size	        = 14;
+		uint32_t m_font_size	        = 10;
 		Font_Hinting_Type m_hinting     = Font_Hinting_Normal;
 		bool m_force_autohint		    = true;
         Font_Outline_Type m_outline     = Font_Outline_Positive;
