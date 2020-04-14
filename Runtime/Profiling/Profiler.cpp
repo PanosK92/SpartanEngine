@@ -293,7 +293,7 @@ namespace Spartan
 			m_gpu_memory_used,
 			m_gpu_memory_available,
 
-			// Renderer
+			// RendererFon
 			static_cast<int>(m_renderer->GetResolution().x), static_cast<int>(m_renderer->GetResolution().y),
 			m_renderer_meshes_rendered,
 			texture_count,

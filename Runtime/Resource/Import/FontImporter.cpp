@@ -19,22 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==========================
+//= INCLUDES =========================
 #include "FontImporter.h"
-#include "ft2build.h"
-#include "freetype/freetype.h"
-#include "freetype/fttypes.h"
-#include "freetype/ftglyph.h"
-#include "freetype/ftimage.h"
 #include "freetype/ftstroke.h"
-#include "../../Logging/Log.h"
-#include "../../Math/MathHelper.h"
 #include "../../Core/Settings.h"
-#include "../../Rendering/Font/Glyph.h"
 #include "../../Rendering/Font/Font.h"
-#include "../../RHI/RHI_Texture.h"
 #include "../../RHI/RHI_Texture2D.h"
-//=====================================
+//====================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -79,95 +70,95 @@ namespace Spartan
 			switch (error_code)
 			{
 				// Generic errors
-                case FT_Err_Cannot_Open_Resource:	LOG_ERROR("FreeType: Cannot open resource."); break;
-				case FT_Err_Unknown_File_Format:	LOG_ERROR("FreeType: Unknown file format."); break;
-				case FT_Err_Invalid_File_Format:	LOG_ERROR("FreeType: Broken file."); break;
-				case FT_Err_Invalid_Version:		LOG_ERROR("FreeType: Invalid FreeType version."); break;
-				case FT_Err_Lower_Module_Version:	LOG_ERROR("FreeType: Module version is too low."); break;
-				case FT_Err_Invalid_Argument:		LOG_ERROR("FreeType: Invalid argument."); break;
-				case FT_Err_Unimplemented_Feature:	LOG_ERROR("FreeType: Unimplemented feature."); break;
-				case FT_Err_Invalid_Table:			LOG_ERROR("FreeType: Invalid table."); break;
-				case FT_Err_Invalid_Offset:			LOG_ERROR("FreeType: Invalid offset."); break;
-				case FT_Err_Array_Too_Large:		LOG_ERROR("FreeType: Array allocation size too large."); break;
-				case FT_Err_Missing_Module:			LOG_ERROR("FreeType: Missing module."); break;
-				case FT_Err_Missing_Property:		LOG_ERROR("FreeType: Missing property."); break;
+                case FT_Err_Cannot_Open_Resource:	        LOG_ERROR("FreeType: Cannot open resource."); break;
+				case FT_Err_Unknown_File_Format:	        LOG_ERROR("FreeType: Unknown file format."); break;
+				case FT_Err_Invalid_File_Format:	        LOG_ERROR("FreeType: Broken file."); break;
+				case FT_Err_Invalid_Version:		        LOG_ERROR("FreeType: Invalid FreeType version."); break;
+				case FT_Err_Lower_Module_Version:	        LOG_ERROR("FreeType: Module version is too low."); break;
+				case FT_Err_Invalid_Argument:		        LOG_ERROR("FreeType: Invalid argument."); break;
+				case FT_Err_Unimplemented_Feature:	        LOG_ERROR("FreeType: Unimplemented feature."); break;
+				case FT_Err_Invalid_Table:			        LOG_ERROR("FreeType: Invalid table."); break;
+				case FT_Err_Invalid_Offset:			        LOG_ERROR("FreeType: Invalid offset."); break;
+				case FT_Err_Array_Too_Large:		        LOG_ERROR("FreeType: Array allocation size too large."); break;
+				case FT_Err_Missing_Module:			        LOG_ERROR("FreeType: Missing module."); break;
+				case FT_Err_Missing_Property:		        LOG_ERROR("FreeType: Missing property."); break;
 				// Glyph/character errors
-				case FT_Err_Invalid_Glyph_Index:	LOG_ERROR("FreeType: Invalid glyph index."); break;
-				case FT_Err_Invalid_Character_Code:	LOG_ERROR("FreeType: Invalid character code."); break;
-				case FT_Err_Invalid_Glyph_Format:	LOG_ERROR("FreeType: Unsupported glyph format."); break;
-				case FT_Err_Cannot_Render_Glyph:	LOG_ERROR("FreeType: Cannot render this glyph format."); break;
-				case FT_Err_Invalid_Outline:		LOG_ERROR("FreeType: Invalid outline."); break;
-				case FT_Err_Invalid_Composite:		LOG_ERROR("FreeType: Invalid composite glyph."); break;
-				case FT_Err_Too_Many_Hints:			LOG_ERROR("FreeType: Too many hints."); break;
-				case FT_Err_Invalid_Pixel_Size:		LOG_ERROR("FreeType: Invalid pixel size."); break;
+				case FT_Err_Invalid_Glyph_Index:	        LOG_ERROR("FreeType: Invalid glyph index."); break;
+				case FT_Err_Invalid_Character_Code:	        LOG_ERROR("FreeType: Invalid character code."); break;
+				case FT_Err_Invalid_Glyph_Format:	        LOG_ERROR("FreeType: Unsupported glyph format."); break;
+				case FT_Err_Cannot_Render_Glyph:	        LOG_ERROR("FreeType: Cannot render this glyph format."); break;
+				case FT_Err_Invalid_Outline:		        LOG_ERROR("FreeType: Invalid outline."); break;
+				case FT_Err_Invalid_Composite:		        LOG_ERROR("FreeType: Invalid composite glyph."); break;
+				case FT_Err_Too_Many_Hints:			        LOG_ERROR("FreeType: Too many hints."); break;
+				case FT_Err_Invalid_Pixel_Size:		        LOG_ERROR("FreeType: Invalid pixel size."); break;
 				// Handle errors
-				case FT_Err_Invalid_Handle:			LOG_ERROR("FreeType: Invalid object handle."); break;
-				case FT_Err_Invalid_Library_Handle:	LOG_ERROR("FreeType: Invalid library handle."); break;
-				case FT_Err_Invalid_Driver_Handle:	LOG_ERROR("FreeType: Invalid module handle."); break;
-				case FT_Err_Invalid_Face_Handle:	LOG_ERROR("FreeType: Invalid face handle."); break;
-				case FT_Err_Invalid_Size_Handle:	LOG_ERROR("FreeType: Invalid size handle."); break;
-				case FT_Err_Invalid_Slot_Handle:	LOG_ERROR("FreeType: Invalid glyph slot handle."); break;
-				case FT_Err_Invalid_CharMap_Handle:	LOG_ERROR("FreeType: Invalid charmap handle."); break;
-				case FT_Err_Invalid_Cache_Handle:	LOG_ERROR("FreeType: Invalid cache manager handle."); break;
-				case FT_Err_Invalid_Stream_Handle:	LOG_ERROR("FreeType: Invalid stream handle."); break;
+				case FT_Err_Invalid_Handle:			        LOG_ERROR("FreeType: Invalid object handle."); break;
+				case FT_Err_Invalid_Library_Handle:	        LOG_ERROR("FreeType: Invalid library handle."); break;
+				case FT_Err_Invalid_Driver_Handle:	        LOG_ERROR("FreeType: Invalid module handle."); break;
+				case FT_Err_Invalid_Face_Handle:	        LOG_ERROR("FreeType: Invalid face handle."); break;
+				case FT_Err_Invalid_Size_Handle:	        LOG_ERROR("FreeType: Invalid size handle."); break;
+				case FT_Err_Invalid_Slot_Handle:	        LOG_ERROR("FreeType: Invalid glyph slot handle."); break;
+				case FT_Err_Invalid_CharMap_Handle:	        LOG_ERROR("FreeType: Invalid charmap handle."); break;
+				case FT_Err_Invalid_Cache_Handle:	        LOG_ERROR("FreeType: Invalid cache manager handle."); break;
+				case FT_Err_Invalid_Stream_Handle:	        LOG_ERROR("FreeType: Invalid stream handle."); break;
 				// Driver errors
-				case FT_Err_Too_Many_Drivers:		LOG_ERROR("FreeType: Too many modules."); break;
-				case FT_Err_Too_Many_Extensions:	LOG_ERROR("FreeType: Too many extensions."); break;
+				case FT_Err_Too_Many_Drivers:		        LOG_ERROR("FreeType: Too many modules."); break;
+				case FT_Err_Too_Many_Extensions:	        LOG_ERROR("FreeType: Too many extensions."); break;
 				// Memory errors
-				case FT_Err_Out_Of_Memory:		LOG_ERROR("FreeType: Out of memory."); break;
-				case FT_Err_Unlisted_Object:	LOG_ERROR("FreeType: Unlisted object."); break;
+				case FT_Err_Out_Of_Memory:		            LOG_ERROR("FreeType: Out of memory."); break;
+				case FT_Err_Unlisted_Object:	            LOG_ERROR("FreeType: Unlisted object."); break;
 				// Stream errors
-				case FT_Err_Cannot_Open_Stream:			LOG_ERROR("FreeType: Cannot open stream."); break;
-				case FT_Err_Invalid_Stream_Seek:		LOG_ERROR("FreeType: Invalid stream seek."); break;
-				case FT_Err_Invalid_Stream_Skip:		LOG_ERROR("FreeType: Invalid stream skip."); break;
-				case FT_Err_Invalid_Stream_Read:		LOG_ERROR("FreeType: Invalid stream read."); break;
-				case FT_Err_Invalid_Stream_Operation:	LOG_ERROR("FreeType: Invalid stream operation."); break;
-				case FT_Err_Invalid_Frame_Operation:	LOG_ERROR("FreeType: Invalid frame operation."); break;
-				case FT_Err_Nested_Frame_Access:		LOG_ERROR("FreeType: Nested frame access."); break;
-				case FT_Err_Invalid_Frame_Read:			LOG_ERROR("FreeType: Invalid frame read."); break;
+				case FT_Err_Cannot_Open_Stream:			    LOG_ERROR("FreeType: Cannot open stream."); break;
+				case FT_Err_Invalid_Stream_Seek:		    LOG_ERROR("FreeType: Invalid stream seek."); break;
+				case FT_Err_Invalid_Stream_Skip:		    LOG_ERROR("FreeType: Invalid stream skip."); break;
+				case FT_Err_Invalid_Stream_Read:		    LOG_ERROR("FreeType: Invalid stream read."); break;
+				case FT_Err_Invalid_Stream_Operation:	    LOG_ERROR("FreeType: Invalid stream operation."); break;
+				case FT_Err_Invalid_Frame_Operation:	    LOG_ERROR("FreeType: Invalid frame operation."); break;
+				case FT_Err_Nested_Frame_Access:		    LOG_ERROR("FreeType: Nested frame access."); break;
+				case FT_Err_Invalid_Frame_Read:			    LOG_ERROR("FreeType: Invalid frame read."); break;
 				// Raster errors
-				case FT_Err_Raster_Uninitialized:	LOG_ERROR("FreeType: Raster uninitialized."); break;
-				case FT_Err_Raster_Corrupted:		LOG_ERROR("FreeType: Raster corrupted."); break;
-				case FT_Err_Raster_Overflow:		LOG_ERROR("FreeType: Raster overflow."); break;
-				case FT_Err_Raster_Negative_Height:	LOG_ERROR("FreeType: Negative height while rastering."); break;
+				case FT_Err_Raster_Uninitialized:	        LOG_ERROR("FreeType: Raster uninitialized."); break;
+				case FT_Err_Raster_Corrupted:		        LOG_ERROR("FreeType: Raster corrupted."); break;
+				case FT_Err_Raster_Overflow:		        LOG_ERROR("FreeType: Raster overflow."); break;
+				case FT_Err_Raster_Negative_Height:	        LOG_ERROR("FreeType: Negative height while rastering."); break;
 				// Cache errors
-				case FT_Err_Too_Many_Caches:	LOG_ERROR("FreeType: Too many registered caches."); break;
+				case FT_Err_Too_Many_Caches:	            LOG_ERROR("FreeType: Too many registered caches."); break;
 				// TrueType and SFNT errors 
-				case FT_Err_Invalid_Opcode:				LOG_ERROR("FreeType: Invalid opcode."); break;
-				case FT_Err_Too_Few_Arguments:			LOG_ERROR("FreeType: Too few arguments."); break;
-				case FT_Err_Stack_Overflow:				LOG_ERROR("FreeType: Stack overflow."); break;
-				case FT_Err_Code_Overflow:				LOG_ERROR("FreeType: Code overflow."); break;
-				case FT_Err_Bad_Argument:				LOG_ERROR("FreeType: Bad argument."); break;
-				case FT_Err_Divide_By_Zero:				LOG_ERROR("FreeType: Division by zero."); break;
-				case FT_Err_Invalid_Reference:			LOG_ERROR("FreeType: Invalid reference."); break;
-				case FT_Err_Debug_OpCode:				LOG_ERROR("FreeType: Found debug opcode."); break;
-				case FT_Err_ENDF_In_Exec_Stream:		LOG_ERROR("FreeType: Found ENDF opcode in execution stream."); break;
-				case FT_Err_Nested_DEFS:				LOG_ERROR("FreeType: Nested DEFS."); break;
-				case FT_Err_Invalid_CodeRange:			LOG_ERROR("FreeType: Invalid code range."); break;
-				case FT_Err_Execution_Too_Long:			LOG_ERROR("FreeType: Execution context too long."); break;
-				case FT_Err_Too_Many_Function_Defs:		LOG_ERROR("FreeType: Too many function definitions."); break;
-				case FT_Err_Too_Many_Instruction_Defs:	LOG_ERROR("FreeType: Too many instruction definitions."); break;
-				case FT_Err_Table_Missing:				LOG_ERROR("FreeType: SFNT font table missing."); break;
-				case FT_Err_Horiz_Header_Missing:		LOG_ERROR("FreeType: Horizontal header (hhea) table missing."); break;
-				case FT_Err_Locations_Missing:			LOG_ERROR("FreeType: Locations (loca) table missing."); break;
-				case FT_Err_Name_Table_Missing:			LOG_ERROR("FreeType: Name table missing."); break;
-				case FT_Err_CMap_Table_Missing:			LOG_ERROR("FreeType: Character map (cmap) table missing."); break;
-				case FT_Err_Hmtx_Table_Missing:			LOG_ERROR("FreeType: Horizontal metrics (hmtx) table missing."); break;
-				case FT_Err_Post_Table_Missing:			LOG_ERROR("FreeType: PostScript (post) table missing."); break;
-				case FT_Err_Invalid_Horiz_Metrics:		LOG_ERROR("FreeType: Invalid horizontal metrics."); break;
-				case FT_Err_Invalid_CharMap_Format:		LOG_ERROR("FreeType: Invalid character map (cma) format."); break;
-				case FT_Err_Invalid_PPem:				LOG_ERROR("FreeType: Invalid ppem value."); break;
-				case FT_Err_Invalid_Vert_Metrics:		LOG_ERROR("FreeType: Invalid vertical metrics."); break;
-				case FT_Err_Could_Not_Find_Context:		LOG_ERROR("FreeType: Could not find context."); break;
-				case FT_Err_Invalid_Post_Table_Format:	LOG_ERROR("FreeType: Invalid PostScript (post) table format."); break;
-				case FT_Err_Invalid_Post_Table:			LOG_ERROR("FreeType: Invalid PostScript (post) table."); break;
-				case FT_Err_DEF_In_Glyf_Bytecode:		LOG_ERROR("FreeType: Found FDEF or IDEF opcode in glyf bytecode."); break;
+				case FT_Err_Invalid_Opcode:				    LOG_ERROR("FreeType: Invalid opcode."); break;
+				case FT_Err_Too_Few_Arguments:			    LOG_ERROR("FreeType: Too few arguments."); break;
+				case FT_Err_Stack_Overflow:				    LOG_ERROR("FreeType: Stack overflow."); break;
+				case FT_Err_Code_Overflow:				    LOG_ERROR("FreeType: Code overflow."); break;
+				case FT_Err_Bad_Argument:				    LOG_ERROR("FreeType: Bad argument."); break;
+				case FT_Err_Divide_By_Zero:				    LOG_ERROR("FreeType: Division by zero."); break;
+				case FT_Err_Invalid_Reference:			    LOG_ERROR("FreeType: Invalid reference."); break;
+				case FT_Err_Debug_OpCode:				    LOG_ERROR("FreeType: Found debug opcode."); break;
+				case FT_Err_ENDF_In_Exec_Stream:		    LOG_ERROR("FreeType: Found ENDF opcode in execution stream."); break;
+				case FT_Err_Nested_DEFS:				    LOG_ERROR("FreeType: Nested DEFS."); break;
+				case FT_Err_Invalid_CodeRange:			    LOG_ERROR("FreeType: Invalid code range."); break;
+				case FT_Err_Execution_Too_Long:			    LOG_ERROR("FreeType: Execution context too long."); break;
+				case FT_Err_Too_Many_Function_Defs:		    LOG_ERROR("FreeType: Too many function definitions."); break;
+				case FT_Err_Too_Many_Instruction_Defs:	    LOG_ERROR("FreeType: Too many instruction definitions."); break;
+				case FT_Err_Table_Missing:				    LOG_ERROR("FreeType: SFNT font table missing."); break;
+				case FT_Err_Horiz_Header_Missing:		    LOG_ERROR("FreeType: Horizontal header (hhea) table missing."); break;
+				case FT_Err_Locations_Missing:			    LOG_ERROR("FreeType: Locations (loca) table missing."); break;
+				case FT_Err_Name_Table_Missing:			    LOG_ERROR("FreeType: Name table missing."); break;
+				case FT_Err_CMap_Table_Missing:			    LOG_ERROR("FreeType: Character map (cmap) table missing."); break;
+				case FT_Err_Hmtx_Table_Missing:			    LOG_ERROR("FreeType: Horizontal metrics (hmtx) table missing."); break;
+				case FT_Err_Post_Table_Missing:			    LOG_ERROR("FreeType: PostScript (post) table missing."); break;
+				case FT_Err_Invalid_Horiz_Metrics:		    LOG_ERROR("FreeType: Invalid horizontal metrics."); break;
+				case FT_Err_Invalid_CharMap_Format:		    LOG_ERROR("FreeType: Invalid character map (cma) format."); break;
+				case FT_Err_Invalid_PPem:				    LOG_ERROR("FreeType: Invalid ppem value."); break;
+				case FT_Err_Invalid_Vert_Metrics:		    LOG_ERROR("FreeType: Invalid vertical metrics."); break;
+				case FT_Err_Could_Not_Find_Context:		    LOG_ERROR("FreeType: Could not find context."); break;
+				case FT_Err_Invalid_Post_Table_Format:	    LOG_ERROR("FreeType: Invalid PostScript (post) table format."); break;
+				case FT_Err_Invalid_Post_Table:			    LOG_ERROR("FreeType: Invalid PostScript (post) table."); break;
+				case FT_Err_DEF_In_Glyf_Bytecode:		    LOG_ERROR("FreeType: Found FDEF or IDEF opcode in glyf bytecode."); break;
 				// CFF, CID, and Type 1 errors 
-				case FT_Err_Syntax_Error:			LOG_ERROR("FreeType: Opcode syntax error."); break;
-				case FT_Err_Stack_Underflow:		LOG_ERROR("FreeType: Argument stack underflow."); break;
-				case FT_Err_Ignore:					LOG_ERROR("FreeType: Ignore."); break;
-				case FT_Err_No_Unicode_Glyph_Name:	LOG_ERROR("FreeType: No Unicode glyph name found."); break;
-				case FT_Err_Glyph_Too_Big:			LOG_ERROR("FreeType: Glyph too big for hinting."); break;
+				case FT_Err_Syntax_Error:			        LOG_ERROR("FreeType: Opcode syntax error."); break;
+				case FT_Err_Stack_Underflow:		        LOG_ERROR("FreeType: Argument stack underflow."); break;
+				case FT_Err_Ignore:					        LOG_ERROR("FreeType: Ignore."); break;
+				case FT_Err_No_Unicode_Glyph_Name:	        LOG_ERROR("FreeType: No Unicode glyph name found."); break;
+				case FT_Err_Glyph_Too_Big:			        LOG_ERROR("FreeType: Glyph too big for hinting."); break;
 				// BDF errors
 				case FT_Err_Missing_Startfont_Field:		LOG_ERROR("FreeType: 'STARTFONT' field missing."); break;
 				case FT_Err_Missing_Font_Field:				LOG_ERROR("FreeType: 'FONT' field missing."); break;
@@ -391,7 +382,7 @@ namespace Spartan
 
 		// Set font size
 		if (!ft_helper::handle_error(FT_Set_Char_Size(
-			ft_font,			// handle to face object
+			ft_font,			    // handle to face object
 			0,						// char_width in 1/64th of points 
 			font->GetSize() * 64,	// char_height in 1/64th of points
 			96,						// horizontal device resolution
@@ -414,7 +405,7 @@ namespace Spartan
         // Get the size of the font atlas texture (if an outline is requested, it accounts for a big enough atlas)
         uint32_t atlas_width        = 0;
         uint32_t atlas_height       = 0;
-        uint32_t atlas_row_height   = 0;
+        uint32_t atlas_row_height   = 0; // includes atlas spacing
         ft_helper::get_texture_atlas_dimensions(&atlas_width, &atlas_height, &atlas_row_height, ft_font, outline_size);
 
         // Atlas for text
@@ -437,6 +428,9 @@ namespace Spartan
             ft_helper::ft_bitmap bitmap_text;
             ft_helper::get_bitmap(&bitmap_text, font, nullptr, ft_font, char_code);
 
+            // Whitespace characters don't have a bitmap
+            bool is_whitespace = !bitmap_text.buffer;
+
             // Load glyph bitmap (if needeD)
             ft_helper::ft_bitmap bitmap_outline;
             if (outline)
@@ -446,9 +440,9 @@ namespace Spartan
 
             // Switch atlas row (if needed)
             uint32_t bitmap_width = Max(bitmap_text.width, bitmap_outline.width);
-            if (pen.x + bitmap_width + ATLAS_SPACING >= atlas_width)
+            if (pen.x + bitmap_width + ATLAS_SPACING > atlas_width)
             {
-                pen.x = ATLAS_SPACING;
+                pen.x = outline_size + ATLAS_SPACING;
                 pen.y += atlas_row_height;
             }
 
@@ -468,18 +462,14 @@ namespace Spartan
             {
                 FT_Glyph_Metrics& metrics = ft_font->glyph->metrics; // they come from the last loaded glyph (text or outline)
 
-			    glyph.x_left            = pen.x;
-			    glyph.y_top             = pen.y;
-                glyph.width             = (metrics.width >> 6) + outline_size * 2;
-                glyph.height            = (metrics.height >> 6) + outline_size * 2;
-                glyph.x_right           = glyph.x_left + glyph.width;
-                glyph.y_bottom          = glyph.y_top + glyph.height;
-			    glyph.descent           = atlas_row_height - (metrics.horiBearingY >> 6);
-			    glyph.horizontal_offset = metrics.horiAdvance >> 6;
-                glyph.uv_x_left         = static_cast<float>(glyph.x_left)   / static_cast<float>(atlas_width);
-			    glyph.uv_x_right        = static_cast<float>(glyph.x_right)  / static_cast<float>(atlas_width);
-			    glyph.uv_y_top          = static_cast<float>(glyph.y_top)    / static_cast<float>(atlas_height);
-			    glyph.uv_y_bottom       = static_cast<float>(glyph.y_bottom) / static_cast<float>(atlas_height);
+                glyph.width                 = (metrics.width >> 6) + outline_size * 2;
+                glyph.height                = (metrics.height >> 6) + outline_size * 2;
+			    glyph.descend               = atlas_row_height - (metrics.horiBearingY >> 6);
+			    glyph.advance_horizontal    = (metrics.horiAdvance >> 6);
+                glyph.uv_x_left             = static_cast<float>(pen.x)                 / static_cast<float>(atlas_width);
+			    glyph.uv_x_right            = static_cast<float>(pen.x + glyph.width)   / static_cast<float>(atlas_width);
+			    glyph.uv_y_top              = static_cast<float>(pen.y)                 / static_cast<float>(atlas_height);
+			    glyph.uv_y_bottom           = static_cast<float>(pen.y + glyph.height)  / static_cast<float>(atlas_height);
 
 			    // Kerning is the process of adjusting the position of two subsequent glyph images 
 			    // in a string of text in order to improve the general appearance of text. 
@@ -490,12 +480,15 @@ namespace Spartan
 			    {
 			    	FT_Vector kerningVec;
 			    	FT_Get_Kerning(ft_font, char_code - 1, char_code, FT_KERNING_DEFAULT, &kerningVec);
-			    	glyph.horizontal_offset += kerningVec.x >> 6;
+			    	glyph.advance_horizontal += kerningVec.x >> 6;
 			    }
 			}
 
-            // Advance pen
-            pen.x += glyph.width + ATLAS_SPACING; // glyph.width already contains outline_size
+            // Advance pen (in case of whitespace, there is no need to do so, nothing has been written to the atlas)
+            if (!is_whitespace)
+            {
+                pen.x += glyph.width + ATLAS_SPACING; // glyph.width already contains outline_size
+            }
 		}
 
 		// Free face
