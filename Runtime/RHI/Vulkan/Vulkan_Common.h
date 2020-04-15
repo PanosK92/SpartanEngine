@@ -1163,7 +1163,7 @@ namespace Spartan::vulkan_common
             return surface_capabilities;
         }
 
-        inline std::vector<VkPresentModeKHR> present_modes(const RHI_Context* rhi_context, const VkSurfaceKHR surface)
+        inline std::vector<VkPresentModeKHR> get_present_modes(const RHI_Context* rhi_context, const VkSurfaceKHR surface)
         {
             uint32_t present_mode_count;
             vkGetPhysicalDeviceSurfacePresentModesKHR(rhi_context->device_physical, surface, &present_mode_count, nullptr);
@@ -1221,36 +1221,25 @@ namespace Spartan::vulkan_common
             }
         }
 
-        inline VkPresentModeKHR set_present_mode(const RHI_Context* rhi_context, const VkSurfaceKHR surface, const VkPresentModeKHR prefered_present_mode)
+        inline VkPresentModeKHR set_present_mode(const RHI_Context* rhi_context, const VkSurfaceKHR surface, const uint32_t flags)
         {
-            // The VK_PRESENT_MODE_FIFO_KHR mode must always be present as per spec
-            // This mode waits for the vertical blank ("v-sync")
-            VkPresentModeKHR present_mode = VK_PRESENT_MODE_FIFO_KHR;
-
-            std::vector<VkPresentModeKHR> surface_present_modes = present_modes(rhi_context, surface);
+            // Get preferred present mode
+            VkPresentModeKHR present_mode_preferred = VK_PRESENT_MODE_FIFO_KHR;
+            present_mode_preferred = flags & RHI_Present_Immediate                  ? VK_PRESENT_MODE_IMMEDIATE_KHR                 : present_mode_preferred;
+            present_mode_preferred = flags & RHI_Present_Fifo                       ? VK_PRESENT_MODE_MAILBOX_KHR                   : present_mode_preferred;
+            present_mode_preferred = flags & RHI_Present_FifoRelaxed                ? VK_PRESENT_MODE_FIFO_RELAXED_KHR              : present_mode_preferred;
+            present_mode_preferred = flags & RHI_Present_SharedDemandRefresh        ? VK_PRESENT_MODE_SHARED_DEMAND_REFRESH_KHR     : present_mode_preferred;
+            present_mode_preferred = flags & RHI_Present_SharedDContinuousRefresh   ? VK_PRESENT_MODE_SHARED_CONTINUOUS_REFRESH_KHR : present_mode_preferred;
 
             // Check if the preferred mode is supported
+            VkPresentModeKHR present_mode = VK_PRESENT_MODE_FIFO_KHR; // VK_PRESENT_MODE_FIFO_KHR is always present (as per spec)
+            std::vector<VkPresentModeKHR> surface_present_modes = get_present_modes(rhi_context, surface);
             for (const auto& supported_present_mode : surface_present_modes)
             {
-                if (prefered_present_mode == supported_present_mode)
+                if (present_mode_preferred == supported_present_mode)
                 {
-                    present_mode = prefered_present_mode;
+                    present_mode = present_mode_preferred;
                     break;
-                }
-            }
-
-            // Select a mode from the supported present modes
-            for (const auto& supported_present_mode : surface_present_modes)
-            {
-                if (supported_present_mode == VK_PRESENT_MODE_MAILBOX_KHR)
-                {
-                    present_mode = supported_present_mode;
-                    break;
-                }
-
-                if ((present_mode != VK_PRESENT_MODE_MAILBOX_KHR) && (supported_present_mode == VK_PRESENT_MODE_IMMEDIATE_KHR))
-                {
-                    present_mode = supported_present_mode;
                 }
             }
 

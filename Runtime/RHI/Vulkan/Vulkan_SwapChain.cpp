@@ -122,7 +122,7 @@ namespace Spartan
 
                 create_info.preTransform    = capabilities.currentTransform;
                 create_info.compositeAlpha  = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-                create_info.presentMode     = vulkan_common::surface::set_present_mode(rhi_context, surface, static_cast<VkPresentModeKHR>(flags));
+                create_info.presentMode     = vulkan_common::surface::set_present_mode(rhi_context, surface, flags);
                 create_info.clipped         = VK_TRUE;
                 create_info.oldSwapchain    = nullptr;
 
