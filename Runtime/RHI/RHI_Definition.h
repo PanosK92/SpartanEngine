@@ -70,14 +70,14 @@ namespace Spartan
 
 	enum RHI_Present_Mode : uint32_t
 	{
-		RHI_Present_Immediate                   = 1 << 0,
-		RHI_Present_Mailbox                     = 1 << 1,
-		RHI_Present_Fifo                        = 1 << 2,
-		RHI_Present_Relaxed                     = 1 << 3,
+		RHI_Present_Immediate                   = 1 << 0, // Doesn't wait.                  Frames are not dropped. Tearing.
+		RHI_Present_Mailbox                     = 1 << 1, // Waits for v-blank.             Frames are dropped.     No tearing.
+		RHI_Present_Fifo                        = 1 << 2, // Waits for v-blank, every time. Frames are not dropped. No tearing.
+		RHI_Present_FifoRelaxed                 = 1 << 3, // Waits for v-blank, once.       Frames are not dropped. Tearing.
 		RHI_Present_SharedDemandRefresh         = 1 << 4,
 		RHI_Present_SharedDContinuousRefresh    = 1 << 5,
 
-        // Find a way to remove those legacy D3D11 only flags
+        // D3D11 only flags as match to Vulkan is possible
         RHI_Swap_Discard                = 1 << 6,
         RHI_Swap_Sequential             = 1 << 7,
         RHI_Swap_Flip_Sequential        = 1 << 8,
