@@ -58,12 +58,25 @@ namespace Spartan
 
                 // Get driver version
                 uint32_t driver_version = 0;
-                vkEnumerateInstanceVersion(&driver_version);
+                {
+                    // Per to LunarG, if vkEnumerateInstanceVersion is not present, we are running on Vulkan 1.0
+                    // https://www.lunarg.com/wp-content/uploads/2019/02/Vulkan-1.1-Compatibility-Statement_01_19.pdf
+                    auto eiv = reinterpret_cast<PFN_vkEnumerateInstanceVersion>(vkGetInstanceProcAddr(nullptr, "vkEnumerateInstanceVersion"));
+
+                    if (eiv)
+                    {
+                        eiv(&driver_version);
+                    }
+                    else
+                    {
+                        driver_version = VK_API_VERSION_1_0;
+                    }
+                }
 
                 // Choose the version which is supported by both the sdk and the driver
                 api_version = Min(sdk_version, driver_version);
 
-                // In case the SDK is not supported by driver, prompt the user to update
+                // In case the SDK is not supported by the driver, prompt the user to update
                 if (sdk_version > driver_version)
                 {
                     // Detect and log version
