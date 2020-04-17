@@ -1097,8 +1097,8 @@ namespace Spartan::vulkan_common
             render_pass_info.pAttachments           = attachment_descriptions.data();
             render_pass_info.subpassCount           = 1;
             render_pass_info.pSubpasses             = &subpass;
-            render_pass_info.dependencyCount        = static_cast<uint32_t>(dependencies.size());
-            render_pass_info.pDependencies          = dependencies.data();
+            render_pass_info.dependencyCount        = 0;
+            render_pass_info.pDependencies          = nullptr;
 
             VkRenderPass* render_pass_vk = reinterpret_cast<VkRenderPass*>(&render_pass);
             return error::check(vkCreateRenderPass(rhi_context->device, &render_pass_info, nullptr, render_pass_vk));

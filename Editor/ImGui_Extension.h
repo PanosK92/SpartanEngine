@@ -34,6 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Input/Input.h"
 #include "World/World.h"
 #include "World/Components/Camera.h"
+#include <chrono>
 //==================================
 
 class EditorHelper
@@ -67,9 +68,12 @@ public:
 		});
 	}
 
-	void LoadScene(const std::string& file_path) const
+	void LoadWorld(const std::string& file_path) const
 	{
 		auto world = g_world;
+
+        // Loading a world resets everything so it's important to ensure that no tasks are running
+        g_threading->Flush(true);
 
 		// Load the scene asynchronously
 		g_threading->AddTask([world, file_path]()
@@ -78,7 +82,7 @@ public:
 		});
 	}
 
-	void SaveScene(const std::string& file_path) const
+	void SaveWorld(const std::string& file_path) const
 	{
 		auto world = g_world;
 

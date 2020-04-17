@@ -163,7 +163,7 @@ namespace Spartan
         Renderer* renderer = m_context->GetSubsystem<Renderer>();
 
         m_fps_limit             = m_context->GetSubsystem<Timer>()->GetTargetFps();
-        m_max_thread_count      = m_context->GetSubsystem<Threading>()->GetThreadCountMax();
+        m_max_thread_count      = m_context->GetSubsystem<Threading>()->GetThreadCountSupport();
         m_resolution            = renderer->GetResolution();   
         m_shadow_map_resolution = renderer->GetOptionValue<uint32_t>(Option_Value_ShadowResolution);
         m_anisotropy            = renderer->GetOptionValue<uint32_t>(Option_Value_Anisotropy);

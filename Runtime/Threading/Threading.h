@@ -52,10 +52,7 @@ namespace Spartan
 	{
 	public:
 		Threading(Context* context);
-		~Threading();
-
-		// This function is invoked by the threads
-		void Invoke();
+        ~Threading();
 
 		// Add a task
 		template <typename Function>
@@ -63,7 +60,7 @@ namespace Spartan
 		{
 			if (m_threads.empty())
 			{
-				LOG_WARNING("Threading::AddTask: No available threads, function will execute in the same thread");
+				LOG_WARNING("No available threads, function will execute in the same thread");
 				function();
 				return;
 			}
@@ -81,12 +78,13 @@ namespace Spartan
 			m_condition_var.notify_one();
 		}
 
+        // Adds a task which is a loop and executes chunks of it in parallel
         template <typename Function>
-        void Loop(Function&& function, uint32_t range)
+        void AddTaskLoop(Function&& function, uint32_t range)
         {
             uint32_t available_threads  = GetThreadsAvailable();
             vector<bool> tasks_done     = vector<bool>(available_threads, false);
-            const uint32_t task_count         = available_threads + 1; // plus one for the current thread
+            const uint32_t task_count   = available_threads + 1; // plus one for the current thread
 
             uint32_t start  = 0;
             uint32_t end    = 0;
@@ -114,13 +112,21 @@ namespace Spartan
             }
         }
 
-        uint32_t GetThreadCount() const { return m_thread_count; }
-        uint32_t GetThreadCountMax() const { return m_thread_max; }
-        uint32_t GetThreadsAvailable();
+        // Get the number of threads used
+        uint32_t GetThreadCount()           const { return m_thread_count; }
+        // Get the maximum number of threads the hardware supports
+        uint32_t GetThreadCountSupport()    const { return m_thread_count_support; }
+        // Get the number of threads which are not doing any work
+        uint32_t GetThreadsAvailable()      const;
+        // Waits for all executing (and queued if requested) tasks to finish
+        void Flush(bool removed_queued = false);
 
 	private:
-		uint32_t m_thread_count = 0;
-        uint32_t m_thread_max   = 0;
+        // This function is invoked by the threads
+        void ThreadLoop();
+
+		uint32_t m_thread_count         = 0;
+        uint32_t m_thread_count_support = 0;
 		std::vector<std::thread> m_threads;
 		std::deque<std::shared_ptr<Task>> m_tasks;
 		std::mutex m_mutex_tasks;
