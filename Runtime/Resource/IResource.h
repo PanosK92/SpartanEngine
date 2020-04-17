@@ -21,12 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
+//= INCLUDES ===================
 #include <memory>
 #include "../Core/Context.h"
 #include "../Core/FileSystem.h"
+#include "../Core/Spartan_Object.h"
 #include "../Logging/Log.h"
-//=============================
+//==============================
 
 namespace Spartan
 {
@@ -54,7 +55,7 @@ namespace Spartan
 		LoadState_Failed
 	};
 
-	class SPARTAN_CLASS IResource
+	class SPARTAN_CLASS IResource : public Spartan_Object
 	{
 	public:
 		IResource(Context* context, Resource_Type type);
@@ -116,7 +117,6 @@ namespace Spartan
 	protected:
 		Resource_Type m_resource_type	= Resource_Unknown;
 		LoadState m_load_state			= LoadState_Idle;
-		Context* m_context				= nullptr;
 
 	private:
 		std::string m_resource_name;

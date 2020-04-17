@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include <memory>
-#include "RHI_Object.h"
 #include "RHI_Viewport.h"
 #include "RHI_Definition.h"
 #include "../Resource/IResource.h"
@@ -50,7 +49,7 @@ namespace Spartan
         RHI_Shader_View_Unordered_Access
     };
 
-	class SPARTAN_CLASS RHI_Texture : public RHI_Object, public IResource
+	class SPARTAN_CLASS RHI_Texture : public IResource
 	{
 	public:
 		RHI_Texture(Context* context);

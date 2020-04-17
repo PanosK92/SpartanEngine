@@ -147,8 +147,6 @@ namespace Spartan
 		Entity* m_entity		= nullptr;
 		// The transform of the component (always exists)
 		Transform* m_transform	= nullptr;
-		// The context of the engine
-		Context* m_context		= nullptr;
 
 	private:
 		// The attributes of the component

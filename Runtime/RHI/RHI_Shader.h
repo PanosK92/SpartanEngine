@@ -21,22 +21,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==============
+//= INCLUDES ======================
 #include <memory>
 #include <string>
 #include <map>
 #include <vector>
 #include "RHI_Vertex.h"
-#include "RHI_Object.h"
+#include "../Core/Spartan_Object.h"
 #include "RHI_Definition.h"
-//=========================
+//=================================
 
 namespace Spartan
 {
 	// Forward declarations
 	class Context;
 
-	class SPARTAN_CLASS RHI_Shader : public RHI_Object
+	class SPARTAN_CLASS RHI_Shader : public Spartan_Object
 	{
 	public:
 

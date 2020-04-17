@@ -21,10 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==============
+//= INCLUDES ======================
 #include <vector>
 #include "RHI_Definition.h"
-//=========================
+#include "../Core/Spartan_Object.h"
+//=================================
 
 namespace Spartan
 {
@@ -39,7 +40,7 @@ namespace Spartan
         RHI_Cmd_List_Ended
     };
 
-	class SPARTAN_CLASS RHI_CommandList : public RHI_Object
+	class SPARTAN_CLASS RHI_CommandList : public Spartan_Object
 	{
 	public:
 		RHI_CommandList(uint32_t index, RHI_SwapChain* swap_chain, Context* context);

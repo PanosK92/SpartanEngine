@@ -66,8 +66,7 @@ namespace Spartan
 
 	private:
 		void AddDefinesBasedOnMaterial();
-		
-		Context* m_context;
+
 		unsigned long m_flags;	
 		static std::vector<std::shared_ptr<ShaderVariation>> m_variations;
 	};

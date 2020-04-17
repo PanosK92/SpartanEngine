@@ -21,16 +21,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =================
+//= INCLUDES ======================
 #include "RHI_Definition.h"
 #include "RHI_Viewport.h"
-#include "RHI_Object.h"
-#include "..\Math\Rectangle.h"
-//============================
+#include "../Core/Spartan_Object.h"
+#include "../Math/Rectangle.h"
+//=================================
 
 namespace Spartan
 {
-    class SPARTAN_CLASS RHI_PipelineState : public RHI_Object
+    class SPARTAN_CLASS RHI_PipelineState : public Spartan_Object
     {
     public:
         RHI_PipelineState();

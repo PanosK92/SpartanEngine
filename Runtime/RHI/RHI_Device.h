@@ -21,14 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==============
+//= INCLUDES ======================
 #include <string>
 #include <vector>
 #include <memory>
 #include <mutex>
 #include "RHI_Definition.h"
-#include "RHI_Object.h"
-//=========================
+#include "../Core/Spartan_Object.h"
+//=================================
 
 namespace Spartan
 {
@@ -150,7 +150,7 @@ namespace Spartan
 		void* data                      = nullptr;
 	};
 
-	class SPARTAN_CLASS RHI_Device : public RHI_Object
+	class SPARTAN_CLASS RHI_Device : public Spartan_Object
 	{
 	public:
 		RHI_Device(Context* context);
@@ -188,7 +188,6 @@ namespace Spartan
         uint32_t m_display_mode_index               = 0;
         uint32_t m_enabled_graphics_shader_stages   = 0;
         bool m_initialized                          = false;
-        Context* m_context                          = nullptr;
         mutable std::mutex m_queue_mutex;
         std::shared_ptr<RHI_Context> m_rhi_context;
 	};
