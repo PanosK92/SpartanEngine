@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-	class SPARTAN_CLASS RHI_Pipeline : public RHI_Object
+	class SPARTAN_CLASS RHI_Pipeline : public Spartan_Object
 	{
 	public:
 		RHI_Pipeline() = default;

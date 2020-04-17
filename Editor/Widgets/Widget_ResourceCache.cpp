@@ -25,8 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widget_ResourceCache.h"
 #include "Resource/ResourceCache.h"
 #include "../ImGui/Source/imgui.h"
-#include <Core\Spartan_Object.h>
-#include "RHI/RHI_Object.h"
+#include "Core/Spartan_Object.h"
 //=================================
 
 //= NAMESPACES ==========
@@ -109,14 +108,7 @@ void Widget_ResourceCache::Tick()
 		    // Memory CPU
             print_memory(object->GetSizeCpu());                             ImGui::NextColumn();
             // Memory GPU
-            if (RHI_Object* rhi_object = dynamic_cast<RHI_Object*>(resource.get()))
-            {
-                print_memory(rhi_object->GetSizeGpu());                     ImGui::NextColumn();
-            }
-            else
-            {
-                print_memory(0);                                            ImGui::NextColumn();
-            }
+            print_memory(object->GetSizeGpu());                             ImGui::NextColumn();
         }
 	}
 	ImGui::Columns(1);

@@ -22,12 +22,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==================
-#include "../Core/EngineDefs.h"
 #include <string>
+#include "../Core/EngineDefs.h"
 //=============================
 
 namespace Spartan
 {
+    //= FORWARD DECLARATIONS =
+    class Context;
+    //========================
+
+    // Globals
 	static uint32_t g_id = 0;
 
 	class SPARTAN_CLASS Spartan_Object
@@ -35,15 +40,28 @@ namespace Spartan
 	public:
 		Spartan_Object() { m_id = GenerateId(); }
 
+        // Name
+        const std::string& GetName()    const { return m_name; }
+
+        // Id
 		const uint32_t GetId()          const { return m_id; }
 		void SetId(const uint32_t id)	      { m_id = id; }
         static uint32_t GenerateId()          { return ++g_id; }
+
+        // CPU & GPU sizes
         const uint64_t GetSizeCpu()     const { return m_size_cpu; }
-        const std::string& GetName()    const { return m_name; }
+        const uint64_t GetSizeGpu()     const { return m_size_gpu; }
+
+        // Execution context.
+        Context* GetContext()           const { return m_context; }
 
 	protected:
+        // Execution context
+        Context* m_context = nullptr;
+
         std::string m_name;
 		uint32_t m_id	    = 0;
         uint64_t m_size_cpu = 0;
+        uint64_t m_size_gpu = 0;
 	};
 }

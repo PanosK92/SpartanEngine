@@ -21,16 +21,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==============
+//= INCLUDES ======================
 #include <memory>
 #include <unordered_map>
 #include "RHI_Definition.h"
-#include "RHI_Object.h"
-//=========================
+#include "../Core/Spartan_Object.h"
+//=================================
 
 namespace Spartan
 {
-	class RHI_PipelineCache : public RHI_Object
+	class RHI_PipelineCache : public Spartan_Object
 	{
 	public:
         RHI_PipelineCache(const RHI_Device* rhi_device) { m_rhi_device = rhi_device; }

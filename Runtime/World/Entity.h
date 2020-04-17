@@ -181,7 +181,6 @@ namespace Spartan
 		bool m_hierarchy_visibility	= true;
 		Transform* m_transform		= nullptr;
 		Renderable* m_renderable	= nullptr;
-        Context* m_context          = nullptr;
         bool m_destruction_pending  = false;
 		
         // Components

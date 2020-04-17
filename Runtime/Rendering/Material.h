@@ -49,7 +49,7 @@ namespace Spartan
 		TextureType_Mask
 	};
 
-	class SPARTAN_CLASS Material : public Spartan_Object, public IResource
+	class SPARTAN_CLASS Material : public IResource
 	{
 	public:
 		Material(Context* context);

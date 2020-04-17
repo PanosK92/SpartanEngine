@@ -251,27 +251,11 @@ namespace Spartan
     {
         uint64_t size = 0;
 
-        if (type == Resource_Unknown)
+        for (const auto& resource : m_resource_groups[type])
         {
-            for (const auto& group : m_resource_groups)
+            if (Spartan_Object* object = dynamic_cast<Spartan_Object*>(resource.get()))
             {
-                for (const auto& resource : group.second)
-                {
-                    if (RHI_Object* object = dynamic_cast<RHI_Object*>(resource.get()))
-                    {
-                        size += object->GetSizeGpu();
-                    }
-                }
-            }
-        }
-        else
-        {
-            for (const auto& resource : m_resource_groups[type])
-            {
-                if (RHI_Object* object = dynamic_cast<RHI_Object*>(resource.get()))
-                {
-                    size += object->GetSizeGpu();
-                }
+                size += object->GetSizeGpu();
             }
         }
 

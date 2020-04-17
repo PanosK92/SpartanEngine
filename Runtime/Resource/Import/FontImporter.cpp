@@ -231,7 +231,7 @@ namespace Spartan
 
             uint32_t glyph_count    = GLYPH_END - GLYPH_START;
             uint32_t glyphs_per_row = ATLAS_WIDTH / max_width;
-            uint32_t row_count      = Ceil(float(glyph_count) / float(glyphs_per_row));
+            uint32_t row_count      = static_cast<uint32_t>(Ceil(float(glyph_count) / float(glyphs_per_row)));
 
             *atlas_width        = ATLAS_WIDTH;
             *atlas_height       = max_height * row_count;
@@ -308,8 +308,8 @@ namespace Spartan
                 for (uint32_t glyph_x = 0; glyph_x < bitmap.width; glyph_x++)
                 {
                     // Compute 
-                    uint32_t atlas_x = pen.x + glyph_x;
-                    uint32_t atlas_y = pen.y + glyph_y;
+                    uint32_t atlas_x = static_cast<uint32_t>(pen.x + glyph_x);
+                    uint32_t atlas_y = static_cast<uint32_t>(pen.y + glyph_y);
 
                     // In case there is an outline, the text has to offset away from the outline's edge
                     atlas_x += outline_size;
