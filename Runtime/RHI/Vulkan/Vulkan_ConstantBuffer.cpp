@@ -68,7 +68,7 @@ namespace Spartan
         size_t min_ubo_alignment = m_rhi_device->GetContextRhi()->device_properties.limits.minUniformBufferOffsetAlignment;
         if (min_ubo_alignment > 0)
         {
-            m_stride = (m_stride + min_ubo_alignment - 1) & ~(min_ubo_alignment - 1);
+            m_stride = static_cast<uint32_t>((m_stride + min_ubo_alignment - 1) & ~(min_ubo_alignment - 1));
         }
         m_size_gpu = m_element_count * m_stride;
 

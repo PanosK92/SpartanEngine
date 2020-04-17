@@ -76,6 +76,13 @@ namespace Spartan
 
 	Engine::~Engine()
 	{
+        // Flush any tasks
+        if (Threading* threading = m_context->GetSubsystem<Threading>())
+        {
+            bool remove_queued = true;
+            m_context->GetSubsystem<Threading>()->Flush(remove_queued);
+        }
+
 		EventSystem::Get().Clear(); // this must become a subsystem
 	}
 

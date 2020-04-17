@@ -377,7 +377,7 @@ namespace Spartan
             }
         };
 
-        m_context->GetSubsystem<Threading>()->Loop(compute_vertex_normals_tangents, vertex_count);
+        m_context->GetSubsystem<Threading>()->AddTaskLoop(compute_vertex_normals_tangents, vertex_count);
 
         return true;
     }
