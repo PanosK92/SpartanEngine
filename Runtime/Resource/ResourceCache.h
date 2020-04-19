@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==================
-#include <map>
+#include <unordered_map>
 #include "IResource.h"
 #include "../Core/ISubsystem.h"
 //=============================
@@ -199,11 +199,11 @@ namespace Spartan
 
 	private:
 		// Cache
-		std::map<Resource_Type, std::vector<std::shared_ptr<IResource>>> m_resource_groups;
+		std::unordered_map<Resource_Type, std::vector<std::shared_ptr<IResource>>> m_resource_groups;
 		std::mutex m_mutex;
 
 		// Directories
-		std::map<Asset_Type, std::string> m_standard_resource_directories;
+		std::unordered_map<Asset_Type, std::string> m_standard_resource_directories;
 		std::string m_project_directory;
 
 		// Importers

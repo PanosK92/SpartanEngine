@@ -121,7 +121,8 @@ namespace Spartan
         void* m_cmd_buffer                      = nullptr;
         void* m_cmd_list_consumed_fence         = nullptr;
         void* m_query_pool                      = nullptr;
-        bool m_render_pass_begun_pipeline_bound = false;
+        bool m_render_pass_active               = false;
+        bool m_pipeline_active                  = false;
         std::vector<uint64_t> m_timestamps;
         std::vector<bool> m_passes_active;
 

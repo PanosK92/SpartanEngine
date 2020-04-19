@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ===============
-#include <map>
+#include <unordered_map>
 #include <vector>
 #include <functional>
 #include "../Core/Variant.h"
@@ -124,6 +124,6 @@ namespace Spartan
 		}
 
 	private:
-		std::map<Event_Type, std::vector<subscriber>> m_subscribers;
+		std::unordered_map<Event_Type, std::vector<subscriber>> m_subscribers;
 	};
 }

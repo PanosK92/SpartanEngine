@@ -1896,10 +1896,10 @@ namespace Spartan
                     if (v_dot_l > 0.5f)
                     {
                         // Compute light screen space position and scale (based on distance from the camera)
-                        const auto position_light_screen  = m_camera->Project(position_light_world);
-                        const auto distance               = (position_camera_world - position_light_world).Length() + M_EPSILON;
-                        auto scale                  = m_gizmo_size_max / distance;
-                        scale                       = Clamp(scale, m_gizmo_size_min, m_gizmo_size_max);
+                        const auto position_light_screen    = m_camera->Project(position_light_world);
+                        const auto distance                 = (position_camera_world - position_light_world).Length() + Helper::M_EPSILON;
+                        auto scale                          = m_gizmo_size_max / distance;
+                        scale                               = Helper::Clamp(scale, m_gizmo_size_min, m_gizmo_size_max);
         
                         // Choose texture based on light type
                         shared_ptr<RHI_Texture> light_tex = nullptr;

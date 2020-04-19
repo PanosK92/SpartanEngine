@@ -48,6 +48,8 @@ namespace Spartan
 
     Threading::~Threading()
     {
+        Flush(true);
+
         // Put unique lock on task mutex.
         unique_lock<mutex> lock(m_mutex_tasks);
 

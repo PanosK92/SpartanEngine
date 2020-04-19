@@ -83,10 +83,10 @@ void Widget_Console::Tick()
 
         // Set max log width
         float max_log_width = 0;
-        max_log_width = m_log_type_visibility[0] ? Math::Max(max_log_width, m_log_type_max_width[0]) : max_log_width;
-        max_log_width = m_log_type_visibility[1] ? Math::Max(max_log_width, m_log_type_max_width[1]) : max_log_width;
-        max_log_width = m_log_type_visibility[2] ? Math::Max(max_log_width, m_log_type_max_width[2]) : max_log_width;
-        max_log_width = Math::Max(max_log_width, ImGui::GetWindowContentRegionWidth());
+        max_log_width = m_log_type_visibility[0] ? Math::Helper::Max(max_log_width, m_log_type_max_width[0]) : max_log_width;
+        max_log_width = m_log_type_visibility[1] ? Math::Helper::Max(max_log_width, m_log_type_max_width[1]) : max_log_width;
+        max_log_width = m_log_type_visibility[2] ? Math::Helper::Max(max_log_width, m_log_type_max_width[2]) : max_log_width;
+        max_log_width = Math::Helper::Max(max_log_width, ImGui::GetWindowContentRegionWidth());
         ImGui::PushItemWidth(max_log_width);
 
         // Wait for reading to finish
@@ -176,12 +176,12 @@ void Widget_Console::AddLogPackage(const LogPackage& package)
     float& width = m_log_type_max_width[package.error_level];
     if (ImGui::GetCurrentContext()->Font)
     {
-        width = Math::Max(width, ImGui::CalcTextSize(package.text.c_str()).x + 10);
+        width = Math::Helper::Max(width, ImGui::CalcTextSize(package.text.c_str()).x + 10);
     }
     else
     {
         // During startup, the font can be null, so compute a poor man's width
-        width = Math::Max(width, package.text.size() * 23.0f);
+        width = Math::Helper::Max(width, package.text.size() * 23.0f);
     }
 
     // If the user is displaying this type of messages, scroll to bottom

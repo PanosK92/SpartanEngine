@@ -1044,52 +1044,26 @@ namespace Spartan::vulkan_common
             }
 
             // Color attachment references
-            std::vector<VkAttachmentReference> reference_colors(render_target_color_texture_count);
+            std::vector<VkAttachmentReference> subpass_reference_colors(render_target_color_texture_count);
             for (uint32_t i = 0; i < render_target_color_texture_count; i++)
             {
-                reference_colors[i] = { i, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL };
+                subpass_reference_colors[i] = { i, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL };
             }
 
             // Depth attachment reference
-            VkAttachmentReference reference_depth   = {};
-            reference_depth.attachment              = render_target_color_texture_count;
-            reference_depth.layout                  = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+            VkAttachmentReference subpass_reference_depth   = {};
+            subpass_reference_depth.attachment              = render_target_color_texture_count;
+            subpass_reference_depth.layout                  = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
             // Subpass
             VkSubpassDescription subpass    = {};
             subpass.pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS;
-            subpass.pColorAttachments       = reference_colors.data();
-            subpass.colorAttachmentCount    = static_cast<uint32_t>(reference_colors.size());
+            subpass.pColorAttachments       = subpass_reference_colors.data();
+            subpass.colorAttachmentCount    = static_cast<uint32_t>(subpass_reference_colors.size());
             if (render_target_depth_texture)
             {
-                subpass.pDepthStencilAttachment = &reference_depth;
+                subpass.pDepthStencilAttachment = &subpass_reference_depth;
             }
-
-            // Sub-pass dependencies for layout transitions
-            std::array<VkSubpassDependency, 2> dependencies
-            {
-                VkSubpassDependency
-                {
-                    VK_SUBPASS_EXTERNAL,														// uint32_t srcSubpass;
-                    0,																			// uint32_t dstSubpass;
-                    VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,										// PipelineStageFlags srcStageMask;
-                    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,								// PipelineStageFlags dstStageMask;
-                    VK_ACCESS_MEMORY_READ_BIT,													// AccessFlags srcAccessMask;
-                    VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,	// AccessFlags dstAccessMask;
-                    VK_DEPENDENCY_BY_REGION_BIT													// DependencyFlags dependencyFlags;
-                },
-
-                VkSubpassDependency
-                {
-                    0,																			// uint32_t srcSubpass;
-                    VK_SUBPASS_EXTERNAL,														// uint32_t dstSubpass;
-                    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,								// PipelineStageFlags srcStageMask;
-                    VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,										// PipelineStageFlags dstStageMask;
-                    VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,	// AccessFlags srcAccessMask;
-                    VK_ACCESS_MEMORY_READ_BIT,													// AccessFlags dstAccessMask;
-                    VK_DEPENDENCY_BY_REGION_BIT													// DependencyFlags dependencyFlags;
-                },
-            };
 
             VkRenderPassCreateInfo render_pass_info = {};
             render_pass_info.sType                  = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;

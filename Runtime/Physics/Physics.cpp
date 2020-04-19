@@ -151,7 +151,7 @@ namespace Spartan
 		}
 		else if (m_max_sub_steps > 0)
 		{
-			max_substeps = Min(max_substeps, m_max_sub_steps);
+			max_substeps = Helper::Min(max_substeps, m_max_sub_steps);
 		}
 
 		// Step the physics world. 

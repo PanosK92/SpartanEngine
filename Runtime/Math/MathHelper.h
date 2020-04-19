@@ -29,13 +29,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan::Math
 {
-	enum Intersection
-	{
-		Outside,
-		Inside,
-		Intersects
-	};
+    enum Intersection
+    {
+        Outside,
+        Inside,
+        Intersects
+    };
+}
 
+namespace Spartan::Math::Helper
+{
 	constexpr float M_EPSILON	= 0.000001f;
 	constexpr float PI			= 3.14159265359f;
 	constexpr float PI_2		= 6.28318530718f;

@@ -92,12 +92,12 @@ namespace Spartan::Math
 
         if (!ignore_near_plane)
         {
-            radius = Max3(extent.x, extent.y, extent.z);
+            radius = Helper::Max3(extent.x, extent.y, extent.z);
         }
         else
         {
             constexpr float z = numeric_limits<float>::infinity(); // reverse-z only (but I must read form Renderer)
-            radius = Max3(extent.x, extent.y, z);
+            radius = Helper::Max3(extent.x, extent.y, z);
         }
 
         // Check sphere first as it's cheaper
@@ -112,14 +112,18 @@ namespace Spartan::Math
 
 	Intersection Frustum::CheckCube(const Vector3& center, const Vector3& extent) const
 	{
-		// Check if any one point of the cube is in the view frustum.
-		Intersection result = Inside;
-		for (const auto& plane : m_planes)
-		{
-            const Plane absolutePlane = Plane(plane.normal.Absolute(), plane.d);
+        Intersection result = Inside;
+        Plane plane_abs;
 
-            const float d = center.x * plane.normal.x + center.y * plane.normal.y + center.z * plane.normal.z;
-            const float r = extent.x * absolutePlane.normal.x + extent.y * absolutePlane.normal.y + extent.z * absolutePlane.normal.z;
+		// Check if any one point of the cube is in the view frustum.
+		
+		for (const Plane& plane : m_planes)
+		{
+            plane_abs.normal    = plane.normal.Abs();
+            plane_abs.d         = plane.d;
+
+            const float d   = center.x * plane.normal.x + center.y * plane.normal.y + center.z * plane.normal.z;
+            const float r   = extent.x * plane_abs.normal.x + extent.y * plane_abs.normal.y + extent.z * plane_abs.normal.z;
 
             const float d_p_r = d + r;
             const float d_m_r = d - r;
@@ -152,7 +156,7 @@ namespace Spartan::Math
 				return Outside;
 
 			// else if the distance is between +- radius, then we intersect
-			if (static_cast<float>(Abs(distance)) < radius)
+			if (static_cast<float>(Helper::Abs(distance)) < radius)
 				return Intersects;
 		}
 

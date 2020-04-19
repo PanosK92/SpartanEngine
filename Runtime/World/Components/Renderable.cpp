@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Utilities/Geometry.h"
 #include "../../RHI/RHI_Texture2D.h"
 #include "../../Rendering/Model.h"
+#include "../../RHI/RHI_Vertex.h"
 //=======================================
 
 //= NAMESPACES ===============
@@ -83,7 +84,7 @@ namespace Spartan
 			static_cast<uint32_t>(indices.size()),
 			0,
 			static_cast<uint32_t>(vertices.size()),
-			BoundingBox(vertices),
+            BoundingBox(vertices.data(), static_cast<uint32_t>(vertices.size())),
 			model.get()
 		);
 	}
@@ -208,16 +209,12 @@ namespace Spartan
 
     const BoundingBox& Renderable::GetAabb()
 	{
+        // Updated if dirty
         if (m_last_transform != GetTransform()->GetMatrix())
         {
-            m_is_dirty = true;
-        }
-
-		if (m_is_dirty)
-		{
-			m_aabb = m_bounding_box.Transform(GetTransform()->GetMatrix());
+            m_aabb = m_bounding_box.Transform(GetTransform()->GetMatrix());
             m_last_transform = GetTransform()->GetMatrix();
-		}
+        }
 
 		return m_aabb;
 	}

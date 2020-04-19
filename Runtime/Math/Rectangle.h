@@ -94,10 +94,10 @@ namespace Spartan
             // Merge a point.
             void Merge(const Vector2& point)
             {
-                left    = Min(left,     point.x);
-                top     = Min(top,      point.y);
-                right   = Max(right,    point.x);
-                bottom  = Max(bottom,   point.y);
+                left    = Math::Helper::Min(left,     point.x);
+                top     = Math::Helper::Min(top,      point.y);
+                right   = Math::Helper::Max(right,    point.x);
+                bottom  = Math::Helper::Max(bottom,   point.y);
             }
 
 			bool CreateBuffers(Renderer* renderer);

@@ -165,9 +165,9 @@ namespace Spartan
 
 		// A scale of 0 will cause a division by zero when 
 		// decomposing the world transform matrix.
-		m_scaleLocal.x = (m_scaleLocal.x == 0.0f) ? M_EPSILON : m_scaleLocal.x;
-		m_scaleLocal.y = (m_scaleLocal.y == 0.0f) ? M_EPSILON : m_scaleLocal.y;
-		m_scaleLocal.z = (m_scaleLocal.z == 0.0f) ? M_EPSILON : m_scaleLocal.z;
+		m_scaleLocal.x = (m_scaleLocal.x == 0.0f) ? Helper::M_EPSILON : m_scaleLocal.x;
+		m_scaleLocal.y = (m_scaleLocal.y == 0.0f) ? Helper::M_EPSILON : m_scaleLocal.y;
+		m_scaleLocal.z = (m_scaleLocal.z == 0.0f) ? Helper::M_EPSILON : m_scaleLocal.z;
 
 		UpdateTransform();
 	}
@@ -364,27 +364,32 @@ namespace Spartan
 		}
 	}
 
-	bool Transform::IsDescendantOf(Transform* transform) const
+	bool Transform::IsDescendantOf(const Transform* transform) const
 	{
-		vector<Transform*> descendants;
-		transform->GetDescendants(&descendants);
+        for (const Transform* child : m_children)
+        {
+            if (child->GetId() == transform->GetId())
+                return true;
 
-		for (const auto& descendant : descendants)
-		{
-			if (descendant->GetId() == GetId())
-				return true;
-		}
+            if (child->HasChildren())
+            {
+                child->IsDescendantOf(child);
+            }
+        }
 
-		return false;
+        return false;
 	}
 
 	void Transform::GetDescendants(vector<Transform*>* descendants)
 	{
-		// Depth first acquisition of descendants
-		for (const auto& child : m_children)
+		for (Transform* child : m_children)
 		{
-			descendants->push_back(child);
-			child->GetDescendants(descendants);
+			descendants->emplace_back(child);
+
+            if (child->HasChildren())
+            {
+                child->GetDescendants(descendants);
+            }
 		}
 	}
 

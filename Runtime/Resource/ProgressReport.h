@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==================
 #include "../Core/EngineDefs.h"
 #include <string>
-#include <map>
+#include <unordered_map>
 //=============================
 
 namespace Spartan
@@ -77,6 +77,6 @@ namespace Spartan
 		void SetIsLoading(int progressID, bool isLoading)			{ m_reports[progressID].isLoading = isLoading; }
 
 	private:	
-		std::map<int, Progress> m_reports;
+		std::unordered_map<int, Progress> m_reports;
 	};
 }

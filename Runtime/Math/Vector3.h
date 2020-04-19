@@ -73,9 +73,9 @@ namespace Spartan::Math
         void Normalize()
         {
             const auto length_squared = LengthSquared();
-            if (!Equals(length_squared, 1.0f) && length_squared > 0.0f)
+            if (!Helper::Equals(length_squared, 1.0f) && length_squared > 0.0f)
             {
-                const auto length_inverted = 1.0f / Sqrt(length_squared);
+                const auto length_inverted = 1.0f / Helper::Sqrt(length_squared);
                 x *= length_inverted;
                 y *= length_inverted;
                 z *= length_inverted;
@@ -86,9 +86,9 @@ namespace Spartan::Math
         [[nodiscard]] Vector3 Normalized() const
 		{
             const auto length_squared = LengthSquared();
-            if (!Equals(length_squared, 1.0f) && length_squared > 0.0f)
+            if (!Helper::Equals(length_squared, 1.0f) && length_squared > 0.0f)
             {
-                const auto length_inverted = 1.0f / Sqrt(length_squared);
+                const auto length_inverted = 1.0f / Helper::Sqrt(length_squared);
                 return (*this) * length_inverted;
             }
             else
@@ -96,15 +96,16 @@ namespace Spartan::Math
 		}
 
         // Returns normalized vector
-		static Vector3 Normalize(const Vector3& v) { return v.Normalized(); }
+		static inline Vector3 Normalize(const Vector3& v) { return v.Normalized(); }
 
         // Returns the dot product
-		static float Dot(const Vector3& v1, const Vector3& v2)	{ return (v1.x * v2.x + v1.y * v2.y + v1.z * v2.z); }
+		static inline float Dot(const Vector3& v1, const Vector3& v2)	{ return (v1.x * v2.x + v1.y * v2.y + v1.z * v2.z); }
+
         // Returns the dot product
         [[nodiscard]] float Dot(const Vector3& rhs) const       { return x * rhs.x + y * rhs.y + z * rhs.z; }
 
         // Returns the cross product
-		static Vector3 Cross(const Vector3& v1, const Vector3& v2)
+		static inline Vector3 Cross(const Vector3& v1, const Vector3& v2)
         {
             return Vector3(
                 v1.y * v2.z - v2.y * v1.z,
@@ -116,14 +117,14 @@ namespace Spartan::Math
         [[nodiscard]] Vector3 Cross(const Vector3& v2) const { return Cross(*this, v2); }
 
         // Returns the length
-        [[nodiscard]] float Length() const		    { return Sqrt(x * x + y * y + z * z); }
+        [[nodiscard]] float Length() const		    { return Helper::Sqrt(x * x + y * y + z * z); }
         // Returns the squared length
         [[nodiscard]] float LengthSquared() const   { return x * x + y * y + z * z; }
 
         // Returns the distance between to vectors
-        static float Distance(const Vector3& a, const Vector3& b)           { return (b - a).Length(); }
+        static inline float Distance(const Vector3& a, const Vector3& b)           { return (b - a).Length(); }
         // Returns the squared distance between to vectors
-        static float DistanceSquared(const Vector3& a, const Vector3& b)    { return (b - a).LengthSquared(); }
+        static inline float DistanceSquared(const Vector3& a, const Vector3& b)    { return (b - a).LengthSquared(); }
 
         // Floor
 		void Floor()
@@ -134,7 +135,7 @@ namespace Spartan::Math
 		}
 
         // Return absolute vector
-        [[nodiscard]] Vector3 Absolute() const { return Vector3(Abs(x), Abs(y), Abs(z)); }
+        [[nodiscard]] Vector3 Abs() const { return Vector3(Helper::Abs(x), Helper::Abs(y), Helper::Abs(z)); }
 
 		Vector3 operator*(const Vector3& b) const
 		{

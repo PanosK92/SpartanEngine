@@ -181,7 +181,7 @@ namespace Spartan
 
 	void RigidBody::SetMass(float mass)
 	{
-		mass = Max(mass, 0.0f);
+		mass = Helper::Max(mass, 0.0f);
 		if (mass != m_mass)
 		{
 			m_mass = mass;

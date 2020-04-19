@@ -157,7 +157,7 @@ namespace Spartan
                 }
             }
 
-            m_time_frame_ms = Math::Min(m_timer.GetElapsedTimeMs(), m_time_cpu_ms + m_time_gpu_ms);
+            m_time_frame_ms = Math::Helper::Min(m_timer.GetElapsedTimeMs(), m_time_cpu_ms + m_time_gpu_ms);
         }
 
         // Detect stutters

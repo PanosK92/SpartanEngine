@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include <vector>
 #include "../RHI/RHI_Definition.h"
+#include "../RHI/RHI_Vertex.h"
 //================================
 
 namespace Spartan::Utility::Geometry
@@ -118,8 +119,8 @@ namespace Spartan::Utility::Geometry
 		Vector3 tangent = Vector3(1, 0, 0);
 		vertices->emplace_back(Vector3(0, radius, 0), Vector2::Zero, normal, tangent);
 
-        const float phiStep   = PI / stacks;
-        const float thetaStep = 2.0f * PI / slices;
+        const float phiStep   = Helper::PI / stacks;
+        const float thetaStep = 2.0f * Helper::PI / slices;
 
 		for (int i = 1; i <= stacks - 1; i++)
 		{
@@ -135,7 +136,7 @@ namespace Spartan::Utility::Geometry
 
 				Vector3 t = Vector3(-radius * sin(phi) * sin(theta), 0, radius * sin(phi) * cos(theta)).Normalized();
 				Vector3 n = p.Normalized();
-				Vector2 uv = Vector2(theta / (PI * 2), phi / PI);
+				Vector2 uv = Vector2(theta / (Helper::PI * 2), phi / Helper::PI);
 				vertices->emplace_back(p, uv, n, t);
 			}
 		}
@@ -187,7 +188,7 @@ namespace Spartan::Utility::Geometry
 		{
             const float y = -0.5f * height + i * stackHeight;
             const float r = radiusBottom + i * radiusStep;
-            const float dTheta = 2.0f * PI / slices;
+            const float dTheta = 2.0f * Helper::PI / slices;
 			for (int j = 0; j <= slices; j++)
 			{
                 const float c = cos(j * dTheta);
@@ -224,7 +225,7 @@ namespace Spartan::Utility::Geometry
 		// Build top cap
 		int baseIndex = (int)vertices->size();
 		float y = 0.5f * height;
-        const float dTheta = 2.0f * PI / slices;
+        const float dTheta = 2.0f * Helper::PI / slices;
 
 		Vector3 normal;
 		Vector3 tangent;

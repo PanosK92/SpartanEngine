@@ -73,12 +73,12 @@ namespace Spartan
         void GeometryClear();
         void GeometrySet(Geometry_Type type);
 		void GeometryGet(std::vector<uint32_t>* indices, std::vector<RHI_Vertex_PosTexNorTan>* vertices) const;
-		auto GeometryIndexOffset()	                const { return m_geometryIndexOffset; }
-		auto GeometryIndexCount()	                const { return m_geometryIndexCount; }		
-		auto GeometryVertexOffset()                 const { return m_geometryVertexOffset; }
-		auto GeometryVertexCount()	                const { return m_geometryVertexCount; }
-		auto GeometryType()			                const { return m_geometry_type; }
-		const auto& GeometryName()	                const { return m_geometryName; }
+		uint32_t GeometryIndexOffset()	            const { return m_geometryIndexOffset; }
+		uint32_t GeometryIndexCount()	            const { return m_geometryIndexCount; }		
+		uint32_t GeometryVertexOffset()             const { return m_geometryVertexOffset; }
+		uint32_t GeometryVertexCount()	            const { return m_geometryVertexCount; }
+        Geometry_Type GeometryType()			    const { return m_geometry_type; }
+		const std::string& GeometryName()	        const { return m_geometryName; }
 		const Model* GeometryModel()                const { return m_model.get(); }
         const Math::BoundingBox& GetBoundingBox()   const { return m_bounding_box; }
         const Math::BoundingBox& GetAabb();
@@ -115,7 +115,6 @@ namespace Spartan
 		Math::BoundingBox m_bounding_box;
 		Math::BoundingBox m_aabb;
         Math::Matrix m_last_transform   = Math::Matrix::Identity;
-        bool m_is_dirty                 = true;
         bool m_castShadows              = true;
         bool m_receiveShadows           = true;
 		bool m_material_default;

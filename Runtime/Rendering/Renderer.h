@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Viewport.h"
 #include "../Math/Rectangle.h"
 #include "Renderer_ConstantBuffers.h"
+#include "../RHI/RHI_Vertex.h"
 //===================================
 
 namespace Spartan

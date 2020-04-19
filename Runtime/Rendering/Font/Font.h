@@ -98,7 +98,7 @@ namespace Spartan
 
 		uint32_t m_font_size	        = 14;
         uint32_t m_outline_size         = 2;
-        bool m_force_autohint           = true;
+        bool m_force_autohint           = false;
 		Font_Hinting_Type m_hinting     = Font_Hinting_Normal;
         Font_Outline_Type m_outline     = Font_Outline_Positive;
 		Math::Vector4 m_color           = Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f);

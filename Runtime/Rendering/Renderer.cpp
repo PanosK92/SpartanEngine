@@ -398,7 +398,7 @@ namespace Spartan
         // Re-allocate buffer with double size (if needed)
         if (entity_count >= m_buffer_object_gpu->GetElementCount())
         {
-            const uint32_t new_size = Math::NextPowerOfTwo(entity_count);
+            const uint32_t new_size = Math::Helper::NextPowerOfTwo(entity_count);
             if (!m_buffer_object_gpu->Create<BufferObject>(new_size))
             {
                 LOG_ERROR("Failed to re-allocate buffer with %d offsets", new_size);
@@ -574,11 +574,11 @@ namespace Spartan
     {
         if (option == Option_Value_Anisotropy)
         {
-            value = Clamp(value, 0.0f, 16.0f);
+            value = Helper::Clamp(value, 0.0f, 16.0f);
         }
         else if (option == Option_Value_ShadowResolution)
         {
-            value = Clamp(value, static_cast<float>(m_resolution_shadow_min), static_cast<float>(m_rhi_device->GetContextRhi()->max_texture_dimension_2d));
+            value = Helper::Clamp(value, static_cast<float>(m_resolution_shadow_min), static_cast<float>(m_rhi_device->GetContextRhi()->max_texture_dimension_2d));
         }
 
         if (m_option_values[option] == value)
