@@ -74,7 +74,7 @@ namespace Spartan
                 }
 
                 // Choose the version which is supported by both the sdk and the driver
-                api_version = Min(sdk_version, driver_version);
+                api_version = Helper::Min(sdk_version, driver_version);
 
                 // In case the SDK is not supported by the driver, prompt the user to update
                 if (sdk_version > driver_version)
