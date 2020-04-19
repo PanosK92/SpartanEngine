@@ -301,12 +301,12 @@ namespace Spartan
     static const uint8_t state_dont_clear_stencil       = 255;
     static const uint8_t state_max_render_target_count  = 8;
 
-    enum RHI_Shader_Type : uint32_t
+    enum RHI_Shader_Type : uint8_t
 	{
-        RHI_Shader_Unknown  = 1 << 0,
-		RHI_Shader_Vertex   = 1 << 1,
-		RHI_Shader_Pixel    = 1 << 2,
-        RHI_Shader_Compute  = 1 << 3,
+        RHI_Shader_Unknown  = 0,
+		RHI_Shader_Vertex   = 1 << 0,
+		RHI_Shader_Pixel    = 1 << 1,
+        RHI_Shader_Compute  = 1 << 2,
 	};
 
 	enum Shader_Compilation_State
@@ -315,5 +315,18 @@ namespace Spartan
 		Shader_Compilation_Compiling,
 		Shader_Compilation_Succeeded,
 		Shader_Compilation_Failed
+	};
+
+    enum Texture_Type : uint8_t
+	{
+		Texture_Unknown   = 0,
+		Texture_Albedo    = 1 << 0,
+		Texture_Roughness = 1 << 1,
+		Texture_Metallic  = 1 << 2,
+		Texture_Normal    = 1 << 3,
+		Texture_Height    = 1 << 4,
+		Texture_Occlusion = 1 << 5,
+		Texture_Emission  = 1 << 6,
+		Texture_Mask      = 1 << 7
 	};
 }

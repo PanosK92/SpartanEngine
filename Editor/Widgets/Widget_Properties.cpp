@@ -760,7 +760,7 @@ void Widget_Properties::ShowMaterial(Material* material) const
 		{
             // Texture slots
             {
-                const auto texture_slot = [&offset_from_pos_x, &material](const char* texture_name, const TextureType texture_type, bool enable_drag_float)
+                const auto texture_slot = [&offset_from_pos_x, &material](const char* texture_name, const Texture_Type texture_type, bool enable_drag_float)
                 {
                     ImGuiEx::ImageSlot(
                         texture_name,
@@ -778,14 +778,14 @@ void Widget_Properties::ShowMaterial(Material* material) const
                     }
                 };
 
-                texture_slot("Albedo",      TextureType_Albedo,     false); ImGui::SameLine(); m_colorPicker_material->Update();
-                texture_slot("Roughness",   TextureType_Roughness,  true);
-                texture_slot("Metallic",    TextureType_Metallic,   true);
-                texture_slot("Normal",      TextureType_Normal,     true);
-                texture_slot("Height",      TextureType_Height,     true);
-                texture_slot("Occlusion",   TextureType_Occlusion,  false);
-                texture_slot("Emission",    TextureType_Emission,   false);
-                texture_slot("Mask",        TextureType_Mask,       false);
+                texture_slot("Albedo",      Texture_Albedo,     false); ImGui::SameLine(); m_colorPicker_material->Update();
+                texture_slot("Roughness",   Texture_Roughness,  true);
+                texture_slot("Metallic",    Texture_Metallic,   true);
+                texture_slot("Normal",      Texture_Normal,     true);
+                texture_slot("Height",      Texture_Height,     true);
+                texture_slot("Occlusion",   Texture_Occlusion,  false);
+                texture_slot("Emission",    Texture_Emission,   false);
+                texture_slot("Mask",        Texture_Mask,       false);
             }
 
             // UV

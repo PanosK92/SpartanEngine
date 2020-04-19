@@ -28,7 +28,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/IResource.h"
 #include "../Math/Vector2.h"
 #include "../Math/Vector4.h"
-#include "../Math/Vector3.h"
 #include "../Core/Spartan_Object.h"
 //=================================
 
@@ -36,48 +35,34 @@ namespace Spartan
 {	
 	class ShaderVariation;
 
-	enum TextureType
-	{
-		TextureType_Unknown,
-		TextureType_Albedo,
-		TextureType_Roughness,
-		TextureType_Metallic,
-		TextureType_Normal,
-		TextureType_Height,
-		TextureType_Occlusion,
-		TextureType_Emission,
-		TextureType_Mask
-	};
-
 	class SPARTAN_CLASS Material : public IResource
 	{
 	public:
 		Material(Context* context);
-		~Material();
+        ~Material() = default;
 
 		//= IResource ===========================================
 		bool LoadFromFile(const std::string& file_path) override;
 		bool SaveToFile(const std::string& file_path) override;
 		//=======================================================
 
-		//= TEXTURES  ==================================================================================================
-		void SetTextureSlot(const TextureType type, const std::shared_ptr<RHI_Texture>& texture);
-		void SetTextureSlot(const TextureType type, const std::shared_ptr<RHI_Texture2D>& texture);
-		void SetTextureSlot(const TextureType type, const std::shared_ptr<RHI_TextureCube>& texture);
+		//= TEXTURES  ======================================================================================================
+		void SetTextureSlot(const Texture_Type type, const std::shared_ptr<RHI_Texture>& texture);
+        void SetTextureSlot(const Texture_Type type, const std::shared_ptr<RHI_Texture2D>& texture);
+        void SetTextureSlot(const Texture_Type type, const std::shared_ptr<RHI_TextureCube>& texture);
 		bool HasTexture(const std::string& path) const;
-        bool HasTexture(const TextureType type) const;
-		std::string GetTexturePathByType(TextureType type);
+        bool HasTexture(const Texture_Type type) const { return m_texture_flags & type; }
+		std::string GetTexturePathByType(Texture_Type type);
 		std::vector<std::string> GetTexturePaths();
-		RHI_Texture* GetTexture_PtrRaw(const TextureType type)                      { return HasTexture(type) ? m_textures[type].get() : m_texture_empty.get(); }
-        std::shared_ptr<RHI_Texture>& GetTexture_PtrShared(const TextureType type)  { return HasTexture(type) ? m_textures[type] : m_texture_empty; }
-		//==============================================================================================================
+		RHI_Texture* GetTexture_Ptr(const Texture_Type type) { return HasTexture(type) ? m_textures[type].get() : nullptr; }
+        std::shared_ptr<RHI_Texture>& GetTexture_PtrShared(const Texture_Type type);
+		//==================================================================================================================
 
-		//= SHADER ====================================================================
-		void AcquireShader();
-		std::shared_ptr<ShaderVariation> GetOrCreateShader(unsigned long shader_flags);
-		const auto& GetShader() const { return m_shader; }
-		auto HasShader()		const { return GetShader() != nullptr; }
-		//=============================================================================
+		//= SHADER =================================================================================
+		std::shared_ptr<ShaderVariation> GetOrCreateShader(const uint8_t shader_flags);
+		const std::shared_ptr<ShaderVariation>& GetShader() const { return m_shader; }
+		bool HasShader()		                            const { return GetShader() != nullptr; }
+		//==========================================================================================
 
 		//= PROPERTIES ==========================================================================================
 		const auto& GetColorAlbedo() const									{ return m_color_albedo; }
@@ -92,10 +77,10 @@ namespace Spartan
 		auto IsEditable() const { return m_is_editable; }
 		void SetIsEditable(const bool is_editable)							{ m_is_editable = is_editable; }
 
-		auto& GetMultiplier(const TextureType type)							{ return m_multipliers[type];}
-		void SetMultiplier(const TextureType type, const float multiplier)	{ m_multipliers[type] = multiplier; }
+		auto& GetMultiplier(const Texture_Type type)                        { return m_multipliers[type];}
+		void SetMultiplier(const Texture_Type type, const float multiplier)	{ m_multipliers[type] = multiplier; }
 
-		static TextureType TextureTypeFromString(const std::string& type);
+		static Texture_Type TextureTypeFromString(const std::string& type);
 		//=======================================================================================================
 
 	private:
@@ -103,10 +88,10 @@ namespace Spartan
 		Math::Vector2 m_uv_tiling		= Math::Vector2(1.0f, 1.0f);
 		Math::Vector2 m_uv_offset		= Math::Vector2(0.0f, 0.0f);
 		bool m_is_editable				= true;
-		std::unordered_map<TextureType, std::shared_ptr<RHI_Texture>> m_textures;
-		std::unordered_map<TextureType, float> m_multipliers;
+        uint8_t m_texture_flags         = 0;
+		std::unordered_map<Texture_Type, std::shared_ptr<RHI_Texture>> m_textures;
+		std::unordered_map<Texture_Type, float> m_multipliers;
 		std::shared_ptr<ShaderVariation> m_shader;	
-		std::shared_ptr<RHI_Texture> m_texture_empty;
 		std::shared_ptr<RHI_Device> m_rhi_device;
 	};
 }
