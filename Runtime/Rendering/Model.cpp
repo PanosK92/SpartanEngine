@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_VertexBuffer.h"
 #include "../RHI/RHI_IndexBuffer.h"
 #include "../RHI/RHI_Texture2D.h"
+#include "../RHI/RHI_Vertex.h"
 //===========================================
 
 //= NAMESPACES ================
@@ -170,7 +171,7 @@ namespace Spartan
 
 		GeometryCreateBuffers();
 		m_normalized_scale	= GeometryComputeNormalizedScale();
-		m_aabb				= BoundingBox(m_mesh->Vertices_Get());
+		m_aabb				= BoundingBox(m_mesh->Vertices_Get().data(), static_cast<uint32_t>(m_mesh->Vertices_Get().size()));
 	}
 
 	void Model::AddMaterial(shared_ptr<Material>& material, const shared_ptr<Entity>& entity) const

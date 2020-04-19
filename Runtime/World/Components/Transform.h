@@ -48,26 +48,26 @@ namespace Spartan
 
 		void UpdateTransform();
 
-		//= POSITION ================================================================
-		auto GetPosition() const { return m_matrix.GetTranslation(); }
-		const auto& GetPositionLocal() const	{ return m_positionLocal; }
+		//= POSITION ==============================================================
+		auto GetPosition()              const { return m_matrix.GetTranslation(); }
+		const auto& GetPositionLocal()  const { return m_positionLocal; }
 		void SetPosition(const Math::Vector3& position);
 		void SetPositionLocal(const Math::Vector3& position);
-		//===========================================================================
+		//=========================================================================
 
 		//= ROTATION ===========================================================
-		Math::Quaternion GetRotation()  const { return m_matrix.GetRotation(); }
-		const auto& GetRotationLocal()  const { return m_rotationLocal; }
+		Math::Quaternion GetRotation() const { return m_matrix.GetRotation(); }
+		const auto& GetRotationLocal() const { return m_rotationLocal; }
 		void SetRotation(const Math::Quaternion& rotation);
 		void SetRotationLocal(const Math::Quaternion& rotation);
 		//======================================================================
 
-		//= SCALE =========================================================
-		auto GetScale() const { return m_matrix.GetScale(); }
-		const auto& GetScaleLocal() const	{ return m_scaleLocal; }
+		//= SCALE =======================================================
+		auto GetScale()             const { return m_matrix.GetScale(); }
+		const auto& GetScaleLocal() const { return m_scaleLocal; }
 		void SetScale(const Math::Vector3& scale);
 		void SetScaleLocal(const Math::Vector3& scale);
-		//=================================================================
+		//===============================================================
 
 		//= TRANSLATION/ROTATION ==================
 		void Translate(const Math::Vector3& delta);
@@ -75,12 +75,12 @@ namespace Spartan
 		//=========================================
 
 		//= DIRECTIONS ===================
-		Math::Vector3 GetUp() const;
-        Math::Vector3 GetDown() const;
-		Math::Vector3 GetForward() const;
+		Math::Vector3 GetUp()       const;
+        Math::Vector3 GetDown()     const;
+		Math::Vector3 GetForward()  const;
         Math::Vector3 GetBackward() const;
-		Math::Vector3 GetRight() const;
-        Math::Vector3 GetLeft() const;
+		Math::Vector3 GetRight()    const;
+        Math::Vector3 GetLeft()     const;
 		//================================
 
 		//= HIERARCHY ==========================================================================
@@ -98,15 +98,15 @@ namespace Spartan
 		const std::vector<Transform*>& GetChildren() const	{ return m_children; }
 	
 		void AcquireChildren();
-		bool IsDescendantOf(Transform* transform) const;
+		bool IsDescendantOf(const Transform* transform) const;
 		void GetDescendants(std::vector<Transform*>* descendants);
 		//======================================================================================
 
-		void LookAt(const Math::Vector3& v) { m_lookAt = v; }
-		const auto& GetMatrix()         const { return m_matrix; }     
-		const auto& GetLocalMatrix()    const { return m_matrixLocal; }
-        const auto& GetWvpLastFrame()   const { return m_wvp_previous; }
-        void SetWvpLastFrame(const Math::Matrix& matrix) { m_wvp_previous = matrix;}
+		void LookAt(const Math::Vector3& v)                       { m_lookAt = v; }
+		const Math::Matrix& GetMatrix()                     const { return m_matrix; }     
+		const Math::Matrix& GetLocalMatrix()                const { return m_matrixLocal; }
+        const Math::Matrix& GetWvpLastFrame()               const { return m_wvp_previous; }
+        void SetWvpLastFrame(const Math::Matrix& matrix)          { m_wvp_previous = matrix;}
 
 	private:
 		Math::Matrix GetParentTransformMatrix() const;

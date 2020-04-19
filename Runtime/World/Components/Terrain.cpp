@@ -174,10 +174,10 @@ namespace Spartan
                 const float height = (static_cast<float>(height_map[k]) / 255.0f);
 
                 // Construct position
-                const uint32_t index        = y * m_width + x;
+                const uint32_t index  = y * m_width + x;
                 positions[index].x    = static_cast<float>(x) - m_width * 0.5f;     // center on the X axis
                 positions[index].z    = static_cast<float>(y) - m_height * 0.5f;    // center on the Z axis
-                positions[index].y    = Lerp(m_min_y, m_max_y, height);
+                positions[index].y    = Helper::Lerp(m_min_y, m_max_y, height);
 
                 k += 4;
 

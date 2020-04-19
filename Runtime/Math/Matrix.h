@@ -72,7 +72,7 @@ namespace Spartan::Math
 		//= TRANSLATION ===========================================
         [[nodiscard]] Vector3 GetTranslation() const { return Vector3(m30, m31, m32); }
 
-		static Matrix CreateTranslation(const Vector3& translation)
+		static inline Matrix CreateTranslation(const Vector3& translation)
 		{
 			return Matrix(
 				1, 0, 0, 0,
@@ -84,7 +84,7 @@ namespace Spartan::Math
 		//=========================================================
 
 		//= ROTATION =====================================================================================
-		static Matrix CreateRotation(const Quaternion& rotation)
+		static inline Matrix CreateRotation(const Quaternion& rotation)
 		{
             const float num9	= rotation.x * rotation.x;
             const float num8	= rotation.y * rotation.y;
@@ -133,7 +133,7 @@ namespace Spartan::Math
 			return RotationMatrixToQuaternion(normalized);
 		}
 
-		static Quaternion RotationMatrixToQuaternion(const Matrix& mRot)
+		static inline Quaternion RotationMatrixToQuaternion(const Matrix& mRot)
 		{
 			Quaternion quaternion;
             float sqrt;
@@ -142,7 +142,7 @@ namespace Spartan::Math
 
 		    if (scale > 0.0f)
 		    {
-                sqrt = Sqrt(scale + 1.0f);
+                sqrt = Helper::Sqrt(scale + 1.0f);
 		        quaternion.w = sqrt * 0.5f;
                 sqrt = 0.5f / sqrt;
 
@@ -154,7 +154,7 @@ namespace Spartan::Math
 		    }
 		    if ((mRot.m00 >= mRot.m11) && (mRot.m00 >= mRot.m22))
 		    {
-                sqrt = Sqrt(1.0f + mRot.m00 - mRot.m11 - mRot.m22);
+                sqrt = Helper::Sqrt(1.0f + mRot.m00 - mRot.m11 - mRot.m22);
                 half = 0.5f / sqrt;
 
 		        quaternion.x = 0.5f * sqrt;
@@ -166,7 +166,7 @@ namespace Spartan::Math
 		    }
 		    if (mRot.m11 > mRot.m22)
 		    {
-                sqrt = Sqrt(1.0f + mRot.m11 - mRot.m00 - mRot.m22);
+                sqrt = Helper::Sqrt(1.0f + mRot.m11 - mRot.m00 - mRot.m22);
                 half = 0.5f / sqrt;
 
 		        quaternion.x = (mRot.m10 + mRot.m01) * half;
@@ -176,7 +176,7 @@ namespace Spartan::Math
 
 		        return quaternion;
 		    }
-            sqrt = Sqrt(1.0f + mRot.m22 - mRot.m00 - mRot.m11);
+            sqrt = Helper::Sqrt(1.0f + mRot.m22 - mRot.m00 - mRot.m11);
 		    half = 0.5f / sqrt;
 
 		    quaternion.x = (mRot.m20 + mRot.m02) * half;
@@ -191,20 +191,20 @@ namespace Spartan::Math
 		//= SCALE ========================================================================================
         [[nodiscard]] Vector3 GetScale() const
 		{
-            const int xs = (Sign(m00 * m01 * m02 * m03) < 0) ? -1 : 1;
-            const int ys = (Sign(m10 * m11 * m12 * m13) < 0) ? -1 : 1;
-            const int zs = (Sign(m20 * m21 * m22 * m23) < 0) ? -1 : 1;
+            const int xs = (Helper::Sign(m00 * m01 * m02 * m03) < 0) ? -1 : 1;
+            const int ys = (Helper::Sign(m10 * m11 * m12 * m13) < 0) ? -1 : 1;
+            const int zs = (Helper::Sign(m20 * m21 * m22 * m23) < 0) ? -1 : 1;
 
 			return Vector3(
-				static_cast<float>(xs) * Sqrt(m00 * m00 + m01 * m01 + m02 * m02),
-				static_cast<float>(ys) * Sqrt(m10 * m10 + m11 * m11 + m12 * m12),
-				static_cast<float>(zs) * Sqrt(m20 * m20 + m21 * m21 + m22 * m22)
+				static_cast<float>(xs) * Helper::Sqrt(m00 * m00 + m01 * m01 + m02 * m02),
+				static_cast<float>(ys) * Helper::Sqrt(m10 * m10 + m11 * m11 + m12 * m12),
+				static_cast<float>(zs) * Helper::Sqrt(m20 * m20 + m21 * m21 + m22 * m22)
 			);
 		}
 
-		static Matrix CreateScale(float scale) { return CreateScale(scale, scale, scale); }
-		static Matrix CreateScale(const Vector3& scale) { return CreateScale(scale.x, scale.y, scale.z); }
-		static Matrix CreateScale(float scaleX, float scaleY, float ScaleZ)
+		static inline Matrix CreateScale(float scale) { return CreateScale(scale, scale, scale); }
+		static inline Matrix CreateScale(const Vector3& scale) { return CreateScale(scale.x, scale.y, scale.z); }
+		static inline Matrix CreateScale(float scaleX, float scaleY, float ScaleZ)
 		{
 			return Matrix(
 				scaleX, 0, 0, 0,
@@ -216,7 +216,7 @@ namespace Spartan::Math
 		//================================================================================================		
 
 		//= MISC ===========================================================================================================================
-		static Matrix CreateLookAtLH(const Vector3& cameraPosition, const Vector3& target, const Vector3& up)
+		static inline Matrix CreateLookAtLH(const Vector3& cameraPosition, const Vector3& target, const Vector3& up)
 		{
             const Vector3 zAxis = Vector3::Normalize(target - cameraPosition);
             const Vector3 xAxis = Vector3::Normalize(Vector3::Cross(up, zAxis));
@@ -230,7 +230,7 @@ namespace Spartan::Math
 			);
 		}
 
-		static Matrix CreateOrthographicLH(float width, float height, float zNearPlane, float zFarPlane)
+		static inline Matrix CreateOrthographicLH(float width, float height, float zNearPlane, float zFarPlane)
 		{
 			return Matrix(
 				2 / width, 0, 0, 0,
@@ -240,7 +240,7 @@ namespace Spartan::Math
 			);
 		}
 
-		static Matrix CreateOrthoOffCenterLH(float left, float right, float bottom, float top, float zNearPlane, float zFarPlane)
+		static inline Matrix CreateOrthoOffCenterLH(float left, float right, float bottom, float top, float zNearPlane, float zFarPlane)
 		{
 			return Matrix(
 				2 / (right - left), 0, 0, 0,
@@ -251,9 +251,9 @@ namespace Spartan::Math
 		}
 
 		// fieldOfView -> Field of view in the y direction, in radians.
-		static Matrix CreatePerspectiveFieldOfViewLH(float fieldOfView, float aspectRatio, float nearPlaneDistance, float farPlaneDistance)
+		static inline Matrix CreatePerspectiveFieldOfViewLH(float fieldOfView, float aspectRatio, float nearPlaneDistance, float farPlaneDistance)
 		{
-            const float yScale = CotF(fieldOfView / 2);
+            const float yScale = Helper::CotF(fieldOfView / 2);
             const float xScale = yScale / aspectRatio;
 
             const float zn = nearPlaneDistance;
@@ -271,7 +271,7 @@ namespace Spartan::Math
 		//= TRANSPOSE ====================================================================================
         [[nodiscard]] Matrix Transposed() const { return Transpose(*this); }
 		void Transpose() { *this = Transpose(*this); }
-		static Matrix Transpose(const Matrix& matrix)
+		static inline Matrix Transpose(const Matrix& matrix)
 		{
 			return Matrix(
 				matrix.m00, matrix.m10, matrix.m20, matrix.m30,
@@ -284,7 +284,7 @@ namespace Spartan::Math
 
 		//= INVERT =======================================================================================
         [[nodiscard]] Matrix Inverted() const { return Invert(*this); }
-		static Matrix Invert(const Matrix& matrix)
+		static inline Matrix Invert(const Matrix& matrix)
 		{
 			float v0 = matrix.m20 * matrix.m31 - matrix.m21 * matrix.m30;
 			float v1 = matrix.m20 * matrix.m32 - matrix.m22 * matrix.m30;
@@ -406,32 +406,47 @@ namespace Spartan::Math
         }
 		//=================================================================================================================================
 
-		//= COMPARISON =================================================
+		//= COMPARISON =====================================================
 		bool operator==(const Matrix& rhs) const
 		{
-			const float* leftData	= Data();
-			const float* rightData	= rhs.Data();
+			const float* data_left	= Data();
+			const float* data_right	= rhs.Data();
 
 			for (unsigned i = 0; i < 16; ++i)
 			{
-				if (!Equals(leftData[i], rightData[i]))
+				if (data_left[i] != data_right[i])
 					return false;
 			}
 
 			return true;
 		}
 
-		bool operator!=(const Matrix& b) const { return !(*this == b); }
-		//==============================================================
+		bool operator!=(const Matrix& rhs) const { return !(*this == rhs); }
+
+        // Test for equality with another matrix with epsilon.
+        bool Equals(const Matrix& rhs)
+        {
+            const float* data_left  = Data();
+            const float* data_right = rhs.Data();
+
+            for (unsigned i = 0; i < 16; ++i)
+            {
+                if (!Helper::Equals(data_left[i], data_right[i]))
+                    return false;
+            }
+
+            return true;
+        }
+		//==================================================================
 
         [[nodiscard]] const float* Data() const { return &m00; }
         [[nodiscard]] std::string ToString() const;
 
 		// Column-major memory representation 
-		float m00{}, m10{}, m20{}, m30{};
-		float m01{}, m11{}, m21{}, m31{};
-		float m02{}, m12{}, m22{}, m32{};
-		float m03{}, m13{}, m23{}, m33{};
+        float m00 = 0.0f, m10 = 0.0f, m20 = 0.0f, m30 = 0.0f;
+        float m01 = 0.0f, m11 = 0.0f, m21 = 0.0f, m31 = 0.0f;
+        float m02 = 0.0f, m12 = 0.0f, m22 = 0.0f, m32 = 0.0f;
+        float m03 = 0.0f, m13 = 0.0f, m23 = 0.0f, m33 = 0.0f;
 		// Note: HLSL expects column-major by default
 
 		static const Matrix Identity;

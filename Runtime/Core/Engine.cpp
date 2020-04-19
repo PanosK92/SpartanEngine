@@ -55,10 +55,10 @@ namespace Spartan
 		m_context = make_shared<Context>();
         m_context->m_engine = this;
 
-		// Register subsystems     
+		// Register subsystems
+        m_context->RegisterSubsystem<Threading>(Tick_Variable);
         m_context->RegisterSubsystem<Timer>(Tick_Variable);         // must be first so it ticks first
 		m_context->RegisterSubsystem<ResourceCache>(Tick_Variable);		
-		m_context->RegisterSubsystem<Threading>(Tick_Variable);			
 		m_context->RegisterSubsystem<Audio>(Tick_Variable);
         m_context->RegisterSubsystem<Physics>(Tick_Variable);       // integrates internally
         m_context->RegisterSubsystem<Input>(Tick_Smoothed);
@@ -76,13 +76,6 @@ namespace Spartan
 
 	Engine::~Engine()
 	{
-        // Flush any tasks
-        if (Threading* threading = m_context->GetSubsystem<Threading>())
-        {
-            bool remove_queued = true;
-            m_context->GetSubsystem<Threading>()->Flush(remove_queued);
-        }
-
 		EventSystem::Get().Clear(); // this must become a subsystem
 	}
 

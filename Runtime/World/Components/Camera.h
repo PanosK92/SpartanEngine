@@ -113,7 +113,7 @@ namespace Spartan
 	private:
         void FpsControl(float delta_time);
 
-        float m_fov_horizontal_rad          = Math::DegreesToRadians(90.0f);
+        float m_fov_horizontal_rad          = Math::Helper::DegreesToRadians(90.0f);
         float m_near_plane                  = 0.3f;
         float m_far_plane                   = 1000.0f;	
         ProjectionType m_projection_type    = Projection_Perspective;

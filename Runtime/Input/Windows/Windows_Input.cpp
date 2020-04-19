@@ -296,8 +296,8 @@ namespace Spartan
 		XINPUT_VIBRATION vibration;
 		ZeroMemory(&vibration, sizeof(XINPUT_VIBRATION));
 		
-		vibration.wLeftMotorSpeed	= static_cast<int>(Clamp(left_motor_speed, 0.0f, 1.0f) * 65535);	// Convert [0, 1] to [0, 65535]
-		vibration.wRightMotorSpeed	= static_cast<int>(Clamp(right_motor_speed, 0.0f, 1.0f) * 65535);	// Convert [0, 1] to [0, 65535]
+		vibration.wLeftMotorSpeed	= static_cast<int>(Helper::Clamp(left_motor_speed, 0.0f, 1.0f) * 65535);	// Convert [0, 1] to [0, 65535]
+		vibration.wRightMotorSpeed	= static_cast<int>(Helper::Clamp(right_motor_speed, 0.0f, 1.0f) * 65535);	// Convert [0, 1] to [0, 65535]
 
 		return XInputSetState(g_gamepad_num, &vibration) == ERROR_SUCCESS;
 	}

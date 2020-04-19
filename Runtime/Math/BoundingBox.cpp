@@ -19,11 +19,11 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===========
+//= INCLUDES =================
 #include "BoundingBox.h"
 #include "Matrix.h"
-#include <vector>
-//======================
+#include "../RHI/RHI_Vertex.h"
+//============================
 
 namespace Spartan::Math
 {
@@ -41,37 +41,37 @@ namespace Spartan::Math
 		this->m_max = max;
 	}
 
-    BoundingBox::BoundingBox(const std::vector<Vector3>& points)
+    BoundingBox::BoundingBox(const Vector3* points, const uint32_t point_count)
     {
         m_min = Vector3::Infinity;
         m_max = Vector3::InfinityNeg;
 
-        for (const auto& point : points)
+        for (uint32_t i = 0; i < point_count; i++)
         {
-            m_max.x = Max(m_max.x, point.x);
-            m_max.y = Max(m_max.y, point.y);
-            m_max.z = Max(m_max.z, point.z);
+            m_max.x = Helper::Max(m_max.x, points[i].x);
+            m_max.y = Helper::Max(m_max.y, points[i].y);
+            m_max.z = Helper::Max(m_max.z, points[i].z);
 
-            m_min.x = Min(m_min.x, point.x);
-            m_min.y = Min(m_min.y, point.y);
-            m_min.z = Min(m_min.z, point.z);
+            m_min.x = Helper::Min(m_min.x, points[i].x);
+            m_min.y = Helper::Min(m_min.y, points[i].y);
+            m_min.z = Helper::Min(m_min.z, points[i].z);
         }
     }
 
-	BoundingBox::BoundingBox(const std::vector<RHI_Vertex_PosTexNorTan>& vertices)
+	BoundingBox::BoundingBox(const RHI_Vertex_PosTexNorTan* vertices, const uint32_t vertex_count)
 	{
 		m_min = Vector3::Infinity;
 		m_max = Vector3::InfinityNeg;
 
-		for (const auto& vertex : vertices)
+		for (uint32_t i = 0; i < vertex_count; i++)
 		{
-			m_max.x = Max(m_max.x, vertex.pos[0]);
-			m_max.y = Max(m_max.y, vertex.pos[1]);
-			m_max.z = Max(m_max.z, vertex.pos[2]);
+			m_max.x = Helper::Max(m_max.x, vertices[i].pos[0]);
+			m_max.y = Helper::Max(m_max.y, vertices[i].pos[1]);
+			m_max.z = Helper::Max(m_max.z, vertices[i].pos[2]);
 
-			m_min.x = Min(m_min.x, vertex.pos[0]);
-			m_min.y = Min(m_min.y, vertex.pos[1]);
-			m_min.z = Min(m_min.z, vertex.pos[2]);
+			m_min.x = Helper::Min(m_min.x, vertices[i].pos[0]);
+			m_min.y = Helper::Min(m_min.y, vertices[i].pos[1]);
+			m_min.z = Helper::Min(m_min.z, vertices[i].pos[2]);
 		}
 	}
 
@@ -116,9 +116,9 @@ namespace Spartan::Math
         const Vector3 extent_old = GetExtents();
         const Vector3 extend_new = Vector3
 		(
-			Abs(transform.m00) * extent_old.x + Abs(transform.m10) * extent_old.y + Abs(transform.m20) * extent_old.z,
-			Abs(transform.m01) * extent_old.x + Abs(transform.m11) * extent_old.y + Abs(transform.m21) * extent_old.z,
-			Abs(transform.m02) * extent_old.x + Abs(transform.m12) * extent_old.y + Abs(transform.m22) * extent_old.z
+			Helper::Abs(transform.m00) * extent_old.x + Helper::Abs(transform.m10) * extent_old.y + Helper::Abs(transform.m20) * extent_old.z,
+			Helper::Abs(transform.m01) * extent_old.x + Helper::Abs(transform.m11) * extent_old.y + Helper::Abs(transform.m21) * extent_old.z,
+			Helper::Abs(transform.m02) * extent_old.x + Helper::Abs(transform.m12) * extent_old.y + Helper::Abs(transform.m22) * extent_old.z
 		);
 
 		return BoundingBox(center_new - extend_new, center_new + extend_new);
@@ -126,11 +126,11 @@ namespace Spartan::Math
 
     void BoundingBox::Merge(const BoundingBox& box)
     {
-        m_min.x = Min(m_min.x, box.m_min.x);
-        m_min.y = Min(m_min.y, box.m_min.y);
-        m_min.z = Min(m_min.z, box.m_min.z);
-        m_max.x = Max(m_max.x, box.m_max.x);
-        m_max.y = Max(m_max.x, box.m_max.x);
-        m_max.z = Max(m_max.x, box.m_max.x);
+        m_min.x = Helper::Min(m_min.x, box.m_min.x);
+        m_min.y = Helper::Min(m_min.y, box.m_min.y);
+        m_min.z = Helper::Min(m_min.z, box.m_min.z);
+        m_max.x = Helper::Max(m_max.x, box.m_max.x);
+        m_max.y = Helper::Max(m_max.x, box.m_max.x);
+        m_max.z = Helper::Max(m_max.x, box.m_max.x);
     }
 }

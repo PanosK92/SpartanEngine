@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ======================
 #include <memory>
 #include <string>
-#include <map>
+#include <unordered_map>
 #include <vector>
 #include "RHI_Vertex.h"
 #include "../Core/Spartan_Object.h"
@@ -86,7 +86,7 @@ namespace Spartan
 
 		std::string m_name;
 		std::string m_file_path;
-		std::map<std::string, std::string> m_defines;
+		std::unordered_map<std::string, std::string> m_defines;
 		std::vector<RHI_Descriptor> m_descriptors;
 		std::shared_ptr<RHI_InputLayout> m_input_layout;
 		Shader_Compilation_State m_compilation_state    = Shader_Compilation_Unknown;

@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Rendering/Material.h"
 #include "../../World/World.h"
 #include "../../World/Components/Renderable.h"
+#include "../../RHI/RHI_Vertex.h"
 //============================================
 
 //= NAMESPACES ================
@@ -329,7 +330,7 @@ namespace Spartan
 		}
 
 		// Compute AABB (before doing move operation on vertices)
-		const auto aabb = BoundingBox(vertices);
+		const auto aabb = BoundingBox(vertices.data(), static_cast<uint32_t>(vertices.size()));
 
 		// Add the mesh to the model
 		uint32_t index_offset;

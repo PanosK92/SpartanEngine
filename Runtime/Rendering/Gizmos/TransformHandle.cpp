@@ -32,6 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../World/Components/Camera.h"
 #include "../../World/Components/Transform.h"
 #include "../../World/Components/Renderable.h"
+#include "../../RHI/RHI_Vertex.h"
 //============================================
 
 //=============================
@@ -123,7 +124,7 @@ namespace Spartan
 		m_model->UpdateGeometry();
 
 		// Create bounding boxes for the handles, based on the vertices used
-		m_handle_x.box		= vertices;
+		m_handle_x.box		= BoundingBox(vertices.data(), static_cast<uint32_t>(vertices.size()));
 		m_handle_y.box		= m_handle_x.box;
 		m_handle_z.box		= m_handle_x.box;
 		m_handle_xyz.box	= m_handle_x.box;
@@ -150,7 +151,7 @@ namespace Spartan
 			const auto mouse_pos_relative	= mouse_pos - editor_offset;
 			const auto ray_start			= camera->GetTransform()->GetPosition();
 			auto ray_end					= camera->Unproject(mouse_pos_relative);
-            const auto ray						= Ray(ray_start, ray_end);
+            const auto ray					= Ray(ray_start, ray_end);
 
 			// Test if ray intersects any of the handles
 			const auto hovered_x	= ray.HitDistance(m_handle_x.box_transformed)   != INFINITY;
@@ -173,7 +174,7 @@ namespace Spartan
 			// Track delta
 			m_ray_previous			= m_ray_current != Vector3::Zero ? m_ray_current : ray_end; // avoid big delta in the first run
 			m_ray_current			= ray_end;
-            const auto delta				= m_ray_current - m_ray_previous;
+            const auto delta		= m_ray_current - m_ray_previous;
             const auto delta_xyz    = delta.Length();
 
             // If the delta reached infinity, ignore the input as it will result in NaN position.
@@ -182,9 +183,9 @@ namespace Spartan
                 return true;
 
 			// Updated handles with delta
-			m_handle_x.delta	= delta_xyz * Sign(delta.x) * handle_speed;
-			m_handle_y.delta	= delta_xyz * Sign(delta.y) * handle_speed;
-			m_handle_z.delta	= delta_xyz * Sign(delta.z) * handle_speed;
+			m_handle_x.delta	= delta_xyz * Helper::Sign(delta.x) * handle_speed;
+			m_handle_y.delta	= delta_xyz * Helper::Sign(delta.y) * handle_speed;
+			m_handle_z.delta	= delta_xyz * Helper::Sign(delta.z) * handle_speed;
 			m_handle_xyz.delta	= m_handle_x.delta + m_handle_y.delta + m_handle_z.delta;
 
 			// Update input

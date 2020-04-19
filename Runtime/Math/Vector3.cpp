@@ -43,9 +43,9 @@ namespace Spartan::Math
 
 	string Vector3::ToString() const
 	{
-		char tempBuffer[200];
-		sprintf_s(tempBuffer, "X:%f, Y:%f, Z:%f", x, y, z);
-		return string(tempBuffer);
+		char buffer[200];
+		sprintf_s(buffer, "X:%f, Y:%f, Z:%f", x, y, z);
+		return string(buffer);
 	}
 
     Vector3::Vector3(const Vector4& vector)

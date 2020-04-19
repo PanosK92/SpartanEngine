@@ -204,13 +204,13 @@ namespace Spartan
 
     void Light::SetRange(float range)
 	{
-		m_range = Clamp(range, 0.0f, INFINITY);
+		m_range = Helper::Clamp(range, 0.0f, INFINITY);
         m_is_dirty = true;
 	}
 
 	void Light::SetAngle(float angle)
 	{
-		m_angle_rad = Clamp(angle, 0.0f, Math::PI_2);
+		m_angle_rad = Helper::Clamp(angle, 0.0f, Helper::PI_2);
 		m_is_dirty  = true;
 	}
 
@@ -340,7 +340,7 @@ namespace Spartan
         for (uint32_t i = 0; i < m_cascade_count; i++)
         {
             const float p           = (i + 1) / static_cast<float>(m_cascade_count);
-            const float log         = min_z * Math::Pow(ratio, p);
+            const float log         = min_z * Math::Helper::Pow(ratio, p);
             const float uniform     = min_z + range * p;
             const float d           = split_lambda * (log - uniform) + uniform;
             splits[i]               = (d - clip_near) / clip_range;
@@ -405,9 +405,9 @@ namespace Spartan
                 for (const Vector3& frustum_corner : frustum_corners)
                 {
                     const float distance = Vector3::Distance(frustum_corner, shadow_slice.center);
-                    radius = Max(radius, distance);
+                    radius = Helper::Max(radius, distance);
                 }
-                radius = Ceil(radius * 16.0f) / 16.0f;
+                radius = Helper::Ceil(radius * 16.0f) / 16.0f;
 
                 // Compute min and max
                 shadow_slice.max = radius;

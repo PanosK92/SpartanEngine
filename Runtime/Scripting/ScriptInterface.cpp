@@ -422,13 +422,13 @@ namespace Spartan
     {
 		auto r = 0;
 
-		r = m_scriptEngine->RegisterGlobalFunction("float Lerp(float, float, float)",	asFUNCTIONPR(Lerp,				(float, float, float), float),	asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterGlobalFunction("float Abs(float)",					asFUNCTIONPR(Abs,				(float), float),				asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterGlobalFunction("float Clamp(float, float, float)",	asFUNCTIONPR(Clamp,				(float, float, float), float),	asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterGlobalFunction("float Max(float, float)",			asFUNCTIONPR(Max,				(float, float), float),			asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterGlobalFunction("float Min(float, float)",			asFUNCTIONPR(Min,				(float, float), float),			asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterGlobalFunction("float DegreesToRadians(float)",		asFUNCTIONPR(DegreesToRadians,	(float), float),				asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterGlobalFunction("float RadiansToDegrees(float)",		asFUNCTIONPR(RadiansToDegrees,	(float), float),				asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterGlobalFunction("float Lerp(float, float, float)",	asFUNCTIONPR(Helper::Lerp,				(float, float, float), float),	asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterGlobalFunction("float Abs(float)",					asFUNCTIONPR(Helper::Abs,				(float), float),				asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterGlobalFunction("float Clamp(float, float, float)",	asFUNCTIONPR(Helper::Clamp,				(float, float, float), float),	asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterGlobalFunction("float Max(float, float)",			asFUNCTIONPR(Helper::Max,		        (float, float), float),			asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterGlobalFunction("float Min(float, float)",			asFUNCTIONPR(Helper::Min,		        (float, float), float),			asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterGlobalFunction("float DegreesToRadians(float)",		asFUNCTIONPR(Helper::DegreesToRadians,	(float), float),				asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterGlobalFunction("float RadiansToDegrees(float)",		asFUNCTIONPR(Helper::RadiansToDegrees,	(float), float),				asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
 	}
 
 	/*------------------------------------------------------------------------------

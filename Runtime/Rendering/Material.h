@@ -21,16 +21,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================
+//= INCLUDES ======================
 #include <memory>
-#include <map>
+#include <unordered_map>
 #include "../RHI/RHI_Definition.h"
 #include "../Resource/IResource.h"
 #include "../Math/Vector2.h"
 #include "../Math/Vector4.h"
 #include "../Math/Vector3.h"
 #include "../Core/Spartan_Object.h"
-//================================
+//=================================
 
 namespace Spartan
 {	
@@ -103,8 +103,8 @@ namespace Spartan
 		Math::Vector2 m_uv_tiling		= Math::Vector2(1.0f, 1.0f);
 		Math::Vector2 m_uv_offset		= Math::Vector2(0.0f, 0.0f);
 		bool m_is_editable				= true;
-		std::map<TextureType, std::shared_ptr<RHI_Texture>> m_textures;
-		std::map<TextureType, float> m_multipliers;
+		std::unordered_map<TextureType, std::shared_ptr<RHI_Texture>> m_textures;
+		std::unordered_map<TextureType, float> m_multipliers;
 		std::shared_ptr<ShaderVariation> m_shader;	
 		std::shared_ptr<RHI_Texture> m_texture_empty;
 		std::shared_ptr<RHI_Device> m_rhi_device;

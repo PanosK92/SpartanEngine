@@ -21,16 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =================
+//= INCLUDES ==========
 #include "MathHelper.h"
 #include "Vector3.h"
-#include "../RHI/RHI_Vertex.h"
-#include <vector>
-//============================
+//=====================
 
 namespace Spartan
 {
 	class Mesh;
+    struct RHI_Vertex_PosTexNorTan;
 
 	namespace Math
 	{
@@ -46,16 +45,15 @@ namespace Spartan
 			BoundingBox(const Vector3& min, const Vector3& max);
 
             // Construct from points
-            BoundingBox(const std::vector<Vector3>& points);
+            BoundingBox(const Vector3* vertices, const uint32_t point_count);
 
 			// Construct from vertices
-			BoundingBox(const std::vector<RHI_Vertex_PosTexNorTan>& vertices);
+			BoundingBox(const RHI_Vertex_PosTexNorTan* vertices, const uint32_t vertex_count);
 
             ~BoundingBox() = default;
 
 			// Assign from bounding box
-			BoundingBox& operator =(const BoundingBox& rhs)
-            = default;
+			BoundingBox& operator =(const BoundingBox& rhs) = default;
 
             // Returns the center
 			Vector3 GetCenter() const	{ return (m_max + m_min) * 0.5f; }

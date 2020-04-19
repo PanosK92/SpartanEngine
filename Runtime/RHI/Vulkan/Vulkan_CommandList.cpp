@@ -134,28 +134,33 @@ namespace Spartan
         // At this point, it's safe to allow for command recording
         m_cmd_state = RHI_Cmd_List_Recording;
 
-        // Prepare descriptor cache for pipeline state
-        m_descriptor_cache->SetPipelineState(pipeline_state);
-
         // Get pipeline
-        m_pipeline = m_pipeline_cache->GetPipeline(this, pipeline_state, m_descriptor_cache->GetResource_DescriptorSetLayout());
-        if (!m_pipeline)
         {
-            LOG_ERROR("Failed to acquire appropriate pipeline");
-            End();
-            return false;
-        }
+            m_pipeline_active = false;
 
-        // Acquire next image (in case the render target is a swapchain)
-        if (!m_pipeline->GetPipelineState()->AcquireNextImage())
-        {
-            LOG_ERROR("Failed to acquire next image");
-            End();
-            return false;
-        }
+            // Update the descriptor cache with the pipeline state and potentially create a new pipeline (if not already there)
+            m_descriptor_cache->SetPipelineState(pipeline_state);
 
-        // Keep a local pointer for convenience
-        m_pipeline_state = &pipeline_state;
+            // Get a pipeline which matches the pipeline state
+            m_pipeline = m_pipeline_cache->GetPipeline(this, pipeline_state, m_descriptor_cache->GetResource_DescriptorSetLayout());
+            if (!m_pipeline)
+            {
+                LOG_ERROR("Failed to acquire appropriate pipeline");
+                End();
+                return false;
+            }
+
+            // Acquire next image (in case the render target is a swapchain)
+            if (!m_pipeline->GetPipelineState()->AcquireNextImage())
+            {
+                LOG_ERROR("Failed to acquire next image");
+                End();
+                return false;
+            }
+
+            // Keep a local pointer for convenience
+            m_pipeline_state = &pipeline_state;
+        }
 
         // Start marker and profiler (if used)
         MarkAndProfileStart(m_pipeline_state);
@@ -182,10 +187,10 @@ namespace Spartan
         }
 
         // End render pass
-        if (m_render_pass_begun_pipeline_bound)
+        if (m_render_pass_active)
         {
             vkCmdEndRenderPass(CMD_BUFFER);
-            m_render_pass_begun_pipeline_bound = false;
+            m_render_pass_active = false;
         }
 
         // End marker and profiler
@@ -440,7 +445,7 @@ namespace Spartan
 
         // If the render pass has been bound then it cleared to whatever values was requested (or not)
         // So at this point we reset the values as we don't want to clear again.
-        if (m_render_pass_begun_pipeline_bound)
+        if (m_render_pass_active)
         {
             m_pipeline_state->ResetClearValues();
         }
@@ -697,24 +702,29 @@ namespace Spartan
 
     bool RHI_CommandList::OnDraw()
     {
-        if (!m_render_pass_begun_pipeline_bound)
+        // Begin render pass
+        if (!m_render_pass_active)
         {
-            // Begin render pass
+            
             BeginRenderPass();
+            m_render_pass_active = true;
+        }
 
+        // Set pipeline
+        if (!m_pipeline_active)
+        {
             // Bind pipeline
             if (VkPipeline vk_pipeline = static_cast<VkPipeline>(m_pipeline->GetPipeline()))
             {
                 vkCmdBindPipeline(CMD_BUFFER, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline);
                 m_profiler->m_rhi_bindings_pipeline++;
+                m_pipeline_active = true;
             }
             else
             {
                 LOG_ERROR("Invalid pipeline");
                 return false;
             }
-
-            m_render_pass_begun_pipeline_bound = true;
         }
 
         // Bind descriptor set

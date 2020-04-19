@@ -107,7 +107,7 @@ namespace Spartan
 
     void Camera::SetNearPlane(const float near_plane)
 	{
-		m_near_plane = Max(0.01f, near_plane);
+		m_near_plane = Helper::Max(0.01f, near_plane);
 		m_isDirty = true;
 	}
 
@@ -125,7 +125,7 @@ namespace Spartan
 
     float Camera::GetFovHorizontalDeg() const
 	{
-		return RadiansToDegrees(m_fov_horizontal_rad);
+		return Helper::RadiansToDegrees(m_fov_horizontal_rad);
 	}
 
     float Camera::GetFovVerticalRad() const
@@ -135,7 +135,7 @@ namespace Spartan
 
     void Camera::SetFovHorizontalDeg(const float fov)
 	{
-		m_fov_horizontal_rad = DegreesToRadians(fov);
+		m_fov_horizontal_rad = Helper::DegreesToRadians(fov);
 		m_isDirty = true;
 	}
 
@@ -309,17 +309,17 @@ namespace Spartan
                 const Vector2 mouse_delta = m_input->GetMouseDelta() * mouse_sensitivity;
 
                 // Lerp to it
-                mouse_smoothed = Math::Lerp(mouse_smoothed, mouse_delta, Clamp(1.0f - mouse_smoothing, 0.0f, 1.0f));
+                mouse_smoothed = Helper::Lerp(mouse_smoothed, mouse_delta, Helper::Clamp(1.0f - mouse_smoothing, 0.0f, 1.0f));
 
                 // Accumulate rotation
                 mouse_rotation += mouse_smoothed;
 
                 // Clamp rotation along the x-axis
-                mouse_rotation.y = Clamp(mouse_rotation.y, -90.0f, 90.0f);
+                mouse_rotation.y = Helper::Clamp(mouse_rotation.y, -90.0f, 90.0f);
 
                 // Compute rotation
-                const auto xQuaternion = Quaternion::FromAngleAxis(mouse_rotation.x * DEG_TO_RAD, Vector3::Up);
-                const auto yQuaternion = Quaternion::FromAngleAxis(mouse_rotation.y * DEG_TO_RAD, Vector3::Right);
+                const auto xQuaternion = Quaternion::FromAngleAxis(mouse_rotation.x * Helper::DEG_TO_RAD, Vector3::Up);
+                const auto yQuaternion = Quaternion::FromAngleAxis(mouse_rotation.y * Helper::DEG_TO_RAD, Vector3::Right);
 
                 // Rotate
                 m_transform->SetRotationLocal(xQuaternion * yQuaternion);
@@ -337,9 +337,9 @@ namespace Spartan
 
                 // Compute speed
                 m_movement_speed += direction * movement_acceleration;
-                m_movement_speed.x = Clamp(m_movement_speed.x, -movement_speed_max, movement_speed_max);
-                m_movement_speed.y = Clamp(m_movement_speed.y, -movement_speed_max, movement_speed_max);
-                m_movement_speed.z = Clamp(m_movement_speed.z, -movement_speed_max, movement_speed_max);
+                m_movement_speed.x = Helper::Clamp(m_movement_speed.x, -movement_speed_max, movement_speed_max);
+                m_movement_speed.y = Helper::Clamp(m_movement_speed.y, -movement_speed_max, movement_speed_max);
+                m_movement_speed.z = Helper::Clamp(m_movement_speed.z, -movement_speed_max, movement_speed_max);
             }
         }
 

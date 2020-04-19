@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../IO/FileStream.h"
 #include "../../Physics/BulletPhysicsHelper.h"
 #include "../../Logging/Log.h"
+#include "../../RHI/RHI_Vertex.h"
 #pragma warning(push, 0) // Hide warnings which belong to Bullet
 #include <BulletCollision/CollisionShapes/btSphereShape.h>
 #include <BulletCollision/CollisionShapes/btCylinderShape.h>
@@ -98,9 +99,9 @@ namespace Spartan
 			return;
 
 		m_size = boundingBox;
-		m_size.x = Clamp(m_size.x, M_EPSILON, INFINITY);
-		m_size.y = Clamp(m_size.y, M_EPSILON, INFINITY);
-		m_size.z = Clamp(m_size.z, M_EPSILON, INFINITY);
+		m_size.x = Helper::Clamp(m_size.x, Helper::M_EPSILON, INFINITY);
+		m_size.y = Helper::Clamp(m_size.y, Helper::M_EPSILON, INFINITY);
+		m_size.z = Helper::Clamp(m_size.z, Helper::M_EPSILON, INFINITY);
 
 		Shape_Update();
 	}
@@ -159,7 +160,7 @@ namespace Spartan
 			break;
 
 		case ColliderShape_Capsule:
-			m_shape = new btCapsuleShape(m_size.x * 0.5f, Max(m_size.y - m_size.x, 0.0f));
+			m_shape = new btCapsuleShape(m_size.x * 0.5f, Helper::Max(m_size.y - m_size.x, 0.0f));
 			m_shape->setLocalScaling(ToBtVector3(worldScale));
 			break;
 
@@ -197,8 +198,8 @@ namespace Spartan
 
 			// Construct hull approximation
 			m_shape = new btConvexHullShape(
-				(btScalar*)&vertices[0],					// points
-				renderable->GeometryVertexCount(),			// point count
+				(btScalar*)&vertices[0],					                // points
+				renderable->GeometryVertexCount(),			                // point count
 				static_cast<uint32_t>(sizeof(RHI_Vertex_PosTexNorTan)));	// stride
 
 			// Scaling has to be done before (potential) optimization
