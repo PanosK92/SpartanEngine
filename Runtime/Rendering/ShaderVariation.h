@@ -30,44 +30,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-	enum Variation_Flag : unsigned long
-	{
-		Variation_Albedo	= 1UL << 0,
-		Variation_Roughness	= 1UL << 1,
-		Variation_Metallic	= 1UL << 2,
-		Variation_Normal	= 1UL << 3,
-		Variation_Height	= 1UL << 4,
-		Variation_Occlusion	= 1UL << 5,
-		Variation_Emission	= 1UL << 6,
-		Variation_Mask		= 1UL << 7
-	};
-
 	class ShaderVariation : public RHI_Shader, public std::enable_shared_from_this<ShaderVariation>
 	{
 	public:
 		ShaderVariation(const std::shared_ptr<RHI_Device>& rhi_device, Context* context);
 		~ShaderVariation() = default;
 
-		void Compile(const std::string& file_path, unsigned long shader_flags);
-
-		unsigned long GetShaderFlags() const	{ return m_flags; }
-		bool HasAlbedoTexture() const			{ return m_flags & Variation_Albedo; }
-		bool HasRoughnessTexture() const		{ return m_flags & Variation_Roughness; }
-		bool HasMetallicTexture() const			{ return m_flags & Variation_Metallic; }
-		bool HasNormalTexture() const			{ return m_flags & Variation_Normal; }
-		bool HasHeightTexture() const			{ return m_flags & Variation_Height; }
-		bool HasOcclusionTexture() const		{ return m_flags & Variation_Occlusion; }
-		bool HasEmissionTexture() const			{ return m_flags & Variation_Emission; }
-		bool HasMaskTexture() const				{ return m_flags & Variation_Mask; }
-
-		// Variation cache
-		static const std::shared_ptr<ShaderVariation>& GetMatchingShader(unsigned long flags);
+		void Compile(const std::string& file_path, const uint8_t shader_flags);
+        uint8_t GetFlags() const { return m_flags; }
+		static const std::shared_ptr<ShaderVariation>& GetMatchingShader(const uint8_t flags);
         static const auto& GetVariations() { return m_variations; }
 
 	private:
 		void AddDefinesBasedOnMaterial();
 
-		unsigned long m_flags;	
+        uint8_t m_flags = 0;
 		static std::vector<std::shared_ptr<ShaderVariation>> m_variations;
 	};
 }

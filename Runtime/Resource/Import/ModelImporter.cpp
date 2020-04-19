@@ -432,7 +432,7 @@ namespace Spartan
 		material->SetColorAlbedo(Vector4(color_diffuse.r, color_diffuse.g, color_diffuse.b, opacity.r));
 
 		// TEXTURES
-		const auto load_mat_tex = [&params, &assimp_material, &material](const TextureType type_spartan, const aiTextureType type_assimp_pbr, const aiTextureType type_assimp_legacy)
+		const auto load_mat_tex = [&params, &assimp_material, &material](const Texture_Type type_spartan, const aiTextureType type_assimp_pbr, const aiTextureType type_assimp_legacy)
 		{
             aiTextureType type_assimp   = assimp_material->GetTextureCount(type_assimp_pbr)     > 0 ? type_assimp_pbr       : aiTextureType_NONE;
             type_assimp                 = assimp_material->GetTextureCount(type_assimp_legacy)  > 0 ? type_assimp_legacy    : type_assimp;
@@ -455,13 +455,13 @@ namespace Spartan
 
 						// Some models (or Assimp) pass a normal map as a height map
 						// auto textureType others pass a height map as a normal map, we try to fix that.
-						if (type_spartan == TextureType_Normal || type_spartan == TextureType_Height)
+						if (type_spartan == Texture_Normal || type_spartan == Texture_Height)
 						{
                             if (const auto texture = material->GetTexture_PtrShared(type_spartan))
                             {
                                 auto proper_type = type_spartan;
-                                proper_type = (proper_type == TextureType_Normal && texture->GetGrayscale()) ? TextureType_Height : proper_type;
-                                proper_type = (proper_type == TextureType_Height && !texture->GetGrayscale()) ? TextureType_Normal : proper_type;
+                                proper_type = (proper_type == Texture_Normal && texture->GetGrayscale()) ? Texture_Height : proper_type;
+                                proper_type = (proper_type == Texture_Height && !texture->GetGrayscale()) ? Texture_Normal : proper_type;
 
                                 if (proper_type != type_spartan)
                                 {
@@ -480,15 +480,15 @@ namespace Spartan
 		};
 
         // Engine texture,                  Assimp texture pbr,                 Assimp texture legacy (fallback)
-		load_mat_tex(TextureType_Albedo,    aiTextureType_BASE_COLOR,           aiTextureType_DIFFUSE);
-		load_mat_tex(TextureType_Roughness, aiTextureType_DIFFUSE_ROUGHNESS,    aiTextureType_SHININESS);   // Use specular as fallback
-		load_mat_tex(TextureType_Metallic,  aiTextureType_METALNESS,            aiTextureType_AMBIENT);     // Use ambient as fallback
-		load_mat_tex(TextureType_Normal,    aiTextureType_NORMAL_CAMERA,        aiTextureType_NORMALS);
-		load_mat_tex(TextureType_Occlusion, aiTextureType_AMBIENT_OCCLUSION,    aiTextureType_LIGHTMAP);
-        load_mat_tex(TextureType_Occlusion, aiTextureType_LIGHTMAP,             aiTextureType_LIGHTMAP);
-		load_mat_tex(TextureType_Emission,  aiTextureType_EMISSION_COLOR,       aiTextureType_EMISSIVE);
-		load_mat_tex(TextureType_Height,    aiTextureType_HEIGHT,               aiTextureType_NONE);
-		load_mat_tex(TextureType_Mask,      aiTextureType_OPACITY,              aiTextureType_NONE);
+		load_mat_tex(Texture_Albedo,    aiTextureType_BASE_COLOR,           aiTextureType_DIFFUSE);
+		load_mat_tex(Texture_Roughness, aiTextureType_DIFFUSE_ROUGHNESS,    aiTextureType_SHININESS);   // Use specular as fallback
+		load_mat_tex(Texture_Metallic,  aiTextureType_METALNESS,            aiTextureType_AMBIENT);     // Use ambient as fallback
+		load_mat_tex(Texture_Normal,    aiTextureType_NORMAL_CAMERA,        aiTextureType_NORMALS);
+		load_mat_tex(Texture_Occlusion, aiTextureType_AMBIENT_OCCLUSION,    aiTextureType_LIGHTMAP);
+        load_mat_tex(Texture_Occlusion, aiTextureType_LIGHTMAP,             aiTextureType_LIGHTMAP);
+		load_mat_tex(Texture_Emission,  aiTextureType_EMISSION_COLOR,       aiTextureType_EMISSIVE);
+		load_mat_tex(Texture_Height,    aiTextureType_HEIGHT,               aiTextureType_NONE);
+		load_mat_tex(Texture_Mask,      aiTextureType_OPACITY,              aiTextureType_NONE);
 
 		return material;
 	}

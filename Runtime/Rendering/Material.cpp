@@ -41,20 +41,16 @@ namespace Spartan
 	{
 		m_rhi_device = context->GetSubsystem<Renderer>()->GetRhiDevice();
 
-		// Initialize properties
-		SetMultiplier(TextureType_Roughness, 0.9f);
-		SetMultiplier(TextureType_Metallic, 0.0f);
-		SetMultiplier(TextureType_Normal, 0.0f);
-		SetMultiplier(TextureType_Height, 0.0f);
-		AcquireShader();
+		// Initialize multipliers
+		SetMultiplier(Texture_Roughness, 0.9f);
+		SetMultiplier(Texture_Metallic, 0.0f);
+		SetMultiplier(Texture_Normal, 0.0f);
+		SetMultiplier(Texture_Height, 0.0f);
+
+        // Acquire shader
+        m_shader = GetOrCreateShader(m_texture_flags);
 	}
 
-	Material::~Material()
-	{
-		m_textures.clear();
-	}
-
-	//= IResource ==============================================
 	bool Material::LoadFromFile(const string& file_path)
 	{
 		auto xml = make_unique<XmlDocument>();
@@ -64,10 +60,10 @@ namespace Spartan
 		SetResourceFilePath(file_path);
 
         xml->GetAttribute("Material", "Color",                  &m_color_albedo);
-		xml->GetAttribute("Material", "Roughness_Multiplier",	&GetMultiplier(TextureType_Roughness));
-		xml->GetAttribute("Material", "Metallic_Multiplier",	&GetMultiplier(TextureType_Metallic));
-		xml->GetAttribute("Material", "Normal_Multiplier",		&GetMultiplier(TextureType_Normal));
-		xml->GetAttribute("Material", "Height_Multiplier",		&GetMultiplier(TextureType_Height));
+		xml->GetAttribute("Material", "Roughness_Multiplier",	&GetMultiplier(Texture_Roughness));
+		xml->GetAttribute("Material", "Metallic_Multiplier",	&GetMultiplier(Texture_Metallic));
+		xml->GetAttribute("Material", "Normal_Multiplier",		&GetMultiplier(Texture_Normal));
+		xml->GetAttribute("Material", "Height_Multiplier",		&GetMultiplier(Texture_Height));
 		xml->GetAttribute("Material", "IsEditable",				&m_is_editable);
 		xml->GetAttribute("Material", "UV_Tiling",				&m_uv_tiling);
 		xml->GetAttribute("Material", "UV_Offset",				&m_uv_offset);
@@ -76,7 +72,7 @@ namespace Spartan
 		for (auto i = 0; i < texture_count; i++)
 		{
 			auto node_name		= "Texture_" + to_string(i);
-			const auto tex_type	= static_cast<TextureType>(xml->GetAttributeAs<uint32_t>(node_name, "Texture_Type"));
+			const auto tex_type	= static_cast<Texture_Type>(xml->GetAttributeAs<uint32_t>(node_name, "Texture_Type"));
 			auto tex_name		= xml->GetAttributeAs<string>(node_name, "Texture_Name");
 			auto tex_path		= xml->GetAttributeAs<string>(node_name, "Texture_Path");
 
@@ -90,7 +86,8 @@ namespace Spartan
 			SetTextureSlot(tex_type, texture);
 		}
 
-		AcquireShader();
+        // Acquire shader
+        m_shader = GetOrCreateShader(m_texture_flags);
 
         m_size_cpu = sizeof(*this);
 
@@ -104,10 +101,10 @@ namespace Spartan
 		auto xml = make_unique<XmlDocument>();
 		xml->AddNode("Material");
 		xml->AddAttribute("Material", "Color",					m_color_albedo);
-		xml->AddAttribute("Material", "Roughness_Multiplier",	GetMultiplier(TextureType_Roughness));
-		xml->AddAttribute("Material", "Metallic_Multiplier",	GetMultiplier(TextureType_Metallic));
-		xml->AddAttribute("Material", "Normal_Multiplier",		GetMultiplier(TextureType_Normal));
-		xml->AddAttribute("Material", "Height_Multiplier",		GetMultiplier(TextureType_Height));
+		xml->AddAttribute("Material", "Roughness_Multiplier",	GetMultiplier(Texture_Roughness));
+		xml->AddAttribute("Material", "Metallic_Multiplier",	GetMultiplier(Texture_Metallic));
+		xml->AddAttribute("Material", "Normal_Multiplier",		GetMultiplier(Texture_Normal));
+		xml->AddAttribute("Material", "Height_Multiplier",		GetMultiplier(Texture_Height));
 		xml->AddAttribute("Material", "UV_Tiling",				m_uv_tiling);
 		xml->AddAttribute("Material", "UV_Offset",				m_uv_offset);
 		xml->AddAttribute("Material", "IsEditable",				m_is_editable);
@@ -128,34 +125,38 @@ namespace Spartan
 		return xml->Save(GetResourceFilePathNative());
 	}
 
-	void Material::SetTextureSlot(const TextureType type, const shared_ptr<RHI_Texture>& texture)
+	void Material::SetTextureSlot(const Texture_Type type, const shared_ptr<RHI_Texture>& texture)
 	{
 		if (texture)
 		{
             // In order for the material to guarantee serialization/deserialization we cache the texture
-            const auto texture_cached = m_context->GetSubsystem<ResourceCache>()->Cache(texture);
+            const shared_ptr<RHI_Texture> texture_cached = m_context->GetSubsystem<ResourceCache>()->Cache(texture);
 			m_textures[type] = texture_cached != nullptr ? texture_cached : texture;
+            m_texture_flags |= type;
+
+            SetMultiplier(type, 1.0f);
 		}
 		else
 		{
 			m_textures.erase(type);
+            m_texture_flags &= ~type;
 		}
 
-		SetMultiplier(type, 1.0f);
-		AcquireShader();
+        // Acquire shader
+        m_shader = GetOrCreateShader(m_texture_flags);
 	}
 
-	void Material::SetTextureSlot(const TextureType type, const std::shared_ptr<RHI_Texture2D>& texture)
+	void Material::SetTextureSlot(const Texture_Type type, const std::shared_ptr<RHI_Texture2D>& texture)
 	{
-		SetTextureSlot(type, static_pointer_cast<RHI_Texture>(texture));
+        SetTextureSlot(type, static_pointer_cast<RHI_Texture>(texture));
 	}
 
-	void Material::SetTextureSlot(const TextureType type, const std::shared_ptr<RHI_TextureCube>& texture)
-	{
-		SetTextureSlot(type, static_pointer_cast<RHI_Texture>(texture));
-	}
+    void Material::SetTextureSlot(const Texture_Type type, const std::shared_ptr<RHI_TextureCube>& texture)
+    {
+        SetTextureSlot(type, static_pointer_cast<RHI_Texture>(texture));
+    }
 
-	bool Material::HasTexture(const string& path) const
+    bool Material::HasTexture(const string& path) const
 	{
 		for (const auto& texture : m_textures)
 		{
@@ -169,21 +170,12 @@ namespace Spartan
 		return false;
 	}
 
-    bool Material::HasTexture(const TextureType type) const
-    {
-        if (m_textures.empty())
-            return false;
-
-        const auto pair = m_textures.find(type);
-        return pair != m_textures.end() && pair->second != nullptr;
-    }
-
-    string Material::GetTexturePathByType(const TextureType type)
+    string Material::GetTexturePathByType(const Texture_Type type)
 	{
 		if (!HasTexture(type))
 			return "";
 
-		return m_textures[type]->GetResourceFilePathNative();
+		return m_textures.at(type)->GetResourceFilePathNative();
 	}
 
 	vector<string> Material::GetTexturePaths()
@@ -200,31 +192,13 @@ namespace Spartan
 		return paths;
 	}
 
-	void Material::AcquireShader()
-	{
-		if (!m_context)
-		{
-			LOG_ERROR("Context is null, can't execute function");
-			return;
-		}
+    shared_ptr<Spartan::RHI_Texture>& Material::GetTexture_PtrShared(const Texture_Type type)
+    {
+        static shared_ptr<RHI_Texture> texture_empty;
+        return HasTexture(type) ? m_textures.at(type) : texture_empty;
+    }
 
-		// Add a shader to the pool based on this material, if a 
-		// matching shader already exists, it will be returned.
-		unsigned long shader_flags = 0;
-
-		if (HasTexture(TextureType_Albedo))		shader_flags	|= Variation_Albedo;
-		if (HasTexture(TextureType_Roughness))	shader_flags	|= Variation_Roughness;
-		if (HasTexture(TextureType_Metallic))	shader_flags	|= Variation_Metallic;
-		if (HasTexture(TextureType_Normal))		shader_flags	|= Variation_Normal;
-		if (HasTexture(TextureType_Height))		shader_flags	|= Variation_Height;
-		if (HasTexture(TextureType_Occlusion))	shader_flags	|= Variation_Occlusion;
-		if (HasTexture(TextureType_Emission))	shader_flags	|= Variation_Emission;
-		if (HasTexture(TextureType_Mask))		shader_flags	|= Variation_Mask;
-
-		m_shader = GetOrCreateShader(shader_flags);
-	}
-
-	std::shared_ptr<ShaderVariation> Material::GetOrCreateShader(const unsigned long shader_flags)
+    shared_ptr<ShaderVariation> Material::GetOrCreateShader(const uint8_t shader_flags)
 	{
 		if (!m_context)
 		{
@@ -257,17 +231,17 @@ namespace Spartan
         m_color_albedo = color;
     }
 
-    TextureType Material::TextureTypeFromString(const string& type)
+    Texture_Type Material::TextureTypeFromString(const string& type)
 	{
-		if (type == "Albedo")		return TextureType_Albedo;
-		if (type == "Roughness")	return TextureType_Roughness;
-		if (type == "Metallic")		return TextureType_Metallic;
-		if (type == "Normal")		return TextureType_Normal;
-		if (type == "Height")		return TextureType_Height;
-		if (type == "Occlusion")	return TextureType_Occlusion;
-		if (type == "Emission")		return TextureType_Emission;
-		if (type == "Mask")			return TextureType_Mask;
+		if (type == "Albedo")		return Texture_Albedo;
+		if (type == "Roughness")	return Texture_Roughness;
+		if (type == "Metallic")		return Texture_Metallic;
+		if (type == "Normal")		return Texture_Normal;
+		if (type == "Height")		return Texture_Height;
+		if (type == "Occlusion")	return Texture_Occlusion;
+		if (type == "Emission")		return Texture_Emission;
+		if (type == "Mask")			return Texture_Mask;
 
-		return TextureType_Unknown;
+		return Texture_Unknown;
 	}
 }

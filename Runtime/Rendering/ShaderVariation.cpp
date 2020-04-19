@@ -31,11 +31,11 @@ namespace Spartan
 {
 	vector<shared_ptr<ShaderVariation>> ShaderVariation::m_variations;
 
-	const shared_ptr<ShaderVariation>& ShaderVariation::GetMatchingShader(const unsigned long flags)
+	const shared_ptr<ShaderVariation>& ShaderVariation::GetMatchingShader(const uint8_t flags)
 	{
 		for (const auto& shader : m_variations)
 		{
-			if (shader->GetShaderFlags() == flags)
+			if (shader->GetFlags() == flags)
 				return shader;
 		}
 
@@ -49,7 +49,7 @@ namespace Spartan
 		m_flags		= 0;
 	}
 
-	void ShaderVariation::Compile(const string& file_path, const unsigned long shader_flags)
+	void ShaderVariation::Compile(const string& file_path, const uint8_t shader_flags)
 	{
 		m_flags = shader_flags;
 
@@ -63,13 +63,13 @@ namespace Spartan
 	void ShaderVariation::AddDefinesBasedOnMaterial()
 	{
 		// Define in the shader what kind of textures it should expect
-		AddDefine("ALBEDO_MAP",		HasAlbedoTexture()		? "1" : "0");
-		AddDefine("ROUGHNESS_MAP",	HasRoughnessTexture()	? "1" : "0");
-		AddDefine("METALLIC_MAP",	HasMetallicTexture()	? "1" : "0");
-		AddDefine("NORMAL_MAP",		HasNormalTexture()		? "1" : "0");
-		AddDefine("HEIGHT_MAP",		HasHeightTexture()		? "1" : "0");
-		AddDefine("OCCLUSION_MAP",	HasOcclusionTexture()	? "1" : "0");
-		AddDefine("EMISSION_MAP",	HasEmissionTexture()	? "1" : "0");
-		AddDefine("MASK_MAP",		HasMaskTexture()		? "1" : "0");
+		AddDefine("ALBEDO_MAP",		(m_flags & Texture_Albedo)		? "1" : "0");
+		AddDefine("ROUGHNESS_MAP",  (m_flags & Texture_Roughness)   ? "1" : "0");
+		AddDefine("METALLIC_MAP",   (m_flags & Texture_Metallic)    ? "1" : "0");
+		AddDefine("NORMAL_MAP",     (m_flags & Texture_Normal)      ? "1" : "0");
+		AddDefine("HEIGHT_MAP",     (m_flags & Texture_Height)      ? "1" : "0");
+		AddDefine("OCCLUSION_MAP",  (m_flags & Texture_Occlusion)   ? "1" : "0");
+		AddDefine("EMISSION_MAP",   (m_flags & Texture_Emission)    ? "1" : "0");
+		AddDefine("MASK_MAP",       (m_flags & Texture_Mask)        ? "1" : "0");
 	}
 }
