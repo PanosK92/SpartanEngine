@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===============
 #include "ShaderVariation.h"
+#include "Material.h"
 //==========================
 
 //= NAMESPACES =====
@@ -63,13 +64,13 @@ namespace Spartan
 	void ShaderVariation::AddDefinesBasedOnMaterial()
 	{
 		// Define in the shader what kind of textures it should expect
-		AddDefine("ALBEDO_MAP",		(m_flags & Texture_Albedo)		? "1" : "0");
-		AddDefine("ROUGHNESS_MAP",  (m_flags & Texture_Roughness)   ? "1" : "0");
-		AddDefine("METALLIC_MAP",   (m_flags & Texture_Metallic)    ? "1" : "0");
-		AddDefine("NORMAL_MAP",     (m_flags & Texture_Normal)      ? "1" : "0");
-		AddDefine("HEIGHT_MAP",     (m_flags & Texture_Height)      ? "1" : "0");
-		AddDefine("OCCLUSION_MAP",  (m_flags & Texture_Occlusion)   ? "1" : "0");
-		AddDefine("EMISSION_MAP",   (m_flags & Texture_Emission)    ? "1" : "0");
-		AddDefine("MASK_MAP",       (m_flags & Texture_Mask)        ? "1" : "0");
+		AddDefine("ALBEDO_MAP",		(m_flags & RHI_Material_Color)     ? "1" : "0");
+		AddDefine("ROUGHNESS_MAP",  (m_flags & RHI_Material_Roughness)  ? "1" : "0");
+		AddDefine("METALLIC_MAP",   (m_flags & RHI_Material_Metallic)   ? "1" : "0");
+		AddDefine("NORMAL_MAP",     (m_flags & RHI_Material_Normal)     ? "1" : "0");
+		AddDefine("HEIGHT_MAP",     (m_flags & RHI_Material_Height)     ? "1" : "0");
+		AddDefine("OCCLUSION_MAP",  (m_flags & RHI_Material_Occlusion)  ? "1" : "0");
+		AddDefine("EMISSION_MAP",   (m_flags & RHI_Material_Emission)   ? "1" : "0");
+		AddDefine("MASK_MAP",       (m_flags & RHI_Material_Mask)       ? "1" : "0");
 	}
 }

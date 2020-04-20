@@ -240,7 +240,7 @@ namespace Spartan
                         if (transparent_pass && m_set_material_id != material->GetId())
                         {
                             // Bind material textures
-                            RHI_Texture* tex_albedo = material->GetTexture_Ptr(Texture_Albedo);
+                            RHI_Texture* tex_albedo = material->GetTexture_Ptr(RHI_Material_Color);
                             cmd_list->SetTexture(28, tex_albedo ? tex_albedo : m_tex_white.get());
 
                             // Update uber buffer with material properties
@@ -454,23 +454,23 @@ namespace Spartan
                         if (m_set_material_id != material->GetId())
                         {
                             // Bind material textures		
-                            cmd_list->SetTexture(0, material->GetTexture_Ptr(Texture_Albedo));
-                            cmd_list->SetTexture(1, material->GetTexture_Ptr(Texture_Roughness));
-                            cmd_list->SetTexture(2, material->GetTexture_Ptr(Texture_Metallic));
-                            cmd_list->SetTexture(3, material->GetTexture_Ptr(Texture_Normal));
-                            cmd_list->SetTexture(4, material->GetTexture_Ptr(Texture_Height));
-                            cmd_list->SetTexture(5, material->GetTexture_Ptr(Texture_Occlusion));
-                            cmd_list->SetTexture(6, material->GetTexture_Ptr(Texture_Emission));
-                            cmd_list->SetTexture(7, material->GetTexture_Ptr(Texture_Mask));
+                            cmd_list->SetTexture(0, material->GetTexture_Ptr(RHI_Material_Color));
+                            cmd_list->SetTexture(1, material->GetTexture_Ptr(RHI_Material_Roughness));
+                            cmd_list->SetTexture(2, material->GetTexture_Ptr(RHI_Material_Metallic));
+                            cmd_list->SetTexture(3, material->GetTexture_Ptr(RHI_Material_Normal));
+                            cmd_list->SetTexture(4, material->GetTexture_Ptr(RHI_Material_Height));
+                            cmd_list->SetTexture(5, material->GetTexture_Ptr(RHI_Material_Occlusion));
+                            cmd_list->SetTexture(6, material->GetTexture_Ptr(RHI_Material_Emission));
+                            cmd_list->SetTexture(7, material->GetTexture_Ptr(RHI_Material_Mask));
                         
                             // Update uber buffer with material properties
                             m_buffer_uber_cpu.mat_albedo        = material->GetColorAlbedo();
                             m_buffer_uber_cpu.mat_tiling_uv     = material->GetTiling();
                             m_buffer_uber_cpu.mat_offset_uv     = material->GetOffset();
-                            m_buffer_uber_cpu.mat_roughness_mul = material->GetMultiplier(Texture_Roughness);
-                            m_buffer_uber_cpu.mat_metallic_mul  = material->GetMultiplier(Texture_Metallic);
-                            m_buffer_uber_cpu.mat_normal_mul    = material->GetMultiplier(Texture_Normal);
-                            m_buffer_uber_cpu.mat_height_mul    = material->GetMultiplier(Texture_Height);
+                            m_buffer_uber_cpu.mat_roughness_mul = material->GetProperty(RHI_Material_Roughness);
+                            m_buffer_uber_cpu.mat_metallic_mul  = material->GetProperty(RHI_Material_Metallic);
+                            m_buffer_uber_cpu.mat_normal_mul    = material->GetProperty(RHI_Material_Normal);
+                            m_buffer_uber_cpu.mat_height_mul    = material->GetProperty(RHI_Material_Height);
 
                             // Update constant buffer
                             UpdateUberBuffer();

@@ -760,32 +760,59 @@ void Widget_Properties::ShowMaterial(Material* material) const
 		{
             // Texture slots
             {
-                const auto texture_slot = [&offset_from_pos_x, &material](const char* texture_name, const Texture_Type texture_type, bool enable_drag_float)
+                const auto show_property = [this, &offset_from_pos_x, &material](const char* name, const char* tooltip, const RHI_Material_Property type, bool show_texture, bool show_modifier)
                 {
-                    ImGuiEx::ImageSlot(
-                        texture_name,
-                        material->GetTexture_PtrShared(texture_type),
-                        [&material, &texture_type](const shared_ptr<RHI_Texture>& texture)  { material->SetTextureSlot(texture_type, texture); },
-                        offset_from_pos_x
-                    );
-
-                    if (enable_drag_float)
+                    // Name
+                    if (name)
                     {
-                        ImGui::SameLine();
-                        ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
-                        ImGui::DragFloat("", &material->GetMultiplier(texture_type), 0.004f, 0.0f, 1.0f);
-                        ImGui::PopID();
+                        ImGui::Text(name);
+                        
+                        if (tooltip)
+                        {
+                            ImGuiEx::Tooltip(tooltip);
+                        }
+
+                        if (show_texture || show_modifier)
+                        {
+                            ImGui::SameLine(offset_from_pos_x);
+                        }
+                    }
+
+                    // Texture
+                    if (show_texture)
+                    {
+                        ImGuiEx::ImageSlot(material->GetTexture_PtrShared(type), [&material, &type](const shared_ptr<RHI_Texture>& texture) { material->SetTextureSlot(type, texture); });
+
+                        if (show_modifier)
+                        {
+                            ImGui::SameLine();
+                        }
+                    }
+
+                    // Modifier
+                    if (show_modifier)
+                    {
+                        if (type == RHI_Material_Color)
+                        {
+                            m_colorPicker_material->Update();
+                        }
+                        else
+                        {
+                            ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
+                            ImGui::DragFloat("", &material->GetProperty(type), 0.004f, 0.0f, 1.0f);
+                            ImGui::PopID();
+                        }
                     }
                 };
 
-                texture_slot("Albedo",      Texture_Albedo,     false); ImGui::SameLine(); m_colorPicker_material->Update();
-                texture_slot("Roughness",   Texture_Roughness,  true);
-                texture_slot("Metallic",    Texture_Metallic,   true);
-                texture_slot("Normal",      Texture_Normal,     true);
-                texture_slot("Height",      Texture_Height,     true);
-                texture_slot("Occlusion",   Texture_Occlusion,  false);
-                texture_slot("Emission",    Texture_Emission,   false);
-                texture_slot("Mask",        Texture_Mask,       false);
+                show_property("Color",      "Diffuse or metal surface color",                                                       RHI_Material_Color,     true, false);
+                show_property("Roughness",  "Specifies microfacet roughness of the surface for diffuse and specular reflection",    RHI_Material_Roughness, true, true);
+                show_property("Metallic",   "Blends between a non-metallic and metallic material model",                            RHI_Material_Metallic,  true, true);
+                show_property("Normal",     "Controls the normals of the base layers",                                              RHI_Material_Normal,    true, true);
+                show_property("Height",     "Perceived depth for parallax mapping",                                                 RHI_Material_Height,    true, true);
+                show_property("Occlusion",  "Amount of light loss, can be complementary to SSAO",                                   RHI_Material_Occlusion, true, false);
+                show_property("Emission",   "Light emission from the surface, works nice with bloom",                               RHI_Material_Emission,  true, false);
+                show_property("Mask",       "Discards pixels",                                                                      RHI_Material_Mask,      true, false);
             }
 
             // UV
@@ -891,11 +918,9 @@ void Widget_Properties::ShowEnvironment(Environment* environment) const
 
     if (ComponentProperty::Begin("Environment", Icon_Component_Environment, environment))
     {
-        ImGuiEx::ImageSlot(
-            "Sphere Map",
-            environment->GetTexture(),
-            [&environment](const shared_ptr<RHI_Texture>& texture) { environment->SetTexture(texture); }
-        );
+        ImGui::Text("Sphere Map");
+
+        ImGuiEx::ImageSlot(environment->GetTexture(), [&environment](const shared_ptr<RHI_Texture>& texture) { environment->SetTexture(texture); } );
     }
     ComponentProperty::End();
 }
@@ -907,23 +932,19 @@ void Widget_Properties::ShowTerrain(Terrain* terrain) const
 
     if (ComponentProperty::Begin("Terrain", Icon_Component_Terrain, terrain))
     {
-        //= REFLECT =================================
-        float min_y         = terrain->GetMinY();
-        float max_y         = terrain->GetMaxY();
-        const float progress      = terrain->GetProgress();
-        //===========================================
+        //= REFLECT =====================================
+        float min_y             = terrain->GetMinY();
+        float max_y             = terrain->GetMaxY();
+        const float progress    = terrain->GetProgress();
+        //===============================================
 
         const float cursor_y = ImGui::GetCursorPosY();
 
         ImGui::BeginGroup();
         {
-            ImGuiEx::ImageSlot(
-                "Height Map",
-                terrain->GetHeightMap(),
-                [&terrain](const shared_ptr<RHI_Texture>& texture) { terrain->SetHeightMap(static_pointer_cast<RHI_Texture2D>(texture)); },
-                0.0f,   // offset_from_start_x
-                true    // label_align_vertically
-            );
+            ImGui::Text("Height Map");
+
+            ImGuiEx::ImageSlot(terrain->GetHeightMap(), [&terrain](const shared_ptr<RHI_Texture>& texture) { terrain->SetHeightMap(static_pointer_cast<RHI_Texture2D>(texture)); });
 
             if (ImGui::Button("Generate", ImVec2(82, 0)))
             {
