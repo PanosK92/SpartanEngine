@@ -805,7 +805,7 @@ void Widget_Properties::ShowMaterial(Material* material) const
                     }
                 };
 
-                show_property("Color",      "Diffuse or metal surface color",                                                       RHI_Material_Color,     true, false);
+                show_property("Color",      "Diffuse or metal surface color",                                                       RHI_Material_Color,     true, true);
                 show_property("Roughness",  "Specifies microfacet roughness of the surface for diffuse and specular reflection",    RHI_Material_Roughness, true, true);
                 show_property("Metallic",   "Blends between a non-metallic and metallic material model",                            RHI_Material_Metallic,  true, true);
                 show_property("Normal",     "Controls the normals of the base layers",                                              RHI_Material_Normal,    true, true);
