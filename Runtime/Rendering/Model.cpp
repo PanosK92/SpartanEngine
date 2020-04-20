@@ -190,7 +190,7 @@ namespace Spartan
         entity->AddComponent<Renderable>()->SetMaterial(material);
 	}
 
-	void Model::AddTexture(shared_ptr<Material>& material, const Texture_Type texture_type, const string& file_path)
+	void Model::AddTexture(shared_ptr<Material>& material, const RHI_Material_Property texture_type, const string& file_path)
 	{
 		if (!material || file_path.empty())
 		{

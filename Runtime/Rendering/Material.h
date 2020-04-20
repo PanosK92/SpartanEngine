@@ -35,6 +35,19 @@ namespace Spartan
 {	
 	class ShaderVariation;
 
+    enum RHI_Material_Property : uint8_t
+	{
+		RHI_Material_Unknown    = 0,
+		RHI_Material_Color      = 1 << 0,   // Diffuse or metal surface color
+		RHI_Material_Roughness  = 1 << 1,   // Specifies microfacet roughness of the surface for diffuse and specular reflection
+		RHI_Material_Metallic   = 1 << 2,   // Blends between a non-metallic and metallic material model
+		RHI_Material_Normal     = 1 << 3,   // Controls the normals of the base layers
+		RHI_Material_Height     = 1 << 4,   // Perceived depth for parallax mapping
+		RHI_Material_Occlusion  = 1 << 5,   // Amount of light loss, can be complementary to SSAO
+		RHI_Material_Emission   = 1 << 6,   // Light emission from the surface, works nice with bloom
+		RHI_Material_Mask       = 1 << 7    // Discards pixels
+	};
+
 	class SPARTAN_CLASS Material : public IResource
 	{
 	public:
@@ -46,17 +59,17 @@ namespace Spartan
 		bool SaveToFile(const std::string& file_path) override;
 		//=======================================================
 
-		//= TEXTURES  ======================================================================================================
-		void SetTextureSlot(const Texture_Type type, const std::shared_ptr<RHI_Texture>& texture);
-        void SetTextureSlot(const Texture_Type type, const std::shared_ptr<RHI_Texture2D>& texture);
-        void SetTextureSlot(const Texture_Type type, const std::shared_ptr<RHI_TextureCube>& texture);
+		//= TEXTURES  ===============================================================================================================
+		void SetTextureSlot(const RHI_Material_Property type, const std::shared_ptr<RHI_Texture>& texture);
+        void SetTextureSlot(const RHI_Material_Property type, const std::shared_ptr<RHI_Texture2D>& texture);
+        void SetTextureSlot(const RHI_Material_Property type, const std::shared_ptr<RHI_TextureCube>& texture);
 		bool HasTexture(const std::string& path) const;
-        bool HasTexture(const Texture_Type type) const { return m_texture_flags & type; }
-		std::string GetTexturePathByType(Texture_Type type);
+        bool HasTexture(const RHI_Material_Property type) const { return m_texture_flags & type; }
+		std::string GetTexturePathByType(RHI_Material_Property type);
 		std::vector<std::string> GetTexturePaths();
-		RHI_Texture* GetTexture_Ptr(const Texture_Type type) { return HasTexture(type) ? m_textures[type].get() : nullptr; }
-        std::shared_ptr<RHI_Texture>& GetTexture_PtrShared(const Texture_Type type);
-		//==================================================================================================================
+		RHI_Texture* GetTexture_Ptr(const RHI_Material_Property type) { return HasTexture(type) ? m_textures[type].get() : nullptr; }
+        std::shared_ptr<RHI_Texture>& GetTexture_PtrShared(const RHI_Material_Property type);
+		//===========================================================================================================================
 
 		//= SHADER =================================================================================
 		std::shared_ptr<ShaderVariation> GetOrCreateShader(const uint8_t shader_flags);
@@ -64,24 +77,24 @@ namespace Spartan
 		bool HasShader()		                            const { return GetShader() != nullptr; }
 		//==========================================================================================
 
-		//= PROPERTIES ==========================================================================================
-		const auto& GetColorAlbedo() const									{ return m_color_albedo; }
+		//= PROPERTIES ===============================================================================================
+		const auto& GetColorAlbedo()                                                const { return m_color_albedo; }
         void SetColorAlbedo(const Math::Vector4& color);
 		
-		const auto& GetTiling() const										{ return m_uv_tiling; }
-		void SetTiling(const Math::Vector2& tiling)							{ m_uv_tiling = tiling; }
+		const auto& GetTiling()                                                     const { return m_uv_tiling; }
+		void SetTiling(const Math::Vector2& tiling)                                 { m_uv_tiling = tiling; }
 
-		const auto& GetOffset() const										{ return m_uv_offset; }
-		void SetOffset(const Math::Vector2& offset)							{ m_uv_offset = offset; }
+		const auto& GetOffset()                                                     const { return m_uv_offset; }
+		void SetOffset(const Math::Vector2& offset)                                 { m_uv_offset = offset; }
 
-		auto IsEditable() const { return m_is_editable; }
-		void SetIsEditable(const bool is_editable)							{ m_is_editable = is_editable; }
+		auto IsEditable() const                                                     { return m_is_editable; }
+		void SetIsEditable(const bool is_editable)                                  { m_is_editable = is_editable; }
 
-		auto& GetMultiplier(const Texture_Type type)                        { return m_multipliers[type];}
-		void SetMultiplier(const Texture_Type type, const float multiplier)	{ m_multipliers[type] = multiplier; }
+		auto& GetProperty(const RHI_Material_Property type)                         { return m_properties[type];}
+		void SetProperty(const RHI_Material_Property type, const float property)    { m_properties[type] = property; }
 
-		static Texture_Type TextureTypeFromString(const std::string& type);
-		//=======================================================================================================
+		static RHI_Material_Property TextureTypeFromString(const std::string& type);
+		//============================================================================================================
 
 	private:
 		Math::Vector4 m_color_albedo	= Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f);
@@ -89,8 +102,8 @@ namespace Spartan
 		Math::Vector2 m_uv_offset		= Math::Vector2(0.0f, 0.0f);
 		bool m_is_editable				= true;
         uint8_t m_texture_flags         = 0;
-		std::unordered_map<Texture_Type, std::shared_ptr<RHI_Texture>> m_textures;
-		std::unordered_map<Texture_Type, float> m_multipliers;
+		std::unordered_map<RHI_Material_Property, std::shared_ptr<RHI_Texture>> m_textures;
+		std::unordered_map<RHI_Material_Property, float> m_properties;
 		std::shared_ptr<ShaderVariation> m_shader;	
 		std::shared_ptr<RHI_Device> m_rhi_device;
 	};

@@ -267,26 +267,10 @@ namespace ImGuiEx
     }
 
     // Image slot
-    inline void ImageSlot(
-        const char* name,
-        const std::shared_ptr<Spartan::RHI_Texture>& image,
-        const std::function<void(const std::shared_ptr<Spartan::RHI_Texture>&)>& setter,
-        float offset_from_start_x   = 0.0f,
-        bool label_align_vertically = false
-    )
+    inline void ImageSlot(const std::shared_ptr<Spartan::RHI_Texture>& image, const std::function<void(const std::shared_ptr<Spartan::RHI_Texture>&)>& setter)
     {
         const ImVec2 slot_size  = ImVec2(80, 80);
         const float button_size = 15.0f;
-
-        // Text
-        if (name)
-        {
-            ImGui::Text(name);
-            if (!label_align_vertically)
-            {
-                ImGui::SameLine(offset_from_start_x);
-            }
-        }
 
         // Image
         ImGui::BeginGroup();

@@ -316,17 +316,4 @@ namespace Spartan
 		Shader_Compilation_Succeeded,
 		Shader_Compilation_Failed
 	};
-
-    enum Texture_Type : uint8_t
-	{
-		Texture_Unknown   = 0,
-		Texture_Albedo    = 1 << 0,
-		Texture_Roughness = 1 << 1,
-		Texture_Metallic  = 1 << 2,
-		Texture_Normal    = 1 << 3,
-		Texture_Height    = 1 << 4,
-		Texture_Occlusion = 1 << 5,
-		Texture_Emission  = 1 << 6,
-		Texture_Mask      = 1 << 7
-	};
 }
