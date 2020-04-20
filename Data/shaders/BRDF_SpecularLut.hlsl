@@ -21,7 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =========
 #include "Common.hlsl"
-#include "BRDF.hlsl"
 //====================
 
 // http://holger.dammertz.org/stuff/notes_HammersleyOnHemisphere.html

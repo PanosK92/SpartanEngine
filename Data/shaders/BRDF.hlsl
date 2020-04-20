@@ -23,63 +23,56 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common.hlsl"
 //====================
 
-// F - Fresnel
-float3 Fresnel_Schlick(float HdV, float3 f0)
+//= BRDF FUNCTIONS ================================================================
+// [Schlick 1994, "An Inexpensive BRDF Model for Physically-Based Rendering"]
+float3 F_Schlick(float3 f0, float v_dot_h)
 {
-	return f0 + (1.0f - f0) * pow(1.0f - HdV, 5.0f);
+    float Fc = pow(1 - v_dot_h, 5.0f);
+	// Anything less than 2% is physically impossible and is instead considered to be shadowing
+    return saturate(50.0 * f0.g) * Fc + (1 - Fc) * f0;
 }
 
-float3 Fresnel_Schlick_Roughness(float cosTheta, float3 F0, float roughness)
+inline float3 F_Schlick(float3 f0, float f90, float v_dot_h)
 {
-	float val = 1.0 - roughness;
-    return F0 + (max(float3(val, val, val), F0) - F0) * pow(1.0f - cosTheta, 5.0f);
-}   
-
-// G - Geometric shadowing
-float Geometry_Schlick_GGX(float NdotV, float roughness)
-{
-    float r = (roughness + 1.0);
-    float k = (r*r) / 8.0;
-
-    float num   = NdotV;
-    float denom = NdotV * (1.0 - k) + k;
-	
-    return num / denom;
+    return f0 + (f90 - f0) * pow(1.0 - v_dot_h, 5.0f);
 }
 
-float Geometry_Smith(float NdotV, float NdotL, float roughness)
+// Smith term for GGX
+// [Smith 1967, "Geometrical shadowing of a random rough surface"]
+inline float V_Smith(float a2, float n_dot_v, float n_dot_l)
 {
-    float ggx2  = Geometry_Schlick_GGX(NdotV, roughness);
-    float ggx1  = Geometry_Schlick_GGX(NdotL, roughness);
-	
-    return ggx1 * ggx2;
+    float Vis_SmithV = n_dot_v + sqrt(n_dot_v * (n_dot_v - n_dot_v * a2) + a2);
+    float Vis_SmithL = n_dot_l + sqrt(n_dot_l * (n_dot_l - n_dot_l * a2) + a2);
+    return rcp(Vis_SmithV * Vis_SmithL);
 }
 
-// D - Normal distribution
-float Distribution_GGX(float NdotH, float a)
+// Appoximation of joint Smith term for GGX
+// [Heitz 2014, "Understanding the Masking-Shadowing Function in Microfacet-Based BRDFs"]
+inline float V_SmithJointApprox(float a2, float n_dot_v, float n_dot_l)
 {
-    float a2     = a * a;
-    float NdotH2 = NdotH * NdotH;
-	
-    float num   = a2;
-    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
-    denom 		= PI * denom * denom;
-	
-    return num / denom;
+    float a             = sqrt(a2);
+    float Vis_SmithV    = n_dot_l * (n_dot_v * (1 - a) + a) + EPSILON;
+    float Vis_SmithL    = n_dot_v * (n_dot_l * (1 - a) + a) + EPSILON;
+    return 0.5 * rcp(Vis_SmithV + Vis_SmithL);
 }
 
-//= INCLUDES ===================
-#include "BRDF_IBL.hlsl"
-#include "BRDF_Environment.hlsl"
-//==============================
+// GGX / Trowbridge-Reitz
+// [Walter et al. 2007, "Microfacet models for refraction through rough surfaces"]
+inline float D_GGX(float a2, float n_dot_h)
+{
+    float d = (n_dot_h * a2 - n_dot_h) * n_dot_h + 1; // 2 mad
+    return a2 / (PI * d * d); // 4 mul, 1 rcp
+}
+//=================================================================================
 
-float3 Diffuse_Lambert( float3 diffuse_color )
+//= LIGHTING ====================================================================================================
+inline float3 Diffuse_Lambert(float3 diffuse_color)
 {
 	return diffuse_color * (1 / PI);
 }
 
 // [Burley 2012, "Physically-Based Shading at Disney"]
-float3 Diffuse_Burley(float3 diffuse_color, float Roughness, float NoV, float NoL, float VoH)
+inline float3 Diffuse_Burley(float3 diffuse_color, float Roughness, float NoV, float NoL, float VoH)
 {
 	float FD90 = 0.5 + 2 * VoH * VoH * Roughness;
 	float FdV = 1 + (FD90 - 1) * pow(1 - NoV, 5);
@@ -88,7 +81,7 @@ float3 Diffuse_Burley(float3 diffuse_color, float Roughness, float NoV, float No
 }
 
 // Diffuse - [Gotanda 2012, "Beyond a Simple Physically Based Blinn-Phong Model in Real-Time"]
-float3 Diffuse_OrenNayar(float3 diffuse_color, float Roughness, float NoV, float NoL, float VoH)
+inline float3 Diffuse_OrenNayar(float3 diffuse_color, float Roughness, float NoV, float NoL, float VoH)
 {
 	float a 	= Roughness * Roughness;
 	float s 	= a;					// / ( 1.29 + 0.5 * a );
@@ -100,18 +93,84 @@ float3 Diffuse_OrenNayar(float3 diffuse_color, float Roughness, float NoV, float
 	return diffuse_color / PI * ( C1 + C2 ) * ( 1 + Roughness * 0.5 );
 }
 
-float3 BRDF_Specular(Material material, float n_dot_v, float n_dot_l, float n_dot_h, float v_dot_h, out float3 F)
+inline float3 BRDF_Diffuse(Material material, float n_dot_v, float n_dot_l, float v_dot_h)
 {
-	float alpha 		= max(0.001f, material.roughness * material.roughness);
-	F 					= Fresnel_Schlick(v_dot_h, material.F0);
-    float G 			= Geometry_Smith(n_dot_v, n_dot_l, material.roughness);
-    float D 			= Distribution_GGX(n_dot_h, alpha);
-	float3 nominator 	= F * G * D;
-	float denominator 	= 4.0f * n_dot_l * n_dot_v;
-	return nominator / max(EPSILON, denominator);
+    return Diffuse_Burley(material.albedo, material.roughness, n_dot_v, n_dot_l, v_dot_h);
 }
 
-float3 BRDF_Diffuse(Material material, float n_dot_v, float n_dot_l, float v_dot_h)
+inline float3 BRDF_Specular(Material material, float n_dot_v, float n_dot_l, float n_dot_h, float v_dot_h, out float3 F)
 {
-	return Diffuse_Burley(material.albedo, material.roughness, n_dot_v, n_dot_l, v_dot_h);
+     // remapping and linearization
+    float roughness = clamp(material.roughness, 0.089f, 1.0f);
+    float a         = roughness * roughness;
+    float a2        = pow(roughness, 4.0f);
+    
+    F       = F_Schlick(material.F0, v_dot_h);
+    float V = V_SmithJointApprox(a2, n_dot_v, n_dot_l);
+    float D = D_GGX(a2, n_dot_h);
+
+	return (D * V) * F;
 }
+//===============================================================================================================
+
+//= IMAGE BASED LIGHTING ====================================================================================================================================================
+static const float mip_max = 11.0f;
+
+inline float3 SampleEnvironment(Texture2D tex_environment, float2 uv, float mip_level)
+{
+	// We are currently using a spherical environment map which has a 2:1 ratio, so at the smallest 
+	// mipmap we have to do a bit of blending otherwise we'll get a visible seem in the middle.
+	if (mip_level == mip_max)
+	{
+		float2 mip_size	= float2(2, 1);
+		float dx 		= mip_size.x;
+	
+		float3 tl = (tex_environment.SampleLevel(sampler_trilinear_clamp, uv + float2(-dx, 0.0f), mip_level).rgb);
+		float3 tr = (tex_environment.SampleLevel(sampler_trilinear_clamp, uv + float2(dx, 0.0f), mip_level).rgb);
+		return (tl + tr) / 2.0f;
+	}
+	
+	return (tex_environment.SampleLevel(sampler_trilinear_clamp, uv, mip_level).rgb);
+}
+
+inline float3 GetSpecularDominantDir(float3 normal, float3 reflection, float roughness)
+{
+	const float smoothness = 1.0f - roughness;
+	const float lerpFactor = smoothness * (sqrt(smoothness) + roughness);
+    
+	return lerp(normal, reflection, lerpFactor);
+}
+
+// https://www.unrealengine.com/blog/physically-based-shading-on-mobile
+inline float3 EnvBRDFApprox(float3 specColor, float roughness, float NdV)
+{
+    // [ Lazarov 2013, "Getting More Physical in Call of Duty: Black Ops II" ]
+    const float4 c0 = float4(-1.0f, -0.0275f, -0.572f, 0.022f );
+    const float4 c1 = float4(1.0f, 0.0425f, 1.0f, -0.04f );
+    float4 r 		= roughness * c0 + c1;
+    float a004 		= min(r.x * r.x, exp2(-9.28f * NdV)) * r.x + r.y;
+    float2 AB 		= float2(-1.04f, 1.04f) * a004 + r.zw;
+   
+    return specColor * AB.x + AB.y;
+}
+
+inline float3 Brdf_Diffuse_Ibl(Material material, float3 normal, Texture2D tex_environment)
+{
+    return SampleEnvironment(tex_environment, direction_sphere_uv(normal), mip_max) * material.albedo;
+}
+
+inline float3 Brdf_Specular_Ibl(Material material, float3 normal, float3 camera_to_pixel, Texture2D tex_environment, Texture2D tex_lutIBL, out float3 F)
+{
+	float3 reflection 	    = reflect(camera_to_pixel, normal);	
+    reflection              = GetSpecularDominantDir(normal, reflect(camera_to_pixel, normal), material.roughness); // From Sebastien Lagarde Moving Frostbite to PBR page 69
+    float n_dot_v           = dot(-camera_to_pixel, normal);
+    float f90               = 0.5 + 2 * n_dot_v * n_dot_v * material.roughness;
+    F                       = F_Schlick(material.F0, f90, material.roughness);
+	float alpha 			= max(EPSILON, material.roughness * material.roughness);
+    float mip_level         = lerp(0, mip_max, alpha);
+	float3 prefilteredColor	= SampleEnvironment(tex_environment, direction_sphere_uv(reflection), mip_level);
+    float2 envBRDF          = tex_lutIBL.Sample(sampler_bilinear_clamp, float2(saturate(n_dot_v), material.roughness)).xy;
+	float3 reflectivity		= F * envBRDF.x + envBRDF.y;
+    return prefilteredColor * reflectivity;
+}
+//===========================================================================================================================================================================

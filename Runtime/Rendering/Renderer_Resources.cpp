@@ -186,7 +186,7 @@ namespace Spartan
         // BRDF - Specular Lut
         m_shaders[Shader_BrdfSpecularLut] = make_shared<RHI_Shader>(m_rhi_device);
         m_shaders[Shader_BrdfSpecularLut]->AddDefine("BRDF_ENV_SPECULAR_LUT");
-        m_shaders[Shader_BrdfSpecularLut]->CompileAsync(m_context, RHI_Shader_Pixel, dir_shaders + "BRDF.hlsl");
+        m_shaders[Shader_BrdfSpecularLut]->CompileAsync(m_context, RHI_Shader_Pixel, dir_shaders + "BRDF_SpecularLut.hlsl");
 
         // Light - Directional
         m_shaders[Shader_LightDirectional_P] = make_shared<RHI_Shader>(m_rhi_device);
