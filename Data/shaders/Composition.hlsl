@@ -30,6 +30,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     
     // Sample from textures
     float4 sample_material  = tex_material.Sample(sampler_point_clamp, uv);
+    int mat_id              = round(sample_material.a * 255);
     float3 light_volumetric = tex_lightVolumetric.Sample(sampler_point_clamp, uv).rgb;
     float3 normal           = tex_normal.Sample(sampler_point_clamp, uv).xyz;
     float depth             = tex_depth.Sample(sampler_point_clamp, uv).r;
@@ -41,7 +42,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     color += light_volumetric;
     
     [branch]
-    if (sample_material.a != 1.0f)
+    if (mat_id == 0)
     {
         color += tex_environment.Sample(sampler_bilinear_clamp, direction_sphere_uv(camera_to_pixel)).rgb;
         color *= clamp(g_directional_light_intensity / 5.0f, 0.01f, 1.0f);

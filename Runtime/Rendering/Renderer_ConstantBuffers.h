@@ -65,21 +65,19 @@ namespace Spartan
         Math::Vector2 taa_jitter_offset;
     };
     
+    // Low frequency buffer - Updates once per frame
+    static const uint32_t m_max_materials = 255; // must match the shader
+    struct BufferMaterial
+    {
+        Math::Vector4 mat_clearcoat_clearcoatRough_anis_anisRot[m_max_materials];
+        Math::Vector4 mat_sheen_sheenTint_pad[m_max_materials];
+    };
+
     // Medium frequency - Updates a few dozen times
     struct BufferUber
     {
         Math::Matrix transform;
 
-        Math::Vector4 mat_albedo;
-    
-        Math::Vector2 mat_tiling_uv;
-        Math::Vector2 mat_offset_uv;
-    
-        float mat_roughness_mul;
-        float mat_metallic_mul;
-        float mat_normal_mul;
-        float mat_height_mul;
-    
         Math::Vector4 color;
     
         Math::Vector3 transform_axis;
@@ -88,10 +86,24 @@ namespace Spartan
         Math::Vector2 blur_direction;
         Math::Vector2 resolution;
 
+        Math::Vector4 mat_albedo;
+
+        Math::Vector2 mat_tiling_uv;
+        Math::Vector2 mat_offset_uv;
+
+        float mat_roughness_mul;
+        float mat_metallic_mul;
+        float mat_normal_mul;
+        float mat_height_mul;
+
+        float mat_id;
+        Math::Vector3 padding;
+
         bool operator==(const BufferUber& rhs) const
         {
             return
                 transform           == rhs.transform            &&
+                mat_id              == rhs.mat_id               &&
                 mat_albedo          == rhs.mat_albedo           &&
                 mat_tiling_uv       == rhs.mat_tiling_uv        &&
                 mat_offset_uv       == rhs.mat_offset_uv        &&

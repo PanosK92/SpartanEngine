@@ -36,15 +36,15 @@ namespace Spartan
 		ShaderVariation(const std::shared_ptr<RHI_Device>& rhi_device, Context* context);
 		~ShaderVariation() = default;
 
-		void Compile(const std::string& file_path, const uint8_t shader_flags);
-        uint8_t GetFlags() const { return m_flags; }
-		static const std::shared_ptr<ShaderVariation>& GetMatchingShader(const uint8_t flags);
+		void Compile(const std::string& file_path, const uint16_t shader_flags);
+        uint16_t GetFlags() const { return m_flags; }
+		static const std::shared_ptr<ShaderVariation>& GetMatchingShader(const uint16_t flags);
         static const auto& GetVariations() { return m_variations; }
 
 	private:
 		void AddDefinesBasedOnMaterial();
 
-        uint8_t m_flags = 0;
+        uint16_t m_flags = 0;
 		static std::vector<std::shared_ptr<ShaderVariation>> m_variations;
 	};
 }

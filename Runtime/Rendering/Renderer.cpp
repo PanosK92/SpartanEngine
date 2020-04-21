@@ -363,6 +363,36 @@ namespace Spartan
         return m_buffer_frame_gpu->Unmap();
     }
 
+    bool Renderer::UpdateMaterialBuffer()
+    {
+        // Map
+        BufferMaterial* buffer = static_cast<BufferMaterial*>(m_buffer_material_gpu->Map());
+        if (!buffer)
+        {
+            LOG_ERROR("Failed to map buffer");
+            return false;
+        }
+
+        // Update
+        for (uint32_t mat_id = 1; mat_id < m_max_materials; mat_id++)
+        {
+            // mat_id of 0 is reserved for the skysphere
+
+            if (!m_materials[mat_id])
+                break;
+
+            buffer->mat_clearcoat_clearcoatRough_anis_anisRot[mat_id].x = m_materials[mat_id]->GetProperty(RHI_Material_Clearcoat);
+            buffer->mat_clearcoat_clearcoatRough_anis_anisRot[mat_id].y = m_materials[mat_id]->GetProperty(RHI_Material_Clearcoat_Roughness);
+            buffer->mat_clearcoat_clearcoatRough_anis_anisRot[mat_id].z = m_materials[mat_id]->GetProperty(RHI_Material_Anisotropic);
+            buffer->mat_clearcoat_clearcoatRough_anis_anisRot[mat_id].w = m_materials[mat_id]->GetProperty(RHI_Material_Anisotropic_Rotation);
+            buffer->mat_sheen_sheenTint_pad[mat_id].x                   = m_materials[mat_id]->GetProperty(RHI_Material_Sheen);
+            buffer->mat_sheen_sheenTint_pad[mat_id].y                   = m_materials[mat_id]->GetProperty(RHI_Material_Sheen_Tint);
+        }
+
+        // Unmap
+        return m_buffer_material_gpu->Unmap();
+    }
+
     bool Renderer::UpdateUberBuffer()
 	{
         // Only update if needed

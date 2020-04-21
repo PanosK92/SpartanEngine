@@ -56,15 +56,22 @@ PixelOutputType mainPS(Pixel_PosUv input)
     {
         float4 sample_albedo    = tex_albedo.Sample(sampler_point_clamp, input.uv);
         float4 sample_material  = tex_material.Sample(sampler_point_clamp, input.uv);
-        
-        material.albedo         = sample_albedo.rgb;
-        material.roughness      = sample_material.r;
-        material.metallic       = sample_material.g;
-        material.emissive       = sample_material.b;
-        material.occlusion      = min(normal_sample.a, tex_ssao.Sample(sampler_point_clamp, input.uv).r); // min(occlusion, ssao)
-        material.F0             = lerp(0.04f, material.albedo, material.metallic);
-        material.is_transparent = sample_albedo.a != 1.0f;
-        material.is_sky         = sample_material.a == 0.0f;
+        int mat_id              = round(sample_material.a * 255);
+
+        material.albedo                 = sample_albedo.rgb;
+        material.roughness              = sample_material.r;
+        material.metallic               = sample_material.g;
+        material.emissive               = sample_material.b;
+        material.clearcoat              = mat_clearcoat_clearcoatRough_aniso_anisoRot[mat_id].x;
+        material.clearcoat_roughness    = mat_clearcoat_clearcoatRough_aniso_anisoRot[mat_id].y;
+        material.anisotropic            = mat_clearcoat_clearcoatRough_aniso_anisoRot[mat_id].z;
+        material.anisotropic_rotation   = mat_clearcoat_clearcoatRough_aniso_anisoRot[mat_id].w;
+        material.sheen                  = mat_sheen_sheenTint_pad[mat_id].x;
+        material.sheen_tint             = mat_sheen_sheenTint_pad[mat_id].y;
+        material.occlusion              = min(normal_sample.a, tex_ssao.Sample(sampler_point_clamp, input.uv).r); // min(occlusion, ssao)
+        material.F0                     = lerp(0.04f, material.albedo, material.metallic);
+        material.is_transparent         = sample_albedo.a != 1.0f;
+        material.is_sky                 = mat_id == 0;
     }
     
     // Fill light struct
@@ -137,7 +144,7 @@ PixelOutputType mainPS(Pixel_PosUv input)
     [branch]
     if (light.intensity > 0.0f && !material.is_sky)
     {
-        // Compute some stuff
+        // Compute some vectors and dot products
         float3 l		= -light.direction;
         float3 v        = -surface.camera_to_pixel;
         float3 h 		= normalize(v + l);
@@ -145,12 +152,25 @@ PixelOutputType mainPS(Pixel_PosUv input)
         float n_dot_v   = saturate(dot(surface.normal, v));
         float n_dot_l   = saturate(dot(surface.normal, l));
         float n_dot_h   = saturate(dot(surface.normal, h));
-        float3 radiance	= light.color * light.intensity * n_dot_l;
-    
-        // BRDF components
-        float3 F 			= 0.0f;
-        float3 cDiffuse 	= BRDF_Diffuse(material, n_dot_v, n_dot_l, v_dot_h);	
-        float3 cSpecular 	= BRDF_Specular(material, n_dot_v, n_dot_l, n_dot_h, v_dot_h, F);
+
+        // Specular
+        float3 specular_fresnel     = 0.0f;
+        float3 specular             = BRDF_Specular(material, n_dot_v, n_dot_l, n_dot_h, v_dot_h, specular_fresnel);
+        float3 specular_energy_cons = energy_conservation(specular_fresnel, material.metallic);
+
+        // Specular Clearcoat
+        float3 specular_clearcoat_fresnel       = 0.0f;
+        float3 specular_clearcoat               = 0.0f;
+        float3 specular_clearcoat_energy_cons   = 1.0f;
+        if (material.clearcoat != 0.0f)
+        {
+            specular_clearcoat              = BRDF_Specular_Clearcoat(material, n_dot_h, v_dot_h, specular_clearcoat_fresnel);
+            specular_clearcoat_energy_cons  = energy_conservation(specular_clearcoat_fresnel);
+        }
+
+        // Diffuse
+        float3 diffuse = BRDF_Diffuse(material, n_dot_v, n_dot_l, v_dot_h);
+        diffuse *= specular_energy_cons * specular_clearcoat_energy_cons;
 
         // SSR
         float3 light_reflection = 0.0f;
@@ -158,11 +178,15 @@ PixelOutputType mainPS(Pixel_PosUv input)
         [branch]
         if (g_ssr_enabled && (sample_ssr.x * sample_ssr.y) != 0.0f)
         {
-            light_reflection = saturate(tex_frame.Sample(sampler_bilinear_clamp, sample_ssr.xy).rgb * F);
+            light_reflection = saturate(tex_frame.Sample(sampler_bilinear_clamp, sample_ssr.xy).rgb * specular_fresnel);
+            light_reflection += saturate(tex_frame.Sample(sampler_bilinear_clamp, sample_ssr.xy).rgb * specular_clearcoat_fresnel);
         }
-    
-        light_out.diffuse.rgb   = cDiffuse * radiance * energy_conservation(F, material.metallic);
-        light_out.specular.rgb	= cSpecular * radiance + light_reflection;
+
+        // Radiance
+        float3 radiance = light.color * light.intensity * n_dot_l;
+        
+        light_out.diffuse.rgb   = diffuse * radiance;
+        light_out.specular.rgb  = specular * radiance + specular_clearcoat + light_reflection;
     }
 
 	return light_out;

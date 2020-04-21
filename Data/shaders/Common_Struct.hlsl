@@ -24,6 +24,12 @@ struct Material
     float3 albedo;
     float roughness;
     float metallic;
+    float clearcoat;
+    float clearcoat_roughness;
+    float anisotropic;
+    float anisotropic_rotation;
+    float sheen;
+    float sheen_tint;
     float occlusion;
     float3 padding;
     float emissive;
@@ -57,6 +63,6 @@ struct Surface
     float depth;
     float3 position;
     float3 normal;
-    float3 camera_to_pixel;         // camera to pixel
-    float camera_to_pixel_length;   // camera to pixel
+    float3 camera_to_pixel;
+    float camera_to_pixel_length;
 };

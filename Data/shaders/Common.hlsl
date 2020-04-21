@@ -271,12 +271,12 @@ float microw_shadowing_cod(float n_dot_l, float visibility)
     return microShadow * microShadow;
 }
 
-inline float3 energy_conservation(float3 F, float metallic)
+inline float3 energy_conservation(float3 F, float metallic = 0.0f)
 {
-    // Energy conservation
-    float3 kS = F; // The energy of light that gets reflected - Equal to Fresnel
-    float3 kD = 1.0f - kS; // Remaining energy, light that gets refracted			
-    kD *= 1.0f - metallic; // Multiply kD by the inverse metalness such that only non-metals have diffuse lighting
+    float3 kS = F;          // The energy of light that gets reflected - Equal to Fresnel
+    float3 kD = 1.0f - kS;  // Remaining energy, light that gets refracted			
+    kD *= 1.0f - metallic;  // Multiply kD by the inverse metalness such that only non-metals have diffuse lighting
+    
     return kD;
 }
 
