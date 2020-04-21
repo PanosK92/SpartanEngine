@@ -148,19 +148,28 @@ PixelOutputType mainPS(Pixel_PosUv input)
         float3 l		= -light.direction;
         float3 v        = -surface.camera_to_pixel;
         float3 h 		= normalize(v + l);
+        float l_dot_h    = saturate(dot(l, h));
         float v_dot_h 	= saturate(dot(v, h));
         float n_dot_v   = saturate(dot(surface.normal, v));
         float n_dot_l   = saturate(dot(surface.normal, l));
         float n_dot_h   = saturate(dot(surface.normal, h));
 
         // Specular
-        float3 specular_fresnel     = 0.0f;
-        float3 specular             = BRDF_Specular(material, n_dot_v, n_dot_l, n_dot_h, v_dot_h, specular_fresnel);
+        float3 specular         = 0.0f;
+        float3 specular_fresnel = 0.0f;
+        if (material.anisotropic == 0.0f)
+        {
+            specular = BRDF_Specular_Isotropic(material, n_dot_v, n_dot_l, n_dot_h, v_dot_h, specular_fresnel);
+        }
+        else
+        {
+            specular = BRDF_Specular_Anisotropic(material, surface, v, l, h, n_dot_v, n_dot_l, n_dot_h, l_dot_h, specular_fresnel);
+        }
         float3 specular_energy_cons = energy_conservation(specular_fresnel, material.metallic);
 
-        // Specular Clearcoat
-        float3 specular_clearcoat_fresnel       = 0.0f;
+        // Specular clearcoat
         float3 specular_clearcoat               = 0.0f;
+        float3 specular_clearcoat_fresnel       = 0.0f;
         float3 specular_clearcoat_energy_cons   = 1.0f;
         if (material.clearcoat != 0.0f)
         {
@@ -168,9 +177,21 @@ PixelOutputType mainPS(Pixel_PosUv input)
             specular_clearcoat_energy_cons  = energy_conservation(specular_clearcoat_fresnel);
         }
 
+        // Sheen
+        float3 specular_sheen               = 0.0f;
+        float3 specular_sheen_fresnel       = 0.0f;
+        float3 specular_sheen_energy_cons   = 1.0f;
+        if (material.sheen != 0.0f)
+        {
+            specular_sheen              = BRDF_Specular_Sheen(material, n_dot_v, n_dot_l, n_dot_h, specular_sheen_fresnel);
+            specular_sheen_energy_cons  = energy_conservation(specular_sheen_fresnel);
+        }
+        
         // Diffuse
         float3 diffuse = BRDF_Diffuse(material, n_dot_v, n_dot_l, v_dot_h);
-        diffuse *= specular_energy_cons * specular_clearcoat_energy_cons;
+
+        // Conserve energy
+        diffuse *= specular_energy_cons * specular_clearcoat_energy_cons * specular_sheen_energy_cons;
 
         // SSR
         float3 light_reflection = 0.0f;
@@ -178,15 +199,16 @@ PixelOutputType mainPS(Pixel_PosUv input)
         [branch]
         if (g_ssr_enabled && (sample_ssr.x * sample_ssr.y) != 0.0f)
         {
-            light_reflection = saturate(tex_frame.Sample(sampler_bilinear_clamp, sample_ssr.xy).rgb * specular_fresnel);
-            light_reflection += saturate(tex_frame.Sample(sampler_bilinear_clamp, sample_ssr.xy).rgb * specular_clearcoat_fresnel);
+            float3 ssr          = min(tex_frame.Sample(sampler_bilinear_clamp, sample_ssr.xy).rgb, FLT_MAX);
+            light_reflection    = ssr * specular_fresnel;
+            light_reflection    += ssr * specular_clearcoat_fresnel;
         }
 
         // Radiance
         float3 radiance = light.color * light.intensity * n_dot_l;
         
         light_out.diffuse.rgb   = diffuse * radiance;
-        light_out.specular.rgb  = specular * radiance + specular_clearcoat + light_reflection;
+        light_out.specular.rgb = (specular + specular_clearcoat + specular_sheen) * radiance + light_reflection;
     }
 
 	return light_out;

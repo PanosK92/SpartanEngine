@@ -34,6 +34,7 @@ static const float PI       = 3.14159265f;
 static const float PI2      = PI * 2;
 static const float INV_PI   = 0.31830988f;
 static const float EPSILON  = 0.00000001f;
+static const float FLT_MAX  = 65504.0f;
 #define g_texel_size        float2(1.0f / g_resolution.x, 1.0f / g_resolution.y)
 #define g_shadow_texel_size (1.0f / g_shadow_resolution)
 
@@ -118,6 +119,23 @@ inline float3x3 makeTBN(float3 n, float3 t)
     float3 b = cross(n, t);
     // create matrix
     return float3x3(t, b, n); 
+}
+
+// Find the normal for this fragment, pulling either from a predefined normal map
+// or from the interpolated mesh normal and tangent attributes.
+inline float3 tangent_to_world(float3 position_world, float3 tangent, float3 normal, float2 uv)
+{
+    float3 dp1  = ddx(position_world);
+    float3 dp2  = ddy(position_world);
+    float2 duv1 = ddx(uv);
+    float2 duv2 = ddy(uv);
+
+    float3 N        = normalize(normal);
+    float3 T        = normalize(dp1 * duv2.y - dp2 * duv1.y);
+    float3 B        = normalize(cross(N, T));
+    float3x3 TBN    = float3x3(T, B, N);
+
+    return normalize(mul(tangent, TBN).xyz);
 }
 
 /*------------------------------------------------------------------------------
@@ -284,4 +302,9 @@ inline float screen_fade(float2 uv)
 {
     float2 fade = max(12.0f * abs(uv - 0.5f) - 5.0f, 0.0f);
     return saturate(1.0 - dot(fade, fade));
+}
+
+inline float prevent_nan(float x)
+{
+    return clamp(x, EPSILON, FLT_MAX);
 }

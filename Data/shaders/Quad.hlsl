@@ -133,7 +133,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 #if PASS_BLOOM_BLEND_ADDITIVE
 	float4 sourceColor 	= tex.Sample(sampler_point_clamp, uv);
 	float4 sourceColor2 = Upsample_Box(uv, tex2);
-	color 				= sourceColor + sourceColor2 * g_bloom_intensity;
+	color 				= min(sourceColor + sourceColor2 * g_bloom_intensity, FLT_MAX);
 #endif
 
 #if PASS_LUMA

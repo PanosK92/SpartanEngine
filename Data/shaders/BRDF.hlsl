@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ------------------------------------------------------------------------------*/
 
 // [Schlick 1994, "An Inexpensive BRDF Model for Physically-Based Rendering"]
-float3 F_Schlick(float3 f0, float v_dot_h)
+inline float3 F_Schlick(float3 f0, float v_dot_h)
 {
     float Fc = pow(1 - v_dot_h, 5.0f);
 	// Anything less than 2% is physically impossible and is instead considered to be shadowing
@@ -38,6 +38,12 @@ float3 F_Schlick(float3 f0, float v_dot_h)
 inline float3 F_Schlick(float3 f0, float f90, float v_dot_h)
 {
     return f0 + (f90 - f0) * pow(1.0 - v_dot_h, 5.0f);
+}
+
+inline float3 fresnel(float3 f0, float l_dot_h)
+{
+    float f90 = saturate(dot(f0, 50.0 * 0.33));
+    return F_Schlick(f0, f90, l_dot_h);
 }
 
 // Smith term for GGX
@@ -59,11 +65,26 @@ inline float V_SmithJointApprox(float a2, float n_dot_v, float n_dot_l)
     return 0.5 * rcp(Vis_SmithV + Vis_SmithL);
 }
 
+float V_GGX_anisotropic_2cos(float cos_theta_m, float alpha_x, float alpha_y, float cos_phi, float sin_phi)
+    {
+	float cos2  = cos_theta_m * cos_theta_m;
+	float sin2  = (1.0 - cos2);
+	float s_x   = alpha_x * cos_phi;
+	float s_y   = alpha_y * sin_phi;
+	return 1.0 / max(cos_theta_m + sqrt(cos2 + (s_x * s_x + s_y * s_y) * sin2), 0.001);
+}
+
 // [Kelemen 2001, "A microfacet based coupled specular-matte brdf model with importance sampling"]
 float V_Kelemen(float v_dot_h)
 {
 	// constant to prevent NaN
     return rcp(4 * v_dot_h * v_dot_h + 1e-5);
+}
+
+// Neubelt and Pettineo 2013, "Crafting a Next-gen Material Pipeline for The Order: 1886"
+float V_Neubelt(float n_dot_v, float n_dot_l)
+{
+    return prevent_nan(1.0 / (4.0 * (n_dot_l + n_dot_v - n_dot_l * n_dot_v)));
 }
 
 // GGX / Trowbridge-Reitz
@@ -74,13 +95,32 @@ inline float D_GGX(float a2, float n_dot_h)
     return a2 / (PI * d * d); // 4 mul, 1 rcp
 }
 
+float D_GGX_Anisotropic(float cos_theta_m, float alpha_x, float alpha_y, float cos_phi, float sin_phi)
+{
+    float cos2  = cos_theta_m * cos_theta_m;
+    float sin2  = (1.0 - cos2);
+    float r_x   = cos_phi / alpha_x;
+    float r_y   = sin_phi / alpha_y;
+    float d     = cos2 + sin2 * (r_x * r_x + r_y * r_y);
+    return 1.0 / max(PI * alpha_x * alpha_y * d * d, EPSILON);
+}
+
+float D_Charlie(float roughness, float NoH)
+ {
+    // Estevez and Kulla 2017, "Production Friendly Microfacet Sheen BRDF"
+    float invAlpha  = 1.0 / roughness;
+    float cos2h     = NoH * NoH;
+    float sin2h     = max(1.0 - cos2h, 0.0078125); // 2^(-14/2), so sin2h^2 > 0 in fp16
+    return (2.0 + invAlpha) * pow(sin2h, invAlpha * 0.5) / (2.0 * PI);
+}
+
 /*------------------------------------------------------------------------------
     Diffuse
 ------------------------------------------------------------------------------*/
 
 inline float3 Diffuse_Lambert(float3 diffuse_color)
 {
-	return diffuse_color * (1 / PI);
+    return diffuse_color * (1 / PI);
 }
 
 // [Burley 2012, "Physically-Based Shading at Disney"]
@@ -113,18 +153,41 @@ inline float3 BRDF_Diffuse(Material material, float n_dot_v, float n_dot_l, floa
 /*------------------------------------------------------------------------------
     Specular
 ------------------------------------------------------------------------------*/
-inline float3 BRDF_Specular(Material material, float n_dot_v, float n_dot_l, float n_dot_h, float v_dot_h, out float3 F)
+
+inline float3 BRDF_Specular_Isotropic(Material material, float n_dot_v, float n_dot_l, float n_dot_h, float v_dot_h, out float3 F)
 {
     // remapping and linearization
     float roughness = clamp(material.roughness, 0.089f, 1.0f);
     float a         = roughness * roughness;
     float a2        = pow(roughness, 4.0f);
-    
-    F       = F_Schlick(material.F0, v_dot_h) * material.clearcoat;
+
     float V = V_SmithJointApprox(a2, n_dot_v, n_dot_l);
     float D = D_GGX(a2, n_dot_h);
-
+    F       = F_Schlick(material.F0, v_dot_h);
+    
 	return (D * V) * F;
+}
+
+inline float3 BRDF_Specular_Anisotropic(Material material, Surface surface, float3 v, float3 l, float3 h, float n_dot_v, float n_dot_l, float n_dot_h, float l_dot_h, out float3 F)
+{
+    float rotation      = max(material.anisotropic_rotation * PI2, EPSILON);
+    float3 direction    = float3(rotation, 0.0f, 0.0f);
+    float3 t            = tangent_to_world(surface.position, direction, surface.normal, surface.uv);
+    float3 b            = normalize(cross(surface.normal, t));
+
+    float alpha_ggx = material.roughness;
+    float aspect    = sqrt(1.0 - material.anisotropic * 0.9);
+	float ax        = alpha_ggx / aspect;
+	float ay        = alpha_ggx * aspect;
+	float XdotH     = dot(t, h);
+	float YdotH     = dot(b, h);
+    
+    // specular anisotropic BRDF
+    float D = D_GGX_Anisotropic(n_dot_h, ax, ay, XdotH, YdotH);
+    float V = V_GGX_anisotropic_2cos(n_dot_v, ax, ay, XdotH, YdotH) * V_GGX_anisotropic_2cos(n_dot_v, ax, ay, XdotH, YdotH);
+    F       = fresnel(material.F0, l_dot_h);
+
+    return (D * V) * F;
 }
 
 inline float3 BRDF_Specular_Clearcoat(Material material, float n_dot_h, float v_dot_h, out float3 F)
@@ -134,13 +197,28 @@ inline float3 BRDF_Specular_Clearcoat(Material material, float n_dot_h, float v_
     float a         = roughness * roughness;
     float a2        = pow(roughness, 4.0f);
     
-    F       = F_Schlick(0.04f, 1.0f, v_dot_h);
-    float V = V_Kelemen(v_dot_h);
     float D = D_GGX(a2, n_dot_h);
+    float V = V_Kelemen(v_dot_h);
+    F       = F_Schlick(0.04, 1.0, v_dot_h) * material.clearcoat;
 
 	return (D * V) * F;
 }
 
+inline float3 BRDF_Specular_Sheen(Material material, float n_dot_v, float n_dot_l, float n_dot_h, out float3 F)
+{
+    // remapping and linearization
+    float roughness = clamp(material.roughness, 0.089f, 1.0f);
+
+    // Mix between white and using base color for sheen reflection
+    float tint  = material.sheen_tint * material.sheen_tint;
+    float3 f0   = lerp(1.0f, material.F0, tint);
+    
+    float D = D_Charlie(roughness, n_dot_h);
+    float V = V_Neubelt(n_dot_v, n_dot_l);
+    F       = f0 * material.sheen;
+
+	return (D * V) * F;
+}
 /*------------------------------------------------------------------------------
     Image based lighting
 ------------------------------------------------------------------------------*/
