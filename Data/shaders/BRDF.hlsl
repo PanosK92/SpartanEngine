@@ -60,9 +60,9 @@ inline float V_Smith(float a2, float n_dot_v, float n_dot_l)
 inline float V_SmithJointApprox(float a2, float n_dot_v, float n_dot_l)
 {
     float a             = sqrt(a2);
-    float Vis_SmithV    = n_dot_l * (n_dot_v * (1 - a) + a) + EPSILON;
-    float Vis_SmithL    = n_dot_v * (n_dot_l * (1 - a) + a) + EPSILON;
-    return 0.5 * rcp(Vis_SmithV + Vis_SmithL);
+    float Vis_SmithV    = n_dot_l * (n_dot_v * (1 - a) + a);
+    float Vis_SmithL    = n_dot_v * (n_dot_l * (1 - a) + a);
+    return saturate_16(0.5 * rcp(Vis_SmithV + Vis_SmithL));
 }
 
 float V_GGX_anisotropic_2cos(float cos_theta_m, float alpha_x, float alpha_y, float cos_phi, float sin_phi)
@@ -84,7 +84,7 @@ float V_Kelemen(float v_dot_h)
 // Neubelt and Pettineo 2013, "Crafting a Next-gen Material Pipeline for The Order: 1886"
 float V_Neubelt(float n_dot_v, float n_dot_l)
 {
-    return prevent_nan(1.0 / (4.0 * (n_dot_l + n_dot_v - n_dot_l * n_dot_v)));
+    return saturate_16(1.0 / (4.0 * (n_dot_l + n_dot_v - n_dot_l * n_dot_v)));
 }
 
 // GGX / Trowbridge-Reitz
@@ -102,7 +102,7 @@ float D_GGX_Anisotropic(float cos_theta_m, float alpha_x, float alpha_y, float c
     float r_x   = cos_phi / alpha_x;
     float r_y   = sin_phi / alpha_y;
     float d     = cos2 + sin2 * (r_x * r_x + r_y * r_y);
-    return 1.0 / max(PI * alpha_x * alpha_y * d * d, EPSILON);
+    return saturate_16(1.0 / (PI * alpha_x * alpha_y * d * d));
 }
 
 float D_Charlie(float roughness, float NoH)
@@ -170,8 +170,8 @@ inline float3 BRDF_Specular_Isotropic(Material material, float n_dot_v, float n_
 
 inline float3 BRDF_Specular_Anisotropic(Material material, Surface surface, float3 v, float3 l, float3 h, float n_dot_v, float n_dot_l, float n_dot_h, float l_dot_h, out float3 F)
 {
-    float rotation      = max(material.anisotropic_rotation * PI2, EPSILON);
-    float3 direction    = float3(rotation, 0.0f, 0.0f);
+    float rotation      = max(material.anisotropic_rotation * PI2, FLT_MIN);
+    float3 direction    = float3(cos(rotation), sin(rotation), 0.0f);
     float3 t            = tangent_to_world(surface.position, direction, surface.normal, surface.uv);
     float3 b            = normalize(cross(surface.normal, t));
 
