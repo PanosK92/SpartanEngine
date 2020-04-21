@@ -744,7 +744,7 @@ void Widget_Properties::ShowMaterial(Material* material) const
 
 	if (ComponentProperty::Begin("Material", Icon_Component_Material, nullptr, false))
 	{
-        const float offset_from_pos_x = 100;
+        const float offset_from_pos_x = 160;
 
 		//= REFLECT =================================================
 		auto tiling	= material->GetTiling();
@@ -805,14 +805,20 @@ void Widget_Properties::ShowMaterial(Material* material) const
                     }
                 };
 
-                show_property("Color",      "Diffuse or metal surface color",                                                       RHI_Material_Color,     true, true);
-                show_property("Roughness",  "Specifies microfacet roughness of the surface for diffuse and specular reflection",    RHI_Material_Roughness, true, true);
-                show_property("Metallic",   "Blends between a non-metallic and metallic material model",                            RHI_Material_Metallic,  true, true);
-                show_property("Normal",     "Controls the normals of the base layers",                                              RHI_Material_Normal,    true, true);
-                show_property("Height",     "Perceived depth for parallax mapping",                                                 RHI_Material_Height,    true, true);
-                show_property("Occlusion",  "Amount of light loss, can be complementary to SSAO",                                   RHI_Material_Occlusion, true, false);
-                show_property("Emission",   "Light emission from the surface, works nice with bloom",                               RHI_Material_Emission,  true, false);
-                show_property("Mask",       "Discards pixels",                                                                      RHI_Material_Mask,      true, false);
+                show_property("Clearcoat",              "Extra white specular layer on top of others",                                          RHI_Material_Clearcoat,             false, true);
+                show_property("Clearcoat roughness",    "Roughness of clearcoat specular",                                                      RHI_Material_Clearcoat_Roughness,   false, true);
+                //show_property("Anisotropic",            "Amount of anisotropy for specular reflection",                                         RHI_Material_Anisotropic,           false, true);
+                //show_property("Anisotropic rotation",   "Rotates the direction of anisotropy, with 1.0 going full circle",                      RHI_Material_Anisotropic_Rotation,  false, true);
+                //show_property("Sheen",                  "Amount of soft velvet like reflection near edges",                                     RHI_Material_Sheen,                 false, true);
+               // show_property("Sheen tint",             "Mix between white and using base color for sheen reflection",                          RHI_Material_Sheen_Tint,            false, true);
+                show_property("Color",                  "Diffuse or metal surface color",                                                       RHI_Material_Color,                 true, true);
+                show_property("Roughness",              "Specifies microfacet roughness of the surface for diffuse and specular reflection",    RHI_Material_Roughness,             true, true);
+                show_property("Metallic",               "Blends between a non-metallic and metallic material model",                            RHI_Material_Metallic,              true, true);
+                show_property("Normal",                 "Controls the normals of the base layers",                                              RHI_Material_Normal,                true, true);
+                show_property("Height",                 "Perceived depth for parallax mapping",                                                 RHI_Material_Height,                true, true);
+                show_property("Occlusion",              "Amount of light loss, can be complementary to SSAO",                                   RHI_Material_Occlusion,             true, false);
+                show_property("Emission",               "Light emission from the surface, works nice with bloom",                               RHI_Material_Emission,              true, false);
+                show_property("Mask",                   "Discards pixels",                                                                      RHI_Material_Mask,                  true, false);
             }
 
             // UV

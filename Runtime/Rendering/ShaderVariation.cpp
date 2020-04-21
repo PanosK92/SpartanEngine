@@ -32,7 +32,7 @@ namespace Spartan
 {
 	vector<shared_ptr<ShaderVariation>> ShaderVariation::m_variations;
 
-	const shared_ptr<ShaderVariation>& ShaderVariation::GetMatchingShader(const uint8_t flags)
+	const shared_ptr<ShaderVariation>& ShaderVariation::GetMatchingShader(const uint16_t flags)
 	{
 		for (const auto& shader : m_variations)
 		{
@@ -46,11 +46,11 @@ namespace Spartan
 
 	ShaderVariation::ShaderVariation(const shared_ptr<RHI_Device>& rhi_device, Context* context) : RHI_Shader(rhi_device)
 	{
-		m_context	= context;
+		m_context   = context;
 		m_flags		= 0;
 	}
 
-	void ShaderVariation::Compile(const string& file_path, const uint8_t shader_flags)
+	void ShaderVariation::Compile(const string& file_path, const uint16_t shader_flags)
 	{
 		m_flags = shader_flags;
 
@@ -64,7 +64,7 @@ namespace Spartan
 	void ShaderVariation::AddDefinesBasedOnMaterial()
 	{
 		// Define in the shader what kind of textures it should expect
-		AddDefine("ALBEDO_MAP",		(m_flags & RHI_Material_Color)     ? "1" : "0");
+		AddDefine("ALBEDO_MAP",		(m_flags & RHI_Material_Color)      ? "1" : "0");
 		AddDefine("ROUGHNESS_MAP",  (m_flags & RHI_Material_Roughness)  ? "1" : "0");
 		AddDefine("METALLIC_MAP",   (m_flags & RHI_Material_Metallic)   ? "1" : "0");
 		AddDefine("NORMAL_MAP",     (m_flags & RHI_Material_Normal)     ? "1" : "0");

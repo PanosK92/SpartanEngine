@@ -62,14 +62,14 @@ PixelOutputType mainPS(PixelInputType input)
 {
 	PixelOutputType g_buffer;
 
-	float2 texCoords 		= float2(input.uv.x * materialTiling.x + materialOffset.x, input.uv.y * materialTiling.y + materialOffset.y);
-	float4 albedo			= materialAlbedoColor;
-	float roughness 		= materialRoughness;
-	float metallic 			= materialMetallic;
-	float3 normal			= input.normal.xyz;
-	float normal_intensity	= clamp(materialNormalStrength, 0.012f, materialNormalStrength);
-	float emission			= 0.0f;
-	float occlusion			= 1.0f;	
+    float2 texCoords    = float2(input.uv.x * g_mat_tiling.x + g_mat_offset.x, input.uv.y * g_mat_tiling.y + g_mat_offset.y);
+    float4 albedo       = g_mat_color;
+    float roughness     = g_mat_roughness;
+    float metallic      = g_mat_metallic;
+	float3 normal		= input.normal.xyz;
+	float emission		= 0.0f;
+	float occlusion		= 1.0f;
+    float material_id   = g_mat_id / 255.0f; // dividing in order to squeeze into the 8 bit buffer
 	
 	//= VELOCITY ================================================================================
 	float2 position_current 	= (input.position_ss_current.xy / input.position_ss_current.w);
@@ -85,7 +85,7 @@ PixelOutputType mainPS(PixelInputType input)
 
 	#if HEIGHT_MAP
 		// Parallax Mapping
-		float height_scale 		= materialHeight * 0.04f;
+		float height_scale 		= g_mat_height * 0.04f;
 		float3 camera_to_pixel 	= normalize(g_camera_position - input.position.xyz);
 		texCoords 				= ParallaxMapping(tex_material_height, sampler_anisotropic_wrap, texCoords, camera_to_pixel, TBN, height_scale);
 	#endif
@@ -118,6 +118,7 @@ PixelOutputType mainPS(PixelInputType input)
 	#if NORMAL_MAP
 		// Get tangent space normal and apply intensity
 		float3 tangent_normal 	= normalize(unpack(tex_material_normal.Sample(sampler_anisotropic_wrap, texCoords).rgb));
+        float normal_intensity  = clamp(g_mat_normal, 0.012f, g_mat_normal);
 		tangent_normal.xy 		*= saturate(normal_intensity);
 		normal 					= normalize(mul(tangent_normal, TBN).xyz); // Transform to world space
 	#endif
@@ -133,7 +134,7 @@ PixelOutputType mainPS(PixelInputType input)
 	// Write to G-Buffer
 	g_buffer.albedo		= albedo;
 	g_buffer.normal 	= float4(normal_encode(normal), occlusion);
-	g_buffer.material	= float4(roughness, metallic, emission, 1.0f);
+    g_buffer.material   = float4(roughness, metallic, emission, material_id);
 	g_buffer.velocity	= velocity;
 
     return g_buffer;

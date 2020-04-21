@@ -50,9 +50,10 @@ namespace Spartan
     {
         // Constant buffers
         cmd_list->SetConstantBuffer(0, RHI_Shader_Vertex | RHI_Shader_Pixel, m_buffer_frame_gpu);
-        cmd_list->SetConstantBuffer(1, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, m_buffer_uber_gpu);
-        cmd_list->SetConstantBuffer(2, RHI_Shader_Vertex, m_buffer_object_gpu);
-        cmd_list->SetConstantBuffer(3, RHI_Shader_Pixel, m_buffer_light_gpu);
+        cmd_list->SetConstantBuffer(1, RHI_Shader_Pixel, m_buffer_material_gpu);
+        cmd_list->SetConstantBuffer(2, RHI_Shader_Vertex | RHI_Shader_Pixel, m_buffer_uber_gpu);
+        cmd_list->SetConstantBuffer(3, RHI_Shader_Vertex, m_buffer_object_gpu);
+        cmd_list->SetConstantBuffer(4, RHI_Shader_Pixel, m_buffer_light_gpu);
         
         // Samplers
         cmd_list->SetSampler(0, m_sampler_compare_depth);
@@ -391,17 +392,17 @@ namespace Spartan
         // Clear
         cmd_list->Clear(pso);
 
-        // Only useful to minimize D3D11 state changes (Vulkan backend is smarter)
-        uint32_t m_set_material_id = 0;
-        
+        uint32_t material_index = 1; // 0 is reserved for the sky
+        m_materials.fill(nullptr);
+
         // Iterate through all the G-Buffer shader variations
-        for (const shared_ptr<ShaderVariation>& resource : ShaderVariation::GetVariations())
+        for (const shared_ptr<ShaderVariation>& shader : ShaderVariation::GetVariations())
         {
-            if (!resource->IsCompiled())
+            if (!shader->IsCompiled())
                 continue;
 
             // Set pixel shader
-            pso.shader_pixel = static_cast<RHI_Shader*>(resource.get());
+            pso.shader_pixel = static_cast<RHI_Shader*>(shader.get());
 
             // Set pass name
             pso.pass_name = pso.shader_pixel->GetName().c_str();
@@ -451,7 +452,8 @@ namespace Spartan
                         cmd_list->SetBufferVertex(model->GetVertexBuffer());
 
                         // Bind material
-                        if (m_set_material_id != material->GetId())
+                        bool is_dirty = material_index == 1 ? true : (m_materials[material_index - 1]->GetId() != material->GetId());
+                        if (is_dirty)
                         {
                             // Bind material textures		
                             cmd_list->SetTexture(0, material->GetTexture_Ptr(RHI_Material_Color));
@@ -464,6 +466,7 @@ namespace Spartan
                             cmd_list->SetTexture(7, material->GetTexture_Ptr(RHI_Material_Mask));
                         
                             // Update uber buffer with material properties
+                            m_buffer_uber_cpu.mat_id            = material_index;
                             m_buffer_uber_cpu.mat_albedo        = material->GetColorAlbedo();
                             m_buffer_uber_cpu.mat_tiling_uv     = material->GetTiling();
                             m_buffer_uber_cpu.mat_offset_uv     = material->GetOffset();
@@ -475,7 +478,11 @@ namespace Spartan
                             // Update constant buffer
                             UpdateUberBuffer();
 
-                            m_set_material_id = material->GetId();
+                            // Keep reference
+                            m_materials[material_index] = material;
+
+                            // Advance index
+                            material_index++;
                         }
                         
                         // Update uber buffer with entity transform
@@ -502,6 +509,9 @@ namespace Spartan
                 cmd_list->Submit();
             }
         }
+
+        // Update constant buffer (light pass will access it using material IDs)
+        UpdateMaterialBuffer();
 	}
 
 	void Renderer::Pass_Ssao(RHI_CommandList* cmd_list, const bool use_stencil)

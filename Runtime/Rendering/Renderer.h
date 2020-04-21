@@ -23,11 +23,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ========================
 #include <unordered_map>
+#include <array>
+#include "Renderer_ConstantBuffers.h"
+#include "Material.h"
 #include "../Core/ISubsystem.h"
+#include "../Math/Rectangle.h"
 #include "../RHI/RHI_Definition.h"
 #include "../RHI/RHI_Viewport.h"
-#include "../Math/Rectangle.h"
-#include "Renderer_ConstantBuffers.h"
 #include "../RHI/RHI_Vertex.h"
 //===================================
 
@@ -43,6 +45,7 @@ namespace Spartan
 	class Grid;
 	class Transform_Gizmo;
 	class Profiler;
+
 	namespace Math
 	{
 		class BoundingBox;
@@ -319,6 +322,7 @@ namespace Spartan
 
         // Constant buffers
         bool UpdateFrameBuffer();
+        bool UpdateMaterialBuffer();
         bool UpdateUberBuffer();
         bool UpdateObjectBuffer(RHI_CommandList* cmd_list, const uint32_t entity_index = 0);
         bool UpdateLightBuffer(const Light* light);
@@ -406,10 +410,12 @@ namespace Spartan
         bool m_brdf_specular_lut_rendered       = false;      
         const float m_gizmo_size_max            = 5.0f;
         const float m_gizmo_size_min            = 0.1f;
-                                                                      
-        //= BUFFERS ============================================
+                                                                  
+        //= BUFFERS ==============================================
         BufferFrame m_buffer_frame_cpu;
         std::shared_ptr<RHI_ConstantBuffer> m_buffer_frame_gpu;
+
+        std::shared_ptr<RHI_ConstantBuffer> m_buffer_material_gpu;
 
         BufferUber m_buffer_uber_cpu;
         BufferUber m_buffer_uber_cpu_previous;
@@ -422,10 +428,12 @@ namespace Spartan
         BufferLight m_buffer_light_cpu;
         BufferLight m_buffer_light_cpu_previous;
         std::shared_ptr<RHI_ConstantBuffer> m_buffer_light_gpu;
-        //======================================================
+        //========================================================
 
-        // Entities & Components
+        // Entities and material references
         std::unordered_map<Renderer_Object_Type, std::vector<Entity*>> m_entities;
+        std::array<Material*, m_max_materials> m_materials;
+        
         std::shared_ptr<Camera> m_camera;
 
         // RHI Core

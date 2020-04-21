@@ -55,20 +55,18 @@ cbuffer BufferFrame : register(b0)
 	float2 g_taa_jitter_offset;
 };
 
+// Low frequency - Updates once per frame
+static const int max_materials = 255;
+cbuffer BufferMaterial : register(b1)
+{
+    float4 mat_clearcoat_clearcoatRough_aniso_anisoRot[max_materials];
+    float4 mat_sheen_sheenTint_pad[max_materials];
+}
+
 // Medium frequency - Updates multiple times per frame
-cbuffer BufferUber : register(b1)
+cbuffer BufferUber : register(b2)
 {
 	matrix g_transform;
-    
-	float4 materialAlbedoColor;	
-
-	float2 materialTiling;
-	float2 materialOffset;
-
-    float materialRoughness;
-    float materialMetallic;
-    float materialNormalStrength;
-	float materialHeight;
 
 	float4 g_color;
 	
@@ -77,10 +75,23 @@ cbuffer BufferUber : register(b1)
 	
 	float2 g_blur_direction;
 	float2 g_resolution;
+
+    float4 g_mat_color;
+
+    float2 g_mat_tiling;
+    float2 g_mat_offset;
+
+    float g_mat_roughness;
+    float g_mat_metallic;
+    float g_mat_normal;
+    float g_mat_height;
+
+    float g_mat_id;
+    float3 g_padding;
 };
 
 // High frequency - Updates per object
-cbuffer BufferObject : register(b2)
+cbuffer BufferObject : register(b3)
 {
 	matrix g_object_transform;
 	matrix g_object_wvp_current;
@@ -88,7 +99,7 @@ cbuffer BufferObject : register(b2)
 };
 
 // Updates as many times as there are lights
-cbuffer LightBuffer : register(b3)
+cbuffer LightBuffer : register(b4)
 {
 	matrix light_view_projection[6];
 	float4 intensity_range_angle_bias;

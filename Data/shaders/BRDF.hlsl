@@ -23,7 +23,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common.hlsl"
 //====================
 
-//= BRDF FUNCTIONS ================================================================
+/*------------------------------------------------------------------------------
+    Fresnel, visibility and normal distribution functions
+------------------------------------------------------------------------------*/
+
 // [Schlick 1994, "An Inexpensive BRDF Model for Physically-Based Rendering"]
 float3 F_Schlick(float3 f0, float v_dot_h)
 {
@@ -56,6 +59,13 @@ inline float V_SmithJointApprox(float a2, float n_dot_v, float n_dot_l)
     return 0.5 * rcp(Vis_SmithV + Vis_SmithL);
 }
 
+// [Kelemen 2001, "A microfacet based coupled specular-matte brdf model with importance sampling"]
+float V_Kelemen(float v_dot_h)
+{
+	// constant to prevent NaN
+    return rcp(4 * v_dot_h * v_dot_h + 1e-5);
+}
+
 // GGX / Trowbridge-Reitz
 // [Walter et al. 2007, "Microfacet models for refraction through rough surfaces"]
 inline float D_GGX(float a2, float n_dot_h)
@@ -63,9 +73,11 @@ inline float D_GGX(float a2, float n_dot_h)
     float d = (n_dot_h * a2 - n_dot_h) * n_dot_h + 1; // 2 mad
     return a2 / (PI * d * d); // 4 mul, 1 rcp
 }
-//=================================================================================
 
-//= LIGHTING ====================================================================================================
+/*------------------------------------------------------------------------------
+    Diffuse
+------------------------------------------------------------------------------*/
+
 inline float3 Diffuse_Lambert(float3 diffuse_color)
 {
 	return diffuse_color * (1 / PI);
@@ -98,22 +110,41 @@ inline float3 BRDF_Diffuse(Material material, float n_dot_v, float n_dot_l, floa
     return Diffuse_Burley(material.albedo, material.roughness, n_dot_v, n_dot_l, v_dot_h);
 }
 
+/*------------------------------------------------------------------------------
+    Specular
+------------------------------------------------------------------------------*/
 inline float3 BRDF_Specular(Material material, float n_dot_v, float n_dot_l, float n_dot_h, float v_dot_h, out float3 F)
 {
-     // remapping and linearization
+    // remapping and linearization
     float roughness = clamp(material.roughness, 0.089f, 1.0f);
     float a         = roughness * roughness;
     float a2        = pow(roughness, 4.0f);
     
-    F       = F_Schlick(material.F0, v_dot_h);
+    F       = F_Schlick(material.F0, v_dot_h) * material.clearcoat;
     float V = V_SmithJointApprox(a2, n_dot_v, n_dot_l);
     float D = D_GGX(a2, n_dot_h);
 
 	return (D * V) * F;
 }
-//===============================================================================================================
 
-//= IMAGE BASED LIGHTING ====================================================================================================================================================
+inline float3 BRDF_Specular_Clearcoat(Material material, float n_dot_h, float v_dot_h, out float3 F)
+{
+    // remapping and linearization
+    float roughness = clamp(material.clearcoat_roughness, 0.089f, 1.0f);
+    float a         = roughness * roughness;
+    float a2        = pow(roughness, 4.0f);
+    
+    F       = F_Schlick(0.04f, 1.0f, v_dot_h);
+    float V = V_Kelemen(v_dot_h);
+    float D = D_GGX(a2, n_dot_h);
+
+	return (D * V) * F;
+}
+
+/*------------------------------------------------------------------------------
+    Image based lighting
+------------------------------------------------------------------------------*/
+
 static const float mip_max = 11.0f;
 
 inline float3 SampleEnvironment(Texture2D tex_environment, float2 uv, float mip_level)
@@ -161,16 +192,18 @@ inline float3 Brdf_Diffuse_Ibl(Material material, float3 normal, Texture2D tex_e
 
 inline float3 Brdf_Specular_Ibl(Material material, float3 normal, float3 camera_to_pixel, Texture2D tex_environment, Texture2D tex_lutIBL, out float3 F)
 {
+    // remapping and linearization
+    float roughness = clamp(material.roughness, 0.089f, 1.0f);
+    float a         = roughness * roughness;
+    
 	float3 reflection 	    = reflect(camera_to_pixel, normal);	
     reflection              = GetSpecularDominantDir(normal, reflect(camera_to_pixel, normal), material.roughness); // From Sebastien Lagarde Moving Frostbite to PBR page 69
     float n_dot_v           = dot(-camera_to_pixel, normal);
     float f90               = 0.5 + 2 * n_dot_v * n_dot_v * material.roughness;
     F                       = F_Schlick(material.F0, f90, material.roughness);
-	float alpha 			= max(EPSILON, material.roughness * material.roughness);
-    float mip_level         = lerp(0, mip_max, alpha);
+    float mip_level         = lerp(0, mip_max, a);
 	float3 prefilteredColor	= SampleEnvironment(tex_environment, direction_sphere_uv(reflection), mip_level);
     float2 envBRDF          = tex_lutIBL.Sample(sampler_bilinear_clamp, float2(saturate(n_dot_v), material.roughness)).xy;
 	float3 reflectivity		= F * envBRDF.x + envBRDF.y;
     return prefilteredColor * reflectivity;
 }
-//===========================================================================================================================================================================
