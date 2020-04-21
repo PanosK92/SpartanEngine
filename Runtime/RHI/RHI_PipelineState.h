@@ -72,7 +72,7 @@ namespace Spartan
         uint32_t render_target_depth_stencil_texture_array_index    = 0;
 
         // Dynamic constant buffers
-        int dynamic_constant_buffer_slot = 2; // such a hack, must fix
+        int dynamic_constant_buffer_slot = 3; // such a hack, must fix. Update: Came back to byte me in the ass
 
         // Clear values
         float clear_depth                                         = state_dont_clear_depth;
