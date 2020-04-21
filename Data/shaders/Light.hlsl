@@ -148,7 +148,7 @@ PixelOutputType mainPS(Pixel_PosUv input)
         float3 l		= -light.direction;
         float3 v        = -surface.camera_to_pixel;
         float3 h 		= normalize(v + l);
-        float l_dot_h    = saturate(dot(l, h));
+        float l_dot_h   = saturate(dot(l, h));
         float v_dot_h 	= saturate(dot(v, h));
         float n_dot_v   = saturate(dot(surface.normal, v));
         float n_dot_l   = saturate(dot(surface.normal, l));
@@ -199,7 +199,7 @@ PixelOutputType mainPS(Pixel_PosUv input)
         [branch]
         if (g_ssr_enabled && (sample_ssr.x * sample_ssr.y) != 0.0f)
         {
-            float3 ssr          = min(tex_frame.Sample(sampler_bilinear_clamp, sample_ssr.xy).rgb, FLT_MAX);
+            float3 ssr          = tex_frame.Sample(sampler_bilinear_clamp, sample_ssr.xy).rgb;
             light_reflection    = ssr * specular_fresnel;
             light_reflection    += ssr * specular_clearcoat_fresnel;
         }
@@ -207,8 +207,8 @@ PixelOutputType mainPS(Pixel_PosUv input)
         // Radiance
         float3 radiance = light.color * light.intensity * n_dot_l;
         
-        light_out.diffuse.rgb   = diffuse * radiance;
-        light_out.specular.rgb = (specular + specular_clearcoat + specular_sheen) * radiance + light_reflection;
+        light_out.diffuse.rgb   = saturate_16(diffuse * radiance);
+        light_out.specular.rgb  = saturate_16((specular + specular_clearcoat + specular_sheen) * radiance + light_reflection);
     }
 
 	return light_out;

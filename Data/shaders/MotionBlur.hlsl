@@ -31,7 +31,7 @@ float4 MotionBlur(float2 texCoord, Texture2D tex)
 	velocity			*= velocity_scale;
 	
 	// Early exit
-	if (abs(velocity.x) + abs(velocity.y) < EPSILON)
+    if (abs(velocity.x) + abs(velocity.y) < FLT_MIN)
 		return color;
 	
     [unroll]

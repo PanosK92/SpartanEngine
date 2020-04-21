@@ -49,18 +49,18 @@ float3 clip_aabb(float3 aabb_min, float3 aabb_max, float3 p, float3 q)
 	float3 rmax = aabb_max - p.xyz;
 	float3 rmin = aabb_min - p.xyz;
 
-	if (r.x > rmax.x + EPSILON)
+    if (r.x > rmax.x + FLT_MIN)
 		r *= (rmax.x / r.x);
-	if (r.y > rmax.y + EPSILON)
+    if (r.y > rmax.y + FLT_MIN)
 		r *= (rmax.y / r.y);
-	if (r.z > rmax.z + EPSILON)
+    if (r.z > rmax.z + FLT_MIN)
 		r *= (rmax.z / r.z);
 
-	if (r.x < rmin.x - EPSILON)
+    if (r.x < rmin.x - FLT_MIN)
 		r *= (rmin.x / r.x);
-	if (r.y < rmin.y - EPSILON)
+    if (r.y < rmin.y - FLT_MIN)
 		r *= (rmin.y / r.y);
-	if (r.z < rmin.z - EPSILON)
+    if (r.z < rmin.z - FLT_MIN)
 		r *= (rmin.z / r.z);
 
 	return p + r;

@@ -33,8 +33,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 static const float PI       = 3.14159265f;
 static const float PI2      = PI * 2;
 static const float INV_PI   = 0.31830988f;
-static const float EPSILON  = 0.00000001f;
+static const float FLT_MIN  = 0.00000001f;
 static const float FLT_MAX  = 65504.0f;
+
 #define g_texel_size        float2(1.0f / g_resolution.x, 1.0f / g_resolution.y)
 #define g_shadow_texel_size (1.0f / g_shadow_resolution)
 
@@ -51,6 +52,14 @@ inline bool is_saturated(float value)   { return value == saturate(value); }
 inline bool is_saturated(float2 value)  { return is_saturated(value.x) && is_saturated(value.y); }
 inline bool is_saturated(float3 value)  { return is_saturated(value.x) && is_saturated(value.y) && is_saturated(value.z); }
 inline bool is_saturated(float4 value)  { return is_saturated(value.x) && is_saturated(value.y) && is_saturated(value.z) && is_saturated(value.w); }
+
+/*------------------------------------------------------------------------------
+    SATURATE
+------------------------------------------------------------------------------*/
+inline float    saturate_16(float x)    { return clamp(x, FLT_MIN, FLT_MAX); }
+inline float2   saturate_16(float2 x)   { return clamp(x, FLT_MIN, FLT_MAX); }
+inline float3   saturate_16(float3 x)   { return clamp(x, FLT_MIN, FLT_MAX); }
+inline float4   saturate_16(float4 x)   { return clamp(x, FLT_MIN, FLT_MAX); }
 
 /*------------------------------------------------------------------------------
     GAMMA CORRECTION
@@ -302,9 +311,4 @@ inline float screen_fade(float2 uv)
 {
     float2 fade = max(12.0f * abs(uv - 0.5f) - 5.0f, 0.0f);
     return saturate(1.0 - dot(fade, fade));
-}
-
-inline float prevent_nan(float x)
-{
-    return clamp(x, EPSILON, FLT_MAX);
 }
