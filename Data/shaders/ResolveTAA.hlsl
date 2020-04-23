@@ -23,9 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Velocity.hlsl"
 //======================
 
-static const float g_blendMin = 0.0f;
-static const float g_blendMax = 0.5f;
-
 // From "Temporal Reprojection Anti-Aliasing"
 // https://github.com/playdeadgames/temporal
 float3 clip_aabb(float3 aabb_min, float3 aabb_max, float3 p, float3 q)
@@ -69,7 +66,13 @@ float3 clip_aabb(float3 aabb_min, float3 aabb_max, float3 p, float3 q)
 
 float4 ResolveTAA(float2 uv, Texture2D tex_history, Texture2D tex_current)
 {
-	//= Sample neighbourhood ==============================================================================
+    // Get history and current colors
+    float2 velocity         = GetVelocity_Dilate_Min(uv);
+    float2 uv_reprojected   = uv - velocity;
+    float3 color_history    = Reinhard(tex_history.Sample(sampler_bilinear_clamp, uv_reprojected).rgb);
+    float3 color_current    = Reinhard(tex_current.Sample(sampler_point_clamp, uv).rgb);
+    
+	//= History clipping ==================================================================================
 	float2 du = float2(g_texel_size.x, 0.0f);
 	float2 dv = float2(0.0f, g_texel_size.y);
 
@@ -77,7 +80,7 @@ float4 ResolveTAA(float2 uv, Texture2D tex_history, Texture2D tex_current)
 	float3 ctc = Reinhard(tex_current.Sample(sampler_point_clamp, uv - dv).rgb);
 	float3 ctr = Reinhard(tex_current.Sample(sampler_point_clamp, uv - dv + du).rgb);
 	float3 cml = Reinhard(tex_current.Sample(sampler_point_clamp, uv - du).rgb);
-	float3 cmc = Reinhard(tex_current.Sample(sampler_point_clamp, uv).rgb);
+    float3 cmc = color_current;
 	float3 cmr = Reinhard(tex_current.Sample(sampler_point_clamp, uv + du).rgb);
 	float3 cbl = Reinhard(tex_current.Sample(sampler_point_clamp, uv + dv - du).rgb);
 	float3 cbc = Reinhard(tex_current.Sample(sampler_point_clamp, uv + dv).rgb);
@@ -86,19 +89,19 @@ float4 ResolveTAA(float2 uv, Texture2D tex_history, Texture2D tex_current)
 	float3 color_min = min(ctl, min(ctc, min(ctr, min(cml, min(cmc, min(cmr, min(cbl, min(cbc, cbr))))))));
 	float3 color_max = max(ctl, max(ctc, max(ctr, max(cml, max(cmc, max(cmr, max(cbl, max(cbc, cbr))))))));
 	float3 color_avg = (ctl + ctc + ctr + cml + cmc + cmr + cbl + cbc + cbr) / 9.0f;
-	//=====================================================================================================
-	
-    // Get history and current colors
-	float2 velocity			= GetVelocity_Dilate_Min(uv);
-	float2 uv_reprojected   = uv - velocity;
-	float3 color_history    = Reinhard(tex_history.Sample(sampler_bilinear_clamp, uv_reprojected).rgb);
-	float3 color_current    = cmc;
 
 	// Clip history to the neighbourhood of the current sample
-	color_history = clip_aabb(color_min, color_max, clamp(color_avg, color_min, color_max), color_history);
-
+    color_history = clip_aabb(color_min, color_max, clamp(color_avg, color_min, color_max), color_history);
+	//=====================================================================================================
+	
 	// Decrease blend factor when motion gets sub-pixel
-	float factor_subpixel = max(0.01f, saturate(length(velocity * g_resolution)));
+    const float threshold   = 0.5f;
+    const float base        = 40.0f;
+    const float gather      = 0.01f;
+    float depth             = get_linear_depth(uv);
+    float texel_vel_mag     = length(velocity) * depth;
+    float subpixel_motion   = saturate(threshold / (FLT_MIN + texel_vel_mag));
+    float factor_subpixel   = texel_vel_mag * base + subpixel_motion * gather;
     
     // Decrease blend factor when contrast is high
     float lum0              = luminance(color_current);
@@ -107,13 +110,13 @@ float4 ResolveTAA(float2 uv, Texture2D tex_history, Texture2D tex_current)
 	factor_contrast         = factor_contrast * factor_contrast;
 
     // Compute blend factor
-    float blend_factor = factor_subpixel * factor_contrast;
+    float blend_factor = saturate(factor_subpixel * factor_contrast);
     
 	// Use max blend if the re-projected uv is out of screen
 	blend_factor = is_saturated(uv_reprojected) ? blend_factor : 1.0f;
 	
 	// Resolve
-	float3 resolved = lerp(color_history, color_current, blend_factor);
+    float3 resolved = lerp(color_history, color_current, blend_factor);
 	
 	// Inverse tonemap
 	return float4(ReinhardInverse(resolved), 1.0f);

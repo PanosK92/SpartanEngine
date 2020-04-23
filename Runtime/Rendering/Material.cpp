@@ -83,10 +83,10 @@ namespace Spartan
 		const auto texture_count = xml->GetAttributeAs<int>("Textures", "Count");
 		for (auto i = 0; i < texture_count; i++)
 		{
-			auto node_name		= "Texture_" + to_string(i);
-			const auto tex_type	= static_cast<Material_Property>(xml->GetAttributeAs<uint32_t>(node_name, "Texture_Type"));
-			auto tex_name		= xml->GetAttributeAs<string>(node_name, "Texture_Name");
-			auto tex_path		= xml->GetAttributeAs<string>(node_name, "Texture_Path");
+			auto node_name		                = "Texture_" + to_string(i);
+			const Material_Property tex_type    = static_cast<Material_Property>(xml->GetAttributeAs<uint32_t>(node_name, "Texture_Type"));
+			auto tex_name		                = xml->GetAttributeAs<string>(node_name, "Texture_Name");
+			auto tex_path		                = xml->GetAttributeAs<string>(node_name, "Texture_Path");
 
 			// If the texture happens to be loaded, get a reference to it
 			auto texture = m_context->GetSubsystem<ResourceCache>()->GetByName<RHI_Texture2D>(tex_name);
@@ -95,7 +95,7 @@ namespace Spartan
 			{
 				texture = m_context->GetSubsystem<ResourceCache>()->Load<RHI_Texture2D>(tex_path);
 			}
-			SetTextureSlot(tex_type, texture);
+			SetTextureSlot(tex_type, texture, GetProperty(tex_type));
 		}
 
         // Ensure an a suitable shader exists
@@ -143,7 +143,7 @@ namespace Spartan
 		return xml->Save(GetResourceFilePathNative());
 	}
 
-	void Material::SetTextureSlot(const Material_Property type, const shared_ptr<RHI_Texture>& texture)
+	void Material::SetTextureSlot(const Material_Property type, const shared_ptr<RHI_Texture>& texture, float multiplier /*= 1.0f*/)
 	{
 		if (texture)
 		{
@@ -152,7 +152,7 @@ namespace Spartan
 			m_textures[type] = texture_cached != nullptr ? texture_cached : texture;
             m_flags |= type;
 
-            SetProperty(type, 1.0f);
+            SetProperty(type, multiplier);
 		}
 		else
 		{
