@@ -188,7 +188,12 @@ namespace Spartan
         // If there is a pixel shader, merge it's resources into our map as well
         if (pipeline_state.shader_pixel)
         {
-            while (pipeline_state.shader_pixel->GetCompilationState() == Shader_Compilation_Compiling) {}
+            // Wait for compilation
+            while (!pipeline_state.shader_pixel->IsCompiled())
+            {
+                std::this_thread::sleep_for(std::chrono::milliseconds(16));
+            }
+
             for (const RHI_Descriptor& descriptor_reflected : pipeline_state.shader_pixel->GetDescriptors())
             {
                 // Assume that the descriptor has been created in the vertex shader and only try to update it's shader stage
