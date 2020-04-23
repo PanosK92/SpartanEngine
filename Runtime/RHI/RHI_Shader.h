@@ -58,6 +58,8 @@ namespace Spartan
             CompileAsync<RHI_Vertex_Undefined>(type, shader);
         }
 
+        void WaitForCompilation();
+
 		// Properties
         void* GetResource()             const										{ return m_resource; }
 		bool HasResource()              const										{ return m_resource != nullptr; }
@@ -65,7 +67,7 @@ namespace Spartan
 		const auto& GetInputLayout()    const										{ return m_input_layout; } // only valid for vertex shader
 		auto GetCompilationState()      const										{ return m_compilation_state; }
         bool IsCompiled()               const										{ return m_compilation_state == Shader_Compilation_Succeeded; }
-		const auto& GetName()           const										{ return m_name; }
+		const std::string& GetName()    const										{ return m_name; }
 		void SetName(const std::string& name)										{ m_name = name; }
 		void AddDefine(const std::string& define, const std::string& value = "1")	{ m_defines[define] = value; }
         auto& GetDefines()              const                                       { return m_defines; }

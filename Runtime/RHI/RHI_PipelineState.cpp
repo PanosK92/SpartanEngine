@@ -59,6 +59,11 @@ namespace Spartan
         // Vertex shader
         if (shader_vertex)
         {
+            if (!shader_vertex->IsCompiled())
+            {
+                is_valid = false;
+            }
+
             // Ensure that no more than one render targets are active
             if (render_target_swapchain && render_target_color_textures[0])
             {
@@ -71,9 +76,23 @@ namespace Spartan
             }
         }
 
+        // Pixel shader
+        if (shader_pixel)
+        {
+            if (!shader_pixel->IsCompiled())
+            {
+                is_valid = false;
+            }
+        }
+
         // Compute shader
         if (shader_compute)
         {
+            if (!shader_compute->IsCompiled())
+            {
+                is_valid = false;
+            }
+
             if (!unordered_access_view)
             {
                 is_valid = false;

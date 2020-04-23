@@ -400,6 +400,7 @@ namespace Spartan
         // Iterate through all the G-Buffer shader variations
         for (const auto& it : ShaderGBuffer::GetVariations())
         {
+            // Skip the shader until it compiles or the users spots a compilation error
             if (!it.second->IsCompiled())
                 continue;
 
@@ -700,6 +701,10 @@ namespace Spartan
             {
                 // Set pixel shader
                 pipeline_state.shader_pixel = static_cast<RHI_Shader*>(ShaderLight::GetVariation(m_context, light, m_options & Render_ScreenSpaceReflections));
+
+                // Skip the shader until it compiles or the users spots a compilation error
+                if (!pipeline_state.shader_pixel->IsCompiled())
+                    continue;
         
                 if (cmd_list->Begin(pipeline_state))
                 {

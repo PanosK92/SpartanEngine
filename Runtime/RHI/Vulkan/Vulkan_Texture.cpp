@@ -293,8 +293,17 @@ namespace Spartan
 	RHI_TextureCube::~RHI_TextureCube()
 	{
 		m_data.clear();
-        vkDestroyImageView(m_rhi_device->GetContextRhi()->device, reinterpret_cast<VkImageView>(m_view_texture), nullptr);
-		vkDestroyImage(m_rhi_device->GetContextRhi()->device, reinterpret_cast<VkImage>(m_texture), nullptr);
+
+        if (m_view_texture)
+        {
+            vkDestroyImageView(m_rhi_device->GetContextRhi()->device, reinterpret_cast<VkImageView>(m_view_texture), nullptr);
+        }
+
+        if (m_texture)
+        {
+            vkDestroyImage(m_rhi_device->GetContextRhi()->device, reinterpret_cast<VkImage>(m_texture), nullptr);
+        }
+
 		vulkan_common::memory::free(m_rhi_device->GetContextRhi(), m_resource_memory);
 	}
 

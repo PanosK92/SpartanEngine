@@ -436,7 +436,7 @@ namespace Spartan
         // Early exit if this light casts no shadows
         if (!m_shadows_enabled)
         {
-            m_shadow_map.texture_depth.reset();
+            m_shadow_map.texture_depth = nullptr;
             return;
         }
 
