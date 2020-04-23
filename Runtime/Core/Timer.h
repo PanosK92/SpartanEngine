@@ -72,9 +72,9 @@ namespace Spartan
         double m_sleep_overhead         = 0.0f;
 
         // FPS
-        double m_fps_min                = 25.0;
-        double m_fps_max                = 200.0;
-        double m_fps_target             = m_fps_max; // ideal scenario
+        double m_fps_min                = 30.0;
+        double m_fps_max                = 1000.0;
+        double m_fps_target             = m_fps_max;
         bool m_user_selected_fps_target = false;
         FPS_Policy m_fps_policy         = Fps_Unlocked;
 	};

@@ -325,18 +325,6 @@ namespace Spartan
             return false;
         }
 
-        float light_directional_intensity = 0.0f;
-        if (!m_entities[Renderer_Object_LightDirectional].empty())
-        {
-            if (Entity* entity = m_entities[Renderer_Object_LightDirectional].front())
-            {
-                if (Light* light = entity->GetComponent<Light>())
-                {
-                    light_directional_intensity = light->GetIntensity();
-                }
-            }
-        }
-
         // Struct is updated automatically here as per frame data are (by definition) known ahead of time
         m_buffer_frame_cpu.camera_near                  = m_camera->GetNearPlane();
         m_buffer_frame_cpu.camera_far                   = m_camera->GetFarPlane();
@@ -353,9 +341,18 @@ namespace Spartan
         m_buffer_frame_cpu.tonemapping                  = m_option_values[Option_Value_Tonemapping];
         m_buffer_frame_cpu.exposure                     = m_option_values[Option_Value_Exposure];
         m_buffer_frame_cpu.gamma                        = m_option_values[Option_Value_Gamma];
-        m_buffer_frame_cpu.directional_light_intensity  = light_directional_intensity;
         m_buffer_frame_cpu.ssr_enabled                  = GetOption(Render_ScreenSpaceReflections) ? 1.0f : 0.0f;
         m_buffer_frame_cpu.shadow_resolution            = GetOptionValue<float>(Option_Value_ShadowResolution);
+
+        // Update directional light intensity, just grab the first one
+        for (const auto& entity : m_entities[Renderer_Object_Light])
+            if (Light* light = entity->GetComponent<Light>())
+            {
+                if (light->GetLightType() == LightType_Directional)
+                {
+                    m_buffer_frame_cpu.directional_light_intensity = light->GetIntensity();
+                }
+            }
 
         // Update
         *buffer = m_buffer_frame_cpu;
@@ -483,11 +480,11 @@ namespace Spartan
         const bool contact_shadows    = static_cast<float>(m_options & Render_ScreenSpaceShadows);
 
         for (uint32_t i = 0; i < light->GetShadowArraySize(); i++) { m_buffer_light_cpu.view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix(i); }
-        m_buffer_light_cpu.intensity_range_angle_bias               = Vector4(light->GetIntensity(), light->GetRange(), light->GetAngle(), GetOption(Render_ReverseZ) ? light->GetBias() : -light->GetBias());
-        m_buffer_light_cpu.normalBias_shadow_volumetric_contact     = Vector4(light->GetNormalBias(), light->GetShadowsEnabled(), contact_shadows && light->GetShadowsScreenSpaceEnabled(), volumetric && light->GetVolumetricEnabled());
-        m_buffer_light_cpu.color                                    = light->GetColor(); m_buffer_light_cpu.color.w = light->GetShadowsTransparentEnabled() ? 1.0f : 0.0f;
-        m_buffer_light_cpu.position                                 = light->GetTransform()->GetPosition();
-        m_buffer_light_cpu.direction                                = light->GetDirection();
+        m_buffer_light_cpu.intensity_range_angle_bias   = Vector4(light->GetIntensity(), light->GetRange(), light->GetAngle(), GetOption(Render_ReverseZ) ? light->GetBias() : -light->GetBias());
+        m_buffer_light_cpu.color                        = light->GetColor();
+        m_buffer_light_cpu.normal_bias                  = light->GetNormalBias();
+        m_buffer_light_cpu.position                     = light->GetTransform()->GetPosition();
+        m_buffer_light_cpu.direction                    = light->GetDirection();
 
         // Update
         *buffer = m_buffer_light_cpu;
@@ -531,10 +528,6 @@ namespace Spartan
 			if (light)
 			{
 				m_entities[Renderer_Object_Light].emplace_back(entity.get());
-
-                if (light->GetLightType() == LightType_Directional) m_entities[Renderer_Object_LightDirectional].emplace_back(entity.get());
-                if (light->GetLightType() == LightType_Point)       m_entities[Renderer_Object_LightPoint].emplace_back(entity.get());
-                if (light->GetLightType() == LightType_Spot)        m_entities[Renderer_Object_LightSpot].emplace_back(entity.get());
 			}
 
 			if (camera)

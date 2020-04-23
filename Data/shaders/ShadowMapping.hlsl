@@ -330,12 +330,15 @@ float4 Shadow_Map(Surface surface, Light light, bool transparent_pixel)
             {   
                 // Sample primary cascade
                 float compare_depth = bias_sloped_scaled(pos.z, light.bias * (cascade + 1));
-                shadow.a            = SampleShadowMap(float3(pos.xy, cascade), compare_depth);             
+                shadow.a            = SampleShadowMap(float3(pos.xy, cascade), compare_depth);
+
+                #if SHADOW_TRANSPARENT
                 [branch]
-                if (light.cast_transparent_shadows && shadow.a > 0.0f && !transparent_pixel)
+                if (shadow.a > 0.0f && !transparent_pixel)
                 {
                     shadow *= Technique_Vogel_Color(float3(pos.xy, cascade));
                 }
+                #endif
 
                 // If we are close to the edge of the primary cascade and a secondary cascade exists, lerp with it.
                 float cascade_lerp  = (max3(abs(pos)) - 0.9f);
@@ -354,11 +357,13 @@ float4 Shadow_Map(Surface surface, Light light, bool transparent_pixel)
                     // Blend cascades   
                     shadow.a = lerp(shadow.a, shadow_secondary, cascade_lerp);
                     
+                    #if SHADOW_TRANSPARENT
                     [branch]
-                    if (light.cast_transparent_shadows && shadow.a > 0.0f && !transparent_pixel)
+                    if (shadow.a > 0.0f && !transparent_pixel)
                     {
                         shadow = min(shadow, Technique_Vogel_Color(float3(pos.xy, cacade_secondary)));
                     }
+                    #endif
                 }
 
                 break;
@@ -375,11 +380,13 @@ float4 Shadow_Map(Surface surface, Light light, bool transparent_pixel)
             float compare_depth     = bias_sloped_scaled(pos_z, light.bias);
             shadow.a                = SampleShadowMap(light.direction, compare_depth);
             
+            #if SHADOW_TRANSPARENT
             [branch]
-            if (light.cast_transparent_shadows && shadow.a > 0.0f && !transparent_pixel)
+            if (shadow.a > 0.0f && !transparent_pixel)
             {
                 shadow *= sample_color(light.direction);
             }
+            #endif
         }
     }
     #elif SPOT
@@ -390,12 +397,14 @@ float4 Shadow_Map(Surface surface, Light light, bool transparent_pixel)
             float3 pos_clip     = project(position_world, light_view_projection[0]);
             float compare_depth = bias_sloped_scaled(pos_clip.z, light.bias);
             shadow.a            = SampleShadowMap(float3(pos_clip.xy, 0.0f), compare_depth);
-            
+
+            #if SHADOW_TRANSPARENT
             [branch]
             if (light.cast_transparent_shadows && shadow.a > 0.0f  && !transparent_pixel)
             {
                 shadow *= sample_color(float3(pos_clip.xy, 0.0f));
             }
+            #endif
         }
     }
     #endif

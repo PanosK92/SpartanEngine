@@ -103,8 +103,8 @@ cbuffer LightBuffer : register(b4)
 {
 	matrix light_view_projection[6];
 	float4 intensity_range_angle_bias;
-	float4 normalBias_shadow_volumetric_contact;
-	float4 color;
+	float3 color;
+    float normal_bias;
 	float4 position;
 	float4 direction;
 };
