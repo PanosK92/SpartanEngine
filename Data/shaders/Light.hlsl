@@ -73,21 +73,17 @@ PixelOutputType mainPS(Pixel_PosUv input)
         material.is_transparent         = sample_albedo.a != 1.0f;
         material.is_sky                 = mat_id == 0;
     }
-    
+
     // Fill light struct
     Light light;
-    light.color 	                = color.xyz;
-    light.position 	                = position.xyz;
-    light.intensity 			    = intensity_range_angle_bias.x;
-    light.range 				    = intensity_range_angle_bias.y;
-    light.angle 				    = intensity_range_angle_bias.z;
-    light.bias					    = intensity_range_angle_bias.w;
-    light.normal_bias 			    = normalBias_shadow_volumetric_contact.x;
-    light.cast_shadows 		        = normalBias_shadow_volumetric_contact.y;
-    light.cast_contact_shadows 	    = normalBias_shadow_volumetric_contact.z;
-    light.cast_transparent_shadows  = color.w;
-    light.is_volumetric 	        = normalBias_shadow_volumetric_contact.w;
-    light.distance_to_pixel         = length(surface.position - light.position);
+    light.color 	        = color.xyz;
+    light.position 	        = position.xyz;
+    light.intensity 		= intensity_range_angle_bias.x;
+    light.range 			= intensity_range_angle_bias.y;
+    light.angle 			= intensity_range_angle_bias.z;
+    light.bias				= intensity_range_angle_bias.w;
+    light.normal_bias       = normal_bias;
+    light.distance_to_pixel = length(surface.position - light.position);
     #if DIRECTIONAL
     light.array_size    = 4;
     light.direction	    = direction.xyz; 
@@ -112,25 +108,25 @@ PixelOutputType mainPS(Pixel_PosUv input)
         float4 shadow = 1.0f;
         
         // Shadow mapping
-        [branch]
-        if (light.cast_shadows)
+        #if SHADOWS
         {
             shadow = Shadow_Map(surface, light, material.is_transparent);
 
             // Volumetric lighting (requires shadow maps)
-            [branch]
-            if (light.is_volumetric)
+            #if VOLUMETRIC
             {
                 light_out.volumetric.rgb = VolumetricLighting(surface, light);
             }
+            #endif
         }
+        #endif
         
         // Screen space shadows
-        [branch]
-        if (light.cast_contact_shadows)
+        #if SHADOWS_SCREEN_SPACE
         {
             shadow.a = min(shadow.a, ScreenSpaceShadows(surface, light));
         }
+        #endif
     
         // Occlusion from texture and ssao
         shadow.a = min(shadow.a, material.occlusion);
@@ -195,14 +191,16 @@ PixelOutputType mainPS(Pixel_PosUv input)
 
         // SSR
         float3 light_reflection = 0.0f;
-        float2 sample_ssr       = tex_ssr.Sample(sampler_point_clamp, input.uv).xy;
+        #if SCREEN_SPACE_REFLECTIONS
+        float2 sample_ssr = tex_ssr.Sample(sampler_point_clamp, input.uv).xy;
         [branch]
-        if (g_ssr_enabled && (sample_ssr.x * sample_ssr.y) != 0.0f)
+        if (sample_ssr.x * sample_ssr.y != 0.0f)
         {
             float3 ssr          = tex_frame.Sample(sampler_bilinear_clamp, sample_ssr.xy).rgb;
             light_reflection    = ssr * specular_fresnel;
             light_reflection    += ssr * specular_clearcoat_fresnel;
         }
+        #endif
 
         // Radiance
         float3 radiance = light.color * light.intensity * n_dot_l;

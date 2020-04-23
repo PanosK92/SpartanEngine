@@ -40,10 +40,6 @@ struct Material
 
 struct Light
 {
-    bool    cast_shadows;
-    bool    cast_contact_shadows;
-    bool    cast_transparent_shadows;
-    bool    is_volumetric;
     float3  color;
     float   intensity;
     float3  position;

@@ -140,20 +140,20 @@ namespace Spartan
     {
         Math::Matrix view_projection[6];
         Math::Vector4 intensity_range_angle_bias;
-        Math::Vector4 normalBias_shadow_volumetric_contact;
-        Math::Vector4 color;
+        Math::Vector3 color;
+        float normal_bias;
         Math::Vector4 position;
         Math::Vector4 direction;
     
         bool operator==(const BufferLight& rhs)
         {
             return
-                view_projection                         == rhs.view_projection                      &&
-                intensity_range_angle_bias              == rhs.intensity_range_angle_bias           &&
-                normalBias_shadow_volumetric_contact    == rhs.normalBias_shadow_volumetric_contact &&
-                color                                   == rhs.color                                &&
-                position                                == rhs.position                             &&
-                direction                               == rhs.direction;
+                view_projection             == rhs.view_projection              &&
+                intensity_range_angle_bias  == rhs.intensity_range_angle_bias   &&
+                normal_bias                 == rhs.normal_bias                  &&
+                color                       == rhs.color                        &&
+                position                    == rhs.position                     &&
+                direction                   == rhs.direction;
         }
     };
 }

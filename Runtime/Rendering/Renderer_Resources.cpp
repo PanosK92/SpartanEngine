@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ============================
 #include "Renderer.h"
 #include "ShaderGBuffer.h"
+#include "ShaderLight.h"
 #include "Font/Font.h"
 #include "../Resource/ResourceCache.h"
 #include "../RHI/RHI_Texture2D.h"
@@ -173,6 +174,14 @@ namespace Spartan
         // Get standard shader directory
         const auto dir_shaders = m_resource_cache->GetDataDirectory(Asset_Shaders) + "/";
 
+        // Shader which compile different variations when needed
+        m_shaders[Shader_Gbuffer_P] = make_shared<ShaderGBuffer>(m_context);
+        m_shaders[Shader_Light_P]   = make_shared<ShaderLight>(m_context);
+
+        // G-Buffer
+        m_shaders[Shader_Gbuffer_V] = make_shared<RHI_Shader>(m_context);
+        m_shaders[Shader_Gbuffer_V]->CompileAsync<RHI_Vertex_PosTexNorTan>(RHI_Shader_Vertex, dir_shaders + "GBuffer.hlsl");
+
         // Quad - Used by almost everything
         m_shaders[Shader_Quad_V] = make_shared<RHI_Shader>(m_context);
         m_shaders[Shader_Quad_V]->CompileAsync<RHI_Vertex_PosTex>(RHI_Shader_Vertex, dir_shaders + "Quad.hlsl");
@@ -183,32 +192,10 @@ namespace Spartan
         m_shaders[Shader_Depth_P] = make_shared<RHI_Shader>(m_context);
         m_shaders[Shader_Depth_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Depth.hlsl");
 
-        // G-Buffer
-        m_shaders[Shader_Gbuffer_V] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_Gbuffer_V]->CompileAsync<RHI_Vertex_PosTexNorTan>(RHI_Shader_Vertex, dir_shaders + "GBuffer.hlsl");
-
-        // G-Buffer
-        m_shaders[Shader_Gbuffer_P] = make_shared<ShaderGBuffer>(m_context);
-
         // BRDF - Specular Lut
         m_shaders[Shader_BrdfSpecularLut] = make_shared<RHI_Shader>(m_context);
         m_shaders[Shader_BrdfSpecularLut]->AddDefine("BRDF_ENV_SPECULAR_LUT");
         m_shaders[Shader_BrdfSpecularLut]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "BRDF_SpecularLut.hlsl");
-
-        // Light - Directional
-        m_shaders[Shader_LightDirectional_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_LightDirectional_P]->AddDefine("DIRECTIONAL");
-        m_shaders[Shader_LightDirectional_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Light.hlsl");
-
-        // Light - Point
-        m_shaders[Shader_LightPoint_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_LightPoint_P]->AddDefine("POINT");
-        m_shaders[Shader_LightPoint_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Light.hlsl");
-
-        // Light - Spot
-        m_shaders[Shader_LightSpot_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_LightSpot_P]->AddDefine("SPOT");
-        m_shaders[Shader_LightSpot_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Light.hlsl");
 
         // Texture
         m_shaders[Shader_Texture_P] = make_shared<RHI_Shader>(m_context);

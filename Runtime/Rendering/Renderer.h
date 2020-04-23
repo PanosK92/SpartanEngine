@@ -121,9 +121,6 @@ namespace Spartan
 		Renderer_Object_Opaque,
 		Renderer_Object_Transparent,
         Renderer_Object_Light,
-		Renderer_Object_LightDirectional,
-        Renderer_Object_LightPoint,
-        Renderer_Object_LightSpot,
 		Renderer_Object_Camera
 	};
 
@@ -156,9 +153,7 @@ namespace Spartan
         Shader_DebugChannelA_P,
         Shader_DebugChannelRgbGammaCorrect_P,
         Shader_BrdfSpecularLut,
-        Shader_LightDirectional_P,
-        Shader_LightPoint_P,
-        Shader_LightSpot_P,
+        Shader_Light_P,
 		Shader_Composition_P,
 		Shader_Color_V,
         Shader_Color_P,

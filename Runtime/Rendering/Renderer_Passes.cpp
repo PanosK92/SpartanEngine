@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Renderer.h"
 #include "Model.h"
 #include "ShaderGBuffer.h"
+#include "ShaderLight.h"
 #include "Font/Font.h"
 #include "Gizmos/Grid.h"
 #include "Gizmos/Transform_Gizmo.h"
@@ -652,12 +653,15 @@ namespace Spartan
 
     void Renderer::Pass_Light(RHI_CommandList* cmd_list, const bool use_stencil)
     {
+        // Acquire lights
+        const vector<Entity*>& entities = m_entities[Renderer_Object_Light];
+        if (entities.empty())
+            return;
+
         // Acquire shaders
-        const auto& shader_v                = m_shaders[Shader_Quad_V];
-        const auto& shader_p_directional    = m_shaders[Shader_LightDirectional_P];
-        const auto& shader_p_point          = m_shaders[Shader_LightPoint_P];
-        const auto& shader_p_spot           = m_shaders[Shader_LightSpot_P];
-        if (!shader_v->IsCompiled() || !shader_p_directional->IsCompiled() || !shader_p_point->IsCompiled() || !shader_p_spot->IsCompiled())
+        RHI_Shader* shader_v    = m_shaders[Shader_Quad_V].get();
+        ShaderLight* shader_p   = static_cast<ShaderLight*>(m_shaders[Shader_Light_P].get());
+        if (!shader_v->IsCompiled())
             return;
 
         // Acquire render targets
@@ -672,7 +676,7 @@ namespace Spartan
 
          // Set render state
         static RHI_PipelineState pipeline_state;
-        pipeline_state.shader_vertex                            = shader_v.get();
+        pipeline_state.shader_vertex                            = shader_v;
         pipeline_state.rasterizer_state                         = m_rasterizer_cull_back_solid.get();
         pipeline_state.blend_state                              = m_blend_additive.get();
         pipeline_state.depth_stencil_state                      = use_stencil ? m_depth_stencil_disabled_enabled_read.get() : m_depth_stencil_disabled.get();
@@ -689,47 +693,37 @@ namespace Spartan
         pipeline_state.primitive_topology                       = RHI_PrimitiveTopology_TriangleList;
         pipeline_state.pass_name                                = "Pass_Light";
 
-        auto draw_lights = [this, &cmd_list, &shader_p_directional, &shader_p_point, &shader_p_spot](Renderer_Object_Type type)
+        // Iterate through all the light entities
+        for (const auto& entity : entities)
         {
-            const vector<Entity*>& entities = m_entities[type];
-            if (entities.empty())
-                return;
-
-            // Choose correct shader
-            RHI_Shader* shader_p = nullptr;
-            if (type == Renderer_Object_LightDirectional)   shader_p = shader_p_directional.get();
-            else if (type == Renderer_Object_LightPoint)    shader_p = shader_p_point.get();
-            else if (type == Renderer_Object_LightSpot)     shader_p = shader_p_spot.get();
-
-            // Set pixel shader
-            pipeline_state.shader_pixel = shader_p;
-
-            if (cmd_list->Begin(pipeline_state))
+            if (Light* light = entity->GetComponent<Light>())
             {
-                cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
-                cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
-                cmd_list->SetTexture(8, m_render_targets[RenderTarget_Gbuffer_Albedo]);
-                cmd_list->SetTexture(9, m_render_targets[RenderTarget_Gbuffer_Normal]);
-                cmd_list->SetTexture(10, m_render_targets[RenderTarget_Gbuffer_Material]);
-                cmd_list->SetTexture(12, m_render_targets[RenderTarget_Gbuffer_Depth]); 
-                cmd_list->SetTexture(22, (m_options & Render_ScreenSpaceAmbientOcclusion)    ? m_render_targets[RenderTarget_Ssao]   : m_tex_white);
-                cmd_list->SetTexture(26, (m_options & Render_ScreenSpaceReflections)         ? m_render_targets[RenderTarget_Ssr]    : m_tex_black);
-                cmd_list->SetTexture(27, m_render_targets[RenderTarget_Composition_Hdr_2]); // previous frame before post-processing
-
-                // Iterate through all the light entities
-                for (const auto& entity : entities)
+                // Set pixel shader
+                pipeline_state.shader_pixel = static_cast<RHI_Shader*>(ShaderLight::GetVariation(m_context, light, m_options & Render_ScreenSpaceReflections));
+        
+                if (cmd_list->Begin(pipeline_state))
                 {
-                    if (Light* light = entity->GetComponent<Light>())
+                    cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
+                    cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
+                    cmd_list->SetTexture(8, m_render_targets[RenderTarget_Gbuffer_Albedo]);
+                    cmd_list->SetTexture(9, m_render_targets[RenderTarget_Gbuffer_Normal]);
+                    cmd_list->SetTexture(10, m_render_targets[RenderTarget_Gbuffer_Material]);
+                    cmd_list->SetTexture(12, m_render_targets[RenderTarget_Gbuffer_Depth]);
+                    cmd_list->SetTexture(22, (m_options & Render_ScreenSpaceAmbientOcclusion) ? m_render_targets[RenderTarget_Ssao] : m_tex_white);
+                    cmd_list->SetTexture(26, (m_options & Render_ScreenSpaceReflections) ? m_render_targets[RenderTarget_Ssr] : m_tex_black);
+                    cmd_list->SetTexture(27, m_render_targets[RenderTarget_Composition_Hdr_2]); // previous frame before post-processing
+        
+                    if (light->GetIntensity() != 0)
                     {
                         // Update light buffer
                         UpdateLightBuffer(light);
-
+        
                         // Set shadow map
                         if (light->GetShadowsEnabled())
                         {
                             RHI_Texture* tex_depth = light->GetDepthTexture();
                             RHI_Texture* tex_color = light->GetShadowsTransparentEnabled() ? light->GetColorTexture() : m_tex_white.get();
-
+        
                             if (light->GetLightType() == LightType_Directional)
                             {
                                 cmd_list->SetTexture(13, tex_depth);
@@ -746,21 +740,16 @@ namespace Spartan
                                 cmd_list->SetTexture(18, tex_color);
                             }
                         }
-
+        
                         // Draw
                         cmd_list->DrawIndexed(Rectangle::GetIndexCount());
                     }
+        
+                    cmd_list->End();
+                    cmd_list->Submit();
                 }
-
-                cmd_list->End();
-                cmd_list->Submit();
             }
-        };
-
-        // Draw lights
-        draw_lights(Renderer_Object_LightDirectional);
-        draw_lights(Renderer_Object_LightPoint);
-        draw_lights(Renderer_Object_LightSpot);
+        }
     }
 
 	void Renderer::Pass_Composition(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_out, const bool use_stencil)
