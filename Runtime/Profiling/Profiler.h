@@ -60,7 +60,7 @@ namespace Spartan
         // Properties
 		void SetProfilingEnabledCpu(const bool enabled)	{ m_profile_cpu_enabled = enabled; }
 		void SetProfilingEnabledGpu(const bool enabled)	{ m_profile_gpu_enabled = enabled; }
-		const auto& GetMetrics() const			        { return m_metrics; }
+		const std::string& GetMetrics() const			{ return m_metrics; }
 		const auto& GetTimeBlocks() const				{ return m_time_blocks_read; }
 		auto GetTimeCpu() const						    { return m_time_cpu_ms; }
 		auto GetTimeGpu() const						    { return m_time_gpu_ms; }
@@ -151,7 +151,7 @@ namespace Spartan
         bool m_is_stuttering_gpu        = false;
 
 		// Misc
-		std::string m_metrics;
+		std::string m_metrics = "N/A";
         Stopwatch m_timer;
 		bool m_profile = true;
 	
