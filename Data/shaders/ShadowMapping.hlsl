@@ -30,8 +30,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define SampleShadowMap Technique_Vogel
 
 // technique - all
-static const uint g_shadow_samples = 16;
-static const uint g_penumbra_samples =16;
+static const uint g_shadow_samples      = 16;
+static const uint g_penumbra_samples    = 16;
 
 // technique - vogel
 static const float g_shadow_vogel_filter_size = 3.0f;
@@ -332,7 +332,7 @@ float4 Shadow_Map(Surface surface, Light light, bool transparent_pixel)
                 float compare_depth = bias_sloped_scaled(pos.z, light.bias * (cascade + 1));
                 shadow.a            = SampleShadowMap(float3(pos.xy, cascade), compare_depth);
 
-                #if SHADOW_TRANSPARENT
+                #if SHADOWS_TRANSPARENT
                 [branch]
                 if (shadow.a > 0.0f && !transparent_pixel)
                 {
@@ -357,7 +357,7 @@ float4 Shadow_Map(Surface surface, Light light, bool transparent_pixel)
                     // Blend cascades   
                     shadow.a = lerp(shadow.a, shadow_secondary, cascade_lerp);
                     
-                    #if SHADOW_TRANSPARENT
+                    #if SHADOWS_TRANSPARENT
                     [branch]
                     if (shadow.a > 0.0f && !transparent_pixel)
                     {
@@ -380,7 +380,7 @@ float4 Shadow_Map(Surface surface, Light light, bool transparent_pixel)
             float compare_depth     = bias_sloped_scaled(pos_z, light.bias);
             shadow.a                = SampleShadowMap(light.direction, compare_depth);
             
-            #if SHADOW_TRANSPARENT
+            #if SHADOWS_TRANSPARENT
             [branch]
             if (shadow.a > 0.0f && !transparent_pixel)
             {
@@ -398,7 +398,7 @@ float4 Shadow_Map(Surface surface, Light light, bool transparent_pixel)
             float compare_depth = bias_sloped_scaled(pos_clip.z, light.bias);
             shadow.a            = SampleShadowMap(float3(pos_clip.xy, 0.0f), compare_depth);
 
-            #if SHADOW_TRANSPARENT
+            #if SHADOWS_TRANSPARENT
             [branch]
             if (light.cast_transparent_shadows && shadow.a > 0.0f  && !transparent_pixel)
             {
