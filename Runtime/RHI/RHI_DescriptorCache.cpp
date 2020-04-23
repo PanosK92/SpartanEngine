@@ -179,8 +179,8 @@ namespace Spartan
             return descriptors;
         }
 
-        // Wait for shader to compile
-        while (pipeline_state.shader_vertex->GetCompilationState() == Shader_Compilation_Compiling) {}
+        // Wait for compilation
+        pipeline_state.shader_vertex->WaitForCompilation();
 
         // Get vertex shader descriptors
         descriptors = pipeline_state.shader_vertex->GetDescriptors();
@@ -189,10 +189,7 @@ namespace Spartan
         if (pipeline_state.shader_pixel)
         {
             // Wait for compilation
-            while (!pipeline_state.shader_pixel->IsCompiled())
-            {
-                std::this_thread::sleep_for(std::chrono::milliseconds(16));
-            }
+            pipeline_state.shader_pixel->WaitForCompilation();
 
             for (const RHI_Descriptor& descriptor_reflected : pipeline_state.shader_pixel->GetDescriptors())
             {

@@ -119,7 +119,23 @@ namespace Spartan
 		});
 	}
 
-    const char* RHI_Shader::GetEntryPoint() const
+	void RHI_Shader::WaitForCompilation()
+	{
+        // Wait
+        while (m_compilation_state == Shader_Compilation_Compiling)
+        {
+            LOG_INFO("Waiting for shader \"%s\" to compile...", m_name.c_str());
+            std::this_thread::sleep_for(std::chrono::milliseconds(16));
+        }
+        
+        // Log error in case of failure
+        if (m_compilation_state != Shader_Compilation_Succeeded)
+        {
+            LOG_ERROR("Shader \"%s\" failed compile", m_name.c_str());
+        }
+	}
+
+	const char* RHI_Shader::GetEntryPoint() const
     {
         static const char* entry_point_empty = nullptr;
 
