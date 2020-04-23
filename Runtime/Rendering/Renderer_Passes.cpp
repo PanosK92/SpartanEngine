@@ -700,7 +700,7 @@ namespace Spartan
             if (Light* light = entity->GetComponent<Light>())
             {
                 // Set pixel shader
-                pipeline_state.shader_pixel = static_cast<RHI_Shader*>(ShaderLight::GetVariation(m_context, light, m_options & Render_ScreenSpaceReflections));
+                pipeline_state.shader_pixel = static_cast<RHI_Shader*>(ShaderLight::GetVariation(m_context, light, m_options));
 
                 // Skip the shader until it compiles or the users spots a compilation error
                 if (!pipeline_state.shader_pixel->IsCompiled())

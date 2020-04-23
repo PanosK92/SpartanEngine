@@ -43,14 +43,14 @@ namespace Spartan
     {
         // Compute flags
         uint16_t flags = 0;
-        flags |= light->GetLightType() == LightType_Directional                                 ? Shader_Light_Directional              : flags;
-        flags |= light->GetLightType() == LightType_Point                                       ? Shader_Light_Point                    : flags;
-        flags |= light->GetLightType() == LightType_Spot                                        ? Shader_Light_Spot                     : flags;
-        flags |= light->GetShadowsEnabled()                                                     ? Shader_Light_Shadows                  : flags;
-        flags |= light->GetShadowsScreenSpaceEnabled()                                          ? Shader_Light_ShadowsScreenSpace       : flags;
-        flags |= light->GetShadowsTransparentEnabled()                                          ? Shader_Light_ShadowsTransparent       : flags;
-        flags |= light->GetVolumetricEnabled() && (renderer_flags & Render_VolumetricLighting)  ? Shader_Light_Volumetric               : flags;
-        flags |= (renderer_flags & Render_ScreenSpaceReflections)                               ? Shader_Light_ScreenSpaceReflections   : flags;
+        flags |= light->GetLightType() == LightType_Directional                                     ? Shader_Light_Directional              : flags;
+        flags |= light->GetLightType() == LightType_Point                                           ? Shader_Light_Point                    : flags;
+        flags |= light->GetLightType() == LightType_Spot                                            ? Shader_Light_Spot                     : flags;
+        flags |= light->GetShadowsEnabled()                                                         ? Shader_Light_Shadows                  : flags;
+        flags |= light->GetShadowsScreenSpaceEnabled()                                              ? Shader_Light_ShadowsScreenSpace       : flags;
+        flags |= light->GetShadowsTransparentEnabled()                                              ? Shader_Light_ShadowsTransparent       : flags;
+        flags |= (light->GetVolumetricEnabled() && (renderer_flags & Render_VolumetricLighting))    ? Shader_Light_Volumetric               : flags;
+        flags |= (renderer_flags & Render_ScreenSpaceReflections)                                   ? Shader_Light_ScreenSpaceReflections   : flags;
 
         // Return existing shader, if it's already compiled
         if (m_variations.find(flags) != m_variations.end())
