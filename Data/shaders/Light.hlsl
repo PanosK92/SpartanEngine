@@ -196,7 +196,8 @@ PixelOutputType mainPS(Pixel_PosUv input)
         [branch]
         if (sample_ssr.x * sample_ssr.y != 0.0f)
         {
-            float3 ssr          = tex_frame.Sample(sampler_bilinear_clamp, sample_ssr.xy).rgb;
+            // saturate as reflections will accumulate int tex_frame overtime, causing more light to go out that it comes in.
+            float3 ssr          = saturate(tex_frame.Sample(sampler_bilinear_clamp, sample_ssr.xy).rgb);
             light_reflection    = ssr * specular_fresnel;
             light_reflection    += ssr * specular_clearcoat_fresnel;
         }

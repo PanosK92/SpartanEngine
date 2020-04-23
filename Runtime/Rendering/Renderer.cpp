@@ -216,12 +216,12 @@ namespace Spartan
 			{
 				m_taa_jitter_previous = m_taa_jitter;
 
-				// Halton(2, 3) * 16 seems to work nice
+                const float scale               = 1.0f;
 				const uint64_t samples	        = 16;
 				const uint64_t index	        = m_frame_num % samples;
-				m_taa_jitter			        = Utility::Sampling::Halton2D(index, 2, 3) * 2.0f - 1.0f;
-				m_taa_jitter.x			        = m_taa_jitter.x / m_resolution.x;
-				m_taa_jitter.y			        = m_taa_jitter.y / m_resolution.y;
+				m_taa_jitter			        = (Utility::Sampling::Halton2D(index, 2, 3) * 2.0f - 1.0f);
+				m_taa_jitter.x			        = (m_taa_jitter.x / m_resolution.x) * scale;
+				m_taa_jitter.y			        = (m_taa_jitter.y / m_resolution.y) * scale;
                 m_buffer_frame_cpu.projection   *= Matrix::CreateTranslation(Vector3(m_taa_jitter.x, m_taa_jitter.y, 0.0f));
 			}
 			else

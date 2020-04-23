@@ -61,21 +61,21 @@ namespace Spartan
         void WaitForCompilation();
 
 		// Properties
-        void* GetResource()             const										{ return m_resource; }
-		bool HasResource()              const										{ return m_resource != nullptr; }
-		const auto& GetDescriptors()    const										{ return m_descriptors; }
-		const auto& GetInputLayout()    const										{ return m_input_layout; } // only valid for vertex shader
-		auto GetCompilationState()      const										{ return m_compilation_state; }
-        bool IsCompiled()               const										{ return m_compilation_state == Shader_Compilation_Succeeded; }
-		const std::string& GetName()    const										{ return m_name; }
+        void* GetResource()                 const									{ return m_resource; }
+		bool HasResource()                  const									{ return m_resource != nullptr; }
+		const auto& GetDescriptors()        const									{ return m_descriptors; }
+		const auto& GetInputLayout()        const									{ return m_input_layout; } // only valid for vertex shader
+		auto GetCompilationState()          const									{ return m_compilation_state; }
+        bool IsCompiled()                   const									{ return m_compilation_state == Shader_Compilation_Succeeded; }
+		const std::string& GetName()        const									{ return m_name; }
 		void SetName(const std::string& name)										{ m_name = name; }
 		void AddDefine(const std::string& define, const std::string& value = "1")	{ m_defines[define] = value; }
-        auto& GetDefines()              const                                       { return m_defines; }
-        const auto& GetFilePath()       const                                       { return m_file_path; }
-        auto GetShaderStage()           const                                       { return m_shader_type; }
-        const char* GetEntryPoint()     const;
-        const char* GetTargetProfile()  const;
-        const char* GetShaderModel()    const;
+        auto& GetDefines()                  const                                   { return m_defines; }
+        const auto& GetFilePath()           const                                   { return m_file_path; }
+        RHI_Shader_Type GetShaderStage()    const                                   { return m_shader_type; }
+        const char* GetEntryPoint()         const;
+        const char* GetTargetProfile()      const;
+        const char* GetShaderModel()        const;
 
 	protected:
 		std::shared_ptr<RHI_Device> m_rhi_device;

@@ -56,22 +56,44 @@ void Widget_ShaderEditor::Tick()
     {
         ImGui::Text("Shaders");
 
-        if (ImGui::BeginChild("##shader_list", ImVec2(m_size.x * 0.32f, m_size.y), true))
+        if (ImGui::BeginChild("##shader_list", ImVec2(m_size.x * 0.32f, m_size.y), true, ImGuiWindowFlags_HorizontalScrollbar))
         {
-            for (const auto& shader_it : shaders)
+            for (const auto& it : shaders)
             {
-                // Build name
-                string name = shader_it.second->GetName();
-                for (const auto& define : shader_it.second->GetDefines())
+                RHI_Shader* shader = it.second.get();
+
+                // Get name
+                string name = shader->GetName();
+
+                // Append stage
+                if (shader->GetShaderStage() == RHI_Shader_Vertex)
                 {
-                    name += "[" + define.first + "]";
+                    name += "_Vertex";
+                }
+                else if (shader->GetShaderStage() == RHI_Shader_Pixel)
+                {
+                    name += "_Pixel";
+                }
+                else if (shader->GetShaderStage() == RHI_Shader_Compute)
+                {
+                    name += "_Compute";
+                }
+                else
+                {
+                    name += "_Unknown";
+                }
+
+                // Append defines
+                for (const auto& define : shader->GetDefines())
+                {
+                    name += "_" + define.first;
                 }
 
                 if (ImGui::Button(name.c_str()))
                 {
-                    m_shader = shader_it.second.get();
-                    shader_dirty = true;
-                    m_shader_name = name;
+                    m_shader        = shader;
+                    shader_dirty    = true;
+                    m_shader_name   = name;
                 }
             }
             ImGui::EndChild();
@@ -117,7 +139,7 @@ void Widget_ShaderEditor::Tick()
                     out.close();
                 }
 
-                // Compile
+                // Compile (but not async so that next frame has the changes, makes it easier for the eye to spot differences)
                 m_shader->Compile(m_shader->GetShaderStage(), m_shader->GetFilePath());
             }
 

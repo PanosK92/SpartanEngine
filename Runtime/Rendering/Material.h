@@ -65,7 +65,7 @@ namespace Spartan
 		//=======================================================
 
 		//= TEXTURES  ===========================================================================================================
-		void SetTextureSlot(const Material_Property type, const std::shared_ptr<RHI_Texture>& texture);
+		void SetTextureSlot(const Material_Property type, const std::shared_ptr<RHI_Texture>& texture, float multiplier = 1.0f);
         void SetTextureSlot(const Material_Property type, const std::shared_ptr<RHI_Texture2D>& texture);
         void SetTextureSlot(const Material_Property type, const std::shared_ptr<RHI_TextureCube>& texture);
 		bool HasTexture(const std::string& path) const;
