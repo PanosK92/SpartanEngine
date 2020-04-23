@@ -66,13 +66,15 @@ Platform | API | Status | Quality | Binaries | :+1:
 ##### v0.31 (WIP)
 Feature     					| Completion    | Notes 
 :-          					| :-            | :-
-Volumetric Lighting				| 100%          | -
+Volumetric lighting				| 100%          | -
 Screen space contact shadows 	| 100%          | -
-Parallax Mapping 				| 100%          | -
-Shader Editor 					| 100%          | Real-time shader editing tool.
-Translucent colored shadows 	| 100%          | -
+Parallax mapping 				| 100%          | -
+Shader editor 					| 100%          | Real-time shader editing tool.
+Clearcoat materials 			| 100%          | -
+Anisotropic materials			| 100%          | -
+Cloth materials 				| 100%          | -
 Shadows 						| 98%           | Enable point & spot light shadows.
-Vulkan      					| 90%           | Don't port it, re-architect the engine instead.
+Vulkan      					| 90%           | Only shadows missing.
 
 ###### v0.32
 - C# scripting (Replace AngelScript).

@@ -23,28 +23,28 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include <memory>
-#include <vector>
+#include <unordered_map>
 #include "../RHI/RHI_Definition.h"
 #include "../RHI/RHI_Shader.h"
 //================================
 
 namespace Spartan
 {
-	class ShaderVariation : public RHI_Shader, public std::enable_shared_from_this<ShaderVariation>
+	class SPARTAN_CLASS ShaderGBuffer : public RHI_Shader, public std::enable_shared_from_this<ShaderGBuffer>
 	{
 	public:
-		ShaderVariation(const std::shared_ptr<RHI_Device>& rhi_device, Context* context);
-		~ShaderVariation() = default;
+		ShaderGBuffer(Context* context, const uint16_t flags = 0);
+		~ShaderGBuffer() = default;
+        
+        bool IsSuitable(const uint16_t flags)  { return m_flags == flags; }
 
-		void Compile(const std::string& file_path, const uint16_t shader_flags);
-        uint16_t GetFlags() const { return m_flags; }
-		static const std::shared_ptr<ShaderVariation>& GetMatchingShader(const uint16_t flags);
+        static const ShaderGBuffer* GenerateVariation(Context* context, const uint16_t flags);
         static const auto& GetVariations() { return m_variations; }
 
 	private:
-		void AddDefinesBasedOnMaterial();
+        static ShaderGBuffer* Compile(Context* context, const uint16_t flags);
 
         uint16_t m_flags = 0;
-		static std::vector<std::shared_ptr<ShaderVariation>> m_variations;
+        static std::unordered_map<uint16_t, std::shared_ptr<ShaderGBuffer>> m_variations;
 	};
 }

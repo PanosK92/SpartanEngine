@@ -27,8 +27,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <unordered_map>
 #include <vector>
 #include "RHI_Vertex.h"
-#include "../Core/Spartan_Object.h"
 #include "RHI_Definition.h"
+#include "../Core/Spartan_Object.h"
 //=================================
 
 namespace Spartan
@@ -39,8 +39,7 @@ namespace Spartan
 	class SPARTAN_CLASS RHI_Shader : public Spartan_Object
 	{
 	public:
-
-		RHI_Shader(const std::shared_ptr<RHI_Device>& rhi_device);
+		RHI_Shader(Context* context);
 		~RHI_Shader();
 
         // Compilation
@@ -53,10 +52,10 @@ namespace Spartan
 
         // Asynchronous compilation
         template<typename T>
-        void CompileAsync(Context* context, const RHI_Shader_Type type, const std::string& shader);
-        void CompileAsync(Context* context, const RHI_Shader_Type type, const std::string& shader)
+        void CompileAsync(const RHI_Shader_Type type, const std::string& shader);
+        void CompileAsync(const RHI_Shader_Type type, const std::string& shader)
         {
-            CompileAsync<RHI_Vertex_Undefined>(context, type, shader);
+            CompileAsync<RHI_Vertex_Undefined>(type, shader);
         }
 
 		// Properties
@@ -90,7 +89,7 @@ namespace Spartan
 		std::vector<RHI_Descriptor> m_descriptors;
 		std::shared_ptr<RHI_InputLayout> m_input_layout;
 		Shader_Compilation_State m_compilation_state    = Shader_Compilation_Unknown;
-        RHI_Shader_Type m_shader_type                       = RHI_Shader_Unknown;
+        RHI_Shader_Type m_shader_type                   = RHI_Shader_Unknown;
         RHI_Vertex_Type m_vertex_type                   = RHI_Vertex_Type_Unknown;
 
 		// API 

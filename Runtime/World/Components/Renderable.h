@@ -92,9 +92,9 @@ namespace Spartan
 		std::shared_ptr<Material> SetMaterial(const std::string& file_path);
 
 		void UseDefaultMaterial();
-		std::string GetMaterialName() const;
-		const auto& GetMaterial()	const { return m_material; }
-		auto HasMaterial()			const { return m_material != nullptr; }
+		std::string GetMaterialName()   const;
+		Material* GetMaterial()         const { return m_material.get(); }
+		auto HasMaterial()			    const { return m_material != nullptr; }
 		//=======================================================================
 
 		//= PROPERTIES ============================================================================

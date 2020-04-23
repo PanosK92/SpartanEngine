@@ -38,7 +38,11 @@ namespace Spartan
 	class SPARTAN_CLASS Spartan_Object
 	{
 	public:
-		Spartan_Object() { m_id = GenerateId(); }
+		Spartan_Object(Context* context = nullptr)
+        {
+            m_context   = context;
+            m_id        = GenerateId();
+        }
 
         // Name
         const std::string& GetName()    const { return m_name; }

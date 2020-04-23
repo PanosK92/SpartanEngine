@@ -23,8 +23,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Shader.h"
 #include "RHI_InputLayout.h"
 #include "../Core/Context.h"
-#include "../Threading/Threading.h"
 #include "../Core/FileSystem.h"
+#include "../Threading/Threading.h"
+#include "../Rendering/Renderer.h"
 #pragma warning(push, 0) // Hide warnings belonging SPIRV-Cross 
 #include <spirv_hlsl.hpp>
 #pragma warning(pop)
@@ -36,10 +37,10 @@ using namespace std;
 
 namespace Spartan
 {
-	RHI_Shader::RHI_Shader(const shared_ptr<RHI_Device>& rhi_device)
+	RHI_Shader::RHI_Shader(Context* context) : Spartan_Object(context)
 	{
-		m_rhi_device	= rhi_device;
-		m_input_layout	= make_shared<RHI_InputLayout>(rhi_device);
+		m_rhi_device	= context->GetSubsystem<Renderer>()->GetRhiDevice();
+		m_input_layout	= make_shared<RHI_InputLayout>(m_rhi_device);
 	}
 
 	template <typename T>
@@ -110,9 +111,9 @@ namespace Spartan
 	}
 
 	template <typename T>
-	void RHI_Shader::CompileAsync(Context* context, const RHI_Shader_Type type, const string& shader)
+	void RHI_Shader::CompileAsync(const RHI_Shader_Type type, const string& shader)
 	{
-		context->GetSubsystem<Threading>()->AddTask([this, type, shader]()
+		m_context->GetSubsystem<Threading>()->AddTask([this, type, shader]()
 		{
 			Compile<T>(type, shader);
 		});
@@ -213,12 +214,12 @@ namespace Spartan
 		}
 	}
 
-    //= Explicit template instantiation =============================================================================
-    template void RHI_Shader::CompileAsync<RHI_Vertex_Undefined>(Context*, const RHI_Shader_Type, const std::string&);
-    template void RHI_Shader::CompileAsync<RHI_Vertex_Pos>(Context*, const RHI_Shader_Type, const std::string&);
-    template void RHI_Shader::CompileAsync<RHI_Vertex_PosTex>(Context*, const RHI_Shader_Type, const std::string&);
-    template void RHI_Shader::CompileAsync<RHI_Vertex_PosCol>(Context*, const RHI_Shader_Type, const std::string&);
-    template void RHI_Shader::CompileAsync<RHI_Vertex_Pos2dTexCol8>(Context*, const RHI_Shader_Type, const std::string&);
-    template void RHI_Shader::CompileAsync<RHI_Vertex_PosTexNorTan>(Context*, const RHI_Shader_Type, const std::string&);
-    //===============================================================================================================
+    //= Explicit template instantiation =======================================================================
+    template void RHI_Shader::CompileAsync<RHI_Vertex_Undefined>(const RHI_Shader_Type, const std::string&);
+    template void RHI_Shader::CompileAsync<RHI_Vertex_Pos>(const RHI_Shader_Type, const std::string&);
+    template void RHI_Shader::CompileAsync<RHI_Vertex_PosTex>(const RHI_Shader_Type, const std::string&);
+    template void RHI_Shader::CompileAsync<RHI_Vertex_PosCol>(const RHI_Shader_Type, const std::string&);
+    template void RHI_Shader::CompileAsync<RHI_Vertex_Pos2dTexCol8>(const RHI_Shader_Type, const std::string&);
+    template void RHI_Shader::CompileAsync<RHI_Vertex_PosTexNorTan>(const RHI_Shader_Type, const std::string&);
+    //=========================================================================================================
 }
