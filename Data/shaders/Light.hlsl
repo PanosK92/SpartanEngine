@@ -200,6 +200,7 @@ PixelOutputType mainPS(Pixel_PosUv input)
             float3 ssr          = saturate(tex_frame.Sample(sampler_bilinear_clamp, sample_ssr.xy).rgb);
             light_reflection    = ssr * specular_fresnel;
             light_reflection    += ssr * specular_clearcoat_fresnel;
+            light_reflection    *= 1.0f - material.roughness; // fade with roughness as we don't have blurry screen space reflections yet
         }
         #endif
 

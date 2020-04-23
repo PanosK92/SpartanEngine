@@ -67,13 +67,14 @@ Platform | API | Status | Quality | Binaries | :+1:
 Feature     					| Completion    | Notes 
 :-          					| :-            | :-
 Volumetric lighting				| 100%          | -
-Screen space contact shadows 	| 100%          | -
 Parallax mapping 				| 100%          | -
 Shader editor 					| 100%          | Real-time shader editing tool.
 Clearcoat materials 			| 100%          | -
 Anisotropic materials			| 100%          | -
 Cloth materials 				| 100%          | -
-Shadows 						| 98%           | Enable point & spot light shadows.
+Shadows 						| 100%          | Enable point & spot light shadows.
+Screen space contact shadows 	| 100%          | -
+Colored transparent shadows 	| 100%          | -
 Vulkan      					| 90%           | Only shadows missing.
 
 ###### v0.32
