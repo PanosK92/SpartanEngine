@@ -130,6 +130,7 @@ namespace Spartan
 	enum Renderer_Shader_Type
 	{
 		Shader_Gbuffer_V,
+        Shader_Gbuffer_P,
 		Shader_Depth_V,
         Shader_Depth_P,
 		Shader_Quad_V,

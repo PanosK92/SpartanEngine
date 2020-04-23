@@ -133,8 +133,8 @@ namespace Spartan
 		float m_range			            = 10.0f;
 		float m_intensity		            = 5.0f;
 		float m_angle_rad		            = 0.5f; // about 30 degrees
-		float m_bias			            = 2.0f;
-		float m_normal_bias		            = 5.0f;
+		float m_bias			            = 5.0f;
+		float m_normal_bias		            = 15.0f;
         bool m_initialized                  = false;
 		bool m_is_dirty			            = true;
         uint32_t m_cascade_count            = 4;

@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==============================
 #include "Renderer.h"
 #include "Model.h"
+#include "ShaderGBuffer.h"
 #include "Font/Font.h"
 #include "Gizmos/Grid.h"
 #include "Gizmos/Transform_Gizmo.h"
@@ -381,12 +382,12 @@ namespace Spartan
             if (!m_materials[mat_id])
                 break;
 
-            buffer->mat_clearcoat_clearcoatRough_anis_anisRot[mat_id].x = m_materials[mat_id]->GetProperty(RHI_Material_Clearcoat);
-            buffer->mat_clearcoat_clearcoatRough_anis_anisRot[mat_id].y = m_materials[mat_id]->GetProperty(RHI_Material_Clearcoat_Roughness);
-            buffer->mat_clearcoat_clearcoatRough_anis_anisRot[mat_id].z = m_materials[mat_id]->GetProperty(RHI_Material_Anisotropic);
-            buffer->mat_clearcoat_clearcoatRough_anis_anisRot[mat_id].w = m_materials[mat_id]->GetProperty(RHI_Material_Anisotropic_Rotation);
-            buffer->mat_sheen_sheenTint_pad[mat_id].x                   = m_materials[mat_id]->GetProperty(RHI_Material_Sheen);
-            buffer->mat_sheen_sheenTint_pad[mat_id].y                   = m_materials[mat_id]->GetProperty(RHI_Material_Sheen_Tint);
+            buffer->mat_clearcoat_clearcoatRough_anis_anisRot[mat_id].x = m_materials[mat_id]->GetProperty(Material_Clearcoat);
+            buffer->mat_clearcoat_clearcoatRough_anis_anisRot[mat_id].y = m_materials[mat_id]->GetProperty(Material_Clearcoat_Roughness);
+            buffer->mat_clearcoat_clearcoatRough_anis_anisRot[mat_id].z = m_materials[mat_id]->GetProperty(Material_Anisotropic);
+            buffer->mat_clearcoat_clearcoatRough_anis_anisRot[mat_id].w = m_materials[mat_id]->GetProperty(Material_Anisotropic_Rotation);
+            buffer->mat_sheen_sheenTint_pad[mat_id].x                   = m_materials[mat_id]->GetProperty(Material_Sheen);
+            buffer->mat_sheen_sheenTint_pad[mat_id].y                   = m_materials[mat_id]->GetProperty(Material_Sheen_Tint);
         }
 
         // Unmap
@@ -511,13 +512,19 @@ namespace Spartan
 				continue;
 
 			// Get all the components we are interested in
-            const auto renderable = entity->GetComponent<Renderable>();
-            const auto light      = entity->GetComponent<Light>();
-			auto camera		= entity->GetComponent<Camera>();
+            Renderable* renderable  = entity->GetComponent<Renderable>();
+            Light* light            = entity->GetComponent<Light>();
+            Camera* camera          = entity->GetComponent<Camera>();
 
 			if (renderable)
 			{
-				const auto is_transparent = !renderable->HasMaterial() ? false : renderable->GetMaterial()->GetColorAlbedo().w < 1.0f;
+                bool is_transparent = false;
+
+                if (const Material* material = renderable->GetMaterial())
+                {
+                    is_transparent = material->GetColorAlbedo().w < 1.0f;
+                }
+
                 m_entities[is_transparent ? Renderer_Object_Transparent : Renderer_Object_Opaque].emplace_back(entity.get());
 			}
 
@@ -546,28 +553,19 @@ namespace Spartan
 		if (!m_camera || renderables->size() <= 2)
 			return;
 
-		auto render_hash = [this](Entity* entity)
+		auto comparison_op = [this](Entity* entity)
 		{
-			// Get renderable
 			auto renderable = entity->GetRenderable();
 			if (!renderable)
 				return 0.0f;
 
-			// Get material
-			const auto material = renderable->GetMaterial();
-			if (!material)
-				return 0.0f;
-
-			const auto num_depth    = (renderable->GetAabb().GetCenter() - m_camera->GetTransform()->GetPosition()).LengthSquared();
-			const auto num_material = static_cast<float>(material->GetId());
-
-			return stof(to_string(num_depth) + "-" + to_string(num_material));
+			return (renderable->GetAabb().GetCenter() - m_camera->GetTransform()->GetPosition()).LengthSquared();
 		};
 
-		// Sort by depth (front to back), then sort by material		
-		sort(renderables->begin(), renderables->end(), [&render_hash](Entity* a, Entity* b)
+		// Sort by depth (front to back)
+		sort(renderables->begin(), renderables->end(), [&comparison_op](Entity* a, Entity* b)
 		{
-            return render_hash(a) < render_hash(b);
+            return comparison_op(a) < comparison_op(b);
 		});
 	}
 

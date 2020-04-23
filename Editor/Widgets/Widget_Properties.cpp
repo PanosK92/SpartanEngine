@@ -157,9 +157,9 @@ void Widget_Properties::Tick()
 
 	if (!m_inspected_entity.expired())
 	{
-		auto entity_ptr = m_inspected_entity.lock().get();
-        const auto renderable	= entity_ptr->GetComponent<Renderable>();
-        const auto material   = renderable ? renderable->GetMaterial() : nullptr;
+		auto entity_ptr         = m_inspected_entity.lock().get();
+        Renderable* renderable  = entity_ptr->GetComponent<Renderable>();
+        Material* material      = renderable ? renderable->GetMaterial() : nullptr;
 
 		ShowTransform(entity_ptr->GetComponent<Transform>());
 		ShowLight(entity_ptr->GetComponent<Light>());
@@ -169,7 +169,7 @@ void Widget_Properties::Tick()
 		ShowAudioSource(entity_ptr->GetComponent<AudioSource>());
 		ShowAudioListener(entity_ptr->GetComponent<AudioListener>());
 		ShowRenderable(renderable);
-		ShowMaterial(material.get());
+		ShowMaterial(material);
 		ShowRigidBody(entity_ptr->GetComponent<RigidBody>());
         ShowSoftBody(entity_ptr->GetComponent<SoftBody>());
 		ShowCollider(entity_ptr->GetComponent<Collider>());
@@ -410,10 +410,10 @@ void Widget_Properties::ShowRenderable(Renderable* renderable) const
 	{
 		//= REFLECT =============================================================
 		auto& mesh_name			= renderable->GeometryName();
-		auto& material			= renderable->GetMaterial();
+		Material* material	    = renderable->GetMaterial();
 		auto material_name		= material ? material->GetResourceName() : "N/A";
-		auto cast_shadows		= renderable->GetCastShadows();
-		auto receive_shadows	= renderable->GetReceiveShadows();
+		bool cast_shadows		= renderable->GetCastShadows();
+		bool receive_shadows	= renderable->GetReceiveShadows();
 		//=======================================================================
 
 		ImGui::Text("Mesh");
@@ -760,7 +760,7 @@ void Widget_Properties::ShowMaterial(Material* material) const
 		{
             // Texture slots
             {
-                const auto show_property = [this, &offset_from_pos_x, &material](const char* name, const char* tooltip, const RHI_Material_Property type, bool show_texture, bool show_modifier)
+                const auto show_property = [this, &offset_from_pos_x, &material](const char* name, const char* tooltip, const Material_Property type, bool show_texture, bool show_modifier)
                 {
                     // Name
                     if (name)
@@ -792,7 +792,7 @@ void Widget_Properties::ShowMaterial(Material* material) const
                     // Modifier
                     if (show_modifier)
                     {
-                        if (type == RHI_Material_Color)
+                        if (type == Material_Color)
                         {
                             m_colorPicker_material->Update();
                         }
@@ -805,20 +805,20 @@ void Widget_Properties::ShowMaterial(Material* material) const
                     }
                 };
 
-                show_property("Clearcoat",              "Extra white specular layer on top of others",                                          RHI_Material_Clearcoat,             false, true);
-                show_property("Clearcoat roughness",    "Roughness of clearcoat specular",                                                      RHI_Material_Clearcoat_Roughness,   false, true);
-                show_property("Anisotropic",            "Amount of anisotropy for specular reflection",                                         RHI_Material_Anisotropic,           false, true);
-                show_property("Anisotropic rotation",   "Rotates the direction of anisotropy, with 1.0 going full circle",                      RHI_Material_Anisotropic_Rotation,  false, true);
-                show_property("Sheen",                  "Amount of soft velvet like reflection near edges",                                     RHI_Material_Sheen,                 false, true);
-                show_property("Sheen tint",             "Mix between white and using base color for sheen reflection",                          RHI_Material_Sheen_Tint,            false, true);
-                show_property("Color",                  "Diffuse or metal surface color",                                                       RHI_Material_Color,                 true, true);
-                show_property("Roughness",              "Specifies microfacet roughness of the surface for diffuse and specular reflection",    RHI_Material_Roughness,             true, true);
-                show_property("Metallic",               "Blends between a non-metallic and metallic material model",                            RHI_Material_Metallic,              true, true);
-                show_property("Normal",                 "Controls the normals of the base layers",                                              RHI_Material_Normal,                true, true);
-                show_property("Height",                 "Perceived depth for parallax mapping",                                                 RHI_Material_Height,                true, true);
-                show_property("Occlusion",              "Amount of light loss, can be complementary to SSAO",                                   RHI_Material_Occlusion,             true, false);
-                show_property("Emission",               "Light emission from the surface, works nice with bloom",                               RHI_Material_Emission,              true, false);
-                show_property("Mask",                   "Discards pixels",                                                                      RHI_Material_Mask,                  true, false);
+                show_property("Clearcoat",              "Extra white specular layer on top of others",                                          Material_Clearcoat,             false, true);
+                show_property("Clearcoat roughness",    "Roughness of clearcoat specular",                                                      Material_Clearcoat_Roughness,   false, true);
+                show_property("Anisotropic",            "Amount of anisotropy for specular reflection",                                         Material_Anisotropic,           false, true);
+                show_property("Anisotropic rotation",   "Rotates the direction of anisotropy, with 1.0 going full circle",                      Material_Anisotropic_Rotation,  false, true);
+                show_property("Sheen",                  "Amount of soft velvet like reflection near edges",                                     Material_Sheen,                 false, true);
+                show_property("Sheen tint",             "Mix between white and using base color for sheen reflection",                          Material_Sheen_Tint,            false, true);
+                show_property("Color",                  "Diffuse or metal surface color",                                                       Material_Color,                 true, true);
+                show_property("Roughness",              "Specifies microfacet roughness of the surface for diffuse and specular reflection",    Material_Roughness,             true, true);
+                show_property("Metallic",               "Blends between a non-metallic and metallic material model",                            Material_Metallic,              true, true);
+                show_property("Normal",                 "Controls the normals of the base layers",                                              Material_Normal,                true, true);
+                show_property("Height",                 "Perceived depth for parallax mapping",                                                 Material_Height,                true, true);
+                show_property("Occlusion",              "Amount of light loss, can be complementary to SSAO",                                   Material_Occlusion,             true, false);
+                show_property("Emission",               "Light emission from the surface, works nice with bloom",                               Material_Emission,              true, false);
+                show_property("Mask",                   "Discards pixels",                                                                      Material_Mask,                  true, false);
             }
 
             // UV

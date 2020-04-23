@@ -104,7 +104,7 @@ namespace Spartan
 
 		// Get a subsystem
 		template <class T> 
-        T* GetSubsystem()
+        T* GetSubsystem() const
 		{
             validate_subsystem_type<T>();
 
