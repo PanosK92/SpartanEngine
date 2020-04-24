@@ -51,12 +51,12 @@ namespace Spartan
 		bool Present();
 
         // Misc
-        uint32_t GetWidth()				            const { return m_width; }
-        uint32_t GetHeight()			            const { return m_height; }
-        uint32_t GetBufferCount()		            const { return m_buffer_count; }
-        uint32_t GetImageIndex()                    const { return m_image_index; }
-        bool IsInitialized()		                const { return m_initialized; }
-        RHI_CommandList* GetCmdList()                     { return m_cmd_lists[m_image_index].get(); }
+        uint32_t GetWidth()             const { return m_width; }
+        uint32_t GetHeight()            const { return m_height; }
+        uint32_t GetBufferCount()       const { return m_buffer_count; }
+        uint32_t GetImageIndex()        const { return m_image_index; }
+        bool IsInitialized()            const { return m_initialized; }
+        RHI_CommandList* GetCmdList()         { return m_cmd_lists[m_image_index].get(); }
 
         // Layout
         const RHI_Image_Layout GetLayout()          const { return m_layout; }
@@ -71,13 +71,13 @@ namespace Spartan
 
 	private:
         // Properties
-		bool m_initialized			= false;
-		bool m_windowed				= false;
-		uint32_t m_buffer_count		= 0;
-		uint32_t m_width			= 0;
-		uint32_t m_height			= 0;
-		uint32_t m_flags			= 0;
-		RHI_Format m_format			= RHI_Format_R8G8B8A8_Unorm;
+		bool m_initialized      = false;
+		bool m_windowed         = false;
+		uint32_t m_buffer_count = 0;
+		uint32_t m_width        = 0;
+		uint32_t m_height       = 0;
+		uint32_t m_flags        = 0;
+		RHI_Format m_format     = RHI_Format_R8G8B8A8_Unorm;
 		
 		// API  
 		void* m_swap_chain_view		        = nullptr;

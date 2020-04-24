@@ -55,25 +55,47 @@ namespace Spartan
 		m_resource_manager	= m_context->GetSubsystem<ResourceCache>();
 		m_renderer			= m_context->GetSubsystem<Renderer>();
 
-		// Get available memory
-		if (const PhysicalDevice* physical_device = m_renderer->GetRhiDevice()->GetPrimaryPhysicalDevice())
-		{
-			m_gpu_name				= physical_device->GetName();
-			m_gpu_memory_available	= RHI_CommandList::Gpu_GetMemory(m_renderer->GetRhiDevice().get());
-		}
-
 		return true;
 	}
 
     void Profiler::Tick(float delta_time)
     {
-        if (!m_renderer || !m_renderer->GetRhiDevice()->GetContextRhi()->profiler)
+        if (!m_renderer)
             return;
 
-        // End previous frame
-        if (m_profile)
+        RHI_Device* rhi_device = m_renderer->GetRhiDevice().get();
+        if (!rhi_device || !rhi_device->GetContextRhi()->profiler)
+            return;
+
+        // Get available memory
+        if (m_gpu_name.empty())
+        {
+            if (const PhysicalDevice* physical_device = rhi_device->GetPrimaryPhysicalDevice())
+            {
+                m_gpu_name              = physical_device->GetName();
+                m_gpu_memory_available  = RHI_CommandList::Gpu_GetMemory(rhi_device);
+            }
+        }
+
+        if (m_increase_capacity)
         {
             OnFrameEnd();
+
+            const uint32_t new_size = m_time_block_count + 100;
+            m_time_blocks_read.reserve(new_size);
+            m_time_blocks_read.resize(new_size);
+            m_time_blocks_write.reserve(new_size);
+            m_time_blocks_write.resize(new_size);
+            LOG_WARNING("Time block list has grown to fit %d commands. Consider making the capacity larger to avoid re-allocations.", m_time_block_count + 1);
+            m_increase_capacity = false;
+            m_profile = true;
+        }
+        else
+        {
+            if (m_profile)
+            {
+                OnFrameEnd();
+            }
         }
 
         m_timer.Start();
@@ -97,7 +119,7 @@ namespace Spartan
         if (m_profile)
         {
             // Get GPU memory usage
-            m_gpu_memory_used = RHI_CommandList::Gpu_GetMemoryUsed(m_renderer->GetRhiDevice().get());
+            m_gpu_memory_used = RHI_CommandList::Gpu_GetMemoryUsed(rhi_device);
 
             // Create a string version of the rhi metrics
             if (m_renderer->GetOptions() & Render_Debug_PerformanceMetrics)
@@ -187,7 +209,7 @@ namespace Spartan
         // Last incomplete block of the same type, is the parent
         TimeBlock* time_block_parent = GetLastIncompleteTimeBlock(type);
 
-		if (auto time_block = GetNewTimeBlock())
+		if (TimeBlock* time_block = GetNewTimeBlock())
 		{
 			time_block->Begin(func_name, type, time_block_parent, cmd_list, m_renderer->GetRhiDevice());
 		}
@@ -195,7 +217,11 @@ namespace Spartan
 
 	void Profiler::TimeBlockEnd()
 	{
-		if (auto time_block = GetLastIncompleteTimeBlock())
+        // If the capacity 
+        if (m_increase_capacity)
+            return;
+
+		if (TimeBlock* time_block = GetLastIncompleteTimeBlock())
 		{
 			time_block->End();
 		}
@@ -203,15 +229,11 @@ namespace Spartan
 
     TimeBlock* Profiler::GetNewTimeBlock()
 	{
-		// Grow capacity if needed
+		// Increase capacity if needed
 		if (m_time_block_count >= static_cast<uint32_t>(m_time_blocks_write.size()))
 		{
-            const uint32_t new_size = m_time_block_count + 100;
-            m_time_blocks_read.reserve(new_size);
-            m_time_blocks_read.resize(new_size);
-			m_time_blocks_write.reserve(new_size);
-			m_time_blocks_write.resize(new_size);
-			LOG_WARNING("Time block list has grown to fit %d commands. Consider making the capacity larger to avoid re-allocations.", m_time_block_count + 1);
+            m_increase_capacity = true;
+            return nullptr;
 		}
 
 		// Return a time block

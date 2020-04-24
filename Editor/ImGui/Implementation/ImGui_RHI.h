@@ -286,6 +286,13 @@ namespace ImGui::RHI
 		if (!g_renderer || !g_renderer->GetSwapChain())
 			return;
 
+        // Validate resolution
+        if (!g_rhi_device->ValidateResolution(width, height))
+        {
+            LOG_WARNING("%dx%d is an invalid resolution", width, height);
+            return;
+        }
+
         g_renderer->GetSwapChain()->Resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
 	}
 

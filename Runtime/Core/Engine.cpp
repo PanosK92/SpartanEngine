@@ -56,16 +56,16 @@ namespace Spartan
         m_context->m_engine = this;
 
 		// Register subsystems
-        m_context->RegisterSubsystem<Threading>(Tick_Variable);
         m_context->RegisterSubsystem<Timer>(Tick_Variable);         // must be first so it ticks first
+        m_context->RegisterSubsystem<Threading>(Tick_Variable);
 		m_context->RegisterSubsystem<ResourceCache>(Tick_Variable);		
 		m_context->RegisterSubsystem<Audio>(Tick_Variable);
         m_context->RegisterSubsystem<Physics>(Tick_Variable);       // integrates internally
         m_context->RegisterSubsystem<Input>(Tick_Smoothed);
 		m_context->RegisterSubsystem<Scripting>(Tick_Smoothed);
 		m_context->RegisterSubsystem<World>(Tick_Smoothed);
-        m_context->RegisterSubsystem<Renderer>(Tick_Smoothed);
         m_context->RegisterSubsystem<Profiler>(Tick_Variable);
+        m_context->RegisterSubsystem<Renderer>(Tick_Smoothed);
         m_context->RegisterSubsystem<Settings>(Tick_Variable);
              	
 		// Initialize above subsystems

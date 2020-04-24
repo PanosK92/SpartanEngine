@@ -366,14 +366,15 @@ namespace Spartan
 
 	bool Transform::IsDescendantOf(const Transform* transform) const
 	{
-        for (const Transform* child : m_children)
+        for (const Transform* child : transform->GetChildren())
         {
-            if (child->GetId() == transform->GetId())
+            if (GetId() == child->GetId())
                 return true;
 
             if (child->HasChildren())
             {
-                child->IsDescendantOf(child);
+                if (IsDescendantOf(child))
+                    return true;
             }
         }
 

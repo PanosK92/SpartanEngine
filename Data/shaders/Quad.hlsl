@@ -122,11 +122,11 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 #endif
 
 #if PASS_BLOOM_DOWNSAMPLE
-	color = Downsample_Box13Tap(uv, tex);
+	color = Downsample_BoxAntiFlicker(uv, tex);
 #endif
 
 #if PASS_BLOOM_DOWNSAMPLE_LUMINANCE
-	color = Downsample_Box13Tap(uv, tex);
+	color = Downsample_BoxAntiFlicker(uv, tex);
 	color = luminance(color) * color;
 #endif
 
