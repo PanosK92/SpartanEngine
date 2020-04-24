@@ -70,7 +70,7 @@ namespace Spartan
 		bool EngineMode_IsSet(const Engine_Mode flag) const	{ return m_flags & flag; }
 
         // Window
-        const auto& GetWindowData() const { return m_window_data; }
+        const WindowData& GetWindowData() const { return m_window_data; }
         void SetWindowData(WindowData& window_data);
 
         auto GetContext() const { return m_context.get(); }

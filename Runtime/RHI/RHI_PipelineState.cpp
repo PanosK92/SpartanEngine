@@ -64,13 +64,20 @@ namespace Spartan
                 is_valid = false;
             }
 
-            // Ensure that no more than one render targets are active
+            // Check that there is a render target
+            if (!render_target_swapchain && !render_target_color_textures[0] && !render_target_depth_texture)
+            {
+                is_valid = false;
+            }
+
+            // Check that no both the swapchain and the color render target are active
             if (render_target_swapchain && render_target_color_textures[0])
             {
                 is_valid = false;
             }
 
-            if (!rasterizer_state || !blend_state || !depth_stencil_state || primitive_topology == RHI_PrimitiveTopology_Unknown || (!render_target_swapchain && !render_target_color_textures[0]))
+            // Check for required states
+            if (!rasterizer_state || !blend_state || !depth_stencil_state || primitive_topology == RHI_PrimitiveTopology_Unknown)
             {
                 is_valid = false;
             }

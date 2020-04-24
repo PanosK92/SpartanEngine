@@ -219,18 +219,18 @@ namespace Spartan
             return;
         }
 
+        // Validate resolution
+        if (!rhi_device->ValidateResolution(width, height))
+        {
+            LOG_WARNING("%dx%d is an invalid resolution", width, height);
+            return;
+        }
+
         // Validate window handle
         const auto hwnd = static_cast<HWND>(window_handle);
         if (!hwnd || !IsWindow(hwnd))
         {
             LOG_ERROR_INVALID_PARAMETER();
-            return;
-        }
-
-        // Validate resolution
-        if (!rhi_device->ValidateResolution(width, height))
-        {
-            LOG_WARNING("%dx%d is an invalid resolution", width, height);
             return;
         }
 

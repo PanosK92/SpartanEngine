@@ -36,9 +36,6 @@ namespace Spartan
 
 	TimeBlock::~TimeBlock()
 	{
-        RHI_CommandList::Gpu_QueryRelease(m_query_disjoint);
-        RHI_CommandList::Gpu_QueryRelease(m_query_start);
-        RHI_CommandList::Gpu_QueryRelease(m_query_end);
 		Reset();
 	}
 
@@ -121,14 +118,18 @@ namespace Spartan
         m_max_tree_depth    = 0;
         m_type              = TimeBlock_Undefined;
         m_is_complete       = false;
-        RHI_CommandList::Gpu_QueryRelease(m_query_disjoint);
-        RHI_CommandList::Gpu_QueryRelease(m_query_start);
-        RHI_CommandList::Gpu_QueryRelease(m_query_end);
+
+        if (m_rhi_device && m_rhi_device->IsInitialized())
+        {
+            RHI_CommandList::Gpu_QueryRelease(m_query_disjoint);
+            RHI_CommandList::Gpu_QueryRelease(m_query_start);
+            RHI_CommandList::Gpu_QueryRelease(m_query_end);
+        }
 	}
 
 	uint32_t TimeBlock::FindTreeDepth(const TimeBlock* time_block, uint32_t depth /*= 0*/)
 	{
-		if (time_block->GetParent())
+		if (time_block && time_block->GetParent())
 			depth =	FindTreeDepth(time_block->GetParent(), ++depth);
 
 		return depth;

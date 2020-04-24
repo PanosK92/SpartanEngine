@@ -115,6 +115,14 @@ void Widget_World::TreeShow()
 			TreeAddEntity(entity.get());
 		}
 
+        // If we have been expanding to show an entity and no more expansions are taking place, we reached it.
+        // So, we stop expanding and we bring it into view.
+        if (m_expand_to_selection && !m_expanded_to_selection)
+        {
+            ImGui::ScrollToBringRectIntoView(m_window, m_selected_entity_rect);
+            m_expand_to_selection = false;
+        }
+
 		ImGui::TreePop();
 	}
 
@@ -138,8 +146,11 @@ void Widget_World::TreeAddEntity(Entity* entity)
 	if (!entity)
 		return;
 
-	const auto is_visible_in_hierarchy	= entity->IsVisibleInHierarchy();
-	auto has_visible_children			= false;
+    m_expanded_to_selection             = false;
+    bool is_selected_entity             = false;
+	const bool is_visible_in_hierarchy	= entity->IsVisibleInHierarchy();
+    bool has_visible_children			= false;
+   
 
 	// Don't draw invisible entities
 	if (!is_visible_in_hierarchy)
@@ -165,27 +176,26 @@ void Widget_World::TreeAddEntity(Entity* entity)
 	// Flag - Is selected?
 	if (const auto selected_entity = EditorHelper::Get().g_selected_entity.lock())
 	{
-		const auto is_selected_entity = selected_entity->GetId() == entity->GetId();
-		node_flags |= is_selected_entity ? ImGuiTreeNodeFlags_Selected : 0;
+        node_flags |= selected_entity->GetId() == entity->GetId() ? ImGuiTreeNodeFlags_Selected : node_flags;
 
-		// Expand to show entity, if it was clicked during this frame
-		if (m_expand_to_show_entity)
+		if (m_expand_to_selection)
 		{
-			// If the selected entity is a descendant of the this entity, start expanding (this can happen if the user clicks on something in the 3D scene)
+			// If the selected entity is a descendant of the this entity, start expanding (this can happen if an entity is selected in the viewport)
 			if (selected_entity->GetTransform()->IsDescendantOf(entity->GetTransform()))
 			{
 				ImGui::SetNextItemOpen(true);
-
-				// Stop expanding when we have reached the selected entity (it's visible to the user)
-				if (is_selected_entity)
-				{
-					m_expand_to_show_entity = false;
-				}
+                m_expanded_to_selection = true;
 			}
 		}
 	}
 
-	const auto is_node_open = ImGui::TreeNodeEx(reinterpret_cast<void*>(static_cast<intptr_t>(entity->GetId())), node_flags, entity->GetName().c_str());
+	const bool is_node_open = ImGui::TreeNodeEx(reinterpret_cast<void*>(static_cast<intptr_t>(entity->GetId())), node_flags, entity->GetName().c_str());
+
+    // Keep a copy of the selected item's rect so that we can scroll to bring it into view
+    if ((node_flags & ImGuiTreeNodeFlags_Selected) && m_expand_to_selection)
+    {
+        m_selected_entity_rect = m_window->DC.LastItemRect;
+    }
 
 	// Manually detect some useful states
 	if (ImGui::IsItemHovered(ImGuiHoveredFlags_RectOnly))
@@ -274,7 +284,7 @@ void Widget_World::EntityHandleDragDrop(Entity* entity_ptr) const
 
 void Widget_World::SetSelectedEntity(const shared_ptr<Entity>& entity, const bool from_editor /*= true*/)
 {
-	m_expand_to_show_entity = true;
+	m_expand_to_selection = true;
 
 	// If the update comes from this widget, let the engine know about it
 	if (from_editor)

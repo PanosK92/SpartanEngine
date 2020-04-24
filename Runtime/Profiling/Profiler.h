@@ -154,6 +154,8 @@ namespace Spartan
 		std::string m_metrics = "N/A";
         Stopwatch m_timer;
 		bool m_profile = true;
+        bool m_increase_capacity = 0.0f;
+        bool m_allow_time_block_end = true;
 	
 		// Dependencies
 		ResourceCache* m_resource_manager	= nullptr;
