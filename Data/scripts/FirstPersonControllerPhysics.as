@@ -83,7 +83,7 @@ class FirstPersonControllerPhysics
 		currentRotation.y += smoothMouse.y;	
 		currentRotation.y = ClampRotation(currentRotation.y);
 		
-		cameraTransform.SetRotationLocal(QuaternionFromEuler(Vector3(currentRotation.y, currentRotation.x, 0.0f)));
+		cameraTransform.SetRotationLocal(Quaternion_FromEulerAngles(Vector3(currentRotation.y, currentRotation.x, 0.0f)));
 	}
 	
 	float ClampRotation(float rotation)
