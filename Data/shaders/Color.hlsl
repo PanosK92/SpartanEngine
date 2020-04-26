@@ -26,12 +26,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 Pixel_PosColor mainVS(Vertex_PosColor input)
 {
     Pixel_PosColor output;
-    	
-    input.position.w 	= 1.0f;
-    output.position 	= mul(input.position, g_viewProjectionUnjittered);
-	output.color 		= input.color;
-	
-	return output;
+        
+    input.position.w    = 1.0f;
+    output.position     = mul(input.position, g_viewProjectionUnjittered);
+    output.color        = input.color;
+    
+    return output;
 }
 
 float4 mainPS(Pixel_PosColor input) : SV_TARGET

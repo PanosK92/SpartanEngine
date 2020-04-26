@@ -23,18 +23,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 struct PS_INPUT
 {
-	float4 position : SV_POSITION;
-	float4 color 	: COLOR;
-	float2 uv  		: TEXCOORD;
+    float4 position : SV_POSITION;
+    float4 color    : COLOR;
+    float2 uv       : TEXCOORD;
 };
 
 PS_INPUT mainVS(Vertex_Pos2dUvColor input)
 {
-	PS_INPUT output;
-	output.position = mul(g_object_transform, float4(input.position.xy, 0.f, 1.f));
-	output.color 	= input.color;
-	output.uv  		= input.uv;
-	return output;
+    PS_INPUT output;
+    output.position = mul(g_object_transform, float4(input.position.xy, 0.f, 1.f));
+    output.color    = input.color;
+    output.uv       = input.uv;
+    return output;
 }
 
 float4 mainPS(PS_INPUT input) : SV_Target

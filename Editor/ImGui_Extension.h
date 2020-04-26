@@ -21,10 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =======================
+//= INCLUDES ============================
 #include <string>
 #include <variant>
-#include "IconProvider.h"
+#include "WidgetsDeferred/IconProvider.h"
 #include "ImGui/Source/imgui.h"
 #include "RHI/RHI_Texture.h"
 #include "RHI/RHI_Texture2D.h"
@@ -35,7 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/World.h"
 #include "World/Components/Camera.h"
 #include <chrono>
-//==================================
+//=======================================
 
 class EditorHelper
 {

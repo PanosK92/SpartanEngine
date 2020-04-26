@@ -21,23 +21,23 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 float3 Reinhard(float3 hdr, float k = 1.0f)
 {
-	return hdr / (hdr + k);
+    return hdr / (hdr + k);
 }
 
 float3 ReinhardInverse(float3 sdr, float k = 1.0)
 {
-	return k * sdr / (k - sdr);
+    return k * sdr / (k - sdr);
 }
 
 float3 Uncharted2(float3 x)
 {
     float A = 0.15;
-	float B = 0.50;
-	float C = 0.10;
-	float D = 0.20;
-	float E = 0.02;
-	float F = 0.30;
-	float W = 11.2;
+    float B = 0.50;
+    float C = 0.10;
+    float D = 0.20;
+    float E = 0.02;
+    float F = 0.30;
+    float W = 11.2;
     return ((x*(A*x+C*B)+D*E)/(x*(A*x+B)+D*F))-E/F;
 }
 
@@ -88,29 +88,29 @@ float3 ACESFitted(float3 color)
 
 float3 ToneMap(float3 color, float exposure = 1.0f)
 {
-	color *= exp(exposure);
-	
-	[branch]
+    color *= exp(exposure);
+    
+    [branch]
     if (g_toneMapping == 0) // OFF
     {
-		// Do nothing
+        // Do nothing
     }
-	else if (g_toneMapping == 1) // ACES
-	{
-		// attempting to match contrast levels
+    else if (g_toneMapping == 1) // ACES
+    {
+        // attempting to match contrast levels
         color = pow(abs(color), 0.833f);
         color *= 1.07f;
 
-		color = ACESFitted(color);
-	}
-	else if (g_toneMapping == 2) // REINHARD
-	{
-		color = Reinhard(color);
-	}
-	else if (g_toneMapping == 3) // UNCHARTED 2
-	{
-		color = Uncharted2(color);
-	}
-	
-	return color;
+        color = ACESFitted(color);
+    }
+    else if (g_toneMapping == 2) // REINHARD
+    {
+        color = Reinhard(color);
+    }
+    else if (g_toneMapping == 3) // UNCHARTED 2
+    {
+        color = Uncharted2(color);
+    }
+    
+    return color;
 }

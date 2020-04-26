@@ -27,16 +27,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 struct PixelOutputType
 {
-	float3 diffuse		: SV_Target0;
-	float3 specular		: SV_Target1;
-	float3 volumetric	: SV_Target2;
+    float3 diffuse      : SV_Target0;
+    float3 specular     : SV_Target1;
+    float3 volumetric   : SV_Target2;
 };
 
 PixelOutputType mainPS(Pixel_PosUv input)
 {
-	PixelOutputType light_out;
+    PixelOutputType light_out;
     light_out.diffuse       = 0.0f;
-	light_out.specular 		= 0.0f;
+    light_out.specular      = 0.0f;
     light_out.volumetric    = 0.0f;
 
     // Sample normal
@@ -76,25 +76,25 @@ PixelOutputType mainPS(Pixel_PosUv input)
 
     // Fill light struct
     Light light;
-    light.color 	        = color.xyz;
-    light.position 	        = position.xyz;
-    light.intensity 		= intensity_range_angle_bias.x;
-    light.range 			= intensity_range_angle_bias.y;
-    light.angle 			= intensity_range_angle_bias.z;
-    light.bias				= intensity_range_angle_bias.w;
+    light.color             = color.xyz;
+    light.position          = position.xyz;
+    light.intensity         = intensity_range_angle_bias.x;
+    light.range             = intensity_range_angle_bias.y;
+    light.angle             = intensity_range_angle_bias.z;
+    light.bias              = intensity_range_angle_bias.w;
     light.normal_bias       = normal_bias;
     light.distance_to_pixel = length(surface.position - light.position);
     #if DIRECTIONAL
     light.array_size    = 4;
-    light.direction	    = direction.xyz; 
+    light.direction     = direction.xyz; 
     light.attenuation   = 1.0f;
     #elif POINT
     light.array_size    = 1;
-    light.direction	    = normalize(surface.position - light.position);
+    light.direction     = normalize(surface.position - light.position);
     light.attenuation   = saturate(1.0f - (light.distance_to_pixel / light.range)); light.attenuation *= light.attenuation;    
     #elif SPOT
     light.array_size    = 1;
-    light.direction	    = normalize(surface.position - light.position);
+    light.direction     = normalize(surface.position - light.position);
     float cutoffAngle   = 1.0f - light.angle;
     float theta         = dot(direction.xyz, light.direction);
     float epsilon       = cutoffAngle - cutoffAngle * 0.9f;
@@ -141,11 +141,11 @@ PixelOutputType mainPS(Pixel_PosUv input)
     if (light.intensity > 0.0f && !material.is_sky)
     {
         // Compute some vectors and dot products
-        float3 l		= -light.direction;
+        float3 l        = -light.direction;
         float3 v        = -surface.camera_to_pixel;
-        float3 h 		= normalize(v + l);
+        float3 h        = normalize(v + l);
         float l_dot_h   = saturate(dot(l, h));
-        float v_dot_h 	= saturate(dot(v, h));
+        float v_dot_h   = saturate(dot(v, h));
         float n_dot_v   = saturate(dot(surface.normal, v));
         float n_dot_l   = saturate(dot(surface.normal, l));
         float n_dot_h   = saturate(dot(surface.normal, h));
@@ -211,5 +211,5 @@ PixelOutputType mainPS(Pixel_PosUv input)
         light_out.specular.rgb  = saturate_16((specular + specular_clearcoat + specular_sheen) * radiance + light_reflection);
     }
 
-	return light_out;
+    return light_out;
 }

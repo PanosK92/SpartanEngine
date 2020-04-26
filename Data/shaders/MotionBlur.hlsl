@@ -22,24 +22,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 static const uint g_mb_samples = 16;
 
 float4 MotionBlur(float2 texCoord, Texture2D tex)
-{	
-	float4 color 	= tex.Sample(sampler_point_clamp, texCoord);	
-	float2 velocity = GetVelocity_Dilate_Max(texCoord, tex_velocity, tex_depth);
-	
-	// Make velocity scale based on user preference instead of frame rate
-	float velocity_scale = g_motionBlur_strength / g_delta_time;
-	velocity			*= velocity_scale;
-	
-	// Early exit
+{   
+    float4 color    = tex.Sample(sampler_point_clamp, texCoord);    
+    float2 velocity = GetVelocity_Dilate_Max(texCoord, tex_velocity, tex_depth);
+    
+    // Make velocity scale based on user preference instead of frame rate
+    float velocity_scale = g_motionBlur_strength / g_delta_time;
+    velocity            *= velocity_scale;
+    
+    // Early exit
     if (abs(velocity.x) + abs(velocity.y) < FLT_MIN)
-		return color;
-	
+        return color;
+    
     [unroll]
-	for (uint i = 1; i < g_mb_samples; ++i) 
-	{
-		float2 offset 	= velocity * (float(i) / float(g_mb_samples - 1) - 0.5f);
-		color 			+= tex.SampleLevel(sampler_bilinear_clamp, texCoord + offset, 0);
-	}
+    for (uint i = 1; i < g_mb_samples; ++i) 
+    {
+        float2 offset   = velocity * (float(i) / float(g_mb_samples - 1) - 0.5f);
+        color           += tex.SampleLevel(sampler_bilinear_clamp, texCoord + offset, 0);
+    }
 
-	return color / float(g_mb_samples);
+    return color / float(g_mb_samples);
 }
