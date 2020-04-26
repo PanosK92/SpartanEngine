@@ -21,21 +21,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 float3 ChromaticAberration(float2 uv, Texture2D sourceTexture)
 {
-	float2 shift 	= float2(2.5f, -2.5f);	// 	[-10, 10]
-	float strength 	= 0.75f;  				//	[0, 1]
-	
-	// supposedly, lens effect
-	shift.x *= abs(uv.x * 2.0f - 1.0f);
-	shift.y *= abs(uv.y * 2.0f - 1.0f);
-	
-	float3 color 		= float3(0.0f, 0.0f, 0.0f);
-	float3 colorInput 	= sourceTexture.Sample(sampler_point_clamp, uv).rgb;
-	
-	// sample the color components
-	color.r = sourceTexture.Sample(sampler_bilinear_clamp, uv + (g_texel_size * shift)).r;
-	color.g = colorInput.g;
-	color.b = sourceTexture.Sample(sampler_bilinear_clamp, uv - (g_texel_size * shift)).b;
+    float2 shift    = float2(2.5f, -2.5f);  //  [-10, 10]
+    float strength  = 0.75f;                //  [0, 1]
+    
+    // supposedly, lens effect
+    shift.x *= abs(uv.x * 2.0f - 1.0f);
+    shift.y *= abs(uv.y * 2.0f - 1.0f);
+    
+    float3 color        = float3(0.0f, 0.0f, 0.0f);
+    float3 colorInput   = sourceTexture.Sample(sampler_point_clamp, uv).rgb;
+    
+    // sample the color components
+    color.r = sourceTexture.Sample(sampler_bilinear_clamp, uv + (g_texel_size * shift)).r;
+    color.g = colorInput.g;
+    color.b = sourceTexture.Sample(sampler_bilinear_clamp, uv - (g_texel_size * shift)).b;
 
-	// adjust the strength of the effect
-	return lerp(colorInput, color, strength);
+    // adjust the strength of the effect
+    return lerp(colorInput, color, strength);
 }

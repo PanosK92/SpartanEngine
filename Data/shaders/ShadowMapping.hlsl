@@ -119,7 +119,7 @@ float Penumbra(float gradient_noise, float2 uv, float z_shadowMapView, int casca
     float avg_blocker_depth = 0.0f;
     float blockers_count    = 0.0f;
     
-	[unroll]
+    [unroll]
     for(uint i = 0; i < g_penumbra_samples; i ++)
     {
         float2 penumbraFilterMaxSize    = 1.0f;
@@ -256,7 +256,7 @@ static const float2 poisson_disk[64] =
 float Technique_Poisson(float3 uv, float compare)
 {
     float shadow    = 0.0f;
-	float temporal  = ceil(frac(g_time)) * any(g_taa_jitter_offset); // helps with noise if TAA is active
+    float temporal  = ceil(frac(g_time)) * any(g_taa_jitter_offset); // helps with noise if TAA is active
 
     [unroll]
     for (uint i = 0; i < g_shadow_samples; i++)
@@ -295,10 +295,10 @@ float Technique_Pcf(float3 uv, float compare)
 ------------------------------------------------------------------------------*/
 inline float bias_sloped_scaled(float z, float bias)
 {
-	const float dmax	= 0.001f;
-    float zdx   		= abs(ddx(z));
-    float zdy   		= abs(ddy(z));
-    float scale 		= clamp(max(zdx, zdy), 0.0f, dmax);
+    const float dmax    = 0.001f;
+    float zdx           = abs(ddx(z));
+    float zdy           = abs(ddy(z));
+    float scale         = clamp(max(zdx, zdy), 0.0f, dmax);
     
     return z + bias * scale;
 }
@@ -375,7 +375,7 @@ float4 Shadow_Map(Surface surface, Light light, bool transparent_pixel)
         [branch]
         if (light.distance_to_pixel < light.range)
         {
-			uint projection_index   = direction_to_cube_face_index(light.direction);
+            uint projection_index   = direction_to_cube_face_index(light.direction);
             float pos_z             = project_depth(position_world, light_view_projection[projection_index]);   
             float compare_depth     = bias_sloped_scaled(pos_z, light.bias);
             shadow.a                = SampleShadowMap(light.direction, compare_depth);

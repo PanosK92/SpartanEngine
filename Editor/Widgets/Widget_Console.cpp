@@ -90,7 +90,10 @@ void Widget_Console::Tick()
         ImGui::PushItemWidth(max_log_width);
 
         // Wait for reading to finish
-        while (m_is_reading) {}
+        while (m_is_reading)
+        {
+            this_thread::sleep_for(std::chrono::milliseconds(16));
+        }
 
         uint32_t index = 0;
         m_is_reading = true;
@@ -104,7 +107,7 @@ void Widget_Console::Tick()
                     ImGui::BeginGroup();
                     {
                         ImGui::PushStyleColor(ImGuiCol_Text, m_log_type_color[log.error_level]);            // text color
-                        ImGui::PushStyleColor(ImGuiCol_FrameBg, index % 2 != 0 ? color_odd : color_even);   // background color      
+                        ImGui::PushStyleColor(ImGuiCol_FrameBg, index % 2 != 0 ? color_odd : color_even);   // background color
                         ImGui::InputText("##log", &log.text, ImGuiInputTextFlags_ReadOnly);
                         ImGui::PopStyleColor(2);
 

@@ -19,46 +19,46 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-static const uint g_vl_steps 		= 64; // below 64, detail loss starts to become easily observable
-static const float g_vl_scattering 	= 0.994f;
-static const float g_vl_pow			= 0.5f;
+static const uint g_vl_steps        = 64; // below 64, detail loss starts to become easily observable
+static const float g_vl_scattering  = 0.994f;
+static const float g_vl_pow         = 0.5f;
 
 // Mie scaterring approximated with Henyey-Greenstein phase function.
 float vl_compute_scattering(float v_dot_l)
 {
     static const float vl_scattering2   = g_vl_scattering * g_vl_scattering;
-	static const float result           = 1.0f - vl_scattering2;
-	float e                             = abs(1.0f + vl_scattering2 - (2.0f * g_vl_scattering) * v_dot_l);
-	return result / pow(e, g_vl_pow);
+    static const float result           = 1.0f - vl_scattering2;
+    float e                             = abs(1.0f + vl_scattering2 - (2.0f * g_vl_scattering) * v_dot_l);
+    return result / pow(e, g_vl_pow);
 }
 
 float vl_raymarch(Light light, float3 ray_pos, float3 ray_step, float ray_dot_light, int array_index)
 {
-	float fog = 0.0f;
+    float fog = 0.0f;
     
-	for (uint i = 0; i < g_vl_steps; i++)
-	{
-		// Compute position in clip space
+    for (uint i = 0; i < g_vl_steps; i++)
+    {
+        // Compute position in clip space
         float3 pos = project(ray_pos, light_view_projection[array_index]);
         
-		// Check to see if the light can "see" the pixel
+        // Check to see if the light can "see" the pixel
         #ifdef DIRECTIONAL
-		float depth_delta = compare_depth(float3(pos.xy, array_index), pos.z);
+        float depth_delta = compare_depth(float3(pos.xy, array_index), pos.z);
         #elif POINT
         float depth_delta = compare_depth(normalize(ray_pos - light.position), pos.z);
         #elif SPOT
         float depth_delta = compare_depth(float3(pos.xy, array_index), pos.z);
         #endif
        
-		if (depth_delta > 0.0f)
-		{
-			fog += vl_compute_scattering(ray_dot_light);
-		}
-		
-		ray_pos += ray_step;
-	}
+        if (depth_delta > 0.0f)
+        {
+            fog += vl_compute_scattering(ray_dot_light);
+        }
+        
+        ray_pos += ray_step;
+    }
 
-	return fog / (float)g_vl_steps;
+    return fog / (float)g_vl_steps;
 }
 
 float3 VolumetricLighting(Surface surface, Light light)
@@ -66,18 +66,18 @@ float3 VolumetricLighting(Surface surface, Light light)
     float3 ray_pos      = surface.position;
     float3 ray_dir      = -surface.camera_to_pixel;
     float step_length   = surface.camera_to_pixel_length / (float)g_vl_steps;
-	float3 ray_step 	= ray_dir * step_length;   
+    float3 ray_step     = ray_dir * step_length;   
     #ifdef DIRECTIONAL
-	float ray_dot_light	= dot(ray_dir, light.direction);
+    float ray_dot_light = dot(ray_dir, light.direction);
     #else
-    float ray_dot_light	= dot(ray_dir, -light.direction);
+    float ray_dot_light = dot(ray_dir, -light.direction);
     #endif
-	float fog 			= 0.0f;
+    float fog           = 0.0f;
     
-	// Apply dithering as it will allow us to get away with a low sample count
+    // Apply dithering as it will allow us to get away with a low sample count
     ray_pos += ray_step * dither_temporal_fallback(surface.uv, 0.0f, 25.0f);
     
-	#if DIRECTIONAL
+    #if DIRECTIONAL
     {
         [loop]
         for (uint array_index = 0; array_index < light.array_size; array_index++)
@@ -99,7 +99,7 @@ float3 VolumetricLighting(Surface surface, Light light)
                     // Ray-march using the next cascade
                     float fog_secondary = vl_raymarch(light, ray_pos, ray_step, ray_dot_light, array_index + 1);
                     
-                    // Blend cascades	
+                    // Blend cascades   
                     fog = lerp(fog, fog_secondary, cascade_lerp);
                 }
                 
@@ -118,7 +118,7 @@ float3 VolumetricLighting(Surface surface, Light light)
             float3 pos = project(ray_pos, light_view_projection[projection_index]);
             
             // Ray-march
-			fog = vl_raymarch(light, ray_pos, ray_step, ray_dot_light, projection_index);
+            fog = vl_raymarch(light, ray_pos, ray_step, ray_dot_light, projection_index);
         }
     }
     #elif SPOT
@@ -130,7 +130,7 @@ float3 VolumetricLighting(Surface surface, Light light)
             float3 pos = project(ray_pos, light_view_projection[0]);
             
             // Ray-march
-			[branch]
+            [branch]
             if (is_saturated(pos))
             {
                 fog = vl_raymarch(light, ray_pos, ray_step, ray_dot_light, 0);
@@ -138,6 +138,6 @@ float3 VolumetricLighting(Surface surface, Light light)
         }
     }
     #endif
-	
-	return fog * light.color * light.intensity;
+    
+    return fog * light.color * light.intensity;
 }

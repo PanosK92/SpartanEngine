@@ -127,9 +127,9 @@ void Widget_Profiler::ShowTimeBlock(const TimeBlock& time_block, float total_tim
     const float fraction    = duration / total_time;
     const float width       = fraction * ImGui::GetWindowContentRegionWidth();
     const auto& color       = ImGui::GetStyle().Colors[ImGuiCol_FrameBgActive];
-    const ImVec2 pos_screen       = ImGui::GetCursorScreenPos();
-    const ImVec2 pos              = ImGui::GetCursorPos();
-    const float text_height       = ImGui::CalcTextSize(name, nullptr, true).y;
+    const ImVec2 pos_screen = ImGui::GetCursorScreenPos();
+    const ImVec2 pos        = ImGui::GetCursorPos();
+    const float text_height = ImGui::CalcTextSize(name, nullptr, true).y;
 
     // Rectangle
     ImGui::GetWindowDrawList()->AddRectFilled(pos_screen, ImVec2(pos_screen.x + width, pos_screen.y + text_height), IM_COL32(color.x * 255, color.y * 255, color.z * 255, 255));

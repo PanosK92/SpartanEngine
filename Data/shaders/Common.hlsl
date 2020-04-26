@@ -154,7 +154,7 @@ inline float get_depth(float2 uv)
 {
     //float2 pos = clamp(uv * g_resolution, 0.0f, g_resolution);
     //return tex_depth.Load(int3(pos, 0)).r;
-	return tex_depth.SampleLevel(sampler_bilinear_clamp, uv, 0).r;
+    return tex_depth.SampleLevel(sampler_bilinear_clamp, uv, 0).r;
 }
 
 inline float get_linear_depth(float z, float near, float far)
@@ -301,7 +301,7 @@ float microw_shadowing_cod(float n_dot_l, float visibility)
 inline float3 energy_conservation(float3 F, float metallic = 0.0f)
 {
     float3 kS = F;          // The energy of light that gets reflected - Equal to Fresnel
-    float3 kD = 1.0f - kS;  // Remaining energy, light that gets refracted			
+    float3 kD = 1.0f - kS;  // Remaining energy, light that gets refracted          
     kD *= 1.0f - metallic;  // Multiply kD by the inverse metalness such that only non-metals have diffuse lighting
     
     return kD;

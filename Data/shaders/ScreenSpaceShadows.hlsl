@@ -29,20 +29,20 @@ static const float g_sss_ray_max_distance   = 0.1f;
 
 float ScreenSpaceShadows(Surface surface, Light light)
 {
-	// Compute ray
+    // Compute ray
     float3 ray_pos      = mul(float4(surface.position, 1.0f), g_view).xyz;
-	float3 ray_dir 		= mul(float4(-light.direction, 0.0f), g_view).xyz;
-	float step_length	= g_sss_ray_max_distance / (float)g_sss_steps;
-	float3 ray_step		= ray_dir * step_length;
+    float3 ray_dir      = mul(float4(-light.direction, 0.0f), g_view).xyz;
+    float step_length   = g_sss_ray_max_distance / (float)g_sss_steps;
+    float3 ray_step     = ray_dir * step_length;
     float2 ray_uv       = 0.0f;
     float shadow        = 1.0f;
 
-	// Apply dithering
+    // Apply dithering
     float3 dither = dither_temporal_fallback(surface.uv, 0.0f, 100.0f);
-	ray_pos += ray_step * dither;
+    ray_pos += ray_step * dither;
 
     // Ray march towards the light
-	float occlusion = 0.0;
+    float occlusion = 0.0;
     for (uint i = 0; i < g_sss_steps; i++)
     {
         // Step ray
@@ -65,7 +65,7 @@ float ScreenSpaceShadows(Surface surface, Light light)
         }
     }
 
-	// fade when out of screen
+    // fade when out of screen
     occlusion *= screen_fade(ray_uv);
     
     return 1.0f - occlusion;

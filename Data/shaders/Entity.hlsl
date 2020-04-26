@@ -25,10 +25,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 struct PixelInputType
 {
-    float4 position 	: SV_POSITION;
-    float2 uv 			: TEXCOORD;
-    float3 normal 		: NORMAL;
-    float3 positionWS 	: POSITIONT_WS;
+    float4 position     : SV_POSITION;
+    float2 uv           : TEXCOORD;
+    float3 normal       : NORMAL;
+    float3 positionWS   : POSITIONT_WS;
 };
 
 PixelInputType mainVS(Vertex_PosUvNorTan input)
@@ -87,13 +87,13 @@ float4 mainPS(PixelInputType input) : SV_TARGET
     float3 normalFiniteDifference1 = normal3 - normal2;
     float edge_normal = sqrt(dot(normalFiniteDifference0, normalFiniteDifference0) + dot(normalFiniteDifference1, normalFiniteDifference1));
 
-	// Compute view direction bias
-	float3 view 		= get_view_direction(uv);
-	float3 normal 		= tex_normal.Sample(sampler_point_clamp, uv).rgb;
-	float view_dir_bias = dot(view, normal) * 0.5f + 0.5f;
+    // Compute view direction bias
+    float3 view         = get_view_direction(uv);
+    float3 normal       = tex_normal.Sample(sampler_point_clamp, uv).rgb;
+    float view_dir_bias = dot(view, normal) * 0.5f + 0.5f;
 
-	if (edge_normal * view_dir_bias < normal_threshold)
-		discard;
+    if (edge_normal * view_dir_bias < normal_threshold)
+        discard;
 
     return float4(0.6f, 0.6f, 1.0f, 1.0f);
 #endif

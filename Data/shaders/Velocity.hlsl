@@ -22,64 +22,64 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // Returns average velocity
 float2 GetVelocity_Dilate_Average(float2 texCoord)
 {
-	float dx = g_texel_size.x;
-	float dy = g_texel_size.y;
-	
-	float2 tl 	= tex_velocity.Sample(sampler_bilinear_clamp, texCoord + float2(-dx, -dy)).xy;
-	float2 tr	= tex_velocity.Sample(sampler_bilinear_clamp, texCoord + float2( dx, -dy)).xy;
-	float2 bl	= tex_velocity.Sample(sampler_bilinear_clamp, texCoord + float2(-dx, dy)).xy;
-	float2 br 	= tex_velocity.Sample(sampler_bilinear_clamp, texCoord + float2( dx, dy)).xy;
-	float2 ce 	= tex_velocity.Sample(sampler_point_clamp, texCoord).xy;
-	
-	return (tl + tr + bl + br + ce) / 5.0f;
+    float dx = g_texel_size.x;
+    float dy = g_texel_size.y;
+    
+    float2 tl   = tex_velocity.Sample(sampler_bilinear_clamp, texCoord + float2(-dx, -dy)).xy;
+    float2 tr   = tex_velocity.Sample(sampler_bilinear_clamp, texCoord + float2( dx, -dy)).xy;
+    float2 bl   = tex_velocity.Sample(sampler_bilinear_clamp, texCoord + float2(-dx, dy)).xy;
+    float2 br   = tex_velocity.Sample(sampler_bilinear_clamp, texCoord + float2( dx, dy)).xy;
+    float2 ce   = tex_velocity.Sample(sampler_point_clamp, texCoord).xy;
+    
+    return (tl + tr + bl + br + ce) / 5.0f;
 }
 
 // Returns velocity with min depth (in a 3x3 neighborhood)
 float2 GetVelocity_Dilate_Min(float2 texCoord)
-{	
-	float min_depth	= 0.0f;
-	float2 min_uv 	= texCoord;
-	
-	[unroll]
+{   
+    float min_depth = 0.0f;
+    float2 min_uv   = texCoord;
+    
+    [unroll]
     for(int y = -1; y <= 1; ++y)
     {
-		[unroll]
+        [unroll]
         for(int x = -1; x <= 1; ++x)
         {
-			float2 offset 	= float2(x, y) * g_texel_size;
-			float depth		= tex_depth.Sample(sampler_bilinear_clamp, texCoord + offset).r;
-			if(depth > min_depth) // Reverse-z, so looking for max to find min depth
-			{
-				min_depth	= depth;
-				min_uv	= texCoord + offset;
-			}
+            float2 offset   = float2(x, y) * g_texel_size;
+            float depth     = tex_depth.Sample(sampler_bilinear_clamp, texCoord + offset).r;
+            if(depth > min_depth) // Reverse-z, so looking for max to find min depth
+            {
+                min_depth   = depth;
+                min_uv  = texCoord + offset;
+            }
         }
-	}
+    }
 
-	return tex_velocity.Sample(sampler_bilinear_clamp, min_uv).xy;
+    return tex_velocity.Sample(sampler_bilinear_clamp, min_uv).xy;
 }
 
 // Returns velocity with max depth (in a 3x3 neighborhood)
 float2 GetVelocity_Dilate_Max(float2 texCoord, Texture2D texture_velocity, Texture2D texture_depth)
-{	
-	float max_depth	= 1.0f;
-	float2 max_uv 	= texCoord;
-	
-	[unroll]
+{   
+    float max_depth = 1.0f;
+    float2 max_uv   = texCoord;
+    
+    [unroll]
     for(int y = -1; y <= 1; ++y)
     {
-		[unroll]
+        [unroll]
         for(int x = -1; x <= 1; ++x)
         {
-			float2 offset 	= float2(x, y) * g_texel_size;
-			float depth		= tex_depth.Sample(sampler_bilinear_clamp, texCoord + offset).r;
-			if(depth < max_depth) // Reverse-z, so looking for min to find max depth
-			{
-				max_depth	= depth;
-				max_uv		= texCoord + offset;
-			}
+            float2 offset   = float2(x, y) * g_texel_size;
+            float depth     = tex_depth.Sample(sampler_bilinear_clamp, texCoord + offset).r;
+            if(depth < max_depth) // Reverse-z, so looking for min to find max depth
+            {
+                max_depth   = depth;
+                max_uv      = texCoord + offset;
+            }
         }
-	}
+    }
 
-	return tex_velocity.Sample(sampler_bilinear_clamp, max_uv).xy;
+    return tex_velocity.Sample(sampler_bilinear_clamp, max_uv).xy;
 }

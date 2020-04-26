@@ -20,14 +20,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 // Material
-Texture2D tex_material_albedo 	        : register (t0);
+Texture2D tex_material_albedo           : register (t0);
 Texture2D tex_material_roughness        : register (t1);
 Texture2D tex_material_metallic         : register (t2);
-Texture2D tex_material_normal 	        : register (t3);
-Texture2D tex_material_height 	        : register (t4);
+Texture2D tex_material_normal           : register (t3);
+Texture2D tex_material_height           : register (t4);
 Texture2D tex_material_occlusion        : register (t5);
 Texture2D tex_material_emission         : register (t6);
-Texture2D tex_material_mask 	        : register (t7);
+Texture2D tex_material_mask             : register (t7);
 
 // G-buffer
 Texture2D tex_albedo                    : register(t8);
@@ -37,12 +37,12 @@ Texture2D tex_velocity                  : register(t11);
 Texture2D tex_depth                     : register(t12);
 
 // Light depth/color maps
-Texture2DArray light_directional_depth 	: register(t13);
-Texture2DArray light_directional_color 	: register(t14);
-TextureCube light_point_depth 			: register(t15);
-TextureCube light_point_color 			: register(t16);
-Texture2D light_spot_depth 				: register(t17);
-Texture2D light_spot_color 				: register(t18);
+Texture2DArray light_directional_depth  : register(t13);
+Texture2DArray light_directional_color  : register(t14);
+TextureCube light_point_depth           : register(t15);
+TextureCube light_point_color           : register(t16);
+Texture2D light_spot_depth              : register(t17);
+Texture2D light_spot_color              : register(t18);
 
 // Misc
 Texture2D tex_lutIbl                    : register(t19);

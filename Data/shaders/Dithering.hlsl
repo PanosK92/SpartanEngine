@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // http://alex.vlachos.com/graphics/Alex_Vlachos_Advanced_VR_Rendering_GDC2015.pdf
 inline float3 dither(float2 uv)
 {
-	float2 screen_pos   = (uv * g_resolution);
+    float2 screen_pos   = (uv * g_resolution);
     float3 dither       = dot(float2(171.0f, 231.0f), screen_pos);
     dither              = frac(dither / float3(103.0f, 71.0f, 97.0f));  
     dither              /= 255.0f;
@@ -34,7 +34,7 @@ inline float3 dither(float2 uv)
 // Same as dither but offests over time, when TAA is enabled. Returns regular dither if TAA is not enabled.
 inline float3 dither_temporal(float2 uv, float scale = 1.0f)
 {
-	float2 screen_pos   = (uv * g_resolution) + sin(g_time) * any(g_taa_jitter_offset);	
+    float2 screen_pos   = (uv * g_resolution) + sin(g_time) * any(g_taa_jitter_offset); 
     float3 dither       = dot(float2(171.0f, 231.0f), screen_pos);
     dither              = frac(dither / float3(103.0f, 71.0f, 97.0f));  
     dither              /= 255.0f;

@@ -21,11 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====================
+//= INCLUDES ====================================
 #include "Widget.h"
 #include <memory>
-#include "..\ButtonColorPicker.h"
-//===============================
+#include "../WidgetsDeferred/ButtonColorPicker.h"
+//===============================================
 
 namespace Spartan
 {

@@ -21,12 +21,29 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===========
+//= INCLUDES ====================================
 #include "Widget.h"
-#include <unordered_map>
-//======================
+#include <vector>
+#include "../WidgetsDeferred/Widget_TextEditor.h"
+#include "Core/FileSystem.h"
+//===============================================
 
-namespace Spartan { class RHI_Shader; class Renderer; }
+namespace Spartan { class RHI_Shader; class Renderer; class Input; }
+
+struct ShaderFile
+{
+    ShaderFile() = default;
+    ShaderFile(const std::string& path, const std::string& source)
+    {
+        this->path      = path;
+        this->source    = source;
+        name = Spartan::FileSystem::GetFileNameFromFilePath(path);
+    }
+
+    std::string name;
+    std::string path;
+    std::string source;
+};
 
 class Widget_ShaderEditor : public Widget
 {
@@ -35,10 +52,16 @@ public:
     void Tick() override;
 
 private:
+    void ShowShaderSource();
+    void ShowShaderList();
     void GetAllShadersFiles(const std::string& file_path);
 
     Spartan::RHI_Shader* m_shader   = nullptr;
     std::string m_shader_name       = "N/A";
     Spartan::Renderer* m_renderer   = nullptr;
-    std::unordered_map<std::string, std::string> m_shader_files;
+    Spartan::Input* m_input         = nullptr;
+    int32_t m_displayed_file_index  = -1;
+    bool m_first_run                = true;
+    std::unique_ptr<Widget_TextEditor> m_text_editor;
+    std::vector<ShaderFile> m_shader_files;
 };

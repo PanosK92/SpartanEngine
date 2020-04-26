@@ -37,8 +37,8 @@ inline float2 binary_search(float3 ray_dir, inout float3 ray_pos, inout float2 r
 
     for (uint i = 0; i < g_ssr_binarySearchSteps; i++)
     {    
-		ray_dir     *= 0.5f;
-		ray_pos     += -sign(depth_delta) * ray_dir;
+        ray_dir     *= 0.5f;
+        ray_pos     += -sign(depth_delta) * ray_dir;
         ray_uv      = project_uv(ray_pos, g_projection);
 
         depth_buffer_z  = get_linear_depth(ray_uv);
@@ -62,12 +62,12 @@ inline float2 trace_ray(float2 uv, float3 ray_pos, float3 ray_dir)
     
     // Reject if the reflection vector is pointing back at the viewer.
     // Attenuate reflections for angles between 60 degrees and 75 degrees, and drop all contribution beyond the (-60,60) degree range
-	float3 camera_direction = normalize(mul(float4(g_camera_direction, 0.0f), g_view).xyz);
+    float3 camera_direction = normalize(mul(float4(g_camera_direction, 0.0f), g_view).xyz);
     float fade_camera       = 1 - smoothstep(0.25, 0.5, dot(-camera_direction, ray_dir));
     [branch]
-	if (fade_camera > 0)
+    if (fade_camera > 0)
     {
-	    // Apply dithering
+        // Apply dithering
         ray_pos += ray_step * dither_temporal_fallback(uv, 0.0f, 50.0f);
 
         // Ray-march
