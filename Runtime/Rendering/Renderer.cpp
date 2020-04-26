@@ -204,12 +204,16 @@ namespace Spartan
 
 		// Get camera matrices
 		{
-			m_near_plane	                            = m_camera->GetNearPlane();
-			m_far_plane		                            = m_camera->GetFarPlane();
-			m_buffer_frame_cpu.view			            = m_camera->GetViewMatrix();
-			m_buffer_frame_cpu.projection	            = m_camera->GetProjectionMatrix();
-            m_buffer_frame_cpu.projection_ortho         = Matrix::CreateOrthographicLH(m_resolution.x, m_resolution.y, m_near_plane, m_far_plane);
-            m_buffer_frame_cpu.view_projection_ortho    = Matrix::CreateLookAtLH(Vector3(0, 0, -m_near_plane), Vector3::Forward, Vector3::Up) * m_buffer_frame_cpu.projection_ortho;
+            if (m_update_ortho_proj || m_near_plane != m_camera->GetNearPlane() || m_far_plane != m_camera->GetFarPlane())
+            {
+                m_buffer_frame_cpu.projection_ortho         = Matrix::CreateOrthographicLH(m_resolution.x, m_resolution.y, m_near_plane, m_far_plane);
+                m_buffer_frame_cpu.view_projection_ortho    = Matrix::CreateLookAtLH(Vector3(0, 0, -m_near_plane), Vector3::Forward, Vector3::Up) * m_buffer_frame_cpu.projection_ortho;
+                m_update_ortho_proj                         = false;
+            }
+            m_near_plane	                            = m_camera->GetNearPlane();
+            m_far_plane		                            = m_camera->GetFarPlane();
+            m_buffer_frame_cpu.view			            = m_camera->GetViewMatrix();
+            m_buffer_frame_cpu.projection	            = m_camera->GetProjectionMatrix();
 
 			// TAA - Generate jitter
 			if (GetOption(Render_AntiAliasing_Taa))
@@ -265,6 +269,8 @@ namespace Spartan
 
 		// Re-create render textures
 		CreateRenderTextures();
+
+        m_update_ortho_proj = true;
 
         FIRE_EVENT(Event_Frame_Resolution_Changed);
 

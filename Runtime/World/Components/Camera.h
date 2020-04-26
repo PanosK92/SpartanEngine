@@ -100,12 +100,14 @@ namespace Spartan
         const RHI_Viewport& GetViewport() const;
 		//================================================================
 
-		//= MISC ========================================================================
+		//= MISC ==============================================================================
 		bool IsInViewFrustrum(Renderable* renderable) const;
 		bool IsInViewFrustrum(const Math::Vector3& center, const Math::Vector3& extents) const;
 		const Math::Vector4& GetClearColor() const		{ return m_clear_color; }
 		void SetClearColor(const Math::Vector4& color)	{ m_clear_color = color; }
-		//===============================================================================
+        bool GetFpsControl()                 const { return m_fps_control; }
+        void SetFpsControl(const bool fps_control) { m_fps_control = fps_control; }
+		//=====================================================================================
 
         Math::Matrix ComputeViewMatrix() const;
         Math::Matrix ComputeProjection(const bool reverse_z);
@@ -123,7 +125,8 @@ namespace Spartan
         Math::Matrix m_view_projection      = Math::Matrix::Identity;
 		Math::Vector3 m_position            = Math::Vector3::Zero;
         Math::Quaternion m_rotation         = Math::Quaternion::Identity;
-        bool m_isDirty                      = false;
+        bool m_is_dirty                     = false;
+        bool m_fps_control                  = true;
         Math::Vector3 m_movement_speed      = Math::Vector3::Zero;
         Math::Vector2 mouse_smoothed        = Math::Vector2::Zero;
         Math::Vector2 mouse_rotation        = Math::Vector2::Zero;     

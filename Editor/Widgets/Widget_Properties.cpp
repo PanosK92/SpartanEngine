@@ -867,6 +867,7 @@ void Widget_Properties::ShowCamera(Camera* camera) const
 		float fov								= camera->GetFovHorizontalDeg();
 		float near_plane						= camera->GetNearPlane();
 		float far_plane							= camera->GetFarPlane();
+        bool fps_control                        = camera->GetFpsControl();
 		m_colorPicker_camera->SetColor(camera->GetClearColor());
 		//========================================================================================================
 
@@ -907,10 +908,15 @@ void Widget_Properties::ShowCamera(Camera* camera) const
 		ImGui::SameLine(ComponentProperty::g_column);		ImGui::PushItemWidth(130); ImGui::InputFloat("Near", &near_plane, 0.1f, 0.1f, "%.3f", input_text_flags); ImGui::PopItemWidth();
 		ImGui::SetCursorPosX(ComponentProperty::g_column);	ImGui::PushItemWidth(130); ImGui::InputFloat("Far", &far_plane, 0.1f, 0.1f, "%.3f", input_text_flags); ImGui::PopItemWidth();
 
+        // FPS Control
+        ImGui::Text("FPS Control");
+        ImGui::SameLine(ComponentProperty::g_column); ImGui::Checkbox("##camera_fps_control", &fps_control); ImGuiEx::Tooltip("Enables FPS control while holding down the right mouse button");
+
 		//= MAP ====================================================================================================================
 		if (fov != camera->GetFovHorizontalDeg())							camera->SetFovHorizontalDeg(fov);
 		if (near_plane != camera->GetNearPlane())							camera->SetNearPlane(near_plane);
 		if (far_plane != camera->GetFarPlane())								camera->SetFarPlane(far_plane);
+        if (fps_control != camera->GetFpsControl())							camera->SetFpsControl(fps_control);
 		if (m_colorPicker_camera->GetColor() != camera->GetClearColor())	camera->SetClearColor(m_colorPicker_camera->GetColor());
 		//==========================================================================================================================
 	}

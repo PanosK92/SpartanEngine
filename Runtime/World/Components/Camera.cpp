@@ -59,7 +59,7 @@ namespace Spartan
 		if (m_last_known_viewport != current_viewport)
 		{
 			m_last_known_viewport   = current_viewport;
-			m_isDirty			    = true;
+			m_is_dirty			    = true;
 		}
 
 		// DIRTY CHECK
@@ -67,12 +67,15 @@ namespace Spartan
 		{
 			m_position = GetTransform()->GetPosition();
 			m_rotation = GetTransform()->GetRotation();
-			m_isDirty = true;
+			m_is_dirty = true;
 		}
 
-        FpsControl(delta_time);
-       
-		if (!m_isDirty)
+        if (m_fps_control)
+        {
+            FpsControl(delta_time);
+        }
+
+		if (!m_is_dirty)
 			return;
 
         m_view              = ComputeViewMatrix();
@@ -80,7 +83,7 @@ namespace Spartan
         m_view_projection   = m_view * m_projection;
 		m_frustrum          = Frustum(GetViewMatrix(), GetProjectionMatrix(), m_renderer->GetOption(Render_ReverseZ) ? GetNearPlane() : GetFarPlane());
 
-		m_isDirty = false;
+		m_is_dirty = false;
 	}
 
 	void Camera::Serialize(FileStream* stream)
@@ -108,19 +111,19 @@ namespace Spartan
     void Camera::SetNearPlane(const float near_plane)
 	{
 		m_near_plane = Helper::Max(0.01f, near_plane);
-		m_isDirty = true;
+		m_is_dirty = true;
 	}
 
 	void Camera::SetFarPlane(const float far_plane)
 	{
 		m_far_plane = far_plane;
-		m_isDirty = true;
+		m_is_dirty = true;
 	}
 
 	void Camera::SetProjection(const ProjectionType projection)
 	{
 		m_projection_type = projection;
-		m_isDirty = true;
+		m_is_dirty = true;
 	}
 
     float Camera::GetFovHorizontalDeg() const
@@ -136,7 +139,7 @@ namespace Spartan
     void Camera::SetFovHorizontalDeg(const float fov)
 	{
 		m_fov_horizontal_rad = Helper::DegreesToRadians(fov);
-		m_isDirty = true;
+		m_is_dirty = true;
 	}
 
     const RHI_Viewport& Camera::GetViewport() const
