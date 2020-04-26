@@ -28,7 +28,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/FileSystem.h"
 //===============================================
 
-namespace Spartan { class RHI_Shader; class Renderer; class Input; }
+namespace Spartan
+{
+    class RHI_Shader;
+    class Renderer;
+    class Input;
+}
 
 struct ShaderFile
 {
@@ -54,7 +59,9 @@ public:
 private:
     void ShowShaderSource();
     void ShowShaderList();
-    void GetAllShadersFiles(const std::string& file_path);
+
+    void GetShaderSource(const std::string& file_path);
+    void GetShaderInstances();
 
     Spartan::RHI_Shader* m_shader   = nullptr;
     std::string m_shader_name       = "N/A";
@@ -63,5 +70,6 @@ private:
     int32_t m_displayed_file_index  = -1;
     bool m_first_run                = true;
     std::unique_ptr<Widget_TextEditor> m_text_editor;
-    std::vector<ShaderFile> m_shader_files;
+    std::vector<Spartan::RHI_Shader*> m_shaders;
+    std::vector<ShaderFile> m_shader_sources;
 };

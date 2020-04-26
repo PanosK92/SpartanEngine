@@ -22,9 +22,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ============================
 #include "Widget_ShaderEditor.h"
 #include "Core/Context.h"
-#include "Rendering/Renderer.h"
 #include "Input/Input.h"
 #include "RHI/RHI_Shader.h"
+#include "Rendering/Renderer.h"
+#include "Rendering/ShaderLight.h"
+#include "Rendering/ShaderGBuffer.h"
 #include <fstream>
 #include <sstream>
 #include "../ImGui/Source/imgui_stdlib.h"
@@ -64,9 +66,9 @@ void Widget_ShaderEditor::ShowShaderSource()
             // Shader source
             if (ImGui::BeginTabBar("#shader_tab_bar", ImGuiTabBarFlags_Reorderable))
             {
-                for (int32_t i = 0; i < static_cast<int32_t>(m_shader_files.size()); i++)
+                for (int32_t i = 0; i < static_cast<int32_t>(m_shader_sources.size()); i++)
                 {
-                    ShaderFile& shader_file = m_shader_files[i];
+                    ShaderFile& shader_file = m_shader_sources[i];
 
                     if (ImGui::BeginTabItem(shader_file.name.c_str()))
                     {
@@ -121,7 +123,7 @@ void Widget_ShaderEditor::ShowShaderSource()
             if (ImGui::Button("Compile"))
             {
                 // Save all files
-                for (ShaderFile& shader_file : m_shader_files)
+                for (ShaderFile& shader_file : m_shader_sources)
                 {
                     ofstream out(shader_file.path);
                     out << shader_file.source;
@@ -141,7 +143,7 @@ void Widget_ShaderEditor::ShowShaderSource()
 
 void Widget_ShaderEditor::ShowShaderList()
 {
-    auto& shaders = m_renderer->GetShaders();
+    GetShaderInstances();
 
     ImGui::BeginGroup();
     {
@@ -149,10 +151,8 @@ void Widget_ShaderEditor::ShowShaderList()
 
         if (ImGui::BeginChild("##shader_list", ImVec2(0.0f, 0.0f), true, ImGuiWindowFlags_HorizontalScrollbar))
         {
-            for (const auto& it : shaders)
+            for (RHI_Shader* shader : m_shaders)
             {
-                RHI_Shader* shader = it.second.get();
-
                 // Get name
                 string name = shader->GetName();
 
@@ -177,7 +177,10 @@ void Widget_ShaderEditor::ShowShaderList()
                 // Append defines
                 for (const auto& define : shader->GetDefines())
                 {
-                    name += "_" + define.first;
+                    if (define.second != "0")
+                    {
+                        name += "_" + define.first;
+                    }
                 }
 
                 if (ImGui::Button(name.c_str()) || m_first_run)
@@ -187,7 +190,7 @@ void Widget_ShaderEditor::ShowShaderList()
                     m_displayed_file_index  = -1;
                     m_first_run             = false;
 
-                    GetAllShadersFiles(m_shader->GetFilePath());
+                    GetShaderSource(m_shader->GetFilePath());
                 }
             }
             ImGui::EndChild();
@@ -196,26 +199,55 @@ void Widget_ShaderEditor::ShowShaderList()
     ImGui::EndGroup();
 }
 
-void Widget_ShaderEditor::GetAllShadersFiles(const string& file_path)
+void Widget_ShaderEditor::GetShaderSource(const string& file_path)
 {
-    // Get all files used by the shader
+    // Get all files included by the shader
     vector<string> include_paths = { file_path };
     auto new_includes = FileSystem::GetIncludedFiles(file_path);
     include_paths.insert(include_paths.end(), new_includes.begin(), new_includes.end());
 
-    // Resize shader files to fit
-    m_shader_files.clear();
-    if (include_paths.size() > m_shader_files.capacity())
+    // Save the path and the source of all those files
     {
-        m_shader_files.reserve(include_paths.size());
+        // Resize shader files to fit
+        m_shader_sources.clear();
+        if (include_paths.size() > m_shader_sources.capacity())
+        {
+            m_shader_sources.reserve(include_paths.size());
+        }
+
+        // Update shader files
+        for (const string& include_path : include_paths)
+        {
+            ifstream in(include_path);
+            stringstream buffer;
+            buffer << in.rdbuf();
+            m_shader_sources.emplace_back(include_path, buffer.str());
+        }
+    }
+}
+
+void Widget_ShaderEditor::GetShaderInstances()
+{
+    auto& shaders = m_renderer->GetShaders();
+    m_shaders.clear();
+
+    for (const auto& it : shaders)
+    {
+        if (it.second->IsCompiled())
+        {
+            m_shaders.emplace_back(it.second.get());
+        }
     }
 
-    // Update shader files
-    for (const string& include_path : include_paths)
+    // Gbuffer - Contained in shaders but not compiled itself, it holds variations in it instead
+    for (const auto& it : ShaderGBuffer::GetVariations())
     {
-        ifstream in(include_path);
-        stringstream buffer;
-        buffer << in.rdbuf();
-        m_shader_files.emplace_back(include_path, buffer.str());
+        m_shaders.emplace_back(it.second.get());
+    }
+
+    // Light - Contained in shaders but not compiled itself, it holds variations in it instead
+    for (const auto& it : ShaderLight::GetVariations())
+    {
+        m_shaders.emplace_back(it.second.get());
     }
 }
