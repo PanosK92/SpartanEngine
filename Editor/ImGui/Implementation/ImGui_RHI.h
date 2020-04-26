@@ -287,7 +287,7 @@ namespace ImGui::RHI
 			return;
 
         // Validate resolution
-        if (!g_rhi_device->ValidateResolution(width, height))
+        if (!g_rhi_device->ValidateResolution(static_cast<uint32_t>(width), static_cast<uint32_t>(height)))
         {
             LOG_WARNING("%dx%d is an invalid resolution", width, height);
             return;

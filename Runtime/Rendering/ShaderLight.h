@@ -52,6 +52,7 @@ namespace Spartan
         ~ShaderLight() = default;
 
         static ShaderLight* GetVariation(Context* context, const Light* light, const uint64_t renderer_flags);
+        static auto& GetVariations() { return m_variations; }
 
     private:
         static ShaderLight* Compile(Context* context, const uint16_t flags);
