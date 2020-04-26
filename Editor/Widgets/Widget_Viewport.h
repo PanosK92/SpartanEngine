@@ -37,7 +37,7 @@ namespace Spartan
 class Widget_Viewport : public Widget
 {
 public:
-	Widget_Viewport(Spartan::Context* context);
+	Widget_Viewport(Editor* editor);
 	void Tick() override;
 
 private:

@@ -32,7 +32,7 @@ namespace Spartan { class Context; }
 class Widget_MenuBar : public Widget
 {
 public:
-	Widget_MenuBar(Spartan::Context* context);
+	Widget_MenuBar(Editor* editor);
 	void Tick() override;
 
 private:

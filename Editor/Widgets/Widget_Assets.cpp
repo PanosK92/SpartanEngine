@@ -38,7 +38,7 @@ namespace Widget_Assets_Statics
 	static string g_double_clicked_path_import_dialog;
 }
 
-Widget_Assets::Widget_Assets(Context* context) : Widget(context)
+Widget_Assets::Widget_Assets(Editor* editor) : Widget(editor)
 {
 	m_title             = "Assets";
 	m_fileDialogView    = make_unique<FileDialog>(m_context, false, FileDialog_Type_Browser,        FileDialog_Op_Load, FileDialog_Filter_All);

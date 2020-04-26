@@ -61,7 +61,7 @@ private:
 class Widget_Console : public Widget
 {
 public:
-	Widget_Console(Spartan::Context* context);
+	Widget_Console(Editor* editor);
 	void Tick() override;
 	void AddLogPackage(const LogPackage& package);
 	void Clear();

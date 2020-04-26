@@ -43,7 +43,7 @@ namespace _Widget_MenuBar
 	static string g_fileDialogSelection;
 }
 
-Widget_MenuBar::Widget_MenuBar(Context* context) : Widget(context)
+Widget_MenuBar::Widget_MenuBar(Editor* editor) : Widget(editor)
 {
     m_title                 = "MenuBar";
 	m_is_window				= false;

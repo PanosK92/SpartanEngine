@@ -33,7 +33,7 @@ using namespace std;
 using namespace Spartan;
 //=======================
 
-Widget_ResourceCache::Widget_ResourceCache(Context* context) : Widget(context)
+Widget_ResourceCache::Widget_ResourceCache(Editor* editor) : Widget(editor)
 {
 	m_title			= "Resource Cache";
 	m_flags	        |= ImGuiWindowFlags_HorizontalScrollbar;

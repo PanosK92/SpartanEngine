@@ -61,7 +61,7 @@ struct Metric
 class Widget_Profiler : public Widget
 {
 public:
-	Widget_Profiler(Spartan::Context* context);
+	Widget_Profiler(Editor* editor);
 	void Tick() override;
 
 private:

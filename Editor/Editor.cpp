@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/Engine.h"
 #include "Core/Settings.h"
 #include "Rendering/Model.h"
+#include "Profiling/Profiler.h"
 #include "ImGui_Extension.h"
 #include "ImGui/Implementation/ImGui_RHI.h"
 #include "ImGui/Implementation/imgui_impl_win32.h"
@@ -35,6 +36,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widgets/Widget_Toolbar.h"
 #include "Widgets/Widget_Viewport.h"
 #include "Widgets/Widget_World.h"
+#include "Widgets/Widget_ShaderEditor.h"
+#include "Widgets/Widget_ResourceCache.h"
+#include "Widgets/Widget_Profiler.h"
+#include "Widgets/Widget_RenderOptions.h"
 //================================================
 
 //= NAMESPACES ==========
@@ -176,14 +181,18 @@ void Editor::OnTick()
 
 void Editor::Widgets_Create()
 {
-    m_widgets.emplace_back(make_unique<Widget_Console>(m_context));
-    m_widgets.emplace_back(make_unique<Widget_MenuBar>(m_context)); _Editor::widget_menu_bar = m_widgets.back().get();
-    m_widgets.emplace_back(make_unique<Widget_Toolbar>(m_context)); _Editor::widget_toolbar = m_widgets.back().get();
-    m_widgets.emplace_back(make_unique<Widget_Viewport>(m_context));	
-	m_widgets.emplace_back(make_unique<Widget_Assets>(m_context));	
-	m_widgets.emplace_back(make_unique<Widget_Properties>(m_context));
-	m_widgets.emplace_back(make_unique<Widget_World>(m_context)); _Editor::widget_world = m_widgets.back().get();
-    m_widgets.emplace_back(make_unique<Widget_ProgressDialog>(m_context));
+    m_widgets.emplace_back(make_shared<Widget_Console>(this));
+    m_widgets.emplace_back(make_shared<Widget_Profiler>(this));
+    m_widgets.emplace_back(make_shared<Widget_ResourceCache>(this));
+    m_widgets.emplace_back(make_shared<Widget_ShaderEditor>(this));
+    m_widgets.emplace_back(make_shared<Widget_RenderOptions>(this));
+    m_widgets.emplace_back(make_shared<Widget_MenuBar>(this)); _Editor::widget_menu_bar = m_widgets.back().get();
+    m_widgets.emplace_back(make_shared<Widget_Toolbar>(this)); _Editor::widget_toolbar = m_widgets.back().get();
+    m_widgets.emplace_back(make_shared<Widget_Viewport>(this));
+	m_widgets.emplace_back(make_shared<Widget_Assets>(this));
+	m_widgets.emplace_back(make_shared<Widget_Properties>(this));
+	m_widgets.emplace_back(make_shared<Widget_World>(this)); _Editor::widget_world = m_widgets.back().get();
+    m_widgets.emplace_back(make_shared<Widget_ProgressDialog>(this));
 }
 
 void Editor::Widgets_Tick()
@@ -195,9 +204,12 @@ void Editor::Widgets_Tick()
 
 	for (auto& widget : m_widgets)
 	{
-		widget->Begin();
-		widget->Tick();
-		widget->End();
+        if (widget->GetVisible())
+        {
+            widget->Begin();
+            widget->Tick();
+            widget->End();
+        }
 	}
 
 	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable)

@@ -50,7 +50,7 @@ namespace Spartan
 class Widget_Properties : public Widget
 {
 public:
-	Widget_Properties(Spartan::Context* context);
+	Widget_Properties(Editor* editor);
 	void Tick() override;
 
 	static void Inspect(const std::weak_ptr<Spartan::Entity>& entity);

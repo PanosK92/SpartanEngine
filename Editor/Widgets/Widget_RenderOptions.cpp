@@ -35,12 +35,12 @@ using namespace Spartan;
 using namespace Spartan::Math;
 //============================
 
-Widget_RenderOptions::Widget_RenderOptions(Context* context) : Widget(context)
+Widget_RenderOptions::Widget_RenderOptions(Editor* editor) : Widget(editor)
 {
     m_title         = "Renderer Options";
     m_flags         |= ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoScrollbar;
     m_is_visible    = false;
-    m_renderer      = context->GetSubsystem<Renderer>();
+    m_renderer      = m_context->GetSubsystem<Renderer>();
     m_alpha         = 1.0f;
 }
 

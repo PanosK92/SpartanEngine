@@ -32,7 +32,7 @@ using namespace Spartan;
 using namespace Math;
 //======================
 
-Widget_Viewport::Widget_Viewport(Context* context) : Widget(context)
+Widget_Viewport::Widget_Viewport(Editor* editor) : Widget(editor)
 {
 	m_title     = "Viewport";
     m_size      = Vector2(400, 250);

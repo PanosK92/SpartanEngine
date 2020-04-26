@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widget_Profiler.h"
 #include "Math/Vector3.h"
 #include "Core/Context.h"
+#include "Math/Vector2.h"
 //==========================
 
 //= NAMESPACES =========
@@ -31,7 +32,7 @@ using namespace Spartan;
 using namespace Math;
 //======================
 
-Widget_Profiler::Widget_Profiler(Context* context) : Widget(context)
+Widget_Profiler::Widget_Profiler(Editor* editor) : Widget(editor)
 {
 	m_flags         |= ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar;
 	m_title			= "Profiler";

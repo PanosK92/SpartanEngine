@@ -31,7 +31,7 @@ class FileDialog;
 class Widget_Assets : public Widget
 {
 public:
-	Widget_Assets(Spartan::Context* context);
+	Widget_Assets(Editor* editor);
 	void Tick() override;
 
 private:

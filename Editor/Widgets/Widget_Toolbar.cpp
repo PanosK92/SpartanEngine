@@ -19,16 +19,18 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ====================
+//= INCLUDES ==============================
 #include "Widget_Toolbar.h"
 #include "Widget_Profiler.h"
 #include "Widget_ResourceCache.h"
 #include "Widget_ShaderEditor.h"
 #include "Widget_RenderOptions.h"
 #include "Core/Engine.h"
-#include "Rendering\Model.h"
+#include "Rendering/Model.h"
 #include "../ImGui_Extension.h"
-//===============================
+#include "../ImGui/Source/imgui_internal.h"
+#include "../Editor.h"
+//=========================================
 
 //= NAMESPACES =========
 using namespace std;
@@ -36,7 +38,7 @@ using namespace Spartan;
 using namespace Math;
 //======================
 
-Widget_Toolbar::Widget_Toolbar(Context* context) : Widget(context)
+Widget_Toolbar::Widget_Toolbar(Editor* editor) : Widget(editor)
 {
 	m_title = "Toolbar";
     
@@ -64,10 +66,10 @@ Widget_Toolbar::Widget_Toolbar(Context* context) : Widget(context)
         ImGui::PopStyleVar();
     };
 
-    m_widgets[Icon_Profiler]            = make_unique<Widget_Profiler>(context);
-    m_widgets[Icon_ResourceCache]       = make_unique<Widget_ResourceCache>(context);
-    m_widgets[Icon_Component_Script]    = make_unique<Widget_ShaderEditor>(context);
-    m_widgets[Icon_Component_Options]   = make_unique<Widget_RenderOptions>(context);
+    m_widgets[Icon_Profiler]            = m_editor->GetWidget<Widget_Profiler>();
+    m_widgets[Icon_ResourceCache]       = m_editor->GetWidget<Widget_ResourceCache>();
+    m_widgets[Icon_Component_Script]    = m_editor->GetWidget<Widget_ShaderEditor>();
+    m_widgets[Icon_Component_Options]   = m_editor->GetWidget<Widget_RenderOptions>();
 
     m_context->m_engine->EngineMode_Disable(Engine_Game);
 }
@@ -90,16 +92,9 @@ void Widget_Toolbar::Tick()
 
     for (auto& widget_it : m_widgets)
     {
-        Widget* widget          = widget_it.second.get();
-        const Icon_Type widget_icon   = widget_it.first;
+        Widget* widget              = widget_it.second;
+        const Icon_Type widget_icon = widget_it.first;
 
         show_button(widget_icon, [this, &widget](){ return widget->GetVisible(); }, [this, &widget]() { widget->SetVisible(true); });
-
-        if (widget->GetVisible())
-        {
-            widget->Begin();
-            widget->Tick();
-            widget->End();
-        }
     }
 }

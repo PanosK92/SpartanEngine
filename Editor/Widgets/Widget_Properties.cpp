@@ -138,7 +138,7 @@ namespace ComponentProperty
 	}
 }
 
-Widget_Properties::Widget_Properties(Context* context) : Widget(context)
+Widget_Properties::Widget_Properties(Editor* editor) : Widget(editor)
 {
 	m_title	    = "Properties";
     m_size.x    = 500; // min width
