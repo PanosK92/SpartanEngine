@@ -57,7 +57,7 @@ namespace _Widget_World
 	static Entity* g_entity_clicked	= nullptr;
 }
 
-Widget_World::Widget_World(Context* context) : Widget(context)
+Widget_World::Widget_World(Editor* editor) : Widget(editor)
 {
 	m_title					= "World";
 	_Widget_World::g_world	= m_context->GetSubsystem<World>();

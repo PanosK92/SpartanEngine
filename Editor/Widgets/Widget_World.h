@@ -21,18 +21,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ======
+//= INCLUDES ==============================
 #include "Widget.h"
 #include <memory>
-namespace Spartan { class Context; }
-//=================
+#include "../ImGui/Source/imgui_internal.h"
+//=========================================
 
 namespace Spartan { class Entity; }
 
 class Widget_World : public Widget
 {
 public:
-	Widget_World(Spartan::Context* context);
+	Widget_World(Editor* editor);
 	void Tick() override;
 
 private:

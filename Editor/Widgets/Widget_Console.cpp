@@ -19,12 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ============================
+//= INCLUDES ==============================
 #include "Widget_Console.h"
-#include "Rendering\Model.h"
+#include "Rendering/Model.h"
 #include "../ImGui_Extension.h"
 #include "../ImGui/Source/imgui_stdlib.h"
-//=======================================
+#include "../ImGui/Source/imgui_internal.h"
+//=========================================
 
 //= NAMESPACES =========
 using namespace std;
@@ -32,7 +33,7 @@ using namespace Spartan;
 using namespace Math;
 //======================
 
-Widget_Console::Widget_Console(Context* context) : Widget(context)
+Widget_Console::Widget_Console(Editor* editor) : Widget(editor)
 {
 	m_title = "Console";
 

@@ -26,12 +26,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widget.h"
 //=================
 
-namespace Spartan { class Context;}
-
 class Widget_ProgressDialog : public Widget
 {
 public:
-	Widget_ProgressDialog(Spartan::Context* contex);
+	Widget_ProgressDialog(Editor* editor);
 	~Widget_ProgressDialog() = default;
 	void Tick() override;
 

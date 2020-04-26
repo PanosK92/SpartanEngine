@@ -53,7 +53,7 @@ struct ShaderFile
 class Widget_ShaderEditor : public Widget
 {
 public:
-    Widget_ShaderEditor(Spartan::Context* context);
+    Widget_ShaderEditor(Editor* editor);
     void Tick() override;
 
 private:

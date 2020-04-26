@@ -35,7 +35,7 @@ namespace _Widget_ProgressDialog
 	static float width = 500.0f;
 }
 
-Widget_ProgressDialog::Widget_ProgressDialog(Context* contex) : Widget(contex)
+Widget_ProgressDialog::Widget_ProgressDialog(Editor* editor) : Widget(editor)
 {
 	m_title			            = "Hold on...";
 	m_is_visible	            = false;

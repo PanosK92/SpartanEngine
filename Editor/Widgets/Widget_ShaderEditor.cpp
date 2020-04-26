@@ -37,7 +37,7 @@ using namespace std;
 using namespace Spartan;
 //======================
 
-Widget_ShaderEditor::Widget_ShaderEditor(Context* context) : Widget(context)
+Widget_ShaderEditor::Widget_ShaderEditor(Editor* editor) : Widget(editor)
 {
     m_title         = "Shader Editor";
     m_flags         |= ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoScrollbar;

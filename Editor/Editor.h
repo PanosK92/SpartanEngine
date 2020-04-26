@@ -47,6 +47,21 @@ public:
 
     void OnWindowMessage(Spartan::WindowData& window_data);
 	void OnTick();
+    Spartan::Context* GetContext() { return m_context; }
+
+    template<typename T>
+    T* GetWidget()
+    {
+        for (const auto& widget : m_widgets)
+        {
+            if (T* widget_t = dynamic_cast<T*>(widget.get()))
+            {
+                return widget_t;
+            }
+        }
+
+        return nullptr;
+    }
 
 private:
 	void Widgets_Create();
@@ -56,7 +71,7 @@ private:
 	void ApplyStyle() const;
 
 	// Editor
-	std::vector<std::unique_ptr<Widget>> m_widgets;
+	std::vector<std::shared_ptr<Widget>> m_widgets;
 	bool m_initializing = false;
     bool m_editor_begun = false;
 

@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 class Widget_ResourceCache : public Widget
 {
 public:
-	Widget_ResourceCache(Spartan::Context* context);
+	Widget_ResourceCache(Editor* editor);
 	void Tick() override;
 
 private:

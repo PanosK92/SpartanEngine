@@ -30,7 +30,7 @@ namespace Spartan { class Renderer; }
 class Widget_RenderOptions : public Widget
 {
 public:
-    Widget_RenderOptions(Spartan::Context* context);
+    Widget_RenderOptions(Editor* editor);
     void Tick() override;
 
 private:

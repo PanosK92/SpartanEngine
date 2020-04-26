@@ -31,10 +31,10 @@ enum Icon_Type;
 class Widget_Toolbar : public Widget
 {
 public:
-	Widget_Toolbar(Spartan::Context* context);
+	Widget_Toolbar(Editor* editor);
 	void Tick() override;
 
 private:
-    std::unordered_map<Icon_Type, std::unique_ptr<Widget>> m_widgets;
+    std::unordered_map<Icon_Type, Widget*> m_widgets;
     float m_button_size = 20.0f;
 };
