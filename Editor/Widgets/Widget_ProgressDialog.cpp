@@ -37,18 +37,18 @@ namespace _Widget_ProgressDialog
 
 Widget_ProgressDialog::Widget_ProgressDialog(Editor* editor) : Widget(editor)
 {
-	m_title			            = "Hold on...";
-	m_is_visible	            = false;
-	m_progress		            = 0.0f;
-    m_size                      = Vector2(_Widget_ProgressDialog::width, 83.0f);
-	m_flags	                    |= ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoDocking;
+	m_title			    = "Hold on...";
+	m_is_visible	    = false;
+	m_progress		    = 0.0f;
+    m_size              = Vector2(_Widget_ProgressDialog::width, 83.0f);
+	m_flags	            |= ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoDocking;
     m_callback_on_start = [this]()
     {
         // Determine if an operation is in progress
         ProgressReport& progressReport  = ProgressReport::Get();
-        const bool is_loading_model           = progressReport.GetIsLoading(g_progress_model_importer);
-        const bool is_loading_scene           = progressReport.GetIsLoading(g_progress_world);
-        const bool in_progress                = is_loading_model || is_loading_scene;
+        const bool is_loading_model     = progressReport.GetIsLoading(g_progress_model_importer);
+        const bool is_loading_scene     = progressReport.GetIsLoading(g_progress_world);
+        const bool in_progress          = is_loading_model || is_loading_scene;
 
         // Acquire progress
         if (is_loading_model)

@@ -46,9 +46,6 @@ Widget_Profiler::Widget_Profiler(Editor* editor) : Widget(editor)
 
 void Widget_Profiler::Tick()
 {
-	if (!m_is_visible)
-		return;
-
 	static int item_type = 1;
 	ImGui::RadioButton("CPU", &item_type, 0);
 	ImGui::SameLine();

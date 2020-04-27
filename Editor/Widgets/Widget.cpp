@@ -43,7 +43,10 @@ bool Widget::Begin()
         m_callback_on_start();
     }
 
-    if (!m_is_window || !m_is_visible)
+    if (!m_is_window)
+        return true;
+
+    if (!m_is_visible)
         return false;
 
     TIME_BLOCK_START_NAMED(m_profiler, m_title.c_str());
@@ -89,14 +92,14 @@ bool Widget::Begin()
     // Begin
     if (ImGui::Begin(m_title.c_str(), &m_is_visible, m_flags))
     {
-        m_window = ImGui::GetCurrentWindow();
-        m_height = ImGui::GetWindowHeight();
-        m_begun = true;
+        m_window    = ImGui::GetCurrentWindow();
+        m_height    = ImGui::GetWindowHeight();
+        m_begun     = true;
     }
     else if (m_window && m_window->Hidden)
     {
         // Enters here if the window is hidden as part of an unselected tab.
-        // ImGui::Begin() makes the window and but returns false, then ImGui still expects ImGui::End() to be called.
+        // ImGui::Begin() makes the window but returns false, then ImGui still expects ImGui::End() to be called.
         // So we make sure that when Widget::End() is called, ImGui::End() get's called as well.
         // Note: ImGui's docking is in beta, so maybe it's at fault here ?
         m_begun = true;
