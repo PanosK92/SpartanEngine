@@ -204,9 +204,8 @@ void Editor::Widgets_Tick()
 
 	for (auto& widget : m_widgets)
 	{
-        if (widget->GetVisible())
+        if (widget->Begin())
         {
-            widget->Begin();
             widget->Tick();
             widget->End();
         }

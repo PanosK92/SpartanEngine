@@ -38,7 +38,6 @@ namespace _Widget_MenuBar
 	static bool imgui_metrics		= false;
 	static bool imgui_style			= false;
 	static bool imgui_demo			= false;
-
 	World* world					= nullptr;
 	static string g_fileDialogSelection;
 }
@@ -107,6 +106,7 @@ void Widget_MenuBar::Tick()
 	if (_Widget_MenuBar::imgui_metrics)	{ ImGui::ShowMetricsWindow(); }
 	if (_Widget_MenuBar::imgui_style)	{ ImGui::Begin("Style Editor", nullptr, ImGuiWindowFlags_NoDocking); ImGui::ShowStyleEditor(); ImGui::End(); }
 	if (_Widget_MenuBar::imgui_demo)	{ ImGui::ShowDemoWindow(&_Widget_MenuBar::imgui_demo); }
+
     ShowFileDialog();
     ShowAboutWindow();
 }
