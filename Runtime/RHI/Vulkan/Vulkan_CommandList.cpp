@@ -404,19 +404,37 @@ namespace Spartan
         // If the image has an invalid layout (can happen for a few frames during staging), replace with black
         if (texture->GetLayout() == RHI_Image_Undefined || texture->GetLayout() == RHI_Image_Preinitialized)
         {
+            LOG_WARNING("Can't set texture without a layout");
             texture = m_renderer->GetBlackTexture();
         }
 
         // Transition to appropriate layout (if needed)
         {
+            RHI_Image_Layout target_layout = RHI_Image_Undefined;
+
+            // Color
             if (texture->IsColorFormat() && texture->GetLayout() != RHI_Image_Shader_Read_Only_Optimal)
             {
-                texture->SetLayout(RHI_Image_Shader_Read_Only_Optimal, this);
+                target_layout = RHI_Image_Shader_Read_Only_Optimal;
             }
 
+            // Depth
             if (texture->IsDepthFormat() && texture->GetLayout() != RHI_Image_Depth_Stencil_Read_Only_Optimal)
             {
-                texture->SetLayout(RHI_Image_Depth_Stencil_Read_Only_Optimal, this);
+                target_layout = RHI_Image_Depth_Stencil_Read_Only_Optimal;
+            }
+
+            bool transition_required = target_layout != RHI_Image_Undefined;
+
+            // Transition
+            if (transition_required && !m_render_pass_active)
+            {
+                texture->SetLayout(target_layout, this);
+            }
+            else if (transition_required && m_render_pass_active)
+            {
+                LOG_WARNING("Can't transition texture to target layout while a render pass is active");
+                texture = m_renderer->GetBlackTexture();
             }
         }
 
