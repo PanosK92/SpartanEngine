@@ -63,11 +63,11 @@ namespace Spartan
         void SetLayout(RHI_Image_Layout layout, RHI_CommandList* command_list = nullptr);
 
         // GPU Resources
-        void* GetResource_ShaderView(uint32_t i = 0)    const { return m_resource_shader_view[i]; }
-        void* GetResource_RenderTargetView()	        const { return m_resource_render_target_view; }
-        void* GetResource_Texture(uint32_t i = 0)       const { return m_resource_texture[i]; }
-        void* GetResource_View_AcquiredSemaphore()      const { return m_present ? m_resource_view_acquired_semaphore[m_image_index] : nullptr; }
-        void*& GetCmdPool()                                   { return m_cmd_pool; }
+        void* Get_Resource(uint32_t i = 0)          const { return m_resource[i]; }
+        void* Get_Resource_View(uint32_t i = 0)     const { return m_resource_view[i]; }
+        void* Get_Resource_View_RenderTarget()      const { return m_resource_view_renderTarget; }
+        void* Get_Resource_View_AcquiredSemaphore() const { return m_present ? m_resource_view_acquiredSemaphore[m_image_index] : nullptr; }
+        void*& GetCmdPool()                               { return m_cmd_pool; }
 
 	private:
         // Properties
@@ -81,7 +81,7 @@ namespace Spartan
 		
 		// API  
 		void* m_swap_chain_view		        = nullptr;
-		void* m_resource_render_target_view	= nullptr;
+		void* m_resource_view_renderTarget	= nullptr;
 		void* m_surface				        = nullptr;	
 		void* m_window_handle		        = nullptr;
         void* m_cmd_pool                    = nullptr;
@@ -91,8 +91,8 @@ namespace Spartan
         RHI_Device* m_rhi_device            = nullptr;
         RHI_Image_Layout m_layout           = RHI_Image_Undefined;
         std::vector<std::shared_ptr<RHI_CommandList>> m_cmd_lists;
-		std::vector<void*> m_resource_view_acquired_semaphore;
-		std::vector<void*> m_resource_shader_view;
-        std::vector<void*> m_resource_texture;
+		std::vector<void*> m_resource_view_acquiredSemaphore;
+		std::vector<void*> m_resource_view;
+        std::vector<void*> m_resource;
 	};
 }

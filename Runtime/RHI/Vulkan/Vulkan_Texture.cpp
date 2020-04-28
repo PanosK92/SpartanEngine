@@ -47,11 +47,11 @@ namespace Spartan
         m_rhi_device->Queue_WaitAll();
         m_data.clear();
         const auto rhi_context = m_rhi_device->GetContextRhi();
-        vulkan_common::image::view::destroy(rhi_context, m_view_texture[0]);
-        vulkan_common::image::view::destroy(rhi_context, m_view_texture[1]);
-        vulkan_common::image::view::destroy(rhi_context, m_view_attachment_depth_stencil);
-        vulkan_common::frame_buffer::destroy(rhi_context, m_view_attachment_color);
-        vulkan_common::image::destroy(rhi_context, m_texture);
+        vulkan_common::image::view::destroy(rhi_context, m_resource_view[0]);
+        vulkan_common::image::view::destroy(rhi_context, m_resource_view[1]);
+        vulkan_common::image::view::destroy(rhi_context, m_resource_view_depthStencil);
+        vulkan_common::frame_buffer::destroy(rhi_context, m_resource_view_renderTarget);
+        vulkan_common::image::destroy(rhi_context, m_resource);
 		vulkan_common::memory::free(m_rhi_device->GetContextRhi(), m_resource_memory);
 	}
 
@@ -94,7 +94,7 @@ namespace Spartan
         // Initialize
         SetLayout(RHI_Image_Preinitialized);
         bool use_staging    = !m_data.empty();
-        auto image          = reinterpret_cast<VkImage*>(&m_texture);
+        auto image          = reinterpret_cast<VkImage*>(&m_resource);
         auto image_memory   = reinterpret_cast<VkDeviceMemory*>(&m_resource_memory);
 
         // Deduce usage flags
@@ -208,7 +208,7 @@ namespace Spartan
             vkCmdCopyBufferToImage(
                 cmd_buffer,
                 *reinterpret_cast<VkBuffer*>(&stating_buffer),
-                static_cast<VkImage>(Get_Texture()),
+                static_cast<VkImage>(Get_Resource()),
                 vulkan_image_layout[copy_layout],
                 static_cast<uint32_t>(buffer_image_copies.size()),
                 buffer_image_copies.data()
@@ -247,41 +247,52 @@ namespace Spartan
 
         // Create image views
         {
-            string name = GetResourceName();
-
-            // Sampled
-            if (IsSampled())
+            // Vulkan only needs image views (bound as attachments), unlike D3D11 where using a texture as a render target would require a render target view and so on...
             {
-                name += name.empty() ? "sampled" : "-sampled";
-
-                // Unlike D3D11, Vulkan doesn't support a single view for a depth-stencil buffer, so we have to create a separate one for the stencil
-
-                if (IsColorFormat() || IsDepthFormat())
+                if (IsColorFormat())
                 {
-                    if (!vulkan_common::image::view::create(rhi_context, *image, m_view_texture[0], this, true))
+                    if (!vulkan_common::image::view::create(rhi_context, *image, m_resource_view[0], this))
+                        return false;
+                }
+
+                if (IsDepthFormat())
+                {
+                    if (!vulkan_common::image::view::create(rhi_context, *image, m_resource_view[0], this, true))
                         return false;
                 }
 
                 if (IsStencilFormat())
                 {
-                    if (!vulkan_common::image::view::create(rhi_context, *image, m_view_texture[1], this, false, true))
+                    if (!vulkan_common::image::view::create(rhi_context, *image, m_resource_view[1], this, false, true))
                         return false;
                 }
             }
 
-            // Color and depth-stencil
-            if (IsRenderTargetColor() || IsRenderTargetDepthStencil())
+            // Name the image and image view(s)
             {
-                name += name.empty() ? "render_target" : "-render_target";
-                // Unlike D3D11, Vulkan uses a framebuffer instead instead of dedicated views for attachments, so nothing to do here
-            }
+                string name = GetResourceName();
 
-            // Name the image and image view
-            vulkan_common::debug::set_image_name(rhi_context->device, *image, name.c_str());
-            vulkan_common::debug::set_image_view_name(rhi_context->device, static_cast<VkImageView>(m_view_texture[0]), name.c_str());
-            if (IsSampled() && IsStencilFormat())
-            {
-                vulkan_common::debug::set_image_view_name(rhi_context->device, static_cast<VkImageView>(m_view_texture[1]), name.c_str());
+                if (IsSampled())
+                {
+                    name += name.empty() ? "sampled" : "-sampled";
+                }
+
+                if (IsRenderTargetColor())
+                {
+                    name += name.empty() ? "render_target_color" : "-render_target_color";
+                }
+
+                if (IsRenderTargetDepthStencil())
+                {
+                    name += name.empty() ? "render_target_depth" : "-render_target_depth";
+                }
+
+                vulkan_common::debug::set_image_name(rhi_context->device, *image, name.c_str());
+                vulkan_common::debug::set_image_view_name(rhi_context->device, static_cast<VkImageView>(m_resource_view[0]), name.c_str());
+                if (IsSampled() && IsStencilFormat())
+                {
+                    vulkan_common::debug::set_image_view_name(rhi_context->device, static_cast<VkImageView>(m_resource_view[1]), name.c_str());
+                }
             }
         }
 
@@ -294,14 +305,14 @@ namespace Spartan
 	{
 		m_data.clear();
 
-        if (m_view_texture)
+        if (m_resource_view)
         {
-            vkDestroyImageView(m_rhi_device->GetContextRhi()->device, reinterpret_cast<VkImageView>(m_view_texture), nullptr);
+            vkDestroyImageView(m_rhi_device->GetContextRhi()->device, reinterpret_cast<VkImageView>(m_resource_view), nullptr);
         }
 
-        if (m_texture)
+        if (m_resource)
         {
-            vkDestroyImage(m_rhi_device->GetContextRhi()->device, reinterpret_cast<VkImage>(m_texture), nullptr);
+            vkDestroyImage(m_rhi_device->GetContextRhi()->device, reinterpret_cast<VkImage>(m_resource), nullptr);
         }
 
 		vulkan_common::memory::free(m_rhi_device->GetContextRhi(), m_resource_memory);

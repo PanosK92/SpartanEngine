@@ -114,12 +114,12 @@ namespace Spartan
         const auto& GetViewport()   const { return m_viewport; }
 
         // GPU resources
-        auto Get_View_Texture(const uint32_t i = 0)                             const { return m_view_texture[i]; }
-        auto Get_View_UnorderedAccess()	                                        const { return m_view_unordered_access; }
-        auto Get_View_Attachment_DepthStencil(const uint32_t i = 0)             const { return i < m_view_attachment_depth_stencil.size() ? m_view_attachment_depth_stencil[i] : nullptr; }
-        auto Get_View_Attachment_DepthStencil_ReadOnly(const uint32_t i = 0)    const { return i < m_view_attachment_depth_stencil_read_only.size() ? m_view_attachment_depth_stencil_read_only[i] : nullptr; }
-        auto Get_View_Attachment_Color(const uint32_t i = 0)	                const { return i < m_view_attachment_color.size() ? m_view_attachment_color[i] : nullptr; }
-        auto Get_Texture()                                                      const { return m_texture; }
+        auto Get_Resource()                                                 const { return m_resource; }
+        auto Get_Resource_View(const uint32_t i = 0)                        const { return m_resource_view[i]; }
+        auto Get_Resource_View_UnorderedAccess()	                        const { return m_resource_view_unorderedAccess; }
+        auto Get_Resource_View_DepthStencil(const uint32_t i = 0)           const { return i < m_resource_view_depthStencil.size() ? m_resource_view_depthStencil[i] : nullptr; }
+        auto Get_Resource_View_DepthStencilReadOnly(const uint32_t i = 0)   const { return i < m_resource_view_depthStencilReadOnly.size() ? m_resource_view_depthStencilReadOnly[i] : nullptr; }
+        auto Get_Resource_View_RenderTarget(const uint32_t i = 0)	        const { return i < m_resource_view_renderTarget.size() ? m_resource_view_renderTarget[i] : nullptr; }
 
 	protected:
 		bool LoadFromFile_NativeFormat(const std::string& file_path);
@@ -142,13 +142,13 @@ namespace Spartan
 		std::shared_ptr<RHI_Device> m_rhi_device;
 
         // API
-        void* m_view_texture[2]         = { nullptr, nullptr }; // color/depth, stencil
-        void* m_view_unordered_access   = nullptr;
-        void* m_texture                 = nullptr;
+        void* m_resource_view[2]         = { nullptr, nullptr }; // color/depth, stencil
+        void* m_resource_view_unorderedAccess   = nullptr;
+        void* m_resource                 = nullptr;
         void* m_resource_memory         = nullptr;
-        std::vector<void*> m_view_attachment_color;
-        std::vector<void*> m_view_attachment_depth_stencil;
-        std::vector<void*> m_view_attachment_depth_stencil_read_only;
+        std::vector<void*> m_resource_view_renderTarget;
+        std::vector<void*> m_resource_view_depthStencil;
+        std::vector<void*> m_resource_view_depthStencilReadOnly;
 	private:
 		uint32_t GetByteCount();
 	};
