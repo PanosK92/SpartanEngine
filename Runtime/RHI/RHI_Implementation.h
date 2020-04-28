@@ -345,11 +345,11 @@ namespace Spartan
                 Identify specific sections within a VkQueue or VkCommandBuffer using labels to aid organization and offline analysis in external tools.
 
                 */
-                std::vector<const char*> extensions_device      = { VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_EXT_MEMORY_BUDGET_EXTENSION_NAME };
+                std::vector<const char*> extensions_device      = { VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_EXT_MEMORY_BUDGET_EXTENSION_NAME, VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME };
                 std::vector<const char*> validation_layers      = { "VK_LAYER_KHRONOS_validation" };
                 std::vector<const char*> extensions_instance    = { VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WIN32_SURFACE_EXTENSION_NAME, VK_EXT_DEBUG_REPORT_EXTENSION_NAME, VK_EXT_DEBUG_UTILS_EXTENSION_NAME };
             #else
-                std::vector<const char*> extensions_device      = { VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_EXT_MEMORY_BUDGET_EXTENSION_NAME };
+                std::vector<const char*> extensions_device      = { VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_EXT_MEMORY_BUDGET_EXTENSION_NAME, VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME };
                 std::vector<const char*> validation_layers      = { };
                 std::vector<const char*> extensions_instance    = { VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WIN32_SURFACE_EXTENSION_NAME };
             #endif
