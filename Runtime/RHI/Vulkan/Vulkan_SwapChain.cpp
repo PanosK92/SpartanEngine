@@ -55,9 +55,9 @@ namespace Spartan
             void* window_handle,
             void*& surface_out,
             void*& swap_chain_view_out,
-            vector<void*>& resource_textures,
-            vector<void*>& resource_views,
-            vector<void*>& resource_views_acquiredSemaphore
+            array<void*, state_max_render_target_count>& resource_textures,
+            array<void*, state_max_render_target_count>& resource_views,
+            array<void*, state_max_render_target_count>& resource_views_acquiredSemaphore
         )
         {
             // Create surface
@@ -141,10 +141,6 @@ namespace Spartan
 
             // Image views
             {
-                resource_textures.reserve(image_count);
-                resource_textures.resize(image_count);
-                resource_views.reserve(image_count);
-                resource_views.resize(image_count);
                 for (uint32_t i = 0; i < image_count; i++)
                 {
                     resource_textures[i] = static_cast<void*>(swap_chain_images[i]);
@@ -152,7 +148,7 @@ namespace Spartan
                     // Name the image
                     vulkan_common::debug::set_image_name(rhi_context->device, swap_chain_images[i], string(string("swapchain_image_") + to_string(0)).c_str());
 
-                    if (!vulkan_common::image::view::create(rhi_context, static_cast<void*>(swap_chain_images[i]), resource_views[i], VK_IMAGE_VIEW_TYPE_2D, rhi_context->surface_format, VK_IMAGE_ASPECT_COLOR_BIT, 1, 1))
+                    if (!vulkan_common::image::view::create(rhi_context, static_cast<void*>(swap_chain_images[i]), resource_views[i], VK_IMAGE_VIEW_TYPE_2D, rhi_context->surface_format, VK_IMAGE_ASPECT_COLOR_BIT))
                         return false;
                 }
             }
@@ -162,7 +158,7 @@ namespace Spartan
 
             for (uint32_t i = 0; i < buffer_count; i++)
             {
-                vulkan_common::semaphore::create(rhi_context, resource_views_acquiredSemaphore.emplace_back(nullptr));
+                vulkan_common::semaphore::create(rhi_context, resource_views_acquiredSemaphore[i]);
             }
 
             return true;
@@ -172,8 +168,8 @@ namespace Spartan
             const RHI_Context* rhi_context,
             void*& surface,
             void*& swap_chain_view,
-            vector<void*>& image_views,
-            vector<void*>& semaphores_image_acquired
+            array<void*, state_max_render_target_count>& image_views,
+            array<void*, state_max_render_target_count>& semaphores_image_acquired
         )
         {
             // Semaphores
@@ -181,7 +177,7 @@ namespace Spartan
             {
                 vulkan_common::semaphore::destroy(rhi_context, semaphore);
             }
-            semaphores_image_acquired.clear();
+            semaphores_image_acquired.fill(nullptr);
 
             // Image views
             vulkan_common::image::view::destroy(rhi_context, image_views);

@@ -49,8 +49,11 @@ namespace Spartan
         const auto rhi_context = m_rhi_device->GetContextRhi();
         vulkan_common::image::view::destroy(rhi_context, m_resource_view[0]);
         vulkan_common::image::view::destroy(rhi_context, m_resource_view[1]);
-        vulkan_common::image::view::destroy(rhi_context, m_resource_view_depthStencil);
-        vulkan_common::frame_buffer::destroy(rhi_context, m_resource_view_renderTarget);
+        for (uint32_t i = 0; i < state_max_render_target_count; i++)
+        {
+            vulkan_common::image::view::destroy(rhi_context, m_resource_view_depthStencil[i]);
+            vulkan_common::image::view::destroy(rhi_context, m_resource_view_renderTarget[i]);
+        }
         vulkan_common::image::destroy(rhi_context, m_resource);
 		vulkan_common::memory::free(m_rhi_device->GetContextRhi(), m_resource_memory);
 	}
@@ -247,7 +250,8 @@ namespace Spartan
 
         // Create image views
         {
-            // Vulkan only needs image views (bound as attachments), unlike D3D11 where using a texture as a render target would require a render target view and so on...
+            // Shader resource views
+            if (IsSampled())
             {
                 if (IsColorFormat())
                 {
@@ -257,13 +261,29 @@ namespace Spartan
 
                 if (IsDepthFormat())
                 {
-                    if (!vulkan_common::image::view::create(rhi_context, *image, m_resource_view[0], this, true))
+                    if (!vulkan_common::image::view::create(rhi_context, *image, m_resource_view[0], this, 0, m_array_size, true, false))
                         return false;
                 }
 
                 if (IsStencilFormat())
                 {
-                    if (!vulkan_common::image::view::create(rhi_context, *image, m_resource_view[1], this, false, true))
+                    if (!vulkan_common::image::view::create(rhi_context, *image, m_resource_view[1], this, 0, m_array_size, false, true))
+                        return false;
+                }
+            }
+
+            // Render target views
+            for (uint32_t i = 0; i < m_array_size; i++)
+            {
+                if (IsRenderTargetColor())
+                {
+                    if (!vulkan_common::image::view::create(rhi_context, *image, m_resource_view_renderTarget[i], this, i, 1))
+                        return false;
+                }
+
+                if (IsRenderTargetDepthStencil())
+                {
+                    if (!vulkan_common::image::view::create(rhi_context, *image, m_resource_view_depthStencil[i], this, i, 1, true))
                         return false;
                 }
             }

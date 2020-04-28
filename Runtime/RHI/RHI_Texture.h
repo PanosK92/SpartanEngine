@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include <memory>
+#include <array>
 #include "RHI_Viewport.h"
 #include "RHI_Definition.h"
 #include "../Resource/IResource.h"
@@ -142,13 +143,13 @@ namespace Spartan
 		std::shared_ptr<RHI_Device> m_rhi_device;
 
         // API
-        void* m_resource_view[2]         = { nullptr, nullptr }; // color/depth, stencil
+        void* m_resource_view[2]                = { nullptr, nullptr }; // color/depth, stencil
         void* m_resource_view_unorderedAccess   = nullptr;
-        void* m_resource                 = nullptr;
-        void* m_resource_memory         = nullptr;
-        std::vector<void*> m_resource_view_renderTarget;
-        std::vector<void*> m_resource_view_depthStencil;
-        std::vector<void*> m_resource_view_depthStencilReadOnly;
+        void* m_resource                        = nullptr;
+        void* m_resource_memory                 = nullptr;
+        std::array<void*, state_max_render_target_count> m_resource_view_renderTarget           = { nullptr };
+        std::array<void*, state_max_render_target_count> m_resource_view_depthStencil           = { nullptr };
+        std::array<void*, state_max_render_target_count> m_resource_view_depthStencilReadOnly   = { nullptr };
 	private:
 		uint32_t GetByteCount();
 	};
