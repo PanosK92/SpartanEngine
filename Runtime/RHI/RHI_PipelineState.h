@@ -49,7 +49,9 @@ namespace Spartan
         bool operator==(const RHI_PipelineState& rhs)   const { return m_hash == rhs.GetHash(); }
 
         //= State (things that if changed, will cause a new pipeline to be generated) ==============================
-        RHI_Shader* shader_vertex                                                   = nullptr; 
+        RHI_Shader* shader_vertex                                                   = nullptr;
+        RHI_Shader* shader_pixel                                                    = nullptr;
+        RHI_Shader* shader_compute                                                  = nullptr;
         RHI_RasterizerState* rasterizer_state                                       = nullptr;
         RHI_BlendState* blend_state                                                 = nullptr;
         RHI_DepthStencilState* depth_stencil_state                                  = nullptr;
@@ -61,15 +63,13 @@ namespace Spartan
         RHI_Texture* render_target_depth_texture                                    = nullptr;    
         RHI_Texture* render_target_color_textures[state_max_render_target_count]    = { nullptr };
         bool dynamic_scissor                                                        = false;
+         // Texture array indices
+        uint32_t render_target_color_texture_array_index                            = 0;
+        uint32_t render_target_depth_stencil_texture_array_index                    = 0;
         //==========================================================================================================
-        RHI_Shader* shader_pixel                                                    = nullptr;
-        RHI_Shader* shader_compute                                                  = nullptr;
+        
         RHI_Texture* unordered_access_view                                          = nullptr;
         bool render_target_depth_texture_read_only                                  = false;
-
-        // Texture array indices
-        uint32_t render_target_color_texture_array_index            = 0;
-        uint32_t render_target_depth_stencil_texture_array_index    = 0;
 
         // Dynamic constant buffers
         int dynamic_constant_buffer_slot = 3; // such a hack, must fix. Update: Came back to byte me in the ass

@@ -119,10 +119,10 @@ namespace Spartan
             if (descriptor.type == RHI_Descriptor_Texture && descriptor.slot == slot + m_rhi_device->GetContextRhi()->shader_shift_texture)
             {
                 // Determine if the descriptor set needs to bind
-                m_needs_to_bind = descriptor.resource != texture->Get_View_Texture() ? true : m_needs_to_bind; // affects vkUpdateDescriptorSets
+                m_needs_to_bind = descriptor.resource != texture->Get_Resource_View() ? true : m_needs_to_bind; // affects vkUpdateDescriptorSets
 
                 // Update
-                descriptor.resource = texture->Get_View_Texture();
+                descriptor.resource = texture->Get_Resource_View();
                 descriptor.layout   = texture->GetLayout();
 
                 break;

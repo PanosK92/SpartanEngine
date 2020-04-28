@@ -396,7 +396,7 @@ namespace Spartan
         }
 
         // Null textures are allowed, and get replaced with a black texture here
-        if (!texture || !texture->Get_View_Texture())
+        if (!texture || !texture->Get_Resource_View())
         {
             texture = m_renderer->GetBlackTexture();
         }
@@ -455,7 +455,7 @@ namespace Spartan
         if (!m_rhi_device->Queue_Submit(
             RHI_Queue_Graphics,                                                                                                                         // queue
             m_cmd_buffer,                                                                                                                               // cmd buffer
-            state->render_target_swapchain ? static_cast<VkSemaphore>(state->render_target_swapchain->GetResource_View_AcquiredSemaphore()) : nullptr,  // wait semaphore
+            state->render_target_swapchain ? static_cast<VkSemaphore>(state->render_target_swapchain->Get_Resource_View_AcquiredSemaphore()) : nullptr, // wait semaphore
             m_cmd_list_consumed_fence,                                                                                                                  // wait fence
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)                                                                                              // wait flags
         )

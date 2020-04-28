@@ -254,9 +254,9 @@ namespace Spartan
 			m_window_handle,
 			m_surface,
 			m_swap_chain_view,
-            m_resource_texture,
-			m_resource_shader_view,
-			m_resource_view_acquired_semaphore
+            m_resource,
+			m_resource_view,
+			m_resource_view_acquiredSemaphore
 		);
 
         // Create command pool
@@ -276,8 +276,8 @@ namespace Spartan
             m_rhi_device->GetContextRhi(),
 			m_surface,
 			m_swap_chain_view,
-			m_resource_shader_view,
-			m_resource_view_acquired_semaphore
+			m_resource_view,
+			m_resource_view_acquiredSemaphore
 		);
 
         // Clear command buffers
@@ -312,8 +312,8 @@ namespace Spartan
             m_rhi_device->GetContextRhi(),
 			m_surface,
 			m_swap_chain_view,
-			m_resource_shader_view,
-			m_resource_view_acquired_semaphore
+			m_resource_view,
+			m_resource_view_acquiredSemaphore
 		);
 
 		// Create the swap chain with the new dimensions
@@ -328,9 +328,9 @@ namespace Spartan
 			m_window_handle,
 			m_surface,
 			m_swap_chain_view,
-            m_resource_texture,
-			m_resource_shader_view,
-			m_resource_view_acquired_semaphore
+            m_resource,
+			m_resource_view,
+			m_resource_view_acquiredSemaphore
 		);
 
 		return m_initialized;
@@ -358,7 +358,7 @@ namespace Spartan
                 m_rhi_device->GetContextRhi()->device,
                 static_cast<VkSwapchainKHR>(m_swap_chain_view),
                 numeric_limits<uint64_t>::max(),
-                static_cast<VkSemaphore>(m_resource_view_acquired_semaphore[index]),
+                static_cast<VkSemaphore>(m_resource_view_acquiredSemaphore[index]),
                 nullptr,
                 &m_image_index
             )
@@ -390,7 +390,7 @@ namespace Spartan
         {
             for (uint32_t i = 0; i < m_buffer_count; i++)
             {
-                vulkan_common::image::set_layout(m_rhi_device, command_list->GetResource_CommandBuffer(), m_resource_texture[i], this, layout);
+                vulkan_common::image::set_layout(m_rhi_device, command_list->GetResource_CommandBuffer(), m_resource[i], this, layout);
             }
         }
 

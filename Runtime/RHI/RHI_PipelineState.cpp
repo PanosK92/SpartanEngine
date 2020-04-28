@@ -170,10 +170,17 @@ namespace Spartan
         Utility::Hash::hash_combine(m_hash, depth_stencil_state->GetId());
         Utility::Hash::hash_combine(m_hash, shader_vertex->GetId());
         Utility::Hash::hash_combine(m_hash, dynamic_scissor);
+        Utility::Hash::hash_combine(m_hash, render_target_color_texture_array_index);
+        Utility::Hash::hash_combine(m_hash, render_target_depth_stencil_texture_array_index);
 
         if (shader_pixel)
         {
             Utility::Hash::hash_combine(m_hash, shader_pixel->GetId());
+        }
+
+        if (shader_compute)
+        {
+            Utility::Hash::hash_combine(m_hash, shader_compute->GetId());
         }
 
         for (auto i = 0; i < state_max_render_target_count; i++)
