@@ -101,13 +101,13 @@ namespace Spartan
             // Color
             for (uint32_t i = 0; i < render_target_color_count; i++)
             {
-                attachments[i] = used_render_target_color[i]->Get_Resource_View();
+                attachments[i] = used_render_target_color[i]->Get_Resource_View_RenderTarget(render_target_color_texture_array_index);
             }
             
             // Depth
             if (render_target_depth_texture)
             {
-                attachments.back() = render_target_depth_texture->Get_Resource_View();
+                attachments.back() = render_target_depth_texture->Get_Resource_View_DepthStencil(render_target_depth_stencil_texture_array_index);
             }
 
             // Create a frame buffer

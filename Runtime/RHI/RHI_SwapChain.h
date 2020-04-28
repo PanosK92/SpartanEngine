@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ======================
 #include <memory>
 #include <vector>
+#include <array>
 #include "RHI_Definition.h"
 #include "../Core/Spartan_Object.h"
 //=================================
@@ -91,8 +92,8 @@ namespace Spartan
         RHI_Device* m_rhi_device            = nullptr;
         RHI_Image_Layout m_layout           = RHI_Image_Undefined;
         std::vector<std::shared_ptr<RHI_CommandList>> m_cmd_lists;
-		std::vector<void*> m_resource_view_acquiredSemaphore;
-		std::vector<void*> m_resource_view;
-        std::vector<void*> m_resource;
+        std::array<void*, state_max_render_target_count> m_resource_view_acquiredSemaphore  = { nullptr };
+		std::array<void*, state_max_render_target_count> m_resource_view                    = { nullptr };
+        std::array<void*, state_max_render_target_count> m_resource                         = { nullptr };
 	};
 }

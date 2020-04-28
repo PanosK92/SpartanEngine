@@ -646,7 +646,7 @@ namespace Spartan::vulkan_common
                     aspect_mask |= VK_IMAGE_ASPECT_STENCIL_BIT;
                 }
             }
-            
+
             return aspect_mask;
         }
 
@@ -923,7 +923,7 @@ namespace Spartan::vulkan_common
 
         namespace view
         {
-            inline bool create(const RHI_Context* rhi_context, void* image, void*& image_view, VkImageViewType type, const VkFormat format, const VkImageAspectFlags aspect_mask, const uint32_t level_count, const uint32_t layer_count)
+            inline bool create(const RHI_Context* rhi_context, void* image, void*& image_view, VkImageViewType type, const VkFormat format, const VkImageAspectFlags aspect_mask, const uint32_t level_count = 1, const uint32_t layer_index = 0, const uint32_t layer_count = 1)
             {
                 VkImageViewCreateInfo create_info           = {};
                 create_info.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -933,7 +933,7 @@ namespace Spartan::vulkan_common
                 create_info.subresourceRange.aspectMask     = aspect_mask;
                 create_info.subresourceRange.baseMipLevel   = 0;
                 create_info.subresourceRange.levelCount     = level_count;
-                create_info.subresourceRange.baseArrayLayer = 0;
+                create_info.subresourceRange.baseArrayLayer = layer_index;
                 create_info.subresourceRange.layerCount     = layer_count;
                 create_info.components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY;
                 create_info.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY;
@@ -944,7 +944,7 @@ namespace Spartan::vulkan_common
                 return error::check(vkCreateImageView(rhi_context->device, &create_info, nullptr, image_view_vk));
             }
 
-            inline bool create(const RHI_Context* rhi_context, void* image, void*& image_view, const RHI_Texture* texture, const bool only_depth = false, const bool only_stencil = false)
+            inline bool create(const RHI_Context* rhi_context, void* image, void*& image_view, const RHI_Texture* texture, const uint32_t array_index = 0, const uint32_t array_length = 1, const bool only_depth = false, const bool only_stencil = false)
             {
                 VkImageViewType type = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
 
@@ -957,7 +957,7 @@ namespace Spartan::vulkan_common
                     type = (texture->GetArraySize() == 1) ? VK_IMAGE_VIEW_TYPE_CUBE : VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
                 }
 
-                return create(rhi_context, image, image_view, type, vulkan_format[texture->GetFormat()], get_aspect_mask(texture, only_depth, only_stencil), texture->GetMiplevels(), texture->GetArraySize());
+                return create(rhi_context, image, image_view, type, vulkan_format[texture->GetFormat()], get_aspect_mask(texture, only_depth, only_stencil), texture->GetMiplevels(), array_index, array_length);
             }
 
             inline void destroy(const RHI_Context* rhi_context, void*& image_view)
@@ -969,14 +969,16 @@ namespace Spartan::vulkan_common
                 image_view = nullptr;
             }
 
-            inline void destroy(const RHI_Context* rhi_context, std::vector<void*>& image_views)
+            inline void destroy(const RHI_Context* rhi_context, std::array<void*, state_max_render_target_count>& image_views)
             {
-                for (auto& image_view : image_views)
+                for (void*& image_view : image_views)
                 {
-                    vkDestroyImageView(rhi_context->device, static_cast<VkImageView>(image_view), nullptr);
+                    if (image_view)
+                    {
+                        vkDestroyImageView(rhi_context->device, static_cast<VkImageView>(image_view), nullptr);
+                    }
                 }
-                image_views.clear();
-                image_views.shrink_to_fit();
+                image_views.fill(nullptr);
             }
         }
     }
@@ -1113,18 +1115,6 @@ namespace Spartan::vulkan_common
 
             vkDestroyFramebuffer(rhi_context->device, static_cast<VkFramebuffer>(frame_buffer), nullptr);
             frame_buffer = nullptr;
-        }
-
-        inline void destroy(const RHI_Context* rhi_context, std::vector<void*>& frame_buffers)
-        {
-            for (auto& frame_buffer : frame_buffers)
-            {
-                if (!frame_buffer)
-                    return;
-
-                vkDestroyFramebuffer(rhi_context->device, static_cast<VkFramebuffer>(frame_buffer), nullptr);
-            }
-            frame_buffers.clear();
         }
     }
 

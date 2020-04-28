@@ -147,7 +147,7 @@ namespace Spartan
 		return true;
 	}
 
-	inline bool CreateRenderTargetView2d(void* texture, vector<void*>& views, const DXGI_FORMAT format, const unsigned array_size, const shared_ptr<RHI_Device>& rhi_device)
+	inline bool CreateRenderTargetView2d(void* texture, array<void*, state_max_render_target_count>& views, const DXGI_FORMAT format, const unsigned array_size, const shared_ptr<RHI_Device>& rhi_device)
 	{
         // Describe
 		D3D11_RENDER_TARGET_VIEW_DESC view_desc		= {};
@@ -161,7 +161,7 @@ namespace Spartan
         for (uint32_t i = 0; i < array_size; i++)
         {
             view_desc.Texture2DArray.FirstArraySlice = i;
-            const auto result = rhi_device->GetContextRhi()->device->CreateRenderTargetView(static_cast<ID3D11Resource*>(texture), &view_desc, reinterpret_cast<ID3D11RenderTargetView**>(&views.emplace_back(nullptr)));
+            const auto result = rhi_device->GetContextRhi()->device->CreateRenderTargetView(static_cast<ID3D11Resource*>(texture), &view_desc, reinterpret_cast<ID3D11RenderTargetView**>(&views[i]));
             if (FAILED(result))
             {
                 LOG_ERROR("Failed, %s.", d3d11_common::dxgi_error_to_string(result));
@@ -172,7 +172,7 @@ namespace Spartan
 		return true;
 	}
 
-	inline bool CreateDepthStencilView2d(void* texture, vector<void*>& views, const uint32_t array_size, const DXGI_FORMAT format, bool read_only, const shared_ptr<RHI_Device>& rhi_device)
+	inline bool CreateDepthStencilView2d(void* texture, array<void*, state_max_render_target_count>& views, const uint32_t array_size, const DXGI_FORMAT format, bool read_only, const shared_ptr<RHI_Device>& rhi_device)
 	{
         // Describe
 		D3D11_DEPTH_STENCIL_VIEW_DESC dsv_desc	= {};
@@ -187,7 +187,7 @@ namespace Spartan
 		for (uint32_t i = 0; i < array_size; i++)
 		{
 			dsv_desc.Texture2DArray.FirstArraySlice = i;
-			const auto result = rhi_device->GetContextRhi()->device->CreateDepthStencilView(static_cast<ID3D11Resource*>(texture), &dsv_desc, reinterpret_cast<ID3D11DepthStencilView**>(&views.emplace_back(nullptr)));
+			const auto result = rhi_device->GetContextRhi()->device->CreateDepthStencilView(static_cast<ID3D11Resource*>(texture), &dsv_desc, reinterpret_cast<ID3D11DepthStencilView**>(&views[i]));
 			if (FAILED(result))
 			{
                 LOG_ERROR("Failed, %s.", d3d11_common::dxgi_error_to_string(result));
@@ -462,7 +462,7 @@ namespace Spartan
 		return true;
 	}
 
-	inline bool CreateDepthStencilViewCube(void* texture, vector<void*>& views, const uint32_t array_size, const DXGI_FORMAT format, bool read_only, const shared_ptr<RHI_Device>& rhi_device)
+	inline bool CreateDepthStencilViewCube(void* texture, array<void*, state_max_render_target_count>& views, const uint32_t array_size, const DXGI_FORMAT format, bool read_only, const shared_ptr<RHI_Device>& rhi_device)
 	{
 		// DSV
 		D3D11_DEPTH_STENCIL_VIEW_DESC dsv_desc	= {};
@@ -476,7 +476,7 @@ namespace Spartan
 		for (uint32_t i = 0; i < array_size; i++)
 		{
 			dsv_desc.Texture2DArray.FirstArraySlice = i;
-			const auto result = rhi_device->GetContextRhi()->device->CreateDepthStencilView(static_cast<ID3D11Resource*>(texture), &dsv_desc, reinterpret_cast<ID3D11DepthStencilView**>(&views.emplace_back(nullptr)));
+			const auto result = rhi_device->GetContextRhi()->device->CreateDepthStencilView(static_cast<ID3D11Resource*>(texture), &dsv_desc, reinterpret_cast<ID3D11DepthStencilView**>(&views[i]));
 			if (FAILED(result))
 			{
                 LOG_ERROR("Failed, %s.", d3d11_common::dxgi_error_to_string(result));
@@ -487,7 +487,7 @@ namespace Spartan
 		return true;
 	}
 
-    inline bool CreateRenderTargetViewCube(void* texture, vector<void*>& views, const DXGI_FORMAT format, const unsigned array_size, const shared_ptr<RHI_Device>& rhi_device)
+    inline bool CreateRenderTargetViewCube(void* texture, array<void*, state_max_render_target_count>& views, const DXGI_FORMAT format, const unsigned array_size, const shared_ptr<RHI_Device>& rhi_device)
 	{
         // Describe
 		D3D11_RENDER_TARGET_VIEW_DESC view_desc		= {};
@@ -501,7 +501,7 @@ namespace Spartan
         for (uint32_t i = 0; i < array_size; i++)
         {
             view_desc.Texture2DArray.FirstArraySlice = i;
-            const auto result = rhi_device->GetContextRhi()->device->CreateRenderTargetView(static_cast<ID3D11Resource*>(texture), &view_desc, reinterpret_cast<ID3D11RenderTargetView**>(&views.emplace_back(nullptr)));
+            const auto result = rhi_device->GetContextRhi()->device->CreateRenderTargetView(static_cast<ID3D11Resource*>(texture), &view_desc, reinterpret_cast<ID3D11RenderTargetView**>(&views[i]));
             if (FAILED(result))
             {
                 LOG_ERROR("Failed, %s.", d3d11_common::dxgi_error_to_string(result));
