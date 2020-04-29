@@ -73,14 +73,11 @@ namespace Spartan
 		auto GetTransparency() const									{ return m_flags & RHI_Texture_Transparent; }
 		void SetTransparency(const bool is_transparent)					{ is_transparent ? m_flags |= RHI_Texture_Transparent : m_flags &= ~RHI_Texture_Transparent; }
 
-		auto GetBpp() const												{ return m_bits_per_channel; }
-		void SetBpp(const uint32_t bpp)									{ m_bits_per_channel = bpp; }
+        uint32_t GetBitsPerChannel() const								{ return m_bits_per_channel; }
+		void SetBitsPerChannel(const uint32_t bits)						{ m_bits_per_channel = bits; }
 
-		auto GetBpc() const												{ return m_bytes_per_channel; }
-		void SetBpc(const uint32_t bpc)									{ m_bytes_per_channel = bpc; }
-
-		auto GetChannels() const										{ return m_channels; }
-		void SetChannels(const uint32_t channels)						{ m_channels = channels; }
+        uint32_t GetChannels() const									{ return m_channel_count; }
+		void SetChannels(const uint32_t channel_count)					{ m_channel_count = channel_count; }
 
 		auto GetFormat() const											{ return m_format; }
 		void SetFormat(const RHI_Format format)							{ m_format = format; }
@@ -128,16 +125,15 @@ namespace Spartan
 		static uint32_t GetChannelCountFromFormat(RHI_Format format);
         virtual bool CreateResourceGpu() { LOG_ERROR("Function not implemented by API"); return false; }
 
-		uint32_t m_bits_per_channel			    = 0;
-		uint32_t m_bytes_per_channel			= 8;
-		uint32_t m_width		                = 0;
-		uint32_t m_height		                = 0;
-		uint32_t m_channels		                = 4;
-        uint32_t m_array_size                   = 1;
-        uint32_t m_mip_levels                   = 1;
-		RHI_Format m_format		                = RHI_Format_Undefined;
-        RHI_Image_Layout m_layout               = RHI_Image_Undefined;
-        uint16_t m_flags	                    = 0;
+		uint32_t m_bits_per_channel = 8;
+		uint32_t m_width		    = 0;
+		uint32_t m_height		    = 0;
+		uint32_t m_channel_count	= 4;
+        uint32_t m_array_size       = 1;
+        uint32_t m_mip_levels       = 1;
+		RHI_Format m_format		    = RHI_Format_Undefined;
+        RHI_Image_Layout m_layout   = RHI_Image_Undefined;
+        uint16_t m_flags	        = 0;
 		RHI_Viewport m_viewport;
 		std::vector<std::vector<std::byte>> m_data;
 		std::shared_ptr<RHI_Device> m_rhi_device;

@@ -98,7 +98,7 @@ namespace Spartan
 		const uint32_t width,
 		const uint32_t height,
 		const uint32_t channels,
-		const uint32_t bpc,
+		const uint32_t bits_per_channel,
 		const uint32_t array_size,
 		const DXGI_FORMAT format,
 		const UINT bind_flags,
@@ -131,9 +131,9 @@ namespace Spartan
 			}
 
 			auto& subresource_data				= vec_subresource_data.emplace_back(D3D11_SUBRESOURCE_DATA{});
-			subresource_data.pSysMem			= data[mip_level].data();					    // Data pointer		
-			subresource_data.SysMemPitch		= (width >> mip_level) * channels * (bpc / 8);	// Line width in bytes
-			subresource_data.SysMemSlicePitch	= 0;								            // This is only used for 3D textures
+			subresource_data.pSysMem			= data[mip_level].data();					                // Data pointer		
+			subresource_data.SysMemPitch		= (width >> mip_level) * channels * (bits_per_channel / 8);	// Line width in bytes
+			subresource_data.SysMemSlicePitch	= 0;								                        // This is only used for 3D textures
 		}
 
 		// Create
@@ -285,8 +285,8 @@ namespace Spartan
             m_resource,
 			m_width,
 			m_height,
-			m_channels,
-			m_bytes_per_channel,
+			m_channel_count,
+			m_bits_per_channel,
 			m_array_size,
 			format,
 			flags,
@@ -366,7 +366,7 @@ namespace Spartan
 		const uint32_t height,
         uint32_t channels,
         uint32_t array_size,
-        uint32_t bpc,
+        uint32_t bits_per_channel,
         DXGI_FORMAT format,
 		const UINT flags,
         vector<vector<vector<std::byte>>>& data,
@@ -414,9 +414,9 @@ namespace Spartan
 
 		    		// D3D11_SUBRESOURCE_DATA
 		    		auto & subresource_data				= vec_subresource_data.emplace_back(D3D11_SUBRESOURCE_DATA{});
-		    		subresource_data.pSysMem			= mip_data.data();                              // Data pointer		
-		    		subresource_data.SysMemPitch		= (width >> mip_level) * channels * (bpc / 8);	// Line width in bytes
-		    		subresource_data.SysMemSlicePitch	= 0;			                                // This is only used for 3D textures
+		    		subresource_data.pSysMem			= mip_data.data();                                          // Data pointer		
+		    		subresource_data.SysMemPitch		= (width >> mip_level) * channels * (bits_per_channel / 8);	// Line width in bytes
+		    		subresource_data.SysMemSlicePitch	= 0;			                                             // This is only used for 3D textures
 		    	}
 
 		    	vec_texture_desc.emplace_back(texture_desc);
@@ -577,8 +577,8 @@ namespace Spartan
             m_resource,
             m_width,
             m_height,
-            m_channels,
-            m_bytes_per_channel,
+            m_channel_count,
+            m_bits_per_channel,
             m_array_size,
             format,
             flags,

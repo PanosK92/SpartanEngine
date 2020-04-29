@@ -100,7 +100,7 @@ namespace Spartan
 		file->Write(m_width);
 		file->Write(m_height);
         file->Write(static_cast<uint32_t>(m_format));
-		file->Write(m_channels);
+		file->Write(m_channel_count);
 		file->Write(m_flags);
 		file->Write(GetId());
 		file->Write(GetResourceFilePath());
@@ -264,7 +264,7 @@ namespace Spartan
 		file->Read(&m_width);
 		file->Read(&m_height);
         file->Read(reinterpret_cast<uint32_t*>(&m_format));
-		file->Read(&m_channels);
+		file->Read(&m_channel_count);
 		file->Read(&m_flags);
 		SetId(file->ReadAs<uint32_t>());
 		SetResourceFilePath(file->ReadAs<string>());

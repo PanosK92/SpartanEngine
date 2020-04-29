@@ -38,7 +38,7 @@ namespace Spartan
 			m_width			= width;
 			m_height		= height;
 			m_viewport		= RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
-			m_channels		= GetChannelCountFromFormat(format);
+			m_channel_count = GetChannelCountFromFormat(format);
 			m_format		= format;		
 			m_data			= data;
 			m_flags	        = RHI_Texture_ShaderView;
@@ -56,7 +56,7 @@ namespace Spartan
 			m_width			= width;
 			m_height		= height;
 			m_viewport		= RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
-			m_channels		= GetChannelCountFromFormat(format);
+			m_channel_count = GetChannelCountFromFormat(format);
 			m_format		= format;
 			m_flags	        = RHI_Texture_ShaderView;
             m_mip_levels    = 1;
@@ -78,7 +78,7 @@ namespace Spartan
 			m_resource_type	= Resource_Texture2d;
 			m_width			= width;
 			m_height		= height;
-			m_channels		= GetChannelCountFromFormat(format);
+			m_channel_count = GetChannelCountFromFormat(format);
 			m_viewport		= RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
 			m_format		= format;
 			m_array_size	= array_size;
