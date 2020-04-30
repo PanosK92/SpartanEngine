@@ -91,8 +91,10 @@ namespace Spartan
 		// Enable progress tracking
 		importer.SetPropertyBool(AI_CONFIG_GLOB_MEASURE_TIME, true);
 		importer.SetProgressHandler(new AssimpHelper::AssimpProgress(file_path));
+        #ifdef DEBUG
 		// Enable logging
 		DefaultLogger::set(new AssimpHelper::AssimpLogger());
+        #endif
         
         const auto importer_flags =
             aiProcess_MakeLeftHanded |              // directx style.

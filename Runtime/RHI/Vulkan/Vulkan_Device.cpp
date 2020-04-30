@@ -203,6 +203,7 @@ namespace Spartan
                 ENABLE_FEATURE(samplerAnisotropy)
                 ENABLE_FEATURE(fillModeNonSolid)
                 ENABLE_FEATURE(wideLines)
+                ENABLE_FEATURE(imageCubeArray)
             }
 
             // Determine enabled graphics shader stages
