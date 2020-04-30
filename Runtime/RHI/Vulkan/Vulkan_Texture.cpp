@@ -39,6 +39,33 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
+    inline void set_debug_name(RHI_Context* rhi_context, RHI_Texture* texture)
+    {
+        string name = texture->GetResourceName();
+
+        if (texture->IsSampled())
+        {
+            name += name.empty() ? "sampled" : "-sampled";
+        }
+
+        if (texture->IsRenderTargetColor())
+        {
+            name += name.empty() ? "render_target_color" : "-render_target_color";
+        }
+
+        if (texture->IsRenderTargetDepthStencil())
+        {
+            name += name.empty() ? "render_target_depth" : "-render_target_depth";
+        }
+
+        vulkan_common::debug::set_image_name(rhi_context->device, static_cast<VkImage>(texture->Get_Resource()), name.c_str());
+        vulkan_common::debug::set_image_view_name(rhi_context->device, static_cast<VkImageView>(texture->Get_Resource_View(0)), name.c_str());
+        if (texture->IsSampled() && texture->IsStencilFormat())
+        {
+            vulkan_common::debug::set_image_view_name(rhi_context->device, static_cast<VkImageView>(texture->Get_Resource_View(1)), name.c_str());
+        }
+    }
+
     RHI_Texture2D::~RHI_Texture2D()
     {
         if (!m_rhi_device->IsInitialized())
@@ -75,7 +102,7 @@ namespace Spartan
 
 	bool RHI_Texture2D::CreateResourceGpu()
 	{
-        const RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
+        RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
 
         // Create image
         {
@@ -166,31 +193,7 @@ namespace Spartan
             }
 
             // Name the image and image view(s)
-            {
-                string name = GetResourceName();
-
-                if (IsSampled())
-                {
-                    name += name.empty() ? "sampled" : "-sampled";
-                }
-
-                if (IsRenderTargetColor())
-                {
-                    name += name.empty() ? "render_target_color" : "-render_target_color";
-                }
-
-                if (IsRenderTargetDepthStencil())
-                {
-                    name += name.empty() ? "render_target_depth" : "-render_target_depth";
-                }
-
-                vulkan_common::debug::set_image_name(rhi_context->device, static_cast<VkImage>(m_resource), name.c_str());
-                vulkan_common::debug::set_image_view_name(rhi_context->device, static_cast<VkImageView>(m_resource_view[0]), name.c_str());
-                if (IsSampled() && IsStencilFormat())
-                {
-                    vulkan_common::debug::set_image_view_name(rhi_context->device, static_cast<VkImageView>(m_resource_view[1]), name.c_str());
-                }
-            }
+            set_debug_name(rhi_context, this);
         }
 
 		return true;
@@ -219,7 +222,7 @@ namespace Spartan
 
 	bool RHI_TextureCube::CreateResourceGpu()
 	{
-        const RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
+        RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
 
         // Create image
         {
@@ -310,31 +313,7 @@ namespace Spartan
             }
 
             // Name the image and image view(s)
-            {
-                string name = GetResourceName();
-
-                if (IsSampled())
-                {
-                    name += name.empty() ? "sampled" : "-sampled";
-                }
-
-                if (IsRenderTargetColor())
-                {
-                    name += name.empty() ? "render_target_color" : "-render_target_color";
-                }
-
-                if (IsRenderTargetDepthStencil())
-                {
-                    name += name.empty() ? "render_target_depth" : "-render_target_depth";
-                }
-
-                vulkan_common::debug::set_image_name(rhi_context->device, static_cast<VkImage>(m_resource), name.c_str());
-                vulkan_common::debug::set_image_view_name(rhi_context->device, static_cast<VkImageView>(m_resource_view[0]), name.c_str());
-                if (IsSampled() && IsStencilFormat())
-                {
-                    vulkan_common::debug::set_image_view_name(rhi_context->device, static_cast<VkImageView>(m_resource_view[1]), name.c_str());
-                }
-            }
+            set_debug_name(rhi_context, this);
         }
 
         return true;
