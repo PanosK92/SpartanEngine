@@ -39,6 +39,9 @@ namespace Spartan
     {
         if (m_descriptor_pool)
         {
+            // Wait in case the buffer is still in use
+            m_rhi_device->Queue_WaitAll();
+
             vkDestroyDescriptorPool(m_rhi_device->GetContextRhi()->device, static_cast<VkDescriptorPool>(m_descriptor_pool), nullptr);
             m_descriptor_pool = nullptr;
         }

@@ -197,8 +197,8 @@ namespace Spartan
 
         // Deduce image properties
         const uint32_t image_bytes_per_channel  = freeimage_helper::get_bytes_per_channel(bitmap);
-        const uint32_t image_channels           = freeimage_helper::get_channel_count(bitmap);
-        const RHI_Format image_format           = freeimage_helper::get_rhi_format(image_bytes_per_channel, image_channels);
+        const uint32_t image_channel_count      = freeimage_helper::get_channel_count(bitmap);
+        const RHI_Format image_format           = freeimage_helper::get_rhi_format(image_bytes_per_channel, image_channel_count);
 
 		// Perform any scaling (if necessary)
 		const auto user_define_dimensions	= (texture->GetWidth() != 0 && texture->GetHeight() != 0);
@@ -212,12 +212,12 @@ namespace Spartan
 
 		// Fill RGBA vector with the data from the FIBITMAP
 		const auto mip = texture->AddMipmap();
-		GetBitsFromFibitmap(mip, bitmap, image_width, image_height, image_channels);
+		GetBitsFromFibitmap(mip, bitmap, image_width, image_height, image_channel_count);
 
 		// If the texture supports mipmaps, generate them
 		if (generate_mipmaps)
 		{
-			GenerateMipmaps(bitmap, texture, image_width, image_height, image_channels);
+			GenerateMipmaps(bitmap, texture, image_width, image_height, image_channel_count);
 		}
 
 		// Free memory 
@@ -227,7 +227,7 @@ namespace Spartan
 		texture->SetBitsPerChannel(image_bytes_per_channel * 8);
 		texture->SetWidth(image_width);
 		texture->SetHeight(image_height);
-		texture->SetChannels(image_channels);
+		texture->SetChannelCount(image_channel_count);
 		texture->SetTransparency(image_is_transparent);
 		texture->SetFormat(image_format);
 		texture->SetGrayscale(image_is_grayscale);

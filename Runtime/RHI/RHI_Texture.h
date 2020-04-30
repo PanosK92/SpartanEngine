@@ -75,14 +75,17 @@ namespace Spartan
 
         uint32_t GetBitsPerChannel() const								{ return m_bits_per_channel; }
 		void SetBitsPerChannel(const uint32_t bits)						{ m_bits_per_channel = bits; }
+        uint32_t GetBytesPerChannel() const                             { return m_bits_per_channel / 8; }
+        uint32_t GetBytesPerPixel() const                               { return (m_bits_per_channel / 8) * m_channel_count; }
 
-        uint32_t GetChannels() const									{ return m_channel_count; }
-		void SetChannels(const uint32_t channel_count)					{ m_channel_count = channel_count; }
+        uint32_t GetChannelCount() const								{ return m_channel_count; }
+		void SetChannelCount(const uint32_t channel_count)				{ m_channel_count = channel_count; }
 
 		auto GetFormat() const											{ return m_format; }
 		void SetFormat(const RHI_Format format)							{ m_format = format; }
 
 		// Data
+        bool HasData() const                                            { return !m_data.empty(); }
 		const auto& GetData() const										{ return m_data; }		
         void SetData(const std::vector<std::vector<std::byte>>& data)   { m_data = data; }
         auto AddMipmap()                                                { return &m_data.emplace_back(std::vector<std::byte>()); }
@@ -110,6 +113,7 @@ namespace Spartan
         // Misc
         auto GetArraySize()         const { return m_array_size; }
         const auto& GetViewport()   const { return m_viewport; }
+        uint16_t GetFlags()         const { return m_flags; }
 
         // GPU resources
         auto Get_Resource()                                                 const { return m_resource; }
