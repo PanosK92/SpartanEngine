@@ -579,7 +579,7 @@ namespace Spartan::vulkan_common
 
     namespace image
     {
-        inline VkImageTiling is_format_supported(const RHI_Context* rhi_context, const RHI_Format format, VkFormatFeatureFlags feature_flags)
+        inline VkImageTiling get_format_tiling(const RHI_Context* rhi_context, const RHI_Format format, VkFormatFeatureFlags feature_flags)
         {
             // Get format properties
             VkFormatProperties format_properties;
@@ -596,20 +596,66 @@ namespace Spartan::vulkan_common
             return VK_IMAGE_TILING_MAX_ENUM;
         }
 
-        inline bool allocate_bind(const RHI_Context* rhi_context, const VkImage& image, VkDeviceMemory* memory, VkDeviceSize* memory_size = nullptr)
+        inline bool is_optimal_format(const RHI_Context* rhi_context, RHI_Texture* texture)
         {
+            // Get format support
+            RHI_Format format                   = texture->GetFormat();
+            bool is_render_target_depth_stencil = texture->IsRenderTargetDepthStencil();
+            VkFormatFeatureFlags format_flags   = is_render_target_depth_stencil ? VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT : VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
+            VkImageTiling image_tiling          = get_format_tiling(rhi_context, format, format_flags);
+
+            // If the format is not supported, early exit
+            if (image_tiling == VK_IMAGE_TILING_MAX_ENUM)
+            {
+                LOG_ERROR("GPU does not support the usage of %s as a %s.", rhi_format_to_string(format), is_render_target_depth_stencil ? "depth-stencil attachment" : "color attachment");
+                return false;
+            }
+
+            // If the format is not optimal, let the user know
+            if (image_tiling != VK_IMAGE_TILING_OPTIMAL)
+            {
+                LOG_ERROR("Format %s does not support optimal tiling, considering switching to a more efficient format.", rhi_format_to_string(format));
+                return false;
+            }
+
+            return true;
+        }
+
+        inline VkImageUsageFlags get_usage_flags(const RHI_Texture* texture)
+        {
+            VkImageUsageFlags flags = 0;
+
+            flags |= (texture->GetFlags() & RHI_Texture_ShaderView)         ? VK_IMAGE_USAGE_SAMPLED_BIT                    : 0;
+            flags |= (texture->GetFlags() & RHI_Texture_DepthStencilView)   ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT   : 0;
+            flags |= (texture->GetFlags() & RHI_Texture_RenderTargetView)   ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT           : 0;
+
+            // If the texture has data, it will be staged
+            if (texture->HasData())
+            {
+                flags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT; // source of a transfer command.
+                flags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT; // destination of a transfer command.
+            }
+
+            return flags;
+        }
+
+        inline bool allocate_bind(const RHI_Context* rhi_context, void*& image, void*& memory, VkDeviceSize* memory_size = nullptr)
+        {
+            VkImage vk_image            = reinterpret_cast<VkImage>(image);
+            VkDeviceMemory vk_memory    = reinterpret_cast<VkDeviceMemory>(memory);
+
             VkMemoryRequirements memory_requirements;
-            vkGetImageMemoryRequirements(rhi_context->device, image, &memory_requirements);
+            vkGetImageMemoryRequirements(rhi_context->device, vk_image, &memory_requirements);
 
             VkMemoryAllocateInfo allocate_info  = {};
             allocate_info.sType                 = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
             allocate_info.allocationSize        = memory_requirements.size;
             allocate_info.memoryTypeIndex       = memory::get_type(rhi_context, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memory_requirements.memoryTypeBits);
 
-            if (!error::check(vkAllocateMemory(rhi_context->device, &allocate_info, nullptr, memory)))
+            if (!error::check(vkAllocateMemory(rhi_context->device, &allocate_info, nullptr, &vk_memory)))
                 return false;
 
-            if (!error::check(vkBindImageMemory(rhi_context->device, image, *memory, 0)))
+            if (!error::check(vkBindImageMemory(rhi_context->device, vk_image, vk_memory, 0)))
                 return false;
 
             if (memory_size)
@@ -652,7 +698,7 @@ namespace Spartan::vulkan_common
 
         inline bool create(
             const RHI_Context* rhi_context,
-            VkImage& image,
+            void*& image,
             const uint32_t width,
             const uint32_t height,
             const uint32_t mip_levels,
@@ -678,7 +724,7 @@ namespace Spartan::vulkan_common
             create_info.samples             = VK_SAMPLE_COUNT_1_BIT;
             create_info.sharingMode         = VK_SHARING_MODE_EXCLUSIVE;
 
-            return error::check(vkCreateImage(rhi_context->device, &create_info, nullptr, &image));
+            return error::check(vkCreateImage(rhi_context->device, &create_info, nullptr, reinterpret_cast<VkImage*>(&image)));
         }
 
         inline void destroy(const RHI_Context* rhi_context, void*& image)
@@ -919,6 +965,124 @@ namespace Spartan::vulkan_common
         inline bool set_layout(const RHI_Device* rhi_device, void* cmd_buffer, void* image, const RHI_SwapChain* swapchain, const RHI_Image_Layout layout_new)
         {
             return set_layout(rhi_device, cmd_buffer, image, VK_IMAGE_ASPECT_COLOR_BIT, 1, 1, swapchain->GetLayout(), layout_new);
+        }
+
+        inline bool copy_to_staging_buffer(RHI_Context* rhi_context, RHI_Texture* texture, std::vector<VkBufferImageCopy>& buffer_image_copies, void*& staging_buffer, void*& staging_buffer_memory)
+        {
+            if (!texture->HasData())
+            {
+                LOG_WARNING("No data to stage");
+                return true;
+            }
+
+            const uint32_t width            = texture->GetWidth();
+            const uint32_t height           = texture->GetHeight();
+            const uint32_t array_size       = texture->GetArraySize();
+            const uint32_t mip_levels       = texture->GetMiplevels();
+            const uint32_t bytes_per_pixel  = texture->GetBytesPerPixel();
+
+            // Fill out VkBufferImageCopy structs describing the array and the mip levels   
+            VkDeviceSize buffer_size = 0;
+            for (uint32_t array_index = 0; array_index < array_size; array_index++)
+            {
+                for (uint32_t mip_index = 0; mip_index < mip_levels; mip_index++)
+                {
+                    uint32_t mip_width  = width >> mip_index;
+                    uint32_t mip_height = height >> mip_index;
+
+                    VkBufferImageCopy region				= {};
+                    region.bufferOffset						= mip_index != 0 ? (width >> (mip_index - 1)) * (height >> (mip_index - 1)) * bytes_per_pixel : 0;
+                    region.bufferRowLength					= 0;
+                    region.bufferImageHeight				= 0;
+                    region.imageSubresource.aspectMask      = get_aspect_mask(texture);
+                    region.imageSubresource.mipLevel		= mip_index;
+                    region.imageSubresource.baseArrayLayer	= array_index;
+                    region.imageSubresource.layerCount		= array_size;
+                    region.imageOffset						= { 0, 0, 0 };
+                    region.imageExtent						= { mip_width, mip_height, 1 };
+
+                    buffer_image_copies[mip_index] = region;
+
+                    // Update staging buffer memory requirement (in bytes)
+                    buffer_size += mip_width * mip_height * bytes_per_pixel;
+                }
+            }
+
+            // Create staging buffer
+            if (!buffer::create(
+                rhi_context,
+                staging_buffer,
+                staging_buffer_memory,
+                buffer_size,
+                VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+            )) return false;
+
+            // Copy array and mip level data to the staging buffer
+            void* data = nullptr;
+            if (error::check(vkMapMemory(rhi_context->device, static_cast<VkDeviceMemory>(staging_buffer_memory), 0, buffer_size, 0, &data)))
+            {
+                for (uint32_t array_index = 0; array_index < array_size; array_index++)
+                {
+                    for (uint32_t mip_index = 0; mip_index < mip_levels; mip_index++)
+                    {
+                        uint32_t index          = array_index + mip_index;
+                        uint64_t memory_size    = (width >> mip_index) * (height >> mip_index) * bytes_per_pixel;
+                        uint64_t memory_offset  = mip_index != 0 ? (width >> (mip_index - 1)) * (height >> (mip_index - 1)) * bytes_per_pixel : 0;
+                        memcpy(static_cast<std::byte*>(data) + memory_offset, texture->GetData(index)->data(), memory_size);
+                    }
+                }
+
+                vkUnmapMemory(rhi_context->device, static_cast<VkDeviceMemory>(staging_buffer_memory));
+            }
+
+            return true;
+        }
+
+        inline bool stage(RHI_Device* rhi_device, RHI_Texture* texture)
+        {
+            RHI_Context* rhi_context = rhi_device->GetContextRhi();
+
+            // Copy the texture's data to a staging buffer
+            void* staging_buffer        = nullptr;
+            void* staging_buffer_memory = nullptr;
+            std::vector<VkBufferImageCopy> buffer_image_copies(texture->GetMiplevels());
+            if (!copy_to_staging_buffer(rhi_context, texture, buffer_image_copies, staging_buffer, staging_buffer_memory))
+                return false;
+
+            // Copy the staging buffer into the image
+            if (VkCommandBuffer cmd_buffer = command_buffer_immediate::begin(rhi_device, RHI_Queue_Graphics))
+            {
+                // Optimal layout for images which are the destination of a transfer format
+                RHI_Image_Layout layout = RHI_Image_Transfer_Dst_Optimal;
+
+                // Transition to layout
+                if (!set_layout(rhi_device, cmd_buffer, texture, layout))
+                    return false;
+
+                // Copy the staging buffer to the image
+                vkCmdCopyBufferToImage(
+                    cmd_buffer,
+                    static_cast<VkBuffer>(staging_buffer),
+                    static_cast<VkImage>(texture->Get_Resource()),
+                    vulkan_image_layout[layout],
+                    static_cast<uint32_t>(buffer_image_copies.size()),
+                    buffer_image_copies.data()
+                );
+
+                // End/flush
+                if (!command_buffer_immediate::end(RHI_Queue_Graphics))
+                    return false;
+
+                // Free staging resources
+                buffer::destroy(rhi_context, staging_buffer);
+                memory::free(rhi_context, staging_buffer_memory);
+
+                // Let the texture know about it's new layout
+                texture->SetLayout(layout);
+            }
+
+            return true;
         }
 
         namespace view
