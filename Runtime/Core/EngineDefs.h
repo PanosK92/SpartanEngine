@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 // Version
-constexpr auto engine_version = "v0.31 WIP";
+constexpr auto engine_version = "v0.32 WIP";
 
 // APIs - Commented as they are expected to be predefined by the project generation scripts
 //#define API_GRAPHICS_D3D11

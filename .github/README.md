@@ -28,26 +28,28 @@ Platform | API | Status | Quality | Binaries | :+1:
 <img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/readme_screen_2.JPG"/>
 <img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/readme_screen_3.JPG"/>
 
-## Features (v0.3)
+## Features (v0.31)
 - 10+ font file formats support (FreeType)
 - 20+ audio file formats support (FMOD)
 - 30+ image file formats support (FreeImage)
 - 40+ model file formats support (Assimp)
-- Deferred rendering with transparency.
-- Vulkan and DirectX 11.
+- Vulkan and DirectX 11 backends.
+- Deferred rendering with transparency (under a single render path and using the same shaders).
+- Principled BSDF supporting anisotropic, clearcoat and cloth materials (combined with things like normal mapping, parallax, masking, occlusion etc).
 - Bloom (Based on a study of Resident Evil 2's RE Engine)
-- Custom mip chain generation (Higher texture fidelity using Lanczos3 scaling)
-- Lights (Directional, point and spot lights)
-- Shadows with colored translucency (Cascaded and omnidirectional shadow mapping with vogel filtering)
-- Font rendering
-- Frustum culling
-- Per-Pixel motion blur
-- Physically based rendering
-- Post-process effects (Tone-Mapping, FXAA, Sharpening, Dithering, Chromatic aberration etc.)
+- Volumetric lighting
+- Lights (Directional, point and spot)
+- Shadows with colored translucency (Cascaded and omnidirectional shadow mapping with Vogel filtering)
 - SSAO (Screen space ambient occlusion)
 - SSR (Screen space reflections)
 - SSS (Screen space shadows)
 - TAA (Temporal anti-aliasing based on Uncharted 4)
+- Real-time shader editor
+- Custom mip chain generation (Higher texture fidelity using Lanczos3 scaling)
+- Font rendering
+- Frustum culling
+- Per-pixel motion blur
+- Post-process effects (Tone-Mapping, FXAA, Sharpening, Dithering, Chromatic aberration etc.)
 - Physics (Rigid bodies, Constraints, Colliders)
 - Entity-component system
 - Event system
@@ -63,22 +65,13 @@ Platform | API | Status | Quality | Binaries | :+1:
 
 # Roadmap
 
-##### v0.31 (WIP)
-Feature     					| Completion    | Notes 
-:-          					| :-            | :-
-Volumetric lighting				| 100%          | -
-Parallax mapping 				| 100%          | -
-Shader editor 					| 100%          | Real-time shader editing tool.
-Clearcoat materials 			| 100%          | -
-Anisotropic materials			| 100%          | -
-Cloth materials 				| 100%          | -
-Shadows 						| 100%          | Enable point & spot light shadows.
-Screen space contact shadows 	| 100%          | -
-Colored transparent shadows 	| 100%          | -
-Vulkan      					| 90%           | Only shadows missing.
-
-###### v0.32
-- C# scripting (Replace AngelScript).
+##### v0.32 (WIP)
+Feature     					| Completion  | Notes 
+:-          					| :-          | :-
+Eye Adaptation 					| 0%          | -
+Depth-of-field					| 0%          | Based on Doom approach
+Subsurface Scattering 			| 0%          | -
+Continuous Vulkan optimisation 	| -           | -
 
 ###### v0.33
 - Ray traced shadows.
@@ -87,15 +80,9 @@ Vulkan      					| 90%           | Only shadows missing.
 ###### v0.34
 - DirectX 12.
 
-###### v0.35
-- Skeletal Animation.
-
-###### v0.36
-- Eye Adaptation.
-- Depth-of-field (Based on Doom approach).
-- Subsurface Scattering.
-
 ###### Future
+- Skeletal Animation.
+- C# scripting (Replace AngelScript).
 - Atmospheric Scattering.
 - Dynamic resolution scaling.
 - Global Illumination.
