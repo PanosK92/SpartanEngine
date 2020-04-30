@@ -596,31 +596,6 @@ namespace Spartan::vulkan_common
             return VK_IMAGE_TILING_MAX_ENUM;
         }
 
-        inline bool is_optimal_format(const RHI_Context* rhi_context, RHI_Texture* texture)
-        {
-            // Get format support
-            RHI_Format format                   = texture->GetFormat();
-            bool is_render_target_depth_stencil = texture->IsRenderTargetDepthStencil();
-            VkFormatFeatureFlags format_flags   = is_render_target_depth_stencil ? VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT : VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
-            VkImageTiling image_tiling          = get_format_tiling(rhi_context, format, format_flags);
-
-            // If the format is not supported, early exit
-            if (image_tiling == VK_IMAGE_TILING_MAX_ENUM)
-            {
-                LOG_ERROR("GPU does not support the usage of %s as a %s.", rhi_format_to_string(format), is_render_target_depth_stencil ? "depth-stencil attachment" : "color attachment");
-                return false;
-            }
-
-            // If the format is not optimal, let the user know
-            if (image_tiling != VK_IMAGE_TILING_OPTIMAL)
-            {
-                LOG_ERROR("Format %s does not support optimal tiling, considering switching to a more efficient format.", rhi_format_to_string(format));
-                return false;
-            }
-
-            return true;
-        }
-
         inline VkImageUsageFlags get_usage_flags(const RHI_Texture* texture)
         {
             VkImageUsageFlags flags = 0;
@@ -696,35 +671,48 @@ namespace Spartan::vulkan_common
             return aspect_mask;
         }
 
-        inline bool create(
-            const RHI_Context* rhi_context,
-            void*& image,
-            const uint32_t width,
-            const uint32_t height,
-            const uint32_t mip_levels,
-            const uint32_t array_layers,
-            const VkFormat format,
-            const VkImageTiling tiling,
-            const RHI_Image_Layout layout,
-            const VkImageUsageFlags usage
-        )
+        inline bool create(const RHI_Context* rhi_context, RHI_Texture* texture, void*& resource)
         {
+            // Get format support
+            RHI_Format format                   = texture->GetFormat();
+            bool is_render_target_depth_stencil = texture->IsRenderTargetDepthStencil();
+            VkFormatFeatureFlags format_flags   = is_render_target_depth_stencil ? VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT : VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
+            VkImageTiling image_tiling          = get_format_tiling(rhi_context, format, format_flags);
+
+            // Ensure the format is supported by the GPU
+            if (image_tiling == VK_IMAGE_TILING_MAX_ENUM)
+            {
+                LOG_ERROR("GPU does not support the usage of %s as a %s.", rhi_format_to_string(format), is_render_target_depth_stencil ? "depth-stencil attachment" : "color attachment");
+                return false;
+            }
+
+            // Reject any image which has a non-optimal format
+            if (image_tiling != VK_IMAGE_TILING_OPTIMAL)
+            {
+                LOG_ERROR("Format %s does not support optimal tiling, considering switching to a more efficient format.", rhi_format_to_string(format));
+                return false;
+            }
+
+            // Set layout to preinitialised (required by Vulkan)
+            texture->SetLayout(RHI_Image_Preinitialized);
+
             VkImageCreateInfo create_info   = {};
             create_info.sType               = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
             create_info.imageType           = VK_IMAGE_TYPE_2D;
-            create_info.extent.width        = width;
-            create_info.extent.height       = height;
+            create_info.flags               = (texture->GetResourceType() == Resource_TextureCube) ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : 0;
+            create_info.extent.width        = texture->GetWidth();
+            create_info.extent.height       = texture->GetHeight();
             create_info.extent.depth        = 1;
-            create_info.mipLevels           = mip_levels;
-            create_info.arrayLayers         = array_layers;
-            create_info.format              = format;
-            create_info.tiling              = tiling;
-            create_info.initialLayout       = vulkan_image_layout[layout];
-            create_info.usage               = usage;
+            create_info.mipLevels           = texture->GetMiplevels();
+            create_info.arrayLayers         = texture->GetArraySize();
+            create_info.format              = vulkan_format[format];
+            create_info.tiling              = VK_IMAGE_TILING_OPTIMAL;
+            create_info.initialLayout       = vulkan_image_layout[RHI_Image_Preinitialized];
+            create_info.usage               = get_usage_flags(texture);
             create_info.samples             = VK_SAMPLE_COUNT_1_BIT;
             create_info.sharingMode         = VK_SHARING_MODE_EXCLUSIVE;
 
-            return error::check(vkCreateImage(rhi_context->device, &create_info, nullptr, reinterpret_cast<VkImage*>(&image)));
+            return error::check(vkCreateImage(rhi_context->device, &create_info, nullptr, reinterpret_cast<VkImage*>(&resource)));
         }
 
         inline void destroy(const RHI_Context* rhi_context, void*& image)
@@ -1118,7 +1106,7 @@ namespace Spartan::vulkan_common
                 }
                 else if (texture->GetResourceType() == Resource_TextureCube)
                 {
-                    type = (texture->GetArraySize() == 1) ? VK_IMAGE_VIEW_TYPE_CUBE : VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
+                    type = VK_IMAGE_VIEW_TYPE_CUBE;
                 }
 
                 return create(rhi_context, image, image_view, type, vulkan_format[texture->GetFormat()], get_aspect_mask(texture, only_depth, only_stencil), texture->GetMiplevels(), array_index, array_length);
