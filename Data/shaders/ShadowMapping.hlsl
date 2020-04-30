@@ -400,7 +400,7 @@ float4 Shadow_Map(Surface surface, Light light, bool transparent_pixel)
 
             #if SHADOWS_TRANSPARENT
             [branch]
-            if (light.cast_transparent_shadows && shadow.a > 0.0f  && !transparent_pixel)
+            if (shadow.a > 0.0f  && !transparent_pixel)
             {
                 shadow *= sample_color(float3(pos_clip.xy, 0.0f));
             }
