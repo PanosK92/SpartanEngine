@@ -692,7 +692,7 @@ namespace Spartan
                 const auto result = adapter->GetDesc(&adapter_desc);
                 if (FAILED(result))
                 {
-                    LOG_ERROR("Failed to get adapter description, %s", d3d11_common::dxgi_error_to_string(result));
+                    LOG_ERROR("Failed to get adapter description, %s", d3d11_utility::dxgi_error_to_string(result));
                     return 0;
                 }
                 return static_cast<uint32_t>(adapter_desc.DedicatedVideoMemory / 1024 / 1024); // convert to MBs
@@ -711,7 +711,7 @@ namespace Spartan
                 const auto result = adapter->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &info);
                 if (FAILED(result))
                 {
-                    LOG_ERROR("Failed to get adapter memory info, %s", d3d11_common::dxgi_error_to_string(result));
+                    LOG_ERROR("Failed to get adapter memory info, %s", d3d11_utility::dxgi_error_to_string(result));
                     return 0;
                 }
                 return static_cast<uint32_t>(info.CurrentUsage / 1024 / 1024); // convert to MBs

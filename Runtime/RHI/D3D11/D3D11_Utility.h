@@ -33,8 +33,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/EngineDefs.h"
 //================================
 
-namespace Spartan::d3d11_common
-{ 
+namespace Spartan::d3d11_utility
+{
+    struct instance
+    {
+        static inline RHI_Device* rhi_device;
+        static inline RHI_Context* rhi_context;
+    };
+
 	inline const char* dxgi_error_to_string(const HRESULT error_code)
 	{
 		switch (error_code)
@@ -68,7 +74,7 @@ namespace Spartan::d3d11_common
 		return "Unknown error code";
 	}
 
-	inline void DetectAdapters(RHI_Device* device)
+	inline void DetectAdapters()
 	{
 		// Create DirectX graphics interface factory
 		IDXGIFactory1* factory;
@@ -117,7 +123,7 @@ namespace Spartan::d3d11_common
 			auto def_char = ' ';
 			WideCharToMultiByte(CP_ACP, 0, adapter_desc.Description, -1, name, 128, &def_char, nullptr);
 
-			device->RegisterPhysicalDevice(PhysicalDevice
+            instance::rhi_device->RegisterPhysicalDevice(PhysicalDevice
             (
                 0,                                                          // api version
                 0,                                                          // driver version
@@ -130,7 +136,7 @@ namespace Spartan::d3d11_common
 		}
 
 		// DISPLAY MODES
-		const auto get_display_modes = [device](IDXGIAdapter* adapter, RHI_Format format)
+		const auto get_display_modes = [](IDXGIAdapter* adapter, RHI_Format format)
 		{
 			// Enumerate the primary adapter output (monitor).
             IDXGIOutput* adapter_output = nullptr;
@@ -151,7 +157,7 @@ namespace Spartan::d3d11_common
 						// Save all the display modes
 						for (const auto& mode : display_modes)
 						{
-							device->RegisterDisplayMode(DisplayMode(mode.Width, mode.Height, mode.RefreshRate.Numerator, mode.RefreshRate.Denominator));
+                            instance::rhi_device->RegisterDisplayMode(DisplayMode(mode.Width, mode.Height, mode.RefreshRate.Numerator, mode.RefreshRate.Denominator));
 						}
 					}
 				}
@@ -162,16 +168,16 @@ namespace Spartan::d3d11_common
 		};
 
 		// Get display modes and set primary adapter
-		for (uint32_t device_index = 0; device_index < device->GetPhysicalDevices().size(); device_index++)
+		for (uint32_t device_index = 0; device_index < instance::rhi_device->GetPhysicalDevices().size(); device_index++)
 		{
-            const PhysicalDevice& physical_device = device->GetPhysicalDevices()[device_index];
+            const PhysicalDevice& physical_device = instance::rhi_device->GetPhysicalDevices()[device_index];
 			const auto dx_adapter = static_cast<IDXGIAdapter*>(physical_device.GetData());
 
 			// Adapters are ordered by memory (descending), so stop on the first success
             const auto format = RHI_Format_R8G8B8A8_Unorm; // TODO: This must come from the swapchain
 			if (get_display_modes(dx_adapter, format))
 			{
-				device->SetPrimaryPhysicalDevice(device_index);
+                instance::rhi_device->SetPrimaryPhysicalDevice(device_index);
                 return;
 			}
 			else
@@ -181,15 +187,15 @@ namespace Spartan::d3d11_common
 		}
 
 		// If we failed to detect any display modes but we have at least one adapter, use it.
-		if (device->GetPhysicalDevices().size() != 0)
+		if (instance::rhi_device->GetPhysicalDevices().size() != 0)
 		{
 			LOG_ERROR("Failed to detect display modes for all physical devices, falling back to first available.");
-			device->SetPrimaryPhysicalDevice(0);
+            instance::rhi_device->SetPrimaryPhysicalDevice(0);
 		}
 	}
 
 	// Determines whether tearing support is available for fullscreen borderless windows.
-	inline bool CheckTearingSupport(RHI_Device* device)
+	inline bool CheckTearingSupport()
 	{
 		// Rather than create the 1.5 factory interface directly, we create the 1.4
 		// interface and query for the 1.5 interface. This will enable the graphics
@@ -208,20 +214,20 @@ namespace Spartan::d3d11_common
 		}
 
         const bool fullscreen_borderless_support	= SUCCEEDED(resut) && allowTearing;
-        const bool vendor_support					= !device->GetPrimaryPhysicalDevice()->IsIntel(); // Intel, bad
+        const bool vendor_support					= !instance::rhi_device->GetPrimaryPhysicalDevice()->IsIntel(); // Intel, bad
 
 		return fullscreen_borderless_support && vendor_support;
 	}
 
 	namespace swap_chain
 	{
-		inline uint32_t validate_flags(RHI_Device* device, uint32_t flags)
+		inline uint32_t validate_flags(uint32_t flags)
 		{
 			// If SwapChain_Allow_Tearing was requested
 			if (flags & RHI_Present_Immediate)
 			{
 				// Check if the adapter supports it, if not, disable it (tends to fail with Intel adapters)
-				if (!d3d11_common::CheckTearingSupport(device))
+				if (!CheckTearingSupport())
 				{
 					flags &= ~RHI_Present_Immediate;
                     LOG_WARNING("Present_Immediate was requested but it's not supported by the adapter.");
@@ -241,7 +247,7 @@ namespace Spartan::d3d11_common
 			return d3d11_flags;
 		}
 
-		inline DXGI_SWAP_EFFECT get_swap_effect(RHI_Device* device, uint32_t flags)
+		inline DXGI_SWAP_EFFECT get_swap_effect(uint32_t flags)
 		{
 			#if !defined(_WIN32_WINNT_WIN10)
 			if (flags & RHI_Swap_Flip_Discard)
@@ -252,7 +258,7 @@ namespace Spartan::d3d11_common
 			}
 			#endif
 
-            if (flags & RHI_Swap_Flip_Discard && device->GetPrimaryPhysicalDevice()->IsIntel())
+            if (flags & RHI_Swap_Flip_Discard && instance::rhi_device->GetPrimaryPhysicalDevice()->IsIntel())
             {
                 LOG_WARNING("Swap_Flip_Discard was requested but it's not supported by Intel adapters, using Swap_Discard instead.");
                 flags &= ~RHI_Swap_Flip_Discard;

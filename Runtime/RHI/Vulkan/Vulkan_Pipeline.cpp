@@ -290,7 +290,7 @@ namespace Spartan
 		    pipeline_layout_info.setLayoutCount				= 1;		
 		    pipeline_layout_info.pSetLayouts				= reinterpret_cast<VkDescriptorSetLayout*>(&descriptor_set_layout);
 
-            if (!vulkan_common::error::check(vkCreatePipelineLayout(m_rhi_device->GetContextRhi()->device, &pipeline_layout_info, nullptr, reinterpret_cast<VkPipelineLayout*>(&m_pipeline_layout))))
+            if (!vulkan_utility::error::check(vkCreatePipelineLayout(m_rhi_device->GetContextRhi()->device, &pipeline_layout_info, nullptr, reinterpret_cast<VkPipelineLayout*>(&m_pipeline_layout))))
 			    return;
         }
 
@@ -312,11 +312,11 @@ namespace Spartan
 		    pipeline_info.renderPass					= static_cast<VkRenderPass>(m_state.GetRenderPass());
 
             auto pipeline = reinterpret_cast<VkPipeline*>(&m_pipeline);
-            vulkan_common::error::check(vkCreateGraphicsPipelines(m_rhi_device->GetContextRhi()->device, nullptr, 1, &pipeline_info, nullptr, pipeline));
+            vulkan_utility::error::check(vkCreateGraphicsPipelines(m_rhi_device->GetContextRhi()->device, nullptr, 1, &pipeline_info, nullptr, pipeline));
 
             // Set pipeline name
             string name = (m_state.shader_vertex ? m_state.shader_vertex->GetName() : "null") + "-" + (m_state.shader_pixel ? m_state.shader_pixel->GetName() : "null");
-            vulkan_common::debug::set_pipeline_name(m_rhi_device->GetContextRhi()->device, *pipeline, name.c_str());
+            vulkan_utility::debug::set_pipeline_name(*pipeline, name.c_str());
         }
 	}
 

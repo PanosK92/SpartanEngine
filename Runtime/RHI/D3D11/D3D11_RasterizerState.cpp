@@ -93,7 +93,7 @@ namespace Spartan
 		}
 		else
 		{
-			LOG_ERROR("Failed to create the rasterizer state, %s.", d3d11_common::dxgi_error_to_string(result));
+			LOG_ERROR("Failed to create the rasterizer state, %s.", d3d11_utility::dxgi_error_to_string(result));
 			m_initialized = false;
 		}
 	}

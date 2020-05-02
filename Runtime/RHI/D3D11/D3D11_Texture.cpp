@@ -140,7 +140,7 @@ namespace Spartan
 		const auto result = rhi_device->GetContextRhi()->device->CreateTexture2D(&texture_desc, vec_subresource_data.data(), reinterpret_cast<ID3D11Texture2D**>(&texture));
 		if (FAILED(result))
 		{
-            LOG_ERROR("Failed, %s.", d3d11_common::dxgi_error_to_string(result));
+            LOG_ERROR("Failed, %s.", d3d11_utility::dxgi_error_to_string(result));
 			return false;
 		}
 
@@ -164,7 +164,7 @@ namespace Spartan
             const auto result = rhi_device->GetContextRhi()->device->CreateRenderTargetView(static_cast<ID3D11Resource*>(texture), &view_desc, reinterpret_cast<ID3D11RenderTargetView**>(&views[i]));
             if (FAILED(result))
             {
-                LOG_ERROR("Failed, %s.", d3d11_common::dxgi_error_to_string(result));
+                LOG_ERROR("Failed, %s.", d3d11_utility::dxgi_error_to_string(result));
                 return false;
             }
         }
@@ -190,7 +190,7 @@ namespace Spartan
 			const auto result = rhi_device->GetContextRhi()->device->CreateDepthStencilView(static_cast<ID3D11Resource*>(texture), &dsv_desc, reinterpret_cast<ID3D11DepthStencilView**>(&views[i]));
 			if (FAILED(result))
 			{
-                LOG_ERROR("Failed, %s.", d3d11_common::dxgi_error_to_string(result));
+                LOG_ERROR("Failed, %s.", d3d11_utility::dxgi_error_to_string(result));
 				return false;
 			}
 		}
@@ -213,7 +213,7 @@ namespace Spartan
 		auto result = rhi_device->GetContextRhi()->device->CreateShaderResourceView(static_cast<ID3D11Resource*>(texture), &shader_resource_view_desc, reinterpret_cast<ID3D11ShaderResourceView**>(&view));
 		if (FAILED(result))
 		{
-            LOG_ERROR("Failed, %s.", d3d11_common::dxgi_error_to_string(result));
+            LOG_ERROR("Failed, %s.", d3d11_utility::dxgi_error_to_string(result));
 			return false;
 		}
 
@@ -231,7 +231,7 @@ namespace Spartan
         const auto result = rhi_device->GetContextRhi()->device->CreateUnorderedAccessView(static_cast<ID3D11Resource*>(texture), &unorderd_access_view_desc, reinterpret_cast<ID3D11UnorderedAccessView**>(&view));
 		if (FAILED(result))
 		{
-            LOG_ERROR("Failed, %s.", d3d11_common::dxgi_error_to_string(result));
+            LOG_ERROR("Failed, %s.", d3d11_utility::dxgi_error_to_string(result));
 			return false;
 		}
 
@@ -431,7 +431,7 @@ namespace Spartan
         const auto result = rhi_device->GetContextRhi()->device->CreateTexture2D(vec_texture_desc.data(), vec_subresource_data.data(), reinterpret_cast<ID3D11Texture2D**>(&texture));
 		if (FAILED(result))
 		{
-            LOG_ERROR("Failed, %s.", d3d11_common::dxgi_error_to_string(result));
+            LOG_ERROR("Failed, %s.", d3d11_utility::dxgi_error_to_string(result));
 			return false;
 		}
 
@@ -455,7 +455,7 @@ namespace Spartan
         const auto result = rhi_device->GetContextRhi()->device->CreateShaderResourceView(static_cast<ID3D11Resource*>(texture), &srv_desc, reinterpret_cast<ID3D11ShaderResourceView**>(&view));
 		if (FAILED(result))
 		{
-            LOG_ERROR("Failed, %s.", d3d11_common::dxgi_error_to_string(result));
+            LOG_ERROR("Failed, %s.", d3d11_utility::dxgi_error_to_string(result));
 			return false;
 		}
 
@@ -479,7 +479,7 @@ namespace Spartan
 			const auto result = rhi_device->GetContextRhi()->device->CreateDepthStencilView(static_cast<ID3D11Resource*>(texture), &dsv_desc, reinterpret_cast<ID3D11DepthStencilView**>(&views[i]));
 			if (FAILED(result))
 			{
-                LOG_ERROR("Failed, %s.", d3d11_common::dxgi_error_to_string(result));
+                LOG_ERROR("Failed, %s.", d3d11_utility::dxgi_error_to_string(result));
 				return false;
 			}
 		}
@@ -504,7 +504,7 @@ namespace Spartan
             const auto result = rhi_device->GetContextRhi()->device->CreateRenderTargetView(static_cast<ID3D11Resource*>(texture), &view_desc, reinterpret_cast<ID3D11RenderTargetView**>(&views[i]));
             if (FAILED(result))
             {
-                LOG_ERROR("Failed, %s.", d3d11_common::dxgi_error_to_string(result));
+                LOG_ERROR("Failed, %s.", d3d11_utility::dxgi_error_to_string(result));
                 return false;
             }
         }
@@ -523,7 +523,7 @@ namespace Spartan
         const auto result = rhi_device->GetContextRhi()->device->CreateUnorderedAccessView(static_cast<ID3D11Resource*>(texture), &unorderd_access_view_desc, reinterpret_cast<ID3D11UnorderedAccessView**>(&view));
 		if (FAILED(result))
 		{
-            LOG_ERROR("Failed, %s.", d3d11_common::dxgi_error_to_string(result));
+            LOG_ERROR("Failed, %s.", d3d11_utility::dxgi_error_to_string(result));
 			return false;
 		}
 

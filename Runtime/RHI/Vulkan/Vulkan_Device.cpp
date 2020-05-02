@@ -44,8 +44,10 @@ namespace Spartan
 {
 	RHI_Device::RHI_Device(Context* context)
 	{
-        m_context       = context;
-		m_rhi_context   = make_shared<RHI_Context>();
+        m_context                               = context;
+		m_rhi_context                           = make_shared<RHI_Context>();
+        vulkan_utility::instance::rhi_context    = m_rhi_context.get();
+        vulkan_utility::instance::rhi_device     = this;
 
 		// Create instance
 		VkApplicationInfo app_info = {};
@@ -94,7 +96,7 @@ namespace Spartan
 			app_info.apiVersion			= api_version;
 
             // Get the supported extensions out of the requested extensions
-            vector<const char*> extensions_supported = vulkan_common::extension::get_supported_instance(m_rhi_context->extensions_instance);
+            vector<const char*> extensions_supported = vulkan_utility::extension::get_supported_instance(m_rhi_context->extensions_instance);
 
 			VkInstanceCreateInfo create_info	= {};
 			create_info.sType					= VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -106,7 +108,7 @@ namespace Spartan
 			if (m_rhi_context->debug)
 			{
                 // Enable validation layer
-				if (vulkan_common::layer::is_present(m_rhi_context->validation_layers.front()))
+				if (vulkan_utility::layer::is_present(m_rhi_context->validation_layers.front()))
 				{
                     // Validation features
                     VkValidationFeatureEnableEXT enabled_validation_features[]  = { VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT };
@@ -126,21 +128,21 @@ namespace Spartan
 				}
 			}
 
-			if (!vulkan_common::error::check(vkCreateInstance(&create_info, nullptr, &m_rhi_context->instance)))
+			if (!vulkan_utility::error::check(vkCreateInstance(&create_info, nullptr, &m_rhi_context->instance)))
                 return;
 		}
 
         // Get function pointers (from extensions)
-        vulkan_common::functions::initialize(this);
+        vulkan_utility::functions::initialize();
 
 		// Debug
 		if (m_rhi_context->debug)
 		{
-            vulkan_common::debug::initialize(m_rhi_context->instance);
+            vulkan_utility::debug::initialize(m_rhi_context->instance);
 		}
 
 		// Find a physical device
-        if (!vulkan_common::device::choose_physical_device(this, context->m_engine->GetWindowData().handle))
+        if (!vulkan_utility::device::choose_physical_device(context->m_engine->GetWindowData().handle))
         {
             LOG_ERROR("Failed to find a suitable physical device.");
             return;
@@ -218,7 +220,7 @@ namespace Spartan
             }
 
             // Get the supported extensions out of the requested extensions
-            vector<const char*> extensions_supported = vulkan_common::extension::get_supported_device(m_rhi_context->extensions_device, m_rhi_context->device_physical);
+            vector<const char*> extensions_supported = vulkan_utility::extension::get_supported_device(m_rhi_context->extensions_device, m_rhi_context->device_physical);
 
             // Device create info
 			VkDeviceCreateInfo create_info = {};
@@ -242,7 +244,7 @@ namespace Spartan
 			}
 
 			// Create
-			if (!vulkan_common::error::check(vkCreateDevice(m_rhi_context->device_physical, &create_info, nullptr, &m_rhi_context->device)))
+			if (!vulkan_utility::error::check(vkCreateDevice(m_rhi_context->device_physical, &create_info, nullptr, &m_rhi_context->device)))
 				return;
 
             // Create queues
@@ -273,7 +275,7 @@ namespace Spartan
 		{
             if (m_rhi_context->debug)
             {
-                vulkan_common::debug::shutdown(m_rhi_context->instance);
+                vulkan_utility::debug::shutdown(m_rhi_context->instance);
             }
 			vkDestroyDevice(m_rhi_context->device, nullptr);
 			vkDestroyInstance(m_rhi_context->instance, nullptr);
@@ -294,7 +296,7 @@ namespace Spartan
         present_info.pImageIndices      = image_index;
 
         lock_guard<mutex> lock(m_queue_mutex);
-        return vulkan_common::error::check(vkQueuePresentKHR(static_cast<VkQueue>(m_rhi_context->queue_graphics), &present_info));
+        return vulkan_utility::error::check(vkQueuePresentKHR(static_cast<VkQueue>(m_rhi_context->queue_graphics), &present_info));
     }
 
     bool RHI_Device::Queue_Submit(const RHI_Queue_Type type, void* cmd_buffer, void* wait_semaphore /*= nullptr*/, void* wait_fence /*= nullptr*/, uint32_t wait_flags /*= 0*/) const
@@ -314,13 +316,13 @@ namespace Spartan
         submit_info.pSignalSemaphores       = nullptr;
 
         lock_guard<mutex> lock(m_queue_mutex);
-        return vulkan_common::error::check(vkQueueSubmit(static_cast<VkQueue>(Queue_Get(type)), 1, &submit_info, static_cast<VkFence>(wait_fence)));
+        return vulkan_utility::error::check(vkQueueSubmit(static_cast<VkQueue>(Queue_Get(type)), 1, &submit_info, static_cast<VkFence>(wait_fence)));
     }
 
     bool RHI_Device::Queue_Wait(const RHI_Queue_Type type) const
     {
         lock_guard<mutex> lock(m_queue_mutex);
-        return vulkan_common::error::check(vkQueueWaitIdle(static_cast<VkQueue>(Queue_Get(type))));
+        return vulkan_utility::error::check(vkQueueWaitIdle(static_cast<VkQueue>(Queue_Get(type))));
     }
 }
 #endif

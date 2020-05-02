@@ -39,7 +39,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    inline void set_debug_name(RHI_Context* rhi_context, RHI_Texture* texture)
+    inline void set_debug_name(RHI_Texture* texture)
     {
         string name = texture->GetResourceName();
 
@@ -58,11 +58,11 @@ namespace Spartan
             name += name.empty() ? "render_target_depth" : "-render_target_depth";
         }
 
-        vulkan_common::debug::set_image_name(rhi_context->device, static_cast<VkImage>(texture->Get_Resource()), name.c_str());
-        vulkan_common::debug::set_image_view_name(rhi_context->device, static_cast<VkImageView>(texture->Get_Resource_View(0)), name.c_str());
+        vulkan_utility::debug::set_image_name(static_cast<VkImage>(texture->Get_Resource()), name.c_str());
+        vulkan_utility::debug::set_image_view_name(static_cast<VkImageView>(texture->Get_Resource_View(0)), name.c_str());
         if (texture->IsSampled() && texture->IsStencilFormat())
         {
-            vulkan_common::debug::set_image_view_name(rhi_context->device, static_cast<VkImageView>(texture->Get_Resource_View(1)), name.c_str());
+            vulkan_utility::debug::set_image_view_name(static_cast<VkImageView>(texture->Get_Resource_View(1)), name.c_str());
         }
     }
 
@@ -73,16 +73,16 @@ namespace Spartan
 
         m_rhi_device->Queue_WaitAll();
         m_data.clear();
-        const auto rhi_context = m_rhi_device->GetContextRhi();
-        vulkan_common::image::view::destroy(rhi_context, m_resource_view[0]);
-        vulkan_common::image::view::destroy(rhi_context, m_resource_view[1]);
+
+        vulkan_utility::image::view::destroy(m_resource_view[0]);
+        vulkan_utility::image::view::destroy(m_resource_view[1]);
         for (uint32_t i = 0; i < state_max_render_target_count; i++)
         {
-            vulkan_common::image::view::destroy(rhi_context, m_resource_view_depthStencil[i]);
-            vulkan_common::image::view::destroy(rhi_context, m_resource_view_renderTarget[i]);
+            vulkan_utility::image::view::destroy(m_resource_view_depthStencil[i]);
+            vulkan_utility::image::view::destroy(m_resource_view_renderTarget[i]);
         }
-        vulkan_common::image::destroy(rhi_context, m_resource);
-		vulkan_common::memory::free(m_rhi_device->GetContextRhi(), m_resource_memory);
+        vulkan_utility::image::destroy(m_resource);
+		vulkan_utility::memory::free(m_resource_memory);
 	}
 
     void RHI_Texture::SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* command_list /*= nullptr*/)
@@ -93,7 +93,7 @@ namespace Spartan
          // If a command list is provided, this means we should insert a pipeline barrier
         if (command_list)
         {
-            if (!vulkan_common::image::set_layout(m_rhi_device.get(), static_cast<VkCommandBuffer>(command_list->GetResource_CommandBuffer()), this, new_layout))
+            if (!vulkan_utility::image::set_layout(static_cast<VkCommandBuffer>(command_list->GetResource_CommandBuffer()), this, new_layout))
                 return;
         }
 
@@ -102,17 +102,15 @@ namespace Spartan
 
 	bool RHI_Texture2D::CreateResourceGpu()
 	{
-        RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
-
         // Create image
         {
-            if (!vulkan_common::image::create(rhi_context, this, m_resource))
+            if (!vulkan_utility::image::create(this, m_resource))
             {
                 LOG_ERROR("Failed to create image");
                 return false;
             }
 
-            if (!vulkan_common::image::allocate_bind(rhi_context, m_resource, m_resource_memory))
+            if (!vulkan_utility::image::allocate_bind(m_resource, m_resource_memory))
             {
                 LOG_ERROR("Failed to allocate and bind image memory");
                 return false;
@@ -122,12 +120,12 @@ namespace Spartan
         // If the texture has any data, stage it
         if (HasData())
         {
-            if (!vulkan_common::image::stage(m_rhi_device.get(), this))
+            if (!vulkan_utility::image::stage(this))
                 return false;
         }
 
         // Transition to target layout
-        if (VkCommandBuffer cmd_buffer = vulkan_common::command_buffer_immediate::begin(m_rhi_device.get(), RHI_Queue_Graphics))
+        if (VkCommandBuffer cmd_buffer = vulkan_utility::command_buffer_immediate::begin(RHI_Queue_Graphics))
         {    
             RHI_Image_Layout target_layout = RHI_Image_Preinitialized;
         
@@ -141,11 +139,11 @@ namespace Spartan
                 target_layout = RHI_Image_Depth_Stencil_Attachment_Optimal;
         
             // Transition to the final layout
-            if (!vulkan_common::image::set_layout(m_rhi_device.get(), cmd_buffer, this, target_layout))
+            if (!vulkan_utility::image::set_layout(cmd_buffer, this, target_layout))
                 return false;
         
             // Flush
-            if (!vulkan_common::command_buffer_immediate::end(RHI_Queue_Graphics))
+            if (!vulkan_utility::command_buffer_immediate::end(RHI_Queue_Graphics))
                 return false;
 
             // Update this texture with the new layout
@@ -159,19 +157,19 @@ namespace Spartan
             {
                 if (IsColorFormat())
                 {
-                    if (!vulkan_common::image::view::create(rhi_context, m_resource, m_resource_view[0], this))
+                    if (!vulkan_utility::image::view::create(m_resource, m_resource_view[0], this))
                         return false;
                 }
 
                 if (IsDepthFormat())
                 {
-                    if (!vulkan_common::image::view::create(rhi_context, m_resource, m_resource_view[0], this, 0, m_array_size, true, false))
+                    if (!vulkan_utility::image::view::create(m_resource, m_resource_view[0], this, 0, m_array_size, true, false))
                         return false;
                 }
 
                 if (IsStencilFormat())
                 {
-                    if (!vulkan_common::image::view::create(rhi_context, m_resource, m_resource_view[1], this, 0, m_array_size, false, true))
+                    if (!vulkan_utility::image::view::create(m_resource, m_resource_view[1], this, 0, m_array_size, false, true))
                         return false;
                 }
             }
@@ -181,19 +179,19 @@ namespace Spartan
             {
                 if (IsRenderTargetColor())
                 {
-                    if (!vulkan_common::image::view::create(rhi_context, m_resource, m_resource_view_renderTarget[i], this, i, 1))
+                    if (!vulkan_utility::image::view::create(m_resource, m_resource_view_renderTarget[i], this, i, 1))
                         return false;
                 }
 
                 if (IsRenderTargetDepthStencil())
                 {
-                    if (!vulkan_common::image::view::create(rhi_context, m_resource, m_resource_view_depthStencil[i], this, i, 1, true))
+                    if (!vulkan_utility::image::view::create(m_resource, m_resource_view_depthStencil[i], this, i, 1, true))
                         return false;
                 }
             }
 
             // Name the image and image view(s)
-            set_debug_name(rhi_context, this);
+            set_debug_name(this);
         }
 
 		return true;
@@ -208,31 +206,29 @@ namespace Spartan
 
         m_rhi_device->Queue_WaitAll();
         m_data.clear();
-        const auto rhi_context = m_rhi_device->GetContextRhi();
-        vulkan_common::image::view::destroy(rhi_context, m_resource_view[0]);
-        vulkan_common::image::view::destroy(rhi_context, m_resource_view[1]);
+
+        vulkan_utility::image::view::destroy(m_resource_view[0]);
+        vulkan_utility::image::view::destroy(m_resource_view[1]);
         for (uint32_t i = 0; i < state_max_render_target_count; i++)
         {
-            vulkan_common::image::view::destroy(rhi_context, m_resource_view_depthStencil[i]);
-            vulkan_common::image::view::destroy(rhi_context, m_resource_view_renderTarget[i]);
+            vulkan_utility::image::view::destroy(m_resource_view_depthStencil[i]);
+            vulkan_utility::image::view::destroy(m_resource_view_renderTarget[i]);
         }
-        vulkan_common::image::destroy(rhi_context, m_resource);
-        vulkan_common::memory::free(m_rhi_device->GetContextRhi(), m_resource_memory);
+        vulkan_utility::image::destroy(m_resource);
+        vulkan_utility::memory::free(m_resource_memory);
 	}
 
 	bool RHI_TextureCube::CreateResourceGpu()
 	{
-        RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
-
         // Create image
         {
-            if (!vulkan_common::image::create(rhi_context, this, m_resource))
+            if (!vulkan_utility::image::create(this, m_resource))
             {
                 LOG_ERROR("Failed to create image");
                 return false;
             }
 
-            if (!vulkan_common::image::allocate_bind(rhi_context, m_resource, m_resource_memory))
+            if (!vulkan_utility::image::allocate_bind(m_resource, m_resource_memory))
             {
                 LOG_ERROR("Failed to allocate and bind image memory");
                 return false;
@@ -242,12 +238,12 @@ namespace Spartan
         // If the texture has any data, stage it
         if (HasData())
         {
-            if (!vulkan_common::image::stage(m_rhi_device.get(), this))
+            if (!vulkan_utility::image::stage(this))
                 return false;
         }
 
         // Transition to target layout
-        if (VkCommandBuffer cmd_buffer = vulkan_common::command_buffer_immediate::begin(m_rhi_device.get(), RHI_Queue_Graphics))
+        if (VkCommandBuffer cmd_buffer = vulkan_utility::command_buffer_immediate::begin(RHI_Queue_Graphics))
         {
             RHI_Image_Layout target_layout = RHI_Image_Preinitialized;
 
@@ -261,11 +257,11 @@ namespace Spartan
                 target_layout = RHI_Image_Depth_Stencil_Attachment_Optimal;
 
             // Transition to the final layout
-            if (!vulkan_common::image::set_layout(m_rhi_device.get(), cmd_buffer, this, target_layout))
+            if (!vulkan_utility::image::set_layout(cmd_buffer, this, target_layout))
                 return false;
 
             // Flush
-            if (!vulkan_common::command_buffer_immediate::end(RHI_Queue_Graphics))
+            if (!vulkan_utility::command_buffer_immediate::end(RHI_Queue_Graphics))
                 return false;
 
             // Update this texture with the new layout
@@ -279,19 +275,19 @@ namespace Spartan
             {
                 if (IsColorFormat())
                 {
-                    if (!vulkan_common::image::view::create(rhi_context, m_resource, m_resource_view[0], this))
+                    if (!vulkan_utility::image::view::create(m_resource, m_resource_view[0], this))
                         return false;
                 }
 
                 if (IsDepthFormat())
                 {
-                    if (!vulkan_common::image::view::create(rhi_context, m_resource, m_resource_view[0], this, 0, m_array_size, true, false))
+                    if (!vulkan_utility::image::view::create(m_resource, m_resource_view[0], this, 0, m_array_size, true, false))
                         return false;
                 }
 
                 if (IsStencilFormat())
                 {
-                    if (!vulkan_common::image::view::create(rhi_context, m_resource, m_resource_view[1], this, 0, m_array_size, false, true))
+                    if (!vulkan_utility::image::view::create(m_resource, m_resource_view[1], this, 0, m_array_size, false, true))
                         return false;
                 }
             }
@@ -301,19 +297,19 @@ namespace Spartan
             {
                 if (IsRenderTargetColor())
                 {
-                    if (!vulkan_common::image::view::create(rhi_context, m_resource, m_resource_view_renderTarget[i], this, i, 1))
+                    if (!vulkan_utility::image::view::create(m_resource, m_resource_view_renderTarget[i], this, i, 1))
                         return false;
                 }
 
                 if (IsRenderTargetDepthStencil())
                 {
-                    if (!vulkan_common::image::view::create(rhi_context, m_resource, m_resource_view_depthStencil[i], this, i, 1, true))
+                    if (!vulkan_utility::image::view::create(m_resource, m_resource_view_depthStencil[i], this, i, 1, true))
                         return false;
                 }
             }
 
             // Name the image and image view(s)
-            set_debug_name(rhi_context, this);
+            set_debug_name(this);
         }
 
         return true;
