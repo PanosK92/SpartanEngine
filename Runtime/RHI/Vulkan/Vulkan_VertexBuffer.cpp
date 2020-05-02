@@ -43,8 +43,8 @@ namespace Spartan
         // Wait in case the buffer is still in use
         m_rhi_device->Queue_WaitAll();
 
-		vulkan_common::buffer::destroy(m_rhi_device->GetContextRhi(), m_buffer);
-		vulkan_common::memory::free(m_rhi_device->GetContextRhi(), m_buffer_memory);
+		vulkan_utility::buffer::destroy(m_buffer);
+		vulkan_utility::memory::free(m_buffer_memory);
 	}
 
 	bool RHI_VertexBuffer::_Create(const void* vertices)
@@ -55,8 +55,6 @@ namespace Spartan
 			return false;
 		}
 
-        RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
-
         // Wait in case the buffer is still in use
         if (m_buffer)
         {
@@ -64,8 +62,8 @@ namespace Spartan
         }
 
 		// Clear previous buffer
-		vulkan_common::buffer::destroy(rhi_context, m_buffer);
-		vulkan_common::memory::free(rhi_context, m_buffer_memory);
+		vulkan_utility::buffer::destroy(m_buffer);
+		vulkan_utility::memory::free(m_buffer_memory);
 
         bool use_staging = vertices != nullptr;
         m_mappable = !use_staging;
@@ -75,8 +73,7 @@ namespace Spartan
 
         if (!use_staging)
         {
-            if (!vulkan_common::buffer::create(
-                    rhi_context,
+            if (!vulkan_utility::buffer::create(
                     m_buffer,
                     m_buffer_memory,
                     m_size_gpu,
@@ -90,8 +87,7 @@ namespace Spartan
 		    // Create staging/source buffer and copy the vertices to it
             void* staging_buffer        = nullptr;
             void* staging_buffer_memory = nullptr;
-		    if (!vulkan_common::buffer::create(
-                    rhi_context,
+		    if (!vulkan_utility::buffer::create(
                     staging_buffer,
                     staging_buffer_memory,
                     m_size_gpu,
@@ -102,8 +98,7 @@ namespace Spartan
             ) return false;
 
             // Create destination buffer
-            if (!vulkan_common::buffer::create(
-                    rhi_context,
+            if (!vulkan_utility::buffer::create(
                     m_buffer,
                     m_buffer_memory,
                     m_size_gpu,
@@ -116,7 +111,7 @@ namespace Spartan
             // Copy from staging buffer
             {
                 // Create command buffer
-                VkCommandBuffer cmd_buffer = vulkan_common::command_buffer_immediate::begin(m_rhi_device.get(), RHI_Queue_Transfer);
+                VkCommandBuffer cmd_buffer = vulkan_utility::command_buffer_immediate::begin(RHI_Queue_Transfer);
 
                 VkBuffer* buffer_vk         = reinterpret_cast<VkBuffer*>(&m_buffer);
                 VkBuffer* buffer_staging_vk = reinterpret_cast<VkBuffer*>(&staging_buffer);
@@ -127,18 +122,18 @@ namespace Spartan
                 vkCmdCopyBuffer(cmd_buffer, *buffer_staging_vk, *buffer_vk, 1, &copy_region);
 
                 // Flush and free command buffer
-                if (!vulkan_common::command_buffer_immediate::end(RHI_Queue_Transfer))
+                if (!vulkan_utility::command_buffer_immediate::end(RHI_Queue_Transfer))
                     return false;
 
                 // Destroy staging resources
-                vulkan_common::buffer::destroy(rhi_context, staging_buffer);
-                vulkan_common::memory::free(rhi_context, staging_buffer_memory);
+                vulkan_utility::buffer::destroy(staging_buffer);
+                vulkan_utility::memory::free(staging_buffer_memory);
             }
         }
 
         // Set debug names
-        vulkan_common::debug::set_buffer_name(m_rhi_device->GetContextRhi()->device, static_cast<VkBuffer>(m_buffer), "vertex_buffer");
-        vulkan_common::debug::set_device_memory_name(m_rhi_device->GetContextRhi()->device, static_cast<VkDeviceMemory>(m_buffer_memory), "vertex_buffer");
+        vulkan_utility::debug::set_buffer_name(static_cast<VkBuffer>(m_buffer), "vertex_buffer");
+        vulkan_utility::debug::set_device_memory_name(static_cast<VkDeviceMemory>(m_buffer_memory), "vertex_buffer");
 
 		return true;
 	}
@@ -160,7 +155,7 @@ namespace Spartan
 		void* ptr = nullptr;
 
         // Map
-        vulkan_common::error::check
+        vulkan_utility::error::check
         (
             vkMapMemory
             (
@@ -201,7 +196,7 @@ namespace Spartan
         mapped_memory_range.memory              = static_cast<VkDeviceMemory>(m_buffer_memory);
         mapped_memory_range.offset              = 0;
         mapped_memory_range.size                = VK_WHOLE_SIZE;
-        return vulkan_common::error::check(vkFlushMappedMemoryRanges(m_rhi_device->GetContextRhi()->device, 1, &mapped_memory_range));
+        return vulkan_utility::error::check(vkFlushMappedMemoryRanges(m_rhi_device->GetContextRhi()->device, 1, &mapped_memory_range));
     }
 }
 #endif

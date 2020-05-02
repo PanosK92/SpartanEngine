@@ -98,7 +98,7 @@ namespace Spartan
 		m_windowed		= true;
 		m_width			= width;
 		m_height		= height;
-		m_flags			= d3d11_common::swap_chain::validate_flags(m_rhi_device, flags);
+		m_flags			= d3d11_utility::swap_chain::validate_flags(flags);
 
 		// Create swap chain
 		{
@@ -115,14 +115,14 @@ namespace Spartan
 			desc.Windowed						= m_windowed ? TRUE : FALSE;
 			desc.BufferDesc.ScanlineOrdering	= DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
 			desc.BufferDesc.Scaling				= DXGI_MODE_SCALING_UNSPECIFIED;
-			desc.SwapEffect						= d3d11_common::swap_chain::get_swap_effect(m_rhi_device, m_flags);
-			desc.Flags							= d3d11_common::swap_chain::get_flags(m_flags);
+			desc.SwapEffect						= d3d11_utility::swap_chain::get_swap_effect(m_flags);
+			desc.Flags							= d3d11_utility::swap_chain::get_flags(m_flags);
 
 			auto swap_chain		= static_cast<IDXGISwapChain*>(m_swap_chain_view);
 			const auto result	= dxgi_factory->CreateSwapChain(m_rhi_device->GetContextRhi()->device, &desc, &swap_chain);
 			if (FAILED(result))
 			{
-				LOG_ERROR("%s", d3d11_common::dxgi_error_to_string(result));
+				LOG_ERROR("%s", d3d11_utility::dxgi_error_to_string(result));
 				return;
 			}
 			m_swap_chain_view = static_cast<void*>(swap_chain);
@@ -135,7 +135,7 @@ namespace Spartan
 			auto result = swap_chain->GetBuffer(0, IID_PPV_ARGS(&backbuffer));
 			if (FAILED(result))
 			{
-				LOG_ERROR("%s", d3d11_common::dxgi_error_to_string(result));
+				LOG_ERROR("%s", d3d11_utility::dxgi_error_to_string(result));
 				return;
 			}
 
@@ -144,7 +144,7 @@ namespace Spartan
 			backbuffer->Release();
 			if (FAILED(result))
 			{
-				LOG_ERROR("%s", d3d11_common::dxgi_error_to_string(result));
+				LOG_ERROR("%s", d3d11_utility::dxgi_error_to_string(result));
 				return;
 			}
 			m_resource_view_renderTarget = static_cast<void*>(render_target_view);
@@ -219,7 +219,7 @@ namespace Spartan
 			    const auto result = swap_chain->ResizeTarget(&dxgi_mode_desc);
 			    if (FAILED(result))
 			    {
-			    	LOG_ERROR("Failed to resize swapchain target, %s.", d3d11_common::dxgi_error_to_string(result));
+			    	LOG_ERROR("Failed to resize swapchain target, %s.", d3d11_utility::dxgi_error_to_string(result));
 			    	return false;
 			    }
             }
@@ -231,11 +231,11 @@ namespace Spartan
 		}
 	
 		// Resize swapchain buffers
-		const UINT d3d11_flags = d3d11_common::swap_chain::get_flags(d3d11_common::swap_chain::validate_flags(m_rhi_device, m_flags));
+		const UINT d3d11_flags = d3d11_utility::swap_chain::get_flags(d3d11_utility::swap_chain::validate_flags(m_flags));
 		auto result = swap_chain->ResizeBuffers(m_buffer_count, static_cast<UINT>(width), static_cast<UINT>(height), d3d11_format[m_format], d3d11_flags);
 		if (FAILED(result))
 		{
-			LOG_ERROR("Failed to resize swapchain buffers, %s.", d3d11_common::dxgi_error_to_string(result));
+			LOG_ERROR("Failed to resize swapchain buffers, %s.", d3d11_utility::dxgi_error_to_string(result));
 			return false;
 		}
 
@@ -244,7 +244,7 @@ namespace Spartan
 		result = swap_chain->GetBuffer(0, IID_PPV_ARGS(&backbuffer));
 		if (FAILED(result))
 		{
-			LOG_ERROR("Failed to get swapchain buffer, %s.", d3d11_common::dxgi_error_to_string(result));
+			LOG_ERROR("Failed to get swapchain buffer, %s.", d3d11_utility::dxgi_error_to_string(result));
 			return false;
 		}
 
@@ -253,7 +253,7 @@ namespace Spartan
 		safe_release(backbuffer);
 		if (FAILED(result))
 		{
-			LOG_ERROR("Failed to create render target view, %s.", d3d11_common::dxgi_error_to_string(result));
+			LOG_ERROR("Failed to create render target view, %s.", d3d11_utility::dxgi_error_to_string(result));
 			return false;
 		}
 		m_resource_view_renderTarget = static_cast<void*>(render_target_view);
@@ -287,7 +287,7 @@ namespace Spartan
         const auto result = ptr_swap_chain->Present(sync_interval, flags);
         if (FAILED(result))
         {
-            LOG_ERROR("Failed to present, %s.", d3d11_common::dxgi_error_to_string(result));
+            LOG_ERROR("Failed to present, %s.", d3d11_utility::dxgi_error_to_string(result));
             return false;
         }
 

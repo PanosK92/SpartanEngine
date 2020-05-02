@@ -75,14 +75,14 @@ namespace Spartan
             query_pool_create_info.queryCount               = static_cast<uint32_t>(m_timestamps.size());
 
             auto query_pool = reinterpret_cast<VkQueryPool*>(&m_query_pool);
-            vulkan_common::error::check(vkCreateQueryPool(rhi_context->device, &query_pool_create_info, nullptr, query_pool));
+            vulkan_utility::error::check(vkCreateQueryPool(rhi_context->device, &query_pool_create_info, nullptr, query_pool));
         }
 
         // Command buffer
-        vulkan_common::command_buffer::create(rhi_context, m_swap_chain->GetCmdPool(), m_cmd_buffer, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+        vulkan_utility::command_buffer::create(m_swap_chain->GetCmdPool(), m_cmd_buffer, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
         // Fence
-        vulkan_common::fence::create(rhi_context, m_cmd_list_consumed_fence);
+        vulkan_utility::fence::create(m_cmd_list_consumed_fence);
 	}
 
 	RHI_CommandList::~RHI_CommandList()
@@ -93,10 +93,10 @@ namespace Spartan
         m_rhi_device->Queue_Wait(RHI_Queue_Graphics);
 
 		// Fence
-        vulkan_common::fence::destroy(rhi_context, m_cmd_list_consumed_fence);
+        vulkan_utility::fence::destroy(m_cmd_list_consumed_fence);
 
         // Command buffer
-        vulkan_common::command_buffer::free(rhi_context, m_swap_chain->GetCmdPool(), m_cmd_buffer);
+        vulkan_utility::command_buffer::free(m_swap_chain->GetCmdPool(), m_cmd_buffer);
 
         // Query pool
         if (m_query_pool)
@@ -128,7 +128,7 @@ namespace Spartan
 		VkCommandBufferBeginInfo begin_info = {};
 		begin_info.sType					= VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		begin_info.flags					= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-		if (!vulkan_common::error::check(vkBeginCommandBuffer(CMD_BUFFER, &begin_info)))
+		if (!vulkan_utility::error::check(vkBeginCommandBuffer(CMD_BUFFER, &begin_info)))
 			return false;
 
         // At this point, it's safe to allow for command recording
@@ -197,7 +197,7 @@ namespace Spartan
         MarkAndProfileEnd(m_pipeline_state);
 
         // End command buffer
-        if (!vulkan_common::error::check(vkEndCommandBuffer(CMD_BUFFER)))
+        if (!vulkan_utility::error::check(vkEndCommandBuffer(CMD_BUFFER)))
             return false;
 
         // Update state
@@ -476,7 +476,7 @@ namespace Spartan
 
     bool RHI_CommandList::Flush()
     {
-        return vulkan_common::fence::wait_reset(m_rhi_device->GetContextRhi(), m_cmd_list_consumed_fence);
+        return vulkan_utility::fence::wait_reset(m_cmd_list_consumed_fence);
     }
 
     uint32_t RHI_CommandList::Gpu_GetMemory(RHI_Device* rhi_device)
@@ -492,7 +492,7 @@ namespace Spartan
 
     uint32_t RHI_CommandList::Gpu_GetMemoryUsed(RHI_Device* rhi_device)
     {
-        if (!rhi_device || !rhi_device->GetContextRhi() || !vulkan_common::functions::get_physical_device_memory_properties_2)
+        if (!rhi_device || !rhi_device->GetContextRhi() || !vulkan_utility::functions::get_physical_device_memory_properties_2)
             return 0;
 
         VkPhysicalDeviceMemoryBudgetPropertiesEXT device_memory_budget_properties = {};
@@ -503,7 +503,7 @@ namespace Spartan
         device_memory_properties.sType                             = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2;
         device_memory_properties.pNext                             = &device_memory_budget_properties;
 
-        vulkan_common::functions::get_physical_device_memory_properties_2(static_cast<VkPhysicalDevice>(rhi_device->GetContextRhi()->device_physical), &device_memory_properties);
+        vulkan_utility::functions::get_physical_device_memory_properties_2(static_cast<VkPhysicalDevice>(rhi_device->GetContextRhi()->device_physical), &device_memory_properties);
 
         return static_cast<uint32_t>(device_memory_budget_properties.heapUsage[0] / 1024 / 1024); // MBs
     }
@@ -605,7 +605,7 @@ namespace Spartan
         // Allowed to markers ?
         if (m_rhi_device->GetContextRhi()->markers && pipeline_state->mark)
         {
-            vulkan_common::debug::begin(CMD_BUFFER, pipeline_state->pass_name, Vector4::Zero);
+            vulkan_utility::debug::begin(CMD_BUFFER, pipeline_state->pass_name, Vector4::Zero);
         }
 
         if (m_pass_index < m_passes_active.size())
@@ -624,7 +624,7 @@ namespace Spartan
         // Allowed markers ?
         if (m_rhi_device->GetContextRhi()->markers && pipeline_state->mark)
         {
-            vulkan_common::debug::end(CMD_BUFFER);
+            vulkan_utility::debug::end(CMD_BUFFER);
         }
 
         // Allowed profiler ?

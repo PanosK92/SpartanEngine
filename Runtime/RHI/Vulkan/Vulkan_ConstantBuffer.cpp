@@ -42,8 +42,8 @@ namespace Spartan
         // Wait in case the buffer is still in use
         m_rhi_device->Queue_WaitAll();
 
-		vulkan_common::buffer::destroy(m_rhi_device->GetContextRhi(), m_buffer);
-		vulkan_common::memory::free(m_rhi_device->GetContextRhi(), m_buffer_memory);
+		vulkan_utility::buffer::destroy(m_buffer);
+		vulkan_utility::memory::free(m_buffer_memory);
 	}
 
 	bool RHI_ConstantBuffer::_Create()
@@ -61,8 +61,8 @@ namespace Spartan
         }
 
 		// Clear previous buffer
-		vulkan_common::buffer::destroy(m_rhi_device->GetContextRhi(), m_buffer);
-		vulkan_common::memory::free(m_rhi_device->GetContextRhi(), m_buffer_memory);
+		vulkan_utility::buffer::destroy(m_buffer);
+		vulkan_utility::memory::free(m_buffer_memory);
 
         // Calculate required alignment based on minimum device offset alignment
         size_t min_ubo_alignment = m_rhi_device->GetContextRhi()->device_properties.limits.minUniformBufferOffsetAlignment;
@@ -73,12 +73,12 @@ namespace Spartan
         m_size_gpu = m_element_count * m_stride;
 
 		// Create buffer
-		if (!vulkan_common::buffer::create(m_rhi_device->GetContextRhi(), m_buffer, m_buffer_memory, m_size_gpu, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
+		if (!vulkan_utility::buffer::create(m_buffer, m_buffer_memory, m_size_gpu, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
 			return false;
 
         // Set debug names
-        vulkan_common::debug::set_buffer_name(m_rhi_device->GetContextRhi()->device, static_cast<VkBuffer>(m_buffer), "constant_buffer");
-        vulkan_common::debug::set_device_memory_name(m_rhi_device->GetContextRhi()->device, static_cast<VkDeviceMemory>(m_buffer_memory), "constant_buffer");
+        vulkan_utility::debug::set_buffer_name(static_cast<VkBuffer>(m_buffer), "constant_buffer");
+        vulkan_utility::debug::set_device_memory_name(static_cast<VkDeviceMemory>(m_buffer_memory), "constant_buffer");
 
 		return true;
 	}
@@ -92,7 +92,7 @@ namespace Spartan
         }
 
         void* ptr = nullptr;
-        vulkan_common::error::check
+        vulkan_utility::error::check
         (
             vkMapMemory
             (
@@ -128,7 +128,7 @@ namespace Spartan
         mapped_memory_range.memory              = static_cast<VkDeviceMemory>(m_buffer_memory);
         mapped_memory_range.offset              = static_cast<uint64_t>(offset_index * m_stride);
         mapped_memory_range.size                = m_stride;
-        return vulkan_common::error::check(vkFlushMappedMemoryRanges(m_rhi_device->GetContextRhi()->device, 1, &mapped_memory_range));
+        return vulkan_utility::error::check(vkFlushMappedMemoryRanges(m_rhi_device->GetContextRhi()->device, 1, &mapped_memory_range));
     }
 }
 #endif

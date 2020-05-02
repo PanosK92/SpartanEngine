@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifdef API_GRAPHICS_D3D11
 //================================
 
-//= INCLUDES ========================
+//= INCLUDES ======================
 #include "../RHI_Device.h"
 #include "../RHI_BlendState.h"
 #include "../RHI_RasterizerState.h"
@@ -33,7 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/Settings.h"
 #include "../../Core/Context.h"
 #include "../../Logging/Log.h"
-//===================================
+//=================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -44,12 +44,14 @@ namespace Spartan
 {
 	RHI_Device::RHI_Device(Context* context)
 	{
-        m_context       = context;
-		m_rhi_context   = make_shared<RHI_Context>();      
-		const static auto multithread_protection = false;
+        m_context                                   = context;
+		m_rhi_context                               = make_shared<RHI_Context>();
+        d3d11_utility::instance::rhi_context        = m_rhi_context.get();
+        d3d11_utility::instance::rhi_device         = this;
+		const static auto multithread_protection    = false;
 
 		// Detect adapters
-		d3d11_common::DetectAdapters(this);
+		d3d11_utility::DetectAdapters();
 
         // Resource limits
         m_rhi_context->max_texture_dimension_2d = D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION;
@@ -116,7 +118,7 @@ namespace Spartan
 
 			if (FAILED(result))
 			{
-				LOG_ERROR("Failed to create device, %s.", d3d11_common::dxgi_error_to_string(result));
+				LOG_ERROR("Failed to create device, %s.", d3d11_utility::dxgi_error_to_string(result));
 				return;
 			}
 		}
@@ -186,7 +188,7 @@ namespace Spartan
             const auto result = m_rhi_context->device_context->QueryInterface(IID_PPV_ARGS(&m_rhi_context->annotation));
             if (FAILED(result))
             {
-                LOG_ERROR("Failed to create ID3DUserDefinedAnnotation for event reporting, %s.", d3d11_common::dxgi_error_to_string(result));
+                LOG_ERROR("Failed to create ID3DUserDefinedAnnotation for event reporting, %s.", d3d11_utility::dxgi_error_to_string(result));
                 return;
             }
         }

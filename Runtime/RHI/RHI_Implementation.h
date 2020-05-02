@@ -394,9 +394,9 @@ namespace Spartan
 
 // HELPERS
 #if defined(API_GRAPHICS_D3D11)
-    #include "D3D11/D3D11_Common.h"
+    #include "D3D11/D3D11_Utility.h"
 #elif defined (API_GRAPHICS_VULKAN)
-    #include "Vulkan/Vulkan_Common.h"
+    #include "Vulkan/Vulkan_Utility.h"
 #endif
 
 #endif // RUNTIME

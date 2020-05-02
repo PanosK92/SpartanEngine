@@ -37,7 +37,7 @@ namespace Spartan
 	void RHI_Sampler::CreateResource()
 	{	
         D3D11_SAMPLER_DESC sampler_desc = {};
-		sampler_desc.Filter			    = d3d11_common::sampler::get_filter(m_filter_min, m_filter_mag, m_filter_mipmap, m_anisotropy_enabled, m_comparison_enabled);
+		sampler_desc.Filter			    = d3d11_utility::sampler::get_filter(m_filter_min, m_filter_mag, m_filter_mipmap, m_anisotropy_enabled, m_comparison_enabled);
 		sampler_desc.AddressU		    = d3d11_sampler_address_mode[m_sampler_address_mode];
 		sampler_desc.AddressV		    = d3d11_sampler_address_mode[m_sampler_address_mode];
 		sampler_desc.AddressW		    = d3d11_sampler_address_mode[m_sampler_address_mode];

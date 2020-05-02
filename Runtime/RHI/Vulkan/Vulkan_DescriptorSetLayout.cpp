@@ -57,10 +57,10 @@ namespace Spartan
             allocate_info.pSetLayouts                   = reinterpret_cast<VkDescriptorSetLayout*>(&m_descriptor_set_layout);
 
             // Allocate		
-            if (!vulkan_common::error::check(vkAllocateDescriptorSets(m_rhi_device->GetContextRhi()->device, &allocate_info, reinterpret_cast<VkDescriptorSet*>(&descriptor_set))))
+            if (!vulkan_utility::error::check(vkAllocateDescriptorSets(m_rhi_device->GetContextRhi()->device, &allocate_info, reinterpret_cast<VkDescriptorSet*>(&descriptor_set))))
                 return nullptr;
 
-            vulkan_common::debug::set_descriptor_set_name(m_rhi_device->GetContextRhi()->device, *reinterpret_cast<VkDescriptorSet*>(&descriptor_set), m_name.c_str());
+            vulkan_utility::debug::set_descriptor_set_name(*reinterpret_cast<VkDescriptorSet*>(&descriptor_set), m_name.c_str());
         }
 
         UpdateDescriptorSet(descriptor_set, m_descriptors);
@@ -162,10 +162,10 @@ namespace Spartan
 
         // Descriptor set layout
         void* descriptor_set_layout = nullptr;
-        if (!vulkan_common::error::check(vkCreateDescriptorSetLayout(m_rhi_device->GetContextRhi()->device, &create_info, nullptr, reinterpret_cast<VkDescriptorSetLayout*>(&descriptor_set_layout))))
+        if (!vulkan_utility::error::check(vkCreateDescriptorSetLayout(m_rhi_device->GetContextRhi()->device, &create_info, nullptr, reinterpret_cast<VkDescriptorSetLayout*>(&descriptor_set_layout))))
             return false;
 
-        vulkan_common::debug::set_descriptor_set_layout_name(m_rhi_device->GetContextRhi()->device, static_cast<VkDescriptorSetLayout>(descriptor_set_layout), m_name.c_str());
+        vulkan_utility::debug::set_descriptor_set_layout_name(static_cast<VkDescriptorSetLayout>(descriptor_set_layout), m_name.c_str());
 
         return descriptor_set_layout;
     }

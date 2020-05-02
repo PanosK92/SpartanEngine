@@ -83,7 +83,7 @@ namespace Spartan
 
 		if (FAILED(result))
 		{
-			LOG_ERROR("Failed to create input layout, %s", d3d11_common::dxgi_error_to_string(result));
+			LOG_ERROR("Failed to create input layout, %s", d3d11_utility::dxgi_error_to_string(result));
 			return false;
 		}
 

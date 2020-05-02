@@ -167,7 +167,7 @@ namespace Spartan
 			{
 				if (FAILED(d3d11_device->CreateVertexShader(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), nullptr, reinterpret_cast<ID3D11VertexShader**>(&shader_view))))
 				{
-                    LOG_ERROR("Failed to create vertex shader, %s", d3d11_common::dxgi_error_to_string(result));
+                    LOG_ERROR("Failed to create vertex shader, %s", d3d11_utility::dxgi_error_to_string(result));
 				}
 
 				// Create input layout
@@ -180,14 +180,14 @@ namespace Spartan
 			{
 				if (FAILED(d3d11_device->CreatePixelShader(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), nullptr, reinterpret_cast<ID3D11PixelShader**>(&shader_view))))
 				{
-					LOG_ERROR("Failed to create pixel shader, %s", d3d11_common::dxgi_error_to_string(result));
+					LOG_ERROR("Failed to create pixel shader, %s", d3d11_utility::dxgi_error_to_string(result));
 				}
 			}
             else if (m_shader_type == RHI_Shader_Compute)
             {
                 if (FAILED(d3d11_device->CreateComputeShader(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), nullptr, reinterpret_cast<ID3D11ComputeShader**>(&shader_view))))
                 {
-                    LOG_ERROR("Failed to create compute shader, %s", d3d11_common::dxgi_error_to_string(result));
+                    LOG_ERROR("Failed to create compute shader, %s", d3d11_utility::dxgi_error_to_string(result));
                 }
             }
 		}

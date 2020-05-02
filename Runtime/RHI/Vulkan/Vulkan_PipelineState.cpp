@@ -48,8 +48,7 @@ namespace Spartan
 
     bool RHI_PipelineState::CreateFrameResources(const RHI_Device* rhi_device)
     {
-        m_rhi_device                = rhi_device;
-        RHI_Context* rhi_context    = rhi_device->GetContextRhi();
+        m_rhi_device = rhi_device;
 
         // Detect all used render target color textures
         vector<RHI_Texture*> used_render_target_color;
@@ -72,11 +71,11 @@ namespace Spartan
         DestroyFrameResources();
 
         // Create a render pass
-        if (!vulkan_common::render_pass::create(rhi_context, target_array, clear_color, render_target_color_count, render_target_depth_texture, clear_depth, clear_stencil, is_swapchain, m_render_pass))
+        if (!vulkan_utility::render_pass::create(target_array, clear_color, render_target_color_count, render_target_depth_texture, clear_depth, clear_stencil, is_swapchain, m_render_pass))
             return false;
 
         // Name the render pass
-        vulkan_common::debug::set_render_pass_name(rhi_context->device, static_cast<VkRenderPass>(m_render_pass), is_swapchain ? "swapchain" : "texture");
+        vulkan_utility::debug::set_render_pass_name(static_cast<VkRenderPass>(m_render_pass), is_swapchain ? "swapchain" : "texture");
 
         // Create frame buffer
         if (is_swapchain)
@@ -85,11 +84,11 @@ namespace Spartan
             for (uint32_t i = 0; i < render_target_swapchain->GetBufferCount(); i++)
             {
                 vector<void*> attachments = { render_target_swapchain->Get_Resource_View(i) };
-                if (!vulkan_common::frame_buffer::create(rhi_context, m_render_pass, attachments, render_target_width, render_target_height, m_frame_buffers[i]))
+                if (!vulkan_utility::frame_buffer::create(m_render_pass, attachments, render_target_width, render_target_height, m_frame_buffers[i]))
                     return false;
 
                 // Name the frame buffer
-                vulkan_common::debug::set_framebuffer_name(rhi_context->device, static_cast<VkFramebuffer>(m_frame_buffers[i]), "swapchain");
+                vulkan_utility::debug::set_framebuffer_name(static_cast<VkFramebuffer>(m_frame_buffers[i]), "swapchain");
             }
 
             return true;
@@ -111,11 +110,11 @@ namespace Spartan
             }
 
             // Create a frame buffer
-            if (!vulkan_common::frame_buffer::create(rhi_context, m_render_pass, attachments, render_target_width, render_target_height, m_frame_buffers[0]))
+            if (!vulkan_utility::frame_buffer::create(m_render_pass, attachments, render_target_width, render_target_height, m_frame_buffers[0]))
                 return false;
             
             // Name the frame buffer
-            vulkan_common::debug::set_framebuffer_name(rhi_context->device, static_cast<VkFramebuffer>(m_frame_buffers[0]), "texture");
+            vulkan_utility::debug::set_framebuffer_name(static_cast<VkFramebuffer>(m_frame_buffers[0]), "texture");
             
             return true;
         }
@@ -133,9 +132,9 @@ namespace Spartan
 
         for (auto& frame_buffer : m_frame_buffers)
         {
-            vulkan_common::frame_buffer::destroy(m_rhi_device->GetContextRhi(), frame_buffer);
+            vulkan_utility::frame_buffer::destroy(frame_buffer);
         }
-        vulkan_common::render_pass::destroy(m_rhi_device->GetContextRhi(), m_render_pass);
+        vulkan_utility::render_pass::destroy(m_render_pass);
     }
 }
 #endif
