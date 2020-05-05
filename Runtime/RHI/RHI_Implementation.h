@@ -152,6 +152,7 @@ static const D3D11_BLEND_OP d3d11_blend_operation[] =
 #define VK_USE_PLATFORM_WIN32_KHR
 #pragma warning(push, 0) // Hide warnings which belong to Vulkan
 #include <vulkan/vulkan.h>
+#include "Vulkan/vk_mem_alloc.h"
 #pragma warning(pop)
 
 static const VkPolygonMode vulkan_polygon_mode[] =
@@ -328,7 +329,8 @@ namespace Spartan
             VkPhysicalDeviceFeatures device_features        = {};
             VkFormat surface_format                         = VK_FORMAT_UNDEFINED;
             VkColorSpaceKHR surface_color_space             = VK_COLOR_SPACE_MAX_ENUM_KHR;
-            std::unordered_map<uint64_t, void*> allocations;
+            VmaAllocator allocator                          = nullptr;
+            std::unordered_map<uint64_t, VmaAllocation> allocations;
 
             // Extensions
             #ifdef DEBUG

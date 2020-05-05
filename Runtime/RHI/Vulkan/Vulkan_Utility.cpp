@@ -48,26 +48,6 @@ namespace Spartan::vulkan_utility
     mutex                                                       command_buffer_immediate::m_mutex_end;
     map<RHI_Queue_Type, command_buffer_immediate::cmdbi_object> command_buffer_immediate::m_objects;
 
-    void globals::initalise_allocator()
-    {
-        VmaAllocatorCreateInfo allocator_info   = {};
-        allocator_info.physicalDevice           = globals::rhi_context->device_physical;
-        allocator_info.device                   = globals::rhi_context->device;
-        allocator_info.instance                 = globals::rhi_context->instance;
-        allocator_info.vulkanApiVersion         = globals::rhi_context->api_version;
-
-        error::check(vmaCreateAllocator(&allocator_info, reinterpret_cast<VmaAllocator*>(&globals::allocator)));
-    }
-
-    void globals::destroy_allocator()
-    {
-        if (globals::allocator != VK_NULL_HANDLE)
-        {
-            vmaDestroyAllocator(static_cast<VmaAllocator>(globals::allocator));
-            globals::allocator = nullptr;
-        }
-    }
-
 	bool image::create(RHI_Texture* texture)
 	{
         // Get format support
@@ -115,7 +95,7 @@ namespace Spartan::vulkan_utility
         // Create image, allocate memory and bind memory to image
         VmaAllocation allocation;
         void* resource = nullptr;
-        if (!error::check(vmaCreateImage(static_cast<VmaAllocator>(globals::allocator), &create_info, &allocation_info, reinterpret_cast<VkImage*>(&resource), &allocation, nullptr)))
+        if (!error::check(vmaCreateImage(globals::rhi_context->allocator, &create_info, &allocation_info, reinterpret_cast<VkImage*>(&resource), &allocation, nullptr)))
             return false;
 
         texture->Set_Resource(resource);
@@ -131,13 +111,14 @@ namespace Spartan::vulkan_utility
         void* resource          = texture->Get_Resource();
         uint64_t allocation_id  = texture->GetId();
 
-        if (!resource || globals::rhi_context->allocations.empty() || globals::rhi_context->allocations.find(allocation_id) == globals::rhi_context->allocations.end())
-            return;
-
-        VmaAllocation allocation = static_cast<VmaAllocation>(globals::rhi_context->allocations[allocation_id]);
-        vmaDestroyImage(static_cast<VmaAllocator>(globals::allocator), static_cast<VkImage>(resource), allocation);
-        globals::rhi_context->allocations.erase(allocation_id);
-        texture->Set_Resource(nullptr);
+        auto it = globals::rhi_context->allocations.find(allocation_id);
+        if (it != globals::rhi_context->allocations.end())
+        {
+            VmaAllocation allocation = it->second;
+            vmaDestroyImage(globals::rhi_context->allocator, static_cast<VkImage>(resource), allocation);
+            globals::rhi_context->allocations.erase(allocation_id);
+            texture->Set_Resource(nullptr);
+        }
     }
 }
 #endif
