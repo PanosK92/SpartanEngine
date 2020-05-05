@@ -46,8 +46,11 @@ namespace Spartan
 	{
         m_context       = context;
 		m_rhi_context   = make_shared<RHI_Context>();
-        vulkan_utility::globals::initialise(this);
 
+        // Pass pointer to the widely used utility namespace
+        vulkan_utility::globals::rhi_device     = this;
+        vulkan_utility::globals::rhi_context    = m_rhi_context.get();
+        
 		// Create instance
 		VkApplicationInfo app_info = {};
 		{
@@ -252,7 +255,7 @@ namespace Spartan
 		}
 
         // Initialise the memory allocator
-        vulkan_utility::globals::initalise_allocator();
+        m_rhi_context->initalise_allocator();
 
 		// Detect and log version
 		string version_major	= to_string(VK_VERSION_MAJOR(app_info.apiVersion));
@@ -274,7 +277,7 @@ namespace Spartan
         // Release resources
 		if (Queue_Wait(RHI_Queue_Graphics))
 		{
-            vulkan_utility::globals::destroy_allocator();
+            m_rhi_context->destroy_allocator();
 
             if (m_rhi_context->debug)
             {
