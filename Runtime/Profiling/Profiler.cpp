@@ -68,7 +68,7 @@ namespace Spartan
             return;
 
         // Get available memory
-        if (m_gpu_name.empty())
+        if (m_gpu_memory_available == 0)
         {
             if (const PhysicalDevice* physical_device = rhi_device->GetPrimaryPhysicalDevice())
             {

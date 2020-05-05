@@ -117,6 +117,7 @@ namespace Spartan
 
         // GPU resources
         void* Get_Resource()                                                const { return m_resource; }
+        void  Set_Resource(void* resource)                                        { m_resource = resource; }
         void* Get_Resource_View(const uint32_t i = 0)                       const { return m_resource_view[i]; }
         void* Get_Resource_View_UnorderedAccess()	                        const { return m_resource_view_unorderedAccess; }
         void* Get_Resource_View_DepthStencil(const uint32_t i = 0)          const { return i < m_resource_view_depthStencil.size() ? m_resource_view_depthStencil[i] : nullptr; }
@@ -146,7 +147,6 @@ namespace Spartan
         void* m_resource_view[2]                = { nullptr, nullptr }; // color/depth, stencil
         void* m_resource_view_unorderedAccess   = nullptr;
         void* m_resource                        = nullptr;
-        void* m_resource_memory                 = nullptr;
         std::array<void*, state_max_render_target_count> m_resource_view_renderTarget           = { nullptr };
         std::array<void*, state_max_render_target_count> m_resource_view_depthStencil           = { nullptr };
         std::array<void*, state_max_render_target_count> m_resource_view_depthStencilReadOnly   = { nullptr };

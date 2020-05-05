@@ -101,8 +101,8 @@ namespace Spartan
 
     void Renderer::CreateRenderTextures()
     {
-        auto width  = static_cast<uint32_t>(m_resolution.x);
-        auto height = static_cast<uint32_t>(m_resolution.y);
+        uint32_t width  = static_cast<uint32_t>(m_resolution.x);
+        uint32_t height = static_cast<uint32_t>(m_resolution.y);
 
         if ((width / 4) == 0 || (height / 4) == 0)
         {

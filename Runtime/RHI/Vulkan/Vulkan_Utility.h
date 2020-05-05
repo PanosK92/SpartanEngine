@@ -39,10 +39,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan::vulkan_utility
 {
-    struct instance
+    struct globals
     {
+        static void initialise(RHI_Device* _rhi_device)
+        {
+            rhi_device  = _rhi_device;
+            rhi_context = _rhi_device->GetContextRhi();
+        };
+
+        static void initalise_allocator();
+        static void destroy_allocator();
+
         static inline RHI_Device* rhi_device;
         static inline RHI_Context* rhi_context;
+        static inline void* allocator;
     };
 
     namespace error
@@ -159,20 +169,20 @@ namespace Spartan::vulkan_utility
             std::vector<VkQueueFamilyProperties> queue_families_properties(queue_family_count);
             vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, queue_families_properties.data());
 
-            if (!get_queue_family_index(VK_QUEUE_GRAPHICS_BIT, queue_families_properties, &instance::rhi_context->queue_graphics_index))
+            if (!get_queue_family_index(VK_QUEUE_GRAPHICS_BIT, queue_families_properties, &globals::rhi_context->queue_graphics_index))
                 return false;
 
-            if (!get_queue_family_index(VK_QUEUE_TRANSFER_BIT, queue_families_properties, &instance::rhi_context->queue_transfer_index))
+            if (!get_queue_family_index(VK_QUEUE_TRANSFER_BIT, queue_families_properties, &globals::rhi_context->queue_transfer_index))
             {
                 LOG_WARNING("Transfer queue not suported, using graphics instead.");
-                instance::rhi_context->queue_transfer_index = instance::rhi_context->queue_graphics_index;
+                globals::rhi_context->queue_transfer_index = globals::rhi_context->queue_graphics_index;
                 return true;
             }
 
-            if (!get_queue_family_index(VK_QUEUE_COMPUTE_BIT, queue_families_properties, &instance::rhi_context->queue_compute_index))
+            if (!get_queue_family_index(VK_QUEUE_COMPUTE_BIT, queue_families_properties, &globals::rhi_context->queue_compute_index))
             {
                 LOG_WARNING("Compute queue not suported, using graphics instead.");
-                instance::rhi_context->queue_compute_index = instance::rhi_context->queue_graphics_index;
+                globals::rhi_context->queue_compute_index = globals::rhi_context->queue_graphics_index;
                 return true;
             }
 
@@ -184,7 +194,7 @@ namespace Spartan::vulkan_utility
             // Register all physical devices
             {
                 uint32_t device_count = 0;
-                if (!error::check(vkEnumeratePhysicalDevices(instance::rhi_context->instance, &device_count, nullptr)))
+                if (!error::check(vkEnumeratePhysicalDevices(globals::rhi_context->instance, &device_count, nullptr)))
                     return false;
 
                 if (device_count == 0)
@@ -194,7 +204,7 @@ namespace Spartan::vulkan_utility
                 }
 
                 std::vector<VkPhysicalDevice> physical_devices(device_count);
-                if (!error::check(vkEnumeratePhysicalDevices(instance::rhi_context->instance, &device_count, physical_devices.data())))
+                if (!error::check(vkEnumeratePhysicalDevices(globals::rhi_context->instance, &device_count, physical_devices.data())))
                     return false;
 
                 // Go through all the devices
@@ -214,7 +224,7 @@ namespace Spartan::vulkan_utility
                     if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU)            type = RHI_PhysicalDevice_Cpu;
 
                     // Let the engine know about it as it will sort all of the devices from best to worst
-                    instance::rhi_device->RegisterPhysicalDevice(PhysicalDevice
+                    globals::rhi_device->RegisterPhysicalDevice(PhysicalDevice
                     (
                         device_properties.apiVersion,                                           // api version
                         device_properties.driverVersion,                                        // driver version
@@ -228,16 +238,16 @@ namespace Spartan::vulkan_utility
             }
 
             // Go through all the devices (sorted from best to worst based on their properties)
-            for (uint32_t device_index = 0; device_index < instance::rhi_device->GetPhysicalDevices().size(); device_index++)
+            for (uint32_t device_index = 0; device_index < globals::rhi_device->GetPhysicalDevices().size(); device_index++)
             {
-                const PhysicalDevice& physical_device_engine = instance::rhi_device->GetPhysicalDevices()[device_index];
+                const PhysicalDevice& physical_device_engine = globals::rhi_device->GetPhysicalDevices()[device_index];
                 VkPhysicalDevice physical_device_vk = static_cast<VkPhysicalDevice>(physical_device_engine.GetData());
 
                 // Get the first device that has a graphics, a compute and a transfer queue
                 if (get_queue_family_indices(physical_device_vk))
                 {
-                    instance::rhi_device->SetPrimaryPhysicalDevice(device_index);
-                    instance::rhi_context->device_physical = physical_device_vk;
+                    globals::rhi_device->SetPrimaryPhysicalDevice(device_index);
+                    globals::rhi_context->device_physical = physical_device_vk;
                     break;
                 }
             }
@@ -251,7 +261,7 @@ namespace Spartan::vulkan_utility
 		inline uint32_t get_type(const VkMemoryPropertyFlags properties, const uint32_t type_bits)
 		{
 			VkPhysicalDeviceMemoryProperties device_memory_properties;
-			vkGetPhysicalDeviceMemoryProperties(instance::rhi_context->device_physical, &device_memory_properties);
+			vkGetPhysicalDeviceMemoryProperties(globals::rhi_context->device_physical, &device_memory_properties);
 
             for (uint32_t i = 0; i < device_memory_properties.memoryTypeCount; i++)
             {
@@ -266,35 +276,14 @@ namespace Spartan::vulkan_utility
         inline bool allocate(VkMemoryPropertyFlags memory_property_flags, VkBuffer* buffer, VkDeviceMemory* device_memory, VkDeviceSize* size = nullptr)
         {
             VkMemoryRequirements memory_requirements;
-			vkGetBufferMemoryRequirements(instance::rhi_context->device, *buffer, &memory_requirements);
+			vkGetBufferMemoryRequirements(globals::rhi_context->device, *buffer, &memory_requirements);
 
             VkMemoryAllocateInfo allocate_info  = {};			
 			allocate_info.sType				    = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 			allocate_info.allocationSize		= memory_requirements.size;
 			allocate_info.memoryTypeIndex		= get_type(memory_property_flags, memory_requirements.memoryTypeBits);
 
-            if (!error::check(vkAllocateMemory(instance::rhi_context->device, &allocate_info, nullptr, device_memory)))
-                return false;
-
-            if (size)
-            {
-                *size = allocate_info.allocationSize;
-            }
-
-            return true;
-        }
-
-        inline bool allocate(VkImage* image, VkDeviceMemory* device_memory, VkDeviceSize* size = nullptr)
-        {
-            VkMemoryRequirements memory_requirements;
-            vkGetImageMemoryRequirements(instance::rhi_context->device, *image, &memory_requirements);
-
-            VkMemoryAllocateInfo allocate_info  = {};
-            allocate_info.sType                 = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-            allocate_info.allocationSize        = memory_requirements.size;
-            allocate_info.memoryTypeIndex       = get_type(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memory_requirements.memoryTypeBits);
-
-            if (!error::check(vkAllocateMemory(instance::rhi_context->device, &allocate_info, nullptr, device_memory)))
+            if (!error::check(vkAllocateMemory(globals::rhi_context->device, &allocate_info, nullptr, device_memory)))
                 return false;
 
             if (size)
@@ -310,7 +299,7 @@ namespace Spartan::vulkan_utility
 			if (!device_memory)
 				return;
 
-			vkFreeMemory(instance::rhi_context->device, static_cast<VkDeviceMemory>(device_memory), nullptr);
+			vkFreeMemory(globals::rhi_context->device, static_cast<VkDeviceMemory>(device_memory), nullptr);
 			device_memory = nullptr;
 		}
 	}
@@ -323,7 +312,7 @@ namespace Spartan::vulkan_utility
             semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
             VkSemaphore* semaphore_vk = reinterpret_cast<VkSemaphore*>(&semaphore);
-            return error::check(vkCreateSemaphore(instance::rhi_context->device, &semaphore_info, nullptr, semaphore_vk));
+            return error::check(vkCreateSemaphore(globals::rhi_context->device, &semaphore_info, nullptr, semaphore_vk));
         }
 
         inline void destroy(void*& semaphore)
@@ -332,7 +321,7 @@ namespace Spartan::vulkan_utility
                 return;
 
             VkSemaphore semaphore_vk = static_cast<VkSemaphore>(semaphore);
-            vkDestroySemaphore(instance::rhi_context->device, semaphore_vk, nullptr);
+            vkDestroySemaphore(globals::rhi_context->device, semaphore_vk, nullptr);
             semaphore = nullptr;
         }
     }
@@ -345,7 +334,7 @@ namespace Spartan::vulkan_utility
             fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 
             VkFence* fence_vk = reinterpret_cast<VkFence*>(&fence);
-            return error::check(vkCreateFence(instance::rhi_context->device, &fence_info, nullptr, fence_vk));
+            return error::check(vkCreateFence(globals::rhi_context->device, &fence_info, nullptr, fence_vk));
         }
 
         inline void destroy(void*& fence)
@@ -354,27 +343,27 @@ namespace Spartan::vulkan_utility
                 return;
 
             VkFence fence_vk = static_cast<VkFence>(fence);
-            vkDestroyFence(instance::rhi_context->device, fence_vk, nullptr);
+            vkDestroyFence(globals::rhi_context->device, fence_vk, nullptr);
             fence = nullptr;
         }
 
         inline bool wait(void*& fence)
         {
             VkFence* fence_vk = reinterpret_cast<VkFence*>(&fence);
-            return error::check(vkWaitForFences(instance::rhi_context->device, 1, fence_vk, true, std::numeric_limits<uint64_t>::max()));
+            return error::check(vkWaitForFences(globals::rhi_context->device, 1, fence_vk, true, std::numeric_limits<uint64_t>::max()));
         }
 
         inline bool reset(void*& fence)
         {
             VkFence* fence_vk = reinterpret_cast<VkFence*>(&fence);
-            return error::check(vkResetFences(instance::rhi_context->device, 1, fence_vk));
+            return error::check(vkResetFences(globals::rhi_context->device, 1, fence_vk));
         }
 
         inline bool wait_reset(void*& fence)
         {
             VkFence* fence_vk = reinterpret_cast<VkFence*>(&fence);
-            return error::check(vkWaitForFences(instance::rhi_context->device, 1, fence_vk, true, std::numeric_limits<uint64_t>::max())) &&
-                error::check(vkResetFences(instance::rhi_context->device, 1, fence_vk));
+            return error::check(vkWaitForFences(globals::rhi_context->device, 1, fence_vk, true, std::numeric_limits<uint64_t>::max())) &&
+                error::check(vkResetFences(globals::rhi_context->device, 1, fence_vk));
         }
     }
 
@@ -384,17 +373,17 @@ namespace Spartan::vulkan_utility
         {
             VkCommandPoolCreateInfo cmd_pool_info   = {};
             cmd_pool_info.sType                     = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-            cmd_pool_info.queueFamilyIndex          = instance::rhi_device->Queue_Index(queue_type);
+            cmd_pool_info.queueFamilyIndex          = globals::rhi_device->Queue_Index(queue_type);
             cmd_pool_info.flags                     = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
             VkCommandPool* cmd_pool_vk = reinterpret_cast<VkCommandPool*>(&cmd_pool);
-            return error::check(vkCreateCommandPool(instance::rhi_device->GetContextRhi()->device, &cmd_pool_info, nullptr, cmd_pool_vk));
+            return error::check(vkCreateCommandPool(globals::rhi_device->GetContextRhi()->device, &cmd_pool_info, nullptr, cmd_pool_vk));
         }
 
         inline void destroy(void*& cmd_pool)
         {
             VkCommandPool cmd_pool_vk = static_cast<VkCommandPool>(cmd_pool);
-            vkDestroyCommandPool(instance::rhi_context->device, cmd_pool_vk, nullptr);
+            vkDestroyCommandPool(globals::rhi_context->device, cmd_pool_vk, nullptr);
             cmd_pool = nullptr;
         }
     }
@@ -412,14 +401,14 @@ namespace Spartan::vulkan_utility
             allocate_info.level                         = level;
             allocate_info.commandBufferCount            = 1;
 
-            return error::check(vkAllocateCommandBuffers(instance::rhi_context->device, &allocate_info, cmd_buffer_vk));
+            return error::check(vkAllocateCommandBuffers(globals::rhi_context->device, &allocate_info, cmd_buffer_vk));
         }
 
         inline void free(void*& cmd_pool, void*& cmd_buffer)
         {
             VkCommandPool cmd_pool_vk       = static_cast<VkCommandPool>(cmd_pool);
             VkCommandBuffer* cmd_buffer_vk  = reinterpret_cast<VkCommandBuffer*>(&cmd_buffer);
-            vkFreeCommandBuffers(instance::rhi_context->device, cmd_pool_vk, 1, cmd_buffer_vk);
+            vkFreeCommandBuffers(globals::rhi_context->device, cmd_pool_vk, 1, cmd_buffer_vk);
         }
 
         inline bool begin(void* cmd_buffer, VkCommandBufferUsageFlagBits usage = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)
@@ -482,10 +471,10 @@ namespace Spartan::vulkan_utility
 
             bool submit()
             {
-                if (!instance::rhi_device->Queue_Submit(queue_type, cmd_buffer))
+                if (!globals::rhi_device->Queue_Submit(queue_type, cmd_buffer))
                     return false;
 
-                if (!instance::rhi_device->Queue_Wait(queue_type))
+                if (!globals::rhi_device->Queue_Wait(queue_type))
                     return false;
 
                 used = false;
@@ -566,7 +555,7 @@ namespace Spartan::vulkan_utility
 			buffer_info.usage				= usage;
 			buffer_info.sharingMode			= VK_SHARING_MODE_EXCLUSIVE;
 
-			if (!error::check(vkCreateBuffer(instance::rhi_context->device, &buffer_info, nullptr, buffer_vk)))
+			if (!error::check(vkCreateBuffer(globals::rhi_context->device, &buffer_info, nullptr, buffer_vk)))
 				return false;
 
             if (!memory::allocate(memory_property_flags, buffer_vk, buffer_memory_vk))
@@ -576,7 +565,7 @@ namespace Spartan::vulkan_utility
             if (data != nullptr)
             {
                 void* mapped;
-                if (error::check(vkMapMemory(instance::rhi_context->device, *buffer_memory_vk, 0, size, 0, &mapped)))
+                if (error::check(vkMapMemory(globals::rhi_context->device, *buffer_memory_vk, 0, size, 0, &mapped)))
                 {
                     memcpy(mapped, data, size);
 
@@ -588,16 +577,16 @@ namespace Spartan::vulkan_utility
                         mappedRange.offset              = 0;
                         mappedRange.size                = size;
 
-                        if (!error::check(vkFlushMappedMemoryRanges(instance::rhi_context->device, 1, &mappedRange)))
+                        if (!error::check(vkFlushMappedMemoryRanges(globals::rhi_context->device, 1, &mappedRange)))
                             return false;
                     }
 
-                    vkUnmapMemory(instance::rhi_context->device, *buffer_memory_vk);
+                    vkUnmapMemory(globals::rhi_context->device, *buffer_memory_vk);
                 }
             }
 
             // Attach the memory to the buffer object
-            if (!error::check(vkBindBufferMemory(instance::rhi_context->device, *buffer_vk, *buffer_memory_vk, 0)))
+            if (!error::check(vkBindBufferMemory(globals::rhi_context->device, *buffer_vk, *buffer_memory_vk, 0)))
                 return false;
 
 			return true;
@@ -608,7 +597,7 @@ namespace Spartan::vulkan_utility
 			if (!_buffer)
 				return;
 
-			vkDestroyBuffer(instance::rhi_context->device, static_cast<VkBuffer>(_buffer), nullptr);
+			vkDestroyBuffer(globals::rhi_context->device, static_cast<VkBuffer>(_buffer), nullptr);
 			_buffer = nullptr;
 		}
 	}
@@ -619,7 +608,7 @@ namespace Spartan::vulkan_utility
         {
             // Get format properties
             VkFormatProperties format_properties;
-            vkGetPhysicalDeviceFormatProperties(instance::rhi_context->device_physical, vulkan_format[format], &format_properties);
+            vkGetPhysicalDeviceFormatProperties(globals::rhi_context->device_physical, vulkan_format[format], &format_properties);
 
             // Check for optimal support
             if (format_properties.optimalTilingFeatures & feature_flags)
@@ -648,20 +637,6 @@ namespace Spartan::vulkan_utility
             }
 
             return flags;
-        }
-
-        inline bool allocate_bind(void*& image, void*& memory, VkDeviceSize* memory_size = nullptr)
-        {
-            VkImage vk_image            = static_cast<VkImage>(image);
-            VkDeviceMemory vk_memory    = static_cast<VkDeviceMemory>(memory);
-
-            if (!memory::allocate(&vk_image, &vk_memory, memory_size))
-                return false;
-
-            if (!error::check(vkBindImageMemory(instance::rhi_context->device, vk_image, vk_memory, 0)))
-                return false;
-
-            return true;
         }
 
         inline VkImageAspectFlags get_aspect_mask(const RHI_Texture* texture, const bool only_depth = false, const bool only_stencil = false)
@@ -694,58 +669,9 @@ namespace Spartan::vulkan_utility
             return aspect_mask;
         }
 
-        inline bool create(RHI_Texture* texture, void*& resource)
-        {
-            // Get format support
-            RHI_Format format                   = texture->GetFormat();
-            bool is_render_target_depth_stencil = texture->IsRenderTargetDepthStencil();
-            VkFormatFeatureFlags format_flags   = is_render_target_depth_stencil ? VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT : VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
-            VkImageTiling image_tiling          = get_format_tiling(format, format_flags);
+        bool create(RHI_Texture* texture);
 
-            // Ensure the format is supported by the GPU
-            if (image_tiling == VK_IMAGE_TILING_MAX_ENUM)
-            {
-                LOG_ERROR("GPU does not support the usage of %s as a %s.", rhi_format_to_string(format), is_render_target_depth_stencil ? "depth-stencil attachment" : "color attachment");
-                return false;
-            }
-
-            // Reject any image which has a non-optimal format
-            if (image_tiling != VK_IMAGE_TILING_OPTIMAL)
-            {
-                LOG_ERROR("Format %s does not support optimal tiling, considering switching to a more efficient format.", rhi_format_to_string(format));
-                return false;
-            }
-
-            // Set layout to preinitialised (required by Vulkan)
-            texture->SetLayout(RHI_Image_Preinitialized);
-
-            VkImageCreateInfo create_info   = {};
-            create_info.sType               = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-            create_info.imageType           = VK_IMAGE_TYPE_2D;
-            create_info.flags               = (texture->GetResourceType() == Resource_TextureCube) ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : 0;
-            create_info.extent.width        = texture->GetWidth();
-            create_info.extent.height       = texture->GetHeight();
-            create_info.extent.depth        = 1;
-            create_info.mipLevels           = texture->GetMiplevels();
-            create_info.arrayLayers         = texture->GetArraySize();
-            create_info.format              = vulkan_format[format];
-            create_info.tiling              = VK_IMAGE_TILING_OPTIMAL;
-            create_info.initialLayout       = vulkan_image_layout[RHI_Image_Preinitialized];
-            create_info.usage               = get_usage_flags(texture);
-            create_info.samples             = VK_SAMPLE_COUNT_1_BIT;
-            create_info.sharingMode         = VK_SHARING_MODE_EXCLUSIVE;
-
-            return error::check(vkCreateImage(instance::rhi_context->device, &create_info, nullptr, reinterpret_cast<VkImage*>(&resource)));
-        }
-
-        inline void destroy(void*& image)
-        {
-            if (!image)
-                return;
-
-            vkDestroyImage(instance::rhi_context->device, static_cast<VkImage>(image), nullptr);
-            image = nullptr;
-        }
+        void destroy(RHI_Texture* texture);
 
         inline VkPipelineStageFlags access_flags_to_pipeline_stage(VkAccessFlags access_flags, const VkPipelineStageFlags enabled_graphics_shader_stages)
         {
@@ -931,7 +857,7 @@ namespace Spartan::vulkan_utility
                 }
                 else if (image_barrier.srcAccessMask != 0)
                 {
-                    source_stage = access_flags_to_pipeline_stage(image_barrier.srcAccessMask, instance::rhi_device->GetEnabledGraphicsStages());
+                    source_stage = access_flags_to_pipeline_stage(image_barrier.srcAccessMask, globals::rhi_device->GetEnabledGraphicsStages());
                 }
                 else
                 {
@@ -947,7 +873,7 @@ namespace Spartan::vulkan_utility
                 }
                 else if (image_barrier.dstAccessMask != 0)
                 {
-                    destination_stage = access_flags_to_pipeline_stage(image_barrier.dstAccessMask, instance::rhi_device->GetEnabledGraphicsStages());
+                    destination_stage = access_flags_to_pipeline_stage(image_barrier.dstAccessMask, globals::rhi_device->GetEnabledGraphicsStages());
                 }
                 else
                 {
@@ -1030,7 +956,7 @@ namespace Spartan::vulkan_utility
 
             // Copy array and mip level data to the staging buffer
             void* data = nullptr;
-            if (error::check(vkMapMemory(instance::rhi_context->device, static_cast<VkDeviceMemory>(staging_buffer_memory), 0, buffer_size, 0, &data)))
+            if (error::check(vkMapMemory(globals::rhi_context->device, static_cast<VkDeviceMemory>(staging_buffer_memory), 0, buffer_size, 0, &data)))
             {
                 for (uint32_t array_index = 0; array_index < array_size; array_index++)
                 {
@@ -1043,7 +969,7 @@ namespace Spartan::vulkan_utility
                     }
                 }
 
-                vkUnmapMemory(instance::rhi_context->device, static_cast<VkDeviceMemory>(staging_buffer_memory));
+                vkUnmapMemory(globals::rhi_context->device, static_cast<VkDeviceMemory>(staging_buffer_memory));
             }
 
             return true;
@@ -1113,7 +1039,7 @@ namespace Spartan::vulkan_utility
                 create_info.components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY;
 
                 VkImageView* image_view_vk = reinterpret_cast<VkImageView*>(&image_view);
-                return error::check(vkCreateImageView(instance::rhi_context->device, &create_info, nullptr, image_view_vk));
+                return error::check(vkCreateImageView(globals::rhi_context->device, &create_info, nullptr, image_view_vk));
             }
 
             inline bool create(void* image, void*& image_view, const RHI_Texture* texture, const uint32_t array_index = 0, const uint32_t array_length = 1, const bool only_depth = false, const bool only_stencil = false)
@@ -1137,7 +1063,7 @@ namespace Spartan::vulkan_utility
                 if (!image_view)
                     return;
 
-                vkDestroyImageView(instance::rhi_context->device, static_cast<VkImageView>(image_view), nullptr);
+                vkDestroyImageView(globals::rhi_context->device, static_cast<VkImageView>(image_view), nullptr);
                 image_view = nullptr;
             }
 
@@ -1147,7 +1073,7 @@ namespace Spartan::vulkan_utility
                 {
                     if (image_view)
                     {
-                        vkDestroyImageView(instance::rhi_context->device, static_cast<VkImageView>(image_view), nullptr);
+                        vkDestroyImageView(globals::rhi_context->device, static_cast<VkImageView>(image_view), nullptr);
                     }
                 }
                 image_views.fill(nullptr);
@@ -1176,7 +1102,7 @@ namespace Spartan::vulkan_utility
                 if (is_swapchain)
                 {
                     // Attachment descriptions
-                    attachment_descriptions[0].format          = instance::rhi_context->surface_format;
+                    attachment_descriptions[0].format          = globals::rhi_context->surface_format;
                     attachment_descriptions[0].samples         = VK_SAMPLE_COUNT_1_BIT;
                     attachment_descriptions[0].loadOp          = (render_target_color_clear[0] == state_dont_clear_color) ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR;
                     attachment_descriptions[0].storeOp         = VK_ATTACHMENT_STORE_OP_STORE;
@@ -1248,7 +1174,7 @@ namespace Spartan::vulkan_utility
             render_pass_info.pDependencies          = nullptr;
 
             VkRenderPass* render_pass_vk = reinterpret_cast<VkRenderPass*>(&render_pass);
-            return error::check(vkCreateRenderPass(instance::rhi_context->device, &render_pass_info, nullptr, render_pass_vk));
+            return error::check(vkCreateRenderPass(globals::rhi_context->device, &render_pass_info, nullptr, render_pass_vk));
         }
 
         inline void destroy(void*& render_pass)
@@ -1257,7 +1183,7 @@ namespace Spartan::vulkan_utility
                 return;
 
             VkRenderPass render_pass_vk = static_cast<VkRenderPass>(render_pass);
-            vkDestroyRenderPass(instance::rhi_context->device, render_pass_vk, nullptr);
+            vkDestroyRenderPass(globals::rhi_context->device, render_pass_vk, nullptr);
             render_pass = nullptr;
         }
     }
@@ -1276,7 +1202,7 @@ namespace Spartan::vulkan_utility
             create_info.layers                  = 1;
 
             VkFramebuffer* frame_buffer_vk = reinterpret_cast<VkFramebuffer*>(&frame_buffer);
-            return error::check(vkCreateFramebuffer(instance::rhi_context->device, &create_info, nullptr, frame_buffer_vk));
+            return error::check(vkCreateFramebuffer(globals::rhi_context->device, &create_info, nullptr, frame_buffer_vk));
         }
 
         inline void destroy(void*& frame_buffer)
@@ -1284,7 +1210,7 @@ namespace Spartan::vulkan_utility
             if (!frame_buffer)
                 return;
 
-            vkDestroyFramebuffer(instance::rhi_context->device, static_cast<VkFramebuffer>(frame_buffer), nullptr);
+            vkDestroyFramebuffer(globals::rhi_context->device, static_cast<VkFramebuffer>(frame_buffer), nullptr);
             frame_buffer = nullptr;
         }
     }
@@ -1294,27 +1220,27 @@ namespace Spartan::vulkan_utility
         inline VkSurfaceCapabilitiesKHR capabilities(const VkSurfaceKHR surface)
         {
             VkSurfaceCapabilitiesKHR surface_capabilities;
-            vkGetPhysicalDeviceSurfaceCapabilitiesKHR(instance::rhi_context->device_physical, surface, &surface_capabilities);
+            vkGetPhysicalDeviceSurfaceCapabilitiesKHR(globals::rhi_context->device_physical, surface, &surface_capabilities);
             return surface_capabilities;
         }
 
         inline std::vector<VkPresentModeKHR> get_present_modes(const VkSurfaceKHR surface)
         {
             uint32_t present_mode_count;
-            vkGetPhysicalDeviceSurfacePresentModesKHR(instance::rhi_context->device_physical, surface, &present_mode_count, nullptr);
+            vkGetPhysicalDeviceSurfacePresentModesKHR(globals::rhi_context->device_physical, surface, &present_mode_count, nullptr);
 
             std::vector<VkPresentModeKHR> surface_present_modes(present_mode_count);
-            vkGetPhysicalDeviceSurfacePresentModesKHR(instance::rhi_context->device_physical, surface, &present_mode_count, &surface_present_modes[0]);
+            vkGetPhysicalDeviceSurfacePresentModesKHR(globals::rhi_context->device_physical, surface, &present_mode_count, &surface_present_modes[0]);
             return surface_present_modes;
         }
 
         inline std::vector<VkSurfaceFormatKHR> formats( const VkSurfaceKHR surface)
         {
             uint32_t format_count;
-            vkGetPhysicalDeviceSurfaceFormatsKHR(instance::rhi_context->device_physical, surface, &format_count, nullptr);
+            vkGetPhysicalDeviceSurfaceFormatsKHR(globals::rhi_context->device_physical, surface, &format_count, nullptr);
 
             std::vector<VkSurfaceFormatKHR> surface_formats(format_count);
-            error::check(vkGetPhysicalDeviceSurfaceFormatsKHR(instance::rhi_context->device_physical, surface, &format_count, &surface_formats[0]));
+            error::check(vkGetPhysicalDeviceSurfaceFormatsKHR(globals::rhi_context->device_physical, surface, &format_count, &surface_formats[0]));
 
             return surface_formats;
         }
@@ -1505,12 +1431,12 @@ namespace Spartan::vulkan_utility
         static void functions::initialize()
         {
             #define get_func(var, def)\
-            var = reinterpret_cast<PFN_##def>(vkGetInstanceProcAddr(static_cast<VkInstance>(instance::rhi_context->instance), #def));\
+            var = reinterpret_cast<PFN_##def>(vkGetInstanceProcAddr(static_cast<VkInstance>(globals::rhi_context->instance), #def));\
             if (!var) LOG_ERROR("Failed to get function pointer for %s", #def);\
 
             get_func(get_physical_device_memory_properties_2, vkGetPhysicalDeviceMemoryProperties2);
 
-            if (instance::rhi_context->debug)
+            if (globals::rhi_context->debug)
             { 
                 /* VK_EXT_debug_utils */
                 get_func(create_messenger,  vkCreateDebugUtilsMessengerEXT);
@@ -1597,7 +1523,7 @@ namespace Spartan::vulkan_utility
             name_info.objectType                    = object_type;
             name_info.objectHandle                  = object;
             name_info.pObjectName                   = name;
-            functions::set_object_name(instance::rhi_context->device, &name_info);
+            functions::set_object_name(globals::rhi_context->device, &name_info);
         }
 
         static void set_object_tag(uint64_t object, VkObjectType objectType, uint64_t name, size_t tagSize, const void* tag)
@@ -1613,7 +1539,7 @@ namespace Spartan::vulkan_utility
             tag_info.tagName                        = name;
             tag_info.tagSize                        = tagSize;
             tag_info.pTag                           = tag;
-            functions::set_object_tag(instance::rhi_context->device, &tag_info);
+            functions::set_object_tag(globals::rhi_context->device, &tag_info);
         }
 
         static void begin(VkCommandBuffer cmd_buffer, const char* name, const Math::Vector4& color)

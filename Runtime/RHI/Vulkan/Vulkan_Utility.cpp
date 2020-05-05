@@ -24,9 +24,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Implementation.h"
 //================================
 
-//= INCLUDES =============
+//= INCLUDES ==============
 #include "Vulkan_Utility.h"
-//========================
+#define VMA_IMPLEMENTATION
+#include "vk_mem_alloc.h"
+//=========================
 
 //= NAMESPACES =====
 using namespace std;
@@ -45,5 +47,97 @@ namespace Spartan::vulkan_utility
     mutex                                                       command_buffer_immediate::m_mutex_begin;
     mutex                                                       command_buffer_immediate::m_mutex_end;
     map<RHI_Queue_Type, command_buffer_immediate::cmdbi_object> command_buffer_immediate::m_objects;
+
+    void globals::initalise_allocator()
+    {
+        VmaAllocatorCreateInfo allocator_info   = {};
+        allocator_info.physicalDevice           = globals::rhi_context->device_physical;
+        allocator_info.device                   = globals::rhi_context->device;
+        allocator_info.instance                 = globals::rhi_context->instance;
+        allocator_info.vulkanApiVersion         = globals::rhi_context->api_version;
+
+        error::check(vmaCreateAllocator(&allocator_info, reinterpret_cast<VmaAllocator*>(&globals::allocator)));
+    }
+
+    void globals::destroy_allocator()
+    {
+        if (globals::allocator != VK_NULL_HANDLE)
+        {
+            vmaDestroyAllocator(static_cast<VmaAllocator>(globals::allocator));
+            globals::allocator = nullptr;
+        }
+    }
+
+	bool image::create(RHI_Texture* texture)
+	{
+        // Get format support
+        RHI_Format format                   = texture->GetFormat();
+        bool is_render_target_depth_stencil = texture->IsRenderTargetDepthStencil();
+        VkFormatFeatureFlags format_flags   = is_render_target_depth_stencil ? VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT : VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
+        VkImageTiling image_tiling          = get_format_tiling(format, format_flags);
+        
+        // Ensure the format is supported by the GPU
+        if (image_tiling == VK_IMAGE_TILING_MAX_ENUM)
+        {
+            LOG_ERROR("GPU does not support the usage of %s as a %s.", rhi_format_to_string(format), is_render_target_depth_stencil ? "depth-stencil attachment" : "color attachment");
+            return false;
+        }
+        
+        // Reject any image which has a non-optimal format
+        if (image_tiling != VK_IMAGE_TILING_OPTIMAL)
+        {
+            LOG_ERROR("Format %s does not support optimal tiling, considering switching to a more efficient format.", rhi_format_to_string(format));
+            return false;
+        }
+        
+        // Set layout to preinitialised (required by Vulkan)
+        texture->SetLayout(RHI_Image_Preinitialized);
+        
+        VkImageCreateInfo create_info   = {};
+        create_info.sType               = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        create_info.imageType           = VK_IMAGE_TYPE_2D;
+        create_info.flags               = (texture->GetResourceType() == Resource_TextureCube) ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : 0;
+        create_info.extent.width        = texture->GetWidth();
+        create_info.extent.height       = texture->GetHeight();
+        create_info.extent.depth        = 1;
+        create_info.mipLevels           = texture->GetMiplevels();
+        create_info.arrayLayers         = texture->GetArraySize();
+        create_info.format              = vulkan_format[format];
+        create_info.tiling              = VK_IMAGE_TILING_OPTIMAL;
+        create_info.initialLayout       = vulkan_image_layout[texture->GetLayout()];
+        create_info.usage               = get_usage_flags(texture);
+        create_info.samples             = VK_SAMPLE_COUNT_1_BIT;
+        create_info.sharingMode         = VK_SHARING_MODE_EXCLUSIVE;
+
+        VmaAllocationCreateInfo allocation_info = {};
+        allocation_info.usage                   = VMA_MEMORY_USAGE_UNKNOWN;
+
+        // Create image, allocate memory and bind memory to image
+        VmaAllocation allocation;
+        void* resource = nullptr;
+        if (!error::check(vmaCreateImage(static_cast<VmaAllocator>(globals::allocator), &create_info, &allocation_info, reinterpret_cast<VkImage*>(&resource), &allocation, nullptr)))
+            return false;
+
+        texture->Set_Resource(resource);
+
+        // Keep allocation reference
+        globals::rhi_context->allocations[texture->GetId()] = allocation;
+
+        return true;
+	}
+
+    void image::destroy(RHI_Texture* texture)
+    {
+        void* resource          = texture->Get_Resource();
+        uint64_t allocation_id  = texture->GetId();
+
+        if (!resource || globals::rhi_context->allocations.empty() || globals::rhi_context->allocations.find(allocation_id) == globals::rhi_context->allocations.end())
+            return;
+
+        VmaAllocation allocation = static_cast<VmaAllocation>(globals::rhi_context->allocations[allocation_id]);
+        vmaDestroyImage(static_cast<VmaAllocator>(globals::allocator), static_cast<VkImage>(resource), allocation);
+        globals::rhi_context->allocations.erase(allocation_id);
+        texture->Set_Resource(nullptr);
+    }
 }
 #endif

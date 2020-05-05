@@ -44,16 +44,14 @@ namespace Spartan
 {
 	RHI_Device::RHI_Device(Context* context)
 	{
-        m_context                               = context;
-		m_rhi_context                           = make_shared<RHI_Context>();
-        vulkan_utility::instance::rhi_context    = m_rhi_context.get();
-        vulkan_utility::instance::rhi_device     = this;
+        m_context       = context;
+		m_rhi_context   = make_shared<RHI_Context>();
+        vulkan_utility::globals::initialise(this);
 
 		// Create instance
 		VkApplicationInfo app_info = {};
 		{
             // Deduce API version to use
-            uint32_t api_version = 0;
             {
                 // Get sdk version
                 uint32_t sdk_version = VK_HEADER_VERSION_COMPLETE;
@@ -76,7 +74,7 @@ namespace Spartan
                 }
 
                 // Choose the version which is supported by both the sdk and the driver
-                api_version = Helper::Min(sdk_version, driver_version);
+                m_rhi_context->api_version = Helper::Min(sdk_version, driver_version);
 
                 // In case the SDK is not supported by the driver, prompt the user to update
                 if (sdk_version > driver_version)
@@ -93,7 +91,7 @@ namespace Spartan
 			app_info.pEngineName		= engine_version;
 			app_info.engineVersion		= VK_MAKE_VERSION(1, 0, 0);
 			app_info.applicationVersion	= VK_MAKE_VERSION(1, 0, 0);
-			app_info.apiVersion			= api_version;
+			app_info.apiVersion			= m_rhi_context->api_version;
 
             // Get the supported extensions out of the requested extensions
             vector<const char*> extensions_supported = vulkan_utility::extension::get_supported_instance(m_rhi_context->extensions_instance);
@@ -253,6 +251,9 @@ namespace Spartan
             vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->queue_transfer_index, 0, reinterpret_cast<VkQueue*>(&m_rhi_context->queue_transfer));
 		}
 
+        // Initialise the memory allocator
+        vulkan_utility::globals::initalise_allocator();
+
 		// Detect and log version
 		string version_major	= to_string(VK_VERSION_MAJOR(app_info.apiVersion));
 		string version_minor	= to_string(VK_VERSION_MINOR(app_info.apiVersion));
@@ -273,6 +274,8 @@ namespace Spartan
         // Release resources
 		if (Queue_Wait(RHI_Queue_Graphics))
 		{
+            vulkan_utility::globals::destroy_allocator();
+
             if (m_rhi_context->debug)
             {
                 vulkan_utility::debug::shutdown(m_rhi_context->instance);
