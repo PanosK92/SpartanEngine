@@ -31,11 +31,7 @@ namespace Spartan
 	class SPARTAN_CLASS RHI_ConstantBuffer : public Spartan_Object
 	{
 	public:
-		RHI_ConstantBuffer(const std::shared_ptr<RHI_Device>& rhi_device, bool is_dynamic = false)
-		{
-			m_rhi_device = rhi_device;
-            m_is_dynamic = is_dynamic;
-		}
+        RHI_ConstantBuffer(const std::shared_ptr<RHI_Device>& rhi_device, bool is_dynamic = false);
 		~RHI_ConstantBuffer();
 
 		template<typename T>
