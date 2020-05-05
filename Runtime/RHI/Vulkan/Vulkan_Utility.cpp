@@ -21,13 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= IMPLEMENTATION ===============
 #ifdef API_GRAPHICS_VULKAN
+#define VMA_IMPLEMENTATION
 #include "../RHI_Implementation.h"
 //================================
 
 //= INCLUDES ==============
 #include "Vulkan_Utility.h"
-#define VMA_IMPLEMENTATION
-#include "vk_mem_alloc.h"
 //=========================
 
 //= NAMESPACES =====

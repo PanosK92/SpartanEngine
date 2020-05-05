@@ -102,32 +102,6 @@ namespace Spartan::vulkan_utility
 
     struct globals
     {
-        static void initialise(RHI_Device* _rhi_device)
-        {
-            rhi_device  = _rhi_device;
-            rhi_context = _rhi_device->GetContextRhi();
-        };
-
-        static inline bool initalise_allocator()
-        {
-            VmaAllocatorCreateInfo allocator_info   = {};
-            allocator_info.physicalDevice           = globals::rhi_context->device_physical;
-            allocator_info.device                   = globals::rhi_context->device;
-            allocator_info.instance                 = globals::rhi_context->instance;
-            allocator_info.vulkanApiVersion         = globals::rhi_context->api_version;
-
-            return error::check(vmaCreateAllocator(&allocator_info, &rhi_context->allocator));
-        }
-
-        static inline void destroy_allocator()
-        {
-            if (rhi_context->allocator != nullptr)
-            {
-                vmaDestroyAllocator(rhi_context->allocator);
-                rhi_context->allocator = nullptr;
-            }
-        }
-
         static inline RHI_Device* rhi_device;
         static inline RHI_Context* rhi_context;
     };

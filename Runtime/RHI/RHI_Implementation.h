@@ -152,7 +152,6 @@ static const D3D11_BLEND_OP d3d11_blend_operation[] =
 #define VK_USE_PLATFORM_WIN32_KHR
 #pragma warning(push, 0) // Hide warnings which belong to Vulkan
 #include <vulkan/vulkan.h>
-#include "Vulkan/vk_mem_alloc.h"
 #pragma warning(pop)
 
 static const VkPolygonMode vulkan_polygon_mode[] =
@@ -305,6 +304,7 @@ static const VkImageLayout vulkan_image_layout[] =
 #if defined (API_GRAPHICS_D3D11)
     #include <stdint.h>
 #elif defined (API_GRAPHICS_VULKAN)
+    #include "Vulkan/vk_mem_alloc.h"
     #include <vector>
     #include <unordered_map>
 #endif
@@ -358,6 +358,9 @@ namespace Spartan
                 std::vector<const char*> validation_layers      = { };
                 std::vector<const char*> extensions_instance    = { VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WIN32_SURFACE_EXTENSION_NAME };
             #endif
+
+                bool initalise_allocator();
+                void destroy_allocator();
         #endif
 
         // Debugging
