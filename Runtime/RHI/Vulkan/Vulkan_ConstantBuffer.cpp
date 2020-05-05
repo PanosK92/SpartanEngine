@@ -37,6 +37,12 @@ using namespace std;
 
 namespace Spartan
 {
+    RHI_ConstantBuffer::RHI_ConstantBuffer(const std::shared_ptr<RHI_Device>& rhi_device, bool is_dynamic /*= false*/)
+    {
+        m_rhi_device = rhi_device;
+        m_is_dynamic = is_dynamic;
+    }
+
 	RHI_ConstantBuffer::~RHI_ConstantBuffer()
 	{
         // Wait in case the buffer is still in use

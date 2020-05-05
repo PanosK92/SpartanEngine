@@ -457,8 +457,15 @@ namespace Spartan
         }
 
         // Update
-        uint64_t offset = entity_index * m_buffer_object_gpu->GetStride();
-        memcpy(reinterpret_cast<std::byte*>(buffer) + offset, reinterpret_cast<std::byte*>(&m_buffer_object_cpu), m_buffer_object_gpu->GetStride());
+        if (m_buffer_object_gpu->IsDynamic())
+        {
+            uint64_t offset = entity_index * m_buffer_object_gpu->GetStride();
+            memcpy(reinterpret_cast<std::byte*>(buffer) + offset, reinterpret_cast<std::byte*>(&m_buffer_object_cpu), m_buffer_object_gpu->GetStride());
+        }
+        else
+        {
+            *buffer = m_buffer_object_cpu;
+        }
         m_buffer_object_cpu_previous = m_buffer_object_cpu;
 
         // Unmap

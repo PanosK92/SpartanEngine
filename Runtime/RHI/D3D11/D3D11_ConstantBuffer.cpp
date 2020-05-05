@@ -36,12 +36,18 @@ using namespace std;
 
 namespace Spartan
 {
+    RHI_ConstantBuffer::RHI_ConstantBuffer(const std::shared_ptr<RHI_Device>& rhi_device, bool is_dynamic /*= false*/)
+    {
+        m_rhi_device = rhi_device;
+        m_is_dynamic = false; // D3D11 doesn't do that
+    }
+
 	RHI_ConstantBuffer::~RHI_ConstantBuffer()
 	{
 		safe_release(*reinterpret_cast<ID3D11Buffer**>(&m_buffer));
 	}
 
-	void* RHI_ConstantBuffer::Map(const uint32_t offset_index /*= 0*/) const
+	void* RHI_ConstantBuffer::Map() const
     {
 		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device_context || !m_buffer)
 		{
@@ -100,10 +106,5 @@ namespace Spartan
 
 		return true;
 	}
-
-    bool RHI_ConstantBuffer::Flush(const uint32_t offset_index /*= 0*/)
-    {
-        return true;
-    }
 }
 #endif
