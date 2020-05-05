@@ -72,7 +72,7 @@ namespace Spartan
         bool use_staging = indices != nullptr;
         if (!use_staging)
         {
-            VmaAllocation allocation = vulkan_utility::buffer::create(m_buffer, m_size_gpu, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+            VmaAllocation allocation = vulkan_utility::buffer::create(m_buffer, m_size_gpu, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, true);
             if (!allocation)
                 return false;
 
@@ -86,7 +86,7 @@ namespace Spartan
 
             // Create staging/source buffer and copy the indices to it
             void* staging_buffer = nullptr;
-            VmaAllocation allocation_staging = vulkan_utility::buffer::create(staging_buffer, m_size_gpu, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, indices);
+            VmaAllocation allocation_staging = vulkan_utility::buffer::create(staging_buffer, m_size_gpu, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, false, indices);
             if (!allocation_staging)
                 return false;
 
