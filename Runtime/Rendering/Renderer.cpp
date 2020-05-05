@@ -449,7 +449,7 @@ namespace Spartan
         }
 
         // Map  
-        BufferObject* buffer = static_cast<BufferObject*>(m_buffer_object_gpu->Map(entity_index));
+        BufferObject* buffer = static_cast<BufferObject*>(m_buffer_object_gpu->Map());
         if (!buffer)
         {
             LOG_ERROR("Failed to map buffer");
@@ -457,7 +457,8 @@ namespace Spartan
         }
 
         // Update
-        *buffer = m_buffer_object_cpu;
+        uint64_t offset = entity_index * m_buffer_object_gpu->GetStride();
+        memcpy(reinterpret_cast<std::byte*>(buffer) + offset, reinterpret_cast<std::byte*>(&m_buffer_object_cpu), m_buffer_object_gpu->GetStride());
         m_buffer_object_cpu_previous = m_buffer_object_cpu;
 
         // Unmap

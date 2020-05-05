@@ -67,7 +67,6 @@ namespace Spartan
 
 		void* Map() const;
 		bool Unmap() const;
-        bool Flush() const;
 
         void* GetResource()		    const { return m_buffer; }
         uint32_t GetIndexCount()	const { return m_index_count; }
@@ -82,8 +81,9 @@ namespace Spartan
 		std::shared_ptr<RHI_Device> m_rhi_device;
 
 		// API
-		void* m_buffer			= nullptr;
-		void* m_buffer_memory	= nullptr;
-        bool m_mappable         = false;
+		void* m_buffer	        = nullptr;
+        void* m_allocation      = nullptr;
+        bool m_is_mappable      = true;
+        bool m_is_host_coherent = true;
 	};
 }

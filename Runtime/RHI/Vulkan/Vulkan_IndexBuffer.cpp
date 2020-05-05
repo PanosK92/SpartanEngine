@@ -43,7 +43,6 @@ namespace Spartan
         m_rhi_device->Queue_WaitAll();
 
 		vulkan_utility::buffer::destroy(m_buffer);
-		vulkan_utility::memory::free(m_buffer_memory);
 	}
 
 	bool RHI_IndexBuffer::_Create(const void* indices)
@@ -64,52 +63,39 @@ namespace Spartan
 
 		// Clear previous buffer
 		vulkan_utility::buffer::destroy(m_buffer);
-		vulkan_utility::memory::free(m_buffer_memory);
 
-        bool use_staging    = indices != nullptr;
-        m_mappable          = !use_staging;
+        // Memory in Vulkan doesn't need to be unmapped before using it on GPU, but unless a
+        // memory type has VK_MEMORY_PROPERTY_HOST_COHERENT_BIT flag set, you need to manually
+        // invalidate cache before reading of mapped pointer and flush cache after writing to
+        // mapped pointer. Map/unmap operations don't do that automatically.
 
-        // The reason we use staging is because VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT is the most optimal memory property.
-        // At the same time, local memory cannot use Map() and Unamap(), so we disable that.
-
+        bool use_staging = indices != nullptr;
         if (!use_staging)
         {
-            // Create buffer
-            if (!vulkan_utility::buffer::create(
-                m_buffer,
-                m_buffer_memory,
-                m_size_gpu,
-                VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-                )
-            ) return false;
+            VmaAllocation allocation = vulkan_utility::buffer::create(m_buffer, m_size_gpu, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+            if (!allocation)
+                return false;
+
+            m_allocation        = static_cast<void*>(allocation);
+            m_is_mappable       = true;
+            m_is_host_coherent  = true;
         }
         else
         {
+            // The reason we use staging is because memory with VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT is not mappable but it's fast, we want that.
+
             // Create staging/source buffer and copy the indices to it
-            void* staging_buffer        = nullptr;
-            void* staging_buffer_memory = nullptr;
-            if (!vulkan_utility::buffer::create(
-                staging_buffer,
-                staging_buffer_memory,
-                m_size_gpu,
-                VK_BUFFER_USAGE_TRANSFER_SRC_BIT,                                               // usage
-                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,     // memory
-                indices
-                )
-            ) return false;
+            void* staging_buffer = nullptr;
+            VmaAllocation allocation_staging = vulkan_utility::buffer::create(staging_buffer, m_size_gpu, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, indices);
+            if (!allocation_staging)
+                return false;
 
             // Create destination buffer
-            if (!vulkan_utility::buffer::create(
-                m_buffer,
-                m_buffer_memory,
-                m_size_gpu,
-                VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,    // usage
-                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT                                     // memory
-                )
-            ) return false;
+            VmaAllocation allocation = vulkan_utility::buffer::create(m_buffer, m_size_gpu, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+            if (!allocation)
+                return false;
 
-            // Copy from staging buffer
+            // Copy staging buffer to destination buffer
             {
                 // Create command buffer
                 VkCommandBuffer cmd_buffer = vulkan_utility::command_buffer_immediate::begin(RHI_Queue_Transfer);
@@ -126,77 +112,71 @@ namespace Spartan
                 if (!vulkan_utility::command_buffer_immediate::end(RHI_Queue_Transfer))
                     return false;
 
-                // Destroy staging resources
+                // Destroy staging buffer
                 vulkan_utility::buffer::destroy(staging_buffer);
-                vulkan_utility::memory::free(staging_buffer_memory);
             }
+
+            m_allocation        = static_cast<void*>(allocation);
+            m_is_mappable       = false;
+            m_is_host_coherent  = false;
         }
 
-        // Set debug names
+        // Set debug name
         vulkan_utility::debug::set_buffer_name(static_cast<VkBuffer>(m_buffer), "index_buffer");
-        vulkan_utility::debug::set_device_memory_name(static_cast<VkDeviceMemory>(m_buffer_memory), "index_buffer");
 
 		return true;
 	}
 
 	void* RHI_IndexBuffer::Map() const
 	{
-		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device || !m_buffer_memory)
+		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device || !m_allocation)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return nullptr;
 		}
 
-        if (!m_mappable)
+        if (!m_is_mappable)
         {
-            LOG_ERROR("This buffer can only be updated via staging");
+            LOG_ERROR("Not mappable, can only be updated via staging");
             return nullptr;
         }
 
 		void* ptr = nullptr;
 
-        vulkan_utility::error::check
-        (
-            vkMapMemory
-            (
-                m_rhi_device->GetContextRhi()->device,
-                static_cast<VkDeviceMemory>(m_buffer_memory),
-                0,
-                m_size_gpu,
-                0,
-                reinterpret_cast<void**>(&ptr)
-            )
-        );
+        if (m_is_mappable)
+        {
+            if (!m_is_host_coherent)
+            {
+                if (!vulkan_utility::error::check(vmaInvalidateAllocation(m_rhi_device->GetContextRhi()->allocator, static_cast<VmaAllocation>(m_allocation), 0, m_size_gpu)))
+                    return nullptr;
+            }
+
+            vulkan_utility::error::check(vmaMapMemory(m_rhi_device->GetContextRhi()->allocator, static_cast<VmaAllocation>(m_allocation), reinterpret_cast<void**>(&ptr)));
+        }
 
 		return ptr;
 	}
 
 	bool RHI_IndexBuffer::Unmap() const
 	{
-		if (!m_buffer_memory)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return false;
-		}
+        if (!m_allocation)
+            return true;
 
-        if (!m_mappable)
+        if (!m_is_mappable)
         {
-            LOG_ERROR("This buffer can only be updated via staging");
-            return nullptr;
+            LOG_ERROR("Not mappable, can only be updated via staging");
+            return false;
         }
 
-		vkUnmapMemory(m_rhi_device->GetContextRhi()->device, static_cast<VkDeviceMemory>(m_buffer_memory));
-		return true;
-	}
+        if (!m_is_host_coherent)
+        {
+            if (!vulkan_utility::error::check(vmaFlushAllocation(m_rhi_device->GetContextRhi()->allocator, static_cast<VmaAllocation>(m_allocation), 0, m_size_gpu)))
+                return false;
+        }
 
-    bool RHI_IndexBuffer::Flush() const
-    {
-        VkMappedMemoryRange mapped_memory_range = {};
-        mapped_memory_range.sType               = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
-        mapped_memory_range.memory              = static_cast<VkDeviceMemory>(m_buffer_memory);
-        mapped_memory_range.offset              = 0;
-        mapped_memory_range.size                = VK_WHOLE_SIZE;
-        return vulkan_utility::error::check(vkFlushMappedMemoryRanges(m_rhi_device->GetContextRhi()->device, 1, &mapped_memory_range));
-    }
+        vmaUnmapMemory(m_rhi_device->GetContextRhi()->allocator, static_cast<VmaAllocation>(m_allocation));
+
+        return true;
+	}
 }
 #endif
