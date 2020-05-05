@@ -119,5 +119,89 @@ namespace Spartan::vulkan_utility
             texture->Set_Resource(nullptr);
         }
     }
+
+    VmaAllocation buffer::create(void*& _buffer, const uint64_t size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memory_property_flags, const void* data /*= nullptr*/)
+    {
+        VmaAllocator allocator = globals::rhi_context->allocator;
+
+        VkBufferCreateInfo buffer_create_info	= {};
+        buffer_create_info.sType				= VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        buffer_create_info.size				    = size;
+        buffer_create_info.usage				= usage;
+        buffer_create_info.sharingMode			= VK_SHARING_MODE_EXCLUSIVE;
+
+        VmaAllocationCreateInfo allocation_create_info  = {};
+        allocation_create_info.usage                    = VMA_MEMORY_USAGE_UNKNOWN;
+        allocation_create_info.preferredFlags           = memory_property_flags;
+
+        // Create buffer, allocate memory and bind it to the buffer
+        VmaAllocation allocation = nullptr;
+        VmaAllocationInfo allocation_info;
+        if (!error::check(vmaCreateBuffer(allocator, &buffer_create_info, &allocation_create_info, reinterpret_cast<VkBuffer*>(&_buffer), &allocation, &allocation_info)))
+            return false;
+
+        // Keep allocation reference
+        globals::rhi_context->allocations[reinterpret_cast<uint64_t>(_buffer)] = allocation;
+
+        // If a pointer to the buffer data has been passed, map the buffer and copy over the data
+        if (data != nullptr)
+        {
+            VkMemoryPropertyFlags memory_flags;
+            vmaGetMemoryTypeProperties(allocator, allocation_info.memoryType, &memory_flags);
+
+            bool is_mappable        = (memory_flags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0;
+            bool is_host_coherent   = (memory_flags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) != 0;
+
+            // Memory in Vulkan doesn't need to be unmapped before using it on GPU, but unless a
+            // memory type has VK_MEMORY_PROPERTY_HOST_COHERENT_BIT flag set, you need to manually
+            // invalidate cache before reading of mapped pointer and flush cache after writing to
+            // mapped pointer. Map/unmap operations don't do that automatically.
+
+            if (is_mappable)
+            {
+                if (!is_host_coherent)
+                {
+                    if (!error::check(vmaInvalidateAllocation(allocator, allocation, 0, size)))
+                        return allocation;
+                }
+
+                void* mapped = nullptr;
+                if (error::check(vmaMapMemory(allocator, allocation, &mapped)))
+                {
+                    memcpy(mapped, data, size);
+
+                    if (!is_host_coherent)
+                    {
+                        if (!error::check(vmaFlushAllocation(allocator, allocation, 0, size)))
+                            return allocation;
+                    }
+
+                    vmaUnmapMemory(allocator, allocation);
+                }
+            }
+            else
+            {
+                LOG_ERROR("Allocation ended up in non-mappable memory. You need to create CPU-side buffer in VMA_MEMORY_USAGE_CPU_ONLY and make a transfer.");
+            }
+        }
+
+        return allocation;
+    }
+
+    void buffer::destroy(void*& _buffer)
+    {
+        if (!_buffer)
+            return;
+
+        uint64_t allocation_id = reinterpret_cast<uint64_t>(_buffer);
+        auto it = globals::rhi_context->allocations.find(allocation_id);
+        if (it != globals::rhi_context->allocations.end())
+        {
+            VmaAllocation allocation = it->second;
+            vmaDestroyBuffer(globals::rhi_context->allocator, static_cast<VkBuffer>(_buffer), allocation);
+            globals::rhi_context->allocations.erase(allocation_id);
+            _buffer = nullptr;
+        }
+    }
 }
 #endif

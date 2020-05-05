@@ -182,14 +182,20 @@ namespace Spartan
 			}
 		}
 
-		const auto vertex_buffer = static_cast<RHI_Vertex_PosTex*>(m_vertex_buffer->Map());
-		copy(vertices.begin(), vertices.end(), vertex_buffer);
-		const auto vertex = m_vertex_buffer->Unmap();
+        bool mapped_vertex = false;
+        if (const auto vertex_buffer = static_cast<RHI_Vertex_PosTex*>(m_vertex_buffer->Map()))
+        {
+            copy(vertices.begin(), vertices.end(), vertex_buffer);
+            mapped_vertex = m_vertex_buffer->Unmap();
+        }
 
-		const auto index_buffer = static_cast<uint32_t*>(m_index_buffer->Map());
-		copy(indices.begin(), indices.end(), index_buffer);
-		const auto index = m_index_buffer->Unmap();
+        bool mapped_index = false;
+        if (const auto index_buffer = static_cast<uint32_t*>(m_index_buffer->Map()))
+        {
+            copy(indices.begin(), indices.end(), index_buffer);
+            mapped_index = m_index_buffer->Unmap();
+        }
 
-		return vertex && index;
+		return mapped_vertex && mapped_index;
 	}
 }

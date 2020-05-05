@@ -246,54 +246,6 @@ namespace Spartan::vulkan_utility
         }
     }
 
-	namespace memory
-	{
-		inline uint32_t get_type(const VkMemoryPropertyFlags properties, const uint32_t type_bits)
-		{
-			VkPhysicalDeviceMemoryProperties device_memory_properties;
-			vkGetPhysicalDeviceMemoryProperties(globals::rhi_context->device_physical, &device_memory_properties);
-
-            for (uint32_t i = 0; i < device_memory_properties.memoryTypeCount; i++)
-            {
-                if ((device_memory_properties.memoryTypes[i].propertyFlags & properties) == properties && type_bits & (1 << i))
-                    return i;
-            }
-
-            // Unable to find memoryType
-			return std::numeric_limits<uint32_t>::max(); 
-		}
-
-        inline bool allocate(VkMemoryPropertyFlags memory_property_flags, VkBuffer* buffer, VkDeviceMemory* device_memory, VkDeviceSize* size = nullptr)
-        {
-            VkMemoryRequirements memory_requirements;
-			vkGetBufferMemoryRequirements(globals::rhi_context->device, *buffer, &memory_requirements);
-
-            VkMemoryAllocateInfo allocate_info  = {};			
-			allocate_info.sType				    = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-			allocate_info.allocationSize		= memory_requirements.size;
-			allocate_info.memoryTypeIndex		= get_type(memory_property_flags, memory_requirements.memoryTypeBits);
-
-            if (!error::check(vkAllocateMemory(globals::rhi_context->device, &allocate_info, nullptr, device_memory)))
-                return false;
-
-            if (size)
-            {
-                *size = allocate_info.allocationSize;
-            }
-
-            return true;
-        }
-
-		inline void free(void*& device_memory)
-		{
-			if (!device_memory)
-				return;
-
-			vkFreeMemory(globals::rhi_context->device, static_cast<VkDeviceMemory>(device_memory), nullptr);
-			device_memory = nullptr;
-		}
-	}
-
     namespace semaphore
     {
         inline bool create(void*& semaphore)
@@ -534,62 +486,8 @@ namespace Spartan::vulkan_utility
 
 	namespace buffer
 	{
-		inline bool create(void*& buffer, void*& device_memory, const uint64_t size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memory_property_flags, const void* data = nullptr)
-		{
-            VkBuffer* buffer_vk              = reinterpret_cast<VkBuffer*>(&buffer);
-            VkDeviceMemory* buffer_memory_vk = reinterpret_cast<VkDeviceMemory*>(&device_memory);
-
-			VkBufferCreateInfo buffer_info	= {};
-			buffer_info.sType				= VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-			buffer_info.size				= size;
-			buffer_info.usage				= usage;
-			buffer_info.sharingMode			= VK_SHARING_MODE_EXCLUSIVE;
-
-			if (!error::check(vkCreateBuffer(globals::rhi_context->device, &buffer_info, nullptr, buffer_vk)))
-				return false;
-
-            if (!memory::allocate(memory_property_flags, buffer_vk, buffer_memory_vk))
-                return false;
-
-            // If a pointer to the buffer data has been passed, map the buffer and copy over the data
-            if (data != nullptr)
-            {
-                void* mapped;
-                if (error::check(vkMapMemory(globals::rhi_context->device, *buffer_memory_vk, 0, size, 0, &mapped)))
-                {
-                    memcpy(mapped, data, size);
-
-                    // If host coherency hasn't been requested, do a manual flush to make writes visible
-                    if ((memory_property_flags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == 0)
-                    {
-                        VkMappedMemoryRange mappedRange = {};
-                        mappedRange.memory              = *buffer_memory_vk;
-                        mappedRange.offset              = 0;
-                        mappedRange.size                = size;
-
-                        if (!error::check(vkFlushMappedMemoryRanges(globals::rhi_context->device, 1, &mappedRange)))
-                            return false;
-                    }
-
-                    vkUnmapMemory(globals::rhi_context->device, *buffer_memory_vk);
-                }
-            }
-
-            // Attach the memory to the buffer object
-            if (!error::check(vkBindBufferMemory(globals::rhi_context->device, *buffer_vk, *buffer_memory_vk, 0)))
-                return false;
-
-			return true;
-		}
-
-		inline void destroy(void*& _buffer)
-		{
-			if (!_buffer)
-				return;
-
-			vkDestroyBuffer(globals::rhi_context->device, static_cast<VkBuffer>(_buffer), nullptr);
-			_buffer = nullptr;
-		}
+        VmaAllocation create(void*& _buffer, const uint64_t size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memory_property_flags, const void* data = nullptr);
+        void destroy(void*& _buffer);
 	}
 
     namespace image
@@ -894,7 +792,7 @@ namespace Spartan::vulkan_utility
             return set_layout(cmd_buffer, image, VK_IMAGE_ASPECT_COLOR_BIT, 1, 1, swapchain->GetLayout(), layout_new);
         }
 
-        inline bool copy_to_staging_buffer(RHI_Texture* texture, std::vector<VkBufferImageCopy>& buffer_image_copies, void*& staging_buffer, void*& staging_buffer_memory)
+        inline bool copy_to_staging_buffer(RHI_Texture* texture, std::vector<VkBufferImageCopy>& buffer_image_copies, void*& staging_buffer)
         {
             if (!texture->HasData())
             {
@@ -936,17 +834,11 @@ namespace Spartan::vulkan_utility
             }
 
             // Create staging buffer
-            if (!buffer::create(
-                staging_buffer,
-                staging_buffer_memory,
-                buffer_size,
-                VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-            )) return false;
+            VmaAllocation allocation = buffer::create(staging_buffer, buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
             // Copy array and mip level data to the staging buffer
             void* data = nullptr;
-            if (error::check(vkMapMemory(globals::rhi_context->device, static_cast<VkDeviceMemory>(staging_buffer_memory), 0, buffer_size, 0, &data)))
+            if (error::check(vmaMapMemory(globals::rhi_context->allocator, allocation, &data)))
             {
                 for (uint32_t array_index = 0; array_index < array_size; array_index++)
                 {
@@ -959,7 +851,7 @@ namespace Spartan::vulkan_utility
                     }
                 }
 
-                vkUnmapMemory(globals::rhi_context->device, static_cast<VkDeviceMemory>(staging_buffer_memory));
+                vmaUnmapMemory(globals::rhi_context->allocator, allocation);
             }
 
             return true;
@@ -968,10 +860,9 @@ namespace Spartan::vulkan_utility
         inline bool stage(RHI_Texture* texture)
         {
             // Copy the texture's data to a staging buffer
-            void* staging_buffer        = nullptr;
-            void* staging_buffer_memory = nullptr;
+            void* staging_buffer = nullptr;
             std::vector<VkBufferImageCopy> buffer_image_copies(texture->GetMiplevels());
-            if (!copy_to_staging_buffer(texture, buffer_image_copies, staging_buffer, staging_buffer_memory))
+            if (!copy_to_staging_buffer(texture, buffer_image_copies, staging_buffer))
                 return false;
 
             // Copy the staging buffer into the image
@@ -998,9 +889,8 @@ namespace Spartan::vulkan_utility
                 if (!command_buffer_immediate::end(RHI_Queue_Graphics))
                     return false;
 
-                // Free staging resources
+                // Free staging buffer
                 buffer::destroy(staging_buffer);
-                memory::free(staging_buffer_memory);
 
                 // Let the texture know about it's new layout
                 texture->SetLayout(layout);

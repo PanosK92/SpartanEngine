@@ -48,9 +48,8 @@ namespace Spartan
             return _Create();
 		}
 
-		void* Map(const uint32_t offset_index = 0) const;
+		void* Map() const;
 		bool Unmap() const;
-        bool Flush(const uint32_t offset_index = 0);
 
 		void* GetResource()         const { return m_buffer; }
         uint32_t GetStride()        const { return m_stride; }
@@ -77,8 +76,8 @@ namespace Spartan
         uint32_t m_offset_dynamic_index = 0;
 
 		// API
-		void* m_buffer			= nullptr;
-		void* m_buffer_memory	= nullptr;
+		void* m_buffer      = nullptr;
+        void* m_allocation  = nullptr;
 
         // Dependencies
         std::shared_ptr<RHI_Device> m_rhi_device;
