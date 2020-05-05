@@ -81,8 +81,7 @@ namespace Spartan
             vulkan_utility::image::view::destroy(m_resource_view_depthStencil[i]);
             vulkan_utility::image::view::destroy(m_resource_view_renderTarget[i]);
         }
-        vulkan_utility::image::destroy(m_resource);
-		vulkan_utility::memory::free(m_resource_memory);
+        vulkan_utility::image::destroy(this);
 	}
 
     void RHI_Texture::SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* command_list /*= nullptr*/)
@@ -103,18 +102,10 @@ namespace Spartan
 	bool RHI_Texture2D::CreateResourceGpu()
 	{
         // Create image
+        if (!vulkan_utility::image::create(this))
         {
-            if (!vulkan_utility::image::create(this, m_resource))
-            {
-                LOG_ERROR("Failed to create image");
-                return false;
-            }
-
-            if (!vulkan_utility::image::allocate_bind(m_resource, m_resource_memory))
-            {
-                LOG_ERROR("Failed to allocate and bind image memory");
-                return false;
-            }
+            LOG_ERROR("Failed to create image");
+            return false;
         }
 
         // If the texture has any data, stage it
@@ -214,25 +205,16 @@ namespace Spartan
             vulkan_utility::image::view::destroy(m_resource_view_depthStencil[i]);
             vulkan_utility::image::view::destroy(m_resource_view_renderTarget[i]);
         }
-        vulkan_utility::image::destroy(m_resource);
-        vulkan_utility::memory::free(m_resource_memory);
+        vulkan_utility::image::destroy(this);
 	}
 
 	bool RHI_TextureCube::CreateResourceGpu()
 	{
         // Create image
+        if (!vulkan_utility::image::create(this))
         {
-            if (!vulkan_utility::image::create(this, m_resource))
-            {
-                LOG_ERROR("Failed to create image");
-                return false;
-            }
-
-            if (!vulkan_utility::image::allocate_bind(m_resource, m_resource_memory))
-            {
-                LOG_ERROR("Failed to allocate and bind image memory");
-                return false;
-            }
+            LOG_ERROR("Failed to create image");
+            return false;
         }
 
         // If the texture has any data, stage it

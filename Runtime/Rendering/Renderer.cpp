@@ -248,8 +248,7 @@ namespace Spartan
 	void Renderer::SetResolution(uint32_t width, uint32_t height)
 	{
 		// Return if resolution is invalid
-        const uint32_t max_res = m_rhi_device->GetContextRhi()->max_texture_dimension_2d;
-		if (width == 0 || width > max_res || height == 0 || height > max_res)
+		if (!m_rhi_device->ValidateResolution(width, height))
 		{
 			LOG_WARNING("%dx%d is an invalid resolution", width, height);
 			return;

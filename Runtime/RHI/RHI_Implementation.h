@@ -305,6 +305,7 @@ static const VkImageLayout vulkan_image_layout[] =
     #include <stdint.h>
 #elif defined (API_GRAPHICS_VULKAN)
     #include <vector>
+    #include <unordered_map>
 #endif
 
 // RHI CONTEXT - All
@@ -319,6 +320,7 @@ namespace Spartan
         #endif
 
         #if defined(API_GRAPHICS_VULKAN)
+            uint32_t api_version                            = 0;
             VkInstance instance                             = nullptr;
             VkPhysicalDevice device_physical                = nullptr;
             VkDevice device                                 = nullptr;
@@ -326,6 +328,7 @@ namespace Spartan
             VkPhysicalDeviceFeatures device_features        = {};
             VkFormat surface_format                         = VK_FORMAT_UNDEFINED;
             VkColorSpaceKHR surface_color_space             = VK_COLOR_SPACE_MAX_ENUM_KHR;
+            std::unordered_map<uint64_t, void*> allocations;
 
             // Extensions
             #ifdef DEBUG
