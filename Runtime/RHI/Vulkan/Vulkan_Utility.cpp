@@ -89,7 +89,7 @@ namespace Spartan::vulkan_utility
         create_info.sharingMode         = VK_SHARING_MODE_EXCLUSIVE;
 
         VmaAllocationCreateInfo allocation_info = {};
-        allocation_info.usage                   = VMA_MEMORY_USAGE_UNKNOWN;
+        allocation_info.usage                   = VMA_MEMORY_USAGE_GPU_ONLY;
 
         // Create image, allocate memory and bind memory to image
         VmaAllocation allocation;
@@ -120,7 +120,7 @@ namespace Spartan::vulkan_utility
         }
     }
 
-    VmaAllocation buffer::create(void*& _buffer, const uint64_t size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memory_property_flags, const void* data /*= nullptr*/)
+    VmaAllocation buffer::create(void*& _buffer, const uint64_t size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memory_property_flags, const bool written_frequently /*= false*/, const void* data /*= nullptr*/)
     {
         VmaAllocator allocator = globals::rhi_context->allocator;
 
@@ -130,8 +130,10 @@ namespace Spartan::vulkan_utility
         buffer_create_info.usage				= usage;
         buffer_create_info.sharingMode			= VK_SHARING_MODE_EXCLUSIVE;
 
+        bool used_for_staging = (usage & VK_BUFFER_USAGE_TRANSFER_SRC_BIT) != 0;
+
         VmaAllocationCreateInfo allocation_create_info  = {};
-        allocation_create_info.usage                    = VMA_MEMORY_USAGE_UNKNOWN;
+        allocation_create_info.usage                    = used_for_staging ? VMA_MEMORY_USAGE_CPU_ONLY : (written_frequently ? VMA_MEMORY_USAGE_CPU_TO_GPU : VMA_MEMORY_USAGE_GPU_ONLY);
         allocation_create_info.preferredFlags           = memory_property_flags;
 
         // Create buffer, allocate memory and bind it to the buffer
