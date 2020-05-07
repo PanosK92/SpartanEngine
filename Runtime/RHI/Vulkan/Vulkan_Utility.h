@@ -1205,6 +1205,19 @@ namespace Spartan::vulkan_utility
         }
     }
 
+    namespace display
+    {
+        inline void detect_display_modes()
+        {
+            // VK_KHR_Display not supported and I don't want to use anything OS specific, must think of something.
+            globals::rhi_device->RegisterDisplayMode(DisplayMode(640, 480, 165, 1));
+            globals::rhi_device->RegisterDisplayMode(DisplayMode(720, 576, 165, 1));
+            globals::rhi_device->RegisterDisplayMode(DisplayMode(1280, 720, 165, 1));
+            globals::rhi_device->RegisterDisplayMode(DisplayMode(1920, 1080, 165, 1));
+            globals::rhi_device->RegisterDisplayMode(DisplayMode(2560, 1440, 165, 1));
+        }
+    }
+
     namespace layer
     {
         inline bool is_present(const char* layer_name)
