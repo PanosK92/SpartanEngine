@@ -71,7 +71,7 @@ namespace Spartan
         DestroyFrameResources();
 
         // Create a render pass
-        if (!vulkan_utility::render_pass::create(target_array, clear_color, render_target_color_count, render_target_depth_texture, clear_depth, clear_stencil, is_swapchain, m_render_pass))
+        if (!vulkan_utility::render_pass::create(depth_stencil_state, target_array, clear_color, render_target_color_count, render_target_depth_texture, clear_depth, clear_stencil, is_swapchain, m_render_pass))
             return false;
 
         // Name the render pass

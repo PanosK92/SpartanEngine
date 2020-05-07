@@ -43,7 +43,7 @@ namespace Spartan
         for (uint32_t i = 0; i < state_max_render_target_count; i++)
         {
             render_target_color_textures[i] = nullptr;
-            clear_color[i]                  = state_dont_clear_color;
+            clear_color[i]                  = state_color_load;
             m_frame_buffers[i]              = nullptr;
         }
     }
@@ -143,12 +143,9 @@ namespace Spartan
 
 	void RHI_PipelineState::ResetClearValues()
 	{
-        for (uint32_t i = 0; i < state_max_render_target_count; i++)
-        {
-            clear_color[i] = state_dont_clear_color;
-        }
-        clear_depth   = state_dont_clear_depth;
-        clear_stencil = state_dont_clear_stencil;
+        clear_color.fill(state_color_dont_care);
+        clear_depth   = state_depth_dont_care;
+        clear_stencil = state_stencil_dont_care;
 	}
 
 	void RHI_PipelineState::ComputeHash()

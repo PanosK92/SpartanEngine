@@ -296,9 +296,14 @@ namespace Spartan
         return "Unknown format";
     }
 
-    static const Math::Vector4 state_dont_clear_color   = Math::Vector4::Infinity;
-    static const float state_dont_clear_depth           = std::numeric_limits<float>::infinity();
-    static const uint8_t state_dont_clear_stencil       = 255;
+    // Clear values
+    static const Math::Vector4  state_color_dont_care    = Math::Vector4::InfinityNeg;
+    static const Math::Vector4  state_color_load         = Math::Vector4::Infinity;
+    static const float          state_depth_dont_care    = -std::numeric_limits<float>::infinity();
+    static const float          state_depth_load         = std::numeric_limits<float>::infinity();
+    static const uint8_t        state_stencil_dont_care  = 254;
+    static const uint8_t        state_stencil_load       = 255;
+
     static const uint8_t state_max_render_target_count  = 8;
 
     enum RHI_Shader_Type : uint8_t

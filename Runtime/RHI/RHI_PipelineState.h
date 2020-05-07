@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Viewport.h"
 #include "../Core/Spartan_Object.h"
 #include "../Math/Rectangle.h"
+#include <array>
 //=================================
 
 namespace Spartan
@@ -48,25 +49,25 @@ namespace Spartan
         void* GetRenderPass()                           const { return m_render_pass; }
         bool operator==(const RHI_PipelineState& rhs)   const { return m_hash == rhs.GetHash(); }
 
-        //= State (things that if changed, will cause a new pipeline to be generated) ==============================
-        RHI_Shader* shader_vertex                                                   = nullptr;
-        RHI_Shader* shader_pixel                                                    = nullptr;
-        RHI_Shader* shader_compute                                                  = nullptr;
-        RHI_RasterizerState* rasterizer_state                                       = nullptr;
-        RHI_BlendState* blend_state                                                 = nullptr;
-        RHI_DepthStencilState* depth_stencil_state                                  = nullptr;
-        RHI_SwapChain* render_target_swapchain                                      = nullptr;
-        RHI_PrimitiveTopology_Mode primitive_topology                               = RHI_PrimitiveTopology_Unknown;
-        RHI_Viewport viewport                                                       = RHI_Viewport::Undefined;
-        Math::Rectangle scissor                                                     = Math::Rectangle::Zero;
-        uint32_t vertex_buffer_stride                                               = 0;
-        RHI_Texture* render_target_depth_texture                                    = nullptr;    
-        RHI_Texture* render_target_color_textures[state_max_render_target_count]    = { nullptr };
-        bool dynamic_scissor                                                        = false;
+        //= State (things that if changed, will cause a new pipeline to be generated) ==========================================
+        RHI_Shader* shader_vertex                                                               = nullptr;
+        RHI_Shader* shader_pixel                                                                = nullptr;
+        RHI_Shader* shader_compute                                                              = nullptr;
+        RHI_RasterizerState* rasterizer_state                                                   = nullptr;
+        RHI_BlendState* blend_state                                                             = nullptr;
+        RHI_DepthStencilState* depth_stencil_state                                              = nullptr;
+        RHI_SwapChain* render_target_swapchain                                                  = nullptr;
+        RHI_PrimitiveTopology_Mode primitive_topology                                           = RHI_PrimitiveTopology_Unknown;
+        RHI_Viewport viewport                                                                   = RHI_Viewport::Undefined;
+        Math::Rectangle scissor                                                                 = Math::Rectangle::Zero;
+        uint32_t vertex_buffer_stride                                                           = 0;
+        RHI_Texture* render_target_depth_texture                                                = nullptr;    
+        std::array<RHI_Texture*, state_max_render_target_count> render_target_color_textures   = { nullptr };
+        bool dynamic_scissor                                                                    = false;
          // Texture array indices
-        uint32_t render_target_color_texture_array_index                            = 0;
-        uint32_t render_target_depth_stencil_texture_array_index                    = 0;
-        //==========================================================================================================
+        uint32_t render_target_color_texture_array_index                                        = 0;
+        uint32_t render_target_depth_stencil_texture_array_index                                = 0;
+        //======================================================================================================================
         
         RHI_Texture* unordered_access_view                                          = nullptr;
         bool render_target_depth_texture_read_only                                  = false;
@@ -75,9 +76,9 @@ namespace Spartan
         int dynamic_constant_buffer_slot = 3; // such a hack, must fix. Update: Came back to byte me in the ass
 
         // Clear values
-        float clear_depth                                         = state_dont_clear_depth;
-        uint8_t clear_stencil                                     = state_dont_clear_stencil;
-        Math::Vector4 clear_color[state_max_render_target_count]  = { state_dont_clear_color };
+        float clear_depth                                                       = state_depth_dont_care;
+        uint8_t clear_stencil                                                   = state_stencil_dont_care;
+        std::array<Math::Vector4, state_max_render_target_count> clear_color    = { state_color_dont_care };
 
         // Profiling
         const char* pass_name   = nullptr;
