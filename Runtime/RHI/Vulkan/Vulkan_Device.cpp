@@ -254,6 +254,8 @@ namespace Spartan
             vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->queue_transfer_index, 0, reinterpret_cast<VkQueue*>(&m_rhi_context->queue_transfer));
 		}
 
+        vulkan_utility::display::detect_display_modes();
+
         // Initialise the memory allocator
         m_rhi_context->initalise_allocator();
 
