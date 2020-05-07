@@ -536,7 +536,7 @@ namespace Spartan
         pipeline_state.rasterizer_state                         = m_rasterizer_cull_back_solid.get();
         pipeline_state.blend_state                              = m_blend_disabled.get();
         pipeline_state.depth_stencil_state                      = !use_stencil ? m_depth_stencil_disabled.get() : m_depth_stencil_disabled_enabled_read.get();
-        pipeline_state.vertex_buffer_stride                     = m_quad.GetVertexBuffer()->GetStride();
+        pipeline_state.vertex_buffer_stride                     = m_viewport_quad.GetVertexBuffer()->GetStride();
         pipeline_state.render_target_color_textures[0]          = use_stencil ? tex_ssao_blurred.get() : tex_ssao_noisy.get();
         pipeline_state.clear_color[0]                           = use_stencil ? state_dont_clear_color : Vector4::One;
         pipeline_state.render_target_depth_texture              = use_stencil ? tex_depth.get() : nullptr;
@@ -552,8 +552,8 @@ namespace Spartan
             m_buffer_uber_cpu.resolution = Vector2(tex_ssao_noisy->GetWidth(), tex_ssao_noisy->GetHeight());
             UpdateUberBuffer();
 
-            cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
-            cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
+            cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
+            cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
             cmd_list->SetTexture(12, m_render_targets[RenderTarget_Gbuffer_Depth]);
             cmd_list->SetTexture(9, m_render_targets[RenderTarget_Gbuffer_Normal]);
             cmd_list->SetTexture(21, m_tex_noise_normal);
@@ -597,7 +597,7 @@ namespace Spartan
         pipeline_state.rasterizer_state                         = m_rasterizer_cull_back_solid.get();
         pipeline_state.blend_state                              = m_blend_disabled.get();
         pipeline_state.depth_stencil_state                      = !use_stencil ? m_depth_stencil_disabled.get() : m_depth_stencil_disabled_enabled_read.get();
-        pipeline_state.vertex_buffer_stride                     = m_quad.GetVertexBuffer()->GetStride();
+        pipeline_state.vertex_buffer_stride                     = m_viewport_quad.GetVertexBuffer()->GetStride();
         pipeline_state.render_target_color_textures[0]          = tex_ssr.get();
         pipeline_state.clear_color[0]                           = use_stencil ? state_dont_clear_color : Vector4::Zero;
         pipeline_state.render_target_depth_texture              = use_stencil ? tex_depth.get() : nullptr;
@@ -613,8 +613,8 @@ namespace Spartan
             m_buffer_uber_cpu.resolution = Vector2(tex_ssr->GetWidth(), tex_ssr->GetHeight());
             UpdateUberBuffer();
         
-            cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
-            cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
+            cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
+            cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
             cmd_list->SetTexture(9, m_render_targets[RenderTarget_Gbuffer_Normal]);
             cmd_list->SetTexture(12, m_render_targets[RenderTarget_Gbuffer_Depth]);
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
@@ -682,7 +682,7 @@ namespace Spartan
         pipeline_state.rasterizer_state                         = m_rasterizer_cull_back_solid.get();
         pipeline_state.blend_state                              = m_blend_additive.get();
         pipeline_state.depth_stencil_state                      = use_stencil ? m_depth_stencil_disabled_enabled_read.get() : m_depth_stencil_disabled.get();
-        pipeline_state.vertex_buffer_stride                     = m_quad.GetVertexBuffer()->GetStride();
+        pipeline_state.vertex_buffer_stride                     = m_viewport_quad.GetVertexBuffer()->GetStride();
         pipeline_state.render_target_color_textures[0]          = tex_diffuse.get();
         pipeline_state.clear_color[0]                           = Vector4::Zero;
         pipeline_state.render_target_color_textures[1]          = tex_specular.get();
@@ -709,8 +709,8 @@ namespace Spartan
         
                 if (cmd_list->Begin(pipeline_state))
                 {
-                    cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
-                    cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
+                    cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
+                    cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
                     cmd_list->SetTexture(8, m_render_targets[RenderTarget_Gbuffer_Albedo]);
                     cmd_list->SetTexture(9, m_render_targets[RenderTarget_Gbuffer_Normal]);
                     cmd_list->SetTexture(10, m_render_targets[RenderTarget_Gbuffer_Material]);
@@ -773,7 +773,7 @@ namespace Spartan
         pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
         pipeline_state.depth_stencil_state              = use_stencil ? m_depth_stencil_disabled_enabled_read.get() : m_depth_stencil_disabled.get();
         pipeline_state.blend_state                      = m_blend_disabled.get();
-        pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
+        pipeline_state.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride();
         pipeline_state.render_target_color_textures[0]  = tex_out.get();
         pipeline_state.clear_color[0]                   = Vector4::Zero;
         pipeline_state.render_target_depth_texture      = use_stencil ? m_render_targets[RenderTarget_Gbuffer_Depth].get() : nullptr;
@@ -789,8 +789,8 @@ namespace Spartan
             UpdateUberBuffer();
 
             // Setup command list
-            cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
-            cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
+            cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
+            cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
             cmd_list->SetTexture(8, m_render_targets[RenderTarget_Gbuffer_Albedo]);
             cmd_list->SetTexture(9, m_render_targets[RenderTarget_Gbuffer_Normal]);
             cmd_list->SetTexture(10, m_render_targets[RenderTarget_Gbuffer_Material]);
@@ -803,8 +803,8 @@ namespace Spartan
             cmd_list->SetTexture(27, m_render_targets[RenderTarget_Composition_Hdr_2]); // previous frame before post-processing
             cmd_list->SetTexture(19, m_render_targets[RenderTarget_Brdf_Specular_Lut]);
             cmd_list->SetTexture(20, GetEnvironmentTexture());
-            cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
-            cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
+            cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
+            cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
             cmd_list->End();
             cmd_list->Submit();
@@ -830,7 +830,7 @@ namespace Spartan
         pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
         pipeline_state.blend_state                      = m_blend_alpha.get();
         pipeline_state.depth_stencil_state              = use_stencil ? m_depth_stencil_disabled_enabled_read.get() : m_depth_stencil_disabled.get();
-        pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
+        pipeline_state.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride();
         pipeline_state.render_target_color_textures[0]  = tex_out;
         pipeline_state.clear_color[0]                   = use_stencil ? state_dont_clear_color : Vector4::Zero;
         pipeline_state.render_target_depth_texture      = use_stencil ? m_render_targets[RenderTarget_Gbuffer_Depth].get() : nullptr;
@@ -841,8 +841,8 @@ namespace Spartan
         // Submit command list
         if (cmd_list->Begin(pipeline_state))
         {
-            cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
-            cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
+            cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
+            cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
             cmd_list->SetTexture(28, tex_in);
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
             cmd_list->End();
@@ -942,7 +942,7 @@ namespace Spartan
         pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
         pipeline_state.blend_state                      = m_blend_disabled.get();
         pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
-        pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
+        pipeline_state.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride();
         pipeline_state.render_target_color_textures[0]  = tex_out.get();
         pipeline_state.clear_color[0]                   = Vector4::Zero;
         pipeline_state.viewport                         = tex_out->GetViewport();
@@ -955,10 +955,10 @@ namespace Spartan
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             UpdateUberBuffer();
 
-            cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
-            cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
+            cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
+            cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
             cmd_list->SetTexture(28, tex_in);
-            cmd_list->DrawIndexed(m_quad.GetIndexCount());
+            cmd_list->DrawIndexed(m_viewport_quad.GetIndexCount());
             cmd_list->End();
             cmd_list->Submit();
         }
@@ -979,7 +979,7 @@ namespace Spartan
         pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
         pipeline_state.blend_state                      = m_blend_disabled.get();
         pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
-        pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
+        pipeline_state.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride();
         pipeline_state.render_target_color_textures[0]  = tex_out.get();
         pipeline_state.clear_color[0]                   = Vector4::Zero;
         pipeline_state.viewport                         = tex_out->GetViewport();
@@ -993,10 +993,10 @@ namespace Spartan
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             UpdateUberBuffer();
         
-            cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
-            cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
+            cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
+            cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
             cmd_list->SetTexture(28, tex_in);
-            cmd_list->DrawIndexed(m_quad.GetIndexCount());
+            cmd_list->DrawIndexed(m_viewport_quad.GetIndexCount());
             cmd_list->End();
             cmd_list->Submit();
         }
@@ -1017,7 +1017,7 @@ namespace Spartan
         pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
         pipeline_state.blend_state                      = m_blend_disabled.get();
         pipeline_state.depth_stencil_state              = use_stencil ? m_depth_stencil_disabled_enabled_read.get() : m_depth_stencil_disabled.get();
-        pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
+        pipeline_state.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride();
         pipeline_state.render_target_color_textures[0]  = tex_out.get();
         pipeline_state.clear_color[0]                   = Vector4::Zero;
         pipeline_state.render_target_depth_texture      = use_stencil ? m_render_targets[RenderTarget_Gbuffer_Depth].get() : nullptr;
@@ -1034,10 +1034,10 @@ namespace Spartan
             m_buffer_uber_cpu.blur_sigma        = sigma;
             UpdateUberBuffer();
 
-            cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
-            cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
+            cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
+            cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
             cmd_list->SetTexture(28, tex_in);
-            cmd_list->DrawIndexed(m_quad.GetIndexCount());
+            cmd_list->DrawIndexed(m_viewport_quad.GetIndexCount());
             cmd_list->End();
             cmd_list->Submit();
         }
@@ -1064,7 +1064,7 @@ namespace Spartan
         pipeline_state_horizontal.rasterizer_state                  = m_rasterizer_cull_back_solid.get();
         pipeline_state_horizontal.blend_state                       = m_blend_disabled.get();
         pipeline_state_horizontal.depth_stencil_state               = m_depth_stencil_disabled.get();
-        pipeline_state_horizontal.vertex_buffer_stride              = m_quad.GetVertexBuffer()->GetStride();
+        pipeline_state_horizontal.vertex_buffer_stride              = m_viewport_quad.GetVertexBuffer()->GetStride();
         pipeline_state_horizontal.render_target_color_textures[0]   = tex_out.get();
         pipeline_state_horizontal.viewport                          = tex_out->GetViewport();
         pipeline_state_horizontal.primitive_topology                = RHI_PrimitiveTopology_TriangleList;
@@ -1079,8 +1079,8 @@ namespace Spartan
             m_buffer_uber_cpu.blur_sigma        = sigma;
             UpdateUberBuffer();
         
-            cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
-            cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
+            cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
+            cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
         	cmd_list->SetTexture(28, tex_in);
         	cmd_list->DrawIndexed(Rectangle::GetIndexCount());
             cmd_list->End();
@@ -1094,7 +1094,7 @@ namespace Spartan
         pipeline_state_vertical.rasterizer_state                = m_rasterizer_cull_back_solid.get();
         pipeline_state_vertical.blend_state                     = m_blend_disabled.get();
         pipeline_state_vertical.depth_stencil_state             = m_depth_stencil_disabled.get();
-        pipeline_state_vertical.vertex_buffer_stride            = m_quad.GetVertexBuffer()->GetStride();
+        pipeline_state_vertical.vertex_buffer_stride            = m_viewport_quad.GetVertexBuffer()->GetStride();
         pipeline_state_vertical.render_target_color_textures[0] = tex_in.get();
         pipeline_state_vertical.viewport                        = tex_in->GetViewport();
         pipeline_state_vertical.primitive_topology              = RHI_PrimitiveTopology_TriangleList;
@@ -1107,8 +1107,8 @@ namespace Spartan
             m_buffer_uber_cpu.blur_sigma        = sigma;
             UpdateUberBuffer();
         
-            cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
-            cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
+            cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
+            cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
             cmd_list->SetTexture(28, tex_out);
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
             cmd_list->End();
@@ -1144,7 +1144,7 @@ namespace Spartan
         pipeline_state_horizontal.rasterizer_state                  = m_rasterizer_cull_back_solid.get();
         pipeline_state_horizontal.blend_state                       = m_blend_disabled.get();
         pipeline_state_horizontal.depth_stencil_state               = use_stencil ? m_depth_stencil_disabled_enabled_read.get() : m_depth_stencil_disabled.get();
-        pipeline_state_horizontal.vertex_buffer_stride              = m_quad.GetVertexBuffer()->GetStride();
+        pipeline_state_horizontal.vertex_buffer_stride              = m_viewport_quad.GetVertexBuffer()->GetStride();
         pipeline_state_horizontal.render_target_color_textures[0]   = tex_out.get();
         pipeline_state_horizontal.render_target_depth_texture       = use_stencil ? tex_depth.get() : nullptr;
         pipeline_state_horizontal.viewport                          = tex_out->GetViewport();
@@ -1160,12 +1160,12 @@ namespace Spartan
             m_buffer_uber_cpu.blur_sigma        = sigma;
             UpdateUberBuffer();
 
-            cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
-            cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
+            cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
+            cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
             cmd_list->SetTexture(28, tex_in);
             cmd_list->SetTexture(12, tex_depth);
             cmd_list->SetTexture(9, tex_normal);
-            cmd_list->DrawIndexed(m_quad.GetIndexCount());
+            cmd_list->DrawIndexed(m_viewport_quad.GetIndexCount());
             cmd_list->End();
             cmd_list->Submit();
         }
@@ -1177,7 +1177,7 @@ namespace Spartan
         pipeline_state_vertical.rasterizer_state                = m_rasterizer_cull_back_solid.get();
         pipeline_state_vertical.blend_state                     = m_blend_disabled.get();
         pipeline_state_vertical.depth_stencil_state             = use_stencil ? m_depth_stencil_disabled_enabled_read.get() : m_depth_stencil_disabled.get();
-        pipeline_state_vertical.vertex_buffer_stride            = m_quad.GetVertexBuffer()->GetStride();
+        pipeline_state_vertical.vertex_buffer_stride            = m_viewport_quad.GetVertexBuffer()->GetStride();
         pipeline_state_vertical.render_target_color_textures[0] = tex_in.get();
         pipeline_state_vertical.render_target_depth_texture     = use_stencil ? tex_depth.get() : nullptr;
         pipeline_state_vertical.viewport                        = tex_in->GetViewport();
@@ -1192,12 +1192,12 @@ namespace Spartan
             m_buffer_uber_cpu.blur_sigma        = sigma;
             UpdateUberBuffer();
 
-            cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
-            cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
+            cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
+            cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
             cmd_list->SetTexture(28, tex_out);
             cmd_list->SetTexture(12, tex_depth);
             cmd_list->SetTexture(9, tex_normal);
-            cmd_list->DrawIndexed(m_quad.GetIndexCount());
+            cmd_list->DrawIndexed(m_viewport_quad.GetIndexCount());
             cmd_list->End();
             cmd_list->Submit();
         }
@@ -1224,7 +1224,7 @@ namespace Spartan
         pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
         pipeline_state.blend_state                      = m_blend_disabled.get();
         pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
-        pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
+        pipeline_state.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride();
         pipeline_state.render_target_color_textures[0]  = tex_out.get();
         pipeline_state.viewport                         = tex_out->GetViewport();
         pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
@@ -1237,8 +1237,8 @@ namespace Spartan
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             UpdateUberBuffer();
 
-            cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
-            cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
+            cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
+            cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
             cmd_list->SetTexture(28, tex_history);
             cmd_list->SetTexture(29, tex_in);
             cmd_list->SetTexture(11, m_render_targets[RenderTarget_Gbuffer_Velocity]);
@@ -1272,7 +1272,7 @@ namespace Spartan
             pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
             pipeline_state.blend_state                      = m_blend_disabled.get();
             pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
-            pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
+            pipeline_state.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride();
             pipeline_state.render_target_color_textures[0]  = m_render_tex_bloom[0].get();
             pipeline_state.clear_color[0]                   = Vector4::Zero;
             pipeline_state.viewport                         = m_render_tex_bloom[0]->GetViewport();
@@ -1286,8 +1286,8 @@ namespace Spartan
                 m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(m_render_tex_bloom[0]->GetWidth()), static_cast<float>(m_render_tex_bloom[0]->GetHeight()));
                 UpdateUberBuffer();
         
-                cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
-                cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
+                cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
+                cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
                 cmd_list->SetTexture(28, tex_in);
                 cmd_list->DrawIndexed(Rectangle::GetIndexCount());
                 cmd_list->End();
@@ -1311,7 +1311,7 @@ namespace Spartan
             pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
             pipeline_state.blend_state                      = m_blend_additive.get();
             pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
-            pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
+            pipeline_state.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride();
             pipeline_state.render_target_color_textures[0]  = tex_out.get();
             pipeline_state.clear_color[0]                   = Vector4::Zero;
             pipeline_state.viewport                         = tex_out->GetViewport();
@@ -1324,8 +1324,8 @@ namespace Spartan
                 m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
                 UpdateUberBuffer();
         
-                cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
-                cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
+                cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
+                cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
                 cmd_list->SetTexture(28, tex_in);
                 cmd_list->DrawIndexed(Rectangle::GetIndexCount());
                 cmd_list->End();
@@ -1348,7 +1348,7 @@ namespace Spartan
             pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
             pipeline_state.blend_state                      = m_blend_disabled.get();
             pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
-            pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
+            pipeline_state.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride();
             pipeline_state.render_target_color_textures[0]  = tex_out.get();
             pipeline_state.clear_color[0]                   = Vector4::Zero;
             pipeline_state.viewport                         = tex_out->GetViewport();
@@ -1362,8 +1362,8 @@ namespace Spartan
                 m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
                 UpdateUberBuffer();
         
-                cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
-                cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
+                cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
+                cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
                 cmd_list->SetTexture(28, tex_in);
                 cmd_list->SetTexture(29, m_render_tex_bloom.front());
                 cmd_list->DrawIndexed(Rectangle::GetIndexCount());
@@ -1388,7 +1388,7 @@ namespace Spartan
         pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
         pipeline_state.blend_state                      = m_blend_disabled.get();
         pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
-        pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
+        pipeline_state.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride();
         pipeline_state.render_target_color_textures[0]  = tex_out.get();
         pipeline_state.clear_color[0]                   = Vector4::Zero;
         pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
@@ -1402,8 +1402,8 @@ namespace Spartan
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             UpdateUberBuffer();
 
-            cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
-            cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
+            cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
+            cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
             cmd_list->SetTexture(28, tex_in);
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
             cmd_list->End();
@@ -1426,7 +1426,7 @@ namespace Spartan
         pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
         pipeline_state.blend_state                      = m_blend_disabled.get();
         pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
-        pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
+        pipeline_state.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride();
         pipeline_state.render_target_color_textures[0]  = tex_out.get();
         pipeline_state.clear_color[0]                   = Vector4::Zero;
         pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
@@ -1440,8 +1440,8 @@ namespace Spartan
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             UpdateUberBuffer();
 
-            cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
-            cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
+            cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
+            cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
             cmd_list->SetTexture(28, tex_in);
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
             cmd_list->End();
@@ -1471,7 +1471,7 @@ namespace Spartan
             pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
             pipeline_state.blend_state                      = m_blend_disabled.get();
             pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
-            pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
+            pipeline_state.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride();
             pipeline_state.render_target_color_textures[0]  = tex_out.get();
             pipeline_state.clear_color[0]                   = Vector4::Zero;
             pipeline_state.viewport                         = tex_out->GetViewport();
@@ -1481,8 +1481,8 @@ namespace Spartan
             // Submit command list
             if (cmd_list->Begin(pipeline_state))
             {
-                cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
-                cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
+                cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
+                cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
                 cmd_list->SetTexture(28, tex_in);
                 cmd_list->DrawIndexed(Rectangle::GetIndexCount());
                 cmd_list->End();
@@ -1499,7 +1499,7 @@ namespace Spartan
             pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
             pipeline_state.blend_state                      = m_blend_disabled.get();
             pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
-            pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
+            pipeline_state.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride();
             pipeline_state.render_target_color_textures[0]  = tex_in.get();
             pipeline_state.clear_color[0]                   = Vector4::Zero;
             pipeline_state.viewport                         = tex_in->GetViewport();
@@ -1508,8 +1508,8 @@ namespace Spartan
 
             if (cmd_list->Begin(pipeline_state))
             {
-                cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
-                cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
+                cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
+                cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
                 cmd_list->SetTexture(28, tex_out);
                 cmd_list->DrawIndexed(Rectangle::GetIndexCount());
                 cmd_list->End();
@@ -1536,7 +1536,7 @@ namespace Spartan
         pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
         pipeline_state.blend_state                      = m_blend_disabled.get();
         pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
-        pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
+        pipeline_state.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride();
         pipeline_state.render_target_color_textures[0]  = tex_out.get();
         pipeline_state.clear_color[0]                   = Vector4::Zero;
         pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
@@ -1550,8 +1550,8 @@ namespace Spartan
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             UpdateUberBuffer();
 
-            cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
-            cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
+            cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
+            cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
             cmd_list->SetTexture(28, tex_in);
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
             cmd_list->End();
@@ -1574,7 +1574,7 @@ namespace Spartan
         pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
         pipeline_state.blend_state                      = m_blend_disabled.get();
         pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
-        pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
+        pipeline_state.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride();
         pipeline_state.render_target_color_textures[0]  = tex_out.get();
         pipeline_state.clear_color[0]                   = Vector4::Zero;
         pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
@@ -1588,8 +1588,8 @@ namespace Spartan
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             UpdateUberBuffer();
 
-            cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
-            cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
+            cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
+            cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
             cmd_list->SetTexture(28, tex_in);
             cmd_list->SetTexture(11, m_render_targets[RenderTarget_Gbuffer_Velocity]);
             cmd_list->SetTexture(12, m_render_targets[RenderTarget_Gbuffer_Depth]);
@@ -1614,7 +1614,7 @@ namespace Spartan
         pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
         pipeline_state.blend_state                      = m_blend_disabled.get();
         pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
-        pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
+        pipeline_state.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride();
         pipeline_state.render_target_color_textures[0]  = tex_out.get();
         pipeline_state.clear_color[0]                   = Vector4::Zero;
         pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
@@ -1628,8 +1628,8 @@ namespace Spartan
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             UpdateUberBuffer();
 
-            cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
-            cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
+            cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
+            cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
             cmd_list->SetTexture(28, tex_in);
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
             cmd_list->End();
@@ -1652,7 +1652,7 @@ namespace Spartan
         pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
         pipeline_state.blend_state                      = m_blend_disabled.get();
         pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
-        pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
+        pipeline_state.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride();
         pipeline_state.render_target_color_textures[0]  = tex_out.get();
         pipeline_state.clear_color[0]                   = Vector4::Zero;
         pipeline_state.viewport                         = tex_out->GetViewport();
@@ -1666,8 +1666,8 @@ namespace Spartan
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             UpdateUberBuffer();
 
-            cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
-            cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
+            cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
+            cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
             cmd_list->SetTexture(28, tex_in);
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
             cmd_list->End();
@@ -1874,7 +1874,7 @@ namespace Spartan
         pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
         pipeline_state.blend_state                      = m_blend_alpha.get();
         pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
-        pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride(); // stride matches rect
+        pipeline_state.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride(); // stride matches rect
         pipeline_state.render_target_color_textures[0]  = tex_out;
         pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
         pipeline_state.viewport                         = tex_out->GetViewport();
@@ -2251,7 +2251,7 @@ namespace Spartan
         pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
         pipeline_state.blend_state                      = m_blend_disabled.get();
         pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
-        pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
+        pipeline_state.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride();
         pipeline_state.render_target_color_textures[0]  = tex_out.get();
         pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
         pipeline_state.viewport                         = tex_out->GetViewport();
@@ -2266,8 +2266,8 @@ namespace Spartan
             UpdateUberBuffer();
 
             cmd_list->SetTexture(28, texture);
-            cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
-            cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
+            cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
+            cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
             cmd_list->End();
             cmd_list->Submit();
@@ -2297,7 +2297,7 @@ namespace Spartan
         pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
         pipeline_state.blend_state                      = m_blend_disabled.get();
         pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
-        pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
+        pipeline_state.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride();
         pipeline_state.render_target_color_textures[0]  = render_target.get();
         pipeline_state.clear_color[0]                   = Vector4::Zero;
         pipeline_state.viewport                         = render_target->GetViewport();
@@ -2311,8 +2311,8 @@ namespace Spartan
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(render_target->GetWidth()), static_cast<float>(render_target->GetHeight()));
             UpdateUberBuffer();
 
-            cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
-            cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
+            cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
+            cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
             cmd_list->End();
             cmd_list->Submit();
@@ -2336,7 +2336,7 @@ namespace Spartan
         pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
         pipeline_state.blend_state                      = m_blend_disabled.get();
         pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
-        pipeline_state.vertex_buffer_stride             = m_quad.GetVertexBuffer()->GetStride();
+        pipeline_state.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride();
         pipeline_state.render_target_color_textures[0]  = tex_out.get();
         pipeline_state.clear_color[0]                   = Vector4::Zero;
         pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
@@ -2352,8 +2352,8 @@ namespace Spartan
             UpdateUberBuffer();
 
             cmd_list->SetTexture(28, tex_in);
-            cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
-            cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
+            cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
+            cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
             cmd_list->End();
             cmd_list->Submit();

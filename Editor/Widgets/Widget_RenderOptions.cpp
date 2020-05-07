@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Math/MathHelper.h"
 #include "Rendering/Model.h"
 #include "../ImGui_Extension.h"
+#include "RHI/RHI_Device.h"
 //===============================
 
 //= NAMESPACES ===============
@@ -50,10 +51,6 @@ void Widget_RenderOptions::Tick()
 
     if (ImGui::CollapsingHeader("Graphics", ImGuiTreeNodeFlags_DefaultOpen))
     {
-        // Reflect from engine
-        static vector<string> tonemapping_options   = { "Off", "ACES", "Reinhard", "Uncharted 2" };
-        string tonemapping_selection                = tonemapping_options[m_renderer->GetOptionValue<uint32_t>(Option_Value_Tonemapping)];
-
         bool do_bloom                   = m_renderer->GetOption(Render_Bloom);
         bool do_volumetric_lighting     = m_renderer->GetOption(Render_VolumetricLighting);    
         bool do_ssao                    = m_renderer->GetOption(Render_ScreenSpaceAmbientOcclusion);
@@ -92,27 +89,83 @@ void Widget_RenderOptions::Tick()
                 }
             };
 
-            // Tonemapping
-            if (ImGui::BeginCombo("Tonemapping", tonemapping_selection.c_str()))
+            // Resolution
             {
-                for (unsigned int i = 0; i < static_cast<unsigned int>(tonemapping_options.size()); i++)
+                const auto display_mode_to_str = [](const DisplayMode& display_mode)
                 {
-                    const auto is_selected = (tonemapping_selection == tonemapping_options[i]);
-                    if (ImGui::Selectable(tonemapping_options[i].c_str(), is_selected))
+                    return to_string(display_mode.width) + "x" + to_string(display_mode.height);
+                };
+
+                static vector<DisplayMode> display_modes;
+                static uint32_t display_mode_index      = 0;
+                const DisplayMode& display_mode_active  = m_renderer->GetRhiDevice()->GetActiveDisplayMode();
+                string display_mode_str                 = display_mode_to_str(display_mode_active);
+                double display_mode_rhz                 = display_mode_active.hz;
+
+                // Get display modes
+                if (display_modes.empty())
+                {
+                    for (const DisplayMode& display_mode : m_renderer->GetRhiDevice()->GetDisplayModes())
                     {
-                        tonemapping_selection = tonemapping_options[i].c_str();
-                        m_renderer->SetOptionValue(Option_Value_Tonemapping, static_cast<float>(i));
-                    }
-                    if (is_selected)
-                    {
-                        ImGui::SetItemDefaultFocus();
+                        if (display_mode.hz == display_mode_rhz)
+                        {
+                            display_modes.emplace_back(display_mode);
+                        }
                     }
                 }
-                ImGui::EndCombo();
+                
+                if (ImGui::BeginCombo("Resolution", display_mode_str.c_str()))
+                {
+                    for (uint32_t i = 0; i < static_cast<uint32_t>(display_modes.size()); i++)
+                    {
+                        const bool entry_selected   = display_mode_index == i;
+                        const string entry_str      = display_mode_to_str(display_modes[i]);
+
+                        if (ImGui::Selectable(entry_str.c_str(), entry_selected))
+                        {
+                            display_mode_index  = i;
+                            display_mode_str    = entry_str;
+
+                            m_renderer->SetResolution(display_modes[i].width, display_modes[i].height);
+                        }
+
+                        if (entry_selected)
+                        {
+                            ImGui::SetItemDefaultFocus();
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
+                ImGui::Separator();
             }
-            ImGui::SameLine(); render_option_float("##tonemapping_option_1", "Exposure", Option_Value_Exposure);
-            ImGui::SameLine(); render_option_float("##tonemapping_option_2", "Gamma", Option_Value_Gamma);
-            ImGui::Separator();
+
+            // Tonemapping
+            {
+                // Reflect from engine
+                static array<string, 4> tonemapping_options = { "Off", "ACES", "Reinhard", "Uncharted 2" };
+                static string tonemapping_selection         = tonemapping_options[m_renderer->GetOptionValue<uint32_t>(Option_Value_Tonemapping)];
+
+                if (ImGui::BeginCombo("Tonemapping", tonemapping_selection.c_str()))
+                {
+                    for (uint32_t i = 0; i < static_cast<uint32_t>(tonemapping_options.size()); i++)
+                    {
+                        const auto is_selected = (tonemapping_selection == tonemapping_options[i]);
+                        if (ImGui::Selectable(tonemapping_options[i].c_str(), is_selected))
+                        {
+                            tonemapping_selection = tonemapping_options[i].c_str();
+                            m_renderer->SetOptionValue(Option_Value_Tonemapping, static_cast<float>(i));
+                        }
+                        if (is_selected)
+                        {
+                            ImGui::SetItemDefaultFocus();
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
+                ImGui::SameLine(); render_option_float("##tonemapping_option_1", "Exposure", Option_Value_Exposure);
+                ImGui::SameLine(); render_option_float("##tonemapping_option_2", "Gamma", Option_Value_Gamma);
+                ImGui::Separator();
+            }
 
             // Bloom
             ImGui::Checkbox("Bloom", &do_bloom); ImGui::SameLine();

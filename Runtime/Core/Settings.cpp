@@ -140,22 +140,21 @@ namespace Spartan
 		// Create a settings file
 		_Settings::fin.open(_Settings::file_name, ifstream::in);
 
-		float resolution_x = 0;
-		float resolution_y = 0;
-
 		// Read the settings
-		_Settings::read_setting(_Settings::fin, "bFullScreen",             m_is_fullscreen);
-		_Settings::read_setting(_Settings::fin, "bIsMouseVisible",         m_is_mouse_visible);
-		_Settings::read_setting(_Settings::fin, "fResolutionWidth",        resolution_x);
-		_Settings::read_setting(_Settings::fin, "fResolutionHeight",       resolution_y);
-		_Settings::read_setting(_Settings::fin, "iShadowMapResolution",    m_shadow_map_resolution);
-		_Settings::read_setting(_Settings::fin, "iAnisotropy",             m_anisotropy);
-		_Settings::read_setting(_Settings::fin, "fFPSLimit",               m_fps_limit);
-		_Settings::read_setting(_Settings::fin, "iMaxThreadCount",         m_max_thread_count);
-        _Settings::read_setting(_Settings::fin, "iRendererFlags",          m_renderer_flags);
+		_Settings::read_setting(_Settings::fin, "bFullScreen",          m_is_fullscreen);
+		_Settings::read_setting(_Settings::fin, "bIsMouseVisible",      m_is_mouse_visible);
+		_Settings::read_setting(_Settings::fin, "fResolutionWidth",     m_resolution.x);
+		_Settings::read_setting(_Settings::fin, "fResolutionHeight",    m_resolution.y);
+		_Settings::read_setting(_Settings::fin, "iShadowMapResolution", m_shadow_map_resolution);
+		_Settings::read_setting(_Settings::fin, "iAnisotropy",          m_anisotropy);
+		_Settings::read_setting(_Settings::fin, "fFPSLimit",            m_fps_limit);
+		_Settings::read_setting(_Settings::fin, "iMaxThreadCount",      m_max_thread_count);
+        _Settings::read_setting(_Settings::fin, "iRendererFlags",       m_renderer_flags);
 
 		// Close the file.
 		_Settings::fin.close();
+
+        m_loaded = true;
 	}
 
     void Settings::Reflect()
@@ -175,6 +174,7 @@ namespace Spartan
         Renderer* renderer = m_context->GetSubsystem<Renderer>();
 
         m_context->GetSubsystem<Timer>()->SetTargetFps(m_fps_limit);
+        renderer->SetResolution(static_cast<uint32_t>(m_resolution.x), static_cast<uint32_t>(m_resolution.y));
         renderer->SetOptionValue(Option_Value_Anisotropy, static_cast<float>(m_anisotropy));
         renderer->SetOptionValue(Option_Value_ShadowResolution, static_cast<float>(m_shadow_map_resolution));
         renderer->SetOptions(m_renderer_flags);

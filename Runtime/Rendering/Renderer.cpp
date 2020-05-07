@@ -58,9 +58,7 @@ namespace Spartan
     {
         // Options
         m_options |= Render_ReverseZ;
-        //m_options |= Render_DepthPrepass;
         m_options |= Render_Debug_Transform;
-        //m_options |= Render_Debug_SelectionOutline;
         m_options |= Render_Debug_Grid;
         m_options |= Render_Debug_Lights;
         m_options |= Render_Debug_Physics;
@@ -71,10 +69,7 @@ namespace Spartan
         m_options |= Render_ScreenSpaceShadows;
         m_options |= Render_ScreenSpaceReflections;	
         m_options |= Render_AntiAliasing_Taa;
-        m_options |= Render_Sharpening_LumaSharpen;             // Helps with TAA induced blurring
-        //m_options |= Render_PostProcess_FXAA;                 // Disabled by default: TAA is superior.
-        //m_options |= Render_PostProcess_Dithering;            // Disabled by default: It's only needed in very dark scenes to fix smooth color gradients.
-        //m_options |= Render_PostProcess_ChromaticAberration;	// Disabled by default: It doesn't improve the image quality, it's more of a stylistic effect.	
+        m_options |= Render_Sharpening_LumaSharpen;
 
         // Option values
         m_option_values[Option_Value_Anisotropy]              = 16.0f;
@@ -110,6 +105,17 @@ namespace Spartan
         m_resource_cache    = m_context->GetSubsystem<ResourceCache>();
         m_profiler          = m_context->GetSubsystem<Profiler>();
 
+        // Resolution, viewport and swapchain default to whatever the window size is
+        const WindowData& window_data = m_context->m_engine->GetWindowData();
+
+        // Set resolution
+        m_resolution.x = window_data.width;
+        m_resolution.y = window_data.height;
+
+        // Set viewport
+        m_viewport.width    = window_data.width;
+        m_viewport.height   = window_data.height;
+
         // Create device
         m_rhi_device = make_shared<RHI_Device>(m_context);
         if (!m_rhi_device->IsInitialized())
@@ -126,16 +132,14 @@ namespace Spartan
 
         // Create swap chain
         {
-            const WindowData& window_data = m_context->m_engine->GetWindowData();
-
             m_swap_chain = make_shared<RHI_SwapChain>
             (
                 window_data.handle,
                 m_rhi_device,
-                static_cast<uint32_t>(window_data.width),
-                static_cast<uint32_t>(window_data.height),
+                static_cast<uint32_t>(m_viewport.width),
+                static_cast<uint32_t>(m_viewport.height),
                 RHI_Format_R8G8B8A8_Unorm,
-                2,
+                3,
                 RHI_Present_Immediate | RHI_Swap_Flip_Discard
             );
 
@@ -146,12 +150,16 @@ namespace Spartan
             }
         }
 
-		// Editor specific
-		m_gizmo_grid		= make_unique<Grid>(m_rhi_device);
-		m_gizmo_transform	= make_unique<Transform_Gizmo>(m_context);
+        // Full-screen quad
+        m_viewport_quad = Math::Rectangle(0, 0, m_viewport.width, m_viewport.height);
+        m_viewport_quad.CreateBuffers(this);
 
 		// Line buffer
 		m_vertex_buffer_lines = make_shared<RHI_VertexBuffer>(m_rhi_device);
+
+        // Editor specific
+        m_gizmo_grid = make_unique<Grid>(m_rhi_device);
+        m_gizmo_transform = make_unique<Transform_Gizmo>(m_context);
 
         CreateConstantBuffers();
 		CreateShaders();
@@ -206,14 +214,15 @@ namespace Spartan
 		{
             if (m_update_ortho_proj || m_near_plane != m_camera->GetNearPlane() || m_far_plane != m_camera->GetFarPlane())
             {
-                m_buffer_frame_cpu.projection_ortho         = Matrix::CreateOrthographicLH(m_resolution.x, m_resolution.y, m_near_plane, m_far_plane);
+                m_buffer_frame_cpu.projection_ortho         = Matrix::CreateOrthographicLH(m_viewport.width, m_viewport.height, m_near_plane, m_far_plane);
                 m_buffer_frame_cpu.view_projection_ortho    = Matrix::CreateLookAtLH(Vector3(0, 0, -m_near_plane), Vector3::Forward, Vector3::Up) * m_buffer_frame_cpu.projection_ortho;
                 m_update_ortho_proj                         = false;
             }
-            m_near_plane	                            = m_camera->GetNearPlane();
-            m_far_plane		                            = m_camera->GetFarPlane();
-            m_buffer_frame_cpu.view			            = m_camera->GetViewMatrix();
-            m_buffer_frame_cpu.projection	            = m_camera->GetProjectionMatrix();
+
+            m_near_plane	                = m_camera->GetNearPlane();
+            m_far_plane		                = m_camera->GetFarPlane();
+            m_buffer_frame_cpu.view		    = m_camera->GetViewMatrix();
+            m_buffer_frame_cpu.projection   = m_camera->GetProjectionMatrix();
 
 			// TAA - Generate jitter
 			if (GetOption(Render_AntiAliasing_Taa))
@@ -231,7 +240,7 @@ namespace Spartan
 			else
 			{
 				m_taa_jitter			= Vector2::Zero;
-				m_taa_jitter_previous	= Vector2::Zero;		
+				m_taa_jitter_previous   = Vector2::Zero;		
 			}
 
             // Compute some TAA affected matrices
@@ -245,7 +254,26 @@ namespace Spartan
 		m_is_rendering = false;
 	}
 
-	void Renderer::SetResolution(uint32_t width, uint32_t height)
+    void Renderer::SetViewport(float width, float height, float offset_x /*= 0*/, float offset_y /*= 0*/)
+    {
+        if (m_viewport.width != width || m_viewport.height != height)
+        {
+            // Update viewport
+            m_viewport.width    = width;
+            m_viewport.height   = height;
+
+            // Update full-screen quad
+            m_viewport_quad = Math::Rectangle(0, 0, width, height);
+            m_viewport_quad.CreateBuffers(this);
+
+            m_update_ortho_proj = true;
+        }
+
+        m_viewport_editor_offset.x = offset_x;
+        m_viewport_editor_offset.y = offset_y;
+    }
+
+    void Renderer::SetResolution(uint32_t width, uint32_t height)
 	{
 		// Return if resolution is invalid
 		if (!m_rhi_device->ValidateResolution(width, height))
@@ -266,10 +294,12 @@ namespace Spartan
 		m_resolution.x = static_cast<float>(width);
 		m_resolution.y = static_cast<float>(height);
 
+        // Register display mode (in case it doesn't exist)
+        const DisplayMode& display_mode = m_rhi_device->GetActiveDisplayMode();
+        m_rhi_device->SetActiveDisplayMode(DisplayMode(width, height, display_mode.numerator, display_mode.denominator));
+
 		// Re-create render textures
 		CreateRenderTextures();
-
-        m_update_ortho_proj = true;
 
         FIRE_EVENT(Event_Frame_Resolution_Changed);
 

@@ -203,30 +203,23 @@ namespace Spartan
 		// will be changed to match the dimensions of the application window.
 		if (m_flags & RHI_SwapChain_Allow_Mode_Switch)
 		{		
-			if (const DisplayMode* display_mode = m_rhi_device->GetPrimaryDisplayMode())
-			{
-			    // Resize swapchain target
-			    DXGI_MODE_DESC dxgi_mode_desc;
-			    ZeroMemory(&dxgi_mode_desc, sizeof(dxgi_mode_desc));
-			    dxgi_mode_desc.Width			= static_cast<UINT>(width);
-			    dxgi_mode_desc.Height			= static_cast<UINT>(height);
-			    dxgi_mode_desc.Format			= d3d11_format[m_format];
-			    dxgi_mode_desc.RefreshRate		= DXGI_RATIONAL{ display_mode->numerator, display_mode->denominator };
-			    dxgi_mode_desc.Scaling			= DXGI_MODE_SCALING_UNSPECIFIED;
-			    dxgi_mode_desc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+            const DisplayMode& display_mode = m_rhi_device->GetActiveDisplayMode();
 
-			    // Resize swapchain target
-			    const auto result = swap_chain->ResizeTarget(&dxgi_mode_desc);
-			    if (FAILED(result))
-			    {
-			    	LOG_ERROR("Failed to resize swapchain target, %s.", d3d11_utility::dxgi_error_to_string(result));
-			    	return false;
-			    }
-            }
-            else
+            // Resize swapchain target
+            DXGI_MODE_DESC dxgi_mode_desc   = {};
+            dxgi_mode_desc.Width			= static_cast<UINT>(width);
+            dxgi_mode_desc.Height			= static_cast<UINT>(height);
+            dxgi_mode_desc.Format			= d3d11_format[m_format];
+            dxgi_mode_desc.RefreshRate		= DXGI_RATIONAL{ display_mode.numerator, display_mode.denominator };
+            dxgi_mode_desc.Scaling			= DXGI_MODE_SCALING_UNSPECIFIED;
+            dxgi_mode_desc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+            
+            // Resize swapchain target
+            const auto result = swap_chain->ResizeTarget(&dxgi_mode_desc);
+            if (FAILED(result))
             {
-                LOG_ERROR("Failed to get a display mode");
-                return false;
+            	LOG_ERROR("Failed to resize swapchain target, %s.", d3d11_utility::dxgi_error_to_string(result));
+            	return false;
             }
 		}
 	

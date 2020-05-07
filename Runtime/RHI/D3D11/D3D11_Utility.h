@@ -35,7 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan::d3d11_utility
 {
-    struct instance
+    struct globals
     {
         static inline RHI_Device* rhi_device;
         static inline RHI_Context* rhi_context;
@@ -123,7 +123,7 @@ namespace Spartan::d3d11_utility
 			auto def_char = ' ';
 			WideCharToMultiByte(CP_ACP, 0, adapter_desc.Description, -1, name, 128, &def_char, nullptr);
 
-            instance::rhi_device->RegisterPhysicalDevice(PhysicalDevice
+            globals::rhi_device->RegisterPhysicalDevice(PhysicalDevice
             (
                 0,                                                          // api version
                 0,                                                          // driver version
@@ -155,9 +155,9 @@ namespace Spartan::d3d11_utility
 					if (result)
 					{
 						// Save all the display modes
-						for (const auto& mode : display_modes)
+						for (const DXGI_MODE_DESC& mode : display_modes)
 						{
-                            instance::rhi_device->RegisterDisplayMode(DisplayMode(mode.Width, mode.Height, mode.RefreshRate.Numerator, mode.RefreshRate.Denominator));
+                            globals::rhi_device->RegisterDisplayMode(DisplayMode(mode.Width, mode.Height, mode.RefreshRate.Numerator, mode.RefreshRate.Denominator));
 						}
 					}
 				}
@@ -168,16 +168,16 @@ namespace Spartan::d3d11_utility
 		};
 
 		// Get display modes and set primary adapter
-		for (uint32_t device_index = 0; device_index < instance::rhi_device->GetPhysicalDevices().size(); device_index++)
+		for (uint32_t device_index = 0; device_index < globals::rhi_device->GetPhysicalDevices().size(); device_index++)
 		{
-            const PhysicalDevice& physical_device = instance::rhi_device->GetPhysicalDevices()[device_index];
+            const PhysicalDevice& physical_device = globals::rhi_device->GetPhysicalDevices()[device_index];
 			const auto dx_adapter = static_cast<IDXGIAdapter*>(physical_device.GetData());
 
 			// Adapters are ordered by memory (descending), so stop on the first success
             const auto format = RHI_Format_R8G8B8A8_Unorm; // TODO: This must come from the swapchain
 			if (get_display_modes(dx_adapter, format))
 			{
-                instance::rhi_device->SetPrimaryPhysicalDevice(device_index);
+                globals::rhi_device->SetPrimaryPhysicalDevice(device_index);
                 return;
 			}
 			else
@@ -187,10 +187,10 @@ namespace Spartan::d3d11_utility
 		}
 
 		// If we failed to detect any display modes but we have at least one adapter, use it.
-		if (instance::rhi_device->GetPhysicalDevices().size() != 0)
+		if (globals::rhi_device->GetPhysicalDevices().size() != 0)
 		{
 			LOG_ERROR("Failed to detect display modes for all physical devices, falling back to first available.");
-            instance::rhi_device->SetPrimaryPhysicalDevice(0);
+            globals::rhi_device->SetPrimaryPhysicalDevice(0);
 		}
 	}
 
@@ -214,7 +214,7 @@ namespace Spartan::d3d11_utility
 		}
 
         const bool fullscreen_borderless_support	= SUCCEEDED(resut) && allowTearing;
-        const bool vendor_support					= !instance::rhi_device->GetPrimaryPhysicalDevice()->IsIntel(); // Intel, bad
+        const bool vendor_support					= !globals::rhi_device->GetPrimaryPhysicalDevice()->IsIntel(); // Intel, bad
 
 		return fullscreen_borderless_support && vendor_support;
 	}
@@ -258,7 +258,7 @@ namespace Spartan::d3d11_utility
 			}
 			#endif
 
-            if (flags & RHI_Swap_Flip_Discard && instance::rhi_device->GetPrimaryPhysicalDevice()->IsIntel())
+            if (flags & RHI_Swap_Flip_Discard && globals::rhi_device->GetPrimaryPhysicalDevice()->IsIntel())
             {
                 LOG_WARNING("Swap_Flip_Discard was requested but it's not supported by Intel adapters, using Swap_Discard instead.");
                 flags &= ~RHI_Swap_Flip_Discard;

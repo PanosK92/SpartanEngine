@@ -46,8 +46,8 @@ namespace Spartan
 	{
         m_context                                   = context;
 		m_rhi_context                               = make_shared<RHI_Context>();
-        d3d11_utility::instance::rhi_context        = m_rhi_context.get();
-        d3d11_utility::instance::rhi_device         = this;
+        d3d11_utility::globals::rhi_context         = m_rhi_context.get();
+        d3d11_utility::globals::rhi_device          = this;
 		const static auto multithread_protection    = false;
 
 		// Detect adapters

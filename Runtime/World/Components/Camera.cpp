@@ -164,7 +164,7 @@ namespace Spartan
 	bool Camera::Pick(const Vector2& mouse_position, shared_ptr<Entity>& picked)
 	{
 		const RHI_Viewport& viewport			= m_renderer->GetViewport();
-		const Vector2& offset					= m_renderer->viewport_editor_offset;
+        const Vector2& offset                   = m_renderer->GetViewportOffset();
 		const Vector2 mouse_position_relative	= mouse_position - offset;
 
 		// Ensure the ray is inside the viewport
@@ -372,7 +372,7 @@ namespace Spartan
 	Matrix Camera::ComputeProjection(const bool reverse_z)
 	{
         const float near_plane	= !reverse_z ? m_near_plane : m_far_plane;
-        const float far_plane     = !reverse_z ? m_far_plane  : m_near_plane;
+        const float far_plane   = !reverse_z ? m_far_plane  : m_near_plane;
 
 		if (m_projection_type == Projection_Perspective)
 		{

@@ -216,17 +216,17 @@ namespace Spartan
 		void DrawBox(const Math::BoundingBox& box, const Math::Vector4& color = DebugColor, bool depth = true);
 
 		// Viewport
-		const auto& GetViewport() const			        { return m_viewport; }
-		void SetViewport(const RHI_Viewport& viewport)	{ m_viewport = viewport; }
+		const RHI_Viewport& GetViewport() const	{ return m_viewport; }
+        const Math::Vector2& GetViewportOffset() const { return m_viewport_editor_offset; }
+        void SetViewport(float width, float height, float offset_x = 0, float offset_y = 0);
 
         // Resolution
-        const auto& GetResolution() const { return m_resolution; }
+        const Math::Vector2& GetResolution() const { return m_resolution; }
         void SetResolution(uint32_t width, uint32_t height);
 
 		// Editor
 		float m_gizmo_transform_size    = 0.015f;
 		float m_gizmo_transform_speed   = 12.0f;
-        Math::Vector2 viewport_editor_offset;
         std::weak_ptr<Entity> SnapTransformGizmoTo(const std::shared_ptr<Entity>& entity) const;
 
 		// Debug
@@ -383,15 +383,16 @@ namespace Spartan
 		Math::Rectangle m_gizmo_light_rect;
 
         // Resolution & Viewport
-		Math::Vector2 m_resolution	= Math::Vector2(1920, 1080);
-		RHI_Viewport m_viewport		= RHI_Viewport(0, 0, 1920, 1080);
+		Math::Vector2 m_resolution	            = Math::Vector2::Zero;
+		RHI_Viewport m_viewport		            = RHI_Viewport(0, 0, 1920, 1080);
+        Math::Vector2 m_viewport_editor_offset  = Math::Vector2::Zero;
 
         // Options
         uint64_t m_options = 0;
         std::unordered_map<Renderer_Option_Value, float> m_option_values;
 
         // Misc
-		Math::Rectangle m_quad;
+		Math::Rectangle m_viewport_quad;
 		std::unique_ptr<Font> m_font;
         Math::Vector2 m_taa_jitter              = Math::Vector2::Zero;
 		Math::Vector2 m_taa_jitter_previous     = Math::Vector2::Zero;

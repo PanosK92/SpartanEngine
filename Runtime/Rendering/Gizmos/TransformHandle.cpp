@@ -147,7 +147,7 @@ namespace Spartan
 			// Create ray starting from camera position and pointing towards where the mouse is pointing
 			const auto mouse_pos			= m_input->GetMousePosition();
 			const auto& viewport			= m_context->GetSubsystem<Renderer>()->GetViewport();
-			const auto editor_offset		= m_context->GetSubsystem<Renderer>()->viewport_editor_offset;
+            const auto& editor_offset       = m_context->GetSubsystem<Renderer>()->GetViewportOffset();
 			const auto mouse_pos_relative	= mouse_pos - editor_offset;
 			const auto ray_start			= camera->GetTransform()->GetPosition();
 			auto ray_end					= camera->Unproject(mouse_pos_relative);

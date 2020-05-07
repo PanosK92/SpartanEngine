@@ -68,27 +68,46 @@ namespace Spartan
 
     void RHI_Device::RegisterDisplayMode(const DisplayMode& display_mode)
     {
+        // Early exit if display is already registered
+        for (const DisplayMode& display_mode_existing : m_display_modes)
+        {
+            if (display_mode == display_mode_existing)
+                return;
+        }
+
         DisplayMode& mode = m_display_modes.emplace_back(display_mode);
 
         // Keep display modes sorted, based on refresh rate (from highest to lowest)
         sort(m_display_modes.begin(), m_display_modes.end(), [](const DisplayMode& display_mode_a, const DisplayMode& display_mode_b)
         {
-            return display_mode_a.refresh_rate > display_mode_b.refresh_rate;
+            return display_mode_a.hz > display_mode_b.hz;
         });
 
+        // Find preferred display mode
+        for (uint32_t i = 0; i < static_cast<uint32_t>(m_display_modes.size()); i++)
+        {
+            const DisplayMode& display_mode = m_display_modes[i];
+
+            // Try to use higher resolution
+            if (display_mode.width > m_display_mode_active.width || display_mode.height > m_display_mode_active.height)
+            {
+                // But not lower hz
+                if (display_mode.hz >= m_display_mode_active.hz)
+                { 
+                    m_display_mode_active.width         = display_mode.width;
+                    m_display_mode_active.height        = display_mode.height;
+                    m_display_mode_active.hz            = display_mode.hz;
+                    m_display_mode_active.numerator     = display_mode.numerator;
+                    m_display_mode_active.denominator   = display_mode.denominator;
+                }
+            }
+        }
+
         // Let the timer know about the refresh rates this monitor is capable of (will result in low latency/smooth ticking)
-        m_context->GetSubsystem<Timer>()->SetTargetFps(m_display_modes.front().refresh_rate);
+        m_context->GetSubsystem<Timer>()->SetTargetFps(m_display_modes.front().hz);
     }
 
-    const DisplayMode* RHI_Device::GetPrimaryDisplayMode()
-    {
-        if (m_display_mode_index >= m_display_modes.size())
-            return nullptr;
-
-        return &m_display_modes[m_display_mode_index];
-    }
-
-	bool RHI_Device::ValidateResolution(const uint32_t width, const uint32_t height) const
+    bool RHI_Device::ValidateResolution(const uint32_t width, const uint32_t height) const
     {
         return  width  > 0 && width  <= m_rhi_context->max_texture_dimension_2d &&
                 height > 0 && height <= m_rhi_context->max_texture_dimension_2d;
