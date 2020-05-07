@@ -329,7 +329,7 @@ namespace Spartan
         // Color
         for (auto i = 0; i < state_max_render_target_count; i++)
         {
-            if (pipeline_state.clear_color[i] != state_color_load)
+            if (pipeline_state.clear_color[i] != state_color_load && pipeline_state.clear_color[i] != state_depth_dont_care)
             {
                 if (pipeline_state.render_target_swapchain)
                 {
@@ -351,18 +351,21 @@ namespace Spartan
         }
 
         // Depth-stencil
-        UINT clear_flags = 0;
-        clear_flags |= (pipeline_state.clear_depth    != state_depth_load)      ? D3D11_CLEAR_DEPTH     : 0;
-        clear_flags |= (pipeline_state.clear_stencil  != state_stencil_load)    ? D3D11_CLEAR_STENCIL   : 0;
-        if (clear_flags != 0)
+        if (pipeline_state.render_target_depth_texture)
         {
-            m_rhi_device->GetContextRhi()->device_context->ClearDepthStencilView
-            (
-                static_cast<ID3D11DepthStencilView*>(pipeline_state.render_target_depth_texture->Get_Resource_View_DepthStencil(pipeline_state.render_target_depth_stencil_texture_array_index)),
-                clear_flags,
-                static_cast<FLOAT>(pipeline_state.clear_depth),
-                static_cast<UINT8>(pipeline_state.clear_stencil)
-            );
+            UINT clear_flags = 0;
+            clear_flags |= (pipeline_state.clear_depth      != state_depth_load     && pipeline_state.clear_depth   != state_depth_dont_care)   ? D3D11_CLEAR_DEPTH     : 0;
+            clear_flags |= (pipeline_state.clear_stencil    != state_stencil_load   && pipeline_state.clear_stencil != state_stencil_dont_care) ? D3D11_CLEAR_STENCIL   : 0;
+            if (clear_flags != 0)
+            {
+                m_rhi_device->GetContextRhi()->device_context->ClearDepthStencilView
+                (
+                    static_cast<ID3D11DepthStencilView*>(pipeline_state.render_target_depth_texture->Get_Resource_View_DepthStencil(pipeline_state.render_target_depth_stencil_texture_array_index)),
+                    clear_flags,
+                    static_cast<FLOAT>(pipeline_state.clear_depth),
+                    static_cast<UINT8>(pipeline_state.clear_stencil)
+                );
+            }
         }
 
         pipeline_state.ResetClearValues();
