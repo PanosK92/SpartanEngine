@@ -110,10 +110,6 @@ namespace Spartan
             return;
         }
 
-        // Full-screen quad
-        m_quad = Math::Rectangle(0, 0, m_resolution.x, m_resolution.y);
-        m_quad.CreateBuffers(this);
-
         // G-Buffer
         // Stencil is used to mask transparent objects and also has a read only version
         // From and below Texture_Format_R8G8B8A8_UNORM, normals have noticeable banding

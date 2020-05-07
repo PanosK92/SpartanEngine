@@ -87,10 +87,8 @@ namespace Spartan
         if (fps_in < 0.0f) // negative -> match monitor's refresh rate
         {
             m_fps_policy = Fps_FixedMonitor;
-            if (const DisplayMode* display_mode = m_context->GetSubsystem<Renderer>()->GetRhiDevice()->GetPrimaryDisplayMode())
-            {
-                fps_in = display_mode->refresh_rate;
-            }
+            const DisplayMode& display_mode = m_context->GetSubsystem<Renderer>()->GetRhiDevice()->GetActiveDisplayMode();
+            fps_in = display_mode.hz;
         }
         else if (fps_in >= 0.0f && fps_in < 10.0f) // zero or very small -> unlock to avoid unresponsiveness
         {

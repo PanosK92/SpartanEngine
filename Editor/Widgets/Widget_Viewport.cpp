@@ -22,7 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==================
 #include "Widget_Viewport.h"
 #include "Core/Timer.h"
-#include "Rendering\Model.h"
+#include "Core/Settings.h"
+#include "Rendering/Model.h"
 #include "../ImGui_Extension.h"
 //=============================
 
@@ -38,8 +39,9 @@ Widget_Viewport::Widget_Viewport(Editor* editor) : Widget(editor)
     m_size      = Vector2(400, 250);
 	m_flags     |= ImGuiWindowFlags_NoScrollbar;
     m_padding   = Vector2(4.0f);
-    m_renderer  = m_context->GetSubsystem<Renderer>();
     m_world     = m_context->GetSubsystem<World>();
+    m_renderer  = m_context->GetSubsystem<Renderer>();
+    m_settings  = m_context->GetSubsystem<Settings>();
 }
 
 void Widget_Viewport::Tick()
@@ -48,33 +50,20 @@ void Widget_Viewport::Tick()
 		return;
 
 	// Get current frame window resolution
-	uint32_t width			= static_cast<uint32_t>(ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x);
-	uint32_t height			= static_cast<uint32_t>(ImGui::GetWindowContentRegionMax().y - ImGui::GetWindowContentRegionMin().y);
-    const uint32_t max_res  = m_renderer->GetMaxResolution();
-	if (width > max_res || height > max_res)
-		return;
-
-	// Make pixel perfect
-	width	-= (width	% 2 != 0) ? 1 : 0;
-	height	-= (height	% 2 != 0) ? 1 : 0;
+	float width			= static_cast<float>(ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x);
+	float height		= static_cast<float>(ImGui::GetWindowContentRegionMax().y - ImGui::GetWindowContentRegionMin().y);
 
 	// Update engine's viewport
-	m_renderer->viewport_editor_offset = Vector2(ImGui::GetWindowPos()) + m_window_padding;
-	m_viewport.width	= static_cast<float>(width);
-	m_viewport.height	= static_cast<float>(height);
-	m_renderer->SetViewport(m_viewport);
+	Vector2 offset = Vector2(ImGui::GetWindowPos()) + m_window_padding;
+	m_renderer->SetViewport(width, height, offset.x, offset.y);
 
-	// Update engine's resolution
-	if (m_timeSinceLastResChange >= 0.1f) // Don't stress the GPU too much
-	{
-		const auto& current_resolution = m_renderer->GetResolution();
-		if (current_resolution.x != width || current_resolution.y != height) // Change only when needed
-		{
-            m_renderer->SetResolution(width, height);
-			m_timeSinceLastResChange = 0;
-		}
-	}
-	m_timeSinceLastResChange += m_context->GetSubsystem<Timer>()->GetDeltaTimeSec();
+    // If this is the first tick and the first time the engine runs (no settings file loaded), we set the resolution to match the viewport size.
+    // This is to avoid a scenario were the resolution is much higher than what the user assumes, resulting in less performance.
+    if (m_is_resolution_dirty && !m_settings->Loaded())
+    {
+        m_renderer->SetResolution(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+        m_is_resolution_dirty = false;
+    }
 
 	// Draw the image after a potential Renderer::SetResolution() call has been made
 	ImGuiEx::Image

@@ -48,21 +48,19 @@ namespace Spartan
 			this->height		= height;
 			this->numerator     = numerator;
             this->denominator   = denominator;
-            this->refresh_rate  = static_cast<double>(numerator) / static_cast<double>(denominator);
+            this->hz  = static_cast<double>(numerator) / static_cast<double>(denominator);
 		}
 
-        DisplayMode(const uint32_t width, const uint32_t height, const double refresh_rate)
+        bool operator ==(const DisplayMode& rhs) const
         {
-            this->width         = width;
-            this->height        = height;
-            this->refresh_rate  = refresh_rate;
+            return width == rhs.width && height == rhs.height && hz == rhs.hz;
         }
 
 		uint32_t width		    = 0;
 		uint32_t height		    = 0;   
         uint32_t numerator      = 0;
         uint32_t denominator    = 0;
-        double refresh_rate     = 0;
+        double hz               = 0;
 	};
 
 	class PhysicalDevice
@@ -164,7 +162,9 @@ namespace Spartan
 
         // Display mode
         void RegisterDisplayMode(const DisplayMode& display_mode);
-        const DisplayMode* GetPrimaryDisplayMode();
+        const DisplayMode& GetActiveDisplayMode() const { return m_display_mode_active; }
+        void SetActiveDisplayMode(const DisplayMode& display_mode) { m_display_mode_active = display_mode; }
+        const std::vector<DisplayMode>& GetDisplayModes() const { return m_display_modes; }
         bool ValidateResolution(const uint32_t width, const uint32_t height) const;
 
         // Queue
@@ -184,8 +184,8 @@ namespace Spartan
 	private:	
 		std::vector<PhysicalDevice> m_physical_devices;
         std::vector<DisplayMode> m_display_modes;
-        uint32_t m_physical_device_index            = 0;
-        uint32_t m_display_mode_index               = 0;
+        DisplayMode m_display_mode_active;
+        uint32_t m_physical_device_index            = 0;     
         uint32_t m_enabled_graphics_shader_stages   = 0;
         bool m_initialized                          = false;
         mutable std::mutex m_queue_mutex;

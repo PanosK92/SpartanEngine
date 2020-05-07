@@ -55,10 +55,11 @@ namespace Spartan
         bool Initialize() override;
         //=========================
 
-		//= MISC =====================================================
-		auto GetIsFullScreen() const	{ return m_is_fullscreen; }
-		auto GetIsMouseVisible() const	{ return m_is_mouse_visible; }
-		//============================================================
+		//= MISC =======================================================
+        bool GetIsFullScreen()      const { return m_is_fullscreen; }
+        bool GetIsMouseVisible()    const { return m_is_mouse_visible; }
+        bool Loaded()            const { return m_loaded; }
+		//==============================================================
 
         void RegisterThirdPartyLib(const std::string& name, const std::string& version, const std::string& url);
         const auto& GetThirdPartyLibs() const { return m_third_party_libs; }
@@ -78,6 +79,7 @@ namespace Spartan
 		uint32_t m_anisotropy				= 0;
 		uint32_t m_max_thread_count			= 0;
         double m_fps_limit                  = 0;
+        bool m_loaded                       = false;
         Context* m_context                  = nullptr;
         std::vector<ThirdPartyLib> m_third_party_libs;
 	};
