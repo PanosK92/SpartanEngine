@@ -329,7 +329,7 @@ namespace Spartan
         // Color
         for (auto i = 0; i < state_max_render_target_count; i++)
         {
-            if (pipeline_state.clear_color[i] != state_dont_clear_color)
+            if (pipeline_state.clear_color[i] != state_color_load)
             {
                 if (pipeline_state.render_target_swapchain)
                 {
@@ -352,8 +352,8 @@ namespace Spartan
 
         // Depth-stencil
         UINT clear_flags = 0;
-        clear_flags |= (pipeline_state.clear_depth    != state_dont_clear_depth)      ? D3D11_CLEAR_DEPTH     : 0;
-        clear_flags |= (pipeline_state.clear_stencil  != state_dont_clear_stencil)    ? D3D11_CLEAR_STENCIL   : 0;
+        clear_flags |= (pipeline_state.clear_depth    != state_depth_load)      ? D3D11_CLEAR_DEPTH     : 0;
+        clear_flags |= (pipeline_state.clear_stencil  != state_stencil_load)    ? D3D11_CLEAR_STENCIL   : 0;
         if (clear_flags != 0)
         {
             m_rhi_device->GetContextRhi()->device_context->ClearDepthStencilView

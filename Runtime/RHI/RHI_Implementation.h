@@ -335,7 +335,7 @@ namespace Spartan
             // Extensions
             #ifdef DEBUG
                 /*
-                https://vulkan.lunarg.com/doc/view/1.1.108.0/mac/validation_layers.html
+                https://vulkan.lunarg.com/doc/view/1.2.135.0/mac/validation_layers.html
 
                 VK_LAYER_KHRONOS_validation
                 ===================================
@@ -350,13 +350,13 @@ namespace Spartan
                 Identify specific sections within a VkQueue or VkCommandBuffer using labels to aid organization and offline analysis in external tools.
 
                 */
-                std::vector<const char*> extensions_device      = { VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_EXT_MEMORY_BUDGET_EXTENSION_NAME, VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME };
+                std::vector<const char*> extensions_device      = { "VK_KHR_swapchain", "VK_EXT_memory_budget", "VK_EXT_depth_clip_enable" };
                 std::vector<const char*> validation_layers      = { "VK_LAYER_KHRONOS_validation" };
-                std::vector<const char*> extensions_instance    = { VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WIN32_SURFACE_EXTENSION_NAME, VK_EXT_DEBUG_REPORT_EXTENSION_NAME, VK_EXT_DEBUG_UTILS_EXTENSION_NAME };
+                std::vector<const char*> extensions_instance    = { "VK_KHR_surface", "VK_KHR_win32_surface", "VK_EXT_debug_report", "VK_EXT_debug_utils" };
             #else
-                std::vector<const char*> extensions_device      = { VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_EXT_MEMORY_BUDGET_EXTENSION_NAME, VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME };
+                std::vector<const char*> extensions_device      = { "VK_KHR_swapchain", "VK_EXT_memory_budget", "VK_EXT_depth_clip_enable" };
                 std::vector<const char*> validation_layers      = { };
-                std::vector<const char*> extensions_instance    = { VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WIN32_SURFACE_EXTENSION_NAME };
+                std::vector<const char*> extensions_instance    = { "VK_KHR_surface", "VK_KHR_win32_surface" };
             #endif
 
                 bool initalise_allocator();
