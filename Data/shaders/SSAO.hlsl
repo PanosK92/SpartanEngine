@@ -25,11 +25,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //=======================
 
 static const int sample_count       = 16;
-static const float radius           = 3.0f;
+static const float radius           = 0.2f;
 static const float intensity        = 1.5f;
 static const float2 noise_scale     = float2(g_resolution.x / 256.0f, g_resolution.y / 256.0f);
 
-static const float3 sampleKernel[64] =
+static const float3 sample_kernel[64] =
 {
     float3(0.04977, -0.04471, 0.04996),
     float3(0.01457, 0.01653, 0.00224),
@@ -103,10 +103,10 @@ float mainPS(Pixel_PosUv input) : SV_TARGET
     float3 center_pos       = get_position(uv);
     float3 center_normal    = get_normal(uv);       
 
-    // Construct TBN
+    // Construct noise tbn
     float3 noise    = unpack(tex_normal_noise.Sample(sampler_bilinear_wrap, input.uv * noise_scale).xyz);
     float3 tangent  = normalize(noise - center_normal * dot(noise, center_normal));
-    float3x3 TBN    = makeTBN(center_normal, tangent);
+    float3x3 tbn    = makeTBN(center_normal, tangent);
 
     // Occlusion
     float occlusion = 0.0f;
@@ -114,15 +114,14 @@ float mainPS(Pixel_PosUv input) : SV_TARGET
     for (int i = 0; i < sample_count; i++)
     {
         // Compute sample uv
-        float3 dither       = dither_temporal(uv, 500.0f);
-        float3 offset       = mul(sampleKernel[i], TBN) * dither;
-        float3 ray_pos      = center_pos + offset * radius;
-        float2 ray_uv       = project_uv(ray_pos, g_viewProjection);
-        float3 sample_pos   = get_position(ray_uv);
+        float3 offset       = normalize(mul(sample_kernel[i], tbn)) * radius;
+        float3 sample_pos   = center_pos + offset; // we can't use this as it might reside inside geometry
+        float2 sample_uv    = project_uv(sample_pos, g_viewProjection);
+        sample_pos          = get_position(sample_uv);
         
         // Compute sample direction
         float3 center_to_sample         = sample_pos - center_pos;
-        float center_to_sample_distance = length(center_to_sample);
+        float center_to_sample_distance = length(center_to_sample) + FLT_MIN;
         float3 center_to_sample_dir     = center_to_sample / center_to_sample_distance;
         
         // Compute occlusion
