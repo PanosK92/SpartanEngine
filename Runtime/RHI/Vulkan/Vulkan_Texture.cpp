@@ -24,13 +24,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Implementation.h"
 //================================
 
-//= INCLUDES =====================
+//= INCLUDES ========================
 #include "../RHI_Device.h"
 #include "../RHI_Texture2D.h"
 #include "../RHI_TextureCube.h"
-#include "../../Math/MathHelper.h"
 #include "../RHI_CommandList.h"
-//================================
+#include "../../Math/MathHelper.h"
+#include "../../Profiling/Profiler.h"
+//===================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -94,6 +95,8 @@ namespace Spartan
         {
             if (!vulkan_utility::image::set_layout(static_cast<VkCommandBuffer>(command_list->GetResource_CommandBuffer()), this, new_layout))
                 return;
+
+            m_context->GetSubsystem<Profiler>()->m_rhi_pipeline_barriers++;
         }
 
         m_layout = new_layout;

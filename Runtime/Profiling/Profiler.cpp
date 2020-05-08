@@ -276,30 +276,31 @@ namespace Spartan
 
         static const char* text =
             // Performance
-            "FPS:\t\t\t\t\t\t\t%.2f\n"
-            "Frame time:\t\t\t\t\t%.2f\n"
-            "CPU time:\t\t\t\t\t\t%.2f\n"
-            "GPU time:\t\t\t\t\t\t%.2f\n"
-            "GPU:\t\t\t\t\t\t\t%s\n"
-            "VRAM:\t\t\t\t\t\t\t%d/%d MB\n"
+            "FPS:\t\t\t\t\t\t%.2f\n"
+            "Frame time:\t\t\t\t%.2f\n"
+            "CPU time:\t\t\t\t\t%.2f\n"
+            "GPU time:\t\t\t\t\t%.2f\n"
+            "GPU:\t\t\t\t\t\t%s\n"
+            "VRAM:\t\t\t\t\t\t%d/%d MB\n"
             // Renderer
-            "Resolution:\t\t\t\t\t\t%dx%d\n"
-            "Meshes rendered:\t\t\t\t%d\n"
-            "Textures:\t\t\t\t\t\t%d\n"
-            "Materials:\t\t\t\t\t\t%d\n"
+            "Resolution:\t\t\t\t\t%dx%d\n"
+            "Meshes rendered:\t\t\t%d\n"
+            "Textures:\t\t\t\t\t%d\n"
+            "Materials:\t\t\t\t\t%d\n"
             // RHI
-            "RHI Draw calls:\t\t\t\t\t%d\n"
-            "RHI Index buffer bindings:\t\t%d\n"
-            "RHI Vertex buffer bindings:\t\t%d\n"
-            "RHI Constant buffer bindings:\t%d\n"
-            "RHI Sampler bindings:\t\t\t%d\n"
-            "RHI Texture bindings:\t\t\t%d\n"
-            "RHI Vertex Shader bindings:\t\t%d\n"
-            "RHI Pixel Shader bindings:\t\t%d\n"
-            "RHI Compute Shader bindings:\t%d\n"
-            "RHI Render Target bindings:\t\t%d\n"
-            "RHI Pipeline bindings:\t\t\t%d\n"
-            "RHI Descriptor Set bindings:\t\t%d";
+            "Draw calls:\t\t\t\t\t%d\n"
+            "Index buffer bindings:\t\t%d\n"
+            "Vertex buffer bindings:\t\t%d\n"
+            "Constant buffer bindings:\t%d\n"
+            "Sampler bindings:\t\t\t%d\n"
+            "Texture bindings:\t\t\t%d\n"
+            "Vertex shader bindings:\t\t%d\n"
+            "Pixel shader bindings:\t\t%d\n"
+            "Compute shader bindings:\t%d\n"
+            "Render target bindings:\t\t%d\n"
+            "Pipeline bindings:\t\t\t%d\n"
+            "Descriptor set bindings:\t\t%d\n"
+            "Pipeline barriers:\t\t\t%d";
 
 		static char buffer[1024]; // real usage is around 800
 		sprintf_s
@@ -333,7 +334,8 @@ namespace Spartan
             m_rhi_bindings_shader_compute,
 			m_rhi_bindings_render_target,
             m_rhi_bindings_pipeline,
-            m_rhi_bindings_descriptor_set
+            m_rhi_bindings_descriptor_set,
+            m_rhi_pipeline_barriers
 		);
 
 		m_metrics = string(buffer);
