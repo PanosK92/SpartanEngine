@@ -152,23 +152,44 @@ namespace Spartan
     {
         m_hash = 0;
 
-        Utility::Hash::hash_combine(m_hash, scissor.left);
-        Utility::Hash::hash_combine(m_hash, scissor.top);
-        Utility::Hash::hash_combine(m_hash, scissor.right);
-        Utility::Hash::hash_combine(m_hash, scissor.bottom);
+        Utility::Hash::hash_combine(m_hash, dynamic_scissor);
         Utility::Hash::hash_combine(m_hash, viewport.x);
         Utility::Hash::hash_combine(m_hash, viewport.y);
         Utility::Hash::hash_combine(m_hash, viewport.width);
         Utility::Hash::hash_combine(m_hash, viewport.height);
         Utility::Hash::hash_combine(m_hash, primitive_topology);
         Utility::Hash::hash_combine(m_hash, vertex_buffer_stride);
-        Utility::Hash::hash_combine(m_hash, rasterizer_state->GetId());
-        Utility::Hash::hash_combine(m_hash, blend_state->GetId());
-        Utility::Hash::hash_combine(m_hash, depth_stencil_state->GetId());
-        Utility::Hash::hash_combine(m_hash, shader_vertex->GetId());
-        Utility::Hash::hash_combine(m_hash, dynamic_scissor);
         Utility::Hash::hash_combine(m_hash, render_target_color_texture_array_index);
         Utility::Hash::hash_combine(m_hash, render_target_depth_stencil_texture_array_index);
+        Utility::Hash::hash_combine(m_hash, render_target_swapchain != nullptr);
+
+        if (!dynamic_scissor)
+        {
+            Utility::Hash::hash_combine(m_hash, scissor.left);
+            Utility::Hash::hash_combine(m_hash, scissor.top);
+            Utility::Hash::hash_combine(m_hash, scissor.right);
+            Utility::Hash::hash_combine(m_hash, scissor.bottom);
+        }
+
+        if (rasterizer_state)
+        {
+            Utility::Hash::hash_combine(m_hash, rasterizer_state->GetId());
+        }
+
+        if (blend_state)
+        {
+            Utility::Hash::hash_combine(m_hash, blend_state->GetId());
+        }
+
+        if (depth_stencil_state)
+        {
+            Utility::Hash::hash_combine(m_hash, depth_stencil_state->GetId());
+        }
+
+        if (shader_vertex)
+        {
+            Utility::Hash::hash_combine(m_hash, shader_vertex->GetId());
+        }
 
         if (shader_pixel)
         {
@@ -180,11 +201,11 @@ namespace Spartan
             Utility::Hash::hash_combine(m_hash, shader_compute->GetId());
         }
 
-        for (auto i = 0; i < state_max_render_target_count; i++)
+        for (RHI_Texture* render_target_color_texture : render_target_color_textures)
         {
-            if (render_target_color_textures[i])
+            if (render_target_color_texture)
             {
-                Utility::Hash::hash_combine(m_hash, render_target_color_textures[i]->GetId());
+                Utility::Hash::hash_combine(m_hash, render_target_color_texture->GetId());
             }
         }
 
