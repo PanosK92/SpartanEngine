@@ -257,6 +257,11 @@ namespace Spartan
         }
     }
 
+    void RHI_Texture::SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* command_list /*= nullptr*/)
+    {
+        m_layout = new_layout;
+    }
+
 	bool RHI_Texture2D::CreateResourceGpu()
 	{
 		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device)
