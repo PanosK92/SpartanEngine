@@ -240,6 +240,20 @@ namespace ImGui::RHI
         // Submit commands
         if (cmd_list->Begin(g_pipeline_state))
         {
+            // Transition layouts
+            for (auto i = 0; i < draw_data->CmdListsCount; i++)
+            {
+                auto cmd_list_imgui = draw_data->CmdLists[i];
+                for (int cmd_i = 0; cmd_i < cmd_list_imgui->CmdBuffer.Size; cmd_i++)
+                {
+                    const auto pcmd = &cmd_list_imgui->CmdBuffer[cmd_i];
+                    if (RHI_Texture* texture = static_cast<RHI_Texture*>(pcmd->TextureId))
+                    {
+                        texture->SetLayout(RHI_Image_Shader_Read_Only_Optimal, cmd_list);
+                    }
+                }
+            }
+
             cmd_list->SetBufferVertex(g_vertex_buffer);
             cmd_list->SetBufferIndex(g_index_buffer);
 
