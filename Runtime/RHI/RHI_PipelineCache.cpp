@@ -45,11 +45,20 @@ namespace Spartan
         // Render target layout transitions
         {
             // Color
-            for (auto i = 0; i < state_max_render_target_count; i++)
             {
-                if (RHI_Texture* texture = pipeline_state.render_target_color_textures[i])
+                // Swapchain
+                if (RHI_SwapChain* swapchain = pipeline_state.render_target_swapchain)
                 {
-                    texture->SetLayout(RHI_Image_Shader_Read_Only_Optimal, cmd_list);
+                    swapchain->SetLayout(RHI_Image_Present_Src, cmd_list);
+                }
+
+                // Texture
+                for (auto i = 0; i < state_max_render_target_count; i++)
+                {
+                    if (RHI_Texture* texture = pipeline_state.render_target_color_textures[i])
+                    {
+                        texture->SetLayout(RHI_Image_Color_Attachment_Optimal, cmd_list);
+                    }
                 }
             }
 
@@ -59,11 +68,7 @@ namespace Spartan
                 texture->SetLayout(RHI_Image_Depth_Stencil_Attachment_Optimal, cmd_list);
             }
 
-            // Swapchain
-            if (RHI_SwapChain* swapchain = pipeline_state.render_target_swapchain)
-            {
-                swapchain->SetLayout(RHI_Image_Present_Src, cmd_list);
-            }
+            
         }
 
         // Compute a hash for it
