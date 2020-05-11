@@ -127,7 +127,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 
 #if PASS_BLOOM_DOWNSAMPLE_LUMINANCE
     color = Downsample_BoxAntiFlicker(uv, tex);
-    color = luminance(color) * color;
+    color = saturate_16(luminance(color) * color);
 #endif
 
 #if PASS_BLOOM_BLEND_ADDITIVE
@@ -180,3 +180,4 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 
     return color;
 }
+

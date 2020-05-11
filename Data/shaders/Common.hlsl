@@ -281,6 +281,14 @@ inline float interleaved_gradient_noise(float2 position_screen)
     return frac(magic.z * frac(dot(position_screen, magic.xy)));
 }
 
+inline float blue_noise(float2 uv)
+{
+    static const float c_goldenRatioConjugate = 0.61803398875f; // also just fract(goldenRatio)
+    static const float2 noise_scale = float2(g_resolution.x / 256.0f, g_resolution.y / 256.0f);
+    float noise = tex_normal_noise.Sample(sampler_bilinear_wrap, uv * noise_scale).r;
+    return frac(noise + float(g_frame) * c_goldenRatioConjugate * any(g_taa_jitter_offset));
+}
+
 /*------------------------------------------------------------------------------
     MISC
 ------------------------------------------------------------------------------*/
@@ -313,8 +321,3 @@ inline float screen_fade(float2 uv)
     float2 fade = max(12.0f * abs(uv - 0.5f) - 5.0f, 0.0f);
     return saturate(1.0 - dot(fade, fade));
 }
-
-
-
-
-
