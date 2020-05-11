@@ -63,6 +63,9 @@ namespace Spartan
 
         Math::Vector2 taa_jitter_offset_previous;
         Math::Vector2 taa_jitter_offset;
+
+        uint32_t frame;
+        Math::Vector3 padding;
     };
     
     // Low frequency buffer - Updates once per frame

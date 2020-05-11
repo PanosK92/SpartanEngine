@@ -19,10 +19,9 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ============
+//= INCLUDES =========
 #include "Common.hlsl"
-#include "Dithering.hlsl"
-//=======================
+//====================
 
 static const int sample_count       = 16;
 static const float radius           = 0.2f;

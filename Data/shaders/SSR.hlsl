@@ -19,10 +19,9 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ============
+//= INCLUDES =========
 #include "Common.hlsl"
-#include "Dithering.hlsl"
-//=======================
+//====================
 
 static const uint   g_ssr_max_steps              = 64;
 static const uint   g_ssr_binarySearchSteps      = 16;
@@ -67,8 +66,9 @@ inline float2 trace_ray(float2 uv, float3 ray_pos, float3 ray_dir)
     [branch]
     if (fade_camera > 0)
     {
-        // Apply dithering
-        ray_pos += ray_step * dither_temporal_fallback(uv, 0.0f, 50.0f);
+        // Offseting with some temporal interleaved gradient noise, will capture more detail
+        float offset = interleaved_gradient_noise(g_resolution * uv);
+        ray_pos += ray_step * offset;
 
         // Ray-march
         float2 ray_uv = 0.0f;
@@ -107,3 +107,4 @@ float2 mainPS(Pixel_PosUv input) : SV_TARGET
     // Trace it
     return trace_ray(uv, ray_pos, ray_dir);
 }
+
