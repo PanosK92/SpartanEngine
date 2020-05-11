@@ -23,8 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common.hlsl"
 //====================
 
-static const int sample_count       = 16;
-static const float radius           = 0.2f;
+static const int sample_count       = 4;
+static const float radius           = 0.3f;
 static const float intensity        = 1.5f;
 static const float2 noise_scale     = float2(g_resolution.x / 256.0f, g_resolution.y / 256.0f);
 
@@ -107,13 +107,16 @@ float mainPS(Pixel_PosUv input) : SV_TARGET
     float3 tangent  = normalize(noise - center_normal * dot(noise, center_normal));
     float3x3 tbn    = makeTBN(center_normal, tangent);
 
+    // Offset radius to get away with way less steps and great detail
+    float radius_adjusted = radius * interleaved_gradient_noise(uv * g_resolution);
+
     // Occlusion
     float occlusion = 0.0f;
     [unroll]
     for (int i = 0; i < sample_count; i++)
     {
         // Compute sample uv
-        float3 offset       = normalize(mul(sample_kernel[i], tbn)) * radius;
+        float3 offset       = normalize(mul(sample_kernel[i], tbn)) * radius_adjusted;
         float3 sample_pos   = center_pos + offset; // we can't use this as it might reside inside geometry
         float2 sample_uv    = project_uv(sample_pos, g_viewProjection);
         sample_pos          = get_position(sample_uv);
@@ -125,7 +128,7 @@ float mainPS(Pixel_PosUv input) : SV_TARGET
         
         // Compute occlusion
         float occlusion_factor  = dot(center_normal, center_to_sample_dir);
-        float range_check       = smoothstep(0.0f, 1.0f, radius / center_to_sample_distance);
+        float range_check       = smoothstep(0.0f, 1.0f, radius_adjusted / center_to_sample_distance);
 
         // Accumulate
         occlusion += occlusion_factor * range_check;
@@ -133,3 +136,8 @@ float mainPS(Pixel_PosUv input) : SV_TARGET
 
     return 1.0f - saturate((occlusion * intensity) / (float)sample_count);
 }
+
+
+
+
+
