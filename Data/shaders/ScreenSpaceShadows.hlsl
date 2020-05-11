@@ -37,9 +37,9 @@ float ScreenSpaceShadows(Surface surface, Light light)
     float2 ray_uv       = 0.0f;
     float shadow        = 1.0f;
 
-    // Apply dithering
-    float3 dither = dither_temporal_fallback(surface.uv, 0.0f, 100.0f);
-    ray_pos += ray_step * dither;
+    // Offseting with some temporal interleaved gradient noise, will capture more detail
+    float offset = interleaved_gradient_noise(g_resolution * surface.uv);
+    ray_pos += ray_step * offset;
 
     // Ray march towards the light
     float occlusion = 0.0;

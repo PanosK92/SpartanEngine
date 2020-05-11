@@ -43,7 +43,7 @@ inline float3 dither_temporal(float2 uv, float scale = 1.0f)
 }
 
 // Same as dither but offests over time, when TAA is enabled. Returns fallback if TAA is not enabled.
-inline float3 dither_temporal_fallback(float2 uv, float fallback, float scale = 1.0f)
+inline float3 dither_temporal_fallback_(float2 uv, float fallback, float scale = 1.0f)
 {
     return any(g_taa_jitter_offset) ? dither_temporal(uv, scale) : fallback;
 }

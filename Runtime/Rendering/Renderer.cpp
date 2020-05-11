@@ -378,6 +378,7 @@ namespace Spartan
         m_buffer_frame_cpu.gamma                        = m_option_values[Option_Value_Gamma];
         m_buffer_frame_cpu.ssr_enabled                  = GetOption(Render_ScreenSpaceReflections) ? 1.0f : 0.0f;
         m_buffer_frame_cpu.shadow_resolution            = GetOptionValue<float>(Option_Value_ShadowResolution);
+        m_buffer_frame_cpu.frame                        = static_cast<uint32_t>(m_frame_num);
 
         // Update directional light intensity, just grab the first one
         for (const auto& entity : m_entities[Renderer_Object_Light])

@@ -53,6 +53,9 @@ cbuffer BufferFrame : register(b0)
 
     float2 g_taa_jitter_offset_previous;
     float2 g_taa_jitter_offset;
+
+    uint g_frame;
+    float3 g_padding;
 };
 
 // Low frequency - Updates once per frame
@@ -87,7 +90,7 @@ cbuffer BufferUber : register(b2)
     float g_mat_height;
 
     float g_mat_id;
-    float3 g_padding;
+    float3 g_padding2;
 };
 
 // High frequency - Updates per object
