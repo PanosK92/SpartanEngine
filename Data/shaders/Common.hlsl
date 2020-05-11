@@ -276,7 +276,7 @@ inline float random(float2 uv)
 
 inline float interleaved_gradient_noise(float2 position_screen)
 {
-	position_screen +=  g_frame * any(g_taa_jitter_offset); // temporal factor
+    position_screen +=  g_frame * any(g_taa_jitter_offset); // temporal factor
     float3 magic = float3(0.06711056f, 0.00583715f, 52.9829189f);
     return frac(magic.z * frac(dot(position_screen, magic.xy)));
 }

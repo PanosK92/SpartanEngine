@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define SampleShadowMap Technique_Vogel
 
 // technique - all
-static const uint g_shadow_samples      = 16;
+static const uint g_shadow_samples      = 4;
 static const uint g_penumbra_samples    = 16;
 
 // technique - vogel
@@ -411,4 +411,11 @@ float4 Shadow_Map(Surface surface, Light light, bool transparent_pixel)
     
     return shadow;
 }
+
+
+
+
+
+
+
 

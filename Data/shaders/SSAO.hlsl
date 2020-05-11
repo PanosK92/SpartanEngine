@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 static const int sample_count       = 4;
 static const float radius           = 0.3f;
-static const float intensity        = 1.5f;
+static const float intensity        = 2.0f;
 static const float2 noise_scale     = float2(g_resolution.x / 256.0f, g_resolution.y / 256.0f);
 
 static const float3 sample_kernel[64] =
@@ -136,8 +136,3 @@ float mainPS(Pixel_PosUv input) : SV_TARGET
 
     return 1.0f - saturate((occlusion * intensity) / (float)sample_count);
 }
-
-
-
-
-
