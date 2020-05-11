@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-static const uint g_vl_steps        = 64; // below 64, detail loss starts to become easily observable
+static const uint g_vl_steps        = 16;
 static const float g_vl_scattering  = 0.994f;
 static const float g_vl_pow         = 0.5f;
 
@@ -74,8 +74,9 @@ float3 VolumetricLighting(Surface surface, Light light)
     #endif
     float fog           = 0.0f;
     
-    // Apply dithering as it will allow us to get away with a low sample count
-    ray_pos += ray_step * dither_temporal_fallback(surface.uv, 0.0f, 25.0f);
+    // Offset ray to get away with way less steps and great detail
+    float offset = interleaved_gradient_noise(g_resolution * surface.uv);
+    ray_pos += ray_step * offset;
     
     #if DIRECTIONAL
     {
@@ -141,3 +142,4 @@ float3 VolumetricLighting(Surface surface, Light light)
     
     return fog * light.color * light.intensity;
 }
+
