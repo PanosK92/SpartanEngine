@@ -700,36 +700,37 @@ namespace Spartan
         {
             if (Light* light = entity->GetComponent<Light>())
             {
-                // Set pixel shader
-                pipeline_state.shader_pixel = static_cast<RHI_Shader*>(ShaderLight::GetVariation(m_context, light, m_options));
-
-                // Skip the shader until it compiles or the users spots a compilation error
-                if (!pipeline_state.shader_pixel->IsCompiled())
-                    continue;
-        
-                if (cmd_list->Begin(pipeline_state))
+                if (light->GetIntensity() != 0)
                 {
-                    cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
-                    cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
-                    cmd_list->SetTexture(8, m_render_targets[RenderTarget_Gbuffer_Albedo]);
-                    cmd_list->SetTexture(9, m_render_targets[RenderTarget_Gbuffer_Normal]);
-                    cmd_list->SetTexture(10, m_render_targets[RenderTarget_Gbuffer_Material]);
-                    cmd_list->SetTexture(12, m_render_targets[RenderTarget_Gbuffer_Depth]);
-                    cmd_list->SetTexture(22, (m_options & Render_ScreenSpaceAmbientOcclusion) ? m_render_targets[RenderTarget_Ssao] : m_tex_white);
-                    cmd_list->SetTexture(26, (m_options & Render_ScreenSpaceReflections) ? m_render_targets[RenderTarget_Ssr] : m_tex_black);
-                    cmd_list->SetTexture(27, m_render_targets[RenderTarget_Composition_Hdr_2]); // previous frame before post-processing
-        
-                    if (light->GetIntensity() != 0)
+                    // Set pixel shader
+                    pipeline_state.shader_pixel = static_cast<RHI_Shader*>(ShaderLight::GetVariation(m_context, light, m_options));
+
+                    // Skip the shader until it compiles or the users spots a compilation error
+                    if (!pipeline_state.shader_pixel->IsCompiled())
+                        continue;
+
+                    if (cmd_list->Begin(pipeline_state))
                     {
-                        // Update light buffer
+                        cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
+                        cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
+                        cmd_list->SetTexture(8, m_render_targets[RenderTarget_Gbuffer_Albedo]);
+                        cmd_list->SetTexture(9, m_render_targets[RenderTarget_Gbuffer_Normal]);
+                        cmd_list->SetTexture(10, m_render_targets[RenderTarget_Gbuffer_Material]);
+                        cmd_list->SetTexture(12, m_render_targets[RenderTarget_Gbuffer_Depth]);
+                        cmd_list->SetTexture(22, (m_options & Render_ScreenSpaceAmbientOcclusion) ? m_render_targets[RenderTarget_Ssao] : m_tex_white);
+                        cmd_list->SetTexture(26, (m_options & Render_ScreenSpaceReflections) ? m_render_targets[RenderTarget_Ssr] : m_tex_black);
+                        cmd_list->SetTexture(27, m_render_targets[RenderTarget_Composition_Hdr_2]); // previous frame before post-processing
+
+
+                            // Update light buffer
                         UpdateLightBuffer(light);
-        
+
                         // Set shadow map
                         if (light->GetShadowsEnabled())
                         {
                             RHI_Texture* tex_depth = light->GetDepthTexture();
                             RHI_Texture* tex_color = light->GetShadowsTransparentEnabled() ? light->GetColorTexture() : m_tex_white.get();
-        
+
                             if (light->GetLightType() == LightType_Directional)
                             {
                                 cmd_list->SetTexture(13, tex_depth);
@@ -746,13 +747,13 @@ namespace Spartan
                                 cmd_list->SetTexture(18, tex_color);
                             }
                         }
-        
+
                         // Draw
                         cmd_list->DrawIndexed(Rectangle::GetIndexCount());
+
+                        cmd_list->End();
+                        cmd_list->Submit();
                     }
-        
-                    cmd_list->End();
-                    cmd_list->Submit();
                 }
             }
         }

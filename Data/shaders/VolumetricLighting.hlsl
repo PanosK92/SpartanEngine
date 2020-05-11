@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-static const uint g_vl_steps        = 16;
+static const uint g_vl_steps        = 4;
 static const float g_vl_scattering  = 0.994f;
 static const float g_vl_pow         = 0.5f;
 
@@ -42,11 +42,9 @@ float vl_raymarch(Light light, float3 ray_pos, float3 ray_step, float ray_dot_li
         float3 pos = project(ray_pos, light_view_projection[array_index]);
         
         // Check to see if the light can "see" the pixel
-        #ifdef DIRECTIONAL
-        float depth_delta = compare_depth(float3(pos.xy, array_index), pos.z);
-        #elif POINT
+        #if POINT
         float depth_delta = compare_depth(normalize(ray_pos - light.position), pos.z);
-        #elif SPOT
+        #else // directional & spot
         float depth_delta = compare_depth(float3(pos.xy, array_index), pos.z);
         #endif
        
@@ -67,15 +65,11 @@ float3 VolumetricLighting(Surface surface, Light light)
     float3 ray_dir      = -surface.camera_to_pixel;
     float step_length   = surface.camera_to_pixel_length / (float)g_vl_steps;
     float3 ray_step     = ray_dir * step_length;   
-    #ifdef DIRECTIONAL
     float ray_dot_light = dot(ray_dir, light.direction);
-    #else
-    float ray_dot_light = dot(ray_dir, -light.direction);
-    #endif
     float fog           = 0.0f;
     
     // Offset ray to get away with way less steps and great detail
-    float offset = interleaved_gradient_noise(g_resolution * surface.uv);
+    float offset = interleaved_gradient_noise(surface.uv * g_resolution);
     ray_pos += ray_step * offset;
     
     #if DIRECTIONAL
@@ -100,7 +94,7 @@ float3 VolumetricLighting(Surface surface, Light light)
                     // Ray-march using the next cascade
                     float fog_secondary = vl_raymarch(light, ray_pos, ray_step, ray_dot_light, array_index + 1);
                     
-                    // Blend cascades   
+                    // Blend cascades
                     fog = lerp(fog, fog_secondary, cascade_lerp);
                 }
                 
@@ -142,6 +136,24 @@ float3 VolumetricLighting(Surface surface, Light light)
     
     return fog * light.color * light.intensity;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

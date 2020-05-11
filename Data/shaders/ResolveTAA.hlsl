@@ -91,7 +91,7 @@ float4 ResolveTAA(float2 uv, Texture2D tex_history, Texture2D tex_current)
     float3 color_avg = (ctl + ctc + ctr + cml + cmc + cmr + cbl + cbc + cbr) / 9.0f;
 
     // Clip history to the neighbourhood of the current sample
-    color_history = clip_aabb(color_min, color_max, clamp(color_avg, color_min, color_max), color_history);
+    color_history = saturate_16(clip_aabb(color_min, color_max, clamp(color_avg, color_min, color_max), color_history));
     //=====================================================================================================
     
     // Decrease blend factor when motion gets sub-pixel
@@ -121,3 +121,5 @@ float4 ResolveTAA(float2 uv, Texture2D tex_history, Texture2D tex_current)
     // Inverse tonemap
     return float4(ReinhardInverse(resolved), 1.0f);
 }
+
+
