@@ -19,9 +19,9 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-static const uint g_sss_steps               = 32;
-static const float g_sss_tolerance          = 0.005f;
-static const float g_sss_ray_max_distance   = 0.1f;
+static const uint g_sss_steps               = 8;
+static const float g_sss_tolerance          = 0.01f;
+static const float g_sss_ray_max_distance   = 0.05f;
 
 //= INLUCES =============
 #include "Dithering.hlsl"
