@@ -430,7 +430,7 @@ namespace Spartan
 
         // Entities and material references
         std::unordered_map<Renderer_Object_Type, std::vector<Entity*>> m_entities;
-        std::array<Material*, m_max_materials> m_materials;
+        std::array<Material*, m_max_material_instances> m_material_instances;
         
         std::shared_ptr<Camera> m_camera;
 

@@ -69,11 +69,11 @@ namespace Spartan
     };
     
     // Low frequency buffer - Updates once per frame
-    static const uint32_t m_max_materials = 255; // must match the shader
+    static const uint32_t m_max_material_instances = 1024; // must match the shader
     struct BufferMaterial
     {
-        Math::Vector4 mat_clearcoat_clearcoatRough_anis_anisRot[m_max_materials];
-        Math::Vector4 mat_sheen_sheenTint_pad[m_max_materials];
+        Math::Vector4 mat_clearcoat_clearcoatRough_anis_anisRot[m_max_material_instances];
+        Math::Vector4 mat_sheen_sheenTint_pad[m_max_material_instances];
     };
 
     // Medium frequency - Updates a few dozen times

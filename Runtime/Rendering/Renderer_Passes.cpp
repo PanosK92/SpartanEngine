@@ -396,7 +396,7 @@ namespace Spartan
         cmd_list->Clear(pso);
 
         uint32_t material_index = 1; // 0 is reserved for the sky
-        m_materials.fill(nullptr);
+        m_material_instances.fill(nullptr);
 
         // Iterate through all the G-Buffer shader variations
         for (const auto& it : ShaderGBuffer::GetVariations())
@@ -452,7 +452,7 @@ namespace Spartan
                     cmd_list->SetBufferVertex(model->GetVertexBuffer());
 
                     // Bind material
-                    bool is_dirty = material_index == 1 ? true : (m_materials[material_index - 1]->GetId() != material->GetId());
+                    bool is_dirty = material_index == 1 ? true : (m_material_instances[material_index - 1]->GetId() != material->GetId());
                     if (is_dirty)
                     {
                         // Bind material textures		
@@ -478,11 +478,19 @@ namespace Spartan
                         // Update constant buffer
                         UpdateUberBuffer();
 
-                        // Keep reference
-                        m_materials[material_index] = material;
+                        // Keep track of used material instances (they get mapped to shaders)
+                        if (material_index < m_material_instances.size())
+                        {
+                            // Keep reference
+                            m_material_instances[material_index] = material;
 
-                        // Advance index
-                        material_index++;
+                            // Advance index
+                            material_index++;
+                        }
+                        else
+                        {
+                            LOG_ERROR("No more room for material instances, increase array to be able to fit %d instances", material_index + 1);
+                        }
                     }
                     
                     // Update uber buffer with entity transform
