@@ -23,9 +23,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common.hlsl"
 //====================
 
-static const uint   g_ssr_max_steps              = 64;
-static const uint   g_ssr_binarySearchSteps      = 16;
-static const float  g_ssr_binarySearchThickness  = 0.0001f;
+static const uint   g_ssr_max_steps              = 8;
+static const uint   g_ssr_binarySearchSteps      = 8;
+static const float  g_ssr_binarySearchThickness  = 0.01f;
 static const float  g_ssr_ray_max_distance       = 10.0f;
 
 inline float2 binary_search(float3 ray_dir, inout float3 ray_pos, inout float2 ray_uv)
@@ -107,4 +107,3 @@ float2 mainPS(Pixel_PosUv input) : SV_TARGET
     // Trace it
     return trace_ray(uv, ray_pos, ray_dir);
 }
-

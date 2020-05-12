@@ -39,25 +39,28 @@ PixelOutputType mainPS(Pixel_PosUv input)
     light_out.specular      = 0.0f;
     light_out.volumetric    = 0.0f;
 
-    // Sample normal
-    float4 normal_sample = tex_normal.Sample(sampler_point_clamp, input.uv);
+    // Sample textures
+    float4 sample_albedo    = tex_albedo.Sample(sampler_point_clamp, input.uv);
+    float4 sample_normal    = tex_normal.Sample(sampler_point_clamp, input.uv);
+    float4 sample_material  = tex_material.Sample(sampler_point_clamp, input.uv);
+    float sample_ssao       = tex_ssao.Sample(sampler_point_clamp, input.uv).r;
 
+    // Post-process samples
+    int mat_id      = round(sample_normal.a * g_max_materials);
+    float occlusion = sample_material.a;
+    
     // Fill surface struct
     Surface surface;
     surface.uv                      = input.uv;
     surface.depth                   = tex_depth.Sample(sampler_point_clamp, surface.uv).r;
     surface.position                = get_position(surface.depth, surface.uv);
-    surface.normal                  = normal_decode(normal_sample.xyz);
+    surface.normal                  = normal_decode(sample_normal.xyz);
     surface.camera_to_pixel         = normalize(surface.position - g_camera_position.xyz);
     surface.camera_to_pixel_length  = length(surface.position - g_camera_position.xyz);
 
     // Create material
     Material material;
     {
-        float4 sample_albedo    = tex_albedo.Sample(sampler_point_clamp, input.uv);
-        float4 sample_material  = tex_material.Sample(sampler_point_clamp, input.uv);
-        int mat_id              = round(sample_material.a * 255);
-
         material.albedo                 = sample_albedo.rgb;
         material.roughness              = sample_material.r;
         material.metallic               = sample_material.g;
@@ -68,7 +71,7 @@ PixelOutputType mainPS(Pixel_PosUv input)
         material.anisotropic_rotation   = mat_clearcoat_clearcoatRough_aniso_anisoRot[mat_id].w;
         material.sheen                  = mat_sheen_sheenTint_pad[mat_id].x;
         material.sheen_tint             = mat_sheen_sheenTint_pad[mat_id].y;
-        material.occlusion              = min(normal_sample.a, tex_ssao.Sample(sampler_point_clamp, input.uv).r); // min(occlusion, ssao)
+        material.occlusion              = min(occlusion, sample_ssao);
         material.F0                     = lerp(0.04f, material.albedo, material.metallic);
         material.is_transparent         = sample_albedo.a != 1.0f;
         material.is_sky                 = mat_id == 0;

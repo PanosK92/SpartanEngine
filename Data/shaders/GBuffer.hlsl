@@ -69,7 +69,7 @@ PixelOutputType mainPS(PixelInputType input)
     float3 normal       = input.normal.xyz;
     float emission      = 0.0f;
     float occlusion     = 1.0f;
-    float material_id   = g_mat_id / 255.0f; // dividing in order to squeeze into the 8 bit buffer
+    float material_id   = g_mat_id / float(g_max_materials); // dividing in order to squeeze into the 8 bit buffer
     
     //= VELOCITY ================================================================================
     float2 position_current     = (input.position_ss_current.xy / input.position_ss_current.w);
@@ -133,8 +133,8 @@ PixelOutputType mainPS(PixelInputType input)
 
     // Write to G-Buffer
     g_buffer.albedo     = albedo;
-    g_buffer.normal     = float4(normal_encode(normal), occlusion);
-    g_buffer.material   = float4(roughness, metallic, emission, material_id);
+    g_buffer.normal     = float4(normal_encode(normal), material_id);
+    g_buffer.material   = float4(roughness, metallic, emission, occlusion);
     g_buffer.velocity   = velocity;
 
     return g_buffer;

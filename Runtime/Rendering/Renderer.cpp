@@ -408,19 +408,19 @@ namespace Spartan
         }
 
         // Update
-        for (uint32_t mat_id = 1; mat_id < m_max_materials; mat_id++)
+        for (uint32_t mat_id = 1; mat_id < m_max_material_instances; mat_id++)
         {
             // mat_id of 0 is reserved for the skysphere
 
-            if (!m_materials[mat_id])
+            if (!m_material_instances[mat_id])
                 break;
 
-            buffer->mat_clearcoat_clearcoatRough_anis_anisRot[mat_id].x = m_materials[mat_id]->GetProperty(Material_Clearcoat);
-            buffer->mat_clearcoat_clearcoatRough_anis_anisRot[mat_id].y = m_materials[mat_id]->GetProperty(Material_Clearcoat_Roughness);
-            buffer->mat_clearcoat_clearcoatRough_anis_anisRot[mat_id].z = m_materials[mat_id]->GetProperty(Material_Anisotropic);
-            buffer->mat_clearcoat_clearcoatRough_anis_anisRot[mat_id].w = m_materials[mat_id]->GetProperty(Material_Anisotropic_Rotation);
-            buffer->mat_sheen_sheenTint_pad[mat_id].x                   = m_materials[mat_id]->GetProperty(Material_Sheen);
-            buffer->mat_sheen_sheenTint_pad[mat_id].y                   = m_materials[mat_id]->GetProperty(Material_Sheen_Tint);
+            buffer->mat_clearcoat_clearcoatRough_anis_anisRot[mat_id].x = m_material_instances[mat_id]->GetProperty(Material_Clearcoat);
+            buffer->mat_clearcoat_clearcoatRough_anis_anisRot[mat_id].y = m_material_instances[mat_id]->GetProperty(Material_Clearcoat_Roughness);
+            buffer->mat_clearcoat_clearcoatRough_anis_anisRot[mat_id].z = m_material_instances[mat_id]->GetProperty(Material_Anisotropic);
+            buffer->mat_clearcoat_clearcoatRough_anis_anisRot[mat_id].w = m_material_instances[mat_id]->GetProperty(Material_Anisotropic_Rotation);
+            buffer->mat_sheen_sheenTint_pad[mat_id].x                   = m_material_instances[mat_id]->GetProperty(Material_Sheen);
+            buffer->mat_sheen_sheenTint_pad[mat_id].y                   = m_material_instances[mat_id]->GetProperty(Material_Sheen_Tint);
         }
 
         // Unmap

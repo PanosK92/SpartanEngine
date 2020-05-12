@@ -102,13 +102,14 @@ float mainPS(Pixel_PosUv input) : SV_TARGET
     float3 center_pos       = get_position(uv);
     float3 center_normal    = get_normal(uv);       
 
+    // Offset radius to get away with way less steps and great detail
+    float ign = interleaved_gradient_noise(uv * g_resolution);
+    float radius_adjusted = radius * ign;
+    
     // Construct noise tbn
-    float3 noise    = unpack(tex_normal_noise.Sample(sampler_bilinear_wrap, input.uv * noise_scale).xyz);
+    float3 noise    = unpack(normalize(tex_normal_noise.Sample(sampler_bilinear_wrap, input.uv * noise_scale).xyz * ign));
     float3 tangent  = normalize(noise - center_normal * dot(noise, center_normal));
     float3x3 tbn    = makeTBN(center_normal, tangent);
-
-    // Offset radius to get away with way less steps and great detail
-    float radius_adjusted = radius * interleaved_gradient_noise(uv * g_resolution);
 
     // Occlusion
     float occlusion = 0.0f;

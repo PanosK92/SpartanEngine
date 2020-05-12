@@ -29,14 +29,16 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     float3 color    = 0.0f;
     
     // Sample from textures
+    float4 sample_normal    = tex_normal.Sample(sampler_point_clamp, uv);
     float4 sample_material  = tex_material.Sample(sampler_point_clamp, uv);
-    int mat_id              = round(sample_material.a * 255);
-    float3 light_volumetric = tex_lightVolumetric.Sample(sampler_point_clamp, uv).rgb;
-    float3 normal           = tex_normal.Sample(sampler_point_clamp, uv).xyz;
+    float3 light_volumetric = tex_lightVolumetric.Sample(sampler_point_clamp, uv).rgb;   
     float depth             = tex_depth.Sample(sampler_point_clamp, uv).r;
     float2 sample_ssr       = tex_ssr.Sample(sampler_point_clamp, uv).xy;
     float sample_ssao       = tex_ssao.Sample(sampler_point_clamp, uv).r;   
     float3 camera_to_pixel  = get_view_direction(depth, uv);
+
+    // Post-process samples
+    int mat_id = round(sample_normal.a * g_max_materials);
     
     // Volumetric lighting
     color += light_volumetric;
@@ -68,8 +70,8 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         
         // Light - Image based
         float3 F                    = 0.0f;   
-        float3 light_ibl_specular   = Brdf_Specular_Ibl(material, normal, camera_to_pixel, tex_environment, tex_lutIbl, F) * light_ambient;
-        float3 light_ibl_diffuse    = Brdf_Diffuse_Ibl(material, normal, tex_environment) * energy_conservation(F, material.metallic) * light_ambient;
+        float3 light_ibl_specular   = Brdf_Specular_Ibl(material, sample_normal.xyz, camera_to_pixel, tex_environment, tex_lutIbl, F) * light_ambient;
+        float3 light_ibl_diffuse    = Brdf_Diffuse_Ibl(material, sample_normal.xyz, tex_environment) * energy_conservation(F, material.metallic) * light_ambient;
         
         // Light - SSR
         float3 light_reflection = 0.0f;

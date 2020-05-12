@@ -59,11 +59,11 @@ cbuffer BufferFrame : register(b0)
 };
 
 // Low frequency - Updates once per frame
-static const int max_materials = 255;
+static const int g_max_materials = 1024;
 cbuffer BufferMaterial : register(b1)
 {
-    float4 mat_clearcoat_clearcoatRough_aniso_anisoRot[max_materials];
-    float4 mat_sheen_sheenTint_pad[max_materials];
+    float4 mat_clearcoat_clearcoatRough_aniso_anisoRot[g_max_materials];
+    float4 mat_sheen_sheenTint_pad[g_max_materials];
 }
 
 // Medium frequency - Updates multiple times per frame
