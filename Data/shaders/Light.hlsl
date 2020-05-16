@@ -46,7 +46,7 @@ PixelOutputType mainPS(Pixel_PosUv input)
     float sample_ssao       = tex_ssao.Sample(sampler_point_clamp, input.uv).r;
 
     // Post-process samples
-    int mat_id      = round(sample_normal.a * g_max_materials);
+    int mat_id      = round(sample_normal.a * 65535);
     float occlusion = sample_material.a;
     
     // Fill surface struct

@@ -73,7 +73,7 @@ namespace Spartan
 
         // Option values
         m_option_values[Option_Value_Anisotropy]              = 16.0f;
-        m_option_values[Option_Value_ShadowResolution]        = 4098.0f;
+        m_option_values[Option_Value_ShadowResolution]        = 2048.0f;
         m_option_values[Option_Value_Tonemapping]             = static_cast<float>(Renderer_ToneMapping_ACES);
         m_option_values[Option_Value_Exposure]                = 0.0f;
         m_option_values[Option_Value_Gamma]                   = 2.2f;
@@ -408,19 +408,18 @@ namespace Spartan
         }
 
         // Update
-        for (uint32_t mat_id = 1; mat_id < m_max_material_instances; mat_id++)
+        for (uint32_t i = 0; i < m_max_material_instances; i++)
         {
-            // mat_id of 0 is reserved for the skysphere
+            Material* material = m_material_instances[i];
+            if (!material)
+                continue;
 
-            if (!m_material_instances[mat_id])
-                break;
-
-            buffer->mat_clearcoat_clearcoatRough_anis_anisRot[mat_id].x = m_material_instances[mat_id]->GetProperty(Material_Clearcoat);
-            buffer->mat_clearcoat_clearcoatRough_anis_anisRot[mat_id].y = m_material_instances[mat_id]->GetProperty(Material_Clearcoat_Roughness);
-            buffer->mat_clearcoat_clearcoatRough_anis_anisRot[mat_id].z = m_material_instances[mat_id]->GetProperty(Material_Anisotropic);
-            buffer->mat_clearcoat_clearcoatRough_anis_anisRot[mat_id].w = m_material_instances[mat_id]->GetProperty(Material_Anisotropic_Rotation);
-            buffer->mat_sheen_sheenTint_pad[mat_id].x                   = m_material_instances[mat_id]->GetProperty(Material_Sheen);
-            buffer->mat_sheen_sheenTint_pad[mat_id].y                   = m_material_instances[mat_id]->GetProperty(Material_Sheen_Tint);
+            buffer->mat_clearcoat_clearcoatRough_anis_anisRot[i].x = material->GetProperty(Material_Clearcoat);
+            buffer->mat_clearcoat_clearcoatRough_anis_anisRot[i].y = material->GetProperty(Material_Clearcoat_Roughness);
+            buffer->mat_clearcoat_clearcoatRough_anis_anisRot[i].z = material->GetProperty(Material_Anisotropic);
+            buffer->mat_clearcoat_clearcoatRough_anis_anisRot[i].w = material->GetProperty(Material_Anisotropic_Rotation);
+            buffer->mat_sheen_sheenTint_pad[i].x                   = material->GetProperty(Material_Sheen);
+            buffer->mat_sheen_sheenTint_pad[i].y                   = material->GetProperty(Material_Sheen_Tint);
         }
 
         // Unmap

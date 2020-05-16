@@ -38,7 +38,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     float3 camera_to_pixel  = get_view_direction(depth, uv);
 
     // Post-process samples
-    int mat_id = round(sample_normal.a * g_max_materials);
+    int mat_id = round(sample_normal.a * 65535);
     
     // Volumetric lighting
     color += light_volumetric;
