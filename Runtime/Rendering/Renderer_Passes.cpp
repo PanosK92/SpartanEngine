@@ -395,7 +395,8 @@ namespace Spartan
         // Clear
         cmd_list->Clear(pso);
 
-        uint32_t material_index = 1; // 0 is reserved for the sky
+        uint32_t material_index = 0;
+        uint32_t material_bound_id = 0;
         m_material_instances.fill(nullptr);
 
         // Iterate through all the G-Buffer shader variations
@@ -452,9 +453,26 @@ namespace Spartan
                     cmd_list->SetBufferVertex(model->GetVertexBuffer());
 
                     // Bind material
-                    bool is_dirty = material_index == 1 ? true : (m_material_instances[material_index - 1]->GetId() != material->GetId());
-                    if (is_dirty)
+                    bool firs_run       = material_index == 0;
+                    bool new_material   = material_bound_id != material->GetId();
+                    if (firs_run || new_material)
                     {
+                        material_bound_id = material->GetId();
+
+                        // Keep track of used material instances (they get mapped to shaders)
+                        if (material_index + 1 < m_material_instances.size())
+                        {
+                            // Advance index (0 is reserved for the sky)
+                            material_index++;
+
+                            // Keep reference
+                            m_material_instances[material_index] = material;
+                        }
+                        else
+                        {
+                            LOG_ERROR("Material instance array has reached it's maximum capacity of %d elements. Consider increasing the size.", m_max_material_instances);
+                        }
+
                         // Bind material textures		
                         cmd_list->SetTexture(0, material->GetTexture_Ptr(Material_Color));
                         cmd_list->SetTexture(1, material->GetTexture_Ptr(Material_Roughness));
@@ -477,20 +495,6 @@ namespace Spartan
 
                         // Update constant buffer
                         UpdateUberBuffer();
-
-                        // Keep track of used material instances (they get mapped to shaders)
-                        if (material_index < m_material_instances.size())
-                        {
-                            // Keep reference
-                            m_material_instances[material_index] = material;
-
-                            // Advance index
-                            material_index++;
-                        }
-                        else
-                        {
-                            LOG_ERROR("No more room for material instances, increase array to be able to fit %d instances", material_index + 1);
-                        }
                     }
                     
                     // Update uber buffer with entity transform

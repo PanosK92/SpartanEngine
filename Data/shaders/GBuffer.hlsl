@@ -69,7 +69,7 @@ PixelOutputType mainPS(PixelInputType input)
     float3 normal       = input.normal.xyz;
     float emission      = 0.0f;
     float occlusion     = 1.0f;
-    float material_id   = g_mat_id / float(g_max_materials); // dividing in order to squeeze into the 8 bit buffer
+    float material_id   = g_mat_id / float(65535);
     
     //= VELOCITY ================================================================================
     float2 position_current     = (input.position_ss_current.xy / input.position_ss_current.w);
