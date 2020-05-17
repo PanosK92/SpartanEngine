@@ -46,7 +46,11 @@ namespace Spartan
 		RHI_CommandList(uint32_t index, RHI_SwapChain* swap_chain, Context* context);
 		~RHI_CommandList();
 
-        // Passes
+        // Command list
+        bool Submit();
+        bool Wait();
+
+        // Render pass
         bool Begin(RHI_PipelineState& pipeline_state);
         bool End();
 
@@ -84,10 +88,6 @@ namespace Spartan
         void SetTexture(const uint32_t slot, RHI_Texture* texture, const uint8_t scope = RHI_Shader_Pixel);
         inline void SetTexture(const uint32_t slot, const std::shared_ptr<RHI_Texture>& texture, const uint8_t scope = RHI_Shader_Pixel) { SetTexture(slot, texture.get(), scope); }
         
-        // Submit/Flush
-		bool Submit();
-        bool Wait();
-
         // Timestamps
         bool Timestamp_Start(void* query_disjoint = nullptr, void* query_start = nullptr) const;
         bool Timestamp_End(void* query_disjoint = nullptr, void* query_end = nullptr) const;

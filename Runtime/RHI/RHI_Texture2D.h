@@ -73,8 +73,9 @@ namespace Spartan
 		}
 
 		// Creates a texture without any data (intended for usage as a render target)
-		RHI_Texture2D(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const uint32_t array_size = 1, const uint16_t flags = 0) : RHI_Texture(context)
+		RHI_Texture2D(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const uint32_t array_size = 1, const uint16_t flags = 0, std::string name = "") : RHI_Texture(context)
 		{
+            m_name          = name;
 			m_resource_type	= Resource_Texture2d;
 			m_width			= width;
 			m_height		= height;

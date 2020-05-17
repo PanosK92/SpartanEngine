@@ -130,10 +130,12 @@ namespace Spartan
 
     const std::vector<uint32_t>& RHI_DescriptorCache::GetDynamicOffsets() const
     {
+        static std::vector<uint32_t> empty;
+
         if (!m_descriptor_layout_current)
         {
             LOG_ERROR("Invalid descriptor set layout");
-            return std::vector<uint32_t>();
+            return empty;
         }
 
         return m_descriptor_layout_current->GetDynamicOffsets();

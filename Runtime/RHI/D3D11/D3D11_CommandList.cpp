@@ -68,6 +68,16 @@ namespace Spartan
 
 	RHI_CommandList::~RHI_CommandList() = default;
 
+    bool RHI_CommandList::Submit()
+    {
+        return true;
+    }
+
+    bool RHI_CommandList::Wait()
+    {
+        return true;
+    }
+
     bool RHI_CommandList::Begin(RHI_PipelineState& pipeline_state)
     {
         if (!pipeline_state.IsValid())
@@ -593,17 +603,6 @@ namespace Spartan
 
         m_profiler->m_rhi_bindings_texture++;
 	}
-
-	bool RHI_CommandList::Submit()
-	{
-		return true;
-	}
-
-    bool RHI_CommandList::Wait()
-    {
-        m_rhi_device->GetContextRhi()->device_context->Flush();
-        return true;
-    }
 
     bool RHI_CommandList::Timestamp_Start(void* query_disjoint /*= nullptr*/, void* query_start /*= nullptr*/) const
     {
