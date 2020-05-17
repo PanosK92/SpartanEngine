@@ -44,6 +44,33 @@ namespace Spartan
     
         return VK_ATTACHMENT_LOAD_OP_CLEAR;
     };
+
+    inline VkAttachmentLoadOp get_depth_load_op(const float depth)
+    {
+        if (depth == state_depth_dont_care)
+            return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+
+        if (depth == state_depth_load)
+            return VK_ATTACHMENT_LOAD_OP_LOAD;
+
+        return VK_ATTACHMENT_LOAD_OP_CLEAR;
+    };
+
+    inline VkAttachmentLoadOp get_stencil_load_op(const uint8_t stencil)
+    {
+        if (stencil == state_stencil_dont_care)
+            return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+
+        if (stencil == state_stencil_load)
+            return VK_ATTACHMENT_LOAD_OP_LOAD;
+
+        return VK_ATTACHMENT_LOAD_OP_CLEAR;
+    };
+
+    inline VkAttachmentStoreOp get_stencil_store_op(const RHI_DepthStencilState* depth_stencil_state)
+    {
+        return depth_stencil_state->GetStencilWriteEnabled() ? VK_ATTACHMENT_STORE_OP_STORE : VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    };
     
     inline bool create_render_pass(
         RHI_Context* rhi_context,
@@ -61,9 +88,8 @@ namespace Spartan
         vector<VkAttachmentDescription> attachment_descriptions;
         vector<VkAttachmentReference> attachment_references;
         {
-            VkAttachmentLoadOp load_op_depth        = (clear_value_depth    == state_depth_dont_care)   ? VK_ATTACHMENT_LOAD_OP_DONT_CARE   : (clear_value_depth    == state_depth_load     ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR);
-            VkAttachmentLoadOp load_op_stencil      = (clear_value_stencil  == state_stencil_dont_care) ? VK_ATTACHMENT_LOAD_OP_DONT_CARE   : (clear_value_stencil  == state_stencil_load   ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR);
-            VkAttachmentStoreOp store_op_stencil    = !depth_stencil_state->GetStencilWriteEnabled()    ? VK_ATTACHMENT_STORE_OP_DONT_CARE  : VK_ATTACHMENT_STORE_OP_STORE;
+            VkAttachmentLoadOp load_op_stencil      = get_stencil_load_op(clear_value_stencil);
+            VkAttachmentStoreOp store_op_stencil    = get_stencil_store_op(depth_stencil_state);
 
             // Color
             {
@@ -123,7 +149,7 @@ namespace Spartan
                 VkAttachmentDescription attachment_desc  = {};
                 attachment_desc.format                   = vulkan_format[render_target_depth_texture->GetFormat()];
                 attachment_desc.samples                  = VK_SAMPLE_COUNT_1_BIT;
-                attachment_desc.loadOp                   = load_op_depth;
+                attachment_desc.loadOp                   = get_depth_load_op(clear_value_depth);
                 attachment_desc.storeOp                  = VK_ATTACHMENT_STORE_OP_STORE;
                 attachment_desc.stencilLoadOp            = load_op_stencil;
                 attachment_desc.stencilStoreOp           = store_op_stencil;
@@ -155,7 +181,21 @@ namespace Spartan
     
         return vulkan_utility::error::check(vkCreateRenderPass(rhi_context->device, &render_pass_info, nullptr, reinterpret_cast<VkRenderPass*>(&render_pass)));
     }
-   
+
+    inline bool create_frame_buffer(RHI_Context* rhi_context, void* render_pass, const std::vector<void*>& attachments, const uint32_t width, const uint32_t height, void*& frame_buffer)
+    {
+        VkFramebufferCreateInfo create_info = {};
+        create_info.sType                   = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        create_info.renderPass              = static_cast<VkRenderPass>(render_pass);
+        create_info.attachmentCount         = static_cast<uint32_t>(attachments.size());
+        create_info.pAttachments            = reinterpret_cast<const VkImageView*>(attachments.data());
+        create_info.width                   = width;
+        create_info.height                  = height;
+        create_info.layers                  = 1;
+
+        return vulkan_utility::error::check(vkCreateFramebuffer(rhi_context->device, &create_info, nullptr, reinterpret_cast<VkFramebuffer*>(&frame_buffer)));
+    }
+  
     void* RHI_PipelineState::GetFrameBuffer() const
     {
         // If this is a swapchain, return the appropriate buffer
@@ -172,11 +212,10 @@ namespace Spartan
     {
         m_rhi_device = rhi_device;
 
-        const bool is_swapchain             = render_target_swapchain != nullptr;
         const uint32_t render_target_width  = GetWidth();
         const uint32_t render_target_height = GetHeight();
 
-        // Destroy existing render pass and frame buffer (if any)
+        // Destroy existing frame resources
         DestroyFrameResources();
 
         // Create a render pass
@@ -184,16 +223,16 @@ namespace Spartan
             return false;
 
         // Name the render pass
-        vulkan_utility::debug::set_render_pass_name(static_cast<VkRenderPass>(m_render_pass), is_swapchain ? "swapchain" : "texture");
+        vulkan_utility::debug::set_render_pass_name(static_cast<VkRenderPass>(m_render_pass), render_target_swapchain ? "swapchain" : "texture");
 
         // Create frame buffer
-        if (is_swapchain)
+        if (render_target_swapchain)
         {
             // Create one frame buffer per image
             for (uint32_t i = 0; i < render_target_swapchain->GetBufferCount(); i++)
             {
                 vector<void*> attachments = { render_target_swapchain->Get_Resource_View(i) };
-                if (!vulkan_utility::frame_buffer::create(m_render_pass, attachments, render_target_width, render_target_height, m_frame_buffers[i]))
+                if (!create_frame_buffer(m_rhi_device->GetContextRhi(), m_render_pass, attachments, render_target_width, render_target_height, m_frame_buffers[i]))
                     return false;
 
                 // Name the frame buffer
@@ -222,7 +261,7 @@ namespace Spartan
             }
 
             // Create a frame buffer
-            if (!vulkan_utility::frame_buffer::create(m_render_pass, attachments, render_target_width, render_target_height, m_frame_buffers[0]))
+            if (!create_frame_buffer(m_rhi_device->GetContextRhi(), m_render_pass, attachments, render_target_width, render_target_height, m_frame_buffers[0]))
                 return false;
             
             // Name the frame buffer
@@ -242,10 +281,14 @@ namespace Spartan
         // Wait in case the buffer is still in use by the graphics queue
         m_rhi_device->Queue_Wait(RHI_Queue_Graphics);
 
-        for (auto& frame_buffer : m_frame_buffers)
+        for (uint32_t i = 0; i < state_max_render_target_count; i++)
         {
-            vulkan_utility::frame_buffer::destroy(frame_buffer);
+            if (void* frame_buffer = m_frame_buffers[i])
+            {
+                vkDestroyFramebuffer(m_rhi_device->GetContextRhi()->device, static_cast<VkFramebuffer>(frame_buffer), nullptr);
+            }
         }
+        m_frame_buffers.fill(nullptr);
 
         // Destroy render pass
         vkDestroyRenderPass(m_rhi_device->GetContextRhi()->device, static_cast<VkRenderPass>(m_render_pass), nullptr);
