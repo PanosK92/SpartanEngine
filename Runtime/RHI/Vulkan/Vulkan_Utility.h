@@ -962,33 +962,6 @@ namespace Spartan::vulkan_utility
         }
     }
 
-    namespace frame_buffer
-    {
-        inline bool create(void* render_pass, const std::vector<void*>& attachments, const uint32_t width, const uint32_t height, void*& frame_buffer)
-        {
-            VkFramebufferCreateInfo create_info = {};
-            create_info.sType                   = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-            create_info.renderPass              = static_cast<VkRenderPass>(render_pass);
-            create_info.attachmentCount         = static_cast<uint32_t>(attachments.size());
-            create_info.pAttachments            = reinterpret_cast<const VkImageView*>(attachments.data());
-            create_info.width                   = width;
-            create_info.height                  = height;
-            create_info.layers                  = 1;
-
-            VkFramebuffer* frame_buffer_vk = reinterpret_cast<VkFramebuffer*>(&frame_buffer);
-            return error::check(vkCreateFramebuffer(globals::rhi_context->device, &create_info, nullptr, frame_buffer_vk));
-        }
-
-        inline void destroy(void*& frame_buffer)
-        {
-            if (!frame_buffer)
-                return;
-
-            vkDestroyFramebuffer(globals::rhi_context->device, static_cast<VkFramebuffer>(frame_buffer), nullptr);
-            frame_buffer = nullptr;
-        }
-    }
-
     namespace surface
     {
         inline VkSurfaceCapabilitiesKHR capabilities(const VkSurfaceKHR surface)
