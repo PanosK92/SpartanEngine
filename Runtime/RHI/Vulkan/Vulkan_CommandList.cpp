@@ -104,11 +104,52 @@ namespace Spartan
         }
 	}
 
+    bool RHI_CommandList::StartRecording()
+    {
+        // Sync CPU to GPU
+        if (m_cmd_state == RHI_Cmd_List_Idle_Sync_Cpu_To_Gpu)
+        {
+            Wait();
+            m_descriptor_cache->GrowIfNeeded();
+            m_cmd_state = RHI_Cmd_List_Idle;
+        }
+
+        if (m_cmd_state != RHI_Cmd_List_Idle)
+        {
+            LOG_ERROR("The command list is still being used");
+            return false;
+        }
+
+        VkCommandBufferBeginInfo begin_info = {};
+        begin_info.sType                    = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        begin_info.flags                    = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        if (!vulkan_utility::error::check(vkBeginCommandBuffer(static_cast<VkCommandBuffer>(m_cmd_buffer), &begin_info)))
+            return false;
+
+        m_cmd_state = RHI_Cmd_List_Recording;
+        return true;
+    }
+
+    bool RHI_CommandList::StopRecording()
+    {
+        if (m_cmd_state != RHI_Cmd_List_Recording)
+        {
+            LOG_ERROR("The command list is not recording");
+            return false;
+        }
+
+        if (!vulkan_utility::error::check(vkEndCommandBuffer(static_cast<VkCommandBuffer>(m_cmd_buffer))))
+            return false;
+
+        m_cmd_state = RHI_Cmd_List_Idle;
+        return true;
+    }
+
     bool RHI_CommandList::Submit()
     {
-        if (m_cmd_state != RHI_Cmd_List_Ended)
+        if (m_cmd_state != RHI_Cmd_List_Idle)
         {
-            LOG_ERROR("RHI_CommandList::End() must be called before calling RHI_CommandList::Submit()");
+            LOG_ERROR("Can't submit while the command list is recording.");
             return false;
         }
 
@@ -120,7 +161,7 @@ namespace Spartan
             state->render_target_swapchain ? static_cast<VkSemaphore>(state->render_target_swapchain->Get_Resource_View_AcquiredSemaphore()) : nullptr, // wait semaphore
             m_cmd_list_consumed_fence,                                                                                                                  // wait fence
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)                                                                                              // wait flags
-            )
+        )
             return false;
 
         // If the render pass has been bound then it cleared to whatever values was requested (or not)
@@ -141,34 +182,8 @@ namespace Spartan
         return vulkan_utility::fence::wait_reset(m_cmd_list_consumed_fence);
     }
 
-    bool RHI_CommandList::Begin(RHI_PipelineState& pipeline_state)
+    bool RHI_CommandList::BeginPass(RHI_PipelineState& pipeline_state)
 	{
-        RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
-
-        // Sync CPU to GPU
-        if (m_cmd_state == RHI_Cmd_List_Idle_Sync_Cpu_To_Gpu)
-        {
-            Wait();
-            m_descriptor_cache->GrowIfNeeded();
-            m_cmd_state = RHI_Cmd_List_Idle;
-        }
-
-        if (m_cmd_state != RHI_Cmd_List_Idle)
-        {
-            LOG_ERROR("Command list is still being used");
-            return false;
-        }
-
-		// Begin command buffer
-		VkCommandBufferBeginInfo begin_info = {};
-		begin_info.sType					= VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		begin_info.flags					= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-		if (!vulkan_utility::error::check(vkBeginCommandBuffer(static_cast<VkCommandBuffer>(m_cmd_buffer), &begin_info)))
-			return false;
-
-        // At this point, it's safe to allow for command recording
-        m_cmd_state = RHI_Cmd_List_Recording;
-
         // Get pipeline
         {
             m_pipeline_active = false;
@@ -216,15 +231,8 @@ namespace Spartan
         return true;
 	}
 
-    bool RHI_CommandList::End()
+    bool RHI_CommandList::EndPass()
     {
-        if (m_cmd_state != RHI_Cmd_List_Recording)
-        {
-            LOG_ERROR("You have to call Begin() before you can call End()");
-            return false;
-        }
-
-        // End render pass
         if (m_render_pass_active)
         {
             vkCmdEndRenderPass(static_cast<VkCommandBuffer>(m_cmd_buffer));
@@ -233,13 +241,6 @@ namespace Spartan
 
         // End marker and profiler
         MarkAndProfileEnd(m_pipeline_state);
-
-        // End command buffer
-        if (!vulkan_utility::error::check(vkEndCommandBuffer(static_cast<VkCommandBuffer>(m_cmd_buffer))))
-            return false;
-
-        // Update state
-        m_cmd_state = RHI_Cmd_List_Ended;
        
         return true;
     }
