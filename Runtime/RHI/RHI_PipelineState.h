@@ -57,8 +57,7 @@ namespace Spartan
         RHI_BlendState* blend_state                                                             = nullptr;
         RHI_DepthStencilState* depth_stencil_state                                              = nullptr;
         RHI_SwapChain* render_target_swapchain                                                  = nullptr;
-        RHI_Texture* render_target_depth_texture                                                = nullptr;
-        std::array<RHI_Texture*, state_max_render_target_count> render_target_color_textures    = { nullptr };
+        
         RHI_PrimitiveTopology_Mode primitive_topology                                           = RHI_PrimitiveTopology_Unknown;
         RHI_Viewport viewport                                                                   = RHI_Viewport::Undefined;
         Math::Rectangle scissor                                                                 = Math::Rectangle::Zero;
@@ -66,6 +65,12 @@ namespace Spartan
         uint32_t vertex_buffer_stride                                                           = 0;
         uint32_t render_target_color_texture_array_index                                        = 0; // affects render pass, which in turns affects the pipeline
         uint32_t render_target_depth_stencil_texture_array_index                                = 0; // affects render pass, which in turns affects the pipeline
+        RHI_Texture* render_target_depth_texture                                                = nullptr;
+        std::array<RHI_Texture*, state_max_render_target_count> render_target_color_textures    = { nullptr };
+        RHI_Image_Layout render_target_color_layout_initial                                     = RHI_Image_Undefined;
+        RHI_Image_Layout render_target_color_layout_final                                       = RHI_Image_Undefined;
+        RHI_Image_Layout render_target_depth_layout_initial                                     = RHI_Image_Undefined;
+        RHI_Image_Layout render_target_depth_layout_final                                       = RHI_Image_Undefined;
         //======================================================================================================================================================
 
         //= Dynamic, modification is free ===============================================================================
