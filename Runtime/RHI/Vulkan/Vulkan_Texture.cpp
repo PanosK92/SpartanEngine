@@ -42,21 +42,25 @@ namespace Spartan
 {
     inline void set_debug_name(RHI_Texture* texture)
     {
-        string name = texture->GetResourceName();
+        string name = texture->GetName();
 
-        if (texture->IsSampled())
+        // If a name hasn't been defined, try to make a reasonable one
+        if (name.empty())
         {
-            name += name.empty() ? "sampled" : "-sampled";
-        }
+            if (texture->IsSampled())
+            {
+                name += name.empty() ? "sampled" : "-sampled";
+            }
 
-        if (texture->IsRenderTargetColor())
-        {
-            name += name.empty() ? "render_target_color" : "-render_target_color";
-        }
+            if (texture->IsRenderTargetColor())
+            {
+                name += name.empty() ? "render_target_color" : "-render_target_color";
+            }
 
-        if (texture->IsRenderTargetDepthStencil())
-        {
-            name += name.empty() ? "render_target_depth" : "-render_target_depth";
+            if (texture->IsRenderTargetDepthStencil())
+            {
+                name += name.empty() ? "render_target_depth" : "-render_target_depth";
+            }
         }
 
         vulkan_utility::debug::set_image_name(static_cast<VkImage>(texture->Get_Resource()), name.c_str());

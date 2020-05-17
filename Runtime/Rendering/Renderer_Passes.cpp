@@ -733,8 +733,7 @@ namespace Spartan
                         cmd_list->SetTexture(26, (m_options & Render_ScreenSpaceReflections) ? m_render_targets[RenderTarget_Ssr] : m_tex_black);
                         cmd_list->SetTexture(27, m_render_targets[RenderTarget_Composition_Hdr_2]); // previous frame before post-processing
 
-
-                            // Update light buffer
+                        // Update light buffer
                         UpdateLightBuffer(light);
 
                         // Set shadow map

@@ -111,7 +111,7 @@ namespace Spartan
                     // Description
                     attachment_descriptions.push_back(attachment_desc);
                     // Reference
-                    attachment_references.push_back({ static_cast<uint32_t>(attachment_references.size()), layout });
+                    attachment_references.push_back({ static_cast<uint32_t>(attachment_references.size()), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL });
                 }
                 else // Textures
                 {

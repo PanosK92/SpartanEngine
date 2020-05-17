@@ -113,44 +113,44 @@ namespace Spartan
         // G-Buffer
         // Stencil is used to mask transparent objects and also has a read only version
         // From and below Texture_Format_R8G8B8A8_UNORM, normals have noticeable banding
-        m_render_targets[RenderTarget_Gbuffer_Albedo]   = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R8G8B8A8_Unorm);
-        m_render_targets[RenderTarget_Gbuffer_Normal]   = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float);
-        m_render_targets[RenderTarget_Gbuffer_Material] = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R8G8B8A8_Unorm);
-        m_render_targets[RenderTarget_Gbuffer_Velocity] = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16_Float);
-        m_render_targets[RenderTarget_Gbuffer_Depth]    = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_D32_Float_S8X24_Uint, 1, RHI_Texture_DepthStencilViewReadOnly);
+        m_render_targets[RenderTarget_Gbuffer_Albedo]   = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R8G8B8A8_Unorm, 1, 0, "rt_gbuffer_albedo");
+        m_render_targets[RenderTarget_Gbuffer_Normal]   = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_gbuffer_normal");
+        m_render_targets[RenderTarget_Gbuffer_Material] = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R8G8B8A8_Unorm, 1, 0, "rt_gbuffer_material");
+        m_render_targets[RenderTarget_Gbuffer_Velocity] = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16_Float, 1, 0, "rt_gbuffer_velocity");
+        m_render_targets[RenderTarget_Gbuffer_Depth]    = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_D32_Float_S8X24_Uint, 1, RHI_Texture_DepthStencilViewReadOnly, "gbuffer_depth");
 
         // Light
-        m_render_targets[RenderTarget_Light_Diffuse]    = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R11G11B10_Float);
-        m_render_targets[RenderTarget_Light_Specular]   = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R11G11B10_Float);
-        m_render_targets[RenderTarget_Light_Volumetric] = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R11G11B10_Float);
+        m_render_targets[RenderTarget_Light_Diffuse]    = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R11G11B10_Float, 1, 0, "rt_light_diffuse");
+        m_render_targets[RenderTarget_Light_Specular]   = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R11G11B10_Float, 1, 0, "rt_light_specular");
+        m_render_targets[RenderTarget_Light_Volumetric] = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R11G11B10_Float, 1, 0, "rt_light_volumetric");
 
         // BRDF Specular Lut
-        m_render_targets[RenderTarget_Brdf_Specular_Lut] = make_unique<RHI_Texture2D>(m_context, 400, 400, RHI_Format_R8G8_Unorm);
+        m_render_targets[RenderTarget_Brdf_Specular_Lut] = make_unique<RHI_Texture2D>(m_context, 400, 400, RHI_Format_R8G8_Unorm, 1, 0, "rt_brdf_specular_lut");
         m_brdf_specular_lut_rendered = false;
 
         // Composition
         {
-            m_render_targets[RenderTarget_Composition_Hdr] = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float); // Investigate using less bits but have an alpha channel
-            m_render_targets[RenderTarget_Composition_Ldr] = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float); // Investigate using less bits but have an alpha channel
+            m_render_targets[RenderTarget_Composition_Hdr]      = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_composition_hdr"); // Investigate using less bits but have an alpha channel
+            m_render_targets[RenderTarget_Composition_Ldr]      = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_composition_ldr"); // Investigate using less bits but have an alpha channel
             // 2nd copies
-            m_render_targets[RenderTarget_Composition_Hdr_2] = make_unique<RHI_Texture2D>(m_context, width, height, m_render_targets[RenderTarget_Composition_Hdr]->GetFormat()); // Used for ping-ponging between effects during post-processing
-            m_render_targets[RenderTarget_Composition_Ldr_2] = make_unique<RHI_Texture2D>(m_context, width, height, m_render_targets[RenderTarget_Composition_Ldr]->GetFormat()); // Used for ping-ponging between effects during post-Processing
+            m_render_targets[RenderTarget_Composition_Hdr_2]    = make_unique<RHI_Texture2D>(m_context, width, height, m_render_targets[RenderTarget_Composition_Hdr]->GetFormat(), 1, 0, "rt_composition_hdr2"); // Used for ping-ponging between effects during post-processing
+            m_render_targets[RenderTarget_Composition_Ldr_2]    = make_unique<RHI_Texture2D>(m_context, width, height, m_render_targets[RenderTarget_Composition_Ldr]->GetFormat(), 1, 0, "rt_composition_ldr2"); // Used for ping-ponging between effects during post-Processing
             // 3rd copies
-            m_render_targets[RenderTarget_TaaHistory] = make_unique<RHI_Texture2D>(m_context, width, height, m_render_targets[RenderTarget_Composition_Hdr]->GetFormat()); // Used for TAA accumulation
+            m_render_targets[RenderTarget_TaaHistory]           = make_unique<RHI_Texture2D>(m_context, width, height, m_render_targets[RenderTarget_Composition_Hdr]->GetFormat(), 1, 0, "rt_taa_history"); // Used for TAA accumulation
         }
 
         // SSAO
-        m_render_targets[RenderTarget_Ssao_Noisy]   = make_unique<RHI_Texture2D>(m_context, static_cast<uint32_t>(width), static_cast<uint32_t>(height), RHI_Format_R8_Unorm);
-        m_render_targets[RenderTarget_Ssao]         = make_unique<RHI_Texture2D>(m_context, static_cast<uint32_t>(width), static_cast<uint32_t>(height), RHI_Format_R8_Unorm);
+        m_render_targets[RenderTarget_Ssao_Noisy]   = make_unique<RHI_Texture2D>(m_context, static_cast<uint32_t>(width), static_cast<uint32_t>(height), RHI_Format_R8_Unorm, 1, 0, "rt_ssao_noisy");
+        m_render_targets[RenderTarget_Ssao]         = make_unique<RHI_Texture2D>(m_context, static_cast<uint32_t>(width), static_cast<uint32_t>(height), RHI_Format_R8_Unorm, 1, 0, "rt_ssao");
 
         // SSR
-        m_render_targets[RenderTarget_Ssr] = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16_Float, 1, RHI_Texture_UnorderedAccessView);
+        m_render_targets[RenderTarget_Ssr] = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16_Float, 1, RHI_Texture_UnorderedAccessView, "rt_ssr");
 
         // Bloom
         {
             // Create as many bloom textures as required to scale down to or below 16px (in any dimension)
             m_render_tex_bloom.clear();
-            m_render_tex_bloom.emplace_back(make_unique<RHI_Texture2D>(m_context, width / 2, height / 2, RHI_Format_R11G11B10_Float));
+            m_render_tex_bloom.emplace_back(make_unique<RHI_Texture2D>(m_context, width / 2, height / 2, RHI_Format_R11G11B10_Float, 1, 0, "rt_bloom"));
             while (m_render_tex_bloom.back()->GetWidth() > 16 && m_render_tex_bloom.back()->GetHeight() > 16)
             {
                 m_render_tex_bloom.emplace_back(
@@ -158,7 +158,8 @@ namespace Spartan
                         m_context,
                         m_render_tex_bloom.back()->GetWidth() / 2,
                         m_render_tex_bloom.back()->GetHeight() / 2,
-                        RHI_Format_R11G11B10_Float
+                        RHI_Format_R11G11B10_Float,
+                        1, 0, "rt_bloom_downscaled"
                         )
                 );
             }
