@@ -86,7 +86,7 @@ namespace Spartan
         
         // Submit/Flush
 		bool Submit();
-        bool Flush();
+        bool Wait();
 
         // Timestamps
         bool Timestamp_Start(void* query_disjoint = nullptr, void* query_start = nullptr) const;

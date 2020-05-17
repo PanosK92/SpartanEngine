@@ -290,10 +290,10 @@ namespace Spartan::vulkan_utility
             fence = nullptr;
         }
 
-        inline bool wait(void*& fence)
+        inline bool wait(void*& fence, uint64_t timeout = std::numeric_limits<uint64_t>::max())
         {
             VkFence* fence_vk = reinterpret_cast<VkFence*>(&fence);
-            return error::check(vkWaitForFences(globals::rhi_context->device, 1, fence_vk, true, std::numeric_limits<uint64_t>::max()));
+            return error::check(vkWaitForFences(globals::rhi_context->device, 1, fence_vk, true, timeout));
         }
 
         inline bool reset(void*& fence)
@@ -302,11 +302,10 @@ namespace Spartan::vulkan_utility
             return error::check(vkResetFences(globals::rhi_context->device, 1, fence_vk));
         }
 
-        inline bool wait_reset(void*& fence)
+        inline bool wait_reset(void*& fence, uint64_t timeout = std::numeric_limits<uint64_t>::max())
         {
             VkFence* fence_vk = reinterpret_cast<VkFence*>(&fence);
-            return error::check(vkWaitForFences(globals::rhi_context->device, 1, fence_vk, true, std::numeric_limits<uint64_t>::max())) &&
-                error::check(vkResetFences(globals::rhi_context->device, 1, fence_vk));
+            return error::check(vkWaitForFences(globals::rhi_context->device, 1, fence_vk, true, timeout)) && error::check(vkResetFences(globals::rhi_context->device, 1, fence_vk));
         }
     }
 

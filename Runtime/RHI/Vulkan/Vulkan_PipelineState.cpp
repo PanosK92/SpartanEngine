@@ -223,7 +223,8 @@ namespace Spartan
             return false;
 
         // Name the render pass
-        vulkan_utility::debug::set_render_pass_name(static_cast<VkRenderPass>(m_render_pass), render_target_swapchain ? "swapchain" : "texture");
+        string name = render_target_swapchain ? ("render_pass_swapchain_" + to_string(m_hash)) : ("render_pass_texture_" + to_string(m_hash));
+        vulkan_utility::debug::set_render_pass_name(static_cast<VkRenderPass>(m_render_pass), name.c_str());
 
         // Create frame buffer
         if (render_target_swapchain)
@@ -236,7 +237,7 @@ namespace Spartan
                     return false;
 
                 // Name the frame buffer
-                vulkan_utility::debug::set_framebuffer_name(static_cast<VkFramebuffer>(m_frame_buffers[i]), "swapchain");
+                vulkan_utility::debug::set_framebuffer_name(static_cast<VkFramebuffer>(m_frame_buffers[i]), "frame_bufer_swapchain");
             }
 
             return true;
@@ -265,7 +266,7 @@ namespace Spartan
                 return false;
             
             // Name the frame buffer
-            vulkan_utility::debug::set_framebuffer_name(static_cast<VkFramebuffer>(m_frame_buffers[0]), "texture");
+            vulkan_utility::debug::set_framebuffer_name(static_cast<VkFramebuffer>(m_frame_buffers[0]), "frame_bufer_texture");
             
             return true;
         }
