@@ -34,6 +34,128 @@ using namespace std;
 
 namespace Spartan
 {
+    inline VkAttachmentLoadOp get_color_load_op(const Math::Vector4& color)
+    {
+        if (color == state_color_dont_care)
+            return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    
+        if (color == state_color_load)
+            return VK_ATTACHMENT_LOAD_OP_LOAD;
+    
+        return VK_ATTACHMENT_LOAD_OP_CLEAR;
+    };
+    
+    inline bool create_render_pass(
+        RHI_Context* rhi_context,
+        RHI_DepthStencilState* depth_stencil_state,
+        RHI_SwapChain* render_target_swapchain,
+        array<RHI_Texture*, state_max_render_target_count>& render_target_color_textures,
+        array<Math::Vector4, state_max_render_target_count>& render_target_color_clear,
+        RHI_Texture* render_target_depth_texture,
+        float clear_value_depth,
+        uint8_t clear_value_stencil,
+        void*& render_pass
+    )
+    {
+        // Attachments
+        vector<VkAttachmentDescription> attachment_descriptions;
+        vector<VkAttachmentReference> attachment_references;
+        {
+            VkAttachmentLoadOp load_op_depth        = (clear_value_depth    == state_depth_dont_care)   ? VK_ATTACHMENT_LOAD_OP_DONT_CARE   : (clear_value_depth    == state_depth_load     ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR);
+            VkAttachmentLoadOp load_op_stencil      = (clear_value_stencil  == state_stencil_dont_care) ? VK_ATTACHMENT_LOAD_OP_DONT_CARE   : (clear_value_stencil  == state_stencil_load   ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR);
+            VkAttachmentStoreOp store_op_stencil    = !depth_stencil_state->GetStencilWriteEnabled()    ? VK_ATTACHMENT_STORE_OP_DONT_CARE  : VK_ATTACHMENT_STORE_OP_STORE;
+
+            // Color
+            {
+                // Swapchain
+                if (render_target_swapchain)
+                {
+                    VkImageLayout layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+                    VkAttachmentDescription attachment_desc  = {};
+                    attachment_desc.format                   = rhi_context->surface_format;
+                    attachment_desc.samples                  = VK_SAMPLE_COUNT_1_BIT;
+                    attachment_desc.loadOp                   = get_color_load_op(render_target_color_clear[0]);
+                    attachment_desc.storeOp                  = VK_ATTACHMENT_STORE_OP_STORE;
+                    attachment_desc.stencilLoadOp            = load_op_stencil;
+                    attachment_desc.stencilStoreOp           = store_op_stencil;
+                    attachment_desc.initialLayout            = layout;
+                    attachment_desc.finalLayout              = layout;
+
+                    // Description
+                    attachment_descriptions.push_back(attachment_desc);
+                    // Reference
+                    attachment_references.push_back({ static_cast<uint32_t>(attachment_references.size()), layout });
+                }
+                else // Textures
+                {
+                    for (uint32_t i = 0; i < state_max_render_target_count; i++)
+                    {
+                        RHI_Texture* texture = render_target_color_textures[i];
+                        if (!texture)
+                            continue;
+
+                        VkImageLayout layout = vulkan_image_layout[texture->GetLayout()];
+
+                        VkAttachmentDescription attachment_desc  = {};
+                        attachment_desc.format                   = vulkan_format[texture->GetFormat()];
+                        attachment_desc.samples                  = VK_SAMPLE_COUNT_1_BIT;
+                        attachment_desc.loadOp                   = get_color_load_op(render_target_color_clear[i]);
+                        attachment_desc.storeOp                  = VK_ATTACHMENT_STORE_OP_STORE;
+                        attachment_desc.stencilLoadOp            = load_op_stencil;
+                        attachment_desc.stencilStoreOp           = store_op_stencil;
+                        attachment_desc.initialLayout            = layout;
+                        attachment_desc.finalLayout              = layout;
+
+                        // Description
+                        attachment_descriptions.push_back(attachment_desc);
+                        // Reference
+                        attachment_references.push_back({ static_cast<uint32_t>(attachment_references.size()), layout });
+                    }
+                }
+            }
+    
+            // Depth
+            if (render_target_depth_texture)
+            {
+                VkImageLayout layout = vulkan_image_layout[render_target_depth_texture->GetLayout()];
+
+                VkAttachmentDescription attachment_desc  = {};
+                attachment_desc.format                   = vulkan_format[render_target_depth_texture->GetFormat()];
+                attachment_desc.samples                  = VK_SAMPLE_COUNT_1_BIT;
+                attachment_desc.loadOp                   = load_op_depth;
+                attachment_desc.storeOp                  = VK_ATTACHMENT_STORE_OP_STORE;
+                attachment_desc.stencilLoadOp            = load_op_stencil;
+                attachment_desc.stencilStoreOp           = store_op_stencil;
+                attachment_desc.initialLayout            = layout;
+                attachment_desc.finalLayout              = layout;
+
+                // Description
+                attachment_descriptions.push_back(attachment_desc);
+                // Reference
+                attachment_references.push_back({ static_cast<uint32_t>(attachment_references.size()), layout });
+            }
+        }
+    
+        // Subpass
+        VkSubpassDescription subpass    = {};
+        subpass.pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        subpass.colorAttachmentCount    = static_cast<uint32_t>(render_target_depth_texture ? attachment_references.size() - 1 : attachment_references.size());
+        subpass.pColorAttachments       = attachment_references.data();
+        subpass.pDepthStencilAttachment = render_target_depth_texture ? &attachment_references.back() : nullptr;
+    
+        VkRenderPassCreateInfo render_pass_info = {};
+        render_pass_info.sType                  = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+        render_pass_info.attachmentCount        = static_cast<uint32_t>(attachment_descriptions.size());
+        render_pass_info.pAttachments           = attachment_descriptions.data();
+        render_pass_info.subpassCount           = 1;
+        render_pass_info.pSubpasses             = &subpass;
+        render_pass_info.dependencyCount        = 0;
+        render_pass_info.pDependencies          = nullptr;
+    
+        return vulkan_utility::error::check(vkCreateRenderPass(rhi_context->device, &render_pass_info, nullptr, reinterpret_cast<VkRenderPass*>(&render_pass)));
+    }
+   
     void* RHI_PipelineState::GetFrameBuffer() const
     {
         // If this is a swapchain, return the appropriate buffer
@@ -50,28 +172,15 @@ namespace Spartan
     {
         m_rhi_device = rhi_device;
 
-        // Detect all used render target color textures
-        vector<RHI_Texture*> used_render_target_color;
-        for (uint8_t i = 0; i < state_max_render_target_count; i++)
-        {
-            if (render_target_color_textures[i])
-            {
-                used_render_target_color.emplace_back(render_target_color_textures[i]);
-            }
-        }
-
-        const bool is_swapchain                     = render_target_swapchain != nullptr;
-        const uint32_t render_target_color_count    = is_swapchain ? 1 : static_cast<uint32_t>(used_render_target_color.size());
-        const uint32_t render_target_depth_count    = render_target_depth_texture ? 1 : 0;
-        const uint32_t render_target_width          = is_swapchain ? render_target_swapchain->GetWidth()    : render_target_color_count != 0 ? used_render_target_color[0]->GetWidth()  : ( render_target_depth_texture ? render_target_depth_texture->GetWidth() : 0);
-        const uint32_t render_target_height         = is_swapchain ? render_target_swapchain->GetHeight()   : render_target_color_count != 0 ? used_render_target_color[0]->GetHeight() : ( render_target_depth_texture ? render_target_depth_texture->GetHeight() : 0);
-        RHI_Texture** target_array                  = is_swapchain ? nullptr : used_render_target_color.data();
+        const bool is_swapchain             = render_target_swapchain != nullptr;
+        const uint32_t render_target_width  = GetWidth();
+        const uint32_t render_target_height = GetHeight();
 
         // Destroy existing render pass and frame buffer (if any)
         DestroyFrameResources();
 
         // Create a render pass
-        if (!vulkan_utility::render_pass::create(depth_stencil_state, target_array, clear_color, render_target_color_count, render_target_depth_texture, clear_depth, clear_stencil, is_swapchain, m_render_pass))
+        if (!create_render_pass(m_rhi_device->GetContextRhi(), depth_stencil_state, render_target_swapchain, render_target_color_textures, clear_color, render_target_depth_texture, clear_depth, clear_stencil, m_render_pass))
             return false;
 
         // Name the render pass
@@ -95,18 +204,21 @@ namespace Spartan
         }
         else
         {
-            vector<void*> attachments(render_target_color_count + render_target_depth_count);
+            vector<void*> attachments;
             
             // Color
-            for (uint32_t i = 0; i < render_target_color_count; i++)
+            for (uint32_t i = 0; i < state_max_render_target_count; i++)
             {
-                attachments[i] = used_render_target_color[i]->Get_Resource_View_RenderTarget(render_target_color_texture_array_index);
+                if (RHI_Texture* texture = render_target_color_textures[i])
+                {
+                    attachments.emplace_back(texture->Get_Resource_View_RenderTarget(render_target_color_texture_array_index));
+                }
             }
             
             // Depth
             if (render_target_depth_texture)
             {
-                attachments.back() = render_target_depth_texture->Get_Resource_View_DepthStencil(render_target_depth_stencil_texture_array_index);
+                attachments.emplace_back(render_target_depth_texture->Get_Resource_View_DepthStencil(render_target_depth_stencil_texture_array_index));
             }
 
             // Create a frame buffer
@@ -134,7 +246,10 @@ namespace Spartan
         {
             vulkan_utility::frame_buffer::destroy(frame_buffer);
         }
-        vulkan_utility::render_pass::destroy(m_render_pass);
+
+        // Destroy render pass
+        vkDestroyRenderPass(m_rhi_device->GetContextRhi()->device, static_cast<VkRenderPass>(m_render_pass), nullptr);
+        m_render_pass = nullptr;
     }
 }
 #endif
