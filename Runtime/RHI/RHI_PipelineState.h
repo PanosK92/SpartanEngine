@@ -37,8 +37,7 @@ namespace Spartan
         RHI_PipelineState();
         ~RHI_PipelineState() { DestroyFrameResources(); }
 
-        bool IsValid();
-        bool AcquireNextImage() const;      
+        bool IsValid();   
         bool CreateFrameResources(const RHI_Device* rhi_device);
         void* GetFrameBuffer() const;
         void ComputeHash();

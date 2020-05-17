@@ -599,7 +599,7 @@ namespace Spartan
 		return true;
 	}
 
-    bool RHI_CommandList::Flush()
+    bool RHI_CommandList::Wait()
     {
         m_rhi_device->GetContextRhi()->device_context->Flush();
         return true;

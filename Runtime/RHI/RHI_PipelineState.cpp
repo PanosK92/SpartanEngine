@@ -108,11 +108,6 @@ namespace Spartan
         return is_valid;
     }
 
-    bool RHI_PipelineState::AcquireNextImage() const
-    {
-        return render_target_swapchain ? render_target_swapchain->AcquireNextImage() : true;
-    }
-
 	uint32_t RHI_PipelineState::GetWidth() const
 	{
         if (render_target_swapchain)

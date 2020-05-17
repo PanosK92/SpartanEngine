@@ -113,14 +113,14 @@ namespace Spartan
         // Sync CPU to GPU
         if (m_cmd_state == RHI_Cmd_List_Idle_Sync_Cpu_To_Gpu)
         {
-            Flush();
+            Wait();
             m_descriptor_cache->GrowIfNeeded();
             m_cmd_state = RHI_Cmd_List_Idle;
         }
 
         if (m_cmd_state != RHI_Cmd_List_Idle)
         {
-            LOG_ERROR("Previous command list is still being used");
+            LOG_ERROR("Command list is still being used");
             return false;
         }
 
@@ -151,11 +151,14 @@ namespace Spartan
             }
 
             // Acquire next image (in case the render target is a swapchain)
-            if (!m_pipeline->GetPipelineState()->AcquireNextImage())
+            if (RHI_SwapChain* swapchain = m_pipeline->GetPipelineState()->render_target_swapchain)
             {
-                LOG_ERROR("Failed to acquire next image");
-                End();
-                return false;
+                if (!swapchain->AcquireNextImage())
+                {
+                    LOG_ERROR("Failed to acquire next image");
+                    End();
+                    return false;
+                }
             }
 
             // Keep a local pointer for convenience
@@ -474,7 +477,7 @@ namespace Spartan
         return true;
 	}
 
-    bool RHI_CommandList::Flush()
+    bool RHI_CommandList::Wait()
     {
         return vulkan_utility::fence::wait_reset(m_cmd_list_consumed_fence);
     }
