@@ -36,8 +36,7 @@ namespace Spartan
     {
         RHI_Cmd_List_Idle,
         RHI_Cmd_List_Idle_Sync_Cpu_To_Gpu,
-        RHI_Cmd_List_Recording,
-        RHI_Cmd_List_Ended
+        RHI_Cmd_List_Recording
     };
 
 	class SPARTAN_CLASS RHI_CommandList : public Spartan_Object
@@ -46,13 +45,30 @@ namespace Spartan
 		RHI_CommandList(uint32_t index, RHI_SwapChain* swap_chain, Context* context);
 		~RHI_CommandList();
 
+        // Temp proxy
+        bool Begin(RHI_PipelineState& pipeline_state)
+        {
+            bool cmd    = StartRecording();
+            bool pass   = BeginPass(pipeline_state);
+            return cmd && pass;
+        }
+        // Temp proxy
+        bool End()
+        {
+            bool pass   = EndPass();
+            bool cmd    = StopRecording();
+            return cmd && pass;
+        }
+
         // Command list
+        bool StartRecording();
+        bool StopRecording();
         bool Submit();
         bool Wait();
 
         // Render pass
-        bool Begin(RHI_PipelineState& pipeline_state);
-        bool End();
+        bool BeginPass(RHI_PipelineState& pipeline_state);
+        bool EndPass();
 
         // Clear
         void Clear(RHI_PipelineState& pipeline_state);
