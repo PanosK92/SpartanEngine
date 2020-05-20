@@ -848,7 +848,7 @@ namespace Spartan::vulkan_utility
             return true;
         }
 
-        inline bool stage(RHI_Texture* texture)
+        inline bool stage(RHI_Texture* texture, RHI_Image_Layout& texture_layout)
         {
             // Copy the texture's data to a staging buffer
             void* staging_buffer = nullptr;
@@ -884,7 +884,7 @@ namespace Spartan::vulkan_utility
                 buffer::destroy(staging_buffer);
 
                 // Let the texture know about it's new layout
-                texture->SetLayout(layout);
+                texture_layout = layout;
             }
 
             return true;
