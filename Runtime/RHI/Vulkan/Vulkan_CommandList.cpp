@@ -94,7 +94,7 @@ namespace Spartan
         vulkan_utility::fence::destroy(m_cmd_list_consumed_fence);
 
         // Command buffer
-        vulkan_utility::command_buffer::free(m_swap_chain->GetCmdPool(), m_cmd_buffer);
+        vulkan_utility::command_buffer::destroy(m_swap_chain->GetCmdPool(), m_cmd_buffer);
 
         // Query pool
         if (m_query_pool)
