@@ -46,37 +46,26 @@ namespace Spartan
     {
         for (RHI_Descriptor& descriptor : m_descriptors)
         {
-            const bool is_dynamic   = constant_buffer->IsDynamic();
-            const bool is_same_type = (!is_dynamic && descriptor.type == RHI_Descriptor_ConstantBuffer) || (is_dynamic && descriptor.type == RHI_Descriptor_ConstantBufferDynamic);
-            const bool is_same_slot = descriptor.slot == slot + m_rhi_device->GetContextRhi()->shader_shift_buffer;
-            const bool is_reference = is_same_type && is_same_slot;
+            const bool is_same_type = descriptor.type == RHI_Descriptor_ConstantBuffer || descriptor.type == RHI_Descriptor_ConstantBufferDynamic;
 
-            if (is_reference)
+            if (is_same_type && descriptor.slot == slot + m_rhi_device->GetContextRhi()->shader_shift_buffer)
             {
                 // Determine if the descriptor set needs to bind
-                m_needs_to_bind = descriptor.resource   != constant_buffer->GetResource()   ? true : m_needs_to_bind;                                                                                       // affects vkUpdateDescriptorSets
-                m_needs_to_bind = descriptor.offset     != constant_buffer->GetOffset()     ? true : m_needs_to_bind;                                                                                       // affects vkUpdateDescriptorSets
-                m_needs_to_bind = descriptor.range      != constant_buffer->GetStride()     ? true : m_needs_to_bind;                                                                                       // affects vkUpdateDescriptorSets
-                m_needs_to_bind = !m_constant_buffer_dynamic_offsets.empty() ? (m_constant_buffer_dynamic_offsets[0] != constant_buffer->GetOffsetDynamic() ? true : m_needs_to_bind) : m_needs_to_bind;    // affects vkCmdBindDescriptorSets 
+                m_needs_to_bind = descriptor.resource   != constant_buffer->GetResource()   ? true : m_needs_to_bind; // affects vkUpdateDescriptorSets
+                m_needs_to_bind = descriptor.offset     != constant_buffer->GetOffset()     ? true : m_needs_to_bind; // affects vkUpdateDescriptorSets
+                m_needs_to_bind = descriptor.range      != constant_buffer->GetStride()     ? true : m_needs_to_bind; // affects vkUpdateDescriptorSets
+
+                // Keep track of dynamic offsets
+                if (constant_buffer->IsDynamic())
+                {
+                    m_dynamic_offsets[0] = constant_buffer->GetOffsetDynamic();
+                    m_needs_to_bind = true; // affects vkCmdBindDescriptorSets 
+                }
 
                 // Update
                 descriptor.resource = constant_buffer->GetResource();
                 descriptor.offset   = constant_buffer->GetOffset();
                 descriptor.range    = constant_buffer->GetStride();
-
-                // Update the dynamic offset.
-                // Note: This is not directly related to the descriptor, it's a value that gets set when vkCmdBindDescriptorSets is called, just before a draw call.
-                if (is_dynamic)
-                {
-                    if (m_constant_buffer_dynamic_offsets.empty())
-                    {
-                        m_constant_buffer_dynamic_offsets.emplace_back(constant_buffer->GetOffsetDynamic());
-                    }
-                    else
-                    {
-                        m_constant_buffer_dynamic_offsets[0] = constant_buffer->GetOffsetDynamic();
-                    }
-                }
 
                 break;
             }
@@ -136,7 +125,8 @@ namespace Spartan
         const size_t hash = ComputeDescriptorSetHash(m_descriptors);
 
         // If we don't have a descriptor set to match that state, create one
-        if (m_descriptor_sets.find(hash) == m_descriptor_sets.end())
+        auto it = m_descriptor_sets.find(hash);
+        if (it == m_descriptor_sets.end())
         {
             // Only allocate if the descriptor set cache hash enough capacity
             if (descriptor_cache->HasEnoughCapacity())
@@ -152,7 +142,7 @@ namespace Spartan
         {
             if (m_needs_to_bind)
             {
-                descriptor_set  = m_descriptor_sets[hash];
+                descriptor_set  = it->second;
                 m_needs_to_bind = false;
             }
         }

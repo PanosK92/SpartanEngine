@@ -132,6 +132,7 @@ namespace Spartan
     {
         // Layout bindings
         vector<VkDescriptorSetLayoutBinding> layout_bindings;
+        layout_bindings.reserve(descriptors.size());
         {
             for (const RHI_Descriptor& descriptor : descriptors)
             {

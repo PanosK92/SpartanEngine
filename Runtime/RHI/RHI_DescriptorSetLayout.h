@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Definition.h"
 #include <unordered_map>
 #include <vector>
+#include <array>
 //=================================
 
 namespace Spartan
@@ -42,9 +43,9 @@ namespace Spartan
         void SetTexture(const uint32_t slot, RHI_Texture* texture);
 
         bool GetResource_DescriptorSet(RHI_DescriptorCache* descriptor_cache, void*& descriptor_set);
-        void* GetResource_DescriptorSetLayout()             const { return m_descriptor_set_layout; }
-        const std::vector<uint32_t>& GetDynamicOffsets()    const { return m_constant_buffer_dynamic_offsets; }
-        uint32_t GetDescriptorSetCount()                    const { return static_cast<uint32_t>(m_descriptor_sets.size()); }
+        void* GetResource_DescriptorSetLayout()                                             const { return m_descriptor_set_layout; }
+        const std::array<uint32_t, state_max_constant_buffer_count>& GetDynamicOffsets()    const { return m_dynamic_offsets; }
+        uint32_t GetDescriptorSetCount()                                                    const { return static_cast<uint32_t>(m_descriptor_sets.size()); }
 
         void NeedsToBind() { m_needs_to_bind = true; }
 
@@ -56,7 +57,17 @@ namespace Spartan
 
         // Misc
         bool m_needs_to_bind = false;
-        std::vector<uint32_t> m_constant_buffer_dynamic_offsets;
+        std::array<uint32_t, state_max_constant_buffer_count> m_dynamic_offsets =
+        {
+            state_dynamic_offset_empty,
+            state_dynamic_offset_empty,
+            state_dynamic_offset_empty,
+            state_dynamic_offset_empty,
+            state_dynamic_offset_empty,
+            state_dynamic_offset_empty,
+            state_dynamic_offset_empty,
+            state_dynamic_offset_empty
+        };
 
         // Descriptors
         std::vector<RHI_Descriptor> m_descriptors;
