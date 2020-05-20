@@ -34,7 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Logging/Log.h"
 #include "../../Math/Vector4.h"
 #include <array>
-#include <map>
+#include <unordered_map>
 #include <atomic>
 //===================================
 
@@ -346,25 +346,11 @@ namespace Spartan::vulkan_utility
             return error::check(vkAllocateCommandBuffers(globals::rhi_context->device, &allocate_info, cmd_buffer_vk));
         }
 
-        inline void free(void*& cmd_pool, void*& cmd_buffer)
+        inline void destroy(void*& cmd_pool, void*& cmd_buffer)
         {
             VkCommandPool cmd_pool_vk       = static_cast<VkCommandPool>(cmd_pool);
             VkCommandBuffer* cmd_buffer_vk  = reinterpret_cast<VkCommandBuffer*>(&cmd_buffer);
             vkFreeCommandBuffers(globals::rhi_context->device, cmd_pool_vk, 1, cmd_buffer_vk);
-        }
-
-        inline bool begin(void* cmd_buffer, VkCommandBufferUsageFlagBits usage = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)
-        {
-            VkCommandBufferBeginInfo begin_info = {};
-            begin_info.sType                    = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-            begin_info.flags                    = usage;
-
-            return error::check(vkBeginCommandBuffer(static_cast<VkCommandBuffer>(cmd_buffer), &begin_info));
-        }
-
-        inline bool end(void* cmd_buffer)
-        {
-            return error::check(vkEndCommandBuffer(static_cast<VkCommandBuffer>(cmd_buffer)));
         }
     }
 
@@ -377,69 +363,92 @@ namespace Spartan::vulkan_utility
 
         struct cmdbi_object
         {
-            bool Initialize(const RHI_Queue_Type queue_type)
+            cmdbi_object() = default;
+            ~cmdbi_object()
             {
-                if (initialized)
-                    return true;
-
-                initialized         = true;
-                this->queue_type    = queue_type;
-
-                // Create command pool
-                if (!command_pool::create(cmd_pool, queue_type))
-                    return false;
-
-                // Create command buffer
-                if (!command_buffer::create(cmd_pool, cmd_buffer, VK_COMMAND_BUFFER_LEVEL_PRIMARY))
-                    return false;
-
-                // Create fence
-                if (!fence::create(cmd_buffer_fence))
-                    return false;
-
-                return true;
+                command_buffer::destroy(cmd_pool, cmd_buffer);
+                command_pool::destroy(cmd_pool);
             }
 
-            bool begin()
+            bool begin(const RHI_Queue_Type queue_type)
             {
-                used = true;
-                return command_buffer::begin(cmd_buffer); static std::map<uint32_t, cmdbi_object> m_objects;
-            }
+                // Wait
+                while (recording)
+                {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(16));
+                }
 
-            bool end()
-            {
-                return command_buffer::end(cmd_buffer);
+                // Initialise
+                if (!initialised)
+                {
+                    // Create command pool
+                    if (!command_pool::create(cmd_pool, queue_type))
+                        return false;
+
+                    // Create command buffer
+                    if (!command_buffer::create(cmd_pool, cmd_buffer, VK_COMMAND_BUFFER_LEVEL_PRIMARY))
+                        return false;
+
+                    initialised = true;
+                    this->queue_type = queue_type;
+                }
+
+                if (!initialised)
+                    return false;
+
+                // Begin
+                VkCommandBufferBeginInfo begin_info = {};
+                begin_info.sType                    = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+                begin_info.flags                    = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+                if (error::check(vkBeginCommandBuffer(static_cast<VkCommandBuffer>(cmd_buffer), &begin_info)))
+                {
+                    recording = true;
+                }
+
+                return recording;
             }
 
             bool submit()
             {
-                if (!globals::rhi_device->Queue_Submit(queue_type, cmd_buffer))
-                    return false;
-
-                if (!globals::rhi_device->Queue_Wait(queue_type))
-                    return false;
-
-                used = false;
-                return true;
-            }
-
-            bool wait_fence()
-            {
-                if (used)
+                if (!initialised)
                 {
-                    used = false;
-                    return fence::wait_reset(cmd_buffer_fence);
+                    LOG_ERROR("Can't submit as the command buffer failed to initialise");
+                    return false;
                 }
 
+                if (!recording)
+                {
+                    LOG_ERROR("Can't submit as the command buffer didn't record anything");
+                    return false;
+                }
+
+                if (!error::check(vkEndCommandBuffer(static_cast<VkCommandBuffer>(cmd_buffer))))
+                {
+                    LOG_ERROR("Failed to end command buffer");
+                    return false;
+                }
+
+                if (!globals::rhi_device->Queue_Submit(queue_type, cmd_buffer))
+                {
+                    LOG_ERROR("Failed to submit to queue");
+                    return false;
+                }
+
+                if (!globals::rhi_device->Queue_Wait(queue_type))
+                {
+                    LOG_ERROR("Failed to wait for queue");
+                    return false;
+                }
+
+                recording = false;
                 return true;
             }
 
             void* cmd_pool                  = nullptr;
             void* cmd_buffer                = nullptr;
-            void* cmd_buffer_fence          = nullptr;
             RHI_Queue_Type queue_type       = RHI_Queue_Undefined;
-            std::atomic<bool> initialized   = false;
-            std::atomic<bool> used          = false;
+            std::atomic<bool> initialised   = false;
+            std::atomic<bool> recording     = false;
         };
 
         static VkCommandBuffer begin(const RHI_Queue_Type queue_type)
@@ -448,19 +457,7 @@ namespace Spartan::vulkan_utility
 
             cmdbi_object& cmbdi = m_objects[queue_type];
 
-            // If the current queue and command buffer are used, wait
-            while (cmbdi.used) {}
-
-            // Initialize
-            if (!cmbdi.Initialize(queue_type))
-                return nullptr;
-
-            // Sync 2: fence ensures the cmd buffer is no longer used
-            if (!cmbdi.wait_fence())
-                return nullptr;
-
-            // Begin
-            if (!cmbdi.begin())
+            if (!cmbdi.begin(queue_type))
                 return nullptr;
 
             return static_cast<VkCommandBuffer>(cmbdi.cmd_buffer);
@@ -469,19 +466,13 @@ namespace Spartan::vulkan_utility
         static bool end(const RHI_Queue_Type queue_type)
         {
             std::lock_guard<std::mutex> lock(m_mutex_end);
-
-            cmdbi_object& cmbdi = m_objects[queue_type];
-
-            if (!cmbdi.end())
-                return false;
-
-            return cmbdi.submit();
+            return m_objects[queue_type].submit();
         }
 
     private:
         static std::mutex m_mutex_begin;
         static std::mutex m_mutex_end;
-        static std::map<RHI_Queue_Type, cmdbi_object> m_objects;
+        static std::unordered_map<RHI_Queue_Type, cmdbi_object> m_objects;
     };
 
 	namespace buffer

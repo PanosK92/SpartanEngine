@@ -35,6 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <atomic>
 #include <dxc/Support/WinIncludes.h>
 #include <dxc/dxcapi.h>
+#include <map>
 //==================================
 
 //= NAMESPACES =====
