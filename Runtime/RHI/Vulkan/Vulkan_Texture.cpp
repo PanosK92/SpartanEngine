@@ -91,6 +91,10 @@ namespace Spartan
 
     void RHI_Texture::SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* command_list /*= nullptr*/)
     {
+        // The texture is most likely still initialising
+        if (m_layout == RHI_Image_Undefined)
+            return;
+
         if (m_layout == new_layout)
             return;
 
@@ -118,8 +122,11 @@ namespace Spartan
         // If the texture has any data, stage it
         if (HasData())
         {
-            if (!vulkan_utility::image::stage(this))
+            if (!vulkan_utility::image::stage(this, m_layout))
+            {
+                LOG_ERROR("Failed to stage");
                 return false;
+            }
         }
 
         // Transition to target layout
@@ -138,11 +145,17 @@ namespace Spartan
         
             // Transition to the final layout
             if (!vulkan_utility::image::set_layout(cmd_buffer, this, target_layout))
+            {
+                LOG_ERROR("Failed to transition layout");
                 return false;
+            }
         
             // Flush
             if (!vulkan_utility::command_buffer_immediate::end(RHI_Queue_Graphics))
+            {
+                LOG_ERROR("Failed to end command buffer");
                 return false;
+            }
 
             // Update this texture with the new layout
             m_layout = target_layout;
@@ -227,7 +240,7 @@ namespace Spartan
         // If the texture has any data, stage it
         if (HasData())
         {
-            if (!vulkan_utility::image::stage(this))
+            if (!vulkan_utility::image::stage(this, m_layout))
                 return false;
         }
 
