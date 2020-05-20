@@ -129,9 +129,9 @@ namespace Spartan
         return m_descriptor_layout_current->GetResource_DescriptorSet(this, descriptor_set);
     }
 
-    const std::vector<uint32_t>& RHI_DescriptorCache::GetDynamicOffsets() const
+    const std::array<uint32_t, state_max_constant_buffer_count>& RHI_DescriptorCache::GetDynamicOffsets() const
     {
-        static std::vector<uint32_t> empty;
+        static std::array<uint32_t, state_max_constant_buffer_count> empty;
 
         if (!m_descriptor_layout_current)
         {

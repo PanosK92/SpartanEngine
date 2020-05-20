@@ -35,11 +35,11 @@ namespace Spartan
 		~RHI_ConstantBuffer();
 
 		template<typename T>
-		bool Create(const uint32_t element_count = 1)
+		bool Create(const uint32_t offset_count = 1)
 		{
             m_stride        = static_cast<uint32_t>(sizeof(T));
-            m_element_count = element_count;
-            m_size_gpu      = static_cast<uint64_t>(m_stride * m_element_count);
+            m_offset_count  = offset_count;
+            m_size_gpu      = static_cast<uint64_t>(m_stride * m_offset_count);
 
             return _Create();
 		}
@@ -49,11 +49,11 @@ namespace Spartan
 
 		void* GetResource()         const { return m_buffer; }
         uint32_t GetStride()        const { return m_stride; }
-        uint32_t GetElementCount()  const { return m_element_count; }
+        uint32_t GetOffsetCount()   const { return m_offset_count; }
 
         // Static offset - The kind of offset that is used when updating the buffer
         uint32_t GetOffset()                                const { return m_offset_index * m_stride; }
-        uint32_t GetOffsetInex()                                  { return m_offset_index; }
+        uint32_t GetOffsetIndex()                           const { return m_offset_index; }
         void SetOffsetIndex(const uint32_t offset_index)          { m_offset_index = offset_index; }
         
         // Dynamic offset - The kind of offset that is used before a draw call, it assumes the buffer is already updated, so it only works as pointer.
@@ -67,7 +67,7 @@ namespace Spartan
 
         bool m_is_dynamic               = false;
         uint32_t m_stride               = 0;
-        uint32_t m_element_count        = 1;
+        uint32_t m_offset_count         = 1;
         uint32_t m_offset_index         = 0;
         uint32_t m_offset_dynamic_index = 0;
 

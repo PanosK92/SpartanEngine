@@ -48,7 +48,7 @@ namespace Spartan
         void* GetResource_DescriptorSetPool() const { return m_descriptor_pool; }
         void* GetResource_DescriptorSetLayout() const;
         bool GetResource_DescriptorSet(void*& descriptor_set);
-        const std::vector<uint32_t>& GetDynamicOffsets() const;
+        const std::array<uint32_t, state_max_constant_buffer_count>& GetDynamicOffsets() const;
 
         // Capacity
         bool HasEnoughCapacity() const;

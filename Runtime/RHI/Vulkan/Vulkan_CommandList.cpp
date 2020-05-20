@@ -691,22 +691,25 @@ namespace Spartan
 
         if (result && descriptor_set != nullptr)
         {
-            const vector<uint32_t>& _dynamic_offsets    = m_descriptor_cache->GetDynamicOffsets();
-            uint32_t dynamic_offset_count               = !_dynamic_offsets.empty() ? static_cast<uint32_t>(_dynamic_offsets.size()) : 0;
-            const uint32_t* dynamic_offsets             = !_dynamic_offsets.empty() ? _dynamic_offsets.data() : nullptr;
+            const std::array<uint32_t, state_max_constant_buffer_count>& dynamic_offsets    = m_descriptor_cache->GetDynamicOffsets();
+            uint32_t dynamic_offset_count                                                   = 0;
+            for (uint32_t i = 0; i < state_max_constant_buffer_count; i++)
+            {
+                dynamic_offset_count++;
+            }
 
             // Bind descriptor set
             VkDescriptorSet descriptor_sets[1] = { static_cast<VkDescriptorSet>(descriptor_set) };
             vkCmdBindDescriptorSets
             (
-                static_cast<VkCommandBuffer>(m_cmd_buffer),                                                     // commandBuffer
+                static_cast<VkCommandBuffer>(m_cmd_buffer),                     // commandBuffer
                 VK_PIPELINE_BIND_POINT_GRAPHICS,                                // pipelineBindPoint
                 static_cast<VkPipelineLayout>(m_pipeline->GetPipelineLayout()), // layout
                 0,                                                              // firstSet
                 1,                                                              // descriptorSetCount
                 descriptor_sets,                                                // pDescriptorSets
                 dynamic_offset_count,                                           // dynamicOffsetCount
-                dynamic_offsets                                                 // pDynamicOffsets
+                !dynamic_offsets.empty() ? dynamic_offsets.data() : nullptr   // pDynamicOffsets
             );
 
             m_profiler->m_rhi_bindings_descriptor_set++;

@@ -459,7 +459,7 @@ namespace Spartan
         const uint32_t entity_count = entity_index + 1;
 
         // Re-allocate buffer with double size (if needed)
-        if (entity_count >= m_buffer_object_gpu->GetElementCount())
+        if (entity_count >= m_buffer_object_gpu->GetOffsetCount())
         {
             const uint32_t new_size = Math::Helper::NextPowerOfTwo(entity_count);
             if (!m_buffer_object_gpu->Create<BufferObject>(new_size))

@@ -74,7 +74,7 @@ namespace Spartan
         {
             m_stride = static_cast<uint32_t>((m_stride + min_ubo_alignment - 1) & ~(min_ubo_alignment - 1));
         }
-        m_size_gpu = m_element_count * m_stride;
+        m_size_gpu = m_offset_count * m_stride;
 
 		// Create buffer
         VmaAllocation allocation = vulkan_utility::buffer::create(m_buffer, m_size_gpu, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, true);
