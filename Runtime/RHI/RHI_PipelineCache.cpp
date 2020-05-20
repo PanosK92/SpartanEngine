@@ -80,12 +80,13 @@ namespace Spartan
         size_t hash = pipeline_state.GetHash();
 
         // If no pipeline exists for this state, create one
-        if (m_cache.find(hash) == m_cache.end())
+        auto it = m_cache.find(hash);
+        if (it == m_cache.end())
         {
             // Cache a new pipeline
-            m_cache.emplace(make_pair(hash, move(make_shared<RHI_Pipeline>(m_rhi_device, pipeline_state, descriptor_set_layout))));
+            it = m_cache.emplace(make_pair(hash, move(make_shared<RHI_Pipeline>(m_rhi_device, pipeline_state, descriptor_set_layout)))).first;
         }
 
-        return m_cache[hash].get();
+        return it->second.get();
     }
 }

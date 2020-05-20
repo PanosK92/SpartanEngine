@@ -59,17 +59,18 @@ namespace Spartan
        }
 
        // If there is no descriptor set layout for this particular hash, create one
-       if (m_descriptor_set_layouts.find(hash) == m_descriptor_set_layouts.end())
+       auto it = m_descriptor_set_layouts.find(hash);
+       if (it == m_descriptor_set_layouts.end())
        {
            // Generate descriptors from the reflected shaders
            vector<RHI_Descriptor> descriptors = GenerateDescriptors(pipeline_state);
 
            // Emplace a new descriptor set layout
-           m_descriptor_set_layouts.emplace(make_pair(hash, make_shared<RHI_DescriptorSetLayout>(m_rhi_device, descriptors)));
+           it = m_descriptor_set_layouts.emplace(make_pair(hash, make_shared<RHI_DescriptorSetLayout>(m_rhi_device, descriptors))).first;
        }
 
        // Get the descriptor set layout we will be using
-        m_descriptor_layout_current = m_descriptor_set_layouts.at(hash).get();
+        m_descriptor_layout_current = it->second.get();
         m_descriptor_layout_current->NeedsToBind();
     }
 
