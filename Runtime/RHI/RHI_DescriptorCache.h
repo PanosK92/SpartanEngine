@@ -38,6 +38,7 @@ namespace Spartan
         ~RHI_DescriptorCache();
 
         void SetPipelineState(RHI_PipelineState& pipeline_state);
+        RHI_DescriptorSetLayout* GetCurrentDescriptorSetLayout() { return m_descriptor_layout_current; }
 
         // Descriptor resource updating
         void SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer);
@@ -48,7 +49,6 @@ namespace Spartan
         void* GetResource_DescriptorSetPool() const { return m_descriptor_pool; }
         void* GetResource_DescriptorSetLayout() const;
         bool GetResource_DescriptorSet(void*& descriptor_set);
-        const std::array<uint32_t, state_max_constant_buffer_count>& GetDynamicOffsets() const;
 
         // Capacity
         bool HasEnoughCapacity() const;

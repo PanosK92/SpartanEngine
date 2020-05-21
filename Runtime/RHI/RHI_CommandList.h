@@ -45,21 +45,6 @@ namespace Spartan
 		RHI_CommandList(uint32_t index, RHI_SwapChain* swap_chain, Context* context);
 		~RHI_CommandList();
 
-        // Temp proxy
-        bool Begin(RHI_PipelineState& pipeline_state)
-        {
-            bool cmd    = StartRecording();
-            bool pass   = BeginPass(pipeline_state);
-            return cmd && pass;
-        }
-        // Temp proxy
-        bool End()
-        {
-            bool pass   = EndPass();
-            bool cmd    = StopRecording();
-            return cmd && pass;
-        }
-
         // Command list
         bool StartRecording();
         bool StopRecording();

@@ -209,6 +209,7 @@ namespace Spartan
 
 		m_frame_num++;
 		m_is_odd_frame = (m_frame_num % 2) == 1;
+        m_buffer_uber_offset_index = 0;
 
 		// Get camera matrices
 		{
@@ -426,42 +427,74 @@ namespace Spartan
         return m_buffer_material_gpu->Unmap();
     }
 
-    bool Renderer::UpdateUberBuffer()
+    bool Renderer::UpdateUberBuffer(RHI_CommandList* cmd_list, const uint32_t offset_index /*= 0*/)
 	{
         // Only update if needed
-        if (m_buffer_uber_cpu == m_buffer_uber_cpu_previous)
-            return false;
-
-        // Map
-        BufferUber* buffer = static_cast<BufferUber*>(m_buffer_uber_gpu->Map());
-		if (!buffer)
-		{
-			LOG_ERROR("Failed to map buffer");
-			return false;
-		}
-
-        // Update
-        *buffer = m_buffer_uber_cpu;
-        m_buffer_uber_cpu_previous = m_buffer_uber_cpu;
-
-        // Unmap
-		return m_buffer_uber_gpu->Unmap();
-	}
-
-    bool Renderer::UpdateObjectBuffer(RHI_CommandList* cmd_list, const uint32_t entity_index /*= 0*/)
-    {
-        // Only update if needed
-        const bool same_content   = m_buffer_object_cpu == m_buffer_object_cpu_previous;
-        const bool same_offset    = m_buffer_object_gpu->GetOffsetIndexDynamic() == entity_index;
+        const bool same_content = m_buffer_uber_cpu == m_buffer_uber_cpu_previous;
+        const bool same_offset  = m_buffer_uber_gpu->GetOffsetIndexDynamic() == offset_index;
         if (same_content && same_offset)
             return true;
 
-        const uint32_t entity_count = entity_index + 1;
+        const uint32_t offset_count = offset_index + 1;
 
         // Re-allocate buffer with double size (if needed)
-        if (entity_count >= m_buffer_object_gpu->GetOffsetCount())
+        if (offset_count >= m_buffer_uber_gpu->GetOffsetCount())
         {
-            const uint32_t new_size = Math::Helper::NextPowerOfTwo(entity_count);
+            const uint32_t new_size = Math::Helper::NextPowerOfTwo(offset_count);
+            if (!m_buffer_uber_gpu->Create<BufferUber>(new_size))
+            {
+                LOG_ERROR("Failed to re-allocate buffer with %d offsets", new_size);
+                return false;
+            }
+        }
+
+        // Set new buffer offset
+        m_buffer_uber_gpu->SetOffsetIndexDynamic(offset_index);
+
+        // Dynamic buffers with offsets have to be rebound whenever the offset changes
+        if (cmd_list)
+        {
+            cmd_list->SetConstantBuffer(2, RHI_Shader_Pixel | RHI_Shader_Vertex, m_buffer_uber_gpu);
+        }
+
+        // Map  
+        BufferUber* buffer = static_cast<BufferUber*>(m_buffer_uber_gpu->Map());
+        if (!buffer)
+        {
+            LOG_ERROR("Failed to map buffer");
+            return false;
+        }
+
+        // Update
+        if (m_buffer_uber_gpu->IsDynamic())
+        {
+            uint64_t offset = offset_index * m_buffer_uber_gpu->GetStride();
+            memcpy(reinterpret_cast<std::byte*>(buffer) + offset, reinterpret_cast<std::byte*>(&m_buffer_uber_cpu), m_buffer_uber_gpu->GetStride());
+        }
+        else
+        {
+            *buffer = m_buffer_uber_cpu;
+        }
+        m_buffer_uber_cpu_previous = m_buffer_uber_cpu;
+
+        // Unmap
+        return m_buffer_uber_gpu->Unmap();
+	}
+
+    bool Renderer::UpdateObjectBuffer(RHI_CommandList* cmd_list, const uint32_t offset_index /*= 0*/)
+    {
+        // Only update if needed
+        const bool same_content   = m_buffer_object_cpu == m_buffer_object_cpu_previous;
+        const bool same_offset    = m_buffer_object_gpu->GetOffsetIndexDynamic() == offset_index;
+        if (same_content && same_offset)
+            return true;
+
+        const uint32_t offset_count = offset_index + 1;
+
+        // Re-allocate buffer with double size (if needed)
+        if (offset_count >= m_buffer_object_gpu->GetOffsetCount())
+        {
+            const uint32_t new_size = Math::Helper::NextPowerOfTwo(offset_count);
             if (!m_buffer_object_gpu->Create<BufferObject>(new_size))
             {
                 LOG_ERROR("Failed to re-allocate buffer with %d offsets", new_size);
@@ -470,7 +503,7 @@ namespace Spartan
         }
 
         // Set new buffer offset
-        m_buffer_object_gpu->SetOffsetIndexDynamic(entity_index);
+        m_buffer_object_gpu->SetOffsetIndexDynamic(offset_index);
 
         // Dynamic buffers with offsets have to be rebound whenever the offset changes
         if (cmd_list)
@@ -489,7 +522,7 @@ namespace Spartan
         // Update
         if (m_buffer_object_gpu->IsDynamic())
         {
-            uint64_t offset = entity_index * m_buffer_object_gpu->GetStride();
+            uint64_t offset = offset_index * m_buffer_object_gpu->GetStride();
             memcpy(reinterpret_cast<std::byte*>(buffer) + offset, reinterpret_cast<std::byte*>(&m_buffer_object_cpu), m_buffer_object_gpu->GetStride());
         }
         else

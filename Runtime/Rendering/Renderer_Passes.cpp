@@ -73,61 +73,65 @@ namespace Spartan
 
         SCOPED_TIME_BLOCK(m_profiler);
 
-        // Updates onces, used almost everywhere
-        UpdateFrameBuffer();
-
-        // Runs only once
-        Pass_BrdfSpecularLut(cmd_list);
-
-        const bool draw_transparent_objects = !m_entities[Renderer_Object_Transparent].empty();
-
-        // Depth
+        if (cmd_list->StartRecording())
         {
-            Pass_LightDepth(cmd_list, Renderer_Object_Opaque);
-            if (draw_transparent_objects)
+            // Updates onces, used almost everywhere
+            UpdateFrameBuffer();
+
+            // Runs only once
+            Pass_BrdfSpecularLut(cmd_list);
+
+            const bool draw_transparent_objects = !m_entities[Renderer_Object_Transparent].empty();
+
+            // Depth
             {
-                Pass_LightDepth(cmd_list, Renderer_Object_Transparent);
+                Pass_LightDepth(cmd_list, Renderer_Object_Opaque);
+                if (draw_transparent_objects)
+                {
+                    Pass_LightDepth(cmd_list, Renderer_Object_Transparent);
+                }
+
+                if (GetOption(Render_DepthPrepass))
+                {
+                    Pass_DepthPrePass(cmd_list);
+                }
             }
 
-            if (GetOption(Render_DepthPrepass))
+            // G-Buffer to Composition
             {
-                Pass_DepthPrePass(cmd_list);
+                // Lighting
+                Pass_GBuffer(cmd_list, Renderer_Object_Opaque);
+                Pass_Ssao(cmd_list, false);
+                Pass_Ssr(cmd_list, false);
+                Pass_Light(cmd_list, false);
+                Pass_Composition(cmd_list, m_render_targets[RenderTarget_Composition_Hdr], false);
+
+                // Lighting for transparent objects
+                if (draw_transparent_objects)
+                {
+                    Pass_GBuffer(cmd_list, Renderer_Object_Transparent);
+                    Pass_Ssao(cmd_list, true);
+                    Pass_Ssr(cmd_list, true);
+                    Pass_Light(cmd_list, true);
+                    Pass_Composition(cmd_list, m_render_targets[RenderTarget_Composition_Hdr_2], true);
+
+                    // Alpha blend the transparent composition on top of opaque one
+                    Pass_AlphaBlend(cmd_list, m_render_targets[RenderTarget_Composition_Hdr_2].get(), m_render_targets[RenderTarget_Composition_Hdr].get(), true);
+                }
+            }
+
+            // Post-processing
+            {
+                Pass_PostProcess(cmd_list);
+                Pass_Outline(cmd_list, m_render_targets[RenderTarget_Composition_Ldr]);
+                Pass_Lines(cmd_list, m_render_targets[RenderTarget_Composition_Ldr]);
+                Pass_TransformHandle(cmd_list, m_render_targets[RenderTarget_Composition_Ldr].get());
+                Pass_Icons(cmd_list, m_render_targets[RenderTarget_Composition_Ldr].get());
+                Pass_DebugBuffer(cmd_list, m_render_targets[RenderTarget_Composition_Ldr]);
+                Pass_Text(cmd_list, m_render_targets[RenderTarget_Composition_Ldr].get());
             }
         }
-
-        // G-Buffer to Composition
-        {
-            // Lighting
-            Pass_GBuffer(cmd_list, Renderer_Object_Opaque);
-            Pass_Ssao(cmd_list, false);
-            Pass_Ssr(cmd_list, false);
-            Pass_Light(cmd_list, false);
-            Pass_Composition(cmd_list, m_render_targets[RenderTarget_Composition_Hdr], false);
-
-            // Lighting for transparent objects
-            if (draw_transparent_objects)
-            {
-                Pass_GBuffer(cmd_list, Renderer_Object_Transparent);
-                Pass_Ssao(cmd_list, true);
-                Pass_Ssr(cmd_list, true);
-                Pass_Light(cmd_list, true);
-                Pass_Composition(cmd_list, m_render_targets[RenderTarget_Composition_Hdr_2], true);
-
-                // Alpha blend the transparent composition on top of opaque one
-                Pass_AlphaBlend(cmd_list, m_render_targets[RenderTarget_Composition_Hdr_2].get(), m_render_targets[RenderTarget_Composition_Hdr].get(), true);
-            }
-        }
-
-        // Post-processing
-        {  
-            Pass_PostProcess(cmd_list);
-            Pass_Outline(cmd_list, m_render_targets[RenderTarget_Composition_Ldr]);
-            Pass_Lines(cmd_list, m_render_targets[RenderTarget_Composition_Ldr]);
-            Pass_TransformHandle(cmd_list, m_render_targets[RenderTarget_Composition_Ldr].get());
-            Pass_Icons(cmd_list, m_render_targets[RenderTarget_Composition_Ldr].get());      
-            Pass_DebugBuffer(cmd_list, m_render_targets[RenderTarget_Composition_Ldr]);
-            Pass_Text(cmd_list, m_render_targets[RenderTarget_Composition_Ldr].get());
-        }
+        cmd_list->Submit();
 	}
 
 	void Renderer::Pass_LightDepth(RHI_CommandList* cmd_list, const Renderer_Object_Type object_type)
@@ -207,7 +211,7 @@ namespace Spartan
                     pipeline_state.rasterizer_state = m_rasterizer_cull_back_solid.get();
                 }
 
-                if (cmd_list->Begin(pipeline_state))
+                if (cmd_list->BeginPass(pipeline_state))
                 {
                     // Useful to avoid constant buffer updates
                     uint32_t m_set_material_id = 0;
@@ -252,7 +256,7 @@ namespace Spartan
                             m_buffer_uber_cpu.mat_offset_uv = material->GetOffset();
 
                             // Update constant buffer
-                            UpdateUberBuffer();
+                            UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
 
                             m_set_material_id = material->GetId();
                         }
@@ -269,8 +273,7 @@ namespace Spartan
                         cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
 
                     }
-                    cmd_list->End(); // end of array
-                    cmd_list->Submit();
+                    cmd_list->EndPass(); // end of array
                 }
             }
         }
@@ -304,7 +307,7 @@ namespace Spartan
         pipeline_state.pass_name                    = "Pass_DepthPrePass";
 
         // Submit commands
-        if (cmd_list->Begin(pipeline_state))
+        if (cmd_list->BeginPass(pipeline_state))
         { 
             if (!entities.empty())
             {
@@ -341,15 +344,14 @@ namespace Spartan
                     {
                         // Update uber buffer with cascade transform
                         m_buffer_uber_cpu.transform = transform->GetMatrix() * m_buffer_frame_cpu.view_projection;
-                        UpdateUberBuffer(); // only updates if needed
+                        UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++); // only updates if needed
                     }
 
                     // Draw	
                     cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
                 }
             }
-            cmd_list->End();
-            cmd_list->Submit();
+            cmd_list->EndPass();
         }
     }
 
@@ -415,7 +417,7 @@ namespace Spartan
             auto& entities = m_entities[object_type];
 
             // Submit command list
-            if (cmd_list->Begin(pso))
+            if (cmd_list->BeginPass(pso))
             {
                 for (uint32_t i = 0; i < static_cast<uint32_t>(entities.size()); i++)
                 {
@@ -494,7 +496,7 @@ namespace Spartan
                         m_buffer_uber_cpu.mat_height_mul    = material->GetProperty(Material_Height);
 
                         // Update constant buffer
-                        UpdateUberBuffer();
+                        UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
                     }
                     
                     // Update uber buffer with entity transform
@@ -516,8 +518,7 @@ namespace Spartan
                     cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
                     m_profiler->m_renderer_meshes_rendered++;
                 }
-                cmd_list->End();
-                cmd_list->Submit();
+                cmd_list->EndPass();
             }
         }
 
@@ -558,11 +559,11 @@ namespace Spartan
         pipeline_state.pass_name                                = "Pass_Ssao";
 
         // Submit commands
-        if (cmd_list->Begin(pipeline_state))
+        if (cmd_list->BeginPass(pipeline_state))
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution = Vector2(tex_ssao_noisy->GetWidth(), tex_ssao_noisy->GetHeight());
-            UpdateUberBuffer();
+            UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
 
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
@@ -570,8 +571,7 @@ namespace Spartan
             cmd_list->SetTexture(9, m_render_targets[RenderTarget_Gbuffer_Normal]);
             cmd_list->SetTexture(21, m_tex_noise_normal);
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
-            cmd_list->End();
-            cmd_list->Submit();
+            cmd_list->EndPass();
         
             // Bilateral blur
             const auto sigma        = 2.0f;
@@ -619,19 +619,18 @@ namespace Spartan
         pipeline_state.pass_name                                = "Pass_Ssr";
 
         // Submit commands
-        if (cmd_list->Begin(pipeline_state))
+        if (cmd_list->BeginPass(pipeline_state))
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution = Vector2(tex_ssr->GetWidth(), tex_ssr->GetHeight());
-            UpdateUberBuffer();
+            UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
         
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
             cmd_list->SetTexture(9, m_render_targets[RenderTarget_Gbuffer_Normal]);
             cmd_list->SetTexture(12, m_render_targets[RenderTarget_Gbuffer_Depth]);
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
-            cmd_list->End();
-            cmd_list->Submit();
+            cmd_list->EndPass();
         }
         //// Acquire shader
         //const auto& shader_c = m_shaders[Shader_Ssr_C];
@@ -645,7 +644,7 @@ namespace Spartan
 
         //// Update uber buffer
         //m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_ssr->GetWidth()), static_cast<float>(tex_ssr->GetHeight()));
-        //UpdateUberBuffer();
+        //UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
 
         //// Set render state
         //static RHI_PipelineState pipeline_state;
@@ -654,13 +653,12 @@ namespace Spartan
         //pipeline_state.pass_name                = "Pass_Ssr";
 
         //// Submit commands
-        //if (cmd_list->Begin(pipeline_state))
+        //if (cmd_list->BeginPass(pipeline_state))
         //{
         //    cmd_list->SetTexture(0, tex_normal);
         //    cmd_list->SetTexture(1, tex_depth);
         //    cmd_list->Dispatch(32, 21, 1);
-        //    cmd_list->End();
-        //    cmd_list->Submit();
+        //    cmd_list->EndPass();
         //    cmd_list->Flush();
         //}
     }
@@ -686,7 +684,7 @@ namespace Spartan
 
         // Update uber buffer
         m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_diffuse->GetWidth()), static_cast<float>(tex_diffuse->GetHeight()));
-        UpdateUberBuffer();
+        UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
 
          // Set render state
         static RHI_PipelineState pipeline_state;
@@ -721,7 +719,7 @@ namespace Spartan
                     if (!pipeline_state.shader_pixel->IsCompiled())
                         continue;
 
-                    if (cmd_list->Begin(pipeline_state))
+                    if (cmd_list->BeginPass(pipeline_state))
                     {
                         cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
                         cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
@@ -762,8 +760,7 @@ namespace Spartan
                         // Draw
                         cmd_list->DrawIndexed(Rectangle::GetIndexCount());
 
-                        cmd_list->End();
-                        cmd_list->Submit();
+                        cmd_list->EndPass();
                     }
                 }
             }
@@ -794,11 +791,11 @@ namespace Spartan
         pipeline_state.pass_name                        = "Pass_Composition";
 
         // Begin commands
-        if (cmd_list->Begin(pipeline_state))
+        if (cmd_list->BeginPass(pipeline_state))
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-            UpdateUberBuffer();
+            UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
 
             // Setup command list
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
@@ -818,8 +815,7 @@ namespace Spartan
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
-            cmd_list->End();
-            cmd_list->Submit();
+            cmd_list->EndPass();
         }
 	}
 
@@ -833,7 +829,7 @@ namespace Spartan
 
         // Update uber buffer
         m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-        UpdateUberBuffer();
+        UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
 
         // Set render state
         static RHI_PipelineState pipeline_state;
@@ -851,14 +847,13 @@ namespace Spartan
         pipeline_state.pass_name                        = "Pass_AlphaBlend";
         
         // Submit command list
-        if (cmd_list->Begin(pipeline_state))
+        if (cmd_list->BeginPass(pipeline_state))
         {
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
             cmd_list->SetTexture(28, tex_in);
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
-            cmd_list->End();
-            cmd_list->Submit();
+            cmd_list->EndPass();
         }
     }
 
@@ -962,17 +957,16 @@ namespace Spartan
         pipeline_state.pass_name                        = "Pass_Upsample";
 
         // Submit commands
-        if (cmd_list->Begin(pipeline_state))
+        if (cmd_list->BeginPass(pipeline_state))
         {
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-            UpdateUberBuffer();
+            UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
 
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
             cmd_list->SetTexture(28, tex_in);
             cmd_list->DrawIndexed(m_viewport_quad.GetIndexCount());
-            cmd_list->End();
-            cmd_list->Submit();
+            cmd_list->EndPass();
         }
     }
 
@@ -999,18 +993,17 @@ namespace Spartan
         pipeline_state.pass_name                        = "Pass_Downsample";
 
         // Submit commands
-        if (cmd_list->Begin(pipeline_state))
+        if (cmd_list->BeginPass(pipeline_state))
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-            UpdateUberBuffer();
+            UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
         
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
             cmd_list->SetTexture(28, tex_in);
             cmd_list->DrawIndexed(m_viewport_quad.GetIndexCount());
-            cmd_list->End();
-            cmd_list->Submit();
+            cmd_list->EndPass();
         }
     }
 
@@ -1038,20 +1031,19 @@ namespace Spartan
         pipeline_state.pass_name                        = "Pass_BlurBox";
 
         // Submit commands
-        if (cmd_list->Begin(pipeline_state))
+        if (cmd_list->BeginPass(pipeline_state))
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution        = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             m_buffer_uber_cpu.blur_direction    = Vector2(pixel_stride, 0.0f);
             m_buffer_uber_cpu.blur_sigma        = sigma;
-            UpdateUberBuffer();
+            UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
 
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
             cmd_list->SetTexture(28, tex_in);
             cmd_list->DrawIndexed(m_viewport_quad.GetIndexCount());
-            cmd_list->End();
-            cmd_list->Submit();
+            cmd_list->EndPass();
         }
 	}
 
@@ -1083,20 +1075,19 @@ namespace Spartan
         pipeline_state_horizontal.pass_name                         = "Pass_BlurGaussian_Horizontal";
 
         // Submit commands for horizontal pass
-        if (cmd_list->Begin(pipeline_state_horizontal))
+        if (cmd_list->BeginPass(pipeline_state_horizontal))
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution        = Vector2(static_cast<float>(tex_in->GetWidth()), static_cast<float>(tex_in->GetHeight()));
             m_buffer_uber_cpu.blur_direction    = Vector2(pixel_stride, 0.0f);
             m_buffer_uber_cpu.blur_sigma        = sigma;
-            UpdateUberBuffer();
+            UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
         
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
         	cmd_list->SetTexture(28, tex_in);
         	cmd_list->DrawIndexed(Rectangle::GetIndexCount());
-            cmd_list->End();
-            cmd_list->Submit();
+            cmd_list->EndPass();
         }
         
         // Set render state for vertical pass
@@ -1113,18 +1104,17 @@ namespace Spartan
         pipeline_state_vertical.pass_name                       = "Pass_BlurGaussian_Vertical";
 
         // Submit commands for vertical pass
-        if (cmd_list->Begin(pipeline_state_vertical))
+        if (cmd_list->BeginPass(pipeline_state_vertical))
         {
             m_buffer_uber_cpu.blur_direction    = Vector2(0.0f, pixel_stride);
             m_buffer_uber_cpu.blur_sigma        = sigma;
-            UpdateUberBuffer();
+            UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
         
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
             cmd_list->SetTexture(28, tex_out);
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
-            cmd_list->End();
-            cmd_list->Submit();
+            cmd_list->EndPass();
         }
 
 		// Swap textures
@@ -1164,13 +1154,13 @@ namespace Spartan
         pipeline_state_horizontal.pass_name                         = "Pass_BlurBilateralGaussian_Horizontal";
 
         // Submit commands for horizontal pass
-        if (cmd_list->Begin(pipeline_state_horizontal))
+        if (cmd_list->BeginPass(pipeline_state_horizontal))
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution        = Vector2(static_cast<float>(tex_in->GetWidth()), static_cast<float>(tex_in->GetHeight()));
             m_buffer_uber_cpu.blur_direction    = Vector2(pixel_stride, 0.0f);
             m_buffer_uber_cpu.blur_sigma        = sigma;
-            UpdateUberBuffer();
+            UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
 
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
@@ -1178,8 +1168,7 @@ namespace Spartan
             cmd_list->SetTexture(12, tex_depth);
             cmd_list->SetTexture(9, tex_normal);
             cmd_list->DrawIndexed(m_viewport_quad.GetIndexCount());
-            cmd_list->End();
-            cmd_list->Submit();
+            cmd_list->EndPass();
         }
 
         // Set render state for vertical pass
@@ -1197,12 +1186,12 @@ namespace Spartan
         pipeline_state_vertical.pass_name                       = "Pass_BlurBilateralGaussian_Vertical";
 
         // Submit commands for vertical pass
-        if (cmd_list->Begin(pipeline_state_vertical))
+        if (cmd_list->BeginPass(pipeline_state_vertical))
         {
             // Update uber buffer
             m_buffer_uber_cpu.blur_direction    = Vector2(0.0f, pixel_stride);
             m_buffer_uber_cpu.blur_sigma        = sigma;
-            UpdateUberBuffer();
+            UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
 
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
@@ -1210,8 +1199,7 @@ namespace Spartan
             cmd_list->SetTexture(12, tex_depth);
             cmd_list->SetTexture(9, tex_normal);
             cmd_list->DrawIndexed(m_viewport_quad.GetIndexCount());
-            cmd_list->End();
-            cmd_list->Submit();
+            cmd_list->EndPass();
         }
 
         // Swap textures
@@ -1243,11 +1231,11 @@ namespace Spartan
         pipeline_state.pass_name                        = "Pass_TAA";
 
         // Submit command list
-		if (cmd_list->Begin(pipeline_state))
+		if (cmd_list->BeginPass(pipeline_state))
 		{
             // Update uber buffer
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-            UpdateUberBuffer();
+            UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
 
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
@@ -1256,8 +1244,7 @@ namespace Spartan
             cmd_list->SetTexture(11, m_render_targets[RenderTarget_Gbuffer_Velocity]);
             cmd_list->SetTexture(12, m_render_targets[RenderTarget_Gbuffer_Depth]);
 			cmd_list->DrawIndexed(Rectangle::GetIndexCount());
-            cmd_list->End();
-            cmd_list->Submit();
+            cmd_list->EndPass();
 		}
 
 		// Copy result
@@ -1292,23 +1279,22 @@ namespace Spartan
             pipeline_state.pass_name                        = "Pass_Bloom_Luminance";
 
             // Submit command list
-            if (cmd_list->Begin(pipeline_state))
+            if (cmd_list->BeginPass(pipeline_state))
             {
                 // Update uber buffer
                 m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(m_render_tex_bloom[0]->GetWidth()), static_cast<float>(m_render_tex_bloom[0]->GetHeight()));
-                UpdateUberBuffer();
+                UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
         
                 cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
                 cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
                 cmd_list->SetTexture(28, tex_in);
                 cmd_list->DrawIndexed(Rectangle::GetIndexCount());
-                cmd_list->End();
-                cmd_list->Submit();
+                cmd_list->EndPass();
             }
         }
         
         // Downsample
-                    // The last bloom texture is the same size as the previous one (it's used for the Gaussian pass below), so we skip it
+        // The last bloom texture is the same size as the previous one (it's used for the Gaussian pass below), so we skip it
         for (int i = 0; i < static_cast<int>(m_render_tex_bloom.size() - 1); i++)
         {
             Pass_Downsample(cmd_list, m_render_tex_bloom[i], m_render_tex_bloom[i + 1], Shader_BloomDownsample_P);
@@ -1330,18 +1316,17 @@ namespace Spartan
             pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
             pipeline_state.pass_name                        = "Pass_Bloom_Upsample";
 
-            if (cmd_list->Begin(pipeline_state))
+            if (cmd_list->BeginPass(pipeline_state))
             {
                 // Update uber buffer
                 m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-                UpdateUberBuffer();
+                UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
         
                 cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
                 cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
                 cmd_list->SetTexture(28, tex_in);
                 cmd_list->DrawIndexed(Rectangle::GetIndexCount());
-                cmd_list->End();
-                cmd_list->Submit(); // we have to submit because all upsample passes are using the uber buffer
+                cmd_list->EndPass();
             }
         };
         
@@ -1368,19 +1353,18 @@ namespace Spartan
             pipeline_state.pass_name                        = "Pass_Bloom_Additive_Blending";
         
             // Submit command list
-            if (cmd_list->Begin(pipeline_state))
+            if (cmd_list->BeginPass(pipeline_state))
             {
                 // Update uber buffer
                 m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-                UpdateUberBuffer();
+                UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
         
                 cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
                 cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
                 cmd_list->SetTexture(28, tex_in);
                 cmd_list->SetTexture(29, m_render_tex_bloom.front());
                 cmd_list->DrawIndexed(Rectangle::GetIndexCount());
-                cmd_list->End();
-                cmd_list->Submit();
+                cmd_list->EndPass();
             }
         }
 	}
@@ -1408,18 +1392,17 @@ namespace Spartan
         pipeline_state.pass_name                        = "Pass_ToneMapping";
 
         // Submit command list
-        if (cmd_list->Begin(pipeline_state))
+        if (cmd_list->BeginPass(pipeline_state))
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-            UpdateUberBuffer();
+            UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
 
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
             cmd_list->SetTexture(28, tex_in);
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
-            cmd_list->End();
-            cmd_list->Submit();
+            cmd_list->EndPass();
         }
 	}
 
@@ -1446,18 +1429,17 @@ namespace Spartan
         pipeline_state.pass_name                        = "Pass_GammaCorrection";
 
         // Submit command list
-        if (cmd_list->Begin(pipeline_state))
+        if (cmd_list->BeginPass(pipeline_state))
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-            UpdateUberBuffer();
+            UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
 
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
             cmd_list->SetTexture(28, tex_in);
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
-            cmd_list->End();
-            cmd_list->Submit();
+            cmd_list->EndPass();
         }
 	}
 
@@ -1472,7 +1454,7 @@ namespace Spartan
 
         // Update uber buffer
         m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-        UpdateUberBuffer();
+        UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
 
         // Luminance
         {
@@ -1491,14 +1473,13 @@ namespace Spartan
             pipeline_state.pass_name                        = "Pass_FXAA_Luminance";
 
             // Submit command list
-            if (cmd_list->Begin(pipeline_state))
+            if (cmd_list->BeginPass(pipeline_state))
             {
                 cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
                 cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
                 cmd_list->SetTexture(28, tex_in);
                 cmd_list->DrawIndexed(Rectangle::GetIndexCount());
-                cmd_list->End();
-                cmd_list->Submit();
+                cmd_list->EndPass();
             }
         }
 
@@ -1518,14 +1499,13 @@ namespace Spartan
             pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
             pipeline_state.pass_name                        = "Pass_FXAA_FXAA";
 
-            if (cmd_list->Begin(pipeline_state))
+            if (cmd_list->BeginPass(pipeline_state))
             {
                 cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
                 cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
                 cmd_list->SetTexture(28, tex_out);
                 cmd_list->DrawIndexed(Rectangle::GetIndexCount());
-                cmd_list->End();
-                cmd_list->Submit();
+                cmd_list->EndPass();
             }
         }
 
@@ -1556,18 +1536,17 @@ namespace Spartan
         pipeline_state.pass_name                        = "Pass_ChromaticAberration";
 
         // Submit command list
-        if (cmd_list->Begin(pipeline_state))
+        if (cmd_list->BeginPass(pipeline_state))
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-            UpdateUberBuffer();
+            UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
 
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
             cmd_list->SetTexture(28, tex_in);
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
-            cmd_list->End();
-            cmd_list->Submit();
+            cmd_list->EndPass();
         }
 	}
 
@@ -1594,11 +1573,11 @@ namespace Spartan
         pipeline_state.pass_name                        = "Pass_MotionBlur";
 
         // Submit command list
-        if (cmd_list->Begin(pipeline_state))
+        if (cmd_list->BeginPass(pipeline_state))
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-            UpdateUberBuffer();
+            UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
 
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
@@ -1606,8 +1585,7 @@ namespace Spartan
             cmd_list->SetTexture(11, m_render_targets[RenderTarget_Gbuffer_Velocity]);
             cmd_list->SetTexture(12, m_render_targets[RenderTarget_Gbuffer_Depth]);
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
-            cmd_list->End();
-            cmd_list->Submit();
+            cmd_list->EndPass();
         }
 	}
 
@@ -1634,18 +1612,17 @@ namespace Spartan
         pipeline_state.pass_name                        = "Pass_Dithering";
 
         // Submit command list
-        if (cmd_list->Begin(pipeline_state))
+        if (cmd_list->BeginPass(pipeline_state))
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-            UpdateUberBuffer();
+            UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
 
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
             cmd_list->SetTexture(28, tex_in);
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
-            cmd_list->End();
-            cmd_list->Submit();
+            cmd_list->EndPass();
         }
 	}
 
@@ -1672,18 +1649,17 @@ namespace Spartan
         pipeline_state.pass_name                        = "Pass_LumaSharpen";
 
         // Submit command list
-        if (cmd_list->Begin(pipeline_state))
+        if (cmd_list->BeginPass(pipeline_state))
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-            UpdateUberBuffer();
+            UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
 
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
             cmd_list->SetTexture(28, tex_in);
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
-            cmd_list->End();
-            cmd_list->Submit();
+            cmd_list->EndPass();
         }
 	}
 
@@ -1771,18 +1747,17 @@ namespace Spartan
                 pipeline_state.pass_name                        = "Pass_Lines_Grid";
 
                 // Create and submit command list
-                if (cmd_list->Begin(pipeline_state))
+                if (cmd_list->BeginPass(pipeline_state))
                 {
                     // Update uber buffer
                     m_buffer_uber_cpu.resolution    = m_resolution;
                     m_buffer_uber_cpu.transform     = m_gizmo_grid->ComputeWorldMatrix(m_camera->GetTransform()) * m_buffer_frame_cpu.view_projection_unjittered;
-                    UpdateUberBuffer();
+                    UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
 
                     cmd_list->SetBufferIndex(m_gizmo_grid->GetIndexBuffer());
                     cmd_list->SetBufferVertex(m_gizmo_grid->GetVertexBuffer());
                     cmd_list->DrawIndexed(m_gizmo_grid->GetIndexCount());
-                    cmd_list->End();
-                    cmd_list->Submit();
+                    cmd_list->EndPass();
                 }
             }
 
@@ -1817,12 +1792,11 @@ namespace Spartan
                 pipeline_state.pass_name                        = "Pass_Lines";
 
                 // Create and submit command list
-                if (cmd_list->Begin(pipeline_state))
+                if (cmd_list->BeginPass(pipeline_state))
                 {
                     cmd_list->SetBufferVertex(m_vertex_buffer_lines);
                     cmd_list->Draw(line_vertex_buffer_size);
-                    cmd_list->End();
-                    cmd_list->Submit();
+                    cmd_list->EndPass();
                 }
             }
         }
@@ -1857,12 +1831,11 @@ namespace Spartan
             pipeline_state.pass_name                        = "Pass_Lines_No_Depth";
 
             // Create and submit command list
-            if (cmd_list->Begin(pipeline_state))
+            if (cmd_list->BeginPass(pipeline_state))
             {
                 cmd_list->SetBufferVertex(m_vertex_buffer_lines);
                 cmd_list->Draw(line_vertex_buffer_size);
-                cmd_list->End();
-                cmd_list->Submit();
+                cmd_list->EndPass();
             }
         }
 	}
@@ -1895,7 +1868,7 @@ namespace Spartan
         // For each light
         for (const auto& entity : lights)
         {
-            if (cmd_list->Begin(pipeline_state))
+            if (cmd_list->BeginPass(pipeline_state))
             {
                 // Light can be null if it just got removed and our buffer doesn't update till the next frame
                 if (Light* light = entity->GetComponent<Light>())
@@ -1940,7 +1913,7 @@ namespace Spartan
                         // Update uber buffer
                         m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_width), static_cast<float>(tex_width));
                         m_buffer_uber_cpu.transform = m_buffer_frame_cpu.view_projection_ortho;
-                        UpdateUberBuffer();
+                        UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
         
                         cmd_list->SetTexture(28, light_tex);
                         cmd_list->SetBufferIndex(m_gizmo_light_rect.GetIndexBuffer());
@@ -1948,8 +1921,7 @@ namespace Spartan
                         cmd_list->DrawIndexed(Rectangle::GetIndexCount());
                     }
                 }
-                cmd_list->End();
-                cmd_list->Submit();
+                cmd_list->EndPass();
             }
         }  
 	}
@@ -1982,64 +1954,60 @@ namespace Spartan
 
             // Axis - X
             pipeline_state.pass_name = "Pass_Gizmos_Axis_X";
-            if (cmd_list->Begin(pipeline_state))
+            if (cmd_list->BeginPass(pipeline_state))
             {
                 m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle().GetTransform(Vector3::Right);
                 m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle().GetColor(Vector3::Right);
-                UpdateUberBuffer();
+                UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
             
                 cmd_list->SetBufferIndex(m_gizmo_transform->GetIndexBuffer());
                 cmd_list->SetBufferVertex(m_gizmo_transform->GetVertexBuffer());
                 cmd_list->DrawIndexed(m_gizmo_transform->GetIndexCount());
-                cmd_list->End();
-                cmd_list->Submit();
+                cmd_list->EndPass();
             }
             
             // Axis - Y
             pipeline_state.pass_name = "Pass_Gizmos_Axis_Y";
-            if (cmd_list->Begin(pipeline_state))
+            if (cmd_list->BeginPass(pipeline_state))
             {
                 m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle().GetTransform(Vector3::Up);
                 m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle().GetColor(Vector3::Up);
-                UpdateUberBuffer();
+                UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
 
                 cmd_list->SetBufferIndex(m_gizmo_transform->GetIndexBuffer());
                 cmd_list->SetBufferVertex(m_gizmo_transform->GetVertexBuffer());
                 cmd_list->DrawIndexed(m_gizmo_transform->GetIndexCount());
-                cmd_list->End();
-                cmd_list->Submit();
+                cmd_list->EndPass();
             }
             
             // Axis - Z
             pipeline_state.pass_name = "Pass_Gizmos_Axis_Z";
-            if (cmd_list->Begin(pipeline_state))
+            if (cmd_list->BeginPass(pipeline_state))
             {
                 m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle().GetTransform(Vector3::Forward);
                 m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle().GetColor(Vector3::Forward);
-                UpdateUberBuffer();
+                UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
 
                 cmd_list->SetBufferIndex(m_gizmo_transform->GetIndexBuffer());
                 cmd_list->SetBufferVertex(m_gizmo_transform->GetVertexBuffer());
                 cmd_list->DrawIndexed(m_gizmo_transform->GetIndexCount());
-                cmd_list->End();
-                cmd_list->Submit();
+                cmd_list->EndPass();
             }
             
             // Axes - XYZ
             if (m_gizmo_transform->DrawXYZ())
             {
                 pipeline_state.pass_name = "Pass_Gizmos_Axis_XYZ";
-                if (cmd_list->Begin(pipeline_state))
+                if (cmd_list->BeginPass(pipeline_state))
                 {
                     m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle().GetTransform(Vector3::One);
                     m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle().GetColor(Vector3::One);
-                    UpdateUberBuffer();
+                    UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
 
                     cmd_list->SetBufferIndex(m_gizmo_transform->GetIndexBuffer());
                     cmd_list->SetBufferVertex(m_gizmo_transform->GetVertexBuffer());
                     cmd_list->DrawIndexed(m_gizmo_transform->GetIndexCount());
-                    cmd_list->End();
-                    cmd_list->Submit();
+                    cmd_list->EndPass();
                 }
             }
         }
@@ -2092,14 +2060,14 @@ namespace Spartan
             pipeline_state.pass_name                                = "Pass_Outline";
 
             // Submit command list
-            if (cmd_list->Begin(pipeline_state))
+            if (cmd_list->BeginPass(pipeline_state))
             {
                  // Update uber buffer with entity transform
                 if (Transform* transform = entity->GetTransform())
                 {
                     m_buffer_uber_cpu.transform     = transform->GetMatrix();
                     m_buffer_uber_cpu.resolution    = Vector2(tex_out->GetWidth(), tex_out->GetHeight());
-                    UpdateUberBuffer();
+                    UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
                 }
 
                 cmd_list->SetTexture(12, tex_depth);
@@ -2107,8 +2075,7 @@ namespace Spartan
                 cmd_list->SetBufferVertex(model->GetVertexBuffer());
                 cmd_list->SetBufferIndex(model->GetIndexBuffer());
                 cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
-                cmd_list->End();
-                cmd_list->Submit();
+                cmd_list->EndPass();
             }
         }
     }
@@ -2143,36 +2110,34 @@ namespace Spartan
         // Draw outline
         if (m_font->GetOutline() != Font_Outline_None && m_font->GetOutlineSize() != 0)
         { 
-            if (cmd_list->Begin(pipeline_state))
+            if (cmd_list->BeginPass(pipeline_state))
             {
                 // Update uber buffer
                 m_buffer_uber_cpu.resolution    = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
                 m_buffer_uber_cpu.color         = m_font->GetColorOutline();
-                UpdateUberBuffer();
+                UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
 
                 cmd_list->SetBufferIndex(m_font->GetIndexBuffer());
                 cmd_list->SetBufferVertex(m_font->GetVertexBuffer());
                 cmd_list->SetTexture(30, m_font->GetAtlasOutline());
                 cmd_list->DrawIndexed(m_font->GetIndexCount());
-                cmd_list->End();
-                cmd_list->Submit();
+                cmd_list->EndPass();
             }
         }
 
         // Draw 
-        if (cmd_list->Begin(pipeline_state))
+        if (cmd_list->BeginPass(pipeline_state))
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution    = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             m_buffer_uber_cpu.color         = m_font->GetColor();
-            UpdateUberBuffer();
+            UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
 
             cmd_list->SetBufferIndex(m_font->GetIndexBuffer());
             cmd_list->SetBufferVertex(m_font->GetVertexBuffer());
             cmd_list->SetTexture(30, m_font->GetAtlas());
             cmd_list->DrawIndexed(m_font->GetIndexCount());
-            cmd_list->End();
-            cmd_list->Submit();
+            cmd_list->EndPass();
         }
 	}
 
@@ -2270,19 +2235,18 @@ namespace Spartan
         pipeline_state.pass_name                        = "Pass_DebugBuffer";
 
         // // Submit command list
-        if (cmd_list->Begin(pipeline_state))
+        if (cmd_list->BeginPass(pipeline_state))
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution    = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             m_buffer_uber_cpu.transform     = m_buffer_frame_cpu.view_projection_ortho;
-            UpdateUberBuffer();
+            UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
 
             cmd_list->SetTexture(28, texture);
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
-            cmd_list->End();
-            cmd_list->Submit();
+            cmd_list->EndPass();
         }
 
 		return true;
@@ -2317,17 +2281,16 @@ namespace Spartan
         pipeline_state.pass_name                        = "Pass_BrdfSpecularLut";
 
         // Submit command list
-        if (cmd_list->Begin(pipeline_state))
+        if (cmd_list->BeginPass(pipeline_state))
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(render_target->GetWidth()), static_cast<float>(render_target->GetHeight()));
-            UpdateUberBuffer();
+            UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
 
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
-            cmd_list->End();
-            cmd_list->Submit();
+            cmd_list->EndPass();
         }
 
         m_brdf_specular_lut_rendered = true;
@@ -2356,19 +2319,18 @@ namespace Spartan
         pipeline_state.pass_name                        = "Pass_Copy";
 
         // Draw
-        if (cmd_list->Begin(pipeline_state))
+        if (cmd_list->BeginPass(pipeline_state))
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution    = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             m_buffer_uber_cpu.transform     = m_buffer_frame_cpu.view_projection_ortho;
-            UpdateUberBuffer();
+            UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
 
             cmd_list->SetTexture(28, tex_in);
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
-            cmd_list->End();
-            cmd_list->Submit();
+            cmd_list->EndPass();
         }
     }
 
@@ -2386,16 +2348,15 @@ namespace Spartan
     //    pipeline_state.pass_name                = "Pass_Copy";
 
     //    // Draw
-    //    if (cmd_list->Begin(pipeline_state))
+    //    if (cmd_list->BeginPass(pipeline_state))
     //    {
     //        // Update uber buffer
     //        m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-    //        UpdateUberBuffer();
+    //        UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
 
     //        cmd_list->SetTexture(31, tex_in, true);
     //        cmd_list->Dispatch(Ceil(m_buffer_uber_cpu.resolution.x / 32.0f), Ceil(m_buffer_uber_cpu.resolution.y / 32.0f));
-    //        cmd_list->End();
-    //        cmd_list->Submit();
+    //        cmd_list->EndPass();
     //    }
     //}
 }

@@ -238,60 +238,64 @@ namespace ImGui::RHI
         g_pipeline_state.pass_name                      = "Pass_ImGui";
 
         // Submit commands
-        if (cmd_list->Begin(g_pipeline_state))
+        if (cmd_list->StartRecording())
         {
-            // Transition layouts
-            for (auto i = 0; i < draw_data->CmdListsCount; i++)
+            if (cmd_list->BeginPass(g_pipeline_state))
             {
-                auto cmd_list_imgui = draw_data->CmdLists[i];
-                for (int cmd_i = 0; cmd_i < cmd_list_imgui->CmdBuffer.Size; cmd_i++)
+                // Transition layouts
+                for (auto i = 0; i < draw_data->CmdListsCount; i++)
                 {
-                    const auto pcmd = &cmd_list_imgui->CmdBuffer[cmd_i];
-                    if (RHI_Texture* texture = static_cast<RHI_Texture*>(pcmd->TextureId))
+                    auto cmd_list_imgui = draw_data->CmdLists[i];
+                    for (int cmd_i = 0; cmd_i < cmd_list_imgui->CmdBuffer.Size; cmd_i++)
                     {
-                        texture->SetLayout(RHI_Image_Shader_Read_Only_Optimal, cmd_list);
+                        const auto pcmd = &cmd_list_imgui->CmdBuffer[cmd_i];
+                        if (RHI_Texture* texture = static_cast<RHI_Texture*>(pcmd->TextureId))
+                        {
+                            texture->SetLayout(RHI_Image_Shader_Read_Only_Optimal, cmd_list);
+                        }
                     }
                 }
-            }
 
-            cmd_list->SetBufferVertex(g_vertex_buffer);
-            cmd_list->SetBufferIndex(g_index_buffer);
+                cmd_list->SetBufferVertex(g_vertex_buffer);
+                cmd_list->SetBufferIndex(g_index_buffer);
 
-            // Render command lists
-            int global_vtx_offset = 0;
-            int global_idx_offset = 0;
-            const auto& clip_off = draw_data->DisplayPos;
-            for (auto i = 0; i < draw_data->CmdListsCount; i++)
-            {
-                auto cmd_list_imgui = draw_data->CmdLists[i];
-                for (auto cmd_i = 0; cmd_i < cmd_list_imgui->CmdBuffer.Size; cmd_i++)
+                // Render command lists
+                int global_vtx_offset = 0;
+                int global_idx_offset = 0;
+                const auto& clip_off = draw_data->DisplayPos;
+                for (auto i = 0; i < draw_data->CmdListsCount; i++)
                 {
-                    const auto pcmd = &cmd_list_imgui->CmdBuffer[cmd_i];
-                    if (pcmd->UserCallback != nullptr)
+                    auto cmd_list_imgui = draw_data->CmdLists[i];
+                    for (auto cmd_i = 0; cmd_i < cmd_list_imgui->CmdBuffer.Size; cmd_i++)
                     {
-                        pcmd->UserCallback(cmd_list_imgui, pcmd);
-                    }
-                    else
-                    {
-                        // Compute scissor rectangle
-                        auto scissor_rect = Math::Rectangle(pcmd->ClipRect.x - clip_off.x, pcmd->ClipRect.y - clip_off.y, pcmd->ClipRect.z - clip_off.x, pcmd->ClipRect.w - clip_off.y);
+                        const auto pcmd = &cmd_list_imgui->CmdBuffer[cmd_i];
+                        if (pcmd->UserCallback != nullptr)
+                        {
+                            pcmd->UserCallback(cmd_list_imgui, pcmd);
+                        }
+                        else
+                        {
+                            // Compute scissor rectangle
+                            auto scissor_rect = Math::Rectangle(pcmd->ClipRect.x - clip_off.x, pcmd->ClipRect.y - clip_off.y, pcmd->ClipRect.z - clip_off.x, pcmd->ClipRect.w - clip_off.y);
 
-                        // Apply scissor rectangle, bind texture and draw
-                        cmd_list->SetScissorRectangle(scissor_rect);
-                        cmd_list->SetTexture(28, static_cast<RHI_Texture*>(pcmd->TextureId));
-                        cmd_list->DrawIndexed(pcmd->ElemCount, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset);
-                    }
+                            // Apply scissor rectangle, bind texture and draw
+                            cmd_list->SetScissorRectangle(scissor_rect);
+                            cmd_list->SetTexture(28, static_cast<RHI_Texture*>(pcmd->TextureId));
+                            cmd_list->DrawIndexed(pcmd->ElemCount, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset);
+                        }
 
+                    }
+                    global_idx_offset += cmd_list_imgui->IdxBuffer.Size;
+                    global_vtx_offset += cmd_list_imgui->VtxBuffer.Size;
                 }
-                global_idx_offset += cmd_list_imgui->IdxBuffer.Size;
-                global_vtx_offset += cmd_list_imgui->VtxBuffer.Size;
-            }
 
-            cmd_list->End();
-            if (cmd_list->Submit() && is_main_viewport)
-            {
-                g_renderer->GetSwapChain()->Present();
+                cmd_list->EndPass();
             }
+        }
+
+        if (cmd_list->Submit() && is_main_viewport)
+        {
+            g_renderer->GetSwapChain()->Present();
         }
 	}
 

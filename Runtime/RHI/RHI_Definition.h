@@ -296,7 +296,7 @@ namespace Spartan
         return "Unknown format";
     }
 
-    // Clear values
+    // Engine constants 
     static const Math::Vector4  state_color_dont_care           = Math::Vector4::InfinityNeg;
     static const Math::Vector4  state_color_load                = Math::Vector4::Infinity;
     static const float          state_depth_dont_care           = -std::numeric_limits<float>::infinity();

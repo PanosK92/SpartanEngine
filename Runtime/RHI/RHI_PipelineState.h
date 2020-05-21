@@ -74,8 +74,11 @@ namespace Spartan
 
         //= Dynamic, modification is free ===============================================================================
         RHI_Texture* unordered_access_view         = nullptr;
-        bool render_target_depth_texture_read_only = false;    
-        int dynamic_constant_buffer_slot           = 3; // such a hack, must fix. Update: Came back to byte me in the ass
+        bool render_target_depth_texture_read_only = false;
+
+        // such a hack, must fix. Update: Came back to byte me in the ass
+        int dynamic_constant_buffer_slot    = 2;
+        int dynamic_constant_buffer_slot_2  = 3;
 
         // Clear values
         float clear_depth                                                       = state_depth_dont_care;

@@ -319,8 +319,8 @@ namespace Spartan
         // Constant buffers
         bool UpdateFrameBuffer();
         bool UpdateMaterialBuffer();
-        bool UpdateUberBuffer();
-        bool UpdateObjectBuffer(RHI_CommandList* cmd_list, const uint32_t entity_index = 0);
+        bool UpdateUberBuffer(RHI_CommandList* cmd_list, const uint32_t offset_index = 0);
+        bool UpdateObjectBuffer(RHI_CommandList* cmd_list, const uint32_t offset_index = 0);
         bool UpdateLightBuffer(const Light* light);
 
         // Misc
@@ -418,6 +418,7 @@ namespace Spartan
         BufferUber m_buffer_uber_cpu;
         BufferUber m_buffer_uber_cpu_previous;
         std::shared_ptr<RHI_ConstantBuffer> m_buffer_uber_gpu;
+        uint32_t m_buffer_uber_offset_index = 0;
 
         BufferObject m_buffer_object_cpu;
         BufferObject m_buffer_object_cpu_previous;

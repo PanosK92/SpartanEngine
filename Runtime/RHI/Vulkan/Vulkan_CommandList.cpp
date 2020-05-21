@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Implementation.h"
 //================================
 
-//= INCLUDES ========================
+//= INCLUDES ==========================
 #include "../RHI_CommandList.h"
 #include "../RHI_Pipeline.h"
 #include "../RHI_Device.h"
@@ -37,10 +37,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_ConstantBuffer.h"
 #include "../RHI_DescriptorCache.h"
 #include "../RHI_PipelineCache.h"
+#include "../RHI_DescriptorSetLayout.h"
 #include "../../Profiling/Profiler.h"
 #include "../../Logging/Log.h"
 #include "../../Rendering/Renderer.h"
-//===================================
+//=====================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -147,10 +148,18 @@ namespace Spartan
 
     bool RHI_CommandList::Submit()
     {
-        if (m_cmd_state != RHI_Cmd_List_Idle)
+        // Ensure the command list has recorded
+        if (m_cmd_state == RHI_Cmd_List_Idle)
         {
-            LOG_ERROR("Can't submit while the command list is recording.");
+            LOG_WARNING("Can't submit a command list which never recorded anything");
             return false;
+        }
+
+        // Ensure the command list is not recording
+        if (m_cmd_state == RHI_Cmd_List_Recording)
+        {
+            if (!StopRecording())
+                return false;
         }
 
         RHI_PipelineState* state = m_pipeline->GetPipelineState();
@@ -196,7 +205,6 @@ namespace Spartan
             if (!m_pipeline)
             {
                 LOG_ERROR("Failed to acquire appropriate pipeline");
-                End();
                 return false;
             }
 
@@ -206,7 +214,6 @@ namespace Spartan
                 if (!swapchain->AcquireNextImage())
                 {
                     LOG_ERROR("Failed to acquire next image");
-                    End();
                     return false;
                 }
             }
@@ -247,11 +254,10 @@ namespace Spartan
 
     void RHI_CommandList::Clear(RHI_PipelineState& pipeline_state)
     {
-        if (Begin(pipeline_state))
+        if (BeginPass(pipeline_state))
         {
             OnDraw();
-            End();
-            Submit();
+            EndPass();
             pipeline_state.ResetClearValues();
         }
     }
@@ -691,13 +697,11 @@ namespace Spartan
 
         if (result && descriptor_set != nullptr)
         {
-            const std::array<uint32_t, state_max_constant_buffer_count>& dynamic_offsets    = m_descriptor_cache->GetDynamicOffsets();
-            uint32_t dynamic_offset_count                                                   = 0;
-            for (uint32_t i = 0; i < state_max_constant_buffer_count; i++)
-            {
-                dynamic_offset_count++;
-            }
-
+            // Get dynamic offsets
+            RHI_DescriptorSetLayout* descriptor_set_layout = m_descriptor_cache->GetCurrentDescriptorSetLayout();
+            const std::array<uint32_t, state_max_constant_buffer_count> dynamic_offsets = descriptor_set_layout->GetDynamicOffsets();
+            uint32_t dynamic_offset_count = descriptor_set_layout->GetDynamicOffsetCount();
+            
             // Bind descriptor set
             VkDescriptorSet descriptor_sets[1] = { static_cast<VkDescriptorSet>(descriptor_set) };
             vkCmdBindDescriptorSets
@@ -709,7 +713,7 @@ namespace Spartan
                 1,                                                              // descriptorSetCount
                 descriptor_sets,                                                // pDescriptorSets
                 dynamic_offset_count,                                           // dynamicOffsetCount
-                !dynamic_offsets.empty() ? dynamic_offsets.data() : nullptr   // pDynamicOffsets
+                !dynamic_offsets.empty() ? dynamic_offsets.data() : nullptr     // pDynamicOffsets
             );
 
             m_profiler->m_rhi_bindings_descriptor_set++;
