@@ -129,19 +129,6 @@ namespace Spartan
         return m_descriptor_layout_current->GetResource_DescriptorSet(this, descriptor_set);
     }
 
-    const std::array<uint32_t, state_max_constant_buffer_count>& RHI_DescriptorCache::GetDynamicOffsets() const
-    {
-        static std::array<uint32_t, state_max_constant_buffer_count> empty;
-
-        if (!m_descriptor_layout_current)
-        {
-            LOG_ERROR("Invalid descriptor set layout");
-            return empty;
-        }
-
-        return m_descriptor_layout_current->GetDynamicOffsets();
-    }
-
     bool RHI_DescriptorCache::HasEnoughCapacity() const
     {
         return m_descriptor_set_capacity > GetDescriptorSetCount();
@@ -221,15 +208,31 @@ namespace Spartan
         }
 
         // Change constant buffers to dynamic (if requested) - This is a hack and not flexible, must improve
-        if (pipeline_state.dynamic_constant_buffer_slot != -1)
         {
-            for (RHI_Descriptor& descriptor : descriptors)
+            if (pipeline_state.dynamic_constant_buffer_slot != -1)
             {
-                if (descriptor.type == RHI_Descriptor_ConstantBuffer)
+                for (RHI_Descriptor& descriptor : descriptors)
                 {
-                    if (descriptor.slot == pipeline_state.dynamic_constant_buffer_slot + m_rhi_device->GetContextRhi()->shader_shift_buffer)
+                    if (descriptor.type == RHI_Descriptor_ConstantBuffer)
                     {
-                        descriptor.type = RHI_Descriptor_ConstantBufferDynamic;
+                        if (descriptor.slot == pipeline_state.dynamic_constant_buffer_slot + m_rhi_device->GetContextRhi()->shader_shift_buffer)
+                        {
+                            descriptor.type = RHI_Descriptor_ConstantBufferDynamic;
+                        }
+                    }
+                }
+            }
+
+            if (pipeline_state.dynamic_constant_buffer_slot_2 != -1)
+            {
+                for (RHI_Descriptor& descriptor : descriptors)
+                {
+                    if (descriptor.type == RHI_Descriptor_ConstantBuffer)
+                    {
+                        if (descriptor.slot == pipeline_state.dynamic_constant_buffer_slot_2 + m_rhi_device->GetContextRhi()->shader_shift_buffer)
+                        {
+                            descriptor.type = RHI_Descriptor_ConstantBufferDynamic;
+                        }
                     }
                 }
             }

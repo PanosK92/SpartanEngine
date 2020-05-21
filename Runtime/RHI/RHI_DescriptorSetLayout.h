@@ -43,11 +43,11 @@ namespace Spartan
         void SetTexture(const uint32_t slot, RHI_Texture* texture);
 
         bool GetResource_DescriptorSet(RHI_DescriptorCache* descriptor_cache, void*& descriptor_set);
-        void* GetResource_DescriptorSetLayout()                                             const { return m_descriptor_set_layout; }
-        const std::array<uint32_t, state_max_constant_buffer_count>& GetDynamicOffsets()    const { return m_dynamic_offsets; }
-        uint32_t GetDescriptorSetCount()                                                    const { return static_cast<uint32_t>(m_descriptor_sets.size()); }
-
-        void NeedsToBind() { m_needs_to_bind = true; }
+        const std::array<uint32_t, state_max_constant_buffer_count> GetDynamicOffsets() const;
+        uint32_t GetDynamicOffsetCount() const;
+        void* GetResource_DescriptorSetLayout() const { return m_descriptor_set_layout; }      
+        uint32_t GetDescriptorSetCount()        const { return static_cast<uint32_t>(m_descriptor_sets.size()); }
+        void NeedsToBind()                            { m_needs_to_bind = true; }
 
     private:
         std::size_t ComputeDescriptorSetHash(const std::vector<RHI_Descriptor>& descriptors);
