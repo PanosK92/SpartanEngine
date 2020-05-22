@@ -96,7 +96,17 @@ namespace Spartan
   
         std::size_t m_hash  = 0;
         void* m_render_pass = nullptr;
-        std::array<void*, state_max_render_target_count> m_frame_buffers = { nullptr };
+        std::array<void*, state_max_render_target_count> m_frame_buffers =
+        {
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+        };
 
         // Dependencies
         const RHI_Device* m_rhi_device = nullptr;

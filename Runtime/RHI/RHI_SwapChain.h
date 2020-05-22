@@ -48,7 +48,6 @@ namespace Spartan
 		~RHI_SwapChain();
 
 		bool Resize(uint32_t width, uint32_t height);
-		bool AcquireNextImage();
 		bool Present();
 
         // Misc
@@ -71,6 +70,8 @@ namespace Spartan
         void*& GetCmdPool()                               { return m_cmd_pool; }
 
 	private:
+        bool AcquireNextImage();
+
         // Properties
 		bool m_initialized      = false;
 		bool m_windowed         = false;

@@ -263,24 +263,29 @@ namespace Spartan
         {
             m_cmd_lists.emplace_back(make_shared<RHI_CommandList>(i, this, rhi_device->GetContext()));
         }
+
+        if (!AcquireNextImage())
+        {
+            LOG_ERROR("Failed to acquire image");
+        }
 	}
 
 	RHI_SwapChain::~RHI_SwapChain()
 	{
-		_Vulkan_SwapChain::destroy
-		(
-            m_rhi_device->GetContextRhi(),
-			m_surface,
-			m_swap_chain_view,
-			m_resource_view,
-			m_resource_view_acquiredSemaphore
-		);
-
         // Clear command buffers
         m_cmd_lists.clear();
 
         // Command pool
         vulkan_utility::command_pool::destroy(m_cmd_pool);
+
+        _Vulkan_SwapChain::destroy
+        (
+            m_rhi_device->GetContextRhi(),
+            m_surface,
+            m_swap_chain_view,
+            m_resource_view,
+            m_resource_view_acquiredSemaphore
+        );
 	}
 
 	bool RHI_SwapChain::Resize(const uint32_t width, const uint32_t height)
@@ -374,7 +379,19 @@ namespace Spartan
             return false;
         }
 
-        return m_rhi_device->Queue_Present(m_swap_chain_view, &m_image_index);
+        if (!m_rhi_device->Queue_Present(m_swap_chain_view, &m_image_index))
+        {
+            LOG_ERROR("Failed to present");
+            return false;
+        }
+
+        if (!AcquireNextImage())
+        {
+            LOG_ERROR("Failed to acquire next image");
+            return false;
+        }
+
+        return true;
 	}
 
     void RHI_SwapChain::SetLayout(RHI_Image_Layout layout, RHI_CommandList* command_list /*= nullptr*/)

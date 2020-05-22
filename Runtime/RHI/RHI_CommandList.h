@@ -101,6 +101,7 @@ namespace Spartan
         
         // Misc
         void* GetResource_CommandBuffer() const { return m_cmd_buffer; }
+        bool IsRecording() const { return m_cmd_state == RHI_Cmd_List_Recording; }
 
 	private:
         void MarkAndProfileStart(const RHI_PipelineState* pipeline_state);

@@ -148,24 +148,24 @@ void Editor::OnTick()
 	if (!m_engine)
 		return;
 
-	// Engine
+	// Engine - tick
 	m_engine->Tick();
+
+    // Ensure that rendering can take place
+    if (!m_renderer || !m_renderer->IsInitialized())
+        return;
 
     // Editor
     m_profiler->TimeBlockStart("Editor", TimeBlock_Cpu);
     {
-        // Ensure that rendering can take place
-        if (!m_renderer || !m_renderer->IsInitialized())
-            return;
-
-        // ImGui implementation - start frame
+        // ImGui - start frame
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
-        // Editor update
+        // Editor - update
         Widgets_Tick();
 
-        // ImGui implementation - end frame
+        // ImGui - end frame
         ImGui::Render();
         ImGui::RHI::RenderDrawData(ImGui::GetDrawData());
 

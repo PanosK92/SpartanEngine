@@ -208,16 +208,6 @@ namespace Spartan
                 return false;
             }
 
-            // Acquire next image (in case the render target is a swapchain)
-            if (RHI_SwapChain* swapchain = m_pipeline->GetPipelineState()->render_target_swapchain)
-            {
-                if (!swapchain->AcquireNextImage())
-                {
-                    LOG_ERROR("Failed to acquire next image");
-                    return false;
-                }
-            }
-
             // Keep a local pointer for convenience
             m_pipeline_state = &pipeline_state;
         }
@@ -648,6 +638,20 @@ namespace Spartan
 
     void RHI_CommandList::BeginRenderPass()
     {
+        RHI_PipelineState* pipeline_state = m_pipeline->GetPipelineState();
+
+        if (!pipeline_state->GetRenderPass())
+        {
+            LOG_ERROR("Current pipeline has no render pass");
+            return;
+        }
+
+        if (!pipeline_state->GetFrameBuffer())
+        {
+            LOG_ERROR("Current pipeline has no frame buffer");
+            return;
+        }
+
         // Clear values
         array<VkClearValue, state_max_render_target_count + 1> clear_values; // +1 for depth-stencil
         uint32_t clear_value_count = 0;
@@ -676,11 +680,11 @@ namespace Spartan
         // Begin render pass
         VkRenderPassBeginInfo render_pass_info      = {};
         render_pass_info.sType                      = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        render_pass_info.renderPass                 = static_cast<VkRenderPass>(m_pipeline->GetPipelineState()->GetRenderPass());
-        render_pass_info.framebuffer                = static_cast<VkFramebuffer>(m_pipeline->GetPipelineState()->GetFrameBuffer());
+        render_pass_info.renderPass                 = static_cast<VkRenderPass>(pipeline_state->GetRenderPass());
+        render_pass_info.framebuffer                = static_cast<VkFramebuffer>(pipeline_state->GetFrameBuffer());
         render_pass_info.renderArea.offset          = { 0, 0 };
-        render_pass_info.renderArea.extent.width    = m_pipeline->GetPipelineState()->GetWidth();
-        render_pass_info.renderArea.extent.height   = m_pipeline->GetPipelineState()->GetHeight();
+        render_pass_info.renderArea.extent.width    = pipeline_state->GetWidth();
+        render_pass_info.renderArea.extent.height   = pipeline_state->GetHeight();
         render_pass_info.clearValueCount            = clear_value_count;
         render_pass_info.pClearValues               = clear_values.data();
         vkCmdBeginRenderPass(static_cast<VkCommandBuffer>(m_cmd_buffer), &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
