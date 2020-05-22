@@ -32,6 +32,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_ConstantBuffer.h"
 #include "../RHI/RHI_RasterizerState.h"
 #include "../RHI/RHI_DepthStencilState.h"
+#include "../RHI/RHI_SwapChain.h"
+#include "../RHI/RHI_CommandList.h"
 //=======================================
 
 //= NAMESPACES ===============
@@ -111,14 +113,16 @@ namespace Spartan
             return;
         }
 
+        Flush();
+
         // G-Buffer
         // Stencil is used to mask transparent objects and also has a read only version
         // From and below Texture_Format_R8G8B8A8_UNORM, normals have noticeable banding
-        m_render_targets[RenderTarget_Gbuffer_Albedo]   = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R8G8B8A8_Unorm, 1, 0, "rt_gbuffer_albedo");
-        m_render_targets[RenderTarget_Gbuffer_Normal]   = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_gbuffer_normal");
-        m_render_targets[RenderTarget_Gbuffer_Material] = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R8G8B8A8_Unorm, 1, 0, "rt_gbuffer_material");
-        m_render_targets[RenderTarget_Gbuffer_Velocity] = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16_Float, 1, 0, "rt_gbuffer_velocity");
-        m_render_targets[RenderTarget_Gbuffer_Depth]    = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_D32_Float_S8X24_Uint, 1, RHI_Texture_DepthStencilViewReadOnly, "gbuffer_depth");
+        m_render_targets[RenderTarget_Gbuffer_Albedo]   = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R8G8B8A8_Unorm,       1, 0,                                       "rt_gbuffer_albedo");
+        m_render_targets[RenderTarget_Gbuffer_Normal]   = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float,   1, 0,                                       "rt_gbuffer_normal");
+        m_render_targets[RenderTarget_Gbuffer_Material] = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R8G8B8A8_Unorm,       1, 0,                                       "rt_gbuffer_material");
+        m_render_targets[RenderTarget_Gbuffer_Velocity] = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16_Float,         1, 0,                                       "rt_gbuffer_velocity");
+        m_render_targets[RenderTarget_Gbuffer_Depth]    = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_D32_Float_S8X24_Uint, 1, RHI_Texture_DepthStencilViewReadOnly,    "gbuffer_depth");
 
         // Light
         m_render_targets[RenderTarget_Light_Diffuse]    = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R11G11B10_Float, 1, 0, "rt_light_diffuse");

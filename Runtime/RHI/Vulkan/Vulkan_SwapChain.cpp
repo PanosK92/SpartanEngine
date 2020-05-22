@@ -271,13 +271,17 @@ namespace Spartan
 	}
 
 	RHI_SwapChain::~RHI_SwapChain()
-	{
-        // Clear command buffers
+    {
+        // Wait in case any command buffer is still in use
+        m_rhi_device->Queue_WaitAll();
+
+        // Command buffers
         m_cmd_lists.clear();
 
         // Command pool
         vulkan_utility::command_pool::destroy(m_cmd_pool);
 
+        // Resources
         _Vulkan_SwapChain::destroy
         (
             m_rhi_device->GetContextRhi(),

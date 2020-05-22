@@ -105,14 +105,13 @@ namespace Spartan
         }
 	}
 
-    bool RHI_CommandList::StartRecording()
+    bool RHI_CommandList::Begin()
     {
         // Sync CPU to GPU
-        if (m_cmd_state == RHI_Cmd_List_Idle_Sync_Cpu_To_Gpu)
+        if (!Wait())
         {
-            Wait();
-            m_descriptor_cache->GrowIfNeeded();
-            m_cmd_state = RHI_Cmd_List_Idle;
+            LOG_ERROR("Failed to wait");
+            return false;
         }
 
         if (m_cmd_state != RHI_Cmd_List_Idle)
@@ -128,21 +127,22 @@ namespace Spartan
             return false;
 
         m_cmd_state = RHI_Cmd_List_Recording;
+        m_flushed = false;
         return true;
     }
 
-    bool RHI_CommandList::StopRecording()
+    bool RHI_CommandList::Stop()
     {
         if (m_cmd_state != RHI_Cmd_List_Recording)
         {
-            LOG_ERROR("The command list is not recording");
-            return false;
+            LOG_WARNING("The command list is not recording, no need to stop it");
+            return true;
         }
 
         if (!vulkan_utility::error::check(vkEndCommandBuffer(static_cast<VkCommandBuffer>(m_cmd_buffer))))
             return false;
 
-        m_cmd_state = RHI_Cmd_List_Idle;
+        m_cmd_state = RHI_Cmd_List_Stopped;
         return true;
     }
 
@@ -151,15 +151,18 @@ namespace Spartan
         // Ensure the command list has recorded
         if (m_cmd_state == RHI_Cmd_List_Idle)
         {
-            LOG_WARNING("Can't submit a command list which never recorded anything");
+            LOG_WARNING("The command list is idle, nothing to submit");
             return false;
         }
 
         // Ensure the command list is not recording
         if (m_cmd_state == RHI_Cmd_List_Recording)
         {
-            if (!StopRecording())
+            if (!Stop())
+            {
+                LOG_ERROR("Failed to stop recording");
                 return false;
+            }
         }
 
         RHI_PipelineState* state = m_pipeline->GetPipelineState();
@@ -188,10 +191,33 @@ namespace Spartan
 
     bool RHI_CommandList::Wait()
     {
-        return vulkan_utility::fence::wait_reset(m_cmd_list_consumed_fence);
+        if (m_cmd_state == RHI_Cmd_List_Idle_Sync_Cpu_To_Gpu)
+        {
+            if (!vulkan_utility::fence::wait_reset(m_cmd_list_consumed_fence))
+                return false;
+
+            m_descriptor_cache->GrowIfNeeded();
+            m_cmd_state = RHI_Cmd_List_Idle;
+        }
+
+        return true;
     }
 
-    bool RHI_CommandList::BeginPass(RHI_PipelineState& pipeline_state)
+    bool RHI_CommandList::Reset()
+    {
+        lock_guard<mutex> guard(m_mutex_reset);
+
+        if (m_cmd_state != RHI_Cmd_List_Recording)
+            return true;
+
+        if (!vulkan_utility::error::check(vkResetCommandBuffer(static_cast<VkCommandBuffer>(m_cmd_buffer), VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT)))
+            return false;
+
+        m_cmd_state = RHI_Cmd_List_Idle;
+        return true;
+    }
+
+    bool RHI_CommandList::BeginRenderPass(RHI_PipelineState& pipeline_state)
 	{
         // Get pipeline
         {
@@ -228,15 +254,16 @@ namespace Spartan
         return true;
 	}
 
-    bool RHI_CommandList::EndPass()
+    bool RHI_CommandList::EndRenderPass()
     {
+        // Render pass
         if (m_render_pass_active)
         {
             vkCmdEndRenderPass(static_cast<VkCommandBuffer>(m_cmd_buffer));
             m_render_pass_active = false;
         }
 
-        // End marker and profiler
+        // Profiling
         MarkAndProfileEnd(m_pipeline_state);
        
         return true;
@@ -244,10 +271,10 @@ namespace Spartan
 
     void RHI_CommandList::Clear(RHI_PipelineState& pipeline_state)
     {
-        if (BeginPass(pipeline_state))
+        if (BeginRenderPass(pipeline_state))
         {
             OnDraw();
-            EndPass();
+            EndRenderPass();
             pipeline_state.ResetClearValues();
         }
     }
@@ -265,11 +292,11 @@ namespace Spartan
             return;
 
 		vkCmdDraw(
-            static_cast<VkCommandBuffer>(m_cmd_buffer),     // commandBuffer
-            vertex_count,   // vertexCount
-            1,              // instanceCount
-            0,              // firstVertex
-            0               // firstInstance
+            static_cast<VkCommandBuffer>(m_cmd_buffer), // commandBuffer
+            vertex_count,                               // vertexCount
+            1,                                          // instanceCount
+            0,                                          // firstVertex
+            0                                           // firstInstance
         );
 
         m_profiler->m_rhi_draw_calls++;
@@ -288,12 +315,12 @@ namespace Spartan
             return;
 
 		vkCmdDrawIndexed(
-            static_cast<VkCommandBuffer>(m_cmd_buffer),     // commandBuffer
-            index_count,    // indexCount
-            1,              // instanceCount
-            index_offset,   // firstIndex
-            vertex_offset,  // vertexOffset
-            0               // firstInstance
+            static_cast<VkCommandBuffer>(m_cmd_buffer), // commandBuffer
+            index_count,                                // indexCount
+            1,                                          // instanceCount
+            index_offset,                               // firstIndex
+            vertex_offset,                              // vertexOffset
+            0                                           // firstInstance
         );
 
         m_profiler->m_rhi_draw_calls++;
@@ -636,9 +663,15 @@ namespace Spartan
         }
     }
 
-    void RHI_CommandList::BeginRenderPass()
+    void RHI_CommandList::_BeginRenderPass()
     {
         RHI_PipelineState* pipeline_state = m_pipeline->GetPipelineState();
+
+        if (!pipeline_state)
+        {
+            LOG_ERROR("There is no pipeline state");
+            return;
+        }
 
         if (!pipeline_state->GetRenderPass())
         {
@@ -733,11 +766,16 @@ namespace Spartan
 
     bool RHI_CommandList::OnDraw()
     {
+        if (m_cmd_state != RHI_Cmd_List_Recording)
+            return false;
+
+        if (m_flushed)
+            return false;
+
         // Begin render pass
         if (!m_render_pass_active)
         {
-            
-            BeginRenderPass();
+            _BeginRenderPass();
             m_render_pass_active = true;
         }
 

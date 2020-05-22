@@ -174,7 +174,7 @@ namespace Spartan
 		if (!m_initialized)
 		{
 			// Log on-screen as the renderer is ready
-			LOG_TO_FILE(false);
+			LOG_TO_FILE(false); 
 			m_initialized = true;
 		}
 
@@ -262,6 +262,8 @@ namespace Spartan
             // Update viewport
             m_viewport.width    = width;
             m_viewport.height   = height;
+
+            Flush();
 
             // Update full-screen quad
             m_viewport_quad = Math::Rectangle(0, 0, width, height);
@@ -440,6 +442,7 @@ namespace Spartan
         // Re-allocate buffer with double size (if needed)
         if (offset_count >= m_buffer_uber_gpu->GetOffsetCount())
         {
+            Flush();
             const uint32_t new_size = Math::Helper::NextPowerOfTwo(offset_count);
             if (!m_buffer_uber_gpu->Create<BufferUber>(new_size))
             {
@@ -494,6 +497,7 @@ namespace Spartan
         // Re-allocate buffer with double size (if needed)
         if (offset_count >= m_buffer_object_gpu->GetOffsetCount())
         {
+            Flush();
             const uint32_t new_size = Math::Helper::NextPowerOfTwo(offset_count);
             if (!m_buffer_object_gpu->Create<BufferObject>(new_size))
             {
@@ -638,6 +642,18 @@ namespace Spartan
 		});
 	}
 
+    void Renderer::ClearEntities()
+    {
+        // light depth buffers might be used by the command list
+        if (!m_swap_chain->GetCmdList()->Reset())
+        {
+            LOG_ERROR("Failed to discard");
+            return;
+        }
+
+        m_entities.clear();
+    }
+
     const shared_ptr<Spartan::RHI_Texture>& Renderer::GetEnvironmentTexture()
     {
         if (m_render_targets.find(RenderTarget_Brdf_Prefiltered_Environment) != m_render_targets.end())
@@ -696,6 +712,34 @@ namespace Spartan
                 }
             }
         }
+    }
+
+    bool Renderer::Present()
+    {
+        if (!m_swap_chain->GetCmdList()->Submit())
+        {
+            LOG_ERROR("Failed to submit");
+            return false;
+        }
+
+        if (!m_swap_chain->Present())
+        {
+            LOG_ERROR("Failed to present");
+            return false;
+        }
+
+        return true;
+    }
+
+    bool Renderer::Flush()
+    {
+        if (!m_swap_chain->GetCmdList()->Flush())
+        {
+            LOG_ERROR("Failed to flush");
+            return false;
+        }
+
+        return true;
     }
 
     uint32_t Renderer::GetMaxResolution() const

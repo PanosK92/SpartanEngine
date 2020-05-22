@@ -68,12 +68,12 @@ namespace Spartan
 
 	RHI_CommandList::~RHI_CommandList() = default;
 
-    bool RHI_CommandList::StartRecording()
+    bool RHI_CommandList::Begin()
     {
         return true;
     }
 
-    bool RHI_CommandList::StopRecording()
+    bool RHI_CommandList::Stop()
     {
         return true;
     }
@@ -88,7 +88,12 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_CommandList::BeginPass(RHI_PipelineState& pipeline_state)
+    bool RHI_CommandList::Wait()
+    {
+        return true;
+    }
+
+    bool RHI_CommandList::BeginRenderPass(RHI_PipelineState& pipeline_state)
     {
         if (!pipeline_state.IsValid())
         {
@@ -337,7 +342,7 @@ namespace Spartan
         return true;
 	}
 
-	bool RHI_CommandList::EndPass()
+	bool RHI_CommandList::EndRenderPass()
 	{
         // End marker and profiler (if enabled)
         MarkAndProfileEnd(m_pipeline_state);
