@@ -254,7 +254,7 @@ namespace Spartan
 
         // Misc
         const std::shared_ptr<RHI_Device>& GetRhiDevice()   const { return m_rhi_device; }
-        const auto& GetSwapChain()                          const { return m_swap_chain; }
+        RHI_SwapChain* GetSwapChain()                       const { return m_swap_chain.get(); }
         RHI_PipelineCache* GetPipelineCache()               const { return m_pipeline_cache.get(); }
         RHI_DescriptorCache* GetDescriptorCache()           const { return m_descriptor_cache.get(); }
         RHI_Texture* GetFrameTexture()                      const { return m_render_targets.at(RenderTarget_Composition_Ldr).get(); }

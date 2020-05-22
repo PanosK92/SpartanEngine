@@ -160,7 +160,7 @@ namespace ImGui::RHI
 
         // Grab the swap chain we will be working with
 		const auto is_main_viewport = (swap_chain_other == nullptr);
-        RHI_SwapChain* swap_chain   = is_main_viewport ? g_renderer->GetSwapChain().get() : swap_chain_other;
+        RHI_SwapChain* swap_chain   = is_main_viewport ? g_renderer->GetSwapChain() : swap_chain_other;
         RHI_CommandList* cmd_list   = swap_chain->GetCmdList();
 
 		// Updated vertex and index buffers

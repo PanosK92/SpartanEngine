@@ -430,9 +430,9 @@ namespace Spartan
     bool Renderer::UpdateUberBuffer(RHI_CommandList* cmd_list, const uint32_t offset_index /*= 0*/)
 	{
         // Only update if needed
-        const bool same_content = m_buffer_uber_cpu == m_buffer_uber_cpu_previous;
-        const bool same_offset  = m_buffer_uber_gpu->GetOffsetIndexDynamic() == offset_index;
-        if (same_content && same_offset)
+        bool update = m_buffer_uber_gpu->GetOffsetIndexDynamic() != offset_index;
+        update      = update ? true : m_buffer_uber_cpu != m_buffer_uber_cpu_previous;
+        if (!update)
             return true;
 
         const uint32_t offset_count = offset_index + 1;
@@ -484,9 +484,9 @@ namespace Spartan
     bool Renderer::UpdateObjectBuffer(RHI_CommandList* cmd_list, const uint32_t offset_index /*= 0*/)
     {
         // Only update if needed
-        const bool same_content   = m_buffer_object_cpu == m_buffer_object_cpu_previous;
-        const bool same_offset    = m_buffer_object_gpu->GetOffsetIndexDynamic() == offset_index;
-        if (same_content && same_offset)
+        bool update = m_buffer_object_gpu->GetOffsetIndexDynamic() != offset_index;
+        update      = update ? true : m_buffer_object_cpu != m_buffer_object_cpu_previous;
+        if (!update)
             return true;
 
         const uint32_t offset_count = offset_index + 1;

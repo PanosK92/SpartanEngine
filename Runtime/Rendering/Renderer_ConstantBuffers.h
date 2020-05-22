@@ -120,6 +120,8 @@ namespace Spartan
                 blur_direction      == rhs.blur_direction       &&
                 resolution          == rhs.resolution;
         }
+
+        bool operator!=(const BufferUber& rhs) const { return !(*this == rhs); }
     };
     
     // High frequency - Updates at least as many times as there are objects in the scene
@@ -136,6 +138,8 @@ namespace Spartan
                 wvp_current     == rhs.wvp_current  &&
                 wvp_previous    == rhs.wvp_previous;
         }
+
+        bool operator!=(const BufferObject& rhs) const { return !(*this == rhs); }
     };
     
     // Light buffer
