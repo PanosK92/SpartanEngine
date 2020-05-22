@@ -148,8 +148,13 @@ void Editor::OnTick()
 	if (!m_engine)
 		return;
 
+    // TODO PERFOMANCE: Both the renderer and the imgui pass must be done in one go
+    RHI_CommandList* cmd_list = m_renderer->GetSwapChain()->GetCmdList();
+
 	// Engine - tick
+    cmd_list->Begin();
 	m_engine->Tick();
+    cmd_list->Submit();
 
     // Ensure that rendering can take place
     if (!m_renderer || !m_renderer->IsInitialized())
@@ -167,7 +172,9 @@ void Editor::OnTick()
 
         // ImGui - end frame
         ImGui::Render();
+        cmd_list->Begin();
         ImGui::RHI::RenderDrawData(ImGui::GetDrawData());
+        m_renderer->Present();
 
         // Update and Render additional Platform Windows
         if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable)

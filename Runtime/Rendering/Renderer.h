@@ -252,9 +252,13 @@ namespace Spartan
         T GetOptionValue(const Renderer_Option_Value option) { return static_cast<T>(m_option_values[option]); }
         void SetOptionValue(Renderer_Option_Value option, float value);
 
+        // Swapchain
+        RHI_SwapChain* GetSwapChain() const { return m_swap_chain.get(); }
+        bool Present();
+        bool Flush();
+
         // Misc
-        const std::shared_ptr<RHI_Device>& GetRhiDevice()   const { return m_rhi_device; }
-        RHI_SwapChain* GetSwapChain()                       const { return m_swap_chain.get(); }
+        const std::shared_ptr<RHI_Device>& GetRhiDevice()   const { return m_rhi_device; } 
         RHI_PipelineCache* GetPipelineCache()               const { return m_pipeline_cache.get(); }
         RHI_DescriptorCache* GetDescriptorCache()           const { return m_descriptor_cache.get(); }
         RHI_Texture* GetFrameTexture()                      const { return m_render_targets.at(RenderTarget_Composition_Ldr).get(); }
@@ -326,7 +330,7 @@ namespace Spartan
         // Misc
         void RenderablesAcquire(const Variant& renderables);
         void RenderablesSort(std::vector<Entity*>* renderables);
-        void ClearEntities() { m_entities.clear(); }
+        void ClearEntities();
 
         // Render textures
         std::unordered_map<Renderer_RenderTarget_Type, std::shared_ptr<RHI_Texture>> m_render_targets;

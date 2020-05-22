@@ -201,6 +201,12 @@ namespace Spartan
         // If this is a swapchain, return the appropriate buffer
         if (render_target_swapchain)
         {
+            if (render_target_swapchain->GetImageIndex() >= state_max_render_target_count)
+            {
+                LOG_ERROR("Invalid image index, %d", render_target_swapchain->GetImageIndex());
+                return nullptr;
+            }
+
             return m_frame_buffers[render_target_swapchain->GetImageIndex()];
         }
 
