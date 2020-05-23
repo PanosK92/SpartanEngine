@@ -166,6 +166,7 @@ namespace Spartan
 
         inline void destroy(
             const RHI_Context* rhi_context,
+            uint8_t buffer_count,
             void*& surface,
             void*& swap_chain_view,
             array<void*, state_max_render_target_count>& image_views,
@@ -173,9 +174,9 @@ namespace Spartan
         )
         {
             // Semaphores
-            for (auto& semaphore : semaphores_image_acquired)
+            for (uint8_t i = 0; i < buffer_count; i++)
             {
-                vulkan_utility::semaphore::destroy(semaphore);
+                vulkan_utility::semaphore::destroy(semaphores_image_acquired[i]);
             }
             semaphores_image_acquired.fill(nullptr);
 
@@ -285,6 +286,7 @@ namespace Spartan
         _Vulkan_SwapChain::destroy
         (
             m_rhi_device->GetContextRhi(),
+            m_buffer_count,
             m_surface,
             m_swap_chain_view,
             m_resource_view,
@@ -318,6 +320,7 @@ namespace Spartan
 		_Vulkan_SwapChain::destroy
 		(
             m_rhi_device->GetContextRhi(),
+            m_buffer_count,
 			m_surface,
 			m_swap_chain_view,
 			m_resource_view,
@@ -349,26 +352,43 @@ namespace Spartan
         if (!m_present)
             return true;
 
-        // If we used all of our buffers, reset the command pool
-        if (m_image_index + 1 > m_buffer_count)
+        bool first_run              = !m_image_acquired;
+        bool reset_pool             = !first_run && m_image_index == 0;
+        RHI_CommandList* cmd_list   = m_cmd_lists[m_image_index].get();
+
+        // If we used all of our command buffers, reset the pool
+        if (reset_pool)
         {
-            VkCommandPool command_pool = static_cast<VkCommandPool>(m_cmd_pool);
-            vulkan_utility::error::check(vkResetCommandPool(m_rhi_device->GetContextRhi()->device, command_pool, 0));
+            for (uint8_t i = 0; i < m_buffer_count; i++)
+            {
+                m_cmd_lists[i]->Wait();
+            }
+
+            vulkan_utility::error::check(vkResetCommandPool(m_rhi_device->GetContextRhi()->device, static_cast<VkCommandPool>(m_cmd_pool), 0));
+        }
+        else // make sure the command buffer has finished working on the current image
+        {
+            cmd_list->Wait();
+        }
+
+        if (!cmd_list->IsIdle())
+        {
+            LOG_WARNING("The command buffer might still be in use, visual glitches might occur");
         }
 
 		// Make index that always matches the m_image_index after vkAcquireNextImageKHR.
 		// This is so getting semaphores and fences can be done by also simply using m_image_index.
-		const uint32_t index = !m_image_acquired ? 0 : (m_image_index + 1) % m_buffer_count;
+		const uint32_t index = first_run ? 0 : (m_image_index + 1) % m_buffer_count;
         
         // Acquire next image
         m_image_acquired = vulkan_utility::error::check(
             vkAcquireNextImageKHR(
-                m_rhi_device->GetContextRhi()->device,
-                static_cast<VkSwapchainKHR>(m_swap_chain_view),
-                numeric_limits<uint64_t>::max(),
-                static_cast<VkSemaphore>(m_resource_view_acquiredSemaphore[index]),
-                nullptr,
-                &m_image_index
+                m_rhi_device->GetContextRhi()->device,                              // device
+                static_cast<VkSwapchainKHR>(m_swap_chain_view),                     // swapchain
+                numeric_limits<uint64_t>::max(),                                    // timeout
+                static_cast<VkSemaphore>(m_resource_view_acquiredSemaphore[index]), // semaphore
+                nullptr,                                                            // fence
+                &m_image_index                                                      // pImageIndex
             )
         );
 
@@ -386,13 +406,9 @@ namespace Spartan
             return false;
         }
 
-        if (!GetCmdList()->IsSubmitted())
-        {
-            LOG_ERROR("The command list hasn't been submitted, nothing to present");
-            return false;
-        }
+        RHI_CommandList* cmd_list = GetCmdList();
 
-        if (!m_rhi_device->Queue_Present(m_swap_chain_view, &m_image_index, GetCmdList()->GetConsumedSemaphore()))
+        if (!m_rhi_device->Queue_Present(m_swap_chain_view, &m_image_index, cmd_list->GetConsumedSemaphore()))
         {
             LOG_ERROR("Failed to present");
             return false;

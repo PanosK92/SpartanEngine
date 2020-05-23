@@ -198,6 +198,7 @@ namespace Spartan
 
         RHI_PipelineState* state = m_pipeline->GetPipelineState();
         void* wait_semaphore = state->render_target_swapchain ? static_cast<VkSemaphore>(state->render_target_swapchain->Get_Resource_View_AcquiredSemaphore()) : nullptr;
+        vulkan_utility::fence::reset(m_consumed_fence);
 
         if (!m_rhi_device->Queue_Submit(
             RHI_Queue_Graphics,                             // queue
@@ -216,7 +217,6 @@ namespace Spartan
             m_pipeline_state->ResetClearValues();
         }
 
-        // Wait for fence on the next Begin(), if we force it now, perfomance will not be as good
         m_cmd_state = RHI_Cmd_List_Submitted;
 
         return true;
@@ -226,7 +226,7 @@ namespace Spartan
     {
         if (m_cmd_state == RHI_Cmd_List_Submitted)
         {
-            if (!vulkan_utility::fence::wait_reset(m_consumed_fence))
+            if (!vulkan_utility::fence::wait(m_consumed_fence))
                 return false;
 
             m_descriptor_cache->GrowIfNeeded();
