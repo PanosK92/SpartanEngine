@@ -93,8 +93,8 @@ namespace Spartan
         RHI_Device* m_rhi_device            = nullptr;
         RHI_Image_Layout m_layout           = RHI_Image_Undefined;
         std::vector<std::shared_ptr<RHI_CommandList>> m_cmd_lists;
-        std::array<void*, state_max_render_target_count> m_resource_view_acquiredSemaphore  = { nullptr };
-		std::array<void*, state_max_render_target_count> m_resource_view                    = { nullptr };
-        std::array<void*, state_max_render_target_count> m_resource                         = { nullptr };
-	};
+        std::array<void*, state_max_render_target_count> m_resource_view_acquiredSemaphore;
+        std::array<void*, state_max_render_target_count> m_resource_view;
+        std::array<void*, state_max_render_target_count> m_resource;
+    };
 }
