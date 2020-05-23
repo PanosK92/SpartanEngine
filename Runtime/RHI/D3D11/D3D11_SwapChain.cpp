@@ -175,7 +175,7 @@ namespace Spartan
 		safe_release(*reinterpret_cast<ID3D11RenderTargetView**>(&m_resource_view_renderTarget));
 	}
 
-	bool RHI_SwapChain::Resize(const uint32_t width, const uint32_t height)
+	bool RHI_SwapChain::Resize(const uint32_t width, const uint32_t height, const bool force /*= false*/)
 	{	
 		if (!m_swap_chain_view)
 		{
@@ -190,6 +190,13 @@ namespace Spartan
             // Return true as when minimizing, a resolution
             // of 0,0 can be passed in, and this is fine.
             return true;
+        }
+
+        // Only resize if needed
+        if (!force)
+        {
+            if (m_width == width && m_height == height)
+                return true;
         }
 
 		auto swap_chain			= static_cast<IDXGISwapChain*>(m_swap_chain_view);
