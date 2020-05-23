@@ -191,8 +191,6 @@ namespace Spartan
 		if (!m_rhi_device || !m_rhi_device->IsInitialized())
 			return;
 
-        RHI_CommandList* cmd_list = m_swap_chain->GetCmdList();
-
 		// If there is no camera, do nothing
 		if (!m_camera)
 		{
@@ -250,9 +248,9 @@ namespace Spartan
             m_buffer_frame_cpu.view_projection_unjittered   = m_buffer_frame_cpu.view * m_camera->GetProjectionMatrix();
 		}
 
-		m_is_rendering = true;
-		Pass_Main(cmd_list);
-		m_is_rendering = false;
+        m_is_rendering = true;
+        Pass_Main(m_swap_chain->GetCmdList());
+        m_is_rendering = false;
 	}
 
     void Renderer::SetViewport(float width, float height, float offset_x /*= 0*/, float offset_y /*= 0*/)
@@ -646,6 +644,8 @@ namespace Spartan
 
     void Renderer::ClearEntities()
     {
+        m_rhi_device->Queue_WaitAll();
+
         // light depth buffers might be used by the command list
         if (!m_swap_chain->GetCmdList()->Reset())
         {

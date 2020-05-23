@@ -253,7 +253,7 @@ namespace Spartan
 			m_swap_chain_view,
             m_resource,
 			m_resource_view,
-			m_resource_view_acquiredSemaphore
+			m_image_acquired_semaphore
 		);
 
         // Create command pool
@@ -265,10 +265,7 @@ namespace Spartan
             m_cmd_lists.emplace_back(make_shared<RHI_CommandList>(i, this, rhi_device->GetContext()));
         }
 
-        if (!AcquireNextImage())
-        {
-            LOG_ERROR("Failed to acquire image");
-        }
+        AcquireNextImage();
 	}
 
 	RHI_SwapChain::~RHI_SwapChain()
@@ -290,11 +287,11 @@ namespace Spartan
             m_surface,
             m_swap_chain_view,
             m_resource_view,
-            m_resource_view_acquiredSemaphore
+            m_image_acquired_semaphore
         );
 	}
 
-	bool RHI_SwapChain::Resize(const uint32_t width, const uint32_t height)
+	bool RHI_SwapChain::Resize(const uint32_t width, const uint32_t height, const bool force /*= false*/)
 	{
         // Validate resolution
         m_present = m_rhi_device->ValidateResolution(width, height);
@@ -306,8 +303,11 @@ namespace Spartan
         }
 
 		// Only resize if needed
-		if (m_width == width && m_height == height)
-			return true;
+        if (!force)
+        {
+            if (m_width == width && m_height == height)
+                return true;
+        }
 
         // Wait in case any command buffer is still in use
         m_rhi_device->Queue_WaitAll();
@@ -324,7 +324,7 @@ namespace Spartan
 			m_surface,
 			m_swap_chain_view,
 			m_resource_view,
-			m_resource_view_acquiredSemaphore
+			m_image_acquired_semaphore
 		);
 
 		// Create the swap chain with the new dimensions
@@ -341,7 +341,7 @@ namespace Spartan
 			m_swap_chain_view,
             m_resource,
 			m_resource_view,
-			m_resource_view_acquiredSemaphore
+			m_image_acquired_semaphore
 		);
 
 		return m_initialized;
@@ -353,46 +353,29 @@ namespace Spartan
             return true;
 
         bool first_run              = !m_image_acquired;
-        bool reset_pool             = !first_run && m_image_index == 0;
-        RHI_CommandList* cmd_list   = m_cmd_lists[m_image_index].get();
+        m_cmd_index                 = first_run ? 0 : (m_image_index + 1) % m_buffer_count;
+        bool reset_pool             = !first_run && m_cmd_index == 0;
+        RHI_CommandList* cmd_list   = m_cmd_lists[m_cmd_index].get();
 
-        // If we used all of our command buffers, reset the pool
-        if (reset_pool)
-        {
-            for (uint8_t i = 0; i < m_buffer_count; i++)
-            {
-                m_cmd_lists[i]->Wait();
-            }
-
-            vulkan_utility::error::check(vkResetCommandPool(m_rhi_device->GetContextRhi()->device, static_cast<VkCommandPool>(m_cmd_pool), 0));
-        }
-        else // make sure the command buffer has finished working on the current image
-        {
-            cmd_list->Wait();
-        }
-
-        if (!cmd_list->IsIdle())
-        {
-            LOG_WARNING("The command buffer might still be in use, visual glitches might occur");
-        }
-
-		// Make index that always matches the m_image_index after vkAcquireNextImageKHR.
-		// This is so getting semaphores and fences can be done by also simply using m_image_index.
-		const uint32_t index = first_run ? 0 : (m_image_index + 1) % m_buffer_count;
-        
         // Acquire next image
-        m_image_acquired = vulkan_utility::error::check(
-            vkAcquireNextImageKHR(
-                m_rhi_device->GetContextRhi()->device,                              // device
-                static_cast<VkSwapchainKHR>(m_swap_chain_view),                     // swapchain
-                numeric_limits<uint64_t>::max(),                                    // timeout
-                static_cast<VkSemaphore>(m_resource_view_acquiredSemaphore[index]), // semaphore
-                nullptr,                                                            // fence
-                &m_image_index                                                      // pImageIndex
-            )
+        VkResult result = vkAcquireNextImageKHR(
+            m_rhi_device->GetContextRhi()->device,                              // device
+            static_cast<VkSwapchainKHR>(m_swap_chain_view),                     // swapchain
+            numeric_limits<uint64_t>::max(),                                    // timeout
+            static_cast<VkSemaphore>(m_image_acquired_semaphore[m_cmd_index]),  // semaphore
+            nullptr,                                                            // fence
+            &m_image_index                                                      // pImageIndex
         );
 
-        return m_image_acquired;
+        if ((result == VK_ERROR_OUT_OF_DATE_KHR) || (result == VK_SUBOPTIMAL_KHR))
+        {
+            LOG_INFO("Outdated swapchain, recreating...");
+            m_image_acquired = Resize(m_width, m_height, true) ? VK_SUCCESS : result;
+        }
+
+        m_image_acquired = result == VK_SUCCESS;
+
+        return vulkan_utility::error::check(result);
 	}
 
 	bool RHI_SwapChain::Present()
@@ -406,19 +389,14 @@ namespace Spartan
             return false;
         }
 
-        RHI_CommandList* cmd_list = GetCmdList();
-
-        if (!m_rhi_device->Queue_Present(m_swap_chain_view, &m_image_index, cmd_list->GetConsumedSemaphore()))
+        if (!m_rhi_device->Queue_Present(m_swap_chain_view, &m_image_index, GetCmdList()->GetConsumedSemaphore()))
         {
             LOG_ERROR("Failed to present");
             return false;
         }
 
         if (!AcquireNextImage())
-        {
-            LOG_ERROR("Failed to acquire next image");
             return false;
-        }
 
         return true;
 	}

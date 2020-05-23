@@ -153,7 +153,8 @@ void Editor::OnTick()
     if (!m_renderer || !m_renderer->IsInitialized())
         return;
 
-    RHI_CommandList* cmd_list = m_renderer->GetSwapChain()->GetCmdList();
+    RHI_SwapChain* swapchain = m_renderer->GetSwapChain();
+    RHI_CommandList* cmd_list = swapchain->GetCmdList();
 
 	// Engine - tick
     cmd_list->Begin();
