@@ -307,6 +307,9 @@ namespace Spartan
 		if (m_width == width && m_height == height)
 			return true;
 
+        // Wait in case any command buffer is still in use
+        m_rhi_device->Queue_WaitAll();
+
 		// Save new dimensions
 		m_width		= width;
 		m_height	= height;

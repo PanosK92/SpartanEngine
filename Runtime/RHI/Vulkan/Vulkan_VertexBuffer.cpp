@@ -142,16 +142,13 @@ namespace Spartan
 
 		void* ptr = nullptr;
 
-        if (m_is_mappable)
+        if (!m_is_host_coherent)
         {
-            if (!m_is_host_coherent)
-            {
-                if (!vulkan_utility::error::check(vmaInvalidateAllocation(m_rhi_device->GetContextRhi()->allocator, static_cast<VmaAllocation>(m_allocation), 0, m_size_gpu)))
-                    return nullptr;
-            }
-
-            vulkan_utility::error::check(vmaMapMemory(m_rhi_device->GetContextRhi()->allocator, static_cast<VmaAllocation>(m_allocation), reinterpret_cast<void**>(&ptr)));
+            if (!vulkan_utility::error::check(vmaInvalidateAllocation(m_rhi_device->GetContextRhi()->allocator, static_cast<VmaAllocation>(m_allocation), 0, m_size_gpu)))
+                return nullptr;
         }
+
+        vulkan_utility::error::check(vmaMapMemory(m_rhi_device->GetContextRhi()->allocator, static_cast<VmaAllocation>(m_allocation), reinterpret_cast<void**>(&ptr)));
 	
 		return ptr;
 	}

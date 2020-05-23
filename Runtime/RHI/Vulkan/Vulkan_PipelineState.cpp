@@ -56,7 +56,7 @@ namespace Spartan
         return VK_ATTACHMENT_LOAD_OP_CLEAR;
     };
 
-    inline VkAttachmentLoadOp get_stencil_load_op(const uint8_t stencil)
+    inline VkAttachmentLoadOp get_stencil_load_op(const uint32_t stencil)
     {
         if (stencil == state_stencil_dont_care)
             return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -80,7 +80,7 @@ namespace Spartan
         array<Math::Vector4, state_max_render_target_count>& render_target_color_clear,
         RHI_Texture* render_target_depth_texture,
         float clear_value_depth,
-        uint8_t clear_value_stencil,
+        uint32_t clear_value_stencil,
         void*& render_pass
     )
     {

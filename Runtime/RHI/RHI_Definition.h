@@ -301,8 +301,8 @@ namespace Spartan
     static const Math::Vector4  state_color_load                = Math::Vector4::Infinity;
     static const float          state_depth_dont_care           = -std::numeric_limits<float>::infinity();
     static const float          state_depth_load                = std::numeric_limits<float>::infinity();
-    static const uint8_t        state_stencil_dont_care         = 254;
-    static const uint8_t        state_stencil_load              = 255;
+    static const uint32_t       state_stencil_dont_care         = (std::numeric_limits<uint32_t>::max)();
+    static const uint32_t       state_stencil_load              = (std::numeric_limits<uint32_t>::max)() - 1;
     static const uint8_t        state_max_render_target_count   = 8;
     static const uint8_t        state_max_constant_buffer_count = 8;
     static const uint32_t       state_dynamic_offset_empty      = (std::numeric_limits<uint32_t>::max)();

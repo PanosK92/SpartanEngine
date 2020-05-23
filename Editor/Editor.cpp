@@ -144,9 +144,14 @@ void Editor::OnWindowMessage(WindowData& window_data)
 }
 
 void Editor::OnTick()
-{	
+{
+    // Verify engine
 	if (!m_engine)
 		return;
+
+    // Verify renderer
+    if (!m_renderer || !m_renderer->IsInitialized())
+        return;
 
     // TODO PERFOMANCE: Both the renderer and the imgui pass must be done in one go
     RHI_CommandList* cmd_list = m_renderer->GetSwapChain()->GetCmdList();
@@ -155,10 +160,6 @@ void Editor::OnTick()
     cmd_list->Begin();
 	m_engine->Tick();
     cmd_list->Submit();
-
-    // Ensure that rendering can take place
-    if (!m_renderer || !m_renderer->IsInitialized())
-        return;
 
     // Editor - main window
     // ImGui - start frame
@@ -180,8 +181,6 @@ void Editor::OnTick()
         ImGui::UpdatePlatformWindows();
         ImGui::RenderPlatformWindowsDefault();
     }
-
-    m_profiler->TimeBlockEnd();
 }
 
 void Editor::Widgets_Create()

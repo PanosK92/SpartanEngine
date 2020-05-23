@@ -224,10 +224,6 @@ namespace ImGui::RHI
             g_renderer->SetGlobalShaderObjectTransform(wvp);
 		}
 
-        // Compute viewport
-        g_viewport.width    = draw_data->DisplaySize.x;
-        g_viewport.height   = draw_data->DisplaySize.y;
-
 		// Set render state
         static RHI_PipelineState pipeline_state = {};
         pipeline_state.shader_vertex            = g_shader_vertex.get();
@@ -238,7 +234,8 @@ namespace ImGui::RHI
         pipeline_state.vertex_buffer_stride     = g_vertex_buffer->GetStride();
         pipeline_state.render_target_swapchain  = swap_chain;
         pipeline_state.clear_color[0]           = clear ? Vector4(0.0f, 0.0f, 0.0f, 1.0f) : state_color_load;
-        pipeline_state.viewport                 = g_viewport;
+        pipeline_state.viewport.width           = draw_data->DisplaySize.x;
+        pipeline_state.viewport.height          = draw_data->DisplaySize.y;
         pipeline_state.dynamic_scissor          = true;
         pipeline_state.primitive_topology       = RHI_PrimitiveTopology_TriangleList;
         pipeline_state.pass_name                = is_child_window ? "pass_imgui_window_child" : "pass_imgui_window_main";
@@ -264,9 +261,9 @@ namespace ImGui::RHI
             cmd_list->SetBufferIndex(g_index_buffer);
 
             // Render command lists
-            int global_vtx_offset = 0;
-            int global_idx_offset = 0;
-            const auto& clip_off = draw_data->DisplayPos;
+            int global_vtx_offset   = 0;
+            int global_idx_offset   = 0;
+            const auto& clip_off    = draw_data->DisplayPos;
             Math::Rectangle scissor_rect;
             for (auto i = 0; i < draw_data->CmdListsCount; i++)
             {
