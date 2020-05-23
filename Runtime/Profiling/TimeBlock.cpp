@@ -87,7 +87,7 @@ namespace Spartan
         m_is_complete = true;
 	}
 
-    void TimeBlock::ComputeDuration()
+    void TimeBlock::ComputeDuration(const uint32_t pass_index)
     {
         if (!m_is_complete)
         {
@@ -104,7 +104,7 @@ namespace Spartan
         {
             if (m_cmd_list)
             {
-                m_duration = m_cmd_list->Timestamp_GetDuration(m_query_disjoint, m_query_start, m_query_end);
+                m_duration = m_cmd_list->Timestamp_GetDuration(m_query_disjoint, m_query_start, m_query_end, pass_index);
             }
         }
     }

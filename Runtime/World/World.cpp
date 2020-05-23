@@ -35,6 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Profiling/Profiler.h"
 #include "../Rendering/Renderer.h"
 #include "../Input/Input.h"
+#include "../RHI/RHI_Device.h"
 //=====================================
 
 //= NAMESPACES ================
@@ -87,8 +88,8 @@ namespace Spartan
         // Tick entities
 		{
             // Detect game toggling
-            const auto started      = m_context->m_engine->EngineMode_IsSet(Engine_Game) && m_was_in_editor_mode;
-            const auto stopped      = !m_context->m_engine->EngineMode_IsSet(Engine_Game) && !m_was_in_editor_mode;
+            const bool started      = m_context->m_engine->EngineMode_IsSet(Engine_Game) && m_was_in_editor_mode;
+            const bool stopped      = !m_context->m_engine->EngineMode_IsSet(Engine_Game) && !m_was_in_editor_mode;
             m_was_in_editor_mode    = !m_context->m_engine->EngineMode_IsSet(Engine_Game);
 
             // Start
@@ -139,7 +140,10 @@ namespace Spartan
 	}
 
 	void World::Unload()
-	{
+    {
+        // Wait in case the gpu is still in flight with entities
+        m_context->GetSubsystem<Renderer>()->GetRhiDevice()->Queue_WaitAll();
+
         // Notify any systems that the entities are about to be cleared
 		FIRE_EVENT(Event_World_Unload);
 
@@ -216,8 +220,12 @@ namespace Spartan
 			return false;
 		}
 
-		// Thread safety: Wait for scene and the renderer to stop the entities (could do double buffering in the future)
-		while (m_state != Loading || m_context->GetSubsystem<Renderer>()->IsRendering()) { m_state = Request_Loading; this_thread::sleep_for(chrono::milliseconds(16)); }
+		// Thread safety: Wait for the world and the renderer to stop using entities
+		while (m_state != Loading || m_context->GetSubsystem<Renderer>()->IsRendering())
+        {
+            m_state = Request_Loading;
+            this_thread::sleep_for(chrono::milliseconds(16));
+        }
 
 		// Start progress report and timing
 		ProgressReport::Get().Reset(g_progress_world);

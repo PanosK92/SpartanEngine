@@ -647,7 +647,7 @@ namespace Spartan
         // light depth buffers might be used by the command list
         if (!m_swap_chain->GetCmdList()->Reset())
         {
-            LOG_ERROR("Failed to discard");
+            LOG_ERROR("Failed to reset command pool");
             return;
         }
 
@@ -716,10 +716,13 @@ namespace Spartan
 
     bool Renderer::Present()
     {
-        if (!m_swap_chain->GetCmdList()->Submit())
+        if (m_swap_chain->GetCmdList()->IsRecording())
         {
-            LOG_ERROR("Failed to submit");
-            return false;
+            if (!m_swap_chain->GetCmdList()->Submit())
+            {
+                LOG_ERROR("Failed to submit");
+                return false;
+            }
         }
 
         if (!m_swap_chain->Present())

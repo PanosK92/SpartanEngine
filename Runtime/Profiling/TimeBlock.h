@@ -46,7 +46,7 @@ namespace Spartan
 
 		void Begin(const char* name, TimeBlock_Type type, const TimeBlock* parent = nullptr, RHI_CommandList* cmd_list = nullptr, const std::shared_ptr<RHI_Device>& rhi_device = nullptr);
 		void End();
-        void ComputeDuration();
+        void ComputeDuration(const uint32_t pass_index);
         void Reset();
         TimeBlock_Type GetType()        const { return m_type; }	
 		const char* GetName()           const { return m_name; }
