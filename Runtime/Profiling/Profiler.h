@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Stopwatch.h"
 //=============================
 
-#define TIME_BLOCK_START_NAMED(profiler, name)  profiler->TimeBlockStart(name, Spartan::TimeBlock_Type::TimeBlock_Cpu);
+#define TIME_BLOCK_START_NAMED(profiler, name)  profiler->TimeBlockStart(name, Spartan::TimeBlock_Type::TimeBlock_Cpu, nullptr);
 #define TIME_BLOCK_END(profiler)			    profiler->TimeBlockEnd();
 #define SCOPED_TIME_BLOCK(profiler)             ScopedTimeBlock time_block = ScopedTimeBlock(profiler, __FUNCTION__)
 

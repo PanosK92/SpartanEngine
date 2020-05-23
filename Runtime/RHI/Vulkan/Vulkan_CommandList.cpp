@@ -58,12 +58,14 @@ namespace Spartan
 		m_rhi_device	    = m_renderer->GetRhiDevice().get();
         m_pipeline_cache    = m_renderer->GetPipelineCache();
         m_descriptor_cache  = m_renderer->GetDescriptorCache();
-        m_passes_active.reserve(100);
-        m_passes_active.resize(100);
-        m_timestamps.reserve(2);
-        m_timestamps.resize(2);
 
         RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
+
+        // Command buffer
+        vulkan_utility::command_buffer::create(m_swap_chain->GetCmdPool(), m_cmd_buffer, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
+        // Fence
+        vulkan_utility::fence::create(m_cmd_list_consumed_fence);
 
         // Query pool
         if (rhi_context->profiler)
@@ -71,17 +73,13 @@ namespace Spartan
             VkQueryPoolCreateInfo query_pool_create_info    = {};
             query_pool_create_info.sType                    = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
             query_pool_create_info.queryType                = VK_QUERY_TYPE_TIMESTAMP;
-            query_pool_create_info.queryCount               = static_cast<uint32_t>(m_timestamps.size());
+            query_pool_create_info.queryCount               = m_max_timestamps;
 
             auto query_pool = reinterpret_cast<VkQueryPool*>(&m_query_pool);
             vulkan_utility::error::check(vkCreateQueryPool(rhi_context->device, &query_pool_create_info, nullptr, query_pool));
+
+            m_timestamps.fill(0);
         }
-
-        // Command buffer
-        vulkan_utility::command_buffer::create(m_swap_chain->GetCmdPool(), m_cmd_buffer, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-
-        // Fence
-        vulkan_utility::fence::create(m_cmd_list_consumed_fence);
 	}
 
 	RHI_CommandList::~RHI_CommandList()
@@ -114,6 +112,35 @@ namespace Spartan
             return false;
         }
 
+        // Get queries
+        {
+            if (m_query_pool)
+            {
+                if (m_rhi_device->GetContextRhi()->profiler)
+                {
+                    if (m_timestamp_index != 0)
+                    {
+                        const uint32_t query_count      = m_timestamp_index * 2;
+                        const size_t stride             = sizeof(uint64_t);
+                        const VkQueryResultFlags flags  = VK_QUERY_RESULT_64_BIT;
+
+                        vkGetQueryPoolResults(
+                            m_rhi_device->GetContextRhi()->device,  // device
+                            static_cast<VkQueryPool>(m_query_pool), // queryPool
+                            0,                                      // firstQuery
+                            query_count,                            // queryCount
+                            query_count * stride,                   // dataSize
+                            m_timestamps.data(),                    // pData
+                            stride,                                 // stride
+                            flags                                   // flags
+                        );
+                    }
+                }
+            }
+
+            m_timestamp_index = 0;
+        }
+
         if (m_cmd_state != RHI_Cmd_List_Idle)
         {
             LOG_ERROR("The command list is still being used");
@@ -126,8 +153,10 @@ namespace Spartan
         if (!vulkan_utility::error::check(vkBeginCommandBuffer(static_cast<VkCommandBuffer>(m_cmd_buffer), &begin_info)))
             return false;
 
+        vkCmdResetQueryPool(static_cast<VkCommandBuffer>(m_cmd_buffer), static_cast<VkQueryPool>(m_query_pool), 0, m_max_timestamps);
+
         m_cmd_state = RHI_Cmd_List_Recording;
-        m_flushed = false;
+        m_flushed   = false;
         return true;
     }
 
@@ -174,7 +203,7 @@ namespace Spartan
             m_cmd_list_consumed_fence,                                                                                                                  // wait fence
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)                                                                                              // wait flags
         )
-            return false;
+        return false;
 
         // If the render pass has been bound then it cleared to whatever values was requested (or not)
         // So at this point we reset the values as we don't want to clear again.
@@ -205,10 +234,10 @@ namespace Spartan
 
     bool RHI_CommandList::Reset()
     {
-        lock_guard<mutex> guard(m_mutex_reset);
-
         if (m_cmd_state != RHI_Cmd_List_Recording)
             return true;
+
+        lock_guard<mutex> guard(m_mutex_reset);
 
         if (!vulkan_utility::error::check(vkResetCommandBuffer(static_cast<VkCommandBuffer>(m_cmd_buffer), VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT)))
             return false;
@@ -239,7 +268,7 @@ namespace Spartan
         }
 
         // Start marker and profiler (if used)
-        MarkAndProfileStart(m_pipeline_state);
+        Timeblock_Start(m_pipeline_state);
 
         // Shader resources
         {
@@ -264,7 +293,7 @@ namespace Spartan
         }
 
         // Profiling
-        MarkAndProfileEnd(m_pipeline_state);
+        Timeblock_End(m_pipeline_state);
        
         return true;
     }
@@ -533,72 +562,56 @@ namespace Spartan
         return static_cast<uint32_t>(device_memory_budget_properties.heapUsage[0] / 1024 / 1024); // MBs
     }
 
-    bool RHI_CommandList::Timestamp_Start(void* query_disjoint /*= nullptr*/, void* query_start /*= nullptr*/) const
+    bool RHI_CommandList::Timestamp_Start(void* query_disjoint /*= nullptr*/, void* query_start /*= nullptr*/)
     {
-        if (!m_rhi_device->GetContextRhi()->profiler)
-            return true;
-
-        if (!m_query_pool)
-            return false;
-
         if (m_cmd_state != RHI_Cmd_List_Recording)
         {
             LOG_WARNING("Can't record command");
             return false;
         }
 
-        // Reset pool
-        vkCmdResetQueryPool(static_cast<VkCommandBuffer>(m_cmd_buffer), static_cast<VkQueryPool>(m_query_pool), 0, 2);
-
-        // Write timestamp
-        vkCmdWriteTimestamp(static_cast<VkCommandBuffer>(m_cmd_buffer), VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, static_cast<VkQueryPool>(m_query_pool), m_pass_index);
-
-        return true;
-    }
-
-    bool RHI_CommandList::Timestamp_End(void* query_disjoint /*= nullptr*/, void* query_end /*= nullptr*/) const
-    {
         if (!m_rhi_device->GetContextRhi()->profiler)
             return true;
 
         if (!m_query_pool)
             return false;
 
+        vkCmdWriteTimestamp(static_cast<VkCommandBuffer>(m_cmd_buffer), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, static_cast<VkQueryPool>(m_query_pool), m_timestamp_index++);
+
+        return true;
+    }
+
+    bool RHI_CommandList::Timestamp_End(void* query_disjoint /*= nullptr*/, void* query_end /*= nullptr*/)
+    {
         if (m_cmd_state != RHI_Cmd_List_Recording)
         {
             LOG_WARNING("Can't record command");
             return false;
         }
 
-        // Write timestamp
-        vkCmdWriteTimestamp(static_cast<VkCommandBuffer>(m_cmd_buffer), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, static_cast<VkQueryPool>(m_query_pool), m_pass_index + 1);
-
-        return true;
-    }
-
-    float RHI_CommandList::Timestamp_GetDuration(void* query_disjoint /*= nullptr*/, void* query_start /*= nullptr*/, void* query_end /*= nullptr*/)
-    {
         if (!m_rhi_device->GetContextRhi()->profiler)
             return true;
 
         if (!m_query_pool)
             return false;
 
-        const uint32_t query_count    = static_cast<uint32_t>(m_timestamps.size());
-        const size_t stride           = sizeof(uint64_t);
+        vkCmdWriteTimestamp(static_cast<VkCommandBuffer>(m_cmd_buffer), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, static_cast<VkQueryPool>(m_query_pool), m_timestamp_index++);
 
-        if (vkGetQueryPoolResults(
-                m_rhi_device->GetContextRhi()->device,  // device
-                static_cast<VkQueryPool>(m_query_pool), // queryPool
-                0,                                      // firstQuery
-                query_count,                            // queryCount
-                query_count * stride,                   // dataSize
-                m_timestamps.data(),                    // pData
-                stride,                                 // stride
-                VK_QUERY_RESULT_64_BIT                  // flags
-        ) != VK_SUCCESS) return 0.0f;
+        return true;
+    }
 
-        return static_cast<float>((m_timestamps[1] - m_timestamps[0]) * m_rhi_device->GetContextRhi()->device_properties.limits.timestampPeriod * 1e-6f);
+    float RHI_CommandList::Timestamp_GetDuration(void* query_disjoint, void* query_start, void* query_end, const uint32_t pass_index)
+    {
+        if (pass_index + 1 >= m_timestamps.size())
+        {
+            LOG_ERROR("Pass index out of timestamp array range");
+            return 0.0f;
+        }
+
+        uint64_t start      = m_timestamps[pass_index];
+        uint64_t end        = m_timestamps[pass_index + 1];
+        uint64_t duration   = Math::Helper::Clamp<uint64_t>(end - start, 0, std::numeric_limits<uint64_t>::max());
+        return static_cast<float>(duration * m_rhi_device->GetContextRhi()->device_properties.limits.timestampPeriod * 1e-6f);
     }
 
     bool RHI_CommandList::Gpu_QueryCreate(RHI_Device* rhi_device, void** query /*= nullptr*/, RHI_Query_Type type /*= RHI_Query_Timestamp*/)
@@ -612,7 +625,17 @@ namespace Spartan
         // Not needed
     }
 
-    void RHI_CommandList::MarkAndProfileStart(const RHI_PipelineState* pipeline_state)
+    bool RHI_CommandList::IsRecording() const
+    {
+        return m_cmd_state == RHI_Cmd_List_Recording;
+    }
+
+    bool RHI_CommandList::IsIdle() const
+    {
+        return m_cmd_state == RHI_Cmd_List_Idle;
+    }
+
+    void RHI_CommandList::Timeblock_Start(const RHI_PipelineState* pipeline_state)
     {
         if (!pipeline_state || !pipeline_state->pass_name)
             return;
@@ -632,19 +655,12 @@ namespace Spartan
         {
             vulkan_utility::debug::begin(static_cast<VkCommandBuffer>(m_cmd_buffer), pipeline_state->pass_name, Vector4::Zero);
         }
-
-        if (m_pass_index < m_passes_active.size())
-        {
-            m_passes_active[m_pass_index++] = true;
-        }
     }
 
-    void RHI_CommandList::MarkAndProfileEnd(const RHI_PipelineState* pipeline_state)
+    void RHI_CommandList::Timeblock_End(const RHI_PipelineState* pipeline_state)
     {
-        if (!pipeline_state || m_pass_index == 0 || !m_passes_active[m_pass_index - 1])
+        if (!pipeline_state)
             return;
-
-        m_passes_active[--m_pass_index] = false;
 
         // Allowed markers ?
         if (m_rhi_device->GetContextRhi()->markers && pipeline_state->mark)
@@ -725,6 +741,9 @@ namespace Spartan
 
     bool RHI_CommandList::BindDescriptorSet()
     {
+        if (m_cmd_state != RHI_Cmd_List_Recording)
+            return false;
+
         // Descriptor set != null, result = true    -> the descriptor set must be bound
         // Descriptor set == null, result = true    -> the descriptor set is already bound
         // Descriptor set == null, result = false   -> a new descriptor was needed but we are out of memory (allocates next frame)

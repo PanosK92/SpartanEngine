@@ -63,7 +63,6 @@ namespace ImGui::RHI
 	static shared_ptr<RHI_Shader>				g_shader_vertex;
     static shared_ptr<RHI_Shader>				g_shader_pixel;
 	static RHI_Viewport							g_viewport;
-    static RHI_PipelineState                    g_pipeline_state;
 
 	inline bool Initialize(Context* context, const float width, const float height)
 	{
@@ -159,8 +158,15 @@ namespace ImGui::RHI
 			return;
 
         // Grab the swap chain we will be working wit
-        RHI_SwapChain* swap_chain   = swap_chain_other ? swap_chain_other : g_renderer->GetSwapChain();
+        bool is_child_window        = swap_chain_other != nullptr;
+        RHI_SwapChain* swap_chain   = is_child_window ? swap_chain_other : g_renderer->GetSwapChain();
         RHI_CommandList* cmd_list   = swap_chain->GetCmdList();
+
+        if (!cmd_list->IsRecording())
+        {
+            LOG_ERROR("Command list is not recording, can't render anything");
+            return;
+        }
 
 		// Updated vertex and index buffers
 		{
@@ -223,21 +229,22 @@ namespace ImGui::RHI
         g_viewport.height   = draw_data->DisplaySize.y;
 
 		// Set render state
-        g_pipeline_state.shader_vertex                  = g_shader_vertex.get();
-        g_pipeline_state.shader_pixel                   = g_shader_pixel.get();
-        g_pipeline_state.rasterizer_state               = g_rasterizer_state.get();
-        g_pipeline_state.blend_state                    = g_blend_state.get();
-        g_pipeline_state.depth_stencil_state            = g_depth_stencil_state.get();
-        g_pipeline_state.vertex_buffer_stride           = g_vertex_buffer->GetStride();
-        g_pipeline_state.render_target_swapchain        = swap_chain;
-        g_pipeline_state.clear_color[0]                 = clear ? Vector4(0.0f, 0.0f, 0.0f, 1.0f) : state_color_load;
-        g_pipeline_state.viewport                       = g_viewport;
-        g_pipeline_state.dynamic_scissor                = true;
-        g_pipeline_state.primitive_topology             = RHI_PrimitiveTopology_TriangleList;
-        g_pipeline_state.pass_name                      = "Pass_ImGui";
+        static RHI_PipelineState pipeline_state = {};
+        pipeline_state.shader_vertex            = g_shader_vertex.get();
+        pipeline_state.shader_pixel             = g_shader_pixel.get();
+        pipeline_state.rasterizer_state         = g_rasterizer_state.get();
+        pipeline_state.blend_state              = g_blend_state.get();
+        pipeline_state.depth_stencil_state      = g_depth_stencil_state.get();
+        pipeline_state.vertex_buffer_stride     = g_vertex_buffer->GetStride();
+        pipeline_state.render_target_swapchain  = swap_chain;
+        pipeline_state.clear_color[0]           = clear ? Vector4(0.0f, 0.0f, 0.0f, 1.0f) : state_color_load;
+        pipeline_state.viewport                 = g_viewport;
+        pipeline_state.dynamic_scissor          = true;
+        pipeline_state.primitive_topology       = RHI_PrimitiveTopology_TriangleList;
+        pipeline_state.pass_name                = is_child_window ? "pass_imgui_window_child" : "pass_imgui_window_main";
 
-        // Submit commands
-        if (cmd_list->BeginRenderPass(g_pipeline_state))
+        // Record commands
+        if (cmd_list->BeginRenderPass(pipeline_state))
         {
             // Transition layouts
             for (auto i = 0; i < draw_data->CmdListsCount; i++)
@@ -260,6 +267,7 @@ namespace ImGui::RHI
             int global_vtx_offset = 0;
             int global_idx_offset = 0;
             const auto& clip_off = draw_data->DisplayPos;
+            Math::Rectangle scissor_rect;
             for (auto i = 0; i < draw_data->CmdListsCount; i++)
             {
                 auto cmd_list_imgui = draw_data->CmdLists[i];
@@ -273,7 +281,10 @@ namespace ImGui::RHI
                     else
                     {
                         // Compute scissor rectangle
-                        auto scissor_rect = Math::Rectangle(pcmd->ClipRect.x - clip_off.x, pcmd->ClipRect.y - clip_off.y, pcmd->ClipRect.z - clip_off.x, pcmd->ClipRect.w - clip_off.y);
+                        scissor_rect.left      = pcmd->ClipRect.x - clip_off.x;
+                        scissor_rect.top       = pcmd->ClipRect.y - clip_off.y;
+                        scissor_rect.right     = pcmd->ClipRect.z - clip_off.x;
+                        scissor_rect.bottom    = pcmd->ClipRect.w - clip_off.y;
 
                         // Apply scissor rectangle, bind texture and draw
                         cmd_list->SetScissorRectangle(scissor_rect);

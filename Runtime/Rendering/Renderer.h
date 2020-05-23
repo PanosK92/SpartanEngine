@@ -266,7 +266,7 @@ namespace Spartan
         const auto& GetCamera()                             const { return m_camera; }
         auto IsInitialized()                                const { return m_initialized; }
         auto& GetShaders()                                  const { return m_shaders; }
-        auto IsRendering()                                  const { return m_is_rendering; }
+        bool IsRendering()                                  const { return m_is_rendering; }
         uint32_t GetMaxResolution() const;
 
         // Globals

@@ -135,6 +135,8 @@ namespace Spartan
     {
         // Clear time blocks
         {
+            uint32_t pass_index_gpu = 0;
+
             for (uint32_t i = 0; i < m_time_block_count; i++)
             {
                 TimeBlock& time_block = m_time_blocks_write[i];
@@ -143,7 +145,11 @@ namespace Spartan
                 {
                     // Must not happen when TimeBlockEnd() ends as D3D11 waits
                     // too much for the results to be ready, which increases CPU time.
-                    time_block.ComputeDuration();
+                    time_block.ComputeDuration(pass_index_gpu);
+                    if (time_block.GetType() == TimeBlock_Gpu)
+                    {
+                        pass_index_gpu += 2;
+                    }
 
                     m_time_blocks_read[i] = time_block;
                 }

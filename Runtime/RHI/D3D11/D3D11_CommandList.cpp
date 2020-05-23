@@ -62,8 +62,7 @@ namespace Spartan
         m_rhi_device        = m_renderer->GetRhiDevice().get();
         m_pipeline_cache    = m_renderer->GetPipelineCache();
         m_descriptor_cache  = m_renderer->GetDescriptorCache();
-        m_passes_active.reserve(100);
-        m_passes_active.resize(100);
+        m_timestamps.fill(0);
 	}
 
 	RHI_CommandList::~RHI_CommandList() = default;
@@ -105,7 +104,7 @@ namespace Spartan
         m_pipeline_state = &pipeline_state;
 
         // Start marker and profiler (if enabled)
-        MarkAndProfileStart(m_pipeline_state);
+        Timeblock_Start(m_pipeline_state);
 
         ID3D11DeviceContext* device_context = m_rhi_device->GetContextRhi()->device_context;
 
@@ -345,7 +344,7 @@ namespace Spartan
 	bool RHI_CommandList::EndRenderPass()
 	{
         // End marker and profiler (if enabled)
-        MarkAndProfileEnd(m_pipeline_state);
+        Timeblock_End(m_pipeline_state);
         return true;
 	}
 
@@ -619,7 +618,7 @@ namespace Spartan
         m_profiler->m_rhi_bindings_texture++;
 	}
 
-    bool RHI_CommandList::Timestamp_Start(void* query_disjoint /*= nullptr*/, void* query_start /*= nullptr*/) const
+    bool RHI_CommandList::Timestamp_Start(void* query_disjoint /*= nullptr*/, void* query_start /*= nullptr*/)
     {
         if (!query_disjoint || !query_start)
         {
@@ -640,7 +639,7 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_CommandList::Timestamp_End(void* query_disjoint /*= nullptr*/, void* query_end /*= nullptr*/) const
+    bool RHI_CommandList::Timestamp_End(void* query_disjoint /*= nullptr*/, void* query_end /*= nullptr*/)
     {
         if (!query_disjoint || !query_end)
         {
@@ -662,7 +661,7 @@ namespace Spartan
         return true;
     }
 
-    float RHI_CommandList::Timestamp_GetDuration(void* query_disjoint /*= nullptr*/, void* query_start /*= nullptr*/, void* query_end /*= nullptr*/)
+    float RHI_CommandList::Timestamp_GetDuration(void* query_disjoint, void* query_start, void* query_end, const uint32_t pass_index)
     {
         if (!query_disjoint || !query_start || !query_end)
         {
@@ -768,7 +767,17 @@ namespace Spartan
         safe_release(*reinterpret_cast<ID3D11Query**>(&query_object));
     }
 
-    void RHI_CommandList::MarkAndProfileStart(const RHI_PipelineState* pipeline_state)
+    bool RHI_CommandList::IsRecording() const
+    {
+        return true;
+    }
+
+    bool RHI_CommandList::IsIdle() const
+    {
+        return true;
+    }
+
+    void RHI_CommandList::Timeblock_Start(const RHI_PipelineState* pipeline_state)
     {
         if (!pipeline_state || !pipeline_state->pass_name)
             return;
@@ -790,13 +799,11 @@ namespace Spartan
         {
             m_rhi_device->GetContextRhi()->annotation->BeginEvent(FileSystem::StringToWstring(pipeline_state->pass_name).c_str());
         }
-
-        m_passes_active[m_pass_index++] = true;
     }
 
-    void RHI_CommandList::MarkAndProfileEnd(const RHI_PipelineState* pipeline_state)
+    void RHI_CommandList::Timeblock_End(const RHI_PipelineState* pipeline_state)
     {
-        if (!pipeline_state || !m_passes_active[m_pass_index - 1])
+        if (!pipeline_state)
             return;
 
         // Allowed to mark ?
@@ -815,8 +822,6 @@ namespace Spartan
                 m_profiler->TimeBlockEnd(); // gpu
             }
         }
-
-        m_passes_active[--m_pass_index] = false;
     }
 
     bool RHI_CommandList::OnDraw()

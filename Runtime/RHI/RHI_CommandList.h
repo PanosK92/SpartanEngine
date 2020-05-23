@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ======================
-#include <vector>
+#include <array>
 #include <atomic>
 #include "RHI_Definition.h"
 #include "../Core/Spartan_Object.h"
@@ -121,9 +121,9 @@ namespace Spartan
         inline void SetTexture(const uint32_t slot, const std::shared_ptr<RHI_Texture>& texture, const uint8_t scope = RHI_Shader_Pixel) { SetTexture(slot, texture.get(), scope); }
         
         // Timestamps
-        bool Timestamp_Start(void* query_disjoint = nullptr, void* query_start = nullptr) const;
-        bool Timestamp_End(void* query_disjoint = nullptr, void* query_end = nullptr) const;
-        float Timestamp_GetDuration(void* query_disjoint = nullptr, void* query_start = nullptr, void* query_end = nullptr);
+        bool Timestamp_Start(void* query_disjoint = nullptr, void* query_start = nullptr);
+        bool Timestamp_End(void* query_disjoint = nullptr, void* query_end = nullptr);
+        float Timestamp_GetDuration(void* query_disjoint, void* query_start, void* query_end, const uint32_t pass_index);
 
         static uint32_t Gpu_GetMemory(RHI_Device* rhi_device);
         static uint32_t Gpu_GetMemoryUsed(RHI_Device* rhi_device);
@@ -132,16 +132,16 @@ namespace Spartan
         
         // Misc
         void* GetResource_CommandBuffer() const { return m_cmd_buffer; }
-        bool IsRecording() const { return m_cmd_state == RHI_Cmd_List_Recording; }
+        bool IsRecording() const;
+        bool IsIdle() const;
 
 	private:
-        void MarkAndProfileStart(const RHI_PipelineState* pipeline_state);
-        void MarkAndProfileEnd(const RHI_PipelineState* pipeline_state);
+        void Timeblock_Start(const RHI_PipelineState* pipeline_state);
+        void Timeblock_End(const RHI_PipelineState* pipeline_state);
         void _BeginRenderPass();
         bool BindDescriptorSet();
         bool OnDraw();
 
-        uint32_t m_pass_index                       = 0;
         std::atomic<RHI_Cmd_List_State> m_cmd_state = RHI_Cmd_List_Idle;
 		RHI_Pipeline* m_pipeline	                = nullptr; 
         RHI_SwapChain* m_swap_chain                 = nullptr;
@@ -158,8 +158,11 @@ namespace Spartan
         bool m_pipeline_active                      = false;
         bool m_flushed                              = false;
         std::mutex m_mutex_reset;
-        std::vector<uint64_t> m_timestamps;
-        std::vector<bool> m_passes_active;
+
+        // Profiling
+        uint32_t m_timestamp_index = 0;
+        static const uint32_t m_max_timestamps = 256;
+        std::array<uint64_t, m_max_timestamps> m_timestamps;
 
         // Variables to minimise state changes
         uint32_t m_set_id_buffer_vertex = 0;

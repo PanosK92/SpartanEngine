@@ -160,29 +160,27 @@ void Editor::OnTick()
     if (!m_renderer || !m_renderer->IsInitialized())
         return;
 
-    // Editor
-    m_profiler->TimeBlockStart("Editor", TimeBlock_Cpu);
+    // Editor - main window
+    // ImGui - start frame
+    ImGui_ImplWin32_NewFrame();
+    ImGui::NewFrame();
+
+    // Editor - update
+    Widgets_Tick();
+
+    // ImGui - end frame
+    ImGui::Render();
+    cmd_list->Begin();
+    ImGui::RHI::RenderDrawData(ImGui::GetDrawData());
+    m_renderer->Present();
+
+    // Editor - child windows
+    if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable)
     {
-        // ImGui - start frame
-        ImGui_ImplWin32_NewFrame();
-        ImGui::NewFrame();
-
-        // Editor - update
-        Widgets_Tick();
-
-        // ImGui - end frame
-        ImGui::Render();
-        cmd_list->Begin();
-        ImGui::RHI::RenderDrawData(ImGui::GetDrawData());
-        m_renderer->Present();
-
-        // Update and Render additional Platform Windows
-        if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable)
-        {
-            ImGui::UpdatePlatformWindows();
-            ImGui::RenderPlatformWindowsDefault();
-        }
+        ImGui::UpdatePlatformWindows();
+        ImGui::RenderPlatformWindowsDefault();
     }
+
     m_profiler->TimeBlockEnd();
 }
 
