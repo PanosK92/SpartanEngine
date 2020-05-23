@@ -36,9 +36,9 @@ namespace Spartan
     enum RHI_Cmd_List_State
     {
         RHI_Cmd_List_Idle,
-        RHI_Cmd_List_Idle_Sync_Cpu_To_Gpu,
         RHI_Cmd_List_Recording,
-        RHI_Cmd_List_Stopped
+        RHI_Cmd_List_Stopped,
+        RHI_Cmd_List_Submitted
     };
 
 	class SPARTAN_CLASS RHI_CommandList : public Spartan_Object
@@ -133,6 +133,7 @@ namespace Spartan
         // Misc
         void* GetResource_CommandBuffer() const { return m_cmd_buffer; }
         bool IsRecording() const;
+        bool IsSubmitted() const;
         bool IsIdle() const;
         void*& GetConsumedSemaphore() { return m_consumed_semaphore; }
 

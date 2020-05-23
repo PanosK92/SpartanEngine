@@ -386,6 +386,12 @@ namespace Spartan
             return false;
         }
 
+        if (!GetCmdList()->IsSubmitted())
+        {
+            LOG_ERROR("The command list hasn't been submitted, nothing to present");
+            return false;
+        }
+
         if (!m_rhi_device->Queue_Present(m_swap_chain_view, &m_image_index, GetCmdList()->GetConsumedSemaphore()))
         {
             LOG_ERROR("Failed to present");

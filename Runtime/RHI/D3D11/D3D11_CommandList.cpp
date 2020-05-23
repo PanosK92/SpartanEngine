@@ -772,6 +772,11 @@ namespace Spartan
         return true;
     }
 
+    bool RHI_CommandList::IsSubmitted() const
+    {
+        return true;
+    }
+
     bool RHI_CommandList::IsIdle() const
     {
         return true;
