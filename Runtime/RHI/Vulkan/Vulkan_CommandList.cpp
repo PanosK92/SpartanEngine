@@ -64,8 +64,9 @@ namespace Spartan
         // Command buffer
         vulkan_utility::command_buffer::create(m_swap_chain->GetCmdPool(), m_cmd_buffer, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
-        // Fence
-        vulkan_utility::fence::create(m_cmd_list_consumed_fence);
+        // Sync
+        vulkan_utility::fence::create(m_consumed_fence);
+        vulkan_utility::semaphore::create(m_consumed_semaphore);
 
         // Query pool
         if (rhi_context->profiler)
@@ -89,8 +90,9 @@ namespace Spartan
 		// Wait in case the buffer is still in use by the graphics queue
         m_rhi_device->Queue_Wait(RHI_Queue_Graphics);
 
-		// Fence
-        vulkan_utility::fence::destroy(m_cmd_list_consumed_fence);
+		// Sync
+        vulkan_utility::fence::destroy(m_consumed_fence);
+        vulkan_utility::semaphore::destroy(m_consumed_semaphore);
 
         // Command buffer
         vulkan_utility::command_buffer::destroy(m_swap_chain->GetCmdPool(), m_cmd_buffer);
@@ -195,13 +197,15 @@ namespace Spartan
         }
 
         RHI_PipelineState* state = m_pipeline->GetPipelineState();
+        void* wait_semaphore = state->render_target_swapchain ? static_cast<VkSemaphore>(state->render_target_swapchain->Get_Resource_View_AcquiredSemaphore()) : nullptr;
 
         if (!m_rhi_device->Queue_Submit(
-            RHI_Queue_Graphics,                                                                                                                         // queue
-            static_cast<VkCommandBuffer>(m_cmd_buffer),                                                                                                 // cmd buffer
-            state->render_target_swapchain ? static_cast<VkSemaphore>(state->render_target_swapchain->Get_Resource_View_AcquiredSemaphore()) : nullptr, // wait semaphore
-            m_cmd_list_consumed_fence,                                                                                                                  // wait fence
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)                                                                                              // wait flags
+            RHI_Queue_Graphics,                             // queue
+            static_cast<VkCommandBuffer>(m_cmd_buffer),     // cmd buffer
+            wait_semaphore,                                 // wait semaphore
+            m_consumed_semaphore,                           // signal semaphore
+            m_consumed_fence,                               // signal fence
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)  // wait flags
         )
         return false;
 
@@ -222,7 +226,7 @@ namespace Spartan
     {
         if (m_cmd_state == RHI_Cmd_List_Idle_Sync_Cpu_To_Gpu)
         {
-            if (!vulkan_utility::fence::wait_reset(m_cmd_list_consumed_fence))
+            if (!vulkan_utility::fence::wait_reset(m_consumed_fence))
                 return false;
 
             m_descriptor_cache->GrowIfNeeded();
@@ -421,11 +425,11 @@ namespace Spartan
 		VkDeviceSize offsets[]		= { 0 };
 
 		vkCmdBindVertexBuffers(
-            static_cast<VkCommandBuffer>(m_cmd_buffer),     // commandBuffer
-            0,              // firstBinding
-            1,              // bindingCount
-            vertex_buffers, // pBuffers
-            offsets         // pOffsets
+            static_cast<VkCommandBuffer>(m_cmd_buffer), // commandBuffer
+            0,                                          // firstBinding
+            1,                                          // bindingCount
+            vertex_buffers,                             // pBuffers
+            offsets                                     // pOffsets
         );
 
         m_profiler->m_rhi_bindings_buffer_vertex++;
@@ -444,7 +448,7 @@ namespace Spartan
             return;
 
 		vkCmdBindIndexBuffer(
-			static_cast<VkCommandBuffer>(m_cmd_buffer),                                                     // commandBuffer
+			static_cast<VkCommandBuffer>(m_cmd_buffer),                     // commandBuffer
 			static_cast<VkBuffer>(buffer->GetResource()),					// buffer
 			0,																// offset
 			buffer->Is16Bit() ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32 // indexType

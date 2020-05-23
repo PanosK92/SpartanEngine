@@ -386,7 +386,7 @@ namespace Spartan
             return false;
         }
 
-        if (!m_rhi_device->Queue_Present(m_swap_chain_view, &m_image_index))
+        if (!m_rhi_device->Queue_Present(m_swap_chain_view, &m_image_index, GetCmdList()->GetConsumedSemaphore()))
         {
             LOG_ERROR("Failed to present");
             return false;
