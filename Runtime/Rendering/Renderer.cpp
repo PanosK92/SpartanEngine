@@ -196,14 +196,14 @@ namespace Spartan
 		// If there is no camera, do nothing
 		if (!m_camera)
 		{
-            //cmd_list->ClearRenderTarget(m_render_targets[RenderTarget_Composition_Ldr]->GetResource_RenderTarget(), Vector4(0.0f, 0.0f, 0.0f, 1.0f));
+            //cmd_list->Clear(m_render_targets[RenderTarget_Composition_Ldr].get(), Vector4(0.0f, 0.0f, 0.0f, 1.0f));
 			return;
 		}
 
 		// If there is nothing to render clear to camera's color and present
 		if (m_entities.empty())
 		{
-            //cmd_list->ClearRenderTarget(m_render_targets[RenderTarget_Composition_Ldr]->GetResource_RenderTarget(), m_camera->GetClearColor());
+            //cmd_list->Clear(m_render_targets[RenderTarget_Composition_Ldr].get(), m_camera->GetClearColor());
 			return;
 		}
 
@@ -431,6 +431,8 @@ namespace Spartan
 
     bool Renderer::UpdateUberBuffer(RHI_CommandList* cmd_list, const uint32_t offset_index /*= 0*/)
 	{
+        m_buffer_object_offset_index = offset_index;
+
         // Only update if needed
         bool update = m_buffer_uber_gpu->GetOffsetIndexDynamic() != offset_index;
         update      = update ? true : m_buffer_uber_cpu != m_buffer_uber_cpu_previous;

@@ -106,18 +106,18 @@ namespace Spartan
 			create_info.ppEnabledExtensionNames	= extensions_supported.data();
 			create_info.enabledLayerCount		= 0;
 
+            // Validation features
+            VkValidationFeatureEnableEXT enabled_validation_features[]  = { VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT };
+            VkValidationFeaturesEXT validation_features                 = {};
+            validation_features.sType                                   = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
+            validation_features.enabledValidationFeatureCount           = 1;
+            validation_features.pEnabledValidationFeatures              = enabled_validation_features;
+
 			if (m_rhi_context->debug)
 			{
                 // Enable validation layer
 				if (vulkan_utility::layer::is_present(m_rhi_context->validation_layers.front()))
 				{
-                    // Validation features
-                    VkValidationFeatureEnableEXT enabled_validation_features[]  = { VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT };
-                    VkValidationFeaturesEXT validation_features                 = {};
-                    validation_features.sType                                   = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
-                    validation_features.enabledValidationFeatureCount           = 1;
-                    validation_features.pEnabledValidationFeatures              = enabled_validation_features;
-
                     // Validation layers
                     create_info.enabledLayerCount   = static_cast<uint32_t>(m_rhi_context->validation_layers.size());
                     create_info.ppEnabledLayerNames = m_rhi_context->validation_layers.data();

@@ -114,9 +114,9 @@ namespace Spartan
 
         // Get queries
         {
-            if (m_query_pool)
+            if (m_rhi_device->GetContextRhi()->profiler)
             {
-                if (m_rhi_device->GetContextRhi()->profiler)
+                if (m_query_pool)
                 {
                     if (m_timestamp_index != 0)
                     {
@@ -716,8 +716,8 @@ namespace Spartan
             }
 
             // Depth-stencil
-            bool clear_depth    = m_pipeline_state->clear_depth     != state_depth_load     && m_pipeline_state->clear_depth != state_depth_dont_care;
-            bool clear_stencil  = m_pipeline_state->clear_stencil   != state_stencil_load   && m_pipeline_state->clear_stencil != state_stencil_dont_care;
+            bool clear_depth    = m_pipeline_state->clear_depth     != state_depth_load     && m_pipeline_state->clear_depth    != state_depth_dont_care;
+            bool clear_stencil  = m_pipeline_state->clear_stencil   != state_stencil_load   && m_pipeline_state->clear_stencil  != state_stencil_dont_care;
             if (clear_depth || clear_stencil)
             {
                 clear_values[clear_value_count++].depthStencil = VkClearDepthStencilValue{ m_pipeline_state->clear_depth, m_pipeline_state->clear_stencil };
