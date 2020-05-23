@@ -217,14 +217,14 @@ namespace Spartan
         }
 
         // Wait for fence on the next Begin(), if we force it now, perfomance will not be as good
-        m_cmd_state = RHI_Cmd_List_Idle_Sync_Cpu_To_Gpu;
+        m_cmd_state = RHI_Cmd_List_Submitted;
 
         return true;
     }
 
     bool RHI_CommandList::Wait()
     {
-        if (m_cmd_state == RHI_Cmd_List_Idle_Sync_Cpu_To_Gpu)
+        if (m_cmd_state == RHI_Cmd_List_Submitted)
         {
             if (!vulkan_utility::fence::wait_reset(m_consumed_fence))
                 return false;
@@ -632,6 +632,11 @@ namespace Spartan
     bool RHI_CommandList::IsRecording() const
     {
         return m_cmd_state == RHI_Cmd_List_Recording;
+    }
+
+    bool RHI_CommandList::IsSubmitted() const
+    {
+        return m_cmd_state == RHI_Cmd_List_Submitted;
     }
 
     bool RHI_CommandList::IsIdle() const
