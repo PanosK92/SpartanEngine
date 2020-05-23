@@ -168,8 +168,8 @@ namespace Spartan
         bool ValidateResolution(const uint32_t width, const uint32_t height) const;
 
         // Queue
-        bool Queue_Present(void* swapchain_view, uint32_t* image_index) const;
-        bool Queue_Submit(const RHI_Queue_Type type, void* cmd_buffer, void* wait_semaphore = nullptr, void* wait_fence = nullptr, const uint32_t wait_flags = 0) const;
+        bool Queue_Present(void* swapchain_view, uint32_t* image_index, void* wait_semaphore = nullptr) const;
+        bool Queue_Submit(const RHI_Queue_Type type, void* cmd_buffer, void* wait_semaphore = nullptr, void* signal_semaphore = nullptr, void* signal_fence = nullptr, const uint32_t wait_flags = 0) const;
         bool Queue_Wait(const RHI_Queue_Type type) const;
         bool Queue_WaitAll() const;
         void* Queue_Get(const RHI_Queue_Type type) const;

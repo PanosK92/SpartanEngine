@@ -290,14 +290,14 @@ namespace Spartan
 		}
 	}
 
-    bool RHI_Device::Queue_Present(void* swapchain_view, uint32_t* image_index) const
+    bool RHI_Device::Queue_Present(void* swapchain_view, uint32_t* image_index, void* wait_semaphore /*= nullptr*/) const
     {
-        VkSemaphore wait_semaphores[]   = { nullptr };
+        VkSemaphore wait_semaphores[]   = { static_cast<VkSemaphore>(wait_semaphore) };
         VkSwapchainKHR swap_chains[]    = { static_cast<VkSwapchainKHR>(swapchain_view) };
 
         VkPresentInfoKHR present_info   = {};
         present_info.sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-        present_info.waitSemaphoreCount = 0;
+        present_info.waitSemaphoreCount = wait_semaphore ? 1 : 0;
         present_info.pWaitSemaphores    = wait_semaphores;
         present_info.swapchainCount     = 1;
         present_info.pSwapchains        = swap_chains;
@@ -307,24 +307,24 @@ namespace Spartan
         return vulkan_utility::error::check(vkQueuePresentKHR(static_cast<VkQueue>(m_rhi_context->queue_graphics), &present_info));
     }
 
-    bool RHI_Device::Queue_Submit(const RHI_Queue_Type type, void* cmd_buffer, void* wait_semaphore /*= nullptr*/, void* wait_fence /*= nullptr*/, uint32_t wait_flags /*= 0*/) const
+    bool RHI_Device::Queue_Submit(const RHI_Queue_Type type, void* cmd_buffer, void* wait_semaphore /*= nullptr*/, void* signal_semaphore /*= nullptr*/, void* signal_fence /*= nullptr*/, uint32_t wait_flags /*= 0*/) const
     {
-        VkCommandBuffer _cmd_buffer         = static_cast<VkCommandBuffer>(cmd_buffer);
         VkSemaphore wait_semaphores[]       = { static_cast<VkSemaphore>(wait_semaphore) };
+        VkSemaphore signal_semaphores[]     = { static_cast<VkSemaphore>(signal_semaphore) };
         VkPipelineStageFlags _wait_flags[]  = { wait_flags };
 
         VkSubmitInfo submit_info            = {};
         submit_info.sType                   = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submit_info.waitSemaphoreCount      = wait_semaphore ? 1 : 0;
         submit_info.pWaitSemaphores         = wait_semaphores;
+        submit_info.signalSemaphoreCount    = signal_semaphore ? 1 : 0;
+        submit_info.pSignalSemaphores       = signal_semaphores;
         submit_info.pWaitDstStageMask       = _wait_flags;
         submit_info.commandBufferCount      = 1;
-        submit_info.pCommandBuffers         = reinterpret_cast<VkCommandBuffer*>(&_cmd_buffer);
-        submit_info.signalSemaphoreCount    = 0;
-        submit_info.pSignalSemaphores       = nullptr;
-
+        submit_info.pCommandBuffers         = reinterpret_cast<VkCommandBuffer*>(&cmd_buffer);
+        
         lock_guard<mutex> lock(m_queue_mutex);
-        return vulkan_utility::error::check(vkQueueSubmit(static_cast<VkQueue>(Queue_Get(type)), 1, &submit_info, static_cast<VkFence>(wait_fence)));
+        return vulkan_utility::error::check(vkQueueSubmit(static_cast<VkQueue>(Queue_Get(type)), 1, &submit_info, static_cast<VkFence>(signal_fence)));
     }
 
     bool RHI_Device::Queue_Wait(const RHI_Queue_Type type) const
