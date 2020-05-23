@@ -197,7 +197,7 @@ namespace Spartan
         }
 
         RHI_PipelineState* state = m_pipeline->GetPipelineState();
-        void* wait_semaphore = state->render_target_swapchain ? static_cast<VkSemaphore>(state->render_target_swapchain->Get_Resource_View_AcquiredSemaphore()) : nullptr;
+        void* wait_semaphore = state->render_target_swapchain ? static_cast<VkSemaphore>(state->render_target_swapchain->GetImageAcquireSemaphore()) : nullptr;
         vulkan_utility::fence::reset(m_consumed_fence);
 
         if (!m_rhi_device->Queue_Submit(
@@ -690,6 +690,12 @@ namespace Spartan
 
     void RHI_CommandList::_BeginRenderPass()
     {
+        if (m_cmd_state != RHI_Cmd_List_Recording)
+        {
+            LOG_WARNING("Can't record command");
+            return;
+        }
+
         RHI_PipelineState* pipeline_state = m_pipeline->GetPipelineState();
 
         if (!pipeline_state)

@@ -141,9 +141,6 @@ namespace Spartan
 
 	void World::Unload()
     {
-        // Wait in case the gpu is still in flight with entities
-        m_context->GetSubsystem<Renderer>()->GetRhiDevice()->Queue_WaitAll();
-
         // Notify any systems that the entities are about to be cleared
 		FIRE_EVENT(Event_World_Unload);
 
