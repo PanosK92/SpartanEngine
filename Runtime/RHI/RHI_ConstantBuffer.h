@@ -51,12 +51,12 @@ namespace Spartan
         uint32_t GetStride()        const { return m_stride; }
         uint32_t GetOffsetCount()   const { return m_offset_count; }
 
-        // Static offset - The kind of offset that is used when updating the buffer
+        // Static offset - The kind of offset that is used when updating the buffer.
         uint32_t GetOffset()                                const { return m_offset_index * m_stride; }
         uint32_t GetOffsetIndex()                           const { return m_offset_index; }
         void SetOffsetIndex(const uint32_t offset_index)          { m_offset_index = offset_index; }
         
-        // Dynamic offset - The kind of offset that is used before a draw call, it assumes the buffer is already updated, so it only works as pointer.
+        // Dynamic offset - The kind of offset that is used when binding descriptor sets.
         bool IsDynamic()                                        const { return m_is_dynamic; }
         uint32_t GetOffsetDynamic()                             const { return m_offset_dynamic_index * m_stride; }
         uint32_t GetOffsetIndexDynamic()                        const { return m_offset_dynamic_index; }

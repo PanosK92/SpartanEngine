@@ -74,6 +74,17 @@ namespace Spartan::d3d11_utility
 		return "Unknown error code";
 	}
 
+    constexpr bool error_check(const HRESULT result)
+    {
+        if (FAILED(result))
+        {
+            LOG_ERROR("%s", dxgi_error_to_string(result));
+            return false;
+        }
+
+        return true;
+    }
+
 	inline void DetectAdapters()
 	{
 		// Create DirectX graphics interface factory
@@ -265,9 +276,12 @@ namespace Spartan::d3d11_utility
                 flags |= RHI_Swap_Discard;
 			}
 
-            if (flags & RHI_Swap_Sequential)      return DXGI_SWAP_EFFECT_SEQUENTIAL;
-            if (flags & RHI_Swap_Flip_Sequential) return DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
-            if (flags & RHI_Swap_Flip_Discard)    return DXGI_SWAP_EFFECT_FLIP_DISCARD;
+            if (flags & RHI_Swap_Discard)           return DXGI_SWAP_EFFECT_DISCARD;
+            if (flags & RHI_Swap_Sequential)        return DXGI_SWAP_EFFECT_SEQUENTIAL;
+            if (flags & RHI_Swap_Flip_Discard)      return DXGI_SWAP_EFFECT_FLIP_DISCARD;
+            if (flags & RHI_Swap_Flip_Sequential)   return DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
+
+            LOG_ERROR("Unable to determine the requested swap effect, opting for DXGI_SWAP_EFFECT_DISCARD");
 			return DXGI_SWAP_EFFECT_DISCARD;
 		}
 	}

@@ -207,7 +207,13 @@ namespace Spartan
 
 		m_frame_num++;
 		m_is_odd_frame = (m_frame_num % 2) == 1;
-        m_buffer_uber_offset_index = 0;
+
+        // Reset dynamic buffer indices when the swapchain resets to first buffer/command list
+        if (m_swap_chain->GetCmdIndex() == 0)
+        {
+            m_buffer_uber_offset_index      = 0;
+            m_buffer_object_offset_index    = 0;
+        }
 
 		// Get camera matrices
 		{
@@ -449,6 +455,7 @@ namespace Spartan
                 LOG_ERROR("Failed to re-allocate buffer with %d offsets", new_size);
                 return false;
             }
+            LOG_INFO("Increased uber buffer size to %d", new_size);
         }
 
         // Set new buffer offset
@@ -504,6 +511,7 @@ namespace Spartan
                 LOG_ERROR("Failed to re-allocate buffer with %d offsets", new_size);
                 return false;
             }
+            LOG_INFO("Increased object buffer size to %d", new_size);
         }
 
         // Set new buffer offset
