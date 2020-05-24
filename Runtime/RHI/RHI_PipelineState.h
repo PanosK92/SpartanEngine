@@ -48,28 +48,57 @@ namespace Spartan
         void* GetRenderPass()                           const { return m_render_pass; }
         bool operator==(const RHI_PipelineState& rhs)   const { return m_hash == rhs.GetHash(); }
 
-        //= Static, modification can potentially generate a new pipeline ====================================================================================================
-        RHI_Shader* shader_vertex                                                               = nullptr;
-        RHI_Shader* shader_pixel                                                                = nullptr;
-        RHI_Shader* shader_compute                                                              = nullptr;
-        RHI_RasterizerState* rasterizer_state                                                   = nullptr;
-        RHI_BlendState* blend_state                                                             = nullptr;
-        RHI_DepthStencilState* depth_stencil_state                                              = nullptr;
-        RHI_SwapChain* render_target_swapchain                                                  = nullptr;      
-        RHI_PrimitiveTopology_Mode primitive_topology                                           = RHI_PrimitiveTopology_Unknown;
-        RHI_Viewport viewport                                                                   = RHI_Viewport::Undefined;
-        Math::Rectangle scissor                                                                 = Math::Rectangle::Zero;
-        bool dynamic_scissor                                                                    = false;
-        uint32_t vertex_buffer_stride                                                           = 0;
-        uint32_t render_target_color_texture_array_index                                        = 0; // affects render pass, which in turns affects the pipeline
-        uint32_t render_target_depth_stencil_texture_array_index                                = 0; // affects render pass, which in turns affects the pipeline
-        RHI_Texture* render_target_depth_texture                                                = nullptr;
-        std::array<RHI_Texture*, state_max_render_target_count> render_target_color_textures    = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
-        RHI_Image_Layout render_target_color_layout_initial                                     = RHI_Image_Undefined;
-        RHI_Image_Layout render_target_color_layout_final                                       = RHI_Image_Undefined;
-        RHI_Image_Layout render_target_depth_layout_initial                                     = RHI_Image_Undefined;
-        RHI_Image_Layout render_target_depth_layout_final                                       = RHI_Image_Undefined;
-        //===================================================================================================================================================================
+        //= Static, modification can potentially generate a new pipeline ===========================================================
+        RHI_Shader* shader_vertex                           = nullptr;
+        RHI_Shader* shader_pixel                            = nullptr;
+        RHI_Shader* shader_compute                          = nullptr;
+        RHI_RasterizerState* rasterizer_state               = nullptr;
+        RHI_BlendState* blend_state                         = nullptr;
+        RHI_DepthStencilState* depth_stencil_state          = nullptr;
+        RHI_SwapChain* render_target_swapchain              = nullptr;      
+        RHI_PrimitiveTopology_Mode primitive_topology       = RHI_PrimitiveTopology_Unknown;
+        RHI_Viewport viewport                               = RHI_Viewport::Undefined;
+        Math::Rectangle scissor                             = Math::Rectangle::Zero;
+        bool dynamic_scissor                                = false;
+        uint32_t vertex_buffer_stride                       = 0;
+        RHI_Image_Layout render_target_color_layout_initial = RHI_Image_Undefined;
+        RHI_Image_Layout render_target_color_layout_final   = RHI_Image_Undefined;
+        RHI_Image_Layout render_target_depth_layout_initial = RHI_Image_Undefined;
+        RHI_Image_Layout render_target_depth_layout_final   = RHI_Image_Undefined;
+
+        // RTs
+        RHI_Texture* render_target_depth_texture = nullptr;
+        std::array<RHI_Texture*, state_max_render_target_count> render_target_color_textures =
+        {
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr
+        };
+
+        // RT indices (affect render pass)
+        uint32_t render_target_color_texture_array_index            = 0;
+        uint32_t render_target_depth_stencil_texture_array_index    = 0;
+
+        // Clear values
+        float clear_depth       = state_depth_load;
+        uint32_t clear_stencil  = state_stencil_load;
+        std::array<Math::Vector4, state_max_render_target_count> clear_color =
+        {
+            state_color_load,
+            state_color_load,
+            state_color_load,
+            state_color_load,
+            state_color_load,
+            state_color_load,
+            state_color_load,
+            state_color_load
+        };
+        //==========================================================================================================================
 
         //= Dynamic, modification is free =============================================================
         RHI_Texture* unordered_access_view         = nullptr;
@@ -80,13 +109,7 @@ namespace Spartan
         int dynamic_constant_buffer_slot_2  = 3;
 
         // Clear values
-        float clear_depth       = state_depth_dont_care;
-        uint32_t clear_stencil  = state_stencil_dont_care;
-        std::array<Math::Vector4, state_max_render_target_count> clear_color =
-        {
-            state_color_dont_care, state_color_dont_care, state_color_dont_care, state_color_dont_care,
-            state_color_dont_care, state_color_dont_care, state_color_dont_care, state_color_dont_care
-        };
+        
 
         // Profiling
         const char* pass_name   = nullptr;
