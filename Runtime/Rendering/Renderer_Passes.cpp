@@ -252,7 +252,7 @@ namespace Spartan
                             m_buffer_uber_cpu.mat_offset_uv = material->GetOffset();
 
                             // Update constant buffer
-                            UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
+                            UpdateUberBuffer(cmd_list);
 
                             m_set_material_id = material->GetId();
                         }
@@ -263,7 +263,7 @@ namespace Spartan
 
                         // Update uber buffer with cascade transform
                         m_buffer_object_cpu.object = entity->GetTransform()->GetMatrix() * view_projection;
-                        if (!UpdateObjectBuffer(cmd_list, m_buffer_object_offset_index++))
+                        if (!UpdateObjectBuffer(cmd_list))
                             continue;
 
                         cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
@@ -340,7 +340,7 @@ namespace Spartan
                     {
                         // Update uber buffer with cascade transform
                         m_buffer_uber_cpu.transform = transform->GetMatrix() * m_buffer_frame_cpu.view_projection;
-                        UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++); // only updates if needed
+                        UpdateUberBuffer(cmd_list);
                     }
 
                     // Draw	
@@ -492,7 +492,7 @@ namespace Spartan
                         m_buffer_uber_cpu.mat_height_mul    = material->GetProperty(Material_Height);
 
                         // Update constant buffer
-                        UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
+                        UpdateUberBuffer(cmd_list);
                     }
                     
                     // Update uber buffer with entity transform
@@ -506,7 +506,7 @@ namespace Spartan
                         transform->SetWvpLastFrame(m_buffer_object_cpu.wvp_current);
 
                         // Update object buffer
-                        if (!UpdateObjectBuffer(cmd_list, m_buffer_object_offset_index++))
+                        if (!UpdateObjectBuffer(cmd_list))
                             continue;
                     }
                     
@@ -559,7 +559,7 @@ namespace Spartan
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution = Vector2(tex_ssao_noisy->GetWidth(), tex_ssao_noisy->GetHeight());
-            UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
+            UpdateUberBuffer(cmd_list);
 
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
@@ -619,7 +619,7 @@ namespace Spartan
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution = Vector2(tex_ssr->GetWidth(), tex_ssr->GetHeight());
-            UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
+            UpdateUberBuffer(cmd_list);
         
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
@@ -640,7 +640,7 @@ namespace Spartan
 
         //// Update uber buffer
         //m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_ssr->GetWidth()), static_cast<float>(tex_ssr->GetHeight()));
-        //UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
+        //UpdateUberBuffer(cmd_list);
 
         //// Set render state
         //static RHI_PipelineState pipeline_state;
@@ -680,7 +680,7 @@ namespace Spartan
 
         // Update uber buffer
         m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_diffuse->GetWidth()), static_cast<float>(tex_diffuse->GetHeight()));
-        UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
+        UpdateUberBuffer(cmd_list);
 
          // Set render state
         static RHI_PipelineState pipeline_state;
@@ -791,7 +791,7 @@ namespace Spartan
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-            UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
+            UpdateUberBuffer(cmd_list);
 
             // Setup command list
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
@@ -825,7 +825,7 @@ namespace Spartan
 
         // Update uber buffer
         m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-        UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
+        UpdateUberBuffer(cmd_list);
 
         // Set render state
         static RHI_PipelineState pipeline_state;
@@ -956,7 +956,7 @@ namespace Spartan
         if (cmd_list->BeginRenderPass(pipeline_state))
         {
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-            UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
+            UpdateUberBuffer(cmd_list);
 
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
@@ -993,7 +993,7 @@ namespace Spartan
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-            UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
+            UpdateUberBuffer(cmd_list);
         
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
@@ -1033,7 +1033,7 @@ namespace Spartan
             m_buffer_uber_cpu.resolution        = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             m_buffer_uber_cpu.blur_direction    = Vector2(pixel_stride, 0.0f);
             m_buffer_uber_cpu.blur_sigma        = sigma;
-            UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
+            UpdateUberBuffer(cmd_list);
 
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
@@ -1077,7 +1077,7 @@ namespace Spartan
             m_buffer_uber_cpu.resolution        = Vector2(static_cast<float>(tex_in->GetWidth()), static_cast<float>(tex_in->GetHeight()));
             m_buffer_uber_cpu.blur_direction    = Vector2(pixel_stride, 0.0f);
             m_buffer_uber_cpu.blur_sigma        = sigma;
-            UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
+            UpdateUberBuffer(cmd_list);
         
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
@@ -1104,7 +1104,7 @@ namespace Spartan
         {
             m_buffer_uber_cpu.blur_direction    = Vector2(0.0f, pixel_stride);
             m_buffer_uber_cpu.blur_sigma        = sigma;
-            UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
+            UpdateUberBuffer(cmd_list);
         
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
@@ -1156,7 +1156,7 @@ namespace Spartan
             m_buffer_uber_cpu.resolution        = Vector2(static_cast<float>(tex_in->GetWidth()), static_cast<float>(tex_in->GetHeight()));
             m_buffer_uber_cpu.blur_direction    = Vector2(pixel_stride, 0.0f);
             m_buffer_uber_cpu.blur_sigma        = sigma;
-            UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
+            UpdateUberBuffer(cmd_list);
 
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
@@ -1187,7 +1187,7 @@ namespace Spartan
             // Update uber buffer
             m_buffer_uber_cpu.blur_direction    = Vector2(0.0f, pixel_stride);
             m_buffer_uber_cpu.blur_sigma        = sigma;
-            UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
+            UpdateUberBuffer(cmd_list);
 
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
@@ -1231,7 +1231,7 @@ namespace Spartan
 		{
             // Update uber buffer
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-            UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
+            UpdateUberBuffer(cmd_list);
 
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
@@ -1279,7 +1279,7 @@ namespace Spartan
             {
                 // Update uber buffer
                 m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(m_render_tex_bloom[0]->GetWidth()), static_cast<float>(m_render_tex_bloom[0]->GetHeight()));
-                UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
+                UpdateUberBuffer(cmd_list);
         
                 cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
                 cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
@@ -1316,7 +1316,7 @@ namespace Spartan
             {
                 // Update uber buffer
                 m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-                UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
+                UpdateUberBuffer(cmd_list);
         
                 cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
                 cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
@@ -1353,7 +1353,7 @@ namespace Spartan
             {
                 // Update uber buffer
                 m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-                UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
+                UpdateUberBuffer(cmd_list);
         
                 cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
                 cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
@@ -1392,7 +1392,7 @@ namespace Spartan
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-            UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
+            UpdateUberBuffer(cmd_list);
 
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
@@ -1429,7 +1429,7 @@ namespace Spartan
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-            UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
+            UpdateUberBuffer(cmd_list);
 
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
@@ -1450,7 +1450,7 @@ namespace Spartan
 
         // Update uber buffer
         m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-        UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
+        UpdateUberBuffer(cmd_list);
 
         // Luminance
         {
@@ -1536,7 +1536,7 @@ namespace Spartan
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-            UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
+            UpdateUberBuffer(cmd_list);
 
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
@@ -1573,7 +1573,7 @@ namespace Spartan
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-            UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
+            UpdateUberBuffer(cmd_list);
 
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
@@ -1612,7 +1612,7 @@ namespace Spartan
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-            UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
+            UpdateUberBuffer(cmd_list);
 
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
@@ -1649,7 +1649,7 @@ namespace Spartan
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-            UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
+            UpdateUberBuffer(cmd_list);
 
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
@@ -1748,7 +1748,7 @@ namespace Spartan
                     // Update uber buffer
                     m_buffer_uber_cpu.resolution    = m_resolution;
                     m_buffer_uber_cpu.transform     = m_gizmo_grid->ComputeWorldMatrix(m_camera->GetTransform()) * m_buffer_frame_cpu.view_projection_unjittered;
-                    UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
+                    UpdateUberBuffer(cmd_list);
 
                     cmd_list->SetBufferIndex(m_gizmo_grid->GetIndexBuffer());
                     cmd_list->SetBufferVertex(m_gizmo_grid->GetVertexBuffer());
@@ -1909,7 +1909,7 @@ namespace Spartan
                         // Update uber buffer
                         m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_width), static_cast<float>(tex_width));
                         m_buffer_uber_cpu.transform = m_buffer_frame_cpu.view_projection_ortho;
-                        UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
+                        UpdateUberBuffer(cmd_list);
         
                         cmd_list->SetTexture(28, light_tex);
                         cmd_list->SetBufferIndex(m_gizmo_light_rect.GetIndexBuffer());
@@ -1954,7 +1954,7 @@ namespace Spartan
             {
                 m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle().GetTransform(Vector3::Right);
                 m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle().GetColor(Vector3::Right);
-                UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
+                UpdateUberBuffer(cmd_list);
             
                 cmd_list->SetBufferIndex(m_gizmo_transform->GetIndexBuffer());
                 cmd_list->SetBufferVertex(m_gizmo_transform->GetVertexBuffer());
@@ -1968,7 +1968,7 @@ namespace Spartan
             {
                 m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle().GetTransform(Vector3::Up);
                 m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle().GetColor(Vector3::Up);
-                UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
+                UpdateUberBuffer(cmd_list);
 
                 cmd_list->SetBufferIndex(m_gizmo_transform->GetIndexBuffer());
                 cmd_list->SetBufferVertex(m_gizmo_transform->GetVertexBuffer());
@@ -1982,7 +1982,7 @@ namespace Spartan
             {
                 m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle().GetTransform(Vector3::Forward);
                 m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle().GetColor(Vector3::Forward);
-                UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
+                UpdateUberBuffer(cmd_list);
 
                 cmd_list->SetBufferIndex(m_gizmo_transform->GetIndexBuffer());
                 cmd_list->SetBufferVertex(m_gizmo_transform->GetVertexBuffer());
@@ -1998,7 +1998,7 @@ namespace Spartan
                 {
                     m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle().GetTransform(Vector3::One);
                     m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle().GetColor(Vector3::One);
-                    UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
+                    UpdateUberBuffer(cmd_list);
 
                     cmd_list->SetBufferIndex(m_gizmo_transform->GetIndexBuffer());
                     cmd_list->SetBufferVertex(m_gizmo_transform->GetVertexBuffer());
@@ -2063,7 +2063,7 @@ namespace Spartan
                 {
                     m_buffer_uber_cpu.transform     = transform->GetMatrix();
                     m_buffer_uber_cpu.resolution    = Vector2(tex_out->GetWidth(), tex_out->GetHeight());
-                    UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
+                    UpdateUberBuffer(cmd_list);
                 }
 
                 cmd_list->SetTexture(12, tex_depth);
@@ -2111,7 +2111,7 @@ namespace Spartan
                 // Update uber buffer
                 m_buffer_uber_cpu.resolution    = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
                 m_buffer_uber_cpu.color         = m_font->GetColorOutline();
-                UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
+                UpdateUberBuffer(cmd_list);
 
                 cmd_list->SetBufferIndex(m_font->GetIndexBuffer());
                 cmd_list->SetBufferVertex(m_font->GetVertexBuffer());
@@ -2127,7 +2127,7 @@ namespace Spartan
             // Update uber buffer
             m_buffer_uber_cpu.resolution    = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             m_buffer_uber_cpu.color         = m_font->GetColor();
-            UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
+            UpdateUberBuffer(cmd_list);
 
             cmd_list->SetBufferIndex(m_font->GetIndexBuffer());
             cmd_list->SetBufferVertex(m_font->GetVertexBuffer());
@@ -2236,7 +2236,7 @@ namespace Spartan
             // Update uber buffer
             m_buffer_uber_cpu.resolution    = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             m_buffer_uber_cpu.transform     = m_buffer_frame_cpu.view_projection_ortho;
-            UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
+            UpdateUberBuffer(cmd_list);
 
             cmd_list->SetTexture(28, texture);
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
@@ -2281,7 +2281,7 @@ namespace Spartan
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(render_target->GetWidth()), static_cast<float>(render_target->GetHeight()));
-            UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
+            UpdateUberBuffer(cmd_list);
 
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
@@ -2320,7 +2320,7 @@ namespace Spartan
             // Update uber buffer
             m_buffer_uber_cpu.resolution    = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             m_buffer_uber_cpu.transform     = m_buffer_frame_cpu.view_projection_ortho;
-            UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
+            UpdateUberBuffer(cmd_list);
 
             cmd_list->SetTexture(28, tex_in);
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
@@ -2348,7 +2348,7 @@ namespace Spartan
     //    {
     //        // Update uber buffer
     //        m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-    //        UpdateUberBuffer(cmd_list, m_buffer_uber_offset_index++);
+    //        UpdateUberBuffer(cmd_list);
 
     //        cmd_list->SetTexture(31, tex_in, true);
     //        cmd_list->Dispatch(Ceil(m_buffer_uber_cpu.resolution.x / 32.0f), Ceil(m_buffer_uber_cpu.resolution.y / 32.0f));

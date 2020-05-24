@@ -433,17 +433,17 @@ namespace Spartan
         return m_buffer_material_gpu->Unmap();
     }
 
-    bool Renderer::UpdateUberBuffer(RHI_CommandList* cmd_list, const uint32_t offset_index /*= 0*/)
-	{
-        m_buffer_object_offset_index = offset_index;
+    bool Renderer::UpdateUberBuffer(RHI_CommandList* cmd_list)
+    {
+        m_buffer_uber_offset_index++;
 
         // Only update if needed
-        bool update = m_buffer_uber_gpu->GetOffsetIndexDynamic() != offset_index;
+        bool update = m_buffer_uber_gpu->GetOffsetIndexDynamic() != m_buffer_uber_offset_index;
         update      = update ? true : m_buffer_uber_cpu != m_buffer_uber_cpu_previous;
         if (!update)
             return true;
 
-        const uint32_t offset_count = offset_index + 1;
+        const uint32_t offset_count = m_buffer_uber_offset_index + 1;
 
         // Re-allocate buffer with double size (if needed)
         if (offset_count >= m_buffer_uber_gpu->GetOffsetCount())
@@ -459,7 +459,7 @@ namespace Spartan
         }
 
         // Set new buffer offset
-        m_buffer_uber_gpu->SetOffsetIndexDynamic(offset_index);
+        m_buffer_uber_gpu->SetOffsetIndexDynamic(m_buffer_uber_offset_index);
 
         // Dynamic buffers with offsets have to be rebound whenever the offset changes
         if (cmd_list)
@@ -478,7 +478,7 @@ namespace Spartan
         // Update
         if (m_buffer_uber_gpu->IsDynamic())
         {
-            uint64_t offset = offset_index * m_buffer_uber_gpu->GetStride();
+            uint64_t offset = m_buffer_uber_offset_index * m_buffer_uber_gpu->GetStride();
             memcpy(reinterpret_cast<std::byte*>(buffer) + offset, reinterpret_cast<std::byte*>(&m_buffer_uber_cpu), m_buffer_uber_gpu->GetStride());
         }
         else
@@ -491,15 +491,17 @@ namespace Spartan
         return m_buffer_uber_gpu->Unmap();
 	}
 
-    bool Renderer::UpdateObjectBuffer(RHI_CommandList* cmd_list, const uint32_t offset_index /*= 0*/)
+    bool Renderer::UpdateObjectBuffer(RHI_CommandList* cmd_list)
     {
+        m_buffer_object_offset_index++;
+
         // Only update if needed
-        bool update = m_buffer_object_gpu->GetOffsetIndexDynamic() != offset_index;
+        bool update = m_buffer_object_gpu->GetOffsetIndexDynamic() != m_buffer_object_offset_index;
         update      = update ? true : m_buffer_object_cpu != m_buffer_object_cpu_previous;
         if (!update)
             return true;
 
-        const uint32_t offset_count = offset_index + 1;
+        const uint32_t offset_count = m_buffer_object_offset_index + 1;
 
         // Re-allocate buffer with double size (if needed)
         if (offset_count >= m_buffer_object_gpu->GetOffsetCount())
@@ -515,7 +517,7 @@ namespace Spartan
         }
 
         // Set new buffer offset
-        m_buffer_object_gpu->SetOffsetIndexDynamic(offset_index);
+        m_buffer_object_gpu->SetOffsetIndexDynamic(m_buffer_object_offset_index);
 
         // Dynamic buffers with offsets have to be rebound whenever the offset changes
         if (cmd_list)
@@ -534,7 +536,7 @@ namespace Spartan
         // Update
         if (m_buffer_object_gpu->IsDynamic())
         {
-            uint64_t offset = offset_index * m_buffer_object_gpu->GetStride();
+            uint64_t offset = m_buffer_object_offset_index * m_buffer_object_gpu->GetStride();
             memcpy(reinterpret_cast<std::byte*>(buffer) + offset, reinterpret_cast<std::byte*>(&m_buffer_object_cpu), m_buffer_object_gpu->GetStride());
         }
         else

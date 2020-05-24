@@ -270,7 +270,7 @@ namespace Spartan
         uint32_t GetMaxResolution() const;
 
         // Globals
-        void SetGlobalShaderObjectTransform(const Math::Matrix& transform) { m_buffer_object_cpu.object = transform; UpdateObjectBuffer(nullptr, m_buffer_object_offset_index++); }
+        void SetGlobalShaderObjectTransform(const Math::Matrix& transform) { m_buffer_object_cpu.object = transform; UpdateObjectBuffer(nullptr); }
         void SetGlobalSamplersAndConstantBuffers(RHI_CommandList* cmd_list) const;
         RHI_Texture* GetBlackTexture() const { return m_tex_black.get(); }
 
@@ -323,8 +323,8 @@ namespace Spartan
         // Constant buffers
         bool UpdateFrameBuffer();
         bool UpdateMaterialBuffer();
-        bool UpdateUberBuffer(RHI_CommandList* cmd_list, const uint32_t offset_index = 0);
-        bool UpdateObjectBuffer(RHI_CommandList* cmd_list, const uint32_t offset_index = 0);
+        bool UpdateUberBuffer(RHI_CommandList* cmd_list);
+        bool UpdateObjectBuffer(RHI_CommandList* cmd_list);
         bool UpdateLightBuffer(const Light* light);
 
         // Misc
