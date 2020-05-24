@@ -39,6 +39,7 @@ namespace Spartan
 	class SPARTAN_CLASS RHI_Shader : public Spartan_Object
 	{
 	public:
+        RHI_Shader() = default;
 		RHI_Shader(Context* context);
 		~RHI_Shader();
 

@@ -55,8 +55,8 @@ namespace ImGui::RHI
 	// RHI resources
 	static shared_ptr<RHI_Device>				g_rhi_device;
 	static unique_ptr<RHI_Texture>				g_texture;
-	static unique_ptr<RHI_VertexBuffer>			g_vertex_buffer;
-	static unique_ptr<RHI_IndexBuffer>			g_index_buffer;
+	static vector<unique_ptr<RHI_VertexBuffer>>	g_vertex_buffers;
+	static vector<unique_ptr<RHI_IndexBuffer>>	g_index_buffers;
 	static unique_ptr<RHI_DepthStencilState>	g_depth_stencil_state;
 	static unique_ptr<RHI_RasterizerState>		g_rasterizer_state;
 	static unique_ptr<RHI_BlendState>			g_blend_state;
@@ -77,9 +77,7 @@ namespace ImGui::RHI
 
 		// Create required RHI objects
 		{
-			g_vertex_buffer			= make_unique<RHI_VertexBuffer>(g_rhi_device, static_cast<uint32_t>(sizeof(ImDrawVert)));
-			g_index_buffer			= make_unique<RHI_IndexBuffer>(g_rhi_device);
-			g_depth_stencil_state	= make_unique<RHI_DepthStencilState>(g_rhi_device, false, g_renderer->GetComparisonFunction());
+			g_depth_stencil_state = make_unique<RHI_DepthStencilState>(g_rhi_device, false, g_renderer->GetComparisonFunction());
 
 			g_rasterizer_state = make_unique<RHI_RasterizerState>
 			(
@@ -181,27 +179,40 @@ namespace ImGui::RHI
             return;
         }
 
-		// Updated vertex and index buffers
-		{
+        // Updated vertex and index buffers
+        RHI_VertexBuffer* vertex_buffer = nullptr;
+        RHI_IndexBuffer* index_buffer   = nullptr;
+        {
+            uint32_t cmd_index = swap_chain->GetCmdIndex();
+
+            if (cmd_index >= g_vertex_buffers.size())
+            {
+                g_vertex_buffers.emplace_back(make_unique<RHI_VertexBuffer>(g_rhi_device, static_cast<uint32_t>(sizeof(ImDrawVert))));
+                g_index_buffers.emplace_back(make_unique<RHI_IndexBuffer>(g_rhi_device));
+            }
+
+            vertex_buffer   = g_vertex_buffers[cmd_index].get();
+            index_buffer    = g_index_buffers[cmd_index].get();
+
 			// Grow vertex buffer as needed
-			if (g_vertex_buffer->GetVertexCount() < static_cast<unsigned int>(draw_data->TotalVtxCount))
+			if (vertex_buffer->GetVertexCount() < static_cast<unsigned int>(draw_data->TotalVtxCount))
 			{
 				const unsigned int new_size = draw_data->TotalVtxCount + 5000;
-				if (!g_vertex_buffer->CreateDynamic<ImDrawVert>(new_size))
+				if (!vertex_buffer->CreateDynamic<ImDrawVert>(new_size))
 					return;
 			}
 
 			// Grow index buffer as needed
-			if (g_index_buffer->GetIndexCount() < static_cast<unsigned int>(draw_data->TotalIdxCount))
+			if (index_buffer->GetIndexCount() < static_cast<unsigned int>(draw_data->TotalIdxCount))
 			{
 				const unsigned int new_size = draw_data->TotalIdxCount + 10000;
-				if (!g_index_buffer->CreateDynamic<ImDrawIdx>(new_size))
+				if (!index_buffer->CreateDynamic<ImDrawIdx>(new_size))
 					return;
 			}
 
 			// Copy and convert all vertices into a single contiguous buffer		
-			auto vtx_dst = static_cast<ImDrawVert*>(g_vertex_buffer->Map());
-			auto idx_dst = static_cast<ImDrawIdx*>(g_index_buffer->Map());
+			auto vtx_dst = static_cast<ImDrawVert*>(vertex_buffer->Map());
+			auto idx_dst = static_cast<ImDrawIdx*>(index_buffer->Map());
 			if (vtx_dst && idx_dst)
 			{
 				for (auto i = 0; i < draw_data->CmdListsCount; i++)
@@ -213,8 +224,8 @@ namespace ImGui::RHI
 					idx_dst += cmd_list->IdxBuffer.Size;
 				}
 
-				g_vertex_buffer->Unmap();
-				g_index_buffer->Unmap();
+				vertex_buffer->Unmap();
+				index_buffer->Unmap();
 			}
 		}
 
@@ -244,7 +255,7 @@ namespace ImGui::RHI
         pipeline_state.rasterizer_state         = g_rasterizer_state.get();
         pipeline_state.blend_state              = g_blend_state.get();
         pipeline_state.depth_stencil_state      = g_depth_stencil_state.get();
-        pipeline_state.vertex_buffer_stride     = g_vertex_buffer->GetStride();
+        pipeline_state.vertex_buffer_stride     = vertex_buffer->GetStride();
         pipeline_state.render_target_swapchain  = swap_chain;
         pipeline_state.clear_color[0]           = clear ? Vector4(0.0f, 0.0f, 0.0f, 1.0f) : state_color_load;
         pipeline_state.viewport.width           = draw_data->DisplaySize.x;
@@ -270,8 +281,8 @@ namespace ImGui::RHI
                 }
             }
 
-            cmd_list->SetBufferVertex(g_vertex_buffer.get());
-            cmd_list->SetBufferIndex(g_index_buffer.get());
+            cmd_list->SetBufferVertex(vertex_buffer);
+            cmd_list->SetBufferIndex(index_buffer);
 
             // Render command lists
             int global_vtx_offset   = 0;
@@ -366,8 +377,8 @@ namespace ImGui::RHI
 			static_cast<uint32_t>(viewport->Size.x),
 			static_cast<uint32_t>(viewport->Size.y),
 			RHI_Format_R8G8B8A8_Unorm,
-			2,
-            RHI_Present_Immediate | RHI_Swap_Flip_Discard
+			g_renderer->GetSwapChain()->GetBufferCount(),
+            g_renderer->GetSwapChain()->GetFlags()
 		);
 	}
 

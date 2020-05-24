@@ -32,6 +32,7 @@ namespace Spartan
 	class SPARTAN_CLASS RHI_RasterizerState : public Spartan_Object
 	{
 	public:
+        RHI_RasterizerState() = default;
         RHI_RasterizerState(
             const std::shared_ptr<RHI_Device>& rhi_device,
             const RHI_Cull_Mode cull_mode,
