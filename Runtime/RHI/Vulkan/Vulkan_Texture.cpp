@@ -71,6 +71,113 @@ namespace Spartan
         }
     }
 
+    inline bool copy_to_staging_buffer(RHI_Texture* texture, std::vector<VkBufferImageCopy>& buffer_image_copies, void*& staging_buffer)
+    {
+        if (!texture->HasData())
+        {
+            LOG_WARNING("No data to stage");
+            return true;
+        }
+
+        const uint32_t width            = texture->GetWidth();
+        const uint32_t height           = texture->GetHeight();
+        const uint32_t array_size       = texture->GetArraySize();
+        const uint32_t mip_levels       = texture->GetMiplevels();
+        const uint32_t bytes_per_pixel  = texture->GetBytesPerPixel();
+
+        // Fill out VkBufferImageCopy structs describing the array and the mip levels   
+        VkDeviceSize buffer_offset = 0;
+        for (uint32_t array_index = 0; array_index < array_size; array_index++)
+        {
+            for (uint32_t mip_index = 0; mip_index < mip_levels; mip_index++)
+            {
+                uint32_t mip_width  = width >> mip_index;
+                uint32_t mip_height = height >> mip_index;
+
+                VkBufferImageCopy region				= {};
+                region.bufferOffset						= buffer_offset;
+                region.bufferRowLength					= 0;
+                region.bufferImageHeight				= 0;
+                region.imageSubresource.aspectMask      = vulkan_utility::image::get_aspect_mask(texture);
+                region.imageSubresource.mipLevel		= mip_index;
+                region.imageSubresource.baseArrayLayer	= array_index;
+                region.imageSubresource.layerCount		= array_size;
+                region.imageOffset						= { 0, 0, 0 };
+                region.imageExtent						= { mip_width, mip_height, 1 };
+
+                buffer_image_copies[mip_index] = region;
+
+                // Update staging buffer memory requirement (in bytes)
+                buffer_offset += mip_width * mip_height * bytes_per_pixel;
+            }
+        }
+
+        // Create staging buffer
+        VmaAllocation allocation = vulkan_utility::buffer::create(staging_buffer, buffer_offset, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+        // Copy array and mip level data to the staging buffer
+        void* data = nullptr;
+        buffer_offset = 0;
+        if (vulkan_utility::error::check(vmaMapMemory(vulkan_utility::globals::rhi_context->allocator, allocation, &data)))
+        {
+            for (uint32_t array_index = 0; array_index < array_size; array_index++)
+            {
+                for (uint32_t mip_index = 0; mip_index < mip_levels; mip_index++)
+                {
+                    uint64_t buffer_size = (width >> mip_index) * (height >> mip_index) * bytes_per_pixel;
+                    memcpy(static_cast<std::byte*>(data) + buffer_offset, texture->GetData(array_index + mip_index)->data(), buffer_size);
+                    buffer_offset += buffer_size;
+                }
+            }
+
+            vmaUnmapMemory(vulkan_utility::globals::rhi_context->allocator, allocation);
+        }
+
+        return true;
+    }
+
+    inline bool stage(RHI_Texture* texture, RHI_Image_Layout& texture_layout)
+    {
+        // Copy the texture's data to a staging buffer
+        void* staging_buffer = nullptr;
+        std::vector<VkBufferImageCopy> buffer_image_copies(texture->GetMiplevels());
+        if (!copy_to_staging_buffer(texture, buffer_image_copies, staging_buffer))
+            return false;
+
+        // Copy the staging buffer into the image
+        if (VkCommandBuffer cmd_buffer = vulkan_utility::command_buffer_immediate::begin(RHI_Queue_Graphics))
+        {
+            // Optimal layout for images which are the destination of a transfer format
+            RHI_Image_Layout layout = RHI_Image_Transfer_Dst_Optimal;
+
+            // Transition to layout
+            if (!vulkan_utility::image::set_layout(cmd_buffer, texture, layout))
+                return false;
+
+            // Copy the staging buffer to the image
+            vkCmdCopyBufferToImage(
+                cmd_buffer,
+                static_cast<VkBuffer>(staging_buffer),
+                static_cast<VkImage>(texture->Get_Resource()),
+                vulkan_image_layout[layout],
+                static_cast<uint32_t>(buffer_image_copies.size()),
+                buffer_image_copies.data()
+            );
+
+            // End/flush
+            if (!vulkan_utility::command_buffer_immediate::end(RHI_Queue_Graphics))
+                return false;
+
+            // Free staging buffer
+            vulkan_utility::buffer::destroy(staging_buffer);
+
+            // Let the texture know about it's new layout
+            texture_layout = layout;
+        }
+
+        return true;
+    }
+
     RHI_Texture2D::~RHI_Texture2D()
     {
         if (!m_rhi_device->IsInitialized())
@@ -122,7 +229,7 @@ namespace Spartan
         // If the texture has any data, stage it
         if (HasData())
         {
-            if (!vulkan_utility::image::stage(this, m_layout))
+            if (!stage(this, m_layout))
             {
                 LOG_ERROR("Failed to stage");
                 return false;
@@ -240,7 +347,7 @@ namespace Spartan
         // If the texture has any data, stage it
         if (HasData())
         {
-            if (!vulkan_utility::image::stage(this, m_layout))
+            if (!stage(this, m_layout))
                 return false;
         }
 
