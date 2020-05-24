@@ -455,7 +455,7 @@ namespace Spartan
         m_rhi_device->GetContextRhi()->device_context->RSSetScissorRects(1, &d3d11_rectangle);
 	}
 
-	void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer)
+	void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer, const uint64_t offset /*= 0*/)
     {
 		if (!buffer || !buffer->GetResource())
 		{
@@ -465,23 +465,25 @@ namespace Spartan
 
         ID3D11Buffer* vertex_buffer         = static_cast<ID3D11Buffer*>(buffer->GetResource());
         UINT stride                         = buffer->GetStride();
-        UINT offset                         = 0;
+        UINT offsets[]                      = { static_cast<UINT>(offset) };
         ID3D11DeviceContext* device_context = m_rhi_device->GetContextRhi()->device_context;
 
-        // Skip if already set
+        // Get currently set buffer
         ID3D11Buffer* set_buffer    = nullptr;
         UINT set_stride             = buffer->GetStride();
         UINT set_offset             = 0;
         device_context->IAGetVertexBuffers(0, 1, &set_buffer, &set_stride, &set_offset);
-        if (set_buffer == vertex_buffer)
+
+        // Skip if already set
+        if (set_buffer == vertex_buffer && set_offset == offset)
             return;
 
-        device_context->IASetVertexBuffers(0, 1, &vertex_buffer, &stride, &offset);
-
+        // Set
+        device_context->IASetVertexBuffers(0, 1, &vertex_buffer, &stride, offsets);
         m_profiler->m_rhi_bindings_buffer_vertex++;
 	}
 
-	void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer)
+	void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer, const uint64_t offset /*= 0*/)
     {
 		if (!buffer || !buffer->GetResource())
 		{
@@ -490,19 +492,21 @@ namespace Spartan
 		}
 
         ID3D11Buffer* index_buffer          = static_cast<ID3D11Buffer*>(buffer->GetResource());
-        const DXGI_FORMAT format                  = buffer->Is16Bit() ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
+        const DXGI_FORMAT format            = buffer->Is16Bit() ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
         ID3D11DeviceContext* device_context = m_rhi_device->GetContextRhi()->device_context;
 
-        // Skip if already set
+        // Get currently set buffer
         ID3D11Buffer* set_buffer    = nullptr;
         DXGI_FORMAT set_format      = DXGI_FORMAT_UNKNOWN;
         UINT set_offset             = 0;
         device_context->IAGetIndexBuffer(&set_buffer, &set_format, &set_offset);
-        if (set_buffer == index_buffer)
+
+        // Skip if already set
+        if (set_buffer == index_buffer && set_offset == offset)
             return;
 
-        device_context->IASetIndexBuffer(index_buffer, format, 0);
-
+        // Set
+        device_context->IASetIndexBuffer(index_buffer, format, static_cast<UINT>(offset));
         m_profiler->m_rhi_bindings_buffer_index++;
 	}
 

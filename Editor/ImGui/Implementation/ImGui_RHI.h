@@ -52,17 +52,16 @@ namespace ImGui::RHI
 	Context*	g_context		= nullptr;
 	Renderer*	g_renderer		= nullptr;
 
-	// RHI Data	
+	// RHI resources
 	static shared_ptr<RHI_Device>				g_rhi_device;
-	static shared_ptr<RHI_Texture>				g_texture;
-	static shared_ptr<RHI_VertexBuffer>			g_vertex_buffer;
-	static shared_ptr<RHI_IndexBuffer>			g_index_buffer;
-	static shared_ptr<RHI_DepthStencilState>	g_depth_stencil_state;
-	static shared_ptr<RHI_RasterizerState>		g_rasterizer_state;
-	static shared_ptr<RHI_BlendState>			g_blend_state;
-	static shared_ptr<RHI_Shader>				g_shader_vertex;
-    static shared_ptr<RHI_Shader>				g_shader_pixel;
-	static RHI_Viewport							g_viewport;
+	static unique_ptr<RHI_Texture>				g_texture;
+	static unique_ptr<RHI_VertexBuffer>			g_vertex_buffer;
+	static unique_ptr<RHI_IndexBuffer>			g_index_buffer;
+	static unique_ptr<RHI_DepthStencilState>	g_depth_stencil_state;
+	static unique_ptr<RHI_RasterizerState>		g_rasterizer_state;
+	static unique_ptr<RHI_BlendState>			g_blend_state;
+	static unique_ptr<RHI_Shader>				g_shader_vertex;
+    static unique_ptr<RHI_Shader>				g_shader_pixel;
 
 	inline bool Initialize(Context* context, const float width, const float height)
 	{
@@ -78,11 +77,11 @@ namespace ImGui::RHI
 
 		// Create required RHI objects
 		{
-			g_vertex_buffer			= make_shared<RHI_VertexBuffer>(g_rhi_device, static_cast<uint32_t>(sizeof(ImDrawVert)));
-			g_index_buffer			= make_shared<RHI_IndexBuffer>(g_rhi_device);
-			g_depth_stencil_state	= make_shared<RHI_DepthStencilState>(g_rhi_device, false, g_renderer->GetComparisonFunction());
+			g_vertex_buffer			= make_unique<RHI_VertexBuffer>(g_rhi_device, static_cast<uint32_t>(sizeof(ImDrawVert)));
+			g_index_buffer			= make_unique<RHI_IndexBuffer>(g_rhi_device);
+			g_depth_stencil_state	= make_unique<RHI_DepthStencilState>(g_rhi_device, false, g_renderer->GetComparisonFunction());
 
-			g_rasterizer_state = make_shared<RHI_RasterizerState>
+			g_rasterizer_state = make_unique<RHI_RasterizerState>
 			(
 			    g_rhi_device,
 			    RHI_Cull_None,
@@ -93,7 +92,7 @@ namespace ImGui::RHI
 			    false	// anti-aliased lines
 			);
 
-			g_blend_state = make_shared<RHI_BlendState>
+			g_blend_state = make_unique<RHI_BlendState>
 			(
 			    g_rhi_device,
 			    true,
@@ -107,9 +106,9 @@ namespace ImGui::RHI
 
             // Compile shaders
             const std::string shader_path = g_context->GetSubsystem<ResourceCache>()->GetDataDirectory(Asset_Shaders) + "/ImGui.hlsl";
-            g_shader_vertex = make_shared<RHI_Shader>(g_context);
+            g_shader_vertex = make_unique<RHI_Shader>(g_context);
             g_shader_vertex->Compile<RHI_Vertex_Pos2dTexCol8>(RHI_Shader_Vertex, shader_path);
-            g_shader_pixel = make_shared<RHI_Shader>(g_context);
+            g_shader_pixel = make_unique<RHI_Shader>(g_context);
             g_shader_pixel->Compile(RHI_Shader_Pixel, shader_path);
 		}
 
@@ -127,7 +126,7 @@ namespace ImGui::RHI
 			memcpy(&data[0], reinterpret_cast<std::byte*>(pixels), size);
 
 			// Upload texture to graphics system
-			g_texture = make_shared<RHI_Texture2D>(g_context, atlas_width, atlas_height, RHI_Format_R8G8B8A8_Unorm, data);
+			g_texture = make_unique<RHI_Texture2D>(g_context, atlas_width, atlas_height, RHI_Format_R8G8B8A8_Unorm, data);
 			io.Fonts->TexID = static_cast<ImTextureID>(g_texture.get());
 		}
 
@@ -144,24 +143,38 @@ namespace ImGui::RHI
 		return true;
 	}
 
-	inline void Shutdown()
-	{
-		DestroyPlatformWindows();
-	}
+    inline void Shutdown()
+    {
+        DestroyPlatformWindows();
+    }
 
-	inline void RenderDrawData(ImDrawData* draw_data, RHI_SwapChain* swap_chain_other = nullptr, const bool clear = true)
+	inline void Render(ImDrawData* draw_data, RHI_SwapChain* swap_chain_other = nullptr, const bool clear = true)
 	{
+        if (!draw_data)
+        {
+            LOG_ERROR("Invalid draw data");
+            return;
+        }
+
 		// Avoid rendering when minimized, scale coordinates for retina displays (screen coordinates != framebuffer coordinates)
-		const auto fb_width		= static_cast<int>(draw_data->DisplaySize.x * draw_data->FramebufferScale.x);
-		const auto fb_height	= static_cast<int>(draw_data->DisplaySize.y * draw_data->FramebufferScale.y);
+		const int fb_width  = static_cast<int>(draw_data->DisplaySize.x * draw_data->FramebufferScale.x);
+		const int fb_height	= static_cast<int>(draw_data->DisplaySize.y * draw_data->FramebufferScale.y);
 		if (fb_width <= 0 || fb_height <= 0 || draw_data->TotalVtxCount == 0)
 			return;
 
-        // Grab the swap chain we will be working wit
+        // Get the swap chain we will be working with
         bool is_child_window        = swap_chain_other != nullptr;
         RHI_SwapChain* swap_chain   = is_child_window ? swap_chain_other : g_renderer->GetSwapChain();
         RHI_CommandList* cmd_list   = swap_chain->GetCmdList();
 
+        // Validate command list
+        if (!cmd_list)
+        {
+            LOG_ERROR("Invalid command list");
+            return;
+        }
+
+        // Validate command list state
         if (!cmd_list->IsRecording())
         {
             LOG_ERROR("Command list is not recording, can't render anything");
@@ -257,8 +270,8 @@ namespace ImGui::RHI
                 }
             }
 
-            cmd_list->SetBufferVertex(g_vertex_buffer);
-            cmd_list->SetBufferIndex(g_index_buffer);
+            cmd_list->SetBufferVertex(g_vertex_buffer.get());
+            cmd_list->SetBufferIndex(g_index_buffer.get());
 
             // Render command lists
             int global_vtx_offset   = 0;
@@ -298,7 +311,7 @@ namespace ImGui::RHI
         }
 	}
 
-	inline void OnResize(const float width, const float height)
+	inline void Resize(const float width, const float height)
 	{
 		if (!g_renderer || !g_renderer->GetSwapChain())
 			return;
@@ -316,11 +329,33 @@ namespace ImGui::RHI
 	//--------------------------------------------
 	// MULTI-VIEWPORT / PLATFORM INTERFACE SUPPORT
 	//--------------------------------------------
-	static void _CreateWindow(ImGuiViewport* viewport)
+
+    inline RHI_SwapChain* GetSwapchain(ImGuiViewport* viewport)
+    {
+        RHI_SwapChain* swapchain = nullptr;
+
+        if (!viewport)
+        {
+            LOG_ERROR("Invalid viewport");
+            return swapchain;
+        }
+
+        swapchain = static_cast<RHI_SwapChain*>(viewport->RendererUserData);
+
+        if (!swapchain)
+        {
+            LOG_ERROR("Invalid swapchain");
+            return swapchain;
+        }
+
+        return swapchain;
+    }
+
+	static void RHI_CreateWindow(ImGuiViewport* viewport)
 	{
 		if (!viewport)
 		{
-			LOG_ERROR_INVALID_PARAMETER();
+            LOG_ERROR("Invalid viewport");
 			return;
 		}
 
@@ -336,33 +371,21 @@ namespace ImGui::RHI
 		);
 	}
 
-	static void _DestroyWindow(ImGuiViewport* viewport)
+	static void RHI_DestroyWindow(ImGuiViewport* viewport)
 	{
-		if (!viewport)
-		{
-            LOG_ERROR("Invalid viewport");
-			return;
-		}
+        RHI_SwapChain* swap_chain = GetSwapchain(viewport);
+        if (!swap_chain)
+            return;
 
-        RHI_SwapChain* swap_chain = static_cast<RHI_SwapChain*>(viewport->RendererUserData);
 		safe_delete(swap_chain);
 		viewport->RendererUserData = nullptr;
 	}
 
-	static void _SetWindowSize(ImGuiViewport* viewport, const ImVec2 size)
+	static void RHI_SetWindowSize(ImGuiViewport* viewport, const ImVec2 size)
 	{
-		if (!viewport)
-		{
-            LOG_ERROR("Invalid viewport");
-			return;
-		}
-
-		auto swap_chain = static_cast<RHI_SwapChain*>(viewport->RendererUserData);
-		if (!swap_chain)
-		{
-            LOG_ERROR("Invalid swapchain");
-			return;
-		}
+        RHI_SwapChain* swap_chain = GetSwapchain(viewport);
+        if (!swap_chain)
+            return;
 		
 		if (!swap_chain->Resize(static_cast<unsigned int>(size.x), static_cast<unsigned int>(size.y)))
 		{
@@ -370,28 +393,19 @@ namespace ImGui::RHI
 		}
 	}
 
-	static void _RenderWindow(ImGuiViewport* viewport, void*)
+	static void RHI_RenderWindow(ImGuiViewport* viewport, void*)
 	{
-		if (!viewport)
-		{
-            LOG_ERROR("Invalid viewport");
-			return;
-		}
-
-        RHI_SwapChain* swap_chain = static_cast<RHI_SwapChain*>(viewport->RendererUserData);
+        RHI_SwapChain* swap_chain = GetSwapchain(viewport);
 		if (!swap_chain)
-		{
-            LOG_ERROR("Invalid swapchain");
 			return;
-		}
 
-        if (!swap_chain->GetCmdList()->Begin())
+        if (swap_chain->GetCmdList() && !swap_chain->GetCmdList()->Begin())
         {
             LOG_ERROR("Failed to begin command list");
         }
 
 		const auto clear = !(viewport->Flags & ImGuiViewportFlags_NoRendererClear);
-		RenderDrawData(viewport->DrawData, swap_chain, clear);
+		Render(viewport->DrawData, swap_chain, clear);
 
         if (!swap_chain->GetCmdList()->Submit())
         {
@@ -399,34 +413,25 @@ namespace ImGui::RHI
         }
 	}
 
-	static void _Present(ImGuiViewport* viewport, void*)
-	{
-		if (!viewport)
-		{
-            LOG_ERROR("Invalid viewport");
-			return;
-		}
-
-		const auto swap_chain = static_cast<RHI_SwapChain*>(viewport->RendererUserData);
-		if (!swap_chain)
-		{
-            LOG_ERROR("Invalid swapchain");
-			return;
-		}
+    static void RHI_SwapBuffers(ImGuiViewport* viewport, void*)
+    {
+        RHI_SwapChain* swap_chain = GetSwapchain(viewport);
+        if (!swap_chain)
+            return;
 
         if (!swap_chain->Present())
         {
             LOG_ERROR("Failed to present");
         }
-	}
+    }
 
 	inline void InitializePlatformInterface()
 	{
-		auto& platform_io					= GetPlatformIO();
-		platform_io.Renderer_CreateWindow	= _CreateWindow;
-		platform_io.Renderer_DestroyWindow	= _DestroyWindow;
-		platform_io.Renderer_SetWindowSize	= _SetWindowSize;
-		platform_io.Renderer_RenderWindow	= _RenderWindow;
-		platform_io.Renderer_SwapBuffers	= _Present;
+        ImGuiPlatformIO& platform_io        = ImGui::GetPlatformIO();
+        platform_io.Renderer_CreateWindow   = RHI_CreateWindow;
+        platform_io.Renderer_DestroyWindow  = RHI_DestroyWindow;
+        platform_io.Renderer_SetWindowSize  = RHI_SetWindowSize;
+        platform_io.Renderer_RenderWindow   = RHI_RenderWindow;
+        platform_io.Renderer_SwapBuffers    = RHI_SwapBuffers;
 	}
 }

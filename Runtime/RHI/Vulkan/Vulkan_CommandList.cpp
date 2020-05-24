@@ -278,7 +278,7 @@ namespace Spartan
         {
             // If the pipeline changed, we are using new descriptors, so the resources have to be set again
             m_set_id_buffer_vertex  = 0;
-            m_set_id_buffer_pixel   = 0;
+            m_set_id_buffer_index   = 0;
 
             // Vulkan doesn't have a persistent state so global resources have to be set
             m_renderer->SetGlobalSamplersAndConstantBuffers(this);
@@ -410,7 +410,7 @@ namespace Spartan
         );
 	}
 
-	void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer)
+	void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer, const uint64_t offset /*= 0*/)
 	{
         if (m_cmd_state != RHI_Cmd_List_Recording)
         {
@@ -418,11 +418,11 @@ namespace Spartan
             return;
         }
 
-        if (m_set_id_buffer_vertex == buffer->GetId())
+        if (m_set_id_buffer_vertex == buffer->GetId() && m_set_id_buffer_vertex_offset == offset)
             return;
 
 		VkBuffer vertex_buffers[]	= { static_cast<VkBuffer>(buffer->GetResource()) };
-		VkDeviceSize offsets[]		= { 0 };
+		VkDeviceSize offsets[]		= { offset };
 
 		vkCmdBindVertexBuffers(
             static_cast<VkCommandBuffer>(m_cmd_buffer), // commandBuffer
@@ -434,9 +434,10 @@ namespace Spartan
 
         m_profiler->m_rhi_bindings_buffer_vertex++;
         m_set_id_buffer_vertex = buffer->GetId();
+        m_set_id_buffer_vertex_offset = offset;
 	}
 
-	void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer)
+	void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer, const uint64_t offset /*= 0*/)
 	{
         if (m_cmd_state != RHI_Cmd_List_Recording)
         {
@@ -444,18 +445,19 @@ namespace Spartan
             return;
         }
 
-        if (m_set_id_buffer_pixel == buffer->GetId())
+        if (m_set_id_buffer_index == buffer->GetId() && m_set_id_buffer_index_offset == offset)
             return;
 
 		vkCmdBindIndexBuffer(
 			static_cast<VkCommandBuffer>(m_cmd_buffer),                     // commandBuffer
 			static_cast<VkBuffer>(buffer->GetResource()),					// buffer
-			0,																// offset
+            offset,															// offset
 			buffer->Is16Bit() ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32 // indexType
 		);
 
         m_profiler->m_rhi_bindings_buffer_index++;
-        m_set_id_buffer_pixel = buffer->GetId();
+        m_set_id_buffer_index = buffer->GetId();
+        m_set_id_buffer_index_offset = offset;
 	}
 
     void RHI_CommandList::SetConstantBuffer(const uint32_t slot, const uint8_t scope, RHI_ConstantBuffer* constant_buffer) const
@@ -792,7 +794,7 @@ namespace Spartan
             // Upon setting a new descriptor, resources have to be set again.
             // Note: I could optimize this further and see if the descriptor happens to contain them.
             m_set_id_buffer_vertex  = 0;
-            m_set_id_buffer_pixel   = 0;
+            m_set_id_buffer_index   = 0;
         }
 
         return result;

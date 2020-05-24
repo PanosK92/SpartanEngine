@@ -101,12 +101,12 @@ namespace Spartan
 		void SetScissorRectangle(const Math::Rectangle& scissor_rectangle) const;
 
 		// Vertex buffer
-		void SetBufferVertex(const RHI_VertexBuffer* buffer);
-        inline void SetBufferVertex(const std::shared_ptr<RHI_VertexBuffer>& buffer) { SetBufferVertex(buffer.get()); }
+		void SetBufferVertex(const RHI_VertexBuffer* buffer, const uint64_t offset = 0);
+        inline void SetBufferVertex(const std::shared_ptr<RHI_VertexBuffer>& buffer, const uint64_t offset = 0) { SetBufferVertex(buffer.get(), offset); }
 
 		// Index buffer
-		void SetBufferIndex(const RHI_IndexBuffer* buffer);
-        inline void SetBufferIndex(const std::shared_ptr<RHI_IndexBuffer>& buffer) { SetBufferIndex(buffer.get()); }
+		void SetBufferIndex(const RHI_IndexBuffer* buffer, const uint64_t offset = 0);
+        inline void SetBufferIndex(const std::shared_ptr<RHI_IndexBuffer>& buffer, const uint64_t offset = 0) { SetBufferIndex(buffer.get(), offset); }
 
 		// Constant buffer
         void SetConstantBuffer(const uint32_t slot, const uint8_t scope, RHI_ConstantBuffer* constant_buffer) const;
@@ -169,6 +169,8 @@ namespace Spartan
 
         // Variables to minimise state changes
         uint32_t m_set_id_buffer_vertex = 0;
-        uint32_t m_set_id_buffer_pixel  = 0;
+        uint64_t m_set_id_buffer_vertex_offset = 0;
+        uint32_t m_set_id_buffer_index  = 0;
+        uint64_t m_set_id_buffer_index_offset = 0;
 	};
 }

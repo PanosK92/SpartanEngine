@@ -263,7 +263,7 @@ namespace Spartan
 
                         // Update uber buffer with cascade transform
                         m_buffer_object_cpu.object = entity->GetTransform()->GetMatrix() * view_projection;
-                        if (!UpdateObjectBuffer(cmd_list, array_index))
+                        if (!UpdateObjectBuffer(cmd_list, m_buffer_object_offset_index++))
                             continue;
 
                         cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
@@ -506,7 +506,7 @@ namespace Spartan
                         transform->SetWvpLastFrame(m_buffer_object_cpu.wvp_current);
 
                         // Update object buffer
-                        if (!UpdateObjectBuffer(cmd_list, i))
+                        if (!UpdateObjectBuffer(cmd_list, m_buffer_object_offset_index++))
                             continue;
                     }
                     

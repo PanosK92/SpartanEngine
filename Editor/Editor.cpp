@@ -136,7 +136,7 @@ void Editor::OnWindowMessage(WindowData& window_data)
 
         if (different_size && !window_minimized)
         {
-            ImGui::RHI::OnResize(window_data.width, window_data.height);
+            ImGui::RHI::Resize(window_data.width, window_data.height);
         }
 
         m_engine->SetWindowData(window_data);
@@ -170,7 +170,7 @@ void Editor::OnTick()
 
     // ImGui - end frame
     ImGui::Render();
-    ImGui::RHI::RenderDrawData(ImGui::GetDrawData());
+    ImGui::RHI::Render(ImGui::GetDrawData());
     m_renderer->Present();
 
     // Editor - child windows

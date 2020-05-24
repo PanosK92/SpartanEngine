@@ -46,7 +46,7 @@ namespace Spartan
 		const uint32_t width,
 		const uint32_t height,
 		const RHI_Format format	    /*= Format_R8G8B8A8_UNORM*/,	
-		const uint32_t buffer_count	/*= 1 */,
+		const uint32_t buffer_count	/*= 2 */,
         const uint32_t flags	    /*= Present_Immediate */
 	)
 	{
@@ -77,9 +77,7 @@ namespace Spartan
 		if (const auto& adapter = rhi_device->GetPrimaryPhysicalDevice())
 		{
 			auto dxgi_adapter = static_cast<IDXGIAdapter*>(adapter->GetData());
-			dxgi_adapter->GetParent(IID_PPV_ARGS(&dxgi_factory));
-
-			if (!dxgi_factory)
+			if (dxgi_adapter->GetParent(IID_PPV_ARGS(&dxgi_factory)) != S_OK)
 			{
 				LOG_ERROR("Failed to get adapter's factory");
 				return;
@@ -102,30 +100,24 @@ namespace Spartan
 
 		// Create swap chain
 		{
-			DXGI_SWAP_CHAIN_DESC desc;
-			ZeroMemory(&desc, sizeof(desc));
-			desc.BufferCount					= static_cast<UINT>(buffer_count);
-			desc.BufferDesc.Width				= static_cast<UINT>(width);
-			desc.BufferDesc.Height				= static_cast<UINT>(height);
-			desc.BufferDesc.Format				= d3d11_format[format];
-			desc.BufferUsage					= DXGI_USAGE_RENDER_TARGET_OUTPUT;
-			desc.OutputWindow					= hwnd;
-			desc.SampleDesc.Count				= 1;
-			desc.SampleDesc.Quality				= 0;
-			desc.Windowed						= m_windowed ? TRUE : FALSE;
-			desc.BufferDesc.ScanlineOrdering	= DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
-			desc.BufferDesc.Scaling				= DXGI_MODE_SCALING_UNSPECIFIED;
-			desc.SwapEffect						= d3d11_utility::swap_chain::get_swap_effect(m_flags);
-			desc.Flags							= d3d11_utility::swap_chain::get_flags(m_flags);
+            DXGI_SWAP_CHAIN_DESC desc   = {};
+			desc.BufferCount			= static_cast<UINT>(buffer_count);
+			desc.BufferDesc.Width		= static_cast<UINT>(width);
+			desc.BufferDesc.Height		= static_cast<UINT>(height);
+			desc.BufferDesc.Format		= d3d11_format[format];
+			desc.BufferUsage			= DXGI_USAGE_RENDER_TARGET_OUTPUT;
+			desc.OutputWindow			= hwnd;
+			desc.SampleDesc.Count		= 1;
+			desc.SampleDesc.Quality		= 0;
+			desc.Windowed				= m_windowed ? TRUE : FALSE;
+			desc.SwapEffect				= d3d11_utility::swap_chain::get_swap_effect(m_flags);
+			desc.Flags					= d3d11_utility::swap_chain::get_flags(m_flags);
 
-			auto swap_chain		= static_cast<IDXGISwapChain*>(m_swap_chain_view);
-			const auto result	= dxgi_factory->CreateSwapChain(m_rhi_device->GetContextRhi()->device, &desc, &swap_chain);
-			if (FAILED(result))
+			if (!d3d11_utility::error_check(dxgi_factory->CreateSwapChain(m_rhi_device->GetContextRhi()->device, &desc, reinterpret_cast<IDXGISwapChain**>(&m_swap_chain_view))))
 			{
-				LOG_ERROR("%s", d3d11_utility::dxgi_error_to_string(result));
+                LOG_ERROR("Failed to create swapchain");
 				return;
 			}
-			m_swap_chain_view = static_cast<void*>(swap_chain);
 		}
 
 		// Create the render target
@@ -273,7 +265,7 @@ namespace Spartan
 
 		if (!m_swap_chain_view)
 		{
-			LOG_ERROR_INVALID_INTERNALS();
+            LOG_ERROR("Can't present, swapchain failed to initialise");
 			return false;
 		}
 

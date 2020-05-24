@@ -54,9 +54,10 @@ namespace Spartan
         uint32_t GetWidth()                 const { return m_width; }
         uint32_t GetHeight()                const { return m_height; }
         uint32_t GetBufferCount()           const { return m_buffer_count; }
+        uint32_t GetCmdIndex()              const { return m_cmd_index; }
         uint32_t GetImageIndex()            const { return m_image_index; }
         bool IsInitialized()                const { return m_initialized; }
-        RHI_CommandList* GetCmdList()             { return m_cmd_lists[m_cmd_index].get(); }
+        RHI_CommandList* GetCmdList()             { return m_cmd_index < static_cast<uint32_t>(m_cmd_lists.size()) ? m_cmd_lists[m_cmd_index].get() : nullptr; }
         void* GetImageAcquireSemaphore()    const { return m_present ? m_image_acquired_semaphore[m_cmd_index] : nullptr; }
 
         // Layout
