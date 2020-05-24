@@ -32,6 +32,7 @@ namespace Spartan
 	class SPARTAN_CLASS RHI_DepthStencilState : public Spartan_Object
 	{
 	public:
+        RHI_DepthStencilState() = default;
 		RHI_DepthStencilState(
             const std::shared_ptr<RHI_Device>& rhi_device,
             const bool depth_test                               = true,

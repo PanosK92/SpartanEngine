@@ -54,6 +54,7 @@ namespace Spartan
         uint32_t GetWidth()                 const { return m_width; }
         uint32_t GetHeight()                const { return m_height; }
         uint32_t GetBufferCount()           const { return m_buffer_count; }
+        uint32_t GetFlags()                 const { return m_flags; }
         uint32_t GetCmdIndex()              const { return m_cmd_index; }
         uint32_t GetImageIndex()            const { return m_image_index; }
         bool IsInitialized()                const { return m_initialized; }

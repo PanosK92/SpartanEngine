@@ -205,7 +205,7 @@ namespace Spartan
 		const uint32_t width,
 		const uint32_t height,
         const RHI_Format format		/*= Format_R8G8B8A8_UNORM */,
-        const uint32_t buffer_count	/*= 1 */,
+        const uint32_t buffer_count	/*= 2 */,
         const uint32_t flags		/*= Present_Immediate */
 	)
 	{
