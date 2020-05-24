@@ -351,9 +351,9 @@ namespace Spartan
     void RHI_CommandList::Clear(RHI_PipelineState& pipeline_state)
     {
         // Color
-        for (auto i = 0; i < state_max_render_target_count; i++)
+        for (uint8_t i = 0; i < state_max_render_target_count; i++)
         {
-            if (pipeline_state.clear_color[i] != state_color_load && pipeline_state.clear_color[i] != state_depth_dont_care)
+            if (pipeline_state.clear_color[i] != state_color_load && pipeline_state.clear_color[i] != state_color_dont_care)
             {
                 if (pipeline_state.render_target_swapchain)
                 {

@@ -202,18 +202,32 @@ namespace Spartan
         // RTs
         bool has_rt_color = false;
         {
+            uint8_t load_op = 0;
+
+            // Color
             for (uint32_t i = 0; i < state_max_render_target_count; i++)
             {
                 if (RHI_Texture* texture = render_target_color_textures[i])
                 {
                     Utility::Hash::hash_combine(m_hash, texture->GetId());
+
+                    load_op = clear_color[i] == state_color_dont_care ? 0 : clear_color[i] == state_color_load ? 1 : 2;
+                    Utility::Hash::hash_combine(m_hash, load_op);
+
                     has_rt_color = true;
                 }
             }
 
+            // Depth
             if (render_target_depth_texture)
             {
                 Utility::Hash::hash_combine(m_hash, render_target_depth_texture->GetId());
+
+                load_op = clear_depth == state_depth_dont_care ? 0 : clear_depth == state_depth_load ? 1 : 2;
+                Utility::Hash::hash_combine(m_hash, load_op);
+
+                load_op = clear_stencil == state_stencil_dont_care ? 0 : clear_stencil == state_stencil_load ? 1 : 2;
+                Utility::Hash::hash_combine(m_hash, load_op);
             }
         }
 

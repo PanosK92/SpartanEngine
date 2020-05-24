@@ -297,8 +297,8 @@ namespace Spartan
     }
 
     // Engine constants 
-    static const Math::Vector4  state_color_dont_care           = Math::Vector4::InfinityNeg;
-    static const Math::Vector4  state_color_load                = Math::Vector4::Infinity;
+    static const Math::Vector4  state_color_dont_care           = Math::Vector4(-std::numeric_limits<float>::infinity(), 0.0f, 0.0f, 0.0f);
+    static const Math::Vector4  state_color_load                = Math::Vector4(std::numeric_limits<float>::infinity(), 0.0f, 0.0f, 0.0f);
     static const float          state_depth_dont_care           = -std::numeric_limits<float>::infinity();
     static const float          state_depth_load                = std::numeric_limits<float>::infinity();
     static const uint32_t       state_stencil_dont_care         = (std::numeric_limits<uint32_t>::max)();

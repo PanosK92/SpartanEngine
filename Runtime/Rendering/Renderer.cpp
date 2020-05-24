@@ -79,7 +79,7 @@ namespace Spartan
         m_option_values[Option_Value_Gamma]                   = 2.2f;
         m_option_values[Option_Value_Sharpen_Strength]        = 1.0f;
         m_option_values[Option_Value_Sharpen_Clamp]           = 0.35f;
-        m_option_values[Option_Value_Bloom_Intensity]         = 0.3f;
+        m_option_values[Option_Value_Bloom_Intensity]         = 0.1f;
         m_option_values[Option_Value_Motion_Blur_Intensity]   = 0.01f;
 
 		// Subscribe to events
