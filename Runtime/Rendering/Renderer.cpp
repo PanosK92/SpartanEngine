@@ -470,11 +470,13 @@ namespace Spartan
             return false;
         }
 
+        uint64_t size   = buffer_gpu->GetStride();
+        uint64_t offset = offset_index * size;
+
         // Update
         if (buffer_gpu->IsDynamic())
         {
-            uint64_t offset = offset_index * buffer_gpu->GetStride();
-            memcpy(reinterpret_cast<std::byte*>(buffer) + offset, reinterpret_cast<std::byte*>(&buffer_cpu), buffer_gpu->GetStride());
+            memcpy(reinterpret_cast<std::byte*>(buffer) + offset, reinterpret_cast<std::byte*>(&buffer_cpu), size);
         }
         else
         {
@@ -483,7 +485,7 @@ namespace Spartan
         buffer_cpu_previous = buffer_cpu;
 
         // Unmap
-        return buffer_gpu->Unmap();
+        return buffer_gpu->Unmap(offset, size);
     }
 
     bool Renderer::UpdateUberBuffer(RHI_CommandList* cmd_list)
@@ -733,9 +735,9 @@ namespace Spartan
         return m_rhi_device->GetContextRhi()->max_texture_dimension_2d;
     }
 
-    void Renderer::SetGlobalShaderObjectTransform(const Math::Matrix& transform)
+    void Renderer::SetGlobalShaderObjectTransform(RHI_CommandList* cmd_list, const Math::Matrix& transform)
     {
         m_buffer_object_cpu.object = transform;
-        UpdateObjectBuffer(m_swap_chain->GetCmdList());
+        UpdateObjectBuffer(cmd_list);
     }
 }

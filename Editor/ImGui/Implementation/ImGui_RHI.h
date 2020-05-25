@@ -245,7 +245,7 @@ namespace ImGui::RHI
 				0.0f,			0.0f,			0.0f,	1.0f
 			);
 
-            g_renderer->SetGlobalShaderObjectTransform(wvp);
+            g_renderer->SetGlobalShaderObjectTransform(cmd_list, wvp);
 		}
 
 		// Set render state

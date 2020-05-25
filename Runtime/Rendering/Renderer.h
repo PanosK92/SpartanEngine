@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include <unordered_map>
 #include <array>
+#include <atomic>
 #include "Renderer_ConstantBuffers.h"
 #include "Material.h"
 #include "../Core/ISubsystem.h"
@@ -183,7 +184,6 @@ namespace Spartan
         // Lighting
         RenderTarget_Light_Diffuse,
         RenderTarget_Light_Specular,
-        // Volumetric light
         RenderTarget_Light_Volumetric,
         // Composition
         RenderTarget_Composition_Hdr,
@@ -270,7 +270,7 @@ namespace Spartan
         uint32_t GetMaxResolution() const;
 
         // Globals
-        void SetGlobalShaderObjectTransform(const Math::Matrix& transform);
+        void SetGlobalShaderObjectTransform(RHI_CommandList* cmd_list, const Math::Matrix& transform);
         void SetGlobalSamplersAndConstantBuffers(RHI_CommandList* cmd_list) const;
         RHI_Texture* GetBlackTexture() const { return m_tex_black.get(); }
 
@@ -407,7 +407,7 @@ namespace Spartan
         float m_far_plane                       = 0.0f;
         uint64_t m_frame_num                    = 0;
         bool m_is_odd_frame                     = false;
-        bool m_is_rendering                     = false;
+        std::atomic<bool> m_is_rendering        = false;
         bool m_brdf_specular_lut_rendered       = false;      
         const float m_gizmo_size_max            = 5.0f;
         const float m_gizmo_size_min            = 0.1f;

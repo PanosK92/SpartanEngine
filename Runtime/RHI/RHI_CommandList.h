@@ -37,8 +37,8 @@ namespace Spartan
     {
         RHI_Cmd_List_Idle,
         RHI_Cmd_List_Recording,
-        RHI_Cmd_List_Stopped,
-        RHI_Cmd_List_Submitted
+        RHI_Cmd_List_Submittable,
+        RHI_Cmd_List_Pending
     };
 
 	class SPARTAN_CLASS RHI_CommandList : public Spartan_Object
@@ -57,10 +57,12 @@ namespace Spartan
         {
             if (m_cmd_state == RHI_Cmd_List_Recording)
             {
-                bool had_render_pass = m_render_pass_active;
-
-                if (!EndRenderPass())
-                    return false;
+                bool has_render_pass = m_render_pass_active;
+                if (has_render_pass)
+                {
+                    if (!EndRenderPass())
+                        return false;
+                }
 
                 if (!Stop())
                     return false;
@@ -71,7 +73,7 @@ namespace Spartan
                 if (!Begin())
                     return false;
 
-                if (had_render_pass)
+                if (has_render_pass)
                 {
                     if (!BeginRenderPass(*m_pipeline_state))
                         return false;
@@ -133,7 +135,7 @@ namespace Spartan
         // Misc
         void* GetResource_CommandBuffer() const { return m_cmd_buffer; }
         bool IsRecording() const;
-        bool IsSubmitted() const;
+        bool IsPending() const;
         bool IsIdle() const;
         void*& GetConsumedSemaphore() { return m_consumed_semaphore; }
 
@@ -168,9 +170,9 @@ namespace Spartan
         std::array<uint64_t, m_max_timestamps> m_timestamps;
 
         // Variables to minimise state changes
-        uint32_t m_set_id_buffer_vertex = 0;
-        uint64_t m_set_id_buffer_vertex_offset = 0;
-        uint32_t m_set_id_buffer_index  = 0;
-        uint64_t m_set_id_buffer_index_offset = 0;
+        uint32_t m_vertex_buffer_id     = 0;
+        uint64_t m_vertex_buffer_offset = 0;
+        uint32_t m_index_buffer_id      = 0;
+        uint64_t m_index_buffer_offset  = 0;
 	};
 }

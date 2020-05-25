@@ -776,7 +776,7 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_CommandList::IsSubmitted() const
+    bool RHI_CommandList::IsPending() const
     {
         return true;
     }

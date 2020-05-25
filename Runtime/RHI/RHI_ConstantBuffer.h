@@ -44,8 +44,8 @@ namespace Spartan
             return _Create();
 		}
 
-		void* Map() const;
-		bool Unmap() const;
+		void* Map();  
+		bool Unmap(const uint64_t offset = 0, const uint64_t size = 0);
 
 		void* GetResource()         const { return m_buffer; }
         uint32_t GetStride()        const { return m_stride; }
@@ -65,7 +65,8 @@ namespace Spartan
 	private:
 		bool _Create();
 
-        bool m_is_dynamic               = false;
+        bool m_is_dynamic               = false;    // only affects Vulkan
+        bool m_persistent_mapping       = true;     // only affects Vulkan, saves 2 ms of CPU time
         uint32_t m_stride               = 0;
         uint32_t m_offset_count         = 1;
         uint32_t m_offset_index         = 0;
@@ -74,6 +75,7 @@ namespace Spartan
 		// API
 		void* m_buffer      = nullptr;
         void* m_allocation  = nullptr;
+        void* m_mapped      = nullptr;
 
         // Dependencies
         std::shared_ptr<RHI_Device> m_rhi_device;

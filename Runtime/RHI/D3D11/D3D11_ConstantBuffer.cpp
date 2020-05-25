@@ -48,7 +48,7 @@ namespace Spartan
 		safe_release(*reinterpret_cast<ID3D11Buffer**>(&m_buffer));
 	}
 
-	void* RHI_ConstantBuffer::Map() const
+	void* RHI_ConstantBuffer::Map()
     {
 		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device_context || !m_buffer)
 		{
@@ -67,7 +67,7 @@ namespace Spartan
 		return mapped_resource.pData;
 	}
 
-	bool RHI_ConstantBuffer::Unmap() const
+	bool RHI_ConstantBuffer::Unmap(const uint64_t offset /*= 0*/, const uint64_t size /*= 0*/)
 	{
 		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device_context || !m_buffer)
 		{
