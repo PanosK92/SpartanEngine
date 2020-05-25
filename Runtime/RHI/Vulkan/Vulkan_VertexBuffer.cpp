@@ -38,15 +38,23 @@ using namespace std;
 
 namespace Spartan
 {
-	RHI_VertexBuffer::~RHI_VertexBuffer()
-	{
+    void RHI_VertexBuffer::_destroy()
+    {
         // Wait in case the buffer is still in use
         m_rhi_device->Queue_WaitAll();
 
-		vulkan_utility::buffer::destroy(m_buffer);
-	}
+        // Unmap
+        if (m_mapped)
+        {
+            vmaUnmapMemory(m_rhi_device->GetContextRhi()->allocator, static_cast<VmaAllocation>(m_allocation));
+            m_mapped = nullptr;
+        }
 
-	bool RHI_VertexBuffer::_Create(const void* vertices)
+        // Destroy
+        vulkan_utility::buffer::destroy(m_buffer);
+    }
+
+	bool RHI_VertexBuffer::_create(const void* vertices)
 	{
 		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device)
 		{
@@ -54,14 +62,8 @@ namespace Spartan
 			return false;
 		}
 
-        // Wait in case the buffer is still in use
-        if (m_buffer)
-        {
-            m_rhi_device->Queue_WaitAll();
-        }
-
-		// Clear previous buffer
-		vulkan_utility::buffer::destroy(m_buffer);
+        // Destroy previous buffer
+        _destroy();
     
         // Memory in Vulkan doesn't need to be unmapped before using it on GPU, but unless a
         // memory type has VK_MEMORY_PROPERTY_HOST_COHERENT_BIT flag set, you need to manually
@@ -71,13 +73,14 @@ namespace Spartan
         bool use_staging = vertices != nullptr;
         if (!use_staging)
         {
-            VmaAllocation allocation = vulkan_utility::buffer::create(m_buffer, m_size_gpu, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, true);
+            VkMemoryPropertyFlags flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+            flags |= !m_persistent_mapping ? VK_MEMORY_PROPERTY_HOST_COHERENT_BIT : 0;
+            VmaAllocation allocation = vulkan_utility::buffer::create(m_buffer, m_size_gpu, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, flags, true);
             if (!allocation)
                 return false;
 
-            m_allocation        = static_cast<void*>(allocation);
-            m_is_mappable       = true;
-            m_is_host_coherent  = true;
+            m_allocation  = static_cast<void*>(allocation);
+            m_is_mappable = true;
         }
         else
         {
@@ -115,9 +118,8 @@ namespace Spartan
                 vulkan_utility::buffer::destroy(staging_buffer);
             }
 
-            m_allocation        = static_cast<void*>(allocation);
-            m_is_mappable       = false;
-            m_is_host_coherent  = false;
+            m_allocation    = static_cast<void*>(allocation);
+            m_is_mappable   = false;
         }
 
         // Set debug name
@@ -126,53 +128,70 @@ namespace Spartan
 		return true;
 	}
 
-	void* RHI_VertexBuffer::Map() const
+	void* RHI_VertexBuffer::Map()
 	{
-        if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device || !m_allocation)
-        {
-            LOG_ERROR_INVALID_INTERNALS();
-            return nullptr;
-        }
-
         if (!m_is_mappable)
         {
             LOG_ERROR("Not mappable, can only be updated via staging");
             return nullptr;
         }
 
-		void* ptr = nullptr;
-
-        if (!m_is_host_coherent)
+        if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device)
         {
-            if (!vulkan_utility::error::check(vmaInvalidateAllocation(m_rhi_device->GetContextRhi()->allocator, static_cast<VmaAllocation>(m_allocation), 0, m_size_gpu)))
-                return nullptr;
+            LOG_ERROR_INVALID_INTERNALS();
+            return nullptr;
         }
 
-        vulkan_utility::error::check(vmaMapMemory(m_rhi_device->GetContextRhi()->allocator, static_cast<VmaAllocation>(m_allocation), reinterpret_cast<void**>(&ptr)));
-	
-		return ptr;
+        if (!m_allocation)
+        {
+            LOG_ERROR("Invalid allocation");
+            return nullptr;
+        }
+
+        if (!m_mapped)
+        {
+            if (!vulkan_utility::error::check(vmaMapMemory(m_rhi_device->GetContextRhi()->allocator, static_cast<VmaAllocation>(m_allocation), reinterpret_cast<void**>(&m_mapped))))
+            {
+                LOG_ERROR("Failed to map memory");
+                return nullptr;
+            }
+        }
+
+        return m_mapped;
 	}
 
-	bool RHI_VertexBuffer::Unmap() const
+	bool RHI_VertexBuffer::Unmap()
 	{
-        if (!m_allocation)
-            return true;
-
         if (!m_is_mappable)
         {
             LOG_ERROR("Not mappable, can only be updated via staging");
             return false;
         }
 
-        if (!m_is_host_coherent)
+        if (!m_allocation)
         {
-            if (!vulkan_utility::error::check(vmaFlushAllocation(m_rhi_device->GetContextRhi()->allocator, static_cast<VmaAllocation>(m_allocation), 0, m_size_gpu)))
-                return false;
+            LOG_ERROR("Invalid allocation");
+            return false;
         }
 
-        vmaUnmapMemory(m_rhi_device->GetContextRhi()->allocator, static_cast<VmaAllocation>(m_allocation));
+        if (m_persistent_mapping)
+        {
+            if (!vulkan_utility::error::check(vmaFlushAllocation(m_rhi_device->GetContextRhi()->allocator, static_cast<VmaAllocation>(m_allocation), 0, m_size_gpu)))
+            {
+                LOG_ERROR("Failed to flush memory");
+                return false;
+            }
+        }
+        else
+        {
+            if (m_mapped)
+            {
+                vmaUnmapMemory(m_rhi_device->GetContextRhi()->allocator, static_cast<VmaAllocation>(m_allocation));
+                m_mapped = nullptr;
+            }
+        }
 
-		return true;
+        return true;
 	}
 }
 #endif

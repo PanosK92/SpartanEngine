@@ -37,6 +37,22 @@ using namespace std;
 
 namespace Spartan
 {
+    void RHI_ConstantBuffer::_destroy()
+    {
+        // Wait in case the buffer is still in use
+        m_rhi_device->Queue_WaitAll();
+
+        // Unmap
+        if (m_mapped)
+        {
+            vmaUnmapMemory(m_rhi_device->GetContextRhi()->allocator, static_cast<VmaAllocation>(m_allocation));
+            m_mapped = nullptr;
+        }
+
+        // Destroy
+        vulkan_utility::buffer::destroy(m_buffer);
+    }
+
     RHI_ConstantBuffer::RHI_ConstantBuffer(const std::shared_ptr<RHI_Device>& rhi_device, const string& name, bool is_dynamic /*= false*/)
     {
         m_rhi_device    = rhi_device;
@@ -44,17 +60,7 @@ namespace Spartan
         m_is_dynamic    = is_dynamic;
     }
 
-	RHI_ConstantBuffer::~RHI_ConstantBuffer()
-	{
-        // Wait in case the buffer is still in use
-        m_rhi_device->Queue_WaitAll();
-
-        Unmap();
-
-		vulkan_utility::buffer::destroy(m_buffer);
-	}
-
-	bool RHI_ConstantBuffer::_Create()
+	bool RHI_ConstantBuffer::_create()
 	{
 		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device)
 		{
@@ -62,14 +68,8 @@ namespace Spartan
 			return false;
 		}
 
-        // Wait in case the buffer is still in use
-        if (m_buffer)
-        {
-            m_rhi_device->Queue_WaitAll();
-        }
-
-		// Clear previous buffer
-		vulkan_utility::buffer::destroy(m_buffer);
+        // Destroy previous buffer
+        _destroy();
 
         // Calculate required alignment based on minimum device offset alignment
         size_t min_ubo_alignment = m_rhi_device->GetContextRhi()->device_properties.limits.minUniformBufferOffsetAlignment;
@@ -99,22 +99,41 @@ namespace Spartan
 
     void* RHI_ConstantBuffer::Map()
     {
-        if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device || !m_allocation)
+        if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device)
         {
             LOG_ERROR_INVALID_INTERNALS();
             return nullptr;
         }
 
-        vulkan_utility::error::check(vmaMapMemory(m_rhi_device->GetContextRhi()->allocator, static_cast<VmaAllocation>(m_allocation), reinterpret_cast<void**>(&m_mapped)));
+        if (!m_allocation)
+        {
+            LOG_ERROR("Invalid allocation");
+            return nullptr;
+        }
+
+        if (!m_mapped)
+        {
+            if (!vulkan_utility::error::check(vmaMapMemory(m_rhi_device->GetContextRhi()->allocator, static_cast<VmaAllocation>(m_allocation), reinterpret_cast<void**>(&m_mapped))))
+            {
+                LOG_ERROR("Failed to map memory");
+                return nullptr;
+            }
+        }
 
         return m_mapped;
     }
 
     bool RHI_ConstantBuffer::Unmap(const uint64_t offset /*= 0*/, const uint64_t size /*= 0*/)
     {
-        if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device || !m_allocation)
+        if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device)
         {
             LOG_ERROR_INVALID_INTERNALS();
+            return false;
+        }
+
+        if (!m_allocation)
+        {
+            LOG_ERROR("Invalid allocation");
             return false;
         }
 

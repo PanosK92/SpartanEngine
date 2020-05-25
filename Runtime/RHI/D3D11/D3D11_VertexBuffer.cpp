@@ -36,12 +36,12 @@ using namespace std;
 
 namespace Spartan
 {
-	RHI_VertexBuffer::~RHI_VertexBuffer()
-	{
-		safe_release(*reinterpret_cast<ID3D11Buffer**>(&m_buffer));
-	}
+    void RHI_VertexBuffer::_destroy()
+    {
+        safe_release(*reinterpret_cast<ID3D11Buffer**>(&m_buffer));
+    }
 
-	bool RHI_VertexBuffer::_Create(const void* vertices)
+	bool RHI_VertexBuffer::_create(const void* vertices)
 	{
 		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device_context)
 		{
@@ -50,7 +50,9 @@ namespace Spartan
 		}
 
         const bool is_dynamic = vertices == nullptr;
-		safe_release(*reinterpret_cast<ID3D11Buffer**>(&m_buffer));
+
+        // Destroy previous buffer
+        _destroy();
 
 		// fill in a buffer description.
         D3D11_BUFFER_DESC buffer_desc   = {};
@@ -78,7 +80,7 @@ namespace Spartan
 		return true;
 	}
 
-	void* RHI_VertexBuffer::Map() const
+	void* RHI_VertexBuffer::Map()
 	{
 		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device_context || !m_buffer)
 		{
@@ -98,7 +100,7 @@ namespace Spartan
 		return mapped_resource.pData;
 	}
 
-	bool RHI_VertexBuffer::Unmap() const
+	bool RHI_VertexBuffer::Unmap()
 	{
 		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device_context || !m_buffer)
 		{

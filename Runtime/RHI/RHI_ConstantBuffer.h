@@ -32,7 +32,7 @@ namespace Spartan
 	{
 	public:
         RHI_ConstantBuffer(const std::shared_ptr<RHI_Device>& rhi_device, const std::string& name, bool is_dynamic = false);
-		~RHI_ConstantBuffer();
+        ~RHI_ConstantBuffer() { _destroy(); }
 
 		template<typename T>
 		bool Create(const uint32_t offset_count = 1)
@@ -41,7 +41,7 @@ namespace Spartan
             m_offset_count  = offset_count;
             m_size_gpu      = static_cast<uint64_t>(m_stride * m_offset_count);
 
-            return _Create();
+            return _create();
 		}
 
 		void* Map();  
@@ -63,10 +63,12 @@ namespace Spartan
         void SetOffsetIndexDynamic(const uint32_t offset_index)       { m_offset_dynamic_index = offset_index; }
 
 	private:
-		bool _Create();
+		bool _create();
+        void _destroy();
 
         bool m_is_dynamic               = false;    // only affects Vulkan
         bool m_persistent_mapping       = true;     // only affects Vulkan, saves 2 ms of CPU time
+        void* m_mapped                  = nullptr;
         uint32_t m_stride               = 0;
         uint32_t m_offset_count         = 1;
         uint32_t m_offset_index         = 0;
@@ -75,7 +77,6 @@ namespace Spartan
 		// API
 		void* m_buffer      = nullptr;
         void* m_allocation  = nullptr;
-        void* m_mapped      = nullptr;
 
         // Dependencies
         std::shared_ptr<RHI_Device> m_rhi_device;
