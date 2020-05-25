@@ -36,17 +36,17 @@ using namespace std;
 
 namespace Spartan
 {
+    void RHI_ConstantBuffer::_destroy()
+    {
+        safe_release(*reinterpret_cast<ID3D11Buffer**>(&m_buffer));
+    }
+
     RHI_ConstantBuffer::RHI_ConstantBuffer(const std::shared_ptr<RHI_Device>& rhi_device, const string& name, bool is_dynamic /*= false*/)
     {
         m_rhi_device    = rhi_device;
         m_name          = name;
         m_is_dynamic    = false; // D3D11 doesn't do that
     }
-
-	RHI_ConstantBuffer::~RHI_ConstantBuffer()
-	{
-		safe_release(*reinterpret_cast<ID3D11Buffer**>(&m_buffer));
-	}
 
 	void* RHI_ConstantBuffer::Map()
     {
@@ -79,7 +79,7 @@ namespace Spartan
 		return true;
 	}
 
-	bool RHI_ConstantBuffer::_Create()
+	bool RHI_ConstantBuffer::_create()
 	{
 		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device)
 		{
@@ -87,7 +87,8 @@ namespace Spartan
 			return false;
 		}
 
-        safe_release(*reinterpret_cast<ID3D11Buffer**>(&m_buffer));
+        // Destroy previous buffer
+        _destroy();
 
 		D3D11_BUFFER_DESC buffer_desc;
 		ZeroMemory(&buffer_desc, sizeof(buffer_desc));

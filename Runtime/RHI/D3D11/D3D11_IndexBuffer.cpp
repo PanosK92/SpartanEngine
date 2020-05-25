@@ -36,12 +36,13 @@ using namespace std;
 
 namespace Spartan
 {
-	RHI_IndexBuffer::~RHI_IndexBuffer()
-	{
-		safe_release(*reinterpret_cast<ID3D11Buffer**>(&m_buffer));
-	}
+    void RHI_IndexBuffer::_destroy()
+    {
+        safe_release(*reinterpret_cast<ID3D11Buffer**>(&m_buffer));
+        return;
+    }
 
-	bool RHI_IndexBuffer::_Create(const void* indices)
+	bool RHI_IndexBuffer::_create(const void* indices)
 	{
 		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device)
 		{
@@ -50,7 +51,9 @@ namespace Spartan
 		}
 
         const bool is_dynamic = indices == nullptr;
-		safe_release(*reinterpret_cast<ID3D11Buffer**>(&m_buffer));
+
+        // Destroy previous buffer
+        _destroy();
 
 		D3D11_BUFFER_DESC buffer_desc;
 		ZeroMemory(&buffer_desc, sizeof(buffer_desc));
@@ -77,7 +80,7 @@ namespace Spartan
 		return true;
 	}
 
-	void* RHI_IndexBuffer::Map() const
+	void* RHI_IndexBuffer::Map()
 	{
 		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device_context || !m_buffer)
 		{
@@ -96,7 +99,7 @@ namespace Spartan
 		return mapped_resource.pData;
 	}
 
-	bool RHI_IndexBuffer::Unmap() const
+	bool RHI_IndexBuffer::Unmap()
 	{
 		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device_context || !m_buffer)
 		{
