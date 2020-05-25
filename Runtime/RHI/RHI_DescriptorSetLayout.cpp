@@ -56,9 +56,11 @@ namespace Spartan
                 // Keep track of dynamic offsets
                 if (constant_buffer->IsDynamic())
                 {
-                    if (m_dynamic_offsets[slot] != constant_buffer->GetOffsetDynamic())
+                    uint32_t dynamic_offset = constant_buffer->GetOffsetDynamic();
+
+                    if (m_dynamic_offsets[slot] != dynamic_offset)
                     {
-                        m_dynamic_offsets[slot] = constant_buffer->GetOffsetDynamic();
+                        m_dynamic_offsets[slot] = dynamic_offset;
                         m_needs_to_bind = true; // affects vkCmdBindDescriptorSets
                     }
                 }

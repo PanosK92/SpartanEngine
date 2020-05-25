@@ -49,6 +49,8 @@ namespace Spartan
         // Wait in case the buffer is still in use
         m_rhi_device->Queue_WaitAll();
 
+        Unmap();
+
 		vulkan_utility::buffer::destroy(m_buffer);
 	}
 
@@ -78,9 +80,14 @@ namespace Spartan
         m_size_gpu = m_offset_count * m_stride;
 
 		// Create buffer
-        VmaAllocation allocation = vulkan_utility::buffer::create(m_buffer, m_size_gpu, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, true);
+        VkMemoryPropertyFlags flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+        flags |= !m_persistent_mapping ? VK_MEMORY_PROPERTY_HOST_COHERENT_BIT : 0;
+        VmaAllocation allocation = vulkan_utility::buffer::create(m_buffer, m_size_gpu, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, flags, true);
         if (!allocation)
+        {
+            LOG_ERROR("Failed to allocate buffer");
             return false;
+        }
 
         m_allocation = static_cast<void*>(allocation);
 
@@ -90,7 +97,7 @@ namespace Spartan
 		return true;
 	}
 
-    void* RHI_ConstantBuffer::Map() const
+    void* RHI_ConstantBuffer::Map()
     {
         if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device || !m_allocation)
         {
@@ -98,14 +105,12 @@ namespace Spartan
             return nullptr;
         }
 
-        void* ptr = nullptr;
+        vulkan_utility::error::check(vmaMapMemory(m_rhi_device->GetContextRhi()->allocator, static_cast<VmaAllocation>(m_allocation), reinterpret_cast<void**>(&m_mapped)));
 
-        vulkan_utility::error::check(vmaMapMemory(m_rhi_device->GetContextRhi()->allocator, static_cast<VmaAllocation>(m_allocation), reinterpret_cast<void**>(&ptr)));
-
-        return ptr;
+        return m_mapped;
     }
 
-    bool RHI_ConstantBuffer::Unmap() const
+    bool RHI_ConstantBuffer::Unmap(const uint64_t offset /*= 0*/, const uint64_t size /*= 0*/)
     {
         if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device || !m_allocation)
         {
@@ -113,7 +118,22 @@ namespace Spartan
             return false;
         }
 
-        vmaUnmapMemory(m_rhi_device->GetContextRhi()->allocator, static_cast<VmaAllocation>(m_allocation));
+        if (m_persistent_mapping)
+        {
+            if (!vulkan_utility::error::check(vmaFlushAllocation(m_rhi_device->GetContextRhi()->allocator, static_cast<VmaAllocation>(m_allocation), offset, size)))
+            {
+                LOG_ERROR("Failed to flush memory");
+                return false;
+            }
+        }
+        else
+        {
+            if (m_mapped)
+            {
+                vmaUnmapMemory(m_rhi_device->GetContextRhi()->allocator, static_cast<VmaAllocation>(m_allocation));
+                m_mapped = nullptr;
+            }
+        }
 
         return true;
     }

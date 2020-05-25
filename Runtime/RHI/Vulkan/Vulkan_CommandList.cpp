@@ -173,7 +173,7 @@ namespace Spartan
         if (!vulkan_utility::error::check(vkEndCommandBuffer(static_cast<VkCommandBuffer>(m_cmd_buffer))))
             return false;
 
-        m_cmd_state = RHI_Cmd_List_Stopped;
+        m_cmd_state = RHI_Cmd_List_Submittable;
         return true;
     }
 
@@ -217,14 +217,14 @@ namespace Spartan
             m_pipeline_state->ResetClearValues();
         }
 
-        m_cmd_state = RHI_Cmd_List_Submitted;
+        m_cmd_state = RHI_Cmd_List_Pending;
 
         return true;
     }
 
     bool RHI_CommandList::Wait()
     {
-        if (m_cmd_state == RHI_Cmd_List_Submitted)
+        if (m_cmd_state == RHI_Cmd_List_Pending)
         {
             if (!vulkan_utility::fence::wait(m_consumed_fence))
                 return false;
@@ -277,8 +277,8 @@ namespace Spartan
         // Shader resources
         {
             // If the pipeline changed, we are using new descriptors, so the resources have to be set again
-            m_set_id_buffer_vertex  = 0;
-            m_set_id_buffer_index   = 0;
+            m_vertex_buffer_id  = 0;
+            m_index_buffer_id   = 0;
 
             // Vulkan doesn't have a persistent state so global resources have to be set
             m_renderer->SetGlobalSamplersAndConstantBuffers(this);
@@ -418,7 +418,7 @@ namespace Spartan
             return;
         }
 
-        if (m_set_id_buffer_vertex == buffer->GetId() && m_set_id_buffer_vertex_offset == offset)
+        if (m_vertex_buffer_id == buffer->GetId() && m_vertex_buffer_offset == offset)
             return;
 
 		VkBuffer vertex_buffers[]	= { static_cast<VkBuffer>(buffer->GetResource()) };
@@ -433,8 +433,8 @@ namespace Spartan
         );
 
         m_profiler->m_rhi_bindings_buffer_vertex++;
-        m_set_id_buffer_vertex = buffer->GetId();
-        m_set_id_buffer_vertex_offset = offset;
+        m_vertex_buffer_id      = buffer->GetId();
+        m_vertex_buffer_offset  = offset;
 	}
 
 	void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer, const uint64_t offset /*= 0*/)
@@ -445,7 +445,7 @@ namespace Spartan
             return;
         }
 
-        if (m_set_id_buffer_index == buffer->GetId() && m_set_id_buffer_index_offset == offset)
+        if (m_index_buffer_id == buffer->GetId() && m_index_buffer_offset == offset)
             return;
 
 		vkCmdBindIndexBuffer(
@@ -456,8 +456,8 @@ namespace Spartan
 		);
 
         m_profiler->m_rhi_bindings_buffer_index++;
-        m_set_id_buffer_index = buffer->GetId();
-        m_set_id_buffer_index_offset = offset;
+        m_index_buffer_id       = buffer->GetId();
+        m_index_buffer_offset   = offset;
 	}
 
     void RHI_CommandList::SetConstantBuffer(const uint32_t slot, const uint8_t scope, RHI_ConstantBuffer* constant_buffer) const
@@ -636,9 +636,9 @@ namespace Spartan
         return m_cmd_state == RHI_Cmd_List_Recording;
     }
 
-    bool RHI_CommandList::IsSubmitted() const
+    bool RHI_CommandList::IsPending() const
     {
-        return m_cmd_state == RHI_Cmd_List_Submitted;
+        return m_cmd_state == RHI_Cmd_List_Pending;
     }
 
     bool RHI_CommandList::IsIdle() const
@@ -793,8 +793,8 @@ namespace Spartan
 
             // Upon setting a new descriptor, resources have to be set again.
             // Note: I could optimize this further and see if the descriptor happens to contain them.
-            m_set_id_buffer_vertex  = 0;
-            m_set_id_buffer_index   = 0;
+            m_vertex_buffer_id  = 0;
+            m_index_buffer_id   = 0;
         }
 
         return result;
