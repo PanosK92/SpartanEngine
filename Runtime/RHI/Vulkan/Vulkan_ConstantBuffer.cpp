@@ -139,7 +139,7 @@ namespace Spartan
 
         if (m_persistent_mapping)
         {
-            if (!vulkan_utility::error::check(vmaFlushAllocation(m_rhi_device->GetContextRhi()->allocator, static_cast<VmaAllocation>(m_allocation), offset, size)))
+            if (!vulkan_utility::error::check(vmaFlushAllocation(m_rhi_device->GetContextRhi()->allocator, static_cast<VmaAllocation>(m_allocation), offset, size != 0 ? size : VK_WHOLE_SIZE)))
             {
                 LOG_ERROR("Failed to flush memory");
                 return false;

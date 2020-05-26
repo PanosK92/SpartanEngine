@@ -138,9 +138,9 @@ namespace Spartan
 
 	void RHI_PipelineState::ResetClearValues()
 	{
-        clear_color.fill(state_color_dont_care);
-        clear_depth   = state_depth_dont_care;
-        clear_stencil = state_stencil_dont_care;
+        clear_color.fill(state_color_load);
+        clear_depth   = state_depth_load;
+        clear_stencil = state_stencil_load;
 	}
 
 	void RHI_PipelineState::ComputeHash()

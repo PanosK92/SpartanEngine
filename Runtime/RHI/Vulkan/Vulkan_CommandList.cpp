@@ -210,13 +210,6 @@ namespace Spartan
         )
         return false;
 
-        // If the render pass has been bound then it cleared to whatever values was requested (or not)
-        // So at this point we reset the values as we don't want to clear again.
-        if (m_render_pass_active)
-        {
-            m_pipeline_state->ResetClearValues();
-        }
-
         m_cmd_state = RHI_Cmd_List_Pending;
 
         return true;
@@ -304,11 +297,60 @@ namespace Spartan
 
     void RHI_CommandList::Clear(RHI_PipelineState& pipeline_state)
     {
-        if (BeginRenderPass(pipeline_state))
+        if (m_render_pass_active)
+        {
+            uint32_t attachment_count = 0;
+            array<VkClearAttachment, state_max_render_target_count + 1> attachments; // +1 for depth-stencil
+
+            for (uint8_t i = 0; i < state_max_render_target_count; i++)
+            { 
+                if (!m_pipeline_state->render_target_color_textures[i])
+                    continue;
+            
+                if (pipeline_state.clear_color[i] != state_color_load)
+                {
+                    attachments[i].aspectMask                   = VK_IMAGE_ASPECT_COLOR_BIT;
+                    attachments[i].colorAttachment              = attachment_count++;
+                    attachments[i].clearValue.color.float32[0]  = pipeline_state.clear_color[i].x;
+                    attachments[i].clearValue.color.float32[1]  = pipeline_state.clear_color[i].y;
+                    attachments[i].clearValue.color.float32[2]  = pipeline_state.clear_color[i].z;
+                    attachments[i].clearValue.color.float32[3]  = pipeline_state.clear_color[i].w;
+                }
+            }
+
+            bool clear_depth    = pipeline_state.clear_depth    != state_depth_load;
+            bool clear_stencil  = pipeline_state.clear_stencil  != state_stencil_load;
+
+            if (clear_depth || clear_stencil)
+            {
+                VkClearAttachment& attachment = attachments[attachment_count++];
+
+                if (clear_depth)
+                {
+                    attachment.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
+                }
+
+                if (clear_stencil)
+                {
+                    attachment.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+                }
+
+                attachment.clearValue.depthStencil.depth    = pipeline_state.clear_depth;
+                attachment.clearValue.depthStencil.stencil  = pipeline_state.clear_stencil;
+            }
+
+            VkClearRect clear_rect           = {};
+            clear_rect.baseArrayLayer        = 0;
+            clear_rect.layerCount            = 1;
+            clear_rect.rect.extent.width     = pipeline_state.GetWidth();
+            clear_rect.rect.extent.height    = pipeline_state.GetHeight();
+
+            vkCmdClearAttachments(static_cast<VkCommandBuffer>(m_cmd_buffer), attachment_count, attachments.data(), 1, &clear_rect);
+        }
+        else if (BeginRenderPass(pipeline_state))
         {
             OnDraw();
             EndRenderPass();
-            pipeline_state.ResetClearValues();
         }
     }
 

@@ -398,9 +398,7 @@ namespace Spartan
         pso.viewport                        = tex_albedo->GetViewport();
         pso.primitive_topology              = RHI_PrimitiveTopology_TriangleList;
 
-        // Clear
-        cmd_list->Clear(pso);
-
+        bool cleared = false;
         uint32_t material_index = 0;
         uint32_t material_bound_id = 0;
         m_material_instances.fill(nullptr);
@@ -525,6 +523,13 @@ namespace Spartan
                 // Render	
                 cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
                 m_profiler->m_renderer_meshes_rendered++;
+
+                // Clear only on first pass
+                if (!cleared)
+                {
+                    pso.ResetClearValues();
+                    cleared = true;
+                }
             }
 
             if (render_pass_active)
