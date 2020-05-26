@@ -391,8 +391,6 @@ namespace Spartan
                 );
             }
         }
-
-        pipeline_state.ResetClearValues();
     }
 
 	void RHI_CommandList::Draw(const uint32_t vertex_count)
