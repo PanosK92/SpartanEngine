@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Implementation.h"
 //================================
 
-//= INCLUDES =======================
+//= INCLUDES =====================
 #include "../RHI_Device.h"
 #include "../RHI_Shader.h"
 #include "../RHI_InputLayout.h"
@@ -33,10 +33,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <sstream> 
 #include <fstream>
 #include <atomic>
-#include <dxc/Support/WinIncludes.h>
-#include <dxc/dxcapi.h>
 #include <map>
-//==================================
+#include <atlbase.h>
+#include <dxc/dxcapi.h>
+//================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -186,38 +186,32 @@ namespace Spartan
 	{
 		inline bool ValidateOperationResult(IDxcOperationResult* operation_result)
 		{
-			if (!operation_result)
-				return true;
-
-			// Get status
-			HRESULT operation_status;
-			operation_result->GetStatus(&operation_status);
-			if (SUCCEEDED(operation_status))
-				return true;
-
-			// If the status is not successful, log error buffer
+            // Log warnings and errors
 			IDxcBlobEncoding* error_buffer = nullptr;
 			operation_result->GetErrorBuffer(&error_buffer);
-			if (!error_buffer)
-				return true;
-
-			stringstream ss(string(static_cast<char*>(error_buffer->GetBufferPointer()), error_buffer->GetBufferSize()));
-			string line;
-			while (getline(ss, line, '\n'))
-			{
-				const auto is_error = line.find("error") != string::npos;
-                if (is_error)
+            if (error_buffer)
+            {
+                stringstream ss(string(static_cast<char*>(error_buffer->GetBufferPointer()), error_buffer->GetBufferSize()));
+                string line;
+                while (getline(ss, line, '\n'))
                 {
-                    LOG_ERROR(line);
+                    const auto is_error = line.find("error") != string::npos;
+                    if (is_error)
+                    {
+                        LOG_ERROR(line);
+                    }
+                    else
+                    {
+                        LOG_WARNING(line);
+                    }
                 }
-                else
-                {
-                    LOG_WARNING(line);
-                }
-			}
+            }
+            safe_release(error_buffer);
 
-			safe_release(error_buffer);
-			return false;
+            // Return status
+            HRESULT operation_status;
+            operation_result->GetStatus(&operation_status);
+			return operation_status == S_OK;
 		}
 
 		class Instance
@@ -432,20 +426,17 @@ namespace Spartan
         const CComPtr<IDxcIncludeHandler> include_handler = new DxShaderCompiler::SpartanIncludeHandler(file_directory);
 		CComPtr<IDxcOperationResult> compilation_result = nullptr;
 		{
-			if (FAILED(DxShaderCompiler::Instance::Get().compiler->Compile
+            DxShaderCompiler::Instance::Get().compiler->Compile
             (
-					shader_blob,												// shader blob
-					file_name.c_str(),											// file name (for warnings and errors)
-                    FileSystem::StringToWstring(GetEntryPoint()).c_str(),		// entry point function
-                    FileSystem::StringToWstring(GetTargetProfile()).c_str(),	// target profile
-					arguments.data(), static_cast<uint32_t>(arguments.size()),	// compilation arguments
-					defines.data(), static_cast<uint32_t>(defines.size()),		// shader defines
-					include_handler,											// handler for #include directives
-					&compilation_result))
-			){
-				LOG_ERROR("Failed to compile %s", file_name.c_str());
-				return nullptr;
-			}
+                shader_blob,												// shader blob
+                file_name.c_str(),											// file name (for warnings and errors)
+                FileSystem::StringToWstring(GetEntryPoint()).c_str(),		// entry point function
+                FileSystem::StringToWstring(GetTargetProfile()).c_str(),	// target profile
+                arguments.data(), static_cast<uint32_t>(arguments.size()),	// compilation arguments
+                defines.data(), static_cast<uint32_t>(defines.size()),		// shader defines
+                include_handler,											// handler for #include directives
+                &compilation_result
+            );
 
 			if (!DxShaderCompiler::ValidateOperationResult(compilation_result))
 			{

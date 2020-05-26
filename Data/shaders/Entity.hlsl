@@ -46,6 +46,8 @@ PixelInputType mainVS(Vertex_PosUvNorTan input)
 
 float4 mainPS(PixelInputType input) : SV_TARGET
 {
+	float4 color = 0.0f;
+
 #ifdef TRANSFORM
     float3 color_diffuse = g_transform_axis.xyz;
     float3 color_ambient = color_diffuse * 0.3f;
@@ -65,7 +67,7 @@ float4 mainPS(PixelInputType input) : SV_TARGET
         specular = pow(specAngle, 16.0f);
     }
 
-    return float4(color_ambient + lambertian * color_diffuse + color_specular * specular, 1.0f);
+    color = float4(color_ambient + lambertian * color_diffuse + color_specular * specular, 1.0f);
 #endif
 
 #ifdef OUTLINE
@@ -95,6 +97,8 @@ float4 mainPS(PixelInputType input) : SV_TARGET
     if (edge_normal * view_dir_bias < normal_threshold)
         discard;
 
-    return float4(0.6f, 0.6f, 1.0f, 1.0f);
+    color = float4(0.6f, 0.6f, 1.0f, 1.0f);
 #endif
+
+	return color;
 }
