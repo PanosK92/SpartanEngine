@@ -142,8 +142,9 @@ namespace Spartan
 	private:
         void Timeblock_Start(const RHI_PipelineState* pipeline_state);
         void Timeblock_End(const RHI_PipelineState* pipeline_state);
-        void _BeginRenderPass();
-        bool BindDescriptorSet();
+        bool Deferred_BeginRenderPass();
+        bool Deferred_BindPipeline();
+        bool Deferred_BindDescriptorSet();
         bool OnDraw();
 
         std::atomic<RHI_Cmd_List_State> m_cmd_state = RHI_Cmd_List_Idle;

@@ -131,14 +131,13 @@ void Editor::OnWindowMessage(WindowData& window_data)
             static_cast<uint64_t>(window_data.lparam)
         );
 
-        bool window_minimized   = (window_data.width == 0 && window_data.height == 0);
-        bool different_size     = m_engine->GetWindowData().width != window_data.width || m_engine->GetWindowData().height != window_data.height;
+        uint32_t width  = window_data.minimise ? 0 : window_data.width;
+        uint32_t height = window_data.minimise ? 0 : window_data.height;
 
-        if (different_size && !window_minimized)
+        if (m_engine->GetWindowData().width != width || m_engine->GetWindowData().height != height)
         {
             ImGui::RHI::Resize(window_data.width, window_data.height);
         }
-
         m_engine->SetWindowData(window_data);
     }
 }

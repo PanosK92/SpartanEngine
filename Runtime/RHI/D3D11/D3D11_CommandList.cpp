@@ -831,6 +831,21 @@ namespace Spartan
         }
     }
 
+    bool RHI_CommandList::Deferred_BeginRenderPass()
+    {
+        return true;
+    }
+
+    bool RHI_CommandList::Deferred_BindPipeline()
+    {
+        return true;
+    }
+
+    bool RHI_CommandList::Deferred_BindDescriptorSet()
+    {
+        return true;
+    }
+
     bool RHI_CommandList::OnDraw()
     {
         return true;
