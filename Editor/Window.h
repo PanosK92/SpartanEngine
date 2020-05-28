@@ -67,6 +67,12 @@ namespace Window
             result = DefWindowProc(hwnd, msg, wParam, lParam);
         }
 
+        if (msg == WM_SYSCOMMAND)
+        {
+            window_data.minimise = wParam == SC_MINIMIZE;
+            window_data.maximise = wParam == SC_MAXIMIZE;
+        }
+
         if (g_on_message)
         {
             g_on_message(window_data);

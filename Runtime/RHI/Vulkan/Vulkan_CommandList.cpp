@@ -732,12 +732,12 @@ namespace Spartan
         }
     }
 
-    void RHI_CommandList::_BeginRenderPass()
+    bool RHI_CommandList::Deferred_BeginRenderPass()
     {
         if (m_cmd_state != RHI_Cmd_List_Recording)
         {
             LOG_WARNING("Can't record command");
-            return;
+            return false;
         }
 
         RHI_PipelineState* pipeline_state = m_pipeline->GetPipelineState();
@@ -745,19 +745,19 @@ namespace Spartan
         if (!pipeline_state)
         {
             LOG_ERROR("There is no pipeline state");
-            return;
+            return false;
         }
 
         if (!pipeline_state->GetRenderPass())
         {
             LOG_ERROR("Current pipeline has no render pass");
-            return;
+            return false;
         }
 
         if (!pipeline_state->GetFrameBuffer())
         {
             LOG_ERROR("Current pipeline has no frame buffer");
-            return;
+            return false;
         }
 
         // Clear values
@@ -796,9 +796,12 @@ namespace Spartan
         render_pass_info.clearValueCount            = clear_value_count;
         render_pass_info.pClearValues               = clear_values.data();
         vkCmdBeginRenderPass(static_cast<VkCommandBuffer>(m_cmd_buffer), &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
+
+        m_render_pass_active = true;
+        return true;
     }
 
-    bool RHI_CommandList::BindDescriptorSet()
+    bool RHI_CommandList::Deferred_BindDescriptorSet()
     {
         if (m_cmd_state != RHI_Cmd_List_Recording)
             return false;
@@ -839,7 +842,24 @@ namespace Spartan
             m_index_buffer_id   = 0;
         }
 
-        return result;
+        return true;
+    }
+
+    bool RHI_CommandList::Deferred_BindPipeline()
+    {
+        if (VkPipeline vk_pipeline = static_cast<VkPipeline>(m_pipeline->GetPipeline()))
+        {
+            vkCmdBindPipeline(static_cast<VkCommandBuffer>(m_cmd_buffer), VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline);
+            m_profiler->m_rhi_bindings_pipeline++;
+            m_pipeline_active = true;
+        }
+        else
+        {
+            LOG_ERROR("Invalid pipeline");
+            return false;
+        }
+
+        return true;
     }
 
     bool RHI_CommandList::OnDraw()
@@ -853,29 +873,25 @@ namespace Spartan
         // Begin render pass
         if (!m_render_pass_active)
         {
-            _BeginRenderPass();
-            m_render_pass_active = true;
+            if (!Deferred_BeginRenderPass())
+            {
+                LOG_ERROR("Failed to begin render pass");
+                return false;
+            }
         }
 
         // Set pipeline
         if (!m_pipeline_active)
         {
-            // Bind pipeline
-            if (VkPipeline vk_pipeline = static_cast<VkPipeline>(m_pipeline->GetPipeline()))
+            if (!Deferred_BindPipeline())
             {
-                vkCmdBindPipeline(static_cast<VkCommandBuffer>(m_cmd_buffer), VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline);
-                m_profiler->m_rhi_bindings_pipeline++;
-                m_pipeline_active = true;
-            }
-            else
-            {
-                LOG_ERROR("Invalid pipeline");
+                LOG_ERROR("Failed to begin render pass");
                 return false;
             }
         }
 
         // Bind descriptor set
-        return BindDescriptorSet();
+        return Deferred_BindDescriptorSet();
     }
 }
 #endif

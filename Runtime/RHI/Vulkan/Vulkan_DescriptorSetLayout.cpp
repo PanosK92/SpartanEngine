@@ -109,7 +109,7 @@ namespace Spartan
                 is_constant_buffer ? descriptor.offset  : 0,                                // offset
                 is_constant_buffer ? descriptor.range   : 0                                 // range
             });
-        
+
             write_descriptor_sets.push_back
             ({
                 VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,	        // sType
