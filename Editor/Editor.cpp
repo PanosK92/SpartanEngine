@@ -131,8 +131,8 @@ void Editor::OnWindowMessage(WindowData& window_data)
             static_cast<uint64_t>(window_data.lparam)
         );
 
-        uint32_t width  = window_data.minimise ? 0 : window_data.width;
-        uint32_t height = window_data.minimise ? 0 : window_data.height;
+        uint32_t width  = static_cast<uint32_t>(window_data.minimise ? 0 : window_data.width);
+        uint32_t height = static_cast<uint32_t>(window_data.minimise ? 0 : window_data.height);
 
         if (m_engine->GetWindowData().width != width || m_engine->GetWindowData().height != height)
         {

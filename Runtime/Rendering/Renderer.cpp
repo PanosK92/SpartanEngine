@@ -191,14 +191,18 @@ namespace Spartan
 		if (!m_rhi_device || !m_rhi_device->IsInitialized())
 			return;
 
-		// If there is no camera, do nothing
+        // Don't do any work if the swapchain is not presenting
+        if (m_swap_chain && !m_swap_chain->IsPresenting())
+            return;
+
+		// If there is no camera, clear
 		if (!m_camera)
 		{
             //cmd_list->Clear(m_render_targets[RenderTarget_Composition_Ldr].get(), Vector4(0.0f, 0.0f, 0.0f, 1.0f));
 			return;
 		}
 
-		// If there is nothing to render clear to camera's color and present
+		// If there are no entities, clear to the camera's clear color
 		if (m_entities.empty())
 		{
             //cmd_list->Clear(m_render_targets[RenderTarget_Composition_Ldr].get(), m_camera->GetClearColor());

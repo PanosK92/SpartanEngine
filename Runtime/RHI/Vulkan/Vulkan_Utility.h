@@ -273,11 +273,10 @@ namespace Spartan::vulkan_utility
     {
         inline bool create(void*& fence)
         {
-            VkFenceCreateInfo fence_info = {};
-            fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+            VkFenceCreateInfo fence_info    = {};
+            fence_info.sType                = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 
-            VkFence* fence_vk = reinterpret_cast<VkFence*>(&fence);
-            return error::check(vkCreateFence(globals::rhi_context->device, &fence_info, nullptr, fence_vk));
+            return error::check(vkCreateFence(globals::rhi_context->device, &fence_info, nullptr, reinterpret_cast<VkFence*>(&fence)));
         }
 
         inline void destroy(void*& fence)
@@ -285,27 +284,23 @@ namespace Spartan::vulkan_utility
             if (!fence)
                 return;
 
-            VkFence fence_vk = static_cast<VkFence>(fence);
-            vkDestroyFence(globals::rhi_context->device, fence_vk, nullptr);
+            vkDestroyFence(globals::rhi_context->device, static_cast<VkFence>(fence), nullptr);
             fence = nullptr;
+        }
+
+        inline bool is_signaled(void*& fence)
+        {
+            return vkGetFenceStatus(globals::rhi_context->device, reinterpret_cast<VkFence>(fence)) == VK_SUCCESS;
         }
 
         inline bool wait(void*& fence, uint64_t timeout = std::numeric_limits<uint64_t>::max())
         {
-            VkFence* fence_vk = reinterpret_cast<VkFence*>(&fence);
-            return error::check(vkWaitForFences(globals::rhi_context->device, 1, fence_vk, true, timeout));
+            return error::check(vkWaitForFences(globals::rhi_context->device, 1, reinterpret_cast<VkFence*>(&fence), true, timeout));
         }
 
         inline bool reset(void*& fence)
         {
-            VkFence* fence_vk = reinterpret_cast<VkFence*>(&fence);
-            return error::check(vkResetFences(globals::rhi_context->device, 1, fence_vk));
-        }
-
-        inline bool wait_reset(void*& fence, uint64_t timeout = std::numeric_limits<uint64_t>::max())
-        {
-            VkFence* fence_vk = reinterpret_cast<VkFence*>(&fence);
-            return error::check(vkWaitForFences(globals::rhi_context->device, 1, fence_vk, true, timeout)) && error::check(vkResetFences(globals::rhi_context->device, 1, fence_vk));
+            return is_signaled(fence) ? error::check(vkResetFences(globals::rhi_context->device, 1, reinterpret_cast<VkFence*>(&fence))) : true;
         }
     }
 

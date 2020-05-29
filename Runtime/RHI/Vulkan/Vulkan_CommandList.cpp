@@ -65,8 +65,8 @@ namespace Spartan
         vulkan_utility::command_buffer::create(m_swap_chain->GetCmdPool(), m_cmd_buffer, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
         // Sync
-        vulkan_utility::fence::create(m_consumed_fence);
-        vulkan_utility::semaphore::create(m_consumed_semaphore);
+        vulkan_utility::fence::create(m_processed_fence);
+        vulkan_utility::semaphore::create(m_processed_semaphore);
 
         // Query pool
         if (rhi_context->profiler)
@@ -91,8 +91,8 @@ namespace Spartan
         m_rhi_device->Queue_Wait(RHI_Queue_Graphics);
 
 		// Sync
-        vulkan_utility::fence::destroy(m_consumed_fence);
-        vulkan_utility::semaphore::destroy(m_consumed_semaphore);
+        vulkan_utility::fence::destroy(m_processed_fence);
+        vulkan_utility::semaphore::destroy(m_processed_semaphore);
 
         // Command buffer
         vulkan_utility::command_buffer::destroy(m_swap_chain->GetCmdPool(), m_cmd_buffer);
@@ -197,15 +197,31 @@ namespace Spartan
         }
 
         RHI_PipelineState* state = m_pipeline->GetPipelineState();
-        void* wait_semaphore = state->render_target_swapchain ? static_cast<VkSemaphore>(state->render_target_swapchain->GetImageAcquireSemaphore()) : nullptr;
-        vulkan_utility::fence::reset(m_consumed_fence);
+
+        // Get wait and signal semaphores
+        void* wait_semaphore    = nullptr;
+        void* signal_semaphore  = nullptr;
+        if (state->render_target_swapchain)
+        {
+            // If the swapchain is not presenting(e.g.minimised window), don't submit and work
+            if (!state->render_target_swapchain->IsPresenting())
+            {
+                m_cmd_state = RHI_Cmd_List_Pending;
+                return true;
+            }
+
+            wait_semaphore      = state->render_target_swapchain->GetImageAcquireSemaphore();
+            signal_semaphore    = m_processed_semaphore;
+        }
+        
+        vulkan_utility::fence::reset(m_processed_fence);
 
         if (!m_rhi_device->Queue_Submit(
             RHI_Queue_Graphics,                             // queue
             static_cast<VkCommandBuffer>(m_cmd_buffer),     // cmd buffer
             wait_semaphore,                                 // wait semaphore
-            m_consumed_semaphore,                           // signal semaphore
-            m_consumed_fence,                               // signal fence
+            signal_semaphore,                               // signal semaphore
+            m_processed_fence,                              // signal fence
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)  // wait flags
         )
         return false;
@@ -219,7 +235,7 @@ namespace Spartan
     {
         if (m_cmd_state == RHI_Cmd_List_Pending)
         {
-            if (!vulkan_utility::fence::wait(m_consumed_fence))
+            if (!vulkan_utility::fence::wait(m_processed_fence))
                 return false;
 
             m_descriptor_cache->GrowIfNeeded();
