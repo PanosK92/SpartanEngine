@@ -137,7 +137,7 @@ namespace Spartan
         bool IsRecording() const;
         bool IsPending() const;
         bool IsIdle() const;
-        void*& GetConsumedSemaphore() { return m_consumed_semaphore; }
+        void*& GetProcessedSemaphore() { return m_processed_semaphore; }
 
 	private:
         void Timeblock_Start(const RHI_PipelineState* pipeline_state);
@@ -157,8 +157,8 @@ namespace Spartan
         RHI_Device* m_rhi_device                    = nullptr;
         Profiler* m_profiler                        = nullptr;
         void* m_cmd_buffer                          = nullptr;
-        void* m_consumed_fence                      = nullptr;
-        void* m_consumed_semaphore                  = nullptr;
+        void* m_processed_fence                     = nullptr;
+        void* m_processed_semaphore                 = nullptr;
         void* m_query_pool                          = nullptr;
         bool m_render_pass_active                   = false;
         bool m_pipeline_active                      = false;
