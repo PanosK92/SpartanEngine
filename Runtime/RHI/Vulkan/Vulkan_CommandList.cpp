@@ -203,7 +203,7 @@ namespace Spartan
         void* signal_semaphore  = nullptr;
         if (state->render_target_swapchain)
         {
-            // If the swapchain is not presenting(e.g.minimised window), don't submit and work
+            // If the swapchain is not presenting (e.g. minimised window), don't submit and work
             if (!state->render_target_swapchain->IsPresenting())
             {
                 m_cmd_state = RHI_Cmd_List_Pending;
@@ -285,7 +285,7 @@ namespace Spartan
 
         // Shader resources
         {
-            // If the pipeline changed, we are using new descriptors, so the resources have to be set again
+            // If the pipeline changed, resources have to be set again
             m_vertex_buffer_id  = 0;
             m_index_buffer_id   = 0;
 
@@ -851,11 +851,6 @@ namespace Spartan
             );
 
             m_profiler->m_rhi_bindings_descriptor_set++;
-
-            // Upon setting a new descriptor, resources have to be set again.
-            // Note: I could optimize this further and see if the descriptor happens to contain them.
-            m_vertex_buffer_id  = 0;
-            m_index_buffer_id   = 0;
         }
 
         return true;
