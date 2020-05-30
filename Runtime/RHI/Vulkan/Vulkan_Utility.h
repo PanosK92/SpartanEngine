@@ -1180,7 +1180,7 @@ namespace Spartan::vulkan_utility
             functions::set_object_tag(globals::rhi_context->device, &tag_info);
         }
 
-        static void begin(VkCommandBuffer cmd_buffer, const char* name, const Math::Vector4& color)
+        static void marker_begin(VkCommandBuffer cmd_buffer, const char* name, const Math::Vector4& color)
         {
             if (!functions::marker_begin)
                 return;
@@ -1196,7 +1196,7 @@ namespace Spartan::vulkan_utility
             functions::marker_begin(cmd_buffer, &label);
         }
 
-        static void end(VkCommandBuffer cmd_buffer)
+        static void marker_end(VkCommandBuffer cmd_buffer)
         {
             if (!functions::marker_end)
                 return;
@@ -1204,102 +1204,102 @@ namespace Spartan::vulkan_utility
             functions::marker_end(cmd_buffer);
         }
 
-        static void set_command_pool_name(VkCommandPool cmd_pool, const char* name)
+        static void set_name(VkCommandPool cmd_pool, const char* name)
         {
             set_object_name((uint64_t)cmd_pool, VK_OBJECT_TYPE_COMMAND_POOL, name);
         }
 
-        static void set_command_buffer_name(VkCommandBuffer cmd_buffer, const char* name)
+        static void set_name(VkCommandBuffer cmd_buffer, const char* name)
         {
             set_object_name((uint64_t)cmd_buffer, VK_OBJECT_TYPE_COMMAND_BUFFER, name);
         }
 
-        static void set_queue_name(VkQueue queue, const char* name)
+        static void set_name(VkQueue queue, const char* name)
         {
             set_object_name((uint64_t)queue, VK_OBJECT_TYPE_QUEUE, name);
         }
 
-        static void set_image_name(VkImage image, const char* name)
+        static void set_name(VkImage image, const char* name)
         {
             set_object_name((uint64_t)image, VK_OBJECT_TYPE_IMAGE, name);
         }
 
-        static void set_image_view_name(VkImageView image_view, const char* name)
+        static void set_name(VkImageView image_view, const char* name)
         {
             set_object_name((uint64_t)image_view, VK_OBJECT_TYPE_IMAGE_VIEW, name);
         }
 
-        static void set_sampler_name(VkSampler sampler, const char* name)
+        static void set_name(VkSampler sampler, const char* name)
         {
             set_object_name((uint64_t)sampler, VK_OBJECT_TYPE_SAMPLER, name);
         }
 
-        static void set_buffer_name(VkBuffer buffer, const char* name)
+        static void set_name(VkBuffer buffer, const char* name)
         {
             set_object_name((uint64_t)buffer, VK_OBJECT_TYPE_BUFFER, name);
         }
 
-        static void set_buffer_view_name(VkBufferView bufferView, const char* name)
+        static void set_name(VkBufferView bufferView, const char* name)
         {
             set_object_name((uint64_t)bufferView, VK_OBJECT_TYPE_BUFFER_VIEW, name);
         }
 
-        static void set_device_memory_name(VkDeviceMemory memory, const char* name)
+        static void set_name(VkDeviceMemory memory, const char* name)
         {
             set_object_name((uint64_t)memory, VK_OBJECT_TYPE_DEVICE_MEMORY, name);
         }
 
-        static void set_shader_module_name(VkShaderModule shaderModule, const char* name)
+        static void set_name(VkShaderModule shaderModule, const char* name)
         {
             set_object_name((uint64_t)shaderModule, VK_OBJECT_TYPE_SHADER_MODULE, name);
         }
 
-        static void set_pipeline_name(VkPipeline pipeline, const char* name)
+        static void set_name(VkPipeline pipeline, const char* name)
         {
             set_object_name((uint64_t)pipeline, VK_OBJECT_TYPE_PIPELINE, name);
         }
 
-        static void set_pipeline_layout_name(VkPipelineLayout pipelineLayout, const char* name)
+        static void set_name(VkPipelineLayout pipelineLayout, const char* name)
         {
             set_object_name((uint64_t)pipelineLayout, VK_OBJECT_TYPE_PIPELINE_LAYOUT, name);
         }
 
-        static void set_render_pass_name(VkRenderPass renderPass, const char* name)
+        static void set_name(VkRenderPass renderPass, const char* name)
         {
             set_object_name((uint64_t)renderPass, VK_OBJECT_TYPE_RENDER_PASS, name);
         }
 
-        static void set_framebuffer_name(VkFramebuffer framebuffer, const char* name)
+        static void set_name(VkFramebuffer framebuffer, const char* name)
         {
             set_object_name((uint64_t)framebuffer, VK_OBJECT_TYPE_FRAMEBUFFER, name);
         }
 
-        static void set_descriptor_set_layout_name(VkDescriptorSetLayout descriptorSetLayout, const char* name)
+        static void set_name(VkDescriptorSetLayout descriptorSetLayout, const char* name)
         {
             set_object_name((uint64_t)descriptorSetLayout, VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT, name);
         }
 
-        static void set_descriptor_set_name(VkDescriptorSet descriptorSet, const char* name)
+        static void set_name(VkDescriptorSet descriptorSet, const char* name)
         {
             set_object_name((uint64_t)descriptorSet, VK_OBJECT_TYPE_DESCRIPTOR_SET, name);
         }
 
-        static void set_descriptor_pool_name(VkDescriptorPool descriptorPool, const char* name)
+        static void set_name(VkDescriptorPool descriptorPool, const char* name)
         {
             set_object_name((uint64_t)descriptorPool, VK_OBJECT_TYPE_DESCRIPTOR_POOL, name);
         }
 
-        static void set_semaphore_name(VkSemaphore semaphore, const char* name)
+        static void set_name(VkSemaphore semaphore, const char* name)
         {
             set_object_name((uint64_t)semaphore, VK_OBJECT_TYPE_SEMAPHORE, name);
         }
 
-        static void set_fence_name(VkFence fence, const char* name)
+        static void set_name(VkFence fence, const char* name)
         {
             set_object_name((uint64_t)fence, VK_OBJECT_TYPE_FENCE, name);
         }
 
-        static void set_event_name(VkEvent _event, const char* name)
+        static void set_name(VkEvent _event, const char* name)
         {
             set_object_name((uint64_t)_event, VK_OBJECT_TYPE_EVENT, name);
         }

@@ -285,38 +285,42 @@ namespace Spartan
         // Pipeline layout
 		VkPipelineLayoutCreateInfo pipeline_layout_info	= {};
         { 
-		    pipeline_layout_info.sType						= VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-		    pipeline_layout_info.pushConstantRangeCount		= 0;
-		    pipeline_layout_info.setLayoutCount				= 1;		
-		    pipeline_layout_info.pSetLayouts				= reinterpret_cast<VkDescriptorSetLayout*>(&descriptor_set_layout);
+		    pipeline_layout_info.sType					= VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+		    pipeline_layout_info.pushConstantRangeCount	= 0;
+		    pipeline_layout_info.setLayoutCount			= 1;		
+		    pipeline_layout_info.pSetLayouts			= reinterpret_cast<VkDescriptorSetLayout*>(&descriptor_set_layout);
 
             if (!vulkan_utility::error::check(vkCreatePipelineLayout(m_rhi_device->GetContextRhi()->device, &pipeline_layout_info, nullptr, reinterpret_cast<VkPipelineLayout*>(&m_pipeline_layout))))
 			    return;
+
+            // Name
+            vulkan_utility::debug::set_name(static_cast<VkPipelineLayout>(m_pipeline_layout), m_state.pass_name);
         }
 
         // Pipeline
         VkGraphicsPipelineCreateInfo pipeline_info = {};
         {
-		    pipeline_info.sType							= VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-		    pipeline_info.stageCount					= static_cast<uint32_t>(shader_stages.size());
-		    pipeline_info.pStages						= shader_stages.data();
-		    pipeline_info.pVertexInputState				= &vertex_input_state;
-		    pipeline_info.pInputAssemblyState			= &input_assembly_state;
-		    pipeline_info.pDynamicState					= dynamic_states.empty() ? nullptr : &dynamic_state;
-		    pipeline_info.pViewportState				= &viewport_state;
-		    pipeline_info.pRasterizationState			= &rasterizer_state;
-		    pipeline_info.pMultisampleState				= &multisampling_state;
-		    pipeline_info.pColorBlendState				= &color_blend_state;
-            pipeline_info.pDepthStencilState            = &depth_stencil_state;
-		    pipeline_info.layout						= static_cast<VkPipelineLayout>(m_pipeline_layout);
-		    pipeline_info.renderPass					= static_cast<VkRenderPass>(m_state.GetRenderPass());
+            // Describe
+		    pipeline_info.sType					= VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+		    pipeline_info.stageCount			= static_cast<uint32_t>(shader_stages.size());
+		    pipeline_info.pStages				= shader_stages.data();
+		    pipeline_info.pVertexInputState		= &vertex_input_state;
+		    pipeline_info.pInputAssemblyState   = &input_assembly_state;
+		    pipeline_info.pDynamicState			= dynamic_states.empty() ? nullptr : &dynamic_state;
+		    pipeline_info.pViewportState		= &viewport_state;
+		    pipeline_info.pRasterizationState	= &rasterizer_state;
+		    pipeline_info.pMultisampleState		= &multisampling_state;
+		    pipeline_info.pColorBlendState		= &color_blend_state;
+            pipeline_info.pDepthStencilState    = &depth_stencil_state;
+		    pipeline_info.layout				= static_cast<VkPipelineLayout>(m_pipeline_layout);
+		    pipeline_info.renderPass			= static_cast<VkRenderPass>(m_state.GetRenderPass());
 
+            // Create
             auto pipeline = reinterpret_cast<VkPipeline*>(&m_pipeline);
             vulkan_utility::error::check(vkCreateGraphicsPipelines(m_rhi_device->GetContextRhi()->device, nullptr, 1, &pipeline_info, nullptr, pipeline));
 
-            // Set pipeline name
-            string name = (m_state.shader_vertex ? m_state.shader_vertex->GetName() : "null") + "-" + (m_state.shader_pixel ? m_state.shader_pixel->GetName() : "null");
-            vulkan_utility::debug::set_pipeline_name(*pipeline, name.c_str());
+            // Name
+            vulkan_utility::debug::set_name(*pipeline, m_state.pass_name);
         }
 	}
 
