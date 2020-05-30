@@ -146,7 +146,7 @@ namespace Spartan
                     resource_textures[i] = static_cast<void*>(swap_chain_images[i]);
 
                     // Name the image
-                    vulkan_utility::debug::set_image_name(swap_chain_images[i], string(string("swapchain_image_") + to_string(0)).c_str());
+                    vulkan_utility::debug::set_name(swap_chain_images[i], string(string("swapchain_image_") + to_string(0)).c_str());
 
                     if (!vulkan_utility::image::view::create(static_cast<void*>(swap_chain_images[i]), resource_views[i], VK_IMAGE_VIEW_TYPE_2D, rhi_context->surface_format, VK_IMAGE_ASPECT_COLOR_BIT))
                         return false;

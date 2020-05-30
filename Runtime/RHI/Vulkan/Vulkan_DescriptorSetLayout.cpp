@@ -60,7 +60,7 @@ namespace Spartan
             if (!vulkan_utility::error::check(vkAllocateDescriptorSets(m_rhi_device->GetContextRhi()->device, &allocate_info, reinterpret_cast<VkDescriptorSet*>(&descriptor_set))))
                 return nullptr;
 
-            vulkan_utility::debug::set_descriptor_set_name(*reinterpret_cast<VkDescriptorSet*>(&descriptor_set), m_name.c_str());
+            vulkan_utility::debug::set_name(*reinterpret_cast<VkDescriptorSet*>(&descriptor_set), m_name.c_str());
         }
 
         UpdateDescriptorSet(descriptor_set, m_descriptors);
@@ -166,7 +166,7 @@ namespace Spartan
         if (!vulkan_utility::error::check(vkCreateDescriptorSetLayout(m_rhi_device->GetContextRhi()->device, &create_info, nullptr, reinterpret_cast<VkDescriptorSetLayout*>(&descriptor_set_layout))))
             return false;
 
-        vulkan_utility::debug::set_descriptor_set_layout_name(static_cast<VkDescriptorSetLayout>(descriptor_set_layout), m_name.c_str());
+        vulkan_utility::debug::set_name(static_cast<VkDescriptorSetLayout>(descriptor_set_layout), m_name.c_str());
 
         return descriptor_set_layout;
     }

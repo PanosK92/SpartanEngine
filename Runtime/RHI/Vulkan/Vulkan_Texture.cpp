@@ -63,11 +63,11 @@ namespace Spartan
             }
         }
 
-        vulkan_utility::debug::set_image_name(static_cast<VkImage>(texture->Get_Resource()), name.c_str());
-        vulkan_utility::debug::set_image_view_name(static_cast<VkImageView>(texture->Get_Resource_View(0)), name.c_str());
+        vulkan_utility::debug::set_name(static_cast<VkImage>(texture->Get_Resource()), name.c_str());
+        vulkan_utility::debug::set_name(static_cast<VkImageView>(texture->Get_Resource_View(0)), name.c_str());
         if (texture->IsSampled() && texture->IsStencilFormat())
         {
-            vulkan_utility::debug::set_image_view_name(static_cast<VkImageView>(texture->Get_Resource_View(1)), name.c_str());
+            vulkan_utility::debug::set_name(static_cast<VkImageView>(texture->Get_Resource_View(1)), name.c_str());
         }
     }
 

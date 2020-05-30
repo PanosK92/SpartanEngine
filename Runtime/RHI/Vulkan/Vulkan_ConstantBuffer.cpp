@@ -92,7 +92,7 @@ namespace Spartan
         m_allocation = static_cast<void*>(allocation);
 
         // Set debug name
-        vulkan_utility::debug::set_buffer_name(static_cast<VkBuffer>(m_buffer), "constant_buffer");
+        vulkan_utility::debug::set_name(static_cast<VkBuffer>(m_buffer), "constant_buffer");
 
 		return true;
 	}

@@ -722,7 +722,7 @@ namespace Spartan
         // Allowed to markers ?
         if (m_rhi_device->GetContextRhi()->markers && pipeline_state->mark)
         {
-            vulkan_utility::debug::begin(static_cast<VkCommandBuffer>(m_cmd_buffer), pipeline_state->pass_name, Vector4::Zero);
+            vulkan_utility::debug::marker_begin(static_cast<VkCommandBuffer>(m_cmd_buffer), pipeline_state->pass_name, Vector4::Zero);
         }
     }
 
@@ -734,7 +734,7 @@ namespace Spartan
         // Allowed markers ?
         if (m_rhi_device->GetContextRhi()->markers && pipeline_state->mark)
         {
-            vulkan_utility::debug::end(static_cast<VkCommandBuffer>(m_cmd_buffer));
+            vulkan_utility::debug::marker_end(static_cast<VkCommandBuffer>(m_cmd_buffer));
         }
 
         // Allowed profiler ?
@@ -853,7 +853,7 @@ namespace Spartan
             m_profiler->m_rhi_bindings_descriptor_set++;
         }
 
-        return true;
+        return result;
     }
 
     bool RHI_CommandList::Deferred_BindPipeline()
