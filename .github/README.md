@@ -66,20 +66,16 @@ Platform | API | Status | Quality | Binaries | :+1:
 
 # Roadmap
 
-##### v0.32 (WIP)
-Feature     					| Completion  | Notes 
-:-          					| :-          | :-
-Eye Adaptation 					| 0%          | -
-Depth-of-field					| 0%          | Based on Doom approach
-Subsurface Scattering 			| 0%          | -
-Continuous Vulkan optimisation 	| -           | -
-
-###### v0.33
-- Ray traced shadows.
-- Ray traced reflections.
-
-###### v0.34
-- DirectX 12.
+##### v0.32-35 (WIP)
+Feature     					| Completion | Notes 
+:-          					| :-         | :-
+Continuous Vulkan optimisation 	| -			 | Outperform D3D11, high priority
+DirectX 12						| -			 | Low priority
+Eye Adaptation 					| -          | Low priority
+Depth-of-field					| -          | Low priority, Based on Doom approach
+Subsurface Scattering 			| -          | Low priority
+Ray traced shadows				| -          | -
+Ray traced reflections			| -          | -
 
 ###### Future
 - Skeletal Animation.
