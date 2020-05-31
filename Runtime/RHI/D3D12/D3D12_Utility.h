@@ -23,9 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include "../RHI_Device.h"
-#include <vector>
-#include <wrl/client.h>
-#include "../../Logging/Log.h"
 #include "../../Core/EngineDefs.h"
 //================================
 

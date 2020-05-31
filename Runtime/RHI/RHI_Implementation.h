@@ -144,7 +144,15 @@ static const D3D11_BLEND_OP d3d11_blend_operation[] =
 	D3D11_BLEND_OP_MIN,
 	D3D11_BLEND_OP_MAX
 };
-#endif 
+#endif
+
+// Definition - DirectX 11
+#if defined(API_GRAPHICS_D3D12)
+#pragma comment(lib, "d3d12.lib")
+#pragma warning(push, 0) // Hide warnings which belong DirectX
+#include <d3d12.h>
+#pragma warning(pop)
+#endif
 
 // Definition - Vulkan
 #if defined(API_GRAPHICS_VULKAN) 
@@ -320,6 +328,10 @@ namespace Spartan
             ID3DUserDefinedAnnotation* annotation   = nullptr;
         #endif
 
+        #if defined(API_GRAPHICS_D3D12)
+            ID3D12Device* device = nullptr;
+        #endif
+
         #if defined(API_GRAPHICS_VULKAN)
             uint32_t api_version                            = 0;
             VkInstance instance                             = nullptr;
@@ -403,6 +415,8 @@ namespace Spartan
 // HELPERS
 #if defined(API_GRAPHICS_D3D11)
     #include "D3D11/D3D11_Utility.h"
+#elif defined (API_GRAPHICS_D3D12)
+    #include "D3D12/D3D12_Utility.h"
 #elif defined (API_GRAPHICS_VULKAN)
     #include "Vulkan/Vulkan_Utility.h"
 #endif
