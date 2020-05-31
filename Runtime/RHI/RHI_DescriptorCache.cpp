@@ -74,15 +74,15 @@ namespace Spartan
         m_descriptor_layout_current->NeedsToBind();
     }
 
-    void RHI_DescriptorCache::SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer)
+    bool RHI_DescriptorCache::SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer)
     {
         if (!m_descriptor_layout_current)
         {
             LOG_ERROR("Invalid descriptor set layout");
-            return;
+            return false;
         }
 
-        m_descriptor_layout_current->SetConstantBuffer(slot, constant_buffer);
+        return m_descriptor_layout_current->SetConstantBuffer(slot, constant_buffer);
     }
 
     void RHI_DescriptorCache::SetSampler(const uint32_t slot, RHI_Sampler* sampler)

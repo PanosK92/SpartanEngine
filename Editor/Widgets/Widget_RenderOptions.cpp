@@ -297,7 +297,7 @@ void Widget_RenderOptions::Tick()
         {
             // Buffer
             {
-                static vector<string> buffer_options =
+                static array<string, 13> buffer_options =
                 {
                     "None",
                     "Albedo",
@@ -310,7 +310,8 @@ void Widget_RenderOptions::Tick()
                     "SSAO",
                     "SSR",
                     "Bloom",
-                    "Volumetric Lighting"
+                    "Volumetric Lighting",
+                    "BRDF Specular Lut"
                 };
                 static int buffer_selection = 0;
                 static string buffer_selection_str = buffer_options[0];

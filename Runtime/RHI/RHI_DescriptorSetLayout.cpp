@@ -42,7 +42,7 @@ namespace Spartan
         m_descriptor_set_layout = CreateDescriptorSetLayout(m_descriptors);
     }
 
-    void RHI_DescriptorSetLayout::SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer)
+    bool RHI_DescriptorSetLayout::SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer)
     {
         for (RHI_Descriptor& descriptor : m_descriptors)
         {
@@ -70,9 +70,11 @@ namespace Spartan
                 descriptor.offset   = constant_buffer->GetOffset();
                 descriptor.range    = constant_buffer->GetStride();
 
-                break;
+                return true;
             }
         }
+
+        return false;
     }
 
     void RHI_DescriptorSetLayout::SetSampler(const uint32_t slot, RHI_Sampler* sampler)

@@ -393,14 +393,15 @@ namespace Spartan
         }
     }
 
-	void RHI_CommandList::Draw(const uint32_t vertex_count)
+    bool RHI_CommandList::Draw(const uint32_t vertex_count)
     {
         m_rhi_device->GetContextRhi()->device_context->Draw(static_cast<UINT>(vertex_count), 0);
-
         m_profiler->m_rhi_draw_calls++;
+
+        return true;
 	}
 
-	void RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset)
+    bool RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset)
     {
         m_rhi_device->GetContextRhi()->device_context->DrawIndexed
         (
@@ -410,6 +411,8 @@ namespace Spartan
         );
 
         m_profiler->m_rhi_draw_calls++;
+
+        return true;
 	}
 
     void RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z /*= 1*/) const
@@ -508,7 +511,7 @@ namespace Spartan
         m_profiler->m_rhi_bindings_buffer_index++;
 	}
 
-    void RHI_CommandList::SetConstantBuffer(const uint32_t slot, const uint8_t scope, RHI_ConstantBuffer* constant_buffer) const
+    bool RHI_CommandList::SetConstantBuffer(const uint32_t slot, const uint8_t scope, RHI_ConstantBuffer* constant_buffer) const
     {
         void* buffer                        = static_cast<ID3D11Buffer*>(constant_buffer ? constant_buffer->GetResource() : nullptr);
         const void* buffer_array[1]         = { buffer };
@@ -551,6 +554,8 @@ namespace Spartan
         m_profiler->m_rhi_bindings_buffer_constant += scope & RHI_Shader_Vertex   ? 1 : 0;
         m_profiler->m_rhi_bindings_buffer_constant += scope & RHI_Shader_Pixel    ? 1 : 0;
         m_profiler->m_rhi_bindings_buffer_constant += scope & RHI_Shader_Compute  ? 1 : 0;
+
+        return true;
     }
 
     void RHI_CommandList::SetSampler(const uint32_t slot, RHI_Sampler* sampler) const

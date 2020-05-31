@@ -66,7 +66,7 @@ cbuffer BufferMaterial : register(b1)
     float4 mat_sheen_sheenTint_pad[g_max_materials];
 }
 
-// Medium frequency - Updates multiple times per frame
+// Medium frequency - Updates per render pass
 cbuffer BufferUber : register(b2)
 {
     matrix g_transform;
@@ -101,7 +101,7 @@ cbuffer BufferObject : register(b3)
     matrix g_object_wvp_previous;
 };
 
-// Updates as many times as there are lights
+// High frequency - Updates per light
 cbuffer LightBuffer : register(b4)
 {
     matrix light_view_projection[6];

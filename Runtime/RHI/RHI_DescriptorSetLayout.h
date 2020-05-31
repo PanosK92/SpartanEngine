@@ -38,7 +38,7 @@ namespace Spartan
         RHI_DescriptorSetLayout(const RHI_Device* rhi_device, const std::vector<RHI_Descriptor>& descriptors);
         ~RHI_DescriptorSetLayout();
 
-        void SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer);
+        bool SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer);
         void SetSampler(const uint32_t slot, RHI_Sampler* sampler);
         void SetTexture(const uint32_t slot, RHI_Texture* texture);
 
