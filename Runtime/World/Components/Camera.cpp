@@ -369,18 +369,25 @@ namespace Spartan
 		return Matrix::CreateLookAtLH(position, look_at, up);
 	}
 
-	Matrix Camera::ComputeProjection(const bool reverse_z)
+	Matrix Camera::ComputeProjection(const bool reverse_z, const float near_plane /*= 0.0f*/, const float far_plane /*= 0.0f*/)
 	{
-        const float near_plane	= !reverse_z ? m_near_plane : m_far_plane;
-        const float far_plane   = !reverse_z ? m_far_plane  : m_near_plane;
+        float _near  = near_plane != 0 ? near_plane : m_near_plane;
+        float _far   = far_plane != 0  ? far_plane : m_far_plane;
+
+        if (reverse_z)
+        {
+            float temp = _near;
+            _near = _far;
+            _far = temp;
+        }
 
 		if (m_projection_type == Projection_Perspective)
 		{
-			return Matrix::CreatePerspectiveFieldOfViewLH(GetFovVerticalRad(), GetViewport().AspectRatio(), near_plane, far_plane);
+			return Matrix::CreatePerspectiveFieldOfViewLH(GetFovVerticalRad(), GetViewport().AspectRatio(), _near, _far);
 		}
 		else if (m_projection_type == Projection_Orthographic)
 		{
-			return Matrix::CreateOrthographicLH(GetViewport().width, GetViewport().height, near_plane, far_plane);
+			return Matrix::CreateOrthographicLH(GetViewport().width, GetViewport().height, _near, _far);
 		}
 
         return Matrix::Identity;

@@ -341,9 +341,10 @@ float4 Shadow_Map(Surface surface, Light light, bool transparent_pixel)
                 #endif
 
                 // If we are close to the edge of the primary cascade and a secondary cascade exists, lerp with it.
-                float cascade_lerp  = (max3(abs(pos)) - 0.9f);
+                static const float blend_threshold = 0.1f;
+                float distance_to_edge = 1.0f - max3(abs(pos * 2.0f - 1.0f));
                 [branch]
-                if (cascade_lerp > 0.0f && cascade < light.array_size - 1)
+                if (distance_to_edge < blend_threshold && cascade < light.array_size)
                 {
                     int cacade_secondary = cascade + 1;
 
@@ -354,8 +355,9 @@ float4 Shadow_Map(Surface surface, Light light, bool transparent_pixel)
                     compare_depth           = bias_sloped_scaled(pos.z, light.bias * (cacade_secondary + 1));
                     float shadow_secondary  = SampleShadowMap(float3(pos.xy, cacade_secondary), compare_depth);
 
-                    // Blend cascades   
-                    shadow.a = lerp(shadow.a, shadow_secondary, cascade_lerp);
+                    // Blend cascades
+                    float alpha = smoothstep(0.0f, blend_threshold, distance_to_edge);
+                    shadow.a = lerp(shadow_secondary, shadow.a, alpha);
                     
                     #if SHADOWS_TRANSPARENT
                     [branch]
@@ -411,11 +413,4 @@ float4 Shadow_Map(Surface surface, Light light, bool transparent_pixel)
     
     return shadow;
 }
-
-
-
-
-
-
-
 

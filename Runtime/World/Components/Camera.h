@@ -110,7 +110,7 @@ namespace Spartan
 		//=====================================================================================
 
         Math::Matrix ComputeViewMatrix() const;
-        Math::Matrix ComputeProjection(const bool reverse_z);
+        Math::Matrix ComputeProjection(const bool reverse_z, const float near_plane = 0.0f, const float far_plane = 0.0f);
 
 	private:
         void FpsControl(float delta_time);
