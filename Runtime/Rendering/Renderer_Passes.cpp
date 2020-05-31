@@ -724,6 +724,8 @@ namespace Spartan
         pipeline_state.primitive_topology                       = RHI_PrimitiveTopology_TriangleList;
         pipeline_state.pass_name                                = "Pass_Light";
 
+        bool cleared = false;
+
         // Iterate through all the light entities
         for (const auto& entity : entities)
         {
@@ -778,8 +780,14 @@ namespace Spartan
 
                         // Draw
                         cmd_list->DrawIndexed(Rectangle::GetIndexCount());
-
                         cmd_list->EndRenderPass();
+
+                        // Clear only on first pass
+                        if (!cleared)
+                        {
+                            pipeline_state.ResetClearValues();
+                            cleared = true;
+                        }
                     }
                 }
             }
