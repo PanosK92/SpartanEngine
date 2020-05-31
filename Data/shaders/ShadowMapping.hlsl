@@ -413,4 +413,3 @@ float4 Shadow_Map(Surface surface, Light light, bool transparent_pixel)
     
     return shadow;
 }
-
