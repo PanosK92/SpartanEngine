@@ -20,7 +20,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= IMPLEMENTATION ===============
-#ifdef API_GRAPHICS_VULKAN
 #include "../RHI_Implementation.h"
 //================================
 
@@ -102,4 +101,3 @@ namespace Spartan
         return true;
     }
 }
-#endif

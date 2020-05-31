@@ -23,43 +23,52 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Implementation.h"
 //================================
 
-//= INCLUDES =================
-#include "../RHI_BlendState.h"
+//= INCLUDES ========================
+#include "../RHI_SwapChain.h"
 #include "../RHI_Device.h"
-//============================
+#include "../../Logging/Log.h"
+#include "../RHI_CommandList.h"
+#include "../../Rendering/Renderer.h"
+#include "../../Profiling/Profiler.h"
+//===================================
 
-//= NAMESPACES =====
+//= NAMESPACES ================
 using namespace std;
-//==================
+using namespace Spartan::Math;
+//=============================
 
 namespace Spartan
 {
-	RHI_BlendState::RHI_BlendState
-	(
-		const std::shared_ptr<RHI_Device>& device,
-		const bool blend_enabled					/*= false*/,
-		const RHI_Blend source_blend				/*= Blend_Src_Alpha*/,
-		const RHI_Blend dest_blend					/*= Blend_Inv_Src_Alpha*/,
-		const RHI_Blend_Operation blend_op			/*= Blend_Operation_Add*/,
-		const RHI_Blend source_blend_alpha			/*= Blend_One*/,
-		const RHI_Blend dest_blend_alpha			/*= Blend_One*/,
-		const RHI_Blend_Operation blend_op_alpha,	/*= Blend_Operation_Add*/
-        const float blend_factor                    /*= 0.0f*/
+	RHI_SwapChain::RHI_SwapChain(
+		void* window_handle,
+        const shared_ptr<RHI_Device>& rhi_device,
+		const uint32_t width,
+		const uint32_t height,
+		const RHI_Format format	    /*= Format_R8G8B8A8_UNORM*/,	
+		const uint32_t buffer_count	/*= 2 */,
+        const uint32_t flags	    /*= Present_Immediate */
 	)
 	{
-		// Save parameters
-		m_blend_enabled			= blend_enabled;
-		m_source_blend			= source_blend;
-		m_dest_blend			= dest_blend;
-		m_blend_op				= blend_op;
-		m_source_blend_alpha	= source_blend_alpha;
-		m_dest_blend_alpha		= dest_blend_alpha;
-		m_blend_op_alpha		= blend_op_alpha;
-        m_blend_factor          = blend_factor;
+        
 	}
 
-	RHI_BlendState::~RHI_BlendState()
+	RHI_SwapChain::~RHI_SwapChain()
 	{
 		
+	}
+
+	bool RHI_SwapChain::Resize(const uint32_t width, const uint32_t height, const bool force /*= false*/)
+	{	
+		return true;
+	}
+
+    bool RHI_SwapChain::AcquireNextImage()
+    {
+        return true;
+    }
+
+	bool RHI_SwapChain::Present()
+    {
+		return true;
 	}
 }

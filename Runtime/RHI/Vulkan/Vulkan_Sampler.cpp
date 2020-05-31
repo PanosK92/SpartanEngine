@@ -20,7 +20,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= IMPLEMENTATION ===============
-#ifdef API_GRAPHICS_VULKAN
 #include "../RHI_Implementation.h"
 //================================
 
@@ -64,4 +63,3 @@ namespace Spartan
 		vkDestroySampler(m_rhi_device->GetContextRhi()->device, reinterpret_cast<VkSampler>(m_resource), nullptr);
 	}
 }
-#endif

@@ -23,42 +23,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Implementation.h"
 //================================
 
-//= INCLUDES =================
-#include "../RHI_BlendState.h"
+//= INCLUDES ========================
+#include "../RHI_Sampler.h"
 #include "../RHI_Device.h"
-//============================
-
-//= NAMESPACES =====
-using namespace std;
-//==================
+#include "../../Logging/Log.h"
+#include "../../Core/Context.h"
+#include "../../Rendering/Renderer.h"
+//===================================
 
 namespace Spartan
 {
-	RHI_BlendState::RHI_BlendState
-	(
-		const std::shared_ptr<RHI_Device>& device,
-		const bool blend_enabled					/*= false*/,
-		const RHI_Blend source_blend				/*= Blend_Src_Alpha*/,
-		const RHI_Blend dest_blend					/*= Blend_Inv_Src_Alpha*/,
-		const RHI_Blend_Operation blend_op			/*= Blend_Operation_Add*/,
-		const RHI_Blend source_blend_alpha			/*= Blend_One*/,
-		const RHI_Blend dest_blend_alpha			/*= Blend_One*/,
-		const RHI_Blend_Operation blend_op_alpha,	/*= Blend_Operation_Add*/
-        const float blend_factor                    /*= 0.0f*/
-	)
-	{
-		// Save parameters
-		m_blend_enabled			= blend_enabled;
-		m_source_blend			= source_blend;
-		m_dest_blend			= dest_blend;
-		m_blend_op				= blend_op;
-		m_source_blend_alpha	= source_blend_alpha;
-		m_dest_blend_alpha		= dest_blend_alpha;
-		m_blend_op_alpha		= blend_op_alpha;
-        m_blend_factor          = blend_factor;
+	void RHI_Sampler::CreateResource()
+	{	
+        
 	}
 
-	RHI_BlendState::~RHI_BlendState()
+	RHI_Sampler::~RHI_Sampler()
 	{
 		
 	}

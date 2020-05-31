@@ -46,59 +46,11 @@ namespace Spartan
 		const bool antialised_line_enabled,
         const float line_width /*= 1.0f */)
 	{
-		if (!rhi_device)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return;
-		}
-
-		if (!rhi_device->GetContextRhi()->device)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return;
-		}
-
-		// Save properties
-		m_cull_mode					= cull_mode;
-		m_fill_mode					= fill_mode;
-		m_depth_clip_enabled		= depth_clip_enabled;
-		m_scissor_enabled			= scissor_enabled;
-		m_multi_sample_enabled		= multi_sample_enabled;
-		m_antialised_line_enabled	= antialised_line_enabled;
-        m_line_width                = line_width;
-
-		// Create rasterizer description
-		D3D11_RASTERIZER_DESC desc;
-		desc.CullMode				= d3d11_cull_mode[cull_mode];
-		desc.FillMode				= d3d11_polygon_mode[fill_mode];	
-		desc.FrontCounterClockwise	= FALSE;
-		desc.DepthBias				= 0;
-		desc.DepthBiasClamp			= 0.0f;
-		desc.SlopeScaledDepthBias	= 0.0f;
-		desc.DepthClipEnable		= depth_clip_enabled;	
-		desc.MultisampleEnable		= multi_sample_enabled;
-		desc.AntialiasedLineEnable	= antialised_line_enabled;
-		desc.ScissorEnable			= scissor_enabled;
-
-		// Create rasterizer state
-		auto rasterizer_state	= static_cast<ID3D11RasterizerState*>(m_buffer);
-		const auto result		= rhi_device->GetContextRhi()->device->CreateRasterizerState(&desc, &rasterizer_state);
-	
-		// Handle result
-		if (SUCCEEDED(result))
-		{
-			m_buffer		= static_cast<void*>(rasterizer_state);
-			m_initialized	= true;
-		}
-		else
-		{
-			LOG_ERROR("Failed to create the rasterizer state, %s.", d3d11_utility::dxgi_error_to_string(result));
-			m_initialized = false;
-		}
+		
 	}
 
 	RHI_RasterizerState::~RHI_RasterizerState()
 	{
-        safe_release(*reinterpret_cast<ID3D11RasterizerState**>(&m_buffer));
+        
 	}
 }

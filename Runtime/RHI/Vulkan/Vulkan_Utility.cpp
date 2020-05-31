@@ -20,7 +20,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= IMPLEMENTATION ===============
-#ifdef API_GRAPHICS_VULKAN
 #define VMA_IMPLEMENTATION
 #include "../RHI_Implementation.h"
 //================================
@@ -206,4 +205,3 @@ namespace Spartan::vulkan_utility
         }
     }
 }
-#endif
