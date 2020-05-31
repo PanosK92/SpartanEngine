@@ -104,10 +104,6 @@ float3 VolumetricLighting(Surface surface, Light light)
 				}
 				break;
 			}
-			else
-			{
-				fog += vl_compute_scattering(ray_dot_light) * 0.25f;
-			}
 		}
     }
     #elif POINT
