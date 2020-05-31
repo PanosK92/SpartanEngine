@@ -21,11 +21,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= IMPLEMENTATION ===============
-#include "../RHI_Implementation.h"
-//================================
-
 //= INCLUDES ========================
+#include "../RHI_Implementation.h"
 #include "../RHI_Device.h"
 #include "../RHI_Texture.h"
 #include "../RHI_SwapChain.h"

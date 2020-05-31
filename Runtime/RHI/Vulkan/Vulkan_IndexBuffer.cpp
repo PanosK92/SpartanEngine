@@ -19,16 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= IMPLEMENTATION ===============
+//= INCLUDES =====================
 #include "../RHI_Implementation.h"
-//================================
-
-//= INCLUDES ==================
 #include "../RHI_Device.h"
 #include "../RHI_IndexBuffer.h"
 #include "../RHI_CommandList.h"
 #include "../../Logging/Log.h"
-//=============================
+//================================
 
 //= NAMESPACES =====
 using namespace std;
