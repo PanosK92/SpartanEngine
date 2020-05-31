@@ -114,7 +114,7 @@ namespace Spartan
         Renderer_Buffer_SSR,
         Renderer_Buffer_Bloom,
         Renderer_Buffer_VolumetricLighting,
-        Renderer_Buffer_Shadows
+        Renderer_Buffer_BrdfSpecularLut
 	};
 
 	enum Renderer_Object_Type

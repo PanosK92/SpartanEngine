@@ -209,9 +209,6 @@ namespace Spartan
 			return;
 		}
 
-		m_frame_num++;
-		m_is_odd_frame = (m_frame_num % 2) == 1;
-
         // Reset dynamic buffer indices when the swapchain resets to first buffer/command list
         if (m_swap_chain->GetCmdIndex() == 0)
         {
@@ -261,17 +258,22 @@ namespace Spartan
         m_is_rendering = true;
         Pass_Main(m_swap_chain->GetCmdList());
         m_is_rendering = false;
+
+        m_frame_num++;
+        m_is_odd_frame = (m_frame_num % 2) == 1;
 	}
 
     void Renderer::SetViewport(float width, float height, float offset_x /*= 0*/, float offset_y /*= 0*/)
     {
         if (m_viewport.width != width || m_viewport.height != height)
         {
+            Flush(); // viewport quad might be in use
+
+            m_brdf_specular_lut_rendered = false; // todo, Vulkan needs to re-renderer it, it shouldn't, what am I missing ?
+
             // Update viewport
             m_viewport.width    = width;
             m_viewport.height   = height;
-
-            Flush();
 
             // Update full-screen quad
             m_viewport_quad = Math::Rectangle(0, 0, width, height);
@@ -451,16 +453,19 @@ namespace Spartan
         const uint32_t offset_count = offset_index + 1;
 
         // Re-allocate buffer with double size (if needed)
-        if (offset_count >= buffer_gpu->GetOffsetCount())
+        if (buffer_gpu->IsDynamic())
         {
-            cmd_list->Flush();
-            const uint32_t new_size = Math::Helper::NextPowerOfTwo(offset_count);
-            if (!buffer_gpu->Create<T>(new_size))
+            if (offset_count >= buffer_gpu->GetOffsetCount())
             {
-                LOG_ERROR("Failed to re-allocate %s buffer with %d offsets", buffer_gpu->GetName().c_str(), new_size);
-                return false;
+                cmd_list->Flush();
+                const uint32_t new_size = Math::Helper::NextPowerOfTwo(offset_count);
+                if (!buffer_gpu->Create<T>(new_size))
+                {
+                    LOG_ERROR("Failed to re-allocate %s buffer with %d offsets", buffer_gpu->GetName().c_str(), new_size);
+                    return false;
+                }
+                LOG_INFO("Increased %s buffer size to %d, that's %d kb", buffer_gpu->GetName().c_str(), new_size, (new_size * buffer_gpu->GetStride()) / 1000);
             }
-            LOG_INFO("Increased %s buffer size to %d, that's %d kb", buffer_gpu->GetName().c_str(), new_size, (new_size * buffer_gpu->GetStride()) / 1000);
         }
 
         // Set new buffer offset
@@ -504,9 +509,7 @@ namespace Spartan
             return false;
 
         // Dynamic buffers with offsets have to be rebound whenever the offset changes
-        cmd_list->SetConstantBuffer(2, RHI_Shader_Pixel | RHI_Shader_Vertex, m_buffer_uber_gpu);
-
-        return true;
+        return cmd_list->SetConstantBuffer(2, RHI_Shader_Pixel | RHI_Shader_Vertex, m_buffer_uber_gpu);
 	}
 
     bool Renderer::UpdateObjectBuffer(RHI_CommandList* cmd_list)
@@ -521,9 +524,7 @@ namespace Spartan
             return false;
 
         // Dynamic buffers with offsets have to be rebound whenever the offset changes
-        cmd_list->SetConstantBuffer(3, RHI_Shader_Vertex, m_buffer_object_gpu);
-
-        return true;
+        return cmd_list->SetConstantBuffer(3, RHI_Shader_Vertex, m_buffer_object_gpu);
     }
 
     bool Renderer::UpdateLightBuffer(const Light* light)

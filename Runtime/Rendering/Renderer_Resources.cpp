@@ -138,10 +138,10 @@ namespace Spartan
             m_render_targets[RenderTarget_Composition_Hdr]      = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_composition_hdr"); // Investigate using less bits but have an alpha channel
             m_render_targets[RenderTarget_Composition_Ldr]      = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_composition_ldr"); // Investigate using less bits but have an alpha channel
             // 2nd copies
-            m_render_targets[RenderTarget_Composition_Hdr_2]    = make_unique<RHI_Texture2D>(m_context, width, height, m_render_targets[RenderTarget_Composition_Hdr]->GetFormat(), 1, 0, "rt_composition_hdr2"); // Used for ping-ponging between effects during post-processing
-            m_render_targets[RenderTarget_Composition_Ldr_2]    = make_unique<RHI_Texture2D>(m_context, width, height, m_render_targets[RenderTarget_Composition_Ldr]->GetFormat(), 1, 0, "rt_composition_ldr2"); // Used for ping-ponging between effects during post-Processing
+            m_render_targets[RenderTarget_Composition_Hdr_2]    = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_composition_hdr2"); // Used for ping-ponging between effects during post-processing
+            m_render_targets[RenderTarget_Composition_Ldr_2]    = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_composition_ldr2"); // Used for ping-ponging between effects during post-Processing
             // 3rd copies
-            m_render_targets[RenderTarget_TaaHistory]           = make_unique<RHI_Texture2D>(m_context, width, height, m_render_targets[RenderTarget_Composition_Hdr]->GetFormat(), 1, 0, "rt_taa_history"); // Used for TAA accumulation
+            m_render_targets[RenderTarget_TaaHistory]           = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_taa_history"); // Used for TAA accumulation
         }
 
         // SSAO

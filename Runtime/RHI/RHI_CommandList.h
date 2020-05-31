@@ -92,8 +92,8 @@ namespace Spartan
         void Clear(RHI_PipelineState& pipeline_state);
 
 		// Draw/Dispatch
-		void Draw(uint32_t vertex_count);
-		void DrawIndexed(uint32_t index_count, uint32_t index_offset = 0, uint32_t vertex_offset = 0);
+        bool Draw(uint32_t vertex_count);
+		bool DrawIndexed(uint32_t index_count, uint32_t index_offset = 0, uint32_t vertex_offset = 0);
         void Dispatch(uint32_t x, uint32_t y, uint32_t z = 1) const;
 
 		// Viewport
@@ -104,15 +104,13 @@ namespace Spartan
 
 		// Vertex buffer
 		void SetBufferVertex(const RHI_VertexBuffer* buffer, const uint64_t offset = 0);
-        inline void SetBufferVertex(const std::shared_ptr<RHI_VertexBuffer>& buffer, const uint64_t offset = 0) { SetBufferVertex(buffer.get(), offset); }
 
 		// Index buffer
 		void SetBufferIndex(const RHI_IndexBuffer* buffer, const uint64_t offset = 0);
-        inline void SetBufferIndex(const std::shared_ptr<RHI_IndexBuffer>& buffer, const uint64_t offset = 0) { SetBufferIndex(buffer.get(), offset); }
 
 		// Constant buffer
-        void SetConstantBuffer(const uint32_t slot, const uint8_t scope, RHI_ConstantBuffer* constant_buffer) const;
-        inline void SetConstantBuffer(const uint32_t slot, const uint8_t scope, const std::shared_ptr<RHI_ConstantBuffer>& constant_buffer) const { SetConstantBuffer(slot, scope, constant_buffer.get()); }
+        bool SetConstantBuffer(const uint32_t slot, const uint8_t scope, RHI_ConstantBuffer* constant_buffer) const;
+        inline bool SetConstantBuffer(const uint32_t slot, const uint8_t scope, const std::shared_ptr<RHI_ConstantBuffer>& constant_buffer) const { return SetConstantBuffer(slot, scope, constant_buffer.get()); }
 
 		// Sampler
         void SetSampler(const uint32_t slot, RHI_Sampler* sampler) const;

@@ -1782,8 +1782,8 @@ namespace Spartan
                     m_buffer_uber_cpu.transform     = m_gizmo_grid->ComputeWorldMatrix(m_camera->GetTransform()) * m_buffer_frame_cpu.view_projection_unjittered;
                     UpdateUberBuffer(cmd_list);
 
-                    cmd_list->SetBufferIndex(m_gizmo_grid->GetIndexBuffer());
-                    cmd_list->SetBufferVertex(m_gizmo_grid->GetVertexBuffer());
+                    cmd_list->SetBufferIndex(m_gizmo_grid->GetIndexBuffer().get());
+                    cmd_list->SetBufferVertex(m_gizmo_grid->GetVertexBuffer().get());
                     cmd_list->DrawIndexed(m_gizmo_grid->GetIndexCount());
                     cmd_list->EndRenderPass();
                 }
@@ -1822,7 +1822,7 @@ namespace Spartan
                 // Create and submit command list
                 if (cmd_list->BeginRenderPass(pipeline_state))
                 {
-                    cmd_list->SetBufferVertex(m_vertex_buffer_lines);
+                    cmd_list->SetBufferVertex(m_vertex_buffer_lines.get());
                     cmd_list->Draw(line_vertex_buffer_size);
                     cmd_list->EndRenderPass();
                 }
@@ -1861,7 +1861,7 @@ namespace Spartan
             // Create and submit command list
             if (cmd_list->BeginRenderPass(pipeline_state))
             {
-                cmd_list->SetBufferVertex(m_vertex_buffer_lines);
+                cmd_list->SetBufferVertex(m_vertex_buffer_lines.get());
                 cmd_list->Draw(line_vertex_buffer_size);
                 cmd_list->EndRenderPass();
             }
@@ -2243,6 +2243,12 @@ namespace Spartan
             shader_type = Shader_DebugChannelRgbGammaCorrect_P;
         }
 
+        if (m_debug_buffer == Renderer_Buffer_BrdfSpecularLut)
+        {
+            texture = m_render_targets[RenderTarget_Brdf_Specular_Lut];
+            shader_type = Shader_Texture_P;
+        }
+
         // Acquire shaders
         const auto& shader_v = m_shaders[Shader_Quad_V];
         const auto& shader_p = m_shaders[shader_type];
@@ -2293,7 +2299,7 @@ namespace Spartan
             return;
 
         // Acquire render target
-        const auto& render_target = m_render_targets[RenderTarget_Brdf_Specular_Lut];
+        RHI_Texture* render_target = m_render_targets[RenderTarget_Brdf_Specular_Lut].get();
 
         // Set render state
         static RHI_PipelineState pipeline_state;
@@ -2303,7 +2309,7 @@ namespace Spartan
         pipeline_state.blend_state                      = m_blend_disabled.get();
         pipeline_state.depth_stencil_state              = m_depth_stencil_disabled.get();
         pipeline_state.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride();
-        pipeline_state.render_target_color_textures[0]  = render_target.get();
+        pipeline_state.render_target_color_textures[0]  = render_target;
         pipeline_state.clear_color[0]                   = state_color_dont_care;
         pipeline_state.viewport                         = render_target->GetViewport();
         pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
@@ -2318,11 +2324,11 @@ namespace Spartan
 
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
-            cmd_list->DrawIndexed(Rectangle::GetIndexCount());
+            cmd_list->DrawIndexed(Rectangle::GetIndexCount()); 
             cmd_list->EndRenderPass();
-        }
 
-        m_brdf_specular_lut_rendered = true;
+            m_brdf_specular_lut_rendered = true;
+        }
     }
 
     void Renderer::Pass_Copy(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)

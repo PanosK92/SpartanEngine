@@ -85,8 +85,8 @@ namespace Spartan
         const auto& GetAtlasOutline()                                   const { return m_atlas_outline; }
         void SetAtlasOutline(const std::shared_ptr<RHI_Texture>& atlas)       { m_atlas_outline = atlas; }
 
-		const auto& GetIndexBuffer()                                    const { return m_index_buffer; }
-		const auto& GetVertexBuffer()                                   const { return m_vertex_buffer; }
+        RHI_IndexBuffer* GetIndexBuffer()                               const { return m_index_buffer.get(); }
+        RHI_VertexBuffer* GetVertexBuffer()                             const { return m_vertex_buffer.get(); }
         uint32_t GetIndexCount()                                        const { return static_cast<uint32_t>(m_indices.size()); }
         uint32_t GetSize()                                              const { return m_font_size; }
 		void SetGlyph(const uint32_t char_code, const Glyph& glyph)			  { m_glyphs[char_code] = glyph; }

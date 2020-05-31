@@ -101,9 +101,9 @@ namespace Spartan
             }
 
 			bool CreateBuffers(Renderer* renderer);
-			static int GetIndexCount()			{ return 6; }
-			const auto&	GetIndexBuffer() const	{ return m_indexBuffer; }
-			const auto& GetVertexBuffer() const	{ return m_vertexBuffer; }
+			static int GetIndexCount() { return 6; }
+            RHI_IndexBuffer* GetIndexBuffer() const { return m_indexBuffer.get(); }
+            RHI_VertexBuffer* GetVertexBuffer() const { return m_vertexBuffer.get(); }
 
             float left;
             float top;

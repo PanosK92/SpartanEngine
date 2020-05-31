@@ -63,10 +63,15 @@ namespace Spartan
 
         // Command buffer
         vulkan_utility::command_buffer::create(m_swap_chain->GetCmdPool(), m_cmd_buffer, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+        vulkan_utility::debug::set_name(static_cast<VkCommandBuffer>(m_cmd_buffer), "cmd_buffer");
 
-        // Sync
+        // Sync - Fence
         vulkan_utility::fence::create(m_processed_fence);
+        vulkan_utility::debug::set_name(static_cast<VkFence>(m_processed_fence), "cmd_buffer_processed");
+
+        // Sync - Semaphore
         vulkan_utility::semaphore::create(m_processed_semaphore);
+        vulkan_utility::debug::set_name(static_cast<VkSemaphore>(m_processed_semaphore), "cmd_buffer_processed");
 
         // Query pool
         if (rhi_context->profiler)
@@ -370,17 +375,17 @@ namespace Spartan
         }
     }
 
-	void RHI_CommandList::Draw(const uint32_t vertex_count)
+    bool RHI_CommandList::Draw(const uint32_t vertex_count)
 	{
         if (m_cmd_state != RHI_Cmd_List_Recording)
         {
             LOG_WARNING("Can't record command");
-            return;
+            return false;
         }
 
         // Ensure correct state before attempting to draw
         if (!OnDraw())
-            return;
+            return false;
 
 		vkCmdDraw(
             static_cast<VkCommandBuffer>(m_cmd_buffer), // commandBuffer
@@ -391,19 +396,21 @@ namespace Spartan
         );
 
         m_profiler->m_rhi_draw_calls++;
+
+        return true;
 	}
 
-	void RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset)
+    bool RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset)
 	{
         if (m_cmd_state != RHI_Cmd_List_Recording)
         {
             LOG_WARNING("Can't record command");
-            return;
+            return false;
         }
 
         // Ensure correct state before attempting to draw
         if (!OnDraw())
-            return;
+            return false;
 
 		vkCmdDrawIndexed(
             static_cast<VkCommandBuffer>(m_cmd_buffer), // commandBuffer
@@ -415,6 +422,8 @@ namespace Spartan
         );
 
         m_profiler->m_rhi_draw_calls++;
+
+        return true;
 	}
 
     void RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z /*= 1*/) const
@@ -518,16 +527,16 @@ namespace Spartan
         m_index_buffer_offset   = offset;
 	}
 
-    void RHI_CommandList::SetConstantBuffer(const uint32_t slot, const uint8_t scope, RHI_ConstantBuffer* constant_buffer) const
+    bool RHI_CommandList::SetConstantBuffer(const uint32_t slot, const uint8_t scope, RHI_ConstantBuffer* constant_buffer) const
     {
         if (m_cmd_state != RHI_Cmd_List_Recording)
         {
             LOG_WARNING("Can't record command");
-            return;
+            return false;
         }
 
         // Set (will only happen if it's not already set)
-        m_descriptor_cache->SetConstantBuffer(slot, constant_buffer);
+        return m_descriptor_cache->SetConstantBuffer(slot, constant_buffer);
     }
 
     void RHI_CommandList::SetSampler(const uint32_t slot, RHI_Sampler* sampler) const
@@ -783,7 +792,7 @@ namespace Spartan
             // Color
             for (auto i = 0; i < state_max_render_target_count; i++)
             {
-                if (m_pipeline_state->clear_color[i] != state_color_load && m_pipeline_state->clear_color[i] != state_depth_dont_care)
+                if (m_pipeline_state->clear_color[i] != state_color_load && m_pipeline_state->clear_color[i] != state_color_dont_care)
                 {
                     Vector4& color = m_pipeline_state->clear_color[i];
                     clear_values[clear_value_count++].color = { {color.x, color.y, color.z, color.w} };

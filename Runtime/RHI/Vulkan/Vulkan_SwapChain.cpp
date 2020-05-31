@@ -57,7 +57,7 @@ namespace Spartan
             void*& swap_chain_view_out,
             array<void*, state_max_render_target_count>& resource_textures,
             array<void*, state_max_render_target_count>& resource_views,
-            array<void*, state_max_render_target_count>& resource_views_acquiredSemaphore
+            array<void*, state_max_render_target_count>& image_acquired_semaphores
         )
         {
             // Create surface
@@ -158,7 +158,8 @@ namespace Spartan
 
             for (uint32_t i = 0; i < buffer_count; i++)
             {
-                vulkan_utility::semaphore::create(resource_views_acquiredSemaphore[i]);
+                vulkan_utility::semaphore::create(image_acquired_semaphores[i]);
+                vulkan_utility::debug::set_name(static_cast<VkSemaphore>(image_acquired_semaphores[i]), "swapchain_image_acquired_semaphore");
             }
 
             return true;
