@@ -20,6 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 static const uint g_vl_steps        = 4;
+static const float g_vl_tolerance   = 0.45f;
 static const float g_vl_scattering  = 0.994f;
 static const float g_vl_pow         = 0.5f;
 
@@ -41,14 +42,15 @@ float vl_raymarch(Light light, float3 ray_pos, float3 ray_step, float ray_dot_li
         // Compute position in clip space
         float3 pos = project(ray_pos, light_view_projection[array_index]);
         
-        // Check to see if the light can "see" the pixel
+        // Compare depth
         #if POINT
         float depth_delta = compare_depth(normalize(ray_pos - light.position), pos.z);
         #else // directional & spot
         float depth_delta = compare_depth(float3(pos.xy, array_index), pos.z);
         #endif
        
-        if (depth_delta > 0.0f)
+        // Depth test
+        if (abs(g_vl_tolerance - depth_delta) > g_vl_tolerance)
         {
             fog += vl_compute_scattering(ray_dot_light);
         }
@@ -74,31 +76,39 @@ float3 VolumetricLighting(Surface surface, Light light)
     
     #if DIRECTIONAL
     {
-        [loop]
+		[loop]
         for (uint array_index = 0; array_index < light.array_size; array_index++)
         {
-            // Compute position in clip space
-            float3 pos = project(ray_pos, light_view_projection[array_index]);
-            
-			// Ray-march
-			fog += vl_raymarch(light, ray_pos, ray_step, ray_dot_light, array_index);
-			
-			// If we are close to the edge of the primary cascade and a next cascade exists, lerp with it.
-			static const float blend_threshold = 0.1f;
-			float distance_to_edge = 1.0f - max3(abs(pos * 2.0f - 1.0f));
+			// Compute position in clip space
+			float3 pos = project(ray_pos, light_view_projection[array_index]);
+		
 			[branch]
-			if (distance_to_edge < blend_threshold && array_index < light.array_size - 1)
+			if (is_saturated(pos))
 			{
-				// Ray-march using the next cascade
-				float fog_secondary = vl_raymarch(light, ray_pos, ray_step, ray_dot_light, array_index + 1);
+				// Ray-march
+				fog += vl_raymarch(light, ray_pos, ray_step, ray_dot_light, array_index);
 				
-				// Blend cascades
-				float alpha = smoothstep(0.0f, blend_threshold, distance_to_edge);
-				fog = lerp(fog_secondary, fog, alpha);
+				// If we are close to the edge of the primary cascade and a next cascade exists, lerp with it.
+				static const float blend_threshold = 0.1f;
+				float distance_to_edge = 1.0f - max3(abs(pos * 2.0f - 1.0f));
+				uint array_index_secondary = array_index + 1;
+				[branch]
+				if (distance_to_edge < blend_threshold && array_index_secondary < light.array_size)
+				{
+					// Ray-march using the next cascade
+					float fog_secondary = vl_raymarch(light, ray_pos, ray_step, ray_dot_light, array_index_secondary);
+					
+					// Blend cascades
+					float alpha = smoothstep(0.0f, blend_threshold, distance_to_edge);
+					fog = lerp(fog_secondary, fog, alpha);
+				}
+				break;
 			}
-			
-			break;
-        }
+			else
+			{
+				fog += vl_compute_scattering(ray_dot_light) * 0.25f;
+			}
+		}
     }
     #elif POINT
     {
@@ -134,3 +144,5 @@ float3 VolumetricLighting(Surface surface, Light light)
     
     return fog * light.color * light.intensity;
 }
+
+
