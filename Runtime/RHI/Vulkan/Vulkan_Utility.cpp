@@ -19,14 +19,11 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= IMPLEMENTATION ===============
+//= INCLUDES =====================
 #define VMA_IMPLEMENTATION
 #include "../RHI_Implementation.h"
-//================================
-
-//= INCLUDES ==============
 #include "Vulkan_Utility.h"
-//=========================
+//================================
 
 //= NAMESPACES =====
 using namespace std;

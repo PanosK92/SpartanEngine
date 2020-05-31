@@ -21,10 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= IMPLEMENTATION ======
-#ifdef API_GRAPHICS_D3D11
-//=======================
-
 //= INCLUDES =====================
 #include "../RHI_Device.h"
 #include <vector>
@@ -307,5 +303,3 @@ namespace Spartan::d3d11_utility
         }
     }
 }
-
-#endif
