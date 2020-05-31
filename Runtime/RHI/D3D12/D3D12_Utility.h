@@ -19,20 +19,21 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= IMPLEMENTATION ===============
-#include "../RHI_Implementation.h"
+#pragma once
+
+//= INCLUDES =====================
+#include "../RHI_Device.h"
+#include <vector>
+#include <wrl/client.h>
+#include "../../Logging/Log.h"
+#include "../../Core/EngineDefs.h"
 //================================
 
-//= INCLUDES ==================
-#include "../RHI_InputLayout.h"
-//=============================
-
-//==================
-using namespace std;
-//==================
-
-namespace Spartan
+namespace Spartan::d3d12_utility
 {
-	RHI_InputLayout::~RHI_InputLayout() {}
-	bool RHI_InputLayout::_CreateResource(void* vertex_shader_blob) { return true; }
+    struct globals
+    {
+        static inline RHI_Device* rhi_device;
+        static inline RHI_Context* rhi_context;
+    };
 }

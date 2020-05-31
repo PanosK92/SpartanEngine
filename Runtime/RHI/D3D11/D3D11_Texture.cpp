@@ -21,7 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= IMPLEMENTATION ===============
 #include "../RHI_Implementation.h"
-#ifdef API_GRAPHICS_D3D11
 //================================
 
 //= INCLUDES =====================
@@ -655,4 +654,3 @@ namespace Spartan
         return result_tex && result_srv && result_uav && result_rt && result_ds;
 	}
 }
-#endif

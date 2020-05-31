@@ -20,7 +20,7 @@ xcopy "ThirdParty\libraries\dxcompiler.dll" "Binaries\Release\" 	/E /I /Q /y
 xcopy "ThirdParty\libraries\fmod64.dll" 	"Binaries\Release\" 	/E /I /Q /y
 echo:
 
-echo 5. Generating Visual Studio 2019 solution...
+echo 5. Generating Visual Studio solution...
 Scripts\premake5.exe --file=scripts\premake.lua %*
 
 exit /b

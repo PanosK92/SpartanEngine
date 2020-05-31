@@ -20,7 +20,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= IMPLEMENTATION ===============
-#ifdef API_GRAPHICS_VULKAN
 #include "../RHI_Implementation.h"
 //================================
 
@@ -333,4 +332,3 @@ namespace Spartan
         return vulkan_utility::error::check(vkQueueWaitIdle(static_cast<VkQueue>(Queue_Get(type))));
     }
 }
-#endif
