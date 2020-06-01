@@ -202,7 +202,12 @@ namespace Spartan
                     }
                 }
             }
-            safe_release(error_buffer);
+
+            if (error_buffer)
+            {
+                error_buffer->Release();
+                error_buffer = nullptr;
+            }
 
             // Return status
             HRESULT operation_status;
