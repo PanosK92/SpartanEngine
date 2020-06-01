@@ -73,16 +73,6 @@ namespace Spartan
             ptr = nullptr;
         }
     }
-
-	template <typename T>
-	constexpr void safe_release(T*& ptr)
-	{
-		if (ptr)
-		{
-			ptr->Release();
-			ptr = nullptr;
-		}
-	}
 }
 
 #define SPARTAN_ASSERT(expression) assert(expression)

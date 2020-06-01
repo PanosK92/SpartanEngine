@@ -81,7 +81,6 @@ namespace Spartan
                 D3D_FEATURE_LEVEL_9_1
             };
 
-            
             auto adapter = static_cast<IDXGIAdapter*>(physical_device->GetData());
             auto driver_type = adapter ? D3D_DRIVER_TYPE_UNKNOWN : D3D_DRIVER_TYPE_HARDWARE;
 
@@ -194,9 +193,9 @@ namespace Spartan
 
 	RHI_Device::~RHI_Device()
 	{
-		safe_release(m_rhi_context->device_context);
-		safe_release(m_rhi_context->device);
-		safe_release(m_rhi_context->annotation);
+        d3d11_utility::release(m_rhi_context->device_context);
+        d3d11_utility::release(m_rhi_context->device);
+        d3d11_utility::release(m_rhi_context->annotation);
 	}
 
     bool RHI_Device::Queue_Submit(const RHI_Queue_Type type, void* cmd_buffer, void* wait_semaphore /*= nullptr*/, void* signal_semaphore /*= nullptr*/, void* wait_fence /*= nullptr*/, uint32_t wait_flags /*= 0*/) const

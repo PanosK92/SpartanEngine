@@ -109,6 +109,9 @@ namespace Spartan
 
     bool RHI_Device::ValidateResolution(const uint32_t width, const uint32_t height) const
     {
+        if (!m_rhi_context)
+            return false;
+
         return  width  > 0 && width  <= m_rhi_context->max_texture_dimension_2d &&
                 height > 0 && height <= m_rhi_context->max_texture_dimension_2d;
 	}

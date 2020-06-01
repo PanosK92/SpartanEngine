@@ -675,6 +675,9 @@ namespace Spartan
 
     void Renderer::SetOptionValue(Renderer_Option_Value option, float value)
     {
+        if (!m_rhi_device || !m_rhi_device->GetContextRhi())
+            return;
+
         if (option == Option_Value_Anisotropy)
         {
             value = Helper::Clamp(value, 0.0f, 16.0f);
@@ -726,6 +729,9 @@ namespace Spartan
 
     bool Renderer::Flush()
     {
+        if (!m_swap_chain || !m_swap_chain->GetCmdList())
+            return false;
+
         if (!m_swap_chain->GetCmdList()->Flush())
         {
             LOG_ERROR("Failed to flush");

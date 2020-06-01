@@ -34,7 +34,7 @@ namespace Spartan
 {
     void RHI_ConstantBuffer::_destroy()
     {
-        safe_release(*reinterpret_cast<ID3D11Buffer**>(&m_buffer));
+        d3d11_utility::release(*reinterpret_cast<ID3D11Buffer**>(&m_buffer));
     }
 
     RHI_ConstantBuffer::RHI_ConstantBuffer(const std::shared_ptr<RHI_Device>& rhi_device, const string& name, bool is_dynamic /*= false*/)

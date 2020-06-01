@@ -159,8 +159,8 @@ namespace Spartan
 
         m_cmd_lists.clear();
 
-		safe_release(swap_chain);
-		safe_release(*reinterpret_cast<ID3D11RenderTargetView**>(&m_resource_view_renderTarget));
+        d3d11_utility::release(swap_chain);
+        d3d11_utility::release(*reinterpret_cast<ID3D11RenderTargetView**>(&m_resource_view_renderTarget));
 	}
 
 	bool RHI_SwapChain::Resize(const uint32_t width, const uint32_t height, const bool force /*= false*/)
@@ -191,7 +191,7 @@ namespace Spartan
 		auto render_target_view	= static_cast<ID3D11RenderTargetView*>(m_resource_view_renderTarget);
 
 		// Release previous stuff
-		safe_release(render_target_view);
+        d3d11_utility::release(render_target_view);
 
 		// Set this flag to enable an application to switch modes by calling IDXGISwapChain::ResizeTarget.
 		// When switching from windowed to full-screen mode, the display mode (or monitor resolution)
@@ -238,7 +238,7 @@ namespace Spartan
 
 		// Create render target view
 		result = m_rhi_device->GetContextRhi()->device->CreateRenderTargetView(backbuffer, nullptr, &render_target_view);
-		safe_release(backbuffer);
+        d3d11_utility::release(backbuffer);
 		if (FAILED(result))
 		{
 			LOG_ERROR("Failed to create render target view, %s.", d3d11_utility::dxgi_error_to_string(result));
