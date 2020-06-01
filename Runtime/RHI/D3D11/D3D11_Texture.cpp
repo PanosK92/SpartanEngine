@@ -236,20 +236,20 @@ namespace Spartan
 
     RHI_Texture2D::~RHI_Texture2D()
     {
-        safe_release(*reinterpret_cast<ID3D11ShaderResourceView**>(&m_resource_view[0]));
-        safe_release(*reinterpret_cast<ID3D11UnorderedAccessView**>(&m_resource_view_unorderedAccess));
-        safe_release(*reinterpret_cast<ID3D11Texture2D**>(&m_resource));
+        d3d11_utility::release(*reinterpret_cast<ID3D11ShaderResourceView**>(&m_resource_view[0]));
+        d3d11_utility::release(*reinterpret_cast<ID3D11UnorderedAccessView**>(&m_resource_view_unorderedAccess));
+        d3d11_utility::release(*reinterpret_cast<ID3D11Texture2D**>(&m_resource));
         for (void*& render_target : m_resource_view_renderTarget)
         {
-            safe_release(*reinterpret_cast<ID3D11RenderTargetView**>(&render_target));
+            d3d11_utility::release(*reinterpret_cast<ID3D11RenderTargetView**>(&render_target));
         }
         for (void*& depth_stencil : m_resource_view_depthStencil)
         {
-            safe_release(*reinterpret_cast<ID3D11DepthStencilView**>(&depth_stencil));
+            d3d11_utility::release(*reinterpret_cast<ID3D11DepthStencilView**>(&depth_stencil));
         }
         for (void*& depth_stencil : m_resource_view_depthStencilReadOnly)
         {
-            safe_release(*reinterpret_cast<ID3D11DepthStencilView**>(&depth_stencil));
+            d3d11_utility::release(*reinterpret_cast<ID3D11DepthStencilView**>(&depth_stencil));
         }
     }
 
@@ -354,7 +354,7 @@ namespace Spartan
 			);
 		}
 
-		safe_release(*reinterpret_cast<ID3D11Texture2D**>(&m_resource));
+        d3d11_utility::release(*reinterpret_cast<ID3D11Texture2D**>(&m_resource));
 
 		return result_tex && result_srv && result_uav && result_rt && result_ds;
 	}
@@ -533,20 +533,20 @@ namespace Spartan
 
     RHI_TextureCube::~RHI_TextureCube()
     {
-        safe_release(*reinterpret_cast<ID3D11ShaderResourceView**>(&m_resource_view));
-        safe_release(*reinterpret_cast<ID3D11UnorderedAccessView**>(&m_resource_view_unorderedAccess));
-        safe_release(*reinterpret_cast<ID3D11Texture2D**>(&m_resource));
+        d3d11_utility::release(*reinterpret_cast<ID3D11ShaderResourceView**>(&m_resource_view));
+        d3d11_utility::release(*reinterpret_cast<ID3D11UnorderedAccessView**>(&m_resource_view_unorderedAccess));
+        d3d11_utility::release(*reinterpret_cast<ID3D11Texture2D**>(&m_resource));
         for (void*& render_target : m_resource_view_renderTarget)
         {
-            safe_release(*reinterpret_cast<ID3D11RenderTargetView**>(&render_target));
+            d3d11_utility::release(*reinterpret_cast<ID3D11RenderTargetView**>(&render_target));
         }
         for (void*& depth_stencil : m_resource_view_depthStencil)
         {
-            safe_release(*reinterpret_cast<ID3D11DepthStencilView**>(&depth_stencil));
+            d3d11_utility::release(*reinterpret_cast<ID3D11DepthStencilView**>(&depth_stencil));
         }
         for (void*& depth_stencil : m_resource_view_depthStencilReadOnly)
         {
-            safe_release(*reinterpret_cast<ID3D11DepthStencilView**>(&depth_stencil));
+            d3d11_utility::release(*reinterpret_cast<ID3D11DepthStencilView**>(&depth_stencil));
         }
     }
 
@@ -646,7 +646,7 @@ namespace Spartan
             );
         }
 
-        safe_release(*reinterpret_cast<ID3D11Texture2D**>(&m_resource));
+        d3d11_utility::release(*reinterpret_cast<ID3D11Texture2D**>(&m_resource));
 
         return result_tex && result_srv && result_uav && result_rt && result_ds;
 	}

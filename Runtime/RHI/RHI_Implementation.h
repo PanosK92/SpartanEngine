@@ -149,8 +149,10 @@ static const D3D11_BLEND_OP d3d11_blend_operation[] =
 // Definition - DirectX 11
 #if defined(API_GRAPHICS_D3D12)
 #pragma comment(lib, "d3d12.lib")
+#pragma comment(lib, "dxgi.lib")
 #pragma warning(push, 0) // Hide warnings which belong DirectX
 #include <d3d12.h>
+#include <dxgi1_4.h>
 #pragma warning(pop)
 #endif
 

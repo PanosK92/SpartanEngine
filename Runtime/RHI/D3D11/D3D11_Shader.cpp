@@ -38,7 +38,7 @@ namespace Spartan
 {
 	RHI_Shader::~RHI_Shader()
 	{
-		safe_release(*reinterpret_cast<ID3D11VertexShader**>(&m_resource));
+        d3d11_utility::release(*reinterpret_cast<ID3D11VertexShader**>(&m_resource));
 	}
 
 	void* RHI_Shader::_Compile(const string& shader)
@@ -138,7 +138,7 @@ namespace Spartan
                 }
 			}
 
-			safe_release(blob_error);
+            d3d11_utility::release(blob_error);
 		}
 
 		// Log compilation failure
@@ -188,7 +188,7 @@ namespace Spartan
             }
 		}
 
-		safe_release(shader_blob);
+        d3d11_utility::release(shader_blob);
 		return shader_view;
 	}
 }

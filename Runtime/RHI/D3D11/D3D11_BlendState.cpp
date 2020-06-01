@@ -103,6 +103,6 @@ namespace Spartan
 
 	RHI_BlendState::~RHI_BlendState()
 	{
-		safe_release(*reinterpret_cast<ID3D11BlendState**>(&m_resource));
+        d3d11_utility::release(*reinterpret_cast<ID3D11BlendState**>(&m_resource));
 	}
 }

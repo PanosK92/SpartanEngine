@@ -767,7 +767,7 @@ namespace Spartan
         if (!query_object)
             return;
 
-        safe_release(*reinterpret_cast<ID3D11Query**>(&query_object));
+        d3d11_utility::release(*reinterpret_cast<ID3D11Query**>(&query_object));
     }
 
     bool RHI_CommandList::IsRecording() const

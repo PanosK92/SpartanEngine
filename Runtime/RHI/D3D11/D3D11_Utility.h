@@ -81,6 +81,16 @@ namespace Spartan::d3d11_utility
         return true;
     }
 
+    template <typename T>
+    constexpr void release(T*& ptr)
+    {
+        if (ptr)
+        {
+            ptr->Release();
+            ptr = nullptr;
+        }
+    }
+
 	inline void DetectAdapters()
 	{
 		// Create DirectX graphics interface factory
@@ -108,7 +118,7 @@ namespace Spartan::d3d11_utility
 
 		// Get all available adapters
 		auto adapters = get_available_adapters(factory);
-		safe_release(factory);
+        release(factory);
 		if (adapters.empty())
 		{
 			LOG_ERROR("Couldn't find any adapters");
