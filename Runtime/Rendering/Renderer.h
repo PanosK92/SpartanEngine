@@ -55,28 +55,29 @@ namespace Spartan
 
 	enum Renderer_Option : uint64_t
 	{
-		Render_Debug_Aabb				    = 1 << 0,
-		Render_Debug_PickingRay			    = 1 << 1,
-		Render_Debug_Grid				    = 1 << 2,
-		Render_Debug_Transform			    = 1 << 3,
-        Render_Debug_SelectionOutline       = 1 << 4,
-		Render_Debug_Lights				    = 1 << 5,
-		Render_Debug_PerformanceMetrics	    = 1 << 6,
-		Render_Debug_Physics			    = 1 << 7,
-        Render_Debug_Wireframe              = 1 << 8,
-		Render_Bloom				        = 1 << 9,
-        Render_VolumetricLighting           = 1 << 10,
-        Render_AntiAliasing_Taa             = 1 << 11,
-		Render_AntiAliasing_Fxaa	        = 1 << 12,
-		Render_ScreenSpaceAmbientOcclusion  = 1 << 13,
-        Render_ScreenSpaceShadows           = 1 << 14,
-		Render_ScreenSpaceReflections		= 1 << 15,
-		Render_MotionBlur			        = 1 << 16,
-		Render_Sharpening_LumaSharpen	    = 1 << 17,
-		Render_ChromaticAberration	        = 1 << 18,
-		Render_Dithering			        = 1 << 19,
-        Render_ReverseZ                     = 1 << 20,
-        Render_DepthPrepass                 = 1 << 21
+		Render_Debug_Aabb				        = 1 << 0,
+		Render_Debug_PickingRay			        = 1 << 1,
+		Render_Debug_Grid				        = 1 << 2,
+		Render_Debug_Transform			        = 1 << 3,
+        Render_Debug_SelectionOutline           = 1 << 4,
+		Render_Debug_Lights				        = 1 << 5,
+		Render_Debug_PerformanceMetrics	        = 1 << 6,
+		Render_Debug_Physics			        = 1 << 7,
+        Render_Debug_Wireframe                  = 1 << 8,
+		Render_Bloom				            = 1 << 9,
+        Render_VolumetricLighting               = 1 << 10,
+        Render_AntiAliasing_Taa                 = 1 << 11,
+		Render_AntiAliasing_Fxaa	            = 1 << 12,
+		Render_ScreenSpaceAmbientOcclusion      = 1 << 13,
+        Render_ScreenSpaceShadows               = 1 << 14,
+		Render_ScreenSpaceReflections		    = 1 << 15,
+        Render_ScreenSpaceGlobalIllumination    = 1 << 16,
+		Render_MotionBlur			            = 1 << 17,
+		Render_Sharpening_LumaSharpen	        = 1 << 18,
+		Render_ChromaticAberration	            = 1 << 19,
+		Render_Dithering			            = 1 << 20,
+        Render_ReverseZ                         = 1 << 21,
+        Render_DepthPrepass                     = 1 << 22
 	};
 
     enum Renderer_Option_Value
@@ -99,23 +100,6 @@ namespace Spartan
         Renderer_ToneMapping_Reinhard,
         Renderer_ToneMapping_Uncharted2
     };
-
-	enum Renderer_Buffer_Type
-	{
-		Renderer_Buffer_None,
-		Renderer_Buffer_Albedo,
-		Renderer_Buffer_Normal,
-		Renderer_Buffer_Material,
-        Renderer_Buffer_Diffuse,
-        Renderer_Buffer_Specular,
-		Renderer_Buffer_Velocity,
-		Renderer_Buffer_Depth,
-		Renderer_Buffer_SSAO,
-        Renderer_Buffer_SSR,
-        Renderer_Buffer_Bloom,
-        Renderer_Buffer_VolumetricLighting,
-        Renderer_Buffer_BrdfSpecularLut
-	};
 
 	enum Renderer_Object_Type
 	{
@@ -162,6 +146,7 @@ namespace Spartan
         Shader_Font_P,
 		Shader_Ssao_P,
         Shader_Ssr_P,
+        Shader_Ssgi_P,
 		Shader_Entity_V,
         Shader_Entity_Transform_P,
 		Shader_BlurBox_P,
@@ -170,33 +155,28 @@ namespace Spartan
         Shader_Entity_Outline_P
 	};
 
-    enum Renderer_RenderTarget_Type
+    enum Renderer_RenderTarget_Type : uint64_t
     {
-        // G-Buffer
-        RenderTarget_Gbuffer_Albedo,
-        RenderTarget_Gbuffer_Normal,
-        RenderTarget_Gbuffer_Material,
-        RenderTarget_Gbuffer_Velocity,
-        RenderTarget_Gbuffer_Depth,
-        // BRDF
-        RenderTarget_Brdf_Prefiltered_Environment,
-        RenderTarget_Brdf_Specular_Lut,
-        // Lighting
-        RenderTarget_Light_Diffuse,
-        RenderTarget_Light_Specular,
-        RenderTarget_Light_Volumetric,
-        // Composition
-        RenderTarget_Composition_Hdr,
-        RenderTarget_Composition_Hdr_2,
-        RenderTarget_Composition_Ldr,
-        RenderTarget_Composition_Ldr_2,
-        // SSAO
-        RenderTarget_Ssao_Noisy,
-        RenderTarget_Ssao,
-        // SSR
-        RenderTarget_Ssr,
-        // Frame
-        RenderTarget_TaaHistory
+        RenderTarget_Gbuffer_Albedo                 = 1 << 0,
+        RenderTarget_Gbuffer_Normal                 = 1 << 1,
+        RenderTarget_Gbuffer_Material               = 1 << 2,
+        RenderTarget_Gbuffer_Velocity               = 1 << 3,
+        RenderTarget_Gbuffer_Depth                  = 1 << 4,
+        RenderTarget_Brdf_Prefiltered_Environment   = 1 << 5,
+        RenderTarget_Brdf_Specular_Lut              = 1 << 6,
+        RenderTarget_Light_Diffuse                  = 1 << 7,
+        RenderTarget_Light_Specular                 = 1 << 8,
+        RenderTarget_Light_Volumetric               = 1 << 9,
+        RenderTarget_Composition_Hdr                = 1 << 10,
+        RenderTarget_Composition_Hdr_2              = 1 << 11,
+        RenderTarget_Composition_Ldr                = 1 << 12,
+        RenderTarget_Composition_Ldr_2              = 1 << 13,
+        RenderTarget_Bloom                          = 1 << 14,
+        RenderTarget_Ssao_Noisy                     = 1 << 15,
+        RenderTarget_Ssao                           = 1 << 16,
+        RenderTarget_Ssr                            = 1 << 17,
+        RenderTarget_Ssgi                           = 1 << 18,
+        RenderTarget_TaaHistory                     = 1 << 19,
     };
 
 	class SPARTAN_CLASS Renderer : public ISubsystem
@@ -229,9 +209,9 @@ namespace Spartan
 		float m_gizmo_transform_speed   = 12.0f;
         std::weak_ptr<Entity> SnapTransformGizmoTo(const std::shared_ptr<Entity>& entity) const;
 
-		// Debug
-		void SetDebugBuffer(const Renderer_Buffer_Type buffer)	{ m_debug_buffer = buffer; }
-		auto GetDebugBuffer() const				                { return m_debug_buffer; }
+		// Debug/Visualise a render target
+		void SetRenderTargetDebug(const uint64_t render_target_debug) { m_render_target_debug = render_target_debug; }
+		auto GetRenderTargetDebug() const				              { return m_render_target_debug; }
 
         // Depth
         auto GetClearDepth()                { return GetOption(Render_ReverseZ) ? m_viewport.depth_min : m_viewport.depth_max; }
@@ -293,6 +273,7 @@ namespace Spartan
 		void Pass_GBuffer(RHI_CommandList* cmd_list, const Renderer_Object_Type object_type);
 		void Pass_Ssao(RHI_CommandList* cmd_list, const bool use_stencil);
         void Pass_Ssr(RHI_CommandList* cmd_list, const bool use_stencil);
+        void Pass_Ssgi(RHI_CommandList* cmd_list, const bool use_stencil);
         void Pass_Light(RHI_CommandList* cmd_list, const bool use_stencil);
 		void Pass_Composition(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_out, const bool use_stencil);
         void Pass_AlphaBlend(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, const bool use_stencil);
@@ -348,11 +329,11 @@ namespace Spartan
 		std::unordered_map<Renderer_Shader_Type, std::shared_ptr<RHI_Shader>> m_shaders;
 
 		// Depth-stencil states
-        std::shared_ptr<RHI_DepthStencilState> m_depth_stencil_disabled;
-        std::shared_ptr<RHI_DepthStencilState> m_depth_stencil_disabled_enabled_read;
-		std::shared_ptr<RHI_DepthStencilState> m_depth_stencil_enabled_disabled_write;
-        std::shared_ptr<RHI_DepthStencilState> m_depth_stencil_enabled_disabled_read;
-        std::shared_ptr<RHI_DepthStencilState> m_depth_stencil_enabled_enabled_write;
+        std::shared_ptr<RHI_DepthStencilState> m_depth_stencil_off_off;
+        std::shared_ptr<RHI_DepthStencilState> m_depth_stencil_off_on_r;
+		std::shared_ptr<RHI_DepthStencilState> m_depth_stencil_on_off_w;
+        std::shared_ptr<RHI_DepthStencilState> m_depth_stencil_on_off_r;
+        std::shared_ptr<RHI_DepthStencilState> m_depth_stencil_on_on_w;
 
         // Blend states 
         std::shared_ptr<RHI_BlendState> m_blend_disabled;
@@ -398,20 +379,20 @@ namespace Spartan
         // Misc
 		Math::Rectangle m_viewport_quad;
 		std::unique_ptr<Font> m_font;
-        Math::Vector2 m_taa_jitter              = Math::Vector2::Zero;
-		Math::Vector2 m_taa_jitter_previous     = Math::Vector2::Zero;
-		Renderer_Buffer_Type m_debug_buffer     = Renderer_Buffer_None;
-		bool m_initialized                      = false;
-        const uint32_t m_resolution_shadow_min  = 128;
-        float m_near_plane                      = 0.0f;
-        float m_far_plane                       = 0.0f;
-        uint64_t m_frame_num                    = 0;
-        bool m_is_odd_frame                     = false;
-        std::atomic<bool> m_is_rendering        = false;
-        bool m_brdf_specular_lut_rendered       = false;      
-        const float m_gizmo_size_max            = 5.0f;
-        const float m_gizmo_size_min            = 0.1f;
-        bool m_update_ortho_proj                = true;
+        Math::Vector2 m_taa_jitter                  = Math::Vector2::Zero;
+		Math::Vector2 m_taa_jitter_previous         = Math::Vector2::Zero;
+        uint64_t m_render_target_debug              = 0;
+		bool m_initialized                          = false;
+        const uint32_t m_resolution_shadow_min      = 128;
+        float m_near_plane                          = 0.0f;
+        float m_far_plane                           = 0.0f;
+        uint64_t m_frame_num                        = 0;
+        bool m_is_odd_frame                         = false;
+        std::atomic<bool> m_is_rendering            = false;
+        bool m_brdf_specular_lut_rendered           = false;      
+        const float m_gizmo_size_max                = 5.0f;
+        const float m_gizmo_size_min                = 0.1f;
+        bool m_update_ortho_proj                    = true;
                                                                   
         //= BUFFERS ==============================================
         BufferFrame m_buffer_frame_cpu;

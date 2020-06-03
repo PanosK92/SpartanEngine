@@ -65,12 +65,12 @@ namespace Spartan
 
     void Renderer::CreateDepthStencilStates()
     {
-        // depth_test, depth_write, depth_function, stencil_test, stencil_write
-        m_depth_stencil_disabled                = make_shared<RHI_DepthStencilState>(m_rhi_device, false,   false,  GetComparisonFunction(), false, false);                         // nothing
-        m_depth_stencil_enabled_disabled_write  = make_shared<RHI_DepthStencilState>(m_rhi_device, true,    true,   GetComparisonFunction(), false, false);                         // depth
-        m_depth_stencil_enabled_disabled_read   = make_shared<RHI_DepthStencilState>(m_rhi_device, true,    false,  GetComparisonFunction(), false, false);                         // depth
-        m_depth_stencil_disabled_enabled_read   = make_shared<RHI_DepthStencilState>(m_rhi_device, false,   false,  GetComparisonFunction(), true,  false,  RHI_Comparison_Equal);  // depth + stencil
-        m_depth_stencil_enabled_enabled_write   = make_shared<RHI_DepthStencilState>(m_rhi_device, true,    true,   GetComparisonFunction(), true,  true,   RHI_Comparison_Always); // depth + stencil
+        // arguments: depth_test, depth_write, depth_function, stencil_test, stencil_write, stencil_function
+        m_depth_stencil_off_off     = make_shared<RHI_DepthStencilState>(m_rhi_device, false,   false,  GetComparisonFunction(), false, false);                         // no depth or stencil
+        m_depth_stencil_on_off_w    = make_shared<RHI_DepthStencilState>(m_rhi_device, true,    true,   GetComparisonFunction(), false, false);                         // depth
+        m_depth_stencil_on_off_r    = make_shared<RHI_DepthStencilState>(m_rhi_device, true,    false,  GetComparisonFunction(), false, false);                         // depth
+        m_depth_stencil_off_on_r    = make_shared<RHI_DepthStencilState>(m_rhi_device, false,   false,  GetComparisonFunction(), true,  false,  RHI_Comparison_Equal);  // depth + stencil
+        m_depth_stencil_on_on_w     = make_shared<RHI_DepthStencilState>(m_rhi_device, true,    true,   GetComparisonFunction(), true,  true,   RHI_Comparison_Always); // depth + stencil
     }
 
     void Renderer::CreateRasterizerStates()
@@ -150,6 +150,9 @@ namespace Spartan
 
         // SSR
         m_render_targets[RenderTarget_Ssr] = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16_Float, 1, RHI_Texture_UnorderedAccessView, "rt_ssr");
+
+        // SSGI
+        m_render_targets[RenderTarget_Ssgi] = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R11G11B10_Float, 1, RHI_Texture_UnorderedAccessView, "rt_ssgi");
 
         // Bloom
         {
@@ -325,6 +328,10 @@ namespace Spartan
         // SSR
         m_shaders[Shader_Ssr_P] = make_shared<RHI_Shader>(m_context);
         m_shaders[Shader_Ssr_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "SSR.hlsl");
+
+        // SSGI
+        m_shaders[Shader_Ssgi_P] = make_shared<RHI_Shader>(m_context);
+        m_shaders[Shader_Ssgi_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "SSGI.hlsl");
 
         // Entity
         m_shaders[Shader_Entity_V] = make_shared<RHI_Shader>(m_context);
