@@ -92,11 +92,8 @@ namespace Spartan
             m_tasks.clear();
         }
 
-        // One task per thread, so we can deduce if anything is running
-        bool tasks_running = GetThreadsAvailable() != GetThreadCount();
-
         // If so, wait for them
-        while (tasks_running)
+        while (AreTasksRunning())
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(16));
         }

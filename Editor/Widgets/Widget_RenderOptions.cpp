@@ -56,6 +56,7 @@ void Widget_RenderOptions::Tick()
         bool do_ssao                    = m_renderer->GetOption(Render_ScreenSpaceAmbientOcclusion);
         bool do_sss                     = m_renderer->GetOption(Render_ScreenSpaceShadows);
         bool do_ssr                     = m_renderer->GetOption(Render_ScreenSpaceReflections);
+        bool do_ssgi                    = m_renderer->GetOption(Render_ScreenSpaceGlobalIllumination);
         bool do_taa                     = m_renderer->GetOption(Render_AntiAliasing_Taa);
         bool do_fxaa                    = m_renderer->GetOption(Render_AntiAliasing_Fxaa);
         bool do_motion_blur             = m_renderer->GetOption(Render_MotionBlur);
@@ -189,6 +190,10 @@ void Widget_RenderOptions::Tick()
             ImGui::Checkbox("SSR - Screen Space Reflections", &do_ssr);
             ImGui::Separator();
 
+            // Screen space global illumination
+            //ImGui::Checkbox("SSGI - Screen Space Global Illumination", &do_ssgi);
+            //ImGui::Separator();
+
             // Motion blur
             ImGui::Checkbox("Motion Blur", &do_motion_blur); ImGui::SameLine();
             render_option_float("##motion_blur_option_1", "Intensity", Option_Value_Motion_Blur_Intensity);
@@ -228,6 +233,7 @@ void Widget_RenderOptions::Tick()
         m_renderer->SetOption(Render_ScreenSpaceAmbientOcclusion,   do_ssao);
         m_renderer->SetOption(Render_ScreenSpaceShadows,            do_sss);
         m_renderer->SetOption(Render_ScreenSpaceReflections,        do_ssr);
+        m_renderer->SetOption(Render_ScreenSpaceGlobalIllumination, do_ssgi);
         m_renderer->SetOption(Render_AntiAliasing_Taa,              do_taa);
         m_renderer->SetOption(Render_AntiAliasing_Fxaa,             do_fxaa);
         m_renderer->SetOption(Render_MotionBlur,                    do_motion_blur);
@@ -297,34 +303,42 @@ void Widget_RenderOptions::Tick()
         {
             // Buffer
             {
-                static array<string, 13> buffer_options =
+                static array<string, 21> render_target_debug =
                 {
                     "None",
-                    "Albedo",
-                    "Normal",
-                    "Material",
-                    "Diffuse",
-                    "Specular",
-                    "Velocity",
-                    "Depth",
-                    "SSAO",
-                    "SSR",
+                    "Gbuffer_Albedo",
+                    "Gbuffer_Normal",
+                    "Gbuffer_Material",
+                    "Gbuffer_Velocity",
+                    "Gbuffer_Depth",
+                    "Brdf_Prefiltered_Environment",
+                    "Brdf_Specular_Lut",
+                    "Light_Diffuse",
+                    "Light_Specular",
+                    "Light_Volumetric",
+                    "Composition_Hdr",
+                    "Composition_Hdr_2",
+                    "Composition_Ldr",
+                    "Composition_Ldr_2",
                     "Bloom",
-                    "Volumetric Lighting",
-                    "BRDF Specular Lut"
+                    "Ssao_Noisy",
+                    "Ssao",
+                    "Ssr",
+                    "Ssgi",
+                    "TaaHistory"
                 };
-                static int buffer_selection = 0;
-                static string buffer_selection_str = buffer_options[0];
+                static int selection_int = 0;
+                static string selection_str = render_target_debug[0];
 
-                if (ImGui::BeginCombo("Buffer", buffer_selection_str.c_str()))
+                if (ImGui::BeginCombo("Render Target", selection_str.c_str()))
                 {
-                    for (auto i = 0; i < buffer_options.size(); i++)
+                    for (auto i = 0; i < render_target_debug.size(); i++)
                     {
-                        const auto is_selected = (buffer_selection_str == buffer_options[i]);
-                        if (ImGui::Selectable(buffer_options[i].c_str(), is_selected))
+                        const auto is_selected = (selection_str == render_target_debug[i]);
+                        if (ImGui::Selectable(render_target_debug[i].c_str(), is_selected))
                         {
-                            buffer_selection_str = buffer_options[i];
-                            buffer_selection = i;
+                            selection_str = render_target_debug[i];
+                            selection_int = i;
                         }
                         if (is_selected)
                         {
@@ -333,7 +347,9 @@ void Widget_RenderOptions::Tick()
                     }
                     ImGui::EndCombo();
                 }
-                m_renderer->SetDebugBuffer(static_cast<Renderer_Buffer_Type>(buffer_selection));
+
+                uint64_t flag = selection_int == 0 ? 0 : 1 << static_cast<uint64_t>(selection_int - 1U);
+                m_renderer->SetRenderTargetDebug(flag);
             }
             ImGui::Separator();
 

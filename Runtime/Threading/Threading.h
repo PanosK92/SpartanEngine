@@ -118,6 +118,8 @@ namespace Spartan
         uint32_t GetThreadCountSupport()    const { return m_thread_count_support; }
         // Get the number of threads which are not doing any work
         uint32_t GetThreadsAvailable()      const;
+        // Returns true if at least one task is running
+        bool AreTasksRunning()              const { return GetThreadsAvailable() != GetThreadCount(); }
         // Waits for all executing (and queued if requested) tasks to finish
         void Flush(bool removed_queued = false);
 

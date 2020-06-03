@@ -179,7 +179,7 @@ namespace ImGui::RHI
             return;
         }
 
-        // Updated vertex and index buffers
+        // Update vertex and index buffers
         RHI_VertexBuffer* vertex_buffer = nullptr;
         RHI_IndexBuffer* index_buffer   = nullptr;
         {
