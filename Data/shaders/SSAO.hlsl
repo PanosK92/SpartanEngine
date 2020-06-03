@@ -23,10 +23,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common.hlsl"
 //====================
 
-static const int sample_count       = 4;
-static const float radius           = 0.3f;
-static const float intensity        = 2.0f;
-static const float2 noise_scale     = float2(g_resolution.x / 256.0f, g_resolution.y / 256.0f);
+static const uint sample_count  = 4;
+static const float radius       = 0.3f;
+static const float intensity    = 2.0f;
+static const float2 noise_scale = float2(g_resolution.x / 256.0f, g_resolution.y / 256.0f);
 
 static const float3 sample_kernel[64] =
 {
@@ -99,16 +99,15 @@ static const float3 sample_kernel[64] =
 float mainPS(Pixel_PosUv input) : SV_TARGET
 {
     float2 uv               = input.uv;
-    float3 center_pos       = get_position(uv);
-    float3 center_normal    = get_normal(uv);       
+    float3 center_pos       = get_position_view_space(uv);
+    float3 center_normal    = get_normal_view_space(uv);       
 
     // Offset radius to get away with way less steps and great detail
     float ign = interleaved_gradient_noise(uv * g_resolution);
     float radius_adjusted = radius * ign;
     
     // Construct noise tbn
-    float3 noise    = unpack(normalize(tex_normal_noise.Sample(sampler_bilinear_wrap, input.uv * noise_scale).xyz * ign));
-    float3 tangent  = normalize(noise - center_normal * dot(noise, center_normal));
+    float3 tangent  = unpack(normalize(tex_normal_noise.Sample(sampler_bilinear_wrap, input.uv * noise_scale).xyz));
     float3x3 tbn    = makeTBN(center_normal, tangent);
 
     // Occlusion
@@ -119,8 +118,8 @@ float mainPS(Pixel_PosUv input) : SV_TARGET
         // Compute sample uv
         float3 offset       = normalize(mul(sample_kernel[i], tbn)) * radius_adjusted;
         float3 sample_pos   = center_pos + offset; // we can't use this as it might reside inside geometry
-        float2 sample_uv    = project_uv(sample_pos, g_viewProjection);
-        sample_pos          = get_position(sample_uv);
+        float2 sample_uv    = project_uv(sample_pos, g_projection);
+        sample_pos          = get_position_view_space(sample_uv);
         
         // Compute sample direction
         float3 center_to_sample         = sample_pos - center_pos;
@@ -137,3 +136,5 @@ float mainPS(Pixel_PosUv input) : SV_TARGET
 
     return 1.0f - saturate((occlusion * intensity) / (float)sample_count);
 }
+
+

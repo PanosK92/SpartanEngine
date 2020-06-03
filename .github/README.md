@@ -70,6 +70,7 @@ Platform | API | Status | Quality | Binaries | :+1:
 Feature     					| Completion | Notes 
 :-          					| :-         | :-
 Continuous Vulkan optimisation 	| -			 | Outperform D3D11, high priority
+Screen space global illumination| -			 | -
 DirectX 12						| -			 | Low priority
 Eye Adaptation 					| -          | Low priority
 Depth-of-field					| -          | Low priority, Based on Doom approach

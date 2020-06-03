@@ -68,7 +68,7 @@ namespace Spartan
         m_options |= Render_ScreenSpaceAmbientOcclusion;
         m_options |= Render_ScreenSpaceShadows;
         m_options |= Render_ScreenSpaceReflections;
-        m_options |= Render_ScreenSpaceGlobalIllumination;
+        //m_options |= Render_ScreenSpaceGlobalIllumination;
         m_options |= Render_AntiAliasing_Taa;
         m_options |= Render_Sharpening_LumaSharpen;
 
