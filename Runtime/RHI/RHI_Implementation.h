@@ -152,6 +152,7 @@ static const D3D11_BLEND_OP d3d11_blend_operation[] =
 #pragma comment(lib, "dxgi.lib")
 #pragma warning(push, 0) // Hide warnings which belong DirectX
 #include <d3d12.h>
+#include <dxgi1_3.h>
 #include <dxgi1_4.h>
 #pragma warning(pop)
 #endif
@@ -325,8 +326,8 @@ namespace Spartan
     struct RHI_Context
     {
         #if defined(API_GRAPHICS_D3D11)
-            ID3D11Device* device                    = nullptr;
-            ID3D11DeviceContext* device_context     = nullptr;
+            ID3D11Device5* device                   = nullptr;
+            ID3D11DeviceContext4* device_context    = nullptr;
             ID3DUserDefinedAnnotation* annotation   = nullptr;
         #endif
 

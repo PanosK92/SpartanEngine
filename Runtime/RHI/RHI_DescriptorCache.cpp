@@ -48,14 +48,30 @@ namespace Spartan
     void RHI_DescriptorCache::SetPipelineState(RHI_PipelineState& pipeline_state)
     {
         // Name this resource, very useful for Vulkan debugging
-        m_name = (pipeline_state.shader_vertex ? pipeline_state.shader_vertex->GetName() : "null") + "-" + (pipeline_state.shader_pixel ? pipeline_state.shader_pixel->GetName() : "null");
+        if (m_name.empty())
+        {
+            m_name = (pipeline_state.shader_compute ? pipeline_state.shader_compute->GetName() : "null");
+            m_name += "-" + (pipeline_state.shader_vertex ? pipeline_state.shader_vertex->GetName() : "null");
+            m_name += "-" + (pipeline_state.shader_pixel ? pipeline_state.shader_pixel->GetName() : "null");
+        }
 
        // Compute shader hash (which defines the descriptor set layout)
        size_t hash = 0;
-       Utility::Hash::hash_combine(hash, pipeline_state.shader_vertex->GetId());
-       if (pipeline_state.shader_pixel)
        {
-           Utility::Hash::hash_combine(hash, pipeline_state.shader_pixel->GetId());
+           if (pipeline_state.shader_compute)
+           {
+               Utility::Hash::hash_combine(hash, pipeline_state.shader_compute->GetId());
+           }
+
+           if (pipeline_state.shader_vertex)
+           {
+               Utility::Hash::hash_combine(hash, pipeline_state.shader_vertex->GetId());
+           }
+
+           if (pipeline_state.shader_pixel)
+           {
+               Utility::Hash::hash_combine(hash, pipeline_state.shader_pixel->GetId());
+           }
        }
 
        // If there is no descriptor set layout for this particular hash, create one

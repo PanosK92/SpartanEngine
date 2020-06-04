@@ -2423,29 +2423,29 @@ namespace Spartan
         }
     }
 
-    //void Renderer::Pass_Copy_CS(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
-    //{
-    //    // Acquire shaders
-    //    const auto& shader_c = m_shaders[Shader_Copy_C];
-    //    if (!shader_c->IsCompiled())
-    //        return;
+    void Renderer::Pass_Copy_CS(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    {
+        // Acquire shaders
+        RHI_Shader* shader_c = m_shaders[Shader_Copy_C].get();
+        if (!shader_c->IsCompiled())
+            return;
 
-    //    // Set render state
-    //    static RHI_PipelineState pipeline_state;
-    //    pipeline_state.shader_compute           = shader_c.get();
-    //    pipeline_state.unordered_access_view    = tex_out.get();
-    //    pipeline_state.pass_name                = "Pass_Copy";
+        // Set render state
+        static RHI_PipelineState pipeline_state;
+        pipeline_state.shader_compute           = shader_c;
+        pipeline_state.unordered_access_view    = tex_out.get();
+        pipeline_state.pass_name                = "Pass_Copy_CS";
 
-    //    // Draw
-    //    if (cmd_list->BeginPass(pipeline_state))
-    //    {
-    //        // Update uber buffer
-    //        m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-    //        UpdateUberBuffer(cmd_list);
+        // Draw
+        if (cmd_list->BeginRenderPass(pipeline_state))
+        {
+            // Update uber buffer
+            m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+            UpdateUberBuffer(cmd_list);
 
-    //        cmd_list->SetTexture(31, tex_in, true);
-    //        cmd_list->Dispatch(Ceil(m_buffer_uber_cpu.resolution.x / 32.0f), Ceil(m_buffer_uber_cpu.resolution.y / 32.0f));
-    //        cmd_list->EndPass();
-    //    }
-    //}
+            cmd_list->SetTexture(31, tex_in, true);
+            cmd_list->Dispatch(static_cast<uint32_t>(Math::Helper::Ceil(m_buffer_uber_cpu.resolution.x / 32.0f)), static_cast<uint32_t>(Math::Helper::Ceil(m_buffer_uber_cpu.resolution.y / 32.0f)));
+            cmd_list->EndRenderPass();
+        }
+    }
 }

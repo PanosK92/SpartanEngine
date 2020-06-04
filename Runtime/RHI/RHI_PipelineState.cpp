@@ -183,6 +183,11 @@ namespace Spartan
 
         // Shaders
         {
+            if (shader_compute)
+            {
+                Utility::Hash::hash_combine(m_hash, shader_compute->GetId());
+            }
+
             if (shader_vertex)
             {
                 Utility::Hash::hash_combine(m_hash, shader_vertex->GetId());
@@ -191,11 +196,6 @@ namespace Spartan
             if (shader_pixel)
             {
                 Utility::Hash::hash_combine(m_hash, shader_pixel->GetId());
-            }
-
-            if (shader_compute)
-            {
-                Utility::Hash::hash_combine(m_hash, shader_compute->GetId());
             }
         }
 
