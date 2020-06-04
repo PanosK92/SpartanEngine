@@ -24,8 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //====================
 
 static const uint sample_count  = 4;
-static const float radius       = 0.3f;
-static const float intensity    = 2.0f;
+static const float radius       = 5.0f;
+static const float intensity    = 1.0f;
 static const float2 noise_scale = float2(g_resolution.x / 256.0f, g_resolution.y / 256.0f);
 
 static const float3 sample_kernel[64] =
@@ -102,22 +102,30 @@ float mainPS(Pixel_PosUv input) : SV_TARGET
     float3 center_pos       = get_position_view_space(uv);
     float3 center_normal    = get_normal_view_space(uv);       
 
-    // Offset radius to get away with way less steps and great detail
-    float ign = interleaved_gradient_noise(uv * g_resolution);
+    // Sample a random vector
+    float3 random_vector = unpack(normalize(tex_normal_noise.Sample(sampler_bilinear_wrap, input.uv * noise_scale).xyz));
+
+    // Use interleaved gradient noise to rotate the random vector (when TAA is on, we can get away with great detail even at 4 samples)
+    float ign               = interleaved_gradient_noise(uv * g_resolution);
+    float rotation_angle    = max(ign * PI2, FLT_MIN);
+    float3 rotation         = float3(cos(rotation_angle), sin(rotation_angle), 0.0f);
+    random_vector           = float3(length(random_vector.xy) * normalize(rotation.xy), random_vector.z);
+
+    // Adjust radius with some noise as well, mainly improves the range check
     float radius_adjusted = radius * ign;
     
-    // Construct noise tbn
-    float3 tangent  = unpack(normalize(tex_normal_noise.Sample(sampler_bilinear_wrap, input.uv * noise_scale).xyz));
-    float3x3 tbn    = makeTBN(center_normal, tangent);
-
     // Occlusion
     float occlusion = 0.0f;
     [unroll]
     for (int i = 0; i < sample_count; i++)
     {
-        // Compute sample uv
-        float3 offset       = normalize(mul(sample_kernel[i], tbn)) * radius_adjusted;
-        float3 sample_pos   = center_pos + offset; // we can't use this as it might reside inside geometry
+        // Compute offset
+        float3 offset = reflect(sample_kernel[i], random_vector);
+        offset *= radius_adjusted;                  // Scale by radius
+        offset *= sign(dot(offset, center_normal)); // Flip if behind normal
+        
+        // Compute sample pos
+        float3 sample_pos   = center_pos + offset;
         float2 sample_uv    = project_uv(sample_pos, g_projection);
         sample_pos          = get_position_view_space(sample_uv);
         
@@ -136,5 +144,3 @@ float mainPS(Pixel_PosUv input) : SV_TARGET
 
     return 1.0f - saturate((occlusion * intensity) / (float)sample_count);
 }
-
-

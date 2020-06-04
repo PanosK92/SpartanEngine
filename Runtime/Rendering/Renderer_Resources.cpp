@@ -152,7 +152,7 @@ namespace Spartan
         m_render_targets[RenderTarget_Ssr] = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16_Float, 1, RHI_Texture_UnorderedAccessView, "rt_ssr");
 
         // SSGI
-        m_render_targets[RenderTarget_Ssgi] = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R11G11B10_Float, 1, RHI_Texture_UnorderedAccessView, "rt_ssgi");
+        //m_render_targets[RenderTarget_Ssgi] = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R11G11B10_Float, 1, RHI_Texture_UnorderedAccessView, "rt_ssgi");
 
         // Bloom
         {

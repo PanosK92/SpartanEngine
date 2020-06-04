@@ -86,7 +86,10 @@ namespace Spartan
 
             auto create_device = [this, &adapter, &driver_type, &device_flags, &feature_levels]()
             {
-                return D3D11CreateDevice(
+                ID3D11Device* temp_device = nullptr;
+                ID3D11DeviceContext* temp_context = nullptr;
+
+                HRESULT result = D3D11CreateDevice(
                     adapter,									// pAdapter: If nullptr, the default adapter will be used
                     driver_type,								// DriverType
                     nullptr,									// HMODULE: nullptr because DriverType = D3D_DRIVER_TYPE_HARDWARE
@@ -94,10 +97,29 @@ namespace Spartan
                     feature_levels.data(),						// pFeatureLevels
                     static_cast<UINT>(feature_levels.size()),	// FeatureLevels
                     D3D11_SDK_VERSION,							// SDKVersion
-                    &m_rhi_context->device,						// ppDevice
+                    &temp_device,						        // ppDevice
                     nullptr,									// pFeatureLevel
-                    &m_rhi_context->device_context				// ppImmediateContext
+                    &temp_context				                // ppImmediateContext
                 );
+
+                if (SUCCEEDED(result))
+                {
+                    // Query old device for newer interface.
+                    if (!d3d11_utility::error_check(temp_device->QueryInterface(__uuidof(ID3D11Device5), (void**)&m_rhi_context->device)))
+                        return E_FAIL;
+
+                    // Release old device.
+                    d3d11_utility::release(temp_device);
+
+                    // Query old device context for newer interface.
+                    if (!d3d11_utility::error_check(temp_context->QueryInterface(__uuidof(ID3D11DeviceContext4), (void**)&m_rhi_context->device_context)))
+                        return E_FAIL;
+
+                    // Release old context.
+                    d3d11_utility::release(temp_context);
+                }
+
+                return result;
             };
 
 			// Create Direct3D device and Direct3D device context.

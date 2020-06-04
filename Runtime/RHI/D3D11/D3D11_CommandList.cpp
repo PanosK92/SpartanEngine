@@ -229,6 +229,7 @@ namespace Spartan
         }
 
         // Primitive topology
+        if (pipeline_state.primitive_topology != RHI_PrimitiveTopology_Unknown)
         {
             // New state
             D3D11_PRIMITIVE_TOPOLOGY topology = d3d11_primitive_topology[pipeline_state.primitive_topology];
@@ -413,23 +414,26 @@ namespace Spartan
 
     void RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z /*= 1*/) const
     {
-        ID3D11DeviceContext* device_context = m_rhi_device->GetContextRhi()->device_context;
+        ID3D11Device5* device                   = m_rhi_device->GetContextRhi()->device;
+        ID3D11DeviceContext4* device_context    = m_rhi_device->GetContextRhi()->device_context;
+
+        // Sync objects
+        static uint32_t fence_value = 0;
+        static ID3D11Fence* fence   = nullptr;
+        static HANDLE fence_event   = nullptr;
+        if (!fence)
+        {
+            d3d11_utility::error_check(device->CreateFence(0, D3D11_FENCE_FLAG_NONE, __uuidof(ID3D11Fence), reinterpret_cast<void**>(&fence)));
+        }
 
         // Dispatch
+        ++fence_value;
         device_context->Dispatch(x, y, z);
+        d3d11_utility::error_check(device_context->Signal(fence, fence_value));
+        d3d11_utility::error_check(fence->SetEventOnCompletion(fence_value, fence_event));
 
-        // Wait (until I figure out something better)     
-        D3D11_QUERY_DESC query_desc = { D3D11_QUERY_EVENT, 0 };
-        ID3D11Query* query = nullptr;
-        if (SUCCEEDED(m_rhi_device->GetContextRhi()->device->CreateQuery(&query_desc, &query)))
-        {
-            device_context->Flush();
-            device_context->End(query);
-
-            while (device_context->GetData(query, nullptr, 0, 0) != S_OK) {}
-
-            query->Release();
-        }
+        // Wait
+        WaitForSingleObject(fence_event, INFINITE);
     }
 
 	void RHI_CommandList::SetViewport(const RHI_Viewport& viewport) const
