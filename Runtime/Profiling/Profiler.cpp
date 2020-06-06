@@ -67,16 +67,6 @@ namespace Spartan
         if (!rhi_device || !rhi_device->GetContextRhi()->profiler)
             return;
 
-        // Get available memory
-        if (m_gpu_memory_available == 0)
-        {
-            if (const PhysicalDevice* physical_device = rhi_device->GetPrimaryPhysicalDevice())
-            {
-                m_gpu_name              = physical_device->GetName();
-                m_gpu_memory_available  = RHI_CommandList::Gpu_GetMemory(rhi_device);
-            }
-        }
-
         if (m_increase_capacity)
         {
             OnFrameEnd();
@@ -118,9 +108,6 @@ namespace Spartan
         // Updating every m_profiling_interval_sec
         if (m_profile)
         {
-            // Get GPU memory usage
-            m_gpu_memory_used = RHI_CommandList::Gpu_GetMemoryUsed(rhi_device);
-
             // Create a string version of the rhi metrics
             if (m_renderer->GetOptions() & Render_Debug_PerformanceMetrics)
             {
@@ -164,10 +151,18 @@ namespace Spartan
             m_time_block_count = 0;
         }
 
+        // Detect stutters
+        float frames_to_accumulate  = 5.0f;
+        float delta_feedback        = 1.0f / frames_to_accumulate;
+        m_is_stuttering_cpu         = m_time_cpu_last > (m_time_cpu_avg + m_stutter_delta_ms);
+        m_is_stuttering_gpu         = m_time_gpu_last > (m_time_gpu_avg + m_stutter_delta_ms);
+
         // Compute cpu and gpu times
         {
-            m_time_cpu_ms = 0;
-            m_time_gpu_ms = 0;
+            frames_to_accumulate    = 20.0f;
+            delta_feedback          = 1.0f / frames_to_accumulate;
+            m_time_cpu_last         = 0.0f;
+            m_time_gpu_last         = 0.0f;
 
             for (const TimeBlock& time_block : m_time_blocks_read)
             {
@@ -176,28 +171,30 @@ namespace Spartan
 
                 if (!time_block.GetParent() && time_block.GetType() == TimeBlock_Cpu)
                 {
-                    m_time_cpu_ms += time_block.GetDuration();
+                    m_time_cpu_last += time_block.GetDuration();
                 }
 
                 if (!time_block.GetParent() && time_block.GetType() == TimeBlock_Gpu)
                 {
-                    m_time_gpu_ms += time_block.GetDuration();
+                    m_time_gpu_last += time_block.GetDuration();
                 }
             }
 
-            m_time_frame_ms = Math::Helper::Min(m_timer.GetElapsedTimeMs(), m_time_cpu_ms + m_time_gpu_ms);
-        }
+            // CPU
+            m_time_cpu_avg = m_time_cpu_avg * (1.0f - delta_feedback) + m_time_cpu_last * delta_feedback;
+            m_time_cpu_min = Math::Helper::Min(m_time_cpu_min, m_time_cpu_last);
+            m_time_cpu_max = Math::Helper::Max(m_time_cpu_max, m_time_cpu_last);
 
-        // Detect stutters
-        {
-            // Detect
-            m_is_stuttering_cpu = m_time_cpu_ms > (m_cpu_avg_ms + m_stutter_delta_ms);
-            m_is_stuttering_gpu = m_time_gpu_ms > (m_gpu_avg_ms + m_stutter_delta_ms);
+            // GPU
+            m_time_gpu_avg = m_time_gpu_avg * (1.0f - delta_feedback) + m_time_gpu_last * delta_feedback;
+            m_time_gpu_min = Math::Helper::Min(m_time_gpu_min, m_time_gpu_last);
+            m_time_gpu_max = Math::Helper::Max(m_time_gpu_max, m_time_gpu_last);
 
-            // Accumulate
-            const double delta_feedback = 1.0 / m_frames_to_accumulate;
-            m_cpu_avg_ms = m_cpu_avg_ms * (1.0 - delta_feedback) + m_time_cpu_ms * delta_feedback;
-            m_gpu_avg_ms = m_gpu_avg_ms * (1.0 - delta_feedback) + m_time_gpu_ms * delta_feedback;
+            // Frame
+            m_time_frame_last   = m_timer.GetElapsedTimeMs(); // cpu + gpu times will equal the frame time only if everything is profiled, which is not, so we just query the timer
+            m_time_frame_avg    = m_time_frame_avg * (1.0f - delta_feedback) + m_time_frame_last * delta_feedback;
+            m_time_frame_min    = Math::Helper::Min(m_time_frame_min, m_time_frame_last);
+            m_time_frame_max    = Math::Helper::Max(m_time_frame_max, m_time_frame_last);
         }
     }
 
@@ -233,6 +230,22 @@ namespace Spartan
 		}
 	}
 
+    void Profiler::ResetMetrics()
+    {
+        m_time_frame_avg    = 0.0f;
+        m_time_frame_min    = std::numeric_limits<float>::max();
+        m_time_frame_max    = std::numeric_limits<float>::lowest();
+        m_time_frame_last   = 0.0f;
+        m_time_cpu_avg      = 0.0f;
+        m_time_cpu_min      = std::numeric_limits<float>::max();
+        m_time_cpu_max      = std::numeric_limits<float>::lowest();
+        m_time_cpu_last     = 0.0f;
+        m_time_gpu_avg      = 0.0f;
+        m_time_gpu_min      = std::numeric_limits<float>::max();
+        m_time_gpu_max      = std::numeric_limits<float>::lowest();
+        m_time_gpu_last     = 0.0f;
+    }
+
     TimeBlock* Profiler::GetNewTimeBlock()
 	{
 		// Increase capacity if needed
@@ -264,13 +277,13 @@ namespace Spartan
 
 	void Profiler::ComputeFps(const float delta_time)
 	{
-		m_frame_count++;
+		m_frames_since_last_fps_computation++;
 		m_time_passed += delta_time;
-        m_fps = static_cast<float>(m_frame_count) / (m_time_passed / 1.0f);
+        m_fps = static_cast<float>(m_frames_since_last_fps_computation) / (m_time_passed / 1.0f);
 
 		if (m_time_passed >= 1.0f)
 		{
-			m_frame_count = 0;
+			m_frames_since_last_fps_computation = 0;
 			m_time_passed = 0;
 		}
 	}
@@ -280,47 +293,71 @@ namespace Spartan
 		const auto texture_count	= m_resource_manager->GetResourceCount(Resource_Texture) + m_resource_manager->GetResourceCount(Resource_Texture2d) + m_resource_manager->GetResourceCount(Resource_TextureCube);
 		const auto material_count	= m_resource_manager->GetResourceCount(Resource_Material);
 
+        RHI_Device* rhi_device = m_renderer->GetRhiDevice().get();
+        if (const PhysicalDevice* physical_device = rhi_device->GetPrimaryPhysicalDevice())
+        {
+            m_gpu_name              = physical_device->GetName();
+            m_gpu_memory_used       = RHI_CommandList::Gpu_GetMemoryUsed(rhi_device);
+            m_gpu_memory_available  = RHI_CommandList::Gpu_GetMemory(rhi_device);
+            m_gpu_driver            = physical_device->GetDriverVersion();
+            m_gpu_api               = physical_device->GetApiVersion();
+        }
+
         static const char* text =
-            // Performance
-            "FPS:\t\t\t\t\t\t%.2f\n"
-            "Frame time:\t\t\t\t%.2f\n"
-            "CPU time:\t\t\t\t\t%.2f\n"
-            "GPU time:\t\t\t\t\t%.2f\n"
-            "GPU:\t\t\t\t\t\t%s\n"
-            "VRAM:\t\t\t\t\t\t%d/%d MB\n"
+            // Times
+            "FPS:\t\t%.2f\n"
+            "Frame:\t%d\n"
+            "Time:\t%.2f ms\n"
+            "\n"
+            // Detailed times
+            "\t\tavg\t\tmin\t\tmax\t\tlast\n"
+            "Total:\t%.2f\t\t%.2f\t\t%.2f\t\t%.2f\n"
+            "CPU:\t\t%.2f\t\t%.2f\t\t%.2f\t\t%.2f\n"
+            "GPU:\t%.2f\t\t%.2f\t\t%.2f\t\t%.2f\n"
+            "\n"
+            // GPU
+            "API:\t\t%s\n"
+            "GPU:\t%s\n"
+            "VRAM:\t%d/%d MB\n"
+            "Driver:\t%s\n"
+            "\n"
             // Renderer
-            "Resolution:\t\t\t\t\t%dx%d\n"
-            "Meshes rendered:\t\t\t%d\n"
-            "Textures:\t\t\t\t\t%d\n"
-            "Materials:\t\t\t\t\t%d\n"
+            "Resolution:\t\t%dx%d\n"
+            "Meshes rendered:\t%d\n"
+            "Textures:\t\t\t%d\n"
+            "Materials:\t\t%d\n"
+            "\n"
             // RHI
-            "Draw calls:\t\t\t\t\t%d\n"
+            "Draw calls:\t\t\t\t%d\n"
             "Index buffer bindings:\t\t%d\n"
             "Vertex buffer bindings:\t\t%d\n"
             "Constant buffer bindings:\t%d\n"
             "Sampler bindings:\t\t\t%d\n"
             "Texture bindings:\t\t\t%d\n"
-            "Vertex shader bindings:\t\t%d\n"
+            "Vertex shader bindings:\t%d\n"
             "Pixel shader bindings:\t\t%d\n"
             "Compute shader bindings:\t%d\n"
-            "Render target bindings:\t\t%d\n"
+            "Render target bindings:\t%d\n"
             "Pipeline bindings:\t\t\t%d\n"
-            "Descriptor set bindings:\t\t%d\n"
+            "Descriptor set bindings:\t%d\n"
             "Pipeline barriers:\t\t\t%d";
 
-		static char buffer[1024]; // real usage is around 800
+        static char buffer[2048];
 		sprintf_s
 		(
 			buffer, text,
 
 			// Performance
 			m_fps,
-			m_time_frame_ms,
-			m_time_cpu_ms,
-			m_time_gpu_ms,
-			m_gpu_name.c_str(),
-			m_gpu_memory_used,
-			m_gpu_memory_available,
+            m_renderer->GetFrameNum(),
+            m_time_frame_last,
+			m_time_frame_avg,   m_time_frame_min,   m_time_frame_max,   m_time_frame_last,
+            m_time_cpu_avg,     m_time_cpu_min,     m_time_cpu_max,     m_time_cpu_last,
+            m_time_gpu_avg,     m_time_gpu_min,     m_time_gpu_max,     m_time_gpu_last,
+            m_gpu_api.c_str(),
+            m_gpu_name.c_str(),
+            m_gpu_memory_used, m_gpu_memory_available,
+            m_gpu_driver.c_str(),
 
 			// RendererFon
 			static_cast<int>(m_renderer->GetResolution().x), static_cast<int>(m_renderer->GetResolution().y),

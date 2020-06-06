@@ -86,8 +86,8 @@ namespace Spartan
 
 	void Font::SetText(const string& text, const Vector2& position)
 	{
-        const bool same_text      = text == m_current_text;
-        const bool has_buffers    = (m_vertex_buffer && m_index_buffer);
+        const bool same_text    = text == m_current_text;
+        const bool has_buffers  = (m_vertex_buffer && m_index_buffer);
 
 		if (same_text || !has_buffers)
 			return;
@@ -95,37 +95,33 @@ namespace Spartan
         Vector2 pen = position;
 		m_current_text = text;
 		m_vertices.clear();
-	
+
 		// Draw each letter onto a quad.
 		for (auto text_char : m_current_text)
 		{
-			auto glyph = m_glyphs[text_char];
+            Glyph& glyph = m_glyphs[text_char];
 
 			if (text_char == ASCII_TAB)
 			{
-				const auto space_offset		        = m_glyphs[ASCII_SPACE].horizontal_advance;
-				const auto space_count		        = 8; // spaces in a typical terminal
-				const auto tab_spacing		        = space_offset * space_count;
-				const auto column_header	        = int(pen.x - position.x); // -position.x because it has to be zero based so we can do the mod below
-				const auto offset_to_next_tab_stop  = tab_spacing - (column_header % (tab_spacing != 0 ? tab_spacing : 1));
-				pen.x                               += offset_to_next_tab_stop;
-				continue;
+				const uint32_t space_offset	        = m_glyphs[ASCII_SPACE].horizontal_advance;
+				const uint32_t space_count	        = 8; // spaces in a typical terminal
+				const uint32_t tab_spacing	        = space_offset * space_count;
+                const uint32_t offset_from_start    = static_cast<uint32_t>(Math::Helper::Abs(pen.x - position.x));
+                const uint32_t next_column_index    = (offset_from_start / tab_spacing) + 1;
+                const uint32_t offset_to_column     = (next_column_index * tab_spacing) - offset_from_start;
+				pen.x                               += offset_to_column;
 			}
-
-			if (text_char == ASCII_NEW_LINE)
+			else if (text_char == ASCII_NEW_LINE)
 			{
 				pen.y -= m_char_max_height;
 				pen.x = position.x;
-				continue;
 			}
-
-			if (text_char == ASCII_SPACE)
+			else if (text_char == ASCII_SPACE)
 			{
-				pen.x += glyph.horizontal_advance;
-				continue;
+                // Advance
+                pen.x += glyph.horizontal_advance;
 			}
-
-            // Any other char
+            else // Any other char
             {
 			    // First triangle in quad.		
 			    m_vertices.emplace_back(pen.x + glyph.offset_x,                 pen.y + glyph.offset_y,                  0.0f, glyph.uv_x_left,  glyph.uv_y_top);       // top left
@@ -137,7 +133,7 @@ namespace Spartan
 			    m_vertices.emplace_back(pen.x + glyph.offset_x	+ glyph.width,	pen.y + glyph.offset_y - glyph.height,   0.0f, glyph.uv_x_right, glyph.uv_y_bottom);    // bottom right
 
 			    // Advance
-			    pen.x += glyph.horizontal_advance;
+                pen.x += glyph.horizontal_advance;
             }
 		}
 		m_vertices.shrink_to_fit();		

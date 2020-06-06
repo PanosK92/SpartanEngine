@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Rendering/Model.h"
 #include "../ImGui_Extension.h"
 #include "RHI/RHI_Device.h"
+#include "Profiling/Profiler.h"
 //===============================
 
 //= NAMESPACES ===============
@@ -281,6 +282,12 @@ void Widget_RenderOptions::Tick()
             ImGui::Checkbox("Grid",                 &debug_grid);
             ImGui::Checkbox("Performance Metrics",  &debug_performance_metrics);
             ImGui::Checkbox("Wireframe",            &debug_wireframe);
+
+            // Reset metrics on activation
+            if (debug_performance_metrics && !m_renderer->GetOption(Render_Debug_PerformanceMetrics))
+            {
+                m_profiler->ResetMetrics();
+            }
 
             m_renderer->SetOption(Render_Debug_Transform,           debug_transform);
             m_renderer->SetOption(Render_Debug_SelectionOutline,    debug_selection_outline);

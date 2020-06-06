@@ -30,8 +30,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
+    // Forward declarations
 	class Profiler;
     class Renderer;
+    class Context;
+    namespace Math
+    {
+        class Rectangle;
+    }
 
     enum RHI_Cmd_List_State
     {

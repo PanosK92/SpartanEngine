@@ -56,23 +56,24 @@ namespace Spartan
         void OnFrameEnd();
 		void TimeBlockStart(const char* func_name, TimeBlock_Type type, RHI_CommandList* cmd_list = nullptr);
 		void TimeBlockEnd();
+        void ResetMetrics();
 
         // Properties
 		void SetProfilingEnabledCpu(const bool enabled)	{ m_profile_cpu_enabled = enabled; }
 		void SetProfilingEnabledGpu(const bool enabled)	{ m_profile_gpu_enabled = enabled; }
-		const std::string& GetMetrics() const			{ return m_metrics; }
-		const auto& GetTimeBlocks() const				{ return m_time_blocks_read; }
-		auto GetTimeCpu() const						    { return m_time_cpu_ms; }
-		auto GetTimeGpu() const						    { return m_time_gpu_ms; }
-		auto GetTimeFrame() const						{ return m_time_frame_ms; }
-		auto GetFps() const							    { return m_fps; }
-		auto GetUpdateInterval() const { return m_profiling_interval_sec; }
-		void SetUpdateInterval(float internval)			{ m_profiling_interval_sec = internval; }
-		const auto& GpuGetName() const { return m_gpu_name; }
-        auto GpuGetMemoryAvailable() const { return m_gpu_memory_available; }
-        auto GpuGetMemoryUsed() const { return m_gpu_memory_used; }
-        bool IsCpuStuttering() const { return m_is_stuttering_cpu; }
-        bool IsGpuStuttering() const { return m_is_stuttering_gpu; }
+		const std::string& GetMetrics()                 const { return m_metrics; }
+		const auto& GetTimeBlocks()                     const { return m_time_blocks_read; }
+		float GetTimeCpuLast()                          const { return m_time_cpu_last; }
+		float GetTimeGpuLast()                          const { return m_time_gpu_last; }
+		float GetTimeFrameLast()                        const { return m_time_frame_last; }
+		float GetFps()                                  const { return m_fps; }
+        float GetUpdateInterval()                       const { return m_profiling_interval_sec; }
+		void SetUpdateInterval(float internval)               { m_profiling_interval_sec = internval; }
+		const auto& GpuGetName()                        const { return m_gpu_name; }
+        auto GpuGetMemoryAvailable()                    const { return m_gpu_memory_available; }
+        auto GpuGetMemoryUsed()                         const { return m_gpu_memory_used; }
+        bool IsCpuStuttering()                          const { return m_is_stuttering_cpu; }
+        bool IsGpuStuttering()                          const { return m_is_stuttering_gpu; }
 		
 		// Metrics - RHI
 		uint32_t m_rhi_draw_calls				= 0;
@@ -93,9 +94,18 @@ namespace Spartan
 		uint32_t m_renderer_meshes_rendered = 0;
 
 		// Metrics - Time
-		float m_time_frame_ms	= 0.0f;
-		float m_time_cpu_ms		= 0.0f;
-		float m_time_gpu_ms		= 0.0f;
+		float m_time_frame_avg  = 0.0f;
+        float m_time_frame_min  = std::numeric_limits<float>::max();
+		float m_time_frame_max  = std::numeric_limits<float>::lowest();
+        float m_time_frame_last = 0.0f;
+        float m_time_cpu_avg    = 0.0f;
+        float m_time_cpu_min    = std::numeric_limits<float>::max();
+		float m_time_cpu_max    = std::numeric_limits<float>::lowest();
+        float m_time_cpu_last   = 0.0f;
+        float m_time_gpu_avg    = 0.0f;
+        float m_time_gpu_min    = std::numeric_limits<float>::max();
+        float m_time_gpu_max    = std::numeric_limits<float>::lowest();
+        float m_time_gpu_last   = 0.0f;
 
 	private:
         void ClearRhiMetrics()
@@ -137,20 +147,19 @@ namespace Spartan
         float m_delta_time      = 0.0f;
 		float m_fps				= 0.0f;
 		float m_time_passed		= 0.0f;
-		uint32_t m_frame_count	= 0;
+		uint32_t m_frames_since_last_fps_computation = 0;
 
 		// Hardware - GPU
 		std::string m_gpu_name			= "N/A";
+        std::string m_gpu_driver        = "N/A";
+        std::string m_gpu_api           = "N/A";
 		uint32_t m_gpu_memory_available	= 0;
 		uint32_t m_gpu_memory_used		= 0;
 
         // Stutter detection
-        double m_cpu_avg_ms             = 0.0;
-        double m_gpu_avg_ms             = 0.0;
-        double m_stutter_delta_ms       = 0.5;
-        double m_frames_to_accumulate   = 5;
-        bool m_is_stuttering_cpu        = false;
-        bool m_is_stuttering_gpu        = false;
+        float m_stutter_delta_ms    = 0.5f;
+        bool m_is_stuttering_cpu    = false;
+        bool m_is_stuttering_gpu    = false;
 
 		// Misc
 		std::string m_metrics = "N/A";
