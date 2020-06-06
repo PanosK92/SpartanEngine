@@ -19,26 +19,16 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= IMPLEMENTATION ===============
-#include "../RHI_Implementation.h"
-//================================
-
 //= INCLUDES ==========================
+#include "../RHI_Implementation.h"
 #include "../RHI_CommandList.h"
 #include "../RHI_Pipeline.h"
-#include "../RHI_Device.h"
-#include "../RHI_SwapChain.h"
-#include "../RHI_Sampler.h"
-#include "../RHI_Texture.h"
 #include "../RHI_VertexBuffer.h"
 #include "../RHI_IndexBuffer.h"
-#include "../RHI_PipelineState.h"
-#include "../RHI_ConstantBuffer.h"
 #include "../RHI_DescriptorCache.h"
 #include "../RHI_PipelineCache.h"
 #include "../RHI_DescriptorSetLayout.h"
 #include "../../Profiling/Profiler.h"
-#include "../../Logging/Log.h"
 #include "../../Rendering/Renderer.h"
 //=====================================
 
@@ -682,8 +672,15 @@ namespace Spartan
 
         uint64_t start      = m_timestamps[pass_index];
         uint64_t end        = m_timestamps[pass_index + 1];
+
+        // If end has not been acquired (zero), early exit
+        if (end < start)
+            return 0.0f;
+
         uint64_t duration   = Math::Helper::Clamp<uint64_t>(end - start, 0, std::numeric_limits<uint64_t>::max());
-        return static_cast<float>(duration * m_rhi_device->GetContextRhi()->device_properties.limits.timestampPeriod * 1e-6f);
+        float duration_ms   = static_cast<float>(duration * m_rhi_device->GetContextRhi()->device_properties.limits.timestampPeriod * 1e-6f);
+
+        return duration_ms;
     }
 
     bool RHI_CommandList::Gpu_QueryCreate(RHI_Device* rhi_device, void** query /*= nullptr*/, RHI_Query_Type type /*= RHI_Query_Timestamp*/)

@@ -75,7 +75,6 @@ namespace Spartan::vulkan_utility
                 case VK_ERROR_INVALID_DEVICE_ADDRESS_EXT:					return "VK_ERROR_INVALID_DEVICE_ADDRESS_EXT";
                 case VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT:			return "VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT";
                 case VK_ERROR_UNKNOWN:                                      return "VK_ERROR_UNKNOWN";
-                case VK_RESULT_RANGE_SIZE:                                  return "VK_RESULT_RANGE_SIZE";
                 case VK_RESULT_MAX_ENUM:                                    return "VK_RESULT_MAX_ENUM";
             }
 

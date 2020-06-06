@@ -370,7 +370,7 @@ namespace Spartan
         const auto dir_font = m_resource_cache->GetDataDirectory(Asset_Fonts) + "/";
 
         // Load a font (used for performance metrics)
-        m_font = make_unique<Font>(m_context, dir_font + "CalibriBold.ttf", 14, Vector4(0.8f, 0.8f, 0.8f, 1.0f));
+        m_font = make_unique<Font>(m_context, dir_font + "CalibriBold.ttf", 12, Vector4(0.8f, 0.8f, 0.8f, 1.0f));
     }
 
     void Renderer::CreateTextures()

@@ -21,8 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-// RHI (Rendering Hardware Interface)
-
 //= INCLUDES ===============
 #include <stdint.h>
 #include "..\Math\Vector4.h"
@@ -66,6 +64,13 @@ namespace Spartan
         RHI_PhysicalDevice_Discrete,
         RHI_PhysicalDevice_Virtual,
         RHI_PhysicalDevice_Cpu
+    };
+
+    enum RHI_Api_Type
+    {
+        RHI_Api_D3d11,
+        RHI_Api_D3d12,
+        RHI_Api_Vulkan
     };
 
 	enum RHI_Present_Mode : uint32_t

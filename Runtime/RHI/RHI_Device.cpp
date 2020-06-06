@@ -21,11 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================
 #include "RHI_Device.h"
-#include "../Core/Context.h"
-#include "../Core/Settings.h"
-#include "../Core/Timer.h"
-#include <algorithm>
 #include "RHI_Implementation.h"
+#include "../Core/Timer.h"
+#include "../Core/Context.h"
 //=============================
 
 //= NAMESPACES ===============

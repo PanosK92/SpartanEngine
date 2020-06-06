@@ -72,7 +72,7 @@ void Widget_Profiler::ShowCPU()
 	// Get stuff
 	const auto& time_blocks		= m_profiler->GetTimeBlocks();
 	const auto time_block_count = static_cast<unsigned int>(time_blocks.size());
-	const auto time_cpu			= m_profiler->GetTimeCpu();	
+	const auto time_cpu			= m_profiler->GetTimeCpuLast();	
 
 	// Time blocks	
 	for (unsigned int i = 0; i < time_block_count; i++)
@@ -92,7 +92,7 @@ void Widget_Profiler::ShowGPU()
 	// Get stuff
 	const auto& time_blocks		= m_profiler->GetTimeBlocks();
 	const auto time_block_count	= static_cast<unsigned int>(time_blocks.size());
-	const auto time_gpu			= m_profiler->GetTimeGpu();
+	const auto time_gpu			= m_profiler->GetTimeGpuLast();
 
 	// Time blocks
 	for (unsigned int i = 0; i < time_block_count; i++)
