@@ -41,6 +41,7 @@ namespace Spartan
 	class ResourceCache;
 	class Renderer;
     class Variant;
+    class Timer;
 
 	class SPARTAN_CLASS Profiler : public ISubsystem
 	{
@@ -129,6 +130,7 @@ namespace Spartan
 		TimeBlock* GetNewTimeBlock();
 		TimeBlock* GetLastIncompleteTimeBlock(TimeBlock_Type type = TimeBlock_Undefined);
 		void ComputeFps(float delta_time);
+        void AcquireGpuData();
 		void UpdateRhiMetricsString();
 
 		// Profiling options
@@ -163,7 +165,6 @@ namespace Spartan
 
 		// Misc
 		std::string m_metrics = "N/A";
-        Stopwatch m_timer;
 		bool m_profile = true;
         bool m_increase_capacity = 0.0f;
         bool m_allow_time_block_end = true;
@@ -171,6 +172,7 @@ namespace Spartan
 		// Dependencies
 		ResourceCache* m_resource_manager	= nullptr;
 		Renderer* m_renderer				= nullptr;
+        Timer* m_timer                      = nullptr;
 	};
 
     class ScopedTimeBlock

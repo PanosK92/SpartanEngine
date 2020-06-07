@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_CommandList.h"
 #include "../Resource/ResourceCache.h"
 #include "../RHI/RHI_Implementation.h"
+#include "../Core/Timer.h"
 //====================================
 
 //= NAMESPACES =====
@@ -54,6 +55,7 @@ namespace Spartan
 	{
 		m_resource_manager	= m_context->GetSubsystem<ResourceCache>();
 		m_renderer			= m_context->GetSubsystem<Renderer>();
+        m_timer             = m_context->GetSubsystem<Timer>();
 
 		return true;
 	}
@@ -88,8 +90,6 @@ namespace Spartan
             }
         }
 
-        m_timer.Start();
-
         // Compute fps
         ComputeFps(delta_time);
 
@@ -108,6 +108,8 @@ namespace Spartan
         // Updating every m_profiling_interval_sec
         if (m_profile)
         {
+            AcquireGpuData();
+
             // Create a string version of the rhi metrics
             if (m_renderer->GetOptions() & Render_Debug_PerformanceMetrics)
             {
@@ -191,7 +193,7 @@ namespace Spartan
             m_time_gpu_max = Math::Helper::Max(m_time_gpu_max, m_time_gpu_last);
 
             // Frame
-            m_time_frame_last   = m_timer.GetElapsedTimeMs(); // cpu + gpu times will equal the frame time only if everything is profiled, which is not, so we just query the timer
+            m_time_frame_last   = static_cast<float>(m_timer->GetDeltaTimeMs());
             m_time_frame_avg    = m_time_frame_avg * (1.0f - delta_feedback) + m_time_frame_last * delta_feedback;
             m_time_frame_min    = Math::Helper::Min(m_time_frame_min, m_time_frame_last);
             m_time_frame_max    = Math::Helper::Max(m_time_frame_max, m_time_frame_last);
@@ -288,11 +290,8 @@ namespace Spartan
 		}
 	}
 
-    void Profiler::UpdateRhiMetricsString()
-	{
-		const auto texture_count	= m_resource_manager->GetResourceCount(Resource_Texture) + m_resource_manager->GetResourceCount(Resource_Texture2d) + m_resource_manager->GetResourceCount(Resource_TextureCube);
-		const auto material_count	= m_resource_manager->GetResourceCount(Resource_Material);
-
+    void Profiler::AcquireGpuData()
+    {
         RHI_Device* rhi_device = m_renderer->GetRhiDevice().get();
         if (const PhysicalDevice* physical_device = rhi_device->GetPrimaryPhysicalDevice())
         {
@@ -302,6 +301,12 @@ namespace Spartan
             m_gpu_driver            = physical_device->GetDriverVersion();
             m_gpu_api               = physical_device->GetApiVersion();
         }
+    }
+
+    void Profiler::UpdateRhiMetricsString()
+	{
+		const auto texture_count	= m_resource_manager->GetResourceCount(Resource_Texture) + m_resource_manager->GetResourceCount(Resource_Texture2d) + m_resource_manager->GetResourceCount(Resource_TextureCube);
+		const auto material_count	= m_resource_manager->GetResourceCount(Resource_Material);
 
         static const char* text =
             // Times
@@ -359,7 +364,7 @@ namespace Spartan
             m_gpu_memory_used, m_gpu_memory_available,
             m_gpu_driver.c_str(),
 
-			// RendererFon
+			// Renderer
 			static_cast<int>(m_renderer->GetResolution().x), static_cast<int>(m_renderer->GetResolution().y),
 			m_renderer_meshes_rendered,
 			texture_count,

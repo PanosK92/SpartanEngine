@@ -142,7 +142,7 @@ namespace Spartan::d3d11_utility
 
             globals::rhi_device->RegisterPhysicalDevice(PhysicalDevice
             (
-                0,                                                          // api version
+                11 << 22,                                                   // api version
                 0,                                                          // driver version
                 adapter_desc.VendorId,                                      // vendor id
                 RHI_PhysicalDevice_Unknown,                                 // type
