@@ -23,10 +23,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common.hlsl"
 //====================
 
-static const uint sample_count  = 4;
-static const float radius       = 5.0f;
-static const float intensity    = 1.0f;
-static const float2 noise_scale = float2(g_resolution.x / 256.0f, g_resolution.y / 256.0f);
+static const uint ao_directions     = 4;
+static const float ao_radius        = 1.0f;
+static const float ao_intensity     = 1.0f;
+static const float2 noise_scale     = float2(g_resolution.x / 256.0f, g_resolution.y / 256.0f);
+static const float ao_radius2       = ao_radius * ao_radius;
 
 static const float3 sample_kernel[64] =
 {
@@ -96,6 +97,20 @@ static const float3 sample_kernel[64] =
     float3(-0.44272, -0.67928, 0.1865)
 };
 
+float falloff(float distance_squared)
+{
+    return saturate(1.0f - distance_squared / ao_radius2);
+}
+
+float occlusion(float3 sample_pos, float3 center_pos, float3 center_normal)
+{
+    float3 center_to_sample = sample_pos - center_pos;
+    float distance_squared  = dot(center_to_sample, center_to_sample);
+    float NdotV             = dot(center_normal, center_to_sample) / sqrt(distance_squared);
+
+    return saturate(NdotV) * falloff(distance_squared);
+}
+
 float mainPS(Pixel_PosUv input) : SV_TARGET
 {
     float2 uv               = input.uv;
@@ -111,17 +126,14 @@ float mainPS(Pixel_PosUv input) : SV_TARGET
     float3 rotation         = float3(cos(rotation_angle), sin(rotation_angle), 0.0f);
     random_vector           = float3(length(random_vector.xy) * normalize(rotation.xy), random_vector.z);
 
-    // Adjust radius with some noise as well, mainly improves the range check
-    float radius_adjusted = radius * ign;
-    
     // Occlusion
-    float occlusion = 0.0f;
+    float ao = 0.0f;
     [unroll]
-    for (uint i = 0; i < sample_count; i++)
+    for (uint i = 0; i < ao_directions; i++)
     {
         // Compute offset
         float3 offset = reflect(sample_kernel[i], random_vector);
-        offset *= radius_adjusted;                  // Scale by radius
+        offset *= ao_radius;                        // Scale by radius
         offset *= sign(dot(offset, center_normal)); // Flip if behind normal
         
         // Compute sample pos
@@ -129,18 +141,9 @@ float mainPS(Pixel_PosUv input) : SV_TARGET
         float2 sample_uv    = project_uv(sample_pos, g_projection);
         sample_pos          = get_position_view_space(sample_uv);
         
-        // Compute sample direction
-        float3 center_to_sample         = sample_pos - center_pos;
-        float center_to_sample_distance = length(center_to_sample) + FLT_MIN;
-        float3 center_to_sample_dir     = center_to_sample / center_to_sample_distance;
-        
-        // Compute occlusion
-        float occlusion_factor  = dot(center_normal, center_to_sample_dir);
-        float range_check       = smoothstep(0.0f, 1.0f, radius_adjusted / center_to_sample_distance);
-
         // Accumulate
-        occlusion += occlusion_factor * range_check;
+        ao += occlusion(sample_pos, center_pos, center_normal);
     }
 
-    return 1.0f - saturate((occlusion * intensity) / (float)sample_count);
+    return 1.0f - saturate((ao * ao_intensity) / (float) ao_directions);
 }
