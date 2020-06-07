@@ -111,7 +111,7 @@ void Widget_Profiler::ShowGPU()
 	ImGui::Separator();
     const unsigned int memory_used		= m_profiler->GpuGetMemoryUsed();
     const unsigned int memory_available	= m_profiler->GpuGetMemoryAvailable();
-    const string overlay					= "Memory " + to_string(memory_used) + "/" + to_string(memory_available) + " MB";
+    const string overlay                = "Memory " + to_string(memory_used) + "/" + to_string(memory_available) + " MB";
 	ImGui::ProgressBar((float)memory_used / (float)memory_available, ImVec2(-1, 0), overlay.c_str());
 }
 

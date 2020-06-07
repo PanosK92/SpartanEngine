@@ -670,10 +670,10 @@ namespace Spartan
             return 0.0f;
         }
 
-        uint64_t start      = m_timestamps[pass_index];
-        uint64_t end        = m_timestamps[pass_index + 1];
+        uint64_t start  = m_timestamps[pass_index];
+        uint64_t end    = m_timestamps[pass_index + 1];
 
-        // If end has not been acquired (zero), early exit
+        // If end has not been acquired yet (zero), early exit
         if (end < start)
             return 0.0f;
 
