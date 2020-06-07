@@ -66,7 +66,8 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         material.F0         = lerp(0.04f, material.albedo, material.metallic);
     
         // Light - Ambient (Hacked together because there is no GI yet and I'm hackerman)
-        float light_ambient = clamp(g_directional_light_intensity * 0.12f, 0.0f, 1.0f) * sample_ssao;
+        float3 mbao = MultiBounceAO(sample_ssao, sample_albedo.rgb);
+        float3 light_ambient = clamp(g_directional_light_intensity * 0.12f, 0.0f, 1.0f) * mbao;
         
         // Light - Image based
         float3 F                    = 0.0f;   

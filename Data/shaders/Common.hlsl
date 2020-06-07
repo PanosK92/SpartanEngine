@@ -274,6 +274,7 @@ inline float random(float2 uv)
     return frac(sin(dot(uv, float2(12.9898, 78.233))) * 43758.5453);
 }
 
+// Based on interleaved gradient function from Jimenez 2014 http://goo.gl/eomGso
 inline float interleaved_gradient_noise(float2 position_screen)
 {
     position_screen += g_frame * any(g_taa_jitter_offset); // temporal factor
@@ -289,9 +290,23 @@ inline float blue_noise(float2 uv)
     return frac(noise + float(g_frame) * c_goldenRatioConjugate * any(g_taa_jitter_offset));
 }
 
+
+
 /*------------------------------------------------------------------------------
-    MISC
+    OCCLUSION/SHADOWING
 ------------------------------------------------------------------------------*/
+
+// From Activision GTAO paper: https://www.activision.com/cdn/research/s2016_pbs_activision_occlusion.pptx
+inline float3 MultiBounceAO(float visibility, float3 albedo)
+{
+    float3 a = 2.0404 * albedo - 0.3324;
+    float3 b = -4.7951 * albedo + 0.6417;
+    float3 c = 2.7552 * albedo + 0.6903;
+	
+    float x = visibility;
+    return max(x, ((x * a + b) * x + c) * x);
+}
+
 // The Technical Art of Uncharted 4 - http://advances.realtimerendering.com/other/2016/naughty_dog/index.html
 float microw_shadowing_nt(float n_dot_l, float ao)
 {
@@ -302,10 +317,14 @@ float microw_shadowing_nt(float n_dot_l, float ao)
 // Chan 2018, "Material Advances in Call of Duty: WWII"
 float microw_shadowing_cod(float n_dot_l, float visibility)
 {
-    float aperture      = rsqrt(1.0 - visibility);
-    float microShadow   = saturate(n_dot_l * aperture);
+    float aperture = rsqrt(1.0 - visibility);
+    float microShadow = saturate(n_dot_l * aperture);
     return microShadow * microShadow;
 }
+
+/*------------------------------------------------------------------------------
+    MISC
+------------------------------------------------------------------------------*/
 
 inline float3 energy_conservation(float3 F, float metallic = 0.0f)
 {

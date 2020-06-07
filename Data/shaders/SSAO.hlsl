@@ -117,7 +117,7 @@ float mainPS(Pixel_PosUv input) : SV_TARGET
     // Occlusion
     float occlusion = 0.0f;
     [unroll]
-    for (int i = 0; i < sample_count; i++)
+    for (uint i = 0; i < sample_count; i++)
     {
         // Compute offset
         float3 offset = reflect(sample_kernel[i], random_vector);

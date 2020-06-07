@@ -41,7 +41,6 @@ struct Material
 struct Light
 {
     float3  color;
-    float   intensity;
     float3  position;
     float   range;
     float3  direction;

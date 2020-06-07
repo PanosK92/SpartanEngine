@@ -138,7 +138,7 @@ float3 VolumetricLighting(Surface surface, Light light)
     }
     #endif
     
-    return fog * light.color * light.intensity;
+    return fog * light.color;
 }
 
 
