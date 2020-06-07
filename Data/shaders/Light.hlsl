@@ -78,10 +78,11 @@ PixelOutputType mainPS(Pixel_PosUv input)
     }
 
     // Fill light struct
+    float light_intensity = intensity_range_angle_bias.x;
+    
     Light light;
-    light.color             = color.xyz;
+    light.color             = color.xyz * light_intensity;
     light.position          = position.xyz;
-    light.intensity         = intensity_range_angle_bias.x;
     light.range             = intensity_range_angle_bias.y;
     light.angle             = intensity_range_angle_bias.z;
     light.bias              = intensity_range_angle_bias.w;
@@ -104,7 +105,7 @@ PixelOutputType mainPS(Pixel_PosUv input)
     light.attenuation   = saturate((theta - cutoffAngle) / epsilon); // attenuate when approaching the outer cone
     light.attenuation   *= saturate(1.0f - light.distance_to_pixel / light.range); light.attenuation *= light.attenuation;
     #endif
-    light.intensity     *= light.attenuation;
+    light.color *= light.attenuation;
     
     // Shadow 
     {
@@ -131,17 +132,16 @@ PixelOutputType mainPS(Pixel_PosUv input)
         }
         #endif
     
-        // Occlusion from texture and ssao
-        shadow.a = min(shadow.a, material.occlusion);
-        
-        // Modulate light intensity and color
-        light.intensity *= shadow.a;
-        light.color     *= shadow.rgb;
+        // Compute multi-bounce ambient occlusion
+        float3 multi_bounce_ao = MultiBounceAO(material.occlusion, sample_albedo.rgb);
+
+        // Modulate light with shadow color, visibility and ambient occlusion
+        light.color *= shadow.rgb * shadow.a * multi_bounce_ao;
     }
 
     // Reflectance equation
     [branch]
-    if (light.intensity > 0.0f && !material.is_sky)
+    if (any(light.color) && !material.is_sky)
     {
         // Compute some vectors and dot products
         float3 l        = -light.direction;
@@ -207,8 +207,7 @@ PixelOutputType mainPS(Pixel_PosUv input)
         }
         #endif
 
-        // Radiance
-        float3 radiance = light.color * light.intensity * n_dot_l;
+        float3 radiance = light.color * n_dot_l;
         
         light_out.diffuse.rgb   = saturate_16(diffuse * radiance);
         light_out.specular.rgb  = saturate_16((specular + specular_clearcoat + specular_sheen) * radiance + light_reflection);

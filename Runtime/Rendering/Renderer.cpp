@@ -75,7 +75,7 @@ namespace Spartan
         // Option values
         m_option_values[Option_Value_Anisotropy]              = 16.0f;
         m_option_values[Option_Value_ShadowResolution]        = 2048.0f;
-        m_option_values[Option_Value_Tonemapping]             = static_cast<float>(Renderer_ToneMapping_ACES);
+        m_option_values[Option_Value_Tonemapping]             = static_cast<float>(Renderer_ToneMapping_Off);
         m_option_values[Option_Value_Exposure]                = 0.0f;
         m_option_values[Option_Value_Gamma]                   = 2.2f;
         m_option_values[Option_Value_Sharpen_Strength]        = 1.0f;
