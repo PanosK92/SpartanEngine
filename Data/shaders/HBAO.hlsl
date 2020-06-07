@@ -23,11 +23,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common.hlsl"
 //====================
 
-static const uint ao_directions     = 4;
-static const float ao_radius        = 1.0f;
-static const float ao_intensity     = 1.0f;
-static const float2 noise_scale     = float2(g_resolution.x / 256.0f, g_resolution.y / 256.0f);
-static const float ao_radius2       = ao_radius * ao_radius;
+static const uint ao_directions = 2;
+static const uint ao_steps      = 2;
+static const float ao_radius    = 0.3f;
+static const float ao_intensity = 3.0f;
+static const float ao_radius2   = ao_radius * ao_radius;
+static const float2 noise_scale = float2(g_resolution.x / 256.0f, g_resolution.y / 256.0f);
 
 static const float3 sample_kernel[64] =
 {
@@ -102,48 +103,89 @@ float falloff(float distance_squared)
     return saturate(1.0f - distance_squared / ao_radius2);
 }
 
-float occlusion(float3 sample_pos, float3 center_pos, float3 center_normal)
+float occlusion(float3 center_pos, float3 center_normal, float3 sample_pos)
 {
     float3 center_to_sample = sample_pos - center_pos;
-    float distance_squared  = dot(center_to_sample, center_to_sample);
-    float NdotV             = dot(center_normal, center_to_sample) / sqrt(distance_squared);
+    float distance_squared = dot(center_to_sample, center_to_sample);
+    float NdotV = dot(center_normal, center_to_sample) / sqrt(distance_squared);
 
     return saturate(NdotV) * falloff(distance_squared);
+}
+
+float2 rotate_direction(float2 dir, float2 cos_sin)
+{
+    return float2(dir.x * cos_sin.x - dir.y * cos_sin.y,
+                  dir.x * cos_sin.y + dir.y * cos_sin.x);
+}
+
+float normal_oriented_hemisphere_ambient_occlusion(float2 uv, float3 position, float3 normal, float3 random_vector)
+{
+    float ao = 0.0f;
+    
+    [unroll]
+    for (uint i = 0; i < ao_directions; i++)
+    {
+        // Compute offset
+        float3 offset   = reflect(sample_kernel[i], random_vector);
+        offset          *= ao_radius;                   // Scale by radius
+        offset          *= sign(dot(offset, normal));   // Flip if behind normal
+        
+        // Compute sample pos
+        float3 sample_pos = position + offset;
+        float2 sample_uv    = project_uv(sample_pos, g_projection);
+        sample_pos          = get_position_view_space(sample_uv);
+        
+        // Accumulate
+        ao += occlusion(position, normal, sample_pos);
+    }
+
+    return 1.0f - saturate((ao * ao_intensity) / (float)ao_directions);
+}
+
+float horizon_based_ambient_occlusion(float2 uv, float3 position, float3 normal, float3 random_vector)
+{
+    float radius_pixels     = ao_radius * g_resolution.x / position.z;
+    float uv_stride_pixels  = radius_pixels / (ao_steps + 1); // divide by ao_steps + 1 so that the farthest samples are not fully attenuated
+    float theta_slice       = PI2 / (float)ao_directions;
+  
+    // Occlusion
+    float ao = 0.0f;
+    [unroll]
+    for (uint direction_index = 0; direction_index < ao_directions; direction_index++)
+    {
+        float theta         = direction_index * theta_slice;
+        float2 direction    = rotate_direction(float2(cos(theta), sin(theta)), random_vector.xy);
+        
+        // Jitter starting sample within the first step
+        float ray_pixels = (random_vector.z * uv_stride_pixels + 1.0);
+
+        [unroll]
+        for (uint step_index = 0; step_index < ao_steps; ++step_index)
+        {
+            float2 snapped_uv       = round(ray_pixels * direction) * g_texel_size + uv;
+            float3 sample_position  = get_position_view_space(snapped_uv);
+
+            ray_pixels += uv_stride_pixels;
+
+            ao += occlusion(position, normal, sample_position);
+        }
+    }
+
+    return 1.0f - saturate((ao * ao_intensity) / (float) (ao_directions * ao_steps));
 }
 
 float mainPS(Pixel_PosUv input) : SV_TARGET
 {
     float2 uv               = input.uv;
-    float3 center_pos       = get_position_view_space(uv);
-    float3 center_normal    = get_normal_view_space(uv);       
+    float3 position         = get_position_view_space(uv);
+    float3 normal           = get_normal_view_space(uv);
+    float3 random_vector    = unpack(normalize(tex_normal_noise.Sample(sampler_bilinear_wrap, uv * noise_scale).xyz));
 
-    // Sample a random vector
-    float3 random_vector = unpack(normalize(tex_normal_noise.Sample(sampler_bilinear_wrap, input.uv * noise_scale).xyz));
-
-    // Use interleaved gradient noise to rotate the random vector (when TAA is on, we can get away with great detail even at 4 samples)
+    // Use temporal interleaved gradient noise to rotate the random vector (free detail with TAA on)
     float ign               = interleaved_gradient_noise(uv * g_resolution);
     float rotation_angle    = max(ign * PI2, FLT_MIN);
     float3 rotation         = float3(cos(rotation_angle), sin(rotation_angle), 0.0f);
     random_vector           = float3(length(random_vector.xy) * normalize(rotation.xy), random_vector.z);
-
-    // Occlusion
-    float ao = 0.0f;
-    [unroll]
-    for (uint i = 0; i < ao_directions; i++)
-    {
-        // Compute offset
-        float3 offset = reflect(sample_kernel[i], random_vector);
-        offset *= ao_radius;                        // Scale by radius
-        offset *= sign(dot(offset, center_normal)); // Flip if behind normal
-        
-        // Compute sample pos
-        float3 sample_pos   = center_pos + offset;
-        float2 sample_uv    = project_uv(sample_pos, g_projection);
-        sample_pos          = get_position_view_space(sample_uv);
-        
-        // Accumulate
-        ao += occlusion(sample_pos, center_pos, center_normal);
-    }
-
-    return 1.0f - saturate((ao * ao_intensity) / (float) ao_directions);
+    
+    return horizon_based_ambient_occlusion(uv, position, normal, random_vector);
 }

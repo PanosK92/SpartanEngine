@@ -68,7 +68,7 @@ namespace Spartan
         Render_VolumetricLighting               = 1 << 10,
         Render_AntiAliasing_Taa                 = 1 << 11,
 		Render_AntiAliasing_Fxaa	            = 1 << 12,
-		Render_ScreenSpaceAmbientOcclusion      = 1 << 13,
+		Render_HorizonBasedAmbientOcclusion     = 1 << 13,
         Render_ScreenSpaceShadows               = 1 << 14,
 		Render_ScreenSpaceReflections		    = 1 << 15,
         Render_ScreenSpaceGlobalIllumination    = 1 << 16,
@@ -144,7 +144,7 @@ namespace Spartan
         Shader_Color_P,
 		Shader_Font_V,
         Shader_Font_P,
-		Shader_Ssao_P,
+		Shader_Hbao_P,
         Shader_Ssr_P,
         Shader_Ssgi_P,
 		Shader_Entity_V,
@@ -172,8 +172,8 @@ namespace Spartan
         RenderTarget_Composition_Ldr                = 1 << 12,
         RenderTarget_Composition_Ldr_2              = 1 << 13,
         RenderTarget_Bloom                          = 1 << 14,
-        RenderTarget_Ssao_Noisy                     = 1 << 15,
-        RenderTarget_Ssao                           = 1 << 16,
+        RenderTarget_Hbao_Noisy                     = 1 << 15,
+        RenderTarget_Hbao                           = 1 << 16,
         RenderTarget_Ssr                            = 1 << 17,
         RenderTarget_Ssgi                           = 1 << 18,
         RenderTarget_TaaHistory                     = 1 << 19,
@@ -271,7 +271,7 @@ namespace Spartan
 		void Pass_LightDepth(RHI_CommandList* cmd_list, const Renderer_Object_Type object_type);
         void Pass_DepthPrePass(RHI_CommandList* cmd_list);
 		void Pass_GBuffer(RHI_CommandList* cmd_list, const Renderer_Object_Type object_type);
-		void Pass_Ssao(RHI_CommandList* cmd_list, const bool use_stencil);
+		void Pass_Hbao(RHI_CommandList* cmd_list, const bool use_stencil);
         void Pass_Ssr(RHI_CommandList* cmd_list, const bool use_stencil);
         void Pass_Ssgi(RHI_CommandList* cmd_list, const bool use_stencil);
         void Pass_Light(RHI_CommandList* cmd_list, const bool use_stencil);

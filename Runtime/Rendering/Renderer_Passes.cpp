@@ -99,7 +99,7 @@ namespace Spartan
         {
             // Lighting
             Pass_GBuffer(cmd_list, Renderer_Object_Opaque);
-            Pass_Ssao(cmd_list, false);
+            Pass_Hbao(cmd_list, false);
             Pass_Ssr(cmd_list, false);
             Pass_Ssgi(cmd_list, false);
             Pass_Light(cmd_list, false);
@@ -109,7 +109,7 @@ namespace Spartan
             if (draw_transparent_objects)
             {
                 Pass_GBuffer(cmd_list, Renderer_Object_Transparent);
-                Pass_Ssao(cmd_list, true);
+                Pass_Hbao(cmd_list, true);
                 Pass_Ssr(cmd_list, true);
                 Pass_Ssgi(cmd_list, true);
                 Pass_Light(cmd_list, true);
@@ -544,20 +544,20 @@ namespace Spartan
         UpdateMaterialBuffer();
 	}
 
-	void Renderer::Pass_Ssao(RHI_CommandList* cmd_list, const bool use_stencil)
+	void Renderer::Pass_Hbao(RHI_CommandList* cmd_list, const bool use_stencil)
 	{
-        if ((m_options & Render_ScreenSpaceAmbientOcclusion) == 0)
+        if ((m_options & Render_HorizonBasedAmbientOcclusion) == 0)
             return;
 
         // Acquire shaders
         const auto& shader_v = m_shaders[Shader_Quad_V];
-        const auto& shader_p = m_shaders[Shader_Ssao_P];
+        const auto& shader_p = m_shaders[Shader_Hbao_P];
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
         
         // Acquire render targets
-        auto& tex_ssao_noisy    = m_render_targets[RenderTarget_Ssao_Noisy];
-        auto& tex_ssao_blurred  = m_render_targets[RenderTarget_Ssao];
+        auto& tex_hbao_noisy    = m_render_targets[RenderTarget_Hbao_Noisy];
+        auto& tex_hbao_blurred  = m_render_targets[RenderTarget_Hbao];
         auto& tex_depth         = m_render_targets[RenderTarget_Gbuffer_Depth];
 
         // Set render state
@@ -568,20 +568,20 @@ namespace Spartan
         pipeline_state.blend_state                              = m_blend_disabled.get();
         pipeline_state.depth_stencil_state                      = use_stencil ? m_depth_stencil_off_on_r.get() : m_depth_stencil_off_off.get();
         pipeline_state.vertex_buffer_stride                     = m_viewport_quad.GetVertexBuffer()->GetStride();
-        pipeline_state.render_target_color_textures[0]          = use_stencil ? tex_ssao_blurred.get() : tex_ssao_noisy.get();
+        pipeline_state.render_target_color_textures[0]          = use_stencil ? tex_hbao_blurred.get() : tex_hbao_noisy.get();
         pipeline_state.clear_color[0]                           = use_stencil ? state_color_load : state_color_dont_care;
         pipeline_state.render_target_depth_texture              = use_stencil ? tex_depth.get() : nullptr;
         pipeline_state.clear_stencil                            = use_stencil ? state_stencil_load : state_stencil_dont_care;
         pipeline_state.render_target_depth_texture_read_only    = use_stencil;
-        pipeline_state.viewport                                 = tex_ssao_noisy->GetViewport();
+        pipeline_state.viewport                                 = tex_hbao_noisy->GetViewport();
         pipeline_state.primitive_topology                       = RHI_PrimitiveTopology_TriangleList;
-        pipeline_state.pass_name                                = "Pass_Ssao";
+        pipeline_state.pass_name                                = "Pass_Hbao";
 
         // Record commands
         if (cmd_list->BeginRenderPass(pipeline_state))
         {
             // Update uber buffer
-            m_buffer_uber_cpu.resolution = Vector2(tex_ssao_noisy->GetWidth(), tex_ssao_noisy->GetHeight());
+            m_buffer_uber_cpu.resolution = Vector2(tex_hbao_noisy->GetWidth(), tex_hbao_noisy->GetHeight());
             UpdateUberBuffer(cmd_list);
 
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
@@ -597,8 +597,8 @@ namespace Spartan
             const auto pixel_stride = 2.0f;
             Pass_BlurBilateralGaussian(
                 cmd_list,
-                use_stencil ? tex_ssao_blurred : tex_ssao_noisy,
-                use_stencil ? tex_ssao_noisy : tex_ssao_blurred,
+                use_stencil ? tex_hbao_blurred : tex_hbao_noisy,
+                use_stencil ? tex_hbao_noisy : tex_hbao_blurred,
                 sigma,
                 pixel_stride,
                 use_stencil
@@ -798,7 +798,7 @@ namespace Spartan
                         cmd_list->SetTexture(9, m_render_targets[RenderTarget_Gbuffer_Normal]);
                         cmd_list->SetTexture(10, m_render_targets[RenderTarget_Gbuffer_Material]);
                         cmd_list->SetTexture(12, m_render_targets[RenderTarget_Gbuffer_Depth]);
-                        cmd_list->SetTexture(22, (m_options & Render_ScreenSpaceAmbientOcclusion) ? m_render_targets[RenderTarget_Ssao] : m_tex_white);
+                        cmd_list->SetTexture(22, (m_options & Render_HorizonBasedAmbientOcclusion) ? m_render_targets[RenderTarget_Hbao] : m_tex_white);
                         cmd_list->SetTexture(26, (m_options & Render_ScreenSpaceReflections) ? m_render_targets[RenderTarget_Ssr] : m_tex_black);
                         cmd_list->SetTexture(27, m_render_targets[RenderTarget_Composition_Hdr_2]); // previous frame before post-processing
 
@@ -882,7 +882,7 @@ namespace Spartan
             cmd_list->SetTexture(9, m_render_targets[RenderTarget_Gbuffer_Normal]);
             cmd_list->SetTexture(10, m_render_targets[RenderTarget_Gbuffer_Material]);
             cmd_list->SetTexture(12, m_render_targets[RenderTarget_Gbuffer_Depth]);
-            cmd_list->SetTexture(22, (m_options & Render_ScreenSpaceAmbientOcclusion) ? m_render_targets[RenderTarget_Ssao] : m_tex_white);
+            cmd_list->SetTexture(22, (m_options & Render_HorizonBasedAmbientOcclusion) ? m_render_targets[RenderTarget_Hbao] : m_tex_white);
             cmd_list->SetTexture(23, m_render_targets[RenderTarget_Light_Diffuse]);
             cmd_list->SetTexture(24, m_render_targets[RenderTarget_Light_Specular]);
             cmd_list->SetTexture(25, (m_options & Render_VolumetricLighting)        ? m_render_targets[RenderTarget_Light_Volumetric] : m_tex_black);
@@ -2271,11 +2271,17 @@ namespace Spartan
 			shader_type = Shader_DebugChannelR_P;
 		}
 
-		if (m_render_target_debug == RenderTarget_Ssao)
+		if (m_render_target_debug == RenderTarget_Hbao)
 		{
-			texture     = m_options & Render_ScreenSpaceAmbientOcclusion ? m_render_targets[RenderTarget_Ssao].get() : m_tex_white.get();
+			texture     = m_options & Render_HorizonBasedAmbientOcclusion ? m_render_targets[RenderTarget_Hbao].get() : m_tex_white.get();
 			shader_type = Shader_DebugChannelR_P;
 		}
+
+        if (m_render_target_debug == RenderTarget_Hbao_Noisy)
+        {
+            texture = m_options & Render_HorizonBasedAmbientOcclusion ? m_render_targets[RenderTarget_Hbao_Noisy].get() : m_tex_white.get();
+            shader_type = Shader_DebugChannelR_P;
+        }
 
         if (m_render_target_debug == RenderTarget_Ssr)
         {
