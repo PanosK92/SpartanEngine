@@ -54,7 +54,7 @@ void Widget_RenderOptions::Tick()
     {
         bool do_bloom                   = m_renderer->GetOption(Render_Bloom);
         bool do_volumetric_lighting     = m_renderer->GetOption(Render_VolumetricLighting);    
-        bool do_ssao                    = m_renderer->GetOption(Render_ScreenSpaceAmbientOcclusion);
+        bool do_ssao                    = m_renderer->GetOption(Render_HorizonBasedAmbientOcclusion);
         bool do_sss                     = m_renderer->GetOption(Render_ScreenSpaceShadows);
         bool do_ssr                     = m_renderer->GetOption(Render_ScreenSpaceReflections);
         bool do_ssgi                    = m_renderer->GetOption(Render_ScreenSpaceGlobalIllumination);
@@ -184,7 +184,7 @@ void Widget_RenderOptions::Tick()
             ImGui::Separator();
 
             // Screen space ambient occlusion
-            ImGui::Checkbox("SSAO - Screen Space Ambient Occlusion", &do_ssao);
+            ImGui::Checkbox("HBAO - Horizon Based Ambient Occlusion", &do_ssao);
             ImGui::Separator();
 
             // Screen space reflections
@@ -231,7 +231,7 @@ void Widget_RenderOptions::Tick()
         // Map back to engine
         m_renderer->SetOption(Render_Bloom,                         do_bloom);
         m_renderer->SetOption(Render_VolumetricLighting,            do_volumetric_lighting); 
-        m_renderer->SetOption(Render_ScreenSpaceAmbientOcclusion,   do_ssao);
+        m_renderer->SetOption(Render_HorizonBasedAmbientOcclusion,   do_ssao);
         m_renderer->SetOption(Render_ScreenSpaceShadows,            do_sss);
         m_renderer->SetOption(Render_ScreenSpaceReflections,        do_ssr);
         m_renderer->SetOption(Render_ScreenSpaceGlobalIllumination, do_ssgi);
@@ -328,8 +328,8 @@ void Widget_RenderOptions::Tick()
                     "Composition_Ldr",
                     "Composition_Ldr_2",
                     "Bloom",
-                    "Ssao_Noisy",
-                    "Ssao",
+                    "Hbao_Noisy",
+                    "Hbao",
                     "Ssr",
                     "Ssgi",
                     "TaaHistory"

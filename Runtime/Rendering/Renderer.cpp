@@ -65,7 +65,7 @@ namespace Spartan
         m_options |= Render_Bloom;
         m_options |= Render_VolumetricLighting;
         m_options |= Render_MotionBlur;
-        m_options |= Render_ScreenSpaceAmbientOcclusion;
+        m_options |= Render_HorizonBasedAmbientOcclusion;
         m_options |= Render_ScreenSpaceShadows;
         m_options |= Render_ScreenSpaceReflections;
         //m_options |= Render_ScreenSpaceGlobalIllumination;
@@ -75,7 +75,7 @@ namespace Spartan
         // Option values
         m_option_values[Option_Value_Anisotropy]              = 16.0f;
         m_option_values[Option_Value_ShadowResolution]        = 2048.0f;
-        m_option_values[Option_Value_Tonemapping]             = static_cast<float>(Renderer_ToneMapping_Off);
+        m_option_values[Option_Value_Tonemapping]             = static_cast<float>(Renderer_ToneMapping_ACES);
         m_option_values[Option_Value_Exposure]                = 0.0f;
         m_option_values[Option_Value_Gamma]                   = 2.2f;
         m_option_values[Option_Value_Sharpen_Strength]        = 1.0f;

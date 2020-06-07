@@ -144,9 +144,9 @@ namespace Spartan
             m_render_targets[RenderTarget_TaaHistory]           = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_taa_history"); // Used for TAA accumulation
         }
 
-        // SSAO
-        m_render_targets[RenderTarget_Ssao_Noisy]   = make_unique<RHI_Texture2D>(m_context, static_cast<uint32_t>(width), static_cast<uint32_t>(height), RHI_Format_R8_Unorm, 1, 0, "rt_ssao_noisy");
-        m_render_targets[RenderTarget_Ssao]         = make_unique<RHI_Texture2D>(m_context, static_cast<uint32_t>(width), static_cast<uint32_t>(height), RHI_Format_R8_Unorm, 1, 0, "rt_ssao");
+        // HBAO
+        m_render_targets[RenderTarget_Hbao_Noisy]   = make_unique<RHI_Texture2D>(m_context, static_cast<uint32_t>(width), static_cast<uint32_t>(height), RHI_Format_R8_Unorm, 1, 0, "rt_hbao_noisy");
+        m_render_targets[RenderTarget_Hbao]         = make_unique<RHI_Texture2D>(m_context, static_cast<uint32_t>(width), static_cast<uint32_t>(height), RHI_Format_R8_Unorm, 1, 0, "rt_hbao");
 
         // SSR
         m_render_targets[RenderTarget_Ssr] = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16_Float, 1, RHI_Texture_UnorderedAccessView, "rt_ssr");
@@ -321,9 +321,9 @@ namespace Spartan
         m_shaders[Shader_BlurGaussianBilateral_P]->AddDefine("PASS_BLUR_BILATERAL_GAUSSIAN");
         m_shaders[Shader_BlurGaussianBilateral_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Quad.hlsl");
 
-        // SSAO
-        m_shaders[Shader_Ssao_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_Ssao_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "SSAO.hlsl");
+        // HBAO
+        m_shaders[Shader_Hbao_P] = make_shared<RHI_Shader>(m_context);
+        m_shaders[Shader_Hbao_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "HBAO.hlsl");
 
         // SSR
         m_shaders[Shader_Ssr_P] = make_shared<RHI_Shader>(m_context);
