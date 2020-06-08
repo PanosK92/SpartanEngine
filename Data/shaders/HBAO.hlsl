@@ -19,14 +19,22 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========
+//= INCLUDES ===========
 #include "Common.hlsl"
-//====================
+#include "Velocity.hlsl"
+//======================
 
+#if INDIRECT_BOUNCE
 static const uint ao_directions = 2;
 static const uint ao_steps      = 2;
-static const float ao_radius    = 0.3f;
-static const float ao_intensity = 3.0f;
+#else
+static const uint ao_directions = 2;
+static const uint ao_steps      = 2;
+#endif
+static const float ao_radius    = 0.5f;
+static const float ao_intensity = 4.0f;
+
+static const float ao_samples   = (float)(ao_directions * ao_steps);
 static const float ao_radius2   = ao_radius * ao_radius;
 static const float2 noise_scale = float2(g_resolution.x / 256.0f, g_resolution.y / 256.0f);
 
@@ -106,10 +114,42 @@ float falloff(float distance_squared)
 float occlusion(float3 center_pos, float3 center_normal, float3 sample_pos)
 {
     float3 center_to_sample = sample_pos - center_pos;
-    float distance_squared = dot(center_to_sample, center_to_sample);
-    float NdotV = dot(center_normal, center_to_sample) / sqrt(distance_squared);
+    float distance_squared  = dot(center_to_sample, center_to_sample);
+    float n_dot_s           = saturate(dot(center_normal, center_to_sample) / sqrt(distance_squared));
 
-    return saturate(NdotV) * falloff(distance_squared);
+    return n_dot_s * falloff(distance_squared);
+}
+
+float3 indirect(float3 center_pos,  float3 center_normal, float3 sample_pos, float2 sample_uv, inout uint indirect_light_samples)
+{
+    float3 indirect = 0.0f;
+    
+    // Reproject diffuse light
+    float2 velocity         = GetVelocity_Dilate_Min(sample_uv);
+    float2 uv_reprojected   = sample_uv - velocity;
+    float3 diffuse_light    = tex_light_diffuse.SampleLevel(sampler_bilinear_clamp, uv_reprojected, 0).rgb * 2;
+
+    // Apply falloff
+    float3 center_to_sample = sample_pos - center_pos;
+    float distance_squared  = dot(center_to_sample, center_to_sample);
+    diffuse_light           *= falloff(distance_squared) * screen_fade(sample_uv);
+
+    // Transport
+    if (luminance(diffuse_light) > 0.0f)
+    {
+        center_to_sample        = normalize(center_to_sample);
+        float3 sample_normal    = get_normal_view_space(sample_uv);
+        float occlusion         = saturate(dot(center_normal, center_to_sample) / sqrt(distance_squared));
+        float visibility        = 1.0f - saturate(dot(-center_to_sample, sample_normal));
+
+        // attunated visibility with distance
+        visibility = saturate(visibility / sqrt(distance_squared));
+        
+        indirect = diffuse_light * visibility;
+        indirect_light_samples++;
+    }
+
+    return indirect;
 }
 
 float2 rotate_direction(float2 dir, float2 cos_sin)
@@ -131,7 +171,7 @@ float normal_oriented_hemisphere_ambient_occlusion(float2 uv, float3 position, f
         offset          *= sign(dot(offset, normal));   // Flip if behind normal
         
         // Compute sample pos
-        float3 sample_pos = position + offset;
+        float3 sample_pos   = position + offset;
         float2 sample_uv    = project_uv(sample_pos, g_projection);
         sample_pos          = get_position_view_space(sample_uv);
         
@@ -142,7 +182,7 @@ float normal_oriented_hemisphere_ambient_occlusion(float2 uv, float3 position, f
     return 1.0f - saturate((ao * ao_intensity) / (float)ao_directions);
 }
 
-float horizon_based_ambient_occlusion(float2 uv, float3 position, float3 normal, float3 random_vector)
+float4 horizon_based_ambient_occlusion(float2 uv, float3 position, float3 normal, float3 random_vector, float ign)
 {
     float radius_pixels     = ao_radius * g_resolution.x / position.z;
     float uv_stride_pixels  = radius_pixels / (ao_steps + 1); // divide by ao_steps + 1 so that the farthest samples are not fully attenuated
@@ -150,6 +190,8 @@ float horizon_based_ambient_occlusion(float2 uv, float3 position, float3 normal,
   
     // Occlusion
     float ao = 0.0f;
+    float3 indirect_light = 0.0f;
+    uint indirect_light_samples = 0;
     [unroll]
     for (uint direction_index = 0; direction_index < ao_directions; direction_index++)
     {
@@ -157,24 +199,37 @@ float horizon_based_ambient_occlusion(float2 uv, float3 position, float3 normal,
         float2 direction    = rotate_direction(float2(cos(theta), sin(theta)), random_vector.xy);
         
         // Jitter starting sample within the first step
-        float ray_pixels = (random_vector.z * uv_stride_pixels + 1.0);
+        float ray_pixels = ign * uv_stride_pixels + 1.0;
 
         [unroll]
         for (uint step_index = 0; step_index < ao_steps; ++step_index)
         {
             float2 snapped_uv       = round(ray_pixels * direction) * g_texel_size + uv;
             float3 sample_position  = get_position_view_space(snapped_uv);
-
-            ray_pixels += uv_stride_pixels;
-
+            
+            // Occlusion
             ao += occlusion(position, normal, sample_position);
+
+            // Indirect bounce
+            #if INDIRECT_BOUNCE
+            indirect_light += indirect(position, normal, sample_position, snapped_uv, indirect_light_samples);
+            #endif
+            
+            ray_pixels += uv_stride_pixels;
         }
     }
 
-    return 1.0f - saturate((ao * ao_intensity) / (float) (ao_directions * ao_steps));
+    ao = 1.0f - saturate(ao * ao_intensity / ao_samples);
+
+    #if INDIRECT_BOUNCE
+    float intensity = 1.5f - ao;
+    indirect_light = saturate(indirect_light / float(indirect_light_samples)) * intensity;
+    #endif
+    
+    return float4(indirect_light, ao);
 }
 
-float mainPS(Pixel_PosUv input) : SV_TARGET
+float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
     float2 uv               = input.uv;
     float3 position         = get_position_view_space(uv);
@@ -187,5 +242,5 @@ float mainPS(Pixel_PosUv input) : SV_TARGET
     float3 rotation         = float3(cos(rotation_angle), sin(rotation_angle), 0.0f);
     random_vector           = float3(length(random_vector.xy) * normalize(rotation.xy), random_vector.z);
     
-    return horizon_based_ambient_occlusion(uv, position, normal, random_vector);
+    return horizon_based_ambient_occlusion(uv, position, normal, random_vector, ign);
 }

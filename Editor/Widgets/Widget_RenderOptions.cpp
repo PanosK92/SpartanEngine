@@ -54,10 +54,10 @@ void Widget_RenderOptions::Tick()
     {
         bool do_bloom                   = m_renderer->GetOption(Render_Bloom);
         bool do_volumetric_lighting     = m_renderer->GetOption(Render_VolumetricLighting);    
-        bool do_ssao                    = m_renderer->GetOption(Render_HorizonBasedAmbientOcclusion);
+        bool do_hbao                    = m_renderer->GetOption(Render_Hbao);
+        bool do_hbao_indirect_bounce    = m_renderer->GetOption(Render_Hbao_IndirectBounce);
         bool do_sss                     = m_renderer->GetOption(Render_ScreenSpaceShadows);
         bool do_ssr                     = m_renderer->GetOption(Render_ScreenSpaceReflections);
-        bool do_ssgi                    = m_renderer->GetOption(Render_ScreenSpaceGlobalIllumination);
         bool do_taa                     = m_renderer->GetOption(Render_AntiAliasing_Taa);
         bool do_fxaa                    = m_renderer->GetOption(Render_AntiAliasing_Fxaa);
         bool do_motion_blur             = m_renderer->GetOption(Render_MotionBlur);
@@ -183,17 +183,18 @@ void Widget_RenderOptions::Tick()
             ImGui::Checkbox("SSS - Screen Space Shadows", &do_sss);
             ImGui::Separator();
 
-            // Screen space ambient occlusion
-            ImGui::Checkbox("HBAO - Horizon Based Ambient Occlusion", &do_ssao);
+            // Horizon based ambient occlusion
+            ImGui::Checkbox("HBAO - Horizon Based Ambient Occlusion", &do_hbao);
+            if (do_hbao)
+            {
+                ImGui::SameLine();
+                ImGui::Checkbox("Indirect bounce", &do_hbao_indirect_bounce);
+            }
             ImGui::Separator();
 
             // Screen space reflections
             ImGui::Checkbox("SSR - Screen Space Reflections", &do_ssr);
             ImGui::Separator();
-
-            // Screen space global illumination
-            //ImGui::Checkbox("SSGI - Screen Space Global Illumination", &do_ssgi);
-            //ImGui::Separator();
 
             // Motion blur
             ImGui::Checkbox("Motion Blur", &do_motion_blur); ImGui::SameLine();
@@ -231,10 +232,10 @@ void Widget_RenderOptions::Tick()
         // Map back to engine
         m_renderer->SetOption(Render_Bloom,                         do_bloom);
         m_renderer->SetOption(Render_VolumetricLighting,            do_volumetric_lighting); 
-        m_renderer->SetOption(Render_HorizonBasedAmbientOcclusion,   do_ssao);
+        m_renderer->SetOption(Render_Hbao,                          do_hbao);
+        m_renderer->SetOption(Render_Hbao_IndirectBounce,           do_hbao_indirect_bounce);
         m_renderer->SetOption(Render_ScreenSpaceShadows,            do_sss);
         m_renderer->SetOption(Render_ScreenSpaceReflections,        do_ssr);
-        m_renderer->SetOption(Render_ScreenSpaceGlobalIllumination, do_ssgi);
         m_renderer->SetOption(Render_AntiAliasing_Taa,              do_taa);
         m_renderer->SetOption(Render_AntiAliasing_Fxaa,             do_fxaa);
         m_renderer->SetOption(Render_MotionBlur,                    do_motion_blur);
@@ -310,7 +311,7 @@ void Widget_RenderOptions::Tick()
         {
             // Buffer
             {
-                static array<string, 21> render_target_debug =
+                static array<string, 20> render_target_debug =
                 {
                     "None",
                     "Gbuffer_Albedo",
@@ -331,7 +332,6 @@ void Widget_RenderOptions::Tick()
                     "Hbao_Noisy",
                     "Hbao",
                     "Ssr",
-                    "Ssgi",
                     "TaaHistory"
                 };
                 static int selection_int = 0;

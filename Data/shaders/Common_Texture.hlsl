@@ -48,7 +48,7 @@ Texture2D light_spot_color              : register(t18);
 Texture2D tex_lutIbl                    : register(t19);
 Texture2D tex_environment               : register(t20);
 Texture2D tex_normal_noise              : register(t21);
-Texture2D tex_ssao                      : register(t22);
+Texture2D tex_hbao                      : register(t22);
 Texture2D tex_light_diffuse             : register(t23);
 Texture2D tex_light_specular            : register(t24);
 Texture2D tex_lightVolumetric           : register(t25);

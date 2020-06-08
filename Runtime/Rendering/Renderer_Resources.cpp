@@ -144,9 +144,9 @@ namespace Spartan
             m_render_targets[RenderTarget_TaaHistory]           = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_taa_history"); // Used for TAA accumulation
         }
 
-        // HBAO
-        m_render_targets[RenderTarget_Hbao_Noisy]   = make_unique<RHI_Texture2D>(m_context, static_cast<uint32_t>(width), static_cast<uint32_t>(height), RHI_Format_R8_Unorm, 1, 0, "rt_hbao_noisy");
-        m_render_targets[RenderTarget_Hbao]         = make_unique<RHI_Texture2D>(m_context, static_cast<uint32_t>(width), static_cast<uint32_t>(height), RHI_Format_R8_Unorm, 1, 0, "rt_hbao");
+        // HBAO + Indirect bounce
+        m_render_targets[RenderTarget_Hbao_Noisy]   = make_unique<RHI_Texture2D>(m_context, static_cast<uint32_t>(width), static_cast<uint32_t>(height), RHI_Format_R16G16B16A16_Float, 1, 0, "rt_hbao_noisy");
+        m_render_targets[RenderTarget_Hbao]         = make_unique<RHI_Texture2D>(m_context, static_cast<uint32_t>(width), static_cast<uint32_t>(height), RHI_Format_R16G16B16A16_Float, 1, 0, "rt_hbao");
 
         // SSR
         m_render_targets[RenderTarget_Ssr] = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16_Float, 1, RHI_Texture_UnorderedAccessView, "rt_ssr");
@@ -325,13 +325,14 @@ namespace Spartan
         m_shaders[Shader_Hbao_P] = make_shared<RHI_Shader>(m_context);
         m_shaders[Shader_Hbao_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "HBAO.hlsl");
 
+        // HBAO
+        m_shaders[Shader_Hbao_IndirectBounce_P] = make_shared<RHI_Shader>(m_context);
+        m_shaders[Shader_Hbao_IndirectBounce_P]->AddDefine("INDIRECT_BOUNCE");
+        m_shaders[Shader_Hbao_IndirectBounce_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "HBAO.hlsl");
+
         // SSR
         m_shaders[Shader_Ssr_P] = make_shared<RHI_Shader>(m_context);
         m_shaders[Shader_Ssr_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "SSR.hlsl");
-
-        // SSGI
-        m_shaders[Shader_Ssgi_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_Ssgi_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "SSGI.hlsl");
 
         // Entity
         m_shaders[Shader_Entity_V] = make_shared<RHI_Shader>(m_context);
@@ -387,8 +388,11 @@ namespace Spartan
         m_tex_white = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
         m_tex_white->LoadFromFile(dir_texture + "white.png");
 
-        m_tex_black = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
-        m_tex_black->LoadFromFile(dir_texture + "black.png");
+        m_tex_black_transparent = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
+        m_tex_black_transparent->LoadFromFile(dir_texture + "black_transparent.png");
+
+        m_tex_black_opaque = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
+        m_tex_black_opaque->LoadFromFile(dir_texture + "black_opaque.png");
 
         // Gizmo icons
         m_gizmo_tex_light_directional = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);

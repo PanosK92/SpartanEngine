@@ -55,29 +55,29 @@ namespace Spartan
 
 	enum Renderer_Option : uint64_t
 	{
-		Render_Debug_Aabb				        = 1 << 0,
-		Render_Debug_PickingRay			        = 1 << 1,
-		Render_Debug_Grid				        = 1 << 2,
-		Render_Debug_Transform			        = 1 << 3,
-        Render_Debug_SelectionOutline           = 1 << 4,
-		Render_Debug_Lights				        = 1 << 5,
-		Render_Debug_PerformanceMetrics	        = 1 << 6,
-		Render_Debug_Physics			        = 1 << 7,
-        Render_Debug_Wireframe                  = 1 << 8,
-		Render_Bloom				            = 1 << 9,
-        Render_VolumetricLighting               = 1 << 10,
-        Render_AntiAliasing_Taa                 = 1 << 11,
-		Render_AntiAliasing_Fxaa	            = 1 << 12,
-		Render_HorizonBasedAmbientOcclusion     = 1 << 13,
-        Render_ScreenSpaceShadows               = 1 << 14,
-		Render_ScreenSpaceReflections		    = 1 << 15,
-        Render_ScreenSpaceGlobalIllumination    = 1 << 16,
-		Render_MotionBlur			            = 1 << 17,
-		Render_Sharpening_LumaSharpen	        = 1 << 18,
-		Render_ChromaticAberration	            = 1 << 19,
-		Render_Dithering			            = 1 << 20,
-        Render_ReverseZ                         = 1 << 21,
-        Render_DepthPrepass                     = 1 << 22
+		Render_Debug_Aabb				= 1 << 0,
+		Render_Debug_PickingRay			= 1 << 1,
+		Render_Debug_Grid				= 1 << 2,
+		Render_Debug_Transform			= 1 << 3,
+        Render_Debug_SelectionOutline   = 1 << 4,
+		Render_Debug_Lights				= 1 << 5,
+		Render_Debug_PerformanceMetrics = 1 << 6,
+		Render_Debug_Physics			= 1 << 7,
+        Render_Debug_Wireframe          = 1 << 8,
+		Render_Bloom				    = 1 << 9,
+        Render_VolumetricLighting       = 1 << 10,
+        Render_AntiAliasing_Taa         = 1 << 11,
+		Render_AntiAliasing_Fxaa	    = 1 << 12,
+		Render_Hbao                     = 1 << 13,
+        Render_Hbao_IndirectBounce      = 1 << 14,
+        Render_ScreenSpaceShadows       = 1 << 15,
+		Render_ScreenSpaceReflections	= 1 << 16,
+		Render_MotionBlur			    = 1 << 17,
+		Render_Sharpening_LumaSharpen	= 1 << 18,
+		Render_ChromaticAberration	    = 1 << 19,
+		Render_Dithering			    = 1 << 20,
+        Render_ReverseZ                 = 1 << 21,
+        Render_DepthPrepass             = 1 << 22
 	};
 
     enum Renderer_Option_Value
@@ -145,8 +145,8 @@ namespace Spartan
 		Shader_Font_V,
         Shader_Font_P,
 		Shader_Hbao_P,
+        Shader_Hbao_IndirectBounce_P,
         Shader_Ssr_P,
-        Shader_Ssgi_P,
 		Shader_Entity_V,
         Shader_Entity_Transform_P,
 		Shader_BlurBox_P,
@@ -252,7 +252,7 @@ namespace Spartan
         // Globals
         void SetGlobalShaderObjectTransform(RHI_CommandList* cmd_list, const Math::Matrix& transform);
         void SetGlobalSamplersAndConstantBuffers(RHI_CommandList* cmd_list) const;
-        RHI_Texture* GetBlackTexture() const { return m_tex_black.get(); }
+        RHI_Texture* GetBlackTexture() const { return m_tex_black_transparent.get(); }
 
 	private:
         // Resource creation
@@ -273,7 +273,6 @@ namespace Spartan
 		void Pass_GBuffer(RHI_CommandList* cmd_list, const Renderer_Object_Type object_type);
 		void Pass_Hbao(RHI_CommandList* cmd_list, const bool use_stencil);
         void Pass_Ssr(RHI_CommandList* cmd_list, const bool use_stencil);
-        void Pass_Ssgi(RHI_CommandList* cmd_list, const bool use_stencil);
         void Pass_Light(RHI_CommandList* cmd_list, const bool use_stencil);
 		void Pass_Composition(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_out, const bool use_stencil);
         void Pass_AlphaBlend(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, const bool use_stencil);
@@ -321,7 +320,8 @@ namespace Spartan
         // Standard textures
         std::shared_ptr<RHI_Texture> m_tex_noise_normal;
         std::shared_ptr<RHI_Texture> m_tex_white;
-        std::shared_ptr<RHI_Texture> m_tex_black;
+        std::shared_ptr<RHI_Texture> m_tex_black_transparent;
+        std::shared_ptr<RHI_Texture> m_tex_black_opaque;
         std::shared_ptr<RHI_Texture> m_gizmo_tex_light_directional;
         std::shared_ptr<RHI_Texture> m_gizmo_tex_light_point;
         std::shared_ptr<RHI_Texture> m_gizmo_tex_light_spot;
