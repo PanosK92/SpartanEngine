@@ -65,10 +65,9 @@ namespace Spartan
         m_options |= Render_Bloom;
         m_options |= Render_VolumetricLighting;
         m_options |= Render_MotionBlur;
-        m_options |= Render_HorizonBasedAmbientOcclusion;
+        m_options |= Render_Hbao;
         m_options |= Render_ScreenSpaceShadows;
         m_options |= Render_ScreenSpaceReflections;
-        //m_options |= Render_ScreenSpaceGlobalIllumination;
         m_options |= Render_AntiAliasing_Taa;
         m_options |= Render_Sharpening_LumaSharpen;
 

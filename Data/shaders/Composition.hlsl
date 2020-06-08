@@ -34,7 +34,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     float3 light_volumetric = tex_lightVolumetric.Sample(sampler_point_clamp, uv).rgb;   
     float depth             = tex_depth.Sample(sampler_point_clamp, uv).r;
     float2 sample_ssr       = tex_ssr.Sample(sampler_point_clamp, uv).xy;
-    float sample_ssao       = tex_ssao.Sample(sampler_point_clamp, uv).r;   
+    float4 sample_hbao      = tex_hbao.Sample(sampler_point_clamp, uv);
     float3 camera_to_pixel  = get_view_direction(depth, uv);
 
     // Post-process samples
@@ -56,7 +56,10 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         float4 sample_albedo    = tex_albedo.Sample(sampler_point_clamp, uv);
         float3 light_diffuse    = tex_light_diffuse.Sample(sampler_point_clamp, uv).rgb;
         float3 light_specular   = tex_light_specular.Sample(sampler_point_clamp, uv).rgb;
-    
+
+        // gi
+        light_diffuse += sample_hbao.rgb;
+        
         // Create material
         Material material;
         material.albedo     = sample_albedo.rgb;
@@ -66,7 +69,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         material.F0         = lerp(0.04f, material.albedo, material.metallic);
     
         // Light - Ambient (Hacked together because there is no GI yet and I'm hackerman)
-        float3 mbao = MultiBounceAO(sample_ssao, sample_albedo.rgb);
+        float3 mbao = MultiBounceAO(sample_hbao.a, sample_albedo.rgb);
         float3 light_ambient = clamp(g_directional_light_intensity * 0.12f, 0.0f, 1.0f) * mbao;
         
         // Light - Image based
