@@ -145,7 +145,7 @@ float3 indirect(float3 center_pos,  float3 center_normal, float3 sample_pos, flo
         // attunated visibility with distance
         visibility = saturate(visibility / sqrt(distance_squared));
         
-        indirect = diffuse_light * visibility;
+        indirect = diffuse_light * visibility * occlusion;
         indirect_light_samples++;
     }
 
@@ -244,3 +244,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     
     return horizon_based_ambient_occlusion(uv, position, normal, random_vector, ign);
 }
+
+
+
+
