@@ -222,7 +222,7 @@ float4 horizon_based_ambient_occlusion(float2 uv, float3 position, float3 normal
     ao = 1.0f - saturate(ao * ao_intensity / ao_samples);
 
     #if INDIRECT_BOUNCE
-    float intensity = 1.5f - ao;
+    float intensity = 1.0f - ao;
     indirect_light = saturate(indirect_light / float(indirect_light_samples)) * intensity;
     #endif
     
