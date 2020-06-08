@@ -717,11 +717,11 @@ namespace Spartan
         pipeline_state.depth_stencil_state                      = use_stencil ? m_depth_stencil_off_on_r.get() : m_depth_stencil_off_off.get();
         pipeline_state.vertex_buffer_stride                     = m_viewport_quad.GetVertexBuffer()->GetStride();
         pipeline_state.render_target_color_textures[0]          = tex_diffuse.get();
-        pipeline_state.clear_color[0]                           = Vector4::Zero;
+        pipeline_state.clear_color[0]                           = use_stencil ? state_color_load : Vector4::Zero; // diffuse needs to accumulate as it's used for ssgi
         pipeline_state.render_target_color_textures[1]          = tex_specular.get();
-        pipeline_state.clear_color[1]                           = Vector4::Zero;
+        pipeline_state.clear_color[1]                           = use_stencil ? state_color_dont_care : Vector4::Zero;
         pipeline_state.render_target_color_textures[2]          = tex_volumetric.get();
-        pipeline_state.clear_color[2]                           = Vector4::Zero;
+        pipeline_state.clear_color[2]                           = use_stencil ? state_color_dont_care : Vector4::Zero;
         pipeline_state.render_target_depth_texture              = use_stencil ? tex_depth.get() : nullptr;
         pipeline_state.clear_stencil                            = use_stencil ? state_stencil_load : state_stencil_dont_care;
         pipeline_state.render_target_depth_texture_read_only    = use_stencil;
@@ -788,7 +788,7 @@ namespace Spartan
                         cmd_list->EndRenderPass();
 
                         // Clear only on first pass
-                        if (!cleared)
+                        if (!cleared && !use_stencil)
                         {
                             pipeline_state.ResetClearValues();
                             cleared = true;
