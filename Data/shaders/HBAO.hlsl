@@ -127,7 +127,7 @@ float3 indirect(float3 center_pos,  float3 center_normal, float3 sample_pos, flo
     // Reproject diffuse light
     float2 velocity         = GetVelocity_Dilate_Min(sample_uv);
     float2 uv_reprojected   = sample_uv - velocity;
-    float3 diffuse_light    = tex_light_diffuse.SampleLevel(sampler_bilinear_clamp, uv_reprojected, 0).rgb * 2;
+    float3 diffuse_light    = tex_light_diffuse.SampleLevel(sampler_bilinear_clamp, uv_reprojected, 0).rgb;
 
     // Apply falloff
     float3 center_to_sample = sample_pos - center_pos;
