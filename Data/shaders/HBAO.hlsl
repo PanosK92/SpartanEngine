@@ -124,18 +124,22 @@ float3 indirect(float3 center_pos,  float3 center_normal, float3 sample_pos, flo
 {
     float3 indirect = 0.0f;
     
-    // Reproject diffuse light
+    // Reproject light
     float2 velocity         = GetVelocity_Dilate_Min(sample_uv);
     float2 uv_reprojected   = sample_uv - velocity;
-    float3 diffuse_light    = tex_light_diffuse.SampleLevel(sampler_bilinear_clamp, uv_reprojected, 0).rgb;
+    float3 light            = tex_light_diffuse.SampleLevel(sampler_bilinear_clamp, uv_reprojected, 0).rgb;
+    light                   += tex_light_specular.SampleLevel(sampler_bilinear_clamp, uv_reprojected, 0).rgb;
 
-    // Apply falloff
+    // Compute center to sample direction and distance
     float3 center_to_sample = sample_pos - center_pos;
     float distance_squared  = dot(center_to_sample, center_to_sample);
-    diffuse_light           *= falloff(distance_squared) * screen_fade(sample_uv);
+
+    // Apply falloff
+    float attunate = falloff(distance_squared) * screen_fade(sample_uv);
+    light *= attunate;
 
     // Transport
-    if (luminance(diffuse_light) > 0.0f)
+    if (luminance(light) > 0.0f)
     {
         center_to_sample = normalize(center_to_sample);
 
@@ -148,7 +152,7 @@ float3 indirect(float3 center_pos,  float3 center_normal, float3 sample_pos, flo
             float3 sample_normal    = get_normal_view_space(sample_uv);
             float visibility        = saturate(dot(sample_normal, -center_to_sample));
         
-            indirect = diffuse_light * visibility * occlusion;
+            indirect = light * visibility * occlusion;
             indirect_light_samples++;
         }
     }
@@ -247,3 +251,4 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     
     return horizon_based_ambient_occlusion(uv, position, normal, random_vector, ign);
 }
+
