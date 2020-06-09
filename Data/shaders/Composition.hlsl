@@ -76,7 +76,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         float3 light_ibl_diffuse    = Brdf_Diffuse_Ibl(material, sample_normal.xyz, tex_environment) * energy_cons * light_ambient;
 
         // Light - Bounce
-        float3 light_bounce = sample_hbao.rgb * energy_cons;
+        float3 light_bounce = sample_hbao.rgb * material.albedo * energy_cons;
         
         // Light - SSR
         float3 light_reflection = 0.0f;
