@@ -190,7 +190,7 @@ float4 horizon_based_ambient_occlusion(float2 uv, float3 position, float3 normal
 {
     float radius_pixels     = ao_radius * g_resolution.x / position.z;
     float uv_stride_pixels  = radius_pixels / (ao_steps + 1); // divide by ao_steps + 1 so that the farthest samples are not fully attenuated
-    float theta_slice       = PI2 / (float)ao_directions;
+    float rotation_step      = PI2 / (float)ao_directions;
   
     // Occlusion
     float ao = 0.0f;
@@ -199,8 +199,8 @@ float4 horizon_based_ambient_occlusion(float2 uv, float3 position, float3 normal
     [unroll]
     for (uint direction_index = 0; direction_index < ao_directions; direction_index++)
     {
-        float theta         = direction_index * theta_slice;
-        float2 direction    = rotate_direction(float2(cos(theta), sin(theta)), random_vector.xy);
+        float rotation_angle        = direction_index * rotation_step;
+        float2 rotation_direction   = rotate_direction(float2(cos(rotation_angle), sin(rotation_angle)), random_vector.xy);
         
         // Jitter starting sample within the first step
         float ray_pixels = ign * uv_stride_pixels + 1.0;
@@ -208,7 +208,7 @@ float4 horizon_based_ambient_occlusion(float2 uv, float3 position, float3 normal
         [unroll]
         for (uint step_index = 0; step_index < ao_steps; ++step_index)
         {
-            float2 snapped_uv       = round(ray_pixels * direction) * g_texel_size + uv;
+            float2 snapped_uv       = round(ray_pixels * rotation_direction) * g_texel_size + uv;
             float3 sample_position  = get_position_view_space(snapped_uv);
             
             // Occlusion
@@ -226,8 +226,7 @@ float4 horizon_based_ambient_occlusion(float2 uv, float3 position, float3 normal
     ao = 1.0f - saturate(ao * ao_intensity / ao_samples);
 
     #if INDIRECT_BOUNCE
-    float intensity = 1.0f - ao;
-    indirect_light = saturate(indirect_light / float(indirect_light_samples)) * intensity;
+    indirect_light = saturate(indirect_light / float(indirect_light_samples));
     #endif
     
     return float4(indirect_light, ao);
@@ -248,7 +247,3 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     
     return horizon_based_ambient_occlusion(uv, position, normal, random_vector, ign);
 }
-
-
-
-
