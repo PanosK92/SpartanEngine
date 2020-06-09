@@ -593,7 +593,6 @@ namespace Spartan
             cmd_list->SetTexture(12, tex_depth);
             cmd_list->SetTexture(21, m_tex_noise_normal);
             cmd_list->SetTexture(23, tex_light_diffuse);
-            cmd_list->SetTexture(24, tex_light_specular);
 
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
             cmd_list->EndRenderPass();

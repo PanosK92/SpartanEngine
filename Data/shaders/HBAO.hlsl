@@ -128,8 +128,7 @@ float3 indirect(float3 center_pos,  float3 center_normal, float3 sample_pos, flo
     float2 velocity         = GetVelocity_Dilate_Min(sample_uv);
     float2 uv_reprojected   = sample_uv - velocity;
     float3 light            = tex_light_diffuse.SampleLevel(sampler_bilinear_clamp, uv_reprojected, 0).rgb;
-    light                   += tex_light_specular.SampleLevel(sampler_bilinear_clamp, uv_reprojected, 0).rgb;
-
+	
     // Compute center to sample direction and distance
     float3 center_to_sample = sample_pos - center_pos;
     float distance_squared  = dot(center_to_sample, center_to_sample);
