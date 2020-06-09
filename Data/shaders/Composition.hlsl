@@ -57,9 +57,6 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         float3 light_diffuse    = tex_light_diffuse.Sample(sampler_point_clamp, uv).rgb;
         float3 light_specular   = tex_light_specular.Sample(sampler_point_clamp, uv).rgb;
 
-        // gi
-        light_diffuse += sample_hbao.rgb;
-        
         // Create material
         Material material;
         material.albedo     = sample_albedo.rgb;
@@ -73,9 +70,13 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         float3 light_ambient = clamp(g_directional_light_intensity * 0.12f, 0.0f, 1.0f) * mbao;
         
         // Light - Image based
-        float3 F                    = 0.0f;   
+        float3 F                    = 0.0f;
         float3 light_ibl_specular   = Brdf_Specular_Ibl(material, sample_normal.xyz, camera_to_pixel, tex_environment, tex_lutIbl, F) * light_ambient;
-        float3 light_ibl_diffuse    = Brdf_Diffuse_Ibl(material, sample_normal.xyz, tex_environment) * energy_conservation(F, material.metallic) * light_ambient;
+        float energy_cons           = energy_conservation(F, material.metallic);
+        float3 light_ibl_diffuse    = Brdf_Diffuse_Ibl(material, sample_normal.xyz, tex_environment) * energy_cons * light_ambient;
+
+        // Light - Bounce
+        float3 light_bounce = sample_hbao.rgb * energy_cons;
         
         // Light - SSR
         float3 light_reflection = 0.0f;
@@ -90,7 +91,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         float3 light_emissive = material.emissive * material.albedo * 50.0f;
     
         // Combine and return
-        color += light_diffuse + light_ibl_diffuse + light_specular + light_ibl_specular + light_reflection + light_emissive;
+        color += light_diffuse + light_ibl_diffuse + light_specular + light_ibl_specular + light_reflection + light_emissive + light_bounce;
         return float4(color, sample_albedo.a);
     }
 }
