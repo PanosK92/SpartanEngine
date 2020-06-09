@@ -137,16 +137,20 @@ float3 indirect(float3 center_pos,  float3 center_normal, float3 sample_pos, flo
     // Transport
     if (luminance(diffuse_light) > 0.0f)
     {
-        center_to_sample        = normalize(center_to_sample);
-        float3 sample_normal    = get_normal_view_space(sample_uv);
-        float occlusion         = saturate(dot(center_normal, center_to_sample) / sqrt(distance_squared));
-        float visibility        = 1.0f - saturate(dot(-center_to_sample, sample_normal));
+        center_to_sample = normalize(center_to_sample);
 
-        // attunated visibility with distance
-        visibility = saturate(visibility / sqrt(distance_squared));
+        float distance      = clamp(sqrt(distance_squared), 0.1, 50);
+        float attunation    = clamp(1.0 / (distance), 0, 50);
+        float occlusion     = saturate(dot(center_normal, center_to_sample)) * attunation;
+
+        if (occlusion > 0.0f)
+        {
+            float3 sample_normal    = get_normal_view_space(sample_uv);
+            float visibility        = saturate(dot(sample_normal, -center_to_sample));
         
-        indirect = diffuse_light * visibility * occlusion;
-        indirect_light_samples++;
+            indirect = diffuse_light * visibility * occlusion;
+            indirect_light_samples++;
+        }
     }
 
     return indirect;
