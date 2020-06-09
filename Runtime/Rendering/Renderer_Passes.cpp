@@ -561,6 +561,7 @@ namespace Spartan
         RHI_Texture* tex_depth                      = m_render_targets[RenderTarget_Gbuffer_Depth].get();
         RHI_Texture* tex_normal                     = m_render_targets[RenderTarget_Gbuffer_Normal].get();
         RHI_Texture* tex_light_diffuse              = m_render_targets[RenderTarget_Light_Diffuse].get();
+        RHI_Texture* tex_light_specular             = m_render_targets[RenderTarget_Light_Specular].get();
 
         // Set render state
         static RHI_PipelineState pipeline_state;
@@ -592,6 +593,8 @@ namespace Spartan
             cmd_list->SetTexture(12, tex_depth);
             cmd_list->SetTexture(21, m_tex_noise_normal);
             cmd_list->SetTexture(23, tex_light_diffuse);
+            cmd_list->SetTexture(24, tex_light_specular);
+
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
             cmd_list->EndRenderPass();
         
