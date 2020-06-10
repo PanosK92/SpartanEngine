@@ -55,7 +55,6 @@ void Widget_RenderOptions::Tick()
         bool do_bloom                   = m_renderer->GetOption(Render_Bloom);
         bool do_volumetric_lighting     = m_renderer->GetOption(Render_VolumetricLighting);    
         bool do_hbao                    = m_renderer->GetOption(Render_Hbao);
-        bool do_hbao_indirect_bounce    = m_renderer->GetOption(Render_Hbao_IndirectBounce);
         bool do_sss                     = m_renderer->GetOption(Render_ScreenSpaceShadows);
         bool do_ssr                     = m_renderer->GetOption(Render_ScreenSpaceReflections);
         bool do_taa                     = m_renderer->GetOption(Render_AntiAliasing_Taa);
@@ -63,7 +62,8 @@ void Widget_RenderOptions::Tick()
         bool do_motion_blur             = m_renderer->GetOption(Render_MotionBlur);
         bool do_sharperning             = m_renderer->GetOption(Render_Sharpening_LumaSharpen);
         bool do_chromatic_aberration    = m_renderer->GetOption(Render_ChromaticAberration);
-        bool do_dithering               = m_renderer->GetOption(Render_Dithering);  
+        bool do_dithering               = m_renderer->GetOption(Render_Dithering);
+        bool do_indirect_bounce         = m_renderer->GetOption(Render_IndirectBounce);
         int resolution_shadow           = m_renderer->GetOptionValue<int>(Option_Value_ShadowResolution);
 
         // Display
@@ -185,16 +185,18 @@ void Widget_RenderOptions::Tick()
 
             // Horizon based ambient occlusion
             ImGui::Checkbox("HBAO - Horizon Based Ambient Occlusion", &do_hbao);
-            if (do_hbao)
-            {
-                ImGui::SameLine();
-                ImGui::Checkbox("Indirect bounce", &do_hbao_indirect_bounce);
-            }
             ImGui::Separator();
 
             // Screen space reflections
             ImGui::Checkbox("SSR - Screen Space Reflections", &do_ssr);
             ImGui::Separator();
+
+            if (do_hbao || do_ssr)
+            {
+                ImGui::Checkbox("SSGI - Screen space global illumination", &do_indirect_bounce);
+                ImGuiEx::Tooltip("Computes one bounce of indirect light using. HBAO and SSR are used for diffuse and specular light, so at least one has to be active");
+                ImGui::Separator();
+            }
 
             // Motion blur
             ImGui::Checkbox("Motion Blur", &do_motion_blur); ImGui::SameLine();
@@ -232,10 +234,10 @@ void Widget_RenderOptions::Tick()
         // Map back to engine
         m_renderer->SetOption(Render_Bloom,                         do_bloom);
         m_renderer->SetOption(Render_VolumetricLighting,            do_volumetric_lighting); 
-        m_renderer->SetOption(Render_Hbao,                          do_hbao);
-        m_renderer->SetOption(Render_Hbao_IndirectBounce,           do_hbao_indirect_bounce);
+        m_renderer->SetOption(Render_Hbao,                          do_hbao); 
         m_renderer->SetOption(Render_ScreenSpaceShadows,            do_sss);
         m_renderer->SetOption(Render_ScreenSpaceReflections,        do_ssr);
+        m_renderer->SetOption(Render_IndirectBounce,                do_indirect_bounce);
         m_renderer->SetOption(Render_AntiAliasing_Taa,              do_taa);
         m_renderer->SetOption(Render_AntiAliasing_Fxaa,             do_fxaa);
         m_renderer->SetOption(Render_MotionBlur,                    do_motion_blur);
