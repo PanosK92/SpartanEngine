@@ -70,7 +70,7 @@ Platform | API | Status | Quality | Binaries | :+1:
 Feature     					 | Completion | Notes 
 :-          					 | :-         | :-
 Continuous Vulkan optimisation 	 | -		  | Outperform D3D11
-Screen space global illumination | 100%		  | One bounce of indirect and specular light
+Screen space global illumination | 100%		  | One bounce of indirect diffuse and specular light
 DirectX 12						 | -		  | Low priority
 Eye Adaptation 					 | -          | Low priority
 Depth-of-field					 | -          | Low priority, Based on Doom approach
