@@ -72,19 +72,28 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         // Light - Image based
         float3 F                    = 0.0f;
         float3 light_ibl_specular   = Brdf_Specular_Ibl(material, sample_normal.xyz, camera_to_pixel, tex_environment, tex_lutIbl, F) * light_ambient;
-        float energy_cons           = energy_conservation(F, material.metallic);
+        float3 energy_cons          = energy_conservation(F, material.metallic);
         float3 light_ibl_diffuse    = Brdf_Diffuse_Ibl(material, sample_normal.xyz, tex_environment) * energy_cons * light_ambient;
 
-        // Light - Bounce
-        float3 light_bounce = sample_hbao.rgb * material.albedo * energy_cons;
+        // Light - Bounce (diffuse)
+        float3 light_bounce = 0.0f;
+        #if INDIRECT_BOUNCE
+        light_bounce = sample_hbao.rgb * material.albedo * energy_cons;
+        #endif
         
         // Light - SSR
         float3 light_reflection = 0.0f;
         [branch]
-        if (g_ssr_enabled && sample_ssr.x != 0.0f && sample_ssr.y != 0.0f)
+        if (g_ssr_enabled && all(sample_ssr))
         {
-            light_reflection = saturate(tex_frame.Sample(sampler_bilinear_clamp, sample_ssr.xy).rgb * F * light_ambient);
+            // Reflection
+            light_reflection = saturate(tex_frame.Sample(sampler_bilinear_clamp, sample_ssr).rgb * F * light_ambient);
             light_reflection *= 1.0f - material.roughness; // fade with roughness as we don't have blurry screen space reflections yet
+
+            // Bounce (specular)
+            #if INDIRECT_BOUNCE
+            light_bounce += tex_light_specular.Sample(sampler_point_clamp, sample_ssr).rgb * material.albedo;
+            #endif
         }
     
         // Light - Emissive

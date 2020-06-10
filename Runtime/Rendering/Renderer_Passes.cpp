@@ -547,7 +547,7 @@ namespace Spartan
         if ((m_options & Render_Hbao) == 0)
             return;
 
-        bool indirect_bounce = (m_options & Render_Hbao_IndirectBounce) != 0;
+        bool indirect_bounce = (m_options & Render_IndirectBounce) != 0;
 
         // Acquire shaders
         RHI_Shader* shader_v = m_shaders[Shader_Quad_V].get();
@@ -711,6 +711,10 @@ namespace Spartan
         m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_diffuse->GetWidth()), static_cast<float>(tex_diffuse->GetHeight()));
         UpdateUberBuffer(cmd_list);
 
+        // Diffuse and specular need to not be loaded as they willbe used for ssgi. Otherwise having a single transparent object to render (use_stencil == true) will cause the light to be discarded.
+        bool indirect_bounce = (m_options & Render_IndirectBounce) != 0;
+        Math::Vector4 clear_color = use_stencil ? (indirect_bounce ? state_color_load : state_color_dont_care) : Vector4::Zero;
+
          // Set render state
         static RHI_PipelineState pipeline_state;
         pipeline_state.shader_vertex                            = shader_v;
@@ -719,9 +723,9 @@ namespace Spartan
         pipeline_state.depth_stencil_state                      = use_stencil ? m_depth_stencil_off_on_r.get() : m_depth_stencil_off_off.get();
         pipeline_state.vertex_buffer_stride                     = m_viewport_quad.GetVertexBuffer()->GetStride();
         pipeline_state.render_target_color_textures[0]          = tex_diffuse.get();
-        pipeline_state.clear_color[0]                           = use_stencil ? state_color_load : Vector4::Zero; // diffuse needs to accumulate as it's used for ssgi
+        pipeline_state.clear_color[0]                           = clear_color;
         pipeline_state.render_target_color_textures[1]          = tex_specular.get();
-        pipeline_state.clear_color[1]                           = use_stencil ? state_color_dont_care : Vector4::Zero;
+        pipeline_state.clear_color[1]                           = clear_color;
         pipeline_state.render_target_color_textures[2]          = tex_volumetric.get();
         pipeline_state.clear_color[2]                           = use_stencil ? state_color_dont_care : Vector4::Zero;
         pipeline_state.render_target_depth_texture              = use_stencil ? tex_depth.get() : nullptr;
@@ -803,9 +807,11 @@ namespace Spartan
 
 	void Renderer::Pass_Composition(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_out, const bool use_stencil)
 	{
+        bool indirect_bounce = (m_options & Render_IndirectBounce) != 0;
+
         // Acquire shaders
         const auto& shader_v = m_shaders[Shader_Quad_V];
-		const auto& shader_p = m_shaders[Shader_Composition_P];
+		const auto& shader_p = m_shaders[indirect_bounce ? Shader_Composition_IndirectBounce_P : Shader_Composition_P];
 		if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
 			return;
 
