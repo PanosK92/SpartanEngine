@@ -250,4 +250,3 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     
     return horizon_based_ambient_occlusion(uv, position, normal, random_vector, ign);
 }
-
