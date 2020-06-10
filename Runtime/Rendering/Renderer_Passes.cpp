@@ -1180,8 +1180,8 @@ namespace Spartan
 			return;
 
         // Acquire render targets
-        auto& tex_depth     = m_render_targets[RenderTarget_Gbuffer_Depth];
-        auto& tex_normal    = m_render_targets[RenderTarget_Gbuffer_Normal];
+        RHI_Texture* tex_depth     = m_render_targets[RenderTarget_Gbuffer_Depth].get();
+        RHI_Texture* tex_normal    = m_render_targets[RenderTarget_Gbuffer_Normal].get();
 
         // Set render state for horizontal pass
         static RHI_PipelineState pipeline_state_horizontal;
@@ -1193,7 +1193,7 @@ namespace Spartan
         pipeline_state_horizontal.vertex_buffer_stride              = m_viewport_quad.GetVertexBuffer()->GetStride();
         pipeline_state_horizontal.render_target_color_textures[0]   = tex_out.get();
         pipeline_state_horizontal.clear_color[0]                    = state_color_dont_care;
-        pipeline_state_horizontal.render_target_depth_texture       = use_stencil ? tex_depth.get() : nullptr;
+        pipeline_state_horizontal.render_target_depth_texture       = use_stencil ? tex_depth : nullptr;
         pipeline_state_horizontal.clear_stencil                     = use_stencil ? state_stencil_load : state_stencil_dont_care;
         pipeline_state_horizontal.viewport                          = tex_out->GetViewport();
         pipeline_state_horizontal.primitive_topology                = RHI_PrimitiveTopology_TriangleList;
@@ -1227,7 +1227,7 @@ namespace Spartan
         pipeline_state_vertical.vertex_buffer_stride            = m_viewport_quad.GetVertexBuffer()->GetStride();
         pipeline_state_vertical.render_target_color_textures[0] = tex_in.get();
         pipeline_state_vertical.clear_color[0]                  = state_color_dont_care;
-        pipeline_state_vertical.render_target_depth_texture     = use_stencil ? tex_depth.get() : nullptr;
+        pipeline_state_vertical.render_target_depth_texture     = use_stencil ? tex_depth : nullptr;
         pipeline_state_vertical.clear_stencil                   = use_stencil ? state_stencil_load : state_stencil_dont_care;
         pipeline_state_vertical.viewport                        = tex_in->GetViewport();
         pipeline_state_vertical.primitive_topology              = RHI_PrimitiveTopology_TriangleList;

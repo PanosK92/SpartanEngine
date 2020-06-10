@@ -39,15 +39,15 @@ float4 Blur_Box(float2 uv, Texture2D tex)
 
 float4 Blur_Gaussian_Fast(float2 uv, Texture2D tex)
 {
-  float4 color  = 0.0f;
-  float2 off1   = float2(1.3846153846, 1.3846153846) * g_blur_direction;
-  float2 off2   = float2(3.2307692308, 3.2307692308) * g_blur_direction;
-  color += tex.SampleLevel(sampler_bilinear_clamp, uv, 0) * 0.2270270270;
-  color += tex.SampleLevel(sampler_bilinear_clamp, uv + (off1 / g_resolution), 0) * 0.3162162162;
-  color += tex.SampleLevel(sampler_bilinear_clamp, uv - (off1 / g_resolution), 0) * 0.3162162162;
-  color += tex.SampleLevel(sampler_bilinear_clamp, uv + (off2 / g_resolution), 0) * 0.0702702703;
-  color += tex.SampleLevel(sampler_bilinear_clamp, uv - (off2 / g_resolution), 0) * 0.0702702703;
-  return color;
+    float4 color  = 0.0f;
+    float2 off1   = float2(1.3846153846, 1.3846153846) * g_blur_direction;
+    float2 off2   = float2(3.2307692308, 3.2307692308) * g_blur_direction;
+    color += tex.SampleLevel(sampler_bilinear_clamp, uv, 0) * 0.2270270270;
+    color += tex.SampleLevel(sampler_bilinear_clamp, uv + (off1 / g_resolution), 0) * 0.3162162162;
+    color += tex.SampleLevel(sampler_bilinear_clamp, uv - (off1 / g_resolution), 0) * 0.3162162162;
+    color += tex.SampleLevel(sampler_bilinear_clamp, uv + (off2 / g_resolution), 0) * 0.0702702703;
+    color += tex.SampleLevel(sampler_bilinear_clamp, uv - (off2 / g_resolution), 0) * 0.0702702703;
+    return color;
 }
 
 // Calculates the gaussian blur weight for a given distance and sigmas
@@ -85,6 +85,7 @@ float4 Blur_GaussianBilateral(float2 uv, Texture2D tex)
     float center_depth      = get_linear_depth(tex_depth.SampleLevel(sampler_point_clamp, uv, 0).r);
     float3 center_normal    = normal_decode(tex_normal.SampleLevel(sampler_point_clamp, uv, 0).xyz);
     float threshold         = 0.1f;
+    
 
     for (int i = -5; i < 5; i++)
     {
@@ -94,7 +95,7 @@ float4 Blur_GaussianBilateral(float2 uv, Texture2D tex)
         
         // Depth-awareness
         float awareness_depth   = saturate(threshold - abs(center_depth - sample_depth));
-        float awareness_normal  = saturate(dot(center_normal, sample_normal));
+        float awareness_normal  = saturate(dot(center_normal, sample_normal)) + FLT_MIN; // FLT_MIN prevents NaN
         float awareness         = awareness_normal * awareness_depth;
 
         float weight        = CalcGaussianWeight(i) * awareness;
