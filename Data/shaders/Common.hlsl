@@ -326,7 +326,7 @@ float microw_shadowing_cod(float n_dot_l, float visibility)
     MISC
 ------------------------------------------------------------------------------*/
 
-inline float3 compute_refractrive_energy(float3 F, float metallic)
+inline float3 compute_diffuse_energy(float3 F, float metallic)
 {
     float3 kS = F;          // The energy of light that gets reflected - Equal to Fresnel
     float3 kD = 1.0f - kS;  // Remaining energy, light that gets refracted          

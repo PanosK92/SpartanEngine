@@ -65,9 +65,20 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         material.emissive   = sample_material.b;
         material.F0         = lerp(0.04f, material.albedo, material.metallic);
 
+        // Light - Image based
+        float3 diffuse_energy       = 1.0f;
+        float3 reflective_energy    = 1.0f;
+        float3 light_ibl_specular   = Brdf_Specular_Ibl(material, sample_normal.xyz, camera_to_pixel, tex_environment, tex_lutIbl, diffuse_energy, reflective_energy);
+        float3 light_ibl_diffuse    = Brdf_Diffuse_Ibl(material, sample_normal.xyz, tex_environment) * diffuse_energy; // Tone down diffuse such as that only non metals have it
+
+        // Light - Bounce (diffuse)
+        float3 light_bounce = 0.0f;
+        #if INDIRECT_BOUNCE
+        light_bounce += sample_hbao.rgb * material.albedo;
+        #endif
+        
         // Light - SSR
         float3 light_reflection = 0.0f;
-        float3 light_bounce     = 0.0f;
         [branch]
         if (g_ssr_enabled && all(sample_ssr))
         {
@@ -75,7 +86,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
             
             // Reflection
             light_reflection = saturate(tex_frame.Sample(sampler_bilinear_clamp, sample_ssr).rgb);
-            light_reflection *= fade;
+            light_reflection *= fade * reflective_energy;
 
             // Bounce (specular)
             #if INDIRECT_BOUNCE
@@ -83,26 +94,17 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
             #endif
         }
         
+        // Light - Emissive
+        float3 light_emissive = material.emissive * material.albedo * 50.0f;
+
         // Light - Ambient
         float3 mbao             = MultiBounceAO(sample_hbao.a, sample_albedo.rgb);
         float3 light_ambient    = saturate(g_directional_light_intensity * 0.1f) * mbao;
         
-        // Light - Image based
-        float3 refractive_energy    = 1.0f;
-        float3 light_ibl_specular   = Brdf_Specular_Ibl(material, sample_normal.xyz, camera_to_pixel, tex_environment, tex_lutIbl, refractive_energy);
-        float3 light_ibl_diffuse    = Brdf_Diffuse_Ibl(material, sample_normal.xyz, tex_environment);
-   
-        // Light - Bounce (diffuse)
-        #if INDIRECT_BOUNCE
-        light_bounce += sample_hbao.rgb * material.albedo;
-        #endif
-
+        // Modulate with ambient light
         light_reflection    *= light_ambient;
-        light_ibl_diffuse   *= light_ambient * refractive_energy;
+        light_ibl_diffuse   *= light_ambient;
         light_ibl_specular  *= light_ambient;
-        
-        // Light - Emissive
-        float3 light_emissive = material.emissive * material.albedo * 50.0f;
     
         // Combine and return
         color += light_diffuse + light_ibl_diffuse + light_specular + light_ibl_specular + light_reflection + light_emissive + light_bounce;
