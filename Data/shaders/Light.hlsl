@@ -153,38 +153,39 @@ PixelOutputType mainPS(Pixel_PosUv input)
         float n_dot_l   = saturate(dot(surface.normal, l));
         float n_dot_h   = saturate(dot(surface.normal, h));
 
-        float3 refractive_energy = 1.0f;
+        float3 diffuse_energy       = 1.0f;
+        float3 reflective_energy    = 1.0f;
         
         // Specular
         float3 specular = 0.0f;
         if (material.anisotropic == 0.0f)
         {
-            specular = BRDF_Specular_Isotropic(material, n_dot_v, n_dot_l, n_dot_h, v_dot_h, refractive_energy);
+            specular = BRDF_Specular_Isotropic(material, n_dot_v, n_dot_l, n_dot_h, v_dot_h, diffuse_energy, reflective_energy);
         }
         else
         {
-            specular = BRDF_Specular_Anisotropic(material, surface, v, l, h, n_dot_v, n_dot_l, n_dot_h, l_dot_h, refractive_energy);
+            specular = BRDF_Specular_Anisotropic(material, surface, v, l, h, n_dot_v, n_dot_l, n_dot_h, l_dot_h, diffuse_energy, reflective_energy);
         }
 
         // Specular clearcoat
         float3 specular_clearcoat = 0.0f;
         if (material.clearcoat != 0.0f)
         {
-            specular_clearcoat = BRDF_Specular_Clearcoat(material, n_dot_h, v_dot_h, refractive_energy);
+            specular_clearcoat = BRDF_Specular_Clearcoat(material, n_dot_h, v_dot_h, diffuse_energy, reflective_energy);
         }
 
         // Sheen
         float3 specular_sheen = 0.0f;
         if (material.sheen != 0.0f)
         {
-            specular_sheen = BRDF_Specular_Sheen(material, n_dot_v, n_dot_l, n_dot_h, refractive_energy);
+            specular_sheen = BRDF_Specular_Sheen(material, n_dot_v, n_dot_l, n_dot_h, diffuse_energy, reflective_energy);
         }
         
         // Diffuse
         float3 diffuse = BRDF_Diffuse(material, n_dot_v, n_dot_l, v_dot_h);
 
-        // Tone down diffuse such us that only non metals have it
-        diffuse *= refractive_energy;
+        // Tone down diffuse such as that only non metals have it
+        diffuse *= diffuse_energy;
 
         // SSR
         float3 light_reflection = 0.0f;
@@ -194,8 +195,9 @@ PixelOutputType mainPS(Pixel_PosUv input)
         if (sample_ssr.x * sample_ssr.y != 0.0f)
         {
             // saturate as reflections will accumulate int tex_frame overtime, causing more light to go out that it comes in.
-            light_reflection    = saturate(tex_frame.Sample(sampler_bilinear_clamp, sample_ssr.xy).rgb);
-            light_reflection    *= 1.0f - material.roughness; // fade with roughness as we don't have blurry screen space reflections yet
+            light_reflection = saturate(tex_frame.Sample(sampler_bilinear_clamp, sample_ssr.xy).rgb);
+            light_reflection *= reflective_energy;
+            light_reflection *= 1.0f - material.roughness; // fade with roughness as we don't have blurry screen space reflections yet
         }
         #endif
 
@@ -207,4 +209,3 @@ PixelOutputType mainPS(Pixel_PosUv input)
 
     return light_out;
 }
-
