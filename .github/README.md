@@ -67,23 +67,22 @@ Platform | API | Status | Quality | Binaries | :+1:
 # Roadmap
 
 ##### v0.32-35 (WIP)
-Feature     					| Completion | Notes 
-:-          					| :-         | :-
-Continuous Vulkan optimisation 	| -			 | Outperform D3D11, high priority
-Screen space global illumination| -			 | -
-DirectX 12						| -			 | Low priority
-Eye Adaptation 					| -          | Low priority
-Depth-of-field					| -          | Low priority, Based on Doom approach
-Subsurface Scattering 			| -          | Low priority
-Ray traced shadows				| -          | -
-Ray traced reflections			| -          | -
+Feature     					 | Completion | Notes 
+:-          					 | :-         | :-
+Continuous Vulkan optimisation 	 | -		  | Outperform D3D11
+Screen space global illumination | 100%		  | One bounce of indirect and specular light
+DirectX 12						 | -		  | Low priority
+Eye Adaptation 					 | -          | Low priority
+Depth-of-field					 | -          | Low priority, Based on Doom approach
+Subsurface Scattering 			 | -          | Low priority
+Ray traced shadows				 | -          | -
+Ray traced reflections			 | -          | -
 
 ###### Future
 - Skeletal Animation.
 - C# scripting (Replace AngelScript).
 - Atmospheric Scattering.
 - Dynamic resolution scaling.
-- Global Illumination.
 - Export on Windows.
 - UI components.
 - Make editor more stylish.

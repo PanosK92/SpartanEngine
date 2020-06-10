@@ -154,21 +154,23 @@ inline float3 BRDF_Diffuse(Material material, float n_dot_v, float n_dot_l, floa
     Specular
 ------------------------------------------------------------------------------*/
 
-inline float3 BRDF_Specular_Isotropic(Material material, float n_dot_v, float n_dot_l, float n_dot_h, float v_dot_h, out float3 F)
+inline float3 BRDF_Specular_Isotropic(Material material, float n_dot_v, float n_dot_l, float n_dot_h, float v_dot_h, inout float3 refractive_energy)
 {
     // remapping and linearization
     float roughness = clamp(material.roughness, 0.089f, 1.0f);
     float a         = roughness * roughness;
     float a2        = pow(roughness, 4.0f);
 
-    float V = V_SmithJointApprox(a2, n_dot_v, n_dot_l);
-    float D = D_GGX(a2, n_dot_h);
-    F       = F_Schlick(material.F0, v_dot_h);
+    float V     = V_SmithJointApprox(a2, n_dot_v, n_dot_l);
+    float D     = D_GGX(a2, n_dot_h);
+    float3 F    = F_Schlick(material.F0, v_dot_h);
+
+    refractive_energy *= compute_refractrive_energy(F, material.metallic);
     
     return (D * V) * F;
 }
 
-inline float3 BRDF_Specular_Anisotropic(Material material, Surface surface, float3 v, float3 l, float3 h, float n_dot_v, float n_dot_l, float n_dot_h, float l_dot_h, out float3 F)
+inline float3 BRDF_Specular_Anisotropic(Material material, Surface surface, float3 v, float3 l, float3 h, float n_dot_v, float n_dot_l, float n_dot_h, float l_dot_h, inout float3 refractive_energy)
 {
     float rotation      = max(material.anisotropic_rotation * PI2, FLT_MIN);
     float3 direction    = float3(cos(rotation), sin(rotation), 0.0f);
@@ -183,28 +185,32 @@ inline float3 BRDF_Specular_Anisotropic(Material material, Surface surface, floa
     float YdotH     = dot(b, h);
     
     // specular anisotropic BRDF
-    float D = D_GGX_Anisotropic(n_dot_h, ax, ay, XdotH, YdotH);
-    float V = V_GGX_anisotropic_2cos(n_dot_v, ax, ay, XdotH, YdotH) * V_GGX_anisotropic_2cos(n_dot_v, ax, ay, XdotH, YdotH);
-    F       = fresnel(material.F0, l_dot_h);
+    float D     = D_GGX_Anisotropic(n_dot_h, ax, ay, XdotH, YdotH);
+    float V     = V_GGX_anisotropic_2cos(n_dot_v, ax, ay, XdotH, YdotH) * V_GGX_anisotropic_2cos(n_dot_v, ax, ay, XdotH, YdotH);
+    float3 F    = fresnel(material.F0, l_dot_h);
 
+    refractive_energy *= compute_refractrive_energy(F, material.metallic);
+    
     return (D * V) * F;
 }
 
-inline float3 BRDF_Specular_Clearcoat(Material material, float n_dot_h, float v_dot_h, out float3 F)
+inline float3 BRDF_Specular_Clearcoat(Material material, float n_dot_h, float v_dot_h, inout float3 refractive_energy)
 {
     // remapping and linearization
     float roughness = clamp(material.clearcoat_roughness, 0.089f, 1.0f);
     float a         = roughness * roughness;
     float a2        = pow(roughness, 4.0f);
     
-    float D = D_GGX(a2, n_dot_h);
-    float V = V_Kelemen(v_dot_h);
-    F       = F_Schlick(0.04, 1.0, v_dot_h) * material.clearcoat;
+    float D     = D_GGX(a2, n_dot_h);
+    float V     = V_Kelemen(v_dot_h);
+    float3 F    = F_Schlick(0.04, 1.0, v_dot_h) * material.clearcoat;
+
+    refractive_energy *= compute_refractrive_energy(F, material.metallic);
 
     return (D * V) * F;
 }
 
-inline float3 BRDF_Specular_Sheen(Material material, float n_dot_v, float n_dot_l, float n_dot_h, out float3 F)
+inline float3 BRDF_Specular_Sheen(Material material, float n_dot_v, float n_dot_l, float n_dot_h, inout float3 refractive_energy)
 {
     // remapping and linearization
     float roughness = clamp(material.roughness, 0.089f, 1.0f);
@@ -213,10 +219,12 @@ inline float3 BRDF_Specular_Sheen(Material material, float n_dot_v, float n_dot_
     float tint  = material.sheen_tint * material.sheen_tint;
     float3 f0   = lerp(1.0f, material.F0, tint);
     
-    float D = D_Charlie(roughness, n_dot_h);
-    float V = V_Neubelt(n_dot_v, n_dot_l);
-    F       = f0 * material.sheen;
+    float D     = D_Charlie(roughness, n_dot_h);
+    float V     = V_Neubelt(n_dot_v, n_dot_l);
+    float3 F    = f0 * material.sheen;
 
+    refractive_energy *= compute_refractrive_energy(F, material.metallic);
+    
     return (D * V) * F;
 }
 /*------------------------------------------------------------------------------
@@ -268,7 +276,7 @@ inline float3 Brdf_Diffuse_Ibl(Material material, float3 normal, Texture2D tex_e
     return SampleEnvironment(tex_environment, direction_sphere_uv(normal), mip_max) * material.albedo;
 }
 
-inline float3 Brdf_Specular_Ibl(Material material, float3 normal, float3 camera_to_pixel, Texture2D tex_environment, Texture2D tex_lutIBL, out float3 F)
+inline float3 Brdf_Specular_Ibl(Material material, float3 normal, float3 camera_to_pixel, Texture2D tex_environment, Texture2D tex_lutIBL, inout float3 refractive_energy)
 {
     // remapping and linearization
     float roughness = clamp(material.roughness, 0.089f, 1.0f);
@@ -278,10 +286,13 @@ inline float3 Brdf_Specular_Ibl(Material material, float3 normal, float3 camera_
     reflection              = GetSpecularDominantDir(normal, reflect(camera_to_pixel, normal), material.roughness); // From Sebastien Lagarde Moving Frostbite to PBR page 69
     float n_dot_v           = dot(-camera_to_pixel, normal);
     float f90               = 0.5 + 2 * n_dot_v * n_dot_v * material.roughness;
-    F                       = F_Schlick(material.F0, f90, material.roughness);
+    float3 F                = F_Schlick(material.F0, f90, material.roughness);
     float mip_level         = lerp(0, mip_max, a);
     float3 prefilteredColor = SampleEnvironment(tex_environment, direction_sphere_uv(reflection), mip_level);
     float2 envBRDF          = tex_lutIBL.Sample(sampler_bilinear_clamp, float2(saturate(n_dot_v), material.roughness)).xy;
     float3 reflectivity     = F * envBRDF.x + envBRDF.y;
-    return prefilteredColor * reflectivity;
+
+    refractive_energy *= compute_refractrive_energy(F, material.metallic);
+    
+    return prefilteredColor * reflectivity;   
 }
