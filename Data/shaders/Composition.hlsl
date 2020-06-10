@@ -88,7 +88,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         float3 light_ambient    = saturate(g_directional_light_intensity * 0.1f) * mbao;
         
         // Light - Image based
-        float3 refractive_energy    = 0.0f;
+        float3 refractive_energy    = 1.0f;
         float3 light_ibl_specular   = Brdf_Specular_Ibl(material, sample_normal.xyz, camera_to_pixel, tex_environment, tex_lutIbl, refractive_energy);
         float3 light_ibl_diffuse    = Brdf_Diffuse_Ibl(material, sample_normal.xyz, tex_environment);
    
