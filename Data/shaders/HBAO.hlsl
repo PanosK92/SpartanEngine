@@ -111,50 +111,43 @@ float falloff(float distance_squared)
     return saturate(1.0f - distance_squared / ao_radius2);
 }
 
-float occlusion(float3 center_pos, float3 center_normal, float3 sample_pos)
+float occlusion(float3 center_normal, float3 center_to_sample, float distance_squared, float attunate)
 {
-    float3 center_to_sample = sample_pos - center_pos;
-    float distance_squared  = dot(center_to_sample, center_to_sample);
-    float n_dot_s           = saturate(dot(center_normal, center_to_sample) / sqrt(distance_squared));
-
-    return n_dot_s * falloff(distance_squared);
+    return saturate(dot(center_normal, center_to_sample) / sqrt(distance_squared)) * attunate;
 }
 
-float3 indirect(float3 center_pos,  float3 center_normal, float3 sample_pos, float2 sample_uv, inout uint indirect_light_samples)
+float3 indirect(float3 center_normal, float3 center_to_sample, float distance_squared, float attunate, float2 sample_uv, inout uint indirect_light_samples)
 {
     float3 indirect = 0.0f;
     
-    // Reproject light
-    float2 velocity         = GetVelocity_Dilate_Min(sample_uv);
-    float2 uv_reprojected   = sample_uv - velocity;
-    float3 light            = tex_light_diffuse.SampleLevel(sampler_bilinear_clamp, uv_reprojected, 0).rgb;
+    // Compute falloff
+    attunate = attunate * screen_fade(sample_uv);
+    
+	// Reproject light
+	float2 velocity         = GetVelocity_Dilate_Min(sample_uv);
+	float2 uv_reprojected   = sample_uv - velocity;
+	float3 light            = tex_light_diffuse.SampleLevel(sampler_bilinear_clamp, uv_reprojected, 0).rgb * attunate;
 	
-    // Compute center to sample direction and distance
-    float3 center_to_sample = sample_pos - center_pos;
-    float distance_squared  = dot(center_to_sample, center_to_sample);
-
-    // Apply falloff
-    float attunate = falloff(distance_squared) * screen_fade(sample_uv);
-    light *= attunate;
-
-    // Transport
-    if (luminance(light) > 0.0f)
-    {
-        center_to_sample = normalize(center_to_sample);
-
-        float distance      = clamp(sqrt(distance_squared), 0.1, 50);
-        float attunation    = clamp(1.0 / (distance), 0, 50);
-        float occlusion     = saturate(dot(center_normal, center_to_sample)) * attunation;
-
-        if (occlusion > 0.0f)
-        {
-            float3 sample_normal    = get_normal_view_space(sample_uv);
-            float visibility        = saturate(dot(sample_normal, -center_to_sample));
-        
-            indirect = light * visibility * occlusion;
-            indirect_light_samples++;
-        }
-    }
+	// Transport
+	[branch]
+	if (luminance(light) > 0.0f)
+	{
+		center_to_sample = normalize(center_to_sample);
+	
+		float distance      = clamp(sqrt(distance_squared), 0.1, 50);
+		float attunation    = clamp(1.0 / (distance), 0, 50);
+		float occlusion     = saturate(dot(center_normal, center_to_sample)) * attunation;
+	
+		[branch]
+		if (occlusion > 0.0f)
+		{
+			float3 sample_normal    = get_normal_view_space(sample_uv);
+			float visibility        = saturate(dot(sample_normal, -center_to_sample));
+		
+			indirect = light * visibility * occlusion;
+			indirect_light_samples++;
+		}
+	}
 
     return indirect;
 }
@@ -178,12 +171,15 @@ float normal_oriented_hemisphere_ambient_occlusion(float2 uv, float3 position, f
         offset          *= sign(dot(offset, normal));   // Flip if behind normal
         
         // Compute sample pos
-        float3 sample_pos   = position + offset;
-        float2 sample_uv    = project_uv(sample_pos, g_projection);
-        sample_pos          = get_position_view_space(sample_uv);
-        
+        float3 sample_pos   	= position + offset;
+        float2 sample_uv    	= project_uv(sample_pos, g_projection);
+        sample_pos          	= get_position_view_space(sample_uv);
+		float3 center_to_sample = sample_pos - position;
+		float distance_squared  = dot(center_to_sample, center_to_sample);
+		float attunate 			= falloff(distance_squared);
+			
         // Accumulate
-        ao += occlusion(position, normal, sample_pos);
+        ao += occlusion(normal, center_to_sample, distance_squared, attunate);
     }
 
     return 1.0f - saturate((ao * ao_intensity) / (float)ao_directions);
@@ -213,14 +209,21 @@ float4 horizon_based_ambient_occlusion(float2 uv, float3 position, float3 normal
         {
             float2 snapped_uv       = round(ray_pixels * rotation_direction) * g_texel_size + uv;
             float3 sample_position  = get_position_view_space(snapped_uv);
-            
-            // Occlusion
-            ao += occlusion(position, normal, sample_position);
-
-            // Indirect bounce
-            #if INDIRECT_BOUNCE
-            indirect_light += indirect(position, normal, sample_position, snapped_uv, indirect_light_samples);
-            #endif
+			float3 center_to_sample = sample_position - position;
+			float distance_squared  = dot(center_to_sample, center_to_sample);
+			float attunate 			= falloff(distance_squared);
+			
+			[branch]
+			if (attunate != 0.0f)
+			{
+				// Occlusion
+				ao += occlusion(normal, center_to_sample, distance_squared, attunate);
+	
+				// Indirect bounce
+				#if INDIRECT_BOUNCE
+				indirect_light += indirect(normal, center_to_sample, distance_squared, attunate, snapped_uv, indirect_light_samples);
+				#endif
+			}
             
             ray_pixels += uv_stride_pixels;
         }

@@ -99,7 +99,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 
         // Light - Ambient
         float3 mbao             = MultiBounceAO(sample_hbao.a, sample_albedo.rgb);
-        float3 light_ambient    = saturate(g_directional_light_intensity * 0.1f) * mbao;
+        float3 light_ambient    = saturate(g_directional_light_intensity * 0.01f) * mbao;
         
         // Modulate with ambient light
         light_reflection    *= light_ambient;
@@ -111,6 +111,3 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         return float4(color, sample_albedo.a);
     }
 }
-
-
-
