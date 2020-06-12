@@ -57,6 +57,7 @@ Texture2D tex_frame                     : register(t27);
 Texture2D tex                           : register(t28);
 Texture2D tex2                          : register(t29);
 Texture2D tex_font_atlas                : register(t30);
+Texture2D tex_blue_noise                : register(t31);
 
 // Compute
-Texture2D<float4> tex_in                : register(t31);
+Texture2D<float4> tex_in                : register(t32);

@@ -72,7 +72,8 @@ float3 VolumetricLighting(Surface surface, Light light)
     
     // Offset ray to get away with way less steps and great detail
     float offset = interleaved_gradient_noise(surface.uv * g_resolution);
-    ray_pos += ray_step * offset;
+    float offset_blue_noise = blue_noise(surface.uv);
+    ray_pos += ray_step  * offset;
     
     #if DIRECTIONAL
     {
@@ -140,5 +141,3 @@ float3 VolumetricLighting(Surface surface, Light light)
     
     return fog * light.color;
 }
-
-

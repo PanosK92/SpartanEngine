@@ -320,6 +320,7 @@ namespace Spartan
 
         // Standard textures
         std::shared_ptr<RHI_Texture> m_tex_noise_normal;
+        std::shared_ptr<RHI_Texture> m_tex_blue_noise;
         std::shared_ptr<RHI_Texture> m_tex_white;
         std::shared_ptr<RHI_Texture> m_tex_black_transparent;
         std::shared_ptr<RHI_Texture> m_tex_black_opaque;

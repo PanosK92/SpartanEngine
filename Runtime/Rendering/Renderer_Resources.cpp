@@ -383,9 +383,11 @@ namespace Spartan
 
         auto generate_mipmaps = false;
 
-        // Noise texture (used by SSAO shader)
         m_tex_noise_normal = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
         m_tex_noise_normal->LoadFromFile(dir_texture + "noise.jpg");
+
+        m_tex_blue_noise = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
+        m_tex_blue_noise->LoadFromFile(dir_texture + "blue_noise.png");
 
         m_tex_white = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
         m_tex_white->LoadFromFile(dir_texture + "white.png");

@@ -284,13 +284,10 @@ inline float interleaved_gradient_noise(float2 position_screen)
 
 inline float blue_noise(float2 uv)
 {
-    static const float c_goldenRatioConjugate = 0.61803398875f; // also just fract(goldenRatio)
-    static const float2 noise_scale = float2(g_resolution.x / 256.0f, g_resolution.y / 256.0f);
-    float noise = tex_normal_noise.Sample(sampler_bilinear_wrap, uv * noise_scale).r;
-    return frac(noise + float(g_frame) * c_goldenRatioConjugate * any(g_taa_jitter_offset));
+    static const float2 noise_scale = float2(g_resolution.x / 470.0f, g_resolution.y / 470.0f);
+    float temporal_factor = g_frame * any(g_taa_jitter_offset) * g_texel_size;
+    return tex_blue_noise.Sample(sampler_bilinear_wrap, uv * noise_scale + temporal_factor).r;
 }
-
-
 
 /*------------------------------------------------------------------------------
     OCCLUSION/SHADOWING

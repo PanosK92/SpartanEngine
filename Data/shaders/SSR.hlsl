@@ -34,6 +34,7 @@ inline float2 binary_search(float3 ray_dir, inout float3 ray_pos, inout float2 r
     float depth_delta       = 1.0f;
     float2 hit_uv           = 0.0f;
 
+    [unroll]
     for (uint i = 0; i < g_ssr_binarySearchSteps; i++)
     {    
         ray_dir     *= 0.5f;
