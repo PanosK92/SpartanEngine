@@ -124,7 +124,7 @@ float3 indirect(float3 center_normal, float3 center_to_sample, float distance_sq
     attunate = attunate * screen_fade(sample_uv);
     
 	// Reproject light
-	float2 velocity         = GetVelocity_Dilate_Min(sample_uv);
+	float2 velocity         = GetVelocity_DepthMin(sample_uv);
 	float2 uv_reprojected   = sample_uv - velocity;
 	float3 light            = tex_light_diffuse.SampleLevel(sampler_bilinear_clamp, uv_reprojected, 0).rgb * attunate;
 	

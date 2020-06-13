@@ -24,7 +24,7 @@ static const uint g_mb_samples = 16;
 float4 MotionBlur(float2 texCoord, Texture2D tex)
 {   
     float4 color    = tex.Sample(sampler_point_clamp, texCoord);    
-    float2 velocity = GetVelocity_Dilate_Max(texCoord, tex_velocity, tex_depth);
+    float2 velocity = GetVelocity_Max(texCoord, tex_velocity, tex_depth);
     
     // Make velocity scale based on user preference instead of frame rate
     float velocity_scale = g_motionBlur_strength / g_delta_time;

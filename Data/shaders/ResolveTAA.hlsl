@@ -67,7 +67,7 @@ float3 clip_aabb(float3 aabb_min, float3 aabb_max, float3 p, float3 q)
 float4 ResolveTAA(float2 uv, Texture2D tex_history, Texture2D tex_current)
 {
     // Get history and current colors
-    float2 velocity         = GetVelocity_Dilate_Min(uv);
+    float2 velocity         = GetVelocity_DepthMin(uv);
     float2 uv_reprojected   = uv - velocity;
     float3 color_history    = Reinhard(tex_history.Sample(sampler_bilinear_clamp, uv_reprojected).rgb);
     float3 color_current    = Reinhard(tex_current.Sample(sampler_point_clamp, uv).rgb);
