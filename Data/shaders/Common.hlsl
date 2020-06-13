@@ -19,6 +19,9 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+#ifndef SPARTAN_COMMON
+#define SPARTAN_COMMON
+
 //= INCLUDES =================
 #include "Common_Struct.hlsl"
 #include "Common_Vertex.hlsl"
@@ -285,7 +288,7 @@ inline float interleaved_gradient_noise(float2 position_screen)
 inline float blue_noise(float2 uv)
 {
     static const float2 noise_scale = float2(g_resolution.x / 470.0f, g_resolution.y / 470.0f);
-    float temporal_factor = g_frame * any(g_taa_jitter_offset) * g_texel_size;
+    float2 temporal_factor = g_frame * any(g_taa_jitter_offset) * g_texel_size;
     return tex_blue_noise.Sample(sampler_bilinear_wrap, uv * noise_scale + temporal_factor).r;
 }
 
@@ -337,3 +340,5 @@ inline float screen_fade(float2 uv)
     float2 fade = max(12.0f * abs(uv - 0.5f) - 5.0f, 0.0f);
     return saturate(1.0 - dot(fade, fade));
 }
+
+#endif // SPARTAN_COMMON
