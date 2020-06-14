@@ -393,7 +393,7 @@ namespace Spartan
         bool m_is_odd_frame                         = false;
         std::atomic<bool> m_is_rendering            = false;
         bool m_brdf_specular_lut_rendered           = false;      
-        const float m_gizmo_size_max                = 5.0f;
+        const float m_gizmo_size_max                = 2.0f;
         const float m_gizmo_size_min                = 0.1f;
         bool m_update_ortho_proj                    = true;
                                                                   
