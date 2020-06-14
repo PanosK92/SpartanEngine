@@ -40,7 +40,7 @@ Platform | API | Status | Quality | Binaries | :+1:
 - Bloom (Based on a study of Resident Evil 2's RE Engine)
 - Volumetric lighting
 - Lights (Directional, point and spot)
-- Shadows with colored translucency (Cascaded and omnidirectional shadow mapping with Vogel filtering)
+- Shadows with penumbra and colored translucency (Cascaded and omnidirectional shadow mapping with Vogel filtering)
 - SSAO (Screen space ambient occlusion)
 - SSR (Screen space reflections)
 - SSS (Screen space shadows)

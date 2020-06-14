@@ -98,9 +98,13 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         float3 light_emissive = material.emissive * material.albedo * 50.0f;
 
         // Light - Ambient
-        float3 mbao             = MultiBounceAO(sample_hbao.a, sample_albedo.rgb);
-        float3 light_ambient    = saturate(g_directional_light_intensity * 0.01f) * mbao;
-        
+        float3 light_ambient = saturate(g_directional_light_intensity * 0.01f);
+		#if INDIRECT_BOUNCE
+		light_ambient *= sample_hbao.a;
+		#else
+		light_ambient *= MultiBounceAO(sample_hbao.a, sample_albedo.rgb);
+        #endif
+		
         // Modulate with ambient light
         light_reflection    *= light_ambient;
         light_ibl_diffuse   *= light_ambient;
