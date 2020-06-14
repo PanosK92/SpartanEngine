@@ -167,6 +167,7 @@ namespace Spartan
         bool m_render_pass_active                   = false;
         bool m_pipeline_active                      = false;
         bool m_flushed                              = false;
+        static bool memory_query_support;
         std::mutex m_mutex_reset;
 
         // Profiling

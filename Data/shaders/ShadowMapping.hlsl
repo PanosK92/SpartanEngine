@@ -37,7 +37,7 @@ static const uint   g_shadow_samples = 8; // penumbra requires a higher sample c
 #endif
 
 // technique - vogel
-static const float  g_shadow_vogel_filter_size  = 4.0f;
+static const float  g_shadow_vogel_filter_size  = 8.0f;
 static const uint   g_penumbra_samples          = 4;
 static const float  g_penumbra_filter_size      = 128.0f;
 
@@ -331,7 +331,7 @@ float4 Shadow_Map(Surface surface, Light light, bool transparent_pixel)
             if (is_saturated(pos))
             {   
                 // Sample primary cascade
-                float compare_depth = bias_sloped_scaled(pos.z, light.bias * (cascade + 1));
+                float compare_depth = bias_sloped_scaled(pos.z, light.bias * (cascade + 2));
                 shadow.a            = SampleShadowMap(float3(pos.xy, cascade), compare_depth);
 
                 #if SHADOWS_TRANSPARENT
@@ -354,7 +354,7 @@ float4 Shadow_Map(Surface surface, Light light, bool transparent_pixel)
                     pos = project(position_world, light_view_projection[cacade_secondary]);
 
                     // Sample secondary cascade
-                    compare_depth           = bias_sloped_scaled(pos.z, light.bias * (cacade_secondary + 1));
+                    compare_depth           = bias_sloped_scaled(pos.z, light.bias * (cacade_secondary + 2));
                     float shadow_secondary  = SampleShadowMap(float3(pos.xy, cacade_secondary), compare_depth);
 
                     // Blend cascades
@@ -415,3 +415,4 @@ float4 Shadow_Map(Surface surface, Light light, bool transparent_pixel)
     
     return shadow;
 }
+
