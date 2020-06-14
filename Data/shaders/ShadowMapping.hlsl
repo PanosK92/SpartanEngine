@@ -31,14 +31,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // technique - all
 #if DIRECTIONAL
-static const uint   g_shadow_samples = 4;
+static const uint   g_shadow_samples = 3;
 #else
 static const uint   g_shadow_samples = 8; // penumbra requires a higher sample count to look good
 #endif
 
 // technique - vogel
-static const float  g_shadow_vogel_filter_size  = 8.0f;
-static const uint   g_penumbra_samples          = 4;
+#if DIRECTIONAL
+static const float  g_shadow_vogel_filter_size  = 2.0f;
+#else
+static const float  g_shadow_vogel_filter_size  = 8.0f; // penumbra requires a biger filter size to look good
+#endif
+static const uint   g_penumbra_samples          = 8;
 static const float  g_penumbra_filter_size      = 128.0f;
 
 // technique - poisson
@@ -295,7 +299,7 @@ float Technique_Pcf(float3 uv, float compare)
 ------------------------------------------------------------------------------*/
 inline float bias_sloped_scaled(float z, float bias)
 {
-    const float scale_min    = 0.0001f;
+    const float scale_min    = 0.001f; // point at which the point light stops having issues
     const float scale_max = 0.1f;
     
     float zdx           = abs(ddx(z));
@@ -415,4 +419,3 @@ float4 Shadow_Map(Surface surface, Light light, bool transparent_pixel)
     
     return shadow;
 }
-
