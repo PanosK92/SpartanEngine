@@ -80,7 +80,7 @@ namespace Spartan
         m_option_values[Option_Value_Sharpen_Strength]        = 1.0f;
         m_option_values[Option_Value_Sharpen_Clamp]           = 0.35f;
         m_option_values[Option_Value_Bloom_Intensity]         = 0.1f;
-        m_option_values[Option_Value_Motion_Blur_Intensity]   = 0.01f;
+        m_option_values[Option_Value_Motion_Blur_Intensity]   = 0.02f;
 
 		// Subscribe to events
 		SUBSCRIBE_TO_EVENT(Event_World_Resolve_Complete,    EVENT_HANDLER_VARIANT(RenderablesAcquire));

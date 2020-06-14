@@ -30,11 +30,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define SampleShadowMap Technique_Vogel
 
 // technique - all
-static const uint g_shadow_samples      = 4;
-static const uint g_penumbra_samples    = 16;
+#if DIRECTIONAL
+static const uint   g_shadow_samples = 4;
+#else
+static const uint   g_shadow_samples = 8; // penumbra requires a higher sample count to look good
+#endif
 
 // technique - vogel
-static const float g_shadow_vogel_filter_size = 3.0f;
+static const float  g_shadow_vogel_filter_size  = 4.0f;
+static const uint   g_penumbra_samples          = 4;
+static const float  g_penumbra_filter_size      = 128.0f;
 
 // technique - poisson
 static const float g_shadow_poisson_filter_size = 5.0f;
@@ -107,42 +112,40 @@ float2 vogel_disk_sample(uint sample_index, uint sample_count, float angle)
   return float2(r * cosine, r * sine);
 }
 
-float AvgBlockersDepthToPenumbra(float z_shadowMapView, float avg_blocker_depth)
+float compute_penumbra(float vogel_angle, float3 uv, float compare)
 {
-    float penumbra = (z_shadowMapView - avg_blocker_depth) / avg_blocker_depth;
-    penumbra *= penumbra;
-    return saturate(80.0f * penumbra);
-}
+    float penumbra          = 1.0f;
+    float blocker_depth_avg = 0.0f;
+    uint blocker_count      = 0;
 
-float Penumbra(float gradient_noise, float2 uv, float z_shadowMapView, int cascade)
-{
-    float avg_blocker_depth = 0.0f;
-    float blockers_count    = 0.0f;
-    
+    #if DIRECTIONAL
+    return penumbra;
+    #endif
+
     [unroll]
     for(uint i = 0; i < g_penumbra_samples; i ++)
     {
-        float2 penumbraFilterMaxSize    = 1.0f;
-        float2 offset                   = vogel_disk_sample(i, g_penumbra_samples, gradient_noise);
-        float depth_sample              = sample_depth(float3(uv + penumbraFilterMaxSize * offset * g_shadow_texel_size, cascade));
+        float2 offset   = vogel_disk_sample(i, g_penumbra_samples, vogel_angle) * g_shadow_texel_size * g_penumbra_filter_size;
+        float depth     = sample_depth(uv + float3(offset, 0.0f));
 
-        //matrix projection = light_view_projection[0][cascade];
-        //depth_sample = projection._43 / (depth_sample - projection._33);
-
-        if(depth_sample > z_shadowMapView)
+        if(depth > compare)
         {
-            avg_blocker_depth += depth_sample;
-            blockers_count += 1.0f;
+            blocker_depth_avg += depth;
+            blocker_count++;
         }
     }
 
-    if(blockers_count > 0.0f)
+    if (blocker_count != 0)
     {
-        avg_blocker_depth /= blockers_count;
-        return AvgBlockersDepthToPenumbra(z_shadowMapView, avg_blocker_depth);
+        blocker_depth_avg /= (float)blocker_count;
+
+        // Compute penumbra
+        penumbra = (compare - blocker_depth_avg) / (blocker_depth_avg + FLT_MIN);
+        penumbra *= penumbra;
+        penumbra *= 10.0f;
     }
     
-    return 0.0f;
+    return clamp(penumbra, 1.0f, FLT_MAX);
 }
 
 /*------------------------------------------------------------------------------
@@ -152,13 +155,12 @@ float Technique_Vogel(float3 uv, float compare)
 {
     float shadow        = 0.0f;
     float vogel_angle   = interleaved_gradient_noise(g_shadow_resolution * uv.xy) * PI2;
+    float penumbra      = compute_penumbra(vogel_angle, uv, compare);
     
-    //float penumbra = Penumbra(vogel_angle, uv, compare, cascade);
-
     [unroll]
     for (uint i = 0; i < g_shadow_samples; i++)
     {
-        float2 offset   = vogel_disk_sample(i, g_shadow_samples, vogel_angle) * g_shadow_texel_size * g_shadow_vogel_filter_size;
+        float2 offset   = vogel_disk_sample(i, g_shadow_samples, vogel_angle) * g_shadow_texel_size * g_shadow_vogel_filter_size * penumbra;
         shadow          += compare_depth(uv + float3(offset, 0.0f), compare);
     } 
 
@@ -169,8 +171,6 @@ float4 Technique_Vogel_Color(float3 uv)
 {
     float4 shadow       = 0.0f;
     float vogel_angle   = interleaved_gradient_noise(g_shadow_resolution * uv.xy) * PI2;
-    
-    //float penumbra = Penumbra(vogel_angle, uv, compare, cascade);
 
     [unroll]
     for (uint i = 0; i < g_shadow_samples; i++)
@@ -295,10 +295,12 @@ float Technique_Pcf(float3 uv, float compare)
 ------------------------------------------------------------------------------*/
 inline float bias_sloped_scaled(float z, float bias)
 {
-    const float dmax    = 0.001f;
+    const float scale_min    = 0.0001f;
+    const float scale_max = 0.1f;
+    
     float zdx           = abs(ddx(z));
     float zdy           = abs(ddy(z));
-    float scale         = clamp(max(zdx, zdy), 0.0f, dmax);
+    float scale         = clamp(max(zdx, zdy), scale_min, scale_max);
     
     return z + bias * scale;
 }
