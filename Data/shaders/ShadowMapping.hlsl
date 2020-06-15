@@ -299,8 +299,8 @@ float Technique_Pcf(float3 uv, float compare)
 ------------------------------------------------------------------------------*/
 inline float bias_sloped_scaled(float z, float bias)
 {
-    const float scale_min    = 0.002f; // point at which the point light stops having issues
-    const float scale_max = 0.1f;
+    const float scale_min    = 0.01f; // point at which the point light stops having issues
+    const float scale_max = 1.0f;
     
     float zdx           = abs(ddx(z));
     float zdy           = abs(ddy(z));
@@ -335,7 +335,7 @@ float4 Shadow_Map(Surface surface, Light light, bool transparent_pixel)
             if (is_saturated(pos))
             {   
                 // Sample primary cascade
-                float compare_depth = bias_sloped_scaled(pos.z, light.bias * (cascade + 2));
+                float compare_depth = bias_sloped_scaled(pos.z, light.bias * (cascade + 1));
                 shadow.a            = SampleShadowMap(float3(pos.xy, cascade), compare_depth);
 
                 #if SHADOWS_TRANSPARENT
@@ -358,7 +358,7 @@ float4 Shadow_Map(Surface surface, Light light, bool transparent_pixel)
                     pos = project(position_world, light_view_projection[cacade_secondary]);
 
                     // Sample secondary cascade
-                    compare_depth           = bias_sloped_scaled(pos.z, light.bias * (cacade_secondary + 2));
+                    compare_depth           = bias_sloped_scaled(pos.z, light.bias * (cacade_secondary + 1));
                     float shadow_secondary  = SampleShadowMap(float3(pos.xy, cacade_secondary), compare_depth);
 
                     // Blend cascades
