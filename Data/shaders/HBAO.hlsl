@@ -32,7 +32,7 @@ static const uint ao_directions = 2;
 static const uint ao_steps      = 2;
 #endif
 static const float ao_radius    = 0.5f;
-static const float ao_intensity = 4.0f;
+static const float ao_intensity = 2.0f;
 
 static const float ao_samples   = (float)(ao_directions * ao_steps);
 static const float ao_radius2   = ao_radius * ao_radius;
@@ -111,12 +111,12 @@ float falloff(float distance_squared)
     return saturate(1.0f - distance_squared / ao_radius2);
 }
 
-float occlusion(float3 center_normal, float3 center_to_sample, float distance_squared, float attunate)
+float compute_occlusion(float3 center_normal, float3 center_to_sample, float distance_squared, float attunate)
 {
     return saturate(dot(center_normal, center_to_sample) / sqrt(distance_squared)) * attunate;
 }
 
-float3 indirect(float3 center_normal, float3 center_to_sample, float distance_squared, float attunate, float2 sample_uv, inout uint indirect_light_samples)
+float3 compute_light(float3 center_normal, float3 center_to_sample, float distance_squared, float attunate, float2 sample_uv, inout uint indirect_light_samples)
 {
     float3 indirect = 0.0f;
     
@@ -152,15 +152,16 @@ float3 indirect(float3 center_normal, float3 center_to_sample, float distance_sq
     return indirect;
 }
 
-float2 rotate_direction(float2 dir, float2 cos_sin)
+float4 normal_oriented_hemisphere_ambient_occlusion(float2 uv, float3 position, float3 normal)
 {
-    return float2(dir.x * cos_sin.x - dir.y * cos_sin.y,
-                  dir.x * cos_sin.y + dir.y * cos_sin.x);
-}
-
-float normal_oriented_hemisphere_ambient_occlusion(float2 uv, float3 position, float3 normal, float3 random_vector)
-{
-    float ao = 0.0f;
+    float occlusion = 0.0f;
+    
+    // Use temporal interleaved gradient noise to rotate the random vector (free detail with TAA on)
+    float3 random_vector    = unpack(normalize(tex_normal_noise.Sample(sampler_bilinear_wrap, uv * noise_scale).xyz));
+    float ign               = interleaved_gradient_noise(uv * g_resolution);
+    float rotation_angle    = max(ign * PI2, FLT_MIN);
+    float3 rotation         = float3(cos(rotation_angle), sin(rotation_angle), 0.0f);
+    random_vector           = float3(length(random_vector.xy) * normalize(rotation.xy), random_vector.z);
     
     [unroll]
     for (uint i = 0; i < ao_directions; i++)
@@ -177,38 +178,48 @@ float normal_oriented_hemisphere_ambient_occlusion(float2 uv, float3 position, f
 		float3 center_to_sample = sample_pos - position;
 		float distance_squared  = dot(center_to_sample, center_to_sample);
 		float attunate 			= falloff(distance_squared);
-			
-        // Accumulate
-        ao += occlusion(normal, center_to_sample, distance_squared, attunate);
+
+        [branch]
+        if (attunate != 0.0f)
+        {
+            // Occlusion
+            occlusion += compute_occlusion(normal, center_to_sample, distance_squared, attunate);
+        }
     }
 
-    return 1.0f - saturate((ao * ao_intensity) / (float)ao_directions);
+    occlusion = 1.0f - saturate(occlusion * ao_intensity / float(ao_directions));  
+    return float4(occlusion, occlusion, occlusion, 1);
 }
 
-float4 horizon_based_ambient_occlusion(float2 uv, float3 position, float3 normal, float3 random_vector, float ign)
+float4 horizon_based_ambient_occlusion(float2 uv, float3 position, float3 normal)
 {
-    float radius_pixels     = ao_radius * g_resolution.x / position.z;
-    float uv_stride_pixels  = radius_pixels / (ao_steps + 1); // divide by ao_steps + 1 so that the farthest samples are not fully attenuated
-    float rotation_step      = PI2 / (float)ao_directions;
-  
-    // Occlusion
-    float ao = 0.0f;
-    float3 indirect_light = 0.0f;
-    uint indirect_light_samples = 0;
+    float occlusion     = 0.0f;
+    float3 light        = 0.0f;
+    uint light_samples  = 0;
+    
+    float radius_pixels = max((ao_radius * g_resolution.x * 0.5f) / position.z, (float)ao_steps);
+    radius_pixels       = radius_pixels / (ao_steps + 1); // divide by ao_steps + 1 so that the farthest samples are not fully attenuated
+    float rotation_step = PI2 / (float)ao_directions;
+
+    // Offsets (noise over space and time)
+    float noise_gradient_temporal   = interleaved_gradient_noise(uv * g_resolution);
+    float offset_spatial            = noise_spatial_offset(uv * g_resolution);
+    float offset_temporal           = noise_temporal_offset();
+    float offset_rotation_temporal  = noise_temporal_direction();
+    float ray_offset                = frac(offset_spatial + offset_temporal) + (random(uv) * 2.0 - 1.0) * 0.25;
+    
     [unroll]
     for (uint direction_index = 0; direction_index < ao_directions; direction_index++)
     {
-        float rotation_angle        = direction_index * rotation_step;
-        float2 rotation_direction   = rotate_direction(float2(cos(rotation_angle), sin(rotation_angle)), random_vector.xy);
-        
-        // Jitter starting sample within the first step
-        float ray_pixels = ign * uv_stride_pixels + 1.0;
+        float rotation_angle        = (direction_index + noise_gradient_temporal + offset_rotation_temporal) * rotation_step;
+        float2 rotation_direction   = float2(cos(rotation_angle), sin(rotation_angle)) * g_texel_size;
 
         [unroll]
         for (uint step_index = 0; step_index < ao_steps; ++step_index)
         {
-            float2 snapped_uv       = round(ray_pixels * rotation_direction) * g_texel_size + uv;
-            float3 sample_position  = get_position_view_space(snapped_uv);
+            float2 uv_offset        = max(radius_pixels * (step_index + ray_offset), 1 + step_index) * rotation_direction;
+            float2 sample_uv        = uv + uv_offset;
+            float3 sample_position  = get_position_view_space(sample_uv);
 			float3 center_to_sample = sample_position - position;
 			float distance_squared  = dot(center_to_sample, center_to_sample);
 			float attunate 			= falloff(distance_squared);
@@ -217,39 +228,29 @@ float4 horizon_based_ambient_occlusion(float2 uv, float3 position, float3 normal
 			if (attunate != 0.0f)
 			{
 				// Occlusion
-				ao += occlusion(normal, center_to_sample, distance_squared, attunate);
-	
+                occlusion += compute_occlusion(normal, center_to_sample, distance_squared, attunate);
+                
 				// Indirect bounce
 				#if INDIRECT_BOUNCE
-				indirect_light += indirect(normal, center_to_sample, distance_squared, attunate, snapped_uv, indirect_light_samples);
-				#endif
-			}
-            
-            ray_pixels += uv_stride_pixels;
+				light += compute_light(normal, center_to_sample, distance_squared, attunate, sample_uv, light_samples);
+                #endif
+            }
         }
     }
 
-    ao = 1.0f - saturate(ao * ao_intensity / ao_samples);
+    occlusion = 1.0f - saturate(occlusion * ao_intensity / float(ao_directions));
 
     #if INDIRECT_BOUNCE
-    indirect_light = saturate(indirect_light / float(indirect_light_samples));
+    light = saturate(light / float(light_samples));
     #endif
     
-    return float4(indirect_light, ao);
+    return float4(light, occlusion);
 }
 
 float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
-    float2 uv               = input.uv;
-    float3 position         = get_position_view_space(uv);
-    float3 normal           = get_normal_view_space(uv);
-    float3 random_vector    = unpack(normalize(tex_normal_noise.Sample(sampler_bilinear_wrap, uv * noise_scale).xyz));
-
-    // Use temporal interleaved gradient noise to rotate the random vector (free detail with TAA on)
-    float ign               = interleaved_gradient_noise(uv * g_resolution);
-    float rotation_angle    = max(ign * PI2, FLT_MIN);
-    float3 rotation         = float3(cos(rotation_angle), sin(rotation_angle), 0.0f);
-    random_vector           = float3(length(random_vector.xy) * normalize(rotation.xy), random_vector.z);
-    
-    return horizon_based_ambient_occlusion(uv, position, normal, random_vector, ign);
+    float3 position = get_position_view_space(input.uv);
+    float3 normal   = get_normal_view_space(input.uv);
+  
+    return horizon_based_ambient_occlusion(input.uv, position, normal);
 }

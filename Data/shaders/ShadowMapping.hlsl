@@ -299,7 +299,7 @@ float Technique_Pcf(float3 uv, float compare)
 ------------------------------------------------------------------------------*/
 inline float bias_sloped_scaled(float z, float bias)
 {
-    const float scale_min    = 0.001f; // point at which the point light stops having issues
+    const float scale_min    = 0.002f; // point at which the point light stops having issues
     const float scale_max = 0.1f;
     
     float zdx           = abs(ddx(z));
@@ -419,3 +419,4 @@ float4 Shadow_Map(Surface surface, Light light, bool transparent_pixel)
     
     return shadow;
 }
+
