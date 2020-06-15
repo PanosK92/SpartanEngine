@@ -27,7 +27,7 @@ Platform | API | Status | Quality | Binaries | :+1:
 [![](https://i.imgur.com/j6zIEI9.jpg)](https://www.youtube.com/watch?v=RIae1ma_DSo)
 <img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/readme_screen_1.1.jpg"/>
 <img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/readme_screen_2.JPG"/>
-<img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/readme_screen_3.JPG"/>
+<img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/readme_screen_3.jpg"/>
 
 ## Features (v0.31)
 - 10+ font file formats support (FreeType)
