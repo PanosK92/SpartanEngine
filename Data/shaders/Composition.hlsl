@@ -86,7 +86,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
             
             // Reflection
             light_reflection = saturate(tex_frame.Sample(sampler_bilinear_clamp, sample_ssr).rgb);
-            light_reflection *= fade * reflective_energy;
+            light_reflection *= fade * light_ibl_specular;
 
             // Bounce (specular)
             #if INDIRECT_BOUNCE
@@ -98,7 +98,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         float3 light_emissive = material.emissive * material.albedo * 50.0f;
 
         // Light - Ambient
-        float3 light_ambient = saturate(g_directional_light_intensity * 0.01f);
+        float3 light_ambient = saturate(g_directional_light_intensity * g_directional_light_intensity);
 		#if INDIRECT_BOUNCE
 		light_ambient *= sample_hbao.a;
 		#else

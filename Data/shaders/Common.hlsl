@@ -292,11 +292,32 @@ inline float blue_noise(float2 uv)
     return tex_blue_noise.Sample(sampler_bilinear_wrap, uv * noise_scale + temporal_factor).r;
 }
 
+// Based on Activision GTAO paper: https://www.activision.com/cdn/research/s2016_pbs_activision_occlusion.pptx
+inline float noise_spatial_offset(float2 position_screen)
+{
+    int2 position = (int2)(position_screen);
+    return 0.25 * (float)((position.y - position.x) & 3);
+}
+
+// Based on Activision GTAO paper: https://www.activision.com/cdn/research/s2016_pbs_activision_occlusion.pptx
+static const float offsets[] = { 0.0f, 0.5f, 0.25f, 0.75f };
+inline float noise_temporal_offset()
+{
+    return offsets[(g_frame / 6) % 4] * any(g_taa_jitter_offset);
+}
+
+// Based on Activision GTAO paper: https://www.activision.com/cdn/research/s2016_pbs_activision_occlusion.pptx
+static const float rotations[] = { 60.0f, 300.0f, 180.0f, 240.0f, 120.0f, 0.0f };
+inline float noise_temporal_direction()
+{
+    return (rotations[g_frame % 6] / 360.0f) * any(g_taa_jitter_offset);
+}
+
 /*------------------------------------------------------------------------------
     OCCLUSION/SHADOWING
 ------------------------------------------------------------------------------*/
 
-// From Activision GTAO paper: https://www.activision.com/cdn/research/s2016_pbs_activision_occlusion.pptx
+// Activision GTAO paper: https://www.activision.com/cdn/research/s2016_pbs_activision_occlusion.pptx
 inline float3 MultiBounceAO(float visibility, float3 albedo)
 {
     float3 a = 2.0404 * albedo - 0.3324;
