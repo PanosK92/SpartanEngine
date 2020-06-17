@@ -25,14 +25,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //======================
 
 #if INDIRECT_BOUNCE
-static const uint ao_directions = 2;
-static const uint ao_steps      = 2;
+static const uint ao_directions = 1;
+static const uint ao_steps      = 4;
 #else
 static const uint ao_directions = 2;
 static const uint ao_steps      = 2;
 #endif
-static const float ao_radius    = 0.5f;
-static const float ao_intensity = 2.0f;
+static const float ao_radius            = 0.5f;
+static const float ao_intensity         = 1.0f;
+static const float ao_bounce_intensity  = 1.0f;
 
 static const float ao_samples   = (float)(ao_directions * ao_steps);
 static const float ao_radius2   = ao_radius * ao_radius;
@@ -132,8 +133,6 @@ float3 compute_light(float3 center_normal, float3 center_to_sample, float distan
 	[branch]
 	if (luminance(light) > 0.0f)
 	{
-		center_to_sample = normalize(center_to_sample);
-	
 		float distance      = clamp(sqrt(distance_squared), 0.1, 50);
 		float attunation    = clamp(1.0 / (distance), 0, 50);
 		float occlusion     = saturate(dot(center_normal, center_to_sample)) * attunation;
@@ -222,26 +221,27 @@ float4 horizon_based_ambient_occlusion(float2 uv, float3 position, float3 normal
             float3 sample_position  = get_position_view_space(sample_uv);
 			float3 center_to_sample = sample_position - position;
 			float distance_squared  = dot(center_to_sample, center_to_sample);
-			float attunate 			= falloff(distance_squared);
+            center_to_sample        = normalize(center_to_sample);
+			float attunation 		= falloff(distance_squared);
 			
 			[branch]
-			if (attunate != 0.0f)
+            if (attunation != 0.0f)
 			{
 				// Occlusion
-                occlusion += compute_occlusion(normal, center_to_sample, distance_squared, attunate);
+                occlusion += compute_occlusion(normal, center_to_sample, distance_squared, attunation);
                 
 				// Indirect bounce
 				#if INDIRECT_BOUNCE
-				light += compute_light(normal, center_to_sample, distance_squared, attunate, sample_uv, light_samples);
+				light += compute_light(normal, center_to_sample, distance_squared, attunation, sample_uv, light_samples);
                 #endif
             }
         }
     }
 
-    occlusion = 1.0f - saturate(occlusion * ao_intensity / float(ao_directions));
+    occlusion = 1.0f - saturate(occlusion * ao_intensity / ao_samples);
 
     #if INDIRECT_BOUNCE
-    light = saturate(light / float(light_samples));
+    light = saturate(light * ao_bounce_intensity / float(light_samples));
     #endif
     
     return float4(light, occlusion);
