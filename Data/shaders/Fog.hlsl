@@ -19,44 +19,18 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-struct Material
-{
-    float3 albedo;
-    float roughness;
-    float metallic;
-    float clearcoat;
-    float clearcoat_roughness;
-    float anisotropic;
-    float anisotropic_rotation;
-    float sheen;
-    float sheen_tint;
-    float occlusion;
-    float3 padding;
-    float emissive;
-    float3 F0;
-    bool is_transparent;
-    bool is_sky;
-};
+static const float fog_density      = 3.5f;
+static const float fog_start        = -0.5f;
+static const float fog_end          = 5.0f;
+static const float fog_start_height = -0.5f;
+static const float fog_end_height   = 7.0f;
 
-struct Light
+float get_fog_factor(const Surface surface)
 {
-    float3  color;
-    float3  position;
-    float   range;
-    float3  direction;
-    float   distance_to_pixel;
-    float   angle;
-    float   bias;
-    float   normal_bias;
-    uint    array_size;
-};
-
-struct Surface
-{
-    float2 uv;
-    float depth;
-    float3 position;
-    float3 normal;
-    float3 camera_to_pixel;
-    float camera_to_pixel_length;
-};
+    float pixel_z       = surface.camera_to_pixel_length;
+    float pixel_y       = surface.position.y;
+    float depth_factor  = saturate(1.0f - (fog_end - pixel_z)           / (fog_end - fog_start + FLT_MIN));
+    float height_factor = saturate(1.0f - (fog_end_height - pixel_y)    / (fog_end_height - fog_start_height + FLT_MIN));
+    
+    return depth_factor * height_factor * fog_density;
+}

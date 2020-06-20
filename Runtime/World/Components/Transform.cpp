@@ -163,8 +163,7 @@ namespace Spartan
 
 		m_scaleLocal = scale;
 
-		// A scale of 0 will cause a division by zero when 
-		// decomposing the world transform matrix.
+		// A scale of 0 will cause a division by zero when decomposing the world transform matrix.
 		m_scaleLocal.x = (m_scaleLocal.x == 0.0f) ? Helper::M_EPSILON : m_scaleLocal.x;
 		m_scaleLocal.y = (m_scaleLocal.y == 0.0f) ? Helper::M_EPSILON : m_scaleLocal.y;
 		m_scaleLocal.z = (m_scaleLocal.z == 0.0f) ? Helper::M_EPSILON : m_scaleLocal.z;

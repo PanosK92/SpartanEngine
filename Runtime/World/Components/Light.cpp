@@ -204,7 +204,7 @@ namespace Spartan
 
     void Light::SetRange(float range)
 	{
-		m_range = Helper::Clamp(range, 0.0f, INFINITY);
+		m_range = Helper::Clamp(range, 0.0f, std::numeric_limits<float>::max());
         m_is_dirty = true;
 	}
 
@@ -212,6 +212,11 @@ namespace Spartan
 	{
 		m_angle_rad = Helper::Clamp(angle, 0.0f, Helper::PI_2);
 		m_is_dirty  = true;
+	}
+
+	void Light::SetTimeOfDay(float time_of_day)
+    {
+        m_time_of_day = Helper::Clamp(time_of_day, 0.0f, 24.0f);
 	}
 
 	Vector3 Light::GetDirection() const
