@@ -303,6 +303,7 @@ void Widget_Properties::ShowLight(Light* light) const
 		auto bias					= light->GetBias();
 		auto normal_bias			= light->GetNormalBias();
 		auto range					= light->GetRange();
+        float time_of_day           = light->GetTimeOfDay();
 		m_colorPicker_light->SetColor(light->GetColor());
 		//===========================================================================
 
@@ -327,6 +328,14 @@ void Widget_Properties::ShowLight(Light* light) const
 			ImGui::EndCombo();
 		}
 		ImGui::PopItemWidth();
+
+        // Time of day
+        //if (light->GetLightType() == LightType_Directional)
+        //{
+        //    ImGui::Text("Time of day");
+        //    ImGui::SameLine(ComponentProperty::g_column);
+        //    ImGui::PushItemWidth(300); ImGui::DragFloat("##lightTime", &time_of_day, 0.1f, 0.0f, 24.0f); ImGui::PopItemWidth();
+        //}
 
 		// Color
 		ImGui::Text("Color");
@@ -395,6 +404,7 @@ void Widget_Properties::ShowLight(Light* light) const
 		if (normal_bias != light->GetNormalBias())					        light->SetNormalBias(normal_bias);
 		if (angle / 179.0f != light->GetAngle())					        light->SetAngle(angle / 179.0f);
 		if (range != light->GetRange())								        light->SetRange(range);
+        if (time_of_day != light->GetTimeOfDay())							light->SetTimeOfDay(time_of_day);
 		if (m_colorPicker_light->GetColor() != light->GetColor())	        light->SetColor(m_colorPicker_light->GetColor());
 		//============================================================================================================================
 	}

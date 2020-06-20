@@ -102,6 +102,9 @@ namespace Spartan
 		void SetAngle(float angle);
 		auto GetAngle() const { return m_angle_rad; }
 
+        void SetTimeOfDay(float time_of_day);
+        auto GetTimeOfDay() const { return m_time_of_day; }
+
 		void SetBias(float value)	{ m_bias = value; }
 		float GetBias() const       { return m_bias; }
 
@@ -133,6 +136,7 @@ namespace Spartan
 		float m_range			            = 10.0f;
 		float m_intensity		            = 5.0f;
 		float m_angle_rad		            = 0.5f; // about 30 degrees
+        float m_time_of_day                 = 1.0f;
 		float m_bias			            = 0.1f;
 		float m_normal_bias		            = 5.0f;
         bool m_initialized                  = false;

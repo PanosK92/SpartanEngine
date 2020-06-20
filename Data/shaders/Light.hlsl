@@ -20,9 +20,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =====================      
-#include "BRDF.hlsl"              
+#include "BRDF.hlsl"
 #include "ShadowMapping.hlsl"
 #include "VolumetricLighting.hlsl"
+#include "Fog.hlsl"
 //================================
 
 struct PixelOutputType
@@ -31,6 +32,21 @@ struct PixelOutputType
     float3 specular     : SV_Target1;
     float3 volumetric   : SV_Target2;
 };
+
+float attunation_distance(const Light light)
+{
+    float attenuation = saturate(1.0f - light.distance_to_pixel / light.range);
+    return attenuation * attenuation;
+}
+
+float attunation_angle(const Light light)
+{
+    float cutoffAngle       = 1.0f - light.angle;
+    float light_dot_pixel   = dot(direction.xyz, light.direction);
+    float epsilon           = cutoffAngle - cutoffAngle * 0.9f;
+    float attenuation       = saturate((light_dot_pixel - cutoffAngle) / epsilon); // attenuate when approaching the outer cone
+    return attenuation * attenuation;
+}
 
 PixelOutputType mainPS(Pixel_PosUv input)
 {
@@ -91,26 +107,20 @@ PixelOutputType mainPS(Pixel_PosUv input)
     #if DIRECTIONAL
     light.array_size    = 4;
     light.direction     = direction.xyz; 
-    light.attenuation   = 1.0f;
     #elif POINT
     light.array_size    = 1;
     light.direction     = normalize(surface.position - light.position);
-    light.attenuation   = saturate(1.0f - (light.distance_to_pixel / light.range)); light.attenuation *= light.attenuation;    
+    light.color         *= attunation_distance(light); // attenuate
     #elif SPOT
     light.array_size    = 1;
     light.direction     = normalize(surface.position - light.position);
-    float cutoffAngle   = 1.0f - light.angle;
-    float theta         = dot(direction.xyz, light.direction);
-    float epsilon       = cutoffAngle - cutoffAngle * 0.9f;
-    light.attenuation   = saturate((theta - cutoffAngle) / epsilon); // attenuate when approaching the outer cone
-    light.attenuation   *= saturate(1.0f - light.distance_to_pixel / light.range); light.attenuation *= light.attenuation;
+    light.color         *= attunation_distance(light) * attunation_angle(light); // attenuate
     #endif
-    light.color *= light.attenuation;
     
-    // Shadow 
+    // Compute shadows and volumetric fog/light
+    float4 shadow       = 1.0f;
+    float3 volumetric   = 0.0f;
     {
-        float4 shadow = 1.0f;
-        
         // Shadow mapping
         #if SHADOWS
         {
@@ -119,7 +129,7 @@ PixelOutputType mainPS(Pixel_PosUv input)
             // Volumetric lighting (requires shadow maps)
             #if VOLUMETRIC
             {
-                light_out.volumetric.rgb = VolumetricLighting(surface, light);
+                volumetric = VolumetricLighting(surface, light) * get_fog_factor(surface);
             }
             #endif
         }
@@ -131,13 +141,13 @@ PixelOutputType mainPS(Pixel_PosUv input)
             shadow.a = min(shadow.a, ScreenSpaceShadows(surface, light));
         }
         #endif
-    
-        // Compute multi-bounce ambient occlusion
-        float3 multi_bounce_ao = MultiBounceAO(material.occlusion, sample_albedo.rgb);
-
-        // Modulate light with shadow color, visibility and ambient occlusion
-        light.color *= shadow.rgb * shadow.a * multi_bounce_ao;
     }
+
+    // Compute multi-bounce ambient occlusion
+    float3 multi_bounce_ao = MultiBounceAO(material.occlusion, sample_albedo.rgb);
+
+    // Modulate light with shadow color, visibility and ambient occlusion
+    light.color *= shadow.rgb * shadow.a * multi_bounce_ao;
 
     // Reflectance equation
     [branch]
@@ -203,9 +213,14 @@ PixelOutputType mainPS(Pixel_PosUv input)
 
         float3 radiance = light.color * n_dot_l;
         
-        light_out.diffuse.rgb   = saturate_16(diffuse * radiance);
-        light_out.specular.rgb  = saturate_16((specular + specular_clearcoat + specular_sheen) * radiance + light_reflection);
+        light_out.diffuse.rgb  = saturate_16(diffuse * radiance);
+        light_out.specular.rgb = saturate_16((specular + specular_clearcoat + specular_sheen) * radiance + light_reflection);
+        
     }
+
+    light_out.volumetric.rgb = saturate_16(volumetric);
 
     return light_out;
 }
+
+

@@ -849,7 +849,7 @@ namespace Spartan
             cmd_list->SetTexture(22, (m_options & Render_Hbao) ? m_render_targets[RenderTarget_Hbao] : m_tex_black_opaque);
             cmd_list->SetTexture(23, m_render_targets[RenderTarget_Light_Diffuse]);
             cmd_list->SetTexture(24, m_render_targets[RenderTarget_Light_Specular]);
-            cmd_list->SetTexture(25, (m_options & Render_VolumetricLighting)        ? m_render_targets[RenderTarget_Light_Volumetric] : m_tex_black_transparent);
+            cmd_list->SetTexture(25, m_render_targets[RenderTarget_Light_Volumetric]);
             cmd_list->SetTexture(26, (m_options & Render_ScreenSpaceReflections)    ? m_render_targets[RenderTarget_Ssr] : m_tex_black_transparent);
             cmd_list->SetTexture(27, m_render_targets[RenderTarget_Composition_Hdr_2]); // previous frame before post-processing
             cmd_list->SetTexture(19, m_render_targets[RenderTarget_Brdf_Specular_Lut]);

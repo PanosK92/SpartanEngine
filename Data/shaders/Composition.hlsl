@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
     float2 uv       = input.uv;
-    float3 color    = 0.0f;
+    float4 color    = 0.0f;
     
     // Sample from textures
     float4 sample_normal    = tex_normal.Sample(sampler_point_clamp, uv);
@@ -40,15 +40,12 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     // Post-process samples
     int mat_id = round(sample_normal.a * 65535);
     
-    // Volumetric lighting
-    color += light_volumetric;
-    
     [branch]
     if (mat_id == 0)
     {
-        color += tex_environment.Sample(sampler_bilinear_clamp, direction_sphere_uv(camera_to_pixel)).rgb;
-        color *= clamp(g_directional_light_intensity / 5.0f, 0.01f, 1.0f);
-        return float4(color, 1.0f);
+        color.rgb   += tex_environment.Sample(sampler_bilinear_clamp, direction_sphere_uv(camera_to_pixel)).rgb;
+        color.rgb   *= clamp(g_directional_light_intensity / 5.0f, 0.01f, 1.0f);
+        color.a     = 1.0f;
     }
     else
     {
@@ -98,7 +95,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         float3 light_emissive = material.emissive * material.albedo * 50.0f;
 
         // Light - Ambient
-        float3 light_ambient = saturate(g_directional_light_intensity * g_directional_light_intensity);
+        float3 light_ambient = saturate(g_directional_light_intensity * g_directional_light_intensity) * 0.4f;
 		#if INDIRECT_BOUNCE
 		light_ambient *= sample_hbao.a;
 		#else
@@ -111,7 +108,13 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         light_ibl_specular  *= light_ambient;
     
         // Combine and return
-        color += light_diffuse + light_ibl_diffuse + light_specular + light_ibl_specular + light_reflection + light_emissive + light_bounce;
-        return float4(color, sample_albedo.a);
+        color.rgb += light_diffuse + light_ibl_diffuse + light_specular + light_ibl_specular + light_reflection + light_emissive + light_bounce;
+        color.a = sample_albedo.a;
     }
+
+    // Volumetric lighting
+    color.rgb += light_volumetric;
+    
+    return saturate_16(color);
 }
+

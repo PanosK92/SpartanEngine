@@ -56,6 +56,9 @@ namespace Spartan::Math::Helper
 	template <typename T>
 	constexpr T Clamp(T x, T a, T b) { return x < a ? a : (x > b ? b : x); }
 
+    template <typename T>
+    constexpr T Saturate(T x) { return Clamp<T>(x, static_cast<T>(0), static_cast<T>(1)); }
+
 	// Lerp linearly between to values
 	template <class T, class U>
 	constexpr T Lerp(T lhs, T rhs, U t) { return lhs * (static_cast<U>(1) - t) + rhs * t; }
@@ -103,9 +106,6 @@ namespace Spartan::Math::Helper
 
     template <class T>
     constexpr T Log(T x) { return log(x); }
-
-    template <class T>
-    constexpr T Saturate(T x) { return Clamp(x, static_cast<T>(0), static_cast<T>(1)); }
 
     template <class T>
     inline T Random(T from = static_cast<T>(0), T to = static_cast<T>(1))
