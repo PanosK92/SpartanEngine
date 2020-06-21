@@ -58,7 +58,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 
 #if PASS_TONEMAPPING
     color       = tex.Sample(sampler_point_clamp, uv);
-    color.rgb   = ToneMap(color.rgb, g_exposure);
+    color.rgb   = ToneMap(color.rgb);
 #endif
 
 #if PASS_TEXTURE
@@ -180,4 +180,3 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 
     return color;
 }
-

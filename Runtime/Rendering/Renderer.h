@@ -85,12 +85,10 @@ namespace Spartan
         Option_Value_Anisotropy,
         Option_Value_ShadowResolution,
         Option_Value_Tonemapping,
-        Option_Value_Exposure,
         Option_Value_Gamma,
         Option_Value_Bloom_Intensity,
         Option_Value_Sharpen_Strength,
-        Option_Value_Sharpen_Clamp, // Limits maximum amount of sharpening a pixel receives - Algorithm's default: 0.035f
-        Option_Value_Motion_Blur_Intensity
+        Option_Value_Sharpen_Clamp // Limits maximum amount of sharpening a pixel receives - Algorithm's default: 0.035f
     };
 
     enum Renderer_ToneMapping_Type

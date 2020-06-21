@@ -39,12 +39,17 @@ namespace Spartan
         Math::Matrix view_projection_inv;
         Math::Matrix view_projection_ortho;
         Math::Matrix view_projection_unjittered;
-    
+
         float delta_time;
         float time;
+        uint32_t frame;
+        float camera_aperture;
+
+        float camera_shutter_speed;
+        float camera_iso;
         float camera_near;
         float camera_far;
-    
+
         Math::Vector3 camera_position;
         float bloom_intensity;
 
@@ -52,20 +57,16 @@ namespace Spartan
         Math::Vector3 camera_direction;
 
         float sharpen_clamp;
-        float motion_blur_strength;
         float gamma;
         float tonemapping;
-
-        float exposure;
         float directional_light_intensity;
+
         float ssr_enabled;
         float shadow_resolution;
+        Math::Vector2 padding;
 
         Math::Vector2 taa_jitter_offset_previous;
         Math::Vector2 taa_jitter_offset;
-
-        uint32_t frame;
-        Math::Vector3 padding;
     };
     
     // Low frequency buffer - Updates once per frame

@@ -874,6 +874,9 @@ void Widget_Properties::ShowCamera(Camera* camera) const
 		//= REFLECT ==============================================================================================
 		vector<const char*> projection_types	= { "Perspective", "Orthographic" };
 		auto projection_char_ptr				= projection_types[static_cast<int>(camera->GetProjectionType())];
+        float aperture                          = camera->GetAperture();
+        float shutter_speed                     = camera->GetShutterSpeed();
+        float iso                               = camera->GetIso();
 		float fov								= camera->GetFovHorizontalDeg();
 		float near_plane						= camera->GetNearPlane();
 		float far_plane							= camera->GetFarPlane();
@@ -890,7 +893,7 @@ void Widget_Properties::ShowCamera(Camera* camera) const
 		// Projection
 		ImGui::Text("Projection");
 		ImGui::SameLine(ComponentProperty::g_column);
-		ImGui::PushItemWidth(110.0f);
+		ImGui::PushItemWidth(115.0f);
 		if (ImGui::BeginCombo("##cameraProjection", projection_char_ptr))
 		{
 			for (auto i = 0; i < projection_types.size(); i++)
@@ -910,8 +913,24 @@ void Widget_Properties::ShowCamera(Camera* camera) const
 		}
 		ImGui::PopItemWidth();
 
+        // Aperture
+        ImGui::SetCursorPosX(ComponentProperty::g_column);
+        ImGui::DragFloat("Aperture", &aperture, 0.004f, 0.001f, 5.0f);
+        ImGuiEx::Tooltip("Size of the lens diaphragm");
+
+        // Shutter speed
+        ImGui::SetCursorPosX(ComponentProperty::g_column);
+        ImGui::DragFloat("Shutter Speed", &shutter_speed, 0.001f, 0.0f, 5.0f);
+        ImGuiEx::Tooltip("The length of time camera shutter is open. Also controls the amount of motion blur.");
+
+        // ISO
+        ImGui::SetCursorPosX(ComponentProperty::g_column);
+        ImGui::DragFloat("ISO", &iso, 0.1f, 0.0f, 2000.0f);
+        ImGuiEx::Tooltip("Sensitivity to light");
+
 		// Field of View
-		ImGui::SetCursorPosX(ComponentProperty::g_column);  ImGui::SliderFloat("Field of View", &fov, 1.0f, 179.0f);
+		ImGui::SetCursorPosX(ComponentProperty::g_column);
+        ImGui::DragFloat("Field of View", &fov, 0.1f, 1.0f, 179.0f);
 
 		// Clipping Planes
 		ImGui::Text("Clipping Planes");
@@ -920,9 +939,13 @@ void Widget_Properties::ShowCamera(Camera* camera) const
 
         // FPS Control
         ImGui::Text("FPS Control");
-        ImGui::SameLine(ComponentProperty::g_column); ImGui::Checkbox("##camera_fps_control", &fps_control); ImGuiEx::Tooltip("Enables FPS control while holding down the right mouse button");
+        ImGui::SameLine(ComponentProperty::g_column); ImGui::Checkbox("##camera_fps_control", &fps_control);
+        ImGuiEx::Tooltip("Enables FPS control while holding down the right mouse button");
 
 		//= MAP ====================================================================================================================
+        if (aperture != camera->GetAperture())						        camera->SetAperture(aperture);
+        if (shutter_speed != camera->GetShutterSpeed())					    camera->SetShutterSpeed(shutter_speed);
+        if (iso != camera->GetIso())							            camera->SetIso(iso);
 		if (fov != camera->GetFovHorizontalDeg())							camera->SetFovHorizontalDeg(fov);
 		if (near_plane != camera->GetNearPlane())							camera->SetNearPlane(near_plane);
 		if (far_plane != camera->GetFarPlane())								camera->SetFarPlane(far_plane);
