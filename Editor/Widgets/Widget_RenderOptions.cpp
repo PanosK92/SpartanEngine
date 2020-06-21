@@ -164,8 +164,7 @@ void Widget_RenderOptions::Tick()
                     }
                     ImGui::EndCombo();
                 }
-                ImGui::SameLine(); render_option_float("##tonemapping_option_1", "Exposure", Option_Value_Exposure);
-                ImGui::SameLine(); render_option_float("##tonemapping_option_2", "Gamma", Option_Value_Gamma);
+                ImGui::SameLine(); render_option_float("##tonemapping_option_1", "Gamma", Option_Value_Gamma);
                 ImGui::Separator();
             }
 
@@ -199,8 +198,7 @@ void Widget_RenderOptions::Tick()
             }
 
             // Motion blur
-            ImGui::Checkbox("Motion Blur", &do_motion_blur); ImGui::SameLine();
-            render_option_float("##motion_blur_option_1", "Intensity", Option_Value_Motion_Blur_Intensity);
+            ImGui::Checkbox("Motion Blur", &do_motion_blur);
             ImGui::Separator();
 
             // Chromatic aberration

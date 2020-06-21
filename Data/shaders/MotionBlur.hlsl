@@ -25,10 +25,15 @@ float4 MotionBlur(float2 texCoord, Texture2D tex)
 {   
     float4 color    = tex.Sample(sampler_point_clamp, texCoord);    
     float2 velocity = GetVelocity_Max(texCoord, tex_velocity, tex_depth);
-    
-    // Make velocity scale based on user preference instead of frame rate
-    float velocity_scale = g_motionBlur_strength / g_delta_time;
-    velocity            *= velocity_scale;
+
+    // Compute motion blur strength from camera's shutter speed
+    float motion_blur_strength = saturate(g_camera_shutter_speed * 1.0f);
+	
+	// Scale with delta time
+    motion_blur_strength /= g_delta_time + FLT_MIN;
+	
+	// Scale velocity
+    velocity *= motion_blur_strength;
     
     // Early exit
     if (abs(velocity.x) + abs(velocity.y) < FLT_MIN)

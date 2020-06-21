@@ -72,15 +72,13 @@ namespace Spartan
         m_options |= Render_Sharpening_LumaSharpen;
 
         // Option values
-        m_option_values[Option_Value_Anisotropy]              = 16.0f;
-        m_option_values[Option_Value_ShadowResolution]        = 2048.0f;
-        m_option_values[Option_Value_Tonemapping]             = static_cast<float>(Renderer_ToneMapping_ACES);
-        m_option_values[Option_Value_Exposure]                = 0.0f;
-        m_option_values[Option_Value_Gamma]                   = 2.2f;
-        m_option_values[Option_Value_Sharpen_Strength]        = 1.0f;
-        m_option_values[Option_Value_Sharpen_Clamp]           = 0.35f;
-        m_option_values[Option_Value_Bloom_Intensity]         = 0.1f;
-        m_option_values[Option_Value_Motion_Blur_Intensity]   = 0.02f;
+        m_option_values[Option_Value_Anisotropy]        = 16.0f;
+        m_option_values[Option_Value_ShadowResolution]  = 2048.0f;
+        m_option_values[Option_Value_Tonemapping]       = static_cast<float>(Renderer_ToneMapping_ACES);
+        m_option_values[Option_Value_Gamma]             = 2.2f;
+        m_option_values[Option_Value_Sharpen_Strength]  = 1.0f;
+        m_option_values[Option_Value_Sharpen_Clamp]     = 0.35f;
+        m_option_values[Option_Value_Bloom_Intensity]   = 0.1f;
 
 		// Subscribe to events
 		SUBSCRIBE_TO_EVENT(Event_World_Resolve_Complete,    EVENT_HANDLER_VARIANT(RenderablesAcquire));
@@ -374,6 +372,9 @@ namespace Spartan
         }
 
         // Struct is updated automatically here as per frame data are (by definition) known ahead of time
+        m_buffer_frame_cpu.camera_aperture              = m_camera->GetAperture();
+        m_buffer_frame_cpu.camera_shutter_speed         = m_camera->GetShutterSpeed();
+        m_buffer_frame_cpu.camera_iso                   = m_camera->GetIso();
         m_buffer_frame_cpu.camera_near                  = m_camera->GetNearPlane();
         m_buffer_frame_cpu.camera_far                   = m_camera->GetFarPlane();
         m_buffer_frame_cpu.camera_position              = m_camera->GetTransform()->GetPosition();
@@ -383,11 +384,9 @@ namespace Spartan
         m_buffer_frame_cpu.sharpen_clamp                = m_option_values[Option_Value_Sharpen_Clamp];
         m_buffer_frame_cpu.taa_jitter_offset_previous   = m_buffer_frame_cpu.taa_jitter_offset;
         m_buffer_frame_cpu.taa_jitter_offset            = m_taa_jitter - m_taa_jitter_previous;
-        m_buffer_frame_cpu.motion_blur_strength         = m_option_values[Option_Value_Motion_Blur_Intensity];
         m_buffer_frame_cpu.delta_time                   = static_cast<float>(m_context->GetSubsystem<Timer>()->GetDeltaTimeSmoothedSec());
         m_buffer_frame_cpu.time                         = static_cast<float>(m_context->GetSubsystem<Timer>()->GetTimeSec());
         m_buffer_frame_cpu.tonemapping                  = m_option_values[Option_Value_Tonemapping];
-        m_buffer_frame_cpu.exposure                     = m_option_values[Option_Value_Exposure];
         m_buffer_frame_cpu.gamma                        = m_option_values[Option_Value_Gamma];
         m_buffer_frame_cpu.ssr_enabled                  = GetOption(Render_ScreenSpaceReflections) ? 1.0f : 0.0f;
         m_buffer_frame_cpu.shadow_resolution            = GetOptionValue<float>(Option_Value_ShadowResolution);

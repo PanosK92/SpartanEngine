@@ -32,9 +32,14 @@ cbuffer BufferFrame : register(b0)
 
     float g_delta_time;
     float g_time;
+    uint g_frame;   
+    float g_camera_aperture;
+    
+    float g_camera_shutter_speed;
+    float g_camera_iso;
     float g_camera_near;
     float g_camera_far;
-    
+
     float3 g_camera_position;
     float g_bloom_intensity;
     
@@ -42,20 +47,16 @@ cbuffer BufferFrame : register(b0)
     float3 g_camera_direction;
     
     float g_sharpen_clamp;
-    float g_motionBlur_strength;
     float g_gamma;
     float g_toneMapping;
-    
-    float g_exposure;
     float g_directional_light_intensity;
+    
     float g_ssr_enabled;
     float g_shadow_resolution;
+    float2 g_padding;
 
     float2 g_taa_jitter_offset_previous;
     float2 g_taa_jitter_offset;
-
-    uint g_frame;
-    float3 g_padding;
 };
 
 // Low frequency - Updates once per frame

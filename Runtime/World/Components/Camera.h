@@ -83,6 +83,18 @@ namespace Spartan
 		Math::Vector3 Unproject(const Math::Vector2& position_screen) const;
 		//==============================================================================
 
+        float GetAperture()const                { return m_aperture; }
+        void SetAperture(const float aperture)  { m_aperture = aperture; }
+
+        float GetShutterSpeed() const                   { return m_shutter_speed; }
+        void SetShutterSpeed(const float shutter_speed) { m_shutter_speed = shutter_speed; }
+
+        float GetIso() const            { return m_iso; }
+        void SetIso(const float iso)    { m_iso = iso; }
+
+        // Reference: https://en.wikipedia.org/wiki/Exposure_value
+        float GetEv100() const { return std::log2((m_aperture * m_aperture) / m_shutter_speed * 100.0f / m_iso);}
+
 		//= PLANES/PROJECTION =================================================
 		void SetNearPlane(float near_plane);		
 		void SetFarPlane(float far_plane);	
@@ -115,6 +127,9 @@ namespace Spartan
 	private:
         void FpsControl(float delta_time);
 
+        float m_aperture                    = 0.15f;            // Size of the lens diaphragm
+        float m_shutter_speed               = 1.0f / 120.0f;    // The length of time camera shutter is open. Also controls the amount of motion blur. In film making, the 180-degree rule states that shutter speed should be set to double your frame rate.
+        float m_iso                         = 1000.0f;          // Sensitivity to light
         float m_fov_horizontal_rad          = Math::Helper::DegreesToRadians(90.0f);
         float m_near_plane                  = 0.3f;
         float m_far_plane                   = 1000.0f;	
