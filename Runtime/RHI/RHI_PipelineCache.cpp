@@ -20,6 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ===================
+#include "Spartan.h"
 #include "RHI_PipelineCache.h"
 #include "RHI_Texture.h"
 #include "RHI_Pipeline.h"

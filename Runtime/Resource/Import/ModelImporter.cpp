@@ -20,14 +20,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =================================
+#include "Spartan.h"
 #include "ModelImporter.h"
-#include <assimp/Importer.hpp>
-#include <assimp/postprocess.h>
-#include <assimp/version.h>
 #include "AssimpHelper.h"
 #include "../ProgressReport.h"
 #include "../../RHI/RHI_Texture.h"
-#include "../../Core/Settings.h"
 #include "../../Rendering/Model.h"
 #include "../../Rendering/Animation.h"
 #include "../../Rendering/Material.h"

@@ -20,8 +20,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ================================
+#include "Spartan.h"
 #include "Grid.h"
-#include "../../Logging/Log.h"
 #include "../../World/Components/Transform.h"
 #include "../../RHI/RHI_VertexBuffer.h"
 #include "../../RHI/RHI_IndexBuffer.h"

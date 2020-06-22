@@ -19,16 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==============
-#include "FileSystem.h"
+//= INCLUDES ========
+#include "Spartan.h"
 #include <filesystem>
 #include <regex>
-#include <fstream>
-#include <sstream> 
-#include "../Logging/Log.h"
-#include <Windows.h>
+#include <windows.h>
 #include <shellapi.h>
-//=========================
+//===================
 
 //= NAMESPACES =====
 using namespace std;

@@ -21,13 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ======================
+//= INCLUDES ==============================
 #include "Transform_Enums.h"
-#include "../../Core/EngineDefs.h"
 #include "../../Math/Matrix.h"
 #include "../../Math/BoundingBox.h"
 #include <memory>
-//=================================
+#include "../../Core/Spartan_Definitions.h"
+//=========================================
 
 namespace Spartan
 {

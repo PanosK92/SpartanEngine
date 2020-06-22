@@ -20,17 +20,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ========================
+#include "Spartan.h"
 #include "Camera.h"
-#include <algorithm>
 #include "Transform.h"
 #include "Renderable.h"
 #include "../Entity.h"
-#include "../../Math/RayHit.h"
-#include "../../Core/Context.h"
 #include "../../Input/Input.h"
 #include "../../IO/FileStream.h"
 #include "../../Rendering/Renderer.h"
-#include "../../Math/MathHelper.h"
 //===================================
 
 //= NAMESPACES ===============
@@ -253,7 +250,7 @@ namespace Spartan
 		return position_screen;
 	}
 
-    Rectangle Camera::Project(const BoundingBox& bounding_box) const
+    Math::Rectangle Camera::Project(const BoundingBox& bounding_box) const
     {
         const Vector3& min = bounding_box.GetMin();
         const Vector3& max = bounding_box.GetMax();
@@ -268,7 +265,7 @@ namespace Spartan
         corners[6] = Vector3(min.x, max.y, max.z);
         corners[7] = max;
 
-        Rectangle rectangle;
+        Math::Rectangle rectangle;
         for (Vector3& corner : corners)
         {
             rectangle.Merge(Project(corner));

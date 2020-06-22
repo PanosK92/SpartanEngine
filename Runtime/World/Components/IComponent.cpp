@@ -19,7 +19,8 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =====================
+//= INCLUDES =============
+#include "Spartan.h"
 #include "IComponent.h"
 #include "Light.h"
 #include "Environment.h"
@@ -35,8 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Transform.h"
 #include "Terrain.h"
 #include "../Entity.h"
-#include "../../Core/FileSystem.h"
-//================================
+//========================
 
 //= NAMESPACES =====
 using namespace std;

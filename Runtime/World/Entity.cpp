@@ -20,6 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ========================
+#include "Spartan.h"
 #include "Entity.h"
 #include "World.h"
 #include "Components/Camera.h"
@@ -36,7 +37,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/AudioListener.h"
 #include "Components/Terrain.h"
 #include "../IO/FileStream.h"
-#include "../Core/Context.h"
 //===================================
 
 //= NAMESPACES =====

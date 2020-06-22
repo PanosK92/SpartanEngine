@@ -19,23 +19,17 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =======================================================
+//= INCLUDES =================================
+#include "Spartan.h"
 #include "Constraint.h"
 #include "RigidBody.h"
 #include "Transform.h"
 #include "../Entity.h"
 #include "../World.h"
-#include "../../Core/Context.h"
 #include "../../IO/FileStream.h"
 #include "../../Physics/Physics.h"
 #include "../../Physics/BulletPhysicsHelper.h"
-#pragma warning(push, 0) // Hide warnings which belong to Bullet
-#include <BulletDynamics/ConstraintSolver/btHingeConstraint.h>
-#include <BulletDynamics/ConstraintSolver/btSliderConstraint.h>
-#include <BulletDynamics/ConstraintSolver/btConeTwistConstraint.h>
-#include <BulletDynamics/ConstraintSolver/btPoint2PointConstraint.h>
-#pragma warning(pop)
-//==================================================================
+//============================================
 
 //= NAMESPACES ===============
 using namespace std;

@@ -20,6 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ==============================
+#include "Spartan.h"
 #include "Renderer.h"
 #include "Model.h"
 #include "ShaderGBuffer.h"
@@ -29,8 +30,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Utilities/Sampling.h"
 #include "../Profiling/Profiler.h"
 #include "../Resource/ResourceCache.h"
-#include "../Core/Engine.h"
-#include "../Core/Timer.h"
 #include "../World/Entity.h"
 #include "../World/Components/Transform.h"
 #include "../World/Components/Renderable.h"

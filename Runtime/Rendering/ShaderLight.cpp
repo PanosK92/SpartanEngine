@@ -20,6 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =========================
+#include "Spartan.h"
 #include "ShaderLight.h"
 #include "Renderer.h"
 #include "../World/Components/Light.h"

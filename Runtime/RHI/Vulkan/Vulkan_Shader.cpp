@@ -20,16 +20,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =====================
+#include "Spartan.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Device.h"
 #include "../RHI_Shader.h"
 #include "../RHI_InputLayout.h"
-#include "../../Logging/Log.h"
-#include "../../Core/FileSystem.h"
-#include <sstream> 
-#include <fstream>
-#include <atomic>
-#include <map>
 #include <atlbase.h>
 #include <dxc/dxcapi.h>
 //================================

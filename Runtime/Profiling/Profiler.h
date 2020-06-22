@@ -21,14 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
+//= INCLUDES ===========================
 #include <string>
 #include <vector>
 #include "TimeBlock.h"
-#include "../Core/EngineDefs.h"
 #include "../Core/ISubsystem.h"
 #include "../Core/Stopwatch.h"
-//=============================
+#include "../Core/Spartan_Definitions.h"
+//======================================
 
 #define TIME_BLOCK_START_NAMED(profiler, name)  profiler->TimeBlockStart(name, Spartan::TimeBlock_Type::TimeBlock_Cpu, nullptr);
 #define TIME_BLOCK_END(profiler)			    profiler->TimeBlockEnd();

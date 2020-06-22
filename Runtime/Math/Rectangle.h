@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include <memory>
 #include "../RHI/RHI_Definition.h"
-#include "Vector2.h"
 //================================
 
 namespace Spartan

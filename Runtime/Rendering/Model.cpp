@@ -20,6 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ================================
+#include "Spartan.h"
 #include "Model.h"
 #include "Mesh.h"
 #include "Renderer.h"

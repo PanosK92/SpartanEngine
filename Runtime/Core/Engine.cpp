@@ -20,10 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =========================
-#include "Engine.h"
-#include "Timer.h"
-#include "EventSystem.h"
-#include "Settings.h"
+#include "Spartan.h"
 #include "../Audio/Audio.h"
 #include "../Input/Input.h"
 #include "../Physics/Physics.h"

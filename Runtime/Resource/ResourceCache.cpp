@@ -20,6 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ======================
+#include "Spartan.h"
 #include "ResourceCache.h"
 #include "ProgressReport.h"
 #include "Import/ImageImporter.h"

@@ -19,14 +19,16 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =======================
-#include "../Input_Implementation.h"
+//= INCLUDES =========================
+#include "Spartan.h"
 #include "../Input.h"
-#include "../../Core/EventSystem.h"
-#include "../../Core/Context.h"
-#include "../../Core/Engine.h"
-#include <sstream>
-//==================================
+#ifdef API_INPUT_WINDOWS
+	#pragma comment(lib, "XInput.lib")
+    #include <windows.h>
+	#include <xinput.h>
+#endif
+
+//====================================
 
 //= NAMESPACES ===============
 using namespace std;

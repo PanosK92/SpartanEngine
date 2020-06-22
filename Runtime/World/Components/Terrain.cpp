@@ -20,13 +20,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ============================
+#include "Spartan.h"
 #include "Terrain.h"
 #include "Renderable.h"
 #include "..\Entity.h"
 #include "..\..\RHI\RHI_Texture2D.h"
-#include "..\..\Logging\Log.h"
-#include "..\..\Math\Vector3.h"
-#include "..\..\Math\MathHelper.h"
 #include "..\..\RHI\RHI_Vertex.h"
 #include "..\..\Rendering\Model.h"
 #include "..\..\IO\FileStream.h"

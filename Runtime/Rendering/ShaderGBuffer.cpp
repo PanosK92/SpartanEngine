@@ -20,6 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =========================
+#include "Spartan.h"
 #include "ShaderGBuffer.h"
 #include "Material.h"
 #include "../Resource/ResourceCache.h"
