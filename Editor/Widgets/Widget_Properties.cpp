@@ -915,17 +915,17 @@ void Widget_Properties::ShowCamera(Camera* camera) const
 
         // Aperture
         ImGui::SetCursorPosX(ComponentProperty::g_column);
-        ImGui::DragFloat("Aperture", &aperture, 0.004f, 0.001f, 5.0f);
+        ImGui::DragFloat("Aperture", &aperture, 0.001f, 0.001f, 1.0f);
         ImGuiEx::Tooltip("Size of the lens diaphragm. Also controls the depth of field.");
 
         // Shutter speed
         ImGui::SetCursorPosX(ComponentProperty::g_column);
-        ImGui::DragFloat("Shutter Speed", &shutter_speed, 0.001f, 0.0f, 5.0f);
+        ImGui::DragFloat("Shutter Speed", &shutter_speed, 0.001f, 0.0f, 1.0f);
         ImGuiEx::Tooltip("The length of time camera shutter is open. Also controls the amount of motion blur.");
 
         // ISO
         ImGui::SetCursorPosX(ComponentProperty::g_column);
-        ImGui::DragFloat("ISO", &iso, 0.1f, 0.0f, 2000.0f);
+        ImGui::DragFloat("ISO", &iso, 0.2f, 0.0f, 2000.0f);
         ImGuiEx::Tooltip("Sensitivity to light");
 
 		// Field of View
