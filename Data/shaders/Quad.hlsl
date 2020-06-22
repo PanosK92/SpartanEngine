@@ -25,8 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ChromaticAberration.hlsl"
 #include "Blur.hlsl"
 #include "ToneMapping.hlsl"
-#include "ResolveTAA.hlsl"
-#include "MotionBlur.hlsl"
 #include "Dithering.hlsl"
 #include "Scaling.hlsl"
 #define FXAA_PC 1
@@ -93,10 +91,6 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     color.rgb = LumaSharpen(uv, tex, g_resolution, g_sharpen_strength, g_sharpen_clamp);    
 #endif
 
-#if PASS_TAA_RESOLVE
-    color = ResolveTAA(uv, tex, tex2);
-#endif
-
 #if PASS_TAA_SHARPEN
     color = SharpenTaa(uv, tex);    
 #endif
@@ -144,10 +138,6 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 #if PASS_DITHERING
     color = tex.Sample(sampler_point_clamp, uv);
     color.rgb += dither(uv);
-#endif
-
-#if PASS_MOTION_BLUR
-    color = MotionBlur(uv, tex);
 #endif
 
 #if DEBUG_NORMAL

@@ -35,8 +35,8 @@ Platform | API | Status | Quality | Binaries | :+1:
 - 30+ image file formats support (FreeImage)
 - 40+ model file formats support (Assimp)
 - Vulkan and DirectX 11 backends (same HLSL shaders compile everywhere)
-- Deferred rendering with transparency (under a single render path and using the same shaders).
-- Principled BSDF supporting anisotropic, clearcoat and cloth materials (combined with things like normal mapping, parallax, masking, occlusion etc).
+- Deferred rendering with transparency (under a single render path and using the same shaders)
+- Principled BSDF supporting anisotropic, clearcoat and cloth materials (combined with things like normal mapping, parallax, masking, occlusion etc)
 - Bloom (Based on a study of Resident Evil 2's RE Engine)
 - Volumetric lighting
 - Lights (Directional, point and spot)
@@ -45,11 +45,13 @@ Platform | API | Status | Quality | Binaries | :+1:
 - SSR (Screen space reflections)
 - SSS (Screen space shadows)
 - TAA (Temporal anti-aliasing based on Uncharted 4)
+- Physically based camera (Aperture, Shutter Speed, ISO)
+- Depth of field, controlled by the aperture of the camera
+- Motion blur controlled by the shutter speed of the camera
 - Real-time shader editor
 - Custom mip chain generation (Higher texture fidelity using Lanczos3 scaling)
 - Font rendering
 - Frustum culling
-- Per-pixel motion blur
 - Post-process effects (Tone-Mapping, FXAA, Sharpening, Dithering, Chromatic aberration etc.)
 - Physics (Rigid bodies, Constraints, Colliders)
 - Entity-component system
@@ -71,9 +73,9 @@ Feature     					 | Completion | Notes
 :-          					 | :-         | :-
 Continuous Vulkan optimisation 	 | -		  | Outperform D3D11
 Screen space global illumination | 100%		  | One bounce of indirect diffuse and specular light
+Depth-of-field					 | 100%       | Controlled by Camera aperture
 DirectX 12						 | -		  | Low priority
 Eye Adaptation 					 | -          | Low priority
-Depth-of-field					 | -          | Low priority, Based on Doom approach
 Subsurface Scattering 			 | -          | Low priority
 Ray traced shadows				 | -          | -
 Ray traced reflections			 | -          | -

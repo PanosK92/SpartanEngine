@@ -916,7 +916,7 @@ void Widget_Properties::ShowCamera(Camera* camera) const
         // Aperture
         ImGui::SetCursorPosX(ComponentProperty::g_column);
         ImGui::DragFloat("Aperture", &aperture, 0.004f, 0.001f, 5.0f);
-        ImGuiEx::Tooltip("Size of the lens diaphragm");
+        ImGuiEx::Tooltip("Size of the lens diaphragm. Also controls the depth of field.");
 
         // Shutter speed
         ImGui::SetCursorPosX(ComponentProperty::g_column);

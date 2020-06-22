@@ -261,13 +261,15 @@ namespace Spartan
 
         // TAA
         m_shaders[Shader_Taa_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_Taa_P]->AddDefine("PASS_TAA_RESOLVE");
-        m_shaders[Shader_Taa_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Quad.hlsl");
+        m_shaders[Shader_Taa_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "TemporalAntialiasing.hlsl");
+
+        // Depth of Field
+        m_shaders[Shader_DepthOfField_P] = make_shared<RHI_Shader>(m_context);
+        m_shaders[Shader_DepthOfField_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "DepthOfField.hlsl");
 
         // Motion Blur
         m_shaders[Shader_MotionBlur_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_MotionBlur_P]->AddDefine("PASS_MOTION_BLUR");
-        m_shaders[Shader_MotionBlur_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Quad.hlsl");
+        m_shaders[Shader_MotionBlur_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "MotionBlur.hlsl");
 
         // Dithering
         m_shaders[Shader_Dithering_P] = make_shared<RHI_Shader>(m_context);

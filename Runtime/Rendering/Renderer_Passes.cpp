@@ -915,7 +915,7 @@ namespace Spartan
         // TAA	
         if (GetOption(Render_AntiAliasing_Taa))
         {
-            Pass_TAA(cmd_list, tex_in_hdr, tex_out_hdr);
+            Pass_TemporalAntialiasing(cmd_list, tex_in_hdr, tex_out_hdr);
             tex_in_hdr.swap(tex_out_hdr);
         }
 
@@ -923,6 +923,13 @@ namespace Spartan
         if (GetOption(Render_MotionBlur))
         {
             Pass_MotionBlur(cmd_list, tex_in_hdr, tex_out_hdr);
+            tex_in_hdr.swap(tex_out_hdr);
+        }
+
+        // Depth of Field
+        if (GetOption(Render_DepthOfField))
+        {
+            Pass_DepthOfField(cmd_list, tex_in_hdr, tex_out_hdr);
             tex_in_hdr.swap(tex_out_hdr);
         }
 
@@ -1256,7 +1263,7 @@ namespace Spartan
 		tex_in.swap(tex_out);
 	}
 
-	void Renderer::Pass_TAA(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+	void Renderer::Pass_TemporalAntialiasing(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
 		// Acquire shaders
         const auto& shader_v = m_shaders[Shader_Quad_V];
@@ -1279,7 +1286,7 @@ namespace Spartan
         pipeline_state.clear_color[0]                   = state_color_dont_care;
         pipeline_state.viewport                         = tex_out->GetViewport();
         pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
-        pipeline_state.pass_name                        = "Pass_TAA";
+        pipeline_state.pass_name                        = "Pass_TemporalAntialiasing";
 
         // Record commands
 		if (cmd_list->BeginRenderPass(pipeline_state))
@@ -1639,6 +1646,44 @@ namespace Spartan
             cmd_list->EndRenderPass();
         }
 	}
+
+    void Renderer::Pass_DepthOfField(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out)
+    {
+        // Acquire shaders
+        const auto& shader_v = m_shaders[Shader_Quad_V];
+		const auto& shader_p = m_shaders[Shader_DepthOfField_P];
+		if (!shader_p->IsCompiled())
+			return;
+
+        // Set render state
+        static RHI_PipelineState pipeline_state;
+        pipeline_state.shader_vertex                    = shader_v.get();
+        pipeline_state.shader_pixel                     = shader_p.get();
+        pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
+        pipeline_state.blend_state                      = m_blend_disabled.get();
+        pipeline_state.depth_stencil_state              = m_depth_stencil_off_off.get();
+        pipeline_state.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride();
+        pipeline_state.render_target_color_textures[0]  = tex_out.get();
+        pipeline_state.clear_color[0]                   = Vector4::Zero;
+        pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
+        pipeline_state.viewport                         = tex_out->GetViewport();
+        pipeline_state.pass_name                        = "Pass_DepthOfField";
+
+        // Record commands
+        if (cmd_list->BeginRenderPass(pipeline_state))
+        {
+            // Update uber buffer
+            m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+            UpdateUberBuffer(cmd_list);
+
+            cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
+            cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
+            cmd_list->SetTexture(28, tex_in);
+            cmd_list->SetTexture(12, m_render_targets[RenderTarget_Gbuffer_Depth]);
+            cmd_list->DrawIndexed(Rectangle::GetIndexCount());
+            cmd_list->EndRenderPass();
+        }
+    }
 
 	void Renderer::Pass_Dithering(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{

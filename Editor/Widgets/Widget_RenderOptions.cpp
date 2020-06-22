@@ -53,6 +53,7 @@ void Widget_RenderOptions::Tick()
     if (ImGui::CollapsingHeader("Graphics", ImGuiTreeNodeFlags_DefaultOpen))
     {
         bool do_bloom                   = m_renderer->GetOption(Render_Bloom);
+        bool do_dof                     = m_renderer->GetOption(Render_DepthOfField);
         bool do_volumetric_lighting     = m_renderer->GetOption(Render_VolumetricLighting);    
         bool do_hbao                    = m_renderer->GetOption(Render_Hbao);
         bool do_sss                     = m_renderer->GetOption(Render_ScreenSpaceShadows);
@@ -173,6 +174,10 @@ void Widget_RenderOptions::Tick()
             render_option_float("##bloom_option_1", "Intensity", Option_Value_Bloom_Intensity, "", 0.001f);
             ImGui::Separator();
 
+            // Depth of Field
+            ImGui::Checkbox("Depth of Field", &do_dof);
+            ImGui::Separator();
+
             // Volumetric lighting
             ImGui::Checkbox("Volumetric lighting", &do_volumetric_lighting);
             ImGuiEx::Tooltip("Requires a light with shadows enabled");
@@ -193,7 +198,7 @@ void Widget_RenderOptions::Tick()
             if (do_hbao || do_ssr)
             {
                 ImGui::Checkbox("SSGI - Screen space global illumination", &do_indirect_bounce);
-                ImGuiEx::Tooltip("Computes one bounce of indirect light using. HBAO and SSR are used for diffuse and specular light, so at least one has to be active");
+                ImGuiEx::Tooltip("Computes one bounce of indirect light. HBAO and SSR are used for diffuse and specular light, so at least one has to be active");
                 ImGui::Separator();
             }
 
@@ -231,6 +236,7 @@ void Widget_RenderOptions::Tick()
 
         // Map back to engine
         m_renderer->SetOption(Render_Bloom,                         do_bloom);
+        m_renderer->SetOption(Render_DepthOfField,                  do_dof);
         m_renderer->SetOption(Render_VolumetricLighting,            do_volumetric_lighting); 
         m_renderer->SetOption(Render_Hbao,                          do_hbao); 
         m_renderer->SetOption(Render_ScreenSpaceShadows,            do_sss);
