@@ -62,7 +62,7 @@ namespace Spartan
         m_options |= Render_Debug_Lights;
         m_options |= Render_Debug_Physics;
         m_options |= Render_Bloom;
-        m_options |= Render_DepthOfField;
+        //m_options |= Render_DepthOfField;
         m_options |= Render_VolumetricLighting;
         m_options |= Render_MotionBlur;
         m_options |= Render_Hbao;
