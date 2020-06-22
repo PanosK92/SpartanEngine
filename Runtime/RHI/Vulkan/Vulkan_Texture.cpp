@@ -20,12 +20,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ========================
+#include "Spartan.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Device.h"
 #include "../RHI_Texture2D.h"
 #include "../RHI_TextureCube.h"
 #include "../RHI_CommandList.h"
-#include "../../Math/MathHelper.h"
 #include "../../Profiling/Profiler.h"
 //===================================
 

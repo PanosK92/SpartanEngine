@@ -20,8 +20,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ==============================
+#include "Spartan.h"
 #include "ScriptInterface.h"
-#include <angelscript.h>
 #include "../Rendering/Material.h"
 #include "../Input/Input.h"
 #include "../World/Entity.h"

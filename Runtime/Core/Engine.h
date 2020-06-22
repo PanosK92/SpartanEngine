@@ -21,10 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==========
-#include "EngineDefs.h"
+//= INCLUDES ===================
 #include <memory>
-//=====================
+#include "Spartan_Definitions.h"
+//==============================
 
 namespace Spartan
 {

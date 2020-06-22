@@ -20,6 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ========================
+#include "Spartan.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Pipeline.h"
 #include "../RHI_Device.h"
@@ -31,7 +32,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_PipelineState.h"
 #include "../RHI_RasterizerState.h"
 #include "../RHI_DepthStencilState.h"
-#include "../../Logging/Log.h"
 //===================================
 
 //= NAMESPACES =====

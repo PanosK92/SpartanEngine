@@ -90,6 +90,10 @@ project (RUNTIME_NAME)
 	staticruntime "On"
 	defines{ "SPARTAN_RUNTIME", API_GRAPHICS }
 	
+	-- Procompiled headers
+	pchheader "Spartan.h"
+	pchsource "../Runtime/Core/Spartan.cpp"
+	
 	-- Source
 	files 
 	{ 

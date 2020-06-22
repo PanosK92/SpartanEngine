@@ -20,10 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =====================
-#include "Timer.h"
-#include "Context.h"
-#include "Settings.h"
-#include "../Logging/Log.h"
+#include "Spartan.h"
 #include "../RHI/RHI_Device.h"
 #include "../Rendering/Renderer.h"
 //================================

@@ -20,6 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ==========================
+#include "Spartan.h"
 #include "World.h"
 #include "Entity.h"
 #include "Components/Transform.h"
@@ -27,8 +28,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Light.h"
 #include "Components/Environment.h"
 #include "Components/AudioListener.h"
-#include "../Core/Engine.h"
-#include "../Core/Stopwatch.h"
 #include "../Resource/ResourceCache.h"
 #include "../Resource/ProgressReport.h"
 #include "../IO/FileStream.h"

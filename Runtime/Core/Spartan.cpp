@@ -19,17 +19,4 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#pragma once
-
-//= INCLUDES ==================
-#include "../Core/EngineDefs.h"
-//=============================
-
-#ifdef API_INPUT_WINDOWS
-    #ifndef WIN32_LEAN_AND_MEAN
-    #define WIN32_LEAN_AND_MEAN
-    #endif
-	#pragma comment(lib, "XInput.lib")
-    #include <windows.h>
-	#include <xinput.h>
-#endif
+#include "Spartan.h"

@@ -20,14 +20,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =============================
+#include "Spartan.h"
 #include "Audio.h"
 #include <fmod.hpp>
 #include <fmod_errors.h>
-#include <sstream>
-#include "../Core/Engine.h"
-#include "../Core/EventSystem.h"
-#include "../Core/Settings.h"
-#include "../Core/Context.h"
 #include "../Profiling/Profiler.h"
 #include "../World/Components/Transform.h"
 //========================================

@@ -21,15 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
+//= INCLUDES ===================
 #include "../Math/Vector2.h"
 #include "../Math/Vector3.h"
 #include "../Math/Vector4.h"
 #include "../Math/Quaternion.h"
 #include "../Math/Matrix.h"
-#include "EngineDefs.h"
 #include <variant>
-//=============================
+#include "Spartan_Definitions.h"
+//==============================
 
 //= FORWARD DECLARATIONS =
 namespace Spartan

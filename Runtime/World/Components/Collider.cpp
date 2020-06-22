@@ -19,7 +19,8 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==================================================
+//= INCLUDES =================================
+#include "Spartan.h"
 #include "Collider.h"
 #include "Transform.h"
 #include "RigidBody.h"
@@ -27,17 +28,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Entity.h"
 #include "../../IO/FileStream.h"
 #include "../../Physics/BulletPhysicsHelper.h"
-#include "../../Logging/Log.h"
 #include "../../RHI/RHI_Vertex.h"
-#pragma warning(push, 0) // Hide warnings which belong to Bullet
-#include <BulletCollision/CollisionShapes/btSphereShape.h>
-#include <BulletCollision/CollisionShapes/btCylinderShape.h>
-#include <BulletCollision/CollisionShapes/btCapsuleShape.h>
-#include <BulletCollision/CollisionShapes/btStaticPlaneShape.h>
-#include <BulletCollision/CollisionShapes/btConeShape.h>
-#include <BulletCollision/CollisionShapes/btConvexHullShape.h>
-#pragma warning(pop)
-//=============================================================
+//============================================
 
 //= NAMESPACES ================
 using namespace std;

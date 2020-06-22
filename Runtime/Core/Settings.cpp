@@ -20,15 +20,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ======================
-#include "Settings.h"
-#include "Timer.h"
-#include "Context.h"
-#include <fstream>
-#include "../Logging/Log.h"
+#include "Spartan.h"
 #include "../Core/FileSystem.h"
 #include "../Rendering/Renderer.h"
 #include "../Threading/Threading.h"
-#include "pugixml.hpp"
 //=================================
 
 //= NAMESPACES ================

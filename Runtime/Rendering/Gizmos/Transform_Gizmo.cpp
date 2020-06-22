@@ -20,6 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ================================
+#include "Spartan.h"
 #include "Transform_Gizmo.h"
 #include "../Model.h"
 #include "../../RHI/RHI_IndexBuffer.h"

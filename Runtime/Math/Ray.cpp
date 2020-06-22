@@ -19,16 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==============================
-#include "Ray.h"
-#include <algorithm>
-#include "RayHit.h"
-#include "../Core/Context.h"
+//= INCLUDES ===============================
+#include "Spartan.h"
 #include "../World/World.h"
 #include "../World/Entity.h"
 #include "../World/Components/Environment.h"
 #include "../World/Components/Renderable.h"
-//=========================================
+//==========================================
 
 //= NAMESPACES =====
 using namespace std;

@@ -20,9 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =======
-#include "Frustum.h"
-#include "Plane.h"
-#include <limits>
+#include "Spartan.h"
 //==================
 
 //= NAMESPACES =====
@@ -34,8 +32,8 @@ namespace Spartan::Math
     Frustum::Frustum(const Matrix& view, const Matrix& projection, float screen_depth)
 	{
 		// Calculate the minimum Z distance in the frustum.
-        const float z_min                 = -projection.m32 / projection.m22;
-        const float r                     = screen_depth / (screen_depth - z_min);
+        const float z_min           = -projection.m32 / projection.m22;
+        const float r               = screen_depth / (screen_depth - z_min);
 		Matrix projection_updated   = projection;
 		projection_updated.m22      = r;
 		projection_updated.m32      = -r * z_min;

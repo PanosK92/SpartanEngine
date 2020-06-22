@@ -20,8 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =================
-#include "BoundingBox.h"
-#include "Matrix.h"
+#include "Spartan.h"
 #include "../RHI/RHI_Vertex.h"
 //============================
 

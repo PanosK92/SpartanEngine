@@ -21,12 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
+//= INCLUDES ===========================
 #include <memory>
 #include <string>
 #include <vector>
-#include "../Core/EngineDefs.h"
-//=============================
+#include "../Core/Spartan_Definitions.h"
+//======================================
 
 //= FORWARD DECLARATIONS =
 namespace pugi

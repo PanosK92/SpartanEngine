@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =================================
+#include "Spartan.h"
 #include "TransformHandle.h"
 #include "Transform_Gizmo.h"
 #include "../Model.h"

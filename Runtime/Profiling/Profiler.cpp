@@ -20,13 +20,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =========================
+#include "Spartan.h"
 #include "Profiler.h"
-#include "../RHI/RHI_Device.h"
 #include "../Rendering/Renderer.h"
-#include "../RHI/RHI_CommandList.h"
 #include "../Resource/ResourceCache.h"
+#include "../RHI/RHI_Device.h"
+#include "../RHI/RHI_CommandList.h"
 #include "../RHI/RHI_Implementation.h"
-#include "../Core/Timer.h"
 //====================================
 
 //= NAMESPACES =====

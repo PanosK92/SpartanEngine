@@ -20,10 +20,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ========================
+#include "Spartan.h"
 #include "../RHI_Implementation.h"
-#include "../../Profiling/Profiler.h"
-#include "../../Logging/Log.h"
-#include "../../Rendering/Renderer.h"
 #include "../RHI_CommandList.h"
 #include "../RHI_Pipeline.h"
 #include "../RHI_Device.h"
@@ -40,7 +38,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_SwapChain.h"
 #include "../RHI_PipelineState.h"
 #include "../RHI_DescriptorCache.h"
-#include <array>
+#include "../../Profiling/Profiler.h"
+#include "../../Rendering/Renderer.h"
 //===================================
 
 //= NAMESPACES ===============

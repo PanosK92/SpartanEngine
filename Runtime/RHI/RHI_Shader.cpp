@@ -20,10 +20,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ======================
+#include "Spartan.h"
 #include "RHI_Shader.h"
 #include "RHI_InputLayout.h"
-#include "../Core/Context.h"
-#include "../Core/FileSystem.h"
 #include "../Threading/Threading.h"
 #include "../Rendering/Renderer.h"
 #pragma warning(push, 0) // Hide warnings belonging SPIRV-Cross 

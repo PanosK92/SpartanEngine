@@ -21,11 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
+//= INCLUDES ===========================
 #include <string>
-#include "../Core/EngineDefs.h"
 #include "MathHelper.h"
-//=============================
+#include "../Core/Spartan_Definitions.h"
+//======================================
 
 namespace Spartan::Math
 {

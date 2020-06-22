@@ -21,10 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
-#include "../Core/EngineDefs.h"
-//=============================
-
 // RUNTIME
 #if defined(SPARTAN_RUNTIME) || (SPARTAN_RUNTIME_STATIC == 1)
 
