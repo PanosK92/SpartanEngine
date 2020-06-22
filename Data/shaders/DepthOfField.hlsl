@@ -23,12 +23,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common.hlsl"
 //====================
 
-static const float g_dof_blur_size = 15.0f;
+static const uint g_dof_temporal_directions = 16;
+static const uint g_dof_sample_count        = 22;
+static const float g_dof_size               = 15.0f;
+
+static const float g_dof_rotation_step = PI2 / (float) g_dof_temporal_directions;
 
 // From https://github.com/Unity-Technologies/PostProcessing/
 // blob/v2/PostProcessing/Shaders/Builtins/DiskKernels.hlsl
-static const uint g_dof_sample_count = 22;
-static const float2 g_dof_samples[g_dof_sample_count] =
+static const float2 g_dof_samples[22] =
 {
     float2(0, 0),
     float2(0.53333336, 0),
@@ -57,9 +60,9 @@ static const float2 g_dof_samples[g_dof_sample_count] =
 // Returns the focus distance by computing the average depth in a cross pattern neighborhood
 float get_focus_distnace()
 {
-    float2 uv   = 0.5f;
-    float dx    = g_dof_blur_size * g_texel_size.x;
-    float dy    = g_dof_blur_size * g_texel_size.y;
+    float2 uv   = 0.5f; // center
+    float dx    = g_dof_size * g_texel_size.x;
+    float dy    = g_dof_size * g_texel_size.y;
 	
     float tl = get_linear_depth(uv + float2(-dx, -dy));
     float tr = get_linear_depth(uv + float2(+dx, -dy));
@@ -76,6 +79,12 @@ float circle_of_confusion(float depth, float focus_distance, float focus_range)
     return abs(clamp(coc, -1.0f, 1.0f));
 }
 
+float2 rotate_direction(float2 Dir, float2 CosSin)
+{
+    return float2(Dir.x * CosSin.x - Dir.y * CosSin.y,
+              Dir.x * CosSin.y + Dir.y * CosSin.x);
+}
+
 float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
     // Autofocus
@@ -83,18 +92,34 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     
     // Find circle of confusion
     float depth         = get_linear_depth(input.uv);
-    float focus_range   = g_camera_aperture * 1000.0f;
+    float focus_range   = g_camera_aperture * 100.0f;
     float coc           = circle_of_confusion(depth, focus_distance, focus_range);
 
+    // Temporal noise and rotation
+    float noise_gradient_temporal   = interleaved_gradient_noise(input.uv * g_resolution);
+    float offset_rotation_temporal  = noise_temporal_direction();
+    
+    // Temporal offset
+    float temporal_scale    = 10.0f;
+    float temporal_offset   = noise_gradient_temporal * (temporal_scale / g_dof_size) * any(g_taa_jitter_offset);
+
+    // Temporal rotation
+    float rotation_angle        = (g_frame + noise_gradient_temporal + offset_rotation_temporal) * g_dof_rotation_step * any(g_taa_jitter_offset);
+    float2 rotation_direction   = normalize(float2(cos(rotation_angle), sin(rotation_angle)));
+    
     // Sample color
     float4 color = 0.0f;
+    [unroll]
     for (uint i = 0; i < g_dof_sample_count; i++)
     {
-        float2 offset   = g_dof_samples[i];
-        offset          *= g_texel_size * g_dof_blur_size;
-        color           += tex.Sample(sampler_point_clamp, input.uv + offset);
+        float2 direction            = g_dof_samples[i];
+        float2 temporal_direction   = rotate_direction(direction, rotation_direction);
+        float2 jitter               = temporal_direction - temporal_offset * temporal_direction;
+        jitter                      *= g_texel_size * g_dof_size;
+      
+        color += tex.Sample(sampler_point_clamp, input.uv + jitter);
     }
-    color *= 1.0f / (float)g_dof_sample_count;
+    color /= (float)g_dof_sample_count;
 
     // Lerp
     color = lerp(tex.Sample(sampler_point_clamp, input.uv), color, coc);
