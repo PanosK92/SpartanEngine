@@ -19,12 +19,17 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-static const uint g_mb_samples = 16;
+//= INCLUDES ===========
+#include "Common.hlsl"
+#include "Velocity.hlsl"
+//======================
 
-float4 MotionBlur(float2 texCoord, Texture2D tex)
-{   
-    float4 color    = tex.Sample(sampler_point_clamp, texCoord);    
-    float2 velocity = GetVelocity_Max(texCoord, tex_velocity, tex_depth);
+static const uint g_motion_blur_samples = 16;
+
+float4 mainPS(Pixel_PosUv input) : SV_TARGET
+{
+    float4 color    = tex.Sample(sampler_point_clamp, input.uv);
+    float2 velocity = GetVelocity_Max(input.uv, tex_velocity, tex_depth);
 
     // Compute motion blur strength from camera's shutter speed
     float motion_blur_strength = saturate(g_camera_shutter_speed * 1.0f);
@@ -40,11 +45,11 @@ float4 MotionBlur(float2 texCoord, Texture2D tex)
         return color;
     
     [unroll]
-    for (uint i = 1; i < g_mb_samples; ++i) 
+    for (uint i = 1; i < g_motion_blur_samples; ++i)
     {
-        float2 offset   = velocity * (float(i) / float(g_mb_samples - 1) - 0.5f);
-        color           += tex.SampleLevel(sampler_bilinear_clamp, texCoord + offset, 0);
+        float2 offset = velocity * (float(i) / float(g_motion_blur_samples - 1) - 0.5f);
+        color += tex.SampleLevel(sampler_bilinear_clamp, input.uv + offset, 0);
     }
 
-    return color / float(g_mb_samples);
+    return color / float(g_motion_blur_samples);
 }

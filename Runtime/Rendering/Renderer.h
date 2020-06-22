@@ -64,20 +64,21 @@ namespace Spartan
 		Render_Debug_PerformanceMetrics = 1 << 6,
 		Render_Debug_Physics			= 1 << 7,
         Render_Debug_Wireframe          = 1 << 8,
-		Render_Bloom				    = 1 << 9,
+		Render_Bloom				    = 1 << 9,    
         Render_VolumetricLighting       = 1 << 10,
         Render_AntiAliasing_Taa         = 1 << 11,
 		Render_AntiAliasing_Fxaa	    = 1 << 12,
 		Render_Hbao                     = 1 << 13,
-        Render_IndirectBounce      = 1 << 14,
+        Render_IndirectBounce           = 1 << 14,
         Render_ScreenSpaceShadows       = 1 << 15,
 		Render_ScreenSpaceReflections	= 1 << 16,
 		Render_MotionBlur			    = 1 << 17,
-		Render_Sharpening_LumaSharpen	= 1 << 18,
-		Render_ChromaticAberration	    = 1 << 19,
-		Render_Dithering			    = 1 << 20,
-        Render_ReverseZ                 = 1 << 21,
-        Render_DepthPrepass             = 1 << 22
+        Render_DepthOfField             = 1 << 18,
+		Render_Sharpening_LumaSharpen	= 1 << 19,
+		Render_ChromaticAberration	    = 1 << 20,
+		Render_Dithering			    = 1 << 21,
+        Render_ReverseZ                 = 1 << 22,
+        Render_DepthPrepass             = 1 << 23
 	};
 
     enum Renderer_Option_Value
@@ -120,6 +121,7 @@ namespace Spartan
 		Shader_Luma_P,
 		Shader_Taa_P,
 		Shader_MotionBlur_P,
+        Shader_DepthOfField_P,
 		Shader_Sharpen_Luma_P,
 		Shader_ChromaticAberration_P,	
 		Shader_BloomDownsampleLuminance_P,
@@ -276,7 +278,7 @@ namespace Spartan
 		void Pass_Composition(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_out, const bool use_stencil);
         void Pass_AlphaBlend(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, const bool use_stencil);
 		void Pass_PostProcess(RHI_CommandList* cmd_list);
-		void Pass_TAA(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
+		void Pass_TemporalAntialiasing(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
 		bool Pass_DebugBuffer(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_out);
 		void Pass_ToneMapping(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
 		void Pass_GammaCorrection(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
@@ -284,6 +286,7 @@ namespace Spartan
         void Pass_LumaSharpen(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
 		void Pass_ChromaticAberration(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
 		void Pass_MotionBlur(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
+        void Pass_DepthOfField(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
 		void Pass_Dithering(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
 		void Pass_Bloom(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
         void Pass_Upsample(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);

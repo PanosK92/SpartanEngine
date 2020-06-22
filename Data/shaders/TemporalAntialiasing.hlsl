@@ -19,9 +19,11 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===========
+//= INCLUDES ==============
+#include "Common.hlsl"
 #include "Velocity.hlsl"
-//======================
+#include "ToneMapping.hlsl"
+//=========================
 
 // From "Temporal Reprojection Anti-Aliasing"
 // https://github.com/playdeadgames/temporal
@@ -64,7 +66,7 @@ float3 clip_aabb(float3 aabb_min, float3 aabb_max, float3 p, float3 q)
 #endif
 }
 
-float4 ResolveTAA(float2 uv, Texture2D tex_history, Texture2D tex_current)
+float4 TemporalAntialiasing(float2 uv, Texture2D tex_history, Texture2D tex_current)
 {
     // Get history and current colors
     float2 velocity         = GetVelocity_DepthMin(uv);
@@ -122,4 +124,7 @@ float4 ResolveTAA(float2 uv, Texture2D tex_history, Texture2D tex_current)
     return float4(ReinhardInverse(resolved), 1.0f);
 }
 
-
+float4 mainPS(Pixel_PosUv input) : SV_TARGET
+{
+    return TemporalAntialiasing(input.uv, tex, tex2);
+}
