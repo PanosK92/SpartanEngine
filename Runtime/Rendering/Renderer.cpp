@@ -62,7 +62,7 @@ namespace Spartan
         m_options |= Render_Debug_Lights;
         m_options |= Render_Debug_Physics;
         m_options |= Render_Bloom;
-        //m_options |= Render_DepthOfField;
+        m_options |= Render_DepthOfField;
         m_options |= Render_VolumetricLighting;
         m_options |= Render_MotionBlur;
         m_options |= Render_Hbao;
@@ -361,7 +361,7 @@ namespace Spartan
         DrawLine(Vector3(min.x, max.y, max.z), Vector3(min.x, min.y, max.z), color, color, depth);
 	}
 
-	bool Renderer::UpdateFrameBuffer()
+    bool Renderer::UpdateFrameBuffer()
     {
         // Map
         BufferFrame* buffer = static_cast<BufferFrame*>(m_buffer_frame_gpu->Map());

@@ -232,7 +232,22 @@ namespace Spartan
         // Blur Box
         m_shaders[Shader_BlurBox_P] = make_shared<RHI_Shader>(m_context);
         m_shaders[Shader_BlurBox_P]->AddDefine("PASS_BLUR_BOX");
-        m_shaders[Shader_BlurBox_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Quad.hlsl");
+        m_shaders[Shader_BlurBox_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Blur.hlsl");
+
+        // Blur Tent
+        m_shaders[Shader_BlurTent_P] = make_shared<RHI_Shader>(m_context);
+        m_shaders[Shader_BlurTent_P]->AddDefine("PASS_BLUR_TENT");
+        m_shaders[Shader_BlurTent_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Blur.hlsl");
+
+        // Blur Gaussian
+        m_shaders[Shader_BlurGaussian_P] = make_shared<RHI_Shader>(m_context);
+        m_shaders[Shader_BlurGaussian_P]->AddDefine("PASS_BLUR_GAUSSIAN");
+        m_shaders[Shader_BlurGaussian_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Blur.hlsl");
+
+        // Blur Bilateral Gaussian
+        m_shaders[Shader_BlurGaussianBilateral_P] = make_shared<RHI_Shader>(m_context);
+        m_shaders[Shader_BlurGaussianBilateral_P]->AddDefine("PASS_BLUR_BILATERAL_GAUSSIAN");
+        m_shaders[Shader_BlurGaussianBilateral_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Blur.hlsl");
 
         // Bloom - downsample luminance
         m_shaders[Shader_BloomDownsampleLuminance_P] = make_shared<RHI_Shader>(m_context);
@@ -310,16 +325,6 @@ namespace Spartan
         m_shaders[Shader_DebugChannelRgbGammaCorrect_P] = make_shared<RHI_Shader>(m_context);
         m_shaders[Shader_DebugChannelRgbGammaCorrect_P]->AddDefine("DEBUG_RGB_CHANNEL_GAMMA_CORRECT");
         m_shaders[Shader_DebugChannelRgbGammaCorrect_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Quad.hlsl");
-
-        // Blur Gaussian
-        m_shaders[Shader_BlurGaussian_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_BlurGaussian_P]->AddDefine("PASS_BLUR_GAUSSIAN");
-        m_shaders[Shader_BlurGaussian_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Quad.hlsl");
-
-        // Blur Bilateral Gaussian
-        m_shaders[Shader_BlurGaussianBilateral_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_BlurGaussianBilateral_P]->AddDefine("PASS_BLUR_BILATERAL_GAUSSIAN");
-        m_shaders[Shader_BlurGaussianBilateral_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Quad.hlsl");
 
         // HBAO
         m_shaders[Shader_Hbao_P] = make_shared<RHI_Shader>(m_context);

@@ -19,7 +19,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-float4 Blur_Box(float2 uv, Texture2D tex)
+//= INCLUDES =========
+#include "Common.hlsl"
+//====================
+
+#if PASS_BLUR_BOX
+float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
     float4 result   = float4(0.0f, 0.0f, 0.0f, 0.0f);
     float temp      = float(-int(g_blur_sigma)) * 0.5f + 0.5f;
@@ -30,12 +35,28 @@ float4 Blur_Box(float2 uv, Texture2D tex)
         for (float j = 0; j < g_blur_sigma; j += g_blur_direction.y) 
         {
             float2 offset = (hlim + float2(float(i), float(j))) * g_texel_size;
-            result += tex.SampleLevel(sampler_bilinear_clamp, uv + offset, 0);
+            result += tex.SampleLevel(sampler_bilinear_clamp, input.uv + offset, 0);
         }
     }
 
     return result / float(g_blur_sigma * g_blur_sigma);
 }
+#endif
+
+#if PASS_BLUR_TENT
+float4 mainPS(Pixel_PosUv input) : SV_TARGET
+{
+    float dx = g_texel_size.x * 0.5f;
+    float dy = g_texel_size.y * 0.5f;
+    
+    float4 tl = tex.Sample(sampler_bilinear_clamp, input.uv + float2(-dx, -dy));
+    float4 tr = tex.Sample(sampler_bilinear_clamp, input.uv + float2(dx, -dy));
+    float4 bl = tex.Sample(sampler_bilinear_clamp, input.uv + float2(-dx, dy));
+    float4 br = tex.Sample(sampler_bilinear_clamp, input.uv + float2(dx, dy));
+    
+    return (tl + tr + bl + br) * 0.25f;
+}
+#endif
 
 float4 Blur_Gaussian_Fast(float2 uv, Texture2D tex)
 {
@@ -58,15 +79,16 @@ float CalcGaussianWeight(int sampleDist)
     return (g * exp(-(sampleDist * sampleDist) / (2.0f * sigma2)));
 }
 
-// Performs a gaussian blur in one direction
-float4 Blur_Gaussian(float2 uv, Texture2D tex)
+// Gaussian blur in one direction
+#if PASS_BLUR_GAUSSIAN
+float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
     // https://github.com/TheRealMJP/MSAAFilter/blob/master/MSAAFilter/PostProcessing.hlsl#L50
     float weightSum = 0.0f;
     float4 color    = 0;
     for (int i = -5; i < 5; i++)
     {
-        float2 sample_uv    = uv + (i * g_texel_size * g_blur_direction);    
+        float2 sample_uv    = input.uv + (i * g_texel_size * g_blur_direction);    
         float weight        = CalcGaussianWeight(i);
         color               += tex.SampleLevel(sampler_bilinear_clamp, sample_uv, 0) * weight;
         weightSum           += weight;
@@ -76,20 +98,22 @@ float4 Blur_Gaussian(float2 uv, Texture2D tex)
 
     return color;
 }
+#endif
 
-// Performs a bilateral gaussian blur (depth aware) in one direction
-float4 Blur_GaussianBilateral(float2 uv, Texture2D tex)
+// Bilateral gaussian blur in one direction
+#if PASS_BLUR_BILATERAL_GAUSSIAN
+float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
     float weightSum         = 0.0f;
     float4 color            = 0.0f;
-    float center_depth      = get_linear_depth(tex_depth.SampleLevel(sampler_point_clamp, uv, 0).r);
-    float3 center_normal    = normal_decode(tex_normal.SampleLevel(sampler_point_clamp, uv, 0).xyz);
+    float center_depth      = get_linear_depth(tex_depth.SampleLevel(sampler_point_clamp, input.uv, 0).r);
+    float3 center_normal    = normal_decode(tex_normal.SampleLevel(sampler_point_clamp, input.uv, 0).xyz);
     float threshold         = 0.1f;
     
 
     for (int i = -5; i < 5; i++)
     {
-        float2 sample_uv        = uv + (i * g_texel_size * g_blur_direction);    
+        float2 sample_uv        = input.uv + (i * g_texel_size * g_blur_direction);    
         float sample_depth      = get_linear_depth(tex_depth.SampleLevel(sampler_bilinear_clamp, sample_uv, 0).r);
         float3 sample_normal    = normal_decode(tex_normal.SampleLevel(sampler_bilinear_clamp, sample_uv, 0).xyz);
         
@@ -106,3 +130,4 @@ float4 Blur_GaussianBilateral(float2 uv, Texture2D tex)
 
     return color;
 }
+#endif

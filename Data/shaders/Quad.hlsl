@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common.hlsl"
 #include "Sharpening.hlsl"
 #include "ChromaticAberration.hlsl"
-#include "Blur.hlsl"
 #include "ToneMapping.hlsl"
 #include "Dithering.hlsl"
 #include "Scaling.hlsl"
@@ -101,18 +100,6 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 
 #if PASS_DOWNSAMPLE_BOX
     color = Downsample_Box(uv, tex);
-#endif
-
-#if PASS_BLUR_BOX
-    color = Blur_Box(uv, tex);
-#endif
-
-#if PASS_BLUR_GAUSSIAN
-    color = Blur_Gaussian(uv, tex);
-#endif
-
-#if PASS_BLUR_BILATERAL_GAUSSIAN
-    color = Blur_GaussianBilateral(uv, tex);
 #endif
 
 #if PASS_BLOOM_DOWNSAMPLE
