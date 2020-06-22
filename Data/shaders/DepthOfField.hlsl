@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common.hlsl"
 //====================
 
-static const float g_dof_focus_distance = 5.0f;
+static const float g_dof_blur_size = 15.0f;
 
 // From https://github.com/Unity-Technologies/PostProcessing/
 // blob/v2/PostProcessing/Shaders/Builtins/DiskKernels.hlsl
@@ -54,21 +54,45 @@ static const float2 g_dof_samples[g_dof_sample_count] =
     float2(0.90096885, -0.43388376),
 };
 
+// Returns the focus distance by computing the average depth in a cross pattern neighborhood
+float get_focus_distnace()
+{
+    float2 uv   = 0.5f;
+    float dx    = g_dof_blur_size * g_texel_size.x;
+    float dy    = g_dof_blur_size * g_texel_size.y;
+	
+    float tl = get_linear_depth(uv + float2(-dx, -dy));
+    float tr = get_linear_depth(uv + float2(+dx, -dy));
+    float bl = get_linear_depth(uv + float2(-dx, +dy));
+    float br = get_linear_depth(uv + float2(+dx, +dy));
+    float ce = get_linear_depth(uv);
+	
+    return (tl + tr + bl + br + ce) * 0.2f;
+}
+
+float circle_of_confusion(float depth, float focus_distance, float focus_range)
+{
+    float coc = (depth - focus_distance) / focus_range;
+    return abs(clamp(coc, -1.0f, 1.0f));
+}
+
 float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
+    // Autofocus
+    float focus_distance = get_focus_distnace();
+    
     // Find circle of confusion
     float depth         = get_linear_depth(input.uv);
-    float focus_range   = g_camera_aperture * 100.0f;
-    float coc           = (depth - g_dof_focus_distance) / focus_range;
-    coc                 = abs(clamp(coc, -1.0f, 1.0f));
+    float focus_range   = g_camera_aperture * 1000.0f;
+    float coc           = circle_of_confusion(depth, focus_distance, focus_range);
 
     // Sample color
     float4 color = 0.0f;
-    for (int k = 0; k < g_dof_sample_count; k++)
+    for (uint i = 0; i < g_dof_sample_count; i++)
     {
-        float2 offset = g_dof_samples[k];
-        offset *= g_texel_size * 15;
-        color += tex.Sample(sampler_point_clamp, input.uv + offset);
+        float2 offset   = g_dof_samples[i];
+        offset          *= g_texel_size * g_dof_blur_size;
+        color           += tex.Sample(sampler_point_clamp, input.uv + offset);
     }
     color *= 1.0f / (float)g_dof_sample_count;
 
@@ -76,5 +100,3 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     color = lerp(tex.Sample(sampler_point_clamp, input.uv), color, coc);
     return saturate_16(color);
 }
-
-
