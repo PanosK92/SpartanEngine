@@ -76,7 +76,8 @@ float get_focal_depth()
 float circle_of_confusion(float depth, float focal_depth)
 {
     float focus_range = g_camera_aperture * g_camera_far;
-    return saturate(abs(depth - focal_depth) / (focus_range + FLT_MIN));
+    float coc = (depth - focal_depth) / (focus_range + FLT_MIN);
+    return saturate(abs(coc));
 }
 
 float2 rotate_vector(float2 v, float2 direction)
@@ -84,15 +85,48 @@ float2 rotate_vector(float2 v, float2 direction)
     return float2(v.x * direction.x - v.y * direction.y, v.x * direction.y + v.y * direction.x);
 }
 
+#if DOWNSAMPLE_CIRCLE_OF_CONFUSION
 float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
-    // Autofocus
-    float focal_depth = get_focal_depth();
-    
-    // Find circle of confusion
-    float depth = get_linear_depth(input.uv);
-    float coc   = circle_of_confusion(depth, focal_depth);
+    // UVs
+    float dx        = g_texel_size.x;
+    float dy        = g_texel_size.y;
+    float2 uv_tl    = input.uv + float2(-dx, -dy);
+    float2 uv_tr    = input.uv + float2(dx, -dy);
+    float2 uv_bl    = input.uv + float2(-dx, dy);
+    float2 uv_br    = input.uv + float2(dx, dy);
 
+    // Color samples
+    float3 color_tl = tex.Sample(sampler_bilinear_clamp, uv_tl).rgb;
+    float3 color_tr = tex.Sample(sampler_bilinear_clamp, uv_tr).rgb;
+    float3 color_bl = tex.Sample(sampler_bilinear_clamp, uv_bl).rgb;
+    float3 color_br = tex.Sample(sampler_bilinear_clamp, uv_br).rgb;
+
+    // Depth samples
+    float depth_tl = get_linear_depth(uv_tl);
+    float depth_tr = get_linear_depth(uv_tr);
+    float depth_bl = get_linear_depth(uv_bl);
+    float depth_br = get_linear_depth(uv_br);
+
+    // Coc samples
+    float focal_depth = get_focal_depth(); // Autofocus
+    float coc_tl = circle_of_confusion(depth_tl, focal_depth);
+    float coc_tr = circle_of_confusion(depth_tr, focal_depth);
+    float coc_bl = circle_of_confusion(depth_bl, focal_depth);
+    float coc_br = circle_of_confusion(depth_br, focal_depth);
+
+    // Compute final circle of confusion    
+    float coc_min   = min(min(min(coc_tl, coc_tr), coc_bl), coc_br);
+    float coc_max   = max(max(max(coc_tl, coc_tr), coc_bl), coc_br);
+    float coc       = coc_max >= -coc_min ? coc_max : coc_min;
+
+    return float4((color_tl + color_tr + color_bl + color_br) * 0.25f, coc);
+}
+#endif
+
+#if BOKEH
+float4 mainPS(Pixel_PosUv input) : SV_TARGET
+{
     // Temporal noise and rotation
     float noise_gradient_temporal   = interleaved_gradient_noise(input.uv * g_resolution);
     float offset_rotation_temporal  = noise_temporal_direction();
@@ -119,11 +153,49 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         float2 jitter               = temporal_direction - temporal_offset * temporal_direction;
         float2 sample_uv            = input.uv + direction * g_texel_size * g_dof_bokeh_radius;
 
-        color += tex.Sample(sampler_point_clamp, sample_uv);
+        color += tex.Sample(sampler_bilinear_clamp, sample_uv);
     }
     color /= (float)g_dof_sample_count;
 
-    // Lerp
-    color = lerp(tex.Sample(sampler_point_clamp, input.uv), color, coc);
     return saturate_16(color);
 }
+#endif
+
+#if TENT
+float4 mainPS(Pixel_PosUv input) : SV_TARGET
+{
+    float dx = g_texel_size.x * 0.5f;
+    float dy = g_texel_size.y * 0.5f;
+    
+    float4 tl = tex.Sample(sampler_bilinear_clamp, input.uv + float2(-dx, -dy));
+    float4 tr = tex.Sample(sampler_bilinear_clamp, input.uv + float2(dx, -dy));
+    float4 bl = tex.Sample(sampler_bilinear_clamp, input.uv + float2(-dx, dy));
+    float4 br = tex.Sample(sampler_bilinear_clamp, input.uv + float2(dx, dy));
+    
+    return (tl + tr + bl + br) * 0.25f;
+}
+#endif
+
+#if UPSCALE_BLEND
+float4 mainPS(Pixel_PosUv input) : SV_TARGET
+{
+    // Upsample bokeh
+    float dx            = g_texel_size.x;
+    float dy            = g_texel_size.y;  
+    float4 tl           = tex2.Sample(sampler_bilinear_clamp, input.uv + float2(-dx, -dy));
+    float4 tr           = tex2.Sample(sampler_bilinear_clamp, input.uv + float2(dx, -dy));
+    float4 bl           = tex2.Sample(sampler_bilinear_clamp, input.uv + float2(-dx, dy));
+    float4 br           = tex2.Sample(sampler_bilinear_clamp, input.uv + float2(dx, dy));
+    float4 bokeh        = (tl + tr + bl + br) * 0.25f;
+
+    // Get dof and coc
+    float3 dof  = bokeh.rgb;
+    float coc   = bokeh.a;
+
+    // Compute final color
+    float4 base     = tex.Sample(sampler_point_clamp, input.uv);
+    float4 color    = lerp(base, float4(dof, base.a), coc);
+
+    return color;
+}
+#endif

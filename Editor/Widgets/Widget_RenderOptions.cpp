@@ -317,7 +317,7 @@ void Widget_RenderOptions::Tick()
         {
             // Buffer
             {
-                static array<string, 20> render_target_debug =
+                static array<string, 22> render_target_debug =
                 {
                     "None",
                     "Gbuffer_Albedo",
@@ -334,6 +334,8 @@ void Widget_RenderOptions::Tick()
                     "Composition_Hdr_2",
                     "Composition_Ldr",
                     "Composition_Ldr_2",
+                    "Dof_Half",
+                    "Dof_Half_2",
                     "Bloom",
                     "Hbao_Noisy",
                     "Hbao",
