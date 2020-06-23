@@ -43,21 +43,6 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 }
 #endif
 
-#if PASS_BLUR_TENT
-float4 mainPS(Pixel_PosUv input) : SV_TARGET
-{
-    float dx = g_texel_size.x * 0.5f;
-    float dy = g_texel_size.y * 0.5f;
-    
-    float4 tl = tex.Sample(sampler_bilinear_clamp, input.uv + float2(-dx, -dy));
-    float4 tr = tex.Sample(sampler_bilinear_clamp, input.uv + float2(dx, -dy));
-    float4 bl = tex.Sample(sampler_bilinear_clamp, input.uv + float2(-dx, dy));
-    float4 br = tex.Sample(sampler_bilinear_clamp, input.uv + float2(dx, dy));
-    
-    return (tl + tr + bl + br) * 0.25f;
-}
-#endif
-
 float4 Blur_Gaussian_Fast(float2 uv, Texture2D tex)
 {
     float4 color  = 0.0f;

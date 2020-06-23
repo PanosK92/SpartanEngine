@@ -134,16 +134,18 @@ namespace Spartan
         m_render_targets[RenderTarget_Brdf_Specular_Lut] = make_unique<RHI_Texture2D>(m_context, 400, 400, RHI_Format_R8G8_Unorm, 1, 0, "rt_brdf_specular_lut");
         m_brdf_specular_lut_rendered = false;
 
-        // Composition
-        {
-            m_render_targets[RenderTarget_Composition_Hdr]      = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_composition_hdr"); // Investigate using less bits but have an alpha channel
-            m_render_targets[RenderTarget_Composition_Ldr]      = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_composition_ldr"); // Investigate using less bits but have an alpha channel
-            // 2nd copies
-            m_render_targets[RenderTarget_Composition_Hdr_2]    = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_composition_hdr2"); // Used for ping-ponging between effects during post-processing
-            m_render_targets[RenderTarget_Composition_Ldr_2]    = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_composition_ldr2"); // Used for ping-ponging between effects during post-Processing
-            // 3rd copies
-            m_render_targets[RenderTarget_TaaHistory]           = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_taa_history"); // Used for TAA accumulation
-        }
+        // Main HDR and LDR textures with secondary copies (necessary for ping-ponging during post-processing)
+        m_render_targets[RenderTarget_Hdr]      = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_hdr");  // Investigate using less bits but have an alpha channel
+        m_render_targets[RenderTarget_Ldr]      = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_ldr");  // Investigate using less bits but have an alpha channel
+        m_render_targets[RenderTarget_Hdr_2]    = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_hdr2"); // Investigate using less bits but have an alpha channel
+        m_render_targets[RenderTarget_Ldr_2]    = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_ldr2"); // Investigate using less bits but have an alpha channel
+
+         // Depth of Field
+        m_render_targets[RenderTarget_Dof_Half]     = make_unique<RHI_Texture2D>(m_context, width * 0.5f, height * 0.5f, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_dof_half");   // Investigate using less bits but have an alpha channel
+        m_render_targets[RenderTarget_Dof_Half_2]   = make_unique<RHI_Texture2D>(m_context, width * 0.5f, height * 0.5f, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_dof_half_2"); // Investigate using less bits but have an alpha channel
+
+        // TAA
+        m_render_targets[RenderTarget_TaaHistory] = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_taa_history");
 
         // HBAO + Indirect bounce
         m_render_targets[RenderTarget_Hbao_Noisy]   = make_unique<RHI_Texture2D>(m_context, static_cast<uint32_t>(width), static_cast<uint32_t>(height), RHI_Format_R16G16B16A16_Float, 1, 0, "rt_hbao_noisy");
@@ -229,25 +231,23 @@ namespace Spartan
         m_shaders[Shader_ChromaticAberration_P]->AddDefine("PASS_CHROMATIC_ABERRATION");
         m_shaders[Shader_ChromaticAberration_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Quad.hlsl");
 
-        // Blur Box
-        m_shaders[Shader_BlurBox_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_BlurBox_P]->AddDefine("PASS_BLUR_BOX");
-        m_shaders[Shader_BlurBox_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Blur.hlsl");
+        // Blur
+        {
+            // Box
+            m_shaders[Shader_BlurBox_P] = make_shared<RHI_Shader>(m_context);
+            m_shaders[Shader_BlurBox_P]->AddDefine("PASS_BLUR_BOX");
+            m_shaders[Shader_BlurBox_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Blur.hlsl");
 
-        // Blur Tent
-        m_shaders[Shader_BlurTent_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_BlurTent_P]->AddDefine("PASS_BLUR_TENT");
-        m_shaders[Shader_BlurTent_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Blur.hlsl");
+            // Gaussian
+            m_shaders[Shader_BlurGaussian_P] = make_shared<RHI_Shader>(m_context);
+            m_shaders[Shader_BlurGaussian_P]->AddDefine("PASS_BLUR_GAUSSIAN");
+            m_shaders[Shader_BlurGaussian_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Blur.hlsl");
 
-        // Blur Gaussian
-        m_shaders[Shader_BlurGaussian_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_BlurGaussian_P]->AddDefine("PASS_BLUR_GAUSSIAN");
-        m_shaders[Shader_BlurGaussian_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Blur.hlsl");
-
-        // Blur Bilateral Gaussian
-        m_shaders[Shader_BlurGaussianBilateral_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_BlurGaussianBilateral_P]->AddDefine("PASS_BLUR_BILATERAL_GAUSSIAN");
-        m_shaders[Shader_BlurGaussianBilateral_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Blur.hlsl");
+            // Bilateral Gaussian
+            m_shaders[Shader_BlurGaussianBilateral_P] = make_shared<RHI_Shader>(m_context);
+            m_shaders[Shader_BlurGaussianBilateral_P]->AddDefine("PASS_BLUR_BILATERAL_GAUSSIAN");
+            m_shaders[Shader_BlurGaussianBilateral_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Blur.hlsl");
+        }
 
         // Bloom - downsample luminance
         m_shaders[Shader_BloomDownsampleLuminance_P] = make_shared<RHI_Shader>(m_context);
@@ -279,8 +279,23 @@ namespace Spartan
         m_shaders[Shader_Taa_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "TemporalAntialiasing.hlsl");
 
         // Depth of Field
-        m_shaders[Shader_DepthOfField_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_DepthOfField_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "DepthOfField.hlsl");
+        {
+            m_shaders[Shader_Dof_DownsampleCoc_P] = make_shared<RHI_Shader>(m_context);
+            m_shaders[Shader_Dof_DownsampleCoc_P]->AddDefine("DOWNSAMPLE_CIRCLE_OF_CONFUSION");
+            m_shaders[Shader_Dof_DownsampleCoc_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "DepthOfField.hlsl");
+
+            m_shaders[Shader_Dof_Bokeh_P] = make_shared<RHI_Shader>(m_context);
+            m_shaders[Shader_Dof_Bokeh_P]->AddDefine("BOKEH");
+            m_shaders[Shader_Dof_Bokeh_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "DepthOfField.hlsl");
+
+            m_shaders[Shader_Dof_Tent_P] = make_shared<RHI_Shader>(m_context);
+            m_shaders[Shader_Dof_Tent_P]->AddDefine("TENT");
+            m_shaders[Shader_Dof_Tent_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "DepthOfField.hlsl");
+
+            m_shaders[Shader_Dof_UpscaleBlend_P] = make_shared<RHI_Shader>(m_context);
+            m_shaders[Shader_Dof_UpscaleBlend_P]->AddDefine("UPSCALE_BLEND");
+            m_shaders[Shader_Dof_UpscaleBlend_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "DepthOfField.hlsl");
+        }
 
         // Motion Blur
         m_shaders[Shader_MotionBlur_P] = make_shared<RHI_Shader>(m_context);

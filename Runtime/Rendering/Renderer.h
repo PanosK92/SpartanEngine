@@ -121,7 +121,10 @@ namespace Spartan
 		Shader_Luma_P,
 		Shader_Taa_P,
 		Shader_MotionBlur_P,
-        Shader_DepthOfField_P,
+        Shader_Dof_DownsampleCoc_P,
+        Shader_Dof_Bokeh_P,
+        Shader_Dof_Tent_P,
+        Shader_Dof_UpscaleBlend_P,
 		Shader_Sharpen_Luma_P,
 		Shader_ChromaticAberration_P,	
 		Shader_BloomDownsampleLuminance_P,
@@ -151,7 +154,6 @@ namespace Spartan
 		Shader_Entity_V,
         Shader_Entity_Transform_P,
 		Shader_BlurBox_P,
-        Shader_BlurTent_P,
 		Shader_BlurGaussian_P,
 		Shader_BlurGaussianBilateral_P,
         Shader_Entity_Outline_P
@@ -169,16 +171,18 @@ namespace Spartan
         RenderTarget_Light_Diffuse                  = 1 << 7,
         RenderTarget_Light_Specular                 = 1 << 8,
         RenderTarget_Light_Volumetric               = 1 << 9,
-        RenderTarget_Composition_Hdr                = 1 << 10,
-        RenderTarget_Composition_Hdr_2              = 1 << 11,
-        RenderTarget_Composition_Ldr                = 1 << 12,
-        RenderTarget_Composition_Ldr_2              = 1 << 13,
-        RenderTarget_Bloom                          = 1 << 14,
-        RenderTarget_Hbao_Noisy                     = 1 << 15,
-        RenderTarget_Hbao                           = 1 << 16,
-        RenderTarget_Ssr                            = 1 << 17,
-        RenderTarget_Ssgi                           = 1 << 18,
-        RenderTarget_TaaHistory                     = 1 << 19,
+        RenderTarget_Hdr                            = 1 << 10,
+        RenderTarget_Ldr                            = 1 << 11,
+        RenderTarget_Hdr_2                          = 1 << 12,
+        RenderTarget_Ldr_2                          = 1 << 13,
+        RenderTarget_Dof_Half                       = 1 << 14,
+        RenderTarget_Dof_Half_2                     = 1 << 15,
+        RenderTarget_Bloom                          = 1 << 16,
+        RenderTarget_Hbao_Noisy                     = 1 << 17,
+        RenderTarget_Hbao                           = 1 << 18,
+        RenderTarget_Ssr                            = 1 << 19,
+        RenderTarget_Ssgi                           = 1 << 20,
+        RenderTarget_TaaHistory                     = 1 << 21,
     };
 
 	class SPARTAN_CLASS Renderer : public ISubsystem
@@ -243,7 +247,7 @@ namespace Spartan
         const std::shared_ptr<RHI_Device>& GetRhiDevice()   const { return m_rhi_device; } 
         RHI_PipelineCache* GetPipelineCache()               const { return m_pipeline_cache.get(); }
         RHI_DescriptorCache* GetDescriptorCache()           const { return m_descriptor_cache.get(); }
-        RHI_Texture* GetFrameTexture()                      const { return m_render_targets.at(RenderTarget_Composition_Ldr).get(); }
+        RHI_Texture* GetFrameTexture()                      const { return m_render_targets.at(RenderTarget_Ldr).get(); }
         auto GetFrameNum()                                  const { return m_frame_num; }
         const auto& GetCamera()                             const { return m_camera; }
         auto IsInitialized()                                const { return m_initialized; }
@@ -291,9 +295,8 @@ namespace Spartan
 		void Pass_Dithering(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
 		void Pass_Bloom(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
         void Pass_Upsample(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
-        void Pass_Downsample(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out, const Renderer_Shader_Type pixel_shader);
+        void Pass_Downsample(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, const Renderer_Shader_Type pixel_shader);
 		void Pass_BlurBox(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out, const float sigma, const float pixel_stride, const bool use_stencil);
-        void Pass_BlurTent(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
 		void Pass_BlurGaussian(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out, const float sigma, const float pixel_stride = 1.0f);
 		void Pass_BlurBilateralGaussian(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out, const float sigma, const float pixel_stride = 1.0f, const bool use_stencil = false);
 		void Pass_Lines(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_out);
