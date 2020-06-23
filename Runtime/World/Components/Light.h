@@ -134,8 +134,8 @@ namespace Spartan
         bool m_shadows_transparent_enabled  = true;
         bool m_volumetric_enabled           = true;
 		float m_range			            = 10.0f;
-		float m_intensity		            = 5.0f;
-		float m_angle_rad		            = 0.5f; // about 30 degrees
+		float m_intensity		            = 128000.0f;    // sun lux
+		float m_angle_rad		            = 0.5f;         // about 30 degrees
         float m_time_of_day                 = 1.0f;
 		float m_bias			            = 0.1f;
 		float m_normal_bias		            = 5.0f;

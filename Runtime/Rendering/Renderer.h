@@ -129,7 +129,7 @@ namespace Spartan
 		Shader_ChromaticAberration_P,	
 		Shader_BloomDownsampleLuminance_P,
         Shader_BloomDownsample_P,
-		Shader_BloomBlend_P,
+		Shader_BloomUpsampleBlend_P,
 		Shader_ToneMapping_P,
 		Shader_GammaCorrection_P,
 		Shader_Dithering_P,

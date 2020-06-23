@@ -305,6 +305,8 @@ void Widget_Properties::ShowLight(Light* light) const
 		auto range					= light->GetRange();
         float time_of_day           = light->GetTimeOfDay();
 		m_colorPicker_light->SetColor(light->GetColor());
+
+        bool is_directional = light->GetLightType() == LightType_Directional;
 		//===========================================================================
 
 		// Type
@@ -342,9 +344,9 @@ void Widget_Properties::ShowLight(Light* light) const
 		ImGui::SameLine(ComponentProperty::g_column); m_colorPicker_light->Update();
 
 		// Intensity
-		ImGui::Text("Intensity");
+        ImGui::Text(is_directional ? "Intensity (Lux)" : "Intensity (Lumens)");
 		ImGui::SameLine(ComponentProperty::g_column);
-		ImGui::PushItemWidth(300); ImGui::DragFloat("##lightIntensity", &intensity, 0.01f, 0.0f, 100.0f); ImGui::PopItemWidth();
+		ImGui::PushItemWidth(300); ImGui::DragFloat("##lightIntensity", &intensity, 5.0f, 0.0f, is_directional ? 128000.0f : 100000.0f); ImGui::PopItemWidth();
 
 		// Shadows
 		ImGui::Text("Shadows");
@@ -363,7 +365,7 @@ void Widget_Properties::ShowLight(Light* light) const
             ImGuiEx::Tooltip("Allows transparent objects to cast colored translucent shadows");
 
             // Volumetric
-            ImGui::Text("Volumeric");
+            ImGui::Text("Volumetric");
             ImGui::SameLine(ComponentProperty::g_column); ImGui::Checkbox("##light_volumetric", &volumetric);
             ImGuiEx::Tooltip("The shadow map is used to determine which parts of the \"air\" should be lit");
         }
@@ -915,18 +917,18 @@ void Widget_Properties::ShowCamera(Camera* camera) const
 
         // Aperture
         ImGui::SetCursorPosX(ComponentProperty::g_column);
-        ImGui::DragFloat("Aperture", &aperture, 0.001f, 0.001f, 1.0f);
+        ImGui::DragFloat("Aperture (mm)", &aperture, 0.01f, 0.01f, 150.0f);
         ImGuiEx::Tooltip("Size of the lens diaphragm. Also controls the depth of field.");
 
         // Shutter speed
         ImGui::SetCursorPosX(ComponentProperty::g_column);
-        ImGui::DragFloat("Shutter Speed", &shutter_speed, 0.001f, 0.0f, 1.0f);
-        ImGuiEx::Tooltip("The length of time camera shutter is open. Also controls the amount of motion blur.");
+        ImGui::DragFloat("Shutter Speed (sec)", &shutter_speed, 0.001f, 0.0f, 1.0f);
+        ImGuiEx::Tooltip("Length of time for which the camera shutter is open. Also controls the amount of motion blur.");
 
         // ISO
         ImGui::SetCursorPosX(ComponentProperty::g_column);
-        ImGui::DragFloat("ISO", &iso, 0.2f, 0.0f, 2000.0f);
-        ImGuiEx::Tooltip("Sensitivity to light");
+        ImGui::DragFloat("ISO", &iso, 1.0f, 0.0f, 2000.0f);
+        ImGuiEx::Tooltip("Sensitivity to light.");
 
 		// Field of View
 		ImGui::SetCursorPosX(ComponentProperty::g_column);

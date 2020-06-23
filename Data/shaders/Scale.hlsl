@@ -19,24 +19,24 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-// Downsample with a 4x4 box filter
-float4 Downsample_Box(float2 uv, Texture2D tex)
+// A 4x4 box filter
+float4 Box_Filter(float2 uv, Texture2D tex, float2 texel_size)
 {
-    float4 uv_delta = g_texel_size.xyxy * float4(-1.0f, -1.0f, 1.0f, 1.0f);
+    float4 offset = texel_size.xyxy * float4(-1.0f, -1.0f, 1.0f, 1.0f);
     
-    float4 downsampled =
-    tex.Sample(sampler_bilinear_clamp, uv + uv_delta.xy) +
-    tex.Sample(sampler_bilinear_clamp, uv + uv_delta.zy) +
-    tex.Sample(sampler_bilinear_clamp, uv + uv_delta.xw) +
-    tex.Sample(sampler_bilinear_clamp, uv + uv_delta.zw);
+    float4 samples =
+    tex.Sample(sampler_bilinear_clamp, uv + offset.xy) +
+    tex.Sample(sampler_bilinear_clamp, uv + offset.zy) +
+    tex.Sample(sampler_bilinear_clamp, uv + offset.xw) +
+    tex.Sample(sampler_bilinear_clamp, uv + offset.zw);
 
-    return downsampled / 4.0f;
+    return samples / 4.0f;
 }
 
-// Downsample with a 4x4 box filter + anti-flicker filter
-float4 Downsample_BoxAntiFlicker(float2 uv, Texture2D tex)
+// A 4x4 box filter + anti-flicker filter
+float4 Box_Filter_AntiFlicker(float2 uv, Texture2D tex, float2 texel_size)
 {
-    float4 d = g_texel_size.xyxy * float4(-1.0f, -1.0f, 1.0f, 1.0f);
+    float4 d = texel_size.xyxy * float4(-1.0f, -1.0f, 1.0f, 1.0f);
 
     float4 s1 = tex.Sample(sampler_bilinear_clamp, uv + d.xy);
     float4 s2 = tex.Sample(sampler_bilinear_clamp, uv + d.zy);
@@ -87,18 +87,4 @@ float4 Downsample_Box13Tap(float2 uv, Texture2D tex)
     o += (G + H + M + L) * div.y;
 
     return o;
-}
-
-// Upsample with a 4x4 box filter
-float4 Upsample_Box(float2 uv, Texture2D tex)
-{
-    float4 uv_delta = g_texel_size.xyxy * float4(-1.0f, -1.0f, 1.0f, 1.0f) * 0.5f;
-    
-    float4 upsampled =
-    tex.Sample(sampler_bilinear_clamp, uv + uv_delta.xy) +
-    tex.Sample(sampler_bilinear_clamp, uv + uv_delta.zy) +
-    tex.Sample(sampler_bilinear_clamp, uv + uv_delta.xw) +
-    tex.Sample(sampler_bilinear_clamp, uv + uv_delta.zw);
-
-    return upsampled / 4.0f;
 }

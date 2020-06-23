@@ -546,8 +546,24 @@ namespace Spartan
         const bool volumetric         = static_cast<float>(m_options & Render_VolumetricLighting);
         const bool contact_shadows    = static_cast<float>(m_options & Render_ScreenSpaceShadows);
 
-        for (uint32_t i = 0; i < light->GetShadowArraySize(); i++) { m_buffer_light_cpu.view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix(i); }
-        m_buffer_light_cpu.intensity_range_angle_bias   = Vector4(light->GetIntensity(), light->GetRange(), light->GetAngle(), GetOption(Render_ReverseZ) ? light->GetBias() : -light->GetBias());
+        for (uint32_t i = 0; i < light->GetShadowArraySize(); i++)
+        {
+            m_buffer_light_cpu.view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
+        }
+
+        float luminous_intensity = light->GetIntensity() * m_camera->GetExposure();
+        if (light->GetLightType() == LightType_Point)
+        {
+            luminous_intensity /= 4.0f * Math::Helper::PI; // lumens to candelas
+            luminous_intensity *= 1000.0f; // hack till I find where this implicit division happens
+        }
+        else if (light->GetLightType() == LightType_Spot)
+        {
+            luminous_intensity /= 1.0f * Math::Helper::PI; // lumens to candelas
+            luminous_intensity *= 1000.0f; // hack till I find where this implicit division happens
+        }
+
+        m_buffer_light_cpu.intensity_range_angle_bias   = Vector4(luminous_intensity, light->GetRange(), light->GetAngle(), GetOption(Render_ReverseZ) ? light->GetBias() : -light->GetBias());
         m_buffer_light_cpu.color                        = light->GetColor();
         m_buffer_light_cpu.normal_bias                  = light->GetNormalBias();
         m_buffer_light_cpu.position                     = light->GetTransform()->GetPosition();

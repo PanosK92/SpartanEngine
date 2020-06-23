@@ -1314,7 +1314,7 @@ namespace Spartan
 		// Acquire shaders
         const auto& shader_v                    = m_shaders[Shader_Quad_V];
 		const auto& shader_p_bloom_luminance	= m_shaders[Shader_BloomDownsampleLuminance_P];
-		const auto& shader_p_bloom_blend	    = m_shaders[Shader_BloomBlend_P];
+		const auto& shader_p_bloom_blend	    = m_shaders[Shader_BloomUpsampleBlend_P];
 		const auto& shader_p_downsample	        = m_shaders[Shader_BloomDownsample_P];
 		const auto& shader_p_upsample		    = m_shaders[Shader_Upsample_P];
 		if (!shader_p_downsample->IsCompiled() || !shader_p_bloom_luminance->IsCompiled() || !shader_p_upsample->IsCompiled() || !shader_p_downsample->IsCompiled())
@@ -1408,7 +1408,7 @@ namespace Spartan
             pipeline_state.clear_color[0]                   = state_color_load;
             pipeline_state.viewport                         = tex_out->GetViewport();
             pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
-            pipeline_state.pass_name                        = "Pass_Bloom_Additive_Blending";
+            pipeline_state.pass_name                        = "Pass_Bloom_Upsample_Blend";
         
             // Record commands
             if (cmd_list->BeginRenderPass(pipeline_state))

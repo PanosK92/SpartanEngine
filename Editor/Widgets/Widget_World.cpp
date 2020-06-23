@@ -577,15 +577,21 @@ void Widget_World::ActionEntityCreateLightDirectional()
 void Widget_World::ActionEntityCreateLightPoint()
 {
 	auto entity = ActionEntityCreateEmpty();
-	entity->AddComponent<Light>()->SetLightType(LightType_Point);
-	entity->SetName("Point");
+    entity->SetName("Point");
+
+    Light* light = entity->AddComponent<Light>();
+    light->SetLightType(LightType_Point);
+    light->SetIntensity(2600.0f); // your typical 150 watt light bulb
 }
 
 void Widget_World::ActionEntityCreateLightSpot()
 {
 	auto entity = ActionEntityCreateEmpty();
-	entity->AddComponent<Light>()->SetLightType(LightType_Spot);
-	entity->SetName("Spot");
+    entity->SetName("Spot");
+
+    Light* light = entity->AddComponent<Light>();
+    light->SetLightType(LightType_Spot);
+    light->SetIntensity(2600.0f); // your typical 150 watt light bulb
 }
 
 void Widget_World::ActionEntityCreateRigidBody()
