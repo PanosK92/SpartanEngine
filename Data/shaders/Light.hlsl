@@ -94,10 +94,8 @@ PixelOutputType mainPS(Pixel_PosUv input)
     }
 
     // Fill light struct
-    float light_intensity = intensity_range_angle_bias.x;
-    
     Light light;
-    light.color             = color.xyz * light_intensity;
+    light.color             = color.xyz;
     light.position          = position.xyz;
     light.range             = intensity_range_angle_bias.y;
     light.angle             = intensity_range_angle_bias.z;
@@ -106,14 +104,17 @@ PixelOutputType mainPS(Pixel_PosUv input)
     light.distance_to_pixel = length(surface.position - light.position);
     #if DIRECTIONAL
     light.array_size    = 4;
-    light.direction     = direction.xyz; 
+    light.direction     = direction.xyz;
+    light.color         *= saturate(dot(normalize(-direction.xyz), surface.normal)) * intensity_range_angle_bias.x;
     #elif POINT
     light.array_size    = 1;
     light.direction     = normalize(surface.position - light.position);
+    light.color         *= intensity_range_angle_bias.x;
     light.color         *= attunation_distance(light); // attenuate
     #elif SPOT
     light.array_size    = 1;
     light.direction     = normalize(surface.position - light.position);
+    light.color         *= intensity_range_angle_bias.x;
     light.color         *= attunation_distance(light) * attunation_angle(light); // attenuate
     #endif
     

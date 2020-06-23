@@ -73,10 +73,14 @@ float get_focal_depth()
     return (tl + tr + bl + br + ce) * 0.2f;
 }
 
-float circle_of_confusion(float depth, float focal_depth)
+float circle_of_confusion(float2 uv, float focal_depth)
 {
-    float focus_range = g_camera_aperture * g_camera_far;
-    float coc = (depth - focal_depth) / (focus_range + FLT_MIN);
+    float camera_aperture   = g_camera_aperture / 1000.0f;  // convert to meters
+    float camera_range      = g_camera_far * 0.25f;         // use 1/4 of the clipping range, how many cameras can go that far to begin with ?
+    
+    float depth         = get_linear_depth(uv);
+    float focus_range   = camera_aperture * g_camera_far;
+    float coc           = (depth - focal_depth) / (focus_range + FLT_MIN);
     return saturate(abs(coc));
 }
 
@@ -89,8 +93,9 @@ float2 rotate_vector(float2 v, float2 direction)
 float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
     // UVs
-    float dx        = g_texel_size.x;
-    float dy        = g_texel_size.y;
+    // g_texel_size refers to the current render target, which is half the size of the input texture, so we multiply by 2
+    float dx        = g_texel_size.x * 2.0f;
+    float dy        = g_texel_size.y * 2.0f;
     float2 uv_tl    = input.uv + float2(-dx, -dy);
     float2 uv_tr    = input.uv + float2(dx, -dy);
     float2 uv_bl    = input.uv + float2(-dx, dy);
@@ -102,18 +107,12 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     float3 color_bl = tex.Sample(sampler_bilinear_clamp, uv_bl).rgb;
     float3 color_br = tex.Sample(sampler_bilinear_clamp, uv_br).rgb;
 
-    // Depth samples
-    float depth_tl = get_linear_depth(uv_tl);
-    float depth_tr = get_linear_depth(uv_tr);
-    float depth_bl = get_linear_depth(uv_bl);
-    float depth_br = get_linear_depth(uv_br);
-
     // Coc samples
     float focal_depth = get_focal_depth(); // Autofocus
-    float coc_tl = circle_of_confusion(depth_tl, focal_depth);
-    float coc_tr = circle_of_confusion(depth_tr, focal_depth);
-    float coc_bl = circle_of_confusion(depth_bl, focal_depth);
-    float coc_br = circle_of_confusion(depth_br, focal_depth);
+    float coc_tl = circle_of_confusion(uv_tl, focal_depth);
+    float coc_tr = circle_of_confusion(uv_tr, focal_depth);
+    float coc_bl = circle_of_confusion(uv_bl, focal_depth);
+    float coc_br = circle_of_confusion(uv_br, focal_depth);
 
     // Compute final circle of confusion    
     float coc_min   = min(min(min(coc_tl, coc_tr), coc_bl), coc_br);
@@ -127,32 +126,12 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 #if BOKEH
 float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
-    // Temporal noise and rotation
-    float noise_gradient_temporal   = interleaved_gradient_noise(input.uv * g_resolution);
-    float offset_rotation_temporal  = noise_temporal_direction();
-    
-    // Temporal offset
-    float temporal_scale    = 10.0f;
-    float temporal_offset   = noise_gradient_temporal * (temporal_scale / g_dof_bokeh_radius) * any(g_taa_jitter_offset);
-
-    // Temporal rotation
-    float rotation_angle        = (g_frame + noise_gradient_temporal + offset_rotation_temporal) * g_dof_rotation_step * any(g_taa_jitter_offset);
-    float2 rotation_direction   = normalize(float2(cos(rotation_angle), sin(rotation_angle)));
-
-    // Depth weights
-    float depth_threshold   = 0.1f;
-    float weights           = 0.0f;
-    
     // Sample color
     float4 color = 0.0f;
     [unroll]
     for (uint i = 0; i < g_dof_sample_count; i++)
     {
-        float2 direction            = g_dof_samples[i];
-        float2 temporal_direction   = rotate_vector(direction, rotation_direction);
-        float2 jitter               = temporal_direction - temporal_offset * temporal_direction;
-        float2 sample_uv            = input.uv + direction * g_texel_size * g_dof_bokeh_radius;
-
+        float2 sample_uv = input.uv + g_dof_samples[i] * g_texel_size * g_dof_bokeh_radius;
         color += tex.Sample(sampler_bilinear_clamp, sample_uv);
     }
     color /= (float)g_dof_sample_count;
@@ -180,8 +159,9 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
     // Upsample bokeh
-    float dx            = g_texel_size.x;
-    float dy            = g_texel_size.y;  
+    // g_texel_size refers to the current render target, which is twice the size of the input texture, so we multiply by 0.5
+    float dx            = g_texel_size.x * 0.5f;
+    float dy            = g_texel_size.y * 0.5f;  
     float4 tl           = tex2.Sample(sampler_bilinear_clamp, input.uv + float2(-dx, -dy));
     float4 tr           = tex2.Sample(sampler_bilinear_clamp, input.uv + float2(dx, -dy));
     float4 bl           = tex2.Sample(sampler_bilinear_clamp, input.uv + float2(-dx, dy));

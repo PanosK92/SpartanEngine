@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ChromaticAberration.hlsl"
 #include "ToneMapping.hlsl"
 #include "Dithering.hlsl"
-#include "Scaling.hlsl"
+#include "Scale.hlsl"
 #define FXAA_PC 1
 #define FXAA_HLSL_5 1
 #define FXAA_QUALITY__PRESET 39
@@ -95,26 +95,15 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 #endif
 
 #if PASS_UPSAMPLE_BOX
-    color = Upsample_Box(uv, tex);
+    // g_texel_size refers to the current render target, which is twice the size of the input texture, so we multiply by 0.5
+    float2 texel_size = g_texel_size * 0.5f;
+    color = Box_Filter(uv, tex, texel_size);
 #endif
 
 #if PASS_DOWNSAMPLE_BOX
-    color = Downsample_Box(uv, tex);
-#endif
-
-#if PASS_BLOOM_DOWNSAMPLE
-    color = Downsample_BoxAntiFlicker(uv, tex);
-#endif
-
-#if PASS_BLOOM_DOWNSAMPLE_LUMINANCE
-    color = Downsample_BoxAntiFlicker(uv, tex);
-    color = saturate_16(luminance(color) * color);
-#endif
-
-#if PASS_BLOOM_BLEND_ADDITIVE
-    float4 sourceColor  = tex.Sample(sampler_point_clamp, uv);
-    float4 sourceColor2 = Upsample_Box(uv, tex2);
-    color               = saturate_16(sourceColor + sourceColor2 * g_bloom_intensity);
+    // g_texel_size refers to the current render target, which is half the size of the input texture, so we multiply by 2
+    float2 texel_size = g_texel_size * 2.0f;
+    color = Box_Filter(uv, tex, texel_size);
 #endif
 
 #if PASS_LUMA

@@ -86,25 +86,8 @@ float3 ACESFitted(float3 color)
     return color;
 }
 
-// Compute EV100 from the camera settings. Aperture in f-stops, shutterSpeed in seconds, sensitivity in ISO.
-float camera_settings_to_ev100(float aperture, float shutterSpeed, float sensitivity)
-{
-    return log2((aperture * aperture) / shutterSpeed * 100.0 / sensitivity);
-}
-
-// Computes the exposure normalization factor from the camera's EV100
-float ev100_to_exposure(float ev100)
-{
-    return 1.0 / (pow(2.0, ev100) * 1.2);
-}
-
 float3 ToneMap(float3 color)
 {
-    float ev100     = camera_settings_to_ev100(g_camera_aperture, g_camera_shutter_speed, g_camera_iso);
-    float exposure  = ev100_to_exposure(ev100);
-    
-    color *= exposure;
-    
     [branch]
     if (g_toneMapping == 0) // OFF
     {
@@ -129,3 +112,4 @@ float3 ToneMap(float3 color)
     
     return color;
 }
+

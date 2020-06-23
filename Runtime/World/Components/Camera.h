@@ -83,7 +83,7 @@ namespace Spartan
 		Math::Vector3 Unproject(const Math::Vector2& position_screen) const;
 		//==============================================================================
 
-        float GetAperture()const                { return m_aperture; }
+        float GetAperture() const               { return m_aperture; }
         void SetAperture(const float aperture)  { m_aperture = aperture; }
 
         float GetShutterSpeed() const                   { return m_shutter_speed; }
@@ -92,8 +92,9 @@ namespace Spartan
         float GetIso() const            { return m_iso; }
         void SetIso(const float iso)    { m_iso = iso; }
 
-        // Reference: https://en.wikipedia.org/wiki/Exposure_value
-        float GetEv100() const { return std::log2((m_aperture * m_aperture) / m_shutter_speed * 100.0f / m_iso);}
+        
+        float GetEv100()    const { return std::log2((m_aperture * m_aperture) / m_shutter_speed * 100.0f / m_iso);} // Reference: https://google.github.io/filament/Filament.md.html#lighting/units/lightunitsvalidation
+        float GetExposure() const { return 1.0f / (std::pow(2.0f, GetEv100()) * 1.2f); } // Frostbite: https://seblagarde.files.wordpress.com/2015/07/course_notes_moving_frostbite_to_pbr_v32.pdf
 
 		//= PLANES/PROJECTION =================================================
 		void SetNearPlane(float near_plane);		
@@ -106,7 +107,7 @@ namespace Spartan
 
 		//= FOV ==========================================================
 		float GetFovHorizontalRad() const { return m_fov_horizontal_rad; }
-        float GetFovVerticalRad() const;
+        float GetFovVerticalRad()   const;
 		float GetFovHorizontalDeg() const;    
 		void SetFovHorizontalDeg(float fov);
         const RHI_Viewport& GetViewport() const;
@@ -127,9 +128,9 @@ namespace Spartan
 	private:
         void FpsControl(float delta_time);
 
-        float m_aperture                    = 0.15f;            // Size of the lens diaphragm
-        float m_shutter_speed               = 1.0f / 120.0f;    // The length of time camera shutter is open. Also controls the amount of motion blur. In film making, the 180-degree rule states that shutter speed should be set to double your frame rate.
-        float m_iso                         = 1000.0f;          // Sensitivity to light
+        float m_aperture                    = 50.0f;        // Size of the lens diaphragm (mm).
+        float m_shutter_speed               = 1.0f / 60.0f; // Length of time for which the camera shutter is open (sec). Also controls the amount of motion blur.
+        float m_iso                         = 500.0f;       // Sensitivity to light.
         float m_fov_horizontal_rad          = Math::Helper::DegreesToRadians(90.0f);
         float m_near_plane                  = 0.3f;
         float m_far_plane                   = 1000.0f;	
