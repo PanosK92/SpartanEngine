@@ -112,4 +112,3 @@ float3 ToneMap(float3 color)
     
     return color;
 }
-

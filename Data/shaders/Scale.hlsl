@@ -62,21 +62,21 @@ float4 Box_Filter_AntiFlicker(float2 uv, Texture2D tex, float2 texel_size)
 // . . I . J . .
 // . K . L . M .
 // . . . . . . .
-float4 Downsample_Box13Tap(float2 uv, Texture2D tex)
+float4 Downsample_Box13Tap(float2 uv, Texture2D tex, float2 texel_size)
 {
-    float4 A = tex.Sample(sampler_bilinear_clamp, uv + g_texel_size * float2(-1.0f, -1.0f));
-    float4 B = tex.Sample(sampler_bilinear_clamp, uv + g_texel_size * float2( 0.0f, -1.0f));
-    float4 C = tex.Sample(sampler_bilinear_clamp, uv + g_texel_size * float2( 1.0f, -1.0f));
-    float4 D = tex.Sample(sampler_bilinear_clamp, uv + g_texel_size * float2(-0.5f, -0.5f));
-    float4 E = tex.Sample(sampler_bilinear_clamp, uv + g_texel_size * float2( 0.5f, -0.5f));
-    float4 F = tex.Sample(sampler_bilinear_clamp, uv + g_texel_size * float2(-1.0f,  0.0f));
+    float4 A = tex.Sample(sampler_bilinear_clamp, uv + texel_size * float2(-1.0f, -1.0f));
+    float4 B = tex.Sample(sampler_bilinear_clamp, uv + texel_size * float2( 0.0f, -1.0f));
+    float4 C = tex.Sample(sampler_bilinear_clamp, uv + texel_size * float2( 1.0f, -1.0f));
+    float4 D = tex.Sample(sampler_bilinear_clamp, uv + texel_size * float2(-0.5f, -0.5f));
+    float4 E = tex.Sample(sampler_bilinear_clamp, uv + texel_size * float2( 0.5f, -0.5f));
+    float4 F = tex.Sample(sampler_bilinear_clamp, uv + texel_size * float2(-1.0f,  0.0f));
     float4 G = tex.Sample(sampler_point_clamp, uv);
-    float4 H = tex.Sample(sampler_bilinear_clamp, uv + g_texel_size * float2( 1.0f,  0.0f));
-    float4 I = tex.Sample(sampler_bilinear_clamp, uv + g_texel_size * float2(-0.5f,  0.5f));
-    float4 J = tex.Sample(sampler_bilinear_clamp, uv + g_texel_size * float2( 0.5f,  0.5f));
-    float4 K = tex.Sample(sampler_bilinear_clamp, uv + g_texel_size * float2(-1.0f,  1.0f));
-    float4 L = tex.Sample(sampler_bilinear_clamp, uv + g_texel_size * float2( 0.0f,  1.0f));
-    float4 M = tex.Sample(sampler_bilinear_clamp, uv + g_texel_size * float2( 1.0f,  1.0f));
+    float4 H = tex.Sample(sampler_bilinear_clamp, uv + texel_size * float2( 1.0f,  0.0f));
+    float4 I = tex.Sample(sampler_bilinear_clamp, uv + texel_size * float2(-0.5f,  0.5f));
+    float4 J = tex.Sample(sampler_bilinear_clamp, uv + texel_size * float2( 0.5f,  0.5f));
+    float4 K = tex.Sample(sampler_bilinear_clamp, uv + texel_size * float2(-1.0f,  1.0f));
+    float4 L = tex.Sample(sampler_bilinear_clamp, uv + texel_size * float2( 0.0f,  1.0f));
+    float4 M = tex.Sample(sampler_bilinear_clamp, uv + texel_size * float2( 1.0f,  1.0f));
 
     float2 div = (1.0f / 4.0f) * float2(0.5f, 0.125f);
 

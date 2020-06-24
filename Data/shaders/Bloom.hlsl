@@ -27,10 +27,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #if DOWNSAMPLE
 float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
-    // g_texel_size refers to the current render target, which is half the size of the input texture.
-    // So the texel size is g_texel_size * 2, but we will use half of that so that we get some sample overlap and as result, enliminate some blockiness.
-    // Same papers call this, a "tent" filter.
-    float2 texel_size = g_texel_size;
+    // g_texel_size refers to the current render target, which is half the size of the input texture, so we multiply by 2.0
+    float2 texel_size = g_texel_size * 2.0f;
     return Box_Filter_AntiFlicker(input.uv, tex, texel_size);
 }
 #endif
@@ -38,7 +36,8 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 #if DOWNSAMPLE_LUMINANCE
 float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
-    float2 texel_size = g_texel_size; // same as above, tent filter
+    // g_texel_size refers to the current render target, which is half the size of the input texture, so we multiply by 2.0
+    float2 texel_size = g_texel_size * 2.0f;
     float4 color = Box_Filter_AntiFlicker(input.uv, tex, texel_size);
     return saturate_16(luminance(color) * color);
 }
@@ -48,9 +47,11 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
     float4 sourceColor  = tex.Sample(sampler_point_clamp, input.uv);
-    // g_texel_size refers to the current render target, which is twice the size of the input texture, so we multiply by 0.5
-    float2 texel_size = g_texel_size * 0.5f;
+    // g_texel_size refers to the current render target, which is twice the size of the input texture.
+    // so instead of multiplying it with 0.5, we will use it as is in order to get a "tent" filter, which helps reduce "blockiness".
+    float2 texel_size = g_texel_size;
     float4 sourceColor2 = Box_Filter(input.uv, tex2, texel_size);
     return saturate_16(sourceColor + sourceColor2 * g_bloom_intensity);
 }
 #endif
+

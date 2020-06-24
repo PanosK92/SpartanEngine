@@ -346,7 +346,9 @@ void Widget_Properties::ShowLight(Light* light) const
 		// Intensity
         ImGui::Text(is_directional ? "Intensity (Lux)" : "Intensity (Lumens)");
 		ImGui::SameLine(ComponentProperty::g_column);
-		ImGui::PushItemWidth(300); ImGui::DragFloat("##lightIntensity", &intensity, 5.0f, 0.0f, is_directional ? 128000.0f : 100000.0f); ImGui::PopItemWidth();
+        float v_speed   = is_directional ? 20.0f : 5.0f;
+        float v_max     = is_directional ? 128000.0f : 100000.0f;
+		ImGui::PushItemWidth(300); ImGui::DragFloat("##lightIntensity", &intensity, v_speed, 0.0f, v_max); ImGui::PopItemWidth();
 
 		// Shadows
 		ImGui::Text("Shadows");

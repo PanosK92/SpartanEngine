@@ -58,11 +58,11 @@ static const float2 g_dof_samples[22] =
 };
 
 // Returns the focal depth by computing the average depth in a cross pattern neighborhood
-float get_focal_depth()
+float get_focal_depth(float2 texel_size)
 {
     float2 uv   = 0.5f; // center
-    float dx    = g_dof_bokeh_radius * g_texel_size.x;
-    float dy    = g_dof_bokeh_radius * g_texel_size.y;
+    float dx    = g_dof_bokeh_radius * texel_size.x;
+    float dy    = g_dof_bokeh_radius * texel_size.y;
 	
     float tl = get_linear_depth(uv + float2(-dx, -dy));
     float tr = get_linear_depth(uv + float2(+dx, -dy));
@@ -89,10 +89,14 @@ float2 rotate_vector(float2 v, float2 direction)
 #if DOWNSAMPLE_CIRCLE_OF_CONFUSION
 float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
+    // g_texel_size refers to the current render target, which is half the size of the input texture.
+    // so the texel size for the input texture is actually twice as big, however because we want
+    // to do a "tent" filter, we use it as is, which is basically half the texel size.
+    float2 texel_size = g_texel_size;
+
     // UVs
-    // g_texel_size refers to the current render target, which is half the size of the input texture, so we multiply by 2
-    float dx        = g_texel_size.x * 2.0f;
-    float dy        = g_texel_size.y * 2.0f;
+    float dx        = texel_size.x;
+    float dy        = texel_size.y;
     float2 uv_tl    = input.uv + float2(-dx, -dy);
     float2 uv_tr    = input.uv + float2(dx, -dy);
     float2 uv_bl    = input.uv + float2(-dx, dy);
@@ -105,16 +109,14 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     float3 color_br = tex.Sample(sampler_bilinear_clamp, uv_br).rgb;
 
     // Coc samples
-    float focal_depth = get_focal_depth(); // Autofocus
+    float focal_depth = get_focal_depth(texel_size * 2.0f); // Autofocus
     float coc_tl = circle_of_confusion(uv_tl, focal_depth);
     float coc_tr = circle_of_confusion(uv_tr, focal_depth);
     float coc_bl = circle_of_confusion(uv_bl, focal_depth);
     float coc_br = circle_of_confusion(uv_br, focal_depth);
 
-    // Compute final circle of confusion    
-    float coc_min   = min(min(min(coc_tl, coc_tr), coc_bl), coc_br);
-    float coc_max   = max(max(max(coc_tl, coc_tr), coc_bl), coc_br);
-    float coc       = coc_max >= -coc_min ? coc_max : coc_min;
+    // Compute coc
+    float coc = max(max(max(coc_tl, coc_tr), coc_bl), coc_br);
 
     return float4((color_tl + color_tr + color_bl + color_br) * 0.25f, coc);
 }
@@ -155,10 +157,12 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 #if UPSCALE_BLEND
 float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
-    // Upsample bokeh
     // g_texel_size refers to the current render target, which is twice the size of the input texture, so we multiply by 0.5
-    float dx            = g_texel_size.x * 0.5f;
-    float dy            = g_texel_size.y * 0.5f;  
+    float2 texel_size = g_texel_size.x * 0.5f;
+
+    // Upsample bokeh
+    float dx            = texel_size.x;
+    float dy            = texel_size.y;  
     float4 tl           = tex2.Sample(sampler_bilinear_clamp, input.uv + float2(-dx, -dy));
     float4 tr           = tex2.Sample(sampler_bilinear_clamp, input.uv + float2(dx, -dy));
     float4 bl           = tex2.Sample(sampler_bilinear_clamp, input.uv + float2(-dx, dy));
@@ -171,7 +175,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 
     // prevent blurry background from bleeding onto sharp foreground
     float depth = get_linear_depth(input.uv);
-    float center_depth = get_focal_depth();
+    float center_depth = get_focal_depth(texel_size);
     float center_coc = circle_of_confusion(input.uv, center_depth);
     if (get_linear_depth(input.uv) > center_depth) 
     {
