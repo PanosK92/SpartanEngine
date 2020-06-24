@@ -75,11 +75,8 @@ float get_focal_depth()
 
 float circle_of_confusion(float2 uv, float focal_depth)
 {
-    float camera_aperture   = g_camera_aperture / 1000.0f;  // convert to meters
-    float camera_range      = g_camera_far * 0.25f;         // use 1/4 of the clipping range, how many cameras can go that far to begin with ?
-    
     float depth         = get_linear_depth(uv);
-    float focus_range   = camera_aperture * g_camera_far;
+    float focus_range   = g_camera_aperture;
     float coc           = (depth - focal_depth) / (focus_range + FLT_MIN);
     return saturate(abs(coc));
 }
@@ -172,6 +169,15 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     float3 dof  = bokeh.rgb;
     float coc   = bokeh.a;
 
+    // prevent blurry background from bleeding onto sharp foreground
+    float depth = get_linear_depth(input.uv);
+    float center_depth = get_focal_depth();
+    float center_coc = circle_of_confusion(input.uv, center_depth);
+    if (get_linear_depth(input.uv) > center_depth) 
+    {
+        coc = clamp(coc, 0.0, center_coc * 2.0f);
+    }
+    
     // Compute final color
     float4 base     = tex.Sample(sampler_point_clamp, input.uv);
     float4 color    = lerp(base, float4(dof, base.a), coc);

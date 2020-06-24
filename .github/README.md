@@ -39,7 +39,7 @@ Platform | API | Status | Quality | Binaries | :+1:
 - Principled BSDF supporting anisotropic, clearcoat and cloth materials (combined with things like normal mapping, parallax, masking, occlusion etc)
 - Bloom (Based on a study of Resident Evil 2's RE Engine)
 - Volumetric lighting
-- Lights (Directional, point and spot)
+- Lights with physical units (lux for directional, candelas for point and spot lights)
 - Shadows with penumbra and colored translucency (Cascaded and omnidirectional shadow mapping with Vogel filtering)
 - SSAO (Screen space ambient occlusion)
 - SSR (Screen space reflections)
