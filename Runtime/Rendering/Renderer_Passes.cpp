@@ -2427,7 +2427,6 @@ namespace Spartan
             shader_type = Shader_DebugChannelRgbGammaCorrect_P;
         }
 
-
         if (m_render_target_debug == RenderTarget_Dof_Half)
         {
             texture = m_render_targets[RenderTarget_Dof_Half].get();
