@@ -183,9 +183,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     }
     
     // Compute final color
-    float4 base     = tex.Sample(sampler_point_clamp, input.uv);
-    float4 color    = lerp(base, float4(dof, base.a), coc);
-
-    return color;
+    float4 base = tex.Sample(sampler_point_clamp, input.uv);
+    return lerp(base, float4(dof, base.a), coc);
 }
 #endif

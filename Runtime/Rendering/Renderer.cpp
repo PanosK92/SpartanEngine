@@ -70,6 +70,8 @@ namespace Spartan
         m_options |= Render_ScreenSpaceReflections;
         m_options |= Render_AntiAliasing_Taa;
         m_options |= Render_Sharpening_LumaSharpen;
+        m_options |= Render_FilmGrain;
+        m_options |= Render_ChromaticAberration;
 
         // Option values
         m_option_values[Option_Value_Anisotropy]        = 16.0f;
@@ -396,7 +398,7 @@ namespace Spartan
         for (const auto& entity : m_entities[Renderer_Object_Light])
             if (Light* light = entity->GetComponent<Light>())
             {
-                if (light->GetLightType() == LightType_Directional)
+                if (light->GetLightType() == Light_Directional)
                 {
                     m_buffer_frame_cpu.directional_light_intensity = light->GetIntensity();
                 }
@@ -551,16 +553,17 @@ namespace Spartan
             m_buffer_light_cpu.view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
         }
 
+        // Convert luminous power to luminous intensity
         float luminous_intensity = light->GetIntensity() * m_camera->GetExposure();
-        if (light->GetLightType() == LightType_Point)
+        if (light->GetLightType() == Light_Point)
         {
-            luminous_intensity /= 4.0f * Math::Helper::PI; // lumens to candelas
-            luminous_intensity *= 1000.0f; // hack till I find where this implicit division happens
+            luminous_intensity /= Math::Helper::PI_4; // lumens to candelas
+            luminous_intensity *= 255.0f; // this is a hack, must fix whats my color units
         }
-        else if (light->GetLightType() == LightType_Spot)
+        else if (light->GetLightType() == Light_Spot)
         {
-            luminous_intensity /= 1.0f * Math::Helper::PI; // lumens to candelas
-            luminous_intensity *= 1000.0f; // hack till I find where this implicit division happens
+            luminous_intensity /= Math::Helper::PI; // lumens to candelas
+            luminous_intensity *= 255.0f; // this is a hack, must fix whats my color units
         }
 
         m_buffer_light_cpu.intensity_range_angle_bias   = Vector4(luminous_intensity, light->GetRange(), light->GetAngle(), GetOption(Render_ReverseZ) ? light->GetBias() : -light->GetBias());

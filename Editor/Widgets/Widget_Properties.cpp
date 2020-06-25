@@ -306,7 +306,7 @@ void Widget_Properties::ShowLight(Light* light) const
         float time_of_day           = light->GetTimeOfDay();
 		m_colorPicker_light->SetColor(light->GetColor());
 
-        bool is_directional = light->GetLightType() == LightType_Directional;
+        bool is_directional = light->GetLightType() == Light_Directional;
 		//===========================================================================
 
 		// Type
@@ -320,7 +320,7 @@ void Widget_Properties::ShowLight(Light* light) const
 				if (ImGui::Selectable(types[i], is_selected))
 				{
 					type_char_ptr = types[i];
-					light->SetLightType(static_cast<LightType>(i));
+					light->SetLightType(static_cast<Light_Type>(i));
 				}
 				if (is_selected)
 				{
@@ -383,7 +383,7 @@ void Widget_Properties::ShowLight(Light* light) const
 		ImGui::PushItemWidth(300); ImGui::InputFloat("##lightNormalBias", &normal_bias, 1.0f, 1.0f, "%.0f"); ImGui::PopItemWidth();
 
 		// Range
-		if (light->GetLightType() != LightType_Directional)
+		if (light->GetLightType() != Light_Directional)
 		{
 			ImGui::Text("Range");
 			ImGui::SameLine(ComponentProperty::g_column);
@@ -391,7 +391,7 @@ void Widget_Properties::ShowLight(Light* light) const
 		}
 
 		// Angle
-		if (light->GetLightType() == LightType_Spot)
+		if (light->GetLightType() == Light_Spot)
 		{
 			ImGui::Text("Angle");
 			ImGui::SameLine(ComponentProperty::g_column);
@@ -920,12 +920,12 @@ void Widget_Properties::ShowCamera(Camera* camera) const
         // Aperture
         ImGui::SetCursorPosX(ComponentProperty::g_column);
         ImGui::DragFloat("Aperture (mm)", &aperture, 0.01f, 0.01f, 150.0f);
-        ImGuiEx::Tooltip("Size of the lens diaphragm. Also controls the depth of field.");
+        ImGuiEx::Tooltip("Size of the lens diaphragm. Controls depth of field and chromatic aberration.");
 
         // Shutter speed
         ImGui::SetCursorPosX(ComponentProperty::g_column);
         ImGui::DragFloat("Shutter Speed (sec)", &shutter_speed, 0.001f, 0.0f, 1.0f);
-        ImGuiEx::Tooltip("Length of time for which the camera shutter is open. Also controls the amount of motion blur.");
+        ImGuiEx::Tooltip("Length of time for which the camera shutter is open. Controls the amount of motion blur.");
 
         // ISO
         ImGui::SetCursorPosX(ComponentProperty::g_column);
@@ -1157,15 +1157,15 @@ void Widget_Properties::ComponentContextMenu_Add() const
 			{
 				if (ImGui::MenuItem("Directional"))
 				{
-					entity->AddComponent<Light>()->SetLightType(LightType_Directional);
+					entity->AddComponent<Light>()->SetLightType(Light_Directional);
 				}
 				else if (ImGui::MenuItem("Point"))
 				{
-					entity->AddComponent<Light>()->SetLightType(LightType_Point);
+					entity->AddComponent<Light>()->SetLightType(Light_Point);
 				}
 				else if (ImGui::MenuItem("Spot"))
 				{
-					entity->AddComponent<Light>()->SetLightType(LightType_Spot);
+					entity->AddComponent<Light>()->SetLightType(Light_Spot);
 				}
 
 				ImGui::EndMenu();
