@@ -408,7 +408,7 @@ namespace Spartan
 		light->GetTransform()->SetPosition(Vector3(0.0f, 10.0f, 0.0f));
 
 		auto light_comp = light->AddComponent<Light>();
-		light_comp->SetLightType(LightType_Directional);
+		light_comp->SetLightType(Light_Directional);
 
 		return light;
 	}

@@ -19,23 +19,24 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-static const float g_chromatic_aberration_intensity = 5.0f;
+//= INCLUDES =========
+#include "Common.hlsl"
+//====================
 
-float3 ChromaticAberration(float2 uv, Texture2D sourceTexture)
+static const float g_film_grain_intensity = 0.5f;
+
+float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
-    float camera_error = 1.0f / g_camera_aperture;
-    float intensity = clamp(camera_error * 50.0f, 0.0f, g_chromatic_aberration_intensity);
-    float2 shift    = float2(intensity, -intensity);
+    float4 color = tex.Sample(sampler_point_clamp, input.uv);
 
-    // Lens effect
-    shift.x *= abs(uv.x * 2.0f - 1.0f);
-    shift.y *= abs(uv.y * 2.0f - 1.0f);
-    
-    // Sample color
-	float3 color    = 0.0f; 
-    color.r         = sourceTexture.Sample(sampler_bilinear_clamp, uv + (g_texel_size * shift)).r;
-    color.g         = sourceTexture.Sample(sampler_point_clamp, uv).g;
-    color.b         = sourceTexture.Sample(sampler_bilinear_clamp, uv - (g_texel_size * shift)).b;
+    // Film grain
+    float x = (input.uv.x + 4.0 ) * (input.uv.y + 4.0 ) * (g_time * 10.0);
+	float4 grain = (fmod((fmod(x, 13.0) + 1.0) * (fmod(x, 123.0) + 1.0), 0.01)-0.005) * g_film_grain_intensity;
 
-    return color;
+    // Iso noise - It's different from film grain but the assumption is that if the user
+    // is running this shader, he is going for a more cinematic look, so he might want iso noise as well.
+    float iso_noise = random(frac(input.uv.x * input.uv.y * g_time));
+    iso_noise *= g_camera_iso * 0.00001f;
+	
+    return saturate(color + iso_noise);
 }

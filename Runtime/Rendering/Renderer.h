@@ -74,11 +74,12 @@ namespace Spartan
 		Render_ScreenSpaceReflections	= 1 << 16,
 		Render_MotionBlur			    = 1 << 17,
         Render_DepthOfField             = 1 << 18,
-		Render_Sharpening_LumaSharpen	= 1 << 19,
-		Render_ChromaticAberration	    = 1 << 20,
-		Render_Dithering			    = 1 << 21,
-        Render_ReverseZ                 = 1 << 22,
-        Render_DepthPrepass             = 1 << 23
+        Render_FilmGrain                = 1 << 19,
+		Render_Sharpening_LumaSharpen	= 1 << 20,
+		Render_ChromaticAberration	    = 1 << 21,
+		Render_Dithering			    = 1 << 22,
+        Render_ReverseZ                 = 1 << 23,
+        Render_DepthPrepass             = 1 << 24
 	};
 
     enum Renderer_Option_Value
@@ -119,6 +120,7 @@ namespace Spartan
         Shader_Copy_C,
 		Shader_Fxaa_P,
 		Shader_Luma_P,
+        Shader_FilmGrain_P,
 		Shader_Taa_P,
 		Shader_MotionBlur_P,
         Shader_Dof_DownsampleCoc_P,
@@ -287,7 +289,8 @@ namespace Spartan
 		bool Pass_DebugBuffer(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_out);
 		void Pass_ToneMapping(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
 		void Pass_GammaCorrection(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
-		void Pass_FXAA(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in,	std::shared_ptr<RHI_Texture>& tex_out);
+        void Pass_FXAA(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in,	std::shared_ptr<RHI_Texture>& tex_out);
+        void Pass_FilmGrain(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
         void Pass_LumaSharpen(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
 		void Pass_ChromaticAberration(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
 		void Pass_MotionBlur(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);

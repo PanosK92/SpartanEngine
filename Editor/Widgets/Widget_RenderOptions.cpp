@@ -61,6 +61,7 @@ void Widget_RenderOptions::Tick()
         bool do_taa                     = m_renderer->GetOption(Render_AntiAliasing_Taa);
         bool do_fxaa                    = m_renderer->GetOption(Render_AntiAliasing_Fxaa);
         bool do_motion_blur             = m_renderer->GetOption(Render_MotionBlur);
+        bool do_film_grain              = m_renderer->GetOption(Render_FilmGrain);
         bool do_sharperning             = m_renderer->GetOption(Render_Sharpening_LumaSharpen);
         bool do_chromatic_aberration    = m_renderer->GetOption(Render_ChromaticAberration);
         bool do_dithering               = m_renderer->GetOption(Render_Dithering);
@@ -219,6 +220,10 @@ void Widget_RenderOptions::Tick()
             ImGui::Checkbox("FXAA - Fast Approximate Anti-Aliasing", &do_fxaa);
             ImGui::Separator();
 
+            // Film grain
+            ImGui::Checkbox("Film grain", &do_film_grain);
+            ImGui::Separator();
+
             // Sharpen
             ImGui::Checkbox("Sharpen", &do_sharperning);
             ImGui::SameLine(); render_option_float("##sharpen_option_1", "Strength",    Option_Value_Sharpen_Strength);
@@ -245,6 +250,7 @@ void Widget_RenderOptions::Tick()
         m_renderer->SetOption(Render_AntiAliasing_Taa,              do_taa);
         m_renderer->SetOption(Render_AntiAliasing_Fxaa,             do_fxaa);
         m_renderer->SetOption(Render_MotionBlur,                    do_motion_blur);
+        m_renderer->SetOption(Render_FilmGrain,                     do_film_grain);
         m_renderer->SetOption(Render_Sharpening_LumaSharpen,        do_sharperning);
         m_renderer->SetOption(Render_ChromaticAberration,           do_chromatic_aberration);
         m_renderer->SetOption(Render_Dithering,                     do_dithering);

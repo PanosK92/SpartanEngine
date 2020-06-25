@@ -197,7 +197,7 @@ namespace Spartan
                 const Matrix& view_projection = light->GetViewMatrix(array_index) * light->GetProjectionMatrix(array_index);
 
                 // Set appropriate rasterizer state
-                if (light->GetLightType() == LightType_Directional)
+                if (light->GetLightType() == Light_Directional)
                 {
                     // "Pancaking" - https://www.gamedev.net/forums/topic/639036-shadow-mapping-and-high-up-objects/
                     // It's basically a way to capture the silhouettes of potential shadow casters behind the light's view point.
@@ -774,17 +774,17 @@ namespace Spartan
                             RHI_Texture* tex_depth = light->GetDepthTexture();
                             RHI_Texture* tex_color = light->GetShadowsTransparentEnabled() ? light->GetColorTexture() : m_tex_white.get();
 
-                            if (light->GetLightType() == LightType_Directional)
+                            if (light->GetLightType() == Light_Directional)
                             {
                                 cmd_list->SetTexture(13, tex_depth);
                                 cmd_list->SetTexture(14, tex_color);
                             }
-                            else if (light->GetLightType() == LightType_Point)
+                            else if (light->GetLightType() == Light_Point)
                             {
                                 cmd_list->SetTexture(15, tex_depth);
                                 cmd_list->SetTexture(16, tex_color);
                             }
-                            else if (light->GetLightType() == LightType_Spot)
+                            else if (light->GetLightType() == Light_Spot)
                             {
                                 cmd_list->SetTexture(17, tex_depth);
                                 cmd_list->SetTexture(18, tex_color);
@@ -968,6 +968,13 @@ namespace Spartan
         if (GetOption(Render_Sharpening_LumaSharpen))
         {
             Pass_LumaSharpen(cmd_list, tex_in_ldr, tex_out_ldr);
+            tex_in_ldr.swap(tex_out_ldr);
+        }
+
+        // Film grain
+        if (GetOption(Render_FilmGrain))
+        {
+            Pass_FilmGrain(cmd_list, tex_in_ldr, tex_out_ldr);
             tex_in_ldr.swap(tex_out_ldr);
         }
 
@@ -1806,15 +1813,15 @@ namespace Spartan
 	void Renderer::Pass_Dithering(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
 		// Acquire shaders
-        const auto& shader_v = m_shaders[Shader_Quad_V];
-		const auto& shader_p = m_shaders[Shader_Dithering_P];
+        RHI_Shader* shader_v = m_shaders[Shader_Quad_V].get();
+        RHI_Shader* shader_p = m_shaders[Shader_Dithering_P].get();
         if (!shader_p->IsCompiled() || !shader_v->IsCompiled())
             return;
 
         // Set render state
         static RHI_PipelineState pipeline_state;
-        pipeline_state.shader_vertex                    = shader_v.get();
-        pipeline_state.shader_pixel                     = shader_p.get();
+        pipeline_state.shader_vertex                    = shader_v;
+        pipeline_state.shader_pixel                     = shader_p;
         pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
         pipeline_state.blend_state                      = m_blend_disabled.get();
         pipeline_state.depth_stencil_state              = m_depth_stencil_off_off.get();
@@ -1840,18 +1847,55 @@ namespace Spartan
         }
 	}
 
-	void Renderer::Pass_LumaSharpen(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
-	{
-		// Acquire shaders
-        const auto& shader_v = m_shaders[Shader_Quad_V];
-		const auto& shader_p = m_shaders[Shader_Sharpen_Luma_P];
+    void Renderer::Pass_FilmGrain(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    {
+        // Acquire shaders
+        RHI_Shader* shader_v = m_shaders[Shader_Quad_V].get();
+		RHI_Shader* shader_p = m_shaders[Shader_FilmGrain_P].get();
         if (!shader_p->IsCompiled() || !shader_v->IsCompiled())
             return;
 
         // Set render state
         static RHI_PipelineState pipeline_state;
-        pipeline_state.shader_vertex                    = shader_v.get();
-        pipeline_state.shader_pixel                     = shader_p.get();
+        pipeline_state.shader_vertex                    = shader_v;
+        pipeline_state.shader_pixel                     = shader_p;
+        pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
+        pipeline_state.blend_state                      = m_blend_disabled.get();
+        pipeline_state.depth_stencil_state              = m_depth_stencil_off_off.get();
+        pipeline_state.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride();
+        pipeline_state.render_target_color_textures[0]  = tex_out.get();
+        pipeline_state.clear_color[0]                   = Vector4::Zero;
+        pipeline_state.viewport                         = tex_out->GetViewport();
+        pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
+        pipeline_state.pass_name                        = "Pass_FilmGrain";
+
+        // Record commands
+        if (cmd_list->BeginRenderPass(pipeline_state))
+        {
+            // Update uber buffer
+            m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+            UpdateUberBuffer(cmd_list);
+
+            cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
+            cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
+            cmd_list->SetTexture(28, tex_in);
+            cmd_list->DrawIndexed(Rectangle::GetIndexCount());
+            cmd_list->EndRenderPass();
+        }
+    }
+
+	void Renderer::Pass_LumaSharpen(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+	{
+		// Acquire shaders
+        RHI_Shader* shader_v = m_shaders[Shader_Quad_V].get();
+		RHI_Shader* shader_p = m_shaders[Shader_Sharpen_Luma_P].get();
+        if (!shader_p->IsCompiled() || !shader_v->IsCompiled())
+            return;
+
+        // Set render state
+        static RHI_PipelineState pipeline_state;
+        pipeline_state.shader_vertex                    = shader_v;
+        pipeline_state.shader_pixel                     = shader_p;
         pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
         pipeline_state.blend_state                      = m_blend_disabled.get();
         pipeline_state.depth_stencil_state              = m_depth_stencil_off_off.get();
@@ -1911,7 +1955,7 @@ namespace Spartan
                 {
                     Light* light = entity->GetComponent<Light>();
 
-                    if (light->GetLightType() == LightType_Spot)
+                    if (light->GetLightType() == Light_Spot)
                     {
                         Vector3 start = light->GetTransform()->GetPosition();
                         Vector3 end = light->GetTransform()->GetForward() * light->GetRange();
@@ -2104,9 +2148,9 @@ namespace Spartan
                         // Choose texture based on light type
                         shared_ptr<RHI_Texture> light_tex = nullptr;
                         const auto type = light->GetLightType();
-                        if (type == LightType_Directional)	light_tex = m_gizmo_tex_light_directional;
-                        else if (type == LightType_Point)	light_tex = m_gizmo_tex_light_point;
-                        else if (type == LightType_Spot)	light_tex = m_gizmo_tex_light_spot;
+                        if (type == Light_Directional)	light_tex = m_gizmo_tex_light_directional;
+                        else if (type == Light_Point)	light_tex = m_gizmo_tex_light_point;
+                        else if (type == Light_Spot)	light_tex = m_gizmo_tex_light_spot;
         
                         // Construct appropriate rectangle
                         const auto tex_width = light_tex->GetWidth() * scale;

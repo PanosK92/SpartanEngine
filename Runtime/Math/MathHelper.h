@@ -42,6 +42,7 @@ namespace Spartan::Math::Helper
 	constexpr float M_EPSILON	= 0.000001f;
 	constexpr float PI			= 3.14159265359f;
 	constexpr float PI_2		= 6.28318530718f;
+    constexpr float PI_4        = 12.5663706144f;
 	constexpr float PI_DIV_2	= 1.57079632679f;
 	constexpr float PI_DIV_4	= 0.78539816339f;
 	constexpr float PI_INV		= 0.31830988618f;

@@ -44,9 +44,9 @@ namespace Spartan
     {
         // Compute flags
         uint16_t flags = 0;
-        flags |= light->GetLightType() == LightType_Directional                                             ? Shader_Light_Directional              : flags;
-        flags |= light->GetLightType() == LightType_Point                                                   ? Shader_Light_Point                    : flags;
-        flags |= light->GetLightType() == LightType_Spot                                                    ? Shader_Light_Spot                     : flags;
+        flags |= light->GetLightType() == Light_Directional                                             ? Shader_Light_Directional              : flags;
+        flags |= light->GetLightType() == Light_Point                                                   ? Shader_Light_Point                    : flags;
+        flags |= light->GetLightType() == Light_Spot                                                    ? Shader_Light_Spot                     : flags;
         flags |= light->GetShadowsEnabled()                                                                 ? Shader_Light_Shadows                  : flags;
         flags |= (light->GetShadowsScreenSpaceEnabled() && (renderer_flags & Render_ScreenSpaceShadows))    ? Shader_Light_ShadowsScreenSpace       : flags;
         flags |= light->GetShadowsTransparentEnabled()                                                      ? Shader_Light_ShadowsTransparent       : flags;

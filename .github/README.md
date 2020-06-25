@@ -46,8 +46,8 @@ Platform | API | Status | Quality | Binaries | :+1:
 - SSS (Screen space shadows)
 - TAA (Temporal anti-aliasing based on Uncharted 4)
 - Physically based camera (Aperture, Shutter Speed, ISO)
-- Depth of field, controlled by the aperture of the camera
-- Motion blur controlled by the shutter speed of the camera
+- Depth of field (controlled by the aperture of the camera)
+- Motion blur (controlled by the shutter speed of the camera)
 - Real-time shader editor
 - Custom mip chain generation (Higher texture fidelity using Lanczos3 scaling)
 - Font rendering

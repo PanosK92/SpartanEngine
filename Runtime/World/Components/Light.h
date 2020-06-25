@@ -38,11 +38,11 @@ namespace Spartan
 	class Renderable;
 	class Renderer;
 
-	enum LightType
+	enum Light_Type
 	{
-		LightType_Directional,
-		LightType_Point,
-		LightType_Spot
+		Light_Directional,
+		Light_Point,
+		Light_Spot
 	};
 
     struct ShadowSlice
@@ -75,11 +75,11 @@ namespace Spartan
 		//============================================
 
         const auto GetLightType() const { return m_light_type; }
-		void SetLightType(LightType type);
+		void SetLightType(Light_Type type);
 
-		void SetColor(float r, float g, float b, float a)	{ m_color = Math::Vector4(r, g, b, a); }
-		void SetColor(const Math::Vector4& color)			{ m_color = color; }
-		const auto& GetColor() const                        { return m_color; }
+        void SetColor(const float temperature);
+        void SetColor(const Math::Vector4& rgb) { m_color_rgb = rgb; }
+		const auto& GetColor() const            { return m_color_rgb; }
 
 		void SetIntensity(float value)	{ m_intensity = value; }
 		auto GetIntensity()	const		{ return m_intensity; }
@@ -127,29 +127,33 @@ namespace Spartan
 		void ComputeViewMatrix();
 		bool ComputeProjectionMatrix(uint32_t index = 0);
         void ComputeCascadeSplits();
-		
-		LightType m_light_type	            = LightType_Directional;
-		bool m_shadows_enabled		        = true;
+
+        // Shadows
+        bool m_shadows_enabled              = true;
         bool m_shadows_screen_space_enabled = true;
         bool m_shadows_transparent_enabled  = true;
-        bool m_volumetric_enabled           = true;
-		float m_range			            = 10.0f;
-		float m_intensity		            = 128000.0f;    // sun lux
-		float m_angle_rad		            = 0.5f;         // about 30 degrees
-        float m_time_of_day                 = 1.0f;
-		float m_bias			            = 0.1f;
-		float m_normal_bias		            = 5.0f;
-        bool m_initialized                  = false;
-		bool m_is_dirty			            = true;
         uint32_t m_cascade_count            = 4;
-		Math::Vector4 m_color               = Math::Vector4(1.0f, 0.76f, 0.57f, 1.0f);
+        ShadowMap m_shadow_map;
+
+        // Bias
+        float m_bias        = 0.1f;
+        float m_normal_bias = 5.0f;
+
+        // Misc
+        Light_Type m_light_type     = Light_Directional;
+        Math::Vector4 m_color_rgb   = Math::Vector4(1.0f, 0.76f, 0.57f, 1.0f);
+        bool m_volumetric_enabled = true;
+		float m_range			  = 10.0f;
+		float m_intensity		  = 128000.0f;  // sun lux
+		float m_angle_rad		  = 0.5f;       // about 30 degrees
+        float m_time_of_day       = 1.0f;
+        bool m_initialized        = false;
+		bool m_is_dirty			  = true;
 		std::array<Math::Matrix, 6> m_matrix_view;
 		std::array<Math::Matrix, 6> m_matrix_projection;
         Math::Quaternion m_previous_rot     = Math::Quaternion::Identity;
         Math::Vector3 m_previous_pos        = Math::Vector3::Infinity;
-        Math::Matrix m_previous_camera_view = Math::Matrix::Identity;    	
-        ShadowMap m_shadow_map;
-
+        Math::Matrix m_previous_camera_view = Math::Matrix::Identity;
 		Renderer* m_renderer;
 	};
 }

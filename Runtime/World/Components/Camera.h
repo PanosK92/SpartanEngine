@@ -128,7 +128,7 @@ namespace Spartan
 	private:
         void FpsControl(float delta_time);
 
-        float m_aperture                    = 50.0f;        // Size of the lens diaphragm (mm).
+        float m_aperture                    = 50.0f;        // Size of the lens diaphragm (mm). Controls depth of field and chromatic aberration.
         float m_shutter_speed               = 1.0f / 60.0f; // Length of time for which the camera shutter is open (sec). Also controls the amount of motion blur.
         float m_iso                         = 500.0f;       // Sensitivity to light.
         float m_fov_horizontal_rad          = Math::Helper::DegreesToRadians(90.0f);
