@@ -120,7 +120,7 @@ namespace Spartan
 
 	void Constraint::SetConstraintType(const ConstraintType type)
 	{
-		if (m_type != type || !m_constraint)
+		if (m_constraintType != type || !m_constraint)
 		{
 			m_constraintType = type;
 			Construct();

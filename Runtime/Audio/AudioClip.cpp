@@ -37,7 +37,7 @@ using namespace FMOD;
 
 namespace Spartan
 {
-	AudioClip::AudioClip(Context* context) : IResource(context, Resource_Audio)
+	AudioClip::AudioClip(Context* context) : IResource(context, ResourceType::Audio)
 	{
 		// AudioClip
 		m_transform		= nullptr;

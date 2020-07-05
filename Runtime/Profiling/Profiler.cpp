@@ -305,8 +305,8 @@ namespace Spartan
 
     void Profiler::UpdateRhiMetricsString()
 	{
-		const auto texture_count	= m_resource_manager->GetResourceCount(Resource_Texture) + m_resource_manager->GetResourceCount(Resource_Texture2d) + m_resource_manager->GetResourceCount(Resource_TextureCube);
-		const auto material_count	= m_resource_manager->GetResourceCount(Resource_Material);
+		const auto texture_count	= m_resource_manager->GetResourceCount(ResourceType::Texture) + m_resource_manager->GetResourceCount(ResourceType::Texture2d) + m_resource_manager->GetResourceCount(ResourceType::TextureCube);
+		const auto material_count	= m_resource_manager->GetResourceCount(ResourceType::Material);
 
         static const char* text =
             // Times

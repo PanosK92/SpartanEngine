@@ -31,34 +31,34 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-	enum Resource_Type
+	enum class ResourceType
 	{
-		Resource_Unknown,
-		Resource_Texture,
-		Resource_Texture2d,
-		Resource_TextureCube,
-		Resource_Audio,
-		Resource_Material,	
-		Resource_Mesh,
-		Resource_Model,
-		Resource_Cubemap,	
-		Resource_Animation,
-		Resource_Font,
-		Resource_Shader
+		Unknown,
+		Texture,
+		Texture2d,
+		TextureCube,
+		Audio,
+		Material,	
+		Mesh,
+		Model,
+		Cubemap,	
+		Animation,
+		Font,
+		Shader
 	};
 
 	enum LoadState
 	{
-		LoadState_Idle,
-		LoadState_Started,
-		LoadState_Completed,
-		LoadState_Failed
+		Idle,
+		Started,
+		Completed,
+		Failed
 	};
 
 	class SPARTAN_CLASS IResource : public Spartan_Object
 	{
 	public:
-		IResource(Context* context, Resource_Type type);
+		IResource(Context* context, ResourceType type);
 		virtual ~IResource() = default;
 
 		void SetResourceFilePath(const std::string& path)
@@ -93,7 +93,7 @@ namespace Spartan
             m_resource_directory            = FileSystem::GetDirectoryFromFilePath(file_path_relative);
         }
         
-        Resource_Type GetResourceType()                 const { return m_resource_type; }
+        ResourceType GetResourceType()                  const { return m_resource_type; }
         const char* GetResourceTypeCstr()               const { return typeid(*this).name(); }
         bool HasFilePathNative()                        const { return !m_resource_file_path_native.empty(); }
         const std::string& GetResourceFilePath()        const { return m_resource_file_path_foreign; }
@@ -112,11 +112,11 @@ namespace Spartan
 
 		// Type
 		template <typename T>
-		static constexpr Resource_Type TypeToEnum();
+		static constexpr ResourceType TypeToEnum();
 
 	protected:
-		Resource_Type m_resource_type	= Resource_Unknown;
-		LoadState m_load_state			= LoadState_Idle;
+		ResourceType m_resource_type	= ResourceType::Unknown;
+		LoadState m_load_state			= Idle;
 
 	private:
 		std::string m_resource_name;

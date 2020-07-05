@@ -72,7 +72,7 @@ namespace Spartan::vulkan_utility
         VkImageCreateInfo create_info   = {};
         create_info.sType               = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         create_info.imageType           = VK_IMAGE_TYPE_2D;
-        create_info.flags               = (texture->GetResourceType() == Resource_TextureCube) ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : 0;
+        create_info.flags               = (texture->GetResourceType() == ResourceType::TextureCube) ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : 0;
         create_info.extent.width        = texture->GetWidth();
         create_info.extent.height       = texture->GetHeight();
         create_info.extent.depth        = 1;

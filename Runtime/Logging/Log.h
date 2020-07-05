@@ -54,23 +54,23 @@ namespace Spartan
 		class Vector4;
 	}
 
-	enum Log_Type
+	enum class LogType
 	{
-		Log_Info,
-		Log_Warning,
-		Log_Error
+		Info,
+		Warning,
+		Error
 	};
 
     struct LogCmd
     {
-        LogCmd(const std::string& text, const Log_Type type)
+        LogCmd(const std::string& text, const LogType type)
         {
             this->text = text;
             this->type = type;
         }
 
         std::string text;
-        Log_Type type;
+        LogType type;
     };
 
 	class SPARTAN_CLASS Log
@@ -83,11 +83,11 @@ namespace Spartan
 		static void SetLogger(const std::weak_ptr<ILogger>& logger) { m_logger = logger; }
 
 		// Alpha
-		static void Write(const char* text, const Log_Type type);
+		static void Write(const char* text, const LogType type);
         static void WriteFInfo(const char* text, ...);
 		static void WriteFWarning(const char* text, ...);
 		static void WriteFError(const char* text, ...);
-        static void Write(const std::string& text, const Log_Type type);
+        static void Write(const std::string& text, const LogType type);
         static void WriteFInfo(const std::string text, ...);
         static void WriteFWarning(const std::string text, ...);
         static void WriteFError(const std::string text, ...);
@@ -104,31 +104,31 @@ namespace Spartan
 			std::is_same<T, double>::value ||
 			std::is_same<T, long double>::value
 		>::type>
-		static void Write(T value, Log_Type type)
+		static void Write(T value, LogType type)
 		{
 			Write(to_string(value), type);
 		}
 
 		// Math
-		static void Write(const Math::Vector2& value, Log_Type type);
-		static void Write(const Math::Vector3& value, Log_Type type);
-		static void Write(const Math::Vector4& value, Log_Type type);
-		static void Write(const Math::Quaternion& value, Log_Type type);
-		static void Write(const Math::Matrix& value, Log_Type type);
+		static void Write(const Math::Vector2& value, LogType type);
+		static void Write(const Math::Vector3& value, LogType type);
+		static void Write(const Math::Vector4& value, LogType type);
+		static void Write(const Math::Quaternion& value, LogType type);
+		static void Write(const Math::Matrix& value, LogType type);
 
 		// Manually handled types
-		static void Write(const bool value, const Log_Type type)							{ Write(value ? "True" : "False", type); }
-		template<typename T> static void Write(std::weak_ptr<T> ptr, const Log_Type type)	{ Write(ptr.expired() ? "Expired" : typeid(ptr).name(), type); }
-		template<typename T> static void Write(std::shared_ptr<T> ptr, const Log_Type type)	{ Write(ptr ? typeid(ptr).name() : "Null", type); }
-		static void Write(const std::weak_ptr<Entity>& entity, Log_Type type);
-		static void Write(const std::shared_ptr<Entity>& entity, Log_Type type);
+		static void Write(const bool value, const LogType type)							    { Write(value ? "True" : "False", type); }
+		template<typename T> static void Write(std::weak_ptr<T> ptr, const LogType type)	{ Write(ptr.expired() ? "Expired" : typeid(ptr).name(), type); }
+		template<typename T> static void Write(std::shared_ptr<T> ptr, const LogType type)	{ Write(ptr ? typeid(ptr).name() : "Null", type); }
+		static void Write(const std::weak_ptr<Entity>& entity, LogType type);
+		static void Write(const std::shared_ptr<Entity>& entity, LogType type);
 
 		static bool m_log_to_file;     
 
 	private:
         static void FlushBuffer();
-		static void LogString(const char* text, Log_Type type);
-		static void LogToFile(const char* text, Log_Type type);
+		static void LogString(const char* text, LogType type);
+		static void LogToFile(const char* text, LogType type);
 
         static std::mutex m_mutex_log;
 		static std::weak_ptr<ILogger> m_logger;

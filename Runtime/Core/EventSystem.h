@@ -40,20 +40,20 @@ Note: Currently, this is a blocking event system
 =================================================================================
 */
 
-enum Event_Type
+enum class EventType
 {
-	Event_Frame_End,		        // A frame ends
-    Event_Window_Data,              // The window has a message for proccesing
-	Event_World_Save,		        // The world must be saved to file
-	Event_World_Saved,		        // The world finished saving to file
-	Event_World_Load,		        // The world must be loaded from file
-	Event_World_Loaded,		        // The world finished loading from file
-	Event_World_Unload,		        // The world should clear everything
-	Event_World_Resolve_Pending,	// The world should resolve
-	Event_World_Resolve_Complete,	// The world has finished resolving
-	Event_World_Stop,		        // The world should stop ticking
-	Event_World_Start,		        // The world should start ticking
-    Event_Frame_Resolution_Changed
+	FrameEnd,		        // A frame ends
+    WindowData,             // The window has a message for processing
+	WorldSave,		        // The world must be saved to file
+	WorldSaved,		        // The world finished saving to file
+	WorldLoad,		        // The world must be loaded from file
+    WorldLoaded,		    // The world finished loading from file
+    WorldUnload,		    // The world should clear everything
+	WorldResolve,	        // The world should resolve
+	WorldResolved,	        // The world has finished resolving
+	WorldStop,		        // The world should stop ticking
+	WorldStart,		        // The world should start ticking
+    FrameResolutionChanged
 };
 
 //= MACROS ====================================================================================================
@@ -86,12 +86,12 @@ namespace Spartan
 			return instance;
 		}
 
-		void Subscribe(const Event_Type event_id, subscriber&& function)
+		void Subscribe(const EventType event_id, subscriber&& function)
 		{
 			m_subscribers[event_id].push_back(std::forward<subscriber>(function));
 		}
 
-		void Unsubscribe(const Event_Type event_id, subscriber&& function)
+		void Unsubscribe(const EventType event_id, subscriber&& function)
 		{
 			const size_t function_adress	= *reinterpret_cast<long*>(reinterpret_cast<char*>(&function));
 			auto& subscribers				= m_subscribers[event_id];
@@ -107,7 +107,7 @@ namespace Spartan
 			}
 		}
 
-		void Fire(const Event_Type event_id, const Variant& data = 0)
+		void Fire(const EventType event_id, const Variant& data = 0)
 		{
 			if (m_subscribers.find(event_id) == m_subscribers.end())
 				return;
@@ -124,6 +124,6 @@ namespace Spartan
 		}
 
 	private:
-		std::unordered_map<Event_Type, std::vector<subscriber>> m_subscribers;
+		std::unordered_map<EventType, std::vector<subscriber>> m_subscribers;
 	};
 }

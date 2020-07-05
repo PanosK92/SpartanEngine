@@ -31,7 +31,7 @@ namespace Spartan
 	Scripting::Scripting(Context* context) : ISubsystem(context)
 	{
 		// Subscribe to events
-		SUBSCRIBE_TO_EVENT(Event_World_Unload, EVENT_HANDLER(Clear));
+		SUBSCRIBE_TO_EVENT(EventType::WorldUnload, EVENT_HANDLER(Clear));
 	}
 
 	Scripting::~Scripting()

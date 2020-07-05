@@ -56,7 +56,7 @@ namespace Spartan
 		//=========================
 
         // Get by name
-		std::shared_ptr<IResource>& GetByName(const std::string& name, Resource_Type type);
+		std::shared_ptr<IResource>& GetByName(const std::string& name, ResourceType type);
 		template <class T> 
 		constexpr std::shared_ptr<T> GetByName(const std::string& name) 
 		{ 
@@ -64,7 +64,7 @@ namespace Spartan
 		}
 
 		// Get by type
-		std::vector<std::shared_ptr<IResource>> GetByType(Resource_Type type = Resource_Unknown);
+		std::vector<std::shared_ptr<IResource>> GetByType(ResourceType type = ResourceType::Unknown);
 
 		// Get by path
 		template <class T>
@@ -114,7 +114,7 @@ namespace Spartan
 			// Cache it
 			return static_pointer_cast<T>(m_resource_groups[resource->GetResourceType()].emplace_back(resource));
 		}
-		bool IsCached(const std::string& resource_name, Resource_Type resource_type);
+		bool IsCached(const std::string& resource_name, ResourceType resource_type);
 
         template <class T>
         void Remove(std::shared_ptr<T>& resource)
@@ -172,16 +172,16 @@ namespace Spartan
 		void SaveResourcesToFiles();
 		void LoadResourcesFromFiles();
 		//============================
-
-		//= MISC ========================================================
+        
+		//= MISC =============================================================
 		// Memory
-        uint64_t GetMemoryUsageCpu(Resource_Type type = Resource_Unknown);
-        uint64_t GetMemoryUsageGpu(Resource_Type type = Resource_Unknown);
+        uint64_t GetMemoryUsageCpu(ResourceType type = ResourceType::Unknown);
+        uint64_t GetMemoryUsageGpu(ResourceType type = ResourceType::Unknown);
 		// Unloads all resources
 		void Clear() { m_resource_groups.clear(); }
 		// Returns all resources of a given type
-		uint32_t GetResourceCount(Resource_Type type = Resource_Unknown);
-		//===============================================================
+		uint32_t GetResourceCount(ResourceType type = ResourceType::Unknown);
+		//====================================================================
 
 		//= DIRECTORIES =======================================================
 		void AddDataDirectory(Asset_Type type, const std::string& directory);
@@ -199,7 +199,7 @@ namespace Spartan
 
 	private:
 		// Cache
-		std::unordered_map<Resource_Type, std::vector<std::shared_ptr<IResource>>> m_resource_groups;
+		std::unordered_map<ResourceType, std::vector<std::shared_ptr<IResource>>> m_resource_groups;
 		std::mutex m_mutex;
 
 		// Directories

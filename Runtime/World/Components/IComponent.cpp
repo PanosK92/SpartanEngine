@@ -61,7 +61,7 @@ namespace Spartan
 	}
 
 	template <typename T>
-    inline constexpr ComponentType IComponent::TypeToEnum() { return ComponentType_Unknown; }
+    inline constexpr ComponentType IComponent::TypeToEnum() { return ComponentType::Unknown; }
 
     template<typename T>
     inline constexpr void validate_component_type() { static_assert(std::is_base_of<IComponent, T>::value, "Provided type does not implement IComponent"); }
@@ -70,17 +70,17 @@ namespace Spartan
 	#define REGISTER_COMPONENT(T, enumT) template<> SPARTAN_CLASS ComponentType IComponent::TypeToEnum<T>() { validate_component_type<T>(); return enumT; }
 
 	// To add a new component to the engine, simply register it here
-	REGISTER_COMPONENT(AudioListener,	ComponentType_AudioListener)
-	REGISTER_COMPONENT(AudioSource,		ComponentType_AudioSource)
-	REGISTER_COMPONENT(Camera,			ComponentType_Camera)
-	REGISTER_COMPONENT(Collider,		ComponentType_Collider)
-	REGISTER_COMPONENT(Constraint,		ComponentType_Constraint)
-	REGISTER_COMPONENT(Light,			ComponentType_Light)
-	REGISTER_COMPONENT(Renderable,		ComponentType_Renderable)
-	REGISTER_COMPONENT(RigidBody,		ComponentType_RigidBody)
-    REGISTER_COMPONENT(SoftBody,        ComponentType_SoftBody)
-	REGISTER_COMPONENT(Script,			ComponentType_Script)
-	REGISTER_COMPONENT(Environment,		ComponentType_Environment)
-    REGISTER_COMPONENT(Terrain,         ComponentType_Terrain)
-	REGISTER_COMPONENT(Transform,		ComponentType_Transform)
+	REGISTER_COMPONENT(AudioListener,	ComponentType::AudioListener)
+	REGISTER_COMPONENT(AudioSource,		ComponentType::AudioSource)
+	REGISTER_COMPONENT(Camera,			ComponentType::Camera)
+	REGISTER_COMPONENT(Collider,		ComponentType::Collider)
+	REGISTER_COMPONENT(Constraint,		ComponentType::Constraint)
+	REGISTER_COMPONENT(Light,			ComponentType::Light)
+	REGISTER_COMPONENT(Renderable,		ComponentType::Renderable)
+	REGISTER_COMPONENT(RigidBody,		ComponentType::RigidBody)
+    REGISTER_COMPONENT(SoftBody,        ComponentType::SoftBody)
+	REGISTER_COMPONENT(Script,			ComponentType::Script)
+	REGISTER_COMPONENT(Environment,		ComponentType::Environment)
+    REGISTER_COMPONENT(Terrain,         ComponentType::Terrain)
+	REGISTER_COMPONENT(Transform,		ComponentType::Transform)
 }

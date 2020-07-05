@@ -67,7 +67,7 @@ namespace Spartan
             RegisterRawInputDevices(Rid, 1, sizeof(Rid[0]));
         }
 
-        SUBSCRIBE_TO_EVENT(Event_Window_Data, EVENT_HANDLER(OnWindowData));
+        SUBSCRIBE_TO_EVENT(EventType::WindowData, EVENT_HANDLER(OnWindowData));
 	}
 
     void Input::OnWindowData()

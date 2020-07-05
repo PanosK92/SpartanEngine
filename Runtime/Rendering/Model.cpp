@@ -44,7 +44,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-	Model::Model(Context* context) : IResource(context, Resource_Model)
+	Model::Model(Context* context) : IResource(context, ResourceType::Model)
 	{
 		m_resource_manager	= m_context->GetSubsystem<ResourceCache>();
 		m_rhi_device		= m_context->GetSubsystem<Renderer>()->GetRhiDevice();

@@ -53,17 +53,17 @@ namespace Spartan
         m_context->m_engine = this;
 
 		// Register subsystems
-        m_context->RegisterSubsystem<Timer>(Tick_Variable);         // must be first so it ticks first
-        m_context->RegisterSubsystem<Threading>(Tick_Variable);
-		m_context->RegisterSubsystem<ResourceCache>(Tick_Variable);		
-		m_context->RegisterSubsystem<Audio>(Tick_Variable);
-        m_context->RegisterSubsystem<Physics>(Tick_Variable);       // integrates internally
-        m_context->RegisterSubsystem<Input>(Tick_Smoothed);
-		m_context->RegisterSubsystem<Scripting>(Tick_Smoothed);
-		m_context->RegisterSubsystem<World>(Tick_Smoothed);
-        m_context->RegisterSubsystem<Profiler>(Tick_Variable);
-        m_context->RegisterSubsystem<Renderer>(Tick_Smoothed);
-        m_context->RegisterSubsystem<Settings>(Tick_Variable);
+        m_context->RegisterSubsystem<Timer>(TickType::Variable);         // must be first so it ticks first
+        m_context->RegisterSubsystem<Threading>(TickType::Variable);
+		m_context->RegisterSubsystem<ResourceCache>(TickType::Variable);
+		m_context->RegisterSubsystem<Audio>(TickType::Variable);
+        m_context->RegisterSubsystem<Physics>(TickType::Variable);       // integrates internally
+        m_context->RegisterSubsystem<Input>(TickType::Smoothed);
+		m_context->RegisterSubsystem<Scripting>(TickType::Smoothed);
+		m_context->RegisterSubsystem<World>(TickType::Smoothed);
+        m_context->RegisterSubsystem<Profiler>(TickType::Variable);
+        m_context->RegisterSubsystem<Renderer>(TickType::Smoothed);
+        m_context->RegisterSubsystem<Settings>(TickType::Variable);
              	
 		// Initialize above subsystems
 		m_context->Initialize();
@@ -78,13 +78,13 @@ namespace Spartan
 
 	void Engine::Tick() const
     {
-        m_context->Tick(Tick_Variable, static_cast<float>(m_timer->GetDeltaTimeSec()));
-        m_context->Tick(Tick_Smoothed, static_cast<float>(m_timer->GetDeltaTimeSmoothedSec()));
+        m_context->Tick(TickType::Variable, static_cast<float>(m_timer->GetDeltaTimeSec()));
+        m_context->Tick(TickType::Smoothed, static_cast<float>(m_timer->GetDeltaTimeSmoothedSec()));
 	}
 
     void Engine::SetWindowData(WindowData& window_data)
     {
         m_window_data = window_data;
-        FIRE_EVENT(Event_Window_Data);
+        FIRE_EVENT(EventType::WindowData);
     }
 }

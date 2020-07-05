@@ -30,7 +30,7 @@ using namespace std;
 
 namespace Spartan
 {
-	Animation::Animation(Context* context): IResource(context, Resource_Animation)
+	Animation::Animation(Context* context): IResource(context, ResourceType::Animation)
 	{
 
 	}

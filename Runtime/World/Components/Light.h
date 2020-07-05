@@ -38,11 +38,11 @@ namespace Spartan
 	class Renderable;
 	class Renderer;
 
-	enum Light_Type
+	enum class LightType
 	{
-		Light_Directional,
-		Light_Point,
-		Light_Spot
+		Directional,
+		Point,
+		Spot
 	};
 
     struct ShadowSlice
@@ -75,7 +75,7 @@ namespace Spartan
 		//============================================
 
         const auto GetLightType() const { return m_light_type; }
-		void SetLightType(Light_Type type);
+		void SetLightType(LightType type);
 
         void SetColor(const float temperature);
         void SetColor(const Math::Vector4& rgb) { m_color_rgb = rgb; }
@@ -140,15 +140,15 @@ namespace Spartan
         float m_normal_bias = 5.0f;
 
         // Misc
-        Light_Type m_light_type     = Light_Directional;
+        LightType m_light_type      = LightType::Directional;
         Math::Vector4 m_color_rgb   = Math::Vector4(1.0f, 0.76f, 0.57f, 1.0f);
-        bool m_volumetric_enabled = true;
-		float m_range			  = 10.0f;
-		float m_intensity		  = 128000.0f;  // sun lux
-		float m_angle_rad		  = 0.5f;       // about 30 degrees
-        float m_time_of_day       = 1.0f;
-        bool m_initialized        = false;
-		bool m_is_dirty			  = true;
+        bool m_volumetric_enabled   = true;
+		float m_range			    = 10.0f;
+		float m_intensity		    = 128000.0f;  // sun lux
+		float m_angle_rad		    = 0.5f;       // about 30 degrees
+        float m_time_of_day         = 1.0f;
+        bool m_initialized          = false;
+		bool m_is_dirty			    = true;
 		std::array<Math::Matrix, 6> m_matrix_view;
 		std::array<Math::Matrix, 6> m_matrix_projection;
         Math::Quaternion m_previous_rot     = Math::Quaternion::Identity;

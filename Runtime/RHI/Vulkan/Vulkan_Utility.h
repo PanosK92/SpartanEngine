@@ -800,11 +800,11 @@ namespace Spartan::vulkan_utility
             {
                 VkImageViewType type = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
 
-                if (texture->GetResourceType() == Resource_Texture2d)
+                if (texture->GetResourceType() == ResourceType::Texture2d)
                 {
                     type = (texture->GetArraySize() == 1) ? VK_IMAGE_VIEW_TYPE_2D : VK_IMAGE_VIEW_TYPE_2D_ARRAY;
                 }
-                else if (texture->GetResourceType() == Resource_TextureCube)
+                else if (texture->GetResourceType() == ResourceType::TextureCube)
                 {
                     type = VK_IMAGE_VIEW_TYPE_CUBE;
                 }
@@ -1105,19 +1105,19 @@ namespace Spartan::vulkan_utility
 
             if (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
             {
-                Log::Write(msg.c_str(), Log_Info);
+                Log::Write(msg.c_str(), LogType::Info);
             }
             else if (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
             {
-                Log::Write(msg.c_str(), Log_Info);
+                Log::Write(msg.c_str(), LogType::Info);
             }
             else if (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
             {
-                Log::Write(msg.c_str(), Log_Warning);
+                Log::Write(msg.c_str(), LogType::Warning);
             }
             else if (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
             {
-                Log::Write(msg.c_str(), Log_Error);
+                Log::Write(msg.c_str(), LogType::Error);
             }
 
             return VK_FALSE;

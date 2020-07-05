@@ -31,22 +31,22 @@ namespace Spartan
 {
     class Engine;
 
-    enum Tick_Group
+    enum class TickType
     {
-        Tick_Variable,
-        Tick_Smoothed
+        Variable,
+        Smoothed
     };
 
     struct _subystem
     {
-        _subystem(const std::shared_ptr<ISubsystem>& subsystem, Tick_Group tick_group)
+        _subystem(const std::shared_ptr<ISubsystem>& subsystem, TickType tick_group)
         {
             ptr = subsystem;
             this->tick_group = tick_group;
         }
 
         std::shared_ptr<ISubsystem> ptr;
-        Tick_Group tick_group;
+        TickType tick_group;
     };
 
 	class SPARTAN_CLASS Context
@@ -67,7 +67,7 @@ namespace Spartan
 
 		// Register a subsystem
 		template <class T>
-		void RegisterSubsystem(Tick_Group tick_group = Tick_Variable)
+		void RegisterSubsystem(TickType tick_group = TickType::Variable)
 		{
             validate_subsystem_type<T>();
 
@@ -91,7 +91,7 @@ namespace Spartan
 		}
 
         // Tick
-		void Tick(Tick_Group tick_group, float delta_time = 0.0f)
+		void Tick(TickType tick_group, float delta_time = 0.0f)
 		{
             for (const auto& subsystem : m_subsystems)
             {

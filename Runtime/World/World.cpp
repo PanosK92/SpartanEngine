@@ -47,9 +47,9 @@ namespace Spartan
 	World::World(Context* context) : ISubsystem(context)
 	{
 		// Subscribe to events
-		SUBSCRIBE_TO_EVENT(Event_World_Resolve_Pending, [this](Variant) { m_is_dirty = true; });
-		SUBSCRIBE_TO_EVENT(Event_World_Stop,	        [this](Variant)	{ m_state = Idle; });
-		SUBSCRIBE_TO_EVENT(Event_World_Start,	        [this](Variant)	{ m_state = Ticking; });
+		SUBSCRIBE_TO_EVENT(EventType::WorldResolve, [this](Variant) { m_is_dirty = true; });
+		SUBSCRIBE_TO_EVENT(EventType::WorldStop,	        [this](Variant)	{ m_state = WorldState::Idle; });
+		SUBSCRIBE_TO_EVENT(EventType::WorldStart,	        [this](Variant)	{ m_state = WorldState::Ticking; });
 	}
 
 	World::~World()
@@ -73,13 +73,13 @@ namespace Spartan
 
 	void World::Tick(float delta_time)
 	{	
-		if (m_state == Request_Loading)
+		if (m_state == WorldState::RequestLoading)
 		{
-			m_state = Loading;
+			m_state = WorldState::Loading;
 			return;
 		}
 
-		if (m_state != Ticking)
+		if (m_state != WorldState::Ticking)
 			return;
 
         SCOPED_TIME_BLOCK(m_profiler);
@@ -133,7 +133,7 @@ namespace Spartan
             }
 
             // Notify Renderer
-            FIRE_EVENT_DATA(Event_World_Resolve_Complete, m_entities);
+            FIRE_EVENT_DATA(EventType::WorldResolved, m_entities);
             m_is_dirty = false;
         }
 	}
@@ -141,7 +141,7 @@ namespace Spartan
 	void World::Unload()
     {
         // Notify any systems that the entities are about to be cleared
-		FIRE_EVENT(Event_World_Unload);
+		FIRE_EVENT(EventType::WorldUnload);
 
         m_entities.clear();
         m_entities.shrink_to_fit();
@@ -166,7 +166,7 @@ namespace Spartan
 		m_name = FileSystem::GetFileNameNoExtensionFromFilePath(file_path);
 
 		// Notify subsystems that need to save data
-		FIRE_EVENT(Event_World_Save);
+		FIRE_EVENT(EventType::WorldSave);
 
 		// Create a prefab file
 		auto file = make_unique<FileStream>(file_path, FileStream_Write);
@@ -203,7 +203,7 @@ namespace Spartan
 		LOG_INFO("Saving took %.2f ms", timer.GetElapsedTimeMs());
 
 		// Notify subsystems waiting for us to finish
-		FIRE_EVENT(Event_World_Saved);
+		FIRE_EVENT(EventType::WorldSaved);
 
 		return true;
 	}
@@ -217,9 +217,9 @@ namespace Spartan
 		}
 
 		// Thread safety: Wait for the world and the renderer to stop using entities
-		while (m_state != Loading || m_context->GetSubsystem<Renderer>()->IsRendering())
+		while (m_state != WorldState::Loading || m_context->GetSubsystem<Renderer>()->IsRendering())
         {
-            m_state = Request_Loading;
+            m_state = WorldState::RequestLoading;
             this_thread::sleep_for(chrono::milliseconds(16));
         }
 
@@ -240,7 +240,7 @@ namespace Spartan
 		m_name = FileSystem::GetFileNameNoExtensionFromFilePath(file_path);
 
 		// Notify subsystems that need to load data
-		FIRE_EVENT(Event_World_Load);
+		FIRE_EVENT(EventType::WorldLoad);
 
 		// Load root entity count
         const auto root_entity_count = file->ReadAs<uint32_t>();
@@ -262,11 +262,11 @@ namespace Spartan
 		}
 
 		m_is_dirty	= true;
-		m_state		= Ticking;
+		m_state		= WorldState::Ticking;
 		ProgressReport::Get().SetIsLoading(g_progress_world, false);	
 		LOG_INFO("Loading took %.2f ms", timer.GetElapsedTimeMs());
 
-		FIRE_EVENT(Event_World_Loaded);
+		FIRE_EVENT(EventType::WorldLoaded);
 		return true;
 	}
 
@@ -408,7 +408,7 @@ namespace Spartan
 		light->GetTransform()->SetPosition(Vector3(0.0f, 10.0f, 0.0f));
 
 		auto light_comp = light->AddComponent<Light>();
-		light_comp->SetLightType(Light_Directional);
+		light_comp->SetLightType(LightType::Directional);
 
 		return light;
 	}
