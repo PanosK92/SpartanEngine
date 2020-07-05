@@ -83,14 +83,14 @@ namespace Spartan
         m_option_values[Option_Value_Bloom_Intensity]   = 0.1f;
 
 		// Subscribe to events
-		SUBSCRIBE_TO_EVENT(Event_World_Resolve_Complete,    EVENT_HANDLER_VARIANT(RenderablesAcquire));
-        SUBSCRIBE_TO_EVENT(Event_World_Unload,              EVENT_HANDLER(ClearEntities));
+		SUBSCRIBE_TO_EVENT(EventType::WorldResolved,    EVENT_HANDLER_VARIANT(RenderablesAcquire));
+        SUBSCRIBE_TO_EVENT(EventType::WorldUnload,              EVENT_HANDLER(ClearEntities));
 	}
 
 	Renderer::~Renderer()
 	{
 		// Unsubscribe from events
-		UNSUBSCRIBE_FROM_EVENT(Event_World_Resolve_Complete, EVENT_HANDLER_VARIANT(RenderablesAcquire));
+		UNSUBSCRIBE_FROM_EVENT(EventType::WorldResolved, EVENT_HANDLER_VARIANT(RenderablesAcquire));
 
 		m_entities.clear();
 		m_camera = nullptr;
@@ -314,7 +314,7 @@ namespace Spartan
 		// Re-create render textures
 		CreateRenderTextures();
 
-        FIRE_EVENT(Event_Frame_Resolution_Changed);
+        FIRE_EVENT(EventType::FrameResolutionChanged);
 
 		// Log
 		LOG_INFO("Resolution set to %dx%d", width, height);
@@ -398,7 +398,7 @@ namespace Spartan
         for (const auto& entity : m_entities[Renderer_Object_Light])
             if (Light* light = entity->GetComponent<Light>())
             {
-                if (light->GetLightType() == Light_Directional)
+                if (light->GetLightType() == LightType::Directional)
                 {
                     m_buffer_frame_cpu.directional_light_intensity = light->GetIntensity();
                 }
@@ -555,12 +555,12 @@ namespace Spartan
 
         // Convert luminous power to luminous intensity
         float luminous_intensity = light->GetIntensity() * m_camera->GetExposure();
-        if (light->GetLightType() == Light_Point)
+        if (light->GetLightType() == LightType::Point)
         {
             luminous_intensity /= Math::Helper::PI_4; // lumens to candelas
             luminous_intensity *= 255.0f; // this is a hack, must fix whats my color units
         }
-        else if (light->GetLightType() == Light_Spot)
+        else if (light->GetLightType() == LightType::Spot)
         {
             luminous_intensity /= Math::Helper::PI; // lumens to candelas
             luminous_intensity *= 255.0f; // this is a hack, must fix whats my color units

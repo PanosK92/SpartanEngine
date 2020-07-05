@@ -34,7 +34,7 @@ namespace Spartan
 		// Creates a texture from data
 		RHI_Texture2D(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const std::vector<std::vector<std::byte>>& data) : RHI_Texture(context)
 		{
-			m_resource_type = Resource_Texture2d;
+			m_resource_type = ResourceType::Texture2d;
 			m_width			= width;
 			m_height		= height;
 			m_viewport		= RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
@@ -52,7 +52,7 @@ namespace Spartan
 		{
             m_data.emplace_back(data);
 
-			m_resource_type = Resource_Texture2d;
+			m_resource_type = ResourceType::Texture2d;
 			m_width			= width;
 			m_height		= height;
 			m_viewport		= RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
@@ -67,7 +67,7 @@ namespace Spartan
 		// Creates an empty texture (intended for deferred loading)
 		RHI_Texture2D(Context* context, const bool generate_mipmaps = true) : RHI_Texture(context)
 		{
-			m_resource_type = Resource_Texture2d;
+			m_resource_type = ResourceType::Texture2d;
 			m_flags         = RHI_Texture_ShaderView;
             m_flags         |= generate_mipmaps ? RHI_Texture_GenerateMipsWhenLoading : 0;
 		}
@@ -76,7 +76,7 @@ namespace Spartan
 		RHI_Texture2D(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const uint32_t array_size = 1, const uint16_t flags = 0, std::string name = "") : RHI_Texture(context)
 		{
             m_name          = name;
-			m_resource_type	= Resource_Texture2d;
+			m_resource_type	= ResourceType::Texture2d;
 			m_width			= width;
 			m_height		= height;
 			m_channel_count = GetChannelCountFromFormat(format);

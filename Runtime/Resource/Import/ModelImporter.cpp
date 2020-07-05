@@ -120,7 +120,7 @@ namespace Spartan
 		// Read the 3D model file from disk
 		if (const aiScene* scene = importer.ReadFile(file_path, importer_flags))
 		{
-			FIRE_EVENT(Event_World_Stop);
+			FIRE_EVENT(EventType::WorldStop);
 
             params.scene            = scene;
             params.has_animation    = scene->mNumAnimations != 0;
@@ -143,7 +143,7 @@ namespace Spartan
             // Update model geometry
 			model->UpdateGeometry();
 
-			FIRE_EVENT(Event_World_Start);
+			FIRE_EVENT(EventType::WorldStart);
 		}
 		else
 		{

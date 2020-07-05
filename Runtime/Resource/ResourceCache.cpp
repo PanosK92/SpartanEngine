@@ -59,15 +59,15 @@ namespace Spartan
 		SetProjectDirectory("Project/");
 
 		// Subscribe to events
-		SUBSCRIBE_TO_EVENT(Event_World_Save,	EVENT_HANDLER(SaveResourcesToFiles));
-		SUBSCRIBE_TO_EVENT(Event_World_Load,	EVENT_HANDLER(LoadResourcesFromFiles));
-		SUBSCRIBE_TO_EVENT(Event_World_Unload,	EVENT_HANDLER(Clear));
+		SUBSCRIBE_TO_EVENT(EventType::WorldSave,	EVENT_HANDLER(SaveResourcesToFiles));
+		SUBSCRIBE_TO_EVENT(EventType::WorldLoad,	EVENT_HANDLER(LoadResourcesFromFiles));
+		SUBSCRIBE_TO_EVENT(EventType::WorldUnload,	EVENT_HANDLER(Clear));
 	}
 
 	ResourceCache::~ResourceCache()
 	{
 		// Unsubscribe from event
-		UNSUBSCRIBE_FROM_EVENT(Event_World_Unload, EVENT_HANDLER(Clear));
+		UNSUBSCRIBE_FROM_EVENT(EventType::WorldUnload, EVENT_HANDLER(Clear));
 		Clear();
 	}
 
@@ -80,7 +80,7 @@ namespace Spartan
 		return true;
 	}
 
-	bool ResourceCache::IsCached(const string& resource_name, const Resource_Type resource_type /*= Resource_Unknown*/)
+	bool ResourceCache::IsCached(const string& resource_name, const ResourceType resource_type /*= Resource_Unknown*/)
 	{
 		if (resource_name.empty())
 		{
@@ -97,7 +97,7 @@ namespace Spartan
 		return false;
 	}
 
-	shared_ptr<IResource>& ResourceCache::GetByName(const string& name, const Resource_Type type)
+	shared_ptr<IResource>& ResourceCache::GetByName(const string& name, const ResourceType type)
 	{
 		for (auto& resource : m_resource_groups[type])
 		{
@@ -109,11 +109,11 @@ namespace Spartan
 		return empty;
 	}
 
-	vector<shared_ptr<IResource>> ResourceCache::GetByType(const Resource_Type type /*= Resource_Unknown*/)
+	vector<shared_ptr<IResource>> ResourceCache::GetByType(const ResourceType type /*= ResourceType::Unknown*/)
 	{
 		vector<shared_ptr<IResource>> resources;
 
-		if (type == Resource_Unknown)
+		if (type == ResourceType::Unknown)
 		{
 			for (const auto& resource_group : m_resource_groups)
 			{
@@ -191,37 +191,37 @@ namespace Spartan
 			auto file_path = file->ReadAs<string>();
 
 			// Load resource type
-            const auto type = static_cast<Resource_Type>(file->ReadAs<uint32_t>());
+            const auto type = static_cast<ResourceType>(file->ReadAs<uint32_t>());
 
 			switch (type)
 			{
-			case Resource_Model:
+			case ResourceType::Model:
 				Load<Model>(file_path);
 				break;
-			case Resource_Material:
+			case ResourceType::Material:
 				Load<Material>(file_path);
 				break;
-			case Resource_Texture:
+			case ResourceType::Texture:
 				Load<RHI_Texture>(file_path);
 				break;
-			case Resource_Texture2d:
+			case ResourceType::Texture2d:
 				Load<RHI_Texture2D>(file_path);
 				break;
-			case Resource_TextureCube:
+			case ResourceType::TextureCube:
 				Load<RHI_TextureCube>(file_path);
 				break;
-            case Resource_Audio:
+            case ResourceType::Audio:
                 Load<AudioClip>(file_path);
                 break;
 			}
 		}
 	}
 
-    uint64_t ResourceCache::GetMemoryUsageCpu(Resource_Type type /*= Resource_Unknown*/)
+    uint64_t ResourceCache::GetMemoryUsageCpu(ResourceType type /*= Resource_Unknown*/)
     {
         uint64_t size = 0;
 
-        if (type == Resource_Unknown)
+        if (type == ResourceType::Unknown)
         {
             for (const auto& group : m_resource_groups)
             {
@@ -248,7 +248,7 @@ namespace Spartan
         return size;
     }
 
-    uint64_t ResourceCache::GetMemoryUsageGpu(Resource_Type type /*= Resource_Unknown*/)
+    uint64_t ResourceCache::GetMemoryUsageGpu(ResourceType type /*= Resource_Unknown*/)
     {
         uint64_t size = 0;
 
@@ -263,7 +263,7 @@ namespace Spartan
         return size;
     }
 
-    uint32_t ResourceCache::GetResourceCount(const Resource_Type type)
+    uint32_t ResourceCache::GetResourceCount(const ResourceType type)
 	{
 		return static_cast<uint32_t>(GetByType(type).size());
 	}

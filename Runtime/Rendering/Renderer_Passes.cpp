@@ -197,7 +197,7 @@ namespace Spartan
                 const Matrix& view_projection = light->GetViewMatrix(array_index) * light->GetProjectionMatrix(array_index);
 
                 // Set appropriate rasterizer state
-                if (light->GetLightType() == Light_Directional)
+                if (light->GetLightType() == LightType::Directional)
                 {
                     // "Pancaking" - https://www.gamedev.net/forums/topic/639036-shadow-mapping-and-high-up-objects/
                     // It's basically a way to capture the silhouettes of potential shadow casters behind the light's view point.
@@ -774,17 +774,17 @@ namespace Spartan
                             RHI_Texture* tex_depth = light->GetDepthTexture();
                             RHI_Texture* tex_color = light->GetShadowsTransparentEnabled() ? light->GetColorTexture() : m_tex_white.get();
 
-                            if (light->GetLightType() == Light_Directional)
+                            if (light->GetLightType() == LightType::Directional)
                             {
                                 cmd_list->SetTexture(13, tex_depth);
                                 cmd_list->SetTexture(14, tex_color);
                             }
-                            else if (light->GetLightType() == Light_Point)
+                            else if (light->GetLightType() == LightType::Point)
                             {
                                 cmd_list->SetTexture(15, tex_depth);
                                 cmd_list->SetTexture(16, tex_color);
                             }
-                            else if (light->GetLightType() == Light_Spot)
+                            else if (light->GetLightType() == LightType::Spot)
                             {
                                 cmd_list->SetTexture(17, tex_depth);
                                 cmd_list->SetTexture(18, tex_color);
@@ -1955,7 +1955,7 @@ namespace Spartan
                 {
                     Light* light = entity->GetComponent<Light>();
 
-                    if (light->GetLightType() == Light_Spot)
+                    if (light->GetLightType() == LightType::Spot)
                     {
                         Vector3 start = light->GetTransform()->GetPosition();
                         Vector3 end = light->GetTransform()->GetForward() * light->GetRange();
@@ -2148,9 +2148,9 @@ namespace Spartan
                         // Choose texture based on light type
                         shared_ptr<RHI_Texture> light_tex = nullptr;
                         const auto type = light->GetLightType();
-                        if (type == Light_Directional)	light_tex = m_gizmo_tex_light_directional;
-                        else if (type == Light_Point)	light_tex = m_gizmo_tex_light_point;
-                        else if (type == Light_Spot)	light_tex = m_gizmo_tex_light_spot;
+                        if (type == LightType::Directional)	light_tex = m_gizmo_tex_light_directional;
+                        else if (type == LightType::Point)	light_tex = m_gizmo_tex_light_point;
+                        else if (type == LightType::Spot)	light_tex = m_gizmo_tex_light_spot;
         
                         // Construct appropriate rectangle
                         const auto tex_width = light_tex->GetWidth() * scale;

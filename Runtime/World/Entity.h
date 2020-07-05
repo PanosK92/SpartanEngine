@@ -64,7 +64,7 @@ namespace Spartan
 			const ComponentType type = IComponent::TypeToEnum<T>();
 
 			// Return component in case it already exists while ignoring Script components (they can exist multiple times)
-			if (HasComponent(type) && type != ComponentType_Script)
+			if (HasComponent(type) && type != ComponentType::Script)
 				return GetComponent<T>();
 
             // Create a new component
@@ -83,7 +83,7 @@ namespace Spartan
             component->OnInitialize();
 
 			// Make the scene resolve
-			FIRE_EVENT(Event_World_Resolve_Pending);
+			FIRE_EVENT(EventType::WorldResolve);
 
             return component.get();
 		}

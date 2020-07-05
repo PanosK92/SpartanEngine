@@ -37,22 +37,22 @@ namespace Spartan
 	class Context;
 	class FileStream;
 
-	enum ComponentType : uint32_t
+	enum class ComponentType : uint32_t
 	{
-		ComponentType_AudioListener,
-		ComponentType_AudioSource,
-		ComponentType_Camera,
-		ComponentType_Collider,
-		ComponentType_Constraint,
-		ComponentType_Light,
-		ComponentType_Renderable,
-		ComponentType_RigidBody,
-        ComponentType_SoftBody,
-		ComponentType_Script,
-		ComponentType_Environment,
-		ComponentType_Transform,
-        ComponentType_Terrain,
-		ComponentType_Unknown
+		AudioListener,
+		AudioSource,
+		Camera,
+		Collider,
+		Constraint,
+		Light,
+		Renderable,
+		RigidBody,
+        SoftBody,
+		Script,
+		Environment,
+		Transform,
+        Terrain,
+		Unknown
 	};
 
 	struct Attribute
@@ -139,7 +139,7 @@ namespace Spartan
 		}
 
 		// The type of the component
-		ComponentType m_type	= ComponentType_Unknown;
+		ComponentType m_type	= ComponentType::Unknown;
 		// The state of the component
 		bool m_enabled			= false;
 		// The owner of the component

@@ -50,7 +50,7 @@ namespace Spartan
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_color_rgb, Vector4);
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_bias, float);
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_normal_bias, float);
-		REGISTER_ATTRIBUTE_GET_SET(GetLightType, SetLightType, Light_Type);
+		REGISTER_ATTRIBUTE_GET_SET(GetLightType, SetLightType, LightType);
 
 		m_renderer = m_context->GetSubsystem<Renderer>();
 	}
@@ -92,7 +92,7 @@ namespace Spartan
 		}
 
 		// Camera dirty check (needed for directional light cascade computations)
-		if (m_light_type == Light_Directional)
+		if (m_light_type == LightType::Directional)
 		{
 			if (auto& camera = m_renderer->GetCamera())
 			{
@@ -110,7 +110,7 @@ namespace Spartan
 		// Update shadow map(s)
         if (m_shadows_enabled)
         {
-            if (m_light_type == Light_Directional)
+            if (m_light_type == LightType::Directional)
             {
                 ComputeCascadeSplits();
             }
@@ -146,7 +146,7 @@ namespace Spartan
 
 	void Light::Deserialize(FileStream* stream)
 	{
-		SetLightType(static_cast<Light_Type>(stream->ReadAs<uint32_t>()));
+		SetLightType(static_cast<LightType>(stream->ReadAs<uint32_t>()));
 		stream->Read(&m_shadows_enabled);
         stream->Read(&m_shadows_screen_space_enabled);
         stream->Read(&m_shadows_transparent_enabled);
@@ -159,7 +159,7 @@ namespace Spartan
 		stream->Read(&m_normal_bias);
 	}
 
-	void Light::SetLightType(Light_Type type)
+	void Light::SetLightType(LightType type)
 	{
         if (m_light_type == type)
             return;
@@ -232,7 +232,7 @@ namespace Spartan
 
 	void Light::ComputeViewMatrix()
 	{
-		if (m_light_type == Light_Directional)
+		if (m_light_type == LightType::Directional)
 		{
             if (!m_shadow_map.slices.empty())
             { 
@@ -246,7 +246,7 @@ namespace Spartan
                 }
             }
 		}
-		else if (m_light_type == Light_Spot)
+		else if (m_light_type == LightType::Spot)
 		{   
             const Vector3 position  = GetTransform()->GetPosition();
             const Vector3 forward	= GetTransform()->GetForward();
@@ -255,7 +255,7 @@ namespace Spartan
 			// Compute
 			m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + forward, up);
 		}
-		else if (m_light_type == Light_Point)
+		else if (m_light_type == LightType::Point)
 		{
             const Vector3 position = GetTransform()->GetPosition();
 
@@ -280,7 +280,7 @@ namespace Spartan
         ShadowSlice& shadow_slice   = m_shadow_map.slices[index];
         const bool reverse_z        = m_renderer ? m_renderer->GetOption(Render_ReverseZ) : false;
 
-		if (m_light_type == Light_Directional)
+		if (m_light_type == LightType::Directional)
 		{
             const float cascade_depth   = (shadow_slice.max.z - shadow_slice.min.z) * 10.0f;
             const float min_z           = reverse_z ? cascade_depth : 0.0f;
@@ -456,7 +456,7 @@ namespace Spartan
             m_shadow_map.texture_color.reset();
         }
 
-		if (GetLightType() == Light_Directional)
+		if (GetLightType() == LightType::Directional)
 		{
             m_shadow_map.texture_depth = make_unique<RHI_Texture2D>(m_context, resolution, resolution, RHI_Format_D32_Float, m_cascade_count);
 
@@ -467,7 +467,7 @@ namespace Spartan
 
             m_shadow_map.slices = vector<ShadowSlice>(m_cascade_count);
 		}
-		else if (GetLightType() == Light_Point)
+		else if (GetLightType() == LightType::Point)
 		{
             m_shadow_map.texture_depth = make_unique<RHI_TextureCube>(m_context, resolution, resolution, RHI_Format_D32_Float);
 
@@ -478,7 +478,7 @@ namespace Spartan
 
             m_shadow_map.slices = vector<ShadowSlice>(6);
 		}
-		else if (GetLightType() == Light_Spot)
+		else if (GetLightType() == LightType::Spot)
 		{
             m_shadow_map.texture_depth  = make_unique<RHI_Texture2D>(m_context, resolution, resolution, RHI_Format_D32_Float, 1);
 
@@ -498,7 +498,7 @@ namespace Spartan
         const auto extents      = box.GetExtents();
 
         // ensure that potential shadow casters from behind the near plane are not rejected
-        const bool ignore_near_plane = (m_light_type == Light_Directional) ? true : false; 
+        const bool ignore_near_plane = (m_light_type == LightType::Directional) ? true : false;
 
         return m_shadow_map.slices[index].frustum.IsVisible(center, extents, ignore_near_plane);
     }

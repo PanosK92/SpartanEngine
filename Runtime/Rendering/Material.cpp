@@ -38,7 +38,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-	Material::Material(Context* context) : IResource(context, Resource_Material)
+	Material::Material(Context* context) : IResource(context, ResourceType::Material)
 	{
 		m_rhi_device = context->GetSubsystem<Renderer>()->GetRhiDevice();
 

@@ -42,7 +42,7 @@ namespace Spartan
 	bool Log::m_first_log		    = true;
    
 	// Everything resolves to this
-	void Log::Write(const char* text, const Log_Type type)
+	void Log::Write(const char* text, const LogType type)
 	{
         if (!text)
         {
@@ -74,7 +74,7 @@ namespace Spartan
 		auto w = vsnprintf(buffer, sizeof(buffer), text, args);
 		va_end(args);
 
-		Write(buffer, Log_Info);
+		Write(buffer, LogType::Info);
 	}
 
     void Log::WriteFWarning(const char* text, ...)
@@ -85,7 +85,7 @@ namespace Spartan
 		auto w = vsnprintf(buffer, sizeof(buffer), text, args);
 		va_end(args);
 
-		Write(buffer, Log_Warning);
+		Write(buffer, LogType::Warning);
 	}
 
     void Log::WriteFError(const char* text, ...)
@@ -96,10 +96,10 @@ namespace Spartan
 		auto w = vsnprintf(buffer, sizeof(buffer), text, args);
 		va_end(args);
 
-		Write(buffer, Log_Error);
+		Write(buffer, LogType::Error);
 	}
 
-    void Log::Write(const string& text, const Log_Type type)
+    void Log::Write(const string& text, const LogType type)
     {
         Write(text.c_str(), type);
     }
@@ -112,7 +112,7 @@ namespace Spartan
         auto w = vsnprintf(buffer, sizeof(buffer), text.c_str(), args);
         va_end(args);
 
-        Write(buffer, Log_Info);
+        Write(buffer, LogType::Info);
     }
 
     void Log::WriteFWarning(const string text, ...)
@@ -123,7 +123,7 @@ namespace Spartan
         auto w = vsnprintf(buffer, sizeof(buffer), text.c_str(), args);
         va_end(args);
 
-        Write(buffer, Log_Warning);
+        Write(buffer, LogType::Warning);
     }
 
     void Log::WriteFError(const string text, ...)
@@ -134,40 +134,40 @@ namespace Spartan
         auto w = vsnprintf(buffer, sizeof(buffer), text.c_str(), args);
         va_end(args);
 
-        Write(buffer, Log_Error);
+        Write(buffer, LogType::Error);
     }
 
-    void Log::Write(const weak_ptr<Entity>& entity, const Log_Type type)
+    void Log::Write(const weak_ptr<Entity>& entity, const LogType type)
 	{
 		entity.expired() ? Write("Null", type) : Write(entity.lock()->GetName(), type);
 	}
 
-	void Log::Write(const std::shared_ptr<Entity>& entity, const Log_Type type)
+	void Log::Write(const std::shared_ptr<Entity>& entity, const LogType type)
 	{
 		entity ? Write(entity->GetName(), type) : Write("Null", type);
 	}
 
-	void Log::Write(const Vector2& value, const Log_Type type)
+	void Log::Write(const Vector2& value, const LogType type)
 	{
 		Write(value.ToString(), type);
 	}
 
-	void Log::Write(const Vector3& value, const Log_Type type)
+	void Log::Write(const Vector3& value, const LogType type)
 	{
 		Write(value.ToString(), type);
 	}
 
-	void Log::Write(const Vector4& value, const Log_Type type)
+	void Log::Write(const Vector4& value, const LogType type)
 	{
 		Write(value.ToString(), type);
 	}
 
-	void Log::Write(const Quaternion& value, const Log_Type type)
+	void Log::Write(const Quaternion& value, const LogType type)
 	{
 		Write(value.ToString(), type);
 	}
 
-	void Log::Write(const Matrix& value, const Log_Type type)
+	void Log::Write(const Matrix& value, const LogType type)
 	{
 		Write(value.ToString(), type);
 	}
@@ -185,7 +185,7 @@ namespace Spartan
         m_log_buffer.clear();
     }
 
-    void Log::LogString(const char* text, const Log_Type type)
+    void Log::LogString(const char* text, const LogType type)
 	{
         if (!text)
         {
@@ -193,10 +193,10 @@ namespace Spartan
             return;
         }
 
-		m_logger.lock()->Log(string(text), type);
+		m_logger.lock()->Log(string(text), static_cast<uint32_t>(type));
 	}
 
-	void Log::LogToFile(const char* text, const Log_Type type)
+	void Log::LogToFile(const char* text, const LogType type)
     {
         if (!text)
         {
@@ -204,7 +204,7 @@ namespace Spartan
             return;
         }
 
-		const string prefix		= (type == Log_Info) ? "Info:" : (type == Log_Warning) ? "Warning:" : "Error:";
+		const string prefix		= (type == LogType::Info) ? "Info:" : (type == LogType::Warning) ? "Warning:" : "Error:";
 		const auto final_text	= prefix + " " + text;
 
 		// Delete the previous log file (if it exists)

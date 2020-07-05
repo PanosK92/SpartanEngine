@@ -61,23 +61,23 @@ namespace Spartan
     {
 		// Log
 		m_scriptEngine->RegisterEnum("LogType");
-		m_scriptEngine->RegisterEnumValue("LogType", "Info",	int(Log_Info));
-		m_scriptEngine->RegisterEnumValue("LogType", "Warning", int(Log_Warning));
-		m_scriptEngine->RegisterEnumValue("LogType", "Error",	int(Log_Error));
+		m_scriptEngine->RegisterEnumValue("LogType", "Info",	int(LogType::Info));
+		m_scriptEngine->RegisterEnumValue("LogType", "Warning", int(LogType::Warning));
+		m_scriptEngine->RegisterEnumValue("LogType", "Error",	int(LogType::Error));
 
 		// Component types
 		m_scriptEngine->RegisterEnum("ComponentType");
-		m_scriptEngine->RegisterEnumValue("ComponentType", "AudioListener", int(ComponentType_AudioListener));
-		m_scriptEngine->RegisterEnumValue("ComponentType", "AudioSource",	int(ComponentType_AudioSource));
-		m_scriptEngine->RegisterEnumValue("ComponentType", "Camera",		int(ComponentType_Camera));
-		m_scriptEngine->RegisterEnumValue("ComponentType", "Collider",		int(ComponentType_Collider));
-		m_scriptEngine->RegisterEnumValue("ComponentType", "Constraint",	int(ComponentType_Constraint));
-		m_scriptEngine->RegisterEnumValue("ComponentType", "Light",			int(ComponentType_Light));
-		m_scriptEngine->RegisterEnumValue("ComponentType", "Renderable",	int(ComponentType_Renderable));
-		m_scriptEngine->RegisterEnumValue("ComponentType", "RigidBody",		int(ComponentType_RigidBody));
-		m_scriptEngine->RegisterEnumValue("ComponentType", "Script",		int(ComponentType_Script));
-		m_scriptEngine->RegisterEnumValue("ComponentType", "Environment",	int(ComponentType_Environment));
-		m_scriptEngine->RegisterEnumValue("ComponentType", "Transform",		int(ComponentType_Transform));
+		m_scriptEngine->RegisterEnumValue("ComponentType", "AudioListener", int(ComponentType::AudioListener));
+		m_scriptEngine->RegisterEnumValue("ComponentType", "AudioSource",	int(ComponentType::AudioSource));
+		m_scriptEngine->RegisterEnumValue("ComponentType", "Camera",		int(ComponentType::Camera));
+		m_scriptEngine->RegisterEnumValue("ComponentType", "Collider",		int(ComponentType::Collider));
+		m_scriptEngine->RegisterEnumValue("ComponentType", "Constraint",	int(ComponentType::Constraint));
+		m_scriptEngine->RegisterEnumValue("ComponentType", "Light",			int(ComponentType::Light));
+		m_scriptEngine->RegisterEnumValue("ComponentType", "Renderable",	int(ComponentType::Renderable));
+		m_scriptEngine->RegisterEnumValue("ComponentType", "RigidBody",		int(ComponentType::RigidBody));
+		m_scriptEngine->RegisterEnumValue("ComponentType", "Script",		int(ComponentType::Script));
+		m_scriptEngine->RegisterEnumValue("ComponentType", "Environment",	int(ComponentType::Environment));
+		m_scriptEngine->RegisterEnumValue("ComponentType", "Transform",		int(ComponentType::Transform));
 
 		// KeyCode
 		m_scriptEngine->RegisterEnum("KeyCode");
@@ -438,12 +438,12 @@ namespace Spartan
     {
 		auto r = 0;
 
-		r = m_scriptEngine->RegisterGlobalFunction("void Log(const string& in, LogType)",		asFUNCTIONPR(Log::Write, (const string&, Log_Type), void),		asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterGlobalFunction("void Log(int, LogType)",					asFUNCTIONPR(Log::Write, (int, Log_Type), void),				asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterGlobalFunction("void Log(bool, LogType)",					asFUNCTIONPR(Log::Write, (bool, Log_Type), void),				asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterGlobalFunction("void Log(float, LogType)",					asFUNCTIONPR(Log::Write, (float, Log_Type), void),				asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
-        r = m_scriptEngine->RegisterGlobalFunction("void Log(const Vector2& in, LogType)",		asFUNCTIONPR(Log::Write, (const Vector2&, Log_Type), void),		asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterGlobalFunction("void Log(const Vector3& in, LogType)",		asFUNCTIONPR(Log::Write, (const Vector3&, Log_Type), void),		asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterGlobalFunction("void Log(const Quaternion& in, LogType)",	asFUNCTIONPR(Log::Write, (const Quaternion&, Log_Type), void),	asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterGlobalFunction("void Log(const string& in, LogType)",		asFUNCTIONPR(Log::Write, (const string&, LogType), void),		asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterGlobalFunction("void Log(int, LogType)",					asFUNCTIONPR(Log::Write, (int, LogType), void),				asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterGlobalFunction("void Log(bool, LogType)",					asFUNCTIONPR(Log::Write, (bool, LogType), void),				asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterGlobalFunction("void Log(float, LogType)",					asFUNCTIONPR(Log::Write, (float, LogType), void),				asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
+        r = m_scriptEngine->RegisterGlobalFunction("void Log(const Vector2& in, LogType)",		asFUNCTIONPR(Log::Write, (const Vector2&, LogType), void),		asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterGlobalFunction("void Log(const Vector3& in, LogType)",		asFUNCTIONPR(Log::Write, (const Vector3&, LogType), void),		asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterGlobalFunction("void Log(const Quaternion& in, LogType)",	asFUNCTIONPR(Log::Write, (const Quaternion&, LogType), void),	asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
 	}
 }

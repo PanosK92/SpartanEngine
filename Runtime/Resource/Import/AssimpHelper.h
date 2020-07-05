@@ -107,23 +107,23 @@ namespace Spartan::AssimpHelper
 		void OnDebug(const char* message) override
 		{
 #ifdef DEBUG
-			LOG_INFO(message, Log_Info);
+			LOG_INFO(message, LogType::Info);
 #endif
 		}
 
 		void OnInfo(const char* message) override
 		{
-            LOG_INFO(message, Log_Info);
+            LOG_INFO(message, LogType::Info);
 		}
 
 		void OnWarn(const char* message) override
 		{
-            LOG_WARNING(message, Log_Warning);
+            LOG_WARNING(message, LogType::Warning);
 		}
 
 		void OnError(const char* message) override
 		{
-			LOG_ERROR(message, Log_Error);
+			LOG_ERROR(message, LogType::Error);
 		}
 	};
 

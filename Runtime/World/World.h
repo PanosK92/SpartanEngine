@@ -36,11 +36,11 @@ namespace Spartan
 	class Input;
 	class Profiler;
 
-	enum Scene_State
+	enum class WorldState
 	{
 		Ticking,
 		Idle,
-		Request_Loading,
+		RequestLoading,
 		Loading
 	};
 
@@ -85,7 +85,7 @@ namespace Spartan
         std::string m_name;
         bool m_was_in_editor_mode   = false;
         bool m_is_dirty             = true;
-        Scene_State m_state         = Ticking;	
+        WorldState m_state          = WorldState::Ticking;
         Input* m_input              = nullptr;
         Profiler* m_profiler        = nullptr;
 

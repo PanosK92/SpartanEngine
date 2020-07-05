@@ -220,7 +220,7 @@ namespace Spartan
             const auto component_count = stream->ReadAs<uint32_t>();
             for (uint32_t i = 0; i < component_count; i++)
             {
-                uint32_t type   = ComponentType_Unknown;
+                uint32_t type   = static_cast<uint32_t>(ComponentType::Unknown);
                 uint32_t id     = 0;
 
                 stream->Read(&type);	// load component's type
@@ -272,7 +272,7 @@ namespace Spartan
         }
 
 		// Make the scene resolve
-		FIRE_EVENT(Event_World_Resolve_Pending);
+		FIRE_EVENT(EventType::WorldResolve);
 	}
 
     IComponent* Entity::AddComponent(const ComponentType type, uint32_t id /*= 0*/)
@@ -282,20 +282,20 @@ namespace Spartan
 
         switch (type)
         {
-            case ComponentType_AudioListener:	return AddComponent<AudioListener>(id);
-            case ComponentType_AudioSource:		return AddComponent<AudioSource>(id);
-            case ComponentType_Camera:			return AddComponent<Camera>(id);
-            case ComponentType_Collider:		return AddComponent<Collider>(id);
-            case ComponentType_Constraint:		return AddComponent<Constraint>(id);
-            case ComponentType_Light:			return AddComponent<Light>(id);
-            case ComponentType_Renderable:		return AddComponent<Renderable>(id);
-            case ComponentType_RigidBody:		return AddComponent<RigidBody>(id);
-            case ComponentType_SoftBody:		return AddComponent<SoftBody>(id);
-            case ComponentType_Script:			return AddComponent<Script>(id);
-            case ComponentType_Environment:		return AddComponent<Environment>(id);
-            case ComponentType_Transform:		return AddComponent<Transform>(id);
-            case ComponentType_Terrain:		    return AddComponent<Terrain>(id);
-            case ComponentType_Unknown:			return nullptr;
+            case ComponentType::AudioListener:	return AddComponent<AudioListener>(id);
+            case ComponentType::AudioSource:	return AddComponent<AudioSource>(id);
+            case ComponentType::Camera:			return AddComponent<Camera>(id);
+            case ComponentType::Collider:		return AddComponent<Collider>(id);
+            case ComponentType::Constraint:		return AddComponent<Constraint>(id);
+            case ComponentType::Light:			return AddComponent<Light>(id);
+            case ComponentType::Renderable:		return AddComponent<Renderable>(id);
+            case ComponentType::RigidBody:		return AddComponent<RigidBody>(id);
+            case ComponentType::SoftBody:		return AddComponent<SoftBody>(id);
+            case ComponentType::Script:			return AddComponent<Script>(id);
+            case ComponentType::Environment:	return AddComponent<Environment>(id);
+            case ComponentType::Transform:		return AddComponent<Transform>(id);
+            case ComponentType::Terrain:		   return AddComponent<Terrain>(id);
+            case ComponentType::Unknown:		return nullptr;
             default:                            return nullptr;
         }
 
@@ -304,7 +304,7 @@ namespace Spartan
 
     void Entity::RemoveComponentById(const uint32_t id)
 	{
-        ComponentType component_type = ComponentType_Unknown;
+        ComponentType component_type = ComponentType::Unknown;
 
 		for (auto it = m_components.begin(); it != m_components.end(); ) 
 		{
@@ -336,6 +336,6 @@ namespace Spartan
         }
 
 		// Make the scene resolve
-		FIRE_EVENT(Event_World_Resolve_Pending);
+		FIRE_EVENT(EventType::WorldResolve);
 	}
 }
