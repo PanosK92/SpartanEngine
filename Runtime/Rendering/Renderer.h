@@ -119,7 +119,7 @@ namespace Spartan
 		Shader_Texture_P,
         Shader_Copy_C,
 		Shader_Fxaa_P,
-		Shader_Luma_P,
+		Shader_Fxaa_Luminance_P,
         Shader_FilmGrain_P,
 		Shader_Taa_P,
 		Shader_MotionBlur_P,
@@ -309,7 +309,7 @@ namespace Spartan
 		void Pass_Text(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         void Pass_BrdfSpecularLut(RHI_CommandList* cmd_list);
         void Pass_Copy(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
-        void Pass_Copy_CS(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
+        void Pass_Copy_CS(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
 
         // Constant buffers
         bool UpdateFrameBuffer();

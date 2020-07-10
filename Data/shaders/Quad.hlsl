@@ -21,15 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ======================
 #include "Common.hlsl"
-#include "Sharpening.hlsl"
 #include "ChromaticAberration.hlsl"
 #include "ToneMapping.hlsl"
 #include "Dithering.hlsl"
-#include "Scale.hlsl"
-#define FXAA_PC 1
-#define FXAA_HLSL_5 1
-#define FXAA_QUALITY__PRESET 39
-#include "FXAA.hlsl"
 //=================================
 
 Pixel_PosUv mainVS(Vertex_PosUv input)
@@ -62,53 +56,8 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     color = tex.Sample(sampler_bilinear_clamp, uv);
 #endif
 
-#if PASS_FXAA
-    FxaaTex fxaa_tex            = { sampler_bilinear_clamp, tex };
-    float2 fxaaQualityRcpFrame  = g_texel_size;
-
-    float fxaa_subPix           = 0.75f;
-    float fxaa_edgeThreshold    = 0.166f;
-    float fxaa_edgeThresholdMin = 0.0833f;
-    
-    color.rgb = FxaaPixelShader
-    ( 
-        uv, 0, fxaa_tex, fxaa_tex, fxaa_tex,
-        fxaaQualityRcpFrame, 0, 0, 0,
-        fxaa_subPix,
-        fxaa_edgeThreshold,
-        fxaa_edgeThresholdMin,
-        0, 0, 0, 0
-    ).rgb;
-    color.a = 1.0f;
-#endif
-
 #if PASS_CHROMATIC_ABERRATION
     color.rgb = ChromaticAberration(uv, tex);
-#endif
-
-#if PASS_LUMA_SHARPEN
-    color.rgb = LumaSharpen(uv, tex, g_resolution, g_sharpen_strength, g_sharpen_clamp);    
-#endif
-
-#if PASS_TAA_SHARPEN
-    color = SharpenTaa(uv, tex);    
-#endif
-
-#if PASS_UPSAMPLE_BOX
-    // g_texel_size refers to the current render target, which is twice the size of the input texture, so we multiply by 0.5
-    float2 texel_size = g_texel_size * 0.5f;
-    color = Box_Filter(uv, tex, texel_size);
-#endif
-
-#if PASS_DOWNSAMPLE_BOX
-    // g_texel_size refers to the current render target, which is half the size of the input texture, so we multiply by 2
-    float2 texel_size = g_texel_size * 2.0f;
-    color = Box_Filter(uv, tex, texel_size);
-#endif
-
-#if PASS_LUMA
-    color   = tex.Sample(sampler_point_clamp, uv);
-    color.a = luminance(color.rgb);
 #endif
 
 #if PASS_DITHERING

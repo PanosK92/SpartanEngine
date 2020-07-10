@@ -948,6 +948,7 @@ namespace Spartan
         else
         {
             Pass_Copy(cmd_list, tex_in_hdr, tex_in_ldr);
+            //Pass_Copy_CS(cmd_list, tex_in_hdr.get(), tex_in_ldr.get());
         }
 
         // Dithering
@@ -1324,7 +1325,7 @@ namespace Spartan
 		const auto& shader_p_bloom_blend	    = m_shaders[Shader_BloomUpsampleBlend_P];
 		const auto& shader_p_downsample	        = m_shaders[Shader_BloomDownsample_P];
 		const auto& shader_p_upsample		    = m_shaders[Shader_Upsample_P];
-		if (!shader_p_downsample->IsCompiled() || !shader_p_bloom_luminance->IsCompiled() || !shader_p_upsample->IsCompiled() || !shader_p_downsample->IsCompiled())
+		if (!shader_v->IsCompiled() || !shader_p_bloom_luminance->IsCompiled() || !shader_p_bloom_blend->IsCompiled() || !shader_p_downsample->IsCompiled() || !shader_p_upsample->IsCompiled())
 			return;
 
         // Luminance
@@ -1512,7 +1513,7 @@ namespace Spartan
 	{
 		// Acquire shaders
         const auto& shader_v        = m_shaders[Shader_Quad_V];
-		const auto& shader_p_luma   = m_shaders[Shader_Luma_P];
+		const auto& shader_p_luma   = m_shaders[Shader_Fxaa_Luminance_P];
 		const auto& shader_p_fxaa   = m_shaders[Shader_Fxaa_P];
 		if (!shader_v->IsCompiled() || !shader_p_luma->IsCompiled() || !shader_p_fxaa->IsCompiled())
 			return;
@@ -2613,7 +2614,7 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_Copy_CS(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    void Renderer::Pass_Copy_CS(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
         // Acquire shaders
         RHI_Shader* shader_c = m_shaders[Shader_Copy_C].get();
@@ -2623,7 +2624,7 @@ namespace Spartan
         // Set render state
         static RHI_PipelineState pipeline_state;
         pipeline_state.shader_compute           = shader_c;
-        pipeline_state.unordered_access_view    = tex_out.get();
+        pipeline_state.unordered_access_view    = tex_out;
         pipeline_state.pass_name                = "Pass_Copy_CS";
 
         // Draw
@@ -2633,8 +2634,13 @@ namespace Spartan
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             UpdateUberBuffer(cmd_list);
 
-            cmd_list->SetTexture(31, tex_in, true);
-            cmd_list->Dispatch(static_cast<uint32_t>(Math::Helper::Ceil(m_buffer_uber_cpu.resolution.x / 32.0f)), static_cast<uint32_t>(Math::Helper::Ceil(m_buffer_uber_cpu.resolution.y / 32.0f)));
+            uint32_t thread_group_count_x   = static_cast<uint32_t>(Math::Helper::Ceil(m_buffer_uber_cpu.resolution.x / 32.0f));
+            uint32_t thread_group_count_y   = static_cast<uint32_t>(Math::Helper::Ceil(m_buffer_uber_cpu.resolution.y / 32.0f));
+            uint32_t thread_group_count_z   = 1;
+            bool async                      = false;
+
+            cmd_list->SetTexture(32, tex_in, RHI_Shader_Compute);
+            cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
         }
     }

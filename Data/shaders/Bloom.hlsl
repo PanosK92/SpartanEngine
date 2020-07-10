@@ -19,10 +19,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========
+//= INCLUDES ==========
 #include "Common.hlsl"
-#include "Scale.hlsl"
-//====================
+#include "Scaling.hlsl"
+//=====================
 
 #if DOWNSAMPLE
 float4 mainPS(Pixel_PosUv input) : SV_TARGET
@@ -46,7 +46,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 #if UPSAMPLE_BLEND
 float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
-    float4 sourceColor  = tex.Sample(sampler_point_clamp, input.uv);
+    float4 sourceColor = tex.Sample(sampler_point_clamp, input.uv);
     // g_texel_size refers to the current render target, which is twice the size of the input texture.
     // so instead of multiplying it with 0.5, we will use it as is in order to get a "tent" filter, which helps reduce "blockiness".
     float2 texel_size = g_texel_size;

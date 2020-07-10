@@ -97,10 +97,12 @@ namespace Spartan
         // Clear
         void Clear(RHI_PipelineState& pipeline_state);
 
-		// Draw/Dispatch
+		// Draw
         bool Draw(uint32_t vertex_count);
 		bool DrawIndexed(uint32_t index_count, uint32_t index_offset = 0, uint32_t vertex_offset = 0);
-        void Dispatch(uint32_t x, uint32_t y, uint32_t z = 1) const;
+
+        // Dispatch
+        void Dispatch(uint32_t x, uint32_t y, uint32_t z, bool async = false) const;
 
 		// Viewport
 		void SetViewport(const RHI_Viewport& viewport) const;
