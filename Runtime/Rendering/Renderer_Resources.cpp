@@ -212,28 +212,17 @@ namespace Spartan
         m_shaders[Shader_Copy_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "Copy.hlsl");
 
         // FXAA
-        m_shaders[Shader_Fxaa_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_Fxaa_P]->AddDefine("PASS_FXAA");
-        m_shaders[Shader_Fxaa_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Quad.hlsl");
+        {
+            // Luminance (encodes luminance into alpha channel)
+            m_shaders[Shader_Fxaa_Luminance_P] = make_shared<RHI_Shader>(m_context);
+            m_shaders[Shader_Fxaa_Luminance_P]->AddDefine("LUMINANCE");
+            m_shaders[Shader_Fxaa_Luminance_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "FXAA.hlsl");
 
-        // Luma
-        m_shaders[Shader_Luma_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_Luma_P]->AddDefine("PASS_LUMA");
-        m_shaders[Shader_Luma_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Quad.hlsl");
-
-        // Film grain
-        m_shaders[Shader_FilmGrain_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_FilmGrain_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "FilmGrain.hlsl");
-
-        // Sharpening - Lumasharpen
-        m_shaders[Shader_Sharpen_Luma_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_Sharpen_Luma_P]->AddDefine("PASS_LUMA_SHARPEN");
-        m_shaders[Shader_Sharpen_Luma_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Quad.hlsl");
-
-        // Chromatic aberration
-        m_shaders[Shader_ChromaticAberration_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_ChromaticAberration_P]->AddDefine("PASS_CHROMATIC_ABERRATION");
-        m_shaders[Shader_ChromaticAberration_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Quad.hlsl");
+            // FXAA
+            m_shaders[Shader_Fxaa_P] = make_shared<RHI_Shader>(m_context);
+            m_shaders[Shader_Fxaa_P]->AddDefine("FXAA");
+            m_shaders[Shader_Fxaa_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "FXAA.hlsl");
+        }
 
         // Blur
         {
@@ -270,6 +259,19 @@ namespace Spartan
             m_shaders[Shader_BloomUpsampleBlend_P]->AddDefine("UPSAMPLE_BLEND");
             m_shaders[Shader_BloomUpsampleBlend_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Bloom.hlsl");
         }
+
+        // Film grain
+        m_shaders[Shader_FilmGrain_P] = make_shared<RHI_Shader>(m_context);
+        m_shaders[Shader_FilmGrain_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "FilmGrain.hlsl");
+
+        // Lumasharpen
+        m_shaders[Shader_Sharpen_Luma_P] = make_shared<RHI_Shader>(m_context);
+        m_shaders[Shader_Sharpen_Luma_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Sharpening.hlsl");
+
+        // Chromatic aberration
+        m_shaders[Shader_ChromaticAberration_P] = make_shared<RHI_Shader>(m_context);
+        m_shaders[Shader_ChromaticAberration_P]->AddDefine("PASS_CHROMATIC_ABERRATION");
+        m_shaders[Shader_ChromaticAberration_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Quad.hlsl");
 
         // Tone-mapping
         m_shaders[Shader_ToneMapping_P] = make_shared<RHI_Shader>(m_context);
@@ -313,15 +315,18 @@ namespace Spartan
         m_shaders[Shader_Dithering_P]->AddDefine("PASS_DITHERING");
         m_shaders[Shader_Dithering_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Quad.hlsl");
 
-        // Upsample box
-        m_shaders[Shader_Upsample_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_Upsample_P]->AddDefine("PASS_UPSAMPLE_BOX");
-        m_shaders[Shader_Upsample_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Quad.hlsl");
+        // Scaling
+        {
+            // Upsample box
+            m_shaders[Shader_Upsample_P] = make_shared<RHI_Shader>(m_context);
+            m_shaders[Shader_Upsample_P]->AddDefine("UPSAMPLE_BOX");
+            m_shaders[Shader_Upsample_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Scaling.hlsl");
 
-        // Downsample box
-        m_shaders[Shader_Downsample_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_Downsample_P]->AddDefine("PASS_DOWNSAMPLE_BOX");
-        m_shaders[Shader_Downsample_P]->CompileAsync( RHI_Shader_Pixel, dir_shaders + "Quad.hlsl");
+            // Downsample box
+            m_shaders[Shader_Downsample_P] = make_shared<RHI_Shader>(m_context);
+            m_shaders[Shader_Downsample_P]->AddDefine("DOWNSAMPLE_BOX");
+            m_shaders[Shader_Downsample_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Scaling.hlsl");
+        }
 
         // Debug Normal
         m_shaders[Shader_DebugNormal_P] = make_shared<RHI_Shader>(m_context);

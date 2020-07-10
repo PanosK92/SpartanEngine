@@ -107,7 +107,7 @@ namespace Spartan
         return true;
 	}
 
-    void RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z /*= 1*/) const
+    void RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z, bool async /*= false*/) const
     {
         
     }

@@ -413,28 +413,31 @@ namespace Spartan
         return true;
 	}
 
-    void RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z /*= 1*/) const
+    void RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z, bool async /*= false*/) const
     {
-        ID3D11Device5* device                   = m_rhi_device->GetContextRhi()->device;
-        ID3D11DeviceContext4* device_context    = m_rhi_device->GetContextRhi()->device_context;
+        ID3D11Device5* device = m_rhi_device->GetContextRhi()->device;
+        ID3D11DeviceContext4* device_context = m_rhi_device->GetContextRhi()->device_context;
 
-        // Sync objects
-        static uint32_t fence_value = 0;
-        static ID3D11Fence* fence   = nullptr;
-        static HANDLE fence_event   = nullptr;
-        if (!fence)
-        {
-            d3d11_utility::error_check(device->CreateFence(0, D3D11_FENCE_FLAG_NONE, __uuidof(ID3D11Fence), reinterpret_cast<void**>(&fence)));
-        }
-
-        // Dispatch
-        ++fence_value;
         device_context->Dispatch(x, y, z);
-        d3d11_utility::error_check(device_context->Signal(fence, fence_value));
-        d3d11_utility::error_check(fence->SetEventOnCompletion(fence_value, fence_event));
 
-        // Wait
-        WaitForSingleObject(fence_event, INFINITE);
+        if (!async)
+        {
+            D3D11_QUERY_DESC desc;
+            desc.Query = D3D11_QUERY_EVENT;
+            desc.MiscFlags = 0;
+            ID3D11Query* query = nullptr;
+            if (SUCCEEDED(device->CreateQuery(&desc, &query)))
+            {
+                device_context->End(query);
+                BOOL data = 0;
+
+                while (S_OK != device_context->GetData(query, &data, sizeof(data), 0))
+                {
+                    // Wait for the GPU to finish
+                }
+                query->Release();
+            }
+        }
     }
 
 	void RHI_CommandList::SetViewport(const RHI_Viewport& viewport) const
