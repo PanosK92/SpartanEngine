@@ -187,9 +187,16 @@ namespace Spartan
         m_shaders[Shader_Gbuffer_V] = make_shared<RHI_Shader>(m_context);
         m_shaders[Shader_Gbuffer_V]->CompileAsync<RHI_Vertex_PosTexNorTan>(RHI_Shader_Vertex, dir_shaders + "GBuffer.hlsl");
 
-        // Quad - Used by almost everything
-        m_shaders[Shader_Quad_V] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_Quad_V]->CompileAsync<RHI_Vertex_PosTex>(RHI_Shader_Vertex, dir_shaders + "Quad.hlsl");
+        // Quad
+        {
+            // Vertex
+            m_shaders[Shader_Quad_V] = make_shared<RHI_Shader>(m_context);
+            m_shaders[Shader_Quad_V]->CompileAsync<RHI_Vertex_PosTex>(RHI_Shader_Vertex, dir_shaders + "Quad.hlsl");
+
+            // Pixel - Just a texture pass
+            m_shaders[Shader_Texture_P] = make_shared<RHI_Shader>(m_context);
+            m_shaders[Shader_Texture_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Quad.hlsl");
+        }
 
         // Depth Vertex
         m_shaders[Shader_Depth_V] = make_shared<RHI_Shader>(m_context);
@@ -201,11 +208,6 @@ namespace Spartan
         m_shaders[Shader_BrdfSpecularLut] = make_shared<RHI_Shader>(m_context);
         m_shaders[Shader_BrdfSpecularLut]->AddDefine("BRDF_ENV_SPECULAR_LUT");
         m_shaders[Shader_BrdfSpecularLut]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "BRDF_SpecularLut.hlsl");
-
-        // Texture
-        m_shaders[Shader_Texture_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_Texture_P]->AddDefine("PASS_TEXTURE");
-        m_shaders[Shader_Texture_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Quad.hlsl");
 
         // Copy
         m_shaders[Shader_Copy_C] = make_shared<RHI_Shader>(m_context);
@@ -271,17 +273,15 @@ namespace Spartan
         // Chromatic aberration
         m_shaders[Shader_ChromaticAberration_P] = make_shared<RHI_Shader>(m_context);
         m_shaders[Shader_ChromaticAberration_P]->AddDefine("PASS_CHROMATIC_ABERRATION");
-        m_shaders[Shader_ChromaticAberration_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Quad.hlsl");
+        m_shaders[Shader_ChromaticAberration_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "ChromaticAberration.hlsl");
 
         // Tone-mapping
         m_shaders[Shader_ToneMapping_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_ToneMapping_P]->AddDefine("PASS_TONEMAPPING");
-        m_shaders[Shader_ToneMapping_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Quad.hlsl");
+        m_shaders[Shader_ToneMapping_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "ToneMapping.hlsl");
 
         // Gamma correction
         m_shaders[Shader_GammaCorrection_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_GammaCorrection_P]->AddDefine("PASS_GAMMA_CORRECTION");
-        m_shaders[Shader_GammaCorrection_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Quad.hlsl");
+        m_shaders[Shader_GammaCorrection_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "GammaCorrection.hlsl");
 
         // TAA
         m_shaders[Shader_Taa_P] = make_shared<RHI_Shader>(m_context);
@@ -312,8 +312,7 @@ namespace Spartan
 
         // Dithering
         m_shaders[Shader_Dithering_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_Dithering_P]->AddDefine("PASS_DITHERING");
-        m_shaders[Shader_Dithering_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Quad.hlsl");
+        m_shaders[Shader_Dithering_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Dithering.hlsl");
 
         // Scaling
         {
@@ -327,31 +326,6 @@ namespace Spartan
             m_shaders[Shader_Downsample_P]->AddDefine("DOWNSAMPLE_BOX");
             m_shaders[Shader_Downsample_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Scaling.hlsl");
         }
-
-        // Debug Normal
-        m_shaders[Shader_DebugNormal_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_DebugNormal_P]->AddDefine("DEBUG_NORMAL");
-        m_shaders[Shader_DebugNormal_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Quad.hlsl");
-
-        // Debug velocity
-        m_shaders[Shader_DebugVelocity_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_DebugVelocity_P]->AddDefine("DEBUG_VELOCITY");
-        m_shaders[Shader_DebugVelocity_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Quad.hlsl");
-
-        // Debug R channel
-        m_shaders[Shader_DebugChannelR_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_DebugChannelR_P]->AddDefine("DEBUG_R_CHANNEL");
-        m_shaders[Shader_DebugChannelR_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Quad.hlsl");
-
-        // Debug A channel
-        m_shaders[Shader_DebugChannelA_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_DebugChannelA_P]->AddDefine("DEBUG_A_CHANNEL");
-        m_shaders[Shader_DebugChannelA_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Quad.hlsl");
-
-        // Debug A channel
-        m_shaders[Shader_DebugChannelRgbGammaCorrect_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_DebugChannelRgbGammaCorrect_P]->AddDefine("DEBUG_RGB_CHANNEL_GAMMA_CORRECT");
-        m_shaders[Shader_DebugChannelRgbGammaCorrect_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Quad.hlsl");
 
         // HBAO
         m_shaders[Shader_Hbao_P] = make_shared<RHI_Shader>(m_context);
@@ -400,6 +374,33 @@ namespace Spartan
         m_shaders[Shader_Color_V]->CompileAsync<RHI_Vertex_PosCol>(RHI_Shader_Vertex, dir_shaders + "Color.hlsl");
         m_shaders[Shader_Color_P] = make_shared<RHI_Shader>(m_context);
         m_shaders[Shader_Color_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Color.hlsl");
+
+        // Debug
+        {
+            // Normal
+            m_shaders[Shader_DebugNormal_P] = make_shared<RHI_Shader>(m_context);
+            m_shaders[Shader_DebugNormal_P]->AddDefine("NORMAL");
+            m_shaders[Shader_DebugNormal_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Debug.hlsl");
+
+            // Velocity
+            m_shaders[Shader_DebugVelocity_P] = make_shared<RHI_Shader>(m_context);
+            m_shaders[Shader_DebugVelocity_P]->AddDefine("VELOCITY");
+            m_shaders[Shader_DebugVelocity_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Debug.hlsl");
+
+            // R channel
+            m_shaders[Shader_DebugChannelR_P] = make_shared<RHI_Shader>(m_context);
+            m_shaders[Shader_DebugChannelR_P]->AddDefine("R_CHANNEL");
+            m_shaders[Shader_DebugChannelR_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Debug.hlsl");
+
+            // A channel
+            m_shaders[Shader_DebugChannelA_P] = make_shared<RHI_Shader>(m_context);
+            m_shaders[Shader_DebugChannelA_P]->AddDefine("A_CHANNEL");
+            m_shaders[Shader_DebugChannelA_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Debug.hlsl");
+
+            // A channel with gamma correction
+            m_shaders[Shader_DebugChannelRgbGammaCorrect_P] = make_shared<RHI_Shader>(m_context);
+            m_shaders[Shader_DebugChannelRgbGammaCorrect_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Debug.hlsl");
+        }
     }
 
     void Renderer::CreateFonts()

@@ -19,11 +19,20 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==============
+//= INCLUDES ===========
 #include "Common.hlsl"
 #include "Velocity.hlsl"
-#include "ToneMapping.hlsl"
-//=========================
+//======================
+
+float3 Reinhard(float3 hdr, float k = 1.0f)
+{
+    return hdr / (hdr + k);
+}
+
+float3 ReinhardInverse(float3 sdr, float k = 1.0)
+{
+    return k * sdr / (k - sdr);
+}
 
 // From "Temporal Reprojection Anti-Aliasing"
 // https://github.com/playdeadgames/temporal
@@ -74,7 +83,7 @@ float4 TemporalAntialiasing(float2 uv, Texture2D tex_history, Texture2D tex_curr
     float3 color_history    = Reinhard(tex_history.Sample(sampler_bilinear_clamp, uv_reprojected).rgb);
     float3 color_current    = Reinhard(tex_current.Sample(sampler_point_clamp, uv).rgb);
     
-    //= History clipping ==================================================================================
+    //= History clipping ===============================================================================================
     float2 du = float2(g_texel_size.x, 0.0f);
     float2 dv = float2(0.0f, g_texel_size.y);
 
@@ -94,7 +103,7 @@ float4 TemporalAntialiasing(float2 uv, Texture2D tex_history, Texture2D tex_curr
 
     // Clip history to the neighbourhood of the current sample
     color_history = saturate_16(clip_aabb(color_min, color_max, clamp(color_avg, color_min, color_max), color_history));
-    //=====================================================================================================
+    //==================================================================================================================
     
     // Decrease blend factor when motion gets sub-pixel
     const float threshold   = 0.5f;

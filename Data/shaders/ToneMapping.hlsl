@@ -19,6 +19,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+//= INCLUDES =========
+#include "Common.hlsl"
+//====================
+
 float3 Reinhard(float3 hdr, float k = 1.0f)
 {
     return hdr / (hdr + k);
@@ -111,4 +115,10 @@ float3 ToneMap(float3 color)
     }
     
     return color;
+}
+
+float4 mainPS(Pixel_PosUv input) : SV_TARGET
+{
+    float4 color = tex.Sample(sampler_point_clamp, input.uv);
+    return float4(ToneMap(color.rgb), 1.0f);
 }
