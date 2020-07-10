@@ -19,9 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+//= INCLUDES =========
+#include "Common.hlsl"
+//====================
+
 static const float g_chromatic_aberration_intensity = 5.0f;
 
-float3 ChromaticAberration(float2 uv, Texture2D sourceTexture)
+float4 ChromaticAberration(float2 uv, Texture2D sourceTexture)
 {
     float camera_error = 1.0f / g_camera_aperture;
     float intensity = clamp(camera_error * 50.0f, 0.0f, g_chromatic_aberration_intensity);
@@ -32,10 +36,15 @@ float3 ChromaticAberration(float2 uv, Texture2D sourceTexture)
     shift.y *= abs(uv.y * 2.0f - 1.0f);
     
     // Sample color
-	float3 color    = 0.0f; 
+	float4 color    = 0.0f; 
     color.r         = sourceTexture.Sample(sampler_bilinear_clamp, uv + (g_texel_size * shift)).r;
-    color.g         = sourceTexture.Sample(sampler_point_clamp, uv).g;
+    color.ga        = sourceTexture.Sample(sampler_point_clamp, uv).ga;
     color.b         = sourceTexture.Sample(sampler_bilinear_clamp, uv - (g_texel_size * shift)).b;
 
     return color;
+}
+
+float4 mainPS(Pixel_PosUv input) : SV_TARGET
+{
+    return ChromaticAberration(input.uv, tex);
 }

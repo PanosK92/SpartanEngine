@@ -19,6 +19,9 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+//= INCLUDES =========
+#include "Common.hlsl"
+//====================
 
 // http://alex.vlachos.com/graphics/Alex_Vlachos_Advanced_VR_Rendering_GDC2015.pdf
 inline float3 dither(float2 uv)
@@ -46,4 +49,11 @@ inline float3 dither_temporal(float2 uv, float scale = 1.0f)
 inline float3 dither_temporal_fallback_(float2 uv, float fallback, float scale = 1.0f)
 {
     return any(g_taa_jitter_offset) ? dither_temporal(uv, scale) : fallback;
+}
+
+float4 mainPS(Pixel_PosUv input) : SV_TARGET
+{
+    float4 color = tex.Sample(sampler_point_clamp, input.uv);
+    color.rgb += dither(input.uv);
+    return color;
 }

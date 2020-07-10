@@ -23,18 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common.hlsl"
 //====================
 
-Pixel_PosUv mainVS(Vertex_PosUv input)
-{
-    Pixel_PosUv output;
-    
-    input.position.w    = 1.0f;
-    output.position     = mul(input.position, g_viewProjectionOrtho);
-    output.uv           = input.uv;
-    
-    return output;
-}
-
 float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
-    return tex.Sample(sampler_point_clamp, input.uv);
+    return gamma(tex.Sample(sampler_point_clamp, input.uv));
 }
