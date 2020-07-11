@@ -41,7 +41,7 @@ namespace Spartan
 			m_channel_count = GetChannelCountFromFormat(format);
 			m_format		= format;		
 			m_data			= data;
-			m_flags	        = RHI_Texture_ShaderView;
+			m_flags	        = RHI_Texture_Sampled;
             m_mip_levels    = static_cast<uint32_t>(data.size());
 
 			RHI_Texture2D::CreateResourceGpu();
@@ -58,7 +58,7 @@ namespace Spartan
 			m_viewport		= RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
 			m_channel_count = GetChannelCountFromFormat(format);
 			m_format		= format;
-			m_flags	        = RHI_Texture_ShaderView;
+			m_flags	        = RHI_Texture_Sampled;
             m_mip_levels    = 1;
 
 			RHI_Texture2D::CreateResourceGpu();
@@ -68,7 +68,7 @@ namespace Spartan
 		RHI_Texture2D(Context* context, const bool generate_mipmaps = true) : RHI_Texture(context)
 		{
 			m_resource_type = ResourceType::Texture2d;
-			m_flags         = RHI_Texture_ShaderView;
+			m_flags         = RHI_Texture_Sampled;
             m_flags         |= generate_mipmaps ? RHI_Texture_GenerateMipsWhenLoading : 0;
 		}
 
@@ -84,8 +84,8 @@ namespace Spartan
 			m_format		= format;
 			m_array_size	= array_size;
             m_flags         = flags;
-            m_flags         |= RHI_Texture_ShaderView;
-			m_flags		    |= IsDepthFormat() ? RHI_Texture_DepthStencilView : (RHI_Texture_RenderTargetView | RHI_Texture_UnorderedAccessView); // Need to optimize that, not every rt is used in a compute shader
+            m_flags         |= RHI_Texture_Sampled;
+			m_flags		    |= IsDepthFormat() ? RHI_Texture_DepthStencil : (RHI_Texture_RenderTarget | RHI_Texture_Storage); // Need to optimize that, not every rt is used in a compute shader
             m_mip_levels    = 1;
 
 			RHI_Texture2D::CreateResourceGpu();

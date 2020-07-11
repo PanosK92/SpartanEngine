@@ -107,9 +107,9 @@ namespace Spartan
         return true;
 	}
 
-    void RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z, bool async /*= false*/) const
+    bool RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z, bool async /*= false*/)
     {
-        
+        return true;
     }
 
 	void RHI_CommandList::SetViewport(const RHI_Viewport& viewport) const
@@ -142,7 +142,7 @@ namespace Spartan
         
     }
 
-    void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const uint8_t scope /*= RHI_Shader_Pixel*/)
+    void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const bool storage /*= false*/)
     {
         
 	}

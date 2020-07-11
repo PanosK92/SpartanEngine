@@ -132,8 +132,8 @@ namespace Spartan
 		Shader_BloomDownsampleLuminance_P,
         Shader_BloomDownsample_P,
 		Shader_BloomUpsampleBlend_P,
-		Shader_ToneMapping_P,
-		Shader_GammaCorrection_P,
+		Shader_ToneMapping_C,
+		Shader_GammaCorrection_C,
 		Shader_Dithering_P,
 		Shader_Upsample_P,
         Shader_Downsample_P,
@@ -308,8 +308,7 @@ namespace Spartan
         void Pass_TransformHandle(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
 		void Pass_Text(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         void Pass_BrdfSpecularLut(RHI_CommandList* cmd_list);
-        void Pass_Copy(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
-        void Pass_Copy_CS(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
+        void Pass_Copy(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
 
         // Constant buffers
         bool UpdateFrameBuffer();

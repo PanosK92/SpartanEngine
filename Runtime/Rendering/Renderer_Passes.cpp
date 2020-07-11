@@ -51,10 +51,10 @@ namespace Spartan
     void Renderer::SetGlobalSamplersAndConstantBuffers(RHI_CommandList* cmd_list) const
     {
         // Constant buffers
-        cmd_list->SetConstantBuffer(0, RHI_Shader_Vertex | RHI_Shader_Pixel, m_buffer_frame_gpu);
+        cmd_list->SetConstantBuffer(0, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, m_buffer_frame_gpu);
         cmd_list->SetConstantBuffer(1, RHI_Shader_Pixel, m_buffer_material_gpu);
-        cmd_list->SetConstantBuffer(2, RHI_Shader_Vertex | RHI_Shader_Pixel, m_buffer_uber_gpu);
-        cmd_list->SetConstantBuffer(3, RHI_Shader_Vertex, m_buffer_object_gpu);
+        cmd_list->SetConstantBuffer(2, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, m_buffer_uber_gpu);
+        cmd_list->SetConstantBuffer(3, RHI_Shader_Vertex | RHI_Shader_Compute, m_buffer_object_gpu);
         cmd_list->SetConstantBuffer(4, RHI_Shader_Pixel, m_buffer_light_gpu);
         
         // Samplers
@@ -658,35 +658,6 @@ namespace Spartan
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
             cmd_list->EndRenderPass();
         }
-        //// Acquire shader
-        //const auto& shader_c = m_shaders[Shader_Ssr_C];
-        //if (!shader_c->IsCompiled())
-        //    return;
-        //
-        //// Acquire render targets
-        //RHI_Texture* tex_ssr    = m_render_targets[RenderTarget_Ssr].get();
-        //RHI_Texture* tex_normal = m_render_targets[RenderTarget_Gbuffer_Normal].get();
-        //RHI_Texture* tex_depth  = m_render_targets[RenderTarget_Gbuffer_Depth].get();
-
-        //// Update uber buffer
-        //m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_ssr->GetWidth()), static_cast<float>(tex_ssr->GetHeight()));
-        //UpdateUberBuffer(cmd_list);
-
-        //// Set render state
-        //static RHI_PipelineState pipeline_state;
-        //pipeline_state.shader_compute           = shader_c.get();
-        //pipeline_state.unordered_access_view    = tex_ssr->GetResource_UnorderedAccessView();
-        //pipeline_state.pass_name                = "Pass_Ssr";
-
-        //// Record commands
-        //if (cmd_list->BeginPass(pipeline_state))
-        //{
-        //    cmd_list->SetTexture(0, tex_normal);
-        //    cmd_list->SetTexture(1, tex_depth);
-        //    cmd_list->Dispatch(32, 21, 1);
-        //    cmd_list->EndPass();
-        //    cmd_list->Flush();
-        //}
     }
 
     void Renderer::Pass_Light(RHI_CommandList* cmd_list, const bool use_stencil)
@@ -947,8 +918,7 @@ namespace Spartan
         }
         else
         {
-            Pass_Copy(cmd_list, tex_in_hdr, tex_in_ldr);
-            //Pass_Copy_CS(cmd_list, tex_in_hdr.get(), tex_in_ldr.get());
+            Pass_Copy(cmd_list, tex_in_hdr.get(), tex_in_ldr.get());
         }
 
         // Dithering
@@ -1314,7 +1284,7 @@ namespace Spartan
 		}
 
 		// Copy result
-        Pass_Copy(cmd_list, tex_out, tex_history);
+        Pass_Copy(cmd_list, tex_out.get(), tex_history.get());
 	}
 
 	void Renderer::Pass_Bloom(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
@@ -1437,74 +1407,54 @@ namespace Spartan
 
 	void Renderer::Pass_ToneMapping(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
-		// Acquire shaders
-		const auto& shader_p = m_shaders[Shader_ToneMapping_P];
-        const auto& shader_v = m_shaders[Shader_Quad_V];
-        if (!shader_p->IsCompiled() || !shader_v->IsCompiled())
+        // Acquire shaders
+        RHI_Shader* shader_c = m_shaders[Shader_ToneMapping_C].get();
+        if (!shader_c->IsCompiled())
             return;
 
         // Set render state
         static RHI_PipelineState pipeline_state;
-        pipeline_state.shader_vertex                    = shader_v.get();
-        pipeline_state.shader_pixel                     = shader_p.get();
-        pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
-        pipeline_state.blend_state                      = m_blend_disabled.get();
-        pipeline_state.depth_stencil_state              = m_depth_stencil_off_off.get();
-        pipeline_state.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride();
-        pipeline_state.render_target_color_textures[0]  = tex_out.get();
-        pipeline_state.clear_color[0]                   = state_color_dont_care;
-        pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
-        pipeline_state.viewport                         = tex_out->GetViewport();
-        pipeline_state.pass_name                        = "Pass_ToneMapping";
+        pipeline_state.shader_compute = shader_c;
+        pipeline_state.pass_name      = "Pass_ToneMapping";
 
-        // Record commands
+        // Draw
         if (cmd_list->BeginRenderPass(pipeline_state))
         {
-            // Update uber buffer
-            m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-            UpdateUberBuffer(cmd_list);
+            uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / 32.0f));
+            uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / 32.0f));
+            uint32_t thread_group_count_z = 1;
+            bool async = false;
 
-            cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
-            cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
+            cmd_list->SetTexture(3, tex_out, true);
             cmd_list->SetTexture(28, tex_in);
-            cmd_list->DrawIndexed(Rectangle::GetIndexCount());
+            cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
         }
 	}
 
 	void Renderer::Pass_GammaCorrection(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
-		// Acquire shaders
-        const auto& shader_v = m_shaders[Shader_Quad_V];
-		const auto& shader_p = m_shaders[Shader_GammaCorrection_P];
-		if (!shader_p->IsCompiled() || !shader_v->IsCompiled())
-			return;
+        // Acquire shaders
+        RHI_Shader* shader_c = m_shaders[Shader_GammaCorrection_C].get();
+        if (!shader_c->IsCompiled())
+            return;
 
         // Set render state
         static RHI_PipelineState pipeline_state;
-        pipeline_state.shader_vertex                    = shader_v.get();
-        pipeline_state.shader_pixel                     = shader_p.get();
-        pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
-        pipeline_state.blend_state                      = m_blend_disabled.get();
-        pipeline_state.depth_stencil_state              = m_depth_stencil_off_off.get();
-        pipeline_state.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride();
-        pipeline_state.render_target_color_textures[0]  = tex_out.get();
-        pipeline_state.clear_color[0]                   = state_color_dont_care;
-        pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
-        pipeline_state.viewport                         = tex_out->GetViewport();
-        pipeline_state.pass_name                        = "Pass_GammaCorrection";
+        pipeline_state.shader_compute   = shader_c;
+        pipeline_state.pass_name        = "Pass_GammaCorrection";
 
-        // Record commands
+        // Draw
         if (cmd_list->BeginRenderPass(pipeline_state))
         {
-            // Update uber buffer
-            m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-            UpdateUberBuffer(cmd_list);
+            uint32_t thread_group_count_x   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / 32.0f));
+            uint32_t thread_group_count_y   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / 32.0f));
+            uint32_t thread_group_count_z   = 1;
+            bool async                      = false;
 
-            cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
-            cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
+            cmd_list->SetTexture(3, tex_out, true);
             cmd_list->SetTexture(28, tex_in);
-            cmd_list->DrawIndexed(Rectangle::GetIndexCount());
+            cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
         }
 	}
@@ -2576,45 +2526,7 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_Copy(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
-    {
-        // Acquire shaders
-        const auto& shader_v = m_shaders[Shader_Quad_V];
-        const auto& shader_p = m_shaders[Shader_Texture_P];
-        if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
-            return;
-
-        // Set render state
-        static RHI_PipelineState pipeline_state;
-        pipeline_state.shader_vertex                    = shader_v.get();
-        pipeline_state.shader_pixel                     = shader_p.get();
-        pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
-        pipeline_state.blend_state                      = m_blend_disabled.get();
-        pipeline_state.depth_stencil_state              = m_depth_stencil_off_off.get();
-        pipeline_state.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride();
-        pipeline_state.render_target_color_textures[0]  = tex_out.get();
-        pipeline_state.clear_color[0]                   = state_color_dont_care;
-        pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
-        pipeline_state.viewport                         = tex_out->GetViewport();
-        pipeline_state.pass_name                        = "Pass_Copy";
-
-        // Draw
-        if (cmd_list->BeginRenderPass(pipeline_state))
-        {
-            // Update uber buffer
-            m_buffer_uber_cpu.resolution    = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-            m_buffer_uber_cpu.transform     = m_buffer_frame_cpu.view_projection_ortho;
-            UpdateUberBuffer(cmd_list);
-
-            cmd_list->SetTexture(28, tex_in);
-            cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
-            cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
-            cmd_list->DrawIndexed(Rectangle::GetIndexCount());
-            cmd_list->EndRenderPass();
-        }
-    }
-
-    void Renderer::Pass_Copy_CS(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
+    void Renderer::Pass_Copy(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
         // Acquire shaders
         RHI_Shader* shader_c = m_shaders[Shader_Copy_C].get();
@@ -2623,23 +2535,19 @@ namespace Spartan
 
         // Set render state
         static RHI_PipelineState pipeline_state;
-        pipeline_state.shader_compute           = shader_c;
-        pipeline_state.unordered_access_view    = tex_out;
-        pipeline_state.pass_name                = "Pass_Copy_CS";
+        pipeline_state.shader_compute = shader_c;
+        pipeline_state.pass_name      = "Pass_Copy";
 
         // Draw
         if (cmd_list->BeginRenderPass(pipeline_state))
         {
-            // Update uber buffer
-            m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-            UpdateUberBuffer(cmd_list);
-
-            uint32_t thread_group_count_x   = static_cast<uint32_t>(Math::Helper::Ceil(m_buffer_uber_cpu.resolution.x / 32.0f));
-            uint32_t thread_group_count_y   = static_cast<uint32_t>(Math::Helper::Ceil(m_buffer_uber_cpu.resolution.y / 32.0f));
+            uint32_t thread_group_count_x   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / 32.0f));
+            uint32_t thread_group_count_y   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / 32.0f));
             uint32_t thread_group_count_z   = 1;
             bool async                      = false;
 
-            cmd_list->SetTexture(32, tex_in, RHI_Shader_Compute);
+            cmd_list->SetTexture(3, tex_out, true);
+            cmd_list->SetTexture(28, tex_in);
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
         }

@@ -48,7 +48,7 @@ namespace Spartan::vulkan_utility
 	{
         // Get format support
         RHI_Format format                   = texture->GetFormat();
-        bool is_render_target_depth_stencil = texture->IsRenderTargetDepthStencil();
+        bool is_render_target_depth_stencil = texture->IsDepthStencil();
         VkFormatFeatureFlags format_flags   = is_render_target_depth_stencil ? VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT : VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
         VkImageTiling image_tiling          = get_format_tiling(format, format_flags);
         

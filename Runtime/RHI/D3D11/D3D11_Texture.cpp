@@ -38,10 +38,10 @@ namespace Spartan
     {
         UINT flags_d3d11 = 0;
 
-        flags_d3d11 |= (flags & RHI_Texture_ShaderView)             ? D3D11_BIND_SHADER_RESOURCE    : 0;
-        flags_d3d11 |= (flags & RHI_Texture_UnorderedAccessView)    ? D3D11_BIND_UNORDERED_ACCESS   : 0;
-        flags_d3d11 |= (flags & RHI_Texture_DepthStencilView)       ? D3D11_BIND_DEPTH_STENCIL      : 0;
-        flags_d3d11 |= (flags & RHI_Texture_RenderTargetView)       ? D3D11_BIND_RENDER_TARGET      : 0;
+        flags_d3d11 |= (flags & RHI_Texture_Sampled)        ? D3D11_BIND_SHADER_RESOURCE    : 0;
+        flags_d3d11 |= (flags & RHI_Texture_Storage)        ? D3D11_BIND_UNORDERED_ACCESS   : 0;
+        flags_d3d11 |= (flags & RHI_Texture_DepthStencil)   ? D3D11_BIND_DEPTH_STENCIL      : 0;
+        flags_d3d11 |= (flags & RHI_Texture_RenderTarget)   ? D3D11_BIND_RENDER_TARGET      : 0;
 
         return flags_d3d11;
     }
@@ -297,7 +297,7 @@ namespace Spartan
 		);
 
         // RESOURCE VIEW
-        if (m_flags & RHI_Texture_ShaderView)
+        if (IsSampled())
         {
             result_srv = CreateShaderResourceView2d(
                 m_resource,
@@ -310,13 +310,13 @@ namespace Spartan
         }
 
         // UNORDERED ACCESS VIEW
-        if (m_flags & RHI_Texture_UnorderedAccessView)
+        if (IsStorage())
         {
             result_uav = CreateUnorderedAccessView2d(m_resource, m_resource_view_unorderedAccess, format, m_rhi_device);
         }
 
         // DEPTH-STENCIL VIEW
-        if (m_flags & RHI_Texture_DepthStencilView)
+        if (IsDepthStencil())
         {
             result_ds = CreateDepthStencilView2d
             (
@@ -328,7 +328,7 @@ namespace Spartan
                 m_rhi_device
             );
 
-            if (m_flags & RHI_Texture_DepthStencilViewReadOnly)
+            if (m_flags & RHI_Texture_DepthStencilReadOnly)
             {
                 result_ds = CreateDepthStencilView2d
                 (
@@ -343,7 +343,7 @@ namespace Spartan
         }
 
 		// RENDER TARGET VIEW
-		if (m_flags & RHI_Texture_RenderTargetView)
+		if (IsRenderTarget())
 		{
 			result_rt = CreateRenderTargetView2d
 			(
@@ -589,7 +589,7 @@ namespace Spartan
         );
 
         // RESOURCE VIEW
-        if (m_flags & RHI_Texture_ShaderView)
+        if (IsSampled())
         {
             result_srv = CreateShaderResourceViewCube(
                 m_resource,
@@ -602,13 +602,13 @@ namespace Spartan
         }
 
         // UNORDERED ACCESS VIEW
-        if (m_flags & RHI_Texture_UnorderedAccessView)
+        if (IsStorage())
         {
             result_uav = CreateUnorderedAccessViewCube(m_resource, m_resource_view_unorderedAccess, format, m_rhi_device);
         }
 
         // DEPTH-STENCIL VIEW
-        if (m_flags & RHI_Texture_DepthStencilView)
+        if (IsDepthStencil())
         {
             result_ds = CreateDepthStencilViewCube
             (
@@ -620,7 +620,7 @@ namespace Spartan
                 m_rhi_device
             );
 
-            if (m_flags & RHI_Texture_DepthStencilViewReadOnly)
+            if (m_flags & RHI_Texture_DepthStencilReadOnly)
             {
                 result_ds = CreateDepthStencilViewCube
                 (
@@ -635,7 +635,7 @@ namespace Spartan
         }
 
         // RENDER TARGET VIEW
-        if (m_flags & RHI_Texture_RenderTargetView)
+        if (IsRenderTarget())
         {
             result_rt = CreateRenderTargetViewCube
             (

@@ -51,8 +51,16 @@ namespace Spartan
         profile = pass_name != nullptr;
         mark    = pass_name != nullptr;
 
+        // Compute shader
+        if (shader_compute)
+        {
+            if (!shader_compute->IsCompiled())
+            {
+                is_valid = false;
+            }
+        }
         // Vertex shader
-        if (shader_vertex)
+        else if (shader_vertex)
         {
             if (!shader_vertex->IsCompiled())
             {
@@ -77,25 +85,15 @@ namespace Spartan
                 is_valid = false;
             }
         }
+        else
+        {
+            is_valid = false;
+        }
 
         // Pixel shader
         if (shader_pixel)
         {
             if (!shader_pixel->IsCompiled())
-            {
-                is_valid = false;
-            }
-        }
-
-        // Compute shader
-        if (shader_compute)
-        {
-            if (!shader_compute->IsCompiled())
-            {
-                is_valid = false;
-            }
-
-            if (!unordered_access_view)
             {
                 is_valid = false;
             }

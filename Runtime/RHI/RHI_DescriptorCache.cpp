@@ -180,46 +180,57 @@ namespace Spartan
     {
         vector<RHI_Descriptor> descriptors;
 
-        if (!pipeline_state.shader_vertex)
+        if (!pipeline_state.IsValid())
         {
-            LOG_ERROR("Vertex shader is invalid");
+            LOG_ERROR("Invalid pipeline state");
             return descriptors;
         }
 
-        // Wait for compilation
-        pipeline_state.shader_vertex->WaitForCompilation();
-
-        // Get vertex shader descriptors
-        descriptors = pipeline_state.shader_vertex->GetDescriptors();
-
-        // If there is a pixel shader, merge it's resources into our map as well
-        if (pipeline_state.shader_pixel)
+        if (pipeline_state.IsCompute())
         {
             // Wait for compilation
-            pipeline_state.shader_pixel->WaitForCompilation();
+            pipeline_state.shader_compute->WaitForCompilation();
 
-            for (const RHI_Descriptor& descriptor_reflected : pipeline_state.shader_pixel->GetDescriptors())
+            // Get compute shader descriptors
+            descriptors = pipeline_state.shader_compute->GetDescriptors();
+        }
+        else
+        {
+            // Wait for compilation
+            pipeline_state.shader_vertex->WaitForCompilation();
+
+            // Get vertex shader descriptors
+            descriptors = pipeline_state.shader_vertex->GetDescriptors();
+
+            // If there is a pixel shader, merge it's resources into our map as well
+            if (pipeline_state.shader_pixel)
             {
-                // Assume that the descriptor has been created in the vertex shader and only try to update it's shader stage
-                bool updated_existing = false;
-                for (RHI_Descriptor& descriptor : descriptors)
-                {
-                    bool is_same_resource =
-                        (descriptor.type == descriptor_reflected.type) &&
-                        (descriptor.slot == descriptor_reflected.slot);
+                // Wait for compilation
+                pipeline_state.shader_pixel->WaitForCompilation();
 
-                    if ((descriptor.type == descriptor_reflected.type) && (descriptor.slot == descriptor_reflected.slot))
+                for (const RHI_Descriptor& descriptor_reflected : pipeline_state.shader_pixel->GetDescriptors())
+                {
+                    // Assume that the descriptor has been created in the vertex shader and only try to update it's shader stage
+                    bool updated_existing = false;
+                    for (RHI_Descriptor& descriptor : descriptors)
                     {
-                        descriptor.stage |= descriptor_reflected.stage;
-                        updated_existing = true;
-                        break;
-                    }
-                }
+                        bool is_same_resource =
+                            (descriptor.type == descriptor_reflected.type) &&
+                            (descriptor.slot == descriptor_reflected.slot);
 
-                // If no updating took place, this descriptor is new, so add it
-                if (!updated_existing)
-                {
-                    descriptors.emplace_back(descriptor_reflected);
+                        if ((descriptor.type == descriptor_reflected.type) && (descriptor.slot == descriptor_reflected.slot))
+                        {
+                            descriptor.stage |= descriptor_reflected.stage;
+                            updated_existing = true;
+                            break;
+                        }
+                    }
+
+                    // If no updating took place, this descriptor is new, so add it
+                    if (!updated_existing)
+                    {
+                        descriptors.emplace_back(descriptor_reflected);
+                    }
                 }
             }
         }

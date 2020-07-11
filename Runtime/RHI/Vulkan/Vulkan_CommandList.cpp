@@ -385,7 +385,7 @@ namespace Spartan
             0                                           // firstInstance
         );
 
-        m_profiler->m_rhi_draw_calls++;
+        m_profiler->m_rhi_draw++;
 
         return true;
 	}
@@ -411,14 +411,27 @@ namespace Spartan
             0                                           // firstInstance
         );
 
-        m_profiler->m_rhi_draw_calls++;
+        m_profiler->m_rhi_draw++;
 
         return true;
 	}
 
-    void RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z, bool async /*= false*/) const
+    bool RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z, bool async /*= false*/)
     {
-        
+        if (m_cmd_state != RHI_Cmd_List_Recording)
+        {
+            LOG_WARNING("Can't record command");
+            return false;
+        }
+
+        // Ensure correct state before attempting to draw
+        if (!OnDraw())
+            return false;
+
+        vkCmdDispatch(static_cast<VkCommandBuffer>(m_cmd_buffer), x, y, z);
+        m_profiler->m_rhi_dispatch++;
+
+        return true;
     }
 
 	void RHI_CommandList::SetViewport(const RHI_Viewport& viewport) const
@@ -541,7 +554,7 @@ namespace Spartan
         m_descriptor_cache->SetSampler(slot, sampler);
     }
 
-    void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const uint8_t scope /*= RHI_Shader_Pixel*/)
+    void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const bool storage /*= false*/)
     {
         if (m_cmd_state != RHI_Cmd_List_Recording)
         {
@@ -837,7 +850,10 @@ namespace Spartan
 
         if (result && descriptor_set != nullptr)
         {
-            // Get dynamic offsets
+            // Bind point
+            VkPipelineBindPoint pipeline_bind_point = m_pipeline_state->IsCompute() ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS;
+
+            // Dynamic offsets
             RHI_DescriptorSetLayout* descriptor_set_layout = m_descriptor_cache->GetCurrentDescriptorSetLayout();
             const std::array<uint32_t, state_max_constant_buffer_count> dynamic_offsets = descriptor_set_layout->GetDynamicOffsets();
             uint32_t dynamic_offset_count = descriptor_set_layout->GetDynamicOffsetCount();
@@ -847,7 +863,7 @@ namespace Spartan
             vkCmdBindDescriptorSets
             (
                 static_cast<VkCommandBuffer>(m_cmd_buffer),                     // commandBuffer
-                VK_PIPELINE_BIND_POINT_GRAPHICS,                                // pipelineBindPoint
+                pipeline_bind_point,                                            // pipelineBindPoint
                 static_cast<VkPipelineLayout>(m_pipeline->GetPipelineLayout()), // layout
                 0,                                                              // firstSet
                 1,                                                              // descriptorSetCount
@@ -866,7 +882,10 @@ namespace Spartan
     {
         if (VkPipeline vk_pipeline = static_cast<VkPipeline>(m_pipeline->GetPipeline()))
         {
-            vkCmdBindPipeline(static_cast<VkCommandBuffer>(m_cmd_buffer), VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline);
+            // Bind point
+            VkPipelineBindPoint pipeline_bind_point = m_pipeline_state->IsCompute() ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS;
+
+            vkCmdBindPipeline(static_cast<VkCommandBuffer>(m_cmd_buffer), pipeline_bind_point, vk_pipeline);
             m_profiler->m_rhi_bindings_pipeline++;
             m_pipeline_active = true;
         }
@@ -888,7 +907,7 @@ namespace Spartan
             return false;
 
         // Begin render pass
-        if (!m_render_pass_active)
+        if (!m_render_pass_active && !m_pipeline_state->IsCompute())
         {
             if (!Deferred_BeginRenderPass())
             {

@@ -33,14 +33,14 @@ namespace Spartan
 {
 	enum RHI_Texture_Flags : uint16_t
 	{
-		RHI_Texture_ShaderView			        = 1 << 0,
-        RHI_Texture_UnorderedAccessView         = 1 << 1,
-		RHI_Texture_RenderTargetView	        = 1 << 2,
-		RHI_Texture_DepthStencilView	        = 1 << 3,
-        RHI_Texture_DepthStencilViewReadOnly    = 1 << 4,
-        RHI_Texture_Grayscale                   = 1 << 5,
-        RHI_Texture_Transparent                 = 1 << 6,
-        RHI_Texture_GenerateMipsWhenLoading     = 1 << 7
+		RHI_Texture_Sampled			        = 1 << 0,
+        RHI_Texture_Storage                 = 1 << 1,
+		RHI_Texture_RenderTarget	        = 1 << 2,
+		RHI_Texture_DepthStencil	        = 1 << 3,
+        RHI_Texture_DepthStencilReadOnly    = 1 << 4,
+        RHI_Texture_Grayscale               = 1 << 5,
+        RHI_Texture_Transparent             = 1 << 6,
+        RHI_Texture_GenerateMipsWhenLoading = 1 << 7
 	};
 
     enum RHI_Shader_View_Type : uint8_t
@@ -95,16 +95,16 @@ namespace Spartan
         std::vector<std::byte> GetMipmap(uint32_t index);
 
         // Binding type
-        bool IsSampled()                    const { return m_flags & RHI_Texture_ShaderView; }
-        bool IsRenderTargetCompute()        const { return m_flags & RHI_Texture_UnorderedAccessView; }
-        bool IsRenderTargetDepthStencil()   const { return m_flags & RHI_Texture_DepthStencilView; }
-        bool IsRenderTargetColor()          const { return m_flags & RHI_Texture_RenderTargetView; }
+        bool IsSampled()        const { return m_flags & RHI_Texture_Sampled; }
+        bool IsStorage()        const { return m_flags & RHI_Texture_Storage; }
+        bool IsDepthStencil()   const { return m_flags & RHI_Texture_DepthStencil; }
+        bool IsRenderTarget()   const { return m_flags & RHI_Texture_RenderTarget; }
 
         // Format type
-        bool IsDepthFormat()    const { return m_format == RHI_Format_D32_Float || m_format == RHI_Format_D32_Float_S8X24_Uint; }
-        bool IsStencilFormat()  const { return m_format == RHI_Format_D32_Float_S8X24_Uint; }
-        bool IsDepthStencil()   const { return IsDepthFormat() || IsStencilFormat(); }
-        bool IsColorFormat()    const { return !IsDepthStencil(); }
+        bool IsDepthFormat()            const { return m_format == RHI_Format_D32_Float || m_format == RHI_Format_D32_Float_S8X24_Uint; }
+        bool IsStencilFormat()          const { return m_format == RHI_Format_D32_Float_S8X24_Uint; }
+        bool IsDepthStencilFormat()     const { return IsDepthFormat() || IsStencilFormat(); }
+        bool IsColorFormat()            const { return !IsDepthStencilFormat(); }
         
         // Layout
         void SetLayout(const RHI_Image_Layout layout, RHI_CommandList* command_list = nullptr);

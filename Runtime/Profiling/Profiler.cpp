@@ -333,12 +333,14 @@ namespace Spartan
             "Materials:\t\t%d\n"
             "\n"
             // RHI
-            "Draw calls:\t\t\t\t%d\n"
+            "Draw:\t\t\t\t\t%d\n"
+            "Dispatch:\t\t\t\t\t%d\n"
             "Index buffer bindings:\t\t%d\n"
             "Vertex buffer bindings:\t\t%d\n"
             "Constant buffer bindings:\t%d\n"
             "Sampler bindings:\t\t\t%d\n"
-            "Texture bindings:\t\t\t%d\n"
+            "Texture sampled bindings:\t\t%d\n"
+            "Texture storage bindings:\t%d\n"
             "Vertex shader bindings:\t%d\n"
             "Pixel shader bindings:\t\t%d\n"
             "Compute shader bindings:\t%d\n"
@@ -371,12 +373,14 @@ namespace Spartan
 			material_count,
 
 			// RHI
-			m_rhi_draw_calls,
+			m_rhi_draw,
+            m_rhi_dispatch,
 			m_rhi_bindings_buffer_index,
 			m_rhi_bindings_buffer_vertex,
 			m_rhi_bindings_buffer_constant,
 			m_rhi_bindings_sampler,
-			m_rhi_bindings_texture,
+			m_rhi_bindings_texture_sampled,
+            m_rhi_bindings_texture_storage,
 			m_rhi_bindings_shader_vertex,
 			m_rhi_bindings_shader_pixel,
             m_rhi_bindings_shader_compute,

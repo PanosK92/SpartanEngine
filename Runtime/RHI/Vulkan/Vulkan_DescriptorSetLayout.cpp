@@ -73,56 +73,56 @@ namespace Spartan
         if (!descriptor_set)
             return;
 
-        const uint32_t descriptor_count = static_cast<uint32_t>(descriptors.size());
-        
-        vector<VkDescriptorImageInfo> image_infos;
-        image_infos.reserve(descriptor_count);
-        
-        vector<VkDescriptorBufferInfo> buffer_infos;
-        buffer_infos.reserve(descriptor_count);
-        
-        vector<VkWriteDescriptorSet> write_descriptor_sets;
-        write_descriptor_sets.reserve(descriptor_count);
-        
+        static const uint8_t descriptors_max = 255;   
+        array<VkDescriptorImageInfo,    descriptors_max> image_infos;
+        array<VkDescriptorBufferInfo,   descriptors_max> buffer_infos;
+        array<VkWriteDescriptorSet,     descriptors_max> write_descriptor_sets;
+        uint8_t i = 0;
+
         for (const RHI_Descriptor& descriptor : descriptors)
         {
             // Ignore null resources (this is legal, as a render pass can choose to not use one or more resources)
             if (!descriptor.resource)
                 continue;
-        
-            // Texture or Sampler
-            image_infos.push_back
-            ({
-                descriptor.type == RHI_Descriptor_Sampler ? static_cast<VkSampler>(descriptor.resource)     : nullptr,                                  // sampler
-                descriptor.type == RHI_Descriptor_Texture ? static_cast<VkImageView>(descriptor.resource)   : nullptr,                                  // imageView
-                descriptor.type == RHI_Descriptor_Texture && descriptor.resource ? vulkan_image_layout[descriptor.layout] : VK_IMAGE_LAYOUT_UNDEFINED   // imageLayout
-            });
-        
-            // Constant/Uniform buffer
-            const bool is_constant_buffer = descriptor.type == RHI_Descriptor_ConstantBuffer || descriptor.type == RHI_Descriptor_ConstantBufferDynamic;
-            buffer_infos.push_back
-            ({
-                is_constant_buffer ? static_cast<VkBuffer>(descriptor.resource) : nullptr,  // buffer
-                is_constant_buffer ? descriptor.offset  : 0,                                // offset
-                is_constant_buffer ? descriptor.range   : 0                                 // range
-            });
 
-            write_descriptor_sets.push_back
-            ({
-                VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,	        // sType
-                nullptr,								        // pNext
-                static_cast<VkDescriptorSet>(descriptor_set),   // dstSet
-                descriptor.slot,				                // dstBinding
-                0,									            // dstArrayElement
-                1,									            // descriptorCount
-                vulkan_descriptor_type[descriptor.type],	    // descriptorType
-                &image_infos.back(),                            // pImageInfo 
-                &buffer_infos.back(),                           // pBufferInfo
-                nullptr									        // pTexelBufferView
-            });
+            // Sampler
+            if (descriptor.type == RHI_Descriptor_Sampler)
+            {
+                image_infos[i].sampler      = static_cast<VkSampler>(descriptor.resource);
+                image_infos[i].imageView    = nullptr;
+                image_infos[i].imageLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
+            }
+            // Sampled/Storage texture
+            else if (descriptor.type == RHI_Descriptor_SampledTexture || descriptor.type == RHI_Descriptor_StorageTexture)
+            {
+                image_infos[i].sampler      = nullptr;
+                image_infos[i].imageView    = static_cast<VkImageView>(descriptor.resource);
+                image_infos[i].imageLayout  = descriptor.resource ? vulkan_image_layout[descriptor.layout] : VK_IMAGE_LAYOUT_UNDEFINED;
+            }
+            // Constant/Uniform buffer
+            else if (descriptor.type == RHI_Descriptor_ConstantBuffer || descriptor.type == RHI_Descriptor_ConstantBufferDynamic)
+            {
+                buffer_infos[i].buffer  = static_cast<VkBuffer>(descriptor.resource);
+                buffer_infos[i].offset  = descriptor.offset;
+                buffer_infos[i].range   = descriptor.range;
+            }
+
+            // Write descriptor set
+            write_descriptor_sets[i].sType             = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            write_descriptor_sets[i].pNext             = nullptr;
+            write_descriptor_sets[i].dstSet            = static_cast<VkDescriptorSet>(descriptor_set);
+            write_descriptor_sets[i].dstBinding        = descriptor.slot;
+            write_descriptor_sets[i].dstArrayElement   = 0;
+            write_descriptor_sets[i].descriptorCount   = 1;
+            write_descriptor_sets[i].descriptorType    = vulkan_descriptor_type[descriptor.type];
+            write_descriptor_sets[i].pImageInfo        = &image_infos[i];
+            write_descriptor_sets[i].pBufferInfo       = &buffer_infos[i];
+            write_descriptor_sets[i].pTexelBufferView  = nullptr;
+
+            i++;
         }
         
-        vkUpdateDescriptorSets(m_rhi_device->GetContextRhi()->device, static_cast<uint32_t>(write_descriptor_sets.size()), write_descriptor_sets.data(), 0, nullptr);
+        vkUpdateDescriptorSets(m_rhi_device->GetContextRhi()->device, i, write_descriptor_sets.data(), 0, nullptr);
     }
 
     void* RHI_DescriptorSetLayout::CreateDescriptorSetLayout(const vector<RHI_Descriptor>& descriptors)
