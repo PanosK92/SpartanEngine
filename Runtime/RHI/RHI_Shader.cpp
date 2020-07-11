@@ -195,34 +195,45 @@ namespace Spartan
 		// The SPIR-V is now parsed, and we can perform reflection on it
         spirv_cross::ShaderResources resources = compiler.get_shader_resources();
 
+        // Get storage images
+        for (const auto& resource : resources.storage_images)
+        {
+            m_descriptors.emplace_back
+            (
+                RHI_Descriptor_Type::RHI_Descriptor_StorageTexture,             // Type
+                compiler.get_decoration(resource.id, spv::DecorationBinding),   // Slot
+                shader_type                                                     // Stage
+            );
+        }
+
+        // Get constant buffers
+        for (const auto& resource : resources.uniform_buffers)
+        {
+            m_descriptors.emplace_back
+            (
+                RHI_Descriptor_Type::RHI_Descriptor_ConstantBuffer,             // Type
+                compiler.get_decoration(resource.id, spv::DecorationBinding),   // Slot
+                shader_type                                                     // Stage
+            );
+        }
+
+        // Get textures
+        for (const auto& resource : resources.separate_images)
+        {
+            m_descriptors.emplace_back
+            (
+                RHI_Descriptor_Type::RHI_Descriptor_SampledTexture,             // Type
+                compiler.get_decoration(resource.id, spv::DecorationBinding),   // Slot
+                shader_type                                                     // Stage
+            );
+        }
+
 		// Get samplers
 		for (const auto& resource : resources.separate_samplers)
 		{
             m_descriptors.emplace_back
             (
                 RHI_Descriptor_Type::RHI_Descriptor_Sampler,                    // Type
-                compiler.get_decoration(resource.id, spv::DecorationBinding),   // Slot
-                shader_type                                                     // Stage
-            );
-		}
-
-		// Get textures
-		for (const auto& resource : resources.separate_images)
-		{
-            m_descriptors.emplace_back
-            (
-                RHI_Descriptor_Type::RHI_Descriptor_Texture,                    // Type
-                compiler.get_decoration(resource.id, spv::DecorationBinding),   // Slot
-                shader_type                                                     // Stage
-            );
-		}
-
-		// Get constant buffers
-		for (const auto& resource : resources.uniform_buffers)
-		{
-            m_descriptors.emplace_back
-            (
-                RHI_Descriptor_Type::RHI_Descriptor_ConstantBuffer,             // Type
                 compiler.get_decoration(resource.id, spv::DecorationBinding),   // Slot
                 shader_type                                                     // Stage
             );

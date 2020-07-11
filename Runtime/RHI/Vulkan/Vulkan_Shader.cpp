@@ -349,7 +349,7 @@ namespace Spartan
         wstring shift_buffer    = to_wstring(m_rhi_device->GetContextRhi()->shader_shift_buffer);
         wstring shift_texture   = to_wstring(m_rhi_device->GetContextRhi()->shader_shift_texture);
         wstring shift_sampler   = to_wstring(m_rhi_device->GetContextRhi()->shader_shift_sampler);
-        wstring shift_rw_buffer = to_wstring(m_rhi_device->GetContextRhi()->shader_shift_rw_buffer);
+        wstring shift_rw_buffer = to_wstring(m_rhi_device->GetContextRhi()->shader_shift_storage_texture);
 
         vector<LPCWSTR> arguments =
         {

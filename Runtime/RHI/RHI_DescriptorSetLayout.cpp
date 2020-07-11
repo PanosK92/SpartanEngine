@@ -111,7 +111,10 @@ namespace Spartan
 
         for (RHI_Descriptor& descriptor : m_descriptors)
         {
-            if (descriptor.type == RHI_Descriptor_Texture && descriptor.slot == slot + m_rhi_device->GetContextRhi()->shader_shift_texture)
+            bool type_match = descriptor.type == RHI_Descriptor_SampledTexture || descriptor.type == RHI_Descriptor_StorageTexture;
+            bool slot_match = descriptor.slot == slot + m_rhi_device->GetContextRhi()->shader_shift_texture || descriptor.slot == slot + m_rhi_device->GetContextRhi()->shader_shift_storage_texture;
+
+            if (type_match && slot_match)
             {
                 // Determine if the descriptor set needs to bind
                 m_needs_to_bind = descriptor.resource != texture->Get_Resource_View() ? true : m_needs_to_bind; // affects vkUpdateDescriptorSets
@@ -161,6 +164,8 @@ namespace Spartan
         // vkCmdBindDescriptorSets expects an array without empty values
 
         std::array<uint32_t, Spartan::state_max_constant_buffer_count> dynamic_offsets;
+        dynamic_offsets.fill(0);
+
         uint32_t j = 0;
         for (uint32_t i = 0; i < state_max_constant_buffer_count; i++)
         {

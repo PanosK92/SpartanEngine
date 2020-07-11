@@ -213,6 +213,9 @@ namespace Spartan
 
     bool RHI_PipelineState::CreateFrameResources(const RHI_Device* rhi_device)
     {
+        if (IsCompute())
+            return true;
+
         m_rhi_device = rhi_device;
 
         const uint32_t render_target_width  = GetWidth();

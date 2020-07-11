@@ -494,9 +494,10 @@ namespace Spartan::vulkan_utility
         {
             VkImageUsageFlags flags = 0;
 
-            flags |= (texture->GetFlags() & RHI_Texture_ShaderView)         ? VK_IMAGE_USAGE_SAMPLED_BIT                    : 0;
-            flags |= (texture->GetFlags() & RHI_Texture_DepthStencilView)   ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT   : 0;
-            flags |= (texture->GetFlags() & RHI_Texture_RenderTargetView)   ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT           : 0;
+            flags |= (texture->GetFlags() & RHI_Texture_Sampled)        ? VK_IMAGE_USAGE_SAMPLED_BIT                    : 0;
+            flags |= (texture->GetFlags() & RHI_Texture_Storage)        ? VK_IMAGE_USAGE_STORAGE_BIT                    : 0;
+            flags |= (texture->GetFlags() & RHI_Texture_DepthStencil)   ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT   : 0;
+            flags |= (texture->GetFlags() & RHI_Texture_RenderTarget)   ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT           : 0;
 
             // If the texture has data, it will be staged
             if (texture->HasData())
@@ -512,7 +513,7 @@ namespace Spartan::vulkan_utility
         {
             VkImageAspectFlags aspect_mask = 0;
 
-            if (texture->IsColorFormat() && texture->IsDepthStencil())
+            if (texture->IsColorFormat() && texture->IsDepthStencilFormat())
             {
                 LOG_ERROR("Texture can't be both color and depth-stencil");
                 return aspect_mask;

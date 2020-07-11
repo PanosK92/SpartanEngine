@@ -117,8 +117,10 @@ float3 ToneMap(float3 color)
     return color;
 }
 
-float4 mainPS(Pixel_PosUv input) : SV_TARGET
+[numthreads(32, 32, 1)]
+void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    float4 color = tex.Sample(sampler_point_clamp, input.uv);
-    return float4(ToneMap(color.rgb), 1.0f);
+    float4 color = tex[thread_id.xy];
+    color = float4(ToneMap(color.rgb), color.a);
+    tex_out_rgba[thread_id.xy] = color;
 }

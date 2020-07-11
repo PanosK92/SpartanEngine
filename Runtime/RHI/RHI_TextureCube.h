@@ -43,7 +43,7 @@ namespace Spartan
 			m_format		= format;
 			m_data_cube		= data;
 			m_array_size	= 6;
-			m_flags	= RHI_Texture_ShaderView;
+			m_flags	= RHI_Texture_Sampled;
             m_mip_levels    = static_cast<uint32_t>(m_data.front().size());
 
 			RHI_TextureCube::CreateResourceGpu();
@@ -59,8 +59,8 @@ namespace Spartan
 			m_viewport		= RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
 			m_format		= format;
 			m_array_size	= 6;
-            m_flags    = RHI_Texture_ShaderView;
-			m_flags	|= IsDepthFormat() ? RHI_Texture_DepthStencilView : RHI_Texture_RenderTargetView;
+            m_flags    = RHI_Texture_Sampled;
+			m_flags	|= IsDepthFormat() ? RHI_Texture_DepthStencil : RHI_Texture_RenderTarget;
             m_mip_levels    = 1;
 
 			RHI_TextureCube::CreateResourceGpu();

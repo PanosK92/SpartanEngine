@@ -231,7 +231,8 @@ namespace Spartan
 	enum RHI_Descriptor_Type
 	{
 		RHI_Descriptor_Sampler,
-		RHI_Descriptor_Texture,
+		RHI_Descriptor_SampledTexture,
+        RHI_Descriptor_StorageTexture,
 		RHI_Descriptor_ConstantBuffer,
         RHI_Descriptor_ConstantBufferDynamic,
         RHI_Descriptor_Undefined

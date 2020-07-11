@@ -45,6 +45,7 @@ namespace Spartan
         uint32_t GetHeight() const;
         void ResetClearValues();
         auto GetHash()                                  const { return m_hash; }
+        bool IsCompute()                                const { return shader_compute != nullptr; }
         void* GetRenderPass()                           const { return m_render_pass; }
         bool operator==(const RHI_PipelineState& rhs)   const { return m_hash == rhs.GetHash(); }
 
@@ -100,8 +101,7 @@ namespace Spartan
         };
         //==========================================================================================================================
 
-        //= Dynamic, modification is free =============================================================
-        RHI_Texture* unordered_access_view         = nullptr;
+        //= Dynamic, modification is free ===============================
         bool render_target_depth_texture_read_only = false;
 
         // such a hack, must fix. Update: Came back to byte me in the ass
@@ -115,7 +115,7 @@ namespace Spartan
         const char* pass_name   = nullptr;
         bool mark               = false;
         bool profile            = false;
-        //=============================================================================================
+        //===============================================================
 
     private:
         void DestroyFrameResources();

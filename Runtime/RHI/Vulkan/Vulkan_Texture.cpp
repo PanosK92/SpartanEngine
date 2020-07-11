@@ -48,15 +48,16 @@ namespace Spartan
                 name += name.empty() ? "sampled" : "-sampled";
             }
 
-            if (texture->IsRenderTargetColor())
+            if (texture->IsDepthStencil())
             {
-                name += name.empty() ? "render_target_color" : "-render_target_color";
+                name += name.empty() ? "depth_stencil" : "-depth_stencil";
             }
 
-            if (texture->IsRenderTargetDepthStencil())
+            if (texture->IsRenderTarget())
             {
-                name += name.empty() ? "render_target_depth" : "-render_target_depth";
+                name += name.empty() ? "render_target" : "-render_target";
             }
+
         }
 
         vulkan_utility::debug::set_name(static_cast<VkImage>(texture->Get_Resource()), name.c_str());
@@ -174,6 +175,25 @@ namespace Spartan
         return true;
     }
 
+    inline RHI_Image_Layout GetAppropriateLayout(RHI_Texture* texture)
+    {
+        RHI_Image_Layout target_layout = RHI_Image_Preinitialized;
+
+        if (texture->IsSampled() && texture->IsColorFormat())
+            target_layout = RHI_Image_Shader_Read_Only_Optimal;
+
+        if (texture->IsRenderTarget())
+            target_layout = RHI_Image_Color_Attachment_Optimal;
+
+        if (texture->IsDepthStencil())
+            target_layout = RHI_Image_Depth_Stencil_Attachment_Optimal;
+
+        if (texture->IsStorage())
+            target_layout = RHI_Image_General;
+
+        return target_layout;
+    }
+
     RHI_Texture2D::~RHI_Texture2D()
     {
         if (!m_rhi_device->IsInitialized())
@@ -235,17 +255,8 @@ namespace Spartan
         // Transition to target layout
         if (VkCommandBuffer cmd_buffer = vulkan_utility::command_buffer_immediate::begin(RHI_Queue_Graphics))
         {    
-            RHI_Image_Layout target_layout = RHI_Image_Preinitialized;
-        
-            if (IsSampled() && IsColorFormat())
-                target_layout = RHI_Image_Shader_Read_Only_Optimal;
-        
-            if (IsRenderTargetColor())
-                target_layout = RHI_Image_Color_Attachment_Optimal;
-        
-            if (IsRenderTargetDepthStencil())
-                target_layout = RHI_Image_Depth_Stencil_Attachment_Optimal;
-        
+            RHI_Image_Layout target_layout = GetAppropriateLayout(this);
+                
             // Transition to the final layout
             if (!vulkan_utility::image::set_layout(cmd_buffer, this, target_layout))
             {
@@ -291,13 +302,13 @@ namespace Spartan
             // Render target views
             for (uint32_t i = 0; i < m_array_size; i++)
             {
-                if (IsRenderTargetColor())
+                if (IsRenderTarget())
                 {
                     if (!vulkan_utility::image::view::create(m_resource, m_resource_view_renderTarget[i], this, i, 1))
                         return false;
                 }
 
-                if (IsRenderTargetDepthStencil())
+                if (IsDepthStencil())
                 {
                     if (!vulkan_utility::image::view::create(m_resource, m_resource_view_depthStencil[i], this, i, 1, true))
                         return false;
@@ -350,16 +361,7 @@ namespace Spartan
         // Transition to target layout
         if (VkCommandBuffer cmd_buffer = vulkan_utility::command_buffer_immediate::begin(RHI_Queue_Graphics))
         {
-            RHI_Image_Layout target_layout = RHI_Image_Preinitialized;
-
-            if (IsSampled() && IsColorFormat())
-                target_layout = RHI_Image_Shader_Read_Only_Optimal;
-
-            if (IsRenderTargetColor())
-                target_layout = RHI_Image_Color_Attachment_Optimal;
-
-            if (IsRenderTargetDepthStencil())
-                target_layout = RHI_Image_Depth_Stencil_Attachment_Optimal;
+            RHI_Image_Layout target_layout = GetAppropriateLayout(this);
 
             // Transition to the final layout
             if (!vulkan_utility::image::set_layout(cmd_buffer, this, target_layout))
@@ -400,13 +402,13 @@ namespace Spartan
             // Render target views
             for (uint32_t i = 0; i < m_array_size; i++)
             {
-                if (IsRenderTargetColor())
+                if (IsRenderTarget())
                 {
                     if (!vulkan_utility::image::view::create(m_resource, m_resource_view_renderTarget[i], this, i, 1))
                         return false;
                 }
 
-                if (IsRenderTargetDepthStencil())
+                if (IsDepthStencil())
                 {
                     if (!vulkan_utility::image::view::create(m_resource, m_resource_view_depthStencil[i], this, i, 1, true))
                         return false;

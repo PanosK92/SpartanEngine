@@ -273,7 +273,7 @@ namespace Spartan
                 // Textures
                 else
                 {
-                    for (auto i = 0; i < state_max_render_target_count; i++)
+                    for (uint8_t i = 0; i < state_max_render_target_count; i++)
                     {
                         if (pipeline_state.render_target_color_textures[i])
                         {
@@ -315,14 +315,6 @@ namespace Spartan
             }
         }
 
-        // Unordered access view(s)
-        if (pipeline_state.unordered_access_view)
-        {
-            const void* resource_array[1] = { pipeline_state.unordered_access_view->Get_Resource_View_UnorderedAccess() };
-            device_context->CSSetUnorderedAccessViews(0, 1, reinterpret_cast<ID3D11UnorderedAccessView* const*>(&resource_array), nullptr);
-            m_profiler->m_rhi_bindings_render_target++;
-        }
-
         // Viewport
         if (pipeline_state.viewport.IsDefined())
         {
@@ -333,7 +325,6 @@ namespace Spartan
         Clear(pipeline_state);
 
         m_renderer->SetGlobalSamplersAndConstantBuffers(this);
-
         m_profiler->m_rhi_bindings_pipeline++;
 
         return true;
@@ -394,7 +385,7 @@ namespace Spartan
     bool RHI_CommandList::Draw(const uint32_t vertex_count)
     {
         m_rhi_device->GetContextRhi()->device_context->Draw(static_cast<UINT>(vertex_count), 0);
-        m_profiler->m_rhi_draw_calls++;
+        m_profiler->m_rhi_draw++;
 
         return true;
 	}
@@ -408,36 +399,25 @@ namespace Spartan
             static_cast<INT>(vertex_offset)
         );
 
-        m_profiler->m_rhi_draw_calls++;
+        m_profiler->m_rhi_draw++;
 
         return true;
 	}
 
-    void RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z, bool async /*= false*/) const
+    bool RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z, bool async /*= false*/)
     {
         ID3D11Device5* device = m_rhi_device->GetContextRhi()->device;
         ID3D11DeviceContext4* device_context = m_rhi_device->GetContextRhi()->device_context;
 
         device_context->Dispatch(x, y, z);
+        m_profiler->m_rhi_dispatch++;
 
-        if (!async)
-        {
-            D3D11_QUERY_DESC desc;
-            desc.Query = D3D11_QUERY_EVENT;
-            desc.MiscFlags = 0;
-            ID3D11Query* query = nullptr;
-            if (SUCCEEDED(device->CreateQuery(&desc, &query)))
-            {
-                device_context->End(query);
-                BOOL data = 0;
+        // Make sure to clean the compute shader UAV slots after dispatching.
+        // If we try to bind the resource but it's still bound as a computer shader output the runtime will automatically set the ID3D11ShaderResourceView to null.
+        const void* resource_array[8] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
+        device_context->CSSetUnorderedAccessViews(0, 8, reinterpret_cast<ID3D11UnorderedAccessView* const*>(&resource_array), nullptr);
 
-                while (S_OK != device_context->GetData(query, &data, sizeof(data), 0))
-                {
-                    // Wait for the GPU to finish
-                }
-                query->Release();
-            }
-        }
+        return true;
     }
 
 	void RHI_CommandList::SetViewport(const RHI_Viewport& viewport) const
@@ -588,45 +568,68 @@ namespace Spartan
         m_profiler->m_rhi_bindings_sampler++;
     }
 
-    void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const uint8_t scope /*= RHI_Shader_Pixel*/)
+    void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const bool storage /*= false*/)
     {
+        const uint8_t scope                 = m_pipeline_state->IsCompute() ? RHI_Shader_Compute : RHI_Shader_Pixel;
         const UINT start_slot               = slot;
         const UINT range                    = 1;
-        void* resource_texture              = texture ? texture->Get_Resource_View() : nullptr;
         ID3D11DeviceContext* device_context = m_rhi_device->GetContextRhi()->device_context;
 
-        // Skip if already set
-        ID3D11ShaderResourceView* set_texture = nullptr;
-        device_context->PSGetShaderResources(slot, range, &set_texture);
-        if (set_texture == resource_texture)
-            return;
-
-        if (range > 1)
+        // Unordered access views
+        if (storage)
         {
-            if (scope & RHI_Shader_Pixel)
-            {
-                device_context->PSSetShaderResources(start_slot, range, reinterpret_cast<ID3D11ShaderResourceView* const*>(resource_texture));
-            }
-            else if (scope & RHI_Shader_Compute)
-            {
-                device_context->CSSetShaderResources(start_slot, range, reinterpret_cast<ID3D11ShaderResourceView* const*>(resource_texture));
-            }
+            // Get resource
+            const void* uav_array[1] = { texture ? texture->Get_Resource_View_UnorderedAccess() : nullptr };
+
+            // Skip if already set
+            ID3D11UnorderedAccessView* set_uav = nullptr;
+            device_context->CSGetUnorderedAccessViews(slot, range, &set_uav);
+            if (set_uav == uav_array[0])
+                return;
+
+            device_context->CSSetUnorderedAccessViews(start_slot, range, reinterpret_cast<ID3D11UnorderedAccessView* const*>(&uav_array), nullptr);
+
+            m_profiler->m_rhi_bindings_texture_storage++;
         }
+        // Textures
         else
         {
-            const void* resource_array[1] = { resource_texture };
+            // Get resource
+            void* srv = texture ? texture->Get_Resource_View() : nullptr;
 
-            if (scope & RHI_Shader_Pixel)
+            // Skip if already set
+            ID3D11ShaderResourceView* set_srv = nullptr;
+            device_context->PSGetShaderResources(slot, range, &set_srv);
+            if (set_srv == srv)
+                return;
+
+            if (range > 1)
             {
-                device_context->PSSetShaderResources(start_slot, range, reinterpret_cast<ID3D11ShaderResourceView* const*>(&resource_array)); 
+                if (scope & RHI_Shader_Pixel)
+                {
+                    device_context->PSSetShaderResources(start_slot, range, reinterpret_cast<ID3D11ShaderResourceView* const*>(srv));
+                }
+                else if (scope & RHI_Shader_Compute)
+                {
+                    device_context->CSSetShaderResources(start_slot, range, reinterpret_cast<ID3D11ShaderResourceView* const*>(srv));
+                }
             }
-            else if (scope & RHI_Shader_Compute)
+            else
             {
-                device_context->CSSetShaderResources(start_slot, range, reinterpret_cast<ID3D11ShaderResourceView* const*>(&resource_array));
+                const void* srv_array[1] = { srv };
+
+                if (scope & RHI_Shader_Pixel)
+                {
+                    device_context->PSSetShaderResources(start_slot, range, reinterpret_cast<ID3D11ShaderResourceView* const*>(&srv_array));
+                }
+                else if (scope & RHI_Shader_Compute)
+                {
+                    device_context->CSSetShaderResources(start_slot, range, reinterpret_cast<ID3D11ShaderResourceView* const*>(&srv_array));
+                }
             }
+
+            m_profiler->m_rhi_bindings_texture_sampled++;
         }
-
-        m_profiler->m_rhi_bindings_texture++;
 	}
 
     bool RHI_CommandList::Timestamp_Start(void* query_disjoint /*= nullptr*/, void* query_start /*= nullptr*/)

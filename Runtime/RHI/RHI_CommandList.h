@@ -102,7 +102,7 @@ namespace Spartan
 		bool DrawIndexed(uint32_t index_count, uint32_t index_offset = 0, uint32_t vertex_offset = 0);
 
         // Dispatch
-        void Dispatch(uint32_t x, uint32_t y, uint32_t z, bool async = false) const;
+        bool Dispatch(uint32_t x, uint32_t y, uint32_t z, bool async = false);
 
 		// Viewport
 		void SetViewport(const RHI_Viewport& viewport) const;
@@ -125,8 +125,8 @@ namespace Spartan
         inline void SetSampler(const uint32_t slot, const std::shared_ptr<RHI_Sampler>& sampler) const { SetSampler(slot, sampler.get()); }
 
 		// Texture
-        void SetTexture(const uint32_t slot, RHI_Texture* texture, const uint8_t scope = RHI_Shader_Pixel);
-        inline void SetTexture(const uint32_t slot, const std::shared_ptr<RHI_Texture>& texture, const uint8_t scope = RHI_Shader_Pixel) { SetTexture(slot, texture.get(), scope); }
+        void SetTexture(const uint32_t slot, RHI_Texture* texture, const bool storage = false);
+        inline void SetTexture(const uint32_t slot, const std::shared_ptr<RHI_Texture>& texture, const bool storage = false) { SetTexture(slot, texture.get(), storage); }
         
         // Timestamps
         bool Timestamp_Start(void* query_disjoint = nullptr, void* query_start = nullptr);

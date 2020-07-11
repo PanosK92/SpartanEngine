@@ -23,7 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common.hlsl"
 //====================
 
-float4 mainPS(Pixel_PosUv input) : SV_TARGET
+[numthreads(32, 32, 1)]
+void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    return gamma(tex.Sample(sampler_point_clamp, input.uv));
+    tex_out_rgba[thread_id.xy] = gamma(tex[thread_id.xy]);
 }

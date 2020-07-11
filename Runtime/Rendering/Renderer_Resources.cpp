@@ -119,11 +119,11 @@ namespace Spartan
         // G-Buffer
         // Stencil is used to mask transparent objects and also has a read only version
         // From and below Texture_Format_R8G8B8A8_UNORM, normals have noticeable banding
-        m_render_targets[RenderTarget_Gbuffer_Albedo]   = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R8G8B8A8_Unorm,       1, 0,                                       "rt_gbuffer_albedo");
-        m_render_targets[RenderTarget_Gbuffer_Normal]   = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float,   1, 0,                                       "rt_gbuffer_normal");
-        m_render_targets[RenderTarget_Gbuffer_Material] = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R8G8B8A8_Unorm,       1, 0,                                       "rt_gbuffer_material");
-        m_render_targets[RenderTarget_Gbuffer_Velocity] = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16_Float,         1, 0,                                       "rt_gbuffer_velocity");
-        m_render_targets[RenderTarget_Gbuffer_Depth]    = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_D32_Float_S8X24_Uint, 1, RHI_Texture_DepthStencilViewReadOnly,    "gbuffer_depth");
+        m_render_targets[RenderTarget_Gbuffer_Albedo]   = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R8G8B8A8_Unorm,       1, 0,                                   "rt_gbuffer_albedo");
+        m_render_targets[RenderTarget_Gbuffer_Normal]   = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float,   1, 0,                                   "rt_gbuffer_normal");
+        m_render_targets[RenderTarget_Gbuffer_Material] = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R8G8B8A8_Unorm,       1, 0,                                   "rt_gbuffer_material");
+        m_render_targets[RenderTarget_Gbuffer_Velocity] = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16_Float,         1, 0,                                   "rt_gbuffer_velocity");
+        m_render_targets[RenderTarget_Gbuffer_Depth]    = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_D32_Float_S8X24_Uint, 1, RHI_Texture_DepthStencilReadOnly,    "gbuffer_depth");
 
         // Light
         m_render_targets[RenderTarget_Light_Diffuse]    = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R11G11B10_Float, 1, 0, "rt_light_diffuse");
@@ -152,7 +152,7 @@ namespace Spartan
         m_render_targets[RenderTarget_Hbao]         = make_unique<RHI_Texture2D>(m_context, static_cast<uint32_t>(width), static_cast<uint32_t>(height), RHI_Format_R16G16B16A16_Float, 1, 0, "rt_hbao");
 
         // SSR
-        m_render_targets[RenderTarget_Ssr] = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16_Float, 1, RHI_Texture_UnorderedAccessView, "rt_ssr");
+        m_render_targets[RenderTarget_Ssr] = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16_Float, 1, RHI_Texture_Storage, "rt_ssr");
 
         // Bloom
         {
@@ -276,12 +276,12 @@ namespace Spartan
         m_shaders[Shader_ChromaticAberration_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "ChromaticAberration.hlsl");
 
         // Tone-mapping
-        m_shaders[Shader_ToneMapping_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_ToneMapping_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "ToneMapping.hlsl");
+        m_shaders[Shader_ToneMapping_C] = make_shared<RHI_Shader>(m_context);
+        m_shaders[Shader_ToneMapping_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "ToneMapping.hlsl");
 
         // Gamma correction
-        m_shaders[Shader_GammaCorrection_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_GammaCorrection_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "GammaCorrection.hlsl");
+        m_shaders[Shader_GammaCorrection_C] = make_shared<RHI_Shader>(m_context);
+        m_shaders[Shader_GammaCorrection_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "GammaCorrection.hlsl");
 
         // TAA
         m_shaders[Shader_Taa_P] = make_shared<RHI_Shader>(m_context);
@@ -399,6 +399,7 @@ namespace Spartan
 
             // A channel with gamma correction
             m_shaders[Shader_DebugChannelRgbGammaCorrect_P] = make_shared<RHI_Shader>(m_context);
+            m_shaders[Shader_DebugChannelRgbGammaCorrect_P]->AddDefine("RGB_CHANNEL_GAMMA_CORRECT");
             m_shaders[Shader_DebugChannelRgbGammaCorrect_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Debug.hlsl");
         }
     }

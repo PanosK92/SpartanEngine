@@ -73,15 +73,14 @@ namespace Spartan
     bool RHI_DescriptorCache::CreateDescriptorPool(uint32_t descriptor_set_capacity)
     {
         // Pool sizes
-        vector<VkDescriptorPoolSize> pool_sizes(4);
-        pool_sizes[0].type              = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        pool_sizes[0].descriptorCount   = RHI_Context::descriptor_max_constant_buffers;
-        pool_sizes[1].type              = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-        pool_sizes[1].descriptorCount   = RHI_Context::descriptor_max_constant_buffers_dynamic;
-        pool_sizes[2].type              = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-        pool_sizes[2].descriptorCount   = RHI_Context::descriptor_max_textures;
-        pool_sizes[3].type              = VK_DESCRIPTOR_TYPE_SAMPLER;
-        pool_sizes[3].descriptorCount   = RHI_Context::descriptor_max_samplers;
+        std::array<VkDescriptorPoolSize, 5> pool_sizes =
+        {
+            VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLER,                   RHI_Context::descriptor_max_samplers },
+            VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,             RHI_Context::descriptor_max_textures },
+            VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,             RHI_Context::descriptor_max_storage_textures },
+            VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,            RHI_Context::descriptor_max_constant_buffers },
+            VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,    RHI_Context::descriptor_max_constant_buffers_dynamic }
+        };
 
         // Create info
         VkDescriptorPoolCreateInfo pool_create_info = {};
