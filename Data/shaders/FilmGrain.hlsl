@@ -35,6 +35,9 @@ float gaussian(float z, float u, float o) {
 [numthreads(32, 32, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
+    if (thread_id.x >= g_resolution.x || thread_id.y >= g_resolution.y)
+        return;
+    
     const float2 uv = (thread_id.xy + 0.5f) / g_resolution;
     float4 color    = tex[thread_id.xy];
 
