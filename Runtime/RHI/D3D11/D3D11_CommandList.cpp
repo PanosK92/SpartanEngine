@@ -546,23 +546,28 @@ namespace Spartan
     {
         const UINT start_slot               = slot;
         const UINT range                    = 1;
-        void* resource_sampler              = sampler ? sampler->GetResource() : nullptr;
+        const void* sampler_array[1]        = { sampler ? sampler->GetResource() : nullptr };
         ID3D11DeviceContext* device_context = m_rhi_device->GetContextRhi()->device_context;
 
-        // Skip if already set
-        ID3D11SamplerState* set_sampler = nullptr;
-        device_context->PSGetSamplers(slot, range, &set_sampler);
-        if (set_sampler == resource_sampler)
-            return;
-
-        if (range > 1)
+        if (m_pipeline_state->IsCompute())
         {
-            device_context->PSSetSamplers(start_slot, range, reinterpret_cast<ID3D11SamplerState* const*>(resource_sampler));
+            // Set only if not already set
+            ID3D11SamplerState* set_sampler = nullptr;
+            device_context->CSGetSamplers(slot, range, &set_sampler);
+            if (set_sampler != sampler_array[0])
+            {
+                device_context->CSSetSamplers(start_slot, range, reinterpret_cast<ID3D11SamplerState* const*>(&sampler_array));
+            }
         }
         else
         {
-            const void* sampler_array[1] = { resource_sampler };
-            device_context->PSSetSamplers(start_slot, range, reinterpret_cast<ID3D11SamplerState* const*>(&sampler_array));
+            // Set only if not already set
+            ID3D11SamplerState* set_sampler = nullptr;
+            device_context->PSGetSamplers(slot, range, &set_sampler);
+            if (set_sampler != sampler_array[0])
+            {
+                device_context->PSSetSamplers(start_slot, range, reinterpret_cast<ID3D11SamplerState* const*>(&sampler_array));
+            }
         }
 
         m_profiler->m_rhi_bindings_sampler++;
@@ -595,37 +600,21 @@ namespace Spartan
         else
         {
             // Get resource
-            void* srv = texture ? texture->Get_Resource_View() : nullptr;
+            const void* srv_array[1] = { texture ? texture->Get_Resource_View() : nullptr };
 
             // Skip if already set
             ID3D11ShaderResourceView* set_srv = nullptr;
             device_context->PSGetShaderResources(slot, range, &set_srv);
-            if (set_srv == srv)
+            if (set_srv == srv_array[0])
                 return;
 
-            if (range > 1)
+            if (scope & RHI_Shader_Pixel)
             {
-                if (scope & RHI_Shader_Pixel)
-                {
-                    device_context->PSSetShaderResources(start_slot, range, reinterpret_cast<ID3D11ShaderResourceView* const*>(srv));
-                }
-                else if (scope & RHI_Shader_Compute)
-                {
-                    device_context->CSSetShaderResources(start_slot, range, reinterpret_cast<ID3D11ShaderResourceView* const*>(srv));
-                }
+                device_context->PSSetShaderResources(start_slot, range, reinterpret_cast<ID3D11ShaderResourceView* const*>(&srv_array));
             }
-            else
+            else if (scope & RHI_Shader_Compute)
             {
-                const void* srv_array[1] = { srv };
-
-                if (scope & RHI_Shader_Pixel)
-                {
-                    device_context->PSSetShaderResources(start_slot, range, reinterpret_cast<ID3D11ShaderResourceView* const*>(&srv_array));
-                }
-                else if (scope & RHI_Shader_Compute)
-                {
-                    device_context->CSSetShaderResources(start_slot, range, reinterpret_cast<ID3D11ShaderResourceView* const*>(&srv_array));
-                }
+                device_context->CSSetShaderResources(start_slot, range, reinterpret_cast<ID3D11ShaderResourceView* const*>(&srv_array));
             }
 
             m_profiler->m_rhi_bindings_texture_sampled++;

@@ -213,19 +213,6 @@ namespace Spartan
         m_shaders[Shader_Copy_C] = make_shared<RHI_Shader>(m_context);
         m_shaders[Shader_Copy_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "Copy.hlsl");
 
-        // FXAA
-        {
-            // Luminance (encodes luminance into alpha channel)
-            m_shaders[Shader_Fxaa_Luminance_P] = make_shared<RHI_Shader>(m_context);
-            m_shaders[Shader_Fxaa_Luminance_P]->AddDefine("LUMINANCE");
-            m_shaders[Shader_Fxaa_Luminance_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "FXAA.hlsl");
-
-            // FXAA
-            m_shaders[Shader_Fxaa_P] = make_shared<RHI_Shader>(m_context);
-            m_shaders[Shader_Fxaa_P]->AddDefine("FXAA");
-            m_shaders[Shader_Fxaa_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "FXAA.hlsl");
-        }
-
         // Blur
         {
             // Box
@@ -283,9 +270,22 @@ namespace Spartan
         m_shaders[Shader_GammaCorrection_C] = make_shared<RHI_Shader>(m_context);
         m_shaders[Shader_GammaCorrection_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "GammaCorrection.hlsl");
 
-        // TAA
-        m_shaders[Shader_Taa_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_Taa_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "TemporalAntialiasing.hlsl");
+        // Anti-aliasing
+        {
+            // TAA
+            m_shaders[Shader_Taa_P] = make_shared<RHI_Shader>(m_context);
+            m_shaders[Shader_Taa_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "TemporalAntialiasing.hlsl");
+
+            // Luminance (encodes luminance into alpha channel)
+            m_shaders[Shader_Fxaa_Luminance_C] = make_shared<RHI_Shader>(m_context);
+            m_shaders[Shader_Fxaa_Luminance_C]->AddDefine("LUMINANCE");
+            m_shaders[Shader_Fxaa_Luminance_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "FXAA.hlsl");
+
+            // FXAA
+            m_shaders[Shader_Fxaa_C] = make_shared<RHI_Shader>(m_context);
+            m_shaders[Shader_Fxaa_C]->AddDefine("FXAA");
+            m_shaders[Shader_Fxaa_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "FXAA.hlsl");
+        }
 
         // Depth of Field
         {

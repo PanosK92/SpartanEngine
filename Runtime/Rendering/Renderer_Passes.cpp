@@ -1462,39 +1462,34 @@ namespace Spartan
 	void Renderer::Pass_FXAA(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
 		// Acquire shaders
-        const auto& shader_v        = m_shaders[Shader_Quad_V];
-		const auto& shader_p_luma   = m_shaders[Shader_Fxaa_Luminance_P];
-		const auto& shader_p_fxaa   = m_shaders[Shader_Fxaa_P];
-		if (!shader_v->IsCompiled() || !shader_p_luma->IsCompiled() || !shader_p_fxaa->IsCompiled())
+		RHI_Shader* shader_p_luma   = m_shaders[Shader_Fxaa_Luminance_C].get();
+		RHI_Shader* shader_p_fxaa   = m_shaders[Shader_Fxaa_C].get();
+		if (!shader_p_luma->IsCompiled() || !shader_p_fxaa->IsCompiled())
 			return;
 
         // Update uber buffer
         m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
         UpdateUberBuffer(cmd_list);
 
+        // Compute thread count
+        uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / 32.0f));
+        uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / 32.0f));
+        uint32_t thread_group_count_z = 1;
+        bool async = false;
+
         // Luminance
         {
             // Set render state
             static RHI_PipelineState pipeline_state;
-            pipeline_state.shader_vertex                    = shader_v.get();
-            pipeline_state.shader_pixel                     = shader_p_luma.get();
-            pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
-            pipeline_state.blend_state                      = m_blend_disabled.get();
-            pipeline_state.depth_stencil_state              = m_depth_stencil_off_off.get();
-            pipeline_state.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride();
-            pipeline_state.render_target_color_textures[0]  = tex_out.get();
-            pipeline_state.clear_color[0]                   = state_color_dont_care;
-            pipeline_state.viewport                         = tex_out->GetViewport();
-            pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
-            pipeline_state.pass_name                        = "Pass_FXAA_Luminance";
+            pipeline_state.shader_compute   = shader_p_luma;
+            pipeline_state.pass_name        = "Pass_FXAA_Luminance";
 
-            // Record commands
+            // Draw
             if (cmd_list->BeginRenderPass(pipeline_state))
             {
-                cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
-                cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
+                cmd_list->SetTexture(3, tex_out, true);
                 cmd_list->SetTexture(28, tex_in);
-                cmd_list->DrawIndexed(Rectangle::GetIndexCount());
+                cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
                 cmd_list->EndRenderPass();
             }
         }
@@ -1503,24 +1498,15 @@ namespace Spartan
         {
             // Set render state
             static RHI_PipelineState pipeline_state;
-            pipeline_state.shader_vertex                    = shader_v.get();
-            pipeline_state.shader_pixel                     = shader_p_fxaa.get();
-            pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
-            pipeline_state.blend_state                      = m_blend_disabled.get();
-            pipeline_state.depth_stencil_state              = m_depth_stencil_off_off.get();
-            pipeline_state.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride();
-            pipeline_state.render_target_color_textures[0]  = tex_in.get();
-            pipeline_state.clear_color[0]                   = state_color_dont_care;
-            pipeline_state.viewport                         = tex_in->GetViewport();
-            pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
-            pipeline_state.pass_name                        = "Pass_FXAA_FXAA";
+            pipeline_state.shader_compute   = shader_p_fxaa;
+            pipeline_state.pass_name        = "Pass_FXAA";
 
+            // Draw
             if (cmd_list->BeginRenderPass(pipeline_state))
             {
-                cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
-                cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
+                cmd_list->SetTexture(3, tex_in, true);
                 cmd_list->SetTexture(28, tex_out);
-                cmd_list->DrawIndexed(Rectangle::GetIndexCount());
+                cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
                 cmd_list->EndRenderPass();
             }
         }
