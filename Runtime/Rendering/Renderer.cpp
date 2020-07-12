@@ -79,7 +79,6 @@ namespace Spartan
         m_option_values[Option_Value_Tonemapping]       = static_cast<float>(Renderer_ToneMapping_ACES);
         m_option_values[Option_Value_Gamma]             = 2.2f;
         m_option_values[Option_Value_Sharpen_Strength]  = 1.0f;
-        m_option_values[Option_Value_Sharpen_Clamp]     = 0.35f;
         m_option_values[Option_Value_Bloom_Intensity]   = 0.1f;
 
 		// Subscribe to events
@@ -383,7 +382,6 @@ namespace Spartan
         m_buffer_frame_cpu.camera_direction             = m_camera->GetTransform()->GetForward();
         m_buffer_frame_cpu.bloom_intensity              = m_option_values[Option_Value_Bloom_Intensity];
         m_buffer_frame_cpu.sharpen_strength             = m_option_values[Option_Value_Sharpen_Strength];
-        m_buffer_frame_cpu.sharpen_clamp                = m_option_values[Option_Value_Sharpen_Clamp];
         m_buffer_frame_cpu.taa_jitter_offset_previous   = m_buffer_frame_cpu.taa_jitter_offset;
         m_buffer_frame_cpu.taa_jitter_offset            = m_taa_jitter - m_taa_jitter_previous;
         m_buffer_frame_cpu.delta_time                   = static_cast<float>(m_context->GetSubsystem<Timer>()->GetDeltaTimeSmoothedSec());

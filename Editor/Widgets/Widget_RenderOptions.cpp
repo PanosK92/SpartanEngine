@@ -225,9 +225,8 @@ void Widget_RenderOptions::Tick()
             ImGui::Separator();
 
             // Sharpen
-            ImGui::Checkbox("Sharpen", &do_sharperning);
-            ImGui::SameLine(); render_option_float("##sharpen_option_1", "Strength",    Option_Value_Sharpen_Strength);
-            ImGui::SameLine(); render_option_float("##sharpen_option_2", "Clamp",       Option_Value_Sharpen_Clamp, "Limits maximum amount of sharpening a pixel receives");
+            ImGui::Checkbox("Sharpening (FidelityFX Contrast Adaptive Sharpening)", &do_sharperning);
+            ImGui::SameLine(); render_option_float("##sharpen_option", "Strength", Option_Value_Sharpen_Strength);
             ImGui::Separator();
 
             // Dithering

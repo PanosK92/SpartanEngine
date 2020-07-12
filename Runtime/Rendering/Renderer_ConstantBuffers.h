@@ -56,14 +56,13 @@ namespace Spartan
         float sharpen_strength;
         Math::Vector3 camera_direction;
 
-        float sharpen_clamp;
         float gamma;
         float tonemapping;
         float directional_light_intensity;
-
         float ssr_enabled;
+
         float shadow_resolution;
-        Math::Vector2 padding;
+        Math::Vector3 padding;
 
         Math::Vector2 taa_jitter_offset_previous;
         Math::Vector2 taa_jitter_offset;
