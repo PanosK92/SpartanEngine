@@ -50,14 +50,14 @@ float4 LumaSharpen(float2 texCoord, Texture2D sourceTexture, float2 resolution, 
     float px = 1.0f / resolution[0];
     float py = 1.0f / resolution[1];
 
-    float3 blur_ori = sourceTexture.Sample(sampler_bilinear_clamp, texCoord + float2(px,-py) * 0.5f * offset_bias).rgb; // South East
-    blur_ori += sourceTexture.Sample(sampler_bilinear_clamp, texCoord + float2(-px,-py) * 0.5f * offset_bias).rgb;  // South West
-    blur_ori += sourceTexture.Sample(sampler_bilinear_clamp, texCoord + float2(px,py) * 0.5f * offset_bias).rgb; // North East
-    blur_ori += sourceTexture.Sample(sampler_bilinear_clamp, texCoord + float2(-px,py) * 0.5f * offset_bias).rgb; // North West
-    blur_ori *= 0.25f;  // ( /= 4) Divide by the number of texture fetches
+    float3 blur_ori  = sourceTexture.SampleLevel(sampler_bilinear_clamp, texCoord + float2(px,-py) * 0.5f * offset_bias, 0).rgb; // South East
+    blur_ori        += sourceTexture.SampleLevel(sampler_bilinear_clamp, texCoord + float2(-px, -py) * 0.5f * offset_bias, 0).rgb; // South West
+    blur_ori        += sourceTexture.SampleLevel(sampler_bilinear_clamp, texCoord + float2(px, py) * 0.5f * offset_bias, 0).rgb; // North East
+    blur_ori        += sourceTexture.SampleLevel(sampler_bilinear_clamp, texCoord + float2(-px, py) * 0.5f * offset_bias, 0).rgb; // North West
+    blur_ori        *= 0.25f;  // ( /= 4) Divide by the number of texture fetches
 
     // -- Calculate the sharpening --
-    float4 colorInput = sourceTexture.Sample(sampler_point_clamp, texCoord);
+    float4 colorInput = sourceTexture.SampleLevel(sampler_point_clamp, texCoord, 0);
     float3 ori = colorInput.rgb;
     float3 sharp = ori - blur_ori;  // Subtracting the blurred image from the original image
 

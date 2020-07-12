@@ -25,11 +25,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 static const float g_chromatic_aberration_intensity = 5.0f;
 
-float4 ChromaticAberration(float2 uv, Texture2D sourceTexture)
+float4 ChromaticAberration(uint2 thread_id, Texture2D sourceTexture)
 {
-    float camera_error = 1.0f / g_camera_aperture;
-    float intensity = clamp(camera_error * 50.0f, 0.0f, g_chromatic_aberration_intensity);
-    float2 shift    = float2(intensity, -intensity);
+    const float2 uv     = (thread_id + 0.5f) / g_resolution;
+    float camera_error  = 1.0f / g_camera_aperture;
+    float intensity     = clamp(camera_error * 50.0f, 0.0f, g_chromatic_aberration_intensity);
+    float2 shift        = float2(intensity, -intensity);
 
     // Lens effect
     shift.x *= abs(uv.x * 2.0f - 1.0f);
@@ -37,14 +38,15 @@ float4 ChromaticAberration(float2 uv, Texture2D sourceTexture)
     
     // Sample color
 	float4 color    = 0.0f; 
-    color.r         = sourceTexture.Sample(sampler_bilinear_clamp, uv + (g_texel_size * shift)).r;
-    color.ga        = sourceTexture.Sample(sampler_point_clamp, uv).ga;
-    color.b         = sourceTexture.Sample(sampler_bilinear_clamp, uv - (g_texel_size * shift)).b;
+    color.r         = sourceTexture.SampleLevel(sampler_bilinear_clamp, uv + (g_texel_size * shift), 0).r;
+    color.ga        = sourceTexture[thread_id].ga;
+    color.b         = sourceTexture.SampleLevel(sampler_bilinear_clamp, uv - (g_texel_size * shift), 0).b;
 
     return color;
 }
 
-float4 mainPS(Pixel_PosUv input) : SV_TARGET
+[numthreads(32, 32, 1)]
+void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    return ChromaticAberration(input.uv, tex);
+    tex_out_rgba[thread_id.xy] = ChromaticAberration(thread_id.xy, tex);
 }

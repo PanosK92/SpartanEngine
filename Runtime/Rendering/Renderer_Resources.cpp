@@ -250,17 +250,17 @@ namespace Spartan
         }
 
         // Film grain
-        m_shaders[Shader_FilmGrain_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_FilmGrain_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "FilmGrain.hlsl");
+        m_shaders[Shader_FilmGrain_C] = make_shared<RHI_Shader>(m_context);
+        m_shaders[Shader_FilmGrain_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "FilmGrain.hlsl");
 
         // Lumasharpen
-        m_shaders[Shader_Sharpen_Luma_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_Sharpen_Luma_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Sharpening.hlsl");
+        m_shaders[Shader_Sharpen_Luma_C] = make_shared<RHI_Shader>(m_context);
+        m_shaders[Shader_Sharpen_Luma_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "Sharpening.hlsl");
 
         // Chromatic aberration
-        m_shaders[Shader_ChromaticAberration_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_ChromaticAberration_P]->AddDefine("PASS_CHROMATIC_ABERRATION");
-        m_shaders[Shader_ChromaticAberration_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "ChromaticAberration.hlsl");
+        m_shaders[Shader_ChromaticAberration_C] = make_shared<RHI_Shader>(m_context);
+        m_shaders[Shader_ChromaticAberration_C]->AddDefine("PASS_CHROMATIC_ABERRATION");
+        m_shaders[Shader_ChromaticAberration_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "ChromaticAberration.hlsl");
 
         // Tone-mapping
         m_shaders[Shader_ToneMapping_C] = make_shared<RHI_Shader>(m_context);
@@ -273,8 +273,8 @@ namespace Spartan
         // Anti-aliasing
         {
             // TAA
-            m_shaders[Shader_Taa_P] = make_shared<RHI_Shader>(m_context);
-            m_shaders[Shader_Taa_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "TemporalAntialiasing.hlsl");
+            m_shaders[Shader_Taa_C] = make_shared<RHI_Shader>(m_context);
+            m_shaders[Shader_Taa_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "TemporalAntialiasing.hlsl");
 
             // Luminance (encodes luminance into alpha channel)
             m_shaders[Shader_Fxaa_Luminance_C] = make_shared<RHI_Shader>(m_context);

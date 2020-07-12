@@ -25,18 +25,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 static const float g_film_grain_intensity = 0.5f;
 
-float4 mainPS(Pixel_PosUv input) : SV_TARGET
+[numthreads(32, 32, 1)]
+void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    float4 color = tex.Sample(sampler_point_clamp, input.uv);
+    const float2 uv = (thread_id.xy + 0.5f) / g_resolution;
+    float4 color    = tex.SampleLevel(sampler_point_clamp, uv, 0);
 
     // Film grain
-    float x = (input.uv.x + 4.0 ) * (input.uv.y + 4.0 ) * (g_time * 10.0);
+    float x = (uv.x + 4.0 ) * (uv.y + 4.0 ) * (g_time * 10.0);
 	float4 grain = (fmod((fmod(x, 13.0) + 1.0) * (fmod(x, 123.0) + 1.0), 0.01)-0.005) * g_film_grain_intensity;
 
     // Iso noise - It's different from film grain but the assumption is that if the user
     // is running this shader, he is going for a more cinematic look, so he might want iso noise as well.
-    float iso_noise = random(frac(input.uv.x * input.uv.y * g_time));
+    float iso_noise = random(frac(uv.x * uv.y * g_time));
     iso_noise *= g_camera_iso * 0.00001f;
 	
-    return saturate(color + iso_noise);
+    tex_out_rgba[thread_id.xy] = saturate(color + iso_noise);
 }

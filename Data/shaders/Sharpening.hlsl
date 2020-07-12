@@ -31,16 +31,18 @@ float4 SharpenTaa(float2 uv, Texture2D source_texture)
     float2 dx = float2(g_texel_size.x, 0.0f);
     float2 dy = float2(0.0f, g_texel_size.y);
 
-    float4 up       = source_texture.Sample(sampler_bilinear_clamp, uv - dy);
-    float4 down     = source_texture.Sample(sampler_bilinear_clamp, uv + dy);
-    float4 center   = source_texture.Sample(sampler_bilinear_clamp, uv);
-    float4 right    = source_texture.Sample(sampler_bilinear_clamp, uv + dx);
-    float4 left     = source_texture.Sample(sampler_bilinear_clamp, uv - dx);
+    float4 up       = source_texture.SampleLevel(sampler_bilinear_clamp, uv - dy, 0);
+    float4 down     = source_texture.SampleLevel(sampler_bilinear_clamp, uv + dy, 0);
+    float4 center   = source_texture.SampleLevel(sampler_bilinear_clamp, uv, 0);
+    float4 right    = source_texture.SampleLevel(sampler_bilinear_clamp, uv + dx, 0);
+    float4 left     = source_texture.SampleLevel(sampler_bilinear_clamp, uv - dx, 0);
     
     return saturate(center + (4 * center - up - down - left - right) * intensity);
 }
 
-float4 mainPS(Pixel_PosUv input) : SV_TARGET
+[numthreads(32, 32, 1)]
+void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    return LumaSharpen(input.uv, tex, g_resolution, g_sharpen_strength, g_sharpen_clamp);
+    const float2 uv = (thread_id.xy + 0.5f) / g_resolution;
+    tex_out_rgba[thread_id.xy] = LumaSharpen(uv, tex, g_resolution, g_sharpen_strength, g_sharpen_clamp);
 }
