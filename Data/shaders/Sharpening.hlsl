@@ -78,6 +78,9 @@ float3 Sharpen(uint2 thread_id)
 [numthreads(32, 32, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
+    if (thread_id.x >= g_resolution.x || thread_id.y >= g_resolution.y)
+        return;
+    
     const float3 color  = Sharpen(thread_id.xy);
     const float a       = tex[thread_id.xy].a;
     

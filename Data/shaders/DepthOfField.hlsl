@@ -90,6 +90,9 @@ float2 rotate_vector(float2 v, float2 direction)
 [numthreads(32, 32, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
+    if (thread_id.x >= g_resolution.x || thread_id.y >= g_resolution.y)
+        return;
+    
     // g_texel_size refers to the current render target, which is half the size of the input texture.
     // so the texel size for the input texture is actually twice as big, however because we want
     // to do a "tent" filter, we use it as is, which is basically half the texel size.
@@ -128,6 +131,9 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 [numthreads(32, 32, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
+    if (thread_id.x >= g_resolution.x || thread_id.y >= g_resolution.y)
+        return;
+    
     const float2 uv = (thread_id.xy + 0.5f) / g_resolution;
 
     // Sample color
@@ -148,6 +154,9 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 [numthreads(32, 32, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
+    if (thread_id.x >= g_resolution.x || thread_id.y >= g_resolution.y)
+        return;
+    
     const float2 uv = (thread_id.xy + 0.5f) / g_resolution;
     const float dx  = g_texel_size.x * 0.5f;
     const float dy  = g_texel_size.y * 0.5f;
@@ -165,6 +174,9 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 [numthreads(32, 32, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
+    if (thread_id.x >= g_resolution.x || thread_id.y >= g_resolution.y)
+        return;
+    
     // g_texel_size refers to the current render target, which is twice the size of the input texture, so we multiply by 0.5
     const float2 texel_size = g_texel_size.x * 0.5f;
     const float2 uv = (thread_id.xy + 0.5f) / g_resolution;
