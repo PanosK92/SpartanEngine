@@ -23,22 +23,35 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common.hlsl"
 //====================
 
-static const float g_film_grain_intensity = 0.5f;
+static const float g_film_grain_intensity = 0.002f;
+static const float g_film_grain_speed = 3.0f;
+static const float g_film_grain_mean = 0.0f; // What gray level noise should tend to.
+static const float g_film_grain_variance = 0.5f; // Controls the contrast/variance of noise.
+
+float gaussian(float z, float u, float o) {
+    return (1.0 / (o * sqrt(2.0 * 3.1415))) * exp(-(((z - u) * (z - u)) / (2.0 * (o * o))));
+}
 
 [numthreads(32, 32, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
     const float2 uv = (thread_id.xy + 0.5f) / g_resolution;
-    float4 color    = tex.SampleLevel(sampler_point_clamp, uv, 0);
+    float4 color    = tex[thread_id.xy];
 
     // Film grain
-    float x = (uv.x + 4.0 ) * (uv.y + 4.0 ) * (g_time * 10.0);
-	float4 grain = (fmod((fmod(x, 13.0) + 1.0) * (fmod(x, 123.0) + 1.0), 0.01)-0.005) * g_film_grain_intensity;
+	float t             = g_time * float(g_film_grain_speed);
+    float seed          = dot(uv, float2(12.9898, 78.233));
+    float noise         = frac(sin(seed) * 43758.5453 + t);
+    noise               = gaussian(noise, float(g_film_grain_mean), float(g_film_grain_variance) * float(g_film_grain_variance));
+    float3 film_grain   =  noise * (1.0f - color.rgb) * g_film_grain_intensity;
 
-    // Iso noise - It's different from film grain but the assumption is that if the user
-    // is running this shader, he is going for a more cinematic look, so he might want iso noise as well.
-    float iso_noise = random(frac(uv.x * uv.y * g_time));
-    iso_noise *= g_camera_iso * 0.00001f;
+    // Iso noise
+    noise               = random(frac(uv.x * uv.y * g_time));
+    noise               *= g_camera_iso * 0.00001f;
+    float3 iso_noise    = noise * (1.0f - color.rgb);
+    
+    // Additive blending
+    color.rgb += (film_grain + iso_noise) * 0.5f;
 	
-    tex_out_rgba[thread_id.xy] = saturate(color + iso_noise);
+    tex_out_rgba[thread_id.xy] = saturate(color);
 }

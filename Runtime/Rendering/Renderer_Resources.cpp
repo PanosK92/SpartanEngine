@@ -289,26 +289,26 @@ namespace Spartan
 
         // Depth of Field
         {
-            m_shaders[Shader_Dof_DownsampleCoc_P] = make_shared<RHI_Shader>(m_context);
-            m_shaders[Shader_Dof_DownsampleCoc_P]->AddDefine("DOWNSAMPLE_CIRCLE_OF_CONFUSION");
-            m_shaders[Shader_Dof_DownsampleCoc_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "DepthOfField.hlsl");
+            m_shaders[Shader_Dof_DownsampleCoc_C] = make_shared<RHI_Shader>(m_context);
+            m_shaders[Shader_Dof_DownsampleCoc_C]->AddDefine("DOWNSAMPLE_CIRCLE_OF_CONFUSION");
+            m_shaders[Shader_Dof_DownsampleCoc_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "DepthOfField.hlsl");
 
-            m_shaders[Shader_Dof_Bokeh_P] = make_shared<RHI_Shader>(m_context);
-            m_shaders[Shader_Dof_Bokeh_P]->AddDefine("BOKEH");
-            m_shaders[Shader_Dof_Bokeh_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "DepthOfField.hlsl");
+            m_shaders[Shader_Dof_Bokeh_C] = make_shared<RHI_Shader>(m_context);
+            m_shaders[Shader_Dof_Bokeh_C]->AddDefine("BOKEH");
+            m_shaders[Shader_Dof_Bokeh_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "DepthOfField.hlsl");
 
-            m_shaders[Shader_Dof_Tent_P] = make_shared<RHI_Shader>(m_context);
-            m_shaders[Shader_Dof_Tent_P]->AddDefine("TENT");
-            m_shaders[Shader_Dof_Tent_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "DepthOfField.hlsl");
+            m_shaders[Shader_Dof_Tent_C] = make_shared<RHI_Shader>(m_context);
+            m_shaders[Shader_Dof_Tent_C]->AddDefine("TENT");
+            m_shaders[Shader_Dof_Tent_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "DepthOfField.hlsl");
 
-            m_shaders[Shader_Dof_UpscaleBlend_P] = make_shared<RHI_Shader>(m_context);
-            m_shaders[Shader_Dof_UpscaleBlend_P]->AddDefine("UPSCALE_BLEND");
-            m_shaders[Shader_Dof_UpscaleBlend_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "DepthOfField.hlsl");
+            m_shaders[Shader_Dof_UpscaleBlend_C] = make_shared<RHI_Shader>(m_context);
+            m_shaders[Shader_Dof_UpscaleBlend_C]->AddDefine("UPSCALE_BLEND");
+            m_shaders[Shader_Dof_UpscaleBlend_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "DepthOfField.hlsl");
         }
 
         // Motion Blur
-        m_shaders[Shader_MotionBlur_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_MotionBlur_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "MotionBlur.hlsl");
+        m_shaders[Shader_MotionBlur_C] = make_shared<RHI_Shader>(m_context);
+        m_shaders[Shader_MotionBlur_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "MotionBlur.hlsl");
 
         // Dithering
         m_shaders[Shader_Dithering_P] = make_shared<RHI_Shader>(m_context);
