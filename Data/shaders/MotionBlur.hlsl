@@ -26,10 +26,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 static const uint g_motion_blur_samples = 16;
 
-float4 mainPS(Pixel_PosUv input) : SV_TARGET
+[numthreads(32, 32, 1)]
+void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    float4 color    = tex.Sample(sampler_point_clamp, input.uv);
-    float2 velocity = GetVelocity_Max(input.uv, tex_velocity, tex_depth);
+    const float2 uv = (thread_id.xy + 0.5f) / g_resolution;
+    float4 color    = tex[thread_id.xy];
+    float2 velocity = GetVelocity_Max(uv, tex_velocity, tex_depth);
 
     // Compute motion blur strength from camera's shutter speed
     float motion_blur_strength = saturate(g_camera_shutter_speed * 1.0f);
@@ -42,14 +44,14 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     
     // Early exit
     if (abs(velocity.x) + abs(velocity.y) < FLT_MIN)
-        return color;
+        tex_out_rgba[thread_id.xy] = color;
     
     [unroll]
     for (uint i = 1; i < g_motion_blur_samples; ++i)
     {
         float2 offset = velocity * (float(i) / float(g_motion_blur_samples - 1) - 0.5f);
-        color += tex.SampleLevel(sampler_bilinear_clamp, input.uv + offset, 0);
+        color += tex.SampleLevel(sampler_bilinear_clamp, uv + offset, 0);
     }
 
-    return color / float(g_motion_blur_samples);
+    tex_out_rgba[thread_id.xy] = color / float(g_motion_blur_samples);
 }

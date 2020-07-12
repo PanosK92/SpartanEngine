@@ -1542,194 +1542,153 @@ namespace Spartan
 
 	void Renderer::Pass_MotionBlur(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
-		// Acquire shaders
-        const auto& shader_v = m_shaders[Shader_Quad_V];
-		const auto& shader_p = m_shaders[Shader_MotionBlur_P];
-		if (!shader_p->IsCompiled())
-			return;
+        // Acquire shaders
+        RHI_Shader* shader_c = m_shaders[Shader_MotionBlur_C].get();
+        if (!shader_c->IsCompiled())
+            return;
 
         // Set render state
         static RHI_PipelineState pipeline_state;
-        pipeline_state.shader_vertex                    = shader_v.get();
-        pipeline_state.shader_pixel                     = shader_p.get();
-        pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
-        pipeline_state.blend_state                      = m_blend_disabled.get();
-        pipeline_state.depth_stencil_state              = m_depth_stencil_off_off.get();
-        pipeline_state.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride();
-        pipeline_state.render_target_color_textures[0]  = tex_out.get();
-        pipeline_state.clear_color[0]                   = Vector4::Zero;
-        pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
-        pipeline_state.viewport                         = tex_out->GetViewport();
-        pipeline_state.pass_name                        = "Pass_MotionBlur";
+        pipeline_state.shader_compute = shader_c;
+        pipeline_state.pass_name      = "Pass_MotionBlur";
 
-        // Record commands
+        // Draw
         if (cmd_list->BeginRenderPass(pipeline_state))
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             UpdateUberBuffer(cmd_list);
 
-            cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
-            cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
+            uint32_t thread_group_count_x   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / 32.0f));
+            uint32_t thread_group_count_y   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / 32.0f));
+            uint32_t thread_group_count_z   = 1;
+            bool async                      = false;
+
+            cmd_list->SetTexture(3, tex_out, true);
             cmd_list->SetTexture(28, tex_in);
             cmd_list->SetTexture(11, m_render_targets[RenderTarget_Gbuffer_Velocity]);
             cmd_list->SetTexture(12, m_render_targets[RenderTarget_Gbuffer_Depth]);
-            cmd_list->DrawIndexed(Rectangle::GetIndexCount());
+            cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
         }
 	}
 
     void Renderer::Pass_DepthOfField(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
+        // Acquire shaders
+        RHI_Shader* shader_downsampleCoc    = m_shaders[Shader_Dof_DownsampleCoc_C].get();
+        RHI_Shader* shader_bokeh            = m_shaders[Shader_Dof_Bokeh_C].get();
+        RHI_Shader* shader_tent             = m_shaders[Shader_Dof_Tent_C].get();
+        RHI_Shader* shader_upsampleBlend    = m_shaders[Shader_Dof_UpscaleBlend_C].get();
+        if (!shader_downsampleCoc->IsCompiled() || !shader_bokeh->IsCompiled() || !shader_tent->IsCompiled() || !shader_upsampleBlend->IsCompiled())
+            return;
+
+        // Acquire render targets
         RHI_Texture* tex_bokeh_half     = m_render_targets[RenderTarget_Dof_Half].get();
         RHI_Texture* tex_bokeh_half_2   = m_render_targets[RenderTarget_Dof_Half_2].get();
 
         // Downsample and compute circle of confusion
         {
-            // Acquire shaders
-            RHI_Shader* shader_v = m_shaders[Shader_Quad_V].get();
-            RHI_Shader* shader_p = m_shaders[Shader_Dof_DownsampleCoc_P].get();
-            if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
-                return;
-
             // Set render state
             static RHI_PipelineState pipeline_state;
-            pipeline_state.shader_vertex                    = shader_v;
-            pipeline_state.shader_pixel                     = shader_p;
-            pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
-            pipeline_state.blend_state                      = m_blend_disabled.get();
-            pipeline_state.depth_stencil_state              = m_depth_stencil_off_off.get();
-            pipeline_state.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride();
-            pipeline_state.render_target_color_textures[0]  = tex_bokeh_half;
-            pipeline_state.clear_color[0]                   = state_color_dont_care;
-            pipeline_state.viewport                         = tex_bokeh_half->GetViewport();
-            pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
-            pipeline_state.pass_name                        = "Pass_of_DownsampleCoc";
+            pipeline_state.shader_compute = shader_downsampleCoc;
+            pipeline_state.pass_name      = "Pass_Dof_DownsampleCoc";
 
-            // Record commands
+            // Draw
             if (cmd_list->BeginRenderPass(pipeline_state))
             {
                 // Update uber buffer
                 m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_bokeh_half->GetWidth()), static_cast<float>(tex_bokeh_half->GetHeight()));
                 UpdateUberBuffer(cmd_list);
 
-                cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
-                cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
+                uint32_t thread_group_count_x   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_bokeh_half->GetWidth()) / 32.0f));
+                uint32_t thread_group_count_y   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_bokeh_half->GetHeight()) / 32.0f));
+                uint32_t thread_group_count_z   = 1;
+                bool async                      = false;
+
+                cmd_list->SetTexture(3, tex_bokeh_half, true);
                 cmd_list->SetTexture(12, m_render_targets[RenderTarget_Gbuffer_Depth]);
                 cmd_list->SetTexture(28, tex_in);
-                cmd_list->DrawIndexed(m_viewport_quad.GetIndexCount());
+                cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
                 cmd_list->EndRenderPass();
             }
         }
 
         // Bokeh
         {
-            // Acquire shaders
-            RHI_Shader* shader_v = m_shaders[Shader_Quad_V].get();
-		    RHI_Shader* shader_p = m_shaders[Shader_Dof_Bokeh_P].get();
-		    if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
-		    	return;
-
             // Set render state
             static RHI_PipelineState pipeline_state;
-            pipeline_state.shader_vertex                    = shader_v;
-            pipeline_state.shader_pixel                     = shader_p;
-            pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
-            pipeline_state.blend_state                      = m_blend_disabled.get();
-            pipeline_state.depth_stencil_state              = m_depth_stencil_off_off.get();
-            pipeline_state.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride();
-            pipeline_state.render_target_color_textures[0]  = tex_bokeh_half_2;
-            pipeline_state.clear_color[0]                   = Vector4::Zero;
-            pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
-            pipeline_state.viewport                         = tex_bokeh_half_2->GetViewport();
-            pipeline_state.pass_name                        = "Pass_Dof_Bokeh";
+            pipeline_state.shader_compute   = shader_bokeh;
+            pipeline_state.pass_name        = "Pass_Dof_Bokeh";
 
-            // Record commands
+            // Draw
             if (cmd_list->BeginRenderPass(pipeline_state))
             {
                 // Update uber buffer
                 m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_bokeh_half_2->GetWidth()), static_cast<float>(tex_bokeh_half_2->GetHeight()));
                 UpdateUberBuffer(cmd_list);
 
-                cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
-                cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
+                uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_bokeh_half_2->GetWidth()) / 32.0f));
+                uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_bokeh_half_2->GetHeight()) / 32.0f));
+                uint32_t thread_group_count_z = 1;
+                bool async = false;
+
+                cmd_list->SetTexture(3, tex_bokeh_half_2, true);
                 cmd_list->SetTexture(28, tex_bokeh_half);
-                cmd_list->DrawIndexed(Rectangle::GetIndexCount());
+                cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
                 cmd_list->EndRenderPass();
             }
         }
 
         // Blur the bokeh using a tent filter
         {
-            // Acquire shaders
-            RHI_Shader* shader_v = m_shaders[Shader_Quad_V].get();
-            RHI_Shader* shader_p = m_shaders[Shader_Dof_Tent_P].get();
-            if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
-                return;
-
             // Set render state
             static RHI_PipelineState pipeline_state;
-            pipeline_state.shader_vertex                    = shader_v;
-            pipeline_state.shader_pixel                     = shader_p;
-            pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
-            pipeline_state.blend_state                      = m_blend_disabled.get();
-            pipeline_state.depth_stencil_state              = m_depth_stencil_off_off.get();
-            pipeline_state.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride();
-            pipeline_state.render_target_color_textures[0]  = tex_bokeh_half;
-            pipeline_state.clear_color[0]                   = state_color_dont_care;
-            pipeline_state.viewport                         = tex_bokeh_half->GetViewport();
-            pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
-            pipeline_state.pass_name                        = "Pass_Dof_Tent";
+            pipeline_state.shader_compute   = shader_tent;
+            pipeline_state.pass_name        = "Pass_Dof_Tent";
 
-            // Record commands
+            // Draw
             if (cmd_list->BeginRenderPass(pipeline_state))
             {
                 // Update uber buffer
                 m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_bokeh_half->GetWidth()), static_cast<float>(tex_bokeh_half->GetHeight()));
                 UpdateUberBuffer(cmd_list);
 
-                cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
-                cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
+                uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_bokeh_half->GetWidth()) / 32.0f));
+                uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_bokeh_half->GetHeight()) / 32.0f));
+                uint32_t thread_group_count_z = 1;
+                bool async = false;
+
+                cmd_list->SetTexture(3, tex_bokeh_half, true);
                 cmd_list->SetTexture(28, tex_bokeh_half_2);
-                cmd_list->DrawIndexed(m_viewport_quad.GetIndexCount());
+                cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
                 cmd_list->EndRenderPass();
             }
         }
 
         // Upscale & Blend
         {
-            // Acquire shaders
-            RHI_Shader* shader_v = m_shaders[Shader_Quad_V].get();
-            RHI_Shader* shader_p = m_shaders[Shader_Dof_UpscaleBlend_P].get();
-            if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
-                return;
-
             // Set render state
             static RHI_PipelineState pipeline_state;
-            pipeline_state.shader_vertex                    = shader_v;
-            pipeline_state.shader_pixel                     = shader_p;
-            pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
-            pipeline_state.blend_state                      = m_blend_disabled.get();
-            pipeline_state.depth_stencil_state              = m_depth_stencil_off_off.get();
-            pipeline_state.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride();
-            pipeline_state.render_target_color_textures[0]  = tex_out.get();
-            pipeline_state.clear_color[0]                   = Vector4::Zero;
-            pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
-            pipeline_state.viewport                         = tex_out->GetViewport();
-            pipeline_state.pass_name                        = "Pass_Dof_UpscaleBlend";
+            pipeline_state.shader_compute   = shader_upsampleBlend;
+            pipeline_state.pass_name        = "Pass_Dof_UpscaleBlend";
 
-            // Record commands
+            // Draw
             if (cmd_list->BeginRenderPass(pipeline_state))
             {
                 // Update uber buffer
                 m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
                 UpdateUberBuffer(cmd_list);
 
-                cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
-                cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
+                uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / 32.0f));
+                uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / 32.0f));
+                uint32_t thread_group_count_z = 1;
+                bool async = false;
+
+                cmd_list->SetTexture(3, tex_out, true);
                 cmd_list->SetTexture(28, tex_in);
                 cmd_list->SetTexture(29, tex_bokeh_half);
-                cmd_list->DrawIndexed(Rectangle::GetIndexCount());
+                cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
                 cmd_list->EndRenderPass();
             }
         }

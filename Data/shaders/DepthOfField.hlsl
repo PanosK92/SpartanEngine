@@ -87,26 +87,28 @@ float2 rotate_vector(float2 v, float2 direction)
 }
 
 #if DOWNSAMPLE_CIRCLE_OF_CONFUSION
-float4 mainPS(Pixel_PosUv input) : SV_TARGET
+[numthreads(32, 32, 1)]
+void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
     // g_texel_size refers to the current render target, which is half the size of the input texture.
     // so the texel size for the input texture is actually twice as big, however because we want
     // to do a "tent" filter, we use it as is, which is basically half the texel size.
-    float2 texel_size = g_texel_size;
+    const float2 texel_size = g_texel_size;
+    const float2 uv = (thread_id.xy + 0.5f) / g_resolution;
 
     // UVs
     float dx        = texel_size.x;
     float dy        = texel_size.y;
-    float2 uv_tl    = input.uv + float2(-dx, -dy);
-    float2 uv_tr    = input.uv + float2(dx, -dy);
-    float2 uv_bl    = input.uv + float2(-dx, dy);
-    float2 uv_br    = input.uv + float2(dx, dy);
+    float2 uv_tl    = uv + float2(-dx, -dy);
+    float2 uv_tr    = uv + float2(dx, -dy);
+    float2 uv_bl    = uv + float2(-dx, dy);
+    float2 uv_br    = uv + float2(dx, dy);
 
     // Color samples
-    float3 color_tl = tex.Sample(sampler_bilinear_clamp, uv_tl).rgb;
-    float3 color_tr = tex.Sample(sampler_bilinear_clamp, uv_tr).rgb;
-    float3 color_bl = tex.Sample(sampler_bilinear_clamp, uv_bl).rgb;
-    float3 color_br = tex.Sample(sampler_bilinear_clamp, uv_br).rgb;
+    float3 color_tl = tex.SampleLevel(sampler_bilinear_clamp, uv_tl, 0).rgb;
+    float3 color_tr = tex.SampleLevel(sampler_bilinear_clamp, uv_tr, 0).rgb;
+    float3 color_bl = tex.SampleLevel(sampler_bilinear_clamp, uv_bl, 0).rgb;
+    float3 color_br = tex.SampleLevel(sampler_bilinear_clamp, uv_br, 0).rgb;
 
     // Coc samples
     float focal_depth = get_focal_depth(texel_size * 2.0f); // Autofocus
@@ -118,55 +120,62 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     // Compute coc
     float coc = max(max(max(coc_tl, coc_tr), coc_bl), coc_br);
 
-    return float4((color_tl + color_tr + color_bl + color_br) * 0.25f, coc);
+    tex_out_rgba[thread_id.xy] = float4((color_tl + color_tr + color_bl + color_br) * 0.25f, coc);
 }
 #endif
 
 #if BOKEH
-float4 mainPS(Pixel_PosUv input) : SV_TARGET
+[numthreads(32, 32, 1)]
+void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
+    const float2 uv = (thread_id.xy + 0.5f) / g_resolution;
+
     // Sample color
     float4 color = 0.0f;
     [unroll]
     for (uint i = 0; i < g_dof_sample_count; i++)
     {
-        float2 sample_uv = input.uv + g_dof_samples[i] * g_texel_size * g_dof_bokeh_radius;
-        color += tex.Sample(sampler_bilinear_clamp, sample_uv);
+        float2 sample_uv = uv + g_dof_samples[i] * g_texel_size * g_dof_bokeh_radius;
+        color += tex.SampleLevel(sampler_bilinear_clamp, sample_uv, 0);
     }
     color /= (float)g_dof_sample_count;
 
-    return saturate_16(color);
+    tex_out_rgba[thread_id.xy] = saturate_16(color);
 }
 #endif
 
 #if TENT
-float4 mainPS(Pixel_PosUv input) : SV_TARGET
+[numthreads(32, 32, 1)]
+void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    float dx = g_texel_size.x * 0.5f;
-    float dy = g_texel_size.y * 0.5f;
+    const float2 uv = (thread_id.xy + 0.5f) / g_resolution;
+    const float dx  = g_texel_size.x * 0.5f;
+    const float dy  = g_texel_size.y * 0.5f;
     
-    float4 tl = tex.Sample(sampler_bilinear_clamp, input.uv + float2(-dx, -dy));
-    float4 tr = tex.Sample(sampler_bilinear_clamp, input.uv + float2(dx, -dy));
-    float4 bl = tex.Sample(sampler_bilinear_clamp, input.uv + float2(-dx, dy));
-    float4 br = tex.Sample(sampler_bilinear_clamp, input.uv + float2(dx, dy));
+    float4 tl = tex.SampleLevel(sampler_bilinear_clamp, uv + float2(-dx, -dy), 0);
+    float4 tr = tex.SampleLevel(sampler_bilinear_clamp, uv + float2(dx, -dy), 0);
+    float4 bl = tex.SampleLevel(sampler_bilinear_clamp, uv + float2(-dx, dy), 0);
+    float4 br = tex.SampleLevel(sampler_bilinear_clamp, uv + float2(dx, dy), 0);
     
-    return (tl + tr + bl + br) * 0.25f;
+    tex_out_rgba[thread_id.xy] = (tl + tr + bl + br) * 0.25f;
 }
 #endif
 
 #if UPSCALE_BLEND
-float4 mainPS(Pixel_PosUv input) : SV_TARGET
+[numthreads(32, 32, 1)]
+void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
     // g_texel_size refers to the current render target, which is twice the size of the input texture, so we multiply by 0.5
-    float2 texel_size = g_texel_size.x * 0.5f;
+    const float2 texel_size = g_texel_size.x * 0.5f;
+    const float2 uv = (thread_id.xy + 0.5f) / g_resolution;
 
     // Upsample bokeh
     float dx            = texel_size.x;
     float dy            = texel_size.y;  
-    float4 tl           = tex2.Sample(sampler_bilinear_clamp, input.uv + float2(-dx, -dy));
-    float4 tr           = tex2.Sample(sampler_bilinear_clamp, input.uv + float2(dx, -dy));
-    float4 bl           = tex2.Sample(sampler_bilinear_clamp, input.uv + float2(-dx, dy));
-    float4 br           = tex2.Sample(sampler_bilinear_clamp, input.uv + float2(dx, dy));
+    float4 tl           = tex2.SampleLevel(sampler_bilinear_clamp, uv + float2(-dx, -dy), 0);
+    float4 tr           = tex2.SampleLevel(sampler_bilinear_clamp, uv + float2(dx, -dy), 0);
+    float4 bl           = tex2.SampleLevel(sampler_bilinear_clamp, uv + float2(-dx, dy), 0);
+    float4 br           = tex2.SampleLevel(sampler_bilinear_clamp, uv + float2(dx, dy), 0);
     float4 bokeh        = (tl + tr + bl + br) * 0.25f;
 
     // Get dof and coc
@@ -174,16 +183,16 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     float coc   = bokeh.a;
 
     // prevent blurry background from bleeding onto sharp foreground
-    float depth = get_linear_depth(input.uv);
-    float center_depth = get_focal_depth(texel_size);
-    float center_coc = circle_of_confusion(input.uv, center_depth);
-    if (get_linear_depth(input.uv) > center_depth) 
+    float depth         = get_linear_depth(uv);
+    float center_depth  = get_focal_depth(texel_size);
+    float center_coc    = circle_of_confusion(uv, center_depth);
+    if (get_linear_depth(uv) > center_depth) 
     {
         coc = clamp(coc, 0.0, center_coc * 2.0f);
     }
     
     // Compute final color
-    float4 base = tex.Sample(sampler_point_clamp, input.uv);
-    return lerp(base, float4(dof, base.a), coc);
+    float4 base = tex[thread_id.xy];
+    tex_out_rgba[thread_id.xy] = lerp(base, float4(dof, base.a), coc);
 }
 #endif
