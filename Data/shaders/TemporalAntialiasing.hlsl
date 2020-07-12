@@ -75,27 +75,28 @@ float3 clip_aabb(float3 aabb_min, float3 aabb_max, float3 p, float3 q)
 #endif
 }
 
-float4 TemporalAntialiasing(float2 uv, Texture2D tex_history, Texture2D tex_current)
+float4 TemporalAntialiasing(uint2 thread_id, Texture2D tex_history, Texture2D tex_current)
 {
     // Get history and current colors
+    const float2 uv         = (thread_id + 0.5f) / g_resolution;
     float2 velocity         = GetVelocity_DepthMin(uv);
     float2 uv_reprojected   = uv - velocity;
-    float3 color_history    = Reinhard(tex_history.Sample(sampler_bilinear_clamp, uv_reprojected).rgb);
-    float3 color_current    = Reinhard(tex_current.Sample(sampler_point_clamp, uv).rgb);
+    float3 color_history    = tex_history.SampleLevel(sampler_bilinear_clamp, uv_reprojected, 0).rgb;
+    float3 color_current    = tex_current[thread_id].rgb;
     
     //= History clipping ===============================================================================================
-    float2 du = float2(g_texel_size.x, 0.0f);
-    float2 dv = float2(0.0f, g_texel_size.y);
+    uint2 du = uint2(1, 0);
+    uint2 dv = uint2(0, 1);
 
-    float3 ctl = Reinhard(tex_current.Sample(sampler_point_clamp, uv - dv - du).rgb);
-    float3 ctc = Reinhard(tex_current.Sample(sampler_point_clamp, uv - dv).rgb);
-    float3 ctr = Reinhard(tex_current.Sample(sampler_point_clamp, uv - dv + du).rgb);
-    float3 cml = Reinhard(tex_current.Sample(sampler_point_clamp, uv - du).rgb);
+    float3 ctl = tex_current[thread_id - dv - du].rgb;
+    float3 ctc = tex_current[thread_id - dv].rgb;
+    float3 ctr = tex_current[thread_id - dv + du].rgb;
+    float3 cml = tex_current[thread_id - du].rgb;
     float3 cmc = color_current;
-    float3 cmr = Reinhard(tex_current.Sample(sampler_point_clamp, uv + du).rgb);
-    float3 cbl = Reinhard(tex_current.Sample(sampler_point_clamp, uv + dv - du).rgb);
-    float3 cbc = Reinhard(tex_current.Sample(sampler_point_clamp, uv + dv).rgb);
-    float3 cbr = Reinhard(tex_current.Sample(sampler_point_clamp, uv + dv + du).rgb);
+    float3 cmr = tex_current[thread_id + du].rgb;
+    float3 cbl = tex_current[thread_id + dv - du].rgb;
+    float3 cbc = tex_current[thread_id + dv].rgb;
+    float3 cbr = tex_current[thread_id + dv + du].rgb;
 
     float3 color_min = min(ctl, min(ctc, min(ctr, min(cml, min(cmc, min(cmr, min(cbl, min(cbc, cbr))))))));
     float3 color_max = max(ctl, max(ctc, max(ctr, max(cml, max(cmc, max(cmr, max(cbl, max(cbc, cbr))))))));
@@ -125,15 +126,22 @@ float4 TemporalAntialiasing(float2 uv, Texture2D tex_history, Texture2D tex_curr
     
     // Use max blend if the re-projected uv is out of screen
     blend_factor = is_saturated(uv_reprojected) ? blend_factor : 1.0f;
+
+    // Tonemap
+    color_history = Reinhard(color_history);
+    color_current = Reinhard(color_current);
     
     // Resolve
     float3 resolved = lerp(color_history, color_current, blend_factor);
     
     // Inverse tonemap
-    return float4(ReinhardInverse(resolved), 1.0f);
+    resolved = ReinhardInverse(resolved);
+    
+    return float4(resolved, 1.0f);
 }
 
-float4 mainPS(Pixel_PosUv input) : SV_TARGET
+[numthreads(32, 32, 1)]
+void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    return TemporalAntialiasing(input.uv, tex, tex2);
+    tex_out_rgba[thread_id.xy] = TemporalAntialiasing(thread_id.xy, tex, tex2);
 }

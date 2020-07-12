@@ -37,5 +37,5 @@ Pixel_PosUv mainVS(Vertex_PosUv input)
 float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
     float2 uv = float2(input.uv.x * g_mat_tiling.x + g_mat_offset.x, input.uv.y * g_mat_offset.y + g_mat_tiling.y);
-    return degamma(tex.Sample(sampler_anisotropic_wrap, uv)) * g_mat_color;
+    return degamma(tex.SampleLevel(sampler_anisotropic_wrap, uv, 0)) * g_mat_color;
 }

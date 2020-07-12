@@ -333,21 +333,21 @@ namespace Spartan
             "Materials:\t\t%d\n"
             "\n"
             // RHI
-            "Draw:\t\t\t\t\t%d\n"
-            "Dispatch:\t\t\t\t\t%d\n"
-            "Index buffer bindings:\t\t%d\n"
-            "Vertex buffer bindings:\t\t%d\n"
-            "Constant buffer bindings:\t%d\n"
-            "Sampler bindings:\t\t\t%d\n"
-            "Texture sampled bindings:\t\t%d\n"
-            "Texture storage bindings:\t%d\n"
-            "Vertex shader bindings:\t%d\n"
-            "Pixel shader bindings:\t\t%d\n"
-            "Compute shader bindings:\t%d\n"
-            "Render target bindings:\t%d\n"
-            "Pipeline bindings:\t\t\t%d\n"
-            "Descriptor set bindings:\t%d\n"
-            "Pipeline barriers:\t\t\t%d";
+            "Draw:\t\t\t%d\n"
+            "Dispatch:\t\t\t%d\n"
+            "Index buffer:\t\t%d\n"
+            "Vertex buffer:\t\t%d\n"
+            "Constant buffer:\t%d\n"
+            "Sampler:\t\t\t%d\n"
+            "Texture sampled:\t%d\n"
+            "Texture storage:\t%d\n"
+            "Shader vertex:\t%d\n"
+            "Shader pixel:\t\t%d\n"
+            "Shader compute:\t%d\n"
+            "Render target:\t%d\n"
+            "Pipeline:\t\t\t%d\n"
+            "Descriptor set:\t%d\n"
+            "Pipeline barrier:\t%d";
 
         static char buffer[2048];
 		sprintf_s
