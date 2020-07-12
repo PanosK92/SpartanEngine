@@ -25,41 +25,42 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define FXAA_PC 1
 #define FXAA_HLSL_5 1
 #define FXAA_QUALITY__PRESET 39
-#include "FXAA.h"
+#include "Fxaa3_11.h"
 #endif
 //=============================
 
+static const float g_fxaa_subPix            = 0.75f;    // The amount of sub-pixel aliasing removal. This can effect sharpness.
+static const float g_fxaa_edgeThreshold     = 0.166f;   // The minimum amount of local contrast required to apply algorithm.
+static const float g_fxaa_edgeThresholdMin  = 0.0833f;  // Trims the algorithm from processing darks
 
-float4 mainPS(Pixel_PosUv input) : SV_TARGET
+[numthreads(32, 32, 1)]
+void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    float4 color = 0.0f;
-
-     // Encodue luminance into alpha channel which is optimal for FXAA
+    const float2 uv = (thread_id.xy + 0.5f) / g_resolution;
+    float4 color    = 0.0f;
+    
+     // Encode luminance into alpha channel which is optimal for FXAA
 #if LUMINANCE
-    color = tex.Sample(sampler_point_clamp, input.uv);
-    color.a = luminance(color.rgb);  
+    color.rgb   = tex[thread_id.xy].rgb;
+    color.a     = luminance(color.rgb);  
 #endif
 
      // Actual FXAA
 #if FXAA
-    static const float fxaa_subPix           = 0.75f;
-    static const float fxaa_edgeThreshold    = 0.166f;
-    static const float fxaa_edgeThresholdMin = 0.0833f;
-    
     FxaaTex fxaa_tex = { sampler_bilinear_clamp, tex };
     float2 fxaaQualityRcpFrame = g_texel_size;
 
     color.rgb = FxaaPixelShader
     (
-        input.uv, 0, fxaa_tex, fxaa_tex, fxaa_tex,
+        uv, 0, fxaa_tex, fxaa_tex, fxaa_tex,
         fxaaQualityRcpFrame, 0, 0, 0,
-        fxaa_subPix,
-        fxaa_edgeThreshold,
-        fxaa_edgeThresholdMin,
+        g_fxaa_subPix,
+        g_fxaa_edgeThreshold,
+        g_fxaa_edgeThresholdMin,
         0, 0, 0, 0
     ).rgb;
     color.a = 1.0f; 
 #endif
     
-    return color;
+    tex_out_rgba[thread_id.xy] = color;
 }
