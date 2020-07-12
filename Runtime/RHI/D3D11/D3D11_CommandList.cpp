@@ -417,8 +417,6 @@ namespace Spartan
         const void* resource_array[8] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
         device_context->CSSetUnorderedAccessViews(0, 8, reinterpret_cast<ID3D11UnorderedAccessView* const*>(&resource_array), nullptr);
 
-        device_context->OMSetRenderTargets(8, reinterpret_cast<ID3D11RenderTargetView* const*>(&resource_array), nullptr);
-
         return true;
     }
 

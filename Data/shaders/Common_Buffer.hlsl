@@ -46,14 +46,13 @@ cbuffer BufferFrame : register(b0)
     float g_sharpen_strength;   
     float3 g_camera_direction;
     
-    float g_sharpen_clamp;
     float g_gamma;
     float g_toneMapping;
-    float g_directional_light_intensity;
-    
+    float g_directional_light_intensity;   
     float g_ssr_enabled;
+    
     float g_shadow_resolution;
-    float2 g_padding;
+    float3 g_padding;
 
     float2 g_taa_jitter_offset_previous;
     float2 g_taa_jitter_offset;

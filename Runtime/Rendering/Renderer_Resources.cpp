@@ -253,9 +253,9 @@ namespace Spartan
         m_shaders[Shader_FilmGrain_C] = make_shared<RHI_Shader>(m_context);
         m_shaders[Shader_FilmGrain_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "FilmGrain.hlsl");
 
-        // Lumasharpen
-        m_shaders[Shader_Sharpen_Luma_C] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_Sharpen_Luma_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "Sharpening.hlsl");
+        // Sharpening
+        m_shaders[Shader_Sharpening_C] = make_shared<RHI_Shader>(m_context);
+        m_shaders[Shader_Sharpening_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "Sharpening.hlsl");
 
         // Chromatic aberration
         m_shaders[Shader_ChromaticAberration_C] = make_shared<RHI_Shader>(m_context);

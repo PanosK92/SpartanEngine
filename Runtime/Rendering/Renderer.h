@@ -89,8 +89,7 @@ namespace Spartan
         Option_Value_Tonemapping,
         Option_Value_Gamma,
         Option_Value_Bloom_Intensity,
-        Option_Value_Sharpen_Strength,
-        Option_Value_Sharpen_Clamp // Limits maximum amount of sharpening a pixel receives - Algorithm's default: 0.035f
+        Option_Value_Sharpen_Strength
     };
 
     enum Renderer_ToneMapping_Type
@@ -127,7 +126,7 @@ namespace Spartan
         Shader_Dof_Bokeh_C,
         Shader_Dof_Tent_C,
         Shader_Dof_UpscaleBlend_C,
-		Shader_Sharpen_Luma_C,
+		Shader_Sharpening_C,
 		Shader_ChromaticAberration_C,	
 		Shader_BloomDownsampleLuminance_P,
         Shader_BloomDownsample_P,
@@ -291,7 +290,7 @@ namespace Spartan
 		void Pass_GammaCorrection(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
         void Pass_FXAA(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in,	std::shared_ptr<RHI_Texture>& tex_out);
         void Pass_FilmGrain(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
-        void Pass_LumaSharpen(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
+        void Pass_Sharpening(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
 		void Pass_ChromaticAberration(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
 		void Pass_MotionBlur(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
         void Pass_DepthOfField(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);

@@ -938,7 +938,7 @@ namespace Spartan
         // Sharpening
         if (GetOption(Render_Sharpening_LumaSharpen))
         {
-            Pass_LumaSharpen(cmd_list, tex_in_ldr, tex_out_ldr);
+            Pass_Sharpening(cmd_list, tex_in_ldr, tex_out_ldr);
             tex_in_ldr.swap(tex_out_ldr);
         }
 
@@ -1762,17 +1762,17 @@ namespace Spartan
         }
     }
 
-	void Renderer::Pass_LumaSharpen(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+	void Renderer::Pass_Sharpening(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
         // Acquire shaders
-        RHI_Shader* shader_c = m_shaders[Shader_Sharpen_Luma_C].get();
+        RHI_Shader* shader_c = m_shaders[Shader_Sharpening_C].get();
         if (!shader_c->IsCompiled())
             return;
 
         // Set render state
         static RHI_PipelineState pipeline_state;
         pipeline_state.shader_compute = shader_c;
-        pipeline_state.pass_name      = "Pass_LumaSharpen";
+        pipeline_state.pass_name      = "Pass_Sharpening";
 
         // Draw
         if (cmd_list->BeginRenderPass(pipeline_state))
