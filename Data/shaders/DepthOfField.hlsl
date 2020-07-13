@@ -87,7 +87,7 @@ float2 rotate_vector(float2 v, float2 direction)
 }
 
 #if DOWNSAMPLE_CIRCLE_OF_CONFUSION
-[numthreads(32, 32, 1)]
+[numthreads(thread_group_count, thread_group_count, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
     if (thread_id.x >= g_resolution.x || thread_id.y >= g_resolution.y)
@@ -128,7 +128,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 #endif
 
 #if BOKEH
-[numthreads(32, 32, 1)]
+[numthreads(thread_group_count, thread_group_count, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
     if (thread_id.x >= g_resolution.x || thread_id.y >= g_resolution.y)
@@ -151,7 +151,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 #endif
 
 #if TENT
-[numthreads(32, 32, 1)]
+[numthreads(thread_group_count, thread_group_count, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
     if (thread_id.x >= g_resolution.x || thread_id.y >= g_resolution.y)
@@ -171,7 +171,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 #endif
 
 #if UPSCALE_BLEND
-[numthreads(32, 32, 1)]
+[numthreads(thread_group_count, thread_group_count, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
     if (thread_id.x >= g_resolution.x || thread_id.y >= g_resolution.y)

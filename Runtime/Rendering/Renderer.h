@@ -403,6 +403,7 @@ namespace Spartan
         const float m_gizmo_size_max                = 2.0f;
         const float m_gizmo_size_min                = 0.1f;
         bool m_update_ortho_proj                    = true;
+        const float m_thread_group_count            = 8.0f;
                                                                   
         //= BUFFERS ==============================================
         BufferFrame m_buffer_frame_cpu;

@@ -45,7 +45,7 @@ float4 ChromaticAberration(uint2 thread_id, Texture2D sourceTexture)
     return color;
 }
 
-[numthreads(32, 32, 1)]
+[numthreads(thread_group_count, thread_group_count, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
     if (thread_id.x >= g_resolution.x || thread_id.y >= g_resolution.y)
