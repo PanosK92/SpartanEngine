@@ -48,7 +48,7 @@ float4 ChromaticAberration(uint2 thread_id, Texture2D sourceTexture)
 [numthreads(thread_group_count, thread_group_count, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    if (thread_id.x >= g_resolution.x || thread_id.y >= g_resolution.y)
+    if (thread_id.x >= uint(g_resolution.x) || thread_id.y >= uint(g_resolution.y))
         return;
     
     tex_out_rgba[thread_id.xy] = ChromaticAberration(thread_id.xy, tex);

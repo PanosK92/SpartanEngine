@@ -83,7 +83,7 @@ float4 TemporalAntialiasing(uint2 thread_id, Texture2D tex_history, Texture2D te
     float2 uv_reprojected   = uv - velocity;
     float3 color_history    = tex_history.SampleLevel(sampler_bilinear_clamp, uv_reprojected, 0).rgb;
     float3 color_current    = tex_current[thread_id].rgb;
-    
+      
     //= History clipping ===============================================================================================
     uint2 du = uint2(1, 0);
     uint2 dv = uint2(0, 1);
@@ -115,6 +115,10 @@ float4 TemporalAntialiasing(uint2 thread_id, Texture2D tex_history, Texture2D te
     float subpixel_motion   = saturate(threshold / (FLT_MIN + texel_vel_mag));
     float factor_subpixel   = texel_vel_mag * base + subpixel_motion * gather;
     
+    // Tonemap
+    color_history = Reinhard(color_history);
+    color_current = Reinhard(color_current);
+    
     // Decrease blend factor when contrast is high
     float lum0              = luminance(color_current);
     float lum1              = luminance(color_history);
@@ -127,10 +131,6 @@ float4 TemporalAntialiasing(uint2 thread_id, Texture2D tex_history, Texture2D te
     // Use max blend if the re-projected uv is out of screen
     blend_factor = is_saturated(uv_reprojected) ? blend_factor : 1.0f;
 
-    // Tonemap
-    color_history = Reinhard(color_history);
-    color_current = Reinhard(color_current);
-    
     // Resolve
     float3 resolved = lerp(color_history, color_current, blend_factor);
     
@@ -143,7 +143,7 @@ float4 TemporalAntialiasing(uint2 thread_id, Texture2D tex_history, Texture2D te
 [numthreads(thread_group_count, thread_group_count, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    if (thread_id.x >= g_resolution.x || thread_id.y >= g_resolution.y)
+    if (thread_id.x >= uint(g_resolution.x) || thread_id.y >= uint(g_resolution.y))
         return;
     
     tex_out_rgba[thread_id.xy] = TemporalAntialiasing(thread_id.xy, tex, tex2);
