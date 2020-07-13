@@ -90,7 +90,7 @@ float2 rotate_vector(float2 v, float2 direction)
 [numthreads(thread_group_count, thread_group_count, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    if (thread_id.x >= g_resolution.x || thread_id.y >= g_resolution.y)
+    if (thread_id.x >= uint(g_resolution.x) || thread_id.y >= uint(g_resolution.y))
         return;
     
     // g_texel_size refers to the current render target, which is half the size of the input texture.
@@ -131,7 +131,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 [numthreads(thread_group_count, thread_group_count, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    if (thread_id.x >= g_resolution.x || thread_id.y >= g_resolution.y)
+    if (thread_id.x >= uint(g_resolution.x) || thread_id.y >= uint(g_resolution.y))
         return;
     
     const float2 uv = (thread_id.xy + 0.5f) / g_resolution;
@@ -154,7 +154,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 [numthreads(thread_group_count, thread_group_count, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    if (thread_id.x >= g_resolution.x || thread_id.y >= g_resolution.y)
+    if (thread_id.x >= uint(g_resolution.x) || thread_id.y >= uint(g_resolution.y))
         return;
     
     const float2 uv = (thread_id.xy + 0.5f) / g_resolution;
@@ -174,7 +174,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 [numthreads(thread_group_count, thread_group_count, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    if (thread_id.x >= g_resolution.x || thread_id.y >= g_resolution.y)
+    if (thread_id.x >= uint(g_resolution.x) || thread_id.y >= uint(g_resolution.y))
         return;
     
     // g_texel_size refers to the current render target, which is twice the size of the input texture, so we multiply by 0.5

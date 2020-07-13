@@ -68,7 +68,7 @@ float3 Sharpen(uint2 thread_id)
     float4 const0;
     float4 const1;
     CasSetup(const0, const1, g_sharpen_strength, g_resolution.x, g_resolution.y, g_resolution.x, g_resolution.y);
-    float4 color = float4(0.0, 0.0, 0.0, 1.0);
+    float3 color = 0.0f;
     CasFilter(color.r, color.g, color.b, thread_id, const0, const1, true);
     return color;
 }
@@ -78,7 +78,7 @@ float3 Sharpen(uint2 thread_id)
 [numthreads(thread_group_count, thread_group_count, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    if (thread_id.x >= g_resolution.x || thread_id.y >= g_resolution.y)
+    if (thread_id.x >= uint(g_resolution.x) || thread_id.y >= uint(g_resolution.y))
         return;
     
     const float3 color  = Sharpen(thread_id.xy);
