@@ -41,6 +41,7 @@ static const float FLT_MAX  = 65504.0f;
 
 #define g_texel_size        float2(1.0f / g_resolution.x, 1.0f / g_resolution.y)
 #define g_shadow_texel_size (1.0f / g_shadow_resolution)
+#define thread_group_count  8
 
 /*------------------------------------------------------------------------------
     MATH

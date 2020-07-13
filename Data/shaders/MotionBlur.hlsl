@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 static const uint g_motion_blur_samples = 16;
 
-[numthreads(32, 32, 1)]
+[numthreads(thread_group_count, thread_group_count, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
     const float2 uv = (thread_id.xy + 0.5f) / g_resolution;
