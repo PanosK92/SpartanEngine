@@ -73,7 +73,7 @@ namespace Spartan
         if (!descriptor_set)
             return;
 
-        static const uint8_t descriptors_max = 255;   
+        static const uint8_t descriptors_max = 255;
         array<VkDescriptorImageInfo,    descriptors_max> image_infos;
         array<VkDescriptorBufferInfo,   descriptors_max> buffer_infos;
         array<VkWriteDescriptorSet,     descriptors_max> write_descriptor_sets;
@@ -121,33 +121,38 @@ namespace Spartan
 
             i++;
         }
-        
-        vkUpdateDescriptorSets(m_rhi_device->GetContextRhi()->device, i, write_descriptor_sets.data(), 0, nullptr);
+
+        vkUpdateDescriptorSets(
+            m_rhi_device->GetContextRhi()->device,  // device
+            static_cast<uint32_t>(i),               // descriptorWriteCount
+            write_descriptor_sets.data(),           // pDescriptorWrites
+            0,                                      // descriptorCopyCount
+            nullptr                                 // pDescriptorCopies
+        );
     }
 
     void* RHI_DescriptorSetLayout::CreateDescriptorSetLayout(const vector<RHI_Descriptor>& descriptors)
     {
         // Layout bindings
-        vector<VkDescriptorSetLayoutBinding> layout_bindings;
-        layout_bindings.reserve(descriptors.size());
-        {
-            for (const RHI_Descriptor& descriptor : descriptors)
-            {
-                // Stage flags
-                VkShaderStageFlags stage_flags = 0;
-                stage_flags |= (descriptor.stage & RHI_Shader_Vertex)   ? VK_SHADER_STAGE_VERTEX_BIT    : 0;
-                stage_flags |= (descriptor.stage & RHI_Shader_Pixel)    ? VK_SHADER_STAGE_FRAGMENT_BIT  : 0;
-                stage_flags |= (descriptor.stage & RHI_Shader_Compute)  ? VK_SHADER_STAGE_COMPUTE_BIT   : 0;
+        static const uint8_t descriptors_max = 255;
+        array<VkDescriptorSetLayoutBinding, descriptors_max> layout_bindings;
+        uint8_t i = 0;
 
-                layout_bindings.push_back
-                ({
-                    descriptor.slot,							// binding
-                    vulkan_descriptor_type[descriptor.type],	// descriptorType
-                    1,										    // descriptorCount
-                    stage_flags,							    // stageFlags
-                    nullptr									    // pImmutableSamplers
-                    });
-            }
+        for (const RHI_Descriptor& descriptor : descriptors)
+        {
+            // Stage flags
+            VkShaderStageFlags stage_flags = 0;
+            stage_flags |= (descriptor.stage & RHI_Shader_Vertex)   ? VK_SHADER_STAGE_VERTEX_BIT    : 0;
+            stage_flags |= (descriptor.stage & RHI_Shader_Pixel)    ? VK_SHADER_STAGE_FRAGMENT_BIT  : 0;
+            stage_flags |= (descriptor.stage & RHI_Shader_Compute)  ? VK_SHADER_STAGE_COMPUTE_BIT   : 0;
+        
+            layout_bindings[i].binding              = descriptor.slot;
+            layout_bindings[i].descriptorType       = vulkan_descriptor_type[descriptor.type];
+            layout_bindings[i].descriptorCount      = 1;
+            layout_bindings[i].stageFlags           = stage_flags;
+            layout_bindings[i].pImmutableSamplers   = nullptr;
+        
+            i++;
         }
 
         // Create info
@@ -155,7 +160,7 @@ namespace Spartan
         create_info.sType                           = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         create_info.flags                           = 0;
         create_info.pNext                           = nullptr;
-        create_info.bindingCount                    = static_cast<uint32_t>(layout_bindings.size());
+        create_info.bindingCount                    = static_cast<uint32_t>(i);
         create_info.pBindings                       = layout_bindings.data();
 
         // Descriptor set layout

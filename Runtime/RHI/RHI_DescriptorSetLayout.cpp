@@ -36,11 +36,13 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_DescriptorSetLayout::RHI_DescriptorSetLayout(const RHI_Device* rhi_device, const std::vector<RHI_Descriptor>& descriptors)
+    RHI_DescriptorSetLayout::RHI_DescriptorSetLayout(const RHI_Device* rhi_device, const std::vector<RHI_Descriptor>& descriptors, const string& name)
     {
         m_rhi_device            = rhi_device;
         m_descriptors           = descriptors;
+        m_name                  = name;
         m_descriptor_set_layout = CreateDescriptorSetLayout(m_descriptors);
+        m_dynamic_offsets.fill(state_dynamic_offset_empty);
     }
 
     bool RHI_DescriptorSetLayout::SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer)

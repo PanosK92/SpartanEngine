@@ -182,8 +182,7 @@ namespace Spartan
         RenderTarget_Hbao_Noisy                     = 1 << 17,
         RenderTarget_Hbao                           = 1 << 18,
         RenderTarget_Ssr                            = 1 << 19,
-        RenderTarget_Ssgi                           = 1 << 20,
-        RenderTarget_TaaHistory                     = 1 << 21,
+        RenderTarget_TaaHistory                     = 1 << 20,
     };
 
 	class SPARTAN_CLASS Renderer : public ISubsystem
