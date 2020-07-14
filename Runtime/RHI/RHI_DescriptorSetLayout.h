@@ -35,7 +35,7 @@ namespace Spartan
     {
     public:
         RHI_DescriptorSetLayout() = default;
-        RHI_DescriptorSetLayout(const RHI_Device* rhi_device, const std::vector<RHI_Descriptor>& descriptors);
+        RHI_DescriptorSetLayout(const RHI_Device* rhi_device, const std::vector<RHI_Descriptor>& descriptors, const std::string& name);
         ~RHI_DescriptorSetLayout();
 
         bool SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer);
@@ -57,17 +57,7 @@ namespace Spartan
 
         // Misc
         bool m_needs_to_bind = false;
-        std::array<uint32_t, state_max_constant_buffer_count> m_dynamic_offsets =
-        {
-            state_dynamic_offset_empty,
-            state_dynamic_offset_empty,
-            state_dynamic_offset_empty,
-            state_dynamic_offset_empty,
-            state_dynamic_offset_empty,
-            state_dynamic_offset_empty,
-            state_dynamic_offset_empty,
-            state_dynamic_offset_empty
-        };
+        std::array<uint32_t, state_max_constant_buffer_count> m_dynamic_offsets;
 
         // Descriptors
         std::vector<RHI_Descriptor> m_descriptors;

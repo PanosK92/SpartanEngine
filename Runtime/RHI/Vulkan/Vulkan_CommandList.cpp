@@ -579,16 +579,35 @@ namespace Spartan
         {
             RHI_Image_Layout target_layout = RHI_Image_Undefined;
 
-            // Color
-            if (texture->IsColorFormat() && texture->GetLayout() != RHI_Image_Shader_Read_Only_Optimal)
+            if (storage)
             {
-                target_layout = RHI_Image_Shader_Read_Only_Optimal;
+                if (!texture->IsStorage())
+                {
+                    LOG_ERROR("Texture %s doesn't support storage", texture->GetName().c_str());
+                }
+                else
+                {
+                    // According to section 13.1 of the Vulkan spec, storage textures have to be in a general layout.
+                    // https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/vkspec.html#descriptorsets-storageimage
+                    if (texture->GetLayout() != RHI_Image_General)
+                    {
+                        target_layout = RHI_Image_General;
+                    }
+                }
             }
-
-            // Depth
-            if (texture->IsDepthFormat() && texture->GetLayout() != RHI_Image_Depth_Stencil_Read_Only_Optimal)
+            else
             {
-                target_layout = RHI_Image_Depth_Stencil_Read_Only_Optimal;
+                // Color
+                if (texture->IsColorFormat() && texture->GetLayout() != RHI_Image_Shader_Read_Only_Optimal)
+                {
+                    target_layout = RHI_Image_Shader_Read_Only_Optimal;
+                }
+
+                // Depth
+                if (texture->IsDepthFormat() && texture->GetLayout() != RHI_Image_Depth_Stencil_Read_Only_Optimal)
+                {
+                    target_layout = RHI_Image_Depth_Stencil_Read_Only_Optimal;
+                }
             }
 
             bool transition_required = target_layout != RHI_Image_Undefined;

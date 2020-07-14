@@ -2332,11 +2332,6 @@ namespace Spartan
             shader_type = Shader_DebugChannelRgbGammaCorrect_P;
         }
 
-        if (m_render_target_debug == RenderTarget_Ssgi)
-        {
-            shader_type = Shader_DebugChannelRgbGammaCorrect_P;
-        }
-
         if (m_render_target_debug == RenderTarget_Bloom)
         {
             texture     = m_render_tex_bloom.front().get();

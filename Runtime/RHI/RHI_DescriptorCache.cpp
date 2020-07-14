@@ -83,7 +83,7 @@ namespace Spartan
            vector<RHI_Descriptor> descriptors = GenerateDescriptors(pipeline_state);
 
            // Emplace a new descriptor set layout
-           it = m_descriptor_set_layouts.emplace(make_pair(hash, make_shared<RHI_DescriptorSetLayout>(m_rhi_device, descriptors))).first;
+           it = m_descriptor_set_layouts.emplace(make_pair(hash, make_shared<RHI_DescriptorSetLayout>(m_rhi_device, descriptors, m_name.c_str()))).first;
        }
 
        // Get the descriptor set layout we will be using
