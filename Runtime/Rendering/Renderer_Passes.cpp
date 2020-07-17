@@ -890,17 +890,17 @@ namespace Spartan
             tex_in_hdr.swap(tex_out_hdr);
         }
 
-        // Motion Blur
-        if (GetOption(Render_MotionBlur))
-        {
-            Pass_MotionBlur(cmd_list, tex_in_hdr, tex_out_hdr);
-            tex_in_hdr.swap(tex_out_hdr);
-        }
-
         // Depth of Field
         if (GetOption(Render_DepthOfField))
         {
             Pass_DepthOfField(cmd_list, tex_in_hdr, tex_out_hdr);
+            tex_in_hdr.swap(tex_out_hdr);
+        }
+
+        // Motion Blur
+        if (GetOption(Render_MotionBlur))
+        {
+            Pass_MotionBlur(cmd_list, tex_in_hdr, tex_out_hdr);
             tex_in_hdr.swap(tex_out_hdr);
         }
 
