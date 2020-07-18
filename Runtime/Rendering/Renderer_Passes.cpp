@@ -999,39 +999,28 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_Downsample(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, const Renderer_Shader_Type pixel_shader)
+    void Renderer::Pass_Downsample(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, const Renderer_Shader_Type shader_type)
     {
-        // Acquire shaders
-        const auto& shader_v = m_shaders[Shader_Quad_V];
-        const auto& shader_p = m_shaders[pixel_shader];
-        if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
-            return;
-
         // Set render state
         static RHI_PipelineState pipeline_state;
-        pipeline_state.shader_vertex                    = shader_v.get();
-        pipeline_state.shader_pixel                     = shader_p.get();
-        pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
-        pipeline_state.blend_state                      = m_blend_disabled.get();
-        pipeline_state.depth_stencil_state              = m_depth_stencil_off_off.get();
-        pipeline_state.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride();
-        pipeline_state.render_target_color_textures[0]  = tex_out;
-        pipeline_state.clear_color[0]                   = state_color_dont_care;
-        pipeline_state.viewport                         = tex_out->GetViewport();
-        pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
-        pipeline_state.pass_name                        = "Pass_Downsample";
+        pipeline_state.shader_compute = m_shaders[shader_type].get();
+        pipeline_state.pass_name      = "Pass_Downsample";
 
-        // Record commands
+        // Draw
         if (cmd_list->BeginRenderPass(pipeline_state))
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             UpdateUberBuffer(cmd_list);
-        
-            cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
-            cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
+
+            uint32_t thread_group_count_x   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
+            uint32_t thread_group_count_y   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
+            uint32_t thread_group_count_z   = 1;
+            bool async                      = false;
+
+            cmd_list->SetTexture(3, tex_out, true);
             cmd_list->SetTexture(28, tex_in);
-            cmd_list->DrawIndexed(m_viewport_quad.GetIndexCount());
+            cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
         }
     }
@@ -1284,11 +1273,11 @@ namespace Spartan
 	void Renderer::Pass_Bloom(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
 		// Acquire shaders
-        const auto& shader_v                    = m_shaders[Shader_Quad_V];
-		const auto& shader_p_bloom_luminance	= m_shaders[Shader_BloomDownsampleLuminance_P];
-		const auto& shader_p_bloom_blend	    = m_shaders[Shader_BloomUpsampleBlend_P];
-		const auto& shader_p_downsample	        = m_shaders[Shader_BloomDownsample_P];
-		const auto& shader_p_upsample		    = m_shaders[Shader_Upsample_P];
+        RHI_Shader* shader_v                    = m_shaders[Shader_Quad_V].get();
+		RHI_Shader* shader_p_bloom_luminance	= m_shaders[Shader_BloomDownsampleLuminance_C].get();
+		RHI_Shader* shader_p_bloom_blend	    = m_shaders[Shader_BloomUpsampleBlend_P].get();
+		RHI_Shader* shader_p_downsample	        = m_shaders[Shader_BloomDownsample_C].get();
+		RHI_Shader* shader_p_upsample		    = m_shaders[Shader_Upsample_P].get();
 		if (!shader_v->IsCompiled() || !shader_p_bloom_luminance->IsCompiled() || !shader_p_bloom_blend->IsCompiled() || !shader_p_downsample->IsCompiled() || !shader_p_upsample->IsCompiled())
 			return;
 
@@ -1296,46 +1285,41 @@ namespace Spartan
         {
             // Set render state
             static RHI_PipelineState pipeline_state;
-            pipeline_state.shader_vertex                    = shader_v.get();
-            pipeline_state.shader_pixel                     = shader_p_bloom_luminance.get();
-            pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
-            pipeline_state.blend_state                      = m_blend_disabled.get();
-            pipeline_state.depth_stencil_state              = m_depth_stencil_off_off.get();
-            pipeline_state.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride();
-            pipeline_state.render_target_color_textures[0]  = m_render_tex_bloom[0].get();
-            pipeline_state.clear_color[0]                   = state_color_dont_care;
-            pipeline_state.viewport                         = m_render_tex_bloom[0]->GetViewport();
-            pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
-            pipeline_state.pass_name                        = "Pass_Bloom_Luminance";
+            pipeline_state.shader_compute = shader_p_bloom_luminance;
+            pipeline_state.pass_name      = "Pass_Bloom_Luminance";
 
-            // Record commands
+            // Draw
             if (cmd_list->BeginRenderPass(pipeline_state))
             {
                 // Update uber buffer
-                m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(m_render_tex_bloom[0]->GetWidth()), static_cast<float>(m_render_tex_bloom[0]->GetHeight()));
+                m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(m_render_tex_bloom[0].get()->GetWidth()), static_cast<float>(m_render_tex_bloom[0].get()->GetHeight()));
                 UpdateUberBuffer(cmd_list);
-        
-                cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
-                cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
+
+                uint32_t thread_group_count_x   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(m_render_tex_bloom[0].get()->GetWidth()) / m_thread_group_count));
+                uint32_t thread_group_count_y   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(m_render_tex_bloom[0].get()->GetHeight()) / m_thread_group_count));
+                uint32_t thread_group_count_z   = 1;
+                bool async                      = false;
+
+                cmd_list->SetTexture(3, m_render_tex_bloom[0].get(), true);
                 cmd_list->SetTexture(28, tex_in);
-                cmd_list->DrawIndexed(Rectangle::GetIndexCount());
+                cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
                 cmd_list->EndRenderPass();
-            }
+        }
         }
         
         // Downsample
         // The last bloom texture is the same size as the previous one (it's used for the Gaussian pass below), so we skip it
         for (int i = 0; i < static_cast<int>(m_render_tex_bloom.size() - 1); i++)
         {
-            Pass_Downsample(cmd_list, m_render_tex_bloom[i].get(), m_render_tex_bloom[i + 1].get(), Shader_BloomDownsample_P);
+            Pass_Downsample(cmd_list, m_render_tex_bloom[i].get(), m_render_tex_bloom[i + 1].get(), Shader_BloomDownsample_C);
         }
         
         auto upsample_additive = [this, &cmd_list, &shader_v, &shader_p_upsample](shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
         {
             // Set render state
             static RHI_PipelineState pipeline_state;
-            pipeline_state.shader_vertex                    = shader_v.get();
-            pipeline_state.shader_pixel                     = shader_p_upsample.get();
+            pipeline_state.shader_vertex                    = shader_v;
+            pipeline_state.shader_pixel                     = shader_p_upsample;
             pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
             pipeline_state.blend_state                      = m_blend_additive.get();
             pipeline_state.depth_stencil_state              = m_depth_stencil_off_off.get();
@@ -1370,8 +1354,8 @@ namespace Spartan
         {
             // Set render state
             static RHI_PipelineState pipeline_state;
-            pipeline_state.shader_vertex                    = shader_v.get();
-            pipeline_state.shader_pixel                     = shader_p_bloom_blend.get();
+            pipeline_state.shader_vertex                    = shader_v;
+            pipeline_state.shader_pixel                     = shader_p_bloom_blend;
             pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
             pipeline_state.blend_state                      = m_blend_disabled.get();
             pipeline_state.depth_stencil_state              = m_depth_stencil_off_off.get();

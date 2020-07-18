@@ -82,7 +82,7 @@ namespace Spartan
         }
 
         const WindowData& window_data   = m_context->m_engine->GetWindowData();
-        const HWND window_handle              = static_cast<HWND>(window_data.handle);
+        const HWND window_handle        = static_cast<HWND>(window_data.handle);
 
         // Mouse
         {
@@ -118,9 +118,7 @@ namespace Spartan
 
             // Wheel
             {
-                const int wheel_delta     = ::GetScrollPos(window_handle, SB_VERT);
-                m_mouse_wheel_delta = static_cast<float>(wheel_delta - m_mouse_wheel);
-                m_mouse_wheel       = wheel_delta;
+                m_mouse_wheel_delta = (float)GET_WHEEL_DELTA_WPARAM(window_data.wparam) / (float)WHEEL_DELTA;
             }
         }
 

@@ -25,21 +25,33 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //=====================
 
 #if DOWNSAMPLE
-float4 mainPS(Pixel_PosUv input) : SV_TARGET
+[numthreads(thread_group_count, thread_group_count, 1)]
+void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
+    if (thread_id.x >= uint(g_resolution.x) || thread_id.y >= uint(g_resolution.y))
+        return;
+
     // g_texel_size refers to the current render target, which is half the size of the input texture, so we multiply by 2.0
     float2 texel_size = g_texel_size * 2.0f;
-    return Box_Filter_AntiFlicker(input.uv, tex, texel_size);
+    const float2 uv = (thread_id + 0.5f) / g_resolution;
+
+    tex_out_rgba[thread_id.xy] = Box_Filter_AntiFlicker(uv, tex, texel_size);
 }
 #endif
 
 #if DOWNSAMPLE_LUMINANCE
-float4 mainPS(Pixel_PosUv input) : SV_TARGET
+[numthreads(thread_group_count, thread_group_count, 1)]
+void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
+    if (thread_id.x >= uint(g_resolution.x) || thread_id.y >= uint(g_resolution.y))
+        return;
+
     // g_texel_size refers to the current render target, which is half the size of the input texture, so we multiply by 2.0
     float2 texel_size = g_texel_size * 2.0f;
-    float4 color = Box_Filter_AntiFlicker(input.uv, tex, texel_size);
-    return saturate_16(luminance(color) * color);
+    const float2 uv = (thread_id + 0.5f) / g_resolution;
+
+    float4 color = Box_Filter_AntiFlicker(uv, tex, texel_size);
+    tex_out_rgba[thread_id.xy] = saturate_16(luminance(color) * color);
 }
 #endif
 
