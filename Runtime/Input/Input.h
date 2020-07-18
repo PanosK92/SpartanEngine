@@ -93,8 +93,9 @@ namespace Spartan
 		bool GetKeyUp(const KeyCode key)	{ return !GetKey(key) && m_keys_previous_frame[static_cast<uint32_t>(key)]; }	// Returns true the first frame the user releases the button identified by KeyCode.
 
 		// Mouse
-		const Math::Vector2& GetMousePosition() const	{ return m_mouse_position; }
-		const Math::Vector2& GetMouseDelta() const		{ return m_mouse_delta; }
+		const Math::Vector2& GetMousePosition() const { return m_mouse_position; }
+		const Math::Vector2& GetMouseDelta()    const { return m_mouse_delta; }
+        const float GetMouseWheelDelta()        const { return m_mouse_wheel_delta; }
 
 		// Gamepad
 		bool GamepadIsConnected() const							{ return m_gamepad_connected; }
@@ -117,7 +118,6 @@ namespace Spartan
 		// Mouse
 		Math::Vector2 m_mouse_position	= Math::Vector2::Zero;
 		Math::Vector2 m_mouse_delta		= Math::Vector2::Zero;
-		int m_mouse_wheel				= 0;
 		float m_mouse_wheel_delta		= 0;
 
 		// Gamepad   

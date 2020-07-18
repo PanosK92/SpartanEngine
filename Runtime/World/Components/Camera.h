@@ -144,8 +144,13 @@ namespace Spartan
         bool m_is_dirty                     = false;
         bool m_fps_control                  = true;
         Math::Vector3 m_movement_speed      = Math::Vector3::Zero;
-        Math::Vector2 mouse_smoothed        = Math::Vector2::Zero;
-        Math::Vector2 mouse_rotation        = Math::Vector2::Zero;     
+        float m_movement_speed_max          = 3.5f;
+        float m_movement_acceleration       = 1000.0f;
+        float m_movement_drag               = 10.0f;
+        Math::Vector2 m_mouse_smoothed      = Math::Vector2::Zero;
+        Math::Vector2 m_mouse_rotation      = Math::Vector2::Zero;
+        float m_mouse_sensitivity           = 0.2f;
+        float m_mouse_smoothing             = 0.5f;
         RHI_Viewport m_last_known_viewport;
         Math::Ray m_ray;
         Math::Frustum m_frustrum;

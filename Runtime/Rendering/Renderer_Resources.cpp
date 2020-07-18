@@ -234,14 +234,14 @@ namespace Spartan
         // Bloom
         {
             // Downsample luminance
-            m_shaders[Shader_BloomDownsampleLuminance_P] = make_shared<RHI_Shader>(m_context);
-            m_shaders[Shader_BloomDownsampleLuminance_P]->AddDefine("DOWNSAMPLE_LUMINANCE");
-            m_shaders[Shader_BloomDownsampleLuminance_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Bloom.hlsl");
+            m_shaders[Shader_BloomDownsampleLuminance_C] = make_shared<RHI_Shader>(m_context);
+            m_shaders[Shader_BloomDownsampleLuminance_C]->AddDefine("DOWNSAMPLE_LUMINANCE");
+            m_shaders[Shader_BloomDownsampleLuminance_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "Bloom.hlsl");
 
             // Downsample anti-flicker
-            m_shaders[Shader_BloomDownsample_P] = make_shared<RHI_Shader>(m_context);
-            m_shaders[Shader_BloomDownsample_P]->AddDefine("DOWNSAMPLE");
-            m_shaders[Shader_BloomDownsample_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Bloom.hlsl");
+            m_shaders[Shader_BloomDownsample_C] = make_shared<RHI_Shader>(m_context);
+            m_shaders[Shader_BloomDownsample_C]->AddDefine("DOWNSAMPLE");
+            m_shaders[Shader_BloomDownsample_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "Bloom.hlsl");
 
             // Upsample blend
             m_shaders[Shader_BloomUpsampleBlend_P] = make_shared<RHI_Shader>(m_context);

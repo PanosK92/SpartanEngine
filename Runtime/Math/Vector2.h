@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===========================
 #include <string>
+#include "MathHelper.h"
 #include "../Core/Spartan_Definitions.h"
 //======================================
 
@@ -132,6 +133,11 @@ namespace Spartan::Math
 			y /= rhs.y;
 		}
 		//===================================================================================
+
+        // Returns the length
+        [[nodiscard]] float Length() const { return Helper::Sqrt(x * x + y * y); }
+        // Returns the squared length
+        [[nodiscard]] float LengthSquared() const { return x * x + y * y; }
 
 		bool operator==(const Vector2& b) const
         {

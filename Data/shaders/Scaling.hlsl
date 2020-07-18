@@ -29,10 +29,10 @@ float4 Box_Filter(float2 uv, Texture2D tex, float2 texel_size)
     float4 offset = texel_size.xyxy * float4(-1.0f, -1.0f, 1.0f, 1.0f);
     
     float4 samples =
-    tex.Sample(sampler_bilinear_clamp, uv + offset.xy) +
-    tex.Sample(sampler_bilinear_clamp, uv + offset.zy) +
-    tex.Sample(sampler_bilinear_clamp, uv + offset.xw) +
-    tex.Sample(sampler_bilinear_clamp, uv + offset.zw);
+    tex.SampleLevel(sampler_bilinear_clamp, uv + offset.xy, 0) +
+    tex.SampleLevel(sampler_bilinear_clamp, uv + offset.zy, 0) +
+    tex.SampleLevel(sampler_bilinear_clamp, uv + offset.xw, 0) +
+    tex.SampleLevel(sampler_bilinear_clamp, uv + offset.zw, 0);
 
     return samples / 4.0f;
 }
@@ -42,10 +42,10 @@ float4 Box_Filter_AntiFlicker(float2 uv, Texture2D tex, float2 texel_size)
 {
     float4 d = texel_size.xyxy * float4(-1.0f, -1.0f, 1.0f, 1.0f);
 
-    float4 s1 = tex.Sample(sampler_bilinear_clamp, uv + d.xy);
-    float4 s2 = tex.Sample(sampler_bilinear_clamp, uv + d.zy);
-    float4 s3 = tex.Sample(sampler_bilinear_clamp, uv + d.xw);
-    float4 s4 = tex.Sample(sampler_bilinear_clamp, uv + d.zw);
+    float4 s1 = tex.SampleLevel(sampler_bilinear_clamp, uv + d.xy, 0.0f);
+    float4 s2 = tex.SampleLevel(sampler_bilinear_clamp, uv + d.zy, 0.0f);
+    float4 s3 = tex.SampleLevel(sampler_bilinear_clamp, uv + d.xw, 0.0f);
+    float4 s4 = tex.SampleLevel(sampler_bilinear_clamp, uv + d.zw, 0.0f);
     
     // Karis's luma weighted average
     float s1w = 1 / (luminance(s1) + 1);

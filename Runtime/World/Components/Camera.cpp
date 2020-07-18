@@ -293,46 +293,45 @@ namespace Spartan
 
     void Camera::FpsControl(float delta_time)
     {
-        static const float mouse_sensitivity        = 0.13f;
-        static const float mouse_smoothing          = 0.2f;
-        static const float movement_speed_max       = 40.0f;
-        static const float movement_acceleration    = 0.8f;
-        static const float movement_drag            = 0.08f;
-
         if (m_input->GetKey(KeyCode::Click_Right))
         {
             // Mouse look
             {
                 // Snap to initial camera rotation (if this is the first time running)
-                if (mouse_rotation == Vector2::Zero)
+                if (m_mouse_rotation == Vector2::Zero)
                 {
-                    const Quaternion rotation = m_transform->GetRotation();
-                    mouse_rotation.x    = rotation.Yaw();
-                    mouse_rotation.y    = rotation.Pitch();
+                    const Quaternion rotation   = m_transform->GetRotation();
+                    m_mouse_rotation.x          = rotation.Yaw();
+                    m_mouse_rotation.y          = rotation.Pitch();
                 }
 
                 // Get mouse delta
-                const Vector2 mouse_delta = m_input->GetMouseDelta() * mouse_sensitivity;
+                const Vector2 mouse_delta = m_input->GetMouseDelta() * m_mouse_sensitivity;
 
                 // Lerp to it
-                mouse_smoothed = Helper::Lerp(mouse_smoothed, mouse_delta, Helper::Clamp(1.0f - mouse_smoothing, 0.0f, 1.0f));
+                m_mouse_smoothed = Helper::Lerp(m_mouse_smoothed, mouse_delta, Helper::Saturate(1.0f - m_mouse_smoothing));
 
                 // Accumulate rotation
-                mouse_rotation += mouse_smoothed;
+                m_mouse_rotation += m_mouse_smoothed;
 
                 // Clamp rotation along the x-axis
-                mouse_rotation.y = Helper::Clamp(mouse_rotation.y, -90.0f, 90.0f);
+                m_mouse_rotation.y = Helper::Clamp(m_mouse_rotation.y, -90.0f, 90.0f);
 
                 // Compute rotation
-                const auto xQuaternion = Quaternion::FromAngleAxis(mouse_rotation.x * Helper::DEG_TO_RAD, Vector3::Up);
-                const auto yQuaternion = Quaternion::FromAngleAxis(mouse_rotation.y * Helper::DEG_TO_RAD, Vector3::Right);
+                const Quaternion xQuaternion    = Quaternion::FromAngleAxis(m_mouse_rotation.x * Helper::DEG_TO_RAD, Vector3::Up);
+                const Quaternion yQuaternion    = Quaternion::FromAngleAxis(m_mouse_rotation.y * Helper::DEG_TO_RAD, Vector3::Right);
+                const Quaternion rotation       = xQuaternion * yQuaternion;
 
                 // Rotate
-                m_transform->SetRotationLocal(xQuaternion * yQuaternion);
+                m_transform->SetRotationLocal(rotation);
             }
 
             // Keyboard movement
             {
+                // Compute max speed
+                m_movement_speed_max += m_input->GetMouseWheelDelta();
+                m_movement_speed_max = Helper::Clamp(m_movement_speed_max, 0.0f, numeric_limits<float>::max());
+
                 // Compute direction
                 Vector3 direction = Vector3::Zero;
                 if (m_input->GetKey(KeyCode::W)) direction += m_transform->GetForward();
@@ -342,20 +341,18 @@ namespace Spartan
                 direction.Normalize();
 
                 // Compute speed
-                m_movement_speed += direction * movement_acceleration;
-                m_movement_speed.x = Helper::Clamp(m_movement_speed.x, -movement_speed_max, movement_speed_max);
-                m_movement_speed.y = Helper::Clamp(m_movement_speed.y, -movement_speed_max, movement_speed_max);
-                m_movement_speed.z = Helper::Clamp(m_movement_speed.z, -movement_speed_max, movement_speed_max);
+                m_movement_speed += m_movement_acceleration * direction * delta_time;
+                m_movement_speed.ClampMagnitude(m_movement_speed_max * delta_time);
             }
         }
 
         // Apply movement drag
-        m_movement_speed *= 1.0f - movement_drag;
+        m_movement_speed *= 1.0f - Helper::Saturate(m_movement_drag * delta_time);
 
         // Translate for as long as there is speed
         if (m_movement_speed != Vector3::Zero)
         {
-            m_transform->Translate(m_movement_speed * delta_time);
+            m_transform->Translate(m_movement_speed);
         }
     }
 

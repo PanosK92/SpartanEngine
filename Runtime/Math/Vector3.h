@@ -121,6 +121,29 @@ namespace Spartan::Math
         // Returns the squared length
         [[nodiscard]] float LengthSquared() const   { return x * x + y * y + z * z; }
 
+        // Returns a copy of /vector/ with its magnitude clamped to /maxLength/.
+        inline void ClampMagnitude(float maxLength)
+        {
+            float sqrmag = LengthSquared();
+
+            if (sqrmag > maxLength * maxLength)
+            {
+                float mag = Helper::Sqrt(sqrmag);
+
+                //these intermediate variables force the intermediate result to be
+                //of float precision. without this, the intermediate result can be of higher
+                //precision, which changes behavior.
+
+                float normalized_x = x / mag;
+                float normalized_y = y / mag;
+                float normalized_z = z / mag;
+
+                x = normalized_x * maxLength;
+                y = normalized_y * maxLength;
+                z = normalized_z * maxLength;
+            }
+        }
+
         // Returns the distance between to vectors
         static inline float Distance(const Vector3& a, const Vector3& b)           { return (b - a).Length(); }
         // Returns the squared distance between to vectors
