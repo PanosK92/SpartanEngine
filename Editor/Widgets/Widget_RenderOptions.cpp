@@ -70,7 +70,7 @@ void Widget_RenderOptions::Tick()
 
         // Display
         {
-            const auto render_option_float = [this](const char* id, const char* text, Renderer_Option_Value render_option, const string& tooltip = "", float step = 0.1f)
+            const auto render_option_float = [this](const char* id, const char* text, Renderer_Option_Value render_option, const string& tooltip = "", float step = 0.1f, float min = 0.0f, float max = numeric_limits<float>::max())
             {
                 float value = m_renderer->GetOptionValue<float>(render_option);
 
@@ -79,7 +79,7 @@ void Widget_RenderOptions::Tick()
                 ImGui::InputFloat(text, &value, step);
                 ImGui::PopItemWidth();
                 ImGui::PopID();
-                value = Helper::Abs(value);
+                value = Helper::Clamp(value, min, max);
 
                 // Only update if changed
                 if (m_renderer->GetOptionValue<float>(render_option) != value)
@@ -227,7 +227,7 @@ void Widget_RenderOptions::Tick()
             // Sharpen
             ImGui::Checkbox("Sharpening (FidelityFX CAS)", &do_sharperning);
             ImGuiEx::Tooltip("Contrast adaptive sharpening. Areas of the image that are already sharp are sharpened less, while areas that lack detail are sharpened more.");
-            ImGui::SameLine(); render_option_float("##sharpen_option", "Strength", Option_Value_Sharpen_Strength);
+            ImGui::SameLine(); render_option_float("##sharpen_option", "Strength", Option_Value_Sharpen_Strength, "", 0.1f, 0.0f, 1.0f);
             ImGui::Separator();
 
             // Dithering

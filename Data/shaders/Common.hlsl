@@ -113,9 +113,8 @@ inline float3 normal_encode(float3 normal)  { return normalize(normal); }
 
 inline float3 get_normal(float2 uv)
 {
-    //float2 pos = clamp(uv * g_resolution, 0.0f, g_resolution);
-    //return normal_decode(tex_normal.Load(int3(pos, 0)).rgb);
-    return tex_normal.SampleLevel(sampler_bilinear_clamp, uv, 0).xyz;
+    float2 pos = clamp(round(uv * g_resolution), 0.0f, g_resolution);
+    return tex_normal.Load(int3(pos, 0)).rgb;
 }
 
 inline float3 get_normal_view_space(float2 uv)
@@ -156,9 +155,8 @@ inline float3 tangent_to_world(float3 position_world, float3 tangent, float3 nor
 ------------------------------------------------------------------------------*/
 inline float get_depth(float2 uv)
 {
-    //float2 pos = clamp(uv * g_resolution, 0.0f, g_resolution);
-    //return tex_depth.Load(int3(pos, 0)).r;
-    return tex_depth.SampleLevel(sampler_bilinear_clamp, uv, 0).r;
+    float2 pos = clamp(round(uv * g_resolution), 0.0f, g_resolution);
+    return tex_depth.Load(int3(pos, 0)).r;
 }
 
 inline float get_linear_depth(float z, float near, float far)
@@ -364,3 +362,4 @@ inline float screen_fade(float2 uv)
 }
 
 #endif // SPARTAN_COMMON
+
