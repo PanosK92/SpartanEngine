@@ -128,7 +128,7 @@ PixelOutputType mainPS(PixelInputType input)
     #endif
     
     #if EMISSION_MAP
-        emission = tex_material_emission.Sample(sampler_anisotropic_wrap, texCoords).r;
+        emission = luminance(tex_material_emission.Sample(sampler_anisotropic_wrap, texCoords).rgb);
     #endif
 
     // Write to G-Buffer
