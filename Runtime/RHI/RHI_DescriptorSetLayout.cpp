@@ -97,7 +97,7 @@ namespace Spartan
         }
     }
 
-    void RHI_DescriptorSetLayout::SetTexture(const uint32_t slot, RHI_Texture* texture)
+    void RHI_DescriptorSetLayout::SetTexture(const uint32_t slot, RHI_Texture* texture, const bool storage)
     {
         if (!texture->IsSampled())
         {
@@ -113,11 +113,13 @@ namespace Spartan
 
         for (RHI_Descriptor& descriptor : m_descriptors)
         {
-            bool type_match = descriptor.type == RHI_Descriptor_SampledTexture || descriptor.type == RHI_Descriptor_StorageTexture;
-            bool slot_match = descriptor.slot == slot + m_rhi_device->GetContextRhi()->shader_shift_texture || descriptor.slot == slot + m_rhi_device->GetContextRhi()->shader_shift_storage_texture;
+            const RHI_Descriptor_Type type_to_match = storage ? RHI_Descriptor_StorageTexture : RHI_Descriptor_SampledTexture;
+            const uint32_t slot_to_match            = slot + (storage ? m_rhi_device->GetContextRhi()->shader_shift_storage_texture : m_rhi_device->GetContextRhi()->shader_shift_texture);
 
-            if (type_match && slot_match)
+            if (descriptor.type == type_to_match && descriptor.slot == slot_to_match)
             {
+                bool fucked = slot == 0 && !texture->IsStorage();
+
                 // Determine if the descriptor set needs to bind
                 m_needs_to_bind = descriptor.resource != texture->Get_Resource_View() ? true : m_needs_to_bind; // affects vkUpdateDescriptorSets
 

@@ -679,10 +679,6 @@ namespace Spartan
         RHI_Texture* tex_volumetric    = m_render_targets[RenderTarget_Light_Volumetric].get();
         RHI_Texture* tex_depth         = m_render_targets[RenderTarget_Gbuffer_Depth].get();
 
-        // Update uber buffer
-        m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_diffuse->GetWidth()), static_cast<float>(tex_diffuse->GetHeight()));
-        UpdateUberBuffer(cmd_list);
-
         // Diffuse and specular need to not be loaded as they willbe used for ssgi. Otherwise having a single transparent object to render (use_stencil == true) will cause the light to be discarded.
         bool indirect_bounce = (m_options & Render_IndirectBounce) != 0;
         Math::Vector4 clear_color = use_stencil ? (indirect_bounce ? state_color_load : state_color_dont_care) : Vector4::Zero;
@@ -725,6 +721,10 @@ namespace Spartan
 
                     if (cmd_list->BeginRenderPass(pipeline_state))
                     {
+                        // Update uber buffer
+                        m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_diffuse->GetWidth()), static_cast<float>(tex_diffuse->GetHeight()));
+                        UpdateUberBuffer(cmd_list);
+
                         cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
                         cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
                         cmd_list->SetTexture(8, m_render_targets[RenderTarget_Gbuffer_Albedo]);
