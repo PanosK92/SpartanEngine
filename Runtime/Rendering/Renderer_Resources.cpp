@@ -243,10 +243,15 @@ namespace Spartan
             m_shaders[Shader_BloomDownsample_C]->AddDefine("DOWNSAMPLE");
             m_shaders[Shader_BloomDownsample_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "Bloom.hlsl");
 
-            // Upsample blend
-            m_shaders[Shader_BloomUpsampleBlend_P] = make_shared<RHI_Shader>(m_context);
-            m_shaders[Shader_BloomUpsampleBlend_P]->AddDefine("UPSAMPLE_BLEND");
-            m_shaders[Shader_BloomUpsampleBlend_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Bloom.hlsl");
+            // Upsample blend (with previous mip)
+            m_shaders[Shader_BloomUpsampleBlendMip_C] = make_shared<RHI_Shader>(m_context);
+            m_shaders[Shader_BloomUpsampleBlendMip_C]->AddDefine("UPSAMPLE_BLEND_MIP");
+            m_shaders[Shader_BloomUpsampleBlendMip_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "Bloom.hlsl");
+
+            // Upsample blend (with frame)
+            m_shaders[Shader_BloomUpsampleBlendFrame_C] = make_shared<RHI_Shader>(m_context);
+            m_shaders[Shader_BloomUpsampleBlendFrame_C]->AddDefine("UPSAMPLE_BLEND_FRAME");
+            m_shaders[Shader_BloomUpsampleBlendFrame_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "Bloom.hlsl");
         }
 
         // Film grain
@@ -314,18 +319,10 @@ namespace Spartan
         m_shaders[Shader_Dithering_P] = make_shared<RHI_Shader>(m_context);
         m_shaders[Shader_Dithering_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Dithering.hlsl");
 
-        // Scaling
-        {
-            // Upsample box
-            m_shaders[Shader_Upsample_P] = make_shared<RHI_Shader>(m_context);
-            m_shaders[Shader_Upsample_P]->AddDefine("UPSAMPLE_BOX");
-            m_shaders[Shader_Upsample_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Scaling.hlsl");
-
-            // Downsample box
-            m_shaders[Shader_Downsample_P] = make_shared<RHI_Shader>(m_context);
-            m_shaders[Shader_Downsample_P]->AddDefine("DOWNSAMPLE_BOX");
-            m_shaders[Shader_Downsample_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Scaling.hlsl");
-        }
+        // Downsample box
+        m_shaders[Shader_Downsample_P] = make_shared<RHI_Shader>(m_context);
+        m_shaders[Shader_Downsample_P]->AddDefine("DOWNSAMPLE_BOX");
+        m_shaders[Shader_Downsample_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Scaling.hlsl");
 
         // HBAO
         m_shaders[Shader_Hbao_P] = make_shared<RHI_Shader>(m_context);
