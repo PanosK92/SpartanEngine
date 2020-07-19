@@ -48,14 +48,6 @@ namespace Spartan
 
     void RHI_DescriptorCache::SetPipelineState(RHI_PipelineState& pipeline_state)
     {
-        // Name this resource, very useful for Vulkan debugging
-        if (m_name.empty())
-        {
-            m_name = (pipeline_state.shader_compute ? pipeline_state.shader_compute->GetName() : "null");
-            m_name += "-" + (pipeline_state.shader_vertex ? pipeline_state.shader_vertex->GetName() : "null");
-            m_name += "-" + (pipeline_state.shader_pixel ? pipeline_state.shader_pixel->GetName() : "null");
-        }
-
        // Compute shader hash (which defines the descriptor set layout)
        size_t hash = 0;
        {
@@ -82,8 +74,13 @@ namespace Spartan
            // Generate descriptors from the reflected shaders
            vector<RHI_Descriptor> descriptors = GenerateDescriptors(pipeline_state);
 
+           // Create a name for the descriptor set layout, very useful for Vulkan debugging
+           string name  = (pipeline_state.shader_compute ? pipeline_state.shader_compute->GetName() : "null");
+           name         += "-" + (pipeline_state.shader_vertex ? pipeline_state.shader_vertex->GetName() : "null");
+           name         += "-" + (pipeline_state.shader_pixel ? pipeline_state.shader_pixel->GetName() : "null");
+
            // Emplace a new descriptor set layout
-           it = m_descriptor_set_layouts.emplace(make_pair(hash, make_shared<RHI_DescriptorSetLayout>(m_rhi_device, descriptors, m_name.c_str()))).first;
+           it = m_descriptor_set_layouts.emplace(make_pair(hash, make_shared<RHI_DescriptorSetLayout>(m_rhi_device, descriptors, name.c_str()))).first;
        }
 
        // Get the descriptor set layout we will be using
@@ -113,7 +110,7 @@ namespace Spartan
         m_descriptor_layout_current->SetSampler(slot, sampler);
     }
 
-    void RHI_DescriptorCache::SetTexture(const uint32_t slot, RHI_Texture* texture)
+    void RHI_DescriptorCache::SetTexture(const uint32_t slot, RHI_Texture* texture, const bool storage)
     {
         if (!m_descriptor_layout_current)
         {
@@ -121,7 +118,7 @@ namespace Spartan
             return;
         }
 
-        m_descriptor_layout_current->SetTexture(slot, texture);
+        m_descriptor_layout_current->SetTexture(slot, texture, storage);
     }
 
     void* RHI_DescriptorCache::GetResource_DescriptorSetLayout() const

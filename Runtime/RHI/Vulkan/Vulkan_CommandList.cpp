@@ -26,6 +26,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Pipeline.h"
 #include "../RHI_VertexBuffer.h"
 #include "../RHI_IndexBuffer.h"
+#include "../RHI_ConstantBuffer.h"
+#include "../RHI_Sampler.h"
 #include "../RHI_DescriptorCache.h"
 #include "../RHI_PipelineCache.h"
 #include "../RHI_DescriptorSetLayout.h"
@@ -260,10 +262,10 @@ namespace Spartan
         {
             m_pipeline_active = false;
 
-            // Update the descriptor cache with the pipeline state and potentially create a new pipeline (if not already there)
+            // Update the descriptor cache with the pipeline state
             m_descriptor_cache->SetPipelineState(pipeline_state);
 
-            // Get a pipeline which matches the pipeline state
+            // Get (or create) a pipeline which matches the pipeline state
             m_pipeline = m_pipeline_cache->GetPipeline(this, pipeline_state, m_descriptor_cache->GetResource_DescriptorSetLayout());
             if (!m_pipeline)
             {
@@ -538,6 +540,12 @@ namespace Spartan
             return false;
         }
 
+        if (!m_descriptor_cache->GetCurrentDescriptorSetLayout())
+        {
+            LOG_WARNING("Descriptor layout not set, try setting constant buffer \"%s\" within a render pass", constant_buffer->GetName().c_str());
+            return false;
+        }
+
         // Set (will only happen if it's not already set)
         return m_descriptor_cache->SetConstantBuffer(slot, constant_buffer);
     }
@@ -550,6 +558,12 @@ namespace Spartan
             return;
         }
 
+        if (!m_descriptor_cache->GetCurrentDescriptorSetLayout())
+        {
+            LOG_WARNING("Descriptor layout not set, try setting sampler \"%s\" within a render pass", sampler->GetName().c_str());
+            return;
+        }
+
         // Set (will only happen if it's not already set)
         m_descriptor_cache->SetSampler(slot, sampler);
     }
@@ -559,6 +573,12 @@ namespace Spartan
         if (m_cmd_state != RHI_Cmd_List_Recording)
         {
             LOG_WARNING("Can't record command");
+            return;
+        }
+
+        if (!m_descriptor_cache->GetCurrentDescriptorSetLayout())
+        {
+            LOG_WARNING("Descriptor layout not set, try setting texture \"%s\" within a render pass", texture->GetName().c_str());
             return;
         }
 
@@ -625,7 +645,7 @@ namespace Spartan
         }
 
         // Set (will only happen if it's not already set)
-        m_descriptor_cache->SetTexture(slot, texture);
+        m_descriptor_cache->SetTexture(slot, texture, storage);
     }
 
     uint32_t RHI_CommandList::Gpu_GetMemory(RHI_Device* rhi_device)
