@@ -159,6 +159,11 @@ inline float get_depth(float2 uv)
     return tex_depth.Load(int3(pos, 0)).r;
 }
 
+inline float get_depth_filtered(float2 uv)
+{
+    return tex_depth.SampleLevel(sampler_bilinear_clamp, uv, 0).r;
+}
+
 inline float get_linear_depth(float z, float near, float far)
 {
     float z_b = z;
@@ -193,9 +198,8 @@ inline float3 get_position(float z, float2 uv)
 
 inline float3 get_position(float2 uv)
 {
-    //float depth = get_depth(uv);
     // Effects like ambient occlusion have visual discontinuities when they are not using filtered depth
-    float depth = tex_depth.SampleLevel(sampler_bilinear_clamp, uv, 0).r;
+    float depth = get_depth_filtered(uv);
     return get_position(depth, uv);
 }
 

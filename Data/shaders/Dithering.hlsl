@@ -51,9 +51,15 @@ inline float3 dither_temporal_fallback_(float2 uv, float fallback, float scale =
     return any(g_taa_jitter_offset) ? dither_temporal(uv, scale) : fallback;
 }
 
-float4 mainPS(Pixel_PosUv input) : SV_TARGET
+[numthreads(thread_group_count, thread_group_count, 1)]
+void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    float4 color = tex.Sample(sampler_point_clamp, input.uv);
-    color.rgb += dither(input.uv);
-    return color;
+    if (thread_id.x >= uint(g_resolution.x) || thread_id.y >= uint(g_resolution.y))
+        return;
+
+    const float2 uv = (thread_id.xy + 0.5f) / g_resolution;
+    float4 color    = tex[thread_id.xy];
+    color.rgb       += dither(uv);
+    
+    tex_out_rgba[thread_id.xy] = color;
 }

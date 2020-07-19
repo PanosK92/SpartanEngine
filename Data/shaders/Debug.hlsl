@@ -23,38 +23,42 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common.hlsl"
 //====================
 
-float4 mainPS(Pixel_PosUv input) : SV_TARGET
+[numthreads(thread_group_count, thread_group_count, 1)]
+void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    float2 uv       = input.uv;
+    if (thread_id.x >= uint(g_resolution.x) || thread_id.y >= uint(g_resolution.y))
+        return;
+    
+    const float2 uv = (thread_id.xy + 0.5f) / g_resolution;
     float4 color    = 0.0f;
     
 #if NORMAL
-    float3 normal = tex.Sample(sampler_point_clamp, uv).rgb;
-    normal = pack(normal);
-    color = float4(normal, 1.0f);
+    float3 normal   = tex[thread_id.xy].rgb;
+    normal          = pack(normal);
+    color           = float4(normal, 1.0f);
 #endif
 
 #if VELOCITY
-    float3 velocity = tex.Sample(sampler_point_clamp, uv).rgb;
+    float3 velocity = tex[thread_id.xy].rgb;
     velocity        = abs(velocity) * 20.0f;
     color           = float4(velocity, 1.0f);
 #endif
 
 #if R_CHANNEL
-    float r = tex.Sample(sampler_point_clamp, uv).r;
-    color = float4(r, r, r, 1.0f);
+    float r = tex[thread_id.xy].r;
+    color   = float4(r, r, r, 1.0f);
 #endif
 
 #if A_CHANNEL
-    float a = tex.Sample(sampler_point_clamp, uv).a;
-    color = float4(a, a, a, 1.0f);
+    float a = tex[thread_id.xy].a;
+    color   = float4(a, a, a, 1.0f);
 #endif
 
 #if RGB_CHANNEL_GAMMA_CORRECT
-    float3 rgb  = tex.Sample(sampler_point_clamp, uv).rgb;
+    float3 rgb  = tex[thread_id.xy].rgb;
     rgb         = gamma(rgb);
     color       = float4(rgb, 1.0f);
 #endif
     
-    return color;
+    tex_out_rgba[thread_id.xy] = color;
 }

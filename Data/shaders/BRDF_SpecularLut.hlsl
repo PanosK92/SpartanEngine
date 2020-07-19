@@ -126,7 +126,12 @@ float2 IntegrateBRDF(float n_dot_v, float roughness)
     return float2(A, B);
 }
 
-float2 mainPS(Pixel_PosUv input) : SV_TARGET
+[numthreads(thread_group_count, thread_group_count, 1)]
+void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    return IntegrateBRDF(input.uv.x, input.uv.y);
+    if (thread_id.x >= uint(g_resolution.x) || thread_id.y >= uint(g_resolution.y))
+        return;
+
+    const float2 uv = (thread_id.xy + 0.5f) / g_resolution;
+    tex_out_rg[thread_id.xy] = IntegrateBRDF(uv.x, uv.y);
 }

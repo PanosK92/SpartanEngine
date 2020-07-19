@@ -205,9 +205,8 @@ namespace Spartan
         m_shaders[Shader_Depth_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Depth.hlsl");
 
         // BRDF - Specular Lut
-        m_shaders[Shader_BrdfSpecularLut] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_BrdfSpecularLut]->AddDefine("BRDF_ENV_SPECULAR_LUT");
-        m_shaders[Shader_BrdfSpecularLut]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "BRDF_SpecularLut.hlsl");
+        m_shaders[Shader_BrdfSpecularLut_C] = make_shared<RHI_Shader>(m_context);
+        m_shaders[Shader_BrdfSpecularLut_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "BRDF_SpecularLut.hlsl");
 
         // Copy
         m_shaders[Shader_Copy_C] = make_shared<RHI_Shader>(m_context);
@@ -316,13 +315,8 @@ namespace Spartan
         m_shaders[Shader_MotionBlur_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "MotionBlur.hlsl");
 
         // Dithering
-        m_shaders[Shader_Dithering_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_Dithering_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Dithering.hlsl");
-
-        // Downsample box
-        m_shaders[Shader_Downsample_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_Downsample_P]->AddDefine("DOWNSAMPLE_BOX");
-        m_shaders[Shader_Downsample_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Scaling.hlsl");
+        m_shaders[Shader_Dithering_C] = make_shared<RHI_Shader>(m_context);
+        m_shaders[Shader_Dithering_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "Dithering.hlsl");
 
         // HBAO
         m_shaders[Shader_Hbao_P] = make_shared<RHI_Shader>(m_context);
@@ -375,29 +369,29 @@ namespace Spartan
         // Debug
         {
             // Normal
-            m_shaders[Shader_DebugNormal_P] = make_shared<RHI_Shader>(m_context);
-            m_shaders[Shader_DebugNormal_P]->AddDefine("NORMAL");
-            m_shaders[Shader_DebugNormal_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Debug.hlsl");
+            m_shaders[Shader_DebugNormal_C] = make_shared<RHI_Shader>(m_context);
+            m_shaders[Shader_DebugNormal_C]->AddDefine("NORMAL");
+            m_shaders[Shader_DebugNormal_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "Debug.hlsl");
 
             // Velocity
-            m_shaders[Shader_DebugVelocity_P] = make_shared<RHI_Shader>(m_context);
-            m_shaders[Shader_DebugVelocity_P]->AddDefine("VELOCITY");
-            m_shaders[Shader_DebugVelocity_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Debug.hlsl");
+            m_shaders[Shader_DebugVelocity_C] = make_shared<RHI_Shader>(m_context);
+            m_shaders[Shader_DebugVelocity_C]->AddDefine("VELOCITY");
+            m_shaders[Shader_DebugVelocity_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "Debug.hlsl");
 
             // R channel
-            m_shaders[Shader_DebugChannelR_P] = make_shared<RHI_Shader>(m_context);
-            m_shaders[Shader_DebugChannelR_P]->AddDefine("R_CHANNEL");
-            m_shaders[Shader_DebugChannelR_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Debug.hlsl");
+            m_shaders[Shader_DebugChannelR_C] = make_shared<RHI_Shader>(m_context);
+            m_shaders[Shader_DebugChannelR_C]->AddDefine("R_CHANNEL");
+            m_shaders[Shader_DebugChannelR_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "Debug.hlsl");
 
             // A channel
-            m_shaders[Shader_DebugChannelA_P] = make_shared<RHI_Shader>(m_context);
-            m_shaders[Shader_DebugChannelA_P]->AddDefine("A_CHANNEL");
-            m_shaders[Shader_DebugChannelA_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Debug.hlsl");
+            m_shaders[Shader_DebugChannelA_C] = make_shared<RHI_Shader>(m_context);
+            m_shaders[Shader_DebugChannelA_C]->AddDefine("A_CHANNEL");
+            m_shaders[Shader_DebugChannelA_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "Debug.hlsl");
 
             // A channel with gamma correction
-            m_shaders[Shader_DebugChannelRgbGammaCorrect_P] = make_shared<RHI_Shader>(m_context);
-            m_shaders[Shader_DebugChannelRgbGammaCorrect_P]->AddDefine("RGB_CHANNEL_GAMMA_CORRECT");
-            m_shaders[Shader_DebugChannelRgbGammaCorrect_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Debug.hlsl");
+            m_shaders[Shader_DebugChannelRgbGammaCorrect_C] = make_shared<RHI_Shader>(m_context);
+            m_shaders[Shader_DebugChannelRgbGammaCorrect_C]->AddDefine("RGB_CHANNEL_GAMMA_CORRECT");
+            m_shaders[Shader_DebugChannelRgbGammaCorrect_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "Debug.hlsl");
         }
     }
 

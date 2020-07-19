@@ -92,21 +92,3 @@ float4 Downsample_Box13Tap(float2 uv, Texture2D tex, float2 texel_size)
 
     return o;
 }
-
-#if UPSAMPLE_BOX
-float4 mainPS(Pixel_PosUv input) : SV_TARGET
-{
-    // g_texel_size refers to the current render target, which is twice the size of the input texture, so we multiply by 0.5
-    float2 texel_size = g_texel_size * 0.5f;
-    return Box_Filter(input.uv, tex, texel_size);
-}
-#endif
-
-#if DOWNSAMPLE_BOX
-float4 mainPS(Pixel_PosUv input) : SV_TARGET
-{
-    // g_texel_size refers to the current render target, which is half the size of the input texture, so we multiply by 2
-    float2 texel_size = g_texel_size * 2.0f;
-    return Box_Filter(input.uv, tex, texel_size);
-}
-#endif
