@@ -130,11 +130,11 @@ namespace Spartan
 		Shader_ChromaticAberration_C,	
 		Shader_BloomDownsampleLuminance_C,
         Shader_BloomDownsample_C,
-		Shader_BloomUpsampleBlend_P,
+        Shader_BloomUpsampleBlendFrame_C,
+		Shader_BloomUpsampleBlendMip_C,
 		Shader_ToneMapping_C,
 		Shader_GammaCorrection_C,
 		Shader_Dithering_P,
-		Shader_Upsample_P,
         Shader_Downsample_P,
 		Shader_DebugNormal_P,
 		Shader_DebugVelocity_P,
@@ -295,8 +295,6 @@ namespace Spartan
         void Pass_DepthOfField(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
 		void Pass_Dithering(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
 		void Pass_Bloom(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
-        void Pass_Upsample(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
-        void Pass_Downsample(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, const Renderer_Shader_Type pixel_shader);
 		void Pass_BlurBox(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out, const float sigma, const float pixel_stride, const bool use_stencil);
 		void Pass_BlurGaussian(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out, const float sigma, const float pixel_stride = 1.0f);
 		void Pass_BlurBilateralGaussian(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out, const float sigma, const float pixel_stride = 1.0f, const bool use_stencil = false);
