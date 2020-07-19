@@ -193,7 +193,9 @@ inline float3 get_position(float z, float2 uv)
 
 inline float3 get_position(float2 uv)
 {
-    float depth = get_depth(uv);
+    //float depth = get_depth(uv);
+    // Effects like ambient occlusion have visual discontinuities when they are not using filtered depth
+    float depth = tex_depth.SampleLevel(sampler_bilinear_clamp, uv, 0).r;
     return get_position(depth, uv);
 }
 
