@@ -69,16 +69,17 @@ Platform | API | Status | Quality | Binaries | :+1:
 # Roadmap
 
 ##### v0.32-35 (WIP)
-Feature     					 | Completion | Notes 
-:-          					 | :-         | :-
-Continuous Vulkan optimisation 	 | -		  | Outperform D3D11
-Screen space global illumination | 100%		  | One bounce of indirect diffuse and specular light
-Depth-of-field					 | 100%       | Controlled by Camera aperture
-DirectX 12						 | -		  | Low priority
-Eye Adaptation 					 | -          | Low priority
-Subsurface Scattering 			 | -          | Low priority
-Ray traced shadows				 | -          | -
-Ray traced reflections			 | -          | -
+Feature     					 	| Completion 	| Notes 
+:-          					 	| :-         	| :-
+Continuous Vulkan optimisation 	 	| -		  		| Outperform D3D11
+Screen space global illumination 	| 100%		  	| One bounce of indirect diffuse and specular light
+Depth-of-field					 	| 100%       	| Controlled by Camera aperture
+C# scripting (Replace AngelScript) 	| 50%			| Using Mono (no engine API exposed yet)
+DirectX 12						 	| -				| Low priority
+Eye Adaptation 					 	| -          	| Low priority
+Subsurface Scattering 			 	| -          	| Low priority
+Ray traced shadows				 	| -          	| -
+Ray traced reflections			 	| -          	| -
 
 ###### Future
 - Skeletal Animation.

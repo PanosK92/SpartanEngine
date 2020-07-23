@@ -110,14 +110,14 @@ project (RUNTIME_NAME)
 	includedirs { "../ThirdParty/DirectXShaderCompiler" }
 	includedirs { "../ThirdParty/SPIRV-Cross_2020-01-16" }
 	includedirs { "../ThirdParty/Vulkan_1.2.141.0" }
-	includedirs { "../ThirdParty/AngelScript_2.33.0" }
 	includedirs { "../ThirdParty/Assimp_5.0.0" }
 	includedirs { "../ThirdParty/Bullet_2.89" }
 	includedirs { "../ThirdParty/FMOD_1.10.10" }
 	includedirs { "../ThirdParty/FreeImage_3.18.0" }
 	includedirs { "../ThirdParty/FreeType_2.10.1" }
 	includedirs { "../ThirdParty/pugixml_1.10" }
-	
+	includedirs { "../ThirdParty/Mono_6.12.0.86" }
+
 	-- Libraries
 	libdirs (LIBRARY_DIR)
 
@@ -127,7 +127,6 @@ project (RUNTIME_NAME)
 		debugdir (TARGET_DIR_DEBUG)
 		debugformat (DEBUG_FORMAT)
 		links { "dxcompiler", "spirv-cross-core_debug", "spirv-cross-hlsl_debug", "spirv-cross-glsl_debug" }
-		links { "angelscript_debug" }
 		links { "assimp_debug" }
 		links { "fmodL64_vc" }
 		links { "FreeImageLib_debug" }
@@ -135,13 +134,13 @@ project (RUNTIME_NAME)
 		links { "BulletCollision_debug", "BulletDynamics_debug", "BulletSoftBody_debug", "LinearMath_debug" }
 		links { "pugixml_debug" }
 		links { "IrrXML_debug" }
+		links { "libmono-static-sgen_debug.lib" }
 			
 	--	"Release"
 	filter "configurations:Release"
 		targetdir (TARGET_DIR_RELEASE)
 		debugdir (TARGET_DIR_RELEASE)
 		links { "dxcompiler", "spirv-cross-core", "spirv-cross-hlsl", "spirv-cross-glsl" }
-		links { "angelscript" }
 		links { "assimp" }
 		links { "fmod64_vc" }
 		links { "FreeImageLib" }
@@ -149,6 +148,7 @@ project (RUNTIME_NAME)
 		links { "BulletCollision", "BulletDynamics", "BulletSoftBody", "LinearMath" }
 		links { "pugixml" }
 		links { "IrrXML" }
+		links { "libmono-static-sgen.lib" }
 
 -- Editor --------------------------------------------------------------------------------------------------
 project (EDITOR_NAME)

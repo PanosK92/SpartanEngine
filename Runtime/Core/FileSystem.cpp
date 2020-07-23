@@ -343,6 +343,11 @@ namespace Spartan
 		return GetDirectoryFromFilePath(path) + GetFileNameNoExtensionFromFilePath(path);
 	}
 
+	string FileSystem::ReplaceExtension(const string& path, const string& extension)
+	{
+        return GetDirectoryFromFilePath(path) + GetFileNameNoExtensionFromFilePath(path) + extension;
+	}
+
 	string FileSystem::GetExtensionFromFilePath(const string& path)
 	{
         string extension;
@@ -400,9 +405,6 @@ namespace Spartan
 
             if (!path.empty())
             {
-                // Replace double backward slashes with one backward slash
-                std::replace(path.begin(), path.end(), '\\', '/');
-
                 // finally, save
                 directories.emplace_back(path);
             }

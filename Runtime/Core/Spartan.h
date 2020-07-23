@@ -62,8 +62,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= THIRD-PARTY LIBS ===========================================================
 #pragma warning(push, 0) // Hide warnings which don't belong to us
-// Angelscript
-#include <angelscript.h>
 // Assimp
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
@@ -94,6 +92,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "freetype/ftstroke.h"
 //pugixml
 #include "pugixml.hpp"
+// Mono
+#include <mono/jit/jit.h>
+#include <mono/metadata/assembly.h>
+#include <mono/metadata/loader.h>
+#include <mono/metadata/threads.h>
+#include <mono/metadata/mono-gc.h>
+#include <mono/metadata/mono-config.h>
+#include <mono/metadata/mono-debug.h>
+#include <mono/metadata/environment.h>
+#include <mono/metadata/debug-helpers.h>
 #pragma warning(pop)
 //==============================================================================
 

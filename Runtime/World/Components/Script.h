@@ -21,13 +21,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==============================
+//= INCLUDES ==========
 #include "IComponent.h"
-#include "../../Scripting/ScriptInstance.h"
-//=========================================
+//=====================
 
 namespace Spartan
 {
+    // FORWARD DECLERATIONS =
+    class Scripting;
+    struct ScriptInstance;
+    //=======================
+
 	class SPARTAN_CLASS Script : public IComponent
 	{
 	public:
@@ -41,12 +45,15 @@ namespace Spartan
 		void Deserialize(FileStream* stream) override;
 		//============================================
 
-		bool SetScript(const std::string& filePath);
+		bool SetScript(const std::string& file_path);
 		std::string GetScriptPath() const;
-		std::string GetName();
+		std::string GetName() const;
 
 	private:
-		std::shared_ptr<ScriptInstance> m_scriptInstance;
 		std::string m_name;
+        std::string m_file_path;
+        Scripting* m_scripting              = nullptr;
+        ScriptInstance* m_script_instance   = nullptr;
+        uint32_t m_script_instance_id       = 0;
 	};
 }

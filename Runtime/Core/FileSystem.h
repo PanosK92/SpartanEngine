@@ -56,6 +56,7 @@ namespace Spartan
 		static std::string GetFileNameNoExtensionFromFilePath(const std::string& path);
 		static std::string GetDirectoryFromFilePath(const std::string& path);
 		static std::string GetFilePathWithoutExtension(const std::string& path);
+        static std::string ReplaceExtension(const std::string& path, const std::string& extension);
 		static std::string GetExtensionFromFilePath(const std::string& path);
         static std::string NativizeFilePath(const std::string& path);
 		static std::string GetRelativePath(const std::string& path);
@@ -207,7 +208,7 @@ namespace Spartan
 
     static const std::vector<std::string> supported_formats_script
     {
-        ".as"
+        ".cs"
     };
 
     static const std::vector<std::string> supported_formats_font

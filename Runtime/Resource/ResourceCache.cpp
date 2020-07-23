@@ -44,7 +44,7 @@ namespace Spartan
 {
 	ResourceCache::ResourceCache(Context* context) : ISubsystem(context)
 	{
-        const string data_dir = "Data/";
+        const string data_dir = "Data\\";
 
 		// Add engine standard resource directories
 		AddDataDirectory(Asset_Cubemaps,		data_dir + "environment");

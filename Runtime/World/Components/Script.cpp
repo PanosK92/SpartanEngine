@@ -19,12 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===================
+//= INCLUDES =========================
 #include "Spartan.h"
-#include "Script.h"			
-#include "../../IO/FileStream.h"
+#include "Script.h"
 #include "../Entity.h"
-//==============================
+#include "../../IO/FileStream.h"
+#include "../../Scripting/Scripting.h"
+//====================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -34,70 +35,65 @@ namespace Spartan
 {
 	Script::Script(Context* context, Entity* entity, uint32_t id /*= 0*/) : IComponent(context, entity, id)
 	{
-
+        m_scripting = context->GetSubsystem<Scripting>();
 	}
 
-    //= ICOMPONENT ==================================================================
 	void Script::OnStart()
 	{
-		if (!m_scriptInstance)
-			return;
-
-		if (!m_scriptInstance->IsInstantiated())
-			return;
-
-		m_scriptInstance->ExecuteStart();
+        if (m_script_instance)
+        {
+            m_scripting->CallScriptFunction_Start(m_script_instance);
+        }
 	}
 
 	void Script::OnTick(float delta_time)
 	{
-		if (!m_scriptInstance)
-			return;
+        // Don't run any scripts if we are not in game mode
+        if (!m_context->m_engine->EngineMode_IsSet(Engine_Game))
+            return;
 
-		if (!m_scriptInstance->IsInstantiated())
-			return;
-
-		m_scriptInstance->ExecuteUpdate(delta_time);
+        if (m_script_instance)
+        {
+            m_scripting->CallScriptFunction_Update(m_script_instance, delta_time);
+        }
 	}
 
 	void Script::Serialize(FileStream* stream)
 	{
-		stream->Write(m_scriptInstance ? m_scriptInstance->GetScriptPath() : "");
+        stream->Write(m_file_path);
 	}
 
 	void Script::Deserialize(FileStream* stream)
 	{
-		string script_path;
-		stream->Read(&script_path);
-
-		if (!script_path.empty())
-		{
-			SetScript(script_path);
-		}
+        stream->Read(&m_file_path);
+        SetScript(m_file_path);
 	}
-	//====================================================================================
 
-	bool Script::SetScript(const string& filePath)
+	bool Script::SetScript(const string& file_path)
 	{
-		// Instantiate the script
-		m_scriptInstance = make_shared<ScriptInstance>();
-		m_scriptInstance->Instantiate(filePath, GetEntity()->GetPtrShared(), GetContext()->GetSubsystem<Scripting>());
+        // Load script
+        uint32_t id = m_scripting->Load(file_path);
+        if (id == SCRIPT_NOT_LOADED)
+        {
+            LOG_ERROR("Failed to load script");
+            return false;
+        }
 
-		// Check if the script has been instantiated successfully.
-		if (!m_scriptInstance->IsInstantiated())
-			return false;
+        // Initialise
+        m_script_instance   = m_scripting->GetScript(id);
+        m_file_path         = file_path;
+        m_name              = FileSystem::GetFileNameNoExtensionFromFilePath(file_path);
 
-		m_scriptInstance->ExecuteStart();
 		return true;
 	}
 
 	string Script::GetScriptPath() const
     {
-		return m_scriptInstance ? m_scriptInstance->GetScriptPath() : "";
+        return m_file_path;
 	}
 
-	string Script::GetName()
+	string Script::GetName() const
 	{
-		return m_scriptInstance ? FileSystem::GetFileNameNoExtensionFromFilePath(GetScriptPath()) : "";
+        return m_name;
 	}
 }

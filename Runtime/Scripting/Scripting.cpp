@@ -19,177 +19,286 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =================================
+//= INCLUDES =========================
 #include "Spartan.h"
 #include "Scripting.h"
-#include <scriptstdstring/scriptstdstring.cpp>
-#include "ScriptInterface.h"
-//===========================================
+#include "../Resource/ResourceCache.h"
+//====================================
+
+//= LIBRARIES =====================
+#pragma comment(lib, "version.lib")
+#pragma comment(lib, "Bcrypt.lib")
+#pragma comment(lib, "Winmm.lib")
+//=================================
+
+//= NAMESPACES =====
+using namespace std;
+//==================
 
 namespace Spartan
 {
+    static ResourceCache* resource_cache = nullptr;
+
+    static std::string execute_command(const char* cmd)
+    {
+        std::array<char, 1024> buffer;
+        std::string result;
+        std::unique_ptr<FILE, decltype(&_pclose)> pipe(_popen(cmd, "r"), _pclose);
+        if (!pipe)
+        {
+            LOG_ERROR("popen() failed");
+            return result;
+        }
+
+        while (fgets(buffer.data(), static_cast<int>(buffer.size()), pipe.get()) != nullptr)
+        {
+            result += buffer.data();
+        }
+
+        return result;
+    }
+
+    static bool compile_script(const std::string& script, const std::string& dll_reference = "")
+    {
+        // Get paths
+        const string dir_scripts    = resource_cache->GetDataDirectory(Asset_Scripts) + "\\";
+        const string dir_compiler   = dir_scripts + "mono\\roslyn\\csc.exe";
+
+        // Compile script
+        string command = dir_compiler + " -target:library -nologo";
+        if (!dll_reference.empty())
+        {
+            command += " -reference:" + dll_reference;
+        }
+        command += " -out:" + FileSystem::ReplaceExtension(script, ".dll") + " " + string(script);
+        string result = execute_command(command.c_str());
+
+        // Log compilation output
+        std::istringstream f(result);
+        std::string line;
+        bool compilation_result = true;
+        while (std::getline(f, line))
+        {
+            if (FileSystem::IsEmptyOrWhitespace(line))
+                continue;
+
+            const auto is_error = line.find("error") != string::npos;
+            if (is_error)
+            {
+                LOG_ERROR(line);
+                compilation_result = false;
+            }
+            else
+            {
+                LOG_INFO(line);
+            }
+        }
+
+        if (compilation_result)
+        {
+            LOG_INFO("Successfully compiled C# script \"%s\"", script.c_str());
+            return true;
+        }
+
+        return false;
+    }
+
+    static MonoAssembly* load_assembly(MonoDomain* domain, const std::string& script)
+    {
+        // Ensure that the directory of the script contains the callback dll (otherwise mono will crash)
+        const string callbacks_cs_source    = resource_cache->GetDataDirectory(Asset_Scripts) + "\\" + "Spartan.dll";
+        const string callbacks_cs_dest      = FileSystem::GetDirectoryFromFilePath(script) + "Spartan.dll";
+        if (!FileSystem::Exists(callbacks_cs_dest))
+        {
+            FileSystem::CopyFileFromTo(callbacks_cs_source, callbacks_cs_dest);
+        }
+
+        // Compile script
+        if (!compile_script(script, callbacks_cs_dest))
+        {
+            LOG_ERROR("Failed to compile script");
+            return nullptr;
+        }
+
+        // Open assembly
+        string dll_path = FileSystem::ReplaceExtension(script, ".dll");
+        return mono_domain_assembly_open(domain, dll_path.c_str());
+    }
+
+    static MonoMethod* get_method(MonoImage* image, const std::string& method)
+    {
+        // Get method description
+        MonoMethodDesc* mono_method_desc = mono_method_desc_new(method.c_str(), NULL);
+        if (!mono_method_desc)
+        {
+            LOG_ERROR("Failed to get method description %s", method.c_str());
+            return nullptr;
+        }
+
+        // Search the method in the image
+        MonoMethod* mono_method = mono_method_desc_search_in_image(mono_method_desc, image);
+        if (!mono_method)
+        {
+            LOG_ERROR("Failed to get method %s", method.c_str());
+            return nullptr;
+        }
+
+        return mono_method;
+    }
+
 	Scripting::Scripting(Context* context) : ISubsystem(context)
 	{
+        // Get file paths
+        resource_cache              = context->GetSubsystem<ResourceCache>();
+        const string dir_scripts    = resource_cache->GetDataDirectory(Asset_Scripts) + "\\";
+        const string dir_mono_lib   = dir_scripts + string("mono\\lib");
+        const string dir_mono_etc   = dir_scripts + string("mono\\etc");
+
+        // Point mono to the libs and configuration files
+        mono_set_dirs(dir_mono_lib.c_str(), dir_mono_etc.c_str());
+
+        // Initialise a domain
+        m_domain = mono_jit_init_version("Spartan", "v4.0.30319");
+        if (!m_domain)
+        {
+            LOG_ERROR("mono_jit_init failed");
+            return;
+        }
+
+        if (!mono_domain_set(m_domain, false))
+        {
+            LOG_ERROR("mono_domain_set failed");
+            return;
+        }
+
+        mono_thread_set_main(mono_thread_current());
+
 		// Subscribe to events
 		SUBSCRIBE_TO_EVENT(EventType::WorldUnload, EVENT_HANDLER(Clear));
 	}
 
 	Scripting::~Scripting()
 	{
-		Clear();
-
-		if (m_scriptEngine)
-		{
-			m_scriptEngine->ShutDownAndRelease();
-			m_scriptEngine = nullptr;
-		}
+        mono_jit_cleanup(m_domain);
 	}
+
+    static void Test(float delta_time)
+    {
+        LOG_ERROR("%f", delta_time);
+    }
 
     bool Scripting::Initialize()
     {
-        m_scriptEngine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
-        if (!m_scriptEngine)
+        // Compile callbacks
+        ResourceCache* resource_cache = m_context->GetSubsystem<ResourceCache>();
+        const string callbacks_cs = resource_cache->GetDataDirectory(Asset_Scripts) + "/" + "Spartan.cs";
+        if (!compile_script(callbacks_cs))
         {
-            LOG_ERROR("Failed to create AngelScript engine");
+            LOG_ERROR("Failed to compile Spartan callbacks");
             return false;
         }
 
-        // Register the string type
-        RegisterStdString(m_scriptEngine);
-
-        // Register engine script interface
-        auto scriptInterface = make_shared<ScriptInterface>();
-        scriptInterface->Register(m_scriptEngine, m_context);
-
-        // Set the message callback to print the human readable messages that the engine gives in case of errors
-        m_scriptEngine->SetMessageCallback(asMETHOD(Scripting, message_callback), this, asCALL_THISCALL);
-
-        m_scriptEngine->SetEngineProperty(asEP_BUILD_WITHOUT_LINE_CUES, true);
+        // Register callbacks
+        mono_add_internal_call("Spartan.Debug::Log", reinterpret_cast<const void*>(Test));
 
         // Get version
-        const string major = to_string(ANGELSCRIPT_VERSION).erase(1, 4);
-        const string minor = to_string(ANGELSCRIPT_VERSION).erase(0, 1).erase(2, 2);
-        const string rev = to_string(ANGELSCRIPT_VERSION).erase(0, 3);
-        m_context->GetSubsystem<Settings>()->RegisterThirdPartyLib("AngelScript", major + "." + minor + "." + rev, "https://www.angelcode.com/angelscript/downloads.html");
+        //const string major = to_string(ANGELSCRIPT_VERSION).erase(1, 4);
+        //const string minor = to_string(ANGELSCRIPT_VERSION).erase(0, 1).erase(2, 2);
+        //const string rev = to_string(ANGELSCRIPT_VERSION).erase(0, 3);
+        //m_context->GetSubsystem<Settings>()->RegisterThirdPartyLib("AngelScript", major + "." + minor + "." + rev, "https://www.angelcode.com/angelscript/downloads.html");
 
         return true;
     }
 
+    uint32_t Scripting::Load(const std::string& file_path)
+    {
+        ScriptInstance script;
+
+        string class_name = FileSystem::GetFileNameNoExtensionFromFilePath(file_path);
+
+        script.assembly = load_assembly(m_domain, file_path);
+        if (!script.assembly)
+        {
+            LOG_ERROR("Failed to load assembly");
+            return SCRIPT_NOT_LOADED;
+        }
+
+        // Get image from script assembly
+        script.image = mono_assembly_get_image(script.assembly);
+        if (!script.image)
+        {
+            LOG_ERROR("Failed to get image");
+            return SCRIPT_NOT_LOADED;
+        }
+
+        // Get the class
+        script.klass = mono_class_from_name(script.image, "", class_name.c_str());
+        if (!script.klass)
+        {
+            LOG_ERROR("Failed to get class");
+            return SCRIPT_NOT_LOADED;
+        }
+
+        // Create a instance of the class
+        script.object = mono_object_new(m_domain, script.klass);
+        if (!script.object)
+        {
+            LOG_ERROR("Failed to create object");
+            return SCRIPT_NOT_LOADED;
+        }
+
+        // Call its default constructor
+        mono_runtime_object_init(script.object);
+
+        // Get methods
+        script.method_start     = get_method(script.image, class_name + ":Start()");
+        script.method_update    = get_method(script.image, class_name + ":Update(single)");
+
+        // Add script
+        m_scripts[++m_script_id] = script;
+
+        // Return script id
+        return m_script_id;
+    }
+
+    ScriptInstance* Scripting::GetScript(const uint32_t id)
+    {
+        if (m_scripts.find(id) == m_scripts.end())
+            nullptr;
+
+        return &m_scripts[id];
+    }
+
+    bool Scripting::CallScriptFunction_Start(const ScriptInstance* script_instance)
+    {
+        if (!script_instance->method_start || !script_instance->object)
+        {
+            LOG_ERROR("Invalid script instance");
+            return false;
+        }
+
+        mono_runtime_invoke(script_instance->method_start, script_instance->object, nullptr, nullptr);
+        return true;
+    }
+
+    bool Scripting::CallScriptFunction_Update(const ScriptInstance* script_instance, float delta_time)
+    {
+        if (!script_instance->method_update || !script_instance->object)
+        {
+            LOG_ERROR("Invalid script instance");
+            return false;
+        }
+
+        // Set method argument
+        void* args[1];
+        args[0] = &delta_time;
+
+        mono_runtime_invoke(script_instance->method_update, script_instance->object, args, nullptr);
+        return true;
+    }
+
     void Scripting::Clear()
-	{
-		for (auto& context : m_contexts)
-		{
-			context->Release();
-		}
-
-		m_contexts.clear();
-		m_contexts.shrink_to_fit();
-	}
-
-	asIScriptEngine* Scripting::GetAsIScriptEngine() const
     {
-		return m_scriptEngine;
-	}
-
-	/*------------------------------------------------------------------------------
-									[CONTEXT]
-	------------------------------------------------------------------------------*/
-	// Contexts is what you use to call AngelScript functions and methods.
-	// They say you must pool them to avoid overhead. So I do as they say.
-	asIScriptContext* Scripting::RequestContext()
-	{
-		asIScriptContext* context = nullptr;
-		if (m_contexts.size())
-		{
-			context = *m_contexts.rbegin();
-			m_contexts.pop_back();
-		}
-		else
-		{
-			context = m_scriptEngine->CreateContext();
-		}
-
-		return context;
-	}
-
-	// A context should be returned after calling an AngelScript function, 
-	// it will be inserted back in the pool for re-use
-	void Scripting::ReturnContext(asIScriptContext* context)
-	{
-		if (!context)
-		{
-			LOG_ERROR("Scripting::ReturnContext: Context is null");
-			return;
-		}
-		m_contexts.push_back(context);
-		context->Unprepare();
-	}
-
-	/*------------------------------------------------------------------------------
-								[CALLS]
-	------------------------------------------------------------------------------*/
-	bool Scripting::ExecuteCall(asIScriptFunction* scriptFunc, asIScriptObject* obj, float delta_time /*=-1.0f*/)
-	{
-		asIScriptContext* ctx = RequestContext();
-
-		ctx->Prepare(scriptFunc); // prepare the context for calling the method
-
-        // Instance data and function parameters
-		ctx->SetObject(obj); // set the object pointer
-        if (delta_time != -1.0f) ctx->SetArgFloat(0, delta_time);
-
-        const int r = ctx->Execute(); // execute the call
-
-		// output any exceptions
-		if (r == asEXECUTION_EXCEPTION)
-		{
-			LogExceptionInfo(ctx);
-			ReturnContext(ctx);
-			return false;
-		}
-		ReturnContext(ctx);
-
-		return true;
-	}
-
-	/*------------------------------------------------------------------------------
-										[MODULE]
-	------------------------------------------------------------------------------*/
-	void Scripting::DiscardModule(const string& moduleName) const
-    {
-		m_scriptEngine->DiscardModule(moduleName.c_str());
-	}
-
-	/*------------------------------------------------------------------------------
-									[PRIVATE]
-	------------------------------------------------------------------------------*/
-	// This is used for script exception messages
-	void Scripting::LogExceptionInfo(asIScriptContext* ctx) const
-    {
-        const string exceptionDescription = ctx->GetExceptionString(); // get the exception that occurred
-		const asIScriptFunction* function = ctx->GetExceptionFunction(); // get the function where the exception occurred
-
-        const string functionDecleration = function->GetDeclaration();
-		string moduleName = function->GetModuleName();
-        const string scriptPath = function->GetScriptSectionName();
-        const string scriptFile = FileSystem::GetFileNameFromFilePath(scriptPath);
-        const string exceptionLine = to_string(ctx->GetExceptionLineNumber());
-
-		LOG_ERROR("%s, at line %s, in function %s, in script %s", exceptionDescription.c_str(), exceptionLine.c_str(), functionDecleration.c_str(), scriptFile.c_str());
-	}
-
-	// This is used for AngelScript error messages
-	void Scripting::message_callback(const asSMessageInfo& msg) const
-    {
-        const string filename = FileSystem::GetFileNameFromFilePath(msg.section);
-        const string message = msg.message;
-
-		string final_message;
-		if (filename != "")
-			final_message = filename + " " + message;
-		else
-			final_message = message;
-
-		LOG_ERROR(final_message);
-	}
+        m_scripts.clear();
+    }
 }
