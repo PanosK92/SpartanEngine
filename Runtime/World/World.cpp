@@ -48,8 +48,8 @@ namespace Spartan
 	{
 		// Subscribe to events
 		SUBSCRIBE_TO_EVENT(EventType::WorldResolve, [this](Variant) { m_is_dirty = true; });
-		SUBSCRIBE_TO_EVENT(EventType::WorldStop,	        [this](Variant)	{ m_state = WorldState::Idle; });
-		SUBSCRIBE_TO_EVENT(EventType::WorldStart,	        [this](Variant)	{ m_state = WorldState::Ticking; });
+		SUBSCRIBE_TO_EVENT(EventType::WorldStop,    [this](Variant)	{ m_state = WorldState::Idle; });
+		SUBSCRIBE_TO_EVENT(EventType::WorldStart,   [this](Variant)	{ m_state = WorldState::Ticking; });
 	}
 
 	World::~World()
