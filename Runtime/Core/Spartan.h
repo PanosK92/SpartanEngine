@@ -102,6 +102,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <mono/metadata/mono-debug.h>
 #include <mono/metadata/environment.h>
 #include <mono/metadata/debug-helpers.h>
+#include <mono/metadata/exception.h>
+#include <mono/metadata/appdomain.h>
+#include <mono/utils/mono-publib.h>
 #pragma warning(pop)
 //==============================================================================
 

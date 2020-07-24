@@ -266,6 +266,11 @@ void FileDialog::ShowMiddle()
                             m_is_dirty = m_navigation.Navigate(item.GetPath());
                             m_selection_made = !item.IsDirectory();
 
+                            if (!item.IsDirectory())
+                            {
+                                FileSystem::OpenDirectoryWindow(item.GetPath());
+                            }
+
                             // Callback
                             if (m_callback_on_item_double_clicked) m_callback_on_item_double_clicked(m_navigation.m_path_current);
                         }
@@ -519,6 +524,38 @@ void FileDialog::EmptyAreaContextMenu()
 		FileSystem::CreateDirectory_(m_navigation.m_path_current + "/New folder");
 		m_is_dirty = true;
 	}
+
+    if (ImGui::MenuItem("Create script"))
+    {
+        const string file_path = m_navigation.m_path_current + "/NewScript" + EXTENSION_SCRIPT;
+        const string text =
+            "using System;\n"
+            "using Spartan;\n"
+            "\n"
+            "public class NewScript\n"
+            "{\n"
+            "\tpublic NewScript()\n"
+            "\t{\n"
+            "\n"
+            "\t}\n"
+            "\n"
+            "\t// Start is called before the first frame update\n"
+            "\tpublic void Start()\n"
+            "\t{\n"
+            "\n"
+            "\t}\n"
+            "\n"
+            "\t// Update is called once per frame\n"
+            "\tpublic void Update(float delta_time)\n"
+            "\t{\n"
+            "\n"
+            "\t}\n"
+            "}\n";
+
+        FileSystem::CreateTextFile(file_path, text);
+
+        m_is_dirty = true;
+    }
 
     if (ImGui::MenuItem("Create material"))
     {

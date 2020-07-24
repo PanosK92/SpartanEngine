@@ -33,7 +33,15 @@ using namespace std;
 
 namespace Spartan
 {
-    bool FileSystem::IsEmptyOrWhitespace(const std::string& var)
+	void FileSystem::CreateTextFile(const string& file_path, const string& text)
+	{
+        std::ofstream outfile(file_path);
+        outfile << text;
+        outfile.flush();
+        outfile.close();
+	}
+
+	bool FileSystem::IsEmptyOrWhitespace(const std::string& var)
     {
         // Check if it's empty
         if (var.empty())

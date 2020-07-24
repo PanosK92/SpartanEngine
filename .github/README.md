@@ -61,7 +61,7 @@ Platform | API | Status | Quality | Binaries | :+1:
 - Thread pool
 - Engine rendered platform agnostic editor
 - Profiling (CPU & GPU)
-- C/C++ (Using AngelScript)
+- C# scripting (Mono)
 - XML files
 - Windows 10 and a modern/dedicated GPU (The target is high-end machines, old setups or mobile devices are not officially supported)
 - Easy to build (Single click project generation which includes editor and runtime)
@@ -83,7 +83,6 @@ Ray traced reflections			 	| -          	| -
 
 ###### Future
 - Skeletal Animation.
-- C# scripting (Replace AngelScript).
 - Atmospheric Scattering.
 - Dynamic resolution scaling.
 - Export on Windows.
