@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =========================
 #include "Spartan.h"
 #include "Scripting.h"
+#include "ScriptInterface.h"
 #include "../Resource/ResourceCache.h"
 //====================================
 
@@ -182,11 +183,6 @@ namespace Spartan
         mono_jit_cleanup(m_domain);
 	}
 
-    static void Test(float delta_time)
-    {
-        LOG_ERROR("%f", delta_time);
-    }
-
     bool Scripting::Initialize()
     {
         // Compile callbacks
@@ -199,7 +195,7 @@ namespace Spartan
         }
 
         // Register callbacks
-        mono_add_internal_call("Spartan.Debug::Log", reinterpret_cast<const void*>(Test));
+        ScriptInterface::RegisterCallbacks();
 
         // Get version
         //const string major = to_string(ANGELSCRIPT_VERSION).erase(1, 4);
@@ -300,5 +296,6 @@ namespace Spartan
     void Scripting::Clear()
     {
         m_scripts.clear();
+        m_script_id = SCRIPT_NOT_LOADED;
     }
 }

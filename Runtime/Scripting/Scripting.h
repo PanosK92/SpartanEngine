@@ -64,6 +64,6 @@ namespace Spartan
 	private:
         MonoDomain* m_domain = nullptr;
         std::unordered_map<uint32_t, ScriptInstance> m_scripts;
-        uint32_t m_script_id = 0;
+        uint32_t m_script_id = SCRIPT_NOT_LOADED;
 	};
 }

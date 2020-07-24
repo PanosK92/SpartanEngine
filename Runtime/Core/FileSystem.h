@@ -32,6 +32,9 @@ namespace Spartan
 	class SPARTAN_CLASS FileSystem
 	{
 	public:
+        // File creation
+        static void CreateTextFile(const std::string& file_path, const std::string& text);
+
         // Strings
         static bool IsEmptyOrWhitespace(const std::string& var);
         static bool IsAlphanumeric(const std::string& var);
@@ -93,15 +96,16 @@ namespace Spartan
         static std::vector<std::string> GetSupportedSceneFilesInDirectory(const std::string& path);
 	};
 
-    static const char* EXTENSION_WORLD     = ".world";
+    static const char* EXTENSION_WORLD      = ".world";
     static const char* EXTENSION_MATERIAL   = ".material";
-    static const char* EXTENSION_MODEL     = ".model";
-    static const char* EXTENSION_PREFAB    = ".prefab";
-    static const char* EXTENSION_SHADER    = ".shader";
-    static const char* EXTENSION_FONT      = ".font";
-    static const char* EXTENSION_TEXTURE   = ".texture";
-    static const char* EXTENSION_MESH      = ".mesh";
-    static const char* EXTENSION_AUDIO     = ".audio";
+    static const char* EXTENSION_MODEL      = ".model";
+    static const char* EXTENSION_PREFAB     = ".prefab";
+    static const char* EXTENSION_SHADER     = ".shader";
+    static const char* EXTENSION_FONT       = ".font";
+    static const char* EXTENSION_TEXTURE    = ".texture";
+    static const char* EXTENSION_MESH       = ".mesh";
+    static const char* EXTENSION_AUDIO      = ".audio";
+    static const char* EXTENSION_SCRIPT     = ".cs";
 
     static const std::vector<std::string> supported_formats_image
     {
