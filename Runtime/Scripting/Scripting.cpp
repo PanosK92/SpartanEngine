@@ -22,7 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =========================
 #include "Spartan.h"
 #include "Scripting.h"
-#include "ScriptInterface.h"
+#include "ScriptingHelper.h"
+#include "ScriptingInterface.h"
 #include "../Resource/ResourceCache.h"
 //====================================
 
@@ -38,120 +39,12 @@ using namespace std;
 
 namespace Spartan
 {
-    static ResourceCache* resource_cache = nullptr;
-
-    static std::string execute_command(const char* cmd)
-    {
-        std::array<char, 1024> buffer;
-        std::string result;
-        std::unique_ptr<FILE, decltype(&_pclose)> pipe(_popen(cmd, "r"), _pclose);
-        if (!pipe)
-        {
-            LOG_ERROR("popen() failed");
-            return result;
-        }
-
-        while (fgets(buffer.data(), static_cast<int>(buffer.size()), pipe.get()) != nullptr)
-        {
-            result += buffer.data();
-        }
-
-        return result;
-    }
-
-    static bool compile_script(const std::string& script, const std::string& dll_reference = "")
-    {
-        // Get paths
-        const string dir_scripts    = resource_cache->GetDataDirectory(Asset_Scripts) + "\\";
-        const string dir_compiler   = dir_scripts + "mono\\roslyn\\csc.exe";
-
-        // Compile script
-        string command = dir_compiler + " -target:library -nologo";
-        if (!dll_reference.empty())
-        {
-            command += " -reference:" + dll_reference;
-        }
-        command += " -out:" + FileSystem::ReplaceExtension(script, ".dll") + " " + string(script);
-        string result = execute_command(command.c_str());
-
-        // Log compilation output
-        std::istringstream f(result);
-        std::string line;
-        bool compilation_result = true;
-        while (std::getline(f, line))
-        {
-            if (FileSystem::IsEmptyOrWhitespace(line))
-                continue;
-
-            const auto is_error = line.find("error") != string::npos;
-            if (is_error)
-            {
-                LOG_ERROR(line);
-                compilation_result = false;
-            }
-            else
-            {
-                LOG_INFO(line);
-            }
-        }
-
-        if (compilation_result)
-        {
-            LOG_INFO("Successfully compiled C# script \"%s\"", script.c_str());
-            return true;
-        }
-
-        return false;
-    }
-
-    static MonoAssembly* load_assembly(MonoDomain* domain, const std::string& script)
-    {
-        // Ensure that the directory of the script contains the callback dll (otherwise mono will crash)
-        const string callbacks_cs_source    = resource_cache->GetDataDirectory(Asset_Scripts) + "\\" + "Spartan.dll";
-        const string callbacks_cs_dest      = FileSystem::GetDirectoryFromFilePath(script) + "Spartan.dll";
-        if (!FileSystem::Exists(callbacks_cs_dest))
-        {
-            FileSystem::CopyFileFromTo(callbacks_cs_source, callbacks_cs_dest);
-        }
-
-        // Compile script
-        if (!compile_script(script, callbacks_cs_dest))
-        {
-            LOG_ERROR("Failed to compile script");
-            return nullptr;
-        }
-
-        // Open assembly
-        string dll_path = FileSystem::ReplaceExtension(script, ".dll");
-        return mono_domain_assembly_open(domain, dll_path.c_str());
-    }
-
-    static MonoMethod* get_method(MonoImage* image, const std::string& method)
-    {
-        // Get method description
-        MonoMethodDesc* mono_method_desc = mono_method_desc_new(method.c_str(), NULL);
-        if (!mono_method_desc)
-        {
-            LOG_ERROR("Failed to get method description %s", method.c_str());
-            return nullptr;
-        }
-
-        // Search the method in the image
-        MonoMethod* mono_method = mono_method_desc_search_in_image(mono_method_desc, image);
-        if (!mono_method)
-        {
-            LOG_ERROR("Failed to get method %s", method.c_str());
-            return nullptr;
-        }
-
-        return mono_method;
-    }
-
 	Scripting::Scripting(Context* context) : ISubsystem(context)
 	{
+        ScriptingHelper::resource_cache = m_context->GetSubsystem<ResourceCache>();
+
         // Get file paths
-        resource_cache              = context->GetSubsystem<ResourceCache>();
-        const string dir_scripts    = resource_cache->GetDataDirectory(Asset_Scripts) + "\\";
+        const string dir_scripts    = ScriptingHelper::resource_cache->GetDataDirectory(Asset_Scripts) + "\\";
         const string dir_mono_lib   = dir_scripts + string("mono\\lib");
         const string dir_mono_etc   = dir_scripts + string("mono\\etc");
 
@@ -172,6 +65,7 @@ namespace Spartan
             return;
         }
 
+        // soft debugger needs this
         mono_thread_set_main(mono_thread_current());
 
 		// Subscribe to events
@@ -185,17 +79,25 @@ namespace Spartan
 
     bool Scripting::Initialize()
     {
-        // Compile callbacks
-        ResourceCache* resource_cache = m_context->GetSubsystem<ResourceCache>();
-        const string callbacks_cs = resource_cache->GetDataDirectory(Asset_Scripts) + "/" + "Spartan.cs";
-        if (!compile_script(callbacks_cs))
+        // Get callbacks assembly
+        const string callbacks_cs           = ScriptingHelper::resource_cache->GetDataDirectory(Asset_Scripts) + "/" + "Spartan.cs";
+        MonoAssembly* callbacks_assembly    = ScriptingHelper::compile_and_load_assembly(m_domain, callbacks_cs, false);
+        if(!callbacks_assembly)
         {
-            LOG_ERROR("Failed to compile Spartan callbacks");
+            LOG_ERROR("Failed to get callbacks assembly");
+            return false;
+        }
+
+        // Get image from script assembly
+        MonoImage* callbacks_image = mono_assembly_get_image(callbacks_assembly);
+        if (!callbacks_image)
+        {
+            LOG_ERROR("Failed to get callbacks image");
             return false;
         }
 
         // Register callbacks
-        ScriptInterface::RegisterCallbacks();
+        ScriptingInterface::RegisterCallbacks(m_context, m_domain, callbacks_image, callbacks_assembly);
 
         // Get version
         //const string major = to_string(ANGELSCRIPT_VERSION).erase(1, 4);
@@ -212,7 +114,7 @@ namespace Spartan
 
         string class_name = FileSystem::GetFileNameNoExtensionFromFilePath(file_path);
 
-        script.assembly = load_assembly(m_domain, file_path);
+        script.assembly = ScriptingHelper::compile_and_load_assembly(m_domain, file_path);
         if (!script.assembly)
         {
             LOG_ERROR("Failed to load assembly");
@@ -231,24 +133,32 @@ namespace Spartan
         script.klass = mono_class_from_name(script.image, "", class_name.c_str());
         if (!script.klass)
         {
+            mono_image_close(script.image);
             LOG_ERROR("Failed to get class");
             return SCRIPT_NOT_LOADED;
         }
-
-        // Create a instance of the class
+        
+        // Create class instance
         script.object = mono_object_new(m_domain, script.klass);
         if (!script.object)
         {
-            LOG_ERROR("Failed to create object");
+            mono_image_close(script.image);
+            LOG_ERROR("Failed to create class instance");
             return SCRIPT_NOT_LOADED;
         }
 
-        // Call its default constructor
+        // Call the default constructor
         mono_runtime_object_init(script.object);
+        if (!script.object)
+        {
+            mono_image_close(script.image);
+            LOG_ERROR("Failed to run class constructor");
+            return SCRIPT_NOT_LOADED;
+        }
 
         // Get methods
-        script.method_start     = get_method(script.image, class_name + ":Start()");
-        script.method_update    = get_method(script.image, class_name + ":Update(single)");
+        script.method_start     = ScriptingHelper::get_method(script.image, class_name + ":Start()");
+        script.method_update    = ScriptingHelper::get_method(script.image, class_name + ":Update(single)");
 
         // Add script
         m_scripts[++m_script_id] = script;
