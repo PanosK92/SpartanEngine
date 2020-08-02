@@ -381,22 +381,9 @@ namespace Spartan
             bool profiler = true;
         #endif
 
-        // Shader resource slot shifts
-        static const uint32_t shader_shift_storage_texture  = 000;
-        static const uint32_t shader_shift_buffer           = 100;
-        static const uint32_t shader_shift_texture          = 200;
-        static const uint32_t shader_shift_sampler          = 300;
-
-        // Descriptor set limits
-        static const uint8_t descriptor_max_storage_textures            = 10;
-        static const uint8_t descriptor_max_constant_buffers            = 10;
-        static const uint8_t descriptor_max_constant_buffers_dynamic    = 10;
-        static const uint8_t descriptor_max_samplers                    = 10;
-        static const uint8_t descriptor_max_textures                    = 10;
-
         // Device limits
-        uint32_t max_texture_dimension_2d   = 16384;
-        uint32_t max_msaa_level             = 0;
+        uint32_t rhi_max_texture_dimension_2d   = 16384;
+        uint32_t rhi_max_msaa_level             = 0;
 
         // Queues
         void* queue_graphics            = nullptr;

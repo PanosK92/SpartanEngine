@@ -69,7 +69,7 @@ namespace Spartan
 
         // RTs
         RHI_Texture* render_target_depth_texture = nullptr;
-        std::array<RHI_Texture*, state_max_render_target_count> render_target_color_textures =
+        std::array<RHI_Texture*, rhi_max_render_target_count> render_target_color_textures =
         {
             nullptr,
             nullptr,
@@ -86,18 +86,18 @@ namespace Spartan
         uint32_t render_target_depth_stencil_texture_array_index    = 0;
 
         // Clear values
-        float clear_depth       = state_depth_load;
-        uint32_t clear_stencil  = state_stencil_load;
-        std::array<Math::Vector4, state_max_render_target_count> clear_color =
+        float clear_depth       = rhi_depth_load;
+        uint32_t clear_stencil  = rhi_stencil_load;
+        std::array<Math::Vector4, rhi_max_render_target_count> clear_color =
         {
-            state_color_load,
-            state_color_load,
-            state_color_load,
-            state_color_load,
-            state_color_load,
-            state_color_load,
-            state_color_load,
-            state_color_load
+            rhi_color_load,
+            rhi_color_load,
+            rhi_color_load,
+            rhi_color_load,
+            rhi_color_load,
+            rhi_color_load,
+            rhi_color_load,
+            rhi_color_load
         };
         //==========================================================================================================================
 
@@ -122,7 +122,7 @@ namespace Spartan
 
         std::size_t m_hash  = 0;
         void* m_render_pass = nullptr;
-        std::array<void*, state_max_render_target_count> m_frame_buffers =
+        std::array<void*, rhi_max_render_target_count> m_frame_buffers =
         {
             nullptr,
             nullptr,

@@ -147,9 +147,9 @@ namespace Spartan
         void* m_resource_view[2]                = { nullptr, nullptr }; // color/depth, stencil
         void* m_resource_view_unorderedAccess   = nullptr;
         void* m_resource                        = nullptr;
-        std::array<void*, state_max_render_target_count> m_resource_view_renderTarget           = { nullptr };
-        std::array<void*, state_max_render_target_count> m_resource_view_depthStencil           = { nullptr };
-        std::array<void*, state_max_render_target_count> m_resource_view_depthStencilReadOnly   = { nullptr };
+        std::array<void*, rhi_max_render_target_count> m_resource_view_renderTarget           = { nullptr };
+        std::array<void*, rhi_max_render_target_count> m_resource_view_depthStencil           = { nullptr };
+        std::array<void*, rhi_max_render_target_count> m_resource_view_depthStencilReadOnly   = { nullptr };
 	private:
 		uint32_t GetByteCount();
 	};

@@ -346,10 +346,10 @@ namespace Spartan
 		}
 
         // Get resource shifts
-        wstring shift_buffer    = to_wstring(m_rhi_device->GetContextRhi()->shader_shift_buffer);
-        wstring shift_texture   = to_wstring(m_rhi_device->GetContextRhi()->shader_shift_texture);
-        wstring shift_sampler   = to_wstring(m_rhi_device->GetContextRhi()->shader_shift_sampler);
-        wstring shift_rw_buffer = to_wstring(m_rhi_device->GetContextRhi()->shader_shift_storage_texture);
+        wstring shift_buffer    = to_wstring(rhi_shader_shift_buffer);
+        wstring shift_texture   = to_wstring(rhi_shader_shift_texture);
+        wstring shift_sampler   = to_wstring(rhi_shader_shift_sampler);
+        wstring shift_rw_buffer = to_wstring(rhi_shader_shift_storage_texture);
 
         vector<LPCWSTR> arguments =
         {

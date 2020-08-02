@@ -700,7 +700,7 @@ namespace Spartan
         }
         else if (option == Option_Value_ShadowResolution)
         {
-            value = Helper::Clamp(value, static_cast<float>(m_resolution_shadow_min), static_cast<float>(m_rhi_device->GetContextRhi()->max_texture_dimension_2d));
+            value = Helper::Clamp(value, static_cast<float>(m_resolution_shadow_min), static_cast<float>(m_rhi_device->GetContextRhi()->rhi_max_texture_dimension_2d));
         }
 
         if (m_option_values[option] == value)
@@ -759,7 +759,7 @@ namespace Spartan
 
     uint32_t Renderer::GetMaxResolution() const
     {
-        return m_rhi_device->GetContextRhi()->max_texture_dimension_2d;
+        return m_rhi_device->GetContextRhi()->rhi_max_texture_dimension_2d;
     }
 
     void Renderer::SetGlobalShaderObjectTransform(RHI_CommandList* cmd_list, const Math::Matrix& transform)

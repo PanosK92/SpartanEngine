@@ -56,7 +56,7 @@ namespace Spartan
                 }
 
                 // Texture
-                for (auto i = 0; i < state_max_render_target_count; i++)
+                for (auto i = 0; i < rhi_max_render_target_count; i++)
                 {
                     if (RHI_Texture* texture = pipeline_state.render_target_color_textures[i])
                     {

@@ -313,14 +313,14 @@ namespace Spartan
         if (m_render_pass_active)
         {
             uint32_t attachment_count = 0;
-            array<VkClearAttachment, state_max_render_target_count + 1> attachments; // +1 for depth-stencil
+            array<VkClearAttachment, rhi_max_render_target_count + 1> attachments; // +1 for depth-stencil
 
-            for (uint8_t i = 0; i < state_max_render_target_count; i++)
+            for (uint8_t i = 0; i < rhi_max_render_target_count; i++)
             { 
                 if (!m_pipeline_state->render_target_color_textures[i])
                     continue;
             
-                if (pipeline_state.clear_color[i] != state_color_load)
+                if (pipeline_state.clear_color[i] != rhi_color_load)
                 {
                     attachments[i].aspectMask                   = VK_IMAGE_ASPECT_COLOR_BIT;
                     attachments[i].colorAttachment              = attachment_count++;
@@ -331,8 +331,8 @@ namespace Spartan
                 }
             }
 
-            bool clear_depth    = pipeline_state.clear_depth    != state_depth_load;
-            bool clear_stencil  = pipeline_state.clear_stencil  != state_stencil_load;
+            bool clear_depth    = pipeline_state.clear_depth    != rhi_depth_load;
+            bool clear_stencil  = pipeline_state.clear_stencil  != rhi_stencil_load;
 
             if (clear_depth || clear_stencil)
             {
@@ -835,13 +835,13 @@ namespace Spartan
         }
 
         // Clear values
-        array<VkClearValue, state_max_render_target_count + 1> clear_values; // +1 for depth-stencil
+        array<VkClearValue, rhi_max_render_target_count + 1> clear_values; // +1 for depth-stencil
         uint32_t clear_value_count = 0;
         {
             // Color
-            for (auto i = 0; i < state_max_render_target_count; i++)
+            for (auto i = 0; i < rhi_max_render_target_count; i++)
             {
-                if (m_pipeline_state->clear_color[i] != state_color_load && m_pipeline_state->clear_color[i] != state_color_dont_care)
+                if (m_pipeline_state->clear_color[i] != rhi_color_load && m_pipeline_state->clear_color[i] != rhi_color_dont_care)
                 {
                     Vector4& color = m_pipeline_state->clear_color[i];
                     clear_values[clear_value_count++].color = { {color.x, color.y, color.z, color.w} };
@@ -849,8 +849,8 @@ namespace Spartan
             }
 
             // Depth-stencil
-            bool clear_depth    = m_pipeline_state->clear_depth     != state_depth_load     && m_pipeline_state->clear_depth    != state_depth_dont_care;
-            bool clear_stencil  = m_pipeline_state->clear_stencil   != state_stencil_load   && m_pipeline_state->clear_stencil  != state_stencil_dont_care;
+            bool clear_depth    = m_pipeline_state->clear_depth     != rhi_depth_load     && m_pipeline_state->clear_depth    != rhi_depth_dont_care;
+            bool clear_stencil  = m_pipeline_state->clear_stencil   != rhi_stencil_load   && m_pipeline_state->clear_stencil  != rhi_stencil_dont_care;
             if (clear_depth || clear_stencil)
             {
                 clear_values[clear_value_count++].depthStencil = VkClearDepthStencilValue{ m_pipeline_state->clear_depth, m_pipeline_state->clear_stencil };
@@ -894,7 +894,7 @@ namespace Spartan
 
             // Dynamic offsets
             RHI_DescriptorSetLayout* descriptor_set_layout = m_descriptor_cache->GetCurrentDescriptorSetLayout();
-            const std::array<uint32_t, state_max_constant_buffer_count> dynamic_offsets = descriptor_set_layout->GetDynamicOffsets();
+            const std::array<uint32_t, rhi_max_constant_buffer_count> dynamic_offsets = descriptor_set_layout->GetDynamicOffsets();
             uint32_t dynamic_offset_count = descriptor_set_layout->GetDynamicOffsetCount();
             
             // Bind descriptor set

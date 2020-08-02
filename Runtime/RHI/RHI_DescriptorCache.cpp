@@ -228,7 +228,7 @@ namespace Spartan
                 {
                     if (descriptor.type == RHI_Descriptor_ConstantBuffer)
                     {
-                        if (descriptor.slot == pipeline_state.dynamic_constant_buffer_slot + m_rhi_device->GetContextRhi()->shader_shift_buffer)
+                        if (descriptor.slot == pipeline_state.dynamic_constant_buffer_slot + rhi_shader_shift_buffer)
                         {
                             descriptor.is_dynamic_constant_buffer = true;
                         }
@@ -242,7 +242,7 @@ namespace Spartan
                 {
                     if (descriptor.type == RHI_Descriptor_ConstantBuffer)
                     {
-                        if (descriptor.slot == pipeline_state.dynamic_constant_buffer_slot_2 + m_rhi_device->GetContextRhi()->shader_shift_buffer)
+                        if (descriptor.slot == pipeline_state.dynamic_constant_buffer_slot_2 + rhi_shader_shift_buffer)
                         {
                             descriptor.is_dynamic_constant_buffer = true;
                         }
