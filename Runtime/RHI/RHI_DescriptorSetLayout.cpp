@@ -118,8 +118,6 @@ namespace Spartan
 
             if (descriptor.type == type_to_match && descriptor.slot == slot_to_match)
             {
-                bool fucked = slot == 0 && !texture->IsStorage();
-
                 // Determine if the descriptor set needs to bind
                 m_needs_to_bind = descriptor.resource != texture->Get_Resource_View() ? true : m_needs_to_bind; // affects vkUpdateDescriptorSets
 
