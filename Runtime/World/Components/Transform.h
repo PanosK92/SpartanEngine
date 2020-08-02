@@ -49,7 +49,7 @@ namespace Spartan
 		void UpdateTransform();
 
 		//= POSITION ==============================================================
-		auto GetPosition()              const { return m_matrix.GetTranslation(); }
+        Math::Vector3 GetPosition()     const { return m_matrix.GetTranslation(); }
 		const auto& GetPositionLocal()  const { return m_positionLocal; }
 		void SetPosition(const Math::Vector3& position);
 		void SetPositionLocal(const Math::Vector3& position);

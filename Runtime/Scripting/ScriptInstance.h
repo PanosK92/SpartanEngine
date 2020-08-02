@@ -21,44 +21,32 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
-#include <vector>
-#include <string>
-#include "ScriptInstance.h"
-#include "../Core/ISubsystem.h"
-//=============================
-
-//= FORWARD DECLARATIONS =
-struct _MonoDomain;
-//========================
+//= INCLUDES ==============
+#include "../Logging/Log.h"
+//=========================
 
 namespace Spartan
 {
-    //= FORWARD DECLARATIONS =
-    class Script;
-    //========================
+    struct ScriptInstance
+    {
+        MonoAssembly* assembly      = nullptr;
+        MonoImage* image            = nullptr;
+        MonoClass* klass            = nullptr;
+        MonoObject* object          = nullptr;       
+        MonoMethod* method_start    = nullptr;
+        MonoMethod* method_update   = nullptr;
 
-    static const uint32_t SCRIPT_NOT_LOADED = 0;
+        template<class T>
+        bool SetValue(T* value, const std::string& name)
+        {
+            if (MonoClassField* field = mono_class_get_field_from_name(klass, name.c_str()))
+            {
+                mono_field_set_value(object, field, value);
+                return true;
+            }
 
-	class Scripting : public ISubsystem
-	{
-	public:
-		Scripting(Context* context);
-		~Scripting();
-
-        //= Subsystem =============
-        bool Initialize() override;
-        //=========================
-
-        uint32_t Load(const std::string& file_path, Script* script_component);
-        ScriptInstance* GetScript(const uint32_t id);
-        bool CallScriptFunction_Start(const ScriptInstance* script_instance);
-        bool CallScriptFunction_Update(const ScriptInstance* script_instance, float delta_time);
-        void Clear();
-
-	private:
-        MonoDomain* m_domain = nullptr;
-        std::unordered_map<uint32_t, ScriptInstance> m_scripts;
-        uint32_t m_script_id = SCRIPT_NOT_LOADED;
-	};
+            LOG_ERROR("Failed to set value for field %s", name.c_str());
+            return false;
+        }
+    };
 }

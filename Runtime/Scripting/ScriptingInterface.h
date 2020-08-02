@@ -21,67 +21,70 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==============
+//= INCLUDES =============================
 #include "../World/World.h"
 #include "../Input/Input.h"
-//=========================
+#include "../World/Components/Transform.h"
+//========================================
 
 namespace Spartan::ScriptingInterface
 {
     // Dependencies
     static Input* g_input       = nullptr;
     static World* g_world       = nullptr;
-    static MonoDomain* g_domain = nullptr;
 
     // Type wrappers
     struct _vector2 { float x, y; };
-
-    // Log
-    static void LogFloat(float delta_time, LogType type)            { Log::Write(std::to_string(delta_time), type); }
-    static void LogString(MonoString* mono_string, LogType type)    { Log::Write(std::string(mono_string_to_utf8(mono_string)), type); }
-
-    // Input
-    static bool GetKey(const KeyCode key)       { return g_input->GetKey(key); }
-    static bool GetKeyDown(const KeyCode key)   { return g_input->GetKeyDown(key); }
-    static bool GetKeyUp(const KeyCode key)     { return g_input->GetKeyUp(key); }
-    static _vector2 GetMousePosition()          { return _vector2{ g_input->GetMousePosition().x, g_input->GetMousePosition().y }; }
-    static _vector2 GetMouseDelta()             { return _vector2{ g_input->GetMouseDelta().x, g_input->GetMouseDelta().y }; }
-    static float GetMouseWheelDelta()           { return g_input->GetMouseWheelDelta(); }
-
-    // World
-    static bool WorldSave(const std::string& file_path) { return g_world->SaveToFile(file_path); }
-    static bool WorldLoad(const std::string& file_path) { return g_world->LoadFromFile(file_path); }
+    struct _vector3 { float x, y, z; };
     
-    static void RegisterCallbacks(Context* context, MonoDomain* domain, MonoImage* callbacks_image, MonoAssembly* callbacks_assembly)
+    // Callbacks - Log
+    static void Debug_LogFloat(float delta_time, LogType type)            { Log::Write(std::to_string(delta_time), type); }
+    static void Debug_LogString(MonoString* mono_string, LogType type)    { Log::Write(std::string(mono_string_to_utf8(mono_string)), type); }
+
+    // Callbacks - Transform
+    static _vector3 Transform_GetPosition(void* handle)
     {
-        g_input     = context->GetSubsystem<Input>();
-        g_world     = context->GetSubsystem<World>();
-        g_domain    = domain;
+        Transform* transform = static_cast<Transform*>(handle);
+        return _vector3{ transform->GetPosition().x, transform->GetPosition().y, transform->GetPosition().z };
+    }
+    static void Transform_SetPosition(void* handle, _vector3 v) { static_cast<Transform*>(handle)->SetPosition(Math::Vector3(v.x, v.y, v.z)); }
 
-        // Get Vector2 class
-        //g_class_vector2 = mono_class_from_name(callbacks_image, "Spartan", "Vector2");
-        //if (!g_class_vector2)
-        //{
-        //    LOG_ERROR("Failed to get Vector2 class");
-        //    return;
-        //}
+    // Callbacks - Input
+    static bool Input_GetKey(const KeyCode key)       { return g_input->GetKey(key); }
+    static bool Input_GetKeyDown(const KeyCode key)   { return g_input->GetKeyDown(key); }
+    static bool Input_GetKeyUp(const KeyCode key)     { return g_input->GetKeyUp(key); }
+    static _vector2 Input_GetMousePosition()          { return _vector2{ g_input->GetMousePosition().x, g_input->GetMousePosition().y }; }
+    static _vector2 Input_GetMouseDelta()             { return _vector2{ g_input->GetMouseDelta().x, g_input->GetMouseDelta().y }; }
+    static float Input_GetMouseWheelDelta()           { return g_input->GetMouseWheelDelta(); }
+
+    // Callbacks - World
+    static bool World_Save(const std::string& file_path) { return g_world->SaveToFile(file_path); }
+    static bool World_Load(const std::string& file_path) { return g_world->LoadFromFile(file_path); }
     
-        // Namespace.Class::Method(T1,...Tn)
-    
+    static void RegisterCallbacks(Context* context)
+    {
+        // Dependencies
+        g_input = context->GetSubsystem<Input>();
+        g_world = context->GetSubsystem<World>();
+ 
         // Debug
-        mono_add_internal_call("Spartan.Debug::Log(single,Spartan.DebugType)", LogFloat);
-        mono_add_internal_call("Spartan.Debug::Log(string,Spartan.DebugType)", LogString);
-    
+        mono_add_internal_call("Spartan.Debug::Log(single,Spartan.DebugType)", Debug_LogFloat);
+        mono_add_internal_call("Spartan.Debug::Log(string,Spartan.DebugType)", Debug_LogString);
+
+        // Transform
+        mono_add_internal_call("Spartan.Transform::_internal_GetPosition()", Transform_GetPosition);
+        mono_add_internal_call("Spartan.Transform::_internal_SetPosition()", Transform_SetPosition);
+
         // Input         
-        mono_add_internal_call("Spartan.Input::GetKey(Spartan.KeyCode)",        GetKey);
-        mono_add_internal_call("Spartan.Input::GetKeyDown(Spartan.KeyCode)",    GetKeyDown);
-        mono_add_internal_call("Spartan.Input::GetKeyUp(Spartan.KeyCode)",      GetKeyUp);
-        mono_add_internal_call("Spartan.Input::GetMousePosition()",             GetMousePosition);
-        mono_add_internal_call("Spartan.Input::GetMouseDelta()",                GetMouseDelta);
-        mono_add_internal_call("Spartan.Input::GetMouseWheelDelta()",           GetMouseWheelDelta);
+        mono_add_internal_call("Spartan.Input::GetKey(Spartan.KeyCode)",        Input_GetKey);
+        mono_add_internal_call("Spartan.Input::GetKeyDown(Spartan.KeyCode)",    Input_GetKeyDown);
+        mono_add_internal_call("Spartan.Input::GetKeyUp(Spartan.KeyCode)",      Input_GetKeyUp);
+        mono_add_internal_call("Spartan.Input::GetMousePosition()",             Input_GetMousePosition);
+        mono_add_internal_call("Spartan.Input::GetMouseDelta()",                Input_GetMouseDelta);
+        mono_add_internal_call("Spartan.Input::GetMouseWheelDelta()",           Input_GetMouseWheelDelta);
     
         // World         
-        mono_add_internal_call("Spartan.World::Save(single)", WorldSave);
-        mono_add_internal_call("Spartan.World::Load(string)", WorldLoad);
+        mono_add_internal_call("Spartan.World::Save(single)", World_Save);
+        mono_add_internal_call("Spartan.World::Load(string)", World_Load);
     }
 }

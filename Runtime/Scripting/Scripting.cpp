@@ -19,13 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========================
+//= INCLUDES ==========================
 #include "Spartan.h"
 #include "Scripting.h"
 #include "ScriptingHelper.h"
 #include "ScriptingInterface.h"
 #include "../Resource/ResourceCache.h"
-//====================================
+#include "../World/Components/Script.h"
+//=====================================
 
 //= LIBRARIES =====================
 #pragma comment(lib, "version.lib")
@@ -96,8 +97,8 @@ namespace Spartan
             return false;
         }
 
-        // Register callbacks
-        ScriptingInterface::RegisterCallbacks(m_context, m_domain, callbacks_image, callbacks_assembly);
+        // Register static callbacks
+        ScriptingInterface::RegisterCallbacks(m_context);
 
         // Get version
         //const string major = to_string(ANGELSCRIPT_VERSION).erase(1, 4);
@@ -108,7 +109,7 @@ namespace Spartan
         return true;
     }
 
-    uint32_t Scripting::Load(const std::string& file_path)
+    uint32_t Scripting::Load(const std::string& file_path, Script* script_component)
     {
         ScriptInstance script;
 
@@ -147,6 +148,26 @@ namespace Spartan
             return SCRIPT_NOT_LOADED;
         }
 
+        // Get methods
+        script.method_start     = ScriptingHelper::get_method(script.image, class_name + ":Start()");
+        script.method_update    = ScriptingHelper::get_method(script.image, class_name + ":Update(single)");
+
+        // Set entity handle
+        if (!script.SetValue(script_component->GetEntity(), "_internal_entity_handle"))
+        {
+            mono_image_close(script.image);
+            LOG_ERROR("Failed to set entity handle");
+            return SCRIPT_NOT_LOADED;
+        }
+
+        // Set transform handle
+        if (!script.SetValue(script_component->GetTransform(), "_internal_transform_handle"))
+        {
+            mono_image_close(script.image);
+            LOG_ERROR("Failed to set transform handle");
+            return SCRIPT_NOT_LOADED;
+        }
+
         // Call the default constructor
         mono_runtime_object_init(script.object);
         if (!script.object)
@@ -155,10 +176,6 @@ namespace Spartan
             LOG_ERROR("Failed to run class constructor");
             return SCRIPT_NOT_LOADED;
         }
-
-        // Get methods
-        script.method_start     = ScriptingHelper::get_method(script.image, class_name + ":Start()");
-        script.method_update    = ScriptingHelper::get_method(script.image, class_name + ":Update(single)");
 
         // Add script
         m_scripts[++m_script_id] = script;
