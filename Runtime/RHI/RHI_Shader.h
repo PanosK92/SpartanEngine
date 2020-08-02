@@ -26,9 +26,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "RHI_Vertex.h"
-#include "RHI_Definition.h"
 #include "../Core/Spartan_Object.h"
+#include "RHI_Vertex.h"
+#include "RHI_Desctiptor.h"
 //=================================
 
 namespace Spartan
@@ -65,13 +65,13 @@ namespace Spartan
         auto& GetDefines() const                                                    { return m_defines; }
 
         // Misc
-        const auto& GetDescriptors()        const { return m_descriptors; }
-        const auto& GetInputLayout()        const { return m_input_layout; } // only valid for vertex shader
-        const auto& GetFilePath()           const { return m_file_path; }
-        RHI_Shader_Type GetShaderStage()    const { return m_shader_type; }
-        const char* GetEntryPoint()         const;
-        const char* GetTargetProfile()      const;
-        const char* GetShaderModel()        const;
+        const std::vector<RHI_Descriptor>& GetDescriptors() const { return m_descriptors; }
+        const auto& GetInputLayout()                        const { return m_input_layout; } // only valid for vertex shader
+        const auto& GetFilePath()                           const { return m_file_path; }
+        RHI_Shader_Type GetShaderStage()                    const { return m_shader_type; }
+        const char* GetEntryPoint()                         const;
+        const char* GetTargetProfile()                      const;
+        const char* GetShaderModel()                        const;
 
 	protected:
 		std::shared_ptr<RHI_Device> m_rhi_device;

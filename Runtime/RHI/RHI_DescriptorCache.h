@@ -23,10 +23,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ======================
 #include "../Core/Spartan_Object.h"
-#include "RHI_Definition.h"
 #include <unordered_map>
 #include <vector>
 #include <memory>
+#include "RHI_Desctiptor.h"
 //=================================
 
 namespace Spartan
@@ -63,6 +63,7 @@ namespace Spartan
         // Descriptor set layouts 
         std::unordered_map<std::size_t, std::shared_ptr<RHI_DescriptorSetLayout>> m_descriptor_set_layouts;
         RHI_DescriptorSetLayout* m_descriptor_layout_current = nullptr;
+        std::vector<RHI_Descriptor> m_descriptors;
 
         // Descriptor pool
         uint32_t m_descriptor_set_capacity = 16;
