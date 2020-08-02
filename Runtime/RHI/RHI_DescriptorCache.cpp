@@ -48,42 +48,43 @@ namespace Spartan
 
     void RHI_DescriptorCache::SetPipelineState(RHI_PipelineState& pipeline_state)
     {
-       // Compute shader hash (which defines the descriptor set layout)
-       size_t hash = 0;
-       {
-           if (pipeline_state.shader_compute)
-           {
-               Utility::Hash::hash_combine(hash, pipeline_state.shader_compute->GetId());
-           }
+        // Compute shader hash (which defines the descriptor set layout)
+        size_t hash = 0;
+        {
+            if (pipeline_state.shader_compute)
+            {
+                Utility::Hash::hash_combine(hash, pipeline_state.shader_compute->GetId());
+            }
 
-           if (pipeline_state.shader_vertex)
-           {
-               Utility::Hash::hash_combine(hash, pipeline_state.shader_vertex->GetId());
-           }
+            if (pipeline_state.shader_vertex)
+            {
+                Utility::Hash::hash_combine(hash, pipeline_state.shader_vertex->GetId());
+            }
 
-           if (pipeline_state.shader_pixel)
-           {
-               Utility::Hash::hash_combine(hash, pipeline_state.shader_pixel->GetId());
-           }
-       }
+            if (pipeline_state.shader_pixel)
+            {
+                Utility::Hash::hash_combine(hash, pipeline_state.shader_pixel->GetId());
+            }
+        }
 
-       // If there is no descriptor set layout for this particular hash, create one
-       auto it = m_descriptor_set_layouts.find(hash);
-       if (it == m_descriptor_set_layouts.end())
-       {
-           // Generate descriptors from the reflected shaders
-           vector<RHI_Descriptor> descriptors = GenerateDescriptors(pipeline_state);
+        // If there is no descriptor set layout for this particular hash, create one
+        auto it = m_descriptor_set_layouts.find(hash);
+        if (it == m_descriptor_set_layouts.end())
+        {
+            // Generate descriptors from the reflected shaders
+            vector<RHI_Descriptor> descriptors;
+            GetDescriptors(pipeline_state, descriptors);
 
-           // Create a name for the descriptor set layout, very useful for Vulkan debugging
-           string name  = (pipeline_state.shader_compute ? pipeline_state.shader_compute->GetName() : "null");
-           name         += "-" + (pipeline_state.shader_vertex ? pipeline_state.shader_vertex->GetName() : "null");
-           name         += "-" + (pipeline_state.shader_pixel ? pipeline_state.shader_pixel->GetName() : "null");
+            // Create a name for the descriptor set layout, very useful for Vulkan debugging
+            string name = (pipeline_state.shader_compute ? pipeline_state.shader_compute->GetName() : "null");
+            name += "-" + (pipeline_state.shader_vertex ? pipeline_state.shader_vertex->GetName() : "null");
+            name += "-" + (pipeline_state.shader_pixel ? pipeline_state.shader_pixel->GetName() : "null");
 
-           // Emplace a new descriptor set layout
-           it = m_descriptor_set_layouts.emplace(make_pair(hash, make_shared<RHI_DescriptorSetLayout>(m_rhi_device, descriptors, name.c_str()))).first;
-       }
+            // Emplace a new descriptor set layout
+            it = m_descriptor_set_layouts.emplace(make_pair(hash, make_shared<RHI_DescriptorSetLayout>(m_rhi_device, descriptors, name.c_str()))).first;
+        }
 
-       // Get the descriptor set layout we will be using
+        // Get the descriptor set layout we will be using
         m_descriptor_layout_current = it->second.get();
         m_descriptor_layout_current->NeedsToBind();
     }
@@ -173,14 +174,12 @@ namespace Spartan
         return descriptor_set_count;
     }
 
-    vector<RHI_Descriptor> RHI_DescriptorCache::GenerateDescriptors(RHI_PipelineState& pipeline_state)
+    void RHI_DescriptorCache::GetDescriptors(RHI_PipelineState& pipeline_state, vector<RHI_Descriptor>& descriptors)
     {
-        vector<RHI_Descriptor> descriptors;
-
         if (!pipeline_state.IsValid())
         {
             LOG_ERROR("Invalid pipeline state");
-            return descriptors;
+            return;
         }
 
         if (pipeline_state.IsCompute())
@@ -242,7 +241,7 @@ namespace Spartan
                     {
                         if (descriptor.slot == pipeline_state.dynamic_constant_buffer_slot + m_rhi_device->GetContextRhi()->shader_shift_buffer)
                         {
-                            descriptor.type = RHI_Descriptor_ConstantBufferDynamic;
+                            descriptor.is_dynamic_constant_buffer = true;
                         }
                     }
                 }
@@ -256,13 +255,11 @@ namespace Spartan
                     {
                         if (descriptor.slot == pipeline_state.dynamic_constant_buffer_slot_2 + m_rhi_device->GetContextRhi()->shader_shift_buffer)
                         {
-                            descriptor.type = RHI_Descriptor_ConstantBufferDynamic;
+                            descriptor.is_dynamic_constant_buffer = true;
                         }
                     }
                 }
             }
         }
-
-        return descriptors;
     }
 }
