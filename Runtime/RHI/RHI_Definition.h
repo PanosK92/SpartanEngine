@@ -21,11 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =================
+//= INCLUDES ===============
 #include <stdint.h>
-#include "..\Math\Vector4.h"
-#include "..\Utilities\Hash.h"
-//============================
+#include "../Math/Vector4.h"
+//==========================
 
 // Declarations
 namespace Spartan
@@ -275,17 +274,6 @@ namespace Spartan
         return "Unknown format";
     }
 
-    // Engine constants 
-    static const Math::Vector4  state_color_dont_care           = Math::Vector4(-std::numeric_limits<float>::infinity(), 0.0f, 0.0f, 0.0f);
-    static const Math::Vector4  state_color_load                = Math::Vector4(std::numeric_limits<float>::infinity(), 0.0f, 0.0f, 0.0f);
-    static const float          state_depth_dont_care           = -std::numeric_limits<float>::infinity();
-    static const float          state_depth_load                = std::numeric_limits<float>::infinity();
-    static const uint32_t       state_stencil_dont_care         = (std::numeric_limits<uint32_t>::max)();
-    static const uint32_t       state_stencil_load              = (std::numeric_limits<uint32_t>::max)() - 1;
-    static const uint8_t        state_max_render_target_count   = 8;
-    static const uint8_t        state_max_constant_buffer_count = 8;
-    static const uint32_t       state_dynamic_offset_empty      = (std::numeric_limits<uint32_t>::max)();
-
     enum RHI_Shader_Type : uint8_t
 	{
         RHI_Shader_Unknown  = 0,
@@ -301,4 +289,27 @@ namespace Spartan
 		Shader_Compilation_Succeeded,
 		Shader_Compilation_Failed
 	};
+
+    // Shader resource slot shifts (required to produce spirv from hlsl)
+    static const uint32_t rhi_shader_shift_storage_texture  = 000;
+    static const uint32_t rhi_shader_shift_buffer           = 100;
+    static const uint32_t rhi_shader_shift_texture          = 200;
+    static const uint32_t rhi_shader_shift_sampler          = 300;
+    
+    // Descriptor set limits
+    static const uint8_t rhi_descriptor_max_storage_textures            = 10;
+    static const uint8_t rhi_descriptor_max_constant_buffers            = 10;
+    static const uint8_t rhi_descriptor_max_constant_buffers_dynamic    = 10;
+    static const uint8_t rhi_descriptor_max_samplers                    = 10;
+    static const uint8_t rhi_descriptor_max_textures                    = 10;
+    
+    static const Math::Vector4  rhi_color_dont_care           = Math::Vector4(-std::numeric_limits<float>::infinity(), 0.0f, 0.0f, 0.0f);
+    static const Math::Vector4  rhi_color_load                = Math::Vector4(std::numeric_limits<float>::infinity(), 0.0f, 0.0f, 0.0f);
+    static const float          rhi_depth_dont_care           = -std::numeric_limits<float>::infinity();
+    static const float          rhi_depth_load                = std::numeric_limits<float>::infinity();
+    static const uint32_t       rhi_stencil_dont_care         = (std::numeric_limits<uint32_t>::max)();
+    static const uint32_t       rhi_stencil_load              = (std::numeric_limits<uint32_t>::max)() - 1;
+    static const uint8_t        rhi_max_render_target_count   = 8;
+    static const uint8_t        rhi_max_constant_buffer_count = 8;
+    static const uint32_t       rhi_dynamic_offset_empty      = (std::numeric_limits<uint32_t>::max)();
 }

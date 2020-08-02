@@ -33,10 +33,10 @@ namespace Spartan
 {
     inline VkAttachmentLoadOp get_color_load_op(const Math::Vector4& color)
     {
-        if (color == state_color_dont_care)
+        if (color == rhi_color_dont_care)
             return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     
-        if (color == state_color_load)
+        if (color == rhi_color_load)
             return VK_ATTACHMENT_LOAD_OP_LOAD;
     
         return VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -44,10 +44,10 @@ namespace Spartan
 
     inline VkAttachmentLoadOp get_depth_load_op(const float depth)
     {
-        if (depth == state_depth_dont_care)
+        if (depth == rhi_depth_dont_care)
             return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 
-        if (depth == state_depth_load)
+        if (depth == rhi_depth_load)
             return VK_ATTACHMENT_LOAD_OP_LOAD;
 
         return VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -55,10 +55,10 @@ namespace Spartan
 
     inline VkAttachmentLoadOp get_stencil_load_op(const uint32_t stencil)
     {
-        if (stencil == state_stencil_dont_care)
+        if (stencil == rhi_stencil_dont_care)
             return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 
-        if (stencil == state_stencil_load)
+        if (stencil == rhi_stencil_load)
             return VK_ATTACHMENT_LOAD_OP_LOAD;
 
         return VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -73,8 +73,8 @@ namespace Spartan
         RHI_Context* rhi_context,
         RHI_DepthStencilState* depth_stencil_state,
         RHI_SwapChain* render_target_swapchain,
-        array<RHI_Texture*, state_max_render_target_count>& render_target_color_textures,
-        array<Math::Vector4, state_max_render_target_count>& render_target_color_clear,
+        array<RHI_Texture*, rhi_max_render_target_count>& render_target_color_textures,
+        array<Math::Vector4, rhi_max_render_target_count>& render_target_color_clear,
         RHI_Texture* render_target_depth_texture,
         float clear_value_depth,
         uint32_t clear_value_stencil,
@@ -112,7 +112,7 @@ namespace Spartan
                 }
                 else // Textures
                 {
-                    for (uint32_t i = 0; i < state_max_render_target_count; i++)
+                    for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
                     {
                         RHI_Texture* texture = render_target_color_textures[i];
                         if (!texture)
@@ -198,7 +198,7 @@ namespace Spartan
         // If this is a swapchain, return the appropriate buffer
         if (render_target_swapchain)
         {
-            if (render_target_swapchain->GetImageIndex() >= state_max_render_target_count)
+            if (render_target_swapchain->GetImageIndex() >= rhi_max_render_target_count)
             {
                 LOG_ERROR("Invalid image index, %d", render_target_swapchain->GetImageIndex());
                 return nullptr;
@@ -253,7 +253,7 @@ namespace Spartan
             vector<void*> attachments;
             
             // Color
-            for (uint32_t i = 0; i < state_max_render_target_count; i++)
+            for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
             {
                 if (RHI_Texture* texture = render_target_color_textures[i])
                 {
@@ -288,7 +288,7 @@ namespace Spartan
         // Wait in case the buffer is still in use by the graphics queue
         m_rhi_device->Queue_Wait(RHI_Queue_Graphics);
 
-        for (uint32_t i = 0; i < state_max_render_target_count; i++)
+        for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
         {
             if (void* frame_buffer = m_frame_buffers[i])
             {

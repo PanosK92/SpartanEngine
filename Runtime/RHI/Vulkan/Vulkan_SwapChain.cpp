@@ -50,9 +50,9 @@ namespace Spartan
             void* window_handle,
             void*& surface_out,
             void*& swap_chain_view_out,
-            array<void*, state_max_render_target_count>& resource_textures,
-            array<void*, state_max_render_target_count>& resource_views,
-            array<void*, state_max_render_target_count>& image_acquired_semaphores
+            array<void*, rhi_max_render_target_count>& resource_textures,
+            array<void*, rhi_max_render_target_count>& resource_views,
+            array<void*, rhi_max_render_target_count>& image_acquired_semaphores
         )
         {
             // Create surface
@@ -165,8 +165,8 @@ namespace Spartan
             uint8_t buffer_count,
             void*& surface,
             void*& swap_chain_view,
-            array<void*, state_max_render_target_count>& image_views,
-            array<void*, state_max_render_target_count>& semaphores_image_acquired
+            array<void*, rhi_max_render_target_count>& image_views,
+            array<void*, rhi_max_render_target_count>& semaphores_image_acquired
         )
         {
             // Semaphores

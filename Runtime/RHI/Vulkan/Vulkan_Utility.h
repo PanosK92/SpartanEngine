@@ -822,7 +822,7 @@ namespace Spartan::vulkan_utility
                 image_view = nullptr;
             }
 
-            inline void destroy(std::array<void*, state_max_render_target_count>& image_views)
+            inline void destroy(std::array<void*, rhi_max_render_target_count>& image_views)
             {
                 for (void*& image_view : image_views)
                 {

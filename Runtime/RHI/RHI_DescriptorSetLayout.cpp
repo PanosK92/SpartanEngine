@@ -42,14 +42,14 @@ namespace Spartan
         m_descriptors           = descriptors;
         m_name                  = name;
         m_descriptor_set_layout = CreateDescriptorSetLayout(m_descriptors);
-        m_dynamic_offsets.fill(state_dynamic_offset_empty);
+        m_dynamic_offsets.fill(rhi_dynamic_offset_empty);
     }
 
     bool RHI_DescriptorSetLayout::SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer)
     {
         for (RHI_Descriptor& descriptor : m_descriptors)
         {
-            if ((descriptor.type == RHI_Descriptor_ConstantBuffer) && descriptor.slot == slot + m_rhi_device->GetContextRhi()->shader_shift_buffer)
+            if ((descriptor.type == RHI_Descriptor_ConstantBuffer) && descriptor.slot == slot + rhi_shader_shift_buffer)
             {
                 // Determine if the descriptor set needs to bind
                 m_needs_to_bind = descriptor.resource   != constant_buffer->GetResource()   ? true : m_needs_to_bind; // affects vkUpdateDescriptorSets
@@ -84,7 +84,7 @@ namespace Spartan
     {
         for (RHI_Descriptor& descriptor : m_descriptors)
         {
-            if (descriptor.type == RHI_Descriptor_Sampler && descriptor.slot == slot + m_rhi_device->GetContextRhi()->shader_shift_sampler)
+            if (descriptor.type == RHI_Descriptor_Sampler && descriptor.slot == slot + rhi_shader_shift_sampler)
             {
                 // Determine if the descriptor set needs to bind
                 m_needs_to_bind = descriptor.resource != sampler->GetResource() ? true : m_needs_to_bind; // affects vkUpdateDescriptorSets
@@ -113,7 +113,7 @@ namespace Spartan
 
         for (RHI_Descriptor& descriptor : m_descriptors)
         {
-            const uint32_t slot_match = slot + (storage ? m_rhi_device->GetContextRhi()->shader_shift_storage_texture : m_rhi_device->GetContextRhi()->shader_shift_texture);
+            const uint32_t slot_match = slot + (storage ? rhi_shader_shift_storage_texture : rhi_shader_shift_texture);
 
             if (descriptor.type == RHI_Descriptor_Texture && descriptor.slot == slot_match)
             {
@@ -160,17 +160,17 @@ namespace Spartan
         return true;
     }
 
-    const std::array<uint32_t, Spartan::state_max_constant_buffer_count> RHI_DescriptorSetLayout::GetDynamicOffsets() const
+    const std::array<uint32_t, Spartan::rhi_max_constant_buffer_count> RHI_DescriptorSetLayout::GetDynamicOffsets() const
     {
         // vkCmdBindDescriptorSets expects an array without empty values
 
-        std::array<uint32_t, Spartan::state_max_constant_buffer_count> dynamic_offsets;
+        std::array<uint32_t, Spartan::rhi_max_constant_buffer_count> dynamic_offsets;
         dynamic_offsets.fill(0);
 
         uint32_t j = 0;
-        for (uint32_t i = 0; i < state_max_constant_buffer_count; i++)
+        for (uint32_t i = 0; i < rhi_max_constant_buffer_count; i++)
         {
-            if (m_dynamic_offsets[i] != state_dynamic_offset_empty)
+            if (m_dynamic_offsets[i] != rhi_dynamic_offset_empty)
             {
                 dynamic_offsets[j++] = m_dynamic_offsets[i];
             }
@@ -183,9 +183,9 @@ namespace Spartan
     {
         uint32_t dynamic_offset_count = 0;
 
-        for (uint32_t i = 0; i < state_max_constant_buffer_count; i++)
+        for (uint32_t i = 0; i < rhi_max_constant_buffer_count; i++)
         {
-            if (m_dynamic_offsets[i] != state_dynamic_offset_empty)
+            if (m_dynamic_offsets[i] != rhi_dynamic_offset_empty)
             {
                 dynamic_offset_count++;
             }

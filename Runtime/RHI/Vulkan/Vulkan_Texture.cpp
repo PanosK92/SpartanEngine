@@ -204,7 +204,7 @@ namespace Spartan
 
         vulkan_utility::image::view::destroy(m_resource_view[0]);
         vulkan_utility::image::view::destroy(m_resource_view[1]);
-        for (uint32_t i = 0; i < state_max_render_target_count; i++)
+        for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
         {
             vulkan_utility::image::view::destroy(m_resource_view_depthStencil[i]);
             vulkan_utility::image::view::destroy(m_resource_view_renderTarget[i]);
@@ -334,7 +334,7 @@ namespace Spartan
 
         vulkan_utility::image::view::destroy(m_resource_view[0]);
         vulkan_utility::image::view::destroy(m_resource_view[1]);
-        for (uint32_t i = 0; i < state_max_render_target_count; i++)
+        for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
         {
             vulkan_utility::image::view::destroy(m_resource_view_depthStencil[i]);
             vulkan_utility::image::view::destroy(m_resource_view_renderTarget[i]);

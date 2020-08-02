@@ -295,7 +295,7 @@ namespace Spartan
                     }
 
                     // Render target(s)
-                    for (uint32_t i = 0; i < state_max_render_target_count; i++)
+                    for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
                     {
                         if (m_state.render_target_color_textures[i] != nullptr)
                         {
