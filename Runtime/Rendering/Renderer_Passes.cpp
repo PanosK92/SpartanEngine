@@ -1520,6 +1520,7 @@ namespace Spartan
         // Acquire render targets
         RHI_Texture* tex_bokeh_half     = m_render_targets[RenderTarget_Dof_Half].get();
         RHI_Texture* tex_bokeh_half_2   = m_render_targets[RenderTarget_Dof_Half_2].get();
+        RHI_Texture* tex_depth          = m_render_targets[RenderTarget_Gbuffer_Depth].get();
 
         // Downsample and compute circle of confusion
         {
@@ -1541,7 +1542,7 @@ namespace Spartan
                 bool async                      = false;
 
                 cmd_list->SetTexture(3, tex_bokeh_half, true);
-                cmd_list->SetTexture(12, m_render_targets[RenderTarget_Gbuffer_Depth]);
+                cmd_list->SetTexture(12, tex_depth);
                 cmd_list->SetTexture(28, tex_in);
                 cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
                 cmd_list->EndRenderPass();
@@ -1620,6 +1621,7 @@ namespace Spartan
                 bool async = false;
 
                 cmd_list->SetTexture(3, tex_out, true);
+                cmd_list->SetTexture(12, tex_depth);
                 cmd_list->SetTexture(28, tex_in);
                 cmd_list->SetTexture(29, tex_bokeh_half);
                 cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);

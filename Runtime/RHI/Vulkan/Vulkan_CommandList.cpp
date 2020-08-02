@@ -880,8 +880,8 @@ namespace Spartan
         if (m_cmd_state != RHI_Cmd_List_Recording)
             return false;
 
-        // Descriptor set != null, result = true    -> the descriptor set must be bound
-        // Descriptor set == null, result = true    -> the descriptor set is already bound
+        // Descriptor set != null, result = true    -> a descriptor set must be bound
+        // Descriptor set == null, result = true    -> a descriptor set is already bound
         // Descriptor set == null, result = false   -> a new descriptor was needed but we are out of memory (allocates next frame)
 
         void* descriptor_set = nullptr;
