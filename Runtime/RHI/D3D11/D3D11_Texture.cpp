@@ -144,7 +144,7 @@ namespace Spartan
 		return true;
 	}
 
-	inline bool CreateRenderTargetView2d(void* texture, array<void*, state_max_render_target_count>& views, const DXGI_FORMAT format, const unsigned array_size, const shared_ptr<RHI_Device>& rhi_device)
+	inline bool CreateRenderTargetView2d(void* texture, array<void*, rhi_max_render_target_count>& views, const DXGI_FORMAT format, const unsigned array_size, const shared_ptr<RHI_Device>& rhi_device)
 	{
         // Describe
 		D3D11_RENDER_TARGET_VIEW_DESC view_desc		= {};
@@ -169,7 +169,7 @@ namespace Spartan
 		return true;
 	}
 
-	inline bool CreateDepthStencilView2d(void* texture, array<void*, state_max_render_target_count>& views, const uint32_t array_size, const DXGI_FORMAT format, bool read_only, const shared_ptr<RHI_Device>& rhi_device)
+	inline bool CreateDepthStencilView2d(void* texture, array<void*, rhi_max_render_target_count>& views, const uint32_t array_size, const DXGI_FORMAT format, bool read_only, const shared_ptr<RHI_Device>& rhi_device)
 	{
         // Describe
 		D3D11_DEPTH_STENCIL_VIEW_DESC dsv_desc	= {};
@@ -464,7 +464,7 @@ namespace Spartan
 		return true;
 	}
 
-	inline bool CreateDepthStencilViewCube(void* texture, array<void*, state_max_render_target_count>& views, const uint32_t array_size, const DXGI_FORMAT format, bool read_only, const shared_ptr<RHI_Device>& rhi_device)
+	inline bool CreateDepthStencilViewCube(void* texture, array<void*, rhi_max_render_target_count>& views, const uint32_t array_size, const DXGI_FORMAT format, bool read_only, const shared_ptr<RHI_Device>& rhi_device)
 	{
 		// DSV
 		D3D11_DEPTH_STENCIL_VIEW_DESC dsv_desc	= {};
@@ -489,7 +489,7 @@ namespace Spartan
 		return true;
 	}
 
-    inline bool CreateRenderTargetViewCube(void* texture, array<void*, state_max_render_target_count>& views, const DXGI_FORMAT format, const unsigned array_size, const shared_ptr<RHI_Device>& rhi_device)
+    inline bool CreateRenderTargetViewCube(void* texture, array<void*, rhi_max_render_target_count>& views, const DXGI_FORMAT format, const unsigned array_size, const shared_ptr<RHI_Device>& rhi_device)
 	{
         // Describe
 		D3D11_RENDER_TARGET_VIEW_DESC view_desc		= {};

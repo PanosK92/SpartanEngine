@@ -263,7 +263,7 @@ namespace Spartan
             }
 
             // Detect color targets
-            std::array<ID3D11RenderTargetView*, state_max_render_target_count> render_targets = { nullptr };
+            std::array<ID3D11RenderTargetView*, rhi_max_render_target_count> render_targets = { nullptr };
             {
                 // Swapchain
                 if (pipeline_state.render_target_swapchain)
@@ -273,7 +273,7 @@ namespace Spartan
                 // Textures
                 else
                 {
-                    for (uint8_t i = 0; i < state_max_render_target_count; i++)
+                    for (uint8_t i = 0; i < rhi_max_render_target_count; i++)
                     {
                         if (pipeline_state.render_target_color_textures[i])
                         {
@@ -287,9 +287,9 @@ namespace Spartan
             // Set render targets
             {
                 // Current state
-                std::array<ID3D11RenderTargetView*, state_max_render_target_count> set_render_target_views = { nullptr };
+                std::array<ID3D11RenderTargetView*, rhi_max_render_target_count> set_render_target_views = { nullptr };
                 ID3D11DepthStencilView* set_depth_stencil_view = nullptr;
-                device_context->OMGetRenderTargets(state_max_render_target_count, set_render_target_views.data(), &set_depth_stencil_view);
+                device_context->OMGetRenderTargets(rhi_max_render_target_count, set_render_target_views.data(), &set_depth_stencil_view);
 
                 // Set if dirty
                 if (render_targets != set_render_target_views || depth_stencil != set_depth_stencil_view)
@@ -340,9 +340,9 @@ namespace Spartan
     void RHI_CommandList::Clear(RHI_PipelineState& pipeline_state)
     {
         // Color
-        for (uint8_t i = 0; i < state_max_render_target_count; i++)
+        for (uint8_t i = 0; i < rhi_max_render_target_count; i++)
         {
-            if (pipeline_state.clear_color[i] != state_color_load && pipeline_state.clear_color[i] != state_color_dont_care)
+            if (pipeline_state.clear_color[i] != rhi_color_load && pipeline_state.clear_color[i] != rhi_color_dont_care)
             {
                 if (pipeline_state.render_target_swapchain)
                 {
@@ -367,8 +367,8 @@ namespace Spartan
         if (pipeline_state.render_target_depth_texture)
         {
             UINT clear_flags = 0;
-            clear_flags |= (pipeline_state.clear_depth      != state_depth_load     && pipeline_state.clear_depth   != state_depth_dont_care)   ? D3D11_CLEAR_DEPTH     : 0;
-            clear_flags |= (pipeline_state.clear_stencil    != state_stencil_load   && pipeline_state.clear_stencil != state_stencil_dont_care) ? D3D11_CLEAR_STENCIL   : 0;
+            clear_flags |= (pipeline_state.clear_depth      != rhi_depth_load     && pipeline_state.clear_depth   != rhi_depth_dont_care)   ? D3D11_CLEAR_DEPTH     : 0;
+            clear_flags |= (pipeline_state.clear_stencil    != rhi_stencil_load   && pipeline_state.clear_stencil != rhi_stencil_dont_care) ? D3D11_CLEAR_STENCIL   : 0;
             if (clear_flags != 0)
             {
                 m_rhi_device->GetContextRhi()->device_context->ClearDepthStencilView
