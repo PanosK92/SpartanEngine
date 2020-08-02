@@ -266,9 +266,13 @@ void FileDialog::ShowMiddle()
                             m_is_dirty = m_navigation.Navigate(item.GetPath());
                             m_selection_made = !item.IsDirectory();
 
-                            if (!item.IsDirectory())
+                            // When browsing files, open them on double click
+                            if (m_type == FileDialog_Type_Browser)
                             {
-                                FileSystem::OpenDirectoryWindow(item.GetPath());
+                                if (!item.IsDirectory())
+                                {
+                                    FileSystem::OpenDirectoryWindow(item.GetPath());
+                                }
                             }
 
                             // Callback
