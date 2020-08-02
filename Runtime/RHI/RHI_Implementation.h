@@ -287,16 +287,6 @@ static const VkSamplerMipmapMode vulkan_mipmap_mode[] =
 	VK_SAMPLER_MIPMAP_MODE_LINEAR
 };
 
-static const VkDescriptorType vulkan_descriptor_type[] =
-{
-	VK_DESCRIPTOR_TYPE_SAMPLER,
-	VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-    VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-	VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-    VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-    VK_DESCRIPTOR_TYPE_MAX_ENUM
-};
-
 static const VkImageLayout vulkan_image_layout[] =
 {
     VK_IMAGE_LAYOUT_UNDEFINED,

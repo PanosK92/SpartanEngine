@@ -49,7 +49,7 @@ namespace Spartan
     {
         for (RHI_Descriptor& descriptor : m_descriptors)
         {
-            if ((descriptor.type == RHI_Descriptor_ConstantBuffer || descriptor.type == RHI_Descriptor_ConstantBufferDynamic) && descriptor.slot == slot + m_rhi_device->GetContextRhi()->shader_shift_buffer)
+            if ((descriptor.type == RHI_Descriptor_ConstantBuffer) && descriptor.slot == slot + m_rhi_device->GetContextRhi()->shader_shift_buffer)
             {
                 // Determine if the descriptor set needs to bind
                 m_needs_to_bind = descriptor.resource   != constant_buffer->GetResource()   ? true : m_needs_to_bind; // affects vkUpdateDescriptorSets
@@ -113,10 +113,9 @@ namespace Spartan
 
         for (RHI_Descriptor& descriptor : m_descriptors)
         {
-            const RHI_Descriptor_Type type_to_match = storage ? RHI_Descriptor_StorageTexture : RHI_Descriptor_SampledTexture;
-            const uint32_t slot_to_match            = slot + (storage ? m_rhi_device->GetContextRhi()->shader_shift_storage_texture : m_rhi_device->GetContextRhi()->shader_shift_texture);
+            const uint32_t slot_match = slot + (storage ? m_rhi_device->GetContextRhi()->shader_shift_storage_texture : m_rhi_device->GetContextRhi()->shader_shift_texture);
 
-            if (descriptor.type == type_to_match && descriptor.slot == slot_to_match)
+            if (descriptor.type == RHI_Descriptor_Texture && descriptor.slot == slot_match)
             {
                 // Determine if the descriptor set needs to bind
                 m_needs_to_bind = descriptor.resource != texture->Get_Resource_View() ? true : m_needs_to_bind; // affects vkUpdateDescriptorSets
@@ -201,13 +200,7 @@ namespace Spartan
 
         for (const RHI_Descriptor& descriptor : descriptors)
         {
-            Utility::Hash::hash_combine(hash, descriptor.slot);
-            Utility::Hash::hash_combine(hash, descriptor.stage);
-            Utility::Hash::hash_combine(hash, descriptor.offset);
-            Utility::Hash::hash_combine(hash, descriptor.range);
-            Utility::Hash::hash_combine(hash, descriptor.resource);
-            Utility::Hash::hash_combine(hash, static_cast<uint32_t>(descriptor.type));
-            Utility::Hash::hash_combine(hash, static_cast<uint32_t>(descriptor.layout));
+            Utility::Hash::hash_combine(hash, descriptor.GetHash());
         }
 
         return hash;

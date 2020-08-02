@@ -200,9 +200,11 @@ namespace Spartan
         {
             m_descriptors.emplace_back
             (
-                RHI_Descriptor_Type::RHI_Descriptor_StorageTexture,             // Type
-                compiler.get_decoration(resource.id, spv::DecorationBinding),   // Slot
-                shader_type                                                     // Stage
+                RHI_Descriptor_Type::RHI_Descriptor_Texture,                    // type
+                compiler.get_decoration(resource.id, spv::DecorationBinding),   // slot
+                shader_type,                                                    // stage
+                true,                                                           // is_storage
+                false                                                           // is_dynamic_constant_buffer
             );
         }
 
@@ -211,9 +213,11 @@ namespace Spartan
         {
             m_descriptors.emplace_back
             (
-                RHI_Descriptor_Type::RHI_Descriptor_ConstantBuffer,             // Type
-                compiler.get_decoration(resource.id, spv::DecorationBinding),   // Slot
-                shader_type                                                     // Stage
+                RHI_Descriptor_Type::RHI_Descriptor_ConstantBuffer,             // type
+                compiler.get_decoration(resource.id, spv::DecorationBinding),   // slot
+                shader_type,                                                    // stage
+                false,                                                          // is_storage
+                false                                                           // is_dynamic_constant_buffer
             );
         }
 
@@ -222,9 +226,11 @@ namespace Spartan
         {
             m_descriptors.emplace_back
             (
-                RHI_Descriptor_Type::RHI_Descriptor_SampledTexture,             // Type
-                compiler.get_decoration(resource.id, spv::DecorationBinding),   // Slot
-                shader_type                                                     // Stage
+                RHI_Descriptor_Type::RHI_Descriptor_Texture,                    // type
+                compiler.get_decoration(resource.id, spv::DecorationBinding),   // slot
+                shader_type,                                                    // stage
+                false,                                                          // is_storage
+                false                                                           // is_dynamic_constant_buffer
             );
         }
 
@@ -233,9 +239,11 @@ namespace Spartan
 		{
             m_descriptors.emplace_back
             (
-                RHI_Descriptor_Type::RHI_Descriptor_Sampler,                    // Type
-                compiler.get_decoration(resource.id, spv::DecorationBinding),   // Slot
-                shader_type                                                     // Stage
+                RHI_Descriptor_Type::RHI_Descriptor_Sampler,                    // type
+                compiler.get_decoration(resource.id, spv::DecorationBinding),   // slot
+                shader_type,                                                    // stage
+                false,                                                          // is_storage
+                false                                                           // is_dynamic_constant_buffer
             );
 		}
 	}

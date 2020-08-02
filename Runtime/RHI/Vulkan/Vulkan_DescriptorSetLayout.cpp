@@ -32,6 +32,25 @@ using namespace std;
 
 namespace Spartan
 {
+    static VkDescriptorType GetDescriptorType(const RHI_Descriptor& descriptor)
+    {
+        if (descriptor.type == RHI_Descriptor_ConstantBuffer)
+        {
+            return descriptor.is_dynamic_constant_buffer ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        }
+        else if (descriptor.type == RHI_Descriptor_Texture)
+        {
+            return descriptor.is_storage ? VK_DESCRIPTOR_TYPE_STORAGE_IMAGE : VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        }
+        else if (descriptor.type == RHI_Descriptor_Sampler)
+        {
+            return VK_DESCRIPTOR_TYPE_SAMPLER;
+        }
+
+        LOG_ERROR("Invalid descriptor type");
+        return VK_DESCRIPTOR_TYPE_MAX_ENUM;
+    }
+
     RHI_DescriptorSetLayout::~RHI_DescriptorSetLayout()
     {
         if (m_descriptor_set_layout)
@@ -93,14 +112,14 @@ namespace Spartan
                 image_infos[i].imageLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
             }
             // Sampled/Storage texture
-            else if (descriptor.type == RHI_Descriptor_SampledTexture || descriptor.type == RHI_Descriptor_StorageTexture)
+            else if (descriptor.type == RHI_Descriptor_Texture)
             {
                 image_infos[i].sampler      = nullptr;
                 image_infos[i].imageView    = static_cast<VkImageView>(descriptor.resource);
                 image_infos[i].imageLayout  = descriptor.resource ? vulkan_image_layout[descriptor.layout] : VK_IMAGE_LAYOUT_UNDEFINED;
             }
             // Constant/Uniform buffer
-            else if (descriptor.type == RHI_Descriptor_ConstantBuffer || descriptor.type == RHI_Descriptor_ConstantBufferDynamic)
+            else if (descriptor.type == RHI_Descriptor_ConstantBuffer)
             {
                 buffer_infos[i].buffer  = static_cast<VkBuffer>(descriptor.resource);
                 buffer_infos[i].offset  = descriptor.offset;
@@ -114,7 +133,7 @@ namespace Spartan
             write_descriptor_sets[i].dstBinding        = descriptor.slot;
             write_descriptor_sets[i].dstArrayElement   = 0;
             write_descriptor_sets[i].descriptorCount   = 1;
-            write_descriptor_sets[i].descriptorType    = vulkan_descriptor_type[descriptor.type];
+            write_descriptor_sets[i].descriptorType    = GetDescriptorType(descriptor);
             write_descriptor_sets[i].pImageInfo        = &image_infos[i];
             write_descriptor_sets[i].pBufferInfo       = &buffer_infos[i];
             write_descriptor_sets[i].pTexelBufferView  = nullptr;
@@ -147,7 +166,7 @@ namespace Spartan
             stage_flags |= (descriptor.stage & RHI_Shader_Compute)  ? VK_SHADER_STAGE_COMPUTE_BIT   : 0;
         
             layout_bindings[i].binding              = descriptor.slot;
-            layout_bindings[i].descriptorType       = vulkan_descriptor_type[descriptor.type];
+            layout_bindings[i].descriptorType       = GetDescriptorType(descriptor);
             layout_bindings[i].descriptorCount      = 1;
             layout_bindings[i].stageFlags           = stage_flags;
             layout_bindings[i].pImmutableSamplers   = nullptr;

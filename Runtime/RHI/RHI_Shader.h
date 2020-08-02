@@ -44,36 +44,31 @@ namespace Spartan
 		~RHI_Shader();
 
         // Compilation
-        template<typename T>
-        void Compile(const RHI_Shader_Type type, const std::string& shader);
-        void Compile(const RHI_Shader_Type type, const std::string& shader)
-        {
-            Compile<RHI_Vertex_Undefined>(type, shader);
-        }
-
-        // Asynchronous compilation
-        template<typename T>
-        void CompileAsync(const RHI_Shader_Type type, const std::string& shader);
-        void CompileAsync(const RHI_Shader_Type type, const std::string& shader)
-        {
-            CompileAsync<RHI_Vertex_Undefined>(type, shader);
-        }
-
+        template<typename T> void Compile(const RHI_Shader_Type type, const std::string& shader);
+        void Compile(const RHI_Shader_Type type, const std::string& shader) { Compile<RHI_Vertex_Undefined>(type, shader); }
+        template<typename T> void CompileAsync(const RHI_Shader_Type type, const std::string& shader);
+        void CompileAsync(const RHI_Shader_Type type, const std::string& shader) { CompileAsync<RHI_Vertex_Undefined>(type, shader); }
+        auto GetCompilationState()  const { return m_compilation_state; }
+        bool IsCompiled()           const { return m_compilation_state == Shader_Compilation_Succeeded; }
         void WaitForCompilation();
 
-		// Properties
-        void* GetResource()                 const									{ return m_resource; }
-		bool HasResource()                  const									{ return m_resource != nullptr; }
-		const auto& GetDescriptors()        const									{ return m_descriptors; }
-		const auto& GetInputLayout()        const									{ return m_input_layout; } // only valid for vertex shader
-		auto GetCompilationState()          const									{ return m_compilation_state; }
-        bool IsCompiled()                   const									{ return m_compilation_state == Shader_Compilation_Succeeded; }
-		const std::string& GetName()        const									{ return m_name; }
-		void SetName(const std::string& name)										{ m_name = name; }
+		// Resource
+        void* GetResource() const { return m_resource; }
+        bool HasResource()  const { return m_resource != nullptr; }
+
+        // Name
+		const std::string& GetName() const      { return m_name; }
+		void SetName(const std::string& name)   { m_name = name; }
+
+        // Defines
 		void AddDefine(const std::string& define, const std::string& value = "1")	{ m_defines[define] = value; }
-        auto& GetDefines()                  const                                   { return m_defines; }
-        const auto& GetFilePath()           const                                   { return m_file_path; }
-        RHI_Shader_Type GetShaderStage()    const                                   { return m_shader_type; }
+        auto& GetDefines() const                                                    { return m_defines; }
+
+        // Misc
+        const auto& GetDescriptors()        const { return m_descriptors; }
+        const auto& GetInputLayout()        const { return m_input_layout; } // only valid for vertex shader
+        const auto& GetFilePath()           const { return m_file_path; }
+        RHI_Shader_Type GetShaderStage()    const { return m_shader_type; }
         const char* GetEntryPoint()         const;
         const char* GetTargetProfile()      const;
         const char* GetShaderModel()        const;

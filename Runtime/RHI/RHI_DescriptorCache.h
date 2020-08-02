@@ -58,7 +58,7 @@ namespace Spartan
         uint32_t GetDescriptorSetCount() const;
         void SetDescriptorSetCapacity(uint32_t descriptor_capacity);
         bool CreateDescriptorPool(uint32_t descriptor_set_capacity);
-        std::vector<RHI_Descriptor> GenerateDescriptors(RHI_PipelineState& pipeline_state);
+        void GetDescriptors(RHI_PipelineState& pipeline_state, std::vector<RHI_Descriptor>& descriptors);
 
         // Descriptor set layouts 
         std::unordered_map<std::size_t, std::shared_ptr<RHI_DescriptorSetLayout>> m_descriptor_set_layouts;
