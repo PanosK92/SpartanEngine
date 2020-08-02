@@ -4,33 +4,14 @@ using System.Runtime.InteropServices;
 
 namespace Spartan
 {
+    using ObjectHandle = UInt64;
+
     public enum DebugType
     {
         Info    = 0,
         Warning = 1,
         Error   = 2
     };
-
-    public class Debug
-    {
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        public static extern void Log(string text, DebugType type = DebugType.Info);
-
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        public static extern void Log(float value, DebugType type = DebugType.Info);
-    }
-
-    public struct Vector2
-    {
-        public Vector2(float x, float y)
-        {
-            this.x = x;
-            this.y = y;
-        }
-
-        public float x;
-        public float y;
-    }
 
     public enum KeyCode
     {
@@ -79,6 +60,41 @@ namespace Spartan
         Right_Shoulder
     };
 
+    public class Debug
+    {
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public static extern void Log(string text, DebugType type = DebugType.Info);
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public static extern void Log(float value, DebugType type = DebugType.Info);
+    }
+
+    public struct Vector2
+    {
+        public Vector2(float x, float y)
+        {
+            this.x = x;
+            this.y = y;
+        }
+
+        public float x;
+        public float y;
+    }
+
+    public struct Vector3
+    {
+        public Vector3(float x, float y, float z)
+        {
+            this.x = x;
+            this.y = y;
+            this.z = z;
+        }
+
+        public float x;
+        public float y;
+        public float z;
+    }
+
     public class Input
     {
         [MethodImpl(MethodImplOptions.InternalCall)]
@@ -107,5 +123,49 @@ namespace Spartan
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         public static extern bool Save(string file_path);
+    }
+
+    public class Entity
+    {
+        public Entity(ObjectHandle handle)
+        {
+            this.handle = handle;
+        }
+
+        private ObjectHandle handle;
+    }
+
+    public class Transform
+    {
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        private static extern Vector3 _internal_GetPosition(ObjectHandle handle);
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        private static extern void _internal_SetPosition(ObjectHandle handle, Vector3 position);
+
+        private ObjectHandle handle;
+
+        public Transform(ObjectHandle handle)
+        {
+            this.handle = handle;
+        }
+
+        public Vector3 GetPosition()                { return _internal_GetPosition(handle); }
+        public void SetPosition(Vector3 position)   { _internal_SetPosition(handle, position); }
+    }
+
+    public class SpartanClass
+    {
+        public SpartanClass()
+        {
+            entity      = new Entity(_internal_entity_handle);
+            transform   = new Transform(_internal_transform_handle);
+        }
+
+        private ObjectHandle _internal_entity_handle;
+        private ObjectHandle _internal_transform_handle;
+
+        public Entity entity;
+        public Transform transform;
     }
 }
