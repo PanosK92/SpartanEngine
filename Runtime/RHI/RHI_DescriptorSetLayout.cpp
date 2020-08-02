@@ -200,7 +200,7 @@ namespace Spartan
 
         for (const RHI_Descriptor& descriptor : descriptors)
         {
-            Utility::Hash::hash_combine(hash, descriptor.GetHash());
+            Utility::Hash::hash_combine(hash, descriptor.GetHash(true));
         }
 
         return hash;

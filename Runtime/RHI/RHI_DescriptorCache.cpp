@@ -48,40 +48,27 @@ namespace Spartan
 
     void RHI_DescriptorCache::SetPipelineState(RHI_PipelineState& pipeline_state)
     {
-        // Compute shader hash (which defines the descriptor set layout)
+        // Get pipeline descriptors
+        GetDescriptors(pipeline_state, m_descriptors);
+
+        // Compute a hash for the descriptors
         size_t hash = 0;
+        for (const RHI_Descriptor& descriptor : m_descriptors)
         {
-            if (pipeline_state.shader_compute)
-            {
-                Utility::Hash::hash_combine(hash, pipeline_state.shader_compute->GetId());
-            }
-
-            if (pipeline_state.shader_vertex)
-            {
-                Utility::Hash::hash_combine(hash, pipeline_state.shader_vertex->GetId());
-            }
-
-            if (pipeline_state.shader_pixel)
-            {
-                Utility::Hash::hash_combine(hash, pipeline_state.shader_pixel->GetId());
-            }
+            Utility::Hash::hash_combine(hash, descriptor.GetHash(false));
         }
 
         // If there is no descriptor set layout for this particular hash, create one
         auto it = m_descriptor_set_layouts.find(hash);
         if (it == m_descriptor_set_layouts.end())
         {
-            // Generate descriptors from the reflected shaders
-            vector<RHI_Descriptor> descriptors;
-            GetDescriptors(pipeline_state, descriptors);
-
             // Create a name for the descriptor set layout, very useful for Vulkan debugging
             string name = (pipeline_state.shader_compute ? pipeline_state.shader_compute->GetName() : "null");
             name += "-" + (pipeline_state.shader_vertex ? pipeline_state.shader_vertex->GetName() : "null");
             name += "-" + (pipeline_state.shader_pixel ? pipeline_state.shader_pixel->GetName() : "null");
 
             // Emplace a new descriptor set layout
-            it = m_descriptor_set_layouts.emplace(make_pair(hash, make_shared<RHI_DescriptorSetLayout>(m_rhi_device, descriptors, name.c_str()))).first;
+            it = m_descriptor_set_layouts.emplace(make_pair(hash, make_shared<RHI_DescriptorSetLayout>(m_rhi_device, m_descriptors, name.c_str()))).first;
         }
 
         // Get the descriptor set layout we will be using
@@ -176,6 +163,8 @@ namespace Spartan
 
     void RHI_DescriptorCache::GetDescriptors(RHI_PipelineState& pipeline_state, vector<RHI_Descriptor>& descriptors)
     {
+        descriptors.clear();
+
         if (!pipeline_state.IsValid())
         {
             LOG_ERROR("Invalid pipeline state");

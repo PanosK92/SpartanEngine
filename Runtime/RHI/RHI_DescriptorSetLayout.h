@@ -23,10 +23,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ======================
 #include "../Core/Spartan_Object.h"
-#include "RHI_Definition.h"
 #include <unordered_map>
 #include <vector>
 #include <array>
+#include "RHI_Desctiptor.h"
 //=================================
 
 namespace Spartan

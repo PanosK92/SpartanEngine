@@ -251,56 +251,6 @@ namespace Spartan
         RHI_Image_Present_Src
     };
 
-    struct RHI_Descriptor
-    {
-        RHI_Descriptor() = default;
-
-        RHI_Descriptor(const RHI_Descriptor& descriptor)
-        {
-            type                        = descriptor.type;
-            slot                        = descriptor.slot;
-            stage                       = descriptor.stage;
-            is_storage                  = descriptor.is_storage;
-            is_dynamic_constant_buffer  = descriptor.is_dynamic_constant_buffer;
-        }
-
-        RHI_Descriptor(const RHI_Descriptor_Type type, const uint32_t slot, const uint32_t stage, const bool is_storage, const bool is_dynamic_constant_buffer)
-        {
-            this->type                          = type;
-            this->slot                          = slot;
-            this->stage                         = stage;
-            this->is_storage                    = is_storage;
-            this->is_dynamic_constant_buffer    = is_dynamic_constant_buffer;
-        }
-
-        std::size_t GetHash() const
-        {
-            std::size_t hash = 0;
-
-            Utility::Hash::hash_combine(hash, slot);
-            Utility::Hash::hash_combine(hash, stage);
-            Utility::Hash::hash_combine(hash, offset);
-            Utility::Hash::hash_combine(hash, range);
-            Utility::Hash::hash_combine(hash, resource);
-            Utility::Hash::hash_combine(hash, is_storage);
-            Utility::Hash::hash_combine(hash, is_dynamic_constant_buffer);
-            Utility::Hash::hash_combine(hash, static_cast<uint32_t>(type));
-            Utility::Hash::hash_combine(hash, static_cast<uint32_t>(layout));
-
-            return hash;
-        }
-
-        uint32_t slot                   = 0;
-        uint32_t stage                  = 0;
-        uint64_t offset                 = 0;
-        uint64_t range                  = 0;
-        RHI_Descriptor_Type type        = RHI_Descriptor_Undefined;
-        RHI_Image_Layout layout         = RHI_Image_Undefined;
-        bool is_storage                 = false;
-        bool is_dynamic_constant_buffer = false;
-        void* resource                  = nullptr;
-    };
-
     inline const char* rhi_format_to_string(const RHI_Format result)
     {
         switch (result)
