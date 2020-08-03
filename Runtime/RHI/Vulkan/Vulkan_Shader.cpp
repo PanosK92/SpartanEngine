@@ -47,9 +47,7 @@ namespace Spartan
 	}
 
 	/*
-	OVERVIEW: HLSL Compiler
-
-    Version: dxcompiler.dll: 1.5 - 1.5.0.2471 (HEAD, dfda2ee1)
+    Version: dxcompiler.dll: 1.6 - 1.5.0.2760 (cb0191d8)
     
     USAGE: dxc.exe [options] <inputs>
     
@@ -59,7 +57,7 @@ namespace Spartan
       -Qunused-arguments Don't emit warning for unused driver arguments
     
     Compilation Options:
-      -all_resources_bound    Enables agressive flattening
+      -all-resources-bound    Enables agressive flattening
       -auto-binding-space <value>
                               Set auto binding space - enables auto resource binding in libraries
       -Cc                     Output color coded assembly listings
@@ -68,10 +66,13 @@ namespace Spartan
       -denorm <value>         select denormal value options (any, preserve, ftz). any is the default.
       -D <value>              Define macro
       -enable-16bit-types     Enable 16bit types and disable min precision types. Available in HLSL 2018 and shader model 6.2
+      -encoding <value>       Set default encoding for text outputs (utf8|utf16) default=utf8
       -export-shaders-only    Only export shaders when compiling a library
       -exports <value>        Specify exports when compiling a library: export1[[,export1_clone,...]=internal_name][;...]
       -E <value>              Entry point name
       -Fc <file>              Output assembly code listing file
+      -fdiagnostics-show-option
+                              Print option name with mappable diagnostics
       -Fd <file>              Write debug information to the given file, or automatically named file in directory when ending in '\'
       -Fe <file>              Output warnings and errors to the given file
       -Fh <file>              Output header file containing object code
@@ -79,9 +80,14 @@ namespace Spartan
                               Expand the operands before performing token-pasting operation (fxc behavior)
       -flegacy-resource-reservation
                               Reserve unused explicit register assignments for compatibility with shader model 5.0 and below
-      -force_rootsig_ver <profile>
+      -fno-diagnostics-show-option
+                              Do not print option name with mappable diagnostics
+      -force-rootsig-ver <profile>
                               force root signature version (rootsig_1_1 if omitted)
       -Fo <file>              Output object file
+      -Fre <file>             Output reflection to the given file
+      -Frs <file>             Output root signature to the given file
+      -Fsh <file>             Output shader hash to the given file
       -Gec                    Enable backward compatibility mode
       -Ges                    Enable strict mode
       -Gfa                    Avoid flow control constructs
@@ -93,25 +99,27 @@ namespace Spartan
       -I <value>              Add directory to include search path
       -Lx                     Output hexadecimal literals
       -Ni                     Output instruction numbers in assembly listings
+      -no-legacy-cbuf-layout  Do not use legacy cbuffer load
       -no-warnings            Suppress warnings
-      -not_use_legacy_cbuf_load
-                              Do not use legacy cbuffer load
       -No                     Output instruction byte offsets in assembly listings
       -Odump                  Print the optimizer commands.
       -Od                     Disable optimizations
-      -pack_optimized         Optimize signature packing assuming identical signature provided for each connecting stage
-      -pack_prefix_stable     (default) Pack signatures preserving prefix-stable property - appended elements will not disturb placement of prior elements
+      -pack-optimized         Optimize signature packing assuming identical signature provided for each connecting stage
+      -pack-prefix-stable     (default) Pack signatures preserving prefix-stable property - appended elements will not disturb placement of prior elements
       -recompile              recompile from DXIL container with Debug Info or Debug Info bitcode file
-      -res_may_alias          Assume that UAVs/SRVs may alias
+      -res-may-alias          Assume that UAVs/SRVs may alias
       -rootsig-define <value> Read root signature from a #define
       -T <profile>            Set target profile.
-            <profile>: ps_6_0, ps_6_1, ps_6_2, ps_6_3, ps_6_4, ps_6_5,
-                     vs_6_0, vs_6_1, vs_6_2, vs_6_3, vs_6_4, vs_6_5,
-                     cs_6_0, cs_6_1, cs_6_2, cs_6_3, cs_6_4, cs_6_5,
-                     gs_6_0, gs_6_1, gs_6_2, gs_6_3, gs_6_4, gs_6_5,
-                     ds_6_0, ds_6_1, ds_6_2, ds_6_3, ds_6_4, ds_6_5,
-                     hs_6_0, hs_6_1, hs_6_2, hs_6_3, hs_6_4, hs_6_5,
-                     lib_6_3, lib_6_4, lib_6_5, ms_6_5, as_6_5
+            <profile>: ps_6_0, ps_6_1, ps_6_2, ps_6_3, ps_6_4, ps_6_5, ps_6_6,
+                     vs_6_0, vs_6_1, vs_6_2, vs_6_3, vs_6_4, vs_6_5, vs_6_6,
+                     gs_6_0, gs_6_1, gs_6_2, gs_6_3, gs_6_4, gs_6_5, gs_6_6,
+                     hs_6_0, hs_6_1, hs_6_2, hs_6_3, hs_6_4, hs_6_5, hs_6_6,
+                     ds_6_0, ds_6_1, ds_6_2, ds_6_3, ds_6_4, ds_6_5, ds_6_6,
+                     cs_6_0, cs_6_1, cs_6_2, cs_6_3, cs_6_4, cs_6_5, cs_6_6,
+                     lib_6_1, lib_6_2, lib_6_3, lib_6_4, lib_6_5, lib_6_6,
+                     ms_6_5, ms_6_6,
+                     as_6_5, as_6_6,
+    
       -Vd                     Disable validation
       -Vi                     Display details about the include process.
       -Vn <name>              Use <name> as variable name in header file
@@ -119,14 +127,27 @@ namespace Spartan
       -Zi                     Enable debug information
       -Zpc                    Pack matrices in column-major order
       -Zpr                    Pack matrices in row-major order
-      -Zsb                    Build debug name considering only output binary
-      -Zss                    Build debug name considering source information
+      -Zsb                    Compute Shader Hash considering only output binary
+      -Zss                    Compute Shader Hash considering source information
     
     Optimization Options:
       -O0 Optimization Level 0
       -O1 Optimization Level 1
       -O2 Optimization Level 2
       -O3 Optimization Level 3 (Default)
+    
+    Rewriter Options:
+      -extract-entry-uniforms Move uniform parameters from entry point to global scope
+      -global-extern-by-default
+                              Set extern on non-static globals
+      -keep-user-macro        Write out user defines after rewritten HLSL
+      -line-directive         Add line directive
+      -remove-unused-functions
+                              Remove unused functions and types
+      -remove-unused-globals  Remove unused static globals and functions
+      -skip-fn-body           Translate function definitions to declarations
+      -skip-static            Remove static functions and globals when used with -skip-fn-body
+      -unchanged              Rewrite HLSL, without changes.
     
     SPIR-V CodeGen Options:
       -fspv-debug=<value>     Specify whitelist of debug info category (file -> source -> line, tool)
@@ -136,6 +157,8 @@ namespace Spartan
       -fspv-reflect           Emit additional SPIR-V instructions to aid reflection
       -fspv-target-env=<value>
                               Specify the target environment: vulkan1.0 (default) or vulkan1.1
+      -fvk-auto-shift-bindings
+                              Apply fvk-*-shift to resources without an explicit register assignment.
       -fvk-b-shift <shift> <space>
                               Specify Vulkan binding number shift for b-type register
       -fvk-bind-globals <binding> <set>
@@ -360,6 +383,7 @@ namespace Spartan
             L"-fvk-t-shift", shift_texture.c_str(), L"all",     // Specify Vulkan binding number shift for t-type (texture) register
             L"-fvk-s-shift", shift_sampler.c_str(), L"all",     // Specify Vulkan binding number shift for s-type (sampler) register
             L"-fvk-u-shift", shift_rw_buffer.c_str(), L"all",   // Specify Vulkan binding number shift for u-type (read/write buffer) register
+            L"-fvk-use-dx-position-w",                          // Reciprocate SV_Position.w after reading from stage input in PS to accommodate the difference between Vulkan and DirectX
             L"-fvk-use-dx-layout",                              // Use DirectX memory layout for Vulkan resources
             L"-flegacy-macro-expansion",                        // Expand the operands before performing token-pasting operation (fxc behavior)
             #ifdef DEBUG

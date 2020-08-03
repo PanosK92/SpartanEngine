@@ -24,7 +24,7 @@ class CallInst;
 }
 #include "llvm/IR/Attributes.h"
 #include "llvm/ADT/StringRef.h"
-#include "llvm/ADT/DenseMap.h"
+#include "llvm/ADT/MapVector.h"
 
 #include "DxilConstants.h"
 #include <unordered_map>
@@ -42,13 +42,15 @@ public:
   OP(llvm::LLVMContext &Ctx, llvm::Module *pModule);
 
   void RefreshCache();
+  void FixOverloadNames();
 
   llvm::Function *GetOpFunc(OpCode OpCode, llvm::Type *pOverloadType);
-  const llvm::SmallDenseMap<llvm::Type *, llvm::Function *, 8> &GetOpFuncList(OpCode OpCode) const;
+  const llvm::SmallMapVector<llvm::Type *, llvm::Function *, 8> &GetOpFuncList(OpCode OpCode) const;
   void RemoveFunction(llvm::Function *F);
   llvm::Type *GetOverloadType(OpCode OpCode, llvm::Function *F);
   llvm::LLVMContext &GetCtx() { return m_Ctx; }
   llvm::Type *GetHandleType() const;
+  llvm::Type *GetResourcePropertiesType() const;
   llvm::Type *GetDimensionsType() const;
   llvm::Type *GetSamplePosType() const;
   llvm::Type *GetBinaryWithCarryType() const;
@@ -119,6 +121,7 @@ private:
   llvm::Module *m_pModule;
 
   llvm::Type *m_pHandleType;
+  llvm::Type *m_pResourcePropertiesType;
   llvm::Type *m_pDimensionsType;
   llvm::Type *m_pSamplePosType;
   llvm::Type *m_pBinaryWithCarryType;
@@ -136,7 +139,7 @@ private:
   llvm::Type *m_pCBufferRetType[kNumTypeOverloads];
 
   struct OpCodeCacheItem {
-    llvm::SmallDenseMap<llvm::Type *, llvm::Function *, 8> pOverloads;
+    llvm::SmallMapVector<llvm::Type *, llvm::Function *, 8> pOverloads;
   };
   OpCodeCacheItem m_OpCodeClassCache[(unsigned)OpCodeClass::NumOpClasses];
   std::unordered_map<const llvm::Function *, OpCodeClass> m_FunctionToOpClass;
@@ -160,6 +163,8 @@ private:
   static unsigned GetTypeSlot(llvm::Type *pType);
   static const char *GetOverloadTypeName(unsigned TypeSlot);
   static llvm::StringRef GetTypeName(llvm::Type *Ty, std::string &str);
+  static llvm::StringRef ConstructOverloadName(llvm::Type *Ty, DXIL::OpCode opCode,
+                                               std::string &funcNameStorage);
 };
 
 } // namespace hlsl
