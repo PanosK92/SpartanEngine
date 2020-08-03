@@ -27,7 +27,10 @@ import hctdb_instrhelp
 namespace DXIL {
   // DXIL version.
   const unsigned kDxilMajor = 1;
-  const unsigned kDxilMinor = 5;
+  /* <py::lines('VALRULE-TEXT')>hctdb_instrhelp.get_dxil_version_minor()</py>*/
+  // VALRULE-TEXT:BEGIN
+  const unsigned kDxilMinor = 6;
+  // VALRULE-TEXT:END
 
   inline unsigned MakeDxilVersion(unsigned DxilMajor, unsigned DxilMinor) {
     return 0 | (DxilMajor << 8) | (DxilMinor);
@@ -112,7 +115,7 @@ namespace DXIL {
 
   const unsigned kResRetStatusIndex = 4;
 
-  enum class ComponentType : uint8_t { 
+  enum class ComponentType : uint32_t {
     Invalid = 0,
     I1, I16, U16, I32, U32, I64, U64,
     F16, F32, F64,
@@ -327,8 +330,41 @@ namespace DXIL {
     RTAccelerationStructure,
     FeedbackTexture2D,
     FeedbackTexture2DArray,
+    StructuredBufferWithCounter,
+    SamplerComparison,
     NumEntries,
   };
+
+  inline bool IsAnyTexture(DXIL::ResourceKind ResourceKind) {
+    return DXIL::ResourceKind::Texture1D <= ResourceKind &&
+           ResourceKind <= DXIL::ResourceKind::TextureCubeArray;
+  }
+
+  inline bool IsStructuredBuffer(DXIL::ResourceKind ResourceKind) {
+    return ResourceKind == DXIL::ResourceKind::StructuredBuffer ||
+           ResourceKind == DXIL::ResourceKind::StructuredBufferWithCounter;
+  }
+
+  inline bool IsTypedBuffer(DXIL::ResourceKind ResourceKind) {
+    return ResourceKind == DXIL::ResourceKind::TypedBuffer;
+  }
+
+  inline bool IsTyped(DXIL::ResourceKind ResourceKind) {
+    return IsTypedBuffer(ResourceKind) || IsAnyTexture(ResourceKind);
+  }
+
+  inline bool IsRawBuffer(DXIL::ResourceKind ResourceKind) {
+    return ResourceKind == DXIL::ResourceKind::RawBuffer;
+  }
+
+  inline bool IsTBuffer(DXIL::ResourceKind ResourceKind) {
+    return ResourceKind == DXIL::ResourceKind::TBuffer;
+  }
+
+  inline bool IsFeedbackTexture(DXIL::ResourceKind ResourceKind) {
+    return ResourceKind == DXIL::ResourceKind::FeedbackTexture2D ||
+           ResourceKind == DXIL::ResourceKind::FeedbackTexture2DArray;
+  }
 
   // TODO: change opcodes.
   /* <py::lines('OPCODE-ENUM')>hctdb_instrhelp.get_enum_decl("OpCode")</py>*/
@@ -409,6 +445,10 @@ namespace DXIL {
     EmitThenCutStream = 99, // equivalent to an EmitStream followed by a CutStream
     GSInstanceID = 100, // GSInstanceID
   
+    // Get handle from heap
+    AnnotateHandle = 217, // annotate handle with resource properties
+    CreateHandleFromHeap = 216, // create resource handle from heap
+  
     // Graphics shader
     ViewID = 138, // returns the view index
   
@@ -428,6 +468,7 @@ namespace DXIL {
     AllocateRayQuery = 178, // allocates space for RayQuery and return handle
     RayQuery_Abort = 181, // aborts a ray query
     RayQuery_CandidateGeometryIndex = 203, // returns candidate hit geometry index
+    RayQuery_CandidateInstanceContributionToHitGroupIndex = 214, // returns candidate hit InstanceContributionToHitGroupIndex
     RayQuery_CandidateInstanceID = 202, // returns candidate hit instance ID
     RayQuery_CandidateInstanceIndex = 201, // returns candidate hit instance index
     RayQuery_CandidateObjectRayDirection = 206, // returns candidate object ray direction
@@ -443,6 +484,7 @@ namespace DXIL {
     RayQuery_CommitNonOpaqueTriangleHit = 182, // commits a non opaque triangle hit
     RayQuery_CommitProceduralPrimitiveHit = 183, // commits a procedural primitive hit
     RayQuery_CommittedGeometryIndex = 209, // returns committed hit geometry index
+    RayQuery_CommittedInstanceContributionToHitGroupIndex = 215, // returns committed hit InstanceContributionToHitGroupIndex
     RayQuery_CommittedInstanceID = 208, // returns committed hit instance ID
     RayQuery_CommittedInstanceIndex = 207, // returns committed hit instance index
     RayQuery_CommittedObjectRayDirection = 212, // returns committed object ray direction
@@ -656,9 +698,10 @@ namespace DXIL {
     NumOpCodes_Dxil_1_2 = 141,
     NumOpCodes_Dxil_1_3 = 162,
     NumOpCodes_Dxil_1_4 = 165,
-    NumOpCodes_Dxil_1_5 = 214,
+    NumOpCodes_Dxil_1_5 = 216,
+    NumOpCodes_Dxil_1_6 = 218,
   
-    NumOpCodes = 214 // exclusive last value of enumeration
+    NumOpCodes = 218 // exclusive last value of enumeration
   };
   // OPCODE-ENUM:END
 
@@ -724,6 +767,10 @@ namespace DXIL {
     EmitStream,
     EmitThenCutStream,
     GSInstanceID,
+  
+    // Get handle from heap
+    AnnotateHandle,
+    CreateHandleFromHeap,
   
     // Graphics shader
     ViewID,
@@ -905,8 +952,9 @@ namespace DXIL {
     NumOpClasses_Dxil_1_3 = 118,
     NumOpClasses_Dxil_1_4 = 120,
     NumOpClasses_Dxil_1_5 = 143,
+    NumOpClasses_Dxil_1_6 = 145,
   
-    NumOpClasses = 143 // exclusive last value of enumeration
+    NumOpClasses = 145 // exclusive last value of enumeration
   };
   // OPCODECLASS-ENUM:END
 
@@ -1389,6 +1437,10 @@ namespace DXIL {
   extern const char* kFP32DenormValueAnyString;
   extern const char* kFP32DenormValuePreserveString;
   extern const char* kFP32DenormValueFtzString;
+
+  extern const char *kDxBreakFuncName;
+  extern const char *kDxBreakCondName;
+  extern const char *kDxBreakMDName;
 
 } // namespace DXIL
 

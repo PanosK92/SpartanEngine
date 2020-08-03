@@ -11,15 +11,20 @@
 
 #pragma once
 
+#include "llvm/IR/IRBuilder.h"
 #include <string>
 
 namespace llvm {
-class Module;
-class Function;
-class CallInst;
 class Argument;
-class StringRef;
+template<typename T> class ArrayRef;
+class AttributeSet;
+class CallInst;
+class Function;
 class FunctionType;
+class Module;
+class StringRef;
+class Type;
+class Value;
 }
 
 namespace hlsl {
@@ -36,6 +41,7 @@ enum class HLOpcodeGroup {
   HLMatLoadStore,
   HLSelect,
   HLCreateHandle,
+  HLAnnotateHandle,
   NumOfHLOps
 };
 
@@ -121,6 +127,9 @@ llvm::StringRef GetHLLowerStrategy(llvm::Function *F);
 unsigned  GetHLOpcode(const llvm::CallInst *CI);
 unsigned  GetRowMajorOpcode(HLOpcodeGroup group, unsigned opcode);
 void SetHLLowerStrategy(llvm::Function *F, llvm::StringRef S);
+
+void SetHLWaveSensitive(llvm::Function *F);
+bool IsHLWaveSensitive(llvm::Function *F);
 
 // For intrinsic opcode.
 bool HasUnsignedOpcode(unsigned opcode);
@@ -346,6 +355,14 @@ const unsigned kWaveAllEqualValueOpIdx = 1;
 const unsigned kCreateHandleResourceOpIdx = 1;
 const unsigned kCreateHandleIndexOpIdx = 2; // Only for array of cbuffer.
 
+// AnnotateHandle.
+const unsigned kAnnotateHandleHandleOpIdx = 1;
+const unsigned kAnnotateHandleResourceClassOpIdx = 2;
+const unsigned kAnnotateHandleResourceKindOpIdx = 3;
+const unsigned kAnnotateHandleResourcePropertiesOpIdx = 4;
+const unsigned kAnnotateHandleResourceTypeOpIdx = 5;
+
+
 // TraceRay.
 const unsigned kTraceRayRayDescOpIdx = 7;
 const unsigned kTraceRayPayLoadOpIdx = 8;
@@ -377,9 +394,30 @@ llvm::Function *GetOrCreateHLFunction(llvm::Module &M,
                                       llvm::StringRef *fnName,
                                       unsigned opcode);
 
+llvm::Function *GetOrCreateHLFunction(llvm::Module &M,
+                                      llvm::FunctionType *funcTy,
+                                      HLOpcodeGroup group, unsigned opcode,
+                                      const llvm::AttributeSet &attribs);
+llvm::Function *GetOrCreateHLFunction(llvm::Module &M,
+                                      llvm::FunctionType *funcTy,
+                                      HLOpcodeGroup group,
+                                      llvm::StringRef *groupName,
+                                      llvm::StringRef *fnName,
+                                      unsigned opcode,
+                                      const llvm::AttributeSet &attribs);
+
 llvm::Function *GetOrCreateHLFunctionWithBody(llvm::Module &M,
                                               llvm::FunctionType *funcTy,
                                               HLOpcodeGroup group,
                                               unsigned opcode,
                                               llvm::StringRef name);
+
+llvm::Value *callHLFunction(llvm::Module &Module, HLOpcodeGroup OpcodeGroup, unsigned Opcode,
+                            llvm::Type *RetTy, llvm::ArrayRef<llvm::Value*> Args,
+                            const llvm::AttributeSet &attribs, llvm::IRBuilder<> &Builder);
+
+llvm::Value *callHLFunction(llvm::Module &Module, HLOpcodeGroup OpcodeGroup, unsigned Opcode,
+                            llvm::Type *RetTy, llvm::ArrayRef<llvm::Value*> Args,
+                            llvm::IRBuilder<> &Builder);
+
 } // namespace hlsl
