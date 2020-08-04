@@ -158,13 +158,13 @@ namespace Spartan
         static const char* target_profile_ps = "ps_5_0";
         static const char* target_profile_cs = "cs_5_0";
         #elif defined(API_GRAPHICS_D3D12)
-        static const char* target_profile_vs = "vs_6_0";
-        static const char* target_profile_ps = "ps_6_0";
-        static const char* target_profile_cs = "cs_6_0";
+        static const char* target_profile_vs = "vs_6_6";
+        static const char* target_profile_ps = "ps_6_6";
+        static const char* target_profile_cs = "cs_6_6";
         #elif defined(API_GRAPHICS_VULKAN)
-        static const char* target_profile_vs = "vs_6_0";
-        static const char* target_profile_ps = "ps_6_0";
-        static const char* target_profile_cs = "cs_6_0";
+        static const char* target_profile_vs = "vs_6_6";
+        static const char* target_profile_ps = "ps_6_6";
+        static const char* target_profile_cs = "cs_6_6";
         #endif
 
         if (m_shader_type == RHI_Shader_Vertex)     return target_profile_vs;
