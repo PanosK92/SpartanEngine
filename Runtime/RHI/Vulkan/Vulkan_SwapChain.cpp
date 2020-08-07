@@ -348,9 +348,7 @@ namespace Spartan
         if (!m_present)
             return true;
 
-        bool first_run              = !m_image_acquired;
-        m_cmd_index                 = first_run ? 0 : (m_image_index + 1) % m_buffer_count;
-        bool reset_pool             = !first_run && m_cmd_index == 0;
+        m_cmd_index                 = m_image_index++ % m_buffer_count;
         RHI_CommandList* cmd_list   = m_cmd_lists[m_cmd_index].get();
 
         // Acquire next image
@@ -368,9 +366,12 @@ namespace Spartan
             LOG_INFO("Outdated swapchain, recreating...");
             m_image_acquired = Resize(m_width, m_height, true) ? VK_SUCCESS : result;
         }
+        else if (result != VK_SUCCESS)
+        {
+            LOG_ERROR("Failed to acquire next image");
+        }
 
         m_image_acquired = result == VK_SUCCESS;
-
         return vulkan_utility::error::check(result);
 	}
 
