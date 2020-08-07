@@ -39,7 +39,7 @@ namespace Spartan
         class Rectangle;
     }
 
-    enum class RHI_Cmd_List_State : uint64_t
+    enum class RHI_CommandListState : uint64_t
     {
         Idle,
         Recording,
@@ -61,7 +61,7 @@ namespace Spartan
         bool Reset();
         bool Flush()
         {
-            if (m_cmd_state == RHI_Cmd_List_State::Recording)
+            if (m_cmd_state == RHI_CommandListState::Recording)
             {
                 bool has_render_pass = m_render_pass_active;
                 if (has_render_pass)
@@ -153,7 +153,7 @@ namespace Spartan
         bool Deferred_BindDescriptorSet();
         bool OnDraw();
 
-        std::atomic<RHI_Cmd_List_State> m_cmd_state = RHI_Cmd_List_State::Idle;
+        std::atomic<RHI_CommandListState> m_cmd_state = RHI_CommandListState::Idle;
 		RHI_Pipeline* m_pipeline	                = nullptr; 
         RHI_SwapChain* m_swap_chain                 = nullptr;
         Renderer* m_renderer                        = nullptr;

@@ -53,15 +53,15 @@ namespace ImGui::RHI
 	Renderer*	g_renderer		= nullptr;
 
 	// RHI resources
-	static shared_ptr<RHI_Device>				g_rhi_device;
-	static unique_ptr<RHI_Texture>				g_texture;
-	static vector<unique_ptr<RHI_VertexBuffer>>	g_vertex_buffers;
-	static vector<unique_ptr<RHI_IndexBuffer>>	g_index_buffers;
-	static unique_ptr<RHI_DepthStencilState>	g_depth_stencil_state;
-	static unique_ptr<RHI_RasterizerState>		g_rasterizer_state;
-	static unique_ptr<RHI_BlendState>			g_blend_state;
-	static unique_ptr<RHI_Shader>				g_shader_vertex;
-    static unique_ptr<RHI_Shader>				g_shader_pixel;
+	static shared_ptr<RHI_Device>				                            g_rhi_device;
+	static unique_ptr<RHI_Texture>				                            g_texture;
+	static unordered_map<uint32_t, vector<unique_ptr<RHI_VertexBuffer>>>	g_vertex_buffers;
+	static unordered_map<uint32_t, vector<unique_ptr<RHI_IndexBuffer>>>	    g_index_buffers;
+	static unique_ptr<RHI_DepthStencilState>	                            g_depth_stencil_state;
+	static unique_ptr<RHI_RasterizerState>		                            g_rasterizer_state;
+	static unique_ptr<RHI_BlendState>			                            g_blend_state;
+	static unique_ptr<RHI_Shader>				                            g_shader_vertex;
+    static unique_ptr<RHI_Shader>				                            g_shader_pixel;
 
 	inline bool Initialize(Context* context, const float width, const float height)
 	{
@@ -183,16 +183,17 @@ namespace ImGui::RHI
         RHI_VertexBuffer* vertex_buffer = nullptr;
         RHI_IndexBuffer* index_buffer   = nullptr;
         {
-            uint32_t cmd_index = swap_chain->GetCmdIndex();
+            const uint32_t swapchain_id         = swap_chain->GetId();
+            const uint32_t swapchain_cmd_index  = swap_chain->GetCmdIndex();
 
-            if (cmd_index >= g_vertex_buffers.size())
+            if (swapchain_cmd_index >= g_vertex_buffers[swapchain_id].size())
             {
-                g_vertex_buffers.emplace_back(make_unique<RHI_VertexBuffer>(g_rhi_device, static_cast<uint32_t>(sizeof(ImDrawVert))));
-                g_index_buffers.emplace_back(make_unique<RHI_IndexBuffer>(g_rhi_device));
+                g_vertex_buffers[swapchain_id].emplace_back(make_unique<RHI_VertexBuffer>(g_rhi_device, static_cast<uint32_t>(sizeof(ImDrawVert))));
+                g_index_buffers[swapchain_id].emplace_back(make_unique<RHI_IndexBuffer>(g_rhi_device));
             }
 
-            vertex_buffer   = g_vertex_buffers[cmd_index].get();
-            index_buffer    = g_index_buffers[cmd_index].get();
+            vertex_buffer   = g_vertex_buffers[swapchain_id][swapchain_cmd_index].get();
+            index_buffer    = g_index_buffers[swapchain_id][swapchain_cmd_index].get();
 
 			// Grow vertex buffer as needed
 			if (vertex_buffer->GetVertexCount() < static_cast<unsigned int>(draw_data->TotalVtxCount))

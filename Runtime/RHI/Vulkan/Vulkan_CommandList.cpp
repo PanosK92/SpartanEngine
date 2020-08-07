@@ -140,7 +140,7 @@ namespace Spartan
             m_timestamp_index = 0;
         }
 
-        if (m_cmd_state != RHI_Cmd_List_State::Idle)
+        if (m_cmd_state != RHI_CommandListState::Idle)
         {
             LOG_ERROR("The command list is still being used");
             return false;
@@ -154,14 +154,14 @@ namespace Spartan
 
         vkCmdResetQueryPool(static_cast<VkCommandBuffer>(m_cmd_buffer), static_cast<VkQueryPool>(m_query_pool), 0, m_max_timestamps);
 
-        m_cmd_state = RHI_Cmd_List_State::Recording;
+        m_cmd_state = RHI_CommandListState::Recording;
         m_flushed   = false;
         return true;
     }
 
     bool RHI_CommandList::Stop()
     {
-        if (m_cmd_state != RHI_Cmd_List_State::Recording)
+        if (m_cmd_state != RHI_CommandListState::Recording)
         {
             LOG_WARNING("The command list is not recording, no need to stop it");
             return true;
@@ -170,21 +170,21 @@ namespace Spartan
         if (!vulkan_utility::error::check(vkEndCommandBuffer(static_cast<VkCommandBuffer>(m_cmd_buffer))))
             return false;
 
-        m_cmd_state = RHI_Cmd_List_State::Submittable;
+        m_cmd_state = RHI_CommandListState::Submittable;
         return true;
     }
 
     bool RHI_CommandList::Submit()
     {
         // Ensure the command list has recorded
-        if (m_cmd_state == RHI_Cmd_List_State::Idle)
+        if (m_cmd_state == RHI_CommandListState::Idle)
         {
             LOG_WARNING("The command list is idle, nothing to submit");
             return false;
         }
 
         // Ensure the command list is not recording
-        if (m_cmd_state == RHI_Cmd_List_State::Recording)
+        if (m_cmd_state == RHI_CommandListState::Recording)
         {
             if (!Stop())
             {
@@ -200,14 +200,14 @@ namespace Spartan
         void* signal_semaphore  = nullptr;
         if (state->render_target_swapchain)
         {
-            // If the swapchain is not presenting (e.g. minimised window), don't submit and work
+            // If the swapchain is not presenting (e.g. minimised window), don't submit any work
             if (!state->render_target_swapchain->IsPresenting())
             {
-                m_cmd_state = RHI_Cmd_List_State::Submitted;
+                m_cmd_state = RHI_CommandListState::Submitted;
                 return true;
             }
 
-            wait_semaphore      = state->render_target_swapchain->GetImageAcquireSemaphore();
+            wait_semaphore      = state->render_target_swapchain->GetImageAcquiredSemaphore();
             signal_semaphore    = m_processed_semaphore;
         }
         
@@ -223,20 +223,20 @@ namespace Spartan
         )
         return false;
 
-        m_cmd_state = RHI_Cmd_List_State::Submitted;
+        m_cmd_state = RHI_CommandListState::Submitted;
 
         return true;
     }
 
     bool RHI_CommandList::Wait()
     {
-        if (m_cmd_state == RHI_Cmd_List_State::Submitted)
+        if (m_cmd_state == RHI_CommandListState::Submitted)
         {
             if (!vulkan_utility::fence::wait(m_processed_fence))
                 return false;
 
             m_descriptor_cache->GrowIfNeeded();
-            m_cmd_state = RHI_Cmd_List_State::Idle;
+            m_cmd_state = RHI_CommandListState::Idle;
         }
 
         return true;
@@ -244,7 +244,7 @@ namespace Spartan
 
     bool RHI_CommandList::Reset()
     {
-        if (m_cmd_state != RHI_Cmd_List_State::Recording)
+        if (m_cmd_state != RHI_CommandListState::Recording)
             return true;
 
         lock_guard<mutex> guard(m_mutex_reset);
@@ -252,7 +252,7 @@ namespace Spartan
         if (!vulkan_utility::error::check(vkResetCommandBuffer(static_cast<VkCommandBuffer>(m_cmd_buffer), VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT)))
             return false;
 
-        m_cmd_state = RHI_Cmd_List_State::Idle;
+        m_cmd_state = RHI_CommandListState::Idle;
         return true;
     }
 
@@ -369,7 +369,7 @@ namespace Spartan
 
     bool RHI_CommandList::Draw(const uint32_t vertex_count)
 	{
-        if (m_cmd_state != RHI_Cmd_List_State::Recording)
+        if (m_cmd_state != RHI_CommandListState::Recording)
         {
             LOG_WARNING("Can't record command");
             return false;
@@ -394,7 +394,7 @@ namespace Spartan
 
     bool RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset)
 	{
-        if (m_cmd_state != RHI_Cmd_List_State::Recording)
+        if (m_cmd_state != RHI_CommandListState::Recording)
         {
             LOG_WARNING("Can't record command");
             return false;
@@ -420,7 +420,7 @@ namespace Spartan
 
     bool RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z, bool async /*= false*/)
     {
-        if (m_cmd_state != RHI_Cmd_List_State::Recording)
+        if (m_cmd_state != RHI_CommandListState::Recording)
         {
             LOG_WARNING("Can't record command");
             return false;
@@ -438,7 +438,7 @@ namespace Spartan
 
 	void RHI_CommandList::SetViewport(const RHI_Viewport& viewport) const
 	{
-        if (m_cmd_state != RHI_Cmd_List_State::Recording)
+        if (m_cmd_state != RHI_CommandListState::Recording)
         {
             LOG_WARNING("Can't record command");
             return;
@@ -462,7 +462,7 @@ namespace Spartan
 
 	void RHI_CommandList::SetScissorRectangle(const Math::Rectangle& scissor_rectangle) const
 	{
-        if (m_cmd_state != RHI_Cmd_List_State::Recording)
+        if (m_cmd_state != RHI_CommandListState::Recording)
         {
             LOG_WARNING("Can't record command");
             return;
@@ -484,7 +484,7 @@ namespace Spartan
 
 	void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer, const uint64_t offset /*= 0*/)
 	{
-        if (m_cmd_state != RHI_Cmd_List_State::Recording)
+        if (m_cmd_state != RHI_CommandListState::Recording)
         {
             LOG_WARNING("Can't record command");
             return;
@@ -511,7 +511,7 @@ namespace Spartan
 
 	void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer, const uint64_t offset /*= 0*/)
 	{
-        if (m_cmd_state != RHI_Cmd_List_State::Recording)
+        if (m_cmd_state != RHI_CommandListState::Recording)
         {
             LOG_WARNING("Can't record command");
             return;
@@ -534,7 +534,7 @@ namespace Spartan
 
     bool RHI_CommandList::SetConstantBuffer(const uint32_t slot, const uint8_t scope, RHI_ConstantBuffer* constant_buffer) const
     {
-        if (m_cmd_state != RHI_Cmd_List_State::Recording)
+        if (m_cmd_state != RHI_CommandListState::Recording)
         {
             LOG_WARNING("Can't record command");
             return false;
@@ -552,7 +552,7 @@ namespace Spartan
 
     void RHI_CommandList::SetSampler(const uint32_t slot, RHI_Sampler* sampler) const
     {
-        if (m_cmd_state != RHI_Cmd_List_State::Recording)
+        if (m_cmd_state != RHI_CommandListState::Recording)
         {
             LOG_WARNING("Can't record command");
             return;
@@ -570,7 +570,7 @@ namespace Spartan
 
     void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const bool storage /*= false*/)
     {
-        if (m_cmd_state != RHI_Cmd_List_State::Recording)
+        if (m_cmd_state != RHI_CommandListState::Recording)
         {
             LOG_WARNING("Can't record command");
             return;
@@ -679,7 +679,7 @@ namespace Spartan
 
     bool RHI_CommandList::Timestamp_Start(void* query_disjoint /*= nullptr*/, void* query_start /*= nullptr*/)
     {
-        if (m_cmd_state != RHI_Cmd_List_State::Recording)
+        if (m_cmd_state != RHI_CommandListState::Recording)
         {
             LOG_WARNING("Can't record command");
             return false;
@@ -698,7 +698,7 @@ namespace Spartan
 
     bool RHI_CommandList::Timestamp_End(void* query_disjoint /*= nullptr*/, void* query_end /*= nullptr*/)
     {
-        if (m_cmd_state != RHI_Cmd_List_State::Recording)
+        if (m_cmd_state != RHI_CommandListState::Recording)
         {
             LOG_WARNING("Can't record command");
             return false;
@@ -749,17 +749,17 @@ namespace Spartan
 
     bool RHI_CommandList::IsRecording() const
     {
-        return m_cmd_state == RHI_Cmd_List_State::Recording;
+        return m_cmd_state == RHI_CommandListState::Recording;
     }
 
     bool RHI_CommandList::IsPending() const
     {
-        return m_cmd_state == RHI_Cmd_List_State::Submitted;
+        return m_cmd_state == RHI_CommandListState::Submitted;
     }
 
     bool RHI_CommandList::IsIdle() const
     {
-        return m_cmd_state == RHI_Cmd_List_State::Idle;
+        return m_cmd_state == RHI_CommandListState::Idle;
     }
 
     void RHI_CommandList::Timeblock_Start(const RHI_PipelineState* pipeline_state)
@@ -808,7 +808,7 @@ namespace Spartan
 
     bool RHI_CommandList::Deferred_BeginRenderPass()
     {
-        if (m_cmd_state != RHI_Cmd_List_State::Recording)
+        if (m_cmd_state != RHI_CommandListState::Recording)
         {
             LOG_WARNING("Can't record command");
             return false;
@@ -877,7 +877,7 @@ namespace Spartan
 
     bool RHI_CommandList::Deferred_BindDescriptorSet()
     {
-        if (m_cmd_state != RHI_Cmd_List_State::Recording)
+        if (m_cmd_state != RHI_CommandListState::Recording)
             return false;
 
         // Descriptor set != null, result = true    -> a descriptor set must be bound
@@ -939,7 +939,7 @@ namespace Spartan
 
     bool RHI_CommandList::OnDraw()
     {
-        if (m_cmd_state != RHI_Cmd_List_State::Recording)
+        if (m_cmd_state != RHI_CommandListState::Recording)
             return false;
 
         if (m_flushed)
