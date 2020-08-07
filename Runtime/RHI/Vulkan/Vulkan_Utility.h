@@ -156,20 +156,21 @@ namespace Spartan::vulkan_utility
             vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, queue_families_properties.data());
 
             if (!get_queue_family_index(VK_QUEUE_GRAPHICS_BIT, queue_families_properties, &globals::rhi_context->queue_graphics_index))
+            {
+                LOG_ERROR("Graphics queue not suported.");
                 return false;
+            }
 
             if (!get_queue_family_index(VK_QUEUE_TRANSFER_BIT, queue_families_properties, &globals::rhi_context->queue_transfer_index))
             {
                 LOG_WARNING("Transfer queue not suported, using graphics instead.");
                 globals::rhi_context->queue_transfer_index = globals::rhi_context->queue_graphics_index;
-                return true;
             }
 
             if (!get_queue_family_index(VK_QUEUE_COMPUTE_BIT, queue_families_properties, &globals::rhi_context->queue_compute_index))
             {
                 LOG_WARNING("Compute queue not suported, using graphics instead.");
                 globals::rhi_context->queue_compute_index = globals::rhi_context->queue_graphics_index;
-                return true;
             }
 
             return true;
