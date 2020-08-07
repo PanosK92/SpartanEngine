@@ -198,7 +198,7 @@ void Widget_RenderOptions::Tick()
 
             if (do_hbao || do_ssr)
             {
-                ImGui::Checkbox("SSGI - Screen space global illumination", &do_indirect_bounce);
+                ImGui::Checkbox("SSGI - Screen Space Global Illumination", &do_indirect_bounce);
                 ImGuiEx::Tooltip("Computes one bounce of indirect light. HBAO and SSR are used for diffuse and specular light, so at least one has to be active");
                 ImGui::Separator();
             }

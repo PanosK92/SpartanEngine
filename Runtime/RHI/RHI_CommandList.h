@@ -39,12 +39,12 @@ namespace Spartan
         class Rectangle;
     }
 
-    enum RHI_Cmd_List_State : uint64_t
+    enum class RHI_Cmd_List_State : uint64_t
     {
-        RHI_Cmd_List_Idle,
-        RHI_Cmd_List_Recording,
-        RHI_Cmd_List_Submittable,
-        RHI_Cmd_List_Pending
+        Idle,
+        Recording,
+        Submittable,
+        Submitted
     };
 
 	class SPARTAN_CLASS RHI_CommandList : public Spartan_Object
@@ -61,7 +61,7 @@ namespace Spartan
         bool Reset();
         bool Flush()
         {
-            if (m_cmd_state == RHI_Cmd_List_Recording)
+            if (m_cmd_state == RHI_Cmd_List_State::Recording)
             {
                 bool has_render_pass = m_render_pass_active;
                 if (has_render_pass)
@@ -153,7 +153,7 @@ namespace Spartan
         bool Deferred_BindDescriptorSet();
         bool OnDraw();
 
-        std::atomic<RHI_Cmd_List_State> m_cmd_state = RHI_Cmd_List_Idle;
+        std::atomic<RHI_Cmd_List_State> m_cmd_state = RHI_Cmd_List_State::Idle;
 		RHI_Pipeline* m_pipeline	                = nullptr; 
         RHI_SwapChain* m_swap_chain                 = nullptr;
         Renderer* m_renderer                        = nullptr;

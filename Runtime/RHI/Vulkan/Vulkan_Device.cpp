@@ -285,15 +285,12 @@ namespace Spartan
 
     bool RHI_Device::Queue_Present(void* swapchain_view, uint32_t* image_index, void* wait_semaphore /*= nullptr*/) const
     {
-        VkSemaphore wait_semaphores[]   = { static_cast<VkSemaphore>(wait_semaphore) };
-        VkSwapchainKHR swap_chains[]    = { static_cast<VkSwapchainKHR>(swapchain_view) };
-
         VkPresentInfoKHR present_info   = {};
         present_info.sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
         present_info.waitSemaphoreCount = wait_semaphore ? 1 : 0;
-        present_info.pWaitSemaphores    = wait_semaphores;
+        present_info.pWaitSemaphores    = wait_semaphore ? reinterpret_cast<VkSemaphore*>(&wait_semaphore) : nullptr;
         present_info.swapchainCount     = 1;
-        present_info.pSwapchains        = swap_chains;
+        present_info.pSwapchains        = reinterpret_cast<VkSwapchainKHR*>(&swapchain_view);
         present_info.pImageIndices      = image_index;
 
         lock_guard<mutex> lock(m_queue_mutex);
@@ -302,17 +299,13 @@ namespace Spartan
 
     bool RHI_Device::Queue_Submit(const RHI_Queue_Type type, void* cmd_buffer, void* wait_semaphore /*= nullptr*/, void* signal_semaphore /*= nullptr*/, void* signal_fence /*= nullptr*/, uint32_t wait_flags /*= 0*/) const
     {
-        VkSemaphore wait_semaphores[]       = { static_cast<VkSemaphore>(wait_semaphore) };
-        VkSemaphore signal_semaphores[]     = { static_cast<VkSemaphore>(signal_semaphore) };
-        VkPipelineStageFlags _wait_flags[]  = { wait_flags };
-
         VkSubmitInfo submit_info            = {};
         submit_info.sType                   = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submit_info.waitSemaphoreCount      = wait_semaphore ? 1 : 0;
-        submit_info.pWaitSemaphores         = wait_semaphores;
+        submit_info.pWaitSemaphores         = wait_semaphore ? reinterpret_cast<VkSemaphore*>(&wait_semaphore) : nullptr;
         submit_info.signalSemaphoreCount    = signal_semaphore ? 1 : 0;
-        submit_info.pSignalSemaphores       = signal_semaphores;
-        submit_info.pWaitDstStageMask       = _wait_flags;
+        submit_info.pSignalSemaphores       = signal_semaphore ? reinterpret_cast<VkSemaphore*>(&signal_semaphore) : nullptr;
+        submit_info.pWaitDstStageMask       = &wait_flags;
         submit_info.commandBufferCount      = 1;
         submit_info.pCommandBuffers         = reinterpret_cast<VkCommandBuffer*>(&cmd_buffer);
         

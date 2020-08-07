@@ -509,8 +509,18 @@ namespace Spartan::vulkan_utility
             return static_cast<VkCommandBuffer>(cmbdi.cmd_buffer);
         }
 
-        static bool end(const RHI_Queue_Type queue_type, const uint32_t wait_flags)
+        static bool end(const RHI_Queue_Type queue_type)
         {
+            uint32_t wait_flags;
+            if (queue_type == RHI_Queue_Graphics)
+            {
+                wait_flags = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            }
+            else if (queue_type == RHI_Queue_Transfer)
+            {
+                wait_flags = VK_PIPELINE_STAGE_TRANSFER_BIT;
+            }
+
             std::lock_guard<std::mutex> lock(m_mutex_end);
             return m_objects[queue_type].submit(wait_flags);
         }
