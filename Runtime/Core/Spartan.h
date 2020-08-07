@@ -45,7 +45,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 //=========================
 
-//= STD ==============
+//= STD ================
 #include <string>
 #include <algorithm>
 #include <type_traits>
@@ -58,7 +58,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <array>
 #include <atomic>
 #include <map>
-//====================
+#include <unordered_map>
+//======================
 
 //= THIRD-PARTY LIBS ===========================================================
 #pragma warning(push, 0) // Hide warnings which don't belong to us
@@ -104,7 +105,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <mono/metadata/debug-helpers.h>
 #include <mono/metadata/exception.h>
 #include <mono/metadata/appdomain.h>
-#include <mono/utils/mono-publib.h>
 #pragma warning(pop)
 //==============================================================================
 

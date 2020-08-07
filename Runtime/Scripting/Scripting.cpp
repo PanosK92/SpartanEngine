@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Spartan.h"
 #include "Scripting.h"
 #include "ScriptingHelper.h"
-#include "ScriptingInterface.h"
+#include "ScriptingApi.h"
 #include "../Resource/ResourceCache.h"
 #include "../World/Components/Script.h"
 //=====================================
@@ -42,6 +42,17 @@ namespace Spartan
 {
 	Scripting::Scripting(Context* context) : ISubsystem(context)
 	{
+		// Subscribe to events
+		SUBSCRIBE_TO_EVENT(EventType::WorldUnload, EVENT_HANDLER(Clear));
+	}
+
+	Scripting::~Scripting()
+	{
+        mono_jit_cleanup(m_domain);
+	}
+
+    bool Scripting::Initialize()
+    {
         ScriptingHelper::resource_cache = m_context->GetSubsystem<ResourceCache>();
 
         // Get file paths
@@ -57,62 +68,34 @@ namespace Spartan
         if (!m_domain)
         {
             LOG_ERROR("mono_jit_init failed");
-            return;
+            return false;
         }
 
         if (!mono_domain_set(m_domain, false))
         {
             LOG_ERROR("mono_domain_set failed");
-            return;
+            return false;
         }
 
         // soft debugger needs this
         mono_thread_set_main(mono_thread_current());
 
-		// Subscribe to events
-		SUBSCRIBE_TO_EVENT(EventType::WorldUnload, EVENT_HANDLER(Clear));
-	}
-
-	Scripting::~Scripting()
-	{
-        mono_jit_cleanup(m_domain);
-	}
-
-    bool Scripting::Initialize()
-    {
-        // Get callbacks assembly
-        const string callbacks_cs           = ScriptingHelper::resource_cache->GetDataDirectory(Asset_Scripts) + "/" + "Spartan.cs";
-        MonoAssembly* callbacks_assembly    = ScriptingHelper::compile_and_load_assembly(m_domain, callbacks_cs, false);
-        if(!callbacks_assembly)
-        {
-            LOG_ERROR("Failed to get callbacks assembly");
-            return false;
-        }
-
-        // Get image from script assembly
-        MonoImage* callbacks_image = mono_assembly_get_image(callbacks_assembly);
-        if (!callbacks_image)
-        {
-            LOG_ERROR("Failed to get callbacks image");
-            return false;
-        }
-
-        // Register static callbacks
-        ScriptingInterface::RegisterCallbacks(m_context);
-
         // Get version
-        //const string major = to_string(ANGELSCRIPT_VERSION).erase(1, 4);
-        //const string minor = to_string(ANGELSCRIPT_VERSION).erase(0, 1).erase(2, 2);
-        //const string rev = to_string(ANGELSCRIPT_VERSION).erase(0, 3);
-        //m_context->GetSubsystem<Settings>()->RegisterThirdPartyLib("AngelScript", major + "." + minor + "." + rev, "https://www.angelcode.com/angelscript/downloads.html");
+        m_context->GetSubsystem<Settings>()->RegisterThirdPartyLib("Mono", "6.10.0.104", "https://www.mono-project.com/");
 
         return true;
     }
 
     uint32_t Scripting::Load(const std::string& file_path, Script* script_component)
     {
-        ScriptInstance script;
+        if (!m_api_assembly_compiled)
+        {
+            m_api_assembly_compiled = CompileApiAssembly();
+            if (!m_api_assembly_compiled)
+                return SCRIPT_NOT_LOADED;
+        }
 
+        ScriptInstance script;
         string class_name = FileSystem::GetFileNameNoExtensionFromFilePath(file_path);
 
         script.assembly = ScriptingHelper::compile_and_load_assembly(m_domain, file_path);
@@ -224,5 +207,30 @@ namespace Spartan
     {
         m_scripts.clear();
         m_script_id = SCRIPT_NOT_LOADED;
+    }
+
+    bool Scripting::CompileApiAssembly()
+    {
+        // Get callbacks assembly
+        const string api_cs           = ScriptingHelper::resource_cache->GetDataDirectory(Asset_Scripts) + "/" + "Spartan.cs";
+        MonoAssembly* api_assembly    = ScriptingHelper::compile_and_load_assembly(m_domain, api_cs, false);
+        if (!api_assembly)
+        {
+            LOG_ERROR("Failed to get api assembly");
+            return false;
+        }
+
+        // Get image from script assembly
+        MonoImage* callbacks_image = mono_assembly_get_image(api_assembly);
+        if (!callbacks_image)
+        {
+            LOG_ERROR("Failed to get callbacks image");
+            return false;
+        }
+
+        // Register static callbacks
+        ScriptingApi::RegisterCallbacks(m_context);
+
+        return true;
     }
 }

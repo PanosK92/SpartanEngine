@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Transform.h"
 //========================================
 
-namespace Spartan::ScriptingInterface
+namespace Spartan::ScriptingApi
 {
     // Dependencies
     static Input* g_input       = nullptr;
