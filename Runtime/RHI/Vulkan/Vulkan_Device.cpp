@@ -176,35 +176,39 @@ namespace Spartan
             }
 
 			// Get device features
-            VkPhysicalDeviceFeatures device_features_enabled = {};
+            VkPhysicalDeviceVulkan12Features device_features_1_2_enabled    = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES };
+            VkPhysicalDeviceFeatures2 device_features_enabled               = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, &device_features_1_2_enabled };
             {
-                m_rhi_context->device_features = {};
-                vkGetPhysicalDeviceFeatures(m_rhi_context->device_physical, &m_rhi_context->device_features);
-
-                #define ENABLE_FEATURE(feature)                                                                    \
-                if (m_rhi_context->device_features.feature)                                                        \
-                {                                                                                                  \
-                        device_features_enabled.feature = VK_TRUE;                                                 \
-                }                                                                                                  \
-                else                                                                                               \
-                {                                                                                                  \
-                    LOG_WARNING("Requested device feature " #feature " is not supported by the physical device");  \
-                    device_features_enabled.feature = VK_FALSE;                                                    \
+                // A macro to make enabling features a little easier
+                #define ENABLE_FEATURE(device_features, enabled_features, feature)                                  \
+                if (device_features.feature)                                                                        \
+                {                                                                                                   \
+                    enabled_features.feature = VK_TRUE;                                                             \
+                }                                                                                                   \
+                else                                                                                                \
+                {                                                                                                   \
+                    LOG_WARNING("Requested device feature " #feature " is not supported by the physical device");   \
+                    enabled_features.feature = VK_FALSE;                                                            \
                 }
 
-                ENABLE_FEATURE(samplerAnisotropy)
-                ENABLE_FEATURE(fillModeNonSolid)
-                ENABLE_FEATURE(wideLines)
-                ENABLE_FEATURE(imageCubeArray)
+                // Get
+                vkGetPhysicalDeviceFeatures2(m_rhi_context->device_physical, &m_rhi_context->device_features);
+
+                // Enable
+                ENABLE_FEATURE(m_rhi_context->device_features.features, device_features_enabled.features, samplerAnisotropy)
+                ENABLE_FEATURE(m_rhi_context->device_features.features, device_features_enabled.features, fillModeNonSolid)
+                ENABLE_FEATURE(m_rhi_context->device_features.features, device_features_enabled.features, wideLines)
+                ENABLE_FEATURE(m_rhi_context->device_features.features, device_features_enabled.features, imageCubeArray)
+                ENABLE_FEATURE(m_rhi_context->device_features_1_2, device_features_1_2_enabled, timelineSemaphore)
             }
 
             // Determine enabled graphics shader stages
             m_enabled_graphics_shader_stages = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-            if (device_features_enabled.geometryShader)
+            if (device_features_enabled.features.geometryShader)
             {
                 m_enabled_graphics_shader_stages = VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT;
             }
-            if (device_features_enabled.tessellationShader)
+            if (device_features_enabled.features.tessellationShader)
             {
                 m_enabled_graphics_shader_stages = VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT | VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT;
             }
@@ -218,7 +222,7 @@ namespace Spartan
 				create_info.sType					= VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 				create_info.queueCreateInfoCount	= static_cast<uint32_t>(queue_create_infos.size());
 				create_info.pQueueCreateInfos		= queue_create_infos.data();
-				create_info.pEnabledFeatures		= &device_features_enabled;
+				create_info.pNext                   = &device_features_enabled;
 				create_info.enabledExtensionCount	= static_cast<uint32_t>(extensions_supported.size());
 				create_info.ppEnabledExtensionNames = extensions_supported.data();
 

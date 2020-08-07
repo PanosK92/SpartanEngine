@@ -39,7 +39,7 @@ namespace Spartan
         class Rectangle;
     }
 
-    enum RHI_Cmd_List_State
+    enum RHI_Cmd_List_State : uint64_t
     {
         RHI_Cmd_List_Idle,
         RHI_Cmd_List_Recording,

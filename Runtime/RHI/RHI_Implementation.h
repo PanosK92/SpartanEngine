@@ -327,16 +327,17 @@ namespace Spartan
         #endif
 
         #if defined(API_GRAPHICS_VULKAN)
-            RHI_Api_Type api_type                           = RHI_Api_Vulkan;
-            uint32_t api_version                            = 0;
-            VkInstance instance                             = nullptr;
-            VkPhysicalDevice device_physical                = nullptr;
-            VkDevice device                                 = nullptr;
-            VkPhysicalDeviceProperties device_properties    = {};
-            VkPhysicalDeviceFeatures device_features        = {};
-            VkFormat surface_format                         = VK_FORMAT_UNDEFINED;
-            VkColorSpaceKHR surface_color_space             = VK_COLOR_SPACE_MAX_ENUM_KHR;
-            VmaAllocator allocator                          = nullptr;
+            RHI_Api_Type api_type                                   = RHI_Api_Vulkan;
+            uint32_t api_version                                    = 0;
+            VkInstance instance                                     = nullptr;
+            VkPhysicalDevice device_physical                        = nullptr;
+            VkDevice device                                         = nullptr;
+            VkPhysicalDeviceProperties device_properties            = {};    
+            VkPhysicalDeviceVulkan12Features device_features_1_2    = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES };
+            VkPhysicalDeviceFeatures2 device_features               = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, &device_features_1_2 };
+            VkFormat surface_format                                 = VK_FORMAT_UNDEFINED;
+            VkColorSpaceKHR surface_color_space                     = VK_COLOR_SPACE_MAX_ENUM_KHR;
+            VmaAllocator allocator                                  = nullptr;
             std::unordered_map<uint64_t, VmaAllocation> allocations;
 
             // Extensions
@@ -357,11 +358,11 @@ namespace Spartan
                 Identify specific sections within a VkQueue or VkCommandBuffer using labels to aid organization and offline analysis in external tools.
 
                 */
-                std::vector<const char*> extensions_device      = { "VK_KHR_swapchain", "VK_EXT_memory_budget", "VK_EXT_depth_clip_enable" };
+                std::vector<const char*> extensions_device      = { "VK_KHR_swapchain", "VK_EXT_memory_budget", "VK_EXT_depth_clip_enable", "VK_KHR_timeline_semaphore" };
                 std::vector<const char*> validation_layers      = { "VK_LAYER_KHRONOS_validation" };
                 std::vector<const char*> extensions_instance    = { "VK_KHR_surface", "VK_KHR_win32_surface", "VK_EXT_debug_report", "VK_EXT_debug_utils" };
             #else
-                std::vector<const char*> extensions_device      = { "VK_KHR_swapchain", "VK_EXT_memory_budget", "VK_EXT_depth_clip_enable" };
+                std::vector<const char*> extensions_device      = { "VK_KHR_swapchain", "VK_EXT_memory_budget", "VK_EXT_depth_clip_enable", "VK_KHR_timeline_semaphore" };
                 std::vector<const char*> validation_layers      = { };
                 std::vector<const char*> extensions_instance    = { "VK_KHR_surface", "VK_KHR_win32_surface" };
             #endif

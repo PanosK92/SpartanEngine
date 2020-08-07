@@ -162,7 +162,7 @@ namespace Spartan
             );
 
             // End/flush
-            if (!vulkan_utility::command_buffer_immediate::end(RHI_Queue_Graphics))
+            if (!vulkan_utility::command_buffer_immediate::end(RHI_Queue_Graphics, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT))
                 return false;
 
             // Free staging buffer
@@ -265,7 +265,7 @@ namespace Spartan
             }
         
             // Flush
-            if (!vulkan_utility::command_buffer_immediate::end(RHI_Queue_Graphics))
+            if (!vulkan_utility::command_buffer_immediate::end(RHI_Queue_Graphics, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT))
             {
                 LOG_ERROR("Failed to end command buffer");
                 return false;
@@ -368,7 +368,7 @@ namespace Spartan
                 return false;
 
             // Flush
-            if (!vulkan_utility::command_buffer_immediate::end(RHI_Queue_Graphics))
+            if (!vulkan_utility::command_buffer_immediate::end(RHI_Queue_Graphics, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT))
                 return false;
 
             // Update this texture with the new layout
