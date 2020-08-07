@@ -179,6 +179,8 @@ namespace ImGui::RHI
             return;
         }
 
+        // Validate swap chain state
+
         // Update vertex and index buffers
         RHI_VertexBuffer* vertex_buffer = nullptr;
         RHI_IndexBuffer* index_buffer   = nullptr;
@@ -195,39 +197,39 @@ namespace ImGui::RHI
             vertex_buffer   = g_vertex_buffers[swapchain_id][swapchain_cmd_index].get();
             index_buffer    = g_index_buffers[swapchain_id][swapchain_cmd_index].get();
 
-			// Grow vertex buffer as needed
-			if (vertex_buffer->GetVertexCount() < static_cast<unsigned int>(draw_data->TotalVtxCount))
-			{
-				const unsigned int new_size = draw_data->TotalVtxCount + 5000;
-				if (!vertex_buffer->CreateDynamic<ImDrawVert>(new_size))
-					return;
-			}
-
-			// Grow index buffer as needed
-			if (index_buffer->GetIndexCount() < static_cast<unsigned int>(draw_data->TotalIdxCount))
-			{
-				const unsigned int new_size = draw_data->TotalIdxCount + 10000;
-				if (!index_buffer->CreateDynamic<ImDrawIdx>(new_size))
-					return;
-			}
-
-			// Copy and convert all vertices into a single contiguous buffer		
-			auto vtx_dst = static_cast<ImDrawVert*>(vertex_buffer->Map());
-			auto idx_dst = static_cast<ImDrawIdx*>(index_buffer->Map());
-			if (vtx_dst && idx_dst)
-			{
-				for (auto i = 0; i < draw_data->CmdListsCount; i++)
-				{
-					const ImDrawList* cmd_list = draw_data->CmdLists[i];
-					memcpy(vtx_dst, cmd_list->VtxBuffer.Data, cmd_list->VtxBuffer.Size * sizeof(ImDrawVert));
-					memcpy(idx_dst, cmd_list->IdxBuffer.Data, cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx));
-					vtx_dst += cmd_list->VtxBuffer.Size;
-					idx_dst += cmd_list->IdxBuffer.Size;
-				}
-
-				vertex_buffer->Unmap();
-				index_buffer->Unmap();
-			}
+            // Grow vertex buffer as needed
+            if (vertex_buffer->GetVertexCount() < static_cast<unsigned int>(draw_data->TotalVtxCount))
+            {
+                const unsigned int new_size = draw_data->TotalVtxCount + 5000;
+                if (!vertex_buffer->CreateDynamic<ImDrawVert>(new_size))
+                    return;
+            }
+            
+            // Grow index buffer as needed
+            if (index_buffer->GetIndexCount() < static_cast<unsigned int>(draw_data->TotalIdxCount))
+            {
+                const unsigned int new_size = draw_data->TotalIdxCount + 10000;
+                if (!index_buffer->CreateDynamic<ImDrawIdx>(new_size))
+                    return;
+            }
+            
+            // Copy and convert all vertices into a single contiguous buffer		
+            auto vtx_dst = static_cast<ImDrawVert*>(vertex_buffer->Map());
+            auto idx_dst = static_cast<ImDrawIdx*>(index_buffer->Map());
+            if (vtx_dst && idx_dst)
+            {
+                for (auto i = 0; i < draw_data->CmdListsCount; i++)
+                {
+                    const ImDrawList* cmd_list = draw_data->CmdLists[i];
+                    memcpy(vtx_dst, cmd_list->VtxBuffer.Data, cmd_list->VtxBuffer.Size * sizeof(ImDrawVert));
+                    memcpy(idx_dst, cmd_list->IdxBuffer.Data, cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx));
+                    vtx_dst += cmd_list->VtxBuffer.Size;
+                    idx_dst += cmd_list->IdxBuffer.Size;
+                }
+            
+                vertex_buffer->Unmap();
+                index_buffer->Unmap();
+            }
 		}
 
 		// Setup orthographic projection matrix into our constant buffer

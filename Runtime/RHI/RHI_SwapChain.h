@@ -57,10 +57,11 @@ namespace Spartan
         uint32_t GetFlags()                 const { return m_flags; }
         uint32_t GetCmdIndex()              const { return m_cmd_index; }
         uint32_t GetImageIndex()            const { return m_image_index; }
-        bool IsInitialized()                const { return m_initialized; }
         RHI_CommandList* GetCmdList()             { return m_cmd_index < static_cast<uint32_t>(m_cmd_lists.size()) ? m_cmd_lists[m_cmd_index].get() : nullptr; }
         void* GetImageAcquiredSemaphore()   const { return m_cmd_index < static_cast<uint32_t>(m_image_acquired_semaphore.size()) ? m_image_acquired_semaphore[m_cmd_index] : nullptr; }
+        bool IsInitialized()                const { return m_initialized; }
         bool IsPresenting()                 const { return m_present; }
+        bool HasAcquireImage()              const { return m_image_acquired; }
 
         // Layout
         const RHI_Image_Layout GetLayout() const { return m_layout; }
