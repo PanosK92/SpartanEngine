@@ -242,6 +242,62 @@ namespace Spartan::vulkan_utility
         }
     }
 
+    namespace timeline_semaphore
+    {
+        inline bool create(void*& semaphore, const uint64_t intial_value = 0)
+        {
+            VkSemaphoreTypeCreateInfo timeline_info = {};
+            timeline_info.sType         = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO;
+            timeline_info.pNext         = nullptr;
+            timeline_info.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
+            timeline_info.initialValue  = intial_value;
+        
+            VkSemaphoreCreateInfo semaphore_info = {};
+            semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+            semaphore_info.pNext = &timeline_info;
+            semaphore_info.flags = 0;
+        
+            VkSemaphore* semaphore_vk = reinterpret_cast<VkSemaphore*>(&semaphore);
+            return error::check(vkCreateSemaphore(globals::rhi_context->device, &semaphore_info, nullptr, semaphore_vk));
+        }
+        
+        inline void destroy(void*& semaphore)
+        {
+            if (!semaphore)
+                return;
+        
+            VkSemaphore semaphore_vk = static_cast<VkSemaphore>(semaphore);
+            vkDestroySemaphore(globals::rhi_context->device, semaphore_vk, nullptr);
+            semaphore = nullptr;
+        }
+
+        inline bool wait(void*& semaphore, const uint64_t wait_value, uint64_t timeout = std::numeric_limits<uint64_t>::max())
+        {
+            if (!semaphore)
+                return false;
+
+            VkSemaphoreWaitInfo wait_info = {};
+            wait_info.sType          = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO;
+            wait_info.pNext          = nullptr;
+            wait_info.flags          = 0;
+            wait_info.semaphoreCount = 1;
+            wait_info.pSemaphores    = reinterpret_cast<VkSemaphore*>(&semaphore);
+            wait_info.pValues        = &wait_value;
+
+            return error::check(vkWaitSemaphores(globals::rhi_context->device, &wait_info, timeout));
+        }
+
+        inline uint64_t get_counter_value(void*& semaphore)
+        {
+            if (!semaphore)
+                return 0;
+
+            uint64_t value;
+            vkGetSemaphoreCounterValue(globals::rhi_context->device, static_cast<VkSemaphore>(semaphore), &value);
+            return value;
+        }
+    }
+
     namespace semaphore
     {
         inline bool create(void*& semaphore)
@@ -398,7 +454,7 @@ namespace Spartan::vulkan_utility
                 return recording;
             }
 
-            bool submit()
+            bool submit(const uint32_t wait_flags)
             {
                 if (!initialised)
                 {
@@ -418,7 +474,7 @@ namespace Spartan::vulkan_utility
                     return false;
                 }
 
-                if (!globals::rhi_device->Queue_Submit(queue_type, cmd_buffer))
+                if (!globals::rhi_device->Queue_Submit(queue_type, cmd_buffer, nullptr, nullptr, nullptr, wait_flags))
                 {
                     LOG_ERROR("Failed to submit to queue");
                     return false;
@@ -453,10 +509,10 @@ namespace Spartan::vulkan_utility
             return static_cast<VkCommandBuffer>(cmbdi.cmd_buffer);
         }
 
-        static bool end(const RHI_Queue_Type queue_type)
+        static bool end(const RHI_Queue_Type queue_type, const uint32_t wait_flags)
         {
             std::lock_guard<std::mutex> lock(m_mutex_end);
-            return m_objects[queue_type].submit();
+            return m_objects[queue_type].submit(wait_flags);
         }
 
     private:
