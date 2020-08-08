@@ -193,22 +193,26 @@ namespace Spartan
             }
         }
 
-        RHI_PipelineState* state = m_pipeline->GetPipelineState();
-
         // Get wait and signal semaphores
         void* wait_semaphore    = nullptr;
         void* signal_semaphore  = nullptr;
-        if (state->render_target_swapchain)
+        if (m_pipeline)
         {
-            // If the swapchain is not presenting (e.g. minimised window), don't submit any work
-            if (!state->render_target_swapchain->IsPresenting())
+            if (RHI_PipelineState* state = m_pipeline->GetPipelineState())
             {
-                m_cmd_state = RHI_CommandListState::Submitted;
-                return true;
-            }
+                if (state->render_target_swapchain)
+                {
+                    // If the swapchain is not presenting (e.g. minimised window), don't submit any work
+                    if (!state->render_target_swapchain->IsPresenting())
+                    {
+                        m_cmd_state = RHI_CommandListState::Submitted;
+                        return true;
+                    }
 
-            wait_semaphore      = state->render_target_swapchain->GetImageAcquiredSemaphore();
-            signal_semaphore    = m_processed_semaphore;
+                    wait_semaphore      = state->render_target_swapchain->GetImageAcquiredSemaphore();
+                    signal_semaphore    = m_processed_semaphore; // swapchain waits for this when presenting
+                }
+            }
         }
         
         vulkan_utility::fence::reset(m_processed_fence);
@@ -224,7 +228,6 @@ namespace Spartan
         return false;
 
         m_cmd_state = RHI_CommandListState::Submitted;
-
         return true;
     }
 
@@ -745,21 +748,6 @@ namespace Spartan
     void RHI_CommandList::Gpu_QueryRelease(void*& query_object)
     {
         // Not needed
-    }
-
-    bool RHI_CommandList::IsRecording() const
-    {
-        return m_cmd_state == RHI_CommandListState::Recording;
-    }
-
-    bool RHI_CommandList::IsPending() const
-    {
-        return m_cmd_state == RHI_CommandListState::Submitted;
-    }
-
-    bool RHI_CommandList::IsIdle() const
-    {
-        return m_cmd_state == RHI_CommandListState::Idle;
     }
 
     void RHI_CommandList::Timeblock_Start(const RHI_PipelineState* pipeline_state)

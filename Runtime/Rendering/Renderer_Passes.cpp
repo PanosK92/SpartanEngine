@@ -75,7 +75,7 @@ namespace Spartan
         SCOPED_TIME_BLOCK(m_profiler);
 
         // Updates onces, used almost everywhere
-        UpdateFrameBuffer();
+        UpdateFrameBuffer(cmd_list);
         
         // Runs only once
         Pass_BrdfSpecularLut(cmd_list);

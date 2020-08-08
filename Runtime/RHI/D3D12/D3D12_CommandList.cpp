@@ -182,21 +182,6 @@ namespace Spartan
 
     }
 
-    bool RHI_CommandList::IsRecording() const
-    {
-        return true;
-    }
-
-    bool RHI_CommandList::IsPending() const
-    {
-        return true;
-    }
-
-    bool RHI_CommandList::IsIdle() const
-    {
-        return true;
-    }
-
     void RHI_CommandList::Timeblock_Start(const RHI_PipelineState* pipeline_state)
     {
 

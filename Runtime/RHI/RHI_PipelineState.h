@@ -105,8 +105,9 @@ namespace Spartan
         bool render_target_depth_texture_read_only = false;
 
         // such a hack, must fix. Update: Came back to byte me in the ass
-        int dynamic_constant_buffer_slot    = 2;
-        int dynamic_constant_buffer_slot_2  = 3;
+        int dynamic_constant_buffer_slot_1  = 0;
+        int dynamic_constant_buffer_slot_2  = 2;
+        int dynamic_constant_buffer_slot_3  = 3;
 
         // Clear values
         
