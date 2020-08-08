@@ -784,21 +784,6 @@ namespace Spartan
         d3d11_utility::release(*reinterpret_cast<ID3D11Query**>(&query_object));
     }
 
-    bool RHI_CommandList::IsRecording() const
-    {
-        return true;
-    }
-
-    bool RHI_CommandList::IsPending() const
-    {
-        return true;
-    }
-
-    bool RHI_CommandList::IsIdle() const
-    {
-        return true;
-    }
-
     void RHI_CommandList::Timeblock_Start(const RHI_PipelineState* pipeline_state)
     {
         if (!pipeline_state || !pipeline_state->pass_name)

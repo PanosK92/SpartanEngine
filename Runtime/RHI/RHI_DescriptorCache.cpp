@@ -222,13 +222,13 @@ namespace Spartan
 
         // Change constant buffers to dynamic (if requested) - This is a hack and not flexible, must improve
         {
-            if (pipeline_state.dynamic_constant_buffer_slot != -1)
+            if (pipeline_state.dynamic_constant_buffer_slot_1 != -1)
             {
                 for (RHI_Descriptor& descriptor : descriptors)
                 {
                     if (descriptor.type == RHI_Descriptor_ConstantBuffer)
                     {
-                        if (descriptor.slot == pipeline_state.dynamic_constant_buffer_slot + rhi_shader_shift_buffer)
+                        if (descriptor.slot == pipeline_state.dynamic_constant_buffer_slot_1 + rhi_shader_shift_buffer)
                         {
                             descriptor.is_dynamic_constant_buffer = true;
                         }
@@ -243,6 +243,20 @@ namespace Spartan
                     if (descriptor.type == RHI_Descriptor_ConstantBuffer)
                     {
                         if (descriptor.slot == pipeline_state.dynamic_constant_buffer_slot_2 + rhi_shader_shift_buffer)
+                        {
+                            descriptor.is_dynamic_constant_buffer = true;
+                        }
+                    }
+                }
+            }
+
+            if (pipeline_state.dynamic_constant_buffer_slot_3 != -1)
+            {
+                for (RHI_Descriptor& descriptor : descriptors)
+                {
+                    if (descriptor.type == RHI_Descriptor_ConstantBuffer)
+                    {
+                        if (descriptor.slot == pipeline_state.dynamic_constant_buffer_slot_3 + rhi_shader_shift_buffer)
                         {
                             descriptor.is_dynamic_constant_buffer = true;
                         }

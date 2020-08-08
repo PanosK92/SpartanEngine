@@ -83,7 +83,7 @@ namespace Spartan
 
 		// Subscribe to events
 		SUBSCRIBE_TO_EVENT(EventType::WorldResolved,    EVENT_HANDLER_VARIANT(RenderablesAcquire));
-        SUBSCRIBE_TO_EVENT(EventType::WorldUnload,              EVENT_HANDLER(ClearEntities));
+        SUBSCRIBE_TO_EVENT(EventType::WorldUnload,      EVENT_HANDLER(ClearEntities));
 	}
 
 	Renderer::~Renderer()
@@ -138,7 +138,7 @@ namespace Spartan
                 static_cast<uint32_t>(m_viewport.width),
                 static_cast<uint32_t>(m_viewport.height),
                 RHI_Format_R8G8B8A8_Unorm,
-                3,
+                m_swap_chain_buffer_count,
                 RHI_Present_Immediate | RHI_Swap_Flip_Discard
             );
 
@@ -213,9 +213,10 @@ namespace Spartan
         {
             m_buffer_uber_offset_index      = 0;
             m_buffer_object_offset_index    = 0;
+            m_buffer_frame_offset_index     = 0;
         }
 
-		// Get camera matrices
+		// Update frame buffer
 		{
             if (m_update_ortho_proj || m_near_plane != m_camera->GetNearPlane() || m_far_plane != m_camera->GetFarPlane())
             {
@@ -248,10 +249,28 @@ namespace Spartan
 				m_taa_jitter_previous   = Vector2::Zero;		
 			}
 
-            // Compute some TAA affected matrices
+            // Update the remaining of the frame buffer
             m_buffer_frame_cpu.view_projection              = m_buffer_frame_cpu.view * m_buffer_frame_cpu.projection;
             m_buffer_frame_cpu.view_projection_inv          = Matrix::Invert(m_buffer_frame_cpu.view_projection);   
             m_buffer_frame_cpu.view_projection_unjittered   = m_buffer_frame_cpu.view * m_camera->GetProjectionMatrix();
+            m_buffer_frame_cpu.camera_aperture              = m_camera->GetAperture();
+            m_buffer_frame_cpu.camera_shutter_speed         = m_camera->GetShutterSpeed();
+            m_buffer_frame_cpu.camera_iso                   = m_camera->GetIso();
+            m_buffer_frame_cpu.camera_near                  = m_camera->GetNearPlane();
+            m_buffer_frame_cpu.camera_far                   = m_camera->GetFarPlane();
+            m_buffer_frame_cpu.camera_position              = m_camera->GetTransform()->GetPosition();
+            m_buffer_frame_cpu.camera_direction             = m_camera->GetTransform()->GetForward();
+            m_buffer_frame_cpu.bloom_intensity              = m_option_values[Option_Value_Bloom_Intensity];
+            m_buffer_frame_cpu.sharpen_strength             = m_option_values[Option_Value_Sharpen_Strength];
+            m_buffer_frame_cpu.taa_jitter_offset_previous   = m_buffer_frame_cpu_previous.taa_jitter_offset;
+            m_buffer_frame_cpu.taa_jitter_offset            = m_taa_jitter - m_taa_jitter_previous;
+            m_buffer_frame_cpu.delta_time                   = static_cast<float>(m_context->GetSubsystem<Timer>()->GetDeltaTimeSmoothedSec());
+            m_buffer_frame_cpu.time                         = static_cast<float>(m_context->GetSubsystem<Timer>()->GetTimeSec());
+            m_buffer_frame_cpu.tonemapping                  = m_option_values[Option_Value_Tonemapping];
+            m_buffer_frame_cpu.gamma                        = m_option_values[Option_Value_Gamma];
+            m_buffer_frame_cpu.ssr_enabled                  = GetOption(Render_ScreenSpaceReflections) ? 1.0f : 0.0f;
+            m_buffer_frame_cpu.shadow_resolution            = GetOptionValue<float>(Option_Value_ShadowResolution);
+            m_buffer_frame_cpu.frame                        = static_cast<uint32_t>(m_frame_num);
 		}
 
         m_is_rendering = true;
@@ -362,53 +381,6 @@ namespace Spartan
         DrawLine(Vector3(min.x, max.y, max.z), Vector3(min.x, min.y, max.z), color, color, depth);
 	}
 
-    bool Renderer::UpdateFrameBuffer()
-    {
-        // Map
-        BufferFrame* buffer = static_cast<BufferFrame*>(m_buffer_frame_gpu->Map());
-        if (!buffer)
-        {
-            LOG_ERROR("Failed to map buffer");
-            return false;
-        }
-
-        // Struct is updated automatically here as per frame data are (by definition) known ahead of time
-        m_buffer_frame_cpu.camera_aperture              = m_camera->GetAperture();
-        m_buffer_frame_cpu.camera_shutter_speed         = m_camera->GetShutterSpeed();
-        m_buffer_frame_cpu.camera_iso                   = m_camera->GetIso();
-        m_buffer_frame_cpu.camera_near                  = m_camera->GetNearPlane();
-        m_buffer_frame_cpu.camera_far                   = m_camera->GetFarPlane();
-        m_buffer_frame_cpu.camera_position              = m_camera->GetTransform()->GetPosition();
-        m_buffer_frame_cpu.camera_direction             = m_camera->GetTransform()->GetForward();
-        m_buffer_frame_cpu.bloom_intensity              = m_option_values[Option_Value_Bloom_Intensity];
-        m_buffer_frame_cpu.sharpen_strength             = m_option_values[Option_Value_Sharpen_Strength];
-        m_buffer_frame_cpu.taa_jitter_offset_previous   = m_buffer_frame_cpu.taa_jitter_offset;
-        m_buffer_frame_cpu.taa_jitter_offset            = m_taa_jitter - m_taa_jitter_previous;
-        m_buffer_frame_cpu.delta_time                   = static_cast<float>(m_context->GetSubsystem<Timer>()->GetDeltaTimeSmoothedSec());
-        m_buffer_frame_cpu.time                         = static_cast<float>(m_context->GetSubsystem<Timer>()->GetTimeSec());
-        m_buffer_frame_cpu.tonemapping                  = m_option_values[Option_Value_Tonemapping];
-        m_buffer_frame_cpu.gamma                        = m_option_values[Option_Value_Gamma];
-        m_buffer_frame_cpu.ssr_enabled                  = GetOption(Render_ScreenSpaceReflections) ? 1.0f : 0.0f;
-        m_buffer_frame_cpu.shadow_resolution            = GetOptionValue<float>(Option_Value_ShadowResolution);
-        m_buffer_frame_cpu.frame                        = static_cast<uint32_t>(m_frame_num);
-
-        // Update directional light intensity, just grab the first one
-        for (const auto& entity : m_entities[Renderer_Object_Light])
-            if (Light* light = entity->GetComponent<Light>())
-            {
-                if (light->GetLightType() == LightType::Directional)
-                {
-                    m_buffer_frame_cpu.directional_light_intensity = light->GetIntensity();
-                }
-            }
-
-        // Update
-        *buffer = m_buffer_frame_cpu;
-
-        // Unmap
-        return m_buffer_frame_gpu->Unmap();
-    }
-
     bool Renderer::UpdateMaterialBuffer()
     {
         // Map
@@ -441,23 +413,19 @@ namespace Spartan
     template<typename T>
     inline bool update_dynamic_buffer(RHI_CommandList* cmd_list, RHI_ConstantBuffer* buffer_gpu, T& buffer_cpu, T& buffer_cpu_previous, uint32_t& offset_index)
     {
-        offset_index++;
-
         // Only update if needed
-        bool update = buffer_gpu->GetOffsetIndexDynamic() != offset_index;
-        update      = update ? true : buffer_cpu != buffer_cpu_previous;
-        if (!update)
+        if (buffer_cpu == buffer_cpu_previous)
             return true;
 
-        const uint32_t offset_count = offset_index + 1;
+        offset_index++;
 
         // Re-allocate buffer with double size (if needed)
         if (buffer_gpu->IsDynamic())
         {
-            if (offset_count >= buffer_gpu->GetOffsetCount())
+            if (offset_index >= buffer_gpu->GetOffsetCount())
             {
                 cmd_list->Flush();
-                const uint32_t new_size = Math::Helper::NextPowerOfTwo(offset_count);
+                const uint32_t new_size = Math::Helper::NextPowerOfTwo(offset_index + 1);
                 if (!buffer_gpu->Create<T>(new_size))
                 {
                     LOG_ERROR("Failed to re-allocate %s buffer with %d offsets", buffer_gpu->GetName().c_str(), new_size);
@@ -496,6 +464,33 @@ namespace Spartan
         return buffer_gpu->Unmap(offset, size);
     }
 
+    bool Renderer::UpdateFrameBuffer(RHI_CommandList* cmd_list)
+    {
+        // Update directional light intensity, just grab the first one
+        for (const auto& entity : m_entities[Renderer_Object_Light])
+        {
+            if (Light* light = entity->GetComponent<Light>())
+            {
+                if (light->GetLightType() == LightType::Directional)
+                {
+                    m_buffer_frame_cpu.directional_light_intensity = light->GetIntensity();
+                }
+            }
+        }
+
+        if (!cmd_list)
+        {
+            LOG_ERROR("Invalid command list");
+            return false;
+        }
+
+        if (!update_dynamic_buffer<BufferFrame>(cmd_list, m_buffer_frame_gpu.get(), m_buffer_frame_cpu, m_buffer_frame_cpu_previous, m_buffer_frame_offset_index))
+            return false;
+
+        // Dynamic buffers with offsets have to be rebound whenever the offset changes
+        return cmd_list->SetConstantBuffer(0, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, m_buffer_frame_gpu);
+    }
+
     bool Renderer::UpdateUberBuffer(RHI_CommandList* cmd_list)
     {
         if (!cmd_list)
@@ -508,7 +503,7 @@ namespace Spartan
             return false;
 
         // Dynamic buffers with offsets have to be rebound whenever the offset changes
-        return cmd_list->SetConstantBuffer(2, RHI_Shader_Pixel | RHI_Shader_Vertex, m_buffer_uber_gpu);
+        return cmd_list->SetConstantBuffer(2, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, m_buffer_uber_gpu);
 	}
 
     bool Renderer::UpdateObjectBuffer(RHI_CommandList* cmd_list)
@@ -523,7 +518,7 @@ namespace Spartan
             return false;
 
         // Dynamic buffers with offsets have to be rebound whenever the offset changes
-        return cmd_list->SetConstantBuffer(3, RHI_Shader_Vertex, m_buffer_object_gpu);
+        return cmd_list->SetConstantBuffer(3, RHI_Shader_Vertex | RHI_Shader_Compute, m_buffer_object_gpu);
     }
 
     bool Renderer::UpdateLightBuffer(const Light* light)
