@@ -51,7 +51,7 @@ namespace Spartan
         m_buffer_frame_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device, "frame", is_dynamic);
         m_buffer_frame_gpu->Create<BufferFrame>(m_swap_chain_buffer_count);
 
-        m_buffer_material_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device, "material");
+        m_buffer_material_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device, "material", is_dynamic);
         m_buffer_material_gpu->Create<BufferMaterial>();
 
         m_buffer_uber_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device, "uber", is_dynamic);

@@ -215,6 +215,7 @@ namespace Spartan
             m_buffer_object_offset_index    = 0;
             m_buffer_frame_offset_index     = 0;
             m_buffer_light_offset_index     = 0;
+            m_buffer_material_offset_index  = 0;
         }
 
 		// Update frame buffer
@@ -382,35 +383,6 @@ namespace Spartan
         DrawLine(Vector3(min.x, max.y, max.z), Vector3(min.x, min.y, max.z), color, color, depth);
 	}
 
-    bool Renderer::UpdateMaterialBuffer()
-    {
-        // Map
-        BufferMaterial* buffer = static_cast<BufferMaterial*>(m_buffer_material_gpu->Map());
-        if (!buffer)
-        {
-            LOG_ERROR("Failed to map buffer");
-            return false;
-        }
-
-        // Update
-        for (uint32_t i = 0; i < m_max_material_instances; i++)
-        {
-            Material* material = m_material_instances[i];
-            if (!material)
-                continue;
-
-            buffer->mat_clearcoat_clearcoatRough_anis_anisRot[i].x = material->GetProperty(Material_Clearcoat);
-            buffer->mat_clearcoat_clearcoatRough_anis_anisRot[i].y = material->GetProperty(Material_Clearcoat_Roughness);
-            buffer->mat_clearcoat_clearcoatRough_anis_anisRot[i].z = material->GetProperty(Material_Anisotropic);
-            buffer->mat_clearcoat_clearcoatRough_anis_anisRot[i].w = material->GetProperty(Material_Anisotropic_Rotation);
-            buffer->mat_sheen_sheenTint_pad[i].x                   = material->GetProperty(Material_Sheen);
-            buffer->mat_sheen_sheenTint_pad[i].y                   = material->GetProperty(Material_Sheen_Tint);
-        }
-
-        // Unmap
-        return m_buffer_material_gpu->Unmap();
-    }
-
     template<typename T>
     inline bool update_dynamic_buffer(RHI_CommandList* cmd_list, RHI_ConstantBuffer* buffer_gpu, T& buffer_cpu, T& buffer_cpu_previous, uint32_t& offset_index)
     {
@@ -490,6 +462,36 @@ namespace Spartan
 
         // Dynamic buffers with offsets have to be rebound whenever the offset changes
         return cmd_list->SetConstantBuffer(0, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, m_buffer_frame_gpu);
+    }
+
+    bool Renderer::UpdateMaterialBuffer(RHI_CommandList* cmd_list)
+    {
+        // Update
+        for (uint32_t i = 0; i < m_max_material_instances; i++)
+        {
+            Material* material = m_material_instances[i];
+            if (!material)
+                continue;
+
+            m_buffer_material_cpu.mat_clearcoat_clearcoatRough_anis_anisRot[i].x = material->GetProperty(Material_Clearcoat);
+            m_buffer_material_cpu.mat_clearcoat_clearcoatRough_anis_anisRot[i].y = material->GetProperty(Material_Clearcoat_Roughness);
+            m_buffer_material_cpu.mat_clearcoat_clearcoatRough_anis_anisRot[i].z = material->GetProperty(Material_Anisotropic);
+            m_buffer_material_cpu.mat_clearcoat_clearcoatRough_anis_anisRot[i].w = material->GetProperty(Material_Anisotropic_Rotation);
+            m_buffer_material_cpu.mat_sheen_sheenTint_pad[i].x = material->GetProperty(Material_Sheen);
+            m_buffer_material_cpu.mat_sheen_sheenTint_pad[i].y = material->GetProperty(Material_Sheen_Tint);
+        }
+
+        if (!cmd_list)
+        {
+            LOG_ERROR("Invalid command list");
+            return false;
+        }
+
+        if (!update_dynamic_buffer<BufferMaterial>(cmd_list, m_buffer_material_gpu.get(), m_buffer_material_cpu, m_buffer_material_cpu_previous, m_buffer_material_offset_index))
+            return false;
+
+        // Dynamic buffers with offsets have to be rebound whenever the offset changes
+        return cmd_list->SetConstantBuffer(1, RHI_Shader_Pixel, m_buffer_material_gpu);
     }
 
     bool Renderer::UpdateUberBuffer(RHI_CommandList* cmd_list)
