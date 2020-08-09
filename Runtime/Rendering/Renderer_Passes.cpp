@@ -737,7 +737,7 @@ namespace Spartan
                         cmd_list->SetTexture(31, m_tex_blue_noise);
 
                         // Update light buffer
-                        UpdateLightBuffer(light);
+                        UpdateLightBuffer(cmd_list, light);
 
                         // Set shadow map
                         if (light->GetShadowsEnabled())

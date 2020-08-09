@@ -214,6 +214,7 @@ namespace Spartan
             m_buffer_uber_offset_index      = 0;
             m_buffer_object_offset_index    = 0;
             m_buffer_frame_offset_index     = 0;
+            m_buffer_light_offset_index     = 0;
         }
 
 		// Update frame buffer
@@ -521,25 +522,19 @@ namespace Spartan
         return cmd_list->SetConstantBuffer(3, RHI_Shader_Vertex | RHI_Shader_Compute, m_buffer_object_gpu);
     }
 
-    bool Renderer::UpdateLightBuffer(const Light* light)
+    bool Renderer::UpdateLightBuffer(RHI_CommandList* cmd_list, const Light* light)
     {
-        if (!light)
-            return false;
-
-        // Only update if needed
-        if (m_buffer_light_cpu == m_buffer_light_cpu_previous)
-            return true;
-
-        // Map
-        BufferLight* buffer = static_cast<BufferLight*>(m_buffer_light_gpu->Map());
-        if (!buffer)
+        if (!cmd_list)
         {
-            LOG_ERROR("Failed to map buffer");
+            LOG_ERROR("Invalid command list");
             return false;
         }
 
-        const bool volumetric         = static_cast<float>(m_options & Render_VolumetricLighting);
-        const bool contact_shadows    = static_cast<float>(m_options & Render_ScreenSpaceShadows);
+        if (!light)
+        {
+            LOG_ERROR("Invalid light");
+            return false;
+        }
 
         for (uint32_t i = 0; i < light->GetShadowArraySize(); i++)
         {
@@ -565,12 +560,11 @@ namespace Spartan
         m_buffer_light_cpu.position                     = light->GetTransform()->GetPosition();
         m_buffer_light_cpu.direction                    = light->GetDirection();
 
-        // Update
-        *buffer = m_buffer_light_cpu;
-        m_buffer_light_cpu_previous = m_buffer_light_cpu;
+        if (!update_dynamic_buffer<BufferLight>(cmd_list, m_buffer_light_gpu.get(), m_buffer_light_cpu, m_buffer_light_cpu_previous, m_buffer_light_offset_index))
+            return false;
 
-        // Unmap
-        return m_buffer_light_gpu->Unmap();
+        // Dynamic buffers with offsets have to be rebound whenever the offset changes
+        return cmd_list->SetConstantBuffer(4, RHI_Shader_Pixel, m_buffer_light_gpu);
     }
 
 	void Renderer::RenderablesAcquire(const Variant& entities_variant)

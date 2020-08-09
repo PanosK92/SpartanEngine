@@ -60,7 +60,7 @@ namespace Spartan
         m_buffer_object_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device, "object", is_dynamic);
         m_buffer_object_gpu->Create<BufferObject>();
 
-        m_buffer_light_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device, "light");
+        m_buffer_light_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device, "light", is_dynamic);
         m_buffer_light_gpu->Create<BufferLight>();
     }
 
