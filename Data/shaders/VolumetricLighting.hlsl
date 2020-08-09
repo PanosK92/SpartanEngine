@@ -61,7 +61,7 @@ float vl_raymarch(Light light, float3 ray_pos, float3 ray_step, float ray_dot_li
     return fog / (float)g_vl_steps;
 }
 
-float3 VolumetricLighting(Surface surface, Light light)
+float VolumetricLighting(Surface surface, Light light)
 {
     float3 ray_pos      = surface.position;
     float3 ray_dir      = -surface.camera_to_pixel;
@@ -72,8 +72,7 @@ float3 VolumetricLighting(Surface surface, Light light)
     
     // Offset ray to get away with way less steps and great detail
     float offset = interleaved_gradient_noise(surface.uv * g_resolution);
-    float offset_blue_noise = blue_noise(surface.uv);
-    ray_pos += ray_step  * offset;
+    ray_pos += ray_step * offset;
     
     #if DIRECTIONAL
     {
@@ -139,5 +138,5 @@ float3 VolumetricLighting(Surface surface, Light light)
     }
     #endif
     
-    return fog * light.color;
+    return fog;
 }

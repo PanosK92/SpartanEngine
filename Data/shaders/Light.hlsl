@@ -95,7 +95,7 @@ PixelOutputType mainPS(Pixel_PosUv input)
 
     // Fill light struct
     Light light;
-    light.color             = color.xyz;
+    light.color             = color.rgb;
     light.position          = position.xyz;
     light.range             = intensity_range_angle_bias.y;
     light.angle             = intensity_range_angle_bias.z;
@@ -130,7 +130,7 @@ PixelOutputType mainPS(Pixel_PosUv input)
             // Volumetric lighting (requires shadow maps)
             #if VOLUMETRIC
             {
-                volumetric = VolumetricLighting(surface, light) * get_fog_factor(surface);
+                volumetric += VolumetricLighting(surface, light) * get_fog_factor(surface) * 20.0f * color.rgb;
             }
             #endif
         }
@@ -223,3 +223,4 @@ PixelOutputType mainPS(Pixel_PosUv input)
 
     return light_out;
 }
+

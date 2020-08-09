@@ -62,7 +62,8 @@ namespace Spartan
         float ssr_enabled;
 
         float shadow_resolution;
-        Math::Vector3 padding;
+        float fog;
+        Math::Vector2 padding;
 
         Math::Vector2 taa_jitter_offset_previous;
         Math::Vector2 taa_jitter_offset;
@@ -93,6 +94,7 @@ namespace Spartan
                 directional_light_intensity == rhs.directional_light_intensity &&
                 ssr_enabled                 == rhs.ssr_enabled &&
                 shadow_resolution           == rhs.shadow_resolution &&
+                fog                         == rhs.fog &&
                 taa_jitter_offset_previous  == rhs.taa_jitter_offset_previous &&
                 taa_jitter_offset           == rhs.taa_jitter_offset;
         }

@@ -124,29 +124,33 @@ float3 compute_light(float3 center_normal, float3 center_to_sample, float distan
     // Compute falloff
     attunate = attunate * screen_fade(sample_uv);
     
-	// Reproject light
-	float2 velocity         = GetVelocity_DepthMin(sample_uv);
-	float2 uv_reprojected   = sample_uv - velocity;
-	float3 light            = tex_light_diffuse.SampleLevel(sampler_bilinear_clamp, uv_reprojected, 0).rgb * attunate;
-	
-	// Transport
-	[branch]
-	if (luminance(light) > 0.0f)
+    [branch]
+    if (attunate > 0.0f)
 	{
-		float distance      = clamp(sqrt(distance_squared), 0.1, 50);
-		float attunation    = clamp(1.0 / (distance), 0, 50);
-		float occlusion     = saturate(dot(center_normal, center_to_sample)) * attunation;
-	
-		[branch]
-		if (occlusion > 0.0f)
-		{
-			float3 sample_normal    = get_normal_view_space(sample_uv);
-			float visibility        = saturate(dot(sample_normal, -center_to_sample));
-		
-			indirect = light * visibility * occlusion;
-			indirect_light_samples++;
-		}
-	}
+	    // Reproject light
+	    float2 velocity         = GetVelocity_DepthMin(sample_uv);
+	    float2 uv_reprojected   = sample_uv - velocity;
+	    float3 light            = tex_light_diffuse.SampleLevel(sampler_bilinear_clamp, uv_reprojected, 0).rgb * attunate;
+	    
+	    // Transport
+	    [branch]
+	    if (luminance(light) > 0.0f)
+	    {
+	    	float distance      = clamp(sqrt(distance_squared), 0.1, 50);
+	    	float attunation    = clamp(1.0 / (distance), 0, 50);
+	    	float occlusion     = saturate(dot(center_normal, center_to_sample)) * attunation;
+	    
+	    	[branch]
+	    	if (occlusion > 0.0f)
+	    	{
+	    		float3 sample_normal    = get_normal_view_space(sample_uv);
+	    		float visibility        = saturate(dot(sample_normal, -center_to_sample));
+	    	
+	    		indirect = light * visibility * occlusion;
+	    		indirect_light_samples++;
+	    	}
+	    }
+    }   
 
     return indirect;
 }
@@ -241,7 +245,7 @@ float4 horizon_based_ambient_occlusion(float2 uv, float3 position, float3 normal
     occlusion = 1.0f - saturate(occlusion * ao_intensity / ao_samples);
 
     #if INDIRECT_BOUNCE
-    light = saturate(light * ao_bounce_intensity / float(light_samples));
+    light = saturate(light * ao_bounce_intensity / (float(light_samples) + FLT_MIN));
     #endif
     
     return float4(light, occlusion);
