@@ -310,7 +310,7 @@ namespace Spartan
         bool UpdateMaterialBuffer();
         bool UpdateUberBuffer(RHI_CommandList* cmd_list);
         bool UpdateObjectBuffer(RHI_CommandList* cmd_list);
-        bool UpdateLightBuffer(const Light* light);
+        bool UpdateLightBuffer(RHI_CommandList* cmd_list, const Light* light);
 
         // Misc
         void RenderablesAcquire(const Variant& renderables);
@@ -425,6 +425,7 @@ namespace Spartan
         BufferLight m_buffer_light_cpu;
         BufferLight m_buffer_light_cpu_previous;
         std::shared_ptr<RHI_ConstantBuffer> m_buffer_light_gpu;
+        uint32_t m_buffer_light_offset_index = 0;
         //========================================================
 
         // Entities and material references

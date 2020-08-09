@@ -108,6 +108,7 @@ namespace Spartan
         int dynamic_constant_buffer_slot_1  = 0;
         int dynamic_constant_buffer_slot_2  = 2;
         int dynamic_constant_buffer_slot_3  = 3;
+        int dynamic_constant_buffer_slot_4  = 4;
 
         // Clear values
         
