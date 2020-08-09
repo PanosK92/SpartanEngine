@@ -106,9 +106,10 @@ namespace Spartan
 
         // such a hack, must fix. Update: Came back to byte me in the ass
         int dynamic_constant_buffer_slot_1  = 0;
-        int dynamic_constant_buffer_slot_2  = 2;
-        int dynamic_constant_buffer_slot_3  = 3;
-        int dynamic_constant_buffer_slot_4  = 4;
+        int dynamic_constant_buffer_slot_2  = 1;
+        int dynamic_constant_buffer_slot_3  = 2;
+        int dynamic_constant_buffer_slot_4  = 3;
+        int dynamic_constant_buffer_slot_5  = 4;
 
         // Clear values
         

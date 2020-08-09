@@ -307,7 +307,7 @@ namespace Spartan
 
         // Constant buffers
         bool UpdateFrameBuffer(RHI_CommandList* cmd_list);
-        bool UpdateMaterialBuffer();
+        bool UpdateMaterialBuffer(RHI_CommandList* cmd_list);
         bool UpdateUberBuffer(RHI_CommandList* cmd_list);
         bool UpdateObjectBuffer(RHI_CommandList* cmd_list);
         bool UpdateLightBuffer(RHI_CommandList* cmd_list, const Light* light);
@@ -401,16 +401,25 @@ namespace Spartan
         bool m_update_ortho_proj                    = true;
         const float m_thread_group_count            = 8.0f;
 
+        // RHI Core
+        std::shared_ptr<RHI_Device> m_rhi_device;
+        std::shared_ptr<RHI_PipelineCache> m_pipeline_cache;
+        std::shared_ptr<RHI_DescriptorCache> m_descriptor_cache;
+
+        // Swapchain
         static const uint8_t m_swap_chain_buffer_count = 3;
         std::shared_ptr<RHI_SwapChain> m_swap_chain;
 
-        //= BUFFERS ==============================================
+        //= CONSTANT BUFFERS =====================================
         BufferFrame m_buffer_frame_cpu;
         BufferFrame m_buffer_frame_cpu_previous;
         std::shared_ptr<RHI_ConstantBuffer> m_buffer_frame_gpu;
         uint32_t m_buffer_frame_offset_index = 0;
 
+        BufferMaterial m_buffer_material_cpu;
+        BufferMaterial m_buffer_material_cpu_previous;
         std::shared_ptr<RHI_ConstantBuffer> m_buffer_material_gpu;
+        uint32_t m_buffer_material_offset_index = 0;
 
         BufferUber m_buffer_uber_cpu;
         BufferUber m_buffer_uber_cpu_previous;
@@ -430,14 +439,8 @@ namespace Spartan
 
         // Entities and material references
         std::unordered_map<Renderer_Object_Type, std::vector<Entity*>> m_entities;
-        std::array<Material*, m_max_material_instances> m_material_instances;
-        
+        std::array<Material*, m_max_material_instances> m_material_instances;    
         std::shared_ptr<Camera> m_camera;
-
-        // RHI Core
-        std::shared_ptr<RHI_Device> m_rhi_device;
-        std::shared_ptr<RHI_PipelineCache> m_pipeline_cache;
-        std::shared_ptr<RHI_DescriptorCache> m_descriptor_cache;
 
         // Dependencies
         Profiler* m_profiler            = nullptr;

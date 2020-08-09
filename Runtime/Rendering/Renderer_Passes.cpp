@@ -540,7 +540,7 @@ namespace Spartan
         }
 
         // Update constant buffer (light pass will access it using material IDs)
-        UpdateMaterialBuffer();
+        UpdateMaterialBuffer(cmd_list);
 	}
 
 	void Renderer::Pass_Hbao(RHI_CommandList* cmd_list, const bool use_stencil)

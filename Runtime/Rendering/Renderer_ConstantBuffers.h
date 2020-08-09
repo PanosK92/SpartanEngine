@@ -103,8 +103,17 @@ namespace Spartan
     static const uint32_t m_max_material_instances = 1024; // must match the shader
     struct BufferMaterial
     {
-        Math::Vector4 mat_clearcoat_clearcoatRough_anis_anisRot[m_max_material_instances];
-        Math::Vector4 mat_sheen_sheenTint_pad[m_max_material_instances];
+        std::array<Math::Vector4, m_max_material_instances> mat_clearcoat_clearcoatRough_anis_anisRot;
+        std::array<Math::Vector4, m_max_material_instances> mat_sheen_sheenTint_pad;
+
+        bool operator==(const BufferMaterial& rhs) const
+        {
+            return
+                mat_clearcoat_clearcoatRough_anis_anisRot == rhs.mat_clearcoat_clearcoatRough_anis_anisRot &&
+                mat_sheen_sheenTint_pad == rhs.mat_sheen_sheenTint_pad;
+        }
+
+        bool operator!=(const BufferMaterial& rhs) const { return !(*this == rhs); }
     };
 
     // Medium frequency - Updates a few dozen times

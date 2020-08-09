@@ -277,6 +277,20 @@ namespace Spartan
                     }
                 }
             }
+
+            if (pipeline_state.dynamic_constant_buffer_slot_5 != -1)
+            {
+                for (RHI_Descriptor& descriptor : descriptors)
+                {
+                    if (descriptor.type == RHI_Descriptor_ConstantBuffer)
+                    {
+                        if (descriptor.slot == pipeline_state.dynamic_constant_buffer_slot_5 + rhi_shader_shift_buffer)
+                        {
+                            descriptor.is_dynamic_constant_buffer = true;
+                        }
+                    }
+                }
+            }
         }
     }
 }
