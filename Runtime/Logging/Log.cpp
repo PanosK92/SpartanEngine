@@ -52,7 +52,7 @@ namespace Spartan
 
         lock_guard<mutex> guard(m_mutex_log);
 
-        const auto log_to_file = m_logger.expired() || m_log_to_file;
+        const bool log_to_file = m_logger.expired() || m_log_to_file;
 
         if (log_to_file)
         {

@@ -52,16 +52,16 @@ namespace Spartan
         m_buffer_frame_gpu->Create<BufferFrame>(m_swap_chain_buffer_count);
 
         m_buffer_material_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device, "material", is_dynamic);
-        m_buffer_material_gpu->Create<BufferMaterial>();
+        m_buffer_material_gpu->Create<BufferMaterial>(m_swap_chain_buffer_count);
 
         m_buffer_uber_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device, "uber", is_dynamic);
         m_buffer_uber_gpu->Create<BufferUber>(64);
 
         m_buffer_object_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device, "object", is_dynamic);
-        m_buffer_object_gpu->Create<BufferObject>();
+        m_buffer_object_gpu->Create<BufferObject>(m_swap_chain_buffer_count);
 
         m_buffer_light_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device, "light", is_dynamic);
-        m_buffer_light_gpu->Create<BufferLight>();
+        m_buffer_light_gpu->Create<BufferLight>(m_swap_chain_buffer_count);
     }
 
     void Renderer::CreateDepthStencilStates()

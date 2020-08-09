@@ -404,12 +404,15 @@ namespace Spartan
                     LOG_ERROR("Failed to re-allocate %s buffer with %d offsets", buffer_gpu->GetName().c_str(), new_size);
                     return false;
                 }
-                LOG_INFO("Increased %s buffer size to %d, that's %d kb", buffer_gpu->GetName().c_str(), new_size, (new_size * buffer_gpu->GetStride()) / 1000);
+                LOG_INFO("Increased %s buffer offsets to %d, that's %d kb", buffer_gpu->GetName().c_str(), new_size, (new_size * buffer_gpu->GetStride()) / 1000);
             }
         }
 
         // Set new buffer offset
-        buffer_gpu->SetOffsetIndexDynamic(offset_index);
+        if (buffer_gpu->IsDynamic())
+        {
+            buffer_gpu->SetOffsetIndexDynamic(offset_index);
+        }
 
         // Map  
         T* buffer = static_cast<T*>(buffer_gpu->Map());
@@ -466,6 +469,12 @@ namespace Spartan
 
     bool Renderer::UpdateMaterialBuffer(RHI_CommandList* cmd_list)
     {
+        if (!cmd_list)
+        {
+            LOG_ERROR("Invalid command list");
+            return false;
+        }
+
         // Update
         for (uint32_t i = 0; i < m_max_material_instances; i++)
         {
@@ -479,12 +488,6 @@ namespace Spartan
             m_buffer_material_cpu.mat_clearcoat_clearcoatRough_anis_anisRot[i].w = material->GetProperty(Material_Anisotropic_Rotation);
             m_buffer_material_cpu.mat_sheen_sheenTint_pad[i].x = material->GetProperty(Material_Sheen);
             m_buffer_material_cpu.mat_sheen_sheenTint_pad[i].y = material->GetProperty(Material_Sheen_Tint);
-        }
-
-        if (!cmd_list)
-        {
-            LOG_ERROR("Invalid command list");
-            return false;
         }
 
         if (!update_dynamic_buffer<BufferMaterial>(cmd_list, m_buffer_material_gpu.get(), m_buffer_material_cpu, m_buffer_material_cpu_previous, m_buffer_material_offset_index))
