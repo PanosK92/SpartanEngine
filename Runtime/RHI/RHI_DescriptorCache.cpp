@@ -55,7 +55,7 @@ namespace Spartan
         size_t hash = 0;
         for (const RHI_Descriptor& descriptor : m_descriptors)
         {
-            Utility::Hash::hash_combine(hash, descriptor.GetHash(false));
+            Utility::Hash::hash_combine(hash, descriptor.GetHash());
         }
 
         // If there is no descriptor set layout for this particular hash, create one
@@ -220,74 +220,16 @@ namespace Spartan
             }
         }
 
-        // Change constant buffers to dynamic (if requested) - This is a hack and not flexible, must improve
+        // Change constant buffers to dynamic (if requested)
+        for (uint32_t i = 0; i < rhi_max_constant_buffer_count; i++)
         {
-            if (pipeline_state.dynamic_constant_buffer_slot_1 != -1)
+            for (RHI_Descriptor& descriptor : descriptors)
             {
-                for (RHI_Descriptor& descriptor : descriptors)
+                if (descriptor.type == RHI_Descriptor_ConstantBuffer)
                 {
-                    if (descriptor.type == RHI_Descriptor_ConstantBuffer)
+                    if (descriptor.slot == pipeline_state.dynamic_constant_buffer_slots[i] + rhi_shader_shift_buffer)
                     {
-                        if (descriptor.slot == pipeline_state.dynamic_constant_buffer_slot_1 + rhi_shader_shift_buffer)
-                        {
-                            descriptor.is_dynamic_constant_buffer = true;
-                        }
-                    }
-                }
-            }
-
-            if (pipeline_state.dynamic_constant_buffer_slot_2 != -1)
-            {
-                for (RHI_Descriptor& descriptor : descriptors)
-                {
-                    if (descriptor.type == RHI_Descriptor_ConstantBuffer)
-                    {
-                        if (descriptor.slot == pipeline_state.dynamic_constant_buffer_slot_2 + rhi_shader_shift_buffer)
-                        {
-                            descriptor.is_dynamic_constant_buffer = true;
-                        }
-                    }
-                }
-            }
-
-            if (pipeline_state.dynamic_constant_buffer_slot_3 != -1)
-            {
-                for (RHI_Descriptor& descriptor : descriptors)
-                {
-                    if (descriptor.type == RHI_Descriptor_ConstantBuffer)
-                    {
-                        if (descriptor.slot == pipeline_state.dynamic_constant_buffer_slot_3 + rhi_shader_shift_buffer)
-                        {
-                            descriptor.is_dynamic_constant_buffer = true;
-                        }
-                    }
-                }
-            }
-
-            if (pipeline_state.dynamic_constant_buffer_slot_4 != -1)
-            {
-                for (RHI_Descriptor& descriptor : descriptors)
-                {
-                    if (descriptor.type == RHI_Descriptor_ConstantBuffer)
-                    {
-                        if (descriptor.slot == pipeline_state.dynamic_constant_buffer_slot_4 + rhi_shader_shift_buffer)
-                        {
-                            descriptor.is_dynamic_constant_buffer = true;
-                        }
-                    }
-                }
-            }
-
-            if (pipeline_state.dynamic_constant_buffer_slot_5 != -1)
-            {
-                for (RHI_Descriptor& descriptor : descriptors)
-                {
-                    if (descriptor.type == RHI_Descriptor_ConstantBuffer)
-                    {
-                        if (descriptor.slot == pipeline_state.dynamic_constant_buffer_slot_5 + rhi_shader_shift_buffer)
-                        {
-                            descriptor.is_dynamic_constant_buffer = true;
-                        }
+                        descriptor.is_dynamic_constant_buffer = true;
                     }
                 }
             }

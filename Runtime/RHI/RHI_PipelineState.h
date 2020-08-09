@@ -101,31 +101,27 @@ namespace Spartan
         };
         //==========================================================================================================================
 
-        //= Dynamic, modification is free ===============================
+        //= Dynamic, modification is free ============================================
         bool render_target_depth_texture_read_only = false;
 
-        // such a hack, must fix. Update: Came back to byte me in the ass
-        int dynamic_constant_buffer_slot_1  = 0;
-        int dynamic_constant_buffer_slot_2  = 1;
-        int dynamic_constant_buffer_slot_3  = 2;
-        int dynamic_constant_buffer_slot_4  = 3;
-        int dynamic_constant_buffer_slot_5  = 4;
-
-        // Clear values
-        
+        // Constant buffer slots which refer to dynamic buffers (-1 means unused)
+        std::array<int, rhi_max_constant_buffer_count> dynamic_constant_buffer_slots =
+        {
+            0, 1, 2, 3, 4, -1, -1, -1
+        };
 
         // Profiling
         const char* pass_name   = nullptr;
         bool mark               = false;
         bool profile            = false;
-        //===============================================================
+        //============================================================================
 
     private:
         void DestroyFrameResources();
 
         std::size_t m_hash  = 0;
         void* m_render_pass = nullptr;
-        std::array<void*, rhi_max_render_target_count> m_frame_buffers =
+        std::array<void*, rhi_max_constant_buffer_count> m_frame_buffers =
         {
             nullptr,
             nullptr,
