@@ -43,6 +43,11 @@ namespace Spartan
         m_name                  = name;
         m_descriptor_set_layout = CreateDescriptorSetLayout(m_descriptors);
         m_dynamic_offsets.fill(rhi_dynamic_offset_empty);
+
+        for (const RHI_Descriptor& descriptor : descriptors)
+        {
+            Utility::Hash::hash_combine(m_descriptor_set_layout_hash, descriptor.GetHash());
+        }
     }
 
     bool RHI_DescriptorSetLayout::SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer)
@@ -196,13 +201,12 @@ namespace Spartan
 
     size_t RHI_DescriptorSetLayout::ComputeDescriptorSetHash(const vector<RHI_Descriptor>& descriptors)
     {
-        size_t hash = 0;
-
+        // Integrate resource into the hash
+        size_t hash = m_descriptor_set_layout_hash;
         for (const RHI_Descriptor& descriptor : descriptors)
         {
-            Utility::Hash::hash_combine(hash, descriptor.GetHash(true));
+            Utility::Hash::hash_combine(hash, descriptor.resource);
         }
-
         return hash;
     }
 }
