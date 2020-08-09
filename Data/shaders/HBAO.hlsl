@@ -32,7 +32,7 @@ static const uint ao_directions = 2;
 static const uint ao_steps      = 2;
 #endif
 static const float ao_radius            = 0.5f;
-static const float ao_intensity         = 2.0f;
+static const float ao_intensity         = 1.0f;
 static const float ao_bounce_intensity  = 1.0f;
 
 static const float ao_samples   = (float)(ao_directions * ao_steps);
@@ -117,45 +117,41 @@ float compute_occlusion(float3 center_normal, float3 center_to_sample, float dis
     return saturate(dot(center_normal, center_to_sample) / sqrt(distance_squared)) * attunate;
 }
 
-float compute_light(float3 center_normal, float3 center_to_sample, float distance_squared, float attunate, float2 sample_uv, inout uint indirect_light_samples)
+float3 compute_light(float3 center_normal, float3 center_to_sample, float distance_squared, float attunate, float2 sample_uv, inout uint indirect_light_samples)
 {
-    float indirect = 0.0f;
+    float3 indirect = 0.0f;
     
     // Compute falloff
     attunate = attunate * screen_fade(sample_uv);
-
-    [branch]
-	if (attunate > 0.0f)
+    
+	// Reproject light
+	float2 velocity         = GetVelocity_DepthMin(sample_uv);
+	float2 uv_reprojected   = sample_uv - velocity;
+	float3 light            = tex_light_diffuse.SampleLevel(sampler_bilinear_clamp, uv_reprojected, 0).rgb * attunate;
+	
+	// Transport
+	[branch]
+	if (luminance(light) > 0.0f)
 	{
-	    // Reproject light
-	    float2 velocity         = GetVelocity_DepthMin(sample_uv);
-	    float2 uv_reprojected   = sample_uv - velocity;
-	    float light             = luminance(tex_light_diffuse.SampleLevel(sampler_bilinear_clamp, uv_reprojected, 0).rgb) * attunate;
-	    
-	    // Transport
-	    [branch]
-	    if (light > 0.0f)
-	    {
-	    	float distance      = clamp(sqrt(distance_squared), 0.1, 50);
-	    	float attunation    = clamp(1.0 / (distance), 0, 50);
-	    	float occlusion     = saturate(dot(center_normal, center_to_sample)) * attunation;
-
-	    	[branch]
-	    	if (occlusion > 0.0f)
-	    	{
-	    		float3 sample_normal    = get_normal_view_space(sample_uv);
-	    		float visibility        = saturate(dot(sample_normal, -center_to_sample));
-	    	
-	    		indirect = light * visibility * occlusion;
-	    		indirect_light_samples++;
-	    	}
-	    }
-    }
+		float distance      = clamp(sqrt(distance_squared), 0.1, 50);
+		float attunation    = clamp(1.0 / (distance), 0, 50);
+		float occlusion     = saturate(dot(center_normal, center_to_sample)) * attunation;
+	
+		[branch]
+		if (occlusion > 0.0f)
+		{
+			float3 sample_normal    = get_normal_view_space(sample_uv);
+			float visibility        = saturate(dot(sample_normal, -center_to_sample));
+		
+			indirect = light * visibility * occlusion;
+			indirect_light_samples++;
+		}
+	}
 
     return indirect;
 }
 
-float2 normal_oriented_hemisphere_ambient_occlusion(float2 uv, float3 position, float3 normal)
+float4 normal_oriented_hemisphere_ambient_occlusion(float2 uv, float3 position, float3 normal)
 {
     float occlusion = 0.0f;
     
@@ -191,13 +187,13 @@ float2 normal_oriented_hemisphere_ambient_occlusion(float2 uv, float3 position, 
     }
 
     occlusion = 1.0f - saturate(occlusion * ao_intensity / float(ao_directions));  
-    return float2(1, occlusion);
+    return float4(occlusion, occlusion, occlusion, 1);
 }
 
-float2 horizon_based_ambient_occlusion(float2 uv, float3 position, float3 normal)
+float4 horizon_based_ambient_occlusion(float2 uv, float3 position, float3 normal)
 {
     float occlusion     = 0.0f;
-    float light         = 0.0f;
+    float3 light        = 0.0f;
     uint light_samples  = 0;
     
     float radius_pixels = max((ao_radius * g_resolution.x * 0.5f) / position.z, (float)ao_steps);
@@ -245,13 +241,13 @@ float2 horizon_based_ambient_occlusion(float2 uv, float3 position, float3 normal
     occlusion = 1.0f - saturate(occlusion * ao_intensity / ao_samples);
 
     #if INDIRECT_BOUNCE
-    light = saturate(light * ao_bounce_intensity / (float(light_samples) + FLT_MIN));
+    light = saturate(light * ao_bounce_intensity / float(light_samples));
     #endif
     
-    return float2(light, occlusion);
+    return float4(light, occlusion);
 }
 
-float2 mainPS(Pixel_PosUv input) : SV_TARGET
+float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
     float3 position = get_position_view_space(input.uv);
     float3 normal   = get_normal_view_space(input.uv);

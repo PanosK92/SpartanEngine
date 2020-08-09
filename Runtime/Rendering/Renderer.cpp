@@ -165,7 +165,7 @@ namespace Spartan
 		CreateDepthStencilStates();
 		CreateRasterizerStates();
 		CreateBlendStates();
-		CreateRenderTargets();
+		CreateRenderTextures();
 		CreateFonts();	
 		CreateSamplers();
 		CreateTextures();
@@ -332,7 +332,7 @@ namespace Spartan
         m_rhi_device->SetActiveDisplayMode(DisplayMode(width, height, display_mode.numerator, display_mode.denominator));
 
 		// Re-create render textures
-		CreateRenderTargets();
+		CreateRenderTextures();
 
         FIRE_EVENT(EventType::FrameResolutionChanged);
 
