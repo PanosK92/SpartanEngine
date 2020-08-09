@@ -175,7 +175,7 @@ namespace ImGui::RHI
         // Validate command list state
         if (!cmd_list->IsRecording())
         {
-            LOG_ERROR("Command list is not recording, can't render anything");
+            LOG_WARNING("Command list is not recording, can't render anything");
             return;
         }
 

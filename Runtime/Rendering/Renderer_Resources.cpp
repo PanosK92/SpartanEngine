@@ -103,7 +103,7 @@ namespace Spartan
         m_sampler_anisotropic_wrap  = make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_TRILINEAR, RHI_Sampler_Address_Wrap,   RHI_Comparison_Always, true);
     }
 
-    void Renderer::CreateRenderTextures()
+    void Renderer::CreateRenderTargets()
     {
         uint32_t width  = static_cast<uint32_t>(m_resolution.x);
         uint32_t height = static_cast<uint32_t>(m_resolution.y);
@@ -123,7 +123,7 @@ namespace Spartan
         m_render_targets[RenderTarget_Gbuffer_Normal]   = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float,   1, 0,                                   "rt_gbuffer_normal");
         m_render_targets[RenderTarget_Gbuffer_Material] = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R8G8B8A8_Unorm,       1, 0,                                   "rt_gbuffer_material");
         m_render_targets[RenderTarget_Gbuffer_Velocity] = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16_Float,         1, 0,                                   "rt_gbuffer_velocity");
-        m_render_targets[RenderTarget_Gbuffer_Depth]    = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_D32_Float_S8X24_Uint, 1, RHI_Texture_DepthStencilReadOnly,    "gbuffer_depth");
+        m_render_targets[RenderTarget_Gbuffer_Depth]    = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_D32_Float_S8X24_Uint, 1, RHI_Texture_DepthStencilReadOnly,    "rt_gbuffer_depth");
 
         // Light
         m_render_targets[RenderTarget_Light_Diffuse]    = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R11G11B10_Float, 1, 0, "rt_light_diffuse");
@@ -148,8 +148,8 @@ namespace Spartan
         m_render_targets[RenderTarget_TaaHistory] = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_taa_history");
 
         // HBAO + Indirect bounce
-        m_render_targets[RenderTarget_Hbao_Noisy]   = make_unique<RHI_Texture2D>(m_context, static_cast<uint32_t>(width), static_cast<uint32_t>(height), RHI_Format_R16G16B16A16_Float, 1, 0, "rt_hbao_noisy");
-        m_render_targets[RenderTarget_Hbao]         = make_unique<RHI_Texture2D>(m_context, static_cast<uint32_t>(width), static_cast<uint32_t>(height), RHI_Format_R16G16B16A16_Float, 1, 0, "rt_hbao");
+        m_render_targets[RenderTarget_Hbao_Noisy]   = make_unique<RHI_Texture2D>(m_context, static_cast<uint32_t>(width), static_cast<uint32_t>(height), RHI_Format_R16G16_Float, 1, 0, "rt_hbao_noisy");
+        m_render_targets[RenderTarget_Hbao]         = make_unique<RHI_Texture2D>(m_context, static_cast<uint32_t>(width), static_cast<uint32_t>(height), RHI_Format_R16G16_Float, 1, 0, "rt_hbao");
 
         // SSR
         m_render_targets[RenderTarget_Ssr] = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16_Float, 1, RHI_Texture_Storage, "rt_ssr");
@@ -378,17 +378,22 @@ namespace Spartan
             m_shaders[Shader_DebugVelocity_C]->AddDefine("VELOCITY");
             m_shaders[Shader_DebugVelocity_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "Debug.hlsl");
 
-            // R channel
+            // R
             m_shaders[Shader_DebugChannelR_C] = make_shared<RHI_Shader>(m_context);
             m_shaders[Shader_DebugChannelR_C]->AddDefine("R_CHANNEL");
             m_shaders[Shader_DebugChannelR_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "Debug.hlsl");
 
-            // A channel
+            // A
             m_shaders[Shader_DebugChannelA_C] = make_shared<RHI_Shader>(m_context);
             m_shaders[Shader_DebugChannelA_C]->AddDefine("A_CHANNEL");
             m_shaders[Shader_DebugChannelA_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "Debug.hlsl");
 
-            // A channel with gamma correction
+            // RG with gamma correction
+            m_shaders[Shader_DebugChannelRgGammaCorrect_C] = make_shared<RHI_Shader>(m_context);
+            m_shaders[Shader_DebugChannelRgGammaCorrect_C]->AddDefine("RG_CHANNEL_GAMMA_CORRECT");
+            m_shaders[Shader_DebugChannelRgGammaCorrect_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "Debug.hlsl");
+
+            // RGB with gamma correction
             m_shaders[Shader_DebugChannelRgbGammaCorrect_C] = make_shared<RHI_Shader>(m_context);
             m_shaders[Shader_DebugChannelRgbGammaCorrect_C]->AddDefine("RGB_CHANNEL_GAMMA_CORRECT");
             m_shaders[Shader_DebugChannelRgbGammaCorrect_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "Debug.hlsl");
@@ -418,13 +423,13 @@ namespace Spartan
         m_tex_blue_noise->LoadFromFile(dir_texture + "blue_noise.png");
 
         m_tex_white = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
-        m_tex_white->LoadFromFile(dir_texture + "white.png");
+        m_tex_white->LoadFromFile(dir_texture + "rgba_white.png");
 
-        m_tex_black_transparent = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
-        m_tex_black_transparent->LoadFromFile(dir_texture + "black_transparent.png");
+        m_tex_green = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
+        m_tex_green->LoadFromFile(dir_texture + "rgba_green.png");
 
-        m_tex_black_opaque = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
-        m_tex_black_opaque->LoadFromFile(dir_texture + "black_opaque.png");
+        m_tex_transparent = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
+        m_tex_transparent->LoadFromFile(dir_texture + "rgba_transparent.png");
 
         // Gizmo icons
         m_gizmo_tex_light_directional = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
