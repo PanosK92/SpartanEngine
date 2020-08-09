@@ -369,3 +369,4 @@ inline float screen_fade(float2 uv)
 
 #endif // SPARTAN_COMMON
 
+

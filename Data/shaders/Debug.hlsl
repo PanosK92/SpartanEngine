@@ -54,6 +54,12 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     color   = float4(a, a, a, 1.0f);
 #endif
 
+#if RG_CHANNEL_GAMMA_CORRECT
+    float3 rgb  = float3(tex[thread_id.xy].rg, 0.0f);
+    rgb         = gamma(rgb);
+    color       = float4(rgb, 1.0f);
+#endif
+    
 #if RGB_CHANNEL_GAMMA_CORRECT
     float3 rgb  = tex[thread_id.xy].rgb;
     rgb         = gamma(rgb);

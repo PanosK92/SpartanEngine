@@ -139,6 +139,7 @@ namespace Spartan
 		Shader_DebugVelocity_C,
 		Shader_DebugChannelR_C,
         Shader_DebugChannelA_C,
+        Shader_DebugChannelRgGammaCorrect_C,
         Shader_DebugChannelRgbGammaCorrect_C,
         Shader_BrdfSpecularLut_C,
         Shader_Light_P,
@@ -257,7 +258,7 @@ namespace Spartan
         // Globals
         void SetGlobalShaderObjectTransform(RHI_CommandList* cmd_list, const Math::Matrix& transform);
         void SetGlobalSamplersAndConstantBuffers(RHI_CommandList* cmd_list) const;
-        RHI_Texture* GetBlackTexture() const { return m_tex_black_transparent.get(); }
+        RHI_Texture* GetBlackTexture() const { return m_tex_transparent.get(); }
 
 	private:
         // Resource creation
@@ -269,7 +270,7 @@ namespace Spartan
 		void CreateTextures();
 		void CreateShaders();
 		void CreateSamplers();
-		void CreateRenderTextures();
+		void CreateRenderTargets();
 
 		// Passes
 		void Pass_Main(RHI_CommandList* cmd_list);
@@ -325,8 +326,8 @@ namespace Spartan
         std::shared_ptr<RHI_Texture> m_tex_noise_normal;
         std::shared_ptr<RHI_Texture> m_tex_blue_noise;
         std::shared_ptr<RHI_Texture> m_tex_white;
-        std::shared_ptr<RHI_Texture> m_tex_black_transparent;
-        std::shared_ptr<RHI_Texture> m_tex_black_opaque;
+        std::shared_ptr<RHI_Texture> m_tex_transparent;
+        std::shared_ptr<RHI_Texture> m_tex_green;
         std::shared_ptr<RHI_Texture> m_gizmo_tex_light_directional;
         std::shared_ptr<RHI_Texture> m_gizmo_tex_light_point;
         std::shared_ptr<RHI_Texture> m_gizmo_tex_light_spot;
