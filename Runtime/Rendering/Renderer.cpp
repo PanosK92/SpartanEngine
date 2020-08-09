@@ -80,6 +80,7 @@ namespace Spartan
         m_option_values[Option_Value_Gamma]             = 2.2f;
         m_option_values[Option_Value_Sharpen_Strength]  = 1.0f;
         m_option_values[Option_Value_Bloom_Intensity]   = 0.2f;
+        m_option_values[Option_Value_Fog]               = 1.0f;
 
 		// Subscribe to events
 		SUBSCRIBE_TO_EVENT(EventType::WorldResolved,    EVENT_HANDLER_VARIANT(RenderablesAcquire));
@@ -264,6 +265,7 @@ namespace Spartan
             m_buffer_frame_cpu.camera_direction             = m_camera->GetTransform()->GetForward();
             m_buffer_frame_cpu.bloom_intensity              = m_option_values[Option_Value_Bloom_Intensity];
             m_buffer_frame_cpu.sharpen_strength             = m_option_values[Option_Value_Sharpen_Strength];
+            m_buffer_frame_cpu.fog                          = m_option_values[Option_Value_Fog];
             m_buffer_frame_cpu.taa_jitter_offset_previous   = m_buffer_frame_cpu_previous.taa_jitter_offset;
             m_buffer_frame_cpu.taa_jitter_offset            = m_taa_jitter - m_taa_jitter_previous;
             m_buffer_frame_cpu.delta_time                   = static_cast<float>(m_context->GetSubsystem<Timer>()->GetDeltaTimeSmoothedSec());

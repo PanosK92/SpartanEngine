@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // = INCLUDES ======
 #include "BRDF.hlsl"
+#include "Fog.hlsl"
 //==================
 
 float4 mainPS(Pixel_PosUv input) : SV_TARGET
@@ -39,12 +40,18 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 
     // Post-process samples
     int mat_id = round(sample_normal.a * 65535);
+
+    // Fog
+    float3 position                 = get_position(uv);
+    float camera_to_pixel_length    = length(position - g_camera_position.xyz);
+    float3 fog                      = get_fog_factor(position.y, camera_to_pixel_length);
     
     [branch]
     if (mat_id == 0)
     {
         color.rgb   += tex_environment.Sample(sampler_bilinear_clamp, direction_sphere_uv(camera_to_pixel)).rgb;
         color.rgb   *= clamp(g_directional_light_intensity / 5.0f, 0.01f, 1.0f);
+        fog         *= luminance(color.rgb);
         color.a     = 1.0f;
     }
     else
@@ -96,26 +103,31 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 
         // Light - Ambient
         float3 light_ambient = saturate(g_directional_light_intensity * g_directional_light_intensity) * 0.4f;
+        
+        // Modulate fog with ambient light
+        fog *= light_ambient * 0.25f;
+                
+        // Apply ambient occlusion to ambient light
 		#if INDIRECT_BOUNCE
 		light_ambient *= sample_hbao.a;
 		#else
 		light_ambient *= MultiBounceAO(sample_hbao.a, sample_albedo.rgb);
         #endif
-		
+
         // Modulate with ambient light
         light_reflection    *= light_ambient;
         light_ibl_diffuse   *= light_ambient;
         light_ibl_specular  *= light_ambient;
-    
+        
         // Combine and return
         color.rgb += light_diffuse + light_ibl_diffuse + light_specular + light_ibl_specular + light_reflection + light_emissive + light_bounce;
         color.a = sample_albedo.a;
     }
 
-    // Volumetric lighting
+    // Volumetric lighting and fog
     color.rgb += light_volumetric;
+    color.rgb += fog;
     
     return saturate_16(color);
 }
-
 

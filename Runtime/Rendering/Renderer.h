@@ -89,7 +89,8 @@ namespace Spartan
         Option_Value_Tonemapping,
         Option_Value_Gamma,
         Option_Value_Bloom_Intensity,
-        Option_Value_Sharpen_Strength
+        Option_Value_Sharpen_Strength,
+        Option_Value_Fog
     };
 
     enum Renderer_ToneMapping_Type

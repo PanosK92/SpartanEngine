@@ -52,6 +52,7 @@ void Widget_RenderOptions::Tick()
 
     if (ImGui::CollapsingHeader("Graphics", ImGuiTreeNodeFlags_DefaultOpen))
     {
+        // Reflect
         bool do_bloom                   = m_renderer->GetOption(Render_Bloom);
         bool do_dof                     = m_renderer->GetOption(Render_DepthOfField);
         bool do_volumetric_lighting     = m_renderer->GetOption(Render_VolumetricLighting);    
@@ -67,8 +68,9 @@ void Widget_RenderOptions::Tick()
         bool do_dithering               = m_renderer->GetOption(Render_Dithering);
         bool do_indirect_bounce         = m_renderer->GetOption(Render_IndirectBounce);
         int resolution_shadow           = m_renderer->GetOptionValue<int>(Option_Value_ShadowResolution);
+        float fog                       = m_renderer->GetOptionValue<float>(Option_Value_Fog);
 
-        // Display
+        // Show
         {
             const auto render_option_float = [this](const char* id, const char* text, Renderer_Option_Value render_option, const string& tooltip = "", float step = 0.1f, float min = 0.0f, float max = numeric_limits<float>::max())
             {
@@ -237,9 +239,13 @@ void Widget_RenderOptions::Tick()
 
             // Shadow resolution
             ImGui::InputInt("Shadow Resolution", &resolution_shadow, 1);
+
+            // Fog
+            ImGui::SliderFloat("Fog", &fog, 0.0f, 16.0f, "%.2f");
+            ImGuiEx::Tooltip("Fog density, something that also affects the visibility of volumetric lighting.");
         }
 
-        // Map back to engine
+        // Map
         m_renderer->SetOption(Render_Bloom,                         do_bloom);
         m_renderer->SetOption(Render_DepthOfField,                  do_dof);
         m_renderer->SetOption(Render_VolumetricLighting,            do_volumetric_lighting); 
@@ -255,6 +261,7 @@ void Widget_RenderOptions::Tick()
         m_renderer->SetOption(Render_ChromaticAberration,           do_chromatic_aberration);
         m_renderer->SetOption(Render_Dithering,                     do_dithering);
         m_renderer->SetOptionValue(Option_Value_ShadowResolution,   static_cast<float>(resolution_shadow));
+        m_renderer->SetOptionValue(Option_Value_Fog,                fog);
     }
 
     if (ImGui::CollapsingHeader("Widgets", ImGuiTreeNodeFlags_None))

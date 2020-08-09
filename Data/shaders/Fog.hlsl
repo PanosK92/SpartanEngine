@@ -19,18 +19,18 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-static const float fog_density      = 3.5f;
 static const float fog_start        = -0.5f;
 static const float fog_end          = 5.0f;
 static const float fog_start_height = -0.5f;
 static const float fog_end_height   = 7.0f;
 
-float get_fog_factor(const Surface surface)
+float get_fog_factor(const float pixel_y, const float pixel_z)
 {
-    float pixel_z       = surface.camera_to_pixel_length;
-    float pixel_y       = surface.position.y;
     float depth_factor  = saturate(1.0f - (fog_end - pixel_z)           / (fog_end - fog_start + FLT_MIN));
     float height_factor = saturate(1.0f - (fog_end_height - pixel_y)    / (fog_end_height - fog_start_height + FLT_MIN));
     
-    return depth_factor * height_factor * fog_density;
+    return depth_factor * height_factor * g_fog_density;
 }
+
+
+float get_fog_factor(const Surface surface) { return get_fog_factor(surface.position.y, surface.camera_to_pixel_length); }
