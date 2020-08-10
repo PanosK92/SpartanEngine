@@ -196,7 +196,7 @@ void Widget_RenderOptions::Tick()
 
             // Screen Space Global Illumination
             ImGui::Checkbox("SSGI - Screen Space Global Illumination", &do_ssgi);
-            ImGuiEx::Tooltip("Computes one bounce of indirect diffuse light. If SSR is enabled, it will used for the specular.");
+            ImGuiEx::Tooltip("Computes one bounce of indirect diffuse light. If SSR is enabled, it will be used for the specular.");
             ImGui::Separator();
 
             // Screen space reflections
