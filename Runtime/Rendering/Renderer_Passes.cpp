@@ -579,6 +579,8 @@ namespace Spartan
             cmd_list->SetTexture(11, m_render_targets[RenderTarget_Gbuffer_Velocity]);
             cmd_list->SetTexture(12, m_render_targets[RenderTarget_Gbuffer_Depth]);
             cmd_list->SetTexture(23, m_render_targets[RenderTarget_Light_Diffuse]);
+            cmd_list->SetTexture(24, m_render_targets[RenderTarget_Light_Specular]);
+            cmd_list->SetTexture(26, (m_options & Render_ScreenSpaceReflections) ? m_render_targets[RenderTarget_Ssr] : m_tex_black_transparent);
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
         }
@@ -815,11 +817,9 @@ namespace Spartan
 
 	void Renderer::Pass_Composition(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_out, const bool use_stencil)
 	{
-        bool do_ssgi = (m_options & Render_Ssgi) != 0;
-
         // Acquire shaders
         const auto& shader_v = m_shaders[Shader_Quad_V];
-		const auto& shader_p = m_shaders[do_ssgi ? Shader_Composition_Ssgi_P : Shader_Composition_P];
+		const auto& shader_p = m_shaders[Shader_Composition_P];
 		if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
 			return;
 
@@ -861,7 +861,7 @@ namespace Spartan
             cmd_list->SetTexture(27, m_render_targets[RenderTarget_Hdr_2]); // previous frame before post-processing
             cmd_list->SetTexture(19, m_render_targets[RenderTarget_Brdf_Specular_Lut]);
             cmd_list->SetTexture(20, GetEnvironmentTexture());
-            cmd_list->SetTexture(31, do_ssgi ? m_render_targets[RenderTarget_Ssgi] : m_tex_black_opaque);
+            cmd_list->SetTexture(31, (m_options & Render_Ssgi) ? m_render_targets[RenderTarget_Ssgi] : m_tex_black_opaque);
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());

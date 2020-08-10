@@ -76,12 +76,6 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         float3 light_ibl_specular   = Brdf_Specular_Ibl(material, sample_normal.xyz, camera_to_pixel, tex_environment, tex_lutIbl, diffuse_energy, reflective_energy);
         float3 light_ibl_diffuse    = Brdf_Diffuse_Ibl(material, sample_normal.xyz, tex_environment) * diffuse_energy; // Tone down diffuse such as that only non metals have it
 
-        // Light - Bounce (diffuse)
-        float3 light_bounce = 0.0f;
-        #if SSGI
-        light_bounce += sample_ssgi * material.albedo;
-        #endif
-        
         // Light - SSR
         float3 light_reflection = 0.0f;
         [branch]
@@ -92,12 +86,10 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
             // Reflection
             light_reflection = saturate(tex_frame.Sample(sampler_bilinear_clamp, sample_ssr).rgb);
             light_reflection *= fade * light_ibl_specular;
-
-            // Bounce (specular)
-            #if INDIRECT_BOUNCE
-            light_bounce += tex_light_specular.Sample(sampler_point_clamp, sample_ssr).rgb * fade;
-            #endif
         }
+
+        // Light - SSGI
+        float3 light_ssgi = sample_ssgi * material.albedo;
         
         // Light - Emissive
         float3 light_emissive = material.emissive * material.albedo * 50.0f;
@@ -121,7 +113,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         light_ibl_specular  *= light_ambient;
         
         // Combine and return
-        color.rgb += light_diffuse + light_ibl_diffuse + light_specular + light_ibl_specular + light_reflection + light_emissive + light_bounce;
+        color.rgb += light_diffuse + light_ibl_diffuse + light_specular + light_ibl_specular + light_reflection + light_emissive + light_ssgi;
         color.a = sample_albedo.a;
     }
 

@@ -351,11 +351,6 @@ namespace Spartan
         m_shaders[Shader_Composition_P] = make_shared<RHI_Shader>(m_context);
         m_shaders[Shader_Composition_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Composition.hlsl");
 
-        // Composition
-        m_shaders[Shader_Composition_Ssgi_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_Composition_Ssgi_P]->AddDefine("SSGI");
-        m_shaders[Shader_Composition_Ssgi_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Composition.hlsl");
-
         // Font
         m_shaders[Shader_Font_V] = make_shared<RHI_Shader>(m_context);
         m_shaders[Shader_Font_V]->CompileAsync<RHI_Vertex_PosTex>(RHI_Shader_Vertex, dir_shaders + "Font.hlsl");
