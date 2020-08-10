@@ -19,21 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===========
+//= INCLUDES =========
 #include "Common.hlsl"
-#include "Velocity.hlsl"
-//======================
+//====================
 
-#if INDIRECT_BOUNCE
-static const uint ao_directions = 2;
-static const uint ao_steps      = 6;
-#else
 static const uint ao_directions = 2;
 static const uint ao_steps      = 2;
-#endif
-static const float ao_radius            = 0.5f;
-static const float ao_intensity         = 1.0f;
-static const float ao_bounce_intensity  = 10.0f;
+static const float ao_radius    = 0.5f;
+static const float ao_intensity = 1.0f;
 
 static const float ao_samples   = (float)(ao_directions * ao_steps);
 static const float ao_radius2   = ao_radius * ao_radius;
@@ -117,45 +110,7 @@ float compute_occlusion(float3 center_normal, float3 center_to_sample, float dis
     return saturate(dot(center_normal, center_to_sample) / sqrt(distance_squared)) * attunate;
 }
 
-float3 compute_light(float3 center_normal, float3 center_to_sample, float distance_squared, float attunate, float2 sample_uv, inout uint indirect_light_samples)
-{
-    float3 indirect = 0.0f;
-    
-    // Compute falloff
-    attunate = attunate * screen_fade(sample_uv);
-    
-    [branch]
-    if (attunate > 0.0f)
-	{
-	    // Reproject light
-	    float2 velocity         = GetVelocity_DepthMin(sample_uv);
-	    float2 uv_reprojected   = sample_uv - velocity;
-	    float3 light            = tex_light_diffuse.SampleLevel(sampler_bilinear_clamp, uv_reprojected, 0).rgb * attunate;
-	    
-	    // Transport
-	    [branch]
-	    if (luminance(light) > 0.0f)
-	    {
-	    	float distance      = clamp(sqrt(distance_squared), 0.1, 50);
-	    	float attunation    = clamp(1.0 / (distance), 0, 50);
-	    	float occlusion     = saturate(dot(center_normal, center_to_sample)) * attunation;
-	    
-	    	[branch]
-	    	if (occlusion > 0.0f)
-	    	{
-	    		float3 sample_normal    = get_normal_view_space(sample_uv);
-	    		float visibility        = saturate(dot(sample_normal, -center_to_sample));
-	    	
-	    		indirect = light * visibility * occlusion;
-	    		indirect_light_samples++;
-	    	}
-	    }
-    }   
-
-    return indirect;
-}
-
-float4 normal_oriented_hemisphere_ambient_occlusion(float2 uv, float3 position, float3 normal)
+float normal_oriented_hemisphere_ambient_occlusion(float2 uv, float3 position, float3 normal)
 {
     float occlusion = 0.0f;
     
@@ -190,15 +145,12 @@ float4 normal_oriented_hemisphere_ambient_occlusion(float2 uv, float3 position, 
         }
     }
 
-    occlusion = 1.0f - saturate(occlusion * ao_intensity / float(ao_directions));  
-    return float4(occlusion, occlusion, occlusion, 1);
+    return 1.0f - saturate(occlusion * ao_intensity / float(ao_directions));
 }
 
-float4 horizon_based_ambient_occlusion(float2 uv, float3 position, float3 normal)
+float horizon_based_ambient_occlusion(float2 uv, float3 position, float3 normal)
 {
     float occlusion     = 0.0f;
-    float3 light        = 0.0f;
-    uint light_samples  = 0;
     
     float radius_pixels = max((ao_radius * g_resolution.x * 0.5f) / position.z, (float)ao_steps);
     radius_pixels       = radius_pixels / (ao_steps + 1); // divide by ao_steps + 1 so that the farthest samples are not fully attenuated
@@ -233,48 +185,17 @@ float4 horizon_based_ambient_occlusion(float2 uv, float3 position, float3 normal
 			{
 				// Occlusion
                 occlusion += compute_occlusion(normal, center_to_sample, distance_squared, attunation);
-                
-				// Indirect bounce
-				#if INDIRECT_BOUNCE
-				light += compute_light(normal, center_to_sample, distance_squared, attunation, sample_uv, light_samples);
-                #endif
             }
         }
     }
 
-    occlusion = 1.0f - saturate(occlusion * ao_intensity / ao_samples);
-
-    #if INDIRECT_BOUNCE
-    light = saturate(light * ao_bounce_intensity / (float(light_samples) + FLT_MIN));
-    #endif
-    
-    return float4(light, occlusion);
+    return 1.0f - saturate(occlusion * ao_intensity / ao_samples);
 }
 
-#if INDIRECT_BOUNCE
-struct PixelOutputType
-{
-    float occlusion : SV_Target0; 
-    float3 light    : SV_Target1;  
-};
-#endif
-
-#if INDIRECT_BOUNCE
-PixelOutputType mainPS(Pixel_PosUv input)
-#else
 float mainPS(Pixel_PosUv input) : SV_TARGET
-#endif
 {
     float3 position = get_position_view_space(input.uv);
     float3 normal   = get_normal_view_space(input.uv);
-    float4 hbao     = horizon_based_ambient_occlusion(input.uv, position, normal);
-
-    #if INDIRECT_BOUNCE
-    PixelOutputType rt;
-    rt.occlusion    = hbao.a;  
-    rt.light        = hbao.rgb; // diffuse
-    return rt;
-    #else
-    return hbao.a;
-    #endif
+    return horizon_based_ambient_occlusion(input.uv, position, normal);
 }
+

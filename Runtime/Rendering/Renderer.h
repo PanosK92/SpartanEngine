@@ -69,7 +69,7 @@ namespace Spartan
         Render_AntiAliasing_Taa         = 1 << 11,
 		Render_AntiAliasing_Fxaa	    = 1 << 12,
 		Render_Hbao                     = 1 << 13,
-        Render_IndirectBounce           = 1 << 14,
+        Render_Ssgi                     = 1 << 14,
         Render_ScreenSpaceShadows       = 1 << 15,
 		Render_ScreenSpaceReflections	= 1 << 16,
 		Render_MotionBlur			    = 1 << 17,
@@ -144,13 +144,13 @@ namespace Spartan
         Shader_BrdfSpecularLut_C,
         Shader_Light_P,
 		Shader_Composition_P,
-        Shader_Composition_IndirectBounce_P,
+        Shader_Composition_Ssgi_P,
 		Shader_Color_V,
         Shader_Color_P,
 		Shader_Font_V,
         Shader_Font_P,
 		Shader_Hbao_P,
-        Shader_Hbao_IndirectBounce_P,
+        Shader_Ssgi_C,
         Shader_Ssr_P,
 		Shader_Entity_V,
         Shader_Entity_Transform_P,
@@ -278,6 +278,7 @@ namespace Spartan
 		void Pass_LightDepth(RHI_CommandList* cmd_list, const Renderer_Object_Type object_type);
         void Pass_DepthPrePass(RHI_CommandList* cmd_list);
 		void Pass_GBuffer(RHI_CommandList* cmd_list, const Renderer_Object_Type object_type);
+        void Pass_Ssgi(RHI_CommandList* cmd_list);
 		void Pass_Hbao(RHI_CommandList* cmd_list, const bool use_stencil);
         void Pass_Ssr(RHI_CommandList* cmd_list, const bool use_stencil);
         void Pass_Light(RHI_CommandList* cmd_list, const bool use_stencil);

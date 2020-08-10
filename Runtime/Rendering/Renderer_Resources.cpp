@@ -325,10 +325,9 @@ namespace Spartan
         m_shaders[Shader_Hbao_P] = make_shared<RHI_Shader>(m_context);
         m_shaders[Shader_Hbao_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "HBAO.hlsl");
 
-        // HBAO
-        m_shaders[Shader_Hbao_IndirectBounce_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_Hbao_IndirectBounce_P]->AddDefine("INDIRECT_BOUNCE");
-        m_shaders[Shader_Hbao_IndirectBounce_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "HBAO.hlsl");
+        // SSGI
+        m_shaders[Shader_Ssgi_C] = make_shared<RHI_Shader>(m_context);
+        m_shaders[Shader_Ssgi_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "SSGI.hlsl");
 
         // SSR
         m_shaders[Shader_Ssr_P] = make_shared<RHI_Shader>(m_context);
@@ -353,9 +352,9 @@ namespace Spartan
         m_shaders[Shader_Composition_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Composition.hlsl");
 
         // Composition
-        m_shaders[Shader_Composition_IndirectBounce_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_Composition_IndirectBounce_P]->AddDefine("INDIRECT_BOUNCE");
-        m_shaders[Shader_Composition_IndirectBounce_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Composition.hlsl");
+        m_shaders[Shader_Composition_Ssgi_P] = make_shared<RHI_Shader>(m_context);
+        m_shaders[Shader_Composition_Ssgi_P]->AddDefine("SSGI");
+        m_shaders[Shader_Composition_Ssgi_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Composition.hlsl");
 
         // Font
         m_shaders[Shader_Font_V] = make_shared<RHI_Shader>(m_context);

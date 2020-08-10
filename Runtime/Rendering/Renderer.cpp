@@ -442,7 +442,7 @@ namespace Spartan
         return buffer_gpu->Unmap(offset, size);
     }
 
-    bool Renderer::UpdateFrameBuffer(RHI_CommandList* cmd_list)
+	bool Renderer::UpdateFrameBuffer(RHI_CommandList* cmd_list)
     {
         // Update directional light intensity, just grab the first one
         for (const auto& entity : m_entities[Renderer_Object_Light])
