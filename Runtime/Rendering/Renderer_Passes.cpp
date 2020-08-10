@@ -576,6 +576,7 @@ namespace Spartan
 
             cmd_list->SetTexture(2, tex_out, true);
             cmd_list->SetTexture(9, m_render_targets[RenderTarget_Gbuffer_Normal]);
+            cmd_list->SetTexture(10, m_render_targets[RenderTarget_Gbuffer_Material]);
             cmd_list->SetTexture(11, m_render_targets[RenderTarget_Gbuffer_Velocity]);
             cmd_list->SetTexture(12, m_render_targets[RenderTarget_Gbuffer_Depth]);
             cmd_list->SetTexture(23, m_render_targets[RenderTarget_Light_Diffuse]);

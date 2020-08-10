@@ -24,45 +24,50 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Velocity.hlsl"
 //======================
 
-static const uint g_ssgi_directions         = 1;
+static const uint g_ssgi_directions         = 2;
 static const uint g_ssgi_steps              = 4;
-static const float g_ssgi_radius            = 5.0f;
-static const float g_ssgi_bounce_intensity  = 10.0f;
-static const float g_ssgi_samples           = (float)(g_ssgi_directions * g_ssgi_steps);
-static const float g_ssgi_radius2           = g_ssgi_radius * g_ssgi_radius;
+static const float g_ssgi_radius            = 3.0f;
+static const float g_ssgi_bounce_intensity  = 20.0f;
+
+static const float g_ssgi_samples       = (float)(g_ssgi_directions * g_ssgi_steps);
+static const float g_ssgi_radius2       = g_ssgi_radius * g_ssgi_radius;
+static const float g_ssgi_negInvRadius2 = -1.0f / g_ssgi_radius2;
 
 float falloff(float distance_squared)
 {
-    return saturate(1.0f - distance_squared / g_ssgi_radius2);
+    return distance_squared * g_ssgi_negInvRadius2 + 1.0f;
 }
 
-float compute_occlusion(float3 center_normal, float3 center_to_sample, float distance_squared, float attunate)
+float compute_occlusion(float3 position, float3 normal, float3 sample_position)
 {
-    return saturate(dot(center_normal, center_to_sample) / sqrt(distance_squared)) * attunate;
+  float3 v      = sample_position - position;
+  float v_dot_v = dot(v, v);
+  float n_dot_v = dot(normal, v) * 1.0f / sqrt(v_dot_v);
+  return saturate(n_dot_v) * saturate(falloff(v_dot_v));
 }
 
-float3 compute_light(float3 center_normal, float3 center_to_sample, float distance_squared, float attunate, float2 sample_uv, inout uint indirect_light_samples)
+float3 compute_light(float3 position, float3 normal, float2 sample_uv, inout uint indirect_light_samples)
 {
+    float3 sample_position  = get_position_view_space(sample_uv);
+    float3 center_to_sample = sample_position - position;
+    float distance_squared  = dot(center_to_sample, center_to_sample);
+    center_to_sample        = normalize(center_to_sample);
     float3 indirect = 0.0f;
     
-    // Compute falloff
-    attunate = attunate * screen_fade(sample_uv);
-    
     [branch]
-    if (attunate > 0.0f)
+    if (screen_fade(sample_uv) > 0.0f)
 	{
 	    // Reproject light
 	    float2 velocity         = GetVelocity_DepthMin(sample_uv);
 	    float2 uv_reprojected   = sample_uv - velocity;
-	    float3 light            = tex_light_diffuse.SampleLevel(sampler_bilinear_clamp, uv_reprojected, 0).rgb * attunate;
+	    float3 light            = tex_light_diffuse.SampleLevel(sampler_bilinear_clamp, uv_reprojected, 0).rgb;
 	    
 	    // Transport
 	    [branch]
 	    if (luminance(light) > 0.0f)
 	    {
-	    	float distance      = clamp(sqrt(distance_squared), 0.1, 50);
-	    	float attunation    = clamp(1.0 / (distance), 0, 50);
-	    	float occlusion     = saturate(dot(center_normal, center_to_sample)) * attunation;
+            float3 sample_position  = get_position_view_space(sample_uv);
+	    	float occlusion         = compute_occlusion(position, normal, sample_position);
 	    
 	    	[branch]
 	    	if (occlusion > 0.0f)
@@ -106,17 +111,9 @@ float3 ssgi(float2 uv, float3 position, float3 normal)
         {
             float2 uv_offset        = max(radius_pixels * (step_index + ray_offset), 1 + step_index) * rotation_direction;
             float2 sample_uv        = uv + uv_offset;
-            float3 sample_position  = get_position_view_space(sample_uv);
-			float3 center_to_sample = sample_position - position;
-			float distance_squared  = dot(center_to_sample, center_to_sample);
-            center_to_sample        = normalize(center_to_sample);
-			float attunation 		= falloff(distance_squared);
+            
 			
-			[branch]
-            if (attunation != 0.0f)
-			{
-				light += compute_light(normal, center_to_sample, distance_squared, attunation, sample_uv, light_samples);
-            }
+			light += compute_light(position, normal, sample_uv, light_samples);
         }
     }
 
