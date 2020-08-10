@@ -59,7 +59,7 @@ PixelOutputType mainPS(Pixel_PosUv input)
     float4 sample_albedo    = tex_albedo.Sample(sampler_point_clamp, input.uv);
     float4 sample_normal    = tex_normal.Sample(sampler_point_clamp, input.uv);
     float4 sample_material  = tex_material.Sample(sampler_point_clamp, input.uv);
-    float4 sample_hbao      = tex_hbao.Sample(sampler_point_clamp, input.uv);
+    float sample_hbao       = tex_hbao.Sample(sampler_point_clamp, input.uv).r;
 
     // Post-process samples
     int mat_id      = round(sample_normal.a * 65535);
@@ -87,7 +87,7 @@ PixelOutputType mainPS(Pixel_PosUv input)
         material.anisotropic_rotation   = mat_clearcoat_clearcoatRough_aniso_anisoRot[mat_id].w;
         material.sheen                  = mat_sheen_sheenTint_pad[mat_id].x;
         material.sheen_tint             = mat_sheen_sheenTint_pad[mat_id].y;
-        material.occlusion              = min(occlusion, sample_hbao.a);
+        material.occlusion              = min(occlusion, sample_hbao);
         material.F0                     = lerp(0.04f, material.albedo, material.metallic);
         material.is_transparent         = sample_albedo.a != 1.0f;
         material.is_sky                 = mat_id == 0;

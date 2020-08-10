@@ -181,8 +181,9 @@ namespace Spartan
         RenderTarget_Bloom                          = 1 << 16,
         RenderTarget_Hbao_Noisy                     = 1 << 17,
         RenderTarget_Hbao                           = 1 << 18,
-        RenderTarget_Ssr                            = 1 << 19,
-        RenderTarget_TaaHistory                     = 1 << 20,
+        RenderTarget_Ssgi                           = 1 << 19,
+        RenderTarget_Ssr                            = 1 << 20,
+        RenderTarget_TaaHistory                     = 1 << 21,
     };
 
 	class SPARTAN_CLASS Renderer : public ISubsystem

@@ -136,8 +136,12 @@ namespace Spartan
 
     bool RHI_DescriptorSetLayout::GetResource_DescriptorSet(RHI_DescriptorCache* descriptor_cache, void*& descriptor_set)
     {
-        // Get the hash of the current state of the descriptors
-        const size_t hash = ComputeDescriptorSetHash(m_descriptors);
+        // Integrate resource into the hash
+        size_t hash = m_descriptor_set_layout_hash;
+        for (const RHI_Descriptor& descriptor : m_descriptors)
+        {
+            Utility::Hash::hash_combine(hash, descriptor.resource);
+        }
 
         // If we don't have a descriptor set to match that state, create one
         auto it = m_descriptor_sets.find(hash);
@@ -197,16 +201,5 @@ namespace Spartan
         }
 
         return dynamic_offset_count;
-    }
-
-    size_t RHI_DescriptorSetLayout::ComputeDescriptorSetHash(const vector<RHI_Descriptor>& descriptors)
-    {
-        // Integrate resource into the hash
-        size_t hash = m_descriptor_set_layout_hash;
-        for (const RHI_Descriptor& descriptor : descriptors)
-        {
-            Utility::Hash::hash_combine(hash, descriptor.resource);
-        }
-        return hash;
     }
 }

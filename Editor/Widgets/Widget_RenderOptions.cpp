@@ -194,16 +194,18 @@ void Widget_RenderOptions::Tick()
             ImGui::Checkbox("HBAO - Horizon Based Ambient Occlusion", &do_hbao);
             ImGui::Separator();
 
+            // Screen Space Global Illumination
+            ImGui::Checkbox("SSGI - Screen Space Global Illumination", &do_indirect_bounce);
+            ImGuiEx::Tooltip("Computes one bounce of indirect light. HBAO and SSR are used for diffuse and specular light. HBAO must always be active");
+            ImGui::Separator();
+            if (!do_hbao)
+            {
+                do_indirect_bounce = false;
+            }
+
             // Screen space reflections
             ImGui::Checkbox("SSR - Screen Space Reflections", &do_ssr);
             ImGui::Separator();
-
-            if (do_hbao || do_ssr)
-            {
-                ImGui::Checkbox("SSGI - Screen Space Global Illumination", &do_indirect_bounce);
-                ImGuiEx::Tooltip("Computes one bounce of indirect light. HBAO and SSR are used for diffuse and specular light, so at least one has to be active");
-                ImGui::Separator();
-            }
 
             // Motion blur
             ImGui::Checkbox("Motion Blur", &do_motion_blur);
@@ -330,7 +332,7 @@ void Widget_RenderOptions::Tick()
         {
             // Buffer
             {
-                static array<string, 22> render_target_debug =
+                static array<string, 23> render_target_debug =
                 {
                     "None",
                     "Gbuffer_Albedo",
@@ -352,6 +354,7 @@ void Widget_RenderOptions::Tick()
                     "Bloom",
                     "Hbao_Noisy",
                     "Hbao",
+                    "Ssgi",
                     "Ssr",
                     "TaaHistory"
                 };
