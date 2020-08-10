@@ -144,7 +144,6 @@ namespace Spartan
         Shader_BrdfSpecularLut_C,
         Shader_Light_P,
 		Shader_Composition_P,
-        Shader_Composition_Ssgi_P,
 		Shader_Color_V,
         Shader_Color_P,
 		Shader_Font_V,

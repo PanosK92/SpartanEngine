@@ -129,9 +129,28 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     if (thread_id.x >= uint(g_resolution.x) || thread_id.y >= uint(g_resolution.y))
         return;
     
-    const float2 uv             = (thread_id.xy + 0.5f) / g_resolution;
-    float3 position             = get_position_view_space(uv);
-    float3 normal               = get_normal_view_space(uv);
-    tex_out_rgb[thread_id.xy]   = ssgi(uv, position, normal);
+    const float2 uv = (thread_id.xy + 0.5f) / g_resolution;
+    float3 position = get_position_view_space(uv);
+    float3 normal   = get_normal_view_space(uv);
+    
+    // Diffuse
+    float3 light = ssgi(uv, position, normal);
+
+    // Specular
+    [branch]
+    if (g_ssr_enabled)
+    {
+        float2 sample_ssr = tex_ssr.Load(int3(thread_id.xy, 0)).xy;
+        
+        [branch]
+        if (all(sample_ssr))
+        {
+            float roughness = tex_material.Load(int3(thread_id.xy, 0)).r;
+            float fade = 1.0f - roughness; // fade with roughness as we don't have blurry screen space reflections yet
+            light += tex_light_specular.SampleLevel(sampler_point_clamp, sample_ssr, 0).rgb * fade;
+        }
+    }
+
+    tex_out_rgb[thread_id.xy] = light;
 }
 
