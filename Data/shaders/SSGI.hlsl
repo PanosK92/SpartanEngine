@@ -24,8 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Velocity.hlsl"
 //======================
 
-static const uint g_ssgi_directions         = 2;
-static const uint g_ssgi_steps              = 6;
+static const uint g_ssgi_directions         = 1;
+static const uint g_ssgi_steps              = 4;
 static const float g_ssgi_radius            = 5.0f;
 static const float g_ssgi_bounce_intensity  = 10.0f;
 static const float g_ssgi_samples           = (float)(g_ssgi_directions * g_ssgi_steps);
@@ -151,6 +151,6 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         }
     }
 
-    tex_out_rgb[thread_id.xy] = light;
+    tex_out_rgb[thread_id.xy] = lerp(tex_out_rgb[thread_id.xy], light, 0.1f);
 }
 

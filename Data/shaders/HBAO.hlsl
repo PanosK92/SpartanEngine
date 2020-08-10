@@ -23,14 +23,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common.hlsl"
 //====================
 
-static const uint ao_directions = 2;
-static const uint ao_steps      = 2;
-static const float ao_radius    = 0.5f;
-static const float ao_intensity = 1.0f;
+static const uint ao_directions = 1;
+static const uint ao_steps      = 4;
+static const float ao_radius    = 0.3f;
+static const float ao_intensity = 2.0f;
 
-static const float ao_samples   = (float)(ao_directions * ao_steps);
-static const float ao_radius2   = ao_radius * ao_radius;
-static const float2 noise_scale = float2(g_resolution.x / 256.0f, g_resolution.y / 256.0f);
+static const float ao_samples       = (float)(ao_directions * ao_steps);
+static const float ao_radius2       = ao_radius * ao_radius;
+static const float ao_negInvRadius2 = -1.0f / ao_radius2;
+static const float2 noise_scale     = float2(g_resolution.x / 256.0f, g_resolution.y / 256.0f);
 
 static const float3 sample_kernel[64] =
 {
@@ -102,16 +103,21 @@ static const float3 sample_kernel[64] =
 
 float falloff(float distance_squared)
 {
-    return saturate(1.0f - distance_squared / ao_radius2);
+    return distance_squared * ao_negInvRadius2 + 1.0f;
 }
 
-float compute_occlusion(float3 center_normal, float3 center_to_sample, float distance_squared, float attunate)
+float compute_occlusion(float3 position, float3 normal, float3 sample_position)
 {
-    return saturate(dot(center_normal, center_to_sample) / sqrt(distance_squared)) * attunate;
+  float3 v      = sample_position - position;
+  float v_dot_v = dot(v, v);
+  float n_dot_v = dot(normal, v) * 1.0f / sqrt(v_dot_v);
+  return saturate(n_dot_v) * saturate(falloff(v_dot_v));
 }
 
-float normal_oriented_hemisphere_ambient_occlusion(float2 uv, float3 position, float3 normal)
+float normal_oriented_hemisphere_ambient_occlusion(float2 uv)
 {
+    float3 position = get_position_view_space(uv);
+    float3 normal   = get_normal_view_space(uv);
     float occlusion = 0.0f;
     
     // Use temporal interleaved gradient noise to rotate the random vector (free detail with TAA on)
@@ -133,24 +139,19 @@ float normal_oriented_hemisphere_ambient_occlusion(float2 uv, float3 position, f
         float3 sample_pos   	= position + offset;
         float2 sample_uv    	= project_uv(sample_pos, g_projection);
         sample_pos          	= get_position_view_space(sample_uv);
-		float3 center_to_sample = sample_pos - position;
-		float distance_squared  = dot(center_to_sample, center_to_sample);
-		float attunate 			= falloff(distance_squared);
 
-        [branch]
-        if (attunate != 0.0f)
-        {
-            // Occlusion
-            occlusion += compute_occlusion(normal, center_to_sample, distance_squared, attunate);
-        }
+        // Occlusion
+        occlusion += compute_occlusion(position, normal, sample_pos);
     }
 
     return 1.0f - saturate(occlusion * ao_intensity / float(ao_directions));
 }
 
-float horizon_based_ambient_occlusion(float2 uv, float3 position, float3 normal)
+float horizon_based_ambient_occlusion(float2 uv)
 {
-    float occlusion     = 0.0f;
+    float3 position = get_position_view_space(uv);
+    float3 normal   = get_normal_view_space(uv);
+    float occlusion = 0.0f;
     
     float radius_pixels = max((ao_radius * g_resolution.x * 0.5f) / position.z, (float)ao_steps);
     radius_pixels       = radius_pixels / (ao_steps + 1); // divide by ao_steps + 1 so that the farthest samples are not fully attenuated
@@ -175,17 +176,9 @@ float horizon_based_ambient_occlusion(float2 uv, float3 position, float3 normal)
             float2 uv_offset        = max(radius_pixels * (step_index + ray_offset), 1 + step_index) * rotation_direction;
             float2 sample_uv        = uv + uv_offset;
             float3 sample_position  = get_position_view_space(sample_uv);
-			float3 center_to_sample = sample_position - position;
-			float distance_squared  = dot(center_to_sample, center_to_sample);
-            center_to_sample        = normalize(center_to_sample);
-			float attunation 		= falloff(distance_squared);
 			
-			[branch]
-            if (attunation != 0.0f)
-			{
-				// Occlusion
-                occlusion += compute_occlusion(normal, center_to_sample, distance_squared, attunation);
-            }
+			// Occlusion
+            occlusion += compute_occlusion(position, normal, sample_position);
         }
     }
 
@@ -194,8 +187,5 @@ float horizon_based_ambient_occlusion(float2 uv, float3 position, float3 normal)
 
 float mainPS(Pixel_PosUv input) : SV_TARGET
 {
-    float3 position = get_position_view_space(input.uv);
-    float3 normal   = get_normal_view_space(input.uv);
-    return horizon_based_ambient_occlusion(input.uv, position, normal);
+    return horizon_based_ambient_occlusion(input.uv);
 }
-
