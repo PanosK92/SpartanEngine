@@ -25,15 +25,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //======================
 
 #if INDIRECT_BOUNCE
-static const uint ao_directions = 1;
-static const uint ao_steps      = 4;
+static const uint ao_directions = 2;
+static const uint ao_steps      = 6;
 #else
 static const uint ao_directions = 2;
 static const uint ao_steps      = 2;
 #endif
 static const float ao_radius            = 0.5f;
 static const float ao_intensity         = 1.0f;
-static const float ao_bounce_intensity  = 1.0f;
+static const float ao_bounce_intensity  = 10.0f;
 
 static const float ao_samples   = (float)(ao_directions * ao_steps);
 static const float ao_radius2   = ao_radius * ao_radius;
@@ -251,10 +251,30 @@ float4 horizon_based_ambient_occlusion(float2 uv, float3 position, float3 normal
     return float4(light, occlusion);
 }
 
-float4 mainPS(Pixel_PosUv input) : SV_TARGET
+#if INDIRECT_BOUNCE
+struct PixelOutputType
+{
+    float occlusion : SV_Target0; 
+    float3 light    : SV_Target1;  
+};
+#endif
+
+#if INDIRECT_BOUNCE
+PixelOutputType mainPS(Pixel_PosUv input)
+#else
+float mainPS(Pixel_PosUv input) : SV_TARGET
+#endif
 {
     float3 position = get_position_view_space(input.uv);
     float3 normal   = get_normal_view_space(input.uv);
-  
-    return horizon_based_ambient_occlusion(input.uv, position, normal);
+    float4 hbao     = horizon_based_ambient_occlusion(input.uv, position, normal);
+
+    #if INDIRECT_BOUNCE
+    PixelOutputType rt;
+    rt.occlusion    = hbao.a;  
+    rt.light        = hbao.rgb; // diffuse
+    return rt;
+    #else
+    return hbao.a;
+    #endif
 }

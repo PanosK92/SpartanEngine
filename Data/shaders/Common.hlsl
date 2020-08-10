@@ -290,13 +290,6 @@ inline float interleaved_gradient_noise(float2 position_screen)
     return frac(magic.z * frac(dot(position_screen, magic.xy)));
 }
 
-inline float blue_noise(float2 uv)
-{
-    static const float2 noise_scale = float2(g_resolution.x / 470.0f, g_resolution.y / 470.0f);
-    float2 temporal_factor = g_frame * any(g_taa_jitter_offset) * g_texel_size;
-    return tex_blue_noise.Sample(sampler_bilinear_wrap, uv * noise_scale + temporal_factor).r;
-}
-
 // Based on Activision GTAO paper: https://www.activision.com/cdn/research/s2016_pbs_activision_occlusion.pptx
 inline float noise_spatial_offset(float2 position_screen)
 {

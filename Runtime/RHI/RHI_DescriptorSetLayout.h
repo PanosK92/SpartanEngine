@@ -50,7 +50,6 @@ namespace Spartan
         void NeedsToBind()                            { m_needs_to_bind = true; }
 
     private:
-        std::size_t ComputeDescriptorSetHash(const std::vector<RHI_Descriptor>& descriptors);
         void* CreateDescriptorSet(const std::size_t hash, const RHI_DescriptorCache* descriptor_cache);
         void UpdateDescriptorSet(void* descriptor_set, const std::vector<RHI_Descriptor>& descriptors);
         void* CreateDescriptorSetLayout(const std::vector<RHI_Descriptor>& descriptors);
