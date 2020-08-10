@@ -35,7 +35,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     float3 light_volumetric = tex_lightVolumetric.Sample(sampler_point_clamp, uv).rgb;   
     float depth             = tex_depth.Sample(sampler_point_clamp, uv).r;
     float2 sample_ssr       = tex_ssr.Sample(sampler_point_clamp, uv).xy;
-    float sample_hbao       = tex_hbao.Sample(sampler_point_clamp, uv);
+    float sample_hbao       = tex_hbao.Sample(sampler_point_clamp, uv).r;
     float3 sample_ssgi      = tex_ssgi.Sample(sampler_point_clamp, uv).rgb;
     float3 camera_to_pixel  = get_view_direction(depth, uv);
 
@@ -78,7 +78,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 
         // Light - Bounce (diffuse)
         float3 light_bounce = 0.0f;
-        #if INDIRECT_BOUNCE
+        #if SSGI
         light_bounce += sample_ssgi * material.albedo;
         #endif
         
@@ -109,7 +109,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         fog *= light_ambient * 0.25f;
                 
         // Apply ambient occlusion to ambient light
-		#if INDIRECT_BOUNCE
+		#if SSGI
 		light_ambient *= sample_hbao;
 		#else
 		light_ambient *= MultiBounceAO(sample_hbao, sample_albedo.rgb);
@@ -131,5 +131,6 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     
     return saturate_16(color);
 }
+
 
 
