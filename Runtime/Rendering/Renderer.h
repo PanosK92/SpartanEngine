@@ -169,20 +169,22 @@ namespace Spartan
         RenderTarget_Brdf_Prefiltered_Environment   = 1 << 5,
         RenderTarget_Brdf_Specular_Lut              = 1 << 6,
         RenderTarget_Light_Diffuse                  = 1 << 7,
-        RenderTarget_Light_Specular                 = 1 << 8,
-        RenderTarget_Light_Volumetric               = 1 << 9,
-        RenderTarget_Frame_Hdr                      = 1 << 10,
-        RenderTarget_Frame_Ldr                      = 1 << 11,
-        RenderTarget_Frame_Hdr_2                    = 1 << 12,
-        RenderTarget_Frame_Ldr_2                    = 1 << 13,
-        RenderTarget_Dof_Half                       = 1 << 14,
-        RenderTarget_Dof_Half_2                     = 1 << 15,
-        RenderTarget_Bloom                          = 1 << 16,
-        RenderTarget_Hbao_Noisy                     = 1 << 17,
-        RenderTarget_Hbao                           = 1 << 18,
-        RenderTarget_Ssgi                           = 1 << 19,
-        RenderTarget_Ssr                            = 1 << 20,
-        RenderTarget_TaaHistory                     = 1 << 21,
+        RenderTarget_Light_Diffuse_Transparent      = 1 << 8,
+        RenderTarget_Light_Specular                 = 1 << 9,
+        RenderTarget_Light_Specular_Transparent     = 1 << 10,
+        RenderTarget_Light_Volumetric               = 1 << 11,
+        RenderTarget_Frame_Hdr                      = 1 << 12,
+        RenderTarget_Frame_Ldr                      = 1 << 13,
+        RenderTarget_Frame_Hdr_2                    = 1 << 14,
+        RenderTarget_Frame_Ldr_2                    = 1 << 15,
+        RenderTarget_Dof_Half                       = 1 << 16,
+        RenderTarget_Dof_Half_2                     = 1 << 17,
+        RenderTarget_Bloom                          = 1 << 18,
+        RenderTarget_Hbao_Noisy                     = 1 << 19,
+        RenderTarget_Hbao                           = 1 << 20,
+        RenderTarget_Ssgi                           = 1 << 21,
+        RenderTarget_Ssr                            = 1 << 22,
+        RenderTarget_TaaHistory                     = 1 << 23,
     };
 
 	class SPARTAN_CLASS Renderer : public ISubsystem
@@ -282,7 +284,6 @@ namespace Spartan
         void Pass_Ssr(RHI_CommandList* cmd_list);
         void Pass_Light(RHI_CommandList* cmd_list, const Renderer_Object_Type object_type);
 		void Pass_Composition(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_out, const Renderer_Object_Type object_type);
-        void Pass_AlphaBlendCompositions(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
 		void Pass_PostProcess(RHI_CommandList* cmd_list);
 		void Pass_TemporalAntialiasing(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
 		bool Pass_DebugBuffer(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_out);

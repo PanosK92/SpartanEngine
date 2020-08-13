@@ -392,7 +392,7 @@ float4 Shadow_Map(Surface surface, Light light, bool transparent_pixel)
             [branch]
             if (shadow.a > 0.0f && !transparent_pixel)
             {
-                shadow *= sample_color(light.direction);
+                shadow *= Technique_Vogel_Color(light.direction);
             }
             #endif
         }
@@ -410,7 +410,7 @@ float4 Shadow_Map(Surface surface, Light light, bool transparent_pixel)
             [branch]
             if (shadow.a > 0.0f  && !transparent_pixel)
             {
-                shadow *= sample_color(float3(pos_clip.xy, 0.0f));
+                shadow *= Technique_Vogel_Color(light.direction);
             }
             #endif
         }

@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 static const uint ao_directions = 1;
 static const uint ao_steps      = 4;
 static const float ao_radius    = 0.3f;
-static const float ao_intensity = 2.0f;
+static const float ao_intensity = 3.3f;
 
 static const float ao_samples       = (float)(ao_directions * ao_steps);
 static const float ao_radius2       = ao_radius * ao_radius;
@@ -195,3 +195,4 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     
     tex_out_r[thread_id.xy] = horizon_based_ambient_occlusion(uv);
 }
+

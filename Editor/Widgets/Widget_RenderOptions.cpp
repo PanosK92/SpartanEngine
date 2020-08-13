@@ -328,7 +328,7 @@ void Widget_RenderOptions::Tick()
         {
             // Buffer
             {
-                static array<string, 23> render_target_debug =
+                static array<string, 25> render_target_debug =
                 {
                     "None",
                     "Gbuffer_Albedo",
@@ -339,7 +339,9 @@ void Widget_RenderOptions::Tick()
                     "Brdf_Prefiltered_Environment",
                     "Brdf_Specular_Lut",
                     "Light_Diffuse",
+                    "Light_Diffuse_Transparent",
                     "Light_Specular",
+                    "Light_Specular_Transparent",
                     "Light_Volumetric",
                     "Composition_Hdr",
                     "Composition_Hdr_2",

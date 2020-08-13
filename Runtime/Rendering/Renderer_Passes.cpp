@@ -111,10 +111,8 @@ namespace Spartan
             {
                 Pass_GBuffer(cmd_list, Renderer_Object_Transparent);
                 Pass_Light(cmd_list, Renderer_Object_Transparent);
-                Pass_Composition(cmd_list, m_render_targets[RenderTarget_Frame_Hdr_2], Renderer_Object_Transparent);
-        
-                // Alpha blend the transparent composition on top of opaque one
-                Pass_AlphaBlendCompositions(cmd_list, m_render_targets[RenderTarget_Frame_Hdr_2].get(), m_render_targets[RenderTarget_Frame_Hdr].get());
+                Pass_Copy(cmd_list, m_render_targets[RenderTarget_Frame_Hdr].get(), m_render_targets[RenderTarget_Frame_Hdr_2].get());
+                Pass_Composition(cmd_list, m_render_targets[RenderTarget_Frame_Hdr], Renderer_Object_Transparent);
             }
         }
         
@@ -692,14 +690,10 @@ namespace Spartan
             return;
 
         // Acquire render targets
-        RHI_Texture* tex_diffuse       = m_render_targets[RenderTarget_Light_Diffuse].get();
-        RHI_Texture* tex_specular      = m_render_targets[RenderTarget_Light_Specular].get();
+        RHI_Texture* tex_diffuse       = is_transparent ? m_render_targets[RenderTarget_Light_Diffuse_Transparent].get() : m_render_targets[RenderTarget_Light_Diffuse].get();
+        RHI_Texture* tex_specular      = is_transparent ? m_render_targets[RenderTarget_Light_Specular_Transparent].get() : m_render_targets[RenderTarget_Light_Specular].get();
         RHI_Texture* tex_volumetric    = m_render_targets[RenderTarget_Light_Volumetric].get();
         RHI_Texture* tex_depth         = m_render_targets[RenderTarget_Gbuffer_Depth].get();
-
-        // Specular needs to not be loaded as it's used by SSGI. Otherwise having a single transparent object to render (use_stencil == true) will cause the light to be discarded.
-        bool indirect_bounce = (m_options & Render_Ssgi) != 0;
-        Math::Vector4 clear_color = is_transparent ? (indirect_bounce ? rhi_color_load : rhi_color_dont_care) : Vector4::Zero;
 
          // Set render state
         static RHI_PipelineState pipeline_state;
@@ -709,11 +703,11 @@ namespace Spartan
         pipeline_state.depth_stencil_state                      = is_transparent ? m_depth_stencil_off_on_r.get() : m_depth_stencil_off_off.get();
         pipeline_state.vertex_buffer_stride                     = m_viewport_quad.GetVertexBuffer()->GetStride();
         pipeline_state.render_target_color_textures[0]          = tex_diffuse;
-        pipeline_state.clear_color[0]                           = is_transparent ? rhi_color_dont_care : Vector4::Zero;
+        pipeline_state.clear_color[0]                           = Vector4::Zero;
         pipeline_state.render_target_color_textures[1]          = tex_specular;
-        pipeline_state.clear_color[1]                           = clear_color;
+        pipeline_state.clear_color[1]                           = Vector4::Zero;
         pipeline_state.render_target_color_textures[2]          = tex_volumetric;
-        pipeline_state.clear_color[2]                           = is_transparent ? rhi_color_dont_care : Vector4::Zero;
+        pipeline_state.clear_color[2]                           = Vector4::Zero;
         pipeline_state.render_target_depth_texture              = is_transparent ? tex_depth : nullptr;
         pipeline_state.clear_stencil                            = is_transparent ? rhi_stencil_load : rhi_stencil_dont_care;
         pipeline_state.render_target_depth_texture_read_only    = is_transparent;
@@ -814,7 +808,7 @@ namespace Spartan
         pipeline_state.blend_state                      = m_blend_disabled.get();
         pipeline_state.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride();
         pipeline_state.render_target_color_textures[0]  = tex_out.get();
-        pipeline_state.clear_color[0]                   = rhi_color_dont_care;
+        pipeline_state.clear_color[0]                   = is_transparent ? rhi_color_load : rhi_color_dont_care;
         pipeline_state.render_target_depth_texture      = is_transparent ? m_render_targets[RenderTarget_Gbuffer_Depth].get() : nullptr;
         pipeline_state.clear_stencil                    = is_transparent ? rhi_stencil_load : rhi_stencil_dont_care;
         pipeline_state.viewport                         = tex_out->GetViewport();
@@ -836,11 +830,11 @@ namespace Spartan
             cmd_list->SetTexture(10, m_render_targets[RenderTarget_Gbuffer_Material]);
             cmd_list->SetTexture(12, m_render_targets[RenderTarget_Gbuffer_Depth]);
             cmd_list->SetTexture(22, (m_options & Render_Hbao) ? m_render_targets[RenderTarget_Hbao] : m_tex_white);
-            cmd_list->SetTexture(23, m_render_targets[RenderTarget_Light_Diffuse]);
-            cmd_list->SetTexture(24, m_render_targets[RenderTarget_Light_Specular]);
+            cmd_list->SetTexture(23, is_transparent ? m_render_targets[RenderTarget_Light_Diffuse_Transparent] : m_render_targets[RenderTarget_Light_Diffuse]);
+            cmd_list->SetTexture(24, is_transparent ? m_render_targets[RenderTarget_Light_Specular_Transparent] : m_render_targets[RenderTarget_Light_Specular]);
             cmd_list->SetTexture(25, m_render_targets[RenderTarget_Light_Volumetric]);
             cmd_list->SetTexture(26, (m_options & Render_ScreenSpaceReflections) ? m_render_targets[RenderTarget_Ssr] : m_tex_black_transparent);
-            cmd_list->SetTexture(27, m_render_targets[RenderTarget_Frame_Hdr_2]); // previous frame before post-processing
+            cmd_list->SetTexture(27, m_render_targets[RenderTarget_Frame_Hdr_2]);
             cmd_list->SetTexture(19, m_render_targets[RenderTarget_Brdf_Specular_Lut]);
             cmd_list->SetTexture(20, GetEnvironmentTexture());
             cmd_list->SetTexture(31, (m_options & Render_Ssgi) ? m_render_targets[RenderTarget_Ssgi] : m_tex_black_opaque);
@@ -850,45 +844,6 @@ namespace Spartan
             cmd_list->EndRenderPass();
         }
 	}
-
-    void Renderer::Pass_AlphaBlendCompositions(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
-    {
-        // Acquire shaders
-        const auto& shader_v    = m_shaders[Shader_Quad_V];
-        const auto& shader_p    = m_shaders[Shader_Texture_P];
-        if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
-            return;
-
-        // Update uber buffer
-        m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-        UpdateUberBuffer(cmd_list);
-
-        // Set render state
-        static RHI_PipelineState pipeline_state;
-        pipeline_state.shader_vertex                    = shader_v.get();
-        pipeline_state.shader_pixel                     = shader_p.get();
-        pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
-        pipeline_state.blend_state                      = m_blend_alpha.get();
-        pipeline_state.depth_stencil_state              = m_depth_stencil_off_on_r.get();
-        pipeline_state.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride();
-        pipeline_state.render_target_color_textures[0]  = tex_out;
-        pipeline_state.clear_color[0]                   = rhi_color_load;
-        pipeline_state.render_target_depth_texture      = m_render_targets[RenderTarget_Gbuffer_Depth].get();
-        pipeline_state.clear_stencil                    = rhi_stencil_load;
-        pipeline_state.viewport                         = tex_out->GetViewport();
-        pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
-        pipeline_state.pass_name                        = "Pass_AlphaBlend";
-        
-        // Record commands
-        if (cmd_list->BeginRenderPass(pipeline_state))
-        {
-            cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
-            cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
-            cmd_list->SetTexture(28, tex_in);
-            cmd_list->DrawIndexed(Rectangle::GetIndexCount());
-            cmd_list->EndRenderPass();
-        }
-    }
 
 	void Renderer::Pass_PostProcess(RHI_CommandList* cmd_list)
 	{
@@ -936,7 +891,7 @@ namespace Spartan
         }
         else
         {
-            Pass_Copy(cmd_list, tex_in_hdr.get(), tex_in_ldr.get());
+            Pass_Copy(cmd_list, tex_in_hdr.get(), tex_in_ldr.get()); // clipping
         }
 
         // Dithering
@@ -2251,12 +2206,12 @@ namespace Spartan
 			shader_type = Shader_Copy_C;
 		}
 
-        if (m_render_target_debug == RenderTarget_Light_Diffuse)
+        if (m_render_target_debug == RenderTarget_Light_Diffuse || m_render_target_debug == RenderTarget_Light_Diffuse_Transparent)
         {
             shader_type = Shader_DebugChannelRgbGammaCorrect_C;
         }
 
-        if (m_render_target_debug == RenderTarget_Light_Specular)
+        if (m_render_target_debug == RenderTarget_Light_Specular || m_render_target_debug == RenderTarget_Light_Specular_Transparent)
         {
             shader_type = Shader_DebugChannelRgbGammaCorrect_C;
         }
