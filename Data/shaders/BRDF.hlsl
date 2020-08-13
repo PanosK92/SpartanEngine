@@ -246,8 +246,8 @@ inline float3 SampleEnvironment(Texture2D tex_environment, float2 uv, float mip_
         float2 mip_size = float2(2, 1);
         float dx        = mip_size.x;
     
-        float3 tl = (tex_environment.SampleLevel(sampler_trilinear_clamp, uv + float2(-dx, 0.0f), mip_level).rgb);
-        float3 tr = (tex_environment.SampleLevel(sampler_trilinear_clamp, uv + float2(dx, 0.0f), mip_level).rgb);
+        float3 tl = (tex_environment.SampleLevel(sampler_bilinear_clamp, uv + float2(-dx, 0.0f), mip_level).rgb);
+        float3 tr = (tex_environment.SampleLevel(sampler_bilinear_clamp, uv + float2(dx, 0.0f), mip_level).rgb);
         return (tl + tr) / 2.0f;
     }
     
@@ -300,3 +300,4 @@ inline float3 Brdf_Specular_Ibl(Material material, float3 normal, float3 camera_
     
     return prefilteredColor * reflectivity;   
 }
+
