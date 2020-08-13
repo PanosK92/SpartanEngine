@@ -135,10 +135,10 @@ namespace Spartan
         m_brdf_specular_lut_rendered = false;
 
         // Main HDR and LDR textures with secondary copies (necessary for ping-ponging during post-processing)
-        m_render_targets[RenderTarget_Hdr]      = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_hdr");  // Investigate using less bits but have an alpha channel
-        m_render_targets[RenderTarget_Ldr]      = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_ldr");  // Investigate using less bits but have an alpha channel
-        m_render_targets[RenderTarget_Hdr_2]    = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_hdr2"); // Investigate using less bits but have an alpha channel
-        m_render_targets[RenderTarget_Ldr_2]    = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_ldr2"); // Investigate using less bits but have an alpha channel
+        m_render_targets[RenderTarget_Frame_Hdr]      = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_hdr");  // Investigate using less bits but have an alpha channel
+        m_render_targets[RenderTarget_Frame_Ldr]      = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_ldr");  // Investigate using less bits but have an alpha channel
+        m_render_targets[RenderTarget_Frame_Hdr_2]    = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_hdr2"); // Investigate using less bits but have an alpha channel
+        m_render_targets[RenderTarget_Frame_Ldr_2]    = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_ldr2"); // Investigate using less bits but have an alpha channel
 
          // Depth of Field
         m_render_targets[RenderTarget_Dof_Half]     = make_unique<RHI_Texture2D>(m_context, width * 0.5f, height * 0.5f, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_dof_half");   // Investigate using less bits but have an alpha channel
@@ -322,16 +322,16 @@ namespace Spartan
         m_shaders[Shader_Dithering_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "Dithering.hlsl");
 
         // HBAO
-        m_shaders[Shader_Hbao_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_Hbao_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "HBAO.hlsl");
+        m_shaders[Shader_Hbao_C] = make_shared<RHI_Shader>(m_context);
+        m_shaders[Shader_Hbao_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "HBAO.hlsl");
 
         // SSGI
         m_shaders[Shader_Ssgi_C] = make_shared<RHI_Shader>(m_context);
         m_shaders[Shader_Ssgi_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "SSGI.hlsl");
 
         // SSR
-        m_shaders[Shader_Ssr_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[Shader_Ssr_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "SSR.hlsl");
+        m_shaders[Shader_Ssr_C] = make_shared<RHI_Shader>(m_context);
+        m_shaders[Shader_Ssr_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "SSR.hlsl");
 
         // Entity
         m_shaders[Shader_Entity_V] = make_shared<RHI_Shader>(m_context);

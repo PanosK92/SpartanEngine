@@ -148,9 +148,9 @@ namespace Spartan
         Shader_Color_P,
 		Shader_Font_V,
         Shader_Font_P,
-		Shader_Hbao_P,
+		Shader_Hbao_C,
         Shader_Ssgi_C,
-        Shader_Ssr_P,
+        Shader_Ssr_C,
 		Shader_Entity_V,
         Shader_Entity_Transform_P,
 		Shader_BlurBox_P,
@@ -171,10 +171,10 @@ namespace Spartan
         RenderTarget_Light_Diffuse                  = 1 << 7,
         RenderTarget_Light_Specular                 = 1 << 8,
         RenderTarget_Light_Volumetric               = 1 << 9,
-        RenderTarget_Hdr                            = 1 << 10,
-        RenderTarget_Ldr                            = 1 << 11,
-        RenderTarget_Hdr_2                          = 1 << 12,
-        RenderTarget_Ldr_2                          = 1 << 13,
+        RenderTarget_Frame_Hdr                      = 1 << 10,
+        RenderTarget_Frame_Ldr                      = 1 << 11,
+        RenderTarget_Frame_Hdr_2                    = 1 << 12,
+        RenderTarget_Frame_Ldr_2                    = 1 << 13,
         RenderTarget_Dof_Half                       = 1 << 14,
         RenderTarget_Dof_Half_2                     = 1 << 15,
         RenderTarget_Bloom                          = 1 << 16,
@@ -247,7 +247,7 @@ namespace Spartan
         const std::shared_ptr<RHI_Device>& GetRhiDevice()   const { return m_rhi_device; } 
         RHI_PipelineCache* GetPipelineCache()               const { return m_pipeline_cache.get(); }
         RHI_DescriptorCache* GetDescriptorCache()           const { return m_descriptor_cache.get(); }
-        RHI_Texture* GetFrameTexture()                      const { return m_render_targets.at(RenderTarget_Ldr).get(); }
+        RHI_Texture* GetFrameTexture()                      const { return m_render_targets.at(RenderTarget_Frame_Ldr).get(); }
         auto GetFrameNum()                                  const { return m_frame_num; }
         const auto& GetCamera()                             const { return m_camera; }
         auto IsInitialized()                                const { return m_initialized; }
@@ -278,11 +278,11 @@ namespace Spartan
         void Pass_DepthPrePass(RHI_CommandList* cmd_list);
 		void Pass_GBuffer(RHI_CommandList* cmd_list, const Renderer_Object_Type object_type);
         void Pass_Ssgi(RHI_CommandList* cmd_list);
-		void Pass_Hbao(RHI_CommandList* cmd_list, const bool use_stencil);
-        void Pass_Ssr(RHI_CommandList* cmd_list, const bool use_stencil);
-        void Pass_Light(RHI_CommandList* cmd_list, const bool use_stencil);
-		void Pass_Composition(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_out, const bool use_stencil);
-        void Pass_AlphaBlend(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, const bool use_stencil);
+		void Pass_Hbao(RHI_CommandList* cmd_list);
+        void Pass_Ssr(RHI_CommandList* cmd_list);
+        void Pass_Light(RHI_CommandList* cmd_list, const Renderer_Object_Type object_type);
+		void Pass_Composition(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_out, const Renderer_Object_Type object_type);
+        void Pass_AlphaBlendCompositions(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
 		void Pass_PostProcess(RHI_CommandList* cmd_list);
 		void Pass_TemporalAntialiasing(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
 		bool Pass_DebugBuffer(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_out);

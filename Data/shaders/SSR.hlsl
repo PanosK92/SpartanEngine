@@ -96,9 +96,13 @@ inline float2 trace_ray(float2 uv, float3 ray_pos, float3 ray_dir)
     return ray_uv_hit;
 }
 
-float2 mainPS(Pixel_PosUv input) : SV_TARGET
+[numthreads(thread_group_count, thread_group_count, 1)]
+void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    float2 uv = input.uv;
+    if (thread_id.x >= uint(g_resolution.x) || thread_id.y >= uint(g_resolution.y))
+        return;
+
+    const float2 uv = (thread_id.xy + 0.5f) / g_resolution;
 
     // Compute view-space ray
     float3 normal_view = get_normal_view_space(uv);
@@ -106,5 +110,5 @@ float2 mainPS(Pixel_PosUv input) : SV_TARGET
     float3 ray_dir = normalize(reflect(ray_pos, normal_view));
 
     // Trace it
-    return trace_ray(uv, ray_pos, ray_dir);
+    tex_out_rg[thread_id.xy] = trace_ray(uv, ray_pos, ray_dir);
 }
