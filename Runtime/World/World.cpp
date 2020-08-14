@@ -155,7 +155,7 @@ namespace Spartan
 		ProgressReport::Get().Reset(g_progress_world);
 		ProgressReport::Get().SetIsLoading(g_progress_world, true);
 		ProgressReport::Get().SetStatus(g_progress_world, "Saving world...");
-		Stopwatch timer;
+        const Stopwatch timer;
 	
 		// Add scene file extension to the filepath if it's missing
 		auto file_path = filePathIn;
@@ -227,7 +227,7 @@ namespace Spartan
 		ProgressReport::Get().Reset(g_progress_world);
 		ProgressReport::Get().SetIsLoading(g_progress_world, true);
 		ProgressReport::Get().SetStatus(g_progress_world, "Loading world...");
-		Stopwatch timer;
+        const Stopwatch timer;
 		
 		// Unload current entities
 		Unload();

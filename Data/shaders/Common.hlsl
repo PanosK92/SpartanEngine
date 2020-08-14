@@ -182,6 +182,12 @@ inline float get_linear_depth(float2 uv)
     return get_linear_depth(depth);
 }
 
+inline float get_linear_depth_filtered(float2 uv)
+{
+    float depth = get_depth_filtered( uv);
+    return get_linear_depth(depth);
+}
+
 /*------------------------------------------------------------------------------
     POSITION
 ------------------------------------------------------------------------------*/

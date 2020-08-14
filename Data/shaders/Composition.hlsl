@@ -26,17 +26,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
-    float2 uv       = input.uv;
-    float4 color    = float4(0.0f, 0.0f, 0.0f, 1.0f);
+    const float2 uv         = input.uv;
+    const float2 screen_pos = uv * g_resolution;
+    float4 color            = float4(0.0f, 0.0f, 0.0f, 1.0f);
     
     // Sample from textures
-    float4 sample_normal    = tex_normal.Sample(sampler_point_clamp, uv);
-    float4 sample_material  = tex_material.Sample(sampler_point_clamp, uv);
-    float3 light_volumetric = tex_lightVolumetric.Sample(sampler_point_clamp, uv).rgb;   
-    float depth             = tex_depth.Sample(sampler_point_clamp, uv).r;
-    float2 sample_ssr       = tex_ssr.Sample(sampler_point_clamp, uv).xy;
-    float sample_hbao       = tex_hbao.Sample(sampler_point_clamp, uv).r;
-    float3 sample_ssgi      = tex_ssgi.Sample(sampler_point_clamp, uv).rgb;
+    float4 sample_normal    = tex_normal.Load(int3(screen_pos, 0));
+    float4 sample_material  = tex_material.Load(int3(screen_pos, 0));
+    float3 light_volumetric = tex_lightVolumetric.Load(int3(screen_pos, 0)).rgb;   
+    float depth             = tex_depth.Load(int3(screen_pos, 0)).r;
+    float2 sample_ssr       = tex_ssr.Load(int3(screen_pos, 0)).xy;
+    float sample_hbao       = tex_hbao.Load(int3(screen_pos, 0)).r;
+    float3 sample_ssgi      = tex_ssgi.Load(int3(screen_pos, 0)).rgb;
     float3 camera_to_pixel  = get_view_direction(depth, uv);
 
     // Post-process samples
@@ -57,9 +58,9 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     else
     {
         // Sample from textures
-        float4 sample_albedo    = tex_albedo.Sample(sampler_point_clamp, uv);
-        float3 light_diffuse    = tex_light_diffuse.Sample(sampler_point_clamp, uv).rgb;
-        float3 light_specular   = tex_light_specular.Sample(sampler_point_clamp, uv).rgb;
+        float4 sample_albedo    = tex_albedo.Load(int3(screen_pos, 0));
+        float3 light_diffuse    = tex_light_diffuse.Load(int3(screen_pos, 0)).rgb;
+        float3 light_specular   = tex_light_specular.Load(int3(screen_pos, 0)).rgb;
         
         // Create material
         Material material;
@@ -95,7 +96,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         float3 light_emissive = material.emissive * material.albedo * 50.0f;
 
         // Light - Ambient
-        float3 light_ambient = saturate(g_directional_light_intensity * g_directional_light_intensity) * 0.4f;
+        float3 light_ambient = saturate(g_directional_light_intensity * g_directional_light_intensity) * 0.01f;
         
         // Modulate fog with ambient light
         fog *= light_ambient * 0.25f;
@@ -139,4 +140,3 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     
     return saturate_16(color);
 }
-

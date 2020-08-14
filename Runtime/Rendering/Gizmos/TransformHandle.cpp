@@ -19,12 +19,9 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#pragma once
-
 //= INCLUDES =================================
 #include "Spartan.h"
 #include "TransformHandle.h"
-#include "Transform_Gizmo.h"
 #include "../Model.h"
 #include "../Renderer.h"
 #include "../../Utilities/Geometry.h"
@@ -205,16 +202,16 @@ namespace Spartan
 		{
 			return m_handle_x.transform;
 		}
-		else if (axis == Vector3::Up)
-		{
-			return m_handle_y.transform;
-		}
-		else if (axis == Vector3::Forward)
-		{
-			return m_handle_z.transform;
-		}
+        if (axis == Vector3::Up)
+        {
+            return m_handle_y.transform;
+        }
+        if (axis == Vector3::Forward)
+        {
+            return m_handle_z.transform;
+        }
 
-		return m_handle_xyz.transform;
+        return m_handle_xyz.transform;
 	}
 
 	const Vector3& TransformHandle::GetColor(const Vector3& axis) const
@@ -223,16 +220,18 @@ namespace Spartan
 		{
 			return m_handle_x.GetColor();
 		}
-		else if (axis == Vector3::Up)
-		{
-			return m_handle_y.GetColor();
-		}
-		else if (axis == Vector3::Forward)
-		{
-			return m_handle_z.GetColor();
-		}
 
-		return m_handle_xyz.GetColor();
+        if (axis == Vector3::Up)
+        {
+            return m_handle_y.GetColor();
+        }
+
+        if (axis == Vector3::Forward)
+        {
+            return m_handle_z.GetColor();
+        }
+
+        return m_handle_xyz.GetColor();
 	}
 
 	const RHI_VertexBuffer* TransformHandle::GetVertexBuffer() const

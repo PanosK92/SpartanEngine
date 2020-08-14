@@ -376,7 +376,7 @@ namespace Spartan
 
         if (reverse_z)
         {
-            float temp = _near;
+            const float temp = _near;
             _near = _far;
             _far = temp;
         }

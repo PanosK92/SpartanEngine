@@ -87,7 +87,7 @@ namespace Spartan
                 ID3D11Device* temp_device = nullptr;
                 ID3D11DeviceContext* temp_context = nullptr;
 
-                HRESULT result = D3D11CreateDevice(
+                const HRESULT result = D3D11CreateDevice(
                     adapter,									// pAdapter: If nullptr, the default adapter will be used
                     driver_type,								// DriverType
                     nullptr,									// HMODULE: nullptr because DriverType = D3D_DRIVER_TYPE_HARDWARE

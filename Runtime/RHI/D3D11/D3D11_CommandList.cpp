@@ -192,7 +192,7 @@ namespace Spartan
             ID3D11BlendState* blend_state       = static_cast<ID3D11BlendState*>(pipeline_state.blend_state ? pipeline_state.blend_state->GetResource() : nullptr);
             const float blendFactor             = pipeline_state.blend_state ? pipeline_state.blend_state->GetBlendFactor() : 0.0f;
             std::array<FLOAT, 4> blend_factor   = { blendFactor, blendFactor, blendFactor, blendFactor };
-            UINT mask                           = 0;
+            const UINT mask                           = 0;
 
             // Set if dirty
             if (blend_state_set != blend_state || blend_factor_set != blend_factor || mask_set != mask)
@@ -238,7 +238,7 @@ namespace Spartan
         if (pipeline_state.primitive_topology != RHI_PrimitiveTopology_Unknown)
         {
             // New state
-            D3D11_PRIMITIVE_TOPOLOGY topology = d3d11_primitive_topology[pipeline_state.primitive_topology];
+            const D3D11_PRIMITIVE_TOPOLOGY topology = d3d11_primitive_topology[pipeline_state.primitive_topology];
 
             // Current state
             D3D11_PRIMITIVE_TOPOLOGY topology_set;
@@ -740,7 +740,7 @@ namespace Spartan
             {
                 // Try to query video memory info
                 DXGI_QUERY_VIDEO_MEMORY_INFO info = {};
-                HRESULT result = adapter->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &info);
+                const HRESULT result = adapter->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &info);
 
                 if (SUCCEEDED(result))
                 {

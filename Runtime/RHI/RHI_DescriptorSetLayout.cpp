@@ -64,7 +64,7 @@ namespace Spartan
                 // Keep track of dynamic offsets
                 if (constant_buffer->IsDynamic())
                 {
-                    uint32_t dynamic_offset = constant_buffer->GetOffsetDynamic();
+                    const uint32_t dynamic_offset = constant_buffer->GetOffsetDynamic();
 
                     if (m_dynamic_offsets[slot] != dynamic_offset)
                     {
@@ -144,7 +144,7 @@ namespace Spartan
         }
 
         // If we don't have a descriptor set to match that state, create one
-        auto it = m_descriptor_sets.find(hash);
+        const auto it = m_descriptor_sets.find(hash);
         if (it == m_descriptor_sets.end())
         {
             // Only allocate if the descriptor set cache hash enough capacity

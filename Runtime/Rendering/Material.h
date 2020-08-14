@@ -28,7 +28,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/IResource.h"
 #include "../Math/Vector2.h"
 #include "../Math/Vector4.h"
-#include "../Core/Spartan_Object.h"
 //=================================
 
 namespace Spartan

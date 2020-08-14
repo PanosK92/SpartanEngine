@@ -228,9 +228,9 @@ namespace Spartan
             uint32_t max_height = 0;
 			get_character_max_dimensions(&max_width, &max_height, face, outline_size);
 
-            uint32_t glyph_count    = GLYPH_END - GLYPH_START;
-            uint32_t glyphs_per_row = ATLAS_WIDTH / max_width;
-            uint32_t row_count      = static_cast<uint32_t>(Helper::Ceil(float(glyph_count) / float(glyphs_per_row)));
+            const uint32_t glyph_count    = GLYPH_END - GLYPH_START;
+            const uint32_t glyphs_per_row = ATLAS_WIDTH / max_width;
+            const uint32_t row_count      = static_cast<uint32_t>(Helper::Ceil(float(glyph_count) / float(glyphs_per_row)));
 
             *atlas_width        = ATLAS_WIDTH;
             *atlas_height       = max_height * row_count;
@@ -421,8 +421,8 @@ namespace Spartan
 		}
 
         // Set outline size
-        uint32_t outline_size   = (font->GetOutline() != Font_Outline_None) ? font->GetOutlineSize() : 0;
-        bool outline            = outline_size != 0;
+        const uint32_t outline_size   = (font->GetOutline() != Font_Outline_None) ? font->GetOutlineSize() : 0;
+        const bool outline            = outline_size != 0;
         if (outline)
         {
             FT_Stroker_Set(m_stroker, outline_size * 64, FT_STROKER_LINECAP_ROUND, FT_STROKER_LINEJOIN_ROUND, 0);
