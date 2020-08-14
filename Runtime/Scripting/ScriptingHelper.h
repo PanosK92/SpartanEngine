@@ -33,7 +33,7 @@ namespace Spartan::ScriptingHelper
     {
         std::array<char, 1024> buffer;
         std::string result;
-        std::unique_ptr<FILE, decltype(&_pclose)> pipe(_popen(cmd, "r"), _pclose);
+        const std::unique_ptr<FILE, decltype(&_pclose)> pipe(_popen(cmd, "r"), _pclose);
         if (!pipe)
         {
             LOG_ERROR("popen() failed");
@@ -61,7 +61,7 @@ namespace Spartan::ScriptingHelper
             command += " -reference:" + dll_reference;
         }
         command += " -out:" + FileSystem::ReplaceExtension(script, ".dll") + " " + std::string(script);
-        std::string result = execute_command(command.c_str());
+        const std::string result = execute_command(command.c_str());
 
         // Log compilation output
         std::istringstream f(result);
@@ -123,7 +123,7 @@ namespace Spartan::ScriptingHelper
         }
 
         // Open assembly
-        std::string dll_path = FileSystem::ReplaceExtension(script, ".dll");
+        const std::string dll_path = FileSystem::ReplaceExtension(script, ".dll");
         return mono_domain_assembly_open(domain, dll_path.c_str());
     }
 

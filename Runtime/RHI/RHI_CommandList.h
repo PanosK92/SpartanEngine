@@ -63,7 +63,7 @@ namespace Spartan
         {
             if (m_cmd_state == RHI_CommandListState::Recording)
             {
-                bool has_render_pass = m_render_pass_active;
+                const bool has_render_pass = m_render_pass_active;
                 if (has_render_pass)
                 {
                     if (!EndRenderPass())

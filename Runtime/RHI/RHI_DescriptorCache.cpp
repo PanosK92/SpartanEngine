@@ -27,7 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Texture.h"
 #include "RHI_PipelineState.h"
 #include "RHI_ConstantBuffer.h"
-#include "RHI_Implementation.h"
 #include "RHI_DescriptorSetLayout.h"
 #include "..\Utilities\Hash.h"
 //==================================

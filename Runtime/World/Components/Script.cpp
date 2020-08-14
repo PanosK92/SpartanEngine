@@ -72,7 +72,7 @@ namespace Spartan
 	bool Script::SetScript(const string& file_path)
 	{
         // Load script
-        uint32_t id = m_scripting->Load(file_path, this);
+        const uint32_t id = m_scripting->Load(file_path, this);
         if (id == SCRIPT_NOT_LOADED)
         {
             LOG_ERROR("Failed to load script");

@@ -124,19 +124,19 @@ namespace Spartan::Math
         // Returns a copy of /vector/ with its magnitude clamped to /maxLength/.
         inline void ClampMagnitude(float maxLength)
         {
-            float sqrmag = LengthSquared();
+            const float sqrmag = LengthSquared();
 
             if (sqrmag > maxLength * maxLength)
             {
-                float mag = Helper::Sqrt(sqrmag);
+                const float mag = Helper::Sqrt(sqrmag);
 
                 //these intermediate variables force the intermediate result to be
                 //of float precision. without this, the intermediate result can be of higher
                 //precision, which changes behavior.
 
-                float normalized_x = x / mag;
-                float normalized_y = y / mag;
-                float normalized_z = z / mag;
+                const float normalized_x = x / mag;
+                const float normalized_y = y / mag;
+                const float normalized_z = z / mag;
 
                 x = normalized_x * maxLength;
                 y = normalized_y * maxLength;

@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Spartan.h"
 #include "Renderer.h"
 #include "Model.h"
-#include "ShaderGBuffer.h"
 #include "Font/Font.h"
 #include "Gizmos/Grid.h"
 #include "Gizmos/Transform_Gizmo.h"
@@ -42,8 +41,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Texture2D.h"
 #include "../RHI/RHI_SwapChain.h"
 #include "../RHI/RHI_VertexBuffer.h"
-#include "../RHI/RHI_Implementation.h"
 #include "../RHI/RHI_DescriptorCache.h"
+#include "../RHI/RHI_Implementation.h"
 //=========================================
 
 //= NAMESPACES ===============
@@ -386,7 +385,7 @@ namespace Spartan
 	}
 
     template<typename T>
-    inline bool update_dynamic_buffer(RHI_CommandList* cmd_list, RHI_ConstantBuffer* buffer_gpu, T& buffer_cpu, T& buffer_cpu_previous, uint32_t& offset_index)
+    bool update_dynamic_buffer(RHI_CommandList* cmd_list, RHI_ConstantBuffer* buffer_gpu, T& buffer_cpu, T& buffer_cpu_previous, uint32_t& offset_index)
     {
         // Only update if needed
         if (buffer_cpu == buffer_cpu_previous)
@@ -424,8 +423,8 @@ namespace Spartan
             return false;
         }
 
-        uint64_t size   = buffer_gpu->GetStride();
-        uint64_t offset = offset_index * size;
+        const uint64_t size   = buffer_gpu->GetStride();
+        const uint64_t offset = offset_index * size;
 
         // Update
         if (buffer_gpu->IsDynamic())

@@ -55,11 +55,13 @@ PixelOutputType mainPS(Pixel_PosUv input)
     light_out.specular      = 0.0f;
     light_out.volumetric    = 0.0f;
 
+    const float2 screen_pos = input.uv * g_resolution;
+    
     // Sample textures
-    float4 sample_albedo    = tex_albedo.Sample(sampler_point_clamp, input.uv);
-    float4 sample_normal    = tex_normal.Sample(sampler_point_clamp, input.uv);
-    float4 sample_material  = tex_material.Sample(sampler_point_clamp, input.uv);
-    float sample_hbao       = tex_hbao.Sample(sampler_point_clamp, input.uv).r;
+    float4 sample_albedo    = tex_albedo.Load(int3(screen_pos, 0));
+    float4 sample_normal    = tex_normal.Load(int3(screen_pos, 0));
+    float4 sample_material  = tex_material.Load(int3(screen_pos, 0));
+    float sample_hbao       = tex_hbao.Load(int3(screen_pos, 0)).r;
 
     // Post-process samples
     int mat_id      = round(sample_normal.a * 65535);

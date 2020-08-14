@@ -23,11 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common.hlsl"
 //====================
 
-static const uint g_dof_temporal_directions = 6;
 static const uint g_dof_sample_count        = 22;
 static const float g_dof_bokeh_radius       = 8.0f;
-
-static const float g_dof_rotation_step = PI2 / (float) g_dof_temporal_directions;
 
 // From https://github.com/Unity-Technologies/PostProcessing/
 // blob/v2/PostProcessing/Shaders/Builtins/DiskKernels.hlsl
@@ -63,27 +60,25 @@ float get_focal_depth(float2 texel_size)
     float2 uv   = 0.5f; // center
     float dx    = g_dof_bokeh_radius * texel_size.x;
     float dy    = g_dof_bokeh_radius * texel_size.y;
-	
-    float tl = get_linear_depth(uv + float2(-dx, -dy));
-    float tr = get_linear_depth(uv + float2(+dx, -dy));
-    float bl = get_linear_depth(uv + float2(-dx, +dy));
-    float br = get_linear_depth(uv + float2(+dx, +dy));
-    float ce = get_linear_depth(uv);
+
+    // get_linear_depth() loads the texel using g_resolution
+    // which refers to the render target size, not the depth texture.
+    // we avoid this issue by using a sampler and simply pass the UVs
+    float tl = get_linear_depth_filtered(uv + float2(-dx, -dy));
+    float tr = get_linear_depth_filtered(uv + float2(+dx, -dy));
+    float bl = get_linear_depth_filtered(uv + float2(-dx, +dy));
+    float br = get_linear_depth_filtered(uv + float2(+dx, +dy));
+    float ce = get_linear_depth_filtered(uv);
 	
     return (tl + tr + bl + br + ce) * 0.2f;
 }
 
 float circle_of_confusion(float2 uv, float focal_depth)
 {
-    float depth         = get_linear_depth(uv);
+    float depth         = get_linear_depth_filtered(uv);
     float focus_range   = g_camera_aperture;
-    float coc           = (depth - focal_depth) / (focus_range + FLT_MIN);
-    return saturate(abs(coc));
-}
-
-float2 rotate_vector(float2 v, float2 direction)
-{
-    return float2(v.x * direction.x - v.y * direction.y, v.x * direction.y + v.y * direction.x);
+    float coc           = abs(depth - focal_depth) / (focus_range + FLT_MIN);
+    return saturate(coc);
 }
 
 #if DOWNSAMPLE_CIRCLE_OF_CONFUSION
@@ -119,11 +114,10 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     float coc_tr = circle_of_confusion(uv_tr, focal_depth);
     float coc_bl = circle_of_confusion(uv_bl, focal_depth);
     float coc_br = circle_of_confusion(uv_br, focal_depth);
-
-    // Compute coc
-    float coc = max(max(max(coc_tl, coc_tr), coc_bl), coc_br);
-
-    tex_out_rgba[thread_id.xy] = float4((color_tl + color_tr + color_bl + color_br) * 0.25f, coc);
+    
+    float3 color    = (color_tl + color_tr + color_bl + color_br) * 0.25f;
+    float coc       = (coc_tl + coc_tr + coc_bl + coc_br) * 0.25f;
+    tex_out_rgba[thread_id.xy] = float4(color, coc);
 }
 #endif
 
@@ -196,9 +190,9 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     // prevent blurry background from bleeding onto sharp foreground
     float depth         = get_linear_depth(uv);
-    float center_depth  = get_focal_depth(texel_size);
-    float center_coc    = circle_of_confusion(uv, center_depth);
-    if (get_linear_depth(uv) > center_depth) 
+    float focal_depth  = get_focal_depth(texel_size);
+    float center_coc    = circle_of_confusion(uv, focal_depth);
+    if (get_linear_depth(uv) > focal_depth) 
     {
         coc = clamp(coc, 0.0, center_coc * 2.0f);
     }

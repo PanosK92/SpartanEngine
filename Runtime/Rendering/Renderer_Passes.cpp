@@ -459,8 +459,8 @@ namespace Spartan
                 cmd_list->SetBufferVertex(model->GetVertexBuffer());
 
                 // Bind material
-                bool firs_run       = material_index == 0;
-                bool new_material   = material_bound_id != material->GetId();
+                const bool firs_run       = material_index == 0;
+                const bool new_material   = material_bound_id != material->GetId();
                 if (firs_run || new_material)
                 {
                     material_bound_id = material->GetId();
@@ -565,10 +565,10 @@ namespace Spartan
             m_buffer_uber_cpu.resolution = Vector2(tex_out->GetWidth(), tex_out->GetHeight());
             UpdateUberBuffer(cmd_list);
 
-            uint32_t thread_group_count_x   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
-            uint32_t thread_group_count_y   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
-            uint32_t thread_group_count_z   = 1;
-            bool async                      = false;
+            const uint32_t thread_group_count_x   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
+            const uint32_t thread_group_count_y   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
+            const uint32_t thread_group_count_z   = 1;
+            const bool async                      = false;
 
             cmd_list->SetTexture(2, tex_out, true);
             cmd_list->SetTexture(9, m_render_targets[RenderTarget_Gbuffer_Normal]);
@@ -611,10 +611,10 @@ namespace Spartan
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_hbao_noisy->GetWidth()), static_cast<float>(tex_hbao_noisy->GetHeight()));
             UpdateUberBuffer(cmd_list);
 
-            uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_hbao_noisy->GetWidth()) / m_thread_group_count));
-            uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_hbao_noisy->GetHeight()) / m_thread_group_count));
-            uint32_t thread_group_count_z = 1;
-            bool async = false;
+            const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_hbao_noisy->GetWidth()) / m_thread_group_count));
+            const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_hbao_noisy->GetHeight()) / m_thread_group_count));
+            const uint32_t thread_group_count_z = 1;
+            const bool async = false;
 
             cmd_list->SetTexture(0, tex_hbao_noisy, true);
             cmd_list->SetTexture(9, tex_normal);
@@ -661,10 +661,10 @@ namespace Spartan
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             UpdateUberBuffer(cmd_list);
 
-            uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
-            uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
-            uint32_t thread_group_count_z = 1;
-            bool async = false;
+            const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
+            const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
+            const uint32_t thread_group_count_z = 1;
+            const bool async = false;
 
             cmd_list->SetTexture(1, tex_out, true);
             cmd_list->SetTexture(9, m_render_targets[RenderTarget_Gbuffer_Normal]);
@@ -1163,10 +1163,10 @@ namespace Spartan
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             UpdateUberBuffer(cmd_list);
 
-            uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
-            uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
-            uint32_t thread_group_count_z = 1;
-            bool async = false;
+            const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
+            const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
+            const uint32_t thread_group_count_z = 1;
+            const bool async = false;
 
             cmd_list->SetTexture(3, tex_out, true);
             cmd_list->SetTexture(28, tex_history);
@@ -1205,10 +1205,10 @@ namespace Spartan
                 m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(m_render_tex_bloom[0].get()->GetWidth()), static_cast<float>(m_render_tex_bloom[0].get()->GetHeight()));
                 UpdateUberBuffer(cmd_list);
 
-                uint32_t thread_group_count_x   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(m_render_tex_bloom[0].get()->GetWidth()) / m_thread_group_count));
-                uint32_t thread_group_count_y   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(m_render_tex_bloom[0].get()->GetHeight()) / m_thread_group_count));
-                uint32_t thread_group_count_z   = 1;
-                bool async                      = false;
+                const uint32_t thread_group_count_x   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(m_render_tex_bloom[0].get()->GetWidth()) / m_thread_group_count));
+                const uint32_t thread_group_count_y   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(m_render_tex_bloom[0].get()->GetHeight()) / m_thread_group_count));
+                const uint32_t thread_group_count_z   = 1;
+                const bool async                      = false;
 
                 cmd_list->SetTexture(3, m_render_tex_bloom[0].get(), true);
                 cmd_list->SetTexture(28, tex_in);
@@ -1236,10 +1236,10 @@ namespace Spartan
                 m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(mip_small->GetWidth()), static_cast<float>(mip_small->GetHeight()));
                 UpdateUberBuffer(cmd_list);
 
-                uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(mip_small->GetWidth()) / m_thread_group_count));
-                uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(mip_small->GetHeight()) / m_thread_group_count));
-                uint32_t thread_group_count_z = 1;
-                bool async = false;
+                const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(mip_small->GetWidth()) / m_thread_group_count));
+                const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(mip_small->GetHeight()) / m_thread_group_count));
+                const uint32_t thread_group_count_z = 1;
+                const bool async = false;
 
                 cmd_list->SetTexture(3, mip_small, true);
                 cmd_list->SetTexture(28, mip_large);
@@ -1266,10 +1266,10 @@ namespace Spartan
                 m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(mip_large->GetWidth()), static_cast<float>(mip_large->GetHeight()));
                 UpdateUberBuffer(cmd_list);
 
-                uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(mip_large->GetWidth()) / m_thread_group_count));
-                uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(mip_large->GetHeight()) / m_thread_group_count));
-                uint32_t thread_group_count_z = 1;
-                bool async = false;
+                const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(mip_large->GetWidth()) / m_thread_group_count));
+                const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(mip_large->GetHeight()) / m_thread_group_count));
+                const uint32_t thread_group_count_z = 1;
+                const bool async = false;
 
                 cmd_list->SetTexture(3, mip_large, true);
                 cmd_list->SetTexture(28, mip_small);
@@ -1292,10 +1292,10 @@ namespace Spartan
                 m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
                 UpdateUberBuffer(cmd_list);
 
-                uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
-                uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
-                uint32_t thread_group_count_z = 1;
-                bool async = false;
+                const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
+                const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
+                const uint32_t thread_group_count_z = 1;
+                const bool async = false;
 
                 cmd_list->SetTexture(3, tex_out.get(), true);
                 cmd_list->SetTexture(28, tex_in);
@@ -1325,10 +1325,10 @@ namespace Spartan
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             UpdateUberBuffer(cmd_list);
 
-            uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
-            uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
-            uint32_t thread_group_count_z = 1;
-            bool async = false;
+            const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
+            const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
+            const uint32_t thread_group_count_z = 1;
+            const bool async = false;
 
             cmd_list->SetTexture(3, tex_out, true);
             cmd_list->SetTexture(28, tex_in);
@@ -1356,10 +1356,10 @@ namespace Spartan
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             UpdateUberBuffer(cmd_list);
 
-            uint32_t thread_group_count_x   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
-            uint32_t thread_group_count_y   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
-            uint32_t thread_group_count_z   = 1;
-            bool async                      = false;
+            const uint32_t thread_group_count_x   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
+            const uint32_t thread_group_count_y   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
+            const uint32_t thread_group_count_z   = 1;
+            const bool async                      = false;
 
             cmd_list->SetTexture(3, tex_out, true);
             cmd_list->SetTexture(28, tex_in);
@@ -1381,10 +1381,10 @@ namespace Spartan
         UpdateUberBuffer(cmd_list);
 
         // Compute thread count
-        uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
-        uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
-        uint32_t thread_group_count_z = 1;
-        bool async = false;
+        const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
+        const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
+        const uint32_t thread_group_count_z = 1;
+        const bool async = false;
 
         // Luminance
         {
@@ -1443,10 +1443,10 @@ namespace Spartan
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             UpdateUberBuffer(cmd_list);
 
-            uint32_t thread_group_count_x   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
-            uint32_t thread_group_count_y   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
-            uint32_t thread_group_count_z   = 1;
-            bool async                      = false;
+            const uint32_t thread_group_count_x   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
+            const uint32_t thread_group_count_y   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
+            const uint32_t thread_group_count_z   = 1;
+            const bool async                      = false;
 
             cmd_list->SetTexture(3, tex_out, true);
             cmd_list->SetTexture(28, tex_in);
@@ -1474,10 +1474,10 @@ namespace Spartan
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             UpdateUberBuffer(cmd_list);
 
-            uint32_t thread_group_count_x   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
-            uint32_t thread_group_count_y   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
-            uint32_t thread_group_count_z   = 1;
-            bool async                      = false;
+            const uint32_t thread_group_count_x   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
+            const uint32_t thread_group_count_y   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
+            const uint32_t thread_group_count_z   = 1;
+            const bool async                      = false;
 
             cmd_list->SetTexture(3, tex_out, true);
             cmd_list->SetTexture(28, tex_in);
@@ -1517,10 +1517,10 @@ namespace Spartan
                 m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_bokeh_half->GetWidth()), static_cast<float>(tex_bokeh_half->GetHeight()));
                 UpdateUberBuffer(cmd_list);
 
-                uint32_t thread_group_count_x   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_bokeh_half->GetWidth()) / m_thread_group_count));
-                uint32_t thread_group_count_y   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_bokeh_half->GetHeight()) / m_thread_group_count));
-                uint32_t thread_group_count_z   = 1;
-                bool async                      = false;
+                const uint32_t thread_group_count_x   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_bokeh_half->GetWidth()) / m_thread_group_count));
+                const uint32_t thread_group_count_y   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_bokeh_half->GetHeight()) / m_thread_group_count));
+                const uint32_t thread_group_count_z   = 1;
+                const bool async                      = false;
 
                 cmd_list->SetTexture(3, tex_bokeh_half, true);
                 cmd_list->SetTexture(12, tex_depth);
@@ -1544,10 +1544,10 @@ namespace Spartan
                 m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_bokeh_half_2->GetWidth()), static_cast<float>(tex_bokeh_half_2->GetHeight()));
                 UpdateUberBuffer(cmd_list);
 
-                uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_bokeh_half_2->GetWidth()) / m_thread_group_count));
-                uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_bokeh_half_2->GetHeight()) / m_thread_group_count));
-                uint32_t thread_group_count_z = 1;
-                bool async = false;
+                const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_bokeh_half_2->GetWidth()) / m_thread_group_count));
+                const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_bokeh_half_2->GetHeight()) / m_thread_group_count));
+                const uint32_t thread_group_count_z = 1;
+                const bool async = false;
 
                 cmd_list->SetTexture(3, tex_bokeh_half_2, true);
                 cmd_list->SetTexture(28, tex_bokeh_half);
@@ -1570,10 +1570,10 @@ namespace Spartan
                 m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_bokeh_half->GetWidth()), static_cast<float>(tex_bokeh_half->GetHeight()));
                 UpdateUberBuffer(cmd_list);
 
-                uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_bokeh_half->GetWidth()) / m_thread_group_count));
-                uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_bokeh_half->GetHeight()) / m_thread_group_count));
-                uint32_t thread_group_count_z = 1;
-                bool async = false;
+                const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_bokeh_half->GetWidth()) / m_thread_group_count));
+                const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_bokeh_half->GetHeight()) / m_thread_group_count));
+                const uint32_t thread_group_count_z = 1;
+                const bool async = false;
 
                 cmd_list->SetTexture(3, tex_bokeh_half, true);
                 cmd_list->SetTexture(28, tex_bokeh_half_2);
@@ -1596,10 +1596,10 @@ namespace Spartan
                 m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
                 UpdateUberBuffer(cmd_list);
 
-                uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
-                uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
-                uint32_t thread_group_count_z = 1;
-                bool async = false;
+                const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
+                const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
+                const uint32_t thread_group_count_z = 1;
+                const bool async = false;
 
                 cmd_list->SetTexture(3, tex_out, true);
                 cmd_list->SetTexture(12, tex_depth);
@@ -1630,10 +1630,10 @@ namespace Spartan
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             UpdateUberBuffer(cmd_list);
 
-            uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
-            uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
-            uint32_t thread_group_count_z = 1;
-            bool async = false;
+            const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
+            const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
+            const uint32_t thread_group_count_z = 1;
+            const bool async = false;
 
             cmd_list->SetTexture(3, tex_out, true);
             cmd_list->SetTexture(28, tex_in);
@@ -1661,10 +1661,10 @@ namespace Spartan
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             UpdateUberBuffer(cmd_list);
 
-            uint32_t thread_group_count_x   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
-            uint32_t thread_group_count_y   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
-            uint32_t thread_group_count_z   = 1;
-            bool async                      = false;
+            const uint32_t thread_group_count_x   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
+            const uint32_t thread_group_count_y   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
+            const uint32_t thread_group_count_z   = 1;
+            const bool async                      = false;
 
             cmd_list->SetTexture(3, tex_out, true);
             cmd_list->SetTexture(28, tex_in);
@@ -1692,10 +1692,10 @@ namespace Spartan
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             UpdateUberBuffer(cmd_list);
 
-            uint32_t thread_group_count_x   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
-            uint32_t thread_group_count_y   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
-            uint32_t thread_group_count_z   = 1;
-            bool async                      = false;
+            const uint32_t thread_group_count_x   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
+            const uint32_t thread_group_count_y   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
+            const uint32_t thread_group_count_z   = 1;
+            const bool async                      = false;
 
             cmd_list->SetTexture(3, tex_out, true);
             cmd_list->SetTexture(28, tex_in);
@@ -2295,10 +2295,10 @@ namespace Spartan
             m_buffer_uber_cpu.transform     = m_buffer_frame_cpu.view_projection_ortho;
             UpdateUberBuffer(cmd_list);
 
-            uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
-            uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
-            uint32_t thread_group_count_z = 1;
-            bool async = false;
+            const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
+            const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
+            const uint32_t thread_group_count_z = 1;
+            const bool async = false;
 
             cmd_list->SetTexture(3, tex_out, true);
             cmd_list->SetTexture(28, texture);
@@ -2334,10 +2334,10 @@ namespace Spartan
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(render_target->GetWidth()), static_cast<float>(render_target->GetHeight()));
             UpdateUberBuffer(cmd_list);
 
-            uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(render_target->GetWidth()) / m_thread_group_count));
-            uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(render_target->GetHeight()) / m_thread_group_count));
-            uint32_t thread_group_count_z = 1;
-            bool async = false;
+            const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(render_target->GetWidth()) / m_thread_group_count));
+            const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(render_target->GetHeight()) / m_thread_group_count));
+            const uint32_t thread_group_count_z = 1;
+            const bool async = false;
 
             cmd_list->SetTexture(1, render_target, true);
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
@@ -2362,10 +2362,10 @@ namespace Spartan
         // Draw
         if (cmd_list->BeginRenderPass(pipeline_state))
         {
-            uint32_t thread_group_count_x   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
-            uint32_t thread_group_count_y   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
-            uint32_t thread_group_count_z   = 1;
-            bool async                      = false;
+            const uint32_t thread_group_count_x   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
+            const uint32_t thread_group_count_y   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
+            const uint32_t thread_group_count_z   = 1;
+            const bool async                      = false;
 
             cmd_list->SetTexture(3, tex_out, true);
             cmd_list->SetTexture(28, tex_in);

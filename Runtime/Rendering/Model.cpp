@@ -69,7 +69,7 @@ namespace Spartan
 
 	bool Model::LoadFromFile(const string& file_path)
 	{
-		Stopwatch timer;
+        const Stopwatch timer;
 
         if (file_path.empty() || FileSystem::IsDirectory(file_path))
         {

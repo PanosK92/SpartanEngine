@@ -65,7 +65,7 @@ namespace Spartan
 		if (!m_context)
 			return false;
 
-		Stopwatch timer;
+        const Stopwatch timer;
 
 		// Load
 		if (!m_context->GetSubsystem<ResourceCache>()->GetFontImporter()->LoadFromFile(this, file_path))
