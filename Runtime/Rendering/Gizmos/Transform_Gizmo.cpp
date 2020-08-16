@@ -85,15 +85,15 @@ namespace Spartan
         }
 
 		// Switch between position, rotation and scale handles, with W, E and R respectively
-		if (m_input->GetKeyDown(W))
+		if (m_input->GetKeyDown(KeyCode::W))
 		{
 			m_type = TransformHandle_Position;
 		}
-		else if (m_input->GetKeyDown(E))
+		else if (m_input->GetKeyDown(KeyCode::E))
 		{
 			m_type = TransformHandle_Scale;
 		}
-		else if (m_input->GetKeyDown(R))
+		else if (m_input->GetKeyDown(KeyCode::R))
 		{
 			m_type = TransformHandle_Rotation;
 		}

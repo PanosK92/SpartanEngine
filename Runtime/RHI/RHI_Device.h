@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Spartan_Object.h"
 #include <mutex>
 #include <memory>
-#include "RHI_DisplayMode.h"
+#include "../Display/DisplayMode.h"
 #include "RHI_PhysicalDevice.h"
 //=================================
 
@@ -43,13 +43,6 @@ namespace Spartan
         void SetPrimaryPhysicalDevice(const uint32_t index);
         const std::vector<PhysicalDevice>& GetPhysicalDevices() const { return m_physical_devices; }
 
-        // Display mode
-        void RegisterDisplayMode(const DisplayMode& display_mode);
-        const DisplayMode& GetActiveDisplayMode() const { return m_display_mode_active; }
-        void SetActiveDisplayMode(const DisplayMode& display_mode) { m_display_mode_active = display_mode; }
-        const std::vector<DisplayMode>& GetDisplayModes() const { return m_display_modes; }
-        bool ValidateResolution(const uint32_t width, const uint32_t height) const;
-
         // Queue
         bool Queue_Present(void* swapchain_view, uint32_t* image_index, void* wait_semaphore = nullptr) const;
         bool Queue_Submit(const RHI_Queue_Type type, void* cmd_buffer, void* wait_semaphore = nullptr, void* signal_semaphore = nullptr, void* signal_fence = nullptr, const uint32_t wait_flags = 0) const;
@@ -59,6 +52,7 @@ namespace Spartan
         uint32_t Queue_Index(const RHI_Queue_Type type) const;
 
         // Misc
+        bool ValidateResolution(const uint32_t width, const uint32_t height) const;
 		auto IsInitialized()                const { return m_initialized; }
         RHI_Context* GetContextRhi()	    const { return m_rhi_context.get(); }
         Context* GetContext()               const { return m_context; }
@@ -66,8 +60,6 @@ namespace Spartan
 
 	private:	
 		std::vector<PhysicalDevice> m_physical_devices;
-        std::vector<DisplayMode> m_display_modes;
-        DisplayMode m_display_mode_active;
         uint32_t m_physical_device_index            = 0;     
         uint32_t m_enabled_graphics_shader_stages   = 0;
         bool m_initialized                          = false;

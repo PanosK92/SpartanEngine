@@ -293,7 +293,7 @@ namespace Spartan
 			const float width			= static_cast<float>(m_shadow_map.texture_depth->GetWidth());
 			const float height			= static_cast<float>(m_shadow_map.texture_depth->GetHeight());
 			const auto aspect_ratio		= width / height;
-			const float fov				= 1.57079633f; // 1.57079633 = 90 deg
+			const float fov				= 1.57079633f; // 90 deg
 			const float near_plane		= reverse_z ? m_range : 0.1f;
 			const float far_plane		= reverse_z ? 0.1f : m_range;
 			m_matrix_projection[index]	= Matrix::CreatePerspectiveFieldOfViewLH(fov, aspect_ratio, near_plane, far_plane);
@@ -437,10 +437,9 @@ namespace Spartan
         if (!m_renderer || !m_renderer->IsInitialized())
             return;
 
+        // Early exit if there is no change in shadow map resolution
         const uint32_t resolution       = m_renderer->GetOptionValue<uint32_t>(Option_Value_ShadowResolution);
         const bool resolution_changed   = m_shadow_map.texture_depth ? (resolution != m_shadow_map.texture_depth->GetWidth()) : false;
-
-        // Early exit if there was no change
 		if ((!m_is_dirty && !resolution_changed))
 			return;
 

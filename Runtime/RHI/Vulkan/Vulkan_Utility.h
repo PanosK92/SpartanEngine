@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_DepthStencilState.h"
 #include "../../Logging/Log.h"
 #include "../../Math/Vector4.h"
+#include "../../Display/Display.h"
 #include <array>
 #include <unordered_map>
 #include <atomic>
@@ -1001,11 +1002,11 @@ namespace Spartan::vulkan_utility
         inline void detect_display_modes()
         {
             // VK_KHR_Display not supported and I don't want to use anything OS specific, must think of something.
-            globals::rhi_device->RegisterDisplayMode(DisplayMode(640, 480, 165, 1));
-            globals::rhi_device->RegisterDisplayMode(DisplayMode(720, 576, 165, 1));
-            globals::rhi_device->RegisterDisplayMode(DisplayMode(1280, 720, 165, 1));
-            globals::rhi_device->RegisterDisplayMode(DisplayMode(1920, 1080, 165, 1));
-            globals::rhi_device->RegisterDisplayMode(DisplayMode(2560, 1440, 165, 1));
+            Display::RegisterDisplayMode(DisplayMode(640, 480, 165, 1), globals::rhi_device->GetContext());
+            Display::RegisterDisplayMode(DisplayMode(720, 576, 165, 1), globals::rhi_device->GetContext());
+            Display::RegisterDisplayMode(DisplayMode(1280, 720, 165, 1), globals::rhi_device->GetContext());
+            Display::RegisterDisplayMode(DisplayMode(1920, 1080, 165, 1), globals::rhi_device->GetContext());
+            Display::RegisterDisplayMode(DisplayMode(2560, 1440, 165, 1), globals::rhi_device->GetContext());
         }
     }
 

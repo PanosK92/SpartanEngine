@@ -104,14 +104,14 @@ void Widget_RenderOptions::Tick()
 
                 static vector<DisplayMode> display_modes;
                 static uint32_t display_mode_index      = 0;
-                const DisplayMode& display_mode_active  = m_renderer->GetRhiDevice()->GetActiveDisplayMode();
+                const DisplayMode& display_mode_active  = Display::GetActiveDisplayMode();
                 string display_mode_str                 = display_mode_to_str(display_mode_active);
                 double display_mode_rhz                 = display_mode_active.hz;
 
                 // Get display modes
                 if (display_modes.empty())
                 {
-                    for (const DisplayMode& display_mode : m_renderer->GetRhiDevice()->GetDisplayModes())
+                    for (const DisplayMode& display_mode : Display::GetDisplayModes())
                     {
                         if (display_mode.hz == display_mode_rhz)
                         {

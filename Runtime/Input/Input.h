@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-	enum KeyCode
+	enum class KeyCode
 	{
 		// Keyboard
 		F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15,/*Function*/ 
@@ -94,6 +94,7 @@ namespace Spartan
 
 		// Mouse
 		const Math::Vector2& GetMousePosition() const { return m_mouse_position; }
+        void SetMousePosition(const Math::Vector2& position);
 		const Math::Vector2& GetMouseDelta()    const { return m_mouse_delta; }
         const float GetMouseWheelDelta()        const { return m_mouse_wheel_delta; }
 

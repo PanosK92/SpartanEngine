@@ -21,12 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =================
+//= INCLUDES =====================
 #include "../RHI_Device.h"
 #include <vector>
 #include <wrl/client.h>
 #include "../../Logging/Log.h"
-//============================
+#include "../../Display/Display.h"
+//================================
 
 namespace Spartan::d3d11_utility
 {
@@ -177,7 +178,7 @@ namespace Spartan::d3d11_utility
 						// Save all the display modes
 						for (const DXGI_MODE_DESC& mode : display_modes)
 						{
-                            globals::rhi_device->RegisterDisplayMode(DisplayMode(mode.Width, mode.Height, mode.RefreshRate.Numerator, mode.RefreshRate.Denominator));
+                            Display::RegisterDisplayMode(DisplayMode(mode.Width, mode.Height, mode.RefreshRate.Numerator, mode.RefreshRate.Denominator), globals::rhi_device->GetContext());
 						}
 					}
 				}

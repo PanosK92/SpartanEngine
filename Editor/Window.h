@@ -85,7 +85,7 @@ namespace Window
 	{
 		g_instance = instance;
         const std::wstring windowTitle	= Spartan::FileSystem::StringToWstring(title);
-        const int windowWidth				= GetSystemMetrics(SM_CXSCREEN);
+        const int windowWidth		    = GetSystemMetrics(SM_CXSCREEN);
         const int windowHeight			= GetSystemMetrics(SM_CYSCREEN);
         const LPCWSTR className			= L"myWindowClass";
 	
