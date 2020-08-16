@@ -80,27 +80,27 @@ void Widget_ShaderEditor::ShowShaderSource()
                         }
 
                         // Handle keyboard shortcuts
-                        if (m_input->GetKeyDown(Ctrl_Left) && m_input->GetKeyDown(C))
+                        if (m_input->GetKeyDown(KeyCode::Ctrl_Left) && m_input->GetKeyDown(KeyCode::C))
                         {
                             m_text_editor->Copy();
                         }
 
-                        if (m_input->GetKeyDown(Ctrl_Left) && m_input->GetKeyDown(X))
+                        if (m_input->GetKeyDown(KeyCode::Ctrl_Left) && m_input->GetKeyDown(KeyCode::X))
                         {
                             m_text_editor->Cut();
                         }
 
-                        if (m_input->GetKeyDown(Ctrl_Left) && m_input->GetKeyDown(V))
+                        if (m_input->GetKeyDown(KeyCode::Ctrl_Left) && m_input->GetKeyDown(KeyCode::V))
                         {
                             m_text_editor->Paste();
                         }
 
-                        if (m_input->GetKeyDown(Ctrl_Left) && m_input->GetKeyDown(Z))
+                        if (m_input->GetKeyDown(KeyCode::Ctrl_Left) && m_input->GetKeyDown(KeyCode::Z))
                         {
                             m_text_editor->Undo();
                         }
 
-                        if (m_input->GetKeyDown(Ctrl_Left) && m_input->GetKeyDown(Y))
+                        if (m_input->GetKeyDown(KeyCode::Ctrl_Left) && m_input->GetKeyDown(KeyCode::Y))
                         {
                             m_text_editor->Redo();
                         }

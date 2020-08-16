@@ -136,8 +136,8 @@ namespace Spartan
         ShadowMap m_shadow_map;
 
         // Bias
-        float m_bias        = 0.1f;
-        float m_normal_bias = 5.0f;
+        float m_bias        = 0.01f;
+        float m_normal_bias = 3.0f;
 
         // Misc
         LightType m_light_type      = LightType::Directional;

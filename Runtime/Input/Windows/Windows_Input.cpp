@@ -225,6 +225,21 @@ namespace Spartan
         m_is_new_frame = false;
     }
 
+    void Input::SetMousePosition(const Math::Vector2& position)
+    {
+        const WindowData& window_data   = m_context->m_engine->GetWindowData();
+        const HWND window_handle        = static_cast<HWND>(window_data.handle);
+
+        if (window_handle == ::GetActiveWindow())
+        {
+            POINT mouse_screen_pos = POINT{ static_cast<LONG>(position.x), static_cast<LONG>(position.y) };
+            if (::ClientToScreen(window_handle, &mouse_screen_pos))
+            {
+                ::SetCursorPos(mouse_screen_pos.x, mouse_screen_pos.y);
+            }
+        }
+    }
+
 	void Input::Tick(float delta_time)
 	{
         // Check for new device

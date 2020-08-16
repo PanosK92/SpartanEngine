@@ -19,11 +19,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =====================
+//= INCLUDES ==================
 #include "Spartan.h"
-#include "../RHI/RHI_Device.h"
-#include "../Rendering/Renderer.h"
-//================================
+#include "../Display/Display.h"
+//=============================
 
 //= NAMESPACES =====
 using namespace std;
@@ -84,7 +83,7 @@ namespace Spartan
         if (fps_in < 0.0f) // negative -> match monitor's refresh rate
         {
             m_fps_policy = Fps_FixedMonitor;
-            const DisplayMode& display_mode = m_context->GetSubsystem<Renderer>()->GetRhiDevice()->GetActiveDisplayMode();
+            const DisplayMode& display_mode = Display::GetActiveDisplayMode();
             fps_in = display_mode.hz;
         }
         else if (fps_in >= 0.0f && fps_in < 10.0f) // zero or very small -> unlock to avoid unresponsiveness

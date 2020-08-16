@@ -43,13 +43,13 @@ namespace Spartan
 	void TransformHandleAxis::UpdateInput(const TransformHandle_Type type, Transform* transform, Input* input)
 	{
 		// First press
-		if (isHovered && input->GetKeyDown(Click_Left))
+		if (isHovered && input->GetKeyDown(KeyCode::Click_Left))
 		{
 			isEditing = true;
 		}
 
 		// Editing can happen here
-		if (isEditing && input->GetKey(Click_Left))
+		if (isEditing && input->GetKey(KeyCode::Click_Left))
 		{
             if (type == TransformHandle_Position)
             {
@@ -73,7 +73,7 @@ namespace Spartan
 		}
 
 		// Last press (on release)
-		if (isEditing && input->GetKeyUp(Click_Left))
+		if (isEditing && input->GetKeyUp(KeyCode::Click_Left))
 		{
 			isEditing = false;
 		}

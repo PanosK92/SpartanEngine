@@ -486,7 +486,7 @@ void Widget_World::PopupEntityRename() const
 
 void Widget_World::HandleKeyShortcuts()
 {
-	if (_Widget_World::g_input->GetKey(Delete))
+	if (_Widget_World::g_input->GetKey(KeyCode::Delete))
 	{
 		ActionEntityDelete(EditorHelper::Get().g_selected_entity.lock());
 	}

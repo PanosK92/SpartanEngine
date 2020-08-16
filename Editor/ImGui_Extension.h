@@ -35,6 +35,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/World.h"
 #include "World/Components/Camera.h"
 #include <chrono>
+#include "Window.h"
+#include "Display/Display.h"
 //=======================================
 
 class EditorHelper
@@ -335,6 +337,39 @@ namespace ImGuiEx
             ImGui::BeginTooltip();
             ImGui::Text(text);
             ImGui::EndTooltip();
+        }
+    }
+
+    // A drag float which will wrap the mouse cursor around the edges of the screen
+    inline void DragFloatWrap(const char* label, float* v, float v_speed = 1.0f, float v_min = 0.0f, float v_max = 0.0f, const char* format = "%.3f", float power = 1.0f)
+    {
+        ImGui::DragFloat(label, v, v_speed, v_min, v_max, format, power);
+
+        if (ImGui::IsItemEdited() && ImGui::IsMouseDown(0))
+        {
+            Spartan::Input* input       = EditorHelper::Get().g_input;
+            Spartan::Math::Vector2 pos  = input->GetMousePosition();
+            uint32_t edge_padding       = 5;
+
+            bool wrapped = false;
+            if (pos.x >= Spartan::Display::GetWidth() - edge_padding)
+            {
+                pos.x = static_cast<float>(edge_padding + 1);
+                wrapped = true;              
+            }
+            else if (pos.x <= edge_padding)
+            {
+                pos.x = static_cast<float>(Spartan::Display::GetWidth() - edge_padding - 1);
+                wrapped = true;
+            }
+
+            if (wrapped)
+            {
+                ImGuiIO& imgui_io           = ImGui::GetIO();
+                imgui_io.MousePos           = pos;
+                imgui_io.MousePosPrev       = pos; // set previous position as well so that we eliminate a huge mouse delta, which we don't want for the drag float
+                imgui_io.WantSetMousePos    = true;
+            }
         }
     }
 }

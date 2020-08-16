@@ -242,7 +242,7 @@ void Widget_Properties::ShowTransform(Transform* transform) const
             // Float
 			ImGui::PushItemWidth(128.0f);
 			ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
-            ImGui::DragFloat("##no_label", value, step, numeric_limits<float>::lowest(), numeric_limits<float>::max(), format.c_str());
+            ImGuiEx::DragFloatWrap("##no_label", value, step, numeric_limits<float>::lowest(), numeric_limits<float>::max(), format.c_str());
 			ImGui::PopID();
 			ImGui::PopItemWidth();
 		};
@@ -336,7 +336,7 @@ void Widget_Properties::ShowLight(Light* light) const
         //{
         //    ImGui::Text("Time of day");
         //    ImGui::SameLine(ComponentProperty::g_column);
-        //    ImGui::PushItemWidth(300); ImGui::DragFloat("##lightTime", &time_of_day, 0.1f, 0.0f, 24.0f); ImGui::PopItemWidth();
+        //    ImGui::PushItemWidth(300); ImGuiEx::DragFloatWrap("##lightTime", &time_of_day, 0.1f, 0.0f, 24.0f); ImGui::PopItemWidth();
         //}
 
 		// Color
@@ -348,7 +348,7 @@ void Widget_Properties::ShowLight(Light* light) const
 		ImGui::SameLine(ComponentProperty::g_column);
         float v_speed   = is_directional ? 20.0f : 5.0f;
         float v_max     = is_directional ? 128000.0f : 100000.0f;
-		ImGui::PushItemWidth(300); ImGui::DragFloat("##lightIntensity", &intensity, v_speed, 0.0f, v_max); ImGui::PopItemWidth();
+		ImGui::PushItemWidth(300); ImGuiEx::DragFloatWrap("##lightIntensity", &intensity, v_speed, 0.0f, v_max); ImGui::PopItemWidth();
 
 		// Shadows
 		ImGui::Text("Shadows");
@@ -375,7 +375,7 @@ void Widget_Properties::ShowLight(Light* light) const
 		// Bias
 		ImGui::Text("Bias");
 		ImGui::SameLine(ComponentProperty::g_column);
-		ImGui::PushItemWidth(300); ImGui::InputFloat("##lightBias", &bias, 0.1f, 0.1f, "%.1f"); ImGui::PopItemWidth();
+		ImGui::PushItemWidth(300); ImGui::InputFloat("##lightBias", &bias, 0.01f, 0.01f, "%.2f"); ImGui::PopItemWidth();
 
 		// Normal Bias
 		ImGui::Text("Normal Bias");
@@ -387,7 +387,7 @@ void Widget_Properties::ShowLight(Light* light) const
 		{
 			ImGui::Text("Range");
 			ImGui::SameLine(ComponentProperty::g_column);
-			ImGui::PushItemWidth(300); ImGui::DragFloat("##lightRange", &range, 0.01f, 0.0f, 100.0f); ImGui::PopItemWidth();
+			ImGui::PushItemWidth(300); ImGuiEx::DragFloatWrap("##lightRange", &range, 0.01f, 0.0f, 100.0f); ImGui::PopItemWidth();
 		}
 
 		// Angle
@@ -395,7 +395,7 @@ void Widget_Properties::ShowLight(Light* light) const
 		{
 			ImGui::Text("Angle");
 			ImGui::SameLine(ComponentProperty::g_column);
-			ImGui::PushItemWidth(300); ImGui::DragFloat("##lightAngle", &angle, 0.01f, 1.0f, 179.0f); ImGui::PopItemWidth();
+			ImGui::PushItemWidth(300); ImGuiEx::DragFloatWrap("##lightAngle", &angle, 0.01f, 1.0f, 179.0f); ImGui::PopItemWidth();
 		}
 
 		//= MAP ======================================================================================================================
@@ -813,7 +813,7 @@ void Widget_Properties::ShowMaterial(Material* material) const
                         else
                         {
                             ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
-                            ImGui::DragFloat("", &material->GetProperty(type), 0.004f, 0.0f, 1.0f);
+                            ImGuiEx::DragFloatWrap("", &material->GetProperty(type), 0.004f, 0.0f, 1.0f);
                             ImGui::PopID();
                         }
                     }
@@ -919,22 +919,22 @@ void Widget_Properties::ShowCamera(Camera* camera) const
 
         // Aperture
         ImGui::SetCursorPosX(ComponentProperty::g_column);
-        ImGui::DragFloat("Aperture (mm)", &aperture, 0.01f, 0.01f, 150.0f);
+        ImGuiEx::DragFloatWrap("Aperture (mm)", &aperture, 0.01f, 0.01f, 150.0f);
         ImGuiEx::Tooltip("Size of the lens diaphragm. Controls depth of field and chromatic aberration.");
 
         // Shutter speed
         ImGui::SetCursorPosX(ComponentProperty::g_column);
-        ImGui::DragFloat("Shutter Speed (sec)", &shutter_speed, 0.001f, 0.0f, 1.0f);
+        ImGuiEx::DragFloatWrap("Shutter Speed (sec)", &shutter_speed, 0.001f, 0.0f, 1.0f);
         ImGuiEx::Tooltip("Length of time for which the camera shutter is open. Controls the amount of motion blur.");
 
         // ISO
         ImGui::SetCursorPosX(ComponentProperty::g_column);
-        ImGui::DragFloat("ISO", &iso, 1.0f, 0.0f, 2000.0f);
+        ImGuiEx::DragFloatWrap("ISO", &iso, 1.0f, 0.0f, 2000.0f);
         ImGuiEx::Tooltip("Sensitivity to light.");
 
 		// Field of View
 		ImGui::SetCursorPosX(ComponentProperty::g_column);
-        ImGui::DragFloat("Field of View", &fov, 0.1f, 1.0f, 179.0f);
+        ImGuiEx::DragFloatWrap("Field of View", &fov, 0.1f, 1.0f, 179.0f);
 
 		// Clipping Planes
 		ImGui::Text("Clipping Planes");

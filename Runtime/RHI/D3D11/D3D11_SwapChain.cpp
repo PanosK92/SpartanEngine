@@ -198,7 +198,7 @@ namespace Spartan
 		// will be changed to match the dimensions of the application window.
 		if (m_flags & RHI_SwapChain_Allow_Mode_Switch)
 		{		
-            const DisplayMode& display_mode = m_rhi_device->GetActiveDisplayMode();
+            const DisplayMode& display_mode = Display::GetActiveDisplayMode();
 
             // Resize swapchain target
             DXGI_MODE_DESC dxgi_mode_desc   = {};
