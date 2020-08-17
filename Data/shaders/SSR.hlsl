@@ -105,10 +105,11 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     const float2 uv = (thread_id.xy + 0.5f) / g_resolution;
 
     // Compute view-space ray
-    float3 normal_view = get_normal_view_space(uv);
-    float3 ray_pos = get_position_view_space(uv);
+    float3 normal_view = get_normal_view_space(thread_id.xy);
+    float3 ray_pos = get_position_view_space(thread_id.xy);
     float3 ray_dir = normalize(reflect(ray_pos, normal_view));
 
     // Trace it
     tex_out_rg[thread_id.xy] = trace_ray(uv, ray_pos, ray_dir);
 }
+

@@ -64,18 +64,18 @@ float get_focal_depth(float2 texel_size)
     // get_linear_depth() loads the texel using g_resolution
     // which refers to the render target size, not the depth texture.
     // we avoid this issue by using a sampler and simply pass the UVs
-    float tl = get_linear_depth_filtered(uv + float2(-dx, -dy));
-    float tr = get_linear_depth_filtered(uv + float2(+dx, -dy));
-    float bl = get_linear_depth_filtered(uv + float2(-dx, +dy));
-    float br = get_linear_depth_filtered(uv + float2(+dx, +dy));
-    float ce = get_linear_depth_filtered(uv);
+    float tl = get_linear_depth(uv + float2(-dx, -dy));
+    float tr = get_linear_depth(uv + float2(+dx, -dy));
+    float bl = get_linear_depth(uv + float2(-dx, +dy));
+    float br = get_linear_depth(uv + float2(+dx, +dy));
+    float ce = get_linear_depth(uv);
 	
     return (tl + tr + bl + br + ce) * 0.2f;
 }
 
 float circle_of_confusion(float2 uv, float focal_depth)
 {
-    float depth         = get_linear_depth_filtered(uv);
+    float depth         = get_linear_depth(uv);
     float focus_range   = g_camera_aperture;
     float coc           = abs(depth - focal_depth) / (focus_range + FLT_MIN);
     return saturate(coc);

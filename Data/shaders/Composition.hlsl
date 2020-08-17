@@ -96,7 +96,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         float3 light_emissive = material.emissive * material.albedo * 50.0f;
 
         // Light - Ambient
-        float3 light_ambient = saturate(g_directional_light_intensity / 128000.0f) + 0.05f;
+        float3 light_ambient = saturate(g_directional_light_intensity / 128000.0f);
         
         // Modulate fog with ambient light
         fog *= light_ambient * 0.25f;
@@ -140,4 +140,3 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     
     return saturate_16(color);
 }
-

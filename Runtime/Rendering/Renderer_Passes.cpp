@@ -551,7 +551,8 @@ namespace Spartan
             return;
 
         // Get render target
-        RHI_Texture* tex_out = m_render_targets[RenderTarget_Ssgi].get();
+        RHI_Texture* tex_out            = m_render_targets[RenderTarget_Ssgi].get();
+        RHI_Texture* tex_accumulation   = m_render_targets[RenderTarget_Accumulation_Ssgi].get();
 
         // Set render state
         static RHI_PipelineState pipeline_state;
@@ -578,9 +579,13 @@ namespace Spartan
             cmd_list->SetTexture(23, m_render_targets[RenderTarget_Light_Diffuse]);
             cmd_list->SetTexture(24, m_render_targets[RenderTarget_Light_Specular]);
             cmd_list->SetTexture(26, (m_options & Render_ScreenSpaceReflections) ? m_render_targets[RenderTarget_Ssr] : m_tex_black_transparent);
+            cmd_list->SetTexture(28, tex_accumulation);
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
         }
+
+        // Accumulate
+        Pass_Copy(cmd_list, tex_out, tex_accumulation);
     }
 
 	void Renderer::Pass_Hbao(RHI_CommandList* cmd_list)
@@ -1148,8 +1153,8 @@ namespace Spartan
         if (!shader_c->IsCompiled())
             return;
 
-        // Acquire history render target
-        auto& tex_history = m_render_targets[RenderTarget_TaaHistory];
+        // Acquire accumulation render target
+        auto& tex_accumulation = m_render_targets[RenderTarget_Accumulation_Taa];
 
         // Set render state
         static RHI_PipelineState pipeline_state;
@@ -1169,7 +1174,7 @@ namespace Spartan
             const bool async = false;
 
             cmd_list->SetTexture(3, tex_out, true);
-            cmd_list->SetTexture(28, tex_history);
+            cmd_list->SetTexture(28, tex_accumulation);
             cmd_list->SetTexture(29, tex_in);
             cmd_list->SetTexture(11, m_render_targets[RenderTarget_Gbuffer_Velocity]);
             cmd_list->SetTexture(12, m_render_targets[RenderTarget_Gbuffer_Depth]);
@@ -1177,8 +1182,8 @@ namespace Spartan
             cmd_list->EndRenderPass();
         }
 
-		// Copy result
-        Pass_Copy(cmd_list, tex_out.get(), tex_history.get());
+		// Accumulate
+        Pass_Copy(cmd_list, tex_out.get(), tex_accumulation.get());
 	}
 
 	void Renderer::Pass_Bloom(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)

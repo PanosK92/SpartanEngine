@@ -24,8 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Velocity.hlsl"
 //======================
 
-static const uint g_ssgi_directions         = 2;
-static const uint g_ssgi_steps              = 4;
+static const uint g_ssgi_directions         = 1;
+static const uint g_ssgi_steps              = 2;
 static const float g_ssgi_radius            = 3.0f;
 static const float g_ssgi_bounce_intensity  = 20.0f;
 
@@ -57,11 +57,10 @@ float3 compute_light(float3 position, float3 normal, float2 sample_uv, inout uin
     [branch]
     if (screen_fade(sample_uv) > 0.0f)
 	{
-	    // Reproject light
-	    float2 velocity         = GetVelocity_DepthMin(sample_uv);
-	    float2 uv_reprojected   = sample_uv - velocity;
-	    float3 light            = tex_light_diffuse.SampleLevel(sampler_bilinear_clamp, uv_reprojected, 0).rgb;
-	    
+	    // Sample light
+	    float3 light    = tex_light_diffuse.SampleLevel(sampler_bilinear_clamp, sample_uv, 0).rgb;  // first bounce
+        //light           += tex.SampleLevel(sampler_bilinear_clamp, sample_uv, 0).rgb;               // multi-bounce (accumulation texture)
+        
 	    // Transport
 	    [branch]
 	    if (luminance(light) > 0.0f)
@@ -127,12 +126,13 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         return;
     
     const float2 uv = (thread_id.xy + 0.5f) / g_resolution;
-    float3 position = get_position_view_space(uv);
-    float3 normal   = get_normal_view_space(uv);
+    float3 position = get_position_view_space(thread_id.xy);
+    float3 normal   = get_normal_view_space(thread_id.xy);
+    float depth     = get_linear_depth(thread_id.xy);
     
     // Diffuse
     float3 light = ssgi(uv, position, normal);
-
+   
     // Specular
     [branch]
     if (g_ssr_enabled)
@@ -148,6 +148,24 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         }
     }
 
-    tex_out_rgb[thread_id.xy] = lerp(tex_out_rgb[thread_id.xy], light, 0.1f);
-}
+    // Reproject
+    float2 velocity         = GetVelocity_DepthMin(uv);
+    float2 uv_reprojected   = uv - velocity;
+    float3 color_history    = tex.SampleLevel(sampler_bilinear_clamp, uv_reprojected, 0).rgb;
 
+    // Decrease blend factor when motion gets sub-pixel
+    const float threshold   = 0.5f;
+    const float base        = 10.0f;
+    const float gather      = g_delta_time * 5;   
+    float texel_vel_mag     = length(velocity) * depth;
+    float subpixel_motion   = saturate(threshold / (FLT_MIN + texel_vel_mag));
+    float factor_subpixel   = texel_vel_mag * base + subpixel_motion * gather;
+    
+    // Compute blend factor
+    float blend_factor = saturate(factor_subpixel);
+    
+    // Use max blend if the re-projected uv is out of screen
+    blend_factor = is_saturated(uv_reprojected) ? blend_factor : 1.0f;
+
+    tex_out_rgb[thread_id.xy] = lerp(color_history, light, blend_factor);
+}

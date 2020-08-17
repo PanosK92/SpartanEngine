@@ -114,10 +114,11 @@ float compute_occlusion(float3 position, float3 normal, float3 sample_position)
   return saturate(n_dot_v) * saturate(falloff(v_dot_v));
 }
 
-float normal_oriented_hemisphere_ambient_occlusion(float2 uv)
+float normal_oriented_hemisphere_ambient_occlusion(int2 pos)
 {
-    float3 position = get_position_view_space(uv);
-    float3 normal   = get_normal_view_space(uv);
+    const float2 uv = (pos + 0.5f) / g_resolution;
+    float3 position = get_position_view_space(pos);
+    float3 normal   = get_normal_view_space(pos);
     float occlusion = 0.0f;
     
     // Use temporal interleaved gradient noise to rotate the random vector (free detail with TAA on)
@@ -147,10 +148,11 @@ float normal_oriented_hemisphere_ambient_occlusion(float2 uv)
     return 1.0f - saturate(occlusion * ao_intensity / float(ao_directions));
 }
 
-float horizon_based_ambient_occlusion(float2 uv)
+float horizon_based_ambient_occlusion(int2 pos)
 {
-    float3 position = get_position_view_space(uv);
-    float3 normal   = get_normal_view_space(uv);
+    const float2 uv = (pos + 0.5f) / g_resolution;
+    float3 position = get_position_view_space(pos);
+    float3 normal   = get_normal_view_space(pos);
     float occlusion = 0.0f;
     
     float radius_pixels = max((ao_radius * g_resolution.x * 0.5f) / position.z, (float)ao_steps);
@@ -191,8 +193,5 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     if (thread_id.x >= uint(g_resolution.x) || thread_id.y >= uint(g_resolution.y))
         return;
 
-    const float2 uv = (thread_id.xy + 0.5f) / g_resolution;
-    
-    tex_out_r[thread_id.xy] = horizon_based_ambient_occlusion(uv);
+    tex_out_r[thread_id.xy] = horizon_based_ambient_occlusion(thread_id.xy);
 }
-

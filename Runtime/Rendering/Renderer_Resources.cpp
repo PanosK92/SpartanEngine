@@ -145,18 +145,19 @@ namespace Spartan
         m_render_targets[RenderTarget_Dof_Half]     = make_unique<RHI_Texture2D>(m_context, width * 0.5f, height * 0.5f, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_dof_half");   // Investigate using less bits but have an alpha channel
         m_render_targets[RenderTarget_Dof_Half_2]   = make_unique<RHI_Texture2D>(m_context, width * 0.5f, height * 0.5f, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_dof_half_2"); // Investigate using less bits but have an alpha channel
 
-        // TAA
-        m_render_targets[RenderTarget_TaaHistory] = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_taa_history");
-
         // HBAO
-        m_render_targets[RenderTarget_Hbao_Noisy]   = make_unique<RHI_Texture2D>(m_context, static_cast<uint32_t>(width), static_cast<uint32_t>(height), RHI_Format_R8_Unorm, 1, 0, "rt_hbao_noisy");
-        m_render_targets[RenderTarget_Hbao]         = make_unique<RHI_Texture2D>(m_context, static_cast<uint32_t>(width), static_cast<uint32_t>(height), RHI_Format_R8_Unorm, 1, 0, "rt_hbao");
+        m_render_targets[RenderTarget_Hbao_Noisy]   = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R8_Unorm, 1, 0, "rt_hbao_noisy");
+        m_render_targets[RenderTarget_Hbao]         = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R8_Unorm, 1, 0, "rt_hbao");
 
         // SSGI
-        m_render_targets[RenderTarget_Ssgi] = make_unique<RHI_Texture2D>(m_context, static_cast<uint32_t>(width), static_cast<uint32_t>(height), RHI_Format_R11G11B10_Float, 1, 0, "rt_ssgi");
+        m_render_targets[RenderTarget_Ssgi] = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R11G11B10_Float, 1, 0, "rt_ssgi");
 
         // SSR
         m_render_targets[RenderTarget_Ssr] = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16_Float, 1, RHI_Texture_Storage, "rt_ssr");
+
+        // Accumulation
+        m_render_targets[RenderTarget_Accumulation_Taa]     = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_accumulation_taa");
+        m_render_targets[RenderTarget_Accumulation_Ssgi]    = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R11G11B10_Float, 1, 0, "rt_accumulation_ssgi");
 
         // Bloom
         {
