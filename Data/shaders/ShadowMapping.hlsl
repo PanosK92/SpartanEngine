@@ -149,7 +149,7 @@ float compute_penumbra(float vogel_angle, float3 uv, float compare)
         penumbra *= 10.0f;
     }
     
-    return clamp(penumbra, 1.0f, FLT_MAX);
+    return clamp(penumbra, 1.0f, FLT_MAX_16);
 }
 
 /*------------------------------------------------------------------------------

@@ -328,7 +328,7 @@ void Widget_RenderOptions::Tick()
         {
             // Buffer
             {
-                static array<string, 25> render_target_debug =
+                static array<string, 24> render_target_debug =
                 {
                     "None",
                     "Gbuffer_Albedo",
@@ -353,8 +353,7 @@ void Widget_RenderOptions::Tick()
                     "Hbao_Noisy",
                     "Hbao",
                     "Ssgi",
-                    "Ssr",
-                    "TaaHistory"
+                    "Ssr"
                 };
                 static int selection_int = 0;
                 static string selection_str = render_target_debug[0];

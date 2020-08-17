@@ -75,41 +75,46 @@ float3 clip_aabb(float3 aabb_min, float3 aabb_max, float3 p, float3 q)
 #endif
 }
 
-float4 TemporalAntialiasing(uint2 thread_id, Texture2D tex_history, Texture2D tex_current)
+// Clip history to the neighbourhood of the current sample
+float3 clip_history(int2 pos, Texture2D tex_current, float3 color_history)
 {
-    // Get history and current colors
-    const float2 uv         = (thread_id + 0.5f) / g_resolution;
-    float2 velocity         = GetVelocity_DepthMin(uv);
-    float2 uv_reprojected   = uv - velocity;
-    float3 color_history    = tex_history.SampleLevel(sampler_bilinear_clamp, uv_reprojected, 0).rgb;
-    float3 color_current    = tex_current[thread_id].rgb;
-      
-    //= History clipping ===============================================================================================
     uint2 du = uint2(1, 0);
     uint2 dv = uint2(0, 1);
 
-    float3 ctl = tex_current[thread_id - dv - du].rgb;
-    float3 ctc = tex_current[thread_id - dv].rgb;
-    float3 ctr = tex_current[thread_id - dv + du].rgb;
-    float3 cml = tex_current[thread_id - du].rgb;
-    float3 cmc = color_current;
-    float3 cmr = tex_current[thread_id + du].rgb;
-    float3 cbl = tex_current[thread_id + dv - du].rgb;
-    float3 cbc = tex_current[thread_id + dv].rgb;
-    float3 cbr = tex_current[thread_id + dv + du].rgb;
+    float3 ctl = tex_current[pos - dv - du].rgb;
+    float3 ctc = tex_current[pos - dv].rgb;
+    float3 ctr = tex_current[pos - dv + du].rgb;
+    float3 cml = tex_current[pos - du].rgb;
+    float3 cmc = tex_current[pos].rgb;
+    float3 cmr = tex_current[pos + du].rgb;
+    float3 cbl = tex_current[pos + dv - du].rgb;
+    float3 cbc = tex_current[pos + dv].rgb;
+    float3 cbr = tex_current[pos + dv + du].rgb;
 
     float3 color_min = min(ctl, min(ctc, min(ctr, min(cml, min(cmc, min(cmr, min(cbl, min(cbc, cbr))))))));
     float3 color_max = max(ctl, max(ctc, max(ctr, max(cml, max(cmc, max(cmr, max(cbl, max(cbc, cbr))))))));
     float3 color_avg = (ctl + ctc + ctr + cml + cmc + cmr + cbl + cbc + cbr) / 9.0f;
 
     // Clip history to the neighbourhood of the current sample
-    color_history = saturate_16(clip_aabb(color_min, color_max, clamp(color_avg, color_min, color_max), color_history));
-    //==================================================================================================================
+    return saturate_16(clip_aabb(color_min, color_max, clamp(color_avg, color_min, color_max), color_history));
+}
+
+float4 TemporalAntialiasing(uint2 thread_id, Texture2D tex_accumulation, Texture2D tex_current)
+{
+    // Get history and current colors
+    const float2 uv         = (thread_id + 0.5f) / g_resolution;
+    float2 velocity         = GetVelocity_DepthMin(uv);
+    float2 uv_reprojected   = uv - velocity;
+    float3 color_history    = tex_accumulation.SampleLevel(sampler_bilinear_clamp, uv_reprojected, 0).rgb;
+    float3 color_current    = tex_current[thread_id].rgb;
+
+    // Clip history to the neighbourhood of the current sample
+    color_history = clip_history(thread_id.xy, tex_current, color_history);
     
     // Decrease blend factor when motion gets sub-pixel
     const float threshold   = 0.5f;
     const float base        = 40.0f;
-    const float gather      = 0.01f;
+    const float gather      = g_delta_time;
     float depth             = get_linear_depth(uv);
     float texel_vel_mag     = length(velocity) * depth;
     float subpixel_motion   = saturate(threshold / (FLT_MIN + texel_vel_mag));

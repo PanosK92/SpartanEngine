@@ -72,6 +72,7 @@ namespace Spartan
         m_options |= Render_Sharpening_LumaSharpen;
         m_options |= Render_FilmGrain;
         m_options |= Render_ChromaticAberration;
+        m_options |= Render_Ssgi;
 
         // Option values
         m_option_values[Option_Value_Anisotropy]        = 16.0f;
