@@ -577,7 +577,7 @@ namespace Spartan
         }
     }
 
-    void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const bool storage /*= false*/)
+    void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const bool storage /*= false*/, const Math::Vector4& storage_clear /*= rhi_color_load*/)
     {
         const uint8_t scope                 = m_pipeline_state->IsCompute() ? RHI_Shader_Compute : RHI_Shader_Pixel;
         const UINT start_slot               = slot;
@@ -587,6 +587,13 @@ namespace Spartan
         // Unordered access views
         if (storage)
         {
+            // Clear if needed
+            if (storage_clear != rhi_color_load && storage_clear != rhi_color_dont_care)
+            {
+                // TODO: Assuming the UAV is a float, which almost always is, but I should fix it anyway
+                device_context->ClearUnorderedAccessViewFloat(static_cast<ID3D11UnorderedAccessView*>(texture->Get_Resource_View_UnorderedAccess()), storage_clear.Data());
+            }
+
             // Get resource
             const void* uav_array[1] = { texture ? texture->Get_Resource_View_UnorderedAccess() : nullptr };
 

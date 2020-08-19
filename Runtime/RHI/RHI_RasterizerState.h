@@ -41,45 +41,54 @@ namespace Spartan
             const bool scissor_enabled,
             const bool multi_sample_enabled,
             const bool antialised_line_enabled,
+            const float depth_bias = 0.0f,
+            const float depth_bias_slope_scaled = 0.0f,
             const float line_width = 1.0f
-		);
-		~RHI_RasterizerState();
+        );
+        ~RHI_RasterizerState();
 
-		auto GetCullMode()				const { return m_cull_mode; }
-		auto GetFillMode()				const { return m_fill_mode; }
-		auto GetDepthClipEnabled()		const { return m_depth_clip_enabled; }
-		auto GetScissorEnabled()		const { return m_scissor_enabled; }
-		auto GetMultiSampleEnabled()	const { return m_multi_sample_enabled; }
-		auto GetAntialisedLineEnabled() const { return m_antialised_line_enabled; }
-		auto IsInitialized()			const { return m_initialized; }
-		auto GetResource()				const { return m_buffer; }
-        auto GetLineWidth()             const { return m_line_width; }
+        RHI_Cull_Mode GetCullMode()     const { return m_cull_mode; }
+        RHI_Fill_Mode GetFillMode()     const { return m_fill_mode; }
+        bool GetDepthClipEnabled()      const { return m_depth_clip_enabled; }
+        bool GetScissorEnabled()        const { return m_scissor_enabled; }
+        bool GetMultiSampleEnabled()    const { return m_multi_sample_enabled; }
+        bool GetAntialisedLineEnabled() const { return m_antialised_line_enabled; }
+        bool IsInitialized()            const { return m_initialized; }
+        void* GetResource()             const { return m_buffer; }
+        float GetLineWidth()            const { return m_line_width; }
+        float GetDepthBias()            const { return m_depth_bias; }
+        float GetDepthBiasSlopeScaled() const { return m_depth_bias_slope_scaled; }
 
-		bool operator==(const RHI_RasterizerState& rhs) const
-		{
-			return
-				m_cull_mode                 == rhs.GetCullMode()            &&
-				m_fill_mode                 == rhs.GetFillMode()            &&
-				m_depth_clip_enabled        == rhs.GetDepthClipEnabled()    &&
-				m_scissor_enabled           == rhs.GetScissorEnabled()      &&
-				m_multi_sample_enabled      == rhs.GetMultiSampleEnabled()  &&
-				m_antialised_line_enabled   == rhs.GetAntialisedLineEnabled();
-		}
+        bool operator==(const RHI_RasterizerState& rhs) const
+        {
+            return
+                m_cull_mode                 == rhs.GetCullMode()                &&
+                m_fill_mode                 == rhs.GetFillMode()                &&
+                m_depth_clip_enabled        == rhs.GetDepthClipEnabled()        &&
+                m_scissor_enabled           == rhs.GetScissorEnabled()          &&
+                m_multi_sample_enabled      == rhs.GetMultiSampleEnabled()      &&
+                m_antialised_line_enabled   == rhs.GetAntialisedLineEnabled()   &&
+                m_depth_bias                == rhs.GetDepthBias()               &&
+                m_depth_bias_slope_scaled   == rhs.GetDepthBiasSlopeScaled()    &&
+                m_line_width                == rhs.GetLineWidth();
+        }
 
-	private:
-		// Properties
+    private:
+        // Properties
         RHI_Cull_Mode m_cull_mode       = RHI_Cull_Undefined;
         RHI_Fill_Mode m_fill_mode       = RHI_Fill_Undefined;
-		bool m_depth_clip_enabled       = false;
-		bool m_scissor_enabled          = false;
+        bool m_depth_clip_enabled       = false;
+        bool m_scissor_enabled          = false;
         bool m_multi_sample_enabled     = false;
         bool m_antialised_line_enabled  = false;
+        float m_depth_bias              = 0.0f;
+        float m_depth_bias_slope_scaled = 0.0f;
         float m_line_width              = 1.0f;
-
-		// Initialized
-		bool m_initialized = false;
-
-		// Rasterizer state view
-		void* m_buffer = nullptr;
-	};
+        
+        // Initialized
+        bool m_initialized = false;
+        
+        // Rasterizer state view
+        void* m_buffer = nullptr;
+    };
 }
