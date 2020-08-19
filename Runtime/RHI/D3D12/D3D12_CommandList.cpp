@@ -49,12 +49,12 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-	RHI_CommandList::RHI_CommandList(uint32_t index, RHI_SwapChain* swap_chain, Context* context)
-	{
-
-	}
-
-	RHI_CommandList::~RHI_CommandList() = default;
+    RHI_CommandList::RHI_CommandList(uint32_t index, RHI_SwapChain* swap_chain, Context* context)
+    {
+    
+    }
+    
+    RHI_CommandList::~RHI_CommandList() = default;
 
     bool RHI_CommandList::Begin()
     {
@@ -84,12 +84,12 @@ namespace Spartan
     bool RHI_CommandList::BeginRenderPass(RHI_PipelineState& pipeline_state)
     {
         return true;
-	}
-
-	bool RHI_CommandList::EndRenderPass()
-	{
+    }
+    
+    bool RHI_CommandList::EndRenderPass()
+    {
         return true;
-	}
+    }
 
     void RHI_CommandList::Clear(RHI_PipelineState& pipeline_state)
     {
@@ -100,43 +100,43 @@ namespace Spartan
     {
        
         return true;
-	}
-
+    }
+    
     bool RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset)
     {
         return true;
-	}
-
+    }
+    
     bool RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z, bool async /*= false*/)
     {
         return true;
     }
-
-	void RHI_CommandList::SetViewport(const RHI_Viewport& viewport) const
+    
+    void RHI_CommandList::SetViewport(const RHI_Viewport& viewport) const
     {
        
-	}
-
-	void RHI_CommandList::SetScissorRectangle(const Math::Rectangle& scissor_rectangle) const
+    }
+    
+    void RHI_CommandList::SetScissorRectangle(const Math::Rectangle& scissor_rectangle) const
     {
        
-	}
-
-	void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer, const uint64_t offset /*= 0*/)
+    }
+    
+    void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer, const uint64_t offset /*= 0*/)
     {
-		
-	}
-
-	void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer, const uint64_t offset /*= 0*/)
+    
+    }
+    
+    void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer, const uint64_t offset /*= 0*/)
     {
-		
-	}
-
+    
+    }
+    
     bool RHI_CommandList::SetConstantBuffer(const uint32_t slot, const uint8_t scope, RHI_ConstantBuffer* constant_buffer) const
     {
         return true;
     }
-
+    
     void RHI_CommandList::SetSampler(const uint32_t slot, RHI_Sampler* sampler) const
     {
         
@@ -145,7 +145,19 @@ namespace Spartan
     void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const bool storage /*= false*/)
     {
         
-	}
+    }
+
+    void RHI_CommandList::ClearRenderTarget(RHI_Texture* texture,
+        const uint32_t color_index          /*= 0*/,
+        const uint32_t depth_stencil_index  /*= 0*/,
+        const bool storage                  /*= false*/,
+        const Math::Vector4& clear_color    /*= rhi_color_load*/,
+        const float clear_depth             /*= rhi_depth_load*/,
+        const float clear_stencil           /*= rhi_stencil_load*/
+    )
+    {
+
+    }
 
     bool RHI_CommandList::Timestamp_Start(void* query_disjoint /*= nullptr*/, void* query_start /*= nullptr*/)
     {

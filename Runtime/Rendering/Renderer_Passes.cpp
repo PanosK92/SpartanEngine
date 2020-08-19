@@ -693,12 +693,14 @@ namespace Spartan
         RHI_Texture* tex_specular   = is_transparent ? m_render_targets[RenderTarget_Light_Specular_Transparent].get() : m_render_targets[RenderTarget_Light_Specular].get();
         RHI_Texture* tex_volumetric = m_render_targets[RenderTarget_Light_Volumetric].get();
 
+        // Clear render targets
+        cmd_list->ClearRenderTarget(tex_diffuse,    0, 0, true, Vector4::Zero);
+        cmd_list->ClearRenderTarget(tex_specular,   0, 0, true, Vector4::Zero);
+        cmd_list->ClearRenderTarget(tex_volumetric, 0, 0, true, Vector4::Zero);
+
         // Set render state
         static RHI_PipelineState pipeline_state;
-        pipeline_state.pass_name        = "Pass_Light";
-
-        bool cleared = false;
-        Vector4 clear_value = Vector4::Zero;
+        pipeline_state.pass_name = "Pass_Light";
 
         // Iterate through all the light entities
         for (const auto& entity : entities)
@@ -717,9 +719,9 @@ namespace Spartan
                     // Draw
                     if (cmd_list->BeginRenderPass(pipeline_state))
                     {
-                        cmd_list->SetTexture(2, tex_diffuse, true, clear_value);
-                        cmd_list->SetTexture(4, tex_specular, true, clear_value);
-                        cmd_list->SetTexture(5, tex_volumetric, true, clear_value);
+                        cmd_list->SetTexture(2, tex_diffuse, true);
+                        cmd_list->SetTexture(4, tex_specular, true);
+                        cmd_list->SetTexture(5, tex_volumetric, true);
                         cmd_list->SetTexture(8, m_render_targets[RenderTarget_Gbuffer_Albedo]);
                         cmd_list->SetTexture(9, m_render_targets[RenderTarget_Gbuffer_Normal]);
                         cmd_list->SetTexture(10, m_render_targets[RenderTarget_Gbuffer_Material]);
@@ -756,13 +758,6 @@ namespace Spartan
                         // Update uber buffer
                         m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_diffuse->GetWidth()), static_cast<float>(tex_diffuse->GetHeight()));
                         UpdateUberBuffer(cmd_list);
-
-                        // Clear only on first pass
-                        if (!cleared && !is_transparent)
-                        {
-                            clear_value = rhi_color_load;
-                            cleared = true;
-                        }
 
                         const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_diffuse->GetWidth()) / m_thread_group_count));
                         const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_diffuse->GetHeight()) / m_thread_group_count));
