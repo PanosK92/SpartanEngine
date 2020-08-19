@@ -38,7 +38,7 @@ float ScreenSpaceShadows(Surface surface, Light light)
 	
 	// Offset starting position with temporal interleaved gradient noise
     float offset = interleaved_gradient_noise(g_resolution * surface.uv);
-    ray_pos      += ray_step * offset;
+    //ray_pos      += ray_step * offset;
 
     // Ray march towards the light
     float occlusion = 0.0;
@@ -56,7 +56,7 @@ float ScreenSpaceShadows(Surface surface, Light light)
 			// Compute depth difference
 			float depth_z     = get_linear_depth(ray_uv);
 			float depth_delta = ray_pos.z - depth_z;
-			
+
 			// Occlusion test
 			if (abs(g_sss_tolerance - depth_delta) < g_sss_tolerance)
 			{
@@ -71,3 +71,6 @@ float ScreenSpaceShadows(Surface surface, Light light)
     
     return 1.0f - occlusion;
 }
+
+
+

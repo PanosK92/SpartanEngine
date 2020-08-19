@@ -142,7 +142,7 @@ namespace Spartan
         Shader_DebugChannelA_C,
         Shader_DebugChannelRgbGammaCorrect_C,
         Shader_BrdfSpecularLut_C,
-        Shader_Light_P,
+        Shader_Light_C,
 		Shader_Composition_P,
 		Shader_Color_V,
         Shader_Color_P,

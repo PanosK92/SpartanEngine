@@ -109,7 +109,7 @@ float VolumetricLighting(Surface surface, Light light)
     #elif POINT
     {
         [branch]
-        if (light.distance_to_pixel < light.range)
+        if (light.distance_to_pixel < light.far)
         {
             uint projection_index = direction_to_cube_face_index(light.direction);
             
@@ -123,7 +123,7 @@ float VolumetricLighting(Surface surface, Light light)
     #elif SPOT
     {
         [branch]
-        if (light.distance_to_pixel < light.range)
+        if (light.distance_to_pixel < light.far)
         {
             // Compute position in clip space
             float3 pos = project(ray_pos, light_view_projection[0]);

@@ -54,7 +54,7 @@ namespace Spartan
         static auto& GetVariations() { return m_variations; }
 
     private:
-        static ShaderLight* Compile(Context* context, const uint16_t flags);
+        static ShaderLight* _Compile(Context* context, const uint16_t flags);
 
         uint16_t m_flags = 0;
         static std::unordered_map<uint16_t, std::shared_ptr<ShaderLight>> m_variations;

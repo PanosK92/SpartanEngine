@@ -297,22 +297,29 @@ float Technique_Pcf(float3 uv, float compare)
 /*------------------------------------------------------------------------------
     BIAS
 ------------------------------------------------------------------------------*/
-inline float bias_sloped_scaled(float z, float bias)
+inline void auto_bias(inout float3 position, Light light, float bias_mul = 1.0f)
 {
-    const float scale_min    = 0.01f; // point at which the point light stops having issues
-    const float scale_max = 1.0f;
+    //// Receiver plane bias (slope scaled basically)
+    //float3 du                   = ddx(position);
+    //float3 dv                   = ddy(position);
+    //float2 receiver_plane_bias  = mul(transpose(float2x2(du.xy, dv.xy)), float2(du.z, dv.z));
     
-    float zdx           = abs(ddx(z));
-    float zdy           = abs(ddy(z));
-    float scale         = clamp(max(zdx, zdy), scale_min, scale_max);
+    //// Static depth biasing to make up for incorrect fractional sampling on the shadow map grid
+    //float sampling_error = min(2.0f * dot(g_shadow_texel_size, abs(receiver_plane_bias)), 0.01f);
+
+    // Scale down as the user is interacting with much bigger, non-fractional values (just a UX approach)
+    float fixed_factor = 0.0001f;
     
-    return z + bias * scale;
+    // Slope scaling
+    float slope_factor = (1.0f - saturate(light.n_dot_l));
+
+    // Apply bias
+    position.z += fixed_factor * slope_factor * light.bias * bias_mul;
 }
 
 inline float3 bias_normal_offset(Light light, float3 normal)
 {
-    float n_dot_l = 1.0f - dot(normal, normalize(-light.direction));
-    return normal * n_dot_l * light.normal_bias * g_shadow_texel_size * 10;
+    return normal * (1.0f - saturate(light.n_dot_l)) * light.normal_bias * g_shadow_texel_size * 10;
 }
 
 /*------------------------------------------------------------------------------
@@ -335,8 +342,8 @@ float4 Shadow_Map(Surface surface, Light light, bool transparent_pixel)
             if (is_saturated(pos))
             {   
                 // Sample primary cascade
-                float compare_depth = bias_sloped_scaled(pos.z, light.bias * (cascade + 1));
-                shadow.a            = SampleShadowMap(float3(pos.xy, cascade), compare_depth);
+                auto_bias(pos, light, cascade + 1);
+                shadow.a = SampleShadowMap(float3(pos.xy, cascade), pos.z);
 
                 #if SHADOWS_TRANSPARENT
                 [branch]
@@ -358,8 +365,8 @@ float4 Shadow_Map(Surface surface, Light light, bool transparent_pixel)
                     pos = project(position_world, light_view_projection[cacade_secondary]);
 
                     // Sample secondary cascade
-                    compare_depth           = bias_sloped_scaled(pos.z, light.bias * (cacade_secondary + 1));
-                    float shadow_secondary  = SampleShadowMap(float3(pos.xy, cacade_secondary), compare_depth);
+                    auto_bias(pos, light, cacade_secondary + 1);
+                    float shadow_secondary = SampleShadowMap(float3(pos.xy, cacade_secondary), pos.z);
 
                     // Blend cascades
                     float alpha = smoothstep(0.0f, blend_threshold, distance_to_edge);
@@ -381,12 +388,12 @@ float4 Shadow_Map(Surface surface, Light light, bool transparent_pixel)
     #elif POINT
     {
         [branch]
-        if (light.distance_to_pixel < light.range)
+        if (light.distance_to_pixel < light.far)
         {
-            uint projection_index   = direction_to_cube_face_index(light.direction);
-            float pos_z             = project_depth(position_world, light_view_projection[projection_index]);   
-            float compare_depth     = bias_sloped_scaled(pos_z, light.bias);
-            shadow.a                = SampleShadowMap(light.direction, compare_depth);
+            uint projection_index = direction_to_cube_face_index(light.direction);
+            float3 position = project(position_world, light_view_projection[projection_index]);
+            auto_bias(position, light);
+            shadow.a = SampleShadowMap(light.direction, position.z);
             
             #if SHADOWS_TRANSPARENT
             [branch]
@@ -400,11 +407,11 @@ float4 Shadow_Map(Surface surface, Light light, bool transparent_pixel)
     #elif SPOT
     {
         [branch]
-        if (light.distance_to_pixel < light.range)
+        if (light.distance_to_pixel < light.far)
         {
-            float3 pos_clip     = project(position_world, light_view_projection[0]);
-            float compare_depth = bias_sloped_scaled(pos_clip.z, light.bias);
-            shadow.a            = SampleShadowMap(float3(pos_clip.xy, 0.0f), compare_depth);
+            float3 position = project(position_world, light_view_projection[0]);
+            auto_bias(position, light);
+            shadow.a = SampleShadowMap(float3(position.xy, 0.0f), position.z);
 
             #if SHADOWS_TRANSPARENT
             [branch]

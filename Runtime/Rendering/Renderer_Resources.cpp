@@ -186,7 +186,7 @@ namespace Spartan
 
         // Shader which compile different variations when needed
         m_shaders[Shader_Gbuffer_P] = make_shared<ShaderGBuffer>(m_context);
-        m_shaders[Shader_Light_P]   = make_shared<ShaderLight>(m_context);
+        m_shaders[Shader_Light_C]   = make_shared<ShaderLight>(m_context);
 
         // G-Buffer
         m_shaders[Shader_Gbuffer_V] = make_shared<RHI_Shader>(m_context);
