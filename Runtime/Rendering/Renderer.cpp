@@ -196,19 +196,21 @@ namespace Spartan
         if (m_swap_chain && !m_swap_chain->IsPresenting())
             return;
 
-		// If there is no camera, clear
-		if (!m_camera)
-		{
-            //cmd_list->Clear(m_render_targets[RenderTarget_Composition_Ldr].get(), Vector4(0.0f, 0.0f, 0.0f, 1.0f));
-			return;
-		}
+        RHI_CommandList* cmd_list = m_swap_chain->GetCmdList();
 
-		// If there are no entities, clear to the camera's clear color
-		if (m_entities.empty())
-		{
-            //cmd_list->Clear(m_render_targets[RenderTarget_Composition_Ldr].get(), m_camera->GetClearColor());
-			return;
-		}
+        // If there is no camera, clear to black
+        if (!m_camera)
+        {
+            cmd_list->ClearRenderTarget(m_render_targets[RenderTarget_Frame_Ldr].get(), 0, 0, false, Vector4(0.0f, 0.0f, 0.0f, 1.0f));
+            return;
+        }
+        
+        // If there is not camera but no other entities to render, clear to camera's color
+        if (m_entities[Renderer_Object_Opaque].empty() && m_entities[Renderer_Object_Transparent].empty() && m_entities[Renderer_Object_Light].empty())
+        {
+            cmd_list->ClearRenderTarget(m_render_targets[RenderTarget_Frame_Ldr].get(), 0, 0, false, m_camera->GetClearColor());
+            return;
+        }
 
         // Reset dynamic buffer indices when the swapchain resets to first buffer/command list
         if (m_swap_chain->GetCmdIndex() == 0)
@@ -220,8 +222,8 @@ namespace Spartan
             m_buffer_material_offset_index  = 0;
         }
 
-		// Update frame buffer
-		{
+        // Update frame buffer
+        {
             if (m_update_ortho_proj || m_near_plane != m_camera->GetNearPlane() || m_far_plane != m_camera->GetFarPlane())
             {
                 m_buffer_frame_cpu.projection_ortho         = Matrix::CreateOrthographicLH(m_viewport.width, m_viewport.height, m_near_plane, m_far_plane);
@@ -229,29 +231,29 @@ namespace Spartan
                 m_update_ortho_proj                         = false;
             }
 
-            m_near_plane	                = m_camera->GetNearPlane();
-            m_far_plane		                = m_camera->GetFarPlane();
-            m_buffer_frame_cpu.view		    = m_camera->GetViewMatrix();
+            m_near_plane                    = m_camera->GetNearPlane();
+            m_far_plane                     = m_camera->GetFarPlane();
+            m_buffer_frame_cpu.view         = m_camera->GetViewMatrix();
             m_buffer_frame_cpu.projection   = m_camera->GetProjectionMatrix();
 
-			// TAA - Generate jitter
-			if (GetOption(Render_AntiAliasing_Taa))
-			{
-				m_taa_jitter_previous = m_taa_jitter;
-
+            // TAA - Generate jitter
+            if (GetOption(Render_AntiAliasing_Taa))
+            {
+                m_taa_jitter_previous = m_taa_jitter;
+                
                 const float scale               = 1.0f;
-				const uint64_t samples	        = 16;
-				const uint64_t index	        = m_frame_num % samples;
-				m_taa_jitter			        = (Utility::Sampling::Halton2D(index, 2, 3) * 2.0f - 1.0f);
-				m_taa_jitter.x			        = (m_taa_jitter.x / m_resolution.x) * scale;
-				m_taa_jitter.y			        = (m_taa_jitter.y / m_resolution.y) * scale;
+                const uint64_t samples          = 16;
+                const uint64_t index            = m_frame_num % samples;
+                m_taa_jitter			        = (Utility::Sampling::Halton2D(index, 2, 3) * 2.0f - 1.0f);
+                m_taa_jitter.x			        = (m_taa_jitter.x / m_resolution.x) * scale;
+                m_taa_jitter.y			        = (m_taa_jitter.y / m_resolution.y) * scale;
                 m_buffer_frame_cpu.projection   *= Matrix::CreateTranslation(Vector3(m_taa_jitter.x, m_taa_jitter.y, 0.0f));
-			}
-			else
-			{
-				m_taa_jitter			= Vector2::Zero;
-				m_taa_jitter_previous   = Vector2::Zero;		
-			}
+            }
+            else
+            {
+                m_taa_jitter            = Vector2::Zero;
+                m_taa_jitter_previous   = Vector2::Zero;
+            }
 
             // Update the remaining of the frame buffer
             m_buffer_frame_cpu.view_projection              = m_buffer_frame_cpu.view * m_buffer_frame_cpu.projection;
@@ -279,7 +281,7 @@ namespace Spartan
 		}
 
         m_is_rendering = true;
-        Pass_Main(m_swap_chain->GetCmdList());
+        Pass_Main(cmd_list);
         m_is_rendering = false;
 
         m_frame_num++;

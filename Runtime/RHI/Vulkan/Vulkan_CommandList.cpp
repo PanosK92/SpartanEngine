@@ -580,7 +580,16 @@ namespace Spartan
         const float clear_stencil           /*= rhi_stencil_load*/
     )
     {
+        VkImageSubresourceRange image_subresource_range = {};
+        image_subresource_range.aspectMask              = VK_IMAGE_ASPECT_COLOR_BIT;
+        image_subresource_range.baseMipLevel            = 0;
+        image_subresource_range.levelCount              = 1;
+        image_subresource_range.baseArrayLayer          = 0;
+        image_subresource_range.layerCount              = 1;
 
+        VkClearColorValue _clear_color = { clear_color.x, clear_color.y, clear_color.z, clear_color.w };
+
+        vkCmdClearColorImage(static_cast<VkCommandBuffer>(m_cmd_buffer), static_cast<VkImage>(texture->Get_Resource_View()), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &_clear_color, 1, &image_subresource_range);
     }
 
     void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const bool storage /*= false*/)
