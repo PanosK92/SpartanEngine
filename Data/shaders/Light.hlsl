@@ -218,7 +218,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         
     }
 
-    tex_out_rgb[thread_id.xy]   = light_diffuse;
-    tex_out_rgb2[thread_id.xy]  = light_specular;
-    tex_out_rgb3[thread_id.xy]  = saturate_16(light_volumetric);
+    tex_out_rgb[thread_id.xy]   += light_diffuse;
+    tex_out_rgb2[thread_id.xy]  += light_specular;
+    tex_out_rgb3[thread_id.xy]  += saturate_16(light_volumetric);
 }
