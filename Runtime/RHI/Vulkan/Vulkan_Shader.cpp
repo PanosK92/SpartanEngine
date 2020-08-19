@@ -377,9 +377,9 @@ namespace Spartan
 		// Defines
         {
             // Add standard defines
-            arguments.emplace_back("-D"); arguments.emplace_back("COMPILE_VS="+ to_string(static_cast<uint8_t>(m_shader_type == RHI_Shader_Vertex)));
-            arguments.emplace_back("-D"); arguments.emplace_back("COMPILE_PS="+ to_string(static_cast<uint8_t>(m_shader_type == RHI_Shader_Pixel)));
-            arguments.emplace_back("-D"); arguments.emplace_back("COMPILE_CS="+ to_string(static_cast<uint8_t>(m_shader_type == RHI_Shader_Compute)));
+            arguments.emplace_back("-D"); arguments.emplace_back("VS="+ to_string(static_cast<uint8_t>(m_shader_type == RHI_Shader_Vertex)));
+            arguments.emplace_back("-D"); arguments.emplace_back("PS="+ to_string(static_cast<uint8_t>(m_shader_type == RHI_Shader_Pixel)));
+            arguments.emplace_back("-D"); arguments.emplace_back("CS="+ to_string(static_cast<uint8_t>(m_shader_type == RHI_Shader_Compute)));
 
             // Add the rest of the defines
             for (const auto& define : m_defines)

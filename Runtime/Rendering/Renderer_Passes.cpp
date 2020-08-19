@@ -52,10 +52,10 @@ namespace Spartan
     {
         // Constant buffers
         cmd_list->SetConstantBuffer(0, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, m_buffer_frame_gpu);
-        cmd_list->SetConstantBuffer(1, RHI_Shader_Pixel, m_buffer_material_gpu);
+        cmd_list->SetConstantBuffer(1, RHI_Shader_Compute, m_buffer_material_gpu);
         cmd_list->SetConstantBuffer(2, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, m_buffer_uber_gpu);
         cmd_list->SetConstantBuffer(3, RHI_Shader_Vertex | RHI_Shader_Compute, m_buffer_object_gpu);
-        cmd_list->SetConstantBuffer(4, RHI_Shader_Pixel, m_buffer_light_gpu);
+        cmd_list->SetConstantBuffer(4, RHI_Shader_Compute, m_buffer_light_gpu);
         
         // Samplers
         cmd_list->SetSampler(0, m_sampler_compare_depth);
@@ -681,46 +681,21 @@ namespace Spartan
 
     void Renderer::Pass_Light(RHI_CommandList* cmd_list, const Renderer_Object_Type object_type)
     {
-        const bool is_transparent = object_type == Renderer_Object_Type::Renderer_Object_Transparent;
-
         // Acquire lights
         const vector<Entity*>& entities = m_entities[Renderer_Object_Light];
         if (entities.empty())
             return;
 
-        // Acquire shaders
-        RHI_Shader* shader_v    = m_shaders[Shader_Quad_V].get();
-        ShaderLight* shader_p   = static_cast<ShaderLight*>(m_shaders[Shader_Light_P].get());
-        if (!shader_v->IsCompiled())
-            return;
+        const bool is_transparent = object_type == Renderer_Object_Type::Renderer_Object_Transparent;
 
         // Acquire render targets
-        RHI_Texture* tex_diffuse       = is_transparent ? m_render_targets[RenderTarget_Light_Diffuse_Transparent].get() : m_render_targets[RenderTarget_Light_Diffuse].get();
-        RHI_Texture* tex_specular      = is_transparent ? m_render_targets[RenderTarget_Light_Specular_Transparent].get() : m_render_targets[RenderTarget_Light_Specular].get();
-        RHI_Texture* tex_volumetric    = m_render_targets[RenderTarget_Light_Volumetric].get();
-        RHI_Texture* tex_depth         = m_render_targets[RenderTarget_Gbuffer_Depth].get();
+        RHI_Texture* tex_diffuse    = is_transparent ? m_render_targets[RenderTarget_Light_Diffuse_Transparent].get() : m_render_targets[RenderTarget_Light_Diffuse].get();
+        RHI_Texture* tex_specular   = is_transparent ? m_render_targets[RenderTarget_Light_Specular_Transparent].get() : m_render_targets[RenderTarget_Light_Specular].get();
+        RHI_Texture* tex_volumetric = m_render_targets[RenderTarget_Light_Volumetric].get();
 
-         // Set render state
+        // Set render state
         static RHI_PipelineState pipeline_state;
-        pipeline_state.shader_vertex                            = shader_v;
-        pipeline_state.rasterizer_state                         = m_rasterizer_cull_back_solid.get();
-        pipeline_state.blend_state                              = m_blend_additive.get();
-        pipeline_state.depth_stencil_state                      = is_transparent ? m_depth_stencil_off_on_r.get() : m_depth_stencil_off_off.get();
-        pipeline_state.vertex_buffer_stride                     = m_viewport_quad.GetVertexBuffer()->GetStride();
-        pipeline_state.render_target_color_textures[0]          = tex_diffuse;
-        pipeline_state.clear_color[0]                           = Vector4::Zero;
-        pipeline_state.render_target_color_textures[1]          = tex_specular;
-        pipeline_state.clear_color[1]                           = Vector4::Zero;
-        pipeline_state.render_target_color_textures[2]          = tex_volumetric;
-        pipeline_state.clear_color[2]                           = Vector4::Zero;
-        pipeline_state.render_target_depth_texture              = is_transparent ? tex_depth : nullptr;
-        pipeline_state.clear_stencil                            = is_transparent ? rhi_stencil_load : rhi_stencil_dont_care;
-        pipeline_state.render_target_depth_texture_read_only    = is_transparent;
-        pipeline_state.viewport                                 = tex_diffuse->GetViewport();
-        pipeline_state.primitive_topology                       = RHI_PrimitiveTopology_TriangleList;
-        pipeline_state.pass_name                                = "Pass_Light";
-
-        bool cleared = false;
+        pipeline_state.pass_name = "Pass_Light";
 
         // Iterate through all the light entities
         for (const auto& entity : entities)
@@ -730,30 +705,24 @@ namespace Spartan
                 if (light->GetIntensity() != 0)
                 {
                     // Set pixel shader
-                    pipeline_state.shader_pixel = static_cast<RHI_Shader*>(ShaderLight::GetVariation(m_context, light, m_options));
+                    pipeline_state.shader_compute = static_cast<RHI_Shader*>(ShaderLight::GetVariation(m_context, light, m_options));
 
                     // Skip the shader until it compiles or the users spots a compilation error
-                    if (!pipeline_state.shader_pixel->IsCompiled())
+                    if (!pipeline_state.shader_compute->IsCompiled())
                         continue;
 
+                    // Draw
                     if (cmd_list->BeginRenderPass(pipeline_state))
                     {
-                        // Update uber buffer
-                        m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_diffuse->GetWidth()), static_cast<float>(tex_diffuse->GetHeight()));
-                        UpdateUberBuffer(cmd_list);
-
-                        cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
-                        cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
+                        cmd_list->SetTexture(2, tex_diffuse, true);
+                        cmd_list->SetTexture(4, tex_specular, true);
+                        cmd_list->SetTexture(5, tex_volumetric, true);
                         cmd_list->SetTexture(8, m_render_targets[RenderTarget_Gbuffer_Albedo]);
                         cmd_list->SetTexture(9, m_render_targets[RenderTarget_Gbuffer_Normal]);
                         cmd_list->SetTexture(10, m_render_targets[RenderTarget_Gbuffer_Material]);
-                        cmd_list->SetTexture(12, tex_depth);
                         cmd_list->SetTexture(22, (m_options & Render_Hbao) ? m_render_targets[RenderTarget_Hbao] : m_tex_white);
                         cmd_list->SetTexture(26, (m_options & Render_ScreenSpaceReflections) ? m_render_targets[RenderTarget_Ssr] : m_tex_black_transparent);
                         cmd_list->SetTexture(27, m_render_targets[RenderTarget_Frame_Hdr_2]); // previous frame before post-processing
-
-                        // Update light buffer
-                        UpdateLightBuffer(cmd_list, light);
 
                         // Set shadow map
                         if (light->GetShadowsEnabled())
@@ -778,16 +747,20 @@ namespace Spartan
                             }
                         }
 
-                        // Draw
-                        cmd_list->DrawIndexed(Rectangle::GetIndexCount());
-                        cmd_list->EndRenderPass();
+                        // Update light buffer
+                        UpdateLightBuffer(cmd_list, light);
 
-                        // Clear only on first pass
-                        if (!cleared && !is_transparent)
-                        {
-                            pipeline_state.ResetClearValues();
-                            cleared = true;
-                        }
+                        // Update uber buffer
+                        m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_diffuse->GetWidth()), static_cast<float>(tex_diffuse->GetHeight()));
+                        UpdateUberBuffer(cmd_list);
+
+                        const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_diffuse->GetWidth()) / m_thread_group_count));
+                        const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_diffuse->GetHeight()) / m_thread_group_count));
+                        const uint32_t thread_group_count_z = 1;
+                        const bool async = false;
+
+                        cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
+                        cmd_list->EndRenderPass();
                     }
                 }
             }

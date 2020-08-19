@@ -58,10 +58,10 @@ namespace Spartan
             return m_variations.at(flags).get();
 
         // Compile new shader
-        return Compile(context, flags);
+        return _Compile(context, flags);
     }
 
-    ShaderLight* ShaderLight::Compile(Context* context, const uint16_t flags)
+    ShaderLight* ShaderLight::_Compile(Context* context, const uint16_t flags)
     {
         // Shader source file path
         const string file_path = context->GetSubsystem<ResourceCache>()->GetDataDirectory(Asset_Shaders) + "/Light.hlsl";
@@ -80,7 +80,7 @@ namespace Spartan
         shader->AddDefine("SCREEN_SPACE_REFLECTIONS",   (flags & Shader_Light_ScreenSpaceReflections)   ? "1" : "0");
 
         // Compile
-        shader->CompileAsync(RHI_Shader_Pixel, file_path);
+        shader->CompileAsync(RHI_Shader_Compute, file_path);
 
         // Save
         m_variations[flags] = shader;

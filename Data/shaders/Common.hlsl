@@ -151,23 +151,6 @@ inline float3x3 makeTBN(float3 n, float3 t)
     return float3x3(t, b, n); 
 }
 
-// Find the normal for this fragment, pulling either from a predefined normal map
-// or from the interpolated mesh normal and tangent attributes.
-inline float3 tangent_to_world(float3 position_world, float3 tangent, float3 normal, float2 uv)
-{
-    float3 dp1  = ddx(position_world);
-    float3 dp2  = ddy(position_world);
-    float2 duv1 = ddx(uv);
-    float2 duv2 = ddy(uv);
-
-    float3 N        = normalize(normal);
-    float3 T        = normalize(dp1 * duv2.y - dp2 * duv1.y);
-    float3 B        = normalize(cross(N, T));
-    float3x3 TBN    = float3x3(T, B, N);
-
-    return normalize(mul(tangent, TBN).xyz);
-}
-
 /*------------------------------------------------------------------------------
     DEPTH
 ------------------------------------------------------------------------------*/
@@ -178,7 +161,8 @@ inline float get_depth(int2 pos)
 
 inline float get_depth(float2 uv)
 {
-    return tex_depth.SampleLevel(sampler_point_clamp, uv, 0).r;
+    // effects like screen space shadows, can get artifacts if a point sampler is used
+    return tex_depth.SampleLevel(sampler_bilinear_clamp, uv, 0).r;
 }
 
 inline float get_linear_depth(float z, float near, float far)

@@ -26,16 +26,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Fog.hlsl"
 //================================
 
-struct PixelOutputType
-{
-    float3 diffuse      : SV_Target0;
-    float3 specular     : SV_Target1;
-    float3 volumetric   : SV_Target2;
-};
-
 float attunation_distance(const Light light)
 {
-    float attenuation = saturate(1.0f - light.distance_to_pixel / light.range);
+    float attenuation = saturate(1.0f - light.distance_to_pixel / light.far);
     return attenuation * attenuation;
 }
 
@@ -48,29 +41,32 @@ float attunation_angle(const Light light)
     return attenuation * attenuation;
 }
 
-PixelOutputType mainPS(Pixel_PosUv input)
+[numthreads(thread_group_count, thread_group_count, 1)]
+void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    PixelOutputType light_out;
-    light_out.diffuse       = 0.0f;
-    light_out.specular      = 0.0f;
-    light_out.volumetric    = 0.0f;
-
-    const float2 screen_pos = input.uv * g_resolution;
+    if (thread_id.x >= uint(g_resolution.x) || thread_id.y >= uint(g_resolution.y))
+        return;
     
     // Sample textures
-    float4 sample_albedo    = tex_albedo.Load(int3(screen_pos, 0));
-    float4 sample_normal    = tex_normal.Load(int3(screen_pos, 0));
-    float4 sample_material  = tex_material.Load(int3(screen_pos, 0));
-    float sample_hbao       = tex_hbao.Load(int3(screen_pos, 0)).r;
+    float4 sample_albedo    = tex_albedo.Load(int3(thread_id.xy, 0));
+    float4 sample_normal    = tex_normal.Load(int3(thread_id.xy, 0));
+    float4 sample_material  = tex_material.Load(int3(thread_id.xy, 0));
+    float sample_depth      = tex_depth.Load(int3(thread_id.xy, 0)).r;
+    float sample_hbao       = tex_hbao.Load(int3(thread_id.xy, 0)).r;
 
     // Post-process samples
     int mat_id      = round(sample_normal.a * 65535);
     float occlusion = sample_material.a;
+
+    const float2 uv = (thread_id.xy + 0.5f) / g_resolution;
+    float3 light_diffuse    = 0.0f;
+    float3 light_specular   = 0.0f;
+    float3 light_volumetric = 0.0f;
     
     // Fill surface struct
     Surface surface;
-    surface.uv                      = input.uv;
-    surface.depth                   = tex_depth.Sample(sampler_point_clamp, surface.uv).r;
+    surface.uv                      = uv;
+    surface.depth                   = sample_depth;
     surface.position                = get_position(surface.depth, surface.uv);
     surface.normal                  = normal_decode(sample_normal.xyz);
     surface.camera_to_pixel         = normalize(surface.position - g_camera_position.xyz);
@@ -99,14 +95,15 @@ PixelOutputType mainPS(Pixel_PosUv input)
     Light light;
     light.color             = color.rgb;
     light.position          = position.xyz;
-    light.range             = intensity_range_angle_bias.y;
+    light.near              = 0.1f;
+    light.far               = intensity_range_angle_bias.y;
     light.angle             = intensity_range_angle_bias.z;
     light.bias              = intensity_range_angle_bias.w;
     light.normal_bias       = normal_bias;
     light.distance_to_pixel = length(surface.position - light.position);
     #if DIRECTIONAL
     light.array_size    = 4;
-    light.direction     = direction.xyz;
+    light.direction     = normalize(direction.xyz);
     light.color         *= saturate(dot(normalize(-direction.xyz), surface.normal)) * intensity_range_angle_bias.x;
     #elif POINT
     light.array_size    = 1;
@@ -119,10 +116,10 @@ PixelOutputType mainPS(Pixel_PosUv input)
     light.color         *= intensity_range_angle_bias.x;
     light.color         *= attunation_distance(light) * attunation_angle(light); // attenuate
     #endif
+    light.n_dot_l       = dot(-light.direction, surface.normal);
     
     // Compute shadows and volumetric fog/light
-    float4 shadow       = 1.0f;
-    float3 volumetric   = 0.0f;
+    float4 shadow = 1.0f;
     {
         // Shadow mapping
         #if SHADOWS
@@ -132,7 +129,7 @@ PixelOutputType mainPS(Pixel_PosUv input)
             // Volumetric lighting (requires shadow maps)
             #if VOLUMETRIC
             {
-                volumetric += VolumetricLighting(surface, light) * get_fog_factor(surface) * 20.0f * color.rgb;
+                light_volumetric += VolumetricLighting(surface, light) * get_fog_factor(surface) * 20.0f * color.rgb;
             }
             #endif
         }
@@ -163,7 +160,7 @@ PixelOutputType mainPS(Pixel_PosUv input)
         float l_dot_h   = saturate(dot(l, h));
         float v_dot_h   = saturate(dot(v, h));
         float n_dot_v   = saturate(dot(surface.normal, v));
-        float n_dot_l   = saturate(dot(surface.normal, l));
+        float n_dot_l   = saturate(light.n_dot_l);
         float n_dot_h   = saturate(dot(surface.normal, h));
 
         float3 diffuse_energy       = 1.0f;
@@ -203,12 +200,12 @@ PixelOutputType mainPS(Pixel_PosUv input)
         // SSR
         float3 light_reflection = 0.0f;
         #if SCREEN_SPACE_REFLECTIONS
-        float2 sample_ssr = tex_ssr.Sample(sampler_point_clamp, input.uv).xy;
+        float2 sample_ssr = tex_ssr.Load(int3(thread_id.xy, 0)).xy;
         [branch]
         if (sample_ssr.x * sample_ssr.y != 0.0f)
         {
             // saturate as reflections will accumulate int tex_frame overtime, causing more light to go out that it comes in.
-            light_reflection = saturate(tex_frame.Sample(sampler_bilinear_clamp, sample_ssr.xy).rgb);
+            light_reflection = saturate(tex_frame.SampleLevel(sampler_bilinear_clamp, sample_ssr, 0).rgb);
             light_reflection *= reflective_energy;
             light_reflection *= 1.0f - material.roughness; // fade with roughness as we don't have blurry screen space reflections yet
         }
@@ -216,13 +213,12 @@ PixelOutputType mainPS(Pixel_PosUv input)
 
         float3 radiance = light.color * n_dot_l;
         
-        light_out.diffuse.rgb  = saturate_16(diffuse * radiance);
-        light_out.specular.rgb = saturate_16((specular + specular_clearcoat + specular_sheen) * radiance + light_reflection);
+        light_diffuse  = saturate_16(diffuse * radiance);
+        light_specular = saturate_16((specular + specular_clearcoat + specular_sheen) * radiance + light_reflection);
         
     }
 
-    light_out.volumetric.rgb = saturate_16(volumetric);
-
-    return light_out;
+    tex_out_rgb[thread_id.xy]   = light_diffuse;
+    tex_out_rgb2[thread_id.xy]  = light_specular;
+    tex_out_rgb3[thread_id.xy]  = saturate_16(light_volumetric);
 }
-

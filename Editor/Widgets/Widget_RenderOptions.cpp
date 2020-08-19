@@ -225,7 +225,7 @@ void Widget_RenderOptions::Tick()
             ImGui::Separator();
 
             // Sharpen
-            ImGui::Checkbox("Sharpening (FidelityFX CAS)", &do_sharperning);
+            ImGui::Checkbox("Sharpening (AMD FidelityFX CAS)", &do_sharperning);
             ImGuiEx::Tooltip("Contrast adaptive sharpening. Areas of the image that are already sharp are sharpened less, while areas that lack detail are sharpened more.");
             ImGui::SameLine(); render_option_float("##sharpen_option", "Strength", Option_Value_Sharpen_Strength, "", 0.1f, 0.0f, 1.0f);
             ImGui::Separator();

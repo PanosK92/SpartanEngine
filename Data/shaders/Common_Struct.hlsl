@@ -42,13 +42,15 @@ struct Light
 {
     float3  color;
     float3  position;
-    float   range;
     float3  direction;
     float   distance_to_pixel;
     float   angle;
     float   bias;
     float   normal_bias;
     uint    array_size;
+    float   n_dot_l;
+    float   near;
+    float   far;
 };
 
 struct Surface

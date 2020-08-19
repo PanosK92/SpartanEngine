@@ -52,7 +52,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     if (mat_id == 0)
     {
         color.rgb   += tex_environment.Sample(sampler_bilinear_clamp, direction_sphere_uv(camera_to_pixel)).rgb;
-        color.rgb   *= clamp(g_directional_light_intensity / 5.0f, 0.01f, 1.0f);
+        color.rgb   *= saturate(g_directional_light_intensity / 128000.0f);
         fog         *= luminance(color.rgb);
     }
     else
@@ -140,3 +140,4 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     
     return saturate_16(color);
 }
+

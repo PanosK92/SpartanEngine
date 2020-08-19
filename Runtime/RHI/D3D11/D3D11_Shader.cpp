@@ -65,9 +65,9 @@ namespace Spartan
 		// Defines
 		vector<D3D_SHADER_MACRO> defines =
 		{
-			D3D_SHADER_MACRO{ "COMPILE_VS", m_shader_type == RHI_Shader_Vertex   ? "1" : "0" },
-			D3D_SHADER_MACRO{ "COMPILE_PS", m_shader_type == RHI_Shader_Pixel    ? "1" : "0" },
-            D3D_SHADER_MACRO{ "COMPILE_CS", m_shader_type == RHI_Shader_Compute  ? "1" : "0" }
+			D3D_SHADER_MACRO{ "VS", m_shader_type == RHI_Shader_Vertex   ? "1" : "0" },
+			D3D_SHADER_MACRO{ "PS", m_shader_type == RHI_Shader_Pixel    ? "1" : "0" },
+            D3D_SHADER_MACRO{ "CS", m_shader_type == RHI_Shader_Compute  ? "1" : "0" }
 		};
 		for (const auto& define : m_defines)
 		{
