@@ -75,13 +75,10 @@ namespace Spartan
 
     void Renderer::CreateRasterizerStates()
     {
-        m_rasterizer_cull_back_solid            = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_Cull_Back,     RHI_Fill_Solid,     true,   false, false, false);
-        m_rasterizer_cull_back_solid_no_clip    = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_Cull_Back,     RHI_Fill_Solid,     false,  false, false, false);
-        m_rasterizer_cull_front_solid           = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_Cull_Front,    RHI_Fill_Solid,     true,   false, false, false);
-        m_rasterizer_cull_none_solid            = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_Cull_None,     RHI_Fill_Solid,     true,   false, false, false);
-        m_rasterizer_cull_back_wireframe        = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_Cull_Back,     RHI_Fill_Wireframe, true,   false, false, true);
-        m_rasterizer_cull_front_wireframe       = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_Cull_Front,    RHI_Fill_Wireframe, true,   false, false, true);
-        m_rasterizer_cull_none_wireframe        = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_Cull_None,     RHI_Fill_Wireframe, true,   false, false, true);
+        m_rasterizer_cull_back_solid        = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_Cull_Back, RHI_Fill_Solid,     true,  false, false, false);
+        m_rasterizer_cull_back_wireframe    = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_Cull_Back, RHI_Fill_Wireframe, true,  false, false, true);
+        m_rasterizer_light_point_spot       = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_Cull_Back, RHI_Fill_Solid,     true,  false, false, false, GetOption(Render_ReverseZ) ? -0.01f : 0.01f,    0.0f);
+        m_rasterizer_light_directional      = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_Cull_Back, RHI_Fill_Solid,     false, false, false, false, GetOption(Render_ReverseZ) ? -0.001f : 0.001f,  0.0f * 0.1f);
     }
 
     void Renderer::CreateBlendStates()

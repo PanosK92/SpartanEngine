@@ -352,12 +352,9 @@ namespace Spartan
 
         // Rasterizer states
 		std::shared_ptr<RHI_RasterizerState> m_rasterizer_cull_back_solid;
-        std::shared_ptr<RHI_RasterizerState> m_rasterizer_cull_back_solid_no_clip;
-		std::shared_ptr<RHI_RasterizerState> m_rasterizer_cull_front_solid;
-		std::shared_ptr<RHI_RasterizerState> m_rasterizer_cull_none_solid;
 		std::shared_ptr<RHI_RasterizerState> m_rasterizer_cull_back_wireframe;
-		std::shared_ptr<RHI_RasterizerState> m_rasterizer_cull_front_wireframe;
-		std::shared_ptr<RHI_RasterizerState> m_rasterizer_cull_none_wireframe;
+        std::shared_ptr<RHI_RasterizerState> m_rasterizer_light_point_spot;
+        std::shared_ptr<RHI_RasterizerState> m_rasterizer_light_directional;
 
         // Samplers
 		std::shared_ptr<RHI_Sampler> m_sampler_compare_depth;

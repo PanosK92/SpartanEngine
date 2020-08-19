@@ -125,8 +125,8 @@ namespace Spartan
         inline void SetSampler(const uint32_t slot, const std::shared_ptr<RHI_Sampler>& sampler) const { SetSampler(slot, sampler.get()); }
 
 		// Texture
-        void SetTexture(const uint32_t slot, RHI_Texture* texture, const bool storage = false);
-        inline void SetTexture(const uint32_t slot, const std::shared_ptr<RHI_Texture>& texture, const bool storage = false) { SetTexture(slot, texture.get(), storage); }
+        void SetTexture(const uint32_t slot, RHI_Texture* texture, const bool storage = false, const Math::Vector4& storage_clear = rhi_color_load);
+        inline void SetTexture(const uint32_t slot, const std::shared_ptr<RHI_Texture>& texture, const bool storage = false, const Math::Vector4& storage_clear = rhi_color_load) { SetTexture(slot, texture.get(), storage, storage_clear); }
         
         // Timestamps
         bool Timestamp_Start(void* query_disjoint = nullptr, void* query_start = nullptr);
