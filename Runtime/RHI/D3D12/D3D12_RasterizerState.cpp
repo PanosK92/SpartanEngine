@@ -32,22 +32,24 @@ using namespace std;
 
 namespace Spartan
 {
-	RHI_RasterizerState::RHI_RasterizerState
-	(
-		const shared_ptr<RHI_Device>& rhi_device,
-		const RHI_Cull_Mode cull_mode,
-		const RHI_Fill_Mode fill_mode,
-		const bool depth_clip_enabled,
-		const bool scissor_enabled,
-		const bool multi_sample_enabled,
-		const bool antialised_line_enabled,
+    RHI_RasterizerState::RHI_RasterizerState
+    (
+        const shared_ptr<RHI_Device>& rhi_device,
+        const RHI_Cull_Mode cull_mode,
+        const RHI_Fill_Mode fill_mode,
+        const bool depth_clip_enabled,
+        const bool scissor_enabled,
+        const bool multi_sample_enabled,
+        const bool antialised_line_enabled,
+        const float depth_bias /*= 0.0f */,
+        const float depth_bias_slope_scaled /*= 0.0f */,
         const float line_width /*= 1.0f */)
-	{
-		
-	}
+    {
+    
+    }
 
-	RHI_RasterizerState::~RHI_RasterizerState()
-	{
+    RHI_RasterizerState::~RHI_RasterizerState()
+    {
         
-	}
+    }
 }

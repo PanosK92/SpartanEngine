@@ -258,7 +258,7 @@ namespace Spartan
                 rasterizer_state.lineWidth                  = m_rhi_device->GetContextRhi()->device_features.features.wideLines ? m_state.rasterizer_state->GetLineWidth() : 1.0f;
                 rasterizer_state.cullMode                   = vulkan_cull_mode[m_state.rasterizer_state->GetCullMode()];
 		        rasterizer_state.frontFace				    = VK_FRONT_FACE_CLOCKWISE;
-		        rasterizer_state.depthBiasEnable		    = m_state.rasterizer_state->GetDepthBias() != 0.0f ? VK_FALSE : VK_TRUE;
+		        rasterizer_state.depthBiasEnable		    = m_state.rasterizer_state->GetDepthBias() != 0.0f ? VK_TRUE : VK_FALSE;
 		        rasterizer_state.depthBiasConstantFactor    = m_state.rasterizer_state->GetDepthBias();
 		        rasterizer_state.depthBiasClamp			    = 0.0f;
 		        rasterizer_state.depthBiasSlopeFactor	    = m_state.rasterizer_state->GetDepthBiasSlopeScaled();

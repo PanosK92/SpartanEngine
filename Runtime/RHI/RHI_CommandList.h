@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Spartan
 {
     // Forward declarations
-	class Profiler;
+    class Profiler;
     class Renderer;
     class Context;
     namespace Math
@@ -47,12 +47,12 @@ namespace Spartan
         Submitted
     };
 
-	class SPARTAN_CLASS RHI_CommandList : public Spartan_Object
-	{
-	public:
-		RHI_CommandList(uint32_t index, RHI_SwapChain* swap_chain, Context* context);
-		~RHI_CommandList();
-
+    class SPARTAN_CLASS RHI_CommandList : public Spartan_Object
+    {
+    public:
+        RHI_CommandList(uint32_t index, RHI_SwapChain* swap_chain, Context* context);
+        ~RHI_CommandList();
+    
         // Command list
         bool Begin();
         bool Stop();
@@ -97,36 +97,37 @@ namespace Spartan
         // Clear
         void Clear(RHI_PipelineState& pipeline_state);
 
-		// Draw
+        // Draw
         bool Draw(uint32_t vertex_count);
-		bool DrawIndexed(uint32_t index_count, uint32_t index_offset = 0, uint32_t vertex_offset = 0);
-
+        bool DrawIndexed(uint32_t index_count, uint32_t index_offset = 0, uint32_t vertex_offset = 0);
+        
         // Dispatch
         bool Dispatch(uint32_t x, uint32_t y, uint32_t z, bool async = false);
-
-		// Viewport
-		void SetViewport(const RHI_Viewport& viewport) const;
-
+        
+        // Viewport
+        void SetViewport(const RHI_Viewport& viewport) const;
+        
         // Scissor
-		void SetScissorRectangle(const Math::Rectangle& scissor_rectangle) const;
-
-		// Vertex buffer
-		void SetBufferVertex(const RHI_VertexBuffer* buffer, const uint64_t offset = 0);
-
-		// Index buffer
-		void SetBufferIndex(const RHI_IndexBuffer* buffer, const uint64_t offset = 0);
-
-		// Constant buffer
+        void SetScissorRectangle(const Math::Rectangle& scissor_rectangle) const;
+        
+        // Vertex buffer
+        void SetBufferVertex(const RHI_VertexBuffer* buffer, const uint64_t offset = 0);
+        
+        // Index buffer
+        void SetBufferIndex(const RHI_IndexBuffer* buffer, const uint64_t offset = 0);
+        
+        // Constant buffer
         bool SetConstantBuffer(const uint32_t slot, const uint8_t scope, RHI_ConstantBuffer* constant_buffer) const;
         inline bool SetConstantBuffer(const uint32_t slot, const uint8_t scope, const std::shared_ptr<RHI_ConstantBuffer>& constant_buffer) const { return SetConstantBuffer(slot, scope, constant_buffer.get()); }
-
-		// Sampler
+        
+        // Sampler
         void SetSampler(const uint32_t slot, RHI_Sampler* sampler) const;
         inline void SetSampler(const uint32_t slot, const std::shared_ptr<RHI_Sampler>& sampler) const { SetSampler(slot, sampler.get()); }
-
-		// Texture
-        void SetTexture(const uint32_t slot, RHI_Texture* texture, const bool storage = false, const Math::Vector4& storage_clear = rhi_color_load);
-        inline void SetTexture(const uint32_t slot, const std::shared_ptr<RHI_Texture>& texture, const bool storage = false, const Math::Vector4& storage_clear = rhi_color_load) { SetTexture(slot, texture.get(), storage, storage_clear); }
+        
+        // Texture
+        void ClearRenderTarget(RHI_Texture* texture, const uint32_t color_index = 0, const uint32_t depth_stencil_index = 0, const bool storage = false, const Math::Vector4& clear_color = rhi_color_load, const float clear_depth = rhi_depth_load, const float clear_stencil = rhi_stencil_load);
+        void SetTexture(const uint32_t slot, RHI_Texture* texture, const bool storage = false);
+        inline void SetTexture(const uint32_t slot, const std::shared_ptr<RHI_Texture>& texture, const bool storage = false) { SetTexture(slot, texture.get(), storage); }
         
         // Timestamps
         bool Timestamp_Start(void* query_disjoint = nullptr, void* query_start = nullptr);
@@ -145,7 +146,7 @@ namespace Spartan
         bool IsIdle()                       const { return m_cmd_state == RHI_CommandListState::Idle; }
         void*& GetProcessedSemaphore()            { return m_processed_semaphore; }
 
-	private:
+    private:
         void Timeblock_Start(const RHI_PipelineState* pipeline_state);
         void Timeblock_End(const RHI_PipelineState* pipeline_state);
         bool Deferred_BeginRenderPass();
@@ -154,7 +155,7 @@ namespace Spartan
         bool OnDraw();
 
         std::atomic<RHI_CommandListState> m_cmd_state   = RHI_CommandListState::Idle;
-		RHI_Pipeline* m_pipeline	                    = nullptr; 
+        RHI_Pipeline* m_pipeline	                    = nullptr; 
         RHI_SwapChain* m_swap_chain                     = nullptr;
         Renderer* m_renderer                            = nullptr;
         RHI_PipelineCache* m_pipeline_cache             = nullptr;
@@ -182,5 +183,5 @@ namespace Spartan
         uint64_t m_vertex_buffer_offset = 0;
         uint32_t m_index_buffer_id      = 0;
         uint64_t m_index_buffer_offset  = 0;
-	};
+    };
 }

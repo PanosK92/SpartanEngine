@@ -577,7 +577,59 @@ namespace Spartan
         }
     }
 
-    void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const bool storage /*= false*/, const Math::Vector4& storage_clear /*= rhi_color_load*/)
+    void RHI_CommandList::ClearRenderTarget(RHI_Texture* texture,
+        const uint32_t color_index          /*= 0*/,
+        const uint32_t depth_stencil_index  /*= 0*/,
+        const bool storage                  /*= false*/,
+        const Math::Vector4& clear_color    /*= rhi_color_load*/,
+        const float clear_depth             /*= rhi_depth_load*/,
+        const float clear_stencil           /*= rhi_stencil_load*/
+    )
+    {
+        if (storage)
+        {
+            if (clear_color == rhi_color_load || clear_color == rhi_color_dont_care)
+                return;
+
+            // TODO: Assuming the UAV is a float, which almost always is, but I should fix it anyway
+            m_rhi_device->GetContextRhi()->device_context->ClearUnorderedAccessViewFloat(static_cast<ID3D11UnorderedAccessView*>(texture->Get_Resource_View_UnorderedAccess()), clear_color.Data());
+        }
+        else if (texture->IsRenderTarget())
+        {
+            if (texture->IsColorFormat())
+            {
+                if (clear_color == rhi_color_load || clear_color == rhi_color_dont_care)
+                    return;
+
+                m_rhi_device->GetContextRhi()->device_context->ClearRenderTargetView
+                (
+                    static_cast<ID3D11RenderTargetView*>(const_cast<void*>(texture->Get_Resource_View_RenderTarget(color_index))),
+                    clear_color.Data()
+                );
+            }
+            else if (texture->IsDepthStencilFormat())
+            {
+                if ((clear_depth == rhi_depth_load || clear_depth == rhi_depth_dont_care) && (clear_stencil == rhi_stencil_load || clear_stencil == rhi_stencil_dont_care))
+                    return;
+
+                UINT clear_flags = 0;
+                clear_flags |= (clear_depth     != rhi_depth_load   && clear_depth   != rhi_depth_dont_care)     ? D3D11_CLEAR_DEPTH : 0;
+                clear_flags |= (clear_stencil   != rhi_stencil_load && clear_stencil != rhi_stencil_dont_care)   ? D3D11_CLEAR_STENCIL : 0;
+                if (clear_flags != 0)
+                {
+                    m_rhi_device->GetContextRhi()->device_context->ClearDepthStencilView
+                    (
+                        static_cast<ID3D11DepthStencilView*>(texture->Get_Resource_View_DepthStencil(depth_stencil_index)),
+                        clear_flags,
+                        static_cast<FLOAT>(clear_depth),
+                        static_cast<UINT8>(clear_stencil)
+                    );
+                }
+            }
+        }
+    }
+
+    void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const bool storage /*= false*/)
     {
         const uint8_t scope                 = m_pipeline_state->IsCompute() ? RHI_Shader_Compute : RHI_Shader_Pixel;
         const UINT start_slot               = slot;
@@ -587,13 +639,6 @@ namespace Spartan
         // Unordered access views
         if (storage)
         {
-            // Clear if needed
-            if (storage_clear != rhi_color_load && storage_clear != rhi_color_dont_care)
-            {
-                // TODO: Assuming the UAV is a float, which almost always is, but I should fix it anyway
-                device_context->ClearUnorderedAccessViewFloat(static_cast<ID3D11UnorderedAccessView*>(texture->Get_Resource_View_UnorderedAccess()), storage_clear.Data());
-            }
-
             // Get resource
             const void* uav_array[1] = { texture ? texture->Get_Resource_View_UnorderedAccess() : nullptr };
 
