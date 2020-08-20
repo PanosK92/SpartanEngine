@@ -130,7 +130,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 		    float2 refraction_uv    = uv + normal2D * ior * 0.03f;
             float3 refraction_color = tex_frame.Sample(sampler_bilinear_clamp, refraction_uv).rgb;
 
-            color.rgb += refraction_color + light * sample_albedo.a;
+            color.rgb += refraction_color * sample_albedo.rgb + light * sample_albedo.a;
         }
     }
 
@@ -140,4 +140,3 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     
     return saturate_16(color);
 }
-

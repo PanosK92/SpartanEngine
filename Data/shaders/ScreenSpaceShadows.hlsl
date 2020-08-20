@@ -20,9 +20,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 // Settings
-static const uint  g_sss_steps            = 8;     // Quality/performance
+static const uint  g_sss_steps            = 16;     // Quality/performance
 static const float g_sss_ray_max_distance = 0.05f; // Max shadow length
-static const float g_sss_tolerance        = 0.01f; // Error in favor of reducing gaps
+static const float g_sss_tolerance        = 0.02f; // Error in favor of reducing gaps
 static const float g_sss_step_length      = g_sss_ray_max_distance / (float)g_sss_steps;
 
 //= INLUCES ==========
@@ -37,8 +37,8 @@ float ScreenSpaceShadows(Surface surface, Light light)
     float3 ray_step = ray_dir * g_sss_step_length;
 	
 	// Offset starting position with temporal interleaved gradient noise
-    float offset = interleaved_gradient_noise(g_resolution * surface.uv);
-    //ray_pos      += ray_step * offset;
+    float offset = interleaved_gradient_noise(g_resolution * surface.uv) * 2.0f - 1.0;
+    ray_pos      += ray_step * offset;
 
     // Ray march towards the light
     float occlusion = 0.0;
@@ -71,6 +71,3 @@ float ScreenSpaceShadows(Surface surface, Light light)
     
     return 1.0f - occlusion;
 }
-
-
-
