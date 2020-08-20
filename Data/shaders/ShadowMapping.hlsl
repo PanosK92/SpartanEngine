@@ -325,7 +325,7 @@ inline float3 bias_normal_offset(Light light, float3 normal)
 /*------------------------------------------------------------------------------
     ENTRYPOINT
 ------------------------------------------------------------------------------*/
-float4 Shadow_Map(Surface surface, Light light, bool transparent_pixel)
+float4 Shadow_Map(Surface surface, Light light)
 { 
     float3 position_world   = surface.position + bias_normal_offset(light, surface.normal);
     float4 shadow           = 1.0f;
@@ -345,9 +345,9 @@ float4 Shadow_Map(Surface surface, Light light, bool transparent_pixel)
                 auto_bias(pos, light, cascade + 1);
                 shadow.a = SampleShadowMap(float3(pos.xy, cascade), pos.z);
 
-                #if SHADOWS_TRANSPARENT
+                #if (SHADOWS_TRANSPARENT == 1 && TRANSPARENT == 0)
                 [branch]
-                if (shadow.a > 0.0f && !transparent_pixel)
+                if (shadow.a > 0.0f)
                 {
                     shadow *= Technique_Vogel_Color(float3(pos.xy, cascade));
                 }
@@ -372,9 +372,9 @@ float4 Shadow_Map(Surface surface, Light light, bool transparent_pixel)
                     float alpha = smoothstep(0.0f, blend_threshold, distance_to_edge);
                     shadow.a = lerp(shadow_secondary, shadow.a, alpha);
                     
-                    #if SHADOWS_TRANSPARENT
+                    #if (SHADOWS_TRANSPARENT == 1 && TRANSPARENT == 0)
                     [branch]
-                    if (shadow.a > 0.0f && !transparent_pixel)
+                    if (shadow.a > 0.0f)
                     {
                         shadow = min(shadow, Technique_Vogel_Color(float3(pos.xy, cacade_secondary)));
                     }
@@ -395,9 +395,9 @@ float4 Shadow_Map(Surface surface, Light light, bool transparent_pixel)
             auto_bias(position, light);
             shadow.a = SampleShadowMap(light.direction, position.z);
             
-            #if SHADOWS_TRANSPARENT
+            #if (SHADOWS_TRANSPARENT == 1 && TRANSPARENT == 0)
             [branch]
-            if (shadow.a > 0.0f && !transparent_pixel)
+            if (shadow.a > 0.0f)
             {
                 shadow *= Technique_Vogel_Color(light.direction);
             }
@@ -413,9 +413,9 @@ float4 Shadow_Map(Surface surface, Light light, bool transparent_pixel)
             auto_bias(position, light);
             shadow.a = SampleShadowMap(float3(position.xy, 0.0f), position.z);
 
-            #if SHADOWS_TRANSPARENT
+            #if (SHADOWS_TRANSPARENT == 1 && TRANSPARENT == 0)
             [branch]
-            if (shadow.a > 0.0f  && !transparent_pixel)
+            if (shadow.a > 0.0f)
             {
                 shadow *= Technique_Vogel_Color(light.direction);
             }

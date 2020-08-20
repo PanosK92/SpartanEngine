@@ -40,10 +40,11 @@ namespace Spartan
         m_flags = flags;
     }
 
-    ShaderLight* ShaderLight::GetVariation(Context* context, const Light* light, const uint64_t renderer_flags)
+    ShaderLight* ShaderLight::GetVariation(Context* context, const Light* light, const uint64_t renderer_flags, const bool is_transparent_pass)
     {
         // Compute flags
         uint16_t flags = 0;
+        flags |= is_transparent_pass                                                                        ? Shader_Light_Transparent              : flags;
         flags |= light->GetLightType() == LightType::Directional                                            ? Shader_Light_Directional              : flags;
         flags |= light->GetLightType() == LightType::Point                                                  ? Shader_Light_Point                    : flags;
         flags |= light->GetLightType() == LightType::Spot                                                   ? Shader_Light_Spot                     : flags;
@@ -70,6 +71,7 @@ namespace Spartan
         shared_ptr<ShaderLight> shader = make_shared<ShaderLight>(context, flags);
 
         // Add defines based on flag properties
+        shader->AddDefine("TRANSPARENT",                (flags & Shader_Light_Transparent)              ? "1" : "0");
         shader->AddDefine("DIRECTIONAL",                (flags & Shader_Light_Directional)              ? "1" : "0");
         shader->AddDefine("POINT",                      (flags & Shader_Light_Point)                    ? "1" : "0");
         shader->AddDefine("SPOT",                       (flags & Shader_Light_Spot)                     ? "1" : "0");

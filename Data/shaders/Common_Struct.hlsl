@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 struct Material
 {
-    float3 albedo;
+    float4 albedo;
     float roughness;
     float metallic;
     float clearcoat;
@@ -34,7 +34,6 @@ struct Material
     float3 padding;
     float emissive;
     float3 F0;
-    bool is_transparent;
     bool is_sky;
 };
 

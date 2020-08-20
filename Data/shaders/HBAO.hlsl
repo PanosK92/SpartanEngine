@@ -110,7 +110,7 @@ float compute_occlusion(float3 position, float3 normal, float3 sample_position)
 {
   float3 v      = sample_position - position;
   float v_dot_v = dot(v, v);
-  float n_dot_v = dot(normal, v) * 1.0f / sqrt(v_dot_v);
+  float n_dot_v = dot(normal, v) * 1.0f / fast_sqrt(v_dot_v);
   return saturate(n_dot_v) * saturate(falloff(v_dot_v));
 }
 

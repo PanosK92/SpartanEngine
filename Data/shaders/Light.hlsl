@@ -46,13 +46,25 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
     if (thread_id.x >= uint(g_resolution.x) || thread_id.y >= uint(g_resolution.y))
         return;
+
+    // Sample albedo
+    float4 sample_albedo = tex_albedo.Load(int3(thread_id.xy, 0));
+
+    // If this is a transparent pass, ignore all opaque pixels
+    #if TRANSPARENT
+    if (sample_albedo.a == 1.0f)
+        return;
+    #endif
     
-    // Sample textures
-    float4 sample_albedo    = tex_albedo.Load(int3(thread_id.xy, 0));
+    // Sample there rest of the textures
     float4 sample_normal    = tex_normal.Load(int3(thread_id.xy, 0));
     float4 sample_material  = tex_material.Load(int3(thread_id.xy, 0));
     float sample_depth      = tex_depth.Load(int3(thread_id.xy, 0)).r;
+    #if TRANSPARENT
+    float sample_hbao       = 1.0f; // we don't do ao for transparents
+    #else
     float sample_hbao       = tex_hbao.Load(int3(thread_id.xy, 0)).r;
+    #endif
 
     // Post-process samples
     int mat_id      = round(sample_normal.a * 65535);
@@ -75,7 +87,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     // Create material
     Material material;
     {
-        material.albedo                 = sample_albedo.rgb;
+        material.albedo                 = sample_albedo;
         material.roughness              = sample_material.r;
         material.metallic               = sample_material.g;
         material.emissive               = sample_material.b;
@@ -86,8 +98,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         material.sheen                  = mat_sheen_sheenTint_pad[mat_id].x;
         material.sheen_tint             = mat_sheen_sheenTint_pad[mat_id].y;
         material.occlusion              = min(occlusion, sample_hbao);
-        material.F0                     = lerp(0.04f, material.albedo, material.metallic);
-        material.is_transparent         = sample_albedo.a != 1.0f;
+        material.F0                     = lerp(0.04f, material.albedo.rgb, material.metallic);
         material.is_sky                 = mat_id == 0;
     }
 
@@ -124,7 +135,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         // Shadow mapping
         #if SHADOWS
         {
-            shadow = Shadow_Map(surface, light, material.is_transparent);
+            shadow = Shadow_Map(surface, light);
 
             // Volumetric lighting (requires shadow maps)
             #if VOLUMETRIC

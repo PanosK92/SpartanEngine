@@ -64,12 +64,11 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         
         // Create material
         Material material;
-        material.albedo         = sample_albedo.rgb;
+        material.albedo         = sample_albedo;
         material.roughness      = sample_material.r;
         material.metallic       = sample_material.g;
         material.emissive       = sample_material.b;    
-        material.F0             = lerp(0.04f, material.albedo, material.metallic);
-        material.is_transparent = sample_albedo.a != 1.0f;
+        material.F0             = lerp(0.04f, material.albedo.rgb, material.metallic);
 
         // Light - Image based
         float3 diffuse_energy       = 1.0f;
@@ -90,10 +89,10 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         }
 
         // Light - SSGI
-        float3 light_ssgi = sample_ssgi * material.albedo;
+        float3 light_ssgi = sample_ssgi * material.albedo.rgb;
         
         // Light - Emissive
-        float3 light_emissive = material.emissive * material.albedo * 50.0f;
+        float3 light_emissive = material.emissive * material.albedo.rgb * 50.0f;
 
         // Light - Ambient
         float3 light_ambient = saturate(g_directional_light_intensity / 128000.0f);
@@ -102,10 +101,10 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         fog *= light_ambient * 0.25f;
                 
         // Apply ambient occlusion to ambient light
-		#if SSGI
-		light_ambient *= sample_hbao;
-		#else
-		light_ambient *= MultiBounceAO(sample_hbao, sample_albedo.rgb);
+        #if SSGI
+        light_ambient *= sample_hbao;
+        #else
+        light_ambient *= MultiBounceAO(sample_hbao, sample_albedo.rgb);
         #endif
 
         // Modulate with ambient light
@@ -115,7 +114,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         
         // Opaques
         [branch]
-        if (!material.is_transparent)
+        if (material.albedo.a == 1.0f)
         {
             color.rgb += light_diffuse + light_ibl_diffuse + light_specular + light_ibl_specular + light_reflection + light_emissive + light_ssgi;
         }
@@ -127,7 +126,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
             // Refraction
             float ior               = 1.5; // glass
             float2 normal2D         = mul((float3x3)g_view, sample_normal.xyz).xy;
-		    float2 refraction_uv    = uv + normal2D * ior * 0.03f;
+            float2 refraction_uv    = uv + normal2D * ior * 0.03f;
             float3 refraction_color = tex_frame.Sample(sampler_bilinear_clamp, refraction_uv).rgb;
 
             color.rgb += refraction_color * sample_albedo.rgb + light * sample_albedo.a;

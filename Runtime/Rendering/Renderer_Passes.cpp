@@ -686,11 +686,11 @@ namespace Spartan
         if (entities.empty())
             return;
 
-        const bool is_transparent = object_type == Renderer_Object_Type::Renderer_Object_Transparent;
+        const bool is_transparent_pass = object_type == Renderer_Object_Type::Renderer_Object_Transparent;
 
         // Acquire render targets
-        RHI_Texture* tex_diffuse    = is_transparent ? m_render_targets[RenderTarget_Light_Diffuse_Transparent].get()   : m_render_targets[RenderTarget_Light_Diffuse].get();
-        RHI_Texture* tex_specular   = is_transparent ? m_render_targets[RenderTarget_Light_Specular_Transparent].get()  : m_render_targets[RenderTarget_Light_Specular].get();
+        RHI_Texture* tex_diffuse    = is_transparent_pass ? m_render_targets[RenderTarget_Light_Diffuse_Transparent].get()   : m_render_targets[RenderTarget_Light_Diffuse].get();
+        RHI_Texture* tex_specular   = is_transparent_pass ? m_render_targets[RenderTarget_Light_Specular_Transparent].get()  : m_render_targets[RenderTarget_Light_Specular].get();
         RHI_Texture* tex_volumetric = m_render_targets[RenderTarget_Light_Volumetric].get();
 
         // Clear render targets
@@ -710,7 +710,7 @@ namespace Spartan
                 if (light->GetIntensity() != 0)
                 {
                     // Set pixel shader
-                    pipeline_state.shader_compute = static_cast<RHI_Shader*>(ShaderLight::GetVariation(m_context, light, m_options));
+                    pipeline_state.shader_compute = static_cast<RHI_Shader*>(ShaderLight::GetVariation(m_context, light, m_options, is_transparent_pass));
 
                     // Skip the shader until it compiles or the users spots a compilation error
                     if (!pipeline_state.shader_compute->IsCompiled())
@@ -725,6 +725,7 @@ namespace Spartan
                         cmd_list->SetTexture(8, m_render_targets[RenderTarget_Gbuffer_Albedo]);
                         cmd_list->SetTexture(9, m_render_targets[RenderTarget_Gbuffer_Normal]);
                         cmd_list->SetTexture(10, m_render_targets[RenderTarget_Gbuffer_Material]);
+                        cmd_list->SetTexture(12, m_render_targets[RenderTarget_Gbuffer_Depth]);
                         cmd_list->SetTexture(22, (m_options & Render_Hbao) ? m_render_targets[RenderTarget_Hbao] : m_tex_white);
                         cmd_list->SetTexture(26, (m_options & Render_ScreenSpaceReflections) ? m_render_targets[RenderTarget_Ssr] : m_tex_black_transparent);
                         cmd_list->SetTexture(27, m_render_targets[RenderTarget_Frame_Hdr_2]); // previous frame before post-processing
@@ -778,9 +779,9 @@ namespace Spartan
 
         // Acquire shaders
         const auto& shader_v = m_shaders[Shader_Quad_V];
-		const auto& shader_p = m_shaders[Shader_Composition_P];
-		if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
-			return;
+        const auto& shader_p = m_shaders[Shader_Composition_P];
+        if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
+            return;
 
         // Set render state
         static RHI_PipelineState pipeline_state;
@@ -826,7 +827,7 @@ namespace Spartan
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
             cmd_list->EndRenderPass();
         }
-	}
+    }
     
     void Renderer::Pass_PostProcess(RHI_CommandList* cmd_list)
 	{
