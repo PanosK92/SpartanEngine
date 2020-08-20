@@ -91,7 +91,7 @@ namespace Spartan
         return true;
     }
 
-    void RHI_CommandList::Clear(RHI_PipelineState& pipeline_state)
+    void RHI_CommandList::ClearPipelineStateRenderTargets(RHI_PipelineState& pipeline_state)
     {
         
     }
