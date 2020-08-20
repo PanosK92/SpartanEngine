@@ -50,8 +50,8 @@ inline float3 fresnel(float3 f0, float l_dot_h)
 // [Smith 1967, "Geometrical shadowing of a random rough surface"]
 inline float V_Smith(float a2, float n_dot_v, float n_dot_l)
 {
-    float Vis_SmithV = n_dot_v + sqrt(n_dot_v * (n_dot_v - n_dot_v * a2) + a2);
-    float Vis_SmithL = n_dot_l + sqrt(n_dot_l * (n_dot_l - n_dot_l * a2) + a2);
+    float Vis_SmithV = n_dot_v + fast_sqrt(n_dot_v * (n_dot_v - n_dot_v * a2) + a2);
+    float Vis_SmithL = n_dot_l + fast_sqrt(n_dot_l * (n_dot_l - n_dot_l * a2) + a2);
     return rcp(Vis_SmithV * Vis_SmithL);
 }
 
@@ -59,7 +59,7 @@ inline float V_Smith(float a2, float n_dot_v, float n_dot_l)
 // [Heitz 2014, "Understanding the Masking-Shadowing Function in Microfacet-Based BRDFs"]
 inline float V_SmithJointApprox(float a2, float n_dot_v, float n_dot_l)
 {
-    float a             = sqrt(a2);
+    float a             = fast_sqrt(a2);
     float Vis_SmithV    = n_dot_l * (n_dot_v * (1 - a) + a);
     float Vis_SmithL    = n_dot_v * (n_dot_l * (1 - a) + a);
     return saturate_16(0.5 * rcp(Vis_SmithV + Vis_SmithL));
@@ -71,7 +71,7 @@ float V_GGX_anisotropic_2cos(float cos_theta_m, float alpha_x, float alpha_y, fl
     float sin2  = (1.0 - cos2);
     float s_x   = alpha_x * cos_phi;
     float s_y   = alpha_y * sin_phi;
-    return 1.0 / max(cos_theta_m + sqrt(cos2 + (s_x * s_x + s_y * s_y) * sin2), 0.001);
+    return 1.0 / max(cos_theta_m + fast_sqrt(cos2 + (s_x * s_x + s_y * s_y) * sin2), 0.001);
 }
 
 // [Kelemen 2001, "A microfacet based coupled specular-matte brdf model with importance sampling"]
@@ -147,7 +147,7 @@ inline float3 Diffuse_OrenNayar(float3 diffuse_color, float Roughness, float NoV
 
 inline float3 BRDF_Diffuse(Material material, float n_dot_v, float n_dot_l, float v_dot_h)
 {
-    return Diffuse_Burley(material.albedo, material.roughness, n_dot_v, n_dot_l, v_dot_h);
+    return Diffuse_Burley(material.albedo.rgb, material.roughness, n_dot_v, n_dot_l, v_dot_h);
 }
 
 /*------------------------------------------------------------------------------
@@ -183,7 +183,7 @@ inline float3 BRDF_Specular_Anisotropic(Material material, Surface surface, floa
     b                   = normalize(cross(n, t));                               // update bitangent
 
     float alpha_ggx = material.roughness;
-    float aspect    = sqrt(1.0 - material.anisotropic * 0.9);
+    float aspect    = fast_sqrt(1.0 - material.anisotropic * 0.9);
     float ax        = alpha_ggx / aspect;
     float ay        = alpha_ggx * aspect;
     float XdotH     = dot(t, h);
@@ -261,7 +261,7 @@ inline float3 SampleEnvironment(Texture2D tex_environment, float2 uv, float mip_
 inline float3 GetSpecularDominantDir(float3 normal, float3 reflection, float roughness)
 {
     const float smoothness = 1.0f - roughness;
-    const float lerpFactor = smoothness * (sqrt(smoothness) + roughness);
+    const float lerpFactor = smoothness * (fast_sqrt(smoothness) + roughness);
     
     return lerp(normal, reflection, lerpFactor);
 }
@@ -281,7 +281,7 @@ inline float3 EnvBRDFApprox(float3 specColor, float roughness, float NdV)
 
 inline float3 Brdf_Diffuse_Ibl(Material material, float3 normal, Texture2D tex_environment)
 {
-    return SampleEnvironment(tex_environment, direction_sphere_uv(normal), mip_max) * material.albedo;
+    return SampleEnvironment(tex_environment, direction_sphere_uv(normal), mip_max) * material.albedo.rgb;
 }
 
 inline float3 Brdf_Specular_Ibl(Material material, float3 normal, float3 camera_to_pixel, Texture2D tex_environment, Texture2D tex_lutIBL, inout float3 diffuse_energy, inout float3 reflectivity)
@@ -304,4 +304,3 @@ inline float3 Brdf_Specular_Ibl(Material material, float3 normal, float3 camera_
     
     return prefilteredColor * reflectivity;   
 }
-

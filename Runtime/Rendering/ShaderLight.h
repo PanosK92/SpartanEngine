@@ -34,14 +34,15 @@ namespace Spartan
     enum Shader_Light_Branch : uint16_t
     {
         Shader_Light_Undefined              = 0,
-        Shader_Light_Directional            = 1 << 0,
-        Shader_Light_Point                  = 1 << 1,
-        Shader_Light_Spot                   = 1 << 2,
-        Shader_Light_Shadows                = 1 << 3,
-        Shader_Light_ShadowsScreenSpace     = 1 << 4,
-        Shader_Light_ShadowsTransparent     = 1 << 5,
-        Shader_Light_Volumetric             = 1 << 6,
-        Shader_Light_ScreenSpaceReflections = 1 << 7
+        Shader_Light_Transparent            = 1 << 0,
+        Shader_Light_Directional            = 1 << 1,
+        Shader_Light_Point                  = 1 << 2,
+        Shader_Light_Spot                   = 1 << 3,
+        Shader_Light_Shadows                = 1 << 4,
+        Shader_Light_ShadowsScreenSpace     = 1 << 5,
+        Shader_Light_ShadowsTransparent     = 1 << 6,
+        Shader_Light_Volumetric             = 1 << 7,
+        Shader_Light_ScreenSpaceReflections = 1 << 8
     };
 
     class SPARTAN_CLASS ShaderLight : public RHI_Shader
@@ -50,7 +51,7 @@ namespace Spartan
         ShaderLight(Context* context, const uint16_t flags = 0);
         ~ShaderLight() = default;
 
-        static ShaderLight* GetVariation(Context* context, const Light* light, const uint64_t renderer_flags);
+        static ShaderLight* GetVariation(Context* context, const Light* light, const uint64_t renderer_flags, const bool is_transparent_pass);
         static auto& GetVariations() { return m_variations; }
 
     private:

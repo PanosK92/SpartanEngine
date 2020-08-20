@@ -90,6 +90,32 @@ inline float2 unpack(float2 value)  { return value * 2.0f - 1.0f; }
 inline float2 pack(float2 value)    { return value * 0.5f + 0.5f; }
 
 /*------------------------------------------------------------------------------
+    FAST MATH APPROXIMATIONS
+------------------------------------------------------------------------------*/
+inline float fast_sqrt(float v)
+{
+    int x = asint(v);
+	x = 0x1FBD1DF5 + (x >> 1);
+	return asfloat(x);
+}
+
+inline float fast_sin(float x)
+{
+    const float B = 4 / PI;
+    const float C = -4 / PI2;
+    const float P = 0.225;
+
+    float y = B * x + C * x * abs(x);
+    y = P * (y * abs(y) - y) + y;
+    return y;
+}
+
+inline float fast_cos(float x)
+{
+   return abs(abs(x)  /PI2 % 4 - 2) - 1; 
+}
+
+/*------------------------------------------------------------------------------
     PROJECT
 ------------------------------------------------------------------------------*/
 inline float3 project(float3 position, matrix transform)
