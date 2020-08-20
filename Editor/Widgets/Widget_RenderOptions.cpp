@@ -239,7 +239,7 @@ void Widget_RenderOptions::Tick()
             ImGui::InputInt("Shadow Resolution", &resolution_shadow, 1);
 
             // Fog
-            ImGui::SliderFloat("Fog", &fog, 0.0f, 16.0f, "%.2f");
+            ImGuiEx::DragFloatWrap("Fog", &fog, 0.01f, 0.0f, 16.0f, "%.2f");
             ImGuiEx::Tooltip("Fog density, something that also affects the visibility of volumetric lighting.");
         }
 

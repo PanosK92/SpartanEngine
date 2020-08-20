@@ -924,12 +924,12 @@ void Widget_Properties::ShowCamera(Camera* camera) const
 
         // Shutter speed
         ImGui::SetCursorPosX(ComponentProperty::g_column);
-        ImGuiEx::DragFloatWrap("Shutter Speed (sec)", &shutter_speed, 0.001f, 0.0f, 1.0f);
+        ImGuiEx::DragFloatWrap("Shutter Speed (sec)", &shutter_speed, 0.0001f, 0.0f, 1.0f, "%.4f");
         ImGuiEx::Tooltip("Length of time for which the camera shutter is open. Controls the amount of motion blur.");
 
         // ISO
         ImGui::SetCursorPosX(ComponentProperty::g_column);
-        ImGuiEx::DragFloatWrap("ISO", &iso, 1.0f, 0.0f, 2000.0f);
+        ImGuiEx::DragFloatWrap("ISO", &iso, 0.1f, 0.0f, 2000.0f);
         ImGuiEx::Tooltip("Sensitivity to light.");
 
 		// Field of View

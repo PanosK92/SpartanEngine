@@ -96,6 +96,18 @@ namespace Spartan
         
     }
 
+    void RHI_CommandList::ClearRenderTarget(RHI_Texture* texture,
+        const uint32_t color_index          /*= 0*/,
+        const uint32_t depth_stencil_index  /*= 0*/,
+        const bool storage                  /*= false*/,
+        const Math::Vector4& clear_color    /*= rhi_color_load*/,
+        const float clear_depth             /*= rhi_depth_load*/,
+        const uint32_t clear_stencil        /*= rhi_stencil_load*/
+    )
+    {
+
+    }
+
     bool RHI_CommandList::Draw(const uint32_t vertex_count)
     {
        
@@ -144,19 +156,7 @@ namespace Spartan
 
     void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const bool storage /*= false*/)
     {
-        
-    }
-
-    void RHI_CommandList::ClearRenderTarget(RHI_Texture* texture,
-        const uint32_t color_index          /*= 0*/,
-        const uint32_t depth_stencil_index  /*= 0*/,
-        const bool storage                  /*= false*/,
-        const Math::Vector4& clear_color    /*= rhi_color_load*/,
-        const float clear_depth             /*= rhi_depth_load*/,
-        const float clear_stencil           /*= rhi_stencil_load*/
-    )
-    {
-
+    
     }
 
     bool RHI_CommandList::Timestamp_Start(void* query_disjoint /*= nullptr*/, void* query_start /*= nullptr*/)

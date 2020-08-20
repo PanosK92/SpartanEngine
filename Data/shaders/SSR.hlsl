@@ -23,8 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common.hlsl"
 //====================
 
-static const uint g_ssr_max_steps = 8;
-static const uint g_ssr_binarySearchSteps = 8;
+static const uint g_ssr_max_steps = 16;
+static const uint g_ssr_binarySearchSteps = 16;
 static const float g_ssr_binarySearchThickness = 0.01f;
 static const float g_ssr_ray_max_distance = 10.0f;
 
@@ -68,7 +68,7 @@ inline float2 trace_ray(float2 uv, float3 ray_pos, float3 ray_dir)
     if (fade_camera > 0)
     {
         // Offseting with some temporal interleaved gradient noise, will capture more detail
-        float offset = interleaved_gradient_noise(g_resolution * uv);
+        float offset = interleaved_gradient_noise(g_resolution * uv) * 2.0f - 1.0f;
         ray_pos += ray_step * offset;
 
         // Ray-march
@@ -112,4 +112,3 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     // Trace it
     tex_out_rg[thread_id.xy] = trace_ray(uv, ray_pos, ray_dir);
 }
-

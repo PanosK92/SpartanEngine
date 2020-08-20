@@ -67,7 +67,7 @@ namespace Spartan
     }
 
     void Renderer::Pass_Main(RHI_CommandList* cmd_list)
-	{
+    {
         // Validate RHI device as it's required almost everywhere
         if (!m_rhi_device)
             return;
@@ -126,9 +126,9 @@ namespace Spartan
             Pass_DebugBuffer(cmd_list, m_render_targets[RenderTarget_Frame_Ldr]);
             Pass_Text(cmd_list, m_render_targets[RenderTarget_Frame_Ldr].get());
         }
-	}
+    }
 
-	void Renderer::Pass_LightDepth(RHI_CommandList* cmd_list, const Renderer_Object_Type object_type)
+    void Renderer::Pass_LightDepth(RHI_CommandList* cmd_list, const Renderer_Object_Type object_type)
 	{
         // All opaque objects are rendered from the lights point of view.
         // Opaque objects write their depth information to a depth buffer, using just a vertex shader.
@@ -357,7 +357,7 @@ namespace Spartan
         }
     }
 
-	void Renderer::Pass_GBuffer(RHI_CommandList* cmd_list, const Renderer_Object_Type object_type)
+    void Renderer::Pass_GBuffer(RHI_CommandList* cmd_list, const Renderer_Object_Type object_type)
 	{
         // Acquire required resources/shaders
         RHI_Texture* tex_albedo       = m_render_targets[RenderTarget_Gbuffer_Albedo].get();
@@ -588,7 +588,7 @@ namespace Spartan
         Pass_Copy(cmd_list, tex_out, tex_accumulation);
     }
 
-	void Renderer::Pass_Hbao(RHI_CommandList* cmd_list)
+    void Renderer::Pass_Hbao(RHI_CommandList* cmd_list)
 	{
         if ((m_options & Render_Hbao) == 0)
             return;
@@ -689,8 +689,8 @@ namespace Spartan
         const bool is_transparent = object_type == Renderer_Object_Type::Renderer_Object_Transparent;
 
         // Acquire render targets
-        RHI_Texture* tex_diffuse    = is_transparent ? m_render_targets[RenderTarget_Light_Diffuse_Transparent].get() : m_render_targets[RenderTarget_Light_Diffuse].get();
-        RHI_Texture* tex_specular   = is_transparent ? m_render_targets[RenderTarget_Light_Specular_Transparent].get() : m_render_targets[RenderTarget_Light_Specular].get();
+        RHI_Texture* tex_diffuse    = is_transparent ? m_render_targets[RenderTarget_Light_Diffuse_Transparent].get()   : m_render_targets[RenderTarget_Light_Diffuse].get();
+        RHI_Texture* tex_specular   = is_transparent ? m_render_targets[RenderTarget_Light_Specular_Transparent].get()  : m_render_targets[RenderTarget_Light_Specular].get();
         RHI_Texture* tex_volumetric = m_render_targets[RenderTarget_Light_Volumetric].get();
 
         // Clear render targets
@@ -772,7 +772,7 @@ namespace Spartan
         }
     }
 
-	void Renderer::Pass_Composition(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_out, const Renderer_Object_Type object_type)
+    void Renderer::Pass_Composition(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_out, const Renderer_Object_Type object_type)
 	{
         const bool is_transparent = object_type == Renderer_Object_Type::Renderer_Object_Transparent;
 
@@ -827,8 +827,8 @@ namespace Spartan
             cmd_list->EndRenderPass();
         }
 	}
-
-	void Renderer::Pass_PostProcess(RHI_CommandList* cmd_list)
+    
+    void Renderer::Pass_PostProcess(RHI_CommandList* cmd_list)
 	{
         // IN:  RenderTarget_Composition_Hdr
         // OUT: RenderTarget_Composition_Ldr
@@ -918,7 +918,7 @@ namespace Spartan
         // Swap textures
         tex_in_ldr.swap(tex_out_ldr);
 	}
-
+    
     void Renderer::Pass_BlurBox(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out, const float sigma, const float pixel_stride, const bool use_stencil)
 	{
         // Acquire shaders
@@ -958,8 +958,8 @@ namespace Spartan
             cmd_list->EndRenderPass();
         }
 	}
-
-	void Renderer::Pass_BlurGaussian(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out, const float sigma, const float pixel_stride)
+    
+    void Renderer::Pass_BlurGaussian(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out, const float sigma, const float pixel_stride)
 	{
 		if (tex_in->GetWidth() != tex_out->GetWidth() || tex_in->GetHeight() != tex_out->GetHeight() || tex_in->GetFormat() != tex_out->GetFormat())
 		{
@@ -1034,8 +1034,8 @@ namespace Spartan
 		// Swap textures
 		tex_in.swap(tex_out);
 	}
-
-	void Renderer::Pass_BlurBilateralGaussian(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out, const float sigma, const float pixel_stride, const bool use_stencil)
+    
+    void Renderer::Pass_BlurBilateralGaussian(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out, const float sigma, const float pixel_stride, const bool use_stencil)
 	{
 		if (tex_in->GetWidth() != tex_out->GetWidth() || tex_in->GetHeight() != tex_out->GetHeight() || tex_in->GetFormat() != tex_out->GetFormat())
 		{
@@ -1123,8 +1123,8 @@ namespace Spartan
         // Swap textures
 		tex_in.swap(tex_out);
 	}
-
-	void Renderer::Pass_TemporalAntialiasing(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    
+    void Renderer::Pass_TemporalAntialiasing(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
         // Acquire shaders
         RHI_Shader* shader_c = m_shaders[Shader_Taa_C].get();
@@ -1163,8 +1163,8 @@ namespace Spartan
 		// Accumulate
         Pass_Copy(cmd_list, tex_out.get(), tex_accumulation.get());
 	}
-
-	void Renderer::Pass_Bloom(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    
+    void Renderer::Pass_Bloom(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
 		// Acquire shaders
 		RHI_Shader* shader_downsampleLuminance	= m_shaders[Shader_BloomDownsampleLuminance_C].get();
@@ -1288,8 +1288,8 @@ namespace Spartan
             }
         }
 	}
-
-	void Renderer::Pass_ToneMapping(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    
+    void Renderer::Pass_ToneMapping(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
         // Acquire shaders
         RHI_Shader* shader_c = m_shaders[Shader_ToneMapping_C].get();
@@ -1319,8 +1319,8 @@ namespace Spartan
             cmd_list->EndRenderPass();
         }
 	}
-
-	void Renderer::Pass_GammaCorrection(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    
+    void Renderer::Pass_GammaCorrection(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
         // Acquire shaders
         RHI_Shader* shader_c = m_shaders[Shader_GammaCorrection_C].get();
@@ -1350,8 +1350,8 @@ namespace Spartan
             cmd_list->EndRenderPass();
         }
 	}
-
-	void Renderer::Pass_FXAA(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    
+    void Renderer::Pass_FXAA(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
 		// Acquire shaders
 		RHI_Shader* shader_p_luma   = m_shaders[Shader_Fxaa_Luminance_C].get();
@@ -1406,8 +1406,8 @@ namespace Spartan
         // Swap the textures
         tex_in.swap(tex_out);
 	}
-
-	void Renderer::Pass_ChromaticAberration(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    
+    void Renderer::Pass_ChromaticAberration(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
         // Acquire shaders
         RHI_Shader* shader_c = m_shaders[Shader_ChromaticAberration_C].get();
@@ -1437,8 +1437,8 @@ namespace Spartan
             cmd_list->EndRenderPass();
         }
 	}
-
-	void Renderer::Pass_MotionBlur(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    
+    void Renderer::Pass_MotionBlur(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
         // Acquire shaders
         RHI_Shader* shader_c = m_shaders[Shader_MotionBlur_C].get();
@@ -1470,7 +1470,7 @@ namespace Spartan
             cmd_list->EndRenderPass();
         }
 	}
-
+    
     void Renderer::Pass_DepthOfField(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
         // Acquire shaders
@@ -1593,8 +1593,8 @@ namespace Spartan
             }
         }
     }
-
-	void Renderer::Pass_Dithering(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    
+    void Renderer::Pass_Dithering(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
 		// Acquire shaders
         RHI_Shader* shader = m_shaders[Shader_Dithering_C].get();
@@ -1624,7 +1624,7 @@ namespace Spartan
             cmd_list->EndRenderPass();
         }
 	}
-
+    
     void Renderer::Pass_FilmGrain(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
         // Acquire shaders
@@ -1655,8 +1655,8 @@ namespace Spartan
             cmd_list->EndRenderPass();
         }
     }
-
-	void Renderer::Pass_Sharpening(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    
+    void Renderer::Pass_Sharpening(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
         // Acquire shaders
         RHI_Shader* shader_c = m_shaders[Shader_Sharpening_C].get();
@@ -1686,8 +1686,8 @@ namespace Spartan
             cmd_list->EndRenderPass();
         }
 	}
-
-	void Renderer::Pass_Lines(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_out)
+    
+    void Renderer::Pass_Lines(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_out)
 	{
 		const bool draw_picking_ray = m_options & Render_Debug_PickingRay;
 		const bool draw_aabb		= m_options & Render_Debug_Aabb;
@@ -1863,8 +1863,8 @@ namespace Spartan
             }
         }
 	}
-
-	void Renderer::Pass_Icons(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
+    
+    void Renderer::Pass_Icons(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
 	{
         if (!(m_options & Render_Debug_Lights))
             return;
@@ -1949,7 +1949,7 @@ namespace Spartan
             }
         }  
 	}
-
+    
     void Renderer::Pass_TransformHandle(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
 	{
         if (!GetOption(Render_Debug_Transform))
@@ -2036,7 +2036,7 @@ namespace Spartan
             }
         }
 	}
-
+    
     void Renderer::Pass_Outline(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_out)
     {
         if (!GetOption(Render_Debug_SelectionOutline))
@@ -2103,8 +2103,8 @@ namespace Spartan
             }
         }
     }
-
-	void Renderer::Pass_Text(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
+    
+    void Renderer::Pass_Text(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
 	{
         // Early exit cases
         const bool draw         = m_options & Render_Debug_PerformanceMetrics;
@@ -2164,8 +2164,8 @@ namespace Spartan
             cmd_list->EndRenderPass();
         }
 	}
-
-	bool Renderer::Pass_DebugBuffer(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_out)
+    
+    bool Renderer::Pass_DebugBuffer(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_out)
 	{
         if (m_render_target_debug == 0)
             return true;
@@ -2291,7 +2291,7 @@ namespace Spartan
 
 		return true;
 	}
-
+    
     void Renderer::Pass_BrdfSpecularLut(RHI_CommandList* cmd_list)
     {
         if (m_brdf_specular_lut_rendered)
@@ -2329,7 +2329,7 @@ namespace Spartan
             m_brdf_specular_lut_rendered = true;
         }
     }
-
+    
     void Renderer::Pass_Copy(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
         // Acquire shaders
