@@ -311,7 +311,7 @@ namespace Spartan
         return true;
     }
 
-    void RHI_CommandList::Clear(RHI_PipelineState& pipeline_state)
+    void RHI_CommandList::ClearPipelineStateRenderTargets(RHI_PipelineState& pipeline_state)
     {
         if (m_render_pass_active)
         {
@@ -367,6 +367,59 @@ namespace Spartan
         {
             OnDraw();
             EndRenderPass();
+        }
+    }
+
+    void RHI_CommandList::ClearRenderTarget(RHI_Texture* texture,
+        const uint32_t color_index          /*= 0*/,
+        const uint32_t depth_stencil_index  /*= 0*/,
+        const bool storage                  /*= false*/,
+        const Math::Vector4& clear_color    /*= rhi_color_load*/,
+        const float clear_depth             /*= rhi_depth_load*/,
+        const uint32_t clear_stencil        /*= rhi_stencil_load*/
+    )
+    {
+        if (m_cmd_state != RHI_CommandListState::Recording)
+        {
+            LOG_WARNING("Can't record command");
+            return;
+        }
+
+        if (!texture || !texture->Get_Resource_View())
+            return;
+
+        texture->SetLayout(RHI_Image_Transfer_Dst_Optimal, this);
+
+        VkImageSubresourceRange image_subresource_range = {};
+        image_subresource_range.baseMipLevel            = 0;
+        image_subresource_range.levelCount              = 1;
+        image_subresource_range.baseArrayLayer          = 0;
+        image_subresource_range.layerCount              = 1;
+
+        if (texture->IsColorFormat())
+        {
+            VkClearColorValue _clear_color = { clear_color.x, clear_color.y, clear_color.z, clear_color.w };
+
+            image_subresource_range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+
+            vkCmdClearColorImage(static_cast<VkCommandBuffer>(m_cmd_buffer), static_cast<VkImage>(texture->Get_Resource_View(color_index)), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &_clear_color, 1, &image_subresource_range);
+        }
+        else if (texture->IsDepthStencilFormat())
+        {
+            VkClearDepthStencilValue clear_depth_stencil = { clear_depth, clear_stencil };
+
+            if (texture->IsDepthFormat())
+            {
+                image_subresource_range.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+            }
+
+            if (texture->IsStencilFormat())
+            {
+                image_subresource_range.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
+
+            }
+
+            vkCmdClearDepthStencilImage(static_cast<VkCommandBuffer>(m_cmd_buffer), static_cast<VkImage>(texture->Get_Resource_View(depth_stencil_index)), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clear_depth_stencil, 1, &image_subresource_range);
         }
     }
 
@@ -569,27 +622,6 @@ namespace Spartan
 
         // Set (will only happen if it's not already set)
         m_descriptor_cache->SetSampler(slot, sampler);
-    }
-
-    void RHI_CommandList::ClearRenderTarget(RHI_Texture* texture,
-        const uint32_t color_index          /*= 0*/,
-        const uint32_t depth_stencil_index  /*= 0*/,
-        const bool storage                  /*= false*/,
-        const Math::Vector4& clear_color    /*= rhi_color_load*/,
-        const float clear_depth             /*= rhi_depth_load*/,
-        const float clear_stencil           /*= rhi_stencil_load*/
-    )
-    {
-        VkImageSubresourceRange image_subresource_range = {};
-        image_subresource_range.aspectMask              = VK_IMAGE_ASPECT_COLOR_BIT;
-        image_subresource_range.baseMipLevel            = 0;
-        image_subresource_range.levelCount              = 1;
-        image_subresource_range.baseArrayLayer          = 0;
-        image_subresource_range.layerCount              = 1;
-
-        VkClearColorValue _clear_color = { clear_color.x, clear_color.y, clear_color.z, clear_color.w };
-
-        vkCmdClearColorImage(static_cast<VkCommandBuffer>(m_cmd_buffer), static_cast<VkImage>(texture->Get_Resource_View()), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &_clear_color, 1, &image_subresource_range);
     }
 
     void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const bool storage /*= false*/)

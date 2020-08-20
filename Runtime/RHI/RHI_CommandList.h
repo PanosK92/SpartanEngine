@@ -95,7 +95,8 @@ namespace Spartan
         bool EndRenderPass();
 
         // Clear
-        void Clear(RHI_PipelineState& pipeline_state);
+        void ClearPipelineStateRenderTargets(RHI_PipelineState& pipeline_state);
+        void ClearRenderTarget(RHI_Texture* texture, const uint32_t color_index = 0, const uint32_t depth_stencil_index = 0, const bool storage = false, const Math::Vector4& clear_color = rhi_color_load, const float clear_depth = rhi_depth_load, const uint32_t clear_stencil = rhi_stencil_load);
 
         // Draw
         bool Draw(uint32_t vertex_count);
@@ -125,7 +126,6 @@ namespace Spartan
         inline void SetSampler(const uint32_t slot, const std::shared_ptr<RHI_Sampler>& sampler) const { SetSampler(slot, sampler.get()); }
         
         // Texture
-        void ClearRenderTarget(RHI_Texture* texture, const uint32_t color_index = 0, const uint32_t depth_stencil_index = 0, const bool storage = false, const Math::Vector4& clear_color = rhi_color_load, const float clear_depth = rhi_depth_load, const float clear_stencil = rhi_stencil_load);
         void SetTexture(const uint32_t slot, RHI_Texture* texture, const bool storage = false);
         inline void SetTexture(const uint32_t slot, const std::shared_ptr<RHI_Texture>& texture, const bool storage = false) { SetTexture(slot, texture.get(), storage); }
         

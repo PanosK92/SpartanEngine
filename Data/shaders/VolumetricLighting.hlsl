@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-static const uint g_vl_steps        = 4;
+static const uint g_vl_steps        = 32; // we can go lower and have it look ok but a lot of detail will vanish, not worth it.
 static const float g_vl_tolerance   = 0.45f;
 static const float g_vl_scattering  = 0.994f;
 static const float g_vl_pow         = 0.5f;
@@ -71,7 +71,7 @@ float VolumetricLighting(Surface surface, Light light)
     float fog           = 0.0f;
     
     // Offset ray to get away with way less steps and great detail
-    float offset = interleaved_gradient_noise(surface.uv * g_resolution);
+    float offset = interleaved_gradient_noise(surface.uv * g_resolution) * 2.0f - 1.0f;
     ray_pos += ray_step * offset;
     
     #if DIRECTIONAL
