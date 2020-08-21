@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==============================
 #include "Spartan.h"
 #include "Renderer.h"
+#include "Renderer_Bindings.h"
 #include "Model.h"
 #include "ShaderGBuffer.h"
 #include "ShaderLight.h"
@@ -35,8 +36,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_PipelineState.h"
 #include "../RHI/RHI_Texture.h"
 #include "../World/Entity.h"
-#include "../World/Components/Light.h"
 #include "../World/Components/Camera.h"
+#include "../World/Components/Light.h"
 #include "../World/Components/Transform.h"
 #include "../World/Components/Renderable.h"
 //=========================================
@@ -247,7 +248,7 @@ namespace Spartan
                     {
                         // Bind material textures
                         RHI_Texture* tex_albedo = material->GetTexture_Ptr(Material_Color);
-                        cmd_list->SetTexture(28, tex_albedo ? tex_albedo : m_tex_white.get());
+                        cmd_list->SetTexture(RendererBindingsTex::tex, tex_albedo ? tex_albedo : m_tex_white.get());
 
                         // Update uber buffer with material properties
                         m_buffer_uber_cpu.mat_albedo    = material->GetColorAlbedo();
@@ -480,14 +481,14 @@ namespace Spartan
                     }
 
                     // Bind material textures        
-                    cmd_list->SetTexture(0, material->GetTexture_Ptr(Material_Color));
-                    cmd_list->SetTexture(1, material->GetTexture_Ptr(Material_Roughness));
-                    cmd_list->SetTexture(2, material->GetTexture_Ptr(Material_Metallic));
-                    cmd_list->SetTexture(3, material->GetTexture_Ptr(Material_Normal));
-                    cmd_list->SetTexture(4, material->GetTexture_Ptr(Material_Height));
-                    cmd_list->SetTexture(5, material->GetTexture_Ptr(Material_Occlusion));
-                    cmd_list->SetTexture(6, material->GetTexture_Ptr(Material_Emission));
-                    cmd_list->SetTexture(7, material->GetTexture_Ptr(Material_Mask));
+                    cmd_list->SetTexture(RendererBindingsTex::material_albedo, material->GetTexture_Ptr(Material_Color));
+                    cmd_list->SetTexture(RendererBindingsTex::material_roughness, material->GetTexture_Ptr(Material_Roughness));
+                    cmd_list->SetTexture(RendererBindingsTex::material_metallic, material->GetTexture_Ptr(Material_Metallic));
+                    cmd_list->SetTexture(RendererBindingsTex::material_normal, material->GetTexture_Ptr(Material_Normal));
+                    cmd_list->SetTexture(RendererBindingsTex::material_height, material->GetTexture_Ptr(Material_Height));
+                    cmd_list->SetTexture(RendererBindingsTex::material_occlusion, material->GetTexture_Ptr(Material_Occlusion));
+                    cmd_list->SetTexture(RendererBindingsTex::material_emission, material->GetTexture_Ptr(Material_Emission));
+                    cmd_list->SetTexture(RendererBindingsTex::material_mask, material->GetTexture_Ptr(Material_Mask));
                 
                     // Update uber buffer with material properties
                     m_buffer_uber_cpu.mat_id            = static_cast<float>(material_index);
@@ -571,15 +572,15 @@ namespace Spartan
             const uint32_t thread_group_count_z   = 1;
             const bool async                      = false;
 
-            cmd_list->SetTexture(2, tex_out, true);
-            cmd_list->SetTexture(9, m_render_targets[RendererRt::Gbuffer_Normal]);
-            cmd_list->SetTexture(10, m_render_targets[RendererRt::Gbuffer_Material]);
-            cmd_list->SetTexture(11, m_render_targets[RendererRt::Gbuffer_Velocity]);
-            cmd_list->SetTexture(12, m_render_targets[RendererRt::Gbuffer_Depth]);
-            cmd_list->SetTexture(23, m_render_targets[RendererRt::Light_Diffuse]);
-            cmd_list->SetTexture(24, m_render_targets[RendererRt::Light_Specular]);
-            cmd_list->SetTexture(26, (m_options & Render_ScreenSpaceReflections) ? m_render_targets[RendererRt::Ssr] : m_tex_black_transparent);
-            cmd_list->SetTexture(28, tex_accumulation);
+            cmd_list->SetTexture(RendererBindingsUav::rgb, tex_out);
+            cmd_list->SetTexture(RendererBindingsTex::gbuffer_normal, m_render_targets[RendererRt::Gbuffer_Normal]);
+            cmd_list->SetTexture(RendererBindingsTex::gbuffer_material, m_render_targets[RendererRt::Gbuffer_Material]);
+            cmd_list->SetTexture(RendererBindingsTex::gbuffer_velocity, m_render_targets[RendererRt::Gbuffer_Velocity]);
+            cmd_list->SetTexture(RendererBindingsTex::gbuffer_depth, m_render_targets[RendererRt::Gbuffer_Depth]);
+            cmd_list->SetTexture(RendererBindingsTex::light_diffuse, m_render_targets[RendererRt::Light_Diffuse]);
+            cmd_list->SetTexture(RendererBindingsTex::light_specular, m_render_targets[RendererRt::Light_Specular]);
+            cmd_list->SetTexture(RendererBindingsTex::ssr, (m_options & Render_ScreenSpaceReflections) ? m_render_targets[RendererRt::Ssr] : m_tex_black_transparent);
+            cmd_list->SetTexture(RendererBindingsTex::tex, tex_accumulation);
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
         }
@@ -621,9 +622,9 @@ namespace Spartan
             const uint32_t thread_group_count_z = 1;
             const bool async = false;
 
-            cmd_list->SetTexture(0, tex_hbao_noisy, true);
-            cmd_list->SetTexture(9, tex_normal);
-            cmd_list->SetTexture(12, tex_depth);
+            cmd_list->SetTexture(RendererBindingsUav::r, tex_hbao_noisy);
+            cmd_list->SetTexture(RendererBindingsTex::gbuffer_normal, tex_normal);
+            cmd_list->SetTexture(RendererBindingsTex::gbuffer_depth, tex_depth);
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
 
@@ -671,9 +672,9 @@ namespace Spartan
             const uint32_t thread_group_count_z = 1;
             const bool async = false;
 
-            cmd_list->SetTexture(1, tex_out, true);
-            cmd_list->SetTexture(9, m_render_targets[RendererRt::Gbuffer_Normal]);
-            cmd_list->SetTexture(12, m_render_targets[RendererRt::Gbuffer_Depth]);
+            cmd_list->SetTexture(RendererBindingsUav::rg, tex_out);
+            cmd_list->SetTexture(RendererBindingsTex::gbuffer_normal, m_render_targets[RendererRt::Gbuffer_Normal]);
+            cmd_list->SetTexture(RendererBindingsTex::gbuffer_depth, m_render_targets[RendererRt::Gbuffer_Depth]);
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
         }
@@ -719,16 +720,16 @@ namespace Spartan
                     // Draw
                     if (cmd_list->BeginRenderPass(pipeline_state))
                     {
-                        cmd_list->SetTexture(2, tex_diffuse, true);
-                        cmd_list->SetTexture(4, tex_specular, true);
-                        cmd_list->SetTexture(5, tex_volumetric, true);
-                        cmd_list->SetTexture(8, m_render_targets[RendererRt::Gbuffer_Albedo]);
-                        cmd_list->SetTexture(9, m_render_targets[RendererRt::Gbuffer_Normal]);
-                        cmd_list->SetTexture(10, m_render_targets[RendererRt::Gbuffer_Material]);
-                        cmd_list->SetTexture(12, m_render_targets[RendererRt::Gbuffer_Depth]);
-                        cmd_list->SetTexture(22, (m_options & Render_Hbao) ? m_render_targets[RendererRt::Hbao_Blurred] : m_tex_white);
-                        cmd_list->SetTexture(26, (m_options & Render_ScreenSpaceReflections) ? m_render_targets[RendererRt::Ssr] : m_tex_black_transparent);
-                        cmd_list->SetTexture(27, m_render_targets[RendererRt::Frame_Hdr_2]); // previous frame before post-processing
+                        cmd_list->SetTexture(RendererBindingsUav::rgb, tex_diffuse);
+                        cmd_list->SetTexture(RendererBindingsUav::rgb2, tex_specular);
+                        cmd_list->SetTexture(RendererBindingsUav::rgb3, tex_volumetric);
+                        cmd_list->SetTexture(RendererBindingsTex::gbuffer_albedo, m_render_targets[RendererRt::Gbuffer_Albedo]);
+                        cmd_list->SetTexture(RendererBindingsTex::gbuffer_normal, m_render_targets[RendererRt::Gbuffer_Normal]);
+                        cmd_list->SetTexture(RendererBindingsTex::gbuffer_material, m_render_targets[RendererRt::Gbuffer_Material]);
+                        cmd_list->SetTexture(RendererBindingsTex::gbuffer_depth, m_render_targets[RendererRt::Gbuffer_Depth]);
+                        cmd_list->SetTexture(RendererBindingsTex::hbao, (m_options & Render_Hbao) ? m_render_targets[RendererRt::Hbao_Blurred] : m_tex_white);
+                        cmd_list->SetTexture(RendererBindingsTex::ssr, (m_options & Render_ScreenSpaceReflections) ? m_render_targets[RendererRt::Ssr] : m_tex_black_transparent);
+                        cmd_list->SetTexture(RendererBindingsTex::frame, m_render_targets[RendererRt::Frame_Hdr_2]); // previous frame before post-processing
 
                         // Set shadow map
                         if (light->GetShadowsEnabled())
@@ -738,18 +739,18 @@ namespace Spartan
 
                             if (light->GetLightType() == LightType::Directional)
                             {
-                                cmd_list->SetTexture(13, tex_depth);
-                                cmd_list->SetTexture(14, tex_color);
+                                cmd_list->SetTexture(RendererBindingsTex::light_directional_depth, tex_depth);
+                                cmd_list->SetTexture(RendererBindingsTex::light_directional_color, tex_color);
                             }
                             else if (light->GetLightType() == LightType::Point)
                             {
-                                cmd_list->SetTexture(15, tex_depth);
-                                cmd_list->SetTexture(16, tex_color);
+                                cmd_list->SetTexture(RendererBindingsTex::light_point_depth, tex_depth);
+                                cmd_list->SetTexture(RendererBindingsTex::light_point_color, tex_color);
                             }
                             else if (light->GetLightType() == LightType::Spot)
                             {
-                                cmd_list->SetTexture(17, tex_depth);
-                                cmd_list->SetTexture(18, tex_color);
+                                cmd_list->SetTexture(RendererBindingsTex::light_spot_depth, tex_depth);
+                                cmd_list->SetTexture(RendererBindingsTex::light_spot_color, tex_color);
                             }
                         }
 
@@ -809,19 +810,19 @@ namespace Spartan
             // Setup command list
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
-            cmd_list->SetTexture(8, m_render_targets[RendererRt::Gbuffer_Albedo]);
-            cmd_list->SetTexture(9, m_render_targets[RendererRt::Gbuffer_Normal]);
-            cmd_list->SetTexture(10, m_render_targets[RendererRt::Gbuffer_Material]);
-            cmd_list->SetTexture(12, m_render_targets[RendererRt::Gbuffer_Depth]);
-            cmd_list->SetTexture(22, (m_options & Render_Hbao) ? m_render_targets[RendererRt::Hbao_Blurred] : m_tex_white);
-            cmd_list->SetTexture(23, is_transparent ? m_render_targets[RendererRt::Light_Diffuse_Transparent] : m_render_targets[RendererRt::Light_Diffuse]);
-            cmd_list->SetTexture(24, is_transparent ? m_render_targets[RendererRt::Light_Specular_Transparent] : m_render_targets[RendererRt::Light_Specular]);
-            cmd_list->SetTexture(25, m_render_targets[RendererRt::Light_Volumetric]);
-            cmd_list->SetTexture(26, (m_options & Render_ScreenSpaceReflections) ? m_render_targets[RendererRt::Ssr] : m_tex_black_transparent);
-            cmd_list->SetTexture(27, m_render_targets[RendererRt::Frame_Hdr_2]);
-            cmd_list->SetTexture(19, m_render_targets[RendererRt::Brdf_Specular_Lut]);
-            cmd_list->SetTexture(20, GetEnvironmentTexture());
-            cmd_list->SetTexture(31, (m_options & Render_Ssgi) ? m_render_targets[RendererRt::Ssgi] : m_tex_black_opaque);
+            cmd_list->SetTexture(RendererBindingsTex::gbuffer_albedo, m_render_targets[RendererRt::Gbuffer_Albedo]);
+            cmd_list->SetTexture(RendererBindingsTex::gbuffer_normal, m_render_targets[RendererRt::Gbuffer_Normal]);
+            cmd_list->SetTexture(RendererBindingsTex::gbuffer_material, m_render_targets[RendererRt::Gbuffer_Material]);
+            cmd_list->SetTexture(RendererBindingsTex::gbuffer_depth, m_render_targets[RendererRt::Gbuffer_Depth]);
+            cmd_list->SetTexture(RendererBindingsTex::hbao, (m_options & Render_Hbao) ? m_render_targets[RendererRt::Hbao_Blurred] : m_tex_white);
+            cmd_list->SetTexture(RendererBindingsTex::light_diffuse, is_transparent ? m_render_targets[RendererRt::Light_Diffuse_Transparent] : m_render_targets[RendererRt::Light_Diffuse]);
+            cmd_list->SetTexture(RendererBindingsTex::light_specular, is_transparent ? m_render_targets[RendererRt::Light_Specular_Transparent] : m_render_targets[RendererRt::Light_Specular]);
+            cmd_list->SetTexture(RendererBindingsTex::light_volumetric, m_render_targets[RendererRt::Light_Volumetric]);
+            cmd_list->SetTexture(RendererBindingsTex::ssr, (m_options & Render_ScreenSpaceReflections) ? m_render_targets[RendererRt::Ssr] : m_tex_black_transparent);
+            cmd_list->SetTexture(RendererBindingsTex::frame, m_render_targets[RendererRt::Frame_Hdr_2]);
+            cmd_list->SetTexture(RendererBindingsTex::lutIbl, m_render_targets[RendererRt::Brdf_Specular_Lut]);
+            cmd_list->SetTexture(RendererBindingsTex::environment, GetEnvironmentTexture());
+            cmd_list->SetTexture(RendererBindingsTex::ssgi, (m_options & Render_Ssgi) ? m_render_targets[RendererRt::Ssgi] : m_tex_black_opaque);
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
@@ -954,7 +955,7 @@ namespace Spartan
 
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
-            cmd_list->SetTexture(28, tex_in);
+            cmd_list->SetTexture(RendererBindingsTex::tex, tex_in);
             cmd_list->DrawIndexed(m_viewport_quad.GetIndexCount());
             cmd_list->EndRenderPass();
         }
@@ -999,7 +1000,7 @@ namespace Spartan
         
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
-            cmd_list->SetTexture(28, tex_in);
+            cmd_list->SetTexture(RendererBindingsTex::tex, tex_in);
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
             cmd_list->EndRenderPass();
         }
@@ -1027,7 +1028,7 @@ namespace Spartan
         
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
-            cmd_list->SetTexture(28, tex_out);
+            cmd_list->SetTexture(RendererBindingsTex::tex, tex_out);
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
             cmd_list->EndRenderPass();
         }
@@ -1081,9 +1082,9 @@ namespace Spartan
 
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
-            cmd_list->SetTexture(28, tex_in);
-            cmd_list->SetTexture(12, tex_depth);
-            cmd_list->SetTexture(9, tex_normal);
+            cmd_list->SetTexture(RendererBindingsTex::tex, tex_in);
+            cmd_list->SetTexture(RendererBindingsTex::gbuffer_depth, tex_depth);
+            cmd_list->SetTexture(RendererBindingsTex::gbuffer_normal, tex_normal);
             cmd_list->DrawIndexed(m_viewport_quad.GetIndexCount());
             cmd_list->EndRenderPass();
         }
@@ -1114,9 +1115,9 @@ namespace Spartan
 
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
-            cmd_list->SetTexture(28, tex_out);
-            cmd_list->SetTexture(12, tex_depth);
-            cmd_list->SetTexture(9, tex_normal);
+            cmd_list->SetTexture(RendererBindingsTex::tex, tex_out);
+            cmd_list->SetTexture(RendererBindingsTex::gbuffer_depth, tex_depth);
+            cmd_list->SetTexture(RendererBindingsTex::gbuffer_normal, tex_normal);
             cmd_list->DrawIndexed(m_viewport_quad.GetIndexCount());
             cmd_list->EndRenderPass();
         }
@@ -1152,11 +1153,11 @@ namespace Spartan
             const uint32_t thread_group_count_z = 1;
             const bool async = false;
 
-            cmd_list->SetTexture(3, tex_out, true);
-            cmd_list->SetTexture(28, tex_accumulation);
-            cmd_list->SetTexture(29, tex_in);
-            cmd_list->SetTexture(11, m_render_targets[RendererRt::Gbuffer_Velocity]);
-            cmd_list->SetTexture(12, m_render_targets[RendererRt::Gbuffer_Depth]);
+            cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out);
+            cmd_list->SetTexture(RendererBindingsTex::tex, tex_accumulation);
+            cmd_list->SetTexture(RendererBindingsTex::tex2, tex_in);
+            cmd_list->SetTexture(RendererBindingsTex::gbuffer_velocity, m_render_targets[RendererRt::Gbuffer_Velocity]);
+            cmd_list->SetTexture(RendererBindingsTex::gbuffer_depth, m_render_targets[RendererRt::Gbuffer_Depth]);
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
         }
@@ -1194,8 +1195,8 @@ namespace Spartan
                 const uint32_t thread_group_count_z   = 1;
                 const bool async                      = false;
 
-                cmd_list->SetTexture(3, m_render_tex_bloom[0].get(), true);
-                cmd_list->SetTexture(28, tex_in);
+                cmd_list->SetTexture(RendererBindingsUav::rgba, m_render_tex_bloom[0].get());
+                cmd_list->SetTexture(RendererBindingsTex::tex, tex_in);
                 cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
                 cmd_list->EndRenderPass();
             }
@@ -1225,8 +1226,8 @@ namespace Spartan
                 const uint32_t thread_group_count_z = 1;
                 const bool async = false;
 
-                cmd_list->SetTexture(3, mip_small, true);
-                cmd_list->SetTexture(28, mip_large);
+                cmd_list->SetTexture(RendererBindingsUav::rgba, mip_small);
+                cmd_list->SetTexture(RendererBindingsTex::tex, mip_large);
                 cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
                 cmd_list->EndRenderPass();
             }
@@ -1255,8 +1256,8 @@ namespace Spartan
                 const uint32_t thread_group_count_z = 1;
                 const bool async = false;
 
-                cmd_list->SetTexture(3, mip_large, true);
-                cmd_list->SetTexture(28, mip_small);
+                cmd_list->SetTexture(RendererBindingsUav::rgba, mip_large);
+                cmd_list->SetTexture(RendererBindingsTex::tex, mip_small);
                 cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
                 cmd_list->EndRenderPass();
             }
@@ -1281,9 +1282,9 @@ namespace Spartan
                 const uint32_t thread_group_count_z = 1;
                 const bool async = false;
 
-                cmd_list->SetTexture(3, tex_out.get(), true);
-                cmd_list->SetTexture(28, tex_in);
-                cmd_list->SetTexture(29, m_render_tex_bloom.front());
+                cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out.get());
+                cmd_list->SetTexture(RendererBindingsTex::tex, tex_in);
+                cmd_list->SetTexture(RendererBindingsTex::tex2, m_render_tex_bloom.front());
                 cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
                 cmd_list->EndRenderPass();
             }
@@ -1314,8 +1315,8 @@ namespace Spartan
             const uint32_t thread_group_count_z = 1;
             const bool async = false;
 
-            cmd_list->SetTexture(3, tex_out, true);
-            cmd_list->SetTexture(28, tex_in);
+            cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out);
+            cmd_list->SetTexture(RendererBindingsTex::tex, tex_in);
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
         }
@@ -1345,8 +1346,8 @@ namespace Spartan
             const uint32_t thread_group_count_z   = 1;
             const bool async                      = false;
 
-            cmd_list->SetTexture(3, tex_out, true);
-            cmd_list->SetTexture(28, tex_in);
+            cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out);
+            cmd_list->SetTexture(RendererBindingsTex::tex, tex_in);
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
         }
@@ -1380,8 +1381,8 @@ namespace Spartan
             // Draw
             if (cmd_list->BeginRenderPass(pipeline_state))
             {
-                cmd_list->SetTexture(3, tex_out, true);
-                cmd_list->SetTexture(28, tex_in);
+                cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out);
+                cmd_list->SetTexture(RendererBindingsTex::tex, tex_in);
                 cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
                 cmd_list->EndRenderPass();
             }
@@ -1397,8 +1398,8 @@ namespace Spartan
             // Draw
             if (cmd_list->BeginRenderPass(pipeline_state))
             {
-                cmd_list->SetTexture(3, tex_in, true);
-                cmd_list->SetTexture(28, tex_out);
+                cmd_list->SetTexture(RendererBindingsUav::rgba, tex_in);
+                cmd_list->SetTexture(RendererBindingsTex::tex, tex_out);
                 cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
                 cmd_list->EndRenderPass();
             }
@@ -1432,8 +1433,8 @@ namespace Spartan
             const uint32_t thread_group_count_z   = 1;
             const bool async                      = false;
 
-            cmd_list->SetTexture(3, tex_out, true);
-            cmd_list->SetTexture(28, tex_in);
+            cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out);
+            cmd_list->SetTexture(RendererBindingsTex::tex, tex_in);
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
         }
@@ -1463,10 +1464,10 @@ namespace Spartan
             const uint32_t thread_group_count_z   = 1;
             const bool async                      = false;
 
-            cmd_list->SetTexture(3, tex_out, true);
-            cmd_list->SetTexture(28, tex_in);
-            cmd_list->SetTexture(11, m_render_targets[RendererRt::Gbuffer_Velocity]);
-            cmd_list->SetTexture(12, m_render_targets[RendererRt::Gbuffer_Depth]);
+            cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out);
+            cmd_list->SetTexture(RendererBindingsTex::tex, tex_in);
+            cmd_list->SetTexture(RendererBindingsTex::gbuffer_velocity, m_render_targets[RendererRt::Gbuffer_Velocity]);
+            cmd_list->SetTexture(RendererBindingsTex::gbuffer_depth, m_render_targets[RendererRt::Gbuffer_Depth]);
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
         }
@@ -1506,9 +1507,9 @@ namespace Spartan
                 const uint32_t thread_group_count_z   = 1;
                 const bool async                      = false;
 
-                cmd_list->SetTexture(3, tex_bokeh_half, true);
-                cmd_list->SetTexture(12, tex_depth);
-                cmd_list->SetTexture(28, tex_in);
+                cmd_list->SetTexture(RendererBindingsUav::rgba, tex_bokeh_half);
+                cmd_list->SetTexture(RendererBindingsTex::gbuffer_depth, tex_depth);
+                cmd_list->SetTexture(RendererBindingsTex::tex, tex_in);
                 cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
                 cmd_list->EndRenderPass();
             }
@@ -1533,8 +1534,8 @@ namespace Spartan
                 const uint32_t thread_group_count_z = 1;
                 const bool async = false;
 
-                cmd_list->SetTexture(3, tex_bokeh_half_2, true);
-                cmd_list->SetTexture(28, tex_bokeh_half);
+                cmd_list->SetTexture(RendererBindingsUav::rgba, tex_bokeh_half_2);
+                cmd_list->SetTexture(RendererBindingsTex::tex, tex_bokeh_half);
                 cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
                 cmd_list->EndRenderPass();
             }
@@ -1559,8 +1560,8 @@ namespace Spartan
                 const uint32_t thread_group_count_z = 1;
                 const bool async = false;
 
-                cmd_list->SetTexture(3, tex_bokeh_half, true);
-                cmd_list->SetTexture(28, tex_bokeh_half_2);
+                cmd_list->SetTexture(RendererBindingsUav::rgba, tex_bokeh_half);
+                cmd_list->SetTexture(RendererBindingsTex::tex, tex_bokeh_half_2);
                 cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
                 cmd_list->EndRenderPass();
             }
@@ -1585,10 +1586,10 @@ namespace Spartan
                 const uint32_t thread_group_count_z = 1;
                 const bool async = false;
 
-                cmd_list->SetTexture(3, tex_out, true);
-                cmd_list->SetTexture(12, tex_depth);
-                cmd_list->SetTexture(28, tex_in);
-                cmd_list->SetTexture(29, tex_bokeh_half);
+                cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out);
+                cmd_list->SetTexture(RendererBindingsTex::gbuffer_depth, tex_depth);
+                cmd_list->SetTexture(RendererBindingsTex::tex, tex_in);
+                cmd_list->SetTexture(RendererBindingsTex::tex2, tex_bokeh_half);
                 cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
                 cmd_list->EndRenderPass();
             }
@@ -1619,8 +1620,8 @@ namespace Spartan
             const uint32_t thread_group_count_z = 1;
             const bool async = false;
 
-            cmd_list->SetTexture(3, tex_out, true);
-            cmd_list->SetTexture(28, tex_in);
+            cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out);
+            cmd_list->SetTexture(RendererBindingsTex::tex, tex_in);
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
         }
@@ -1650,8 +1651,8 @@ namespace Spartan
             const uint32_t thread_group_count_z   = 1;
             const bool async                      = false;
 
-            cmd_list->SetTexture(3, tex_out, true);
-            cmd_list->SetTexture(28, tex_in);
+            cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out);
+            cmd_list->SetTexture(RendererBindingsTex::tex, tex_in);
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
         }
@@ -1681,8 +1682,8 @@ namespace Spartan
             const uint32_t thread_group_count_z   = 1;
             const bool async                      = false;
 
-            cmd_list->SetTexture(3, tex_out, true);
-            cmd_list->SetTexture(28, tex_in);
+            cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out);
+            cmd_list->SetTexture(RendererBindingsTex::tex, tex_in);
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
         }
@@ -1940,7 +1941,7 @@ namespace Spartan
                         m_buffer_uber_cpu.transform = m_buffer_frame_cpu.view_projection_ortho;
                         UpdateUberBuffer(cmd_list);
         
-                        cmd_list->SetTexture(28, light_tex);
+                        cmd_list->SetTexture(RendererBindingsTex::tex, light_tex);
                         cmd_list->SetBufferIndex(m_gizmo_light_rect.GetIndexBuffer());
                         cmd_list->SetBufferVertex(m_gizmo_light_rect.GetVertexBuffer());
                         cmd_list->DrawIndexed(Rectangle::GetIndexCount());
@@ -2095,8 +2096,8 @@ namespace Spartan
                     UpdateUberBuffer(cmd_list);
                 }
 
-                cmd_list->SetTexture(12, tex_depth);
-                cmd_list->SetTexture(9, tex_normal);
+                cmd_list->SetTexture(RendererBindingsTex::gbuffer_depth, tex_depth);
+                cmd_list->SetTexture(RendererBindingsTex::gbuffer_normal, tex_normal);
                 cmd_list->SetBufferVertex(model->GetVertexBuffer());
                 cmd_list->SetBufferIndex(model->GetIndexBuffer());
                 cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
@@ -2144,7 +2145,7 @@ namespace Spartan
 
                 cmd_list->SetBufferIndex(m_font->GetIndexBuffer());
                 cmd_list->SetBufferVertex(m_font->GetVertexBuffer());
-                cmd_list->SetTexture(30, m_font->GetAtlasOutline());
+                cmd_list->SetTexture(RendererBindingsTex::material_normal, m_font->GetAtlasOutline());
                 cmd_list->DrawIndexed(m_font->GetIndexCount());
                 cmd_list->EndRenderPass();
             }
@@ -2160,7 +2161,7 @@ namespace Spartan
 
             cmd_list->SetBufferIndex(m_font->GetIndexBuffer());
             cmd_list->SetBufferVertex(m_font->GetVertexBuffer());
-            cmd_list->SetTexture(30, m_font->GetAtlas());
+            cmd_list->SetTexture(RendererBindingsTex::material_normal, m_font->GetAtlas());
             cmd_list->DrawIndexed(m_font->GetIndexCount());
             cmd_list->EndRenderPass();
         }
@@ -2284,8 +2285,8 @@ namespace Spartan
             const uint32_t thread_group_count_z = 1;
             const bool async = false;
 
-            cmd_list->SetTexture(3, tex_out, true);
-            cmd_list->SetTexture(28, texture);
+            cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out);
+            cmd_list->SetTexture(RendererBindingsTex::tex, texture);
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
         }
@@ -2323,7 +2324,7 @@ namespace Spartan
             const uint32_t thread_group_count_z = 1;
             const bool async = false;
 
-            cmd_list->SetTexture(1, render_target, true);
+            cmd_list->SetTexture(RendererBindingsUav::rg, render_target);
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
 
@@ -2351,8 +2352,8 @@ namespace Spartan
             const uint32_t thread_group_count_z   = 1;
             const bool async                      = false;
 
-            cmd_list->SetTexture(3, tex_out, true);
-            cmd_list->SetTexture(28, tex_in);
+            cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out);
+            cmd_list->SetTexture(RendererBindingsTex::tex, tex_in);
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
         }
