@@ -34,65 +34,65 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-	AudioSource::AudioSource(Context* context, Entity* entity, uint32_t id /*= 0*/) : IComponent(context, entity, id)
-	{
-		m_mute				= false;
-		m_play_on_start		= true;
-		m_loop				= false;
-		m_priority			= 128;
-		m_volume			= 1.0f;
-		m_pitch				= 1.0f;
-		m_pan				= 0.0f;
-		m_audio_clip_loaded	= false;
-	}
-	
-	void AudioSource::OnInitialize()
-	{
-		if (!m_audio_clip)
-			return;
-		
-		// Set the transform
-		m_audio_clip->SetTransform(GetTransform());
-	}
-	
-	void AudioSource::OnStart()
-	{
-		if (!m_play_on_start)
-			return;
+    AudioSource::AudioSource(Context* context, Entity* entity, uint32_t id /*= 0*/) : IComponent(context, entity, id)
+    {
+        m_mute                = false;
+        m_play_on_start        = true;
+        m_loop                = false;
+        m_priority            = 128;
+        m_volume            = 1.0f;
+        m_pitch                = 1.0f;
+        m_pan                = 0.0f;
+        m_audio_clip_loaded    = false;
+    }
+    
+    void AudioSource::OnInitialize()
+    {
+        if (!m_audio_clip)
+            return;
+        
+        // Set the transform
+        m_audio_clip->SetTransform(GetTransform());
+    }
+    
+    void AudioSource::OnStart()
+    {
+        if (!m_play_on_start)
+            return;
 
-		Play();
-	}
-	
-	void AudioSource::OnStop()
-	{
-		Stop();
-	}
-	
-	void AudioSource::OnRemove()
-	{
-		if (!m_audio_clip)
-			return;
-	
-		m_audio_clip->Stop();
-	}
-	
-	void AudioSource::OnTick(float delta_time)
-	{
-		if (!m_audio_clip)
-			return;
-	
-		m_audio_clip->Update();
-	}
-	
-	void AudioSource::Serialize(FileStream* stream)
-	{
-		stream->Write(m_mute);
-		stream->Write(m_play_on_start);
-		stream->Write(m_loop);
-		stream->Write(m_priority);
-		stream->Write(m_volume);
-		stream->Write(m_pitch);
-		stream->Write(m_pan);
+        Play();
+    }
+    
+    void AudioSource::OnStop()
+    {
+        Stop();
+    }
+    
+    void AudioSource::OnRemove()
+    {
+        if (!m_audio_clip)
+            return;
+    
+        m_audio_clip->Stop();
+    }
+    
+    void AudioSource::OnTick(float delta_time)
+    {
+        if (!m_audio_clip)
+            return;
+    
+        m_audio_clip->Update();
+    }
+    
+    void AudioSource::Serialize(FileStream* stream)
+    {
+        stream->Write(m_mute);
+        stream->Write(m_play_on_start);
+        stream->Write(m_loop);
+        stream->Write(m_priority);
+        stream->Write(m_volume);
+        stream->Write(m_pitch);
+        stream->Write(m_pan);
 
         const bool has_audio_clip = m_audio_clip != nullptr;
         stream->Write(has_audio_clip);
@@ -100,23 +100,23 @@ namespace Spartan
         {
             stream->Write(m_audio_clip->GetResourceName());
         }
-	}
-	
-	void AudioSource::Deserialize(FileStream* stream)
-	{
-		stream->Read(&m_mute);
-		stream->Read(&m_play_on_start);
-		stream->Read(&m_loop);
-		stream->Read(&m_priority);
-		stream->Read(&m_volume);
-		stream->Read(&m_pitch);
-		stream->Read(&m_pan);
+    }
+    
+    void AudioSource::Deserialize(FileStream* stream)
+    {
+        stream->Read(&m_mute);
+        stream->Read(&m_play_on_start);
+        stream->Read(&m_loop);
+        stream->Read(&m_priority);
+        stream->Read(&m_volume);
+        stream->Read(&m_pitch);
+        stream->Read(&m_pan);
 
         if (stream->ReadAs<bool>())
         {
             m_audio_clip = m_context->GetSubsystem<ResourceCache>()->GetByName<AudioClip>(stream->ReadAs<string>());
         }
-	}
+    }
 
     void AudioSource::SetAudioClip(const string& file_path)
     {
@@ -131,77 +131,77 @@ namespace Spartan
 
     string AudioSource::GetAudioClipName() const
     {
-		return m_audio_clip ? m_audio_clip->GetResourceName() : "";
-	}
-	
-	bool AudioSource::Play() const
+        return m_audio_clip ? m_audio_clip->GetResourceName() : "";
+    }
+    
+    bool AudioSource::Play() const
     {
-		if (!m_audio_clip)
-			return false;
-	
-		m_audio_clip->Play();
-		m_audio_clip->SetMute(m_mute);
-		m_audio_clip->SetVolume(m_volume);
-		m_audio_clip->SetLoop(m_loop);
-		m_audio_clip->SetPriority(m_priority);
-		m_audio_clip->SetPan(m_pan);
-	
-		return true;
-	}
-	
-	bool AudioSource::Stop() const
+        if (!m_audio_clip)
+            return false;
+    
+        m_audio_clip->Play();
+        m_audio_clip->SetMute(m_mute);
+        m_audio_clip->SetVolume(m_volume);
+        m_audio_clip->SetLoop(m_loop);
+        m_audio_clip->SetPriority(m_priority);
+        m_audio_clip->SetPan(m_pan);
+    
+        return true;
+    }
+    
+    bool AudioSource::Stop() const
     {
-		if (!m_audio_clip)
-			return false;
-	
-		return m_audio_clip->Stop();
-	}
-	
-	void AudioSource::SetMute(bool mute)
-	{
-		if (m_mute == mute || !m_audio_clip)
-			return;
-	
-		m_mute = mute;
-		m_audio_clip->SetMute(mute);
-	}
-	
-	void AudioSource::SetPriority(int priority)
-	{
-		if (!m_audio_clip)
-			return;
-	
-		// Priority for the channel, from 0 (most important) 
-		// to 256 (least important), default = 128.
-		m_priority = static_cast<int>(Helper::Clamp(priority, 0, 255));
-		m_audio_clip->SetPriority(m_priority);
-	}
-	
-	void AudioSource::SetVolume(float volume)
-	{
-		if (!m_audio_clip)
-			return;
-	
-		m_volume = Helper::Clamp(volume, 0.0f, 1.0f);
-		m_audio_clip->SetVolume(m_volume);
-	}
-	
-	void AudioSource::SetPitch(float pitch)
-	{
-		if (!m_audio_clip)
-			return;
-	
-		m_pitch = Helper::Clamp(pitch, 0.0f, 3.0f);
-		m_audio_clip->SetPitch(m_pitch);
-	}
-	
-	void AudioSource::SetPan(float pan)
-	{
-		if (!m_audio_clip)
-			return;
-	
-		// Pan level, from -1.0 (left) to 1.0 (right).
-		m_pan = Helper::Clamp(pan, -1.0f, 1.0f);
-		m_audio_clip->SetPan(m_pan);
-	}
+        if (!m_audio_clip)
+            return false;
+    
+        return m_audio_clip->Stop();
+    }
+    
+    void AudioSource::SetMute(bool mute)
+    {
+        if (m_mute == mute || !m_audio_clip)
+            return;
+    
+        m_mute = mute;
+        m_audio_clip->SetMute(mute);
+    }
+    
+    void AudioSource::SetPriority(int priority)
+    {
+        if (!m_audio_clip)
+            return;
+    
+        // Priority for the channel, from 0 (most important) 
+        // to 256 (least important), default = 128.
+        m_priority = static_cast<int>(Helper::Clamp(priority, 0, 255));
+        m_audio_clip->SetPriority(m_priority);
+    }
+    
+    void AudioSource::SetVolume(float volume)
+    {
+        if (!m_audio_clip)
+            return;
+    
+        m_volume = Helper::Clamp(volume, 0.0f, 1.0f);
+        m_audio_clip->SetVolume(m_volume);
+    }
+    
+    void AudioSource::SetPitch(float pitch)
+    {
+        if (!m_audio_clip)
+            return;
+    
+        m_pitch = Helper::Clamp(pitch, 0.0f, 3.0f);
+        m_audio_clip->SetPitch(m_pitch);
+    }
+    
+    void AudioSource::SetPan(float pan)
+    {
+        if (!m_audio_clip)
+            return;
+    
+        // Pan level, from -1.0 (left) to 1.0 (right).
+        m_pan = Helper::Clamp(pan, -1.0f, 1.0f);
+        m_audio_clip->SetPan(m_pan);
+    }
 }

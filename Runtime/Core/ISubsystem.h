@@ -29,22 +29,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-	class Context;
+    class Context;
 
-	class SPARTAN_CLASS ISubsystem : public std::enable_shared_from_this<ISubsystem>
-	{		
-	public:
-		ISubsystem(Context* context) { m_context = context; }
-		virtual ~ISubsystem() = default;
-		virtual bool Initialize() { return true; }
-		virtual void Tick(float delta_time) {}
+    class SPARTAN_CLASS ISubsystem : public std::enable_shared_from_this<ISubsystem>
+    {        
+    public:
+        ISubsystem(Context* context) { m_context = context; }
+        virtual ~ISubsystem() = default;
+        virtual bool Initialize() { return true; }
+        virtual void Tick(float delta_time) {}
 
         template <typename T>
         std::shared_ptr<T> GetPtrShared() { return dynamic_pointer_cast<T>(shared_from_this()); }
 
-	protected:
-		Context* m_context;
-	};
+    protected:
+        Context* m_context;
+    };
 
     template<typename T>
     constexpr void validate_subsystem_type() { static_assert(std::is_base_of<ISubsystem, T>::value, "Provided type does not implement ISubystem"); }

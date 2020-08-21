@@ -29,91 +29,91 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= FWD DECLARATIONS =
 namespace FMOD
 {
-	class System;
-	class Sound;
-	class Channel;
+    class System;
+    class Sound;
+    class Channel;
 }
 //====================
 
 namespace Spartan
 {
-	class Transform;
+    class Transform;
 
-	enum PlayMode
-	{
-		Play_Memory,
-		Play_Stream
-	};
+    enum PlayMode
+    {
+        Play_Memory,
+        Play_Stream
+    };
 
-	enum Rolloff
-	{
-		Linear,
-		Custom
-	};
+    enum Rolloff
+    {
+        Linear,
+        Custom
+    };
 
-	class SPARTAN_CLASS AudioClip : public IResource
-	{
-	public:
-		AudioClip(Context* context);
-		~AudioClip();
+    class SPARTAN_CLASS AudioClip : public IResource
+    {
+    public:
+        AudioClip(Context* context);
+        ~AudioClip();
 
         //= IResource ===========================================
         bool LoadFromFile(const std::string& file_path) override;
         bool SaveToFile(const std::string& file_path) override;
         //=======================================================
 
-		bool Play();
-		bool Pause();
-		bool Stop();
+        bool Play();
+        bool Pause();
+        bool Stop();
 
-		// Set's sound looping
-		bool SetLoop(bool loop);
+        // Set's sound looping
+        bool SetLoop(bool loop);
 
-		// Set's the volume [0.0f, 1.0f]
-		bool SetVolume(float volume);
+        // Set's the volume [0.0f, 1.0f]
+        bool SetVolume(float volume);
 
-		// Sets the mute state effectively silencing it or returning it to its normal volume.
-		bool SetMute(bool mute);
+        // Sets the mute state effectively silencing it or returning it to its normal volume.
+        bool SetMute(bool mute);
 
-		// Set's the priority for the channel [0, 255]
-		bool SetPriority(int priority);
+        // Set's the priority for the channel [0, 255]
+        bool SetPriority(int priority);
 
-		// Sets the pitch value
-		bool SetPitch(float pitch);
+        // Sets the pitch value
+        bool SetPitch(float pitch);
 
-		// Sets the pan level
-		bool SetPan(float pan);
+        // Sets the pan level
+        bool SetPan(float pan);
 
-		// Sets the rolloff
-		bool SetRolloff(const std::vector<Math::Vector3>& curve_points);
-		bool SetRolloff(Rolloff rolloff);
+        // Sets the rolloff
+        bool SetRolloff(const std::vector<Math::Vector3>& curve_points);
+        bool SetRolloff(Rolloff rolloff);
 
-		// Makes the audio use the 3D attributes of the transform
-		void SetTransform(Transform* transform) { m_transform = transform; }
+        // Makes the audio use the 3D attributes of the transform
+        void SetTransform(Transform* transform) { m_transform = transform; }
 
-		// Should be called per frame to update the 3D attributes of the sound
-		bool Update();
+        // Should be called per frame to update the 3D attributes of the sound
+        bool Update();
 
-		bool IsPlaying();
+        bool IsPlaying();
 
-	private:
-		//= CREATION ===================================
-		bool CreateSound(const std::string& file_path);
-		bool CreateStream(const std::string& file_path);
-		//==============================================
-		int GetSoundMode() const;
-		void LogErrorFmod(int error) const;
-		bool IsChannelValid() const;
+    private:
+        //= CREATION ===================================
+        bool CreateSound(const std::string& file_path);
+        bool CreateStream(const std::string& file_path);
+        //==============================================
+        int GetSoundMode() const;
+        void LogErrorFmod(int error) const;
+        bool IsChannelValid() const;
 
-		Transform* m_transform;
-		FMOD::System* m_systemFMOD;
-		FMOD::Sound* m_soundFMOD;
-		FMOD::Channel* m_channelFMOD;	
-		PlayMode m_playMode;
-		int m_modeLoop;
-		float m_minDistance;
-		float m_maxDistance;
-		int m_modeRolloff;
-		int m_result;
-	};
+        Transform* m_transform;
+        FMOD::System* m_systemFMOD;
+        FMOD::Sound* m_soundFMOD;
+        FMOD::Channel* m_channelFMOD;    
+        PlayMode m_playMode;
+        int m_modeLoop;
+        float m_minDistance;
+        float m_maxDistance;
+        int m_modeRolloff;
+        int m_result;
+    };
 }

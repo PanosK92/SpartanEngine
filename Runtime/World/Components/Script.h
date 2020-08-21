@@ -32,28 +32,28 @@ namespace Spartan
     struct ScriptInstance;
     //=======================
 
-	class SPARTAN_CLASS Script : public IComponent
-	{
-	public:
-		Script(Context* context, Entity* entity, uint32_t id = 0);
-		~Script() = default;
+    class SPARTAN_CLASS Script : public IComponent
+    {
+    public:
+        Script(Context* context, Entity* entity, uint32_t id = 0);
+        ~Script() = default;
 
-		//= ICOMPONENT ===============================
-		void OnStart() override;
-		void OnTick(float delta_time) override;
-		void Serialize(FileStream* stream) override;
-		void Deserialize(FileStream* stream) override;
-		//============================================
+        //= ICOMPONENT ===============================
+        void OnStart() override;
+        void OnTick(float delta_time) override;
+        void Serialize(FileStream* stream) override;
+        void Deserialize(FileStream* stream) override;
+        //============================================
 
-		bool SetScript(const std::string& file_path);
-		std::string GetScriptPath() const;
-		std::string GetName() const;
+        bool SetScript(const std::string& file_path);
+        std::string GetScriptPath() const;
+        std::string GetName() const;
 
-	private:
-		std::string m_name;
+    private:
+        std::string m_name;
         std::string m_file_path;
         Scripting* m_scripting              = nullptr;
         ScriptInstance* m_script_instance   = nullptr;
         uint32_t m_script_instance_id       = 0;
-	};
+    };
 }

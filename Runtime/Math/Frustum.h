@@ -29,19 +29,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan::Math
 {
-	class Frustum
-	{
-	public:
+    class Frustum
+    {
+    public:
         Frustum() = default;
         Frustum(const Matrix& mView, const Matrix& mProjection, float screenDepth);
-		~Frustum() = default;
+        ~Frustum() = default;
 
         bool IsVisible(const Vector3& center, const Vector3& extent, bool ignore_near_plane = false) const;
 
-	private:
+    private:
         Intersection CheckCube(const Vector3& center, const Vector3& extent) const;
         Intersection CheckSphere(const Vector3& center, float radius) const;
 
-		Plane m_planes[6];
-	};
+        Plane m_planes[6];
+    };
 }

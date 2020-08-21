@@ -34,62 +34,62 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= FORWARD DECLARATIONS =
 namespace Spartan
 {
-	class Entity;
+    class Entity;
 }
 //========================
 
-#define _VARIANT_TYPES								\
-	char,											\
-	unsigned char,									\
-	int,											\
-	uint32_t,									    \
-	bool,											\
-	float,											\
-	double,											\
-	void*,											\
-	Spartan::Entity*,								\
-	std::shared_ptr<Spartan::Entity>,				\
-	std::weak_ptr<Spartan::Entity>,					\
-	std::vector<std::weak_ptr<Spartan::Entity>>,	\
-	std::vector<std::shared_ptr<Spartan::Entity>>,	\
-	Spartan::Math::Vector2,							\
-	Spartan::Math::Vector3,							\
-	Spartan::Math::Vector4,							\
-	Spartan::Math::Matrix,							\
-	Spartan::Math::Quaternion
+#define _VARIANT_TYPES                                \
+    char,                                            \
+    unsigned char,                                    \
+    int,                                            \
+    uint32_t,                                        \
+    bool,                                            \
+    float,                                            \
+    double,                                            \
+    void*,                                            \
+    Spartan::Entity*,                                \
+    std::shared_ptr<Spartan::Entity>,                \
+    std::weak_ptr<Spartan::Entity>,                    \
+    std::vector<std::weak_ptr<Spartan::Entity>>,    \
+    std::vector<std::shared_ptr<Spartan::Entity>>,    \
+    Spartan::Math::Vector2,                            \
+    Spartan::Math::Vector3,                            \
+    Spartan::Math::Vector4,                            \
+    Spartan::Math::Matrix,                            \
+    Spartan::Math::Quaternion
 
 #define VARIANT_TYPES std::variant<_VARIANT_TYPES>
 typedef std::variant<_VARIANT_TYPES, VARIANT_TYPES> VariantInternal;
 
 namespace Spartan
 {
-	class SPARTAN_CLASS Variant
-	{
-	public:
-		// Default
-		Variant() = default;
+    class SPARTAN_CLASS Variant
+    {
+    public:
+        // Default
+        Variant() = default;
         ~Variant() = default;
 
         // Copy constructor 1
-		Variant(const Variant& var){ m_variant = var.GetVariantRaw(); }
-		// Copy constructor 2
-		template <class T, class = std::enable_if<!std::is_same<T, Variant>::value>>
-		Variant(T value) { m_variant = value; }
+        Variant(const Variant& var){ m_variant = var.GetVariantRaw(); }
+        // Copy constructor 2
+        template <class T, class = std::enable_if<!std::is_same<T, Variant>::value>>
+        Variant(T value) { m_variant = value; }
 
-		// Assignment operator 1
-		Variant& operator =(const Variant& rhs);
-		// Assignment operator 2
-		template <class T, class = std::enable_if<!std::is_same<T, Variant>::value>>
-		Variant& operator =(T rhs) { return m_variant = rhs; }
+        // Assignment operator 1
+        Variant& operator =(const Variant& rhs);
+        // Assignment operator 2
+        template <class T, class = std::enable_if<!std::is_same<T, Variant>::value>>
+        Variant& operator =(T rhs) { return m_variant = rhs; }
 
-		const VariantInternal& GetVariantRaw() const { return m_variant; }
+        const VariantInternal& GetVariantRaw() const { return m_variant; }
 
-		template<class T>
-		inline const T& Get() const { return std::get<T>(m_variant); }
+        template<class T>
+        inline const T& Get() const { return std::get<T>(m_variant); }
 
-	private:
-		VariantInternal m_variant;
-	};
+    private:
+        VariantInternal m_variant;
+    };
 
-	
+    
 }

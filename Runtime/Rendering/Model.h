@@ -32,23 +32,23 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-	class ResourceCache;
-	class Entity;
-	class Mesh;
-	namespace Math{ class BoundingBox; }
+    class ResourceCache;
+    class Entity;
+    class Mesh;
+    namespace Math{ class BoundingBox; }
 
-	class SPARTAN_CLASS Model : public IResource, public std::enable_shared_from_this<Model>
-	{
-	public:
-		Model(Context* context);
-		~Model();
+    class SPARTAN_CLASS Model : public IResource, public std::enable_shared_from_this<Model>
+    {
+    public:
+        Model(Context* context);
+        ~Model();
 
         void Clear();
 
-		//= IResource ===========================================
-		bool LoadFromFile(const std::string& file_path) override;
-		bool SaveToFile(const std::string& file_path) override;
-		//=======================================================
+        //= IResource ===========================================
+        bool LoadFromFile(const std::string& file_path) override;
+        bool SaveToFile(const std::string& file_path) override;
+        //=======================================================
 
         // Geometry
         void AppendGeometry(
@@ -69,34 +69,34 @@ namespace Spartan
         const auto& GetAabb() const { return m_aabb; }
         const auto& GetMesh() const { return m_mesh; }
 
-		// Add resources to the model
+        // Add resources to the model
         void SetRootEntity(const std::shared_ptr<Entity>& entity) { m_root_entity = entity; }
-		void AddMaterial(std::shared_ptr<Material>& material, const std::shared_ptr<Entity>& entity) const;
-		void AddTexture(std::shared_ptr<Material>& material, Material_Property texture_type, const std::string& file_path);
+        void AddMaterial(std::shared_ptr<Material>& material, const std::shared_ptr<Entity>& entity) const;
+        void AddTexture(std::shared_ptr<Material>& material, Material_Property texture_type, const std::string& file_path);
 
         // Misc
         bool IsAnimated()                           const { return m_is_animated; }
-		void SetAnimated(const bool is_animated)	      { m_is_animated = is_animated; }
-		const RHI_IndexBuffer* GetIndexBuffer()     const { return m_index_buffer.get(); }
-		const RHI_VertexBuffer* GetVertexBuffer()   const { return m_vertex_buffer.get(); }
-		auto GetSharedPtr()							      { return shared_from_this(); }
+        void SetAnimated(const bool is_animated)          { m_is_animated = is_animated; }
+        const RHI_IndexBuffer* GetIndexBuffer()     const { return m_index_buffer.get(); }
+        const RHI_VertexBuffer* GetVertexBuffer()   const { return m_vertex_buffer.get(); }
+        auto GetSharedPtr()                                  { return shared_from_this(); }
 
-	private:
-		// Geometry
-		bool GeometryCreateBuffers();
-		float GeometryComputeNormalizedScale() const;
+    private:
+        // Geometry
+        bool GeometryCreateBuffers();
+        float GeometryComputeNormalizedScale() const;
 
-		// Misc
-		std::weak_ptr<Entity> m_root_entity;
-		std::shared_ptr<RHI_VertexBuffer> m_vertex_buffer;
-		std::shared_ptr<RHI_IndexBuffer> m_index_buffer;
-		std::shared_ptr<Mesh> m_mesh;
-		Math::BoundingBox m_aabb;
-		float m_normalized_scale	= 1.0f;
-		bool m_is_animated			= false;
+        // Misc
+        std::weak_ptr<Entity> m_root_entity;
+        std::shared_ptr<RHI_VertexBuffer> m_vertex_buffer;
+        std::shared_ptr<RHI_IndexBuffer> m_index_buffer;
+        std::shared_ptr<Mesh> m_mesh;
+        Math::BoundingBox m_aabb;
+        float m_normalized_scale    = 1.0f;
+        bool m_is_animated            = false;
 
         // Dependencies
-		ResourceCache* m_resource_manager;
-		std::shared_ptr<RHI_Device> m_rhi_device;	
-	};
+        ResourceCache* m_resource_manager;
+        std::shared_ptr<RHI_Device> m_rhi_device;    
+    };
 }

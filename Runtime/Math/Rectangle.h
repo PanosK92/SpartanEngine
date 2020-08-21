@@ -28,56 +28,56 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-	class Renderer;
+    class Renderer;
 
-	namespace Math
-	{
-		class Rectangle
-		{
-		public:
-			Rectangle()
-			{
+    namespace Math
+    {
+        class Rectangle
+        {
+        public:
+            Rectangle()
+            {
                 left    = std::numeric_limits<float>::max();
                 top     = std::numeric_limits<float>::max();
                 right   = std::numeric_limits<float>::lowest();
                 bottom  = std::numeric_limits<float>::lowest();
-			}
+            }
 
-			Rectangle(const float left, const float top, const float right, const float bottom)
-			{
+            Rectangle(const float left, const float top, const float right, const float bottom)
+            {
                 this->left      = left;
                 this->top       = top;
                 this->right     = right;
                 this->bottom    = bottom;
-			}
+            }
 
-			Rectangle(const Rectangle& rectangle)
-			{
+            Rectangle(const Rectangle& rectangle)
+            {
                 left    = rectangle.left;
                 top     = rectangle.top;
                 right   = rectangle.right;
                 bottom  = rectangle.bottom;
-			}
+            }
 
-			~Rectangle() = default;
+            ~Rectangle() = default;
 
-			bool operator==(const Rectangle& rhs) const
-			{
-				return
+            bool operator==(const Rectangle& rhs) const
+            {
+                return
                     left    == rhs.left     &&
                     top     == rhs.top      &&
-					right   == rhs.right    &&
+                    right   == rhs.right    &&
                     bottom  == rhs.bottom;
-			}
+            }
 
-			bool operator!=(const Rectangle& rhs) const
-			{
-				return
+            bool operator!=(const Rectangle& rhs) const
+            {
+                return
                     left    != rhs.left     ||
                     top     != rhs.top      ||
                     right   != rhs.right    ||
                     bottom  != rhs.bottom;
-			}
+            }
 
             bool IsDefined() const
             {
@@ -99,8 +99,8 @@ namespace Spartan
                 bottom  = Math::Helper::Max(bottom,   point.y);
             }
 
-			bool CreateBuffers(Renderer* renderer);
-			static int GetIndexCount() { return 6; }
+            bool CreateBuffers(Renderer* renderer);
+            static int GetIndexCount() { return 6; }
             RHI_IndexBuffer* GetIndexBuffer() const { return m_indexBuffer.get(); }
             RHI_VertexBuffer* GetVertexBuffer() const { return m_vertexBuffer.get(); }
 
@@ -111,9 +111,9 @@ namespace Spartan
 
             static const Rectangle Zero;
 
-		private:
-			std::shared_ptr<RHI_VertexBuffer> m_vertexBuffer;
-			std::shared_ptr<RHI_IndexBuffer> m_indexBuffer;
-		};
-	}
+        private:
+            std::shared_ptr<RHI_VertexBuffer> m_vertexBuffer;
+            std::shared_ptr<RHI_IndexBuffer> m_indexBuffer;
+        };
+    }
 }

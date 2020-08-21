@@ -33,15 +33,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-	// Forward declarations
-	class Context;
+    // Forward declarations
+    class Context;
 
-	class SPARTAN_CLASS RHI_Shader : public Spartan_Object
-	{
-	public:
+    class SPARTAN_CLASS RHI_Shader : public Spartan_Object
+    {
+    public:
         RHI_Shader() = default;
-		RHI_Shader(Context* context);
-		~RHI_Shader();
+        RHI_Shader(Context* context);
+        ~RHI_Shader();
 
         // Compilation
         template<typename T> void Compile(const RHI_Shader_Type type, const std::string& shader);
@@ -52,16 +52,16 @@ namespace Spartan
         bool IsCompiled()           const { return m_compilation_state == Shader_Compilation_Succeeded; }
         void WaitForCompilation();
 
-		// Resource
+        // Resource
         void* GetResource() const { return m_resource; }
         bool HasResource()  const { return m_resource != nullptr; }
 
         // Name
-		const std::string& GetName() const      { return m_name; }
-		void SetName(const std::string& name)   { m_name = name; }
+        const std::string& GetName() const      { return m_name; }
+        void SetName(const std::string& name)   { m_name = name; }
 
         // Defines
-		void AddDefine(const std::string& define, const std::string& value = "1")	{ m_defines[define] = value; }
+        void AddDefine(const std::string& define, const std::string& value = "1")    { m_defines[define] = value; }
         auto& GetDefines() const                                                    { return m_defines; }
 
         // Misc
@@ -73,24 +73,24 @@ namespace Spartan
         const char* GetTargetProfile()                      const;
         const char* GetShaderModel()                        const;
 
-	protected:
-		std::shared_ptr<RHI_Device> m_rhi_device;
+    protected:
+        std::shared_ptr<RHI_Device> m_rhi_device;
 
-	private:
+    private:
         // All compile functions resolve to this, and this is the underlying API implements
-		void* _Compile(const std::string& shader);
-		void _Reflect(const RHI_Shader_Type shader_type, const uint32_t* ptr, uint32_t size);
+        void* _Compile(const std::string& shader);
+        void _Reflect(const RHI_Shader_Type shader_type, const uint32_t* ptr, uint32_t size);
 
-		std::string m_name;
-		std::string m_file_path;
-		std::unordered_map<std::string, std::string> m_defines;
-		std::vector<RHI_Descriptor> m_descriptors;
-		std::shared_ptr<RHI_InputLayout> m_input_layout;
-		Shader_Compilation_State m_compilation_state    = Shader_Compilation_Unknown;
+        std::string m_name;
+        std::string m_file_path;
+        std::unordered_map<std::string, std::string> m_defines;
+        std::vector<RHI_Descriptor> m_descriptors;
+        std::shared_ptr<RHI_InputLayout> m_input_layout;
+        Shader_Compilation_State m_compilation_state    = Shader_Compilation_Unknown;
         RHI_Shader_Type m_shader_type                   = RHI_Shader_Unknown;
         RHI_Vertex_Type m_vertex_type                   = RHI_Vertex_Type_Unknown;
 
-		// API 
-		void* m_resource = nullptr;
-	};
+        // API 
+        void* m_resource = nullptr;
+    };
 }

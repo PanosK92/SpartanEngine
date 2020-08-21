@@ -28,38 +28,38 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= FORWARD DECLARATIONS =
 namespace FMOD
 {
-	class System;
+    class System;
 }
 //========================
 
 namespace Spartan
 {
-	class Transform;
-	class Profiler;
+    class Transform;
+    class Profiler;
 
-	class Audio : public ISubsystem
-	{
-	public:
+    class Audio : public ISubsystem
+    {
+    public:
         Audio(Context* context);
-		~Audio();
+        ~Audio();
 
         //= ISubsystem ======================
         bool Initialize() override;
         void Tick(float delta_time) override;
         //===================================
 
-		auto GetSystemFMOD() const { return m_system_fmod; }
-		void SetListenerTransform(Transform* transform);
+        auto GetSystemFMOD() const { return m_system_fmod; }
+        void SetListenerTransform(Transform* transform);
 
-	private:
-		void LogErrorFmod(int error) const;
+    private:
+        void LogErrorFmod(int error) const;
 
-		uint32_t m_result_fmod		= 0;
-		uint32_t m_max_channels		= 32;
-		float m_distance_entity		= 1.0f;
-		bool m_initialized			= false;
-		Transform* m_listener		= nullptr;
-		Profiler* m_profiler		= nullptr;
-		FMOD::System* m_system_fmod = nullptr;
-	};
+        uint32_t m_result_fmod        = 0;
+        uint32_t m_max_channels        = 32;
+        float m_distance_entity        = 1.0f;
+        bool m_initialized            = false;
+        Transform* m_listener        = nullptr;
+        Profiler* m_profiler        = nullptr;
+        FMOD::System* m_system_fmod = nullptr;
+    };
 }

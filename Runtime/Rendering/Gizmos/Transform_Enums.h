@@ -24,13 +24,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 enum TransformHandle_Type
 {
-	TransformHandle_Position,
-	TransformHandle_Rotation,
-	TransformHandle_Scale
+    TransformHandle_Position,
+    TransformHandle_Rotation,
+    TransformHandle_Scale
 };
 
 enum TransformHandle_Space
 {
-	TransformHandle_Local,
-	TransformHandle_World
+    TransformHandle_Local,
+    TransformHandle_World
 };

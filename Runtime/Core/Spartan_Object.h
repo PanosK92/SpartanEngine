@@ -33,12 +33,12 @@ namespace Spartan
     //========================
 
     // Globals
-	static uint32_t g_id = 0;
+    static uint32_t g_id = 0;
 
-	class SPARTAN_CLASS Spartan_Object
-	{
-	public:
-		Spartan_Object(Context* context = nullptr)
+    class SPARTAN_CLASS Spartan_Object
+    {
+    public:
+        Spartan_Object(Context* context = nullptr)
         {
             m_context   = context;
             m_id        = GenerateId();
@@ -48,8 +48,8 @@ namespace Spartan
         const std::string& GetName()    const { return m_name; }
 
         // Id
-		const uint32_t GetId()          const { return m_id; }
-		void SetId(const uint32_t id)	      { m_id = id; }
+        const uint32_t GetId()          const { return m_id; }
+        void SetId(const uint32_t id)          { m_id = id; }
         static uint32_t GenerateId()          { return ++g_id; }
 
         // CPU & GPU sizes
@@ -59,13 +59,13 @@ namespace Spartan
         // Execution context.
         Context* GetContext()           const { return m_context; }
 
-	protected:
+    protected:
         // Execution context
         Context* m_context = nullptr;
 
         std::string m_name;
-		uint32_t m_id	    = 0;
+        uint32_t m_id        = 0;
         uint64_t m_size_cpu = 0;
         uint64_t m_size_gpu = 0;
-	};
+    };
 }

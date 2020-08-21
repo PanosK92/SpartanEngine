@@ -41,21 +41,21 @@ struct btSoftBodyWorldInfo;
 
 namespace Spartan
 {
-	class Renderer;
-	class PhysicsDebugDraw;
-	class Profiler;
-	namespace Math { class Vector3; }	
+    class Renderer;
+    class PhysicsDebugDraw;
+    class Profiler;
+    namespace Math { class Vector3; }    
 
-	class Physics : public ISubsystem
-	{
-	public:
-		Physics(Context* context);
-		~Physics();
+    class Physics : public ISubsystem
+    {
+    public:
+        Physics(Context* context);
+        ~Physics();
 
-		//= Subsystem =======================
-		bool Initialize() override;
-		void Tick(float delta_time) override;
-		//===================================
+        //= Subsystem =======================
+        bool Initialize() override;
+        void Tick(float delta_time) override;
+        //===================================
 
         // Rigid body
         void AddBody(btRigidBody* body) const;
@@ -70,12 +70,12 @@ namespace Spartan
         void RemoveConstraint(btTypedConstraint*& constraint) const;
 
         // Properties
-		Math::Vector3 GetGravity()  const;
+        Math::Vector3 GetGravity()  const;
         auto& GetSoftWorldInfo()    const { return *m_world_info; }
         auto GetPhysicsDebugDraw()  const { return m_debug_draw; }
-		bool IsSimulating()         const { return m_simulating; }
+        bool IsSimulating()         const { return m_simulating; }
 
-	private:
+    private:
         btBroadphaseInterface* m_broadphase                         = nullptr;
         btCollisionDispatcher* m_collision_dispatcher               = nullptr;
         btSequentialImpulseConstraintSolver* m_constraint_solver    = nullptr;
@@ -88,12 +88,12 @@ namespace Spartan
         Renderer* m_renderer = nullptr;
         Profiler* m_profiler = nullptr;
 
-		//= PROPERTIES =================================================
+        //= PROPERTIES =================================================
         int m_max_sub_steps         = 1;
         int m_max_solve_iterations  = 256;
         float m_internal_fps        = 60.0f;
         Math::Vector3 m_gravity     = Math::Vector3(0.0f, -9.81f, 0.0f);
         bool m_simulating           = false;
-		//==============================================================
-	};
+        //==============================================================
+    };
 }

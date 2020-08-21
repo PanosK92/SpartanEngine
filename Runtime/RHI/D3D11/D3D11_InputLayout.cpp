@@ -32,57 +32,57 @@ using namespace std;
 
 namespace Spartan
 {
-	RHI_InputLayout::~RHI_InputLayout()
-	{
+    RHI_InputLayout::~RHI_InputLayout()
+    {
         d3d11_utility::release(*reinterpret_cast<ID3D11InputLayout**>(&m_resource));
-	}
+    }
 
-	bool RHI_InputLayout::_CreateResource(void* vertex_shader_blob)
-	{
-		if (!vertex_shader_blob)
-		{
-			LOG_ERROR_INVALID_PARAMETER();
-			return false;
-		}
+    bool RHI_InputLayout::_CreateResource(void* vertex_shader_blob)
+    {
+        if (!vertex_shader_blob)
+        {
+            LOG_ERROR_INVALID_PARAMETER();
+            return false;
+        }
 
-		if (m_vertex_attributes.empty())
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return false;
-		}
+        if (m_vertex_attributes.empty())
+        {
+            LOG_ERROR_INVALID_INTERNALS();
+            return false;
+        }
 
-		vector<D3D11_INPUT_ELEMENT_DESC> vertex_attributes;
-		for (const auto& vertex_attribute : m_vertex_attributes)
-		{
-			vertex_attributes.emplace_back(D3D11_INPUT_ELEMENT_DESC
-			{ 
-				vertex_attribute.name.c_str(),			// SemanticName
-				0,										// SemanticIndex
-				d3d11_format[vertex_attribute.format],	// Format
-				0,										// InputSlot
-				vertex_attribute.offset,				// AlignedByteOffset
-				D3D11_INPUT_PER_VERTEX_DATA,			// InputSlotClass
-				0										// InstanceDataStepRate
-			});
-		}
+        vector<D3D11_INPUT_ELEMENT_DESC> vertex_attributes;
+        for (const auto& vertex_attribute : m_vertex_attributes)
+        {
+            vertex_attributes.emplace_back(D3D11_INPUT_ELEMENT_DESC
+            { 
+                vertex_attribute.name.c_str(),            // SemanticName
+                0,                                        // SemanticIndex
+                d3d11_format[vertex_attribute.format],    // Format
+                0,                                        // InputSlot
+                vertex_attribute.offset,                // AlignedByteOffset
+                D3D11_INPUT_PER_VERTEX_DATA,            // InputSlotClass
+                0                                        // InstanceDataStepRate
+            });
+        }
 
-		// Create input layout
-		auto d3d_blob = static_cast<ID3D10Blob*>(vertex_shader_blob);
-		const auto result = m_rhi_device->GetContextRhi()->device->CreateInputLayout
-		(
-			vertex_attributes.data(),
-			static_cast<UINT>(vertex_attributes.size()),
-			d3d_blob->GetBufferPointer(),
-			d3d_blob->GetBufferSize(),
-			reinterpret_cast<ID3D11InputLayout**>(&m_resource)
-		);
+        // Create input layout
+        auto d3d_blob = static_cast<ID3D10Blob*>(vertex_shader_blob);
+        const auto result = m_rhi_device->GetContextRhi()->device->CreateInputLayout
+        (
+            vertex_attributes.data(),
+            static_cast<UINT>(vertex_attributes.size()),
+            d3d_blob->GetBufferPointer(),
+            d3d_blob->GetBufferSize(),
+            reinterpret_cast<ID3D11InputLayout**>(&m_resource)
+        );
 
-		if (FAILED(result))
-		{
-			LOG_ERROR("Failed to create input layout, %s", d3d11_utility::dxgi_error_to_string(result));
-			return false;
-		}
+        if (FAILED(result))
+        {
+            LOG_ERROR("Failed to create input layout, %s", d3d11_utility::dxgi_error_to_string(result));
+            return false;
+        }
 
-		return true;
-	}
+        return true;
+    }
 }

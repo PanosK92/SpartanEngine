@@ -34,58 +34,58 @@ namespace Spartan
 {
     uint32_t TimeBlock::m_max_tree_depth = 0;
 
-	TimeBlock::~TimeBlock()
-	{
-		Reset();
-	}
+    TimeBlock::~TimeBlock()
+    {
+        Reset();
+    }
 
-	void TimeBlock::Begin(const char* name, TimeBlock_Type type, const TimeBlock* parent /*= nullptr*/, RHI_CommandList* cmd_list /*= nullptr*/, const shared_ptr<RHI_Device>& rhi_device /*= nullptr*/)
-	{
-		m_name			    = name;
-		m_parent		    = parent;
-		m_tree_depth	    = FindTreeDepth(this);
-		m_rhi_device	    = rhi_device.get();
+    void TimeBlock::Begin(const char* name, TimeBlock_Type type, const TimeBlock* parent /*= nullptr*/, RHI_CommandList* cmd_list /*= nullptr*/, const shared_ptr<RHI_Device>& rhi_device /*= nullptr*/)
+    {
+        m_name                = name;
+        m_parent            = parent;
+        m_tree_depth        = FindTreeDepth(this);
+        m_rhi_device        = rhi_device.get();
         m_cmd_list          = cmd_list;
         m_type              = type;
         m_max_tree_depth    = Math::Helper::Max(m_max_tree_depth, m_tree_depth);
 
-		if (type == TimeBlock_Cpu)
-		{
-			m_start = chrono::high_resolution_clock::now();
-		}
-		else if (type == TimeBlock_Gpu)
-		{
-			// Create required queries
-			if (!m_query_disjoint)
-			{
-				RHI_CommandList::Gpu_QueryCreate(m_rhi_device, &m_query_disjoint, RHI_Query_Timestamp_Disjoint);
-				RHI_CommandList::Gpu_QueryCreate(m_rhi_device, &m_query_start, RHI_Query_Timestamp);
-				RHI_CommandList::Gpu_QueryCreate(m_rhi_device, &m_query_end, RHI_Query_Timestamp);
-			}
+        if (type == TimeBlock_Cpu)
+        {
+            m_start = chrono::high_resolution_clock::now();
+        }
+        else if (type == TimeBlock_Gpu)
+        {
+            // Create required queries
+            if (!m_query_disjoint)
+            {
+                RHI_CommandList::Gpu_QueryCreate(m_rhi_device, &m_query_disjoint, RHI_Query_Timestamp_Disjoint);
+                RHI_CommandList::Gpu_QueryCreate(m_rhi_device, &m_query_start, RHI_Query_Timestamp);
+                RHI_CommandList::Gpu_QueryCreate(m_rhi_device, &m_query_end, RHI_Query_Timestamp);
+            }
 
             if (cmd_list)
             {
                 cmd_list->Timestamp_Start(m_query_disjoint, m_query_start);
             }
-		}
-	}
+        }
+    }
 
-	void TimeBlock::End()
-	{
-		if (m_type == TimeBlock_Cpu)
-		{
-			m_end = chrono::high_resolution_clock::now();
-		}
-		else if (m_type == TimeBlock_Gpu)
-		{
+    void TimeBlock::End()
+    {
+        if (m_type == TimeBlock_Cpu)
+        {
+            m_end = chrono::high_resolution_clock::now();
+        }
+        else if (m_type == TimeBlock_Gpu)
+        {
             if (m_cmd_list)
             {
                 m_cmd_list->Timestamp_End(m_query_disjoint, m_query_end);
             }
-		}
+        }
 
         m_is_complete = true;
-	}
+    }
 
     void TimeBlock::ComputeDuration(const uint32_t pass_index)
     {
@@ -110,11 +110,11 @@ namespace Spartan
     }
 
     void TimeBlock::Reset()
-	{
+    {
         m_name              = nullptr;
-		m_parent		    = nullptr;
-		m_tree_depth	    = 0;
-		m_duration	        = 0.0f;
+        m_parent            = nullptr;
+        m_tree_depth        = 0;
+        m_duration            = 0.0f;
         m_max_tree_depth    = 0;
         m_type              = TimeBlock_Undefined;
         m_is_complete       = false;
@@ -125,13 +125,13 @@ namespace Spartan
             RHI_CommandList::Gpu_QueryRelease(m_query_start);
             RHI_CommandList::Gpu_QueryRelease(m_query_end);
         }
-	}
+    }
 
-	uint32_t TimeBlock::FindTreeDepth(const TimeBlock* time_block, uint32_t depth /*= 0*/)
-	{
-		if (time_block && time_block->GetParent())
-			depth =	FindTreeDepth(time_block->GetParent(), ++depth);
+    uint32_t TimeBlock::FindTreeDepth(const TimeBlock* time_block, uint32_t depth /*= 0*/)
+    {
+        if (time_block && time_block->GetParent())
+            depth =    FindTreeDepth(time_block->GetParent(), ++depth);
 
-		return depth;
-	}
+        return depth;
+    }
 }

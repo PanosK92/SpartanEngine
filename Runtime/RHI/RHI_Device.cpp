@@ -54,14 +54,14 @@ namespace Spartan
     }
 
     void RHI_Device::SetPrimaryPhysicalDevice(const uint32_t index)
-	{
+    {
         m_physical_device_index = index;
 
         if (const PhysicalDevice* physical_device = GetPrimaryPhysicalDevice())
         {
             LOG_INFO("%s (%d MB)", physical_device->GetName().c_str(), physical_device->GetMemory());
         }
-	}
+    }
 
     bool RHI_Device::ValidateResolution(const uint32_t width, const uint32_t height) const
     {
@@ -70,12 +70,12 @@ namespace Spartan
 
         return  width  > 0 && width  <= m_rhi_context->rhi_max_texture_dimension_2d &&
                 height > 0 && height <= m_rhi_context->rhi_max_texture_dimension_2d;
-	}
+    }
 
-	bool RHI_Device::Queue_WaitAll() const
+    bool RHI_Device::Queue_WaitAll() const
     {
         return Queue_Wait(RHI_Queue_Graphics) && Queue_Wait(RHI_Queue_Transfer) && Queue_Wait(RHI_Queue_Compute);
-	}
+    }
 
     void* RHI_Device::Queue_Get(const RHI_Queue_Type type) const
     {

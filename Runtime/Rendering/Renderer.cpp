@@ -83,26 +83,26 @@ namespace Spartan
         m_option_values[Option_Value_Bloom_Intensity]   = 0.2f;
         m_option_values[Option_Value_Fog]               = 1.0f;
 
-		// Subscribe to events
-		SUBSCRIBE_TO_EVENT(EventType::WorldResolved,    EVENT_HANDLER_VARIANT(RenderablesAcquire));
+        // Subscribe to events
+        SUBSCRIBE_TO_EVENT(EventType::WorldResolved,    EVENT_HANDLER_VARIANT(RenderablesAcquire));
         SUBSCRIBE_TO_EVENT(EventType::WorldUnload,      EVENT_HANDLER(ClearEntities));
-	}
+    }
 
-	Renderer::~Renderer()
-	{
-		// Unsubscribe from events
-		UNSUBSCRIBE_FROM_EVENT(EventType::WorldResolved, EVENT_HANDLER_VARIANT(RenderablesAcquire));
+    Renderer::~Renderer()
+    {
+        // Unsubscribe from events
+        UNSUBSCRIBE_FROM_EVENT(EventType::WorldResolved, EVENT_HANDLER_VARIANT(RenderablesAcquire));
 
-		m_entities.clear();
-		m_camera = nullptr;
+        m_entities.clear();
+        m_camera = nullptr;
 
-		// Log to file as the renderer is no more
-		LOG_TO_FILE(true);
-	}
+        // Log to file as the renderer is no more
+        LOG_TO_FILE(true);
+    }
 
-	bool Renderer::Initialize()
-	{
-        // Get required systems		
+    bool Renderer::Initialize()
+    {
+        // Get required systems        
         m_resource_cache    = m_context->GetSubsystem<ResourceCache>();
         m_profiler          = m_context->GetSubsystem<Profiler>();
 
@@ -155,42 +155,42 @@ namespace Spartan
         m_viewport_quad = Math::Rectangle(0, 0, m_viewport.width, m_viewport.height);
         m_viewport_quad.CreateBuffers(this);
 
-		// Line buffer
-		m_vertex_buffer_lines = make_shared<RHI_VertexBuffer>(m_rhi_device);
+        // Line buffer
+        m_vertex_buffer_lines = make_shared<RHI_VertexBuffer>(m_rhi_device);
 
         // Editor specific
         m_gizmo_grid = make_unique<Grid>(m_rhi_device);
         m_gizmo_transform = make_unique<Transform_Gizmo>(m_context);
 
         CreateConstantBuffers();
-		CreateShaders();
-		CreateDepthStencilStates();
-		CreateRasterizerStates();
-		CreateBlendStates();
-		CreateRenderTextures();
-		CreateFonts();	
-		CreateSamplers();
-		CreateTextures();
+        CreateShaders();
+        CreateDepthStencilStates();
+        CreateRasterizerStates();
+        CreateBlendStates();
+        CreateRenderTextures();
+        CreateFonts();    
+        CreateSamplers();
+        CreateTextures();
 
-		if (!m_initialized)
-		{
-			// Log on-screen as the renderer is ready
-			LOG_TO_FILE(false); 
-			m_initialized = true;
-		}
+        if (!m_initialized)
+        {
+            // Log on-screen as the renderer is ready
+            LOG_TO_FILE(false); 
+            m_initialized = true;
+        }
 
-		return true;
-	}
+        return true;
+    }
 
     std::weak_ptr<Spartan::Entity> Renderer::SnapTransformGizmoTo(const shared_ptr<Entity>& entity) const
-	{
-		return m_gizmo_transform->SetSelectedEntity(entity);
-	}
+    {
+        return m_gizmo_transform->SetSelectedEntity(entity);
+    }
 
     void Renderer::Tick(float delta_time)
-	{
-		if (!m_rhi_device || !m_rhi_device->IsInitialized())
-			return;
+    {
+        if (!m_rhi_device || !m_rhi_device->IsInitialized())
+            return;
 
         // Don't do any work if the swapchain is not presenting
         if (m_swap_chain && !m_swap_chain->IsPresenting())
@@ -244,9 +244,9 @@ namespace Spartan
                 const float scale               = 1.0f;
                 const uint64_t samples          = 16;
                 const uint64_t index            = m_frame_num % samples;
-                m_taa_jitter			        = (Utility::Sampling::Halton2D(index, 2, 3) * 2.0f - 1.0f);
-                m_taa_jitter.x			        = (m_taa_jitter.x / m_resolution.x) * scale;
-                m_taa_jitter.y			        = (m_taa_jitter.y / m_resolution.y) * scale;
+                m_taa_jitter                    = (Utility::Sampling::Halton2D(index, 2, 3) * 2.0f - 1.0f);
+                m_taa_jitter.x                    = (m_taa_jitter.x / m_resolution.x) * scale;
+                m_taa_jitter.y                    = (m_taa_jitter.y / m_resolution.y) * scale;
                 m_buffer_frame_cpu.projection   *= Matrix::CreateTranslation(Vector3(m_taa_jitter.x, m_taa_jitter.y, 0.0f));
             }
             else
@@ -278,7 +278,7 @@ namespace Spartan
             m_buffer_frame_cpu.ssr_enabled                  = GetOption(Render_ScreenSpaceReflections) ? 1.0f : 0.0f;
             m_buffer_frame_cpu.shadow_resolution            = GetOptionValue<float>(Option_Value_ShadowResolution);
             m_buffer_frame_cpu.frame                        = static_cast<uint32_t>(m_frame_num);
-		}
+        }
 
         m_is_rendering = true;
         Pass_Main(cmd_list);
@@ -286,7 +286,7 @@ namespace Spartan
 
         m_frame_num++;
         m_is_odd_frame = (m_frame_num % 2) == 1;
-	}
+    }
 
     void Renderer::SetViewport(float width, float height, float offset_x /*= 0*/, float offset_y /*= 0*/)
     {
@@ -312,69 +312,69 @@ namespace Spartan
     }
 
     void Renderer::SetResolution(uint32_t width, uint32_t height)
-	{
-		// Return if resolution is invalid
-		if (!m_rhi_device->ValidateResolution(width, height))
-		{
-			LOG_WARNING("%dx%d is an invalid resolution", width, height);
-			return;
-		}
+    {
+        // Return if resolution is invalid
+        if (!m_rhi_device->ValidateResolution(width, height))
+        {
+            LOG_WARNING("%dx%d is an invalid resolution", width, height);
+            return;
+        }
 
-		// Make sure we are pixel perfect
-		width	-= (width	% 2 != 0) ? 1 : 0;
-		height	-= (height	% 2 != 0) ? 1 : 0;
+        // Make sure we are pixel perfect
+        width    -= (width    % 2 != 0) ? 1 : 0;
+        height    -= (height    % 2 != 0) ? 1 : 0;
 
         // Silently return if resolution is already set
         if (m_resolution.x == width && m_resolution.y == height)
             return;
 
-		// Set resolution
-		m_resolution.x = static_cast<float>(width);
-		m_resolution.y = static_cast<float>(height);
+        // Set resolution
+        m_resolution.x = static_cast<float>(width);
+        m_resolution.y = static_cast<float>(height);
 
         // Register display mode (in case it doesn't exist)
         const DisplayMode& display_mode = Display::GetActiveDisplayMode();
         Display::SetActiveDisplayMode(DisplayMode(width, height, display_mode.numerator, display_mode.denominator));
 
-		// Re-create render textures
-		CreateRenderTextures();
+        // Re-create render textures
+        CreateRenderTextures();
 
         FIRE_EVENT(EventType::FrameResolutionChanged);
 
-		// Log
-		LOG_INFO("Resolution set to %dx%d", width, height);
-	}
+        // Log
+        LOG_INFO("Resolution set to %dx%d", width, height);
+    }
 
-	void Renderer::DrawLine(const Vector3& from, const Vector3& to, const Vector4& color_from, const Vector4& color_to, const bool depth /*= true*/)
-	{
-		if (depth)
-		{
-			m_lines_list_depth_enabled.emplace_back(from, color_from);
-			m_lines_list_depth_enabled.emplace_back(to, color_to);
-		}
-		else
-		{
-			m_lines_list_depth_disabled.emplace_back(from, color_from);
-			m_lines_list_depth_disabled.emplace_back(to, color_to);
-		}
-	}
+    void Renderer::DrawLine(const Vector3& from, const Vector3& to, const Vector4& color_from, const Vector4& color_to, const bool depth /*= true*/)
+    {
+        if (depth)
+        {
+            m_lines_list_depth_enabled.emplace_back(from, color_from);
+            m_lines_list_depth_enabled.emplace_back(to, color_to);
+        }
+        else
+        {
+            m_lines_list_depth_disabled.emplace_back(from, color_from);
+            m_lines_list_depth_disabled.emplace_back(to, color_to);
+        }
+    }
 
-	void Renderer::DrawRectangle(const Math::Rectangle& rectangle, const Math::Vector4& color /*= DebugColor*/, bool depth /*= true*/)
-	{
+    void Renderer::DrawRectangle(const Math::Rectangle& rectangle, const Math::Vector4& color /*= DebugColor*/, bool depth /*= true*/)
+    {
         const float cam_z = m_camera->GetTransform()->GetPosition().z + m_camera->GetNearPlane() + 5.0f;
 
         DrawLine(Vector3(rectangle.left,    rectangle.top,      cam_z), Vector3(rectangle.right,    rectangle.top,      cam_z), color, color, depth);
         DrawLine(Vector3(rectangle.right,   rectangle.top,      cam_z), Vector3(rectangle.right,    rectangle.bottom,   cam_z), color, color, depth);
         DrawLine(Vector3(rectangle.right,   rectangle.bottom,   cam_z), Vector3(rectangle.left,     rectangle.bottom,   cam_z), color, color, depth);
         DrawLine(Vector3(rectangle.left,    rectangle.bottom,   cam_z), Vector3(rectangle.left,     rectangle.top,      cam_z), color, color, depth);
-	}
+    }
 
-	void Renderer::DrawBox(const BoundingBox& box, const Vector4& color, const bool depth /*= true*/)
-	{
-		const auto& min = box.GetMin();
-		const auto& max = box.GetMax();
-	
-		DrawLine(Vector3(min.x, min.y, min.z), Vector3(max.x, min.y, min.z), color, color, depth);
+    void Renderer::DrawBox(const BoundingBox& box, const Vector4& color, const bool depth /*= true*/)
+    {
+        const auto& min = box.GetMin();
+        const auto& max = box.GetMax();
+    
+        DrawLine(Vector3(min.x, min.y, min.z), Vector3(max.x, min.y, min.z), color, color, depth);
         DrawLine(Vector3(max.x, min.y, min.z), Vector3(max.x, max.y, min.z), color, color, depth);
         DrawLine(Vector3(max.x, max.y, min.z), Vector3(min.x, max.y, min.z), color, color, depth);
         DrawLine(Vector3(min.x, max.y, min.z), Vector3(min.x, min.y, min.z), color, color, depth);
@@ -386,7 +386,7 @@ namespace Spartan
         DrawLine(Vector3(max.x, min.y, max.z), Vector3(max.x, max.y, max.z), color, color, depth);
         DrawLine(Vector3(max.x, max.y, max.z), Vector3(min.x, max.y, max.z), color, color, depth);
         DrawLine(Vector3(min.x, max.y, max.z), Vector3(min.x, min.y, max.z), color, color, depth);
-	}
+    }
 
     template<typename T>
     bool update_dynamic_buffer(RHI_CommandList* cmd_list, RHI_ConstantBuffer* buffer_gpu, T& buffer_cpu, T& buffer_cpu_previous, uint32_t& offset_index)
@@ -445,7 +445,7 @@ namespace Spartan
         return buffer_gpu->Unmap(offset, size);
     }
 
-	bool Renderer::UpdateFrameBuffer(RHI_CommandList* cmd_list)
+    bool Renderer::UpdateFrameBuffer(RHI_CommandList* cmd_list)
     {
         // Update directional light intensity, just grab the first one
         for (const auto& entity : m_entities[Renderer_Object_Light])
@@ -515,7 +515,7 @@ namespace Spartan
 
         // Dynamic buffers with offsets have to be rebound whenever the offset changes
         return cmd_list->SetConstantBuffer(2, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, m_buffer_uber_gpu);
-	}
+    }
 
     bool Renderer::UpdateObjectBuffer(RHI_CommandList* cmd_list)
     {
@@ -577,27 +577,27 @@ namespace Spartan
         return cmd_list->SetConstantBuffer(4, RHI_Shader_Pixel, m_buffer_light_gpu);
     }
 
-	void Renderer::RenderablesAcquire(const Variant& entities_variant)
-	{
+    void Renderer::RenderablesAcquire(const Variant& entities_variant)
+    {
         SCOPED_TIME_BLOCK(m_profiler);
 
-		// Clear previous state
-		m_entities.clear();
-		m_camera = nullptr;
+        // Clear previous state
+        m_entities.clear();
+        m_camera = nullptr;
 
-		vector<shared_ptr<Entity>> entities = entities_variant.Get<vector<shared_ptr<Entity>>>();
-		for (const auto& entity : entities)
-		{
-			if (!entity || !entity->IsActive())
-				continue;
+        vector<shared_ptr<Entity>> entities = entities_variant.Get<vector<shared_ptr<Entity>>>();
+        for (const auto& entity : entities)
+        {
+            if (!entity || !entity->IsActive())
+                continue;
 
-			// Get all the components we are interested in
+            // Get all the components we are interested in
             Renderable* renderable  = entity->GetComponent<Renderable>();
             Light* light            = entity->GetComponent<Light>();
             Camera* camera          = entity->GetComponent<Camera>();
 
-			if (renderable)
-			{
+            if (renderable)
+            {
                 bool is_transparent = false;
 
                 if (const Material* material = renderable->GetMaterial())
@@ -606,44 +606,44 @@ namespace Spartan
                 }
 
                 m_entities[is_transparent ? Renderer_Object_Transparent : Renderer_Object_Opaque].emplace_back(entity.get());
-			}
+            }
 
-			if (light)
-			{
-				m_entities[Renderer_Object_Light].emplace_back(entity.get());
-			}
+            if (light)
+            {
+                m_entities[Renderer_Object_Light].emplace_back(entity.get());
+            }
 
-			if (camera)
-			{
-				m_entities[Renderer_Object_Camera].emplace_back(entity.get());
-				m_camera = camera->GetPtrShared<Camera>();
-			}
-		}
+            if (camera)
+            {
+                m_entities[Renderer_Object_Camera].emplace_back(entity.get());
+                m_camera = camera->GetPtrShared<Camera>();
+            }
+        }
 
-		RenderablesSort(&m_entities[Renderer_Object_Opaque]);
-		RenderablesSort(&m_entities[Renderer_Object_Transparent]);
-	}
+        RenderablesSort(&m_entities[Renderer_Object_Opaque]);
+        RenderablesSort(&m_entities[Renderer_Object_Transparent]);
+    }
 
-	void Renderer::RenderablesSort(vector<Entity*>* renderables)
-	{
-		if (!m_camera || renderables->size() <= 2)
-			return;
+    void Renderer::RenderablesSort(vector<Entity*>* renderables)
+    {
+        if (!m_camera || renderables->size() <= 2)
+            return;
 
-		auto comparison_op = [this](Entity* entity)
-		{
-			auto renderable = entity->GetRenderable();
-			if (!renderable)
-				return 0.0f;
+        auto comparison_op = [this](Entity* entity)
+        {
+            auto renderable = entity->GetRenderable();
+            if (!renderable)
+                return 0.0f;
 
-			return (renderable->GetAabb().GetCenter() - m_camera->GetTransform()->GetPosition()).LengthSquared();
-		};
+            return (renderable->GetAabb().GetCenter() - m_camera->GetTransform()->GetPosition()).LengthSquared();
+        };
 
-		// Sort by depth (front to back)
-		sort(renderables->begin(), renderables->end(), [&comparison_op](Entity* a, Entity* b)
-		{
+        // Sort by depth (front to back)
+        sort(renderables->begin(), renderables->end(), [&comparison_op](Entity* a, Entity* b)
+        {
             return comparison_op(a) < comparison_op(b);
-		});
-	}
+        });
+    }
 
     void Renderer::ClearEntities()
     {
@@ -672,8 +672,8 @@ namespace Spartan
         m_render_targets[RenderTarget_Brdf_Prefiltered_Environment] = texture;
     }
 
-	void Renderer::SetOption(Renderer_Option option, bool enable)
-	{
+    void Renderer::SetOption(Renderer_Option option, bool enable)
+    {
         if (enable && !GetOption(option))
         {
             m_options |= option;
@@ -686,7 +686,7 @@ namespace Spartan
         {
             return;
         }
-	}
+    }
 
     void Renderer::SetOptionValue(Renderer_Option_Value option, float value)
     {

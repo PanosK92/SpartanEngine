@@ -27,20 +27,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan::Utility::Sampling
 {
-	inline float Halton(uint64_t index, uint64_t base)
-	{
-		float f = 1; float r = 0;
-		while (index > 0)
-		{
-			f = f / static_cast<float>(base);
-			r = r + f * (index % base);
-			index = index / base;
-		}
-		return r;
-	}
+    inline float Halton(uint64_t index, uint64_t base)
+    {
+        float f = 1; float r = 0;
+        while (index > 0)
+        {
+            f = f / static_cast<float>(base);
+            r = r + f * (index % base);
+            index = index / base;
+        }
+        return r;
+    }
 
-	inline Math::Vector2 Halton2D(uint64_t index, uint64_t baseA, uint64_t baseB)
-	{
-		return Math::Vector2(Halton(index, baseA), Halton(index, baseB));
-	}
+    inline Math::Vector2 Halton2D(uint64_t index, uint64_t baseA, uint64_t baseB)
+    {
+        return Math::Vector2(Halton(index, baseA), Halton(index, baseB));
+    }
 }

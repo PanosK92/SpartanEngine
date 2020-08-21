@@ -28,16 +28,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-	enum Environment_Type
-	{
-		Enviroment_Cubemap,
-		Environment_Sphere
-	};
+    enum Environment_Type
+    {
+        Enviroment_Cubemap,
+        Environment_Sphere
+    };
 
-	class SPARTAN_CLASS Environment : public IComponent
-	{
-	public:
-		Environment(Context* context, Entity* entity, uint32_t id = 0);
+    class SPARTAN_CLASS Environment : public IComponent
+    {
+    public:
+        Environment(Context* context, Entity* entity, uint32_t id = 0);
         ~Environment() = default;
 
         //= IComponent ===============================
@@ -51,12 +51,12 @@ namespace Spartan
         const std::shared_ptr<RHI_Texture>& GetTexture() const;
         void SetTexture(const std::shared_ptr<RHI_Texture>& texture);
 
-	private:
-		void SetFromTextureArray(const std::vector<std::string>& texturePaths);
-		void SetFromTextureSphere(const std::string& texturePath);
+    private:
+        void SetFromTextureArray(const std::vector<std::string>& texturePaths);
+        void SetFromTextureSphere(const std::string& texturePath);
 
-		std::vector<std::string> m_file_paths;
-		Environment_Type m_environment_type;
+        std::vector<std::string> m_file_paths;
+        Environment_Type m_environment_type;
         bool m_is_dirty = false;
-	};
+    };
 }

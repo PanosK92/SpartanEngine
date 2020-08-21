@@ -28,72 +28,72 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-	class SPARTAN_CLASS RHI_Texture2D : public RHI_Texture
-	{
-	public:
-		// Creates a texture from data
-		RHI_Texture2D(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const std::vector<std::vector<std::byte>>& data) : RHI_Texture(context)
-		{
-			m_resource_type = ResourceType::Texture2d;
-			m_width			= width;
-			m_height		= height;
-			m_viewport		= RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
-			m_channel_count = GetChannelCountFromFormat(format);
-			m_format		= format;		
-			m_data			= data;
-			m_flags	        = RHI_Texture_Sampled;
+    class SPARTAN_CLASS RHI_Texture2D : public RHI_Texture
+    {
+    public:
+        // Creates a texture from data
+        RHI_Texture2D(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const std::vector<std::vector<std::byte>>& data) : RHI_Texture(context)
+        {
+            m_resource_type = ResourceType::Texture2d;
+            m_width            = width;
+            m_height        = height;
+            m_viewport        = RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
+            m_channel_count = GetChannelCountFromFormat(format);
+            m_format        = format;        
+            m_data            = data;
+            m_flags            = RHI_Texture_Sampled;
             m_mip_levels    = static_cast<uint32_t>(data.size());
 
-			RHI_Texture2D::CreateResourceGpu();
-		}
+            RHI_Texture2D::CreateResourceGpu();
+        }
 
-		// Creates a texture from data
-		RHI_Texture2D(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const std::vector<std::byte>& data) : RHI_Texture(context)
-		{
+        // Creates a texture from data
+        RHI_Texture2D(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const std::vector<std::byte>& data) : RHI_Texture(context)
+        {
             m_data.emplace_back(data);
 
-			m_resource_type = ResourceType::Texture2d;
-			m_width			= width;
-			m_height		= height;
-			m_viewport		= RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
-			m_channel_count = GetChannelCountFromFormat(format);
-			m_format		= format;
-			m_flags	        = RHI_Texture_Sampled;
+            m_resource_type = ResourceType::Texture2d;
+            m_width            = width;
+            m_height        = height;
+            m_viewport        = RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
+            m_channel_count = GetChannelCountFromFormat(format);
+            m_format        = format;
+            m_flags            = RHI_Texture_Sampled;
             m_mip_levels    = 1;
 
-			RHI_Texture2D::CreateResourceGpu();
-		}
+            RHI_Texture2D::CreateResourceGpu();
+        }
 
-		// Creates an empty texture (intended for deferred loading)
-		RHI_Texture2D(Context* context, const bool generate_mipmaps = true) : RHI_Texture(context)
-		{
-			m_resource_type = ResourceType::Texture2d;
-			m_flags         = RHI_Texture_Sampled;
+        // Creates an empty texture (intended for deferred loading)
+        RHI_Texture2D(Context* context, const bool generate_mipmaps = true) : RHI_Texture(context)
+        {
+            m_resource_type = ResourceType::Texture2d;
+            m_flags         = RHI_Texture_Sampled;
             m_flags         |= generate_mipmaps ? RHI_Texture_GenerateMipsWhenLoading : 0;
-		}
+        }
 
-		// Creates a texture without any data (intended for usage as a render target)
-		RHI_Texture2D(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const uint32_t array_size = 1, const uint16_t flags = 0, std::string name = "") : RHI_Texture(context)
-		{
+        // Creates a texture without any data (intended for usage as a render target)
+        RHI_Texture2D(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const uint32_t array_size = 1, const uint16_t flags = 0, std::string name = "") : RHI_Texture(context)
+        {
             m_name          = name;
-			m_resource_type	= ResourceType::Texture2d;
-			m_width			= width;
-			m_height		= height;
-			m_channel_count = GetChannelCountFromFormat(format);
-			m_viewport		= RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
-			m_format		= format;
-			m_array_size	= array_size;
+            m_resource_type    = ResourceType::Texture2d;
+            m_width            = width;
+            m_height        = height;
+            m_channel_count = GetChannelCountFromFormat(format);
+            m_viewport        = RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
+            m_format        = format;
+            m_array_size    = array_size;
             m_flags         = flags;
             m_flags         |= RHI_Texture_Sampled;
-			m_flags		    |= IsDepthFormat() ? RHI_Texture_DepthStencil : (RHI_Texture_RenderTarget | RHI_Texture_Storage); // Need to optimize that, not every rt is used in a compute shader
+            m_flags            |= IsDepthFormat() ? RHI_Texture_DepthStencil : (RHI_Texture_RenderTarget | RHI_Texture_Storage); // Need to optimize that, not every rt is used in a compute shader
             m_mip_levels    = 1;
 
-			RHI_Texture2D::CreateResourceGpu();
-		}
+            RHI_Texture2D::CreateResourceGpu();
+        }
 
-		~RHI_Texture2D();
+        ~RHI_Texture2D();
 
-		// RHI_Texture
-		bool CreateResourceGpu() override;
-	};
+        // RHI_Texture
+        bool CreateResourceGpu() override;
+    };
 }

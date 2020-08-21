@@ -40,29 +40,29 @@ namespace Spartan
 
     }
 
-	Audio::~Audio()
-	{
-		// Unsubscribe from events
-		UNSUBSCRIBE_FROM_EVENT(EventType::WorldUnload, [this](Variant) { m_listener = nullptr; });
+    Audio::~Audio()
+    {
+        // Unsubscribe from events
+        UNSUBSCRIBE_FROM_EVENT(EventType::WorldUnload, [this](Variant) { m_listener = nullptr; });
 
-		if (!m_system_fmod)
-			return;
+        if (!m_system_fmod)
+            return;
 
-		// Close FMOD
-		m_result_fmod = m_system_fmod->close();
-		if (m_result_fmod != FMOD_OK)
-		{
-			LogErrorFmod(m_result_fmod);
-			return;
-		}
+        // Close FMOD
+        m_result_fmod = m_system_fmod->close();
+        if (m_result_fmod != FMOD_OK)
+        {
+            LogErrorFmod(m_result_fmod);
+            return;
+        }
 
-		// Release FMOD
-		m_result_fmod = m_system_fmod->release();
-		if (m_result_fmod != FMOD_OK)
-		{
-			LogErrorFmod(m_result_fmod);
-		}
-	}
+        // Release FMOD
+        m_result_fmod = m_system_fmod->release();
+        if (m_result_fmod != FMOD_OK)
+        {
+            LogErrorFmod(m_result_fmod);
+        }
+    }
 
     bool Audio::Initialize()
     {
@@ -133,55 +133,55 @@ namespace Spartan
         return true;
     }
 
-	void Audio::Tick(float delta_time)
-	{
-		// Don't play audio if the engine is not in game mode
-		if (!m_context->m_engine->EngineMode_IsSet(Engine_Game))
-			return;
+    void Audio::Tick(float delta_time)
+    {
+        // Don't play audio if the engine is not in game mode
+        if (!m_context->m_engine->EngineMode_IsSet(Engine_Game))
+            return;
 
-		if (!m_initialized)
-			return;
+        if (!m_initialized)
+            return;
 
         SCOPED_TIME_BLOCK(m_profiler);
 
-		// Update FMOD
-		m_result_fmod = m_system_fmod->update();
-		if (m_result_fmod != FMOD_OK)
-		{
-			LogErrorFmod(m_result_fmod);
-			return;
-		}
+        // Update FMOD
+        m_result_fmod = m_system_fmod->update();
+        if (m_result_fmod != FMOD_OK)
+        {
+            LogErrorFmod(m_result_fmod);
+            return;
+        }
 
-		if (m_listener)
-		{
-			auto position = m_listener->GetPosition();
-			auto velocity = Math::Vector3::Zero;
-			auto forward = m_listener->GetForward();
-			auto up = m_listener->GetUp();
+        if (m_listener)
+        {
+            auto position = m_listener->GetPosition();
+            auto velocity = Math::Vector3::Zero;
+            auto forward = m_listener->GetForward();
+            auto up = m_listener->GetUp();
 
-			// Set 3D attributes
-			m_result_fmod = m_system_fmod->set3DListenerAttributes(
-				0, 
-				reinterpret_cast<FMOD_VECTOR*>(&position), 
-				reinterpret_cast<FMOD_VECTOR*>(&velocity), 
-				reinterpret_cast<FMOD_VECTOR*>(&forward), 
-				reinterpret_cast<FMOD_VECTOR*>(&up)
-			);
-			if (m_result_fmod != FMOD_OK)
-			{
-				LogErrorFmod(m_result_fmod);
-				return;
-			}
-		}
-	}
+            // Set 3D attributes
+            m_result_fmod = m_system_fmod->set3DListenerAttributes(
+                0, 
+                reinterpret_cast<FMOD_VECTOR*>(&position), 
+                reinterpret_cast<FMOD_VECTOR*>(&velocity), 
+                reinterpret_cast<FMOD_VECTOR*>(&forward), 
+                reinterpret_cast<FMOD_VECTOR*>(&up)
+            );
+            if (m_result_fmod != FMOD_OK)
+            {
+                LogErrorFmod(m_result_fmod);
+                return;
+            }
+        }
+    }
 
     void Audio::SetListenerTransform(Transform* transform)
-	{
-		m_listener = transform;
-	}
+    {
+        m_listener = transform;
+    }
 
-	void Audio::LogErrorFmod(int error) const
-	{
-		LOG_ERROR("%s", FMOD_ErrorString(static_cast<FMOD_RESULT>(error)));
-	}
+    void Audio::LogErrorFmod(int error) const
+    {
+        LOG_ERROR("%s", FMOD_ErrorString(static_cast<FMOD_RESULT>(error)));
+    }
 }

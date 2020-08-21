@@ -29,42 +29,42 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-	class World;
-	class Input;
-	class Camera;
-	class Context;
-	class Entity;
-	class RHI_IndexBuffer;
-	class RHI_VertexBuffer;
+    class World;
+    class Input;
+    class Camera;
+    class Context;
+    class Entity;
+    class RHI_IndexBuffer;
+    class RHI_VertexBuffer;
 
-	class SPARTAN_CLASS Transform_Gizmo
-	{
-	public:
-		Transform_Gizmo(Context* context);
-		~Transform_Gizmo() = default;
+    class SPARTAN_CLASS Transform_Gizmo
+    {
+    public:
+        Transform_Gizmo(Context* context);
+        ~Transform_Gizmo() = default;
 
         std::weak_ptr<Spartan::Entity> SetSelectedEntity(const std::shared_ptr<Entity>& entity);
-		bool Update(Camera* camera, float handle_size, float handle_speed);
-		uint32_t GetIndexCount()                    const;
-		const RHI_VertexBuffer* GetVertexBuffer()   const;
-		const RHI_IndexBuffer* GetIndexBuffer()     const;
-		const TransformHandle& GetHandle()          const;
-		bool DrawXYZ()                              const { return m_type == TransformHandle_Scale; }
+        bool Update(Camera* camera, float handle_size, float handle_speed);
+        uint32_t GetIndexCount()                    const;
+        const RHI_VertexBuffer* GetVertexBuffer()   const;
+        const RHI_IndexBuffer* GetIndexBuffer()     const;
+        const TransformHandle& GetHandle()          const;
+        bool DrawXYZ()                              const { return m_type == TransformHandle_Scale; }
         bool IsEntitySelected()                     const { return m_is_editing; }
         const Entity* GetSelectedEntity()           const { return m_entity_selected.lock().get(); }
-		
-	private:
-		bool m_is_editing               = false;
-		bool m_just_finished_editing    = false;
+        
+    private:
+        bool m_is_editing               = false;
+        bool m_just_finished_editing    = false;
 
-		std::weak_ptr<Entity> m_entity_selected;
-		TransformHandle m_handle_position;
-		TransformHandle m_handle_rotation;
-		TransformHandle m_handle_scale;
-		TransformHandle_Type m_type;
-		TransformHandle_Space m_space;
-		Context* m_context;
-		Input* m_input;
-		World* m_world;
-	};
+        std::weak_ptr<Entity> m_entity_selected;
+        TransformHandle m_handle_position;
+        TransformHandle m_handle_rotation;
+        TransformHandle m_handle_scale;
+        TransformHandle_Type m_type;
+        TransformHandle_Space m_space;
+        Context* m_context;
+        Input* m_input;
+        World* m_world;
+    };
 }

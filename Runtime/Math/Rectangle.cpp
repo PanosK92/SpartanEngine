@@ -35,51 +35,51 @@ namespace Spartan::Math
 {
     const Rectangle Rectangle::Zero(0.0f, 0.0f, 0.0f, 0.0f);
 
-	bool Rectangle::CreateBuffers(Renderer* renderer)
-	{
-		if (!renderer)
-		{
-			LOG_ERROR_INVALID_PARAMETER();
-			return false;
-		}
+    bool Rectangle::CreateBuffers(Renderer* renderer)
+    {
+        if (!renderer)
+        {
+            LOG_ERROR_INVALID_PARAMETER();
+            return false;
+        }
 
-		// Compute screen coordinates
-		const auto viewport		= renderer->GetViewport();
-		const auto sc_left		= -(viewport.width * 0.5f) + left;
-		const auto sc_right		= sc_left + Width();
-		const auto sc_top		= (viewport.height * 0.5f) - top;
-		const auto sc_bottom	= sc_top - Height();
+        // Compute screen coordinates
+        const auto viewport        = renderer->GetViewport();
+        const auto sc_left        = -(viewport.width * 0.5f) + left;
+        const auto sc_right        = sc_left + Width();
+        const auto sc_top        = (viewport.height * 0.5f) - top;
+        const auto sc_bottom    = sc_top - Height();
 
-		// Create vertex buffer
-		const RHI_Vertex_PosTex vertices[6] = 
-		{
-			// First triangle	
-			RHI_Vertex_PosTex(Vector3(sc_left,	sc_top,		0.0f),	Vector2(0.0f, 0.0f)),	// Top left	
-			RHI_Vertex_PosTex(Vector3(sc_right,	sc_bottom,	0.0f),	Vector2(1.0f, 1.0f)),	// Bottom right	
-			RHI_Vertex_PosTex(Vector3(sc_left,	sc_bottom,	0.0f),	Vector2(0.0f, 1.0f)),	// Bottom left
-			// Second triangle	
-			RHI_Vertex_PosTex(Vector3(sc_left,	sc_top,		0.0f),	Vector2(0.0f, 0.0f)),	// Top left	
-			RHI_Vertex_PosTex(Vector3(sc_right,	sc_top,		0.0f),	Vector2(1.0f, 0.0f)),	// Top right		
-			RHI_Vertex_PosTex(Vector3(sc_right,	sc_bottom,	0.0f),	Vector2(1.0f, 1.0f))	// Bottom right
-		};
+        // Create vertex buffer
+        const RHI_Vertex_PosTex vertices[6] = 
+        {
+            // First triangle    
+            RHI_Vertex_PosTex(Vector3(sc_left,    sc_top,        0.0f),    Vector2(0.0f, 0.0f)),    // Top left    
+            RHI_Vertex_PosTex(Vector3(sc_right,    sc_bottom,    0.0f),    Vector2(1.0f, 1.0f)),    // Bottom right    
+            RHI_Vertex_PosTex(Vector3(sc_left,    sc_bottom,    0.0f),    Vector2(0.0f, 1.0f)),    // Bottom left
+            // Second triangle    
+            RHI_Vertex_PosTex(Vector3(sc_left,    sc_top,        0.0f),    Vector2(0.0f, 0.0f)),    // Top left    
+            RHI_Vertex_PosTex(Vector3(sc_right,    sc_top,        0.0f),    Vector2(1.0f, 0.0f)),    // Top right        
+            RHI_Vertex_PosTex(Vector3(sc_right,    sc_bottom,    0.0f),    Vector2(1.0f, 1.0f))    // Bottom right
+        };
 
-		m_vertexBuffer = make_shared<RHI_VertexBuffer>(renderer->GetRhiDevice());
-		if (!m_vertexBuffer->Create(vertices, 6))
-		{
-			LOG_ERROR("Failed to create vertex buffer.");
-			return false;
-		}
+        m_vertexBuffer = make_shared<RHI_VertexBuffer>(renderer->GetRhiDevice());
+        if (!m_vertexBuffer->Create(vertices, 6))
+        {
+            LOG_ERROR("Failed to create vertex buffer.");
+            return false;
+        }
 
-		// Create index buffer
-		const uint32_t indices[6] = { 0, 1, 2, 3, 4, 5 };
+        // Create index buffer
+        const uint32_t indices[6] = { 0, 1, 2, 3, 4, 5 };
 
-		m_indexBuffer = make_shared<RHI_IndexBuffer>(renderer->GetRhiDevice());
-		if (!m_indexBuffer->Create(indices, 6))
-		{
-			LOG_ERROR("Failed to create index buffer.");
-			return false;
-		}
+        m_indexBuffer = make_shared<RHI_IndexBuffer>(renderer->GetRhiDevice());
+        if (!m_indexBuffer->Create(indices, 6))
+        {
+            LOG_ERROR("Failed to create index buffer.");
+            return false;
+        }
 
-		return true;
-	}
+        return true;
+    }
 }

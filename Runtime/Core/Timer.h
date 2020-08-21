@@ -37,14 +37,14 @@ namespace Spartan
         Fps_FixedMonitor
     };
 
-	class SPARTAN_CLASS Timer : public ISubsystem
-	{
-	public:
-		Timer(Context* context);
-		~Timer() = default;
+    class SPARTAN_CLASS Timer : public ISubsystem
+    {
+    public:
+        Timer(Context* context);
+        ~Timer() = default;
 
         //= ISybsystem ======================
-		void Tick(float delta_time) override;
+        void Tick(float delta_time) override;
         //===================================
 
         //= FPS ============================================
@@ -56,18 +56,18 @@ namespace Spartan
 
         auto GetTimeMs()                const { return m_time_ms; }
         auto GetTimeSec()               const { return static_cast<float>(m_time_ms / 1000.0); }
-		auto GetDeltaTimeMs()           const { return m_delta_time_ms; }
-		auto GetDeltaTimeSec()          const { return static_cast<float>(m_delta_time_ms / 1000.0); }
+        auto GetDeltaTimeMs()           const { return m_delta_time_ms; }
+        auto GetDeltaTimeSec()          const { return static_cast<float>(m_delta_time_ms / 1000.0); }
         auto GetDeltaTimeSmoothedMs()   const { return m_delta_time_smoothed_ms; }
         auto GetDeltaTimeSmoothedSec()  const { return static_cast<float>(m_delta_time_smoothed_ms / 1000.0); }
 
-	private:
+    private:
         // Frame time
         std::chrono::high_resolution_clock::time_point m_time_start;
         std::chrono::high_resolution_clock::time_point m_time_frame_start;
-		std::chrono::high_resolution_clock::time_point m_time_frame_end;
+        std::chrono::high_resolution_clock::time_point m_time_frame_end;
         double m_time_ms                = 0.0f;
-		double m_delta_time_ms          = 0.0f;
+        double m_delta_time_ms          = 0.0f;
         double m_delta_time_smoothed_ms = 0.0f;
         double m_sleep_overhead         = 0.0f;
 
@@ -77,5 +77,5 @@ namespace Spartan
         double m_fps_target             = m_fps_max;
         bool m_user_selected_fps_target = false;
         FPS_Policy m_fps_policy         = Fps_Unlocked;
-	};
+    };
 }

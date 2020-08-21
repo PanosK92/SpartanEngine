@@ -34,11 +34,11 @@ struct aiMesh;
 
 namespace Spartan
 {
-	class Context;
-	class Material;
-	class Entity;
-	class Model;
-	class World;
+    class Context;
+    class Material;
+    class Entity;
+    class Model;
+    class World;
 
     struct ModelParams
     {
@@ -53,27 +53,27 @@ namespace Spartan
         const aiScene* scene    = nullptr;
     };
 
-	class SPARTAN_CLASS ModelImporter
-	{
-	public:
-		ModelImporter(Context* context);
-		~ModelImporter() = default;
+    class SPARTAN_CLASS ModelImporter
+    {
+    public:
+        ModelImporter(Context* context);
+        ~ModelImporter() = default;
 
-		bool Load(Model* model, const std::string& file_path);
+        bool Load(Model* model, const std::string& file_path);
 
-	private:
+    private:
         // Parsing
-		void ParseNode(const aiNode* assimp_node, const ModelParams& params, Entity* parent_node = nullptr, Entity* new_entity = nullptr);
+        void ParseNode(const aiNode* assimp_node, const ModelParams& params, Entity* parent_node = nullptr, Entity* new_entity = nullptr);
         void ParseNodeMeshes(const aiNode* assimp_node, Entity* new_entity, const ModelParams& params);
         void ParseAnimations(const ModelParams& params);
 
         // Loading
-		void LoadMesh(aiMesh* assimp_mesh, Entity* entity_parent, const ModelParams& params);
+        void LoadMesh(aiMesh* assimp_mesh, Entity* entity_parent, const ModelParams& params);
         void LoadBones(const aiMesh* assimp_mesh, const ModelParams& params);
-		std::shared_ptr<Material> LoadMaterial(aiMaterial* assimp_material, const ModelParams& params);
+        std::shared_ptr<Material> LoadMaterial(aiMaterial* assimp_material, const ModelParams& params);
 
         // Dependencies
-		Context* m_context;
-		World* m_world;
-	};
+        Context* m_context;
+        World* m_world;
+    };
 }

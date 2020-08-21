@@ -37,29 +37,29 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-	Environment::Environment(Context* context, Entity* entity, uint32_t id /*= 0*/) : IComponent(context, entity, id)
-	{
-		m_environment_type = Environment_Sphere;
+    Environment::Environment(Context* context, Entity* entity, uint32_t id /*= 0*/) : IComponent(context, entity, id)
+    {
+        m_environment_type = Environment_Sphere;
 
-		// Default texture paths
-		const auto dir_cubemaps = GetContext()->GetSubsystem<ResourceCache>()->GetDataDirectory(Asset_Cubemaps) + "/";
-		if (m_environment_type == Enviroment_Cubemap)
-		{
+        // Default texture paths
+        const auto dir_cubemaps = GetContext()->GetSubsystem<ResourceCache>()->GetDataDirectory(Asset_Cubemaps) + "/";
+        if (m_environment_type == Enviroment_Cubemap)
+        {
             m_file_paths =
-			{
-				dir_cubemaps + "array/X+.tga",	// right
-				dir_cubemaps + "array/X-.tga",	// left
-				dir_cubemaps + "array/Y+.tga",	// up
-				dir_cubemaps + "array/Y-.tga",	// down
-				dir_cubemaps + "array/Z-.tga",	// back
-				dir_cubemaps + "array/Z+.tga"	// front
-			};
-		}
-		else if (m_environment_type == Environment_Sphere)
-		{
+            {
+                dir_cubemaps + "array/X+.tga",    // right
+                dir_cubemaps + "array/X-.tga",    // left
+                dir_cubemaps + "array/Y+.tga",    // up
+                dir_cubemaps + "array/Y-.tga",    // down
+                dir_cubemaps + "array/Z-.tga",    // back
+                dir_cubemaps + "array/Z+.tga"    // front
+            };
+        }
+        else if (m_environment_type == Environment_Sphere)
+        {
             m_file_paths = { dir_cubemaps + "syferfontein_0d_clear_4k.hdr" };
-		}
-	}
+        }
+    }
 
     void Environment::OnTick(float delta_time)
     {
@@ -119,39 +119,39 @@ namespace Spartan
     }
 
     void Environment::SetFromTextureArray(const vector<string>& file_paths)
-	{
-		if (file_paths.empty())
-			return;
+    {
+        if (file_paths.empty())
+            return;
 
         LOG_INFO("Creating sky box...");
 
-		// Load all textures (sides)
-		vector<vector<vector<std::byte>>> cubemapData;
+        // Load all textures (sides)
+        vector<vector<vector<std::byte>>> cubemapData;
 
-		// Load all the cubemap sides
+        // Load all the cubemap sides
         auto m_generate_mipmaps = false;
-		auto loaderTex = make_shared<RHI_Texture2D>(GetContext(), m_generate_mipmaps);
-		{
-			loaderTex->LoadFromFile(file_paths[0]);
-			cubemapData.emplace_back(loaderTex->GetData());
+        auto loaderTex = make_shared<RHI_Texture2D>(GetContext(), m_generate_mipmaps);
+        {
+            loaderTex->LoadFromFile(file_paths[0]);
+            cubemapData.emplace_back(loaderTex->GetData());
 
-			loaderTex->LoadFromFile(file_paths[1]);
-			cubemapData.emplace_back(loaderTex->GetData());
+            loaderTex->LoadFromFile(file_paths[1]);
+            cubemapData.emplace_back(loaderTex->GetData());
 
-			loaderTex->LoadFromFile(file_paths[2]);
-			cubemapData.emplace_back(loaderTex->GetData());
+            loaderTex->LoadFromFile(file_paths[2]);
+            cubemapData.emplace_back(loaderTex->GetData());
 
-			loaderTex->LoadFromFile(file_paths[3]);
-			cubemapData.emplace_back(loaderTex->GetData());
+            loaderTex->LoadFromFile(file_paths[3]);
+            cubemapData.emplace_back(loaderTex->GetData());
 
-			loaderTex->LoadFromFile(file_paths[4]);
-			cubemapData.emplace_back(loaderTex->GetData());
+            loaderTex->LoadFromFile(file_paths[4]);
+            cubemapData.emplace_back(loaderTex->GetData());
 
-			loaderTex->LoadFromFile(file_paths[5]);
-			cubemapData.emplace_back(loaderTex->GetData());
-		}
+            loaderTex->LoadFromFile(file_paths[5]);
+            cubemapData.emplace_back(loaderTex->GetData());
+        }
 
-		// Texture
+        // Texture
         auto texture = make_shared<RHI_TextureCube>(GetContext(), loaderTex->GetWidth(), loaderTex->GetHeight(), loaderTex->GetFormat(), cubemapData);
         texture->SetResourceFilePath(m_context->GetSubsystem<ResourceCache>()->GetProjectDirectory() + "environment" + EXTENSION_TEXTURE);
         texture->SetWidth(loaderTex->GetWidth());
@@ -162,10 +162,10 @@ namespace Spartan
         SetTexture(static_pointer_cast<RHI_Texture>(texture));
 
         LOG_INFO("Sky box has been created successfully");
-	}
+    }
 
-	void Environment::SetFromTextureSphere(const string& file_path)
-	{
+    void Environment::SetFromTextureSphere(const string& file_path)
+    {
         LOG_INFO("Creating sky sphere...");
 
         // Don't generate mipmaps as the Renderer will generate a prefiltered environment which is required for proper IBL
@@ -183,5 +183,5 @@ namespace Spartan
         {
             LOG_ERROR("Sky sphere creation failed");
         }
-	}
+    }
 }

@@ -33,9 +33,9 @@ using namespace Spartan::Math;
 
 namespace _Settings
 {
-	ofstream fout;
-	ifstream fin;
-	string file_name = "Spartan.ini";
+    ofstream fout;
+    ifstream fin;
+    string file_name = "Spartan.ini";
 
     template <class T>
     void write_setting(ofstream& fout, const string& name, T value)
@@ -111,46 +111,46 @@ namespace Spartan
     }
 
     void Settings::Save() const
-	{
-		// Create a settings file
-		_Settings::fout.open(_Settings::file_name, ofstream::out);
+    {
+        // Create a settings file
+        _Settings::fout.open(_Settings::file_name, ofstream::out);
 
-		// Write the settings
-		_Settings::write_setting(_Settings::fout, "bFullScreen",            m_is_fullscreen);
-		_Settings::write_setting(_Settings::fout, "bIsMouseVisible",        m_is_mouse_visible);
+        // Write the settings
+        _Settings::write_setting(_Settings::fout, "bFullScreen",            m_is_fullscreen);
+        _Settings::write_setting(_Settings::fout, "bIsMouseVisible",        m_is_mouse_visible);
         _Settings::write_setting(_Settings::fout, "fResolutionWidth",       m_resolution.x);
         _Settings::write_setting(_Settings::fout, "fResolutionHeight",      m_resolution.y);
-		_Settings::write_setting(_Settings::fout, "iShadowMapResolution",   m_shadow_map_resolution);
-		_Settings::write_setting(_Settings::fout, "iAnisotropy",            m_anisotropy);
-		_Settings::write_setting(_Settings::fout, "fFPSLimit",              m_fps_limit);
-		_Settings::write_setting(_Settings::fout, "iMaxThreadCount",        m_max_thread_count);
+        _Settings::write_setting(_Settings::fout, "iShadowMapResolution",   m_shadow_map_resolution);
+        _Settings::write_setting(_Settings::fout, "iAnisotropy",            m_anisotropy);
+        _Settings::write_setting(_Settings::fout, "fFPSLimit",              m_fps_limit);
+        _Settings::write_setting(_Settings::fout, "iMaxThreadCount",        m_max_thread_count);
         _Settings::write_setting(_Settings::fout, "iRendererFlags",         m_renderer_flags);
 
-		// Close the file.
-		_Settings::fout.close();
-	}
+        // Close the file.
+        _Settings::fout.close();
+    }
 
-	void Settings::Load()
-	{
-		// Create a settings file
-		_Settings::fin.open(_Settings::file_name, ifstream::in);
+    void Settings::Load()
+    {
+        // Create a settings file
+        _Settings::fin.open(_Settings::file_name, ifstream::in);
 
-		// Read the settings
-		_Settings::read_setting(_Settings::fin, "bFullScreen",          m_is_fullscreen);
-		_Settings::read_setting(_Settings::fin, "bIsMouseVisible",      m_is_mouse_visible);
-		_Settings::read_setting(_Settings::fin, "fResolutionWidth",     m_resolution.x);
-		_Settings::read_setting(_Settings::fin, "fResolutionHeight",    m_resolution.y);
-		_Settings::read_setting(_Settings::fin, "iShadowMapResolution", m_shadow_map_resolution);
-		_Settings::read_setting(_Settings::fin, "iAnisotropy",          m_anisotropy);
-		_Settings::read_setting(_Settings::fin, "fFPSLimit",            m_fps_limit);
-		_Settings::read_setting(_Settings::fin, "iMaxThreadCount",      m_max_thread_count);
+        // Read the settings
+        _Settings::read_setting(_Settings::fin, "bFullScreen",          m_is_fullscreen);
+        _Settings::read_setting(_Settings::fin, "bIsMouseVisible",      m_is_mouse_visible);
+        _Settings::read_setting(_Settings::fin, "fResolutionWidth",     m_resolution.x);
+        _Settings::read_setting(_Settings::fin, "fResolutionHeight",    m_resolution.y);
+        _Settings::read_setting(_Settings::fin, "iShadowMapResolution", m_shadow_map_resolution);
+        _Settings::read_setting(_Settings::fin, "iAnisotropy",          m_anisotropy);
+        _Settings::read_setting(_Settings::fin, "fFPSLimit",            m_fps_limit);
+        _Settings::read_setting(_Settings::fin, "iMaxThreadCount",      m_max_thread_count);
         _Settings::read_setting(_Settings::fin, "iRendererFlags",       m_renderer_flags);
 
-		// Close the file.
-		_Settings::fin.close();
+        // Close the file.
+        _Settings::fin.close();
 
         m_loaded = true;
-	}
+    }
 
     void Settings::Reflect()
     {
