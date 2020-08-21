@@ -22,9 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ===============
-#include "..\Math\Vector2.h"
-#include "..\Math\Vector3.h"
-#include "..\Math\Matrix.h"
+#include "../Math/Vector2.h"
+#include "../Math/Vector3.h"
+#include "../Math/Matrix.h"
 //==========================
 
 namespace Spartan
