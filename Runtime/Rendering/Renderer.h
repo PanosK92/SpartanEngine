@@ -376,8 +376,8 @@ namespace Spartan
         Math::Rectangle m_gizmo_light_rect;
 
         // Resolution & Viewport
-        Math::Vector2 m_resolution                = Math::Vector2::Zero;
-        RHI_Viewport m_viewport                    = RHI_Viewport(0, 0, 1920, 1080);
+        Math::Vector2 m_resolution              = Math::Vector2::Zero;
+        RHI_Viewport m_viewport                 = RHI_Viewport(0, 0, 1920, 1080);
         Math::Vector2 m_viewport_editor_offset  = Math::Vector2::Zero;
 
         // Options
