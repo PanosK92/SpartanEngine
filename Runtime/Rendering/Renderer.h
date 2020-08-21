@@ -109,83 +109,83 @@ namespace Spartan
         Renderer_Object_Camera
     };
 
-    enum Renderer_Shader_Type
+    enum class RendererShader
     {
-        Shader_Gbuffer_V,
-        Shader_Gbuffer_P,
-        Shader_Depth_V,
-        Shader_Depth_P,
-        Shader_Quad_V,
-        Shader_Texture_P,
-        Shader_Copy_C,
-        Shader_Fxaa_C,
-        Shader_Fxaa_Luminance_C,
-        Shader_FilmGrain_C,
-        Shader_Taa_C,
-        Shader_MotionBlur_C,
-        Shader_Dof_DownsampleCoc_C,
-        Shader_Dof_Bokeh_C,
-        Shader_Dof_Tent_C,
-        Shader_Dof_UpscaleBlend_C,
-        Shader_Sharpening_C,
-        Shader_ChromaticAberration_C,    
-        Shader_BloomDownsampleLuminance_C,
-        Shader_BloomDownsample_C,
-        Shader_BloomUpsampleBlendFrame_C,
-        Shader_BloomUpsampleBlendMip_C,
-        Shader_ToneMapping_C,
-        Shader_GammaCorrection_C,
-        Shader_Dithering_C,
-        Shader_DebugNormal_C,
-        Shader_DebugVelocity_C,
-        Shader_DebugChannelR_C,
-        Shader_DebugChannelA_C,
-        Shader_DebugChannelRgbGammaCorrect_C,
-        Shader_BrdfSpecularLut_C,
-        Shader_Light_C,
-        Shader_Composition_P,
-        Shader_Color_V,
-        Shader_Color_P,
-        Shader_Font_V,
-        Shader_Font_P,
-        Shader_Hbao_C,
-        Shader_Ssgi_C,
-        Shader_Ssr_C,
-        Shader_Entity_V,
-        Shader_Entity_Transform_P,
-        Shader_BlurBox_P,
-        Shader_BlurGaussian_P,
-        Shader_BlurGaussianBilateral_P,
-        Shader_Entity_Outline_P
+        Gbuffer_V,
+        Gbuffer_P,
+        Depth_V,
+        Depth_P,
+        Quad_V,
+        Texture_P,
+        Copy_C,
+        Fxaa_C,
+        Fxaa_Luminance_C,
+        FilmGrain_C,
+        Taa_C,
+        MotionBlur_C,
+        Dof_DownsampleCoc_C,
+        Dof_Bokeh_C,
+        Dof_Tent_C,
+        Dof_UpscaleBlend_C,
+        Sharpening_C,
+        ChromaticAberration_C,    
+        BloomDownsampleLuminance_C,
+        BloomDownsample_C,
+        BloomUpsampleBlendFrame_C,
+        BloomUpsampleBlendMip_C,
+        ToneMapping_C,
+        GammaCorrection_C,
+        Dithering_C,
+        DebugNormal_C,
+        DebugVelocity_C,
+        DebugChannelR_C,
+        DebugChannelA_C,
+        DebugChannelRgbGammaCorrect_C,
+        BrdfSpecularLut_C,
+        Light_C,
+        Composition_P,
+        Color_V,
+        Color_P,
+        Font_V,
+        Font_P,
+        Hbao_C,
+        Ssgi_C,
+        Ssr_C,
+        Entity_V,
+        Entity_Transform_P,
+        BlurBox_P,
+        BlurGaussian_P,
+        BlurGaussianBilateral_P,
+        Entity_Outline_P
     };
 
-    enum Renderer_RenderTarget_Type : uint64_t
+    enum class RendererRt : uint64_t
     {
-        RenderTarget_Gbuffer_Albedo                 = 1 << 0,
-        RenderTarget_Gbuffer_Normal                 = 1 << 1,
-        RenderTarget_Gbuffer_Material               = 1 << 2,
-        RenderTarget_Gbuffer_Velocity               = 1 << 3,
-        RenderTarget_Gbuffer_Depth                  = 1 << 4,
-        RenderTarget_Brdf_Prefiltered_Environment   = 1 << 5,
-        RenderTarget_Brdf_Specular_Lut              = 1 << 6,
-        RenderTarget_Light_Diffuse                  = 1 << 7,
-        RenderTarget_Light_Diffuse_Transparent      = 1 << 8,
-        RenderTarget_Light_Specular                 = 1 << 9,
-        RenderTarget_Light_Specular_Transparent     = 1 << 10,
-        RenderTarget_Light_Volumetric               = 1 << 11,
-        RenderTarget_Frame_Hdr                      = 1 << 12,
-        RenderTarget_Frame_Ldr                      = 1 << 13,
-        RenderTarget_Frame_Hdr_2                    = 1 << 14,
-        RenderTarget_Frame_Ldr_2                    = 1 << 15,
-        RenderTarget_Dof_Half                       = 1 << 16,
-        RenderTarget_Dof_Half_2                     = 1 << 17,
-        RenderTarget_Bloom                          = 1 << 18,
-        RenderTarget_Hbao_Noisy                     = 1 << 19,
-        RenderTarget_Hbao                           = 1 << 20,
-        RenderTarget_Ssgi                           = 1 << 21,
-        RenderTarget_Ssr                            = 1 << 22,
-        RenderTarget_Accumulation_Taa               = 1 << 23,
-        RenderTarget_Accumulation_Ssgi              = 1 << 24,
+        Gbuffer_Albedo                  = 1 << 0,
+        Gbuffer_Normal                  = 1 << 1,
+        Gbuffer_Material                = 1 << 2,
+        Gbuffer_Velocity                = 1 << 3,
+        Gbuffer_Depth                   = 1 << 4,
+        Brdf_Prefiltered_Environment    = 1 << 5,
+        Brdf_Specular_Lut               = 1 << 6,
+        Light_Diffuse                   = 1 << 7,
+        Light_Diffuse_Transparent       = 1 << 8,
+        Light_Specular                  = 1 << 9,
+        Light_Specular_Transparent      = 1 << 10,
+        Light_Volumetric                = 1 << 11,
+        Frame_Hdr                       = 1 << 12,
+        Frame_Ldr                       = 1 << 13,
+        Frame_Hdr_2                     = 1 << 14,
+        Frame_Ldr_2                     = 1 << 15,
+        Dof_Half                        = 1 << 16,
+        Dof_Half_2                      = 1 << 17,
+        Bloom                           = 1 << 18,
+        Hbao                            = 1 << 19,
+        Hbao_Blurred                    = 1 << 20,
+        Ssgi                            = 1 << 21,
+        Ssr                             = 1 << 22,
+        Accumulation_Taa                = 1 << 23,
+        Accumulation_Ssgi               = 1 << 24,
     };
 
     class SPARTAN_CLASS Renderer : public ISubsystem
@@ -251,7 +251,7 @@ namespace Spartan
         const std::shared_ptr<RHI_Device>& GetRhiDevice()   const { return m_rhi_device; } 
         RHI_PipelineCache* GetPipelineCache()               const { return m_pipeline_cache.get(); }
         RHI_DescriptorCache* GetDescriptorCache()           const { return m_descriptor_cache.get(); }
-        RHI_Texture* GetFrameTexture()                      const { return m_render_targets.at(RenderTarget_Frame_Ldr).get(); }
+        RHI_Texture* GetFrameTexture()                      const { return m_render_targets.at(RendererRt::Frame_Ldr).get(); }
         auto GetFrameNum()                                  const { return m_frame_num; }
         const auto& GetCamera()                             const { return m_camera; }
         auto IsInitialized()                                const { return m_initialized; }
@@ -323,7 +323,7 @@ namespace Spartan
         void ClearEntities();
 
         // Render textures
-        std::unordered_map<Renderer_RenderTarget_Type, std::shared_ptr<RHI_Texture>> m_render_targets;
+        std::unordered_map<RendererRt, std::shared_ptr<RHI_Texture>> m_render_targets;
         std::vector<std::shared_ptr<RHI_Texture>> m_render_tex_bloom;
 
         // Standard textures
@@ -337,7 +337,7 @@ namespace Spartan
         std::shared_ptr<RHI_Texture> m_gizmo_tex_light_spot;
 
         // Shaders
-        std::unordered_map<Renderer_Shader_Type, std::shared_ptr<RHI_Shader>> m_shaders;
+        std::unordered_map<RendererShader, std::shared_ptr<RHI_Shader>> m_shaders;
 
         // Depth-stencil states
         std::shared_ptr<RHI_DepthStencilState> m_depth_stencil_off_off;

@@ -201,14 +201,14 @@ namespace Spartan
         // If there is no camera, clear to black
         if (!m_camera)
         {
-            cmd_list->ClearRenderTarget(m_render_targets[RenderTarget_Frame_Ldr].get(), 0, 0, false, Vector4(0.0f, 0.0f, 0.0f, 1.0f));
+            cmd_list->ClearRenderTarget(m_render_targets[RendererRt::Frame_Ldr].get(), 0, 0, false, Vector4(0.0f, 0.0f, 0.0f, 1.0f));
             return;
         }
         
         // If there is not camera but no other entities to render, clear to camera's color
         if (m_entities[Renderer_Object_Opaque].empty() && m_entities[Renderer_Object_Transparent].empty() && m_entities[Renderer_Object_Light].empty())
         {
-            cmd_list->ClearRenderTarget(m_render_targets[RenderTarget_Frame_Ldr].get(), 0, 0, false, m_camera->GetClearColor());
+            cmd_list->ClearRenderTarget(m_render_targets[RendererRt::Frame_Ldr].get(), 0, 0, false, m_camera->GetClearColor());
             return;
         }
 
@@ -661,15 +661,15 @@ namespace Spartan
 
     const shared_ptr<Spartan::RHI_Texture>& Renderer::GetEnvironmentTexture()
     {
-        if (m_render_targets.find(RenderTarget_Brdf_Prefiltered_Environment) != m_render_targets.end())
-            return m_render_targets[RenderTarget_Brdf_Prefiltered_Environment];
+        if (m_render_targets.find(RendererRt::Brdf_Prefiltered_Environment) != m_render_targets.end())
+            return m_render_targets[RendererRt::Brdf_Prefiltered_Environment];
 
         return m_tex_white;
     }
 
     void Renderer::SetEnvironmentTexture(const shared_ptr<RHI_Texture>& texture)
     {
-        m_render_targets[RenderTarget_Brdf_Prefiltered_Environment] = texture;
+        m_render_targets[RendererRt::Brdf_Prefiltered_Environment] = texture;
     }
 
     void Renderer::SetOption(Renderer_Option option, bool enable)
