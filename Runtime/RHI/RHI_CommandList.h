@@ -155,7 +155,7 @@ namespace Spartan
         bool OnDraw();
 
         std::atomic<RHI_CommandListState> m_cmd_state   = RHI_CommandListState::Idle;
-        RHI_Pipeline* m_pipeline	                    = nullptr; 
+        RHI_Pipeline* m_pipeline                        = nullptr; 
         RHI_SwapChain* m_swap_chain                     = nullptr;
         Renderer* m_renderer                            = nullptr;
         RHI_PipelineCache* m_pipeline_cache             = nullptr;

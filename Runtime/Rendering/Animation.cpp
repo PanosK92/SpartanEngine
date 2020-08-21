@@ -30,18 +30,18 @@ using namespace std;
 
 namespace Spartan
 {
-	Animation::Animation(Context* context): IResource(context, ResourceType::Animation)
-	{
+    Animation::Animation(Context* context): IResource(context, ResourceType::Animation)
+    {
 
-	}
+    }
 
     bool Animation::LoadFromFile(const string& filePath)
-	{
-		return true;
-	}
+    {
+        return true;
+    }
 
-	bool Animation::SaveToFile(const string& filePath)
-	{
-		return true;
-	}
+    bool Animation::SaveToFile(const string& filePath)
+    {
+        return true;
+    }
 }

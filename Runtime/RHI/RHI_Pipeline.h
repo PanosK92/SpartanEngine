@@ -28,23 +28,23 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-	class SPARTAN_CLASS RHI_Pipeline : public Spartan_Object
-	{
-	public:
-		RHI_Pipeline() = default;
-		RHI_Pipeline(const RHI_Device* rhi_device, RHI_PipelineState& pipeline_state, void* descriptor_set_layout);
-		~RHI_Pipeline();
+    class SPARTAN_CLASS RHI_Pipeline : public Spartan_Object
+    {
+    public:
+        RHI_Pipeline() = default;
+        RHI_Pipeline(const RHI_Device* rhi_device, RHI_PipelineState& pipeline_state, void* descriptor_set_layout);
+        ~RHI_Pipeline();
 
         void* GetPipeline()                     const { return m_pipeline; }
         void* GetPipelineLayout()               const { return m_pipeline_layout; }
         RHI_PipelineState* GetPipelineState()         { return &m_state; }
 
-	private:
+    private:
         RHI_PipelineState m_state;
  
-		// API
-		void* m_pipeline		= nullptr;
-		void* m_pipeline_layout = nullptr;
+        // API
+        void* m_pipeline        = nullptr;
+        void* m_pipeline_layout = nullptr;
 
         // Dependencies
         const RHI_Device* m_rhi_device;

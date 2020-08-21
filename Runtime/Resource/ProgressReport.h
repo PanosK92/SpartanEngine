@@ -29,54 +29,54 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-	static int g_progress_model_importer	= 0;
-	static int g_progress_world				= 1;
-	static int g_progress_resource_cache	= 2;
+    static int g_progress_model_importer    = 0;
+    static int g_progress_world                = 1;
+    static int g_progress_resource_cache    = 2;
 
-	struct Progress
-	{
-		Progress(){ Clear(); }
+    struct Progress
+    {
+        Progress(){ Clear(); }
 
-		void Clear()
-		{
-			status.clear();
-			jobsDone	= 0;
-			jobCount	= 0;
-			isLoading	= false;
-		}
+        void Clear()
+        {
+            status.clear();
+            jobsDone    = 0;
+            jobCount    = 0;
+            isLoading    = false;
+        }
 
-		std::string status;
-		int jobsDone;
-		int jobCount;
-		bool isLoading;
-	};
+        std::string status;
+        int jobsDone;
+        int jobCount;
+        bool isLoading;
+    };
 
-	class SPARTAN_CLASS ProgressReport
-	{
-	public:
-		static ProgressReport& Get()
-		{
-			static ProgressReport instance;
-			return instance;
-		}
+    class SPARTAN_CLASS ProgressReport
+    {
+    public:
+        static ProgressReport& Get()
+        {
+            static ProgressReport instance;
+            return instance;
+        }
 
-		ProgressReport() = default;
+        ProgressReport() = default;
 
         void Reset(int progressID)
-		{
-			m_reports[progressID].Clear();
-		}
+        {
+            m_reports[progressID].Clear();
+        }
 
-		const std::string& GetStatus(int progressID)				{ return m_reports[progressID].status; }
-		void SetStatus(int progressID, const std::string& status)	{ m_reports[progressID].status = status; }
-		void SetJobCount(int progressID, int jobCount)				{ m_reports[progressID].jobCount = jobCount;}
-		void IncrementJobsDone(int progressID)						{ m_reports[progressID].jobsDone++; }
-		void SetJobsDone(int progressID, int jobsDone)				{ m_reports[progressID].jobsDone = jobsDone; }
-		float GetPercentage(int progressID)							{ return static_cast<float>(m_reports[progressID].jobsDone) / static_cast<float>(m_reports[progressID].jobCount); }
-		bool GetIsLoading(int progressID)							{ return m_reports[progressID].isLoading; }
-		void SetIsLoading(int progressID, bool isLoading)			{ m_reports[progressID].isLoading = isLoading; }
+        const std::string& GetStatus(int progressID)                { return m_reports[progressID].status; }
+        void SetStatus(int progressID, const std::string& status)    { m_reports[progressID].status = status; }
+        void SetJobCount(int progressID, int jobCount)                { m_reports[progressID].jobCount = jobCount;}
+        void IncrementJobsDone(int progressID)                        { m_reports[progressID].jobsDone++; }
+        void SetJobsDone(int progressID, int jobsDone)                { m_reports[progressID].jobsDone = jobsDone; }
+        float GetPercentage(int progressID)                            { return static_cast<float>(m_reports[progressID].jobsDone) / static_cast<float>(m_reports[progressID].jobCount); }
+        bool GetIsLoading(int progressID)                            { return m_reports[progressID].isLoading; }
+        void SetIsLoading(int progressID, bool isLoading)            { m_reports[progressID].isLoading = isLoading; }
 
-	private:	
-		std::unordered_map<int, Progress> m_reports;
-	};
+    private:    
+        std::unordered_map<int, Progress> m_reports;
+    };
 }

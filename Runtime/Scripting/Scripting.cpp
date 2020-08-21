@@ -40,16 +40,16 @@ using namespace std;
 
 namespace Spartan
 {
-	Scripting::Scripting(Context* context) : ISubsystem(context)
-	{
-		// Subscribe to events
-		SUBSCRIBE_TO_EVENT(EventType::WorldUnload, EVENT_HANDLER(Clear));
-	}
+    Scripting::Scripting(Context* context) : ISubsystem(context)
+    {
+        // Subscribe to events
+        SUBSCRIBE_TO_EVENT(EventType::WorldUnload, EVENT_HANDLER(Clear));
+    }
 
-	Scripting::~Scripting()
-	{
+    Scripting::~Scripting()
+    {
         mono_jit_cleanup(m_domain);
-	}
+    }
 
     bool Scripting::Initialize()
     {

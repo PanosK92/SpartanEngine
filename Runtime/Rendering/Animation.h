@@ -61,27 +61,27 @@ namespace Spartan
         std::vector<KeyVector> scaleFrames;
     };
 
-	class SPARTAN_CLASS Animation : public IResource
-	{
-	public:
-		Animation(Context* context);
-		~Animation() = default;
+    class SPARTAN_CLASS Animation : public IResource
+    {
+    public:
+        Animation(Context* context);
+        ~Animation() = default;
 
-		//= IResource ==========================================
-		bool LoadFromFile(const std::string& filePath) override;
-		bool SaveToFile(const std::string& filePath) override;
-		//======================================================
+        //= IResource ==========================================
+        bool LoadFromFile(const std::string& filePath) override;
+        bool SaveToFile(const std::string& filePath) override;
+        //======================================================
 
-		void SetName(const std::string& name)   { m_name = name; }
-		void SetDuration(double duration)       { m_duration = duration; }
-		void SetTicksPerSec(double ticksPerSec) { m_ticksPerSec = ticksPerSec; }
+        void SetName(const std::string& name)   { m_name = name; }
+        void SetDuration(double duration)       { m_duration = duration; }
+        void SetTicksPerSec(double ticksPerSec) { m_ticksPerSec = ticksPerSec; }
 
-	private:
-		std::string m_name;
-		double m_duration       = 0;
-		double m_ticksPerSec    = 0;
+    private:
+        std::string m_name;
+        double m_duration       = 0;
+        double m_ticksPerSec    = 0;
 
-		// Each channel controls a single node
-		std::vector<AnimationNode> m_channels;
-	};
+        // Each channel controls a single node
+        std::vector<AnimationNode> m_channels;
+    };
 }

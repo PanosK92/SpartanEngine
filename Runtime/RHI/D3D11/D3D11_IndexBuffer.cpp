@@ -38,72 +38,72 @@ namespace Spartan
         return;
     }
 
-	bool RHI_IndexBuffer::_create(const void* indices)
-	{
-		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return false;
-		}
+    bool RHI_IndexBuffer::_create(const void* indices)
+    {
+        if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device)
+        {
+            LOG_ERROR_INVALID_INTERNALS();
+            return false;
+        }
 
         const bool is_dynamic = indices == nullptr;
 
         // Destroy previous buffer
         _destroy();
 
-		D3D11_BUFFER_DESC buffer_desc;
-		ZeroMemory(&buffer_desc, sizeof(buffer_desc));
-		buffer_desc.ByteWidth			= m_stride * m_index_count;
-		buffer_desc.Usage				= is_dynamic ? D3D11_USAGE_DYNAMIC : D3D11_USAGE_IMMUTABLE;
-		buffer_desc.CPUAccessFlags		= is_dynamic ? D3D11_CPU_ACCESS_WRITE : 0;
-		buffer_desc.BindFlags			= D3D11_BIND_INDEX_BUFFER;	
-		buffer_desc.MiscFlags			= 0;
-		buffer_desc.StructureByteStride = 0;
+        D3D11_BUFFER_DESC buffer_desc;
+        ZeroMemory(&buffer_desc, sizeof(buffer_desc));
+        buffer_desc.ByteWidth            = m_stride * m_index_count;
+        buffer_desc.Usage                = is_dynamic ? D3D11_USAGE_DYNAMIC : D3D11_USAGE_IMMUTABLE;
+        buffer_desc.CPUAccessFlags        = is_dynamic ? D3D11_CPU_ACCESS_WRITE : 0;
+        buffer_desc.BindFlags            = D3D11_BIND_INDEX_BUFFER;    
+        buffer_desc.MiscFlags            = 0;
+        buffer_desc.StructureByteStride = 0;
 
-		D3D11_SUBRESOURCE_DATA init_data;
-		init_data.pSysMem			= indices;
-		init_data.SysMemPitch		= 0;
-		init_data.SysMemSlicePitch	= 0;
+        D3D11_SUBRESOURCE_DATA init_data;
+        init_data.pSysMem            = indices;
+        init_data.SysMemPitch        = 0;
+        init_data.SysMemSlicePitch    = 0;
 
-		const auto ptr = reinterpret_cast<ID3D11Buffer**>(&m_buffer);
-		const auto result = m_rhi_device->GetContextRhi()->device->CreateBuffer(&buffer_desc, is_dynamic ? nullptr : &init_data, ptr);
-		if FAILED(result)
-		{
-			LOG_ERROR(" Failed to create index buffer");
-			return false;
-		}
+        const auto ptr = reinterpret_cast<ID3D11Buffer**>(&m_buffer);
+        const auto result = m_rhi_device->GetContextRhi()->device->CreateBuffer(&buffer_desc, is_dynamic ? nullptr : &init_data, ptr);
+        if FAILED(result)
+        {
+            LOG_ERROR(" Failed to create index buffer");
+            return false;
+        }
 
-		return true;
-	}
+        return true;
+    }
 
-	void* RHI_IndexBuffer::Map()
-	{
-		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device_context || !m_buffer)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return nullptr;
-		}
+    void* RHI_IndexBuffer::Map()
+    {
+        if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device_context || !m_buffer)
+        {
+            LOG_ERROR_INVALID_INTERNALS();
+            return nullptr;
+        }
 
-		D3D11_MAPPED_SUBRESOURCE mapped_resource;
-		const auto result = m_rhi_device->GetContextRhi()->device_context->Map(static_cast<ID3D11Resource*>(m_buffer), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
-		if (FAILED(result))
-		{
-			LOG_ERROR("Failed to map index buffer.");
-			return nullptr;
-		}
+        D3D11_MAPPED_SUBRESOURCE mapped_resource;
+        const auto result = m_rhi_device->GetContextRhi()->device_context->Map(static_cast<ID3D11Resource*>(m_buffer), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
+        if (FAILED(result))
+        {
+            LOG_ERROR("Failed to map index buffer.");
+            return nullptr;
+        }
 
-		return mapped_resource.pData;
-	}
+        return mapped_resource.pData;
+    }
 
-	bool RHI_IndexBuffer::Unmap()
-	{
-		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device_context || !m_buffer)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return false;
-		}
+    bool RHI_IndexBuffer::Unmap()
+    {
+        if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device_context || !m_buffer)
+        {
+            LOG_ERROR_INVALID_INTERNALS();
+            return false;
+        }
 
-		m_rhi_device->GetContextRhi()->device_context->Unmap(static_cast<ID3D11Resource*>(m_buffer), 0);
-		return true;
-	}
+        m_rhi_device->GetContextRhi()->device_context->Unmap(static_cast<ID3D11Resource*>(m_buffer), 0);
+        return true;
+    }
 }

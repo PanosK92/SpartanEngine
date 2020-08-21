@@ -31,24 +31,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-	namespace Math { class Vector4; }
+    namespace Math { class Vector4; }
 
-	class SPARTAN_CLASS RHI_SwapChain : public Spartan_Object
-	{
-	public:
-		RHI_SwapChain(
-			void* window_handle,
+    class SPARTAN_CLASS RHI_SwapChain : public Spartan_Object
+    {
+    public:
+        RHI_SwapChain(
+            void* window_handle,
             const std::shared_ptr<RHI_Device>& rhi_device,
-			uint32_t width,
-			uint32_t height,
-			RHI_Format format		= RHI_Format_R8G8B8A8_Unorm,       
-			uint32_t buffer_count	= 2,
+            uint32_t width,
+            uint32_t height,
+            RHI_Format format        = RHI_Format_R8G8B8A8_Unorm,       
+            uint32_t buffer_count    = 2,
             uint32_t flags          = RHI_Present_Immediate
-		);
-		~RHI_SwapChain();
+        );
+        ~RHI_SwapChain();
 
-		bool Resize(uint32_t width, uint32_t height, const bool force = false);
-		bool Present();
+        bool Resize(uint32_t width, uint32_t height, const bool force = false);
+        bool Present();
 
         // Misc
         uint32_t GetWidth()                 const { return m_width; }
@@ -73,23 +73,23 @@ namespace Spartan
         void* Get_Resource_View_RenderTarget()      const { return m_resource_view_renderTarget; }
         void*& GetCmdPool()                               { return m_cmd_pool; }
 
-	private:
+    private:
         bool AcquireNextImage();
 
         // Properties
-		bool m_initialized      = false;
-		bool m_windowed         = false;
-		uint32_t m_buffer_count = 0;
-		uint32_t m_width        = 0;
-		uint32_t m_height       = 0;
-		uint32_t m_flags        = 0;
-		RHI_Format m_format     = RHI_Format_R8G8B8A8_Unorm;
-		
-		// API  
-		void* m_swap_chain_view		        = nullptr;
-		void* m_resource_view_renderTarget	= nullptr;
-		void* m_surface				        = nullptr;	
-		void* m_window_handle		        = nullptr;
+        bool m_initialized      = false;
+        bool m_windowed         = false;
+        uint32_t m_buffer_count = 0;
+        uint32_t m_width        = 0;
+        uint32_t m_height       = 0;
+        uint32_t m_flags        = 0;
+        RHI_Format m_format     = RHI_Format_R8G8B8A8_Unorm;
+        
+        // API  
+        void* m_swap_chain_view                = nullptr;
+        void* m_resource_view_renderTarget    = nullptr;
+        void* m_surface                        = nullptr;    
+        void* m_window_handle                = nullptr;
         void* m_cmd_pool                    = nullptr;
         bool m_image_acquired               = false;
         bool m_present                      = true;

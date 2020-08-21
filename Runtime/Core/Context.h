@@ -49,12 +49,12 @@ namespace Spartan
         TickType tick_group;
     };
 
-	class SPARTAN_CLASS Context
-	{
-	public:
-		Context() = default;
+    class SPARTAN_CLASS Context
+    {
+    public:
+        Context() = default;
 
-		~Context()
+        ~Context()
         {
             // Loop in reverse registration order to avoid dependency conflicts
             for (size_t i = m_subsystems.size() - 1; i > 0; i--)
@@ -65,34 +65,34 @@ namespace Spartan
             m_subsystems.clear();
         }
 
-		// Register a subsystem
-		template <class T>
-		void RegisterSubsystem(TickType tick_group = TickType::Variable)
-		{
+        // Register a subsystem
+        template <class T>
+        void RegisterSubsystem(TickType tick_group = TickType::Variable)
+        {
             validate_subsystem_type<T>();
 
             m_subsystems.emplace_back(std::make_shared<T>(this), tick_group);
-		}
+        }
 
-		// Initialize subsystems
-		bool Initialize()
-		{
-			auto result = true;
+        // Initialize subsystems
+        bool Initialize()
+        {
+            auto result = true;
             for (const auto& subsystem : m_subsystems)
             {
                 if (!subsystem.ptr->Initialize())
                 {
-                	LOG_ERROR("Failed to initialize %s", typeid(*subsystem.ptr).name());
-                	result = false;
+                    LOG_ERROR("Failed to initialize %s", typeid(*subsystem.ptr).name());
+                    result = false;
                 }
             }
 
-			return result;
-		}
+            return result;
+        }
 
         // Tick
-		void Tick(TickType tick_group, float delta_time = 0.0f)
-		{
+        void Tick(TickType tick_group, float delta_time = 0.0f)
+        {
             for (const auto& subsystem : m_subsystems)
             {
                 if (subsystem.tick_group != tick_group)
@@ -100,26 +100,26 @@ namespace Spartan
 
                 subsystem.ptr->Tick(delta_time);
             }
-		}
+        }
 
-		// Get a subsystem
-		template <class T> 
+        // Get a subsystem
+        template <class T> 
         T* GetSubsystem() const
-		{
+        {
             validate_subsystem_type<T>();
 
-			for (const auto& subsystem : m_subsystems)
-			{
+            for (const auto& subsystem : m_subsystems)
+            {
                 if (typeid(T) == typeid(*subsystem.ptr))
                     return static_cast<T*>(subsystem.ptr.get());
-			}
+            }
 
-			return nullptr;
-		}
+            return nullptr;
+        }
 
         Engine* m_engine = nullptr;
 
-	private:
-		std::vector<_subystem> m_subsystems;
-	};
+    private:
+        std::vector<_subystem> m_subsystems;
+    };
 }

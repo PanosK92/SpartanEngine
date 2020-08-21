@@ -36,39 +36,39 @@ using namespace std;
 
 namespace Spartan
 {
-	RHI_Shader::RHI_Shader(Context* context) : Spartan_Object(context)
-	{
-		m_rhi_device	= context->GetSubsystem<Renderer>()->GetRhiDevice();
-		m_input_layout	= make_shared<RHI_InputLayout>(m_rhi_device);
-	}
+    RHI_Shader::RHI_Shader(Context* context) : Spartan_Object(context)
+    {
+        m_rhi_device    = context->GetSubsystem<Renderer>()->GetRhiDevice();
+        m_input_layout    = make_shared<RHI_InputLayout>(m_rhi_device);
+    }
 
-	template <typename T>
-	void RHI_Shader::Compile(const RHI_Shader_Type type, const string& shader)
-	{
+    template <typename T>
+    void RHI_Shader::Compile(const RHI_Shader_Type type, const string& shader)
+    {
         m_shader_type = type;
         m_vertex_type = RHI_Vertex_Type_To_Enum<T>();
 
         // Can also be the source
         const bool is_file = FileSystem::IsFile(shader);
 
-		// Deduce name and file path
-		if (is_file)
-		{
-			m_name      = FileSystem::GetFileNameFromFilePath(shader);
-			m_file_path = shader;
-		}
-		else
-		{
-			m_name.clear();
-			m_file_path.clear();
-		}
+        // Deduce name and file path
+        if (is_file)
+        {
+            m_name      = FileSystem::GetFileNameFromFilePath(shader);
+            m_file_path = shader;
+        }
+        else
+        {
+            m_name.clear();
+            m_file_path.clear();
+        }
 
-		// Compile
+        // Compile
         m_compilation_state = Shader_Compilation_Compiling;
         m_resource          = _Compile(shader);
         m_compilation_state = m_resource ? Shader_Compilation_Succeeded : Shader_Compilation_Failed;
 
-		// Log compilation result
+        // Log compilation result
         {
             string type_str = "unknown";
             type_str        = type == RHI_Shader_Vertex     ? "vertex"   : type_str;
@@ -107,19 +107,19 @@ namespace Spartan
                 }
             }
         }
-	}
+    }
 
-	template <typename T>
-	void RHI_Shader::CompileAsync(const RHI_Shader_Type type, const string& shader)
-	{
-		m_context->GetSubsystem<Threading>()->AddTask([this, type, shader]()
-		{
-			Compile<T>(type, shader);
-		});
-	}
+    template <typename T>
+    void RHI_Shader::CompileAsync(const RHI_Shader_Type type, const string& shader)
+    {
+        m_context->GetSubsystem<Threading>()->AddTask([this, type, shader]()
+        {
+            Compile<T>(type, shader);
+        });
+    }
 
-	void RHI_Shader::WaitForCompilation()
-	{
+    void RHI_Shader::WaitForCompilation()
+    {
         // Wait
         while (m_compilation_state == Shader_Compilation_Compiling)
         {
@@ -132,9 +132,9 @@ namespace Spartan
         {
             LOG_ERROR("Shader \"%s\" failed compile", m_name.c_str());
         }
-	}
+    }
 
-	const char* RHI_Shader::GetEntryPoint() const
+    const char* RHI_Shader::GetEntryPoint() const
     {
         static const char* entry_point_empty = nullptr;
 
@@ -188,11 +188,11 @@ namespace Spartan
     }
 
     void RHI_Shader::_Reflect(const RHI_Shader_Type shader_type, const uint32_t* ptr, const uint32_t size)
-	{
-		// Initialize compiler with SPIR-V data
-		const auto compiler = spirv_cross::CompilerHLSL(ptr, size);
+    {
+        // Initialize compiler with SPIR-V data
+        const auto compiler = spirv_cross::CompilerHLSL(ptr, size);
 
-		// The SPIR-V is now parsed, and we can perform reflection on it
+        // The SPIR-V is now parsed, and we can perform reflection on it
         spirv_cross::ShaderResources resources = compiler.get_shader_resources();
 
         // Get storage images
@@ -234,9 +234,9 @@ namespace Spartan
             );
         }
 
-		// Get samplers
-		for (const auto& resource : resources.separate_samplers)
-		{
+        // Get samplers
+        for (const auto& resource : resources.separate_samplers)
+        {
             m_descriptors.emplace_back
             (
                 RHI_Descriptor_Type::RHI_Descriptor_Sampler,                    // type
@@ -245,8 +245,8 @@ namespace Spartan
                 false,                                                          // is_storage
                 false                                                           // is_dynamic_constant_buffer
             );
-		}
-	}
+        }
+    }
 
     //= Explicit template instantiation =======================================================================
     template void RHI_Shader::CompileAsync<RHI_Vertex_Undefined>(const RHI_Shader_Type, const std::string&);

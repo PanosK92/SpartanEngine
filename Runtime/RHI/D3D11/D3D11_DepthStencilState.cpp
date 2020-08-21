@@ -45,21 +45,21 @@ namespace Spartan
         const RHI_Stencil_Operation stencil_pass_op         /*= RHI_Stencil_Replace */
     )
     {
-		if (!rhi_device)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return;
-		}
+        if (!rhi_device)
+        {
+            LOG_ERROR_INVALID_INTERNALS();
+            return;
+        }
 
-		auto d3d11_device = rhi_device->GetContextRhi()->device;
-		if (!d3d11_device)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return;
-		}
+        auto d3d11_device = rhi_device->GetContextRhi()->device;
+        if (!d3d11_device)
+        {
+            LOG_ERROR_INVALID_INTERNALS();
+            return;
+        }
 
-		// Save properties
-		m_depth_test_enabled    = depth_test;
+        // Save properties
+        m_depth_test_enabled    = depth_test;
         m_depth_write_enabled   = depth_write;
         m_depth_function        = depth_function;
         m_stencil_test_enabled  = stencil_test;
@@ -69,17 +69,17 @@ namespace Spartan
         m_stencil_depth_fail_op = stencil_depth_fail_op;
         m_stencil_pass_op       = stencil_pass_op;
 
-		// Create description
-		D3D11_DEPTH_STENCIL_DESC desc;
+        // Create description
+        D3D11_DEPTH_STENCIL_DESC desc;
         {
             // Depth test parameters
-		    desc.DepthEnable					= static_cast<BOOL>(depth_test || depth_write);
-		    desc.DepthWriteMask					= depth_write ? D3D11_DEPTH_WRITE_MASK_ALL : D3D11_DEPTH_WRITE_MASK_ZERO;
-		    desc.DepthFunc						= d3d11_comparison_function[depth_function];
+            desc.DepthEnable                    = static_cast<BOOL>(depth_test || depth_write);
+            desc.DepthWriteMask                    = depth_write ? D3D11_DEPTH_WRITE_MASK_ALL : D3D11_DEPTH_WRITE_MASK_ZERO;
+            desc.DepthFunc                        = d3d11_comparison_function[depth_function];
             // Stencil test parameters
-		    desc.StencilEnable					= static_cast<BOOL>(stencil_test || stencil_write);
-		    desc.StencilReadMask				= stencil_test  ? D3D11_DEFAULT_STENCIL_READ_MASK   : 0;
-		    desc.StencilWriteMask				= stencil_write ? D3D11_DEFAULT_STENCIL_WRITE_MASK  : 0;
+            desc.StencilEnable                    = static_cast<BOOL>(stencil_test || stencil_write);
+            desc.StencilReadMask                = stencil_test  ? D3D11_DEFAULT_STENCIL_READ_MASK   : 0;
+            desc.StencilWriteMask                = stencil_write ? D3D11_DEFAULT_STENCIL_WRITE_MASK  : 0;
             // Stencil operations if pixel is front-facing
             desc.FrontFace.StencilFailOp        = d3d11_stencil_operation[m_stencil_fail_op];
             desc.FrontFace.StencilDepthFailOp   = d3d11_stencil_operation[m_stencil_depth_fail_op];
@@ -87,27 +87,27 @@ namespace Spartan
             desc.FrontFace.StencilFunc          = d3d11_comparison_function[stencil_function];
             // Stencil operations if pixel is back-facing
             desc.BackFace                       = desc.FrontFace;
-		}
+        }
 
-		// Create depth-stencil state
-		auto depth_stencil_state	= static_cast<ID3D11DepthStencilState*>(m_buffer);
-		const auto result			= d3d11_device->CreateDepthStencilState(&desc, &depth_stencil_state);
+        // Create depth-stencil state
+        auto depth_stencil_state    = static_cast<ID3D11DepthStencilState*>(m_buffer);
+        const auto result            = d3d11_device->CreateDepthStencilState(&desc, &depth_stencil_state);
 
-		// Handle result
-		if (SUCCEEDED(result))
-		{
-			m_buffer		= static_cast<void*>(depth_stencil_state);
-			m_initialized	= true;
-		}
-		else
-		{
-			m_initialized = false;
-			LOG_ERROR("Failed to create depth-stencil state %s.", d3d11_utility::dxgi_error_to_string(result));
-		}
-	}
+        // Handle result
+        if (SUCCEEDED(result))
+        {
+            m_buffer        = static_cast<void*>(depth_stencil_state);
+            m_initialized    = true;
+        }
+        else
+        {
+            m_initialized = false;
+            LOG_ERROR("Failed to create depth-stencil state %s.", d3d11_utility::dxgi_error_to_string(result));
+        }
+    }
 
-	RHI_DepthStencilState::~RHI_DepthStencilState()
-	{
+    RHI_DepthStencilState::~RHI_DepthStencilState()
+    {
         d3d11_utility::release(*reinterpret_cast<ID3D11DepthStencilState**>(&m_buffer));
-	}
+    }
 }

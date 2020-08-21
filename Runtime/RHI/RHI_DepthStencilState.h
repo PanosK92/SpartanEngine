@@ -29,11 +29,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-	class SPARTAN_CLASS RHI_DepthStencilState : public Spartan_Object
-	{
-	public:
+    class SPARTAN_CLASS RHI_DepthStencilState : public Spartan_Object
+    {
+    public:
         RHI_DepthStencilState() = default;
-		RHI_DepthStencilState(
+        RHI_DepthStencilState(
             const std::shared_ptr<RHI_Device>& rhi_device,
             const bool depth_test                               = true,
             const bool depth_write                              = true,
@@ -45,7 +45,7 @@ namespace Spartan
             const RHI_Stencil_Operation stencil_depth_fail_op   = RHI_Stencil_Keep,
             const RHI_Stencil_Operation stencil_pass_op         = RHI_Stencil_Replace
         );
-		~RHI_DepthStencilState();
+        ~RHI_DepthStencilState();
 
         bool GetDepthTestEnabled()                              const { return m_depth_test_enabled; }
         bool GetDepthWriteEnabled()                             const { return m_depth_write_enabled; }
@@ -58,8 +58,8 @@ namespace Spartan
         RHI_Stencil_Operation GetStencilPassOperation()         const { return m_stencil_pass_op; }
         void* GetResource()                                     const { return m_buffer; }
 
-	private:
-		bool m_depth_test_enabled	                    = false;
+    private:
+        bool m_depth_test_enabled                        = false;
         bool m_depth_write_enabled                      = false;
         RHI_Comparison_Function m_depth_function        = RHI_Comparison_Never;
         bool m_stencil_test_enabled                     = false;
@@ -68,7 +68,7 @@ namespace Spartan
         RHI_Stencil_Operation m_stencil_fail_op         = RHI_Stencil_Keep;
         RHI_Stencil_Operation m_stencil_depth_fail_op   = RHI_Stencil_Keep;
         RHI_Stencil_Operation m_stencil_pass_op         = RHI_Stencil_Replace;
-		bool m_initialized		                        = false;
-		void* m_buffer			                        = nullptr;
-	};
+        bool m_initialized                                = false;
+        void* m_buffer                                    = nullptr;
+    };
 }

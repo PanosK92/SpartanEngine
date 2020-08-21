@@ -32,12 +32,12 @@ using namespace std;
 
 namespace Spartan
 {
-	unordered_map<uint16_t, shared_ptr<ShaderGBuffer>> ShaderGBuffer::m_variations;
+    unordered_map<uint16_t, shared_ptr<ShaderGBuffer>> ShaderGBuffer::m_variations;
 
-	ShaderGBuffer::ShaderGBuffer(Context* context, const uint16_t flags /*= 0*/) : RHI_Shader(context)
-	{
+    ShaderGBuffer::ShaderGBuffer(Context* context, const uint16_t flags /*= 0*/) : RHI_Shader(context)
+    {
         m_flags = flags;
-	}
+    }
 
     const ShaderGBuffer* ShaderGBuffer::GenerateVariation(Context* context, const uint16_t flags)
     {
@@ -50,7 +50,7 @@ namespace Spartan
     }
 
     ShaderGBuffer* ShaderGBuffer::Compile(Context* context, const uint16_t flags)
-	{
+    {
         // Shader source file path
         const string file_path = context->GetSubsystem<ResourceCache>()->GetDataDirectory(Asset_Shaders) + "/GBuffer.hlsl";
 
@@ -58,7 +58,7 @@ namespace Spartan
         shared_ptr<ShaderGBuffer> shader = make_shared<ShaderGBuffer>(context, flags);
 
         // Add defines based on flag properties
-        shader->AddDefine("ALBEDO_MAP",		(flags & Material_Color)      ? "1" : "0");
+        shader->AddDefine("ALBEDO_MAP",        (flags & Material_Color)      ? "1" : "0");
         shader->AddDefine("ROUGHNESS_MAP",  (flags & Material_Roughness)  ? "1" : "0");
         shader->AddDefine("METALLIC_MAP",   (flags & Material_Metallic)   ? "1" : "0");
         shader->AddDefine("NORMAL_MAP",     (flags & Material_Normal)     ? "1" : "0");
@@ -74,5 +74,5 @@ namespace Spartan
         m_variations[flags] = shader;
 
         return shader.get();
-	}
+    }
 }

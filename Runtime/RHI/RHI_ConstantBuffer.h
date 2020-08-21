@@ -28,26 +28,26 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-	class SPARTAN_CLASS RHI_ConstantBuffer : public Spartan_Object
-	{
-	public:
+    class SPARTAN_CLASS RHI_ConstantBuffer : public Spartan_Object
+    {
+    public:
         RHI_ConstantBuffer(const std::shared_ptr<RHI_Device>& rhi_device, const std::string& name, bool is_dynamic = false);
         ~RHI_ConstantBuffer() { _destroy(); }
 
-		template<typename T>
-		bool Create(const uint32_t offset_count = 1)
-		{
+        template<typename T>
+        bool Create(const uint32_t offset_count = 1)
+        {
             m_stride        = static_cast<uint32_t>(sizeof(T));
             m_offset_count  = offset_count;
             m_size_gpu      = static_cast<uint64_t>(m_stride * m_offset_count);
 
             return _create();
-		}
+        }
 
-		void* Map();  
-		bool Unmap(const uint64_t offset = 0, const uint64_t size = 0);
+        void* Map();  
+        bool Unmap(const uint64_t offset = 0, const uint64_t size = 0);
 
-		void* GetResource()         const { return m_buffer; }
+        void* GetResource()         const { return m_buffer; }
         uint32_t GetStride()        const { return m_stride; }
         uint32_t GetOffsetCount()   const { return m_offset_count; }
 
@@ -62,8 +62,8 @@ namespace Spartan
         uint32_t GetOffsetIndexDynamic()                        const { return m_offset_dynamic_index; }
         void SetOffsetIndexDynamic(const uint32_t offset_index)       { m_offset_dynamic_index = offset_index; }
 
-	private:
-		bool _create();
+    private:
+        bool _create();
         void _destroy();
 
         bool m_is_dynamic               = false;    // only affects Vulkan
@@ -74,11 +74,11 @@ namespace Spartan
         uint32_t m_offset_index         = 0;
         uint32_t m_offset_dynamic_index = 0;
 
-		// API
-		void* m_buffer      = nullptr;
+        // API
+        void* m_buffer      = nullptr;
         void* m_allocation  = nullptr;
 
         // Dependencies
         std::shared_ptr<RHI_Device> m_rhi_device;
-	};
+    };
 }

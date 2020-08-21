@@ -30,15 +30,15 @@ using namespace std;
 
 namespace Spartan
 {
-	Timer::Timer(Context* context) : ISubsystem(context)
-	{
+    Timer::Timer(Context* context) : ISubsystem(context)
+    {
         m_time_start        = chrono::high_resolution_clock::now();
-		m_time_frame_start  = chrono::high_resolution_clock::now();
-		m_time_frame_end    = chrono::high_resolution_clock::now();
-	}
+        m_time_frame_start  = chrono::high_resolution_clock::now();
+        m_time_frame_end    = chrono::high_resolution_clock::now();
+    }
 
-	void Timer::Tick(float delta_time)
-	{
+    void Timer::Tick(float delta_time)
+    {
         // Get time
         m_time_frame_end    = m_time_frame_start;
         m_time_frame_start  = chrono::high_resolution_clock::now();
@@ -46,11 +46,11 @@ namespace Spartan
         // Compute durations
         const chrono::duration<double, milli> time_elapsed      = m_time_start - m_time_frame_start;
         chrono::duration<double, milli> time_delta              = m_time_frame_start - m_time_frame_end;
-		const chrono::duration<double, milli> time_remaining    = chrono::duration<double, milli>(1000.0 / m_fps_target) - time_delta;
+        const chrono::duration<double, milli> time_remaining    = chrono::duration<double, milli>(1000.0 / m_fps_target) - time_delta;
 
         // Fps limiting
-		if (time_remaining.count() > 0)
-		{
+        if (time_remaining.count() > 0)
+        {
             // Compute sleep duration and account for the sleep overhead.
             // The sleep overhead is the time the kernel takes to wake up the thread after the thread has finished sleeping.
             const chrono::duration<double, milli> sleep_duration_requested = chrono::duration<double, milli>(time_remaining.count() - m_sleep_overhead);
@@ -64,11 +64,11 @@ namespace Spartan
 
             // Account for sleep duration
             time_delta += sleep_time_real;
-		}
+        }
 
         // Save times
         m_time_ms           = static_cast<double>(time_elapsed.count());
-		m_delta_time_ms     = static_cast<double>(time_delta.count());
+        m_delta_time_ms     = static_cast<double>(time_delta.count());
 
         // Compute smoothed delta time
         const double frames_to_accumulate   = 5;
@@ -76,7 +76,7 @@ namespace Spartan
         double delta_max                    = 1000.0 / m_fps_min;
         const double delta_clamped          = m_delta_time_ms > delta_max ? delta_max : m_delta_time_ms; // If frame time is too high/slow, clamp it   
         m_delta_time_smoothed_ms            = m_delta_time_smoothed_ms * (1.0 - delta_feedback) + delta_clamped * delta_feedback;
-	}
+    }
 
     void Timer::SetTargetFps(double fps_in)
     {

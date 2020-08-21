@@ -31,43 +31,43 @@ namespace Spartan::Math
 {
     class Vector4;
 
-	class SPARTAN_CLASS Vector3
-	{
-	public:
-		// Constructor
-		Vector3()
-		{
-			x = 0;
-			y = 0;
-			z = 0;
-		}
+    class SPARTAN_CLASS Vector3
+    {
+    public:
+        // Constructor
+        Vector3()
+        {
+            x = 0;
+            y = 0;
+            z = 0;
+        }
 
-		// Copy-constructor
-		Vector3(const Vector3& vector)
-		{
-			x = vector.x;
-			y = vector.y;
-			z = vector.z;
-		}
+        // Copy-constructor
+        Vector3(const Vector3& vector)
+        {
+            x = vector.x;
+            y = vector.y;
+            z = vector.z;
+        }
 
         // Copy-constructor
         Vector3(const Vector4& vector);
 
-		// Construct from coordinates.
-		Vector3(float x, float y, float z)
-		{
-			this->x = x;
-			this->y = y;
-			this->z = z;
-		}
+        // Construct from coordinates.
+        Vector3(float x, float y, float z)
+        {
+            this->x = x;
+            this->y = y;
+            this->z = z;
+        }
 
-		// Construct from single value.
-		Vector3(float f)
-		{
-			x = f;
-			y = f;
-			z = f;
-		}
+        // Construct from single value.
+        Vector3(float f)
+        {
+            x = f;
+            y = f;
+            z = f;
+        }
 
         // Normalize
         void Normalize()
@@ -84,7 +84,7 @@ namespace Spartan::Math
 
         // Return normalized vector
         [[nodiscard]] Vector3 Normalized() const
-		{
+        {
             const auto length_squared = LengthSquared();
             if (!Helper::Equals(length_squared, 1.0f) && length_squared > 0.0f)
             {
@@ -93,31 +93,31 @@ namespace Spartan::Math
             }
             else
                 return *this;
-		}
+        }
 
         // Returns normalized vector
-		static inline Vector3 Normalize(const Vector3& v) { return v.Normalized(); }
+        static inline Vector3 Normalize(const Vector3& v) { return v.Normalized(); }
 
         // Returns the dot product
-		static inline float Dot(const Vector3& v1, const Vector3& v2)	{ return (v1.x * v2.x + v1.y * v2.y + v1.z * v2.z); }
+        static inline float Dot(const Vector3& v1, const Vector3& v2)    { return (v1.x * v2.x + v1.y * v2.y + v1.z * v2.z); }
 
         // Returns the dot product
         [[nodiscard]] float Dot(const Vector3& rhs) const       { return x * rhs.x + y * rhs.y + z * rhs.z; }
 
         // Returns the cross product
-		static inline Vector3 Cross(const Vector3& v1, const Vector3& v2)
+        static inline Vector3 Cross(const Vector3& v1, const Vector3& v2)
         {
             return Vector3(
                 v1.y * v2.z - v2.y * v1.z,
                 -(v1.x * v2.z - v2.x * v1.z),
                 v1.x * v2.y - v2.x * v1.y
             );
-		}
+        }
         // Returns the cross product
         [[nodiscard]] Vector3 Cross(const Vector3& v2) const { return Cross(*this, v2); }
 
         // Returns the length
-        [[nodiscard]] float Length() const		    { return Helper::Sqrt(x * x + y * y + z * z); }
+        [[nodiscard]] float Length() const            { return Helper::Sqrt(x * x + y * y + z * z); }
         // Returns the squared length
         [[nodiscard]] float LengthSquared() const   { return x * x + y * y + z * z; }
 
@@ -150,96 +150,96 @@ namespace Spartan::Math
         static inline float DistanceSquared(const Vector3& a, const Vector3& b)    { return (b - a).LengthSquared(); }
 
         // Floor
-		void Floor()
-		{
+        void Floor()
+        {
             x = floor(x);
             y = floor(y);
             z = floor(z);
-		}
+        }
 
         // Return absolute vector
         [[nodiscard]] Vector3 Abs() const { return Vector3(Helper::Abs(x), Helper::Abs(y), Helper::Abs(z)); }
 
-		Vector3 operator*(const Vector3& b) const
-		{
-			return Vector3(
-				x * b.x,
-				y * b.y,
-				z * b.z
-			);
-		}
+        Vector3 operator*(const Vector3& b) const
+        {
+            return Vector3(
+                x * b.x,
+                y * b.y,
+                z * b.z
+            );
+        }
 
-		void operator*=(const Vector3& b)
-		{
-			x *= b.x;
-			y *= b.y;
-			z *= b.z;
-		}
+        void operator*=(const Vector3& b)
+        {
+            x *= b.x;
+            y *= b.y;
+            z *= b.z;
+        }
 
-		Vector3 operator*(const float value) const
-		{
-			return Vector3(
-				x * value,
-				y * value,
-				z * value
-			);
-		}
+        Vector3 operator*(const float value) const
+        {
+            return Vector3(
+                x * value,
+                y * value,
+                z * value
+            );
+        }
 
-		void operator*=(const float value)
-		{
-			x *= value;
-			y *= value;
-			z *= value;
-		}
+        void operator*=(const float value)
+        {
+            x *= value;
+            y *= value;
+            z *= value;
+        }
 
-		Vector3 operator+(const Vector3& b) const   { return Vector3(x + b.x, y + b.y, z + b.z); }
-		Vector3 operator+(const float value) const  { return Vector3(x + value, y + value, z + value); }
+        Vector3 operator+(const Vector3& b) const   { return Vector3(x + b.x, y + b.y, z + b.z); }
+        Vector3 operator+(const float value) const  { return Vector3(x + value, y + value, z + value); }
 
-		void operator+=(const Vector3& b)
-		{
-			x += b.x;
-			y += b.y;
-			z += b.z;
-		}
+        void operator+=(const Vector3& b)
+        {
+            x += b.x;
+            y += b.y;
+            z += b.z;
+        }
 
-		void operator+=(const float value)
-		{
-			x += value;
-			y += value;
-			z += value;
-		}
+        void operator+=(const float value)
+        {
+            x += value;
+            y += value;
+            z += value;
+        }
 
-		Vector3 operator-(const Vector3& b) const   { return Vector3(x - b.x, y - b.y, z - b.z); }
-		Vector3 operator-(const float value) const  { return Vector3(x - value, y - value, z - value); }
+        Vector3 operator-(const Vector3& b) const   { return Vector3(x - b.x, y - b.y, z - b.z); }
+        Vector3 operator-(const float value) const  { return Vector3(x - value, y - value, z - value); }
 
-		void operator-=(const Vector3& rhs)
-		{
-			x -= rhs.x;
-			y -= rhs.y;
-			z -= rhs.z;
-		}
+        void operator-=(const Vector3& rhs)
+        {
+            x -= rhs.x;
+            y -= rhs.y;
+            z -= rhs.z;
+        }
 
-		Vector3 operator/(const Vector3& rhs) const { return Vector3(x / rhs.x, y / rhs.y, z / rhs.z); }
-		Vector3 operator/(const float rhs) const    { return Vector3(x / rhs, y / rhs, z / rhs); }
+        Vector3 operator/(const Vector3& rhs) const { return Vector3(x / rhs.x, y / rhs.y, z / rhs.z); }
+        Vector3 operator/(const float rhs) const    { return Vector3(x / rhs, y / rhs, z / rhs); }
 
-		void operator/=(const Vector3& rhs)
-		{
-			x /= rhs.x;
-			y /= rhs.y;
-			z /= rhs.z;
-		}
+        void operator/=(const Vector3& rhs)
+        {
+            x /= rhs.x;
+            y /= rhs.y;
+            z /= rhs.z;
+        }
 
-		// Test for equality without using epsilon
-		bool operator==(const Vector3& rhs) const
-		{
-			return x == rhs.x && y == rhs.y && z == rhs.z;
-		}
+        // Test for equality without using epsilon
+        bool operator==(const Vector3& rhs) const
+        {
+            return x == rhs.x && y == rhs.y && z == rhs.z;
+        }
 
-		// Test for inequality without using epsilon
-		bool operator!=(const Vector3& rhs) const
-		{
-			return !(*this == rhs);
-		}
+        // Test for inequality without using epsilon
+        bool operator!=(const Vector3& rhs) const
+        {
+            return !(*this == rhs);
+        }
 
         // Return negation.
         Vector3 operator -() const { return Vector3(-x, -y, -z); }
@@ -247,22 +247,22 @@ namespace Spartan::Math
         [[nodiscard]] std::string ToString() const;
         [[nodiscard]] const float* Data() const { return &x; }
 
-		float x;
-		float y;
-		float z;
+        float x;
+        float y;
+        float z;
 
-		static const Vector3 Zero;
-		static const Vector3 Left;
-		static const Vector3 Right;
-		static const Vector3 Up;
-		static const Vector3 Down;
-		static const Vector3 Forward;
-		static const Vector3 Backward;
-		static const Vector3 One;
-		static const Vector3 Infinity;
-		static const Vector3 InfinityNeg;
-	};
+        static const Vector3 Zero;
+        static const Vector3 Left;
+        static const Vector3 Right;
+        static const Vector3 Up;
+        static const Vector3 Down;
+        static const Vector3 Forward;
+        static const Vector3 Backward;
+        static const Vector3 One;
+        static const Vector3 Infinity;
+        static const Vector3 InfinityNeg;
+    };
 
-	// Reverse order operators
-	inline SPARTAN_CLASS Vector3 operator*(float lhs, const Vector3& rhs) { return rhs * lhs; }
+    // Reverse order operators
+    inline SPARTAN_CLASS Vector3 operator*(float lhs, const Vector3& rhs) { return rhs * lhs; }
 }

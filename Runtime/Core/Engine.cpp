@@ -39,8 +39,8 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-	Engine::Engine(const WindowData& window_data)
-	{
+    Engine::Engine(const WindowData& window_data)
+    {
         // Window
         m_window_data = window_data;
 
@@ -49,38 +49,38 @@ namespace Spartan
         m_flags |= Engine_Game;
 
         // Create context
-		m_context = make_shared<Context>();
+        m_context = make_shared<Context>();
         m_context->m_engine = this;
 
-		// Register subsystems
+        // Register subsystems
         m_context->RegisterSubsystem<Timer>(TickType::Variable);         // must be first so it ticks first
         m_context->RegisterSubsystem<Threading>(TickType::Variable);
-		m_context->RegisterSubsystem<ResourceCache>(TickType::Variable);
-		m_context->RegisterSubsystem<Audio>(TickType::Variable);
+        m_context->RegisterSubsystem<ResourceCache>(TickType::Variable);
+        m_context->RegisterSubsystem<Audio>(TickType::Variable);
         m_context->RegisterSubsystem<Physics>(TickType::Variable);       // integrates internally
         m_context->RegisterSubsystem<Input>(TickType::Smoothed);
-		m_context->RegisterSubsystem<Scripting>(TickType::Smoothed);
-		m_context->RegisterSubsystem<World>(TickType::Smoothed);
+        m_context->RegisterSubsystem<Scripting>(TickType::Smoothed);
+        m_context->RegisterSubsystem<World>(TickType::Smoothed);
         m_context->RegisterSubsystem<Profiler>(TickType::Variable);
         m_context->RegisterSubsystem<Renderer>(TickType::Smoothed);
         m_context->RegisterSubsystem<Settings>(TickType::Variable);
-             	
-		// Initialize above subsystems
-		m_context->Initialize();
+                 
+        // Initialize above subsystems
+        m_context->Initialize();
 
         m_timer = m_context->GetSubsystem<Timer>();
-	}
+    }
 
-	Engine::~Engine()
-	{
-		EventSystem::Get().Clear(); // this must become a subsystem
-	}
+    Engine::~Engine()
+    {
+        EventSystem::Get().Clear(); // this must become a subsystem
+    }
 
-	void Engine::Tick() const
+    void Engine::Tick() const
     {
         m_context->Tick(TickType::Variable, static_cast<float>(m_timer->GetDeltaTimeSec()));
         m_context->Tick(TickType::Smoothed, static_cast<float>(m_timer->GetDeltaTimeSmoothedSec()));
-	}
+    }
 
     void Engine::SetWindowData(WindowData& window_data)
     {

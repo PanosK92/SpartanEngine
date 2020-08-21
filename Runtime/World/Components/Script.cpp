@@ -33,21 +33,21 @@ using namespace std;
 
 namespace Spartan
 {
-	Script::Script(Context* context, Entity* entity, uint32_t id /*= 0*/) : IComponent(context, entity, id)
-	{
+    Script::Script(Context* context, Entity* entity, uint32_t id /*= 0*/) : IComponent(context, entity, id)
+    {
         m_scripting = context->GetSubsystem<Scripting>();
-	}
+    }
 
-	void Script::OnStart()
-	{
+    void Script::OnStart()
+    {
         if (m_script_instance)
         {
             m_scripting->CallScriptFunction_Start(m_script_instance);
         }
-	}
+    }
 
-	void Script::OnTick(float delta_time)
-	{
+    void Script::OnTick(float delta_time)
+    {
         // Don't run any scripts if we are not in game mode
         if (!m_context->m_engine->EngineMode_IsSet(Engine_Game))
             return;
@@ -56,21 +56,21 @@ namespace Spartan
         {
             m_scripting->CallScriptFunction_Update(m_script_instance, delta_time);
         }
-	}
+    }
 
-	void Script::Serialize(FileStream* stream)
-	{
+    void Script::Serialize(FileStream* stream)
+    {
         stream->Write(m_file_path);
-	}
+    }
 
-	void Script::Deserialize(FileStream* stream)
-	{
+    void Script::Deserialize(FileStream* stream)
+    {
         stream->Read(&m_file_path);
         SetScript(m_file_path);
-	}
+    }
 
-	bool Script::SetScript(const string& file_path)
-	{
+    bool Script::SetScript(const string& file_path)
+    {
         // Load script
         const uint32_t id = m_scripting->Load(file_path, this);
         if (id == SCRIPT_NOT_LOADED)
@@ -84,16 +84,16 @@ namespace Spartan
         m_file_path         = file_path;
         m_name              = FileSystem::GetFileNameNoExtensionFromFilePath(file_path);
 
-		return true;
-	}
+        return true;
+    }
 
-	string Script::GetScriptPath() const
+    string Script::GetScriptPath() const
     {
         return m_file_path;
-	}
+    }
 
-	string Script::GetName() const
-	{
+    string Script::GetName() const
+    {
         return m_name;
-	}
+    }
 }

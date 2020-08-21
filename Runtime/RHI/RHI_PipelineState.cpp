@@ -107,8 +107,8 @@ namespace Spartan
         return is_valid;
     }
 
-	uint32_t RHI_PipelineState::GetWidth() const
-	{
+    uint32_t RHI_PipelineState::GetWidth() const
+    {
         if (render_target_swapchain)
             return render_target_swapchain->GetWidth();
 
@@ -119,7 +119,7 @@ namespace Spartan
             return render_target_depth_texture->GetWidth();
 
         return 0;
-	}
+    }
 
     uint32_t RHI_PipelineState::GetHeight() const
     {
@@ -135,14 +135,14 @@ namespace Spartan
         return 0;
     }
 
-	void RHI_PipelineState::ResetClearValues()
-	{
+    void RHI_PipelineState::ResetClearValues()
+    {
         clear_color.fill(rhi_color_load);
         clear_depth   = rhi_depth_load;
         clear_stencil = rhi_stencil_load;
-	}
+    }
 
-	void RHI_PipelineState::ComputeHash()
+    void RHI_PipelineState::ComputeHash()
     {
         m_hash = 0;
 

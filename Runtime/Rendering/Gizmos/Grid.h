@@ -31,30 +31,30 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-	class Context;
-	class Transform;
+    class Context;
+    class Transform;
 
-	class SPARTAN_CLASS Grid
-	{
-	public:
-		Grid(std::shared_ptr<RHI_Device> rhi_device);
+    class SPARTAN_CLASS Grid
+    {
+    public:
+        Grid(std::shared_ptr<RHI_Device> rhi_device);
         ~Grid() = default;
-		
-		const Math::Matrix& ComputeWorldMatrix(Transform* camera);
-		
-		const auto& GetIndexBuffer() const  { return m_indexBuffer; }
-		const auto& GetVertexBuffer() const { return m_vertexBuffer; }
-		uint32_t GetIndexCount() const      { return m_indexCount; }
+        
+        const Math::Matrix& ComputeWorldMatrix(Transform* camera);
+        
+        const auto& GetIndexBuffer() const  { return m_indexBuffer; }
+        const auto& GetVertexBuffer() const { return m_vertexBuffer; }
+        uint32_t GetIndexCount() const      { return m_indexCount; }
 
-	private:
-		void BuildGrid(std::vector<RHI_Vertex_PosCol>* vertices, std::vector<uint32_t>* indices);
-		bool CreateBuffers(std::vector<RHI_Vertex_PosCol>& vertices, std::vector<uint32_t>& indices, std::shared_ptr<RHI_Device>& rhi_device);
+    private:
+        void BuildGrid(std::vector<RHI_Vertex_PosCol>* vertices, std::vector<uint32_t>* indices);
+        bool CreateBuffers(std::vector<RHI_Vertex_PosCol>& vertices, std::vector<uint32_t>& indices, std::shared_ptr<RHI_Device>& rhi_device);
 
-		uint32_t m_indexCount;
-		uint32_t m_terrainHeight;
-		uint32_t m_terrainWidth;
-		std::shared_ptr<RHI_VertexBuffer> m_vertexBuffer;
-		std::shared_ptr<RHI_IndexBuffer> m_indexBuffer;
-		Math::Matrix m_world;
-	};
+        uint32_t m_indexCount;
+        uint32_t m_terrainHeight;
+        uint32_t m_terrainWidth;
+        std::shared_ptr<RHI_VertexBuffer> m_vertexBuffer;
+        std::shared_ptr<RHI_IndexBuffer> m_indexBuffer;
+        Math::Matrix m_world;
+    };
 }

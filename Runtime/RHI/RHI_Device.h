@@ -31,11 +31,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-	class SPARTAN_CLASS RHI_Device : public Spartan_Object
-	{
-	public:
-		RHI_Device(Context* context);
-		~RHI_Device();
+    class SPARTAN_CLASS RHI_Device : public Spartan_Object
+    {
+    public:
+        RHI_Device(Context* context);
+        ~RHI_Device();
 
         // Physical device
         void RegisterPhysicalDevice(const PhysicalDevice& physical_device);    
@@ -53,17 +53,17 @@ namespace Spartan
 
         // Misc
         bool ValidateResolution(const uint32_t width, const uint32_t height) const;
-		auto IsInitialized()                const { return m_initialized; }
-        RHI_Context* GetContextRhi()	    const { return m_rhi_context.get(); }
+        auto IsInitialized()                const { return m_initialized; }
+        RHI_Context* GetContextRhi()        const { return m_rhi_context.get(); }
         Context* GetContext()               const { return m_context; }
         uint32_t GetEnabledGraphicsStages() const { return m_enabled_graphics_shader_stages; }
 
-	private:	
-		std::vector<PhysicalDevice> m_physical_devices;
+    private:    
+        std::vector<PhysicalDevice> m_physical_devices;
         uint32_t m_physical_device_index            = 0;     
         uint32_t m_enabled_graphics_shader_stages   = 0;
         bool m_initialized                          = false;
         mutable std::mutex m_queue_mutex;
         std::shared_ptr<RHI_Context> m_rhi_context;
-	};
+    };
 }

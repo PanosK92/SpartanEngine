@@ -32,23 +32,23 @@ struct FIBITMAP;
 
 namespace Spartan
 {
-	class Context;
+    class Context;
 
-	class SPARTAN_CLASS ImageImporter
-	{
-	public:
-		ImageImporter(Context* context);
-		~ImageImporter();
+    class SPARTAN_CLASS ImageImporter
+    {
+    public:
+        ImageImporter(Context* context);
+        ~ImageImporter();
 
-		bool Load(const std::string& file_path, RHI_Texture* texture, bool generate_mipmaps = true);
+        bool Load(const std::string& file_path, RHI_Texture* texture, bool generate_mipmaps = true);
 
-	private:	
-		bool GetBitsFromFibitmap(std::vector<std::byte>* data, FIBITMAP* bitmap, uint32_t width, uint32_t height, uint32_t channels) const;
-		void GenerateMipmaps(FIBITMAP* bitmap, RHI_Texture* texture, uint32_t width, uint32_t height, uint32_t channels);
-		FIBITMAP* ApplyBitmapCorrections(FIBITMAP* bitmap) const;
-		FIBITMAP* _FreeImage_ConvertTo32Bits(FIBITMAP* bitmap) const;
-		FIBITMAP* _FreeImage_Rescale(FIBITMAP* bitmap, uint32_t width, uint32_t height) const;
+    private:    
+        bool GetBitsFromFibitmap(std::vector<std::byte>* data, FIBITMAP* bitmap, uint32_t width, uint32_t height, uint32_t channels) const;
+        void GenerateMipmaps(FIBITMAP* bitmap, RHI_Texture* texture, uint32_t width, uint32_t height, uint32_t channels);
+        FIBITMAP* ApplyBitmapCorrections(FIBITMAP* bitmap) const;
+        FIBITMAP* _FreeImage_ConvertTo32Bits(FIBITMAP* bitmap) const;
+        FIBITMAP* _FreeImage_Rescale(FIBITMAP* bitmap, uint32_t width, uint32_t height) const;
 
         Context* m_context = nullptr;
-	};
+    };
 }

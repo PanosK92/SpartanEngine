@@ -33,25 +33,25 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 inline Spartan::Math::Vector3 ToVector3(const btVector3& vector)
 {
-	return Spartan::Math::Vector3(vector.getX(), vector.getY(), vector.getZ());
+    return Spartan::Math::Vector3(vector.getX(), vector.getY(), vector.getZ());
 }
 
 inline Spartan::Math::Vector4 ToVector4(const btVector3& vector)
 {
-	return Spartan::Math::Vector4(vector.getX(), vector.getY(), vector.getZ(), 1.0f);
+    return Spartan::Math::Vector4(vector.getX(), vector.getY(), vector.getZ(), 1.0f);
 }
 
 inline btVector3 ToBtVector3(const Spartan::Math::Vector3& vector)
 {
-	return btVector3(vector.x, vector.y, vector.z);
+    return btVector3(vector.x, vector.y, vector.z);
 }
 
 inline btQuaternion ToBtQuaternion(const Spartan::Math::Quaternion& quaternion)
 {
-	return btQuaternion(quaternion.x, quaternion.y, quaternion.z, quaternion.w);
+    return btQuaternion(quaternion.x, quaternion.y, quaternion.z, quaternion.w);
 }
 
 inline Spartan::Math::Quaternion ToQuaternion(const btQuaternion& quaternion)
 {
-	return Spartan::Math::Quaternion(quaternion.getX(), quaternion.getY(), quaternion.getZ(), quaternion.getW());
+    return Spartan::Math::Quaternion(quaternion.getX(), quaternion.getY(), quaternion.getZ(), quaternion.getW());
 }

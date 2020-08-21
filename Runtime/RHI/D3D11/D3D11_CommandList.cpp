@@ -51,8 +51,8 @@ namespace Spartan
 {
     bool RHI_CommandList::memory_query_support = true;
 
-	RHI_CommandList::RHI_CommandList(uint32_t index, RHI_SwapChain* swap_chain, Context* context)
-	{
+    RHI_CommandList::RHI_CommandList(uint32_t index, RHI_SwapChain* swap_chain, Context* context)
+    {
         m_swap_chain        = swap_chain;
         m_renderer          = context->GetSubsystem<Renderer>();
         m_profiler          = context->GetSubsystem<Profiler>();
@@ -60,9 +60,9 @@ namespace Spartan
         m_pipeline_cache    = m_renderer->GetPipelineCache();
         m_descriptor_cache  = m_renderer->GetDescriptorCache();
         m_timestamps.fill(0);
-	}
+    }
 
-	RHI_CommandList::~RHI_CommandList() = default;
+    RHI_CommandList::~RHI_CommandList() = default;
 
     bool RHI_CommandList::Begin()
     {
@@ -333,14 +333,14 @@ namespace Spartan
         m_profiler->m_rhi_bindings_pipeline++;
 
         return true;
-	}
+    }
 
-	bool RHI_CommandList::EndRenderPass()
-	{
+    bool RHI_CommandList::EndRenderPass()
+    {
         // End marker and profiler (if enabled)
         Timeblock_End(m_pipeline_state);
         return true;
-	}
+    }
 
     void RHI_CommandList::ClearPipelineStateRenderTargets(RHI_PipelineState& pipeline_state)
     {
@@ -445,7 +445,7 @@ namespace Spartan
         m_profiler->m_rhi_draw++;
 
         return true;
-	}
+    }
 
     bool RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset)
     {
@@ -459,7 +459,7 @@ namespace Spartan
         m_profiler->m_rhi_draw++;
 
         return true;
-	}
+    }
 
     bool RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z, bool async /*= false*/)
     {
@@ -477,7 +477,7 @@ namespace Spartan
         return true;
     }
 
-	void RHI_CommandList::SetViewport(const RHI_Viewport& viewport) const
+    void RHI_CommandList::SetViewport(const RHI_Viewport& viewport) const
     {
         D3D11_VIEWPORT d3d11_viewport   = {};
         d3d11_viewport.TopLeftX         = viewport.x;
@@ -488,22 +488,22 @@ namespace Spartan
         d3d11_viewport.MaxDepth         = viewport.depth_max;
 
         m_rhi_device->GetContextRhi()->device_context->RSSetViewports(1, &d3d11_viewport);
-	}
+    }
 
-	void RHI_CommandList::SetScissorRectangle(const Math::Rectangle& scissor_rectangle) const
+    void RHI_CommandList::SetScissorRectangle(const Math::Rectangle& scissor_rectangle) const
     {
         const D3D11_RECT d3d11_rectangle = { static_cast<LONG>(scissor_rectangle.left), static_cast<LONG>(scissor_rectangle.top), static_cast<LONG>(scissor_rectangle.right), static_cast<LONG>(scissor_rectangle.bottom) };
 
         m_rhi_device->GetContextRhi()->device_context->RSSetScissorRects(1, &d3d11_rectangle);
-	}
+    }
 
-	void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer, const uint64_t offset /*= 0*/)
+    void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer, const uint64_t offset /*= 0*/)
     {
-		if (!buffer || !buffer->GetResource())
-		{
-			LOG_ERROR_INVALID_PARAMETER();
-			return;
-		}
+        if (!buffer || !buffer->GetResource())
+        {
+            LOG_ERROR_INVALID_PARAMETER();
+            return;
+        }
 
         ID3D11Buffer* vertex_buffer         = static_cast<ID3D11Buffer*>(buffer->GetResource());
         UINT stride                         = buffer->GetStride();
@@ -523,15 +523,15 @@ namespace Spartan
         // Set
         device_context->IASetVertexBuffers(0, 1, &vertex_buffer, &stride, offsets);
         m_profiler->m_rhi_bindings_buffer_vertex++;
-	}
+    }
 
-	void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer, const uint64_t offset /*= 0*/)
+    void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer, const uint64_t offset /*= 0*/)
     {
-		if (!buffer || !buffer->GetResource())
-		{
-			LOG_ERROR_INVALID_PARAMETER();
-			return;
-		}
+        if (!buffer || !buffer->GetResource())
+        {
+            LOG_ERROR_INVALID_PARAMETER();
+            return;
+        }
 
         ID3D11Buffer* index_buffer          = static_cast<ID3D11Buffer*>(buffer->GetResource());
         const DXGI_FORMAT format            = buffer->Is16Bit() ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
@@ -550,7 +550,7 @@ namespace Spartan
         // Set
         device_context->IASetIndexBuffer(index_buffer, format, static_cast<UINT>(offset));
         m_profiler->m_rhi_bindings_buffer_index++;
-	}
+    }
 
     bool RHI_CommandList::SetConstantBuffer(const uint32_t slot, const uint8_t scope, RHI_ConstantBuffer* constant_buffer) const
     {
@@ -680,7 +680,7 @@ namespace Spartan
                 }
             }
         }
-	}
+    }
 
     bool RHI_CommandList::Timestamp_Start(void* query_disjoint /*= nullptr*/, void* query_start /*= nullptr*/)
     {

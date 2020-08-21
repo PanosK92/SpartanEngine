@@ -29,36 +29,36 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-	class Context;
+    class Context;
 
-	namespace Math
-	{
-		class RayHit;
-		class BoundingBox;
+    namespace Math
+    {
+        class RayHit;
+        class BoundingBox;
 
-		class SPARTAN_CLASS Ray
-		{
-		public:
-			Ray() = default;
-			Ray(const Vector3& start, const Vector3& end);
-			~Ray() = default;
+        class SPARTAN_CLASS Ray
+        {
+        public:
+            Ray() = default;
+            Ray(const Vector3& start, const Vector3& end);
+            ~Ray() = default;
 
-			// Traces a ray against all entities in the world, returns all hits in a vector.
-			std::vector<RayHit> Trace(Context* context) const;
+            // Traces a ray against all entities in the world, returns all hits in a vector.
+            std::vector<RayHit> Trace(Context* context) const;
 
-			// Returns hit distance to a bounding box, or infinity if there is no hit.
-			float HitDistance(const BoundingBox& box) const;
+            // Returns hit distance to a bounding box, or infinity if there is no hit.
+            float HitDistance(const BoundingBox& box) const;
 
-			const auto& GetStart()      const { return m_start; }
-			const auto& GetEnd()        const { return m_end; }
+            const auto& GetStart()      const { return m_start; }
+            const auto& GetEnd()        const { return m_end; }
             const auto& GetLength()     const { return m_length; }
-			const auto& GetDirection()  const { return m_direction; }
+            const auto& GetDirection()  const { return m_direction; }
 
-		private:
-			Vector3 m_start;
-			Vector3 m_end;
-			Vector3 m_direction;
+        private:
+            Vector3 m_start;
+            Vector3 m_end;
+            Vector3 m_direction;
             float m_length = 0.0f;
-		};
-	}
+        };
+    }
 }

@@ -33,128 +33,128 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-	class Entity;
+    class Entity;
 
-	enum FileStream_Mode : uint32_t
-	{
-		FileStream_Read		= 1 << 0,
-		FileStream_Write	= 1 << 1,
-		FileStream_Append	= 1 << 2,
-	};
+    enum FileStream_Mode : uint32_t
+    {
+        FileStream_Read     = 1 << 0,
+        FileStream_Write    = 1 << 1,
+        FileStream_Append   = 1 << 2,
+    };
 
-	class SPARTAN_CLASS FileStream
-	{
-	public:
-		FileStream(const std::string& path, uint32_t flags);
-		~FileStream();
+    class SPARTAN_CLASS FileStream
+    {
+    public:
+        FileStream(const std::string& path, uint32_t flags);
+        ~FileStream();
 
-		auto IsOpen() const { return m_is_open; }
-		void Close();
+        auto IsOpen() const { return m_is_open; }
+        void Close();
 
-		//= WRITING ==================================================
-		template <class T, class = typename std::enable_if<
-			std::is_same<T, bool>::value				||
-			std::is_same<T, unsigned char>::value		||		
-			std::is_same<T, int>::value					||
-			std::is_same<T, long>::value				||
-			std::is_same<T, long long>::value			||
-			std::is_same<T, uint8_t>::value			    ||
-            std::is_same<T, uint16_t>::value			||
-            std::is_same<T, uint32_t>::value			||
-            std::is_same<T, uint64_t>::value			||
-			std::is_same<T, unsigned long>::value		||
-			std::is_same<T, unsigned long long>::value	||
-			std::is_same<T, float>::value				||
-			std::is_same<T, double>::value				||
-			std::is_same<T, long double>::value			||
-			std::is_same<T, std::byte>::value			||
-			std::is_same<T, Math::Vector2>::value		||
-			std::is_same<T, Math::Vector3>::value		||
-			std::is_same<T, Math::Vector4>::value		||
-			std::is_same<T, Math::Quaternion>::value	||
-			std::is_same<T, Math::BoundingBox>::value
-		>::type>
-		void Write(T value)
-		{
-			out.write(reinterpret_cast<char*>(&value), sizeof(value));
-		}
+        //= WRITING ==================================================
+        template <class T, class = typename std::enable_if<
+            std::is_same<T, bool>::value                ||
+            std::is_same<T, unsigned char>::value       ||        
+            std::is_same<T, int>::value                 ||
+            std::is_same<T, long>::value                ||
+            std::is_same<T, long long>::value           ||
+            std::is_same<T, uint8_t>::value             ||
+            std::is_same<T, uint16_t>::value            ||
+            std::is_same<T, uint32_t>::value            ||
+            std::is_same<T, uint64_t>::value            ||
+            std::is_same<T, unsigned long>::value       ||
+            std::is_same<T, unsigned long long>::value  ||
+            std::is_same<T, float>::value               ||
+            std::is_same<T, double>::value              ||
+            std::is_same<T, long double>::value         ||
+            std::is_same<T, std::byte>::value           ||
+            std::is_same<T, Math::Vector2>::value       ||
+            std::is_same<T, Math::Vector3>::value       ||
+            std::is_same<T, Math::Vector4>::value       ||
+            std::is_same<T, Math::Quaternion>::value    ||
+            std::is_same<T, Math::BoundingBox>::value
+        >::type>
+        void Write(T value)
+        {
+            out.write(reinterpret_cast<char*>(&value), sizeof(value));
+        }
 
-		void Write(const std::string& value);
-		void Write(const std::vector<std::string>& value);
-		void Write(const std::vector<RHI_Vertex_PosTexNorTan>& value);
-		void Write(const std::vector<uint32_t>& value);
-		void Write(const std::vector<unsigned char>& value);
-		void Write(const std::vector<std::byte>& value);
-		void Skip(uint32_t n);
-		//===========================================================
-		
-		//= READING ===========================================
-		template <class T, class = typename std::enable_if
-		<
-			std::is_same<T, bool>::value				||
-			std::is_same<T, unsigned char>::value		||
-			std::is_same<T, int>::value					||
-			std::is_same<T, long>::value				||
-			std::is_same<T, long long>::value			||
-            std::is_same<T, uint8_t>::value			    ||
-            std::is_same<T, uint16_t>::value			||
-            std::is_same<T, uint32_t>::value			||
-			std::is_same<T, uint64_t>::value			||
-			std::is_same<T, unsigned long>::value		||
-			std::is_same<T, unsigned long long>::value	||
-			std::is_same<T, float>::value				||
-			std::is_same<T, double>::value				||
-			std::is_same<T, long double>::value			||
-			std::is_same<T, std::byte>::value			||
-			std::is_same<T, Math::Vector2>::value		||
-			std::is_same<T, Math::Vector3>::value		||
-			std::is_same<T, Math::Vector4>::value		||
-			std::is_same<T, Math::Quaternion>::value	||
-			std::is_same<T, Math::BoundingBox>::value
-		>::type>
-		void Read(T* value)
-		{
-			in.read(reinterpret_cast<char*>(value), sizeof(T));
-		}
-		void Read(std::string* value);
-		void Read(std::vector<std::string>* vec);
-		void Read(std::vector<RHI_Vertex_PosTexNorTan>* vec);
-		void Read(std::vector<uint32_t>* vec);
-		void Read(std::vector<unsigned char>* vec);
-		void Read(std::vector<std::byte>* vec);
+        void Write(const std::string& value);
+        void Write(const std::vector<std::string>& value);
+        void Write(const std::vector<RHI_Vertex_PosTexNorTan>& value);
+        void Write(const std::vector<uint32_t>& value);
+        void Write(const std::vector<unsigned char>& value);
+        void Write(const std::vector<std::byte>& value);
+        void Skip(uint32_t n);
+        //===========================================================
+        
+        //= READING ===========================================
+        template <class T, class = typename std::enable_if
+        <
+            std::is_same<T, bool>::value                ||
+            std::is_same<T, unsigned char>::value       ||
+            std::is_same<T, int>::value                 ||
+            std::is_same<T, long>::value                ||
+            std::is_same<T, long long>::value           ||
+            std::is_same<T, uint8_t>::value             ||
+            std::is_same<T, uint16_t>::value            ||
+            std::is_same<T, uint32_t>::value            ||
+            std::is_same<T, uint64_t>::value            ||
+            std::is_same<T, unsigned long>::value       ||
+            std::is_same<T, unsigned long long>::value  ||
+            std::is_same<T, float>::value               ||
+            std::is_same<T, double>::value              ||
+            std::is_same<T, long double>::value         ||
+            std::is_same<T, std::byte>::value           ||
+            std::is_same<T, Math::Vector2>::value       ||
+            std::is_same<T, Math::Vector3>::value       ||
+            std::is_same<T, Math::Vector4>::value       ||
+            std::is_same<T, Math::Quaternion>::value    ||
+            std::is_same<T, Math::BoundingBox>::value
+        >::type>
+        void Read(T* value)
+        {
+            in.read(reinterpret_cast<char*>(value), sizeof(T));
+        }
+        void Read(std::string* value);
+        void Read(std::vector<std::string>* vec);
+        void Read(std::vector<RHI_Vertex_PosTexNorTan>* vec);
+        void Read(std::vector<uint32_t>* vec);
+        void Read(std::vector<unsigned char>* vec);
+        void Read(std::vector<std::byte>* vec);
 
-		// Reading with explicit type definition
-		template <class T, class = typename std::enable_if
-		<
-			std::is_same<T, bool>::value				||
-			std::is_same<T, unsigned char>::value		||		
-			std::is_same<T, int>::value					||
-			std::is_same<T, long>::value				||
-			std::is_same<T, long long>::value			||
-			std::is_same<T, uint8_t>::value			    ||
-            std::is_same<T, uint16_t>::value			||
-            std::is_same<T, uint32_t>::value			||
-            std::is_same<T, uint64_t>::value			||
-			std::is_same<T, unsigned long>::value		||
-			std::is_same<T, unsigned long long>::value	||
-			std::is_same<T, float>::value				||
-			std::is_same<T, double>::value				||
-			std::is_same<T, long double>::value			||
-			std::is_same<T, std::byte>::value			||
-			std::is_same<T, std::string>::value
-		>::type> 
-		T ReadAs()
-		{
-			T value;
-			Read(&value);
-			return value;
-		}
-		//=====================================================
+        // Reading with explicit type definition
+        template <class T, class = typename std::enable_if
+        <
+            std::is_same<T, bool>::value                ||
+            std::is_same<T, unsigned char>::value       ||
+            std::is_same<T, int>::value                 ||
+            std::is_same<T, long>::value                ||
+            std::is_same<T, long long>::value           ||
+            std::is_same<T, uint8_t>::value             ||
+            std::is_same<T, uint16_t>::value            ||
+            std::is_same<T, uint32_t>::value            ||
+            std::is_same<T, uint64_t>::value            ||
+            std::is_same<T, unsigned long>::value       ||
+            std::is_same<T, unsigned long long>::value  ||
+            std::is_same<T, float>::value               ||
+            std::is_same<T, double>::value              ||
+            std::is_same<T, long double>::value         ||
+            std::is_same<T, std::byte>::value           ||
+            std::is_same<T, std::string>::value
+        >::type> 
+        T ReadAs()
+        {
+            T value;
+            Read(&value);
+            return value;
+        }
+        //=====================================================
 
-	private:
-		std::ofstream out;
-		std::ifstream in;
-		uint32_t m_flags;
-		bool m_is_open;
-	};
+    private:
+        std::ofstream out;
+        std::ifstream in;
+        uint32_t m_flags;
+        bool m_is_open;
+    };
 }

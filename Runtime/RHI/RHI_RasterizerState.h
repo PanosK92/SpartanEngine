@@ -29,9 +29,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-	class SPARTAN_CLASS RHI_RasterizerState : public Spartan_Object
-	{
-	public:
+    class SPARTAN_CLASS RHI_RasterizerState : public Spartan_Object
+    {
+    public:
         RHI_RasterizerState() = default;
         RHI_RasterizerState(
             const std::shared_ptr<RHI_Device>& rhi_device,

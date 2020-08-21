@@ -33,9 +33,9 @@ namespace Spartan
 {
     RHI_Pipeline::RHI_Pipeline(const RHI_Device* rhi_device, RHI_PipelineState& pipeline_state, void* descriptor_set_layout)
     {
-		m_rhi_device	= rhi_device;
-		m_state			= pipeline_state;
-	}
+        m_rhi_device    = rhi_device;
+        m_state            = pipeline_state;
+    }
 
-	RHI_Pipeline::~RHI_Pipeline() = default;
+    RHI_Pipeline::~RHI_Pipeline() = default;
 }

@@ -35,120 +35,120 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-	Grid::Grid(shared_ptr<RHI_Device> rhi_device)
-	{
-		m_indexCount	= 0;
-		m_terrainHeight = 200;
-		m_terrainWidth	= 200;
+    Grid::Grid(shared_ptr<RHI_Device> rhi_device)
+    {
+        m_indexCount    = 0;
+        m_terrainHeight = 200;
+        m_terrainWidth    = 200;
 
-		vector<RHI_Vertex_PosCol> vertices;
-		vector<unsigned> indices;
-		BuildGrid(&vertices, &indices);
-		CreateBuffers(vertices, indices, rhi_device);
-	}
+        vector<RHI_Vertex_PosCol> vertices;
+        vector<unsigned> indices;
+        BuildGrid(&vertices, &indices);
+        CreateBuffers(vertices, indices, rhi_device);
+    }
 
-	const Matrix& Grid::ComputeWorldMatrix(Transform* camera)
-	{
-		// To get the grid to feel infinite, it has to follow the camera,
-		// but only by increments of the grid's spacing size. This gives the illusion 
-		// that the grid never moves and if the grid is large enough, the user can't tell.
-		const auto gridSpacing = 1.0f;
-		const auto translation = Vector3
-		(
-			static_cast<int>(camera->GetPosition().x / gridSpacing) * gridSpacing, 
-			0.0f, 
-			static_cast<int>(camera->GetPosition().z / gridSpacing) * gridSpacing
-		);
-	
-		m_world = Matrix::CreateScale(gridSpacing) * Matrix::CreateTranslation(translation);
+    const Matrix& Grid::ComputeWorldMatrix(Transform* camera)
+    {
+        // To get the grid to feel infinite, it has to follow the camera,
+        // but only by increments of the grid's spacing size. This gives the illusion 
+        // that the grid never moves and if the grid is large enough, the user can't tell.
+        const auto gridSpacing = 1.0f;
+        const auto translation = Vector3
+        (
+            static_cast<int>(camera->GetPosition().x / gridSpacing) * gridSpacing, 
+            0.0f, 
+            static_cast<int>(camera->GetPosition().z / gridSpacing) * gridSpacing
+        );
+    
+        m_world = Matrix::CreateScale(gridSpacing) * Matrix::CreateTranslation(translation);
 
-		return m_world;
-	}
+        return m_world;
+    }
 
-	void Grid::BuildGrid(vector<RHI_Vertex_PosCol>* vertices, vector<uint32_t>* indices)
-	{
-		const auto halfSizeW = int(m_terrainWidth * 0.5f);
-		const auto halfSizeH = int(m_terrainHeight * 0.5f);
+    void Grid::BuildGrid(vector<RHI_Vertex_PosCol>* vertices, vector<uint32_t>* indices)
+    {
+        const auto halfSizeW = int(m_terrainWidth * 0.5f);
+        const auto halfSizeH = int(m_terrainHeight * 0.5f);
 
-		for (auto j = -halfSizeH; j < halfSizeH; j++)
-		{
-			for (auto i = -halfSizeW; i < halfSizeW; i++)
-			{
-				// Become more transparent, the further out we go
-				const auto alphaWidth	= 1.0f - static_cast<float>(Helper::Abs(j)) / static_cast<float>(halfSizeH);
-				const auto alphaHeight	= 1.0f - static_cast<float>(Helper::Abs(i)) / static_cast<float>(halfSizeW);
-				auto alpha			    = (alphaWidth + alphaHeight) * 0.5f;
-				alpha				    = Helper::Pow(alpha, 10.0f);
+        for (auto j = -halfSizeH; j < halfSizeH; j++)
+        {
+            for (auto i = -halfSizeW; i < halfSizeW; i++)
+            {
+                // Become more transparent, the further out we go
+                const auto alphaWidth    = 1.0f - static_cast<float>(Helper::Abs(j)) / static_cast<float>(halfSizeH);
+                const auto alphaHeight    = 1.0f - static_cast<float>(Helper::Abs(i)) / static_cast<float>(halfSizeW);
+                auto alpha                = (alphaWidth + alphaHeight) * 0.5f;
+                alpha                    = Helper::Pow(alpha, 10.0f);
 
-				// LINE 1
-				// Upper left.
-				auto positionX = static_cast<float>(i);
-				auto positionZ = static_cast<float>(j + 1);
-				vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, alpha));
+                // LINE 1
+                // Upper left.
+                auto positionX = static_cast<float>(i);
+                auto positionZ = static_cast<float>(j + 1);
+                vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, alpha));
 
-				// Upper right.
-				positionX = static_cast<float>(i + 1);
-				positionZ = static_cast<float>(j + 1);
-				vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, alpha));
+                // Upper right.
+                positionX = static_cast<float>(i + 1);
+                positionZ = static_cast<float>(j + 1);
+                vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, alpha));
 
-				// LINE 2
-				// Upper right.
-				positionX = static_cast<float>(i + 1);
-				positionZ = static_cast<float>(j + 1);
-				vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, alpha));
+                // LINE 2
+                // Upper right.
+                positionX = static_cast<float>(i + 1);
+                positionZ = static_cast<float>(j + 1);
+                vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, alpha));
 
-				// Bottom right.
-				positionX = static_cast<float>(i + 1);
-				positionZ = static_cast<float>(j);
-				vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, alpha));
+                // Bottom right.
+                positionX = static_cast<float>(i + 1);
+                positionZ = static_cast<float>(j);
+                vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, alpha));
 
-				// LINE 3
-				// Bottom right.
-				positionX = static_cast<float>(i + 1);
-				positionZ = static_cast<float>(j);
-				vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, alpha));
+                // LINE 3
+                // Bottom right.
+                positionX = static_cast<float>(i + 1);
+                positionZ = static_cast<float>(j);
+                vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, alpha));
 
-				// Bottom left.
-				positionX = static_cast<float>(i);
-				positionZ = static_cast<float>(j);
-				vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, alpha));
+                // Bottom left.
+                positionX = static_cast<float>(i);
+                positionZ = static_cast<float>(j);
+                vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, alpha));
 
-				// LINE 4
-				// Bottom left.
-				positionX = static_cast<float>(i);
-				positionZ = static_cast<float>(j);
-				vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, alpha));
+                // LINE 4
+                // Bottom left.
+                positionX = static_cast<float>(i);
+                positionZ = static_cast<float>(j);
+                vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, alpha));
 
-				// Upper left.
-				positionX = static_cast<float>(i);
-				positionZ = static_cast<float>(j + 1);
-				vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, alpha));
-			}
-		}
+                // Upper left.
+                positionX = static_cast<float>(i);
+                positionZ = static_cast<float>(j + 1);
+                vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, alpha));
+            }
+        }
 
-		for (uint32_t i = 0; i < vertices->size(); i++)
-		{
-			indices->emplace_back(i);
-		}
-		m_indexCount = static_cast<uint32_t>(indices->size());
-	}
+        for (uint32_t i = 0; i < vertices->size(); i++)
+        {
+            indices->emplace_back(i);
+        }
+        m_indexCount = static_cast<uint32_t>(indices->size());
+    }
 
-	bool Grid::CreateBuffers(vector<RHI_Vertex_PosCol>& vertices, vector<unsigned>& indices, shared_ptr<RHI_Device>& rhi_device)
-	{
-		m_vertexBuffer = make_shared<RHI_VertexBuffer>(rhi_device);
-		if (!m_vertexBuffer->Create(vertices))
-		{
-			LOG_ERROR("Failed to create vertex buffer.");
-			return false;
-		}
+    bool Grid::CreateBuffers(vector<RHI_Vertex_PosCol>& vertices, vector<unsigned>& indices, shared_ptr<RHI_Device>& rhi_device)
+    {
+        m_vertexBuffer = make_shared<RHI_VertexBuffer>(rhi_device);
+        if (!m_vertexBuffer->Create(vertices))
+        {
+            LOG_ERROR("Failed to create vertex buffer.");
+            return false;
+        }
 
-		m_indexBuffer = make_shared<RHI_IndexBuffer>(rhi_device);
-		if (!m_indexBuffer->Create(indices))
-		{
-			LOG_ERROR("Failed to create index buffer.");
-			return false;
-		}
+        m_indexBuffer = make_shared<RHI_IndexBuffer>(rhi_device);
+        if (!m_indexBuffer->Create(indices))
+        {
+            LOG_ERROR("Failed to create index buffer.");
+            return false;
+        }
 
-		return true;
-	}
+        return true;
+    }
 }

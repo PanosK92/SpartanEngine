@@ -31,206 +31,206 @@ using namespace std;
 
 namespace Spartan
 {
-	FileStream::FileStream(const string& path, uint32_t flags)
-	{
-		m_is_open	= false;
-		m_flags		= flags;
+    FileStream::FileStream(const string& path, uint32_t flags)
+    {
+        m_is_open    = false;
+        m_flags        = flags;
 
-		int ios_flags	= ios::binary;
-		ios_flags		|= (flags & FileStream_Read)	? ios::in	: 0;
-		ios_flags		|= (flags & FileStream_Write)	? ios::out	: 0;
-		ios_flags		|= (flags & FileStream_Append)	? ios::app	: 0;
+        int ios_flags    = ios::binary;
+        ios_flags        |= (flags & FileStream_Read)    ? ios::in    : 0;
+        ios_flags        |= (flags & FileStream_Write)    ? ios::out    : 0;
+        ios_flags        |= (flags & FileStream_Append)    ? ios::app    : 0;
 
-		if (m_flags & FileStream_Write)
-		{
-			out.open(path, ios_flags);
-			if (out.fail())
-			{
-				LOG_ERROR("Failed to open \"%s\" for writing", path.c_str());
-				return;
-			}
-		}
-		else if (m_flags & FileStream_Read)
-		{
-			in.open(path, ios_flags);
-			if(in.fail())
-			{
-				LOG_ERROR("Failed to open \"%s\" for reading", path.c_str());
-				return;
-			}
-		}
+        if (m_flags & FileStream_Write)
+        {
+            out.open(path, ios_flags);
+            if (out.fail())
+            {
+                LOG_ERROR("Failed to open \"%s\" for writing", path.c_str());
+                return;
+            }
+        }
+        else if (m_flags & FileStream_Read)
+        {
+            in.open(path, ios_flags);
+            if(in.fail())
+            {
+                LOG_ERROR("Failed to open \"%s\" for reading", path.c_str());
+                return;
+            }
+        }
 
-		m_is_open = true;
-	}
+        m_is_open = true;
+    }
 
-	FileStream::~FileStream()
-	{
-		Close();
-	}
+    FileStream::~FileStream()
+    {
+        Close();
+    }
 
-	void FileStream::Close()
-	{
-		if (m_flags & FileStream_Write)
-		{
-			out.flush();
-			out.close();
-		}
-		else if (m_flags & FileStream_Read)
-		{
-			in.clear();
-			in.close();
-		}
-	}
+    void FileStream::Close()
+    {
+        if (m_flags & FileStream_Write)
+        {
+            out.flush();
+            out.close();
+        }
+        else if (m_flags & FileStream_Read)
+        {
+            in.clear();
+            in.close();
+        }
+    }
 
-	void FileStream::Write(const string& value)
-	{
-		const auto length = static_cast<uint32_t>(value.length());
-		Write(length);
+    void FileStream::Write(const string& value)
+    {
+        const auto length = static_cast<uint32_t>(value.length());
+        Write(length);
 
-		out.write(const_cast<char*>(value.c_str()), length);
-	}
+        out.write(const_cast<char*>(value.c_str()), length);
+    }
 
-	void FileStream::Write(const vector<string>& value)
-	{
-		const auto size = static_cast<uint32_t>(value.size());
-		Write(size);
+    void FileStream::Write(const vector<string>& value)
+    {
+        const auto size = static_cast<uint32_t>(value.size());
+        Write(size);
 
-		for (uint32_t i = 0; i < size; i++)
-		{
-			Write(value[i]);
-		}
-	}
+        for (uint32_t i = 0; i < size; i++)
+        {
+            Write(value[i]);
+        }
+    }
 
-	void FileStream::Write(const vector<RHI_Vertex_PosTexNorTan>& value)
-	{
-		const auto length = static_cast<uint32_t>(value.size());
-		Write(length);
-		out.write(reinterpret_cast<const char*>(&value[0]), sizeof(RHI_Vertex_PosTexNorTan) * length);
-	}
+    void FileStream::Write(const vector<RHI_Vertex_PosTexNorTan>& value)
+    {
+        const auto length = static_cast<uint32_t>(value.size());
+        Write(length);
+        out.write(reinterpret_cast<const char*>(&value[0]), sizeof(RHI_Vertex_PosTexNorTan) * length);
+    }
 
-	void FileStream::Write(const vector<uint32_t>& value)
-	{
-		const auto length = static_cast<uint32_t>(value.size());
-		Write(length);
-		out.write(reinterpret_cast<const char*>(&value[0]), sizeof(uint32_t) * length);
-	}
+    void FileStream::Write(const vector<uint32_t>& value)
+    {
+        const auto length = static_cast<uint32_t>(value.size());
+        Write(length);
+        out.write(reinterpret_cast<const char*>(&value[0]), sizeof(uint32_t) * length);
+    }
 
-	void FileStream::Write(const vector<unsigned char>& value)
-	{
-		const auto size = static_cast<uint32_t>(value.size());
-		Write(size);
-		out.write(reinterpret_cast<const char*>(&value[0]), sizeof(unsigned char) * size);
-	}
+    void FileStream::Write(const vector<unsigned char>& value)
+    {
+        const auto size = static_cast<uint32_t>(value.size());
+        Write(size);
+        out.write(reinterpret_cast<const char*>(&value[0]), sizeof(unsigned char) * size);
+    }
 
-	void FileStream::Write(const vector<std::byte>& value)
-	{
-		const auto size = static_cast<uint32_t>(value.size());
-		Write(size);
-		out.write(reinterpret_cast<const char*>(&value[0]), sizeof(std::byte) * size);
-	}
+    void FileStream::Write(const vector<std::byte>& value)
+    {
+        const auto size = static_cast<uint32_t>(value.size());
+        Write(size);
+        out.write(reinterpret_cast<const char*>(&value[0]), sizeof(std::byte) * size);
+    }
 
-	void FileStream::Skip(uint32_t n)
-	{
-		// Set the seek cursor to offset n from the current position
-		if (m_flags & FileStream_Write)
-		{
-			out.seekp(n, ios::cur);
-		}
-		else if (m_flags & FileStream_Read)
-		{
-			in.ignore(n, ios::cur);
-		}
-	}
+    void FileStream::Skip(uint32_t n)
+    {
+        // Set the seek cursor to offset n from the current position
+        if (m_flags & FileStream_Write)
+        {
+            out.seekp(n, ios::cur);
+        }
+        else if (m_flags & FileStream_Read)
+        {
+            in.ignore(n, ios::cur);
+        }
+    }
 
-	void FileStream::Read(string* value)
-	{
-		uint32_t length = 0;
-		Read(&length);
+    void FileStream::Read(string* value)
+    {
+        uint32_t length = 0;
+        Read(&length);
 
-		value->resize(length);
-		in.read(const_cast<char*>(value->c_str()), length);
-	}
+        value->resize(length);
+        in.read(const_cast<char*>(value->c_str()), length);
+    }
 
-	void FileStream::Read(vector<string>* vec)
-	{
-		if (!vec)
-			return;
+    void FileStream::Read(vector<string>* vec)
+    {
+        if (!vec)
+            return;
 
-		vec->clear();
-		vec->shrink_to_fit();
+        vec->clear();
+        vec->shrink_to_fit();
 
-		uint32_t size = 0;
-		Read(&size);
+        uint32_t size = 0;
+        Read(&size);
 
-		string str;
-		for (uint32_t i = 0; i < size; i++)
-		{
-			Read(&str);
-			vec->emplace_back(str);
-		}
-	}
+        string str;
+        for (uint32_t i = 0; i < size; i++)
+        {
+            Read(&str);
+            vec->emplace_back(str);
+        }
+    }
 
-	void FileStream::Read(vector<RHI_Vertex_PosTexNorTan>* vec)
-	{
-		if (!vec)
-			return;
+    void FileStream::Read(vector<RHI_Vertex_PosTexNorTan>* vec)
+    {
+        if (!vec)
+            return;
 
-		vec->clear();
-		vec->shrink_to_fit();
-
-        const auto length = ReadAs<uint32_t>();
-
-		vec->reserve(length);
-		vec->resize(length);
-
-		in.read(reinterpret_cast<char*>(vec->data()), sizeof(RHI_Vertex_PosTexNorTan) * length);
-	}
-
-	void FileStream::Read(vector<uint32_t>* vec)
-	{
-		if (!vec)
-			return;
-
-		vec->clear();
-		vec->shrink_to_fit();
+        vec->clear();
+        vec->shrink_to_fit();
 
         const auto length = ReadAs<uint32_t>();
 
-		vec->reserve(length);
-		vec->resize(length);
+        vec->reserve(length);
+        vec->resize(length);
 
-		in.read(reinterpret_cast<char*>(vec->data()), sizeof(uint32_t) * length);
-	}
+        in.read(reinterpret_cast<char*>(vec->data()), sizeof(RHI_Vertex_PosTexNorTan) * length);
+    }
 
-	void FileStream::Read(vector<unsigned char>* vec)
-	{
-		if (!vec)
-			return;
+    void FileStream::Read(vector<uint32_t>* vec)
+    {
+        if (!vec)
+            return;
 
-		vec->clear();
-		vec->shrink_to_fit();
+        vec->clear();
+        vec->shrink_to_fit();
 
         const auto length = ReadAs<uint32_t>();
 
-		vec->reserve(length);
-		vec->resize(length);
+        vec->reserve(length);
+        vec->resize(length);
 
-		in.read(reinterpret_cast<char*>(vec->data()), sizeof(unsigned char) * length);
-	}
+        in.read(reinterpret_cast<char*>(vec->data()), sizeof(uint32_t) * length);
+    }
 
-	void FileStream::Read(vector<std::byte>* vec)
-	{
-		if (!vec)
-			return;
+    void FileStream::Read(vector<unsigned char>* vec)
+    {
+        if (!vec)
+            return;
 
-		vec->clear();
-		vec->shrink_to_fit();
+        vec->clear();
+        vec->shrink_to_fit();
 
-		const auto length = ReadAs<uint32_t>();
+        const auto length = ReadAs<uint32_t>();
 
-		vec->reserve(length);
-		vec->resize(length);
+        vec->reserve(length);
+        vec->resize(length);
 
-		in.read(reinterpret_cast<char*>(vec->data()), sizeof(std::byte) * length);
-	}
+        in.read(reinterpret_cast<char*>(vec->data()), sizeof(unsigned char) * length);
+    }
+
+    void FileStream::Read(vector<std::byte>* vec)
+    {
+        if (!vec)
+            return;
+
+        vec->clear();
+        vec->shrink_to_fit();
+
+        const auto length = ReadAs<uint32_t>();
+
+        vec->reserve(length);
+        vec->resize(length);
+
+        in.read(reinterpret_cast<char*>(vec->data()), sizeof(std::byte) * length);
+    }
 }

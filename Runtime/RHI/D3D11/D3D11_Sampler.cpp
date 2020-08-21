@@ -29,32 +29,32 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-	void RHI_Sampler::CreateResource()
-	{	
+    void RHI_Sampler::CreateResource()
+    {    
         D3D11_SAMPLER_DESC sampler_desc = {};
-		sampler_desc.Filter			    = d3d11_utility::sampler::get_filter(m_filter_min, m_filter_mag, m_filter_mipmap, m_anisotropy_enabled, m_comparison_enabled);
-		sampler_desc.AddressU		    = d3d11_sampler_address_mode[m_sampler_address_mode];
-		sampler_desc.AddressV		    = d3d11_sampler_address_mode[m_sampler_address_mode];
-		sampler_desc.AddressW		    = d3d11_sampler_address_mode[m_sampler_address_mode];
-		sampler_desc.MipLODBias		    = 0.0f;
+        sampler_desc.Filter                = d3d11_utility::sampler::get_filter(m_filter_min, m_filter_mag, m_filter_mipmap, m_anisotropy_enabled, m_comparison_enabled);
+        sampler_desc.AddressU            = d3d11_sampler_address_mode[m_sampler_address_mode];
+        sampler_desc.AddressV            = d3d11_sampler_address_mode[m_sampler_address_mode];
+        sampler_desc.AddressW            = d3d11_sampler_address_mode[m_sampler_address_mode];
+        sampler_desc.MipLODBias            = 0.0f;
         sampler_desc.MaxAnisotropy      = m_rhi_device->GetContext()->GetSubsystem<Renderer>()->GetOptionValue<UINT>(Option_Value_Anisotropy);
-		sampler_desc.ComparisonFunc	    = d3d11_comparison_function[m_comparison_function];
-		sampler_desc.BorderColor[0]	    = 0;
-		sampler_desc.BorderColor[1]	    = 0;
-		sampler_desc.BorderColor[2]	    = 0;
-		sampler_desc.BorderColor[3]	    = 0;
-		sampler_desc.MinLOD			    = 0;
-		sampler_desc.MaxLOD			    = FLT_MAX;
-	
-		// Create sampler state.
-		if (FAILED(m_rhi_device->GetContextRhi()->device->CreateSamplerState(&sampler_desc, reinterpret_cast<ID3D11SamplerState**>(&m_resource))))
-		{
-			LOG_ERROR("Failed to create sampler state");
-		}
-	}
+        sampler_desc.ComparisonFunc        = d3d11_comparison_function[m_comparison_function];
+        sampler_desc.BorderColor[0]        = 0;
+        sampler_desc.BorderColor[1]        = 0;
+        sampler_desc.BorderColor[2]        = 0;
+        sampler_desc.BorderColor[3]        = 0;
+        sampler_desc.MinLOD                = 0;
+        sampler_desc.MaxLOD                = FLT_MAX;
+    
+        // Create sampler state.
+        if (FAILED(m_rhi_device->GetContextRhi()->device->CreateSamplerState(&sampler_desc, reinterpret_cast<ID3D11SamplerState**>(&m_resource))))
+        {
+            LOG_ERROR("Failed to create sampler state");
+        }
+    }
 
-	RHI_Sampler::~RHI_Sampler()
-	{
+    RHI_Sampler::~RHI_Sampler()
+    {
         d3d11_utility::release(*reinterpret_cast<ID3D11SamplerState**>(&m_resource));
-	}
+    }
 }

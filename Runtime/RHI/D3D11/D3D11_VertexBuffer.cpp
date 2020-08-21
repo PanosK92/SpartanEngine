@@ -37,75 +37,75 @@ namespace Spartan
         d3d11_utility::release(*reinterpret_cast<ID3D11Buffer**>(&m_buffer));
     }
 
-	bool RHI_VertexBuffer::_create(const void* vertices)
-	{
-		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device_context)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return false;
-		}
+    bool RHI_VertexBuffer::_create(const void* vertices)
+    {
+        if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device_context)
+        {
+            LOG_ERROR_INVALID_INTERNALS();
+            return false;
+        }
 
         const bool is_dynamic = vertices == nullptr;
 
         // Destroy previous buffer
         _destroy();
 
-		// fill in a buffer description.
+        // fill in a buffer description.
         D3D11_BUFFER_DESC buffer_desc   = {};
-		buffer_desc.ByteWidth			= static_cast<UINT>(m_size_gpu);
-		buffer_desc.Usage				= is_dynamic ? D3D11_USAGE_DYNAMIC : D3D11_USAGE_IMMUTABLE;
-		buffer_desc.CPUAccessFlags		= is_dynamic ? D3D11_CPU_ACCESS_WRITE : 0;
-		buffer_desc.BindFlags			= D3D11_BIND_VERTEX_BUFFER;	
-		buffer_desc.MiscFlags			= 0;
-		buffer_desc.StructureByteStride = 0;
+        buffer_desc.ByteWidth            = static_cast<UINT>(m_size_gpu);
+        buffer_desc.Usage                = is_dynamic ? D3D11_USAGE_DYNAMIC : D3D11_USAGE_IMMUTABLE;
+        buffer_desc.CPUAccessFlags        = is_dynamic ? D3D11_CPU_ACCESS_WRITE : 0;
+        buffer_desc.BindFlags            = D3D11_BIND_VERTEX_BUFFER;    
+        buffer_desc.MiscFlags            = 0;
+        buffer_desc.StructureByteStride = 0;
 
-		// fill in the subresource data.
+        // fill in the subresource data.
         D3D11_SUBRESOURCE_DATA init_data    = {};
-		init_data.pSysMem			        = vertices;
-		init_data.SysMemPitch		        = 0;
-		init_data.SysMemSlicePitch	        = 0;
+        init_data.pSysMem                    = vertices;
+        init_data.SysMemPitch                = 0;
+        init_data.SysMemSlicePitch            = 0;
 
-		const auto ptr		= reinterpret_cast<ID3D11Buffer**>(&m_buffer);
-		const auto result	= m_rhi_device->GetContextRhi()->device->CreateBuffer(&buffer_desc, is_dynamic ? nullptr : &init_data, ptr);
-		if (FAILED(result))
-		{
-			LOG_ERROR("Failed to create vertex buffer");
-			return false;
-		}
+        const auto ptr        = reinterpret_cast<ID3D11Buffer**>(&m_buffer);
+        const auto result    = m_rhi_device->GetContextRhi()->device->CreateBuffer(&buffer_desc, is_dynamic ? nullptr : &init_data, ptr);
+        if (FAILED(result))
+        {
+            LOG_ERROR("Failed to create vertex buffer");
+            return false;
+        }
 
-		return true;
-	}
+        return true;
+    }
 
-	void* RHI_VertexBuffer::Map()
-	{
-		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device_context || !m_buffer)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return nullptr;
-		}
+    void* RHI_VertexBuffer::Map()
+    {
+        if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device_context || !m_buffer)
+        {
+            LOG_ERROR_INVALID_INTERNALS();
+            return nullptr;
+        }
 
-		// Disable GPU access to the vertex buffer data.
-		D3D11_MAPPED_SUBRESOURCE mapped_resource;
-		const auto result = m_rhi_device->GetContextRhi()->device_context->Map(static_cast<ID3D11Resource*>(m_buffer), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
-		if (FAILED(result))
-		{
-			LOG_ERROR("Failed to map vertex buffer");
-			return nullptr;
-		}
+        // Disable GPU access to the vertex buffer data.
+        D3D11_MAPPED_SUBRESOURCE mapped_resource;
+        const auto result = m_rhi_device->GetContextRhi()->device_context->Map(static_cast<ID3D11Resource*>(m_buffer), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
+        if (FAILED(result))
+        {
+            LOG_ERROR("Failed to map vertex buffer");
+            return nullptr;
+        }
 
-		return mapped_resource.pData;
-	}
+        return mapped_resource.pData;
+    }
 
-	bool RHI_VertexBuffer::Unmap()
-	{
-		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device_context || !m_buffer)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return false;
-		}
+    bool RHI_VertexBuffer::Unmap()
+    {
+        if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device_context || !m_buffer)
+        {
+            LOG_ERROR_INVALID_INTERNALS();
+            return false;
+        }
 
-		// Re-enable GPU access to the vertex buffer data.
-		m_rhi_device->GetContextRhi()->device_context->Unmap(static_cast<ID3D11Resource*>(m_buffer), 0);
-		return true;
-	}
+        // Re-enable GPU access to the vertex buffer data.
+        m_rhi_device->GetContextRhi()->device_context->Unmap(static_cast<ID3D11Resource*>(m_buffer), 0);
+        return true;
+    }
 }

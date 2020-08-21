@@ -35,13 +35,13 @@ using namespace std;
 
 namespace Spartan
 {
-	Profiler::Profiler(Context* context) : ISubsystem(context)
-	{
+    Profiler::Profiler(Context* context) : ISubsystem(context)
+    {
         m_time_blocks_read.reserve(m_time_block_capacity);
         m_time_blocks_read.resize(m_time_block_capacity);
-		m_time_blocks_write.reserve(m_time_block_capacity);
-		m_time_blocks_write.resize(m_time_block_capacity);
-	}
+        m_time_blocks_write.reserve(m_time_block_capacity);
+        m_time_blocks_write.resize(m_time_block_capacity);
+    }
 
     Profiler::~Profiler()
     {
@@ -52,13 +52,13 @@ namespace Spartan
     }
 
     bool Profiler::Initialize()
-	{
-		m_resource_manager	= m_context->GetSubsystem<ResourceCache>();
-		m_renderer			= m_context->GetSubsystem<Renderer>();
+    {
+        m_resource_manager    = m_context->GetSubsystem<ResourceCache>();
+        m_renderer            = m_context->GetSubsystem<Renderer>();
         m_timer             = m_context->GetSubsystem<Timer>();
 
-		return true;
-	}
+        return true;
+    }
 
     void Profiler::Tick(float delta_time)
     {
@@ -201,36 +201,36 @@ namespace Spartan
     }
 
     void Profiler::TimeBlockStart(const char* func_name, TimeBlock_Type type, RHI_CommandList* cmd_list /*= nullptr*/)
-	{
-		if (!m_profile)
-			return;
+    {
+        if (!m_profile)
+            return;
 
         const bool can_profile_cpu = (type == TimeBlock_Cpu) && m_profile_cpu_enabled;
         const bool can_profile_gpu = (type == TimeBlock_Gpu) && m_profile_gpu_enabled;
 
-		if (!can_profile_cpu && !can_profile_gpu)
-			return;
+        if (!can_profile_cpu && !can_profile_gpu)
+            return;
 
         // Last incomplete block of the same type, is the parent
         TimeBlock* time_block_parent = GetLastIncompleteTimeBlock(type);
 
-		if (TimeBlock* time_block = GetNewTimeBlock())
-		{
-			time_block->Begin(func_name, type, time_block_parent, cmd_list, m_renderer->GetRhiDevice());
-		}
-	}
+        if (TimeBlock* time_block = GetNewTimeBlock())
+        {
+            time_block->Begin(func_name, type, time_block_parent, cmd_list, m_renderer->GetRhiDevice());
+        }
+    }
 
-	void Profiler::TimeBlockEnd()
-	{
+    void Profiler::TimeBlockEnd()
+    {
         // If the capacity 
         if (m_increase_capacity)
             return;
 
-		if (TimeBlock* time_block = GetLastIncompleteTimeBlock())
-		{
-			time_block->End();
-		}
-	}
+        if (TimeBlock* time_block = GetLastIncompleteTimeBlock())
+        {
+            time_block->End();
+        }
+    }
 
     void Profiler::ResetMetrics()
     {
@@ -249,46 +249,46 @@ namespace Spartan
     }
 
     TimeBlock* Profiler::GetNewTimeBlock()
-	{
-		// Increase capacity if needed
-		if (m_time_block_count >= static_cast<uint32_t>(m_time_blocks_write.size()))
-		{
+    {
+        // Increase capacity if needed
+        if (m_time_block_count >= static_cast<uint32_t>(m_time_blocks_write.size()))
+        {
             m_increase_capacity = true;
             return nullptr;
-		}
+        }
 
-		// Return a time block
-		return &m_time_blocks_write[m_time_block_count++];
-	}
+        // Return a time block
+        return &m_time_blocks_write[m_time_block_count++];
+    }
 
-	TimeBlock* Profiler::GetLastIncompleteTimeBlock(TimeBlock_Type type /*= TimeBlock_Undefined*/)
-	{
-		for (int i = m_time_block_count - 1; i >= 0; i--)
-		{
-			TimeBlock& time_block = m_time_blocks_write[i];
+    TimeBlock* Profiler::GetLastIncompleteTimeBlock(TimeBlock_Type type /*= TimeBlock_Undefined*/)
+    {
+        for (int i = m_time_block_count - 1; i >= 0; i--)
+        {
+            TimeBlock& time_block = m_time_blocks_write[i];
 
             if (type == time_block.GetType() || type == TimeBlock_Undefined)
             {
                 if (!time_block.IsComplete())
                     return &time_block;
             }
-		}
+        }
 
-		return nullptr;
-	}
+        return nullptr;
+    }
 
-	void Profiler::ComputeFps(const float delta_time)
-	{
-		m_frames_since_last_fps_computation++;
-		m_time_passed += delta_time;
+    void Profiler::ComputeFps(const float delta_time)
+    {
+        m_frames_since_last_fps_computation++;
+        m_time_passed += delta_time;
         m_fps = static_cast<float>(m_frames_since_last_fps_computation) / (m_time_passed / 1.0f);
 
-		if (m_time_passed >= 1.0f)
-		{
-			m_frames_since_last_fps_computation = 0;
-			m_time_passed = 0;
-		}
-	}
+        if (m_time_passed >= 1.0f)
+        {
+            m_frames_since_last_fps_computation = 0;
+            m_time_passed = 0;
+        }
+    }
 
     void Profiler::AcquireGpuData()
     {
@@ -304,9 +304,9 @@ namespace Spartan
     }
 
     void Profiler::UpdateRhiMetricsString()
-	{
-		const auto texture_count	= m_resource_manager->GetResourceCount(ResourceType::Texture) + m_resource_manager->GetResourceCount(ResourceType::Texture2d) + m_resource_manager->GetResourceCount(ResourceType::TextureCube);
-		const auto material_count	= m_resource_manager->GetResourceCount(ResourceType::Material);
+    {
+        const auto texture_count    = m_resource_manager->GetResourceCount(ResourceType::Texture) + m_resource_manager->GetResourceCount(ResourceType::Texture2d) + m_resource_manager->GetResourceCount(ResourceType::TextureCube);
+        const auto material_count    = m_resource_manager->GetResourceCount(ResourceType::Material);
 
         static const char* text =
             // Times
@@ -350,15 +350,15 @@ namespace Spartan
             "Pipeline barrier:\t%d";
 
         static char buffer[2048];
-		sprintf_s
-		(
-			buffer, text,
+        sprintf_s
+        (
+            buffer, text,
 
-			// Performance
-			m_fps,
+            // Performance
+            m_fps,
             m_renderer->GetFrameNum(),
             m_time_frame_last,
-			m_time_frame_avg,   m_time_frame_min,   m_time_frame_max,   m_time_frame_last,
+            m_time_frame_avg,   m_time_frame_min,   m_time_frame_max,   m_time_frame_last,
             m_time_cpu_avg,     m_time_cpu_min,     m_time_cpu_max,     m_time_cpu_last,
             m_time_gpu_avg,     m_time_gpu_min,     m_time_gpu_max,     m_time_gpu_last,
             m_gpu_api.c_str(),
@@ -366,30 +366,30 @@ namespace Spartan
             m_gpu_memory_used, m_gpu_memory_available,
             m_gpu_driver.c_str(),
 
-			// Renderer
-			static_cast<int>(m_renderer->GetResolution().x), static_cast<int>(m_renderer->GetResolution().y),
-			m_renderer_meshes_rendered,
-			texture_count,
-			material_count,
+            // Renderer
+            static_cast<int>(m_renderer->GetResolution().x), static_cast<int>(m_renderer->GetResolution().y),
+            m_renderer_meshes_rendered,
+            texture_count,
+            material_count,
 
-			// RHI
-			m_rhi_draw,
+            // RHI
+            m_rhi_draw,
             m_rhi_dispatch,
-			m_rhi_bindings_buffer_index,
-			m_rhi_bindings_buffer_vertex,
-			m_rhi_bindings_buffer_constant,
-			m_rhi_bindings_sampler,
-			m_rhi_bindings_texture_sampled,
+            m_rhi_bindings_buffer_index,
+            m_rhi_bindings_buffer_vertex,
+            m_rhi_bindings_buffer_constant,
+            m_rhi_bindings_sampler,
+            m_rhi_bindings_texture_sampled,
             m_rhi_bindings_texture_storage,
-			m_rhi_bindings_shader_vertex,
-			m_rhi_bindings_shader_pixel,
+            m_rhi_bindings_shader_vertex,
+            m_rhi_bindings_shader_pixel,
             m_rhi_bindings_shader_compute,
-			m_rhi_bindings_render_target,
+            m_rhi_bindings_render_target,
             m_rhi_bindings_pipeline,
             m_rhi_bindings_descriptor_set,
             m_rhi_pipeline_barriers
-		);
+        );
 
-		m_metrics = string(buffer);
-	}
+        m_metrics = string(buffer);
+    }
 }
