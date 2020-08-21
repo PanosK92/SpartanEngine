@@ -289,8 +289,8 @@ void Widget_RenderOptions::Tick()
 
             ImGui::Checkbox("Transform", &debug_transform);
             {
-                ImGui::SameLine(); ImGui::InputFloat("Size", &m_renderer->m_gizmo_transform_size, 0.0025f);
-                ImGui::SameLine(); ImGui::InputFloat("Speed", &m_renderer->m_gizmo_transform_speed, 1.0f);
+                ImGui::SameLine(); ImGui::InputFloat("Size", &m_renderer->gizmo_transform_size, 0.0025f);
+                ImGui::SameLine(); ImGui::InputFloat("Speed", &m_renderer->gizmo_transform_speed, 1.0f);
             }
             ImGui::Checkbox("Selection Outline",    &debug_selection_outline);
             ImGui::Checkbox("Physics",              &debug_physics);
