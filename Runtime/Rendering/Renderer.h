@@ -36,10 +36,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    constexpr Math::Vector4 DEBUG_COLOR      = Math::Vector4(0.41f, 0.86f, 1.0f, 1.0f);
-    constexpr float GIZMO_TRANSFORM_SIZE     = 0.015f;
-    constexpr float GIZMO_TRANSFORM_SPEED    = 12.0f;
-
     // Forward declarations
     class Entity;
     class Camera;
@@ -59,12 +55,12 @@ namespace Spartan
 
     enum Renderer_Option : uint64_t
     {
-        Render_Debug_Aabb                = 1 << 0,
-        Render_Debug_PickingRay            = 1 << 1,
-        Render_Debug_Grid                = 1 << 2,
-        Render_Debug_Transform            = 1 << 3,
+        Render_Debug_Aabb               = 1 << 0,
+        Render_Debug_PickingRay         = 1 << 1,
+        Render_Debug_Grid               = 1 << 2,
+        Render_Debug_Transform          = 1 << 3,
         Render_Debug_SelectionOutline   = 1 << 4,
-        Render_Debug_Lights                = 1 << 5,
+        Render_Debug_Lights             = 1 << 5,
         Render_Debug_PerformanceMetrics = 1 << 6,
         Render_Debug_Physics            = 1 << 7,
         Render_Debug_Wireframe          = 1 << 8,
@@ -75,12 +71,12 @@ namespace Spartan
         Render_Hbao                     = 1 << 13,
         Render_Ssgi                     = 1 << 14,
         Render_ScreenSpaceShadows       = 1 << 15,
-        Render_ScreenSpaceReflections    = 1 << 16,
-        Render_MotionBlur                = 1 << 17,
+        Render_ScreenSpaceReflections   = 1 << 16,
+        Render_MotionBlur               = 1 << 17,
         Render_DepthOfField             = 1 << 18,
         Render_FilmGrain                = 1 << 19,
-        Render_Sharpening_LumaSharpen    = 1 << 20,
-        Render_ChromaticAberration        = 1 << 21,
+        Render_Sharpening_LumaSharpen   = 1 << 20,
+        Render_ChromaticAberration      = 1 << 21,
         Render_Dithering                = 1 << 22,
         Render_ReverseZ                 = 1 << 23,
         Render_DepthPrepass             = 1 << 24
@@ -195,6 +191,10 @@ namespace Spartan
     class SPARTAN_CLASS Renderer : public ISubsystem
     {
     public:
+        #define DEBUG_COLOR          Math::Vector4(0.41f, 0.86f, 1.0f, 1.0f)
+        float gizmo_transform_size   = 0.015f;
+        float gizmo_transform_speed  = 12.0f;
+
         Renderer(Context* context);
         ~Renderer();
 

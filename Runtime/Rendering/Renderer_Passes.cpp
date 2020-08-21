@@ -1963,7 +1963,7 @@ namespace Spartan
             return;
 
         // Transform
-        if (m_gizmo_transform->Update(m_camera.get(), GIZMO_TRANSFORM_SIZE, GIZMO_TRANSFORM_SPEED))
+        if (m_gizmo_transform->Update(m_camera.get(), gizmo_transform_size, gizmo_transform_speed))
         {
             // Set render state
             static RHI_PipelineState pipeline_state;
