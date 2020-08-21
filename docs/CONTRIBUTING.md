@@ -7,7 +7,7 @@ I will probaly update and adds things to this page, but for now, here are few si
 # Code
 - Try to follow the [KISS](https://en.wikipedia.org/wiki/KISS_principle) principle whenever possible.
 
-- Choose the right tool for the job. Abstain from dogmas like "Only use orthodox c++" or "Only use modern C++".
+- Choose the right tool for the job. Abstain from dogmas like "Only use orthodox C++" or "Only use modern C++".
 
 - If you think you should add a comment, first try to see if the code structure and naming conventions can be more self documenting. If not, a comment can be added. In general, comments are good, as long as they explain what's inherently not obvious.
 
