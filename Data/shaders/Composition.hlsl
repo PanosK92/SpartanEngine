@@ -33,11 +33,18 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     // Sample from textures
     float4 sample_normal    = tex_normal.Load(int3(screen_pos, 0));
     float4 sample_material  = tex_material.Load(int3(screen_pos, 0));
-    float3 light_volumetric = tex_lightVolumetric.Load(int3(screen_pos, 0)).rgb;   
+    float3 light_volumetric = tex_light_volumetric.Load(int3(screen_pos, 0)).rgb;   
     float depth             = tex_depth.Load(int3(screen_pos, 0)).r;
+    #if TRANSPARENT
+    float2 sample_ssr       = 0.0f; // we don't do ssr for transparents
+    float sample_hbao       = 1.0f; // we don't do ao for transparents
+    float3 sample_ssgi      = 0.0f; // we don't do ssgi for transparents
+    #else
     float2 sample_ssr       = tex_ssr.Load(int3(screen_pos, 0)).xy;
-    float sample_hbao       = tex_hbao.Load(int3(screen_pos, 0)).r;
+    float sample_hbao       = tex_hbao.Load(int3(screen_pos.xy, 0)).r;
     float3 sample_ssgi      = tex_ssgi.Load(int3(screen_pos, 0)).rgb;
+    #endif
+    
     float3 camera_to_pixel  = get_view_direction(depth, uv);
 
     // Post-process samples
@@ -111,25 +118,26 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         light_reflection    *= light_ambient;
         light_ibl_diffuse   *= light_ambient;
         light_ibl_specular  *= light_ambient;
+
+        // Combine all light
+        float3 light = light_diffuse + light_ibl_diffuse + light_specular + light_ibl_specular + light_reflection + light_emissive + light_ssgi;
         
         // Opaques
         [branch]
         if (material.albedo.a == 1.0f)
         {
-            color.rgb += light_diffuse + light_ibl_diffuse + light_specular + light_ibl_specular + light_reflection + light_emissive + light_ssgi;
+            color.rgb += light;
         }
-        else // Transparents
+        // Transparents
+        else 
         {
-            // SSGI samples the opaque light, so we don't integrate here
-            float3 light = light_diffuse + light_ibl_diffuse + light_specular + light_ibl_specular + light_reflection + light_emissive;
-
             // Refraction
             float ior               = 1.5; // glass
             float2 normal2D         = mul((float3x3)g_view, sample_normal.xyz).xy;
             float2 refraction_uv    = uv + normal2D * ior * 0.03f;
-            float3 refraction_color = tex_frame.Sample(sampler_bilinear_clamp, refraction_uv).rgb;
+            float3 refraction_color = tex_frame.SampleLevel(sampler_bilinear_clamp, refraction_uv, 0.0f).rgb;
 
-            color.rgb += refraction_color * sample_albedo.rgb + light * sample_albedo.a;
+            color.rgb += refraction_color + light * sample_albedo.a;
         }
     }
 
@@ -139,3 +147,4 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     
     return saturate_16(color);
 }
+
