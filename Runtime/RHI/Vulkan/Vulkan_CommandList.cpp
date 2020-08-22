@@ -313,6 +313,8 @@ namespace Spartan
 
     void RHI_CommandList::ClearPipelineStateRenderTargets(RHI_PipelineState& pipeline_state)
     {
+        return; // working on a fix for this function (causes a crash)
+
         if (m_render_pass_active)
         {
             uint32_t attachment_count = 0;
@@ -379,6 +381,8 @@ namespace Spartan
         const uint32_t clear_stencil        /*= rhi_stencil_load*/
     )
     {
+        return; // working on a fix for this function (causes a crash)
+
         if (m_cmd_state != RHI_CommandListState::Recording)
         {
             LOG_WARNING("Can't record command");
