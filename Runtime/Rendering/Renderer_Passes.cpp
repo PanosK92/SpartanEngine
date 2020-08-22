@@ -100,20 +100,22 @@ namespace Spartan
         // G-Buffer to Composition
         {
             // Lighting
-            Pass_GBuffer(cmd_list, Renderer_Object_Opaque);
+            Pass_GBuffer(cmd_list);
             Pass_Ssr(cmd_list);
             Pass_Hbao(cmd_list);
             Pass_Ssgi(cmd_list);
-            Pass_Light(cmd_list, Renderer_Object_Opaque);
-            Pass_Composition(cmd_list, m_render_targets[RendererRt::Frame_Hdr], Renderer_Object_Opaque);
+            Pass_Light(cmd_list);
+            Pass_Composition(cmd_list, m_render_targets[RendererRt::Frame_Hdr]);
         
             // Lighting for transparent objects (skip ssr, hbao and ssgi as they will not be that noticeable anyway)
             if (draw_transparent_objects)
             {
-                Pass_GBuffer(cmd_list, Renderer_Object_Transparent);
-                Pass_Light(cmd_list, Renderer_Object_Transparent);
+                // save a copy of the opaque composition, so that the transparent one can use it
                 Pass_Copy(cmd_list, m_render_targets[RendererRt::Frame_Hdr].get(), m_render_targets[RendererRt::Frame_Hdr_2].get());
-                Pass_Composition(cmd_list, m_render_targets[RendererRt::Frame_Hdr], Renderer_Object_Transparent);
+
+                Pass_GBuffer(cmd_list, true);
+                Pass_Light(cmd_list, true);
+                Pass_Composition(cmd_list, m_render_targets[RendererRt::Frame_Hdr], true);
             }
         }
         
@@ -358,7 +360,7 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_GBuffer(RHI_CommandList* cmd_list, const Renderer_Object_Type object_type)
+    void Renderer::Pass_GBuffer(RHI_CommandList* cmd_list, const bool is_transparent_pass /*= false*/)
     {
         // Acquire required resources/shaders
         RHI_Texture* tex_albedo       = m_render_targets[RendererRt::Gbuffer_Albedo].get();
@@ -373,26 +375,23 @@ namespace Spartan
         if (!shader_v->IsCompiled())
             return;
 
-        // Clear values that depend on the objects being opaque or transparent
-        const bool is_transparent = object_type == Renderer_Object_Transparent;
-
         // Set render state
         RHI_PipelineState pso;
         pso.shader_vertex                   = shader_v;
         pso.vertex_buffer_stride            = static_cast<uint32_t>(sizeof(RHI_Vertex_PosTexNorTan)); // assume all vertex buffers have the same stride (which they do)
         pso.blend_state                     = m_blend_disabled.get();
         pso.rasterizer_state                = GetOption(Render_Debug_Wireframe) ? m_rasterizer_cull_back_wireframe.get() : m_rasterizer_cull_back_solid.get();
-        pso.depth_stencil_state             = is_transparent ? m_depth_stencil_on_on_w.get() : m_depth_stencil_on_off_w.get(); // GetOptionValue(Render_DepthPrepass) is not accounted for anymore, have to fix
+        pso.depth_stencil_state             = is_transparent_pass ? m_depth_stencil_on_on_w.get() : m_depth_stencil_on_off_w.get(); // GetOptionValue(Render_DepthPrepass) is not accounted for anymore, have to fix
         pso.render_target_color_textures[0] = tex_albedo;
-        pso.clear_color[0]                  = !is_transparent ? Vector4::Zero : rhi_color_load;
+        pso.clear_color[0]                  = !is_transparent_pass ? Vector4::Zero : rhi_color_load;
         pso.render_target_color_textures[1] = tex_normal;
-        pso.clear_color[1]                  = !is_transparent ? Vector4::Zero : rhi_color_load;
+        pso.clear_color[1]                  = !is_transparent_pass ? Vector4::Zero : rhi_color_load;
         pso.render_target_color_textures[2] = tex_material;
-        pso.clear_color[2]                  = !is_transparent ? Vector4::Zero : rhi_color_load;
+        pso.clear_color[2]                  = !is_transparent_pass ? Vector4::Zero : rhi_color_load;
         pso.render_target_color_textures[3] = tex_velocity;
-        pso.clear_color[3]                  = !is_transparent ? Vector4::Zero : rhi_color_load;
+        pso.clear_color[3]                  = !is_transparent_pass ? Vector4::Zero : rhi_color_load;
         pso.render_target_depth_texture     = tex_depth;
-        pso.clear_depth                     = is_transparent || GetOption(Render_DepthPrepass) ? rhi_depth_load : GetClearDepth();
+        pso.clear_depth                     = is_transparent_pass || GetOption(Render_DepthPrepass) ? rhi_depth_load : GetClearDepth();
         pso.clear_stencil                   = 0;
         pso.viewport                        = tex_albedo->GetViewport();
         pso.primitive_topology              = RHI_PrimitiveTopology_TriangleList;
@@ -416,7 +415,7 @@ namespace Spartan
             pso.pass_name = pso.shader_pixel->GetName().c_str();
 
             bool render_pass_active = false;
-            auto& entities = m_entities[object_type];
+            auto& entities = m_entities[is_transparent_pass ? Renderer_Object_Transparent : Renderer_Object_Opaque];
 
             // Record commands
             for (uint32_t i = 0; i < static_cast<uint32_t>(entities.size()); i++)
@@ -438,7 +437,7 @@ namespace Spartan
                     continue;
 
                 // Skip transparent objects that won't contribute
-                if (material->GetColorAlbedo().w == 0 && is_transparent)
+                if (material->GetColorAlbedo().w == 0 && is_transparent_pass)
                     continue;
 
                 // Get geometry
@@ -680,14 +679,12 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_Light(RHI_CommandList* cmd_list, const Renderer_Object_Type object_type)
+    void Renderer::Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass /*= false*/)
     {
         // Acquire lights
         const vector<Entity*>& entities = m_entities[Renderer_Object_Light];
         if (entities.empty())
             return;
-
-        const bool is_transparent_pass = object_type == Renderer_Object_Type::Renderer_Object_Transparent;
 
         // Acquire render targets
         RHI_Texture* tex_diffuse    = is_transparent_pass ? m_render_targets[RendererRt::Light_Diffuse_Transparent].get()   : m_render_targets[RendererRt::Light_Diffuse].get();
@@ -774,28 +771,28 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_Composition(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_out, const Renderer_Object_Type object_type)
+    void Renderer::Pass_Composition(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_out, const bool is_transparent_pass /*= false*/)
     {
-        const bool is_transparent = object_type == Renderer_Object_Type::Renderer_Object_Transparent;
-
         // Acquire shaders
         const auto& shader_v = m_shaders[RendererShader::Quad_V];
         const auto& shader_p = m_shaders[RendererShader::Composition_P];
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
+        RHI_Texture* tex_depth = m_render_targets[RendererRt::Gbuffer_Depth].get();
+
         // Set render state
         static RHI_PipelineState pipeline_state;
         pipeline_state.shader_vertex                    = shader_v.get();
         pipeline_state.shader_pixel                     = shader_p.get();
         pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
-        pipeline_state.depth_stencil_state              = is_transparent ? m_depth_stencil_off_on_r.get() : m_depth_stencil_off_off.get();
+        pipeline_state.depth_stencil_state              = is_transparent_pass ? m_depth_stencil_off_on_r.get() : m_depth_stencil_off_off.get();
         pipeline_state.blend_state                      = m_blend_disabled.get();
         pipeline_state.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride();
         pipeline_state.render_target_color_textures[0]  = tex_out.get();
-        pipeline_state.clear_color[0]                   = is_transparent ? rhi_color_load : rhi_color_dont_care;
-        pipeline_state.render_target_depth_texture      = is_transparent ? m_render_targets[RendererRt::Gbuffer_Depth].get() : nullptr;
-        pipeline_state.clear_stencil                    = is_transparent ? rhi_stencil_load : rhi_stencil_dont_care;
+        pipeline_state.clear_color[0]                   = is_transparent_pass ? rhi_color_load : rhi_color_dont_care;
+        pipeline_state.render_target_depth_texture      = is_transparent_pass ? tex_depth : nullptr;
+        pipeline_state.clear_stencil                    = is_transparent_pass ? rhi_stencil_load : rhi_stencil_dont_care;
         pipeline_state.viewport                         = tex_out->GetViewport();
         pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
         pipeline_state.pass_name                        = "Pass_Composition";
@@ -813,10 +810,10 @@ namespace Spartan
             cmd_list->SetTexture(RendererBindingsTex::gbuffer_albedo, m_render_targets[RendererRt::Gbuffer_Albedo]);
             cmd_list->SetTexture(RendererBindingsTex::gbuffer_normal, m_render_targets[RendererRt::Gbuffer_Normal]);
             cmd_list->SetTexture(RendererBindingsTex::gbuffer_material, m_render_targets[RendererRt::Gbuffer_Material]);
-            cmd_list->SetTexture(RendererBindingsTex::gbuffer_depth, m_render_targets[RendererRt::Gbuffer_Depth]);
+            cmd_list->SetTexture(RendererBindingsTex::gbuffer_depth, tex_depth);
             cmd_list->SetTexture(RendererBindingsTex::hbao, (m_options & Render_Hbao) ? m_render_targets[RendererRt::Hbao_Blurred] : m_tex_white);
-            cmd_list->SetTexture(RendererBindingsTex::light_diffuse, is_transparent ? m_render_targets[RendererRt::Light_Diffuse_Transparent] : m_render_targets[RendererRt::Light_Diffuse]);
-            cmd_list->SetTexture(RendererBindingsTex::light_specular, is_transparent ? m_render_targets[RendererRt::Light_Specular_Transparent] : m_render_targets[RendererRt::Light_Specular]);
+            cmd_list->SetTexture(RendererBindingsTex::light_diffuse, is_transparent_pass ? m_render_targets[RendererRt::Light_Diffuse_Transparent] : m_render_targets[RendererRt::Light_Diffuse]);
+            cmd_list->SetTexture(RendererBindingsTex::light_specular, is_transparent_pass ? m_render_targets[RendererRt::Light_Specular_Transparent] : m_render_targets[RendererRt::Light_Specular]);
             cmd_list->SetTexture(RendererBindingsTex::light_volumetric, m_render_targets[RendererRt::Light_Volumetric]);
             cmd_list->SetTexture(RendererBindingsTex::ssr, (m_options & Render_ScreenSpaceReflections) ? m_render_targets[RendererRt::Ssr] : m_tex_black_transparent);
             cmd_list->SetTexture(RendererBindingsTex::frame, m_render_targets[RendererRt::Frame_Hdr_2]);
