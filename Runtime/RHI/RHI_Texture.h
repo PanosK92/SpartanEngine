@@ -119,7 +119,7 @@ namespace Spartan
         void* Get_Resource()                                                const { return m_resource; }
         void  Set_Resource(void* resource)                                        { m_resource = resource; }
         void* Get_Resource_View(const uint32_t i = 0)                       const { return m_resource_view[i]; }
-        void* Get_Resource_View_UnorderedAccess()                            const { return m_resource_view_unorderedAccess; }
+        void* Get_Resource_View_UnorderedAccess()                           const { return m_resource_view_unorderedAccess; }
         void* Get_Resource_View_DepthStencil(const uint32_t i = 0)          const { return i < m_resource_view_depthStencil.size() ? m_resource_view_depthStencil[i] : nullptr; }
         void* Get_Resource_View_DepthStencilReadOnly(const uint32_t i = 0)  const { return i < m_resource_view_depthStencilReadOnly.size() ? m_resource_view_depthStencilReadOnly[i] : nullptr; }
         void* Get_Resource_View_RenderTarget(const uint32_t i = 0)          const { return i < m_resource_view_renderTarget.size() ? m_resource_view_renderTarget[i] : nullptr; }
