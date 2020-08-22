@@ -313,7 +313,11 @@ namespace Spartan
 
     void RHI_CommandList::ClearPipelineStateRenderTargets(RHI_PipelineState& pipeline_state)
     {
-        return; // working on a fix for this function (causes a crash)
+        if (m_cmd_state != RHI_CommandListState::Recording)
+        {
+            LOG_ERROR("Command buffer is not recording.");
+            return;
+        }
 
         if (m_render_pass_active)
         {
@@ -381,17 +385,25 @@ namespace Spartan
         const uint32_t clear_stencil        /*= rhi_stencil_load*/
     )
     {
-        return; // working on a fix for this function (causes a crash)
-
         if (m_cmd_state != RHI_CommandListState::Recording)
         {
-            LOG_WARNING("Can't record command");
+            LOG_ERROR("Command buffer is not recording.");
+            return;
+        }
+
+        if (m_render_pass_active)
+        {
+            LOG_ERROR("Must only be called outside of a render pass instance");
             return;
         }
 
         if (!texture || !texture->Get_Resource_View())
+        {
+            LOG_ERROR("Texture is null.");
             return;
+        }
 
+        // One of the required layouts for clear functions
         texture->SetLayout(RHI_Image_Transfer_Dst_Optimal, this);
 
         VkImageSubresourceRange image_subresource_range = {};
@@ -406,7 +418,7 @@ namespace Spartan
 
             image_subresource_range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 
-            vkCmdClearColorImage(static_cast<VkCommandBuffer>(m_cmd_buffer), static_cast<VkImage>(texture->Get_Resource_View(color_index)), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &_clear_color, 1, &image_subresource_range);
+            vkCmdClearColorImage(static_cast<VkCommandBuffer>(m_cmd_buffer), static_cast<VkImage>(texture->Get_Resource()), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &_clear_color, 1, &image_subresource_range);
         }
         else if (texture->IsDepthStencilFormat())
         {
@@ -420,10 +432,9 @@ namespace Spartan
             if (texture->IsStencilFormat())
             {
                 image_subresource_range.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
-
             }
 
-            vkCmdClearDepthStencilImage(static_cast<VkCommandBuffer>(m_cmd_buffer), static_cast<VkImage>(texture->Get_Resource_View(depth_stencil_index)), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clear_depth_stencil, 1, &image_subresource_range);
+            vkCmdClearDepthStencilImage(static_cast<VkCommandBuffer>(m_cmd_buffer), static_cast<VkImage>(texture->Get_Resource()), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clear_depth_stencil, 1, &image_subresource_range);
         }
     }
 
@@ -431,7 +442,7 @@ namespace Spartan
 	{
         if (m_cmd_state != RHI_CommandListState::Recording)
         {
-            LOG_WARNING("Can't record command");
+            LOG_ERROR("Command buffer is not recording.");
             return false;
         }
 
@@ -439,7 +450,7 @@ namespace Spartan
         if (!OnDraw())
             return false;
 
-		vkCmdDraw(
+        vkCmdDraw(
             static_cast<VkCommandBuffer>(m_cmd_buffer), // commandBuffer
             vertex_count,                               // vertexCount
             1,                                          // instanceCount
@@ -456,7 +467,7 @@ namespace Spartan
 	{
         if (m_cmd_state != RHI_CommandListState::Recording)
         {
-            LOG_WARNING("Can't record command");
+            LOG_ERROR("Command buffer is not recording.");
             return false;
         }
 
@@ -482,7 +493,7 @@ namespace Spartan
     {
         if (m_cmd_state != RHI_CommandListState::Recording)
         {
-            LOG_WARNING("Can't record command");
+            LOG_ERROR("Command buffer is not recording.");
             return false;
         }
 
@@ -500,7 +511,7 @@ namespace Spartan
 	{
         if (m_cmd_state != RHI_CommandListState::Recording)
         {
-            LOG_WARNING("Can't record command");
+            LOG_ERROR("Command buffer is not recording.");
             return;
         }
 
@@ -524,7 +535,7 @@ namespace Spartan
 	{
         if (m_cmd_state != RHI_CommandListState::Recording)
         {
-            LOG_WARNING("Can't record command");
+            LOG_ERROR("Command buffer is not recording.");
             return;
         }
 
@@ -546,7 +557,7 @@ namespace Spartan
 	{
         if (m_cmd_state != RHI_CommandListState::Recording)
         {
-            LOG_WARNING("Can't record command");
+            LOG_ERROR("Command buffer is not recording.");
             return;
         }
 
@@ -573,7 +584,7 @@ namespace Spartan
 	{
         if (m_cmd_state != RHI_CommandListState::Recording)
         {
-            LOG_WARNING("Can't record command");
+            LOG_ERROR("Command buffer is not recording.");
             return;
         }
 
@@ -596,7 +607,7 @@ namespace Spartan
     {
         if (m_cmd_state != RHI_CommandListState::Recording)
         {
-            LOG_WARNING("Can't record command");
+            LOG_ERROR("Command buffer is not recording.");
             return false;
         }
 
@@ -614,7 +625,7 @@ namespace Spartan
     {
         if (m_cmd_state != RHI_CommandListState::Recording)
         {
-            LOG_WARNING("Can't record command");
+            LOG_ERROR("Command buffer is not recording.");
             return;
         }
 
@@ -632,7 +643,7 @@ namespace Spartan
     {
         if (m_cmd_state != RHI_CommandListState::Recording)
         {
-            LOG_WARNING("Can't record command");
+            LOG_ERROR("Command buffer is not recording.");
             return;
         }
 
@@ -741,7 +752,7 @@ namespace Spartan
     {
         if (m_cmd_state != RHI_CommandListState::Recording)
         {
-            LOG_WARNING("Can't record command");
+            LOG_ERROR("Command buffer is not recording.");
             return false;
         }
 
@@ -760,7 +771,7 @@ namespace Spartan
     {
         if (m_cmd_state != RHI_CommandListState::Recording)
         {
-            LOG_WARNING("Can't record command");
+            LOG_ERROR("Command buffer is not recording.");
             return false;
         }
 
@@ -855,7 +866,7 @@ namespace Spartan
     {
         if (m_cmd_state != RHI_CommandListState::Recording)
         {
-            LOG_WARNING("Can't record command");
+            LOG_ERROR("Command buffer is not recording.");
             return false;
         }
 
