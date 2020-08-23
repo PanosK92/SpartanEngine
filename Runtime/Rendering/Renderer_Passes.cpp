@@ -774,8 +774,8 @@ namespace Spartan
     void Renderer::Pass_Composition(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_out, const bool is_transparent_pass /*= false*/)
     {
         // Acquire shaders
-        const auto& shader_v = m_shaders[RendererShader::Quad_V];
-        const auto& shader_p = m_shaders[RendererShader::Composition_P];
+        RHI_Shader* shader_v = m_shaders[RendererShader::Quad_V].get();
+        RHI_Shader* shader_p = is_transparent_pass ? m_shaders[RendererShader::Composition_Transparent_P].get() : m_shaders[RendererShader::Composition_P].get();
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
@@ -783,8 +783,8 @@ namespace Spartan
 
         // Set render state
         static RHI_PipelineState pipeline_state;
-        pipeline_state.shader_vertex                            = shader_v.get();
-        pipeline_state.shader_pixel                             = shader_p.get();
+        pipeline_state.shader_vertex                            = shader_v;
+        pipeline_state.shader_pixel                             = shader_p;
         pipeline_state.rasterizer_state                         = m_rasterizer_cull_back_solid.get();
         pipeline_state.depth_stencil_state                      = is_transparent_pass ? m_depth_stencil_off_on_r.get() : m_depth_stencil_off_off.get();
         pipeline_state.blend_state                              = m_blend_disabled.get();
