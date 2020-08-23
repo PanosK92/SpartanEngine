@@ -31,18 +31,18 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-	RHI_Device::RHI_Device(Context* context)
-	{
+    RHI_Device::RHI_Device(Context* context)
+    {
         m_context       = context;
-		m_rhi_context   = make_shared<RHI_Context>();
+        m_rhi_context   = make_shared<RHI_Context>();
 
         // Pass pointer to the widely used utility namespace
         vulkan_utility::globals::rhi_device     = this;
         vulkan_utility::globals::rhi_context    = m_rhi_context.get();
         
-		// Create instance
-		VkApplicationInfo app_info = {};
-		{
+        // Create instance
+        VkApplicationInfo app_info = {};
+        {
             // Deduce API version to use
             {
                 // Get sdk version
@@ -78,22 +78,22 @@ namespace Spartan
                 }
             }
 
-			app_info.sType				= VK_STRUCTURE_TYPE_APPLICATION_INFO;
-			app_info.pApplicationName	= engine_version;		
-			app_info.pEngineName		= engine_version;
-			app_info.engineVersion		= VK_MAKE_VERSION(1, 0, 0);
-			app_info.applicationVersion	= VK_MAKE_VERSION(1, 0, 0);
-			app_info.apiVersion			= m_rhi_context->api_version;
+            app_info.sType                = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+            app_info.pApplicationName    = engine_version;        
+            app_info.pEngineName        = engine_version;
+            app_info.engineVersion        = VK_MAKE_VERSION(1, 0, 0);
+            app_info.applicationVersion    = VK_MAKE_VERSION(1, 0, 0);
+            app_info.apiVersion            = m_rhi_context->api_version;
 
             // Get the supported extensions out of the requested extensions
             vector<const char*> extensions_supported = vulkan_utility::extension::get_supported_instance(m_rhi_context->extensions_instance);
 
-			VkInstanceCreateInfo create_info	= {};
-			create_info.sType					= VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-			create_info.pApplicationInfo		= &app_info;
-			create_info.enabledExtensionCount	= static_cast<uint32_t>(extensions_supported.size());
-			create_info.ppEnabledExtensionNames	= extensions_supported.data();
-			create_info.enabledLayerCount		= 0;
+            VkInstanceCreateInfo create_info    = {};
+            create_info.sType                    = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+            create_info.pApplicationInfo        = &app_info;
+            create_info.enabledExtensionCount    = static_cast<uint32_t>(extensions_supported.size());
+            create_info.ppEnabledExtensionNames    = extensions_supported.data();
+            create_info.enabledLayerCount        = 0;
 
             // Validation features
             VkValidationFeatureEnableEXT enabled_validation_features[]  = { VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT };
@@ -102,65 +102,65 @@ namespace Spartan
             validation_features.enabledValidationFeatureCount           = 1;
             validation_features.pEnabledValidationFeatures              = enabled_validation_features;
 
-			if (m_rhi_context->debug)
-			{
+            if (m_rhi_context->debug)
+            {
                 // Enable validation layer
-				if (vulkan_utility::layer::is_present(m_rhi_context->validation_layers.front()))
-				{
+                if (vulkan_utility::layer::is_present(m_rhi_context->validation_layers.front()))
+                {
                     // Validation layers
                     create_info.enabledLayerCount   = static_cast<uint32_t>(m_rhi_context->validation_layers.size());
                     create_info.ppEnabledLayerNames = m_rhi_context->validation_layers.data();
                     create_info.pNext               = &validation_features;
-				}
-				else
-				{
-					LOG_ERROR("Validation layer was requested, but not available.");
-				}
-			}
+                }
+                else
+                {
+                    LOG_ERROR("Validation layer was requested, but not available.");
+                }
+            }
 
-			if (!vulkan_utility::error::check(vkCreateInstance(&create_info, nullptr, &m_rhi_context->instance)))
+            if (!vulkan_utility::error::check(vkCreateInstance(&create_info, nullptr, &m_rhi_context->instance)))
                 return;
-		}
+        }
 
         // Get function pointers (from extensions)
         vulkan_utility::functions::initialize();
 
-		// Debug
-		if (m_rhi_context->debug)
-		{
+        // Debug
+        if (m_rhi_context->debug)
+        {
             vulkan_utility::debug::initialize(m_rhi_context->instance);
-		}
+        }
 
-		// Find a physical device
+        // Find a physical device
         if (!vulkan_utility::device::choose_physical_device(context->m_engine->GetWindowData().handle))
         {
             LOG_ERROR("Failed to find a suitable physical device.");
             return;
         }
 
-		// Device
-		{
-			// Queue create info
-			vector<VkDeviceQueueCreateInfo> queue_create_infos;
-			{
-				vector<uint32_t> unique_queue_families =
-				{
-					m_rhi_context->queue_graphics_index,
-					m_rhi_context->queue_transfer_index,
-					m_rhi_context->queue_compute_index
-				};
+        // Device
+        {
+            // Queue create info
+            vector<VkDeviceQueueCreateInfo> queue_create_infos;
+            {
+                vector<uint32_t> unique_queue_families =
+                {
+                    m_rhi_context->queue_graphics_index,
+                    m_rhi_context->queue_transfer_index,
+                    m_rhi_context->queue_compute_index
+                };
 
-				float queue_priority = 1.0f;
-				for (const uint32_t& queue_family : unique_queue_families)
-				{
-					VkDeviceQueueCreateInfo queue_create_info	= {};
-					queue_create_info.sType						= VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-					queue_create_info.queueFamilyIndex			= queue_family;
-					queue_create_info.queueCount				= 1;
-					queue_create_info.pQueuePriorities			= &queue_priority;
-					queue_create_infos.push_back(queue_create_info);
-				}
-			}
+                float queue_priority = 1.0f;
+                for (const uint32_t& queue_family : unique_queue_families)
+                {
+                    VkDeviceQueueCreateInfo queue_create_info    = {};
+                    queue_create_info.sType                        = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+                    queue_create_info.queueFamilyIndex            = queue_family;
+                    queue_create_info.queueCount                = 1;
+                    queue_create_info.pQueuePriorities            = &queue_priority;
+                    queue_create_infos.push_back(queue_create_info);
+                }
+            }
 
             // Get device properties
             vkGetPhysicalDeviceProperties(static_cast<VkPhysicalDevice>(m_rhi_context->device_physical), &m_rhi_context->device_properties);
@@ -175,7 +175,7 @@ namespace Spartan
                 m_rhi_context->profiler = false;
             }
 
-			// Get device features
+            // Get device features
             VkPhysicalDeviceVulkan12Features device_features_1_2_enabled    = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES };
             VkPhysicalDeviceFeatures2 device_features_enabled               = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, &device_features_1_2_enabled };
             {
@@ -217,72 +217,72 @@ namespace Spartan
             vector<const char*> extensions_supported = vulkan_utility::extension::get_supported_device(m_rhi_context->extensions_device, m_rhi_context->device_physical);
 
             // Device create info
-			VkDeviceCreateInfo create_info = {};
-			{
-				create_info.sType					= VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-				create_info.queueCreateInfoCount	= static_cast<uint32_t>(queue_create_infos.size());
-				create_info.pQueueCreateInfos		= queue_create_infos.data();
-				create_info.pNext                   = &device_features_enabled;
-				create_info.enabledExtensionCount	= static_cast<uint32_t>(extensions_supported.size());
-				create_info.ppEnabledExtensionNames = extensions_supported.data();
+            VkDeviceCreateInfo create_info = {};
+            {
+                create_info.sType                    = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+                create_info.queueCreateInfoCount    = static_cast<uint32_t>(queue_create_infos.size());
+                create_info.pQueueCreateInfos        = queue_create_infos.data();
+                create_info.pNext                   = &device_features_enabled;
+                create_info.enabledExtensionCount    = static_cast<uint32_t>(extensions_supported.size());
+                create_info.ppEnabledExtensionNames = extensions_supported.data();
 
-				if (m_rhi_context->debug)
-				{
-					create_info.enabledLayerCount	= static_cast<uint32_t>(m_rhi_context->validation_layers.size());
-					create_info.ppEnabledLayerNames = m_rhi_context->validation_layers.data();
-				}
-				else
-				{
-					create_info.enabledLayerCount = 0;
-				}
-			}
+                if (m_rhi_context->debug)
+                {
+                    create_info.enabledLayerCount    = static_cast<uint32_t>(m_rhi_context->validation_layers.size());
+                    create_info.ppEnabledLayerNames = m_rhi_context->validation_layers.data();
+                }
+                else
+                {
+                    create_info.enabledLayerCount = 0;
+                }
+            }
 
-			// Create
-			if (!vulkan_utility::error::check(vkCreateDevice(m_rhi_context->device_physical, &create_info, nullptr, &m_rhi_context->device)))
-				return;
+            // Create
+            if (!vulkan_utility::error::check(vkCreateDevice(m_rhi_context->device_physical, &create_info, nullptr, &m_rhi_context->device)))
+                return;
 
             // Get queues
             vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->queue_graphics_index, 0, reinterpret_cast<VkQueue*>(&m_rhi_context->queue_graphics));
             vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->queue_transfer_index, 0, reinterpret_cast<VkQueue*>(&m_rhi_context->queue_transfer));
             vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->queue_compute_index,  0, reinterpret_cast<VkQueue*>(&m_rhi_context->queue_compute));
             
-		}
+        }
 
         vulkan_utility::display::detect_display_modes();
 
         // Initialise the memory allocator
         m_rhi_context->initalise_allocator();
 
-		// Detect and log version
-		string version_major	= to_string(VK_VERSION_MAJOR(app_info.apiVersion));
-		string version_minor	= to_string(VK_VERSION_MINOR(app_info.apiVersion));
-		string version_patch	= to_string(VK_VERSION_PATCH(app_info.apiVersion));
+        // Detect and log version
+        string version_major    = to_string(VK_VERSION_MAJOR(app_info.apiVersion));
+        string version_minor    = to_string(VK_VERSION_MINOR(app_info.apiVersion));
+        string version_patch    = to_string(VK_VERSION_PATCH(app_info.apiVersion));
         Settings* settings      = m_context->GetSubsystem<Settings>();
         string version          = version_major + "." + version_minor + "." + version_patch;
         settings->RegisterThirdPartyLib("Vulkan", version_major + "." + version_minor + "." + version_patch, "https://vulkan.lunarg.com/");
-		LOG_INFO("Vulkan %s", version.c_str());
+        LOG_INFO("Vulkan %s", version.c_str());
 
-		m_initialized = true;
-	}
+        m_initialized = true;
+    }
 
-	RHI_Device::~RHI_Device()
-	{
+    RHI_Device::~RHI_Device()
+    {
         if (!m_rhi_context || !m_rhi_context->queue_graphics)
             return;
 
         // Release resources
-		if (Queue_Wait(RHI_Queue_Graphics))
-		{
+        if (Queue_Wait(RHI_Queue_Graphics))
+        {
             m_rhi_context->destroy_allocator();
 
             if (m_rhi_context->debug)
             {
                 vulkan_utility::debug::shutdown(m_rhi_context->instance);
             }
-			vkDestroyDevice(m_rhi_context->device, nullptr);
-			vkDestroyInstance(m_rhi_context->instance, nullptr);
-		}
-	}
+            vkDestroyDevice(m_rhi_context->device, nullptr);
+            vkDestroyInstance(m_rhi_context->instance, nullptr);
+        }
+    }
 
     bool RHI_Device::Queue_Present(void* swapchain_view, uint32_t* image_index, void* wait_semaphore /*= nullptr*/) const
     {

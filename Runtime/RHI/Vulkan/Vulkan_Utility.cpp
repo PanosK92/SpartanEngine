@@ -44,8 +44,8 @@ namespace Spartan::vulkan_utility
     mutex                                                                   command_buffer_immediate::m_mutex_end;
     unordered_map<RHI_Queue_Type, command_buffer_immediate::cmdbi_object>   command_buffer_immediate::m_objects;
 
-	bool image::create(RHI_Texture* texture)
-	{
+    bool image::create(RHI_Texture* texture)
+    {
         // Get format support
         RHI_Format format                   = texture->GetFormat();
         bool is_render_target_depth_stencil = texture->IsDepthStencil();
@@ -100,7 +100,7 @@ namespace Spartan::vulkan_utility
         globals::rhi_context->allocations[texture->GetId()] = allocation;
 
         return true;
-	}
+    }
 
     void image::destroy(RHI_Texture* texture)
     {
@@ -121,11 +121,11 @@ namespace Spartan::vulkan_utility
     {
         VmaAllocator allocator = globals::rhi_context->allocator;
 
-        VkBufferCreateInfo buffer_create_info	= {};
-        buffer_create_info.sType				= VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        buffer_create_info.size				    = size;
-        buffer_create_info.usage				= usage;
-        buffer_create_info.sharingMode			= VK_SHARING_MODE_EXCLUSIVE;
+        VkBufferCreateInfo buffer_create_info    = {};
+        buffer_create_info.sType                = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        buffer_create_info.size                    = size;
+        buffer_create_info.usage                = usage;
+        buffer_create_info.sharingMode            = VK_SHARING_MODE_EXCLUSIVE;
 
         bool used_for_staging = (usage & VK_BUFFER_USAGE_TRANSFER_SRC_BIT) != 0;
 

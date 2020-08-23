@@ -43,11 +43,11 @@ using namespace Spartan::Math;
 namespace Spartan
 {
     RHI_CommandList::RHI_CommandList(uint32_t index, RHI_SwapChain* swap_chain, Context* context)
-	{
+    {
         m_swap_chain        = swap_chain;
         m_renderer          = context->GetSubsystem<Renderer>();
         m_profiler          = context->GetSubsystem<Profiler>();
-		m_rhi_device	    = m_renderer->GetRhiDevice().get();
+        m_rhi_device        = m_renderer->GetRhiDevice().get();
         m_pipeline_cache    = m_renderer->GetPipelineCache();
         m_descriptor_cache  = m_renderer->GetDescriptorCache();
 
@@ -78,16 +78,16 @@ namespace Spartan
 
             m_timestamps.fill(0);
         }
-	}
+    }
 
-	RHI_CommandList::~RHI_CommandList()
-	{
+    RHI_CommandList::~RHI_CommandList()
+    {
         RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
 
-		// Wait in case the buffer is still in use by the graphics queue
+        // Wait in case the buffer is still in use by the graphics queue
         m_rhi_device->Queue_Wait(RHI_Queue_Graphics);
 
-		// Sync
+        // Sync
         vulkan_utility::fence::destroy(m_processed_fence);
         vulkan_utility::semaphore::destroy(m_processed_semaphore);
 
@@ -100,7 +100,7 @@ namespace Spartan
             vkDestroyQueryPool(rhi_context->device, static_cast<VkQueryPool>(m_query_pool), nullptr);
             m_query_pool = nullptr;
         }
-	}
+    }
 
     bool RHI_CommandList::Begin()
     {
@@ -260,7 +260,7 @@ namespace Spartan
     }
 
     bool RHI_CommandList::BeginRenderPass(RHI_PipelineState& pipeline_state)
-	{
+    {
         // Get pipeline
         {
             m_pipeline_active = false;
@@ -294,7 +294,7 @@ namespace Spartan
         }
 
         return true;
-	}
+    }
 
     bool RHI_CommandList::EndRenderPass()
     {
@@ -439,7 +439,7 @@ namespace Spartan
     }
 
     bool RHI_CommandList::Draw(const uint32_t vertex_count)
-	{
+    {
         if (m_cmd_state != RHI_CommandListState::Recording)
         {
             LOG_ERROR("Command buffer is not recording.");
@@ -461,10 +461,10 @@ namespace Spartan
         m_profiler->m_rhi_draw++;
 
         return true;
-	}
+    }
 
     bool RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset)
-	{
+    {
         if (m_cmd_state != RHI_CommandListState::Recording)
         {
             LOG_ERROR("Command buffer is not recording.");
@@ -475,7 +475,7 @@ namespace Spartan
         if (!OnDraw())
             return false;
 
-		vkCmdDrawIndexed(
+        vkCmdDrawIndexed(
             static_cast<VkCommandBuffer>(m_cmd_buffer), // commandBuffer
             index_count,                                // indexCount
             1,                                          // instanceCount
@@ -487,7 +487,7 @@ namespace Spartan
         m_profiler->m_rhi_draw++;
 
         return true;
-	}
+    }
 
     bool RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z, bool async /*= false*/)
     {
@@ -507,54 +507,54 @@ namespace Spartan
         return true;
     }
 
-	void RHI_CommandList::SetViewport(const RHI_Viewport& viewport) const
-	{
+    void RHI_CommandList::SetViewport(const RHI_Viewport& viewport) const
+    {
         if (m_cmd_state != RHI_CommandListState::Recording)
         {
             LOG_ERROR("Command buffer is not recording.");
             return;
         }
 
-		VkViewport vk_viewport	= {};
-		vk_viewport.x			= viewport.x;
-		vk_viewport.y			= viewport.y;
-		vk_viewport.width		= viewport.width;
-		vk_viewport.height		= viewport.height;
-		vk_viewport.minDepth	= viewport.depth_min;
-		vk_viewport.maxDepth	= viewport.depth_max;
+        VkViewport vk_viewport    = {};
+        vk_viewport.x            = viewport.x;
+        vk_viewport.y            = viewport.y;
+        vk_viewport.width        = viewport.width;
+        vk_viewport.height        = viewport.height;
+        vk_viewport.minDepth    = viewport.depth_min;
+        vk_viewport.maxDepth    = viewport.depth_max;
 
-		vkCmdSetViewport(
+        vkCmdSetViewport(
             static_cast<VkCommandBuffer>(m_cmd_buffer),     // commandBuffer
             0,              // firstViewport
             1,              // viewportCount
             &vk_viewport    // pViewports
         );
-	}
+    }
 
-	void RHI_CommandList::SetScissorRectangle(const Math::Rectangle& scissor_rectangle) const
-	{
+    void RHI_CommandList::SetScissorRectangle(const Math::Rectangle& scissor_rectangle) const
+    {
         if (m_cmd_state != RHI_CommandListState::Recording)
         {
             LOG_ERROR("Command buffer is not recording.");
             return;
         }
 
-		VkRect2D vk_scissor;
-		vk_scissor.offset.x			= static_cast<int32_t>(scissor_rectangle.left);
-		vk_scissor.offset.y			= static_cast<int32_t>(scissor_rectangle.top);
-		vk_scissor.extent.width		= static_cast<uint32_t>(scissor_rectangle.Width());
-		vk_scissor.extent.height	= static_cast<uint32_t>(scissor_rectangle.Height());
+        VkRect2D vk_scissor;
+        vk_scissor.offset.x            = static_cast<int32_t>(scissor_rectangle.left);
+        vk_scissor.offset.y            = static_cast<int32_t>(scissor_rectangle.top);
+        vk_scissor.extent.width        = static_cast<uint32_t>(scissor_rectangle.Width());
+        vk_scissor.extent.height    = static_cast<uint32_t>(scissor_rectangle.Height());
 
-		vkCmdSetScissor(
+        vkCmdSetScissor(
             static_cast<VkCommandBuffer>(m_cmd_buffer), // commandBuffer
             0,          // firstScissor
             1,          // scissorCount
             &vk_scissor // pScissors
         );
-	}
+    }
 
-	void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer, const uint64_t offset /*= 0*/)
-	{
+    void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer, const uint64_t offset /*= 0*/)
+    {
         if (m_cmd_state != RHI_CommandListState::Recording)
         {
             LOG_ERROR("Command buffer is not recording.");
@@ -564,10 +564,10 @@ namespace Spartan
         if (m_vertex_buffer_id == buffer->GetId() && m_vertex_buffer_offset == offset)
             return;
 
-		VkBuffer vertex_buffers[]	= { static_cast<VkBuffer>(buffer->GetResource()) };
-		VkDeviceSize offsets[]		= { offset };
+        VkBuffer vertex_buffers[]    = { static_cast<VkBuffer>(buffer->GetResource()) };
+        VkDeviceSize offsets[]        = { offset };
 
-		vkCmdBindVertexBuffers(
+        vkCmdBindVertexBuffers(
             static_cast<VkCommandBuffer>(m_cmd_buffer), // commandBuffer
             0,                                          // firstBinding
             1,                                          // bindingCount
@@ -578,10 +578,10 @@ namespace Spartan
         m_profiler->m_rhi_bindings_buffer_vertex++;
         m_vertex_buffer_id      = buffer->GetId();
         m_vertex_buffer_offset  = offset;
-	}
+    }
 
-	void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer, const uint64_t offset /*= 0*/)
-	{
+    void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer, const uint64_t offset /*= 0*/)
+    {
         if (m_cmd_state != RHI_CommandListState::Recording)
         {
             LOG_ERROR("Command buffer is not recording.");
@@ -591,17 +591,17 @@ namespace Spartan
         if (m_index_buffer_id == buffer->GetId() && m_index_buffer_offset == offset)
             return;
 
-		vkCmdBindIndexBuffer(
-			static_cast<VkCommandBuffer>(m_cmd_buffer),                     // commandBuffer
-			static_cast<VkBuffer>(buffer->GetResource()),					// buffer
-            offset,															// offset
-			buffer->Is16Bit() ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32 // indexType
-		);
+        vkCmdBindIndexBuffer(
+            static_cast<VkCommandBuffer>(m_cmd_buffer),                     // commandBuffer
+            static_cast<VkBuffer>(buffer->GetResource()),                    // buffer
+            offset,                                                            // offset
+            buffer->Is16Bit() ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32 // indexType
+        );
 
         m_profiler->m_rhi_bindings_buffer_index++;
         m_index_buffer_id       = buffer->GetId();
         m_index_buffer_offset   = offset;
-	}
+    }
 
     bool RHI_CommandList::SetConstantBuffer(const uint32_t slot, const uint8_t scope, RHI_ConstantBuffer* constant_buffer) const
     {

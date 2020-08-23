@@ -91,16 +91,16 @@ namespace Spartan
                 uint32_t mip_width  = width >> mip_index;
                 uint32_t mip_height = height >> mip_index;
 
-                VkBufferImageCopy region				= {};
-                region.bufferOffset						= buffer_offset;
-                region.bufferRowLength					= 0;
-                region.bufferImageHeight				= 0;
+                VkBufferImageCopy region                = {};
+                region.bufferOffset                        = buffer_offset;
+                region.bufferRowLength                    = 0;
+                region.bufferImageHeight                = 0;
                 region.imageSubresource.aspectMask      = vulkan_utility::image::get_aspect_mask(texture);
-                region.imageSubresource.mipLevel		= mip_index;
-                region.imageSubresource.baseArrayLayer	= array_index;
-                region.imageSubresource.layerCount		= array_size;
-                region.imageOffset						= { 0, 0, 0 };
-                region.imageExtent						= { mip_width, mip_height, 1 };
+                region.imageSubresource.mipLevel        = mip_index;
+                region.imageSubresource.baseArrayLayer    = array_index;
+                region.imageSubresource.layerCount        = array_size;
+                region.imageOffset                        = { 0, 0, 0 };
+                region.imageExtent                        = { mip_width, mip_height, 1 };
 
                 buffer_image_copies[mip_index] = region;
 
@@ -210,7 +210,7 @@ namespace Spartan
             vulkan_utility::image::view::destroy(m_resource_view_renderTarget[i]);
         }
         vulkan_utility::image::destroy(this);
-	}
+    }
 
     void RHI_Texture::SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* command_list /*= nullptr*/)
     {
@@ -233,8 +233,8 @@ namespace Spartan
         m_layout = new_layout;
     }
 
-	bool RHI_Texture2D::CreateResourceGpu()
-	{
+    bool RHI_Texture2D::CreateResourceGpu()
+    {
         // Create image
         if (!vulkan_utility::image::create(this))
         {
@@ -319,13 +319,13 @@ namespace Spartan
             set_debug_name(this);
         }
 
-		return true;
-	}
+        return true;
+    }
 
-	// TEXTURE CUBE
+    // TEXTURE CUBE
 
-	RHI_TextureCube::~RHI_TextureCube()
-	{
+    RHI_TextureCube::~RHI_TextureCube()
+    {
         if (!m_rhi_device->IsInitialized())
             return;
 
@@ -340,10 +340,10 @@ namespace Spartan
             vulkan_utility::image::view::destroy(m_resource_view_renderTarget[i]);
         }
         vulkan_utility::image::destroy(this);
-	}
+    }
 
-	bool RHI_TextureCube::CreateResourceGpu()
-	{
+    bool RHI_TextureCube::CreateResourceGpu()
+    {
         // Create image
         if (!vulkan_utility::image::create(this))
         {
@@ -420,5 +420,5 @@ namespace Spartan
         }
 
         return true;
-	}
+    }
 }

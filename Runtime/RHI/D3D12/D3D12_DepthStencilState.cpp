@@ -34,15 +34,15 @@ namespace Spartan
 {
     RHI_DepthStencilState::RHI_DepthStencilState(
         const shared_ptr<RHI_Device>& rhi_device,
-        const bool depth_test                               /*= true*/,
-        const bool depth_write                              /*= true*/,
-        const RHI_Comparison_Function depth_function        /*= Comparison_LessEqual*/,
-        const bool stencil_test                             /*= false */,
-        const bool stencil_write                            /*= false */,
-        const RHI_Comparison_Function stencil_function      /*= RHI_Comparison_Equal */,
-        const RHI_Stencil_Operation stencil_fail_op         /*= RHI_Stencil_Keep */,
-        const RHI_Stencil_Operation stencil_depth_fail_op   /*= RHI_Stencil_Keep */,
-        const RHI_Stencil_Operation stencil_pass_op         /*= RHI_Stencil_Replace */
+        const bool depth_test                                       /*= true*/,
+        const bool depth_write                                      /*= true*/,
+        const RHI_Comparison_Function depth_comparison_function     /*= Comparison_LessEqual*/,
+        const bool stencil_test                                     /*= false */,
+        const bool stencil_write                                    /*= false */,
+        const RHI_Comparison_Function stencil_comparison_function   /*= RHI_Comparison_Equal */,
+        const RHI_Stencil_Operation stencil_fail_op                 /*= RHI_Stencil_Keep */,
+        const RHI_Stencil_Operation stencil_depth_fail_op           /*= RHI_Stencil_Keep */,
+        const RHI_Stencil_Operation stencil_pass_op                 /*= RHI_Stencil_Replace */
     )
     {
 		

@@ -195,16 +195,16 @@ namespace Spartan
         }
     }
 
-	RHI_SwapChain::RHI_SwapChain(
-		void* window_handle,
+    RHI_SwapChain::RHI_SwapChain(
+        void* window_handle,
         const shared_ptr<RHI_Device>& rhi_device,
-		const uint32_t width,
-		const uint32_t height,
-        const RHI_Format format		/*= Format_R8G8B8A8_UNORM */,
-        const uint32_t buffer_count	/*= 2 */,
-        const uint32_t flags		/*= Present_Immediate */
-	)
-	{
+        const uint32_t width,
+        const uint32_t height,
+        const RHI_Format format        /*= Format_R8G8B8A8_UNORM */,
+        const uint32_t buffer_count    /*= 2 */,
+        const uint32_t flags        /*= Present_Immediate */
+    )
+    {
         // Validate device
         if (!rhi_device || !rhi_device->GetContextRhi()->device)
         {
@@ -227,30 +227,30 @@ namespace Spartan
             return;
         }
 
-		// Copy parameters
-		m_format		= format;
-		m_rhi_device	= rhi_device.get();
-		m_buffer_count	= buffer_count;
-		m_width			= width;
-		m_height		= height;
-		m_window_handle	= window_handle;
+        // Copy parameters
+        m_format        = format;
+        m_rhi_device    = rhi_device.get();
+        m_buffer_count    = buffer_count;
+        m_width            = width;
+        m_height        = height;
+        m_window_handle    = window_handle;
         m_flags         = flags;
 
-		m_initialized = _Vulkan_SwapChain::create
-		(
+        m_initialized = _Vulkan_SwapChain::create
+        (
             rhi_device->GetContextRhi(),
-			&m_width,
-			&m_height,
-			m_buffer_count,
-			m_format,
+            &m_width,
+            &m_height,
+            m_buffer_count,
+            m_format,
             m_flags,
-			m_window_handle,
-			m_surface,
-			m_swap_chain_view,
+            m_window_handle,
+            m_surface,
+            m_swap_chain_view,
             m_resource,
-			m_resource_view,
-			m_image_acquired_semaphore
-		);
+            m_resource_view,
+            m_image_acquired_semaphore
+        );
 
         // Create command pool
         vulkan_utility::command_pool::create(m_cmd_pool, RHI_Queue_Graphics);
@@ -262,9 +262,9 @@ namespace Spartan
         }
 
         AcquireNextImage();
-	}
+    }
 
-	RHI_SwapChain::~RHI_SwapChain()
+    RHI_SwapChain::~RHI_SwapChain()
     {
         // Wait in case any command buffer is still in use
         m_rhi_device->Queue_WaitAll();
@@ -285,10 +285,10 @@ namespace Spartan
             m_resource_view,
             m_image_acquired_semaphore
         );
-	}
+    }
 
-	bool RHI_SwapChain::Resize(const uint32_t width, const uint32_t height, const bool force /*= false*/)
-	{
+    bool RHI_SwapChain::Resize(const uint32_t width, const uint32_t height, const bool force /*= false*/)
+    {
         // Validate resolution
         m_present = m_rhi_device->ValidateResolution(width, height);
         if (!m_present)
@@ -298,7 +298,7 @@ namespace Spartan
             return true;
         }
 
-		// Only resize if needed
+        // Only resize if needed
         if (!force)
         {
             if (m_width == width && m_height == height)
@@ -308,43 +308,43 @@ namespace Spartan
         // Wait in case any command buffer is still in use
         m_rhi_device->Queue_WaitAll();
 
-		// Save new dimensions
-		m_width		= width;
-		m_height	= height;
+        // Save new dimensions
+        m_width        = width;
+        m_height    = height;
 
-		// Destroy previous swap chain
-		_Vulkan_SwapChain::destroy
-		(
+        // Destroy previous swap chain
+        _Vulkan_SwapChain::destroy
+        (
             m_rhi_device->GetContextRhi(),
             m_buffer_count,
-			m_surface,
-			m_swap_chain_view,
-			m_resource_view,
-			m_image_acquired_semaphore
-		);
+            m_surface,
+            m_swap_chain_view,
+            m_resource_view,
+            m_image_acquired_semaphore
+        );
 
-		// Create the swap chain with the new dimensions
-		m_initialized = _Vulkan_SwapChain::create
-		(
+        // Create the swap chain with the new dimensions
+        m_initialized = _Vulkan_SwapChain::create
+        (
             m_rhi_device->GetContextRhi(),
-			&m_width,
-			&m_height,
-			m_buffer_count,
-			m_format,
-			m_flags,
-			m_window_handle,
-			m_surface,
-			m_swap_chain_view,
+            &m_width,
+            &m_height,
+            m_buffer_count,
+            m_format,
+            m_flags,
+            m_window_handle,
+            m_surface,
+            m_swap_chain_view,
             m_resource,
-			m_resource_view,
-			m_image_acquired_semaphore
-		);
+            m_resource_view,
+            m_image_acquired_semaphore
+        );
 
-		return m_initialized;
-	}
+        return m_initialized;
+    }
 
-	bool RHI_SwapChain::AcquireNextImage()
-	{
+    bool RHI_SwapChain::AcquireNextImage()
+    {
         if (!m_present)
             return true;
 
@@ -373,10 +373,10 @@ namespace Spartan
 
         m_image_acquired = result == VK_SUCCESS;
         return vulkan_utility::error::check(result);
-	}
+    }
 
-	bool RHI_SwapChain::Present()
-	{
+    bool RHI_SwapChain::Present()
+    {
         if (!m_present)
             return true;
 
@@ -396,7 +396,7 @@ namespace Spartan
             return false;
 
         return true;
-	}
+    }
 
     void RHI_SwapChain::SetLayout(RHI_Image_Layout layout, RHI_CommandList* command_list /*= nullptr*/)
     {

@@ -50,13 +50,13 @@ namespace Spartan
         vulkan_utility::buffer::destroy(m_buffer);
     }
 
-	bool RHI_VertexBuffer::_create(const void* vertices)
-	{
-		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return false;
-		}
+    bool RHI_VertexBuffer::_create(const void* vertices)
+    {
+        if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device)
+        {
+            LOG_ERROR_INVALID_INTERNALS();
+            return false;
+        }
 
         // Destroy previous buffer
         _destroy();
@@ -82,7 +82,7 @@ namespace Spartan
         {
             // The reason we use staging is because memory with VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT is not mappable but it's fast, we want that.
 
-		    // Create staging/source buffer and copy the vertices to it
+            // Create staging/source buffer and copy the vertices to it
             void* staging_buffer = nullptr;
             VmaAllocation allocation_staging = vulkan_utility::buffer::create(staging_buffer, m_size_gpu, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, false, vertices);
             if (!allocation_staging)
@@ -121,11 +121,11 @@ namespace Spartan
         // Set debug name
         vulkan_utility::debug::set_name(static_cast<VkBuffer>(m_buffer), "vertex_buffer");
 
-		return true;
-	}
+        return true;
+    }
 
-	void* RHI_VertexBuffer::Map()
-	{
+    void* RHI_VertexBuffer::Map()
+    {
         if (!m_is_mappable)
         {
             LOG_ERROR("Not mappable, can only be updated via staging");
@@ -154,10 +154,10 @@ namespace Spartan
         }
 
         return m_mapped;
-	}
+    }
 
-	bool RHI_VertexBuffer::Unmap()
-	{
+    bool RHI_VertexBuffer::Unmap()
+    {
         if (!m_is_mappable)
         {
             LOG_ERROR("Not mappable, can only be updated via staging");
@@ -188,5 +188,5 @@ namespace Spartan
         }
 
         return true;
-	}
+    }
 }

@@ -41,9 +41,10 @@ namespace Spartan
             const bool scissor_enabled,
             const bool multi_sample_enabled,
             const bool antialised_line_enabled,
-            const float depth_bias = 0.0f,
+            const float depth_bias              = 0.0f,
+            const float depth_bias_clamp        = 0.0f,
             const float depth_bias_slope_scaled = 0.0f,
-            const float line_width = 1.0f
+            const float line_width              = 1.0f
         );
         ~RHI_RasterizerState();
 
@@ -57,6 +58,7 @@ namespace Spartan
         void* GetResource()             const { return m_buffer; }
         float GetLineWidth()            const { return m_line_width; }
         float GetDepthBias()            const { return m_depth_bias; }
+        float GetDepthBiasClamp()       const { return m_depth_bias_clamp; }
         float GetDepthBiasSlopeScaled() const { return m_depth_bias_slope_scaled; }
 
         bool operator==(const RHI_RasterizerState& rhs) const
@@ -82,6 +84,7 @@ namespace Spartan
         bool m_multi_sample_enabled     = false;
         bool m_antialised_line_enabled  = false;
         float m_depth_bias              = 0.0f;
+        float m_depth_bias_clamp        = 0.0f;
         float m_depth_bias_slope_scaled = 0.0f;
         float m_line_width              = 1.0f;
         

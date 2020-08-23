@@ -56,13 +56,13 @@ namespace Spartan
         m_is_dynamic    = is_dynamic;
     }
 
-	bool RHI_ConstantBuffer::_create()
-	{
-		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device)
-		{
-			LOG_ERROR_INVALID_PARAMETER();
-			return false;
-		}
+    bool RHI_ConstantBuffer::_create()
+    {
+        if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device)
+        {
+            LOG_ERROR_INVALID_PARAMETER();
+            return false;
+        }
 
         // Destroy previous buffer
         _destroy();
@@ -75,7 +75,7 @@ namespace Spartan
         }
         m_size_gpu = m_offset_count * m_stride;
 
-		// Create buffer
+        // Create buffer
         VkMemoryPropertyFlags flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
         flags |= !m_persistent_mapping ? VK_MEMORY_PROPERTY_HOST_COHERENT_BIT : 0;
         VmaAllocation allocation = vulkan_utility::buffer::create(m_buffer, m_size_gpu, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, flags, true);
@@ -90,8 +90,8 @@ namespace Spartan
         // Set debug name
         vulkan_utility::debug::set_name(static_cast<VkBuffer>(m_buffer), "constant_buffer");
 
-		return true;
-	}
+        return true;
+    }
 
     void* RHI_ConstantBuffer::Map()
     {
