@@ -783,19 +783,20 @@ namespace Spartan
 
         // Set render state
         static RHI_PipelineState pipeline_state;
-        pipeline_state.shader_vertex                    = shader_v.get();
-        pipeline_state.shader_pixel                     = shader_p.get();
-        pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
-        pipeline_state.depth_stencil_state              = is_transparent_pass ? m_depth_stencil_off_on_r.get() : m_depth_stencil_off_off.get();
-        pipeline_state.blend_state                      = m_blend_disabled.get();
-        pipeline_state.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride();
-        pipeline_state.render_target_color_textures[0]  = tex_out.get();
-        pipeline_state.clear_color[0]                   = is_transparent_pass ? rhi_color_load : rhi_color_dont_care;
-        pipeline_state.render_target_depth_texture      = is_transparent_pass ? tex_depth : nullptr;
-        pipeline_state.clear_stencil                    = is_transparent_pass ? rhi_stencil_load : rhi_stencil_dont_care;
-        pipeline_state.viewport                         = tex_out->GetViewport();
-        pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
-        pipeline_state.pass_name                        = "Pass_Composition";
+        pipeline_state.shader_vertex                            = shader_v.get();
+        pipeline_state.shader_pixel                             = shader_p.get();
+        pipeline_state.rasterizer_state                         = m_rasterizer_cull_back_solid.get();
+        pipeline_state.depth_stencil_state                      = is_transparent_pass ? m_depth_stencil_off_on_r.get() : m_depth_stencil_off_off.get();
+        pipeline_state.blend_state                              = m_blend_disabled.get();
+        pipeline_state.vertex_buffer_stride                     = m_viewport_quad.GetVertexBuffer()->GetStride();
+        pipeline_state.render_target_color_textures[0]          = tex_out.get();
+        pipeline_state.clear_color[0]                           = is_transparent_pass ? rhi_color_load : rhi_color_dont_care;
+        pipeline_state.render_target_depth_texture              = is_transparent_pass ? tex_depth : nullptr;
+        pipeline_state.render_target_depth_texture_read_only    = is_transparent_pass;
+        pipeline_state.clear_stencil                            = is_transparent_pass ? rhi_stencil_load : rhi_stencil_dont_care;
+        pipeline_state.viewport                                 = tex_out->GetViewport();
+        pipeline_state.primitive_topology                       = RHI_PrimitiveTopology_TriangleList;
+        pipeline_state.pass_name                                = "Pass_Composition";
 
         // Begin commands
         if (cmd_list->BeginRenderPass(pipeline_state))
@@ -811,9 +812,9 @@ namespace Spartan
             cmd_list->SetTexture(RendererBindingsTex::gbuffer_normal, m_render_targets[RendererRt::Gbuffer_Normal]);
             cmd_list->SetTexture(RendererBindingsTex::gbuffer_material, m_render_targets[RendererRt::Gbuffer_Material]);
             cmd_list->SetTexture(RendererBindingsTex::gbuffer_depth, tex_depth);
-            cmd_list->SetTexture(RendererBindingsTex::hbao, (m_options & Render_Hbao) ? m_render_targets[RendererRt::Hbao_Blurred] : m_tex_white);
-            cmd_list->SetTexture(RendererBindingsTex::light_diffuse, is_transparent_pass ? m_render_targets[RendererRt::Light_Diffuse_Transparent] : m_render_targets[RendererRt::Light_Diffuse]);
-            cmd_list->SetTexture(RendererBindingsTex::light_specular, is_transparent_pass ? m_render_targets[RendererRt::Light_Specular_Transparent] : m_render_targets[RendererRt::Light_Specular]);
+            cmd_list->SetTexture(RendererBindingsTex::hbao, (m_options & Render_Hbao)       ? m_render_targets[RendererRt::Hbao_Blurred]                : m_tex_white);
+            cmd_list->SetTexture(RendererBindingsTex::light_diffuse, is_transparent_pass    ? m_render_targets[RendererRt::Light_Diffuse_Transparent]   : m_render_targets[RendererRt::Light_Diffuse]);
+            cmd_list->SetTexture(RendererBindingsTex::light_specular, is_transparent_pass   ? m_render_targets[RendererRt::Light_Specular_Transparent]  : m_render_targets[RendererRt::Light_Specular]);
             cmd_list->SetTexture(RendererBindingsTex::light_volumetric, m_render_targets[RendererRt::Light_Volumetric]);
             cmd_list->SetTexture(RendererBindingsTex::ssr, (m_options & Render_ScreenSpaceReflections) ? m_render_targets[RendererRt::Ssr] : m_tex_black_transparent);
             cmd_list->SetTexture(RendererBindingsTex::frame, m_render_targets[RendererRt::Frame_Hdr_2]);

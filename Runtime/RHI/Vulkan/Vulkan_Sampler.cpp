@@ -31,31 +31,31 @@ namespace Spartan
 {
     void RHI_Sampler::CreateResource()
     {
-		VkSamplerCreateInfo sampler_info	= {};
-		sampler_info.sType					= VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-		sampler_info.magFilter				= vulkan_filter[m_filter_mag];
-		sampler_info.minFilter				= vulkan_filter[m_filter_min];
-		sampler_info.mipmapMode				= vulkan_mipmap_mode[m_filter_mipmap];
-		sampler_info.addressModeU			= vulkan_sampler_address_mode[m_sampler_address_mode];
-		sampler_info.addressModeV			= vulkan_sampler_address_mode[m_sampler_address_mode];
-		sampler_info.addressModeW			= vulkan_sampler_address_mode[m_sampler_address_mode];
-		sampler_info.anisotropyEnable		= m_anisotropy_enabled;
+        VkSamplerCreateInfo sampler_info    = {};
+        sampler_info.sType                    = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        sampler_info.magFilter                = vulkan_filter[m_filter_mag];
+        sampler_info.minFilter                = vulkan_filter[m_filter_min];
+        sampler_info.mipmapMode                = vulkan_mipmap_mode[m_filter_mipmap];
+        sampler_info.addressModeU            = vulkan_sampler_address_mode[m_sampler_address_mode];
+        sampler_info.addressModeV            = vulkan_sampler_address_mode[m_sampler_address_mode];
+        sampler_info.addressModeW            = vulkan_sampler_address_mode[m_sampler_address_mode];
+        sampler_info.anisotropyEnable        = m_anisotropy_enabled;
         sampler_info.maxAnisotropy          = m_rhi_device->GetContext()->GetSubsystem<Renderer>()->GetOptionValue<float>(Option_Value_Anisotropy);
-		sampler_info.compareEnable			= m_comparison_enabled ? VK_TRUE : VK_FALSE;
-		sampler_info.compareOp				= vulkan_compare_operator[m_comparison_function];
-		sampler_info.borderColor			= VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+        sampler_info.compareEnable            = m_comparison_enabled ? VK_TRUE : VK_FALSE;
+        sampler_info.compareOp                = vulkan_compare_operator[m_comparison_function];
+        sampler_info.borderColor            = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
         sampler_info.mipLodBias             = 0.0f;
         sampler_info.minLod                 = 0.0f;
         sampler_info.maxLod                 = FLT_MAX;
-	
-		if (vkCreateSampler(m_rhi_device->GetContextRhi()->device, &sampler_info, nullptr, reinterpret_cast<VkSampler*>(&m_resource)) != VK_SUCCESS)
-		{
-			LOG_ERROR("Failed to create sampler");
-		}
-	}
+    
+        if (vkCreateSampler(m_rhi_device->GetContextRhi()->device, &sampler_info, nullptr, reinterpret_cast<VkSampler*>(&m_resource)) != VK_SUCCESS)
+        {
+            LOG_ERROR("Failed to create sampler");
+        }
+    }
 
-	RHI_Sampler::~RHI_Sampler()
-	{
-		vkDestroySampler(m_rhi_device->GetContextRhi()->device, reinterpret_cast<VkSampler>(m_resource), nullptr);
-	}
+    RHI_Sampler::~RHI_Sampler()
+    {
+        vkDestroySampler(m_rhi_device->GetContextRhi()->device, reinterpret_cast<VkSampler>(m_resource), nullptr);
+    }
 }

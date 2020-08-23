@@ -66,10 +66,10 @@ namespace Spartan
     void Renderer::CreateDepthStencilStates()
     {
         // arguments: depth_test, depth_write, depth_function, stencil_test, stencil_write, stencil_function
-        m_depth_stencil_off_off     = make_shared<RHI_DepthStencilState>(m_rhi_device, false,   false,  GetComparisonFunction(), false, false);                         // no depth or stencil
-        m_depth_stencil_on_off_w    = make_shared<RHI_DepthStencilState>(m_rhi_device, true,    true,   GetComparisonFunction(), false, false);                         // depth
-        m_depth_stencil_on_off_r    = make_shared<RHI_DepthStencilState>(m_rhi_device, true,    false,  GetComparisonFunction(), false, false);                         // depth
-        m_depth_stencil_off_on_r    = make_shared<RHI_DepthStencilState>(m_rhi_device, false,   false,  GetComparisonFunction(), true,  false,  RHI_Comparison_Equal);  // depth + stencil
+        m_depth_stencil_off_off     = make_shared<RHI_DepthStencilState>(m_rhi_device, false,   false,  RHI_Comparison_Never,    false, false,  RHI_Comparison_Never);  // no depth or stencil
+        m_depth_stencil_on_off_w    = make_shared<RHI_DepthStencilState>(m_rhi_device, true,    true,   GetComparisonFunction(), false, false,  RHI_Comparison_Never);  // depth
+        m_depth_stencil_on_off_r    = make_shared<RHI_DepthStencilState>(m_rhi_device, true,    false,  GetComparisonFunction(), false, false,  RHI_Comparison_Never);  // depth
+        m_depth_stencil_off_on_r    = make_shared<RHI_DepthStencilState>(m_rhi_device, false,   false,  RHI_Comparison_Never,    true,  false,  RHI_Comparison_Equal);  // depth + stencil
         m_depth_stencil_on_on_w     = make_shared<RHI_DepthStencilState>(m_rhi_device, true,    true,   GetComparisonFunction(), true,  true,   RHI_Comparison_Always); // depth + stencil
     }
 
@@ -77,8 +77,8 @@ namespace Spartan
     {
         m_rasterizer_cull_back_solid        = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_Cull_Back, RHI_Fill_Solid,     true,  false, false, false);
         m_rasterizer_cull_back_wireframe    = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_Cull_Back, RHI_Fill_Wireframe, true,  false, false, true);
-        m_rasterizer_light_point_spot       = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_Cull_Back, RHI_Fill_Solid,     true,  false, false, false, GetOption(Render_ReverseZ) ? -0.01f : 0.01f,    0.0f);
-        m_rasterizer_light_directional      = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_Cull_Back, RHI_Fill_Solid,     false, false, false, false, GetOption(Render_ReverseZ) ? -0.001f : 0.001f,  0.0f * 0.1f);
+        m_rasterizer_light_point_spot       = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_Cull_Back, RHI_Fill_Solid,     true,  false, false, false, GetOption(Render_ReverseZ) ? -0.01f : 0.01f,   0.0f, 0.0f);
+        m_rasterizer_light_directional      = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_Cull_Back, RHI_Fill_Solid,     false, false, false, false, GetOption(Render_ReverseZ) ? -0.001f : 0.001f, 0.0f, 0.0f);
     }
 
     void Renderer::CreateBlendStates()

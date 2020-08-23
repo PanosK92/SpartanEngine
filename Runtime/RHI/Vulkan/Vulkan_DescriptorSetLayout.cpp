@@ -72,7 +72,7 @@ namespace Spartan
             allocate_info.descriptorSetCount            = 1;
             allocate_info.pSetLayouts                   = reinterpret_cast<VkDescriptorSetLayout*>(&m_descriptor_set_layout);
 
-            // Allocate		
+            // Allocate        
             if (!vulkan_utility::error::check(vkAllocateDescriptorSets(m_rhi_device->GetContextRhi()->device, &allocate_info, reinterpret_cast<VkDescriptorSet*>(&descriptor_set))))
                 return nullptr;
 

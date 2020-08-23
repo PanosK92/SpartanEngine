@@ -49,13 +49,13 @@ namespace Spartan
         vulkan_utility::buffer::destroy(m_buffer);
     }
 
-	bool RHI_IndexBuffer::_create(const void* indices)
-	{
-		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return false;
-		}
+    bool RHI_IndexBuffer::_create(const void* indices)
+    {
+        if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device)
+        {
+            LOG_ERROR_INVALID_INTERNALS();
+            return false;
+        }
 
         RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
 
@@ -122,22 +122,22 @@ namespace Spartan
         // Set debug name
         vulkan_utility::debug::set_name(static_cast<VkBuffer>(m_buffer), "index_buffer");
 
-		return true;
-	}
+        return true;
+    }
 
-	void* RHI_IndexBuffer::Map()
-	{
+    void* RHI_IndexBuffer::Map()
+    {
         if (!m_is_mappable)
         {
             LOG_ERROR("Not mappable, can only be updated via staging");
             return nullptr;
         }
 
-		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return nullptr;
-		}
+        if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device)
+        {
+            LOG_ERROR_INVALID_INTERNALS();
+            return nullptr;
+        }
 
         if (!m_allocation)
         {
@@ -155,10 +155,10 @@ namespace Spartan
         }
 
         return m_mapped;
-	}
+    }
 
-	bool RHI_IndexBuffer::Unmap()
-	{
+    bool RHI_IndexBuffer::Unmap()
+    {
         if (!m_is_mappable)
         {
             LOG_ERROR("Not mappable, can only be updated via staging");
@@ -189,5 +189,5 @@ namespace Spartan
         }
 
         return true;
-	}
+    }
 }

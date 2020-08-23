@@ -35,20 +35,20 @@ using namespace std;
 
 namespace Spartan
 {
-	RHI_Shader::~RHI_Shader()
-	{
+    RHI_Shader::~RHI_Shader()
+    {
         const auto rhi_context = m_rhi_device->GetContextRhi();
 
-		if (HasResource())
-		{
-			vkDestroyShaderModule(rhi_context->device, static_cast<VkShaderModule>(m_resource), nullptr);
+        if (HasResource())
+        {
+            vkDestroyShaderModule(rhi_context->device, static_cast<VkShaderModule>(m_resource), nullptr);
             m_resource = nullptr;
-		}
-	}
+        }
+    }
 
-	namespace DxcHelper
-	{
-        	/*
+    namespace DxcHelper
+    {
+            /*
         Version: dxcompiler.dll: 1.6 - 1.5.0.2760 (cb0191d8)
         
         USAGE: dxc.exe [options] <inputs>
@@ -196,7 +196,7 @@ namespace Spartan
                                 Attach root signature to shader bytecode
           -verifyrootsignature <file>
                                 Verify shader bytecode with root signature
-	    */
+        */
 
         inline bool error_check(IDxcResult* dxc_result)
         {
@@ -241,14 +241,14 @@ namespace Spartan
             return result == S_OK;
         }
 
-		class Compiler
-		{
-		public:
-			Compiler()
-			{
+        class Compiler
+        {
+        public:
+            Compiler()
+            {
                 DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&m_utils));
                 DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&m_compiler));;
-			}
+            }
 
             CComPtr<IDxcBlob> Compile(const string& shader, vector<string>& arguments)
             {
@@ -302,7 +302,7 @@ namespace Spartan
                     m_compiler->Compile
                     (
                         &dxc_buffer,                                        // Source text to compile
-                        arguments_lpcwstr.data(),							// Array of pointers to arguments
+                        arguments_lpcwstr.data(),                            // Array of pointers to arguments
                         static_cast<uint32_t>(arguments_lpcwstr.size()),    // Number of arguments
                         include_handler,                                    // user-provided interface to handle #include directives (optional)
                         IID_PPV_ARGS(&dxc_result)                           // IDxcResult: status, buffer, and errors
@@ -328,17 +328,17 @@ namespace Spartan
             
             CComPtr<IDxcUtils> m_utils          = nullptr;
             CComPtr<IDxcCompiler3> m_compiler   = nullptr;
-		};
+        };
 
         static Compiler& Instance()
         {
             static Compiler instance;
             return instance;
         }
-	}
-	
-	void* RHI_Shader::_Compile(const string& shader)
-	{
+    }
+    
+    void* RHI_Shader::_Compile(const string& shader)
+    {
         // Arguments (and defines)
         vector<string> arguments;
 
@@ -374,7 +374,7 @@ namespace Spartan
             }
         }
 
-		// Defines
+        // Defines
         {
             // Add standard defines
             arguments.emplace_back("-D"); arguments.emplace_back("VS="+ to_string(static_cast<uint8_t>(m_shader_type == RHI_Shader_Vertex)));
@@ -388,7 +388,7 @@ namespace Spartan
             }
         }
 
-		// Compile
+        // Compile
         if (CComPtr<IDxcBlob> shader_buffer = DxcHelper::Instance().Compile(shader, arguments))
         {
             // Create shader module
@@ -427,5 +427,5 @@ namespace Spartan
 
         LOG_ERROR("Failed to compile %s", shader.c_str());
         return nullptr;
-	}		
+    }        
 }
