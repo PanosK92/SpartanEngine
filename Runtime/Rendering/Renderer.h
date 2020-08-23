@@ -191,9 +191,15 @@ namespace Spartan
     class SPARTAN_CLASS Renderer : public ISubsystem
     {
     public:
-        #define DEBUG_COLOR          Math::Vector4(0.41f, 0.86f, 1.0f, 1.0f)
-        float gizmo_transform_size   = 0.015f;
-        float gizmo_transform_speed  = 12.0f;
+        // Constants
+        const uint32_t m_resolution_shadow_min  = 128;
+        const float m_gizmo_size_max            = 2.0f;
+        const float m_gizmo_size_min            = 0.1f;
+        const float m_thread_group_count        = 8.0f;
+        const float m_depth_bias                = 0.003f; // bias that's applied directly into the depth buffer
+        const float m_depth_bias_clamp          = 0.0f;
+        const float m_depth_bias_slope_scaled   = 2.0f;
+        #define DEBUG_COLOR                     Math::Vector4(0.41f, 0.86f, 1.0f, 1.0f)
 
         Renderer(Context* context);
         ~Renderer();
@@ -217,6 +223,8 @@ namespace Spartan
         void SetResolution(uint32_t width, uint32_t height);
 
         // Editor
+        float m_gizmo_transform_size    = 0.015f;
+        float m_gizmo_transform_speed   = 12.0f;
         std::weak_ptr<Entity> SnapTransformGizmoTo(const std::shared_ptr<Entity>& entity) const;
 
         // Debug/Visualise a render target
@@ -247,6 +255,15 @@ namespace Spartan
         bool Present();
         bool Flush();
 
+        // Default textures
+        RHI_Texture* GetDefaultTextureWhite()       const { return m_default_tex_white.get(); }
+        RHI_Texture* GetDefaultTextureBlack()       const { return m_default_tex_black.get(); }
+        RHI_Texture* GetDefaultTextureTransparent() const { return m_default_tex_transparent.get(); }
+
+        // Global shader resources
+        void SetGlobalShaderObjectTransform(RHI_CommandList* cmd_list, const Math::Matrix& transform);
+        void SetGlobalSamplersAndConstantBuffers(RHI_CommandList* cmd_list) const;
+
         // Misc
         const std::shared_ptr<RHI_Device>& GetRhiDevice()   const { return m_rhi_device; } 
         RHI_PipelineCache* GetPipelineCache()               const { return m_pipeline_cache.get(); }
@@ -258,13 +275,6 @@ namespace Spartan
         auto& GetShaders()                                  const { return m_shaders; }
         bool IsRendering()                                  const { return m_is_rendering; }
         uint32_t GetMaxResolution() const;
-
-        // Globals
-        void SetGlobalShaderObjectTransform(RHI_CommandList* cmd_list, const Math::Matrix& transform);
-        void SetGlobalSamplersAndConstantBuffers(RHI_CommandList* cmd_list) const;
-        RHI_Texture* GetDefaultTextureWhite()       const { return m_default_tex_white.get(); }
-        RHI_Texture* GetDefaultTextureBlack()       const { return m_default_tex_black.get(); }
-        RHI_Texture* GetDefaultTextureTransparent() const { return m_default_tex_transparent.get(); }
 
     private:
         // Resource creation
@@ -387,21 +397,17 @@ namespace Spartan
         // Misc
         Math::Rectangle m_viewport_quad;
         std::unique_ptr<Font> m_font;
-        Math::Vector2 m_taa_jitter                  = Math::Vector2::Zero;
-        Math::Vector2 m_taa_jitter_previous         = Math::Vector2::Zero;
-        uint64_t m_render_target_debug              = 0;
-        bool m_initialized                          = false;
-        const uint32_t m_resolution_shadow_min      = 128;
-        float m_near_plane                          = 0.0f;
-        float m_far_plane                           = 0.0f;
-        uint64_t m_frame_num                        = 0;
-        bool m_is_odd_frame                         = false;
-        std::atomic<bool> m_is_rendering            = false;
-        bool m_brdf_specular_lut_rendered           = false;      
-        const float m_gizmo_size_max                = 2.0f;
-        const float m_gizmo_size_min                = 0.1f;
-        bool m_update_ortho_proj                    = true;
-        const float m_thread_group_count            = 8.0f;
+        Math::Vector2 m_taa_jitter          = Math::Vector2::Zero;
+        Math::Vector2 m_taa_jitter_previous = Math::Vector2::Zero;
+        uint64_t m_render_target_debug      = 0;
+        bool m_initialized                  = false;
+        float m_near_plane                  = 0.0f;
+        float m_far_plane                   = 0.0f;
+        uint64_t m_frame_num                = 0;
+        bool m_is_odd_frame                 = false;
+        std::atomic<bool> m_is_rendering    = false;
+        bool m_brdf_specular_lut_rendered   = false;
+        bool m_update_ortho_proj            = true;
 
         // RHI Core
         std::shared_ptr<RHI_Device> m_rhi_device;
