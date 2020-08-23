@@ -28,8 +28,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_BlendState.h"
 #include "../RHI_InputLayout.h"
 #include "../RHI_CommandList.h"
-#include "../RHI_DescriptorCache.h"
 #include "../RHI_PipelineState.h"
+#include "../RHI_DescriptorCache.h"
 #include "../RHI_RasterizerState.h"
 #include "../RHI_DepthStencilState.h"
 //===================================
@@ -259,7 +259,7 @@ namespace Spartan
                 rasterizer_state.cullMode                   = vulkan_cull_mode[m_state.rasterizer_state->GetCullMode()];
                 rasterizer_state.frontFace                  = VK_FRONT_FACE_CLOCKWISE;
                 rasterizer_state.depthBiasEnable            = m_state.rasterizer_state->GetDepthBias() != 0.0f ? VK_TRUE : VK_FALSE;
-                rasterizer_state.depthBiasConstantFactor    = m_state.rasterizer_state->GetDepthBias();
+                rasterizer_state.depthBiasConstantFactor    = Math::Helper::Floor(m_state.rasterizer_state->GetDepthBias() * (float)(1 << 24));
                 rasterizer_state.depthBiasClamp             = m_state.rasterizer_state->GetDepthBiasClamp();
                 rasterizer_state.depthBiasSlopeFactor       = m_state.rasterizer_state->GetDepthBiasSlopeScaled();
             }
