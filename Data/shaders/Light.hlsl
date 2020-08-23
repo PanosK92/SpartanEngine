@@ -152,6 +152,11 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
             shadow.a = min(shadow.a, ScreenSpaceShadows(surface, light));
         }
         #endif
+
+        // Ensure that the shadow is as transparent as the material
+        #if TRANSPARENT
+        shadow.a = clamp(shadow.a, material.albedo.a, 1.0f);
+        #endif
     }
 
     // Compute multi-bounce ambient occlusion
@@ -222,11 +227,33 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         }
         #endif
 
+        // Combine all light
         float3 radiance = light.color * n_dot_l;
+        light_diffuse  += saturate_16(diffuse * radiance);
+        light_specular += saturate_16((specular + specular_clearcoat + specular_sheen) * radiance + light_reflection);
         
-        light_diffuse  = saturate_16(diffuse * radiance);
-        light_specular = saturate_16((specular + specular_clearcoat + specular_sheen) * radiance + light_reflection);
-        
+        // Refraction
+        #if TRANSPARENT
+        {
+            float ior               = 1.5; // glass
+            float2 normal2D         = mul((float3x3)g_view, sample_normal.xyz).xy;
+            float2 refraction_uv    = uv + normal2D * ior * 0.03f;
+            float3 refraction_color = 0.0f;
+
+            // Only refract what's behind the surface
+            [branch]
+            if (get_linear_depth(refraction_uv) + 0.2f > get_linear_depth(surface.depth))
+            {
+                refraction_color = tex_frame.SampleLevel(sampler_bilinear_clamp, refraction_uv, 0).rgb;
+            }
+            else
+            {
+                refraction_color = tex_frame.Load(int3(thread_id.xy, 0));
+            }
+
+            light_diffuse = refraction_color + light_diffuse * material.albedo.a;
+        }
+        #endif
     }
 
     tex_out_rgb[thread_id.xy]   += light_diffuse;

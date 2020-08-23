@@ -71,11 +71,11 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         
         // Create material
         Material material;
-        material.albedo         = sample_albedo;
-        material.roughness      = sample_material.r;
-        material.metallic       = sample_material.g;
-        material.emissive       = sample_material.b;    
-        material.F0             = lerp(0.04f, material.albedo.rgb, material.metallic);
+        material.albedo     = sample_albedo;
+        material.roughness  = sample_material.r;
+        material.metallic   = sample_material.g;
+        material.emissive   = sample_material.b;
+        material.F0         = lerp(0.04f, material.albedo.rgb, material.metallic);
 
         // Light - Image based
         float3 diffuse_energy       = 1.0f;
@@ -120,25 +120,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         light_ibl_specular  *= light_ambient;
 
         // Combine all light
-        float3 light = light_diffuse + light_ibl_diffuse + light_specular + light_ibl_specular + light_reflection + light_emissive + light_ssgi;
-        
-        // Opaques
-        [branch]
-        if (material.albedo.a == 1.0f)
-        {
-            color.rgb += light;
-        }
-        // Transparents
-        else 
-        {
-            // Refraction
-            float ior               = 1.5; // glass
-            float2 normal2D         = mul((float3x3)g_view, sample_normal.xyz).xy;
-            float2 refraction_uv    = uv + normal2D * ior * 0.03f;
-            float3 refraction_color = tex_frame.SampleLevel(sampler_bilinear_clamp, refraction_uv, 0.0f).rgb;
-
-            color.rgb += refraction_color + light * sample_albedo.a;
-        }
+        color.rgb += light_diffuse + light_ibl_diffuse + light_specular + light_ibl_specular + light_reflection + light_emissive + light_ssgi;
     }
 
     // Volumetric lighting and fog
@@ -147,4 +129,3 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     
     return saturate_16(color);
 }
-
