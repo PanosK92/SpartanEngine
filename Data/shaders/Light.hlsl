@@ -55,6 +55,8 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     if (sample_albedo.a == 1.0f)
         return;
     #endif
+
+    const float2 uv = (thread_id.xy + 0.5f) / g_resolution;
     
     // Sample there rest of the textures
     float4 sample_normal    = tex_normal.Load(int3(thread_id.xy, 0));
@@ -63,14 +65,13 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     #if TRANSPARENT
     float sample_hbao       = 1.0f; // we don't do ao for transparents
     #else
-    float sample_hbao       = tex_hbao.Load(int3(thread_id.xy, 0)).r;
+    float sample_hbao       = tex_hbao.SampleLevel(sampler_point_clamp, uv, 0).r; // if hbao is disabled, the texture will be 1x1 white pixel, so we use a sampler
     #endif
 
     // Post-process samples
     int mat_id      = round(sample_normal.a * 65535);
     float occlusion = sample_material.a;
 
-    const float2 uv = (thread_id.xy + 0.5f) / g_resolution;
     float3 light_diffuse    = 0.0f;
     float3 light_specular   = 0.0f;
     float3 light_volumetric = 0.0f;

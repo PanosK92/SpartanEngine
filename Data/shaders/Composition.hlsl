@@ -33,7 +33,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     // Sample from textures
     float4 sample_normal    = tex_normal.Load(int3(screen_pos, 0));
     float4 sample_material  = tex_material.Load(int3(screen_pos, 0));
-    float3 light_volumetric = tex_light_volumetric.Load(int3(screen_pos, 0)).rgb;   
+    float3 light_volumetric = tex_light_volumetric.Load(int3(screen_pos, 0)).rgb;
     float depth             = tex_depth.Load(int3(screen_pos, 0)).r;
     #if TRANSPARENT
     float2 sample_ssr       = 0.0f; // we don't do ssr for transparents
@@ -41,7 +41,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     float3 sample_ssgi      = 0.0f; // we don't do ssgi for transparents
     #else
     float2 sample_ssr       = tex_ssr.Load(int3(screen_pos, 0)).xy;
-    float sample_hbao       = tex_hbao.Load(int3(screen_pos.xy, 0)).r;
+    float sample_hbao       = tex_hbao.SampleLevel(sampler_point_clamp, uv, 0).r; // if hbao is disabled, the texture will be 1x1 white pixel, so we use a sampler
     float3 sample_ssgi      = tex_ssgi.Load(int3(screen_pos, 0)).rgb;
     #endif
     
