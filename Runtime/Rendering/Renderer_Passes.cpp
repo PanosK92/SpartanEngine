@@ -250,7 +250,7 @@ namespace Spartan
                     {
                         // Bind material textures
                         RHI_Texture* tex_albedo = material->GetTexture_Ptr(Material_Color);
-                        cmd_list->SetTexture(RendererBindingsTex::tex, tex_albedo ? tex_albedo : m_tex_white.get());
+                        cmd_list->SetTexture(RendererBindingsTex::tex, tex_albedo ? tex_albedo : m_default_tex_white.get());
 
                         // Update uber buffer with material properties
                         m_buffer_uber_cpu.mat_albedo    = material->GetColorAlbedo();
@@ -578,7 +578,7 @@ namespace Spartan
             cmd_list->SetTexture(RendererBindingsTex::gbuffer_depth, m_render_targets[RendererRt::Gbuffer_Depth]);
             cmd_list->SetTexture(RendererBindingsTex::light_diffuse, m_render_targets[RendererRt::Light_Diffuse]);
             cmd_list->SetTexture(RendererBindingsTex::light_specular, m_render_targets[RendererRt::Light_Specular]);
-            cmd_list->SetTexture(RendererBindingsTex::ssr, (m_options & Render_ScreenSpaceReflections) ? m_render_targets[RendererRt::Ssr] : m_tex_black_transparent);
+            cmd_list->SetTexture(RendererBindingsTex::ssr, (m_options & Render_ScreenSpaceReflections) ? m_render_targets[RendererRt::Ssr] : m_default_tex_transparent);
             cmd_list->SetTexture(RendererBindingsTex::tex, tex_accumulation);
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
@@ -724,15 +724,15 @@ namespace Spartan
                         cmd_list->SetTexture(RendererBindingsTex::gbuffer_normal, m_render_targets[RendererRt::Gbuffer_Normal]);
                         cmd_list->SetTexture(RendererBindingsTex::gbuffer_material, m_render_targets[RendererRt::Gbuffer_Material]);
                         cmd_list->SetTexture(RendererBindingsTex::gbuffer_depth, m_render_targets[RendererRt::Gbuffer_Depth]);
-                        cmd_list->SetTexture(RendererBindingsTex::hbao, (m_options & Render_Hbao) ? m_render_targets[RendererRt::Hbao_Blurred] : m_tex_white);
-                        cmd_list->SetTexture(RendererBindingsTex::ssr, (m_options & Render_ScreenSpaceReflections) ? m_render_targets[RendererRt::Ssr] : m_tex_black_transparent);
+                        cmd_list->SetTexture(RendererBindingsTex::hbao, (m_options & Render_Hbao) ? m_render_targets[RendererRt::Hbao_Blurred] : m_default_tex_white);
+                        cmd_list->SetTexture(RendererBindingsTex::ssr, (m_options & Render_ScreenSpaceReflections) ? m_render_targets[RendererRt::Ssr] : m_default_tex_transparent);
                         cmd_list->SetTexture(RendererBindingsTex::frame, m_render_targets[RendererRt::Frame_Hdr_2]); // previous frame before post-processing
 
                         // Set shadow map
                         if (light->GetShadowsEnabled())
                         {
                             RHI_Texture* tex_depth = light->GetDepthTexture();
-                            RHI_Texture* tex_color = light->GetShadowsTransparentEnabled() ? light->GetColorTexture() : m_tex_white.get();
+                            RHI_Texture* tex_color = light->GetShadowsTransparentEnabled() ? light->GetColorTexture() : m_default_tex_white.get();
 
                             if (light->GetLightType() == LightType::Directional)
                             {
@@ -812,15 +812,15 @@ namespace Spartan
             cmd_list->SetTexture(RendererBindingsTex::gbuffer_normal, m_render_targets[RendererRt::Gbuffer_Normal]);
             cmd_list->SetTexture(RendererBindingsTex::gbuffer_material, m_render_targets[RendererRt::Gbuffer_Material]);
             cmd_list->SetTexture(RendererBindingsTex::gbuffer_depth, tex_depth);
-            cmd_list->SetTexture(RendererBindingsTex::hbao, (m_options & Render_Hbao)       ? m_render_targets[RendererRt::Hbao_Blurred]                : m_tex_white);
+            cmd_list->SetTexture(RendererBindingsTex::hbao, (m_options & Render_Hbao)       ? m_render_targets[RendererRt::Hbao_Blurred]                : m_default_tex_white);
             cmd_list->SetTexture(RendererBindingsTex::light_diffuse, is_transparent_pass    ? m_render_targets[RendererRt::Light_Diffuse_Transparent]   : m_render_targets[RendererRt::Light_Diffuse]);
             cmd_list->SetTexture(RendererBindingsTex::light_specular, is_transparent_pass   ? m_render_targets[RendererRt::Light_Specular_Transparent]  : m_render_targets[RendererRt::Light_Specular]);
             cmd_list->SetTexture(RendererBindingsTex::light_volumetric, m_render_targets[RendererRt::Light_Volumetric]);
-            cmd_list->SetTexture(RendererBindingsTex::ssr, (m_options & Render_ScreenSpaceReflections) ? m_render_targets[RendererRt::Ssr] : m_tex_black_transparent);
+            cmd_list->SetTexture(RendererBindingsTex::ssr, (m_options & Render_ScreenSpaceReflections) ? m_render_targets[RendererRt::Ssr] : m_default_tex_transparent);
             cmd_list->SetTexture(RendererBindingsTex::frame, m_render_targets[RendererRt::Frame_Hdr_2]);
             cmd_list->SetTexture(RendererBindingsTex::lutIbl, m_render_targets[RendererRt::Brdf_Specular_Lut]);
             cmd_list->SetTexture(RendererBindingsTex::environment, GetEnvironmentTexture());
-            cmd_list->SetTexture(RendererBindingsTex::ssgi, (m_options & Render_Ssgi) ? m_render_targets[RendererRt::Ssgi] : m_tex_black_opaque);
+            cmd_list->SetTexture(RendererBindingsTex::ssgi, (m_options & Render_Ssgi) ? m_render_targets[RendererRt::Ssgi] : m_default_tex_black);
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
@@ -2211,19 +2211,19 @@ namespace Spartan
 
         if (m_render_target_debug == static_cast<uint64_t>(RendererRt::Hbao_Blurred))
         {
-            texture     = m_options & Render_Hbao ? m_render_targets[RendererRt::Hbao_Blurred].get() : m_tex_white.get();
+            texture     = m_options & Render_Hbao ? m_render_targets[RendererRt::Hbao_Blurred].get() : m_default_tex_white.get();
             shader_type = RendererShader::DebugChannelR_C;
         }
 
         if (m_render_target_debug == static_cast<uint64_t>(RendererRt::Hbao))
         {
-            texture = m_options & Render_Hbao ? m_render_targets[RendererRt::Hbao].get() : m_tex_white.get();
+            texture = m_options & Render_Hbao ? m_render_targets[RendererRt::Hbao].get() : m_default_tex_white.get();
             shader_type = RendererShader::DebugChannelR_C;
         }
 
         if (m_render_target_debug == static_cast<uint64_t>(RendererRt::Ssgi))
         {
-            texture = m_options & Render_Ssgi ? m_render_targets[RendererRt::Ssgi].get() : m_tex_black_opaque.get();
+            texture = m_options & Render_Ssgi ? m_render_targets[RendererRt::Ssgi].get() : m_default_tex_black.get();
             shader_type = RendererShader::DebugChannelRgbGammaCorrect_C;
         }
 
