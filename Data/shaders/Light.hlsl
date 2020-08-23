@@ -248,7 +248,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
             }
             else
             {
-                refraction_color = tex_frame.Load(int3(thread_id.xy, 0));
+                refraction_color = tex_frame.Load(int3(thread_id.xy, 0)).rgb;
             }
 
             light_diffuse = refraction_color + light_diffuse * material.albedo.a;
