@@ -407,20 +407,14 @@ namespace Spartan
 
         auto generate_mipmaps = false;
 
-        m_tex_noise_normal = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
-        m_tex_noise_normal->LoadFromFile(dir_texture + "noise.jpg");
+        m_default_tex_white = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
+        m_default_tex_white->LoadFromFile(dir_texture + "white.png");
 
-        m_tex_blue_noise = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
-        m_tex_blue_noise->LoadFromFile(dir_texture + "blue_noise.png");
+        m_default_tex_black = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
+        m_default_tex_black->LoadFromFile(dir_texture + "black.png");
 
-        m_tex_white = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
-        m_tex_white->LoadFromFile(dir_texture + "white.png");
-
-        m_tex_black_transparent = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
-        m_tex_black_transparent->LoadFromFile(dir_texture + "black_transparent.png");
-
-        m_tex_black_opaque = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
-        m_tex_black_opaque->LoadFromFile(dir_texture + "black_opaque.png");
+        m_default_tex_transparent = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
+        m_default_tex_transparent->LoadFromFile(dir_texture + "transparent.png");
 
         // Gizmo icons
         m_gizmo_tex_light_directional = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);

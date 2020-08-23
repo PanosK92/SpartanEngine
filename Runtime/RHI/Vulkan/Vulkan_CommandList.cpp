@@ -656,14 +656,14 @@ namespace Spartan
         // Null textures are allowed, and get replaced with a black texture here
         if (!texture || !texture->Get_Resource_View())
         {
-            texture = m_renderer->GetBlackTexture();
+            texture = m_renderer->GetDefaultTextureTransparent();
         }
 
         // If the image has an invalid layout (can happen for a few frames during staging), replace with black
         if (texture->GetLayout() == RHI_Image_Undefined || texture->GetLayout() == RHI_Image_Preinitialized)
         {
             LOG_WARNING("Can't set texture without a layout");
-            texture = m_renderer->GetBlackTexture();
+            texture = m_renderer->GetDefaultTextureTransparent();
         }
 
         // Transition to appropriate layout (if needed)
@@ -711,7 +711,7 @@ namespace Spartan
             else if (transition_required && m_render_pass_active)
             {
                 LOG_WARNING("Can't transition texture to target layout while a render pass is active");
-                texture = m_renderer->GetBlackTexture();
+                texture = m_renderer->GetDefaultTextureTransparent();
             }
         }
 

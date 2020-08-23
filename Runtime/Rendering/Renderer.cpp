@@ -664,7 +664,7 @@ namespace Spartan
         if (m_render_targets.find(RendererRt::Brdf_Prefiltered_Environment) != m_render_targets.end())
             return m_render_targets[RendererRt::Brdf_Prefiltered_Environment];
 
-        return m_tex_white;
+        return m_default_tex_white;
     }
 
     void Renderer::SetEnvironmentTexture(const shared_ptr<RHI_Texture>& texture)
