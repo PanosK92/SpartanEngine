@@ -350,8 +350,14 @@ namespace Spartan
         m_shaders[RendererShader::Entity_Outline_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Entity.hlsl");
 
         // Composition
-        m_shaders[RendererShader::Composition_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[RendererShader::Composition_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Composition.hlsl");
+        {
+            m_shaders[RendererShader::Composition_P] = make_shared<RHI_Shader>(m_context);
+            m_shaders[RendererShader::Composition_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Composition.hlsl");
+
+            m_shaders[RendererShader::Composition_Transparent_P] = make_shared<RHI_Shader>(m_context);
+            m_shaders[RendererShader::Composition_Transparent_P]->AddDefine("TRANSPARENT");
+            m_shaders[RendererShader::Composition_Transparent_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Composition.hlsl");
+        }
 
         // Font
         m_shaders[RendererShader::Font_V] = make_shared<RHI_Shader>(m_context);
