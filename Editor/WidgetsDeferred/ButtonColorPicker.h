@@ -28,15 +28,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 class ButtonColorPicker
 {
 public:
-	ButtonColorPicker(const std::string& windowTitle);
-	void Update();
-	void SetColor(const Spartan::Math::Vector4& color) { m_color = color; }
-	const Spartan::Math::Vector4& GetColor() const { return m_color; }
+    ButtonColorPicker(const std::string& windowTitle);
+    void Update();
+    void SetColor(const Spartan::Math::Vector4& color) { m_color = color; }
+    const Spartan::Math::Vector4& GetColor() const { return m_color; }
 
 private:
-	void ShowColorPicker();
+    void ShowColorPicker();
 
-	bool m_isVisible;
-	Spartan::Math::Vector4 m_color;
-	std::string m_windowTitle;
+    bool m_isVisible;
+    Spartan::Math::Vector4 m_color;
+    std::string m_windowTitle;
 };

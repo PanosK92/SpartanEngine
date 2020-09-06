@@ -31,12 +31,12 @@ class FileDialog;
 class Widget_Assets : public Widget
 {
 public:
-	Widget_Assets(Editor* editor);
-	void Tick() override;
+    Widget_Assets(Editor* editor);
+    void Tick() override;
 
 private:
-	void OnPathClicked(const std::string& path) const;
+    void OnPathClicked(const std::string& path) const;
 
-	std::unique_ptr<FileDialog> m_fileDialogView;
-	std::unique_ptr<FileDialog> m_fileDialogLoad;
+    std::unique_ptr<FileDialog> m_fileDialogView;
+    std::unique_ptr<FileDialog> m_fileDialogLoad;
 };

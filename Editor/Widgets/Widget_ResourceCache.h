@@ -28,8 +28,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 class Widget_ResourceCache : public Widget
 {
 public:
-	Widget_ResourceCache(Editor* editor);
-	void Tick() override;
+    Widget_ResourceCache(Editor* editor);
+    void Tick() override;
 
 private:
     bool m_column_width_set = false;

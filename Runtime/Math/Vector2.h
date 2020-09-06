@@ -139,6 +139,11 @@ namespace Spartan::Math
         // Returns the squared length
         [[nodiscard]] float LengthSquared() const { return x * x + y * y; }
 
+        // Returns the distance between to vectors
+        static inline float Distance(const Vector2& a, const Vector2& b) { return (b - a).Length(); }
+        // Returns the squared distance between to vectors
+        static inline float DistanceSquared(const Vector2& a, const Vector2& b) { return (b - a).LengthSquared(); }
+
         bool operator==(const Vector2& b) const
         {
             return x == b.x && y == b.y;

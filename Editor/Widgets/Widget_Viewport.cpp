@@ -35,9 +35,9 @@ using namespace Math;
 
 Widget_Viewport::Widget_Viewport(Editor* editor) : Widget(editor)
 {
-	m_title     = "Viewport";
+    m_title     = "Viewport";
     m_size      = Vector2(400, 250);
-	m_flags     |= ImGuiWindowFlags_NoScrollbar;
+    m_flags     |= ImGuiWindowFlags_NoScrollbar;
     m_padding   = Vector2(4.0f);
     m_world     = m_context->GetSubsystem<World>();
     m_renderer  = m_context->GetSubsystem<Renderer>();
@@ -46,16 +46,16 @@ Widget_Viewport::Widget_Viewport(Editor* editor) : Widget(editor)
 
 void Widget_Viewport::Tick()
 {
-	if (!m_renderer)
-		return;
+    if (!m_renderer)
+        return;
 
-	// Get current frame window resolution
-	float width			= static_cast<float>(ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x);
-	float height		= static_cast<float>(ImGui::GetWindowContentRegionMax().y - ImGui::GetWindowContentRegionMin().y);
+    // Get current frame window resolution
+    float width            = static_cast<float>(ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x);
+    float height        = static_cast<float>(ImGui::GetWindowContentRegionMax().y - ImGui::GetWindowContentRegionMin().y);
 
-	// Update engine's viewport
-	Vector2 offset = Vector2(ImGui::GetWindowPos()) + m_window_padding;
-	m_renderer->SetViewport(width, height, offset.x, offset.y);
+    // Update engine's viewport
+    Vector2 offset = Vector2(ImGui::GetWindowPos()) + m_window_padding;
+    m_renderer->SetViewport(width, height, offset.x, offset.y);
 
     // If this is the first tick and the first time the engine runs (no settings file loaded), we set the resolution to match the viewport size.
     // This is to avoid a scenario were the resolution is much higher than what the user assumes, resulting in less performance.
@@ -65,25 +65,25 @@ void Widget_Viewport::Tick()
         m_is_resolution_dirty = false;
     }
 
-	// Draw the image after a potential Renderer::SetResolution() call has been made
-	ImGuiEx::Image
-	(
+    // Draw the image after a potential Renderer::SetResolution() call has been made
+    ImGuiEx::Image
+    (
         m_renderer->GetFrameTexture(),
-		ImVec2(static_cast<float>(width), static_cast<float>(height)),
-		ImColor(255, 255, 255, 255),
-		ImColor(50, 127, 166, 255)
-	);
+        ImVec2(static_cast<float>(width), static_cast<float>(height)),
+        ImColor(255, 255, 255, 255),
+        ImColor(50, 127, 166, 255)
+    );
 
-	// If this widget was released, make the engine pick an entity.
-	// Don't do that on mouse down as a mouse down event might also mean that the user is currently transforming the entity.
-	if (ImGui::IsMouseReleased(0) && ImGui::IsItemHovered())
-	{
-		EditorHelper::Get().PickEntity();
-	}
+    // If this widget was released, make the engine pick an entity.
+    // Don't do that on mouse down as a mouse down event might also mean that the user is currently transforming the entity.
+    if (ImGui::IsMouseReleased(0) && ImGui::IsItemHovered())
+    {
+        EditorHelper::Get().PickEntity();
+    }
 
-	// Handle model drop
-	if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayload_Model))
-	{
-		EditorHelper::Get().LoadModel(get<const char*>(payload->data));
-	}
+    // Handle model drop
+    if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayload_Model))
+    {
+        EditorHelper::Get().LoadModel(get<const char*>(payload->data));
+    }
 }

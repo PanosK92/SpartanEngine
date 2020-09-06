@@ -260,12 +260,12 @@ namespace Spartan
             const Vector3 position = GetTransform()->GetPosition();
 
             // Compute view for each side of the cube map
-            m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + Vector3::Right,        Vector3::Up);        // x+
-            m_matrix_view[1] = Matrix::CreateLookAtLH(position, position + Vector3::Left,        Vector3::Up);        // x-
-            m_matrix_view[2] = Matrix::CreateLookAtLH(position, position + Vector3::Up,            Vector3::Backward);    // y+
-            m_matrix_view[3] = Matrix::CreateLookAtLH(position, position + Vector3::Down,        Vector3::Forward);    // y-
-            m_matrix_view[4] = Matrix::CreateLookAtLH(position, position + Vector3::Forward,    Vector3::Up);        // z+
-            m_matrix_view[5] = Matrix::CreateLookAtLH(position, position + Vector3::Backward,    Vector3::Up);        // z-
+            m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + Vector3::Right,      Vector3::Up);       // x+
+            m_matrix_view[1] = Matrix::CreateLookAtLH(position, position + Vector3::Left,       Vector3::Up);       // x-
+            m_matrix_view[2] = Matrix::CreateLookAtLH(position, position + Vector3::Up,         Vector3::Backward); // y+
+            m_matrix_view[3] = Matrix::CreateLookAtLH(position, position + Vector3::Down,       Vector3::Forward);  // y-
+            m_matrix_view[4] = Matrix::CreateLookAtLH(position, position + Vector3::Forward,    Vector3::Up);       // z+
+            m_matrix_view[5] = Matrix::CreateLookAtLH(position, position + Vector3::Backward,   Vector3::Up);       // z-
         }
     }
 
@@ -290,13 +290,13 @@ namespace Spartan
         }
         else
         {
-            const float width            = static_cast<float>(m_shadow_map.texture_depth->GetWidth());
-            const float height            = static_cast<float>(m_shadow_map.texture_depth->GetHeight());
-            const auto aspect_ratio        = width / height;
-            const float fov                = 1.57079633f; // 90 deg
-            const float near_plane        = reverse_z ? m_range : 0.1f;
-            const float far_plane        = reverse_z ? 0.1f : m_range;
-            m_matrix_projection[index]    = Matrix::CreatePerspectiveFieldOfViewLH(fov, aspect_ratio, near_plane, far_plane);
+            const float width           = static_cast<float>(m_shadow_map.texture_depth->GetWidth());
+            const float height          = static_cast<float>(m_shadow_map.texture_depth->GetHeight());
+            const auto aspect_ratio     = width / height;
+            const float fov             = 1.57079633f; // 90 deg
+            const float near_plane      = reverse_z ? m_range : 0.1f;
+            const float far_plane       = reverse_z ? 0.1f : m_range;
+            m_matrix_projection[index]  = Matrix::CreatePerspectiveFieldOfViewLH(fov, aspect_ratio, near_plane, far_plane);
             shadow_slice.frustum        = Frustum(m_matrix_view[index], m_matrix_projection[index], far_plane);
         }
 
@@ -346,7 +346,7 @@ namespace Spartan
         const float min_z         = clip_near;
         const float max_z         = clip_near + clip_range;
         const float range         = max_z - min_z;
-        const float ratio         = max_z / min_z;    
+        const float ratio         = max_z / min_z;
         vector<float> splits(m_cascade_count);
         for (uint32_t i = 0; i < m_cascade_count; i++)
         {

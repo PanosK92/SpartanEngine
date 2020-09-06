@@ -98,9 +98,6 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         // Light - SSGI
         float3 light_ssgi = sample_ssgi * material.albedo.rgb;
         
-        // Light - Emissive
-        float3 light_emissive = material.emissive * material.albedo.rgb * 50.0f;
-
         // Light - Ambient
         float3 light_ambient = saturate(g_directional_light_intensity / 128000.0f);
         
@@ -120,7 +117,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         light_ibl_specular  *= light_ambient;
 
         // Combine all light
-        color.rgb += light_diffuse + light_ibl_diffuse + light_specular + light_ibl_specular + light_reflection + light_emissive + light_ssgi;
+        color.rgb += light_diffuse + light_ibl_diffuse + light_specular + light_ibl_specular + light_reflection + light_ssgi;
     }
 
     // Volumetric lighting and fog

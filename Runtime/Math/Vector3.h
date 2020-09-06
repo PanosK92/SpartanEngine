@@ -61,6 +61,14 @@ namespace Spartan::Math
             this->z = z;
         }
 
+        // Construct from array.
+        Vector3(float pos[3])
+        {
+            this->x = pos[0];
+            this->y = pos[1];
+            this->z = pos[2];
+        }
+
         // Construct from single value.
         Vector3(float f)
         {
@@ -117,7 +125,7 @@ namespace Spartan::Math
         [[nodiscard]] Vector3 Cross(const Vector3& v2) const { return Cross(*this, v2); }
 
         // Returns the length
-        [[nodiscard]] float Length() const            { return Helper::Sqrt(x * x + y * y + z * z); }
+        [[nodiscard]] float Length() const          { return Helper::Sqrt(x * x + y * y + z * z); }
         // Returns the squared length
         [[nodiscard]] float LengthSquared() const   { return x * x + y * y + z * z; }
 

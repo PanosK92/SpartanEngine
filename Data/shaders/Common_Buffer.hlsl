@@ -24,11 +24,11 @@ cbuffer BufferFrame : register(b0)
 {
     matrix g_view;
     matrix g_projection;
-    matrix g_projectionOrtho;
-    matrix g_viewProjection;
-    matrix g_viewProjectionInv;
-    matrix g_viewProjectionOrtho;
-    matrix g_viewProjectionUnjittered;
+    matrix g_projection_orthographic;
+    matrix g_view_projection;
+    matrix g_view_projection_inverted;
+    matrix g_view_projection_orthographic;
+    matrix g_view_projection_unjittered;
 
     float g_delta_time;
     float g_time;
@@ -48,7 +48,7 @@ cbuffer BufferFrame : register(b0)
     
     float g_gamma;
     float g_toneMapping;
-    float g_directional_light_intensity;   
+    float g_directional_light_intensity;
     float g_ssr_enabled;
     
     float g_shadow_resolution;
@@ -91,7 +91,8 @@ cbuffer BufferUber : register(b2)
     float g_mat_height;
 
     float g_mat_id;
-    float3 g_padding2;
+    float g_mip_index;
+    float2 g_padding2;
 };
 
 // High frequency - Updates per object

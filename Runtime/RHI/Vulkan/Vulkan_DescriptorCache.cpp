@@ -52,6 +52,12 @@ namespace Spartan
             return;
         }
 
+        if (m_descriptor_set_capacity == descriptor_set_capacity)
+        {
+            LOG_INFO("Capacity is already %d elements", m_descriptor_set_capacity);
+            return;
+        }
+
         // Wait in case the pool is being used
         m_rhi_device->Queue_WaitAll();
 
@@ -68,6 +74,19 @@ namespace Spartan
 
         // Re-allocate everything with double size
         CreateDescriptorPool(descriptor_set_capacity);
+
+        // Log
+        if (descriptor_set_capacity > m_descriptor_set_capacity)
+        {
+            LOG_INFO("Capacity has been increased to %d elements", descriptor_set_capacity);
+        }
+        else if (descriptor_set_capacity < m_descriptor_set_capacity)
+        {
+            LOG_INFO("Capacity has been decreased to %d elements", descriptor_set_capacity);
+        }
+
+        // Update capacity
+        m_descriptor_set_capacity = descriptor_set_capacity;
     }
 
     bool RHI_DescriptorCache::CreateDescriptorPool(uint32_t descriptor_set_capacity)

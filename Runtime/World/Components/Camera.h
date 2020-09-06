@@ -83,8 +83,8 @@ namespace Spartan
         Math::Vector3 Unproject(const Math::Vector2& position_screen) const;
         //==============================================================================
 
-        float GetAperture() const               { return m_aperture; }
-        void SetAperture(const float aperture)  { m_aperture = aperture; }
+        float GetAperture() const { return m_aperture; }
+        void SetAperture(const float aperture) { m_aperture = aperture; }
 
         float GetShutterSpeed() const                   { return m_shutter_speed; }
         void SetShutterSpeed(const float shutter_speed) { m_shutter_speed = shutter_speed; }

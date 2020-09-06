@@ -43,90 +43,90 @@ class EditorHelper
 {
 public:
 
-	static EditorHelper& Get()
-	{
-		static EditorHelper instance;
-		return instance;
-	}
+    static EditorHelper& Get()
+    {
+        static EditorHelper instance;
+        return instance;
+    }
 
-	void Initialize(Spartan::Context* context)
-	{
-		g_context			= context;
-		g_resource_cache	= context->GetSubsystem<Spartan::ResourceCache>();
-		g_world				= context->GetSubsystem<Spartan::World>();
-		g_threading			= context->GetSubsystem<Spartan::Threading>();
-		g_renderer			= context->GetSubsystem<Spartan::Renderer>();
-		g_input				= context->GetSubsystem<Spartan::Input>();
-	}
+    void Initialize(Spartan::Context* context)
+    {
+        g_context            = context;
+        g_resource_cache    = context->GetSubsystem<Spartan::ResourceCache>();
+        g_world                = context->GetSubsystem<Spartan::World>();
+        g_threading            = context->GetSubsystem<Spartan::Threading>();
+        g_renderer            = context->GetSubsystem<Spartan::Renderer>();
+        g_input                = context->GetSubsystem<Spartan::Input>();
+    }
 
-	void LoadModel(const std::string& file_path) const
-	{
-		auto resource_cache = g_resource_cache;
+    void LoadModel(const std::string& file_path) const
+    {
+        auto resource_cache = g_resource_cache;
 
-		// Load the model asynchronously
-		g_threading->AddTask([resource_cache, file_path]()
-		{
-			resource_cache->Load<Spartan::Model>(file_path);
-		});
-	}
+        // Load the model asynchronously
+        g_threading->AddTask([resource_cache, file_path]()
+        {
+            resource_cache->Load<Spartan::Model>(file_path);
+        });
+    }
 
-	void LoadWorld(const std::string& file_path) const
-	{
-		auto world = g_world;
+    void LoadWorld(const std::string& file_path) const
+    {
+        auto world = g_world;
 
         // Loading a world resets everything so it's important to ensure that no tasks are running
         g_threading->Flush(true);
 
-		// Load the scene asynchronously
-		g_threading->AddTask([world, file_path]()
-		{
-			world->LoadFromFile(file_path);
-		});
-	}
+        // Load the scene asynchronously
+        g_threading->AddTask([world, file_path]()
+        {
+            world->LoadFromFile(file_path);
+        });
+    }
 
-	void SaveWorld(const std::string& file_path) const
-	{
-		auto world = g_world;
+    void SaveWorld(const std::string& file_path) const
+    {
+        auto world = g_world;
 
-		// Save the scene asynchronously
-		g_threading->AddTask([world, file_path]()
-		{
-			world->SaveToFile(file_path);
-		});
-	}
+        // Save the scene asynchronously
+        g_threading->AddTask([world, file_path]()
+        {
+            world->SaveToFile(file_path);
+        });
+    }
 
-	void PickEntity()
-	{
-		// Get camera
-		const auto& camera = g_renderer->GetCamera();
-		if (!camera)
-			return;
+    void PickEntity()
+    {
+        // Get camera
+        const auto& camera = g_renderer->GetCamera();
+        if (!camera)
+            return;
 
-		// Pick the world
-		std::shared_ptr<Spartan::Entity> entity;
-		camera->Pick(g_input->GetMousePosition(), entity);
+        // Pick the world
+        std::shared_ptr<Spartan::Entity> entity;
+        camera->Pick(g_input->GetMousePosition(), entity);
 
-		// Set the transform gizmo to the selected entity
-		SetSelectedEntity(entity);
+        // Set the transform gizmo to the selected entity
+        SetSelectedEntity(entity);
 
-		// Fire callback
-		g_on_entity_selected();
-	}
+        // Fire callback
+        g_on_entity_selected();
+    }
 
-	void SetSelectedEntity(const std::shared_ptr<Spartan::Entity>& entity)
-	{
-		// keep returned entity instead as the transform gizmo can decide to reject it
-		g_selected_entity = g_renderer->SnapTransformGizmoTo(entity);
-	}
+    void SetSelectedEntity(const std::shared_ptr<Spartan::Entity>& entity)
+    {
+        // keep returned entity instead as the transform gizmo can decide to reject it
+        g_selected_entity = g_renderer->SnapTransformGizmoTo(entity);
+    }
 
-	Spartan::Context*				g_context				= nullptr;
-	Spartan::ResourceCache*			g_resource_cache		= nullptr;
-	Spartan::World*					g_world					= nullptr;
-	Spartan::Threading*				g_threading				= nullptr;
-	Spartan::Renderer*				g_renderer				= nullptr;
-	Spartan::Input*					g_input					= nullptr;
-	std::weak_ptr<Spartan::Entity>	g_selected_entity;
-	std::function<void()>			g_on_entity_selected	= nullptr;
+    Spartan::Context*                g_context                = nullptr;
+    Spartan::ResourceCache*            g_resource_cache        = nullptr;
+    Spartan::World*                    g_world                    = nullptr;
+    Spartan::Threading*                g_threading                = nullptr;
+    Spartan::Renderer*                g_renderer                = nullptr;
+    Spartan::Input*                    g_input                    = nullptr;
+    std::weak_ptr<Spartan::Entity>    g_selected_entity;
+    std::function<void()>            g_on_entity_selected    = nullptr;
 };
 
 namespace ImGuiEx
@@ -140,11 +140,11 @@ namespace ImGuiEx
         (
             static_cast<ImTextureID>(texture),
             size,
-            ImVec2(0, 0),			// uv0
-            ImVec2(1, 1),			// uv1
-            -1,						// frame padding
-            ImColor(0, 0, 0, 0),	// background
-            default_tint		    // tint
+            ImVec2(0, 0),            // uv0
+            ImVec2(1, 1),            // uv1
+            -1,                        // frame padding
+            ImColor(0, 0, 0, 0),    // background
+            default_tint            // tint
         );
     }
 
@@ -153,11 +153,11 @@ namespace ImGuiEx
         return ImGui::ImageButton(
             static_cast<ImTextureID>(IconProvider::Get().GetTextureByType(icon)),
             ImVec2(size, size),
-            ImVec2(0, 0),			// uv0
-            ImVec2(1, 1),			// uv1
-            -1,						// frame padding
-            ImColor(0, 0, 0, 0),	// background
-            default_tint		    // tint
+            ImVec2(0, 0),            // uv0
+            ImVec2(1, 1),            // uv1
+            -1,                        // frame padding
+            ImColor(0, 0, 0, 0),    // background
+            default_tint            // tint
         );
     }
 
@@ -167,11 +167,11 @@ namespace ImGuiEx
         const auto pressed = ImGui::ImageButton(
             static_cast<ImTextureID>(IconProvider::Get().GetTextureByType(icon)),
             ImVec2(size, size),
-            ImVec2(0, 0),			// uv0
-            ImVec2(1, 1),			// uv1
-            -1,						// frame padding
-            ImColor(0, 0, 0, 0),	// background
-            default_tint		    // tint
+            ImVec2(0, 0),            // uv0
+            ImVec2(1, 1),            // uv1
+            -1,                        // frame padding
+            ImColor(0, 0, 0, 0),    // background
+            default_tint            // tint
         );
         ImGui::PopID();
         return pressed;
@@ -184,8 +184,8 @@ namespace ImGuiEx
             ImVec2(size, size),
             ImVec2(0, 0),
             ImVec2(1, 1),
-            default_tint,		    // tint
-            ImColor(0, 0, 0, 0)		// border
+            default_tint,            // tint
+            ImColor(0, 0, 0, 0)        // border
         );
     }
 
@@ -196,8 +196,8 @@ namespace ImGuiEx
             ImVec2(size, size),
             ImVec2(0, 0),
             ImVec2(1, 1),
-            default_tint,		    // tint
-            ImColor(0, 0, 0, 0)		// border
+            default_tint,            // tint
+            ImColor(0, 0, 0, 0)        // border
         );
     }
 
@@ -220,8 +220,8 @@ namespace ImGuiEx
             ImVec2(size, size),
             ImVec2(0, 0),
             ImVec2(1, 1),
-            default_tint,		    // tint
-            ImColor(0, 0, 0, 0)		// border
+            default_tint,            // tint
+            ImColor(0, 0, 0, 0)        // border
         );
     }
 
@@ -341,9 +341,9 @@ namespace ImGuiEx
     }
 
     // A drag float which will wrap the mouse cursor around the edges of the screen
-    inline void DragFloatWrap(const char* label, float* v, float v_speed = 1.0f, float v_min = 0.0f, float v_max = 0.0f, const char* format = "%.3f", float power = 1.0f)
+    inline void DragFloatWrap(const char* label, float* v, float v_speed = 1.0f, float v_min = 0.0f, float v_max = 0.0f, const char* format = "%.3f", const ImGuiSliderFlags flags = 0)
     {
-        ImGui::DragFloat(label, v, v_speed, v_min, v_max, format, power);
+        ImGui::DragFloat(label, v, v_speed, v_min, v_max, format, flags);
 
         if (ImGui::IsItemEdited() && ImGui::IsMouseDown(0))
         {

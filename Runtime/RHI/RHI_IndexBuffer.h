@@ -45,7 +45,7 @@ namespace Spartan
         bool Create(const std::vector<T>& indices)
         {
             m_stride        = sizeof(T);
-            m_index_count    = static_cast<uint32_t>(indices.size());
+            m_index_count   = static_cast<uint32_t>(indices.size());
             m_size_gpu      = static_cast<uint64_t>(m_stride * m_index_count);
             return _create(static_cast<const void*>(indices.data()));
         }
@@ -54,7 +54,7 @@ namespace Spartan
         bool Create(const T* indices, const uint32_t index_count)
         {
             m_stride        = sizeof(T);
-            m_index_count    = index_count;
+            m_index_count   = index_count;
             m_size_gpu      = static_cast<uint64_t>(m_stride * m_index_count);
             return _create(static_cast<const void*>(indices));
         }
@@ -63,7 +63,7 @@ namespace Spartan
         bool CreateDynamic(const uint32_t index_count)
         {
             m_stride        = sizeof(T);
-            m_index_count    = index_count;
+            m_index_count   = index_count;
             m_size_gpu      = static_cast<uint64_t>(m_stride * m_index_count);
             return _create(nullptr);
         }
@@ -71,10 +71,10 @@ namespace Spartan
         void* Map();
         bool Unmap();
 
-        void* GetResource()            const { return m_buffer; }
+        void* GetResource()         const { return m_buffer; }
         uint32_t GetIndexCount()    const { return m_index_count; }
-        bool Is16Bit()                const { return sizeof(uint16_t) == m_stride; }
-        bool Is32Bit()                const { return sizeof(uint32_t) == m_stride; }
+        bool Is16Bit()              const { return sizeof(uint16_t) == m_stride; }
+        bool Is32Bit()              const { return sizeof(uint32_t) == m_stride; }
 
     protected:
         bool _create(const void* indices);
@@ -82,12 +82,12 @@ namespace Spartan
 
         bool m_persistent_mapping   = true; // only affects Vulkan
         void* m_mapped              = nullptr;
-        uint32_t m_stride            = 0;
-        uint32_t m_index_count        = 0;
+        uint32_t m_stride           = 0;
+        uint32_t m_index_count      = 0;
         
         // API
         std::shared_ptr<RHI_Device> m_rhi_device;
-        void* m_buffer        = nullptr;
+        void* m_buffer      = nullptr;
         void* m_allocation  = nullptr;
         bool m_is_mappable  = true;
     };

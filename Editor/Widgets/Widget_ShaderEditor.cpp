@@ -41,7 +41,7 @@ Widget_ShaderEditor::Widget_ShaderEditor(Editor* editor) : Widget(editor)
 {
     m_title         = "Shader Editor";
     m_flags         |= ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoScrollbar;
-    m_is_visible	= false;
+    m_is_visible    = false;
     m_size          = ImVec2(1366, 1000);
     m_text_editor   = make_unique<Widget_TextEditor>();
     m_renderer      = m_context->GetSubsystem<Renderer>();

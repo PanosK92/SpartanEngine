@@ -71,6 +71,8 @@ namespace Spartan
 
     struct RHI_Vertex_PosCol
     {
+        RHI_Vertex_PosCol() = default;
+
         RHI_Vertex_PosCol(const Math::Vector3& pos, const Math::Vector4& col)
         {
             this->pos[0] = pos.x;

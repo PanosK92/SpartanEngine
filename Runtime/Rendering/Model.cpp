@@ -61,7 +61,7 @@ namespace Spartan
         m_root_entity.reset();
         m_vertex_buffer.reset();
         m_index_buffer.reset();
-        m_mesh->Geometry_Clear();
+        m_mesh->Clear();
         m_aabb.Undefine();
         m_normalized_scale = 1.0f;
         m_is_animated = false;
@@ -113,7 +113,7 @@ namespace Spartan
         // Compute memory usage
         {
             // Cpu
-            m_size_cpu = !m_mesh ? 0 : m_mesh->Geometry_MemoryUsage();
+            m_size_cpu = !m_mesh ? 0 : m_mesh->GetMemoryUsage();
 
             // Gpu
             if (m_vertex_buffer && m_index_buffer)
@@ -159,7 +159,7 @@ namespace Spartan
 
     void Model::GetGeometry(const uint32_t index_offset, const uint32_t index_count, const uint32_t vertex_offset, const uint32_t vertex_count, vector<uint32_t>* indices, vector<RHI_Vertex_PosTexNorTan>* vertices) const
     {
-        m_mesh->Geometry_Get(index_offset, index_count, vertex_offset, vertex_count, indices, vertices);
+        m_mesh->GetGeometry(index_offset, index_count, vertex_offset, vertex_count, indices, vertices);
     }
 
     void Model::UpdateGeometry()

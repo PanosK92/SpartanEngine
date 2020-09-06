@@ -29,9 +29,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     // Create editor
     Editor editor;
 
-	// Create window
-	Window::Create(hInstance, "Spartan " + std::string(engine_version));	
-	Window::Show();
+    // Create window
+    Window::Create(hInstance, "Spartan " + std::string(engine_version));    
+    Window::Show();
 
     // Hook it up with the editor
     Window::g_on_message = [&editor](Spartan::WindowData& window_data) { editor.OnWindowMessage(window_data); };
@@ -43,6 +43,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     }
 
     // Exit
-	Window::Destroy();
+    Window::Destroy();
     return 0;
 }

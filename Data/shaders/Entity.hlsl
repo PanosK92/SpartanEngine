@@ -35,11 +35,11 @@ PixelInputType mainVS(Vertex_PosUvNorTan input)
 {
     PixelInputType output;
 
-    input.position.w = 1.0f;
-    output.positionWS = mul(input.position, g_transform).xyz;
-    output.position = mul(float4(output.positionWS, 1.0f), g_viewProjectionUnjittered);
-    output.normal = mul(input.normal, (float3x3)g_transform);
-    output.uv = input.uv;
+    input.position.w    = 1.0f;
+    output.positionWS   = mul(input.position, g_transform).xyz;
+    output.position     = mul(float4(output.positionWS, 1.0f), g_view_projection_unjittered);
+    output.normal       = mul(input.normal, (float3x3)g_transform);
+    output.uv           = input.uv;
 
     return output;
 }
@@ -73,7 +73,7 @@ float4 mainPS(PixelInputType input) : SV_TARGET
 #ifdef OUTLINE
     float normal_threshold = 0.2f;
 
-    float2 uv               = project(input.positionWS.xyz, g_viewProjectionUnjittered).xy;
+    float2 uv               = project(input.positionWS.xyz, g_view_projection_unjittered).xy;
     float scale             = 1.0f;
     float halfScaleFloor    = floor(scale * 0.5f);
     float halfScaleCeil     = ceil(scale * 0.5f);

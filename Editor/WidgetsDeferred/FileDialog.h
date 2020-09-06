@@ -29,22 +29,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 enum FileDialog_Type
 {
-	FileDialog_Type_Browser,
-	FileDialog_Type_FileSelection
+    FileDialog_Type_Browser,
+    FileDialog_Type_FileSelection
 };
 
 enum FileDialog_Operation
 {
-	FileDialog_Op_Open,
-	FileDialog_Op_Load,
-	FileDialog_Op_Save
+    FileDialog_Op_Open,
+    FileDialog_Op_Load,
+    FileDialog_Op_Save
 };
 
 enum FileDialog_Filter
 {
-	FileDialog_Filter_All,
-	FileDialog_Filter_Scene,
-	FileDialog_Filter_Model
+    FileDialog_Filter_All,
+    FileDialog_Filter_Scene,
+    FileDialog_Filter_Model
 };
 
 // Keeps tracks of directory navigation
@@ -158,71 +158,71 @@ public:
 class FileDialogItem
 {
 public:
-	FileDialogItem(const std::string& path, const Thumbnail& thumbnail)
-	{
-		m_path			= path;
-		m_thumbnail		= thumbnail;
-		m_id			= Spartan::Spartan_Object::GenerateId();
-		m_isDirectory	= Spartan::FileSystem::IsDirectory(path);
-		m_label			= Spartan::FileSystem::GetFileNameFromFilePath(path);
-	}
+    FileDialogItem(const std::string& path, const Thumbnail& thumbnail)
+    {
+        m_path            = path;
+        m_thumbnail        = thumbnail;
+        m_id            = Spartan::Spartan_Object::GenerateId();
+        m_isDirectory    = Spartan::FileSystem::IsDirectory(path);
+        m_label            = Spartan::FileSystem::GetFileNameFromFilePath(path);
+    }
 
-	const auto& GetPath()           const { return m_path; }
-	const auto& GetLabel()          const { return m_label; }
-	auto GetId()                    const { return m_id; }
-	auto GetTexture()               const { return IconProvider::Get().GetTextureByThumbnail(m_thumbnail); }
-	auto IsDirectory()              const { return m_isDirectory; }
-	auto GetTimeSinceLastClickMs()  const { return static_cast<float>(m_time_since_last_click.count()); }
+    const auto& GetPath()           const { return m_path; }
+    const auto& GetLabel()          const { return m_label; }
+    auto GetId()                    const { return m_id; }
+    auto GetTexture()               const { return IconProvider::Get().GetTextureByThumbnail(m_thumbnail); }
+    auto IsDirectory()              const { return m_isDirectory; }
+    auto GetTimeSinceLastClickMs()  const { return static_cast<float>(m_time_since_last_click.count()); }
 
-	void Clicked()	
-	{
-		const auto now			= std::chrono::high_resolution_clock::now();
-		m_time_since_last_click	= now - m_last_click_time;
-		m_last_click_time		= now;
-	}
-	
+    void Clicked()    
+    {
+        const auto now            = std::chrono::high_resolution_clock::now();
+        m_time_since_last_click    = now - m_last_click_time;
+        m_last_click_time        = now;
+    }
+    
 private:
-	Thumbnail m_thumbnail;
-	unsigned int m_id;
-	std::string m_path;
-	std::string m_label;
-	bool m_isDirectory;
-	std::chrono::duration<double, std::milli> m_time_since_last_click;
-	std::chrono::time_point<std::chrono::high_resolution_clock> m_last_click_time;
+    Thumbnail m_thumbnail;
+    unsigned int m_id;
+    std::string m_path;
+    std::string m_label;
+    bool m_isDirectory;
+    std::chrono::duration<double, std::milli> m_time_since_last_click;
+    std::chrono::time_point<std::chrono::high_resolution_clock> m_last_click_time;
 };
 
 class FileDialog
 {
 public:
-	FileDialog(Spartan::Context* context, bool standalone_window, FileDialog_Type type, FileDialog_Operation operation, FileDialog_Filter filter);
+    FileDialog(Spartan::Context* context, bool standalone_window, FileDialog_Type type, FileDialog_Operation operation, FileDialog_Filter filter);
 
-	// Type & Filter
-	auto GetType()      const { return m_type; }
+    // Type & Filter
+    auto GetType()      const { return m_type; }
     auto GetFilter()    const { return m_filter; }
 
-	// Operation
+    // Operation
     auto GetOperation() const { return m_operation; }
-	void SetOperation(FileDialog_Operation operation);
+    void SetOperation(FileDialog_Operation operation);
 
-	// Shows the dialog and returns true if a a selection was made
-	bool Show(bool* is_visible, std::string* directory = nullptr, std::string* file_path = nullptr);
+    // Shows the dialog and returns true if a a selection was made
+    bool Show(bool* is_visible, std::string* directory = nullptr, std::string* file_path = nullptr);
 
-	void SetCallbackOnItemClicked(const std::function<void(const std::string&)>& callback)			{ m_callback_on_item_clicked = callback; }
-	void SetCallbackOnItemDoubleClicked(const std::function<void(const std::string&)>& callback)	{ m_callback_on_item_double_clicked = callback; }
+    void SetCallbackOnItemClicked(const std::function<void(const std::string&)>& callback)            { m_callback_on_item_clicked = callback; }
+    void SetCallbackOnItemDoubleClicked(const std::function<void(const std::string&)>& callback)    { m_callback_on_item_double_clicked = callback; }
 
 private:
-	void ShowTop(bool* is_visible);
-	void ShowMiddle();
-	void ShowBottom(bool* is_visible);
+    void ShowTop(bool* is_visible);
+    void ShowMiddle();
+    void ShowBottom(bool* is_visible);
 
-	// Item functionality handling
-	void ItemDrag(FileDialogItem* item) const;
-	void ItemClick(FileDialogItem* item) const;
-	void ItemContextMenu(FileDialogItem* item);
+    // Item functionality handling
+    void ItemDrag(FileDialogItem* item) const;
+    void ItemClick(FileDialogItem* item) const;
+    void ItemContextMenu(FileDialogItem* item);
 
-	// Misc
+    // Misc
     bool DialogUpdateFromDirectory(const std::string& path);
-	void EmptyAreaContextMenu();
+    void EmptyAreaContextMenu();
 
     // Options
     const bool m_drop_shadow    = true;
@@ -231,9 +231,9 @@ private:
     const Spartan::Math::Vector4 m_content_background_color = Spartan::Math::Vector4(0.0f, 0.0f, 0.0f, 50.0f);
 
     // Flags
-	bool m_is_window;
-	bool m_selection_made;
-	bool m_is_dirty;
+    bool m_is_window;
+    bool m_selection_made;
+    bool m_is_dirty;
     bool m_is_hovering_item;    
     bool m_is_hovering_window;
     std::string m_title;
@@ -252,9 +252,9 @@ private:
     std::vector<FileDialogItem> m_items;
     Spartan::Math::Vector2 m_item_size;
     ImGuiTextFilter m_search_filter;
-	Spartan::Context* m_context;
+    Spartan::Context* m_context;
 
-	// Callbacks
-	std::function<void(const std::string&)> m_callback_on_item_clicked;
-	std::function<void(const std::string&)> m_callback_on_item_double_clicked;
+    // Callbacks
+    std::function<void(const std::string&)> m_callback_on_item_clicked;
+    std::function<void(const std::string&)> m_callback_on_item_double_clicked;
 };

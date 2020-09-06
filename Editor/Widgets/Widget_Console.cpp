@@ -35,49 +35,49 @@ using namespace Math;
 
 Widget_Console::Widget_Console(Editor* editor) : Widget(editor)
 {
-	m_title = "Console";
+    m_title = "Console";
 
-	// Create an implementation of EngineLogger
-	m_logger = make_shared<EngineLogger>();
-	m_logger->SetCallback([this](const LogPackage& package) { AddLogPackage(package); });
+    // Create an implementation of EngineLogger
+    m_logger = make_shared<EngineLogger>();
+    m_logger->SetCallback([this](const LogPackage& package) { AddLogPackage(package); });
 
-	// Set the logger implementation for the engine to use
-	Log::SetLogger(m_logger);
+    // Set the logger implementation for the engine to use
+    Log::SetLogger(m_logger);
 }
 
 void Widget_Console::Tick()
 {
-	// Clear Button
-	if (ImGui::Button("Clear"))	{ Clear();} ImGui::SameLine();
+    // Clear Button
+    if (ImGui::Button("Clear"))    { Clear();} ImGui::SameLine();
 
-	// Lambda for info, warning, error filter buttons
-	const auto button_log_type_visibility_toggle = [this](const Icon_Type icon, uint32_t index)
-	{
+    // Lambda for info, warning, error filter buttons
+    const auto button_log_type_visibility_toggle = [this](const Icon_Type icon, uint32_t index)
+    {
         bool& visibility = m_log_type_visibility[index];
-		ImGui::PushStyleColor(ImGuiCol_Button, visibility ? ImGui::GetStyle().Colors[ImGuiCol_Button] : ImGui::GetStyle().Colors[ImGuiCol_FrameBg]);
-		if (ImGuiEx::ImageButton(icon, 15.0f))
-		{
+        ImGui::PushStyleColor(ImGuiCol_Button, visibility ? ImGui::GetStyle().Colors[ImGuiCol_Button] : ImGui::GetStyle().Colors[ImGuiCol_FrameBg]);
+        if (ImGuiEx::ImageButton(icon, 15.0f))
+        {
             visibility = !visibility;
             m_scroll_to_bottom = true;
-		}
-		ImGui::PopStyleColor();
-		ImGui::SameLine();
+        }
+        ImGui::PopStyleColor();
+        ImGui::SameLine();
         ImGui::Text("%d", m_log_type_count[index]);
         ImGui::SameLine();
-	};
+    };
 
-	// Log category visibility buttons
-	button_log_type_visibility_toggle(Icon_Console_Info,       0);
-	button_log_type_visibility_toggle(Icon_Console_Warning,    1);
-	button_log_type_visibility_toggle(Icon_Console_Error,      2);
+    // Log category visibility buttons
+    button_log_type_visibility_toggle(Icon_Console_Info,       0);
+    button_log_type_visibility_toggle(Icon_Console_Warning,    1);
+    button_log_type_visibility_toggle(Icon_Console_Error,      2);
 
-	// Text filter
+    // Text filter
     const float label_width = 37.0f; //ImGui::CalcTextSize("Filter", nullptr, true).x;
-	m_log_filter.Draw("Filter", ImGui::GetContentRegionAvail().x - label_width);
-	ImGui::Separator();
+    m_log_filter.Draw("Filter", ImGui::GetContentRegionAvail().x - label_width);
+    ImGui::Separator();
 
-	// Content
-	if (ImGui::BeginChild("scrolling", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar))
+    // Content
+    if (ImGui::BeginChild("scrolling", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar))
     {
         ImVec4 color_odd    = ImGui::GetStyle().Colors[ImGuiCol_FrameBg];
         ImVec4 color_even   = color_odd; color_even.w = 0;
@@ -167,11 +167,11 @@ void Widget_Console::AddLogPackage(const LogPackage& package)
     while (m_is_reading) {}
 
     // Save to deque
-	m_logs.push_back(package);
-	if (static_cast<uint32_t>(m_logs.size()) > m_log_max_count)
-	{
-		m_logs.pop_front();
-	}
+    m_logs.push_back(package);
+    if (static_cast<uint32_t>(m_logs.size()) > m_log_max_count)
+    {
+        m_logs.pop_front();
+    }
 
     // Update count
     m_log_type_count[package.error_level]++;
@@ -197,8 +197,8 @@ void Widget_Console::AddLogPackage(const LogPackage& package)
 
 void Widget_Console::Clear()
 {
-	m_logs.clear();
-	m_logs.shrink_to_fit();
+    m_logs.clear();
+    m_logs.shrink_to_fit();
 
     m_log_type_max_width[0] = 0;
     m_log_type_max_width[1] = 0;

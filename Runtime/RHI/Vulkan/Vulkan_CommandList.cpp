@@ -818,6 +818,14 @@ namespace Spartan
         // Not needed
     }
 
+    void RHI_CommandList::ResetDescriptorCache()
+    {
+        if (m_descriptor_cache)
+        {
+            m_descriptor_cache->Reset();
+        }
+    }
+
     void RHI_CommandList::Timeblock_Start(const RHI_PipelineState* pipeline_state)
     {
         if (!pipeline_state || !pipeline_state->pass_name)

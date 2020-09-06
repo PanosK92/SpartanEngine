@@ -32,7 +32,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    void Mesh::Geometry_Clear()
+    void Mesh::Clear()
     {
         m_vertices.clear();
         m_vertices.shrink_to_fit();
@@ -40,7 +40,7 @@ namespace Spartan
         m_indices.shrink_to_fit();
     }
 
-    uint32_t Mesh::Geometry_MemoryUsage() const
+    uint32_t Mesh::GetMemoryUsage() const
     {
         uint32_t size = 0;
         size += uint32_t(m_vertices.size()    * sizeof(RHI_Vertex_PosTexNorTan));
@@ -49,23 +49,23 @@ namespace Spartan
         return size;
     }
 
-    void Mesh::Geometry_Get(uint32_t indexOffset, uint32_t indexCount, uint32_t vertexOffset, unsigned vertexCount, vector<uint32_t>* indices, vector<RHI_Vertex_PosTexNorTan>* vertices)
+    void Mesh::GetGeometry(uint32_t indexOffset, uint32_t indexCount, uint32_t vertexOffset, unsigned vertexCount, vector<uint32_t>* indices, vector<RHI_Vertex_PosTexNorTan>* vertices)
     {
-        if (indexOffset == 0 || indexCount == 0 || vertexOffset == 0 || vertexCount == 0 || !vertices || !indices)
+        if ((indexOffset == 0 && indexCount == 0) || (vertexOffset == 0 && vertexCount == 0) || !vertices || !indices)
         {
             LOG_ERROR("Mesh::Geometry_Get: Invalid parameters");
             return;
         }
 
         // Indices
-        const auto indexFirst    = m_indices.begin() + indexOffset;
+        const auto indexFirst   = m_indices.begin() + indexOffset;
         const auto indexLast    = m_indices.begin() + indexOffset + indexCount;
-        *indices        = vector<uint32_t>(indexFirst, indexLast);
+        *indices                = vector<uint32_t>(indexFirst, indexLast);
 
         // Vertices
-        const auto vertexFirst    = m_vertices.begin() + vertexOffset;
-        const auto vertexLast        = m_vertices.begin() + vertexOffset + vertexCount;
-        *vertices            = vector<RHI_Vertex_PosTexNorTan>(vertexFirst, vertexLast);
+        const auto vertexFirst  = m_vertices.begin() + vertexOffset;
+        const auto vertexLast   = m_vertices.begin() + vertexOffset + vertexCount;
+        *vertices               = vector<RHI_Vertex_PosTexNorTan>(vertexFirst, vertexLast);
     }
 
     void Mesh::Vertices_Append(const vector<RHI_Vertex_PosTexNorTan>& vertices, uint32_t* vertexOffset)

@@ -36,23 +36,22 @@ namespace Spartan
 {
     Transform::Transform(Context* context, Entity* entity, uint32_t id /*= 0*/) : IComponent(context, entity, id, this)
     {
-        m_positionLocal        = Vector3::Zero;
-        m_rotationLocal        = Quaternion(0, 0, 0, 1);
-        m_scaleLocal        = Vector3::One;
-        m_matrix            = Matrix::Identity;
-        m_matrixLocal        = Matrix::Identity;
-        m_wvp_previous        = Matrix::Identity;
-        m_parent            = nullptr;
+        m_positionLocal = Vector3::Zero;
+        m_rotationLocal = Quaternion(0, 0, 0, 1);
+        m_scaleLocal    = Vector3::One;
+        m_matrix        = Matrix::Identity;
+        m_matrixLocal   = Matrix::Identity;
+        m_wvp_previous  = Matrix::Identity;
+        m_parent        = nullptr;
 
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_positionLocal,    Vector3);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_rotationLocal,    Quaternion);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_scaleLocal, Vector3);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_matrix, Matrix);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_matrixLocal, Matrix);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_lookAt, Vector3);
+        REGISTER_ATTRIBUTE_VALUE_VALUE(m_positionLocal, Vector3);
+        REGISTER_ATTRIBUTE_VALUE_VALUE(m_rotationLocal, Quaternion);
+        REGISTER_ATTRIBUTE_VALUE_VALUE(m_scaleLocal,    Vector3);
+        REGISTER_ATTRIBUTE_VALUE_VALUE(m_matrix,        Matrix);
+        REGISTER_ATTRIBUTE_VALUE_VALUE(m_matrixLocal,   Matrix);
+        REGISTER_ATTRIBUTE_VALUE_VALUE(m_lookAt,        Vector3);
     }
 
-    //= ICOMPONENT ==================================================================================
     void Transform::OnInitialize()
     {
         UpdateTransform();
@@ -86,7 +85,7 @@ namespace Spartan
 
         UpdateTransform();
     }
-    //===============================================================================================
+
     void Transform::UpdateTransform()
     {
         // Compute local transform
@@ -109,7 +108,6 @@ namespace Spartan
         }
     }
 
-    //= TRANSLATION ==================================================================================
     void Transform::SetPosition(const Vector3& position)
     {
         if (GetPosition() == position)
@@ -126,9 +124,7 @@ namespace Spartan
         m_positionLocal = position;
         UpdateTransform();
     }
-    //================================================================================================
 
-    //= ROTATION =====================================================================================
     void Transform::SetRotation(const Quaternion& rotation)
     {
         if (GetRotation() == rotation)
@@ -145,9 +141,7 @@ namespace Spartan
         m_rotationLocal = rotation;
         UpdateTransform();
     }
-    //================================================================================================
 
-    //= SCALE ========================================================================================
     void Transform::SetScale(const Vector3& scale)
     {
         if (GetScale() == scale)
@@ -164,15 +158,13 @@ namespace Spartan
         m_scaleLocal = scale;
 
         // A scale of 0 will cause a division by zero when decomposing the world transform matrix.
-        m_scaleLocal.x = (m_scaleLocal.x == 0.0f) ? Helper::M_EPSILON : m_scaleLocal.x;
-        m_scaleLocal.y = (m_scaleLocal.y == 0.0f) ? Helper::M_EPSILON : m_scaleLocal.y;
-        m_scaleLocal.z = (m_scaleLocal.z == 0.0f) ? Helper::M_EPSILON : m_scaleLocal.z;
+        m_scaleLocal.x = (m_scaleLocal.x == 0.0f) ? Helper::EPSILON : m_scaleLocal.x;
+        m_scaleLocal.y = (m_scaleLocal.y == 0.0f) ? Helper::EPSILON : m_scaleLocal.y;
+        m_scaleLocal.z = (m_scaleLocal.z == 0.0f) ? Helper::EPSILON : m_scaleLocal.z;
 
         UpdateTransform();
     }
-    //================================================================================================
 
-    //= TRANSLATION/ROTATION =========================================================================
     void Transform::Translate(const Vector3& delta)
     {
         if (!HasParent())
@@ -227,9 +219,6 @@ namespace Spartan
         return GetRotationLocal() * Vector3::Left;
     }
 
-    //================================================================================================
-
-    //= HIERARCHY ====================================================================================
     // Sets a parent for this transform
     void Transform::SetParent(Transform* new_parent)
     {

@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Transform.h"
 #include "Renderable.h"
 #include "../Entity.h"
+#include "../World.h"
 #include "../../Input/Input.h"
 #include "../../IO/FileStream.h"
 #include "../../Rendering/Renderer.h"
@@ -154,7 +155,7 @@ namespace Spartan
     {
         const BoundingBox& box  = renderable->GetAabb();
         const Vector3 center    = box.GetCenter();
-        const Vector3 extents    = box.GetExtents();
+        const Vector3 extents   = box.GetExtents();
 
         return m_frustrum.IsVisible(center, extents);
     }
@@ -168,7 +169,7 @@ namespace Spartan
     {
         const RHI_Viewport& viewport            = m_renderer->GetViewport();
         const Vector2& offset                   = m_renderer->GetViewportOffset();
-        const Vector2 mouse_position_relative    = mouse_position - offset;
+        const Vector2 mouse_position_relative   = mouse_position - offset;
 
         // Ensure the ray is inside the viewport
         const auto x_outside = (mouse_position.x < offset.x) || (mouse_position.x > offset.x + viewport.width);
@@ -176,60 +177,96 @@ namespace Spartan
         if (x_outside || y_outside)
             return false;
 
-        // Trace ray
-        m_ray        = Ray(GetTransform()->GetPosition(), Unproject(mouse_position_relative));
-        auto hits    = m_ray.Trace(m_context);
+        // Create mouse ray
+        Vector3 ray_start   = GetTransform()->GetPosition();
+        Vector3 ray_end     = Unproject(mouse_position_relative);
+        m_ray               = Ray(ray_start, ray_end);
 
-        // Create a struct to hold hit related data
-        struct scored_entity
+        // Traces ray against all AABBs in the world
+        vector<RayHit> hits;
         {
-            scored_entity(const shared_ptr<Entity>& entity, const float distance_ray, const float distance_obb)
+            const auto& entities = m_context->GetSubsystem<World>()->EntityGetAll();
+            for (const auto& entity : entities)
             {
-                this->entity = entity;
-                score = distance_ray * 0.1f + distance_obb * 0.9f;
+                // Make sure there entity has a renderable
+                if (!entity->HasComponent<Renderable>())
+                    continue;
+
+                // Get object oriented bounding box
+                const BoundingBox& aabb = entity->GetComponent<Renderable>()->GetAabb();
+
+                // Compute hit distance
+                float distance = m_ray.HitDistance(aabb);
+
+                // Don't store hit data if there was no hit
+                if (distance == Helper::INFINITY_)
+                    continue;
+
+                hits.emplace_back(
+                    entity,                                             // Entity
+                    m_ray.GetStart() + distance * m_ray.GetDirection(), // Position
+                    distance,                                           // Distance
+                    distance == 0.0f                                    // Inside
+                );
             }
 
-            shared_ptr<Entity> entity;
-            float score;
-        };
-        vector<scored_entity> m_scored;
-
-        // Go through all the hits and score them
-        m_scored.reserve(hits.size());
-        for (const auto& hit : hits)
-        {
-            // Filter hits that start inside OBBs
-            if (hit.m_inside)
-                continue;
-
-            // Score this hit
-            const BoundingBox& aabb = hit.m_entity->GetComponent<Renderable>()->GetAabb();
-            const float distance_abb      = Vector3::DistanceSquared(hit.m_position, aabb.GetCenter());
-            m_scored.emplace_back
-            (
-                hit.m_entity,
-                1.0f - hit.m_distance / m_ray.GetLength(),          // normalized ray distance score
-                1.0f - (distance_abb / aabb.GetExtents().Length())  // normalized aabb center distance score
-            );
+            // Sort by distance (ascending)
+            std::sort(hits.begin(), hits.end(), [](const RayHit& a, const RayHit& b) { return a.m_distance < b.m_distance; });
         }
-        m_scored.shrink_to_fit();
 
-        // Return entity with highest score
-        picked = nullptr;
-        if (!m_scored.empty())
+        // Check if there are any hits
+        if (hits.empty())
+            return false;
+
+        // If there is a single hit, return that
+        if (hits.size() == 1)
         {
-            // ordering descendingly
-            sort(m_scored.begin(), m_scored.end(), [](const scored_entity& a, const scored_entity& b) { return a.score > b.score; });
-
-            picked = m_scored.front().entity;
+            picked = hits.front().m_entity;
             return true;
         }
 
-        // If no hit was good enough but there are hits, compromise by picking the closest one
-        if (!picked && !hits.empty())
-            picked = hits.front().m_entity;
+        // Draw picking ray
+        //m_renderer->DrawDebugLine(ray_start, ray_end, Vector4(0, 1, 0, 1), Vector4(0, 1, 0, 1), 5.0f, true);
 
-        return true;
+        // If there are more hits, perform triangle intersection
+        float distance_min = numeric_limits<float>::max();
+        for (RayHit& hit : hits)
+        {
+            // Get entity geometry
+            Renderable* renderable = hit.m_entity->GetRenderable();
+            vector<uint32_t> indicies;
+            vector<RHI_Vertex_PosTexNorTan> vertices;
+            renderable->GeometryGet(&indicies, &vertices);
+            if (indicies.empty()|| vertices.empty())
+            {
+                LOG_ERROR("Failed to get geometry of entity %s, skipping intersection test.");
+                continue;
+            }
+
+            // Compute matrix which can transform vertices to view space
+            Matrix vertex_transform = hit.m_entity->GetTransform()->GetMatrix();
+
+            // Go through each face
+            for (uint32_t i = 0; i < indicies.size(); i += 3)
+            {
+                Vector3 p1_world = Vector3(vertices[indicies[i]].pos) * vertex_transform;
+                Vector3 p2_world = Vector3(vertices[indicies[i + 1]].pos) * vertex_transform;
+                Vector3 p3_world = Vector3(vertices[indicies[i + 2]].pos) * vertex_transform;
+
+                float distance = m_ray.HitDistance(p1_world, p2_world, p3_world);
+                
+                if (distance < distance_min)
+                {
+                    // Draw min distance triangle
+                    //m_renderer->DrawDebugTriangle(p1_world, p2_world, p3_world, Vector4(1.0f, 0.0f, 0.0f, 1.0f), 5.0f, false);
+
+                    picked = hit.m_entity;
+                    distance_min = distance;
+                }
+            }
+        }
+
+        return picked != nullptr;
     }
 
     Vector2 Camera::Project(const Vector3& position_world) const
@@ -276,13 +313,12 @@ namespace Spartan
 
     Vector3 Camera::Unproject(const Vector2& position_screen) const
     {
-        const auto& viewport = m_renderer->GetViewport();
-
         // Convert screen space position to clip space position
         Vector3 position_clip;
+        const auto& viewport = m_renderer->GetViewport();
         position_clip.x = (position_screen.x / viewport.width) * 2.0f - 1.0f;
         position_clip.y = (position_screen.y / viewport.height) * -2.0f + 1.0f;
-        position_clip.z = 1.0f;
+        position_clip.z = m_near_plane;
 
         // Compute world space position
         const auto view_projection_inverted    = m_view_projection.Inverted();
@@ -358,9 +394,9 @@ namespace Spartan
 
     Matrix Camera::ComputeViewMatrix() const
     {
-        const auto position    = GetTransform()->GetPosition();
+        const auto position = GetTransform()->GetPosition();
         auto look_at        = GetTransform()->GetRotation() * Vector3::Forward;
-        const auto up        = GetTransform()->GetRotation() * Vector3::Up;
+        const auto up       = GetTransform()->GetRotation() * Vector3::Up;
 
         // offset look_at by current position
         look_at += position;

@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ===========================
-#include <vector>
 #include "Vector3.h"
 #include "../Core/Spartan_Definitions.h"
 //======================================
@@ -43,11 +42,11 @@ namespace Spartan
             Ray(const Vector3& start, const Vector3& end);
             ~Ray() = default;
 
-            // Traces a ray against all entities in the world, returns all hits in a vector.
-            std::vector<RayHit> Trace(Context* context) const;
-
             // Returns hit distance to a bounding box, or infinity if there is no hit.
             float HitDistance(const BoundingBox& box) const;
+
+            // Return hit distance to a triangle, or infinity if no hit. Optionally return hit normal and hit barycentric coordinate at intersect point.
+            float HitDistance(const Vector3& v1, const Vector3& v2, const Vector3& v3, Vector3* out_normal = nullptr, Vector3* out_bary = nullptr) const;
 
             const auto& GetStart()      const { return m_start; }
             const auto& GetEnd()        const { return m_end; }

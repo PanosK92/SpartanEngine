@@ -40,15 +40,15 @@ using namespace Math;
 
 Widget_Toolbar::Widget_Toolbar(Editor* editor) : Widget(editor)
 {
-	m_title = "Toolbar";
+    m_title = "Toolbar";
     
-	m_flags =
+    m_flags =
         ImGuiWindowFlags_NoCollapse         |
-		ImGuiWindowFlags_NoResize           |
-		ImGuiWindowFlags_NoMove             |
-		ImGuiWindowFlags_NoSavedSettings    |
-		ImGuiWindowFlags_NoScrollbar        |
-		ImGuiWindowFlags_NoTitleBar         |
+        ImGuiWindowFlags_NoResize           |
+        ImGuiWindowFlags_NoMove             |
+        ImGuiWindowFlags_NoSavedSettings    |
+        ImGuiWindowFlags_NoScrollbar        |
+        ImGuiWindowFlags_NoTitleBar         |
         ImGuiWindowFlags_NoDocking;
 
     m_callback_on_visible = [this]()
@@ -87,7 +87,7 @@ void Widget_Toolbar::Tick()
         ImGui::PopStyleColor();
     };
 
-    // Play button	
+    // Play button    
     show_button(Icon_Button_Play, [this]() { return m_context->m_engine->EngineMode_IsSet(Engine_Game); }, [this]() { m_context->m_engine->EngineMode_Toggle(Engine_Game); });
 
     for (auto& widget_it : m_widgets)

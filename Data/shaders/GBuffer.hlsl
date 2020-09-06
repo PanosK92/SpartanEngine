@@ -49,7 +49,7 @@ PixelInputType mainVS(Vertex_PosUvNorTan input)
     input.position.w            = 1.0f;     
     output.position_ss_previous = mul(input.position, g_object_wvp_previous);
     output.position             = mul(input.position, g_object_transform);
-    output.position             = mul(output.position, g_viewProjection);
+    output.position             = mul(output.position, g_view_projection);
     output.position_ss_current  = output.position;
     output.normal               = normalize(mul(input.normal, (float3x3)g_object_transform)).xyz;
     output.tangent              = normalize(mul(input.tangent, (float3x3)g_object_transform)).xyz;

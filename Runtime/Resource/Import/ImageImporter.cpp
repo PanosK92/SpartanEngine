@@ -35,22 +35,22 @@ using namespace std;
 
 namespace Spartan::freeimage_helper
 {
-    static FREE_IMAGE_FILTER rescale_filter = FILTER_LANCZOS3;
+    static FREE_IMAGE_FILTER rescale_filter = FILTER_BOX;
 
     // A struct that rescaling threads will work with
     struct RescaleJob
     {
-        uint32_t width            = 0;
-        uint32_t height            = 0;
-        uint32_t channel_count    = 0;
-        vector<std::byte>* data    = nullptr;
+        uint32_t width           = 0;
+        uint32_t height          = 0;
+        uint32_t channel_count   = 0;
+        vector<std::byte>* data  = nullptr;
         bool done                = false;
 
         RescaleJob(const uint32_t width, const uint32_t height, const uint32_t channel_count)
         {
-            this->width            = width;
+            this->width         = width;
             this->height        = height;
-            this->channel_count    = channel_count;
+            this->channel_count = channel_count;
         }
     };
 
@@ -134,8 +134,8 @@ namespace Spartan
         // Register error handler
         const auto free_image_error_handler = [](const FREE_IMAGE_FORMAT fif, const char* message)
         {
-            const auto text        = (message != nullptr) ? message : "Unknown error";
-            const auto format    = (fif != FIF_UNKNOWN) ? FreeImage_GetFormatFromFIF(fif) : "Unknown";
+            const auto text     = (message != nullptr) ? message : "Unknown error";
+            const auto format   = (fif != FIF_UNKNOWN) ? FreeImage_GetFormatFromFIF(fif) : "Unknown";
             
             LOG_ERROR("%s, Format: %s", text, format);
         };
@@ -166,7 +166,7 @@ namespace Spartan
 
         // Acquire image format
         auto format    = FreeImage_GetFileType(file_path.c_str(), 0);
-        format        = (format == FIF_UNKNOWN) ? FreeImage_GetFIFFromFilename(file_path.c_str()) : format;  // If the format is unknown, try to get it from the the filename    
+        format        = (format == FIF_UNKNOWN) ? FreeImage_GetFIFFromFilename(file_path.c_str()) : format;  // If the format is unknown, try to work it out from the file path
         if (!FreeImage_FIFSupportsReading(format)) // If the format is still unknown, give up
         {
             LOG_ERROR("Unsupported format");
@@ -177,7 +177,7 @@ namespace Spartan
         auto bitmap = FreeImage_Load(format, file_path.c_str());
         if (!bitmap)
         {
-            LOG_ERROR("Failed to load");
+            LOG_ERROR("Failed to load \"%s\"", file_path.c_str());
             return false;
         }
 
@@ -199,18 +199,18 @@ namespace Spartan
         const RHI_Format image_format           = freeimage_helper::get_rhi_format(image_bytes_per_channel, image_channel_count);
 
         // Perform any scaling (if necessary)
-        const auto user_define_dimensions    = (texture->GetWidth() != 0 && texture->GetHeight() != 0);
-        const auto dimension_mismatch        = (FreeImage_GetWidth(bitmap) != texture->GetWidth() && FreeImage_GetHeight(bitmap) != texture->GetHeight());
+        const auto user_define_dimensions   = (texture->GetWidth() != 0 && texture->GetHeight() != 0);
+        const auto dimension_mismatch       = (FreeImage_GetWidth(bitmap) != texture->GetWidth() && FreeImage_GetHeight(bitmap) != texture->GetHeight());
         const auto scale                    = user_define_dimensions && dimension_mismatch;
-        bitmap                                = scale ? _FreeImage_Rescale(bitmap, texture->GetWidth(), texture->GetHeight()) : bitmap;
+        bitmap                              = scale ? _FreeImage_Rescale(bitmap, texture->GetWidth(), texture->GetHeight()) : bitmap;
 
         // Deduce image properties
         const unsigned int image_width    = FreeImage_GetWidth(bitmap);
         const unsigned int image_height = FreeImage_GetHeight(bitmap);
 
         // Fill RGBA vector with the data from the FIBITMAP
-        const auto mip = texture->AddMipmap();
-        GetBitsFromFibitmap(mip, bitmap, image_width, image_height, image_channel_count);
+        std::vector<std::byte>& mip = texture->AddMip();
+        GetBitsFromFibitmap(&mip, bitmap, image_width, image_height, image_channel_count);
 
         // If the texture supports mipmaps, generate them
         if (generate_mipmaps)
@@ -275,16 +275,16 @@ namespace Spartan
             
             // Resize the RHI_Texture vector accordingly
             const auto size = width * height * channels;
-            auto mip        = texture->AddMipmap();
-            mip->reserve(size);
-            mip->resize(size);
+            std::vector<std::byte>& mip = texture->AddMip();
+            mip.reserve(size);
+            mip.resize(size);
         }
 
         // Pass data pointers (now that the RHI_Texture mip vector has been constructed)
         for (uint32_t i = 0; i < jobs.size(); i++)
         {
             // reminder: i + 1 because the 0 mip is the default image size
-            jobs[i].data = texture->GetData(i + 1);
+            jobs[i].data = &texture->GetMip(i + 1);
         }
 
         // Parallelize mipmap generation using multiple threads (because FreeImage_Rescale() using FILTER_LANCZOS3 is expensive)

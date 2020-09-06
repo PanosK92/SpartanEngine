@@ -75,6 +75,12 @@ namespace Spartan
         m_descriptor_layout_current->NeedsToBind();
     }
 
+    void RHI_DescriptorCache::Reset()
+    {
+        // This will reset everything
+        SetDescriptorSetCapacity(1);
+    }
+    
     bool RHI_DescriptorCache::SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer)
     {
         if (!m_descriptor_layout_current)
@@ -143,9 +149,7 @@ namespace Spartan
         // If we are over-budget, re-allocate the descriptor pool with double size
         if (required_capacity > m_descriptor_set_capacity)
         {
-            m_descriptor_set_capacity *= 2;
-            SetDescriptorSetCapacity(m_descriptor_set_capacity);
-            LOG_INFO("Capacity has been increased to %d elements", m_descriptor_set_capacity);
+            SetDescriptorSetCapacity(m_descriptor_set_capacity * 2);
         }
     }
 

@@ -32,48 +32,48 @@ namespace Spartan { class Entity; }
 class Widget_World : public Widget
 {
 public:
-	Widget_World(Editor* editor);
-	void Tick() override;
+    Widget_World(Editor* editor);
+    void Tick() override;
 
 private:
-	// Tree
-	void TreeShow();
-	void OnTreeBegin();
-	void OnTreeEnd();
-	void TreeAddEntity(Spartan::Entity* entity);
-	void HandleClicking();
-	void EntityHandleDragDrop(Spartan::Entity* entity_ptr) const;
-	void SetSelectedEntity(const std::shared_ptr<Spartan::Entity>& entity, bool from_editor = true);
+    // Tree
+    void TreeShow();
+    void OnTreeBegin();
+    void OnTreeEnd();
+    void TreeAddEntity(Spartan::Entity* entity);
+    void HandleClicking();
+    void EntityHandleDragDrop(Spartan::Entity* entity_ptr) const;
+    void SetSelectedEntity(const std::shared_ptr<Spartan::Entity>& entity, bool from_editor = true);
 
-	// Misc
-	void Popups();
-	void PopupContextMenu() const;	
-	void PopupEntityRename() const;
-	static void HandleKeyShortcuts();
+    // Misc
+    void Popups();
+    void PopupContextMenu() const;    
+    void PopupEntityRename() const;
+    static void HandleKeyShortcuts();
 
-	// Context menu actions
-	static void ActionEntityDelete(const std::shared_ptr<Spartan::Entity>& entity);
-	static Spartan::Entity* ActionEntityCreateEmpty();
-	static void ActionEntityCreateCube();
-	static void ActionEntityCreateQuad();
-	static void ActionEntityCreateSphere();
-	static void ActionEntityCreateCylinder();
-	static void ActionEntityCreateCone();
-	static void ActionEntityCreateCamera();
+    // Context menu actions
+    static void ActionEntityDelete(const std::shared_ptr<Spartan::Entity>& entity);
+    static Spartan::Entity* ActionEntityCreateEmpty();
+    static void ActionEntityCreateCube();
+    static void ActionEntityCreateQuad();
+    static void ActionEntityCreateSphere();
+    static void ActionEntityCreateCylinder();
+    static void ActionEntityCreateCone();
+    static void ActionEntityCreateCamera();
     static void ActionEntityCreateTerrain();
-	static void ActionEntityCreateLightDirectional();
-	static void ActionEntityCreateLightPoint();
-	static void ActionEntityCreateLightSpot();
-	static void ActionEntityCreateRigidBody();
+    static void ActionEntityCreateLightDirectional();
+    static void ActionEntityCreateLightPoint();
+    static void ActionEntityCreateLightSpot();
+    static void ActionEntityCreateRigidBody();
     static void ActionEntityCreateSoftBody();
-	static void ActionEntityCreateCollider();
-	static void ActionEntityCreateConstraint();
-	static void ActionEntityCreateAudioSource();
-	static void ActionEntityCreateAudioListener();
-	static void ActionEntityCreateSkybox();
-	
-	std::shared_ptr<Spartan::Entity> m_entity_empty;
-	bool m_expand_to_selection      = false;
+    static void ActionEntityCreateCollider();
+    static void ActionEntityCreateConstraint();
+    static void ActionEntityCreateAudioSource();
+    static void ActionEntityCreateAudioListener();
+    static void ActionEntityCreateSkybox();
+    
+    std::shared_ptr<Spartan::Entity> m_entity_empty;
+    bool m_expand_to_selection      = false;
     bool m_expanded_to_selection    = false;
     ImRect m_selected_entity_rect;
 };

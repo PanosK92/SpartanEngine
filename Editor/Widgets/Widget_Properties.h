@@ -29,59 +29,59 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-	class Entity;
-	class Transform;
-	class Light;
-	class Renderable;
-	class RigidBody;
+    class Entity;
+    class Transform;
+    class Light;
+    class Renderable;
+    class RigidBody;
     class SoftBody;
-	class Collider;
-	class Constraint;
-	class Material;
-	class Camera;
-	class AudioSource;
-	class AudioListener;
-	class Script;
+    class Collider;
+    class Constraint;
+    class Material;
+    class Camera;
+    class AudioSource;
+    class AudioListener;
+    class Script;
     class Terrain;
     class Environment;
-	class IComponent;
+    class IComponent;
 }
 
 class Widget_Properties : public Widget
 {
 public:
-	Widget_Properties(Editor* editor);
-	void Tick() override;
+    Widget_Properties(Editor* editor);
+    void Tick() override;
 
-	static void Inspect(const std::weak_ptr<Spartan::Entity>& entity);
-	static void Inspect(const std::weak_ptr<Spartan::Material>& material);
+    static void Inspect(const std::weak_ptr<Spartan::Entity>& entity);
+    static void Inspect(const std::weak_ptr<Spartan::Material>& material);
 
-	// Inspected resources
-	static std::weak_ptr<Spartan::Entity> m_inspected_entity;
-	static std::weak_ptr<Spartan::Material> m_inspected_material;
+    // Inspected resources
+    static std::weak_ptr<Spartan::Entity> m_inspected_entity;
+    static std::weak_ptr<Spartan::Material> m_inspected_material;
 
 private:
-	void ShowTransform(Spartan::Transform* transform) const;
-	void ShowLight(Spartan::Light* light) const;
-	void ShowRenderable(Spartan::Renderable* renderable) const;
-	void ShowRigidBody(Spartan::RigidBody* rigid_body) const;
+    void ShowTransform(Spartan::Transform* transform) const;
+    void ShowLight(Spartan::Light* light) const;
+    void ShowRenderable(Spartan::Renderable* renderable) const;
+    void ShowRigidBody(Spartan::RigidBody* rigid_body) const;
     void ShowSoftBody(Spartan::SoftBody* soft_body) const;
-	void ShowCollider(Spartan::Collider* collider) const;
-	void ShowConstraint(Spartan::Constraint* constraint) const;
-	void ShowMaterial(Spartan::Material* material) const;
-	void ShowCamera(Spartan::Camera* camera) const;
+    void ShowCollider(Spartan::Collider* collider) const;
+    void ShowConstraint(Spartan::Constraint* constraint) const;
+    void ShowMaterial(Spartan::Material* material) const;
+    void ShowCamera(Spartan::Camera* camera) const;
     void ShowEnvironment(Spartan::Environment* environment) const;
     void ShowTerrain(Spartan::Terrain* terrain) const;
-	void ShowAudioSource(Spartan::AudioSource* audio_source) const;
-	void ShowAudioListener(Spartan::AudioListener* audio_listener) const;
-	void ShowScript(Spartan::Script* script) const;
+    void ShowAudioSource(Spartan::AudioSource* audio_source) const;
+    void ShowAudioListener(Spartan::AudioListener* audio_listener) const;
+    void ShowScript(Spartan::Script* script) const;
 
-	void ShowAddComponentButton() const;
-	void ComponentContextMenu_Add() const;
-	void Drop_AutoAddComponents() const;
+    void ShowAddComponentButton() const;
+    void ComponentContextMenu_Add() const;
+    void Drop_AutoAddComponents() const;
 
-	// Color pickers
-	std::unique_ptr<ButtonColorPicker> m_colorPicker_material;
-	std::unique_ptr<ButtonColorPicker> m_colorPicker_light;
-	std::unique_ptr<ButtonColorPicker> m_colorPicker_camera;
+    // Color pickers
+    std::unique_ptr<ButtonColorPicker> m_colorPicker_material;
+    std::unique_ptr<ButtonColorPicker> m_colorPicker_light;
+    std::unique_ptr<ButtonColorPicker> m_colorPicker_camera;
 };

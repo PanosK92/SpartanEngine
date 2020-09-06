@@ -133,22 +133,22 @@ namespace Spartan
         auto loaderTex = make_shared<RHI_Texture2D>(GetContext(), m_generate_mipmaps);
         {
             loaderTex->LoadFromFile(file_paths[0]);
-            cubemapData.emplace_back(loaderTex->GetData());
+            cubemapData.emplace_back(loaderTex->GetMips());
 
             loaderTex->LoadFromFile(file_paths[1]);
-            cubemapData.emplace_back(loaderTex->GetData());
+            cubemapData.emplace_back(loaderTex->GetMips());
 
             loaderTex->LoadFromFile(file_paths[2]);
-            cubemapData.emplace_back(loaderTex->GetData());
+            cubemapData.emplace_back(loaderTex->GetMips());
 
             loaderTex->LoadFromFile(file_paths[3]);
-            cubemapData.emplace_back(loaderTex->GetData());
+            cubemapData.emplace_back(loaderTex->GetMips());
 
             loaderTex->LoadFromFile(file_paths[4]);
-            cubemapData.emplace_back(loaderTex->GetData());
+            cubemapData.emplace_back(loaderTex->GetMips());
 
             loaderTex->LoadFromFile(file_paths[5]);
-            cubemapData.emplace_back(loaderTex->GetData());
+            cubemapData.emplace_back(loaderTex->GetMips());
         }
 
         // Texture

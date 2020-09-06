@@ -54,20 +54,20 @@ namespace Spartan
             if (type == TransformHandle_Position)
             {
                 auto position = transform->GetPosition();
-                position += isEditing ? delta * axis : 0;
+                position += isEditing ? delta * axis : 0.0f;
                 transform->SetPosition(position);
             }
             else if (type == TransformHandle_Scale)
             {
                 auto scale = transform->GetScale();
-                scale += isEditing ? delta * axis : 0;
+                scale += isEditing ? delta * axis : 0.0f;
                 transform->SetScale(scale);
             }
             else if (type == TransformHandle_Rotation)
             {
                 auto rotation = transform->GetRotation().ToEulerAngles();
                 const auto speed_multiplier = 10.0f;
-                rotation += isEditing ? delta * axis * speed_multiplier : 0;
+                rotation += isEditing ? delta * axis * speed_multiplier : 0.0f;
                 transform->SetRotation(Quaternion::FromEulerAngles(rotation));
             }
         }
@@ -82,24 +82,26 @@ namespace Spartan
     void TransformHandleAxis::DrawExtra(Renderer* renderer, const Vector3& transform_center) const
     {
         // Draw axis line (connect the handle with the origin of the transform)
-        const auto color = Vector4(GetColor(), 1.0f);
-        renderer->DrawLine(box_transformed.GetCenter(), transform_center, color, color, false);
+        const Vector4 color = Vector4(GetColor(), 1.0f);
+        const Vector3 from  = box_transformed.GetCenter();
+        const Vector3& to   = transform_center;
+        renderer->DrawDebugLine(from, to, color, color, 0.0f, false);
     }
 
     void TransformHandle::Initialize(const TransformHandle_Type type, Context* context)
     {
-        m_type        = type;
-        m_context    = context;
-        m_renderer    = context->GetSubsystem<Renderer>();
-        m_input        = context->GetSubsystem<Input>();
+        m_type      = type;
+        m_context   = context;
+        m_renderer  = context->GetSubsystem<Renderer>();
+        m_input     = context->GetSubsystem<Input>();
 
         m_handle_x      = TransformHandleAxis(Vector3::Right, m_context);
         m_handle_y      = TransformHandleAxis(Vector3::Up, m_context);
         m_handle_z      = TransformHandleAxis(Vector3::Forward, m_context);
         m_handle_xyz    = TransformHandleAxis(Vector3::One, m_context);
 
-        m_ray_previous    = Vector3::Zero;
-        m_ray_current    = Vector3::Zero;
+        m_ray_previous  = Vector3::Zero;
+        m_ray_current   = Vector3::Zero;
 
         // Create position controller
         vector<RHI_Vertex_PosTexNorTan> vertices;
@@ -122,9 +124,9 @@ namespace Spartan
         m_model->UpdateGeometry();
 
         // Create bounding boxes for the handles, based on the vertices used
-        m_handle_x.box        = BoundingBox(vertices.data(), static_cast<uint32_t>(vertices.size()));
-        m_handle_y.box        = m_handle_x.box;
-        m_handle_z.box        = m_handle_x.box;
+        m_handle_x.box      = BoundingBox(vertices.data(), static_cast<uint32_t>(vertices.size()));
+        m_handle_y.box      = m_handle_x.box;
+        m_handle_z.box      = m_handle_x.box;
         m_handle_xyz.box    = m_handle_x.box;
     }
 
@@ -146,32 +148,32 @@ namespace Spartan
             const auto mouse_pos            = m_input->GetMousePosition();
             const auto& viewport            = m_context->GetSubsystem<Renderer>()->GetViewport();
             const auto& editor_offset       = m_context->GetSubsystem<Renderer>()->GetViewportOffset();
-            const auto mouse_pos_relative    = mouse_pos - editor_offset;
+            const auto mouse_pos_relative   = mouse_pos - editor_offset;
             const auto ray_start            = camera->GetTransform()->GetPosition();
             auto ray_end                    = camera->Unproject(mouse_pos_relative);
-            const auto ray                    = Ray(ray_start, ray_end);
+            const auto ray                  = Ray(ray_start, ray_end);
 
             // Test if ray intersects any of the handles
             const auto hovered_x    = ray.HitDistance(m_handle_x.box_transformed)   != INFINITY;
             const auto hovered_y    = ray.HitDistance(m_handle_y.box_transformed)   != INFINITY;
             const auto hovered_z    = ray.HitDistance(m_handle_z.box_transformed)   != INFINITY;
-            const auto hovered_xyz    = ray.HitDistance(m_handle_xyz.box_transformed) != INFINITY;
+            const auto hovered_xyz  = ray.HitDistance(m_handle_xyz.box_transformed) != INFINITY;
 
             // Mark a handle as hovered, only if it's the only hovered handle (during the previous frame
             m_handle_x.isHovered        = hovered_x && !(m_handle_y.isHovered || m_handle_z.isHovered);
             m_handle_y.isHovered        = hovered_y && !(m_handle_x.isHovered || m_handle_z.isHovered);
             m_handle_z.isHovered        = hovered_z && !(m_handle_x.isHovered || m_handle_y.isHovered);
-            m_handle_xyz.isHovered        = hovered_xyz && !(m_handle_x.isHovered || m_handle_y.isHovered || m_handle_z.isHovered);
+            m_handle_xyz.isHovered      = hovered_xyz && !(m_handle_x.isHovered || m_handle_y.isHovered || m_handle_z.isHovered);
 
             // Disable handle if one of the other two is active (affects the color)
-            m_handle_x.isDisabled    = !m_handle_x.isEditing        && (m_handle_y.isEditing || m_handle_z.isEditing || m_handle_xyz.isEditing);
-            m_handle_y.isDisabled    = !m_handle_y.isEditing        && (m_handle_x.isEditing || m_handle_z.isEditing || m_handle_xyz.isEditing);
-            m_handle_z.isDisabled    = !m_handle_z.isEditing        && (m_handle_x.isEditing || m_handle_y.isEditing || m_handle_xyz.isEditing);
-            m_handle_xyz.isDisabled = !m_handle_xyz.isEditing    && (m_handle_x.isEditing || m_handle_y.isEditing || m_handle_z.isEditing);
+            m_handle_x.isDisabled       = !m_handle_x.isEditing     && (m_handle_y.isEditing || m_handle_z.isEditing || m_handle_xyz.isEditing);
+            m_handle_y.isDisabled       = !m_handle_y.isEditing     && (m_handle_x.isEditing || m_handle_z.isEditing || m_handle_xyz.isEditing);
+            m_handle_z.isDisabled       = !m_handle_z.isEditing     && (m_handle_x.isEditing || m_handle_y.isEditing || m_handle_xyz.isEditing);
+            m_handle_xyz.isDisabled     = !m_handle_xyz.isEditing   && (m_handle_x.isEditing || m_handle_y.isEditing || m_handle_z.isEditing);
 
             // Track delta
-            m_ray_previous            = m_ray_current != Vector3::Zero ? m_ray_current : ray_end; // avoid big delta in the first run
-            m_ray_current            = ray_end;
+            m_ray_previous          = m_ray_current != Vector3::Zero ? m_ray_current : ray_end; // avoid big delta in the first run
+            m_ray_current           = ray_end;
             const auto delta        = m_ray_current - m_ray_previous;
             const auto delta_xyz    = delta.Length();
 
@@ -184,7 +186,7 @@ namespace Spartan
             m_handle_x.delta    = delta_xyz * Helper::Sign(delta.x) * handle_speed;
             m_handle_y.delta    = delta_xyz * Helper::Sign(delta.y) * handle_speed;
             m_handle_z.delta    = delta_xyz * Helper::Sign(delta.z) * handle_speed;
-            m_handle_xyz.delta    = m_handle_x.delta + m_handle_y.delta + m_handle_z.delta;
+            m_handle_xyz.delta  = m_handle_x.delta + m_handle_y.delta + m_handle_z.delta;
 
             // Update input
             m_handle_x.UpdateInput(m_type, entity->GetTransform(), m_input);
