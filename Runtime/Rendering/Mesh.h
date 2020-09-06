@@ -32,11 +32,11 @@ namespace Spartan
     {
     public:
         Mesh() = default;
-        ~Mesh() { Geometry_Clear(); }
+        ~Mesh() { Clear(); }
 
         // Geometry
-        void Geometry_Clear();
-        void Geometry_Get(
+        void Clear();
+        void GetGeometry(
             uint32_t indexOffset,
             uint32_t indexCount,
             uint32_t vertexOffset,
@@ -44,24 +44,24 @@ namespace Spartan
             std::vector<uint32_t>* indices,
             std::vector<RHI_Vertex_PosTexNorTan>* vertices
         );
-        uint32_t Geometry_MemoryUsage() const;
+        uint32_t GetMemoryUsage() const;
 
         // Vertices
         void Vertex_Add(const RHI_Vertex_PosTexNorTan& vertex);
-        void Vertices_Append(const std::vector<RHI_Vertex_PosTexNorTan>& vertices, uint32_t* vertexOffset);    
+        void Vertices_Append(const std::vector<RHI_Vertex_PosTexNorTan>& vertices, uint32_t* vertexOffset);
         uint32_t Vertices_Count() const;
         std::vector<RHI_Vertex_PosTexNorTan>& Vertices_Get()                    { return m_vertices; }
-        void Vertices_Set(const std::vector<RHI_Vertex_PosTexNorTan>& vertices)    { m_vertices = vertices; }
+        void Vertices_Set(const std::vector<RHI_Vertex_PosTexNorTan>& vertices) { m_vertices = vertices; }
 
         // Indices
-        void Index_Add(uint32_t index)                            { m_indices.emplace_back(index); }
+        void Index_Add(uint32_t index)                          { m_indices.emplace_back(index); }
         std::vector<uint32_t>& Indices_Get()                    { return m_indices; }
-        void Indices_Set(const std::vector<uint32_t>& indices)    { m_indices = indices; }
-        uint32_t Indices_Count() const                            { return static_cast<uint32_t>(m_indices.size()); }
+        void Indices_Set(const std::vector<uint32_t>& indices)  { m_indices = indices; }
+        uint32_t Indices_Count() const                          { return static_cast<uint32_t>(m_indices.size()); }
         void Indices_Append(const std::vector<uint32_t>& indices, uint32_t* indexOffset);
     
         // Misc
-        uint32_t GetTriangleCount() const { return Indices_Count() / 3; }    
+        uint32_t GetTriangleCount() const { return Indices_Count() / 3; }
         
     private:
         std::vector<RHI_Vertex_PosTexNorTan> m_vertices;

@@ -150,9 +150,9 @@ namespace Spartan
         std::vector<TimeBlock> m_time_blocks_read;
 
         // FPS
-        float m_delta_time      = 0.0f;
-        float m_fps                = 0.0f;
-        float m_time_passed        = 0.0f;
+        float m_delta_time          = 0.0f;
+        float m_fps                 = 0.0f;
+        float m_time_passed         = 0.0f;
         uint32_t m_frames_since_last_fps_computation = 0;
 
         // Hardware - GPU

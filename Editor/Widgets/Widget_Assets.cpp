@@ -33,44 +33,44 @@ using namespace Spartan;
 
 namespace Widget_Assets_Statics
 {
-	static bool g_show_file_dialog_view = true;
-	static bool g_show_file_dialog_load = false;
-	static string g_double_clicked_path_import_dialog;
+    static bool g_show_file_dialog_view = true;
+    static bool g_show_file_dialog_load = false;
+    static string g_double_clicked_path_import_dialog;
 }
 
 Widget_Assets::Widget_Assets(Editor* editor) : Widget(editor)
 {
-	m_title             = "Assets";
-	m_fileDialogView    = make_unique<FileDialog>(m_context, false, FileDialog_Type_Browser,        FileDialog_Op_Load, FileDialog_Filter_All);
-	m_fileDialogLoad    = make_unique<FileDialog>(m_context, true,  FileDialog_Type_FileSelection,  FileDialog_Op_Load, FileDialog_Filter_Model);
-	m_flags             |= ImGuiWindowFlags_NoScrollbar;
+    m_title             = "Assets";
+    m_fileDialogView    = make_unique<FileDialog>(m_context, false, FileDialog_Type_Browser,        FileDialog_Op_Load, FileDialog_Filter_All);
+    m_fileDialogLoad    = make_unique<FileDialog>(m_context, true,  FileDialog_Type_FileSelection,  FileDialog_Op_Load, FileDialog_Filter_Model);
+    m_flags             |= ImGuiWindowFlags_NoScrollbar;
 
-	// Just clicked, not selected (double clicked, end of dialog)
-	m_fileDialogView->SetCallbackOnItemClicked([this](const string& str) { OnPathClicked(str); });
+    // Just clicked, not selected (double clicked, end of dialog)
+    m_fileDialogView->SetCallbackOnItemClicked([this](const string& str) { OnPathClicked(str); });
 }
 
 void Widget_Assets::Tick()
-{	
-	if (ImGui::Button("Import"))
-	{
-		Widget_Assets_Statics::g_show_file_dialog_load = true;
-	}
+{    
+    if (ImGui::Button("Import"))
+    {
+        Widget_Assets_Statics::g_show_file_dialog_load = true;
+    }
 
-	ImGui::SameLine();
-	
-	// VIEW
-	m_fileDialogView->Show(&Widget_Assets_Statics::g_show_file_dialog_view);
+    ImGui::SameLine();
+    
+    // VIEW
+    m_fileDialogView->Show(&Widget_Assets_Statics::g_show_file_dialog_view);
 
-	// IMPORT
-	if (m_fileDialogLoad->Show(&Widget_Assets_Statics::g_show_file_dialog_load, nullptr, &Widget_Assets_Statics::g_double_clicked_path_import_dialog))
-	{
-		// Model
-		if (FileSystem::IsSupportedModelFile(Widget_Assets_Statics::g_double_clicked_path_import_dialog))
-		{
-			EditorHelper::Get().LoadModel(Widget_Assets_Statics::g_double_clicked_path_import_dialog);
-			Widget_Assets_Statics::g_show_file_dialog_load = false;
-		}
-	}
+    // IMPORT
+    if (m_fileDialogLoad->Show(&Widget_Assets_Statics::g_show_file_dialog_load, nullptr, &Widget_Assets_Statics::g_double_clicked_path_import_dialog))
+    {
+        // Model
+        if (FileSystem::IsSupportedModelFile(Widget_Assets_Statics::g_double_clicked_path_import_dialog))
+        {
+            EditorHelper::Get().LoadModel(Widget_Assets_Statics::g_double_clicked_path_import_dialog);
+            Widget_Assets_Statics::g_show_file_dialog_load = false;
+        }
+    }
 }
 
 void Widget_Assets::OnPathClicked(const std::string& path) const
@@ -78,9 +78,9 @@ void Widget_Assets::OnPathClicked(const std::string& path) const
     if (!FileSystem::IsFile(path))
         return;
 
-	if (FileSystem::IsEngineMaterialFile(path))
-	{
-		const auto material = m_context->GetSubsystem<ResourceCache>()->Load<Material>(path);
-		Widget_Properties::Inspect(material);
-	}
+    if (FileSystem::IsEngineMaterialFile(path))
+    {
+        const auto material = m_context->GetSubsystem<ResourceCache>()->Load<Material>(path);
+        Widget_Properties::Inspect(material);
+    }
 }

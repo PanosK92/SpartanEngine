@@ -284,6 +284,8 @@ namespace Spartan
         Pass_Main(cmd_list);
         m_is_rendering = false;
 
+        DrawDebugTick(delta_time);
+
         m_frame_num++;
         m_is_odd_frame = (m_frame_num % 2) == 1;
     }
@@ -321,8 +323,8 @@ namespace Spartan
         }
 
         // Make sure we are pixel perfect
-        width    -= (width    % 2 != 0) ? 1 : 0;
-        height    -= (height    % 2 != 0) ? 1 : 0;
+        width   -= (width    % 2 != 0) ? 1 : 0;
+        height  -= (height    % 2 != 0) ? 1 : 0;
 
         // Silently return if resolution is already set
         if (m_resolution.x == width && m_resolution.y == height)
@@ -343,49 +345,6 @@ namespace Spartan
 
         // Log
         LOG_INFO("Resolution set to %dx%d", width, height);
-    }
-
-    void Renderer::DrawLine(const Vector3& from, const Vector3& to, const Vector4& color_from, const Vector4& color_to, const bool depth /*= true*/)
-    {
-        if (depth)
-        {
-            m_lines_list_depth_enabled.emplace_back(from, color_from);
-            m_lines_list_depth_enabled.emplace_back(to, color_to);
-        }
-        else
-        {
-            m_lines_list_depth_disabled.emplace_back(from, color_from);
-            m_lines_list_depth_disabled.emplace_back(to, color_to);
-        }
-    }
-
-    void Renderer::DrawRectangle(const Math::Rectangle& rectangle, const Math::Vector4& color /*= DebugColor*/, bool depth /*= true*/)
-    {
-        const float cam_z = m_camera->GetTransform()->GetPosition().z + m_camera->GetNearPlane() + 5.0f;
-
-        DrawLine(Vector3(rectangle.left,    rectangle.top,      cam_z), Vector3(rectangle.right,    rectangle.top,      cam_z), color, color, depth);
-        DrawLine(Vector3(rectangle.right,   rectangle.top,      cam_z), Vector3(rectangle.right,    rectangle.bottom,   cam_z), color, color, depth);
-        DrawLine(Vector3(rectangle.right,   rectangle.bottom,   cam_z), Vector3(rectangle.left,     rectangle.bottom,   cam_z), color, color, depth);
-        DrawLine(Vector3(rectangle.left,    rectangle.bottom,   cam_z), Vector3(rectangle.left,     rectangle.top,      cam_z), color, color, depth);
-    }
-
-    void Renderer::DrawBox(const BoundingBox& box, const Vector4& color, const bool depth /*= true*/)
-    {
-        const auto& min = box.GetMin();
-        const auto& max = box.GetMax();
-    
-        DrawLine(Vector3(min.x, min.y, min.z), Vector3(max.x, min.y, min.z), color, color, depth);
-        DrawLine(Vector3(max.x, min.y, min.z), Vector3(max.x, max.y, min.z), color, color, depth);
-        DrawLine(Vector3(max.x, max.y, min.z), Vector3(min.x, max.y, min.z), color, color, depth);
-        DrawLine(Vector3(min.x, max.y, min.z), Vector3(min.x, min.y, min.z), color, color, depth);
-        DrawLine(Vector3(min.x, min.y, min.z), Vector3(min.x, min.y, max.z), color, color, depth);
-        DrawLine(Vector3(max.x, min.y, min.z), Vector3(max.x, min.y, max.z), color, color, depth);
-        DrawLine(Vector3(max.x, max.y, min.z), Vector3(max.x, max.y, max.z), color, color, depth);
-        DrawLine(Vector3(min.x, max.y, min.z), Vector3(min.x, max.y, max.z), color, color, depth);
-        DrawLine(Vector3(min.x, min.y, max.z), Vector3(max.x, min.y, max.z), color, color, depth);
-        DrawLine(Vector3(max.x, min.y, max.z), Vector3(max.x, max.y, max.z), color, color, depth);
-        DrawLine(Vector3(max.x, max.y, max.z), Vector3(min.x, max.y, max.z), color, color, depth);
-        DrawLine(Vector3(min.x, max.y, max.z), Vector3(min.x, min.y, max.z), color, color, depth);
     }
 
     template<typename T>

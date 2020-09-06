@@ -104,7 +104,7 @@ namespace Spartan
             m_is_generating = true;
 
             // Get height map data
-            const vector<std::byte> height_map_data = m_height_map->GetMipmap(0);
+            const vector<std::byte> height_map_data = m_height_map->GetOrLoadMip(0);
             if (height_map_data.empty())
             {
                 LOG_ERROR("Height map has no data");

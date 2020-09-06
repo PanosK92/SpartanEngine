@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <array>
 #include <atomic>
 #include "Renderer_ConstantBuffers.h"
+#include "Renderer_Enums.h"
 #include "Material.h"
 #include "../Core/ISubsystem.h"
 #include "../Math/Rectangle.h"
@@ -53,142 +54,6 @@ namespace Spartan
         class Frustum;
     }
 
-    enum Renderer_Option : uint64_t
-    {
-        Render_Debug_Aabb               = 1 << 0,
-        Render_Debug_PickingRay         = 1 << 1,
-        Render_Debug_Grid               = 1 << 2,
-        Render_Debug_Transform          = 1 << 3,
-        Render_Debug_SelectionOutline   = 1 << 4,
-        Render_Debug_Lights             = 1 << 5,
-        Render_Debug_PerformanceMetrics = 1 << 6,
-        Render_Debug_Physics            = 1 << 7,
-        Render_Debug_Wireframe          = 1 << 8,
-        Render_Bloom                    = 1 << 9,    
-        Render_VolumetricLighting       = 1 << 10,
-        Render_AntiAliasing_Taa         = 1 << 11,
-        Render_AntiAliasing_Fxaa        = 1 << 12,
-        Render_Hbao                     = 1 << 13,
-        Render_Ssgi                     = 1 << 14,
-        Render_ScreenSpaceShadows       = 1 << 15,
-        Render_ScreenSpaceReflections   = 1 << 16,
-        Render_MotionBlur               = 1 << 17,
-        Render_DepthOfField             = 1 << 18,
-        Render_FilmGrain                = 1 << 19,
-        Render_Sharpening_LumaSharpen   = 1 << 20,
-        Render_ChromaticAberration      = 1 << 21,
-        Render_Dithering                = 1 << 22,
-        Render_ReverseZ                 = 1 << 23,
-        Render_DepthPrepass             = 1 << 24
-    };
-
-    enum Renderer_Option_Value
-    {
-        Option_Value_Anisotropy,
-        Option_Value_ShadowResolution,
-        Option_Value_Tonemapping,
-        Option_Value_Gamma,
-        Option_Value_Bloom_Intensity,
-        Option_Value_Sharpen_Strength,
-        Option_Value_Fog
-    };
-
-    enum Renderer_ToneMapping_Type
-    {
-        Renderer_ToneMapping_Off,
-        Renderer_ToneMapping_ACES,
-        Renderer_ToneMapping_Reinhard,
-        Renderer_ToneMapping_Uncharted2
-    };
-
-    enum Renderer_Object_Type
-    {
-        Renderer_Object_Opaque,
-        Renderer_Object_Transparent,
-        Renderer_Object_Light,
-        Renderer_Object_Camera
-    };
-
-    enum class RendererShader
-    {
-        Gbuffer_V,
-        Gbuffer_P,
-        Depth_V,
-        Depth_P,
-        Quad_V,
-        Texture_P,
-        Copy_C,
-        Fxaa_C,
-        Fxaa_Luminance_C,
-        FilmGrain_C,
-        Taa_C,
-        MotionBlur_C,
-        Dof_DownsampleCoc_C,
-        Dof_Bokeh_C,
-        Dof_Tent_C,
-        Dof_UpscaleBlend_C,
-        Sharpening_C,
-        ChromaticAberration_C,    
-        BloomDownsampleLuminance_C,
-        BloomDownsample_C,
-        BloomUpsampleBlendFrame_C,
-        BloomUpsampleBlendMip_C,
-        ToneMapping_C,
-        GammaCorrection_C,
-        Dithering_C,
-        DebugNormal_C,
-        DebugVelocity_C,
-        DebugChannelR_C,
-        DebugChannelA_C,
-        DebugChannelRgbGammaCorrect_C,
-        BrdfSpecularLut_C,
-        Light_C,
-        Composition_P,
-        Composition_Transparent_P,
-        Color_V,
-        Color_P,
-        Font_V,
-        Font_P,
-        Hbao_C,
-        Ssgi_C,
-        Ssr_C,
-        Entity_V,
-        Entity_Transform_P,
-        BlurBox_P,
-        BlurGaussian_P,
-        BlurGaussianBilateral_P,
-        Entity_Outline_P
-    };
-
-    enum class RendererRt : uint64_t
-    {
-        Gbuffer_Albedo                  = 1 << 0,
-        Gbuffer_Normal                  = 1 << 1,
-        Gbuffer_Material                = 1 << 2,
-        Gbuffer_Velocity                = 1 << 3,
-        Gbuffer_Depth                   = 1 << 4,
-        Brdf_Prefiltered_Environment    = 1 << 5,
-        Brdf_Specular_Lut               = 1 << 6,
-        Light_Diffuse                   = 1 << 7,
-        Light_Diffuse_Transparent       = 1 << 8,
-        Light_Specular                  = 1 << 9,
-        Light_Specular_Transparent      = 1 << 10,
-        Light_Volumetric                = 1 << 11,
-        Frame_Hdr                       = 1 << 12,
-        Frame_Ldr                       = 1 << 13,
-        Frame_Hdr_2                     = 1 << 14,
-        Frame_Ldr_2                     = 1 << 15,
-        Dof_Half                        = 1 << 16,
-        Dof_Half_2                      = 1 << 17,
-        Bloom                           = 1 << 18,
-        Hbao                            = 1 << 19,
-        Hbao_Blurred                    = 1 << 20,
-        Ssgi                            = 1 << 21,
-        Ssr                             = 1 << 22,
-        Accumulation_Taa                = 1 << 23,
-        Accumulation_Ssgi               = 1 << 24,
-    };
-
     class SPARTAN_CLASS Renderer : public ISubsystem
     {
     public:
@@ -210,9 +75,12 @@ namespace Spartan
         void Tick(float delta_time) override;
         //===================================
 
-        void DrawLine(const Math::Vector3& from, const Math::Vector3& to, const Math::Vector4& color_from = DEBUG_COLOR, const Math::Vector4& color_to = DEBUG_COLOR, bool depth = true);
-        void DrawRectangle(const Math::Rectangle& rectangle, const Math::Vector4& color = DEBUG_COLOR, bool depth = true);
-        void DrawBox(const Math::BoundingBox& box, const Math::Vector4& color = DEBUG_COLOR, bool depth = true);
+        // Debug draw
+        void DrawDebugTick(const float delta_time);
+        void DrawDebugLine(const Math::Vector3& from, const Math::Vector3& to, const Math::Vector4& color_from = DEBUG_COLOR, const Math::Vector4& color_to = DEBUG_COLOR, const float duration = 0.0f, const bool depth = true);
+        void DrawDebugTriangle(const Math::Vector3& v0, const Math::Vector3& v1, const Math::Vector3& v2, const Math::Vector4& color = DEBUG_COLOR, const float duration = 0.0f, const bool depth = true);
+        void DrawDebugRectangle(const Math::Rectangle& rectangle, const Math::Vector4& color = DEBUG_COLOR, const float duration = 0.0f, const bool depth = true);
+        void DrawDebugBox(const Math::BoundingBox& box, const Math::Vector4& color = DEBUG_COLOR, const float duration = 0.0f, const bool depth = true);
 
         // Viewport
         const RHI_Viewport& GetViewport()           const { return m_viewport; }
@@ -378,8 +246,10 @@ namespace Spartan
 
         // Line rendering
         std::shared_ptr<RHI_VertexBuffer> m_vertex_buffer_lines;
-        std::vector<RHI_Vertex_PosCol> m_lines_list_depth_enabled;
-        std::vector<RHI_Vertex_PosCol> m_lines_list_depth_disabled;
+        std::vector<RHI_Vertex_PosCol> m_lines_depth_disabled;
+        std::vector<RHI_Vertex_PosCol> m_lines_depth_enabled;
+        std::vector<float> m_lines_depth_disabled_duration;
+        std::vector<float> m_lines_depth_enabled_duration;
 
         // Gizmos
         std::unique_ptr<Transform_Gizmo> m_gizmo_transform;

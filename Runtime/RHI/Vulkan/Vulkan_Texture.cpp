@@ -27,6 +27,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_TextureCube.h"
 #include "../RHI_CommandList.h"
 #include "../../Profiling/Profiler.h"
+#include "../../Rendering/Renderer.h"
+#include "../RHI_DescriptorCache.h"
 //===================================
 
 //= NAMESPACES ===============
@@ -196,12 +198,27 @@ namespace Spartan
 
     RHI_Texture2D::~RHI_Texture2D()
     {
-        if (!m_rhi_device->IsInitialized())
-            return;
+        if (!m_rhi_device || !m_rhi_device->IsInitialized())
+        {
+            LOG_ERROR("Invalid RHI Device.");
+        }
 
+        // Ensure the GPU is not using this texture
         m_rhi_device->Queue_WaitAll();
-        m_data.clear();
+        
+        // Make sure that no descriptor sets refer to this texture.
+        // Right now I just reset the descriptor cache, which works but it's not ideal.
+        // Todo: Get only the referring descriptor sets, and simply update the slot this texture is bound to.
+        if (Renderer* renderer = m_rhi_device->GetContext()->GetSubsystem<Renderer>())
+        {
+            if (RHI_DescriptorCache* descriptor_cache = renderer->GetDescriptorCache())
+            {
+                descriptor_cache->Reset();
+            }
+        }
 
+        // De-allocate everything
+        m_data.clear();
         vulkan_utility::image::view::destroy(m_resource_view[0]);
         vulkan_utility::image::view::destroy(m_resource_view[1]);
         for (uint32_t i = 0; i < rhi_max_render_target_count; i++)

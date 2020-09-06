@@ -225,8 +225,8 @@ inline float3 get_position(float z, float2 uv)
     float x             = uv.x * 2.0f - 1.0f;
     float y             = (1.0f - uv.y) * 2.0f - 1.0f;
     float4 pos_clip     = float4(x, y, z, 1.0f);
-    float4 pos_world    = mul(pos_clip, g_viewProjectionInv);   
-    return pos_world.xyz / pos_world.w;  
+    float4 pos_world    = mul(pos_clip, g_view_projection_inverted);
+    return pos_world.xyz / pos_world.w;
 }
 
 inline float3 get_position(int2 pos)

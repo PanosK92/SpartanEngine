@@ -137,7 +137,7 @@ namespace Spartan::Math
             const Vector3 normEnd   = end.Normalized();
             const float d           = normStart.Dot(normEnd);
 
-            if (d > -1.0f + Helper::M_EPSILON)
+            if (d > -1.0f + Helper::EPSILON)
             {
                 const Vector3 c = normStart.Cross(normEnd);
                 const float s = sqrtf((1.0f + d) * 2.0f);
@@ -152,7 +152,7 @@ namespace Spartan::Math
             else
             {
                 Vector3 axis = Vector3::Right.Cross(normStart);
-                if (axis.Length() < Helper::M_EPSILON)
+                if (axis.Length() < Helper::EPSILON)
                 {
                     axis = Vector3::Up.Cross(normStart);
                 }
@@ -167,7 +167,7 @@ namespace Spartan::Math
             const Vector3 forward = direction.Normalized();
 
             Vector3 v = forward.Cross(upDirection);
-            if (v.LengthSquared() >= Helper::M_EPSILON)
+            if (v.LengthSquared() >= Helper::EPSILON)
             {
                 v.Normalize();
                 const Vector3 up = v.Cross(forward);
@@ -221,7 +221,7 @@ namespace Spartan::Math
             const float length_squared = LengthSquared();
             if (length_squared == 1.0f)
                 return Conjugate();
-            else if (length_squared >= Helper::M_EPSILON)
+            else if (length_squared >= Helper::EPSILON)
                 return Conjugate() * (1.0f / length_squared);
             else
                 return Identity;

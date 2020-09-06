@@ -10,9 +10,9 @@
 
 namespace Window
 {
-	static HINSTANCE g_instance;
-	static HWND g_handle;
-	static std::function<void(Spartan::WindowData& window_data)> g_on_message;
+    static HINSTANCE g_instance;
+    static HWND g_handle;
+    static std::function<void(Spartan::WindowData& window_data)> g_on_message;
 
     inline void GetWindowSize(float* width, float* height)
     {
@@ -36,9 +36,9 @@ namespace Window
         return static_cast<uint32_t>(rect.bottom - rect.top);
     }
 
-	// Window Procedure
-	inline LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
-	{
+    // Window Procedure
+    inline LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+    {
         LRESULT result = 0;
 
         Spartan::WindowData window_data;
@@ -79,83 +79,83 @@ namespace Window
         }
 
         return result;
-	}
+    }
 
-	inline bool Create(HINSTANCE instance, const std::string& title)
-	{
-		g_instance = instance;
-        const std::wstring windowTitle	= Spartan::FileSystem::StringToWstring(title);
-        const int windowWidth		    = GetSystemMetrics(SM_CXSCREEN);
-        const int windowHeight			= GetSystemMetrics(SM_CYSCREEN);
-        const LPCWSTR className			= L"myWindowClass";
-	
-		// Register the Window Class
-		WNDCLASSEX wc;
-		wc.cbSize        = sizeof(WNDCLASSEX);
-		wc.style         = 0;
-		wc.lpfnWndProc   = WndProc;
-		wc.cbClsExtra    = 0;
-		wc.cbWndExtra    = 0;
-		wc.hInstance     = g_instance;
-		wc.hIcon         = LoadIcon(instance, IDI_APPLICATION);
-		wc.hCursor       = LoadCursor(instance, IDC_ARROW);
-		wc.hbrBackground = (HBRUSH)(COLOR_WINDOW+1);
-		wc.lpszMenuName  = nullptr;
-		wc.lpszClassName = className;
-		wc.hIconSm       = LoadIcon(instance, IDI_APPLICATION);
-	
-		if(!RegisterClassEx(&wc))
-		{
-			MessageBox(nullptr, L"Window registration failed!", L"Error!", MB_ICONEXCLAMATION | MB_OK);
-			return false;
-		}
-	
-		// Create the Window
-		g_handle = CreateWindowEx
-		(
-			WS_EX_CLIENTEDGE,
-			className,
-			windowTitle.c_str(),
-			WS_OVERLAPPEDWINDOW,
-			CW_USEDEFAULT, CW_USEDEFAULT, windowWidth, windowHeight,
-			nullptr, nullptr, g_instance, nullptr
-		);
-	
-		if(!g_handle)
-		{
-			MessageBox(nullptr, L"Window creation failed!", L"Error!", MB_ICONEXCLAMATION | MB_OK);
-			return false;
-		}
+    inline bool Create(HINSTANCE instance, const std::string& title)
+    {
+        g_instance = instance;
+        const std::wstring windowTitle    = Spartan::FileSystem::StringToWstring(title);
+        const int windowWidth            = GetSystemMetrics(SM_CXSCREEN);
+        const int windowHeight            = GetSystemMetrics(SM_CYSCREEN);
+        const LPCWSTR className            = L"myWindowClass";
+    
+        // Register the Window Class
+        WNDCLASSEX wc;
+        wc.cbSize        = sizeof(WNDCLASSEX);
+        wc.style         = 0;
+        wc.lpfnWndProc   = WndProc;
+        wc.cbClsExtra    = 0;
+        wc.cbWndExtra    = 0;
+        wc.hInstance     = g_instance;
+        wc.hIcon         = LoadIcon(instance, IDI_APPLICATION);
+        wc.hCursor       = LoadCursor(instance, IDC_ARROW);
+        wc.hbrBackground = (HBRUSH)(COLOR_WINDOW+1);
+        wc.lpszMenuName  = nullptr;
+        wc.lpszClassName = className;
+        wc.hIconSm       = LoadIcon(instance, IDI_APPLICATION);
+    
+        if(!RegisterClassEx(&wc))
+        {
+            MessageBox(nullptr, L"Window registration failed!", L"Error!", MB_ICONEXCLAMATION | MB_OK);
+            return false;
+        }
+    
+        // Create the Window
+        g_handle = CreateWindowEx
+        (
+            WS_EX_CLIENTEDGE,
+            className,
+            windowTitle.c_str(),
+            WS_OVERLAPPEDWINDOW,
+            CW_USEDEFAULT, CW_USEDEFAULT, windowWidth, windowHeight,
+            nullptr, nullptr, g_instance, nullptr
+        );
+    
+        if(!g_handle)
+        {
+            MessageBox(nullptr, L"Window creation failed!", L"Error!", MB_ICONEXCLAMATION | MB_OK);
+            return false;
+        }
 
-		return true;
-	}
+        return true;
+    }
 
-	inline void Show()
-	{
-		ShowWindow(g_handle, SW_MAXIMIZE);
-		UpdateWindow(g_handle);
-		SetFocus(g_handle);	
-	}
+    inline void Show()
+    {
+        ShowWindow(g_handle, SW_MAXIMIZE);
+        UpdateWindow(g_handle);
+        SetFocus(g_handle);    
+    }
 
-	inline bool Tick()
-	{
-		MSG msg;
-		ZeroMemory(&msg, sizeof(msg));
+    inline bool Tick()
+    {
+        MSG msg;
+        ZeroMemory(&msg, sizeof(msg));
 
         while(PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
-		{
-			TranslateMessage(&msg);
-			DispatchMessage(&msg);
+        {
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
 
             if (msg.message == WM_QUIT)
                 return false;
-		}
+        }
 
         return true;
-	}
+    }
 
     inline void Destroy()
-	{
-		DestroyWindow(g_handle);
-	}
+    {
+        DestroyWindow(g_handle);
+    }
 }

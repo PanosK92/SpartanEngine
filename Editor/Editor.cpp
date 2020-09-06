@@ -49,22 +49,22 @@ using namespace Spartan;
  
 namespace _Editor
 {
-	Widget* widget_menu_bar		= nullptr;
-	Widget* widget_toolbar		= nullptr;
-	Widget* widget_world		= nullptr;
-	const char* editor_name	    = "SpartanEditor";
+    Widget* widget_menu_bar        = nullptr;
+    Widget* widget_toolbar        = nullptr;
+    Widget* widget_world        = nullptr;
+    const char* editor_name        = "SpartanEditor";
 }
 
 Editor::~Editor()
 {
-	m_widgets.clear();
-	m_widgets.shrink_to_fit();
+    m_widgets.clear();
+    m_widgets.shrink_to_fit();
 
-	// Shutdown ImGui (unless the renderer was never initialized and ImGui was no initialized to begin with)
+    // Shutdown ImGui (unless the renderer was never initialized and ImGui was no initialized to begin with)
     if (m_renderer->IsInitialized())
     {
         ImGui::RHI::Shutdown();
-	    ImGui_ImplWin32_Shutdown();
+        ImGui_ImplWin32_Shutdown();
         ImGui::DestroyContext();
     }
 }
@@ -145,8 +145,8 @@ void Editor::OnWindowMessage(WindowData& window_data)
 void Editor::OnTick()
 {
     // Verify engine
-	if (!m_engine)
-		return;
+    if (!m_engine)
+        return;
 
     // Verify renderer
     if (!m_renderer || !m_renderer->IsInitialized())
@@ -155,9 +155,9 @@ void Editor::OnTick()
     RHI_SwapChain* swapchain = m_renderer->GetSwapChain();
     RHI_CommandList* cmd_list = swapchain->GetCmdList();
 
-	// Engine - tick
+    // Engine - tick
     cmd_list->Begin();
-	m_engine->Tick();
+    m_engine->Tick();
 
     // Editor - main window
     // ImGui - start frame
@@ -190,29 +190,29 @@ void Editor::Widgets_Create()
     m_widgets.emplace_back(make_shared<Widget_MenuBar>(this)); _Editor::widget_menu_bar = m_widgets.back().get();
     m_widgets.emplace_back(make_shared<Widget_Toolbar>(this)); _Editor::widget_toolbar = m_widgets.back().get();
     m_widgets.emplace_back(make_shared<Widget_Viewport>(this));
-	m_widgets.emplace_back(make_shared<Widget_Assets>(this));
-	m_widgets.emplace_back(make_shared<Widget_Properties>(this));
-	m_widgets.emplace_back(make_shared<Widget_World>(this)); _Editor::widget_world = m_widgets.back().get();
+    m_widgets.emplace_back(make_shared<Widget_Assets>(this));
+    m_widgets.emplace_back(make_shared<Widget_Properties>(this));
+    m_widgets.emplace_back(make_shared<Widget_World>(this)); _Editor::widget_world = m_widgets.back().get();
     m_widgets.emplace_back(make_shared<Widget_ProgressDialog>(this));
 }
 
 void Editor::Widgets_Tick()
 {
-	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable)
+    if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable)
     {
         MainWindow_Begin();
     }
 
-	for (auto& widget : m_widgets)
-	{
+    for (auto& widget : m_widgets)
+    {
         if (widget->Begin())
         {
             widget->Tick();
             widget->End();
         }
-	}
+    }
 
-	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable)
+    if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable)
     {
         MainWindow_End();
     }
@@ -220,30 +220,30 @@ void Editor::Widgets_Tick()
 
 void Editor::MainWindow_Begin()
 {
-	// Set window flags
-	const auto window_flags =
-		ImGuiWindowFlags_MenuBar                |
-		ImGuiWindowFlags_NoDocking              |
-		ImGuiWindowFlags_NoTitleBar             |
-		ImGuiWindowFlags_NoCollapse             |
-		ImGuiWindowFlags_NoResize               |
-		ImGuiWindowFlags_NoMove                 |
-		ImGuiWindowFlags_NoBringToFrontOnFocus  |
-		ImGuiWindowFlags_NoNavFocus;
+    // Set window flags
+    const auto window_flags =
+        ImGuiWindowFlags_MenuBar                |
+        ImGuiWindowFlags_NoDocking              |
+        ImGuiWindowFlags_NoTitleBar             |
+        ImGuiWindowFlags_NoCollapse             |
+        ImGuiWindowFlags_NoResize               |
+        ImGuiWindowFlags_NoMove                 |
+        ImGuiWindowFlags_NoBringToFrontOnFocus  |
+        ImGuiWindowFlags_NoNavFocus;
 
-	// Set window position and size
-	float offset_y  = 0;
+    // Set window position and size
+    float offset_y  = 0;
     offset_y        += _Editor::widget_menu_bar ? _Editor::widget_menu_bar->GetHeight() : 0;
     offset_y        += _Editor::widget_toolbar  ? _Editor::widget_toolbar->GetHeight()  : 0;
-	const ImGuiViewport* viewport = ImGui::GetMainViewport();
-	ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x, viewport->Pos.y + offset_y));
-	ImGui::SetNextWindowSize(ImVec2(viewport->Size.x, viewport->Size.y - offset_y));
-	ImGui::SetNextWindowViewport(viewport->ID);
+    const ImGuiViewport* viewport = ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x, viewport->Pos.y + offset_y));
+    ImGui::SetNextWindowSize(ImVec2(viewport->Size.x, viewport->Size.y - offset_y));
+    ImGui::SetNextWindowViewport(viewport->ID);
 
-	// Set window style
-	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+    // Set window style
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
     ImGui::SetNextWindowBgAlpha(0.0f);
 
     // Begin window
@@ -252,32 +252,32 @@ void Editor::MainWindow_Begin()
     ImGui::PopStyleVar(3);
 
     // Begin dock space
-	if (m_editor_begun)
+    if (m_editor_begun)
     {
-	    // Dock space
-	    const auto window_id = ImGui::GetID(_Editor::editor_name);
-	    if (!ImGui::DockBuilderGetNode(window_id))
-	    {
-	    	// Reset current docking state
-	    	ImGui::DockBuilderRemoveNode(window_id);
-	    	ImGui::DockBuilderAddNode(window_id, ImGuiDockNodeFlags_None);
+        // Dock space
+        const auto window_id = ImGui::GetID(_Editor::editor_name);
+        if (!ImGui::DockBuilderGetNode(window_id))
+        {
+            // Reset current docking state
+            ImGui::DockBuilderRemoveNode(window_id);
+            ImGui::DockBuilderAddNode(window_id, ImGuiDockNodeFlags_None);
             ImGui::DockBuilderSetNodeSize(window_id, ImGui::GetMainViewport()->Size);
 
-	    	// DockBuilderSplitNode(ImGuiID node_id, ImGuiDir split_dir, float size_ratio_for_node_at_dir, ImGuiID* out_id_dir, ImGuiID* out_id_other);
-            ImGuiID dock_main_id		        = window_id;
-            ImGuiID dock_right_id		        = ImGui::DockBuilderSplitNode(dock_main_id,		ImGuiDir_Right, 0.2f,   nullptr, &dock_main_id);
-            const ImGuiID dock_right_down_id	= ImGui::DockBuilderSplitNode(dock_right_id,	ImGuiDir_Down,	0.6f,   nullptr, &dock_right_id);
-            ImGuiID dock_down_id		        = ImGui::DockBuilderSplitNode(dock_main_id,		ImGuiDir_Down,	0.25f,  nullptr, &dock_main_id);
-            const ImGuiID dock_down_right_id	= ImGui::DockBuilderSplitNode(dock_down_id,		ImGuiDir_Right, 0.6f,   nullptr, &dock_down_id);
+            // DockBuilderSplitNode(ImGuiID node_id, ImGuiDir split_dir, float size_ratio_for_node_at_dir, ImGuiID* out_id_dir, ImGuiID* out_id_other);
+            ImGuiID dock_main_id                = window_id;
+            ImGuiID dock_right_id                = ImGui::DockBuilderSplitNode(dock_main_id,        ImGuiDir_Right, 0.2f,   nullptr, &dock_main_id);
+            const ImGuiID dock_right_down_id    = ImGui::DockBuilderSplitNode(dock_right_id,    ImGuiDir_Down,    0.6f,   nullptr, &dock_right_id);
+            ImGuiID dock_down_id                = ImGui::DockBuilderSplitNode(dock_main_id,        ImGuiDir_Down,    0.25f,  nullptr, &dock_main_id);
+            const ImGuiID dock_down_right_id    = ImGui::DockBuilderSplitNode(dock_down_id,        ImGuiDir_Right, 0.6f,   nullptr, &dock_down_id);
 
-	    	// Dock windows	
-	    	ImGui::DockBuilderDockWindow("World",		dock_right_id);
-	    	ImGui::DockBuilderDockWindow("Properties",	dock_right_down_id);
-	    	ImGui::DockBuilderDockWindow("Console",		dock_down_id);
-	    	ImGui::DockBuilderDockWindow("Assets",		dock_down_right_id);
-	    	ImGui::DockBuilderDockWindow("Viewport",	dock_main_id);
-	    	ImGui::DockBuilderFinish(dock_main_id);
-	    }
+            // Dock windows    
+            ImGui::DockBuilderDockWindow("World",        dock_right_id);
+            ImGui::DockBuilderDockWindow("Properties",    dock_right_down_id);
+            ImGui::DockBuilderDockWindow("Console",        dock_down_id);
+            ImGui::DockBuilderDockWindow("Assets",        dock_down_right_id);
+            ImGui::DockBuilderDockWindow("Viewport",    dock_main_id);
+            ImGui::DockBuilderFinish(dock_main_id);
+        }
 
         ImGui::DockSpace(window_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
     }
@@ -287,101 +287,101 @@ void Editor::MainWindow_End()
 {
     if (m_editor_begun)
     {
-	    ImGui::End();
+        ImGui::End();
     }
 }
 
 void Editor::ApplyStyle() const
 {
-	// Color settings	
-	const auto color_text			        = ImVec4(0.810f, 0.810f, 0.810f, 1.000f);
-    const auto color_text_disabled			= ImVec4(color_text.x, color_text.y, color_text.z, 0.5f);
-    const auto color_interactive			= ImVec4(0.229f, 0.337f, 0.501f, 1.000f);
+    // Color settings    
+    const auto color_text                    = ImVec4(0.810f, 0.810f, 0.810f, 1.000f);
+    const auto color_text_disabled            = ImVec4(color_text.x, color_text.y, color_text.z, 0.5f);
+    const auto color_interactive            = ImVec4(0.229f, 0.337f, 0.501f, 1.000f);
     const auto color_interactive_hovered    = ImVec4(0.312f, 0.456f, 0.675f, 1.000f);
     const auto color_interactive_clicked    = ImVec4(0.412f, 0.556f, 0.775f, 1.000f);
-	const auto color_background		        = ImVec4(50.0f  / 255.0f, 50.0f  / 255.0f, 50.0f  / 255.0f, 1.0f);
+    const auto color_background                = ImVec4(50.0f  / 255.0f, 50.0f  / 255.0f, 50.0f  / 255.0f, 1.0f);
     const auto color_background_content     = ImVec4(35.0f  / 255.0f, 35.0f  / 255.0f, 35.0f  / 255.0f, 1.0f);
     const auto color_shadow                 = ImVec4(0.0f, 0.0f, 0.0f, 0.5f);
 
     // Use default dark style as a base
     ImGui::StyleColorsDark();
 
-	// Colors
+    // Colors
     ImVec4* colors                          = ImGui::GetStyle().Colors;
-    colors[ImGuiCol_Text]			        = color_text;
-    colors[ImGuiCol_TextDisabled]			= color_text_disabled;
-    colors[ImGuiCol_WindowBg]			    = color_background;             // Background of normal windows
-    colors[ImGuiCol_ChildBg]			    = color_background;             // Background of child windows
-    colors[ImGuiCol_PopupBg]			    = color_background;             // Background of popups, menus, tooltips windows
-    colors[ImGuiCol_Border]			        = color_interactive;
-    colors[ImGuiCol_BorderShadow]			= color_shadow;
-    colors[ImGuiCol_FrameBg]			    = color_background_content;     // Background of checkbox, radio button, plot, slider, text input
-    colors[ImGuiCol_FrameBgHovered]			= color_interactive;
-    colors[ImGuiCol_FrameBgActive]			= color_interactive_clicked;
-    colors[ImGuiCol_TitleBg]			    = color_background_content;
-    colors[ImGuiCol_TitleBgActive]			= color_interactive;
-    colors[ImGuiCol_TitleBgCollapsed]		= color_background;
-    colors[ImGuiCol_MenuBarBg]			    = color_background_content;
-    colors[ImGuiCol_ScrollbarBg]			= color_background_content;
-    colors[ImGuiCol_ScrollbarGrab]		    = color_interactive;
-    colors[ImGuiCol_ScrollbarGrabHovered]	= color_interactive_hovered;
-    colors[ImGuiCol_ScrollbarGrabActive]	= color_interactive_clicked;
-    colors[ImGuiCol_CheckMark]			    = color_text;
-    colors[ImGuiCol_SliderGrab]			    = color_interactive;
-    colors[ImGuiCol_SliderGrabActive]		= color_interactive_clicked;
-    colors[ImGuiCol_Button]			        = color_interactive;
-    colors[ImGuiCol_ButtonHovered]		    = color_interactive_hovered;
-    colors[ImGuiCol_ButtonActive]			= color_interactive_clicked;
-    colors[ImGuiCol_Header]			        = color_interactive;            // Header* colors are used for CollapsingHeader, TreeNode, Selectable, MenuItem
-    colors[ImGuiCol_HeaderHovered]			= color_interactive_hovered;
-    colors[ImGuiCol_HeaderActive]			= color_interactive_clicked;
-    colors[ImGuiCol_Separator]			    = color_interactive;
-    colors[ImGuiCol_SeparatorHovered]		= color_interactive_hovered;
-    colors[ImGuiCol_SeparatorActive]		= color_interactive_clicked;
-    colors[ImGuiCol_ResizeGrip]			    = color_interactive;
-    colors[ImGuiCol_ResizeGripHovered]		= color_interactive_hovered;
-    colors[ImGuiCol_ResizeGripActive]		= color_interactive_clicked;
-    colors[ImGuiCol_Tab]			        = color_interactive;
-    colors[ImGuiCol_TabHovered]			    = color_interactive_hovered;
-    colors[ImGuiCol_TabActive]			    = color_interactive_clicked;
-    colors[ImGuiCol_TabUnfocused]			= color_interactive;
-    colors[ImGuiCol_TabUnfocusedActive]		= color_interactive;            // Might be called active, but it's active only because it's it's the only tab available, the user didn't really activate it
-    colors[ImGuiCol_DockingPreview]			= color_interactive_clicked;    // Preview overlay color when about to docking something
-    colors[ImGuiCol_DockingEmptyBg]			= color_interactive;            // Background color for empty node (e.g. CentralNode with no window docked into it)
-    colors[ImGuiCol_PlotLines]			    = color_interactive;
-    colors[ImGuiCol_PlotLinesHovered]		= color_interactive_hovered;
-    colors[ImGuiCol_PlotHistogram]			= color_interactive;
-    colors[ImGuiCol_PlotHistogramHovered]	= color_interactive_hovered;
-    colors[ImGuiCol_TextSelectedBg]			= color_background;
-    colors[ImGuiCol_DragDropTarget]			= color_interactive_hovered;    // Color when hovering over target
-    colors[ImGuiCol_NavHighlight]			= color_background;             // Gamepad/keyboard: current highlighted item
+    colors[ImGuiCol_Text]                    = color_text;
+    colors[ImGuiCol_TextDisabled]            = color_text_disabled;
+    colors[ImGuiCol_WindowBg]                = color_background;             // Background of normal windows
+    colors[ImGuiCol_ChildBg]                = color_background;             // Background of child windows
+    colors[ImGuiCol_PopupBg]                = color_background;             // Background of popups, menus, tooltips windows
+    colors[ImGuiCol_Border]                    = color_interactive;
+    colors[ImGuiCol_BorderShadow]            = color_shadow;
+    colors[ImGuiCol_FrameBg]                = color_background_content;     // Background of checkbox, radio button, plot, slider, text input
+    colors[ImGuiCol_FrameBgHovered]            = color_interactive;
+    colors[ImGuiCol_FrameBgActive]            = color_interactive_clicked;
+    colors[ImGuiCol_TitleBg]                = color_background_content;
+    colors[ImGuiCol_TitleBgActive]            = color_interactive;
+    colors[ImGuiCol_TitleBgCollapsed]        = color_background;
+    colors[ImGuiCol_MenuBarBg]                = color_background_content;
+    colors[ImGuiCol_ScrollbarBg]            = color_background_content;
+    colors[ImGuiCol_ScrollbarGrab]            = color_interactive;
+    colors[ImGuiCol_ScrollbarGrabHovered]    = color_interactive_hovered;
+    colors[ImGuiCol_ScrollbarGrabActive]    = color_interactive_clicked;
+    colors[ImGuiCol_CheckMark]                = color_text;
+    colors[ImGuiCol_SliderGrab]                = color_interactive;
+    colors[ImGuiCol_SliderGrabActive]        = color_interactive_clicked;
+    colors[ImGuiCol_Button]                    = color_interactive;
+    colors[ImGuiCol_ButtonHovered]            = color_interactive_hovered;
+    colors[ImGuiCol_ButtonActive]            = color_interactive_clicked;
+    colors[ImGuiCol_Header]                    = color_interactive;            // Header* colors are used for CollapsingHeader, TreeNode, Selectable, MenuItem
+    colors[ImGuiCol_HeaderHovered]            = color_interactive_hovered;
+    colors[ImGuiCol_HeaderActive]            = color_interactive_clicked;
+    colors[ImGuiCol_Separator]                = color_interactive;
+    colors[ImGuiCol_SeparatorHovered]        = color_interactive_hovered;
+    colors[ImGuiCol_SeparatorActive]        = color_interactive_clicked;
+    colors[ImGuiCol_ResizeGrip]                = color_interactive;
+    colors[ImGuiCol_ResizeGripHovered]        = color_interactive_hovered;
+    colors[ImGuiCol_ResizeGripActive]        = color_interactive_clicked;
+    colors[ImGuiCol_Tab]                    = color_interactive;
+    colors[ImGuiCol_TabHovered]                = color_interactive_hovered;
+    colors[ImGuiCol_TabActive]                = color_interactive_clicked;
+    colors[ImGuiCol_TabUnfocused]            = color_interactive;
+    colors[ImGuiCol_TabUnfocusedActive]        = color_interactive;            // Might be called active, but it's active only because it's it's the only tab available, the user didn't really activate it
+    colors[ImGuiCol_DockingPreview]            = color_interactive_clicked;    // Preview overlay color when about to docking something
+    colors[ImGuiCol_DockingEmptyBg]            = color_interactive;            // Background color for empty node (e.g. CentralNode with no window docked into it)
+    colors[ImGuiCol_PlotLines]                = color_interactive;
+    colors[ImGuiCol_PlotLinesHovered]        = color_interactive_hovered;
+    colors[ImGuiCol_PlotHistogram]            = color_interactive;
+    colors[ImGuiCol_PlotHistogramHovered]    = color_interactive_hovered;
+    colors[ImGuiCol_TextSelectedBg]            = color_background;
+    colors[ImGuiCol_DragDropTarget]            = color_interactive_hovered;    // Color when hovering over target
+    colors[ImGuiCol_NavHighlight]            = color_background;             // Gamepad/keyboard: current highlighted item
     colors[ImGuiCol_NavWindowingHighlight]  = color_background;             // Highlight window when using CTRL+TAB
-    colors[ImGuiCol_NavWindowingDimBg]		= color_background;             // Darken/colorize entire screen behind the CTRL+TAB window list, when active
-    colors[ImGuiCol_ModalWindowDimBg]		= color_background;             // Darken/colorize entire screen behind a modal window, when one is active
+    colors[ImGuiCol_NavWindowingDimBg]        = color_background;             // Darken/colorize entire screen behind the CTRL+TAB window list, when active
+    colors[ImGuiCol_ModalWindowDimBg]        = color_background;             // Darken/colorize entire screen behind a modal window, when one is active
 
     // Spatial settings
     const auto font_size    = 24.0f;
     const auto font_scale   = 0.7f;
     const auto roundness    = 2.0f;
 
-	// Spatial
+    // Spatial
     ImGuiStyle& style               = ImGui::GetStyle();
-	style.WindowBorderSize	        = 1.0f;
-	style.FrameBorderSize	        = 0.0f;
+    style.WindowBorderSize            = 1.0f;
+    style.FrameBorderSize            = 0.0f;
     style.ScrollbarSize             = 20.0f;
-	style.FramePadding		        = ImVec2(5, 5);
-	style.ItemSpacing		        = ImVec2(6, 5);
+    style.FramePadding                = ImVec2(5, 5);
+    style.ItemSpacing                = ImVec2(6, 5);
     style.WindowMenuButtonPosition  = ImGuiDir_Right;
-	style.WindowRounding	        = roundness;
-	style.FrameRounding		        = roundness;
-	style.PopupRounding		        = roundness;
-	style.GrabRounding		        = roundness;
+    style.WindowRounding            = roundness;
+    style.FrameRounding                = roundness;
+    style.PopupRounding                = roundness;
+    style.GrabRounding                = roundness;
     style.ScrollbarRounding         = roundness;
     style.Alpha                     = 1.0f;
 
     // Font
     auto& io = ImGui::GetIO();
     const string dir_fonts = m_context->GetSubsystem<ResourceCache>()->GetDataDirectory(Asset_Fonts) + "/";
-	io.Fonts->AddFontFromFileTTF((dir_fonts + "CalibriBold.ttf").c_str(), font_size);
+    io.Fonts->AddFontFromFileTTF((dir_fonts + "CalibriBold.ttf").c_str(), font_size);
     io.FontGlobalScale = font_scale;
 }

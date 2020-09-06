@@ -323,7 +323,7 @@ namespace Spartan
             {
                 // if (aiPrimitiveType_LINE | aiPrimitiveType_POINT) && aiProcess_Triangulate) then (face.mNumIndices == 3)
                 auto& face                    = assimp_mesh->mFaces[face_index];
-                const auto indices_index    = (face_index * 3);
+                const auto indices_index      = (face_index * 3);
                 indices[indices_index + 0]    = face.mIndices[0];
                 indices[indices_index + 1]    = face.mIndices[1];
                 indices[indices_index + 2]    = face.mIndices[2];

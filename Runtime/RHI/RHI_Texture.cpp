@@ -141,7 +141,7 @@ namespace Spartan
             return false;
         }
 
-        m_mip_levels = static_cast<uint32_t>(m_data.size());
+        m_mip_count = static_cast<uint32_t>(m_data.size());
 
         // Create GPU resource
         if (!m_context->GetSubsystem<Renderer>()->GetRhiDevice()->IsInitialized() || !CreateResourceGpu())
@@ -163,7 +163,7 @@ namespace Spartan
         {
             m_size_cpu = 0;
             m_size_gpu = 0;
-            for (uint8_t mip_index = 0; mip_index < m_mip_levels; mip_index++)
+            for (uint8_t mip_index = 0; mip_index < m_mip_count; mip_index++)
             {
                 const uint32_t mip_width  = m_width >> mip_index;
                 const uint32_t mip_height = m_height >> mip_index;
@@ -176,18 +176,20 @@ namespace Spartan
         return true;
     }
 
-    vector<std::byte>* RHI_Texture::GetData(const uint32_t index)
+    vector<std::byte>& RHI_Texture::GetMip(const uint8_t index)
     {
+        static vector<std::byte> empty;
+
         if (index >= m_data.size())
         {
             LOG_WARNING("Index out of range");
-            return nullptr;
+            return empty;
         }
 
-        return &m_data[index];
+        return m_data[index];
     }
 
-    vector<std::byte> RHI_Texture::GetMipmap(const uint32_t index)
+    vector<std::byte> RHI_Texture::GetOrLoadMip(const uint8_t index)
     {
         vector<std::byte> data;
 
@@ -203,11 +205,11 @@ namespace Spartan
             if (file->IsOpen())
             {
                 auto byte_count = file->ReadAs<uint32_t>();
-                const auto mip_count  = file->ReadAs<uint32_t>();
+                const uint32_t mip_count  = file->ReadAs<uint32_t>();
 
                 if (index < mip_count)
                 {
-                    for (uint32_t i = 0; i <= index; i++)
+                    for (uint8_t i = 0; i <= index; i++)
                     {
                         file->Read(&data);
                     }
@@ -277,19 +279,22 @@ namespace Spartan
     {
         switch (format)
         {
-            case RHI_Format_R8_Unorm:                return 1;
-            case RHI_Format_R16_Uint:                return 1;
-            case RHI_Format_R16_Float:                return 1;
-            case RHI_Format_R32_Uint:                return 1;
-            case RHI_Format_R32_Float:                return 1;
-            case RHI_Format_R8G8_Unorm:                return 2;
-            case RHI_Format_R16G16_Float:            return 2;
-            case RHI_Format_R32G32_Float:            return 2;
+            case RHI_Format_R8_Unorm:               return 1;
+            case RHI_Format_R16_Uint:               return 1;
+            case RHI_Format_R16_Float:              return 1;
+            case RHI_Format_R32_Uint:               return 1;
+            case RHI_Format_R32_Float:              return 1;
+            case RHI_Format_R8G8_Unorm:             return 2;
+            case RHI_Format_R16G16_Float:           return 2;
+            case RHI_Format_R32G32_Float:           return 2;
+            case RHI_Format_R11G11B10_Float:        return 3;
+            case RHI_Format_R16G16B16A16_Snorm:     return 3;
             case RHI_Format_R32G32B32_Float:        return 3;
-            case RHI_Format_R8G8B8A8_Unorm:            return 4;
-            case RHI_Format_R16G16B16A16_Float:        return 4;
-            case RHI_Format_R32G32B32A32_Float:        return 4;
-            case RHI_Format_D32_Float:                return 1;
+            case RHI_Format_R8G8B8A8_Unorm:         return 4;
+            case RHI_Format_R10G10B10A2_Unorm:      return 4;
+            case RHI_Format_R16G16B16A16_Float:     return 4;
+            case RHI_Format_R32G32B32A32_Float:     return 4;
+            case RHI_Format_D32_Float:              return 1;
             case RHI_Format_D32_Float_S8X24_Uint:   return 2;
             default:                                return 0;
         }

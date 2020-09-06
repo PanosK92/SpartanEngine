@@ -32,39 +32,39 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 struct LogPackage
 {
-	std::string text;
-	unsigned int error_level = 0;
+    std::string text;
+    unsigned int error_level = 0;
 };
 
 // Implementation of Spartan::ILogger so the engine can log into the editor
 class EngineLogger : public Spartan::ILogger
 {
 public:
-	typedef std::function<void(LogPackage)> log_func;
-	void SetCallback(log_func&& func)
-	{
-		m_log_func = std::forward<log_func>(func);
-	}
+    typedef std::function<void(LogPackage)> log_func;
+    void SetCallback(log_func&& func)
+    {
+        m_log_func = std::forward<log_func>(func);
+    }
 
-	void Log(const std::string& text, const unsigned int error_level) override
-	{
-		LogPackage package;
-		package.text = text;
-		package.error_level = error_level;
-		m_log_func(package);
-	}
+    void Log(const std::string& text, const unsigned int error_level) override
+    {
+        LogPackage package;
+        package.text = text;
+        package.error_level = error_level;
+        m_log_func(package);
+    }
 
 private:
-	log_func m_log_func;
+    log_func m_log_func;
 };
 
 class Widget_Console : public Widget
 {
 public:
-	Widget_Console(Editor* editor);
-	void Tick() override;
-	void AddLogPackage(const LogPackage& package);
-	void Clear();
+    Widget_Console(Editor* editor);
+    void Tick() override;
+    void AddLogPackage(const LogPackage& package);
+    void Clear();
 
 private:
     bool m_scroll_to_bottom         = false;
@@ -74,9 +74,9 @@ private:
     uint32_t m_log_type_count[3]    = { 0, 0, 0 };
     const std::vector<Spartan::Math::Vector4> m_log_type_color =
     {
-        Spartan::Math::Vector4(0.76f, 0.77f, 0.8f, 1.0f),	// Info
-        Spartan::Math::Vector4(0.7f, 0.75f, 0.0f, 1.0f),	// Warning
-        Spartan::Math::Vector4(0.7f, 0.3f, 0.3f, 1.0f)	    // Error
+        Spartan::Math::Vector4(0.76f, 0.77f, 0.8f, 1.0f),    // Info
+        Spartan::Math::Vector4(0.7f, 0.75f, 0.0f, 1.0f),    // Warning
+        Spartan::Math::Vector4(0.7f, 0.3f, 0.3f, 1.0f)        // Error
     };
     std::atomic<bool> m_is_reading = false;
     std::shared_ptr<EngineLogger> m_logger;

@@ -32,12 +32,12 @@ namespace Spartan { class Context; }
 class Widget_MenuBar : public Widget
 {
 public:
-	Widget_MenuBar(Editor* editor);
-	void Tick() override;
+    Widget_MenuBar(Editor* editor);
+    void Tick() override;
 
 private:
-	void ShowFileDialog() const;
-	void ShowAboutWindow() const;
+    void ShowFileDialog() const;
+    void ShowAboutWindow() const;
 
-	std::unique_ptr<FileDialog> m_fileDialog;
+    std::unique_ptr<FileDialog> m_fileDialog;
 };

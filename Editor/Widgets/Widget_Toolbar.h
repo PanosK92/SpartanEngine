@@ -31,8 +31,8 @@ enum Icon_Type;
 class Widget_Toolbar : public Widget
 {
 public:
-	Widget_Toolbar(Editor* editor);
-	void Tick() override;
+    Widget_Toolbar(Editor* editor);
+    void Tick() override;
 
 private:
     std::unordered_map<Icon_Type, Widget*> m_widgets;

@@ -21,13 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==============================
+//= INCLUDES ===========================
 #include <array>
 #include <atomic>
 #include "RHI_Definition.h"
 #include "../Core/Spartan_Object.h"
-#include "../Rendering/Renderer_Bindings.h"
-//=========================================
+#include "../Rendering/Renderer_Enums.h"
+//======================================
 
 namespace Spartan
 {
@@ -130,8 +130,8 @@ namespace Spartan
         void SetTexture(const uint32_t slot, RHI_Texture* texture, const bool storage = false);
         inline void SetTexture(const RendererBindingsUav slot, RHI_Texture* texture)                        { SetTexture(static_cast<uint32_t>(slot), texture, true); }
         inline void SetTexture(const RendererBindingsUav slot, const std::shared_ptr<RHI_Texture>& texture) { SetTexture(static_cast<uint32_t>(slot), texture.get(), true); }
-        inline void SetTexture(const RendererBindingsTex slot, RHI_Texture* texture)                        { SetTexture(static_cast<uint32_t>(slot), texture, false); }
-        inline void SetTexture(const RendererBindingsTex slot, const std::shared_ptr<RHI_Texture>& texture) { SetTexture(static_cast<uint32_t>(slot), texture.get(), false); }
+        inline void SetTexture(const RendererBindingsSrv slot, RHI_Texture* texture)                        { SetTexture(static_cast<uint32_t>(slot), texture, false); }
+        inline void SetTexture(const RendererBindingsSrv slot, const std::shared_ptr<RHI_Texture>& texture) { SetTexture(static_cast<uint32_t>(slot), texture.get(), false); }
         
         // Timestamps
         bool Timestamp_Start(void* query_disjoint = nullptr, void* query_start = nullptr);
@@ -144,6 +144,7 @@ namespace Spartan
         static void Gpu_QueryRelease(void*& query_object);
         
         // Misc
+        void ResetDescriptorCache();
         void* GetResource_CommandBuffer()   const { return m_cmd_buffer; }
         bool IsRecording()                  const { return m_cmd_state == RHI_CommandListState::Recording; }
         bool IsSubmitted()                  const { return m_cmd_state == RHI_CommandListState::Submitted; }

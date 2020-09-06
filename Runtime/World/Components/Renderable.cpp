@@ -49,7 +49,7 @@ namespace Spartan
         // Construct geometry
         if (type == Geometry_Default_Cube)
         {
-            Utility::Geometry::CreateCube(&vertices, &indices);        
+            Utility::Geometry::CreateCube(&vertices, &indices);
             model->SetResourceFilePath(project_directory + "default_cube" + EXTENSION_MODEL);
         }
         else if (type == Geometry_Default_Quad)
@@ -92,19 +92,19 @@ namespace Spartan
 
     Renderable::Renderable(Context* context, Entity* entity, uint32_t id /*= 0*/) : IComponent(context, entity, id)
     {
-        m_geometry_type            = Geometry_Custom;    
-        m_geometryIndexOffset    = 0;
+        m_geometry_type         = Geometry_Custom;
+        m_geometryIndexOffset   = 0;
         m_geometryIndexCount    = 0;
-        m_geometryVertexOffset    = 0;
-        m_geometryVertexCount    = 0;
-        m_material_default        = false;
-        m_castShadows            = true;
-        m_receiveShadows        = true;
+        m_geometryVertexOffset  = 0;
+        m_geometryVertexCount   = 0;
+        m_material_default      = false;
+        m_cast_shadows          = true;
+        m_receive_shadows       = true;
 
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_material_default,       bool);
+        REGISTER_ATTRIBUTE_VALUE_VALUE(m_material_default,      bool);
         REGISTER_ATTRIBUTE_VALUE_VALUE(m_material,              shared_ptr<Material>);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_castShadows,           bool);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_receiveShadows,        bool);
+        REGISTER_ATTRIBUTE_VALUE_VALUE(m_cast_shadows,          bool);
+        REGISTER_ATTRIBUTE_VALUE_VALUE(m_receive_shadows,       bool);
         REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryIndexOffset,   uint32_t);
         REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryIndexCount,    uint32_t);
         REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryVertexOffset,  uint32_t);
@@ -112,7 +112,7 @@ namespace Spartan
         REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryName,          string);
         REGISTER_ATTRIBUTE_VALUE_VALUE(m_model,                 shared_ptr<Model>);
         REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box,          BoundingBox);
-        REGISTER_ATTRIBUTE_GET_SET(Geometry_Type, GeometrySet, Geometry_Type);
+        REGISTER_ATTRIBUTE_GET_SET(Geometry_Type, GeometrySet,  Geometry_Type);
     }
 
     void Renderable::Serialize(FileStream* stream)
@@ -127,8 +127,8 @@ namespace Spartan
         stream->Write(m_model ? m_model->GetResourceName() : "");
 
         // Material
-        stream->Write(m_castShadows);
-        stream->Write(m_receiveShadows);
+        stream->Write(m_cast_shadows);
+        stream->Write(m_receive_shadows);
         stream->Write(m_material_default);
         if (!m_material_default)
         {
@@ -139,11 +139,11 @@ namespace Spartan
     void Renderable::Deserialize(FileStream* stream)
     {
         // Geometry
-        m_geometry_type            = static_cast<Geometry_Type>(stream->ReadAs<uint32_t>());
-        m_geometryIndexOffset    = stream->ReadAs<uint32_t>();
+        m_geometry_type         = static_cast<Geometry_Type>(stream->ReadAs<uint32_t>());
+        m_geometryIndexOffset   = stream->ReadAs<uint32_t>();
         m_geometryIndexCount    = stream->ReadAs<uint32_t>();
-        m_geometryVertexOffset    = stream->ReadAs<uint32_t>();
-        m_geometryVertexCount    = stream->ReadAs<uint32_t>();
+        m_geometryVertexOffset  = stream->ReadAs<uint32_t>();
+        m_geometryVertexCount   = stream->ReadAs<uint32_t>();
         stream->Read(&m_bounding_box);
         string model_name;
         stream->Read(&model_name);
@@ -156,12 +156,12 @@ namespace Spartan
         }
 
         // Material
-        stream->Read(&m_castShadows);
-        stream->Read(&m_receiveShadows);
+        stream->Read(&m_cast_shadows);
+        stream->Read(&m_receive_shadows);
         stream->Read(&m_material_default);
         if (m_material_default)
         {
-            UseDefaultMaterial();        
+            UseDefaultMaterial();
         }
         else
         {
@@ -173,13 +173,13 @@ namespace Spartan
 
     void Renderable::GeometrySet(const string& name, const uint32_t index_offset, const uint32_t index_count, const uint32_t vertex_offset, const uint32_t vertex_count, const BoundingBox& bounding_box, Model* model)
     {    
-        m_geometryName            = name;
-        m_geometryIndexOffset    = index_offset;
+        m_geometryName          = name;
+        m_geometryIndexOffset   = index_offset;
         m_geometryIndexCount    = index_count;
-        m_geometryVertexOffset    = vertex_offset;
-        m_geometryVertexCount    = vertex_count;
-        m_bounding_box            = bounding_box;
-        m_model                    = model ? model->GetSharedPtr() : nullptr;
+        m_geometryVertexOffset  = vertex_offset;
+        m_geometryVertexCount   = vertex_count;
+        m_bounding_box          = bounding_box;
+        m_model                 = model ? model->GetSharedPtr() : nullptr;
     }
 
     void Renderable::GeometrySet(const Geometry_Type type)

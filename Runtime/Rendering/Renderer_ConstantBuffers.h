@@ -142,7 +142,8 @@ namespace Spartan
         float mat_height_mul;
 
         float mat_id;
-        Math::Vector3 padding;
+        uint32_t mip_index;
+        Math::Vector2 padding;
 
         bool operator==(const BufferUber& rhs) const
         {
@@ -160,6 +161,7 @@ namespace Spartan
                 transform_axis      == rhs.transform_axis       &&
                 blur_sigma          == rhs.blur_sigma           &&
                 blur_direction      == rhs.blur_direction       &&
+                mip_index           == rhs.mip_index            &&
                 resolution          == rhs.resolution;
         }
 

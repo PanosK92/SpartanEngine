@@ -39,7 +39,7 @@ namespace Spartan
             {
                 m_entity    = entity;
                 m_position  = position;
-                m_distance    = distance;
+                m_distance  = distance;
                 m_inside    = is_inside;
             };
 

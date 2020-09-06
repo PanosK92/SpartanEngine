@@ -63,9 +63,10 @@ Texture2D tex_font_atlas        : register(t32);
 Texture2D tex_ssgi              : register(t33);
 
 // Compute
-RWTexture2D<float> tex_out_r        : register(u0);
-RWTexture2D<float2> tex_out_rg      : register(u1);
-RWTexture2D<float3> tex_out_rgb     : register(u2);
-RWTexture2D<float4> tex_out_rgba    : register(u3);
-RWTexture2D<float3> tex_out_rgb2    : register(u4);
-RWTexture2D<float3> tex_out_rgb3    : register(u5);
+RWTexture2D<float> tex_out_r                : register(u0);
+RWTexture2D<float2> tex_out_rg              : register(u1);
+RWTexture2D<float3> tex_out_rgb             : register(u2);
+RWTexture2D<float4> tex_out_rgba            : register(u3);
+RWTexture2D<float3> tex_out_rgb2            : register(u4);
+RWTexture2D<float3> tex_out_rgb3            : register(u5);
+RWTexture2DArray<float4> uav_array_rgba     : register(u6);

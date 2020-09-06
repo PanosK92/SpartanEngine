@@ -136,7 +136,7 @@ inline float3 Diffuse_Burley(float3 diffuse_color, float Roughness, float NoV, f
 inline float3 Diffuse_OrenNayar(float3 diffuse_color, float Roughness, float NoV, float NoL, float VoH)
 {
     float a     = Roughness * Roughness;
-    float s     = a;                    // / ( 1.29 + 0.5 * a );
+    float s     = a;                    // ( 1.29 + 0.5 * a );
     float s2    = s * s;
     float VoL   = 2 * VoH * VoH - 1;    // double angle identity
     float Cosri = VoL - NoV * NoL;
@@ -302,5 +302,5 @@ inline float3 Brdf_Specular_Ibl(Material material, float3 normal, float3 camera_
 
     diffuse_energy *= compute_diffuse_energy(F, material.metallic);
     
-    return prefilteredColor * reflectivity;   
+    return prefilteredColor * reflectivity;
 }

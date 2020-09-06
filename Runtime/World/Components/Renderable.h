@@ -73,12 +73,12 @@ namespace Spartan
         void GeometryClear();
         void GeometrySet(Geometry_Type type);
         void GeometryGet(std::vector<uint32_t>* indices, std::vector<RHI_Vertex_PosTexNorTan>* vertices) const;
-        uint32_t GeometryIndexOffset()                const { return m_geometryIndexOffset; }
-        uint32_t GeometryIndexCount()                const { return m_geometryIndexCount; }        
+        uint32_t GeometryIndexOffset()              const { return m_geometryIndexOffset; }
+        uint32_t GeometryIndexCount()               const { return m_geometryIndexCount; }
         uint32_t GeometryVertexOffset()             const { return m_geometryVertexOffset; }
-        uint32_t GeometryVertexCount()                const { return m_geometryVertexCount; }
+        uint32_t GeometryVertexCount()              const { return m_geometryVertexCount; }
         Geometry_Type GeometryType()                const { return m_geometry_type; }
-        const std::string& GeometryName()            const { return m_geometryName; }
+        const std::string& GeometryName()           const { return m_geometryName; }
         const Model* GeometryModel()                const { return m_model.get(); }
         const Math::BoundingBox& GetBoundingBox()   const { return m_bounding_box; }
         const Math::BoundingBox& GetAabb();
@@ -94,15 +94,15 @@ namespace Spartan
         void UseDefaultMaterial();
         std::string GetMaterialName()   const;
         Material* GetMaterial()         const { return m_material.get(); }
-        auto HasMaterial()                const { return m_material != nullptr; }
+        auto HasMaterial()              const { return m_material != nullptr; }
         //=======================================================================
 
-        //= PROPERTIES ============================================================================
-        void SetCastShadows(const bool cast_shadows)        { m_castShadows = cast_shadows; }
-        auto GetCastShadows() const                            { return m_castShadows; }
-        void SetReceiveShadows(const bool receive_shadows)    { m_receiveShadows = receive_shadows; }
-        auto GetReceiveShadows() const                        { return m_receiveShadows; }
-        //=========================================================================================
+        //= PROPERTIES ============================================================================-
+        void SetCastShadows(const bool cast_shadows)        { m_cast_shadows = cast_shadows; }
+        auto GetCastShadows() const                         { return m_cast_shadows; }
+        void SetReceiveShadows(const bool receive_shadows)  { m_receive_shadows = receive_shadows; }
+        auto GetReceiveShadows() const                      { return m_receive_shadows; }
+        //=========================================================================================-
 
     private:
         std::string m_geometryName;
@@ -115,8 +115,8 @@ namespace Spartan
         Math::BoundingBox m_bounding_box;
         Math::BoundingBox m_aabb;
         Math::Matrix m_last_transform   = Math::Matrix::Identity;
-        bool m_castShadows              = true;
-        bool m_receiveShadows           = true;
+        bool m_cast_shadows             = true;
+        bool m_receive_shadows          = true;
         bool m_material_default;
         std::shared_ptr<Material> m_material;
     };

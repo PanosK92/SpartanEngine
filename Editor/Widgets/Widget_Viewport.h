@@ -38,8 +38,8 @@ namespace Spartan
 class Widget_Viewport : public Widget
 {
 public:
-	Widget_Viewport(Editor* editor);
-	void Tick() override;
+    Widget_Viewport(Editor* editor);
+    void Tick() override;
 
 private:
     float m_window_padding          = 4.0f;

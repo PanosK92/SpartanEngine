@@ -61,38 +61,38 @@ namespace Spartan
         bool LoadFromFile(const std::string& file_path) override;
         //=======================================================
 
-        auto GetWidth() const                                            { return m_width; }
-        void SetWidth(const uint32_t width)                                { m_width = width; }
+        auto GetWidth() const                                           { return m_width; }
+        void SetWidth(const uint32_t width)                             { m_width = width; }
 
-        auto GetHeight() const                                            { return m_height; }
-        void SetHeight(const uint32_t height)                            { m_height = height; }
+        auto GetHeight() const                                          { return m_height; }
+        void SetHeight(const uint32_t height)                           { m_height = height; }
 
-        auto GetGrayscale() const                                        { return m_flags & RHI_Texture_Grayscale; }
-        void SetGrayscale(const bool is_grayscale)                        { is_grayscale ? m_flags |= RHI_Texture_Grayscale : m_flags &= ~RHI_Texture_Grayscale; }
+        auto GetGrayscale() const                                       { return m_flags & RHI_Texture_Grayscale; }
+        void SetGrayscale(const bool is_grayscale)                      { is_grayscale ? m_flags |= RHI_Texture_Grayscale : m_flags &= ~RHI_Texture_Grayscale; }
 
         auto GetTransparency() const                                    { return m_flags & RHI_Texture_Transparent; }
-        void SetTransparency(const bool is_transparent)                    { is_transparent ? m_flags |= RHI_Texture_Transparent : m_flags &= ~RHI_Texture_Transparent; }
+        void SetTransparency(const bool is_transparent)                 { is_transparent ? m_flags |= RHI_Texture_Transparent : m_flags &= ~RHI_Texture_Transparent; }
 
-        uint32_t GetBitsPerChannel() const                                { return m_bits_per_channel; }
-        void SetBitsPerChannel(const uint32_t bits)                        { m_bits_per_channel = bits; }
+        uint32_t GetBitsPerChannel() const                              { return m_bits_per_channel; }
+        void SetBitsPerChannel(const uint32_t bits)                     { m_bits_per_channel = bits; }
         uint32_t GetBytesPerChannel() const                             { return m_bits_per_channel / 8; }
         uint32_t GetBytesPerPixel() const                               { return (m_bits_per_channel / 8) * m_channel_count; }
 
         uint32_t GetChannelCount() const                                { return m_channel_count; }
-        void SetChannelCount(const uint32_t channel_count)                { m_channel_count = channel_count; }
+        void SetChannelCount(const uint32_t channel_count)              { m_channel_count = channel_count; }
 
-        auto GetFormat() const                                            { return m_format; }
-        void SetFormat(const RHI_Format format)                            { m_format = format; }
+        auto GetFormat() const                                          { return m_format; }
+        void SetFormat(const RHI_Format format)                         { m_format = format; }
 
         // Data
         bool HasData() const                                            { return !m_data.empty(); }
-        const auto& GetData() const                                        { return m_data; }        
         void SetData(const std::vector<std::vector<std::byte>>& data)   { m_data = data; }
-        auto AddMipmap()                                                { return &m_data.emplace_back(std::vector<std::byte>()); }
-        bool HasMipmaps() const                                         { return !m_data.empty();  }
-        uint32_t GetMiplevels() const                                   { return m_mip_levels; }
-        std::vector<std::byte>* GetData(uint32_t mipmap_index);
-        std::vector<std::byte> GetMipmap(uint32_t index);
+        bool HasMipmaps() const                                         { return m_mip_count > 1;  }
+        uint8_t GetMipCount() const                                     { return m_mip_count; }
+        std::vector<std::byte>& AddMip()                             { return m_data.emplace_back(std::vector<std::byte>()); }
+        std::vector<std::vector<std::byte>>& GetMips()                  { return m_data; }
+        std::vector<std::byte>& GetMip(const uint8_t mip_index);
+        std::vector<std::byte> GetOrLoadMip(const uint8_t mip_index);
 
         // Binding type
         bool IsSampled()        const { return m_flags & RHI_Texture_Sampled; }
@@ -132,11 +132,11 @@ namespace Spartan
 
         uint32_t m_bits_per_channel = 8;
         uint32_t m_width            = 0;
-        uint32_t m_height            = 0;
+        uint32_t m_height           = 0;
         uint32_t m_channel_count    = 4;
         uint32_t m_array_size       = 1;
-        uint32_t m_mip_levels       = 1;
-        RHI_Format m_format            = RHI_Format_Undefined;
+        uint8_t m_mip_count         = 1;
+        RHI_Format m_format         = RHI_Format_Undefined;
         RHI_Image_Layout m_layout   = RHI_Image_Undefined;
         uint16_t m_flags            = 0;
         RHI_Viewport m_viewport;
