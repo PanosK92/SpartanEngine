@@ -834,7 +834,7 @@ namespace Spartan::vulkan_utility
 
         inline bool set_layout(void* cmd_buffer, const RHI_Texture* texture, const RHI_Image_Layout layout_new)
         {
-            return set_layout(cmd_buffer, texture->Get_Resource(), get_aspect_mask(texture), texture->GetMiplevels(), texture->GetArraySize(), texture->GetLayout(), layout_new);
+            return set_layout(cmd_buffer, texture->Get_Resource(), get_aspect_mask(texture), texture->GetMipCount(), texture->GetArraySize(), texture->GetLayout(), layout_new);
         }
 
         inline bool set_layout(void* cmd_buffer, void* image, const RHI_SwapChain* swapchain, const RHI_Image_Layout layout_new)
@@ -878,7 +878,7 @@ namespace Spartan::vulkan_utility
                     type = VK_IMAGE_VIEW_TYPE_CUBE;
                 }
 
-                return create(image, image_view, type, vulkan_format[texture->GetFormat()], get_aspect_mask(texture, only_depth, only_stencil), texture->GetMiplevels(), array_index, array_length);
+                return create(image, image_view, type, vulkan_format[texture->GetFormat()], get_aspect_mask(texture, only_depth, only_stencil), texture->GetMipCount(), array_index, array_length);
             }
 
             inline void destroy(void*& image_view)

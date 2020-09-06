@@ -81,7 +81,7 @@ namespace Spartan
         const uint32_t width            = texture->GetWidth();
         const uint32_t height           = texture->GetHeight();
         const uint32_t array_size       = texture->GetArraySize();
-        const uint32_t mip_levels       = texture->GetMiplevels();
+        const uint32_t mip_levels       = texture->GetMipCount();
         const uint32_t bytes_per_pixel  = texture->GetBytesPerPixel();
 
         // Fill out VkBufferImageCopy structs describing the array and the mip levels   
@@ -124,7 +124,7 @@ namespace Spartan
                 for (uint32_t mip_index = 0; mip_index < mip_levels; mip_index++)
                 {
                     uint64_t buffer_size = (width >> mip_index) * (height >> mip_index) * bytes_per_pixel;
-                    memcpy(static_cast<std::byte*>(data) + buffer_offset, texture->GetData(array_index + mip_index)->data(), buffer_size);
+                    memcpy(static_cast<std::byte*>(data) + buffer_offset, texture->GetMip(array_index + mip_index).data(), buffer_size);
                     buffer_offset += buffer_size;
                 }
             }
@@ -139,7 +139,7 @@ namespace Spartan
     {
         // Copy the texture's data to a staging buffer
         void* staging_buffer = nullptr;
-        std::vector<VkBufferImageCopy> buffer_image_copies(texture->GetMiplevels());
+        std::vector<VkBufferImageCopy> buffer_image_copies(texture->GetMipCount());
         if (!copy_to_staging_buffer(texture, buffer_image_copies, staging_buffer))
             return false;
 
