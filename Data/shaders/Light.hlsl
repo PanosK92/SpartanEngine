@@ -213,9 +213,6 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         // Tone down diffuse such as that only non metals have it
         light_diffuse *= diffuse_energy;
 
-        // Light - Emissive
-        float3 light_emissive = material.emissive * material.albedo.rgb * 50.0f;
-
         // Light - Subsurface scattering fast approximation
         float3 light_subsurface_scattering = 0.0f;
         /* Will activate soon
@@ -254,34 +251,37 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
         // Combine all light
         float3 radiance = light.color * n_dot_l;
-        light_diffuse  = saturate_16(light_diffuse * radiance + light_emissive + light_subsurface_scattering);
+        light_diffuse  = saturate_16(light_diffuse * radiance + light_subsurface_scattering);
         light_specular = saturate_16((light_specular + light_specular_clearcoat + light_specular_sheen) * radiance + light_reflection);
-        
-        // Refraction
-        #if TRANSPARENT
-        {
-            float ior               = 1.5; // glass
-            float2 normal2D         = mul((float3x3)g_view, sample_normal.xyz).xy;
-            float2 refraction_uv    = uv + normal2D * ior * 0.03f;
-            float3 refraction_color = 0.0f;
-
-            // Only refract what's behind the surface
-            [branch]
-            if (get_linear_depth(refraction_uv) + 0.2f > get_linear_depth(surface.depth))
-            {
-                refraction_color = tex_frame.SampleLevel(sampler_bilinear_clamp, refraction_uv, 0).rgb;
-            }
-            else
-            {
-                refraction_color = tex_frame.Load(int3(thread_id.xy, 0)).rgb;
-            }
-
-            light_diffuse = lerp(refraction_color, light_diffuse, material.albedo.a);
-        }
-        #endif
     }
 
-    tex_out_rgb[thread_id.xy]   += light_diffuse;
+    // Light - Refraction
+    #if TRANSPARENT
+    {
+        float ior               = 1.5; // glass
+        float2 normal2D         = mul((float3x3)g_view, sample_normal.xyz).xy;
+        float2 refraction_uv    = uv + normal2D * ior * 0.03f;
+        float3 refraction_color = 0.0f;
+    
+        // Only refract what's behind the surface
+        [branch]
+        if (get_linear_depth(refraction_uv) > get_linear_depth(surface.depth))
+        {
+            refraction_color = tex_frame.SampleLevel(sampler_bilinear_clamp, refraction_uv, 0).rgb;
+        }
+        else
+        {
+            refraction_color = tex_frame.Load(int3(thread_id.xy, 0)).rgb;
+        }
+    
+        light_diffuse = lerp(refraction_color, light_diffuse, material.albedo.a);
+    }
+    #endif
+    
+    // Light - Emissive
+    float3 light_emissive = material.emissive * material.albedo.rgb * 50.0f;
+
+    tex_out_rgb[thread_id.xy]   += light_diffuse + light_emissive;
     tex_out_rgb2[thread_id.xy]  += light_specular;
     tex_out_rgb3[thread_id.xy]  += saturate_16(light_volumetric);
 }
