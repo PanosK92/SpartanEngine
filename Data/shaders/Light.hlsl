@@ -184,7 +184,6 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         float3 reflective_energy    = 1.0f;
         
         // Light - Specular
-        float3 light_specular = 0.0f;
         if (material.anisotropic == 0.0f)
         {
             light_specular = BRDF_Specular_Isotropic(material, n_dot_v, n_dot_l, n_dot_h, v_dot_h, diffuse_energy, reflective_energy);
@@ -209,10 +208,10 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         }
         
         // Light - Diffuse
-        float3 diffuse = BRDF_Diffuse(material, n_dot_v, n_dot_l, v_dot_h);
+        light_diffuse = BRDF_Diffuse(material, n_dot_v, n_dot_l, v_dot_h);
 
         // Tone down diffuse such as that only non metals have it
-        diffuse *= diffuse_energy;
+        light_diffuse *= diffuse_energy;
 
         // Light - Emissive
         float3 light_emissive = material.emissive * material.albedo.rgb * 50.0f;
@@ -255,8 +254,8 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
         // Combine all light
         float3 radiance = light.color * n_dot_l;
-        light_diffuse  += saturate_16(diffuse * radiance + light_emissive + light_subsurface_scattering);
-        light_specular += saturate_16((light_specular + light_specular_clearcoat + light_specular_sheen) * radiance + light_reflection);
+        light_diffuse  = saturate_16(light_diffuse * radiance + light_emissive + light_subsurface_scattering);
+        light_specular = saturate_16((light_specular + light_specular_clearcoat + light_specular_sheen) * radiance + light_reflection);
         
         // Refraction
         #if TRANSPARENT
