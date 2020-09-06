@@ -76,7 +76,7 @@ namespace Spartan::vulkan_utility
         create_info.extent.width        = texture->GetWidth();
         create_info.extent.height       = texture->GetHeight();
         create_info.extent.depth        = 1;
-        create_info.mipLevels           = texture->GetMiplevels();
+        create_info.mipLevels           = texture->GetMipCount();
         create_info.arrayLayers         = texture->GetArraySize();
         create_info.format              = vulkan_format[format];
         create_info.tiling              = VK_IMAGE_TILING_OPTIMAL;
