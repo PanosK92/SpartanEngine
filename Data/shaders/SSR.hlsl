@@ -56,9 +56,9 @@ inline float2 binary_search(float3 ray_dir, inout float3 ray_pos, inout float2 r
 
 inline float2 trace_ray(float2 uv, float3 ray_pos, float3 ray_dir)
 {
-    float step_length = g_ssr_ray_max_distance / (float) g_ssr_max_steps;
-    float3 ray_step = ray_dir * step_length;
-    float2 ray_uv_hit = 0.0f;
+    float step_length   = g_ssr_ray_max_distance / (float) g_ssr_max_steps;
+    float3 ray_step     = ray_dir * step_length;
+    float2 ray_uv_hit   = 0.0f;
     
     // Reject if the reflection vector is pointing back at the viewer.
     // Attenuate reflections for angles between 60 degrees and 75 degrees, and drop all contribution beyond the (-60,60) degree range
@@ -105,9 +105,9 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     const float2 uv = (thread_id.xy + 0.5f) / g_resolution;
 
     // Compute view-space ray
-    float3 normal_view = get_normal_view_space(thread_id.xy);
-    float3 ray_pos = get_position_view_space(thread_id.xy);
-    float3 ray_dir = normalize(reflect(ray_pos, normal_view));
+    float3 normal_view  = get_normal_view_space(thread_id.xy);
+    float3 ray_pos      = get_position_view_space(thread_id.xy);
+    float3 ray_dir      = normalize(reflect(ray_pos, normal_view));
 
     // Trace it
     tex_out_rg[thread_id.xy] = trace_ray(uv, ray_pos, ray_dir);

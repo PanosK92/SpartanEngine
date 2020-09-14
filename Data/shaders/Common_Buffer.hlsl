@@ -106,10 +106,10 @@ cbuffer BufferObject : register(b3)
 // High frequency - Updates per light
 cbuffer LightBuffer : register(b4)
 {
-    matrix light_view_projection[6];
-    float4 intensity_range_angle_bias;
-    float3 color;
-    float normal_bias;
-    float4 position;
-    float4 direction;
+    matrix cb_light_view_projection[6];
+    float4 cb_light_intensity_range_angle_bias;
+    float3 cb_light_color;
+    float cb_light_normal_bias;
+    float4 cb_light_position;
+    float4 cb_light_direction;
 };

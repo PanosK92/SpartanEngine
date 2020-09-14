@@ -366,7 +366,7 @@ namespace Spartan
                 std::vector<const char*> validation_layers      = { };
                 std::vector<const char*> extensions_instance    = { "VK_KHR_surface", "VK_KHR_win32_surface" };
             #endif
-
+                
                 bool initalise_allocator();
                 void destroy_allocator();
         #endif

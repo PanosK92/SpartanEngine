@@ -23,10 +23,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common.hlsl"
 //====================
 
-static const float g_film_grain_intensity = 0.002f;
-static const float g_film_grain_speed = 3.0f;
-static const float g_film_grain_mean = 0.0f; // What gray level noise should tend to.
-static const float g_film_grain_variance = 0.5f; // Controls the contrast/variance of noise.
+static const float g_film_grain_intensity   = 0.002f;
+static const float g_film_grain_speed       = 3.0f;
+static const float g_film_grain_mean        = 0.0f; // What gray level noise should tend to.
+static const float g_film_grain_variance    = 0.5f; // Controls the contrast/variance of noise.
 
 float gaussian(float z, float u, float o) {
     return (1.0 / (o * sqrt(2.0 * 3.1415))) * exp(-(((z - u) * (z - u)) / (2.0 * (o * o))));

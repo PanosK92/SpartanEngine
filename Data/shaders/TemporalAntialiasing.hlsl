@@ -76,20 +76,20 @@ float3 clip_aabb(float3 aabb_min, float3 aabb_max, float3 p, float3 q)
 }
 
 // Clip history to the neighbourhood of the current sample
-float3 clip_history(int2 pos, Texture2D tex_current, float3 color_history)
+float3 clip_history(int2 pos, Texture2D tex, float3 color_history)
 {
     uint2 du = uint2(1, 0);
     uint2 dv = uint2(0, 1);
 
-    float3 ctl = tex_current[pos - dv - du].rgb;
-    float3 ctc = tex_current[pos - dv].rgb;
-    float3 ctr = tex_current[pos - dv + du].rgb;
-    float3 cml = tex_current[pos - du].rgb;
-    float3 cmc = tex_current[pos].rgb;
-    float3 cmr = tex_current[pos + du].rgb;
-    float3 cbl = tex_current[pos + dv - du].rgb;
-    float3 cbc = tex_current[pos + dv].rgb;
-    float3 cbr = tex_current[pos + dv + du].rgb;
+    float3 ctl = tex[pos - dv - du].rgb;
+    float3 ctc = tex[pos - dv].rgb;
+    float3 ctr = tex[pos - dv + du].rgb;
+    float3 cml = tex[pos - du].rgb;
+    float3 cmc = tex[pos].rgb;
+    float3 cmr = tex[pos + du].rgb;
+    float3 cbl = tex[pos + dv - du].rgb;
+    float3 cbc = tex[pos + dv].rgb;
+    float3 cbr = tex[pos + dv + du].rgb;
 
     float3 color_min = min(ctl, min(ctc, min(ctr, min(cml, min(cmc, min(cmr, min(cbl, min(cbc, cbr))))))));
     float3 color_max = max(ctl, max(ctc, max(ctr, max(cml, max(cmc, max(cmr, max(cbl, max(cbc, cbr))))))));
@@ -110,32 +110,33 @@ float4 TemporalAntialiasing(uint2 thread_id, Texture2D tex_accumulation, Texture
 
     // Clip history to the neighbourhood of the current sample
     color_history = clip_history(thread_id.xy, tex_current, color_history);
-    
-    // Decrease blend factor when motion gets sub-pixel
-    const float threshold   = 0.5f;
-    const float base        = 40.0f;
-    const float gather      = g_delta_time;
-    float depth             = get_linear_depth(uv);
-    float texel_vel_mag     = length(velocity) * depth;
-    float subpixel_motion   = saturate(threshold / (FLT_MIN + texel_vel_mag));
-    float factor_subpixel   = texel_vel_mag * base + subpixel_motion * gather;
+
+    // Compute blend factor
+    float blend_factor = 1.0f;
+    {   
+        // Decrease blend factor when motion gets sub-pixel
+        const float threshold   = 0.5f;
+        const float base        = 0.5f;
+        const float gather      = g_delta_time * 25.0f;
+        float depth             = get_linear_depth(uv);
+        float texel_vel_mag     = length(velocity) * depth;
+        float subpixel_motion   = saturate(threshold / (FLT_MIN + texel_vel_mag));
+        blend_factor *= texel_vel_mag * base + subpixel_motion * gather;
+
+        // Decrease blend factor when contrast is high
+        float luminance_history = luminance(color_history);
+        float luminance_current = luminance(color_current);
+        float diff = 1.0 - abs(luminance_current - luminance_history) / (0.001 + max(luminance_current, luminance_history));
+        blend_factor *= diff * diff;
+
+        // Override blend factor if the re-projected uv is out of screen
+        blend_factor = is_saturated(uv_reprojected) ? blend_factor : 1.0f;
+    }
     
     // Tonemap
     color_history = Reinhard(color_history);
     color_current = Reinhard(color_current);
     
-    // Decrease blend factor when contrast is high
-    float lum0              = luminance(color_current);
-    float lum1              = luminance(color_history);
-    float factor_contrast   = 1.0f - abs(lum0 - lum1);
-    factor_contrast         = factor_contrast * factor_contrast;
-
-    // Compute blend factor
-    float blend_factor = saturate(factor_subpixel * factor_contrast);
-    
-    // Use max blend if the re-projected uv is out of screen
-    blend_factor = is_saturated(uv_reprojected) ? blend_factor : 1.0f;
-
     // Resolve
     float3 resolved = lerp(color_history, color_current, blend_factor);
     

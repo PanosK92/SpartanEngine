@@ -46,18 +46,20 @@ struct Light
     float   angle;
     float   bias;
     float   normal_bias;
-    uint    array_size;
-    float   n_dot_l;
     float   near;
     float   far;
+    float   attenuation;
+    float   intensity;
+    float3  radiance;
 };
 
 struct Surface
 {
-    float2 uv;
-    float depth;
-    float3 position;
-    float3 normal;
-    float3 camera_to_pixel;
-    float camera_to_pixel_length;
+    float2  uv;
+    float   depth;
+    float3  position;
+    float3  normal;
+    float3  camera_to_pixel;
+    float   camera_to_pixel_length;
+    float   n_dot_l;
 };

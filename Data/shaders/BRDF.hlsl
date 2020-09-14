@@ -304,3 +304,4 @@ inline float3 Brdf_Specular_Ibl(Material material, float3 normal, float3 camera_
     
     return prefilteredColor * reflectivity;
 }
+

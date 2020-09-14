@@ -110,8 +110,11 @@ namespace Spartan
 
             for (const auto& subsystem : m_subsystems)
             {
-                if (typeid(T) == typeid(*subsystem.ptr))
-                    return static_cast<T*>(subsystem.ptr.get());
+                if (subsystem.ptr)
+                {
+                    if (typeid(T) == typeid(*subsystem.ptr))
+                        return static_cast<T*>(subsystem.ptr.get());
+                }
             }
 
             return nullptr;

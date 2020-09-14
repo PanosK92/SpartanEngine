@@ -117,6 +117,7 @@ namespace Spartan
 
             ComputeViewMatrix();
 
+            // Compute projection matrix
             if (m_shadow_map.texture_depth)
             {
                 for (uint32_t i = 0; i < m_shadow_map.texture_depth->GetArraySize(); i++)
@@ -249,7 +250,7 @@ namespace Spartan
         else if (m_light_type == LightType::Spot)
         {   
             const Vector3 position  = GetTransform()->GetPosition();
-            const Vector3 forward    = GetTransform()->GetForward();
+            const Vector3 forward   = GetTransform()->GetForward();
             const Vector3 up        = GetTransform()->GetUp();
 
             // Compute
@@ -290,10 +291,10 @@ namespace Spartan
         }
         else
         {
-            const float width           = static_cast<float>(m_shadow_map.texture_depth->GetWidth());
-            const float height          = static_cast<float>(m_shadow_map.texture_depth->GetHeight());
-            const auto aspect_ratio     = width / height;
-            const float fov             = 1.57079633f; // 90 deg
+            const uint32_t width        = m_shadow_map.texture_depth->GetWidth();
+            const uint32_t height       = m_shadow_map.texture_depth->GetHeight();
+            const float aspect_ratio    = static_cast<float>(width) / static_cast<float>(height);
+            const float fov             = m_light_type == LightType::Spot ? m_angle_rad : 1.57079633f; // 90 deg
             const float near_plane      = reverse_z ? m_range : 0.1f;
             const float far_plane       = reverse_z ? 0.1f : m_range;
             m_matrix_projection[index]  = Matrix::CreatePerspectiveFieldOfViewLH(fov, aspect_ratio, near_plane, far_plane);
@@ -336,7 +337,7 @@ namespace Spartan
 
         Camera* camera                        = m_renderer->GetCamera().get();
         const float clip_near                 = camera->GetNearPlane();
-        const float clip_far                  = camera->GetFarPlane() * 0.25f;
+        const float clip_far                  = camera->GetFarPlane();
         const Matrix view_projection_inverted = Matrix::Invert(camera->GetViewMatrix() * camera->ComputeProjection(false, clip_near, clip_far));
 
         // Calculate split depths based on view camera frustum

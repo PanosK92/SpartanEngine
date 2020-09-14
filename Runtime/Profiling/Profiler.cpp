@@ -306,7 +306,7 @@ namespace Spartan
     void Profiler::UpdateRhiMetricsString()
     {
         const auto texture_count    = m_resource_manager->GetResourceCount(ResourceType::Texture) + m_resource_manager->GetResourceCount(ResourceType::Texture2d) + m_resource_manager->GetResourceCount(ResourceType::TextureCube);
-        const auto material_count    = m_resource_manager->GetResourceCount(ResourceType::Material);
+        const auto material_count   = m_resource_manager->GetResourceCount(ResourceType::Material);
 
         static const char* text =
             // Times
@@ -316,9 +316,9 @@ namespace Spartan
             "\n"
             // Detailed times
             "\t\tavg\t\tmin\t\tmax\t\tlast\n"
-            "Total:\t%.2f\t\t%.2f\t\t%.2f\t\t%.2f\n"
-            "CPU:\t\t%.2f\t\t%.2f\t\t%.2f\t\t%.2f\n"
-            "GPU:\t%.2f\t\t%.2f\t\t%.2f\t\t%.2f\n"
+            "Total:\t%06.2f\t%06.2f\t%06.2f\t%06.2f ms\n"
+            "CPU:\t\t%06.2f\t%06.2f\t%06.2f\t%06.2f ms\n"
+            "GPU:\t%06.2f\t%06.2f\t%06.2f\t%06.2f ms\n"
             "\n"
             // GPU
             "API:\t\t%s\n"

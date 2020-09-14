@@ -27,7 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     #include <windows.h>
     #include <xinput.h>
 #endif
-
 //====================================
 
 //= NAMESPACES ===============
@@ -263,34 +262,34 @@ namespace Spartan
 
         if (m_gamepad_connected)
         {
-            m_keys[start_index_gamepad]            = g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_UP;
-            m_keys[start_index_gamepad + 1]        = g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_DOWN;
-            m_keys[start_index_gamepad + 2]        = g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_LEFT;
-            m_keys[start_index_gamepad + 3]        = g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_RIGHT;
-            m_keys[start_index_gamepad + 4]        = g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_A;
-            m_keys[start_index_gamepad + 5]        = g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_B;
-            m_keys[start_index_gamepad + 6]        = g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_X;
-            m_keys[start_index_gamepad + 7]        = g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_Y;
-            m_keys[start_index_gamepad + 6]        = g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_START;
-            m_keys[start_index_gamepad + 7]        = g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_BACK;
-            m_keys[start_index_gamepad + 8]        = g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_LEFT_THUMB;
-            m_keys[start_index_gamepad + 9]        = g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_RIGHT_THUMB;
+            m_keys[start_index_gamepad]         = g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_UP;
+            m_keys[start_index_gamepad + 1]     = g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_DOWN;
+            m_keys[start_index_gamepad + 2]     = g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_LEFT;
+            m_keys[start_index_gamepad + 3]     = g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_RIGHT;
+            m_keys[start_index_gamepad + 4]     = g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_A;
+            m_keys[start_index_gamepad + 5]     = g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_B;
+            m_keys[start_index_gamepad + 6]     = g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_X;
+            m_keys[start_index_gamepad + 7]     = g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_Y;
+            m_keys[start_index_gamepad + 6]     = g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_START;
+            m_keys[start_index_gamepad + 7]     = g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_BACK;
+            m_keys[start_index_gamepad + 8]     = g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_LEFT_THUMB;
+            m_keys[start_index_gamepad + 9]     = g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_RIGHT_THUMB;
             m_keys[start_index_gamepad + 10]    = g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER;
             m_keys[start_index_gamepad + 11]    = g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER;
 
-            m_gamepad_trigger_left    = static_cast<float>(g_gamepad.Gamepad.bLeftTrigger);
-            m_gamepad_trigger_right    = static_cast<float>(g_gamepad.Gamepad.bRightTrigger);
-            m_gamepad_thumb_left.x    = static_cast<float>(g_gamepad.Gamepad.sThumbLX);
-            m_gamepad_thumb_left.y    = static_cast<float>(g_gamepad.Gamepad.sThumbLY);
-            m_gamepad_thumb_right.x    = static_cast<float>(g_gamepad.Gamepad.sThumbRX);
-            m_gamepad_thumb_right.y    = static_cast<float>(g_gamepad.Gamepad.sThumbRY);
+            m_gamepad_trigger_left  = static_cast<float>(g_gamepad.Gamepad.bLeftTrigger);
+            m_gamepad_trigger_right = static_cast<float>(g_gamepad.Gamepad.bRightTrigger);
+            m_gamepad_thumb_left.x  = static_cast<float>(g_gamepad.Gamepad.sThumbLX);
+            m_gamepad_thumb_left.y  = static_cast<float>(g_gamepad.Gamepad.sThumbLY);
+            m_gamepad_thumb_right.x = static_cast<float>(g_gamepad.Gamepad.sThumbRX);
+            m_gamepad_thumb_right.y = static_cast<float>(g_gamepad.Gamepad.sThumbRY);
 
-            if (m_gamepad_trigger_left != 0)    m_gamepad_trigger_left    /= 255.0f;    // Convert [0, 255] to [0, 1]
-            if (m_gamepad_trigger_right != 0)    m_gamepad_trigger_right    /= 255.0f;    // Convert [0, 255] to [0, 1]
-            if (m_gamepad_thumb_left.x != 0)    m_gamepad_thumb_left.x    = m_gamepad_thumb_left.x    < 0 ? m_gamepad_thumb_left.x    / 32768.0f : m_gamepad_thumb_left.x        / 32767.0f; // Convert [-32768, 32767] to [-1, 1]
-            if (m_gamepad_thumb_left.y != 0)    m_gamepad_thumb_left.y    = m_gamepad_thumb_left.y    < 0 ? m_gamepad_thumb_left.y    / 32768.0f : m_gamepad_thumb_left.y        / 32767.0f; // Convert [-32768, 32767] to [-1, 1]
-            if (m_gamepad_thumb_right.x != 0)    m_gamepad_thumb_right.x = m_gamepad_thumb_right.x    < 0 ? m_gamepad_thumb_right.x    / 32768.0f : m_gamepad_thumb_right.x    / 32767.0f; // Convert [-32768, 32767] to [-1, 1]
-            if (m_gamepad_thumb_right.y != 0)    m_gamepad_thumb_right.y = m_gamepad_thumb_right.y    < 0 ? m_gamepad_thumb_right.y    / 32768.0f : m_gamepad_thumb_right.y    / 32767.0f; // Convert [-32768, 32767] to [-1, 1]
+            if (m_gamepad_trigger_left != 0)    m_gamepad_trigger_left  /= 255.0f;    // Convert [0, 255] to [0, 1]
+            if (m_gamepad_trigger_right != 0)   m_gamepad_trigger_right /= 255.0f;    // Convert [0, 255] to [0, 1]
+            if (m_gamepad_thumb_left.x != 0)    m_gamepad_thumb_left.x  = m_gamepad_thumb_left.x    < 0 ? m_gamepad_thumb_left.x    / 32768.0f : m_gamepad_thumb_left.x     / 32767.0f; // Convert [-32768, 32767] to [-1, 1]
+            if (m_gamepad_thumb_left.y != 0)    m_gamepad_thumb_left.y  = m_gamepad_thumb_left.y    < 0 ? m_gamepad_thumb_left.y    / 32768.0f : m_gamepad_thumb_left.y     / 32767.0f; // Convert [-32768, 32767] to [-1, 1]
+            if (m_gamepad_thumb_right.x != 0)   m_gamepad_thumb_right.x = m_gamepad_thumb_right.x   < 0 ? m_gamepad_thumb_right.x   / 32768.0f : m_gamepad_thumb_right.x    / 32767.0f; // Convert [-32768, 32767] to [-1, 1]
+            if (m_gamepad_thumb_right.y != 0)   m_gamepad_thumb_right.y = m_gamepad_thumb_right.y   < 0 ? m_gamepad_thumb_right.y   / 32768.0f : m_gamepad_thumb_right.y    / 32767.0f; // Convert [-32768, 32767] to [-1, 1]
         }
         else
         {
@@ -311,8 +310,8 @@ namespace Spartan
         XINPUT_VIBRATION vibration;
         ZeroMemory(&vibration, sizeof(XINPUT_VIBRATION));
         
-        vibration.wLeftMotorSpeed    = static_cast<int>(Helper::Clamp(left_motor_speed, 0.0f, 1.0f) * 65535);    // Convert [0, 1] to [0, 65535]
-        vibration.wRightMotorSpeed    = static_cast<int>(Helper::Clamp(right_motor_speed, 0.0f, 1.0f) * 65535);    // Convert [0, 1] to [0, 65535]
+        vibration.wLeftMotorSpeed   = static_cast<int>(Helper::Clamp(left_motor_speed, 0.0f, 1.0f) * 65535);    // Convert [0, 1] to [0, 65535]
+        vibration.wRightMotorSpeed  = static_cast<int>(Helper::Clamp(right_motor_speed, 0.0f, 1.0f) * 65535);   // Convert [0, 1] to [0, 65535]
 
         return XInputSetState(g_gamepad_num, &vibration) == ERROR_SUCCESS;
     }

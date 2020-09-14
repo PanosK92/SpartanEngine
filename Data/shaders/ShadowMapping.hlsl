@@ -54,7 +54,7 @@ static const float g_pcf_filter_size = (sqrt((float)g_shadow_samples) - 1.0f) / 
 /*------------------------------------------------------------------------------
     DEPTH SAMPLING
 ------------------------------------------------------------------------------*/
-float compare_depth(float3 uv, float compare)
+float shadow_compare_depth(float3 uv, float compare)
 {
     #if DIRECTIONAL
     // float3 -> uv, slice
@@ -70,7 +70,7 @@ float compare_depth(float3 uv, float compare)
     return 0.0f;
 }
 
-float sample_depth(float3 uv)
+float shadow_sample_depth(float3 uv)
 {
     #if DIRECTIONAL
     // float3 -> uv, slice
@@ -86,7 +86,7 @@ float sample_depth(float3 uv)
     return 0.0f;
 }
 
-float4 sample_color(float3 uv)
+float4 shadow_sample_color(float3 uv)
 {
     #if DIRECTIONAL
     // float3 -> uv, slice
@@ -130,7 +130,7 @@ float compute_penumbra(float vogel_angle, float3 uv, float compare)
     for(uint i = 0; i < g_penumbra_samples; i ++)
     {
         float2 offset   = vogel_disk_sample(i, g_penumbra_samples, vogel_angle) * g_shadow_texel_size * g_penumbra_filter_size;
-        float depth     = sample_depth(uv + float3(offset, 0.0f));
+        float depth     = shadow_sample_depth(uv + float3(offset, 0.0f));
 
         if(depth > compare)
         {
@@ -165,7 +165,7 @@ float Technique_Vogel(float3 uv, float compare)
     for (uint i = 0; i < g_shadow_samples; i++)
     {
         float2 offset   = vogel_disk_sample(i, g_shadow_samples, vogel_angle) * g_shadow_texel_size * g_shadow_vogel_filter_size * penumbra;
-        shadow          += compare_depth(uv + float3(offset, 0.0f), compare);
+        shadow          += shadow_compare_depth(uv + float3(offset, 0.0f), compare);
     } 
 
     return shadow / (float)g_shadow_samples;
@@ -180,7 +180,7 @@ float4 Technique_Vogel_Color(float3 uv)
     for (uint i = 0; i < g_shadow_samples; i++)
     {
         float2 offset   = vogel_disk_sample(i, g_shadow_samples, vogel_angle) * g_shadow_texel_size * g_shadow_vogel_filter_size;
-        shadow          += sample_color(uv + float3(offset, 0.0f));
+        shadow          += shadow_sample_color(uv + float3(offset, 0.0f));
     } 
 
     return shadow / (float)g_shadow_samples;
@@ -267,7 +267,7 @@ float Technique_Poisson(float3 uv, float compare)
     {
         uint index      = uint(g_shadow_samples * random(uv.xy * i) + temporal) % g_shadow_samples; // A pseudo-random number between 0 and 15, different for each pixel and each index
         float2 offset   = poisson_disk[index] * g_shadow_texel_size * g_shadow_poisson_filter_size;
-        shadow          += compare_depth(uv + float3(offset, 0.0f), compare);
+        shadow          += shadow_compare_depth(uv + float3(offset, 0.0f), compare);
     }   
 
     return shadow / (float)g_shadow_samples;
@@ -287,7 +287,7 @@ float Technique_Pcf(float3 uv, float compare)
         for (float x = -g_pcf_filter_size; x <= g_pcf_filter_size; x++)
         {
             float2 offset    = float2(x, y) * g_shadow_texel_size;
-            shadow           += compare_depth(uv + float3(offset, 0.0f), compare);   
+            shadow           += shadow_compare_depth(uv + float3(offset, 0.0f), compare);   
         }
     }
     
@@ -297,7 +297,7 @@ float Technique_Pcf(float3 uv, float compare)
 /*------------------------------------------------------------------------------
     BIAS
 ------------------------------------------------------------------------------*/
-inline void auto_bias(inout float3 position, Light light, float bias_mul = 1.0f)
+inline void auto_bias(Surface surface, inout float3 position, Light light, float bias_mul = 1.0f)
 {
     //// Receiver plane bias (slope scaled basically)
     //float3 du                   = ddx(position);
@@ -311,15 +311,15 @@ inline void auto_bias(inout float3 position, Light light, float bias_mul = 1.0f)
     float fixed_factor = 0.0001f;
     
     // Slope scaling
-    float slope_factor = (1.0f - saturate(light.n_dot_l));
+    float slope_factor = (1.0f - saturate(surface.n_dot_l));
 
     // Apply bias
     position.z += fixed_factor * slope_factor * light.bias * bias_mul;
 }
 
-inline float3 bias_normal_offset(Light light, float3 normal)
+inline float3 bias_normal_offset(Surface surface, Light light, float3 normal)
 {
-    return normal * (1.0f - saturate(light.n_dot_l)) * light.normal_bias * g_shadow_texel_size * 10;
+    return normal * (1.0f - saturate(surface.n_dot_l)) * light.normal_bias * g_shadow_texel_size * 10;
 }
 
 /*------------------------------------------------------------------------------
@@ -327,22 +327,23 @@ inline float3 bias_normal_offset(Light light, float3 normal)
 ------------------------------------------------------------------------------*/
 float4 Shadow_Map(Surface surface, Light light)
 { 
-    float3 position_world   = surface.position + bias_normal_offset(light, surface.normal);
+    float3 position_world   = surface.position + bias_normal_offset(surface, light, surface.normal);
     float4 shadow           = 1.0f;
 
     #if DIRECTIONAL
     {
-        for (uint cascade = 0; cascade < light.array_size; cascade++)
+        [unroll]
+        for (uint cascade = 0; cascade < light_array_size; cascade++)
         {
             // Compute position in clip space for primary cascade
-            float3 pos = project(position_world, light_view_projection[cascade]);
+            float3 pos = project(position_world, cb_light_view_projection[cascade]);
             
             // If the position exists within the cascade, sample it
             [branch]
             if (is_saturated(pos))
             {   
                 // Sample primary cascade
-                auto_bias(pos, light, cascade + 1);
+                auto_bias(surface, pos, light, cascade + 1);
                 shadow.a = SampleShadowMap(float3(pos.xy, cascade), pos.z);
 
                 #if (SHADOWS_TRANSPARENT == 1 && TRANSPARENT == 0)
@@ -357,15 +358,15 @@ float4 Shadow_Map(Surface surface, Light light)
                 static const float blend_threshold = 0.1f;
                 float distance_to_edge = 1.0f - max3(abs(pos * 2.0f - 1.0f));
                 [branch]
-                if (distance_to_edge < blend_threshold && cascade < light.array_size)
+                if (distance_to_edge < blend_threshold && cascade < light_array_size)
                 {
                     int cacade_secondary = cascade + 1;
 
                     // Compute position in clip space for secondary cascade
-                    pos = project(position_world, light_view_projection[cacade_secondary]);
+                    pos = project(position_world, cb_light_view_projection[cacade_secondary]);
 
                     // Sample secondary cascade
-                    auto_bias(pos, light, cacade_secondary + 1);
+                    auto_bias(surface, pos, light, cacade_secondary + 1);
                     float shadow_secondary = SampleShadowMap(float3(pos.xy, cacade_secondary), pos.z);
 
                     // Blend cascades
@@ -391,8 +392,8 @@ float4 Shadow_Map(Surface surface, Light light)
         if (light.distance_to_pixel < light.far)
         {
             uint projection_index = direction_to_cube_face_index(light.direction);
-            float3 position = project(position_world, light_view_projection[projection_index]);
-            auto_bias(position, light);
+            float3 position = project(position_world, cb_light_view_projection[projection_index]);
+            auto_bias(surface, position, light);
             shadow.a = SampleShadowMap(light.direction, position.z);
             
             #if (SHADOWS_TRANSPARENT == 1 && TRANSPARENT == 0)
@@ -409,8 +410,8 @@ float4 Shadow_Map(Surface surface, Light light)
         [branch]
         if (light.distance_to_pixel < light.far)
         {
-            float3 position = project(position_world, light_view_projection[0]);
-            auto_bias(position, light);
+            float3 position = project(position_world, cb_light_view_projection[0]);
+            auto_bias(surface, position, light);
             shadow.a = SampleShadowMap(float3(position.xy, 0.0f), position.z);
 
             #if (SHADOWS_TRANSPARENT == 1 && TRANSPARENT == 0)

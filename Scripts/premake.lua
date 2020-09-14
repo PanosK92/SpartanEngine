@@ -109,7 +109,7 @@ project (RUNTIME_NAME)
 	-- Includes
 	includedirs { "../ThirdParty/DirectXShaderCompiler" }
 	includedirs { "../ThirdParty/SPIRV-Cross_2020-01-16" }
-	includedirs { "../ThirdParty/Vulkan_1.2.148.0" }
+	includedirs { "../ThirdParty/Vulkan_1.2.148.1" }
 	includedirs { "../ThirdParty/Assimp_5.0.0" }
 	includedirs { "../ThirdParty/Bullet_2.89" }
 	includedirs { "../ThirdParty/FMOD_1.10.10" }

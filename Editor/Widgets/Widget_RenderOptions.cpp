@@ -209,11 +209,12 @@ void Widget_RenderOptions::Tick()
 
             // Chromatic aberration
             ImGui::Checkbox("Chromatic Aberration", &do_chromatic_aberration);
-            ImGuiEx::Tooltip("Emulates the inability of old cameras to focus all colors in the same focal point");
+            ImGuiEx::Tooltip("Emulates the inability of old cameras to focus all colors in the same focal point.");
             ImGui::Separator();
 
             // Temporal anti-aliasing
             ImGui::Checkbox("TAA - Temporal Anti-Aliasing", &do_taa);
+            ImGuiEx::Tooltip("Used to improve many stochastic effects, you want this to always be enabled.");
             ImGui::Separator();
 
             // FXAA

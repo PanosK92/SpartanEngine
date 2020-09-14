@@ -410,6 +410,7 @@ namespace ImGui::RHI
         if (swap_chain->GetCmdList() && !swap_chain->GetCmdList()->Begin())
         {
             LOG_ERROR("Failed to begin command list");
+            return;
         }
 
         const auto clear = !(viewport->Flags & ImGuiViewportFlags_NoRendererClear);

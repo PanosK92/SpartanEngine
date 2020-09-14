@@ -265,7 +265,7 @@ void Widget_Properties::ShowTransform(Transform* transform) const
         ImGui::SameLine();
         show_vector("Rotation", rotation);
         ImGui::SameLine();
-        show_vector("Scale", scale);   
+        show_vector("Scale", scale);
         
         //= MAP ===================================================================
         if (!is_playing)
@@ -292,17 +292,17 @@ void Widget_Properties::ShowLight(Light* light) const
     if (ComponentProperty::Begin("Light", Icon_Component_Light, light))
     {
         //= REFLECT =================================================================
-        static vector<char*> types    = { "Directional", "Point", "Spot" };
-        const char* type_char_ptr    = types[static_cast<int>(light->GetLightType())];
-        auto intensity                = light->GetIntensity();
-        auto angle                    = light->GetAngle() * 179.0f;
-        auto shadows                = light->GetShadowsEnabled();
-        auto shadows_screen_space   = light->GetShadowsScreenSpaceEnabled();
-        auto shadows_transparent    = light->GetShadowsTransparentEnabled();
-        auto volumetric             = light->GetVolumetricEnabled();
-        auto bias                    = light->GetBias();
-        auto normal_bias            = light->GetNormalBias();
-        auto range                    = light->GetRange();
+        static vector<char*> types  = { "Directional", "Point", "Spot" };
+        const char* type_char_ptr   = types[static_cast<int>(light->GetLightType())];
+        float intensity             = light->GetIntensity();
+        float angle                 = light->GetAngle() * Math::Helper::RAD_TO_DEG;
+        bool shadows                = light->GetShadowsEnabled();
+        bool shadows_screen_space   = light->GetShadowsScreenSpaceEnabled();
+        bool shadows_transparent    = light->GetShadowsTransparentEnabled();
+        bool volumetric             = light->GetVolumetricEnabled();
+        float bias                  = light->GetBias();
+        float normal_bias           = light->GetNormalBias();
+        float range                 = light->GetRange();
         float time_of_day           = light->GetTimeOfDay();
         m_colorPicker_light->SetColor(light->GetColor());
 
@@ -365,12 +365,12 @@ void Widget_Properties::ShowLight(Light* light) const
             ImGui::Text("Transparent Shadows");
             ImGui::SameLine(ComponentProperty::g_column); ImGui::Checkbox("##light_shadows_transparent", &shadows_transparent);
             ImGuiEx::Tooltip("Allows transparent objects to cast colored translucent shadows");
-
-            // Volumetric
-            ImGui::Text("Volumetric");
-            ImGui::SameLine(ComponentProperty::g_column); ImGui::Checkbox("##light_volumetric", &volumetric);
-            ImGuiEx::Tooltip("The shadow map is used to determine which parts of the \"air\" should be lit");
         }
+
+        // Volumetric
+        ImGui::Text("Volumetric");
+        ImGui::SameLine(ComponentProperty::g_column); ImGui::Checkbox("##light_volumetric", &volumetric);
+        ImGuiEx::Tooltip("The shadow map is used to determine which parts of the \"air\" should be lit");
 
         // Bias
         ImGui::Text("Bias");
@@ -399,17 +399,17 @@ void Widget_Properties::ShowLight(Light* light) const
         }
 
         //= MAP ======================================================================================================================
-        if (intensity != light->GetIntensity())                                light->SetIntensity(intensity);
-        if (shadows != light->GetShadowsEnabled())                            light->SetShadowsEnabled(shadows);
+        if (intensity != light->GetIntensity())                             light->SetIntensity(intensity);
+        if (shadows != light->GetShadowsEnabled())                          light->SetShadowsEnabled(shadows);
         if (shadows_screen_space != light->GetShadowsScreenSpaceEnabled())  light->SetShadowsScreenSpaceEnabled(shadows_screen_space);
         if (shadows_transparent != light->GetShadowsTransparentEnabled())   light->SetShadowsTransparentEnabled(shadows_transparent);
         if (volumetric != light->GetVolumetricEnabled())                    light->SetVolumetricEnabled(volumetric);
-        if (bias != light->GetBias())                                        light->SetBias(bias);
-        if (normal_bias != light->GetNormalBias())                            light->SetNormalBias(normal_bias);
-        if (angle / 179.0f != light->GetAngle())                            light->SetAngle(angle / 179.0f);
-        if (range != light->GetRange())                                        light->SetRange(range);
-        if (time_of_day != light->GetTimeOfDay())                            light->SetTimeOfDay(time_of_day);
-        if (m_colorPicker_light->GetColor() != light->GetColor())            light->SetColor(m_colorPicker_light->GetColor());
+        if (bias != light->GetBias())                                       light->SetBias(bias);
+        if (normal_bias != light->GetNormalBias())                          light->SetNormalBias(normal_bias);
+        if (angle != light->GetAngle() * Math::Helper::RAD_TO_DEG)          light->SetAngle(angle * Math::Helper::DEG_TO_RAD);
+        if (range != light->GetRange())                                     light->SetRange(range);
+        if (time_of_day != light->GetTimeOfDay())                           light->SetTimeOfDay(time_of_day);
+        if (m_colorPicker_light->GetColor() != light->GetColor())           light->SetColor(m_colorPicker_light->GetColor());
         //============================================================================================================================
     }
     ComponentProperty::End();
@@ -423,11 +423,10 @@ void Widget_Properties::ShowRenderable(Renderable* renderable) const
     if (ComponentProperty::Begin("Renderable", Icon_Component_Renderable, renderable))
     {
         //= REFLECT =============================================================
-        auto& mesh_name            = renderable->GeometryName();
-        Material* material        = renderable->GetMaterial();
-        auto material_name        = material ? material->GetResourceName() : "N/A";
-        bool cast_shadows        = renderable->GetCastShadows();
-        bool receive_shadows    = renderable->GetReceiveShadows();
+        const string& mesh_name = renderable->GeometryName();
+        Material* material      = renderable->GetMaterial();
+        string material_name    = material ? material->GetResourceName() : "N/A";
+        bool cast_shadows       = renderable->GetCastShadows();
         //=======================================================================
 
         ImGui::Text("Mesh");
@@ -450,14 +449,9 @@ void Widget_Properties::ShowRenderable(Renderable* renderable) const
         ImGui::Text("Cast Shadows");
         ImGui::SameLine(ComponentProperty::g_column); ImGui::Checkbox("##RenderableCastShadows", &cast_shadows);
 
-        // Receive shadows
-        ImGui::Text("Receive Shadows");
-        ImGui::SameLine(ComponentProperty::g_column); ImGui::Checkbox("##RenderableReceiveShadows", &receive_shadows);
-
-        //= MAP ==============================================================================================
-        if (cast_shadows != renderable->GetCastShadows())        renderable->SetCastShadows(cast_shadows);
-        if (receive_shadows != renderable->GetReceiveShadows())    renderable->SetReceiveShadows(receive_shadows);
-        //====================================================================================================
+        //= MAP ===================================================================================
+        if (cast_shadows != renderable->GetCastShadows()) renderable->SetCastShadows(cast_shadows);
+        //=========================================================================================
     }
     ComponentProperty::End();
 }
@@ -470,18 +464,18 @@ void Widget_Properties::ShowRigidBody(RigidBody* rigid_body) const
     if (ComponentProperty::Begin("RigidBody", Icon_Component_RigidBody, rigid_body))
     {
         //= REFLECT ================================================================
-        auto mass                = rigid_body->GetMass();
-        auto friction            = rigid_body->GetFriction();
-        auto friction_rolling    = rigid_body->GetFrictionRolling();
+        auto mass               = rigid_body->GetMass();
+        auto friction           = rigid_body->GetFriction();
+        auto friction_rolling   = rigid_body->GetFrictionRolling();
         auto restitution        = rigid_body->GetRestitution();
         auto use_gravity        = rigid_body->GetUseGravity();
-        auto is_kinematic        = rigid_body->GetIsKinematic();
-        auto freeze_pos_x        = static_cast<bool>(rigid_body->GetPositionLock().x);
-        auto freeze_pos_y        = static_cast<bool>(rigid_body->GetPositionLock().y);
-        auto freeze_pos_z        = static_cast<bool>(rigid_body->GetPositionLock().z);
-        auto freeze_rot_x        = static_cast<bool>(rigid_body->GetRotationLock().x);
-        auto freeze_rot_y        = static_cast<bool>(rigid_body->GetRotationLock().y);
-        auto freeze_rot_z        = static_cast<bool>(rigid_body->GetRotationLock().z);
+        auto is_kinematic       = rigid_body->GetIsKinematic();
+        auto freeze_pos_x       = static_cast<bool>(rigid_body->GetPositionLock().x);
+        auto freeze_pos_y       = static_cast<bool>(rigid_body->GetPositionLock().y);
+        auto freeze_pos_z       = static_cast<bool>(rigid_body->GetPositionLock().z);
+        auto freeze_rot_x       = static_cast<bool>(rigid_body->GetRotationLock().x);
+        auto freeze_rot_y       = static_cast<bool>(rigid_body->GetRotationLock().y);
+        auto freeze_rot_z       = static_cast<bool>(rigid_body->GetRotationLock().z);
         //==========================================================================
 
         const auto input_text_flags        = ImGuiInputTextFlags_CharsDecimal;
@@ -532,20 +526,20 @@ void Widget_Properties::ShowRigidBody(RigidBody* rigid_body) const
         ImGui::SameLine(); ImGui::Text("Z");
         ImGui::SameLine(); ImGui::Checkbox("##RigidFreezeRotZ", &freeze_rot_z);
 
-        //= MAP ====================================================================================================================================================================================================
-        if (mass != rigid_body->GetMass())                        rigid_body->SetMass(mass);
-        if (friction != rigid_body->GetFriction())                rigid_body->SetFriction(friction);
-        if (friction_rolling != rigid_body->GetFrictionRolling())    rigid_body->SetFrictionRolling(friction_rolling);
-        if (restitution != rigid_body->GetRestitution())            rigid_body->SetRestitution(restitution);
-        if (use_gravity != rigid_body->GetUseGravity())            rigid_body->SetUseGravity(use_gravity);
-        if (is_kinematic != rigid_body->GetIsKinematic())            rigid_body->SetIsKinematic(is_kinematic);
-        if (freeze_pos_x != static_cast<bool>(rigid_body->GetPositionLock().x))    rigid_body->SetPositionLock(Vector3(static_cast<float>(freeze_pos_x), static_cast<float>(freeze_pos_y), static_cast<float>(freeze_pos_z)));
-        if (freeze_pos_y != static_cast<bool>(rigid_body->GetPositionLock().y))    rigid_body->SetPositionLock(Vector3(static_cast<float>(freeze_pos_x), static_cast<float>(freeze_pos_y), static_cast<float>(freeze_pos_z)));
-        if (freeze_pos_z != static_cast<bool>(rigid_body->GetPositionLock().z))    rigid_body->SetPositionLock(Vector3(static_cast<float>(freeze_pos_x), static_cast<float>(freeze_pos_y), static_cast<float>(freeze_pos_z)));
-        if (freeze_rot_x != static_cast<bool>(rigid_body->GetRotationLock().x))    rigid_body->SetRotationLock(Vector3(static_cast<float>(freeze_rot_x), static_cast<float>(freeze_rot_y), static_cast<float>(freeze_rot_z)));
-        if (freeze_rot_y != static_cast<bool>(rigid_body->GetRotationLock().y))    rigid_body->SetRotationLock(Vector3(static_cast<float>(freeze_rot_x), static_cast<float>(freeze_rot_y), static_cast<float>(freeze_rot_z)));
-        if (freeze_rot_z != static_cast<bool>(rigid_body->GetRotationLock().z))    rigid_body->SetRotationLock(Vector3(static_cast<float>(freeze_rot_x), static_cast<float>(freeze_rot_y), static_cast<float>(freeze_rot_z)));
-        //==========================================================================================================================================================================================================
+        //= MAP ===========================================================================================================================================================================================================
+        if (mass != rigid_body->GetMass())                                      rigid_body->SetMass(mass);
+        if (friction != rigid_body->GetFriction())                              rigid_body->SetFriction(friction);
+        if (friction_rolling != rigid_body->GetFrictionRolling())               rigid_body->SetFrictionRolling(friction_rolling);
+        if (restitution != rigid_body->GetRestitution())                        rigid_body->SetRestitution(restitution);
+        if (use_gravity != rigid_body->GetUseGravity())                         rigid_body->SetUseGravity(use_gravity);
+        if (is_kinematic != rigid_body->GetIsKinematic())                       rigid_body->SetIsKinematic(is_kinematic);
+        if (freeze_pos_x != static_cast<bool>(rigid_body->GetPositionLock().x)) rigid_body->SetPositionLock(Vector3(static_cast<float>(freeze_pos_x), static_cast<float>(freeze_pos_y), static_cast<float>(freeze_pos_z)));
+        if (freeze_pos_y != static_cast<bool>(rigid_body->GetPositionLock().y)) rigid_body->SetPositionLock(Vector3(static_cast<float>(freeze_pos_x), static_cast<float>(freeze_pos_y), static_cast<float>(freeze_pos_z)));
+        if (freeze_pos_z != static_cast<bool>(rigid_body->GetPositionLock().z)) rigid_body->SetPositionLock(Vector3(static_cast<float>(freeze_pos_x), static_cast<float>(freeze_pos_y), static_cast<float>(freeze_pos_z)));
+        if (freeze_rot_x != static_cast<bool>(rigid_body->GetRotationLock().x)) rigid_body->SetRotationLock(Vector3(static_cast<float>(freeze_rot_x), static_cast<float>(freeze_rot_y), static_cast<float>(freeze_rot_z)));
+        if (freeze_rot_y != static_cast<bool>(rigid_body->GetRotationLock().y)) rigid_body->SetRotationLock(Vector3(static_cast<float>(freeze_rot_x), static_cast<float>(freeze_rot_y), static_cast<float>(freeze_rot_z)));
+        if (freeze_rot_z != static_cast<bool>(rigid_body->GetRotationLock().z)) rigid_body->SetRotationLock(Vector3(static_cast<float>(freeze_rot_x), static_cast<float>(freeze_rot_y), static_cast<float>(freeze_rot_z)));
+        //=================================================================================================================================================================================================================
     }
     ComponentProperty::End();
 }
@@ -618,15 +612,15 @@ void Widget_Properties::ShowCollider(Collider* collider) const
 
         // Center
         ImGui::Text("Center");
-        ImGui::SameLine(ComponentProperty::g_column);    ImGui::PushID("colCenterX"); ImGui::InputFloat("X", &collider_center.x, step, step_fast, precision, input_text_flags); ImGui::PopID();
-        ImGui::SameLine();                                ImGui::PushID("colCenterY"); ImGui::InputFloat("Y", &collider_center.y, step, step_fast, precision, input_text_flags); ImGui::PopID();
-        ImGui::SameLine();                                ImGui::PushID("colCenterZ"); ImGui::InputFloat("Z", &collider_center.z, step, step_fast, precision, input_text_flags); ImGui::PopID();
+        ImGui::SameLine(ComponentProperty::g_column);   ImGui::PushID("colCenterX"); ImGui::InputFloat("X", &collider_center.x, step, step_fast, precision, input_text_flags); ImGui::PopID();
+        ImGui::SameLine();                              ImGui::PushID("colCenterY"); ImGui::InputFloat("Y", &collider_center.y, step, step_fast, precision, input_text_flags); ImGui::PopID();
+        ImGui::SameLine();                              ImGui::PushID("colCenterZ"); ImGui::InputFloat("Z", &collider_center.z, step, step_fast, precision, input_text_flags); ImGui::PopID();
 
         // Size
         ImGui::Text("Size");
         ImGui::SameLine(ComponentProperty::g_column);    ImGui::PushID("colSizeX"); ImGui::InputFloat("X", &collider_bounding_box.x, step, step_fast, precision, input_text_flags); ImGui::PopID();
-        ImGui::SameLine();                                ImGui::PushID("colSizeY"); ImGui::InputFloat("Y", &collider_bounding_box.y, step, step_fast, precision, input_text_flags); ImGui::PopID();
-        ImGui::SameLine();                                ImGui::PushID("colSizeZ"); ImGui::InputFloat("Z", &collider_bounding_box.z, step, step_fast, precision, input_text_flags); ImGui::PopID();
+        ImGui::SameLine();                               ImGui::PushID("colSizeY"); ImGui::InputFloat("Y", &collider_bounding_box.y, step, step_fast, precision, input_text_flags); ImGui::PopID();
+        ImGui::SameLine();                               ImGui::PushID("colSizeZ"); ImGui::InputFloat("Z", &collider_bounding_box.z, step, step_fast, precision, input_text_flags); ImGui::PopID();
 
         // Optimize
         if (collider->GetShapeType() == ColliderShape_Mesh)
@@ -635,11 +629,11 @@ void Widget_Properties::ShowCollider(Collider* collider) const
             ImGui::SameLine(ComponentProperty::g_column); ImGui::Checkbox("##colliderOptimize", &optimize);
         }
 
-        //= MAP ==================================================================================================
-        if (collider_center != collider->GetCenter())                collider->SetCenter(collider_center);
-        if (collider_bounding_box != collider->GetBoundingBox())        collider->SetBoundingBox(collider_bounding_box);
+        //= MAP ====================================================================================================
+        if (collider_center != collider->GetCenter())               collider->SetCenter(collider_center);
+        if (collider_bounding_box != collider->GetBoundingBox())    collider->SetBoundingBox(collider_bounding_box);
         if (optimize != collider->GetOptimize())                    collider->SetOptimize(optimize);
-        //========================================================================================================
+        //==========================================================================================================
     }
     ComponentProperty::End();
 }
@@ -651,22 +645,22 @@ void Widget_Properties::ShowConstraint(Constraint* constraint) const
 
     if (ComponentProperty::Begin("Constraint", Icon_Component_AudioSource, constraint))
     {
-        //= REFLECT ============================================================================
-        vector<char*> types        = {"Point", "Hinge", "Slider", "ConeTwist" };
+        //= REFLECT ==========================================================================
+        vector<char*> types     = {"Point", "Hinge", "Slider", "ConeTwist" };
         const char* type_str    = types[static_cast<int>(constraint->GetConstraintType())];
-        auto other_body            = constraint->GetBodyOther();
-        bool other_body_dirty    = false;
+        auto other_body         = constraint->GetBodyOther();
+        bool other_body_dirty   = false;
         Vector3 position        = constraint->GetPosition();
         Vector3 rotation        = constraint->GetRotation().ToEulerAngles();
-        Vector2 high_limit        = constraint->GetHighLimit();
-        Vector2 low_limit        = constraint->GetLowLimit();
-        string other_body_name    = other_body.expired() ? "N/A" : other_body.lock()->GetName();
-        //======================================================================================
+        Vector2 high_limit      = constraint->GetHighLimit();
+        Vector2 low_limit       = constraint->GetLowLimit();
+        string other_body_name  = other_body.expired() ? "N/A" : other_body.lock()->GetName();
+        //====================================================================================
 
-        const auto inputTextFlags        = ImGuiInputTextFlags_CharsDecimal;
-        const float step                = 0.1f;
-        const float step_fast            = 0.1f;
-        const char* precision    = "%.3f";
+        const auto inputTextFlags   = ImGuiInputTextFlags_CharsDecimal;
+        const float step            = 0.1f;
+        const float step_fast       = 0.1f;
+        const char* precision       = "%.3f";
 
         // Type
         ImGui::Text("Type");
@@ -740,13 +734,13 @@ void Widget_Properties::ShowConstraint(Constraint* constraint) const
             ImGui::SameLine(); ImGui::InputFloat("##ConsLowLimY", &low_limit.y, step, step_fast, precision, inputTextFlags);
         }
 
-        //= MAP ========================================================================================================================
-        if (other_body_dirty)                                                { constraint->SetBodyOther(other_body); other_body_dirty = false; }
-        if (position != constraint->GetPosition())                        constraint->SetPosition(position);
-        if (rotation != constraint->GetRotation().ToEulerAngles())        constraint->SetRotation(Quaternion::FromEulerAngles(rotation));
-        if (high_limit != constraint->GetHighLimit())                    constraint->SetHighLimit(high_limit);
-        if (low_limit != constraint->GetLowLimit())                        constraint->SetLowLimit(low_limit);
-        //==============================================================================================================================
+        //= MAP =======================================================================================================================
+        if (other_body_dirty)                                       { constraint->SetBodyOther(other_body); other_body_dirty = false; }
+        if (position != constraint->GetPosition())                  constraint->SetPosition(position);
+        if (rotation != constraint->GetRotation().ToEulerAngles())  constraint->SetRotation(Quaternion::FromEulerAngles(rotation));
+        if (high_limit != constraint->GetHighLimit())               constraint->SetHighLimit(high_limit);
+        if (low_limit != constraint->GetLowLimit())                 constraint->SetLowLimit(low_limit);
+        //=============================================================================================================================
     }
     ComponentProperty::End();
 }
@@ -862,7 +856,7 @@ void Widget_Properties::ShowMaterial(Material* material) const
         //= MAP =============================================================================================================================
         if (tiling != material->GetTiling())                                    material->SetTiling(tiling);
         if (offset != material->GetOffset())                                    material->SetOffset(offset);
-        if (m_colorPicker_material->GetColor() != material->GetColorAlbedo())    material->SetColorAlbedo(m_colorPicker_material->GetColor());
+        if (m_colorPicker_material->GetColor() != material->GetColorAlbedo())   material->SetColorAlbedo(m_colorPicker_material->GetColor());
         //===================================================================================================================================
     }
     ComponentProperty::End();
@@ -881,9 +875,9 @@ void Widget_Properties::ShowCamera(Camera* camera) const
         float aperture                          = camera->GetAperture();
         float shutter_speed                     = camera->GetShutterSpeed();
         float iso                               = camera->GetIso();
-        float fov                                = camera->GetFovHorizontalDeg();
+        float fov                               = camera->GetFovHorizontalDeg();
         float near_plane                        = camera->GetNearPlane();
-        float far_plane                            = camera->GetFarPlane();
+        float far_plane                         = camera->GetFarPlane();
         bool fps_control                        = camera->GetFpsControl();
         m_colorPicker_camera->SetColor(camera->GetClearColor());
         //========================================================================================================
@@ -930,7 +924,7 @@ void Widget_Properties::ShowCamera(Camera* camera) const
         // ISO
         ImGui::SetCursorPosX(ComponentProperty::g_column);
         ImGuiEx::DragFloatWrap("ISO", &iso, 0.1f, 0.0f, 2000.0f);
-        ImGuiEx::Tooltip("Sensitivity to light.");
+        ImGuiEx::Tooltip("Sensitivity to light. Controls camera noise.");
 
         // Field of View
         ImGui::SetCursorPosX(ComponentProperty::g_column);
@@ -938,8 +932,8 @@ void Widget_Properties::ShowCamera(Camera* camera) const
 
         // Clipping Planes
         ImGui::Text("Clipping Planes");
-        ImGui::SameLine(ComponentProperty::g_column);        ImGui::PushItemWidth(130); ImGui::InputFloat("Near", &near_plane, 0.1f, 0.1f, "%.3f", input_text_flags); ImGui::PopItemWidth();
-        ImGui::SetCursorPosX(ComponentProperty::g_column);    ImGui::PushItemWidth(130); ImGui::InputFloat("Far", &far_plane, 0.1f, 0.1f, "%.3f", input_text_flags); ImGui::PopItemWidth();
+        ImGui::SameLine(ComponentProperty::g_column);       ImGui::PushItemWidth(130); ImGui::InputFloat("Near", &near_plane, 0.1f, 0.1f, "%.3f", input_text_flags); ImGui::PopItemWidth();
+        ImGui::SetCursorPosX(ComponentProperty::g_column);  ImGui::PushItemWidth(130); ImGui::InputFloat("Far", &far_plane, 0.1f, 0.1f, "%.3f", input_text_flags); ImGui::PopItemWidth();
 
         // FPS Control
         ImGui::Text("FPS Control");
@@ -947,13 +941,13 @@ void Widget_Properties::ShowCamera(Camera* camera) const
         ImGuiEx::Tooltip("Enables FPS control while holding down the right mouse button");
 
         //= MAP ====================================================================================================================
-        if (aperture != camera->GetAperture())                                camera->SetAperture(aperture);
-        if (shutter_speed != camera->GetShutterSpeed())                        camera->SetShutterSpeed(shutter_speed);
+        if (aperture != camera->GetAperture())                              camera->SetAperture(aperture);
+        if (shutter_speed != camera->GetShutterSpeed())                     camera->SetShutterSpeed(shutter_speed);
         if (iso != camera->GetIso())                                        camera->SetIso(iso);
-        if (fov != camera->GetFovHorizontalDeg())                            camera->SetFovHorizontalDeg(fov);
-        if (near_plane != camera->GetNearPlane())                            camera->SetNearPlane(near_plane);
-        if (far_plane != camera->GetFarPlane())                                camera->SetFarPlane(far_plane);
-        if (fps_control != camera->GetFpsControl())                            camera->SetFpsControl(fps_control);
+        if (fov != camera->GetFovHorizontalDeg())                           camera->SetFovHorizontalDeg(fov);
+        if (near_plane != camera->GetNearPlane())                           camera->SetNearPlane(near_plane);
+        if (far_plane != camera->GetFarPlane())                             camera->SetFarPlane(far_plane);
+        if (fps_control != camera->GetFpsControl())                         camera->SetFpsControl(fps_control);
         if (m_colorPicker_camera->GetColor() != camera->GetClearColor())    camera->SetClearColor(m_colorPicker_camera->GetColor());
         //==========================================================================================================================
     }
@@ -1033,16 +1027,16 @@ void Widget_Properties::ShowAudioSource(AudioSource* audio_source) const
 
     if (ComponentProperty::Begin("Audio Source", Icon_Component_AudioSource, audio_source))
     {
-        //= REFLECT ==============================================
-        string audio_clip_name    = audio_source->GetAudioClipName();
-        bool mute                = audio_source->GetMute();
-        bool play_on_start        = audio_source->GetPlayOnStart();
-        bool loop                = audio_source->GetLoop();
+        //= REFLECT ===============================================
+        string audio_clip_name  = audio_source->GetAudioClipName();
+        bool mute               = audio_source->GetMute();
+        bool play_on_start      = audio_source->GetPlayOnStart();
+        bool loop               = audio_source->GetLoop();
         int priority            = audio_source->GetPriority();
         float volume            = audio_source->GetVolume();
-        float pitch                = audio_source->GetPitch();
-        float pan                = audio_source->GetPan();
-        //========================================================
+        float pitch             = audio_source->GetPitch();
+        float pan               = audio_source->GetPan();
+        //=========================================================
 
         // Audio clip
         ImGui::Text("Audio Clip");
