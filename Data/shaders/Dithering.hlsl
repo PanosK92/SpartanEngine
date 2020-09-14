@@ -24,31 +24,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //====================
 
 // http://alex.vlachos.com/graphics/Alex_Vlachos_Advanced_VR_Rendering_GDC2015.pdf
-inline float3 dither(float2 uv)
+inline float3 dither(uint2 screen_pos)
 {
-    float2 screen_pos   = (uv * g_resolution);
-    float3 dither       = dot(float2(171.0f, 231.0f), screen_pos);
-    dither              = frac(dither / float3(103.0f, 71.0f, 97.0f));  
-    dither              /= 255.0f;
+    float3 dither   = dot(float2(171.0f, 231.0f), float2(screen_pos));
+    dither          = frac(dither / float3(103.0f, 71.0f, 97.0f));
+    dither          /= 255.0f;
     
     return dither;
-}
-
-// Same as dither but offests over time, when TAA is enabled. Returns regular dither if TAA is not enabled.
-inline float3 dither_temporal(float2 uv, float scale = 1.0f)
-{
-    float2 screen_pos   = (uv * g_resolution) + sin(g_time) * any(g_taa_jitter_offset); 
-    float3 dither       = dot(float2(171.0f, 231.0f), screen_pos);
-    dither              = frac(dither / float3(103.0f, 71.0f, 97.0f));  
-    dither              /= 255.0f;
-    
-    return dither * scale;
-}
-
-// Same as dither but offests over time, when TAA is enabled. Returns fallback if TAA is not enabled.
-inline float3 dither_temporal_fallback_(float2 uv, float fallback, float scale = 1.0f)
-{
-    return any(g_taa_jitter_offset) ? dither_temporal(uv, scale) : fallback;
 }
 
 [numthreads(thread_group_count, thread_group_count, 1)]
@@ -57,9 +39,8 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     if (thread_id.x >= uint(g_resolution.x) || thread_id.y >= uint(g_resolution.y))
         return;
 
-    const float2 uv = (thread_id.xy + 0.5f) / g_resolution;
     float4 color    = tex[thread_id.xy];
-    color.rgb       += dither(uv);
+    color.rgb       += dither(thread_id.xy);
     
     tex_out_rgba[thread_id.xy] = color;
 }

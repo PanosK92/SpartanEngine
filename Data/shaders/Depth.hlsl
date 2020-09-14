@@ -34,6 +34,7 @@ Pixel_PosUv mainVS(Vertex_PosUv input)
     return output;
 }
 
+// Translucent shadows
 float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
     float2 uv = float2(input.uv.x * g_mat_tiling.x + g_mat_offset.x, input.uv.y * g_mat_offset.y + g_mat_tiling.y);

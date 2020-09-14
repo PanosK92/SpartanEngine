@@ -78,22 +78,22 @@ namespace Spartan
                 }
             }
 
-            app_info.sType                = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-            app_info.pApplicationName    = engine_version;        
+            app_info.sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+            app_info.pApplicationName   = engine_version;
             app_info.pEngineName        = engine_version;
-            app_info.engineVersion        = VK_MAKE_VERSION(1, 0, 0);
-            app_info.applicationVersion    = VK_MAKE_VERSION(1, 0, 0);
-            app_info.apiVersion            = m_rhi_context->api_version;
+            app_info.engineVersion      = VK_MAKE_VERSION(1, 0, 0);
+            app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+            app_info.apiVersion         = m_rhi_context->api_version;
 
             // Get the supported extensions out of the requested extensions
             vector<const char*> extensions_supported = vulkan_utility::extension::get_supported_instance(m_rhi_context->extensions_instance);
 
             VkInstanceCreateInfo create_info    = {};
-            create_info.sType                    = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+            create_info.sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
             create_info.pApplicationInfo        = &app_info;
-            create_info.enabledExtensionCount    = static_cast<uint32_t>(extensions_supported.size());
-            create_info.ppEnabledExtensionNames    = extensions_supported.data();
-            create_info.enabledLayerCount        = 0;
+            create_info.enabledExtensionCount   = static_cast<uint32_t>(extensions_supported.size());
+            create_info.ppEnabledExtensionNames = extensions_supported.data();
+            create_info.enabledLayerCount       = 0;
 
             // Validation features
             VkValidationFeatureEnableEXT enabled_validation_features[]  = { VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT };

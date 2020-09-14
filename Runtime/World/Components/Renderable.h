@@ -97,12 +97,10 @@ namespace Spartan
         auto HasMaterial()              const { return m_material != nullptr; }
         //=======================================================================
 
-        //= PROPERTIES ============================================================================-
+        //= PROPERTIES =======================================================================
         void SetCastShadows(const bool cast_shadows)        { m_cast_shadows = cast_shadows; }
         auto GetCastShadows() const                         { return m_cast_shadows; }
-        void SetReceiveShadows(const bool receive_shadows)  { m_receive_shadows = receive_shadows; }
-        auto GetReceiveShadows() const                      { return m_receive_shadows; }
-        //=========================================================================================-
+        //====================================================================================
 
     private:
         std::string m_geometryName;
@@ -116,7 +114,6 @@ namespace Spartan
         Math::BoundingBox m_aabb;
         Math::Matrix m_last_transform   = Math::Matrix::Identity;
         bool m_cast_shadows             = true;
-        bool m_receive_shadows          = true;
         bool m_material_default;
         std::shared_ptr<Material> m_material;
     };

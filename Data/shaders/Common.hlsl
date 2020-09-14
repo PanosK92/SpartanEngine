@@ -35,6 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ------------------------------------------------------------------------------*/
 static const float PI           = 3.14159265f;
 static const float PI2          = PI * 2;
+static const float PI4          = PI * 4;
 static const float INV_PI       = 0.31830988f;
 static const float FLT_MIN      = 0.00000001f;
 static const float FLT_MAX_10   = 65000.0f;

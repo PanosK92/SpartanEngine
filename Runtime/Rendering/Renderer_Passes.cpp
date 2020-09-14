@@ -272,7 +272,6 @@ namespace Spartan
                         continue;
 
                     cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
-
                 }
 
                 if (render_pass_active)

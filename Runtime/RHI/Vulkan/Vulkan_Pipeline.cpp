@@ -100,7 +100,7 @@ namespace Spartan
 
             // Viewport & Scissor
             vector<VkDynamicState> dynamic_states;
-            VkPipelineDynamicStateCreateInfo dynamic_state      = {};   
+            VkPipelineDynamicStateCreateInfo dynamic_state      = {};
             VkViewport vkViewport                               = {};
             VkRect2D scissor                                    = {};
             VkPipelineViewportStateCreateInfo viewport_state    = {};

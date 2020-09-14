@@ -80,8 +80,8 @@ namespace Spartan
         m_option_values[Option_Value_Tonemapping]       = static_cast<float>(Renderer_ToneMapping_ACES);
         m_option_values[Option_Value_Gamma]             = 2.2f;
         m_option_values[Option_Value_Sharpen_Strength]  = 1.0f;
-        m_option_values[Option_Value_Bloom_Intensity]   = 0.2f;
-        m_option_values[Option_Value_Fog]               = 1.0f;
+        m_option_values[Option_Value_Bloom_Intensity]   = 0.1f;
+        m_option_values[Option_Value_Fog]               = 0.1f;
 
         // Subscribe to events
         SUBSCRIBE_TO_EVENT(EventType::WorldResolved,    EVENT_HANDLER_VARIANT(RenderablesAcquire));

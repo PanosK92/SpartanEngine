@@ -99,12 +99,10 @@ namespace Spartan
         m_geometryVertexCount   = 0;
         m_material_default      = false;
         m_cast_shadows          = true;
-        m_receive_shadows       = true;
 
         REGISTER_ATTRIBUTE_VALUE_VALUE(m_material_default,      bool);
         REGISTER_ATTRIBUTE_VALUE_VALUE(m_material,              shared_ptr<Material>);
         REGISTER_ATTRIBUTE_VALUE_VALUE(m_cast_shadows,          bool);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_receive_shadows,       bool);
         REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryIndexOffset,   uint32_t);
         REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryIndexCount,    uint32_t);
         REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryVertexOffset,  uint32_t);
@@ -128,7 +126,6 @@ namespace Spartan
 
         // Material
         stream->Write(m_cast_shadows);
-        stream->Write(m_receive_shadows);
         stream->Write(m_material_default);
         if (!m_material_default)
         {
@@ -157,7 +154,6 @@ namespace Spartan
 
         // Material
         stream->Read(&m_cast_shadows);
-        stream->Read(&m_receive_shadows);
         stream->Read(&m_material_default);
         if (m_material_default)
         {

@@ -105,7 +105,7 @@ namespace Spartan
         void SetTimeOfDay(float time_of_day);
         auto GetTimeOfDay() const { return m_time_of_day; }
 
-        void SetBias(float value)    { m_bias = value; }
+        void SetBias(float value)   { m_bias = value; }
         float GetBias() const       { return m_bias; }
 
         void SetNormalBias(float value) { m_normal_bias = value; }
@@ -143,12 +143,12 @@ namespace Spartan
         LightType m_light_type      = LightType::Directional;
         Math::Vector4 m_color_rgb   = Math::Vector4(1.0f, 0.76f, 0.57f, 1.0f);
         bool m_volumetric_enabled   = true;
-        float m_range                = 10.0f;
-        float m_intensity            = 128000.0f;  // sun lux
-        float m_angle_rad            = 0.5f;       // about 30 degrees
+        float m_range               = 10.0f;
+        float m_intensity           = 128000.0f;  // sun lux
+        float m_angle_rad           = 0.5f;       // about 30 degrees
         float m_time_of_day         = 1.0f;
         bool m_initialized          = false;
-        bool m_is_dirty                = true;
+        bool m_is_dirty             = true;
         std::array<Math::Matrix, 6> m_matrix_view;
         std::array<Math::Matrix, 6> m_matrix_projection;
         Math::Quaternion m_previous_rot     = Math::Quaternion::Identity;
