@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //====================
 
 static const uint g_ssr_max_steps = 8;
-static const uint g_ssr_binarySearchSteps = 8;
+static const uint g_ssr_binarySearchSteps = 12;
 static const float g_ssr_binarySearchThickness = 0.01f;
 static const float g_ssr_ray_max_distance = 10.0f;
 

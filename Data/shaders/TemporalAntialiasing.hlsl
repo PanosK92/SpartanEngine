@@ -24,6 +24,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Velocity.hlsl"
 //======================
 
+static const float g_taa_blend_min = 0.05f;
+static const float g_taa_blend_max = 1.0f;
+
 float3 Reinhard(float3 hdr, float k = 1.0f)
 {
     return hdr / (hdr + k);
@@ -126,8 +129,11 @@ float4 TemporalAntialiasing(uint2 thread_id, Texture2D tex_accumulation, Texture
         // Decrease blend factor when contrast is high
         float luminance_history = luminance(color_history);
         float luminance_current = luminance(color_current);
-        float diff = 1.0 - abs(luminance_current - luminance_history) / (0.001 + max(luminance_current, luminance_history));
+        float diff = 1.0 - abs(luminance_current - luminance_history) / (FLT_MIN + max(luminance_current, luminance_history));
         blend_factor *= diff * diff;
+
+        // Clamp
+        blend_factor = clamp(blend_factor, g_taa_blend_min, g_taa_blend_max);
 
         // Override blend factor if the re-projected uv is out of screen
         blend_factor = is_saturated(uv_reprojected) ? blend_factor : 1.0f;
