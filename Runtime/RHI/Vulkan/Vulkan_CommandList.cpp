@@ -203,7 +203,7 @@ namespace Spartan
                 if (state->render_target_swapchain)
                 {
                     // If the swapchain is not presenting (e.g. minimised window), don't submit any work
-                    if (!state->render_target_swapchain->IsPresenting())
+                    if (!state->render_target_swapchain->PresentEnabled())
                     {
                         m_cmd_state = RHI_CommandListState::Submitted;
                         return true;

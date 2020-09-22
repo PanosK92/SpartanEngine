@@ -290,8 +290,8 @@ namespace Spartan
     bool RHI_SwapChain::Resize(const uint32_t width, const uint32_t height, const bool force /*= false*/)
     {
         // Validate resolution
-        m_present = m_rhi_device->ValidateResolution(width, height);
-        if (!m_present)
+        m_present_enabled = m_rhi_device->ValidateResolution(width, height);
+        if (!m_present_enabled)
         {
             // Return true as when minimizing, a resolution
             // of 0,0 can be passed in, and this is fine.
@@ -309,7 +309,7 @@ namespace Spartan
         m_rhi_device->Queue_WaitAll();
 
         // Save new dimensions
-        m_width        = width;
+        m_width     = width;
         m_height    = height;
 
         // Destroy previous swap chain
@@ -345,20 +345,20 @@ namespace Spartan
 
     bool RHI_SwapChain::AcquireNextImage()
     {
-        if (!m_present)
+        if (!m_present_enabled)
             return true;
 
-        m_cmd_index                 = m_image_index++ % m_buffer_count;
-        RHI_CommandList* cmd_list   = m_cmd_lists[m_cmd_index].get();
+        m_cmd_index = m_cmd_index++ % m_buffer_count;
+        RHI_CommandList* cmd_list = m_cmd_lists[m_cmd_index].get();
 
         // Acquire next image
         VkResult result = vkAcquireNextImageKHR(
-            m_rhi_device->GetContextRhi()->device,                              // device
-            static_cast<VkSwapchainKHR>(m_swap_chain_view),                     // swapchain
-            numeric_limits<uint64_t>::max(),                                    // timeout
-            static_cast<VkSemaphore>(m_image_acquired_semaphore[m_cmd_index]),  // semaphore
-            nullptr,                                                            // fence
-            &m_image_index                                                      // pImageIndex
+            m_rhi_device->GetContextRhi()->device,                                  // device
+            static_cast<VkSwapchainKHR>(m_swap_chain_view),                         // swapchain
+            numeric_limits<uint64_t>::max(),                                        // timeout
+            static_cast<VkSemaphore>(m_image_acquired_semaphore[m_image_index]),    // semaphore
+            nullptr,                                                                // fence
+            &m_image_index                                                          // pImageIndex
         );
 
         if ((result == VK_ERROR_OUT_OF_DATE_KHR) || (result == VK_SUBOPTIMAL_KHR))
@@ -372,13 +372,29 @@ namespace Spartan
         }
 
         m_image_acquired = result == VK_SUCCESS;
+
         return vulkan_utility::error::check(result);
     }
 
     bool RHI_SwapChain::Present()
     {
-        if (!m_present)
+        if (!m_present_enabled)
+        {
+            LOG_INFO("Presenting has been disabled.");
             return true;
+        }
+
+        RHI_CommandList* cmd_list = GetCmdList();
+
+        // Ensure the command list is not recording
+        if (cmd_list->IsRecording())
+        {
+            if (!cmd_list->Submit())
+            {
+                LOG_ERROR("Failed to submit pending command list.");
+                return false;
+            }
+        }
 
         if (!m_image_acquired)
         {
@@ -386,7 +402,7 @@ namespace Spartan
             return false;
         }
 
-        if (!m_rhi_device->Queue_Present(m_swap_chain_view, &m_image_index, GetCmdList()->GetProcessedSemaphore()))
+        if (!m_rhi_device->Queue_Present(m_swap_chain_view, &m_image_index, cmd_list->GetProcessedSemaphore()))
         {
             LOG_ERROR("Failed to present");
             return false;

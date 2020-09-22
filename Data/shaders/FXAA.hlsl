@@ -33,7 +33,7 @@ static const float g_fxaa_subPix            = 0.75f;    // The amount of sub-pix
 static const float g_fxaa_edgeThreshold     = 0.166f;   // The minimum amount of local contrast required to apply algorithm.
 static const float g_fxaa_edgeThresholdMin  = 0.0833f;  // Trims the algorithm from processing darks
 
-[numthreads(thread_group_count, thread_group_count, 1)]
+[numthreads(thread_group_count_x, thread_group_count_y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
     const float2 uv = (thread_id.xy + 0.5f) / g_resolution;

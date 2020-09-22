@@ -41,8 +41,8 @@ namespace Spartan
             const std::shared_ptr<RHI_Device>& rhi_device,
             uint32_t width,
             uint32_t height,
-            RHI_Format format        = RHI_Format_R8G8B8A8_Unorm,       
-            uint32_t buffer_count    = 2,
+            RHI_Format format       = RHI_Format_R8G8B8A8_Unorm,
+            uint32_t buffer_count   = 2,
             uint32_t flags          = RHI_Present_Immediate
         );
         ~RHI_SwapChain();
@@ -60,7 +60,7 @@ namespace Spartan
         RHI_CommandList* GetCmdList()             { return m_cmd_index < static_cast<uint32_t>(m_cmd_lists.size()) ? m_cmd_lists[m_cmd_index].get() : nullptr; }
         void* GetImageAcquiredSemaphore()   const { return m_cmd_index < static_cast<uint32_t>(m_image_acquired_semaphore.size()) ? m_image_acquired_semaphore[m_cmd_index] : nullptr; }
         bool IsInitialized()                const { return m_initialized; }
-        bool IsPresenting()                 const { return m_present; }
+        bool PresentEnabled()               const { return m_present_enabled; }
         bool HasAcquireImage()              const { return m_image_acquired; }
 
         // Layout
@@ -86,13 +86,13 @@ namespace Spartan
         RHI_Format m_format     = RHI_Format_R8G8B8A8_Unorm;
         
         // API  
-        void* m_swap_chain_view                = nullptr;
-        void* m_resource_view_renderTarget    = nullptr;
-        void* m_surface                        = nullptr;    
-        void* m_window_handle                = nullptr;
+        void* m_swap_chain_view             = nullptr;
+        void* m_resource_view_renderTarget  = nullptr;
+        void* m_surface                     = nullptr;
+        void* m_window_handle               = nullptr;
         void* m_cmd_pool                    = nullptr;
         bool m_image_acquired               = false;
-        bool m_present                      = true;
+        bool m_present_enabled              = true;
         uint32_t m_cmd_index                = 0;
         uint32_t m_image_index              = 0;
         RHI_Device* m_rhi_device            = nullptr;

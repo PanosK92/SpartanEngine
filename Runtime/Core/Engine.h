@@ -44,9 +44,8 @@ namespace Spartan
         uint32_t monitor_height_virtual = 0; // multi-monitor setup
         uint64_t wparam                 = 0;
         int64_t lparam                  = 0;
-
-        bool minimise = false;
-        bool maximise = false;
+        bool minimise                   = false;
+        bool maximise                   = false;
     };
 
     enum Engine_Mode : uint32_t

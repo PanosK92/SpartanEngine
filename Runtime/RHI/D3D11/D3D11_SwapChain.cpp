@@ -172,8 +172,8 @@ namespace Spartan
         }
 
         // Validate resolution
-        m_present = m_rhi_device->ValidateResolution(width, height);
-        if (!m_present)
+        m_present_enabled = m_rhi_device->ValidateResolution(width, height);
+        if (!m_present_enabled)
         {
             // Return true as when minimizing, a resolution
             // of 0,0 can be passed in, and this is fine.
@@ -186,6 +186,10 @@ namespace Spartan
             if (m_width == width && m_height == height)
                 return true;
         }
+
+        // Save new dimensions
+        m_width     = width;
+        m_height    = height;
 
         auto swap_chain            = static_cast<IDXGISwapChain*>(m_swap_chain_view);
         auto render_target_view    = static_cast<ID3D11RenderTargetView*>(m_resource_view_renderTarget);
@@ -203,10 +207,10 @@ namespace Spartan
             // Resize swapchain target
             DXGI_MODE_DESC dxgi_mode_desc   = {};
             dxgi_mode_desc.Width            = static_cast<UINT>(width);
-            dxgi_mode_desc.Height            = static_cast<UINT>(height);
-            dxgi_mode_desc.Format            = d3d11_format[m_format];
-            dxgi_mode_desc.RefreshRate        = DXGI_RATIONAL{ display_mode.numerator, display_mode.denominator };
-            dxgi_mode_desc.Scaling            = DXGI_MODE_SCALING_UNSPECIFIED;
+            dxgi_mode_desc.Height           = static_cast<UINT>(height);
+            dxgi_mode_desc.Format           = d3d11_format[m_format];
+            dxgi_mode_desc.RefreshRate      = DXGI_RATIONAL{ display_mode.numerator, display_mode.denominator };
+            dxgi_mode_desc.Scaling          = DXGI_MODE_SCALING_UNSPECIFIED;
             dxgi_mode_desc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
             
             // Resize swapchain target
@@ -256,8 +260,11 @@ namespace Spartan
 
     bool RHI_SwapChain::Present()
     {
-        if (!m_present)
+        if (!m_present_enabled)
+        {
+            LOG_INFO("Presenting has been disabled.");
             return true;
+        }
 
         if (!m_swap_chain_view)
         {
@@ -266,9 +273,9 @@ namespace Spartan
         }
 
         // Build flags
-        const bool tearing_allowed    = m_flags & RHI_Present_Immediate;
+        const bool tearing_allowed  = m_flags & RHI_Present_Immediate;
         const UINT sync_interval    = tearing_allowed ? 0 : 1; // sync interval can go up to 4, so this could be improved
-        const UINT flags            = (tearing_allowed && m_windowed) ? DXGI_PRESENT_ALLOW_TEARING : 0;    
+        const UINT flags            = (tearing_allowed && m_windowed) ? DXGI_PRESENT_ALLOW_TEARING : 0;
 
         // Present
         auto ptr_swap_chain = static_cast<IDXGISwapChain*>(m_swap_chain_view);

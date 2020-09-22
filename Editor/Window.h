@@ -41,7 +41,7 @@ namespace Window
     {
         LRESULT result = 0;
 
-        Spartan::WindowData window_data;
+        Spartan::WindowData window_data     = {};
         window_data.handle                  = static_cast<void*>(g_handle);
         window_data.instance                = static_cast<void*>(g_instance);
         window_data.message                 = static_cast<uint32_t>(msg);
@@ -134,7 +134,7 @@ namespace Window
     {
         ShowWindow(g_handle, SW_MAXIMIZE);
         UpdateWindow(g_handle);
-        SetFocus(g_handle);    
+        SetFocus(g_handle);
     }
 
     inline bool Tick()

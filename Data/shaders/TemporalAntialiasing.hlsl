@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 static const float g_taa_blend_min = 0.05f;
 static const float g_taa_blend_max = 1.0f;
+#define LDS_HISTORY_CLIPPING 1
 
 float3 Reinhard(float3 hdr, float k = 1.0f)
 {
@@ -78,22 +79,58 @@ float3 clip_aabb(float3 aabb_min, float3 aabb_max, float3 p, float3 q)
 #endif
 }
 
+#define BORDER_SIZE         1
+#define TILE_SIZE_X         (thread_group_count_x + 2 * BORDER_SIZE)
+#define TILE_SIZE_Y         (thread_group_count_y + 2 * BORDER_SIZE)
+#define TILE_PIXEL_COUNT    (TILE_SIZE_X * TILE_SIZE_Y)
+
+groupshared float3 colors_current[TILE_SIZE_X][TILE_SIZE_Y];
+
 // Clip history to the neighbourhood of the current sample
-float3 clip_history(int2 pos, Texture2D tex, float3 color_history)
+float3 clip_history(uint2 thread_id, uint group_index, uint3 group_id, Texture2D tex, float3 color_history)
 {
+    #if LDS_HISTORY_CLIPPING
+    
+    uint2 pos_upper_left = group_id.xy * uint2(thread_group_count_x, thread_group_count_y) - BORDER_SIZE;
+    [unroll]
+    for (uint i = group_index; i < TILE_PIXEL_COUNT; i += thread_group_count)
+    {
+        uint2 pos_array = uint2(i % TILE_SIZE_X, i / TILE_SIZE_X);
+        uint2 pos_tex   = pos_upper_left + pos_array;
+        colors_current[pos_array.x][pos_array.y] = tex[pos_upper_left + pos_array].rgb;
+    }
+ 
+    GroupMemoryBarrierWithGroupSync();
+
+    uint2 array_pos = uint2(group_index % thread_group_count_x, group_index / thread_group_count_x) + 1;
+    
+    float3 ctl = colors_current[array_pos.x - 1][array_pos.y - 1];
+    float3 ctc = colors_current[array_pos.x][array_pos.y - 1];
+    float3 ctr = colors_current[array_pos.x + 1][array_pos.y - 1];
+    float3 cml = colors_current[array_pos.x - 1][array_pos.y];
+    float3 cmc = colors_current[array_pos.x][array_pos.y];
+    float3 cmr = colors_current[array_pos.x + 1][array_pos.y];
+    float3 cbl = colors_current[array_pos.x - 1][array_pos.y + 1];
+    float3 cbc = colors_current[array_pos.x][array_pos.y + 1];
+    float3 cbr = colors_current[array_pos.x + 1][array_pos.y + 1];
+    
+    #else
+    
     uint2 du = uint2(1, 0);
     uint2 dv = uint2(0, 1);
 
-    float3 ctl = tex[pos - dv - du].rgb;
-    float3 ctc = tex[pos - dv].rgb;
-    float3 ctr = tex[pos - dv + du].rgb;
-    float3 cml = tex[pos - du].rgb;
-    float3 cmc = tex[pos].rgb;
-    float3 cmr = tex[pos + du].rgb;
-    float3 cbl = tex[pos + dv - du].rgb;
-    float3 cbc = tex[pos + dv].rgb;
-    float3 cbr = tex[pos + dv + du].rgb;
+    float3 ctl = tex[thread_id - dv - du].rgb;
+    float3 ctc = tex[thread_id - dv].rgb;
+    float3 ctr = tex[thread_id - dv + du].rgb;
+    float3 cml = tex[thread_id - du].rgb;
+    float3 cmc = tex[thread_id].rgb;
+    float3 cmr = tex[thread_id + du].rgb;
+    float3 cbl = tex[thread_id + dv - du].rgb;
+    float3 cbc = tex[thread_id + dv].rgb;
+    float3 cbr = tex[thread_id + dv + du].rgb;
 
+    #endif
+  
     float3 color_min = min(ctl, min(ctc, min(ctr, min(cml, min(cmc, min(cmr, min(cbl, min(cbc, cbr))))))));
     float3 color_max = max(ctl, max(ctc, max(ctr, max(cml, max(cmc, max(cmr, max(cbl, max(cbc, cbr))))))));
     float3 color_avg = (ctl + ctc + ctr + cml + cmc + cmr + cbl + cbc + cbr) / 9.0f;
@@ -102,7 +139,7 @@ float3 clip_history(int2 pos, Texture2D tex, float3 color_history)
     return saturate_16(clip_aabb(color_min, color_max, clamp(color_avg, color_min, color_max), color_history));
 }
 
-float4 TemporalAntialiasing(uint2 thread_id, Texture2D tex_accumulation, Texture2D tex_current)
+float4 TemporalAntialiasing(uint2 thread_id, uint group_index, uint3 group_id, Texture2D tex_accumulation, Texture2D tex_current)
 {
     // Get history and current colors
     const float2 uv         = (thread_id + 0.5f) / g_resolution;
@@ -112,7 +149,7 @@ float4 TemporalAntialiasing(uint2 thread_id, Texture2D tex_accumulation, Texture
     float3 color_current    = tex_current[thread_id].rgb;
 
     // Clip history to the neighbourhood of the current sample
-    color_history = clip_history(thread_id.xy, tex_current, color_history);
+    color_history = clip_history(thread_id.xy, group_index, group_id, tex_current, color_history);
 
     // Compute blend factor
     float blend_factor = 1.0f;
@@ -122,7 +159,7 @@ float4 TemporalAntialiasing(uint2 thread_id, Texture2D tex_accumulation, Texture
         const float base        = 0.5f;
         const float gather      = g_delta_time * 25.0f;
         float depth             = get_linear_depth(uv);
-        float texel_vel_mag     = length(velocity) * depth;
+        float texel_vel_mag     = length(velocity / g_texel_size) * depth;
         float subpixel_motion   = saturate(threshold / (FLT_MIN + texel_vel_mag));
         blend_factor *= texel_vel_mag * base + subpixel_motion * gather;
 
@@ -152,11 +189,9 @@ float4 TemporalAntialiasing(uint2 thread_id, Texture2D tex_accumulation, Texture
     return float4(resolved, 1.0f);
 }
 
-[numthreads(thread_group_count, thread_group_count, 1)]
-void mainCS(uint3 thread_id : SV_DispatchThreadID)
+[numthreads(thread_group_count_x, thread_group_count_y, 1)]
+void mainCS(uint3 thread_id : SV_DispatchThreadID, uint group_index : SV_GroupIndex, uint3 group_id : SV_GroupID)
 {
-    if (thread_id.x >= uint(g_resolution.x) || thread_id.y >= uint(g_resolution.y))
-        return;
-    
-    tex_out_rgba[thread_id.xy] = TemporalAntialiasing(thread_id.xy, tex, tex2);
+    tex_out_rgba[thread_id.xy] = TemporalAntialiasing(thread_id.xy, group_index, group_id, tex, tex2);
 }
+

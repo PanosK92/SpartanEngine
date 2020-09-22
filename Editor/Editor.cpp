@@ -47,12 +47,17 @@ using namespace std;
 using namespace Spartan;
 //=======================
  
-namespace _Editor
+namespace _editor
 {
-    Widget* widget_menu_bar = nullptr;
-    Widget* widget_toolbar  = nullptr;
-    Widget* widget_world    = nullptr;
-    const char* editor_name = "SpartanEditor";
+    Widget* widget_menu_bar     = nullptr;
+    Widget* widget_toolbar      = nullptr;
+    Widget* widget_world        = nullptr;
+    const char* editor_name     = "SpartanEditor";
+    bool show                   = true;
+    Renderer* renderer          = nullptr;
+    Profiler* profiler          = nullptr;
+    RHI_SwapChain* swapchain    = nullptr;
+    shared_ptr<Spartan::RHI_Device> rhi_device;
 }
 
 Editor::~Editor()
@@ -60,8 +65,7 @@ Editor::~Editor()
     m_widgets.clear();
     m_widgets.shrink_to_fit();
 
-    // Shutdown ImGui (unless the renderer was never initialized and ImGui was no initialized to begin with)
-    if (m_renderer->IsInitialized())
+    if (ImGui::GetCurrentContext())
     {
         ImGui::RHI::Shutdown();
         ImGui_ImplWin32_Shutdown();
@@ -71,227 +75,169 @@ Editor::~Editor()
 
 void Editor::OnWindowMessage(WindowData& window_data)
 {
-    // During window creation, Windows fire off a couple of messages,
-    // m_initializing is to prevent that spamming.
-    if (!m_engine && !m_initializing)
+    // During window creation, Windows fire off a couple of messages, m_initializing is to prevent that spamming.
+    if (!m_initialised)
     {
-        m_initializing = true;
-
         // Create engine
         m_engine = make_unique<Engine>(window_data);
 
         // Acquire useful engine subsystems
-        m_context       = m_engine->GetContext();
-        m_renderer      = m_context->GetSubsystem<Renderer>();
-        m_profiler      = m_context->GetSubsystem<Profiler>();
-        m_rhi_device    = m_renderer->GetRhiDevice();
-        
-        if (m_renderer->IsInitialized())
+        m_context           = m_engine->GetContext();
+        _editor::profiler   = m_context->GetSubsystem<Profiler>();
+        _editor::renderer   = m_context->GetSubsystem<Renderer>();
+        _editor::swapchain  = _editor::renderer->GetSwapChain();
+        _editor::rhi_device = _editor::renderer->GetRhiDevice();
+        _editor::show       = !_editor::renderer->GetIsFullscreen();
+
+        if (_editor::renderer->IsInitialized())
         {
-            // ImGui version validation
-            IMGUI_CHECKVERSION();
-            m_context->GetSubsystem<Settings>()->RegisterThirdPartyLib("Dear ImGui", IMGUI_VERSION, "https://github.com/ocornut/imgui");
+            if (_editor::show)
+            {
+                ImGui_Initialise(window_data);
+            }
 
-            // ImGui context creation
-            ImGui::CreateContext();
-
-            // ImGui configuration
-            auto& io = ImGui::GetIO();
-            io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-            io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-            io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-            io.ConfigWindowsResizeFromEdges = true;
-            io.ConfigViewportsNoTaskBarIcon = true;
-            ApplyStyle();
-
-            // ImGui backend setup
-            ImGui_ImplWin32_Init(window_data.handle);
-            ImGui::RHI::Initialize(m_context, static_cast<float>(window_data.width), static_cast<float>(window_data.height));
-
-            // Initialization of misc custom systems
-            IconProvider::Get().Initialize(m_context);
-            EditorHelper::Get().Initialize(m_context);
-
-            // Create all ImGui widgets
-            Widgets_Create();
+            m_initialised = true;
         }
-        else
-        {
-            LOG_ERROR("The engine failed to initialize the renderer subsystem, aborting editor creation.");
-        }
-
-        m_initializing = false;
     }
-    else if (!m_initializing)
+    else if (m_initialised)
     {
-        ImGui_ImplWin32_WndProcHandler(
-            static_cast<HWND>(window_data.handle),
-            static_cast<uint32_t>(window_data.message),
-            static_cast<int64_t>(window_data.wparam),
-            static_cast<uint64_t>(window_data.lparam)
-        );
+        // Updated ImGui with message (if showing)
+        if (_editor::show)
+        {
+            ImGui_ImplWin32_WndProcHandler(
+                static_cast<HWND>(window_data.handle),
+                static_cast<uint32_t>(window_data.message),
+                static_cast<int64_t>(window_data.wparam),
+                static_cast<uint64_t>(window_data.lparam)
+            );
+        }
 
+        // Passing zero dimensions will cause the swapchain to not present at all
         uint32_t width  = static_cast<uint32_t>(window_data.minimise ? 0 : window_data.width);
         uint32_t height = static_cast<uint32_t>(window_data.minimise ? 0 : window_data.height);
 
-        if (m_engine->GetWindowData().width != width || m_engine->GetWindowData().height != height)
+        if (!_editor::swapchain->PresentEnabled() || _editor::swapchain->GetWidth() != width || _editor::swapchain->GetHeight() != height)
         {
-            ImGui::RHI::Resize(window_data.width, window_data.height);
+            _editor::swapchain->Resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
         }
+
         m_engine->SetWindowData(window_data);
     }
 }
 
 void Editor::OnTick()
 {
-    // Verify engine
-    if (!m_engine)
+    // Verify a couple of things
+    if (!m_engine || !_editor::renderer || !_editor::renderer->IsInitialized())
         return;
 
-    // Verify renderer
-    if (!m_renderer || !m_renderer->IsInitialized())
-        return;
-
-    RHI_SwapChain* swapchain = m_renderer->GetSwapChain();
-    RHI_CommandList* cmd_list = swapchain->GetCmdList();
+    _editor::show = !_editor::renderer->GetIsFullscreen() && m_initialised;
+    RHI_CommandList* cmd_list = _editor::swapchain->GetCmdList();
 
     // Engine - tick
-    cmd_list->Begin();
+    if (_editor::swapchain->PresentEnabled())
+    {
+        cmd_list->Begin();
+    }
     m_engine->Tick();
 
     // Editor - main window
-    // ImGui - start frame
-    ImGui_ImplWin32_NewFrame();
-    ImGui::NewFrame();
+    if (_editor::show)
+    {
+        // ImGui - start frame
+        ImGui_ImplWin32_NewFrame();
+        ImGui::NewFrame();
 
-    // Editor - update
-    Widgets_Tick();
+        // ImGui - widgets tick
+        {
+            if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable)
+            {
+                ImGui_Begin();
+            }
 
-    // ImGui - end frame
-    ImGui::Render();
-    ImGui::RHI::Render(ImGui::GetDrawData());
-    m_renderer->Present();
+            for (auto& widget : m_widgets)
+            {
+                if (widget->Begin())
+                {
+                    widget->Tick();
+                    widget->End();
+                }
+            }
+
+            if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable)
+            {
+                ImGui_End();
+            }
+        }
+
+        // ImGui - end frame
+        ImGui::Render();
+        ImGui::RHI::Render(ImGui::GetDrawData());
+    }
+    else
+    {
+        _editor::renderer->Pass_CopyToBackbuffer(cmd_list);
+    }
+
+    // Present
+    if (_editor::swapchain->PresentEnabled())
+    {
+        _editor::swapchain->Present();
+    }
 
     // Editor - child windows
-    if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable)
+    if (_editor::show)
     {
-        ImGui::UpdatePlatformWindows();
-        ImGui::RenderPlatformWindowsDefault();
+        if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable)
+        {
+            ImGui::UpdatePlatformWindows();
+            ImGui::RenderPlatformWindowsDefault();
+        }
     }
 }
 
-void Editor::Widgets_Create()
+void Editor::ImGui_Initialise(const WindowData& window_data)
 {
+    // ImGui version validation
+    IMGUI_CHECKVERSION();
+    m_context->GetSubsystem<Settings>()->RegisterThirdPartyLib("Dear ImGui", IMGUI_VERSION, "https://github.com/ocornut/imgui");
+
+    // ImGui context creation
+    ImGui::CreateContext();
+
+    // ImGui configuration
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags                  |= ImGuiConfigFlags_NavEnableKeyboard;
+    io.ConfigFlags                  |= ImGuiConfigFlags_DockingEnable;
+    io.ConfigFlags                  |= ImGuiConfigFlags_ViewportsEnable;
+    io.ConfigWindowsResizeFromEdges = true;
+    io.ConfigViewportsNoTaskBarIcon = true;
+    ImGui_ApplyStyle();
+
+    // ImGui backend setup
+    ImGui_ImplWin32_Init(window_data.handle);
+    ImGui::RHI::Initialize(m_context, static_cast<float>(window_data.width), static_cast<float>(window_data.height));
+
+    // Initialization of misc custom systems
+    IconProvider::Get().Initialize(m_context);
+    EditorHelper::Get().Initialize(m_context);
+
+    // Create all ImGui widgets
     m_widgets.emplace_back(make_shared<Widget_Console>(this));
     m_widgets.emplace_back(make_shared<Widget_Profiler>(this));
     m_widgets.emplace_back(make_shared<Widget_ResourceCache>(this));
     m_widgets.emplace_back(make_shared<Widget_ShaderEditor>(this));
     m_widgets.emplace_back(make_shared<Widget_RenderOptions>(this));
-    m_widgets.emplace_back(make_shared<Widget_MenuBar>(this)); _Editor::widget_menu_bar = m_widgets.back().get();
-    m_widgets.emplace_back(make_shared<Widget_Toolbar>(this)); _Editor::widget_toolbar = m_widgets.back().get();
+    m_widgets.emplace_back(make_shared<Widget_MenuBar>(this)); _editor::widget_menu_bar = m_widgets.back().get();
+    m_widgets.emplace_back(make_shared<Widget_Toolbar>(this)); _editor::widget_toolbar = m_widgets.back().get();
     m_widgets.emplace_back(make_shared<Widget_Viewport>(this));
     m_widgets.emplace_back(make_shared<Widget_Assets>(this));
     m_widgets.emplace_back(make_shared<Widget_Properties>(this));
-    m_widgets.emplace_back(make_shared<Widget_World>(this)); _Editor::widget_world = m_widgets.back().get();
+    m_widgets.emplace_back(make_shared<Widget_World>(this)); _editor::widget_world = m_widgets.back().get();
     m_widgets.emplace_back(make_shared<Widget_ProgressDialog>(this));
 }
 
-void Editor::Widgets_Tick()
-{
-    if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable)
-    {
-        MainWindow_Begin();
-    }
-
-    for (auto& widget : m_widgets)
-    {
-        if (widget->Begin())
-        {
-            widget->Tick();
-            widget->End();
-        }
-    }
-
-    if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable)
-    {
-        MainWindow_End();
-    }
-}
-
-void Editor::MainWindow_Begin()
-{
-    // Set window flags
-    const auto window_flags =
-        ImGuiWindowFlags_MenuBar                |
-        ImGuiWindowFlags_NoDocking              |
-        ImGuiWindowFlags_NoTitleBar             |
-        ImGuiWindowFlags_NoCollapse             |
-        ImGuiWindowFlags_NoResize               |
-        ImGuiWindowFlags_NoMove                 |
-        ImGuiWindowFlags_NoBringToFrontOnFocus  |
-        ImGuiWindowFlags_NoNavFocus;
-
-    // Set window position and size
-    float offset_y  = 0;
-    offset_y        += _Editor::widget_menu_bar ? _Editor::widget_menu_bar->GetHeight() : 0;
-    offset_y        += _Editor::widget_toolbar  ? _Editor::widget_toolbar->GetHeight()  : 0;
-    const ImGuiViewport* viewport = ImGui::GetMainViewport();
-    ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x, viewport->Pos.y + offset_y));
-    ImGui::SetNextWindowSize(ImVec2(viewport->Size.x, viewport->Size.y - offset_y));
-    ImGui::SetNextWindowViewport(viewport->ID);
-
-    // Set window style
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-    ImGui::SetNextWindowBgAlpha(0.0f);
-
-    // Begin window
-    bool open = true;
-    m_editor_begun = ImGui::Begin(_Editor::editor_name, &open, window_flags);
-    ImGui::PopStyleVar(3);
-
-    // Begin dock space
-    if (m_editor_begun)
-    {
-        // Dock space
-        const auto window_id = ImGui::GetID(_Editor::editor_name);
-        if (!ImGui::DockBuilderGetNode(window_id))
-        {
-            // Reset current docking state
-            ImGui::DockBuilderRemoveNode(window_id);
-            ImGui::DockBuilderAddNode(window_id, ImGuiDockNodeFlags_None);
-            ImGui::DockBuilderSetNodeSize(window_id, ImGui::GetMainViewport()->Size);
-
-            // DockBuilderSplitNode(ImGuiID node_id, ImGuiDir split_dir, float size_ratio_for_node_at_dir, ImGuiID* out_id_dir, ImGuiID* out_id_other);
-            ImGuiID dock_main_id                = window_id;
-            ImGuiID dock_right_id                = ImGui::DockBuilderSplitNode(dock_main_id,    ImGuiDir_Right, 0.2f,   nullptr, &dock_main_id);
-            const ImGuiID dock_right_down_id    = ImGui::DockBuilderSplitNode(dock_right_id,    ImGuiDir_Down,  0.6f,   nullptr, &dock_right_id);
-            ImGuiID dock_down_id                = ImGui::DockBuilderSplitNode(dock_main_id,     ImGuiDir_Down,  0.25f,  nullptr, &dock_main_id);
-            const ImGuiID dock_down_right_id    = ImGui::DockBuilderSplitNode(dock_down_id,     ImGuiDir_Right, 0.6f,   nullptr, &dock_down_id);
-
-            // Dock windows    
-            ImGui::DockBuilderDockWindow("World",        dock_right_id);
-            ImGui::DockBuilderDockWindow("Properties",    dock_right_down_id);
-            ImGui::DockBuilderDockWindow("Console",        dock_down_id);
-            ImGui::DockBuilderDockWindow("Assets",        dock_down_right_id);
-            ImGui::DockBuilderDockWindow("Viewport",    dock_main_id);
-            ImGui::DockBuilderFinish(dock_main_id);
-        }
-
-        ImGui::DockSpace(window_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
-    }
-}
-
-void Editor::MainWindow_End()
-{
-    if (m_editor_begun)
-    {
-        ImGui::End();
-    }
-}
-
-void Editor::ApplyStyle() const
+void Editor::ImGui_ApplyStyle() const
 {
     // Color settings    
     const auto color_text                   = ImVec4(0.810f, 0.810f, 0.810f, 1.000f);
@@ -384,4 +330,77 @@ void Editor::ApplyStyle() const
     const string dir_fonts = m_context->GetSubsystem<ResourceCache>()->GetDataDirectory(Asset_Fonts) + "/";
     io.Fonts->AddFontFromFileTTF((dir_fonts + "CalibriBold.ttf").c_str(), font_size);
     io.FontGlobalScale = font_scale;
+}
+
+void Editor::ImGui_Begin()
+{
+    // Set window flags
+    const auto window_flags =
+        ImGuiWindowFlags_MenuBar                |
+        ImGuiWindowFlags_NoDocking              |
+        ImGuiWindowFlags_NoTitleBar             |
+        ImGuiWindowFlags_NoCollapse             |
+        ImGuiWindowFlags_NoResize               |
+        ImGuiWindowFlags_NoMove                 |
+        ImGuiWindowFlags_NoBringToFrontOnFocus  |
+        ImGuiWindowFlags_NoNavFocus;
+
+    // Set window position and size
+    float offset_y  = 0;
+    offset_y        += _editor::widget_menu_bar ? _editor::widget_menu_bar->GetHeight() : 0;
+    offset_y        += _editor::widget_toolbar  ? _editor::widget_toolbar->GetHeight()  : 0;
+    const ImGuiViewport* viewport = ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x, viewport->Pos.y + offset_y));
+    ImGui::SetNextWindowSize(ImVec2(viewport->Size.x, viewport->Size.y - offset_y));
+    ImGui::SetNextWindowViewport(viewport->ID);
+
+    // Set window style
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+    ImGui::SetNextWindowBgAlpha(0.0f);
+
+    // Begin window
+    bool open = true;
+    m_editor_begun = ImGui::Begin(_editor::editor_name, &open, window_flags);
+    ImGui::PopStyleVar(3);
+
+    // Begin dock space
+    if (m_editor_begun)
+    {
+        // Dock space
+        const auto window_id = ImGui::GetID(_editor::editor_name);
+        if (!ImGui::DockBuilderGetNode(window_id))
+        {
+            // Reset current docking state
+            ImGui::DockBuilderRemoveNode(window_id);
+            ImGui::DockBuilderAddNode(window_id, ImGuiDockNodeFlags_None);
+            ImGui::DockBuilderSetNodeSize(window_id, ImGui::GetMainViewport()->Size);
+
+            // DockBuilderSplitNode(ImGuiID node_id, ImGuiDir split_dir, float size_ratio_for_node_at_dir, ImGuiID* out_id_dir, ImGuiID* out_id_other);
+            ImGuiID dock_main_id                = window_id;
+            ImGuiID dock_right_id               = ImGui::DockBuilderSplitNode(dock_main_id,     ImGuiDir_Right, 0.2f,   nullptr, &dock_main_id);
+            const ImGuiID dock_right_down_id    = ImGui::DockBuilderSplitNode(dock_right_id,    ImGuiDir_Down,  0.6f,   nullptr, &dock_right_id);
+            ImGuiID dock_down_id                = ImGui::DockBuilderSplitNode(dock_main_id,     ImGuiDir_Down,  0.25f,  nullptr, &dock_main_id);
+            const ImGuiID dock_down_right_id    = ImGui::DockBuilderSplitNode(dock_down_id,     ImGuiDir_Right, 0.6f,   nullptr, &dock_down_id);
+
+            // Dock windows    
+            ImGui::DockBuilderDockWindow("World",       dock_right_id);
+            ImGui::DockBuilderDockWindow("Properties",  dock_right_down_id);
+            ImGui::DockBuilderDockWindow("Console",     dock_down_id);
+            ImGui::DockBuilderDockWindow("Assets",      dock_down_right_id);
+            ImGui::DockBuilderDockWindow("Viewport",    dock_main_id);
+            ImGui::DockBuilderFinish(dock_main_id);
+        }
+
+        ImGui::DockSpace(window_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
+    }
+}
+
+void Editor::ImGui_End()
+{
+    if (m_editor_begun)
+    {
+        ImGui::End();
+    }
 }

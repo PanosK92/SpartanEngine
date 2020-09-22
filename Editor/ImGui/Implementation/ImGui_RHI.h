@@ -243,8 +243,8 @@ namespace ImGui::RHI
             const auto B = draw_data->DisplayPos.y + draw_data->DisplaySize.y;
             const auto wvp = Matrix
             (
-                2.0f / (R - L),    0.0f,            0.0f,    (R + L) / (L - R),
-                0.0f,            2.0f / (T - B), 0.0f,    (T + B) / (B - T),
+                2.0f / (R - L),  0.0f,            0.0f,    (R + L) / (L - R),
+                0.0f,            2.0f / (T - B),  0.0f,    (T + B) / (B - T),
                 0.0f,            0.0f,            0.5f,    0.5f,
                 0.0f,            0.0f,            0.0f,    1.0f
             );
@@ -326,14 +326,6 @@ namespace ImGui::RHI
         }
     }
 
-    inline void Resize(const float width, const float height)
-    {
-        if (!g_renderer || !g_renderer->GetSwapChain())
-            return;
-
-        g_renderer->GetSwapChain()->Resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
-    }
-
     //--------------------------------------------
     // MULTI-VIEWPORT / PLATFORM INTERFACE SUPPORT
     //--------------------------------------------
@@ -395,7 +387,7 @@ namespace ImGui::RHI
         if (!swap_chain)
             return;
         
-        if (!swap_chain->Resize(static_cast<unsigned int>(size.x), static_cast<unsigned int>(size.y)))
+        if (!swap_chain->Resize(static_cast<uint32_t>(size.x), static_cast<uint32_t>(size.y)))
         {
             LOG_ERROR("Failed to resize swap chain");
         }
