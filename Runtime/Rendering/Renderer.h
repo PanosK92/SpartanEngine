@@ -91,6 +91,10 @@ namespace Spartan
         const Math::Vector2& GetResolution() const { return m_resolution; }
         void SetResolution(uint32_t width, uint32_t height);
 
+        // Resolution
+        bool GetIsFullscreen() const { return m_is_fullscreen; }
+        void SetIsFullscreen(const bool is_fullscreen) { m_is_fullscreen = is_fullscreen; }
+
         // Editor
         float m_gizmo_transform_size    = 0.015f;
         float m_gizmo_transform_speed   = 12.0f;
@@ -121,7 +125,6 @@ namespace Spartan
 
         // Swapchain
         RHI_SwapChain* GetSwapChain() const { return m_swap_chain.get(); }
-        bool Present();
         bool Flush();
 
         // Default textures
@@ -144,6 +147,9 @@ namespace Spartan
         auto& GetShaders()                                  const { return m_shaders; }
         bool IsRendering()                                  const { return m_is_rendering; }
         uint32_t GetMaxResolution() const;
+
+        // Passes
+        void Pass_CopyToBackbuffer(RHI_CommandList* cmd_list);
 
     private:
         // Resource creation
@@ -272,6 +278,7 @@ namespace Spartan
         Math::Vector2 m_taa_jitter_previous = Math::Vector2::Zero;
         uint64_t m_render_target_debug      = 0;
         bool m_initialized                  = false;
+        bool m_is_fullscreen                = false;
         float m_near_plane                  = 0.0f;
         float m_far_plane                   = 0.0f;
         uint64_t m_frame_num                = 0;

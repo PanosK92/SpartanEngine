@@ -126,7 +126,7 @@ float2 IntegrateBRDF(float n_dot_v, float roughness)
     return float2(A, B);
 }
 
-[numthreads(thread_group_count, thread_group_count, 1)]
+[numthreads(thread_group_count_x, thread_group_count_y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
     if (thread_id.x >= uint(g_resolution.x) || thread_id.y >= uint(g_resolution.y))

@@ -23,10 +23,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common.hlsl"
 //====================
 
-static const uint g_ssr_max_steps = 8;
-static const uint g_ssr_binarySearchSteps = 12;
-static const float g_ssr_binarySearchThickness = 0.01f;
-static const float g_ssr_ray_max_distance = 10.0f;
+static const uint g_ssr_max_steps               = 12;
+static const uint g_ssr_binarySearchSteps       = 12;
+static const float g_ssr_binarySearchThickness  = 0.001f;
+static const float g_ssr_ray_max_distance       = 10.0f;
 
 inline float2 binary_search(float3 ray_dir, inout float3 ray_pos, inout float2 ray_uv)
 {
@@ -96,7 +96,7 @@ inline float2 trace_ray(float2 uv, float3 ray_pos, float3 ray_dir)
     return ray_uv_hit;
 }
 
-[numthreads(thread_group_count, thread_group_count, 1)]
+[numthreads(thread_group_count_x, thread_group_count_y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
     if (thread_id.x >= uint(g_resolution.x) || thread_id.y >= uint(g_resolution.y))

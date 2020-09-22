@@ -926,7 +926,7 @@ namespace Spartan
             return;
 
         // Set render state
-        static RHI_PipelineState pipeline_state;
+        static RHI_PipelineState pipeline_state         = {};
         pipeline_state.shader_vertex                    = shader_v.get();
         pipeline_state.shader_pixel                     = shader_p.get();
         pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
@@ -2349,6 +2349,39 @@ namespace Spartan
             cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out);
             cmd_list->SetTexture(RendererBindingsSrv::tex, tex_in);
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
+            cmd_list->EndRenderPass();
+        }
+    }
+
+    void Renderer::Pass_CopyToBackbuffer(RHI_CommandList* cmd_list)
+    {
+        // Acquire shaders
+        RHI_Shader* shader_v = m_shaders[RendererShader::Quad_V].get();
+        RHI_Shader* shader_p = m_shaders[RendererShader::Texture_P].get();
+        if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
+            return;
+
+        // Set render state
+        static RHI_PipelineState pipeline_state = {};
+        pipeline_state.shader_vertex            = shader_v;
+        pipeline_state.shader_pixel             = shader_p;
+        pipeline_state.rasterizer_state         = m_rasterizer_cull_back_solid.get();
+        pipeline_state.blend_state              = m_blend_disabled.get();
+        pipeline_state.depth_stencil_state      = m_depth_stencil_off_off.get();
+        pipeline_state.vertex_buffer_stride     = m_viewport_quad.GetVertexBuffer()->GetStride();
+        pipeline_state.render_target_swapchain  = m_swap_chain.get();
+        pipeline_state.clear_color[0]           = rhi_color_dont_care;
+        pipeline_state.primitive_topology       = RHI_PrimitiveTopology_TriangleList;
+        pipeline_state.viewport                 = m_viewport;
+        pipeline_state.pass_name                = "Pass_CopyToBackbuffer";
+
+        // Record commands
+        if (cmd_list->BeginRenderPass(pipeline_state))
+        {
+            cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
+            cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
+            cmd_list->SetTexture(RendererBindingsSrv::tex, m_render_targets[RendererRt::Frame_Ldr].get());
+            cmd_list->DrawIndexed(m_viewport_quad.GetIndexCount());
             cmd_list->EndRenderPass();
         }
     }

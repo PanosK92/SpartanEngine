@@ -1,3 +1,4 @@
+
 <img align="left" width="128" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/logo.png"/>
 
 # Spartan Engine [![Discord](https://img.shields.io/discord/677302405263785986?label=Discord)](https://discord.gg/TG5r2BS)
@@ -17,11 +18,11 @@
 <img align="left" width="32" src="https://opensource.org/files/OSIApproved_1.png">Embracing the open source ethos and respecting the <a href="https://en.wikipedia.org/wiki/MIT_License">MIT license</a> is greatly appreciated. This means that you can copy all the code you want as long as you include a copy of the original license.</p>
 
 ## Download
-Platform | API | Status | Quality | Binaries | :+1:
+Platform | API | Status | Quality | Binaries
 :-:|:-:|:-:|:-:|:-:|:-:|
-<img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/docs/logo_windows.png" width="20"/>|<img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/docs/logo_d3d11.png" width="100"/>|[![Build status](https://ci.appveyor.com/api/projects/status/p5duow3h4w8jp506/branch/master?svg=true)](https://ci.appveyor.com/project/PanosK92/spartanengine-d3d11/branch/master)|[![Codacy Badge](https://api.codacy.com/project/badge/Grade/da72b4f208284a30b7673abd86e8d8d3)](https://www.codacy.com/app/PanosK92/Directus3D?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=PanosK92/Directus3D&amp;utm_campaign=Badge_Grade)|[Download](https://ci.appveyor.com/api/projects/PanosK92/spartanengine-d3d11/artifacts/Binaries/release_d3d11.zip?branch=master)|[![](https://www.paypalobjects.com/en_GB/i/btn/btn_donate_SM.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=CSP87Y77VNHPG&source=url)
-<img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/docs/logo_windows.png" width="20"/>|<img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/docs/logo_vulkan.png" width="100"/>|[![Build status](https://ci.appveyor.com/api/projects/status/txlx815l43ytodij/branch/master?svg=true)](https://ci.appveyor.com/project/PanosK92/spartanengine-vulkan/branch/master)|*Beta*|[Download](https://ci.appveyor.com/api/projects/PanosK92/spartanengine-vulkan/artifacts/Binaries/release_vulkan.zip?branch=master)|[![](https://www.paypalobjects.com/en_GB/i/btn/btn_donate_SM.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=CSP87Y77VNHPG&source=url)
-<img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/docs/logo_windows.png" width="20"/>|<img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/docs/logo_d3d12.png" width="100"/>|[![Build status](https://ci.appveyor.com/api/projects/status/j77vml2hrt5o0oy0?svg=true)](https://ci.appveyor.com/project/PanosK92/spartanengine-d3d12)|*WIP*|WIP|WIP|
+<img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/docs/logo_windows.png" width="20"/>|<img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/docs/logo_d3d11.png" width="100"/>|[![Build status](https://ci.appveyor.com/api/projects/status/p5duow3h4w8jp506/branch/master?svg=true)](https://ci.appveyor.com/project/PanosK92/spartanengine-d3d11/branch/master)|[![Codacy Badge](https://api.codacy.com/project/badge/Grade/da72b4f208284a30b7673abd86e8d8d3)](https://www.codacy.com/app/PanosK92/Directus3D?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=PanosK92/Directus3D&amp;utm_campaign=Badge_Grade)|[Download](https://ci.appveyor.com/api/projects/PanosK92/spartanengine-d3d11/artifacts/Binaries/release_d3d11.zip?branch=master)
+<img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/docs/logo_windows.png" width="20"/>|<img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/docs/logo_vulkan.png" width="100"/>|[![Build status](https://ci.appveyor.com/api/projects/status/txlx815l43ytodij/branch/master?svg=true)](https://ci.appveyor.com/project/PanosK92/spartanengine-vulkan/branch/master)|*Beta*|[Download](https://ci.appveyor.com/api/projects/PanosK92/spartanengine-vulkan/artifacts/Binaries/release_vulkan.zip?branch=master)
+<img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/docs/logo_windows.png" width="20"/>|<img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/docs/logo_d3d12.png" width="100"/>|[![Build status](https://ci.appveyor.com/api/projects/status/j77vml2hrt5o0oy0?svg=true)](https://ci.appveyor.com/project/PanosK92/spartanengine-d3d12)|*WIP*|WIP
 
 ## Media
 [![](https://i.imgur.com/j6zIEI9.jpg)](https://www.youtube.com/watch?v=RIae1ma_DSo)
@@ -71,7 +72,7 @@ Platform | API | Status | Quality | Binaries | :+1:
 ##### v0.32-35 (WIP)
 Feature     					 	| Completion 	| Notes 
 :-          					 	| :-         	| :-
-Continuous Vulkan optimisation 	 	| -		  		| Outperform D3D11
+Continuous Vulkan optimisation 	 	| -		  		| Outperforms D3D11. Need to make more stable and uber optimise.
 Screen space global illumination 	| 100%		  	| One bounce of indirect diffuse and specular light
 Depth-of-field					 	| 100%       	| Controlled by Camera aperture
 C# scripting (Replace AngelScript) 	| 50%			| Using Mono (no engine API exposed yet)

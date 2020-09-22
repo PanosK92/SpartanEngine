@@ -85,7 +85,7 @@ float3 get_light_direction(Light light, Surface surface)
 #include "Fog.hlsl"
 //================================
 
-[numthreads(thread_group_count, thread_group_count, 1)]
+[numthreads(thread_group_count_x, thread_group_count_y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
     if (thread_id.x >= uint(g_resolution.x) || thread_id.y >= uint(g_resolution.y))
@@ -265,9 +265,9 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         {
             // saturate as reflections will accumulate int tex_frame overtime, causing more light to go out that it comes in.
             float3 light_reflection = saturate(tex_frame.SampleLevel(sampler_bilinear_clamp, sample_ssr, 0).rgb);
-            light_reflection *= reflective_energy;
             light_reflection *= 1.0f - material.roughness; // fade with roughness as we don't have blurry screen space reflections yet
-            light_specular += light_reflection;
+            light_diffuse += light_reflection * diffuse_energy;
+            light_specular += light_reflection * reflective_energy;
         }
         #endif
     }

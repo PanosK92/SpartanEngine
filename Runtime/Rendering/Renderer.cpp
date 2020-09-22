@@ -193,7 +193,7 @@ namespace Spartan
             return;
 
         // Don't do any work if the swapchain is not presenting
-        if (m_swap_chain && !m_swap_chain->IsPresenting())
+        if (m_swap_chain && !m_swap_chain->PresentEnabled())
             return;
 
         RHI_CommandList* cmd_list = m_swap_chain->GetCmdList();
@@ -245,8 +245,8 @@ namespace Spartan
                 const uint64_t samples          = 16;
                 const uint64_t index            = m_frame_num % samples;
                 m_taa_jitter                    = (Utility::Sampling::Halton2D(index, 2, 3) * 2.0f - 1.0f);
-                m_taa_jitter.x                    = (m_taa_jitter.x / m_resolution.x) * scale;
-                m_taa_jitter.y                    = (m_taa_jitter.y / m_resolution.y) * scale;
+                m_taa_jitter.x                  = (m_taa_jitter.x / m_resolution.x) * scale;
+                m_taa_jitter.y                  = (m_taa_jitter.y / m_resolution.y) * scale;
                 m_buffer_frame_cpu.projection   *= Matrix::CreateTranslation(Vector3(m_taa_jitter.x, m_taa_jitter.y, 0.0f));
             }
             else
@@ -404,7 +404,7 @@ namespace Spartan
         return buffer_gpu->Unmap(offset, size);
     }
 
-    bool Renderer::UpdateFrameBuffer(RHI_CommandList* cmd_list)
+	bool Renderer::UpdateFrameBuffer(RHI_CommandList* cmd_list)
     {
         // Update directional light intensity, just grab the first one
         for (const auto& entity : m_entities[Renderer_Object_Light])
@@ -679,26 +679,6 @@ namespace Spartan
                 }
             }
         }
-    }
-
-    bool Renderer::Present()
-    {
-        if (m_swap_chain->GetCmdList()->IsRecording())
-        {
-            if (!m_swap_chain->GetCmdList()->Submit())
-            {
-                LOG_ERROR("Failed to submit");
-                return false;
-            }
-        }
-
-        if (!m_swap_chain->Present())
-        {
-            LOG_ERROR("Failed to present");
-            return false;
-        }
-
-        return true;
     }
 
     bool Renderer::Flush()
