@@ -77,7 +77,7 @@ namespace Spartan
         std::shared_ptr<RHI_Device> m_rhi_device;
 
     private:
-        // All compile functions resolve to this, and this is the underlying API implements
+        // All compile functions resolve to this, and this is what the underlying API implements
         void* _Compile(const std::string& shader);
         void _Reflect(const RHI_Shader_Type shader_type, const uint32_t* ptr, uint32_t size);
 

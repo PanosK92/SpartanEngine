@@ -34,13 +34,18 @@ using namespace std;
 
 namespace Spartan
 {
-	RHI_Shader::~RHI_Shader()
-	{
-		
-	}
+    RHI_Shader::~RHI_Shader()
+    {
 
-	void* RHI_Shader::_Compile(const string& shader)
-	{
+    }
+
+    void* RHI_Shader::_Compile(const string& shader)
+    {
         return nullptr;
-	}
+    }
+
+    void RHI_Shader::_Reflect(const RHI_Shader_Type shader_type, const uint32_t* ptr, uint32_t size)
+    {
+
+    }
 }

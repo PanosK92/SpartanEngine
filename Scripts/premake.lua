@@ -17,19 +17,22 @@
 -- IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 -- CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-SOLUTION_NAME		= "Spartan"
-EDITOR_NAME			= "Editor"
-RUNTIME_NAME		= "Runtime"
-TARGET_NAME			= "Spartan" -- Name of executable
-DEBUG_FORMAT		= "c7"
-EDITOR_DIR			= "../" .. EDITOR_NAME
-RUNTIME_DIR			= "../" .. RUNTIME_NAME
-IGNORE_FILES		= {}
-LIBRARY_DIR			= "../ThirdParty/libraries"
-INTERMEDIATE_DIR	= "../Binaries/Intermediate"
-TARGET_DIR_RELEASE  = "../Binaries/Release"
-TARGET_DIR_DEBUG    = "../Binaries/Debug"
-API_GRAPHICS		= _ARGS[1]
+SOLUTION_NAME				= "Spartan"
+EDITOR_NAME					= "Editor"
+RUNTIME_NAME				= "Runtime"
+TARGET_NAME					= "Spartan" -- Name of executable
+DEBUG_FORMAT				= "c7"
+EDITOR_DIR					= "../" .. EDITOR_NAME
+RUNTIME_DIR					= "../" .. RUNTIME_NAME
+IGNORE_FILES				= {}
+ADDITIONAL_INCLUDES			= {}
+ADDITIONAL_LIBRARIES		= {}
+ADDITIONAL_LIBRARIES_DBG	= {}
+LIBRARY_DIR					= "../ThirdParty/libraries"
+INTERMEDIATE_DIR			= "../Binaries/Intermediate"
+TARGET_DIR_RELEASE  		= "../Binaries/Release"
+TARGET_DIR_DEBUG    		= "../Binaries/Debug"
+API_GRAPHICS				= _ARGS[1]
 
 -- Compute graphics api specific variables
 if API_GRAPHICS == "d3d11" then
@@ -43,10 +46,21 @@ elseif API_GRAPHICS == "d3d12" then
 	IGNORE_FILES[0]	= RUNTIME_DIR .. "/RHI/D3D11/**"
 	IGNORE_FILES[1]	= RUNTIME_DIR .. "/RHI/Vulkan/**"
 elseif API_GRAPHICS == "vulkan" then
-	API_GRAPHICS	= "API_GRAPHICS_VULKAN"
-	TARGET_NAME		= "Spartan_vk"
-	IGNORE_FILES[0]	= RUNTIME_DIR .. "/RHI/D3D11/**"
-	IGNORE_FILES[1]	= RUNTIME_DIR .. "/RHI/D3D12/**"
+	API_GRAPHICS				= "API_GRAPHICS_VULKAN"
+	TARGET_NAME					= "Spartan_vk"
+	IGNORE_FILES[0]				= RUNTIME_DIR .. "/RHI/D3D11/**"
+	IGNORE_FILES[1]				= RUNTIME_DIR .. "/RHI/D3D12/**"
+	ADDITIONAL_INCLUDES[0] 		= "../ThirdParty/DirectXShaderCompiler";
+	ADDITIONAL_INCLUDES[1] 		= "../ThirdParty/SPIRV-Cross_2020-01-16";
+	ADDITIONAL_INCLUDES[2] 		= "../ThirdParty/Vulkan_1.2.148.1";
+	ADDITIONAL_LIBRARIES[0] 	= "dxcompiler";
+	ADDITIONAL_LIBRARIES[1] 	= "spirv-cross-core";
+	ADDITIONAL_LIBRARIES[2] 	= "spirv-cross-hlsl";
+	ADDITIONAL_LIBRARIES[3] 	= "spirv-cross-glsl";
+	ADDITIONAL_LIBRARIES_DBG[0] = "dxcompiler";
+	ADDITIONAL_LIBRARIES_DBG[1] = "spirv-cross-core_debug";
+	ADDITIONAL_LIBRARIES_DBG[2] = "spirv-cross-hlsl_debug";
+	ADDITIONAL_LIBRARIES_DBG[3] = "spirv-cross-glsl_debug";
 end
 
 -- Solution
@@ -107,9 +121,6 @@ project (RUNTIME_NAME)
 	removefiles { IGNORE_FILES[0], IGNORE_FILES[1] }
 
 	-- Includes
-	includedirs { "../ThirdParty/DirectXShaderCompiler" }
-	includedirs { "../ThirdParty/SPIRV-Cross_2020-01-16" }
-	includedirs { "../ThirdParty/Vulkan_1.2.148.1" }
 	includedirs { "../ThirdParty/Assimp_5.0.0" }
 	includedirs { "../ThirdParty/Bullet_2.89" }
 	includedirs { "../ThirdParty/FMOD_1.10.10" }
@@ -117,6 +128,7 @@ project (RUNTIME_NAME)
 	includedirs { "../ThirdParty/FreeType_2.10.1" }
 	includedirs { "../ThirdParty/pugixml_1.10" }
 	includedirs { "../ThirdParty/Mono_6.12.0.86" }
+	includedirs { ADDITIONAL_INCLUDES[0], ADDITIONAL_INCLUDES[1], ADDITIONAL_INCLUDES[2] }
 
 	-- Libraries
 	libdirs (LIBRARY_DIR)
@@ -126,7 +138,6 @@ project (RUNTIME_NAME)
 		targetdir (TARGET_DIR_DEBUG)
 		debugdir (TARGET_DIR_DEBUG)
 		debugformat (DEBUG_FORMAT)
-		links { "dxcompiler", "spirv-cross-core_debug", "spirv-cross-hlsl_debug", "spirv-cross-glsl_debug" }
 		links { "assimp_debug" }
 		links { "fmodL64_vc" }
 		links { "FreeImageLib_debug" }
@@ -135,12 +146,15 @@ project (RUNTIME_NAME)
 		links { "pugixml_debug" }
 		links { "IrrXML_debug" }
 		links { "libmono-static-sgen_debug.lib" }
+		links { ADDITIONAL_LIBRARIES_DBG[0], ADDITIONAL_LIBRARIES_DBG[1], ADDITIONAL_LIBRARIES_DBG[2], ADDITIONAL_LIBRARIES_DBG[3] }
 			
 	--	"Release"
 	filter "configurations:Release"
 		targetdir (TARGET_DIR_RELEASE)
 		debugdir (TARGET_DIR_RELEASE)
-		links { "dxcompiler", "spirv-cross-core", "spirv-cross-hlsl", "spirv-cross-glsl" }
+		if API_GRAPHICS == "vulkan" then
+			links { "dxcompiler", "spirv-cross-core", "spirv-cross-hlsl", "spirv-cross-glsl" }
+		end
 		links { "assimp" }
 		links { "fmod64_vc" }
 		links { "FreeImageLib" }
@@ -149,6 +163,7 @@ project (RUNTIME_NAME)
 		links { "pugixml" }
 		links { "IrrXML" }
 		links { "libmono-static-sgen.lib" }
+		links { ADDITIONAL_LIBRARIES[0], ADDITIONAL_LIBRARIES[1], ADDITIONAL_LIBRARIES[2], ADDITIONAL_LIBRARIES[3] }
 
 -- Editor --------------------------------------------------------------------------------------------------
 project (EDITOR_NAME)

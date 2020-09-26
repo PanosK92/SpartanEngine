@@ -348,8 +348,8 @@ namespace Spartan
         if (!m_present_enabled)
             return true;
 
-        m_cmd_index = m_cmd_index++ % m_buffer_count;
         RHI_CommandList* cmd_list = m_cmd_lists[m_cmd_index].get();
+        m_cmd_index = m_cmd_index++ % m_buffer_count;
 
         // Acquire next image
         VkResult result = vkAcquireNextImageKHR(
