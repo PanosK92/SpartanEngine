@@ -189,4 +189,9 @@ namespace Spartan
         d3d11_utility::release(shader_blob);
         return shader_view;
     }
+
+    void RHI_Shader::_Reflect(const RHI_Shader_Type shader_type, const uint32_t* ptr, uint32_t size)
+    {
+
+    }
 }

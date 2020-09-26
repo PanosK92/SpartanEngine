@@ -27,6 +27,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_InputLayout.h"
 #include <atlbase.h>
 #include <dxc/dxcapi.h>
+#pragma warning(push, 0) // Hide warnings belonging SPIRV-Cross 
+#include <spirv_hlsl.hpp>
+#pragma warning(pop)
 //================================
 
 //= NAMESPACES =====
@@ -427,5 +430,66 @@ namespace Spartan
 
         LOG_ERROR("Failed to compile %s", shader.c_str());
         return nullptr;
-    }        
+    }
+
+    void RHI_Shader::_Reflect(const RHI_Shader_Type shader_type, const uint32_t* ptr, const uint32_t size)
+    {
+        // Initialize compiler with SPIR-V data
+        const auto compiler = spirv_cross::CompilerHLSL(ptr, size);
+
+        // The SPIR-V is now parsed, and we can perform reflection on it
+        spirv_cross::ShaderResources resources = compiler.get_shader_resources();
+
+        // Get storage images
+        for (const auto& resource : resources.storage_images)
+        {
+            m_descriptors.emplace_back
+            (
+                RHI_Descriptor_Type::RHI_Descriptor_Texture,                    // type
+                compiler.get_decoration(resource.id, spv::DecorationBinding),   // slot
+                shader_type,                                                    // stage
+                true,                                                           // is_storage
+                false                                                           // is_dynamic_constant_buffer
+            );
+        }
+
+        // Get constant buffers
+        for (const auto& resource : resources.uniform_buffers)
+        {
+            m_descriptors.emplace_back
+            (
+                RHI_Descriptor_Type::RHI_Descriptor_ConstantBuffer,             // type
+                compiler.get_decoration(resource.id, spv::DecorationBinding),   // slot
+                shader_type,                                                    // stage
+                false,                                                          // is_storage
+                false                                                           // is_dynamic_constant_buffer
+            );
+        }
+
+        // Get textures
+        for (const auto& resource : resources.separate_images)
+        {
+            m_descriptors.emplace_back
+            (
+                RHI_Descriptor_Type::RHI_Descriptor_Texture,                    // type
+                compiler.get_decoration(resource.id, spv::DecorationBinding),   // slot
+                shader_type,                                                    // stage
+                false,                                                          // is_storage
+                false                                                           // is_dynamic_constant_buffer
+            );
+        }
+
+        // Get samplers
+        for (const auto& resource : resources.separate_samplers)
+        {
+            m_descriptors.emplace_back
+            (
+                RHI_Descriptor_Type::RHI_Descriptor_Sampler,                    // type
+                compiler.get_decoration(resource.id, spv::DecorationBinding),   // slot
+                shader_type,                                                    // stage
+                false,                                                          // is_storage
+                false                                                           // is_dynamic_constant_buffer
+            );
+        }
+    }
 }
