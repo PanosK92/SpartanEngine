@@ -574,6 +574,12 @@ namespace Spartan::vulkan_utility
                 flags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT; // destination of a transfer command.
             }
 
+            // If the texture is a render target, it's possible that it can be cleared
+            if (texture->IsRenderTarget())
+            {
+                flags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+            }
+
             return flags;
         }
 

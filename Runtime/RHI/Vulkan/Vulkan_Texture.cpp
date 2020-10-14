@@ -94,15 +94,15 @@ namespace Spartan
                 uint32_t mip_height = height >> mip_index;
 
                 VkBufferImageCopy region                = {};
-                region.bufferOffset                        = buffer_offset;
-                region.bufferRowLength                    = 0;
+                region.bufferOffset                     = buffer_offset;
+                region.bufferRowLength                  = 0;
                 region.bufferImageHeight                = 0;
                 region.imageSubresource.aspectMask      = vulkan_utility::image::get_aspect_mask(texture);
                 region.imageSubresource.mipLevel        = mip_index;
-                region.imageSubresource.baseArrayLayer    = array_index;
-                region.imageSubresource.layerCount        = array_size;
-                region.imageOffset                        = { 0, 0, 0 };
-                region.imageExtent                        = { mip_width, mip_height, 1 };
+                region.imageSubresource.baseArrayLayer  = array_index;
+                region.imageSubresource.layerCount      = array_size;
+                region.imageOffset                      = { 0, 0, 0 };
+                region.imageExtent                      = { mip_width, mip_height, 1 };
 
                 buffer_image_copies[mip_index] = region;
 
