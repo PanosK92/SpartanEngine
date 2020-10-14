@@ -349,16 +349,15 @@ namespace Spartan
             return true;
 
         RHI_CommandList* cmd_list = m_cmd_lists[m_cmd_index].get();
-        m_cmd_index = m_cmd_index++ % m_buffer_count;
-
+        
         // Acquire next image
         VkResult result = vkAcquireNextImageKHR(
-            m_rhi_device->GetContextRhi()->device,                                  // device
-            static_cast<VkSwapchainKHR>(m_swap_chain_view),                         // swapchain
-            numeric_limits<uint64_t>::max(),                                        // timeout
-            static_cast<VkSemaphore>(m_image_acquired_semaphore[m_image_index]),    // semaphore
-            nullptr,                                                                // fence
-            &m_image_index                                                          // pImageIndex
+            m_rhi_device->GetContextRhi()->device,                              // device
+            static_cast<VkSwapchainKHR>(m_swap_chain_view),                     // swapchain
+            numeric_limits<uint64_t>::max(),                                    // timeout
+            static_cast<VkSemaphore>(m_image_acquired_semaphore[m_cmd_index]),  // semaphore
+            nullptr,                                                            // fence
+            &m_image_index                                                      // pImageIndex
         );
 
         if ((result == VK_ERROR_OUT_OF_DATE_KHR) || (result == VK_SUBOPTIMAL_KHR))
@@ -366,12 +365,11 @@ namespace Spartan
             LOG_INFO("Outdated swapchain, recreating...");
             m_image_acquired = Resize(m_width, m_height, true) ? VK_SUCCESS : result;
         }
-        else if (result != VK_SUCCESS)
+        else if (result == VK_SUCCESS)
         {
-            LOG_ERROR("Failed to acquire next image");
+            m_image_acquired    = true;
+            m_cmd_index         = m_cmd_index++ % m_buffer_count;
         }
-
-        m_image_acquired = result == VK_SUCCESS;
 
         return vulkan_utility::error::check(result);
     }

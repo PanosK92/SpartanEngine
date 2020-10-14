@@ -52,7 +52,7 @@ elseif API_GRAPHICS == "vulkan" then
 	IGNORE_FILES[1]				= RUNTIME_DIR .. "/RHI/D3D12/**"
 	ADDITIONAL_INCLUDES[0] 		= "../ThirdParty/DirectXShaderCompiler";
 	ADDITIONAL_INCLUDES[1] 		= "../ThirdParty/SPIRV-Cross_2020-01-16";
-	ADDITIONAL_INCLUDES[2] 		= "../ThirdParty/Vulkan_1.2.148.1";
+	ADDITIONAL_INCLUDES[2] 		= "../ThirdParty/Vulkan_1.2.154.0";
 	ADDITIONAL_LIBRARIES[0] 	= "dxcompiler";
 	ADDITIONAL_LIBRARIES[1] 	= "spirv-cross-core";
 	ADDITIONAL_LIBRARIES[2] 	= "spirv-cross-hlsl";
