@@ -227,6 +227,11 @@ namespace Spartan
         )
         return false;
 
+        if (signal_semaphore)
+        {
+            m_processed_semaphore_submited = true;
+        }
+
         m_cmd_state = RHI_CommandListState::Submitted;
         return true;
     }
@@ -261,6 +266,12 @@ namespace Spartan
 
     bool RHI_CommandList::BeginRenderPass(RHI_PipelineState& pipeline_state)
     {
+        if (m_cmd_state != RHI_CommandListState::Recording)
+        {
+            LOG_WARNING("Command list must be in a recording state");
+            return false;
+        }
+
         // Get pipeline
         {
             m_pipeline_active = false;
