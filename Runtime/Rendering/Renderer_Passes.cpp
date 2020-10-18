@@ -72,6 +72,10 @@ namespace Spartan
         if (!m_rhi_device)
             return;
 
+        // Validate command list state
+        if (!cmd_list->IsRecording())
+            return;
+
         SCOPED_TIME_BLOCK(m_profiler);
 
         // Updates onces, used almost everywhere

@@ -149,7 +149,7 @@ namespace Spartan
         bool IsRecording()                  const { return m_cmd_state == RHI_CommandListState::Recording; }
         bool IsSubmitted()                  const { return m_cmd_state == RHI_CommandListState::Submitted; }
         bool IsIdle()                       const { return m_cmd_state == RHI_CommandListState::Idle; }
-        void*& GetProcessedSemaphore()            { return m_processed_semaphore; }
+        void* GetProcessedSemaphore()             { return m_processed_semaphore_submited ? m_processed_semaphore : nullptr; }
 
     private:
         void Timeblock_Start(const RHI_PipelineState* pipeline_state);
@@ -171,6 +171,7 @@ namespace Spartan
         void* m_cmd_buffer                              = nullptr;
         void* m_processed_fence                         = nullptr;
         void* m_processed_semaphore                     = nullptr;
+        bool m_processed_semaphore_submited             = false;
         void* m_query_pool                              = nullptr;
         bool m_render_pass_active                       = false;
         bool m_pipeline_active                          = false;
