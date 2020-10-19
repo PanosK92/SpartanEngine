@@ -410,16 +410,12 @@ namespace Spartan
         float _near  = near_plane != 0 ? near_plane : m_near_plane;
         float _far   = far_plane != 0  ? far_plane : m_far_plane;
 
-        if (reverse_z)
-        {
-            const float temp = _near;
-            _near = _far;
-            _far = temp;
-        }
-
         if (m_projection_type == Projection_Perspective)
         {
-            return Matrix::CreatePerspectiveFieldOfViewLH(GetFovVerticalRad(), GetViewport().AspectRatio(), _near, _far);
+			if (reverse_z)
+            	return Matrix::CreatePerspectiveReversedZFovLH(GetFovVerticalRad(), GetViewport().AspectRatio(), _near, _far);
+			else
+				return Matrix::CreatePerspectiveFovLH(GetFovVerticalRad(), GetViewport().AspectRatio(), _near, _far);
         }
         else if (m_projection_type == Projection_Orthographic)
         {
