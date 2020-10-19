@@ -251,19 +251,29 @@ namespace Spartan::Math
         }
 
         // fieldOfView -> Field of view in the y direction, in radians.
-        static inline Matrix CreatePerspectiveFieldOfViewLH(float fieldOfView, float aspectRatio, float nearPlaneDistance, float farPlaneDistance)
+        static inline Matrix CreatePerspectiveFovLH(float fieldOfView, float aspectRatio, float nearPlaneDistance, float farPlaneDistance)
         {
             const float yScale = Helper::CotF(fieldOfView / 2);
             const float xScale = yScale / aspectRatio;
 
-            const float zn = nearPlaneDistance;
-            const float zf = farPlaneDistance;
+            return Matrix (
+                xScale, 0,		0,																				0,
+                0,		yScale, 0,																				0,
+                0,		0,		farPlaneDistance / (farPlaneDistance - nearPlaneDistance),						1,
+                0,		0,		-nearPlaneDistance * farPlaneDistance / (farPlaneDistance - nearPlaneDistance), 0
+            );
+        }
+        
+        static inline Matrix CreatePerspectiveReverseZFovLH( float fieldOfView, float aspectRatio, float nearPlaneDistance, float farPlaneDistance )
+        {
+            const float yScale = Helper::CotF(fieldOfView / 2);
+            const float xScale = yScale / aspectRatio;
 
-            return Matrix(
-                xScale, 0, 0, 0,
-                0, yScale, 0, 0,
-                0, 0, zf / (zf - zn), 1,
-                0, 0, -zn * zf / (zf - zn), 0
+            return Matrix (
+                xScale, 0,		0,																				0,
+                0,      yScale, 0,																				0,
+                0,      0,		nearPlaneDistance / (nearPlaneDistance - farPlaneDistance),						1,
+                0,      0,		-farPlaneDistance * nearPlaneDistance / (nearPlaneDistance - farPlaneDistance), 0
             );
         }
         //=================================================================================================================================
