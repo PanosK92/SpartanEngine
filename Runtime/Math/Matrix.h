@@ -264,7 +264,7 @@ namespace Spartan::Math
             );
         }
         
-        static inline Matrix CreatePerspectiveReverseZFovLH( float fieldOfView, float aspectRatio, float nearPlaneDistance, float farPlaneDistance )
+        static inline Matrix CreatePerspectiveReversedZFovLH( float fieldOfView, float aspectRatio, float nearPlaneDistance, float farPlaneDistance )
         {
             const float yScale = Helper::CotF(fieldOfView / 2);
             const float xScale = yScale / aspectRatio;
