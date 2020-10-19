@@ -116,6 +116,8 @@ project (RUNTIME_NAME)
 		RUNTIME_DIR .. "/**.hpp",
 		RUNTIME_DIR .. "/**.inl"
 	}
+
+    includedirs { "../Runtime" }
 	
 	-- Source to ignore
 	removefiles { IGNORE_FILES[0], IGNORE_FILES[1] }
