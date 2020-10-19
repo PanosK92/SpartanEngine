@@ -25,11 +25,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <array>
 #include <memory>
 #include "IComponent.h"
-#include "../../Math/Vector4.h"
-#include "../../Math/Vector3.h"
-#include "../../Math/Matrix.h"
-#include "../../RHI/RHI_Definition.h"
-#include "../../Math/Frustum.h"
+#include "Math/Vector4.h"
+#include "Math/Vector3.h"
+#include "Math/Matrix.h"
+#include "RHI/RHI_Definition.h"
+#include "Math/Frustum.h"
 //===================================
 
 namespace Spartan
