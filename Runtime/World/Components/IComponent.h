@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <any>
 #include <vector>
 #include <functional>
-#include "../../Core/Spartan_Object.h"
+#include "Core/Spartan_Object.h"
 //====================================
 
 namespace Spartan

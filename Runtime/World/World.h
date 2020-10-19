@@ -25,8 +25,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include <memory>
 #include <string>
-#include "../Core/ISubsystem.h"
-#include "../Core/Spartan_Definitions.h"
+
+#include "Core/ISubsystem.h"
+#include "Core/Spartan_Definitions.h"
 //======================================
 
 namespace Spartan

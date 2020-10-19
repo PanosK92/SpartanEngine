@@ -24,8 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ======================
 #include "IComponent.h"
 #include <vector>
-#include "../../Math/BoundingBox.h"
-#include "../../Math/Matrix.h"
+#include "Math/BoundingBox.h"
+#include "Math/Matrix.h"
 //=================================
 
 namespace Spartan

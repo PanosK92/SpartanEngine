@@ -24,13 +24,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include "IComponent.h"
 #include <memory>
-#include "../../RHI/RHI_Definition.h"
-#include "../../RHI/RHI_Viewport.h"
-#include "../../Math/Matrix.h"
-#include "../../Math/Ray.h"
-#include "../../Math/Frustum.h"
-#include "../../Math/Vector2.h"
-#include "../../Math/Rectangle.h"
+#include "RHI/RHI_Definition.h"
+#include "RHI/RHI_Viewport.h"
+#include "Math/Matrix.h"
+#include "Math/Ray.h"
+#include "Math/Frustum.h"
+#include "Math/Vector2.h"
+#include "Math/Rectangle.h"
 //===================================
 
 namespace Spartan
