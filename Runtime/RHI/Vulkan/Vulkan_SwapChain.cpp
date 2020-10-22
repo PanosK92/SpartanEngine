@@ -37,23 +37,21 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    namespace _Vulkan_SwapChain
-    {
-        inline bool create
-        (
-            RHI_Context* rhi_context,
-            uint32_t* width,
-            uint32_t* height,
-            uint32_t buffer_count,
-            RHI_Format format,
-            uint32_t flags,
-            void* window_handle,
-            void*& surface_out,
-            void*& swap_chain_view_out,
-            array<void*, rhi_max_render_target_count>& resource_textures,
-            array<void*, rhi_max_render_target_count>& resource_views,
-            array<void*, rhi_max_render_target_count>& image_acquired_semaphores
-        )
+    static bool swapchain_create
+    (
+        RHI_Context* rhi_context,
+        uint32_t* width,
+        uint32_t* height,
+        uint32_t buffer_count,
+        RHI_Format format,
+        uint32_t flags,
+        void* window_handle,
+        void*& surface_out,
+        void*& swap_chain_view_out,
+        array<void*, rhi_max_render_target_count>& resource_textures,
+        array<void*, rhi_max_render_target_count>& resource_views,
+        array<void*, rhi_max_render_target_count>& image_acquired_semaphores
+    )
         {
             // Create surface
             VkSurfaceKHR surface = nullptr;
@@ -159,39 +157,38 @@ namespace Spartan
 
             return true;
         }
-
-        inline void destroy(
-            const RHI_Context* rhi_context,
-            uint8_t buffer_count,
-            void*& surface,
-            void*& swap_chain_view,
-            array<void*, rhi_max_render_target_count>& image_views,
-            array<void*, rhi_max_render_target_count>& semaphores_image_acquired
-        )
+    
+    static void swapchain_destroy(
+        const RHI_Context* rhi_context,
+        uint8_t buffer_count,
+        void*& surface,
+        void*& swap_chain_view,
+        array<void*, rhi_max_render_target_count>& image_views,
+        array<void*, rhi_max_render_target_count>& semaphores_image_acquired
+    )
+    {
+        // Semaphores
+        for (uint8_t i = 0; i < buffer_count; i++)
         {
-            // Semaphores
-            for (uint8_t i = 0; i < buffer_count; i++)
-            {
-                vulkan_utility::semaphore::destroy(semaphores_image_acquired[i]);
-            }
-            semaphores_image_acquired.fill(nullptr);
-
-            // Image views
-            vulkan_utility::image::view::destroy(image_views);
-
-            // Swap chain view
-            if (swap_chain_view)
-            {
-                vkDestroySwapchainKHR(rhi_context->device, static_cast<VkSwapchainKHR>(swap_chain_view), nullptr);
-                swap_chain_view = nullptr;
-            }
-
-            // Surface
-            if (surface)
-            {
-                vkDestroySurfaceKHR(rhi_context->instance, static_cast<VkSurfaceKHR>(surface), nullptr);
-                surface = nullptr;
-            }
+            vulkan_utility::semaphore::destroy(semaphores_image_acquired[i]);
+        }
+        semaphores_image_acquired.fill(nullptr);
+    
+        // Image views
+        vulkan_utility::image::view::destroy(image_views);
+    
+        // Swap chain view
+        if (swap_chain_view)
+        {
+            vkDestroySwapchainKHR(rhi_context->device, static_cast<VkSwapchainKHR>(swap_chain_view), nullptr);
+            swap_chain_view = nullptr;
+        }
+    
+        // Surface
+        if (surface)
+        {
+            vkDestroySurfaceKHR(rhi_context->instance, static_cast<VkSurfaceKHR>(surface), nullptr);
+            surface = nullptr;
         }
     }
 
@@ -230,13 +227,13 @@ namespace Spartan
         // Copy parameters
         m_format        = format;
         m_rhi_device    = rhi_device.get();
-        m_buffer_count    = buffer_count;
-        m_width            = width;
+        m_buffer_count  = buffer_count;
+        m_width         = width;
         m_height        = height;
-        m_window_handle    = window_handle;
+        m_window_handle = window_handle;
         m_flags         = flags;
 
-        m_initialized = _Vulkan_SwapChain::create
+        m_initialized = swapchain_create
         (
             rhi_device->GetContextRhi(),
             &m_width,
@@ -276,7 +273,7 @@ namespace Spartan
         vulkan_utility::command_pool::destroy(m_cmd_pool);
 
         // Resources
-        _Vulkan_SwapChain::destroy
+        swapchain_destroy
         (
             m_rhi_device->GetContextRhi(),
             m_buffer_count,
@@ -313,7 +310,7 @@ namespace Spartan
         m_height    = height;
 
         // Destroy previous swap chain
-        _Vulkan_SwapChain::destroy
+        swapchain_destroy
         (
             m_rhi_device->GetContextRhi(),
             m_buffer_count,
@@ -324,7 +321,7 @@ namespace Spartan
         );
 
         // Create the swap chain with the new dimensions
-        m_initialized = _Vulkan_SwapChain::create
+        m_initialized = swapchain_create
         (
             m_rhi_device->GetContextRhi(),
             &m_width,
@@ -348,30 +345,39 @@ namespace Spartan
         if (!m_present_enabled)
             return true;
 
-        RHI_CommandList* cmd_list = m_cmd_lists[m_cmd_index].get();
-        
+        m_cmd_index                     = m_cmd_index++ % m_buffer_count;
+        m_image_acquired[m_cmd_index]   = false;
+
         // Acquire next image
         VkResult result = vkAcquireNextImageKHR(
             m_rhi_device->GetContextRhi()->device,                              // device
             static_cast<VkSwapchainKHR>(m_swap_chain_view),                     // swapchain
             numeric_limits<uint64_t>::max(),                                    // timeout
-            static_cast<VkSemaphore>(m_image_acquired_semaphore[m_cmd_index]),  // semaphore
-            nullptr,                                                            // fence
+            static_cast<VkSemaphore>(m_image_acquired_semaphore[m_cmd_index]),  // signal semaphore
+            nullptr,                                                            // signal fence
             &m_image_index                                                      // pImageIndex
         );
 
+        // Recreate swapchain with different size (if needed)
         if ((result == VK_ERROR_OUT_OF_DATE_KHR) || (result == VK_SUBOPTIMAL_KHR))
         {
             LOG_INFO("Outdated swapchain, recreating...");
-            m_image_acquired = Resize(m_width, m_height, true) ? VK_SUCCESS : result;
-        }
-        else if (result == VK_SUCCESS)
-        {
-            m_image_acquired    = true;
-            m_cmd_index         = m_cmd_index++ % m_buffer_count;
+
+            if (!Resize(m_width, m_height, true))
+            {
+                LOG_INFO("Failed to resize swapchain");
+            }
+
+            return false;
         }
 
-        return vulkan_utility::error::check(result);
+        // Validate result
+        if (!vulkan_utility::error::check(result))
+            return false;
+          
+        m_image_acquired[m_cmd_index] = true;
+
+        return true;
     }
 
     bool RHI_SwapChain::Present()
@@ -394,7 +400,7 @@ namespace Spartan
             }
         }
 
-        if (!m_image_acquired)
+        if (!HasAcquireImage())
         {
             LOG_ERROR("Image has not been acquired");
             return false;

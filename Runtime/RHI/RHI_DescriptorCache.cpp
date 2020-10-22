@@ -182,7 +182,7 @@ namespace Spartan
             // Get compute shader descriptors
             descriptors = pipeline_state.shader_compute->GetDescriptors();
         }
-        else
+        else if (pipeline_state.IsGraphics())
         {
             // Wait for compilation
             pipeline_state.shader_vertex->WaitForCompilation();

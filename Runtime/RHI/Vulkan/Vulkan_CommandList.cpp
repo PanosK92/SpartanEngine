@@ -154,8 +154,9 @@ namespace Spartan
 
         vkCmdResetQueryPool(static_cast<VkCommandBuffer>(m_cmd_buffer), static_cast<VkQueryPool>(m_query_pool), 0, m_max_timestamps);
 
-        m_cmd_state = RHI_CommandListState::Recording;
-        m_flushed   = false;
+        m_cmd_state                     = RHI_CommandListState::Recording;
+        m_flushed                       = false;
+        m_processed_semaphore_submited  = false;
         return true;
     }
 

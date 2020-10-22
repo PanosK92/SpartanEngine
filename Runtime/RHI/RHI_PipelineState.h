@@ -45,11 +45,12 @@ namespace Spartan
         uint32_t GetHeight() const;
         void ResetClearValues();
         auto GetHash()                                  const { return m_hash; }
-        bool IsCompute()                                const { return shader_compute != nullptr; }
+        bool IsCompute()                                const { return shader_compute != nullptr && !IsGraphics(); }
+        bool IsGraphics()                               const { return (shader_vertex != nullptr || shader_pixel != nullptr) && !IsCompute(); }
         void* GetRenderPass()                           const { return m_render_pass; }
         bool operator==(const RHI_PipelineState& rhs)   const { return m_hash == rhs.GetHash(); }
 
-        //= Static, modification can potentially generate a new pipeline ===========================================================
+        //= Static, modification can potentially generate a new pipeline ===================
         RHI_Shader* shader_vertex                           = nullptr;
         RHI_Shader* shader_pixel                            = nullptr;
         RHI_Shader* shader_compute                          = nullptr;
@@ -86,8 +87,8 @@ namespace Spartan
         uint32_t render_target_depth_stencil_texture_array_index    = 0;
 
         // Clear values
-        float clear_depth       = rhi_depth_load;
-        uint32_t clear_stencil  = rhi_stencil_load;
+        float clear_depth = rhi_depth_load;
+        uint32_t clear_stencil = rhi_stencil_load;
         std::array<Math::Vector4, rhi_max_render_target_count> clear_color =
         {
             rhi_color_load,
@@ -99,7 +100,7 @@ namespace Spartan
             rhi_color_load,
             rhi_color_load
         };
-        //==========================================================================================================================
+        //==================================================================================
 
         //= Dynamic, modification is free ============================================
         bool render_target_depth_texture_read_only = false;

@@ -45,66 +45,51 @@ namespace Spartan
 
     bool RHI_PipelineState::IsValid()
     {
-        bool is_valid = true;
-
         // Deduce if marking and profiling should occur
         profile = pass_name != nullptr;
         mark    = pass_name != nullptr;
 
-        // Compute shader
-        if (shader_compute)
-        {
-            if (!shader_compute->IsCompiled())
-            {
-                is_valid = false;
-            }
-        }
-        // Vertex shader
-        else if (shader_vertex)
-        {
-            if (!shader_vertex->IsCompiled())
-            {
-                is_valid = false;
-            }
+        // Deduce states
+        bool has_shader_compute     = shader_compute    ? shader_compute->IsCompiled()  : false;
+        bool has_shader_vertex      = shader_vertex     ? shader_vertex->IsCompiled()   : false;
+        bool has_shader_pixel       = shader_pixel      ? shader_pixel->IsCompiled()    : false;
+        bool has_render_target      = render_target_color_textures[0] || render_target_depth_texture;   // Check that there is at least one render target
+        bool has_backbuffer         = render_target_swapchain;                                          // Check that no both the swapchain and the color render target are active
+        bool has_graphics_states    = rasterizer_state && blend_state && depth_stencil_state && primitive_topology != RHI_PrimitiveTopology_Unknown;
+        bool is_graphics_pso        = (has_shader_vertex || has_shader_pixel) && !has_shader_compute;
+        bool is_compute_pso         = has_shader_compute && (!has_shader_vertex && !has_shader_pixel);
 
-            // Check that there is a render target
-            if (!render_target_swapchain && !render_target_color_textures[0] && !render_target_depth_texture)
-            {
-                is_valid = false;
-            }
-
-            // Check that no both the swapchain and the color render target are active
-            if (render_target_swapchain && render_target_color_textures[0])
-            {
-                is_valid = false;
-            }
-
-            // Check for required states
-            if (!rasterizer_state || !blend_state || !depth_stencil_state || primitive_topology == RHI_PrimitiveTopology_Unknown)
-            {
-                is_valid = false;
-            }
-        }
-        else
+        // Validate pipeline type
+        if (!is_compute_pso && !is_graphics_pso)
         {
-            is_valid = false;
+            LOG_ERROR("Invalid pipeline state. No compute, vertex or pixel shaders have been provided.");
+            return false;
         }
 
-        // Pixel shader
-        if (shader_pixel)
+        // Validate graphics states
+        if (is_graphics_pso && !has_graphics_states)
         {
-            if (!shader_pixel->IsCompiled())
+            LOG_ERROR("Invalid graphics pipeline state. Not all required graphics states have been provided.");
+            return false;
+        }
+
+        // Validate render targets
+        if (is_graphics_pso && !has_render_target && !has_backbuffer)
+        {
+            if (!has_render_target && !has_backbuffer)
             {
-                is_valid = false;
+                LOG_ERROR("Invalid graphics pipeline state. No render targets or a backbuffer have been provided.");
+                return false;
+            }
+
+            if (has_render_target && has_backbuffer)
+            {
+                LOG_ERROR("Invalid graphics pipeline state. Both a render target and a backbuffer have been provided.");
+                return false;
             }
         }
 
-        if (!is_valid)
-        {
-            LOG_ERROR("Invalid pipeline state");
-        }
-
-        return is_valid;
+        return true;
     }
 
     uint32_t RHI_PipelineState::GetWidth() const
