@@ -233,25 +233,6 @@ namespace ImGui::RHI
             }
         }
 
-        // Setup orthographic projection matrix into our constant buffer
-        // Our visible ImGui space lies from draw_data->DisplayPos (top left) to 
-        // draw_data->DisplayPos+data_data->DisplaySize (bottom right). DisplayMin is (0,0) for single viewport apps.
-        {
-            const auto L = draw_data->DisplayPos.x;
-            const auto R = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
-            const auto T = draw_data->DisplayPos.y;
-            const auto B = draw_data->DisplayPos.y + draw_data->DisplaySize.y;
-            const auto wvp = Matrix
-            (
-                2.0f / (R - L),  0.0f,            0.0f,    (R + L) / (L - R),
-                0.0f,            2.0f / (T - B),  0.0f,    (T + B) / (B - T),
-                0.0f,            0.0f,            0.5f,    0.5f,
-                0.0f,            0.0f,            0.0f,    1.0f
-            );
-
-            g_renderer->SetGlobalShaderObjectTransform(cmd_list, wvp);
-        }
-
         // Set render state
         static RHI_PipelineState pipeline_state = {};
         pipeline_state.shader_vertex            = g_shader_vertex.get();
@@ -271,6 +252,25 @@ namespace ImGui::RHI
         // Record commands
         if (cmd_list->BeginRenderPass(pipeline_state))
         {
+            // Setup orthographic projection matrix into our constant buffer
+            // Our visible ImGui space lies from draw_data->DisplayPos (top left) to 
+            // draw_data->DisplayPos+data_data->DisplaySize (bottom right). DisplayMin is (0,0) for single viewport apps.
+            {
+                const auto L = draw_data->DisplayPos.x;
+                const auto R = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
+                const auto T = draw_data->DisplayPos.y;
+                const auto B = draw_data->DisplayPos.y + draw_data->DisplaySize.y;
+                const auto wvp = Matrix
+                (
+                    2.0f / (R - L), 0.0f, 0.0f, (R + L) / (L - R),
+                    0.0f, 2.0f / (T - B), 0.0f, (T + B) / (B - T),
+                    0.0f, 0.0f, 0.5f, 0.5f,
+                    0.0f, 0.0f, 0.0f, 1.0f
+                );
+
+                g_renderer->SetGlobalShaderObjectTransform(cmd_list, wvp);
+            }
+
             // Transition layouts
             for (auto i = 0; i < draw_data->CmdListsCount; i++)
             {

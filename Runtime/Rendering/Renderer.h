@@ -165,6 +165,7 @@ namespace Spartan
 
         // Passes
         void Pass_Main(RHI_CommandList* cmd_list);
+        void Pass_UpdateFrameBuffer(RHI_CommandList* cmd_list);
         void Pass_LightDepth(RHI_CommandList* cmd_list, const Renderer_Object_Type object_type);
         void Pass_DepthPrePass(RHI_CommandList* cmd_list);
         void Pass_GBuffer(RHI_CommandList* cmd_list, const bool is_transparent_pass = false);

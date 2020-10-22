@@ -125,7 +125,7 @@ project (RUNTIME_NAME)
 	includedirs { "../ThirdParty/Bullet_2.89" }
 	includedirs { "../ThirdParty/FMOD_1.10.10" }
 	includedirs { "../ThirdParty/FreeImage_3.18.0" }
-	includedirs { "../ThirdParty/FreeType_2.10.1" }
+	includedirs { "../ThirdParty/FreeType_2.10.4" }
 	includedirs { "../ThirdParty/pugixml_1.10" }
 	includedirs { "../ThirdParty/Mono_6.12.0.86" }
 	includedirs { ADDITIONAL_INCLUDES[0], ADDITIONAL_INCLUDES[1], ADDITIONAL_INCLUDES[2] }

@@ -78,8 +78,7 @@ namespace Spartan
 
         SCOPED_TIME_BLOCK(m_profiler);
 
-        // Updates onces, used almost everywhere
-        UpdateFrameBuffer(cmd_list);
+        Pass_UpdateFrameBuffer(cmd_list);
         
         // Runs only once
         Pass_BrdfSpecularLut(cmd_list);
@@ -132,6 +131,30 @@ namespace Spartan
             Pass_DebugBuffer(cmd_list, m_render_targets[RendererRt::Frame_Ldr]);
             Pass_Text(cmd_list, m_render_targets[RendererRt::Frame_Ldr].get());
         }
+    }
+
+    void Renderer::Pass_UpdateFrameBuffer(RHI_CommandList* cmd_list)
+    {
+        // TODO: An empty pipeline should create an empty/basic render pass so buffers can be updated.
+        // For the time being, I just provided a dummy compute shader.
+
+        // Acquire shaders
+        RHI_Shader* shader_c = m_shaders[RendererShader::Copy_C].get();
+        if (!shader_c->IsCompiled())
+            return;
+
+        // Set render state
+        static RHI_PipelineState pipeline_state;
+        pipeline_state.shader_compute   = shader_c;
+        pipeline_state.pass_name        = "Pass_UpdateFrameBuffer";
+
+        // Draw
+        if (cmd_list->BeginRenderPass(pipeline_state))
+        {
+            UpdateFrameBuffer(cmd_list);
+            cmd_list->EndRenderPass();
+        }
+
     }
 
     void Renderer::Pass_LightDepth(RHI_CommandList* cmd_list, const Renderer_Object_Type object_type)
@@ -537,9 +560,6 @@ namespace Spartan
                 cmd_list->EndRenderPass();
             }
         }
-
-        // Update constant buffer (light pass will access it using material IDs)
-        UpdateMaterialBuffer(cmd_list);
     }
 
     void Renderer::Pass_Ssgi(RHI_CommandList* cmd_list)
@@ -719,16 +739,19 @@ namespace Spartan
                     // Draw
                     if (cmd_list->BeginRenderPass(pipeline_state))
                     {
-                        cmd_list->SetTexture(RendererBindingsUav::rgb, tex_diffuse);
-                        cmd_list->SetTexture(RendererBindingsUav::rgb2, tex_specular);
-                        cmd_list->SetTexture(RendererBindingsUav::rgb3, tex_volumetric);
-                        cmd_list->SetTexture(RendererBindingsSrv::gbuffer_albedo, m_render_targets[RendererRt::Gbuffer_Albedo]);
-                        cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal, m_render_targets[RendererRt::Gbuffer_Normal]);
+                        // Update constant buffer (light pass will access it using material IDs)
+                        UpdateMaterialBuffer(cmd_list);
+
+                        cmd_list->SetTexture(RendererBindingsUav::rgb,              tex_diffuse);
+                        cmd_list->SetTexture(RendererBindingsUav::rgb2,             tex_specular);
+                        cmd_list->SetTexture(RendererBindingsUav::rgb3,             tex_volumetric);
+                        cmd_list->SetTexture(RendererBindingsSrv::gbuffer_albedo,   m_render_targets[RendererRt::Gbuffer_Albedo]);
+                        cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal,   m_render_targets[RendererRt::Gbuffer_Normal]);
                         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_material, m_render_targets[RendererRt::Gbuffer_Material]);
-                        cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth, m_render_targets[RendererRt::Gbuffer_Depth]);
-                        cmd_list->SetTexture(RendererBindingsSrv::hbao, (m_options & Render_Hbao) ? m_render_targets[RendererRt::Hbao_Blurred] : m_default_tex_white);
-                        cmd_list->SetTexture(RendererBindingsSrv::ssr, (m_options & Render_ScreenSpaceReflections) ? m_render_targets[RendererRt::Ssr] : m_default_tex_transparent);
-                        cmd_list->SetTexture(RendererBindingsSrv::frame, m_render_targets[RendererRt::Frame_Hdr_2]); // previous frame before post-processing
+                        cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    m_render_targets[RendererRt::Gbuffer_Depth]);
+                        cmd_list->SetTexture(RendererBindingsSrv::hbao,             (m_options & Render_Hbao) ? m_render_targets[RendererRt::Hbao_Blurred] : m_default_tex_white);
+                        cmd_list->SetTexture(RendererBindingsSrv::ssr,              (m_options & Render_ScreenSpaceReflections) ? m_render_targets[RendererRt::Ssr] : m_default_tex_transparent);
+                        cmd_list->SetTexture(RendererBindingsSrv::frame,            m_render_targets[RendererRt::Frame_Hdr_2]); // previous frame before post-processing
 
                         // Set shadow map
                         if (light->GetShadowsEnabled())
