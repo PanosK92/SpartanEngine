@@ -44,18 +44,12 @@ namespace Spartan
         }
     }
 
-    void RHI_DescriptorCache::SetDescriptorSetCapacity(uint32_t descriptor_set_capacity)
+    void RHI_DescriptorCache::Reset(uint32_t descriptor_set_capacity /*= 0*/)
     {
-        if (!m_rhi_device || !m_rhi_device->GetContextRhi())
+        // If the requested capacity is zero, then only recreate the descriptor pool
+        if (descriptor_set_capacity == 0)
         {
-            LOG_ERROR_INVALID_INTERNALS();
-            return;
-        }
-
-        if (m_descriptor_set_capacity == descriptor_set_capacity)
-        {
-            LOG_INFO("Capacity is already %d elements", m_descriptor_set_capacity);
-            return;
+            descriptor_set_capacity = m_descriptor_set_capacity;
         }
 
         // Wait in case the pool is being used
@@ -72,7 +66,7 @@ namespace Spartan
             m_descriptor_pool = nullptr;
         }
 
-        // Re-allocate everything with double size
+        // Create pool
         CreateDescriptorPool(descriptor_set_capacity);
 
         // Log
@@ -84,6 +78,28 @@ namespace Spartan
         {
             LOG_INFO("Capacity has been decreased to %d elements", descriptor_set_capacity);
         }
+        else
+        {
+            LOG_INFO("Descriptor pool has been reset");
+        }
+    }
+
+    void RHI_DescriptorCache::SetDescriptorSetCapacity(uint32_t descriptor_set_capacity)
+    {
+        if (!m_rhi_device || !m_rhi_device->GetContextRhi())
+        {
+            LOG_ERROR_INVALID_INTERNALS();
+            return;
+        }
+
+        if (m_descriptor_set_capacity == descriptor_set_capacity)
+        {
+            LOG_INFO("Capacity is already %d elements", m_descriptor_set_capacity);
+            return;
+        }
+
+        // Re-create descriptor pool
+        Reset(descriptor_set_capacity);
 
         // Update capacity
         m_descriptor_set_capacity = descriptor_set_capacity;

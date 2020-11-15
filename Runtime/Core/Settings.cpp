@@ -73,6 +73,9 @@ namespace Spartan
 
         // Register SPIRV-Cross
         RegisterThirdPartyLib("SPIRV-Cross", "2020-01-16", "https://github.com/KhronosGroup/SPIRV-Cross");
+
+        // Register DirectXShaderCompiler
+        RegisterThirdPartyLib("DirectXShaderCompiler", "1.6 - 1.5.0.2860", "https://github.com/microsoft/DirectXShaderCompiler");
     }
 
     Settings::~Settings()

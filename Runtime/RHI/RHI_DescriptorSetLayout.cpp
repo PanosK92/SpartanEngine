@@ -110,7 +110,7 @@ namespace Spartan
             return;
         }
 
-        if (texture->GetLayout() == RHI_Image_Undefined || texture->GetLayout() == RHI_Image_Preinitialized)
+        if (texture->GetLayout() == RHI_Image_Layout::Undefined || texture->GetLayout() == RHI_Image_Layout::Preinitialized)
         {
             LOG_ERROR("Texture has an invalid layout");
             return;

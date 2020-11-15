@@ -1,7 +1,7 @@
 #pragma once
 
 // Version
-constexpr auto engine_version = "v0.32 WIP";
+constexpr auto sp_version = "v0.32 WIP";
 
 // Class
 #define SPARTAN_CLASS
@@ -17,7 +17,7 @@ constexpr auto engine_version = "v0.32 WIP";
 namespace Spartan
 {
     template <typename T>
-    constexpr void safe_delete(T*& ptr)
+    constexpr void sp_ptr_delete(T*& ptr)
     {
         if (ptr)
         {
@@ -26,6 +26,10 @@ namespace Spartan
         }
     }
 }
+
+// Optimisation
+#define SP_OPTIMISE_OFF #pragma optimize( "", off )
+#define SP_OPTIMISE_ON #pragma optimize( "", on )
 
 // Windows
 #ifndef WIN32_LEAN_AND_MEAN

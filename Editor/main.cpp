@@ -30,7 +30,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     Editor editor;
 
     // Create window
-    Window::Create(hInstance, "Spartan " + std::string(engine_version));
+    Window::Create(hInstance, "Spartan " + std::string(sp_version));
     Window::Show();
 
     // Hook it up with the editor

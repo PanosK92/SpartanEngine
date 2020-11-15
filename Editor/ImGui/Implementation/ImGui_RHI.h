@@ -280,7 +280,7 @@ namespace ImGui::RHI
                     const auto pcmd = &cmd_list_imgui->CmdBuffer[cmd_i];
                     if (RHI_Texture* texture = static_cast<RHI_Texture*>(pcmd->TextureId))
                     {
-                        texture->SetLayout(RHI_Image_Shader_Read_Only_Optimal, cmd_list);
+                        texture->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
                     }
                 }
             }
@@ -377,7 +377,7 @@ namespace ImGui::RHI
         if (!swap_chain)
             return;
 
-        safe_delete(swap_chain);
+        sp_ptr_delete(swap_chain);
         viewport->RendererUserData = nullptr;
     }
 

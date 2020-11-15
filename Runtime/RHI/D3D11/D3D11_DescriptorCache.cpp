@@ -34,6 +34,11 @@ namespace Spartan
 
     }
 
+    void RHI_DescriptorCache::Reset(uint32_t descriptor_set_capacity /*= 0*/)
+    {
+
+    }
+
     bool RHI_DescriptorCache::CreateDescriptorPool(uint32_t descriptor_set_capacity)
     {
         return true;

@@ -147,7 +147,7 @@ namespace Spartan
         if (VkCommandBuffer cmd_buffer = vulkan_utility::command_buffer_immediate::begin(RHI_Queue_Graphics))
         {
             // Optimal layout for images which are the destination of a transfer format
-            RHI_Image_Layout layout = RHI_Image_Transfer_Dst_Optimal;
+            RHI_Image_Layout layout = RHI_Image_Layout::Transfer_Dst_Optimal;
 
             // Transition to layout
             if (!vulkan_utility::image::set_layout(cmd_buffer, texture, layout))
@@ -158,7 +158,7 @@ namespace Spartan
                 cmd_buffer,
                 static_cast<VkBuffer>(staging_buffer),
                 static_cast<VkImage>(texture->Get_Resource()),
-                vulkan_image_layout[layout],
+                vulkan_image_layout[static_cast<uint8_t>(layout)],
                 static_cast<uint32_t>(buffer_image_copies.size()),
                 buffer_image_copies.data()
             );
@@ -179,19 +179,19 @@ namespace Spartan
 
     inline RHI_Image_Layout GetAppropriateLayout(RHI_Texture* texture)
     {
-        RHI_Image_Layout target_layout = RHI_Image_Preinitialized;
+        RHI_Image_Layout target_layout = RHI_Image_Layout::Preinitialized;
 
         if (texture->IsSampled() && texture->IsColorFormat())
-            target_layout = RHI_Image_Shader_Read_Only_Optimal;
+            target_layout = RHI_Image_Layout::Shader_Read_Only_Optimal;
 
         if (texture->IsRenderTarget())
-            target_layout = RHI_Image_Color_Attachment_Optimal;
+            target_layout = RHI_Image_Layout::Color_Attachment_Optimal;
 
         if (texture->IsDepthStencil())
-            target_layout = RHI_Image_Depth_Stencil_Attachment_Optimal;
+            target_layout = RHI_Image_Layout::Depth_Stencil_Attachment_Optimal;
 
         if (texture->IsStorage())
-            target_layout = RHI_Image_General;
+            target_layout = RHI_Image_Layout::General;
 
         return target_layout;
     }
@@ -232,7 +232,7 @@ namespace Spartan
     void RHI_Texture::SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* command_list /*= nullptr*/)
     {
         // The texture is most likely still initialising
-        if (m_layout == RHI_Image_Undefined)
+        if (m_layout == RHI_Image_Layout::Undefined)
             return;
 
         if (m_layout == new_layout)

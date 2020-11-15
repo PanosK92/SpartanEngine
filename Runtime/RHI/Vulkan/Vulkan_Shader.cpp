@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Shader.h"
 #include "../RHI_InputLayout.h"
 #include <atlbase.h>
-#include <dxc/dxcapi.h>
+#include <dxcapi.h>
 #pragma warning(push, 0) // Hide warnings belonging SPIRV-Cross 
 #include <spirv_hlsl.hpp>
 #pragma warning(pop)
@@ -51,9 +51,9 @@ namespace Spartan
 
     namespace DxcHelper
     {
-            /*
-        Version: dxcompiler.dll: 1.6 - 1.5.0.2760 (cb0191d8)
-        
+        /*
+        Version: dxcompiler.dll: 1.6 - 1.5.0.2860 (f1f60648)
+
         USAGE: dxc.exe [options] <inputs>
         
         Common Options:
@@ -199,6 +199,9 @@ namespace Spartan
                                 Attach root signature to shader bytecode
           -verifyrootsignature <file>
                                 Verify shader bytecode with root signature
+        
+        Warning Options:
+          -W[no-]<warning> Enable/Disable the specified warning
         */
 
         inline bool error_check(IDxcResult* dxc_result)
@@ -305,7 +308,7 @@ namespace Spartan
                     m_compiler->Compile
                     (
                         &dxc_buffer,                                        // Source text to compile
-                        arguments_lpcwstr.data(),                            // Array of pointers to arguments
+                        arguments_lpcwstr.data(),                           // Array of pointers to arguments
                         static_cast<uint32_t>(arguments_lpcwstr.size()),    // Number of arguments
                         include_handler,                                    // user-provided interface to handle #include directives (optional)
                         IID_PPV_ARGS(&dxc_result)                           // IDxcResult: status, buffer, and errors

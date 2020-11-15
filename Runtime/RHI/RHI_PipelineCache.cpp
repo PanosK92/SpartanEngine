@@ -50,9 +50,8 @@ namespace Spartan
                 // Swapchain
                 if (RHI_SwapChain* swapchain = pipeline_state.render_target_swapchain)
                 {
-                    swapchain->SetLayout(RHI_Image_Present_Src, cmd_list);
-                    pipeline_state.render_target_color_layout_initial   = RHI_Image_Present_Src;
-                    pipeline_state.render_target_color_layout_final     = RHI_Image_Present_Src;
+                    pipeline_state.render_target_color_layout_initial   = RHI_Image_Layout::Present_Src;
+                    pipeline_state.render_target_color_layout_final     = RHI_Image_Layout::Present_Src;
                 }
 
                 // Texture
@@ -60,9 +59,9 @@ namespace Spartan
                 {
                     if (RHI_Texture* texture = pipeline_state.render_target_color_textures[i])
                     {
-                        texture->SetLayout(RHI_Image_Color_Attachment_Optimal, cmd_list);
-                        pipeline_state.render_target_color_layout_initial   = RHI_Image_Color_Attachment_Optimal;
-                        pipeline_state.render_target_color_layout_final     = RHI_Image_Color_Attachment_Optimal;
+                        texture->SetLayout(RHI_Image_Layout::Color_Attachment_Optimal, cmd_list);
+                        pipeline_state.render_target_color_layout_initial   = RHI_Image_Layout::Color_Attachment_Optimal;
+                        pipeline_state.render_target_color_layout_final     = RHI_Image_Layout::Color_Attachment_Optimal;
                     }
                 }
             }
@@ -70,9 +69,9 @@ namespace Spartan
             // Depth
             if (RHI_Texture* texture = pipeline_state.render_target_depth_texture)
             {
-                texture->SetLayout(RHI_Image_Depth_Stencil_Attachment_Optimal, cmd_list);
-                pipeline_state.render_target_depth_layout_initial   = RHI_Image_Depth_Stencil_Attachment_Optimal;
-                pipeline_state.render_target_depth_layout_final     = RHI_Image_Depth_Stencil_Attachment_Optimal;
+                texture->SetLayout(RHI_Image_Layout::Depth_Stencil_Attachment_Optimal, cmd_list);
+                pipeline_state.render_target_depth_layout_initial   = RHI_Image_Layout::Depth_Stencil_Attachment_Optimal;
+                pipeline_state.render_target_depth_layout_final     = RHI_Image_Layout::Depth_Stencil_Attachment_Optimal;
             }
         }
 

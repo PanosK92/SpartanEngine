@@ -151,7 +151,7 @@ void Widget_MenuBar::ShowAboutWindow() const
     ImGui::SetNextWindowFocus();
     ImGui::Begin("About", &_Widget_MenuBar::g_showAboutWindow, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking);
 
-    ImGui::Text("Spartan %s", engine_version);
+    ImGui::Text("Spartan %s", sp_version);
     ImGui::Text("Author: Panos Karabelas");
     ImGui::SameLine(ImGui::GetWindowContentRegionWidth());
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() - 55);
@@ -183,16 +183,19 @@ void Widget_MenuBar::ShowAboutWindow() const
 
     ImGui::Separator();
 
+    static uint32_t col_a = 220;
+    static uint32_t col_b = 340;
+
     ImGui::Text("Third party libraries");
     {
         ImGui::Text("Name");
-        ImGui::SameLine(140); ImGui::Text("Version");
-        ImGui::SameLine(250); ImGui::Text("URL");
+        ImGui::SameLine(col_a); ImGui::Text("Version");
+        ImGui::SameLine(col_b); ImGui::Text("URL");
         for (const ThirdPartyLib& lib : m_context->GetSubsystem<Settings>()->GetThirdPartyLibs())
         {
             ImGui::BulletText(lib.name.c_str());
-            ImGui::SameLine(140); ImGui::Text(lib.version.c_str());
-            ImGui::SameLine(250); ImGui::PushID(lib.url.c_str());  if (ImGui::Button(lib.url.c_str())) { FileSystem::OpenDirectoryWindow(lib.url); } ImGui::PopID();
+            ImGui::SameLine(col_a); ImGui::Text(lib.version.c_str());
+            ImGui::SameLine(col_b); ImGui::PushID(lib.url.c_str());  if (ImGui::Button(lib.url.c_str())) { FileSystem::OpenDirectoryWindow(lib.url); } ImGui::PopID();
         }
     }
 

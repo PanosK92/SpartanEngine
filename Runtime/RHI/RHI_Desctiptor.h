@@ -71,7 +71,7 @@ namespace Spartan
         uint64_t offset                 = 0;
         uint64_t range                  = 0;
         RHI_Descriptor_Type type        = RHI_Descriptor_Undefined;
-        RHI_Image_Layout layout         = RHI_Image_Undefined;
+        RHI_Image_Layout layout         = RHI_Image_Layout::Undefined;
         bool is_storage                 = false;
         bool is_dynamic_constant_buffer = false;
         void* resource                  = nullptr;

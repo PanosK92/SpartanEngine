@@ -116,7 +116,7 @@ namespace Spartan
             {
                 image_infos[i].sampler      = nullptr;
                 image_infos[i].imageView    = static_cast<VkImageView>(descriptor.resource);
-                image_infos[i].imageLayout  = descriptor.resource ? vulkan_image_layout[descriptor.layout] : VK_IMAGE_LAYOUT_UNDEFINED;
+                image_infos[i].imageLayout  = descriptor.resource ? vulkan_image_layout[static_cast<uint8_t>(descriptor.layout)] : VK_IMAGE_LAYOUT_UNDEFINED;
             }
             // Constant/Uniform buffer
             else if (descriptor.type == RHI_Descriptor_ConstantBuffer)
