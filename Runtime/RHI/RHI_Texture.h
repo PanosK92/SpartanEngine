@@ -137,7 +137,7 @@ namespace Spartan
         uint32_t m_array_size       = 1;
         uint8_t m_mip_count         = 1;
         RHI_Format m_format         = RHI_Format_Undefined;
-        RHI_Image_Layout m_layout   = RHI_Image_Undefined;
+        RHI_Image_Layout m_layout   = RHI_Image_Layout::Undefined;
         uint16_t m_flags            = 0;
         RHI_Viewport m_viewport;
         std::vector<std::vector<std::byte>> m_data;

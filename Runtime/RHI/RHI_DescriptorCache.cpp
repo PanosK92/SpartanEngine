@@ -74,12 +74,6 @@ namespace Spartan
         m_descriptor_layout_current = it->second.get();
         m_descriptor_layout_current->NeedsToBind();
     }
-
-    void RHI_DescriptorCache::Reset()
-    {
-        // This will reset everything
-        SetDescriptorSetCapacity(1);
-    }
     
     bool RHI_DescriptorCache::SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer)
     {

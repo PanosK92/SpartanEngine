@@ -23,9 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ======================
 #include "../Core/Spartan_Object.h"
-#include <unordered_map>
-#include <vector>
-#include <memory>
 #include "RHI_Desctiptor.h"
 //=================================
 
@@ -39,7 +36,7 @@ namespace Spartan
 
         void SetPipelineState(RHI_PipelineState& pipeline_state);
         RHI_DescriptorSetLayout* GetCurrentDescriptorSetLayout() { return m_descriptor_layout_current; }
-        void Reset();
+        void Reset(uint32_t descriptor_set_capacity = 0);
 
         // Descriptor resource updating
         bool SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer);

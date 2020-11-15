@@ -237,17 +237,17 @@ namespace Spartan
         RHI_Descriptor_Undefined
     };
 
-    enum RHI_Image_Layout
+    enum class RHI_Image_Layout
     {
-        RHI_Image_Undefined,
-        RHI_Image_General,
-        RHI_Image_Preinitialized,
-        RHI_Image_Color_Attachment_Optimal,
-        RHI_Image_Depth_Stencil_Attachment_Optimal,
-        RHI_Image_Depth_Stencil_Read_Only_Optimal,    
-        RHI_Image_Shader_Read_Only_Optimal,
-        RHI_Image_Transfer_Dst_Optimal,
-        RHI_Image_Present_Src
+        Undefined,
+        General,
+        Preinitialized,
+        Color_Attachment_Optimal,
+        Depth_Stencil_Attachment_Optimal,
+        Depth_Stencil_Read_Only_Optimal,
+        Shader_Read_Only_Optimal,
+        Transfer_Dst_Optimal,
+        Present_Src
     };
 
     inline const char* rhi_format_to_string(const RHI_Format result)
@@ -255,19 +255,19 @@ namespace Spartan
         switch (result)
         {
             case RHI_Format_R8_Unorm:               return "RHI_Format_R8_Unorm";
-            case RHI_Format_R16_Uint:                return "RHI_Format_R16_Uint";
-            case RHI_Format_R16_Float:                return "RHI_Format_R16_Float";
-            case RHI_Format_R32_Uint:                return "RHI_Format_R32_Uint";
-            case RHI_Format_R32_Float:                return "RHI_Format_R32_Float";
-            case RHI_Format_R8G8_Unorm:                return "RHI_Format_R8G8_Unorm";
-            case RHI_Format_R16G16_Float:            return "RHI_Format_R16G16_Float";
-            case RHI_Format_R32G32_Float:            return "RHI_Format_R32G32_Float";
+            case RHI_Format_R16_Uint:               return "RHI_Format_R16_Uint";
+            case RHI_Format_R16_Float:              return "RHI_Format_R16_Float";
+            case RHI_Format_R32_Uint:               return "RHI_Format_R32_Uint";
+            case RHI_Format_R32_Float:              return "RHI_Format_R32_Float";
+            case RHI_Format_R8G8_Unorm:             return "RHI_Format_R8G8_Unorm";
+            case RHI_Format_R16G16_Float:           return "RHI_Format_R16G16_Float";
+            case RHI_Format_R32G32_Float:           return "RHI_Format_R32G32_Float";
             case RHI_Format_R32G32B32_Float:        return "RHI_Format_R32G32B32_Float";
-            case RHI_Format_R8G8B8A8_Unorm:            return "RHI_Format_R8G8B8A8_Unorm";
-            case RHI_Format_R16G16B16A16_Float:        return "RHI_Format_R16G16B16A16_Float";
-            case RHI_Format_R32G32B32A32_Float:        return "RHI_Format_R32G32B32A32_Float";
-            case RHI_Format_D32_Float:                return "RHI_Format_D32_Float";
-            case RHI_Format_D32_Float_S8X24_Uint:    return "RHI_Format_D32_Float_S8X24_Uint";
+            case RHI_Format_R8G8B8A8_Unorm:         return "RHI_Format_R8G8B8A8_Unorm";
+            case RHI_Format_R16G16B16A16_Float:     return "RHI_Format_R16G16B16A16_Float";
+            case RHI_Format_R32G32B32A32_Float:     return "RHI_Format_R32G32B32A32_Float";
+            case RHI_Format_D32_Float:              return "RHI_Format_D32_Float";
+            case RHI_Format_D32_Float_S8X24_Uint:   return "RHI_Format_D32_Float_S8X24_Uint";
             case RHI_Format_Undefined:              return "RHI_Format_Undefined";
         }
 

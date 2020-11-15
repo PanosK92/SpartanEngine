@@ -63,10 +63,10 @@ namespace Spartan
         Math::Rectangle scissor                             = Math::Rectangle::Zero;
         bool dynamic_scissor                                = false;
         uint32_t vertex_buffer_stride                       = 0;
-        RHI_Image_Layout render_target_color_layout_initial = RHI_Image_Undefined;
-        RHI_Image_Layout render_target_color_layout_final   = RHI_Image_Undefined;
-        RHI_Image_Layout render_target_depth_layout_initial = RHI_Image_Undefined;
-        RHI_Image_Layout render_target_depth_layout_final   = RHI_Image_Undefined;
+        RHI_Image_Layout render_target_color_layout_initial = RHI_Image_Layout::Undefined;
+        RHI_Image_Layout render_target_color_layout_final   = RHI_Image_Layout::Undefined;
+        RHI_Image_Layout render_target_depth_layout_initial = RHI_Image_Layout::Undefined;
+        RHI_Image_Layout render_target_depth_layout_final   = RHI_Image_Layout::Undefined;
 
         // RTs
         RHI_Texture* render_target_depth_texture = nullptr;

@@ -59,13 +59,8 @@ namespace Spartan
         uint32_t GetImageIndex()            const { return m_image_index; }
         bool IsInitialized()                const { return m_initialized; }
         bool PresentEnabled()               const { return m_present_enabled; }
-        bool HasAcquireImage()              const { return m_image_acquired[m_cmd_index]; }
         RHI_CommandList* GetCmdList()             { return m_cmd_index < static_cast<uint32_t>(m_cmd_lists.size()) ? m_cmd_lists[m_cmd_index].get() : nullptr; }
-        void* GetImageAcquiredSemaphore()   const { return HasAcquireImage() ? m_image_acquired_semaphore[m_cmd_index] : nullptr; }
-
-        // Layout
-        const RHI_Image_Layout GetLayout() const { return m_layout; }
-        void SetLayout(RHI_Image_Layout layout, RHI_CommandList* command_list = nullptr);
+        void* GetImageAcquiredSemaphore()   const { return m_image_acquired_semaphore[m_cmd_index]; }
 
         // GPU Resources
         void* Get_Resource(uint32_t i = 0)          const { return m_resource[i]; }
@@ -91,12 +86,10 @@ namespace Spartan
         void* m_surface                         = nullptr;
         void* m_window_handle                   = nullptr;
         void* m_cmd_pool                        = nullptr;
-        std::array<bool, 3> m_image_acquired    = { false, false, false };
         bool m_present_enabled                  = true;
-        uint32_t m_cmd_index                    = 0;
+        uint32_t m_cmd_index                    = std::numeric_limits<uint32_t>::max();
         uint32_t m_image_index                  = 0;
         RHI_Device* m_rhi_device                = nullptr;
-        RHI_Image_Layout m_layout               = RHI_Image_Undefined;
         std::vector<std::shared_ptr<RHI_CommandList>> m_cmd_lists;
         std::array<void*, rhi_max_render_target_count> m_image_acquired_semaphore   = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
         std::array<void*, rhi_max_render_target_count> m_resource_view              = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };

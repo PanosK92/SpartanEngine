@@ -780,8 +780,8 @@ namespace Spartan::vulkan_utility
             VkImageMemoryBarrier image_barrier              = {};
             image_barrier.sType                             = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
             image_barrier.pNext                             = nullptr;
-            image_barrier.oldLayout                         = vulkan_image_layout[layout_old];
-            image_barrier.newLayout                         = vulkan_image_layout[layout_new];
+            image_barrier.oldLayout                         = vulkan_image_layout[static_cast<uint8_t>(layout_old)];
+            image_barrier.newLayout                         = vulkan_image_layout[static_cast<uint8_t>(layout_new)];
             image_barrier.srcQueueFamilyIndex               = VK_QUEUE_FAMILY_IGNORED;
             image_barrier.dstQueueFamilyIndex               = VK_QUEUE_FAMILY_IGNORED;
             image_barrier.image                             = static_cast<VkImage>(image);
@@ -841,11 +841,6 @@ namespace Spartan::vulkan_utility
         inline bool set_layout(void* cmd_buffer, const RHI_Texture* texture, const RHI_Image_Layout layout_new)
         {
             return set_layout(cmd_buffer, texture->Get_Resource(), get_aspect_mask(texture), texture->GetMipCount(), texture->GetArraySize(), texture->GetLayout(), layout_new);
-        }
-
-        inline bool set_layout(void* cmd_buffer, void* image, const RHI_SwapChain* swapchain, const RHI_Image_Layout layout_new)
-        {
-            return set_layout(cmd_buffer, image, VK_IMAGE_ASPECT_COLOR_BIT, 1, 1, swapchain->GetLayout(), layout_new);
         }
 
         namespace view

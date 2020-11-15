@@ -79,13 +79,13 @@ namespace Spartan
 
     Physics::~Physics()
     {
-        safe_delete(m_world);
-        safe_delete(m_constraint_solver);
-        safe_delete(m_collision_dispatcher);
-        safe_delete(m_collision_configuration);
-        safe_delete(m_broadphase);
-        safe_delete(m_world_info);
-        safe_delete(m_debug_draw);
+        sp_ptr_delete(m_world);
+        sp_ptr_delete(m_constraint_solver);
+        sp_ptr_delete(m_collision_dispatcher);
+        sp_ptr_delete(m_collision_configuration);
+        sp_ptr_delete(m_broadphase);
+        sp_ptr_delete(m_world_info);
+        sp_ptr_delete(m_debug_draw);
     }
 
     bool Physics::Initialize()
@@ -163,7 +163,7 @@ namespace Spartan
 
         m_world->removeRigidBody(body);
         delete body->getMotionState();
-        safe_delete(body);
+        sp_ptr_delete(body);
     }
 
     void Physics::AddConstraint(btTypedConstraint* constraint, bool collision_with_linked_body /*= true*/) const
@@ -180,7 +180,7 @@ namespace Spartan
             return;
 
         m_world->removeConstraint(constraint);
-        safe_delete(constraint);
+        sp_ptr_delete(constraint);
     }
 
     void Physics::AddBody(btSoftBody* body) const
@@ -199,7 +199,7 @@ namespace Spartan
         if (btSoftRigidDynamicsWorld* world = static_cast<btSoftRigidDynamicsWorld*>(m_world))
         {
             world->removeSoftBody(body);
-            safe_delete(body);
+            sp_ptr_delete(body);
         }
     }
 

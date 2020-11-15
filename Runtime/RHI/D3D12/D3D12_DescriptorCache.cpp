@@ -27,10 +27,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    RHI_DescriptorCache::~RHI_DescriptorCache()
-    = default;
+    RHI_DescriptorCache::~RHI_DescriptorCache()= default;
 
     void RHI_DescriptorCache::SetDescriptorSetCapacity(uint32_t descriptor_set_capacity)
+    {
+
+    }
+
+    void RHI_DescriptorCache::Reset(uint32_t descriptor_set_capacity /*= 0*/)
     {
 
     }

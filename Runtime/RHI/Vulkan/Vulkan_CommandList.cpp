@@ -104,7 +104,7 @@ namespace Spartan
 
     bool RHI_CommandList::Begin()
     {
-        // Sync CPU to GPU
+        // Ensure this command list is not currently in use
         if (!Wait())
         {
             LOG_ERROR("Failed to wait");
@@ -416,7 +416,7 @@ namespace Spartan
         }
 
         // One of the required layouts for clear functions
-        texture->SetLayout(RHI_Image_Transfer_Dst_Optimal, this);
+        texture->SetLayout(RHI_Image_Layout::Transfer_Dst_Optimal, this);
 
         VkImageSubresourceRange image_subresource_range = {};
         image_subresource_range.baseMipLevel            = 0;
@@ -672,7 +672,7 @@ namespace Spartan
         }
 
         // If the image has an invalid layout (can happen for a few frames during staging), replace with black
-        if (texture->GetLayout() == RHI_Image_Undefined || texture->GetLayout() == RHI_Image_Preinitialized)
+        if (texture->GetLayout() == RHI_Image_Layout::Undefined || texture->GetLayout() == RHI_Image_Layout::Preinitialized)
         {
             LOG_WARNING("Can't set texture without a layout");
             texture = m_renderer->GetDefaultTextureTransparent();
@@ -680,7 +680,7 @@ namespace Spartan
 
         // Transition to appropriate layout (if needed)
         {
-            RHI_Image_Layout target_layout = RHI_Image_Undefined;
+            RHI_Image_Layout target_layout = RHI_Image_Layout::Undefined;
 
             if (storage)
             {
@@ -692,28 +692,28 @@ namespace Spartan
                 {
                     // According to section 13.1 of the Vulkan spec, storage textures have to be in a general layout.
                     // https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/vkspec.html#descriptorsets-storageimage
-                    if (texture->GetLayout() != RHI_Image_General)
+                    if (texture->GetLayout() != RHI_Image_Layout::General)
                     {
-                        target_layout = RHI_Image_General;
+                        target_layout = RHI_Image_Layout::General;
                     }
                 }
             }
             else
             {
                 // Color
-                if (texture->IsColorFormat() && texture->GetLayout() != RHI_Image_Shader_Read_Only_Optimal)
+                if (texture->IsColorFormat() && texture->GetLayout() != RHI_Image_Layout::Shader_Read_Only_Optimal)
                 {
-                    target_layout = RHI_Image_Shader_Read_Only_Optimal;
+                    target_layout = RHI_Image_Layout::Shader_Read_Only_Optimal;
                 }
 
                 // Depth
-                if (texture->IsDepthFormat() && texture->GetLayout() != RHI_Image_Depth_Stencil_Read_Only_Optimal)
+                if (texture->IsDepthFormat() && texture->GetLayout() != RHI_Image_Layout::Depth_Stencil_Read_Only_Optimal)
                 {
-                    target_layout = RHI_Image_Depth_Stencil_Read_Only_Optimal;
+                    target_layout = RHI_Image_Layout::Depth_Stencil_Read_Only_Optimal;
                 }
             }
 
-            bool transition_required = target_layout != RHI_Image_Undefined;
+            bool transition_required = target_layout != RHI_Image_Layout::Undefined;
 
             // Transition
             if (transition_required && !m_render_pass_active)

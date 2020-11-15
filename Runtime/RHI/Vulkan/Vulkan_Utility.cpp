@@ -67,7 +67,7 @@ namespace Spartan::vulkan_utility
         }
         
         // Set layout to preinitialised (required by Vulkan)
-        texture->SetLayout(RHI_Image_Preinitialized);
+        texture->SetLayout(RHI_Image_Layout::Preinitialized);
         
         VkImageCreateInfo create_info   = {};
         create_info.sType               = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -80,7 +80,7 @@ namespace Spartan::vulkan_utility
         create_info.arrayLayers         = texture->GetArraySize();
         create_info.format              = vulkan_format[format];
         create_info.tiling              = VK_IMAGE_TILING_OPTIMAL;
-        create_info.initialLayout       = vulkan_image_layout[texture->GetLayout()];
+        create_info.initialLayout       = vulkan_image_layout[static_cast<uint8_t>(texture->GetLayout())];
         create_info.usage               = get_usage_flags(texture);
         create_info.samples             = VK_SAMPLE_COUNT_1_BIT;
         create_info.sharingMode         = VK_SHARING_MODE_EXCLUSIVE;
@@ -121,11 +121,11 @@ namespace Spartan::vulkan_utility
     {
         VmaAllocator allocator = globals::rhi_context->allocator;
 
-        VkBufferCreateInfo buffer_create_info    = {};
+        VkBufferCreateInfo buffer_create_info   = {};
         buffer_create_info.sType                = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        buffer_create_info.size                    = size;
+        buffer_create_info.size                 = size;
         buffer_create_info.usage                = usage;
-        buffer_create_info.sharingMode            = VK_SHARING_MODE_EXCLUSIVE;
+        buffer_create_info.sharingMode          = VK_SHARING_MODE_EXCLUSIVE;
 
         bool used_for_staging = (usage & VK_BUFFER_USAGE_TRANSFER_SRC_BIT) != 0;
 
