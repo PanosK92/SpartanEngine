@@ -145,6 +145,7 @@ namespace Spartan
         }
 
         m_initialized = true;
+        m_cmd_index = 0;
     }
 
     RHI_SwapChain::~RHI_SwapChain()
