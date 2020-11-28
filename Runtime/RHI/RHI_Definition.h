@@ -52,6 +52,7 @@ namespace Spartan
     class RHI_TextureCube;
     class RHI_Shader;
     class RHI_Semaphore;
+    class RHI_Fence;
     struct RHI_Vertex_Undefined;
     struct RHI_Vertex_PosTex;
     struct RHI_Vertex_PosCol;

@@ -19,39 +19,29 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =====================
-#include "Spartan.h"
-#include "../RHI_Semaphore.h"
-#include "../RHI_Implementation.h"
-//================================
+#pragma once
+
+//= INCLUDES ======================
+#include "../Core/Spartan_Object.h"
+#include "RHI_Definition.h"
+//=================================
 
 namespace Spartan
 {
-    RHI_Semaphore::RHI_Semaphore(RHI_Device* rhi_device, const char* name /*= nullptr*/)
+    class RHI_Fence : public Spartan_Object
     {
-        m_rhi_device = rhi_device;
+    public:
+        RHI_Fence(RHI_Device* rhi_device, const char* name = nullptr);
+        ~RHI_Fence();
 
-        // Describe
-        VkSemaphoreCreateInfo semaphore_info = {};
-        semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+        bool IsSignaled();
+        bool Wait(uint64_t timeout = std::numeric_limits<uint64_t>::max());
+        bool Reset();
 
-        VkSemaphore* vk_semaphore = reinterpret_cast<VkSemaphore*>(&m_resource);
+        void* GetResource() { return m_resource; }
 
-        // Create
-        if (!vulkan_utility::error::check(vkCreateSemaphore(m_rhi_device->GetContextRhi()->device, &semaphore_info, nullptr, vk_semaphore)))
-            return;
-
-        // Name
-        vulkan_utility::debug::set_name(*vk_semaphore, name);
-    }
-
-    RHI_Semaphore::~RHI_Semaphore()
-    {
-        if (!m_resource)
-            return;
-
-        VkSemaphore semaphore_vk = static_cast<VkSemaphore>(m_resource);
-        vkDestroySemaphore(m_rhi_device->GetContextRhi()->device, semaphore_vk, nullptr);
-        m_resource = nullptr;
-    }
+    private:
+        void* m_resource = nullptr;
+        RHI_Device* m_rhi_device = nullptr;
+    };
 }

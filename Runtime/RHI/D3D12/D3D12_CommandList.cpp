@@ -71,11 +71,6 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_CommandList::Wait()
-    {
-        return true;
-    }
-
     bool RHI_CommandList::Reset()
     {
         return true;
