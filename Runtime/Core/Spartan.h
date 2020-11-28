@@ -21,29 +21,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= DISABLED WARNINGS ==============================================================================================================================
-// identifier' : class 'type' needs to have dll-interface to be used by clients of class 'type2'
-#pragma warning(disable: 4251) // https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-2-c4275?view=vs-2019
-// non – DLL-interface classkey 'identifier' used as base for DLL-interface classkey 'identifier'
-#pragma warning(disable: 4275) // https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-2-c4275?view=vs-2019
-// no definition for inline function 'function'
-#pragma warning(disable: 4506) // https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-1-c4506?view=vs-2017
-//==================================================================================================================================================
-
-// Platform 
-//#define API_GRAPHICS_D3D11    -> Defined by solution generation script
-//#define API_GRAPHICS_D3D12    -> Defined by solution generation script
-//#define API_GRAPHICS_VULKAN   -> Defined by solution generation script
-#define API_INPUT_WINDOWS //    -> Explicitly defined for now
-
-//= WINDOWS ===============
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-//=========================
+// Engine macros
+#include "Spartan_Definitions.h"
 
 //= STD ================
 #include <string>
@@ -62,11 +41,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //======================
 
 //= THIRD-PARTY LIBS ===========================================================
-#pragma warning(push, 0) // Hide warnings which don't belong to us
+SP_WARNINGS_OFF
+
 // Assimp
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 #include <assimp/version.h>
+#include <assimp/scene.h>
+#include <assimp/DefaultLogger.hpp>
+#include <assimp/ProgressHandler.hpp>
+
+// Audio
+#include <fmod.hpp>
+#include <fmod_errors.h>
+
 // Bullet
 #include <btBulletDynamicsCommon.h>
 #include <BulletCollision/BroadphaseCollision/btDbvtBroadphase.h>
@@ -89,10 +77,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <BulletDynamics/ConstraintSolver/btSliderConstraint.h>
 #include <BulletDynamics/ConstraintSolver/btConeTwistConstraint.h>
 #include <BulletDynamics/ConstraintSolver/btPoint2PointConstraint.h>
+
 // FreeType
 #include "freetype/ftstroke.h"
+
 //pugixml
 #include "pugixml.hpp"
+
 // Mono
 #include <mono/jit/jit.h>
 #include <mono/metadata/assembly.h>
@@ -105,7 +96,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <mono/metadata/debug-helpers.h>
 #include <mono/metadata/exception.h>
 #include <mono/metadata/appdomain.h>
-#pragma warning(pop)
+
+// Reflection
+#include <spirv_cross/spirv_hlsl.hpp>
+
+SP_WARNINGS_ON
 //==============================================================================
 
 //= RUNTIME ====================
@@ -117,8 +112,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Timer.h"
 #include "FileSystem.h"
 #include "Stopwatch.h"
+
 // Logging
 #include "../Logging/Log.h"
+
 // Math
 #include "../Math/Vector2.h"
 #include "../Math/Vector3.h"
@@ -132,5 +129,3 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Plane.h"
 #include "../Math/MathHelper.h"
 //==============================
-
-#define SPARTAN_ASSERT(expression) assert(expression)

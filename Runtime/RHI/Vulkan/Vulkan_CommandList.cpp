@@ -160,7 +160,7 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_CommandList::Stop()
+    bool RHI_CommandList::End()
     {
         if (m_cmd_state != RHI_CommandListState::Recording)
         {
@@ -180,18 +180,15 @@ namespace Spartan
         // Ensure the command list has recorded
         if (m_cmd_state == RHI_CommandListState::Idle)
         {
-            LOG_WARNING("The command list is idle, nothing to submit");
+            LOG_WARNING("The command list is idle, nothing to submit.");
             return false;
         }
 
         // Ensure the command list is not recording
         if (m_cmd_state == RHI_CommandListState::Recording)
         {
-            if (!Stop())
-            {
-                LOG_ERROR("Failed to stop recording");
-                return false;
-            }
+            LOG_ERROR("The command list is recorindg. Call End() before Submit().");
+            return false;
         }
 
         // Get wait and signal semaphores
@@ -225,8 +222,11 @@ namespace Spartan
             signal_semaphore,                               // signal semaphore
             m_processed_fence,                              // signal fence
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)  // wait flags
-        )
-        return false;
+            )
+        {
+            LOG_ERROR("Failed to submit the command list.");
+            return false;
+        }
 
         if (signal_semaphore)
         {

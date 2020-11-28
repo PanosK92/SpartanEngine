@@ -399,16 +399,26 @@ namespace ImGui::RHI
         if (!swap_chain)
             return;
 
-        if (swap_chain->GetCmdList() && !swap_chain->GetCmdList()->Begin())
+        RHI_CommandList* cmd_list = swap_chain->GetCmdList();
+        if (!cmd_list)
+            return;
+
+        if (!cmd_list->Begin())
         {
             LOG_ERROR("Failed to begin command list");
             return;
         }
 
-        const auto clear = !(viewport->Flags & ImGuiViewportFlags_NoRendererClear);
+        const bool clear = !(viewport->Flags & ImGuiViewportFlags_NoRendererClear);
         Render(viewport->DrawData, swap_chain, clear);
 
-        if (!swap_chain->GetCmdList()->Submit())
+        if (!cmd_list->End())
+        {
+            LOG_ERROR("Failed to end command list");
+            return;
+        }
+
+        if (!cmd_list->Submit())
         {
             LOG_ERROR("Failed to submit command list");
         }

@@ -50,8 +50,8 @@ namespace Spartan
 
     enum Engine_Mode : uint32_t
     {
-        Engine_Physics    = 1UL << 0, // Should the physics tick?    
-        Engine_Game        = 1UL << 1,    // Is the engine running in game or editor mode?
+        Engine_Physics  = 1UL << 0, // Should the physics tick ?
+        Engine_Game     = 1UL << 1, // Is the engine running in game or editor mode ?
     };
 
     class SPARTAN_CLASS Engine
@@ -64,12 +64,12 @@ namespace Spartan
         void Tick() const;
 
         //  Flags
-        auto EngineMode_GetAll() const { return m_flags; }
-        void EngineMode_SetAll(const uint32_t flags)        { m_flags = flags; }
+        auto EngineMode_GetAll()                        const { return m_flags; }
+        void EngineMode_SetAll(const uint32_t flags)          { m_flags = flags; }
         void EngineMode_Enable(const Engine_Mode flag)        { m_flags |= flag; }
-        void EngineMode_Disable(const Engine_Mode flag)        { m_flags &= ~flag; }
+        void EngineMode_Disable(const Engine_Mode flag)       { m_flags &= ~flag; }
         void EngineMode_Toggle(const Engine_Mode flag)        { m_flags = !EngineMode_IsSet(flag) ? m_flags | flag : m_flags & ~flag;}
-        bool EngineMode_IsSet(const Engine_Mode flag) const    { return m_flags & flag; }
+        bool EngineMode_IsSet(const Engine_Mode flag)   const { return m_flags & flag; }
 
         // Window
         const WindowData& GetWindowData() const { return m_window_data; }
@@ -79,8 +79,8 @@ namespace Spartan
 
     private:
         WindowData m_window_data;
-        uint32_t m_flags        = 0;
-        Timer* m_timer          = nullptr;
+        uint32_t m_flags    = 0;
+        Timer* m_timer      = nullptr;
         std::shared_ptr<Context> m_context;
     };
 }

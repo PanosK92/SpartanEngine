@@ -360,16 +360,23 @@ namespace Spartan
         if (!m_present_enabled)
             return true;
 
-        m_cmd_index = ++m_cmd_index % m_buffer_count;
+        // Get next cmd index
+        uint32_t next_cmd_index = (m_cmd_index + 1) % m_buffer_count;
+
+        if (m_image_acquired[next_cmd_index])
+        {
+            LOG_ERROR("Image acquired semaphore for buffer %d has not been waited for.", next_cmd_index);
+            return false;
+        }
 
         // Acquire next image
         VkResult result = vkAcquireNextImageKHR(
-            m_rhi_device->GetContextRhi()->device,                              // device
-            static_cast<VkSwapchainKHR>(m_swap_chain_view),                     // swapchain
-            numeric_limits<uint64_t>::max(),                                    // timeout
-            static_cast<VkSemaphore>(m_image_acquired_semaphore[m_cmd_index]),  // signal semaphore
-            nullptr,                                                            // signal fence
-            &m_image_index                                                      // pImageIndex
+            m_rhi_device->GetContextRhi()->device,                                  // device
+            static_cast<VkSwapchainKHR>(m_swap_chain_view),                         // swapchain
+            numeric_limits<uint64_t>::max(),                                        // timeout
+            static_cast<VkSemaphore>(m_image_acquired_semaphore[next_cmd_index]),   // signal semaphore
+            nullptr,                                                                // signal fence
+            &m_image_index                                                          // pImageIndex
         );
 
         // Recreate swapchain with different size (if needed)
@@ -392,6 +399,12 @@ namespace Spartan
             return false;
         }
 
+        // Save cmd index
+        m_cmd_index = next_cmd_index;
+
+        // Updated semaphore
+        m_image_acquired[m_cmd_index] = true;
+
         return true;
     }
 
@@ -404,24 +417,22 @@ namespace Spartan
         }
 
         // Ensure the command list is not recording
-        RHI_CommandList* cmd_list = GetCmdList();
-        if (cmd_list->IsRecording())
+        if (GetCmdList()->IsRecording())
         {
-            if (!cmd_list->Submit())
-            {
-                LOG_ERROR("Failed to submit pending command list.");
-                return false;
-            }
+            LOG_ERROR("Command list is still recording.");
+            return false;
         }
 
         // Present
-        if (!m_rhi_device->Queue_Present(m_swap_chain_view, &m_image_index, cmd_list->GetProcessedSemaphore()))
+        if (!m_rhi_device->Queue_Present(m_swap_chain_view, &m_image_index, GetCmdList()->GetProcessedSemaphore()))
         {
             LOG_ERROR("Failed to present");
             return false;
         }
 
         // Acquire the next image
-        return AcquireNextImage();
+        AcquireNextImage();
+
+        return true;
     }
 }

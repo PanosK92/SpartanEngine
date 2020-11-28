@@ -56,7 +56,7 @@ namespace Spartan
     
         // Command list
         bool Begin();
-        bool Stop();
+        bool End();
         bool Submit();
         bool Wait();
         bool Reset();
@@ -71,7 +71,7 @@ namespace Spartan
                         return false;
                 }
 
-                if (!Stop())
+                if (!End())
                     return false;
 
                 if (!Submit())
