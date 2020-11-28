@@ -312,7 +312,7 @@ namespace Spartan::d3d11_utility
             if ((filter_min == RHI_Sampler_Mipmap_Linear)   && (filter_mag == RHI_Sampler_Mipmap_Linear)    && (filter_mipmap == RHI_Filter_Nearest))            return !comparison_enabled ? D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT          : D3D11_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT;
             if ((filter_min == RHI_Sampler_Mipmap_Linear)   && (filter_mag == RHI_Sampler_Mipmap_Linear)    && (filter_mipmap == RHI_Sampler_Mipmap_Linear))    return !comparison_enabled ? D3D11_FILTER_MIN_MAG_MIP_LINEAR                : D3D11_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR;
 
-            SPARTAN_ASSERT(false && "D3D11_Sampler filter not supported.");
+            SP_ASSERT(false && "D3D11_Sampler filter not supported.");
             return D3D11_FILTER_MIN_MAG_MIP_POINT;
         }
     }
