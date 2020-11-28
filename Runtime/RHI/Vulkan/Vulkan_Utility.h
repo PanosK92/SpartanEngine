@@ -300,28 +300,6 @@ namespace Spartan::vulkan_utility
         }
     }
 
-    namespace semaphore
-    {
-        inline bool create(void*& semaphore)
-        {
-            VkSemaphoreCreateInfo semaphore_info = {};
-            semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-            VkSemaphore* semaphore_vk = reinterpret_cast<VkSemaphore*>(&semaphore);
-            return error::check(vkCreateSemaphore(globals::rhi_context->device, &semaphore_info, nullptr, semaphore_vk));
-        }
-
-        inline void destroy(void*& semaphore)
-        {
-            if (!semaphore)
-                return;
-
-            VkSemaphore semaphore_vk = static_cast<VkSemaphore>(semaphore);
-            vkDestroySemaphore(globals::rhi_context->device, semaphore_vk, nullptr);
-            semaphore = nullptr;
-        }
-    }
-
     namespace fence
     {
         inline bool create(void*& fence)

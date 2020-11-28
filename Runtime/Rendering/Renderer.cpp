@@ -141,7 +141,8 @@ namespace Spartan
                 static_cast<uint32_t>(m_viewport.height),
                 RHI_Format_R8G8B8A8_Unorm,
                 m_swap_chain_buffer_count,
-                RHI_Present_Immediate | RHI_Swap_Flip_Discard
+                RHI_Present_Immediate | RHI_Swap_Flip_Discard,
+                "swapchain_main"
             );
 
             if (!m_swap_chain->IsInitialized())

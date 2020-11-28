@@ -51,6 +51,7 @@ namespace Spartan
     class RHI_Texture2D;
     class RHI_TextureCube;
     class RHI_Shader;
+    class RHI_Semaphore;
     struct RHI_Vertex_Undefined;
     struct RHI_Vertex_PosTex;
     struct RHI_Vertex_PosCol;
@@ -248,6 +249,13 @@ namespace Spartan
         Shader_Read_Only_Optimal,
         Transfer_Dst_Optimal,
         Present_Src
+    };
+
+    enum class RHI_Semaphore_State
+    {
+        Idle,
+        Submitted,
+        Signaled
     };
 
     inline const char* rhi_format_to_string(const RHI_Format result)

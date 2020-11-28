@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include "Spartan.h"
 #include "../RHI_Implementation.h"
+#include "../RHI_Semaphore.h"
 //================================
 
 //= NAMESPACES ===============
@@ -284,34 +285,61 @@ namespace Spartan
         }
     }
 
-    bool RHI_Device::Queue_Present(void* swapchain_view, uint32_t* image_index, void* wait_semaphore /*= nullptr*/) const
+    bool RHI_Device::Queue_Present(void* swapchain_view, uint32_t* image_index, RHI_Semaphore* wait_semaphore /*= nullptr*/) const
     {
+        // Validate semaphore state
+        if (wait_semaphore) SP_ASSERT(wait_semaphore->GetState() == RHI_Semaphore_State::Signaled);
+
+        // Get semaphore Vulkan resource
+        void* vk_wait_semaphore = wait_semaphore ? wait_semaphore->GetResource() : nullptr;
+
         VkPresentInfoKHR present_info   = {};
         present_info.sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
         present_info.waitSemaphoreCount = wait_semaphore ? 1 : 0;
-        present_info.pWaitSemaphores    = wait_semaphore ? reinterpret_cast<VkSemaphore*>(&wait_semaphore) : nullptr;
+        present_info.pWaitSemaphores    = wait_semaphore ? reinterpret_cast<VkSemaphore*>(&vk_wait_semaphore) : nullptr;
         present_info.swapchainCount     = 1;
         present_info.pSwapchains        = reinterpret_cast<VkSwapchainKHR*>(&swapchain_view);
         present_info.pImageIndices      = image_index;
 
         lock_guard<mutex> lock(m_queue_mutex);
-        return vulkan_utility::error::check(vkQueuePresentKHR(static_cast<VkQueue>(m_rhi_context->queue_graphics), &present_info));
+        if (!vulkan_utility::error::check(vkQueuePresentKHR(static_cast<VkQueue>(m_rhi_context->queue_graphics), &present_info)))
+            return false;
+
+        // Update semaphore state
+        if (wait_semaphore) wait_semaphore->SetState(RHI_Semaphore_State::Idle);
+
+        return true;
     }
 
-    bool RHI_Device::Queue_Submit(const RHI_Queue_Type type, void* cmd_buffer, void* wait_semaphore /*= nullptr*/, void* signal_semaphore /*= nullptr*/, void* signal_fence /*= nullptr*/, uint32_t wait_flags /*= 0*/) const
+    bool RHI_Device::Queue_Submit(const RHI_Queue_Type type, void* cmd_buffer, RHI_Semaphore* wait_semaphore /*= nullptr*/, RHI_Semaphore* signal_semaphore /*= nullptr*/, void* signal_fence /*= nullptr*/, uint32_t wait_flags /*= 0*/) const
     {
+        // Validate semaphore states
+        if (wait_semaphore)     SP_ASSERT(wait_semaphore->GetState() == RHI_Semaphore_State::Signaled);
+        if (signal_semaphore)   SP_ASSERT(signal_semaphore->GetState() == RHI_Semaphore_State::Idle);
+
+        // Get semaphore Vulkan resources
+        void* vk_wait_semaphore   = wait_semaphore ? wait_semaphore->GetResource() : nullptr;
+        void* vk_signal_semaphore = signal_semaphore ? signal_semaphore->GetResource() : nullptr;
+
         VkSubmitInfo submit_info            = {};
         submit_info.sType                   = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submit_info.waitSemaphoreCount      = wait_semaphore ? 1 : 0;
-        submit_info.pWaitSemaphores         = wait_semaphore ? reinterpret_cast<VkSemaphore*>(&wait_semaphore) : nullptr;
+        submit_info.pWaitSemaphores         = wait_semaphore ? reinterpret_cast<VkSemaphore*>(&vk_wait_semaphore) : nullptr;
         submit_info.signalSemaphoreCount    = signal_semaphore ? 1 : 0;
-        submit_info.pSignalSemaphores       = signal_semaphore ? reinterpret_cast<VkSemaphore*>(&signal_semaphore) : nullptr;
+        submit_info.pSignalSemaphores       = signal_semaphore ? reinterpret_cast<VkSemaphore*>(&vk_signal_semaphore) : nullptr;
         submit_info.pWaitDstStageMask       = &wait_flags;
         submit_info.commandBufferCount      = 1;
         submit_info.pCommandBuffers         = reinterpret_cast<VkCommandBuffer*>(&cmd_buffer);
         
         lock_guard<mutex> lock(m_queue_mutex);
-        return vulkan_utility::error::check(vkQueueSubmit(static_cast<VkQueue>(Queue_Get(type)), 1, &submit_info, static_cast<VkFence>(signal_fence)));
+        if (!vulkan_utility::error::check(vkQueueSubmit(static_cast<VkQueue>(Queue_Get(type)), 1, &submit_info, static_cast<VkFence>(signal_fence))))
+            return false;
+
+        // Update semaphore states
+        if (wait_semaphore) wait_semaphore->SetState(RHI_Semaphore_State::Idle);
+        if (signal_semaphore) signal_semaphore->SetState(RHI_Semaphore_State::Signaled);
+
+        return true;
     }
 
     bool RHI_Device::Queue_Wait(const RHI_Queue_Type type) const

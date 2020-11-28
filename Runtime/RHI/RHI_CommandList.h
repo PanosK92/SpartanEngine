@@ -145,11 +145,11 @@ namespace Spartan
         
         // Misc
         void ResetDescriptorCache();
-        void* GetResource_CommandBuffer()   const { return m_cmd_buffer; }
-        bool IsRecording()                  const { return m_cmd_state == RHI_CommandListState::Recording; }
-        bool IsSubmitted()                  const { return m_cmd_state == RHI_CommandListState::Submitted; }
-        bool IsIdle()                       const { return m_cmd_state == RHI_CommandListState::Idle; }
-        void* GetProcessedSemaphore()             { return m_processed_semaphore_submited ? m_processed_semaphore : nullptr; }
+        void* GetResource_CommandBuffer()       const { return m_cmd_buffer; }
+        bool IsRecording()                      const { return m_cmd_state == RHI_CommandListState::Recording; }
+        bool IsSubmitted()                      const { return m_cmd_state == RHI_CommandListState::Submitted; }
+        bool IsIdle()                           const { return m_cmd_state == RHI_CommandListState::Idle; }
+        RHI_Semaphore* GetProcessedSemaphore()        { return m_processed_semaphore.get(); }
 
     private:
         void Timeblock_Start(const RHI_PipelineState* pipeline_state);
@@ -159,23 +159,22 @@ namespace Spartan
         bool Deferred_BindDescriptorSet();
         bool OnDraw();
 
-        std::atomic<RHI_CommandListState> m_cmd_state   = RHI_CommandListState::Idle;
-        RHI_Pipeline* m_pipeline                        = nullptr; 
-        RHI_SwapChain* m_swap_chain                     = nullptr;
-        Renderer* m_renderer                            = nullptr;
-        RHI_PipelineCache* m_pipeline_cache             = nullptr;
-        RHI_DescriptorCache* m_descriptor_cache         = nullptr;
-        RHI_PipelineState* m_pipeline_state             = nullptr;
-        RHI_Device* m_rhi_device                        = nullptr;
-        Profiler* m_profiler                            = nullptr;
-        void* m_cmd_buffer                              = nullptr;
-        void* m_processed_fence                         = nullptr;
-        void* m_processed_semaphore                     = nullptr;
-        bool m_processed_semaphore_submited             = false;
-        void* m_query_pool                              = nullptr;
-        bool m_render_pass_active                       = false;
-        bool m_pipeline_active                          = false;
-        bool m_flushed                                  = false;
+        std::atomic<RHI_CommandListState> m_cmd_state           = RHI_CommandListState::Idle;
+        RHI_Pipeline* m_pipeline                                = nullptr; 
+        RHI_SwapChain* m_swap_chain                             = nullptr;
+        Renderer* m_renderer                                    = nullptr;
+        RHI_PipelineCache* m_pipeline_cache                     = nullptr;
+        RHI_DescriptorCache* m_descriptor_cache                 = nullptr;
+        RHI_PipelineState* m_pipeline_state                     = nullptr;
+        RHI_Device* m_rhi_device                                = nullptr;
+        Profiler* m_profiler                                    = nullptr;
+        void* m_cmd_buffer                                      = nullptr;
+        void* m_processed_fence                                 = nullptr;
+        std::shared_ptr<RHI_Semaphore> m_processed_semaphore    = nullptr;
+        void* m_query_pool                                      = nullptr;
+        bool m_render_pass_active                               = false;
+        bool m_pipeline_active                                  = false;
+        bool m_flushed                                          = false;
         static bool memory_query_support;
         std::mutex m_mutex_reset;
 

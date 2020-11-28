@@ -351,7 +351,7 @@ namespace ImGui::RHI
         return swapchain;
     }
 
-    static void RHI_CreateWindow(ImGuiViewport* viewport)
+    static void RHI_Window_Create(ImGuiViewport* viewport)
     {
         if (!viewport)
         {
@@ -367,11 +367,12 @@ namespace ImGui::RHI
             static_cast<uint32_t>(viewport->Size.y),
             RHI_Format_R8G8B8A8_Unorm,
             g_renderer->GetSwapChain()->GetBufferCount(),
-            g_renderer->GetSwapChain()->GetFlags()
+            g_renderer->GetSwapChain()->GetFlags(),
+            (string("swapchain_child_") + string(to_string(viewport->ID))).c_str()
         );
     }
 
-    static void RHI_DestroyWindow(ImGuiViewport* viewport)
+    static void RHI_Window_Destroy(ImGuiViewport* viewport)
     {
         RHI_SwapChain* swap_chain = GetSwapchain(viewport);
         if (!swap_chain)
@@ -381,7 +382,7 @@ namespace ImGui::RHI
         viewport->RendererUserData = nullptr;
     }
 
-    static void RHI_SetWindowSize(ImGuiViewport* viewport, const ImVec2 size)
+    static void RHI_Window_SetSize(ImGuiViewport* viewport, const ImVec2 size)
     {
         RHI_SwapChain* swap_chain = GetSwapchain(viewport);
         if (!swap_chain)
@@ -393,7 +394,7 @@ namespace ImGui::RHI
         }
     }
 
-    static void RHI_RenderWindow(ImGuiViewport* viewport, void*)
+    static void RHI_Window_Render(ImGuiViewport* viewport, void*)
     {
         RHI_SwapChain* swap_chain = GetSwapchain(viewport);
         if (!swap_chain)
@@ -424,7 +425,7 @@ namespace ImGui::RHI
         }
     }
 
-    static void RHI_SwapBuffers(ImGuiViewport* viewport, void*)
+    static void RHI_Window_Present(ImGuiViewport* viewport, void*)
     {
         RHI_SwapChain* swap_chain = GetSwapchain(viewport);
         if (!swap_chain)
@@ -439,10 +440,10 @@ namespace ImGui::RHI
     inline void InitializePlatformInterface()
     {
         ImGuiPlatformIO& platform_io        = ImGui::GetPlatformIO();
-        platform_io.Renderer_CreateWindow   = RHI_CreateWindow;
-        platform_io.Renderer_DestroyWindow  = RHI_DestroyWindow;
-        platform_io.Renderer_SetWindowSize  = RHI_SetWindowSize;
-        platform_io.Renderer_RenderWindow   = RHI_RenderWindow;
-        platform_io.Renderer_SwapBuffers    = RHI_SwapBuffers;
+        platform_io.Renderer_CreateWindow   = RHI_Window_Create;
+        platform_io.Renderer_DestroyWindow  = RHI_Window_Destroy;
+        platform_io.Renderer_SetWindowSize  = RHI_Window_SetSize;
+        platform_io.Renderer_RenderWindow   = RHI_Window_Render;
+        platform_io.Renderer_SwapBuffers    = RHI_Window_Present;
     }
 }
