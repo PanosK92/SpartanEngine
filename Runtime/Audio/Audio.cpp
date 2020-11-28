@@ -22,8 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =============================
 #include "Spartan.h"
 #include "Audio.h"
-#include <fmod.hpp>
-#include <fmod_errors.h>
 #include "../Profiling/Profiler.h"
 #include "../World/Components/Transform.h"
 //========================================

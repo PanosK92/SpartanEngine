@@ -33,11 +33,11 @@ using namespace Spartan;
 
 namespace _Widget_MenuBar
 {
-    static bool g_showAboutWindow    = false;
-    static bool g_fileDialogVisible    = false;
-    static bool imgui_metrics        = false;
-    static bool imgui_style            = false;
-    static bool imgui_demo            = false;
+    static bool g_showAboutWindow   = false;
+    static bool g_fileDialogVisible = false;
+    static bool imgui_metrics       = false;
+    static bool imgui_style         = false;
+    static bool imgui_demo          = false;
     World* world                    = nullptr;
     static string g_fileDialogSelection;
 }
@@ -45,9 +45,9 @@ namespace _Widget_MenuBar
 Widget_MenuBar::Widget_MenuBar(Editor* editor) : Widget(editor)
 {
     m_title                 = "MenuBar";
-    m_is_window                = false;
+    m_is_window             = false;
     m_fileDialog            = make_unique<FileDialog>(m_context, true, FileDialog_Type_FileSelection, FileDialog_Op_Open, FileDialog_Filter_Scene);
-    _Widget_MenuBar::world    = m_context->GetSubsystem<World>();
+    _Widget_MenuBar::world  = m_context->GetSubsystem<World>();
 }
 
 void Widget_MenuBar::Tick()
@@ -89,8 +89,8 @@ void Widget_MenuBar::Tick()
         if (ImGui::BeginMenu("View"))
         {
             ImGui::MenuItem("ImGui Metrics",    nullptr, &_Widget_MenuBar::imgui_metrics);
-            ImGui::MenuItem("ImGui Style",        nullptr, &_Widget_MenuBar::imgui_style);
-            ImGui::MenuItem("ImGui Demo",        nullptr, &_Widget_MenuBar::imgui_demo);
+            ImGui::MenuItem("ImGui Style",      nullptr, &_Widget_MenuBar::imgui_style);
+            ImGui::MenuItem("ImGui Demo",       nullptr, &_Widget_MenuBar::imgui_demo);
             ImGui::EndMenu();
         }
 
@@ -103,8 +103,8 @@ void Widget_MenuBar::Tick()
         ImGui::EndMainMenuBar();
     }
 
-    if (_Widget_MenuBar::imgui_metrics)    { ImGui::ShowMetricsWindow(); }
-    if (_Widget_MenuBar::imgui_style)    { ImGui::Begin("Style Editor", nullptr, ImGuiWindowFlags_NoDocking); ImGui::ShowStyleEditor(); ImGui::End(); }
+    if (_Widget_MenuBar::imgui_metrics) { ImGui::ShowMetricsWindow(); }
+    if (_Widget_MenuBar::imgui_style)   { ImGui::Begin("Style Editor", nullptr, ImGuiWindowFlags_NoDocking); ImGui::ShowStyleEditor(); ImGui::End(); }
     if (_Widget_MenuBar::imgui_demo)    { ImGui::ShowDemoWindow(&_Widget_MenuBar::imgui_demo); }
 
     ShowFileDialog();
@@ -183,8 +183,8 @@ void Widget_MenuBar::ShowAboutWindow() const
 
     ImGui::Separator();
 
-    static uint32_t col_a = 220;
-    static uint32_t col_b = 340;
+    static float col_a = 220.0f;
+    static float col_b = 340.0f;
 
     ImGui::Text("Third party libraries");
     {

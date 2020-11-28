@@ -179,6 +179,10 @@ void Editor::OnTick()
         _editor::renderer->Pass_CopyToBackbuffer(cmd_list);
     }
 
+    // Submit command list
+    cmd_list->End();
+    cmd_list->Submit();
+
     // Present
     if (_editor::swapchain->PresentEnabled())
     {

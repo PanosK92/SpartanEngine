@@ -93,7 +93,7 @@ namespace Spartan::vulkan_utility
 
         inline void _assert(VkResult result)
         {
-            SPARTAN_ASSERT(result == VK_SUCCESS);
+            SP_ASSERT(result == VK_SUCCESS);
         }
     }
 
@@ -624,7 +624,7 @@ namespace Spartan::vulkan_utility
             while (access_flags != 0)
             {
                 VkAccessFlagBits AccessFlag = static_cast<VkAccessFlagBits>(access_flags & (~(access_flags - 1)));
-                SPARTAN_ASSERT(AccessFlag != 0 && (AccessFlag & (AccessFlag - 1)) == 0);
+                SP_ASSERT(AccessFlag != 0 && (AccessFlag & (AccessFlag - 1)) == 0);
                 access_flags &= ~AccessFlag;
 
                 switch (AccessFlag)

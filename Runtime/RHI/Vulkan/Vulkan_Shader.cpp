@@ -19,18 +19,17 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =====================
+//= INCLUDES ========================
 #include "Spartan.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Device.h"
 #include "../RHI_Shader.h"
 #include "../RHI_InputLayout.h"
+SP_WARNINGS_OFF
 #include <atlbase.h>
 #include <dxcapi.h>
-#pragma warning(push, 0) // Hide warnings belonging SPIRV-Cross 
-#include <spirv_hlsl.hpp>
-#pragma warning(pop)
-//================================
+SP_WARNINGS_ON
+//===================================
 
 //= NAMESPACES =====
 using namespace std;

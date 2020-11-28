@@ -61,7 +61,7 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_CommandList::Stop()
+    bool RHI_CommandList::End()
     {
         return true;
     }

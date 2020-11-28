@@ -22,9 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ================================
-#include <assimp/scene.h>
-#include <assimp/DefaultLogger.hpp>
-#include <assimp/ProgressHandler.hpp>
 #include "../ProgressReport.h"
 #include "../../Math/Vector2.h"
 #include "../../Math/Vector3.h"

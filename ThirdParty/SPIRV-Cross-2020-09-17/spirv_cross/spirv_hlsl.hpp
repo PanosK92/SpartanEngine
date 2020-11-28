@@ -109,6 +109,21 @@ public:
 		// Set to false if you know you will never use base instance or base vertex
 		// functionality as it might remove an internal cbuffer.
 		bool support_nonzero_base_vertex_base_instance = false;
+
+		// Forces a storage buffer to always be declared as UAV, even if the readonly decoration is used.
+		// By default, a readonly storage buffer will be declared as ByteAddressBuffer (SRV) instead.
+		// Alternatively, use set_hlsl_force_storage_buffer_as_uav to specify individually.
+		bool force_storage_buffer_as_uav = false;
+
+		// Forces any storage image type marked as NonWritable to be considered an SRV instead.
+		// For this to work with function call parameters, NonWritable must be considered to be part of the type system
+		// so that NonWritable image arguments are also translated to Texture rather than RWTexture.
+		bool nonwritable_uav_texture_as_srv = false;
+
+		// Enables native 16-bit types. Needs SM 6.2.
+		// Uses half/int16_t/uint16_t instead of min16* types.
+		// Also adds support for 16-bit load-store from (RW)ByteAddressBuffer.
+		bool enable_16bit_types = false;
 	};
 
 	explicit CompilerHLSL(std::vector<uint32_t> spirv_)
@@ -177,6 +192,9 @@ public:
 	void add_hlsl_resource_binding(const HLSLResourceBinding &resource);
 	bool is_hlsl_resource_binding_used(spv::ExecutionModel model, uint32_t set, uint32_t binding) const;
 
+	// Controls which storage buffer bindings will be forced to be declared as UAVs.
+	void set_hlsl_force_storage_buffer_as_uav(uint32_t desc_set, uint32_t binding);
+
 private:
 	std::string type_to_glsl(const SPIRType &type, uint32_t id = 0) override;
 	std::string image_type_hlsl(const SPIRType &type, uint32_t id);
@@ -186,11 +204,12 @@ private:
 	void emit_hlsl_entry_point();
 	void emit_header() override;
 	void emit_resources();
+	void declare_undefined_values() override;
 	void emit_interface_block_globally(const SPIRVariable &type);
 	void emit_interface_block_in_struct(const SPIRVariable &type, std::unordered_set<uint32_t> &active_locations);
 	void emit_builtin_inputs_in_struct();
 	void emit_builtin_outputs_in_struct();
-	void emit_texture_op(const Instruction &i) override;
+	void emit_texture_op(const Instruction &i, bool sparse) override;
 	void emit_instruction(const Instruction &instruction) override;
 	void emit_glsl_op(uint32_t result_type, uint32_t result_id, uint32_t op, const uint32_t *args,
 	                  uint32_t count) override;
@@ -206,6 +225,7 @@ private:
 	std::string layout_for_member(const SPIRType &type, uint32_t index) override;
 	std::string to_interpolation_qualifiers(const Bitset &flags) override;
 	std::string bitcast_glsl_op(const SPIRType &result_type, const SPIRType &argument_type) override;
+	bool emit_complex_bitcast(uint32_t result_type, uint32_t id, uint32_t op0) override;
 	std::string to_func_call_arg(const SPIRFunction::Parameter &arg, uint32_t id) override;
 	std::string to_sampler_expression(uint32_t id);
 	std::string to_resource_binding(const SPIRVariable &var);
@@ -234,11 +254,14 @@ private:
 	const char *to_storage_qualifiers_glsl(const SPIRVariable &var) override;
 	void replace_illegal_names() override;
 
+	bool is_hlsl_force_storage_buffer_as_uav(ID id) const;
+
 	Options hlsl_options;
 
 	// TODO: Refactor this to be more similar to MSL, maybe have some common system in place?
 	bool requires_op_fmod = false;
 	bool requires_fp16_packing = false;
+	bool requires_uint2_packing = false;
 	bool requires_explicit_fp16_packing = false;
 	bool requires_unorm8_packing = false;
 	bool requires_snorm8_packing = false;
@@ -252,8 +275,24 @@ private:
 	bool requires_scalar_reflect = false;
 	bool requires_scalar_refract = false;
 	bool requires_scalar_faceforward = false;
-	uint64_t required_textureSizeVariants = 0;
-	void require_texture_query_variant(const SPIRType &type);
+
+	struct TextureSizeVariants
+	{
+		// MSVC 2013 workaround.
+		TextureSizeVariants()
+		{
+			srv = 0;
+			for (auto &unorm : uav)
+				for (auto &u : unorm)
+					u = 0;
+		}
+		uint64_t srv;
+		uint64_t uav[3][4];
+	} required_texture_size_variants;
+
+	void require_texture_query_variant(uint32_t var_id);
+	void emit_texture_size_variants(uint64_t variant_mask, const char *vecsize_qualifier, bool uav,
+	                                const char *type_qualifier);
 
 	enum TextureQueryVariantDim
 	{
@@ -277,6 +316,15 @@ private:
 		QueryTypeUInt = 32,
 		QueryTypeCount = 3
 	};
+
+	enum BitcastType
+	{
+		TypeNormal,
+		TypePackUint2x32,
+		TypeUnpackUint64
+	};
+
+	BitcastType get_bitcast_type(uint32_t result_type, uint32_t op0);
 
 	void emit_builtin_variables();
 	bool require_output = false;
@@ -302,6 +350,11 @@ private:
 
 	std::unordered_map<StageSetBinding, std::pair<HLSLResourceBinding, bool>, InternalHasher> resource_bindings;
 	void remap_hlsl_resource_binding(HLSLBindingFlagBits type, uint32_t &desc_set, uint32_t &binding);
+
+	std::unordered_set<SetBindingPair, InternalHasher> force_uav_buffer_bindings;
+
+	// Returns true for BuiltInSampleMask because gl_SampleMask[] is an array in SPIR-V, but SV_Coverage is a scalar in HLSL.
+	bool builtin_translates_to_nonarray(spv::BuiltIn builtin) const override;
 };
 } // namespace SPIRV_CROSS_NAMESPACE
 
