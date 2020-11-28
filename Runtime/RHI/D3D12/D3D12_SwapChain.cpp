@@ -36,36 +36,37 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-	RHI_SwapChain::RHI_SwapChain(
-		void* window_handle,
+    RHI_SwapChain::RHI_SwapChain(
+        void* window_handle,
         const shared_ptr<RHI_Device>& rhi_device,
-		const uint32_t width,
-		const uint32_t height,
-		const RHI_Format format	    /*= Format_R8G8B8A8_UNORM*/,	
-		const uint32_t buffer_count	/*= 2 */,
-        const uint32_t flags	    /*= Present_Immediate */
-	)
-	{
-        
-	}
-
-	RHI_SwapChain::~RHI_SwapChain()
-	{
-		
-	}
-
-	bool RHI_SwapChain::Resize(const uint32_t width, const uint32_t height, const bool force /*= false*/)
-	{	
-		return true;
-	}
-
+        const uint32_t width,
+        const uint32_t height,
+        const RHI_Format format	    /*= Format_R8G8B8A8_UNORM*/,
+        const uint32_t buffer_count	/*= 2 */,
+        const uint32_t flags	    /*= Present_Immediate */,
+        const char* name            /*= nullptr */
+    )
+    {
+    
+    }
+    
+    RHI_SwapChain::~RHI_SwapChain()
+    {
+    
+    }
+    
+    bool RHI_SwapChain::Resize(const uint32_t width, const uint32_t height, const bool force /*= false*/)
+    {
+        return true;
+    }
+    
     bool RHI_SwapChain::AcquireNextImage()
     {
         return true;
     }
-
-	bool RHI_SwapChain::Present()
+    
+    bool RHI_SwapChain::Present()
     {
-		return true;
-	}
+        return true;
+    }
 }
