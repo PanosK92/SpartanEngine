@@ -21,37 +21,35 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include "Spartan.h"
-#include "../RHI_Semaphore.h"
+#include "../RHI_Fence.h"
 #include "../RHI_Implementation.h"
+#include "../RHI_Device.h"
 //================================
 
 namespace Spartan
 {
-    RHI_Semaphore::RHI_Semaphore(RHI_Device* rhi_device, const char* name /*= nullptr*/)
+    RHI_Fence::RHI_Fence(RHI_Device* rhi_device, const char* name /*= nullptr*/)
     {
-        m_rhi_device = rhi_device;
 
-        // Describe
-        VkSemaphoreCreateInfo semaphore_info = {};
-        semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-        VkSemaphore* vk_semaphore = reinterpret_cast<VkSemaphore*>(&m_resource);
-
-        // Create
-        if (!vulkan_utility::error::check(vkCreateSemaphore(m_rhi_device->GetContextRhi()->device, &semaphore_info, nullptr, vk_semaphore)))
-            return;
-
-        // Name
-        vulkan_utility::debug::set_name(*vk_semaphore, name);
     }
 
-    RHI_Semaphore::~RHI_Semaphore()
+    RHI_Fence::~RHI_Fence()
     {
-        if (!m_resource)
-            return;
 
-        VkSemaphore semaphore_vk = static_cast<VkSemaphore>(m_resource);
-        vkDestroySemaphore(m_rhi_device->GetContextRhi()->device, semaphore_vk, nullptr);
-        m_resource = nullptr;
+    }
+
+    bool RHI_Fence::IsSignaled()
+    {
+        return true;
+    }
+
+    bool RHI_Fence::Wait(uint64_t timeout /*= std::numeric_limits<uint64_t>::max()*/)
+    {
+        return true;
+    }
+
+    bool RHI_Fence::Reset()
+    {
+        return true;
     }
 }

@@ -169,7 +169,7 @@ namespace Spartan
         RHI_Device* m_rhi_device                                = nullptr;
         Profiler* m_profiler                                    = nullptr;
         void* m_cmd_buffer                                      = nullptr;
-        void* m_processed_fence                                 = nullptr;
+        std::shared_ptr<RHI_Fence> m_processed_fence            = nullptr;
         std::shared_ptr<RHI_Semaphore> m_processed_semaphore    = nullptr;
         void* m_query_pool                                      = nullptr;
         bool m_render_pass_active                               = false;

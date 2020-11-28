@@ -82,12 +82,6 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_CommandList::Wait()
-    {
-        m_cmd_state = RHI_CommandListState::Idle;
-        return true;
-    }
-
     bool RHI_CommandList::Reset()
     {
         m_cmd_state = RHI_CommandListState::Idle;

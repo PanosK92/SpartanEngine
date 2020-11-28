@@ -32,6 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_PipelineCache.h"
 #include "../RHI_DescriptorSetLayout.h"
 #include "../RHI_Semaphore.h"
+#include "../RHI_Fence.h"
 #include "../../Profiling/Profiler.h"
 #include "../../Rendering/Renderer.h"
 //=====================================
@@ -59,8 +60,7 @@ namespace Spartan
         vulkan_utility::debug::set_name(static_cast<VkCommandBuffer>(m_cmd_buffer), "cmd_buffer");
 
         // Sync - Fence
-        vulkan_utility::fence::create(m_processed_fence);
-        vulkan_utility::debug::set_name(static_cast<VkFence>(m_processed_fence), "cmd_buffer_processed");
+        m_processed_fence = make_shared<RHI_Fence>(m_rhi_device, "cmd_buffer_processed");
 
         // Sync - Semaphore
         m_processed_semaphore = make_shared<RHI_Semaphore>(m_rhi_device, "cmd_buffer_processed");
@@ -86,9 +86,6 @@ namespace Spartan
 
         // Wait in case the buffer is still in use by the graphics queue
         m_rhi_device->Queue_Wait(RHI_Queue_Graphics);
-
-        // Sync
-        vulkan_utility::fence::destroy(m_processed_fence);
 
         // Command buffer
         vulkan_utility::command_buffer::destroy(m_swap_chain->GetCmdPool(), m_cmd_buffer);
@@ -219,15 +216,15 @@ namespace Spartan
                 }
             }
         }
-        
-        vulkan_utility::fence::reset(m_processed_fence);
+
+        m_processed_fence->Reset();
 
         if (!m_rhi_device->Queue_Submit(
             RHI_Queue_Graphics,                             // queue
             static_cast<VkCommandBuffer>(m_cmd_buffer),     // cmd buffer
             wait_semaphore,                                 // wait semaphore
             signal_semaphore,                               // signal semaphore
-            m_processed_fence,                              // signal fence
+            m_processed_fence.get(),                        // signal fence
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)  // wait flags
             )
         {
@@ -236,20 +233,6 @@ namespace Spartan
         }
 
         m_cmd_state = RHI_CommandListState::Submitted;
-        return true;
-    }
-
-    bool RHI_CommandList::Wait()
-    {
-        if (m_cmd_state == RHI_CommandListState::Submitted)
-        {
-            if (!vulkan_utility::fence::wait(m_processed_fence))
-                return false;
-
-            m_descriptor_cache->GrowIfNeeded();
-            m_cmd_state = RHI_CommandListState::Idle;
-        }
-
         return true;
     }
 

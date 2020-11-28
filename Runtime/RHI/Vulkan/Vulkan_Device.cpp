@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Spartan.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Semaphore.h"
+#include "../RHI_Fence.h"
 //================================
 
 //= NAMESPACES ===============
@@ -311,7 +312,7 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_Device::Queue_Submit(const RHI_Queue_Type type, void* cmd_buffer, RHI_Semaphore* wait_semaphore /*= nullptr*/, RHI_Semaphore* signal_semaphore /*= nullptr*/, void* signal_fence /*= nullptr*/, uint32_t wait_flags /*= 0*/) const
+    bool RHI_Device::Queue_Submit(const RHI_Queue_Type type, void* cmd_buffer, RHI_Semaphore* wait_semaphore /*= nullptr*/, RHI_Semaphore* signal_semaphore /*= nullptr*/, RHI_Fence* signal_fence /*= nullptr*/, uint32_t wait_flags /*= 0*/) const
     {
         // Validate semaphore states
         if (wait_semaphore)     SP_ASSERT(wait_semaphore->GetState() == RHI_Semaphore_State::Signaled);
@@ -330,14 +331,17 @@ namespace Spartan
         submit_info.pWaitDstStageMask       = &wait_flags;
         submit_info.commandBufferCount      = 1;
         submit_info.pCommandBuffers         = reinterpret_cast<VkCommandBuffer*>(&cmd_buffer);
-        
+
+        // Get signal fence
+        void* vk_signal_fence = signal_fence ? signal_fence->GetResource() : nullptr;
+
         lock_guard<mutex> lock(m_queue_mutex);
-        if (!vulkan_utility::error::check(vkQueueSubmit(static_cast<VkQueue>(Queue_Get(type)), 1, &submit_info, static_cast<VkFence>(signal_fence))))
+        if (!vulkan_utility::error::check(vkQueueSubmit(static_cast<VkQueue>(Queue_Get(type)), 1, &submit_info, static_cast<VkFence>(vk_signal_fence))))
             return false;
 
         // Update semaphore states
-        if (wait_semaphore) wait_semaphore->SetState(RHI_Semaphore_State::Idle);
-        if (signal_semaphore) signal_semaphore->SetState(RHI_Semaphore_State::Signaled);
+        if (wait_semaphore)     wait_semaphore->SetState(RHI_Semaphore_State::Idle);
+        if (signal_semaphore)   signal_semaphore->SetState(RHI_Semaphore_State::Signaled);
 
         return true;
     }

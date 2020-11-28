@@ -21,37 +21,50 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include "Spartan.h"
-#include "../RHI_Semaphore.h"
+#include "../RHI_Fence.h"
 #include "../RHI_Implementation.h"
+#include "../RHI_Device.h"
 //================================
 
 namespace Spartan
 {
-    RHI_Semaphore::RHI_Semaphore(RHI_Device* rhi_device, const char* name /*= nullptr*/)
+    RHI_Fence::RHI_Fence(RHI_Device* rhi_device, const char* name /*= nullptr*/)
     {
         m_rhi_device = rhi_device;
 
         // Describe
-        VkSemaphoreCreateInfo semaphore_info = {};
-        semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-        VkSemaphore* vk_semaphore = reinterpret_cast<VkSemaphore*>(&m_resource);
+        VkFenceCreateInfo fence_info = {};
+        fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 
         // Create
-        if (!vulkan_utility::error::check(vkCreateSemaphore(m_rhi_device->GetContextRhi()->device, &semaphore_info, nullptr, vk_semaphore)))
+        if (!vulkan_utility::error::check(vkCreateFence(m_rhi_device->GetContextRhi()->device, &fence_info, nullptr, reinterpret_cast<VkFence*>(&m_resource))))
             return;
 
         // Name
-        vulkan_utility::debug::set_name(*vk_semaphore, name);
+        vulkan_utility::debug::set_name(static_cast<VkFence>(m_resource), name);
     }
 
-    RHI_Semaphore::~RHI_Semaphore()
+    RHI_Fence::~RHI_Fence()
     {
         if (!m_resource)
             return;
 
-        VkSemaphore semaphore_vk = static_cast<VkSemaphore>(m_resource);
-        vkDestroySemaphore(m_rhi_device->GetContextRhi()->device, semaphore_vk, nullptr);
+        vkDestroyFence(m_rhi_device->GetContextRhi()->device, static_cast<VkFence>(m_resource), nullptr);
         m_resource = nullptr;
+    }
+
+    bool RHI_Fence::IsSignaled()
+    {
+        return vkGetFenceStatus(m_rhi_device->GetContextRhi()->device, reinterpret_cast<VkFence>(m_resource)) == VK_SUCCESS;
+    }
+
+    bool RHI_Fence::Wait(uint64_t timeout /*= std::numeric_limits<uint64_t>::max()*/)
+    {
+        return vulkan_utility::error::check(vkWaitForFences(m_rhi_device->GetContextRhi()->device, 1, reinterpret_cast<VkFence*>(&m_resource), true, timeout));
+    }
+
+    bool RHI_Fence::Reset()
+    {
+        return IsSignaled() ? vulkan_utility::error::check(vkResetFences(m_rhi_device->GetContextRhi()->device, 1, reinterpret_cast<VkFence*>(&m_resource))) : true;
     }
 }
