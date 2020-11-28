@@ -41,9 +41,10 @@ namespace Spartan
         const shared_ptr<RHI_Device>& rhi_device,
         const uint32_t width,
         const uint32_t height,
-        const RHI_Format format        /*= Format_R8G8B8A8_UNORM*/,    
-        const uint32_t buffer_count    /*= 2 */,
-        const uint32_t flags        /*= Present_Immediate */
+        const RHI_Format format     /*= Format_R8G8B8A8_UNORM*/,
+        const uint32_t buffer_count /*= 2 */,
+        const uint32_t flags        /*= Present_Immediate */,
+        const char* name            /*= nullptr */
     )
     {
         // Validate device
@@ -88,11 +89,11 @@ namespace Spartan
         // Save parameters
         m_format        = format;
         m_rhi_device    = rhi_device.get();
-        m_buffer_count    = buffer_count;
-        m_windowed        = true;
-        m_width            = width;
+        m_buffer_count  = buffer_count;
+        m_windowed      = true;
+        m_width         = width;
         m_height        = height;
-        m_flags            = d3d11_utility::swap_chain::validate_flags(flags);
+        m_flags         = d3d11_utility::swap_chain::validate_flags(flags);
 
         // Create swap chain
         {
