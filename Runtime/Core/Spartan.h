@@ -97,9 +97,6 @@ SP_WARNINGS_OFF
 #include <mono/metadata/exception.h>
 #include <mono/metadata/appdomain.h>
 
-// Reflection
-#include <spirv_cross/spirv_hlsl.hpp>
-
 SP_WARNINGS_ON
 //==============================================================================
 
