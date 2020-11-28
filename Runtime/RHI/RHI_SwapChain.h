@@ -43,7 +43,8 @@ namespace Spartan
             uint32_t height,
             RHI_Format format       = RHI_Format_R8G8B8A8_Unorm,
             uint32_t buffer_count   = 2,
-            uint32_t flags          = RHI_Present_Immediate
+            uint32_t flags          = RHI_Present_Immediate,
+            const char* name        = nullptr
         );
         ~RHI_SwapChain();
 
@@ -51,22 +52,16 @@ namespace Spartan
         bool Present();
 
         // Misc
-        uint32_t GetWidth()                 const { return m_width; }
-        uint32_t GetHeight()                const { return m_height; }
-        uint32_t GetBufferCount()           const { return m_buffer_count; }
-        uint32_t GetFlags()                 const { return m_flags; }
-        uint32_t GetCmdIndex()              const { return m_cmd_index; }
-        uint32_t GetImageIndex()            const { return m_image_index; }
-        bool IsInitialized()                const { return m_initialized; }
-        bool PresentEnabled()               const { return m_present_enabled; }
-        RHI_CommandList* GetCmdList()             { return m_cmd_index < static_cast<uint32_t>(m_cmd_lists.size()) ? m_cmd_lists[m_cmd_index].get() : nullptr; }
-
-        void* GetImageAcquiredSemaphore()
-        {
-            void* semaphore = m_image_acquired[m_cmd_index] ? m_image_acquired_semaphore[m_cmd_index] : nullptr;
-            m_image_acquired[m_cmd_index] = false;
-            return semaphore;
-        }
+        uint32_t GetWidth()                     const { return m_width; }
+        uint32_t GetHeight()                    const { return m_height; }
+        uint32_t GetBufferCount()               const { return m_buffer_count; }
+        uint32_t GetFlags()                     const { return m_flags; }
+        uint32_t GetCmdIndex()                  const { return m_cmd_index; }
+        uint32_t GetImageIndex()                const { return m_image_index; }
+        bool IsInitialized()                    const { return m_initialized; }
+        bool PresentEnabled()                   const { return m_present_enabled; }
+        RHI_CommandList* GetCmdList()                 { return m_cmd_index < static_cast<uint32_t>(m_cmd_lists.size()) ? m_cmd_lists[m_cmd_index].get() : nullptr; }
+        RHI_Semaphore* GetImageAcquiredSemaphore()    { return m_image_acquired_semaphore[m_cmd_index].get(); }
 
         // GPU Resources
         void* Get_Resource(uint32_t i = 0)          const { return m_resource[i]; }
@@ -97,9 +92,8 @@ namespace Spartan
         uint32_t m_image_index                  = 0;
         RHI_Device* m_rhi_device                = nullptr;
         std::vector<std::shared_ptr<RHI_CommandList>> m_cmd_lists;
-        std::array<void*, rhi_max_render_target_count> m_image_acquired_semaphore   = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
-        std::array<bool, rhi_max_render_target_count> m_image_acquired              = { false, false, false, false, false, false, false, false };
-        std::array<void*, rhi_max_render_target_count> m_resource_view              = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
-        std::array<void*, rhi_max_render_target_count> m_resource                   = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
+        std::array<std::shared_ptr<RHI_Semaphore>, rhi_max_render_target_count> m_image_acquired_semaphore  = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
+        std::array<void*, rhi_max_render_target_count> m_resource_view                                      = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
+        std::array<void*, rhi_max_render_target_count> m_resource                                           = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
     };
 }

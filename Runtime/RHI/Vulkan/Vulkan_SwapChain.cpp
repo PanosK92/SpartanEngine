@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Device.h"
 #include "../RHI_CommandList.h"
 #include "../RHI_Pipeline.h"
+#include "../RHI_Semaphore.h"
 #include "../../Profiling/Profiler.h"
 #include "../../Rendering/Renderer.h"
 //===================================
@@ -39,7 +40,7 @@ namespace Spartan
 {
     static bool swapchain_create
     (
-        RHI_Context* rhi_context,
+        RHI_Device* rhi_device,
         uint32_t* width,
         uint32_t* height,
         uint32_t buffer_count,
@@ -50,9 +51,11 @@ namespace Spartan
         void*& swap_chain_view_out,
         array<void*, rhi_max_render_target_count>& resource_textures,
         array<void*, rhi_max_render_target_count>& resource_views,
-        array<void*, rhi_max_render_target_count>& image_acquired_semaphore
+        array<std::shared_ptr<RHI_Semaphore>, rhi_max_render_target_count>& image_acquired_semaphore
     )
         {
+            RHI_Context* rhi_context = rhi_device->GetContextRhi();
+
             // Create surface
             VkSurfaceKHR surface = nullptr;
             {
@@ -61,7 +64,7 @@ namespace Spartan
                 create_info.hwnd                        = static_cast<HWND>(window_handle);
                 create_info.hinstance                   = GetModuleHandle(nullptr);
 
-                if (!vulkan_utility::error::check(vkCreateWin32SurfaceKHR(rhi_context->instance, &create_info, nullptr, &surface)))
+                if (!vulkan_utility::error::check(vkCreateWin32SurfaceKHR(rhi_device->GetContextRhi()->instance, &create_info, nullptr, &surface)))
                     return false;
 
                 VkBool32 present_support = false;
@@ -166,27 +169,24 @@ namespace Spartan
             // Semaphores
             for (uint32_t i = 0; i < buffer_count; i++)
             {
-                vulkan_utility::semaphore::create(image_acquired_semaphore[i]);
-                vulkan_utility::debug::set_name(static_cast<VkSemaphore>(image_acquired_semaphore[i]), (string("swapchain_image_acquired_semaphore_") + to_string(i)).c_str());
+                image_acquired_semaphore[i] = make_shared<RHI_Semaphore>(rhi_device, (string("swapchain_image_acquired_semaphore_") + to_string(i)).c_str());
             }
 
             return true;
         }
     
     static void swapchain_destroy(
-        const RHI_Context* rhi_context,
+        RHI_Device* rhi_device,
         uint8_t buffer_count,
         void*& surface,
         void*& swap_chain_view,
         array<void*, rhi_max_render_target_count>& image_views,
-        array<void*, rhi_max_render_target_count>& image_acquired_semaphore
+        array<std::shared_ptr<RHI_Semaphore>, rhi_max_render_target_count>& image_acquired_semaphore
     )
     {
+        RHI_Context* rhi_context = rhi_device->GetContextRhi();
+
         // Semaphores
-        for (uint8_t i = 0; i < buffer_count; i++)
-        {
-            vulkan_utility::semaphore::destroy(image_acquired_semaphore[i]);
-        }
         image_acquired_semaphore.fill(nullptr);
     
         // Image views
@@ -214,9 +214,12 @@ namespace Spartan
         const uint32_t height,
         const RHI_Format format     /*= Format_R8G8B8A8_UNORM */,
         const uint32_t buffer_count /*= 2 */,
-        const uint32_t flags        /*= Present_Immediate */
+        const uint32_t flags        /*= Present_Immediate */,
+        const char* name            /*= nullptr */
     )
     {
+        m_name = name;
+
         // Validate device
         if (!rhi_device || !rhi_device->GetContextRhi()->device)
         {
@@ -250,7 +253,7 @@ namespace Spartan
 
         m_initialized = swapchain_create
         (
-            rhi_device->GetContextRhi(),
+            m_rhi_device,
             &m_width,
             &m_height,
             m_buffer_count,
@@ -290,7 +293,7 @@ namespace Spartan
         // Resources
         swapchain_destroy
         (
-            m_rhi_device->GetContextRhi(),
+            m_rhi_device,
             m_buffer_count,
             m_surface,
             m_swap_chain_view,
@@ -327,7 +330,7 @@ namespace Spartan
         // Destroy previous swap chain
         swapchain_destroy
         (
-            m_rhi_device->GetContextRhi(),
+            m_rhi_device,
             m_buffer_count,
             m_surface,
             m_swap_chain_view,
@@ -338,7 +341,7 @@ namespace Spartan
         // Create the swap chain with the new dimensions
         m_initialized = swapchain_create
         (
-            m_rhi_device->GetContextRhi(),
+            m_rhi_device,
             &m_width,
             &m_height,
             m_buffer_count,
@@ -363,20 +366,20 @@ namespace Spartan
         // Get next cmd index
         uint32_t next_cmd_index = (m_cmd_index + 1) % m_buffer_count;
 
-        if (m_image_acquired[next_cmd_index])
-        {
-            LOG_ERROR("Image acquired semaphore for buffer %d has not been waited for.", next_cmd_index);
-            return false;
-        }
+        // Get signal semaphore
+        RHI_Semaphore* signal_semaphore = m_image_acquired_semaphore[next_cmd_index].get();
+
+        // Validate semaphore state
+        SP_ASSERT(signal_semaphore->GetState() == RHI_Semaphore_State::Idle);
 
         // Acquire next image
         VkResult result = vkAcquireNextImageKHR(
-            m_rhi_device->GetContextRhi()->device,                                  // device
-            static_cast<VkSwapchainKHR>(m_swap_chain_view),                         // swapchain
-            numeric_limits<uint64_t>::max(),                                        // timeout
-            static_cast<VkSemaphore>(m_image_acquired_semaphore[next_cmd_index]),   // signal semaphore
-            nullptr,                                                                // signal fence
-            &m_image_index                                                          // pImageIndex
+            m_rhi_device->GetContextRhi()->device,                      // device
+            static_cast<VkSwapchainKHR>(m_swap_chain_view),             // swapchain
+            numeric_limits<uint64_t>::max(),                            // timeout
+            static_cast<VkSemaphore>(signal_semaphore->GetResource()),  // signal semaphore
+            nullptr,                                                    // signal fence
+            &m_image_index                                              // pImageIndex
         );
 
         // Recreate swapchain with different size (if needed)
@@ -402,8 +405,8 @@ namespace Spartan
         // Save cmd index
         m_cmd_index = next_cmd_index;
 
-        // Updated semaphore
-        m_image_acquired[m_cmd_index] = true;
+        // Update semaphore state
+        signal_semaphore->SetState(RHI_Semaphore_State::Signaled);
 
         return true;
     }
@@ -423,8 +426,14 @@ namespace Spartan
             return false;
         }
 
+        // Get wait semaphore
+        RHI_Semaphore* wait_semaphore = GetCmdList()->GetProcessedSemaphore();
+
+        // Validate semaphore state
+        SP_ASSERT(wait_semaphore->GetState() == RHI_Semaphore_State::Signaled);
+
         // Present
-        if (!m_rhi_device->Queue_Present(m_swap_chain_view, &m_image_index, GetCmdList()->GetProcessedSemaphore()))
+        if (!m_rhi_device->Queue_Present(m_swap_chain_view, &m_image_index, wait_semaphore))
         {
             LOG_ERROR("Failed to present");
             return false;

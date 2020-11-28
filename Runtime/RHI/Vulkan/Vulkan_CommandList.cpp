@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_DescriptorCache.h"
 #include "../RHI_PipelineCache.h"
 #include "../RHI_DescriptorSetLayout.h"
+#include "../RHI_Semaphore.h"
 #include "../../Profiling/Profiler.h"
 #include "../../Rendering/Renderer.h"
 //=====================================
@@ -62,8 +63,7 @@ namespace Spartan
         vulkan_utility::debug::set_name(static_cast<VkFence>(m_processed_fence), "cmd_buffer_processed");
 
         // Sync - Semaphore
-        vulkan_utility::semaphore::create(m_processed_semaphore);
-        vulkan_utility::debug::set_name(static_cast<VkSemaphore>(m_processed_semaphore), "cmd_buffer_processed");
+        m_processed_semaphore = make_shared<RHI_Semaphore>(m_rhi_device, "cmd_buffer_processed");
 
         // Query pool
         if (rhi_context->profiler)
@@ -89,7 +89,6 @@ namespace Spartan
 
         // Sync
         vulkan_utility::fence::destroy(m_processed_fence);
-        vulkan_utility::semaphore::destroy(m_processed_semaphore);
 
         // Command buffer
         vulkan_utility::command_buffer::destroy(m_swap_chain->GetCmdPool(), m_cmd_buffer);
@@ -156,7 +155,7 @@ namespace Spartan
 
         m_cmd_state                     = RHI_CommandListState::Recording;
         m_flushed                       = false;
-        m_processed_semaphore_submited  = false;
+
         return true;
     }
 
@@ -191,9 +190,12 @@ namespace Spartan
             return false;
         }
 
+        // Ensure the processes semaphore can be used
+        SP_ASSERT(m_processed_semaphore->GetState() == RHI_Semaphore_State::Idle);
+
         // Get wait and signal semaphores
-        void* wait_semaphore    = nullptr;
-        void* signal_semaphore  = nullptr;
+        RHI_Semaphore* wait_semaphore    = nullptr;
+        RHI_Semaphore* signal_semaphore  = nullptr;
         if (m_pipeline)
         {
             if (RHI_PipelineState* state = m_pipeline->GetPipelineState())
@@ -207,8 +209,13 @@ namespace Spartan
                         return true;
                     }
 
-                    wait_semaphore      = state->render_target_swapchain->GetImageAcquiredSemaphore();
-                    signal_semaphore    = m_processed_semaphore; // swapchain waits for this when presenting
+                    // Wait semaphore
+                    if (state->render_target_swapchain->GetImageAcquiredSemaphore()->GetState() == RHI_Semaphore_State::Signaled)
+                    {
+                        wait_semaphore = state->render_target_swapchain->GetImageAcquiredSemaphore();
+                    }
+
+                    signal_semaphore = m_processed_semaphore.get(); // swapchain waits for this when presenting
                 }
             }
         }
@@ -226,11 +233,6 @@ namespace Spartan
         {
             LOG_ERROR("Failed to submit the command list.");
             return false;
-        }
-
-        if (signal_semaphore)
-        {
-            m_processed_semaphore_submited = true;
         }
 
         m_cmd_state = RHI_CommandListState::Submitted;

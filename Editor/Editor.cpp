@@ -49,10 +49,10 @@ using namespace Spartan;
  
 namespace _editor
 {
+    const char* editor_name     = "SpartanEditor";
     Widget* widget_menu_bar     = nullptr;
     Widget* widget_toolbar      = nullptr;
     Widget* widget_world        = nullptr;
-    const char* editor_name     = "SpartanEditor";
     bool show                   = true;
     Renderer* renderer          = nullptr;
     Profiler* profiler          = nullptr;
