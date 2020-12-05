@@ -35,8 +35,7 @@ using namespace Spartan;
 
 Widget_ResourceCache::Widget_ResourceCache(Editor* editor) : Widget(editor)
 {
-    m_title            = "Resource Cache";
-    m_flags            |= ImGuiWindowFlags_HorizontalScrollbar;
+    m_title         = "Resource Cache";
     m_size          = ImVec2(1366, 768);
     m_is_visible    = false;
 }
@@ -59,57 +58,72 @@ inline void print_memory(uint64_t memory)
 
 void Widget_ResourceCache::Tick()
 {
-    auto resource_cache            = m_context->GetSubsystem<ResourceCache>();
-    auto resources                = resource_cache->GetByType();
-    const auto memory_usage_cpu    = resource_cache->GetMemoryUsageCpu() / 1000.0f / 1000.0f;
-    const auto memory_usage_gpu = resource_cache->GetMemoryUsageGpu() / 1000.0f / 1000.0f;
+    auto resource_cache             = m_context->GetSubsystem<ResourceCache>();
+    auto resources                  = resource_cache->GetByType();
+    const float memory_usage_cpu    = resource_cache->GetMemoryUsageCpu() / 1000.0f / 1000.0f;
+    const float memory_usage_gpu    = resource_cache->GetMemoryUsageGpu() / 1000.0f / 1000.0f;
 
     ImGui::Text("Resource count: %d, Memory usage cpu: %d Mb, Memory usage gpu: %d Mb", static_cast<uint32_t>(resources.size()), static_cast<uint32_t>(memory_usage_cpu), static_cast<uint32_t>(memory_usage_gpu));
     ImGui::Separator();
-    ImGui::Columns(7, "##Widget_ResourceCache");
 
-    // Set column width - Has to be done only once in order to allow for the user to resize them
-    if (!m_column_width_set)
+    static ImGuiTableFlags flags =
+        ImGuiTableFlags_Borders             | // Draw all borders.
+        ImGuiTableFlags_RowBg               | // Set each RowBg color with ImGuiCol_TableRowBg or ImGuiCol_TableRowBgAlt (equivalent of calling TableSetBgColor with ImGuiTableBgFlags_RowBg0 on each row manually)
+        ImGuiTableFlags_Resizable           | // Allow resizing columns.
+        ImGuiTableFlags_ContextMenuInBody   | // Right-click on columns body/contents will display table context menu. By default it is available in TableHeadersRow().
+        ImGuiTableFlags_ScrollX             | // Enable horizontal scrolling. Require 'outer_size' parameter of BeginTable() to specify the container size. Changes default sizing policy. Because this create a child window, ScrollY is currently generally recommended when using ScrollX.
+        ImGuiTableFlags_ScrollY;              // Enable vertical scrolling. Require 'outer_size' parameter of BeginTable() to specify the container size.
+
+    static ImVec2 size = ImVec2(-1.0f);
+    if (ImGui::BeginTable("##Widget_ResourceCache", 7, flags, size))
     {
-        ImGui::SetColumnWidth(0, m_size.x * 0.15f);
-        ImGui::SetColumnWidth(1, m_size.x * 0.05f);
-        ImGui::SetColumnWidth(2, m_size.x * 0.15f);
-        ImGui::SetColumnWidth(3, m_size.x * 0.3f);
-        ImGui::SetColumnWidth(4, m_size.x * 0.3f);
-        ImGui::SetColumnWidth(5, m_size.x * 0.05f);
-        m_column_width_set = true;
-    }
+        // Headers
+        ImGui::TableSetupColumn("Type");
+        ImGui::TableSetupColumn("ID");
+        ImGui::TableSetupColumn("Name");
+        ImGui::TableSetupColumn("Path");
+        ImGui::TableSetupColumn("Path (native)");
+        ImGui::TableSetupColumn("Size CPU");
+        ImGui::TableSetupColumn("Size GPU");
+        ImGui::TableHeadersRow();
 
-    // Set column titles
-    ImGui::Text("Type");            ImGui::NextColumn();
-    ImGui::Text("ID");              ImGui::NextColumn();
-    ImGui::Text("Name");            ImGui::NextColumn();
-    ImGui::Text("Path");            ImGui::NextColumn();
-    ImGui::Text("Path (native)");   ImGui::NextColumn();
-    ImGui::Text("Size CPU");        ImGui::NextColumn();
-    ImGui::Text("Size GPU");        ImGui::NextColumn();
-    ImGui::Separator();
-
-    // Fill rows with resource information
-    for (const shared_ptr<IResource>& resource : resources)
-    {
-        if (Spartan_Object* object = dynamic_cast<Spartan_Object*>(resource.get()))
+        for (const shared_ptr<IResource>& resource : resources)
         {
-            // Type
-            ImGui::Text(resource->GetResourceTypeCstr());                    ImGui::NextColumn();
-            // ID
-            ImGui::Text(to_string(object->GetId()).c_str());                ImGui::NextColumn();
-            // Name
-            ImGui::Text(resource->GetResourceName().c_str());                ImGui::NextColumn();
-            // Path
-            ImGui::Text(resource->GetResourceFilePath().c_str());            ImGui::NextColumn();
-            // Path (native)
-            ImGui::Text(resource->GetResourceFilePathNative().c_str());        ImGui::NextColumn();
-            // Memory CPU
-            print_memory(object->GetSizeCpu());                             ImGui::NextColumn();
-            // Memory GPU
-            print_memory(object->GetSizeGpu());                             ImGui::NextColumn();
+            if (Spartan_Object* object = dynamic_cast<Spartan_Object*>(resource.get()))
+            {
+                // Switch row
+                ImGui::TableNextRow();
+
+                // Type
+                ImGui::TableSetColumnIndex(0);
+                ImGui::Text(resource->GetResourceTypeCstr());
+
+                // ID
+                ImGui::TableSetColumnIndex(1);
+                ImGui::Text(to_string(object->GetId()).c_str());
+
+                // Name
+                ImGui::TableSetColumnIndex(2);
+                ImGui::Text(resource->GetResourceName().c_str());
+
+                // Path
+                ImGui::TableSetColumnIndex(3);
+                ImGui::Text(resource->GetResourceFilePath().c_str());
+
+                // Path (native)
+                ImGui::TableSetColumnIndex(4);
+                ImGui::Text(resource->GetResourceFilePathNative().c_str());
+                
+                // Memory CPU
+                ImGui::TableSetColumnIndex(5);
+                print_memory(object->GetSizeCpu());
+                
+                // Memory GPU
+                ImGui::TableSetColumnIndex(6);
+                print_memory(object->GetSizeGpu());
+            }
         }
+
+        ImGui::EndTable();
     }
-    ImGui::Columns(1);
 }

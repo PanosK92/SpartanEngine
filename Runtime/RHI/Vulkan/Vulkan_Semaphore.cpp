@@ -42,7 +42,11 @@ namespace Spartan
             return;
 
         // Name
-        vulkan_utility::debug::set_name(*vk_semaphore, name);
+        if (name)
+        {
+            m_name = name;
+            vulkan_utility::debug::set_name(*vk_semaphore, name);
+        }
     }
 
     RHI_Semaphore::~RHI_Semaphore()
