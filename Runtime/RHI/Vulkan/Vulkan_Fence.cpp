@@ -41,7 +41,11 @@ namespace Spartan
             return;
 
         // Name
-        vulkan_utility::debug::set_name(static_cast<VkFence>(m_resource), name);
+        if (name)
+        {
+            m_name = name;
+            vulkan_utility::debug::set_name(static_cast<VkFence>(m_resource), name);
+        }
     }
 
     RHI_Fence::~RHI_Fence()

@@ -187,7 +187,7 @@ namespace Spartan
             return false;
         }
 
-        // Ensure the processes semaphore can be used
+        // Ensure the processed semaphore can be used
         SP_ASSERT(m_processed_semaphore->GetState() == RHI_Semaphore_State::Idle);
 
         // Get wait and signal semaphores

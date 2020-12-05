@@ -46,7 +46,7 @@ public:
 
     // Properties
     bool IsWindow()                     const { return m_is_window; }
-    bool& GetVisible()                          { return m_is_visible; }
+    bool& GetVisible()                        { return m_is_visible; }
     void SetVisible(bool is_visible)          { m_is_visible = is_visible; }
     float GetHeight()                   const { return m_height; }
     ImGuiWindow* GetWindow()            const { return m_window; }

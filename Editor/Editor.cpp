@@ -134,11 +134,13 @@ void Editor::OnTick()
     _editor::show = !_editor::renderer->GetIsFullscreen() && m_initialised;
     RHI_CommandList* cmd_list = _editor::swapchain->GetCmdList();
 
-    // Engine - tick
+    // Cmd - begin
     if (_editor::swapchain->PresentEnabled())
     {
         cmd_list->Begin();
     }
+
+    // Engine - tick
     m_engine->Tick();
 
     // Editor - main window
@@ -179,7 +181,7 @@ void Editor::OnTick()
         _editor::renderer->Pass_CopyToBackbuffer(cmd_list);
     }
 
-    // Submit command list
+    // Cmd - end and submit
     cmd_list->End();
     cmd_list->Submit();
 

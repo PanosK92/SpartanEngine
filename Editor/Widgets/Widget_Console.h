@@ -69,7 +69,6 @@ public:
 private:
     bool m_scroll_to_bottom         = false;
     uint32_t m_log_max_count        = 1000;
-    float m_log_type_max_width[3]   = { 0, 0, 0 };
     bool m_log_type_visibility[3]   = { true, true, true };
     uint32_t m_log_type_count[3]    = { 0, 0, 0 };
     const std::vector<Spartan::Math::Vector4> m_log_type_color =
@@ -82,5 +81,4 @@ private:
     std::shared_ptr<EngineLogger> m_logger;
     std::deque<LogPackage> m_logs;
     ImGuiTextFilter m_log_filter;
-    LogPackage m_log_selected;
 };

@@ -148,7 +148,7 @@ void Widget_World::TreeAddEntity(Entity* entity)
 
     m_expanded_to_selection             = false;
     bool is_selected_entity             = false;
-    const bool is_visible_in_hierarchy    = entity->IsVisibleInHierarchy();
+    const bool is_visible_in_hierarchy  = entity->IsVisibleInHierarchy();
     bool has_visible_children            = false;
    
 

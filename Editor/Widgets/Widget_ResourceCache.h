@@ -32,5 +32,4 @@ public:
     void Tick() override;
 
 private:
-    bool m_column_width_set = false;
 };
