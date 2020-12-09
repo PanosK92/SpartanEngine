@@ -68,7 +68,7 @@ void Widget_RenderOptions::TickVisible()
         bool do_dithering               = m_renderer->GetOption(Render_Dithering);
         bool do_ssgi                    = m_renderer->GetOption(Render_Ssgi);
         int resolution_shadow           = m_renderer->GetOptionValue<int>(Option_Value_ShadowResolution);
-        float fog_density                       = m_renderer->GetOptionValue<float>(Option_Value_Fog);
+        float fog_density               = m_renderer->GetOptionValue<float>(Option_Value_Fog);
 
         // Show
         {
@@ -378,8 +378,7 @@ void Widget_RenderOptions::TickVisible()
                     ImGui::EndCombo();
                 }
 
-                uint64_t flag = selection_int == 0 ? 0 : 1 << static_cast<uint64_t>(selection_int - 1U);
-                m_renderer->SetRenderTargetDebug(flag);
+                m_renderer->SetRenderTargetDebug(static_cast<RendererRt>(selection_int));
             }
             ImGui::Separator();
 

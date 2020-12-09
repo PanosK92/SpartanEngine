@@ -139,6 +139,7 @@ namespace Spartan
     // Render targets
     enum class RendererRt : uint8_t
     {
+        Undefined,
         Gbuffer_Albedo,
         Gbuffer_Normal,
         Gbuffer_Material,
@@ -179,7 +180,7 @@ namespace Spartan
         Render_Debug_Physics            = 1 << 7,
         Render_Debug_Wireframe          = 1 << 8,
         Render_Bloom                    = 1 << 9,
-        Render_VolumetricFog       = 1 << 10,
+        Render_VolumetricFog            = 1 << 10,
         Render_AntiAliasing_Taa         = 1 << 11,
         Render_AntiAliasing_Fxaa        = 1 << 12,
         Render_Ssao                     = 1 << 13,
