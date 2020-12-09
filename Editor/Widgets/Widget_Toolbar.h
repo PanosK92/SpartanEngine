@@ -32,9 +32,10 @@ class Widget_Toolbar : public Widget
 {
 public:
     Widget_Toolbar(Editor* editor);
-    void Tick() override;
+
+    void TickAlways() override;
 
 private:
     std::unordered_map<Icon_Type, Widget*> m_widgets;
-    float m_button_size = 20.0f;
+    float m_button_size = 16.0f;
 };

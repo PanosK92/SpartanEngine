@@ -62,7 +62,8 @@ class Widget_Console : public Widget
 {
 public:
     Widget_Console(Editor* editor);
-    void Tick() override;
+
+    void TickVisible() override;
     void AddLogPackage(const LogPackage& package);
     void Clear();
 

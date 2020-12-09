@@ -29,7 +29,8 @@ class Widget_ResourceCache : public Widget
 {
 public:
     Widget_ResourceCache(Editor* editor);
-    void Tick() override;
+
+    void TickVisible() override;
 
 private:
 };

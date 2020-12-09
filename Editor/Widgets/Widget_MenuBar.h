@@ -28,16 +28,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //========================================
 
 namespace Spartan { class Context; }
+class Widget_Toolbar;
 
 class Widget_MenuBar : public Widget
 {
 public:
     Widget_MenuBar(Editor* editor);
-    void Tick() override;
+
+    void TickAlways() override;
+    float GetPadding() { return 8.0f; }
 
 private:
     void ShowFileDialog() const;
     void ShowAboutWindow() const;
 
-    std::unique_ptr<FileDialog> m_fileDialog;
+    std::unique_ptr<Widget_Toolbar> m_tool_bar;
+    std::unique_ptr<FileDialog> m_file_dialog;
 };

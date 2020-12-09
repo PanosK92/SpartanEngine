@@ -32,7 +32,8 @@ class Widget_Assets : public Widget
 {
 public:
     Widget_Assets(Editor* editor);
-    void Tick() override;
+
+    void TickVisible() override;
 
 private:
     void OnPathClicked(const std::string& path) const;

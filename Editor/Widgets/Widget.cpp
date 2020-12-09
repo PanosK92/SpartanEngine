@@ -35,102 +35,123 @@ Widget::Widget(Editor* editor)
     m_window    = nullptr;
 }
 
-bool Widget::Begin()
+void Widget::TickAlways()
 {
-    // Callback
-    if (m_callback_on_start)
-    {
-        m_callback_on_start();
-    }
 
-    if (!m_is_window)
-        return true;
-
-    if (!m_is_visible)
-        return false;
-
-    TIME_BLOCK_START_NAMED(m_profiler, m_title.c_str());
-
-    // Callback
-    if (m_callback_on_visible)
-    {
-        m_callback_on_visible();
-    }
-
-    // Position
-    if (m_position.x != -1.0f && m_position.y != -1.0f)
-    {
-        ImGui::SetNextWindowPos(m_position);
-    }
-
-    // Padding
-    if (m_padding.x != -1.0f && m_padding.y != -1.0f)
-    {
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, m_padding);
-        m_var_pushes++;
-    }
-
-    // Alpha
-    if (m_alpha != -1.0f)
-    {
-        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, m_alpha);
-        m_var_pushes++;
-    }
-
-    // Size
-    if (m_size.x != -1.0f && m_size.y != -1.0f)
-    {
-        ImGui::SetNextWindowSize(m_size, ImGuiCond_FirstUseEver);
-    }
-
-    // Max size
-    if ((m_size.x != -1.0f && m_size.y != -1.0f) || (m_size_max.x != FLT_MAX && m_size_max.y != FLT_MAX))
-    {
-        ImGui::SetNextWindowSizeConstraints(m_size, m_size_max);
-    }
-
-    // Begin
-    if (ImGui::Begin(m_title.c_str(), &m_is_visible, m_flags))
-    {
-        m_window    = ImGui::GetCurrentWindow();
-        m_height    = ImGui::GetWindowHeight();
-        m_begun     = true;
-    }
-    else if (m_window && m_window->Hidden)
-    {
-        // Enters here if the window is hidden as part of an unselected tab.
-        // ImGui::Begin() makes the window but returns false, then ImGui still expects ImGui::End() to be called.
-        // So we make sure that when Widget::End() is called, ImGui::End() get's called as well.
-        // Note: ImGui's docking is in beta, so maybe it's at fault here ?
-        m_begun = true;
-    }
-
-    // Begin callback
-    if (m_begun && m_callback_on_begin)
-    {
-        m_callback_on_begin();
-    }
-
-    return m_begun;
 }
 
-bool Widget::End()
+void Widget::TickVisible()
 {
-    // End
-    if (m_begun)
+
+}
+
+void Widget::OnShow()
+{
+
+}
+
+void Widget::OnHide()
+{
+
+}
+
+void Widget::OnPushStyleVar()
+{
+
+}
+
+void Widget::Tick()
+{
+    TickAlways();
+
+    if (!m_is_window)
+        return;
+
+    // ImGui::Begin()
+    bool begun = false;
     {
-        ImGui::End();
+        if (!m_is_visible)
+            return;
+
+        TIME_BLOCK_START_NAMED(m_profiler, m_title.c_str());
+
+        // Position
+        if (m_position.x != -1.0f && m_position.y != -1.0f)
+        {
+            ImGui::SetNextWindowPos(m_position);
+        }
+
+        // Padding
+        if (m_padding.x != -1.0f && m_padding.y != -1.0f)
+        {
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, m_padding);
+            m_var_pushes++;
+        }
+
+        // Alpha
+        if (m_alpha != -1.0f)
+        {
+            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, m_alpha);
+            m_var_pushes++;
+        }
+
+        // Size
+        if (m_size.x != -1.0f && m_size.y != -1.0f)
+        {
+            ImGui::SetNextWindowSize(m_size, ImGuiCond_FirstUseEver);
+        }
+
+        // Max size
+        if ((m_size.x != -1.0f && m_size.y != -1.0f) || (m_size_max.x != FLT_MAX && m_size_max.y != FLT_MAX))
+        {
+            ImGui::SetNextWindowSizeConstraints(m_size, m_size_max);
+        }
+
+        // Callback
+        OnPushStyleVar();
+
+        // Begin
+        if (ImGui::Begin(m_title.c_str(), &m_is_visible, m_flags))
+        {
+            m_window = ImGui::GetCurrentWindow();
+            m_height = ImGui::GetWindowHeight();
+            begun = true;
+        }
+        else if (m_window && m_window->Hidden)
+        {
+            // Enters here if the window is hidden as part of an unselected tab.
+            // ImGui::Begin() makes the window but returns false, then ImGui still expects ImGui::End() to be called.
+            // So we make sure that when Widget::End() is called, ImGui::End() get's called as well.
+            // Note: ImGui's docking is in beta, so maybe it's at fault here ?
+            begun = true;
+        }
+
+        // Callbacks
+        if (m_window && m_window->Appearing)
+        {
+            OnShow();
+        }
+        else if (!m_is_visible)
+        {
+            OnHide();
+        }
     }
 
-    // Pop style variables
-    ImGui::PopStyleVar(m_var_pushes);
-    m_var_pushes = 0;
+    if (begun)
+    {
+        TickVisible();
 
-    // End profiling
-    TIME_BLOCK_END(m_profiler);
+        // ImGui::End()
+        {
+            // End
+            ImGui::End();
 
-    // Reset state
-    m_begun = false;
+            // Pop style variables
+            ImGui::PopStyleVar(m_var_pushes);
+            m_var_pushes = 0;
 
-    return true;
+            // End profiling
+            TIME_BLOCK_END(m_profiler);
+        }
+    }
 }

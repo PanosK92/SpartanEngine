@@ -49,7 +49,7 @@ Widget_Assets::Widget_Assets(Editor* editor) : Widget(editor)
     m_fileDialogView->SetCallbackOnItemClicked([this](const string& str) { OnPathClicked(str); });
 }
 
-void Widget_Assets::Tick()
+void Widget_Assets::TickVisible()
 {    
     if (ImGui::Button("Import"))
     {

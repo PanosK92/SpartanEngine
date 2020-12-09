@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =============================
 #include "Widget_MenuBar.h"
+#include "Widget_Toolbar.h"
 #include "../WidgetsDeferred/FileDialog.h"
 #include "Core/Settings.h"
 #include "Rendering/Model.h"
@@ -46,12 +47,14 @@ Widget_MenuBar::Widget_MenuBar(Editor* editor) : Widget(editor)
 {
     m_title                 = "MenuBar";
     m_is_window             = false;
-    m_fileDialog            = make_unique<FileDialog>(m_context, true, FileDialog_Type_FileSelection, FileDialog_Op_Open, FileDialog_Filter_Scene);
+    m_tool_bar              = make_unique<Widget_Toolbar>(editor);
+    m_file_dialog           = make_unique<FileDialog>(m_context, true, FileDialog_Type_FileSelection, FileDialog_Op_Open, FileDialog_Filter_Scene);
     _Widget_MenuBar::world  = m_context->GetSubsystem<World>();
 }
 
-void Widget_MenuBar::Tick()
+void Widget_MenuBar::TickAlways()
 {
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(GetPadding(), GetPadding()));
     if (ImGui::BeginMainMenuBar())
     {
         if (ImGui::BeginMenu("World"))
@@ -65,7 +68,7 @@ void Widget_MenuBar::Tick()
 
             if (ImGui::MenuItem("Load"))
             {
-                m_fileDialog->SetOperation(FileDialog_Op_Load);
+                m_file_dialog->SetOperation(FileDialog_Op_Load);
                 _Widget_MenuBar::g_fileDialogVisible = true;
             }
 
@@ -73,13 +76,13 @@ void Widget_MenuBar::Tick()
 
             if (ImGui::MenuItem("Save"))
             {
-                m_fileDialog->SetOperation(FileDialog_Op_Save);
+                m_file_dialog->SetOperation(FileDialog_Op_Save);
                 _Widget_MenuBar::g_fileDialogVisible = true;
             }
 
             if (ImGui::MenuItem("Save As..."))
             {
-                m_fileDialog->SetOperation(FileDialog_Op_Save);
+                m_file_dialog->SetOperation(FileDialog_Op_Save);
                 _Widget_MenuBar::g_fileDialogVisible = true;
             }
 
@@ -100,8 +103,14 @@ void Widget_MenuBar::Tick()
             ImGui::EndMenu();
         }
 
+        // Tool bar
+        ImGui::Spacing();
+        m_tool_bar->Tick();
+        
+
         ImGui::EndMainMenuBar();
     }
+    ImGui::PopStyleVar();
 
     if (_Widget_MenuBar::imgui_metrics) { ImGui::ShowMetricsWindow(); }
     if (_Widget_MenuBar::imgui_style)   { ImGui::Begin("Style Editor", nullptr, ImGuiWindowFlags_NoDocking); ImGui::ShowStyleEditor(); ImGui::End(); }
@@ -118,10 +127,10 @@ void Widget_MenuBar::ShowFileDialog() const
         ImGui::SetNextWindowFocus();
     }
 
-    if (m_fileDialog->Show(&_Widget_MenuBar::g_fileDialogVisible, nullptr, &_Widget_MenuBar::g_fileDialogSelection))
+    if (m_file_dialog->Show(&_Widget_MenuBar::g_fileDialogVisible, nullptr, &_Widget_MenuBar::g_fileDialogSelection))
     {
         // LOAD
-        if (m_fileDialog->GetOperation() == FileDialog_Op_Open || m_fileDialog->GetOperation() == FileDialog_Op_Load)
+        if (m_file_dialog->GetOperation() == FileDialog_Op_Open || m_file_dialog->GetOperation() == FileDialog_Op_Load)
         {
             // Scene
             if (FileSystem::IsEngineSceneFile(_Widget_MenuBar::g_fileDialogSelection))
@@ -131,10 +140,10 @@ void Widget_MenuBar::ShowFileDialog() const
             }
         }
         // SAVE
-        else if (m_fileDialog->GetOperation() == FileDialog_Op_Save)
+        else if (m_file_dialog->GetOperation() == FileDialog_Op_Save)
         {
             // Scene
-            if (m_fileDialog->GetFilter() == FileDialog_Filter_Scene)
+            if (m_file_dialog->GetFilter() == FileDialog_Filter_Scene)
             {
                 EditorHelper::Get().SaveWorld(_Widget_MenuBar::g_fileDialogSelection);
                 _Widget_MenuBar::g_fileDialogVisible = false;

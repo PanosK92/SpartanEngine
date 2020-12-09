@@ -151,7 +151,7 @@ Widget_Properties::Widget_Properties(Editor* editor) : Widget(editor)
     _Widget_Properties::scene            = m_context->GetSubsystem<World>();  
 }
 
-void Widget_Properties::Tick()
+void Widget_Properties::TickVisible()
 {
     ImGui::PushItemWidth(ComponentProperty::g_max_width);
 

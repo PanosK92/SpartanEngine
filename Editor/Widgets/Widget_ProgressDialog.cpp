@@ -37,42 +37,39 @@ namespace _Widget_ProgressDialog
 
 Widget_ProgressDialog::Widget_ProgressDialog(Editor* editor) : Widget(editor)
 {
-    m_title                = "Hold on...";
-    m_is_visible        = false;
-    m_progress            = 0.0f;
-    m_size              = Vector2(_Widget_ProgressDialog::width, 83.0f);
-    m_flags                |= ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoDocking;
-    m_callback_on_start = [this]()
-    {
-        // Determine if an operation is in progress
-        ProgressReport& progressReport  = ProgressReport::Get();
-        const bool is_loading_model     = progressReport.GetIsLoading(g_progress_model_importer);
-        const bool is_loading_scene     = progressReport.GetIsLoading(g_progress_world);
-        const bool in_progress          = is_loading_model || is_loading_scene;
-
-        // Acquire progress
-        if (is_loading_model)
-        {
-            m_progress          = progressReport.GetPercentage(g_progress_model_importer);
-            m_progressStatus    = progressReport.GetStatus(g_progress_model_importer);
-        }
-        else if (is_loading_scene)
-        {
-            m_progress          = progressReport.GetPercentage(g_progress_world);
-            m_progressStatus    = progressReport.GetStatus(g_progress_world);
-        }
-
-        // Show only if an operation is in progress
-        m_is_visible = in_progress;
-    };
+    m_title         = "Hold on...";
+    m_is_visible    = false;
+    m_progress      = 0.0f;
+    m_size          = Vector2(_Widget_ProgressDialog::width, 83.0f);
+    m_flags         |= ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoDocking;
 }
 
-void Widget_ProgressDialog::Tick()
+void Widget_ProgressDialog::TickAlways()
 {
-    if (!m_is_visible)
-        return;
+    // Determine if an operation is in progress
+    ProgressReport& progressReport  = ProgressReport::Get();
+    const bool is_loading_model     = progressReport.GetIsLoading(g_progress_model_importer);
+    const bool is_loading_scene     = progressReport.GetIsLoading(g_progress_world);
+    const bool in_progress          = is_loading_model || is_loading_scene;
 
-    // Show dialog
+    // Acquire progress
+    if (is_loading_model)
+    {
+        m_progress          = progressReport.GetPercentage(g_progress_model_importer);
+        m_progressStatus    = progressReport.GetStatus(g_progress_model_importer);
+    }
+    else if (is_loading_scene)
+    {
+        m_progress          = progressReport.GetPercentage(g_progress_world);
+        m_progressStatus    = progressReport.GetStatus(g_progress_world);
+    }
+
+    // Show only if an operation is in progress
+    SetVisible(in_progress);
+}
+
+void Widget_ProgressDialog::TickVisible()
+{
     ImGui::SetWindowFocus();
     ImGui::PushItemWidth(_Widget_ProgressDialog::width - ImGui::GetStyle().WindowPadding.x * 2.0f);
     ImGui::ProgressBar(m_progress, ImVec2(0.0f, 0.0f));

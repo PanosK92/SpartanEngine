@@ -54,7 +54,8 @@ class Widget_ShaderEditor : public Widget
 {
 public:
     Widget_ShaderEditor(Editor* editor);
-    void Tick() override;
+
+    void TickVisible() override;
 
 private:
     void ShowShaderSource();

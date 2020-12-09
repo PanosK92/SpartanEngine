@@ -48,7 +48,7 @@ Widget_ShaderEditor::Widget_ShaderEditor(Editor* editor) : Widget(editor)
     m_input         = m_context->GetSubsystem<Input>();
 }
 
-void Widget_ShaderEditor::Tick()
+void Widget_ShaderEditor::TickVisible()
 {
     ShowShaderSource();
     ImGui::SameLine();

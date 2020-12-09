@@ -1,4 +1,4 @@
-/*
+#/*
 Copyright(c) 2016-2020 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -47,35 +47,35 @@ using namespace Spartan;
 
 namespace _Widget_World
 {
-    static World* g_world            = nullptr;
-    static Input* g_input            = nullptr;
-    static bool g_popupRenameentity    = false;
+    static World* g_world           = nullptr;
+    static Input* g_input           = nullptr;
+    static bool g_popupRenameentity = false;
     static ImGuiEx::DragDropPayload g_payload;
     // entities in relation to mouse events
-    static Entity* g_entity_copied    = nullptr;
-    static Entity* g_entity_hovered    = nullptr;
-    static Entity* g_entity_clicked    = nullptr;
+    static Entity* g_entity_copied  = nullptr;
+    static Entity* g_entity_hovered = nullptr;
+    static Entity* g_entity_clicked = nullptr;
 }
 
 Widget_World::Widget_World(Editor* editor) : Widget(editor)
 {
-    m_title                    = "World";
+    m_title = "World";
+    m_flags |= ImGuiWindowFlags_HorizontalScrollbar;
+
     _Widget_World::g_world    = m_context->GetSubsystem<World>();
     _Widget_World::g_input    = m_context->GetSubsystem<Input>();
-
-    m_flags |= ImGuiWindowFlags_HorizontalScrollbar;
 
     // Subscribe to entity clicked engine event
     EditorHelper::Get().g_on_entity_selected = [this](){ SetSelectedEntity(EditorHelper::Get().g_selected_entity.lock(), false); };
 }
 
-void Widget_World::Tick()
+void Widget_World::TickVisible()
 {
     // If something is being loaded, don't parse the hierarchy
-    auto& progress_report            = ProgressReport::Get();
-    const auto is_loading_model        = progress_report.GetIsLoading(g_progress_model_importer);
-    const auto is_loading_scene        = progress_report.GetIsLoading(g_progress_world);
-    const auto is_loading            = is_loading_model || is_loading_scene;
+    auto& progress_report       = ProgressReport::Get();
+    const auto is_loading_model = progress_report.GetIsLoading(g_progress_model_importer);
+    const auto is_loading_scene = progress_report.GetIsLoading(g_progress_world);
+    const auto is_loading       = is_loading_model || is_loading_scene;
     if (is_loading)
         return;
     
@@ -97,7 +97,7 @@ void Widget_World::TreeShow()
 {
     OnTreeBegin();
 
-    if (ImGui::TreeNodeEx("Root", ImGuiTreeNodeFlags_DefaultOpen))
+    if (ImGui::TreeNodeEx("Root", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanFullWidth))
     {
         // Dropping on the scene node should unparent the entity
         if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayload_Entity))
@@ -149,7 +149,7 @@ void Widget_World::TreeAddEntity(Entity* entity)
     m_expanded_to_selection             = false;
     bool is_selected_entity             = false;
     const bool is_visible_in_hierarchy  = entity->IsVisibleInHierarchy();
-    bool has_visible_children            = false;
+    bool has_visible_children           = false;
    
 
     // Don't draw invisible entities
@@ -168,7 +168,7 @@ void Widget_World::TreeAddEntity(Entity* entity)
     }
 
     // Flags
-    ImGuiTreeNodeFlags node_flags    = ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_SpanAvailWidth;
+    ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_SpanFullWidth;
 
     // Flag - Is expandable (has children) ?
     node_flags |= has_visible_children ? ImGuiTreeNodeFlags_OpenOnArrow : ImGuiTreeNodeFlags_Leaf; 
@@ -203,7 +203,7 @@ void Widget_World::TreeAddEntity(Entity* entity)
         _Widget_World::g_entity_hovered = entity;
     }
 
-    EntityHandleDragDrop(entity);    
+    EntityHandleDragDrop(entity);
 
     // Recursively show all child nodes
     if (is_node_open)

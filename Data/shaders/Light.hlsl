@@ -78,12 +78,12 @@ float3 get_light_direction(Light light, Surface surface)
     return direction;
 }
 
-//= INCLUDES =====================
+//= INCLUDES ================
 #include "BRDF.hlsl"
 #include "ShadowMapping.hlsl"
-#include "VolumetricLighting.hlsl"
+#include "VolumetricFog.hlsl"
 #include "Fog.hlsl"
-//================================
+//===========================
 
 [numthreads(thread_group_count_x, thread_group_count_y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)

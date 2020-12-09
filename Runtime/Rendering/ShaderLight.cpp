@@ -51,7 +51,7 @@ namespace Spartan
         flags |= light->GetShadowsEnabled()                                                                 ? Shader_Light_Shadows                  : flags;
         flags |= (light->GetShadowsScreenSpaceEnabled() && (renderer_flags & Render_ScreenSpaceShadows))    ? Shader_Light_ShadowsScreenSpace       : flags;
         flags |= light->GetShadowsTransparentEnabled()                                                      ? Shader_Light_ShadowsTransparent       : flags;
-        flags |= (light->GetVolumetricEnabled() && (renderer_flags & Render_VolumetricLighting))            ? Shader_Light_Volumetric               : flags;
+        flags |= (light->GetVolumetricEnabled() && (renderer_flags & Render_VolumetricFog))            ? Shader_Light_Volumetric               : flags;
         flags |= (renderer_flags & Render_ScreenSpaceReflections)                                           ? Shader_Light_ScreenSpaceReflections   : flags;
 
         // Return existing shader, if it's already compiled

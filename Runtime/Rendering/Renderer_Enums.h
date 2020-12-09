@@ -84,7 +84,7 @@ namespace Spartan
     };
 
     // Shaders
-    enum class RendererShader
+    enum class RendererShader : uint8_t
     {
         Gbuffer_V,
         Gbuffer_P,
@@ -137,33 +137,33 @@ namespace Spartan
     };
 
     // Render targets
-    enum class RendererRt : uint64_t
+    enum class RendererRt : uint8_t
     {
-        Gbuffer_Albedo                  = 1 << 0,
-        Gbuffer_Normal                  = 1 << 1,
-        Gbuffer_Material                = 1 << 2,
-        Gbuffer_Velocity                = 1 << 3,
-        Gbuffer_Depth                   = 1 << 4,
-        Brdf_Prefiltered_Environment    = 1 << 5,
-        Brdf_Specular_Lut               = 1 << 6,
-        Light_Diffuse                   = 1 << 7,
-        Light_Diffuse_Transparent       = 1 << 8,
-        Light_Specular                  = 1 << 9,
-        Light_Specular_Transparent      = 1 << 10,
-        Light_Volumetric                = 1 << 11,
-        Frame_Hdr                       = 1 << 12,
-        Frame_Ldr                       = 1 << 13,
-        Frame_Hdr_2                     = 1 << 14,
-        Frame_Ldr_2                     = 1 << 15,
-        Dof_Half                        = 1 << 16,
-        Dof_Half_2                      = 1 << 17,
-        Bloom                           = 1 << 18,
-        Hbao                            = 1 << 19,
-        Hbao_Blurred                    = 1 << 20,
-        Ssgi                            = 1 << 21,
-        Ssr                             = 1 << 22,
-        Accumulation_Taa                = 1 << 23,
-        Accumulation_Ssgi               = 1 << 24,
+        Gbuffer_Albedo,
+        Gbuffer_Normal,
+        Gbuffer_Material,
+        Gbuffer_Velocity,
+        Gbuffer_Depth,
+        Brdf_Prefiltered_Environment,
+        Brdf_Specular_Lut,
+        Light_Diffuse,
+        Light_Diffuse_Transparent,
+        Light_Specular,
+        Light_Specular_Transparent,
+        Light_Volumetric,
+        Frame_Hdr,
+        Frame_Ldr,
+        Frame_Hdr_2,
+        Frame_Ldr_2,
+        Dof_Half,
+        Dof_Half_2,
+        Bloom,
+        Hbao,
+        Hbao_Blurred,
+        Ssgi,
+        Ssr,
+        Accumulation_Taa,
+        Accumulation_Ssgi
     };
 
     // Renderer/graphics options
@@ -179,10 +179,10 @@ namespace Spartan
         Render_Debug_Physics            = 1 << 7,
         Render_Debug_Wireframe          = 1 << 8,
         Render_Bloom                    = 1 << 9,
-        Render_VolumetricLighting       = 1 << 10,
+        Render_VolumetricFog       = 1 << 10,
         Render_AntiAliasing_Taa         = 1 << 11,
         Render_AntiAliasing_Fxaa        = 1 << 12,
-        Render_Hbao                     = 1 << 13,
+        Render_Ssao                     = 1 << 13,
         Render_Ssgi                     = 1 << 14,
         Render_ScreenSpaceShadows       = 1 << 15,
         Render_ScreenSpaceReflections   = 1 << 16,

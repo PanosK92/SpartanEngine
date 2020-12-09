@@ -45,7 +45,7 @@ Widget_Console::Widget_Console(Editor* editor) : Widget(editor)
     Log::SetLogger(m_logger);
 }
 
-void Widget_Console::Tick()
+void Widget_Console::TickVisible()
 {
     // Clear Button
     if (ImGui::Button("Clear")) { Clear();} ImGui::SameLine();
@@ -81,9 +81,15 @@ void Widget_Console::Tick()
 
     m_is_reading = true;
 
+    // Content properties
+    static const ImGuiTableFlags table_flags =
+        ImGuiTableFlags_RowBg           |
+        ImGuiTableFlags_BordersOuter    |
+        ImGuiTableFlags_ScrollX         |
+        ImGuiTableFlags_ScrollY;
+    static const ImVec2 size = ImVec2(-1.0f);
+
     // Content
-    static ImGuiTableFlags table_flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY;
-    static ImVec2 size = ImVec2(-1.0f);
     if (ImGui::BeginTable("##widget_console_content", 1, table_flags, size))
     {
         // Logs

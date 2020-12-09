@@ -35,90 +35,28 @@ using namespace Math;
 Widget_Profiler::Widget_Profiler(Editor* editor) : Widget(editor)
 {
     m_flags         |= ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar;
-    m_title            = "Profiler";
+    m_title         = "Profiler";
     m_is_visible    = false;
-    m_profiler        = m_context->GetSubsystem<Profiler>();
+    m_profiler      = m_context->GetSubsystem<Profiler>();
     m_size          = Vector2(1000, 715);
-
-    m_plot_times_cpu.resize(m_plot_size);
-    m_plot_times_gpu.resize(m_plot_size);
 }
 
-void Widget_Profiler::Tick()
+void Widget_Profiler::OnShow()
 {
-    static int item_type = 1;
-    ImGui::RadioButton("CPU", &item_type, 0);
-    ImGui::SameLine();
-    ImGui::RadioButton("GPU", &item_type, 1);
-    ImGui::SameLine();
-    float interval = m_profiler->GetUpdateInterval();
-    ImGui::DragFloat("Update interval (The smaller the interval the higher the performance impact)", &interval, 0.001f, 0.0f, 0.5f);
-    m_profiler->SetUpdateInterval(interval);
-    ImGui::Separator();
-    const bool show_cpu = (item_type == 0);
-
-    if (show_cpu)
-    {
-        ShowCPU();
-    }
-    else
-    {
-        ShowGPU();
-    }
+    m_profiler->SetEnabled(true);
 }
 
-void Widget_Profiler::ShowCPU()
+void Widget_Profiler::OnHide()
 {
-    // Get stuff
-    const auto& time_blocks        = m_profiler->GetTimeBlocks();
-    const auto time_block_count = static_cast<unsigned int>(time_blocks.size());
-    const auto time_cpu            = m_profiler->GetTimeCpuLast();    
-
-    // Time blocks    
-    for (unsigned int i = 0; i < time_block_count; i++)
-    {
-        if (time_blocks[i].GetType() != TimeBlock_Cpu)
-            continue;
-
-        ShowTimeBlock(time_blocks[i], time_cpu);
-    }
-
-    ImGui::Separator();
-    ShowPlot(m_plot_times_cpu, m_metric_cpu, time_cpu, m_profiler->IsCpuStuttering());
+    m_profiler->SetEnabled(false);
 }
 
-void Widget_Profiler::ShowGPU()
-{
-    // Get stuff
-    const auto& time_blocks        = m_profiler->GetTimeBlocks();
-    const auto time_block_count    = static_cast<unsigned int>(time_blocks.size());
-    const auto time_gpu            = m_profiler->GetTimeGpuLast();
-
-    // Time blocks
-    for (unsigned int i = 0; i < time_block_count; i++)
-    {
-        if (time_blocks[i].GetType() != TimeBlock_Gpu)
-            continue;
-
-        ShowTimeBlock(time_blocks[i], time_gpu);
-    }
-
-    // Plot
-    ImGui::Separator();
-    ShowPlot(m_plot_times_gpu, m_metric_gpu, time_gpu, m_profiler->IsGpuStuttering());
-
-    // VRAM    
-    ImGui::Separator();
-    const unsigned int memory_used        = m_profiler->GpuGetMemoryUsed();
-    const unsigned int memory_available    = m_profiler->GpuGetMemoryAvailable();
-    const string overlay                = "Memory " + to_string(memory_used) + "/" + to_string(memory_available) + " MB";
-    ImGui::ProgressBar((float)memory_used / (float)memory_available, ImVec2(-1, 0), overlay.c_str());
-}
-
-void Widget_Profiler::ShowTimeBlock(const TimeBlock& time_block, float total_time) const
+static void ShowTimeBlock(const TimeBlock& time_block, float total_time)
 {
     if (!time_block.IsComplete())
         return;
+
+    float m_tree_depth_stride = 10;
 
     const char* name        = time_block.GetName();
     const float duration    = time_block.GetDuration();
@@ -136,26 +74,85 @@ void Widget_Profiler::ShowTimeBlock(const TimeBlock& time_block, float total_tim
     ImGui::Text("%s - %.2f ms", name, duration);
 }
 
-void Widget_Profiler::ShowPlot(vector<float>& data, Metric& metric, float time_value, bool is_stuttering) const
+void Widget_Profiler::TickVisible()
 {
-    if (time_value >= 0.0f)
+    int previous_item_type = m_item_type;
+
+    ImGui::RadioButton("CPU", &m_item_type, 0);
+    ImGui::SameLine();
+    ImGui::RadioButton("GPU", &m_item_type, 1);
+    ImGui::SameLine();
+    float interval = m_profiler->GetUpdateInterval();
+    ImGui::DragFloat("Update interval (The smaller the interval the higher the performance impact)", &interval, 0.001f, 0.0f, 0.5f);
+    m_profiler->SetUpdateInterval(interval);
+    ImGui::Separator();
+
+    TimeBlockType type                          = m_item_type == 0 ? TimeBlockType::Cpu : TimeBlockType::Gpu;
+    const std::vector<TimeBlock>& time_blocks   = m_profiler->GetTimeBlocks();
+    const uint32_t time_block_count             = static_cast<uint32_t>(time_blocks.size());
+    float time_last                             = type == TimeBlockType::Cpu ? m_profiler->GetTimeCpuLast() : m_profiler->GetTimeGpuLast();
+
+    // Time blocks
+    for (uint32_t i = 0; i < time_block_count; i++)
     {
-        metric.AddSample(time_value);
+        if (time_blocks[i].GetType() != type)
+            continue;
+
+        ShowTimeBlock(time_blocks[i], time_last);
     }
-    else
+
+    // Plot
+    ImGui::Separator();
     {
-        // Repeat the last value
-        time_value = data.back();
+        // Clear plot on change from cpu to gpu and vice versa
+        if (previous_item_type != m_item_type)
+        {
+            m_plot.fill(0.0f);
+            m_timings.Clear();
+        }
+
+        // If the update frequency is low enough, we can get zeros, in this case simply repeat the last value
+        if (time_last == 0.0f)
+        {
+            time_last = m_plot.back();
+        }
+        else
+        {
+            m_timings.AddSample(time_last);
+        }
+
+        // Cur, Avg, Min, Max
+        {
+            if (ImGui::Button("Clear")) { m_timings.Clear(); }
+            ImGui::SameLine();
+            ImGui::Text("Cur:%.2f, Avg:%.2f, Min:%.2f, Max:%.2f", time_last, m_timings.m_avg, m_timings.m_min, m_timings.m_max);
+            bool is_stuttering = type == TimeBlockType::Cpu ? m_profiler->IsCpuStuttering() : m_profiler->IsGpuStuttering();
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(is_stuttering ? 1.0f : 0.0f, is_stuttering ? 0.0f : 1.0f, 0.0f, 1.0f), is_stuttering ? "Stuttering: Yes" : "Stuttering: No");
+        }
+
+        // Shift plot to the left
+        for (uint32_t i = 0; i < m_plot.size() - 1; i++)
+        {
+            m_plot[i] = m_plot[i + 1];
+        }
+
+        // Update last entry
+        m_plot[m_plot.size() - 1] = time_last;
+
+        // Show
+        ImGui::PlotLines("", m_plot.data(), static_cast<int>(m_plot.size()), 0, "", m_timings.m_min, m_timings.m_max, ImVec2(ImGui::GetWindowContentRegionWidth(), 80));
     }
 
-    // Add value to data
-    data.erase(data.begin());
-    data.emplace_back(time_value);
+    // VRAM
+    if (type == TimeBlockType::Gpu)
+    {
+        ImGui::Separator();
 
-    if (ImGui::Button("Clear")) { metric.Clear(); }
-    ImGui::SameLine();  ImGui::Text("Cur:%.2f, Avg:%.2f, Min:%.2f, Max:%.2f", time_value, metric.m_avg, metric.m_min, metric.m_max);
-    ImGui::SameLine();  ImGui::TextColored(ImVec4(is_stuttering ? 1.0f : 0.0f, is_stuttering ? 0.0f : 1.0f, 0.0f, 1.0f), is_stuttering ? "Stuttering: Yes" : "Stuttering: No");
+        const uint32_t memory_used      = m_profiler->GpuGetMemoryUsed();
+        const uint32_t memory_available = m_profiler->GpuGetMemoryAvailable();
+        const string overlay            = "Memory " + to_string(memory_used) + "/" + to_string(memory_available) + " MB";
 
-    // Plot data
-    ImGui::PlotLines("", data.data(), static_cast<int>(data.size()), 0, "", metric.m_min, metric.m_max, ImVec2(ImGui::GetWindowContentRegionWidth(), 80));
+        ImGui::ProgressBar((float)memory_used / (float)memory_available, ImVec2(-1, 0), overlay.c_str());
+    }
 }

@@ -31,7 +31,9 @@ class Widget_ProgressDialog : public Widget
 public:
     Widget_ProgressDialog(Editor* editor);
     ~Widget_ProgressDialog() = default;
-    void Tick() override;
+
+    void TickAlways() override;
+    void TickVisible() override;
 
 private:
     float m_progress;
