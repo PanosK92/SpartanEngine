@@ -109,7 +109,7 @@ void Widget_Console::TickVisible()
                 {
                     // Text
                     ImGui::PushStyleColor(ImGuiCol_Text, m_log_type_color[log.error_level]);
-                    ImGui::Text(log.text.c_str());
+                    ImGui::TextUnformatted(log.text.c_str());
                     ImGui::PopStyleColor(1);
                 
                     // Context menu
