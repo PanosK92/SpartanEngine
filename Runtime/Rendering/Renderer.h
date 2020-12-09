@@ -101,7 +101,7 @@ namespace Spartan
         std::weak_ptr<Entity> SnapTransformGizmoTo(const std::shared_ptr<Entity>& entity) const;
 
         // Debug/Visualise a render target
-        void SetRenderTargetDebug(const uint64_t render_target_debug)   { m_render_target_debug = render_target_debug; }
+        void SetRenderTargetDebug(const RendererRt render_target_debug) { m_render_target_debug = render_target_debug; }
         auto GetRenderTargetDebug() const                               { return m_render_target_debug; }
 
         // Depth
@@ -277,7 +277,7 @@ namespace Spartan
         std::unique_ptr<Font> m_font;
         Math::Vector2 m_taa_jitter          = Math::Vector2::Zero;
         Math::Vector2 m_taa_jitter_previous = Math::Vector2::Zero;
-        uint64_t m_render_target_debug      = 0;
+        RendererRt m_render_target_debug    = RendererRt::Undefined;
         bool m_initialized                  = false;
         bool m_is_fullscreen                = false;
         float m_near_plane                  = 0.0f;

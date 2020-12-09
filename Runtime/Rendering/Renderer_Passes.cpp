@@ -2190,95 +2190,95 @@ namespace Spartan
     
     bool Renderer::Pass_DebugBuffer(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_out)
     {
-        if (m_render_target_debug == 0)
+        if (m_render_target_debug == RendererRt::Undefined)
             return true;
 
         // Bind correct texture & shader pass
-        RHI_Texture* texture                = m_render_targets[static_cast<RendererRt>(m_render_target_debug)].get();
+        RHI_Texture* texture          = m_render_targets[m_render_target_debug].get();
         RendererShader shader_type    = RendererShader::Copy_C;
 
-        if (m_render_target_debug == static_cast<uint64_t>(RendererRt::Gbuffer_Albedo))
+        if (m_render_target_debug == RendererRt::Gbuffer_Albedo)
         {
             shader_type = RendererShader::DebugChannelRgbGammaCorrect_C;
         }
 
-        if (m_render_target_debug == static_cast<uint64_t>(RendererRt::Gbuffer_Normal))
+        if (m_render_target_debug == RendererRt::Gbuffer_Normal)
         {
             shader_type = RendererShader::DebugNormal_C;
         }
 
-        if (m_render_target_debug == static_cast<uint64_t>(RendererRt::Gbuffer_Material))
+        if (m_render_target_debug == RendererRt::Gbuffer_Material)
         {
             shader_type = RendererShader::Copy_C;
         }
 
-        if (m_render_target_debug == static_cast<uint64_t>(RendererRt::Light_Diffuse) || m_render_target_debug == static_cast<uint64_t>(RendererRt::Light_Diffuse_Transparent))
+        if (m_render_target_debug == RendererRt::Light_Diffuse || m_render_target_debug == RendererRt::Light_Diffuse_Transparent)
         {
             shader_type = RendererShader::DebugChannelRgbGammaCorrect_C;
         }
 
-        if (m_render_target_debug == static_cast<uint64_t>(RendererRt::Light_Specular) || m_render_target_debug == static_cast<uint64_t>(RendererRt::Light_Specular_Transparent))
+        if (m_render_target_debug == RendererRt::Light_Specular || m_render_target_debug == RendererRt::Light_Specular_Transparent)
         {
             shader_type = RendererShader::DebugChannelRgbGammaCorrect_C;
         }
 
-        if (m_render_target_debug == static_cast<uint64_t>(RendererRt::Gbuffer_Velocity))
+        if (m_render_target_debug == RendererRt::Gbuffer_Velocity)
         {
             shader_type = RendererShader::DebugVelocity_C;
         }
 
-        if (m_render_target_debug == static_cast<uint64_t>(RendererRt::Gbuffer_Depth))
+        if (m_render_target_debug == RendererRt::Gbuffer_Depth)
         {
             shader_type = RendererShader::DebugChannelR_C;
         }
 
-        if (m_render_target_debug == static_cast<uint64_t>(RendererRt::Hbao_Blurred))
+        if (m_render_target_debug == RendererRt::Hbao_Blurred)
         {
             texture     = m_options & Render_Ssao ? m_render_targets[RendererRt::Hbao_Blurred].get() : m_default_tex_white.get();
             shader_type = RendererShader::DebugChannelR_C;
         }
 
-        if (m_render_target_debug == static_cast<uint64_t>(RendererRt::Hbao))
+        if (m_render_target_debug == RendererRt::Hbao)
         {
             texture = m_options & Render_Ssao ? m_render_targets[RendererRt::Hbao].get() : m_default_tex_white.get();
             shader_type = RendererShader::DebugChannelR_C;
         }
 
-        if (m_render_target_debug == static_cast<uint64_t>(RendererRt::Ssgi))
+        if (m_render_target_debug == RendererRt::Ssgi)
         {
             texture = m_options & Render_Ssgi ? m_render_targets[RendererRt::Ssgi].get() : m_default_tex_black.get();
             shader_type = RendererShader::DebugChannelRgbGammaCorrect_C;
         }
 
-        if (m_render_target_debug == static_cast<uint64_t>(RendererRt::Ssr))
+        if (m_render_target_debug == RendererRt::Ssr)
         {
             shader_type = RendererShader::DebugChannelRgbGammaCorrect_C;
         }
 
-        if (m_render_target_debug == static_cast<uint64_t>(RendererRt::Bloom))
+        if (m_render_target_debug == RendererRt::Bloom)
         {
             texture     = m_render_tex_bloom.front().get();
             shader_type = RendererShader::DebugChannelRgbGammaCorrect_C;
         }
 
-        if (m_render_target_debug == static_cast<uint64_t>(RendererRt::Dof_Half))
+        if (m_render_target_debug == RendererRt::Dof_Half)
         {
             texture = m_render_targets[RendererRt::Dof_Half].get();
             shader_type = RendererShader::DebugChannelRgbGammaCorrect_C;
         }
 
-        if (m_render_target_debug == static_cast<uint64_t>(RendererRt::Dof_Half_2))
+        if (m_render_target_debug == RendererRt::Dof_Half_2)
         {
             texture = m_render_targets[RendererRt::Dof_Half_2].get();
             shader_type = RendererShader::DebugChannelRgbGammaCorrect_C;
         }
 
-        if (m_render_target_debug == static_cast<uint64_t>(RendererRt::Light_Volumetric))
+        if (m_render_target_debug == RendererRt::Light_Volumetric)
         {
             shader_type = RendererShader::DebugChannelRgbGammaCorrect_C;
         }
 
-        if (m_render_target_debug == static_cast<uint64_t>(RendererRt::Brdf_Specular_Lut))
+        if (m_render_target_debug == RendererRt::Brdf_Specular_Lut)
         {
             shader_type = RendererShader::Copy_C;
         }
