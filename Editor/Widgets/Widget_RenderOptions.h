@@ -31,7 +31,8 @@ class Widget_RenderOptions : public Widget
 {
 public:
     Widget_RenderOptions(Editor* editor);
-    void Tick() override;
+
+    void TickVisible() override;
 
 private:
     Spartan::Renderer* m_renderer;

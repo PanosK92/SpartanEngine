@@ -31,11 +31,11 @@ namespace Spartan
 {
     class RHI_Device;
 
-    enum TimeBlock_Type
+    enum class TimeBlockType
     {
-        TimeBlock_Cpu,
-        TimeBlock_Gpu,
-        TimeBlock_Undefined
+        Cpu,
+        Gpu,
+        Undefined
     };
 
     class TimeBlock
@@ -44,11 +44,11 @@ namespace Spartan
         TimeBlock() = default;
         ~TimeBlock();
 
-        void Begin(const char* name, TimeBlock_Type type, const TimeBlock* parent = nullptr, RHI_CommandList* cmd_list = nullptr, const std::shared_ptr<RHI_Device>& rhi_device = nullptr);
+        void Begin(const char* name, TimeBlockType type, const TimeBlock* parent = nullptr, RHI_CommandList* cmd_list = nullptr, const std::shared_ptr<RHI_Device>& rhi_device = nullptr);
         void End();
         void ComputeDuration(const uint32_t pass_index);
         void Reset();
-        TimeBlock_Type GetType()        const { return m_type; }    
+        TimeBlockType GetType()         const { return m_type; }
         const char* GetName()           const { return m_name; }
         const TimeBlock* GetParent()    const { return m_parent; }
         uint32_t GetTreeDepth()         const { return m_tree_depth; }
@@ -61,10 +61,10 @@ namespace Spartan
         static uint32_t m_max_tree_depth;
 
         const char* m_name          = nullptr;
-        TimeBlock_Type m_type       = TimeBlock_Undefined;
+        TimeBlockType m_type        = TimeBlockType::Undefined;
         float m_duration            = 0.0f;
-        const TimeBlock* m_parent    = nullptr;
-        uint32_t m_tree_depth        = 0;
+        const TimeBlock* m_parent   = nullptr;
+        uint32_t m_tree_depth       = 0;
         bool m_is_complete          = false;
         RHI_Device* m_rhi_device    = nullptr;
 
@@ -73,9 +73,9 @@ namespace Spartan
         std::chrono::steady_clock::time_point m_end;
     
         // GPU timing
-        void* m_query_disjoint        = nullptr;
-        void* m_query_start            = nullptr;
-        void* m_query_end            = nullptr;
+        void* m_query_disjoint      = nullptr;
+        void* m_query_start         = nullptr;
+        void* m_query_end           = nullptr;
         RHI_CommandList* m_cmd_list = nullptr;
     };
 }

@@ -40,31 +40,16 @@ using namespace Math;
 
 Widget_Toolbar::Widget_Toolbar(Editor* editor) : Widget(editor)
 {
-    m_title = "Toolbar";
-    
+    m_title     = "Toolbar";
+    m_is_window = false;
+
     m_flags =
         ImGuiWindowFlags_NoCollapse         |
         ImGuiWindowFlags_NoResize           |
         ImGuiWindowFlags_NoMove             |
         ImGuiWindowFlags_NoSavedSettings    |
         ImGuiWindowFlags_NoScrollbar        |
-        ImGuiWindowFlags_NoTitleBar         |
-        ImGuiWindowFlags_NoDocking;
-
-    m_callback_on_visible = [this]()
-    {
-        auto& ctx = *ImGui::GetCurrentContext();
-        ctx.NextWindowData.MenuBarOffsetMinVal = ImVec2(ctx.Style.DisplaySafeAreaPadding.x, Helper::Max(ctx.Style.DisplaySafeAreaPadding.y - ctx.Style.FramePadding.y, 0.0f));
-        m_position = Vector2(ctx.Viewports[0]->Pos.x, ctx.Viewports[0]->Pos.y + 25.0f);
-        m_size = Vector2(ctx.Viewports[0]->Size.x, ctx.NextWindowData.MenuBarOffsetMinVal.y + ctx.FontBaseSize + ctx.Style.FramePadding.y + 20.0f);
-
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, Vector2(0, 5));
-    };
-
-    m_callback_on_begin = [this]()
-    {
-        ImGui::PopStyleVar();
-    };
+        ImGuiWindowFlags_NoTitleBar;
 
     m_widgets[Icon_Profiler]            = m_editor->GetWidget<Widget_Profiler>();
     m_widgets[Icon_ResourceCache]       = m_editor->GetWidget<Widget_ResourceCache>();
@@ -74,7 +59,7 @@ Widget_Toolbar::Widget_Toolbar(Editor* editor) : Widget(editor)
     m_context->m_engine->EngineMode_Disable(Engine_Game);
 }
 
-void Widget_Toolbar::Tick()
+void Widget_Toolbar::TickAlways()
 {
     auto show_button = [this](Icon_Type icon_type, const function<bool()>& get_visibility, const function<void()>& make_visible)
     {
@@ -87,7 +72,7 @@ void Widget_Toolbar::Tick()
         ImGui::PopStyleColor();
     };
 
-    // Play button    
+    // Play button
     show_button(Icon_Button_Play, [this]() { return m_context->m_engine->EngineMode_IsSet(Engine_Game); }, [this]() { m_context->m_engine->EngineMode_Toggle(Engine_Game); });
 
     for (auto& widget_it : m_widgets)

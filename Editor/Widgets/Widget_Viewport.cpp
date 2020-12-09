@@ -44,7 +44,7 @@ Widget_Viewport::Widget_Viewport(Editor* editor) : Widget(editor)
     m_settings  = m_context->GetSubsystem<Settings>();
 }
 
-void Widget_Viewport::Tick()
+void Widget_Viewport::TickVisible()
 {
     if (!m_renderer)
         return;

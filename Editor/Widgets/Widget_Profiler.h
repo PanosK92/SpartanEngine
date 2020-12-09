@@ -26,12 +26,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Profiling/Profiler.h"
 #include "Math/MathHelper.h"
 #include "Core/Timer.h"
-#include <vector>
+#include <array>
 //=============================
 
-struct Metric
+struct Timings
 {
-    Metric() { Clear(); }
+    Timings() { Clear(); }
 
     void AddSample(const float sample)
     {
@@ -44,11 +44,11 @@ struct Metric
 
     void Clear()
     {
-        m_min            = FLT_MAX;
-        m_max            = FLT_MIN;
-        m_avg            = 0.0f;
-        m_sum            = 0.0f;
-        m_sample_count    = 0;
+        m_min           = FLT_MAX;
+        m_max           = FLT_MIN;
+        m_avg           = 0.0f;
+        m_sum           = 0.0f;
+        m_sample_count  = 0;
     }
 
     float m_min;
@@ -62,19 +62,14 @@ class Widget_Profiler : public Widget
 {
 public:
     Widget_Profiler(Editor* editor);
-    void Tick() override;
+
+    void OnShow() override;
+    void OnHide() override;
+    void TickVisible() override;
 
 private:
-    void ShowCPU();
-    void ShowGPU();
-    void ShowTimeBlock(const Spartan::TimeBlock& time_block, float total_time) const;
-    void ShowPlot(std::vector<float>& data, Metric& metric, float time_value, bool is_stuttering) const;
-
-    std::vector<float> m_plot_times_cpu;
-    std::vector<float> m_plot_times_gpu;
-    unsigned int m_plot_size = 400;
-    Metric m_metric_cpu;
-    Metric m_metric_gpu;
+    std::array<float, 400> m_plot;
+    Timings m_timings;
     Spartan::Profiler* m_profiler;
-    float m_tree_depth_stride = 10;
+    int m_item_type = 1;
 };

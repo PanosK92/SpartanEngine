@@ -51,7 +51,8 @@ class Widget_Properties : public Widget
 {
 public:
     Widget_Properties(Editor* editor);
-    void Tick() override;
+
+    void TickVisible() override;
 
     static void Inspect(const std::weak_ptr<Spartan::Entity>& entity);
     static void Inspect(const std::weak_ptr<Spartan::Material>& material);

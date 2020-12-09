@@ -847,8 +847,8 @@ namespace Spartan
         {
             if (m_profiler)
             {
-                m_profiler->TimeBlockStart(pipeline_state->pass_name, TimeBlock_Cpu, this);
-                m_profiler->TimeBlockStart(pipeline_state->pass_name, TimeBlock_Gpu, this);
+                m_profiler->TimeBlockStart(pipeline_state->pass_name, TimeBlockType::Cpu, this);
+                m_profiler->TimeBlockStart(pipeline_state->pass_name, TimeBlockType::Gpu, this);
             }
         }
 

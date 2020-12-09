@@ -56,7 +56,7 @@ inline void print_memory(uint64_t memory)
     }
 }
 
-void Widget_ResourceCache::Tick()
+void Widget_ResourceCache::TickVisible()
 {
     auto resource_cache             = m_context->GetSubsystem<ResourceCache>();
     auto resources                  = resource_cache->GetByType();

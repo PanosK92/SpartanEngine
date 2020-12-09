@@ -33,7 +33,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widgets/Widget_MenuBar.h"
 #include "Widgets/Widget_ProgressDialog.h"
 #include "Widgets/Widget_Properties.h"
-#include "Widgets/Widget_Toolbar.h"
 #include "Widgets/Widget_Viewport.h"
 #include "Widgets/Widget_World.h"
 #include "Widgets/Widget_ShaderEditor.h"
@@ -49,14 +48,13 @@ using namespace Spartan;
  
 namespace _editor
 {
-    const char* editor_name     = "SpartanEditor";
-    Widget* widget_menu_bar     = nullptr;
-    Widget* widget_toolbar      = nullptr;
-    Widget* widget_world        = nullptr;
-    bool show                   = true;
-    Renderer* renderer          = nullptr;
-    Profiler* profiler          = nullptr;
-    RHI_SwapChain* swapchain    = nullptr;
+    const char* editor_name         = "SpartanEditor";
+    Widget_MenuBar* widget_menu_bar = nullptr;
+    Widget* widget_world            = nullptr;
+    bool show                       = true;
+    Renderer* renderer              = nullptr;
+    Profiler* profiler              = nullptr;
+    RHI_SwapChain* swapchain        = nullptr;
     shared_ptr<Spartan::RHI_Device> rhi_device;
 }
 
@@ -157,13 +155,9 @@ void Editor::OnTick()
                 ImGui_Begin();
             }
 
-            for (auto& widget : m_widgets)
+            for (std::shared_ptr<Widget>& widget : m_widgets)
             {
-                if (widget->Begin())
-                {
-                    widget->Tick();
-                    widget->End();
-                }
+                widget->Tick();
             }
 
             if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable)
@@ -234,8 +228,7 @@ void Editor::ImGui_Initialise(const WindowData& window_data)
     m_widgets.emplace_back(make_shared<Widget_ResourceCache>(this));
     m_widgets.emplace_back(make_shared<Widget_ShaderEditor>(this));
     m_widgets.emplace_back(make_shared<Widget_RenderOptions>(this));
-    m_widgets.emplace_back(make_shared<Widget_MenuBar>(this)); _editor::widget_menu_bar = m_widgets.back().get();
-    m_widgets.emplace_back(make_shared<Widget_Toolbar>(this)); _editor::widget_toolbar = m_widgets.back().get();
+    m_widgets.emplace_back(make_shared<Widget_MenuBar>(this)); _editor::widget_menu_bar = static_cast<Widget_MenuBar*>(m_widgets.back().get());
     m_widgets.emplace_back(make_shared<Widget_Viewport>(this));
     m_widgets.emplace_back(make_shared<Widget_Assets>(this));
     m_widgets.emplace_back(make_shared<Widget_Properties>(this));
@@ -352,9 +345,7 @@ void Editor::ImGui_Begin()
         ImGuiWindowFlags_NoNavFocus;
 
     // Set window position and size
-    float offset_y  = 0;
-    offset_y        += _editor::widget_menu_bar ? _editor::widget_menu_bar->GetHeight() : 0;
-    offset_y        += _editor::widget_toolbar  ? _editor::widget_toolbar->GetHeight()  : 0;
+    float offset_y = _editor::widget_menu_bar ? (_editor::widget_menu_bar->GetHeight() + _editor::widget_menu_bar->GetPadding()) : 0;
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
     ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x, viewport->Pos.y + offset_y));
     ImGui::SetNextWindowSize(ImVec2(viewport->Size.x, viewport->Size.y - offset_y));
@@ -390,12 +381,13 @@ void Editor::ImGui_Begin()
             ImGuiID dock_down_id                = ImGui::DockBuilderSplitNode(dock_main_id,     ImGuiDir_Down,  0.25f,  nullptr, &dock_main_id);
             const ImGuiID dock_down_right_id    = ImGui::DockBuilderSplitNode(dock_down_id,     ImGuiDir_Right, 0.6f,   nullptr, &dock_down_id);
 
-            // Dock windows    
+            // Dock windows
             ImGui::DockBuilderDockWindow("World",       dock_right_id);
             ImGui::DockBuilderDockWindow("Properties",  dock_right_down_id);
             ImGui::DockBuilderDockWindow("Console",     dock_down_id);
             ImGui::DockBuilderDockWindow("Assets",      dock_down_right_id);
             ImGui::DockBuilderDockWindow("Viewport",    dock_main_id);
+
             ImGui::DockBuilderFinish(dock_main_id);
         }
 

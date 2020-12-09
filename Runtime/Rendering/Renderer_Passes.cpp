@@ -612,7 +612,7 @@ namespace Spartan
 
     void Renderer::Pass_Hbao(RHI_CommandList* cmd_list)
     {
-        if ((m_options & Render_Hbao) == 0)
+        if ((m_options & Render_Ssao) == 0)
             return;
 
         // Acquire shaders
@@ -749,7 +749,7 @@ namespace Spartan
                         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal,   m_render_targets[RendererRt::Gbuffer_Normal]);
                         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_material, m_render_targets[RendererRt::Gbuffer_Material]);
                         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    m_render_targets[RendererRt::Gbuffer_Depth]);
-                        cmd_list->SetTexture(RendererBindingsSrv::hbao,             (m_options & Render_Hbao) ? m_render_targets[RendererRt::Hbao_Blurred] : m_default_tex_white);
+                        cmd_list->SetTexture(RendererBindingsSrv::hbao,             (m_options & Render_Ssao) ? m_render_targets[RendererRt::Hbao_Blurred] : m_default_tex_white);
                         cmd_list->SetTexture(RendererBindingsSrv::ssr,              (m_options & Render_ScreenSpaceReflections) ? m_render_targets[RendererRt::Ssr] : m_default_tex_transparent);
                         cmd_list->SetTexture(RendererBindingsSrv::frame,            m_render_targets[RendererRt::Frame_Hdr_2]); // previous frame before post-processing
 
@@ -837,7 +837,7 @@ namespace Spartan
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal, m_render_targets[RendererRt::Gbuffer_Normal]);
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_material, m_render_targets[RendererRt::Gbuffer_Material]);
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth, tex_depth);
-            cmd_list->SetTexture(RendererBindingsSrv::hbao, (m_options & Render_Hbao)       ? m_render_targets[RendererRt::Hbao_Blurred]                : m_default_tex_white);
+            cmd_list->SetTexture(RendererBindingsSrv::hbao, (m_options & Render_Ssao)       ? m_render_targets[RendererRt::Hbao_Blurred]                : m_default_tex_white);
             cmd_list->SetTexture(RendererBindingsSrv::light_diffuse, is_transparent_pass    ? m_render_targets[RendererRt::Light_Diffuse_Transparent]   : m_render_targets[RendererRt::Light_Diffuse]);
             cmd_list->SetTexture(RendererBindingsSrv::light_specular, is_transparent_pass   ? m_render_targets[RendererRt::Light_Specular_Transparent]  : m_render_targets[RendererRt::Light_Specular]);
             cmd_list->SetTexture(RendererBindingsSrv::light_volumetric, m_render_targets[RendererRt::Light_Volumetric]);
@@ -2234,13 +2234,13 @@ namespace Spartan
 
         if (m_render_target_debug == static_cast<uint64_t>(RendererRt::Hbao_Blurred))
         {
-            texture     = m_options & Render_Hbao ? m_render_targets[RendererRt::Hbao_Blurred].get() : m_default_tex_white.get();
+            texture     = m_options & Render_Ssao ? m_render_targets[RendererRt::Hbao_Blurred].get() : m_default_tex_white.get();
             shader_type = RendererShader::DebugChannelR_C;
         }
 
         if (m_render_target_debug == static_cast<uint64_t>(RendererRt::Hbao))
         {
-            texture = m_options & Render_Hbao ? m_render_targets[RendererRt::Hbao].get() : m_default_tex_white.get();
+            texture = m_options & Render_Ssao ? m_render_targets[RendererRt::Hbao].get() : m_default_tex_white.get();
             shader_type = RendererShader::DebugChannelR_C;
         }
 

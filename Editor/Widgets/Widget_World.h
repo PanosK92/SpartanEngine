@@ -33,7 +33,8 @@ class Widget_World : public Widget
 {
 public:
     Widget_World(Editor* editor);
-    void Tick() override;
+
+    void TickVisible() override;
 
 private:
     // Tree

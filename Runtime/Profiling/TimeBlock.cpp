@@ -39,7 +39,7 @@ namespace Spartan
         Reset();
     }
 
-    void TimeBlock::Begin(const char* name, TimeBlock_Type type, const TimeBlock* parent /*= nullptr*/, RHI_CommandList* cmd_list /*= nullptr*/, const shared_ptr<RHI_Device>& rhi_device /*= nullptr*/)
+    void TimeBlock::Begin(const char* name, TimeBlockType type, const TimeBlock* parent /*= nullptr*/, RHI_CommandList* cmd_list /*= nullptr*/, const shared_ptr<RHI_Device>& rhi_device /*= nullptr*/)
     {
         m_name                = name;
         m_parent            = parent;
@@ -49,11 +49,11 @@ namespace Spartan
         m_type              = type;
         m_max_tree_depth    = Math::Helper::Max(m_max_tree_depth, m_tree_depth);
 
-        if (type == TimeBlock_Cpu)
+        if (type == TimeBlockType::Cpu)
         {
             m_start = chrono::high_resolution_clock::now();
         }
-        else if (type == TimeBlock_Gpu)
+        else if (type == TimeBlockType::Gpu)
         {
             // Create required queries
             if (!m_query_disjoint)
@@ -72,11 +72,11 @@ namespace Spartan
 
     void TimeBlock::End()
     {
-        if (m_type == TimeBlock_Cpu)
+        if (m_type == TimeBlockType::Cpu)
         {
             m_end = chrono::high_resolution_clock::now();
         }
-        else if (m_type == TimeBlock_Gpu)
+        else if (m_type == TimeBlockType::Gpu)
         {
             if (m_cmd_list)
             {
@@ -95,12 +95,12 @@ namespace Spartan
             return;
         }
 
-        if (m_type == TimeBlock_Cpu)
+        if (m_type == TimeBlockType::Cpu)
         {
             const chrono::duration<double, milli> ms = m_end - m_start;
             m_duration = static_cast<float>(ms.count());
         }
-        else if (m_type == TimeBlock_Gpu)
+        else if (m_type == TimeBlockType::Gpu)
         {
             if (m_cmd_list)
             {
@@ -114,9 +114,9 @@ namespace Spartan
         m_name              = nullptr;
         m_parent            = nullptr;
         m_tree_depth        = 0;
-        m_duration            = 0.0f;
+        m_duration          = 0.0f;
         m_max_tree_depth    = 0;
-        m_type              = TimeBlock_Undefined;
+        m_type              = TimeBlockType::Undefined;
         m_is_complete       = false;
 
         if (m_rhi_device && m_rhi_device->IsInitialized())

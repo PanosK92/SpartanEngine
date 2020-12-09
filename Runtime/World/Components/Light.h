@@ -81,8 +81,8 @@ namespace Spartan
         void SetColor(const Math::Vector4& rgb) { m_color_rgb = rgb; }
         const auto& GetColor() const            { return m_color_rgb; }
 
-        void SetIntensity(float value)    { m_intensity = value; }
-        auto GetIntensity()    const        { return m_intensity; }
+        void SetIntensity(float value)  { m_intensity = value; }
+        auto GetIntensity()    const    { return m_intensity; }
 
         bool GetShadowsEnabled() const { return m_shadows_enabled; }
         void SetShadowsEnabled(bool cast_shadows);

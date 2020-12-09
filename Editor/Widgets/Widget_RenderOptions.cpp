@@ -46,7 +46,7 @@ Widget_RenderOptions::Widget_RenderOptions(Editor* editor) : Widget(editor)
     m_alpha         = 1.0f;
 }
 
-void Widget_RenderOptions::Tick()
+void Widget_RenderOptions::TickVisible()
 {
     ImGui::SliderFloat("Opacity", &m_alpha, 0.1f, 1.0f, "%.1f");
 
@@ -55,8 +55,8 @@ void Widget_RenderOptions::Tick()
         // Reflect
         bool do_bloom                   = m_renderer->GetOption(Render_Bloom);
         bool do_dof                     = m_renderer->GetOption(Render_DepthOfField);
-        bool do_volumetric_lighting     = m_renderer->GetOption(Render_VolumetricLighting);    
-        bool do_hbao                    = m_renderer->GetOption(Render_Hbao);
+        bool do_volumetric_fog          = m_renderer->GetOption(Render_VolumetricFog);
+        bool do_ssao                    = m_renderer->GetOption(Render_Ssao);
         bool do_sss                     = m_renderer->GetOption(Render_ScreenSpaceShadows);
         bool do_ssr                     = m_renderer->GetOption(Render_ScreenSpaceReflections);
         bool do_taa                     = m_renderer->GetOption(Render_AntiAliasing_Taa);
@@ -68,7 +68,7 @@ void Widget_RenderOptions::Tick()
         bool do_dithering               = m_renderer->GetOption(Render_Dithering);
         bool do_ssgi                    = m_renderer->GetOption(Render_Ssgi);
         int resolution_shadow           = m_renderer->GetOptionValue<int>(Option_Value_ShadowResolution);
-        float fog                       = m_renderer->GetOptionValue<float>(Option_Value_Fog);
+        float fog_density                       = m_renderer->GetOptionValue<float>(Option_Value_Fog);
 
         // Show
         {
@@ -181,17 +181,22 @@ void Widget_RenderOptions::Tick()
             ImGui::Checkbox("Depth of Field", &do_dof);
             ImGui::Separator();
 
-            // Volumetric lighting
-            ImGui::Checkbox("Volumetric lighting", &do_volumetric_lighting);
+            // Volumetric fog
+            ImGui::Checkbox("Volumetric Fog", &do_volumetric_fog);
             ImGuiEx::Tooltip("Requires a light with shadows enabled");
+            if (do_volumetric_fog)
+            {
+                ImGui::SameLine();
+                ImGuiEx::DragFloatWrap("Density", &fog_density, 0.01f, 0.0f, 16.0f, "%.2f");
+            }
             ImGui::Separator();
 
             // Screen space shadows
             ImGui::Checkbox("SSS - Screen Space Shadows", &do_sss);
             ImGui::Separator();
 
-            // Horizon based ambient occlusion
-            ImGui::Checkbox("HBAO - Horizon Based Ambient Occlusion", &do_hbao);
+            // Screen space ambient occlusion
+            ImGui::Checkbox("SSAO - Screen Space Ambient Occlusion", &do_ssao);
             ImGui::Separator();
 
             // Screen Space Global Illumination
@@ -222,7 +227,7 @@ void Widget_RenderOptions::Tick()
             ImGui::Separator();
 
             // Film grain
-            ImGui::Checkbox("Film grain", &do_film_grain);
+            ImGui::Checkbox("Film Grain", &do_film_grain);
             ImGui::Separator();
 
             // Sharpen
@@ -238,20 +243,16 @@ void Widget_RenderOptions::Tick()
 
             // Shadow resolution
             ImGui::InputInt("Shadow Resolution", &resolution_shadow, 1);
-
-            // Fog
-            ImGuiEx::DragFloatWrap("Fog", &fog, 0.01f, 0.0f, 16.0f, "%.2f");
-            ImGuiEx::Tooltip("Fog density, something that also affects the visibility of volumetric lighting.");
         }
 
         // Map
         m_renderer->SetOption(Render_Bloom,                         do_bloom);
         m_renderer->SetOption(Render_DepthOfField,                  do_dof);
-        m_renderer->SetOption(Render_VolumetricLighting,            do_volumetric_lighting); 
-        m_renderer->SetOption(Render_Hbao,                          do_hbao); 
+        m_renderer->SetOption(Render_VolumetricFog,                 do_volumetric_fog);
+        m_renderer->SetOption(Render_Ssao,                          do_ssao);
         m_renderer->SetOption(Render_ScreenSpaceShadows,            do_sss);
         m_renderer->SetOption(Render_ScreenSpaceReflections,        do_ssr);
-        m_renderer->SetOption(Render_Ssgi,                do_ssgi);
+        m_renderer->SetOption(Render_Ssgi,                          do_ssgi);
         m_renderer->SetOption(Render_AntiAliasing_Taa,              do_taa);
         m_renderer->SetOption(Render_AntiAliasing_Fxaa,             do_fxaa);
         m_renderer->SetOption(Render_MotionBlur,                    do_motion_blur);
@@ -260,7 +261,7 @@ void Widget_RenderOptions::Tick()
         m_renderer->SetOption(Render_ChromaticAberration,           do_chromatic_aberration);
         m_renderer->SetOption(Render_Dithering,                     do_dithering);
         m_renderer->SetOptionValue(Option_Value_ShadowResolution,   static_cast<float>(resolution_shadow));
-        m_renderer->SetOptionValue(Option_Value_Fog,                fog);
+        m_renderer->SetOptionValue(Option_Value_Fog,                fog_density);
     }
 
     if (ImGui::CollapsingHeader("Widgets", ImGuiTreeNodeFlags_None))
