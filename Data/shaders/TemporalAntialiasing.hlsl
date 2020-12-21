@@ -157,7 +157,7 @@ float4 TemporalAntialiasing(uint2 thread_id, uint group_index, uint3 group_id, T
         // Decrease blend factor when motion gets sub-pixel
         const float threshold   = 0.5f;
         const float base        = 0.5f;
-        const float gather      = g_delta_time * 25.0f;
+        const float gather      = g_delta_time;
         float depth             = get_linear_depth(uv);
         float texel_vel_mag     = length(velocity / g_texel_size) * depth;
         float subpixel_motion   = saturate(threshold / (FLT_MIN + texel_vel_mag));
@@ -194,4 +194,3 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID, uint group_index : SV_GroupIn
 {
     tex_out_rgba[thread_id.xy] = TemporalAntialiasing(thread_id.xy, group_index, group_id, tex, tex2);
 }
-
