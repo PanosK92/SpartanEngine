@@ -47,13 +47,13 @@ namespace Spartan
         const string data_dir = "Data\\";
 
         // Add engine standard resource directories
-        AddDataDirectory(Asset_Cubemaps,        data_dir + "environment");
-        AddDataDirectory(Asset_Fonts,            data_dir + "fonts");
-        AddDataDirectory(Asset_Icons,            data_dir + "icons");
-        AddDataDirectory(Asset_Scripts,            data_dir + "scripts");
-        AddDataDirectory(Asset_ShaderCompiler,    data_dir + "shader_compiler");    
-        AddDataDirectory(Asset_Shaders,            data_dir + "shaders");
-        AddDataDirectory(Asset_Textures,        data_dir + "textures");
+        AddResourceDirectory(ResourceDirectory::Cubemaps,        data_dir + "environment");
+        AddResourceDirectory(ResourceDirectory::Fonts,           data_dir + "fonts");
+        AddResourceDirectory(ResourceDirectory::Icons,           data_dir + "icons");
+        AddResourceDirectory(ResourceDirectory::Scripts,         data_dir + "scripts");
+        AddResourceDirectory(ResourceDirectory::ShaderCompiler,  data_dir + "shader_compiler");
+        AddResourceDirectory(ResourceDirectory::Shaders,         data_dir + "shaders");
+        AddResourceDirectory(ResourceDirectory::Textures,        data_dir + "textures");
 
         // Create project directory
         SetProjectDirectory("Project/");
@@ -61,7 +61,7 @@ namespace Spartan
         // Subscribe to events
         SUBSCRIBE_TO_EVENT(EventType::WorldSave,    EVENT_HANDLER(SaveResourcesToFiles));
         SUBSCRIBE_TO_EVENT(EventType::WorldLoad,    EVENT_HANDLER(LoadResourcesFromFiles));
-        SUBSCRIBE_TO_EVENT(EventType::WorldUnload,    EVENT_HANDLER(Clear));
+        SUBSCRIBE_TO_EVENT(EventType::WorldUnload,  EVENT_HANDLER(Clear));
     }
 
     ResourceCache::~ResourceCache()
@@ -76,7 +76,8 @@ namespace Spartan
         // Importers
         m_importer_image    = make_shared<ImageImporter>(m_context);
         m_importer_model    = make_shared<ModelImporter>(m_context);
-        m_importer_font        = make_shared<FontImporter>(m_context);
+        m_importer_font     = make_shared<FontImporter>(m_context);
+
         return true;
     }
 
@@ -268,12 +269,12 @@ namespace Spartan
         return static_cast<uint32_t>(GetByType(type).size());
     }
 
-    void ResourceCache::AddDataDirectory(const Asset_Type type, const string& directory)
+    void ResourceCache::AddResourceDirectory(const ResourceDirectory type, const string& directory)
     {
         m_standard_resource_directories[type] = directory;
     }
 
-    string ResourceCache::GetDataDirectory(const Asset_Type type)
+    string ResourceCache::GetResourceDirectory(const ResourceDirectory type)
     {
         for (auto& directory : m_standard_resource_directories)
         {

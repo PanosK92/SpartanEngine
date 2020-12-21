@@ -36,14 +36,6 @@ namespace Spartan
     class Input;
     class Profiler;
 
-    enum class WorldState
-    {
-        Ticking,
-        Idle,
-        RequestLoading,
-        Loading
-    };
-
     class SPARTAN_CLASS World : public ISubsystem
     {
     public:
@@ -55,14 +47,14 @@ namespace Spartan
         void Tick(float delta_time) override;
         //===================================
         
-        void Unload();
+        void Unload() { m_clear = true; }
         bool SaveToFile(const std::string& filePath);
         bool LoadFromFile(const std::string& file_path);
         const auto& GetName() const { return m_name; }
-        void MakeDirty() { m_is_dirty = true; }
+        void MakeDirty() { m_resolve = true; }
 
         //= Entities ===========================================================================
-        std::shared_ptr<Entity>& EntityCreate(bool is_active = true);
+        std::shared_ptr<Entity> EntityCreate(bool is_active = true);
         std::shared_ptr<Entity>& EntityAdd(const std::shared_ptr<Entity>& entity);
         bool EntityExists(const std::shared_ptr<Entity>& entity);
         void EntityRemove(const std::shared_ptr<Entity>& entity);    
@@ -76,19 +68,23 @@ namespace Spartan
     private:
         void _EntityRemove(const std::shared_ptr<Entity>& entity);
 
-        //= COMMON ENTITY CREATION ========================
-        std::shared_ptr<Entity>& CreateEnvironment();
+        //= COMMON ENTITY CREATION ======================
+        std::shared_ptr<Entity> CreateEnvironment();
         std::shared_ptr<Entity> CreateCamera();
-        std::shared_ptr<Entity>& CreateDirectionalLight();
-        //================================================
+        std::shared_ptr<Entity> CreateDirectionalLight();
+        //===============================================
 
         std::string m_name;
-        bool m_was_in_editor_mode   = false;
-        bool m_is_dirty             = true;
-        WorldState m_state          = WorldState::Ticking;
-        Input* m_input              = nullptr;
-        Profiler* m_profiler        = nullptr;
+        bool m_was_in_editor_mode       = false;
+        bool m_resolve                  = true;
+        std::atomic<bool> m_tick        = true;
+        std::atomic<bool> m_is_ticking  = true;
+        std::atomic<bool> m_clear       = false;
+        std::atomic<bool> m_clear_temp  = false;
+        Input* m_input                  = nullptr;
+        Profiler* m_profiler            = nullptr;
 
         std::vector<std::shared_ptr<Entity>> m_entities;
+        std::vector<std::shared_ptr<Entity>> m_entities_temp;
     };
 }

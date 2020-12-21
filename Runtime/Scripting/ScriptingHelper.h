@@ -51,7 +51,7 @@ namespace Spartan::ScriptingHelper
     static bool compile_script(const std::string& script, const std::string& dll_reference = "")
     {
         // Get paths
-        const std::string dir_scripts    = resource_cache->GetDataDirectory(Asset_Scripts) + "\\";
+        const std::string dir_scripts    = resource_cache->GetResourceDirectory(ResourceDirectory::Scripts) + "\\";
         const std::string dir_compiler   = dir_scripts + "mono\\roslyn\\csc.exe";
 
         // Compile script
@@ -98,7 +98,7 @@ namespace Spartan::ScriptingHelper
         // Ensure that the directory of the script contains the callback dll (otherwise mono will crash)
         if (is_script)
         {
-            const std::string callbacks_cs_source = resource_cache->GetDataDirectory(Asset_Scripts) + "\\" + "Spartan.dll";
+            const std::string callbacks_cs_source = resource_cache->GetResourceDirectory(ResourceDirectory::Scripts) + "\\" + "Spartan.dll";
             const std::string callbacks_cs_dest = FileSystem::GetDirectoryFromFilePath(script) + "Spartan.dll";
             if (!FileSystem::Exists(callbacks_cs_dest))
             {

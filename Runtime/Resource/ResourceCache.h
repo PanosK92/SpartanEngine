@@ -34,15 +34,15 @@ namespace Spartan
     class ImageImporter;
     class ModelImporter;
 
-    enum Asset_Type
+    enum class ResourceDirectory
     {
-        Asset_Cubemaps,
-        Asset_Fonts,
-        Asset_Icons,
-        Asset_Scripts,
-        Asset_ShaderCompiler,
-        Asset_Shaders,
-        Asset_Textures
+        Cubemaps,
+        Fonts,
+        Icons,
+        Scripts,
+        ShaderCompiler,
+        Shaders,
+        Textures
     };
 
     class SPARTAN_CLASS ResourceCache : public ISubsystem
@@ -183,14 +183,14 @@ namespace Spartan
         uint32_t GetResourceCount(ResourceType type = ResourceType::Unknown);
         //====================================================================
 
-        //= DIRECTORIES =======================================================
-        void AddDataDirectory(Asset_Type type, const std::string& directory);
-        std::string GetDataDirectory(Asset_Type type);
+        //= DIRECTORIES ================================================================
+        void AddResourceDirectory(ResourceDirectory type, const std::string& directory);
+        std::string GetResourceDirectory(ResourceDirectory type);
         void SetProjectDirectory(const std::string& directory);
         std::string GetProjectDirectoryAbsolute() const;
-        const auto& GetProjectDirectory() const    { return m_project_directory; }
-        std::string GetDataDirectory() const    { return "Data"; }
-        //=====================================================================
+        const auto& GetProjectDirectory()   const { return m_project_directory; }
+        std::string GetResourceDirectory()  const { return "Data"; }
+        //==============================================================================
 
         // Importers
         auto GetModelImporter() const { return m_importer_model.get(); }
@@ -203,7 +203,7 @@ namespace Spartan
         std::mutex m_mutex;
 
         // Directories
-        std::unordered_map<Asset_Type, std::string> m_standard_resource_directories;
+        std::unordered_map<ResourceDirectory, std::string> m_standard_resource_directories;
         std::string m_project_directory;
 
         // Importers

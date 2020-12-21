@@ -281,9 +281,7 @@ namespace Spartan
             m_buffer_frame_cpu.frame                        = static_cast<uint32_t>(m_frame_num);
         }
 
-        m_is_rendering = true;
         Pass_Main(cmd_list);
-        m_is_rendering = false;
 
         DrawDebugTick(delta_time);
 

@@ -47,9 +47,9 @@ namespace Spartan
     World::World(Context* context) : ISubsystem(context)
     {
         // Subscribe to events
-        SUBSCRIBE_TO_EVENT(EventType::WorldResolve, [this](Variant) { m_is_dirty = true; });
-        SUBSCRIBE_TO_EVENT(EventType::WorldStop,    [this](Variant) { m_state = WorldState::Idle; });
-        SUBSCRIBE_TO_EVENT(EventType::WorldStart,   [this](Variant) { m_state = WorldState::Ticking; });
+        SUBSCRIBE_TO_EVENT(EventType::WorldResolve, [this](Variant) { m_resolve = true; });
+        SUBSCRIBE_TO_EVENT(EventType::WorldStop,    [this](Variant) { m_tick = false; });
+        SUBSCRIBE_TO_EVENT(EventType::WorldStart,   [this](Variant) { m_tick = true; });
     }
 
     World::~World()
@@ -61,8 +61,8 @@ namespace Spartan
 
     bool World::Initialize()
     {
-        m_input        = m_context->GetSubsystem<Input>();
-        m_profiler    = m_context->GetSubsystem<Profiler>();
+        m_input     = m_context->GetSubsystem<Input>();
+        m_profiler  = m_context->GetSubsystem<Profiler>();
 
         CreateCamera();
         CreateEnvironment();
@@ -72,15 +72,11 @@ namespace Spartan
     }
 
     void World::Tick(float delta_time)
-    {    
-        if (m_state == WorldState::RequestLoading)
-        {
-            m_state = WorldState::Loading;
+    {
+        if (!m_tick)
             return;
-        }
 
-        if (m_state != WorldState::Ticking)
-            return;
+        m_is_ticking = true;
 
         SCOPED_TIME_BLOCK(m_profiler);
 
@@ -116,7 +112,7 @@ namespace Spartan
             }
         }
 
-        if (m_is_dirty)
+        if (m_resolve)
         {
             // Update dirty entities
             {
@@ -134,19 +130,27 @@ namespace Spartan
 
             // Notify Renderer
             FIRE_EVENT_DATA(EventType::WorldResolved, m_entities);
-            m_is_dirty = false;
+            m_resolve = false;
         }
-    }
 
-    void World::Unload()
-    {
-        // Notify any systems that the entities are about to be cleared
-        FIRE_EVENT(EventType::WorldUnload);
+        m_is_ticking = false;
 
-        m_entities.clear();
-        m_entities.shrink_to_fit();
+        if (m_clear)
+        {
+            // Notify any systems that the entities are about to be cleared
+            FIRE_EVENT(EventType::WorldUnload);
 
-        m_is_dirty = true;
+            m_entities.clear();
+
+            m_resolve = true;
+            m_clear = true;
+        }
+
+        if (m_clear_temp)
+        {
+            m_entities_temp.clear();
+            m_clear_temp = false;
+        }
     }
 
     bool World::SaveToFile(const string& filePathIn)
@@ -216,12 +220,20 @@ namespace Spartan
             return false;
         }
 
-        // Thread safety: Wait for the world and the renderer to stop using entities
-        while (m_state != WorldState::Loading || m_context->GetSubsystem<Renderer>()->IsRendering())
+        // Read all the resource file paths
+        auto file = make_unique<FileStream>(file_path, FileStream_Read);
+        if (!file->IsOpen())
+            return false;
+
+        // Thread safety: Wait for the world to stop ticking
+        m_tick = false;
+        while (m_is_ticking)
         {
-            m_state = WorldState::RequestLoading;
-            this_thread::sleep_for(chrono::milliseconds(16));
+            this_thread::sleep_for(chrono::milliseconds(1));
         }
+
+        // Thread safety: Keep the entities around for a bit
+        m_entities_temp.swap(m_entities);
 
         // Start progress report and timing
         ProgressReport::Get().Reset(g_progress_world);
@@ -229,28 +241,20 @@ namespace Spartan
         ProgressReport::Get().SetStatus(g_progress_world, "Loading world...");
         const Stopwatch timer;
         
-        // Unload current entities
-        Unload();
-
-        // Read all the resource file paths
-        auto file = make_unique<FileStream>(file_path, FileStream_Read);
-        if (!file->IsOpen())
-            return false;
-
         m_name = FileSystem::GetFileNameNoExtensionFromFilePath(file_path);
 
         // Notify subsystems that need to load data
         FIRE_EVENT(EventType::WorldLoad);
 
         // Load root entity count
-        const auto root_entity_count = file->ReadAs<uint32_t>();
+        const uint32_t root_entity_count = file->ReadAs<uint32_t>();
 
         ProgressReport::Get().SetJobCount(g_progress_world, root_entity_count);
 
         // Load root entity IDs
         for (uint32_t i = 0; i < root_entity_count; i++)
         {
-            auto& entity = EntityCreate();
+            shared_ptr<Entity> entity = EntityCreate();
             entity->SetId(file->ReadAs<uint32_t>());
         }
 
@@ -261,18 +265,21 @@ namespace Spartan
             ProgressReport::Get().IncrementJobsDone(g_progress_world);
         }
 
-        m_is_dirty    = true;
-        m_state        = WorldState::Ticking;
         ProgressReport::Get().SetIsLoading(g_progress_world, false);
         LOG_INFO("Loading took %.2f ms", timer.GetElapsedTimeMs());
 
         FIRE_EVENT(EventType::WorldLoaded);
+
+        m_resolve       = true;
+        m_clear_temp    = true;
+        m_tick          = true;
+
         return true;
     }
 
-    shared_ptr<Entity>& World::EntityCreate(bool is_active /*= true*/)
+    shared_ptr<Entity> World::EntityCreate(bool is_active /*= true*/)
     {
-        auto& entity = m_entities.emplace_back(make_shared<Entity>(m_context));
+        shared_ptr<Entity> entity = m_entities.emplace_back(make_shared<Entity>(m_context));
         entity->SetActive(is_active);
         return entity;
     }
@@ -303,7 +310,7 @@ namespace Spartan
         // Mark for destruction but don't delete now
         // as the Renderer might still be using it.
         entity->MarkForDestruction();
-        m_is_dirty = true;
+        m_resolve = true;
     }
 
     vector<shared_ptr<Entity>> World::EntityGetRoots()
@@ -376,33 +383,32 @@ namespace Spartan
         }
     }
 
-    shared_ptr<Entity>& World::CreateEnvironment()
+    shared_ptr<Entity> World::CreateEnvironment()
     {
-        auto& environment = EntityCreate();
+        shared_ptr<Entity> environment = EntityCreate();
         environment->SetName("Environment");
         environment->AddComponent<Environment>()->LoadDefault();
 
         return environment;
     }
+
     shared_ptr<Entity> World::CreateCamera()
     {
-        auto resource_mng        = m_context->GetSubsystem<ResourceCache>();
-        const auto dir_scripts    = resource_mng->GetDataDirectory(Asset_Scripts) + "/";
+        ResourceCache* resource_cache   = m_context->GetSubsystem<ResourceCache>();
+        const string dir_scripts        = resource_cache->GetResourceDirectory(ResourceDirectory::Scripts) + "/";
 
-        auto entity = EntityCreate();
+        shared_ptr<Entity> entity = EntityCreate();
         entity->SetName("Camera");
         entity->AddComponent<Camera>();
         entity->AddComponent<AudioListener>();
-        //entity->AddComponent<Script>()->SetScript(dir_scripts + "MouseLook.as");
-        //entity->AddComponent<Script>()->SetScript(dir_scripts + "FirstPersonController.as");
         entity->GetTransform()->SetPositionLocal(Vector3(0.0f, 1.0f, -5.0f));
 
         return entity;
     }
 
-    shared_ptr<Entity>& World::CreateDirectionalLight()
+    shared_ptr<Entity> World::CreateDirectionalLight()
     {
-        auto& light = EntityCreate();
+        shared_ptr<Entity> light = EntityCreate();
         light->SetName("DirectionalLight");
         light->GetTransform()->SetRotationLocal(Quaternion::FromEulerAngles(30.0f, 30.0, 0.0f));
         light->GetTransform()->SetPosition(Vector3(0.0f, 10.0f, 0.0f));
