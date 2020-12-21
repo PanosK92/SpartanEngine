@@ -103,7 +103,7 @@ namespace ImGui::RHI
             );
 
             // Compile shaders
-            const std::string shader_path = g_context->GetSubsystem<ResourceCache>()->GetDataDirectory(Asset_Shaders) + "/ImGui.hlsl";
+            const std::string shader_path = g_context->GetSubsystem<ResourceCache>()->GetResourceDirectory(ResourceDirectory::Shaders) + "/ImGui.hlsl";
             g_shader_vertex = make_unique<RHI_Shader>(g_context);
             g_shader_vertex->Compile<RHI_Vertex_Pos2dTexCol8>(RHI_Shader_Vertex, shader_path);
             g_shader_pixel = make_unique<RHI_Shader>(g_context);

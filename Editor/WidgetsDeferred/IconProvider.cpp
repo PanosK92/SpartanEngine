@@ -45,7 +45,7 @@ IconProvider::~IconProvider()
 void IconProvider::Initialize(Context* context)
 {
     m_context = context;
-    const string data_dir = m_context->GetSubsystem<ResourceCache>()->GetDataDirectory() + "/";
+    const string data_dir = m_context->GetSubsystem<ResourceCache>()->GetResourceDirectory() + "/";
 
     // Load standard icons
     Thumbnail_Load(data_dir + "Icons/component_componentOptions.png",        Icon_Component_Options);    

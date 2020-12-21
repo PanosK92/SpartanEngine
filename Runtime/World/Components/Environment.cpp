@@ -42,7 +42,7 @@ namespace Spartan
         m_environment_type = Environment_Sphere;
 
         // Default texture paths
-        const auto dir_cubemaps = GetContext()->GetSubsystem<ResourceCache>()->GetDataDirectory(Asset_Cubemaps) + "/";
+        const auto dir_cubemaps = GetContext()->GetSubsystem<ResourceCache>()->GetResourceDirectory(ResourceDirectory::Cubemaps) + "/";
         if (m_environment_type == Enviroment_Cubemap)
         {
             m_file_paths =

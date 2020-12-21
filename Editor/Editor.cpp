@@ -326,7 +326,7 @@ void Editor::ImGui_ApplyStyle() const
 
     // Font
     auto& io = ImGui::GetIO();
-    const string dir_fonts = m_context->GetSubsystem<ResourceCache>()->GetDataDirectory(Asset_Fonts) + "/";
+    const string dir_fonts = m_context->GetSubsystem<ResourceCache>()->GetResourceDirectory(ResourceDirectory::Fonts) + "/";
     io.Fonts->AddFontFromFileTTF((dir_fonts + "CalibriBold.ttf").c_str(), font_size);
     io.FontGlobalScale = font_scale;
 }

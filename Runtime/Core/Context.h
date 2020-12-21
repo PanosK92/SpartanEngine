@@ -78,7 +78,7 @@ namespace Spartan
         bool Initialize()
         {
             auto result = true;
-            for (const auto& subsystem : m_subsystems)
+            for (const _subystem& subsystem : m_subsystems)
             {
                 if (!subsystem.ptr->Initialize())
                 {
@@ -93,7 +93,7 @@ namespace Spartan
         // Tick
         void Tick(TickType tick_group, float delta_time = 0.0f)
         {
-            for (const auto& subsystem : m_subsystems)
+            for (const _subystem& subsystem : m_subsystems)
             {
                 if (subsystem.tick_group != tick_group)
                     continue;

@@ -56,7 +56,7 @@ namespace Spartan
         ScriptingHelper::resource_cache = m_context->GetSubsystem<ResourceCache>();
 
         // Get file paths
-        const string dir_scripts    = ScriptingHelper::resource_cache->GetDataDirectory(Asset_Scripts) + "\\";
+        const string dir_scripts    = ScriptingHelper::resource_cache->GetResourceDirectory(ResourceDirectory::Scripts) + "\\";
         const string dir_mono_lib   = dir_scripts + string("mono\\lib");
         const string dir_mono_etc   = dir_scripts + string("mono\\etc");
 
@@ -212,7 +212,7 @@ namespace Spartan
     bool Scripting::CompileApiAssembly()
     {
         // Get callbacks assembly
-        const string api_cs           = ScriptingHelper::resource_cache->GetDataDirectory(Asset_Scripts) + "/" + "Spartan.cs";
+        const string api_cs           = ScriptingHelper::resource_cache->GetResourceDirectory(ResourceDirectory::Scripts) + "/" + "Spartan.cs";
         MonoAssembly* api_assembly    = ScriptingHelper::compile_and_load_assembly(m_domain, api_cs, false);
         if (!api_assembly)
         {

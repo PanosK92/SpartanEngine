@@ -145,7 +145,6 @@ namespace Spartan
         const auto& GetCamera()                             const { return m_camera; }
         auto IsInitialized()                                const { return m_initialized; }
         auto& GetShaders()                                  const { return m_shaders; }
-        bool IsRendering()                                  const { return m_is_rendering; }
         uint32_t GetMaxResolution() const;
 
         // Passes
@@ -284,7 +283,6 @@ namespace Spartan
         float m_far_plane                   = 0.0f;
         uint64_t m_frame_num                = 0;
         bool m_is_odd_frame                 = false;
-        std::atomic<bool> m_is_rendering    = false;
         bool m_brdf_specular_lut_rendered   = false;
         bool m_update_ortho_proj            = true;
 
