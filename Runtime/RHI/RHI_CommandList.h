@@ -40,11 +40,11 @@ namespace Spartan
         class Rectangle;
     }
 
-    enum class RHI_CommandListState : uint64_t
+    enum class RHI_CommandListState : uint8_t
     {
         Idle,
         Recording,
-        Submittable,
+        Ended,
         Submitted
     };
 
@@ -60,36 +60,7 @@ namespace Spartan
         bool Submit();
         bool Wait();
         bool Reset();
-        bool Flush()
-        {
-            if (m_cmd_state == RHI_CommandListState::Recording)
-            {
-                const bool has_render_pass = m_render_pass_active;
-                if (has_render_pass)
-                {
-                    if (!EndRenderPass())
-                        return false;
-                }
-
-                if (!End())
-                    return false;
-
-                if (!Submit())
-                    return false;
-
-                if (!Begin())
-                    return false;
-
-                if (has_render_pass)
-                {
-                    if (!BeginRenderPass(*m_pipeline_state))
-                        return false;
-                }
-            }
-
-            m_flushed = true;
-            return true;
-        }
+        bool Flush();
 
         // Render pass
         bool BeginRenderPass(RHI_PipelineState& pipeline_state);

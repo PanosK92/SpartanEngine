@@ -223,7 +223,7 @@ namespace Spartan
         // goes through the entities and makes the ones that use this material, render in the correct mode.
         if ((m_color_albedo.w != 1.0f && color.w == 1.0f) || (m_color_albedo.w == 1.0f && color.w != 1.0f))
         {
-            m_context->GetSubsystem<World>()->MakeDirty();
+            m_context->GetSubsystem<World>()->Resolve();
         }
 
         m_color_albedo = color;
