@@ -244,7 +244,7 @@ namespace Spartan
                     Entity* entity = entities[entity_index];
 
                     // Acquire renderable component
-                    const auto& renderable = entity->GetRenderable();
+                    Renderable* renderable = entity->GetRenderable();
                     if (!renderable)
                         continue;
 
@@ -253,12 +253,12 @@ namespace Spartan
                         continue;
 
                     // Acquire geometry
-                    const auto& model = renderable->GeometryModel();
+                    Model* model = renderable->GeometryModel();
                     if (!model || !model->GetVertexBuffer() || !model->GetIndexBuffer())
                         continue;
 
                     // Acquire material
-                    const auto& material = renderable->GetMaterial();
+                    Material* material = renderable->GetMaterial();
                     if (!material)
                         continue;
 
@@ -348,12 +348,12 @@ namespace Spartan
                 for (const auto& entity : entities)
                 {
                     // Get renderable
-                    const auto& renderable = entity->GetRenderable();
+                    Renderable* renderable = entity->GetRenderable();
                     if (!renderable)
                         continue;
 
                     // Get geometry
-                    const auto& model = renderable->GeometryModel();
+                    Model* model = renderable->GeometryModel();
                     if (!model || !model->GetVertexBuffer() || !model->GetIndexBuffer())
                         continue;
 
@@ -448,7 +448,7 @@ namespace Spartan
                 Entity* entity = entities[i];
 
                 // Get renderable
-                const auto& renderable = entity->GetRenderable();
+                Renderable* renderable = entity->GetRenderable();
                 if (!renderable)
                     continue;
 
@@ -466,7 +466,7 @@ namespace Spartan
                     continue;
 
                 // Get geometry
-                const auto& model = renderable->GeometryModel();
+                Model* model = renderable->GeometryModel();
                 if (!model || !model->GetVertexBuffer() || !model->GetIndexBuffer())
                     continue;
 

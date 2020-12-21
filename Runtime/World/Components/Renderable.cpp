@@ -40,7 +40,7 @@ namespace Spartan
 {
     inline void build(const Geometry_Type type, Renderable* renderable)
     {    
-        auto model = make_shared<Model>(renderable->GetContext());
+        Model* model = new Model(renderable->GetContext());
         vector<RHI_Vertex_PosTexNorTan> vertices;
         vector<uint32_t> indices;
 
@@ -86,7 +86,7 @@ namespace Spartan
             0,
             static_cast<uint32_t>(vertices.size()),
             BoundingBox(vertices.data(), static_cast<uint32_t>(vertices.size())),
-            model.get()
+            model
         );
     }
 
@@ -101,14 +101,14 @@ namespace Spartan
         m_cast_shadows          = true;
 
         REGISTER_ATTRIBUTE_VALUE_VALUE(m_material_default,      bool);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_material,              shared_ptr<Material>);
+        REGISTER_ATTRIBUTE_VALUE_VALUE(m_material,              Material*);
         REGISTER_ATTRIBUTE_VALUE_VALUE(m_cast_shadows,          bool);
         REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryIndexOffset,   uint32_t);
         REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryIndexCount,    uint32_t);
         REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryVertexOffset,  uint32_t);
         REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryVertexCount,   uint32_t);
         REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryName,          string);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_model,                 shared_ptr<Model>);
+        REGISTER_ATTRIBUTE_VALUE_VALUE(m_model,                 Model*);
         REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box,          BoundingBox);
         REGISTER_ATTRIBUTE_GET_SET(Geometry_Type, GeometrySet,  Geometry_Type);
     }
@@ -144,7 +144,7 @@ namespace Spartan
         stream->Read(&m_bounding_box);
         string model_name;
         stream->Read(&model_name);
-        m_model = m_context->GetSubsystem<ResourceCache>()->GetByName<Model>(model_name);
+        m_model = m_context->GetSubsystem<ResourceCache>()->GetByName<Model>(model_name).get();
 
         // If it was a default mesh, we have to reconstruct it
         if (m_geometry_type != Geometry_Custom) 
@@ -163,19 +163,25 @@ namespace Spartan
         {
             string material_name;
             stream->Read(&material_name);
-            m_material = m_context->GetSubsystem<ResourceCache>()->GetByName<Material>(material_name);
+            m_material = m_context->GetSubsystem<ResourceCache>()->GetByName<Material>(material_name).get();
         }
     }
 
     void Renderable::GeometrySet(const string& name, const uint32_t index_offset, const uint32_t index_count, const uint32_t vertex_offset, const uint32_t vertex_count, const BoundingBox& bounding_box, Model* model)
-    {    
+    {
+        // Terrible way to delete previous geometry in case it's a default one
+        if (m_geometryName == "Default_Geometry")
+        {
+            delete m_model;
+        }
+
         m_geometryName          = name;
         m_geometryIndexOffset   = index_offset;
         m_geometryIndexCount    = index_count;
         m_geometryVertexOffset  = vertex_offset;
         m_geometryVertexCount   = vertex_count;
         m_bounding_box          = bounding_box;
-        m_model                 = model ? model->GetSharedPtr() : nullptr;
+        m_model                 = model;
     }
 
     void Renderable::GeometrySet(const Geometry_Type type)
@@ -217,19 +223,23 @@ namespace Spartan
     }
 
     // All functions (set/load) resolve to this
-    void Renderable::SetMaterial(const shared_ptr<Material>& material)
+    shared_ptr<Material> Renderable::SetMaterial(const shared_ptr<Material>& material)
     {
         if (!material)
         {
             LOG_ERROR_INVALID_PARAMETER();
-            return;
+            return nullptr;
         }
 
         // In order for the component to guarantee serialization/deserialization, we cache the material
-        m_material = m_context->GetSubsystem<ResourceCache>()->Cache(material);
+        shared_ptr<Material> _material = m_context->GetSubsystem<ResourceCache>()->Cache(material);
+
+        m_material = _material.get();
 
         // Set to false otherwise material won't serialize/deserialize
         m_material_default = false;
+
+        return _material;
     }
 
     shared_ptr<Material> Renderable::SetMaterial(const string& file_path)
@@ -243,10 +253,7 @@ namespace Spartan
         }
 
         // Set it as the current material
-        SetMaterial(material);
-
-        // Return it
-        return m_material;
+        return SetMaterial(material);
     }
 
     void Renderable::UseDefaultMaterial()

@@ -79,23 +79,23 @@ namespace Spartan
         uint32_t GeometryVertexCount()              const { return m_geometryVertexCount; }
         Geometry_Type GeometryType()                const { return m_geometry_type; }
         const std::string& GeometryName()           const { return m_geometryName; }
-        const Model* GeometryModel()                const { return m_model.get(); }
+        Model* GeometryModel()                      const { return m_model; }
         const Math::BoundingBox& GetBoundingBox()   const { return m_bounding_box; }
         const Math::BoundingBox& GetAabb();
         //=====================================================================================================
 
-        //= MATERIAL ============================================================
+        //= MATERIAL ====================================================================
         // Sets a material from memory (adds it to the resource cache by default)
-        void SetMaterial(const std::shared_ptr<Material>& material);
+        std::shared_ptr<Material> SetMaterial(const std::shared_ptr<Material>& material);
 
         // Loads a material and the sets it
         std::shared_ptr<Material> SetMaterial(const std::string& file_path);
 
         void UseDefaultMaterial();
         std::string GetMaterialName()   const;
-        Material* GetMaterial()         const { return m_material.get(); }
+        Material* GetMaterial()         const { return m_material; }
         auto HasMaterial()              const { return m_material != nullptr; }
-        //=======================================================================
+        //===============================================================================
 
         //= PROPERTIES =======================================================================
         void SetCastShadows(const bool cast_shadows)        { m_cast_shadows = cast_shadows; }
@@ -108,13 +108,13 @@ namespace Spartan
         uint32_t m_geometryIndexCount;
         uint32_t m_geometryVertexOffset;
         uint32_t m_geometryVertexCount;
-        std::shared_ptr<Model> m_model;
         Geometry_Type m_geometry_type;
         Math::BoundingBox m_bounding_box;
         Math::BoundingBox m_aabb;
         Math::Matrix m_last_transform   = Math::Matrix::Identity;
         bool m_cast_shadows             = true;
         bool m_material_default;
-        std::shared_ptr<Material> m_material;
+        Model* m_model          = nullptr;
+        Material* m_material    = nullptr;
     };
 }
