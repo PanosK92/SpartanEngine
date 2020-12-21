@@ -51,13 +51,13 @@ namespace Spartan
         bool SaveToFile(const std::string& filePath);
         bool LoadFromFile(const std::string& file_path);
         const auto& GetName() const { return m_name; }
-        void MakeDirty() { m_resolve = true; }
+        void Resolve() { m_resolve = true; }
 
         //= Entities ===========================================================================
         std::shared_ptr<Entity> EntityCreate(bool is_active = true);
         std::shared_ptr<Entity>& EntityAdd(const std::shared_ptr<Entity>& entity);
         bool EntityExists(const std::shared_ptr<Entity>& entity);
-        void EntityRemove(const std::shared_ptr<Entity>& entity);    
+        void EntityRemove(const std::shared_ptr<Entity>& entity);
         std::vector<std::shared_ptr<Entity>> EntityGetRoots();
         const std::shared_ptr<Entity>& EntityGetByName(const std::string& name);
         const std::shared_ptr<Entity>& EntityGetById(uint32_t id);

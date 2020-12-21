@@ -30,14 +30,68 @@ namespace Spartan
 {
     bool RHI_CommandList::Wait()
     {
-        if (m_cmd_state == RHI_CommandListState::Submitted)
-        {
-            if (!m_processed_fence->Wait())
-                return false;
+        SP_ASSERT(m_cmd_state == RHI_CommandListState::Submitted);
 
-            m_descriptor_cache->GrowIfNeeded();
-            m_cmd_state = RHI_CommandListState::Idle;
+        if (!m_processed_fence->Wait())
+            return false;
+
+        m_descriptor_cache->GrowIfNeeded();
+        m_cmd_state = RHI_CommandListState::Idle;
+
+        return true;
+    }
+
+    bool RHI_CommandList::Flush()
+    {
+        if (m_cmd_state == RHI_CommandListState::Idle)
+            return true;
+
+        // If recording, end
+        bool was_recording      = false;
+        bool had_render_pass    = false;
+        if (m_cmd_state == RHI_CommandListState::Recording)
+        {
+            was_recording = true;
+
+            if (m_render_pass_active)
+            {
+                had_render_pass = true;
+
+                if (!EndRenderPass())
+                    return false;
+            }
+
+            if (!End())
+                return false;
         }
+
+        // If ended, submit
+        if (m_cmd_state == RHI_CommandListState::Ended)
+        {
+            if (!Submit())
+                return false;
+        }
+
+        // Flush
+        Wait();
+        
+        // If idle, restore state (if any)
+        if (m_cmd_state == RHI_CommandListState::Idle)
+        {
+            if (was_recording)
+            {
+                if (!Begin())
+                    return false;
+            }
+
+            if (had_render_pass)
+            {
+                if (!BeginRenderPass(*m_pipeline_state))
+                    return false;
+            }
+        }
+
+        m_flushed = true;
 
         return true;
     }

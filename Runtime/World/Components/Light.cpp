@@ -174,7 +174,7 @@ namespace Spartan
         }
 
         
-        m_context->GetSubsystem<World>()->MakeDirty();
+        m_context->GetSubsystem<World>()->Resolve();
     }
 
     void Light::SetColor(const float temperature)
