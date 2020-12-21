@@ -49,7 +49,7 @@ namespace Spartan
         ~RHI_SwapChain();
 
         bool Resize(uint32_t width, uint32_t height, const bool force = false);
-        bool Present();
+        bool Present(RHI_Semaphore* wait_semaphore);
 
         // Misc
         uint32_t GetWidth()                     const { return m_width; }
@@ -64,10 +64,10 @@ namespace Spartan
         RHI_Semaphore* GetImageAcquiredSemaphore()    { return m_image_acquired_semaphore[m_cmd_index].get(); }
 
         // GPU Resources
-        void* Get_Resource(uint32_t i = 0)          const { return m_resource[i]; }
-        void* Get_Resource_View(uint32_t i = 0)     const { return m_resource_view[i]; }
-        void* Get_Resource_View_RenderTarget()      const { return m_resource_view_renderTarget; }
-        void*& GetCmdPool()                               { return m_cmd_pool; }
+        void* Get_Resource(uint32_t i = 0)      const { return m_resource[i]; }
+        void* Get_Resource_View(uint32_t i = 0) const { return m_resource_view[i]; }
+        void* Get_Resource_View_RenderTarget()  const { return m_resource_view_renderTarget; }
+        void*& GetCmdPool()                           { return m_cmd_pool; }
 
     private:
         bool AcquireNextImage();

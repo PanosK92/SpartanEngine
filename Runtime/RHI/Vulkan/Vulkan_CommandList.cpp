@@ -101,7 +101,7 @@ namespace Spartan
     bool RHI_CommandList::Begin()
     {
         // If the command list is in use, wait for it
-        if (m_cmd_state == RHI_CommandListState::Submitted)
+        if (m_state == RHI_CommandListState::Submitted)
         {
             if (!Wait())
             {
@@ -111,7 +111,7 @@ namespace Spartan
         }
 
         // Validate command list state
-        SP_ASSERT(m_cmd_state == RHI_CommandListState::Idle);
+        SP_ASSERT(m_state == RHI_CommandListState::Idle);
 
         // Get queries
         {
@@ -150,7 +150,7 @@ namespace Spartan
 
         vkCmdResetQueryPool(static_cast<VkCommandBuffer>(m_cmd_buffer), static_cast<VkQueryPool>(m_query_pool), 0, m_max_timestamps);
 
-        m_cmd_state = RHI_CommandListState::Recording;
+        m_state = RHI_CommandListState::Recording;
         m_flushed   = false;
 
         return true;
@@ -159,19 +159,19 @@ namespace Spartan
     bool RHI_CommandList::End()
     {
         // Validate command list state
-        SP_ASSERT(m_cmd_state == RHI_CommandListState::Recording);
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         if (!vulkan_utility::error::check(vkEndCommandBuffer(static_cast<VkCommandBuffer>(m_cmd_buffer))))
             return false;
 
-        m_cmd_state = RHI_CommandListState::Ended;
+        m_state = RHI_CommandListState::Ended;
         return true;
     }
 
     bool RHI_CommandList::Submit()
     {
         // Validate command list state
-        SP_ASSERT(m_cmd_state == RHI_CommandListState::Ended);
+        SP_ASSERT(m_state == RHI_CommandListState::Ended);
 
         // Ensure the processed semaphore can be used
         SP_ASSERT(m_processed_semaphore->GetState() == RHI_Semaphore_State::Idle);
@@ -188,7 +188,7 @@ namespace Spartan
                     // If the swapchain is not presenting (e.g. minimised window), don't submit any work
                     if (!state->render_target_swapchain->PresentEnabled())
                     {
-                        m_cmd_state = RHI_CommandListState::Submitted;
+                        m_state = RHI_CommandListState::Submitted;
                         return true;
                     }
 
@@ -218,28 +218,28 @@ namespace Spartan
             return false;
         }
 
-        m_cmd_state = RHI_CommandListState::Submitted;
+        m_state = RHI_CommandListState::Submitted;
         return true;
     }
 
     bool RHI_CommandList::Reset()
     {
         // Validate command list state
-        SP_ASSERT(m_cmd_state == RHI_CommandListState::Recording);
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         lock_guard<mutex> guard(m_mutex_reset);
 
         if (!vulkan_utility::error::check(vkResetCommandBuffer(static_cast<VkCommandBuffer>(m_cmd_buffer), VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT)))
             return false;
 
-        m_cmd_state = RHI_CommandListState::Idle;
+        m_state = RHI_CommandListState::Idle;
         return true;
     }
 
     bool RHI_CommandList::BeginRenderPass(RHI_PipelineState& pipeline_state)
     {
         // Validate command list state
-        SP_ASSERT(m_cmd_state == RHI_CommandListState::Recording);
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         // Get pipeline
         {
@@ -294,7 +294,7 @@ namespace Spartan
     void RHI_CommandList::ClearPipelineStateRenderTargets(RHI_PipelineState& pipeline_state)
     {
         // Validate command list state
-        SP_ASSERT(m_cmd_state == RHI_CommandListState::Recording);
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         if (m_render_pass_active)
         {
@@ -363,7 +363,7 @@ namespace Spartan
     )
     {
         // Validate command list state
-        SP_ASSERT(m_cmd_state == RHI_CommandListState::Recording);
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         if (m_render_pass_active)
         {
@@ -415,7 +415,7 @@ namespace Spartan
     bool RHI_CommandList::Draw(const uint32_t vertex_count)
     {
         // Validate command list state
-        SP_ASSERT(m_cmd_state == RHI_CommandListState::Recording);
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         // Ensure correct state before attempting to draw
         if (!OnDraw())
@@ -437,7 +437,7 @@ namespace Spartan
     bool RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset)
     {
         // Validate command list state
-        SP_ASSERT(m_cmd_state == RHI_CommandListState::Recording);
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         // Ensure correct state before attempting to draw
         if (!OnDraw())
@@ -460,7 +460,7 @@ namespace Spartan
     bool RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z, bool async /*= false*/)
     {
         // Validate command list state
-        SP_ASSERT(m_cmd_state == RHI_CommandListState::Recording);
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         // Ensure correct state before attempting to draw
         if (!OnDraw())
@@ -475,7 +475,7 @@ namespace Spartan
     void RHI_CommandList::SetViewport(const RHI_Viewport& viewport) const
     {
         // Validate command list state
-        SP_ASSERT(m_cmd_state == RHI_CommandListState::Recording);
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         VkViewport vk_viewport    = {};
         vk_viewport.x            = viewport.x;
@@ -496,7 +496,7 @@ namespace Spartan
     void RHI_CommandList::SetScissorRectangle(const Math::Rectangle& scissor_rectangle) const
     {
         // Validate command list state
-        SP_ASSERT(m_cmd_state == RHI_CommandListState::Recording);
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         VkRect2D vk_scissor;
         vk_scissor.offset.x            = static_cast<int32_t>(scissor_rectangle.left);
@@ -515,7 +515,7 @@ namespace Spartan
     void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer, const uint64_t offset /*= 0*/)
     {
         // Validate command list state
-        SP_ASSERT(m_cmd_state == RHI_CommandListState::Recording);
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         if (m_vertex_buffer_id == buffer->GetId() && m_vertex_buffer_offset == offset)
             return;
@@ -539,7 +539,7 @@ namespace Spartan
     void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer, const uint64_t offset /*= 0*/)
     {
         // Validate command list state
-        SP_ASSERT(m_cmd_state == RHI_CommandListState::Recording);
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         if (m_index_buffer_id == buffer->GetId() && m_index_buffer_offset == offset)
             return;
@@ -559,7 +559,7 @@ namespace Spartan
     bool RHI_CommandList::SetConstantBuffer(const uint32_t slot, const uint8_t scope, RHI_ConstantBuffer* constant_buffer) const
     {
         // Validate command list state
-        SP_ASSERT(m_cmd_state == RHI_CommandListState::Recording);
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         if (!m_descriptor_cache->GetCurrentDescriptorSetLayout())
         {
@@ -574,7 +574,7 @@ namespace Spartan
     void RHI_CommandList::SetSampler(const uint32_t slot, RHI_Sampler* sampler) const
     {
         // Validate command list state
-        SP_ASSERT(m_cmd_state == RHI_CommandListState::Recording);
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         if (!m_descriptor_cache->GetCurrentDescriptorSetLayout())
         {
@@ -589,7 +589,7 @@ namespace Spartan
     void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const bool storage /*= false*/)
     {
         // Validate command list state
-        SP_ASSERT(m_cmd_state == RHI_CommandListState::Recording);
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         if (!m_descriptor_cache->GetCurrentDescriptorSetLayout())
         {
@@ -695,7 +695,7 @@ namespace Spartan
     bool RHI_CommandList::Timestamp_Start(void* query_disjoint /*= nullptr*/, void* query_start /*= nullptr*/)
     {
         // Validate command list state
-        SP_ASSERT(m_cmd_state == RHI_CommandListState::Recording);
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         if (!m_rhi_device->GetContextRhi()->profiler)
             return true;
@@ -711,7 +711,7 @@ namespace Spartan
     bool RHI_CommandList::Timestamp_End(void* query_disjoint /*= nullptr*/, void* query_end /*= nullptr*/)
     {
         // Validate command list state
-        SP_ASSERT(m_cmd_state == RHI_CommandListState::Recording);
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         if (!m_rhi_device->GetContextRhi()->profiler)
             return true;
@@ -811,7 +811,7 @@ namespace Spartan
     bool RHI_CommandList::Deferred_BeginRenderPass()
     {
         // Validate command list state
-        SP_ASSERT(m_cmd_state == RHI_CommandListState::Recording);
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         RHI_PipelineState* pipeline_state = m_pipeline->GetPipelineState();
 
@@ -877,7 +877,7 @@ namespace Spartan
     bool RHI_CommandList::Deferred_BindDescriptorSet()
     {
         // Validate command list state
-        SP_ASSERT(m_cmd_state == RHI_CommandListState::Recording);
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         // Descriptor set != null, result = true    -> a descriptor set must be bound
         // Descriptor set == null, result = true    -> a descriptor set is already bound
@@ -942,7 +942,7 @@ namespace Spartan
             return false;
 
         // Validate command list state
-        SP_ASSERT(m_cmd_state == RHI_CommandListState::Recording);
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         // Begin render pass
         if (!m_render_pass_active && !m_pipeline_state->IsCompute())

@@ -125,6 +125,7 @@ namespace Spartan
 
         // Swapchain
         RHI_SwapChain* GetSwapChain() const { return m_swap_chain.get(); }
+        bool Present();
         bool Flush();
 
         // Default textures

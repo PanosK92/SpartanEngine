@@ -43,6 +43,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_VertexBuffer.h"
 #include "../RHI/RHI_DescriptorCache.h"
 #include "../RHI/RHI_Implementation.h"
+#include "../RHI/RHI_Semaphore.h"
 #include "../Display/Display.h"
 //=========================================
 
@@ -198,6 +199,7 @@ namespace Spartan
             return;
 
         RHI_CommandList* cmd_list = m_swap_chain->GetCmdList();
+        cmd_list->Begin();
 
         // If there is no camera, clear to black
         if (!m_camera)
@@ -605,7 +607,7 @@ namespace Spartan
 
     void Renderer::ClearEntities()
     {
-        m_rhi_device->Queue_WaitAll();
+        Flush();
 
         // light depth buffers might be used by the command list
         if (!m_swap_chain->GetCmdList()->Reset())
@@ -680,16 +682,45 @@ namespace Spartan
         }
     }
 
+    bool Renderer::Present()
+    {
+        // Get command list
+        RHI_CommandList* cmd_list = m_swap_chain->GetCmdList();
+
+        // Finalise command list
+        if (cmd_list->GetState() == RHI_CommandListState::Recording)
+        {
+            cmd_list->End();
+            cmd_list->Submit();
+        }
+
+        if (!m_swap_chain->PresentEnabled())
+            return false;
+
+        // Get wait semaphore
+        RHI_Semaphore* wait_semaphore = cmd_list->GetProcessedSemaphore();
+
+        // Validate semaphore state
+        if (wait_semaphore)
+        {
+            SP_ASSERT(wait_semaphore->GetState() == RHI_Semaphore_State::Signaled);
+        }
+
+        return m_swap_chain->Present(wait_semaphore);
+    }
+
     bool Renderer::Flush()
     {
-        if (!m_swap_chain || !m_swap_chain->GetCmdList())
-            return false;
+        SP_ASSERT(m_swap_chain != nullptr);
+        SP_ASSERT(m_swap_chain->GetCmdList() != nullptr);
 
         if (!m_swap_chain->GetCmdList()->Flush())
         {
             LOG_ERROR("Failed to flush");
             return false;
         }
+
+        m_rhi_device->Queue_WaitAll();
 
         return true;
     }

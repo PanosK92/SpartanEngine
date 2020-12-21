@@ -260,19 +260,13 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_SwapChain::Present()
+    bool RHI_SwapChain::Present(RHI_Semaphore* wait_semaphore)
     {
-        if (!m_present_enabled)
-        {
-            LOG_INFO("Presenting has been disabled.");
-            return true;
-        }
+        // Validate swapchain state
+        SP_ASSERT(m_present_enabled);
 
-        if (!m_swap_chain_view)
-        {
-            LOG_ERROR("Can't present, swapchain failed to initialise");
-            return false;
-        }
+        // Validate swapchain view
+        SP_ASSERT(m_swap_chain_view != nullptr);
 
         // Build flags
         const bool tearing_allowed  = m_flags & RHI_Present_Immediate;
