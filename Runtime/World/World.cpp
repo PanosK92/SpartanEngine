@@ -48,8 +48,8 @@ namespace Spartan
     {
         // Subscribe to events
         SUBSCRIBE_TO_EVENT(EventType::WorldResolve, [this](Variant) { m_is_dirty = true; });
-        SUBSCRIBE_TO_EVENT(EventType::WorldStop,    [this](Variant)    { m_state = WorldState::Idle; });
-        SUBSCRIBE_TO_EVENT(EventType::WorldStart,   [this](Variant)    { m_state = WorldState::Ticking; });
+        SUBSCRIBE_TO_EVENT(EventType::WorldStop,    [this](Variant) { m_state = WorldState::Idle; });
+        SUBSCRIBE_TO_EVENT(EventType::WorldStart,   [this](Variant) { m_state = WorldState::Ticking; });
     }
 
     World::~World()
@@ -94,7 +94,7 @@ namespace Spartan
             // Start
             if (started)
             {
-                for (const auto& entity : m_entities)
+                for (shared_ptr<Entity>& entity : m_entities)
                 {
                     entity->Start();
                 }
@@ -103,14 +103,14 @@ namespace Spartan
             // Stop
             if (stopped)
             {
-                for (const auto& entity : m_entities)
+                for (shared_ptr<Entity>& entity : m_entities)
                 {
                     entity->Stop();
                 }
             }
 
             // Tick
-            for (const auto& entity : m_entities)
+            for (shared_ptr<Entity>& entity : m_entities)
             {
                 entity->Tick(delta_time);
             }
@@ -123,7 +123,7 @@ namespace Spartan
                 // Make a copy so we can iterate while removing entities
                 auto entities_copy = m_entities;
 
-                for (const auto& entity : entities_copy)
+                for (shared_ptr<Entity>& entity : entities_copy)
                 {
                     if (entity->IsPendingDestruction())
                     {
@@ -263,7 +263,7 @@ namespace Spartan
 
         m_is_dirty    = true;
         m_state        = WorldState::Ticking;
-        ProgressReport::Get().SetIsLoading(g_progress_world, false);    
+        ProgressReport::Get().SetIsLoading(g_progress_world, false);
         LOG_INFO("Loading took %.2f ms", timer.GetElapsedTimeMs());
 
         FIRE_EVENT(EventType::WorldLoaded);

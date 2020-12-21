@@ -67,19 +67,19 @@ namespace Spartan
         SetResourceFilePath(file_path);
 
         xml->GetAttribute("Material", "Color",                          &m_color_albedo);
-        xml->GetAttribute("Material", "Roughness_Multiplier",            &GetProperty(Material_Roughness));
+        xml->GetAttribute("Material", "Roughness_Multiplier",           &GetProperty(Material_Roughness));
         xml->GetAttribute("Material", "Metallic_Multiplier",            &GetProperty(Material_Metallic));
-        xml->GetAttribute("Material", "Normal_Multiplier",                &GetProperty(Material_Normal));
-        xml->GetAttribute("Material", "Height_Multiplier",                &GetProperty(Material_Height));
+        xml->GetAttribute("Material", "Normal_Multiplier",              &GetProperty(Material_Normal));
+        xml->GetAttribute("Material", "Height_Multiplier",              &GetProperty(Material_Height));
         xml->GetAttribute("Material", "Clearcoat_Multiplier",           &GetProperty(Material_Clearcoat));
         xml->GetAttribute("Material", "Clearcoat_Roughness_Multiplier", &GetProperty(Material_Clearcoat_Roughness));
         xml->GetAttribute("Material", "Anisotropi_Multiplier",          &GetProperty(Material_Anisotropic));
         xml->GetAttribute("Material", "Anisotropic_Rotatio_Multiplier", &GetProperty(Material_Anisotropic_Rotation));
         xml->GetAttribute("Material", "Sheen_Multiplier",               &GetProperty(Material_Sheen));
         xml->GetAttribute("Material", "Sheen_Tint_Multiplier",          &GetProperty(Material_Sheen_Tint));
-        xml->GetAttribute("Material", "IsEditable",                        &m_is_editable);
-        xml->GetAttribute("Material", "UV_Tiling",                        &m_uv_tiling);
-        xml->GetAttribute("Material", "UV_Offset",                        &m_uv_offset);
+        xml->GetAttribute("Material", "IsEditable",                     &m_is_editable);
+        xml->GetAttribute("Material", "UV_Tiling",                      &m_uv_tiling);
+        xml->GetAttribute("Material", "UV_Offset",                      &m_uv_offset);
 
         const auto texture_count = xml->GetAttributeAs<int>("Textures", "Count");
         for (auto i = 0; i < texture_count; i++)
