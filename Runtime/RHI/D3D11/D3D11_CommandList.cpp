@@ -72,7 +72,7 @@ namespace Spartan
 
     bool RHI_CommandList::End()
     {
-        m_cmd_state = RHI_CommandListState::Submittable;
+        m_cmd_state = RHI_CommandListState::Ended;
         return true;
     }
 
