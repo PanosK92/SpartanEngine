@@ -47,7 +47,7 @@ namespace Spartan
         void Tick(float delta_time) override;
         //===================================
         
-        void Unload() { m_clear = true; }
+        void New();
         bool SaveToFile(const std::string& filePath);
         bool LoadFromFile(const std::string& file_path);
         const auto& GetName() const { return m_name; }
@@ -66,6 +66,7 @@ namespace Spartan
         //======================================================================================
 
     private:
+        void Clear();
         void _EntityRemove(const std::shared_ptr<Entity>& entity);
 
         //= COMMON ENTITY CREATION ======================
@@ -79,7 +80,6 @@ namespace Spartan
         bool m_resolve                  = true;
         std::atomic<bool> m_tick        = true;
         std::atomic<bool> m_is_ticking  = true;
-        std::atomic<bool> m_clear       = false;
         std::atomic<bool> m_clear_temp  = false;
         Input* m_input                  = nullptr;
         Profiler* m_profiler            = nullptr;

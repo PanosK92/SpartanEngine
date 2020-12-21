@@ -61,14 +61,15 @@ namespace Spartan
         // Subscribe to events
         SUBSCRIBE_TO_EVENT(EventType::WorldSave,    EVENT_HANDLER(SaveResourcesToFiles));
         SUBSCRIBE_TO_EVENT(EventType::WorldLoad,    EVENT_HANDLER(LoadResourcesFromFiles));
-        SUBSCRIBE_TO_EVENT(EventType::WorldUnload,  EVENT_HANDLER(Clear));
+        SUBSCRIBE_TO_EVENT(EventType::WorldClear,   EVENT_HANDLER(Clear));
     }
 
     ResourceCache::~ResourceCache()
     {
-        // Unsubscribe from event
-        UNSUBSCRIBE_FROM_EVENT(EventType::WorldUnload, EVENT_HANDLER(Clear));
-        Clear();
+        // Unsubscribe from events
+        UNSUBSCRIBE_FROM_EVENT(EventType::WorldSave,    EVENT_HANDLER(SaveResourcesToFiles));
+        UNSUBSCRIBE_FROM_EVENT(EventType::WorldLoad,    EVENT_HANDLER(LoadResourcesFromFiles));
+        UNSUBSCRIBE_FROM_EVENT(EventType::WorldClear,   EVENT_HANDLER(Clear));
     }
 
     bool ResourceCache::Initialize()
@@ -81,6 +82,15 @@ namespace Spartan
         return true;
     }
 
+    void ResourceCache::Tick(float delta_time)
+    {
+        if (m_clear_temp)
+        {
+            m_resources_temp.clear();
+            m_clear_temp = false;
+        }
+    }
+
     bool ResourceCache::IsCached(const string& resource_name, const ResourceType resource_type /*= Resource_Unknown*/)
     {
         if (resource_name.empty())
@@ -89,7 +99,7 @@ namespace Spartan
             return false;
         }
 
-        for (const auto& resource : m_resource_groups[resource_type])
+        for (shared_ptr<IResource>& resource : m_resources)
         {
             if (resource_name == resource->GetResourceName())
                 return true;
@@ -100,7 +110,7 @@ namespace Spartan
 
     shared_ptr<IResource>& ResourceCache::GetByName(const string& name, const ResourceType type)
     {
-        for (auto& resource : m_resource_groups[type])
+        for (shared_ptr<IResource>& resource : m_resources)
         {
             if (name == resource->GetResourceName())
                 return resource;
@@ -114,19 +124,51 @@ namespace Spartan
     {
         vector<shared_ptr<IResource>> resources;
 
-        if (type == ResourceType::Unknown)
+        for (shared_ptr<IResource>& resource : m_resources)
         {
-            for (const auto& resource_group : m_resource_groups)
+            if (resource->GetResourceType() == type || type == ResourceType::Unknown)
             {
-                resources.insert(resources.end(), resource_group.second.begin(), resource_group.second.end());
+                resources.emplace_back(resource);
             }
-        }
-        else
-        {
-            resources = m_resource_groups[type];
         }
 
         return resources;
+    }
+
+    uint64_t ResourceCache::GetMemoryUsageCpu(ResourceType type /*= Resource_Unknown*/)
+    {
+        uint64_t size = 0;
+
+        for (shared_ptr<IResource>& resource : m_resources)
+        {
+            if (resource->GetResourceType() == type || type == ResourceType::Unknown)
+            {
+                if (Spartan_Object* object = dynamic_cast<Spartan_Object*>(resource.get()))
+                {
+                    size += object->GetSizeCpu();
+                }
+            }
+        }
+
+        return size;
+    }
+
+    uint64_t ResourceCache::GetMemoryUsageGpu(ResourceType type /*= Resource_Unknown*/)
+    {
+        uint64_t size = 0;
+
+        for (shared_ptr<IResource>& resource : m_resources)
+        {
+            if (resource->GetResourceType() == type || type == ResourceType::Unknown)
+            {
+                if (Spartan_Object* object = dynamic_cast<Spartan_Object*>(resource.get()))
+                {
+                    size += object->GetSizeGpu();
+                }
+            }
+        }
+
+        return size;
     }
 
     void ResourceCache::SaveResourcesToFiles()
@@ -152,23 +194,20 @@ namespace Spartan
         file->Write(resource_count);
 
         // Save all the currently used resources to disk
-        for (const auto& resource_group : m_resource_groups)
+        for (shared_ptr<IResource>& resource : m_resources)
         {
-            for (const auto& resource : resource_group.second)
-            {
-                if (!resource->HasFilePathNative())
-                    continue;
+            if (!resource->HasFilePathNative())
+                continue;
 
-                // Save file path
-                file->Write(resource->GetResourceFilePathNative());
-                // Save type
-                file->Write(static_cast<uint32_t>(resource->GetResourceType()));
-                // Save resource (to a dedicated file)
-                resource->SaveToFile(resource->GetResourceFilePathNative());
+            // Save file path
+            file->Write(resource->GetResourceFilePathNative());
+            // Save type
+            file->Write(static_cast<uint32_t>(resource->GetResourceType()));
+            // Save resource (to a dedicated file)
+            resource->SaveToFile(resource->GetResourceFilePathNative());
 
-                // Update progress
-                ProgressReport::Get().IncrementJobsDone(g_progress_resource_cache);
-            }
+            // Update progress
+            ProgressReport::Get().IncrementJobsDone(g_progress_resource_cache);
         }
 
         // Finish with progress report
@@ -182,7 +221,7 @@ namespace Spartan
         auto file = make_unique<FileStream>(file_path, FileStream_Read);
         if (!file->IsOpen())
             return;
-        
+
         // Load resource count
         const auto resource_count = file->ReadAs<uint32_t>();
 
@@ -216,52 +255,20 @@ namespace Spartan
                 break;
             }
         }
+
     }
 
-    uint64_t ResourceCache::GetMemoryUsageCpu(ResourceType type /*= Resource_Unknown*/)
+    void ResourceCache::Clear()
     {
-        uint64_t size = 0;
+        uint32_t resource_count = static_cast<uint32_t>(m_resources.size());
 
-        if (type == ResourceType::Unknown)
-        {
-            for (const auto& group : m_resource_groups)
-            {
-                for (const auto& resource : group.second)
-                {
-                    if (Spartan_Object* object = dynamic_cast<Spartan_Object*>(resource.get()))
-                    {
-                        size += object->GetSizeCpu();
-                    }
-                }
-            }
-        }
-        else
-        {
-            for (const auto& resource : m_resource_groups[type])
-            {
-                if (Spartan_Object* object = dynamic_cast<Spartan_Object*>(resource.get()))
-                {
-                    size += object->GetSizeCpu();
-                }
-            }
-        }
+        // Thread safety: Keep the resources around for a bit
+        m_resources_temp.clear();
+        m_resources_temp.swap(m_resources);
 
-        return size;
-    }
+        LOG_INFO("%d resources have been cleared", resource_count);
 
-    uint64_t ResourceCache::GetMemoryUsageGpu(ResourceType type /*= Resource_Unknown*/)
-    {
-        uint64_t size = 0;
-
-        for (const auto& resource : m_resource_groups[type])
-        {
-            if (Spartan_Object* object = dynamic_cast<Spartan_Object*>(resource.get()))
-            {
-                size += object->GetSizeGpu();
-            }
-        }
-
-        return size;
+        m_clear_temp = true;
     }
 
     uint32_t ResourceCache::GetResourceCount(const ResourceType type)
