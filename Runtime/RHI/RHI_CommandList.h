@@ -117,10 +117,8 @@ namespace Spartan
         // Misc
         void ResetDescriptorCache();
         void* GetResource_CommandBuffer()       const { return m_cmd_buffer; }
-        bool IsRecording()                      const { return m_cmd_state == RHI_CommandListState::Recording; }
-        bool IsSubmitted()                      const { return m_cmd_state == RHI_CommandListState::Submitted; }
-        bool IsIdle()                           const { return m_cmd_state == RHI_CommandListState::Idle; }
         RHI_Semaphore* GetProcessedSemaphore()        { return m_processed_semaphore.get(); }
+        const RHI_CommandListState GetState()   const { return m_state; }
 
     private:
         void Timeblock_Start(const RHI_PipelineState* pipeline_state);
@@ -130,7 +128,7 @@ namespace Spartan
         bool Deferred_BindDescriptorSet();
         bool OnDraw();
 
-        std::atomic<RHI_CommandListState> m_cmd_state           = RHI_CommandListState::Idle;
+        std::atomic<RHI_CommandListState> m_state           = RHI_CommandListState::Idle;
         RHI_Pipeline* m_pipeline                                = nullptr; 
         RHI_SwapChain* m_swap_chain                             = nullptr;
         Renderer* m_renderer                                    = nullptr;

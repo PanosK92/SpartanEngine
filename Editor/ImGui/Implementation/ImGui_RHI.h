@@ -148,11 +148,8 @@ namespace ImGui::RHI
 
     inline void Render(ImDrawData* draw_data, RHI_SwapChain* swap_chain_other = nullptr, const bool clear = true)
     {
-        if (!draw_data)
-        {
-            LOG_ERROR("Invalid draw data");
-            return;
-        }
+        // Validate draw data
+        SP_ASSERT(draw_data != nullptr);
 
         // Avoid rendering when minimized, scale coordinates for retina displays (screen coordinates != framebuffer coordinates)
         const int fb_width  = static_cast<int>(draw_data->DisplaySize.x * draw_data->FramebufferScale.x);
@@ -160,27 +157,15 @@ namespace ImGui::RHI
         if (fb_width <= 0 || fb_height <= 0 || draw_data->TotalVtxCount == 0)
             return;
 
-        // Get the swap chain we will be working with
+        // Get swap chain
         bool is_child_window        = swap_chain_other != nullptr;
         RHI_SwapChain* swap_chain   = is_child_window ? swap_chain_other : g_renderer->GetSwapChain();
         RHI_CommandList* cmd_list   = swap_chain->GetCmdList();
 
         // Validate command list
-        if (!cmd_list)
-        {
-            LOG_ERROR("Invalid command list");
-            return;
-        }
-
-        // Validate command list state
-        if (!cmd_list->IsRecording())
-        {
-            LOG_ERROR("Command list is not recording, can't render anything");
-            return;
-        }
-
-        // Validate swap chain state
-
+        SP_ASSERT(cmd_list != nullptr);
+        SP_ASSERT(cmd_list->GetState() == RHI_CommandListState::Recording);
+        
         // Update vertex and index buffers
         RHI_VertexBuffer* vertex_buffer = nullptr;
         RHI_IndexBuffer* index_buffer   = nullptr;
@@ -215,8 +200,8 @@ namespace ImGui::RHI
             }
             
             // Copy and convert all vertices into a single contiguous buffer
-            auto vtx_dst = static_cast<ImDrawVert*>(vertex_buffer->Map());
-            auto idx_dst = static_cast<ImDrawIdx*>(index_buffer->Map());
+            ImDrawVert* vtx_dst = static_cast<ImDrawVert*>(vertex_buffer->Map());
+            ImDrawIdx* idx_dst = static_cast<ImDrawIdx*>(index_buffer->Map());
             if (vtx_dst && idx_dst)
             {
                 for (auto i = 0; i < draw_data->CmdListsCount; i++)
@@ -256,11 +241,11 @@ namespace ImGui::RHI
             // Our visible ImGui space lies from draw_data->DisplayPos (top left) to 
             // draw_data->DisplayPos+data_data->DisplaySize (bottom right). DisplayMin is (0,0) for single viewport apps.
             {
-                const auto L = draw_data->DisplayPos.x;
-                const auto R = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
-                const auto T = draw_data->DisplayPos.y;
-                const auto B = draw_data->DisplayPos.y + draw_data->DisplaySize.y;
-                const auto wvp = Matrix
+                const float L       = draw_data->DisplayPos.x;
+                const float R       = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
+                const float T       = draw_data->DisplayPos.y;
+                const float B       = draw_data->DisplayPos.y + draw_data->DisplaySize.y;
+                const Matrix wvp    = Matrix
                 (
                     2.0f / (R - L), 0.0f, 0.0f, (R + L) / (L - R),
                     0.0f, 2.0f / (T - B), 0.0f, (T + B) / (B - T),
@@ -291,14 +276,14 @@ namespace ImGui::RHI
             // Render command lists
             int global_vtx_offset   = 0;
             int global_idx_offset   = 0;
-            const auto& clip_off    = draw_data->DisplayPos;
+            const ImVec2& clip_off  = draw_data->DisplayPos;
             Math::Rectangle scissor_rect;
-            for (auto i = 0; i < draw_data->CmdListsCount; i++)
+            for (int i = 0; i < draw_data->CmdListsCount; i++)
             {
-                auto cmd_list_imgui = draw_data->CmdLists[i];
-                for (auto cmd_i = 0; cmd_i < cmd_list_imgui->CmdBuffer.Size; cmd_i++)
+                ImDrawList* cmd_list_imgui = draw_data->CmdLists[i];
+                for (int cmd_i = 0; cmd_i < cmd_list_imgui->CmdBuffer.Size; cmd_i++)
                 {
-                    const auto pcmd = &cmd_list_imgui->CmdBuffer[cmd_i];
+                    const ImDrawCmd* pcmd = &cmd_list_imgui->CmdBuffer[cmd_i];
                     if (pcmd->UserCallback != nullptr)
                     {
                         pcmd->UserCallback(cmd_list_imgui, pcmd);
@@ -431,7 +416,7 @@ namespace ImGui::RHI
         if (!swap_chain)
             return;
 
-        if (!swap_chain->Present())
+        if (!swap_chain->Present(swap_chain->GetCmdList()->GetProcessedSemaphore()))
         {
             LOG_ERROR("Failed to present");
         }

@@ -411,23 +411,10 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_SwapChain::Present()
+    bool RHI_SwapChain::Present(RHI_Semaphore* wait_semaphore)
     {
-        if (!m_present_enabled)
-        {
-            LOG_INFO("Presenting has been disabled.");
-            return true;
-        }
-
-        // Ensure the command list is not recording
-        if (GetCmdList()->IsRecording())
-        {
-            LOG_ERROR("Command list is still recording.");
-            return false;
-        }
-
-        // Get wait semaphore
-        RHI_Semaphore* wait_semaphore = GetCmdList()->GetProcessedSemaphore();
+        // Validate swapchain state
+        SP_ASSERT(m_present_enabled);
 
         // Validate semaphore state
         SP_ASSERT(wait_semaphore->GetState() == RHI_Semaphore_State::Signaled);

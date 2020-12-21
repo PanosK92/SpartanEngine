@@ -89,7 +89,7 @@ namespace Spartan
         void SetData(const std::vector<std::vector<std::byte>>& data)   { m_data = data; }
         bool HasMipmaps() const                                         { return m_mip_count > 1;  }
         uint8_t GetMipCount() const                                     { return m_mip_count; }
-        std::vector<std::byte>& AddMip()                             { return m_data.emplace_back(std::vector<std::byte>()); }
+        std::vector<std::byte>& AddMip()                                { return m_data.emplace_back(std::vector<std::byte>()); }
         std::vector<std::vector<std::byte>>& GetMips()                  { return m_data; }
         std::vector<std::byte>& GetMip(const uint8_t mip_index);
         std::vector<std::byte> GetOrLoadMip(const uint8_t mip_index);

@@ -30,26 +30,26 @@ namespace Spartan
 {
     bool RHI_CommandList::Wait()
     {
-        SP_ASSERT(m_cmd_state == RHI_CommandListState::Submitted);
+        SP_ASSERT(m_state == RHI_CommandListState::Submitted);
 
         if (!m_processed_fence->Wait())
             return false;
 
         m_descriptor_cache->GrowIfNeeded();
-        m_cmd_state = RHI_CommandListState::Idle;
+        m_state = RHI_CommandListState::Idle;
 
         return true;
     }
 
     bool RHI_CommandList::Flush()
     {
-        if (m_cmd_state == RHI_CommandListState::Idle)
+        if (m_state == RHI_CommandListState::Idle)
             return true;
 
         // If recording, end
         bool was_recording      = false;
         bool had_render_pass    = false;
-        if (m_cmd_state == RHI_CommandListState::Recording)
+        if (m_state == RHI_CommandListState::Recording)
         {
             was_recording = true;
 
@@ -66,7 +66,7 @@ namespace Spartan
         }
 
         // If ended, submit
-        if (m_cmd_state == RHI_CommandListState::Ended)
+        if (m_state == RHI_CommandListState::Ended)
         {
             if (!Submit())
                 return false;
@@ -76,7 +76,7 @@ namespace Spartan
         Wait();
         
         // If idle, restore state (if any)
-        if (m_cmd_state == RHI_CommandListState::Idle)
+        if (m_state == RHI_CommandListState::Idle)
         {
             if (was_recording)
             {

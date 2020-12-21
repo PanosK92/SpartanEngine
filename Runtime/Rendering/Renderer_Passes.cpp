@@ -73,8 +73,7 @@ namespace Spartan
             return;
 
         // Validate command list state
-        if (!cmd_list->IsRecording())
-            return;
+        SP_ASSERT(cmd_list->GetState() == RHI_CommandListState::Recording);
 
         SCOPED_TIME_BLOCK(m_profiler);
 

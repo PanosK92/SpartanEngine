@@ -130,13 +130,6 @@ void Editor::OnTick()
         return;
 
     _editor::show = !_editor::renderer->GetIsFullscreen() && m_initialised;
-    RHI_CommandList* cmd_list = _editor::swapchain->GetCmdList();
-
-    // Cmd - begin
-    if (_editor::swapchain->PresentEnabled())
-    {
-        cmd_list->Begin();
-    }
 
     // Engine - tick
     m_engine->Tick();
@@ -172,23 +165,16 @@ void Editor::OnTick()
     }
     else
     {
-        _editor::renderer->Pass_CopyToBackbuffer(cmd_list);
+        _editor::renderer->Pass_CopyToBackbuffer(_editor::swapchain->GetCmdList());
     }
-
-    // Cmd - end and submit
-    cmd_list->End();
-    cmd_list->Submit();
 
     // Present
-    if (_editor::swapchain->PresentEnabled())
-    {
-        _editor::swapchain->Present();
-    }
+    _editor::renderer->Present();
 
     // Editor - child windows
     if (_editor::show)
     {
-        if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable)
+        if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
         {
             ImGui::UpdatePlatformWindows();
             ImGui::RenderPlatformWindowsDefault();

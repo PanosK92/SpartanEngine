@@ -120,10 +120,10 @@ namespace Spartan
 
         m_data.clear();
         m_data.shrink_to_fit();
-        m_load_state = Started;
+        m_load_state = LoadState::Started;
 
         // Load from disk
-        auto texture_data_loaded = false;        
+        auto texture_data_loaded = false;
         if (FileSystem::IsEngineTextureFile(path)) // engine format (binary)
         {
             texture_data_loaded = LoadFromFile_NativeFormat(path);
@@ -137,7 +137,7 @@ namespace Spartan
         if (!texture_data_loaded)
         {
             LOG_ERROR("Failed to load \"%s\".", path.c_str());
-            m_load_state = Failed;
+            m_load_state = LoadState::Failed;
             return false;
         }
 
@@ -147,7 +147,7 @@ namespace Spartan
         if (!m_context->GetSubsystem<Renderer>()->GetRhiDevice()->IsInitialized() || !CreateResourceGpu())
         {
             LOG_ERROR("Failed to create shader resource for \"%s\".", GetResourceFilePathNative().c_str());
-            m_load_state = Failed;
+            m_load_state = LoadState::Failed;
             return false;
         }
 
@@ -157,7 +157,7 @@ namespace Spartan
             m_data.clear();
             m_data.shrink_to_fit();
         }
-        m_load_state = Completed;
+        m_load_state = LoadState::Completed;
 
         // Compute memory usage
         {

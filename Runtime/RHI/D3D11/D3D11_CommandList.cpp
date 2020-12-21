@@ -66,25 +66,25 @@ namespace Spartan
 
     bool RHI_CommandList::Begin()
     {
-        m_cmd_state = RHI_CommandListState::Recording;
+        m_state = RHI_CommandListState::Recording;
         return true;
     }
 
     bool RHI_CommandList::End()
     {
-        m_cmd_state = RHI_CommandListState::Ended;
+        m_state = RHI_CommandListState::Ended;
         return true;
     }
 
     bool RHI_CommandList::Submit()
     {
-        m_cmd_state = RHI_CommandListState::Submitted;
+        m_state = RHI_CommandListState::Submitted;
         return true;
     }
 
     bool RHI_CommandList::Reset()
     {
-        m_cmd_state = RHI_CommandListState::Idle;
+        m_state = RHI_CommandListState::Idle;
         return true;
     }
 
