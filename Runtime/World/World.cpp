@@ -54,7 +54,6 @@ namespace Spartan
 
     World::~World()
     {
-        Unload();
         m_input     = nullptr;
         m_profiler  = nullptr;
     }
@@ -135,22 +134,16 @@ namespace Spartan
 
         m_is_ticking = false;
 
-        if (m_clear)
-        {
-            // Notify any systems that the entities are about to be cleared
-            FIRE_EVENT(EventType::WorldUnload);
-
-            m_entities.clear();
-
-            m_resolve = true;
-            m_clear = true;
-        }
-
         if (m_clear_temp)
         {
             m_entities_temp.clear();
             m_clear_temp = false;
         }
+    }
+
+    void World::New()
+    {
+        Clear();
     }
 
     bool World::SaveToFile(const string& filePathIn)
@@ -220,20 +213,17 @@ namespace Spartan
             return false;
         }
 
-        // Read all the resource file paths
+        // Open file
         auto file = make_unique<FileStream>(file_path, FileStream_Read);
         if (!file->IsOpen())
             return false;
 
         // Thread safety: Wait for the world to stop ticking
         m_tick = false;
-        while (m_is_ticking)
-        {
-            this_thread::sleep_for(chrono::milliseconds(1));
-        }
+        while (m_is_ticking) { this_thread::sleep_for(chrono::milliseconds(1)); }
 
-        // Thread safety: Keep the entities around for a bit
-        m_entities_temp.swap(m_entities);
+        // Clear current entities
+        Clear();
 
         // Start progress report and timing
         ProgressReport::Get().Reset(g_progress_world);
@@ -270,9 +260,8 @@ namespace Spartan
 
         FIRE_EVENT(EventType::WorldLoaded);
 
-        m_resolve       = true;
-        m_clear_temp    = true;
-        m_tick          = true;
+        m_resolve  = true;
+        m_tick     = true;
 
         return true;
     }
@@ -349,6 +338,19 @@ namespace Spartan
 
         static shared_ptr<Entity> empty;
         return empty;
+    }
+
+    void World::Clear()
+    {
+        // Notify any systems that the entities are about to be cleared
+        FIRE_EVENT(EventType::WorldClear);
+
+        // Thread safety: Keep the entities around for a bit
+        m_entities_temp.clear();
+        m_entities_temp.swap(m_entities);
+
+        m_resolve       = true;
+        m_clear_temp    = true;
     }
 
     // Removes an entity and all of it's children

@@ -41,7 +41,7 @@ namespace Spartan
     Audio::~Audio()
     {
         // Unsubscribe from events
-        UNSUBSCRIBE_FROM_EVENT(EventType::WorldUnload, [this](Variant) { m_listener = nullptr; });
+        UNSUBSCRIBE_FROM_EVENT(EventType::WorldClear, [this](Variant) { m_listener = nullptr; });
 
         if (!m_system_fmod)
             return;
@@ -126,7 +126,7 @@ namespace Spartan
         m_profiler = m_context->GetSubsystem<Profiler>();
 
         // Subscribe to events
-        SUBSCRIBE_TO_EVENT(EventType::WorldUnload, [this](Variant) { m_listener = nullptr; });
+        SUBSCRIBE_TO_EVENT(EventType::WorldClear, [this](Variant) { m_listener = nullptr; });
    
         return true;
     }

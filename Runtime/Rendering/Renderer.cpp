@@ -85,7 +85,7 @@ namespace Spartan
 
         // Subscribe to events
         SUBSCRIBE_TO_EVENT(EventType::WorldResolved,    EVENT_HANDLER_VARIANT(RenderablesAcquire));
-        SUBSCRIBE_TO_EVENT(EventType::WorldUnload,      EVENT_HANDLER(ClearEntities));
+        SUBSCRIBE_TO_EVENT(EventType::WorldClear,       EVENT_HANDLER(ClearEntities));
     }
 
     Renderer::~Renderer()

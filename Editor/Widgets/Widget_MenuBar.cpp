@@ -61,7 +61,7 @@ void Widget_MenuBar::TickAlways()
         {
             if (ImGui::MenuItem("New"))
             {
-                m_context->GetSubsystem<World>()->Unload();
+                m_context->GetSubsystem<World>()->New();
             }
 
             ImGui::Separator();

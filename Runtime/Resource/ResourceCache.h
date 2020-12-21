@@ -51,9 +51,10 @@ namespace Spartan
         ResourceCache(Context* context);
         ~ResourceCache();
 
-        //= Subsystem =============
+        //= Subsystem =======================
         bool Initialize() override;
-        //=========================
+        void Tick(float delta_time) override;
+        //===================================
 
         // Get by name
         std::shared_ptr<IResource>& GetByName(const std::string& name, ResourceType type);
@@ -70,7 +71,7 @@ namespace Spartan
         template <class T>
         std::shared_ptr<T> GetByPath(const std::string& path)
         {
-            for (auto& resource : m_resource_groups[IResource::TypeToEnum<T>()])
+            for (std::shared_ptr<IResource>& resource : m_resources)
             {
                 if (path == resource->GetResourceFilePathNative())
                     return std::static_pointer_cast<T>(resource);
@@ -112,7 +113,7 @@ namespace Spartan
             resource->SaveToFile(resource->GetResourceFilePathNative());
 
             // Cache it
-            return static_pointer_cast<T>(m_resource_groups[resource->GetResourceType()].emplace_back(resource));
+            return static_pointer_cast<T>(m_resources.emplace_back(resource));
         }
         bool IsCached(const std::string& resource_name, ResourceType resource_type);
 
@@ -125,15 +126,13 @@ namespace Spartan
             if (!IsCached(resource->GetResourceName(), resource->GetResourceType()))
                 return;
 
-            auto& vector = m_resource_groups[resource->GetResourceType()];
-            for (auto it = vector.begin(); it != vector.end(); it++)
-            {
-                if (dynamic_cast<Spartan_Object*>((*it).get())->GetId() == resource->GetId())
-                {
-                    vector.erase(it);
-                    break;
-                }
-            }
+            m_resources.erase(
+                std::remove_if(
+                    m_resources.begin(),
+                    m_resources.end(),
+                    [](std::shared_ptr<IResource> resource) { return dynamic_cast<Spartan_Object*>(resource.get())->GetId() == resource->GetId(); }),
+                m_resources.end()
+            );
         }
 
         // Loads a resource and adds it to the resource cache
@@ -168,17 +167,10 @@ namespace Spartan
             return Cache<T>(typed);
         }
 
-        //= I/O ======================
-        void SaveResourcesToFiles();
-        void LoadResourcesFromFiles();
-        //============================
-        
         //= MISC =============================================================
         // Memory
         uint64_t GetMemoryUsageCpu(ResourceType type = ResourceType::Unknown);
         uint64_t GetMemoryUsageGpu(ResourceType type = ResourceType::Unknown);
-        // Unloads all resources
-        void Clear() { m_resource_groups.clear(); }
         // Returns all resources of a given type
         uint32_t GetResourceCount(ResourceType type = ResourceType::Unknown);
         //====================================================================
@@ -198,8 +190,17 @@ namespace Spartan
         auto GetFontImporter()  const { return m_importer_font.get(); }
 
     private:
+        // Event handlers
+        void SaveResourcesToFiles();
+        void LoadResourcesFromFiles();
+        void Clear();
+
+        // Misc
+        bool m_clear_temp = false;
+
         // Cache
-        std::unordered_map<ResourceType, std::vector<std::shared_ptr<IResource>>> m_resource_groups;
+        std::vector<std::shared_ptr<IResource>> m_resources;
+        std::vector<std::shared_ptr<IResource>> m_resources_temp;
         std::mutex m_mutex;
 
         // Directories
