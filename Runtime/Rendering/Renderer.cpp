@@ -608,14 +608,6 @@ namespace Spartan
     void Renderer::ClearEntities()
     {
         Flush();
-
-        // light depth buffers might be used by the command list
-        if (!m_swap_chain->GetCmdList()->Reset())
-        {
-            LOG_ERROR("Failed to reset command pool");
-            return;
-        }
-
         m_entities.clear();
     }
 

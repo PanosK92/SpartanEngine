@@ -32,7 +32,7 @@ namespace Spartan
 {
     Threading::Threading(Context* context) : ISubsystem(context)
     {
-        m_stopping                                = false;
+        m_stopping                               = false;
         m_thread_count_support                  = thread::hardware_concurrency();
         m_thread_count                          = m_thread_count_support - 1; // exclude the main (this) thread
         m_thread_names[this_thread::get_id()]   = "main";
@@ -84,10 +84,10 @@ namespace Spartan
         return available_threads;
     }
 
-    void Threading::Flush(bool removed_queued /*= false*/)
+    void Threading::Flush(bool remove_queued /*= false*/)
     {
         // Clear any queued tasks
-        if (removed_queued)
+        if (remove_queued)
         {
             m_tasks.clear();
         }

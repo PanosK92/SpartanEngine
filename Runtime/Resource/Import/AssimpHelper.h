@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ================================
-#include "../ProgressReport.h"
+#include "../ProgressTracker.h"
 #include "../../Math/Vector2.h"
 #include "../../Math/Vector3.h"
 #include "../../Math/Matrix.h"
@@ -134,32 +134,32 @@ namespace Spartan::AssimpHelper
             m_file_name = FileSystem::GetFileNameFromFilePath(file_path);
 
             // Start progress tracking
-            auto& progress = ProgressReport::Get();
-            progress.Reset(g_progress_model_importer);
-            progress.SetIsLoading(g_progress_model_importer, true);
+            auto& progress = ProgressTracker::Get();
+            progress.Reset(ProgressType::ModelImporter);
+            progress.SetIsLoading(ProgressType::ModelImporter, true);
         }
 
         ~AssimpProgress()
         {
-            ProgressReport::Get().SetIsLoading(g_progress_model_importer, false);
+            ProgressTracker::Get().SetIsLoading(ProgressType::ModelImporter, false);
         }
 
         bool Update(float percentage) override { return true; }
 
         void UpdateFileRead(int current_step, int number_of_steps) override
         {
-            auto& progress = ProgressReport::Get();
-            progress.SetStatus(g_progress_model_importer, "Loading \"" + m_file_name + "\" from disk...");
-            progress.SetJobsDone(g_progress_model_importer, current_step);
-            progress.SetJobCount(g_progress_model_importer, number_of_steps);
+            auto& progress = ProgressTracker::Get();
+            progress.SetStatus(ProgressType::ModelImporter, "Loading \"" + m_file_name + "\" from disk...");
+            progress.SetJobsDone(ProgressType::ModelImporter, current_step);
+            progress.SetJobCount(ProgressType::ModelImporter, number_of_steps);
         }
 
         void UpdatePostProcess(int current_step, int number_of_steps) override
         {
-            auto& progress = ProgressReport::Get();
-            progress.SetStatus(g_progress_model_importer, "Post-Processing \"" + m_file_name + "\"");
-            progress.SetJobsDone(g_progress_model_importer, current_step);
-            progress.SetJobCount(g_progress_model_importer, number_of_steps);
+            auto& progress = ProgressTracker::Get();
+            progress.SetStatus(ProgressType::ModelImporter, "Post-Processing \"" + m_file_name + "\"");
+            progress.SetJobsDone(ProgressType::ModelImporter, current_step);
+            progress.SetJobCount(ProgressType::ModelImporter, number_of_steps);
         }
 
     private:

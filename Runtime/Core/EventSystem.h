@@ -51,8 +51,6 @@ enum class EventType
     WorldClear,             // The world should clear everything
     WorldResolve,           // The world should resolve
     WorldResolved,          // The world has finished resolving
-    WorldStop,              // The world should stop ticking
-    WorldStart,             // The world should start ticking
     FrameResolutionChanged
 };
 
