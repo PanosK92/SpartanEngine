@@ -27,12 +27,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    bool RHI_PipelineState::CreateFrameResources(const RHI_Device* rhi_device)
+    bool RHI_PipelineState::CreateFrameBuffer(const RHI_Device* rhi_device)
     {
         return true;
     }
 
-    void RHI_PipelineState::DestroyFrameResources()
+    void RHI_PipelineState::DestroyFrameBuffer()
     {
 
     }
