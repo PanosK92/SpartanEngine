@@ -355,9 +355,12 @@ namespace Spartan
             m_image_acquired_semaphore
         );
 
-        // Pipeline state has to be recreated as it will be referencing an invalid swap chain view.
-        // We generate a new ID for it so that a new pipeline hash is generated and hence a new pipeline.
-        m_id = GenerateId();
+        // The pipeline state used by the pipeline will now be invalid since it's referring to a destroyed swap chain view.
+        // By generating a new ID, the pipeline cache will automatically generate a new pipeline for this swap chain.
+        if (m_initialized)
+        {
+            m_id = GenerateId();
+        }
 
         return m_initialized;
     }
@@ -394,9 +397,10 @@ namespace Spartan
             if (!Resize(m_width, m_height, true))
             {
                 LOG_ERROR("Failed to resize swapchain");
+                return false;
             }
 
-            return false;
+            return AcquireNextImage();
         }
 
         // Check result
