@@ -96,7 +96,7 @@ namespace Spartan
         }
         else
         {
-            m_state.CreateFrameResources(rhi_device);
+            m_state.CreateFrameBuffer(rhi_device);
 
             // Viewport & Scissor
             vector<VkDynamicState> dynamic_states;

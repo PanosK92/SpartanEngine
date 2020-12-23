@@ -45,7 +45,7 @@ namespace Spartan
         bool GetResource_DescriptorSet(RHI_DescriptorCache* descriptor_cache, void*& descriptor_set);
         const std::array<uint32_t, rhi_max_constant_buffer_count> GetDynamicOffsets() const;
         uint32_t GetDynamicOffsetCount() const;
-        void* GetResource_DescriptorSetLayout() const { return m_descriptor_set_layout; }      
+        void* GetResource_DescriptorSetLayout() const { return m_descriptor_set_layout; }
         uint32_t GetDescriptorSetCount()        const { return static_cast<uint32_t>(m_descriptor_sets.size()); }
         void NeedsToBind()                            { m_needs_to_bind = true; }
 

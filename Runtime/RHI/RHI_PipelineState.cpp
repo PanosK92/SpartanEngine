@@ -40,7 +40,13 @@ namespace Spartan
 {
     RHI_PipelineState::RHI_PipelineState()
     {
+        m_frame_buffers.fill(nullptr);
+        clear_color.fill(rhi_color_load);
+    }
 
+    RHI_PipelineState::~RHI_PipelineState()
+    {
+        DestroyFrameBuffer();
     }
 
     bool RHI_PipelineState::IsValid()

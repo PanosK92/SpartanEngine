@@ -49,7 +49,7 @@ namespace Spartan
 
         // Id
         const uint32_t GetId()          const { return m_id; }
-        void SetId(const uint32_t id)          { m_id = id; }
+        void SetId(const uint32_t id)         { m_id = id; }
         static uint32_t GenerateId()          { return ++g_id; }
 
         // CPU & GPU sizes
