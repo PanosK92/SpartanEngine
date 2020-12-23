@@ -32,30 +32,30 @@ using namespace Spartan;
 using namespace Spartan::Math;
 //============================
 
-#define OPERATION_NAME    (m_operation == FileDialog_Op_Open)    ? "Open"        : (m_operation == FileDialog_Op_Load)    ? "Load"        : (m_operation == FileDialog_Op_Save) ? "Save" : "View"
-#define FILTER_NAME        (m_filter == FileDialog_Filter_All)    ? "All (*.*)"    : (m_filter == FileDialog_Filter_Model)    ? "Model(*.*)"    : "World (*.world)"
+#define OPERATION_NAME  (m_operation == FileDialog_Op_Open)    ? "Open"         : (m_operation == FileDialog_Op_Load)   ? "Load"        : (m_operation == FileDialog_Op_Save) ? "Save" : "View"
+#define FILTER_NAME     (m_filter == FileDialog_Filter_All)    ? "All (*.*)"    : (m_filter == FileDialog_Filter_Model) ? "Model(*.*)"  : "World (*.world)"
 
 FileDialog::FileDialog(Context* context, const bool standalone_window, const FileDialog_Type type, const FileDialog_Operation operation, const FileDialog_Filter filter)
 {
-    m_context                            = context;
-    m_type                                = type;
-    m_operation                            = operation;
+    m_context                           = context;
+    m_type                              = type;
+    m_operation                         = operation;
     m_filter                            = filter;
-    m_type                                = type;
-    m_title                                = OPERATION_NAME;
-    m_is_window                            = standalone_window;
+    m_type                              = type;
+    m_title                             = OPERATION_NAME;
+    m_is_window                         = standalone_window;
     m_item_size                         = Vector2(100.0f, 100.0f);
-    m_is_dirty                            = true;
+    m_is_dirty                          = true;
     m_selection_made                    = false;
-    m_callback_on_item_clicked            = nullptr;
-    m_callback_on_item_double_clicked    = nullptr;
+    m_callback_on_item_clicked          = nullptr;
+    m_callback_on_item_double_clicked   = nullptr;
     m_navigation.Navigate(m_context->GetSubsystem<ResourceCache>()->GetProjectDirectory());
 }
 
 void FileDialog::SetOperation(const FileDialog_Operation operation)
 {
     m_operation = operation;
-    m_title        = OPERATION_NAME;
+    m_title     = OPERATION_NAME;
 }
 
 bool FileDialog::Show(bool* is_visible, string* directory /*= nullptr*/, string* file_path /*= nullptr*/)
@@ -67,11 +67,11 @@ bool FileDialog::Show(bool* is_visible, string* directory /*= nullptr*/, string*
     }
 
     m_selection_made        = false;
-    m_is_hovering_item        = false;
+    m_is_hovering_item      = false;
     m_is_hovering_window    = false;
     
-    ShowTop(is_visible);    // Top menu    
-    ShowMiddle();            // Contents of the current directory
+    ShowTop(is_visible);    // Top menu
+    ShowMiddle();           // Contents of the current directory
     ShowBottom(is_visible); // Bottom menu
 
     if (m_is_window)

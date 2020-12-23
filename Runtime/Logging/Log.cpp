@@ -37,9 +37,9 @@ namespace Spartan
     ofstream Log::m_fout;
     mutex Log::m_mutex_log;
     vector<LogCmd> Log::m_log_buffer;
-    string Log::m_log_file_name        = "log.txt";
-    bool Log::m_log_to_file            = true; // start logging to file (unless changed by the user, e.g. Renderer initialization was successful, so logging can happen on screen)
-    bool Log::m_first_log            = true;
+    string Log::m_log_file_name = "log.txt";
+    bool Log::m_log_to_file     = true; // start logging to file (unless changed by the user, e.g. Renderer initialization was successful, so logging can happen on screen)
+    bool Log::m_first_log       = true;
    
     // Everything resolves to this
     void Log::Write(const char* text, const LogType type)

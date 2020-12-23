@@ -128,7 +128,7 @@ namespace Spartan
         bool Deferred_BindDescriptorSet();
         bool OnDraw();
 
-        std::atomic<RHI_CommandListState> m_state           = RHI_CommandListState::Idle;
+        std::atomic<RHI_CommandListState> m_state               = RHI_CommandListState::Idle;
         RHI_Pipeline* m_pipeline                                = nullptr; 
         RHI_SwapChain* m_swap_chain                             = nullptr;
         Renderer* m_renderer                                    = nullptr;

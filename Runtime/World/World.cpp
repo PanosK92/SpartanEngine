@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Environment.h"
 #include "Components/AudioListener.h"
 #include "../Resource/ResourceCache.h"
-#include "../Resource/ProgressReport.h"
+#include "../Resource/ProgressTracker.h"
 #include "../IO/FileStream.h"
 #include "../Profiling/Profiler.h"
 #include "../Rendering/Renderer.h"
@@ -48,8 +48,6 @@ namespace Spartan
     {
         // Subscribe to events
         SUBSCRIBE_TO_EVENT(EventType::WorldResolve, [this](Variant) { m_resolve = true; });
-        SUBSCRIBE_TO_EVENT(EventType::WorldStop,    [this](Variant) { m_tick = false; });
-        SUBSCRIBE_TO_EVENT(EventType::WorldStart,   [this](Variant) { m_tick = true; });
     }
 
     World::~World()
@@ -72,10 +70,13 @@ namespace Spartan
 
     void World::Tick(float delta_time)
     {
-        if (!m_tick)
+        // If something is being loaded, don't tick as entities are probably being added
+        auto& progress_report = ProgressTracker::Get();
+        const bool is_loading_model = progress_report.GetIsLoading(ProgressType::ModelImporter);
+        const bool is_loading_scene = progress_report.GetIsLoading(ProgressType::World);
+        const bool is_loading       = is_loading_model || is_loading_scene;
+        if (is_loading)
             return;
-
-        m_is_ticking = true;
 
         SCOPED_TIME_BLOCK(m_profiler);
 
@@ -132,12 +133,10 @@ namespace Spartan
             m_resolve = false;
         }
 
-        m_is_ticking = false;
-
-        if (m_clear_temp)
+        if (m_clear_loaded)
         {
-            m_entities_temp.clear();
-            m_clear_temp = false;
+            m_entities_loaded.clear();
+            m_clear_loaded = false;
         }
     }
 
@@ -149,9 +148,9 @@ namespace Spartan
     bool World::SaveToFile(const string& filePathIn)
     {
         // Start progress report and timer
-        ProgressReport::Get().Reset(g_progress_world);
-        ProgressReport::Get().SetIsLoading(g_progress_world, true);
-        ProgressReport::Get().SetStatus(g_progress_world, "Saving world...");
+        ProgressTracker::Get().Reset(ProgressType::World);
+        ProgressTracker::Get().SetIsLoading(ProgressType::World, true);
+        ProgressTracker::Get().SetStatus(ProgressType::World, "Saving world...");
         const Stopwatch timer;
     
         // Add scene file extension to the filepath if it's missing
@@ -177,7 +176,7 @@ namespace Spartan
         auto root_actors = EntityGetRoots();
         const auto root_entity_count = static_cast<uint32_t>(root_actors.size());
 
-        ProgressReport::Get().SetJobCount(g_progress_world, root_entity_count);
+        ProgressTracker::Get().SetJobCount(ProgressType::World, root_entity_count);
 
         // Save root entity count
         file->Write(root_entity_count);
@@ -192,11 +191,11 @@ namespace Spartan
         for (const auto& root : root_actors)
         {
             root->Serialize(file.get());
-            ProgressReport::Get().IncrementJobsDone(g_progress_world);
+            ProgressTracker::Get().IncrementJobsDone(ProgressType::World);
         }
 
         // Finish with progress report and timer
-        ProgressReport::Get().SetIsLoading(g_progress_world, false);
+        ProgressTracker::Get().SetIsLoading(ProgressType::World, false);
         LOG_INFO("Saving took %.2f ms", timer.GetElapsedTimeMs());
 
         // Notify subsystems waiting for us to finish
@@ -218,19 +217,15 @@ namespace Spartan
         if (!file->IsOpen())
             return false;
 
-        // Thread safety: Wait for the world to stop ticking
-        m_tick = false;
-        while (m_is_ticking) { this_thread::sleep_for(chrono::milliseconds(1)); }
+        // Start progress report and timing
+        ProgressTracker::Get().Reset(ProgressType::World);
+        ProgressTracker::Get().SetIsLoading(ProgressType::World, true);
+        ProgressTracker::Get().SetStatus(ProgressType::World, "Loading world...");
+        const Stopwatch timer;
 
         // Clear current entities
         Clear();
 
-        // Start progress report and timing
-        ProgressReport::Get().Reset(g_progress_world);
-        ProgressReport::Get().SetIsLoading(g_progress_world, true);
-        ProgressReport::Get().SetStatus(g_progress_world, "Loading world...");
-        const Stopwatch timer;
-        
         m_name = FileSystem::GetFileNameNoExtensionFromFilePath(file_path);
 
         // Notify subsystems that need to load data
@@ -239,7 +234,7 @@ namespace Spartan
         // Load root entity count
         const uint32_t root_entity_count = file->ReadAs<uint32_t>();
 
-        ProgressReport::Get().SetJobCount(g_progress_world, root_entity_count);
+        ProgressTracker::Get().SetJobCount(ProgressType::World, root_entity_count);
 
         // Load root entity IDs
         for (uint32_t i = 0; i < root_entity_count; i++)
@@ -252,16 +247,15 @@ namespace Spartan
         for (uint32_t i = 0; i < root_entity_count; i++)
         {
             m_entities[i]->Deserialize(file.get(), nullptr);
-            ProgressReport::Get().IncrementJobsDone(g_progress_world);
+            ProgressTracker::Get().IncrementJobsDone(ProgressType::World);
         }
 
-        ProgressReport::Get().SetIsLoading(g_progress_world, false);
+        ProgressTracker::Get().SetIsLoading(ProgressType::World, false);
         LOG_INFO("Loading took %.2f ms", timer.GetElapsedTimeMs());
 
         FIRE_EVENT(EventType::WorldLoaded);
 
-        m_resolve  = true;
-        m_tick     = true;
+        m_resolve = true;
 
         return true;
     }
@@ -271,16 +265,6 @@ namespace Spartan
         shared_ptr<Entity> entity = m_entities.emplace_back(make_shared<Entity>(m_context));
         entity->SetActive(is_active);
         return entity;
-    }
-
-    shared_ptr<Entity>& World::EntityAdd(const shared_ptr<Entity>& entity)
-    {
-        static shared_ptr<Entity> empty;
-
-        if (!entity)
-            return empty;
-
-        return m_entities.emplace_back(entity);
     }
 
     bool World::EntityExists(const shared_ptr<Entity>& entity)
@@ -346,11 +330,11 @@ namespace Spartan
         FIRE_EVENT(EventType::WorldClear);
 
         // Thread safety: Keep the entities around for a bit
-        m_entities_temp.clear();
-        m_entities_temp.swap(m_entities);
+        m_entities_loaded.clear();
+        m_entities_loaded.swap(m_entities);
 
         m_resolve       = true;
-        m_clear_temp    = true;
+        m_clear_loaded  = true;
     }
 
     // Removes an entity and all of it's children

@@ -164,8 +164,14 @@ namespace ImGui::RHI
 
         // Validate command list
         SP_ASSERT(cmd_list != nullptr);
-        SP_ASSERT(cmd_list->GetState() == RHI_CommandListState::Recording);
-        
+
+        // Ugly workaround for when the command list is being flushed by another thread (usually during world loading)
+        if (cmd_list->GetState() != Spartan::RHI_CommandListState::Recording)
+        {
+            LOG_INFO("Waiting for command list to be ready...");
+            this_thread::sleep_for(chrono::milliseconds(16));
+        }
+
         // Update vertex and index buffers
         RHI_VertexBuffer* vertex_buffer = nullptr;
         RHI_IndexBuffer* index_buffer   = nullptr;

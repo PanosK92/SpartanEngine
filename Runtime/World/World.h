@@ -53,17 +53,15 @@ namespace Spartan
         const auto& GetName() const { return m_name; }
         void Resolve() { m_resolve = true; }
 
-        //= Entities ===========================================================================
+        //= Entities ===========================================================
         std::shared_ptr<Entity> EntityCreate(bool is_active = true);
-        std::shared_ptr<Entity>& EntityAdd(const std::shared_ptr<Entity>& entity);
         bool EntityExists(const std::shared_ptr<Entity>& entity);
         void EntityRemove(const std::shared_ptr<Entity>& entity);
         std::vector<std::shared_ptr<Entity>> EntityGetRoots();
         const std::shared_ptr<Entity>& EntityGetByName(const std::string& name);
         const std::shared_ptr<Entity>& EntityGetById(uint32_t id);
         const auto& EntityGetAll() const    { return m_entities; }
-        auto EntityGetCount() const         { return static_cast<uint32_t>(m_entities.size()); }
-        //======================================================================================
+        //======================================================================
 
     private:
         void Clear();
@@ -76,15 +74,13 @@ namespace Spartan
         //===============================================
 
         std::string m_name;
-        bool m_was_in_editor_mode       = false;
-        bool m_resolve                  = true;
-        std::atomic<bool> m_tick        = true;
-        std::atomic<bool> m_is_ticking  = true;
-        std::atomic<bool> m_clear_temp  = false;
-        Input* m_input                  = nullptr;
-        Profiler* m_profiler            = nullptr;
+        bool m_was_in_editor_mode           = false;
+        bool m_resolve                      = true;
+        std::atomic<bool> m_clear_loaded    = false;
+        Input* m_input                      = nullptr;
+        Profiler* m_profiler                = nullptr;
 
         std::vector<std::shared_ptr<Entity>> m_entities;
-        std::vector<std::shared_ptr<Entity>> m_entities_temp;
+        std::vector<std::shared_ptr<Entity>> m_entities_loaded;
     };
 }

@@ -51,12 +51,12 @@ public:
 
     void Initialize(Spartan::Context* context)
     {
-        g_context            = context;
+        g_context           = context;
         g_resource_cache    = context->GetSubsystem<Spartan::ResourceCache>();
-        g_world                = context->GetSubsystem<Spartan::World>();
-        g_threading            = context->GetSubsystem<Spartan::Threading>();
-        g_renderer            = context->GetSubsystem<Spartan::Renderer>();
-        g_input                = context->GetSubsystem<Spartan::Input>();
+        g_world             = context->GetSubsystem<Spartan::World>();
+        g_threading         = context->GetSubsystem<Spartan::Threading>();
+        g_renderer          = context->GetSubsystem<Spartan::Renderer>();
+        g_input             = context->GetSubsystem<Spartan::Input>();
     }
 
     void LoadModel(const std::string& file_path) const
@@ -119,14 +119,14 @@ public:
         g_selected_entity = g_renderer->SnapTransformGizmoTo(entity);
     }
 
-    Spartan::Context*                g_context                = nullptr;
-    Spartan::ResourceCache*            g_resource_cache        = nullptr;
-    Spartan::World*                    g_world                    = nullptr;
-    Spartan::Threading*                g_threading                = nullptr;
-    Spartan::Renderer*                g_renderer                = nullptr;
-    Spartan::Input*                    g_input                    = nullptr;
-    std::weak_ptr<Spartan::Entity>    g_selected_entity;
-    std::function<void()>            g_on_entity_selected    = nullptr;
+    Spartan::Context*               g_context               = nullptr;
+    Spartan::ResourceCache*         g_resource_cache        = nullptr;
+    Spartan::World*                 g_world                 = nullptr;
+    Spartan::Threading*             g_threading             = nullptr;
+    Spartan::Renderer*              g_renderer              = nullptr;
+    Spartan::Input*                 g_input                 = nullptr;
+    std::weak_ptr<Spartan::Entity>  g_selected_entity;
+    std::function<void()>           g_on_entity_selected    = nullptr;
 };
 
 namespace ImGuiEx
@@ -140,9 +140,9 @@ namespace ImGuiEx
         (
             static_cast<ImTextureID>(texture),
             size,
-            ImVec2(0, 0),            // uv0
-            ImVec2(1, 1),            // uv1
-            -1,                        // frame padding
+            ImVec2(0, 0),           // uv0
+            ImVec2(1, 1),           // uv1
+            -1,                     // frame padding
             ImColor(0, 0, 0, 0),    // background
             default_tint            // tint
         );
@@ -153,9 +153,9 @@ namespace ImGuiEx
         return ImGui::ImageButton(
             static_cast<ImTextureID>(IconProvider::Get().GetTextureByType(icon)),
             ImVec2(size, size),
-            ImVec2(0, 0),            // uv0
-            ImVec2(1, 1),            // uv1
-            -1,                        // frame padding
+            ImVec2(0, 0),           // uv0
+            ImVec2(1, 1),           // uv1
+            -1,                     // frame padding
             ImColor(0, 0, 0, 0),    // background
             default_tint            // tint
         );
@@ -167,9 +167,9 @@ namespace ImGuiEx
         const auto pressed = ImGui::ImageButton(
             static_cast<ImTextureID>(IconProvider::Get().GetTextureByType(icon)),
             ImVec2(size, size),
-            ImVec2(0, 0),            // uv0
-            ImVec2(1, 1),            // uv1
-            -1,                        // frame padding
+            ImVec2(0, 0),           // uv0
+            ImVec2(1, 1),           // uv1
+            -1,                     // frame padding
             ImColor(0, 0, 0, 0),    // background
             default_tint            // tint
         );
@@ -184,8 +184,8 @@ namespace ImGuiEx
             ImVec2(size, size),
             ImVec2(0, 0),
             ImVec2(1, 1),
-            default_tint,            // tint
-            ImColor(0, 0, 0, 0)        // border
+            default_tint,       // tint
+            ImColor(0, 0, 0, 0) // border
         );
     }
 
@@ -196,8 +196,8 @@ namespace ImGuiEx
             ImVec2(size, size),
             ImVec2(0, 0),
             ImVec2(1, 1),
-            default_tint,            // tint
-            ImColor(0, 0, 0, 0)        // border
+            default_tint,       // tint
+            ImColor(0, 0, 0, 0) // border
         );
     }
 

@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Spartan.h"
 #include "ModelImporter.h"
 #include "AssimpHelper.h"
-#include "../ProgressReport.h"
+#include "../ProgressTracker.h"
 #include "../../RHI/RHI_Texture.h"
 #include "../../Rendering/Model.h"
 #include "../../Rendering/Animation.h"
@@ -82,9 +82,9 @@ namespace Spartan
         // Maximum number of vertices in a mesh (before splitting)    
         importer.SetPropertyInteger(AI_CONFIG_PP_SLM_VERTEX_LIMIT, params.vertex_limit);
         // Remove points and lines.
-        importer.SetPropertyInteger(AI_CONFIG_PP_SBP_REMOVE, aiPrimitiveType_LINE | aiPrimitiveType_POINT);    
+        importer.SetPropertyInteger(AI_CONFIG_PP_SBP_REMOVE, aiPrimitiveType_LINE | aiPrimitiveType_POINT);
         // Remove cameras and lights
-        importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, aiComponent_CAMERAS | aiComponent_LIGHTS);        
+        importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, aiComponent_CAMERAS | aiComponent_LIGHTS);
         // Enable progress tracking
         importer.SetPropertyBool(AI_CONFIG_GLOB_MEASURE_TIME, true);
         importer.SetProgressHandler(new AssimpHelper::AssimpProgress(file_path));
@@ -120,7 +120,10 @@ namespace Spartan
         // Read the 3D model file from disk
         if (const aiScene* scene = importer.ReadFile(file_path, importer_flags))
         {
-            FIRE_EVENT(EventType::WorldStop);
+            // Update progress tracking
+            int job_count = 0;
+            AssimpHelper::compute_node_count(scene->mRootNode, &job_count);
+            ProgressTracker::Get().SetJobCount(ProgressType::ModelImporter, job_count);
 
             params.scene            = scene;
             params.has_animation    = scene->mNumAnimations != 0;
@@ -131,19 +134,12 @@ namespace Spartan
             new_entity->SetName(params.name); // Set custom name, which is more descriptive than "RootNode"
             params.model->SetRootEntity(new_entity);
 
-            // Update progress tracking
-            int job_count = 0;
-            AssimpHelper::compute_node_count(scene->mRootNode, &job_count);
-            ProgressReport::Get().SetJobCount(g_progress_model_importer, job_count);
-
             // Parse all nodes, starting from the root node and continuing recursively
             ParseNode(scene->mRootNode, params, nullptr, new_entity.get());
             // Parse animations
             ParseAnimations(params);
             // Update model geometry
             model->UpdateGeometry();
-
-            FIRE_EVENT(EventType::WorldStart);
         }
         else
         {
@@ -163,7 +159,7 @@ namespace Spartan
         }
 
         // Update progress tracking
-        ProgressReport::Get().SetStatus(g_progress_model_importer, "Creating entity for " + new_entity->GetName());
+        ProgressTracker::Get().SetStatus(ProgressType::ModelImporter, "Creating entity for " + new_entity->GetName());
 
         // Set the transform of parent_node as the parent of the new_entity's transform
         const auto parent_trans = parent_node ? parent_node->GetTransform() : nullptr;
@@ -183,7 +179,7 @@ namespace Spartan
         }
 
         // Update progress tracking
-        ProgressReport::Get().IncrementJobsDone(g_progress_model_importer);
+        ProgressTracker::Get().IncrementJobsDone(ProgressType::ModelImporter);
     }
 
     void ModelImporter::ParseNodeMeshes(const aiNode* assimp_node, Entity* new_entity, const ModelParams& params)

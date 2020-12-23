@@ -19,10 +19,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =======================
+//= INCLUDES ========================
 #include "Widget_ProgressDialog.h"
-#include "Resource/ProgressReport.h"
-//==================================
+#include "Resource/ProgressTracker.h"
+//===================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -47,21 +47,21 @@ Widget_ProgressDialog::Widget_ProgressDialog(Editor* editor) : Widget(editor)
 void Widget_ProgressDialog::TickAlways()
 {
     // Determine if an operation is in progress
-    ProgressReport& progressReport  = ProgressReport::Get();
-    const bool is_loading_model     = progressReport.GetIsLoading(g_progress_model_importer);
-    const bool is_loading_scene     = progressReport.GetIsLoading(g_progress_world);
+    ProgressTracker& progressReport  = ProgressTracker::Get();
+    const bool is_loading_model     = progressReport.GetIsLoading(ProgressType::ModelImporter);
+    const bool is_loading_scene     = progressReport.GetIsLoading(ProgressType::World);
     const bool in_progress          = is_loading_model || is_loading_scene;
 
     // Acquire progress
     if (is_loading_model)
     {
-        m_progress          = progressReport.GetPercentage(g_progress_model_importer);
-        m_progressStatus    = progressReport.GetStatus(g_progress_model_importer);
+        m_progress          = progressReport.GetPercentage(ProgressType::ModelImporter);
+        m_progressStatus    = progressReport.GetStatus(ProgressType::ModelImporter);
     }
     else if (is_loading_scene)
     {
-        m_progress          = progressReport.GetPercentage(g_progress_world);
-        m_progressStatus    = progressReport.GetStatus(g_progress_world);
+        m_progress          = progressReport.GetPercentage(ProgressType::World);
+        m_progressStatus    = progressReport.GetStatus(ProgressType::World);
     }
 
     // Show only if an operation is in progress

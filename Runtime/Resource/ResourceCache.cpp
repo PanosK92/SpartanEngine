@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ======================
 #include "Spartan.h"
 #include "ResourceCache.h"
-#include "ProgressReport.h"
+#include "ProgressTracker.h"
 #include "Import/ImageImporter.h"
 #include "Import/ModelImporter.h"
 #include "Import/FontImporter.h"
@@ -174,9 +174,9 @@ namespace Spartan
     void ResourceCache::SaveResourcesToFiles()
     {
         // Start progress report
-        ProgressReport::Get().Reset(g_progress_resource_cache);
-        ProgressReport::Get().SetIsLoading(g_progress_resource_cache, true);
-        ProgressReport::Get().SetStatus(g_progress_resource_cache, "Loading resources...");
+        ProgressTracker::Get().Reset(ProgressType::ResourceCache);
+        ProgressTracker::Get().SetIsLoading(ProgressType::ResourceCache, true);
+        ProgressTracker::Get().SetStatus(ProgressType::ResourceCache, "Loading resources...");
 
         // Create resource list file
         string file_path = GetProjectDirectoryAbsolute() + m_context->GetSubsystem<World>()->GetName() + "_resources.dat";
@@ -188,7 +188,7 @@ namespace Spartan
         }
 
         const auto resource_count = GetResourceCount();
-        ProgressReport::Get().SetJobCount(g_progress_resource_cache, resource_count);
+        ProgressTracker::Get().SetJobCount(ProgressType::ResourceCache, resource_count);
 
         // Save resource count
         file->Write(resource_count);
@@ -207,11 +207,11 @@ namespace Spartan
             resource->SaveToFile(resource->GetResourceFilePathNative());
 
             // Update progress
-            ProgressReport::Get().IncrementJobsDone(g_progress_resource_cache);
+            ProgressTracker::Get().IncrementJobsDone(ProgressType::ResourceCache);
         }
 
         // Finish with progress report
-        ProgressReport::Get().SetIsLoading(g_progress_resource_cache, false);
+        ProgressTracker::Get().SetIsLoading(ProgressType::ResourceCache, false);
     }
 
     void ResourceCache::LoadResourcesFromFiles()

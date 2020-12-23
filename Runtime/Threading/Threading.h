@@ -121,7 +121,7 @@ namespace Spartan
         // Returns true if at least one task is running
         bool AreTasksRunning()              const { return GetThreadsAvailable() != GetThreadCount(); }
         // Waits for all executing (and queued if requested) tasks to finish
-        void Flush(bool removed_queued = false);
+        void Flush(bool remove_queued = false);
 
     private:
         // This function is invoked by the threads
