@@ -211,7 +211,7 @@ namespace Spartan
         return m_frame_buffers[0];
     }
 
-    bool RHI_PipelineState::CreateFrameResources(const RHI_Device* rhi_device)
+    bool RHI_PipelineState::CreateFrameBuffer(const RHI_Device* rhi_device)
     {
         if (IsCompute())
             return true;
@@ -222,7 +222,7 @@ namespace Spartan
         const uint32_t render_target_height = GetHeight();
 
         // Destroy existing frame resources
-        DestroyFrameResources();
+        DestroyFrameBuffer();
 
         // Create a render pass
         if (!create_render_pass(m_rhi_device->GetContextRhi(), depth_stencil_state, render_target_swapchain, render_target_color_textures, clear_color, render_target_depth_texture, clear_depth, clear_stencil, m_render_pass))
@@ -280,7 +280,7 @@ namespace Spartan
         return true;
     }
 
-    void RHI_PipelineState::DestroyFrameResources()
+    void RHI_PipelineState::DestroyFrameBuffer()
     {
         if (!m_rhi_device)
             return;

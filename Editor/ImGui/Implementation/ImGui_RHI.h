@@ -166,7 +166,7 @@ namespace ImGui::RHI
         SP_ASSERT(cmd_list != nullptr);
 
         // Ugly workaround for when the command list is being flushed by another thread (usually during world loading)
-        if (cmd_list->GetState() != Spartan::RHI_CommandListState::Recording)
+        while (cmd_list->GetState() != Spartan::RHI_CommandListState::Recording)
         {
             LOG_INFO("Waiting for command list to be ready...");
             this_thread::sleep_for(chrono::milliseconds(16));

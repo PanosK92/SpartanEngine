@@ -355,6 +355,10 @@ namespace Spartan
             m_image_acquired_semaphore
         );
 
+        // Pipeline state has to be recreated as it will be referencing an invalid swap chain view.
+        // We generate a new ID for it so that a new pipeline hash is generated and hence a new pipeline.
+        m_id = GenerateId();
+
         return m_initialized;
     }
 
@@ -419,15 +423,19 @@ namespace Spartan
         // Validate semaphore state
         SP_ASSERT(wait_semaphore->GetState() == RHI_Semaphore_State::Signaled);
 
+        // Acquire next image
+        if (!AcquireNextImage())
+        {
+            LOG_ERROR("Failed to acquire next image");
+            return false;
+        }
+
         // Present
         if (!m_rhi_device->Queue_Present(m_swap_chain_view, &m_image_index, wait_semaphore))
         {
             LOG_ERROR("Failed to present");
             return false;
         }
-
-        // Acquire the next image
-        AcquireNextImage();
 
         return true;
     }

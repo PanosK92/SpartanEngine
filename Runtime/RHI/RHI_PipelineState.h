@@ -35,10 +35,10 @@ namespace Spartan
     {
     public:
         RHI_PipelineState();
-        ~RHI_PipelineState() { DestroyFrameResources(); }
+        ~RHI_PipelineState();
 
-        bool IsValid();   
-        bool CreateFrameResources(const RHI_Device* rhi_device);
+        bool IsValid();
+        bool CreateFrameBuffer(const RHI_Device* rhi_device);
         void* GetFrameBuffer() const;
         void ComputeHash();
         uint32_t GetWidth() const;
@@ -89,17 +89,7 @@ namespace Spartan
         // Clear values
         float clear_depth = rhi_depth_load;
         uint32_t clear_stencil = rhi_stencil_load;
-        std::array<Math::Vector4, rhi_max_render_target_count> clear_color =
-        {
-            rhi_color_load,
-            rhi_color_load,
-            rhi_color_load,
-            rhi_color_load,
-            rhi_color_load,
-            rhi_color_load,
-            rhi_color_load,
-            rhi_color_load
-        };
+        std::array<Math::Vector4, rhi_max_render_target_count> clear_color;
         //==================================================================================
 
         //= Dynamic, modification is free ============================================
@@ -118,21 +108,11 @@ namespace Spartan
         //============================================================================
 
     private:
-        void DestroyFrameResources();
+        void DestroyFrameBuffer();
 
         std::size_t m_hash  = 0;
         void* m_render_pass = nullptr;
-        std::array<void*, rhi_max_constant_buffer_count> m_frame_buffers =
-        {
-            nullptr,
-            nullptr,
-            nullptr,
-            nullptr,
-            nullptr,
-            nullptr,
-            nullptr,
-            nullptr,
-        };
+        std::array<void*, rhi_max_constant_buffer_count> m_frame_buffers;
 
         // Dependencies
         const RHI_Device* m_rhi_device = nullptr;

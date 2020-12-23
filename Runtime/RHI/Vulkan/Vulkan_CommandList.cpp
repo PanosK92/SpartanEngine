@@ -813,25 +813,13 @@ namespace Spartan
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
+        // Get pipeline state
         RHI_PipelineState* pipeline_state = m_pipeline->GetPipelineState();
 
-        if (!pipeline_state)
-        {
-            LOG_ERROR("There is no pipeline state");
-            return false;
-        }
-
-        if (!pipeline_state->GetRenderPass())
-        {
-            LOG_ERROR("Current pipeline has no render pass");
-            return false;
-        }
-
-        if (!pipeline_state->GetFrameBuffer())
-        {
-            LOG_ERROR("Current pipeline has no frame buffer");
-            return false;
-        }
+        // Validate pipeline state
+        SP_ASSERT(pipeline_state != nullptr);
+        SP_ASSERT(pipeline_state->GetRenderPass() != nullptr);
+        SP_ASSERT(pipeline_state->GetFrameBuffer() != nullptr);
 
         // Clear values
         array<VkClearValue, rhi_max_render_target_count + 1> clear_values; // +1 for depth-stencil
@@ -871,6 +859,7 @@ namespace Spartan
         vkCmdBeginRenderPass(static_cast<VkCommandBuffer>(m_cmd_buffer), &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 
         m_render_pass_active = true;
+
         return true;
     }
 

@@ -128,7 +128,6 @@ namespace Spartan
         bool Deferred_BindDescriptorSet();
         bool OnDraw();
 
-        std::atomic<RHI_CommandListState> m_state               = RHI_CommandListState::Idle;
         RHI_Pipeline* m_pipeline                                = nullptr; 
         RHI_SwapChain* m_swap_chain                             = nullptr;
         Renderer* m_renderer                                    = nullptr;
@@ -141,9 +140,10 @@ namespace Spartan
         std::shared_ptr<RHI_Fence> m_processed_fence            = nullptr;
         std::shared_ptr<RHI_Semaphore> m_processed_semaphore    = nullptr;
         void* m_query_pool                                      = nullptr;
-        bool m_render_pass_active                               = false;
-        bool m_pipeline_active                                  = false;
-        bool m_flushed                                          = false;
+        std::atomic<bool> m_render_pass_active                  = false;
+        std::atomic<bool> m_pipeline_active                     = false;
+        std::atomic<bool> m_flushed                             = false;
+        std::atomic<RHI_CommandListState> m_state = RHI_CommandListState::Idle;
         static bool memory_query_support;
         std::mutex m_mutex_reset;
 
