@@ -35,7 +35,6 @@ namespace Spartan
     void RHI_IndexBuffer::_destroy()
     {
         d3d11_utility::release(*reinterpret_cast<ID3D11Buffer**>(&m_buffer));
-        return;
     }
 
     bool RHI_IndexBuffer::_create(const void* indices)
@@ -53,17 +52,17 @@ namespace Spartan
 
         D3D11_BUFFER_DESC buffer_desc;
         ZeroMemory(&buffer_desc, sizeof(buffer_desc));
-        buffer_desc.ByteWidth            = m_stride * m_index_count;
-        buffer_desc.Usage                = is_dynamic ? D3D11_USAGE_DYNAMIC : D3D11_USAGE_IMMUTABLE;
-        buffer_desc.CPUAccessFlags        = is_dynamic ? D3D11_CPU_ACCESS_WRITE : 0;
-        buffer_desc.BindFlags            = D3D11_BIND_INDEX_BUFFER;    
-        buffer_desc.MiscFlags            = 0;
+        buffer_desc.ByteWidth           = m_stride * m_index_count;
+        buffer_desc.Usage               = is_dynamic ? D3D11_USAGE_DYNAMIC : D3D11_USAGE_IMMUTABLE;
+        buffer_desc.CPUAccessFlags      = is_dynamic ? D3D11_CPU_ACCESS_WRITE : 0;
+        buffer_desc.BindFlags           = D3D11_BIND_INDEX_BUFFER;
+        buffer_desc.MiscFlags           = 0;
         buffer_desc.StructureByteStride = 0;
 
-        D3D11_SUBRESOURCE_DATA init_data;
-        init_data.pSysMem            = indices;
-        init_data.SysMemPitch        = 0;
-        init_data.SysMemSlicePitch    = 0;
+        D3D11_SUBRESOURCE_DATA init_data    = {};
+        init_data.pSysMem                   = indices;
+        init_data.SysMemPitch               = 0;
+        init_data.SysMemSlicePitch          = 0;
 
         const auto ptr = reinterpret_cast<ID3D11Buffer**>(&m_buffer);
         const auto result = m_rhi_device->GetContextRhi()->device->CreateBuffer(&buffer_desc, is_dynamic ? nullptr : &init_data, ptr);

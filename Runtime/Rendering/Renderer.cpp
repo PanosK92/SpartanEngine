@@ -24,6 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Renderer.h"
 #include "Model.h"
 #include "Font/Font.h"
+#include "../World/World.h"
+#include "../Display/Display.h"
 #include "Gizmos/Grid.h"
 #include "Gizmos/Transform_Gizmo.h"
 #include "../Utilities/Sampling.h"
@@ -44,7 +46,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_DescriptorCache.h"
 #include "../RHI/RHI_Implementation.h"
 #include "../RHI/RHI_Semaphore.h"
-#include "../Display/Display.h"
 //=========================================
 
 //= NAMESPACES ===============
@@ -86,7 +87,7 @@ namespace Spartan
 
         // Subscribe to events
         SUBSCRIBE_TO_EVENT(EventType::WorldResolved,    EVENT_HANDLER_VARIANT(RenderablesAcquire));
-        SUBSCRIBE_TO_EVENT(EventType::WorldClear,       EVENT_HANDLER(ClearEntities));
+        SUBSCRIBE_TO_EVENT(EventType::WorldClear,       EVENT_HANDLER(Clear));
     }
 
     Renderer::~Renderer()
@@ -194,101 +195,114 @@ namespace Spartan
         if (!m_rhi_device || !m_rhi_device->IsInitialized())
             return;
 
+        if (!m_is_allowed_to_render)
+            return;
+
         // Don't do any work if the swapchain is not presenting
         if (m_swap_chain && !m_swap_chain->PresentEnabled())
             return;
 
+        // Acquire command list
         RHI_CommandList* cmd_list = m_swap_chain->GetCmdList();
+
+        // Begin
         cmd_list->Begin();
 
-        // If there is no camera, clear to black
-        if (!m_camera)
+        // Only render when the world is not loading, as the command list will get flushed by the loading thread.
+        if (!m_context->GetSubsystem<World>()->IsLoading())
         {
-            cmd_list->ClearRenderTarget(m_render_targets[RendererRt::Frame_Ldr].get(), 0, 0, false, Vector4(0.0f, 0.0f, 0.0f, 1.0f));
-            return;
-        }
-        
-        // If there is not camera but no other entities to render, clear to camera's color
-        if (m_entities[Renderer_Object_Opaque].empty() && m_entities[Renderer_Object_Transparent].empty() && m_entities[Renderer_Object_Light].empty())
-        {
-            cmd_list->ClearRenderTarget(m_render_targets[RendererRt::Frame_Ldr].get(), 0, 0, false, m_camera->GetClearColor());
-            return;
-        }
+            m_is_rendering = true;
 
-        // Reset dynamic buffer indices when the swapchain resets to first buffer/command list
-        if (m_swap_chain->GetCmdIndex() == 0)
-        {
-            m_buffer_uber_offset_index      = 0;
-            m_buffer_object_offset_index    = 0;
-            m_buffer_frame_offset_index     = 0;
-            m_buffer_light_offset_index     = 0;
-            m_buffer_material_offset_index  = 0;
-        }
-
-        // Update frame buffer
-        {
-            if (m_update_ortho_proj || m_near_plane != m_camera->GetNearPlane() || m_far_plane != m_camera->GetFarPlane())
+            // If there is no camera, clear to black
+            if (!m_camera)
             {
-                m_buffer_frame_cpu.projection_ortho         = Matrix::CreateOrthographicLH(m_viewport.width, m_viewport.height, m_near_plane, m_far_plane);
-                m_buffer_frame_cpu.view_projection_ortho    = Matrix::CreateLookAtLH(Vector3(0, 0, -m_near_plane), Vector3::Forward, Vector3::Up) * m_buffer_frame_cpu.projection_ortho;
-                m_update_ortho_proj                         = false;
+                cmd_list->ClearRenderTarget(m_render_targets[RendererRt::Frame_Ldr].get(), 0, 0, false, Vector4(0.0f, 0.0f, 0.0f, 1.0f));
+                return;
+            }
+            
+            // If there is not camera but no other entities to render, clear to camera's color
+            if (m_entities[Renderer_Object_Opaque].empty() && m_entities[Renderer_Object_Transparent].empty() && m_entities[Renderer_Object_Light].empty())
+            {
+                cmd_list->ClearRenderTarget(m_render_targets[RendererRt::Frame_Ldr].get(), 0, 0, false, m_camera->GetClearColor());
+                return;
             }
 
-            m_near_plane                    = m_camera->GetNearPlane();
-            m_far_plane                     = m_camera->GetFarPlane();
-            m_buffer_frame_cpu.view         = m_camera->GetViewMatrix();
-            m_buffer_frame_cpu.projection   = m_camera->GetProjectionMatrix();
-
-            // TAA - Generate jitter
-            if (GetOption(Render_AntiAliasing_Taa))
+            // Reset dynamic buffer indices when the swapchain resets to first buffer/command list
+            if (m_swap_chain->GetCmdIndex() == 0)
             {
-                m_taa_jitter_previous = m_taa_jitter;
-                
-                const float scale               = 1.0f;
-                const uint64_t samples          = 16;
-                const uint64_t index            = m_frame_num % samples;
-                m_taa_jitter                    = (Utility::Sampling::Halton2D(index, 2, 3) * 2.0f - 1.0f);
-                m_taa_jitter.x                  = (m_taa_jitter.x / m_resolution.x) * scale;
-                m_taa_jitter.y                  = (m_taa_jitter.y / m_resolution.y) * scale;
-                m_buffer_frame_cpu.projection   *= Matrix::CreateTranslation(Vector3(m_taa_jitter.x, m_taa_jitter.y, 0.0f));
-            }
-            else
-            {
-                m_taa_jitter            = Vector2::Zero;
-                m_taa_jitter_previous   = Vector2::Zero;
+                m_buffer_uber_offset_index      = 0;
+                m_buffer_object_offset_index    = 0;
+                m_buffer_frame_offset_index     = 0;
+                m_buffer_light_offset_index     = 0;
+                m_buffer_material_offset_index  = 0;
             }
 
-            // Update the remaining of the frame buffer
-            m_buffer_frame_cpu.view_projection              = m_buffer_frame_cpu.view * m_buffer_frame_cpu.projection;
-            m_buffer_frame_cpu.view_projection_inv          = Matrix::Invert(m_buffer_frame_cpu.view_projection);   
-            m_buffer_frame_cpu.view_projection_unjittered   = m_buffer_frame_cpu.view * m_camera->GetProjectionMatrix();
-            m_buffer_frame_cpu.camera_aperture              = m_camera->GetAperture();
-            m_buffer_frame_cpu.camera_shutter_speed         = m_camera->GetShutterSpeed();
-            m_buffer_frame_cpu.camera_iso                   = m_camera->GetIso();
-            m_buffer_frame_cpu.camera_near                  = m_camera->GetNearPlane();
-            m_buffer_frame_cpu.camera_far                   = m_camera->GetFarPlane();
-            m_buffer_frame_cpu.camera_position              = m_camera->GetTransform()->GetPosition();
-            m_buffer_frame_cpu.camera_direction             = m_camera->GetTransform()->GetForward();
-            m_buffer_frame_cpu.bloom_intensity              = m_option_values[Option_Value_Bloom_Intensity];
-            m_buffer_frame_cpu.sharpen_strength             = m_option_values[Option_Value_Sharpen_Strength];
-            m_buffer_frame_cpu.fog                          = m_option_values[Option_Value_Fog];
-            m_buffer_frame_cpu.taa_jitter_offset_previous   = m_buffer_frame_cpu_previous.taa_jitter_offset;
-            m_buffer_frame_cpu.taa_jitter_offset            = m_taa_jitter - m_taa_jitter_previous;
-            m_buffer_frame_cpu.delta_time                   = static_cast<float>(m_context->GetSubsystem<Timer>()->GetDeltaTimeSmoothedSec());
-            m_buffer_frame_cpu.time                         = static_cast<float>(m_context->GetSubsystem<Timer>()->GetTimeSec());
-            m_buffer_frame_cpu.tonemapping                  = m_option_values[Option_Value_Tonemapping];
-            m_buffer_frame_cpu.gamma                        = m_option_values[Option_Value_Gamma];
-            m_buffer_frame_cpu.ssr_enabled                  = GetOption(Render_ScreenSpaceReflections) ? 1.0f : 0.0f;
-            m_buffer_frame_cpu.shadow_resolution            = GetOptionValue<float>(Option_Value_ShadowResolution);
-            m_buffer_frame_cpu.frame                        = static_cast<uint32_t>(m_frame_num);
+            // Update frame buffer
+            {
+                if (m_update_ortho_proj || m_near_plane != m_camera->GetNearPlane() || m_far_plane != m_camera->GetFarPlane())
+                {
+                    m_buffer_frame_cpu.projection_ortho         = Matrix::CreateOrthographicLH(m_viewport.width, m_viewport.height, m_near_plane, m_far_plane);
+                    m_buffer_frame_cpu.view_projection_ortho    = Matrix::CreateLookAtLH(Vector3(0, 0, -m_near_plane), Vector3::Forward, Vector3::Up) * m_buffer_frame_cpu.projection_ortho;
+                    m_update_ortho_proj                         = false;
+                }
+
+                m_near_plane                    = m_camera->GetNearPlane();
+                m_far_plane                     = m_camera->GetFarPlane();
+                m_buffer_frame_cpu.view         = m_camera->GetViewMatrix();
+                m_buffer_frame_cpu.projection   = m_camera->GetProjectionMatrix();
+
+                // TAA - Generate jitter
+                if (GetOption(Render_AntiAliasing_Taa))
+                {
+                    m_taa_jitter_previous = m_taa_jitter;
+                    
+                    const float scale               = 1.0f;
+                    const uint64_t samples          = 16;
+                    const uint64_t index            = m_frame_num % samples;
+                    m_taa_jitter                    = (Utility::Sampling::Halton2D(index, 2, 3) * 2.0f - 1.0f);
+                    m_taa_jitter.x                  = (m_taa_jitter.x / m_resolution.x) * scale;
+                    m_taa_jitter.y                  = (m_taa_jitter.y / m_resolution.y) * scale;
+                    m_buffer_frame_cpu.projection   *= Matrix::CreateTranslation(Vector3(m_taa_jitter.x, m_taa_jitter.y, 0.0f));
+                }
+                else
+                {
+                    m_taa_jitter            = Vector2::Zero;
+                    m_taa_jitter_previous   = Vector2::Zero;
+                }
+
+                // Update the remaining of the frame buffer
+                m_buffer_frame_cpu.view_projection              = m_buffer_frame_cpu.view * m_buffer_frame_cpu.projection;
+                m_buffer_frame_cpu.view_projection_inv          = Matrix::Invert(m_buffer_frame_cpu.view_projection);   
+                m_buffer_frame_cpu.view_projection_unjittered   = m_buffer_frame_cpu.view * m_camera->GetProjectionMatrix();
+                m_buffer_frame_cpu.camera_aperture              = m_camera->GetAperture();
+                m_buffer_frame_cpu.camera_shutter_speed         = m_camera->GetShutterSpeed();
+                m_buffer_frame_cpu.camera_iso                   = m_camera->GetIso();
+                m_buffer_frame_cpu.camera_near                  = m_camera->GetNearPlane();
+                m_buffer_frame_cpu.camera_far                   = m_camera->GetFarPlane();
+                m_buffer_frame_cpu.camera_position              = m_camera->GetTransform()->GetPosition();
+                m_buffer_frame_cpu.camera_direction             = m_camera->GetTransform()->GetForward();
+                m_buffer_frame_cpu.bloom_intensity              = m_option_values[Option_Value_Bloom_Intensity];
+                m_buffer_frame_cpu.sharpen_strength             = m_option_values[Option_Value_Sharpen_Strength];
+                m_buffer_frame_cpu.fog                          = m_option_values[Option_Value_Fog];
+                m_buffer_frame_cpu.taa_jitter_offset_previous   = m_buffer_frame_cpu_previous.taa_jitter_offset;
+                m_buffer_frame_cpu.taa_jitter_offset            = m_taa_jitter - m_taa_jitter_previous;
+                m_buffer_frame_cpu.delta_time                   = static_cast<float>(m_context->GetSubsystem<Timer>()->GetDeltaTimeSmoothedSec());
+                m_buffer_frame_cpu.time                         = static_cast<float>(m_context->GetSubsystem<Timer>()->GetTimeSec());
+                m_buffer_frame_cpu.tonemapping                  = m_option_values[Option_Value_Tonemapping];
+                m_buffer_frame_cpu.gamma                        = m_option_values[Option_Value_Gamma];
+                m_buffer_frame_cpu.ssr_enabled                  = GetOption(Render_ScreenSpaceReflections) ? 1.0f : 0.0f;
+                m_buffer_frame_cpu.shadow_resolution            = GetOptionValue<float>(Option_Value_ShadowResolution);
+                m_buffer_frame_cpu.frame                        = static_cast<uint32_t>(m_frame_num);
+            }
+
+            Pass_Main(cmd_list);
+
+            DrawDebugTick(delta_time);
+
+            m_frame_num++;
+            m_is_odd_frame = (m_frame_num % 2) == 1;
+            m_is_rendering = false;
         }
-
-        Pass_Main(cmd_list);
-
-        DrawDebugTick(delta_time);
-
-        m_frame_num++;
-        m_is_odd_frame = (m_frame_num % 2) == 1;
     }
 
     void Renderer::SetViewport(float width, float height, float offset_x /*= 0*/, float offset_y /*= 0*/)
@@ -605,8 +619,9 @@ namespace Spartan
         });
     }
 
-    void Renderer::ClearEntities()
+    void Renderer::Clear()
     {
+        // Flush to remove references to entity resources that will be deallocated
         Flush();
         m_entities.clear();
     }
@@ -726,5 +741,23 @@ namespace Spartan
     {
         m_buffer_object_cpu.object = transform;
         UpdateObjectBuffer(cmd_list);
+    }
+
+    void Renderer::Stop()
+    {
+        // Notify stop
+        m_is_allowed_to_render = false;
+
+        // Wait for stop
+        while (m_is_rendering)
+        {
+            LOG_INFO("Waiting for rendering to finish...");
+            this_thread::sleep_for(chrono::milliseconds(16));
+        }
+    }
+
+    void Renderer::Start()
+    {
+        m_is_allowed_to_render = true;
     }
 }

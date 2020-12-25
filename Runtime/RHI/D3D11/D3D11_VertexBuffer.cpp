@@ -52,21 +52,21 @@ namespace Spartan
 
         // fill in a buffer description.
         D3D11_BUFFER_DESC buffer_desc   = {};
-        buffer_desc.ByteWidth            = static_cast<UINT>(m_size_gpu);
-        buffer_desc.Usage                = is_dynamic ? D3D11_USAGE_DYNAMIC : D3D11_USAGE_IMMUTABLE;
-        buffer_desc.CPUAccessFlags        = is_dynamic ? D3D11_CPU_ACCESS_WRITE : 0;
-        buffer_desc.BindFlags            = D3D11_BIND_VERTEX_BUFFER;    
-        buffer_desc.MiscFlags            = 0;
+        buffer_desc.ByteWidth           = static_cast<UINT>(m_size_gpu);
+        buffer_desc.Usage               = is_dynamic ? D3D11_USAGE_DYNAMIC : D3D11_USAGE_IMMUTABLE;
+        buffer_desc.CPUAccessFlags      = is_dynamic ? D3D11_CPU_ACCESS_WRITE : 0;
+        buffer_desc.BindFlags           = D3D11_BIND_VERTEX_BUFFER;
+        buffer_desc.MiscFlags           = 0;
         buffer_desc.StructureByteStride = 0;
 
         // fill in the subresource data.
         D3D11_SUBRESOURCE_DATA init_data    = {};
-        init_data.pSysMem                    = vertices;
-        init_data.SysMemPitch                = 0;
-        init_data.SysMemSlicePitch            = 0;
+        init_data.pSysMem                   = vertices;
+        init_data.SysMemPitch               = 0;
+        init_data.SysMemSlicePitch          = 0;
 
-        const auto ptr        = reinterpret_cast<ID3D11Buffer**>(&m_buffer);
-        const auto result    = m_rhi_device->GetContextRhi()->device->CreateBuffer(&buffer_desc, is_dynamic ? nullptr : &init_data, ptr);
+        const auto ptr      = reinterpret_cast<ID3D11Buffer**>(&m_buffer);
+        const auto result   = m_rhi_device->GetContextRhi()->device->CreateBuffer(&buffer_desc, is_dynamic ? nullptr : &init_data, ptr);
         if (FAILED(result))
         {
             LOG_ERROR("Failed to create vertex buffer");

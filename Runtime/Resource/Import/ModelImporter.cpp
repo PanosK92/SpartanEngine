@@ -47,9 +47,9 @@ namespace Spartan
         m_world        = context->GetSubsystem<World>();
 
         // Get version
-        const int major    = aiGetVersionMajor();
-        const int minor    = aiGetVersionMinor();
-        const int rev    = aiGetVersionRevision();
+        const int major = aiGetVersionMajor();
+        const int minor = aiGetVersionMinor();
+        const int rev   = aiGetVersionRevision();
         m_context->GetSubsystem<Settings>()->RegisterThirdPartyLib("Assimp", to_string(major) + "." + to_string(minor) + "." + to_string(rev), "https://github.com/assimp/assimp");
     }
 

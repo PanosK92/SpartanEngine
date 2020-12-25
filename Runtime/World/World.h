@@ -52,6 +52,7 @@ namespace Spartan
         bool LoadFromFile(const std::string& file_path);
         const auto& GetName() const { return m_name; }
         void Resolve() { m_resolve = true; }
+        bool IsLoading();
 
         //= Entities ===========================================================
         std::shared_ptr<Entity> EntityCreate(bool is_active = true);
@@ -74,13 +75,11 @@ namespace Spartan
         //===============================================
 
         std::string m_name;
-        bool m_was_in_editor_mode           = false;
-        bool m_resolve                      = true;
-        std::atomic<bool> m_clear_loaded    = false;
-        Input* m_input                      = nullptr;
-        Profiler* m_profiler                = nullptr;
+        bool m_was_in_editor_mode   = false;
+        bool m_resolve              = true;
+        Input* m_input              = nullptr;
+        Profiler* m_profiler        = nullptr;
 
         std::vector<std::shared_ptr<Entity>> m_entities;
-        std::vector<std::shared_ptr<Entity>> m_entities_loaded;
     };
 }

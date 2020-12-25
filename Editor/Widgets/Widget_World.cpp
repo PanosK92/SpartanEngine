@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widget_Properties.h"
 #include "../ImGui_Extension.h"
 #include "../ImGui/Source/imgui_stdlib.h"
-#include "Resource/ProgressTracker.h"
 #include "Rendering/Model.h"
 #include "World/Entity.h"
 #include "World/Components/Transform.h"
@@ -71,12 +70,8 @@ Widget_World::Widget_World(Editor* editor) : Widget(editor)
 
 void Widget_World::TickVisible()
 {
-    // If something is being loaded, don't parse the hierarchy
-    auto& progress_report       = ProgressTracker::Get();
-    const bool is_loading_model = progress_report.GetIsLoading(ProgressType::ModelImporter);
-    const bool is_loading_scene = progress_report.GetIsLoading(ProgressType::World);
-    const bool is_loading       = is_loading_model || is_loading_scene;
-    if (is_loading)
+    // If the world is loading new entities, don't parse the hierarchy
+    if (_Widget_World::g_world->IsLoading())
         return;
     
     TreeShow();
