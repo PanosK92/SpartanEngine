@@ -61,7 +61,6 @@ namespace Spartan
         // Subscribe to events
         SUBSCRIBE_TO_EVENT(EventType::WorldSave,    EVENT_HANDLER(SaveResourcesToFiles));
         SUBSCRIBE_TO_EVENT(EventType::WorldLoad,    EVENT_HANDLER(LoadResourcesFromFiles));
-        SUBSCRIBE_TO_EVENT(EventType::WorldClear,   EVENT_HANDLER(Clear));
     }
 
     ResourceCache::~ResourceCache()
@@ -69,7 +68,6 @@ namespace Spartan
         // Unsubscribe from events
         UNSUBSCRIBE_FROM_EVENT(EventType::WorldSave,    EVENT_HANDLER(SaveResourcesToFiles));
         UNSUBSCRIBE_FROM_EVENT(EventType::WorldLoad,    EVENT_HANDLER(LoadResourcesFromFiles));
-        UNSUBSCRIBE_FROM_EVENT(EventType::WorldClear,   EVENT_HANDLER(Clear));
     }
 
     bool ResourceCache::Initialize()
@@ -80,15 +78,6 @@ namespace Spartan
         m_importer_font     = make_shared<FontImporter>(m_context);
 
         return true;
-    }
-
-    void ResourceCache::Tick(float delta_time)
-    {
-        if (m_clear_temp)
-        {
-            m_resources_temp.clear();
-            m_clear_temp = false;
-        }
     }
 
     bool ResourceCache::IsCached(const string& resource_name, const ResourceType resource_type /*= Resource_Unknown*/)
@@ -262,13 +251,9 @@ namespace Spartan
     {
         uint32_t resource_count = static_cast<uint32_t>(m_resources.size());
 
-        // Thread safety: Keep the resources around for a bit
-        m_resources_temp.clear();
-        m_resources_temp.swap(m_resources);
+        m_resources.clear();
 
         LOG_INFO("%d resources have been cleared", resource_count);
-
-        m_clear_temp = true;
     }
 
     uint32_t ResourceCache::GetResourceCount(const ResourceType type)

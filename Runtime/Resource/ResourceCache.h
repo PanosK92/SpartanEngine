@@ -51,10 +51,9 @@ namespace Spartan
         ResourceCache(Context* context);
         ~ResourceCache();
 
-        //= Subsystem =======================
+        //= Subsystem =============
         bool Initialize() override;
-        void Tick(float delta_time) override;
-        //===================================
+        //=========================
 
         // Get by name
         std::shared_ptr<IResource>& GetByName(const std::string& name, ResourceType type);
@@ -173,6 +172,7 @@ namespace Spartan
         uint64_t GetMemoryUsageGpu(ResourceType type = ResourceType::Unknown);
         // Returns all resources of a given type
         uint32_t GetResourceCount(ResourceType type = ResourceType::Unknown);
+        void Clear();
         //====================================================================
 
         //= DIRECTORIES ================================================================
@@ -193,14 +193,9 @@ namespace Spartan
         // Event handlers
         void SaveResourcesToFiles();
         void LoadResourcesFromFiles();
-        void Clear();
-
-        // Misc
-        bool m_clear_temp = false;
 
         // Cache
         std::vector<std::shared_ptr<IResource>> m_resources;
-        std::vector<std::shared_ptr<IResource>> m_resources_temp;
         std::mutex m_mutex;
 
         // Directories

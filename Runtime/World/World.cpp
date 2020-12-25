@@ -71,11 +71,7 @@ namespace Spartan
     void World::Tick(float delta_time)
     {
         // If something is being loaded, don't tick as entities are probably being added
-        auto& progress_report = ProgressTracker::Get();
-        const bool is_loading_model = progress_report.GetIsLoading(ProgressType::ModelImporter);
-        const bool is_loading_scene = progress_report.GetIsLoading(ProgressType::World);
-        const bool is_loading       = is_loading_model || is_loading_scene;
-        if (is_loading)
+        if (IsLoading())
             return;
 
         SCOPED_TIME_BLOCK(m_profiler);
@@ -131,12 +127,6 @@ namespace Spartan
             // Notify Renderer
             FIRE_EVENT_DATA(EventType::WorldResolved, m_entities);
             m_resolve = false;
-        }
-
-        if (m_clear_loaded)
-        {
-            m_entities_loaded.clear();
-            m_clear_loaded = false;
         }
     }
 
@@ -223,8 +213,15 @@ namespace Spartan
         ProgressTracker::Get().SetStatus(ProgressType::World, "Loading world...");
         const Stopwatch timer;
 
+        // The Renderer will detect the world loading progress and stop (to avoid entity race conditions).
+        // Because this loading function can be called by a different thread, we wait for it to stop first.
+        Renderer* renderer = m_context->GetSubsystem<Renderer>();
+        renderer->Stop();
+        
         // Clear current entities
         Clear();
+
+        renderer->Start();
 
         m_name = FileSystem::GetFileNameNoExtensionFromFilePath(file_path);
 
@@ -255,9 +252,17 @@ namespace Spartan
 
         FIRE_EVENT(EventType::WorldLoaded);
 
-        m_resolve = true;
-
         return true;
+    }
+
+    bool World::IsLoading()
+    {
+        auto& progress_report = ProgressTracker::Get();
+
+        const bool is_loading_model = progress_report.GetIsLoading(ProgressType::ModelImporter);
+        const bool is_loading_scene = progress_report.GetIsLoading(ProgressType::World);
+
+        return is_loading_model || is_loading_scene;
     }
 
     shared_ptr<Entity> World::EntityCreate(bool is_active /*= true*/)
@@ -328,13 +333,13 @@ namespace Spartan
     {
         // Notify any systems that the entities are about to be cleared
         FIRE_EVENT(EventType::WorldClear);
+        m_context->GetSubsystem<Renderer>()->Clear();
+        m_context->GetSubsystem<ResourceCache>()->Clear();
 
-        // Thread safety: Keep the entities around for a bit
-        m_entities_loaded.clear();
-        m_entities_loaded.swap(m_entities);
+        // Clear the entities
+        m_entities.clear();
 
-        m_resolve       = true;
-        m_clear_loaded  = true;
+        m_resolve = true;
     }
 
     // Removes an entity and all of it's children

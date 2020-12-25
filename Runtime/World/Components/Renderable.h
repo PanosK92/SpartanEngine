@@ -97,10 +97,10 @@ namespace Spartan
         auto HasMaterial()              const { return m_material != nullptr; }
         //===============================================================================
 
-        //= PROPERTIES =======================================================================
-        void SetCastShadows(const bool cast_shadows)        { m_cast_shadows = cast_shadows; }
-        auto GetCastShadows() const                         { return m_cast_shadows; }
-        //====================================================================================
+        //= PROPERTIES ===================================================================
+        void SetCastShadows(const bool cast_shadows)    { m_cast_shadows = cast_shadows; }
+        auto GetCastShadows() const                     { return m_cast_shadows; }
+        //================================================================================
 
     private:
         std::string m_geometryName;

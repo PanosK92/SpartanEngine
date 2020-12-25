@@ -137,6 +137,12 @@ namespace Spartan
         void SetGlobalShaderObjectTransform(RHI_CommandList* cmd_list, const Math::Matrix& transform);
         void SetGlobalSamplersAndConstantBuffers(RHI_CommandList* cmd_list) const;
 
+        // Rendering
+        void Stop();
+        void Start();
+        bool IsAllowedToRender()    const { return m_is_allowed_to_render; }
+        bool IsRendering()          const { return m_is_rendering; }
+
         // Misc
         const std::shared_ptr<RHI_Device>& GetRhiDevice()   const { return m_rhi_device; } 
         RHI_PipelineCache* GetPipelineCache()               const { return m_pipeline_cache.get(); }
@@ -147,6 +153,7 @@ namespace Spartan
         auto IsInitialized()                                const { return m_initialized; }
         auto& GetShaders()                                  const { return m_shaders; }
         uint32_t GetMaxResolution() const;
+        void Clear();
 
         // Passes
         void Pass_CopyToBackbuffer(RHI_CommandList* cmd_list);
@@ -208,7 +215,6 @@ namespace Spartan
         // Misc
         void RenderablesAcquire(const Variant& renderables);
         void RenderablesSort(std::vector<Entity*>* renderables);
-        void ClearEntities();
 
         // Render textures
         std::unordered_map<RendererRt, std::shared_ptr<RHI_Texture>> m_render_targets;
@@ -275,17 +281,19 @@ namespace Spartan
         // Misc
         Math::Rectangle m_viewport_quad;
         std::unique_ptr<Font> m_font;
-        Math::Vector2 m_taa_jitter          = Math::Vector2::Zero;
-        Math::Vector2 m_taa_jitter_previous = Math::Vector2::Zero;
-        RendererRt m_render_target_debug    = RendererRt::Undefined;
-        bool m_initialized                  = false;
-        bool m_is_fullscreen                = false;
-        float m_near_plane                  = 0.0f;
-        float m_far_plane                   = 0.0f;
-        uint64_t m_frame_num                = 0;
-        bool m_is_odd_frame                 = false;
-        bool m_brdf_specular_lut_rendered   = false;
-        bool m_update_ortho_proj            = true;
+        Math::Vector2 m_taa_jitter                  = Math::Vector2::Zero;
+        Math::Vector2 m_taa_jitter_previous         = Math::Vector2::Zero;
+        RendererRt m_render_target_debug            = RendererRt::Undefined;
+        bool m_initialized                          = false;
+        bool m_is_fullscreen                        = false;
+        float m_near_plane                          = 0.0f;
+        float m_far_plane                           = 0.0f;
+        uint64_t m_frame_num                        = 0;
+        bool m_is_odd_frame                         = false;
+        bool m_brdf_specular_lut_rendered           = false;
+        bool m_update_ortho_proj                    = true;
+        std::atomic<bool> m_is_allowed_to_render    = true;
+        std::atomic<bool> m_is_rendering            = false;
 
         // RHI Core
         std::shared_ptr<RHI_Device> m_rhi_device;

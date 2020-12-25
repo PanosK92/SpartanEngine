@@ -165,11 +165,18 @@ namespace ImGui::RHI
         // Validate command list
         SP_ASSERT(cmd_list != nullptr);
 
-        // Ugly workaround for when the command list is being flushed by another thread (usually during world loading)
-        while (cmd_list->GetState() != Spartan::RHI_CommandListState::Recording)
+        // Wait until the Renderer is able to render (it can get flushed and stopped during world loading)
+        while (!g_renderer->IsAllowedToRender())
+        {
+            LOG_INFO("Waiting for the Renderer to be ready...");
+            this_thread::sleep_for(chrono::milliseconds(16));
+        }
+
+        // Don't render if the the command list is not recording (can happen when the Renderer is not allowed to render)
+        if (cmd_list->GetState() != Spartan::RHI_CommandListState::Recording)
         {
             LOG_INFO("Waiting for command list to be ready...");
-            this_thread::sleep_for(chrono::milliseconds(16));
+            return;
         }
 
         // Update vertex and index buffers
