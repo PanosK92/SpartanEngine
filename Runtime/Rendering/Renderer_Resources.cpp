@@ -182,7 +182,7 @@ namespace Spartan
     void Renderer::CreateShaders()
     {
         // Get standard shader directory
-        const auto dir_shaders = m_resource_cache->GetResourceDirectory(ResourceDirectory::Shaders) + "/";
+        const auto dir_shaders = m_resource_cache->GetResourceDirectory(ResourceDirectory::Shaders) + "\\";
 
         // Shader which compile different variations when needed
         m_shaders[RendererShader::Gbuffer_P] = make_shared<ShaderGBuffer>(m_context);

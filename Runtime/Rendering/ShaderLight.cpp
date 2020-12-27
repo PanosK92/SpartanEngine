@@ -51,7 +51,7 @@ namespace Spartan
         flags |= light->GetShadowsEnabled()                                                                 ? Shader_Light_Shadows                  : flags;
         flags |= (light->GetShadowsScreenSpaceEnabled() && (renderer_flags & Render_ScreenSpaceShadows))    ? Shader_Light_ShadowsScreenSpace       : flags;
         flags |= light->GetShadowsTransparentEnabled()                                                      ? Shader_Light_ShadowsTransparent       : flags;
-        flags |= (light->GetVolumetricEnabled() && (renderer_flags & Render_VolumetricFog))            ? Shader_Light_Volumetric               : flags;
+        flags |= (light->GetVolumetricEnabled() && (renderer_flags & Render_VolumetricFog))                 ? Shader_Light_Volumetric               : flags;
         flags |= (renderer_flags & Render_ScreenSpaceReflections)                                           ? Shader_Light_ScreenSpaceReflections   : flags;
 
         // Return existing shader, if it's already compiled
@@ -65,7 +65,7 @@ namespace Spartan
     ShaderLight* ShaderLight::_Compile(Context* context, const uint16_t flags)
     {
         // Shader source file path
-        const string file_path = context->GetSubsystem<ResourceCache>()->GetResourceDirectory(ResourceDirectory::Shaders) + "/Light.hlsl";
+        const string file_path = context->GetSubsystem<ResourceCache>()->GetResourceDirectory(ResourceDirectory::Shaders) + "\\Light.hlsl";
 
         // Make new
         shared_ptr<ShaderLight> shader = make_shared<ShaderLight>(context, flags);

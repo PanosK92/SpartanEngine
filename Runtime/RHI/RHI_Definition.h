@@ -291,12 +291,12 @@ namespace Spartan
         RHI_Shader_Compute  = 1 << 2,
     };
 
-    enum Shader_Compilation_State
+    enum class Shader_Compilation_State
     {
-        Shader_Compilation_Unknown,
-        Shader_Compilation_Compiling,
-        Shader_Compilation_Succeeded,
-        Shader_Compilation_Failed
+        Idle,
+        Compiling,
+        Succeeded,
+        Failed
     };
 
     // Shader resource slot shifts (required to produce spirv from hlsl)

@@ -36,7 +36,7 @@ namespace Spartan
     RHI_Shader::RHI_Shader(Context* context) : Spartan_Object(context)
     {
         m_rhi_device    = context->GetSubsystem<Renderer>()->GetRhiDevice();
-        m_input_layout    = make_shared<RHI_InputLayout>(m_rhi_device);
+        m_input_layout  = make_shared<RHI_InputLayout>(m_rhi_device);
     }
 
     template <typename T>
@@ -61,9 +61,9 @@ namespace Spartan
         }
 
         // Compile
-        m_compilation_state = Shader_Compilation_Compiling;
+        m_compilation_state = Shader_Compilation_State::Compiling;
         m_resource          = _Compile(shader);
-        m_compilation_state = m_resource ? Shader_Compilation_Succeeded : Shader_Compilation_Failed;
+        m_compilation_state = m_resource ? Shader_Compilation_State::Succeeded : Shader_Compilation_State::Failed;
 
         // Log compilation result
         {
@@ -81,7 +81,7 @@ namespace Spartan
                 defines += define.first + " = " + define.second;
             }
 
-            if (m_compilation_state == Shader_Compilation_Succeeded)
+            if (m_compilation_state == Shader_Compilation_State::Succeeded)
             {
                 if (defines.empty())
                 {
@@ -92,7 +92,7 @@ namespace Spartan
                     LOG_INFO("Successfully compiled %s shader from \"%s\" with definitions \"%s\"", type_str.c_str(), shader.c_str(), defines.c_str());
                 }
             }
-            else if (m_compilation_state == Shader_Compilation_Failed)
+            else if (m_compilation_state == Shader_Compilation_State::Failed)
             {
                 if (defines.empty())
                 {
@@ -118,14 +118,14 @@ namespace Spartan
     void RHI_Shader::WaitForCompilation()
     {
         // Wait
-        while (m_compilation_state == Shader_Compilation_Compiling)
+        while (m_compilation_state == Shader_Compilation_State::Compiling)
         {
             LOG_INFO("Waiting for shader \"%s\" to compile...", m_name.c_str());
             std::this_thread::sleep_for(std::chrono::milliseconds(16));
         }
         
         // Log error in case of failure
-        if (m_compilation_state != Shader_Compilation_Succeeded)
+        if (m_compilation_state != Shader_Compilation_State::Succeeded)
         {
             LOG_ERROR("Shader \"%s\" failed compile", m_name.c_str());
         }
