@@ -48,8 +48,8 @@ namespace Spartan
         void Compile(const RHI_Shader_Type type, const std::string& shader) { Compile<RHI_Vertex_Undefined>(type, shader); }
         template<typename T> void CompileAsync(const RHI_Shader_Type type, const std::string& shader);
         void CompileAsync(const RHI_Shader_Type type, const std::string& shader) { CompileAsync<RHI_Vertex_Undefined>(type, shader); }
-        auto GetCompilationState()  const { return m_compilation_state; }
-        bool IsCompiled()           const { return m_compilation_state == Shader_Compilation_Succeeded; }
+        Shader_Compilation_State GetCompilationState()  const { return m_compilation_state; }
+        bool IsCompiled()                               const { return m_compilation_state == Shader_Compilation_State::Succeeded; }
         void WaitForCompilation();
 
         // Resource
@@ -61,7 +61,7 @@ namespace Spartan
         void SetName(const std::string& name)   { m_name = name; }
 
         // Defines
-        void AddDefine(const std::string& define, const std::string& value = "1")    { m_defines[define] = value; }
+        void AddDefine(const std::string& define, const std::string& value = "1")   { m_defines[define] = value; }
         auto& GetDefines() const                                                    { return m_defines; }
 
         // Misc
@@ -86,9 +86,9 @@ namespace Spartan
         std::unordered_map<std::string, std::string> m_defines;
         std::vector<RHI_Descriptor> m_descriptors;
         std::shared_ptr<RHI_InputLayout> m_input_layout;
-        Shader_Compilation_State m_compilation_state    = Shader_Compilation_Unknown;
-        RHI_Shader_Type m_shader_type                   = RHI_Shader_Unknown;
-        RHI_Vertex_Type m_vertex_type                   = RHI_Vertex_Type_Unknown;
+        std::atomic<Shader_Compilation_State> m_compilation_state   = Shader_Compilation_State::Idle;
+        RHI_Shader_Type m_shader_type                               = RHI_Shader_Unknown;
+        RHI_Vertex_Type m_vertex_type                               = RHI_Vertex_Type_Unknown;
 
         // API 
         void* m_resource = nullptr;

@@ -52,7 +52,7 @@ namespace Spartan
     ShaderGBuffer* ShaderGBuffer::Compile(Context* context, const uint16_t flags)
     {
         // Shader source file path
-        const string file_path = context->GetSubsystem<ResourceCache>()->GetResourceDirectory(ResourceDirectory::Shaders) + "/GBuffer.hlsl";
+        const string file_path = context->GetSubsystem<ResourceCache>()->GetResourceDirectory(ResourceDirectory::Shaders) + "\\GBuffer.hlsl";
 
         // Make new
         shared_ptr<ShaderGBuffer> shader = make_shared<ShaderGBuffer>(context, flags);
