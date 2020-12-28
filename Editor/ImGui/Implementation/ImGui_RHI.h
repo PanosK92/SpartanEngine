@@ -418,11 +418,14 @@ namespace ImGui::RHI
         // When moving a window outside of the main viewport for the first time
         // it skips presenting every other time, hence the semaphore will signaled
         // because it was never waited for by present. So we do a dummy present here.
-        // Not sure why this behaviour is occuring yet.
-        if (wait_semaphore->GetState() == RHI_Semaphore_State::Signaled)
+        // Not sure why this behavior is occurring yet.
+        if (wait_semaphore) // Semaphore is null for D3D11
         {
-            LOG_INFO("Dummy presenting to reset semaphore");
-            swap_chain->Present(wait_semaphore);
+            if (wait_semaphore->GetState() == RHI_Semaphore_State::Signaled)
+            {
+                LOG_INFO("Dummy presenting to reset semaphore");
+                swap_chain->Present(wait_semaphore);
+            }
         }
 
         if (!cmd_list->End())
