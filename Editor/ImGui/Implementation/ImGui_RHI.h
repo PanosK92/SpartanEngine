@@ -37,6 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI/RHI_PipelineState.h"
 #include "RHI/RHI_RasterizerState.h"
 #include "RHI/RHI_DepthStencilState.h"
+#include "RHI/RHI_Semaphore.h"
 //====================================
 
 namespace ImGui::RHI
@@ -410,6 +411,19 @@ namespace ImGui::RHI
 
         const bool clear = !(viewport->Flags & ImGuiViewportFlags_NoRendererClear);
         Render(viewport->DrawData, swap_chain, clear);
+
+        // Get wait semaphore
+        RHI_Semaphore* wait_semaphore = cmd_list->GetProcessedSemaphore();
+
+        // When moving a window outside of the main viewport for the first time
+        // it skips presenting every other time, hence the semaphore will signaled
+        // because it was never waited for by present. So we do a dummy present here.
+        // Not sure why this behaviour is occuring yet.
+        if (wait_semaphore->GetState() == RHI_Semaphore_State::Signaled)
+        {
+            LOG_INFO("Dummy presenting to reset semaphore");
+            swap_chain->Present(wait_semaphore);
+        }
 
         if (!cmd_list->End())
         {

@@ -694,6 +694,19 @@ namespace Spartan
         // Get command list
         RHI_CommandList* cmd_list = m_swap_chain->GetCmdList();
 
+        // Get wait semaphore
+        RHI_Semaphore* wait_semaphore = cmd_list->GetProcessedSemaphore();
+
+        // When moving an ImGui window outside of the main viewport for the first time
+        // it skips presenting every other time, hence the semaphore will signaled
+        // because it was never waited for by present. So we do a dummy present here.
+        // Not sure why this behaviour is occuring yet.
+        if (wait_semaphore->GetState() == RHI_Semaphore_State::Signaled)
+        {
+            LOG_INFO("Dummy presenting to reset semaphore");
+            m_swap_chain->Present(wait_semaphore);
+        }
+
         // Finalise command list
         if (cmd_list->GetState() == RHI_CommandListState::Recording)
         {
@@ -704,14 +717,8 @@ namespace Spartan
         if (!m_swap_chain->PresentEnabled())
             return false;
 
-        // Get wait semaphore
-        RHI_Semaphore* wait_semaphore = cmd_list->GetProcessedSemaphore();
-
         // Validate semaphore state
-        if (wait_semaphore)
-        {
-            SP_ASSERT(wait_semaphore->GetState() == RHI_Semaphore_State::Signaled);
-        }
+        SP_ASSERT(wait_semaphore->GetState() == RHI_Semaphore_State::Signaled);
 
         return m_swap_chain->Present(wait_semaphore);
     }
