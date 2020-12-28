@@ -695,6 +695,7 @@ namespace Spartan
             cmd_list->SetTexture(RendererBindingsUav::rg, tex_out);
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal, m_render_targets[RendererRt::Gbuffer_Normal]);
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth, m_render_targets[RendererRt::Gbuffer_Depth]);
+            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_material, m_render_targets[RendererRt::Gbuffer_Material]);
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
         }
