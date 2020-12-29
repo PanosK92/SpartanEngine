@@ -416,7 +416,7 @@ namespace ImGui::RHI
         RHI_Semaphore* wait_semaphore = cmd_list->GetProcessedSemaphore();
 
         // When moving a window outside of the main viewport for the first time
-        // it skips presenting every other time, hence the semaphore will signaled
+        // it skips presenting every other time, hence the semaphore will be signaled
         // because it was never waited for by present. So we do a dummy present here.
         // Not sure why this behavior is occurring yet.
         if (wait_semaphore) // Semaphore is null for D3D11

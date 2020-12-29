@@ -28,6 +28,8 @@ static const uint g_ssgi_directions         = 1;
 static const uint g_ssgi_steps              = 2;
 static const float g_ssgi_radius            = 3.0f;
 static const float g_ssgi_bounce_intensity  = 20.0f;
+static const float g_ssgi_blend_min         = 0.0f;
+static const float g_ssgi_blend_max         = 0.1f;
 
 static const float g_ssgi_samples       = (float)(g_ssgi_directions * g_ssgi_steps);
 static const float g_ssgi_radius2       = g_ssgi_radius * g_ssgi_radius;
@@ -56,29 +58,29 @@ float3 compute_light(float3 position, float3 normal, float2 sample_uv, inout uin
     
     [branch]
     if (screen_fade(sample_uv) > 0.0f)
-	{
-	    // Sample light
-	    float3 light    = tex_light_diffuse.SampleLevel(sampler_bilinear_clamp, sample_uv, 0).rgb;  // first bounce
+    {
+        // Sample light
+        float3 light    = tex_light_diffuse.SampleLevel(sampler_bilinear_clamp, sample_uv, 0).rgb;  // first bounce
         //light           += tex.SampleLevel(sampler_bilinear_clamp, sample_uv, 0).rgb;               // multi-bounce (accumulation texture)
         
-	    // Transport
-	    [branch]
-	    if (luminance(light) > 0.0f)
-	    {
-            float3 sample_position  = get_position_view_space(sample_uv);
-	    	float occlusion         = compute_occlusion(position, normal, sample_position);
-	    
-	    	[branch]
-	    	if (occlusion > 0.0f)
-	    	{
-	    		float3 sample_normal    = get_normal_view_space(sample_uv);
-	    		float visibility        = saturate(dot(sample_normal, -center_to_sample));
-	    	
-	    		indirect = light * visibility * occlusion;
-	    		indirect_light_samples++;
-	    	}
-	    }
-    }   
+        // Transport
+        [branch]
+        if (luminance(light) > 0.0f)
+        {
+             float3 sample_position  = get_position_view_space(sample_uv);
+            float occlusion         = compute_occlusion(position, normal, sample_position);
+            
+            [branch]
+            if (occlusion > 0.0f)
+            {
+                float3 sample_normal    = get_normal_view_space(sample_uv);
+                float visibility        = saturate(dot(sample_normal, -center_to_sample));
+                
+                indirect = light * visibility * occlusion;
+                indirect_light_samples++;
+            }
+        }
+    }
 
     return indirect;
 }
@@ -110,9 +112,8 @@ float3 ssgi(float2 uv, float3 position, float3 normal)
         {
             float2 uv_offset        = max(radius_pixels * (step_index + ray_offset), 1 + step_index) * rotation_direction;
             float2 sample_uv        = uv + uv_offset;
-            
-			
-			light += compute_light(position, normal, sample_uv, light_samples);
+
+            light += compute_light(position, normal, sample_uv, light_samples);
         }
     }
 
@@ -143,8 +144,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         if (all(sample_ssr))
         {
             float roughness = tex_material.Load(int3(thread_id.xy, 0)).r;
-            float fade = 1.0f - roughness; // fade with roughness as we don't have blurry screen space reflections yet
-            light += tex_light_specular.SampleLevel(sampler_point_clamp, sample_ssr, 0).rgb * fade;
+            light += tex_light_specular.SampleLevel(sampler_point_clamp, sample_ssr, 0).rgb;
         }
     }
 
@@ -155,17 +155,17 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     // Decrease blend factor when motion gets sub-pixel
     const float threshold   = 0.5f;
-    const float base        = 10.0f;
-    const float gather      = g_delta_time * 5;   
-    float texel_vel_mag     = length(velocity) * depth;
+    const float base        = 0.5f;
+    const float gather      = g_delta_time;
+    float texel_vel_mag     = length(velocity / g_texel_size) * depth;
     float subpixel_motion   = saturate(threshold / (FLT_MIN + texel_vel_mag));
-    float factor_subpixel   = texel_vel_mag * base + subpixel_motion * gather;
-    
-    // Compute blend factor
-    float blend_factor = saturate(factor_subpixel);
-    
-    // Use max blend if the re-projected uv is out of screen
-    blend_factor = is_saturated(uv_reprojected) ? blend_factor : 1.0f;
+    float blend_factor      = texel_vel_mag * base + subpixel_motion * gather;
 
+    // Clamp
+    blend_factor = clamp(blend_factor, g_ssgi_blend_min, g_ssgi_blend_max);
+    
+    // Override blend factor if the re-projected uv is out of screen
+    blend_factor = is_saturated(uv_reprojected) ? blend_factor : 1.0f;
+    
     tex_out_rgb[thread_id.xy] = lerp(color_history, light, blend_factor);
 }

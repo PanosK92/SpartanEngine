@@ -265,9 +265,8 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         {
             // saturate as reflections will accumulate int tex_frame overtime, causing more light to go out that it comes in.
             float3 light_reflection = saturate(tex_frame.SampleLevel(sampler_bilinear_clamp, sample_ssr, 0).rgb);
-            light_reflection *= 1.0f - material.roughness; // fade with roughness as we don't have blurry screen space reflections yet
-            light_diffuse += light_reflection * diffuse_energy;
-            light_specular += light_reflection * reflective_energy;
+            light_diffuse   += light_reflection * diffuse_energy;
+            light_specular  += light_reflection * reflective_energy;
         }
         #endif
     }
