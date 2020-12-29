@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //====================
 
 static const uint g_ssr_max_steps               = 12;
-static const uint g_ssr_binarySearchSteps       = 12;
+static const uint g_ssr_binarySearchSteps       = 16;
 static const float g_ssr_binarySearchThickness  = 0.001f;
 static const float g_ssr_ray_max_distance       = 10.0f;
 
@@ -102,14 +102,37 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     if (thread_id.x >= uint(g_resolution.x) || thread_id.y >= uint(g_resolution.y))
         return;
 
-    const float2 uv = (thread_id.xy + 0.5f) / g_resolution;
+    const float2 uv             = (thread_id.xy + 0.5f) / g_resolution;
+    float3 normal_world_space   = get_normal(thread_id.xy);
+    float roughness             = tex_material.SampleLevel(sampler_point_clamp, uv, 0).r;
+
+    roughness *= roughness;
+    roughness = clamp(roughness, 0.0f, 0.2f); // clamp because there is a limit to how much noise TAA can denoise before looking bad
+
+    // Apply jitter to the surface normal
+    if (roughness != 0.0f)
+    {
+        // Get noise normal
+        float3 normal_noise = unpack(normalize(tex_normal_noise.SampleLevel(sampler_bilinear_wrap, uv * g_normal_noise_scale, 0).xyz));
+
+        // Use temporal interleaved gradient noise to rotate the random vector (free detail with TAA on)
+        float ign               = interleaved_gradient_noise(thread_id.xy);
+        float rotation_angle    = max(ign * PI2, FLT_MIN);
+        float3 rotation         = float3(cos(rotation_angle), sin(rotation_angle), 0.0f);
+        float3 jitter           = float3(length(normal_noise.xy) * normalize(rotation.xy), normal_noise.z);
+
+        jitter *= sign(dot(jitter, normal_world_space)); // Flip if behind normal
+        jitter *= roughness; // Scale jitter with roughness
+
+        // Jitter
+        normal_world_space += jitter;
+    }
 
     // Compute view-space ray
-    float3 normal_view  = get_normal_view_space(thread_id.xy);
+    float3 normal_view  = normalize(mul(float4(normal_world_space, 0.0f), g_view).xyz);
     float3 ray_pos      = get_position_view_space(thread_id.xy);
     float3 ray_dir      = normalize(reflect(ray_pos, normal_view));
 
     // Trace it
     tex_out_rg[thread_id.xy] = trace_ray(uv, ray_pos, ray_dir);
 }
-

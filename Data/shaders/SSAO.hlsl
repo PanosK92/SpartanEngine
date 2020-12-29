@@ -32,7 +32,6 @@ static const float ao_n_dot_v_bias  = 0.0f;
 static const float ao_samples       = (float)(ao_directions * ao_steps);
 static const float ao_radius2       = ao_radius * ao_radius;
 static const float ao_negInvRadius2 = -1.0f / ao_radius2;
-static const float2 noise_scale     = float2(g_resolution.x / 256.0f, g_resolution.y / 256.0f);
 
 float falloff(float distance_squared)
 {
@@ -176,7 +175,7 @@ float normal_oriented_hemisphere_ambient_occlusion(int2 pos)
     float occlusion = 0.0f;
     
     // Use temporal interleaved gradient noise to rotate the random vector (free detail with TAA on)
-    float3 random_vector    = unpack(normalize(tex_normal_noise.Sample(sampler_bilinear_wrap, uv * noise_scale).xyz));
+    float3 random_vector    = unpack(normalize(tex_normal_noise.Sample(sampler_bilinear_wrap, uv * g_normal_noise_scale).xyz));
     float ign               = interleaved_gradient_noise(uv * g_resolution);
     float rotation_angle    = max(ign * PI2, FLT_MIN);
     float3 rotation         = float3(cos(rotation_angle), sin(rotation_angle), 0.0f);
