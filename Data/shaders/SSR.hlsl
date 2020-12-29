@@ -102,12 +102,13 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     if (thread_id.x >= uint(g_resolution.x) || thread_id.y >= uint(g_resolution.y))
         return;
 
-    const float2 uv             = (thread_id.xy + 0.5f) / g_resolution;
-    float3 normal_world_space   = get_normal(thread_id.xy);
-    float roughness             = tex_material.SampleLevel(sampler_point_clamp, uv, 0).r;
-    roughness *= roughness;
+    const float2 uv         = (thread_id.xy + 0.5f) / g_resolution;
+    float3 normal_view      = get_normal_view_space(thread_id.xy);
+    float3 position_view    = get_position_view_space(thread_id.xy);
+    float roughness         = tex_material.SampleLevel(sampler_point_clamp, uv, 0).r;
+    roughness               *= roughness;
 
-    // Apply jitter to the surface normal
+    // Apply jitter to the surface position
     if (roughness != 0.0f)
     {
         // Get noise normal
@@ -119,18 +120,14 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         float3 rotation         = float3(cos(rotation_angle), sin(rotation_angle), 0.0f);
         float3 jitter           = float3(length(normal_noise.xy) * normalize(rotation.xy), normal_noise.z);
 
-        jitter *= sign(dot(jitter, normal_world_space)); // Flip if behind normal
-        jitter *= roughness; // Scale jitter with roughness
-
         // Jitter
-        normal_world_space += jitter;
+        position_view += jitter * roughness * 4.0f;
     }
 
-    // Compute view-space ray
-    float3 normal_view  = normalize(mul(float4(normal_world_space, 0.0f), g_view).xyz);
-    float3 ray_pos      = get_position_view_space(thread_id.xy);
-    float3 ray_dir      = normalize(reflect(ray_pos, normal_view));
+    // Compute ray direction
+    float3 ray_dir = normalize(reflect(position_view, normal_view));
 
     // Trace it
-    tex_out_rg[thread_id.xy] = trace_ray(uv, ray_pos, ray_dir);
+    tex_out_rg[thread_id.xy] = trace_ray(uv, position_view, ray_dir);
 }
+
