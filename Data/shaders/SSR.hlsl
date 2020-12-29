@@ -105,9 +105,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     const float2 uv             = (thread_id.xy + 0.5f) / g_resolution;
     float3 normal_world_space   = get_normal(thread_id.xy);
     float roughness             = tex_material.SampleLevel(sampler_point_clamp, uv, 0).r;
-
     roughness *= roughness;
-    roughness = clamp(roughness, 0.0f, 0.2f); // clamp because there is a limit to how much noise TAA can denoise before looking bad
 
     // Apply jitter to the surface normal
     if (roughness != 0.0f)
