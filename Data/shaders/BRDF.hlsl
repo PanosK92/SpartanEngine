@@ -232,31 +232,12 @@ inline float3 BRDF_Specular_Sheen(Material material, float n_dot_v, float n_dot_
 
     diffuse_energy  *= compute_diffuse_energy(F, material.metallic);
     reflectivity    *= F;
-    
+
     return (D * V) * F;
 }
 /*------------------------------------------------------------------------------
     Image based lighting
 ------------------------------------------------------------------------------*/
-
-static const float mip_max = 11.0f;
-
-inline float3 SampleEnvironment(Texture2D tex_environment, float2 uv, float mip_level)
-{
-    // We are currently using a spherical environment map which has a 2:1 ratio, so at the smallest 
-    // mipmap we have to do a bit of blending otherwise we'll get a visible seem in the middle.
-    if (mip_level == mip_max)
-    {
-        float2 mip_size = float2(2, 1);
-        float dx        = mip_size.x;
-    
-        float3 tl = (tex_environment.SampleLevel(sampler_bilinear_clamp, uv + float2(-dx, 0.0f), mip_level).rgb);
-        float3 tr = (tex_environment.SampleLevel(sampler_bilinear_clamp, uv + float2(dx, 0.0f), mip_level).rgb);
-        return (tl + tr) / 2.0f;
-    }
-    
-    return (tex_environment.SampleLevel(sampler_trilinear_clamp, uv, mip_level).rgb);
-}
 
 inline float3 GetSpecularDominantDir(float3 normal, float3 reflection, float roughness)
 {
@@ -279,12 +260,40 @@ inline float3 EnvBRDFApprox(float3 specColor, float roughness, float NdV)
     return specColor * AB.x + AB.y;
 }
 
-inline float3 Brdf_Diffuse_Ibl(Material material, float3 normal, Texture2D tex_environment)
+static const float mip_max = 11.0f;
+
+inline float3 sample_environment(float2 uv, float mip_level)
 {
-    return SampleEnvironment(tex_environment, direction_sphere_uv(normal), mip_max) * material.albedo.rgb;
+    // We are currently using a spherical environment map which has a 2:1 ratio, so at the smallest 
+    // mipmap we have to do a bit of blending otherwise we'll get a visible seem in the middle.
+    if (mip_level == mip_max)
+    {
+        float2 mip_size = float2(2, 1);
+        float dx = mip_size.x;
+
+        float3 tl = (tex_environment.SampleLevel(sampler_bilinear_clamp, uv + float2(-dx, 0.0f), mip_level).rgb);
+        float3 tr = (tex_environment.SampleLevel(sampler_bilinear_clamp, uv + float2(dx, 0.0f), mip_level).rgb);
+        return (tl + tr) / 2.0f;
+    }
+
+    return tex_environment.SampleLevel(sampler_trilinear_clamp, uv, mip_level).rgb;
 }
 
-inline float3 Brdf_Specular_Ibl(Material material, float3 normal, float3 camera_to_pixel, Texture2D tex_environment, Texture2D tex_lutIBL, inout float3 diffuse_energy, inout float3 reflectivity)
+inline float3 Brdf_Diffuse_Ibl(Material material, float3 normal)
+{
+    return sample_environment(direction_sphere_uv(normal), mip_max) * material.albedo.rgb;
+}
+
+inline float3 Brdf_Reflectivity(Material material, float3 normal, float3 camera_to_pixel)
+{
+    float n_dot_v   = dot(-camera_to_pixel, normal);
+    float f90       = 0.5 + 2 * n_dot_v * n_dot_v * material.roughness;
+    float3 F        = F_Schlick(material.F0, f90, material.roughness);
+    float2 envBRDF  = tex_lutIbl.Sample(sampler_bilinear_clamp, float2(saturate(n_dot_v), material.roughness)).xy;
+    return F * envBRDF.x + envBRDF.y;
+}
+
+inline float3 Brdf_Specular_Ibl(Material material, float3 normal, float3 camera_to_pixel, inout float3 diffuse_energy)
 {
     // remapping and linearization
     float roughness = clamp(material.roughness, 0.089f, 1.0f);
@@ -292,15 +301,11 @@ inline float3 Brdf_Specular_Ibl(Material material, float3 normal, float3 camera_
     
     float3 reflection       = reflect(camera_to_pixel, normal); 
     reflection              = GetSpecularDominantDir(normal, reflect(camera_to_pixel, normal), material.roughness); // From Sebastien Lagarde Moving Frostbite to PBR page 69
-    float n_dot_v           = dot(-camera_to_pixel, normal);
-    float f90               = 0.5 + 2 * n_dot_v * n_dot_v * material.roughness;
-    float3 F                = F_Schlick(material.F0, f90, material.roughness);
     float mip_level         = lerp(0, mip_max, a);
-    float3 prefilteredColor = SampleEnvironment(tex_environment, direction_sphere_uv(reflection), mip_level);
-    float2 envBRDF          = tex_lutIBL.Sample(sampler_bilinear_clamp, float2(saturate(n_dot_v), material.roughness)).xy;
-    reflectivity            *= F * envBRDF.x + envBRDF.y;
+    float3 prefilteredColor = sample_environment(direction_sphere_uv(reflection), mip_level);
+    float3 specular_energy  = Brdf_Reflectivity(material, normal, camera_to_pixel);
 
-    diffuse_energy *= compute_diffuse_energy(F, material.metallic);
+    diffuse_energy *= compute_diffuse_energy(specular_energy, material.metallic);
     
-    return prefilteredColor * reflectivity;
+    return prefilteredColor * specular_energy;
 }

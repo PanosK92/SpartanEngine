@@ -234,9 +234,6 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         // Diffuse
         light_diffuse += BRDF_Diffuse(material, n_dot_v, n_dot_l, v_dot_h);
 
-        // Tone down diffuse such as that only non metals have it
-        light_diffuse *= diffuse_energy;
-
         /* Light - Subsurface scattering fast approximation - Will activate soon
         #if TRANSPARENT
         {
@@ -257,18 +254,8 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         #endif
         */
 
-        // Light - Reflection
-        #if SCREEN_SPACE_REFLECTIONS
-        float2 sample_ssr = tex_ssr.Load(int3(thread_id.xy, 0)).xy;
-        [branch]
-        if (sample_ssr.x * sample_ssr.y != 0.0f)
-        {
-            // saturate as reflections will accumulate int tex_frame overtime, causing more light to go out that it comes in.
-            float3 light_reflection = saturate(tex_frame.SampleLevel(sampler_bilinear_clamp, sample_ssr, 0).rgb);
-            light_diffuse   += light_reflection * diffuse_energy;
-            light_specular  += light_reflection * reflective_energy;
-        }
-        #endif
+        // Tone down diffuse such as that only non metals have it
+        light_diffuse *= diffuse_energy;
     }
 
     // Volumetric lighting
@@ -308,3 +295,4 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     tex_out_rgb2[thread_id.xy]  += saturate_16(light_specular * light.radiance);
     tex_out_rgb3[thread_id.xy]  += saturate_16(light_volumetric);
 }
+
