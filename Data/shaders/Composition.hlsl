@@ -100,9 +100,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
             light_ssr = saturate(tex_frame.SampleLevel(sampler_bilinear_clamp, sample_ssr, 0).rgb);
             light_ssr *= Brdf_Reflectivity(material, sample_normal.xyz, camera_to_pixel);
         }
-
-        // Light - Image based (only if SSR failed)
-        if (!all(light_ssr))
+        else // Light - Image based (only if SSR failed)
         { 
             float3 diffuse_energy = 1.0f;
             light_specular  += Brdf_Specular_Ibl(material, sample_normal.xyz, camera_to_pixel, diffuse_energy) * light_ambient;

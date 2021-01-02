@@ -23,10 +23,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common.hlsl"
 //====================
 
-static const uint g_ssr_max_steps               = 12;
+static const uint g_ssr_max_steps               = 32;
 static const uint g_ssr_binarySearchSteps       = 16;
-static const float g_ssr_binarySearchThickness  = 0.001f;
-static const float g_ssr_ray_max_distance       = 10.0f;
+static const float g_ssr_binarySearchThickness  = 0.002f;
+static const float g_ssr_ray_stride             = 0.02f;
+static const float g_roughness_threshold        = 0.2f;
 
 inline float2 binary_search(float3 ray_dir, inout float3 ray_pos, inout float2 ray_uv)
 {
@@ -56,8 +57,8 @@ inline float2 binary_search(float3 ray_dir, inout float3 ray_pos, inout float2 r
 
 inline float2 trace_ray(float2 uv, float3 ray_pos, float3 ray_dir)
 {
-    float step_length   = g_ssr_ray_max_distance / (float) g_ssr_max_steps;
-    float3 ray_step     = ray_dir * step_length;
+    float3 ray_step     = ray_dir * g_ssr_ray_stride;
+    float3 ray_step_h   = ray_step;
     float2 ray_uv_hit   = 0.0f;
     
     // Reject if the reflection vector is pointing back at the viewer.
@@ -67,17 +68,18 @@ inline float2 trace_ray(float2 uv, float3 ray_pos, float3 ray_dir)
     [branch]
     if (fade_camera > 0)
     {
-        // Offseting with some temporal interleaved gradient noise, will capture more detail
-        float offset = interleaved_gradient_noise(g_resolution * uv) * 2.0f - 1.0f;
-        ray_pos += ray_step * offset;
+        // Adjust ray step using interleaved gradient noise, TAA will bring in more detail without any additional cost
+        float offset = interleaved_gradient_noise(g_resolution * uv);
+        ray_step += ray_step * offset;
 
         // Ray-march
         float2 ray_uv = 0.0f;
         for (uint i = 0; i < g_ssr_max_steps; i++)
         {
             // Step ray
-            ray_pos += ray_step;
-            ray_uv = project_uv(ray_pos, g_projection);
+            ray_step_h  += ray_step; // hierarchical steps (as further reflections matter less)
+            ray_pos     += ray_step_h;
+            ray_uv      = project_uv(ray_pos, g_projection);
 
             float depth_buffer_z = get_linear_depth(ray_uv);
 
@@ -102,32 +104,33 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     if (thread_id.x >= uint(g_resolution.x) || thread_id.y >= uint(g_resolution.y))
         return;
 
-    const float2 uv         = (thread_id.xy + 0.5f) / g_resolution;
+    const float2 uv = (thread_id.xy + 0.5f) / g_resolution;
+
+    // Compute reflection direction
     float3 normal_view      = get_normal_view_space(thread_id.xy);
     float3 position_view    = get_position_view_space(thread_id.xy);
-    float roughness         = tex_material.SampleLevel(sampler_point_clamp, uv, 0).r;
-    roughness               *= roughness;
+    float3 reflection_view  = normalize(reflect(position_view, normal_view));
 
-    // Apply jitter to the surface position
-    if (roughness != 0.0f)
+    // Compute reflection jitter
     {
         // Get noise normal
-        float3 normal_noise = unpack(normalize(tex_normal_noise.SampleLevel(sampler_bilinear_wrap, uv * g_normal_noise_scale, 0).xyz));
-
+        float3 normal_noise = normalize(tex_normal_noise.SampleLevel(sampler_bilinear_wrap, uv * g_normal_noise_scale, 0)).xyz;
+    
         // Use temporal interleaved gradient noise to rotate the random vector (free detail with TAA on)
-        float ign               = interleaved_gradient_noise(thread_id.xy);
-        float rotation_angle    = max(ign * PI2, FLT_MIN);
+        float ign               = interleaved_gradient_noise(thread_id.xy); // 0 to 1
+        float rotation_angle    = max(FLT_MIN, ign * PI); // 180 degrees freedom
         float3 rotation         = float3(cos(rotation_angle), sin(rotation_angle), 0.0f);
         float3 jitter           = float3(length(normal_noise.xy) * normalize(rotation.xy), normal_noise.z);
+    
+        // Get surface roughness
+        float roughness = tex_material.SampleLevel(sampler_point_clamp, uv, 0).r;
+        roughness       *= roughness;
+        roughness       = clamp(roughness, 0.0f, g_roughness_threshold); // limit max roughness as there is a limit to how much denoising TAA can do
 
-        // Jitter
-        position_view += jitter * roughness * 4;
+        // Apply jitter to reflection
+        reflection_view += jitter * roughness;
     }
-
-    // Compute ray direction
-    float3 ray_dir = normalize(reflect(position_view, normal_view));
-
-    // Trace it
-    tex_out_rg[thread_id.xy] = trace_ray(uv, position_view, ray_dir);
+    
+    // Trace reflection
+    tex_out_rg[thread_id.xy] = trace_ray(uv, position_view, reflection_view);
 }
-
