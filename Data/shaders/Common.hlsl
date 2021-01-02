@@ -261,7 +261,7 @@ inline float3 get_position_view_space(float2 uv)
 /*------------------------------------------------------------------------------
     VIEW DIRECTION
 ------------------------------------------------------------------------------*/
-inline float3 get_view_direction( float depth, float2 uv)
+inline float3 get_view_direction(float depth, float2 uv)
 {
     float3 position_world = get_position(depth, uv);
     return normalize(position_world - g_camera_position.xyz);
@@ -273,8 +273,15 @@ inline float3 get_view_direction(float2 uv)
     return get_view_direction(depth, uv);
 }
 
+inline float3 get_view_direction(int2 pos)
+{
+    const float depth = get_depth(pos);
+    const float2 uv = (pos + 0.5f) / g_resolution;
+    return get_view_direction(depth, uv);
+}
+
 /*------------------------------------------------------------------------------
-    DIRECTION TO UV
+    DIRECTION UV
 ------------------------------------------------------------------------------*/
 inline float2 direction_sphere_uv(float3 direction)
 {

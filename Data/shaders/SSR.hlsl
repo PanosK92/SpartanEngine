@@ -121,7 +121,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         float3 jitter           = float3(length(normal_noise.xy) * normalize(rotation.xy), normal_noise.z);
 
         // Jitter
-        position_view += jitter * roughness * 4.0f;
+        position_view += jitter * roughness * 4;
     }
 
     // Compute ray direction

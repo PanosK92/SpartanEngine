@@ -751,8 +751,8 @@ namespace Spartan
                         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_material, m_render_targets[RendererRt::Gbuffer_Material]);
                         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    m_render_targets[RendererRt::Gbuffer_Depth]);
                         cmd_list->SetTexture(RendererBindingsSrv::hbao,             (m_options & Render_Ssao) ? m_render_targets[RendererRt::Hbao_Blurred] : m_default_tex_white);
-                        cmd_list->SetTexture(RendererBindingsSrv::ssr,              (m_options & Render_ScreenSpaceReflections) ? m_render_targets[RendererRt::Ssr] : m_default_tex_transparent);
-                        cmd_list->SetTexture(RendererBindingsSrv::frame,            m_render_targets[RendererRt::Frame_Hdr_2]); // previous frame before post-processing
+                        cmd_list->SetTexture(RendererBindingsSrv::environment,      GetEnvironmentTexture());
+                        cmd_list->SetTexture(RendererBindingsSrv::frame,            m_render_targets[RendererRt::Frame_Hdr_2]); // previous frame - used for transparency/refraction
 
                         // Set shadow map
                         if (light->GetShadowsEnabled())
@@ -831,24 +831,22 @@ namespace Spartan
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             UpdateUberBuffer(cmd_list);
 
-            // Setup command list
-            cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
-            cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
-            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_albedo, m_render_targets[RendererRt::Gbuffer_Albedo]);
-            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal, m_render_targets[RendererRt::Gbuffer_Normal]);
+            // Setup command list  
+            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_albedo,   m_render_targets[RendererRt::Gbuffer_Albedo]);
+            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal,   m_render_targets[RendererRt::Gbuffer_Normal]);
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_material, m_render_targets[RendererRt::Gbuffer_Material]);
-            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth, tex_depth);
-            cmd_list->SetTexture(RendererBindingsSrv::hbao, (m_options & Render_Ssao)       ? m_render_targets[RendererRt::Hbao_Blurred]                : m_default_tex_white);
-            cmd_list->SetTexture(RendererBindingsSrv::light_diffuse, is_transparent_pass    ? m_render_targets[RendererRt::Light_Diffuse_Transparent]   : m_render_targets[RendererRt::Light_Diffuse]);
-            cmd_list->SetTexture(RendererBindingsSrv::light_specular, is_transparent_pass   ? m_render_targets[RendererRt::Light_Specular_Transparent]  : m_render_targets[RendererRt::Light_Specular]);
+            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    tex_depth);
+            cmd_list->SetTexture(RendererBindingsSrv::hbao,             (m_options & Render_Ssao)   ? m_render_targets[RendererRt::Hbao_Blurred]                : m_default_tex_white);
+            cmd_list->SetTexture(RendererBindingsSrv::light_diffuse,    is_transparent_pass         ? m_render_targets[RendererRt::Light_Diffuse_Transparent]   : m_render_targets[RendererRt::Light_Diffuse]);
+            cmd_list->SetTexture(RendererBindingsSrv::light_specular,   is_transparent_pass         ? m_render_targets[RendererRt::Light_Specular_Transparent]  : m_render_targets[RendererRt::Light_Specular]);
             cmd_list->SetTexture(RendererBindingsSrv::light_volumetric, m_render_targets[RendererRt::Light_Volumetric]);
-            cmd_list->SetTexture(RendererBindingsSrv::ssr, (m_options & Render_ScreenSpaceReflections) ? m_render_targets[RendererRt::Ssr] : m_default_tex_transparent);
-            cmd_list->SetTexture(RendererBindingsSrv::frame, m_render_targets[RendererRt::Frame_Hdr_2]);
-            cmd_list->SetTexture(RendererBindingsSrv::lutIbl, m_render_targets[RendererRt::Brdf_Specular_Lut]);
-            cmd_list->SetTexture(RendererBindingsSrv::environment, GetEnvironmentTexture());
-            cmd_list->SetTexture(RendererBindingsSrv::ssgi, (m_options & Render_Ssgi) ? m_render_targets[RendererRt::Ssgi] : m_default_tex_black);
-            cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
+            cmd_list->SetTexture(RendererBindingsSrv::ssr,              (m_options & Render_ScreenSpaceReflections) ? m_render_targets[RendererRt::Ssr] : m_default_tex_transparent);
+            cmd_list->SetTexture(RendererBindingsSrv::frame,            m_render_targets[RendererRt::Frame_Hdr_2]);
+            cmd_list->SetTexture(RendererBindingsSrv::lutIbl,           m_render_targets[RendererRt::Brdf_Specular_Lut]);
+            cmd_list->SetTexture(RendererBindingsSrv::environment,      GetEnvironmentTexture());
+            cmd_list->SetTexture(RendererBindingsSrv::ssgi,             (m_options & Render_Ssgi) ? m_render_targets[RendererRt::Ssgi] : m_default_tex_black);
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
+            cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
             cmd_list->EndRenderPass();
         }
