@@ -27,23 +27,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     Fresnel, visibility and normal distribution functions
 ------------------------------------------------------------------------------*/
 
-// [Schlick 1994, "An Inexpensive BRDF Model for Physically-Based Rendering"]
-inline float3 F_Schlick(float3 f0, float v_dot_h)
+float3 F_Schlick(const float3 f0, float f90, float v_dot_h)
 {
-    float Fc = pow(1 - v_dot_h, 5.0f);
-    // Anything less than 2% is physically impossible and is instead considered to be shadowing
-    return saturate(50.0 * f0.g) * Fc + (1 - Fc) * f0;
+    // Schlick 1994, "An Inexpensive BRDF Model for Physically-Based Rendering"
+    return f0 + (f90 - f0) * pow(1.0 - v_dot_h, 5.0);
 }
 
-inline float3 F_Schlick(float3 f0, float f90, float v_dot_h)
+float3 F_Schlick(const float3 f0, float v_dot_h)
 {
-    return f0 + (f90 - f0) * pow(1.0 - v_dot_h, 5.0f);
+    float f = pow(1.0 - v_dot_h, 5.0);
+    return f + f0 * (1.0 - f);
 }
 
-inline float3 fresnel(float3 f0, float l_dot_h)
+float3 F_Schlick_Roughness(float3 f0, float cosTheta, float roughness)
 {
-    float f90 = saturate(dot(f0, 50.0 * 0.33));
-    return F_Schlick(f0, f90, l_dot_h);
+    float3 a = 1.0 - roughness;
+    return f0 + (max(a, f0) - f0) * pow(max(1.0 - cosTheta, 0.0), 5.0);
 }
 
 // Smith term for GGX
@@ -154,7 +153,7 @@ inline float3 BRDF_Diffuse(Material material, float n_dot_v, float n_dot_l, floa
     Specular
 ------------------------------------------------------------------------------*/
 
-inline float3 BRDF_Specular_Isotropic(Material material, float n_dot_v, float n_dot_l, float n_dot_h, float v_dot_h, inout float3 diffuse_energy, inout float3 reflectivity)
+inline float3 BRDF_Specular_Isotropic(Material material, float n_dot_v, float n_dot_l, float n_dot_h, float v_dot_h, inout float3 diffuse_energy, inout float3 specular_energy)
 {
     // remapping and linearization
     float roughness = clamp(material.roughness, 0.089f, 1.0f);
@@ -166,12 +165,12 @@ inline float3 BRDF_Specular_Isotropic(Material material, float n_dot_v, float n_
     float3 F    = F_Schlick(material.F0, v_dot_h);
 
     diffuse_energy  *= compute_diffuse_energy(F, material.metallic);
-    reflectivity    *= F;
+    specular_energy *= F;
     
     return (D * V) * F;
 }
 
-inline float3 BRDF_Specular_Anisotropic(Material material, Surface surface, float3 v, float3 l, float3 h, float n_dot_v, float n_dot_l, float n_dot_h, float l_dot_h, inout float3 diffuse_energy, inout float3 reflectivity)
+inline float3 BRDF_Specular_Anisotropic(Material material, Surface surface, float3 v, float3 l, float3 h, float n_dot_v, float n_dot_l, float n_dot_h, float l_dot_h, inout float3 diffuse_energy, inout float3 specular_energy)
 {
     float3 n            = surface.normal;
     float3 t            = normalize(cross(n, -n));                              // any perpendicular vector to the normal
@@ -192,15 +191,16 @@ inline float3 BRDF_Specular_Anisotropic(Material material, Surface surface, floa
     // specular anisotropic BRDF
     float D     = D_GGX_Anisotropic(n_dot_h, ax, ay, XdotH, YdotH);
     float V     = V_GGX_anisotropic_2cos(n_dot_v, ax, ay, XdotH, YdotH) * V_GGX_anisotropic_2cos(n_dot_v, ax, ay, XdotH, YdotH);
-    float3 F    = fresnel(material.F0, l_dot_h);
+    float f90   = saturate(dot(material.F0, 50.0 * 0.33));
+    float3 F    = F_Schlick(material.F0, f90, l_dot_h);
 
     diffuse_energy  *= compute_diffuse_energy(F, material.metallic);
-    reflectivity    *= F;
+    specular_energy *= F;
     
     return (D * V) * F;
 }
 
-inline float3 BRDF_Specular_Clearcoat(Material material, float n_dot_h, float v_dot_h, inout float3 diffuse_energy, inout float3 reflectivity)
+inline float3 BRDF_Specular_Clearcoat(Material material, float n_dot_h, float v_dot_h, inout float3 diffuse_energy, inout float3 specular_energy)
 {
     // remapping and linearization
     float roughness = clamp(material.clearcoat_roughness, 0.089f, 1.0f);
@@ -212,12 +212,12 @@ inline float3 BRDF_Specular_Clearcoat(Material material, float n_dot_h, float v_
     float3 F    = F_Schlick(0.04, 1.0, v_dot_h) * material.clearcoat;
 
     diffuse_energy  *= compute_diffuse_energy(F, material.metallic);
-    reflectivity    *= F;
+    specular_energy *= F;
 
     return (D * V) * F;
 }
 
-inline float3 BRDF_Specular_Sheen(Material material, float n_dot_v, float n_dot_l, float n_dot_h, inout float3 diffuse_energy, inout float3 reflectivity)
+inline float3 BRDF_Specular_Sheen(Material material, float n_dot_v, float n_dot_l, float n_dot_h, inout float3 diffuse_energy, inout float3 specular_energy)
 {
     // remapping and linearization
     float roughness = clamp(material.roughness, 0.089f, 1.0f);
@@ -231,7 +231,7 @@ inline float3 BRDF_Specular_Sheen(Material material, float n_dot_v, float n_dot_
     float3 F    = f0 * material.sheen;
 
     diffuse_energy  *= compute_diffuse_energy(F, material.metallic);
-    reflectivity    *= F;
+    specular_energy *= F;
 
     return (D * V) * F;
 }
@@ -284,28 +284,22 @@ inline float3 Brdf_Diffuse_Ibl(Material material, float3 normal)
     return sample_environment(direction_sphere_uv(normal), mip_max) * material.albedo.rgb;
 }
 
-inline float3 Brdf_Reflectivity(Material material, float3 normal, float3 camera_to_pixel)
-{
-    float n_dot_v   = dot(-camera_to_pixel, normal);
-    float f90       = 0.5 + 2 * n_dot_v * n_dot_v * material.roughness;
-    float3 F        = F_Schlick(material.F0, f90, material.roughness);
-    float2 envBRDF  = tex_lutIbl.Sample(sampler_bilinear_clamp, float2(saturate(n_dot_v), material.roughness)).xy;
-    return F * envBRDF.x + envBRDF.y;
-}
-
 inline float3 Brdf_Specular_Ibl(Material material, float3 normal, float3 camera_to_pixel, inout float3 diffuse_energy)
 {
-    // remapping and linearization
-    float roughness = clamp(material.roughness, 0.089f, 1.0f);
-    float a         = roughness * roughness;
-    
-    float3 reflection       = reflect(camera_to_pixel, normal); 
-    reflection              = GetSpecularDominantDir(normal, reflect(camera_to_pixel, normal), material.roughness); // From Sebastien Lagarde Moving Frostbite to PBR page 69
-    float mip_level         = lerp(0, mip_max, a);
-    float3 prefilteredColor = sample_environment(direction_sphere_uv(reflection), mip_level);
-    float3 specular_energy  = Brdf_Reflectivity(material, normal, camera_to_pixel);
+    // Compute specular energy
+    float n_dot_v           = saturate(dot(-camera_to_pixel, normal));
+    float3 F                = F_Schlick_Roughness(material.F0, n_dot_v, material.roughness);
+    float2 envBRDF          = tex_lutIbl.Sample(sampler_bilinear_clamp, float2(n_dot_v, material.roughness)).xy;
+    float3 specular_energy  = F * envBRDF.x + envBRDF.y;
 
+    // Compute prefiltered color
+    float3 reflection           = reflect(camera_to_pixel, normal);
+    reflection                  = GetSpecularDominantDir(normal, reflect(camera_to_pixel, normal), material.roughness); // From Sebastien Lagarde Moving Frostbite to PBR page 69
+    float mip_level             = lerp(0, mip_max, material.roughness * material.roughness);
+    float3 prefiltered_color    = sample_environment(direction_sphere_uv(reflection), mip_level);
+
+    // Outpout diffuse energy
     diffuse_energy *= compute_diffuse_energy(specular_energy, material.metallic);
-    
-    return prefilteredColor * specular_energy;
+
+    return prefiltered_color * specular_energy;
 }

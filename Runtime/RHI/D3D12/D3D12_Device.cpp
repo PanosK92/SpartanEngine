@@ -37,8 +37,8 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-	RHI_Device::RHI_Device(Context* context)
-	{
+    RHI_Device::RHI_Device(Context* context)
+    {
         m_context                           = context;
         m_rhi_context                       = make_shared<RHI_Context>();
         d3d12_utility::globals::rhi_context = m_rhi_context.get();
@@ -99,12 +99,14 @@ namespace Spartan
             settings->RegisterThirdPartyLib("DirectX", level, "https://www.microsoft.com/en-us/download/details.aspx?id=17431");
             LOG_INFO("DirectX %s", level.c_str());
         }
-	}
 
-	RHI_Device::~RHI_Device()
-	{
+        m_initialized = true;
+    }
+
+    RHI_Device::~RHI_Device()
+    {
         d3d12_utility::release(m_rhi_context->device);
-	}
+    }
 
     bool RHI_Device::Queue_Submit(const RHI_Queue_Type type, void* cmd_buffer, RHI_Semaphore* wait_semaphore /*= nullptr*/, RHI_Semaphore* signal_semaphore /*= nullptr*/, RHI_Fence* wait_fence /*= nullptr*/, uint32_t wait_flags /*= 0*/) const
     {
