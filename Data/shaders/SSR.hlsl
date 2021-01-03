@@ -27,7 +27,7 @@ static const uint g_ssr_max_steps               = 32;
 static const uint g_ssr_binarySearchSteps       = 16;
 static const float g_ssr_binarySearchThickness  = 0.002f;
 static const float g_ssr_ray_stride             = 0.02f;
-static const float g_roughness_threshold        = 0.2f;
+static const float g_roughness_threshold        = 0.6f;
 
 inline float2 binary_search(float3 ray_dir, inout float3 ray_pos, inout float2 ray_uv)
 {
