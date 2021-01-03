@@ -63,10 +63,10 @@ inline float2 trace_ray(float2 uv, float3 ray_pos, float3 ray_dir)
     
     // Reject if the reflection vector is pointing back at the viewer.
     // Attenuate reflections for angles between 60 degrees and 75 degrees, and drop all contribution beyond the (-60,60) degree range
-    float3 camera_direction = normalize(mul(float4(g_camera_direction, 0.0f), g_view).xyz);
-    float fade_camera = 1 - smoothstep(0.25, 0.5, dot(-camera_direction, ray_dir));
+    float3 view_direction = get_view_direction_view_space(uv);
+    float view_fade = 1 - smoothstep(0.25, 0.5, dot(-view_direction, ray_dir));
     [branch]
-    if (fade_camera > 0)
+    if (view_fade > 0)
     {
         // Adjust ray step using interleaved gradient noise, TAA will bring in more detail without any additional cost
         float offset = interleaved_gradient_noise(g_resolution * uv);
@@ -111,26 +111,26 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     float3 position_view    = get_position_view_space(thread_id.xy);
     float3 reflection_view  = normalize(reflect(position_view, normal_view));
 
-    // Compute reflection jitter
+    // Jitter reflection vector based on the surface normal
     {
-        // Get noise normal
-        float3 normal_noise = normalize(tex_normal_noise.SampleLevel(sampler_bilinear_wrap, uv * g_normal_noise_scale, 0)).xyz;
-    
-        // Use temporal interleaved gradient noise to rotate the random vector (free detail with TAA on)
-        float ign               = interleaved_gradient_noise(thread_id.xy); // 0 to 1
-        float rotation_angle    = max(FLT_MIN, ign * PI); // 180 degrees freedom
-        float3 rotation         = float3(cos(rotation_angle), sin(rotation_angle), 0.0f);
-        float3 jitter           = float3(length(normal_noise.xy) * normalize(rotation.xy), normal_noise.z);
+        // Compute jitter
+        float ign               = interleaved_gradient_noise(thread_id.xy);
+        float3 random_vector    = unpack(normalize(tex_normal_noise.SampleLevel(sampler_bilinear_wrap, uv * g_normal_noise_scale, 0)).xyz);
+        float3 jitter           = reflect(hemisphere_samples[ign * 63], random_vector);
     
         // Get surface roughness
         float roughness = tex_material.SampleLevel(sampler_point_clamp, uv, 0).r;
         roughness       *= roughness;
         roughness       = clamp(roughness, 0.0f, g_roughness_threshold); // limit max roughness as there is a limit to how much denoising TAA can do
 
+        jitter *= roughness;                                        // Adjust with roughness
+        jitter *= sign(dot(normal_view, reflection_view + jitter)); // Flip if behind normal
+
         // Apply jitter to reflection
-        reflection_view += jitter * roughness;
+        reflection_view += jitter;
     }
     
     // Trace reflection
     tex_out_rg[thread_id.xy] = trace_ray(uv, position_view, reflection_view);
 }
+

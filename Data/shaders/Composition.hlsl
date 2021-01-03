@@ -93,28 +93,31 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         // Light - SSGI
         float3 light_ssgi = sample_ssgi * material.albedo.rgb;
 
-        // Light - SSR
-        float3 light_ssr = 0.0f;
-        if (g_ssr_enabled && any(sample_ssr))
+        // Light - IBL/SSR
+        float3 light_ibl_ssr = 0.0f;
         {
-            light_ssr = saturate(tex_frame.SampleLevel(sampler_bilinear_clamp, sample_ssr, 0).rgb);
-            light_ssr *= Brdf_Reflectivity(material, sample_normal.xyz, camera_to_pixel);
-        }
-        else // Light - Image based (only if SSR failed)
-        { 
-            float3 diffuse_energy = 1.0f;
-            light_specular  += Brdf_Specular_Ibl(material, sample_normal.xyz, camera_to_pixel, diffuse_energy) * light_ambient;
-            light_diffuse   += Brdf_Diffuse_Ibl(material, sample_normal.xyz) * light_ambient * diffuse_energy; // Tone down diffuse such as that only non metals have it
+            // IBL
+            float3 diffuse_energy   = 1.0f;
+            light_ibl_ssr           = Brdf_Specular_Ibl(material, sample_normal.xyz, camera_to_pixel, diffuse_energy) * light_ambient;
+            light_ibl_ssr           += Brdf_Diffuse_Ibl(material, sample_normal.xyz) * light_ambient * diffuse_energy; // Tone down diffuse such as that only non metals have it
+
+            // SSR
+            if (g_ssr_enabled && any(sample_ssr))
+            {
+                float3 light_ssr = tex_frame.SampleLevel(sampler_bilinear_clamp, sample_ssr, 0).rgb;
+
+                // Blend with IBL
+                light_ibl_ssr = lerp(light_ibl_ssr, light_ssr, 1.0f - material.roughness);
+            }
         }
 
         // Combine all light
-        color.rgb += light_diffuse + light_specular + light_ssr + light_ssgi;
+        color.rgb += light_diffuse + light_specular + light_ibl_ssr + light_ssgi;
     }
 
     // Volumetric lighting and fog
     color.rgb += light_volumetric;
     color.rgb += fog;
-    
+
     return saturate_16(color);
 }
-
