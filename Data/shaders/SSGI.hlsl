@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 static const uint g_ssgi_directions         = 1;
 static const uint g_ssgi_steps              = 2;
-static const float g_ssgi_radius            = 3.0f;
+static const float g_ssgi_radius            = 1.5f;
 static const float g_ssgi_bounce_intensity  = 20.0f;
 static const float g_ssgi_blend_min         = 0.0f;
 static const float g_ssgi_blend_max         = 0.1f;
@@ -59,8 +59,9 @@ float3 compute_light(float3 position, float3 normal, float2 sample_uv, inout uin
     [branch]
     if (screen_fade(sample_uv) > 0.0f)
     {
-        // Sample light
-        float3 light = tex_light_diffuse.SampleLevel(sampler_bilinear_clamp, sample_uv, 0).rgb;  // first bounce
+        // First bounce
+        float3 light    = tex_light_diffuse.SampleLevel(sampler_bilinear_clamp, sample_uv, 0).rgb;
+        light           *= tex_albedo.SampleLevel(sampler_bilinear_clamp, sample_uv, 0).rgb;
 
         // Transport
         [branch]
@@ -154,4 +155,3 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     
     tex_out_rgb[thread_id.xy] = lerp(color_history, light, blend_factor);
 }
-

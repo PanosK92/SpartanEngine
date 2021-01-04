@@ -597,6 +597,7 @@ namespace Spartan
             const bool async                      = false;
 
             cmd_list->SetTexture(RendererBindingsUav::rgb,              tex_out);
+            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_albedo,   m_render_targets[RendererRt::Gbuffer_Albedo]);
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal,   m_render_targets[RendererRt::Gbuffer_Normal]);
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_velocity, m_render_targets[RendererRt::Gbuffer_Velocity]);
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    m_render_targets[RendererRt::Gbuffer_Depth]);
