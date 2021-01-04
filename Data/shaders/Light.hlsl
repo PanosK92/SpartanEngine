@@ -268,30 +268,8 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
      // Light - Emissive
     float3 light_emissive = material.emissive * material.albedo.rgb * 50.0f;
     
-    // Light - Refraction
-    float3 light_refraction = 0.0f;
-    #if TRANSPARENT
-    {
-        float ior               = 1.5; // glass
-        float2 normal2D         = mul((float3x3)g_view, sample_normal.xyz).xy;
-        float2 refraction_uv    = uv + normal2D * ior * 0.03f;
-    
-        // Only refract what's behind the surface
-        [branch]
-        if (get_linear_depth(refraction_uv) > get_linear_depth(surface.depth))
-        {
-            light_refraction = tex_frame.SampleLevel(sampler_bilinear_clamp, refraction_uv, 0).rgb;
-        }
-        else
-        {
-            light_refraction = tex_frame.Load(int3(thread_id.xy, 0)).rgb;
-        }
-    
-        light_refraction = lerp(light_refraction, light_diffuse, material.albedo.a);
-    }
-    #endif
-    
-    tex_out_rgb[thread_id.xy]   += saturate_16(light_diffuse * light.radiance + light_emissive + light_refraction);
+
+    tex_out_rgb[thread_id.xy]   += saturate_16(light_diffuse * light.radiance + light_emissive);
     tex_out_rgb2[thread_id.xy]  += saturate_16(light_specular * light.radiance);
     tex_out_rgb3[thread_id.xy]  += saturate_16(light_volumetric);
 }

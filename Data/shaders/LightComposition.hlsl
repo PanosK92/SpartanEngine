@@ -26,27 +26,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
+    float4 color            = float4(0.0f, 0.0f, 0.0f, 1.0f);
     const float2 uv         = input.uv;
     const int2 screen_pos   = uv * g_resolution;
-    float4 color            = float4(0.0f, 0.0f, 0.0f, 1.0f);
-    
-    // Sample from textures
-    float4 sample_normal    = tex_normal.Load(int3(screen_pos, 0));
-    float4 sample_material  = tex_material.Load(int3(screen_pos, 0));
-    float3 light_volumetric = tex_light_volumetric.Load(int3(screen_pos, 0)).rgb;
-    float depth             = tex_depth.Load(int3(screen_pos, 0)).r;
-    #if TRANSPARENT
-    float2 sample_ssr       = 0.0f; // we don't do ssr for transparents
-    float sample_hbao       = 1.0f; // we don't do ao for transparents
-    #else
-    float2 sample_ssr       = tex_ssr.Load(int3(screen_pos, 0)).xy;
-    float sample_hbao       = tex_hbao.SampleLevel(sampler_point_clamp, uv, 0).r; // if hbao is disabled, the texture will be 1x1 white pixel, so we use a sampler
-    #endif
-    
-    float3 camera_to_pixel  = get_view_direction(depth, uv);
 
-    // Post-process samples
-    int mat_id = round(sample_normal.a * 65535);
+    // Sample some textures
+    const float4 normal             = tex_normal.Load(int3(screen_pos, 0));
+    const float depth               = tex_depth.Load(int3(screen_pos, 0)).r;
+    const float3 light_volumetric   = tex_light_volumetric.Load(int3(screen_pos, 0)).rgb;
+
+    // Get view direction
+    const float3 camera_to_pixel = get_view_direction(depth, uv);
+
+    // Get material ID
+    const int mat_id = round(normal.a * 65535);
 
     // Fog
     float3 position                 = get_position(uv);
@@ -62,10 +55,19 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     }
     else
     {
-        // Get diffuse and specular light
+        // Sample from textures
         float3 light_diffuse    = tex_light_diffuse.Load(int3(screen_pos, 0)).rgb;
         float3 light_specular   = tex_light_specular.Load(int3(screen_pos, 0)).rgb;
+        float4 sample_material  = tex_material.Load(int3(screen_pos, 0));
         
+        #if TRANSPARENT
+        float2 sample_ssr       = 0.0f; // we don't do ssr for transparents
+        float sample_hbao       = 1.0f; // we don't do ao for transparents
+        #else
+        float2 sample_ssr       = tex_ssr.Load(int3(screen_pos, 0)).xy;
+        float sample_hbao       = tex_hbao.SampleLevel(sampler_point_clamp, uv, 0).r; // if hbao is disabled, the texture will be 1x1 white pixel, so we use a sampler
+        #endif
+
         // Create material
         Material material;
         material.albedo     = tex_albedo.Load(int3(screen_pos, 0));
@@ -92,8 +94,8 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         {
             // IBL
             float3 diffuse_energy   = 1.0f;
-            light_ibl_ssr           = Brdf_Specular_Ibl(material, sample_normal.xyz, camera_to_pixel, diffuse_energy) * light_ambient;
-            light_ibl_ssr           += Brdf_Diffuse_Ibl(material, sample_normal.xyz) * light_ambient * diffuse_energy; // Tone down diffuse such as that only non metals have it
+            light_ibl_ssr           = Brdf_Specular_Ibl(material, normal.xyz, camera_to_pixel, diffuse_energy) * light_ambient;
+            light_ibl_ssr           += Brdf_Diffuse_Ibl(material, normal.xyz) * light_ambient * diffuse_energy; // Tone down diffuse such as that only non metals have it
 
             // SSR
             if (g_ssr_enabled && any(sample_ssr))
@@ -105,11 +107,38 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
             }
         }
 
-        // Combine all light
-        color.rgb += material.albedo.rgb * (light_diffuse + light_specular) + light_ibl_ssr;
+        // Light - Transparenct/Refraction
+        float3 light_refraction = 0.0f;
+        #if TRANSPARENT
+        {
+            float ior               = 1.5; // glass
+            float2 normal2D         = mul((float3x3)g_view, normal.xyz).xy;
+            float2 refraction_uv    = uv + normal2D * ior * 0.03f;
+        
+            // Only refract what's behind the surface
+            [branch]
+            if (get_linear_depth(refraction_uv) > get_linear_depth(depth))
+            {
+                light_refraction = tex_frame.SampleLevel(sampler_bilinear_clamp, refraction_uv, 0).rgb;
+            }
+            else
+            {
+                light_refraction = tex_frame.SampleLevel(sampler_bilinear_clamp, uv, 0).rgb;
+            }
+        
+            // Increase refraction/transparency as the material more transparent
+            light_refraction *= 1.0f - material.albedo.a;
+        }
+        #endif
+
+        // Accumulate diffuse and specular light
+        color.rgb += material.albedo.rgb * material.albedo.a * (light_diffuse + light_specular);
+
+        // Accumulate ssr and refraction/transparency
+        color.rgb += light_ibl_ssr + light_refraction;
     }
 
-    // Volumetric lighting and fog
+    // Accumulate regular and volumetric fog
     color.rgb += light_volumetric;
     color.rgb += fog;
 
