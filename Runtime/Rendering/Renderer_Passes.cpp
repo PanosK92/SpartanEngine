@@ -106,7 +106,8 @@ namespace Spartan
             Pass_Hbao(cmd_list);
             Pass_Ssgi(cmd_list);
             Pass_Light(cmd_list);
-            Pass_Composition(cmd_list, m_render_targets[RendererRt::Frame_Hdr]);
+            Pass_SsgiInject(cmd_list); // Inject SSGI to light buffers
+            Pass_LightComposition(cmd_list, m_render_targets[RendererRt::Frame_Hdr]);
         
             // Lighting for transparent objects (skip ssr, hbao and ssgi as they will not be that noticeable anyway)
             if (draw_transparent_objects)
@@ -116,10 +117,13 @@ namespace Spartan
 
                 Pass_GBuffer(cmd_list, true);
                 Pass_Light(cmd_list, true);
-                Pass_Composition(cmd_list, m_render_targets[RendererRt::Frame_Hdr], true);
+                Pass_LightComposition(cmd_list, m_render_targets[RendererRt::Frame_Hdr], true);
             }
         }
-        
+
+        // Keep a copy of the frame before any post-processing
+        Pass_Copy(cmd_list, m_render_targets[RendererRt::Frame_Hdr].get(), m_render_targets[RendererRt::Frame_Hdr_Last].get());
+
         // Post-processing
         {
             Pass_PostProcess(cmd_list);
@@ -592,21 +596,56 @@ namespace Spartan
             const uint32_t thread_group_count_z   = 1;
             const bool async                      = false;
 
-            cmd_list->SetTexture(RendererBindingsUav::rgb, tex_out);
-            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal, m_render_targets[RendererRt::Gbuffer_Normal]);
-            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_material, m_render_targets[RendererRt::Gbuffer_Material]);
+            cmd_list->SetTexture(RendererBindingsUav::rgb,              tex_out);
+            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal,   m_render_targets[RendererRt::Gbuffer_Normal]);
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_velocity, m_render_targets[RendererRt::Gbuffer_Velocity]);
-            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth, m_render_targets[RendererRt::Gbuffer_Depth]);
-            cmd_list->SetTexture(RendererBindingsSrv::light_diffuse, m_render_targets[RendererRt::Light_Diffuse]);
-            cmd_list->SetTexture(RendererBindingsSrv::light_specular, m_render_targets[RendererRt::Light_Specular]);
-            cmd_list->SetTexture(RendererBindingsSrv::ssr, (m_options & Render_ScreenSpaceReflections) ? m_render_targets[RendererRt::Ssr] : m_default_tex_transparent);
-            cmd_list->SetTexture(RendererBindingsSrv::tex, tex_accumulation);
+            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    m_render_targets[RendererRt::Gbuffer_Depth]);
+            cmd_list->SetTexture(RendererBindingsSrv::light_diffuse,    m_render_targets[RendererRt::Light_Diffuse]);
+            cmd_list->SetTexture(RendererBindingsSrv::tex,              tex_accumulation);
+
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
         }
 
         // Accumulate
         Pass_Copy(cmd_list, tex_out, tex_accumulation);
+    }
+
+    void Renderer::Pass_SsgiInject(RHI_CommandList* cmd_list)
+    {
+        if ((m_options & Render_Ssgi) == 0)
+            return;
+
+        // Acquire shaders
+        RHI_Shader* shader_c = m_shaders[RendererShader::Ssgi_Inject_C].get();
+        if (!shader_c->IsCompiled())
+            return;
+
+        RHI_Texture* tex_out = m_render_targets[RendererRt::Light_Diffuse].get();
+
+        // Set render state
+        static RHI_PipelineState pipeline_state;
+        pipeline_state.shader_compute   = shader_c;
+        pipeline_state.pass_name        = "Pass_Ssgi_Inject";
+
+        // Draw
+        if (cmd_list->BeginRenderPass(pipeline_state))
+        {
+            // Update uber buffer
+            m_buffer_uber_cpu.resolution = Vector2(tex_out->GetWidth(), tex_out->GetHeight());
+            UpdateUberBuffer(cmd_list);
+
+            const uint32_t thread_group_count_x   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
+            const uint32_t thread_group_count_y   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
+            const uint32_t thread_group_count_z   = 1;
+            const bool async                      = false;
+
+            cmd_list->SetTexture(RendererBindingsUav::rgb, tex_out); // diffuse
+            cmd_list->SetTexture(RendererBindingsSrv::ssgi, m_render_targets[RendererRt::Ssgi]);
+
+            cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
+            cmd_list->EndRenderPass();
+        }
     }
 
     void Renderer::Pass_Hbao(RHI_CommandList* cmd_list)
@@ -752,7 +791,7 @@ namespace Spartan
                         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    m_render_targets[RendererRt::Gbuffer_Depth]);
                         cmd_list->SetTexture(RendererBindingsSrv::hbao,             (m_options & Render_Ssao) ? m_render_targets[RendererRt::Hbao_Blurred] : m_default_tex_white);
                         cmd_list->SetTexture(RendererBindingsSrv::environment,      GetEnvironmentTexture());
-                        cmd_list->SetTexture(RendererBindingsSrv::frame,            m_render_targets[RendererRt::Frame_Hdr_2]); // previous frame - used for transparency/refraction
+                        cmd_list->SetTexture(RendererBindingsSrv::frame,            m_render_targets[RendererRt::Frame_Hdr_Last]); // used for transparency/refraction
 
                         // Set shadow map
                         if (light->GetShadowsEnabled())
@@ -797,11 +836,11 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_Composition(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_out, const bool is_transparent_pass /*= false*/)
+    void Renderer::Pass_LightComposition(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_out, const bool is_transparent_pass /*= false*/)
     {
         // Acquire shaders
         RHI_Shader* shader_v = m_shaders[RendererShader::Quad_V].get();
-        RHI_Shader* shader_p = is_transparent_pass ? m_shaders[RendererShader::Composition_Transparent_P].get() : m_shaders[RendererShader::Composition_P].get();
+        RHI_Shader* shader_p = is_transparent_pass ? m_shaders[RendererShader::Light_Composition_Transparent_P].get() : m_shaders[RendererShader::Light_Composition_P].get();
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
@@ -841,17 +880,17 @@ namespace Spartan
             cmd_list->SetTexture(RendererBindingsSrv::light_specular,   is_transparent_pass         ? m_render_targets[RendererRt::Light_Specular_Transparent]  : m_render_targets[RendererRt::Light_Specular]);
             cmd_list->SetTexture(RendererBindingsSrv::light_volumetric, m_render_targets[RendererRt::Light_Volumetric]);
             cmd_list->SetTexture(RendererBindingsSrv::ssr,              (m_options & Render_ScreenSpaceReflections) ? m_render_targets[RendererRt::Ssr] : m_default_tex_transparent);
-            cmd_list->SetTexture(RendererBindingsSrv::frame,            m_render_targets[RendererRt::Frame_Hdr_2]);
+            cmd_list->SetTexture(RendererBindingsSrv::frame,            m_render_targets[RendererRt::Frame_Hdr_Last]);
             cmd_list->SetTexture(RendererBindingsSrv::lutIbl,           m_render_targets[RendererRt::Brdf_Specular_Lut]);
             cmd_list->SetTexture(RendererBindingsSrv::environment,      GetEnvironmentTexture());
-            cmd_list->SetTexture(RendererBindingsSrv::ssgi,             (m_options & Render_Ssgi) ? m_render_targets[RendererRt::Ssgi] : m_default_tex_black);
+
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
             cmd_list->DrawIndexed(Rectangle::GetIndexCount());
             cmd_list->EndRenderPass();
         }
     }
-    
+
     void Renderer::Pass_PostProcess(RHI_CommandList* cmd_list)
     {
         // IN:  RenderTarget_Composition_Hdr
@@ -863,7 +902,7 @@ namespace Spartan
         auto& tex_in_ldr    = m_render_targets[RendererRt::Frame_Ldr];
         auto& tex_out_ldr   = m_render_targets[RendererRt::Frame_Ldr_2];
 
-        // TAA    
+        // TAA
         if (GetOption(Render_AntiAliasing_Taa))
         {
             Pass_TemporalAntialiasing(cmd_list, tex_in_hdr, tex_out_hdr);
@@ -1175,11 +1214,11 @@ namespace Spartan
             const uint32_t thread_group_count_z = 1;
             const bool async = false;
 
-            cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out);
-            cmd_list->SetTexture(RendererBindingsSrv::tex, tex_accumulation);
-            cmd_list->SetTexture(RendererBindingsSrv::tex2, tex_in);
+            cmd_list->SetTexture(RendererBindingsUav::rgba,             tex_out);
+            cmd_list->SetTexture(RendererBindingsSrv::tex,              tex_accumulation);
+            cmd_list->SetTexture(RendererBindingsSrv::tex2,             tex_in);
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_velocity, m_render_targets[RendererRt::Gbuffer_Velocity]);
-            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth, m_render_targets[RendererRt::Gbuffer_Depth]);
+            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    m_render_targets[RendererRt::Gbuffer_Depth]);
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
         }

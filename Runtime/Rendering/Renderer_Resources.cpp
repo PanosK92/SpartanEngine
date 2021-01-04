@@ -136,10 +136,11 @@ namespace Spartan
         m_brdf_specular_lut_rendered = false;
 
         // Main HDR and LDR textures with secondary copies (necessary for ping-ponging during post-processing)
-        m_render_targets[RendererRt::Frame_Hdr]      = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_hdr");  // Investigate using less bits but have an alpha channel
-        m_render_targets[RendererRt::Frame_Ldr]      = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_ldr");  // Investigate using less bits but have an alpha channel
-        m_render_targets[RendererRt::Frame_Hdr_2]    = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_hdr2"); // Investigate using less bits but have an alpha channel
-        m_render_targets[RendererRt::Frame_Ldr_2]    = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_ldr2"); // Investigate using less bits but have an alpha channel
+        m_render_targets[RendererRt::Frame_Hdr]      = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_hdr");         // Investigate using less bits but have an alpha channel
+        m_render_targets[RendererRt::Frame_Ldr]      = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_ldr");         // Investigate using less bits but have an alpha channel
+        m_render_targets[RendererRt::Frame_Hdr_2]    = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_hdr2");        // Investigate using less bits but have an alpha channel
+        m_render_targets[RendererRt::Frame_Ldr_2]    = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_ldr2");        // Investigate using less bits but have an alpha channel
+        m_render_targets[RendererRt::Frame_Hdr_Last] = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_hdr_last");    // Investigate using less bits but have an alpha channel
 
          // Depth of Field
         m_render_targets[RendererRt::Dof_Half]     = make_unique<RHI_Texture2D>(m_context, width * 0.5f, height * 0.5f, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_dof_half");   // Investigate using less bits but have an alpha channel
@@ -156,8 +157,8 @@ namespace Spartan
         m_render_targets[RendererRt::Ssr] = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16_Float, 1, RHI_Texture_Storage, "rt_ssr");
 
         // Accumulation
-        m_render_targets[RendererRt::Accumulation_Taa]     = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_accumulation_taa");
-        m_render_targets[RendererRt::Accumulation_Ssgi]    = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R11G11B10_Float, 1, 0, "rt_accumulation_ssgi");
+        m_render_targets[RendererRt::Accumulation_Taa]  = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_accumulation_taa");
+        m_render_targets[RendererRt::Accumulation_Ssgi] = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R11G11B10_Float, 1, 0, "rt_accumulation_ssgi");
 
         // Bloom
         {
@@ -328,8 +329,13 @@ namespace Spartan
         m_shaders[RendererShader::Hbao_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "SSAO.hlsl");
 
         // SSGI
-        m_shaders[RendererShader::Ssgi_C] = make_shared<RHI_Shader>(m_context);
-        m_shaders[RendererShader::Ssgi_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "SSGI.hlsl");
+        {
+            m_shaders[RendererShader::Ssgi_C] = make_shared<RHI_Shader>(m_context);
+            m_shaders[RendererShader::Ssgi_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "SSGI.hlsl");
+
+            m_shaders[RendererShader::Ssgi_Inject_C] = make_shared<RHI_Shader>(m_context);
+            m_shaders[RendererShader::Ssgi_Inject_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "SSGI_Inject.hlsl");
+        }
 
         // SSR
         m_shaders[RendererShader::Ssr_C] = make_shared<RHI_Shader>(m_context);
@@ -351,12 +357,12 @@ namespace Spartan
 
         // Composition
         {
-            m_shaders[RendererShader::Composition_P] = make_shared<RHI_Shader>(m_context);
-            m_shaders[RendererShader::Composition_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Composition.hlsl");
+            m_shaders[RendererShader::Light_Composition_P] = make_shared<RHI_Shader>(m_context);
+            m_shaders[RendererShader::Light_Composition_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "LightComposition.hlsl");
 
-            m_shaders[RendererShader::Composition_Transparent_P] = make_shared<RHI_Shader>(m_context);
-            m_shaders[RendererShader::Composition_Transparent_P]->AddDefine("TRANSPARENT");
-            m_shaders[RendererShader::Composition_Transparent_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Composition.hlsl");
+            m_shaders[RendererShader::Light_Composition_Transparent_P] = make_shared<RHI_Shader>(m_context);
+            m_shaders[RendererShader::Light_Composition_Transparent_P]->AddDefine("TRANSPARENT");
+            m_shaders[RendererShader::Light_Composition_Transparent_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "LightComposition.hlsl");
         }
 
         // Font

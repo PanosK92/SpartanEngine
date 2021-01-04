@@ -118,7 +118,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
         // Create material
     Material material;
-    material.albedo                 = sample_albedo;
+    material.albedo                 = float4(1.0f, 1.0f, 1.0f, sample_albedo.a);
     material.roughness              = sample_material.r;
     material.metallic               = sample_material.g;
     material.emissive               = sample_material.b;
@@ -129,7 +129,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     material.sheen                  = mat_sheen_sheenTint_pad[mat_id].x;
     material.sheen_tint             = mat_sheen_sheenTint_pad[mat_id].y;
     material.occlusion              = min(occlusion, sample_hbao);
-    material.F0                     = lerp(0.04f, material.albedo.rgb, material.metallic);
+    material.F0                     = lerp(0.04f, sample_albedo.rgb, material.metallic);
     material.is_sky                 = mat_id == 0;
     
     // Fill surface struct
@@ -295,4 +295,3 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     tex_out_rgb2[thread_id.xy]  += saturate_16(light_specular * light.radiance);
     tex_out_rgb3[thread_id.xy]  += saturate_16(light_volumetric);
 }
-
