@@ -108,21 +108,20 @@ namespace Spartan
             Pass_Light(cmd_list);
             Pass_SsgiInject(cmd_list); // Inject SSGI to light buffers
             Pass_LightComposition(cmd_list, m_render_targets[RendererRt::Frame_Hdr]);
-        
+
+            // Keep a copy of the frame before any post-processing and transparents
+            Pass_Copy(cmd_list, m_render_targets[RendererRt::Frame_Hdr].get(), m_render_targets[RendererRt::Frame_Hdr_Last].get());
+
             // Lighting for transparent objects (skip ssr, hbao and ssgi as they will not be that noticeable anyway)
             if (draw_transparent_objects)
             {
-                // save a copy of the opaque composition, so that the transparent one can use it
-                Pass_Copy(cmd_list, m_render_targets[RendererRt::Frame_Hdr].get(), m_render_targets[RendererRt::Frame_Hdr_2].get());
-
                 Pass_GBuffer(cmd_list, true);
                 Pass_Light(cmd_list, true);
                 Pass_LightComposition(cmd_list, m_render_targets[RendererRt::Frame_Hdr], true);
             }
         }
 
-        // Keep a copy of the frame before any post-processing
-        Pass_Copy(cmd_list, m_render_targets[RendererRt::Frame_Hdr].get(), m_render_targets[RendererRt::Frame_Hdr_Last].get());
+
 
         // Post-processing
         {
@@ -791,9 +790,7 @@ namespace Spartan
                         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_material, m_render_targets[RendererRt::Gbuffer_Material]);
                         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    m_render_targets[RendererRt::Gbuffer_Depth]);
                         cmd_list->SetTexture(RendererBindingsSrv::hbao,             (m_options & Render_Ssao) ? m_render_targets[RendererRt::Hbao_Blurred] : m_default_tex_white);
-                        cmd_list->SetTexture(RendererBindingsSrv::environment,      GetEnvironmentTexture());
-                        cmd_list->SetTexture(RendererBindingsSrv::frame,            m_render_targets[RendererRt::Frame_Hdr_Last]); // used for transparency/refraction
-
+                        
                         // Set shadow map
                         if (light->GetShadowsEnabled())
                         {

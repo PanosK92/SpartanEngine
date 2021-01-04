@@ -60,8 +60,7 @@ float3 compute_light(float3 position, float3 normal, float2 sample_uv, inout uin
     if (screen_fade(sample_uv) > 0.0f)
     {
         // First bounce
-        float3 light    = tex_light_diffuse.SampleLevel(sampler_bilinear_clamp, sample_uv, 0).rgb;
-        light           *= tex_albedo.SampleLevel(sampler_bilinear_clamp, sample_uv, 0).rgb;
+        float3 light = tex_light_diffuse.SampleLevel(sampler_bilinear_clamp, sample_uv, 0).rgb;
 
         // Transport
         [branch]
@@ -114,6 +113,7 @@ float3 ssgi(float2 uv, float3 position, float3 normal)
             float2 sample_uv        = uv + uv_offset;
 
             light += compute_light(position, normal, sample_uv, light_samples);
+            light *= tex_albedo.SampleLevel(sampler_bilinear_clamp, sample_uv, 0).rgb;
         }
     }
 
