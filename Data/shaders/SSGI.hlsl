@@ -60,9 +60,8 @@ float3 compute_light(float3 position, float3 normal, float2 sample_uv, inout uin
     if (screen_fade(sample_uv) > 0.0f)
     {
         // Sample light
-        float3 light    = tex_light_diffuse.SampleLevel(sampler_bilinear_clamp, sample_uv, 0).rgb;  // first bounce
-        //light           += tex.SampleLevel(sampler_bilinear_clamp, sample_uv, 0).rgb;               // multi-bounce (accumulation texture)
-        
+        float3 light = tex_light_diffuse.SampleLevel(sampler_bilinear_clamp, sample_uv, 0).rgb;  // first bounce
+
         // Transport
         [branch]
         if (luminance(light) > 0.0f)
@@ -134,20 +133,6 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     // Diffuse
     float3 light = ssgi(uv, position, normal);
    
-    // Specular
-    [branch]
-    if (g_ssr_enabled)
-    {
-        float2 sample_ssr = tex_ssr.Load(int3(thread_id.xy, 0)).xy;
-        
-        [branch]
-        if (all(sample_ssr))
-        {
-            float roughness = tex_material.Load(int3(thread_id.xy, 0)).r;
-            light += tex_light_specular.SampleLevel(sampler_point_clamp, sample_ssr, 0).rgb;
-        }
-    }
-
     // Reproject
     float2 velocity         = GetVelocity_DepthMin(uv);
     float2 uv_reprojected   = uv - velocity;
@@ -169,3 +154,4 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     
     tex_out_rgb[thread_id.xy] = lerp(color_history, light, blend_factor);
 }
+

@@ -179,11 +179,17 @@ void Widget_RenderOptions::TickVisible()
 
             // Depth of Field
             ImGui::Checkbox("Depth of Field", &do_dof);
+            ImGuiEx::Tooltip("Controlled by the camera's aperture.");
+            ImGui::Separator();
+
+            // Motion blur
+            ImGui::Checkbox("Motion Blur", &do_motion_blur);
+            ImGuiEx::Tooltip("Controlled by the camera's shutter speed.");
             ImGui::Separator();
 
             // Volumetric fog
             ImGui::Checkbox("Volumetric Fog", &do_volumetric_fog);
-            ImGuiEx::Tooltip("Requires a light with shadows enabled");
+            ImGuiEx::Tooltip("Requires a light with shadows enabled.");
             if (do_volumetric_fog)
             {
                 ImGui::SameLine();
@@ -201,15 +207,11 @@ void Widget_RenderOptions::TickVisible()
 
             // Screen Space Global Illumination
             ImGui::Checkbox("SSGI - Screen Space Global Illumination", &do_ssgi);
-            ImGuiEx::Tooltip("Computes one bounce of indirect diffuse light. If SSR is enabled, it will be used for the specular.");
+            ImGuiEx::Tooltip("Computes one bounce of indirect diffuse light.");
             ImGui::Separator();
 
             // Screen space reflections
             ImGui::Checkbox("SSR - Screen Space Reflections", &do_ssr);
-            ImGui::Separator();
-
-            // Motion blur
-            ImGui::Checkbox("Motion Blur", &do_motion_blur);
             ImGui::Separator();
 
             // Chromatic aberration
@@ -330,7 +332,7 @@ void Widget_RenderOptions::TickVisible()
         {
             // Buffer
             {
-                static array<string, 24> render_target_debug =
+                static array<string, 25> render_target_debug =
                 {
                     "None",
                     "Gbuffer_Albedo",
@@ -345,10 +347,11 @@ void Widget_RenderOptions::TickVisible()
                     "Light_Specular",
                     "Light_Specular_Transparent",
                     "Light_Volumetric",
-                    "Composition_Hdr",
-                    "Composition_Hdr_2",
-                    "Composition_Ldr",
-                    "Composition_Ldr_2",
+                    "Frame_Hdr",
+                    "Frame_Hdr_2",
+                    "Frame_Ldr",
+                    "Frame_Ldr_2",
+                    "Frame_Hdr_Last",
                     "Dof_Half",
                     "Dof_Half_2",
                     "Bloom",

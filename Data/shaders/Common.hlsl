@@ -160,14 +160,12 @@ inline float3 get_normal(float2 uv)
 
 inline float3 get_normal_view_space(int2 pos)
 {
-    float3 normal_world_space = get_normal(pos);
-    return normalize(mul(float4(normal_world_space, 0.0f), g_view).xyz);
+    return normalize(mul(float4(get_normal(pos), 0.0f), g_view).xyz);
 }
 
 inline float3 get_normal_view_space(float2 uv)
 {
-    float3 normal_world_space = get_normal(uv);
-    return normalize(mul(float4(normal_world_space, 0.0f), g_view).xyz);
+    return normalize(mul(float4(get_normal(uv), 0.0f), g_view).xyz);
 }
 
 inline float3x3 makeTBN(float3 n, float3 t)
@@ -282,9 +280,12 @@ inline float3 get_view_direction(int2 pos)
 
 inline float3 get_view_direction_view_space(float2 uv)
 {
-    float depth = get_depth(uv);
-    const float3 view_direction = get_view_direction(depth, uv);
-    return mul(float4(view_direction, 0.0f), g_view).xyz;
+    return mul(float4(get_view_direction(get_depth(uv), uv), 0.0f), g_view).xyz;
+}
+
+inline float3 get_view_direction_view_space(int2 pos)
+{
+    return mul(float4(get_view_direction(get_depth(pos), pos), 0.0f), g_view).xyz;
 }
 
 /*------------------------------------------------------------------------------
@@ -492,3 +493,5 @@ static const float3 hemisphere_samples[64] =
 };
 
 #endif // SPARTAN_COMMON
+
+

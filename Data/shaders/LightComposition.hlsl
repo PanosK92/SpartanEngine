@@ -38,11 +38,9 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     #if TRANSPARENT
     float2 sample_ssr       = 0.0f; // we don't do ssr for transparents
     float sample_hbao       = 1.0f; // we don't do ao for transparents
-    float3 sample_ssgi      = 0.0f; // we don't do ssgi for transparents
     #else
     float2 sample_ssr       = tex_ssr.Load(int3(screen_pos, 0)).xy;
     float sample_hbao       = tex_hbao.SampleLevel(sampler_point_clamp, uv, 0).r; // if hbao is disabled, the texture will be 1x1 white pixel, so we use a sampler
-    float3 sample_ssgi      = tex_ssgi.Load(int3(screen_pos, 0)).rgb;
     #endif
     
     float3 camera_to_pixel  = get_view_direction(depth, uv);
@@ -64,19 +62,18 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     }
     else
     {
-        // Sample from textures
-        float4 sample_albedo    = tex_albedo.Load(int3(screen_pos, 0));
+        // Get diffuse and specular light
         float3 light_diffuse    = tex_light_diffuse.Load(int3(screen_pos, 0)).rgb;
         float3 light_specular   = tex_light_specular.Load(int3(screen_pos, 0)).rgb;
         
         // Create material
         Material material;
-        material.albedo     = sample_albedo;
+        material.albedo     = tex_albedo.Load(int3(screen_pos, 0));
         material.roughness  = sample_material.r;
         material.metallic   = sample_material.g;
         material.emissive   = sample_material.b;
         material.F0         = lerp(0.04f, material.albedo.rgb, material.metallic);
-
+        
         // Light - Ambient
         float3 light_ambient = saturate(g_directional_light_intensity / 128000.0f);
 
@@ -87,11 +84,8 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         #if SSGI
         light_ambient *= sample_hbao;
         #else
-        light_ambient *= MultiBounceAO(sample_hbao, sample_albedo.rgb);
+        light_ambient *= MultiBounceAO(sample_hbao, material.albedo.rgb);
         #endif
-
-        // Light - SSGI
-        float3 light_ssgi = sample_ssgi * material.albedo.rgb;
 
         // Light - IBL/SSR
         float3 light_ibl_ssr = 0.0f;
@@ -112,7 +106,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         }
 
         // Combine all light
-        color.rgb += light_diffuse + light_specular + light_ibl_ssr + light_ssgi;
+        color.rgb += material.albedo.rgb * (light_diffuse + light_specular) + light_ibl_ssr;
     }
 
     // Volumetric lighting and fog
@@ -121,4 +115,3 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 
     return saturate_16(color);
 }
-
