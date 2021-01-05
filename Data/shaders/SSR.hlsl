@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2020 Panos Karabelas
+Copyright(c) 2016-2021 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -137,6 +137,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     tex_out_rg[thread_id.xy] = hit_uv;
 }
+
 
 
 

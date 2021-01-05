@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2020 Panos Karabelas
+Copyright(c) 2016-2021 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -626,7 +626,7 @@ namespace Spartan
         // Set render state
         static RHI_PipelineState pipeline_state;
         pipeline_state.shader_compute   = shader_c;
-        pipeline_state.pass_name        = "Pass_Ssgi_Inject";
+        pipeline_state.pass_name        = "Pass_SsgiInject";
 
         // Draw
         if (cmd_list->BeginRenderPass(pipeline_state))
