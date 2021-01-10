@@ -29,10 +29,11 @@ cbuffer BufferFrame : register(b0)
     matrix g_view_projection_inverted;
     matrix g_view_projection_orthographic;
     matrix g_view_projection_unjittered;
+    matrix g_view_projection_previous;
 
     float g_delta_time;
     float g_time;
-    uint g_frame;   
+    uint g_frame;
     float g_camera_aperture;
     
     float g_camera_shutter_speed;
@@ -43,7 +44,7 @@ cbuffer BufferFrame : register(b0)
     float3 g_camera_position;
     float g_bloom_intensity;
     
-    float g_sharpen_strength;   
+    float g_sharpen_strength;
     float3 g_camera_direction;
     
     float g_gamma;
@@ -71,6 +72,7 @@ cbuffer BufferMaterial : register(b1)
 cbuffer BufferUber : register(b2)
 {
     matrix g_transform;
+    matrix g_transform_previous;
 
     float4 g_color;
     
@@ -92,19 +94,12 @@ cbuffer BufferUber : register(b2)
 
     float g_mat_id;
     float g_mip_index;
-    float2 g_padding2;
-};
-
-// High frequency - Updates per object
-cbuffer BufferObject : register(b3)
-{
-    matrix g_object_transform;
-    matrix g_object_wvp_current;
-    matrix g_object_wvp_previous;
+    float g_is_transprent_pass;
+    float g_padding2;
 };
 
 // High frequency - Updates per light
-cbuffer LightBuffer : register(b4)
+cbuffer LightBuffer : register(b3)
 {
     matrix cb_light_view_projection[6];
     float4 cb_light_intensity_range_angle_bias;

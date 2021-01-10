@@ -35,10 +35,10 @@ float2 GetVelocity_Average(float2 texCoord)
 }
 
 // Returns max velocity (3x3 neighborhood)
-float2 GetVelocity_Max(float2 texCoord, Texture2D texture_velocity, Texture2D texture_depth)
+float2 get_velocity_max_3x3(float2 texCoord, Texture2D texture_velocity, Texture2D texture_depth)
 {   
     float2 max_velocity = 0.0f;
-	float max_length2 	= 0.0f;
+    float max_length2 	= 0.0f;
     
     [unroll]
     for(int y = -1; y <= 1; ++y)
@@ -48,11 +48,11 @@ float2 GetVelocity_Max(float2 texCoord, Texture2D texture_velocity, Texture2D te
         {
             float2 offset	= float2(x, y) * g_texel_size;
             float2 velocity = tex_velocity.SampleLevel(sampler_point_clamp, texCoord + offset, 0).xy;
-			float length2   = dot(velocity, velocity);
+            float length2   = dot(velocity, velocity);
             if(length2 > max_length2)
             {
-                max_velocity 	= velocity;
-				max_length2 	= length2;
+                max_velocity    = velocity;
+                max_length2     = length2;
             }
         }
     }
@@ -60,8 +60,8 @@ float2 GetVelocity_Max(float2 texCoord, Texture2D texture_velocity, Texture2D te
     return max_velocity;
 }
 
-// Returns velocity with min depth (3x3 neighborhood)
-float2 GetVelocity_DepthMin(float2 texCoord)
+// Returns velocity with closest depth (3x3 neighborhood)
+float2 get_velocity_closest_3x3(float2 texCoord)
 {   
     float min_depth = 0.0f;
     float2 min_uv   = texCoord;
@@ -85,8 +85,8 @@ float2 GetVelocity_DepthMin(float2 texCoord)
     return tex_velocity.SampleLevel(sampler_point_clamp, min_uv, 0).xy;
 }
 
-// Returns velocity with max depth (3x3 neighborhood)
-float2 GetVelocity_DepthMax(float2 texCoord, Texture2D texture_velocity, Texture2D texture_depth)
+// Returns velocity with furthest depth (3x3 neighborhood)
+float2 get_velocity_furthest_3x3(float2 texCoord, Texture2D texture_velocity, Texture2D texture_depth)
 {   
     float max_depth = 1.0f;
     float2 max_uv   = texCoord;

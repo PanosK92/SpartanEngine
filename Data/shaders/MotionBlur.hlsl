@@ -34,15 +34,15 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     
     const float2 uv = (thread_id.xy + 0.5f) / g_resolution;
     float4 color    = tex[thread_id.xy];
-    float2 velocity = GetVelocity_Max(uv, tex_velocity, tex_depth);
+    float2 velocity = get_velocity_max_3x3(uv, tex_velocity, tex_depth);
 
     // Compute motion blur strength from camera's shutter speed
     float motion_blur_strength = saturate(g_camera_shutter_speed * 1.0f);
-	
-	// Scale with delta time
+    
+    // Scale with delta time
     motion_blur_strength /= g_delta_time + FLT_MIN;
-	
-	// Scale velocity
+    
+    // Scale velocity
     velocity *= motion_blur_strength;
     
     // Early exit

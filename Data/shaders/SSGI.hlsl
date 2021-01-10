@@ -135,7 +135,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     float3 light = ssgi(uv, position, normal);
    
     // Reproject
-    float2 velocity         = GetVelocity_DepthMin(uv);
+    float2 velocity         = get_velocity_closest_3x3(uv);
     float2 uv_reprojected   = uv - velocity;
     float3 color_history    = tex.SampleLevel(sampler_bilinear_clamp, uv_reprojected, 0).rgb;
 

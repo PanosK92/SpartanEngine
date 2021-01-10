@@ -113,8 +113,9 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     #endif
 
     // Post-process samples
-    int mat_id      = round(sample_normal.a * 65535);
-    float occlusion = sample_material.a;
+    int mat_id          = round(sample_normal.a * 65535);
+    const bool is_sky   = mat_id == 0;
+    float occlusion     = sample_material.a;
 
         // Create material
     Material material;
@@ -130,7 +131,6 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     material.sheen_tint             = mat_sheen_sheenTint_pad[mat_id].y;
     material.occlusion              = min(occlusion, sample_hbao);
     material.F0                     = lerp(0.04f, sample_albedo.rgb, material.metallic);
-    material.is_sky                 = mat_id == 0;
     
     // Fill surface struct
     Surface surface;
@@ -194,7 +194,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     // Reflectance equation
     [branch]
-    if (any(light.radiance) && !material.is_sky)
+    if (any(light.radiance) && !is_sky)
     {
         // Compute some vectors and dot products
         float3 l        = -light.direction;
@@ -267,7 +267,6 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     
      // Light - Emissive
     float3 light_emissive = material.emissive * material.albedo.rgb * 50.0f;
-    
 
     tex_out_rgb[thread_id.xy]   += saturate_16(light_diffuse * light.radiance + light_emissive);
     tex_out_rgb2[thread_id.xy]  += saturate_16(light_specular * light.radiance);

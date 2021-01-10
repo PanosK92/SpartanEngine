@@ -77,13 +77,13 @@ namespace Spartan
         m_options |= Render_Ssgi;
 
         // Option values
-        m_option_values[Option_Value_Anisotropy]        = 16.0f;
-        m_option_values[Option_Value_ShadowResolution]  = 2048.0f;
-        m_option_values[Option_Value_Tonemapping]       = static_cast<float>(Renderer_ToneMapping_ACES);
-        m_option_values[Option_Value_Gamma]             = 2.2f;
-        m_option_values[Option_Value_Sharpen_Strength]  = 1.0f;
-        m_option_values[Option_Value_Bloom_Intensity]   = 0.1f;
-        m_option_values[Option_Value_Fog]               = 0.1f;
+        m_option_values[Renderer_Option_Value::Anisotropy]          = 16.0f;
+        m_option_values[Renderer_Option_Value::ShadowResolution]    = 2048.0f;
+        m_option_values[Renderer_Option_Value::Tonemapping]         = static_cast<float>(Renderer_ToneMapping_ACES);
+        m_option_values[Renderer_Option_Value::Gamma]               = 2.2f;
+        m_option_values[Renderer_Option_Value::Sharpen_Strength]    = 1.0f;
+        m_option_values[Renderer_Option_Value::Intensity]           = 0.1f;
+        m_option_values[Renderer_Option_Value::Fog]                 = 0.1f;
 
         // Subscribe to events
         SUBSCRIBE_TO_EVENT(EventType::WorldResolved,    EVENT_HANDLER_VARIANT(RenderablesAcquire));
@@ -171,7 +171,7 @@ namespace Spartan
         CreateRasterizerStates();
         CreateBlendStates();
         CreateRenderTextures();
-        CreateFonts();    
+        CreateFonts();
         CreateSamplers();
         CreateTextures();
 
@@ -231,7 +231,6 @@ namespace Spartan
             if (m_swap_chain->GetCmdIndex() == 0)
             {
                 m_buffer_uber_offset_index      = 0;
-                m_buffer_object_offset_index    = 0;
                 m_buffer_frame_offset_index     = 0;
                 m_buffer_light_offset_index     = 0;
                 m_buffer_material_offset_index  = 0;
@@ -257,9 +256,9 @@ namespace Spartan
                     m_taa_jitter_previous = m_taa_jitter;
                     
                     const float scale               = 1.0f;
-                    const uint64_t samples          = 16;
+                    const uint8_t samples           = 16;
                     const uint64_t index            = m_frame_num % samples;
-                    m_taa_jitter                    = (Utility::Sampling::Halton2D(index, 2, 3) * 2.0f - 1.0f);
+                    m_taa_jitter                    = Utility::Sampling::Halton2D(index, 2, 3) * 2.0f - 1.0f;
                     m_taa_jitter.x                  = (m_taa_jitter.x / m_resolution.x) * scale;
                     m_taa_jitter.y                  = (m_taa_jitter.y / m_resolution.y) * scale;
                     m_buffer_frame_cpu.projection   *= Matrix::CreateTranslation(Vector3(m_taa_jitter.x, m_taa_jitter.y, 0.0f));
@@ -271,8 +270,9 @@ namespace Spartan
                 }
 
                 // Update the remaining of the frame buffer
+                m_buffer_frame_cpu.view_projection_previous     = m_buffer_frame_cpu.view_projection;
                 m_buffer_frame_cpu.view_projection              = m_buffer_frame_cpu.view * m_buffer_frame_cpu.projection;
-                m_buffer_frame_cpu.view_projection_inv          = Matrix::Invert(m_buffer_frame_cpu.view_projection);   
+                m_buffer_frame_cpu.view_projection_inv          = Matrix::Invert(m_buffer_frame_cpu.view_projection);
                 m_buffer_frame_cpu.view_projection_unjittered   = m_buffer_frame_cpu.view * m_camera->GetProjectionMatrix();
                 m_buffer_frame_cpu.camera_aperture              = m_camera->GetAperture();
                 m_buffer_frame_cpu.camera_shutter_speed         = m_camera->GetShutterSpeed();
@@ -281,17 +281,17 @@ namespace Spartan
                 m_buffer_frame_cpu.camera_far                   = m_camera->GetFarPlane();
                 m_buffer_frame_cpu.camera_position              = m_camera->GetTransform()->GetPosition();
                 m_buffer_frame_cpu.camera_direction             = m_camera->GetTransform()->GetForward();
-                m_buffer_frame_cpu.bloom_intensity              = m_option_values[Option_Value_Bloom_Intensity];
-                m_buffer_frame_cpu.sharpen_strength             = m_option_values[Option_Value_Sharpen_Strength];
-                m_buffer_frame_cpu.fog                          = m_option_values[Option_Value_Fog];
+                m_buffer_frame_cpu.bloom_intensity              = m_option_values[Renderer_Option_Value::Intensity];
+                m_buffer_frame_cpu.sharpen_strength             = m_option_values[Renderer_Option_Value::Sharpen_Strength];
+                m_buffer_frame_cpu.fog                          = m_option_values[Renderer_Option_Value::Fog];
                 m_buffer_frame_cpu.taa_jitter_offset_previous   = m_buffer_frame_cpu_previous.taa_jitter_offset;
                 m_buffer_frame_cpu.taa_jitter_offset            = m_taa_jitter - m_taa_jitter_previous;
                 m_buffer_frame_cpu.delta_time                   = static_cast<float>(m_context->GetSubsystem<Timer>()->GetDeltaTimeSmoothedSec());
                 m_buffer_frame_cpu.time                         = static_cast<float>(m_context->GetSubsystem<Timer>()->GetTimeSec());
-                m_buffer_frame_cpu.tonemapping                  = m_option_values[Option_Value_Tonemapping];
-                m_buffer_frame_cpu.gamma                        = m_option_values[Option_Value_Gamma];
+                m_buffer_frame_cpu.tonemapping                  = m_option_values[Renderer_Option_Value::Tonemapping];
+                m_buffer_frame_cpu.gamma                        = m_option_values[Renderer_Option_Value::Gamma];
                 m_buffer_frame_cpu.ssr_enabled                  = GetOption(Render_ScreenSpaceReflections) ? 1.0f : 0.0f;
-                m_buffer_frame_cpu.shadow_resolution            = GetOptionValue<float>(Option_Value_ShadowResolution);
+                m_buffer_frame_cpu.shadow_resolution            = GetOptionValue<float>(Renderer_Option_Value::ShadowResolution);
                 m_buffer_frame_cpu.frame                        = static_cast<uint32_t>(m_frame_num);
             }
 
@@ -491,21 +491,6 @@ namespace Spartan
         return cmd_list->SetConstantBuffer(2, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, m_buffer_uber_gpu);
     }
 
-    bool Renderer::UpdateObjectBuffer(RHI_CommandList* cmd_list)
-    {
-        if (!cmd_list)
-        {
-            LOG_ERROR("Invalid command list");
-            return false;
-        }
-
-        if (!update_dynamic_buffer<BufferObject>(cmd_list, m_buffer_object_gpu.get(), m_buffer_object_cpu, m_buffer_object_cpu_previous, m_buffer_object_offset_index))
-            return false;
-
-        // Dynamic buffers with offsets have to be rebound whenever the offset changes
-        return cmd_list->SetConstantBuffer(3, RHI_Shader_Vertex | RHI_Shader_Compute, m_buffer_object_gpu);
-    }
-
     bool Renderer::UpdateLightBuffer(RHI_CommandList* cmd_list, const Light* light)
     {
         if (!cmd_list)
@@ -660,11 +645,11 @@ namespace Spartan
         if (!m_rhi_device || !m_rhi_device->GetContextRhi())
             return;
 
-        if (option == Option_Value_Anisotropy)
+        if (option == Renderer_Option_Value::Anisotropy)
         {
             value = Helper::Clamp(value, 0.0f, 16.0f);
         }
-        else if (option == Option_Value_ShadowResolution)
+        else if (option == Renderer_Option_Value::ShadowResolution)
         {
             value = Helper::Clamp(value, static_cast<float>(m_resolution_shadow_min), static_cast<float>(m_rhi_device->GetContextRhi()->rhi_max_texture_dimension_2d));
         }
@@ -675,7 +660,7 @@ namespace Spartan
         m_option_values[option] = value;
 
         // Shadow resolution handling
-        if (option == Option_Value_ShadowResolution)
+        if (option == Renderer_Option_Value::ShadowResolution)
         {
             const auto& light_entities = m_entities[Renderer_Object_Light];
             for (const auto& light_entity : light_entities)
@@ -753,8 +738,8 @@ namespace Spartan
 
     void Renderer::SetGlobalShaderObjectTransform(RHI_CommandList* cmd_list, const Math::Matrix& transform)
     {
-        m_buffer_object_cpu.object = transform;
-        UpdateObjectBuffer(cmd_list);
+        m_buffer_uber_cpu.transform = transform;
+        UpdateUberBuffer(cmd_list);
     }
 
     void Renderer::Stop()

@@ -137,7 +137,7 @@ namespace Spartan
     bool RHI_DescriptorSetLayout::GetResource_DescriptorSet(RHI_DescriptorCache* descriptor_cache, void*& descriptor_set)
     {
         // Integrate resource into the hash
-        size_t hash = m_descriptor_set_layout_hash;
+        uint32_t hash = m_descriptor_set_layout_hash;
         for (const RHI_Descriptor& descriptor : m_descriptors)
         {
             Utility::Hash::hash_combine(hash, descriptor.resource);

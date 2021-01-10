@@ -39,6 +39,7 @@ namespace Spartan
         Math::Matrix view_projection_inv;
         Math::Matrix view_projection_ortho;
         Math::Matrix view_projection_unjittered;
+        Math::Matrix view_projection_previous;
 
         float delta_time;
         float time;
@@ -78,6 +79,7 @@ namespace Spartan
                 view_projection_inv         == rhs.view_projection_inv &&
                 view_projection_ortho       == rhs.view_projection_ortho &&
                 view_projection_unjittered  == rhs.view_projection_unjittered &&
+                view_projection_previous    == rhs.view_projection_previous &&
                 delta_time                  == rhs.delta_time &&
                 time                        == rhs.time &&
                 frame                       == rhs.frame &&
@@ -118,10 +120,11 @@ namespace Spartan
         bool operator!=(const BufferMaterial& rhs) const { return !(*this == rhs); }
     };
 
-    // Medium frequency - Updates a few dozen times
+    // High frequency - Updates like crazy
     struct BufferUber
     {
         Math::Matrix transform;
+        Math::Matrix transform_previous;
 
         Math::Vector4 color;
     
@@ -143,12 +146,14 @@ namespace Spartan
 
         float mat_id;
         uint32_t mip_index;
-        Math::Vector2 padding;
+        float is_transparent_pass;
+        float padding;
 
         bool operator==(const BufferUber& rhs) const
         {
             return
                 transform           == rhs.transform            &&
+                transform_previous  == rhs.transform_previous   &&
                 mat_id              == rhs.mat_id               &&
                 mat_albedo          == rhs.mat_albedo           &&
                 mat_tiling_uv       == rhs.mat_tiling_uv        &&
@@ -162,28 +167,11 @@ namespace Spartan
                 blur_sigma          == rhs.blur_sigma           &&
                 blur_direction      == rhs.blur_direction       &&
                 mip_index           == rhs.mip_index            &&
+                is_transparent_pass == rhs.is_transparent_pass  &&
                 resolution          == rhs.resolution;
         }
 
         bool operator!=(const BufferUber& rhs) const { return !(*this == rhs); }
-    };
-    
-    // High frequency - Updates at least as many times as there are objects in the scene
-    struct BufferObject
-    {
-        Math::Matrix object;
-        Math::Matrix wvp_current;
-        Math::Matrix wvp_previous;
-    
-        bool operator==(const BufferObject& rhs) const
-        {
-            return
-                object          == rhs.object       &&
-                wvp_current     == rhs.wvp_current  &&
-                wvp_previous    == rhs.wvp_previous;
-        }
-
-        bool operator!=(const BufferObject& rhs) const { return !(*this == rhs); }
     };
     
     // Light buffer

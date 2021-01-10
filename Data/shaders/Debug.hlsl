@@ -39,7 +39,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
 #if VELOCITY
     float3 velocity = tex[thread_id.xy].rgb;
-    velocity        = abs(velocity) * 20.0f;
+    velocity        = abs(velocity) * 50.0f;
     color           = float4(velocity, 1.0f);
 #endif
 

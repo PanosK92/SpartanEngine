@@ -66,7 +66,7 @@ namespace Spartan
 
         // Descriptor set layout
         void* m_descriptor_set_layout = nullptr;
-        size_t m_descriptor_set_layout_hash = 0;
+        uint32_t m_descriptor_set_layout_hash = 0;
 
         // Dependencies
         const RHI_Device* m_rhi_device = nullptr;

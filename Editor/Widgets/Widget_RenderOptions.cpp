@@ -67,8 +67,8 @@ void Widget_RenderOptions::TickVisible()
         bool do_chromatic_aberration    = m_renderer->GetOption(Render_ChromaticAberration);
         bool do_dithering               = m_renderer->GetOption(Render_Dithering);
         bool do_ssgi                    = m_renderer->GetOption(Render_Ssgi);
-        int resolution_shadow           = m_renderer->GetOptionValue<int>(Option_Value_ShadowResolution);
-        float fog_density               = m_renderer->GetOptionValue<float>(Option_Value_Fog);
+        int resolution_shadow           = m_renderer->GetOptionValue<int>(Renderer_Option_Value::ShadowResolution);
+        float fog_density               = m_renderer->GetOptionValue<float>(Renderer_Option_Value::Fog);
 
         // Show
         {
@@ -149,7 +149,7 @@ void Widget_RenderOptions::TickVisible()
             {
                 // Reflect from engine
                 static array<string, 4> tonemapping_options = { "Off", "ACES", "Reinhard", "Uncharted 2" };
-                static string tonemapping_selection         = tonemapping_options[m_renderer->GetOptionValue<uint32_t>(Option_Value_Tonemapping)];
+                static string tonemapping_selection         = tonemapping_options[m_renderer->GetOptionValue<uint32_t>(Renderer_Option_Value::Tonemapping)];
 
                 if (ImGui::BeginCombo("Tonemapping", tonemapping_selection.c_str()))
                 {
@@ -159,7 +159,7 @@ void Widget_RenderOptions::TickVisible()
                         if (ImGui::Selectable(tonemapping_options[i].c_str(), is_selected))
                         {
                             tonemapping_selection = tonemapping_options[i].c_str();
-                            m_renderer->SetOptionValue(Option_Value_Tonemapping, static_cast<float>(i));
+                            m_renderer->SetOptionValue(Renderer_Option_Value::Tonemapping, static_cast<float>(i));
                         }
                         if (is_selected)
                         {
@@ -168,13 +168,13 @@ void Widget_RenderOptions::TickVisible()
                     }
                     ImGui::EndCombo();
                 }
-                ImGui::SameLine(); render_option_float("##tonemapping_option_1", "Gamma", Option_Value_Gamma);
+                ImGui::SameLine(); render_option_float("##tonemapping_option_1", "Gamma", Renderer_Option_Value::Gamma);
                 ImGui::Separator();
             }
 
             // Bloom
             ImGui::Checkbox("Bloom", &do_bloom); ImGui::SameLine();
-            render_option_float("##bloom_option_1", "Intensity", Option_Value_Bloom_Intensity, "", 0.001f);
+            render_option_float("##bloom_option_1", "Intensity", Renderer_Option_Value::Intensity, "", 0.001f);
             ImGui::Separator();
 
             // Depth of Field
@@ -235,7 +235,7 @@ void Widget_RenderOptions::TickVisible()
             // Sharpen
             ImGui::Checkbox("Sharpening (AMD FidelityFX CAS)", &do_sharperning);
             ImGuiEx::Tooltip("Contrast adaptive sharpening. Areas of the image that are already sharp are sharpened less, while areas that lack detail are sharpened more.");
-            ImGui::SameLine(); render_option_float("##sharpen_option", "Strength", Option_Value_Sharpen_Strength, "", 0.1f, 0.0f, 1.0f);
+            ImGui::SameLine(); render_option_float("##sharpen_option", "Strength", Renderer_Option_Value::Sharpen_Strength, "", 0.1f, 0.0f, 1.0f);
             ImGui::Separator();
 
             // Dithering
@@ -248,22 +248,22 @@ void Widget_RenderOptions::TickVisible()
         }
 
         // Map
-        m_renderer->SetOption(Render_Bloom,                         do_bloom);
-        m_renderer->SetOption(Render_DepthOfField,                  do_dof);
-        m_renderer->SetOption(Render_VolumetricFog,                 do_volumetric_fog);
-        m_renderer->SetOption(Render_Ssao,                          do_ssao);
-        m_renderer->SetOption(Render_ScreenSpaceShadows,            do_sss);
-        m_renderer->SetOption(Render_ScreenSpaceReflections,        do_ssr);
-        m_renderer->SetOption(Render_Ssgi,                          do_ssgi);
-        m_renderer->SetOption(Render_AntiAliasing_Taa,              do_taa);
-        m_renderer->SetOption(Render_AntiAliasing_Fxaa,             do_fxaa);
-        m_renderer->SetOption(Render_MotionBlur,                    do_motion_blur);
-        m_renderer->SetOption(Render_FilmGrain,                     do_film_grain);
-        m_renderer->SetOption(Render_Sharpening_LumaSharpen,        do_sharperning);
-        m_renderer->SetOption(Render_ChromaticAberration,           do_chromatic_aberration);
-        m_renderer->SetOption(Render_Dithering,                     do_dithering);
-        m_renderer->SetOptionValue(Option_Value_ShadowResolution,   static_cast<float>(resolution_shadow));
-        m_renderer->SetOptionValue(Option_Value_Fog,                fog_density);
+        m_renderer->SetOption(Render_Bloom,                                     do_bloom);
+        m_renderer->SetOption(Render_DepthOfField,                              do_dof);
+        m_renderer->SetOption(Render_VolumetricFog,                             do_volumetric_fog);
+        m_renderer->SetOption(Render_Ssao,                                      do_ssao);
+        m_renderer->SetOption(Render_ScreenSpaceShadows,                        do_sss);
+        m_renderer->SetOption(Render_ScreenSpaceReflections,                    do_ssr);
+        m_renderer->SetOption(Render_Ssgi,                                      do_ssgi);
+        m_renderer->SetOption(Render_AntiAliasing_Taa,                          do_taa);
+        m_renderer->SetOption(Render_AntiAliasing_Fxaa,                         do_fxaa);
+        m_renderer->SetOption(Render_MotionBlur,                                do_motion_blur);
+        m_renderer->SetOption(Render_FilmGrain,                                 do_film_grain);
+        m_renderer->SetOption(Render_Sharpening_LumaSharpen,                    do_sharperning);
+        m_renderer->SetOption(Render_ChromaticAberration,                       do_chromatic_aberration);
+        m_renderer->SetOption(Render_Dithering,                                 do_dithering);
+        m_renderer->SetOptionValue(Renderer_Option_Value::ShadowResolution,     static_cast<float>(resolution_shadow));
+        m_renderer->SetOptionValue(Renderer_Option_Value::Fog,                  fog_density);
     }
 
     if (ImGui::CollapsingHeader("Widgets", ImGuiTreeNodeFlags_None))
@@ -332,7 +332,7 @@ void Widget_RenderOptions::TickVisible()
         {
             // Buffer
             {
-                static array<string, 25> render_target_debug =
+                static array<string, 24> render_target_debug =
                 {
                     "None",
                     "Gbuffer_Albedo",
@@ -351,7 +351,6 @@ void Widget_RenderOptions::TickVisible()
                     "Frame_Hdr_2",
                     "Frame_Ldr",
                     "Frame_Ldr_2",
-                    "Frame_Hdr_Last",
                     "Dof_Half",
                     "Dof_Half_2",
                     "Bloom",

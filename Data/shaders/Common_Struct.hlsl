@@ -34,7 +34,6 @@ struct Material
     float3 padding;
     float emissive;
     float3 F0;
-    bool is_sky;
 };
 
 struct Light

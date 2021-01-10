@@ -50,9 +50,9 @@ namespace Spartan
             this->is_dynamic_constant_buffer    = is_dynamic_constant_buffer;
         }
 
-        std::size_t GetHash() const
+        uint32_t GetHash() const
         {
-            std::size_t hash = 0;
+            uint32_t hash = 0;
 
             Utility::Hash::hash_combine(hash, slot);
             Utility::Hash::hash_combine(hash, stage);

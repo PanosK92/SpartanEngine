@@ -44,40 +44,10 @@ namespace Spartan
         }
 
         // Render target layout transitions
-        {
-            // Color
-            {
-                // Swapchain
-                if (RHI_SwapChain* swapchain = pipeline_state.render_target_swapchain)
-                {
-                    pipeline_state.render_target_color_layout_initial   = RHI_Image_Layout::Present_Src;
-                    pipeline_state.render_target_color_layout_final     = RHI_Image_Layout::Present_Src;
-                }
-
-                // Texture
-                for (auto i = 0; i < rhi_max_render_target_count; i++)
-                {
-                    if (RHI_Texture* texture = pipeline_state.render_target_color_textures[i])
-                    {
-                        texture->SetLayout(RHI_Image_Layout::Color_Attachment_Optimal, cmd_list);
-                        pipeline_state.render_target_color_layout_initial   = RHI_Image_Layout::Color_Attachment_Optimal;
-                        pipeline_state.render_target_color_layout_final     = RHI_Image_Layout::Color_Attachment_Optimal;
-                    }
-                }
-            }
-
-            // Depth
-            if (RHI_Texture* texture = pipeline_state.render_target_depth_texture)
-            {
-                texture->SetLayout(RHI_Image_Layout::Depth_Stencil_Attachment_Optimal, cmd_list);
-                pipeline_state.render_target_depth_layout_initial   = RHI_Image_Layout::Depth_Stencil_Attachment_Optimal;
-                pipeline_state.render_target_depth_layout_final     = RHI_Image_Layout::Depth_Stencil_Attachment_Optimal;
-            }
-        }
+        pipeline_state.TransitionRenderTargetLayouts(cmd_list);
 
         // Compute a hash for it
-        pipeline_state.ComputeHash();
-        size_t hash = pipeline_state.GetHash();
+        uint32_t hash = pipeline_state.ComputeHash();
 
         // If no pipeline exists for this state, create one
         auto it = m_cache.find(hash);
@@ -85,6 +55,7 @@ namespace Spartan
         {
             // Cache a new pipeline
             it = m_cache.emplace(make_pair(hash, move(make_shared<RHI_Pipeline>(m_rhi_device, pipeline_state, descriptor_set_layout)))).first;
+            LOG_INFO("A new pipeline has been created.");
         }
 
         return it->second.get();

@@ -143,7 +143,7 @@ float4 TemporalAntialiasing(uint2 thread_id, uint group_index, uint3 group_id, T
 {
     // Get history and current colors
     const float2 uv         = (thread_id + 0.5f) / g_resolution;
-    float2 velocity         = GetVelocity_DepthMin(uv);
+    float2 velocity         = get_velocity_closest_3x3(uv);
     float2 uv_reprojected   = uv - velocity;
     float3 color_history    = tex_accumulation.SampleLevel(sampler_bilinear_clamp, uv_reprojected, 0).rgb;
     float3 color_current    = tex_current[thread_id].rgb;
@@ -157,17 +157,18 @@ float4 TemporalAntialiasing(uint2 thread_id, uint group_index, uint3 group_id, T
         // Decrease blend factor when motion gets sub-pixel
         const float threshold   = 0.5f;
         const float base        = 0.5f;
-        const float gather      = g_delta_time;
+        const float gather      = 0.1666;
         float depth             = get_linear_depth(uv);
         float texel_vel_mag     = length(velocity / g_texel_size) * depth;
-        float subpixel_motion   = saturate(threshold / (FLT_MIN + texel_vel_mag));
+        float subpixel_motion   = saturate(threshold / (texel_vel_mag + FLT_MIN));
         blend_factor *= texel_vel_mag * base + subpixel_motion * gather;
 
         // Decrease blend factor when contrast is high
-        float luminance_history = luminance(color_history);
-        float luminance_current = luminance(color_current);
-        float diff = 1.0 - abs(luminance_current - luminance_history) / (FLT_MIN + max(luminance_current, luminance_history));
-        blend_factor *= diff * diff;
+        float luminance_history     = luminance(color_history);
+        float luminance_current     = luminance(color_current);
+        float unbiased_difference   = abs(luminance_current - luminance_history) / (max(luminance_current, luminance_history) + FLT_MIN);
+        float unbiased_weight       = 1.0 - unbiased_difference;
+        blend_factor *= unbiased_weight * unbiased_weight;
 
         // Clamp
         blend_factor = clamp(blend_factor, g_taa_blend_min, g_taa_blend_max);
