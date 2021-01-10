@@ -63,15 +63,15 @@ namespace Spartan
     private:
         bool m_depth_test_enabled                               = false;
         bool m_depth_write_enabled                              = false;
-        RHI_Comparison_Function m_depth_comparison_function                = RHI_Comparison_Never;
+        RHI_Comparison_Function m_depth_comparison_function     = RHI_Comparison_Never;
         bool m_stencil_test_enabled                             = false;
         bool m_stencil_write_enabled                            = false;
         RHI_Comparison_Function m_stencil_comparison_function   = RHI_Comparison_Never;
         RHI_Stencil_Operation m_stencil_fail_op                 = RHI_Stencil_Keep;
         RHI_Stencil_Operation m_stencil_depth_fail_op           = RHI_Stencil_Keep;
         RHI_Stencil_Operation m_stencil_pass_op                 = RHI_Stencil_Replace;
-        uint8_t m_stencil_read_mask                             = 0xff;
-        uint8_t m_stencil_write_mask                            = 0xff;
+        uint8_t m_stencil_read_mask                             = 1;
+        uint8_t m_stencil_write_mask                            = 1;
         bool m_initialized                                      = false;
         void* m_buffer                                          = nullptr;
     };

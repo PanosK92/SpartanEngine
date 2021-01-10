@@ -41,7 +41,7 @@ namespace Spartan
         m_scaleLocal    = Vector3::One;
         m_matrix        = Matrix::Identity;
         m_matrixLocal   = Matrix::Identity;
-        m_wvp_previous  = Matrix::Identity;
+        m_matrix_previous  = Matrix::Identity;
         m_parent        = nullptr;
 
         REGISTER_ATTRIBUTE_VALUE_VALUE(m_positionLocal, Vector3);

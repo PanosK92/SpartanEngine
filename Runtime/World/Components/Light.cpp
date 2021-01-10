@@ -439,7 +439,7 @@ namespace Spartan
             return;
 
         // Early exit if there is no change in shadow map resolution
-        const uint32_t resolution       = m_renderer->GetOptionValue<uint32_t>(Option_Value_ShadowResolution);
+        const uint32_t resolution       = m_renderer->GetOptionValue<uint32_t>(Renderer_Option_Value::ShadowResolution);
         const bool resolution_changed   = m_shadow_map.texture_depth ? (resolution != m_shadow_map.texture_depth->GetWidth()) : false;
         if ((!m_is_dirty && !resolution_changed))
             return;

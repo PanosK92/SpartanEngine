@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Spartan::Utility::Hash
 {
     template <class T>
-    constexpr void hash_combine(size_t& seed, const T& v)
+    constexpr void hash_combine(uint32_t& seed, const T& v)
     {
         std::hash<T> hasher;
         seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);

@@ -178,10 +178,12 @@ namespace Spartan
         void Pass_GBuffer(RHI_CommandList* cmd_list, const bool is_transparent_pass = false);
         void Pass_Ssgi(RHI_CommandList* cmd_list);
         void Pass_SsgiInject(RHI_CommandList* cmd_list);
-        void Pass_Hbao(RHI_CommandList* cmd_list);
-        void Pass_Ssr(RHI_CommandList* cmd_list);
+        void Pass_Ssao(RHI_CommandList* cmd_list);
+        void Pass_SsrTrace(RHI_CommandList* cmd_list);
+        void Pass_SsrInject(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         void Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass = false);
-        void Pass_LightComposition(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_out, const bool is_transparent_pass = false);
+        void Pass_LightComposition(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass = false);
+        void Pass_LightImageBased(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass = false);
         void Pass_PostProcess(RHI_CommandList* cmd_list);
         void Pass_TemporalAntialiasing(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
         bool Pass_DebugBuffer(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_out);
@@ -210,7 +212,6 @@ namespace Spartan
         bool UpdateFrameBuffer(RHI_CommandList* cmd_list);
         bool UpdateMaterialBuffer(RHI_CommandList* cmd_list);
         bool UpdateUberBuffer(RHI_CommandList* cmd_list);
-        bool UpdateObjectBuffer(RHI_CommandList* cmd_list);
         bool UpdateLightBuffer(RHI_CommandList* cmd_list, const Light* light);
 
         // Misc
@@ -235,10 +236,10 @@ namespace Spartan
 
         // Depth-stencil states
         std::shared_ptr<RHI_DepthStencilState> m_depth_stencil_off_off;
-        std::shared_ptr<RHI_DepthStencilState> m_depth_stencil_off_on_r;
-        std::shared_ptr<RHI_DepthStencilState> m_depth_stencil_on_off_w;
-        std::shared_ptr<RHI_DepthStencilState> m_depth_stencil_on_off_r;
-        std::shared_ptr<RHI_DepthStencilState> m_depth_stencil_on_on_w;
+        std::shared_ptr<RHI_DepthStencilState> m_depth_stencil_off_r;
+        std::shared_ptr<RHI_DepthStencilState> m_depth_stencil_rw_off;
+        std::shared_ptr<RHI_DepthStencilState> m_depth_stencil_r_off;
+        std::shared_ptr<RHI_DepthStencilState> m_depth_stencil_rw_w;
 
         // Blend states 
         std::shared_ptr<RHI_BlendState> m_blend_disabled;
@@ -321,11 +322,6 @@ namespace Spartan
         BufferUber m_buffer_uber_cpu_previous;
         std::shared_ptr<RHI_ConstantBuffer> m_buffer_uber_gpu;
         uint32_t m_buffer_uber_offset_index = 0;
-
-        BufferObject m_buffer_object_cpu;
-        BufferObject m_buffer_object_cpu_previous;
-        std::shared_ptr<RHI_ConstantBuffer> m_buffer_object_gpu;
-        uint32_t m_buffer_object_offset_index = 0;
 
         BufferLight m_buffer_light_cpu;
         BufferLight m_buffer_light_cpu_previous;

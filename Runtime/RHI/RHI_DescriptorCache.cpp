@@ -51,7 +51,7 @@ namespace Spartan
         GetDescriptors(pipeline_state, m_descriptors);
 
         // Compute a hash for the descriptors
-        size_t hash = 0;
+        uint32_t hash = 0;
         for (const RHI_Descriptor& descriptor : m_descriptors)
         {
             Utility::Hash::hash_combine(hash, descriptor.GetHash());
@@ -62,9 +62,9 @@ namespace Spartan
         if (it == m_descriptor_set_layouts.end())
         {
             // Create a name for the descriptor set layout, very useful for Vulkan debugging
-            string name = (pipeline_state.shader_compute ? pipeline_state.shader_compute->GetName() : "null");
-            name += "-" + (pipeline_state.shader_vertex ? pipeline_state.shader_vertex->GetName() : "null");
-            name += "-" + (pipeline_state.shader_pixel ? pipeline_state.shader_pixel->GetName() : "null");
+            string name = (pipeline_state.shader_compute    ? pipeline_state.shader_compute->GetName() : "null");
+            name += "-" + (pipeline_state.shader_vertex     ? pipeline_state.shader_vertex->GetName() : "null");
+            name += "-" + (pipeline_state.shader_pixel      ? pipeline_state.shader_pixel->GetName() : "null");
 
             // Emplace a new descriptor set layout
             it = m_descriptor_set_layouts.emplace(make_pair(hash, make_shared<RHI_DescriptorSetLayout>(m_rhi_device, m_descriptors, name.c_str()))).first;

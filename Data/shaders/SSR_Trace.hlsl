@@ -97,6 +97,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     if (thread_id.x >= uint(g_resolution.x) || thread_id.y >= uint(g_resolution.y))
         return;
 
+const float2 uv = (thread_id.xy + 0.5f) / g_resolution;
     float2 hit_uv = 0.0f;
 
     // Compute reflection direction
@@ -137,7 +138,3 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     tex_out_rg[thread_id.xy] = hit_uv;
 }
-
-
-
-

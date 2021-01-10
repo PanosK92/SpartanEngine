@@ -56,9 +56,6 @@ namespace Spartan
         m_buffer_uber_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device, "uber", is_dynamic);
         m_buffer_uber_gpu->Create<BufferUber>(64);
 
-        m_buffer_object_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device, "object", is_dynamic);
-        m_buffer_object_gpu->Create<BufferObject>(m_swap_chain_buffer_count);
-
         m_buffer_light_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device, "light", is_dynamic);
         m_buffer_light_gpu->Create<BufferLight>(m_swap_chain_buffer_count);
     }
@@ -66,11 +63,11 @@ namespace Spartan
     void Renderer::CreateDepthStencilStates()
     {
         // arguments: depth_test, depth_write, depth_function, stencil_test, stencil_write, stencil_function
-        m_depth_stencil_off_off     = make_shared<RHI_DepthStencilState>(m_rhi_device, false,   false,  RHI_Comparison_Never,    false, false,  RHI_Comparison_Never);  // no depth or stencil
-        m_depth_stencil_on_off_w    = make_shared<RHI_DepthStencilState>(m_rhi_device, true,    true,   GetComparisonFunction(), false, false,  RHI_Comparison_Never);  // depth
-        m_depth_stencil_on_off_r    = make_shared<RHI_DepthStencilState>(m_rhi_device, true,    false,  GetComparisonFunction(), false, false,  RHI_Comparison_Never);  // depth
-        m_depth_stencil_off_on_r    = make_shared<RHI_DepthStencilState>(m_rhi_device, false,   false,  RHI_Comparison_Never,    true,  false,  RHI_Comparison_Equal);  // depth + stencil
-        m_depth_stencil_on_on_w     = make_shared<RHI_DepthStencilState>(m_rhi_device, true,    true,   GetComparisonFunction(), true,  true,   RHI_Comparison_Always); // depth + stencil
+        m_depth_stencil_off_off = make_shared<RHI_DepthStencilState>(m_rhi_device, false,   false,  RHI_Comparison_Never,    false, false,  RHI_Comparison_Never);  // no depth or stencil
+        m_depth_stencil_rw_off  = make_shared<RHI_DepthStencilState>(m_rhi_device, true,    true,   GetComparisonFunction(), false, false,  RHI_Comparison_Never);  // depth
+        m_depth_stencil_r_off   = make_shared<RHI_DepthStencilState>(m_rhi_device, true,    false,  GetComparisonFunction(), false, false,  RHI_Comparison_Never);  // depth
+        m_depth_stencil_off_r   = make_shared<RHI_DepthStencilState>(m_rhi_device, false,   false,  RHI_Comparison_Never,    true,  false,  RHI_Comparison_Equal);  // depth + stencil
+        m_depth_stencil_rw_w    = make_shared<RHI_DepthStencilState>(m_rhi_device, true,    true,   GetComparisonFunction(), false,  true,  RHI_Comparison_Always); // depth + stencil
     }
 
     void Renderer::CreateRasterizerStates()
@@ -140,7 +137,6 @@ namespace Spartan
         m_render_targets[RendererRt::Frame_Ldr]      = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_ldr");         // Investigate using less bits but have an alpha channel
         m_render_targets[RendererRt::Frame_Hdr_2]    = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_hdr2");        // Investigate using less bits but have an alpha channel
         m_render_targets[RendererRt::Frame_Ldr_2]    = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_ldr2");        // Investigate using less bits but have an alpha channel
-        m_render_targets[RendererRt::Frame_Hdr_Last] = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_hdr_last");    // Investigate using less bits but have an alpha channel
 
          // Depth of Field
         m_render_targets[RendererRt::Dof_Half]     = make_unique<RHI_Texture2D>(m_context, width * 0.5f, height * 0.5f, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_dof_half");   // Investigate using less bits but have an alpha channel
@@ -328,18 +324,32 @@ namespace Spartan
         m_shaders[RendererShader::Hbao_C] = make_shared<RHI_Shader>(m_context);
         m_shaders[RendererShader::Hbao_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "SSAO.hlsl");
 
+        // Light
+        {
+            m_shaders[RendererShader::Light_Composition_C] = make_shared<RHI_Shader>(m_context);
+            m_shaders[RendererShader::Light_Composition_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "Light_Composition.hlsl");
+
+            m_shaders[RendererShader::Light_ImageBased_P] = make_shared<RHI_Shader>(m_context);
+            m_shaders[RendererShader::Light_ImageBased_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Light_ImageBased.hlsl");
+        }
+
         // SSGI
         {
             m_shaders[RendererShader::Ssgi_C] = make_shared<RHI_Shader>(m_context);
             m_shaders[RendererShader::Ssgi_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "SSGI.hlsl");
 
-            m_shaders[RendererShader::Ssgi_Inject_C] = make_shared<RHI_Shader>(m_context);
-            m_shaders[RendererShader::Ssgi_Inject_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "SSGI_Inject.hlsl");
+            m_shaders[RendererShader::SsgiInject_C] = make_shared<RHI_Shader>(m_context);
+            m_shaders[RendererShader::SsgiInject_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "SSGI_Inject.hlsl");
         }
 
         // SSR
-        m_shaders[RendererShader::Ssr_C] = make_shared<RHI_Shader>(m_context);
-        m_shaders[RendererShader::Ssr_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "SSR.hlsl");
+        {
+            m_shaders[RendererShader::SsrTrace_C] = make_shared<RHI_Shader>(m_context);
+            m_shaders[RendererShader::SsrTrace_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "SSR_Trace.hlsl");
+
+            m_shaders[RendererShader::SsrInject_C] = make_shared<RHI_Shader>(m_context);
+            m_shaders[RendererShader::SsrInject_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "SSR_Inject.hlsl");
+        }
 
         // Entity
         m_shaders[RendererShader::Entity_V] = make_shared<RHI_Shader>(m_context);
@@ -354,16 +364,6 @@ namespace Spartan
         m_shaders[RendererShader::Entity_Outline_P] = make_shared<RHI_Shader>(m_context);
         m_shaders[RendererShader::Entity_Outline_P]->AddDefine("OUTLINE");
         m_shaders[RendererShader::Entity_Outline_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Entity.hlsl");
-
-        // Composition
-        {
-            m_shaders[RendererShader::Light_Composition_P] = make_shared<RHI_Shader>(m_context);
-            m_shaders[RendererShader::Light_Composition_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "LightComposition.hlsl");
-
-            m_shaders[RendererShader::Light_Composition_Transparent_P] = make_shared<RHI_Shader>(m_context);
-            m_shaders[RendererShader::Light_Composition_Transparent_P]->AddDefine("TRANSPARENT");
-            m_shaders[RendererShader::Light_Composition_Transparent_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "LightComposition.hlsl");
-        }
 
         // Font
         m_shaders[RendererShader::Font_V] = make_shared<RHI_Shader>(m_context);

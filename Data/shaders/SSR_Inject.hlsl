@@ -19,28 +19,27 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#pragma once
+//= INCLUDES =========
+#include "Common.hlsl"
+//====================
 
-//= INCLUDES ======================
-#include <memory>
-#include <unordered_map>
-#include "RHI_Definition.h"
-#include "../Core/Spartan_Object.h"
-//=================================
-
-namespace Spartan
+[numthreads(thread_group_count_x, thread_group_count_y, 1)]
+void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    class RHI_PipelineCache : public Spartan_Object
-    {
-    public:
-        RHI_PipelineCache(const RHI_Device* rhi_device) { m_rhi_device = rhi_device; }
-        RHI_Pipeline* GetPipeline(RHI_CommandList* cmd_list, RHI_PipelineState& pipeline_state, void* descriptor_set_layout);
+    if (thread_id.x >= uint(g_resolution.x) || thread_id.y >= uint(g_resolution.y))
+        return;
 
-    private:
-        // <hash of pipeline state, pipeline state object>
-        std::unordered_map<uint32_t, std::shared_ptr<RHI_Pipeline>> m_cache;
+    const bool is_transparent   = tex_albedo[thread_id.xy].a != 1.0f;
+    const float2 ssr_uv         = tex_ssr[thread_id.xy].xy;
 
-        // Dependencies
-        const RHI_Device* m_rhi_device;
-    };
+    if (!any(ssr_uv) || is_transparent)
+        return;
+
+    float3 ssr = tex_frame.SampleLevel(sampler_bilinear_clamp, ssr_uv, 0).rgb;
+
+    // Fade out as the material roughness increases.
+    // This is because reflections do get rougher by getting jittered but there is a threshold before they start to look too noisy.
+    ssr *= (1.0f - tex_material[thread_id.xy].r);
+
+    tex_out_rgba[thread_id.xy] += float4(ssr, 0.0f);
 }

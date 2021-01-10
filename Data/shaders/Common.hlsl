@@ -222,7 +222,6 @@ inline float get_linear_depth(float2 uv)
 inline float3 get_position(float z, float2 uv)
 {
     // Reconstruct position from depth
-
     float x             = uv.x * 2.0f - 1.0f;
     float y             = (1.0f - uv.y) * 2.0f - 1.0f;
     float4 pos_clip     = float4(x, y, z, 1.0f);
@@ -232,50 +231,48 @@ inline float3 get_position(float z, float2 uv)
 
 inline float3 get_position(int2 pos)
 {
-    const float depth   = get_depth(pos);
-    const float2 uv     = (pos + 0.5f) / g_resolution;
-    return get_position(depth, uv);
+    const float2 uv = (pos + 0.5f) / g_resolution;
+    return get_position(get_depth(pos), uv);
 }
 
 inline float3 get_position(float2 uv)
 {
     // Effects like ambient occlusion have visual discontinuities when they are not using filtered depth
-    float depth = get_depth(uv);
-    return get_position(depth, uv);
+    return get_position(get_depth(uv), uv);
 }
 
 inline float3 get_position_view_space(int2 pos)
 {
-    float3 position_world_space = get_position(pos);
-    return mul(float4(position_world_space, 1.0f), g_view).xyz;
+    return mul(float4(get_position(pos), 1.0f), g_view).xyz;
 }
 
 inline float3 get_position_view_space(float2 uv)
 {
-    float3 position_world_space = get_position(uv);
-    return mul(float4(position_world_space, 1.0f), g_view).xyz;
+    return mul(float4(get_position(uv), 1.0f), g_view).xyz;
 }
 
 /*------------------------------------------------------------------------------
     VIEW DIRECTION
 ------------------------------------------------------------------------------*/
+inline float3 get_view_direction(float3 position_world, float2 uv)
+{
+    return normalize(position_world - g_camera_position.xyz);
+}
+
 inline float3 get_view_direction(float depth, float2 uv)
 {
-    float3 position_world = get_position(depth, uv);
-    return normalize(position_world - g_camera_position.xyz);
+    return get_view_direction(get_position(depth, uv), uv);
 }
 
 inline float3 get_view_direction(float2 uv)
 {
-    float depth = get_depth(uv);
-    return get_view_direction(depth, uv);
+    return get_view_direction(get_depth(uv), uv);
 }
 
 inline float3 get_view_direction(int2 pos)
 {
-    const float depth = get_depth(pos);
     const float2 uv = (pos + 0.5f) / g_resolution;
-    return get_view_direction(depth, uv);
+    return get_view_direction(get_depth(pos), uv);
 }
 
 inline float3 get_view_direction_view_space(float2 uv)
@@ -493,5 +490,6 @@ static const float3 hemisphere_samples[64] =
 };
 
 #endif // SPARTAN_COMMON
+
 
 

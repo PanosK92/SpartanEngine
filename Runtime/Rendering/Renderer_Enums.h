@@ -62,7 +62,7 @@ namespace Spartan
         lutIbl             = 24,
         environment        = 25,
         normal_noise       = 26,
-        hbao               = 27,
+        ssao               = 27,
         ssr                = 28,
         frame              = 29,
         tex                = 30,
@@ -118,16 +118,17 @@ namespace Spartan
         DebugChannelRgbGammaCorrect_C,
         BrdfSpecularLut_C,
         Light_C,
-        Light_Composition_P,
-        Light_Composition_Transparent_P,
+        Light_Composition_C,
+        Light_ImageBased_P,
         Color_V,
         Color_P,
         Font_V,
         Font_P,
         Hbao_C,
         Ssgi_C,
-        Ssgi_Inject_C,
-        Ssr_C,
+        SsgiInject_C,
+        SsrTrace_C,
+        SsrInject_C,
         Entity_V,
         Entity_Transform_P,
         BlurBox_P,
@@ -157,7 +158,6 @@ namespace Spartan
         Frame_Ldr,
         Frame_Hdr_2,
         Frame_Ldr_2,
-        Frame_Hdr_Last,
         Dof_Half,
         Dof_Half_2,
         Bloom,
@@ -200,15 +200,15 @@ namespace Spartan
     };
 
     // Renderer/graphics options values
-    enum Renderer_Option_Value
+    enum class Renderer_Option_Value
     {
-        Option_Value_Anisotropy,
-        Option_Value_ShadowResolution,
-        Option_Value_Tonemapping,
-        Option_Value_Gamma,
-        Option_Value_Bloom_Intensity,
-        Option_Value_Sharpen_Strength,
-        Option_Value_Fog
+        Anisotropy,
+        ShadowResolution,
+        Tonemapping,
+        Gamma,
+        Intensity,
+        Sharpen_Strength,
+        Fog
     };
 
     // Tonemapping

@@ -40,11 +40,12 @@ namespace Spartan
         bool IsValid();
         bool CreateFrameBuffer(const RHI_Device* rhi_device);
         void* GetFrameBuffer() const;
-        void ComputeHash();
+        uint32_t ComputeHash();
+        void TransitionRenderTargetLayouts(RHI_CommandList* cmd_list);
         uint32_t GetWidth() const;
         uint32_t GetHeight() const;
         void ResetClearValues();
-        auto GetHash()                                  const { return m_hash; }
+        uint32_t GetHash()                              const { return m_hash; }
         bool IsCompute()                                const { return shader_compute != nullptr && !IsGraphics(); }
         bool IsGraphics()                               const { return (shader_vertex != nullptr || shader_pixel != nullptr) && !IsCompute(); }
         void* GetRenderPass()                           const { return m_render_pass; }
@@ -63,10 +64,6 @@ namespace Spartan
         Math::Rectangle scissor                             = Math::Rectangle::Zero;
         bool dynamic_scissor                                = false;
         uint32_t vertex_buffer_stride                       = 0;
-        RHI_Image_Layout render_target_color_layout_initial = RHI_Image_Layout::Undefined;
-        RHI_Image_Layout render_target_color_layout_final   = RHI_Image_Layout::Undefined;
-        RHI_Image_Layout render_target_depth_layout_initial = RHI_Image_Layout::Undefined;
-        RHI_Image_Layout render_target_depth_layout_final   = RHI_Image_Layout::Undefined;
 
         // RTs
         RHI_Texture* render_target_depth_texture = nullptr;
@@ -87,8 +84,8 @@ namespace Spartan
         uint32_t render_target_depth_stencil_texture_array_index    = 0;
 
         // Clear values
-        float clear_depth = rhi_depth_load;
-        uint32_t clear_stencil = rhi_stencil_load;
+        float clear_depth       = rhi_depth_load;
+        uint32_t clear_stencil  = rhi_stencil_load;
         std::array<Math::Vector4, rhi_max_render_target_count> clear_color;
         //==================================================================================
 
@@ -110,7 +107,12 @@ namespace Spartan
     private:
         void DestroyFrameBuffer();
 
-        std::size_t m_hash  = 0;
+        RHI_Image_Layout render_target_color_layout_initial = RHI_Image_Layout::Undefined;
+        RHI_Image_Layout render_target_color_layout_final   = RHI_Image_Layout::Undefined;
+        RHI_Image_Layout render_target_depth_layout_initial = RHI_Image_Layout::Undefined;
+        RHI_Image_Layout render_target_depth_layout_final   = RHI_Image_Layout::Undefined;
+
+        uint32_t m_hash  = 0;
         void* m_render_pass = nullptr;
         std::array<void*, rhi_max_constant_buffer_count> m_frame_buffers;
 

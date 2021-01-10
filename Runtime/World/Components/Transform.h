@@ -103,10 +103,10 @@ namespace Spartan
         //======================================================================================
 
         void LookAt(const Math::Vector3& v)                       { m_lookAt = v; }
-        const Math::Matrix& GetMatrix()                     const { return m_matrix; }     
+        const Math::Matrix& GetMatrix()                     const { return m_matrix; }
         const Math::Matrix& GetLocalMatrix()                const { return m_matrixLocal; }
-        const Math::Matrix& GetWvpLastFrame()               const { return m_wvp_previous; }
-        void SetWvpLastFrame(const Math::Matrix& matrix)          { m_wvp_previous = matrix;}
+        const Math::Matrix& GetMatrixPrevious()             const { return m_matrix_previous; }
+        void SetWvpLastFrame(const Math::Matrix& matrix)          { m_matrix_previous = matrix;}
 
     private:
         Math::Matrix GetParentTransformMatrix() const;
@@ -123,6 +123,6 @@ namespace Spartan
         Transform* m_parent; // the parent of this transform
         std::vector<Transform*> m_children; // the children of this transform
 
-        Math::Matrix m_wvp_previous;
+        Math::Matrix m_matrix_previous;
     };
 }

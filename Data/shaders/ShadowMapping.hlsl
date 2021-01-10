@@ -31,22 +31,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // technique - all
 #if DIRECTIONAL
-static const uint   g_shadow_samples = 3;
+static const uint   g_shadow_samples        = 3;
+static const float  g_shadow_filter_size    = 2.0f;
 #else
-static const uint   g_shadow_samples = 8; // penumbra requires a higher sample count to look good
+static const uint   g_shadow_samples        = 8; // penumbra requires a higher sample count to look good
+static const float  g_shadow_filter_size    = 8.0f;
 #endif
 
 // technique - vogel
-#if DIRECTIONAL
-static const float  g_shadow_vogel_filter_size  = 2.0f;
-#else
-static const float  g_shadow_vogel_filter_size  = 8.0f; // penumbra requires a biger filter size to look good
-#endif
-static const uint   g_penumbra_samples          = 8;
-static const float  g_penumbra_filter_size      = 128.0f;
-
-// technique - poisson
-static const float g_shadow_poisson_filter_size = 5.0f;
+static const uint   g_penumbra_samples      = 8;
+static const float  g_penumbra_filter_size  = 128.0f;
 
 // technique - pre-calculated
 static const float g_pcf_filter_size = (sqrt((float)g_shadow_samples) - 1.0f) / 2.0f;
@@ -157,14 +151,15 @@ float compute_penumbra(float vogel_angle, float3 uv, float compare)
 ------------------------------------------------------------------------------*/
 float Technique_Vogel(float3 uv, float compare)
 {
-    float shadow        = 0.0f;
-    float vogel_angle   = interleaved_gradient_noise(g_shadow_resolution * uv.xy) * PI2;
-    float penumbra      = compute_penumbra(vogel_angle, uv, compare);
+    float shadow            = 0.0f;
+    float temporal_offset   = interleaved_gradient_noise(g_shadow_resolution * uv.xy);
+    float temporal_angle    = temporal_offset * PI2;
+    float penumbra          = compute_penumbra(temporal_angle, uv, compare);
     
     [unroll]
     for (uint i = 0; i < g_shadow_samples; i++)
     {
-        float2 offset   = vogel_disk_sample(i, g_shadow_samples, vogel_angle) * g_shadow_texel_size * g_shadow_vogel_filter_size * penumbra;
+        float2 offset   = (vogel_disk_sample(i, g_shadow_samples, temporal_angle) + temporal_offset) * g_shadow_texel_size * g_shadow_filter_size * penumbra;
         shadow          += shadow_compare_depth(uv + float3(offset, 0.0f), compare);
     } 
 
@@ -179,7 +174,7 @@ float4 Technique_Vogel_Color(float3 uv)
     [unroll]
     for (uint i = 0; i < g_shadow_samples; i++)
     {
-        float2 offset   = vogel_disk_sample(i, g_shadow_samples, vogel_angle) * g_shadow_texel_size * g_shadow_vogel_filter_size;
+        float2 offset   = vogel_disk_sample(i, g_shadow_samples, vogel_angle) * g_shadow_texel_size * g_shadow_filter_size;
         shadow          += shadow_sample_color(uv + float3(offset, 0.0f));
     } 
 
@@ -259,14 +254,14 @@ static const float2 poisson_disk[64] =
 
 float Technique_Poisson(float3 uv, float compare)
 {
-    float shadow    = 0.0f;
-    float temporal  = ceil(frac(g_time)) * any(g_taa_jitter_offset); // helps with noise if TAA is active
+    float shadow            = 0.0f;
+    float temporal_offset   = interleaved_gradient_noise(g_shadow_resolution * uv.xy); // helps with noise if TAA is active
 
     [unroll]
     for (uint i = 0; i < g_shadow_samples; i++)
     {
-        uint index      = uint(g_shadow_samples * random(uv.xy * i) + temporal) % g_shadow_samples; // A pseudo-random number between 0 and 15, different for each pixel and each index
-        float2 offset   = poisson_disk[index] * g_shadow_texel_size * g_shadow_poisson_filter_size;
+        uint index      = uint(g_shadow_samples * random(uv.xy * i)) % g_shadow_samples; // A pseudo-random number between 0 and 15, different for each pixel and each index
+        float2 offset   = (poisson_disk[index] + temporal_offset) * g_shadow_texel_size * g_shadow_filter_size;
         shadow          += shadow_compare_depth(uv + float3(offset, 0.0f), compare);
     }   
 
@@ -287,7 +282,7 @@ float Technique_Pcf(float3 uv, float compare)
         for (float x = -g_pcf_filter_size; x <= g_pcf_filter_size; x++)
         {
             float2 offset    = float2(x, y) * g_shadow_texel_size;
-            shadow           += shadow_compare_depth(uv + float3(offset, 0.0f), compare);   
+            shadow           += shadow_compare_depth(uv + float3(offset, 0.0f), compare);
         }
     }
     
@@ -427,4 +422,7 @@ float4 Shadow_Map(Surface surface, Light light)
     
     return shadow;
 }
+
+
+
 

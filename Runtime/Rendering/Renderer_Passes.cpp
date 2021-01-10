@@ -54,8 +54,7 @@ namespace Spartan
         cmd_list->SetConstantBuffer(0, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, m_buffer_frame_gpu);
         cmd_list->SetConstantBuffer(1, RHI_Shader_Compute, m_buffer_material_gpu);
         cmd_list->SetConstantBuffer(2, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, m_buffer_uber_gpu);
-        cmd_list->SetConstantBuffer(3, RHI_Shader_Vertex | RHI_Shader_Compute, m_buffer_object_gpu);
-        cmd_list->SetConstantBuffer(4, RHI_Shader_Compute, m_buffer_light_gpu);
+        cmd_list->SetConstantBuffer(3, RHI_Shader_Compute, m_buffer_light_gpu);
         
         // Samplers
         cmd_list->SetSampler(0, m_sampler_compare_depth);
@@ -98,30 +97,46 @@ namespace Spartan
             }
         }
         
-        // G-Buffer to Composition
+        // G-Buffer and lighting
         {
-            // Lighting
+            // G-buffer
             Pass_GBuffer(cmd_list);
-            Pass_Ssr(cmd_list);
-            Pass_Hbao(cmd_list);
+
+            // Passes which really on the G-buffer
+            Pass_Ssao(cmd_list);
+            Pass_SsrTrace(cmd_list);
             Pass_Ssgi(cmd_list);
+
+            // Lighting
             Pass_Light(cmd_list);
-            Pass_SsgiInject(cmd_list); // Inject SSGI to light buffers
-            Pass_LightComposition(cmd_list, m_render_targets[RendererRt::Frame_Hdr]);
 
-            // Keep a copy of the frame before any post-processing and transparents
-            Pass_Copy(cmd_list, m_render_targets[RendererRt::Frame_Hdr].get(), m_render_targets[RendererRt::Frame_Hdr_Last].get());
+            // Injection of SSGI into the light buffers
+            Pass_SsgiInject(cmd_list);
 
-            // Lighting for transparent objects (skip ssr, hbao and ssgi as they will not be that noticeable anyway)
+            // Composition of the light buffers (including volumetric fog)
+            Pass_LightComposition(cmd_list, m_render_targets[RendererRt::Frame_Hdr].get());
+
+            // Image based lighting
+            Pass_LightImageBased(cmd_list, m_render_targets[RendererRt::Frame_Hdr].get());
+
+            // Copy the frame so that SSR can use it to reflect from
+            Pass_Copy(cmd_list, m_render_targets[RendererRt::Frame_Hdr].get(), m_render_targets[RendererRt::Frame_Hdr_2].get());
+
+            // Inject SSR into the frame
+            Pass_SsrInject(cmd_list, m_render_targets[RendererRt::Frame_Hdr].get());
+
+            // Copy the frame so that transparency and refraction can sample from it
+            Pass_Copy(cmd_list, m_render_targets[RendererRt::Frame_Hdr].get(), m_render_targets[RendererRt::Frame_Hdr_2].get());
+
+            // Lighting for transparent objects (a simpler version of the above)
             if (draw_transparent_objects)
             {
                 Pass_GBuffer(cmd_list, true);
                 Pass_Light(cmd_list, true);
-                Pass_LightComposition(cmd_list, m_render_targets[RendererRt::Frame_Hdr], true);
+                Pass_LightComposition(cmd_list, m_render_targets[RendererRt::Frame_Hdr].get(), true);
+                Pass_LightImageBased(cmd_list, m_render_targets[RendererRt::Frame_Hdr].get(), true);
             }
         }
-
-
 
         // Post-processing
         {
@@ -146,12 +161,12 @@ namespace Spartan
             return;
 
         // Set render state
-        static RHI_PipelineState pipeline_state;
-        pipeline_state.shader_compute   = shader_c;
-        pipeline_state.pass_name        = "Pass_UpdateFrameBuffer";
+        static RHI_PipelineState pso;
+        pso.shader_compute   = shader_c;
+        pso.pass_name        = "Pass_UpdateFrameBuffer";
 
         // Draw
-        if (cmd_list->BeginRenderPass(pipeline_state))
+        if (cmd_list->BeginRenderPass(pso))
         {
             UpdateFrameBuffer(cmd_list);
             cmd_list->EndRenderPass();
@@ -199,28 +214,28 @@ namespace Spartan
                 continue;
 
             // Set render state
-            static RHI_PipelineState pipeline_state;
-            pipeline_state.shader_vertex                    = shader_v;
-            pipeline_state.vertex_buffer_stride             = static_cast<uint32_t>(sizeof(RHI_Vertex_PosTexNorTan)); // assume all vertex buffers have the same stride (which they do)
-            pipeline_state.shader_pixel                     = transparent_pass ? shader_p : nullptr;
-            pipeline_state.blend_state                      = transparent_pass ? m_blend_alpha.get() : m_blend_disabled.get();
-            pipeline_state.depth_stencil_state              = transparent_pass ? m_depth_stencil_on_off_r.get() : m_depth_stencil_on_off_w.get();
-            pipeline_state.render_target_color_textures[0]  = tex_color; // always bind so we can clear to white (in case there are now transparent objects)
-            pipeline_state.render_target_depth_texture      = tex_depth;
-            pipeline_state.clear_stencil                    = rhi_stencil_dont_care;
-            pipeline_state.viewport                         = tex_depth->GetViewport();
-            pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
-            pipeline_state.pass_name                        = transparent_pass ? "Pass_LightDepthTransparent" : "Pass_LightDepth";
+            static RHI_PipelineState pso;
+            pso.shader_vertex                    = shader_v;
+            pso.vertex_buffer_stride             = static_cast<uint32_t>(sizeof(RHI_Vertex_PosTexNorTan)); // assume all vertex buffers have the same stride (which they do)
+            pso.shader_pixel                     = transparent_pass ? shader_p : nullptr;
+            pso.blend_state                      = transparent_pass ? m_blend_alpha.get() : m_blend_disabled.get();
+            pso.depth_stencil_state              = transparent_pass ? m_depth_stencil_r_off.get() : m_depth_stencil_rw_off.get();
+            pso.render_target_color_textures[0]  = tex_color; // always bind so we can clear to white (in case there are now transparent objects)
+            pso.render_target_depth_texture      = tex_depth;
+            pso.clear_stencil                    = rhi_stencil_dont_care;
+            pso.viewport                         = tex_depth->GetViewport();
+            pso.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
+            pso.pass_name                        = transparent_pass ? "Pass_LightDepth_Transparent" : "Pass_LightDepth";
 
             for (uint32_t array_index = 0; array_index < tex_depth->GetArraySize(); array_index++)
             {
                 // Set render target texture array index
-                pipeline_state.render_target_color_texture_array_index          = array_index;
-                pipeline_state.render_target_depth_stencil_texture_array_index  = array_index;
+                pso.render_target_color_texture_array_index          = array_index;
+                pso.render_target_depth_stencil_texture_array_index  = array_index;
 
                 // Set clear values
-                pipeline_state.clear_color[0] = Vector4::One;
-                pipeline_state.clear_depth    = transparent_pass ? rhi_depth_load : GetClearDepth();
+                pso.clear_color[0] = Vector4::One;
+                pso.clear_depth    = transparent_pass ? rhi_depth_load : GetClearDepth();
 
                 const Matrix& view_projection = light->GetViewMatrix(array_index) * light->GetProjectionMatrix(array_index);
 
@@ -230,11 +245,11 @@ namespace Spartan
                     // "Pancaking" - https://www.gamedev.net/forums/topic/639036-shadow-mapping-and-high-up-objects/
                     // It's basically a way to capture the silhouettes of potential shadow casters behind the light's view point.
                     // Of course we also have to make sure that the light doesn't cull them in the first place (this is done automatically by the light)
-                    pipeline_state.rasterizer_state = m_rasterizer_light_directional.get();
+                    pso.rasterizer_state = m_rasterizer_light_directional.get();
                 }
                 else
                 {
-                    pipeline_state.rasterizer_state = m_rasterizer_light_point_spot.get();
+                    pso.rasterizer_state = m_rasterizer_light_point_spot.get();
                 }
 
                 // State tracking
@@ -270,7 +285,7 @@ namespace Spartan
 
                     if (!render_pass_active)
                     {
-                        render_pass_active = cmd_list->BeginRenderPass(pipeline_state);
+                        render_pass_active = cmd_list->BeginRenderPass(pso);
                     }
 
                     // Bind material
@@ -285,9 +300,6 @@ namespace Spartan
                         m_buffer_uber_cpu.mat_tiling_uv = material->GetTiling();
                         m_buffer_uber_cpu.mat_offset_uv = material->GetOffset();
 
-                        // Update constant buffer
-                        UpdateUberBuffer(cmd_list);
-
                         m_set_material_id = material->GetId();
                     }
 
@@ -296,8 +308,8 @@ namespace Spartan
                     cmd_list->SetBufferVertex(model->GetVertexBuffer());
 
                     // Update uber buffer with cascade transform
-                    m_buffer_object_cpu.object = entity->GetTransform()->GetMatrix() * view_projection;
-                    if (!UpdateObjectBuffer(cmd_list))
+                    m_buffer_uber_cpu.transform = entity->GetTransform()->GetMatrix() * view_projection;
+                    if (!UpdateUberBuffer(cmd_list))
                         continue;
 
                     cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
@@ -326,20 +338,20 @@ namespace Spartan
             return;
 
         // Set render state
-        static RHI_PipelineState pipeline_state;
-        pipeline_state.shader_vertex                = shader_depth.get();
-        pipeline_state.shader_pixel                 = nullptr;
-        pipeline_state.rasterizer_state             = m_rasterizer_cull_back_solid.get();
-        pipeline_state.blend_state                  = m_blend_disabled.get();
-        pipeline_state.depth_stencil_state          = m_depth_stencil_on_off_w.get();
-        pipeline_state.render_target_depth_texture  = tex_depth.get();
-        pipeline_state.clear_depth                  = GetClearDepth();
-        pipeline_state.viewport                     = tex_depth->GetViewport();
-        pipeline_state.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
-        pipeline_state.pass_name                    = "Pass_DepthPrePass";
+        static RHI_PipelineState pso;
+        pso.shader_vertex                = shader_depth.get();
+        pso.shader_pixel                 = nullptr;
+        pso.rasterizer_state             = m_rasterizer_cull_back_solid.get();
+        pso.blend_state                  = m_blend_disabled.get();
+        pso.depth_stencil_state          = m_depth_stencil_rw_off.get();
+        pso.render_target_depth_texture  = tex_depth.get();
+        pso.clear_depth                  = GetClearDepth();
+        pso.viewport                     = tex_depth->GetViewport();
+        pso.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
+        pso.pass_name                    = "Pass_DepthPrePass";
 
         // Record commands
-        if (cmd_list->BeginRenderPass(pipeline_state))
+        if (cmd_list->BeginRenderPass(pso))
         { 
             if (!entities.empty())
             {
@@ -405,10 +417,9 @@ namespace Spartan
         // Set render state
         RHI_PipelineState pso;
         pso.shader_vertex                   = shader_v;
-        pso.vertex_buffer_stride            = static_cast<uint32_t>(sizeof(RHI_Vertex_PosTexNorTan)); // assume all vertex buffers have the same stride (which they do)
         pso.blend_state                     = m_blend_disabled.get();
         pso.rasterizer_state                = GetOption(Render_Debug_Wireframe) ? m_rasterizer_cull_back_wireframe.get() : m_rasterizer_cull_back_solid.get();
-        pso.depth_stencil_state             = is_transparent_pass ? m_depth_stencil_on_on_w.get() : m_depth_stencil_on_off_w.get(); // GetOptionValue(Render_DepthPrepass) is not accounted for anymore, have to fix
+        pso.depth_stencil_state             = is_transparent_pass ? m_depth_stencil_rw_w.get() : (GetOption(Render_DepthPrepass) ? m_depth_stencil_r_off.get() : m_depth_stencil_rw_off.get());
         pso.render_target_color_textures[0] = tex_albedo;
         pso.clear_color[0]                  = !is_transparent_pass ? Vector4::Zero : rhi_color_load;
         pso.render_target_color_textures[1] = tex_normal;
@@ -418,9 +429,10 @@ namespace Spartan
         pso.render_target_color_textures[3] = tex_velocity;
         pso.clear_color[3]                  = !is_transparent_pass ? Vector4::Zero : rhi_color_load;
         pso.render_target_depth_texture     = tex_depth;
-        pso.clear_depth                     = is_transparent_pass || GetOption(Render_DepthPrepass) ? rhi_depth_load : GetClearDepth();
-        pso.clear_stencil                   = 0;
+        pso.clear_depth                     = (is_transparent_pass || GetOption(Render_DepthPrepass)) ? rhi_depth_load : GetClearDepth();
+        pso.clear_stencil                   = !is_transparent_pass ? 0 : rhi_stencil_dont_care;
         pso.viewport                        = tex_albedo->GetViewport();
+        pso.vertex_buffer_stride            = static_cast<uint32_t>(sizeof(RHI_Vertex_PosTexNorTan)); // assume all vertex buffers have the same stride (which they do)
         pso.primitive_topology              = RHI_PrimitiveTopology_TriangleList;
 
         bool cleared = false;
@@ -439,7 +451,7 @@ namespace Spartan
             pso.shader_pixel = static_cast<RHI_Shader*>(it.second.get());
 
             // Set pass name
-            pso.pass_name = pso.shader_pixel->GetName().c_str();
+            pso.pass_name = is_transparent_pass ? "GBuffer_Transparent" : "GBuffer_Opaque";
 
             bool render_pass_active = false;
             auto& entities = m_entities[is_transparent_pass ? Renderer_Object_Transparent : Renderer_Object_Opaque];
@@ -478,7 +490,15 @@ namespace Spartan
 
                 if (!render_pass_active)
                 {
+                    // Reset clear values after the first render pass
+                    if (cleared)
+                    {
+                        pso.ResetClearValues();
+                    }
+
                     render_pass_active = cmd_list->BeginRenderPass(pso);
+
+                    cleared = true;
                 }
 
                 // Set geometry (will only happen if not already set)
@@ -506,15 +526,15 @@ namespace Spartan
                         LOG_ERROR("Material instance array has reached it's maximum capacity of %d elements. Consider increasing the size.", m_max_material_instances);
                     }
 
-                    // Bind material textures        
-                    cmd_list->SetTexture(RendererBindingsSrv::material_albedo, material->GetTexture_Ptr(Material_Color));
-                    cmd_list->SetTexture(RendererBindingsSrv::material_roughness, material->GetTexture_Ptr(Material_Roughness));
-                    cmd_list->SetTexture(RendererBindingsSrv::material_metallic, material->GetTexture_Ptr(Material_Metallic));
-                    cmd_list->SetTexture(RendererBindingsSrv::material_normal, material->GetTexture_Ptr(Material_Normal));
-                    cmd_list->SetTexture(RendererBindingsSrv::material_height, material->GetTexture_Ptr(Material_Height));
-                    cmd_list->SetTexture(RendererBindingsSrv::material_occlusion, material->GetTexture_Ptr(Material_Occlusion));
-                    cmd_list->SetTexture(RendererBindingsSrv::material_emission, material->GetTexture_Ptr(Material_Emission));
-                    cmd_list->SetTexture(RendererBindingsSrv::material_mask, material->GetTexture_Ptr(Material_Mask));
+                    // Bind material textures
+                    cmd_list->SetTexture(RendererBindingsSrv::material_albedo,      material->GetTexture_Ptr(Material_Color));
+                    cmd_list->SetTexture(RendererBindingsSrv::material_roughness,   material->GetTexture_Ptr(Material_Roughness));
+                    cmd_list->SetTexture(RendererBindingsSrv::material_metallic,    material->GetTexture_Ptr(Material_Metallic));
+                    cmd_list->SetTexture(RendererBindingsSrv::material_normal,      material->GetTexture_Ptr(Material_Normal));
+                    cmd_list->SetTexture(RendererBindingsSrv::material_height,      material->GetTexture_Ptr(Material_Height));
+                    cmd_list->SetTexture(RendererBindingsSrv::material_occlusion,   material->GetTexture_Ptr(Material_Occlusion));
+                    cmd_list->SetTexture(RendererBindingsSrv::material_emission,    material->GetTexture_Ptr(Material_Emission));
+                    cmd_list->SetTexture(RendererBindingsSrv::material_mask,        material->GetTexture_Ptr(Material_Mask));
                 
                     // Update uber buffer with material properties
                     m_buffer_uber_cpu.mat_id            = static_cast<float>(material_index);
@@ -533,28 +553,20 @@ namespace Spartan
                 // Update uber buffer with entity transform
                 if (Transform* transform = entity->GetTransform())
                 {
-                    m_buffer_object_cpu.object          = transform->GetMatrix();
-                    m_buffer_object_cpu.wvp_current     = transform->GetMatrix() * m_buffer_frame_cpu.view_projection;
-                    m_buffer_object_cpu.wvp_previous    = transform->GetWvpLastFrame();
+                    m_buffer_uber_cpu.transform             = transform->GetMatrix();
+                    m_buffer_uber_cpu.transform_previous    = transform->GetMatrixPrevious();
 
                     // Save matrix for velocity computation
-                    transform->SetWvpLastFrame(m_buffer_object_cpu.wvp_current);
+                    transform->SetWvpLastFrame(m_buffer_uber_cpu.transform);
 
                     // Update object buffer
-                    if (!UpdateObjectBuffer(cmd_list))
+                    if (!UpdateUberBuffer(cmd_list))
                         continue;
                 }
                 
-                // Render    
+                // Render
                 cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
                 m_profiler->m_renderer_meshes_rendered++;
-
-                // Clear only on first pass
-                if (!cleared)
-                {
-                    pso.ResetClearValues();
-                    cleared = true;
-                }
             }
 
             if (render_pass_active)
@@ -579,12 +591,12 @@ namespace Spartan
         RHI_Texture* tex_accumulation   = m_render_targets[RendererRt::Accumulation_Ssgi].get();
 
         // Set render state
-        static RHI_PipelineState pipeline_state;
-        pipeline_state.shader_compute   = shader_c;
-        pipeline_state.pass_name        = "Pass_Ssgi";
+        static RHI_PipelineState pso;
+        pso.shader_compute   = shader_c;
+        pso.pass_name        = "Pass_Ssgi";
 
         // Draw
-        if (cmd_list->BeginRenderPass(pipeline_state))
+        if (cmd_list->BeginRenderPass(pso))
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution = Vector2(tex_out->GetWidth(), tex_out->GetHeight());
@@ -617,19 +629,19 @@ namespace Spartan
             return;
 
         // Acquire shaders
-        RHI_Shader* shader_c = m_shaders[RendererShader::Ssgi_Inject_C].get();
+        RHI_Shader* shader_c = m_shaders[RendererShader::SsgiInject_C].get();
         if (!shader_c->IsCompiled())
             return;
 
         RHI_Texture* tex_out = m_render_targets[RendererRt::Light_Diffuse].get();
 
         // Set render state
-        static RHI_PipelineState pipeline_state;
-        pipeline_state.shader_compute   = shader_c;
-        pipeline_state.pass_name        = "Pass_SsgiInject";
+        static RHI_PipelineState pso;
+        pso.shader_compute   = shader_c;
+        pso.pass_name        = "Pass_SsgiInject";
 
         // Draw
-        if (cmd_list->BeginRenderPass(pipeline_state))
+        if (cmd_list->BeginRenderPass(pso))
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution = Vector2(tex_out->GetWidth(), tex_out->GetHeight());
@@ -648,7 +660,7 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_Hbao(RHI_CommandList* cmd_list)
+    void Renderer::Pass_Ssao(RHI_CommandList* cmd_list)
     {
         if ((m_options & Render_Ssao) == 0)
             return;
@@ -665,12 +677,12 @@ namespace Spartan
         RHI_Texture* tex_normal                     = m_render_targets[RendererRt::Gbuffer_Normal].get();
 
         // Set render state
-        static RHI_PipelineState pipeline_state;
-        pipeline_state.shader_compute   = shader_c;
-        pipeline_state.pass_name        = "Pass_Hbao";
+        static RHI_PipelineState pso;
+        pso.shader_compute   = shader_c;
+        pso.pass_name        = "Pass_Ssao";
 
         // Draw
-        if (cmd_list->BeginRenderPass(pipeline_state))
+        if (cmd_list->BeginRenderPass(pso))
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_hbao_noisy->GetWidth()), static_cast<float>(tex_hbao_noisy->GetHeight()));
@@ -701,13 +713,13 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_Ssr(RHI_CommandList* cmd_list)
+    void Renderer::Pass_SsrTrace(RHI_CommandList* cmd_list)
     {
         if ((m_options & Render_ScreenSpaceReflections) == 0)
             return;
 
         // Acquire shaders
-        RHI_Shader* shader_c = m_shaders[RendererShader::Ssr_C].get();
+        RHI_Shader* shader_c = m_shaders[RendererShader::SsrTrace_C].get();
         if (!shader_c->IsCompiled())
             return;
 
@@ -715,12 +727,12 @@ namespace Spartan
         RHI_Texture* tex_out = m_render_targets[RendererRt::Ssr].get();
 
         // Set render state
-        static RHI_PipelineState pipeline_state;
-        pipeline_state.shader_compute   = shader_c;
-        pipeline_state.pass_name        = "Pass_Ssr";
+        static RHI_PipelineState pso;
+        pso.shader_compute   = shader_c;
+        pso.pass_name        = "Pass_SsrTrace";
 
         // Draw
-        if (cmd_list->BeginRenderPass(pipeline_state))
+        if (cmd_list->BeginRenderPass(pso))
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
@@ -732,10 +744,47 @@ namespace Spartan
             const bool async = false;
 
             cmd_list->SetTexture(RendererBindingsUav::rg, tex_out);
-            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal, m_render_targets[RendererRt::Gbuffer_Normal]);
-            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth, m_render_targets[RendererRt::Gbuffer_Depth]);
+            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal,   m_render_targets[RendererRt::Gbuffer_Normal]);
+            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    m_render_targets[RendererRt::Gbuffer_Depth]);
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_material, m_render_targets[RendererRt::Gbuffer_Material]);
-            cmd_list->SetTexture(RendererBindingsSrv::normal_noise, m_default_tex_normal_noise);
+            cmd_list->SetTexture(RendererBindingsSrv::normal_noise,     m_default_tex_normal_noise);
+            cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
+            cmd_list->EndRenderPass();
+        }
+    }
+
+    void Renderer::Pass_SsrInject(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
+    {
+        if ((m_options & Render_ScreenSpaceReflections) == 0)
+            return;
+
+        // Acquire shaders
+        RHI_Shader* shader_c = m_shaders[RendererShader::SsrInject_C].get();
+        if (!shader_c->IsCompiled())
+            return;
+
+        // Set render state
+        static RHI_PipelineState pso;
+        pso.shader_compute  = shader_c;
+        pso.pass_name       = "Pass_SsrInject";
+
+        // Draw
+        if (cmd_list->BeginRenderPass(pso))
+        {
+            // Update uber buffer
+            m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+            UpdateUberBuffer(cmd_list);
+
+            const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
+            const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
+            const uint32_t thread_group_count_z = 1;
+            const bool async = false;
+
+            cmd_list->SetTexture(RendererBindingsUav::rgba,             tex_out);
+            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_albedo,   m_render_targets[RendererRt::Gbuffer_Albedo]);
+            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_material, m_render_targets[RendererRt::Gbuffer_Material]);
+            cmd_list->SetTexture(RendererBindingsSrv::ssr,              m_render_targets[RendererRt::Ssr]);
+            cmd_list->SetTexture(RendererBindingsSrv::frame,            m_render_targets[RendererRt::Frame_Hdr_2]);
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
         }
@@ -759,8 +808,8 @@ namespace Spartan
         cmd_list->ClearRenderTarget(tex_volumetric, 0, 0, true, Vector4::Zero);
 
         // Set render state
-        static RHI_PipelineState pipeline_state;
-        pipeline_state.pass_name = "Pass_Light";
+        static RHI_PipelineState pso;
+        pso.pass_name = is_transparent_pass ? "Pass_Light_Transparent" : "Pass_Light_Opaque";
 
         // Iterate through all the light entities
         for (const auto& entity : entities)
@@ -770,14 +819,14 @@ namespace Spartan
                 if (light->GetIntensity() != 0)
                 {
                     // Set pixel shader
-                    pipeline_state.shader_compute = static_cast<RHI_Shader*>(ShaderLight::GetVariation(m_context, light, m_options, is_transparent_pass));
+                    pso.shader_compute = static_cast<RHI_Shader*>(ShaderLight::GetVariation(m_context, light, m_options, is_transparent_pass));
 
                     // Skip the shader until it compiles or the users spots a compilation error
-                    if (!pipeline_state.shader_compute->IsCompiled())
+                    if (!pso.shader_compute->IsCompiled())
                         continue;
 
                     // Draw
-                    if (cmd_list->BeginRenderPass(pipeline_state))
+                    if (cmd_list->BeginRenderPass(pso))
                     {
                         // Update constant buffer (light pass will access it using material IDs)
                         UpdateMaterialBuffer(cmd_list);
@@ -789,7 +838,7 @@ namespace Spartan
                         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal,   m_render_targets[RendererRt::Gbuffer_Normal]);
                         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_material, m_render_targets[RendererRt::Gbuffer_Material]);
                         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    m_render_targets[RendererRt::Gbuffer_Depth]);
-                        cmd_list->SetTexture(RendererBindingsSrv::hbao,             (m_options & Render_Ssao) ? m_render_targets[RendererRt::Hbao_Blurred] : m_default_tex_white);
+                        cmd_list->SetTexture(RendererBindingsSrv::ssao,             (m_options & Render_Ssao) ? m_render_targets[RendererRt::Hbao_Blurred] : m_default_tex_white);
                         
                         // Set shadow map
                         if (light->GetShadowsEnabled())
@@ -834,53 +883,90 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_LightComposition(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_out, const bool is_transparent_pass /*= false*/)
+    void Renderer::Pass_LightComposition(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass /*= false*/)
+    {
+        // Acquire shaders
+        RHI_Shader* shader_c = m_shaders[RendererShader::Light_Composition_C].get();
+        if (!shader_c->IsCompiled())
+            return;
+
+        // Set render state
+        static RHI_PipelineState pso;
+        pso.shader_compute   = shader_c;
+        pso.pass_name        = is_transparent_pass ? "Pass_LightComposition_Transparent" : "Pass_LightComposition_Opaque";
+
+        // Begin commands
+        if (cmd_list->BeginRenderPass(pso))
+        {
+            // Update uber buffer
+            m_buffer_uber_cpu.resolution            = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+            m_buffer_uber_cpu.is_transparent_pass   = is_transparent_pass;
+            UpdateUberBuffer(cmd_list);
+
+            const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
+            const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
+            const uint32_t thread_group_count_z = 1;
+            const bool async = false;
+
+            // Setup command list
+            cmd_list->SetTexture(RendererBindingsUav::rgba,             tex_out);
+            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_albedo,   m_render_targets[RendererRt::Gbuffer_Albedo]);
+            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal,   m_render_targets[RendererRt::Gbuffer_Normal]);
+            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    m_render_targets[RendererRt::Gbuffer_Depth]);
+            cmd_list->SetTexture(RendererBindingsSrv::light_diffuse,    is_transparent_pass ? m_render_targets[RendererRt::Light_Diffuse_Transparent].get() : m_render_targets[RendererRt::Light_Diffuse].get());
+            cmd_list->SetTexture(RendererBindingsSrv::light_specular,   is_transparent_pass ? m_render_targets[RendererRt::Light_Specular_Transparent].get() : m_render_targets[RendererRt::Light_Specular].get());
+            cmd_list->SetTexture(RendererBindingsSrv::light_volumetric, m_render_targets[RendererRt::Light_Volumetric]);
+            cmd_list->SetTexture(RendererBindingsSrv::environment,      GetEnvironmentTexture());
+
+            cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
+            cmd_list->EndRenderPass();
+        }
+    }
+
+    void Renderer::Pass_LightImageBased(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass /*= false*/)
     {
         // Acquire shaders
         RHI_Shader* shader_v = m_shaders[RendererShader::Quad_V].get();
-        RHI_Shader* shader_p = is_transparent_pass ? m_shaders[RendererShader::Light_Composition_Transparent_P].get() : m_shaders[RendererShader::Light_Composition_P].get();
+        RHI_Shader* shader_p = m_shaders[RendererShader::Light_ImageBased_P].get();
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
         RHI_Texture* tex_depth = m_render_targets[RendererRt::Gbuffer_Depth].get();
 
         // Set render state
-        static RHI_PipelineState pipeline_state;
-        pipeline_state.shader_vertex                            = shader_v;
-        pipeline_state.shader_pixel                             = shader_p;
-        pipeline_state.rasterizer_state                         = m_rasterizer_cull_back_solid.get();
-        pipeline_state.depth_stencil_state                      = is_transparent_pass ? m_depth_stencil_off_on_r.get() : m_depth_stencil_off_off.get();
-        pipeline_state.blend_state                              = m_blend_disabled.get();
-        pipeline_state.vertex_buffer_stride                     = m_viewport_quad.GetVertexBuffer()->GetStride();
-        pipeline_state.render_target_color_textures[0]          = tex_out.get();
-        pipeline_state.clear_color[0]                           = is_transparent_pass ? rhi_color_load : rhi_color_dont_care;
-        pipeline_state.render_target_depth_texture              = is_transparent_pass ? tex_depth : nullptr;
-        pipeline_state.render_target_depth_texture_read_only    = is_transparent_pass;
-        pipeline_state.clear_stencil                            = is_transparent_pass ? rhi_stencil_load : rhi_stencil_dont_care;
-        pipeline_state.viewport                                 = tex_out->GetViewport();
-        pipeline_state.primitive_topology                       = RHI_PrimitiveTopology_TriangleList;
-        pipeline_state.pass_name                                = "Pass_Composition";
+        static RHI_PipelineState pso;
+        pso.shader_vertex                           = shader_v;
+        pso.shader_pixel                            = shader_p;
+        pso.rasterizer_state                        = m_rasterizer_cull_back_solid.get();
+        pso.depth_stencil_state                     = is_transparent_pass ? m_depth_stencil_off_r.get() : m_depth_stencil_off_off.get();
+        pso.blend_state                             = is_transparent_pass ? m_blend_disabled.get() : m_blend_additive.get();
+        pso.render_target_color_textures[0]         = tex_out;
+        pso.clear_color[0]                          = rhi_color_load;
+        pso.render_target_depth_texture             = is_transparent_pass ? tex_depth : nullptr;
+        pso.render_target_depth_texture_read_only   = is_transparent_pass;
+        pso.clear_depth                             = rhi_depth_load;
+        pso.clear_stencil                           = rhi_stencil_load;
+        pso.viewport                                = tex_out->GetViewport();
+        pso.vertex_buffer_stride                    = m_viewport_quad.GetVertexBuffer()->GetStride();
+        pso.primitive_topology                      = RHI_PrimitiveTopology_TriangleList;
+        pso.pass_name                               = is_transparent_pass ? "Pass_LightImageBased_Transparent" : "Pass_LightImageBased_Opaque";
 
         // Begin commands
-        if (cmd_list->BeginRenderPass(pipeline_state))
+        if (cmd_list->BeginRenderPass(pso))
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             UpdateUberBuffer(cmd_list);
 
-            // Setup command list  
+            // Setup command list
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_albedo,   m_render_targets[RendererRt::Gbuffer_Albedo]);
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal,   m_render_targets[RendererRt::Gbuffer_Normal]);
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_material, m_render_targets[RendererRt::Gbuffer_Material]);
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    tex_depth);
-            cmd_list->SetTexture(RendererBindingsSrv::hbao,             (m_options & Render_Ssao)   ? m_render_targets[RendererRt::Hbao_Blurred]                : m_default_tex_white);
-            cmd_list->SetTexture(RendererBindingsSrv::light_diffuse,    is_transparent_pass         ? m_render_targets[RendererRt::Light_Diffuse_Transparent]   : m_render_targets[RendererRt::Light_Diffuse]);
-            cmd_list->SetTexture(RendererBindingsSrv::light_specular,   is_transparent_pass         ? m_render_targets[RendererRt::Light_Specular_Transparent]  : m_render_targets[RendererRt::Light_Specular]);
-            cmd_list->SetTexture(RendererBindingsSrv::light_volumetric, m_render_targets[RendererRt::Light_Volumetric]);
-            cmd_list->SetTexture(RendererBindingsSrv::ssr,              (m_options & Render_ScreenSpaceReflections) ? m_render_targets[RendererRt::Ssr] : m_default_tex_transparent);
-            cmd_list->SetTexture(RendererBindingsSrv::frame,            m_render_targets[RendererRt::Frame_Hdr_Last]);
+            cmd_list->SetTexture(RendererBindingsSrv::ssao,             (m_options & Render_Ssao) ? m_render_targets[RendererRt::Hbao_Blurred]    : m_default_tex_white);
             cmd_list->SetTexture(RendererBindingsSrv::lutIbl,           m_render_targets[RendererRt::Brdf_Specular_Lut]);
             cmd_list->SetTexture(RendererBindingsSrv::environment,      GetEnvironmentTexture());
+            cmd_list->SetTexture(RendererBindingsSrv::frame,            m_render_targets[RendererRt::Frame_Hdr_2]); // refraction
 
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
@@ -929,7 +1015,7 @@ namespace Spartan
         }
 
         // Tone-Mapping
-        if (m_option_values[Option_Value_Tonemapping] != 0)
+        if (m_option_values[Renderer_Option_Value::Tonemapping] != 0)
         {
             Pass_ToneMapping(cmd_list, tex_in_hdr, tex_in_ldr); // HDR -> LDR
         }
@@ -989,22 +1075,22 @@ namespace Spartan
             return;
 
         // Set render state
-        static RHI_PipelineState pipeline_state         = {};
-        pipeline_state.shader_vertex                    = shader_v.get();
-        pipeline_state.shader_pixel                     = shader_p.get();
-        pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
-        pipeline_state.blend_state                      = m_blend_disabled.get();
-        pipeline_state.depth_stencil_state              = use_stencil ? m_depth_stencil_off_on_r.get() : m_depth_stencil_off_off.get();
-        pipeline_state.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride();
-        pipeline_state.render_target_color_textures[0]  = tex_out.get();
-        pipeline_state.clear_color[0]                   = rhi_color_dont_care;
-        pipeline_state.render_target_depth_texture      = use_stencil ? m_render_targets[RendererRt::Gbuffer_Depth].get() : nullptr;
-        pipeline_state.viewport                         = tex_out->GetViewport();
-        pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
-        pipeline_state.pass_name                        = "Pass_BlurBox";
+        static RHI_PipelineState pso         = {};
+        pso.shader_vertex                    = shader_v.get();
+        pso.shader_pixel                     = shader_p.get();
+        pso.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
+        pso.blend_state                      = m_blend_disabled.get();
+        pso.depth_stencil_state              = use_stencil ? m_depth_stencil_off_r.get() : m_depth_stencil_off_off.get();
+        pso.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride();
+        pso.render_target_color_textures[0]  = tex_out.get();
+        pso.clear_color[0]                   = rhi_color_dont_care;
+        pso.render_target_depth_texture      = use_stencil ? m_render_targets[RendererRt::Gbuffer_Depth].get() : nullptr;
+        pso.viewport                         = tex_out->GetViewport();
+        pso.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
+        pso.pass_name                        = "Pass_BlurBox";
 
         // Record commands
-        if (cmd_list->BeginRenderPass(pipeline_state))
+        if (cmd_list->BeginRenderPass(pso))
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution        = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
@@ -1035,21 +1121,21 @@ namespace Spartan
             return;
 
         // Set render state for horizontal pass
-        static RHI_PipelineState pipeline_state_horizontal;
-        pipeline_state_horizontal.shader_vertex                     = shader_v.get();
-        pipeline_state_horizontal.shader_pixel                      = shader_p.get();
-        pipeline_state_horizontal.rasterizer_state                  = m_rasterizer_cull_back_solid.get();
-        pipeline_state_horizontal.blend_state                       = m_blend_disabled.get();
-        pipeline_state_horizontal.depth_stencil_state               = m_depth_stencil_off_off.get();
-        pipeline_state_horizontal.vertex_buffer_stride              = m_viewport_quad.GetVertexBuffer()->GetStride();
-        pipeline_state_horizontal.render_target_color_textures[0]   = tex_out.get();
-        pipeline_state_horizontal.clear_color[0]                    = rhi_color_dont_care;
-        pipeline_state_horizontal.viewport                          = tex_out->GetViewport();
-        pipeline_state_horizontal.primitive_topology                = RHI_PrimitiveTopology_TriangleList;
-        pipeline_state_horizontal.pass_name                         = "Pass_BlurGaussian_Horizontal";
+        static RHI_PipelineState pso_horizontal;
+        pso_horizontal.shader_vertex                     = shader_v.get();
+        pso_horizontal.shader_pixel                      = shader_p.get();
+        pso_horizontal.rasterizer_state                  = m_rasterizer_cull_back_solid.get();
+        pso_horizontal.blend_state                       = m_blend_disabled.get();
+        pso_horizontal.depth_stencil_state               = m_depth_stencil_off_off.get();
+        pso_horizontal.vertex_buffer_stride              = m_viewport_quad.GetVertexBuffer()->GetStride();
+        pso_horizontal.render_target_color_textures[0]   = tex_out.get();
+        pso_horizontal.clear_color[0]                    = rhi_color_dont_care;
+        pso_horizontal.viewport                          = tex_out->GetViewport();
+        pso_horizontal.primitive_topology                = RHI_PrimitiveTopology_TriangleList;
+        pso_horizontal.pass_name                         = "Pass_BlurGaussian_Horizontal";
 
         // Record commands for horizontal pass
-        if (cmd_list->BeginRenderPass(pipeline_state_horizontal))
+        if (cmd_list->BeginRenderPass(pso_horizontal))
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution        = Vector2(static_cast<float>(tex_in->GetWidth()), static_cast<float>(tex_in->GetHeight()));
@@ -1065,21 +1151,21 @@ namespace Spartan
         }
         
         // Set render state for vertical pass
-        static RHI_PipelineState pipeline_state_vertical;
-        pipeline_state_vertical.shader_vertex                   = shader_v.get();
-        pipeline_state_vertical.shader_pixel                    = shader_p.get();
-        pipeline_state_vertical.rasterizer_state                = m_rasterizer_cull_back_solid.get();
-        pipeline_state_vertical.blend_state                     = m_blend_disabled.get();
-        pipeline_state_vertical.depth_stencil_state             = m_depth_stencil_off_off.get();
-        pipeline_state_vertical.vertex_buffer_stride            = m_viewport_quad.GetVertexBuffer()->GetStride();
-        pipeline_state_vertical.render_target_color_textures[0] = tex_in.get();
-        pipeline_state_vertical.clear_color[0]                  = rhi_color_dont_care;
-        pipeline_state_vertical.viewport                        = tex_in->GetViewport();
-        pipeline_state_vertical.primitive_topology              = RHI_PrimitiveTopology_TriangleList;
-        pipeline_state_vertical.pass_name                       = "Pass_BlurGaussian_Vertical";
+        static RHI_PipelineState pso_vertical;
+        pso_vertical.shader_vertex                   = shader_v.get();
+        pso_vertical.shader_pixel                    = shader_p.get();
+        pso_vertical.rasterizer_state                = m_rasterizer_cull_back_solid.get();
+        pso_vertical.blend_state                     = m_blend_disabled.get();
+        pso_vertical.depth_stencil_state             = m_depth_stencil_off_off.get();
+        pso_vertical.vertex_buffer_stride            = m_viewport_quad.GetVertexBuffer()->GetStride();
+        pso_vertical.render_target_color_textures[0] = tex_in.get();
+        pso_vertical.clear_color[0]                  = rhi_color_dont_care;
+        pso_vertical.viewport                        = tex_in->GetViewport();
+        pso_vertical.primitive_topology              = RHI_PrimitiveTopology_TriangleList;
+        pso_vertical.pass_name                       = "Pass_BlurGaussian_Vertical";
 
         // Record commands for vertical pass
-        if (cmd_list->BeginRenderPass(pipeline_state_vertical))
+        if (cmd_list->BeginRenderPass(pso_vertical))
         {
             m_buffer_uber_cpu.blur_direction    = Vector2(0.0f, pixel_stride);
             m_buffer_uber_cpu.blur_sigma        = sigma;
@@ -1115,23 +1201,23 @@ namespace Spartan
         RHI_Texture* tex_normal    = m_render_targets[RendererRt::Gbuffer_Normal].get();
 
         // Set render state for horizontal pass
-        static RHI_PipelineState pipeline_state_horizontal;
-        pipeline_state_horizontal.shader_vertex                     = shader_v.get();
-        pipeline_state_horizontal.shader_pixel                      = shader_p.get();
-        pipeline_state_horizontal.rasterizer_state                  = m_rasterizer_cull_back_solid.get();
-        pipeline_state_horizontal.blend_state                       = m_blend_disabled.get();
-        pipeline_state_horizontal.depth_stencil_state               = use_stencil ? m_depth_stencil_off_on_r.get() : m_depth_stencil_off_off.get();
-        pipeline_state_horizontal.vertex_buffer_stride              = m_viewport_quad.GetVertexBuffer()->GetStride();
-        pipeline_state_horizontal.render_target_color_textures[0]   = tex_out.get();
-        pipeline_state_horizontal.clear_color[0]                    = rhi_color_dont_care;
-        pipeline_state_horizontal.render_target_depth_texture       = use_stencil ? tex_depth : nullptr;
-        pipeline_state_horizontal.clear_stencil                     = use_stencil ? rhi_stencil_load : rhi_stencil_dont_care;
-        pipeline_state_horizontal.viewport                          = tex_out->GetViewport();
-        pipeline_state_horizontal.primitive_topology                = RHI_PrimitiveTopology_TriangleList;
-        pipeline_state_horizontal.pass_name                         = "Pass_BlurBilateralGaussian_Horizontal";
+        static RHI_PipelineState pso_horizontal;
+        pso_horizontal.shader_vertex                     = shader_v.get();
+        pso_horizontal.shader_pixel                      = shader_p.get();
+        pso_horizontal.rasterizer_state                  = m_rasterizer_cull_back_solid.get();
+        pso_horizontal.blend_state                       = m_blend_disabled.get();
+        pso_horizontal.depth_stencil_state               = use_stencil ? m_depth_stencil_off_r.get() : m_depth_stencil_off_off.get();
+        pso_horizontal.vertex_buffer_stride              = m_viewport_quad.GetVertexBuffer()->GetStride();
+        pso_horizontal.render_target_color_textures[0]   = tex_out.get();
+        pso_horizontal.clear_color[0]                    = rhi_color_dont_care;
+        pso_horizontal.render_target_depth_texture       = use_stencil ? tex_depth : nullptr;
+        pso_horizontal.clear_stencil                     = use_stencil ? rhi_stencil_load : rhi_stencil_dont_care;
+        pso_horizontal.viewport                          = tex_out->GetViewport();
+        pso_horizontal.primitive_topology                = RHI_PrimitiveTopology_TriangleList;
+        pso_horizontal.pass_name                         = "Pass_BlurBilateralGaussian_Horizontal";
 
         // Record commands for horizontal pass
-        if (cmd_list->BeginRenderPass(pipeline_state_horizontal))
+        if (cmd_list->BeginRenderPass(pso_horizontal))
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution        = Vector2(static_cast<float>(tex_in->GetWidth()), static_cast<float>(tex_in->GetHeight()));
@@ -1149,23 +1235,23 @@ namespace Spartan
         }
 
         // Set render state for vertical pass
-        static RHI_PipelineState pipeline_state_vertical;
-        pipeline_state_vertical.shader_vertex                   = shader_v.get();
-        pipeline_state_vertical.shader_pixel                    = shader_p.get();
-        pipeline_state_vertical.rasterizer_state                = m_rasterizer_cull_back_solid.get();
-        pipeline_state_vertical.blend_state                     = m_blend_disabled.get();
-        pipeline_state_vertical.depth_stencil_state             = use_stencil ? m_depth_stencil_off_on_r.get() : m_depth_stencil_off_off.get();
-        pipeline_state_vertical.vertex_buffer_stride            = m_viewport_quad.GetVertexBuffer()->GetStride();
-        pipeline_state_vertical.render_target_color_textures[0] = tex_in.get();
-        pipeline_state_vertical.clear_color[0]                  = rhi_color_dont_care;
-        pipeline_state_vertical.render_target_depth_texture     = use_stencil ? tex_depth : nullptr;
-        pipeline_state_vertical.clear_stencil                   = use_stencil ? rhi_stencil_load : rhi_stencil_dont_care;
-        pipeline_state_vertical.viewport                        = tex_in->GetViewport();
-        pipeline_state_vertical.primitive_topology              = RHI_PrimitiveTopology_TriangleList;
-        pipeline_state_vertical.pass_name                       = "Pass_BlurBilateralGaussian_Vertical";
+        static RHI_PipelineState pso_vertical;
+        pso_vertical.shader_vertex                   = shader_v.get();
+        pso_vertical.shader_pixel                    = shader_p.get();
+        pso_vertical.rasterizer_state                = m_rasterizer_cull_back_solid.get();
+        pso_vertical.blend_state                     = m_blend_disabled.get();
+        pso_vertical.depth_stencil_state             = use_stencil ? m_depth_stencil_off_r.get() : m_depth_stencil_off_off.get();
+        pso_vertical.vertex_buffer_stride            = m_viewport_quad.GetVertexBuffer()->GetStride();
+        pso_vertical.render_target_color_textures[0] = tex_in.get();
+        pso_vertical.clear_color[0]                  = rhi_color_dont_care;
+        pso_vertical.render_target_depth_texture     = use_stencil ? tex_depth : nullptr;
+        pso_vertical.clear_stencil                   = use_stencil ? rhi_stencil_load : rhi_stencil_dont_care;
+        pso_vertical.viewport                        = tex_in->GetViewport();
+        pso_vertical.primitive_topology              = RHI_PrimitiveTopology_TriangleList;
+        pso_vertical.pass_name                       = "Pass_BlurBilateralGaussian_Vertical";
 
         // Record commands for vertical pass
-        if (cmd_list->BeginRenderPass(pipeline_state_vertical))
+        if (cmd_list->BeginRenderPass(pso_vertical))
         {
             // Update uber buffer
             m_buffer_uber_cpu.blur_direction    = Vector2(0.0f, pixel_stride);
@@ -1196,12 +1282,12 @@ namespace Spartan
         auto& tex_accumulation = m_render_targets[RendererRt::Accumulation_Taa];
 
         // Set render state
-        static RHI_PipelineState pipeline_state;
-        pipeline_state.shader_compute   = shader_c;
-        pipeline_state.pass_name        = "Pass_TemporalAntialiasing";
+        static RHI_PipelineState pso;
+        pso.shader_compute   = shader_c;
+        pso.pass_name        = "Pass_TemporalAntialiasing";
 
         // Draw
-        if (cmd_list->BeginRenderPass(pipeline_state))
+        if (cmd_list->BeginRenderPass(pso))
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
@@ -1238,12 +1324,12 @@ namespace Spartan
         // Luminance
         {
             // Set render state
-            static RHI_PipelineState pipeline_state;
-            pipeline_state.shader_compute = shader_downsampleLuminance;
-            pipeline_state.pass_name      = "Pass_BloomDownsampleLuminance";
+            static RHI_PipelineState pso;
+            pso.shader_compute = shader_downsampleLuminance;
+            pso.pass_name      = "Pass_BloomDownsampleLuminance";
 
             // Draw
-            if (cmd_list->BeginRenderPass(pipeline_state))
+            if (cmd_list->BeginRenderPass(pso))
             {
                 // Update uber buffer
                 m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(m_render_tex_bloom[0].get()->GetWidth()), static_cast<float>(m_render_tex_bloom[0].get()->GetHeight()));
@@ -1269,12 +1355,12 @@ namespace Spartan
             RHI_Texture* mip_large = m_render_tex_bloom[i].get();
 
             // Set render state
-            static RHI_PipelineState pipeline_state;
-            pipeline_state.shader_compute   = shader_downsample;
-            pipeline_state.pass_name        = "Pass_BloomDownsample";
+            static RHI_PipelineState pso;
+            pso.shader_compute   = shader_downsample;
+            pso.pass_name        = "Pass_BloomDownsample";
 
             // Draw
-            if (cmd_list->BeginRenderPass(pipeline_state))
+            if (cmd_list->BeginRenderPass(pso))
             {
                 // Update uber buffer
                 m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(mip_small->GetWidth()), static_cast<float>(mip_small->GetHeight()));
@@ -1299,12 +1385,12 @@ namespace Spartan
             RHI_Texture* mip_large = m_render_tex_bloom[i - 1].get();
 
             // Set render state
-            static RHI_PipelineState pipeline_state;
-            pipeline_state.shader_compute   = shader_upsampleBlendMip;
-            pipeline_state.pass_name        = "Pass_BloomUpsampleBlendMip";
+            static RHI_PipelineState pso;
+            pso.shader_compute   = shader_upsampleBlendMip;
+            pso.pass_name        = "Pass_BloomUpsampleBlendMip";
 
             // Draw
-            if (cmd_list->BeginRenderPass(pipeline_state))
+            if (cmd_list->BeginRenderPass(pso))
             {
                 // Update uber buffer
                 m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(mip_large->GetWidth()), static_cast<float>(mip_large->GetHeight()));
@@ -1325,12 +1411,12 @@ namespace Spartan
         // Upsample mip 2 and blend with mip 1, then blend with the frame
         {
             // Set render state
-            static RHI_PipelineState pipeline_state;
-            pipeline_state.shader_compute   = shader_upsampleBlendFrame;
-            pipeline_state.pass_name        = "Pass_BloomUpsampleBlendFrame";
+            static RHI_PipelineState pso;
+            pso.shader_compute   = shader_upsampleBlendFrame;
+            pso.pass_name        = "Pass_BloomUpsampleBlendFrame";
 
             // Draw
-            if (cmd_list->BeginRenderPass(pipeline_state))
+            if (cmd_list->BeginRenderPass(pso))
             {
                 // Update uber buffer
                 m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
@@ -1358,12 +1444,12 @@ namespace Spartan
             return;
 
         // Set render state
-        static RHI_PipelineState pipeline_state;
-        pipeline_state.shader_compute = shader_c;
-        pipeline_state.pass_name      = "Pass_ToneMapping";
+        static RHI_PipelineState pso;
+        pso.shader_compute = shader_c;
+        pso.pass_name      = "Pass_ToneMapping";
 
         // Draw
-        if (cmd_list->BeginRenderPass(pipeline_state))
+        if (cmd_list->BeginRenderPass(pso))
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
@@ -1389,12 +1475,12 @@ namespace Spartan
             return;
 
         // Set render state
-        static RHI_PipelineState pipeline_state;
-        pipeline_state.shader_compute   = shader_c;
-        pipeline_state.pass_name        = "Pass_GammaCorrection";
+        static RHI_PipelineState pso;
+        pso.shader_compute   = shader_c;
+        pso.pass_name        = "Pass_GammaCorrection";
 
         // Draw
-        if (cmd_list->BeginRenderPass(pipeline_state))
+        if (cmd_list->BeginRenderPass(pso))
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
@@ -1433,12 +1519,12 @@ namespace Spartan
         // Luminance
         {
             // Set render state
-            static RHI_PipelineState pipeline_state;
-            pipeline_state.shader_compute   = shader_p_luma;
-            pipeline_state.pass_name        = "Pass_FXAA_Luminance";
+            static RHI_PipelineState pso;
+            pso.shader_compute   = shader_p_luma;
+            pso.pass_name        = "Pass_FXAA_Luminance";
 
             // Draw
-            if (cmd_list->BeginRenderPass(pipeline_state))
+            if (cmd_list->BeginRenderPass(pso))
             {
                 cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out);
                 cmd_list->SetTexture(RendererBindingsSrv::tex, tex_in);
@@ -1450,12 +1536,12 @@ namespace Spartan
         // FXAA
         {
             // Set render state
-            static RHI_PipelineState pipeline_state;
-            pipeline_state.shader_compute   = shader_p_fxaa;
-            pipeline_state.pass_name        = "Pass_FXAA";
+            static RHI_PipelineState pso;
+            pso.shader_compute   = shader_p_fxaa;
+            pso.pass_name        = "Pass_FXAA";
 
             // Draw
-            if (cmd_list->BeginRenderPass(pipeline_state))
+            if (cmd_list->BeginRenderPass(pso))
             {
                 cmd_list->SetTexture(RendererBindingsUav::rgba, tex_in);
                 cmd_list->SetTexture(RendererBindingsSrv::tex, tex_out);
@@ -1476,12 +1562,12 @@ namespace Spartan
             return;
 
         // Set render state
-        static RHI_PipelineState pipeline_state;
-        pipeline_state.shader_compute = shader_c;
-        pipeline_state.pass_name      = "Pass_ChromaticAberration";
+        static RHI_PipelineState pso;
+        pso.shader_compute = shader_c;
+        pso.pass_name      = "Pass_ChromaticAberration";
 
         // Draw
-        if (cmd_list->BeginRenderPass(pipeline_state))
+        if (cmd_list->BeginRenderPass(pso))
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
@@ -1507,12 +1593,12 @@ namespace Spartan
             return;
 
         // Set render state
-        static RHI_PipelineState pipeline_state;
-        pipeline_state.shader_compute = shader_c;
-        pipeline_state.pass_name      = "Pass_MotionBlur";
+        static RHI_PipelineState pso;
+        pso.shader_compute = shader_c;
+        pso.pass_name      = "Pass_MotionBlur";
 
         // Draw
-        if (cmd_list->BeginRenderPass(pipeline_state))
+        if (cmd_list->BeginRenderPass(pso))
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
@@ -1550,12 +1636,12 @@ namespace Spartan
         // Downsample and compute circle of confusion
         {
             // Set render state
-            static RHI_PipelineState pipeline_state;
-            pipeline_state.shader_compute = shader_downsampleCoc;
-            pipeline_state.pass_name      = "Pass_Dof_DownsampleCoc";
+            static RHI_PipelineState pso;
+            pso.shader_compute = shader_downsampleCoc;
+            pso.pass_name      = "Pass_Dof_DownsampleCoc";
 
             // Draw
-            if (cmd_list->BeginRenderPass(pipeline_state))
+            if (cmd_list->BeginRenderPass(pso))
             {
                 // Update uber buffer
                 m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_bokeh_half->GetWidth()), static_cast<float>(tex_bokeh_half->GetHeight()));
@@ -1577,12 +1663,12 @@ namespace Spartan
         // Bokeh
         {
             // Set render state
-            static RHI_PipelineState pipeline_state;
-            pipeline_state.shader_compute   = shader_bokeh;
-            pipeline_state.pass_name        = "Pass_Dof_Bokeh";
+            static RHI_PipelineState pso;
+            pso.shader_compute   = shader_bokeh;
+            pso.pass_name        = "Pass_Dof_Bokeh";
 
             // Draw
-            if (cmd_list->BeginRenderPass(pipeline_state))
+            if (cmd_list->BeginRenderPass(pso))
             {
                 // Update uber buffer
                 m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_bokeh_half_2->GetWidth()), static_cast<float>(tex_bokeh_half_2->GetHeight()));
@@ -1603,12 +1689,12 @@ namespace Spartan
         // Blur the bokeh using a tent filter
         {
             // Set render state
-            static RHI_PipelineState pipeline_state;
-            pipeline_state.shader_compute   = shader_tent;
-            pipeline_state.pass_name        = "Pass_Dof_Tent";
+            static RHI_PipelineState pso;
+            pso.shader_compute   = shader_tent;
+            pso.pass_name        = "Pass_Dof_Tent";
 
             // Draw
-            if (cmd_list->BeginRenderPass(pipeline_state))
+            if (cmd_list->BeginRenderPass(pso))
             {
                 // Update uber buffer
                 m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_bokeh_half->GetWidth()), static_cast<float>(tex_bokeh_half->GetHeight()));
@@ -1629,12 +1715,12 @@ namespace Spartan
         // Upscale & Blend
         {
             // Set render state
-            static RHI_PipelineState pipeline_state;
-            pipeline_state.shader_compute   = shader_upsampleBlend;
-            pipeline_state.pass_name        = "Pass_Dof_UpscaleBlend";
+            static RHI_PipelineState pso;
+            pso.shader_compute   = shader_upsampleBlend;
+            pso.pass_name        = "Pass_Dof_UpscaleBlend";
 
             // Draw
-            if (cmd_list->BeginRenderPass(pipeline_state))
+            if (cmd_list->BeginRenderPass(pso))
             {
                 // Update uber buffer
                 m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
@@ -1663,12 +1749,12 @@ namespace Spartan
             return;
 
         // Set render state
-        static RHI_PipelineState pipeline_state;
-        pipeline_state.shader_compute   = shader;
-        pipeline_state.pass_name        = "Pass_Dithering";
+        static RHI_PipelineState pso;
+        pso.shader_compute   = shader;
+        pso.pass_name        = "Pass_Dithering";
 
         // Draw
-        if (cmd_list->BeginRenderPass(pipeline_state))
+        if (cmd_list->BeginRenderPass(pso))
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
@@ -1694,12 +1780,12 @@ namespace Spartan
             return;
 
         // Set render state
-        static RHI_PipelineState pipeline_state;
-        pipeline_state.shader_compute = shader_c;
-        pipeline_state.pass_name      = "Pass_FilmGrain";
+        static RHI_PipelineState pso;
+        pso.shader_compute = shader_c;
+        pso.pass_name      = "Pass_FilmGrain";
 
         // Draw
-        if (cmd_list->BeginRenderPass(pipeline_state))
+        if (cmd_list->BeginRenderPass(pso))
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
@@ -1725,12 +1811,12 @@ namespace Spartan
             return;
 
         // Set render state
-        static RHI_PipelineState pipeline_state;
-        pipeline_state.shader_compute = shader_c;
-        pipeline_state.pass_name      = "Pass_Sharpening";
+        static RHI_PipelineState pso;
+        pso.shader_compute = shader_c;
+        pso.pass_name      = "Pass_Sharpening";
 
         // Draw
-        if (cmd_list->BeginRenderPass(pipeline_state))
+        if (cmd_list->BeginRenderPass(pso))
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
@@ -1769,21 +1855,21 @@ namespace Spartan
         if (draw_grid)
         {
             // Set render state
-            static RHI_PipelineState pipeline_state;
-            pipeline_state.shader_vertex                    = shader_color_v;
-            pipeline_state.shader_pixel                     = shader_color_p;
-            pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_wireframe.get();
-            pipeline_state.blend_state                      = m_blend_alpha.get();
-            pipeline_state.depth_stencil_state              = m_depth_stencil_on_off_r.get();
-            pipeline_state.vertex_buffer_stride             = m_gizmo_grid->GetVertexBuffer()->GetStride();
-            pipeline_state.render_target_color_textures[0]  = tex_out.get();
-            pipeline_state.render_target_depth_texture      = m_render_targets[RendererRt::Gbuffer_Depth].get();
-            pipeline_state.viewport                         = tex_out->GetViewport();
-            pipeline_state.primitive_topology               = RHI_PrimitiveTopology_LineList;
-            pipeline_state.pass_name                        = "Pass_Lines_Grid";
+            static RHI_PipelineState pso;
+            pso.shader_vertex                    = shader_color_v;
+            pso.shader_pixel                     = shader_color_p;
+            pso.rasterizer_state                 = m_rasterizer_cull_back_wireframe.get();
+            pso.blend_state                      = m_blend_alpha.get();
+            pso.depth_stencil_state              = m_depth_stencil_r_off.get();
+            pso.vertex_buffer_stride             = m_gizmo_grid->GetVertexBuffer()->GetStride();
+            pso.render_target_color_textures[0]  = tex_out.get();
+            pso.render_target_depth_texture      = m_render_targets[RendererRt::Gbuffer_Depth].get();
+            pso.viewport                         = tex_out->GetViewport();
+            pso.primitive_topology               = RHI_PrimitiveTopology_LineList;
+            pso.pass_name                        = "Pass_Lines_Grid";
         
             // Create and submit command list
-            if (cmd_list->BeginRenderPass(pipeline_state))
+            if (cmd_list->BeginRenderPass(pso))
             {
                 // Update uber buffer
                 m_buffer_uber_cpu.resolution    = m_resolution;
@@ -1862,21 +1948,21 @@ namespace Spartan
                 m_vertex_buffer_lines->Unmap();
 
                 // Set render state
-                static RHI_PipelineState pipeline_state;
-                pipeline_state.shader_vertex                    = shader_color_v;
-                pipeline_state.shader_pixel                     = shader_color_p;
-                pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_wireframe.get();
-                pipeline_state.blend_state                      = m_blend_alpha.get();
-                pipeline_state.depth_stencil_state              = m_depth_stencil_on_off_r.get();
-                pipeline_state.vertex_buffer_stride             = m_vertex_buffer_lines->GetStride();
-                pipeline_state.render_target_color_textures[0]  = tex_out.get();
-                pipeline_state.render_target_depth_texture      = m_render_targets[RendererRt::Gbuffer_Depth].get();
-                pipeline_state.viewport                         = tex_out->GetViewport();
-                pipeline_state.primitive_topology               = RHI_PrimitiveTopology_LineList;
-                pipeline_state.pass_name                        = "Pass_Lines";
+                static RHI_PipelineState pso;
+                pso.shader_vertex                    = shader_color_v;
+                pso.shader_pixel                     = shader_color_p;
+                pso.rasterizer_state                 = m_rasterizer_cull_back_wireframe.get();
+                pso.blend_state                      = m_blend_alpha.get();
+                pso.depth_stencil_state              = m_depth_stencil_r_off.get();
+                pso.vertex_buffer_stride             = m_vertex_buffer_lines->GetStride();
+                pso.render_target_color_textures[0]  = tex_out.get();
+                pso.render_target_depth_texture      = m_render_targets[RendererRt::Gbuffer_Depth].get();
+                pso.viewport                         = tex_out->GetViewport();
+                pso.primitive_topology               = RHI_PrimitiveTopology_LineList;
+                pso.pass_name                        = "Pass_Lines";
 
                 // Create and submit command list
-                if (cmd_list->BeginRenderPass(pipeline_state))
+                if (cmd_list->BeginRenderPass(pso))
                 {
                     cmd_list->SetBufferVertex(m_vertex_buffer_lines.get());
                     cmd_list->Draw(line_vertex_buffer_size);
@@ -1900,20 +1986,20 @@ namespace Spartan
                 m_vertex_buffer_lines->Unmap();
 
                 // Set render state
-                static RHI_PipelineState pipeline_state;
-                pipeline_state.shader_vertex                    = shader_color_v;
-                pipeline_state.shader_pixel                     = shader_color_p;
-                pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_wireframe.get();
-                pipeline_state.blend_state                      = m_blend_disabled.get();
-                pipeline_state.depth_stencil_state              = m_depth_stencil_off_off.get();
-                pipeline_state.vertex_buffer_stride             = m_vertex_buffer_lines->GetStride();
-                pipeline_state.render_target_color_textures[0]  = tex_out.get();
-                pipeline_state.viewport                         = tex_out->GetViewport();
-                pipeline_state.primitive_topology               = RHI_PrimitiveTopology_LineList;
-                pipeline_state.pass_name                        = "Pass_Lines_No_Depth";
+                static RHI_PipelineState pso;
+                pso.shader_vertex                    = shader_color_v;
+                pso.shader_pixel                     = shader_color_p;
+                pso.rasterizer_state                 = m_rasterizer_cull_back_wireframe.get();
+                pso.blend_state                      = m_blend_disabled.get();
+                pso.depth_stencil_state              = m_depth_stencil_off_off.get();
+                pso.vertex_buffer_stride             = m_vertex_buffer_lines->GetStride();
+                pso.render_target_color_textures[0]  = tex_out.get();
+                pso.viewport                         = tex_out->GetViewport();
+                pso.primitive_topology               = RHI_PrimitiveTopology_LineList;
+                pso.pass_name                        = "Pass_Lines_No_Depth";
 
                 // Create and submit command list
-                if (cmd_list->BeginRenderPass(pipeline_state))
+                if (cmd_list->BeginRenderPass(pso))
                 {
                     cmd_list->SetBufferVertex(m_vertex_buffer_lines.get());
                     cmd_list->Draw(line_vertex_buffer_size);
@@ -1936,22 +2022,22 @@ namespace Spartan
             return;
 
         // Set render state
-        static RHI_PipelineState pipeline_state;
-        pipeline_state.shader_vertex                    = shader_quad_v.get();
-        pipeline_state.shader_pixel                     = shader_texture_p.get();
-        pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
-        pipeline_state.blend_state                      = m_blend_alpha.get();
-        pipeline_state.depth_stencil_state              = m_depth_stencil_off_off.get();
-        pipeline_state.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride(); // stride matches rect
-        pipeline_state.render_target_color_textures[0]  = tex_out;
-        pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
-        pipeline_state.viewport                         = tex_out->GetViewport();
-        pipeline_state.pass_name                        = "Pass_Icons";
+        static RHI_PipelineState pso;
+        pso.shader_vertex                    = shader_quad_v.get();
+        pso.shader_pixel                     = shader_texture_p.get();
+        pso.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
+        pso.blend_state                      = m_blend_alpha.get();
+        pso.depth_stencil_state              = m_depth_stencil_off_off.get();
+        pso.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride(); // stride matches rect
+        pso.render_target_color_textures[0]  = tex_out;
+        pso.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
+        pso.viewport                         = tex_out->GetViewport();
+        pso.pass_name                        = "Pass_Icons";
 
         // For each light
         for (const auto& entity : lights)
         {
-            if (cmd_list->BeginRenderPass(pipeline_state))
+            if (cmd_list->BeginRenderPass(pso))
             {
                 // Light can be null if it just got removed and our buffer doesn't update till the next frame
                 if (Light* light = entity->GetComponent<Light>())
@@ -2024,20 +2110,20 @@ namespace Spartan
         if (m_gizmo_transform->Update(m_camera.get(), m_gizmo_transform_size, m_gizmo_transform_speed))
         {
             // Set render state
-            static RHI_PipelineState pipeline_state;
-            pipeline_state.shader_vertex                    = shader_gizmo_transform_v.get();
-            pipeline_state.shader_pixel                     = shader_gizmo_transform_p.get();
-            pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
-            pipeline_state.blend_state                      = m_blend_alpha.get();
-            pipeline_state.depth_stencil_state              = m_depth_stencil_off_off.get();
-            pipeline_state.vertex_buffer_stride             = m_gizmo_transform->GetVertexBuffer()->GetStride();
-            pipeline_state.render_target_color_textures[0]  = tex_out;
-            pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
-            pipeline_state.viewport                         = tex_out->GetViewport();
+            static RHI_PipelineState pso;
+            pso.shader_vertex                    = shader_gizmo_transform_v.get();
+            pso.shader_pixel                     = shader_gizmo_transform_p.get();
+            pso.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
+            pso.blend_state                      = m_blend_alpha.get();
+            pso.depth_stencil_state              = m_depth_stencil_off_off.get();
+            pso.vertex_buffer_stride             = m_gizmo_transform->GetVertexBuffer()->GetStride();
+            pso.render_target_color_textures[0]  = tex_out;
+            pso.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
+            pso.viewport                         = tex_out->GetViewport();
 
             // Axis - X
-            pipeline_state.pass_name = "Pass_Gizmos_Axis_X";
-            if (cmd_list->BeginRenderPass(pipeline_state))
+            pso.pass_name = "Pass_Gizmos_Axis_X";
+            if (cmd_list->BeginRenderPass(pso))
             {
                 m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle().GetTransform(Vector3::Right);
                 m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle().GetColor(Vector3::Right);
@@ -2050,8 +2136,8 @@ namespace Spartan
             }
             
             // Axis - Y
-            pipeline_state.pass_name = "Pass_Gizmos_Axis_Y";
-            if (cmd_list->BeginRenderPass(pipeline_state))
+            pso.pass_name = "Pass_Gizmos_Axis_Y";
+            if (cmd_list->BeginRenderPass(pso))
             {
                 m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle().GetTransform(Vector3::Up);
                 m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle().GetColor(Vector3::Up);
@@ -2064,8 +2150,8 @@ namespace Spartan
             }
             
             // Axis - Z
-            pipeline_state.pass_name = "Pass_Gizmos_Axis_Z";
-            if (cmd_list->BeginRenderPass(pipeline_state))
+            pso.pass_name = "Pass_Gizmos_Axis_Z";
+            if (cmd_list->BeginRenderPass(pso))
             {
                 m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle().GetTransform(Vector3::Forward);
                 m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle().GetColor(Vector3::Forward);
@@ -2080,8 +2166,8 @@ namespace Spartan
             // Axes - XYZ
             if (m_gizmo_transform->DrawXYZ())
             {
-                pipeline_state.pass_name = "Pass_Gizmos_Axis_XYZ";
-                if (cmd_list->BeginRenderPass(pipeline_state))
+                pso.pass_name = "Pass_Gizmos_Axis_XYZ";
+                if (cmd_list->BeginRenderPass(pso))
                 {
                     m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle().GetTransform(Vector3::One);
                     m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle().GetColor(Vector3::One);
@@ -2128,22 +2214,22 @@ namespace Spartan
             RHI_Texture* tex_normal = m_render_targets[RendererRt::Gbuffer_Normal].get();
 
             // Set render state
-            static RHI_PipelineState pipeline_state;
-            pipeline_state.shader_vertex                            = shader_v.get();
-            pipeline_state.shader_pixel                             = shader_p.get();
-            pipeline_state.rasterizer_state                         = m_rasterizer_cull_back_solid.get();
-            pipeline_state.blend_state                              = m_blend_alpha.get();
-            pipeline_state.depth_stencil_state                      = m_depth_stencil_on_off_r.get();
-            pipeline_state.vertex_buffer_stride                     = model->GetVertexBuffer()->GetStride();
-            pipeline_state.render_target_color_textures[0]          = tex_out.get();
-            pipeline_state.render_target_depth_texture              = tex_depth;
-            pipeline_state.render_target_depth_texture_read_only    = true;
-            pipeline_state.primitive_topology                       = RHI_PrimitiveTopology_TriangleList;
-            pipeline_state.viewport                                 = tex_out->GetViewport();
-            pipeline_state.pass_name                                = "Pass_Outline";
+            static RHI_PipelineState pso;
+            pso.shader_vertex                            = shader_v.get();
+            pso.shader_pixel                             = shader_p.get();
+            pso.rasterizer_state                         = m_rasterizer_cull_back_solid.get();
+            pso.blend_state                              = m_blend_alpha.get();
+            pso.depth_stencil_state                      = m_depth_stencil_r_off.get();
+            pso.vertex_buffer_stride                     = model->GetVertexBuffer()->GetStride();
+            pso.render_target_color_textures[0]          = tex_out.get();
+            pso.render_target_depth_texture              = tex_depth;
+            pso.render_target_depth_texture_read_only    = true;
+            pso.primitive_topology                       = RHI_PrimitiveTopology_TriangleList;
+            pso.viewport                                 = tex_out->GetViewport();
+            pso.pass_name                                = "Pass_Outline";
 
             // Record commands
-            if (cmd_list->BeginRenderPass(pipeline_state))
+            if (cmd_list->BeginRenderPass(pso))
             {
                  // Update uber buffer with entity transform
                 if (Transform* transform = entity->GetTransform())
@@ -2174,17 +2260,17 @@ namespace Spartan
             return;
 
         // Set render state
-        static RHI_PipelineState pipeline_state;
-        pipeline_state.shader_vertex                    = shader_v.get();
-        pipeline_state.shader_pixel                     = shader_p.get();
-        pipeline_state.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
-        pipeline_state.blend_state                      = m_blend_alpha.get();
-        pipeline_state.depth_stencil_state              = m_depth_stencil_off_off.get();
-        pipeline_state.vertex_buffer_stride             = m_font->GetVertexBuffer()->GetStride();
-        pipeline_state.render_target_color_textures[0]  = tex_out;
-        pipeline_state.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
-        pipeline_state.viewport                         = tex_out->GetViewport();
-        pipeline_state.pass_name                        = "Pass_Text";
+        static RHI_PipelineState pso;
+        pso.shader_vertex                    = shader_v.get();
+        pso.shader_pixel                     = shader_p.get();
+        pso.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
+        pso.blend_state                      = m_blend_alpha.get();
+        pso.depth_stencil_state              = m_depth_stencil_off_off.get();
+        pso.vertex_buffer_stride             = m_font->GetVertexBuffer()->GetStride();
+        pso.render_target_color_textures[0]  = tex_out;
+        pso.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
+        pso.viewport                         = tex_out->GetViewport();
+        pso.pass_name                        = "Pass_Text";
 
         // Update text
         const auto text_pos = Vector2(-m_viewport.width * 0.5f + 5.0f, m_viewport.height * 0.5f - m_font->GetSize() - 2.0f);
@@ -2193,7 +2279,7 @@ namespace Spartan
         // Draw outline
         if (m_font->GetOutline() != Font_Outline_None && m_font->GetOutlineSize() != 0)
         { 
-            if (cmd_list->BeginRenderPass(pipeline_state))
+            if (cmd_list->BeginRenderPass(pso))
             {
                 // Update uber buffer
                 m_buffer_uber_cpu.resolution    = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
@@ -2209,7 +2295,7 @@ namespace Spartan
         }
 
         // Draw 
-        if (cmd_list->BeginRenderPass(pipeline_state))
+        if (cmd_list->BeginRenderPass(pso))
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution    = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
@@ -2325,12 +2411,12 @@ namespace Spartan
             return false;
 
         // Set render state
-        static RHI_PipelineState pipeline_state;
-        pipeline_state.shader_compute   = shader;
-        pipeline_state.pass_name        = "Pass_DebugBuffer";
+        static RHI_PipelineState pso;
+        pso.shader_compute   = shader;
+        pso.pass_name        = "Pass_DebugBuffer";
 
         // Draw
-        if (cmd_list->BeginRenderPass(pipeline_state))
+        if (cmd_list->BeginRenderPass(pso))
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution    = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
@@ -2365,12 +2451,12 @@ namespace Spartan
         RHI_Texture* render_target = m_render_targets[RendererRt::Brdf_Specular_Lut].get();
 
         // Set render state
-        static RHI_PipelineState pipeline_state;
-        pipeline_state.shader_compute   = shader;
-        pipeline_state.pass_name        = "Pass_BrdfSpecularLut";
+        static RHI_PipelineState pso;
+        pso.shader_compute   = shader;
+        pso.pass_name        = "Pass_BrdfSpecularLut";
 
         // Draw
-        if (cmd_list->BeginRenderPass(pipeline_state))
+        if (cmd_list->BeginRenderPass(pso))
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(render_target->GetWidth()), static_cast<float>(render_target->GetHeight()));
@@ -2397,12 +2483,12 @@ namespace Spartan
             return;
 
         // Set render state
-        static RHI_PipelineState pipeline_state;
-        pipeline_state.shader_compute = shader_c;
-        pipeline_state.pass_name      = "Pass_Copy";
+        static RHI_PipelineState pso;
+        pso.shader_compute = shader_c;
+        pso.pass_name      = "Pass_Copy";
 
         // Draw
-        if (cmd_list->BeginRenderPass(pipeline_state))
+        if (cmd_list->BeginRenderPass(pso))
         {
             const uint32_t thread_group_count_x   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
             const uint32_t thread_group_count_y   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
@@ -2410,7 +2496,7 @@ namespace Spartan
             const bool async                      = false;
 
             cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out);
-            cmd_list->SetTexture(RendererBindingsSrv::tex, tex_in);
+            cmd_list->SetTexture(RendererBindingsSrv::tex,  tex_in);
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
         }
@@ -2425,21 +2511,21 @@ namespace Spartan
             return;
 
         // Set render state
-        static RHI_PipelineState pipeline_state = {};
-        pipeline_state.shader_vertex            = shader_v;
-        pipeline_state.shader_pixel             = shader_p;
-        pipeline_state.rasterizer_state         = m_rasterizer_cull_back_solid.get();
-        pipeline_state.blend_state              = m_blend_disabled.get();
-        pipeline_state.depth_stencil_state      = m_depth_stencil_off_off.get();
-        pipeline_state.vertex_buffer_stride     = m_viewport_quad.GetVertexBuffer()->GetStride();
-        pipeline_state.render_target_swapchain  = m_swap_chain.get();
-        pipeline_state.clear_color[0]           = rhi_color_dont_care;
-        pipeline_state.primitive_topology       = RHI_PrimitiveTopology_TriangleList;
-        pipeline_state.viewport                 = m_viewport;
-        pipeline_state.pass_name                = "Pass_CopyToBackbuffer";
+        static RHI_PipelineState pso = {};
+        pso.shader_vertex            = shader_v;
+        pso.shader_pixel             = shader_p;
+        pso.rasterizer_state         = m_rasterizer_cull_back_solid.get();
+        pso.blend_state              = m_blend_disabled.get();
+        pso.depth_stencil_state      = m_depth_stencil_off_off.get();
+        pso.vertex_buffer_stride     = m_viewport_quad.GetVertexBuffer()->GetStride();
+        pso.render_target_swapchain  = m_swap_chain.get();
+        pso.clear_color[0]           = rhi_color_dont_care;
+        pso.primitive_topology       = RHI_PrimitiveTopology_TriangleList;
+        pso.viewport                 = m_viewport;
+        pso.pass_name                = "Pass_CopyToBackbuffer";
 
         // Record commands
-        if (cmd_list->BeginRenderPass(pipeline_state))
+        if (cmd_list->BeginRenderPass(pso))
         {
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
