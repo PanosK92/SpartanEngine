@@ -128,7 +128,7 @@ namespace Spartan
         Ssgi_C,
         SsgiInject_C,
         SsrTrace_C,
-        SsrInject_C,
+        Reflections_P,
         Entity_V,
         Entity_Transform_P,
         BlurBox_P,

@@ -72,4 +72,5 @@ RWTexture2D<float3> tex_out_rgb3            : register(u5);
 RWTexture2DArray<float4> uav_array_rgba     : register(u6);
 
 // Misc
-static const float2 g_normal_noise_scale = float2(g_resolution.x / 256.0f, g_resolution.y / 256.0f);
+static const float2 g_normal_noise_scale    = float2(g_resolution.x / 256.0f, g_resolution.y / 256.0f);
+static const float g_envrionement_max_mip   = 11.0f;

@@ -190,11 +190,8 @@ void Widget_RenderOptions::TickVisible()
             // Volumetric fog
             ImGui::Checkbox("Volumetric Fog", &do_volumetric_fog);
             ImGuiEx::Tooltip("Requires a light with shadows enabled.");
-            if (do_volumetric_fog)
-            {
-                ImGui::SameLine();
-                ImGuiEx::DragFloatWrap("Density", &fog_density, 0.01f, 0.0f, 16.0f, "%.2f");
-            }
+            ImGui::SameLine();
+            ImGuiEx::DragFloatWrap("Density", &fog_density, 0.01f, 0.0f, 16.0f, "%.2f");
             ImGui::Separator();
 
             // Screen space shadows

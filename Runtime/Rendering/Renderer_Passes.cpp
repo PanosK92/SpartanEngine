@@ -116,13 +116,14 @@ namespace Spartan
             // Image based lighting
             Pass_LightImageBased(cmd_list, m_render_targets[RendererRt::Frame_Hdr].get());
 
-            // Inject SSR into the frame
+            // If SSR is enabled, copy the frame so that SSR can use it to reflect from
             if ((m_options & Render_ScreenSpaceReflections) != 0)
             {
-                // Copy the frame so that SSR can use it to reflect from
                 Pass_Copy(cmd_list, m_render_targets[RendererRt::Frame_Hdr].get(), m_render_targets[RendererRt::Frame_Hdr_2].get());
-                Pass_SsrInject(cmd_list, m_render_targets[RendererRt::Frame_Hdr].get(), m_render_targets[RendererRt::Frame_Hdr_2].get());
             }
+
+            // Reflections - SSR & Environment
+            Pass_Reflections(cmd_list, m_render_targets[RendererRt::Frame_Hdr].get(), m_render_targets[RendererRt::Frame_Hdr_2].get());
 
             // Lighting for transparent objects (a simpler version of the above)
             if (draw_transparent_objects)
@@ -752,20 +753,30 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_SsrInject(RHI_CommandList* cmd_list, RHI_Texture* tex_out, RHI_Texture* tex_reflections)
+    void Renderer::Pass_Reflections(RHI_CommandList* cmd_list, RHI_Texture* tex_out, RHI_Texture* tex_reflections)
     {
-        if ((m_options & Render_ScreenSpaceReflections) == 0)
-            return;
-
         // Acquire shaders
-        RHI_Shader* shader_c = m_shaders[RendererShader::SsrInject_C].get();
-        if (!shader_c->IsCompiled())
+        RHI_Shader* shader_v = m_shaders[RendererShader::Quad_V].get();
+        RHI_Shader* shader_p = m_shaders[RendererShader::Reflections_P].get();
+        if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
         // Set render state
         static RHI_PipelineState pso;
-        pso.shader_compute  = shader_c;
-        pso.pass_name       = "Pass_SsrInject";
+        pso.shader_vertex                   = shader_v;
+        pso.shader_pixel                    = shader_p;
+        pso.rasterizer_state                = m_rasterizer_cull_back_solid.get();
+        pso.depth_stencil_state             = m_depth_stencil_off_off.get();
+        pso.blend_state                     = m_blend_additive.get();
+        pso.render_target_color_textures[0] = tex_out;
+        pso.clear_color[0]                  = rhi_color_load;
+        pso.render_target_depth_texture     = nullptr;
+        pso.clear_depth                     = rhi_depth_dont_care;
+        pso.clear_stencil                   = rhi_stencil_dont_care;
+        pso.viewport                        = tex_out->GetViewport();
+        pso.vertex_buffer_stride            = m_viewport_quad.GetVertexBuffer()->GetStride();
+        pso.primitive_topology              = RHI_PrimitiveTopology_TriangleList;
+        pso.pass_name                       = "Pass_Reflections";
 
         // Draw
         if (cmd_list->BeginRenderPass(pso))
@@ -774,17 +785,17 @@ namespace Spartan
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             UpdateUberBuffer(cmd_list);
 
-            const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
-            const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
-            const uint32_t thread_group_count_z = 1;
-            const bool async = false;
-
-            cmd_list->SetTexture(RendererBindingsUav::rgba,             tex_out);
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_albedo,   m_render_targets[RendererRt::Gbuffer_Albedo]);
+            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal,   m_render_targets[RendererRt::Gbuffer_Normal]);
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_material, m_render_targets[RendererRt::Gbuffer_Material]);
+            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    m_render_targets[RendererRt::Gbuffer_Depth]);
             cmd_list->SetTexture(RendererBindingsSrv::ssr,              m_render_targets[RendererRt::Ssr]);
             cmd_list->SetTexture(RendererBindingsSrv::frame,            tex_reflections);
-            cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
+            cmd_list->SetTexture(RendererBindingsSrv::environment,      GetEnvironmentTexture());
+
+            cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
+            cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
+            cmd_list->DrawIndexed(Rectangle::GetIndexCount());
             cmd_list->EndRenderPass();
         }
     }

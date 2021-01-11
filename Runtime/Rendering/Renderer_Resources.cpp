@@ -342,13 +342,13 @@ namespace Spartan
             m_shaders[RendererShader::SsgiInject_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "SSGI_Inject.hlsl");
         }
 
-        // SSR
+        // Reflections
         {
             m_shaders[RendererShader::SsrTrace_C] = make_shared<RHI_Shader>(m_context);
             m_shaders[RendererShader::SsrTrace_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "SSR_Trace.hlsl");
 
-            m_shaders[RendererShader::SsrInject_C] = make_shared<RHI_Shader>(m_context);
-            m_shaders[RendererShader::SsrInject_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "SSR_Inject.hlsl");
+            m_shaders[RendererShader::Reflections_P] = make_shared<RHI_Shader>(m_context);
+            m_shaders[RendererShader::Reflections_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Reflections.hlsl");
         }
 
         // Entity
