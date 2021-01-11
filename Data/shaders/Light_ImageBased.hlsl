@@ -84,5 +84,6 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         }
     }
 
-    return float4(saturate_16(light_ibl + light_refraction), 0.0f);
+    return float4(saturate_16(light_ibl + light_refraction), 1.0f);
 }
+

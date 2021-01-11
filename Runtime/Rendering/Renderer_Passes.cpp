@@ -110,27 +110,26 @@ namespace Spartan
             // Lighting
             Pass_Light(cmd_list);
 
-            // Injection of SSGI into the light buffers
-            Pass_SsgiInject(cmd_list);
-
             // Composition of the light buffers (including volumetric fog)
             Pass_LightComposition(cmd_list, m_render_targets[RendererRt::Frame_Hdr].get());
 
             // Image based lighting
             Pass_LightImageBased(cmd_list, m_render_targets[RendererRt::Frame_Hdr].get());
 
-            // Copy the frame so that SSR can use it to reflect from
-            Pass_Copy(cmd_list, m_render_targets[RendererRt::Frame_Hdr].get(), m_render_targets[RendererRt::Frame_Hdr_2].get());
-
             // Inject SSR into the frame
-            Pass_SsrInject(cmd_list, m_render_targets[RendererRt::Frame_Hdr].get());
-
-            // Copy the frame so that transparency and refraction can sample from it
-            Pass_Copy(cmd_list, m_render_targets[RendererRt::Frame_Hdr].get(), m_render_targets[RendererRt::Frame_Hdr_2].get());
+            if ((m_options & Render_ScreenSpaceReflections) != 0)
+            {
+                // Copy the frame so that SSR can use it to reflect from
+                Pass_Copy(cmd_list, m_render_targets[RendererRt::Frame_Hdr].get(), m_render_targets[RendererRt::Frame_Hdr_2].get());
+                Pass_SsrInject(cmd_list, m_render_targets[RendererRt::Frame_Hdr].get(), m_render_targets[RendererRt::Frame_Hdr_2].get());
+            }
 
             // Lighting for transparent objects (a simpler version of the above)
             if (draw_transparent_objects)
             {
+                // Copy the frame so that transparency and refraction can sample from it
+                Pass_Copy(cmd_list, m_render_targets[RendererRt::Frame_Hdr].get(), m_render_targets[RendererRt::Frame_Hdr_2].get());
+
                 Pass_GBuffer(cmd_list, true);
                 Pass_Light(cmd_list, true);
                 Pass_LightComposition(cmd_list, m_render_targets[RendererRt::Frame_Hdr].get(), true);
@@ -753,7 +752,7 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_SsrInject(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
+    void Renderer::Pass_SsrInject(RHI_CommandList* cmd_list, RHI_Texture* tex_out, RHI_Texture* tex_reflections)
     {
         if ((m_options & Render_ScreenSpaceReflections) == 0)
             return;
@@ -784,7 +783,7 @@ namespace Spartan
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_albedo,   m_render_targets[RendererRt::Gbuffer_Albedo]);
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_material, m_render_targets[RendererRt::Gbuffer_Material]);
             cmd_list->SetTexture(RendererBindingsSrv::ssr,              m_render_targets[RendererRt::Ssr]);
-            cmd_list->SetTexture(RendererBindingsSrv::frame,            m_render_targets[RendererRt::Frame_Hdr_2]);
+            cmd_list->SetTexture(RendererBindingsSrv::frame,            tex_reflections);
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
         }
