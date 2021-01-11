@@ -69,7 +69,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         float3 light_specular   = tex_light_specular[thread_id.xy].rgb;
 
         // Accumulate diffuse and specular light
-        color.rgb += (light_diffuse + light_specular) * albedo.rgb * albedo.a * albedo.a;
+        color.rgb += (light_diffuse * albedo.rgb + light_specular) * albedo.a * albedo.a;
     }
 
     // Accumulate fog

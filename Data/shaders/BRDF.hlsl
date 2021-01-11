@@ -260,13 +260,11 @@ inline float3 EnvBRDFApprox(float3 specColor, float roughness, float NdV)
     return specColor * AB.x + AB.y;
 }
 
-static const float mip_max = 11.0f;
-
 inline float3 sample_environment(float2 uv, float mip_level)
 {
     // We are currently using a spherical environment map which has a 2:1 ratio, so at the smallest 
     // mipmap we have to do a bit of blending otherwise we'll get a visible seem in the middle.
-    if (mip_level == mip_max)
+    if (mip_level == g_envrionement_max_mip)
     {
         float2 mip_size = float2(2, 1);
         float dx = mip_size.x;
@@ -281,7 +279,7 @@ inline float3 sample_environment(float2 uv, float mip_level)
 
 inline float3 Brdf_Diffuse_Ibl(Material material, float3 normal)
 {
-    return sample_environment(direction_sphere_uv(normal), mip_max) * material.albedo.rgb;
+    return sample_environment(direction_sphere_uv(normal), g_envrionement_max_mip) * material.albedo.rgb;
 }
 
 inline float3 Brdf_Specular_Ibl(Material material, float3 normal, float3 camera_to_pixel, inout float3 diffuse_energy)
@@ -294,8 +292,8 @@ inline float3 Brdf_Specular_Ibl(Material material, float3 normal, float3 camera_
 
     // Compute prefiltered color
     float3 reflection           = reflect(camera_to_pixel, normal);
-    reflection                  = GetSpecularDominantDir(normal, reflect(camera_to_pixel, normal), material.roughness); // From Sebastien Lagarde Moving Frostbite to PBR page 69
-    float mip_level             = lerp(0, mip_max, material.roughness * material.roughness);
+    reflection                  = GetSpecularDominantDir(normal, reflection, material.roughness); // From Sebastien Lagarde Moving Frostbite to PBR page 69
+    float mip_level             = lerp(0, g_envrionement_max_mip, material.roughness * material.roughness);
     float3 prefiltered_color    = sample_environment(direction_sphere_uv(reflection), mip_level);
 
     // Outpout diffuse energy

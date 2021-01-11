@@ -100,8 +100,9 @@ PixelOutputType mainPS(PixelInputType input)
         if (albedo_sample.a <= mask_threshold)
             discard;
 
-        albedo_sample.rgb = degamma(albedo_sample.rgb);
-        albedo *= albedo_sample;
+        albedo_sample.a     = 1.0f;
+        albedo_sample.rgb   = degamma(albedo_sample.rgb);
+        albedo              *= albedo_sample;
     #endif
     
     #if ROUGHNESS_MAP
