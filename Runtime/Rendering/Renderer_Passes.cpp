@@ -110,6 +110,9 @@ namespace Spartan
             // Lighting
             Pass_Light(cmd_list);
 
+            // Injection of SSGI into the light buffers
+            Pass_SsgiInject(cmd_list);
+
             // Composition of the light buffers (including volumetric fog)
             Pass_LightComposition(cmd_list, m_render_targets[RendererRt::Frame_Hdr].get());
 
