@@ -31,4 +31,3 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     tex_out_rgb[thread_id.xy] += tex_ssgi[thread_id.xy];
 }
-
