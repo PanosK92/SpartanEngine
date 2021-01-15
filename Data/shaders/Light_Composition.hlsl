@@ -43,7 +43,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     // Get some useful things
     const float depth               = get_depth(thread_id.xy);
     const float3 position           = get_position(depth, uv);
-    const float3 camera_to_pixel    = get_view_direction(position, uv);
+    const float3 camera_to_pixel    = get_view_direction(position);
 
     // Compute fog
     float camera_to_pixel_length    = length(position - g_camera_position.xyz);

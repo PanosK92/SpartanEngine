@@ -23,11 +23,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define SPARTAN_COMMON
 
 //= INCLUDES =================
-#include "Common_Struct.hlsl"
 #include "Common_Vertex.hlsl"
 #include "Common_Buffer.hlsl"
 #include "Common_Sampler.hlsl"
 #include "Common_Texture.hlsl"
+#include "Common_Struct.hlsl"
 //============================
 
 /*------------------------------------------------------------------------------
@@ -148,17 +148,17 @@ inline float3 normal_decode(float3 normal)  { return normalize(normal); }
 // No encoding required (just normalise)
 inline float3 normal_encode(float3 normal)  { return normalize(normal); }
 
-inline float3 get_normal(int2 pos)
+inline float3 get_normal(uint2 pos)
 {
-    return tex_normal.Load(int3(clamp(pos, int2(0, 0), (int2)g_resolution), 0)).rgb;
+    return tex_normal[pos].xyz;
 }
 
 inline float3 get_normal(float2 uv)
 {
-    return tex_normal.SampleLevel(sampler_point_clamp, uv, 0).r;
+    return tex_normal.SampleLevel(sampler_point_clamp, uv, 0).xyz;
 }
 
-inline float3 get_normal_view_space(int2 pos)
+inline float3 get_normal_view_space(uint2 pos)
 {
     return normalize(mul(float4(get_normal(pos), 0.0f), g_view).xyz);
 }
@@ -181,9 +181,9 @@ inline float3x3 makeTBN(float3 n, float3 t)
 /*------------------------------------------------------------------------------
     DEPTH
 ------------------------------------------------------------------------------*/
-inline float get_depth(int2 pos)
+inline float get_depth(uint2 pos)
 {
-    return tex_depth.Load(int3(clamp(pos, int2(0, 0), (int2)g_resolution), 0)).r;
+    return tex_depth[pos].r;
 }
 
 inline float get_depth(float2 uv)
@@ -204,16 +204,14 @@ inline float get_linear_depth(float z)
     return get_linear_depth(z, g_camera_near, g_camera_far);
 }
 
-inline float get_linear_depth(int2 pos)
+inline float get_linear_depth(uint2 pos)
 {
-    float depth = get_depth(pos);
-    return get_linear_depth(depth);
+    return get_linear_depth(get_depth(pos));
 }
 
 inline float get_linear_depth(float2 uv)
 {
-    float depth = get_depth(uv);
-    return get_linear_depth(depth);
+    return get_linear_depth(get_depth(uv));
 }
 
 /*------------------------------------------------------------------------------
@@ -229,19 +227,18 @@ inline float3 get_position(float z, float2 uv)
     return pos_world.xyz / pos_world.w;
 }
 
-inline float3 get_position(int2 pos)
+inline float3 get_position(float2 uv)
+{
+    return get_position(get_depth(uv), uv);
+}
+
+inline float3 get_position(uint2 pos)
 {
     const float2 uv = (pos + 0.5f) / g_resolution;
     return get_position(get_depth(pos), uv);
 }
 
-inline float3 get_position(float2 uv)
-{
-    // Effects like ambient occlusion have visual discontinuities when they are not using filtered depth
-    return get_position(get_depth(uv), uv);
-}
-
-inline float3 get_position_view_space(int2 pos)
+inline float3 get_position_view_space(uint2 pos)
 {
     return mul(float4(get_position(pos), 1.0f), g_view).xyz;
 }
@@ -254,35 +251,36 @@ inline float3 get_position_view_space(float2 uv)
 /*------------------------------------------------------------------------------
     VIEW DIRECTION
 ------------------------------------------------------------------------------*/
-inline float3 get_view_direction(float3 position_world, float2 uv)
+inline float3 get_view_direction(float3 position_world)
 {
     return normalize(position_world - g_camera_position.xyz);
 }
 
 inline float3 get_view_direction(float depth, float2 uv)
 {
-    return get_view_direction(get_position(depth, uv), uv);
+    return get_view_direction(get_position(depth, uv));
 }
 
 inline float3 get_view_direction(float2 uv)
 {
-    return get_view_direction(get_depth(uv), uv);
+    return get_view_direction(get_position(uv));
 }
 
-inline float3 get_view_direction(int2 pos)
+inline float3 get_view_direction(uint2 pos)
 {
     const float2 uv = (pos + 0.5f) / g_resolution;
-    return get_view_direction(get_depth(pos), uv);
+    return get_view_direction(uv);
 }
 
 inline float3 get_view_direction_view_space(float2 uv)
 {
-    return mul(float4(get_view_direction(get_depth(uv), uv), 0.0f), g_view).xyz;
+    return mul(float4(get_view_direction(get_position(uv)), 0.0f), g_view).xyz;
 }
 
-inline float3 get_view_direction_view_space(int2 pos)
+inline float3 get_view_direction_view_space(uint2 pos)
 {
-    return mul(float4(get_view_direction(get_depth(pos), pos), 0.0f), g_view).xyz;
+	const float2 uv = (pos + 0.5f) / g_resolution;
+    return get_view_direction_view_space(uv);
 }
 
 /*------------------------------------------------------------------------------

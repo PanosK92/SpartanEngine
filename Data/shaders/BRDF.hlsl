@@ -144,45 +144,45 @@ inline float3 Diffuse_OrenNayar(float3 diffuse_color, float Roughness, float NoV
     return diffuse_color / PI * ( C1 + C2 ) * ( 1 + Roughness * 0.5 );
 }
 
-inline float3 BRDF_Diffuse(Material material, float n_dot_v, float n_dot_l, float v_dot_h)
+inline float3 BRDF_Diffuse(Surface surface, float n_dot_v, float n_dot_l, float v_dot_h)
 {
-    return Diffuse_Burley(material.albedo.rgb, material.roughness, n_dot_v, n_dot_l, v_dot_h);
+    return Diffuse_Burley(surface.albedo.rgb, surface.roughness, n_dot_v, n_dot_l, v_dot_h);
 }
 
 /*------------------------------------------------------------------------------
     Specular
 ------------------------------------------------------------------------------*/
 
-inline float3 BRDF_Specular_Isotropic(Material material, float n_dot_v, float n_dot_l, float n_dot_h, float v_dot_h, inout float3 diffuse_energy, inout float3 specular_energy)
+inline float3 BRDF_Specular_Isotropic(Surface surface, float n_dot_v, float n_dot_l, float n_dot_h, float v_dot_h, inout float3 diffuse_energy, inout float3 specular_energy)
 {
     // remapping and linearization
-    float roughness = clamp(material.roughness, 0.089f, 1.0f);
+    float roughness = clamp(surface.roughness, 0.089f, 1.0f);
     float a         = roughness * roughness;
     float a2        = pow(roughness, 4.0f);
 
     float V     = V_SmithJointApprox(a2, n_dot_v, n_dot_l);
     float D     = D_GGX(a2, n_dot_h);
-    float3 F    = F_Schlick(material.F0, v_dot_h);
+    float3 F    = F_Schlick(surface.F0, v_dot_h);
 
-    diffuse_energy  *= compute_diffuse_energy(F, material.metallic);
+    diffuse_energy  *= compute_diffuse_energy(F, surface.metallic);
     specular_energy *= F;
     
     return (D * V) * F;
 }
 
-inline float3 BRDF_Specular_Anisotropic(Material material, Surface surface, float3 v, float3 l, float3 h, float n_dot_v, float n_dot_l, float n_dot_h, float l_dot_h, inout float3 diffuse_energy, inout float3 specular_energy)
+inline float3 BRDF_Specular_Anisotropic(Surface surface, float3 v, float3 l, float3 h, float n_dot_v, float n_dot_l, float n_dot_h, float l_dot_h, inout float3 diffuse_energy, inout float3 specular_energy)
 {
     float3 n            = surface.normal;
     float3 t            = normalize(cross(n, -n));                              // any perpendicular vector to the normal
     float3 b            = cross(n, t);
     float3x3 TBN        = float3x3(t, b, n);
-    float rotation      = max(material.anisotropic_rotation * PI2, FLT_MIN);    // convert material property to a full rotation
+    float rotation      = max(surface.anisotropic_rotation * PI2, FLT_MIN);     // convert material property to a full rotation
     float2 direction    = float2(cos(rotation), sin(rotation));                 // convert rotation to direction
     t                   = normalize(mul(float3(direction, 0.0f), TBN).xyz);     // compute direction derived tangent
     b                   = normalize(cross(n, t));                               // update bitangent
 
-    float alpha_ggx = material.roughness;
-    float aspect    = fast_sqrt(1.0 - material.anisotropic * 0.9);
+    float alpha_ggx = surface.roughness;
+    float aspect    = fast_sqrt(1.0 - surface.anisotropic * 0.9);
     float ax        = alpha_ggx / aspect;
     float ay        = alpha_ggx * aspect;
     float XdotH     = dot(t, h);
@@ -191,46 +191,46 @@ inline float3 BRDF_Specular_Anisotropic(Material material, Surface surface, floa
     // specular anisotropic BRDF
     float D     = D_GGX_Anisotropic(n_dot_h, ax, ay, XdotH, YdotH);
     float V     = V_GGX_anisotropic_2cos(n_dot_v, ax, ay, XdotH, YdotH) * V_GGX_anisotropic_2cos(n_dot_v, ax, ay, XdotH, YdotH);
-    float f90   = saturate(dot(material.F0, 50.0 * 0.33));
-    float3 F    = F_Schlick(material.F0, f90, l_dot_h);
+    float f90   = saturate(dot(surface.F0, 50.0 * 0.33));
+    float3 F    = F_Schlick(surface.F0, f90, l_dot_h);
 
-    diffuse_energy  *= compute_diffuse_energy(F, material.metallic);
+    diffuse_energy  *= compute_diffuse_energy(F, surface.metallic);
     specular_energy *= F;
     
     return (D * V) * F;
 }
 
-inline float3 BRDF_Specular_Clearcoat(Material material, float n_dot_h, float v_dot_h, inout float3 diffuse_energy, inout float3 specular_energy)
+inline float3 BRDF_Specular_Clearcoat(Surface surface, float n_dot_h, float v_dot_h, inout float3 diffuse_energy, inout float3 specular_energy)
 {
     // remapping and linearization
-    float roughness = clamp(material.clearcoat_roughness, 0.089f, 1.0f);
+    float roughness = clamp(surface.clearcoat_roughness, 0.089f, 1.0f);
     float a         = roughness * roughness;
     float a2        = pow(roughness, 4.0f);
     
     float D     = D_GGX(a2, n_dot_h);
     float V     = V_Kelemen(v_dot_h);
-    float3 F    = F_Schlick(0.04, 1.0, v_dot_h) * material.clearcoat;
+    float3 F    = F_Schlick(0.04, 1.0, v_dot_h) * surface.clearcoat;
 
-    diffuse_energy  *= compute_diffuse_energy(F, material.metallic);
+    diffuse_energy  *= compute_diffuse_energy(F, surface.metallic);
     specular_energy *= F;
 
     return (D * V) * F;
 }
 
-inline float3 BRDF_Specular_Sheen(Material material, float n_dot_v, float n_dot_l, float n_dot_h, inout float3 diffuse_energy, inout float3 specular_energy)
+inline float3 BRDF_Specular_Sheen(Surface surface, float n_dot_v, float n_dot_l, float n_dot_h, inout float3 diffuse_energy, inout float3 specular_energy)
 {
     // remapping and linearization
-    float roughness = clamp(material.roughness, 0.089f, 1.0f);
+    float roughness = clamp(surface.roughness, 0.089f, 1.0f);
 
     // Mix between white and using base color for sheen reflection
-    float tint  = material.sheen_tint * material.sheen_tint;
-    float3 f0   = lerp(1.0f, material.F0, tint);
+    float tint  = surface.sheen_tint * surface.sheen_tint;
+    float3 f0   = lerp(1.0f, surface.F0, tint);
     
     float D     = D_Charlie(roughness, n_dot_h);
     float V     = V_Neubelt(n_dot_v, n_dot_l);
-    float3 F    = f0 * material.sheen;
+    float3 F    = f0 * surface.sheen;
 
-    diffuse_energy  *= compute_diffuse_energy(F, material.metallic);
+    diffuse_energy  *= compute_diffuse_energy(F, surface.metallic);
     specular_energy *= F;
 
     return (D * V) * F;
@@ -277,27 +277,27 @@ inline float3 sample_environment(float2 uv, float mip_level)
     return tex_environment.SampleLevel(sampler_trilinear_clamp, uv, mip_level).rgb;
 }
 
-inline float3 Brdf_Diffuse_Ibl(Material material, float3 normal)
+inline float3 Brdf_Diffuse_Ibl(Surface surface, float3 normal)
 {
-    return sample_environment(direction_sphere_uv(normal), g_envrionement_max_mip) * material.albedo.rgb;
+    return sample_environment(direction_sphere_uv(normal), g_envrionement_max_mip) * surface.albedo.rgb;
 }
 
-inline float3 Brdf_Specular_Ibl(Material material, float3 normal, float3 camera_to_pixel, inout float3 diffuse_energy)
+inline float3 Brdf_Specular_Ibl(Surface surface, float3 normal, float3 camera_to_pixel, inout float3 diffuse_energy)
 {
     // Compute specular energy
     float n_dot_v           = saturate(dot(-camera_to_pixel, normal));
-    float3 F                = F_Schlick_Roughness(material.F0, n_dot_v, material.roughness);
-    float2 envBRDF          = tex_lutIbl.Sample(sampler_bilinear_clamp, float2(n_dot_v, material.roughness)).xy;
+    float3 F                = F_Schlick_Roughness(surface.F0, n_dot_v, surface.roughness);
+    float2 envBRDF          = tex_lutIbl.Sample(sampler_bilinear_clamp, float2(n_dot_v, surface.roughness)).xy;
     float3 specular_energy  = F * envBRDF.x + envBRDF.y;
 
     // Compute prefiltered color
     float3 reflection           = reflect(camera_to_pixel, normal);
-    reflection                  = GetSpecularDominantDir(normal, reflection, material.roughness); // From Sebastien Lagarde Moving Frostbite to PBR page 69
-    float mip_level             = lerp(0, g_envrionement_max_mip, material.roughness * material.roughness);
+    reflection                  = GetSpecularDominantDir(normal, reflection, surface.roughness); // From Sebastien Lagarde Moving Frostbite to PBR page 69
+    float mip_level             = lerp(0, g_envrionement_max_mip, surface.roughness * surface.roughness);
     float3 prefiltered_color    = sample_environment(direction_sphere_uv(reflection), mip_level);
 
     // Outpout diffuse energy
-    diffuse_energy *= compute_diffuse_energy(specular_energy, material.metallic);
+    diffuse_energy *= compute_diffuse_energy(specular_energy, surface.metallic);
 
     return prefiltered_color * specular_energy;
 }
