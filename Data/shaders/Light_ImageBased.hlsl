@@ -36,33 +36,33 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 
     // Construct material
     const float4 sample_material = tex_material.Load(int3(screen_pos, 0));
-    Material material;
-    material.albedo     = tex_albedo.Load(int3(screen_pos, 0));
-    material.roughness  = sample_material.r;
-    material.metallic   = sample_material.g;
-    material.emissive   = sample_material.b;
-    material.F0         = lerp(0.04f, material.albedo.rgb, material.metallic);
+    Surface surface;
+    surface.albedo     = tex_albedo.Load(int3(screen_pos, 0));
+    surface.roughness  = sample_material.r;
+    surface.metallic   = sample_material.g;
+    surface.emissive   = sample_material.b;
+    surface.F0         = lerp(0.04f, surface.albedo.rgb, surface.metallic);
 
-    const bool is_transparent = material.albedo.a != 1.0f;
+    const bool is_transparent = surface.albedo.a != 1.0f;
 
     // Sample some textures
     const float depth   = tex_depth.Load(int3(screen_pos, 0)).r;
-    float ssao          = !is_transparent ? tex_hbao.SampleLevel(sampler_point_clamp, uv, 0).r : 1.0f; // if hbao is disabled, the texture will be 1x1 white pixel, so we use a sampler
+    float ssao          = !is_transparent ? tex_ssao.SampleLevel(sampler_point_clamp, uv, 0).r : 1.0f; // if hbao is disabled, the texture will be 1x1 white pixel, so we use a sampler
 
     // Light - Ambient
     float3 light_ambient = saturate(g_directional_light_intensity / 128000.0f);
     
     // Apply ambient occlusion to ambient light
-    light_ambient *= MultiBounceAO(ssao, material.albedo.rgb);
+    light_ambient *= MultiBounceAO(ssao, surface.albedo.rgb);
     
     // Light - IBL
     const float3 camera_to_pixel = get_view_direction(depth, uv);
     float3 diffuse_energy   = 1.0f;
-    float3 light_ibl        = Brdf_Specular_Ibl(material, normal.xyz, camera_to_pixel, diffuse_energy) * light_ambient;
-    light_ibl               += Brdf_Diffuse_Ibl(material, normal.xyz) * light_ambient * diffuse_energy; // Tone down diffuse such as that only non metals have it
+    float3 light_ibl        = Brdf_Specular_Ibl(surface, normal.xyz, camera_to_pixel, diffuse_energy) * light_ambient;
+    light_ibl               += Brdf_Diffuse_Ibl(surface, normal.xyz) * light_ambient * diffuse_energy; // Tone down diffuse such as that only non metals have it
 
     // Fade out for transparents
-    light_ibl *= material.albedo.a;
+    light_ibl *= surface.albedo.a;
 
     // Light - Refraction (only for transparents)
     float3 light_refraction = 0.0f;

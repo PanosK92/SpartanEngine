@@ -306,7 +306,7 @@ inline void auto_bias(Surface surface, inout float3 position, Light light, float
     float fixed_factor = 0.0001f;
     
     // Slope scaling
-    float slope_factor = (1.0f - saturate(surface.n_dot_l));
+    float slope_factor = (1.0f - saturate(light.n_dot_l));
 
     // Apply bias
     position.z += fixed_factor * slope_factor * light.bias * bias_mul;
@@ -314,7 +314,7 @@ inline void auto_bias(Surface surface, inout float3 position, Light light, float
 
 inline float3 bias_normal_offset(Surface surface, Light light, float3 normal)
 {
-    return normal * (1.0f - saturate(surface.n_dot_l)) * light.normal_bias * g_shadow_texel_size * 10;
+    return normal * (1.0f - saturate(light.n_dot_l)) * light.normal_bias * g_shadow_texel_size * 10;
 }
 
 /*------------------------------------------------------------------------------

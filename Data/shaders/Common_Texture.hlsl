@@ -54,7 +54,7 @@ Texture2D light_spot_color              : register(t23);
 Texture2D tex_lutIbl            : register(t24);
 Texture2D tex_environment       : register(t25);
 Texture2D tex_normal_noise      : register(t26);
-Texture2D tex_hbao              : register(t27);
+Texture2D tex_ssao              : register(t27);
 Texture2D tex_ssr               : register(t28);
 Texture2D tex_frame             : register(t29);
 Texture2D tex                   : register(t30);

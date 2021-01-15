@@ -92,7 +92,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         return;
 
     // Sample albedo
-    float4 sample_albedo = tex_albedo.Load(int3(thread_id.xy, 0));
+    float4 sample_albedo = tex_albedo[thread_id.xy];
 
     // If this is a transparent pass, ignore all opaque pixels
     #if TRANSPARENT
@@ -101,46 +101,17 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     #endif
 
     const float2 uv = (thread_id.xy + 0.5f) / g_resolution;
-    
-    // Sample there rest of the textures
-    float4 sample_normal    = tex_normal.Load(int3(thread_id.xy, 0));
-    float4 sample_material  = tex_material.Load(int3(thread_id.xy, 0));
-    float sample_depth      = tex_depth.Load(int3(thread_id.xy, 0)).r;
+
+    // Sample ssao
     #if TRANSPARENT
-    float sample_hbao       = 1.0f; // we don't do ao for transparents
+    float sample_ssao   = 1.0f; // we don't do ao for transparents
     #else
-    float sample_hbao       = tex_hbao.SampleLevel(sampler_point_clamp, uv, 0).r; // if hbao is disabled, the texture will be 1x1 white pixel, so we use a sampler
+    float sample_ssao   = tex_ssao.SampleLevel(sampler_point_clamp, uv, 0).r; // if ssao is disabled, the texture will be 1x1 white pixel, so we use a sampler
     #endif
 
-    // Post-process samples
-    int mat_id          = round(sample_normal.a * 65535);
-    const bool is_sky   = mat_id == 0;
-    float occlusion     = sample_material.a;
-
-        // Create material
-    Material material;
-    material.albedo                 = float4(1.0f, 1.0f, 1.0f, sample_albedo.a);
-    material.roughness              = sample_material.r;
-    material.metallic               = sample_material.g;
-    material.emissive               = sample_material.b;
-    material.clearcoat              = mat_clearcoat_clearcoatRough_aniso_anisoRot[mat_id].x;
-    material.clearcoat_roughness    = mat_clearcoat_clearcoatRough_aniso_anisoRot[mat_id].y;
-    material.anisotropic            = mat_clearcoat_clearcoatRough_aniso_anisoRot[mat_id].z;
-    material.anisotropic_rotation   = mat_clearcoat_clearcoatRough_aniso_anisoRot[mat_id].w;
-    material.sheen                  = mat_sheen_sheenTint_pad[mat_id].x;
-    material.sheen_tint             = mat_sheen_sheenTint_pad[mat_id].y;
-    material.occlusion              = min(occlusion, sample_hbao);
-    material.F0                     = lerp(0.04f, sample_albedo.rgb, material.metallic);
-    
-    // Fill surface struct
+    // Create material
     Surface surface;
-    surface.uv                      = uv;
-    surface.depth                   = sample_depth;
-    surface.position                = get_position(surface.depth, surface.uv);
-    surface.normal                  = normal_decode(sample_normal.xyz);
-    surface.camera_to_pixel         = surface.position - g_camera_position.xyz;
-    surface.camera_to_pixel_length  = length(surface.camera_to_pixel);
-    surface.camera_to_pixel         = normalize(surface.camera_to_pixel);
+    surface.Build(uv, float4(1.0f, 1.0f, 1.0f, sample_albedo.a), tex_normal[thread_id.xy], tex_material[thread_id.xy], tex_depth[thread_id.xy].r, sample_ssao);
 
     // Fill light struct
     Light light;
@@ -155,10 +126,9 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     light.distance_to_pixel = length(surface.position - light.position);
     light.direction         = get_light_direction(light, surface);
     light.attenuation       = get_light_attenuation(light, surface.position);
+    light.n_dot_l           = saturate(dot(surface.normal, -light.direction)); // Pre-compute n_dot_l since it's used in many places
+    light.radiance          = light.color * light.intensity * light.attenuation * light.n_dot_l;
 
-    // Pre-compute n_dot_l since it's used in many places
-    surface.n_dot_l = saturate(dot(surface.normal, -light.direction));
-    
     // Shadows
     float4 shadow = 1.0f;
     {
@@ -178,23 +148,23 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
         // Ensure that the shadow is as transparent as the material
         #if TRANSPARENT
-        shadow.a = clamp(shadow.a, material.albedo.a, 1.0f);
+        shadow.a = clamp(shadow.a, surface.albedo.a, 1.0f);
         #endif
     }
+
+    // Compute multi-bounce ambient occlusion
+    float3 multi_bounce_ao = MultiBounceAO(surface.occlusion, sample_albedo.rgb);
+
+    // Compute final radiance
+    light.radiance *= shadow.rgb * shadow.a * multi_bounce_ao;
 
     float3 light_diffuse    = 0.0f;
     float3 light_specular   = 0.0f;
     float3 light_volumetric = 0.0f;
-    
-    // Compute multi-bounce ambient occlusion
-    float3 multi_bounce_ao = MultiBounceAO(material.occlusion, sample_albedo.rgb);
-
-    // Compute final radiance
-    light.radiance = light.color * light.intensity * light.attenuation * surface.n_dot_l * shadow.rgb * shadow.a * multi_bounce_ao;
 
     // Reflectance equation
     [branch]
-    if (any(light.radiance) && !is_sky)
+    if (any(light.radiance) && !surface.is_sky())
     {
         // Compute some vectors and dot products
         float3 l        = -light.direction;
@@ -203,36 +173,35 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         float l_dot_h   = saturate(dot(l, h));
         float v_dot_h   = saturate(dot(v, h));
         float n_dot_v   = saturate(dot(surface.normal, v));
-        float n_dot_l   = surface.n_dot_l;
         float n_dot_h   = saturate(dot(surface.normal, h));
 
         float3 diffuse_energy       = 1.0f;
         float3 reflective_energy    = 1.0f;
         
         // Specular
-        if (material.anisotropic == 0.0f)
+        if (surface.anisotropic == 0.0f)
         {
-            light_specular += BRDF_Specular_Isotropic(material, n_dot_v, n_dot_l, n_dot_h, v_dot_h, diffuse_energy, reflective_energy);
+            light_specular += BRDF_Specular_Isotropic(surface, n_dot_v, light.n_dot_l, n_dot_h, v_dot_h, diffuse_energy, reflective_energy);
         }
         else
         {
-            light_specular += BRDF_Specular_Anisotropic(material, surface, v, l, h, n_dot_v, n_dot_l, n_dot_h, l_dot_h, diffuse_energy, reflective_energy);
+            light_specular += BRDF_Specular_Anisotropic(surface, v, l, h, n_dot_v, light.n_dot_l, n_dot_h, l_dot_h, diffuse_energy, reflective_energy);
         }
 
         // Specular clearcoat
-        if (material.clearcoat != 0.0f)
+        if (surface.clearcoat != 0.0f)
         {
-            light_specular += BRDF_Specular_Clearcoat(material, n_dot_h, v_dot_h, diffuse_energy, reflective_energy);
+            light_specular += BRDF_Specular_Clearcoat(surface, n_dot_h, v_dot_h, diffuse_energy, reflective_energy);
         }
 
         // Sheen;
-        if (material.sheen != 0.0f)
+        if (surface.sheen != 0.0f)
         {
-            light_specular += BRDF_Specular_Sheen(material, n_dot_v, n_dot_l, n_dot_h, diffuse_energy, reflective_energy);
+            light_specular += BRDF_Specular_Sheen(surface, n_dot_v, light.n_dot_l, n_dot_h, diffuse_energy, reflective_energy);
         }
         
         // Diffuse
-        light_diffuse += BRDF_Diffuse(material, n_dot_v, n_dot_l, v_dot_h);
+        light_diffuse += BRDF_Diffuse(surface, n_dot_v, light.n_dot_l, v_dot_h);
 
         /* Light - Subsurface scattering fast approximation - Will activate soon
         #if TRANSPARENT
@@ -240,7 +209,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
             const float thickness_edge  = 0.1f;
             const float thickness_face  = 1.0f;
             const float distortion      = 0.65f;
-            const float ambient         = 1.0f - material.albedo.a;
+            const float ambient         = 1.0f - surface.albedo.a;
             const float scale           = 1.0f;
             const float power           = 0.8f;
             
@@ -249,7 +218,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
             float v_dot_h   = pow(saturate(dot(v, -h)), power) * scale;
             float intensity = (v_dot_h + ambient) * thickness;
             
-            light_diffuse += material.albedo.rgb * light.color * intensity;
+            light_diffuse += surface.albedo.rgb * light.color * intensity;
         }
         #endif
         */
@@ -266,7 +235,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     #endif
     
      // Light - Emissive
-    float3 light_emissive = material.emissive * material.albedo.rgb * 50.0f;
+    float3 light_emissive = surface.emissive * surface.albedo.rgb * 50.0f;
 
     tex_out_rgb[thread_id.xy]   += saturate_16(light_diffuse * light.radiance + light_emissive);
     tex_out_rgb2[thread_id.xy]  += saturate_16(light_specular * light.radiance);

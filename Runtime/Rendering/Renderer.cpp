@@ -720,13 +720,15 @@ namespace Spartan
         SP_ASSERT(m_swap_chain != nullptr);
         SP_ASSERT(m_swap_chain->GetCmdList() != nullptr);
 
+        // Wait in case this call is coming from a different thread as
+        // attempting to end a render pass while it's being used, causes an exception.
+        m_rhi_device->Queue_WaitAll();
+
         if (!m_swap_chain->GetCmdList()->Flush())
         {
             LOG_ERROR("Failed to flush");
             return false;
         }
-
-        m_rhi_device->Queue_WaitAll();
 
         return true;
     }
