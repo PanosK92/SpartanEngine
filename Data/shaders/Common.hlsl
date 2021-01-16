@@ -219,7 +219,6 @@ inline float get_linear_depth(float2 uv)
 ------------------------------------------------------------------------------*/
 inline float3 get_position(float z, float2 uv)
 {
-    // Reconstruct position from depth
     float x             = uv.x * 2.0f - 1.0f;
     float y             = (1.0f - uv.y) * 2.0f - 1.0f;
     float4 pos_clip     = float4(x, y, z, 1.0f);
@@ -279,8 +278,13 @@ inline float3 get_view_direction_view_space(float2 uv)
 
 inline float3 get_view_direction_view_space(uint2 pos)
 {
-	const float2 uv = (pos + 0.5f) / g_resolution;
+    const float2 uv = (pos + 0.5f) / g_resolution;
     return get_view_direction_view_space(uv);
+}
+
+inline float3 get_view_direction_view_space(float3 position_world)
+{
+    return mul(float4(get_view_direction(position_world), 0.0f), g_view).xyz;
 }
 
 /*------------------------------------------------------------------------------
@@ -398,6 +402,44 @@ float microw_shadowing_cod(float n_dot_l, float visibility)
     float aperture = rsqrt(1.0 - visibility);
     float microShadow = saturate(n_dot_l * aperture);
     return microShadow * microShadow;
+}
+
+/*------------------------------------------------------------------------------
+    PRIMITIVES
+------------------------------------------------------------------------------*/
+float draw_line(float2 p1, float2 p2, float2 uv, float a)
+{
+    float r = 0.0f;
+    float one_px = 1. / g_resolution.x; // not really one px
+
+    // get dist between points
+    float d = distance(p1, p2);
+
+    // get dist between current pixel and p1
+    float duv = distance(p1, uv);
+
+    // if point is on line, according to dist, it should match current uv 
+    r = 1.0f - floor(1.0f - (a * one_px) + distance(lerp(p1, p2, clamp(duv / d, 0.0f, 1.0f)), uv));
+
+    return r;
+}
+
+float draw_line_view_space(float3 p1, float3 p2, float2 uv, float a)
+{
+    float2 p1_uv = project_uv(p1, g_projection);
+    float2 p2_uv = project_uv(p2, g_projection);
+    return draw_line(p1_uv, p2_uv, uv, a);
+}
+
+float draw_circle(float2 origin, float radius, float2 uv)
+{
+    return (distance(origin, uv) <= radius) ? 1.0f : 0.0f;
+}
+
+float draw_circle_view_space(float3 origin, float radius, float2 uv)
+{
+    float2 origin_uv = project_uv(origin, g_projection);
+    return draw_circle(origin_uv, radius, uv);
 }
 
 /*------------------------------------------------------------------------------
