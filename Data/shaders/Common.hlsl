@@ -530,6 +530,3 @@ static const float3 hemisphere_samples[64] =
 };
 
 #endif // SPARTAN_COMMON
-
-
-
