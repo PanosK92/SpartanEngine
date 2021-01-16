@@ -91,14 +91,31 @@ inline float2 trace_ray(int2 screen_pos, float3 ray_pos, float3 ray_dir)
     return ray_uv_hit;
 }
 
+inline float compute_alpha(int2 screen_pos, float2 hit_uv, float3 view_direction, float3 reflection)
+{
+    float alpha = 1.0f;
+
+    alpha *= screen_fade(hit_uv);
+
+    // Reject if the reflection vector is pointing back at the viewer.
+    alpha *= 1.0f - saturate(dot(-view_direction, reflection));
+
+    // Fade out as the material roughness increases.
+    // This is because reflections do get rougher by getting jittered but there is a threshold before they start to look too noisy.
+    float roughness = tex_material[screen_pos].r;
+    alpha *= 1.0f - roughness;
+
+    // If the UV is invalid fade completely
+    alpha *= all(hit_uv);
+
+    return alpha;
+}
+
 [numthreads(thread_group_count_x, thread_group_count_y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
     if (thread_id.x >= uint(g_resolution.x) || thread_id.y >= uint(g_resolution.y))
         return;
-
-    const float2 uv = (thread_id.xy + 0.5f) / g_resolution;
-    float2 hit_uv   = 0.0f;
 
     // Compute reflection direction in view space
     float3 normal       = get_normal_view_space(thread_id.xy);
@@ -109,6 +126,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     {
         // Compute jitter
         float ign               = interleaved_gradient_noise(thread_id.xy);
+        float2 uv               = (thread_id.xy + 0.5f) / g_resolution;
         float3 random_vector    = unpack(normalize(tex_normal_noise.SampleLevel(sampler_bilinear_wrap, uv * g_normal_noise_scale, 0)).xyz);
         float3 jitter           = reflect(hemisphere_samples[ign * 63], random_vector);
 
@@ -124,15 +142,8 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         reflection += jitter * 3;
     }
 
-    // Reject if the reflection vector is pointing back at the viewer.
-    // Attenuate reflections for angles between 60 degrees and 75 degrees, and drop all contribution beyond the (-60,60) degree range
-    float view_fade = 1 - smoothstep(0.25, 0.5, dot(-position, reflection));
-    [branch]
-    if (view_fade > 0)
-    {
-        hit_uv = trace_ray(thread_id.xy, position, reflection);
-    }
-
-    tex_out_rg[thread_id.xy] = hit_uv;
+    float2 hit_uv               = trace_ray(thread_id.xy, position, reflection);
+    float alpha                 = compute_alpha(thread_id.xy, hit_uv, position, reflection);
+    tex_out_rgba[thread_id.xy]  = float4(hit_uv, alpha, 0.0f);
 }
 

@@ -150,7 +150,7 @@ namespace Spartan
         m_render_targets[RendererRt::Ssgi] = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R11G11B10_Float, 1, 0, "rt_ssgi");
 
         // SSR
-        m_render_targets[RendererRt::Ssr] = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16_Float, 1, RHI_Texture_Storage, "rt_ssr");
+        m_render_targets[RendererRt::Ssr] = make_shared<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Snorm, 1, RHI_Texture_Storage, "rt_ssr");
 
         // Accumulation
         m_render_targets[RendererRt::Accumulation_Taa]  = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_accumulation_taa");

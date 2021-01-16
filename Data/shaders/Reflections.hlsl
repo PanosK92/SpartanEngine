@@ -33,30 +33,31 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     if (is_transparent)
         discard;
 
-    const float2 ssr_uv             = g_ssr_enabled ? tex_ssr.SampleLevel(sampler_point_clamp, uv, 0).xy : 0.0f;
-    const float4 material_sample    = tex_material.SampleLevel(sampler_point_clamp, uv, 0);
-    const float3 normal             = tex_normal.SampleLevel(sampler_point_clamp, uv, 0).xyz;
+    const float3 ssr_sample = g_ssr_enabled ? tex_ssr.SampleLevel(sampler_point_clamp, uv, 0).rgb : 0.0f;
+    const float2 ssr_uv     = ssr_sample.rg;
+    const float ssr_alpha   = ssr_sample.b;
 
-    Surface surface;
-    surface.roughness  = material_sample.r;
-    surface.metallic   = material_sample.g;
-    surface.emissive   = material_sample.b;
-    surface.F0         = lerp(0.04f, sample_albedo.rgb, surface.metallic);
-
-    float3 color = 0.0f;
+    float3 color_ssr            = 0.0f;
+    float3 color_environment    = 0.0f;
 
     // Get ssr color
-    if (any(ssr_uv))
+    if (ssr_alpha != 0.0f)
     {
-        color = tex_frame.SampleLevel(sampler_bilinear_clamp, ssr_uv, 0).rgb;
-
-        // Fade out as the material roughness increases.
-        // This is because reflections do get rougher by getting jittered but there is a threshold before they start to look too noisy.
-        color *= (1.0f - surface.roughness);
+        color_ssr = tex_frame.SampleLevel(sampler_bilinear_clamp, ssr_uv, 0).rgb;
     }
+
     // Get environment color
-    else
+    if (ssr_alpha != 1.0f)
     {
+        const float4 material_sample    = tex_material.SampleLevel(sampler_point_clamp, uv, 0);
+        const float3 normal             = tex_normal.SampleLevel(sampler_point_clamp, uv, 0).xyz;
+
+        Surface surface;
+        surface.roughness  = material_sample.r;
+        surface.metallic   = material_sample.g;
+        surface.emissive   = material_sample.b;
+        surface.F0         = lerp(0.04f, sample_albedo.rgb, surface.metallic);
+
         const float3 camera_to_pixel    = get_view_direction(uv);
         float3 reflection               = reflect(camera_to_pixel, normal);
         float mip_level                 = lerp(0, g_envrionement_max_mip, surface.roughness * surface.roughness);
@@ -64,8 +65,8 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         float3 F                        = F_Schlick_Roughness(surface.F0, n_dot_v, surface.roughness);
         float ambient_light             = saturate(g_directional_light_intensity / 128000.0f); // this is is wrong, SSR needs to sample an already darkened sky
 
-        color = tex_environment.SampleLevel(sampler_trilinear_clamp, direction_sphere_uv(reflection), mip_level).rgb * F * ambient_light;
+        color_environment = tex_environment.SampleLevel(sampler_trilinear_clamp, direction_sphere_uv(reflection), mip_level).rgb * F * ambient_light;
     }
 
-    return float4(color, 0.0f);
+    return float4(lerp(color_environment, color_ssr, ssr_alpha), 0.0f);
 }
