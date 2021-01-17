@@ -20,10 +20,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 // Settings
-static const uint  g_sss_steps            = 16;     // Quality/performance
-static const float g_sss_ray_max_distance = 0.05f; // Max shadow length
-static const float g_sss_tolerance        = 0.02f; // Error in favor of reducing gaps
-static const float g_sss_step_length      = g_sss_ray_max_distance / (float)g_sss_steps;
+static const uint  g_sss_max_steps        = 16;     // Max ray steps, affects quality and performance.
+static const float g_sss_ray_max_distance = 0.05f;  // Max shadow length, longer shadows are less accurate.
+static const float g_sss_thickness        = 0.02f;  // Depth testing thickness.
+static const float g_sss_step_length      = g_sss_ray_max_distance / (float)g_sss_max_steps;
 
 //= INLUCES ==========
 #include "Common.hlsl"
@@ -31,43 +31,45 @@ static const float g_sss_step_length      = g_sss_ray_max_distance / (float)g_ss
 
 float ScreenSpaceShadows(Surface surface, Light light)
 {
-    // Compute ray
+    // Compute ray position and direction (in view-space)
     float3 ray_pos  = mul(float4(surface.position, 1.0f), g_view).xyz;
     float3 ray_dir  = mul(float4(-light.direction, 0.0f), g_view).xyz;
+
+    // Compute ray step
     float3 ray_step = ray_dir * g_sss_step_length;
-	
-	// Offset starting position with temporal interleaved gradient noise
+
+    // Offset starting position with temporal interleaved gradient noise
     float offset = interleaved_gradient_noise(g_resolution * surface.uv) * 2.0f - 1.0;
     ray_pos      += ray_step * offset;
 
     // Ray march towards the light
     float occlusion = 0.0;
     float2 ray_uv   = 0.0f;
-	[unroll]
-    for (uint i = 0; i < g_sss_steps; i++)
+    for (uint i = 0; i < g_sss_max_steps; i++)
     {
         // Step the ray
         ray_pos += ray_step;
         ray_uv  = project_uv(ray_pos, g_projection);
-		
-		[branch]
+
+        // Ensure the UV coordinates are inside the screen
         if (is_saturated(ray_uv))
         {
-			// Compute depth difference
-			float depth_z     = get_linear_depth(ray_uv);
-			float depth_delta = ray_pos.z - depth_z;
+            // Compute the difference between the ray's and the camera's depth
+            float depth_z     = get_linear_depth(ray_uv);
+            float depth_delta = ray_pos.z - depth_z;
 
-			// Occlusion test
-			if (abs(g_sss_tolerance - depth_delta) < g_sss_tolerance)
-			{
-				occlusion = 1.0f;
-				break;
-			}
-		}
+            // Check if the camera can no longer "see" the ray (camera depth must be smaller than the ray depth, so positive depth_delta)
+            if ((depth_delta > 0.0f) && (depth_delta < g_sss_thickness))
+            {
+                occlusion = 1.0f;
+
+                // Fade out as we approach the edges of the screen
+                occlusion *= screen_fade(ray_uv);
+
+                break;
+            }
+        }
     }
 
-    // Fade out as we approach the edges of the screen
-    occlusion *= screen_fade(ray_uv);
-    
     return 1.0f - occlusion;
 }
