@@ -55,12 +55,13 @@ float ScreenSpaceShadows(Surface surface, Light light)
         if (is_saturated(ray_uv))
         {
             // Compute the difference between the ray's and the camera's depth
-            float depth_z     = get_linear_depth(ray_uv);
-            float depth_delta = ray_pos.z - depth_z;
+            float depth_z       = get_linear_depth(ray_uv);
+            float depth_delta   = ray_pos.z - depth_z;
 
-            // Check if the camera can no longer "see" the ray (camera depth must be smaller than the ray depth, so positive depth_delta)
+            // Check if the camera can't "see" the ray (ray depth must be larger than the camera depth, so positive depth_delta)
             if ((depth_delta > 0.0f) && (depth_delta < g_sss_thickness))
             {
+                // Mark as occluded
                 occlusion = 1.0f;
 
                 // Fade out as we approach the edges of the screen
@@ -71,5 +72,6 @@ float ScreenSpaceShadows(Surface surface, Light light)
         }
     }
 
+    // Convert to visibility
     return 1.0f - occlusion;
 }
