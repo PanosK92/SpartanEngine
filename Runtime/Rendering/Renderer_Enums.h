@@ -58,17 +58,20 @@ namespace Spartan
         light_spot_depth           = 22,
         light_spot_color           = 23,
 
+        // Noise
+        noise_normal    = 24,
+        noise_blue      = 25,
+
         // Misc
-        lutIbl             = 24,
-        environment        = 25,
-        normal_noise       = 26,
-        ssao               = 27,
-        ssr                = 28,
-        frame              = 29,
-        tex                = 30,
-        tex2               = 31,
-        font_atlas         = 32,
-        ssgi               = 33
+        lutIbl      = 26,
+        environment = 27,
+        ssao        = 28,
+        ssr         = 29,
+        frame       = 30,
+        tex         = 31,
+        tex2        = 32,
+        font_atlas  = 33,
+        ssgi        = 34
     };
 
     // Unordered access views bindings

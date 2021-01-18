@@ -422,8 +422,11 @@ namespace Spartan
 
         auto generate_mipmaps = false;
 
-        m_default_tex_normal_noise = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
-        m_default_tex_normal_noise->LoadFromFile(dir_texture + "normal_noise.png");
+        m_default_tex_noise_normal = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
+        m_default_tex_noise_normal->LoadFromFile(dir_texture + "noise_normal.png");
+
+        m_default_tex_noise_blue = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
+        m_default_tex_noise_blue->LoadFromFile(dir_texture + "noise_blue.png");
 
         m_default_tex_white = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
         m_default_tex_white->LoadFromFile(dir_texture + "white.png");

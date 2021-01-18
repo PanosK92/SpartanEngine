@@ -91,6 +91,8 @@ inline float3 unpack(float3 value)  { return value * 2.0f - 1.0f; }
 inline float3 pack(float3 value)    { return value * 0.5f + 0.5f; }
 inline float2 unpack(float2 value)  { return value * 2.0f - 1.0f; }
 inline float2 pack(float2 value)    { return value * 0.5f + 0.5f; }
+inline float unpack(float value)    { return value * 2.0f - 1.0f; }
+inline float pack(float value)      { return value * 0.5f + 0.5f; }
 
 /*------------------------------------------------------------------------------
     FAST MATH APPROXIMATIONS
@@ -338,40 +340,52 @@ inline float luminance(float4 color)
 }
 
 /*------------------------------------------------------------------------------
-    RANDOM/SAMPLING
+    NOISE/OFFSETS/ROTATIONS
 ------------------------------------------------------------------------------*/
-inline float random(float2 uv)
+inline float get_random(float2 uv)
 {
     return frac(sin(dot(uv, float2(12.9898, 78.233))) * 43758.5453);
 }
 
-// Based on interleaved gradient function from Jimenez 2014 http://goo.gl/eomGso
-inline float interleaved_gradient_noise(float2 position_screen)
-{
-    position_screen += g_frame * any(g_taa_jitter_offset); // temporal factor
-    float3 magic = float3(0.06711056f, 0.00583715f, 52.9829189f);
-    return frac(magic.z * frac(dot(position_screen, magic.xy)));
-}
-
 // Based on Activision GTAO paper: https://www.activision.com/cdn/research/s2016_pbs_activision_occlusion.pptx
-inline float noise_spatial_offset(float2 position_screen)
+inline float get_offset_non_temporal(uint2 screen_pos)
 {
-    int2 position = (int2)(position_screen);
+    int2 position = (int2)(screen_pos);
     return 0.25 * (float)((position.y - position.x) & 3);
 }
 
 // Based on Activision GTAO paper: https://www.activision.com/cdn/research/s2016_pbs_activision_occlusion.pptx
 static const float offsets[] = { 0.0f, 0.5f, 0.25f, 0.75f };
-inline float noise_temporal_offset()
+inline float get_offset()
 {
     return offsets[(g_frame / 6) % 4] * any(g_taa_jitter_offset);
 }
 
 // Based on Activision GTAO paper: https://www.activision.com/cdn/research/s2016_pbs_activision_occlusion.pptx
 static const float rotations[] = { 60.0f, 300.0f, 180.0f, 240.0f, 120.0f, 0.0f };
-inline float noise_temporal_direction()
+inline float get_direction()
 {
     return (rotations[g_frame % 6] / 360.0f) * any(g_taa_jitter_offset);
+}
+
+// Derived from the interleaved gradient function from Jimenez 2014 http://goo.gl/eomGso
+float get_noise_interleaved_gradient(uint2 screen_pos)
+{
+    screen_pos += g_frame * any(g_taa_jitter_offset); // temporal factor
+    float3 magic = float3(0.06711056f, 0.00583715f, 52.9829189f);
+    return frac(magic.z * frac(dot((float2)screen_pos, magic.xy)));
+}
+
+float get_noise_blue(uint2 screen_pos)
+{
+    float2 uv = (screen_pos + 0.5f) / g_resolution;
+    return tex_noise_blue.SampleLevel(sampler_bilinear_wrap, uv * g_tex_noise_blue_scale, 0).r;
+}
+
+float3 get_noise_normal(uint2 screen_pos)
+{
+    float2 uv = (screen_pos + 0.5f) / g_resolution;
+    return normalize(tex_noise_normal.SampleLevel(sampler_bilinear_wrap, uv * g_tex_noise_normal_scale, 0).xyz);
 }
 
 /*------------------------------------------------------------------------------

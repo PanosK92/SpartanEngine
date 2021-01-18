@@ -152,7 +152,7 @@ float compute_penumbra(float vogel_angle, float3 uv, float compare)
 float Technique_Vogel(float3 uv, float compare)
 {
     float shadow            = 0.0f;
-    float temporal_offset   = interleaved_gradient_noise(g_shadow_resolution * uv.xy);
+    float temporal_offset   = get_noise_interleaved_gradient(uv.xy * g_shadow_resolution);
     float temporal_angle    = temporal_offset * PI2;
     float penumbra          = compute_penumbra(temporal_angle, uv, compare);
     
@@ -169,7 +169,7 @@ float Technique_Vogel(float3 uv, float compare)
 float4 Technique_Vogel_Color(float3 uv)
 {
     float4 shadow       = 0.0f;
-    float vogel_angle   = interleaved_gradient_noise(g_shadow_resolution * uv.xy) * PI2;
+    float vogel_angle   = get_noise_interleaved_gradient(uv.xy * g_shadow_resolution) * PI2;
 
     [unroll]
     for (uint i = 0; i < g_shadow_samples; i++)
@@ -255,12 +255,12 @@ static const float2 poisson_disk[64] =
 float Technique_Poisson(float3 uv, float compare)
 {
     float shadow            = 0.0f;
-    float temporal_offset   = interleaved_gradient_noise(g_shadow_resolution * uv.xy); // helps with noise if TAA is active
+    float temporal_offset   = get_noise_interleaved_gradient(uv.xy * g_shadow_resolution); // helps with noise if TAA is active
 
     [unroll]
     for (uint i = 0; i < g_shadow_samples; i++)
     {
-        uint index      = uint(g_shadow_samples * random(uv.xy * i)) % g_shadow_samples; // A pseudo-random number between 0 and 15, different for each pixel and each index
+        uint index      = uint(g_shadow_samples * get_random(uv.xy * i)) % g_shadow_samples; // A pseudo-random number between 0 and 15, different for each pixel and each index
         float2 offset   = (poisson_disk[index] + temporal_offset) * g_shadow_texel_size * g_shadow_filter_size;
         shadow          += shadow_compare_depth(uv + float3(offset, 0.0f), compare);
     }   
@@ -422,7 +422,3 @@ float4 Shadow_Map(Surface surface, Light light)
     
     return shadow;
 }
-
-
-
-

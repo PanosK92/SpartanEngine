@@ -223,7 +223,8 @@ namespace Spartan
         std::vector<std::shared_ptr<RHI_Texture>> m_render_tex_bloom;
 
         // Standard textures
-        std::shared_ptr<RHI_Texture> m_default_tex_normal_noise;
+        std::shared_ptr<RHI_Texture> m_default_tex_noise_normal;
+        std::shared_ptr<RHI_Texture> m_default_tex_noise_blue;
         std::shared_ptr<RHI_Texture> m_default_tex_white;
         std::shared_ptr<RHI_Texture> m_default_tex_black;
         std::shared_ptr<RHI_Texture> m_default_tex_transparent;

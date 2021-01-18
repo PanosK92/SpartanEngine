@@ -72,11 +72,11 @@ Platform | API | Status | Quality | Binaries
 ##### v0.32-35 (WIP)
 Feature     					 	| Completion 	| Notes 
 :-          					 	| :-         	| :-
-Continuous Vulkan optimisation 	 	| -		  		| Outperforms D3D11. Need to make more stable and uber optimise.
 Screen space global illumination 	| 100%		  	| One bounce of indirect diffuse and specular light
 Depth-of-field					 	| 100%       	| Controlled by Camera aperture
 C# scripting (Replace AngelScript) 	| 50%			| Using Mono (no engine API exposed yet)
-DirectX 12						 	| -				| Low priority
+Vulkan polishing 	 				| -		  		| Optimise to outperform D3D11 in all cases and improve stability, things which will also make the engine API better.
+DirectX 12						 	| -				| Low priority, after the engine API has matured thanks to Vulkan, D3D12 will take little time to add.
 Eye Adaptation 					 	| -          	| Low priority
 Subsurface Scattering 			 	| -          	| Low priority
 Ray traced shadows				 	| -          	| -
