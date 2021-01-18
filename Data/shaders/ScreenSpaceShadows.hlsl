@@ -39,7 +39,7 @@ float ScreenSpaceShadows(Surface surface, Light light)
     float3 ray_step = ray_dir * g_sss_step_length;
 
     // Offset starting position with temporal interleaved gradient noise
-    float offset = interleaved_gradient_noise(g_resolution * surface.uv) * 2.0f - 1.0;
+    float offset = get_noise_interleaved_gradient(surface.uv * g_resolution) * 2.0f - 1.0;
     ray_pos      += ray_step * offset;
 
     // Ray march towards the light

@@ -50,17 +50,20 @@ TextureCube light_point_color           : register(t21);
 Texture2D light_spot_depth              : register(t22);
 Texture2D light_spot_color              : register(t23);
 
+// Noise
+Texture2D tex_noise_normal  : register(t24);
+Texture2D tex_noise_blue    : register(t25);
+
 // Misc
-Texture2D tex_lutIbl            : register(t24);
-Texture2D tex_environment       : register(t25);
-Texture2D tex_normal_noise      : register(t26);
-Texture2D tex_ssao              : register(t27);
-Texture2D tex_ssr               : register(t28);
-Texture2D tex_frame             : register(t29);
-Texture2D tex                   : register(t30);
-Texture2D tex2                  : register(t31);
-Texture2D tex_font_atlas        : register(t32);
-Texture2D tex_ssgi              : register(t33);
+Texture2D tex_lutIbl        : register(t26);
+Texture2D tex_environment   : register(t27);
+Texture2D tex_ssao          : register(t28);
+Texture2D tex_ssr           : register(t29);
+Texture2D tex_frame         : register(t30);
+Texture2D tex               : register(t31);
+Texture2D tex2              : register(t32);
+Texture2D tex_font_atlas    : register(t33);
+Texture2D tex_ssgi          : register(t34);
 
 // Compute
 RWTexture2D<float> tex_out_r                : register(u0);
@@ -72,5 +75,6 @@ RWTexture2D<float3> tex_out_rgb3            : register(u5);
 RWTexture2DArray<float4> uav_array_rgba     : register(u6);
 
 // Misc
-static const float2 g_normal_noise_scale    = float2(g_resolution.x / 256.0f, g_resolution.y / 256.0f);
-static const float g_envrionement_max_mip   = 11.0f;
+static const float2 g_tex_noise_normal_scale    = float2(g_resolution.x / 256.0f, g_resolution.y / 256.0f);
+static const float2 g_tex_noise_blue_scale      = float2(g_resolution.x / 256.0f, g_resolution.y / 256.0f);
+static const float g_envrionement_max_mip       = 11.0f;

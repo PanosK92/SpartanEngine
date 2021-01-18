@@ -59,11 +59,11 @@ float horizon_based_ambient_occlusion(int2 pos)
     float step_angle    = PI2 / (float)ao_directions;
 
     // Offsets (noise over space and time)
-    float noise_gradient_temporal   = interleaved_gradient_noise(uv * g_resolution);
-    float offset_spatial            = noise_spatial_offset(uv * g_resolution);
-    float offset_temporal           = noise_temporal_offset();
-    float offset_rotation_temporal  = noise_temporal_direction();
-    float ray_offset                = frac(offset_spatial + offset_temporal) + (random(uv) * 2.0 - 1.0) * 0.25;
+    float noise_gradient_temporal   = get_noise_interleaved_gradient(pos);
+    float offset_spatial            = get_offset_non_temporal(pos);
+    float offset_temporal           = get_offset();
+    float offset_rotation_temporal  = get_direction();
+    float ray_offset                = frac(offset_spatial + offset_temporal) + (get_random(uv) * 2.0 - 1.0) * 0.25;
 
     float occlusion = 0;
     
@@ -105,8 +105,8 @@ float normal_oriented_hemisphere_ambient_occlusion(int2 pos)
     float occlusion = 0.0f;
     
     // Use temporal interleaved gradient noise to rotate the random vector (free detail with TAA on)
-    float3 random_vector    = unpack(normalize(tex_normal_noise.Sample(sampler_bilinear_wrap, uv * g_normal_noise_scale).xyz));
-    float ign               = interleaved_gradient_noise(uv * g_resolution);
+    float3 random_vector    = unpack(get_noise_normal(pos));
+    float ign               = get_noise_interleaved_gradient(pos);
     float rotation_angle    = max(ign * PI2, FLT_MIN);
     float3 rotation         = float3(cos(rotation_angle), sin(rotation_angle), 0.0f);
     random_vector           = float3(length(random_vector.xy) * normalize(rotation.xy), random_vector.z);

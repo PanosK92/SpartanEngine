@@ -94,11 +94,11 @@ float3 ssgi(float2 uv, float3 position, float3 normal)
     float rotation_step = PI2 / (float)g_ssgi_directions;
 
     // Offsets (noise over space and time)
-    float noise_gradient_temporal   = interleaved_gradient_noise(uv * g_resolution);
-    float offset_spatial            = noise_spatial_offset(uv * g_resolution);
-    float offset_temporal           = noise_temporal_offset();
-    float offset_rotation_temporal  = noise_temporal_direction();
-    float ray_offset                = frac(offset_spatial + offset_temporal) + (random(uv) * 2.0 - 1.0) * 0.25;
+    float noise_gradient_temporal   = get_noise_interleaved_gradient(uv * g_resolution);
+    float offset_spatial            = get_offset_non_temporal(uv * g_resolution);
+    float offset_temporal           = get_offset();
+    float offset_rotation_temporal  = get_direction();
+    float ray_offset                = frac(offset_spatial + offset_temporal) + (get_random(uv) * 2.0 - 1.0) * 0.25;
     
     [unroll]
     for (uint direction_index = 0; direction_index < g_ssgi_directions; direction_index++)
@@ -109,8 +109,8 @@ float3 ssgi(float2 uv, float3 position, float3 normal)
         [unroll]
         for (uint step_index = 0; step_index < g_ssgi_steps; ++step_index)
         {
-            float2 uv_offset        = max(radius_pixels * (step_index + ray_offset), 1 + step_index) * rotation_direction;
-            float2 sample_uv        = uv + uv_offset;
+            float2 uv_offset = max(radius_pixels * (step_index + ray_offset), 1 + step_index) * rotation_direction;
+            float2 sample_uv = uv + uv_offset;
 
             light += compute_light(position, normal, sample_uv, light_samples);
             light *= tex_albedo.SampleLevel(sampler_bilinear_clamp, sample_uv, 0).rgb;

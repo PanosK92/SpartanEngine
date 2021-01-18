@@ -24,9 +24,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Velocity.hlsl"
 //======================
 
-static const float g_taa_blend_min = 0.05f;
-static const float g_taa_blend_max = 1.0f;
-#define LDS_HISTORY_CLIPPING 1
+static const float g_taa_blend_min = 0.0f;
+static const float g_taa_blend_max = 0.4f;
+#define LDS_HISTORY_CLIPPING 0 // slower on some GPUs, faster on others
 
 float3 Reinhard(float3 hdr, float k = 1.0f)
 {
@@ -148,6 +148,10 @@ float4 TemporalAntialiasing(uint2 thread_id, uint group_index, uint3 group_id, T
     float3 color_history    = tex_accumulation.SampleLevel(sampler_bilinear_clamp, uv_reprojected, 0).rgb;
     float3 color_current    = tex_current[thread_id].rgb;
 
+    // If re-projected UV is out of screen, converge to current color immediately
+    if (!is_saturated(uv_reprojected))
+        return float4(color_current, 1.0f);
+
     // Clip history to the neighbourhood of the current sample
     color_history = clip_history(thread_id.xy, group_index, group_id, tex_current, color_history);
 
@@ -159,22 +163,18 @@ float4 TemporalAntialiasing(uint2 thread_id, uint group_index, uint3 group_id, T
         const float base        = 0.5f;
         const float gather      = 0.1666;
         float depth             = get_linear_depth(uv);
-        float texel_vel_mag     = length(velocity / g_texel_size) * depth;
+        float texel_vel_mag     = length(velocity * g_resolution) * depth;
         float subpixel_motion   = saturate(threshold / (texel_vel_mag + FLT_MIN));
         blend_factor *= texel_vel_mag * base + subpixel_motion * gather;
 
         // Decrease blend factor when contrast is high
         float luminance_history     = luminance(color_history);
         float luminance_current     = luminance(color_current);
-        float unbiased_difference   = abs(luminance_current - luminance_history) / (max(luminance_current, luminance_history) + FLT_MIN);
-        float unbiased_weight       = 1.0 - unbiased_difference;
-        blend_factor *= unbiased_weight * unbiased_weight;
+        float unbiased_difference   = abs(luminance_current - luminance_history) / ((max(luminance_current, luminance_history) + FLT_MIN));
+        blend_factor *= 1.0 - unbiased_difference;
 
         // Clamp
         blend_factor = clamp(blend_factor, g_taa_blend_min, g_taa_blend_max);
-
-        // Override blend factor if the re-projected uv is out of screen
-        blend_factor = is_saturated(uv_reprojected) ? blend_factor : 1.0f;
     }
     
     // Tonemap

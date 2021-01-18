@@ -64,7 +64,7 @@ inline float2 trace_ray(int2 screen_pos, float3 ray_pos, float3 ray_dir)
     float2 ray_uv_hit   = 0.0f;
     
     // Adjust ray step using interleaved gradient noise, TAA will bring in more detail without any additional cost
-    float offset = interleaved_gradient_noise(screen_pos);
+    float offset = get_noise_interleaved_gradient(screen_pos);
     ray_step += ray_step * offset;
     
     // Ray-march
@@ -140,9 +140,8 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
             // Jitter reflection vector based on the surface normal
             {
                 // Compute jitter
-                float ign               = interleaved_gradient_noise(thread_id.xy);
-                float2 uv               = (thread_id.xy + 0.5f) / g_resolution;
-                float3 random_vector    = unpack(normalize(tex_normal_noise.SampleLevel(sampler_bilinear_wrap, uv * g_normal_noise_scale, 0)).xyz);
+                float ign               = get_noise_interleaved_gradient(thread_id.xy);
+                float3 random_vector    = unpack(get_noise_normal(thread_id.xy));
                 float3 jitter           = reflect(hemisphere_samples[ign * 63], random_vector);
 
                 // Get surface roughness

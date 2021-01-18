@@ -49,19 +49,28 @@ void Widget_Viewport::TickVisible()
     if (!m_renderer)
         return;
 
-    // Get current frame window resolution
-    float width            = static_cast<float>(ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x);
-    float height        = static_cast<float>(ImGui::GetWindowContentRegionMax().y - ImGui::GetWindowContentRegionMin().y);
+    // Get size
+    float width     = static_cast<float>(ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x);
+    float height    = static_cast<float>(ImGui::GetWindowContentRegionMax().y - ImGui::GetWindowContentRegionMin().y);
+
+    // Get offset
+    Vector2 offset = Vector2(ImGui::GetWindowPos()) + m_window_padding;
 
     // Update engine's viewport
-    Vector2 offset = Vector2(ImGui::GetWindowPos()) + m_window_padding;
-    m_renderer->SetViewport(width, height, offset.x, offset.y);
+    if (m_width != width || m_height != height || m_offset != offset)
+    {
+        m_renderer->SetViewport(width, height, offset.x, offset.y);
+
+        m_width     = width;
+        m_height    = height;
+        m_offset    = offset;
+    }
 
     // If this is the first tick and the first time the engine runs (no settings file loaded), we set the resolution to match the viewport size.
     // This is to avoid a scenario were the resolution is much higher than what the user assumes, resulting in less performance.
     if (m_is_resolution_dirty && !m_settings->Loaded())
     {
-        m_renderer->SetResolution(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+        m_renderer->SetResolution(static_cast<uint32_t>(m_width), static_cast<uint32_t>(m_height));
         m_is_resolution_dirty = false;
     }
 
@@ -69,7 +78,7 @@ void Widget_Viewport::TickVisible()
     ImGuiEx::Image
     (
         m_renderer->GetFrameTexture(),
-        ImVec2(static_cast<float>(width), static_cast<float>(height)),
+        ImVec2(static_cast<float>(m_width), static_cast<float>(m_height)),
         ImColor(255, 255, 255, 255),
         ImColor(50, 127, 166, 255)
     );
