@@ -41,8 +41,7 @@ namespace Spartan
         Shader_Light_Shadows                = 1 << 4,
         Shader_Light_ShadowsScreenSpace     = 1 << 5,
         Shader_Light_ShadowsTransparent     = 1 << 6,
-        Shader_Light_Volumetric             = 1 << 7,
-        Shader_Light_ScreenSpaceReflections = 1 << 8
+        Shader_Light_Volumetric             = 1 << 7
     };
 
     class SPARTAN_CLASS ShaderLight : public RHI_Shader

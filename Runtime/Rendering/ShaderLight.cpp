@@ -52,7 +52,6 @@ namespace Spartan
         flags |= (light->GetShadowsScreenSpaceEnabled() && (renderer_flags & Render_ScreenSpaceShadows))    ? Shader_Light_ShadowsScreenSpace       : flags;
         flags |= light->GetShadowsTransparentEnabled()                                                      ? Shader_Light_ShadowsTransparent       : flags;
         flags |= (light->GetVolumetricEnabled() && (renderer_flags & Render_VolumetricFog))                 ? Shader_Light_Volumetric               : flags;
-        flags |= (renderer_flags & Render_ScreenSpaceReflections)                                           ? Shader_Light_ScreenSpaceReflections   : flags;
 
         // Return existing shader, if it's already compiled
         if (m_variations.find(flags) != m_variations.end())
@@ -79,7 +78,6 @@ namespace Spartan
         shader->AddDefine("SHADOWS_SCREEN_SPACE",       (flags & Shader_Light_ShadowsScreenSpace)       ? "1" : "0");
         shader->AddDefine("SHADOWS_TRANSPARENT",        (flags & Shader_Light_ShadowsTransparent)       ? "1" : "0");
         shader->AddDefine("VOLUMETRIC",                 (flags & Shader_Light_Volumetric)               ? "1" : "0");
-        shader->AddDefine("SCREEN_SPACE_REFLECTIONS",   (flags & Shader_Light_ScreenSpaceReflections)   ? "1" : "0");
 
         // Compile
         shader->CompileAsync(RHI_Shader_Compute, file_path);

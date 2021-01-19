@@ -141,16 +141,7 @@ namespace Spartan
             }
         }
 
-        // Post-processing
-        {
-            Pass_PostProcess(cmd_list);
-            Pass_Outline(cmd_list, m_render_targets[RendererRt::Frame_Ldr]);
-            Pass_TransformHandle(cmd_list, m_render_targets[RendererRt::Frame_Ldr].get());
-            Pass_Lines(cmd_list, m_render_targets[RendererRt::Frame_Ldr]);
-            Pass_Icons(cmd_list, m_render_targets[RendererRt::Frame_Ldr].get());
-            Pass_DebugBuffer(cmd_list, m_render_targets[RendererRt::Frame_Ldr]);
-            Pass_Text(cmd_list, m_render_targets[RendererRt::Frame_Ldr].get());
-        }
+        Pass_PostProcess(cmd_list);
     }
 
     void Renderer::Pass_UpdateFrameBuffer(RHI_CommandList* cmd_list)
@@ -995,10 +986,10 @@ namespace Spartan
         // OUT: RenderTarget_Composition_Ldr
 
         // Acquire render targets
-        auto& tex_in_hdr    = m_render_targets[RendererRt::Frame_Hdr];
-        auto& tex_out_hdr   = m_render_targets[RendererRt::Frame_Hdr_2];
-        auto& tex_in_ldr    = m_render_targets[RendererRt::Frame_Ldr];
-        auto& tex_out_ldr   = m_render_targets[RendererRt::Frame_Ldr_2];
+        shared_ptr<RHI_Texture>& tex_in_hdr    = m_render_targets[RendererRt::Frame_Hdr];
+        shared_ptr<RHI_Texture>& tex_out_hdr   = m_render_targets[RendererRt::Frame_Hdr_2];
+        shared_ptr<RHI_Texture>& tex_in_ldr    = m_render_targets[RendererRt::Frame_Ldr];
+        shared_ptr<RHI_Texture>& tex_out_ldr   = m_render_targets[RendererRt::Frame_Ldr_2];
 
         // TAA
         if (GetOption(Render_AntiAliasing_Taa))
@@ -1075,6 +1066,14 @@ namespace Spartan
 
         // Gamma correction
         Pass_GammaCorrection(cmd_list, tex_in_ldr, tex_out_ldr);
+
+        // Passes that render on top of each other
+        Pass_Outline(cmd_list,          tex_out_ldr.get());
+        Pass_TransformHandle(cmd_list,  tex_out_ldr.get());
+        Pass_Lines(cmd_list,            tex_out_ldr.get());
+        Pass_Icons(cmd_list,            tex_out_ldr.get());
+        Pass_DebugBuffer(cmd_list,      tex_out_ldr.get());
+        Pass_Text(cmd_list,             tex_out_ldr.get());
 
         // Swap textures
         tex_in_ldr.swap(tex_out_ldr);
@@ -1848,7 +1847,7 @@ namespace Spartan
         }
     }
     
-    void Renderer::Pass_Lines(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_out)
+    void Renderer::Pass_Lines(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
         const bool draw_picking_ray = m_options & Render_Debug_PickingRay;
         const bool draw_aabb        = m_options & Render_Debug_Aabb;
@@ -1876,7 +1875,7 @@ namespace Spartan
             pso.blend_state                      = m_blend_alpha.get();
             pso.depth_stencil_state              = m_depth_stencil_r_off.get();
             pso.vertex_buffer_stride             = m_gizmo_grid->GetVertexBuffer()->GetStride();
-            pso.render_target_color_textures[0]  = tex_out.get();
+            pso.render_target_color_textures[0]  = tex_out;
             pso.render_target_depth_texture      = m_render_targets[RendererRt::Gbuffer_Depth].get();
             pso.viewport                         = tex_out->GetViewport();
             pso.primitive_topology               = RHI_PrimitiveTopology_LineList;
@@ -1969,7 +1968,7 @@ namespace Spartan
                 pso.blend_state                      = m_blend_alpha.get();
                 pso.depth_stencil_state              = m_depth_stencil_r_off.get();
                 pso.vertex_buffer_stride             = m_vertex_buffer_lines->GetStride();
-                pso.render_target_color_textures[0]  = tex_out.get();
+                pso.render_target_color_textures[0]  = tex_out;
                 pso.render_target_depth_texture      = m_render_targets[RendererRt::Gbuffer_Depth].get();
                 pso.viewport                         = tex_out->GetViewport();
                 pso.primitive_topology               = RHI_PrimitiveTopology_LineList;
@@ -2007,7 +2006,7 @@ namespace Spartan
                 pso.blend_state                      = m_blend_disabled.get();
                 pso.depth_stencil_state              = m_depth_stencil_off_off.get();
                 pso.vertex_buffer_stride             = m_vertex_buffer_lines->GetStride();
-                pso.render_target_color_textures[0]  = tex_out.get();
+                pso.render_target_color_textures[0]  = tex_out;
                 pso.viewport                         = tex_out->GetViewport();
                 pso.primitive_topology               = RHI_PrimitiveTopology_LineList;
                 pso.pass_name                        = "Pass_Lines_No_Depth";
@@ -2196,7 +2195,7 @@ namespace Spartan
         }
     }
     
-    void Renderer::Pass_Outline(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_out)
+    void Renderer::Pass_Outline(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
         if (!GetOption(Render_Debug_SelectionOutline))
             return;
@@ -2235,7 +2234,7 @@ namespace Spartan
             pso.blend_state                              = m_blend_alpha.get();
             pso.depth_stencil_state                      = m_depth_stencil_r_off.get();
             pso.vertex_buffer_stride                     = model->GetVertexBuffer()->GetStride();
-            pso.render_target_color_textures[0]          = tex_out.get();
+            pso.render_target_color_textures[0]          = tex_out;
             pso.render_target_depth_texture              = tex_depth;
             pso.render_target_depth_texture_read_only    = true;
             pso.primitive_topology                       = RHI_PrimitiveTopology_TriangleList;
@@ -2324,7 +2323,7 @@ namespace Spartan
         }
     }
     
-    bool Renderer::Pass_DebugBuffer(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_out)
+    bool Renderer::Pass_DebugBuffer(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
         if (m_render_target_debug == RendererRt::Undefined)
             return true;

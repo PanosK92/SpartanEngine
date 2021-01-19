@@ -151,7 +151,7 @@ namespace Spartan
         auto GetFrameNum()                                  const { return m_frame_num; }
         const auto& GetCamera()                             const { return m_camera; }
         auto IsInitialized()                                const { return m_initialized; }
-        auto& GetShaders()                                  const { return m_shaders; }
+        auto GetShaders()                                   const { return m_shaders; }
         uint32_t GetMaxResolution() const;
         void Clear();
 
@@ -186,7 +186,7 @@ namespace Spartan
         void Pass_LightImageBased(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass = false);
         void Pass_PostProcess(RHI_CommandList* cmd_list);
         void Pass_TemporalAntialiasing(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
-        bool Pass_DebugBuffer(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_out);
+        bool Pass_DebugBuffer(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         void Pass_ToneMapping(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
         void Pass_GammaCorrection(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
         void Pass_FXAA(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in,    std::shared_ptr<RHI_Texture>& tex_out);
@@ -200,8 +200,8 @@ namespace Spartan
         void Pass_BlurBox(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out, const float sigma, const float pixel_stride, const bool use_stencil);
         void Pass_BlurGaussian(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out, const float sigma, const float pixel_stride = 1.0f);
         void Pass_BlurBilateralGaussian(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out, const float sigma, const float pixel_stride = 1.0f, const bool use_stencil = false);
-        void Pass_Lines(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_out);
-        void Pass_Outline(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_out);
+        void Pass_Lines(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
+        void Pass_Outline(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         void Pass_Icons(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         void Pass_TransformHandle(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         void Pass_Text(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
