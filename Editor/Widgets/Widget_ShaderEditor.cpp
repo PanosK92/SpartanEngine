@@ -61,12 +61,12 @@ void Widget_ShaderEditor::ShowShaderSource()
     {
         ImGui::Text(m_shader ? m_shader_name.c_str() : "Select a shader");
 
-        if (ImGui::BeginChild("##shader_source", ImVec2(m_size.x * 0.8f, 0.0f)))
+        if (ImGui::BeginChild("##shader_source", ImVec2(m_size.x * 0.7f, 0.0f)))
         {
             // Shader source
             if (ImGui::BeginTabBar("#shader_tab_bar", ImGuiTabBarFlags_Reorderable))
             {
-                for (int32_t i = 0; i < static_cast<int32_t>(m_shader_sources.size()); i++)
+                for (uint32_t i = 0; i < static_cast<uint32_t>(m_shader_sources.size()); i++)
                 {
                     ShaderFile& shader_file = m_shader_sources[i];
 
@@ -228,7 +228,7 @@ void Widget_ShaderEditor::GetShaderSource(const string& file_path)
 
 void Widget_ShaderEditor::GetShaderInstances()
 {
-    auto& shaders = m_renderer->GetShaders();
+    unordered_map<RendererShader, shared_ptr<RHI_Shader>> shaders = m_renderer->GetShaders();
     m_shaders.clear();
 
     for (const auto& it : shaders)
@@ -250,4 +250,7 @@ void Widget_ShaderEditor::GetShaderInstances()
     {
         m_shaders.emplace_back(it.second.get());
     }
+
+    // Order them alphabetically
+    sort(m_shaders.begin(), m_shaders.end(), [](RHI_Shader* a, RHI_Shader* b) { return a->GetName() < b->GetName(); });
 }

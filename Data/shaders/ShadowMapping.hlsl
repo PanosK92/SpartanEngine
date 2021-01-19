@@ -35,7 +35,7 @@ static const uint   g_shadow_samples        = 3;
 static const float  g_shadow_filter_size    = 2.0f;
 #else
 static const uint   g_shadow_samples        = 8; // penumbra requires a higher sample count to look good
-static const float  g_shadow_filter_size    = 8.0f;
+static const float  g_shadow_filter_size    = 2.0f;
 #endif
 
 // technique - vogel
@@ -159,7 +159,7 @@ float Technique_Vogel(float3 uv, float compare)
     [unroll]
     for (uint i = 0; i < g_shadow_samples; i++)
     {
-        float2 offset   = (vogel_disk_sample(i, g_shadow_samples, temporal_angle) + temporal_offset) * g_shadow_texel_size * g_shadow_filter_size * penumbra;
+        float2 offset   = vogel_disk_sample(i, g_shadow_samples, temporal_angle) * g_shadow_texel_size * g_shadow_filter_size * penumbra;
         shadow          += shadow_compare_depth(uv + float3(offset, 0.0f), compare);
     } 
 
@@ -422,3 +422,4 @@ float4 Shadow_Map(Surface surface, Light light)
     
     return shadow;
 }
+

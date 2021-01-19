@@ -369,11 +369,11 @@ inline float get_direction()
 }
 
 // Derived from the interleaved gradient function from Jimenez 2014 http://goo.gl/eomGso
-float get_noise_interleaved_gradient(uint2 screen_pos)
+float get_noise_interleaved_gradient(float2 screen_pos)
 {
     screen_pos += g_frame * any(g_taa_jitter_offset); // temporal factor
     float3 magic = float3(0.06711056f, 0.00583715f, 52.9829189f);
-    return frac(magic.z * frac(dot((float2)screen_pos, magic.xy)));
+    return frac(magic.z * frac(dot(screen_pos, magic.xy)));
 }
 
 float get_noise_blue(uint2 screen_pos)
