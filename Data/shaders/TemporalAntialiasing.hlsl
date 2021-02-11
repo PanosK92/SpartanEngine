@@ -170,7 +170,7 @@ float4 TemporalAntialiasing(uint2 thread_id, uint group_index, uint3 group_id, T
         // Decrease blend factor when contrast is high
         float luminance_history     = luminance(color_history);
         float luminance_current     = luminance(color_current);
-        float unbiased_difference   = abs(luminance_current - luminance_history) / ((max(luminance_current, luminance_history) + FLT_MIN));
+        float unbiased_difference   = abs(luminance_current - luminance_history) / ((max(luminance_current, luminance_history) + 0.3));
         blend_factor *= 1.0 - unbiased_difference;
 
         // Clamp

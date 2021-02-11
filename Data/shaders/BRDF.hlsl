@@ -172,14 +172,16 @@ inline float3 BRDF_Specular_Isotropic(Surface surface, float n_dot_v, float n_do
 
 inline float3 BRDF_Specular_Anisotropic(Surface surface, float3 v, float3 l, float3 h, float n_dot_v, float n_dot_l, float n_dot_h, float l_dot_h, inout float3 diffuse_energy, inout float3 specular_energy)
 {
-    float3 n            = surface.normal;
-    float3 t            = normalize(cross(n, -n));                              // any perpendicular vector to the normal
-    float3 b            = cross(n, t);
-    float3x3 TBN        = float3x3(t, b, n);
+    // Construct TBN from the normal
+    float3 t, b;
+    find_best_axis_vectors(surface.normal, t, b);
+    float3x3 TBN = float3x3(t, b, surface.normal);
+
+    // Rotate tangent and bitagent
     float rotation      = max(surface.anisotropic_rotation * PI2, FLT_MIN);     // convert material property to a full rotation
     float2 direction    = float2(cos(rotation), sin(rotation));                 // convert rotation to direction
     t                   = normalize(mul(float3(direction, 0.0f), TBN).xyz);     // compute direction derived tangent
-    b                   = normalize(cross(n, t));                               // update bitangent
+    b                   = normalize(cross(surface.normal, t));                  // re-compute bitangent
 
     float alpha_ggx = surface.roughness;
     float aspect    = fast_sqrt(1.0 - surface.anisotropic * 0.9);

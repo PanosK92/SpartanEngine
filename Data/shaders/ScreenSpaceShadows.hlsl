@@ -32,8 +32,8 @@ static const float g_sss_step_length      = g_sss_ray_max_distance / (float)g_ss
 float ScreenSpaceShadows(Surface surface, Light light)
 {
     // Compute ray position and direction (in view-space)
-    float3 ray_pos  = mul(float4(surface.position, 1.0f), g_view).xyz;
-    float3 ray_dir  = mul(float4(-light.direction, 0.0f), g_view).xyz;
+    float3 ray_pos = world_to_view(surface.position);
+    float3 ray_dir = world_to_view(-light.direction, false);
 
     // Compute ray step
     float3 ray_step = ray_dir * g_sss_step_length;
@@ -49,7 +49,7 @@ float ScreenSpaceShadows(Surface surface, Light light)
     {
         // Step the ray
         ray_pos += ray_step;
-        ray_uv  = project_uv(ray_pos, g_projection);
+        ray_uv  = view_to_uv(ray_pos);
 
         // Ensure the UV coordinates are inside the screen
         if (is_saturated(ray_uv))

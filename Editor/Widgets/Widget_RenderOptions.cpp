@@ -351,8 +351,8 @@ void Widget_RenderOptions::TickVisible()
                     "Dof_Half",
                     "Dof_Half_2",
                     "Bloom",
-                    "Hbao_Noisy",
-                    "Hbao",
+                    "Ssao_Noisy",
+                    "Ssao",
                     "Ssgi",
                     "Ssr"
                 };

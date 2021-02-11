@@ -19,9 +19,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-static const uint g_vl_steps        = 8;
-static const float g_vl_scattering  = 0.5f;
-static const float g_vl_pow         =1.5f;
+static const uint g_vl_steps                    = 8;
+static const float g_vl_scattering              = 0.5f;
+static const float g_vl_pow                     = 1.5f;
+static const float g_vl_cascade_blend_threshold = 0.1f;
 
 static const float g_vl_scattering2 = g_vl_scattering * g_vl_scattering;
 static const float g_vl_x           = 1 - g_vl_scattering2;
@@ -52,17 +53,16 @@ float3 vl_raymarch(Light light, float3 ray_pos, float3 ray_step, float3 ray_dir,
         #endif
 
         #if SHADOWS == 1 ||  SHADOWS_TRANSPARENT == 1
-        // Compute position in clip space
-        float3 pos = project(ray_pos, cb_light_view_projection[array_index]);
+        float3 pos_ndc = world_to_ndc(ray_pos, cb_light_view_projection[array_index]);
         #endif
         
         // Shadows - Opaque
         #if SHADOWS
         {
             #if POINT
-            attenuation *= shadow_compare_depth(normalize(ray_pos - light.position), pos.z);
+            attenuation *= shadow_compare_depth(normalize(ray_pos - light.position), pos_ndc.z);
             #else // directional & spot
-            attenuation *= shadow_compare_depth(float3(pos.xy, array_index), pos.z);
+            attenuation *= shadow_compare_depth(float3(ndc_to_uv(pos_ndc), array_index), pos_ndc.z);
             #endif
         }
         #endif
@@ -73,7 +73,7 @@ float3 vl_raymarch(Light light, float3 ray_pos, float3 ray_step, float3 ray_dir,
             #if POINT
             attenuation *= shadow_sample_color(normalize(ray_pos - light.position)).rgb;
             #else // directional & spot
-            attenuation *= shadow_sample_color(float3(pos.xy, array_index)).rgb;
+            attenuation *= shadow_sample_color(float3(ndc_to_uv(pos_ndc), array_index)).rgb;
             #endif
         }
         #endif
@@ -105,27 +105,29 @@ float3 VolumetricLighting(Surface surface, Light light)
         [unroll]
         for (uint array_index = 0; array_index < light_array_size; array_index++)
         {
-            // Compute position in clip space
-            float3 pos = project(ray_pos, cb_light_view_projection[array_index]);
+            // Compute ndc position
+            float3 pos_ndc = world_to_ndc(ray_pos, cb_light_view_projection[array_index]);
 
+            // Compute distance to projection bounds
+            float distance_to_bounds = 1.0f - max3(abs(pos_ndc));
+
+            // Ensure not out of bound
             [branch]
-            if (is_saturated(pos))
+            if (distance_to_bounds >= 0.0f)
             {
                 // Ray-march
                 fog += vl_raymarch(light, ray_pos, ray_step, ray_dir, array_index);
 
                 // If we are close to the edge of the primary cascade and a next cascade exists, lerp with it.
-                static const float blend_threshold = 0.1f;
-                float distance_to_edge = 1.0f - max3(abs(pos * 2.0f - 1.0f));
                 uint array_index_secondary = array_index + 1;
                 [branch]
-                if (distance_to_edge < blend_threshold && array_index_secondary < light_array_size)
+                if (distance_to_bounds <= g_vl_cascade_blend_threshold && array_index_secondary < light_array_size)
                 {
                     // Ray-march using the next cascade
                     float3 fog_secondary = vl_raymarch(light, ray_pos, ray_step, ray_dir, array_index_secondary);
                     
                     // Blend cascades
-                    float alpha = smoothstep(0.0f, blend_threshold, distance_to_edge);
+                    float alpha = smoothstep(0.0f, distance_to_bounds, g_vl_cascade_blend_threshold);
                     fog = lerp(fog_secondary, fog, alpha);
                     break;
                 }

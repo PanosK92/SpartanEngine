@@ -23,76 +23,77 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common.hlsl"
 //====================
 
-static const uint g_ssr_max_steps                   = 128;
-static const uint g_ssr_binary_search_steps         = 16;
-static const float g_ssr_binary_search_threshold    = 0.02f;
-static const float g_ssr_ray_stride                 = 0.001f;
+static const float g_ssr_max_distance               = 80.0f;
+static const uint g_ssr_max_steps                   = 64;
+static const uint g_ssr_binary_search_steps         = 32;
+static const float g_ssr_thickness                  = 0.00005f;
 static const float g_srr_jitter_roughness_threshold = 0.6f; // Higher values allow for blurrier reflections (can also push TAA denoising to it's limits while also introducing GPU cache misses).
 static const float g_ssr_camera_facing_threshold    = 0.8f; // Higher values allow for more camera facing rays to be traced.
 
-inline float2 binary_search(float3 ray_dir, inout float3 ray_pos, inout float2 ray_uv)
+bool intersect_depth_buffer(float2 ray_pos, float2 ray_start, float ray_length, float z_start, float z_end, out float depth_delta)
 {
-    float depth_delta_previous_sign = -1.0f;
+    float alpha     = length(ray_pos - ray_start) / ray_length;
+    float ray_depth = (z_start * z_end) / lerp(z_end, z_start, alpha);
+    depth_delta     = ray_depth - get_linear_depth(ray_pos);
 
-    [unroll]
-    for (uint i = 0; i < g_ssr_binary_search_steps; i++)
+    return depth_delta >= 0.0f;
+}
+
+float2 trace_ray(uint2 screen_pos, float3 ray_start_vs, float3 ray_dir_vs)
+{
+    // Compute ray in UV space
+    float3 ray_end_vs       = ray_start_vs + ray_dir_vs * g_ssr_max_distance;
+    float2 ray_start        = view_to_uv(ray_start_vs);
+    float2 ray_end          = view_to_uv(ray_end_vs);
+    float2 ray_start_to_end = ray_end - ray_start;
+    float ray_length        = length(ray_start_to_end);
+    float2 ray_step         = (ray_start_to_end) / (float)g_ssr_max_steps;
+    float2 ray_pos          = ray_start;
+    
+    // Adjust position with some temporal noise (TAA will do some magic later)
+    float offset = get_noise_interleaved_gradient(screen_pos);
+    ray_pos += ray_step * offset;
+    
+    // Ray-march
+    for (uint i = 0; i < g_ssr_max_steps; i++)
     {
-        // Test depth delta
-        float depth_delta = ray_pos.z - get_linear_depth(ray_uv);
-        if (abs(depth_delta) <= g_ssr_binary_search_threshold)
-            return ray_uv;
-
-        // Half direction
-        if (sign(depth_delta) != depth_delta_previous_sign)
-        {
-            ray_dir *= -0.5f;
-            depth_delta_previous_sign = sign(depth_delta);
-        }
-
         // Step ray
-        ray_pos += ray_dir;
-        ray_uv  = project_uv(ray_pos, g_projection);
+        ray_pos += ray_step;
+
+        // Intersect depth buffer
+        float depth_delta = 0.0f;
+        if (intersect_depth_buffer(ray_pos, ray_start, ray_length, ray_start_vs.z, ray_end_vs.z, depth_delta))
+        {
+            // Binary search
+            float depth_delta_previous_sign = -1.0f;
+            for (uint j = 0; j < g_ssr_binary_search_steps; j++)
+            {
+                // Depth test
+                if (abs(depth_delta) <= g_ssr_thickness)
+                    return ray_pos;
+
+                // Half direction and flip (if necessery)
+                if (sign(depth_delta) != depth_delta_previous_sign)
+                {
+                    ray_step *= -0.5f;
+                    depth_delta_previous_sign = sign(depth_delta);
+                }
+
+                // Step ray
+                ray_pos += ray_step;
+
+                // Intersect depth buffer
+                intersect_depth_buffer(ray_pos, ray_start, ray_length, ray_start_vs.z, ray_end_vs.z, depth_delta);
+            }
+
+            return 0.0f;
+        }
     }
 
     return 0.0f;
 }
 
-inline float2 trace_ray(int2 screen_pos, float3 ray_pos, float3 ray_dir)
-{
-    float3 ray_step     = ray_dir * g_ssr_ray_stride;
-    float3 ray_step_h   = 0.0f;
-    float2 ray_uv_hit   = 0.0f;
-    
-    // Adjust ray step using interleaved gradient noise, TAA will bring in more detail without any additional cost
-    float offset = get_noise_interleaved_gradient(screen_pos);
-    ray_step += ray_step * offset;
-    
-    // Ray-march
-    float2 ray_uv = 0.0f;
-    for (uint i = 0; i < g_ssr_max_steps; i++)
-    {
-        // Step ray
-        ray_step_h  += ray_step; // hierarchical steps (as further reflections matter less)
-        ray_pos     += ray_step_h;
-        ray_uv      = project_uv(ray_pos, g_projection);
-    
-        float depth_buffer_z = get_linear_depth(ray_uv);
-    
-        [branch]
-        if (ray_pos.z >= depth_buffer_z)
-        {
-            ray_uv_hit = binary_search(ray_dir, ray_pos, ray_uv);
-            break;
-        }
-    }
-    
-    // Reject if the reflection is pointing outside of the viewport
-    ray_uv_hit *= is_saturated(ray_uv_hit);
-
-    return ray_uv_hit;
-}
-
-inline float compute_alpha(int2 screen_pos, float2 hit_uv, float v_dot_r)
+inline float compute_alpha(uint2 screen_pos, float2 hit_uv, float v_dot_r)
 {
     float alpha = 1.0f;
 
@@ -140,7 +141,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
             // Jitter reflection vector based on the surface normal
             {
                 // Compute jitter
-                float ign               = get_noise_interleaved_gradient(thread_id.xy);
+                float ign               = get_noise_blue(thread_id.xy);
                 float3 random_vector    = unpack(get_noise_normal(thread_id.xy));
                 float3 jitter           = reflect(hemisphere_samples[ign * 63], random_vector);
 

@@ -47,7 +47,41 @@ float compute_occlusion(float3 position, float3 normal, float3 sample_position)
     return saturate(n_dot_v - ao_n_dot_v_bias) * saturate(falloff(v_dot_v));
 }
 
-float horizon_based_ambient_occlusion(int2 pos)
+float normal_oriented_hemisphere_ambient_occlusion(int2 pos)
+{
+    const float2 uv = (pos + 0.5f) / g_resolution;
+    float3 position = get_position_view_space(pos);
+    float3 normal   = get_normal_view_space(pos);
+    float occlusion = 0.0f;
+    
+    // Use temporal interleaved gradient noise to rotate the random vector (free detail with TAA on)
+    float3 random_vector    = unpack(get_noise_normal(pos));
+    float ign               = get_noise_interleaved_gradient(pos);
+    float rotation_angle    = max(ign * PI2, FLT_MIN);
+    float3 rotation         = float3(cos(rotation_angle), sin(rotation_angle), 0.0f);
+    random_vector           = float3(length(random_vector.xy) * normalize(rotation.xy), random_vector.z);
+    
+    [unroll]
+    for (uint i = 0; i < ao_directions; i++)
+    {
+        // Compute offset
+        float3 offset   = reflect(hemisphere_samples[i], random_vector);
+        offset          *= ao_radius;                   // Scale by radius
+        offset          *= sign(dot(offset, normal));   // Flip if behind normal
+        
+        // Compute sample pos
+        float3 sample_pos   = position + offset;
+        float2 sample_uv    = view_to_uv(sample_pos);
+        sample_pos          = get_position_view_space(sample_uv);
+
+        // Occlusion
+        occlusion += compute_occlusion(position, normal, sample_pos);
+    }
+
+    return 1.0f - saturate(occlusion * ao_intensity / float(ao_directions));
+}
+
+float ground_truth_ambient_occlusion(int2 pos)
 {
     const float2 uv = (pos + 0.5f) / g_resolution;
     float3 position = get_position_view_space(pos);
@@ -94,39 +128,5 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     if (thread_id.x >= uint(g_resolution.x) || thread_id.y >= uint(g_resolution.y))
         return;
 
-    tex_out_r[thread_id.xy] = horizon_based_ambient_occlusion(thread_id.xy);
-}
-
-float normal_oriented_hemisphere_ambient_occlusion(int2 pos)
-{
-    const float2 uv = (pos + 0.5f) / g_resolution;
-    float3 position = get_position_view_space(pos);
-    float3 normal   = get_normal_view_space(pos);
-    float occlusion = 0.0f;
-    
-    // Use temporal interleaved gradient noise to rotate the random vector (free detail with TAA on)
-    float3 random_vector    = unpack(get_noise_normal(pos));
-    float ign               = get_noise_interleaved_gradient(pos);
-    float rotation_angle    = max(ign * PI2, FLT_MIN);
-    float3 rotation         = float3(cos(rotation_angle), sin(rotation_angle), 0.0f);
-    random_vector           = float3(length(random_vector.xy) * normalize(rotation.xy), random_vector.z);
-    
-    [unroll]
-    for (uint i = 0; i < ao_directions; i++)
-    {
-        // Compute offset
-        float3 offset   = reflect(hemisphere_samples[i], random_vector);
-        offset          *= ao_radius;                   // Scale by radius
-        offset          *= sign(dot(offset, normal));   // Flip if behind normal
-        
-        // Compute sample pos
-        float3 sample_pos   = position + offset;
-        float2 sample_uv    = project_uv(sample_pos, g_projection);
-        sample_pos          = get_position_view_space(sample_uv);
-
-        // Occlusion
-        occlusion += compute_occlusion(position, normal, sample_pos);
-    }
-
-    return 1.0f - saturate(occlusion * ao_intensity / float(ao_directions));
+    tex_out_r[thread_id.xy] = ground_truth_ambient_occlusion(thread_id.xy);
 }
