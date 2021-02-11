@@ -203,8 +203,7 @@ void Widget_ShaderEditor::GetShaderSource(const string& file_path)
 {
     // Get all files included by the shader
     vector<string> include_paths = { file_path };
-    auto new_includes = FileSystem::GetIncludedFiles(file_path);
-    include_paths.insert(include_paths.end(), new_includes.begin(), new_includes.end());
+    FileSystem::GetIncludedFilePathsFromFilePath(file_path, include_paths);
 
     // Save the path and the source of all those files
     {

@@ -164,55 +164,66 @@ namespace Spartan
         return result;
     }
 
-    vector<string> FileSystem::GetIncludedFiles(const std::string& file_path)
+    void FileSystem::GetIncludedFilePathsFromFilePath(const string& file_path, vector<string>& file_paths)
     {
         // Read the file
         ifstream in(file_path);
         stringstream buffer;
         buffer << in.rdbuf();
 
-        string source = buffer.str();
-        string directory = GetDirectoryFromFilePath(file_path);
-        string directive_exp = "#include \"";
-        vector<string> file_paths;
+        string file_source = buffer.str();
+        string file_directory = GetDirectoryFromFilePath(file_path);
+        string include_directive_prefix = "#include \"";
 
         // Early exit if there is no include directive
-        if (source.find(directive_exp) == string::npos)
-            return file_paths;
+        if (file_source.find(include_directive_prefix) == string::npos)
+            return;
 
         // Scan for include directives
-        istringstream stream(source);
-        string include_directive;
-        while (std::getline(stream, include_directive))
+        istringstream stream(file_source);
+        string source_line;
+        while (getline(stream, source_line))
         {
-            if (include_directive.find(directive_exp) != string::npos)
+            if (source_line.find(include_directive_prefix) != string::npos)
             {
-                // Construct file path and save it
-                string file_name = GetStringBetweenExpressions(include_directive, directive_exp, "\"");
-                file_paths.emplace_back(directory + file_name);
+                string file_name = GetStringBetweenExpressions(source_line, include_directive_prefix, "\"");
+                string include_file_path = file_directory + file_name;
+
+                // Save file path if not already saved (to avoid recursive include directives)
+                if (find(file_paths.begin(), file_paths.end(), include_file_path) == file_paths.end())
+                {
+                    file_paths.emplace_back(include_file_path);
+                }
             }
         }
 
-        // If any file path contains more file paths inside, start resolving them recursively
-        auto file_paths_copy = file_paths; // copy the file paths to avoid modification while iterating
-        for (const auto& _file_path : file_paths_copy)
+        // Go through the source of the includes files
+        vector<string> file_paths_copy = file_paths; // copy the file paths to avoid modification while iterating
+        for (const string& _file_path : file_paths_copy)
         {
-            // Read the file
+            // Get the file source
             ifstream _in(_file_path);
             stringstream _buffer;
             _buffer << _in.rdbuf();
+            stream = istringstream(_buffer.str());
 
-            // Check for include directive
-            string source = _buffer.str();
-            if (source.find(directive_exp) != string::npos)
+            // Go through every line
+            while (getline(stream, source_line))
             {
-                auto new_includes = GetIncludedFiles(_file_path);
-                file_paths.insert(file_paths.end(), new_includes.begin(), new_includes.end());
+                // Check for include directive
+                if (source_line.find(include_directive_prefix) != string::npos)
+                {
+                    string file_name = GetStringBetweenExpressions(source_line, include_directive_prefix, "\"");
+                    string include_file_path = file_directory + file_name;
+
+                    // Recursively resolve the file path, only if it hasn't been already processed (can happen with recursive includes directives)
+                    if (find(file_paths.begin(), file_paths.end(), include_file_path) == file_paths.end())
+                    {
+                        GetIncludedFilePathsFromFilePath(_file_path, file_paths);
+                    }
+                }
             }
         }
-
-        // At this point, everything should be resolved
-        return file_paths;
     }
 
     void FileSystem::OpenDirectoryWindow(const string& directory)
