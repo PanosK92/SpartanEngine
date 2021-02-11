@@ -73,7 +73,7 @@ float4 mainPS(PixelInputType input) : SV_TARGET
 #ifdef OUTLINE
     float normal_threshold = 0.2f;
 
-    float2 uv               = project(input.positionWS.xyz, g_view_projection_unjittered).xy;
+    float2 uv               = world_to_uv_unjittered(input.positionWS.xyz);
     float scale             = 1.0f;
     float halfScaleFloor    = floor(scale * 0.5f);
     float halfScaleCeil     = ceil(scale * 0.5f);

@@ -43,8 +43,8 @@ static const float FLT_MAX_11   = 65000.0f;
 static const float FLT_MAX_14   = 65500.0f;
 static const float FLT_MAX_16   = 65500.0f;
 
-#define g_texel_size        float2(1.0f / g_resolution.x, 1.0f / g_resolution.y)
-#define g_shadow_texel_size (1.0f / g_shadow_resolution)
+#define g_texel_size            float2(1.0f / g_resolution.x, 1.0f / g_resolution.y)
+#define g_shadow_texel_size     (1.0f / g_shadow_resolution)
 #define thread_group_count_x    8
 #define thread_group_count_y    8
 #define thread_group_count      64
@@ -52,59 +52,69 @@ static const float FLT_MAX_16   = 65500.0f;
 /*------------------------------------------------------------------------------
     MATH
 ------------------------------------------------------------------------------*/
-inline float min2(float2 value) { return min(value.x, value.y); }
-inline float min3(float3 value) { return min(min(value.x, value.y), value.z); }
+float min2(float2 value) { return min(value.x, value.y); }
+float min3(float3 value) { return min(min(value.x, value.y), value.z); }
 
-inline float max2(float2 value) { return max(value.x, value.y); }
-inline float max3(float3 value) { return max(max(value.x, value.y), value.z); }
+float max2(float2 value) { return max(value.x, value.y); }
+float max3(float3 value) { return max(max(value.x, value.y), value.z); }
 
-inline bool is_saturated(float value)   { return value == saturate(value); }
-inline bool is_saturated(float2 value)  { return is_saturated(value.x) && is_saturated(value.y); }
-inline bool is_saturated(float3 value)  { return is_saturated(value.x) && is_saturated(value.y) && is_saturated(value.z); }
-inline bool is_saturated(float4 value)  { return is_saturated(value.x) && is_saturated(value.y) && is_saturated(value.z) && is_saturated(value.w); }
+bool is_saturated(float value)   { return value == saturate(value); }
+bool is_saturated(float2 value)  { return is_saturated(value.x) && is_saturated(value.y); }
+bool is_saturated(float3 value)  { return is_saturated(value.x) && is_saturated(value.y) && is_saturated(value.z); }
+bool is_saturated(float4 value)  { return is_saturated(value.x) && is_saturated(value.y) && is_saturated(value.z) && is_saturated(value.w); }
 
 /*------------------------------------------------------------------------------
     SATURATE
 ------------------------------------------------------------------------------*/
-inline float    saturate_11(float x)    { return clamp(x, FLT_MIN, FLT_MAX_11); }
-inline float2   saturate_11(float2 x)   { return clamp(x, FLT_MIN, FLT_MAX_11); }
-inline float3   saturate_11(float3 x)   { return clamp(x, FLT_MIN, FLT_MAX_11); }
-inline float4   saturate_11(float4 x)   { return clamp(x, FLT_MIN, FLT_MAX_11); }
+float    saturate_11(float x)    { return clamp(x, FLT_MIN, FLT_MAX_11); }
+float2   saturate_11(float2 x)   { return clamp(x, FLT_MIN, FLT_MAX_11); }
+float3   saturate_11(float3 x)   { return clamp(x, FLT_MIN, FLT_MAX_11); }
+float4   saturate_11(float4 x)   { return clamp(x, FLT_MIN, FLT_MAX_11); }
 
-inline float    saturate_16(float x)    { return clamp(x, FLT_MIN, FLT_MAX_16); }
-inline float2   saturate_16(float2 x)   { return clamp(x, FLT_MIN, FLT_MAX_16); }
-inline float3   saturate_16(float3 x)   { return clamp(x, FLT_MIN, FLT_MAX_16); }
-inline float4   saturate_16(float4 x)   { return clamp(x, FLT_MIN, FLT_MAX_16); }
+float    saturate_16(float x)    { return clamp(x, FLT_MIN, FLT_MAX_16); }
+float2   saturate_16(float2 x)   { return clamp(x, FLT_MIN, FLT_MAX_16); }
+float3   saturate_16(float3 x)   { return clamp(x, FLT_MIN, FLT_MAX_16); }
+float4   saturate_16(float4 x)   { return clamp(x, FLT_MIN, FLT_MAX_16); }
 
 /*------------------------------------------------------------------------------
     GAMMA CORRECTION
 ------------------------------------------------------------------------------*/
-inline float4 degamma(float4 color) { return pow(abs(color), g_gamma); }
-inline float3 degamma(float3 color) { return pow(abs(color), g_gamma); }
-inline float4 gamma(float4 color)   { return pow(abs(color), 1.0f / g_gamma); }
-inline float3 gamma(float3 color)   { return pow(abs(color), 1.0f / g_gamma); }
+float4 degamma(float4 color) { return pow(abs(color), g_gamma); }
+float3 degamma(float3 color) { return pow(abs(color), g_gamma); }
+float4 gamma(float4 color)   { return pow(abs(color), 1.0f / g_gamma); }
+float3 gamma(float3 color)   { return pow(abs(color), 1.0f / g_gamma); }
 
 /*------------------------------------------------------------------------------
     PACKING
 ------------------------------------------------------------------------------*/
-inline float3 unpack(float3 value)  { return value * 2.0f - 1.0f; }
-inline float3 pack(float3 value)    { return value * 0.5f + 0.5f; }
-inline float2 unpack(float2 value)  { return value * 2.0f - 1.0f; }
-inline float2 pack(float2 value)    { return value * 0.5f + 0.5f; }
-inline float unpack(float value)    { return value * 2.0f - 1.0f; }
-inline float pack(float value)      { return value * 0.5f + 0.5f; }
+float3 unpack(float3 value)  { return value * 2.0f - 1.0f; }
+float3 pack(float3 value)    { return value * 0.5f + 0.5f; }
+float2 unpack(float2 value)  { return value * 2.0f - 1.0f; }
+float2 pack(float2 value)    { return value * 0.5f + 0.5f; }
+float unpack(float value)    { return value * 2.0f - 1.0f; }
+float pack(float value)      { return value * 0.5f + 0.5f; }
 
 /*------------------------------------------------------------------------------
     FAST MATH APPROXIMATIONS
 ------------------------------------------------------------------------------*/
-inline float fast_sqrt(float v)
+
+// Relative error : < 0.7% over full
+// Precise format : ~small float
+// 1 ALU
+float fast_sqrt(float x)
 {
-    int x = asint(v);
-	x = 0x1FBD1DF5 + (x >> 1);
-	return asfloat(x);
+    int i = asint(x);
+    i = 0x1FBD1DF5 + (i >> 1);
+    return asfloat(i);
 }
 
-inline float fast_sin(float x)
+float fast_length(float3 v)
+{
+    float LengthSqr = dot(v, v);
+    return fast_sqrt(LengthSqr);
+}
+
+float fast_sin(float x)
 {
     const float B = 4 / PI;
     const float C = -4 / PI2;
@@ -115,62 +125,89 @@ inline float fast_sin(float x)
     return y;
 }
 
-inline float fast_cos(float x)
+float fast_cos(float x)
 {
-   return abs(abs(x)  /PI2 % 4 - 2) - 1; 
+   return abs(abs(x)  /PI2 % 4 - 2) - 1;
 }
 
 /*------------------------------------------------------------------------------
-    PROJECT
+    TRANSFORMATIONS
 ------------------------------------------------------------------------------*/
-inline float3 project(float3 position, matrix transform)
+float3 world_to_view(float3 x, bool is_position = true)
 {
-    float4 projectedCoords  = mul(float4(position, 1.0f), transform);
-    projectedCoords.xyz     /= projectedCoords.w;
-    projectedCoords.xy      = projectedCoords.xy * float2(0.5f, -0.5f) + 0.5f;
-
-    return projectedCoords.xyz;
+    return mul(float4(x, (float)is_position), g_view).xyz;
 }
 
-inline float2 project_uv(float3 position, matrix transform)
+float3 world_to_ndc(float3 x, bool is_position = true)
 {
-    return project(position, transform).xy;
+    float4 projectedCoords = mul(float4(x, (float)is_position), g_view_projection);
+    return projectedCoords.xyz / projectedCoords.w;
 }
 
-inline float project_depth(float3 position, matrix transform)
+float3 world_to_ndc(float3 x, float4x4 transform) // shadow mapping
 {
-    return project(position, transform).z;
+    float4 projectedCoords = mul(float4(x, 1.0f), transform);
+    return projectedCoords.xyz / projectedCoords.w;
+}
+
+float3 view_to_ndc(float3 x, bool is_position = true)
+{
+    float4 projectedCoords = mul(float4(x, (float)is_position), g_projection);
+    return projectedCoords.xyz / projectedCoords.w;
+}
+
+float2 world_to_uv(float3 x, bool is_position = true)
+{
+    float4 projectedCoords = mul(float4(x, (float)is_position), g_view_projection);
+    return (projectedCoords.xy / projectedCoords.w) * float2(0.5f, -0.5f) + 0.5f;
+}
+
+float2 world_to_uv_unjittered(float3 x, bool is_position = true)
+{
+    float4 projectedCoords = mul(float4(x, (float)is_position), g_view_projection_unjittered);
+    return (projectedCoords.xy / projectedCoords.w) * float2(0.5f, -0.5f) + 0.5f;
+}
+
+float2 view_to_uv(float3 x, bool is_position = true)
+{
+    float4 projectedCoords = mul(float4(x, (float)is_position), g_projection);
+    return (projectedCoords.xy / projectedCoords.w) * float2(0.5f, -0.5f) + 0.5f;
+}
+
+float2 ndc_to_uv(float3 x)
+{
+    return x.xy * float2(0.5f, -0.5f) + 0.5f;
 }
 
 /*------------------------------------------------------------------------------
     NORMAL
 ------------------------------------------------------------------------------*/
 // No decoding required (just normalise)
-inline float3 normal_decode(float3 normal)  { return normalize(normal); }
+float3 normal_decode(float3 normal)  { return normalize(normal); }
 // No encoding required (just normalise)
-inline float3 normal_encode(float3 normal)  { return normalize(normal); }
+float3 normal_encode(float3 normal)  { return normalize(normal); }
 
-inline float3 get_normal(uint2 pos)
+float3 get_normal(uint2 pos)
 {
     return tex_normal[pos].xyz;
 }
 
-inline float3 get_normal(float2 uv)
+float3 get_normal(float2 uv)
 {
     return tex_normal.SampleLevel(sampler_point_clamp, uv, 0).xyz;
 }
 
-inline float3 get_normal_view_space(uint2 pos)
+float3 get_normal_view_space(uint2 pos)
 {
     return normalize(mul(float4(get_normal(pos), 0.0f), g_view).xyz);
 }
 
-inline float3 get_normal_view_space(float2 uv)
+float3 get_normal_view_space(float2 uv)
 {
     return normalize(mul(float4(get_normal(uv), 0.0f), g_view).xyz);
 }
 
-inline float3x3 makeTBN(float3 n, float3 t)
+float3x3 makeTBN(float3 n, float3 t)
 {
     // re-orthogonalize T with respect to N
     t = normalize(t - dot(t, n) * n);
@@ -183,35 +220,36 @@ inline float3x3 makeTBN(float3 n, float3 t)
 /*------------------------------------------------------------------------------
     DEPTH
 ------------------------------------------------------------------------------*/
-inline float get_depth(uint2 pos)
+float get_depth(uint2 pos)
 {
-    return tex_depth[pos].r;
+    // Load returns 0 for any value accessed out of bounds
+    return tex_depth.Load(int3(pos, 0)).r;
 }
 
-inline float get_depth(float2 uv)
+float get_depth(float2 uv)
 {
     // effects like screen space shadows, can get artifacts if a point sampler is used
     return tex_depth.SampleLevel(sampler_bilinear_clamp, uv, 0).r;
 }
 
-inline float get_linear_depth(float z, float near, float far)
+float get_linear_depth(float z, float near, float far)
 {
     float z_b = z;
     float z_n = 2.0f * z_b - 1.0f;
     return 2.0f * far * near / (near + far - z_n * (near - far));
 }
 
-inline float get_linear_depth(float z)
+float get_linear_depth(float z)
 {
     return get_linear_depth(z, g_camera_near, g_camera_far);
 }
 
-inline float get_linear_depth(uint2 pos)
+float get_linear_depth(uint2 pos)
 {
     return get_linear_depth(get_depth(pos));
 }
 
-inline float get_linear_depth(float2 uv)
+float get_linear_depth(float2 uv)
 {
     return get_linear_depth(get_depth(uv));
 }
@@ -219,7 +257,7 @@ inline float get_linear_depth(float2 uv)
 /*------------------------------------------------------------------------------
     POSITION
 ------------------------------------------------------------------------------*/
-inline float3 get_position(float z, float2 uv)
+float3 get_position(float z, float2 uv)
 {
     float x             = uv.x * 2.0f - 1.0f;
     float y             = (1.0f - uv.y) * 2.0f - 1.0f;
@@ -228,23 +266,23 @@ inline float3 get_position(float z, float2 uv)
     return pos_world.xyz / pos_world.w;
 }
 
-inline float3 get_position(float2 uv)
+float3 get_position(float2 uv)
 {
     return get_position(get_depth(uv), uv);
 }
 
-inline float3 get_position(uint2 pos)
+float3 get_position(uint2 pos)
 {
     const float2 uv = (pos + 0.5f) / g_resolution;
     return get_position(get_depth(pos), uv);
 }
 
-inline float3 get_position_view_space(uint2 pos)
+float3 get_position_view_space(uint2 pos)
 {
     return mul(float4(get_position(pos), 1.0f), g_view).xyz;
 }
 
-inline float3 get_position_view_space(float2 uv)
+float3 get_position_view_space(float2 uv)
 {
     return mul(float4(get_position(uv), 1.0f), g_view).xyz;
 }
@@ -252,39 +290,39 @@ inline float3 get_position_view_space(float2 uv)
 /*------------------------------------------------------------------------------
     VIEW DIRECTION
 ------------------------------------------------------------------------------*/
-inline float3 get_view_direction(float3 position_world)
+float3 get_view_direction(float3 position_world)
 {
     return normalize(position_world - g_camera_position.xyz);
 }
 
-inline float3 get_view_direction(float depth, float2 uv)
+float3 get_view_direction(float depth, float2 uv)
 {
     return get_view_direction(get_position(depth, uv));
 }
 
-inline float3 get_view_direction(float2 uv)
+float3 get_view_direction(float2 uv)
 {
     return get_view_direction(get_position(uv));
 }
 
-inline float3 get_view_direction(uint2 pos)
+float3 get_view_direction(uint2 pos)
 {
     const float2 uv = (pos + 0.5f) / g_resolution;
     return get_view_direction(uv);
 }
 
-inline float3 get_view_direction_view_space(float2 uv)
+float3 get_view_direction_view_space(float2 uv)
 {
     return mul(float4(get_view_direction(get_position(uv)), 0.0f), g_view).xyz;
 }
 
-inline float3 get_view_direction_view_space(uint2 pos)
+float3 get_view_direction_view_space(uint2 pos)
 {
     const float2 uv = (pos + 0.5f) / g_resolution;
     return get_view_direction_view_space(uv);
 }
 
-inline float3 get_view_direction_view_space(float3 position_world)
+float3 get_view_direction_view_space(float3 position_world)
 {
     return mul(float4(get_view_direction(position_world), 0.0f), g_view).xyz;
 }
@@ -292,7 +330,7 @@ inline float3 get_view_direction_view_space(float3 position_world)
 /*------------------------------------------------------------------------------
     DIRECTION UV
 ------------------------------------------------------------------------------*/
-inline float2 direction_sphere_uv(float3 direction)
+float2 direction_sphere_uv(float3 direction)
 {
     float n = length(direction.xz);
     float2 uv = float2((n > 0.0000001) ? direction.x / n : 0.0, direction.y);
@@ -303,7 +341,7 @@ inline float2 direction_sphere_uv(float3 direction)
     return uv;
 }
 
-inline uint direction_to_cube_face_index(const float3 direction)
+uint direction_to_cube_face_index(const float3 direction)
 {
     float3 direction_abs = abs(direction);
     float max_coordinate = max3(direction_abs);
@@ -329,12 +367,12 @@ inline uint direction_to_cube_face_index(const float3 direction)
 ------------------------------------------------------------------------------*/
 static const float3 lumCoeff = float3(0.299f, 0.587f, 0.114f);
 
-inline float luminance(float3 color)
+float luminance(float3 color)
 {
     return max(dot(color, lumCoeff), 0.0001f);
 }
 
-inline float luminance(float4 color)
+float luminance(float4 color)
 {
     return max(dot(color.rgb, lumCoeff), 0.0001f);
 }
@@ -342,13 +380,13 @@ inline float luminance(float4 color)
 /*------------------------------------------------------------------------------
     NOISE/OFFSETS/ROTATIONS
 ------------------------------------------------------------------------------*/
-inline float get_random(float2 uv)
+float get_random(float2 uv)
 {
     return frac(sin(dot(uv, float2(12.9898, 78.233))) * 43758.5453);
 }
 
 // Based on Activision GTAO paper: https://www.activision.com/cdn/research/s2016_pbs_activision_occlusion.pptx
-inline float get_offset_non_temporal(uint2 screen_pos)
+float get_offset_non_temporal(uint2 screen_pos)
 {
     int2 position = (int2)(screen_pos);
     return 0.25 * (float)((position.y - position.x) & 3);
@@ -356,36 +394,43 @@ inline float get_offset_non_temporal(uint2 screen_pos)
 
 // Based on Activision GTAO paper: https://www.activision.com/cdn/research/s2016_pbs_activision_occlusion.pptx
 static const float offsets[] = { 0.0f, 0.5f, 0.25f, 0.75f };
-inline float get_offset()
+float get_offset()
 {
-    return offsets[(g_frame / 6) % 4] * any(g_taa_jitter_offset);
+    return offsets[(g_frame % 4) * any(g_taa_jitter_offset)];
 }
 
 // Based on Activision GTAO paper: https://www.activision.com/cdn/research/s2016_pbs_activision_occlusion.pptx
 static const float rotations[] = { 60.0f, 300.0f, 180.0f, 240.0f, 120.0f, 0.0f };
-inline float get_direction()
+float get_direction()
 {
-    return (rotations[g_frame % 6] / 360.0f) * any(g_taa_jitter_offset);
+    return (rotations[(g_frame % 6) * any(g_taa_jitter_offset)] / 360.0f);
 }
 
 // Derived from the interleaved gradient function from Jimenez 2014 http://goo.gl/eomGso
 float get_noise_interleaved_gradient(float2 screen_pos)
 {
-    screen_pos += g_frame * any(g_taa_jitter_offset); // temporal factor
+    screen_pos += g_frame * any(g_taa_jitter_offset);
     float3 magic = float3(0.06711056f, 0.00583715f, 52.9829189f);
     return frac(magic.z * frac(dot(screen_pos, magic.xy)));
 }
 
-float get_noise_blue(uint2 screen_pos)
+float get_noise_blue(float2 screen_pos)
 {
-    float2 uv = (screen_pos + 0.5f) / g_resolution;
-    return tex_noise_blue.SampleLevel(sampler_bilinear_wrap, uv * g_tex_noise_blue_scale, 0).r;
+    float2 uv = (screen_pos + 0.5f) * g_tex_noise_blue_scale;
+
+    // Animate
+    float timeSeconds = g_time;
+    float u = frac((screen_pos.x / 64.0) + timeSeconds * 4.7526);
+    float v = frac((screen_pos.y / 64.0) + timeSeconds * 3.1914);
+    uv += float2(u, v) * any(g_taa_jitter_offset);
+
+    return tex_noise_blue.SampleLevel(sampler_point_wrap, uv, 0).r;
 }
 
 float3 get_noise_normal(uint2 screen_pos)
 {
-    float2 uv = (screen_pos + 0.5f) / g_resolution;
-    return normalize(tex_noise_normal.SampleLevel(sampler_bilinear_wrap, uv * g_tex_noise_normal_scale, 0).xyz);
+    float2 uv = (screen_pos + 0.5f) * g_tex_noise_normal_scale;
+    return normalize(tex_noise_normal.SampleLevel(sampler_point_wrap, uv, 0).xyz);
 }
 
 /*------------------------------------------------------------------------------
@@ -393,7 +438,7 @@ float3 get_noise_normal(uint2 screen_pos)
 ------------------------------------------------------------------------------*/
 
 // Activision GTAO paper: https://www.activision.com/cdn/research/s2016_pbs_activision_occlusion.pptx
-inline float3 MultiBounceAO(float visibility, float3 albedo)
+float3 MultiBounceAO(float visibility, float3 albedo)
 {
     float3 a = 2.0404 * albedo - 0.3324;
     float3 b = -4.7951 * albedo + 0.6417;
@@ -440,8 +485,8 @@ float draw_line(float2 p1, float2 p2, float2 uv, float a)
 
 float draw_line_view_space(float3 p1, float3 p2, float2 uv, float a)
 {
-    float2 p1_uv = project_uv(p1, g_projection);
-    float2 p2_uv = project_uv(p2, g_projection);
+    float2 p1_uv = view_to_uv(p1);
+    float2 p2_uv = view_to_uv(p2);
     return draw_line(p1_uv, p2_uv, uv, a);
 }
 
@@ -452,7 +497,7 @@ float draw_circle(float2 origin, float radius, float2 uv)
 
 float draw_circle_view_space(float3 origin, float radius, float2 uv)
 {
-    float2 origin_uv = project_uv(origin, g_projection);
+    float2 origin_uv = view_to_uv(origin);
     return draw_circle(origin_uv, radius, uv);
 }
 
@@ -460,7 +505,7 @@ float draw_circle_view_space(float3 origin, float radius, float2 uv)
     MISC
 ------------------------------------------------------------------------------*/
 
-inline float3 compute_diffuse_energy(float3 F, float metallic)
+float3 compute_diffuse_energy(float3 F, float metallic)
 {
     float3 kS = F;          // The energy of light that gets reflected - Equal to Fresnel
     float3 kD = 1.0f - kS;  // Remaining energy, light that gets refracted          
@@ -469,10 +514,30 @@ inline float3 compute_diffuse_energy(float3 F, float metallic)
     return kD;
 }
 
-inline float screen_fade(float2 uv)
+float screen_fade(float2 uv)
 {
     float2 fade = max(12.0f * abs(uv - 0.5f) - 5.0f, 0.0f);
     return saturate(1.0 - dot(fade, fade));
+}
+
+// Find good arbitrary axis vectors to represent U and V axes of a plane,
+// given just the normal. Ported from UnMath.h
+void find_best_axis_vectors(float3 In, out float3 Axis1, out float3 Axis2)
+{
+    const float3 N = abs(In);
+
+    // Find best basis vectors.
+    if (N.z > N.x && N.z > N.y)
+    {
+        Axis1 = float3(1, 0, 0);
+    }
+    else
+    {
+        Axis1 = float3(0, 0, 1);
+    }
+
+    Axis1 = normalize(Axis1 - In * dot(Axis1, In));
+    Axis2 = cross(Axis1, In);
 }
 
 static const float3 hemisphere_samples[64] =

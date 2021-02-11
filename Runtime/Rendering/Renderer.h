@@ -256,6 +256,7 @@ namespace Spartan
         // Samplers
         std::shared_ptr<RHI_Sampler> m_sampler_compare_depth;
         std::shared_ptr<RHI_Sampler> m_sampler_point_clamp;
+        std::shared_ptr<RHI_Sampler> m_sampler_point_wrap;
         std::shared_ptr<RHI_Sampler> m_sampler_bilinear_clamp;
         std::shared_ptr<RHI_Sampler> m_sampler_bilinear_wrap;
         std::shared_ptr<RHI_Sampler> m_sampler_trilinear_clamp;
