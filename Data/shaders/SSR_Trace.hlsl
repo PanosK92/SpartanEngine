@@ -41,7 +41,7 @@ bool intersect_depth_buffer(float2 ray_pos, float2 ray_start, float ray_length, 
 
 float2 trace_ray(uint2 screen_pos, float3 ray_start_vs, float3 ray_dir_vs)
 {
-    // Compute ray in UV space
+    // Compute ray to UV space
     float3 ray_end_vs       = ray_start_vs + ray_dir_vs * g_ssr_max_distance;
     float2 ray_start        = view_to_uv(ray_start_vs);
     float2 ray_end          = view_to_uv(ray_end_vs);
