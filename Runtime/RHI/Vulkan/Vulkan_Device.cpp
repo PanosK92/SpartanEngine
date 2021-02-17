@@ -98,11 +98,10 @@ namespace Spartan
             create_info.enabledLayerCount       = 0;
 
             // Validation features
-            VkValidationFeatureEnableEXT enabled_validation_features[]  = { VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT };
-            VkValidationFeaturesEXT validation_features                 = {};
-            validation_features.sType                                   = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
-            validation_features.enabledValidationFeatureCount           = 1;
-            validation_features.pEnabledValidationFeatures              = enabled_validation_features;
+            VkValidationFeaturesEXT validation_features         = {};
+            validation_features.sType                           = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
+            validation_features.enabledValidationFeatureCount   = static_cast<uint32_t>(m_rhi_context->validation_extensions.size());
+            validation_features.pEnabledValidationFeatures      = m_rhi_context->validation_extensions.data();
 
             if (m_rhi_context->debug)
             {
@@ -159,7 +158,7 @@ namespace Spartan
                     queue_create_info.sType                     = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
                     queue_create_info.queueFamilyIndex          = queue_family;
                     queue_create_info.queueCount                = 1;
-                    queue_create_info.pQueuePriorities            = &queue_priority;
+                    queue_create_info.pQueuePriorities          = &queue_priority;
                     queue_create_infos.push_back(queue_create_info);
                 }
             }
@@ -221,11 +220,11 @@ namespace Spartan
             // Device create info
             VkDeviceCreateInfo create_info = {};
             {
-                create_info.sType                    = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+                create_info.sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
                 create_info.queueCreateInfoCount    = static_cast<uint32_t>(queue_create_infos.size());
-                create_info.pQueueCreateInfos        = queue_create_infos.data();
+                create_info.pQueueCreateInfos       = queue_create_infos.data();
                 create_info.pNext                   = &device_features_enabled;
-                create_info.enabledExtensionCount    = static_cast<uint32_t>(extensions_supported.size());
+                create_info.enabledExtensionCount   = static_cast<uint32_t>(extensions_supported.size());
                 create_info.ppEnabledExtensionNames = extensions_supported.data();
 
                 if (m_rhi_context->debug)

@@ -165,8 +165,8 @@ namespace Spartan
         }
 
         // Acquire image format
-        auto format    = FreeImage_GetFileType(file_path.c_str(), 0);
-        format        = (format == FIF_UNKNOWN) ? FreeImage_GetFIFFromFilename(file_path.c_str()) : format;  // If the format is unknown, try to work it out from the file path
+        FREE_IMAGE_FORMAT format    = FreeImage_GetFileType(file_path.c_str(), 0);
+        format                      = (format == FIF_UNKNOWN) ? FreeImage_GetFIFFromFilename(file_path.c_str()) : format;  // If the format is unknown, try to work it out from the file path
         if (!FreeImage_FIFSupportsReading(format)) // If the format is still unknown, give up
         {
             LOG_ERROR("Unsupported format");
@@ -181,7 +181,7 @@ namespace Spartan
             return false;
         }
 
-        // Deduce image properties. Important that this is done here, before ApplyBitmapCorrections(), as after that, results for grayscale seemed to be always false
+        // Deduce image properties. Important that this is done here, before ApplyBitmapCorrections(), as after that, results for grayscale seem to be always false
         const bool image_is_transparent = FreeImage_IsTransparent(bitmap);
         const bool image_is_grayscale   = FreeImage_GetColorType(bitmap) == FIC_MINISBLACK;
 

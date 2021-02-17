@@ -55,6 +55,9 @@ namespace Spartan
     {
         if (m_descriptor_set_layout)
         {
+            // Wait in case it's still in use by the GPU
+            m_rhi_device->Queue_WaitAll();
+
             vkDestroyDescriptorSetLayout(m_rhi_device->GetContextRhi()->device, static_cast<VkDescriptorSetLayout>(m_descriptor_set_layout), nullptr);
             m_descriptor_set_layout = nullptr;
         }

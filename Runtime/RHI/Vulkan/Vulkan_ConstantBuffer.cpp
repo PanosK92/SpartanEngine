@@ -35,7 +35,7 @@ namespace Spartan
 {
     void RHI_ConstantBuffer::_destroy()
     {
-        // Wait in case the buffer is still in use
+        // Wait in case it's still in use by the GPU
         m_rhi_device->Queue_WaitAll();
 
         // Unmap

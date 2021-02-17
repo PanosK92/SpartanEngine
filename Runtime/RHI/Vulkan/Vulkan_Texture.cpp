@@ -203,7 +203,7 @@ namespace Spartan
             LOG_ERROR("Invalid RHI Device.");
         }
 
-        // Ensure the GPU is not using this texture
+        // Wait in case it's still in use by the GPU
         m_rhi_device->Queue_WaitAll();
         
         // Make sure that no descriptor sets refer to this texture.

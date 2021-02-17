@@ -43,12 +43,12 @@ Texture2D tex_light_specular_transparent    : register(t16);
 Texture2D tex_light_volumetric              : register(t17);
 
 // Light depth/color maps
-Texture2DArray light_directional_depth  : register(t18);
-Texture2DArray light_directional_color  : register(t19);
-TextureCube light_point_depth           : register(t20);
-TextureCube light_point_color           : register(t21);
-Texture2D light_spot_depth              : register(t22);
-Texture2D light_spot_color              : register(t23);
+Texture2DArray tex_light_directional_depth  : register(t18);
+Texture2DArray tex_light_directional_color  : register(t19);
+TextureCube tex_light_point_depth           : register(t20);
+TextureCube tex_light_point_color           : register(t21);
+Texture2D tex_light_spot_depth              : register(t22);
+Texture2D tex_light_spot_color              : register(t23);
 
 // Noise
 Texture2D tex_noise_normal  : register(t24);

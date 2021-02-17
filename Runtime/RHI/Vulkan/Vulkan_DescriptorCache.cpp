@@ -52,7 +52,7 @@ namespace Spartan
             descriptor_set_capacity = m_descriptor_set_capacity;
         }
 
-        // Wait in case the pool is being used
+        // Wait in case it's still in use by the GPU
         m_rhi_device->Queue_WaitAll();
 
         // Destroy layouts (and descriptor sets)

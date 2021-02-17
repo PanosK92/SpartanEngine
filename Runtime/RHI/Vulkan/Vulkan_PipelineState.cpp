@@ -66,6 +66,9 @@ namespace Spartan
 
     inline VkAttachmentStoreOp get_stencil_store_op(const RHI_DepthStencilState* depth_stencil_state)
     {
+        if (!depth_stencil_state)
+            return VK_ATTACHMENT_STORE_OP_DONT_CARE;
+
         return depth_stencil_state->GetStencilWriteEnabled() ? VK_ATTACHMENT_STORE_OP_STORE : VK_ATTACHMENT_STORE_OP_DONT_CARE;
     };
     
