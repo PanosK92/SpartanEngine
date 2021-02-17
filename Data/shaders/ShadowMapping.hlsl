@@ -53,13 +53,13 @@ float shadow_compare_depth(float3 uv, float compare)
 {
     #if DIRECTIONAL
     // float3 -> uv, slice
-    return light_directional_depth.SampleCmpLevelZero(sampler_compare_depth, uv, compare).r;
+    return tex_light_directional_depth.SampleCmpLevelZero(sampler_compare_depth, uv, compare).r;
     #elif POINT
     // float3 -> direction
-    return light_point_depth.SampleCmpLevelZero(sampler_compare_depth, uv, compare).r;
+    return tex_light_point_depth.SampleCmpLevelZero(sampler_compare_depth, uv, compare).r;
     #elif SPOT
     // float3 -> uv, 0
-    return light_spot_depth.SampleCmpLevelZero(sampler_compare_depth, uv.xy, compare).r;
+    return tex_light_spot_depth.SampleCmpLevelZero(sampler_compare_depth, uv.xy, compare).r;
     #endif
 
     return 0.0f;
@@ -69,13 +69,13 @@ float shadow_sample_depth(float3 uv)
 {
     #if DIRECTIONAL
     // float3 -> uv, slice
-    return light_directional_depth.SampleLevel(sampler_point_clamp, uv, 0).r;
+    return tex_light_directional_depth.SampleLevel(sampler_point_clamp, uv, 0).r;
     #elif POINT
     // float3 -> direction
-    return light_point_depth.SampleLevel(sampler_point_clamp, uv, 0).r;
+    return tex_light_point_depth.SampleLevel(sampler_point_clamp, uv, 0).r;
     #elif SPOT
     // float3 -> uv, 0
-    return light_spot_depth.SampleLevel(sampler_point_clamp, uv.xy, 0).r;
+    return tex_light_spot_depth.SampleLevel(sampler_point_clamp, uv.xy, 0).r;
     #endif
 
     return 0.0f;
@@ -85,13 +85,13 @@ float4 shadow_sample_color(float3 uv)
 {
     #if DIRECTIONAL
     // float3 -> uv, slice
-    return light_directional_color.SampleLevel(sampler_point_clamp, uv, 0);
+    return tex_light_directional_color.SampleLevel(sampler_point_clamp, uv, 0);
     #elif POINT
     // float3 -> direction
-    return light_point_color.SampleLevel(sampler_point_clamp, uv, 0);
+    return tex_light_point_color.SampleLevel(sampler_point_clamp, uv, 0);
     #elif SPOT
     // float3 -> uv, 0
-    return light_spot_color.SampleLevel(sampler_point_clamp, uv.xy, 0);
+    return tex_light_spot_color.SampleLevel(sampler_point_clamp, uv.xy, 0);
     #endif
 
     return 0.0f;

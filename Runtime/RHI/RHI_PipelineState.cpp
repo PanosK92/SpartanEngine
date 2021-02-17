@@ -65,12 +65,8 @@ namespace Spartan
         bool is_graphics_pso        = (has_shader_vertex || has_shader_pixel) && !has_shader_compute;
         bool is_compute_pso         = has_shader_compute && (!has_shader_vertex && !has_shader_pixel);
 
-        // Validate pipeline type
-        if (!is_compute_pso && !is_graphics_pso)
-        {
-            LOG_ERROR("Invalid pipeline state. No compute, vertex or pixel shaders have been provided.");
-            return false;
-        }
+        // Note: Sometimes a pipeline state is needed just to update a constant buffer, therefore
+        // a piepeline state can have no shaders but still be valid.
 
         // Validate graphics states
         if (is_graphics_pso && !has_graphics_states)

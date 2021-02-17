@@ -358,13 +358,15 @@ namespace Spartan
                 Identify specific sections within a VkQueue or VkCommandBuffer using labels to aid organization and offline analysis in external tools.
 
                 */
-                std::vector<const char*> extensions_device      = { "VK_KHR_swapchain", "VK_EXT_memory_budget", "VK_EXT_depth_clip_enable", "VK_KHR_timeline_semaphore" };
-                std::vector<const char*> validation_layers      = { "VK_LAYER_KHRONOS_validation" };
-                std::vector<const char*> extensions_instance    = { "VK_KHR_surface", "VK_KHR_win32_surface", "VK_EXT_debug_report", "VK_EXT_debug_utils" };
+                std::vector<const char*> extensions_device                      = { "VK_KHR_swapchain", "VK_EXT_memory_budget", "VK_EXT_depth_clip_enable", "VK_KHR_timeline_semaphore" };
+                std::vector<const char*> validation_layers                      = { "VK_LAYER_KHRONOS_validation" };
+                std::vector<VkValidationFeatureEnableEXT> validation_extensions = { VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT, VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT };
+                std::vector<const char*> extensions_instance                    = { "VK_KHR_surface", "VK_KHR_win32_surface", "VK_EXT_debug_report", "VK_EXT_debug_utils" };
             #else
-                std::vector<const char*> extensions_device      = { "VK_KHR_swapchain", "VK_EXT_memory_budget", "VK_EXT_depth_clip_enable", "VK_KHR_timeline_semaphore" };
-                std::vector<const char*> validation_layers      = { };
-                std::vector<const char*> extensions_instance    = { "VK_KHR_surface", "VK_KHR_win32_surface" };
+                std::vector<const char*> extensions_device                      = { "VK_KHR_swapchain", "VK_EXT_memory_budget", "VK_EXT_depth_clip_enable", "VK_KHR_timeline_semaphore" };
+                std::vector<const char*> validation_layers                      = { };
+                std::vector<VkValidationFeatureEnableEXT> validation_extensions = { };
+                std::vector<const char*> extensions_instance                    = { "VK_KHR_surface", "VK_KHR_win32_surface" };
             #endif
                 
                 bool initalise_allocator();

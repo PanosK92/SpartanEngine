@@ -131,7 +131,7 @@ void Widget_ShaderEditor::ShowShaderSource()
                     out.close();
                 }
 
-                // Compile synchronously so that the last frame switch immediately to the new shader, much better than seeing flickering.
+                // Compile synchronously to make it obvious when the first rendered frame (with your changes) shows up
                 m_shader->Compile(m_shader->GetShaderStage(), m_shader->GetFilePath());
             }
 

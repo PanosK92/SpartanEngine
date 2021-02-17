@@ -147,18 +147,9 @@ namespace Spartan
 
     void Renderer::Pass_UpdateFrameBuffer(RHI_CommandList* cmd_list)
     {
-        // TODO: An empty pipeline should create an empty/basic render pass so buffers can be updated.
-        // For the time being, I just provided a dummy compute shader.
-
-        // Acquire shaders
-        RHI_Shader* shader_c = m_shaders[RendererShader::Copy_C].get();
-        if (!shader_c->IsCompiled())
-            return;
-
         // Set render state
         static RHI_PipelineState pso;
-        pso.shader_compute   = shader_c;
-        pso.pass_name        = "Pass_UpdateFrameBuffer";
+        pso.pass_name = "Pass_UpdateFrameBuffer";
 
         // Draw
         if (cmd_list->BeginRenderPass(pso))
@@ -666,8 +657,8 @@ namespace Spartan
             return;
 
         // Acquire textures
-        shared_ptr<RHI_Texture>& tex_hbao_noisy     = m_render_targets[RendererRt::Hbao];
-        shared_ptr<RHI_Texture>& tex_hbao_blurred   = m_render_targets[RendererRt::Hbao_Blurred];
+        shared_ptr<RHI_Texture>& tex_ssao_noisy     = m_render_targets[RendererRt::Ssao];
+        shared_ptr<RHI_Texture>& tex_ssao_blurred   = m_render_targets[RendererRt::Ssao_Blurred];
         RHI_Texture* tex_depth                      = m_render_targets[RendererRt::Gbuffer_Depth].get();
         RHI_Texture* tex_normal                     = m_render_targets[RendererRt::Gbuffer_Normal].get();
 
@@ -680,15 +671,15 @@ namespace Spartan
         if (cmd_list->BeginRenderPass(pso))
         {
             // Update uber buffer
-            m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_hbao_noisy->GetWidth()), static_cast<float>(tex_hbao_noisy->GetHeight()));
+            m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_ssao_noisy->GetWidth()), static_cast<float>(tex_ssao_noisy->GetHeight()));
             UpdateUberBuffer(cmd_list);
 
-            const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_hbao_noisy->GetWidth()) / m_thread_group_count));
-            const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_hbao_noisy->GetHeight()) / m_thread_group_count));
+            const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_ssao_noisy->GetWidth()) / m_thread_group_count));
+            const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_ssao_noisy->GetHeight()) / m_thread_group_count));
             const uint32_t thread_group_count_z = 1;
             const bool async = false;
 
-            cmd_list->SetTexture(RendererBindingsUav::r, tex_hbao_noisy);
+            cmd_list->SetTexture(RendererBindingsUav::r, tex_ssao_noisy);
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal, tex_normal);
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth, tex_depth);
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
@@ -699,8 +690,8 @@ namespace Spartan
             const auto pixel_stride = 2.0f;
             Pass_BlurBilateralGaussian(
                 cmd_list,
-                tex_hbao_noisy,
-                tex_hbao_blurred,
+                tex_ssao_noisy,
+                tex_ssao_blurred,
                 sigma,
                 pixel_stride,
                 false
@@ -844,7 +835,7 @@ namespace Spartan
                         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal,   m_render_targets[RendererRt::Gbuffer_Normal]);
                         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_material, m_render_targets[RendererRt::Gbuffer_Material]);
                         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    m_render_targets[RendererRt::Gbuffer_Depth]);
-                        cmd_list->SetTexture(RendererBindingsSrv::ssao,             (m_options & Render_Ssao) ? m_render_targets[RendererRt::Hbao_Blurred] : m_default_tex_white);
+                        cmd_list->SetTexture(RendererBindingsSrv::ssao,             (m_options & Render_Ssao) ? m_render_targets[RendererRt::Ssao_Blurred] : m_default_tex_white);
                         
                         // Set shadow map
                         if (light->GetShadowsEnabled())
@@ -969,7 +960,7 @@ namespace Spartan
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal,   m_render_targets[RendererRt::Gbuffer_Normal]);
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_material, m_render_targets[RendererRt::Gbuffer_Material]);
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    tex_depth);
-            cmd_list->SetTexture(RendererBindingsSrv::ssao,             (m_options & Render_Ssao) ? m_render_targets[RendererRt::Hbao_Blurred]    : m_default_tex_white);
+            cmd_list->SetTexture(RendererBindingsSrv::ssao,             (m_options & Render_Ssao) ? m_render_targets[RendererRt::Ssao_Blurred]    : m_default_tex_white);
             cmd_list->SetTexture(RendererBindingsSrv::lutIbl,           m_render_targets[RendererRt::Brdf_Specular_Lut]);
             cmd_list->SetTexture(RendererBindingsSrv::environment,      GetEnvironmentTexture());
             cmd_list->SetTexture(RendererBindingsSrv::frame,            m_render_targets[RendererRt::Frame_Hdr_2]); // refraction
@@ -2368,15 +2359,15 @@ namespace Spartan
             shader_type = RendererShader::DebugChannelR_C;
         }
 
-        if (m_render_target_debug == RendererRt::Hbao_Blurred)
+        if (m_render_target_debug == RendererRt::Ssao_Blurred)
         {
-            texture     = m_options & Render_Ssao ? m_render_targets[RendererRt::Hbao_Blurred].get() : m_default_tex_white.get();
+            texture     = m_options & Render_Ssao ? m_render_targets[RendererRt::Ssao_Blurred].get() : m_default_tex_white.get();
             shader_type = RendererShader::DebugChannelR_C;
         }
 
-        if (m_render_target_debug == RendererRt::Hbao)
+        if (m_render_target_debug == RendererRt::Ssao)
         {
-            texture = m_options & Render_Ssao ? m_render_targets[RendererRt::Hbao].get() : m_default_tex_white.get();
+            texture = m_options & Render_Ssao ? m_render_targets[RendererRt::Ssao].get() : m_default_tex_white.get();
             shader_type = RendererShader::DebugChannelR_C;
         }
 

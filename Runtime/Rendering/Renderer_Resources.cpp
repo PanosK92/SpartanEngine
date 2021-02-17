@@ -144,8 +144,8 @@ namespace Spartan
         m_render_targets[RendererRt::Dof_Half_2]   = make_unique<RHI_Texture2D>(m_context, width * 0.5f, height * 0.5f, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_dof_half_2"); // Investigate using less bits but have an alpha channel
 
         // HBAO
-        m_render_targets[RendererRt::Hbao]          = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R8_Unorm, 1, 0, "rt_hbao_noisy");
-        m_render_targets[RendererRt::Hbao_Blurred]  = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R8_Unorm, 1, 0, "rt_hbao");
+        m_render_targets[RendererRt::Ssao]          = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R8_Unorm, 1, 0, "rt_ssao_noisy");
+        m_render_targets[RendererRt::Ssao_Blurred]  = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R8_Unorm, 1, 0, "rt_ssao");
 
         // SSGI
         m_render_targets[RendererRt::Ssgi] = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R11G11B10_Float, 1, 0, "rt_ssgi");
