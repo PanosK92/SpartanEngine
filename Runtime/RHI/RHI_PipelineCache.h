@@ -34,7 +34,7 @@ namespace Spartan
     {
     public:
         RHI_PipelineCache(const RHI_Device* rhi_device) { m_rhi_device = rhi_device; }
-        RHI_Pipeline* GetPipeline(RHI_CommandList* cmd_list, RHI_PipelineState& pipeline_state, void* descriptor_set_layout);
+        RHI_Pipeline* GetPipeline(RHI_CommandList* cmd_list, RHI_PipelineState& pipeline_state, RHI_DescriptorSetLayout* descriptor_set_layout);
 
     private:
         // <hash of pipeline state, pipeline state object>

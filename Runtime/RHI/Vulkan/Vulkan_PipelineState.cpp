@@ -184,6 +184,9 @@ namespace Spartan
 
     inline bool create_frame_buffer(RHI_Context* rhi_context, void* render_pass, const std::vector<void*>& attachments, const uint32_t width, const uint32_t height, void*& frame_buffer)
     {
+        SP_ASSERT(width != 0);
+        SP_ASSERT(height != 0);
+
         VkFramebufferCreateInfo create_info = {};
         create_info.sType                   = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         create_info.renderPass              = static_cast<VkRenderPass>(render_pass);

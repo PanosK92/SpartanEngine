@@ -32,7 +32,7 @@ namespace Spartan
     {
     public:
         RHI_Pipeline() = default;
-        RHI_Pipeline(const RHI_Device* rhi_device, RHI_PipelineState& pipeline_state, void* descriptor_set_layout);
+        RHI_Pipeline(const RHI_Device* rhi_device, RHI_PipelineState& pipeline_state, RHI_DescriptorSetLayout* descriptor_set_layout);
         ~RHI_Pipeline();
 
         void* GetPipeline()                     const { return m_pipeline; }

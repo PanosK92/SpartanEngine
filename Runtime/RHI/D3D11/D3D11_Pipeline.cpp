@@ -31,10 +31,10 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_Pipeline::RHI_Pipeline(const RHI_Device* rhi_device, RHI_PipelineState& pipeline_state, void* descriptor_set_layout)
+    RHI_Pipeline::RHI_Pipeline(const RHI_Device* rhi_device, RHI_PipelineState& pipeline_state, RHI_DescriptorSetLayout* descriptor_set_layout)
     {
         m_rhi_device    = rhi_device;
-        m_state            = pipeline_state;
+        m_state         = pipeline_state;
     }
 
     RHI_Pipeline::~RHI_Pipeline() = default;

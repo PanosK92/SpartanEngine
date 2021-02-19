@@ -21,8 +21,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===============================
 #include "Spartan.h"
-#include "../RHI_Implementation.h"
 #include "../RHI_DescriptorSet.h"
+#include "../RHI_Implementation.h"
 #include "../RHI_DescriptorSetLayout.h"
 #include "../RHI_DescriptorSetLayoutCache.h"
 //==========================================
@@ -33,12 +33,18 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_DescriptorSetLayout::~RHI_DescriptorSetLayout()
+    RHI_DescriptorSet::~RHI_DescriptorSet()
     {
 
     }
 
-    void RHI_DescriptorSetLayout::CreateResource(const vector<RHI_Descriptor>& descriptors)
+    bool RHI_DescriptorSet::Create()
+    {
+
+        return true;
+    }
+
+    void RHI_DescriptorSet::Update(const vector<RHI_Descriptor>& descriptors)
     {
 
     }

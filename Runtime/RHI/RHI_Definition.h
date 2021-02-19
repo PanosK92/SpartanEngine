@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ===============
-#include <stdint.h>
+#include <cstdint>
 #include "../Math/Vector4.h"
 //==========================
 
@@ -35,8 +35,9 @@ namespace Spartan
     class RHI_PipelineState;
     class RHI_PipelineCache;
     class RHI_Pipeline;
+    class RHI_DescriptorSet;
     class RHI_DescriptorSetLayout;
-    class RHI_DescriptorCache;
+    class RHI_DescriptorSetLayoutCache;
     class RHI_SwapChain;
     class RHI_RasterizerState;
     class RHI_BlendState;
@@ -231,12 +232,12 @@ namespace Spartan
         RHI_Blend_Operation_Max
     };
 
-    enum RHI_Descriptor_Type
+    enum class RHI_Descriptor_Type
     {
-        RHI_Descriptor_Sampler,
-        RHI_Descriptor_Texture,
-        RHI_Descriptor_ConstantBuffer,
-        RHI_Descriptor_Undefined
+        Sampler,
+        Texture,
+        ConstantBuffer,
+        Undefined
     };
 
     enum class RHI_Image_Layout

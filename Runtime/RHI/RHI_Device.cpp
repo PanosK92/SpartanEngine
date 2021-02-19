@@ -68,8 +68,8 @@ namespace Spartan
         if (!m_rhi_context)
             return false;
 
-        return  width  > 0 && width  <= m_rhi_context->rhi_max_texture_dimension_2d &&
-                height > 0 && height <= m_rhi_context->rhi_max_texture_dimension_2d;
+        return  width  > 0 && width  <= RHI_Context::texture_2d_dimension_max &&
+                height > 0 && height <= RHI_Context::texture_2d_dimension_max;
     }
 
     bool RHI_Device::Queue_WaitAll() const

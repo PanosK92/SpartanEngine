@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==============================
+//= INCLUDES ===================================
 #include "Spartan.h"
 #include "Renderer.h"
 #include "Model.h"
@@ -43,10 +43,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Texture2D.h"
 #include "../RHI/RHI_SwapChain.h"
 #include "../RHI/RHI_VertexBuffer.h"
-#include "../RHI/RHI_DescriptorCache.h"
+#include "../RHI/RHI_DescriptorSetLayoutCache.h"
 #include "../RHI/RHI_Implementation.h"
 #include "../RHI/RHI_Semaphore.h"
-//=========================================
+//==============================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -130,8 +130,8 @@ namespace Spartan
         // Create pipeline cache
         m_pipeline_cache = make_shared<RHI_PipelineCache>(m_rhi_device.get());
 
-        // Create descriptor cache
-        m_descriptor_cache = make_shared<RHI_DescriptorCache>(m_rhi_device.get());
+        // Create descriptor set layout cache
+        m_descriptor_set_layout_cache = make_shared<RHI_DescriptorSetLayoutCache>(m_rhi_device.get());
 
         // Create swap chain
         {
@@ -651,7 +651,7 @@ namespace Spartan
         }
         else if (option == Renderer_Option_Value::ShadowResolution)
         {
-            value = Helper::Clamp(value, static_cast<float>(m_resolution_shadow_min), static_cast<float>(m_rhi_device->GetContextRhi()->rhi_max_texture_dimension_2d));
+            value = Helper::Clamp(value, static_cast<float>(m_resolution_shadow_min), static_cast<float>(RHI_Context::texture_2d_dimension_max));
         }
 
         if (m_option_values[option] == value)
@@ -735,7 +735,7 @@ namespace Spartan
 
     uint32_t Renderer::GetMaxResolution() const
     {
-        return m_rhi_device->GetContextRhi()->rhi_max_texture_dimension_2d;
+        return RHI_Context::texture_2d_dimension_max;
     }
 
     void Renderer::SetGlobalShaderObjectTransform(RHI_CommandList* cmd_list, const Math::Matrix& transform)

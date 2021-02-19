@@ -1,3 +1,5 @@
+#pragma once
+
 /*
 Copyright(c) 2016-2021 Panos Karabelas
 
@@ -19,28 +21,30 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+#pragma once
+
 //= INCLUDES ======================
-#include "Spartan.h"
-#include "../RHI_Implementation.h"
-#include "../RHI_DescriptorCache.h"
+#include "../Core/Spartan_Object.h"
+#include "RHI_Descriptor.h"
 //=================================
+
 namespace Spartan
 {
-    RHI_DescriptorCache::~RHI_DescriptorCache()
-    = default;
-
-    void RHI_DescriptorCache::SetDescriptorSetCapacity(uint32_t descriptor_set_capacity)
+    class SPARTAN_CLASS RHI_DescriptorSet : public Spartan_Object
     {
+    public:
+        RHI_DescriptorSet() = default;
+        RHI_DescriptorSet(const RHI_Device* rhi_device, const RHI_DescriptorSetLayoutCache* descriptor_set_layout_cache, const std::vector<RHI_Descriptor>& descriptors);
+        ~RHI_DescriptorSet();
 
-    }
+        void* GetResource() { return m_resource; }
 
-    void RHI_DescriptorCache::Reset(uint32_t descriptor_set_capacity /*= 0*/)
-    {
+    private:
+        bool Create();
+        void Update(const std::vector<RHI_Descriptor>& descriptors);
 
-    }
-
-    bool RHI_DescriptorCache::CreateDescriptorPool(uint32_t descriptor_set_capacity)
-    {
-        return true;
-    }
+        void* m_resource = nullptr;
+        const RHI_DescriptorSetLayoutCache* m_descriptor_set_layout_cache = nullptr;
+        const RHI_Device* m_rhi_device = nullptr;
+    };
 }

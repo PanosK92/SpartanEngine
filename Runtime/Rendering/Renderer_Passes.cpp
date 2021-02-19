@@ -836,6 +836,7 @@ namespace Spartan
                         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_material, m_render_targets[RendererRt::Gbuffer_Material]);
                         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    m_render_targets[RendererRt::Gbuffer_Depth]);
                         cmd_list->SetTexture(RendererBindingsSrv::ssao,             (m_options & Render_Ssao) ? m_render_targets[RendererRt::Ssao_Blurred] : m_default_tex_white);
+                        cmd_list->SetTexture(RendererBindingsSrv::noise_blue,       m_default_tex_noise_blue);
                         
                         // Set shadow map
                         if (light->GetShadowsEnabled())

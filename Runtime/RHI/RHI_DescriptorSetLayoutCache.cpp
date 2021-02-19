@@ -19,17 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =======================
+//= INCLUDES ============================
 #include "Spartan.h"
-#include "RHI_DescriptorCache.h"
+#include "RHI_DescriptorSetLayoutCache.h"
 #include "RHI_Shader.h"
-#include "RHI_Sampler.h"
-#include "RHI_Texture.h"
 #include "RHI_PipelineState.h"
-#include "RHI_ConstantBuffer.h"
 #include "RHI_DescriptorSetLayout.h"
-#include "..\Utilities\Hash.h"
-//==================================
+//=======================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -37,7 +33,7 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_DescriptorCache::RHI_DescriptorCache(const RHI_Device* rhi_device)
+    RHI_DescriptorSetLayoutCache::RHI_DescriptorSetLayoutCache(const RHI_Device* rhi_device)
     {
         m_rhi_device = rhi_device;
 
@@ -45,7 +41,7 @@ namespace Spartan
         SetDescriptorSetCapacity(m_descriptor_set_capacity);
     }
 
-    void RHI_DescriptorCache::SetPipelineState(RHI_PipelineState& pipeline_state)
+    void RHI_DescriptorSetLayoutCache::SetPipelineState(RHI_PipelineState& pipeline_state)
     {
         // Get pipeline descriptors
         GetDescriptors(pipeline_state, m_descriptors);
@@ -54,7 +50,7 @@ namespace Spartan
         uint32_t hash = 0;
         for (const RHI_Descriptor& descriptor : m_descriptors)
         {
-            Utility::Hash::hash_combine(hash, descriptor.GetHash());
+            Utility::Hash::hash_combine(hash, descriptor.ComputeHash(false));
         }
 
         // If there is no descriptor set layout for this particular hash, create one
@@ -75,67 +71,31 @@ namespace Spartan
         m_descriptor_layout_current->NeedsToBind();
     }
     
-    bool RHI_DescriptorCache::SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer)
+    bool RHI_DescriptorSetLayoutCache::SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer)
     {
-        if (!m_descriptor_layout_current)
-        {
-            LOG_ERROR("Invalid descriptor set layout");
-            return false;
-        }
-
+        SP_ASSERT(m_descriptor_layout_current != nullptr);
         return m_descriptor_layout_current->SetConstantBuffer(slot, constant_buffer);
     }
 
-    void RHI_DescriptorCache::SetSampler(const uint32_t slot, RHI_Sampler* sampler)
+    void RHI_DescriptorSetLayoutCache::SetSampler(const uint32_t slot, RHI_Sampler* sampler)
     {
-        if (!m_descriptor_layout_current)
-        {
-            LOG_ERROR("Invalid descriptor set layout");
-            return;
-        }
-
+        SP_ASSERT(m_descriptor_layout_current != nullptr);
         m_descriptor_layout_current->SetSampler(slot, sampler);
     }
 
-    void RHI_DescriptorCache::SetTexture(const uint32_t slot, RHI_Texture* texture, const bool storage)
+    void RHI_DescriptorSetLayoutCache::SetTexture(const uint32_t slot, RHI_Texture* texture, const bool storage)
     {
-        if (!m_descriptor_layout_current)
-        {
-            LOG_ERROR("Invalid descriptor set layout");
-            return;
-        }
-
+        SP_ASSERT(m_descriptor_layout_current != nullptr);
         m_descriptor_layout_current->SetTexture(slot, texture, storage);
     }
 
-    void* RHI_DescriptorCache::GetResource_DescriptorSetLayout() const
+    bool RHI_DescriptorSetLayoutCache::GetDescriptorSet(RHI_DescriptorSet*& descriptor_set)
     {
-        if (!m_descriptor_layout_current)
-        {
-            LOG_ERROR("Invalid descriptor set layout");
-            return nullptr;
-        }
-
-        return m_descriptor_layout_current->GetResource_DescriptorSetLayout();
+        SP_ASSERT(m_descriptor_layout_current != nullptr);
+        return m_descriptor_layout_current->GetDescriptorSet(this, descriptor_set);
     }
 
-    bool RHI_DescriptorCache::GetResource_DescriptorSet(void*& descriptor_set)
-    {
-        if (!m_descriptor_layout_current)
-        {
-            LOG_ERROR("Invalid descriptor set layout");
-            return nullptr;
-        }
-
-        return m_descriptor_layout_current->GetResource_DescriptorSet(this, descriptor_set);
-    }
-
-    bool RHI_DescriptorCache::HasEnoughCapacity() const
-    {
-        return m_descriptor_set_capacity > GetDescriptorSetCount();
-    }
-
-    void RHI_DescriptorCache::GrowIfNeeded()
+    void RHI_DescriptorSetLayoutCache::GrowIfNeeded()
     {
         // If there is room for at least one more descriptor set (hence +1), we don't need to re-allocate yet
         const uint32_t required_capacity = GetDescriptorSetCount() + 1;
@@ -147,8 +107,17 @@ namespace Spartan
         }
     }
 
-    uint32_t RHI_DescriptorCache::GetDescriptorSetCount() const
+    uint32_t RHI_DescriptorSetLayoutCache::GetDescriptorSetCount() const
     {
+        // Instead of updating descriptors to not reference it, the RHI_Texture2D destructor
+        // resets the descriptor set layout cache. This can happen from another thread hence
+        //  we do this wait here. Ideally ~RHI_Texture2D() is made to work right.
+        while (m_descriptor_set_layouts_being_cleared)
+        {
+            LOG_INFO("Waiting for descriptor set layouts to be cleared...");
+            this_thread::sleep_for(chrono::milliseconds(16));
+        }
+
         uint32_t descriptor_set_count = 0;
         for (const auto& it : m_descriptor_set_layouts)
         {
@@ -158,7 +127,7 @@ namespace Spartan
         return descriptor_set_count;
     }
 
-    void RHI_DescriptorCache::GetDescriptors(RHI_PipelineState& pipeline_state, vector<RHI_Descriptor>& descriptors)
+    void RHI_DescriptorSetLayoutCache::GetDescriptors(RHI_PipelineState& pipeline_state, vector<RHI_Descriptor>& descriptors)
     {
         descriptors.clear();
 
@@ -222,7 +191,7 @@ namespace Spartan
         {
             for (RHI_Descriptor& descriptor : descriptors)
             {
-                if (descriptor.type == RHI_Descriptor_ConstantBuffer)
+                if (descriptor.type == RHI_Descriptor_Type::ConstantBuffer)
                 {
                     if (descriptor.slot == pipeline_state.dynamic_constant_buffer_slots[i] + rhi_shader_shift_buffer)
                     {

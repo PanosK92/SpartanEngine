@@ -27,12 +27,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Texture.h"
 #include "../RHI_SwapChain.h"
 #include "../RHI_DepthStencilState.h"
+#include "../RHI_Descriptor.h"
 #include "../../Logging/Log.h"
 #include "../../Math/Vector4.h"
 #include "../../Display/Display.h"
-#include <array>
-#include <unordered_map>
-#include <atomic>
+
 //===================================
 
 namespace Spartan::vulkan_utility
@@ -1312,4 +1311,19 @@ namespace Spartan::vulkan_utility
             set_object_name((uint64_t)_event, VK_OBJECT_TYPE_EVENT, name);
         }
     };
+
+    static VkDescriptorType ToVulkanDescriptorType(const RHI_Descriptor& descriptor)
+    {
+        if (descriptor.type == RHI_Descriptor_Type::ConstantBuffer)
+            return descriptor.is_dynamic_constant_buffer ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+
+        if (descriptor.type == RHI_Descriptor_Type::Texture)
+            return descriptor.is_storage ? VK_DESCRIPTOR_TYPE_STORAGE_IMAGE : VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+
+        if (descriptor.type == RHI_Descriptor_Type::Sampler)
+            return VK_DESCRIPTOR_TYPE_SAMPLER;
+
+        LOG_ERROR("Invalid descriptor type");
+        return VK_DESCRIPTOR_TYPE_MAX_ENUM;
+    }
 }

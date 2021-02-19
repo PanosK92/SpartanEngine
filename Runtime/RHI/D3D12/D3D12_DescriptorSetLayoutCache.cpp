@@ -22,9 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===============================
 #include "Spartan.h"
 #include "../RHI_Implementation.h"
-#include "../RHI_DescriptorSet.h"
-#include "../RHI_DescriptorSetLayout.h"
 #include "../RHI_DescriptorSetLayoutCache.h"
+#include "../RHI_Shader.h"
 //==========================================
 
 //= NAMESPACES =====
@@ -33,13 +32,23 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_DescriptorSetLayout::~RHI_DescriptorSetLayout()
+    RHI_DescriptorSetLayoutCache::~RHI_DescriptorSetLayoutCache()
     {
 
     }
 
-    void RHI_DescriptorSetLayout::CreateResource(const vector<RHI_Descriptor>& descriptors)
+    void RHI_DescriptorSetLayoutCache::Reset(uint32_t descriptor_set_capacity /*= 0*/)
     {
 
+    }
+
+    void RHI_DescriptorSetLayoutCache::SetDescriptorSetCapacity(uint32_t descriptor_set_capacity)
+    {
+
+    }
+
+    bool RHI_DescriptorSetLayoutCache::CreateDescriptorPool(uint32_t descriptor_set_capacity)
+    {
+        return true;
     }
 }

@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==========================
+//= INCLUDES ===============================
 #include "Spartan.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_CommandList.h"
@@ -28,14 +28,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_IndexBuffer.h"
 #include "../RHI_ConstantBuffer.h"
 #include "../RHI_Sampler.h"
-#include "../RHI_DescriptorCache.h"
-#include "../RHI_PipelineCache.h"
+#include "../RHI_DescriptorSet.h"
 #include "../RHI_DescriptorSetLayout.h"
+#include "../RHI_DescriptorSetLayoutCache.h"
+#include "../RHI_PipelineCache.h"
 #include "../RHI_Semaphore.h"
 #include "../RHI_Fence.h"
 #include "../../Profiling/Profiler.h"
 #include "../../Rendering/Renderer.h"
-//=====================================
+//==========================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -46,12 +47,12 @@ namespace Spartan
 {
     RHI_CommandList::RHI_CommandList(uint32_t index, RHI_SwapChain* swap_chain, Context* context)
     {
-        m_swap_chain        = swap_chain;
-        m_renderer          = context->GetSubsystem<Renderer>();
-        m_profiler          = context->GetSubsystem<Profiler>();
-        m_rhi_device        = m_renderer->GetRhiDevice().get();
-        m_pipeline_cache    = m_renderer->GetPipelineCache();
-        m_descriptor_cache  = m_renderer->GetDescriptorCache();
+        m_swap_chain                    = swap_chain;
+        m_renderer                      = context->GetSubsystem<Renderer>();
+        m_profiler                      = context->GetSubsystem<Profiler>();
+        m_rhi_device                    = m_renderer->GetRhiDevice().get();
+        m_pipeline_cache                = m_renderer->GetPipelineCache();
+        m_descriptor_set_layout_cache   = m_renderer->GetDescriptorLayoutSetCache();
 
         RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
 
@@ -246,10 +247,10 @@ namespace Spartan
             m_pipeline_active = false;
 
             // Update the descriptor cache with the pipeline state
-            m_descriptor_cache->SetPipelineState(pipeline_state);
+            m_descriptor_set_layout_cache->SetPipelineState(pipeline_state);
 
             // Get (or create) a pipeline which matches the pipeline state
-            m_pipeline = m_pipeline_cache->GetPipeline(this, pipeline_state, m_descriptor_cache->GetResource_DescriptorSetLayout());
+            m_pipeline = m_pipeline_cache->GetPipeline(this, pipeline_state, m_descriptor_set_layout_cache->GetCurrentDescriptorSetLayout());
             if (!m_pipeline)
             {
                 LOG_ERROR("Failed to acquire appropriate pipeline");
@@ -561,14 +562,14 @@ namespace Spartan
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
-        if (!m_descriptor_cache->GetCurrentDescriptorSetLayout())
+        if (!m_descriptor_set_layout_cache->GetCurrentDescriptorSetLayout())
         {
             LOG_WARNING("Descriptor layout not set, try setting constant buffer \"%s\" within a render pass", constant_buffer->GetName().c_str());
             return false;
         }
 
         // Set (will only happen if it's not already set)
-        return m_descriptor_cache->SetConstantBuffer(slot, constant_buffer);
+        return m_descriptor_set_layout_cache->SetConstantBuffer(slot, constant_buffer);
     }
 
     void RHI_CommandList::SetSampler(const uint32_t slot, RHI_Sampler* sampler) const
@@ -576,14 +577,14 @@ namespace Spartan
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
-        if (!m_descriptor_cache->GetCurrentDescriptorSetLayout())
+        if (!m_descriptor_set_layout_cache->GetCurrentDescriptorSetLayout())
         {
             LOG_WARNING("Descriptor layout not set, try setting sampler \"%s\" within a render pass", sampler->GetName().c_str());
             return;
         }
 
         // Set (will only happen if it's not already set)
-        m_descriptor_cache->SetSampler(slot, sampler);
+        m_descriptor_set_layout_cache->SetSampler(slot, sampler);
     }
 
     void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const bool storage /*= false*/)
@@ -591,7 +592,7 @@ namespace Spartan
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
-        if (!m_descriptor_cache->GetCurrentDescriptorSetLayout())
+        if (!m_descriptor_set_layout_cache->GetCurrentDescriptorSetLayout())
         {
             LOG_WARNING("Descriptor layout not set, try setting texture \"%s\" within a render pass", texture->GetName().c_str());
             return;
@@ -660,7 +661,7 @@ namespace Spartan
         }
 
         // Set (will only happen if it's not already set)
-        m_descriptor_cache->SetTexture(slot, texture, storage);
+        m_descriptor_set_layout_cache->SetTexture(slot, texture, storage);
     }
 
     uint32_t RHI_CommandList::Gpu_GetMemory(RHI_Device* rhi_device)
@@ -758,9 +759,9 @@ namespace Spartan
 
     void RHI_CommandList::ResetDescriptorCache()
     {
-        if (m_descriptor_cache)
+        if (m_descriptor_set_layout_cache)
         {
-            m_descriptor_cache->Reset();
+            m_descriptor_set_layout_cache->Reset();
         }
     }
 
@@ -875,8 +876,8 @@ namespace Spartan
         // Descriptor set == null, result = true    -> a descriptor set is already bound
         // Descriptor set == null, result = false   -> a new descriptor was needed but we are out of memory (allocates next frame)
 
-        void* descriptor_set = nullptr;
-        bool result = m_descriptor_cache->GetResource_DescriptorSet(descriptor_set);
+        RHI_DescriptorSet* descriptor_set = nullptr;
+        bool result = m_descriptor_set_layout_cache->GetDescriptorSet(descriptor_set);
 
         if (result && descriptor_set != nullptr)
         {
@@ -884,20 +885,26 @@ namespace Spartan
             VkPipelineBindPoint pipeline_bind_point = m_pipeline_state->IsCompute() ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS;
 
             // Dynamic offsets
-            RHI_DescriptorSetLayout* descriptor_set_layout = m_descriptor_cache->GetCurrentDescriptorSetLayout();
+            RHI_DescriptorSetLayout* descriptor_set_layout = m_descriptor_set_layout_cache->GetCurrentDescriptorSetLayout();
             const std::array<uint32_t, rhi_max_constant_buffer_count> dynamic_offsets = descriptor_set_layout->GetDynamicOffsets();
             uint32_t dynamic_offset_count = descriptor_set_layout->GetDynamicOffsetCount();
-            
+
+            // Validate descriptor sets
+            array<void*, 1> descriptor_sets = { descriptor_set->GetResource() };
+            for (uint32_t i = 0; i < static_cast<uint32_t>(descriptor_sets.size()); i++)
+            {
+                SP_ASSERT(descriptor_sets[i] != nullptr);
+            }
+
             // Bind descriptor set
-            VkDescriptorSet descriptor_sets[1] = { static_cast<VkDescriptorSet>(descriptor_set) };
             vkCmdBindDescriptorSets
             (
                 static_cast<VkCommandBuffer>(m_cmd_buffer),                     // commandBuffer
                 pipeline_bind_point,                                            // pipelineBindPoint
                 static_cast<VkPipelineLayout>(m_pipeline->GetPipelineLayout()), // layout
                 0,                                                              // firstSet
-                1,                                                              // descriptorSetCount
-                descriptor_sets,                                                // pDescriptorSets
+                static_cast<uint32_t>(descriptor_sets.size()),                  // descriptorSetCount
+                reinterpret_cast<VkDescriptorSet*>(descriptor_sets.data()),     // pDescriptorSets
                 dynamic_offset_count,                                           // dynamicOffsetCount
                 !dynamic_offsets.empty() ? dynamic_offsets.data() : nullptr     // pDynamicOffsets
             );

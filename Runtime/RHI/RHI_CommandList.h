@@ -128,22 +128,22 @@ namespace Spartan
         bool Deferred_BindDescriptorSet();
         bool OnDraw();
 
-        RHI_Pipeline* m_pipeline                                = nullptr; 
-        RHI_SwapChain* m_swap_chain                             = nullptr;
-        Renderer* m_renderer                                    = nullptr;
-        RHI_PipelineCache* m_pipeline_cache                     = nullptr;
-        RHI_DescriptorCache* m_descriptor_cache                 = nullptr;
-        RHI_PipelineState* m_pipeline_state                     = nullptr;
-        RHI_Device* m_rhi_device                                = nullptr;
-        Profiler* m_profiler                                    = nullptr;
-        void* m_cmd_buffer                                      = nullptr;
-        std::shared_ptr<RHI_Fence> m_processed_fence            = nullptr;
-        std::shared_ptr<RHI_Semaphore> m_processed_semaphore    = nullptr;
-        void* m_query_pool                                      = nullptr;
-        std::atomic<bool> m_render_pass_active                  = false;
-        std::atomic<bool> m_pipeline_active                     = false;
-        std::atomic<bool> m_flushed                             = false;
-        std::atomic<RHI_CommandListState> m_state = RHI_CommandListState::Idle;
+        RHI_Pipeline* m_pipeline                                    = nullptr; 
+        RHI_SwapChain* m_swap_chain                                 = nullptr;
+        Renderer* m_renderer                                        = nullptr;
+        RHI_PipelineCache* m_pipeline_cache                         = nullptr;
+        RHI_DescriptorSetLayoutCache* m_descriptor_set_layout_cache = nullptr;
+        RHI_PipelineState* m_pipeline_state                         = nullptr;
+        RHI_Device* m_rhi_device                                    = nullptr;
+        Profiler* m_profiler                                        = nullptr;
+        void* m_cmd_buffer                                          = nullptr;
+        std::shared_ptr<RHI_Fence> m_processed_fence                = nullptr;
+        std::shared_ptr<RHI_Semaphore> m_processed_semaphore        = nullptr;
+        void* m_query_pool                                          = nullptr;
+        std::atomic<bool> m_render_pass_active                      = false;
+        std::atomic<bool> m_pipeline_active                         = false;
+        std::atomic<bool> m_flushed                                 = false;
+        std::atomic<RHI_CommandListState> m_state                   = RHI_CommandListState::Idle;
         static bool memory_query_support;
         std::mutex m_mutex_reset;
 
