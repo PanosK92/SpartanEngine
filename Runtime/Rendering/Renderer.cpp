@@ -104,7 +104,7 @@ namespace Spartan
 
     bool Renderer::Initialize()
     {
-        // Get required systems        
+        // Get required systems
         m_resource_cache    = m_context->GetSubsystem<ResourceCache>();
         m_profiler          = m_context->GetSubsystem<Profiler>();
 

@@ -32,7 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // technique - all
 #if DIRECTIONAL
 static const uint   g_shadow_samples                    = 3;
-static const float  g_shadow_filter_size                = 2.0f;
+static const float  g_shadow_filter_size                = 3.0f;
 static const float  g_shadow_cascade_blend_threshold    = 0.1f;
 #else
 static const uint   g_shadow_samples        = 8; // penumbra requires a higher sample count to look good
@@ -150,10 +150,10 @@ float compute_penumbra(float vogel_angle, float3 uv, float compare)
 /*------------------------------------------------------------------------------
     TECHNIQUE - VOGEL
 ------------------------------------------------------------------------------*/
-float Technique_Vogel(float3 uv, float compare)
+float Technique_Vogel(Surface surface, float3 uv, float compare)
 {
     float shadow            = 0.0f;
-    float temporal_offset   = get_noise_blue(uv.xy * g_shadow_resolution);
+    float temporal_offset   = get_noise_interleaved_gradient(surface.uv * g_resolution);
     float temporal_angle    = temporal_offset * PI2;
     float penumbra          = compute_penumbra(temporal_angle, uv, compare);
     
@@ -167,10 +167,10 @@ float Technique_Vogel(float3 uv, float compare)
     return shadow / (float)g_shadow_samples;
 }
 
-float4 Technique_Vogel_Color(float3 uv)
+float4 Technique_Vogel_Color(Surface surface, float3 uv)
 {
     float4 shadow       = 0.0f;
-    float vogel_angle   = get_noise_interleaved_gradient(uv.xy * g_shadow_resolution) * PI2;
+    float vogel_angle   = get_noise_interleaved_gradient(surface.uv * g_resolution) * PI2;
 
     [unroll]
     for (uint i = 0; i < g_shadow_samples; i++)
@@ -253,7 +253,7 @@ static const float2 poisson_disk[64] =
     float2(-0.1020106f, 0.6724468f),
 };
 
-float Technique_Poisson(float3 uv, float compare)
+float Technique_Poisson(Surface surface, float3 uv, float compare)
 {
     float shadow            = 0.0f;
     float temporal_offset   = get_noise_interleaved_gradient(uv.xy * g_shadow_resolution); // helps with noise if TAA is active
@@ -272,7 +272,7 @@ float Technique_Poisson(float3 uv, float compare)
 /*------------------------------------------------------------------------------
     TECHNIQUE - PCF
 ------------------------------------------------------------------------------*/
-float Technique_Pcf(float3 uv, float compare)
+float Technique_Pcf(Surface surface, float3 uv, float compare)
 {
     float shadow = 0.0f;
 
@@ -348,13 +348,13 @@ float4 Shadow_Map(Surface surface, Light light)
                 float2 uv = ndc_to_uv(pos_ndc);
 
                 // Sample primary cascade
-                shadow.a = SampleShadowMap(float3(uv, cascade), pos_ndc.z);
+                shadow.a = SampleShadowMap(surface, float3(uv, cascade), pos_ndc.z);
 
                 #if (SHADOWS_TRANSPARENT == 1 && TRANSPARENT == 0)
                 [branch]
                 if (shadow.a > 0.0f)
                 {
-                    shadow *= Technique_Vogel_Color(float3(uv, cascade));
+                    shadow *= Technique_Vogel_Color(surface, float3(uv, cascade));
                 }
                 #endif
 
@@ -369,7 +369,7 @@ float4 Shadow_Map(Surface surface, Light light)
 
                     // Sample secondary cascade
                     auto_bias(surface, pos_ndc, light, cacade_secondary + 1);
-                    float shadow_secondary = SampleShadowMap(float3(uv, cacade_secondary), pos_ndc.z);
+                    float shadow_secondary = SampleShadowMap(surface, float3(uv, cacade_secondary), pos_ndc.z);
 
                     // Blend cascades
                     float alpha = smoothstep(0.0f, distance_to_bounds, g_shadow_cascade_blend_threshold);
@@ -379,7 +379,7 @@ float4 Shadow_Map(Surface surface, Light light)
                     [branch]
                     if (shadow.a > 0.0f)
                     {
-                        shadow = min(shadow, Technique_Vogel_Color(float3(uv, cacade_secondary)));
+                        shadow = min(shadow, Technique_Vogel_Color(surface, float3(uv, cacade_secondary)));
                     }
                     #endif
                 }
@@ -396,13 +396,13 @@ float4 Shadow_Map(Surface surface, Light light)
             uint projection_index = direction_to_cube_face_index(light.direction);
             float3 pos_ndc = world_to_ndc(position_world, cb_light_view_projection[projection_index]);
             auto_bias(surface, pos_ndc, light);
-            shadow.a = SampleShadowMap(light.direction, pos_ndc.z);
+            shadow.a = SampleShadowMap(surface, light.direction, pos_ndc.z);
             
             #if (SHADOWS_TRANSPARENT == 1 && TRANSPARENT == 0)
             [branch]
             if (shadow.a > 0.0f)
             {
-                shadow *= Technique_Vogel_Color(light.direction);
+                shadow *= Technique_Vogel_Color(surface, light.direction);
             }
             #endif
         }
@@ -414,13 +414,13 @@ float4 Shadow_Map(Surface surface, Light light)
         {
             float3 pos_ndc = world_to_ndc(position_world, cb_light_view_projection[0]);
             auto_bias(surface, pos_ndc, light);
-            shadow.a = SampleShadowMap(float3(ndc_to_uv(pos_ndc), 0.0f), pos_ndc.z);
+            shadow.a = SampleShadowMap(surface, float3(ndc_to_uv(pos_ndc), 0.0f), pos_ndc.z);
 
             #if (SHADOWS_TRANSPARENT == 1 && TRANSPARENT == 0)
             [branch]
             if (shadow.a > 0.0f)
             {
-                shadow *= Technique_Vogel_Color(light.direction);
+                shadow *= Technique_Vogel_Color(surface, light.direction);
             }
             #endif
         }
