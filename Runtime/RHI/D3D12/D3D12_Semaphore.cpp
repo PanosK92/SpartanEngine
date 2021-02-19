@@ -30,9 +30,10 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_Semaphore::RHI_Semaphore(RHI_Device* rhi_device, const char* name /*= nullptr*/)
+    RHI_Semaphore::RHI_Semaphore(RHI_Device* rhi_device, bool is_timeline /*= false*/, const char* name /*= nullptr*/)
     {
-        m_rhi_device = rhi_device;
+        m_is_timeline   = is_timeline;
+        m_rhi_device    = rhi_device;
     }
 
     RHI_Semaphore::~RHI_Semaphore()
