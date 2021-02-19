@@ -141,9 +141,9 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
             // Jitter reflection vector based on the surface normal
             {
                 // Compute jitter
-                float ign               = get_noise_blue(thread_id.xy);
+                float random            = get_noise_interleaved_gradient(thread_id.xy);
                 float3 random_vector    = unpack(get_noise_normal(thread_id.xy));
-                float3 jitter           = reflect(hemisphere_samples[ign * 63], random_vector);
+                float3 jitter           = reflect(hemisphere_samples[random * 63], random_vector);
 
                 // Get surface roughness
                 float roughness = tex_material.Load(int3(thread_id.xy, 0)).r;
