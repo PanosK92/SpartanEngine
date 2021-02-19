@@ -31,16 +31,25 @@ namespace Spartan
     class RHI_Semaphore : public Spartan_Object
     {
     public:
-        RHI_Semaphore(RHI_Device* rhi_device, const char* name = nullptr);
+        RHI_Semaphore(RHI_Device* rhi_device, bool is_timeline = false, const char* name = nullptr);
         ~RHI_Semaphore();
 
-        void* GetResource() { return m_resource; }
+        // Timeline
+        bool IsTimelineSemaphore() const { return m_is_timeline; }
+        bool Wait(const uint64_t value, const uint64_t timeout = std::numeric_limits<uint64_t>::max());
+        bool Signal(const uint64_t value);
+        uint64_t GetValue();
 
         RHI_Semaphore_State GetState()                  const { return m_state; }
         void SetState(const RHI_Semaphore_State state)        { m_state = state; }
+        void* GetResource()                                   { return m_resource; }
+
     private:
-        void* m_resource = nullptr;
+        void* m_resource            = nullptr;
+        bool m_is_timeline          = false;
         RHI_Semaphore_State m_state = RHI_Semaphore_State::Idle;
+
+        // Misc
         RHI_Device* m_rhi_device = nullptr;
     };
 }

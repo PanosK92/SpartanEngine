@@ -306,23 +306,29 @@ namespace Spartan
             return false;
 
         // Update semaphore state
-        if (wait_semaphore) wait_semaphore->SetState(RHI_Semaphore_State::Idle);
+        if (wait_semaphore)
+            wait_semaphore->SetState(RHI_Semaphore_State::Idle);
 
         return true;
     }
 
-    bool RHI_Device::Queue_Submit(const RHI_Queue_Type type, void* cmd_buffer, RHI_Semaphore* wait_semaphore /*= nullptr*/, RHI_Semaphore* signal_semaphore /*= nullptr*/, RHI_Fence* signal_fence /*= nullptr*/, uint32_t wait_flags /*= 0*/) const
+    bool RHI_Device::Queue_Submit(const RHI_Queue_Type type, const uint32_t wait_flags, void* cmd_buffer, RHI_Semaphore* wait_semaphore /*= nullptr*/, RHI_Semaphore* signal_semaphore /*= nullptr*/, RHI_Fence* signal_fence /*= nullptr*/) const
     {
+        // Validate input
+        SP_ASSERT(cmd_buffer != nullptr);
+
         // Validate semaphore states
         if (wait_semaphore)     SP_ASSERT(wait_semaphore->GetState() == RHI_Semaphore_State::Signaled);
         if (signal_semaphore)   SP_ASSERT(signal_semaphore->GetState() == RHI_Semaphore_State::Idle);
 
         // Get semaphore Vulkan resources
-        void* vk_wait_semaphore   = wait_semaphore ? wait_semaphore->GetResource() : nullptr;
-        void* vk_signal_semaphore = signal_semaphore ? signal_semaphore->GetResource() : nullptr;
+        void* vk_wait_semaphore     = wait_semaphore    ? wait_semaphore->GetResource()     : nullptr;
+        void* vk_signal_semaphore   = signal_semaphore  ? signal_semaphore->GetResource()   : nullptr;
 
+        // Submit info
         VkSubmitInfo submit_info            = {};
         submit_info.sType                   = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submit_info.pNext                   = nullptr;
         submit_info.waitSemaphoreCount      = wait_semaphore ? 1 : 0;
         submit_info.pWaitSemaphores         = wait_semaphore ? reinterpret_cast<VkSemaphore*>(&vk_wait_semaphore) : nullptr;
         submit_info.signalSemaphoreCount    = signal_semaphore ? 1 : 0;

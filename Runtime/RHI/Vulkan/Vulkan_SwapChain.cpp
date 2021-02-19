@@ -169,7 +169,7 @@ namespace Spartan
             // Semaphores
             for (uint32_t i = 0; i < buffer_count; i++)
             {
-                image_acquired_semaphore[i] = make_shared<RHI_Semaphore>(rhi_device, (string("swapchain_image_acquired_semaphore_") + to_string(i)).c_str());
+                image_acquired_semaphore[i] = make_shared<RHI_Semaphore>(rhi_device, false, (string("swapchain_image_acquired_semaphore_") + to_string(i)).c_str());
             }
 
             return true;
