@@ -451,7 +451,8 @@ namespace Spartan
         {
             m_descriptors.emplace_back
             (
-                RHI_Descriptor_Type::RHI_Descriptor_Texture,                    // type
+                resource.name,                                                  // name
+                RHI_Descriptor_Type::Texture,                                   // type
                 compiler.get_decoration(resource.id, spv::DecorationBinding),   // slot
                 shader_type,                                                    // stage
                 true,                                                           // is_storage
@@ -464,7 +465,8 @@ namespace Spartan
         {
             m_descriptors.emplace_back
             (
-                RHI_Descriptor_Type::RHI_Descriptor_ConstantBuffer,             // type
+                resource.name,                                                  // name
+                RHI_Descriptor_Type::ConstantBuffer,                            // type
                 compiler.get_decoration(resource.id, spv::DecorationBinding),   // slot
                 shader_type,                                                    // stage
                 false,                                                          // is_storage
@@ -477,7 +479,8 @@ namespace Spartan
         {
             m_descriptors.emplace_back
             (
-                RHI_Descriptor_Type::RHI_Descriptor_Texture,                    // type
+                resource.name,                                                  // name
+                RHI_Descriptor_Type::Texture,                                   // type
                 compiler.get_decoration(resource.id, spv::DecorationBinding),   // slot
                 shader_type,                                                    // stage
                 false,                                                          // is_storage
@@ -490,7 +493,8 @@ namespace Spartan
         {
             m_descriptors.emplace_back
             (
-                RHI_Descriptor_Type::RHI_Descriptor_Sampler,                    // type
+                resource.name,                                                  // name
+                RHI_Descriptor_Type::Sampler,                                   // type
                 compiler.get_decoration(resource.id, spv::DecorationBinding),   // slot
                 shader_type,                                                    // stage
                 false,                                                          // is_storage

@@ -19,14 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===================
+//= INCLUDES ============================
 #include "Spartan.h"
 #include "RHI_PipelineCache.h"
 #include "RHI_Texture.h"
 #include "RHI_Pipeline.h"
 #include "RHI_SwapChain.h"
-#include "RHI_DescriptorCache.h"
-//==============================
+#include "RHI_DescriptorSetLayoutCache.h"
+//=======================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -34,7 +34,7 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_Pipeline* RHI_PipelineCache::GetPipeline(RHI_CommandList* cmd_list, RHI_PipelineState& pipeline_state, void* descriptor_set_layout)
+    RHI_Pipeline* RHI_PipelineCache::GetPipeline(RHI_CommandList* cmd_list, RHI_PipelineState& pipeline_state, RHI_DescriptorSetLayout* descriptor_set_layout)
     {
         // Validate it
         if (!pipeline_state.IsValid())

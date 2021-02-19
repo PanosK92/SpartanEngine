@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2020 Panos Karabelas
+Copyright(c) 2016-2021 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,11 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==========================
+//= INCLUDES ===============================
 #include "Spartan.h"
 #include "../RHI_Implementation.h"
+#include "../RHI_DescriptorSet.h"
 #include "../RHI_DescriptorSetLayout.h"
-//=====================================
+#include "../RHI_DescriptorSetLayoutCache.h"
+//==========================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -36,18 +38,8 @@ namespace Spartan
 
     }
 
-    void* RHI_DescriptorSetLayout::CreateDescriptorSet(const size_t hash, const RHI_DescriptorCache* descriptor_cache)
+    void RHI_DescriptorSetLayout::CreateResource(const vector<RHI_Descriptor>& descriptors)
     {
-        return nullptr;
-    }
 
-    void RHI_DescriptorSetLayout::UpdateDescriptorSet(void* descriptor_set, const vector<RHI_Descriptor>& descriptors)
-    {
-        
-    }
-
-    void* RHI_DescriptorSetLayout::CreateDescriptorSetLayout(const vector<RHI_Descriptor>& descriptors)
-    {
-        return nullptr;
     }
 }

@@ -144,14 +144,14 @@ namespace Spartan
         bool IsRendering()          const { return m_is_rendering; }
 
         // Misc
-        const std::shared_ptr<RHI_Device>& GetRhiDevice()   const { return m_rhi_device; } 
-        RHI_PipelineCache* GetPipelineCache()               const { return m_pipeline_cache.get(); }
-        RHI_DescriptorCache* GetDescriptorCache()           const { return m_descriptor_cache.get(); }
-        RHI_Texture* GetFrameTexture()                      const { return m_render_targets.at(RendererRt::Frame_Ldr).get(); }
-        auto GetFrameNum()                                  const { return m_frame_num; }
-        const auto& GetCamera()                             const { return m_camera; }
-        auto IsInitialized()                                const { return m_initialized; }
-        auto GetShaders()                                   const { return m_shaders; }
+        const std::shared_ptr<RHI_Device>& GetRhiDevice()           const { return m_rhi_device; }
+        RHI_PipelineCache* GetPipelineCache()                       const { return m_pipeline_cache.get(); }
+        RHI_DescriptorSetLayoutCache* GetDescriptorLayoutSetCache() const { return m_descriptor_set_layout_cache.get(); }
+        RHI_Texture* GetFrameTexture()                              const { return m_render_targets.at(RendererRt::Frame_Ldr).get(); }
+        auto GetFrameNum()                                          const { return m_frame_num; }
+        const auto& GetCamera()                                     const { return m_camera; }
+        auto IsInitialized()                                        const { return m_initialized; }
+        auto GetShaders()                                           const { return m_shaders; }
         uint32_t GetMaxResolution() const;
         void Clear();
 
@@ -303,7 +303,7 @@ namespace Spartan
         // RHI Core
         std::shared_ptr<RHI_Device> m_rhi_device;
         std::shared_ptr<RHI_PipelineCache> m_pipeline_cache;
-        std::shared_ptr<RHI_DescriptorCache> m_descriptor_cache;
+        std::shared_ptr<RHI_DescriptorSetLayoutCache> m_descriptor_set_layout_cache;
 
         // Swapchain
         static const uint8_t m_swap_chain_buffer_count = 3;
@@ -333,7 +333,7 @@ namespace Spartan
 
         // Entities and material references
         std::unordered_map<Renderer_Object_Type, std::vector<Entity*>> m_entities;
-        std::array<Material*, m_max_material_instances> m_material_instances;    
+        std::array<Material*, m_max_material_instances> m_material_instances;
         std::shared_ptr<Camera> m_camera;
 
         // Dependencies

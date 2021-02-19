@@ -23,19 +23,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ======================
 #include "../Core/Spartan_Object.h"
-#include "RHI_Desctiptor.h"
+#include "RHI_Descriptor.h"
 //=================================
 
 namespace Spartan
 {
-    class SPARTAN_CLASS RHI_DescriptorCache : public Spartan_Object
+    class SPARTAN_CLASS RHI_DescriptorSetLayoutCache : public Spartan_Object
     {
     public:
-        RHI_DescriptorCache(const RHI_Device* rhi_device);
-        ~RHI_DescriptorCache();
+        RHI_DescriptorSetLayoutCache(const RHI_Device* rhi_device);
+        ~RHI_DescriptorSetLayoutCache();
 
         void SetPipelineState(RHI_PipelineState& pipeline_state);
-        RHI_DescriptorSetLayout* GetCurrentDescriptorSetLayout() { return m_descriptor_layout_current; }
         void Reset(uint32_t descriptor_set_capacity = 0);
 
         // Descriptor resource updating
@@ -43,13 +42,12 @@ namespace Spartan
         void SetSampler(const uint32_t slot, RHI_Sampler* sampler);
         void SetTexture(const uint32_t slot, RHI_Texture* texture, const bool storage);
 
-        // Properties
-        void* GetResource_DescriptorSetPool() const { return m_descriptor_pool; }
-        void* GetResource_DescriptorSetLayout() const;
-        bool GetResource_DescriptorSet(void*& descriptor_set);
+        RHI_DescriptorSetLayout* GetCurrentDescriptorSetLayout() const { return m_descriptor_layout_current; }
+        bool GetDescriptorSet(RHI_DescriptorSet*& descriptor_set);
+        void* GetResource_DescriptorPool() const { return m_descriptor_pool; }
 
         // Capacity
-        bool HasEnoughCapacity() const;
+        bool HasEnoughCapacity() const { return m_descriptor_set_capacity > GetDescriptorSetCount(); }
         void GrowIfNeeded();
 
     private:
@@ -67,7 +65,8 @@ namespace Spartan
         uint32_t m_descriptor_set_capacity = 16;
         void* m_descriptor_pool = nullptr;
 
-        // Dependencies
+        // Misc
+        std::atomic<bool> m_descriptor_set_layouts_being_cleared = false;
         const RHI_Device* m_rhi_device;
     };
 }

@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_CommandList.h"
 #include "../../Profiling/Profiler.h"
 #include "../../Rendering/Renderer.h"
-#include "../RHI_DescriptorCache.h"
+#include "../RHI_DescriptorSetLayoutCache.h"
 //===================================
 
 //= NAMESPACES ===============
@@ -207,13 +207,13 @@ namespace Spartan
         m_rhi_device->Queue_WaitAll();
         
         // Make sure that no descriptor sets refer to this texture.
-        // Right now I just reset the descriptor cache, which works but it's not ideal.
+        // Right now I just reset the descriptor set layout cache, which works but it's not ideal.
         // Todo: Get only the referring descriptor sets, and simply update the slot this texture is bound to.
         if (Renderer* renderer = m_rhi_device->GetContext()->GetSubsystem<Renderer>())
         {
-            if (RHI_DescriptorCache* descriptor_cache = renderer->GetDescriptorCache())
+            if (RHI_DescriptorSetLayoutCache* descriptor_set_layout_cache = renderer->GetDescriptorLayoutSetCache())
             {
-                descriptor_cache->Reset();
+                descriptor_set_layout_cache->Reset();
             }
         }
 

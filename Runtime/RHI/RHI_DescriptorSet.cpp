@@ -19,13 +19,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===============================
+//= INCLUDES ==================
 #include "Spartan.h"
-#include "../RHI_Implementation.h"
-#include "../RHI_DescriptorSet.h"
-#include "../RHI_DescriptorSetLayout.h"
-#include "../RHI_DescriptorSetLayoutCache.h"
-//==========================================
+#include "RHI_DescriptorSet.h"
+//=============================
 
 //= NAMESPACES =====
 using namespace std;
@@ -33,13 +30,14 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_DescriptorSetLayout::~RHI_DescriptorSetLayout()
+    RHI_DescriptorSet::RHI_DescriptorSet(const RHI_Device* rhi_device, const RHI_DescriptorSetLayoutCache* descriptor_set_layout_cache, const vector<RHI_Descriptor>& descriptors)
     {
+        m_rhi_device                    = rhi_device;
+        m_descriptor_set_layout_cache   = descriptor_set_layout_cache;
 
-    }
-
-    void RHI_DescriptorSetLayout::CreateResource(const vector<RHI_Descriptor>& descriptors)
-    {
-
+        if (Create())
+        {
+            Update(descriptors);
+        }
     }
 }

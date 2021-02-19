@@ -19,12 +19,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ======================
+//= INCLUDES ===============================
 #include "Spartan.h"
 #include "../RHI_Implementation.h"
-#include "../RHI_DescriptorCache.h"
+#include "../RHI_DescriptorSetLayoutCache.h"
 #include "../RHI_Shader.h"
-//=================================
+//==========================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -32,7 +32,7 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_DescriptorCache::~RHI_DescriptorCache()
+    RHI_DescriptorSetLayoutCache::~RHI_DescriptorSetLayoutCache()
     {
         if (m_descriptor_pool)
         {
@@ -44,7 +44,7 @@ namespace Spartan
         }
     }
 
-    void RHI_DescriptorCache::Reset(uint32_t descriptor_set_capacity /*= 0*/)
+    void RHI_DescriptorSetLayoutCache::Reset(uint32_t descriptor_set_capacity /*= 0*/)
     {
         // If the requested capacity is zero, then only recreate the descriptor pool
         if (descriptor_set_capacity == 0)
@@ -52,16 +52,18 @@ namespace Spartan
             descriptor_set_capacity = m_descriptor_set_capacity;
         }
 
-        // Wait in case it's still in use by the GPU
-        m_rhi_device->Queue_WaitAll();
-
         // Destroy layouts (and descriptor sets)
+        m_descriptor_set_layouts_being_cleared = true;
         m_descriptor_set_layouts.clear();
+        m_descriptor_set_layouts_being_cleared = false;
         m_descriptor_layout_current = nullptr;
 
         // Destroy pool
         if (m_descriptor_pool)
         {
+            // Wait in case it's still in use by the GPU
+            m_rhi_device->Queue_WaitAll();
+
             vkDestroyDescriptorPool(m_rhi_device->GetContextRhi()->device, static_cast<VkDescriptorPool>(m_descriptor_pool), nullptr);
             m_descriptor_pool = nullptr;
         }
@@ -84,7 +86,7 @@ namespace Spartan
         }
     }
 
-    void RHI_DescriptorCache::SetDescriptorSetCapacity(uint32_t descriptor_set_capacity)
+    void RHI_DescriptorSetLayoutCache::SetDescriptorSetCapacity(uint32_t descriptor_set_capacity)
     {
         if (!m_rhi_device || !m_rhi_device->GetContextRhi())
         {
@@ -105,7 +107,7 @@ namespace Spartan
         m_descriptor_set_capacity = descriptor_set_capacity;
     }
 
-    bool RHI_DescriptorCache::CreateDescriptorPool(uint32_t descriptor_set_capacity)
+    bool RHI_DescriptorSetLayoutCache::CreateDescriptorPool(uint32_t descriptor_set_capacity)
     {
         // Pool sizes
         std::array<VkDescriptorPoolSize, 5> pool_sizes =

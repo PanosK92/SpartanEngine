@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ========================
+//= INCLUDES ===============================
 #include "Spartan.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_CommandList.h"
@@ -37,10 +37,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_InputLayout.h"
 #include "../RHI_SwapChain.h"
 #include "../RHI_PipelineState.h"
-#include "../RHI_DescriptorCache.h"
+#include "../RHI_DescriptorSetLayoutCache.h"
 #include "../../Profiling/Profiler.h"
 #include "../../Rendering/Renderer.h"
-//===================================
+//==========================================
 
 //= NAMESPACES ===============
 using namespace std;

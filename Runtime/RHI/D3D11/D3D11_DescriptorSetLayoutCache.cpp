@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2020 Panos Karabelas
+Copyright(c) 2016-2021 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,27 +19,35 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ======================
+//= INCLUDES ===============================
 #include "Spartan.h"
 #include "../RHI_Implementation.h"
-#include "../RHI_DescriptorCache.h"
-//=================================
+#include "../RHI_DescriptorSetLayoutCache.h"
+#include "../RHI_Shader.h"
+//==========================================
+
+//= NAMESPACES =====
+using namespace std;
+//==================
 
 namespace Spartan
 {
-    RHI_DescriptorCache::~RHI_DescriptorCache()= default;
-
-    void RHI_DescriptorCache::SetDescriptorSetCapacity(uint32_t descriptor_set_capacity)
+    RHI_DescriptorSetLayoutCache::~RHI_DescriptorSetLayoutCache()
     {
 
     }
 
-    void RHI_DescriptorCache::Reset(uint32_t descriptor_set_capacity /*= 0*/)
+    void RHI_DescriptorSetLayoutCache::Reset(uint32_t descriptor_set_capacity /*= 0*/)
     {
 
     }
 
-    bool RHI_DescriptorCache::CreateDescriptorPool(uint32_t descriptor_set_capacity)
+    void RHI_DescriptorSetLayoutCache::SetDescriptorSetCapacity(uint32_t descriptor_set_capacity)
+    {
+        
+    }
+
+    bool RHI_DescriptorSetLayoutCache::CreateDescriptorPool(uint32_t descriptor_set_capacity)
     {
         return true;
     }

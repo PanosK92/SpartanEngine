@@ -19,20 +19,16 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ========================
+//= INCLUDES ==========================
 #include "Spartan.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Pipeline.h"
-#include "../RHI_Device.h"
 #include "../RHI_Shader.h"
 #include "../RHI_BlendState.h"
 #include "../RHI_InputLayout.h"
-#include "../RHI_CommandList.h"
-#include "../RHI_PipelineState.h"
-#include "../RHI_DescriptorCache.h"
+#include "../RHI_DescriptorSetLayout.h"
 #include "../RHI_RasterizerState.h"
-#include "../RHI_DepthStencilState.h"
-//===================================
+//=====================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -40,50 +36,57 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_Pipeline::RHI_Pipeline(const RHI_Device* rhi_device, RHI_PipelineState& pipeline_state, void* descriptor_set_layout)
+    RHI_Pipeline::RHI_Pipeline(const RHI_Device* rhi_device, RHI_PipelineState& pipeline_state, RHI_DescriptorSetLayout* descriptor_set_layout)
     {
         m_rhi_device    = rhi_device;
         m_state         = pipeline_state;
-        
-        if (pipeline_state.IsCompute())
-        {
-            if (!m_state.shader_compute->GetResource() || !m_state.shader_compute->GetEntryPoint())
-            {
-                LOG_ERROR("Compute shader is invalid");
-                return;
-            }
 
-            // Shader
-            VkPipelineShaderStageCreateInfo shader_stage_info_compute   = {};
-            shader_stage_info_compute.sType                             = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-            shader_stage_info_compute.stage                             = VK_SHADER_STAGE_COMPUTE_BIT;
-            shader_stage_info_compute.module                            = static_cast<VkShaderModule>(m_state.shader_compute->GetResource());
-            shader_stage_info_compute.pName                             = m_state.shader_compute->GetEntryPoint();
+        // Pipeline layout
+        {
+            array<void*, 1> layouts = { descriptor_set_layout->GetResource() };
+
+            // Validate descriptor set layouts
+            for (void* layout : layouts)
+            {
+                SP_ASSERT(layout != nullptr);
+            }
 
             // Pipeline layout
             VkPipelineLayoutCreateInfo pipeline_layout_info = {};
+            pipeline_layout_info.sType                      = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+            pipeline_layout_info.pushConstantRangeCount     = 0;
+            pipeline_layout_info.setLayoutCount             = static_cast<uint32_t>(layouts.size());
+            pipeline_layout_info.pSetLayouts                = reinterpret_cast<VkDescriptorSetLayout*>(layouts.data());
+
+            // Create
+            if (!vulkan_utility::error::check(vkCreatePipelineLayout(m_rhi_device->GetContextRhi()->device, &pipeline_layout_info, nullptr, reinterpret_cast<VkPipelineLayout*>(&m_pipeline_layout))))
+                return;
+
+            // Name
+            vulkan_utility::debug::set_name(static_cast<VkPipelineLayout>(m_pipeline_layout), m_state.pass_name);
+        }
+
+        if (pipeline_state.IsCompute())
+        {
+            // Shader
+            VkPipelineShaderStageCreateInfo shader_stage_info = {};
             {
-                // Describe
-                pipeline_layout_info.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-                pipeline_layout_info.pushConstantRangeCount = 0;
-                pipeline_layout_info.setLayoutCount         = 1;
-                pipeline_layout_info.pSetLayouts            = reinterpret_cast<VkDescriptorSetLayout*>(&descriptor_set_layout);
+                shader_stage_info.sType     = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+                shader_stage_info.stage     = VK_SHADER_STAGE_COMPUTE_BIT;
+                shader_stage_info.module    = static_cast<VkShaderModule>(m_state.shader_compute->GetResource());
+                shader_stage_info.pName     = m_state.shader_compute->GetEntryPoint();
 
-                // Create
-                if (!vulkan_utility::error::check(vkCreatePipelineLayout(m_rhi_device->GetContextRhi()->device, &pipeline_layout_info, nullptr, reinterpret_cast<VkPipelineLayout*>(&m_pipeline_layout))))
-                    return;
-
-                // Name
-                vulkan_utility::debug::set_name(static_cast<VkPipelineLayout>(m_pipeline_layout), m_state.pass_name);
+                // Validate shader stage
+                SP_ASSERT(shader_stage_info.module != nullptr);
+                SP_ASSERT(shader_stage_info.pName != nullptr);
             }
 
             // Pipeline
-            VkComputePipelineCreateInfo pipeline_info = {};
             {
-                // Describe
-                pipeline_info.sType     = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-                pipeline_info.layout    = static_cast<VkPipelineLayout>(m_pipeline_layout);
-                pipeline_info.stage     = shader_stage_info_compute;
+                VkComputePipelineCreateInfo pipeline_info   = {};
+                pipeline_info.sType                         = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+                pipeline_info.layout                        = static_cast<VkPipelineLayout>(m_pipeline_layout);
+                pipeline_info.stage                         = shader_stage_info;
 
                 // Pipeline creation
                 VkPipeline* pipeline = reinterpret_cast<VkPipeline*>(&m_pipeline);
@@ -94,9 +97,12 @@ namespace Spartan
                 vulkan_utility::debug::set_name(*pipeline, m_state.pass_name);
             }
         }
-        else
+        else if (pipeline_state.IsGraphics() || pipeline_state.IsDummy())
         {
-            m_state.CreateFrameBuffer(rhi_device);
+            if (pipeline_state.IsGraphics())
+            {
+                m_state.CreateFrameBuffer(rhi_device);
+            }
 
             // Viewport & Scissor
             vector<VkDynamicState> dynamic_states;
@@ -123,7 +129,7 @@ namespace Spartan
                 dynamic_state.dynamicStateCount = static_cast<uint32_t>(dynamic_states.size());
                 dynamic_state.pDynamicStates    = dynamic_states.data();
             
-                // Viewport 
+                // Viewport
                 vkViewport.x        = m_state.viewport.x;
                 vkViewport.y        = m_state.viewport.y;
                 vkViewport.width    = m_state.viewport.width;
@@ -131,7 +137,7 @@ namespace Spartan
                 vkViewport.minDepth = m_state.viewport.depth_min;
                 vkViewport.maxDepth = m_state.viewport.depth_max;
             
-                // Scissor       
+                // Scissor
                 if (!m_state.scissor.IsDefined())
                 {
                     scissor.offset          = { 0, 0 };
@@ -159,18 +165,16 @@ namespace Spartan
             // Vertex shader
             if (m_state.shader_vertex)
             {
-                if (!m_state.shader_vertex->GetResource() || !m_state.shader_vertex->GetEntryPoint())
-                {
-                    LOG_ERROR("Vertex shader is invalid");
-                    return;
-                }
-            
                 VkPipelineShaderStageCreateInfo shader_stage_info_vertex    = {};
                 shader_stage_info_vertex.sType                              = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
                 shader_stage_info_vertex.stage                              = VK_SHADER_STAGE_VERTEX_BIT;
                 shader_stage_info_vertex.module                             = static_cast<VkShaderModule>(m_state.shader_vertex->GetResource());
                 shader_stage_info_vertex.pName                              = m_state.shader_vertex->GetEntryPoint();
-            
+
+                // Validate shader stage
+                SP_ASSERT(shader_stage_info_vertex.module != nullptr);
+                SP_ASSERT(shader_stage_info_vertex.pName != nullptr);
+
                 shader_stages.push_back(shader_stage_info_vertex);
             }
             else
@@ -182,26 +186,24 @@ namespace Spartan
             // Pixel shader
             if (m_state.shader_pixel)
             {
-                if (!m_state.shader_pixel->GetResource() || !m_state.shader_pixel->GetEntryPoint())
-                {
-                    LOG_ERROR("Pixel shader is invalid");
-                    return;
-                }
-            
                 VkPipelineShaderStageCreateInfo shader_stage_info_pixel = {};
                 shader_stage_info_pixel.sType                           = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
                 shader_stage_info_pixel.stage                           = VK_SHADER_STAGE_FRAGMENT_BIT;
                 shader_stage_info_pixel.module                          = static_cast<VkShaderModule>(m_state.shader_pixel->GetResource());
                 shader_stage_info_pixel.pName                           = m_state.shader_pixel->GetEntryPoint();
-            
+
+                // Validate shader stage
+                SP_ASSERT(shader_stage_info_pixel.module != nullptr);
+                SP_ASSERT(shader_stage_info_pixel.pName != nullptr);
+
                 shader_stages.push_back(shader_stage_info_pixel);
             }
             
             // Binding description
             VkVertexInputBindingDescription binding_description = {};
-            binding_description.binding     = 0;
-            binding_description.inputRate   = VK_VERTEX_INPUT_RATE_VERTEX;
-            binding_description.stride      = m_state.vertex_buffer_stride;
+            binding_description.binding                         = 0;
+            binding_description.inputRate                       = VK_VERTEX_INPUT_RATE_VERTEX;
+            binding_description.stride                          = m_state.vertex_buffer_stride;
             
             // Vertex attributes description
             vector<VkVertexInputAttributeDescription> vertex_attribute_descs;
@@ -242,7 +244,7 @@ namespace Spartan
             }
             
             // Rasterizer state
-            VkPipelineRasterizationStateCreateInfo rasterizer_state    = {};
+            VkPipelineRasterizationStateCreateInfo rasterizer_state = {};
             VkPipelineRasterizationDepthClipStateCreateInfoEXT rasterizer_state_depth_clip = {};
             {
                 rasterizer_state_depth_clip.sType           = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT;
@@ -267,8 +269,8 @@ namespace Spartan
             // Mutlisampling
             VkPipelineMultisampleStateCreateInfo multisampling_state = {};
             {
-                multisampling_state.sType                    = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-                multisampling_state.sampleShadingEnable        = m_state.rasterizer_state->GetMultiSampleEnabled() ? VK_TRUE : VK_FALSE;
+                multisampling_state.sType                   = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+                multisampling_state.sampleShadingEnable     = m_state.rasterizer_state->GetMultiSampleEnabled() ? VK_TRUE : VK_FALSE;
                 multisampling_state.rasterizationSamples    = VK_SAMPLE_COUNT_1_BIT;
             }
             
@@ -321,7 +323,7 @@ namespace Spartan
                 depth_stencil_state.sType               = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
                 depth_stencil_state.depthTestEnable     = m_state.depth_stencil_state->GetDepthTestEnabled();
                 depth_stencil_state.depthWriteEnable    = m_state.depth_stencil_state->GetDepthWriteEnabled();
-                depth_stencil_state.depthCompareOp      = vulkan_compare_operator[m_state.depth_stencil_state->GetDepthComparisonFunction()];    
+                depth_stencil_state.depthCompareOp      = vulkan_compare_operator[m_state.depth_stencil_state->GetDepthComparisonFunction()];
                 depth_stencil_state.stencilTestEnable   = m_state.depth_stencil_state->GetStencilTestEnabled();
                 depth_stencil_state.front.compareOp     = vulkan_compare_operator[m_state.depth_stencil_state->GetStencilComparisonFunction()];
                 depth_stencil_state.front.failOp        = vulkan_stencil_operation[m_state.depth_stencil_state->GetStencilFailOperation()];
@@ -332,24 +334,7 @@ namespace Spartan
                 depth_stencil_state.front.reference     = 1;
                 depth_stencil_state.back                = depth_stencil_state.front;
             }
-            
-            // Pipeline layout
-            VkPipelineLayoutCreateInfo pipeline_layout_info    = {};
-            {
-                // Describe
-                pipeline_layout_info.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-                pipeline_layout_info.pushConstantRangeCount = 0;
-                pipeline_layout_info.setLayoutCount         = 1;
-                pipeline_layout_info.pSetLayouts            = reinterpret_cast<VkDescriptorSetLayout*>(&descriptor_set_layout);
-            
-                // Create
-                if (!vulkan_utility::error::check(vkCreatePipelineLayout(m_rhi_device->GetContextRhi()->device, &pipeline_layout_info, nullptr, reinterpret_cast<VkPipelineLayout*>(&m_pipeline_layout))))
-                    return;
-            
-                // Name
-                vulkan_utility::debug::set_name(static_cast<VkPipelineLayout>(m_pipeline_layout), m_state.pass_name);
-            }
-            
+
             // Pipeline
             VkGraphicsPipelineCreateInfo pipeline_info = {};
             {
@@ -372,7 +357,7 @@ namespace Spartan
                 auto pipeline = reinterpret_cast<VkPipeline*>(&m_pipeline);
                 if (!vulkan_utility::error::check(vkCreateGraphicsPipelines(m_rhi_device->GetContextRhi()->device, nullptr, 1, &pipeline_info, nullptr, pipeline)))
                     return;
-            
+
                 // Name
                 vulkan_utility::debug::set_name(*pipeline, m_state.pass_name);
             }
@@ -381,7 +366,7 @@ namespace Spartan
     
     RHI_Pipeline::~RHI_Pipeline()
     {
-        // Wait in case the buffer is still in use
+        // Wait in case it's still in use by the GPU
         m_rhi_device->Queue_WaitAll();
     
         vkDestroyPipeline(m_rhi_device->GetContextRhi()->device, static_cast<VkPipeline>(m_pipeline), nullptr);

@@ -19,12 +19,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===================
+//= INCLUDES ============================
 #include "Spartan.h"
 #include "RHI_CommandList.h"
 #include "RHI_Fence.h"
-#include "RHI_DescriptorCache.h"
-//==============================
+#include "RHI_DescriptorSetLayoutCache.h"
+//=======================================
 
 namespace Spartan
 {
@@ -35,7 +35,7 @@ namespace Spartan
         if (!m_processed_fence->Wait())
             return false;
 
-        m_descriptor_cache->GrowIfNeeded();
+        m_descriptor_set_layout_cache->GrowIfNeeded();
         m_state = RHI_CommandListState::Idle;
 
         return true;

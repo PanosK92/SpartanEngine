@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // RUNTIME
 #if defined(SPARTAN_RUNTIME) || (SPARTAN_RUNTIME_STATIC == 1)
 
-
 // Definition - DirectX 11
 #if defined(API_GRAPHICS_D3D11)
 #pragma comment(lib, "d3d11.lib")
@@ -187,10 +186,10 @@ static const VkPrimitiveTopology vulkan_primitive_topology[] =
 static const VkFormat vulkan_format[] =
 {
     // R
-    VK_FORMAT_R8_UNORM,    
-    VK_FORMAT_R16_UINT,    
-    VK_FORMAT_R16_SFLOAT,    
-    VK_FORMAT_R32_UINT,    
+    VK_FORMAT_R8_UNORM,
+    VK_FORMAT_R16_UINT,
+    VK_FORMAT_R16_SFLOAT,
+    VK_FORMAT_R32_UINT,
     VK_FORMAT_R32_SFLOAT,
     // RG
     VK_FORMAT_R8G8_UNORM,
@@ -332,7 +331,7 @@ namespace Spartan
             VkInstance instance                                     = nullptr;
             VkPhysicalDevice device_physical                        = nullptr;
             VkDevice device                                         = nullptr;
-            VkPhysicalDeviceProperties device_properties            = {};    
+            VkPhysicalDeviceProperties device_properties            = {};
             VkPhysicalDeviceVulkan12Features device_features_1_2    = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES };
             VkPhysicalDeviceFeatures2 device_features               = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, &device_features_1_2 };
             VkFormat surface_format                                 = VK_FORMAT_UNDEFINED;
@@ -385,8 +384,8 @@ namespace Spartan
         #endif
 
         // Device limits
-        uint32_t rhi_max_texture_dimension_2d   = 16384;
-        uint32_t rhi_max_msaa_level             = 0;
+        static inline uint32_t texture_2d_dimension_max = 16384;
+        static const uint8_t descriptors_max            = 255;
 
         // Queues
         void* queue_graphics            = nullptr;

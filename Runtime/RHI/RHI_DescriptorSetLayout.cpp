@@ -19,16 +19,15 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =======================
+//= INCLUDES ============================
 #include "Spartan.h"
 #include "RHI_DescriptorSetLayout.h"
 #include "RHI_ConstantBuffer.h"
 #include "RHI_Sampler.h"
 #include "RHI_Texture.h"
-#include "RHI_Implementation.h"
-#include "RHI_DescriptorCache.h"
-#include "../Utilities/Hash.h"
-//==================================
+#include "RHI_DescriptorSetLayoutCache.h"
+#include "RHI_DescriptorSet.h"
+//=======================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -36,17 +35,17 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_DescriptorSetLayout::RHI_DescriptorSetLayout(const RHI_Device* rhi_device, const std::vector<RHI_Descriptor>& descriptors, const string& name)
+    RHI_DescriptorSetLayout::RHI_DescriptorSetLayout(const RHI_Device* rhi_device, const vector<RHI_Descriptor>& descriptors, const string& name)
     {
-        m_rhi_device            = rhi_device;
-        m_descriptors           = descriptors;
-        m_name                  = name;
-        m_descriptor_set_layout = CreateDescriptorSetLayout(m_descriptors);
+        m_rhi_device    = rhi_device;
+        m_descriptors   = descriptors;
+        m_name          = name;
+        CreateResource(m_descriptors);
         m_dynamic_offsets.fill(rhi_dynamic_offset_empty);
 
-        for (const RHI_Descriptor& descriptor : descriptors)
+        for (const RHI_Descriptor& descriptor : m_descriptors)
         {
-            Utility::Hash::hash_combine(m_descriptor_set_layout_hash, descriptor.GetHash());
+            Utility::Hash::hash_combine(m_hash, descriptor.ComputeHash(false));
         }
     }
 
@@ -54,7 +53,7 @@ namespace Spartan
     {
         for (RHI_Descriptor& descriptor : m_descriptors)
         {
-            if ((descriptor.type == RHI_Descriptor_ConstantBuffer) && descriptor.slot == slot + rhi_shader_shift_buffer)
+            if ((descriptor.type == RHI_Descriptor_Type::ConstantBuffer) && descriptor.slot == slot + rhi_shader_shift_buffer)
             {
                 // Determine if the descriptor set needs to bind
                 m_needs_to_bind = descriptor.resource   != constant_buffer->GetResource()   ? true : m_needs_to_bind; // affects vkUpdateDescriptorSets
@@ -89,7 +88,7 @@ namespace Spartan
     {
         for (RHI_Descriptor& descriptor : m_descriptors)
         {
-            if (descriptor.type == RHI_Descriptor_Sampler && descriptor.slot == slot + rhi_shader_shift_sampler)
+            if (descriptor.type == RHI_Descriptor_Type::Sampler && descriptor.slot == slot + rhi_shader_shift_sampler)
             {
                 // Determine if the descriptor set needs to bind
                 m_needs_to_bind = descriptor.resource != sampler->GetResource() ? true : m_needs_to_bind; // affects vkUpdateDescriptorSets
@@ -120,7 +119,7 @@ namespace Spartan
         {
             const uint32_t slot_match = slot + (storage ? rhi_shader_shift_storage_texture : rhi_shader_shift_texture);
 
-            if (descriptor.type == RHI_Descriptor_Texture && descriptor.slot == slot_match)
+            if (descriptor.type == RHI_Descriptor_Type::Texture && descriptor.slot == slot_match)
             {
                 // Determine if the descriptor set needs to bind
                 m_needs_to_bind = descriptor.resource != texture->Get_Resource_View() ? true : m_needs_to_bind; // affects vkUpdateDescriptorSets
@@ -134,10 +133,10 @@ namespace Spartan
         }
     }
 
-    bool RHI_DescriptorSetLayout::GetResource_DescriptorSet(RHI_DescriptorCache* descriptor_cache, void*& descriptor_set)
+    bool RHI_DescriptorSetLayout::GetDescriptorSet(RHI_DescriptorSetLayoutCache* descriptor_set_layout_cache, RHI_DescriptorSet*& descriptor_set)
     {
         // Integrate resource into the hash
-        uint32_t hash = m_descriptor_set_layout_hash;
+        uint32_t hash = m_hash;
         for (const RHI_Descriptor& descriptor : m_descriptors)
         {
             Utility::Hash::hash_combine(hash, descriptor.resource);
@@ -148,9 +147,13 @@ namespace Spartan
         if (it == m_descriptor_sets.end())
         {
             // Only allocate if the descriptor set cache hash enough capacity
-            if (descriptor_cache->HasEnoughCapacity())
+            if (descriptor_set_layout_cache->HasEnoughCapacity())
             {
-                descriptor_set = CreateDescriptorSet(hash, descriptor_cache);
+                // Create descriptor set
+                m_descriptor_sets[hash] = RHI_DescriptorSet(m_rhi_device, descriptor_set_layout_cache, m_descriptors);
+
+                // Out
+                descriptor_set = &m_descriptor_sets[hash];
             }
             else
             {
@@ -161,7 +164,7 @@ namespace Spartan
         {
             if (m_needs_to_bind)
             {
-                descriptor_set  = it->second;
+                descriptor_set  = &it->second;
                 m_needs_to_bind = false;
             }
         }

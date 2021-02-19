@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include "../Core/Spartan_Object.h"
 #include "RHI_Vertex.h"
-#include "RHI_Desctiptor.h"
+#include "RHI_Descriptor.h"
 //=================================
 
 namespace Spartan
