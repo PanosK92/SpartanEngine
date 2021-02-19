@@ -38,14 +38,14 @@ namespace Spartan
         ~RHI_Device();
 
         // Physical device
-        void RegisterPhysicalDevice(const PhysicalDevice& physical_device);    
+        void RegisterPhysicalDevice(const PhysicalDevice& physical_device);
         const PhysicalDevice* GetPrimaryPhysicalDevice();
         void SetPrimaryPhysicalDevice(const uint32_t index);
         const std::vector<PhysicalDevice>& GetPhysicalDevices() const { return m_physical_devices; }
 
         // Queue
         bool Queue_Present(void* swapchain_view, uint32_t* image_index, RHI_Semaphore* wait_semaphore = nullptr) const;
-        bool Queue_Submit(const RHI_Queue_Type type, void* cmd_buffer, RHI_Semaphore* wait_semaphore = nullptr, RHI_Semaphore* signal_semaphore = nullptr, RHI_Fence* signal_fence = nullptr, const uint32_t wait_flags = 0) const;
+        bool Queue_Submit(const RHI_Queue_Type type, const uint32_t wait_flags, void* cmd_buffer, RHI_Semaphore* wait_semaphore = nullptr, RHI_Semaphore* signal_semaphore = nullptr, RHI_Fence* signal_fence = nullptr) const;
         bool Queue_Wait(const RHI_Queue_Type type) const;
         bool Queue_WaitAll() const;
         void* Queue_Get(const RHI_Queue_Type type) const;
@@ -60,7 +60,7 @@ namespace Spartan
 
     private:    
         std::vector<PhysicalDevice> m_physical_devices;
-        uint32_t m_physical_device_index            = 0;     
+        uint32_t m_physical_device_index            = 0;
         uint32_t m_enabled_graphics_shader_stages   = 0;
         bool m_initialized                          = false;
         mutable std::mutex m_queue_mutex;

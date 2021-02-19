@@ -418,7 +418,7 @@ namespace Spartan::vulkan_utility
                     return false;
                 }
 
-                if (!globals::rhi_device->Queue_Submit(queue_type, cmd_buffer, nullptr, nullptr, nullptr, wait_flags))
+                if (!globals::rhi_device->Queue_Submit(queue_type, wait_flags, cmd_buffer))
                 {
                     LOG_ERROR("Failed to submit to queue");
                     return false;

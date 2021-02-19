@@ -64,7 +64,7 @@ namespace Spartan
         m_processed_fence = make_shared<RHI_Fence>(m_rhi_device, "cmd_buffer_processed");
 
         // Sync - Semaphore
-        m_processed_semaphore = make_shared<RHI_Semaphore>(m_rhi_device, "cmd_buffer_processed");
+        m_processed_semaphore = make_shared<RHI_Semaphore>(m_rhi_device, false, "cmd_buffer_processed");
 
         // Query pool
         if (rhi_context->profiler)
@@ -85,8 +85,8 @@ namespace Spartan
     {
         RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
 
-        // Wait in case the buffer is still in use by the graphics queue
-        m_rhi_device->Queue_Wait(RHI_Queue_Graphics);
+        // Wait in case it's still in use by the GPU
+        m_rhi_device->Queue_WaitAll();
 
         // Command buffer
         vulkan_utility::command_buffer::destroy(m_swap_chain->GetCmdPool(), m_cmd_buffer);
@@ -208,12 +208,12 @@ namespace Spartan
 
         if (!m_rhi_device->Queue_Submit(
             RHI_Queue_Graphics,                             // queue
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,  // wait flags
             static_cast<VkCommandBuffer>(m_cmd_buffer),     // cmd buffer
             wait_semaphore,                                 // wait semaphore
             signal_semaphore,                               // signal semaphore
-            m_processed_fence.get(),                        // signal fence
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)  // wait flags
-            )
+            m_processed_fence.get()                         // signal fence
+            ))
         {
             LOG_ERROR("Failed to submit the command list.");
             return false;
