@@ -39,7 +39,6 @@ namespace Spartan
         const RHI_Fill_Mode fill_mode,
         const bool depth_clip_enabled,
         const bool scissor_enabled,
-        const bool multi_sample_enabled,
         const bool antialised_line_enabled,
         const float depth_bias              /*= 0.0f */,
         const float depth_bias_clamp        /*= 0.0f */,
@@ -63,7 +62,6 @@ namespace Spartan
         m_fill_mode                 = fill_mode;
         m_depth_clip_enabled        = depth_clip_enabled;
         m_scissor_enabled           = scissor_enabled;
-        m_multi_sample_enabled      = multi_sample_enabled;
         m_antialised_line_enabled   = antialised_line_enabled;
         m_depth_bias                = depth_bias;
         m_depth_bias_clamp          = depth_bias_clamp;
@@ -73,13 +71,13 @@ namespace Spartan
         // Create rasterizer description
         D3D11_RASTERIZER_DESC desc  = {};
         desc.CullMode               = d3d11_cull_mode[cull_mode];
-        desc.FillMode               = d3d11_polygon_mode[fill_mode];    
-        desc.FrontCounterClockwise  = FALSE;
+        desc.FillMode               = d3d11_polygon_mode[fill_mode];
+        desc.FrontCounterClockwise  = false;
         desc.DepthBias              = static_cast<UINT>(Math::Helper::Floor(depth_bias * (float)(1 << 24)));
         desc.DepthBiasClamp         = depth_bias_clamp;
         desc.SlopeScaledDepthBias   = depth_bias_slope_scaled;
-        desc.DepthClipEnable        = depth_clip_enabled;    
-        desc.MultisampleEnable      = multi_sample_enabled;
+        desc.DepthClipEnable        = depth_clip_enabled;
+        desc.MultisampleEnable      = false;
         desc.AntialiasedLineEnable  = antialised_line_enabled;
         desc.ScissorEnable          = scissor_enabled;
 

@@ -272,7 +272,7 @@ namespace Spartan
             return;
 
         // Release resources
-        if (Queue_Wait(RHI_Queue_Graphics))
+        if (Queue_WaitAll())
         {
             m_rhi_context->destroy_allocator();
 

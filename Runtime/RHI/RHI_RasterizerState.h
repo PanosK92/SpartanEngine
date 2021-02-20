@@ -39,7 +39,6 @@ namespace Spartan
             const RHI_Fill_Mode fill_mode,
             const bool depth_clip_enabled,
             const bool scissor_enabled,
-            const bool multi_sample_enabled,
             const bool antialised_line_enabled,
             const float depth_bias              = 0.0f,
             const float depth_bias_clamp        = 0.0f,
@@ -52,7 +51,6 @@ namespace Spartan
         RHI_Fill_Mode GetFillMode()     const { return m_fill_mode; }
         bool GetDepthClipEnabled()      const { return m_depth_clip_enabled; }
         bool GetScissorEnabled()        const { return m_scissor_enabled; }
-        bool GetMultiSampleEnabled()    const { return m_multi_sample_enabled; }
         bool GetAntialisedLineEnabled() const { return m_antialised_line_enabled; }
         bool IsInitialized()            const { return m_initialized; }
         void* GetResource()             const { return m_buffer; }
@@ -68,7 +66,6 @@ namespace Spartan
                 m_fill_mode                 == rhs.GetFillMode()                &&
                 m_depth_clip_enabled        == rhs.GetDepthClipEnabled()        &&
                 m_scissor_enabled           == rhs.GetScissorEnabled()          &&
-                m_multi_sample_enabled      == rhs.GetMultiSampleEnabled()      &&
                 m_antialised_line_enabled   == rhs.GetAntialisedLineEnabled()   &&
                 m_depth_bias                == rhs.GetDepthBias()               &&
                 m_depth_bias_slope_scaled   == rhs.GetDepthBiasSlopeScaled()    &&
@@ -81,7 +78,6 @@ namespace Spartan
         RHI_Fill_Mode m_fill_mode       = RHI_Fill_Undefined;
         bool m_depth_clip_enabled       = false;
         bool m_scissor_enabled          = false;
-        bool m_multi_sample_enabled     = false;
         bool m_antialised_line_enabled  = false;
         float m_depth_bias              = 0.0f;
         float m_depth_bias_clamp        = 0.0f;

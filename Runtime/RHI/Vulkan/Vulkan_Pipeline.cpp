@@ -270,7 +270,7 @@ namespace Spartan
             VkPipelineMultisampleStateCreateInfo multisampling_state = {};
             {
                 multisampling_state.sType                   = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-                multisampling_state.sampleShadingEnable     = m_state.rasterizer_state->GetMultiSampleEnabled() ? VK_TRUE : VK_FALSE;
+                multisampling_state.sampleShadingEnable     = VK_FALSE;
                 multisampling_state.rasterizationSamples    = VK_SAMPLE_COUNT_1_BIT;
             }
             

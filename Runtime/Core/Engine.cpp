@@ -64,7 +64,7 @@ namespace Spartan
         m_context->RegisterSubsystem<Renderer>();
         m_context->RegisterSubsystem<Profiler>();
         m_context->RegisterSubsystem<Settings>();
-                 
+
         // Initialize above subsystems
         m_context->Initialize();
 

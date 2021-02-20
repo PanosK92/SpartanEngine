@@ -129,13 +129,14 @@ namespace Spartan
 
     void RHI_DescriptorSetLayoutCache::GetDescriptors(RHI_PipelineState& pipeline_state, vector<RHI_Descriptor>& descriptors)
     {
-        descriptors.clear();
-
         if (!pipeline_state.IsValid())
         {
             LOG_ERROR("Invalid pipeline state");
+            descriptors.clear();
             return;
         }
+
+        bool descriptors_acquired = false;
 
         if (pipeline_state.IsCompute())
         {
@@ -144,6 +145,7 @@ namespace Spartan
 
             // Get compute shader descriptors
             descriptors = pipeline_state.shader_compute->GetDescriptors();
+            descriptors_acquired = true;
         }
         else if (pipeline_state.IsGraphics())
         {
@@ -152,6 +154,7 @@ namespace Spartan
 
             // Get vertex shader descriptors
             descriptors = pipeline_state.shader_vertex->GetDescriptors();
+            descriptors_acquired = true;
 
             // If there is a pixel shader, merge it's resources into our map as well
             if (pipeline_state.shader_pixel)
@@ -187,15 +190,18 @@ namespace Spartan
         }
 
         // Change constant buffers to dynamic (if requested)
-        for (uint32_t i = 0; i < rhi_max_constant_buffer_count; i++)
+        if (descriptors_acquired)
         {
-            for (RHI_Descriptor& descriptor : descriptors)
+            for (uint32_t i = 0; i < rhi_max_constant_buffer_count; i++)
             {
-                if (descriptor.type == RHI_Descriptor_Type::ConstantBuffer)
+                for (RHI_Descriptor& descriptor : descriptors)
                 {
-                    if (descriptor.slot == pipeline_state.dynamic_constant_buffer_slots[i] + rhi_shader_shift_buffer)
+                    if (descriptor.type == RHI_Descriptor_Type::ConstantBuffer)
                     {
-                        descriptor.is_dynamic_constant_buffer = true;
+                        if (descriptor.slot == pipeline_state.dynamic_constant_buffer_slots[i] + rhi_shader_shift_buffer)
+                        {
+                            descriptor.is_dynamic_constant_buffer = true;
+                        }
                     }
                 }
             }

@@ -86,11 +86,11 @@ namespace Spartan
     {
         SP_ASSERT(m_is_timeline);
 
-        VkSemaphoreSignalInfo semaphore_signal_info    = {};
-        semaphore_signal_info.sType                    = VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO;
-        semaphore_signal_info.pNext                    = nullptr;
-        semaphore_signal_info.semaphore                = static_cast<VkSemaphore>(m_resource);
-        semaphore_signal_info.value                    = value;
+        VkSemaphoreSignalInfo semaphore_signal_info = {};
+        semaphore_signal_info.sType                 = VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO;
+        semaphore_signal_info.pNext                 = nullptr;
+        semaphore_signal_info.semaphore             = static_cast<VkSemaphore>(m_resource);
+        semaphore_signal_info.value                 = value;
 
         return vulkan_utility::error::check(vkSignalSemaphore(m_rhi_device->GetContextRhi()->device, &semaphore_signal_info));
     }

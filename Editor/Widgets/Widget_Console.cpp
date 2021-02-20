@@ -103,15 +103,24 @@ void Widget_Console::TickVisible()
                 // Switch row
                 ImGui::TableNextRow();
                 ImGui::TableSetColumnIndex(0);
-    
+
                 // Log
                 ImGui::PushID(row);
                 {
-                    // Text
-                    ImGui::PushStyleColor(ImGuiCol_Text, m_log_type_color[log.error_level]);
-                    ImGui::TextUnformatted(log.text.c_str());
-                    ImGui::PopStyleColor(1);
-                
+                    ImVec2 itemSize = ImGui::GetTextLineHeight();
+
+                    // Text (only add if visible as it's quite expensive)
+                    if (ImGui::IsRectVisible(itemSize))
+                    {
+                        ImGui::PushStyleColor(ImGuiCol_Text, m_log_type_color[log.error_level]);
+                        ImGui::TextUnformatted(log.text.c_str());
+                        ImGui::PopStyleColor(1);
+                    }
+                    else
+                    {
+                        ImGui::Dummy(itemSize);
+                    }
+
                     // Context menu
                     if (ImGui::BeginPopupContextItem("##widget_console_contextMenu"))
                     {
@@ -121,14 +130,14 @@ void Widget_Console::TickVisible()
                             ImGui::LogText("%s", log.text.c_str());
                             ImGui::LogFinish();
                         }
-                
+
                         ImGui::Separator();
-                
+
                         if (ImGui::MenuItem("Search"))
                         {
                             FileSystem::OpenDirectoryWindow("https://www.google.com/search?q=" + log.text);
                         }
-                
+
                         ImGui::EndPopup();
                     }
                 }
