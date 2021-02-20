@@ -51,7 +51,6 @@ namespace _editor
     const char* editor_name         = "SpartanEditor";
     Widget_MenuBar* widget_menu_bar = nullptr;
     Widget* widget_world            = nullptr;
-    bool show                       = true;
     Renderer* renderer              = nullptr;
     Profiler* profiler              = nullptr;
     RHI_SwapChain* swapchain        = nullptr;
@@ -85,30 +84,22 @@ void Editor::OnWindowMessage(WindowData& window_data)
         _editor::renderer   = m_context->GetSubsystem<Renderer>();
         _editor::swapchain  = _editor::renderer->GetSwapChain();
         _editor::rhi_device = _editor::renderer->GetRhiDevice();
-        _editor::show       = !_editor::renderer->GetIsFullscreen();
 
         if (_editor::renderer->IsInitialized())
         {
-            if (_editor::show)
-            {
-                ImGui_Initialise(window_data);
-            }
-
+            Initialise(window_data);
             m_initialised = true;
         }
     }
     else if (m_initialised)
     {
-        // Updated ImGui with message (if showing)
-        if (_editor::show)
-        {
-            ImGui_ImplWin32_WndProcHandler(
-                static_cast<HWND>(window_data.handle),
-                static_cast<uint32_t>(window_data.message),
-                static_cast<int64_t>(window_data.wparam),
-                static_cast<uint64_t>(window_data.lparam)
-            );
-        }
+        // Updated ImGui with message
+        ImGui_ImplWin32_WndProcHandler(
+            static_cast<HWND>(window_data.handle),
+            static_cast<uint32_t>(window_data.message),
+            static_cast<int64_t>(window_data.wparam),
+            static_cast<uint64_t>(window_data.lparam)
+        );
 
         // Passing zero dimensions will cause the swapchain to not present at all
         uint32_t width  = static_cast<uint32_t>(window_data.minimise ? 0 : window_data.width);
@@ -126,63 +117,65 @@ void Editor::OnWindowMessage(WindowData& window_data)
 void Editor::OnTick()
 {
     // Verify a couple of things
-    if (!m_engine || !_editor::renderer || !_editor::renderer->IsInitialized())
+    if (!m_initialised || !m_engine || !_editor::renderer || !_editor::renderer->IsInitialized())
         return;
 
-    _editor::show = !_editor::renderer->GetIsFullscreen() && m_initialised;
-
-    // Engine - tick
+    // Engine - Tick
     m_engine->Tick();
 
-    // Editor - main window
-    if (_editor::show)
+    bool is_fullscreen = _editor::renderer->GetIsFullscreen();
+
+    // ImGui - Begin
+    if (!is_fullscreen)
     {
-        // ImGui - start frame
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
+    }
 
-        // ImGui - widgets tick
+    // Editor - Begin
+    if (!is_fullscreen)
+    {
+        BeginWindow();
+    }
+
+    // Editor - Tick
+    if (!is_fullscreen)
+    {
+        for (shared_ptr<Widget>& widget : m_widgets)
         {
-            if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable)
-            {
-                ImGui_Begin();
-            }
-
-            for (std::shared_ptr<Widget>& widget : m_widgets)
-            {
-                widget->Tick();
-            }
-
-            if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable)
-            {
-                ImGui_End();
-            }
+            widget->Tick();
         }
-
-        // ImGui - end frame
-        ImGui::Render();
-        ImGui::RHI::Render(ImGui::GetDrawData());
     }
     else
     {
         _editor::renderer->Pass_CopyToBackbuffer(_editor::swapchain->GetCmdList());
     }
 
+    // Editor - End
+    if (!is_fullscreen && m_editor_begun)
+    {
+        ImGui::End();
+    }
+
+    // ImGui - End/Render
+    if (!is_fullscreen)
+    {
+        ImGui::Render();
+        ImGui::RHI::Render(ImGui::GetDrawData());
+    }
+
     // Present
     _editor::renderer->Present();
 
-    // Editor - child windows
-    if (_editor::show)
+    // ImGui - child windows
+    if (!is_fullscreen && ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
     {
-        if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-        {
-            ImGui::UpdatePlatformWindows();
-            ImGui::RenderPlatformWindowsDefault();
-        }
+        ImGui::UpdatePlatformWindows();
+        ImGui::RenderPlatformWindowsDefault();
     }
 }
 
-void Editor::ImGui_Initialise(const WindowData& window_data)
+void Editor::Initialise(const WindowData& window_data)
 {
     // ImGui version validation
     IMGUI_CHECKVERSION();
@@ -198,7 +191,7 @@ void Editor::ImGui_Initialise(const WindowData& window_data)
     io.ConfigFlags                  |= ImGuiConfigFlags_ViewportsEnable;
     io.ConfigWindowsResizeFromEdges = true;
     io.ConfigViewportsNoTaskBarIcon = true;
-    ImGui_ApplyStyle();
+    ApplyStyle();
 
     // ImGui backend setup
     ImGui_ImplWin32_Init(window_data.handle);
@@ -222,9 +215,9 @@ void Editor::ImGui_Initialise(const WindowData& window_data)
     m_widgets.emplace_back(make_shared<Widget_ProgressDialog>(this));
 }
 
-void Editor::ImGui_ApplyStyle() const
+void Editor::ApplyStyle() const
 {
-    // Color settings    
+    // Color settings
     const auto color_text                   = ImVec4(0.810f, 0.810f, 0.810f, 1.000f);
     const auto color_text_disabled          = ImVec4(color_text.x, color_text.y, color_text.z, 0.5f);
     const auto color_interactive            = ImVec4(0.338f, 0.338f, 0.338f, 1.000f);
@@ -317,7 +310,7 @@ void Editor::ImGui_ApplyStyle() const
     io.FontGlobalScale = font_scale;
 }
 
-void Editor::ImGui_Begin()
+void Editor::BeginWindow()
 {
     // Set window flags
     const auto window_flags =
@@ -349,7 +342,7 @@ void Editor::ImGui_Begin()
     ImGui::PopStyleVar(3);
 
     // Begin dock space
-    if (m_editor_begun)
+    if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable && m_editor_begun)
     {
         // Dock space
         const auto window_id = ImGui::GetID(_editor::editor_name);
@@ -378,13 +371,5 @@ void Editor::ImGui_Begin()
         }
 
         ImGui::DockSpace(window_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
-    }
-}
-
-void Editor::ImGui_End()
-{
-    if (m_editor_begun)
-    {
-        ImGui::End();
     }
 }

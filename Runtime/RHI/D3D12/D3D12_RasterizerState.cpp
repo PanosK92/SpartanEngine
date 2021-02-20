@@ -39,7 +39,6 @@ namespace Spartan
         const RHI_Fill_Mode fill_mode,
         const bool depth_clip_enabled,
         const bool scissor_enabled,
-        const bool multi_sample_enabled,
         const bool antialised_line_enabled,
         const float depth_bias              /*= 0.0f */,
         const float depth_bias_clamp        /*= 0.0f */,
@@ -51,6 +50,6 @@ namespace Spartan
 
     RHI_RasterizerState::~RHI_RasterizerState()
     {
-        
+
     }
 }

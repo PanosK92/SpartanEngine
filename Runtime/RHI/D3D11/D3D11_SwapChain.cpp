@@ -99,16 +99,16 @@ namespace Spartan
         {
             DXGI_SWAP_CHAIN_DESC desc   = {};
             desc.BufferCount            = static_cast<UINT>(buffer_count);
-            desc.BufferDesc.Width        = static_cast<UINT>(width);
-            desc.BufferDesc.Height        = static_cast<UINT>(height);
-            desc.BufferDesc.Format        = d3d11_format[format];
+            desc.BufferDesc.Width       = static_cast<UINT>(width);
+            desc.BufferDesc.Height      = static_cast<UINT>(height);
+            desc.BufferDesc.Format      = d3d11_format[format];
             desc.BufferUsage            = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-            desc.OutputWindow            = hwnd;
-            desc.SampleDesc.Count        = 1;
-            desc.SampleDesc.Quality        = 0;
-            desc.Windowed                = m_windowed ? TRUE : FALSE;
-            desc.SwapEffect                = d3d11_utility::swap_chain::get_swap_effect(m_flags);
-            desc.Flags                    = d3d11_utility::swap_chain::get_flags(m_flags);
+            desc.OutputWindow           = hwnd;
+            desc.SampleDesc.Count       = 1;
+            desc.SampleDesc.Quality     = 0;
+            desc.Windowed               = m_windowed ? TRUE : FALSE;
+            desc.SwapEffect             = d3d11_utility::swap_chain::get_swap_effect(m_flags);
+            desc.Flags                  = d3d11_utility::swap_chain::get_flags(m_flags);
 
             if (!d3d11_utility::error_check(dxgi_factory->CreateSwapChain(m_rhi_device->GetContextRhi()->device, &desc, reinterpret_cast<IDXGISwapChain**>(&m_swap_chain_view))))
             {
@@ -203,7 +203,7 @@ namespace Spartan
         // When switching from windowed to full-screen mode, the display mode (or monitor resolution)
         // will be changed to match the dimensions of the application window.
         if (m_flags & RHI_SwapChain_Allow_Mode_Switch)
-        {        
+        {
             const DisplayMode& display_mode = Display::GetActiveDisplayMode();
 
             // Resize swapchain target
@@ -262,26 +262,15 @@ namespace Spartan
 
     bool RHI_SwapChain::Present(RHI_Semaphore* wait_semaphore)
     {
-        // Validate swapchain state
         SP_ASSERT(m_present_enabled);
-
-        // Validate swapchain view
         SP_ASSERT(m_swap_chain_view != nullptr);
 
-        // Build flags
+        // Present parameters
         const bool tearing_allowed  = m_flags & RHI_Present_Immediate;
         const UINT sync_interval    = tearing_allowed ? 0 : 1; // sync interval can go up to 4, so this could be improved
         const UINT flags            = (tearing_allowed && m_windowed) ? DXGI_PRESENT_ALLOW_TEARING : 0;
 
         // Present
-        auto ptr_swap_chain = static_cast<IDXGISwapChain*>(m_swap_chain_view);
-        const auto result = ptr_swap_chain->Present(sync_interval, flags);
-        if (FAILED(result))
-        {
-            LOG_ERROR("Failed to present, %s.", d3d11_utility::dxgi_error_to_string(result));
-            return false;
-        }
-
-        return true;
+        return d3d11_utility::error_check(static_cast<IDXGISwapChain*>(m_swap_chain_view)->Present(sync_interval, flags));
     }
 }

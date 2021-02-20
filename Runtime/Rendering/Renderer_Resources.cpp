@@ -75,10 +75,10 @@ namespace Spartan
         float depth_bias                = GetOption(Render_ReverseZ) ? -m_depth_bias : m_depth_bias;
         float depth_bias_slope_scaled   = GetOption(Render_ReverseZ) ? -m_depth_bias_slope_scaled : m_depth_bias_slope_scaled;
 
-        m_rasterizer_cull_back_solid        = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_Cull_Back, RHI_Fill_Solid,     true,  false, false, false);
-        m_rasterizer_cull_back_wireframe    = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_Cull_Back, RHI_Fill_Wireframe, true,  false, false, true);
-        m_rasterizer_light_point_spot       = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_Cull_Back, RHI_Fill_Solid,     true,  false, false, false, depth_bias,         m_depth_bias_clamp, depth_bias_slope_scaled);
-        m_rasterizer_light_directional      = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_Cull_Back, RHI_Fill_Solid,     false, false, false, false, depth_bias * 0.1f,  m_depth_bias_clamp, depth_bias_slope_scaled);
+        m_rasterizer_cull_back_solid        = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_Cull_Back, RHI_Fill_Solid,     true,  false, false);
+        m_rasterizer_cull_back_wireframe    = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_Cull_Back, RHI_Fill_Wireframe, true,  false, true);
+        m_rasterizer_light_point_spot       = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_Cull_Back, RHI_Fill_Solid,     true,  false, false, depth_bias,         m_depth_bias_clamp, depth_bias_slope_scaled);
+        m_rasterizer_light_directional      = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_Cull_Back, RHI_Fill_Solid,     false, false, false, depth_bias * 0.1f,  m_depth_bias_clamp, depth_bias_slope_scaled);
     }
 
     void Renderer::CreateBlendStates()

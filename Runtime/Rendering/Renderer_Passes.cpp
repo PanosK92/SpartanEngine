@@ -34,6 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_VertexBuffer.h"
 #include "../RHI/RHI_PipelineState.h"
 #include "../RHI/RHI_Texture.h"
+#include "../RHI/RHI_SwapChain.h"
 #include "../World/Entity.h"
 #include "../World/Components/Camera.h"
 #include "../World/Components/Light.h"
@@ -68,20 +69,18 @@ namespace Spartan
 
     void Renderer::Pass_Main(RHI_CommandList* cmd_list)
     {
-        // Validate RHI device as it's required almost everywhere
-        if (!m_rhi_device)
-            return;
-
-        // Validate command list state
+        // Validate cmd list
+        SP_ASSERT(cmd_list != nullptr);
         SP_ASSERT(cmd_list->GetState() == RHI_CommandListState::Recording);
 
         SCOPED_TIME_BLOCK(m_profiler);
 
+        // Update frame constant buffer
         Pass_UpdateFrameBuffer(cmd_list);
-        
-        // Runs only once
+
+        // Generate brdf specular lut (only runs once)
         Pass_BrdfSpecularLut(cmd_list);
-        
+
         const bool draw_transparent_objects = !m_entities[Renderer_Object_Transparent].empty();
         
         // Depth
@@ -1071,7 +1070,7 @@ namespace Spartan
         // Swap textures
         tex_in_ldr.swap(tex_out_ldr);
     }
-    
+
     void Renderer::Pass_BlurBox(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out, const float sigma, const float pixel_stride, const bool use_stencil)
     {
         // Acquire shaders
@@ -1111,7 +1110,7 @@ namespace Spartan
             cmd_list->EndRenderPass();
         }
     }
-    
+
     void Renderer::Pass_BlurGaussian(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out, const float sigma, const float pixel_stride)
     {
         if (tex_in->GetWidth() != tex_out->GetWidth() || tex_in->GetHeight() != tex_out->GetHeight() || tex_in->GetFormat() != tex_out->GetFormat())
@@ -1187,7 +1186,7 @@ namespace Spartan
         // Swap textures
         tex_in.swap(tex_out);
     }
-    
+
     void Renderer::Pass_BlurBilateralGaussian(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out, const float sigma, const float pixel_stride, const bool use_stencil)
     {
         if (tex_in->GetWidth() != tex_out->GetWidth() || tex_in->GetHeight() != tex_out->GetHeight() || tex_in->GetFormat() != tex_out->GetFormat())
@@ -1276,7 +1275,7 @@ namespace Spartan
         // Swap textures
         tex_in.swap(tex_out);
     }
-    
+
     void Renderer::Pass_TemporalAntialiasing(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
         // Acquire shaders
@@ -1316,7 +1315,7 @@ namespace Spartan
         // Accumulate
         Pass_Copy(cmd_list, tex_out.get(), tex_accumulation.get());
     }
-    
+
     void Renderer::Pass_Bloom(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
         // Acquire shaders
@@ -1441,7 +1440,7 @@ namespace Spartan
             }
         }
     }
-    
+
     void Renderer::Pass_ToneMapping(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
         // Acquire shaders
@@ -1472,7 +1471,7 @@ namespace Spartan
             cmd_list->EndRenderPass();
         }
     }
-    
+
     void Renderer::Pass_GammaCorrection(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
         // Acquire shaders
@@ -1503,7 +1502,7 @@ namespace Spartan
             cmd_list->EndRenderPass();
         }
     }
-    
+
     void Renderer::Pass_FXAA(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
         // Acquire shaders
@@ -1559,7 +1558,7 @@ namespace Spartan
         // Swap the textures
         tex_in.swap(tex_out);
     }
-    
+
     void Renderer::Pass_ChromaticAberration(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
         // Acquire shaders
@@ -1590,7 +1589,7 @@ namespace Spartan
             cmd_list->EndRenderPass();
         }
     }
-    
+
     void Renderer::Pass_MotionBlur(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
         // Acquire shaders
@@ -1623,7 +1622,7 @@ namespace Spartan
             cmd_list->EndRenderPass();
         }
     }
-    
+
     void Renderer::Pass_DepthOfField(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
         // Acquire shaders
@@ -1746,7 +1745,7 @@ namespace Spartan
             }
         }
     }
-    
+
     void Renderer::Pass_Dithering(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
         // Acquire shaders
@@ -1777,7 +1776,7 @@ namespace Spartan
             cmd_list->EndRenderPass();
         }
     }
-    
+
     void Renderer::Pass_FilmGrain(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
         // Acquire shaders
@@ -1808,7 +1807,7 @@ namespace Spartan
             cmd_list->EndRenderPass();
         }
     }
-    
+
     void Renderer::Pass_Sharpening(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
         // Acquire shaders
@@ -1839,15 +1838,15 @@ namespace Spartan
             cmd_list->EndRenderPass();
         }
     }
-    
+
     void Renderer::Pass_Lines(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
         const bool draw_picking_ray = m_options & Render_Debug_PickingRay;
         const bool draw_aabb        = m_options & Render_Debug_Aabb;
         const bool draw_grid        = m_options & Render_Debug_Grid;
         const bool draw_lights      = m_options & Render_Debug_Lights;
-        const auto draw_lines       = !m_lines_depth_disabled.empty() || !m_lines_depth_enabled.empty(); // Any kind of lines, physics, user debug, etc.
-        const auto draw             = draw_picking_ray || draw_aabb || draw_grid || draw_lines || draw_lights;
+        const bool draw_lines       = !m_lines_depth_disabled.empty() || !m_lines_depth_enabled.empty(); // Any kind of lines, physics, user debug, etc.
+        const bool draw             = draw_picking_ray || draw_aabb || draw_grid || draw_lines || draw_lights;
         if (!draw)
             return;
 
@@ -2014,7 +2013,7 @@ namespace Spartan
             }
         }
     }
-    
+
     void Renderer::Pass_Icons(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
         if (!(m_options & Render_Debug_Lights))
@@ -2100,7 +2099,7 @@ namespace Spartan
             }
         }  
     }
-    
+
     void Renderer::Pass_TransformHandle(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
         if (!GetOption(Render_Debug_Transform))
@@ -2187,7 +2186,7 @@ namespace Spartan
             }
         }
     }
-    
+
     void Renderer::Pass_Outline(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
         if (!GetOption(Render_Debug_SelectionOutline))
@@ -2254,7 +2253,7 @@ namespace Spartan
             }
         }
     }
-    
+
     void Renderer::Pass_Text(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
         // Early exit cases
@@ -2279,7 +2278,7 @@ namespace Spartan
         pso.pass_name                        = "Pass_Text";
 
         // Update text
-        const auto text_pos = Vector2(-m_viewport.width * 0.5f + 5.0f, m_viewport.height * 0.5f - m_font->GetSize() - 2.0f);
+        const Vector2 text_pos = Vector2(-m_viewport.width * 0.5f + 5.0f, m_viewport.height * 0.5f - m_font->GetSize() - 2.0f);
         m_font->SetText(m_profiler->GetMetrics(), text_pos);
 
         // Draw outline
@@ -2315,7 +2314,7 @@ namespace Spartan
             cmd_list->EndRenderPass();
         }
     }
-    
+
     bool Renderer::Pass_DebugBuffer(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
         if (m_render_target_debug == RendererRt::Undefined)
@@ -2442,7 +2441,7 @@ namespace Spartan
 
         return true;
     }
-    
+
     void Renderer::Pass_BrdfSpecularLut(RHI_CommandList* cmd_list)
     {
         if (m_brdf_specular_lut_rendered)
@@ -2480,7 +2479,7 @@ namespace Spartan
             m_brdf_specular_lut_rendered = true;
         }
     }
-    
+
     void Renderer::Pass_Copy(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
         // Acquire shaders
@@ -2533,9 +2532,13 @@ namespace Spartan
         // Record commands
         if (cmd_list->BeginRenderPass(pso))
         {
+            // Update uber buffer
+            m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(m_swap_chain->GetWidth()), static_cast<float>(m_swap_chain->GetHeight()));
+            UpdateUberBuffer(cmd_list);
+
+            cmd_list->SetTexture(RendererBindingsSrv::tex, m_render_targets[RendererRt::Frame_Ldr].get());
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
-            cmd_list->SetTexture(RendererBindingsSrv::tex, m_render_targets[RendererRt::Frame_Ldr].get());
             cmd_list->DrawIndexed(m_viewport_quad.GetIndexCount());
             cmd_list->EndRenderPass();
         }

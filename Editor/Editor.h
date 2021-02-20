@@ -64,10 +64,9 @@ public:
     }
 
 private:
-    void ImGui_Initialise(const Spartan::WindowData& window_data);
-    void ImGui_ApplyStyle() const;
-    void ImGui_Begin();
-    void ImGui_End();
+    void Initialise(const Spartan::WindowData& window_data);
+    void ApplyStyle() const;
+    void BeginWindow();
 
     // Editor
     std::vector<std::shared_ptr<Widget>> m_widgets;
