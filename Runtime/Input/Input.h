@@ -117,9 +117,9 @@ namespace Spartan
         uint32_t start_index_gamepad    = 86;
 
         // Mouse
-        Math::Vector2 m_mouse_position    = Math::Vector2::Zero;
-        Math::Vector2 m_mouse_delta        = Math::Vector2::Zero;
-        float m_mouse_wheel_delta        = 0;
+        Math::Vector2 m_mouse_position  = Math::Vector2::Zero;
+        Math::Vector2 m_mouse_delta     = Math::Vector2::Zero;
+        float m_mouse_wheel_delta       = 0;
 
         // Gamepad   
         bool m_gamepad_connected            = false;

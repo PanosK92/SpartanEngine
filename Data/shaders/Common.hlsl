@@ -436,18 +436,6 @@ float3 get_noise_normal(uint2 screen_pos)
 /*------------------------------------------------------------------------------
     OCCLUSION/SHADOWING
 ------------------------------------------------------------------------------*/
-
-// Activision GTAO paper: https://www.activision.com/cdn/research/s2016_pbs_activision_occlusion.pptx
-float3 MultiBounceAO(float visibility, float3 albedo)
-{
-    float3 a = 2.0404 * albedo - 0.3324;
-    float3 b = -4.7951 * albedo + 0.6417;
-    float3 c = 2.7552 * albedo + 0.6903;
-	
-    float x = visibility;
-    return max(x, ((x * a + b) * x + c) * x);
-}
-
 // The Technical Art of Uncharted 4 - http://advances.realtimerendering.com/other/2016/naughty_dog/index.html
 float microw_shadowing_nt(float n_dot_l, float ao)
 {

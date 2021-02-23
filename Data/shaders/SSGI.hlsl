@@ -35,6 +35,11 @@ static const float g_ssgi_samples       = (float)(g_ssgi_directions * g_ssgi_ste
 static const float g_ssgi_radius2       = g_ssgi_radius * g_ssgi_radius;
 static const float g_ssgi_negInvRadius2 = -1.0f / g_ssgi_radius2;
 
+float3 sample_light(float2 uv)
+{
+    return tex_light_diffuse.SampleLevel(sampler_bilinear_clamp, uv, 0).rgb;
+}
+
 float falloff(float distance_squared)
 {
     return distance_squared * g_ssgi_negInvRadius2 + 1.0f;
@@ -60,13 +65,13 @@ float3 compute_light(float3 position, float3 normal, float2 sample_uv, inout uin
     if (screen_fade(sample_uv) > 0.0f)
     {
         // First bounce
-        float3 light = tex_light_diffuse.SampleLevel(sampler_bilinear_clamp, sample_uv, 0).rgb;
+        float3 light = sample_light(sample_uv);
 
         // Transport
         [branch]
         if (luminance(light) > 0.0f)
         {
-             float3 sample_position  = get_position_view_space(sample_uv);
+             float3 sample_position = get_position_view_space(sample_uv);
             float occlusion         = compute_occlusion(position, normal, sample_position);
             
             [branch]
@@ -125,7 +130,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
     if (thread_id.x >= uint(g_resolution.x) || thread_id.y >= uint(g_resolution.y))
         return;
-    
+
     const float2 uv = (thread_id.xy + 0.5f) / g_resolution;
     float3 position = get_position_view_space(thread_id.xy);
     float3 normal   = get_normal_view_space(thread_id.xy);
@@ -142,16 +147,17 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     // Decrease blend factor when motion gets sub-pixel
     const float threshold   = 0.5f;
     const float base        = 0.5f;
-    const float gather      = g_delta_time;
+    const float gather      = 0.1666;
     float texel_vel_mag     = length(velocity / g_texel_size) * depth;
     float subpixel_motion   = saturate(threshold / (FLT_MIN + texel_vel_mag));
     float blend_factor      = texel_vel_mag * base + subpixel_motion * gather;
 
     // Clamp
     blend_factor = clamp(blend_factor, g_ssgi_blend_min, g_ssgi_blend_max);
-    
+
     // Override blend factor if the re-projected uv is out of screen
     blend_factor = is_saturated(uv_reprojected) ? blend_factor : 1.0f;
-    
+
     tex_out_rgb[thread_id.xy] = lerp(color_history, light, blend_factor);
 }
+

@@ -160,19 +160,19 @@ class FileDialogItem
 public:
     FileDialogItem(const std::string& path, const Thumbnail& thumbnail)
     {
-        m_path            = path;
-        m_thumbnail        = thumbnail;
+        m_path          = path;
+        m_thumbnail     = thumbnail;
         m_id            = Spartan::Spartan_Object::GenerateId();
-        m_isDirectory    = Spartan::FileSystem::IsDirectory(path);
-        m_label            = Spartan::FileSystem::GetFileNameFromFilePath(path);
+        m_isDirectory   = Spartan::FileSystem::IsDirectory(path);
+        m_label         = Spartan::FileSystem::GetFileNameFromFilePath(path);
     }
 
-    const auto& GetPath()           const { return m_path; }
-    const auto& GetLabel()          const { return m_label; }
-    auto GetId()                    const { return m_id; }
-    auto GetTexture()               const { return IconProvider::Get().GetTextureByThumbnail(m_thumbnail); }
-    auto IsDirectory()              const { return m_isDirectory; }
-    auto GetTimeSinceLastClickMs()  const { return static_cast<float>(m_time_since_last_click.count()); }
+    const auto& GetPath()               const { return m_path; }
+    const auto& GetLabel()              const { return m_label; }
+    auto GetId()                        const { return m_id; }
+    Spartan::RHI_Texture* GetTexture()  const { return IconProvider::Get().GetTextureByThumbnail(m_thumbnail); }
+    auto IsDirectory()                  const { return m_isDirectory; }
+    auto GetTimeSinceLastClickMs()      const { return static_cast<float>(m_time_since_last_click.count()); }
 
     void Clicked()    
     {

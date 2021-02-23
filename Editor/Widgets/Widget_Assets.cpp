@@ -58,10 +58,10 @@ void Widget_Assets::TickVisible()
 
     ImGui::SameLine();
     
-    // VIEW
+    // View
     m_fileDialogView->Show(&Widget_Assets_Statics::g_show_file_dialog_view);
 
-    // IMPORT
+    // Import
     if (m_fileDialogLoad->Show(&Widget_Assets_Statics::g_show_file_dialog_load, nullptr, &Widget_Assets_Statics::g_double_clicked_path_import_dialog))
     {
         // Model

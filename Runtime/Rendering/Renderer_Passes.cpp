@@ -815,7 +815,7 @@ namespace Spartan
                 if (light->GetIntensity() != 0)
                 {
                     // Set pixel shader
-                    pso.shader_compute = static_cast<RHI_Shader*>(ShaderLight::GetVariation(m_context, light, m_options, is_transparent_pass));
+                    pso.shader_compute = static_cast<RHI_Shader*>(ShaderLight::GetVariation(m_context, light, m_options));
 
                     // Skip the shader until it compiles or the users spots a compilation error
                     if (!pso.shader_compute->IsCompiled())
@@ -864,7 +864,8 @@ namespace Spartan
                         UpdateLightBuffer(cmd_list, light);
 
                         // Update uber buffer
-                        m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_diffuse->GetWidth()), static_cast<float>(tex_diffuse->GetHeight()));
+                        m_buffer_uber_cpu.resolution            = Vector2(static_cast<float>(tex_diffuse->GetWidth()), static_cast<float>(tex_diffuse->GetHeight()));
+                        m_buffer_uber_cpu.is_transparent_pass   = is_transparent_pass;
                         UpdateUberBuffer(cmd_list);
 
                         const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_diffuse->GetWidth()) / m_thread_group_count));
@@ -952,7 +953,8 @@ namespace Spartan
         if (cmd_list->BeginRenderPass(pso))
         {
             // Update uber buffer
-            m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+            m_buffer_uber_cpu.resolution            = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+            m_buffer_uber_cpu.is_transparent_pass   = is_transparent_pass;
             UpdateUberBuffer(cmd_list);
 
             // Setup command list

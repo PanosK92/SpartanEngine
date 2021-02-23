@@ -74,7 +74,7 @@ void IconProvider::Initialize(Context* context)
     Thumbnail_Load(data_dir + "Icons/folder.png",                           Thumbnail_Folder);
     Thumbnail_Load(data_dir + "Icons/audio.png",                            Thumbnail_File_Audio);
     Thumbnail_Load(data_dir + "Icons/model.png",                            Thumbnail_File_Model);
-    Thumbnail_Load(data_dir + "Icons/scene.png",                            Thumbnail_File_Scene);
+    Thumbnail_Load(data_dir + "Icons/world.png",                            Thumbnail_File_World);
     Thumbnail_Load(data_dir + "Icons/material.png",                         Thumbnail_File_Material);
     Thumbnail_Load(data_dir + "Icons/shader.png",                           Thumbnail_File_Shader);
     Thumbnail_Load(data_dir + "Icons/xml.png",                              Thumbnail_File_Xml);
@@ -145,7 +145,7 @@ const Thumbnail& IconProvider::Thumbnail_Load(const string& file_path, Icon_Type
     // Shader
     if (FileSystem::IsSupportedShaderFile(file_path))                return GetThumbnailByType(Thumbnail_File_Shader);
     // Scene
-    if (FileSystem::IsEngineSceneFile(file_path))                    return GetThumbnailByType(Thumbnail_File_Scene);
+    if (FileSystem::IsEngineSceneFile(file_path))                    return GetThumbnailByType(Thumbnail_File_World);
     // Script
     if (FileSystem::IsEngineScriptFile(file_path))                    return GetThumbnailByType(Thumbnail_File_Script);
     // Font

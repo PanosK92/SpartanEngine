@@ -30,24 +30,15 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     if (thread_id.x >= uint(g_resolution.x) || thread_id.y >= uint(g_resolution.y))
         return;
 
-    // If this is a transaprent pass but this pixel is not, skip it
-    float4 albedo = tex_albedo[thread_id.xy];
-    if (g_is_transprent_pass && albedo.a == 1.0f)
+    Surface surface;
+    surface.Build(thread_id.xy);
+    
+    // If this is a transparent pass, ignore all opaque pixels, and vice versa.
+    if ((g_is_transprent_pass && surface.is_opaque()) || (!g_is_transprent_pass && surface.is_transparent() && !surface.is_sky()))
         return;
 
-    // Compute some useful things
-    const float2 uv     = (thread_id.xy + 0.5f) / g_resolution;
-    const int mat_id    = round(tex_normal[thread_id.xy].a * 65535);
-    const bool is_sky   = mat_id == 0;
-    
-    // Get some useful things
-    const float depth               = get_depth(thread_id.xy);
-    const float3 position           = get_position(depth, uv);
-    const float3 camera_to_pixel    = get_view_direction(position);
-
     // Compute fog
-    float camera_to_pixel_length    = length(position - g_camera_position.xyz);
-    float3 fog                      = get_fog_factor(position.y, camera_to_pixel_length);
+    float3 fog = get_fog_factor(surface.position.y, surface.camera_to_pixel_length);
 
     // Modulate fog with ambient light
     float ambient_light = saturate(g_directional_light_intensity / 128000.0f);
@@ -56,9 +47,9 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     float4 color = float4(0.0f, 0.0f, 0.0f, 1.0f);
 
     [branch]
-    if (is_sky) // Sky
+    if (surface.is_sky()) // Sky
     {
-        color.rgb   += tex_environment.SampleLevel(sampler_bilinear_clamp, direction_sphere_uv(camera_to_pixel), 0).rgb;
+        color.rgb   += tex_environment.SampleLevel(sampler_bilinear_clamp, direction_sphere_uv(surface.camera_to_pixel), 0).rgb;
         color.rgb   *= saturate(g_directional_light_intensity / 128000.0f);
         fog         *= luminance(color.rgb);
     }
@@ -69,19 +60,22 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         float3 light_specular   = tex_light_specular[thread_id.xy].rgb;
 
         // Accumulate diffuse and specular light
-        color.rgb += (light_diffuse * albedo.rgb + light_specular) * albedo.a * albedo.a;
+        color.rgb += (light_diffuse * surface.albedo + light_specular) * surface.alpha * surface.alpha;
     }
 
     // Accumulate fog
     color.rgb += fog; // regular
     color.rgb += tex_light_volumetric[thread_id.xy].rgb; // volumetric
 
-    if (!g_is_transprent_pass || is_sky)
+    // Overwrite for opaque pass
+    if (surface.is_opaque() || surface.is_sky())
     {
         tex_out_rgba[thread_id.xy] = saturate_16(color);
     }
+    // Accumulation for transparent pass
     else
     {
         tex_out_rgba[thread_id.xy] += saturate_16(color);
     }
 }
+

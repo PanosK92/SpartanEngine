@@ -57,7 +57,7 @@ enum Icon_Type
     Thumbnail_Custom,
     Thumbnail_Folder,
     Thumbnail_File_Audio,
-    Thumbnail_File_Scene,
+    Thumbnail_File_World,
     Thumbnail_File_Model,
     Thumbnail_File_Default,
     Thumbnail_File_Material,

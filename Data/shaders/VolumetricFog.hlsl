@@ -47,7 +47,7 @@ float3 vl_raymarch(Light light, float3 ray_pos, float3 ray_step, float3 ray_dir,
         #if DIRECTIONAL
         attenuation *= mie_scattering(dot(-light.direction, ray_dir));
         #else
-        attenuation *= get_light_attenuation(light, ray_pos);
+        attenuation *= light.compute_attenuation(ray_pos);
         float3 to_light = normalize(light.position - ray_pos);
         attenuation *= mie_scattering(dot(light.direction, -to_light));
         #endif
@@ -103,7 +103,7 @@ float3 VolumetricLighting(Surface surface, Light light)
     #if DIRECTIONAL
     { 
         [unroll]
-        for (uint array_index = 0; array_index < light_array_size; array_index++)
+        for (uint array_index = 0; array_index < light.array_size; array_index++)
         {
             // Compute ndc position
             float3 pos_ndc = world_to_ndc(ray_pos, cb_light_view_projection[array_index]);
@@ -121,7 +121,7 @@ float3 VolumetricLighting(Surface surface, Light light)
                 // If we are close to the edge of the primary cascade and a next cascade exists, lerp with it.
                 uint array_index_secondary = array_index + 1;
                 [branch]
-                if (distance_to_bounds <= g_vl_cascade_blend_threshold && array_index_secondary < light_array_size)
+                if (distance_to_bounds <= g_vl_cascade_blend_threshold && array_index_secondary < light.array_size)
                 {
                     // Ray-march using the next cascade
                     float3 fog_secondary = vl_raymarch(light, ray_pos, ray_step, ray_dir, array_index_secondary);

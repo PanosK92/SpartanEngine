@@ -365,8 +365,8 @@ namespace Spartan
             // Keyboard movement
             {
                 // Compute max speed
-                m_movement_speed_max += m_input->GetMouseWheelDelta();
-                m_movement_speed_max = Helper::Clamp(m_movement_speed_max, 0.0f, numeric_limits<float>::max());
+                m_movement_speed_max += m_input->GetMouseWheelDelta() / 3.0f;
+                m_movement_speed_max = Helper::Clamp(m_movement_speed_max, m_movement_speed_min, numeric_limits<float>::max());
 
                 // Compute direction
                 Vector3 direction = Vector3::Zero;
@@ -374,6 +374,8 @@ namespace Spartan
                 if (m_input->GetKey(KeyCode::S)) direction += m_transform->GetBackward();
                 if (m_input->GetKey(KeyCode::D)) direction += m_transform->GetRight();
                 if (m_input->GetKey(KeyCode::A)) direction += m_transform->GetLeft();
+                if (m_input->GetKey(KeyCode::Q)) direction += m_transform->GetDown();
+                if (m_input->GetKey(KeyCode::E)) direction += m_transform->GetUp();
                 direction.Normalize();
 
                 // Compute speed
