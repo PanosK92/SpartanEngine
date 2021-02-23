@@ -329,7 +329,37 @@ namespace Spartan
 
     void Camera::FpsControl(float delta_time)
     {
-        if (m_input->GetKey(KeyCode::Click_Right))
+        // Detect if fps control should be activated
+        {
+            // Initiate control only when the mouse is within the viewport
+            if (m_input->GetKeyDown(KeyCode::Click_Right) && m_input->GetMouseIsInViewport())
+            {
+                m_fps_control_assumed = true;
+            }
+
+            // Maintain control as long as the right click is pressed and initial control has been given
+            m_fps_control_assumed = m_input->GetKey(KeyCode::Click_Right) && m_fps_control_assumed;
+        }
+
+        // Cursor visibility and position
+        {
+            // Toggle mouse cursor and adjust mouse position
+            if (m_fps_control_assumed && !m_fps_control_cursor_hidden)
+            {
+                m_mouse_last_position = m_input->GetMousePosition();
+                m_input->SetMouseVisible(false);
+                m_fps_control_cursor_hidden = true;
+            }
+            else if (!m_fps_control_assumed && m_fps_control_cursor_hidden)
+            {
+                m_input->SetMousePosition(m_mouse_last_position);
+                m_input->SetMouseVisible(true);
+                m_fps_control_cursor_hidden = false;
+            }
+        }
+
+        // Input
+        if (m_fps_control_assumed)
         {
             // Mouse look
             {
@@ -384,13 +414,16 @@ namespace Spartan
             }
         }
 
-        // Apply movement drag
-        m_movement_speed *= 1.0f - Helper::Saturate(m_movement_drag * delta_time);
-
-        // Translate for as long as there is speed
-        if (m_movement_speed != Vector3::Zero)
+        // Translation
         {
-            m_transform->Translate(m_movement_speed);
+            // Apply movement drag
+            m_movement_speed *= 1.0f - Helper::Saturate(m_movement_drag * delta_time);
+
+            // Translate for as long as there is speed
+            if (m_movement_speed != Vector3::Zero)
+            {
+                m_transform->Translate(m_movement_speed);
+            }
         }
     }
 

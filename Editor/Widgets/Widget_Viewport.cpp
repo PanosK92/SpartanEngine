@@ -42,6 +42,7 @@ Widget_Viewport::Widget_Viewport(Editor* editor) : Widget(editor)
     m_world     = m_context->GetSubsystem<World>();
     m_renderer  = m_context->GetSubsystem<Renderer>();
     m_settings  = m_context->GetSubsystem<Settings>();
+    m_input     = m_context->GetSubsystem<Input>();
 }
 
 void Widget_Viewport::TickVisible()
@@ -82,6 +83,9 @@ void Widget_Viewport::TickVisible()
         ImColor(255, 255, 255, 255),
         ImColor(50, 127, 166, 255)
     );
+
+    // Let the input system now if the mouse is within the viewport
+    m_input->SetMouseIsInViewport(ImGui::IsItemHovered());
 
     // If this widget was released, make the engine pick an entity.
     // Don't do that on mouse down as a mouse down event might also mean that the user is currently transforming the entity.

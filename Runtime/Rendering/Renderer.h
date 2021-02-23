@@ -149,7 +149,7 @@ namespace Spartan
         RHI_DescriptorSetLayoutCache* GetDescriptorLayoutSetCache() const { return m_descriptor_set_layout_cache.get(); }
         RHI_Texture* GetFrameTexture()                              const { return m_render_targets.at(RendererRt::Frame_Ldr).get(); }
         auto GetFrameNum()                                          const { return m_frame_num; }
-        const auto& GetCamera()                                     const { return m_camera; }
+        std::shared_ptr<Camera> GetCamera()                         const { return m_camera; }
         auto IsInitialized()                                        const { return m_initialized; }
         auto GetShaders()                                           const { return m_shaders; }
         uint32_t GetMaxResolution() const;
