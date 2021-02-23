@@ -37,11 +37,11 @@ namespace Spartan
         const std::shared_ptr<RHI_Device>& rhi_device,
         const bool blend_enabled                    /*= false*/,
         const RHI_Blend source_blend                /*= Blend_Src_Alpha*/,
-        const RHI_Blend dest_blend                    /*= Blend_Inv_Src_Alpha*/,
-        const RHI_Blend_Operation blend_op            /*= Blend_Operation_Add*/,
-        const RHI_Blend source_blend_alpha            /*= Blend_One*/,
+        const RHI_Blend dest_blend                  /*= Blend_Inv_Src_Alpha*/,
+        const RHI_Blend_Operation blend_op          /*= Blend_Operation_Add*/,
+        const RHI_Blend source_blend_alpha          /*= Blend_One*/,
         const RHI_Blend dest_blend_alpha            /*= Blend_One*/,
-        const RHI_Blend_Operation blend_op_alpha,    /*= Blend_Operation_Add*/
+        const RHI_Blend_Operation blend_op_alpha,   /*= Blend_Operation_Add*/
         const float blend_factor                    /*= 0.0f*/
     )
     {
@@ -58,47 +58,31 @@ namespace Spartan
         }
 
         // Save parameters
-        m_blend_enabled            = blend_enabled;
-        m_source_blend            = source_blend;
+        m_blend_enabled         = blend_enabled;
+        m_source_blend          = source_blend;
         m_dest_blend            = dest_blend;
-        m_blend_op                = blend_op;
+        m_blend_op              = blend_op;
         m_source_blend_alpha    = source_blend_alpha;
-        m_dest_blend_alpha        = dest_blend_alpha;
+        m_dest_blend_alpha      = dest_blend_alpha;
         m_blend_op_alpha        = blend_op_alpha;
         m_blend_factor          = blend_factor;
 
         // Create description
         D3D11_BLEND_DESC desc;
-        desc.AlphaToCoverageEnable    = false;
-        desc.IndependentBlendEnable = blend_enabled;
-        for (auto& render_target : desc.RenderTarget)
-        {
-            render_target.BlendEnable            = blend_enabled;
-            render_target.SrcBlend                = d3d11_blend_factor[source_blend];
-            render_target.DestBlend                = d3d11_blend_factor[dest_blend];
-            render_target.BlendOp                = d3d11_blend_operation[blend_op];
-            render_target.SrcBlendAlpha            = d3d11_blend_factor[source_blend_alpha];
-            render_target.DestBlendAlpha        = d3d11_blend_factor[dest_blend_alpha];
-            render_target.BlendOpAlpha            = d3d11_blend_operation[blend_op_alpha];
-            render_target.RenderTargetWriteMask    = D3D11_COLOR_WRITE_ENABLE_ALL;
-        }
-        desc.RenderTarget[0].BlendEnable = blend_enabled;
+        desc.AlphaToCoverageEnable                  = false;
+        desc.IndependentBlendEnable                 = false;
+        desc.RenderTarget[0].BlendEnable            = blend_enabled;
+        desc.RenderTarget[0].SrcBlend               = d3d11_blend_factor[source_blend];
+        desc.RenderTarget[0].DestBlend              = d3d11_blend_factor[dest_blend];
+        desc.RenderTarget[0].BlendOp                = d3d11_blend_operation[blend_op];
+        desc.RenderTarget[0].SrcBlendAlpha          = d3d11_blend_factor[source_blend_alpha];
+        desc.RenderTarget[0].DestBlendAlpha         = d3d11_blend_factor[dest_blend_alpha];
+        desc.RenderTarget[0].BlendOpAlpha           = d3d11_blend_operation[blend_op_alpha];
+        desc.RenderTarget[0].RenderTargetWriteMask  = D3D11_COLOR_WRITE_ENABLE_ALL;
+        desc.RenderTarget[0].BlendEnable            = blend_enabled;
 
-        // Create blend state
-        auto blend_state    = static_cast<ID3D11BlendState*>(m_resource);
-        const auto result    = rhi_device->GetContextRhi()->device->CreateBlendState(&desc, &blend_state);
-
-        // Handle result
-        if (SUCCEEDED(result))
-        {
-            m_resource        = static_cast<void*>(blend_state);
-            m_initialized    = true;    
-        }
-        else
-        {
-            m_initialized = false;
-            LOG_ERROR("Failed to create blend state %s.", d3d11_utility::dxgi_error_to_string(result));
-        }
+        // Create
+        m_initialized = d3d11_utility::error_check(rhi_device->GetContextRhi()->device->CreateBlendState(&desc, reinterpret_cast<ID3D11BlendState**>(&m_resource)));
     }
 
     RHI_BlendState::~RHI_BlendState()
