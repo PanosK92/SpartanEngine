@@ -32,6 +32,7 @@ namespace Spartan
     class Renderer;
     class Settings;
     class World;
+    class Input;
 }
 //========================
 
@@ -50,5 +51,6 @@ private:
     bool m_is_resolution_dirty      = true;
     Spartan::Renderer* m_renderer   = nullptr;
     Spartan::Settings* m_settings   = nullptr;
-    Spartan::World* m_world         = nullptr; 
+    Spartan::World* m_world         = nullptr;
+    Spartan::Input* m_input         = nullptr;
 };

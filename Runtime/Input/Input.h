@@ -88,21 +88,24 @@ namespace Spartan
         //===================================
         
         // Keys
-        bool GetKey(const KeyCode key)        { return m_keys[static_cast<uint32_t>(key)]; }                                    // Returns true while the button identified by KeyCode is held down.
-        bool GetKeyDown(const KeyCode key)    { return GetKey(key) && !m_keys_previous_frame[static_cast<uint32_t>(key)]; }    // Returns true during the frame the user pressed down the button identified by KeyCode.
-        bool GetKeyUp(const KeyCode key)    { return !GetKey(key) && m_keys_previous_frame[static_cast<uint32_t>(key)]; }    // Returns true the first frame the user releases the button identified by KeyCode.
+        bool GetKey(const KeyCode key)      { return m_keys[static_cast<uint32_t>(key)]; }                                  // Returns true while the button identified by KeyCode is held down.
+        bool GetKeyDown(const KeyCode key)  { return GetKey(key) && !m_keys_previous_frame[static_cast<uint32_t>(key)]; }   // Returns true during the frame the user pressed down the button identified by KeyCode.
+        bool GetKeyUp(const KeyCode key)    { return !GetKey(key) && m_keys_previous_frame[static_cast<uint32_t>(key)]; }   // Returns true the first frame the user releases the button identified by KeyCode.
 
         // Mouse
-        const Math::Vector2& GetMousePosition() const { return m_mouse_position; }
+        void SetMouseVisible(const bool visible);
+        void SetMouseIsInViewport(const bool is_in_viewport)          { m_mouse_is_in_viewport = is_in_viewport; }
+        bool GetMouseIsInViewport()                             const { return m_mouse_is_in_viewport; }
+        const Math::Vector2& GetMousePosition()                 const { return m_mouse_position; }
         void SetMousePosition(const Math::Vector2& position);
-        const Math::Vector2& GetMouseDelta()    const { return m_mouse_delta; }
-        const float GetMouseWheelDelta()        const { return m_mouse_wheel_delta; }
+        const Math::Vector2& GetMouseDelta()                    const { return m_mouse_delta; }
+        float GetMouseWheelDelta()                              const { return m_mouse_wheel_delta; }
 
         // Gamepad
-        bool GamepadIsConnected() const                            { return m_gamepad_connected; }
-        const Math::Vector2& GetGamepadThumbStickLeft() const    { return m_gamepad_thumb_left; }
-        const Math::Vector2& GetGamepadThumbStickRight() const    { return m_gamepad_thumb_right; }
-        float GetGamepadTriggerLeft() const                        { return m_gamepad_trigger_left; }
+        bool GamepadIsConnected() const                         { return m_gamepad_connected; }
+        const Math::Vector2& GetGamepadThumbStickLeft() const   { return m_gamepad_thumb_left; }
+        const Math::Vector2& GetGamepadThumbStickRight() const  { return m_gamepad_thumb_right; }
+        float GetGamepadTriggerLeft() const                     { return m_gamepad_trigger_left; }
         float GetGamepadTriggerRight() const                    { return m_gamepad_trigger_right; }
         // Vibrate the gamepad. Motor speed range is from 0.0 to 1.0f
         // The left motor is the low-frequency rumble motor. The right motor is the high-frequency rumble motor. 
@@ -113,13 +116,14 @@ namespace Spartan
         // Keys
         std::array<bool, 99> m_keys;
         std::array<bool, 99> m_keys_previous_frame;
-        uint32_t start_index_mouse        = 83;
+        uint32_t start_index_mouse      = 83;
         uint32_t start_index_gamepad    = 86;
 
         // Mouse
         Math::Vector2 m_mouse_position  = Math::Vector2::Zero;
         Math::Vector2 m_mouse_delta     = Math::Vector2::Zero;
         float m_mouse_wheel_delta       = 0;
+        bool m_mouse_is_in_viewport     = true;
 
         // Gamepad   
         bool m_gamepad_connected            = false;

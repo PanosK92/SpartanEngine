@@ -92,13 +92,12 @@ namespace Spartan
         float GetIso() const            { return m_iso; }
         void SetIso(const float iso)    { m_iso = iso; }
 
-        
         float GetEv100()    const { return std::log2((m_aperture * m_aperture) / m_shutter_speed * 100.0f / m_iso);} // Reference: https://google.github.io/filament/Filament.md.html#lighting/units/lightunitsvalidation
         float GetExposure() const { return 1.0f / (std::pow(2.0f, GetEv100()) * 1.2f); } // Frostbite: https://seblagarde.files.wordpress.com/2015/07/course_notes_moving_frostbite_to_pbr_v32.pdf
 
         //= PLANES/PROJECTION =================================================
-        void SetNearPlane(float near_plane);        
-        void SetFarPlane(float far_plane);    
+        void SetNearPlane(float near_plane);
+        void SetFarPlane(float far_plane);
         void SetProjection(ProjectionType projection);
         float GetNearPlane()                const { return m_near_plane; }
         float GetFarPlane()                 const { return m_far_plane; }
@@ -108,7 +107,7 @@ namespace Spartan
         //= FOV ==========================================================
         float GetFovHorizontalRad() const { return m_fov_horizontal_rad; }
         float GetFovVerticalRad()   const;
-        float GetFovHorizontalDeg() const;    
+        float GetFovHorizontalDeg() const;
         void SetFovHorizontalDeg(float fov);
         const RHI_Viewport& GetViewport() const;
         //================================================================
@@ -116,10 +115,10 @@ namespace Spartan
         //= MISC ==============================================================================
         bool IsInViewFrustrum(Renderable* renderable) const;
         bool IsInViewFrustrum(const Math::Vector3& center, const Math::Vector3& extents) const;
-        const Math::Vector4& GetClearColor() const        { return m_clear_color; }
-        void SetClearColor(const Math::Vector4& color)    { m_clear_color = color; }
-        bool GetFpsControl()                 const { return m_fps_control; }
-        void SetFpsControl(const bool fps_control) { m_fps_control = fps_control; }
+        const Math::Vector4& GetClearColor() const            { return m_clear_color; }
+        void SetClearColor(const Math::Vector4& color)        { m_clear_color = color; }
+        bool GetFpsControl()                            const { return m_fps_control; }
+        void SetFpsControl(const bool fps_control)            { m_fps_control = fps_control; }
         //=====================================================================================
 
         Math::Matrix ComputeViewMatrix() const;
@@ -133,7 +132,7 @@ namespace Spartan
         float m_iso                         = 500.0f;       // Sensitivity to light.
         float m_fov_horizontal_rad          = Math::Helper::DegreesToRadians(90.0f);
         float m_near_plane                  = 0.3f;
-        float m_far_plane                   = 1000.0f;    
+        float m_far_plane                   = 1000.0f;
         ProjectionType m_projection_type    = Projection_Perspective;
         Math::Vector4 m_clear_color         = Math::Vector4(0.396f, 0.611f, 0.937f, 1.0f); // A nice cornflower blue 
         Math::Matrix m_view                 = Math::Matrix::Identity;
@@ -143,6 +142,9 @@ namespace Spartan
         Math::Quaternion m_rotation         = Math::Quaternion::Identity;
         bool m_is_dirty                     = false;
         bool m_fps_control                  = true;
+        bool m_fps_control_assumed          = false;
+        Math::Vector2 m_mouse_last_position = Math::Vector2::Zero;
+        bool m_fps_control_cursor_hidden    = false;
         Math::Vector3 m_movement_speed      = Math::Vector3::Zero;
         float m_movement_speed_min          = 0.5f;
         float m_movement_speed_max          = 5.0f;
@@ -156,7 +158,7 @@ namespace Spartan
         Math::Ray m_ray;
         Math::Frustum m_frustrum;
 
-        // Dependencies     
+        // Dependencies
         Renderer* m_renderer    = nullptr;
         Input* m_input          = nullptr;
     };

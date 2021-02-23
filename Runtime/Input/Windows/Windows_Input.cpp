@@ -224,6 +224,18 @@ namespace Spartan
         m_is_new_frame = false;
     }
 
+    void Input::SetMouseVisible(const bool visible)
+    {
+        if (visible)
+        {
+            while (::ShowCursor(TRUE) < 0);
+        }
+        else
+        {
+            while (::ShowCursor(FALSE) >= 0);
+        }
+    }
+
     void Input::SetMousePosition(const Math::Vector2& position)
     {
         const WindowData& window_data   = m_context->m_engine->GetWindowData();
