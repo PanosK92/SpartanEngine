@@ -81,6 +81,7 @@ Eye Adaptation 					 	| -          	| Low priority
 Subsurface Scattering 			 	| -          	| Low priority
 Ray traced shadows				 	| -          	| -
 Ray traced reflections			 	| -          	| -
+Linux support			 	        | -          	| Setup a virtual machine, get Vulkan running. Might bring new people into the project.
 
 ###### Future
 - Skeletal Animation.
