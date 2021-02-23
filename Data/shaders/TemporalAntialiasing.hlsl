@@ -113,9 +113,9 @@ float3 clip_history(uint2 thread_id, uint group_index, uint3 group_id, Texture2D
     float3 cbl = colors_current[array_pos.x - 1][array_pos.y + 1];
     float3 cbc = colors_current[array_pos.x][array_pos.y + 1];
     float3 cbr = colors_current[array_pos.x + 1][array_pos.y + 1];
-    
+
     #else
-    
+
     uint2 du = uint2(1, 0);
     uint2 dv = uint2(0, 1);
 
@@ -130,12 +130,11 @@ float3 clip_history(uint2 thread_id, uint group_index, uint3 group_id, Texture2D
     float3 cbr = tex[thread_id + dv + du].rgb;
 
     #endif
-  
+
     float3 color_min = min(ctl, min(ctc, min(ctr, min(cml, min(cmc, min(cmr, min(cbl, min(cbc, cbr))))))));
     float3 color_max = max(ctl, max(ctc, max(ctr, max(cml, max(cmc, max(cmr, max(cbl, max(cbc, cbr))))))));
     float3 color_avg = (ctl + ctc + ctr + cml + cmc + cmr + cbl + cbc + cbr) / 9.0f;
 
-    // Clip history to the neighbourhood of the current sample
     return saturate_16(clip_aabb(color_min, color_max, clamp(color_avg, color_min, color_max), color_history));
 }
 

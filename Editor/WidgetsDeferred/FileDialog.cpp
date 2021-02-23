@@ -252,7 +252,7 @@ void FileDialog::ShowMiddle()
                     {
                         // Determine type of click
                         item.Clicked();
-                        const auto is_single_click = item.GetTimeSinceLastClickMs() > 500;
+                        const bool is_single_click = item.GetTimeSinceLastClickMs() > 500;
 
                         if (is_single_click)
                         {
@@ -276,7 +276,10 @@ void FileDialog::ShowMiddle()
                             }
 
                             // Callback
-                            if (m_callback_on_item_double_clicked) m_callback_on_item_double_clicked(m_navigation.m_path_current);
+                            if (m_callback_on_item_double_clicked)
+                            {
+                                m_callback_on_item_double_clicked(m_navigation.m_path_current);
+                            }
                         }
                     }
 
@@ -294,11 +297,21 @@ void FileDialog::ShowMiddle()
                         ItemDrag(&item);
                     }
 
-                    ImGui::SetCursorScreenPos(ImVec2(rect_button.Min.x + style.FramePadding.x, rect_button.Min.y + style.FramePadding.y));
-                    ImGui::Image(item.GetTexture(), ImVec2(
-                        rect_button.Max.x - rect_button.Min.x - style.FramePadding.x * 2.0f,
-                        rect_button.Max.y - rect_button.Min.y - style.FramePadding.y - label_height - 5.0f)
-                    );
+                    // Image
+                    {
+                        ImGui::SetCursorScreenPos(ImVec2(rect_button.Min.x + style.FramePadding.x, rect_button.Min.y + style.FramePadding.y));
+
+                        ImVec2 image_size_max   = ImVec2(rect_button.Max.x - rect_button.Min.x - style.FramePadding.x * 2.0f, rect_button.Max.y - rect_button.Min.y - style.FramePadding.y - label_height - 5.0f);
+                        ImVec2 image_size       = item.GetTexture() ? ImVec2(static_cast<float>(item.GetTexture()->GetWidth()), static_cast<float>(item.GetTexture()->GetHeight())) : image_size_max;
+
+                        // TODO
+                        // Scale down the image size to fit the max available size while respecting it's aspect ratio
+                        //float size_delta = image_size.x > image_size.y ? Math::Helper::Abs(image_size_max.x - image_size.x) : Math::Helper::Abs(image_size_max.y - image_size.y);
+                        //image_size.x -= size_delta;
+                        //image_size.y -= size_delta;
+
+                        ImGui::Image(item.GetTexture(), image_size_max);
+                    }
 
                     ImGui::PopStyleColor(2);
                     ImGui::PopID();
@@ -405,10 +418,10 @@ void FileDialog::ItemDrag(FileDialogItem* item) const
             ImGuiEx::CreateDragPayload(m_drag_drop_payload);
         };
 
-        if (FileSystem::IsSupportedModelFile(item->GetPath()))    { set_payload(ImGuiEx::DragPayload_Model,        item->GetPath()); }
-        if (FileSystem::IsSupportedImageFile(item->GetPath()))    { set_payload(ImGuiEx::DragPayload_Texture,        item->GetPath()); }
-        if (FileSystem::IsSupportedAudioFile(item->GetPath()))    { set_payload(ImGuiEx::DragPayload_Audio,        item->GetPath()); }
-        if (FileSystem::IsEngineScriptFile(item->GetPath()))    { set_payload(ImGuiEx::DragPayload_Script,        item->GetPath()); }
+        if (FileSystem::IsSupportedModelFile(item->GetPath()))  { set_payload(ImGuiEx::DragPayload_Model,       item->GetPath()); }
+        if (FileSystem::IsSupportedImageFile(item->GetPath()))  { set_payload(ImGuiEx::DragPayload_Texture,     item->GetPath()); }
+        if (FileSystem::IsSupportedAudioFile(item->GetPath()))  { set_payload(ImGuiEx::DragPayload_Audio,       item->GetPath()); }
+        if (FileSystem::IsEngineScriptFile(item->GetPath()))    { set_payload(ImGuiEx::DragPayload_Script,      item->GetPath()); }
         if (FileSystem::IsEngineMaterialFile(item->GetPath()))  { set_payload(ImGuiEx::DragPayload_Material,    item->GetPath()); }
 
         // Preview
@@ -498,7 +511,7 @@ bool FileDialog::DialogUpdateFromDirectory(const std::string& path)
         child_files = FileSystem::GetSupportedSceneFilesInDirectory(path);
         for (const auto& child_file : child_files)
         {
-            m_items.emplace_back(child_file, IconProvider::Get().Thumbnail_Load(child_file, Thumbnail_File_Scene, static_cast<int>(m_item_size.x)));
+            m_items.emplace_back(child_file, IconProvider::Get().Thumbnail_Load(child_file, Thumbnail_File_World, static_cast<int>(m_item_size.x)));
         }
     }
     else if (m_filter == FileDialog_Filter_Model)

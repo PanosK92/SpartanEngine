@@ -19,66 +19,8 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========
-#include "Common.hlsl"
-//====================
-
-#if DIRECTIONAL
-static const uint light_array_size = 4;
-#else
-static const uint light_array_size = 1;
-#endif
-
-// Attenuation over distance
-float get_light_attenuation_distance(const Light light, const float3 position)
-{
-    float distance_to_pixel = length(position - light.position);
-    float attenuation       = saturate(1.0f - distance_to_pixel / light.far);
-    return attenuation * attenuation;
-}
-
-// Attenuation over angle (approaching the outer cone)
-float get_light_attenuation_angle(const Light light, const float3 direction)
-{
-    float light_dot_pixel   = dot(direction, light.direction);
-    float cutoffAngle       = 1.0f - light.angle;
-    float epsilon           = cutoffAngle - cutoffAngle * 0.9f;
-    float attenuation       = saturate((light_dot_pixel - cutoffAngle) / epsilon);
-    return attenuation * attenuation;
-}
-
-// Final attenuation for all suported lights
-float get_light_attenuation(const Light light, const float3 position)
-{
-    float attenuation = 0.0f;
-    
-    #if DIRECTIONAL
-    attenuation   = saturate(dot(-cb_light_direction.xyz, float3(0.0f, 1.0f, 0.0f)));
-    #elif POINT
-    attenuation   = get_light_attenuation_distance(light, position);
-    #elif SPOT
-    attenuation   = get_light_attenuation_distance(light, position) * get_light_attenuation_angle(light, cb_light_direction.xyz);
-    #endif
-
-    return attenuation;
-}
-
-float3 get_light_direction(Light light, Surface surface)
-{
-    float3 direction = 0.0f;
-    
-    #if DIRECTIONAL
-    direction   = normalize(cb_light_direction.xyz);
-    #elif POINT
-    direction   = normalize(surface.position - light.position);
-    #elif SPOT
-    direction   = normalize(surface.position - light.position);
-    #endif
-
-    return direction;
-}
-
 //= INCLUDES ================
+#include "Common.hlsl"
 #include "BRDF.hlsl"
 #include "ShadowMapping.hlsl"
 #include "VolumetricFog.hlsl"
@@ -91,43 +33,18 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     if (thread_id.x >= uint(g_resolution.x) || thread_id.y >= uint(g_resolution.y))
         return;
 
-    // Sample albedo
-    float4 sample_albedo = tex_albedo[thread_id.xy];
-
-    // If this is a transparent pass, ignore all opaque pixels
-    #if TRANSPARENT
-    if (sample_albedo.a == 1.0f)
-        return;
-    #endif
-
-    const float2 uv = (thread_id.xy + 0.5f) / g_resolution;
-
-    // Sample ssao
-    #if TRANSPARENT
-    float sample_ssao   = 1.0f; // we don't do ao for transparents
-    #else
-    float sample_ssao   = tex_ssao.SampleLevel(sampler_point_clamp, uv, 0).r; // if ssao is disabled, the texture will be 1x1 white pixel, so we use a sampler
-    #endif
-
-    // Create material
+    // Create surface
     Surface surface;
-    surface.Build(uv, float4(1.0f, 1.0f, 1.0f, sample_albedo.a), tex_normal[thread_id.xy], tex_material[thread_id.xy], tex_depth[thread_id.xy].r, sample_ssao);
+    bool use_albedo = false; // we write out pure light color (just a choice)
+    surface.Build(thread_id.xy, use_albedo);
 
-    // Fill light struct
+    // If this is a transparent pass, ignore all opaque pixels, and vice versa.
+    if ((g_is_transprent_pass && surface.is_opaque()) || (!g_is_transprent_pass && surface.is_transparent()))
+        return;
+
+    // Create light
     Light light;
-    light.color             = cb_light_color.rgb;
-    light.position          = cb_light_position.xyz;
-    light.near              = 0.1f;
-    light.intensity         = cb_light_intensity_range_angle_bias.x;
-    light.far               = cb_light_intensity_range_angle_bias.y;
-    light.angle             = cb_light_intensity_range_angle_bias.z;
-    light.bias              = cb_light_intensity_range_angle_bias.w;
-    light.normal_bias       = cb_light_normal_bias;
-    light.distance_to_pixel = length(surface.position - light.position);
-    light.direction         = get_light_direction(light, surface);
-    light.attenuation       = get_light_attenuation(light, surface.position);
-    light.n_dot_l           = saturate(dot(surface.normal, -light.direction)); // Pre-compute n_dot_l since it's used in many places
-    light.radiance          = light.color * light.intensity * light.attenuation * light.n_dot_l;
+    light.Build(surface);
 
     // Shadows
     float4 shadow = 1.0f;
@@ -147,17 +64,15 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         #endif
 
         // Ensure that the shadow is as transparent as the material
-        #if TRANSPARENT
-        shadow.a = clamp(shadow.a, surface.albedo.a, 1.0f);
-        #endif
+        if (g_is_transprent_pass)
+        {
+            shadow.a = clamp(shadow.a, surface.alpha, 1.0f);
+        }
     }
 
-    // Compute multi-bounce ambient occlusion
-    float3 multi_bounce_ao = MultiBounceAO(surface.occlusion, sample_albedo.rgb);
-
     // Compute final radiance
-    light.radiance *= shadow.rgb * shadow.a * multi_bounce_ao;
-
+    light.radiance *= shadow.rgb * shadow.a;
+    
     float3 light_diffuse    = 0.0f;
     float3 light_specular   = 0.0f;
     float3 light_volumetric = 0.0f;
@@ -204,7 +119,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         light_diffuse += BRDF_Diffuse(surface, n_dot_v, light.n_dot_l, v_dot_h);
 
         /* Light - Subsurface scattering fast approximation - Will activate soon
-        #if TRANSPARENT
+        if (g_is_transprent_pass)
         {
             const float thickness_edge  = 0.1f;
             const float thickness_face  = 1.0f;
@@ -220,7 +135,6 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
             
             light_diffuse += surface.albedo.rgb * light.color * intensity;
         }
-        #endif
         */
 
         // Tone down diffuse such as that only non metals have it
@@ -234,10 +148,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     }
     #endif
     
-     // Light - Emissive
-    float3 light_emissive = surface.emissive * surface.albedo.rgb * 50.0f;
-
-    tex_out_rgb[thread_id.xy]   += saturate_16(light_diffuse * light.radiance + light_emissive);
+    tex_out_rgb[thread_id.xy]   += saturate_16(light_diffuse * light.radiance + surface.emissive);
     tex_out_rgb2[thread_id.xy]  += saturate_16(light_specular * light.radiance);
     tex_out_rgb3[thread_id.xy]  += saturate_16(light_volumetric);
 }

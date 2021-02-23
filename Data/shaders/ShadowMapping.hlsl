@@ -329,7 +329,7 @@ float4 Shadow_Map(Surface surface, Light light)
     #if DIRECTIONAL
     {
         [unroll]
-        for (uint cascade = 0; cascade < light_array_size; cascade++)
+        for (uint cascade = 0; cascade < light.array_size; cascade++)
         {
             // Compute NDC position for primary cascade
             float3 pos_ndc = world_to_ndc(position_world, cb_light_view_projection[cascade]);
@@ -350,9 +350,9 @@ float4 Shadow_Map(Surface surface, Light light)
                 // Sample primary cascade
                 shadow.a = SampleShadowMap(surface, float3(uv, cascade), pos_ndc.z);
 
-                #if (SHADOWS_TRANSPARENT == 1 && TRANSPARENT == 0)
+                #if (SHADOWS_TRANSPARENT == 1)
                 [branch]
-                if (shadow.a > 0.0f)
+                if (shadow.a > 0.0f && surface.is_opaque())
                 {
                     shadow *= Technique_Vogel_Color(surface, float3(uv, cascade));
                 }
@@ -360,7 +360,7 @@ float4 Shadow_Map(Surface surface, Light light)
 
                 // If we are close to the edge of the primary cascade and a secondary cascade exists, lerp with it.
                 [branch]
-                if (distance_to_bounds <= g_shadow_cascade_blend_threshold && cascade < light_array_size)
+                if (distance_to_bounds <= g_shadow_cascade_blend_threshold && cascade < light.array_size)
                 {
                     int cacade_secondary = cascade + 1;
 
@@ -375,9 +375,9 @@ float4 Shadow_Map(Surface surface, Light light)
                     float alpha = smoothstep(0.0f, distance_to_bounds, g_shadow_cascade_blend_threshold);
                     shadow.a = lerp(shadow_secondary, shadow.a, alpha);
                     
-                    #if (SHADOWS_TRANSPARENT == 1 && TRANSPARENT == 0)
+                    #if (SHADOWS_TRANSPARENT == 1)
                     [branch]
-                    if (shadow.a > 0.0f)
+                    if (shadow.a > 0.0f && surface.is_opaque())
                     {
                         shadow = min(shadow, Technique_Vogel_Color(surface, float3(uv, cacade_secondary)));
                     }
@@ -398,9 +398,9 @@ float4 Shadow_Map(Surface surface, Light light)
             auto_bias(surface, pos_ndc, light);
             shadow.a = SampleShadowMap(surface, light.direction, pos_ndc.z);
             
-            #if (SHADOWS_TRANSPARENT == 1 && TRANSPARENT == 0)
+            #if (SHADOWS_TRANSPARENT == 1)
             [branch]
-            if (shadow.a > 0.0f)
+            if (shadow.a > 0.0f && surface.is_opaque())
             {
                 shadow *= Technique_Vogel_Color(surface, light.direction);
             }
@@ -416,9 +416,9 @@ float4 Shadow_Map(Surface surface, Light light)
             auto_bias(surface, pos_ndc, light);
             shadow.a = SampleShadowMap(surface, float3(ndc_to_uv(pos_ndc), 0.0f), pos_ndc.z);
 
-            #if (SHADOWS_TRANSPARENT == 1 && TRANSPARENT == 0)
+            #if (SHADOWS_TRANSPARENT == 1)
             [branch]
-            if (shadow.a > 0.0f)
+            if (shadow.a > 0.0f && surface.is_opaque())
             {
                 shadow *= Technique_Vogel_Color(surface, light.direction);
             }
