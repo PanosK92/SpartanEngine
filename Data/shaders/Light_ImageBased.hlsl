@@ -56,7 +56,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         // Compute refraction UV
         float ior               = 1.5; // glass
         float2 normal_view_2d = normalize(mul(float4(surface.normal.xyz, 0.0f), g_view).xyz).xy;
-        float2 refraction_uv    = uv + normal_view_2d * ior * 0.03f;
+        float2 refraction_uv    = uv + normal_view_2d * ior * 0.01f;
 
         // Only refract what's behind the surface
         if (get_linear_depth(refraction_uv) > get_linear_depth(surface.depth)) // refraction (only refract what's behind the surface)
