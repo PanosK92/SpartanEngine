@@ -140,38 +140,38 @@ float3 world_to_view(float3 x, bool is_position = true)
 
 float3 world_to_ndc(float3 x, bool is_position = true)
 {
-    float4 projectedCoords = mul(float4(x, (float)is_position), g_view_projection);
-    return projectedCoords.xyz / projectedCoords.w;
+    float4 ndc = mul(float4(x, (float)is_position), g_view_projection);
+    return ndc.xyz / ndc.w;
 }
 
 float3 world_to_ndc(float3 x, float4x4 transform) // shadow mapping
 {
-    float4 projectedCoords = mul(float4(x, 1.0f), transform);
-    return projectedCoords.xyz / projectedCoords.w;
+    float4 ndc = mul(float4(x, 1.0f), transform);
+    return ndc.xyz / ndc.w;
 }
 
 float3 view_to_ndc(float3 x, bool is_position = true)
 {
-    float4 projectedCoords = mul(float4(x, (float)is_position), g_projection);
-    return projectedCoords.xyz / projectedCoords.w;
+    float4 ndc = mul(float4(x, (float) is_position), g_projection);
+    return ndc.xyz / ndc.w;
 }
 
 float2 world_to_uv(float3 x, bool is_position = true)
 {
-    float4 projectedCoords = mul(float4(x, (float)is_position), g_view_projection);
-    return (projectedCoords.xy / projectedCoords.w) * float2(0.5f, -0.5f) + 0.5f;
+    float4 uv = mul(float4(x, (float)is_position), g_view_projection);
+    return (uv.xy / uv.w) * float2(0.5f, -0.5f) + 0.5f;
 }
 
 float2 world_to_uv_unjittered(float3 x, bool is_position = true)
 {
-    float4 projectedCoords = mul(float4(x, (float)is_position), g_view_projection_unjittered);
-    return (projectedCoords.xy / projectedCoords.w) * float2(0.5f, -0.5f) + 0.5f;
+    float4 uv = mul(float4(x, (float) is_position), g_view_projection_unjittered);
+    return (uv.xy / uv.w) * float2(0.5f, -0.5f) + 0.5f;
 }
 
 float2 view_to_uv(float3 x, bool is_position = true)
 {
-    float4 projectedCoords = mul(float4(x, (float)is_position), g_projection);
-    return (projectedCoords.xy / projectedCoords.w) * float2(0.5f, -0.5f) + 0.5f;
+    float4 uv = mul(float4(x, (float) is_position), g_projection);
+    return (uv.xy / uv.w) * float2(0.5f, -0.5f) + 0.5f;
 }
 
 float2 ndc_to_uv(float3 x)

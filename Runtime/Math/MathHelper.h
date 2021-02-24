@@ -118,32 +118,30 @@ namespace Spartan::Math::Helper
         return distr(eng);
     }
 
-    constexpr uint32_t NextPowerOfTwo(uint32_t n)
+    constexpr uint32_t PreviousPowerOfTwo(uint32_t x)
     {
-        if (n < 2)
-            return 2;
-
-        if (n % 2 == 0)
-            return n << 1;
-
-        --n;
-        n |= n >> 1;
-        n |= n >> 2;
-        n |= n >> 4;
-        n |= n >> 8;
-        n |= n >> 16;
-        return n++;
+        x = x | (x >> 1);
+        x = x | (x >> 2);
+        x = x | (x >> 4);
+        x = x | (x >> 8);
+        x = x | (x >> 16);
+        return x - (x >> 1);
     }
 
-    constexpr uint32_t NextMultiple(uint32_t numToRound, uint32_t multiple)
+    constexpr uint32_t NextPowerOfTwo(uint32_t x)
     {
-        if (multiple == 0)
-            return numToRound;
+        if (x < 2)
+            return 2;
 
-        uint32_t remainder = numToRound % multiple;
-        if (remainder == 0)
-            return numToRound;
+        if (x % 2 == 0)
+            return x << 1;
 
-        return numToRound + multiple - remainder;
+        --x;
+        x |= x >> 1;
+        x |= x >> 2;
+        x |= x >> 4;
+        x |= x >> 8;
+        x |= x >> 16;
+        return x++;
     }
 }
