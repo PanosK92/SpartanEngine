@@ -331,7 +331,7 @@ float4 Shadow_Map(Surface surface, Light light)
         [unroll]
         for (uint cascade = 0; cascade < light.array_size; cascade++)
         {
-            // Project into shadow map space
+            // Project into light space
             float3 pos_ndc  = world_to_ndc(position_world, cb_light_view_projection[cascade]);
             float2 pos_uv   = ndc_to_uv(pos_ndc);
 
@@ -357,7 +357,7 @@ float4 Shadow_Map(Surface surface, Light light)
                 [branch]
                 if (cascade_fade > 0.0f && cascade < light.array_size - 1)
                 {
-                    // Project into shadow map space
+                    // Project into light space
                     pos_ndc = world_to_ndc(position_world, cb_light_view_projection[cascade]);
                     pos_uv  = ndc_to_uv(pos_ndc);
 
@@ -405,21 +405,29 @@ float4 Shadow_Map(Surface surface, Light light)
         [branch]
         if (light.distance_to_pixel < light.far)
         {
-            float3 pos_ndc = world_to_ndc(position_world, cb_light_view_projection[0]);
-            auto_bias(surface, pos_ndc, light);
-            shadow.a = SampleShadowMap(surface, float3(ndc_to_uv(pos_ndc), 0.0f), pos_ndc.z);
+            // Project into light space
+            float3 pos_ndc  = world_to_ndc(position_world, cb_light_view_projection[0]);
+            float2 pos_uv   = ndc_to_uv(pos_ndc);
 
-            #if (SHADOWS_TRANSPARENT == 1)
             [branch]
-            if (shadow.a > 0.0f && surface.is_opaque())
+            if (is_saturated(pos_uv))
             {
-                shadow *= Technique_Vogel_Color(surface, light.direction);
+                auto_bias(surface, pos_ndc, light);
+                shadow.a = SampleShadowMap(surface, float3(ndc_to_uv(pos_ndc), 0.0f), pos_ndc.z);
+
+                #if (SHADOWS_TRANSPARENT == 1)
+                [branch]
+                if (shadow.a > 0.0f && surface.is_opaque())
+                {
+                    shadow *= Technique_Vogel_Color(surface, light.direction);
+                }
+                #endif
             }
-            #endif
         }
     }
     #endif
     
     return shadow;
 }
+
 
