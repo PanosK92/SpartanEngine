@@ -299,6 +299,7 @@ void FileDialog::ShowMiddle()
 
                     // Image
                     {
+                        // Compute thumbnail size
                         ImVec2 image_size_max   = ImVec2(rect_button.Max.x - rect_button.Min.x - style.FramePadding.x * 2.0f, rect_button.Max.y - rect_button.Min.y - style.FramePadding.y - label_height - 5.0f);
                         ImVec2 image_size       = item.GetTexture() ? ImVec2(static_cast<float>(item.GetTexture()->GetWidth()), static_cast<float>(item.GetTexture()->GetHeight())) : image_size_max;
                         ImVec2 image_size_delta = ImVec2(0.0f, 0.0f);

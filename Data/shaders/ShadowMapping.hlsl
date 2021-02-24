@@ -33,7 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #if DIRECTIONAL
 static const uint   g_shadow_samples                    = 3;
 static const float  g_shadow_filter_size                = 3.0f;
-static const float  g_shadow_cascade_blend_threshold    = 0.1f;
+static const float  g_shadow_cascade_blend_threshold    = 0.8f;
 #else
 static const uint   g_shadow_samples        = 8; // penumbra requires a higher sample count to look good
 static const float  g_shadow_filter_size    = 2.0f;
@@ -331,55 +331,48 @@ float4 Shadow_Map(Surface surface, Light light)
         [unroll]
         for (uint cascade = 0; cascade < light.array_size; cascade++)
         {
-            // Compute NDC position for primary cascade
-            float3 pos_ndc = world_to_ndc(position_world, cb_light_view_projection[cascade]);
-
-            // Compute distance to projection bounds
-            float distance_to_bounds = 1.0f - max3(abs(pos_ndc));
+            // Project into shadow map space
+            float3 pos_ndc  = world_to_ndc(position_world, cb_light_view_projection[cascade]);
+            float2 pos_uv   = ndc_to_uv(pos_ndc);
 
             // Ensure not out of bound
             [branch]
-            if (distance_to_bounds >= 0.0f)
+            if (is_saturated(pos_uv))
             {
-                // Bias
-                auto_bias(surface, pos_ndc, light, cascade + 1);
-
-                // Uv
-                float2 uv = ndc_to_uv(pos_ndc);
-
                 // Sample primary cascade
-                shadow.a = SampleShadowMap(surface, float3(uv, cascade), pos_ndc.z);
+                auto_bias(surface, pos_ndc, light, cascade + 1);
+                shadow.a = SampleShadowMap(surface, float3(pos_uv, cascade), pos_ndc.z);
 
                 #if (SHADOWS_TRANSPARENT == 1)
                 [branch]
                 if (shadow.a > 0.0f && surface.is_opaque())
                 {
-                    shadow *= Technique_Vogel_Color(surface, float3(uv, cascade));
+                    shadow *= Technique_Vogel_Color(surface, float3(pos_uv, cascade));
                 }
                 #endif
 
-                // If we are close to the edge of the primary cascade and a secondary cascade exists, lerp with it.
+                // If we are close to the edge a secondary cascade exists, lerp with it.
+                float cascade_fade = (max2(abs(pos_ndc.xy)) - g_shadow_cascade_blend_threshold) * 4.0f;
+                cascade++;
                 [branch]
-                if (distance_to_bounds <= g_shadow_cascade_blend_threshold && cascade < light.array_size)
+                if (cascade_fade > 0.0f && cascade < light.array_size - 1)
                 {
-                    int cacade_secondary = cascade + 1;
-
-                    // Compute position in clip space for secondary cascade
-                    pos_ndc = world_to_ndc(position_world, cb_light_view_projection[cacade_secondary]);
+                    // Project into shadow map space
+                    pos_ndc = world_to_ndc(position_world, cb_light_view_projection[cascade]);
+                    pos_uv  = ndc_to_uv(pos_ndc);
 
                     // Sample secondary cascade
-                    auto_bias(surface, pos_ndc, light, cacade_secondary + 1);
-                    float shadow_secondary = SampleShadowMap(surface, float3(uv, cacade_secondary), pos_ndc.z);
+                    auto_bias(surface, pos_ndc, light, cascade + 1);
+                    float shadow_secondary = SampleShadowMap(surface, float3(pos_uv, cascade), pos_ndc.z);
 
                     // Blend cascades
-                    float alpha = smoothstep(0.0f, distance_to_bounds, g_shadow_cascade_blend_threshold);
-                    shadow.a = lerp(shadow_secondary, shadow.a, alpha);
+                    shadow.a = lerp(shadow.a, shadow_secondary, cascade_fade);
                     
                     #if (SHADOWS_TRANSPARENT == 1)
                     [branch]
                     if (shadow.a > 0.0f && surface.is_opaque())
                     {
-                        shadow = min(shadow, Technique_Vogel_Color(surface, float3(uv, cacade_secondary)));
+                        shadow = min(shadow, Technique_Vogel_Color(surface, float3(pos_uv, cascade)));
                     }
                     #endif
                 }
@@ -429,3 +422,4 @@ float4 Shadow_Map(Surface surface, Light light)
     
     return shadow;
 }
+

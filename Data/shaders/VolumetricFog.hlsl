@@ -34,7 +34,7 @@ float mie_scattering(float v_dot_l)
     return g_vl_x / pow(e, g_vl_pow);
 }
 
-float3 vl_raymarch(Light light, float3 ray_pos, float3 ray_step, float3 ray_dir, int array_index)
+float3 vl_raymarch(Light light, float3 ray_pos, float3 ray_step, float3 ray_dir, int cascade_index)
 {
     float3 fog = 0.0f;
 
@@ -53,7 +53,7 @@ float3 vl_raymarch(Light light, float3 ray_pos, float3 ray_step, float3 ray_dir,
         #endif
 
         #if SHADOWS == 1 ||  SHADOWS_TRANSPARENT == 1
-        float3 pos_ndc = world_to_ndc(ray_pos, cb_light_view_projection[array_index]);
+        float3 pos_ndc = world_to_ndc(ray_pos, cb_light_view_projection[cascade_index]);
         #endif
         
         // Shadows - Opaque
@@ -62,7 +62,7 @@ float3 vl_raymarch(Light light, float3 ray_pos, float3 ray_step, float3 ray_dir,
             #if POINT
             attenuation *= shadow_compare_depth(normalize(ray_pos - light.position), pos_ndc.z);
             #else // directional & spot
-            attenuation *= shadow_compare_depth(float3(ndc_to_uv(pos_ndc), array_index), pos_ndc.z);
+            attenuation *= shadow_compare_depth(float3(ndc_to_uv(pos_ndc), cascade_index), pos_ndc.z);
             #endif
         }
         #endif
@@ -73,7 +73,7 @@ float3 vl_raymarch(Light light, float3 ray_pos, float3 ray_step, float3 ray_dir,
             #if POINT
             attenuation *= shadow_sample_color(normalize(ray_pos - light.position)).rgb;
             #else // directional & spot
-            attenuation *= shadow_sample_color(float3(ndc_to_uv(pos_ndc), array_index)).rgb;
+            attenuation *= shadow_sample_color(float3(ndc_to_uv(pos_ndc), cascade_index)).rgb;
             #endif
         }
         #endif
@@ -103,32 +103,30 @@ float3 VolumetricLighting(Surface surface, Light light)
     #if DIRECTIONAL
     { 
         [unroll]
-        for (uint array_index = 0; array_index < light.array_size; array_index++)
+        for (uint cascade_index = 0; cascade_index < light.array_size; cascade_index++)
         {
-            // Compute ndc position
-            float3 pos_ndc = world_to_ndc(ray_pos, cb_light_view_projection[array_index]);
-
-            // Compute distance to projection bounds
-            float distance_to_bounds = 1.0f - max3(abs(pos_ndc));
+            // Project into shadow map space
+            float3 pos_ndc  = world_to_ndc(ray_pos, cb_light_view_projection[cascade_index]);
+            float2 pos_uv   = ndc_to_uv(pos_ndc);
 
             // Ensure not out of bound
             [branch]
-            if (distance_to_bounds >= 0.0f)
+            if (is_saturated(pos_uv))
             {
                 // Ray-march
-                fog += vl_raymarch(light, ray_pos, ray_step, ray_dir, array_index);
+                fog += vl_raymarch(light, ray_pos, ray_step, ray_dir, cascade_index);
 
-                // If we are close to the edge of the primary cascade and a next cascade exists, lerp with it.
-                uint array_index_secondary = array_index + 1;
+                // If we are close to the edge a secondary cascade exists, lerp with it.
+                float cascade_fade = (max2(abs(pos_ndc.xy)) - g_shadow_cascade_blend_threshold) * 4.0f;
+                cascade_index++;
                 [branch]
-                if (distance_to_bounds <= g_vl_cascade_blend_threshold && array_index_secondary < light.array_size)
+                if (cascade_fade > 0.0f && cascade_index < light.array_size - 1)
                 {
                     // Ray-march using the next cascade
-                    float3 fog_secondary = vl_raymarch(light, ray_pos, ray_step, ray_dir, array_index_secondary);
+                    float3 fog_secondary = vl_raymarch(light, ray_pos, ray_step, ray_dir, cascade_index);
                     
                     // Blend cascades
-                    float alpha = smoothstep(0.0f, distance_to_bounds, g_vl_cascade_blend_threshold);
-                    fog = lerp(fog_secondary, fog, alpha);
+                    fog = lerp(fog, fog_secondary, cascade_fade);
                     break;
                 }
                 break;
