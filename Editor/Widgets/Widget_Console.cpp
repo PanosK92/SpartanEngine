@@ -107,18 +107,18 @@ void Widget_Console::TickVisible()
                 // Log
                 ImGui::PushID(row);
                 {
-                    ImVec2 itemSize = ImGui::GetTextLineHeight();
+                    //ImVec2 itemSize = ImGui::GetTextLineHeight();
 
                     // Text (only add if visible as it's quite expensive)
-                    if (ImGui::IsRectVisible(itemSize))
+                    //if (ImGui::IsRectVisible(itemSize))
                     {
                         ImGui::PushStyleColor(ImGuiCol_Text, m_log_type_color[log.error_level]);
                         ImGui::TextUnformatted(log.text.c_str());
                         ImGui::PopStyleColor(1);
                     }
-                    else
+                    //else
                     {
-                        ImGui::Dummy(itemSize);
+                        //ImGui::Dummy(itemSize);
                     }
 
                     // Context menu
