@@ -299,18 +299,33 @@ void FileDialog::ShowMiddle()
 
                     // Image
                     {
-                        ImGui::SetCursorScreenPos(ImVec2(rect_button.Min.x + style.FramePadding.x, rect_button.Min.y + style.FramePadding.y));
-
                         ImVec2 image_size_max   = ImVec2(rect_button.Max.x - rect_button.Min.x - style.FramePadding.x * 2.0f, rect_button.Max.y - rect_button.Min.y - style.FramePadding.y - label_height - 5.0f);
                         ImVec2 image_size       = item.GetTexture() ? ImVec2(static_cast<float>(item.GetTexture()->GetWidth()), static_cast<float>(item.GetTexture()->GetHeight())) : image_size_max;
+                        ImVec2 image_size_delta = ImVec2(0.0f, 0.0f);
 
-                        // TODO
-                        // Scale down the image size to fit the max available size while respecting it's aspect ratio
-                        //float size_delta = image_size.x > image_size.y ? Math::Helper::Abs(image_size_max.x - image_size.x) : Math::Helper::Abs(image_size_max.y - image_size.y);
-                        //image_size.x -= size_delta;
-                        //image_size.y -= size_delta;
+                        // Scale the image size to fit the max available size while respecting it's aspect ratio
+                        {
+                            // Clamp width
+                            if (image_size.x != image_size_max.x)
+                            {
+                                float scale     = image_size_max.x / image_size.x;
+                                image_size.x    = image_size_max.x;
+                                image_size.y    = image_size.y * scale;
+                            }
+                            // Clamp height
+                            if (image_size.y != image_size_max.y)
+                            { 
+                                float scale     = image_size_max.y / image_size.y;
+                                image_size.x    = image_size.x * scale;
+                                image_size.y    = image_size_max.y;
+                            }
 
-                        ImGui::Image(item.GetTexture(), image_size_max);
+                            image_size_delta.x = image_size_max.x - image_size.x;
+                            image_size_delta.y = image_size_max.y - image_size.y;
+                        }
+
+                        ImGui::SetCursorScreenPos(ImVec2(rect_button.Min.x + style.FramePadding.x + image_size_delta.x * 0.5f, rect_button.Min.y + style.FramePadding.y + image_size_delta.y * 0.5f));
+                        ImGui::Image(item.GetTexture(), image_size);
                     }
 
                     ImGui::PopStyleColor(2);
