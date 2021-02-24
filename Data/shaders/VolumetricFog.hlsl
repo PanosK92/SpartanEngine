@@ -105,7 +105,7 @@ float3 VolumetricLighting(Surface surface, Light light)
         [unroll]
         for (uint cascade_index = 0; cascade_index < light.array_size; cascade_index++)
         {
-            // Project into shadow map space
+            // Project into light space
             float3 pos_ndc  = world_to_ndc(ray_pos, cb_light_view_projection[cascade_index]);
             float2 pos_uv   = ndc_to_uv(pos_ndc);
 
