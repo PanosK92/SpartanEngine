@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ShaderLight.h"
 #include "Font/Font.h"
 #include "Gizmos/Grid.h"
-#include "Gizmos/Transform_Gizmo.h"
+#include "Gizmos/TransformGizmo.h"
 #include "../Profiling/Profiler.h"
 #include "../RHI/RHI_CommandList.h"
 #include "../RHI/RHI_Implementation.h"
@@ -2114,7 +2114,7 @@ namespace Spartan
             return;
 
         // Transform
-        if (m_gizmo_transform->Update(m_camera.get(), m_gizmo_transform_size, m_gizmo_transform_speed))
+        if (m_gizmo_transform->Tick(m_camera.get(), m_gizmo_transform_size, m_gizmo_transform_speed))
         {
             // Set render state
             static RHI_PipelineState pso;
@@ -2132,8 +2132,8 @@ namespace Spartan
             pso.pass_name = "Pass_Gizmos_Axis_X";
             if (cmd_list->BeginRenderPass(pso))
             {
-                m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle().GetTransform(Vector3::Right);
-                m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle().GetColor(Vector3::Right);
+                m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle()->GetTransform(Vector3::Right);
+                m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle()->GetColor(Vector3::Right);
                 UpdateUberBuffer(cmd_list);
             
                 cmd_list->SetBufferIndex(m_gizmo_transform->GetIndexBuffer());
@@ -2146,8 +2146,8 @@ namespace Spartan
             pso.pass_name = "Pass_Gizmos_Axis_Y";
             if (cmd_list->BeginRenderPass(pso))
             {
-                m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle().GetTransform(Vector3::Up);
-                m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle().GetColor(Vector3::Up);
+                m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle()->GetTransform(Vector3::Up);
+                m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle()->GetColor(Vector3::Up);
                 UpdateUberBuffer(cmd_list);
 
                 cmd_list->SetBufferIndex(m_gizmo_transform->GetIndexBuffer());
@@ -2160,8 +2160,8 @@ namespace Spartan
             pso.pass_name = "Pass_Gizmos_Axis_Z";
             if (cmd_list->BeginRenderPass(pso))
             {
-                m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle().GetTransform(Vector3::Forward);
-                m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle().GetColor(Vector3::Forward);
+                m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle()->GetTransform(Vector3::Forward);
+                m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle()->GetColor(Vector3::Forward);
                 UpdateUberBuffer(cmd_list);
 
                 cmd_list->SetBufferIndex(m_gizmo_transform->GetIndexBuffer());
@@ -2176,8 +2176,8 @@ namespace Spartan
                 pso.pass_name = "Pass_Gizmos_Axis_XYZ";
                 if (cmd_list->BeginRenderPass(pso))
                 {
-                    m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle().GetTransform(Vector3::One);
-                    m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle().GetColor(Vector3::One);
+                    m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle()->GetTransform(Vector3::One);
+                    m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle()->GetColor(Vector3::One);
                     UpdateUberBuffer(cmd_list);
 
                     cmd_list->SetBufferIndex(m_gizmo_transform->GetIndexBuffer());

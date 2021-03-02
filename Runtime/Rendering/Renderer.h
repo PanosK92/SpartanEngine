@@ -45,7 +45,7 @@ namespace Spartan
     class Font;
     class Variant;
     class Grid;
-    class Transform_Gizmo;
+    class TransformGizmo;
     class Profiler;
 
     namespace Math
@@ -81,6 +81,7 @@ namespace Spartan
         void DrawDebugTriangle(const Math::Vector3& v0, const Math::Vector3& v1, const Math::Vector3& v2, const Math::Vector4& color = DEBUG_COLOR, const float duration = 0.0f, const bool depth = true);
         void DrawDebugRectangle(const Math::Rectangle& rectangle, const Math::Vector4& color = DEBUG_COLOR, const float duration = 0.0f, const bool depth = true);
         void DrawDebugBox(const Math::BoundingBox& box, const Math::Vector4& color = DEBUG_COLOR, const float duration = 0.0f, const bool depth = true);
+        void DrawDebugCircle(const Math::Vector3& center, const float radius, const uint32_t segments, const Math::Vector4& color = DEBUG_COLOR, const float duration = 0.0f, const bool depth = true);
 
         // Viewport
         const RHI_Viewport& GetViewport()           const { return m_viewport; }
@@ -270,7 +271,7 @@ namespace Spartan
         std::vector<float> m_lines_depth_enabled_duration;
 
         // Gizmos
-        std::unique_ptr<Transform_Gizmo> m_gizmo_transform;
+        std::unique_ptr<TransformGizmo> m_gizmo_transform;
         std::unique_ptr<Grid> m_gizmo_grid;
         Math::Rectangle m_gizmo_light_rect;
 

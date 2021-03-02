@@ -21,16 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-
-enum TransformHandle_Type
+enum class TransformHandleType
 {
-    TransformHandle_Position,
-    TransformHandle_Rotation,
-    TransformHandle_Scale
+    Position,
+    Rotation,
+    Scale
 };
 
-enum TransformHandle_Space
+enum class TransformHandleSpace
 {
-    TransformHandle_Local,
-    TransformHandle_World
+    Local,
+    World
 };
