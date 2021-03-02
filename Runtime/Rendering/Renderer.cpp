@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/World.h"
 #include "../Display/Display.h"
 #include "Gizmos/Grid.h"
-#include "Gizmos/Transform_Gizmo.h"
+#include "Gizmos/TransformGizmo.h"
 #include "../Utilities/Sampling.h"
 #include "../Profiling/Profiler.h"
 #include "../Resource/ResourceCache.h"
@@ -163,7 +163,7 @@ namespace Spartan
 
         // Editor specific
         m_gizmo_grid = make_unique<Grid>(m_rhi_device);
-        m_gizmo_transform = make_unique<Transform_Gizmo>(m_context);
+        m_gizmo_transform = make_unique<TransformGizmo>(m_context);
 
         CreateConstantBuffers();
         CreateShaders();

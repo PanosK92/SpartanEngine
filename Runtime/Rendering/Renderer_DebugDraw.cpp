@@ -121,4 +121,28 @@ namespace Spartan
         DrawDebugLine(Vector3(max.x, max.y, max.z), Vector3(min.x, max.y, max.z), color, color, duration, depth);
         DrawDebugLine(Vector3(min.x, max.y, max.z), Vector3(min.x, min.y, max.z), color, color, duration, depth);
     }
+
+    void Renderer::DrawDebugCircle(const Math::Vector3& center, const float radius, const uint32_t segments, const Math::Vector4& color /*= DEBUG_COLOR*/, const float duration /*= 0.0f*/, const bool depth /*= true*/)
+    {
+        if (radius <= 0.0f || segments <= 0)
+            return;
+
+        vector<Vector3> points;
+        points.reserve(segments + 1);
+        points.resize(segments + 1);
+
+        // Compute points on circle
+        float angle_step = Math::Helper::PI_2 / (float)segments;
+        for (uint32_t i = 0; i <= segments; i++)
+        {
+            float angle = (float)i * angle_step;
+            points[i] = Vector3(cos(angle) * radius + center.x, sin(angle) * radius + center.y, center.z);
+        }
+
+        // Draw
+        for (uint32_t i = 0; i <= segments - 1; i++)
+        {
+            DrawDebugLine(points[i], points[i + 1], color, color, duration, depth);
+        }
+    }
 }

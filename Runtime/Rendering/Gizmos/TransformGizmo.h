@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 #include "TransformHandle.h"
 #include "../../Core/Spartan_Definitions.h"
+#include <unordered_map>
 //=========================================
 
 namespace Spartan
@@ -37,19 +38,19 @@ namespace Spartan
     class RHI_IndexBuffer;
     class RHI_VertexBuffer;
 
-    class SPARTAN_CLASS Transform_Gizmo
+    class SPARTAN_CLASS TransformGizmo
     {
     public:
-        Transform_Gizmo(Context* context);
-        ~Transform_Gizmo() = default;
+        TransformGizmo(Context* context);
+        ~TransformGizmo() = default;
 
         std::weak_ptr<Spartan::Entity> SetSelectedEntity(const std::shared_ptr<Entity>& entity);
-        bool Update(Camera* camera, float handle_size, float handle_speed);
-        uint32_t GetIndexCount()                    const;
-        const RHI_VertexBuffer* GetVertexBuffer()   const;
-        const RHI_IndexBuffer* GetIndexBuffer()     const;
-        const TransformHandle& GetHandle()          const;
-        bool DrawXYZ()                              const { return m_type == TransformHandle_Scale; }
+        bool Tick(Camera* camera, float handle_size, float handle_speed);
+        uint32_t GetIndexCount();
+        const RHI_VertexBuffer* GetVertexBuffer();
+        const RHI_IndexBuffer* GetIndexBuffer();
+        const TransformHandle* GetHandle();
+        bool DrawXYZ()                              const { return m_type == TransformHandleType::Scale; }
         bool IsEntitySelected()                     const { return m_is_editing; }
         const Entity* GetSelectedEntity()           const { return m_entity_selected.lock().get(); }
         
@@ -58,11 +59,9 @@ namespace Spartan
         bool m_just_finished_editing    = false;
 
         std::weak_ptr<Entity> m_entity_selected;
-        TransformHandle m_handle_position;
-        TransformHandle m_handle_rotation;
-        TransformHandle m_handle_scale;
-        TransformHandle_Type m_type;
-        TransformHandle_Space m_space;
+        std::unordered_map<TransformHandleType, std::shared_ptr<TransformHandle>> m_handles;
+        TransformHandleType m_type;
+        TransformHandleSpace m_space;
         Context* m_context;
         Input* m_input;
         World* m_world;
