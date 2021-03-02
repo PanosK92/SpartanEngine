@@ -21,14 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ======================
+//= INCLUDES =====================
 #include <memory>
-#include "../Core/Spartan_Object.h"
-//=================================
+#include "../Core/SpartanObject.h"
+//================================
 
 namespace Spartan
 {
-    class SPARTAN_CLASS RHI_ConstantBuffer : public Spartan_Object
+    class SPARTAN_CLASS RHI_ConstantBuffer : public SpartanObject
     {
     public:
         RHI_ConstantBuffer(const std::shared_ptr<RHI_Device>& rhi_device, const std::string& name, bool is_dynamic = false);

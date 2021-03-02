@@ -19,28 +19,18 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#pragma once
-
-//= INCLUDES =====================
-#include <memory>
-#include <unordered_map>
-#include "RHI_Definition.h"
-#include "../Core/SpartanObject.h"
-//================================
+//= INCLUDES =============
+#include "Spartan.h"
+#include "SpartanObject.h"
+//========================
 
 namespace Spartan
 {
-    class RHI_PipelineCache : public SpartanObject
+    uint32_t g_id = 0;
+
+    SpartanObject::SpartanObject(Context* context /*= nullptr*/)
     {
-    public:
-        RHI_PipelineCache(const RHI_Device* rhi_device) { m_rhi_device = rhi_device; }
-        RHI_Pipeline* GetPipeline(RHI_CommandList* cmd_list, RHI_PipelineState& pipeline_state, RHI_DescriptorSetLayout* descriptor_set_layout);
-
-    private:
-        // <hash of pipeline state, pipeline state object>
-        std::unordered_map<uint32_t, std::shared_ptr<RHI_Pipeline>> m_cache;
-
-        // Dependencies
-        const RHI_Device* m_rhi_device;
-    };
+        m_context   = context;
+        m_id        = GenerateId();
+    }
 }

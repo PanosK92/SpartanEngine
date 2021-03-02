@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widget_ResourceCache.h"
 #include "Resource/ResourceCache.h"
 #include "../ImGui/Source/imgui.h"
-#include "Core/Spartan_Object.h"
+#include "Core/SpartanObject.h"
 //=================================
 
 //= NAMESPACES ==========
@@ -89,7 +89,7 @@ void Widget_ResourceCache::TickVisible()
 
         for (const shared_ptr<IResource>& resource : resources)
         {
-            if (Spartan_Object* object = dynamic_cast<Spartan_Object*>(resource.get()))
+            if (SpartanObject* object = dynamic_cast<SpartanObject*>(resource.get()))
             {
                 // Switch row
                 ImGui::TableNextRow();

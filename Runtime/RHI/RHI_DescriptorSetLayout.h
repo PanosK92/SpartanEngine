@@ -21,17 +21,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ======================
-#include "../Core/Spartan_Object.h"
+//= INCLUDES =====================
+#include "../Core/SpartanObject.h"
 #include <unordered_map>
 #include <vector>
 #include <array>
 #include "RHI_Descriptor.h"
-//=================================
+//================================
 
 namespace Spartan
 {
-    class SPARTAN_CLASS RHI_DescriptorSetLayout : public Spartan_Object
+    class SPARTAN_CLASS RHI_DescriptorSetLayout : public SpartanObject
     {
     public:
         RHI_DescriptorSetLayout() = default;

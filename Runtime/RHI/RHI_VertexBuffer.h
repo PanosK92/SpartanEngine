@@ -21,14 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ======================
+//= INCLUDES =====================
 #include <vector>
-#include "../Core/Spartan_Object.h"
-//=================================
+#include "../Core/SpartanObject.h"
+//================================
 
 namespace Spartan
 {
-    class RHI_VertexBuffer : public Spartan_Object
+    class RHI_VertexBuffer : public SpartanObject
     {
     public:
         RHI_VertexBuffer(const std::shared_ptr<RHI_Device>& rhi_device, const uint32_t stride = 0) 

@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <array>
 #include <atomic>
 #include "RHI_Definition.h"
-#include "../Core/Spartan_Object.h"
+#include "../Core/SpartanObject.h"
 #include "../Rendering/Renderer_Enums.h"
 //======================================
 
@@ -48,7 +48,7 @@ namespace Spartan
         Submitted
     };
 
-    class SPARTAN_CLASS RHI_CommandList : public Spartan_Object
+    class SPARTAN_CLASS RHI_CommandList : public SpartanObject
     {
     public:
         RHI_CommandList(uint32_t index, RHI_SwapChain* swap_chain, Context* context);

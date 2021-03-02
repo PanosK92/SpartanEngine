@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ======================
-#include "../Core/Spartan_Object.h"
+#include "../Core/SpartanObject.h"
 #include <mutex>
 #include <memory>
 #include "../Display/DisplayMode.h"
@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    class SPARTAN_CLASS RHI_Device : public Spartan_Object
+    class SPARTAN_CLASS RHI_Device : public SpartanObject
     {
     public:
         RHI_Device(Context* context);
