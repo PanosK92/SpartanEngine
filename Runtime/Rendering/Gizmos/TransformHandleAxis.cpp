@@ -34,7 +34,6 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-
     TransformHandleAxis::TransformHandleAxis(TransformHandleType type, const Math::Vector3& axis, Context* context)
     {
         m_axis      = axis;

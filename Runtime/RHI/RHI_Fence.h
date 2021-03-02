@@ -21,14 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ======================
-#include "../Core/Spartan_Object.h"
+//= INCLUDES =====================
+#include "../Core/SpartanObject.h"
 #include "RHI_Definition.h"
-//=================================
+//================================
 
 namespace Spartan
 {
-    class RHI_Fence : public Spartan_Object
+    class RHI_Fence : public SpartanObject
     {
     public:
         RHI_Fence(RHI_Device* rhi_device, const char* name = nullptr);

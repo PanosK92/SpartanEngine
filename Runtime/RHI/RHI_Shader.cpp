@@ -33,7 +33,7 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_Shader::RHI_Shader(Context* context) : Spartan_Object(context)
+    RHI_Shader::RHI_Shader(Context* context) : SpartanObject(context)
     {
         m_rhi_device    = context->GetSubsystem<Renderer>()->GetRhiDevice();
         m_input_layout  = make_shared<RHI_InputLayout>(m_rhi_device);

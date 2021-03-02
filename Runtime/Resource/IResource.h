@@ -21,13 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ======================
+//= INCLUDES =====================
 #include <memory>
 #include "../Core/Context.h"
 #include "../Core/FileSystem.h"
-#include "../Core/Spartan_Object.h"
+#include "../Core/SpartanObject.h"
 #include "../Logging/Log.h"
-//=================================
+//================================
 
 namespace Spartan
 {
@@ -55,7 +55,7 @@ namespace Spartan
         Failed
     };
 
-    class SPARTAN_CLASS IResource : public Spartan_Object
+    class SPARTAN_CLASS IResource : public SpartanObject
     {
     public:
         IResource(Context* context, ResourceType type);

@@ -21,14 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ======================
-#include "../Core/Spartan_Object.h"
+//= INCLUDES =====================
+#include "../Core/SpartanObject.h"
 #include "RHI_Descriptor.h"
-//=================================
+//================================
 
 namespace Spartan
 {
-    class SPARTAN_CLASS RHI_DescriptorSetLayoutCache : public Spartan_Object
+    class SPARTAN_CLASS RHI_DescriptorSetLayoutCache : public SpartanObject
     {
     public:
         RHI_DescriptorSetLayoutCache(const RHI_Device* rhi_device);

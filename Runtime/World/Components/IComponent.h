@@ -21,14 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =========================
+//= INCLUDES ========================
 #include <memory>
 #include <string>
 #include <any>
 #include <vector>
 #include <functional>
-#include "../../Core/Spartan_Object.h"
-//====================================
+#include "../../Core/SpartanObject.h"
+//===================================
 
 namespace Spartan
 {
@@ -61,7 +61,7 @@ namespace Spartan
         std::function<void(std::any)> setter;
     };
 
-    class SPARTAN_CLASS IComponent : public Spartan_Object, public std::enable_shared_from_this<IComponent>
+    class SPARTAN_CLASS IComponent : public SpartanObject, public std::enable_shared_from_this<IComponent>
     {
     public:
         IComponent(Context* context, Entity* entity, uint32_t id = 0, Transform* transform = nullptr);
