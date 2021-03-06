@@ -269,8 +269,8 @@ namespace Spartan
         vector<freeimage_helper::RescaleJob> jobs;
         while (width > 1 && height > 1)
         {
-            width    = Math::Helper::Max(width / 2, static_cast<uint32_t>(1));
-            height    = Math::Helper::Max(height / 2, static_cast<uint32_t>(1));
+            width   = Math::Helper::Max(width / 2, static_cast<uint32_t>(1));
+            height  = Math::Helper::Max(height / 2, static_cast<uint32_t>(1));
             jobs.emplace_back(width, height, channels);
             
             // Resize the RHI_Texture vector accordingly
@@ -287,13 +287,13 @@ namespace Spartan
             jobs[i].data = &texture->GetMip(i + 1);
         }
 
-        // Parallelize mipmap generation using multiple threads (because FreeImage_Rescale() using FILTER_LANCZOS3 is expensive)
+        // Parallelize mipmap generation using multiple threads (because FreeImage_Rescale() is expensive)
         auto threading = m_context->GetSubsystem<Threading>();
         for (auto& job : jobs)
         {
             threading->AddTask([this, &job, &bitmap]()
             {
-                const auto bitmap_scaled = FreeImage_Rescale(bitmap, job.width, job.height, freeimage_helper::rescale_filter);
+                FIBITMAP* bitmap_scaled = FreeImage_Rescale(bitmap, job.width, job.height, freeimage_helper::rescale_filter);
                 if (!GetBitsFromFibitmap(job.data, bitmap_scaled, job.width, job.height, job.channel_count))
                 {
                     LOG_ERROR("Failed to create mip level %dx%d", job.width, job.height);
@@ -315,6 +315,8 @@ namespace Spartan
                     ready = false;
                 }
             }
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(16));
         }
     }
 

@@ -32,5 +32,8 @@ namespace Spartan
     public:
         TransformPosition(Context* context = nullptr);
         ~TransformPosition() = default;
+
+    protected:
+        void InteresectionTest(const Math::Ray& camera_to_mouse) override;
     };
 }

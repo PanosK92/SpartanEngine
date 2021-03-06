@@ -55,5 +55,16 @@ namespace Spartan
         m_handle_y.m_box    = m_handle_x.m_box;
         m_handle_z.m_box    = m_handle_x.m_box;
         m_handle_xyz.m_box  = m_handle_x.m_box;
+
+        m_offset_handle_axes_from_center = true;
+    }
+
+    void TransformScale::InteresectionTest(const Math::Ray& camera_to_mouse)
+    {
+        // Test if the ray intersects any of the handles
+        m_handle_x_intersected      = camera_to_mouse.HitDistance(m_handle_x.m_box_transformed)   != Math::Helper::INFINITY_;
+        m_handle_y_intersected      = camera_to_mouse.HitDistance(m_handle_y.m_box_transformed)   != Math::Helper::INFINITY_;
+        m_handle_z_intersected      = camera_to_mouse.HitDistance(m_handle_z.m_box_transformed)   != Math::Helper::INFINITY_;
+        m_handle_xyz_intersected    = camera_to_mouse.HitDistance(m_handle_xyz.m_box_transformed) != Math::Helper::INFINITY_;
     }
 }

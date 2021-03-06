@@ -53,64 +53,34 @@ namespace Spartan
             return false;
         }
 
-        // Snap to entity position
-        SnapToTransform(space, entity, camera, handle_size);
+        ReflectEntityTransform(space, entity, camera, handle_size);
 
-        // Do hit test
-        if (camera)
+        // Allow editing only when the camera is not fps controlled
+        if (!camera->IsFpsControlled())
         {
-            // Create ray starting from camera position and pointing towards where the mouse is pointing
+            // Create ray starting from the camera position and pointing towards where the mouse is pointing
             const Vector2 mouse_pos             = m_input->GetMousePosition();
             const RHI_Viewport& viewport        = m_renderer->GetViewport();
             const Vector2& editor_offset        = m_renderer->GetViewportOffset();
             const Vector2 mouse_pos_relative    = mouse_pos - editor_offset;
             const Vector3 ray_start             = camera->GetTransform()->GetPosition();
             Vector3 ray_end                     = camera->Unproject(mouse_pos_relative);
-            const Ray ray                       = Ray(ray_start, ray_end);
+            Ray camera_to_mouse                 = Ray(ray_start, ray_end);
 
-            // Test if the ray intersects any of the handles
-            const float hovered_x    = ray.HitDistance(m_handle_x.m_box_transformed)   != INFINITY;
-            const float hovered_y    = ray.HitDistance(m_handle_y.m_box_transformed)   != INFINITY;
-            const float hovered_z    = ray.HitDistance(m_handle_z.m_box_transformed)   != INFINITY;
-            const float hovered_xyz  = ray.HitDistance(m_handle_xyz.m_box_transformed) != INFINITY;
+            // Check if the mouse ray hits and of the handle axes
+            InteresectionTest(camera_to_mouse);
 
-            // Mark a handle as hovered, only if it's the only hovered handle (during the previous frame)
-            m_handle_x.m_is_hovered        = hovered_x && !(m_handle_y.m_is_hovered || m_handle_z.m_is_hovered);
-            m_handle_y.m_is_hovered        = hovered_y && !(m_handle_x.m_is_hovered || m_handle_z.m_is_hovered);
-            m_handle_z.m_is_hovered        = hovered_z && !(m_handle_x.m_is_hovered || m_handle_y.m_is_hovered);
-            m_handle_xyz.m_is_hovered      = hovered_xyz && !(m_handle_x.m_is_hovered || m_handle_y.m_is_hovered || m_handle_z.m_is_hovered);
+            UpdateHandleAxesState();
+            UpdateHandleAxesMouseDelta(camera, ray_end, handle_speed);
 
-            // Disable handle if one of the others is active (affects the color)
-            m_handle_x.m_is_disabled       = !m_handle_x.m_is_editing     && (m_handle_y.m_is_editing || m_handle_z.m_is_editing || m_handle_xyz.m_is_editing);
-            m_handle_y.m_is_disabled       = !m_handle_y.m_is_editing     && (m_handle_x.m_is_editing || m_handle_z.m_is_editing || m_handle_xyz.m_is_editing);
-            m_handle_z.m_is_disabled       = !m_handle_z.m_is_editing     && (m_handle_x.m_is_editing || m_handle_y.m_is_editing || m_handle_xyz.m_is_editing);
-            m_handle_xyz.m_is_disabled     = !m_handle_xyz.m_is_editing   && (m_handle_x.m_is_editing || m_handle_y.m_is_editing || m_handle_z.m_is_editing);
-
-            // Track delta
-            m_ray_previous          = m_ray_current != Vector3::Zero ? m_ray_current : ray_end; // ignore big delta in the first run
-            m_ray_current           = ray_end;
-            const Vector3 delta     = m_ray_current - m_ray_previous;
-            const float delta_xyz   = delta.Length();
-
-            // If the delta reached infinity, ignore the input as it will result in NaN position.
-            // This can happen if the transformation is happening extremely close the camera.
-            if (isinf(delta_xyz))
-                return true;
-
-            // Updated handles with delta
-            m_handle_x.m_delta    = delta_xyz * Helper::Sign(delta.x) * handle_speed;
-            m_handle_y.m_delta    = delta_xyz * Helper::Sign(delta.y) * handle_speed;
-            m_handle_z.m_delta    = delta_xyz * Helper::Sign(delta.z) * handle_speed;
-            m_handle_xyz.m_delta  = m_handle_x.m_delta + m_handle_y.m_delta + m_handle_z.m_delta;
-
-            // Update input
-            m_handle_x.UpdateInput(entity->GetTransform());
-            m_handle_y.UpdateInput(entity->GetTransform());
-            m_handle_z.UpdateInput(entity->GetTransform());
-            m_handle_xyz.UpdateInput(entity->GetTransform());
+            // Use detected mouse delta to manipulate the entity's transform
+            m_handle_x.ApplyDeltaToTransform(entity->GetTransform());
+            m_handle_y.ApplyDeltaToTransform(entity->GetTransform());
+            m_handle_z.ApplyDeltaToTransform(entity->GetTransform());
+            m_handle_xyz.ApplyDeltaToTransform(entity->GetTransform());
         }
 
-        // Allow the handles to draw anything else they need
+        // Allow the handles to draw any primitives
         Vector3 center = m_handle_xyz.m_position;
         m_handle_x.DrawPrimitives(center);
         m_handle_y.DrawPrimitives(center);
@@ -118,6 +88,89 @@ namespace Spartan
         m_handle_xyz.DrawPrimitives(center);
 
         return m_handle_x.m_is_editing || m_handle_y.m_is_editing || m_handle_z.m_is_editing || m_handle_xyz.m_is_editing;
+    }
+
+    void TransformHandle::ReflectEntityTransform(const TransformHandleSpace space, Entity* entity, Camera* camera, const float handle_size)
+    {
+        // Get entity's components
+        Transform* entity_transform     = entity->GetTransform();               // Transform alone is not enough
+        Renderable* entity_renderable   = entity->GetComponent<Renderable>();   // Bounding box is also needed as some meshes are not defined around P(0,0,0)
+
+        // Acquire entity's transformation data (local or world space)
+        const Vector3& aabb_center          = entity_renderable                      ? entity_renderable->GetAabb().GetCenter()   : entity_transform->GetPositionLocal();
+        const Quaternion& entity_rotation   = (space == TransformHandleSpace::World) ? entity_transform->GetRotation()            : entity_transform->GetRotationLocal();
+        const Vector3& right                = (space == TransformHandleSpace::World) ? Vector3::Right                             : entity_rotation * Vector3::Right;
+        const Vector3& up                   = (space == TransformHandleSpace::World) ? Vector3::Up                                : entity_rotation * Vector3::Up;
+        const Vector3& forward              = (space == TransformHandleSpace::World) ? Vector3::Forward                           : entity_rotation * Vector3::Forward;
+
+        // Compute scale
+        const float distance_to_camera   = camera ? (camera->GetTransform()->GetPosition() - (aabb_center)).Length() : 0.0f;
+        const float handle_scale         = distance_to_camera / (1.0f / handle_size);
+        const float handle_distance      = distance_to_camera / (1.0f / 0.1f);
+
+        // Set position for each axis handle
+        m_handle_x.m_position   = aabb_center;
+        m_handle_y.m_position   = aabb_center;
+        m_handle_z.m_position   = aabb_center;
+        m_handle_xyz.m_position = aabb_center;
+        if (m_offset_handle_axes_from_center)
+        {
+            m_handle_x.m_position += right * handle_distance;
+            m_handle_y.m_position += up * handle_distance;
+            m_handle_z.m_position += forward * handle_distance;
+        }
+
+        // Set rotation for each axis handle
+        m_handle_x.m_rotation     = Quaternion::FromEulerAngles(0.0f, 0.0f, -90.0f);
+        m_handle_y.m_rotation     = Quaternion::FromEulerAngles(0.0f, 90.0f, 0.0f);
+        m_handle_z.m_rotation     = Quaternion::FromEulerAngles(90.0f, 0.0f, 0.0f);
+
+        // Set scale for each axis handle
+        m_handle_x.m_scale        = handle_scale;
+        m_handle_y.m_scale        = handle_scale;
+        m_handle_z.m_scale        = handle_scale;
+        m_handle_xyz.m_scale      = handle_scale;
+
+        // Update transforms
+        m_handle_x.UpdateTransform();
+        m_handle_y.UpdateTransform();
+        m_handle_z.UpdateTransform();
+        m_handle_xyz.UpdateTransform();
+    }
+
+    void TransformHandle::UpdateHandleAxesState()
+    {
+        // Mark a handle as hovered, only if it's the only hovered handle (during the previous frame)
+        m_handle_x.m_is_hovered     = m_handle_x_intersected    && !(m_handle_y.m_is_hovered || m_handle_z.m_is_hovered);
+        m_handle_y.m_is_hovered     = m_handle_y_intersected    && !(m_handle_x.m_is_hovered || m_handle_z.m_is_hovered);
+        m_handle_z.m_is_hovered     = m_handle_z_intersected    && !(m_handle_x.m_is_hovered || m_handle_y.m_is_hovered);
+        m_handle_xyz.m_is_hovered   = m_handle_xyz_intersected  && !(m_handle_x.m_is_hovered || m_handle_y.m_is_hovered || m_handle_z.m_is_hovered);
+        
+        // Disable handle if one of the others is active (affects the color)
+        m_handle_x.m_is_disabled    = !m_handle_x.m_is_editing     && (m_handle_y.m_is_editing || m_handle_z.m_is_editing || m_handle_xyz.m_is_editing);
+        m_handle_y.m_is_disabled    = !m_handle_y.m_is_editing     && (m_handle_x.m_is_editing || m_handle_z.m_is_editing || m_handle_xyz.m_is_editing);
+        m_handle_z.m_is_disabled    = !m_handle_z.m_is_editing     && (m_handle_x.m_is_editing || m_handle_y.m_is_editing || m_handle_xyz.m_is_editing);
+        m_handle_xyz.m_is_disabled  = !m_handle_xyz.m_is_editing   && (m_handle_x.m_is_editing || m_handle_y.m_is_editing || m_handle_z.m_is_editing);
+    }
+
+    void TransformHandle::UpdateHandleAxesMouseDelta(Camera* camera, const Vector3& ray_end, const float handle_speed)
+    {
+        // Track delta
+        m_ray_previous          = m_ray_current != Vector3::Zero ? m_ray_current : ray_end; // ignore big delta in the first run
+        m_ray_current           = ray_end;
+        const Vector3 delta     = m_ray_current - m_ray_previous;
+        const float delta_xyz   = delta.Length();
+        
+        // If the delta reached infinity, ignore the input as it will result in NaN position.
+        // This can happen if the transformation is happening extremely close the camera.
+        if (isinf(delta_xyz))
+            return;
+
+        // Updated handles with delta
+        m_handle_x.m_delta    = delta_xyz * Helper::Sign(delta.x) * handle_speed;
+        m_handle_y.m_delta    = delta_xyz * Helper::Sign(delta.y) * handle_speed;
+        m_handle_z.m_delta    = delta_xyz * Helper::Sign(delta.z) * handle_speed;
+        m_handle_xyz.m_delta  = m_handle_x.m_delta + m_handle_y.m_delta + m_handle_z.m_delta;
     }
 
     const Matrix& TransformHandle::GetTransform(const Vector3& axis) const
@@ -156,43 +209,5 @@ namespace Spartan
     const RHI_IndexBuffer* TransformHandle::GetIndexBuffer()
     {
         return m_axis_model ? m_axis_model->GetIndexBuffer() : nullptr;
-    }
-
-    void TransformHandle::SnapToTransform(const TransformHandleSpace space, Entity* entity, Camera* camera, const float handle_size)
-    {
-        // Get entity's components
-        Transform* entity_transform     = entity->GetTransform();               // Transform alone is not enough
-        Renderable* entity_renderable   = entity->GetComponent<Renderable>();   // Bounding box is also needed as some meshes are not defined around P(0,0,0)
-
-        // Acquire entity's transformation data (local or world space)
-        const Vector3& aabb_center          = entity_renderable                      ? entity_renderable->GetAabb().GetCenter()   : entity_transform->GetPositionLocal();
-        const Quaternion& entity_rotation   = (space == TransformHandleSpace::World) ? entity_transform->GetRotation()            : entity_transform->GetRotationLocal();
-        const Vector3& right                = (space == TransformHandleSpace::World) ? Vector3::Right                             : entity_rotation * Vector3::Right;
-        const Vector3& up                   = (space == TransformHandleSpace::World) ? Vector3::Up                                : entity_rotation * Vector3::Up;
-        const Vector3& forward              = (space == TransformHandleSpace::World) ? Vector3::Forward                           : entity_rotation * Vector3::Forward;
-
-        // Compute scale
-        const float distance_to_camera   = camera ? (camera->GetTransform()->GetPosition() - (aabb_center)).Length() : 0.0f;
-        const float handle_scale         = distance_to_camera / (1.0f / handle_size);
-        const float handle_distance      = distance_to_camera / (1.0f / 0.1f);
-
-        // Compute transform for the handles
-        m_handle_x.m_position     = aabb_center + right   * handle_distance;
-        m_handle_y.m_position     = aabb_center + up      * handle_distance;
-        m_handle_z.m_position     = aabb_center + forward * handle_distance;
-        m_handle_xyz.m_position   = aabb_center;
-        m_handle_x.m_rotation     = Quaternion::FromEulerAngles(0.0f, 0.0f, -90.0f);
-        m_handle_y.m_rotation     = Quaternion::FromEulerAngles(0.0f, 90.0f, 0.0f);
-        m_handle_z.m_rotation     = Quaternion::FromEulerAngles(90.0f, 0.0f, 0.0f);
-        m_handle_x.m_scale        = handle_scale;
-        m_handle_y.m_scale        = handle_scale;
-        m_handle_z.m_scale        = handle_scale;
-        m_handle_xyz.m_scale      = handle_scale;
-
-        // Update transforms
-        m_handle_x.UpdateTransform();
-        m_handle_y.UpdateTransform();
-        m_handle_z.UpdateTransform();
-        m_handle_xyz.UpdateTransform();
     }
 }

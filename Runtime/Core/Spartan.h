@@ -121,6 +121,7 @@ SP_WARNINGS_ON
 #include "../Math/RayHit.h"
 #include "../Math/Rectangle.h"
 #include "../Math/BoundingBox.h"
+#include "../Math/Sphere.h"
 #include "../Math/Matrix.h"
 #include "../Math/Frustum.h"
 #include "../Math/Plane.h"

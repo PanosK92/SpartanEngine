@@ -112,14 +112,15 @@ namespace Spartan
         const RHI_Viewport& GetViewport() const;
         //================================================================
 
-        //= MISC ==============================================================================
+        //= MISC =================================================================================
         bool IsInViewFrustrum(Renderable* renderable) const;
         bool IsInViewFrustrum(const Math::Vector3& center, const Math::Vector3& extents) const;
         const Math::Vector4& GetClearColor() const            { return m_clear_color; }
         void SetClearColor(const Math::Vector4& color)        { m_clear_color = color; }
-        bool GetFpsControl()                            const { return m_fps_control; }
-        void SetFpsControl(const bool fps_control)            { m_fps_control = fps_control; }
-        //=====================================================================================
+        bool GetFpsControlEnabled()                     const { return m_fps_control_enabled; }
+        void SetFpsControlEnabled(const bool enabled)         { m_fps_control_enabled = enabled; }
+        bool IsFpsControlled()                          const { return m_fps_control_assumed; }
+        //========================================================================================
 
         Math::Matrix ComputeViewMatrix() const;
         Math::Matrix ComputeProjection(const bool reverse_z, const float near_plane = 0.0f, const float far_plane = 0.0f);
@@ -141,7 +142,7 @@ namespace Spartan
         Math::Vector3 m_position            = Math::Vector3::Zero;
         Math::Quaternion m_rotation         = Math::Quaternion::Identity;
         bool m_is_dirty                     = false;
-        bool m_fps_control                  = true;
+        bool m_fps_control_enabled           = true;
         bool m_fps_control_assumed          = false;
         Math::Vector2 m_mouse_last_position = Math::Vector2::Zero;
         bool m_fps_control_cursor_hidden    = false;

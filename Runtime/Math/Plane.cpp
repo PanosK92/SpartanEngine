@@ -25,11 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan::Math
 {
-    Plane::Plane()
-    {
-        d = 0;
-    }
-
     Plane::Plane(const Vector3& normal, float d)
     {
         this->normal = normal;
@@ -44,6 +39,12 @@ namespace Spartan::Math
         const Vector3 cross = Vector3::Cross(ab, ac);
         this->normal = Vector3::Normalize(cross);
         this->d = -Vector3::Dot(normal, a);
+    }
+
+    Plane::Plane(const Vector3& normal, const Vector3& point)
+    {
+        this->normal = normal.Normalized();
+        d = -this->normal.Dot(point);
     }
 
     void Plane::Normalize()
@@ -67,14 +68,14 @@ namespace Spartan::Math
         return newPlane;
     }
 
-    float Plane::DotCoordinate(const Vector3& v) const
+    float Plane::Dot(const Vector3& v) const
     {
         return (this->normal.x * v.x) + (this->normal.y * v.y) + (this->normal.z * v.z) + this->d;
     }
 
-    float Plane::DotCoordinate(const Plane& p, const Vector3& v)
+    float Plane::Dot(const Plane& p, const Vector3& v)
     {
         const Plane& newPlane = p;
-        return newPlane.DotCoordinate(v);
+        return newPlane.Dot(v);
     }
 }

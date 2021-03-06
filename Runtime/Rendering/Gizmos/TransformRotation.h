@@ -32,5 +32,8 @@ namespace Spartan
     public:
         TransformRotation(Context* context = nullptr);
         ~TransformRotation() = default;
+
+    protected:
+        void InteresectionTest(const Math::Ray& camera_to_mouse) override;
     };
 }

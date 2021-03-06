@@ -45,12 +45,18 @@ namespace Spartan
 
     void TransformHandleAxis::UpdateTransform()
     {
+        if (m_type == TransformHandleType::Unknown)
+            return;
+
         m_transform         = Math::Matrix(m_position, m_rotation, m_scale);
         m_box_transformed   = m_box.Transform(m_transform);
     }
 
-    void TransformHandleAxis::UpdateInput(Transform* transform)
+    void TransformHandleAxis::ApplyDeltaToTransform(Transform* transform)
     {
+        if (m_type == TransformHandleType::Unknown)
+            return;
+
         // First press
         if (m_is_hovered && m_input->GetKeyDown(KeyCode::Click_Left))
         {
@@ -90,11 +96,26 @@ namespace Spartan
 
     void TransformHandleAxis::DrawPrimitives(const Vector3& transform_center) const
     {
+        if (m_type == TransformHandleType::Unknown)
+            return;
+
+        // Draw axis circle
+        if (m_type == TransformHandleType::Rotation)
+        {
+            const Vector3 center        = m_box_transformed.GetCenter();
+            const float radius          = m_scale.Length() * 5.0f;
+            const uint32_t segmentCount = 64;
+            const Vector4 color         = Vector4(GetColor(), 1.0f);
+            m_renderer->DrawCircle(center, m_axis, radius, segmentCount, color, 0.0f, false);
+        }
         // Draw axis line (connect the handle with the origin of the transform)
-        const Vector4 color = Vector4(GetColor(), 1.0f);
-        const Vector3 from  = m_box_transformed.GetCenter();
-        const Vector3& to   = transform_center;
-        m_renderer->DrawDebugLine(from, to, color, color, 0.0f, false);
+        else
+        {
+            const Vector4 color = Vector4(GetColor(), 1.0f);
+            const Vector3 from = m_box_transformed.GetCenter();
+            const Vector3& to = transform_center;
+            m_renderer->DrawLine(from, to, color, color, 0.0f, false);
+        }
     }
 
     const Spartan::Math::Vector3& TransformHandleAxis::GetColor() const

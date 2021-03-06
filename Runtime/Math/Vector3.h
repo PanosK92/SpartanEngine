@@ -152,10 +152,12 @@ namespace Spartan::Math
             }
         }
 
+        inline float Distance(const Vector3& x)                                 { return ((*this) - x).Length(); }
+        inline float DistanceSquared(const Vector3& x)                          { return ((*this) - x).LengthSquared(); }
         // Returns the distance between to vectors
-        static inline float Distance(const Vector3& a, const Vector3& b)           { return (b - a).Length(); }
+        static inline float Distance(const Vector3& a, const Vector3& b)        { return (b - a).Length(); }
         // Returns the squared distance between to vectors
-        static inline float DistanceSquared(const Vector3& a, const Vector3& b)    { return (b - a).LengthSquared(); }
+        static inline float DistanceSquared(const Vector3& a, const Vector3& b) { return (b - a).LengthSquared(); }
 
         // Floor
         void Floor()

@@ -44,15 +44,17 @@ namespace Spartan
         TransformGizmo(Context* context);
         ~TransformGizmo() = default;
 
-        std::weak_ptr<Spartan::Entity> SetSelectedEntity(const std::shared_ptr<Entity>& entity);
+        // Ticks the gizmo and returns true if it needs to be queried for rendering
         bool Tick(Camera* camera, float handle_size, float handle_speed);
+
+        std::weak_ptr<Spartan::Entity> SetSelectedEntity(const std::shared_ptr<Entity>& entity);
         uint32_t GetIndexCount();
         const RHI_VertexBuffer* GetVertexBuffer();
         const RHI_IndexBuffer* GetIndexBuffer();
         const TransformHandle* GetHandle();
-        bool DrawXYZ()                              const { return m_type == TransformHandleType::Scale; }
-        bool IsEntitySelected()                     const { return m_is_editing; }
-        const Entity* GetSelectedEntity()           const { return m_entity_selected.lock().get(); }
+        bool DrawXYZ()                      const { return m_type == TransformHandleType::Scale; }
+        bool IsEntitySelected()             const { return m_is_editing; }
+        const Entity* GetSelectedEntity()   const { return m_entity_selected.lock().get(); }
         
     private:
         bool m_is_editing               = false;
@@ -60,7 +62,7 @@ namespace Spartan
 
         std::weak_ptr<Entity> m_entity_selected;
         std::unordered_map<TransformHandleType, std::shared_ptr<TransformHandle>> m_handles;
-        TransformHandleType m_type;
+        TransformHandleType m_type = TransformHandleType::Unknown;
         TransformHandleSpace m_space;
         Context* m_context;
         Input* m_input;
