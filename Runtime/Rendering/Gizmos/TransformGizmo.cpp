@@ -54,6 +54,54 @@ namespace Spartan
         m_handles[TransformHandleType::Rotation]    = make_shared<TransformRotation>(context);
     }
 
+    bool TransformGizmo::Tick(Camera* camera, const float handle_size, const float handle_speed)
+    {
+        m_just_finished_editing = false;
+
+        Entity* selected_entity = m_entity_selected.lock().get();
+
+        // If there isn't a camera or an entity, ignore input
+        if (!camera || !selected_entity)
+        {
+            m_is_editing = false;
+            return false;
+        }
+
+        // If the selected entity is the camera itself, ignore input
+        if (selected_entity->GetId() == camera->GetTransform()->GetEntity()->GetId())
+        {
+            m_is_editing = false;
+            return false;
+        }
+
+        // Switch between position, rotation and scale handles, with W, E and R respectively
+        if (!camera->IsFpsControlled())
+        {
+            if (m_input->GetKeyDown(KeyCode::W))
+            {
+                m_type = TransformHandleType::Position;
+            }
+            else if (m_input->GetKeyDown(KeyCode::E))
+            {
+                m_type = TransformHandleType::Scale;
+            }
+            else if (m_input->GetKeyDown(KeyCode::R))
+            {
+                m_type = TransformHandleType::Rotation;
+            }
+        }
+
+        const bool was_editing = m_is_editing;
+
+        m_handles[m_type]->Tick(m_space, selected_entity, camera, handle_size, handle_speed);
+
+        m_just_finished_editing = was_editing && !m_is_editing;
+
+        // Finally, render the currently selected transform handle only if it hash mashes.
+        // e.g. the rotation transform does it's own custom rendering.
+        return m_handles[m_type]->HasModel();
+    }
+
     weak_ptr<Spartan::Entity> TransformGizmo::SetSelectedEntity(const shared_ptr<Entity>& entity)
     {
         // Update picked entity only when it's not being edited
@@ -63,49 +111,6 @@ namespace Spartan
         }
 
         return m_entity_selected;
-    }
-
-    bool TransformGizmo::Tick(Camera* camera, const float handle_size, const float handle_speed)
-    {
-        m_just_finished_editing = false;
-
-        Entity* selected_entity = m_entity_selected.lock().get();
-
-        // If there is no camera, don't even bother
-        if (!camera || !selected_entity)
-        {
-            m_is_editing = false;
-            return false;
-        }
-
-        // If the selected entity is the actual viewport camera, ignore the input
-        if (selected_entity->GetId() == camera->GetTransform()->GetEntity()->GetId())
-        {
-            m_is_editing = false;
-            return false;
-        }
-
-        // Switch between position, rotation and scale handles, with W, E and R respectively
-        if (m_input->GetKeyDown(KeyCode::W))
-        {
-            m_type = TransformHandleType::Position;
-        }
-        else if (m_input->GetKeyDown(KeyCode::E))
-        {
-            m_type = TransformHandleType::Scale;
-        }
-        else if (m_input->GetKeyDown(KeyCode::R))
-        {
-            m_type = TransformHandleType::Rotation;
-        }
-
-        const bool was_editing = m_is_editing;
-
-        m_handles[m_type]->Tick(m_space, selected_entity, camera, handle_size, handle_speed);
-
-        m_just_finished_editing = was_editing && !m_is_editing;
-
-        return true;
     }
 
     uint32_t TransformGizmo::GetIndexCount()

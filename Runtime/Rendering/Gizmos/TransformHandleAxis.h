@@ -40,7 +40,7 @@ namespace Spartan
         TransformHandleAxis(TransformHandleType type, const Math::Vector3& axis, Context* context);
 
         void UpdateTransform();
-        void UpdateInput(Transform* transform);
+        void ApplyDeltaToTransform(Transform* transform);
         void DrawPrimitives(const Math::Vector3& transform_center) const;
         const Math::Vector3& GetColor() const;
 
@@ -57,7 +57,8 @@ namespace Spartan
         bool m_is_disabled                  = false;
         Math::Vector3 m_color_active        = Math::Vector3(1.0f, 1.0f, 0.0f);
         Math::Vector3 m_color_disabled      = Math::Vector3(0.5f, 0.5f, 0.5f);
-        TransformHandleType m_type;
+        TransformHandleType m_type          = TransformHandleType::Unknown;
+
         Context* m_context      = nullptr;
         Renderer* m_renderer    = nullptr;
         Input* m_input          = nullptr;

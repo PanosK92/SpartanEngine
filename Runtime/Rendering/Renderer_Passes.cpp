@@ -1896,7 +1896,7 @@ namespace Spartan
             if (draw_picking_ray)
             {
                 const auto& ray = m_camera->GetPickingRay();
-                DrawDebugLine(ray.GetStart(), ray.GetStart() + ray.GetDirection() * m_camera->GetFarPlane(), Vector4(0, 1, 0, 1));
+                DrawLine(ray.GetStart(), ray.GetStart() + ray.GetDirection() * m_camera->GetFarPlane(), Vector4(0, 1, 0, 1));
             }
 
             // Lights
@@ -1911,7 +1911,7 @@ namespace Spartan
                     {
                         Vector3 start = light->GetTransform()->GetPosition();
                         Vector3 end = light->GetTransform()->GetForward() * light->GetRange();
-                        DrawDebugLine(start, start + end, Vector4(0, 1, 0, 1));
+                        DrawLine(start, start + end, Vector4(0, 1, 0, 1));
                     }
                 }
             }
@@ -1923,7 +1923,7 @@ namespace Spartan
                 {
                     if (auto renderable = entity->GetRenderable())
                     {
-                        DrawDebugBox(renderable->GetAabb(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
+                        DrawBox(renderable->GetAabb(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
                     }
                 }
 
@@ -1931,7 +1931,7 @@ namespace Spartan
                 {
                     if (auto renderable = entity->GetRenderable())
                     {
-                        DrawDebugBox(renderable->GetAabb(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
+                        DrawBox(renderable->GetAabb(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
                     }
                 }
             }
@@ -2108,8 +2108,8 @@ namespace Spartan
             return;
 
         // Acquire resources
-        auto const& shader_gizmo_transform_v    = m_shaders[RendererShader::Entity_V];
-        auto const& shader_gizmo_transform_p    = m_shaders[RendererShader::Entity_Transform_P];
+        RHI_Shader* shader_gizmo_transform_v    = m_shaders[RendererShader::Entity_V].get();
+        RHI_Shader* shader_gizmo_transform_p    = m_shaders[RendererShader::Entity_Transform_P].get();
         if (!shader_gizmo_transform_v->IsCompiled() || !shader_gizmo_transform_p->IsCompiled())
             return;
 
@@ -2118,8 +2118,8 @@ namespace Spartan
         {
             // Set render state
             static RHI_PipelineState pso;
-            pso.shader_vertex                    = shader_gizmo_transform_v.get();
-            pso.shader_pixel                     = shader_gizmo_transform_p.get();
+            pso.shader_vertex                    = shader_gizmo_transform_v;
+            pso.shader_pixel                     = shader_gizmo_transform_p;
             pso.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
             pso.blend_state                      = m_blend_alpha.get();
             pso.depth_stencil_state              = m_depth_stencil_off_off.get();
@@ -2129,7 +2129,7 @@ namespace Spartan
             pso.viewport                         = tex_out->GetViewport();
 
             // Axis - X
-            pso.pass_name = "Pass_Gizmos_Axis_X";
+            pso.pass_name = "Pass_Handle_Axis_X";
             if (cmd_list->BeginRenderPass(pso))
             {
                 m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle()->GetTransform(Vector3::Right);
@@ -2143,7 +2143,7 @@ namespace Spartan
             }
             
             // Axis - Y
-            pso.pass_name = "Pass_Gizmos_Axis_Y";
+            pso.pass_name = "Pass_Handle_Axis_Y";
             if (cmd_list->BeginRenderPass(pso))
             {
                 m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle()->GetTransform(Vector3::Up);
@@ -2157,7 +2157,7 @@ namespace Spartan
             }
             
             // Axis - Z
-            pso.pass_name = "Pass_Gizmos_Axis_Z";
+            pso.pass_name = "Pass_Handle_Axis_Z";
             if (cmd_list->BeginRenderPass(pso))
             {
                 m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle()->GetTransform(Vector3::Forward);

@@ -32,5 +32,8 @@ namespace Spartan
     public:
         TransformScale(Context* context = nullptr);
         ~TransformScale() = default;
+
+    protected:
+        void InteresectionTest(const Math::Ray& camera_to_mouse) override;
     };
 }

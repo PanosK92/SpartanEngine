@@ -34,6 +34,8 @@ namespace Spartan
     {
         class RayHit;
         class BoundingBox;
+        class Plane;
+        class Sphere;
 
         class SPARTAN_CLASS Ray
         {
@@ -42,11 +44,11 @@ namespace Spartan
             Ray(const Vector3& start, const Vector3& end);
             ~Ray() = default;
 
-            // Returns hit distance to a bounding box, or infinity if there is no hit.
+            // Returns hit distance or infinity if there is no hit.
             float HitDistance(const BoundingBox& box) const;
-
-            // Return hit distance to a triangle, or infinity if no hit. Optionally return hit normal and hit barycentric coordinate at intersect point.
+            float HitDistance(const Plane& plane, Vector3* intersection_point = nullptr) const;
             float HitDistance(const Vector3& v1, const Vector3& v2, const Vector3& v3, Vector3* out_normal = nullptr, Vector3* out_bary = nullptr) const;
+            float HitDistance(const Sphere& sphere) const;
 
             const auto& GetStart()      const { return m_start; }
             const auto& GetEnd()        const { return m_end; }

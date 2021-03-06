@@ -297,7 +297,7 @@ namespace Spartan
 
             Pass_Main(cmd_list);
 
-            DrawDebugTick(delta_time);
+            TickPrimitives(delta_time);
 
             m_frame_num++;
             m_is_odd_frame = (m_frame_num % 2) == 1;

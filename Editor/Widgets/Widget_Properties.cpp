@@ -478,11 +478,11 @@ void Widget_Properties::ShowRigidBody(RigidBody* rigid_body) const
         auto freeze_rot_z       = static_cast<bool>(rigid_body->GetRotationLock().z);
         //==========================================================================
 
-        const auto input_text_flags        = ImGuiInputTextFlags_CharsDecimal;
-        const auto item_width            = 120.0f;
-        const auto step                    = 0.1f;
-        const auto step_fast            = 0.1f;
-        const auto precision            = "%.3f";
+        const auto input_text_flags = ImGuiInputTextFlags_CharsDecimal;
+        const auto item_width       = 120.0f;
+        const auto step             = 0.1f;
+        const auto step_fast        = 0.1f;
+        const auto precision        = "%.3f";
 
         // Mass
         ImGui::Text("Mass");
@@ -878,7 +878,7 @@ void Widget_Properties::ShowCamera(Camera* camera) const
         float fov                               = camera->GetFovHorizontalDeg();
         float near_plane                        = camera->GetNearPlane();
         float far_plane                         = camera->GetFarPlane();
-        bool fps_control                        = camera->GetFpsControl();
+        bool fps_control_enabled                = camera->GetFpsControlEnabled();
         m_colorPicker_camera->SetColor(camera->GetClearColor());
         //========================================================================================================
 
@@ -937,7 +937,7 @@ void Widget_Properties::ShowCamera(Camera* camera) const
 
         // FPS Control
         ImGui::Text("FPS Control");
-        ImGui::SameLine(ComponentProperty::g_column); ImGui::Checkbox("##camera_fps_control", &fps_control);
+        ImGui::SameLine(ComponentProperty::g_column); ImGui::Checkbox("##camera_fps_control", &fps_control_enabled);
         ImGuiEx::Tooltip("Enables FPS control while holding down the right mouse button");
 
         //= MAP ====================================================================================================================
@@ -947,7 +947,7 @@ void Widget_Properties::ShowCamera(Camera* camera) const
         if (fov != camera->GetFovHorizontalDeg())                           camera->SetFovHorizontalDeg(fov);
         if (near_plane != camera->GetNearPlane())                           camera->SetNearPlane(near_plane);
         if (far_plane != camera->GetFarPlane())                             camera->SetFarPlane(far_plane);
-        if (fps_control != camera->GetFpsControl())                         camera->SetFpsControl(fps_control);
+        if (fps_control_enabled != camera->GetFpsControlEnabled())          camera->SetFpsControlEnabled(fps_control_enabled);
         if (m_colorPicker_camera->GetColor() != camera->GetClearColor())    camera->SetClearColor(m_colorPicker_camera->GetColor());
         //==========================================================================================================================
     }

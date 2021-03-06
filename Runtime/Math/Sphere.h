@@ -21,16 +21,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-enum class TransformHandleType
-{
-    Unknown,
-    Position,
-    Rotation,
-    Scale
-};
+//= INCLUDES =======
+#include "Vector3.h"
+//==================
 
-enum class TransformHandleSpace
+namespace Spartan::Math
 {
-    Local,
-    World
-};
+    class Sphere
+    {
+    public:
+        Sphere();
+        Sphere(const Vector3& center, const float radius);
+        ~Sphere() = default;
+
+        Vector3 center;
+        float radius;
+    };
+}

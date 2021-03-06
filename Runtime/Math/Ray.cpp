@@ -21,7 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =======
 #include "Spartan.h"
-#include "Ray.h"
 //==================
 
 //= NAMESPACES =====
@@ -43,13 +42,13 @@ namespace Spartan::Math
     {
         // If undefined, no hit (infinite distance)
         if (!box.Defined())
-            return INFINITY;
+            return Helper::INFINITY_;
         
         // Check for ray origin being inside the box
         if (box.IsInside(m_start))
             return 0.0f;
 
-        auto dist = INFINITY;
+        auto dist = Helper::INFINITY_;
 
         // Check for intersecting in the X-direction
         if (m_start.x < box.GetMin().x && m_direction.x > 0.0f)
@@ -132,6 +131,31 @@ namespace Spartan::Math
         return dist;
     }
 
+    float Ray::HitDistance(const Plane& plane, Vector3* intersection_point /*= nullptr*/) const
+    {
+        float d = plane.normal.Dot(m_direction);
+        if (Helper::Abs(d) >= Helper::EPSILON)
+        {
+            float t = -(plane.normal.Dot(m_start) + plane.d) / d;
+            if (t >= 0.0f)
+            {
+                if (intersection_point)
+                {
+                    *intersection_point = m_start + t * m_direction;
+                }
+                return t;
+            }
+            else
+            {
+                return Helper::INFINITY_;
+            }
+        }
+        else
+        {
+            return Helper::INFINITY_;
+        }
+    }
+
     float Ray::HitDistance(const Vector3& v1, const Vector3& v2, const Vector3& v3, Vector3* out_normal /*= nullptr*/, Vector3* out_bary /*= nullptr*/) const
     {
         // Based on Fast, Minimum Storage Ray/Triangle Intersection by Möller & Trumbore
@@ -173,5 +197,33 @@ namespace Spartan::Math
         }
 
         return Helper::INFINITY_;
-    }  
+    }
+
+    float Ray::HitDistance(const Sphere & sphere) const
+    {
+        Vector3 centeredOrigin = m_start - sphere.center;
+        float squaredRadius = sphere.radius * sphere.radius;
+
+        // Check if ray originates inside the sphere
+        if (centeredOrigin.LengthSquared() <= squaredRadius)
+            return 0.0f;
+
+        // Calculate intersection by quadratic equation
+        float a = m_direction.Dot(m_direction);
+        float b = 2.0f * centeredOrigin.Dot(m_direction);
+        float c = centeredOrigin.Dot(centeredOrigin) - squaredRadius;
+        float d = b * b - 4.0f * a * c;
+    
+        // No solution
+        if (d < 0.0f)
+            return Helper::INFINITY_;
+
+        // Get the nearer solution
+        float dSqrt = sqrtf(d);
+        float dist = (-b - dSqrt) / (2.0f * a);
+        if (dist >= 0.0f)
+            return dist;
+        else
+            return (-b + dSqrt) / (2.0f * a);
+    }
 }

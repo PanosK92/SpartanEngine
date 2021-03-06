@@ -19,18 +19,15 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#pragma once
+//= INCLUDES =======
+#include "Spartan.h"
+//==================
 
-enum class TransformHandleType
+namespace Spartan::Math
 {
-    Unknown,
-    Position,
-    Rotation,
-    Scale
-};
-
-enum class TransformHandleSpace
-{
-    Local,
-    World
-};
+    Sphere::Sphere(const Vector3& center, const float radius)
+    {
+        this->center = center;
+        this->radius = radius;
+    }
+}

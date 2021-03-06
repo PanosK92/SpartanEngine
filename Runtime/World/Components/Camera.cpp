@@ -68,7 +68,7 @@ namespace Spartan
             m_is_dirty = true;
         }
 
-        if (m_fps_control)
+        if (m_fps_control_enabled)
         {
             FpsControl(delta_time);
         }
@@ -395,7 +395,7 @@ namespace Spartan
             // Keyboard movement
             {
                 // Compute max speed
-                m_movement_speed_max += m_input->GetMouseWheelDelta() / 3.0f;
+                m_movement_speed_max += m_input->GetMouseWheelDelta() / 2.0f;
                 m_movement_speed_max = Helper::Clamp(m_movement_speed_max, m_movement_speed_min, numeric_limits<float>::max());
 
                 // Compute direction

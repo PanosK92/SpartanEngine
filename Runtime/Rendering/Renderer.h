@@ -75,13 +75,13 @@ namespace Spartan
         void Tick(float delta_time) override;
         //===================================
 
-        // Debug draw
-        void DrawDebugTick(const float delta_time);
-        void DrawDebugLine(const Math::Vector3& from, const Math::Vector3& to, const Math::Vector4& color_from = DEBUG_COLOR, const Math::Vector4& color_to = DEBUG_COLOR, const float duration = 0.0f, const bool depth = true);
-        void DrawDebugTriangle(const Math::Vector3& v0, const Math::Vector3& v1, const Math::Vector3& v2, const Math::Vector4& color = DEBUG_COLOR, const float duration = 0.0f, const bool depth = true);
-        void DrawDebugRectangle(const Math::Rectangle& rectangle, const Math::Vector4& color = DEBUG_COLOR, const float duration = 0.0f, const bool depth = true);
-        void DrawDebugBox(const Math::BoundingBox& box, const Math::Vector4& color = DEBUG_COLOR, const float duration = 0.0f, const bool depth = true);
-        void DrawDebugCircle(const Math::Vector3& center, const float radius, const uint32_t segments, const Math::Vector4& color = DEBUG_COLOR, const float duration = 0.0f, const bool depth = true);
+        // Primitive rendering
+        void TickPrimitives(const float delta_time);
+        void DrawLine(const Math::Vector3& from, const Math::Vector3& to, const Math::Vector4& color_from = DEBUG_COLOR, const Math::Vector4& color_to = DEBUG_COLOR, const float duration = 0.0f, const bool depth = true);
+        void DrawTriangle(const Math::Vector3& v0, const Math::Vector3& v1, const Math::Vector3& v2, const Math::Vector4& color = DEBUG_COLOR, const float duration = 0.0f, const bool depth = true);
+        void DrawRectangle(const Math::Rectangle& rectangle, const Math::Vector4& color = DEBUG_COLOR, const float duration = 0.0f, const bool depth = true);
+        void DrawBox(const Math::BoundingBox& box, const Math::Vector4& color = DEBUG_COLOR, const float duration = 0.0f, const bool depth = true);
+        void DrawCircle(const Math::Vector3& center, const Math::Vector3& axis, const float radius, const uint32_t segmentCount, const Math::Vector4& color = DEBUG_COLOR, const float duration = 0.0f, const bool depth = true);
 
         // Viewport
         const RHI_Viewport& GetViewport()           const { return m_viewport; }

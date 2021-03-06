@@ -50,21 +50,32 @@ namespace Spartan
         const Math::Vector3& GetColor(const Math::Vector3& axis) const;
         const RHI_VertexBuffer* GetVertexBuffer();
         const RHI_IndexBuffer* GetIndexBuffer();
+        bool HasModel() const { return m_axis_model != nullptr; }
 
     private:
-        void SnapToTransform(TransformHandleSpace space, Entity* entity, Camera* camera, float handle_size);
+        void ReflectEntityTransform(TransformHandleSpace space, Entity* entity, Camera* camera, float handle_size);
+        void UpdateHandleAxesState();
+        void UpdateHandleAxesMouseDelta(Camera* camera, const Math::Vector3& ray_end, const float handle_speed);
 
     protected:
+        // Test if the ray intersects any of the handles
+        virtual void InteresectionTest(const Math::Ray& camera_to_pixel) = 0;
+
         TransformHandleAxis m_handle_x;
         TransformHandleAxis m_handle_y;
         TransformHandleAxis m_handle_z;
         TransformHandleAxis m_handle_xyz;
+        bool m_handle_x_intersected             = false;
+        bool m_handle_y_intersected             = false;
+        bool m_handle_z_intersected             = false;
+        bool m_handle_xyz_intersected           = false;
+        TransformHandleType m_type              = TransformHandleType::Unknown;
+        Math::Vector3 m_ray_previous            = Math::Vector3::Zero;
+        Math::Vector3 m_ray_current             = Math::Vector3::Zero;
+        bool m_offset_handle_axes_from_center   = true;
+        Context* m_context                      = nullptr;
+        Renderer* m_renderer                    = nullptr;
+        Input* m_input                          = nullptr;
         std::unique_ptr<Model> m_axis_model;
-        TransformHandleType m_type;
-        Math::Vector3 m_ray_previous    = Math::Vector3::Zero;
-        Math::Vector3 m_ray_current     = Math::Vector3::Zero;
-        Context* m_context              = nullptr;
-        Renderer* m_renderer            = nullptr;
-        Input* m_input                  = nullptr;
     };
 }
