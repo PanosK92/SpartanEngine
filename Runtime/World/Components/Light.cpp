@@ -94,7 +94,7 @@ namespace Spartan
         // Camera dirty check (needed for directional light cascade computations)
         if (m_light_type == LightType::Directional)
         {
-            if (auto& camera = m_renderer->GetCamera())
+            if (shared_ptr<Camera> camera = m_renderer->GetCamera())
             {
                 if (m_previous_camera_view != camera->GetViewMatrix())
                 {

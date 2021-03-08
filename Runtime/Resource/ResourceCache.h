@@ -106,13 +106,13 @@ namespace Spartan
                 return GetByName<T>(resource->GetResourceName());
 
             // Prevent threads from colliding in critical section
-            std::lock_guard<mutex> guard(m_mutex);
+            std::lock_guard<std::mutex> guard(m_mutex);
 
             // In order to guarantee deserialization, we save it now
             resource->SaveToFile(resource->GetResourceFilePathNative());
 
             // Cache it
-            return static_pointer_cast<T>(m_resources.emplace_back(resource));
+            return std::static_pointer_cast<T>(m_resources.emplace_back(resource));
         }
         bool IsCached(const std::string& resource_name, ResourceType resource_type);
 

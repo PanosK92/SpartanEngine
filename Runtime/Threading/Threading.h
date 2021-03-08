@@ -82,9 +82,9 @@ namespace Spartan
         template <typename Function>
         void AddTaskLoop(Function&& function, uint32_t range)
         {
-            uint32_t available_threads  = GetThreadsAvailable();
-            vector<bool> tasks_done     = vector<bool>(available_threads, false);
-            const uint32_t task_count   = available_threads + 1; // plus one for the current thread
+            uint32_t available_threads      = GetThreadsAvailable();
+            std::vector<bool> tasks_done    = std::vector<bool>(available_threads, false);
+            const uint32_t task_count       = available_threads + 1; // plus one for the current thread
 
             uint32_t start  = 0;
             uint32_t end    = 0;

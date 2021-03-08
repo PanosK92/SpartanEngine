@@ -40,7 +40,7 @@ namespace Spartan
         virtual void Tick(float delta_time) {}
 
         template <typename T>
-        std::shared_ptr<T> GetPtrShared() { return dynamic_pointer_cast<T>(shared_from_this()); }
+        std::shared_ptr<T> GetPtrShared() { return std::dynamic_pointer_cast<T>(shared_from_this()); }
 
     protected:
         Context* m_context;

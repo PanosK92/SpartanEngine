@@ -93,14 +93,14 @@ namespace Spartan
         static constexpr ComponentType TypeToEnum();
         //==========================================
 
-        //= PROPERTIES ==========================================================================
+        //= PROPERTIES ===============================================================================
         Transform* GetTransform()           const { return m_transform; }
         Context* GetContext()               const { return m_context; }
         ComponentType GetType()             const { return m_type; }
         void SetType(ComponentType type)          { m_type = type; }
 
         template <typename T>
-        std::shared_ptr<T> GetPtrShared() { return dynamic_pointer_cast<T>(shared_from_this()); }
+        std::shared_ptr<T> GetPtrShared() { return std::dynamic_pointer_cast<T>(shared_from_this()); }
 
         const auto& GetAttributes() const { return m_attributes; }
         void SetAttributes(const std::vector<Attribute>& attributes)
@@ -114,8 +114,8 @@ namespace Spartan
         // Entity
         Entity* GetEntity()    const { return m_entity; }
         std::string GetEntityName() const;
-        //=======================================================================================
-
+        //============================================================================================
+        
     protected:
         #define REGISTER_ATTRIBUTE_GET_SET(getter, setter, type) RegisterAttribute(     \
         [this]()                        { return getter(); },                           \

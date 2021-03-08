@@ -102,6 +102,7 @@ project (RUNTIME_NAME)
 	objdir (INTERMEDIATE_DIR)
 	kind "StaticLib"
 	staticruntime "On"
+    conformancemode "On"
 	defines{ "SPARTAN_RUNTIME", API_GRAPHICS }
 	
 	-- Procompiled headers
@@ -174,6 +175,7 @@ project (EDITOR_NAME)
 	objdir (INTERMEDIATE_DIR)
 	kind "WindowedApp"
 	staticruntime "On"
+	conformancemode "On"
 	defines{ "SPARTAN_EDITOR", API_GRAPHICS }
 	
 	-- Files
