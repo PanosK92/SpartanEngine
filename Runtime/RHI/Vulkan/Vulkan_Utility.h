@@ -1073,7 +1073,7 @@ namespace Spartan::vulkan_utility
         functions() = default;
         ~functions() = default;
 
-        static void functions::initialize()
+        static void initialize()
         {
             #define get_func(var, def)\
             var = reinterpret_cast<PFN_##def>(vkGetInstanceProcAddr(static_cast<VkInstance>(globals::rhi_context->instance), #def));\

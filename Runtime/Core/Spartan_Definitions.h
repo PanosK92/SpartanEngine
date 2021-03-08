@@ -1,7 +1,7 @@
 #pragma once
 
 // Version
-constexpr char* sp_version = "v0.32 WIP";
+#define sp_version "v0.32 WIP"
 
 // Class
 #define SPARTAN_CLASS

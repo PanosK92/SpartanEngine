@@ -143,12 +143,12 @@ Widget_Properties::Widget_Properties(Editor* editor) : Widget(editor)
     m_title        = "Properties";
     m_size.x    = 500; // min width
 
-    m_colorPicker_light        = make_unique<ButtonColorPicker>("Light Color Picker");
-    m_colorPicker_material    = make_unique<ButtonColorPicker>("Material Color Picker");
+    m_colorPicker_light     = make_unique<ButtonColorPicker>("Light Color Picker");
+    m_colorPicker_material  = make_unique<ButtonColorPicker>("Material Color Picker");
     m_colorPicker_camera    = make_unique<ButtonColorPicker>("Camera Color Picker");
 
-    _Widget_Properties::resource_cache    = m_context->GetSubsystem<ResourceCache>();
-    _Widget_Properties::scene            = m_context->GetSubsystem<World>();  
+    _Widget_Properties::resource_cache  = m_context->GetSubsystem<ResourceCache>();
+    _Widget_Properties::scene           = m_context->GetSubsystem<World>();
 }
 
 void Widget_Properties::TickVisible()
@@ -226,14 +226,14 @@ void Widget_Properties::ShowTransform(Transform* transform) const
         //= REFLECT ==========================================================================================================
         Vector3 position    = transform->GetPositionLocal();
         Vector3 rotation    = !is_playing ? _Widget_Properties::rotation_hint : transform->GetRotationLocal().ToEulerAngles();
-        Vector3 scale        = transform->GetScaleLocal();
+        Vector3 scale       = transform->GetScaleLocal();
         //====================================================================================================================
 
         const auto show_float = [](const char* label, float* value) 
         {
             const float label_float_spacing = 15.0f;
             const float step                = 0.01f;
-            const string format                   = "%.4f";
+            const string format             = "%.4f";
 
             // Label
             ImGui::TextUnformatted(label);
@@ -291,9 +291,9 @@ void Widget_Properties::ShowLight(Light* light) const
 
     if (ComponentProperty::Begin("Light", Icon_Component_Light, light))
     {
-        //= REFLECT =================================================================
-        static vector<char*> types  = { "Directional", "Point", "Spot" };
-        const char* type_char_ptr   = types[static_cast<int>(light->GetLightType())];
+        //= REFLECT =========================================================================
+        static vector<string> types = { "Directional", "Point", "Spot" };
+        const char* type_char_ptr   = types[static_cast<int>(light->GetLightType())].c_str();
         float intensity             = light->GetIntensity();
         float angle                 = light->GetAngle() * Math::Helper::RAD_TO_DEG;
         bool shadows                = light->GetShadowsEnabled();
@@ -307,7 +307,7 @@ void Widget_Properties::ShowLight(Light* light) const
         m_colorPicker_light->SetColor(light->GetColor());
 
         bool is_directional = light->GetLightType() == LightType::Directional;
-        //===========================================================================
+        //===================================================================================
 
         // Type
         ImGui::Text("Type");
@@ -317,9 +317,9 @@ void Widget_Properties::ShowLight(Light* light) const
             for (unsigned int i = 0; i < static_cast<unsigned int>(types.size()); i++)
             {
                 const auto is_selected = (type_char_ptr == types[i]);
-                if (ImGui::Selectable(types[i], is_selected))
+                if (ImGui::Selectable(types[i].c_str(), is_selected))
                 {
-                    type_char_ptr = types[i];
+                    type_char_ptr = types[i].c_str();
                     light->SetLightType(static_cast<LightType>(i));
                 }
                 if (is_selected)
@@ -567,7 +567,7 @@ void Widget_Properties::ShowCollider(Collider* collider) const
 
     if (ComponentProperty::Begin("Collider", Icon_Component_Collider, collider))
     {
-        //= REFLECT =======================================================================
+        //= REFLECT ===============================================================================
         static vector<string> type = {
             "Box",
             "Sphere",
@@ -577,16 +577,16 @@ void Widget_Properties::ShowCollider(Collider* collider) const
             "Cone",
             "Mesh"
         };
-        const char* shape_char_ptr        = type[static_cast<int>(collider->GetShapeType())].c_str();
-        bool optimize                    = collider->GetOptimize();
-        Vector3 collider_center            = collider->GetCenter();
-        Vector3 collider_bounding_box    = collider->GetBoundingBox();
-        //=================================================================================
+        const char* shape_char_ptr      = type[static_cast<int>(collider->GetShapeType())].c_str();
+        bool optimize                   = collider->GetOptimize();
+        Vector3 collider_center         = collider->GetCenter();
+        Vector3 collider_bounding_box   = collider->GetBoundingBox();
+        //=========================================================================================
 
-        const auto input_text_flags        = ImGuiInputTextFlags_CharsDecimal;
-        const auto step                    = 0.1f;
-        const auto step_fast            = 0.1f;
-        const auto precision            = "%.3f";
+        const auto input_text_flags = ImGuiInputTextFlags_CharsDecimal;
+        const auto step             = 0.1f;
+        const auto step_fast        = 0.1f;
+        const auto precision        = "%.3f";
 
         // Type
         ImGui::Text("Type");
@@ -645,9 +645,9 @@ void Widget_Properties::ShowConstraint(Constraint* constraint) const
 
     if (ComponentProperty::Begin("Constraint", Icon_Component_AudioSource, constraint))
     {
-        //= REFLECT ==========================================================================
-        vector<char*> types     = {"Point", "Hinge", "Slider", "ConeTwist" };
-        const char* type_str    = types[static_cast<int>(constraint->GetConstraintType())];
+        //= REFLECT ===============================================================================
+        vector<string> types    = {"Point", "Hinge", "Slider", "ConeTwist" };
+        const char* type_str    = types[static_cast<int>(constraint->GetConstraintType())].c_str();
         auto other_body         = constraint->GetBodyOther();
         bool other_body_dirty   = false;
         Vector3 position        = constraint->GetPosition();
@@ -655,7 +655,7 @@ void Widget_Properties::ShowConstraint(Constraint* constraint) const
         Vector2 high_limit      = constraint->GetHighLimit();
         Vector2 low_limit       = constraint->GetLowLimit();
         string other_body_name  = other_body.expired() ? "N/A" : other_body.lock()->GetName();
-        //====================================================================================
+        //=========================================================================================
 
         const auto inputTextFlags   = ImGuiInputTextFlags_CharsDecimal;
         const float step            = 0.1f;
@@ -669,9 +669,9 @@ void Widget_Properties::ShowConstraint(Constraint* constraint) const
             for (unsigned int i = 0; i < (unsigned int)types.size(); i++)
             {
                 const bool is_selected = (type_str == types[i]);
-                if (ImGui::Selectable(types[i], is_selected))
+                if (ImGui::Selectable(types[i].c_str(), is_selected))
                 {
-                    type_str = types[i];
+                    type_str = types[i].c_str();
                     constraint->SetConstraintType(static_cast<ConstraintType>(i));
                 }
                 if (is_selected)

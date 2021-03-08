@@ -34,18 +34,18 @@ namespace Spartan
         Stopwatch() { Start(); }
         ~Stopwatch() = default;
 
-        void Stopwatch::Start()
+        void Start()
         {
             m_start = std::chrono::high_resolution_clock::now();
         }
 
-        float Stopwatch::GetElapsedTimeSec() const
+        float GetElapsedTimeSec() const
         {
             const std::chrono::duration<double, std::milli> ms = std::chrono::high_resolution_clock::now() - m_start;
             return static_cast<float>(ms.count() / 1000);
         }
 
-        float Stopwatch::GetElapsedTimeMs() const
+        float GetElapsedTimeMs() const
         {
             const std::chrono::duration<double, std::milli> ms = std::chrono::high_resolution_clock::now() - m_start;
             return static_cast<float>(ms.count());

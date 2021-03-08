@@ -137,7 +137,7 @@ namespace Spartan::vulkan_utility
         VmaAllocation allocation = nullptr;
         VmaAllocationInfo allocation_info;
         if (!error::check(vmaCreateBuffer(allocator, &buffer_create_info, &allocation_create_info, reinterpret_cast<VkBuffer*>(&_buffer), &allocation, &allocation_info)))
-            return false;
+            return nullptr;
 
         // Keep allocation reference
         globals::rhi_context->allocations[reinterpret_cast<uint64_t>(_buffer)] = allocation;
