@@ -69,31 +69,35 @@ solution (SOLUTION_NAME)
 	systemversion "latest"
 	cppdialect "C++17"
 	language "C++"
-	platforms "x64"
+	platforms {"x64", "linux"}
 	configurations { "Release", "Debug" }
-	
+
 	-- Defines
 	defines
 	{
 		"SPARTAN_RUNTIME_STATIC=1",
 		"SPARTAN_RUNTIME_SHARED=0"
 	}
-	
+
 	filter { "platforms:x64" }
 		system "Windows"
 		architecture "x64"
-		
+
+    filter { "platforms:linux" }
+		system "Linux"
+		architecture "x86_64"
+
 	--	"Debug"
 	filter "configurations:Debug"
 		defines { "DEBUG" }
 		flags { "MultiProcessorCompile", "LinkTimeOptimization" }
-		symbols "On"			
-		
-	--	"Release"	
+		symbols "On"
+
+	--	"Release"
 	filter "configurations:Release"
 		defines { "NDEBUG" }
 		flags { "MultiProcessorCompile" }
-		symbols "Off"	
+		symbols "Off"
 		optimize "Full"
 
 -- Runtime -------------------------------------------------------------------------------------------------
@@ -102,22 +106,25 @@ project (RUNTIME_NAME)
 	objdir (INTERMEDIATE_DIR)
 	kind "StaticLib"
 	staticruntime "On"
-    conformancemode "On"
+    if os.get() == "windows" then
+        conformancemode "On"
+     end
 	defines{ "SPARTAN_RUNTIME", API_GRAPHICS }
-	
+    files "./CORE/**"
+
 	-- Procompiled headers
 	pchheader "Spartan.h"
 	pchsource "../Runtime/Core/Spartan.cpp"
-	
+
 	-- Source
-	files 
-	{ 
+	files
+	{
 		RUNTIME_DIR .. "/**.h",
 		RUNTIME_DIR .. "/**.cpp",
 		RUNTIME_DIR .. "/**.hpp",
 		RUNTIME_DIR .. "/**.inl"
 	}
-	
+
 	-- Source to ignore
 	removefiles { IGNORE_FILES[0], IGNORE_FILES[1] }
 
@@ -129,6 +136,7 @@ project (RUNTIME_NAME)
 	includedirs { "../ThirdParty/FreeType_2.10.4" }
 	includedirs { "../ThirdParty/pugixml_1.10" }
 	includedirs { "../ThirdParty/Mono_6.12.0.86" }
+    includedirs { "../Runtime/Core" }
 	includedirs { ADDITIONAL_INCLUDES[0], ADDITIONAL_INCLUDES[1], ADDITIONAL_INCLUDES[2] }
 
 	-- Libraries
@@ -148,7 +156,7 @@ project (RUNTIME_NAME)
 		links { "IrrXML_debug" }
 		links { "libmono-static-sgen_debug.lib" }
 		links { ADDITIONAL_LIBRARIES_DBG[0], ADDITIONAL_LIBRARIES_DBG[1], ADDITIONAL_LIBRARIES_DBG[2], ADDITIONAL_LIBRARIES_DBG[3] }
-			
+
 	--	"Release"
 	filter "configurations:Release"
 		targetdir (TARGET_DIR_RELEASE)
@@ -175,31 +183,33 @@ project (EDITOR_NAME)
 	objdir (INTERMEDIATE_DIR)
 	kind "WindowedApp"
 	staticruntime "On"
-	conformancemode "On"
+    if os.get() == "windows" then
+	    conformancemode "On"
+    end
 	defines{ "SPARTAN_EDITOR", API_GRAPHICS }
-	
+
 	-- Files
-	files 
-	{ 
+	files
+	{
 		EDITOR_DIR .. "/**.rc",
 		EDITOR_DIR .. "/**.h",
 		EDITOR_DIR .. "/**.cpp",
 		EDITOR_DIR .. "/**.hpp",
 		EDITOR_DIR .. "/**.inl"
 	}
-	
+
 	-- Includes
 	includedirs { "../" .. RUNTIME_NAME }
-	
+
 	-- Libraries
 	libdirs (LIBRARY_DIR)
 
 	-- "Debug"
 	filter "configurations:Debug"
-		targetdir (TARGET_DIR_DEBUG)	
+		targetdir (TARGET_DIR_DEBUG)
 		debugdir (TARGET_DIR_DEBUG)
-		debugformat (DEBUG_FORMAT)		
-				
+		debugformat (DEBUG_FORMAT)
+
 	-- "Release"
 	filter "configurations:Release"
 		targetdir (TARGET_DIR_RELEASE)
