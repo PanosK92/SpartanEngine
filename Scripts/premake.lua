@@ -34,7 +34,7 @@ TARGET_DIR_RELEASE  		= "../Binaries/Release"
 TARGET_DIR_DEBUG    		= "../Binaries/Debug"
 API_GRAPHICS				= _ARGS[1]
 
--- Compute graphics api specific variables
+-- Graphics api specific variables
 if API_GRAPHICS == "d3d11" then
 	API_GRAPHICS	= "API_GRAPHICS_D3D11"
 	TARGET_NAME		= "Spartan_d3d11"
