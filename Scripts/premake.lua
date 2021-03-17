@@ -106,7 +106,7 @@ project (RUNTIME_NAME)
 	objdir (INTERMEDIATE_DIR)
 	kind "StaticLib"
 	staticruntime "On"
-    if os.get() == "windows" then
+    if os.target() == "windows" then
         conformancemode "On"
      end
 	defines{ "SPARTAN_RUNTIME", API_GRAPHICS }
@@ -183,7 +183,7 @@ project (EDITOR_NAME)
 	objdir (INTERMEDIATE_DIR)
 	kind "WindowedApp"
 	staticruntime "On"
-    if os.get() == "windows" then
+    if os.target() == "windows" then
 	    conformancemode "On"
     end
 	defines{ "SPARTAN_EDITOR", API_GRAPHICS }
