@@ -2049,8 +2049,6 @@ namespace Spartan
                 // Light can be null if it just got removed and our buffer doesn't update till the next frame
                 if (Light* light = entity->GetComponent<Light>())
                 {
-                    const LightType type = light->GetLightType();
-
                     Vector3 position_light_world        = entity->GetTransform()->GetPosition();
                     Vector3 position_camera_world       = m_camera->GetTransform()->GetPosition();
                     Vector3 direction_camera_to_light   = (position_light_world - position_camera_world).Normalized();
@@ -2067,6 +2065,7 @@ namespace Spartan
 
                         // Choose texture based on light type
                         shared_ptr<RHI_Texture> light_tex = nullptr;
+                        const LightType type = light->GetLightType();
                         if (type == LightType::Directional) light_tex = m_gizmo_tex_light_directional;
                         else if (type == LightType::Point)  light_tex = m_gizmo_tex_light_point;
                         else if (type == LightType::Spot)   light_tex = m_gizmo_tex_light_spot;
