@@ -30,11 +30,11 @@ namespace Spartan
 {
     class Context;
 
-    enum FPS_Policy
+    enum class FpsLimitType
     {
-        Fps_Unlocked,
-        Fps_Fixed,
-        Fps_FixedMonitor
+        Unlocked,
+        Fixed,
+        FixedToMonitor
     };
 
     class SPARTAN_CLASS Timer : public ISubsystem
@@ -47,12 +47,12 @@ namespace Spartan
         void Tick(float delta_time) override;
         //===================================
 
-        //= FPS ============================================
+        //= FPS ==============================================
         void SetTargetFps(double fps);
-        auto GetTargetFps() const   { return m_fps_target; }
-        auto GetMinFps() const      { return m_fps_min; }
-        auto GetFpsPolicy() const   { return m_fps_policy; }
-        //==================================================
+        double GetTargetFps()   const { return m_fps_target; }
+        double GetMinFps()      const { return m_fps_min; }
+        FpsLimitType GetFpsLimitType();
+        //====================================================
 
         auto GetTimeMs()                const { return m_time_ms; }
         auto GetTimeSec()               const { return static_cast<float>(m_time_ms / 1000.0); }
@@ -76,6 +76,5 @@ namespace Spartan
         double m_fps_max                = 1000.0;
         double m_fps_target             = m_fps_max;
         bool m_user_selected_fps_target = false;
-        FPS_Policy m_fps_policy         = Fps_Unlocked;
     };
 }

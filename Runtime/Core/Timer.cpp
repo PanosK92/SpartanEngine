@@ -74,7 +74,7 @@ namespace Spartan
         const double frames_to_accumulate   = 5;
         const double delta_feedback         = 1.0 / frames_to_accumulate;
         double delta_max                    = 1000.0 / m_fps_min;
-        const double delta_clamped          = m_delta_time_ms > delta_max ? delta_max : m_delta_time_ms; // If frame time is too high/slow, clamp it   
+        const double delta_clamped          = m_delta_time_ms > delta_max ? delta_max : m_delta_time_ms; // If frame time is too high/slow, clamp it
         m_delta_time_smoothed_ms            = m_delta_time_smoothed_ms * (1.0 - delta_feedback) + delta_clamped * delta_feedback;
     }
 
@@ -82,18 +82,12 @@ namespace Spartan
     {
         if (fps_in < 0.0f) // negative -> match monitor's refresh rate
         {
-            m_fps_policy = Fps_FixedMonitor;
             const DisplayMode& display_mode = Display::GetActiveDisplayMode();
             fps_in = display_mode.hz;
         }
         else if (fps_in >= 0.0f && fps_in < 10.0f) // zero or very small -> unlock to avoid unresponsiveness
         {
-            m_fps_policy    = Fps_Unlocked;
-            fps_in          = m_fps_max;
-        }
-        else // anything decent, let it happen
-        {
-            m_fps_policy = Fps_Fixed;
+            fps_in = m_fps_max;
         }
 
         if (m_fps_target == fps_in)
@@ -102,5 +96,21 @@ namespace Spartan
         m_fps_target = fps_in;
         m_user_selected_fps_target = true;
         LOG_INFO("Set to %.2f FPS", m_fps_target);
+    }
+
+    FpsLimitType Timer::GetFpsLimitType()
+    {
+        if (m_fps_target == Display::GetActiveDisplayMode().hz)
+        {
+            return FpsLimitType::FixedToMonitor;
+        }
+        else if (m_fps_target == m_fps_max)
+        {
+            return FpsLimitType::Unlocked;
+        }
+        else
+        {
+            return FpsLimitType::Fixed;
+        }
     }
 }

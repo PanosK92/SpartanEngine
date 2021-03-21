@@ -111,8 +111,6 @@ namespace Spartan
         void SetNormalBias(float value) { m_normal_bias = value; }
         auto GetNormalBias() const { return m_normal_bias; }
 
-        Math::Vector3 GetDirection() const;
-
         const Math::Matrix& GetViewMatrix(uint32_t index = 0) const;
         const Math::Matrix& GetProjectionMatrix(uint32_t index = 0) const;
 
