@@ -42,12 +42,12 @@ namespace Spartan
 {
     Terrain::Terrain(Context* context, Entity* entity, uint32_t id /*= 0*/) : IComponent(context, entity, id)
     {
-        
+
     }
 
     void Terrain::OnInitialize()
     {
-        
+
     }
 
     void Terrain::Serialize(FileStream* stream)
