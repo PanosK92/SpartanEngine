@@ -23,7 +23,7 @@ jobs:
           
       - name: Clean up for artifact upload
         shell: bash
-        run: 'Scripts\clean.sh'
+        run: ./Scripts/clean.sh
  
       - uses: actions/upload-artifact@master  
         with:
@@ -50,7 +50,7 @@ jobs:
             
         - name: Clean up for artifact upload
           shell: bash
-          run: 'Scripts\clean.sh'
+          run: ./Scripts/clean.sh
   
         - uses: actions/upload-artifact@master  
           with:
@@ -77,7 +77,7 @@ jobs:
           
       - name: Clean up for artifact upload
         shell: bash
-        run: 'Scripts\clean.sh'
+        run: ./Scripts/clean.sh
  
       - uses: actions/upload-artifact@master  
         with:
