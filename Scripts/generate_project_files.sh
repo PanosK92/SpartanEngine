@@ -23,7 +23,9 @@ echo "==========================================================================
 # Copy engine data to the binary directory
 echo
 echo "3. Copying required data to the binary directory..."
+mkdir -p Binaries/Debug/Data
 cp -r Data Binaries/Debug/Data
+mkdir -p Binaries/Release/Data
 cp -r Data Binaries/Release/Data
 
 # Copy engine DLLs to the binary directory
