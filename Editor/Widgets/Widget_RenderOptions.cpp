@@ -158,7 +158,7 @@ void Widget_RenderOptions::TickVisible()
                         const auto is_selected = (tonemapping_selection == tonemapping_options[i]);
                         if (ImGui::Selectable(tonemapping_options[i].c_str(), is_selected))
                         {
-                            tonemapping_selection = tonemapping_options[i].c_str();
+                            tonemapping_selection = tonemapping_options[i];
                             m_renderer->SetOptionValue(Renderer_Option_Value::Tonemapping, static_cast<float>(i));
                         }
                         if (is_selected)
@@ -242,82 +242,77 @@ void Widget_RenderOptions::TickVisible()
 
             // Shadow resolution
             ImGui::InputInt("Shadow Resolution", &resolution_shadow, 1);
+            ImGui::Separator();
+
+            // FPS Limit
+            Timer* timer = m_context->GetSubsystem<Timer>();
+            double fps_target = timer->GetTargetFps();
+            ImGui::InputDouble("FPS Limit", &fps_target);
+            timer->SetTargetFps(fps_target);
+            const FpsLimitType fps_limit_type = timer->GetFpsLimitType();
+            ImGui::SameLine(); ImGui::Text(fps_limit_type == FpsLimitType::FixedToMonitor ? "Fixed to monitor" : (fps_limit_type == FpsLimitType::Unlocked ? "Unlocked" : "Fixed"));
         }
 
         // Map
-        m_renderer->SetOption(Render_Bloom,                                     do_bloom);
-        m_renderer->SetOption(Render_DepthOfField,                              do_dof);
-        m_renderer->SetOption(Render_VolumetricFog,                             do_volumetric_fog);
-        m_renderer->SetOption(Render_Ssao,                                      do_ssao);
-        m_renderer->SetOption(Render_ScreenSpaceShadows,                        do_sss);
-        m_renderer->SetOption(Render_ScreenSpaceReflections,                    do_ssr);
-        m_renderer->SetOption(Render_Ssgi,                                      do_ssgi);
-        m_renderer->SetOption(Render_AntiAliasing_Taa,                          do_taa);
-        m_renderer->SetOption(Render_AntiAliasing_Fxaa,                         do_fxaa);
-        m_renderer->SetOption(Render_MotionBlur,                                do_motion_blur);
-        m_renderer->SetOption(Render_FilmGrain,                                 do_film_grain);
-        m_renderer->SetOption(Render_Sharpening_LumaSharpen,                    do_sharperning);
-        m_renderer->SetOption(Render_ChromaticAberration,                       do_chromatic_aberration);
-        m_renderer->SetOption(Render_Dithering,                                 do_dithering);
-        m_renderer->SetOptionValue(Renderer_Option_Value::ShadowResolution,     static_cast<float>(resolution_shadow));
-        m_renderer->SetOptionValue(Renderer_Option_Value::Fog,                  fog_density);
+        m_renderer->SetOption(Render_Bloom,                                 do_bloom);
+        m_renderer->SetOption(Render_DepthOfField,                          do_dof);
+        m_renderer->SetOption(Render_VolumetricFog,                         do_volumetric_fog);
+        m_renderer->SetOption(Render_Ssao,                                  do_ssao);
+        m_renderer->SetOption(Render_ScreenSpaceShadows,                    do_sss);
+        m_renderer->SetOption(Render_ScreenSpaceReflections,                do_ssr);
+        m_renderer->SetOption(Render_Ssgi,                                  do_ssgi);
+        m_renderer->SetOption(Render_AntiAliasing_Taa,                      do_taa);
+        m_renderer->SetOption(Render_AntiAliasing_Fxaa,                     do_fxaa);
+        m_renderer->SetOption(Render_MotionBlur,                            do_motion_blur);
+        m_renderer->SetOption(Render_FilmGrain,                             do_film_grain);
+        m_renderer->SetOption(Render_Sharpening_LumaSharpen,                do_sharperning);
+        m_renderer->SetOption(Render_ChromaticAberration,                   do_chromatic_aberration);
+        m_renderer->SetOption(Render_Dithering,                             do_dithering);
+        m_renderer->SetOptionValue(Renderer_Option_Value::ShadowResolution, static_cast<float>(resolution_shadow));
+        m_renderer->SetOptionValue(Renderer_Option_Value::Fog,              fog_density);
     }
 
     if (ImGui::CollapsingHeader("Widgets", ImGuiTreeNodeFlags_None))
     {
-        // FPS
+        bool debug_physics               = m_renderer->GetOption(Render_Debug_Physics);
+        bool debug_aabb                  = m_renderer->GetOption(Render_Debug_Aabb);
+        bool debug_light                 = m_renderer->GetOption(Render_Debug_Lights);
+        bool debug_transform             = m_renderer->GetOption(Render_Debug_Transform);
+        bool debug_selection_outline     = m_renderer->GetOption(Render_Debug_SelectionOutline);
+        bool debug_picking_ray           = m_renderer->GetOption(Render_Debug_PickingRay);
+        bool debug_grid                  = m_renderer->GetOption(Render_Debug_Grid);
+        bool debug_performance_metrics   = m_renderer->GetOption(Render_Debug_PerformanceMetrics);
+        bool debug_wireframe             = m_renderer->GetOption(Render_Debug_Wireframe);
+        
+        ImGui::Checkbox("Transform", &debug_transform);
         {
-            auto timer = m_context->GetSubsystem<Timer>();
-            auto fps_target = timer->GetTargetFps();
-
-            ImGui::InputDouble("Target FPS", &fps_target);
-            timer->SetTargetFps(fps_target);
-            const auto fps_policy = timer->GetFpsPolicy();
-            ImGui::SameLine(); ImGui::Text(fps_policy == Fps_FixedMonitor ? "Fixed (Monitor)" : fps_target == Fps_Unlocked ? "Unlocked" : "Fixed");
+            ImGui::SameLine(); ImGui::InputFloat("Size", &m_renderer->m_gizmo_transform_size, 0.0025f);
+            ImGui::SameLine(); ImGui::InputFloat("Speed", &m_renderer->m_gizmo_transform_speed, 1.0f);
         }
-        ImGui::Separator();
-
+        ImGui::Checkbox("Selection Outline",    &debug_selection_outline);
+        ImGui::Checkbox("Physics",              &debug_physics);
+        ImGui::Checkbox("AABB",                 &debug_aabb);
+        ImGui::Checkbox("Lights",               &debug_light);
+        ImGui::Checkbox("Picking Ray",          &debug_picking_ray);
+        ImGui::Checkbox("Grid",                 &debug_grid);
+        ImGui::Checkbox("Performance Metrics",  &debug_performance_metrics);
+        ImGui::Checkbox("Wireframe",            &debug_wireframe);
+        
+        // Reset metrics on activation
+        if (debug_performance_metrics && !m_renderer->GetOption(Render_Debug_PerformanceMetrics))
         {
-            bool debug_physics               = m_renderer->GetOption(Render_Debug_Physics);
-            bool debug_aabb                  = m_renderer->GetOption(Render_Debug_Aabb);
-            bool debug_light                 = m_renderer->GetOption(Render_Debug_Lights);
-            bool debug_transform             = m_renderer->GetOption(Render_Debug_Transform);
-            bool debug_selection_outline     = m_renderer->GetOption(Render_Debug_SelectionOutline);
-            bool debug_picking_ray           = m_renderer->GetOption(Render_Debug_PickingRay);
-            bool debug_grid                  = m_renderer->GetOption(Render_Debug_Grid);
-            bool debug_performance_metrics   = m_renderer->GetOption(Render_Debug_PerformanceMetrics);
-            bool debug_wireframe             = m_renderer->GetOption(Render_Debug_Wireframe);
-
-            ImGui::Checkbox("Transform", &debug_transform);
-            {
-                ImGui::SameLine(); ImGui::InputFloat("Size", &m_renderer->m_gizmo_transform_size, 0.0025f);
-                ImGui::SameLine(); ImGui::InputFloat("Speed", &m_renderer->m_gizmo_transform_speed, 1.0f);
-            }
-            ImGui::Checkbox("Selection Outline",    &debug_selection_outline);
-            ImGui::Checkbox("Physics",              &debug_physics);
-            ImGui::Checkbox("AABB",                 &debug_aabb);
-            ImGui::Checkbox("Lights",               &debug_light);
-            ImGui::Checkbox("Picking Ray",          &debug_picking_ray);
-            ImGui::Checkbox("Grid",                 &debug_grid);
-            ImGui::Checkbox("Performance Metrics",  &debug_performance_metrics);
-            ImGui::Checkbox("Wireframe",            &debug_wireframe);
-
-            // Reset metrics on activation
-            if (debug_performance_metrics && !m_renderer->GetOption(Render_Debug_PerformanceMetrics))
-            {
-                m_profiler->ResetMetrics();
-            }
-
-            m_renderer->SetOption(Render_Debug_Transform,           debug_transform);
-            m_renderer->SetOption(Render_Debug_SelectionOutline,    debug_selection_outline);
-            m_renderer->SetOption(Render_Debug_Physics,             debug_physics);
-            m_renderer->SetOption(Render_Debug_Aabb,                debug_aabb);
-            m_renderer->SetOption(Render_Debug_Lights,              debug_light);
-            m_renderer->SetOption(Render_Debug_PickingRay,          debug_picking_ray);
-            m_renderer->SetOption(Render_Debug_Grid,                debug_grid);
-            m_renderer->SetOption(Render_Debug_PerformanceMetrics,  debug_performance_metrics);
-            m_renderer->SetOption(Render_Debug_Wireframe,           debug_wireframe);
+            m_profiler->ResetMetrics();
         }
+        
+        m_renderer->SetOption(Render_Debug_Transform,           debug_transform);
+        m_renderer->SetOption(Render_Debug_SelectionOutline,    debug_selection_outline);
+        m_renderer->SetOption(Render_Debug_Physics,             debug_physics);
+        m_renderer->SetOption(Render_Debug_Aabb,                debug_aabb);
+        m_renderer->SetOption(Render_Debug_Lights,              debug_light);
+        m_renderer->SetOption(Render_Debug_PickingRay,          debug_picking_ray);
+        m_renderer->SetOption(Render_Debug_Grid,                debug_grid);
+        m_renderer->SetOption(Render_Debug_PerformanceMetrics,  debug_performance_metrics);
+        m_renderer->SetOption(Render_Debug_Wireframe,           debug_wireframe);
     }
 
     if (ImGui::CollapsingHeader("Debug", ImGuiTreeNodeFlags_None))

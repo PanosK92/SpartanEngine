@@ -527,7 +527,7 @@ namespace Spartan
         m_buffer_light_cpu.color                        = light->GetColor();
         m_buffer_light_cpu.normal_bias                  = light->GetNormalBias();
         m_buffer_light_cpu.position                     = light->GetTransform()->GetPosition();
-        m_buffer_light_cpu.direction                    = light->GetDirection();
+        m_buffer_light_cpu.direction                    = light->GetTransform()->GetForward();
 
         if (!update_dynamic_buffer<BufferLight>(cmd_list, m_buffer_light_gpu.get(), m_buffer_light_cpu, m_buffer_light_cpu_previous, m_buffer_light_offset_index))
             return false;
