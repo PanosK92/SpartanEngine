@@ -22,8 +22,8 @@ jobs:
         run: '"%MSBUILD_PATH%\MSBuild.exe" /p:Platform=x64 /p:Configuration=Release /m Spartan.sln'
           
       - name: Clean up for artifact upload
-        shell: cmd
-        run: 'Scripts\clean.bat'
+        shell: bash
+        run: 'Scripts\clean.sh'
  
       - uses: actions/upload-artifact@master  
         with:
@@ -49,8 +49,8 @@ jobs:
           run: '"%MSBUILD_PATH%\MSBuild.exe" /p:Platform=x64 /p:Configuration=Release /m Spartan.sln'
             
         - name: Clean up for artifact upload
-          shell: cmd
-          run: 'Scripts\clean.bat'
+          shell: bash
+          run: 'Scripts\clean.sh'
   
         - uses: actions/upload-artifact@master  
           with:
@@ -76,11 +76,10 @@ jobs:
         run: '"%MSBUILD_PATH%\MSBuild.exe" /p:Platform=x64 /p:Configuration=Release /m Spartan.sln'
           
       - name: Clean up for artifact upload
-        shell: cmd
-        run: 'Scripts\clean.bat'
+        shell: bash
+        run: 'Scripts\clean.sh'
  
       - uses: actions/upload-artifact@master  
         with:
           name: release_vulkan
           path: Binaries\Release
-    
