@@ -29,7 +29,7 @@ ADDITIONAL_INCLUDES			= {}
 ADDITIONAL_LIBRARIES		= {}
 ADDITIONAL_LIBRARIES_DBG	= {}
 LIBRARY_DIR					= "../ThirdParty/libraries"
-INTERMEDIATE_DIR			= "../Binaries/Intermediate"
+OBJ_DIR						= "../Binaries/Obj"
 TARGET_DIR_RELEASE  		= "../Binaries/Release"
 TARGET_DIR_DEBUG    		= "../Binaries/Debug"
 API_GRAPHICS				= _ARGS[1]
@@ -37,17 +37,17 @@ API_GRAPHICS				= _ARGS[1]
 -- Graphics api specific variables
 if API_GRAPHICS == "d3d11" then
 	API_GRAPHICS	= "API_GRAPHICS_D3D11"
-	TARGET_NAME		= "Spartan_d3d11"
+	TARGET_NAME		= TARGET_NAME .. "_d3d11"
 	IGNORE_FILES[0]	= RUNTIME_DIR .. "/RHI/D3D12/**"
 	IGNORE_FILES[1]	= RUNTIME_DIR .. "/RHI/Vulkan/**"
 elseif API_GRAPHICS == "d3d12" then
 	API_GRAPHICS	= "API_GRAPHICS_D3D12"
-	TARGET_NAME		= "Spartan_d3d12"
+	TARGET_NAME		= TARGET_NAME .. "_d3d12"
 	IGNORE_FILES[0]	= RUNTIME_DIR .. "/RHI/D3D11/**"
 	IGNORE_FILES[1]	= RUNTIME_DIR .. "/RHI/Vulkan/**"
 elseif API_GRAPHICS == "vulkan" then
 	API_GRAPHICS				= "API_GRAPHICS_VULKAN"
-	TARGET_NAME					= "Spartan_vk"
+	TARGET_NAME					= TARGET_NAME .. "_vulkan"
 	IGNORE_FILES[0]				= RUNTIME_DIR .. "/RHI/D3D11/**"
 	IGNORE_FILES[1]				= RUNTIME_DIR .. "/RHI/D3D12/**"
 	ADDITIONAL_INCLUDES[0] 		= "../ThirdParty/DirectXShaderCompiler";
@@ -69,8 +69,8 @@ solution (SOLUTION_NAME)
 	systemversion "latest"
 	cppdialect "C++17"
 	language "C++"
-	platforms {"x64", "linux"}
-	configurations { "Release", "Debug" }
+	platforms {"Windows", "Linux"}
+	configurations { "Debug", "Release" }
 
 	-- Defines
 	defines
@@ -79,31 +79,32 @@ solution (SOLUTION_NAME)
 		"SPARTAN_RUNTIME_SHARED=0"
 	}
 
-	filter { "platforms:x64" }
+	filter { "platforms:Windows" }
 		system "Windows"
 		architecture "x64"
 
-    filter { "platforms:linux" }
+    filter { "platforms:Linux" }
 		system "Linux"
 		architecture "x86_64"
 
 	--	"Debug"
 	filter "configurations:Debug"
 		defines { "DEBUG" }
-		flags { "MultiProcessorCompile", "LinkTimeOptimization" }
+		debugformat (DEBUG_FORMAT)
 		symbols "On"
-
+		flags { "MultiProcessorCompile", "LinkTimeOptimization" }
+		
 	--	"Release"
 	filter "configurations:Release"
 		defines { "NDEBUG" }
 		flags { "MultiProcessorCompile" }
 		symbols "Off"
-		optimize "Full"
+		optimize "Speed"
 
 -- Runtime -------------------------------------------------------------------------------------------------
 project (RUNTIME_NAME)
 	location (RUNTIME_DIR)
-	objdir (INTERMEDIATE_DIR)
+	objdir (OBJ_DIR)
 	kind "StaticLib"
 	staticruntime "On"
     if os.target() == "windows" then
@@ -146,7 +147,6 @@ project (RUNTIME_NAME)
 	filter "configurations:Debug"
 		targetdir (TARGET_DIR_DEBUG)
 		debugdir (TARGET_DIR_DEBUG)
-		debugformat (DEBUG_FORMAT)
 		links { "assimp_debug" }
 		links { "fmodL64_vc" }
 		links { "FreeImageLib_debug" }
@@ -180,7 +180,7 @@ project (EDITOR_NAME)
 	links { RUNTIME_NAME }
 	dependson { RUNTIME_NAME }
 	targetname ( TARGET_NAME )
-	objdir (INTERMEDIATE_DIR)
+	objdir (OBJ_DIR)
 	kind "WindowedApp"
 	staticruntime "On"
     if os.target() == "windows" then
@@ -208,7 +208,6 @@ project (EDITOR_NAME)
 	filter "configurations:Debug"
 		targetdir (TARGET_DIR_DEBUG)
 		debugdir (TARGET_DIR_DEBUG)
-		debugformat (DEBUG_FORMAT)
 
 	-- "Release"
 	filter "configurations:Release"
