@@ -1,8 +1,10 @@
 #!/bin/bash
 
+# delete intermediate directory
 rm -rf Binaries/intermediate
-# @RD /S /Q "Binaries\intermediate"
-# del	/S /Q "Binaries\*.exp
-# del	/S /Q "Binaries\*.ilk
-# del	/S /Q "Binaries\*.lib
-# del	/S /Q "Binaries\*.pdb
+
+# delete binary directory files (that don't need to be part of build artifacts)
+rm -f Binaries/*.exp
+rm -f Binaries/*.ilk
+rm -f Binaries/*.lib
+rm -f Binaries/*.pdb
