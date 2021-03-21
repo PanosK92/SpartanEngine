@@ -83,10 +83,10 @@ namespace Spartan
         }
 
         // Position and rotation dirty check
-        if (m_previous_pos != GetTransform()->GetPosition() || m_previous_rot != GetTransform()->GetRotation())
+        if (m_previous_pos != m_transform->GetPosition() || m_previous_rot != m_transform->GetRotation())
         {
-            m_previous_pos = GetTransform()->GetPosition();
-            m_previous_rot = GetTransform()->GetRotation();
+            m_previous_pos = m_transform->GetPosition();
+            m_previous_rot = m_transform->GetRotation();
 
             m_is_dirty = true;
         }
@@ -106,6 +106,13 @@ namespace Spartan
 
         if (!m_is_dirty)
             return;
+
+        // Update position based on direction (for directional light)
+        if (m_light_type == LightType::Directional)
+        {
+            float distance = m_renderer->GetCamera() ? m_renderer->GetCamera()->GetFarPlane() : 1000.0f;
+            m_transform->SetPosition(-m_transform->GetForward() * distance);
+        }
 
         // Update shadow map(s)
         if (m_shadows_enabled)
