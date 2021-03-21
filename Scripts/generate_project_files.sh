@@ -6,8 +6,8 @@ if [ "$1" = "vs2019" ]; then
     is_windows=true
 fi
 
-# Delete intermediate directory (obj files)
-echo "1. Deleting intermediate directory and uncessery files from the binary directory..."
+# Delete any files which are not needed for a CI artifact to be created
+echo "1. Deleting uncessery files from the binary directory..."
 ./Scripts/clean.sh
 
 # Extract third-party libraries (that the project will link to)
