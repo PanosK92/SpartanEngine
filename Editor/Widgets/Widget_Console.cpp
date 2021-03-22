@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widget_Console.h"
 #include "Rendering/Model.h"
 #include "../ImGui_Extension.h"
-#include "../ImGui/Source/imgui_stdlib.h"
 #include "../ImGui/Source/imgui_internal.h"
 //=========================================
 

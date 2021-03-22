@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ============================
+//= INCLUDES =====================================
 #include "Widget_ShaderEditor.h"
 #include "Core/Context.h"
 #include "Input/Input.h"
@@ -29,8 +29,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Rendering/ShaderGBuffer.h"
 #include <fstream>
 #include <sstream>
-#include "../ImGui/Source/imgui_stdlib.h"
-//=======================================
+#include "../ImGui/Source/misc/cpp/imgui_stdlib.h"
+//================================================
 
 //= NAMESPACES =========
 using namespace std;
