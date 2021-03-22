@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 static const float g_ssr_max_distance               = 80.0f;
 static const uint g_ssr_max_steps                   = 64;
 static const uint g_ssr_binary_search_steps         = 32;
-static const float g_ssr_thickness                  = 0.00005f;
+static const float g_ssr_thickness                  = 0.0001f;
 static const float g_srr_jitter_roughness_threshold = 0.6f; // Higher values allow for blurrier reflections (can also push TAA denoising to it's limits while also introducing GPU cache misses).
 static const float g_ssr_camera_facing_threshold    = 0.8f; // Higher values allow for more camera facing rays to be traced.
 
@@ -164,3 +164,4 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     tex_out_rgba[thread_id.xy]  = float4(hit_uv, alpha, 0.0f);
 }
+
