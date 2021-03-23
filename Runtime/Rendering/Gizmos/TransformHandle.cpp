@@ -126,10 +126,10 @@ namespace Spartan
         m_handle_z.m_rotation     = Quaternion::FromEulerAngles(90.0f, 0.0f, 0.0f);
 
         // Set scale for each axis handle
-        m_handle_x.m_scale        = handle_scale;
-        m_handle_y.m_scale        = handle_scale;
-        m_handle_z.m_scale        = handle_scale;
-        m_handle_xyz.m_scale      = handle_scale;
+        m_handle_x.m_scale      = handle_scale;
+        m_handle_y.m_scale      = handle_scale;
+        m_handle_z.m_scale      = handle_scale;
+        m_handle_xyz.m_scale    = handle_scale;
 
         // Update transforms
         m_handle_x.UpdateTransform();
@@ -209,5 +209,22 @@ namespace Spartan
     const RHI_IndexBuffer* TransformHandle::GetIndexBuffer()
     {
         return m_axis_model ? m_axis_model->GetIndexBuffer() : nullptr;
+    }
+
+    bool TransformHandle::IsEditing() const
+    {
+        if (m_handle_x.m_type != TransformHandleType::Unknown && m_handle_x.m_is_editing)
+            return true;
+
+        if (m_handle_y.m_type != TransformHandleType::Unknown && m_handle_y.m_is_editing)
+            return true;
+
+        if (m_handle_z.m_type != TransformHandleType::Unknown && m_handle_z.m_is_editing)
+            return true;
+
+        if (m_handle_xyz.m_type != TransformHandleType::Unknown && m_handle_xyz.m_is_editing)
+            return true;
+
+        return false;
     }
 }

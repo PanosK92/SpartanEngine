@@ -56,9 +56,7 @@ namespace Spartan
 
     bool TransformGizmo::Tick(Camera* camera, const float handle_size, const float handle_speed)
     {
-        m_just_finished_editing = false;
-
-        Entity* selected_entity = m_entity_selected.lock().get();
+        shared_ptr<Entity> selected_entity = m_entity_selected.lock();
 
         // If there isn't a camera or an entity, ignore input
         if (!camera || !selected_entity)
@@ -91,11 +89,8 @@ namespace Spartan
             }
         }
 
-        const bool was_editing = m_is_editing;
-
-        m_handles[m_type]->Tick(m_space, selected_entity, camera, handle_size, handle_speed);
-
-        m_just_finished_editing = was_editing && !m_is_editing;
+        m_handles[m_type]->Tick(m_space, selected_entity.get(), camera, handle_size, handle_speed);
+        m_is_editing = m_handles[m_type]->IsEditing();
 
         // Finally, render the currently selected transform handle only if it hash mashes.
         // e.g. the rotation transform does it's own custom rendering.
@@ -104,8 +99,8 @@ namespace Spartan
 
     weak_ptr<Spartan::Entity> TransformGizmo::SetSelectedEntity(const shared_ptr<Entity>& entity)
     {
-        // Update picked entity only when it's not being edited
-        if (!m_is_editing && !m_just_finished_editing)
+        // Set only when an entity is not already being edited
+        if (!m_is_editing)
         {
             m_entity_selected = entity;
         }
