@@ -57,8 +57,7 @@ namespace Spartan
         const Entity* GetSelectedEntity()   const { return m_entity_selected.lock().get(); }
         
     private:
-        bool m_is_editing               = false;
-        bool m_just_finished_editing    = false;
+        bool m_is_editing = false;
 
         std::weak_ptr<Entity> m_entity_selected;
         std::unordered_map<TransformHandleType, std::shared_ptr<TransformHandle>> m_handles;
