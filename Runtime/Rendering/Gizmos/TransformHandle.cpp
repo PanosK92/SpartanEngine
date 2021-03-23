@@ -74,10 +74,10 @@ namespace Spartan
             UpdateHandleAxesMouseDelta(camera, ray_end, handle_speed);
 
             // Use detected mouse delta to manipulate the entity's transform
-            m_handle_x.ApplyDeltaToTransform(entity->GetTransform());
-            m_handle_y.ApplyDeltaToTransform(entity->GetTransform());
-            m_handle_z.ApplyDeltaToTransform(entity->GetTransform());
-            m_handle_xyz.ApplyDeltaToTransform(entity->GetTransform());
+            m_handle_x.ApplyDeltaToTransform(entity->GetTransform(), space);
+            m_handle_y.ApplyDeltaToTransform(entity->GetTransform(), space);
+            m_handle_z.ApplyDeltaToTransform(entity->GetTransform(), space);
+            m_handle_xyz.ApplyDeltaToTransform(entity->GetTransform(), space);
         }
 
         // Allow the handles to draw any primitives
@@ -97,22 +97,22 @@ namespace Spartan
         Renderable* entity_renderable   = entity->GetComponent<Renderable>();   // Bounding box is also needed as some meshes are not defined around P(0,0,0)
 
         // Acquire entity's transformation data (local or world space)
-        const Vector3& aabb_center          = entity_renderable                      ? entity_renderable->GetAabb().GetCenter()   : entity_transform->GetPositionLocal();
+        const Vector3& center               = entity_renderable                      ? entity_renderable->GetAabb().GetCenter()   : entity_transform->GetPositionLocal();
         const Quaternion& entity_rotation   = (space == TransformHandleSpace::World) ? entity_transform->GetRotation()            : entity_transform->GetRotationLocal();
         const Vector3& right                = (space == TransformHandleSpace::World) ? Vector3::Right                             : entity_rotation * Vector3::Right;
         const Vector3& up                   = (space == TransformHandleSpace::World) ? Vector3::Up                                : entity_rotation * Vector3::Up;
         const Vector3& forward              = (space == TransformHandleSpace::World) ? Vector3::Forward                           : entity_rotation * Vector3::Forward;
 
         // Compute scale
-        const float distance_to_camera   = camera ? (camera->GetTransform()->GetPosition() - (aabb_center)).Length() : 0.0f;
+        const float distance_to_camera   = camera ? (camera->GetTransform()->GetPosition() - (center)).Length() : 0.0f;
         const float handle_scale         = distance_to_camera / (1.0f / handle_size);
         const float handle_distance      = distance_to_camera / (1.0f / 0.1f);
 
         // Set position for each axis handle
-        m_handle_x.m_position   = aabb_center;
-        m_handle_y.m_position   = aabb_center;
-        m_handle_z.m_position   = aabb_center;
-        m_handle_xyz.m_position = aabb_center;
+        m_handle_x.m_position   = center;
+        m_handle_y.m_position   = center;
+        m_handle_z.m_position   = center;
+        m_handle_xyz.m_position = center;
         if (m_offset_handle_axes_from_center)
         {
             m_handle_x.m_position += right * handle_distance;

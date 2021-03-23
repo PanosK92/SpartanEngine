@@ -52,7 +52,7 @@ namespace Spartan
         m_box_transformed   = m_box.Transform(m_transform);
     }
 
-    void TransformHandleAxis::ApplyDeltaToTransform(Transform* transform)
+    void TransformHandleAxis::ApplyDeltaToTransform(Transform* transform, const TransformHandleSpace space)
     {
         if (m_type == TransformHandleType::Unknown)
             return;
@@ -68,22 +68,46 @@ namespace Spartan
         {
             if (m_type == TransformHandleType::Position)
             {
-                auto position = transform->GetPosition();
+                Vector3 position = transform->GetPosition();
                 position += m_delta * m_axis;
-                transform->SetPosition(position);
+
+                if (space == TransformHandleSpace::World)
+                {
+                    transform->SetPosition(position);
+                }
+                else
+                {
+                    transform->SetPositionLocal(position);
+                }
             }
             else if (m_type == TransformHandleType::Scale)
             {
-                auto scale = transform->GetScale();
+                Vector3 scale = transform->GetScale();
                 scale += m_delta * m_axis;
-                transform->SetScale(scale);
+
+                if (space == TransformHandleSpace::World)
+                {
+                    transform->SetScale(scale);
+                }
+                else
+                {
+                    transform->SetScaleLocal(scale);
+                }
             }
             else if (m_type == TransformHandleType::Rotation)
             {
-                auto rotation = transform->GetRotation().ToEulerAngles();
-                const auto speed_multiplier = 10.0f;
+                Vector3 rotation = transform->GetRotation().ToEulerAngles();
+                const float speed_multiplier = 10.0f;
                 rotation += m_delta * m_axis * speed_multiplier;
-                transform->SetRotation(Quaternion::FromEulerAngles(rotation));
+
+                if (space == TransformHandleSpace::World)
+                {
+                    transform->SetRotation(Quaternion::FromEulerAngles(rotation));
+                }
+                else
+                {
+                    transform->SetRotationLocal(Quaternion::FromEulerAngles(rotation));
+                }
             }
         }
 

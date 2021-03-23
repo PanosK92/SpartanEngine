@@ -40,7 +40,7 @@ namespace Spartan
         TransformHandleAxis(TransformHandleType type, const Math::Vector3& axis, Context* context);
 
         void UpdateTransform();
-        void ApplyDeltaToTransform(Transform* transform);
+        void ApplyDeltaToTransform(Transform* transform, const TransformHandleSpace space);
         void DrawPrimitives(const Math::Vector3& transform_center) const;
         const Math::Vector3& GetColor() const;
 
