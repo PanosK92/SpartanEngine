@@ -64,8 +64,8 @@ namespace Spartan
     private:
         // Frame time
         std::chrono::high_resolution_clock::time_point m_time_start;
-        std::chrono::high_resolution_clock::time_point m_time_frame_start;
-        std::chrono::high_resolution_clock::time_point m_time_frame_end;
+        std::chrono::high_resolution_clock::time_point m_time_sleep_start;
+        std::chrono::high_resolution_clock::time_point m_time_sleep_end;
         double m_time_ms                = 0.0f;
         double m_delta_time_ms          = 0.0f;
         double m_delta_time_smoothed_ms = 0.0f;

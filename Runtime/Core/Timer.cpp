@@ -33,42 +33,31 @@ namespace Spartan
     Timer::Timer(Context* context) : ISubsystem(context)
     {
         m_time_start        = chrono::high_resolution_clock::now();
-        m_time_frame_start  = chrono::high_resolution_clock::now();
-        m_time_frame_end    = chrono::high_resolution_clock::now();
+        m_time_sleep_end    = chrono::high_resolution_clock::now();
     }
 
-    void Timer::Tick(float delta_time)
+    void Timer::Tick(float _delta_time)
     {
-        // Get time
-        m_time_frame_end    = m_time_frame_start;
-        m_time_frame_start  = chrono::high_resolution_clock::now();
+        // Compute delta time
+        m_time_sleep_start = chrono::high_resolution_clock::now();
+        chrono::duration<double, milli> delta_time = m_time_sleep_start - m_time_sleep_end;
 
-        // Compute durations
-        const chrono::duration<double, milli> time_elapsed      = m_time_start - m_time_frame_start;
-        chrono::duration<double, milli> time_delta              = m_time_frame_start - m_time_frame_end;
-        const chrono::duration<double, milli> time_remaining    = chrono::duration<double, milli>(1000.0 / m_fps_target) - time_delta;
-
-        // Fps limiting
-        if (time_remaining.count() > 0)
+        // FPS limiting
         {
-            // Compute sleep duration and account for the sleep overhead.
-            // The sleep overhead is the time the kernel takes to wake up the thread after the thread has finished sleeping.
-            const chrono::duration<double, milli> sleep_duration_requested = chrono::duration<double, milli>(time_remaining.count() - m_sleep_overhead);
+            // The kernel takes time to wake up the thread after the thread has finished sleeping.
+            // It can't be trusted for accurate frame limiting, hence we do it simple stupid.
+            double target_ms = 1000.0 / m_fps_target;
+            while (delta_time.count() < target_ms)
+            {
+                delta_time = chrono::high_resolution_clock::now() - m_time_sleep_start;
+            }
 
-            // Put the thread to sleep
-            this_thread::sleep_until(m_time_frame_start + sleep_duration_requested);
-
-            // Compute sleep overhead (to use in next tick)
-            const chrono::duration<double, milli> sleep_time_real = chrono::high_resolution_clock::now() - m_time_frame_start;
-            m_sleep_overhead = sleep_time_real.count() - sleep_duration_requested.count();
-
-            // Account for sleep duration
-            time_delta += sleep_time_real;
+            m_time_sleep_end = chrono::high_resolution_clock::now();
         }
 
-        // Save times
-        m_time_ms           = static_cast<double>(time_elapsed.count());
-        m_delta_time_ms     = static_cast<double>(time_delta.count());
+        // Compute durations
+        m_delta_time_ms = static_cast<double>(delta_time.count());
+        m_time_ms       = static_cast<double>((m_time_start - chrono::high_resolution_clock::now()).count());
 
         // Compute smoothed delta time
         const double frames_to_accumulate   = 5;
@@ -101,16 +90,11 @@ namespace Spartan
     FpsLimitType Timer::GetFpsLimitType()
     {
         if (m_fps_target == Display::GetActiveDisplayMode().hz)
-        {
             return FpsLimitType::FixedToMonitor;
-        }
-        else if (m_fps_target == m_fps_max)
-        {
+
+        if (m_fps_target == m_fps_max)
             return FpsLimitType::Unlocked;
-        }
-        else
-        {
-            return FpsLimitType::Fixed;
-        }
+
+        return FpsLimitType::Fixed;
     }
 }
