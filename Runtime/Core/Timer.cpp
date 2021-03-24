@@ -57,7 +57,7 @@ namespace Spartan
 
         // Compute durations
         m_delta_time_ms = static_cast<double>(delta_time.count());
-        m_time_ms       = static_cast<double>((m_time_start - chrono::high_resolution_clock::now()).count());
+        m_time_ms       = static_cast<double>(chrono::duration<double, milli>(m_time_start - m_time_sleep_start).count());
 
         // Compute smoothed delta time
         const double frames_to_accumulate   = 5;
