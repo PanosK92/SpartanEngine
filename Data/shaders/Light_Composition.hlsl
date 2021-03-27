@@ -34,7 +34,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     surface.Build(thread_id.xy);
     
     // If this is a transparent pass, ignore all opaque pixels, and vice versa.
-    if ((g_is_transprent_pass && surface.is_opaque()) || (!g_is_transprent_pass && surface.is_transparent() && !surface.is_sky()))
+    if ((g_is_transparent_pass && surface.is_opaque()) || (!g_is_transparent_pass && surface.is_transparent() && !surface.is_sky()))
         return;
 
     // Compute fog
@@ -78,4 +78,3 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         tex_out_rgba[thread_id.xy] += saturate_16(color);
     }
 }
-

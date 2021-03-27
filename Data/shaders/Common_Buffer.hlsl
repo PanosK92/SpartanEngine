@@ -94,7 +94,7 @@ cbuffer BufferUber : register(b2)
 
     float g_mat_id;
     float g_mip_index;
-    float g_is_transprent_pass;
+    float g_is_transparent_pass;
     float g_padding2;
 };
 

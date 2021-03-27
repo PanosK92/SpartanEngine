@@ -410,9 +410,12 @@ float get_direction()
 float get_noise_interleaved_gradient(float2 screen_pos)
 {
     // Temporal factor
-    screen_pos.x += g_time * 4.7526 * any(g_taa_jitter_offset);
-    screen_pos.y +=  g_time * 3.1914 * any(g_taa_jitter_offset);
-    
+    float taaOn         = (float)any(g_taa_jitter_offset);
+    float frameCount    = (float)g_frame;
+    float frameStep     = taaOn * frameCount / 60.0f;
+    screen_pos.x        += frameStep * 4.7526;
+    screen_pos.y        += frameStep * 3.1914;
+
     float3 magic = float3(0.06711056f, 0.00583715f, 52.9829189f);
     return frac(magic.z * frac(dot(screen_pos, magic.xy)));
 }
@@ -597,3 +600,4 @@ static const float3 hemisphere_samples[64] =
 };
 
 #endif // SPARTAN_COMMON
+
