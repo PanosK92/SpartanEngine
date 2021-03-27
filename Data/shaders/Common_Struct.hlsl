@@ -85,7 +85,7 @@ struct Surface
         sheen_tint              = mat_sheen_sheenTint_pad[id].y;
 
         // Occlusion
-        float occlusion_ssao    = !g_is_transprent_pass ? tex_ssao.SampleLevel(sampler_point_clamp, uv, 0).r : 1.0f; // if ssao is disabled, the texture will be 1x1 white pixel, so we use a sampler
+        float occlusion_ssao    = !g_is_transparent_pass ? tex_ssao.SampleLevel(sampler_point_clamp, uv, 0).r : 1.0f; // if ssao is disabled, the texture will be 1x1 white pixel, so we use a sampler
         float occlusion_tex     = sample_material.a;
         float _occlusion        = min(occlusion_tex, occlusion_ssao);
         occlusion               = multi_bounce_ao(_occlusion, sample_albedo.rgb);

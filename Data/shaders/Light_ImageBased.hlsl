@@ -30,7 +30,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     // Construct surface
     Surface surface;
     surface.Build(uv * g_resolution);
-    
+
     // Discard sky pixels
     if (surface.is_sky())
         discard;
@@ -40,33 +40,35 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     
     // Apply ambient occlusion to ambient light
     light_ambient *= surface.occlusion;
-    
-    // Light - IBL
-    float3 diffuse_energy   = 1.0f;
-    float3 light_ibl        = Brdf_Specular_Ibl(surface, surface.normal, surface.camera_to_pixel, diffuse_energy) * light_ambient;
-    light_ibl               += Brdf_Diffuse_Ibl(surface, surface.normal) * light_ambient * diffuse_energy; // Tone down diffuse such as that only non metals have it
 
-    // Fade out for transparents
-    light_ibl *= surface.alpha;
+    // Light - IBL
+    float3 light_ibl = 0.0f;
+    if (any(light_ambient))
+    { 
+        float3 diffuse_energy   = 1.0f;
+        light_ibl               = Brdf_Specular_Ibl(surface, surface.normal, surface.camera_to_pixel, diffuse_energy) * light_ambient;
+        light_ibl               += Brdf_Diffuse_Ibl(surface, surface.normal) * light_ambient * diffuse_energy; // Tone down diffuse such as that only non metals have it
+
+        // Fade out for transparents
+        light_ibl *= surface.alpha;
+    }
 
     // Light - Refraction
     float3 light_refraction = 0.0f;
     if (surface.is_transparent())
     {
-        // Compute refraction UV
-        float ior               = 1.5; // glass
-        float2 normal_view_2d = normalize(mul(float4(surface.normal.xyz, 0.0f), g_view).xyz).xy;
-        float2 refraction_uv    = uv + normal_view_2d * ior * 0.01f;
+        // Compute refraction UV offset
+        float ior                   = 1.5; // glass
+        float scale                 = 0.05f;
+        float fInvDist              = clamp(1.0f / world_to_view(surface.position).z, -3.0f, 3.0f);
+        float2 refraction_normal    = world_to_view(-surface.normal.xyz, false).xy ;
+        float2 refraction_uv_offset = refraction_normal * fInvDist * scale * max(0.0f, ior - 1.0f);
 
         // Only refract what's behind the surface
-        if (get_linear_depth(refraction_uv) > get_linear_depth(surface.depth)) // refraction (only refract what's behind the surface)
-        {
-            light_refraction = tex_frame.SampleLevel(sampler_bilinear_clamp, refraction_uv, 0).rgb;
-        }
-        else
-        {
-            light_refraction = tex_frame.SampleLevel(sampler_bilinear_clamp, uv, 0).rgb;
-        }
+        float depth_surface             = get_linear_depth(surface.depth);
+        float depth_surface_refracted   = get_linear_depth(uv + refraction_uv_offset);
+        float is_behind                 = step(depth_surface, depth_surface_refracted);
+        light_refraction                = tex_frame.SampleLevel(sampler_bilinear_clamp, uv + refraction_uv_offset * is_behind, 0).rgb;
     }
 
     return float4(saturate_16(light_ibl + light_refraction), 1.0f);

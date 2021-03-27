@@ -39,7 +39,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     surface.Build(thread_id.xy, use_albedo);
 
     // If this is a transparent pass, ignore all opaque pixels, and vice versa.
-    if ((g_is_transprent_pass && surface.is_opaque()) || (!g_is_transprent_pass && surface.is_transparent()))
+    if ((g_is_transparent_pass && surface.is_opaque()) || (!g_is_transparent_pass && surface.is_transparent()))
         return;
 
     // Create light
@@ -64,7 +64,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         #endif
 
         // Ensure that the shadow is as transparent as the material
-        if (g_is_transprent_pass)
+        if (g_is_transparent_pass)
         {
             shadow.a = clamp(shadow.a, surface.alpha, 1.0f);
         }
