@@ -56,9 +56,6 @@ namespace Spartan
         m_stencil_depth_fail_op         = stencil_depth_fail_op;
         m_stencil_pass_op               = stencil_pass_op;
     }
-    
-    RHI_DepthStencilState::~RHI_DepthStencilState()
-    {
-    
-    }
+
+    RHI_DepthStencilState::~RHI_DepthStencilState() = default;
 }
