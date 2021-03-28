@@ -25,11 +25,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
-    const float2 uv = input.uv;
-
     // Construct surface
     Surface surface;
-    surface.Build(uv * g_resolution);
+    surface.Build(input.uv * g_resolution);
 
     // Discard sky pixels
     if (surface.is_sky())
@@ -53,23 +51,5 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         light_ibl *= surface.alpha;
     }
 
-    // Light - Refraction
-    float3 light_refraction = 0.0f;
-    if (surface.is_transparent())
-    {
-        // Compute refraction UV offset
-        float ior                   = 1.5; // glass
-        float scale                 = 0.05f;
-        float fInvDist              = clamp(1.0f / world_to_view(surface.position).z, -3.0f, 3.0f);
-        float2 refraction_normal    = world_to_view(-surface.normal.xyz, false).xy ;
-        float2 refraction_uv_offset = refraction_normal * fInvDist * scale * max(0.0f, ior - 1.0f);
-
-        // Only refract what's behind the surface
-        float depth_surface             = get_linear_depth(surface.depth);
-        float depth_surface_refracted   = get_linear_depth(uv + refraction_uv_offset);
-        float is_behind                 = step(depth_surface, depth_surface_refracted);
-        light_refraction                = tex_frame.SampleLevel(sampler_bilinear_clamp, uv + refraction_uv_offset * is_behind, 0).rgb;
-    }
-
-    return float4(saturate_16(light_ibl + light_refraction), 1.0f);
+    return float4(saturate_16(light_ibl), 1.0f);
 }

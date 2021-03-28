@@ -131,7 +131,7 @@ namespace Spartan
             // Lighting for transparent objects (a simpler version of the above)
             if (draw_transparent_objects)
             {
-                // Copy the frame so that transparency and refraction can sample from it
+                // Copy the frame so that refraction can sample from it
                 Pass_Copy(cmd_list, m_render_targets[RendererRt::Frame_Hdr].get(), m_render_targets[RendererRt::Frame_Hdr_2].get());
 
                 Pass_GBuffer(cmd_list, true);
@@ -914,6 +914,7 @@ namespace Spartan
             cmd_list->SetTexture(RendererBindingsSrv::light_diffuse,    is_transparent_pass ? m_render_targets[RendererRt::Light_Diffuse_Transparent].get() : m_render_targets[RendererRt::Light_Diffuse].get());
             cmd_list->SetTexture(RendererBindingsSrv::light_specular,   is_transparent_pass ? m_render_targets[RendererRt::Light_Specular_Transparent].get() : m_render_targets[RendererRt::Light_Specular].get());
             cmd_list->SetTexture(RendererBindingsSrv::light_volumetric, m_render_targets[RendererRt::Light_Volumetric]);
+            cmd_list->SetTexture(RendererBindingsSrv::frame,            m_render_targets[RendererRt::Frame_Hdr_2]); // refraction
             cmd_list->SetTexture(RendererBindingsSrv::environment,      GetEnvironmentTexture());
 
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
@@ -923,6 +924,11 @@ namespace Spartan
 
     void Renderer::Pass_LightImageBased(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass /*= false*/)
     {
+        // The directional light's intensity is used to modulate the environment texture.
+        // So, if the intensity is zero, then there is no need to do image based lighting.
+        if (m_buffer_frame_cpu.directional_light_intensity == 0.0f)
+            return;
+
         // Acquire shaders
         RHI_Shader* shader_v = m_shaders[RendererShader::Quad_V].get();
         RHI_Shader* shader_p = m_shaders[RendererShader::Light_ImageBased_P].get();
@@ -937,7 +943,7 @@ namespace Spartan
         pso.shader_pixel                            = shader_p;
         pso.rasterizer_state                        = m_rasterizer_cull_back_solid.get();
         pso.depth_stencil_state                     = is_transparent_pass ? m_depth_stencil_off_r.get() : m_depth_stencil_off_off.get();
-        pso.blend_state                             = is_transparent_pass ? m_blend_disabled.get() : m_blend_additive.get();
+        pso.blend_state                             = m_blend_additive.get();
         pso.render_target_color_textures[0]         = tex_out;
         pso.clear_color[0]                          = rhi_color_load;
         pso.render_target_depth_texture             = is_transparent_pass ? tex_depth : nullptr;
@@ -962,10 +968,9 @@ namespace Spartan
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal,   m_render_targets[RendererRt::Gbuffer_Normal]);
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_material, m_render_targets[RendererRt::Gbuffer_Material]);
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    tex_depth);
-            cmd_list->SetTexture(RendererBindingsSrv::ssao,             (m_options & Render_Ssao) ? m_render_targets[RendererRt::Ssao_Blurred]    : m_default_tex_white);
+            cmd_list->SetTexture(RendererBindingsSrv::ssao,             (m_options & Render_Ssao) ? m_render_targets[RendererRt::Ssao_Blurred] : m_default_tex_white);
             cmd_list->SetTexture(RendererBindingsSrv::lutIbl,           m_render_targets[RendererRt::Brdf_Specular_Lut]);
             cmd_list->SetTexture(RendererBindingsSrv::environment,      GetEnvironmentTexture());
-            cmd_list->SetTexture(RendererBindingsSrv::frame,            m_render_targets[RendererRt::Frame_Hdr_2]); // refraction
 
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());

@@ -55,26 +55,37 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     }
     else // Everything else
     {
-        // Sample from textures
+        // Light - Diffuse n Specular
         float3 light_diffuse    = tex_light_diffuse[thread_id.xy].rgb;
         float3 light_specular   = tex_light_specular[thread_id.xy].rgb;
 
-        // Accumulate diffuse and specular light
-        color.rgb += (light_diffuse * surface.albedo + light_specular) * surface.alpha * surface.alpha;
+        // Light - Refraction
+        float3 light_refraction = 0.0f;
+        if (surface.is_transparent())
+        {
+            // Compute refraction UV offset
+            float ior                   = 1.5; // glass
+            float scale                 = 0.05f;
+            float fInvDist              = clamp(1.0f / world_to_view(surface.position).z, -3.0f, 3.0f);
+            float2 refraction_normal    = world_to_view(surface.normal.xyz, false).xy ;
+            float2 refraction_uv_offset = refraction_normal * fInvDist * scale * max(0.0f, ior - 1.0f);
+
+            // Only refract what's behind the surface
+            float depth_surface             = get_linear_depth(surface.depth);
+            float depth_surface_refracted   = get_linear_depth(surface.uv + refraction_uv_offset);
+            float is_behind                 = step(depth_surface, depth_surface_refracted);
+            light_refraction                = tex_frame.SampleLevel(sampler_bilinear_clamp, surface.uv + refraction_uv_offset * is_behind, 0).rgb;
+        }
+        
+        // Compose everything
+        float alpha = surface.alpha * surface.alpha;
+        float3 light_ds = light_diffuse * surface.albedo + light_specular;
+        color.rgb += lerp(light_ds, light_refraction, 1.0f - alpha);
     }
 
     // Accumulate fog
     color.rgb += fog; // regular
     color.rgb += tex_light_volumetric[thread_id.xy].rgb; // volumetric
 
-    // Overwrite for opaque pass
-    if (surface.is_opaque() || surface.is_sky())
-    {
-        tex_out_rgba[thread_id.xy] = saturate_16(color);
-    }
-    // Accumulation for transparent pass
-    else
-    {
-        tex_out_rgba[thread_id.xy] += saturate_16(color);
-    }
+    tex_out_rgba[thread_id.xy] = saturate_16(color);
 }
