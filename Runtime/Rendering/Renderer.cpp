@@ -356,8 +356,6 @@ namespace Spartan
         // Re-create render textures
         CreateRenderTextures();
 
-        FIRE_EVENT(EventType::FrameResolutionChanged);
-
         // Log
         LOG_INFO("Resolution set to %dx%d", width, height);
     }
