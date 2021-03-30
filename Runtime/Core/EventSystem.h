@@ -42,16 +42,15 @@ Note: Currently, this is a blocking event system
 
 enum class EventType
 {
-    FrameEnd,               // A frame ends
-    WindowData,             // The window has a message for processing
-    WorldSave,              // The world must be saved to file
-    WorldSaved,             // The world finished saving to file
-    WorldLoad,              // The world must be loaded from file
-    WorldLoaded,            // The world finished loading from file
-    WorldClear,             // The world should clear everything
-    WorldResolve,           // The world should resolve
-    WorldResolved,          // The world has finished resolving
-    FrameResolutionChanged
+    FrameEnd,       // A frame ends
+    WindowData,     // The window has a message for processing
+    WorldSave,      // The world must be saved to file
+    WorldSaved,     // The world finished saving to file
+    WorldLoad,      // The world must be loaded from file
+    WorldLoaded,    // The world finished loading from file
+    WorldClear,     // The world should clear everything
+    WorldResolve,   // The world should resolve
+    WorldResolved   // The world has finished resolving
 };
 
 //= MACROS ====================================================================================================

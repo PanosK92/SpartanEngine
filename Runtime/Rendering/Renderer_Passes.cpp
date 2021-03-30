@@ -82,21 +82,21 @@ namespace Spartan
         Pass_BrdfSpecularLut(cmd_list);
 
         const bool draw_transparent_objects = !m_entities[Renderer_Object_Transparent].empty();
-        
+
         // Depth
         {
-            Pass_LightDepth(cmd_list, Renderer_Object_Opaque);
+            Pass_Depth_Light(cmd_list, Renderer_Object_Opaque);
             if (draw_transparent_objects)
             {
-                Pass_LightDepth(cmd_list, Renderer_Object_Transparent);
+                Pass_Depth_Light(cmd_list, Renderer_Object_Transparent);
             }
         
             if (GetOption(Render_DepthPrepass))
             {
-                Pass_DepthPrePass(cmd_list);
+                Pass_Depth_Prepass(cmd_list);
             }
         }
-        
+
         // G-Buffer and lighting
         {
             // G-buffer
@@ -104,20 +104,20 @@ namespace Spartan
 
             // Passes which really on the G-buffer
             Pass_Ssao(cmd_list);
-            Pass_SsrTrace(cmd_list);
+            Pass_Reflections_SsrTrace(cmd_list);
             Pass_Ssgi(cmd_list);
 
             // Lighting
             Pass_Light(cmd_list);
 
             // Injection of SSGI into the light buffers
-            Pass_SsgiInject(cmd_list);
+            Pass_Ssgi_Inject(cmd_list);
 
             // Composition of the light buffers (including volumetric fog)
-            Pass_LightComposition(cmd_list, m_render_targets[RendererRt::Frame_Hdr].get());
+            Pass_Light_Composition(cmd_list, m_render_targets[RendererRt::Frame_Hdr].get());
 
             // Image based lighting
-            Pass_LightImageBased(cmd_list, m_render_targets[RendererRt::Frame_Hdr].get());
+            Pass_Light_ImageBased(cmd_list, m_render_targets[RendererRt::Frame_Hdr].get());
 
             // If SSR is enabled, copy the frame so that SSR can use it to reflect from
             if ((m_options & Render_ScreenSpaceReflections) != 0)
@@ -136,8 +136,8 @@ namespace Spartan
 
                 Pass_GBuffer(cmd_list, true);
                 Pass_Light(cmd_list, true);
-                Pass_LightComposition(cmd_list, m_render_targets[RendererRt::Frame_Hdr].get(), true);
-                Pass_LightImageBased(cmd_list, m_render_targets[RendererRt::Frame_Hdr].get(), true);
+                Pass_Light_Composition(cmd_list, m_render_targets[RendererRt::Frame_Hdr].get(), true);
+                Pass_Light_ImageBased(cmd_list, m_render_targets[RendererRt::Frame_Hdr].get(), true);
             }
         }
 
@@ -159,7 +159,7 @@ namespace Spartan
 
     }
 
-    void Renderer::Pass_LightDepth(RHI_CommandList* cmd_list, const Renderer_Object_Type object_type)
+    void Renderer::Pass_Depth_Light(RHI_CommandList* cmd_list, const Renderer_Object_Type object_type)
     {
         // All opaque objects are rendered from the lights point of view.
         // Opaque objects write their depth information to a depth buffer, using just a vertex shader.
@@ -210,7 +210,7 @@ namespace Spartan
             pso.clear_stencil                    = rhi_stencil_dont_care;
             pso.viewport                         = tex_depth->GetViewport();
             pso.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
-            pso.pass_name                        = transparent_pass ? "Pass_LightDepth_Transparent" : "Pass_LightDepth";
+            pso.pass_name                        = transparent_pass ? "Pass_Depth_Light_Transparent" : "Pass_Depth_Light";
 
             for (uint32_t array_index = 0; array_index < tex_depth->GetArraySize(); array_index++)
             {
@@ -308,7 +308,7 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_DepthPrePass(RHI_CommandList* cmd_list)
+    void Renderer::Pass_Depth_Prepass(RHI_CommandList* cmd_list)
     {
         // Description: All the opaque meshes are rendered, outputting
         // just their depth information into a depth map.
@@ -333,7 +333,7 @@ namespace Spartan
         pso.clear_depth                  = GetClearDepth();
         pso.viewport                     = tex_depth->GetViewport();
         pso.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
-        pso.pass_name                    = "Pass_DepthPrePass";
+        pso.pass_name                    = "Pass_Depth_Prepass";
 
         // Record commands
         if (cmd_list->BeginRenderPass(pso))
@@ -608,7 +608,7 @@ namespace Spartan
         Pass_Copy(cmd_list, tex_out, tex_accumulation);
     }
 
-    void Renderer::Pass_SsgiInject(RHI_CommandList* cmd_list)
+    void Renderer::Pass_Ssgi_Inject(RHI_CommandList* cmd_list)
     {
         if ((m_options & Render_Ssgi) == 0)
             return;
@@ -623,7 +623,7 @@ namespace Spartan
         // Set render state
         static RHI_PipelineState pso;
         pso.shader_compute   = shader_c;
-        pso.pass_name        = "Pass_SsgiInject";
+        pso.pass_name        = "Pass_Ssgi_Inject";
 
         // Draw
         if (cmd_list->BeginRenderPass(pso))
@@ -687,7 +687,7 @@ namespace Spartan
             // Bilateral blur
             const auto sigma = 2.0f;
             const auto pixel_stride = 2.0f;
-            Pass_BlurBilateralGaussian(
+            Pass_Blur_BilateralGaussian(
                 cmd_list,
                 tex_ssao_noisy,
                 tex_ssao_blurred,
@@ -698,7 +698,7 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_SsrTrace(RHI_CommandList* cmd_list)
+    void Renderer::Pass_Reflections_SsrTrace(RHI_CommandList* cmd_list)
     {
         if ((m_options & Render_ScreenSpaceReflections) == 0)
             return;
@@ -714,7 +714,7 @@ namespace Spartan
         // Set render state
         static RHI_PipelineState pso;
         pso.shader_compute   = shader_c;
-        pso.pass_name        = "Pass_SsrTrace";
+        pso.pass_name        = "Pass_Reflections_SsrTrace";
 
         // Draw
         if (cmd_list->BeginRenderPass(pso))
@@ -881,7 +881,7 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_LightComposition(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass /*= false*/)
+    void Renderer::Pass_Light_Composition(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass /*= false*/)
     {
         // Acquire shaders
         RHI_Shader* shader_c = m_shaders[RendererShader::Light_Composition_C].get();
@@ -891,7 +891,7 @@ namespace Spartan
         // Set render state
         static RHI_PipelineState pso;
         pso.shader_compute   = shader_c;
-        pso.pass_name        = is_transparent_pass ? "Pass_LightComposition_Transparent" : "Pass_LightComposition_Opaque";
+        pso.pass_name        = is_transparent_pass ? "Pass_Light_Composition_Transparent" : "Pass_Light_Composition_Opaque";
 
         // Begin commands
         if (cmd_list->BeginRenderPass(pso))
@@ -922,7 +922,7 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_LightImageBased(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass /*= false*/)
+    void Renderer::Pass_Light_ImageBased(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass /*= false*/)
     {
         // The directional light's intensity is used to modulate the environment texture.
         // So, if the intensity is zero, then there is no need to do image based lighting.
@@ -953,7 +953,7 @@ namespace Spartan
         pso.viewport                                = tex_out->GetViewport();
         pso.vertex_buffer_stride                    = m_viewport_quad.GetVertexBuffer()->GetStride();
         pso.primitive_topology                      = RHI_PrimitiveTopology_TriangleList;
-        pso.pass_name                               = is_transparent_pass ? "Pass_LightImageBased_Transparent" : "Pass_LightImageBased_Opaque";
+        pso.pass_name                               = is_transparent_pass ? "Pass_Light_ImageBased_Transparent" : "Pass_Light_ImageBased_Opaque";
 
         // Begin commands
         if (cmd_list->BeginRenderPass(pso))
@@ -993,35 +993,35 @@ namespace Spartan
         // TAA
         if (GetOption(Render_AntiAliasing_Taa))
         {
-            Pass_TemporalAntialiasing(cmd_list, tex_in_hdr, tex_out_hdr);
+            Pass_PostProcess_TAA(cmd_list, tex_in_hdr, tex_out_hdr);
             tex_in_hdr.swap(tex_out_hdr);
         }
 
         // Depth of Field
         if (GetOption(Render_DepthOfField))
         {
-            Pass_DepthOfField(cmd_list, tex_in_hdr, tex_out_hdr);
+            Pass_PostProcess_DepthOfField(cmd_list, tex_in_hdr, tex_out_hdr);
             tex_in_hdr.swap(tex_out_hdr);
         }
 
         // Motion Blur
         if (GetOption(Render_MotionBlur))
         {
-            Pass_MotionBlur(cmd_list, tex_in_hdr, tex_out_hdr);
+            Pass_PostProcess_MotionBlur(cmd_list, tex_in_hdr, tex_out_hdr);
             tex_in_hdr.swap(tex_out_hdr);
         }
 
         // Bloom
         if (GetOption(Render_Bloom))
         {
-            Pass_Bloom(cmd_list, tex_in_hdr, tex_out_hdr);
+            Pass_PostProcess_Bloom(cmd_list, tex_in_hdr, tex_out_hdr);
             tex_in_hdr.swap(tex_out_hdr);
         }
 
         // Tone-Mapping
         if (m_option_values[Renderer_Option_Value::Tonemapping] != 0)
         {
-            Pass_ToneMapping(cmd_list, tex_in_hdr, tex_in_ldr); // HDR -> LDR
+            Pass_PostProcess_ToneMapping(cmd_list, tex_in_hdr, tex_in_ldr); // HDR -> LDR
         }
         else
         {
@@ -1031,40 +1031,40 @@ namespace Spartan
         // Dithering
         if (GetOption(Render_Dithering))
         {
-            Pass_Dithering(cmd_list, tex_in_ldr, tex_out_ldr);
+            Pass_PostProcess_Dithering(cmd_list, tex_in_ldr, tex_out_ldr);
             tex_in_ldr.swap(tex_out_ldr);
         }
 
         // FXAA
         if (GetOption(Render_AntiAliasing_Fxaa))
         {
-            Pass_FXAA(cmd_list, tex_in_ldr, tex_out_ldr);
+            Pass_PostProcess_Fxaa(cmd_list, tex_in_ldr, tex_out_ldr);
             tex_in_ldr.swap(tex_out_ldr);
         }
 
         // Sharpening
         if (GetOption(Render_Sharpening_LumaSharpen))
         {
-            Pass_Sharpening(cmd_list, tex_in_ldr, tex_out_ldr);
+            Pass_PostProcess_Sharpening(cmd_list, tex_in_ldr, tex_out_ldr);
             tex_in_ldr.swap(tex_out_ldr);
         }
 
         // Film grain
         if (GetOption(Render_FilmGrain))
         {
-            Pass_FilmGrain(cmd_list, tex_in_ldr, tex_out_ldr);
+            Pass_PostProcess_FilmGrain(cmd_list, tex_in_ldr, tex_out_ldr);
             tex_in_ldr.swap(tex_out_ldr);
         }
 
         // Chromatic aberration
         if (GetOption(Render_ChromaticAberration))
         {
-            Pass_ChromaticAberration(cmd_list, tex_in_ldr, tex_out_ldr);
+            Pass_PostProcess_ChromaticAberration(cmd_list, tex_in_ldr, tex_out_ldr);
             tex_in_ldr.swap(tex_out_ldr);
         }
 
         // Gamma correction
-        Pass_GammaCorrection(cmd_list, tex_in_ldr, tex_out_ldr);
+        Pass_PostProcess_GammaCorrection(cmd_list, tex_in_ldr, tex_out_ldr);
 
         // Passes that render on top of each other
         Pass_Outline(cmd_list,          tex_out_ldr.get());
@@ -1078,7 +1078,7 @@ namespace Spartan
         tex_in_ldr.swap(tex_out_ldr);
     }
 
-    void Renderer::Pass_BlurBox(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out, const float sigma, const float pixel_stride, const bool use_stencil)
+    void Renderer::Pass_Blur_Box(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out, const float sigma, const float pixel_stride, const bool use_stencil)
     {
         // Acquire shaders
         const auto& shader_v = m_shaders[RendererShader::Quad_V];
@@ -1099,7 +1099,7 @@ namespace Spartan
         pso.render_target_depth_texture      = use_stencil ? m_render_targets[RendererRt::Gbuffer_Depth].get() : nullptr;
         pso.viewport                         = tex_out->GetViewport();
         pso.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
-        pso.pass_name                        = "Pass_BlurBox";
+        pso.pass_name                        = "Pass_Blur_Box";
 
         // Record commands
         if (cmd_list->BeginRenderPass(pso))
@@ -1118,7 +1118,7 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_BlurGaussian(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out, const float sigma, const float pixel_stride)
+    void Renderer::Pass_Blur_Gaussian(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out, const float sigma, const float pixel_stride)
     {
         if (tex_in->GetWidth() != tex_out->GetWidth() || tex_in->GetHeight() != tex_out->GetHeight() || tex_in->GetFormat() != tex_out->GetFormat())
         {
@@ -1144,7 +1144,7 @@ namespace Spartan
         pso_horizontal.clear_color[0]                    = rhi_color_dont_care;
         pso_horizontal.viewport                          = tex_out->GetViewport();
         pso_horizontal.primitive_topology                = RHI_PrimitiveTopology_TriangleList;
-        pso_horizontal.pass_name                         = "Pass_BlurGaussian_Horizontal";
+        pso_horizontal.pass_name                         = "Pass_Blur_Gaussian_Horizontal";
 
         // Record commands for horizontal pass
         if (cmd_list->BeginRenderPass(pso_horizontal))
@@ -1174,7 +1174,7 @@ namespace Spartan
         pso_vertical.clear_color[0]                  = rhi_color_dont_care;
         pso_vertical.viewport                        = tex_in->GetViewport();
         pso_vertical.primitive_topology              = RHI_PrimitiveTopology_TriangleList;
-        pso_vertical.pass_name                       = "Pass_BlurGaussian_Vertical";
+        pso_vertical.pass_name                       = "Pass_Blur_Gaussian_Vertical";
 
         // Record commands for vertical pass
         if (cmd_list->BeginRenderPass(pso_vertical))
@@ -1194,7 +1194,7 @@ namespace Spartan
         tex_in.swap(tex_out);
     }
 
-    void Renderer::Pass_BlurBilateralGaussian(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out, const float sigma, const float pixel_stride, const bool use_stencil)
+    void Renderer::Pass_Blur_BilateralGaussian(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out, const float sigma, const float pixel_stride, const bool use_stencil)
     {
         if (tex_in->GetWidth() != tex_out->GetWidth() || tex_in->GetHeight() != tex_out->GetHeight() || tex_in->GetFormat() != tex_out->GetFormat())
         {
@@ -1226,7 +1226,7 @@ namespace Spartan
         pso_horizontal.clear_stencil                     = use_stencil ? rhi_stencil_load : rhi_stencil_dont_care;
         pso_horizontal.viewport                          = tex_out->GetViewport();
         pso_horizontal.primitive_topology                = RHI_PrimitiveTopology_TriangleList;
-        pso_horizontal.pass_name                         = "Pass_BlurBilateralGaussian_Horizontal";
+        pso_horizontal.pass_name                         = "Pass_Blur_BilateralGaussian_Horizontal";
 
         // Record commands for horizontal pass
         if (cmd_list->BeginRenderPass(pso_horizontal))
@@ -1260,7 +1260,7 @@ namespace Spartan
         pso_vertical.clear_stencil                   = use_stencil ? rhi_stencil_load : rhi_stencil_dont_care;
         pso_vertical.viewport                        = tex_in->GetViewport();
         pso_vertical.primitive_topology              = RHI_PrimitiveTopology_TriangleList;
-        pso_vertical.pass_name                       = "Pass_BlurBilateralGaussian_Vertical";
+        pso_vertical.pass_name                       = "Pass_Blur_BilateralGaussian_Vertical";
 
         // Record commands for vertical pass
         if (cmd_list->BeginRenderPass(pso_vertical))
@@ -1283,7 +1283,7 @@ namespace Spartan
         tex_in.swap(tex_out);
     }
 
-    void Renderer::Pass_TemporalAntialiasing(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    void Renderer::Pass_PostProcess_TAA(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
         // Acquire shaders
         RHI_Shader* shader_c = m_shaders[RendererShader::Taa_C].get();
@@ -1296,7 +1296,7 @@ namespace Spartan
         // Set render state
         static RHI_PipelineState pso;
         pso.shader_compute   = shader_c;
-        pso.pass_name        = "Pass_TemporalAntialiasing";
+        pso.pass_name        = "Pass_PostProcess_TAA";
 
         // Draw
         if (cmd_list->BeginRenderPass(pso))
@@ -1323,7 +1323,7 @@ namespace Spartan
         Pass_Copy(cmd_list, tex_out.get(), tex_accumulation.get());
     }
 
-    void Renderer::Pass_Bloom(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    void Renderer::Pass_PostProcess_Bloom(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
         // Acquire shaders
         RHI_Shader* shader_downsampleLuminance  = m_shaders[RendererShader::BloomDownsampleLuminance_C].get();
@@ -1338,7 +1338,7 @@ namespace Spartan
             // Set render state
             static RHI_PipelineState pso;
             pso.shader_compute = shader_downsampleLuminance;
-            pso.pass_name      = "Pass_BloomDownsampleLuminance";
+            pso.pass_name      = "Pass_PostProcess_BloomDownsampleLuminance";
 
             // Draw
             if (cmd_list->BeginRenderPass(pso))
@@ -1369,7 +1369,7 @@ namespace Spartan
             // Set render state
             static RHI_PipelineState pso;
             pso.shader_compute   = shader_downsample;
-            pso.pass_name        = "Pass_BloomDownsample";
+            pso.pass_name        = "Pass_PostProcess_BloomDownsample";
 
             // Draw
             if (cmd_list->BeginRenderPass(pso))
@@ -1399,7 +1399,7 @@ namespace Spartan
             // Set render state
             static RHI_PipelineState pso;
             pso.shader_compute   = shader_upsampleBlendMip;
-            pso.pass_name        = "Pass_BloomUpsampleBlendMip";
+            pso.pass_name        = "Pass_PostProcess_BloomUpsampleBlendMip";
 
             // Draw
             if (cmd_list->BeginRenderPass(pso))
@@ -1425,7 +1425,7 @@ namespace Spartan
             // Set render state
             static RHI_PipelineState pso;
             pso.shader_compute   = shader_upsampleBlendFrame;
-            pso.pass_name        = "Pass_BloomUpsampleBlendFrame";
+            pso.pass_name        = "Pass_PostProcess_BloomUpsampleBlendFrame";
 
             // Draw
             if (cmd_list->BeginRenderPass(pso))
@@ -1448,7 +1448,7 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_ToneMapping(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    void Renderer::Pass_PostProcess_ToneMapping(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
         // Acquire shaders
         RHI_Shader* shader_c = m_shaders[RendererShader::ToneMapping_C].get();
@@ -1458,7 +1458,7 @@ namespace Spartan
         // Set render state
         static RHI_PipelineState pso;
         pso.shader_compute = shader_c;
-        pso.pass_name      = "Pass_ToneMapping";
+        pso.pass_name      = "Pass_PostProcess_ToneMapping";
 
         // Draw
         if (cmd_list->BeginRenderPass(pso))
@@ -1479,7 +1479,7 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_GammaCorrection(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    void Renderer::Pass_PostProcess_GammaCorrection(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
         // Acquire shaders
         RHI_Shader* shader_c = m_shaders[RendererShader::GammaCorrection_C].get();
@@ -1489,7 +1489,7 @@ namespace Spartan
         // Set render state
         static RHI_PipelineState pso;
         pso.shader_compute   = shader_c;
-        pso.pass_name        = "Pass_GammaCorrection";
+        pso.pass_name        = "Pass_PostProcess_GammaCorrection";
 
         // Draw
         if (cmd_list->BeginRenderPass(pso))
@@ -1510,7 +1510,7 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_FXAA(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    void Renderer::Pass_PostProcess_Fxaa(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
         // Acquire shaders
         RHI_Shader* shader_p_luma   = m_shaders[RendererShader::Fxaa_Luminance_C].get();
@@ -1533,7 +1533,7 @@ namespace Spartan
             // Set render state
             static RHI_PipelineState pso;
             pso.shader_compute   = shader_p_luma;
-            pso.pass_name        = "Pass_FXAA_Luminance";
+            pso.pass_name        = "Pass_PostProcess_FXAA_Luminance";
 
             // Draw
             if (cmd_list->BeginRenderPass(pso))
@@ -1550,7 +1550,7 @@ namespace Spartan
             // Set render state
             static RHI_PipelineState pso;
             pso.shader_compute   = shader_p_fxaa;
-            pso.pass_name        = "Pass_FXAA";
+            pso.pass_name        = "Pass_PostProcess_FXAA";
 
             // Draw
             if (cmd_list->BeginRenderPass(pso))
@@ -1566,7 +1566,7 @@ namespace Spartan
         tex_in.swap(tex_out);
     }
 
-    void Renderer::Pass_ChromaticAberration(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    void Renderer::Pass_PostProcess_ChromaticAberration(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
         // Acquire shaders
         RHI_Shader* shader_c = m_shaders[RendererShader::ChromaticAberration_C].get();
@@ -1576,7 +1576,7 @@ namespace Spartan
         // Set render state
         static RHI_PipelineState pso;
         pso.shader_compute = shader_c;
-        pso.pass_name      = "Pass_ChromaticAberration";
+        pso.pass_name      = "Pass_PostProcess_ChromaticAberration";
 
         // Draw
         if (cmd_list->BeginRenderPass(pso))
@@ -1597,7 +1597,7 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_MotionBlur(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    void Renderer::Pass_PostProcess_MotionBlur(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
         // Acquire shaders
         RHI_Shader* shader_c = m_shaders[RendererShader::MotionBlur_C].get();
@@ -1607,7 +1607,7 @@ namespace Spartan
         // Set render state
         static RHI_PipelineState pso;
         pso.shader_compute = shader_c;
-        pso.pass_name      = "Pass_MotionBlur";
+        pso.pass_name      = "Pass_PostProcess_MotionBlur";
 
         // Draw
         if (cmd_list->BeginRenderPass(pso))
@@ -1630,7 +1630,7 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_DepthOfField(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    void Renderer::Pass_PostProcess_DepthOfField(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
         // Acquire shaders
         RHI_Shader* shader_downsampleCoc    = m_shaders[RendererShader::Dof_DownsampleCoc_C].get();
@@ -1650,7 +1650,7 @@ namespace Spartan
             // Set render state
             static RHI_PipelineState pso;
             pso.shader_compute = shader_downsampleCoc;
-            pso.pass_name      = "Pass_Dof_DownsampleCoc";
+            pso.pass_name      = "Pass_PostProcess_Dof_DownsampleCoc";
 
             // Draw
             if (cmd_list->BeginRenderPass(pso))
@@ -1677,7 +1677,7 @@ namespace Spartan
             // Set render state
             static RHI_PipelineState pso;
             pso.shader_compute   = shader_bokeh;
-            pso.pass_name        = "Pass_Dof_Bokeh";
+            pso.pass_name        = "Pass_PostProcess_Dof_Bokeh";
 
             // Draw
             if (cmd_list->BeginRenderPass(pso))
@@ -1703,7 +1703,7 @@ namespace Spartan
             // Set render state
             static RHI_PipelineState pso;
             pso.shader_compute   = shader_tent;
-            pso.pass_name        = "Pass_Dof_Tent";
+            pso.pass_name        = "Pass_PostProcess_Dof_Tent";
 
             // Draw
             if (cmd_list->BeginRenderPass(pso))
@@ -1729,7 +1729,7 @@ namespace Spartan
             // Set render state
             static RHI_PipelineState pso;
             pso.shader_compute   = shader_upsampleBlend;
-            pso.pass_name        = "Pass_Dof_UpscaleBlend";
+            pso.pass_name        = "Pass_PostProcess_Dof_UpscaleBlend";
 
             // Draw
             if (cmd_list->BeginRenderPass(pso))
@@ -1753,7 +1753,7 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_Dithering(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    void Renderer::Pass_PostProcess_Dithering(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
         // Acquire shaders
         RHI_Shader* shader = m_shaders[RendererShader::Dithering_C].get();
@@ -1763,7 +1763,7 @@ namespace Spartan
         // Set render state
         static RHI_PipelineState pso;
         pso.shader_compute   = shader;
-        pso.pass_name        = "Pass_Dithering";
+        pso.pass_name        = "Pass_PostProcess_Dithering";
 
         // Draw
         if (cmd_list->BeginRenderPass(pso))
@@ -1784,7 +1784,7 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_FilmGrain(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    void Renderer::Pass_PostProcess_FilmGrain(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
         // Acquire shaders
         RHI_Shader* shader_c = m_shaders[RendererShader::FilmGrain_C].get();
@@ -1794,7 +1794,7 @@ namespace Spartan
         // Set render state
         static RHI_PipelineState pso;
         pso.shader_compute = shader_c;
-        pso.pass_name      = "Pass_FilmGrain";
+        pso.pass_name      = "Pass_PostProcess_FilmGrain";
 
         // Draw
         if (cmd_list->BeginRenderPass(pso))
@@ -1815,7 +1815,7 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_Sharpening(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    void Renderer::Pass_PostProcess_Sharpening(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
         // Acquire shaders
         RHI_Shader* shader_c = m_shaders[RendererShader::Sharpening_C].get();
@@ -1825,7 +1825,7 @@ namespace Spartan
         // Set render state
         static RHI_PipelineState pso;
         pso.shader_compute = shader_c;
-        pso.pass_name      = "Pass_Sharpening";
+        pso.pass_name      = "Pass_PostProcess_Sharpening";
 
         // Draw
         if (cmd_list->BeginRenderPass(pso))

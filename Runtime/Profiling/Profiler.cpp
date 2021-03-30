@@ -323,8 +323,11 @@ namespace Spartan
             "VRAM:\t%d/%d MB\n"
             "Driver:\t%s\n"
             "\n"
+            // Resolution
+            "Render resolution:\t\t%dx%d\n"
+            "Output resolution:\t%dx%d\n"
+            "\n"
             // Renderer
-            "Resolution:\t\t%dx%d\n"
             "Meshes rendered:\t%d\n"
             "Textures:\t\t\t%d\n"
             "Materials:\t\t%d\n"
@@ -363,8 +366,11 @@ namespace Spartan
             m_gpu_memory_used, m_gpu_memory_available,
             m_gpu_driver.c_str(),
 
-            // Renderer
+            // Resolution
             static_cast<int>(m_renderer->GetResolution().x), static_cast<int>(m_renderer->GetResolution().y),
+            static_cast<int>(m_renderer->GetViewport().width), static_cast<int>(m_renderer->GetViewport().height),
+
+            // Renderer
             m_renderer_meshes_rendered,
             texture_count,
             material_count,
