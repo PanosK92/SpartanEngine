@@ -94,7 +94,8 @@ namespace Spartan
         Depth_V,
         Depth_P,
         Quad_V,
-        Texture_P,
+        Texture_Point_P,
+        Texture_Bilinear_P,
         Copy_C,
         Fxaa_C,
         Fxaa_Luminance_C,
@@ -127,7 +128,7 @@ namespace Spartan
         Color_P,
         Font_V,
         Font_P,
-        Hbao_C,
+        Ssao_C,
         Ssgi_C,
         SsgiInject_C,
         SsrTrace_C,
@@ -137,8 +138,7 @@ namespace Spartan
         BlurBox_P,
         BlurGaussian_P,
         BlurGaussianBilateral_P,
-        Entity_Outline_P,
-        GenerateMips_C
+        Entity_Outline_P
     };
 
     // Render targets
