@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =========
 #include "Common.hlsl"
-//====================
+//===================
 
 static const float g_ssr_max_distance               = 80.0f;
 static const uint g_ssr_max_steps                   = 64;
@@ -164,4 +164,3 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     tex_out_rgba[thread_id.xy]  = float4(hit_uv, alpha, 0.0f);
 }
-

@@ -192,14 +192,17 @@ namespace Spartan
         m_shaders[RendererShader::Gbuffer_V]->CompileAsync<RHI_Vertex_PosTexNorTan>(RHI_Shader_Vertex, dir_shaders + "GBuffer.hlsl");
 
         // Quad
-        {
-            // Vertex
-            m_shaders[RendererShader::Quad_V] = make_shared<RHI_Shader>(m_context);
-            m_shaders[RendererShader::Quad_V]->CompileAsync<RHI_Vertex_PosTex>(RHI_Shader_Vertex, dir_shaders + "Quad.hlsl");
+        m_shaders[RendererShader::Quad_V] = make_shared<RHI_Shader>(m_context);
+        m_shaders[RendererShader::Quad_V]->CompileAsync<RHI_Vertex_PosTex>(RHI_Shader_Vertex, dir_shaders + "Quad.hlsl");
 
-            // Pixel - Just a texture pass
-            m_shaders[RendererShader::Texture_P] = make_shared<RHI_Shader>(m_context);
-            m_shaders[RendererShader::Texture_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Quad.hlsl");
+        // Texture
+        {
+            m_shaders[RendererShader::Texture_Point_P] = make_shared<RHI_Shader>(m_context);
+            m_shaders[RendererShader::Texture_Point_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Texture.hlsl");
+
+            m_shaders[RendererShader::Texture_Bilinear_P] = make_shared<RHI_Shader>(m_context);
+            m_shaders[RendererShader::Texture_Bilinear_P]->AddDefine("BILINEAR");
+            m_shaders[RendererShader::Texture_Bilinear_P]->CompileAsync(RHI_Shader_Pixel, dir_shaders + "Texture.hlsl");
         }
 
         // Depth Vertex
@@ -323,8 +326,8 @@ namespace Spartan
         m_shaders[RendererShader::Dithering_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "Dithering.hlsl");
 
         // HBAO
-        m_shaders[RendererShader::Hbao_C] = make_shared<RHI_Shader>(m_context);
-        m_shaders[RendererShader::Hbao_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "SSAO.hlsl");
+        m_shaders[RendererShader::Ssao_C] = make_shared<RHI_Shader>(m_context);
+        m_shaders[RendererShader::Ssao_C]->CompileAsync(RHI_Shader_Compute, dir_shaders + "SSAO.hlsl");
 
         // Light
         {

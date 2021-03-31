@@ -651,7 +651,7 @@ namespace Spartan
             return;
 
         // Acquire shaders
-        RHI_Shader* shader_c = m_shaders[RendererShader::Hbao_C].get();
+        RHI_Shader* shader_c = m_shaders[RendererShader::Ssao_C].get();
         if (!shader_c->IsCompiled())
             return;
 
@@ -979,105 +979,6 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_PostProcess(RHI_CommandList* cmd_list)
-    {
-        // IN:  RenderTarget_Composition_Hdr
-        // OUT: RenderTarget_Composition_Ldr
-
-        // Acquire render targets
-        shared_ptr<RHI_Texture>& tex_in_hdr    = m_render_targets[RendererRt::Frame_Hdr];
-        shared_ptr<RHI_Texture>& tex_out_hdr   = m_render_targets[RendererRt::Frame_Hdr_2];
-        shared_ptr<RHI_Texture>& tex_in_ldr    = m_render_targets[RendererRt::Frame_Ldr];
-        shared_ptr<RHI_Texture>& tex_out_ldr   = m_render_targets[RendererRt::Frame_Ldr_2];
-
-        // TAA
-        if (GetOption(Render_AntiAliasing_Taa))
-        {
-            Pass_PostProcess_TAA(cmd_list, tex_in_hdr, tex_out_hdr);
-            tex_in_hdr.swap(tex_out_hdr);
-        }
-
-        // Depth of Field
-        if (GetOption(Render_DepthOfField))
-        {
-            Pass_PostProcess_DepthOfField(cmd_list, tex_in_hdr, tex_out_hdr);
-            tex_in_hdr.swap(tex_out_hdr);
-        }
-
-        // Motion Blur
-        if (GetOption(Render_MotionBlur))
-        {
-            Pass_PostProcess_MotionBlur(cmd_list, tex_in_hdr, tex_out_hdr);
-            tex_in_hdr.swap(tex_out_hdr);
-        }
-
-        // Bloom
-        if (GetOption(Render_Bloom))
-        {
-            Pass_PostProcess_Bloom(cmd_list, tex_in_hdr, tex_out_hdr);
-            tex_in_hdr.swap(tex_out_hdr);
-        }
-
-        // Tone-Mapping
-        if (m_option_values[Renderer_Option_Value::Tonemapping] != 0)
-        {
-            Pass_PostProcess_ToneMapping(cmd_list, tex_in_hdr, tex_in_ldr); // HDR -> LDR
-        }
-        else
-        {
-            Pass_Copy(cmd_list, tex_in_hdr.get(), tex_in_ldr.get()); // clipping
-        }
-
-        // Dithering
-        if (GetOption(Render_Dithering))
-        {
-            Pass_PostProcess_Dithering(cmd_list, tex_in_ldr, tex_out_ldr);
-            tex_in_ldr.swap(tex_out_ldr);
-        }
-
-        // FXAA
-        if (GetOption(Render_AntiAliasing_Fxaa))
-        {
-            Pass_PostProcess_Fxaa(cmd_list, tex_in_ldr, tex_out_ldr);
-            tex_in_ldr.swap(tex_out_ldr);
-        }
-
-        // Sharpening
-        if (GetOption(Render_Sharpening_LumaSharpen))
-        {
-            Pass_PostProcess_Sharpening(cmd_list, tex_in_ldr, tex_out_ldr);
-            tex_in_ldr.swap(tex_out_ldr);
-        }
-
-        // Film grain
-        if (GetOption(Render_FilmGrain))
-        {
-            Pass_PostProcess_FilmGrain(cmd_list, tex_in_ldr, tex_out_ldr);
-            tex_in_ldr.swap(tex_out_ldr);
-        }
-
-        // Chromatic aberration
-        if (GetOption(Render_ChromaticAberration))
-        {
-            Pass_PostProcess_ChromaticAberration(cmd_list, tex_in_ldr, tex_out_ldr);
-            tex_in_ldr.swap(tex_out_ldr);
-        }
-
-        // Gamma correction
-        Pass_PostProcess_GammaCorrection(cmd_list, tex_in_ldr, tex_out_ldr);
-
-        // Passes that render on top of each other
-        Pass_Outline(cmd_list,          tex_out_ldr.get());
-        Pass_TransformHandle(cmd_list,  tex_out_ldr.get());
-        Pass_Lines(cmd_list,            tex_out_ldr.get());
-        Pass_Icons(cmd_list,            tex_out_ldr.get());
-        Pass_DebugBuffer(cmd_list,      tex_out_ldr.get());
-        Pass_Text(cmd_list,             tex_out_ldr.get());
-
-        // Swap textures
-        tex_in_ldr.swap(tex_out_ldr);
-    }
-
     void Renderer::Pass_Blur_Box(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out, const float sigma, const float pixel_stride, const bool use_stencil)
     {
         // Acquire shaders
@@ -1281,6 +1182,105 @@ namespace Spartan
 
         // Swap textures
         tex_in.swap(tex_out);
+    }
+
+    void Renderer::Pass_PostProcess(RHI_CommandList* cmd_list)
+    {
+        // IN:  RenderTarget_Composition_Hdr
+        // OUT: RenderTarget_Composition_Ldr
+
+        // Acquire render targets
+        shared_ptr<RHI_Texture>& tex_in_hdr     = m_render_targets[RendererRt::Frame_Hdr];
+        shared_ptr<RHI_Texture>& tex_out_hdr    = m_render_targets[RendererRt::Frame_Hdr_2];
+        shared_ptr<RHI_Texture>& tex_in_ldr     = m_render_targets[RendererRt::Frame_Ldr];
+        shared_ptr<RHI_Texture>& tex_out_ldr    = m_render_targets[RendererRt::Frame_Ldr_2];
+
+        // TAA
+        if (GetOption(Render_AntiAliasing_Taa))
+        {
+            Pass_PostProcess_TAA(cmd_list, tex_in_hdr, tex_out_hdr);
+            tex_in_hdr.swap(tex_out_hdr);
+        }
+
+        // Depth of Field
+        if (GetOption(Render_DepthOfField))
+        {
+            Pass_PostProcess_DepthOfField(cmd_list, tex_in_hdr, tex_out_hdr);
+            tex_in_hdr.swap(tex_out_hdr);
+        }
+
+        // Motion Blur
+        if (GetOption(Render_MotionBlur))
+        {
+            Pass_PostProcess_MotionBlur(cmd_list, tex_in_hdr, tex_out_hdr);
+            tex_in_hdr.swap(tex_out_hdr);
+        }
+
+        // Bloom
+        if (GetOption(Render_Bloom))
+        {
+            Pass_PostProcess_Bloom(cmd_list, tex_in_hdr, tex_out_hdr);
+            tex_in_hdr.swap(tex_out_hdr);
+        }
+
+        // Tone-Mapping
+        if (m_option_values[Renderer_Option_Value::Tonemapping] != 0)
+        {
+            Pass_PostProcess_ToneMapping(cmd_list, tex_in_hdr, tex_in_ldr); // HDR -> LDR
+        }
+        else
+        {
+            Pass_Copy(cmd_list, tex_in_hdr.get(), tex_in_ldr.get()); // clipping
+        }
+
+        // Dithering
+        if (GetOption(Render_Dithering))
+        {
+            Pass_PostProcess_Dithering(cmd_list, tex_in_ldr, tex_out_ldr);
+            tex_in_ldr.swap(tex_out_ldr);
+        }
+
+        // FXAA
+        if (GetOption(Render_AntiAliasing_Fxaa))
+        {
+            Pass_PostProcess_Fxaa(cmd_list, tex_in_ldr, tex_out_ldr);
+            tex_in_ldr.swap(tex_out_ldr);
+        }
+
+        // Sharpening
+        if (GetOption(Render_Sharpening_LumaSharpen))
+        {
+            Pass_PostProcess_Sharpening(cmd_list, tex_in_ldr, tex_out_ldr);
+            tex_in_ldr.swap(tex_out_ldr);
+        }
+
+        // Film grain
+        if (GetOption(Render_FilmGrain))
+        {
+            Pass_PostProcess_FilmGrain(cmd_list, tex_in_ldr, tex_out_ldr);
+            tex_in_ldr.swap(tex_out_ldr);
+        }
+
+        // Chromatic aberration
+        if (GetOption(Render_ChromaticAberration))
+        {
+            Pass_PostProcess_ChromaticAberration(cmd_list, tex_in_ldr, tex_out_ldr);
+            tex_in_ldr.swap(tex_out_ldr);
+        }
+
+        // Gamma correction
+        Pass_PostProcess_GammaCorrection(cmd_list, tex_in_ldr, tex_out_ldr);
+
+        // Passes that render on top of each other
+        Pass_Outline(cmd_list, tex_out_ldr.get());
+        Pass_TransformHandle(cmd_list, tex_out_ldr.get());
+        Pass_Lines(cmd_list, tex_out_ldr.get());
+        Pass_Icons(cmd_list, tex_out_ldr.get());
+        Pass_DebugBuffer(cmd_list, tex_out_ldr.get());
+        Pass_Text(cmd_list, tex_out_ldr.get());
+
+        // Swap textures
+        tex_in_ldr.swap(tex_out_ldr);
     }
 
     void Renderer::Pass_PostProcess_TAA(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
@@ -2029,7 +2029,7 @@ namespace Spartan
         // Acquire resources
         auto& lights                    = m_entities[Renderer_Object_Light];
         const auto& shader_quad_v       = m_shaders[RendererShader::Quad_V];
-        const auto& shader_texture_p    = m_shaders[RendererShader::Texture_P];
+        const auto& shader_texture_p    = m_shaders[RendererShader::Texture_Bilinear_P];
         if (lights.empty() || !shader_quad_v->IsCompiled() || !shader_texture_p->IsCompiled())
             return;
 
@@ -2519,7 +2519,7 @@ namespace Spartan
     {
         // Acquire shaders
         RHI_Shader* shader_v = m_shaders[RendererShader::Quad_V].get();
-        RHI_Shader* shader_p = m_shaders[RendererShader::Texture_P].get();
+        RHI_Shader* shader_p = m_shaders[RendererShader::Texture_Point_P].get();
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
