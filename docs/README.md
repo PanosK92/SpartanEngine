@@ -72,6 +72,7 @@ Platform | API | Status | Quality | Binaries
 ##### v0.32-35 (WIP)
 Feature     					 	| Completion 	| Notes 
 :-          					 	| :-         	| :-
+Temporal upsampling					| 10%		  	| Reconstruct a high resolution output from a low resolution input
 Screen space global illumination 	| 100%		  	| One bounce of indirect diffuse and specular light
 Depth-of-field					 	| 100%       	| Controlled by Camera aperture
 C# scripting (Replace AngelScript) 	| 50%			| Using Mono (no engine API exposed yet)

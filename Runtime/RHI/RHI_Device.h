@@ -52,7 +52,7 @@ namespace Spartan
         uint32_t Queue_Index(const RHI_Queue_Type type) const;
 
         // Misc
-        bool ValidateResolution(const uint32_t width, const uint32_t height) const;
+        static bool IsValidResolution(const uint32_t width, const uint32_t height);
         auto IsInitialized()                const { return m_initialized; }
         RHI_Context* GetContextRhi()        const { return m_rhi_context.get(); }
         Context* GetContext()               const { return m_context; }
