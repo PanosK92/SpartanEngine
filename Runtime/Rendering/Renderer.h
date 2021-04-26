@@ -65,7 +65,10 @@ namespace Spartan
         const float m_depth_bias                = 0.004f; // bias that's applied directly into the depth buffer
         const float m_depth_bias_clamp          = 0.0f;
         const float m_depth_bias_slope_scaled   = 2.0f;
+        float m_gizmo_transform_size            = 0.015f;
+        float m_gizmo_transform_speed           = 12.0f;
         #define DEBUG_COLOR                     Math::Vector4(0.41f, 0.86f, 1.0f, 1.0f)
+        #define RENDER_TARGET(rt_enum)          m_render_targets[static_cast<uint8_t>(rt_enum)]
 
         Renderer(Context* context);
         ~Renderer();
@@ -88,22 +91,25 @@ namespace Spartan
         const Math::Vector2& GetViewportOffset()    const { return m_viewport_editor_offset; }
         void SetViewport(float width, float height, float offset_x = 0, float offset_y = 0);
 
-        // Resolution
-        const Math::Vector2& GetResolution() const { return m_resolution; }
-        void SetResolution(uint32_t width, uint32_t height);
+        // Resolution render
+        const Math::Vector2& GetResolutionRender() const { return m_resolution_render; }
+        void SetResolutionRender(uint32_t width, uint32_t height);
+
+        // Resolution output
+        const Math::Vector2& GetResolutionOutput() const { return m_resolution_output; }
+        void SetResolutionOutput (uint32_t width, uint32_t height);
 
         // Resolution
         bool GetIsFullscreen() const { return m_is_fullscreen; }
         void SetIsFullscreen(const bool is_fullscreen) { m_is_fullscreen = is_fullscreen; }
 
         // Editor
-        float m_gizmo_transform_size    = 0.015f;
-        float m_gizmo_transform_speed   = 12.0f;
         std::weak_ptr<Entity> SnapTransformGizmoTo(const std::shared_ptr<Entity>& entity) const;
 
-        // Debug/Visualise a render target
+        // Debug/Visualise a render targets
+        const auto& GetRenderTargets()                                  { return m_render_targets; }
         void SetRenderTargetDebug(const RendererRt render_target_debug) { m_render_target_debug = render_target_debug; }
-        auto GetRenderTargetDebug() const                               { return m_render_target_debug; }
+        RendererRt GetRenderTargetDebug() const                         { return m_render_target_debug; }
 
         // Depth
         auto GetClearDepth()                { return GetOption(Render_ReverseZ) ? m_viewport.depth_min : m_viewport.depth_max; }
@@ -111,7 +117,7 @@ namespace Spartan
 
         // Environment
         const std::shared_ptr<RHI_Texture>& GetEnvironmentTexture();
-        void SetEnvironmentTexture(const std::shared_ptr<RHI_Texture>& texture);
+        void SetEnvironmentTexture(const std::shared_ptr<RHI_Texture> texture);
 
         // Options
         uint64_t GetOptions()                           const { return m_options; }
@@ -130,9 +136,9 @@ namespace Spartan
         bool Flush();
 
         // Default textures
-        RHI_Texture* GetDefaultTextureWhite()       const { return m_default_tex_white.get(); }
-        RHI_Texture* GetDefaultTextureBlack()       const { return m_default_tex_black.get(); }
-        RHI_Texture* GetDefaultTextureTransparent() const { return m_default_tex_transparent.get(); }
+        RHI_Texture* GetDefaultTextureWhite()       const { return m_tex_default_white.get(); }
+        RHI_Texture* GetDefaultTextureBlack()       const { return m_tex_default_black.get(); }
+        RHI_Texture* GetDefaultTextureTransparent() const { return m_tex_default_transparent.get(); }
 
         // Global shader resources
         void SetGlobalShaderObjectTransform(RHI_CommandList* cmd_list, const Math::Matrix& transform);
@@ -148,7 +154,7 @@ namespace Spartan
         const std::shared_ptr<RHI_Device>& GetRhiDevice()           const { return m_rhi_device; }
         RHI_PipelineCache* GetPipelineCache()                       const { return m_pipeline_cache.get(); }
         RHI_DescriptorSetLayoutCache* GetDescriptorLayoutSetCache() const { return m_descriptor_set_layout_cache.get(); }
-        RHI_Texture* GetFrameTexture()                              const { return m_render_targets.at(RendererRt::Frame_Ldr).get(); }
+        RHI_Texture* GetFrameTexture()                                    { return RENDER_TARGET(RendererRt::PostProcess_Ldr).get(); }
         auto GetFrameNum()                                          const { return m_frame_num; }
         std::shared_ptr<Camera> GetCamera()                         const { return m_camera; }
         auto IsInitialized()                                        const { return m_initialized; }
@@ -208,6 +214,7 @@ namespace Spartan
         void Pass_Text(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         void Pass_BrdfSpecularLut(RHI_CommandList* cmd_list);
         void Pass_Copy(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
+        void Pass_CopyBilinear(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
 
         // Constant buffers
         bool UpdateFrameBuffer(RHI_CommandList* cmd_list);
@@ -219,19 +226,20 @@ namespace Spartan
         void RenderablesAcquire(const Variant& renderables);
         void RenderablesSort(std::vector<Entity*>* renderables);
 
-        // Render textures
-        std::unordered_map<RendererRt, std::shared_ptr<RHI_Texture>> m_render_targets;
+        // Render targets
+        std::array<std::shared_ptr<RHI_Texture>, 24> m_render_targets;
         std::vector<std::shared_ptr<RHI_Texture>> m_render_tex_bloom;
 
         // Standard textures
-        std::shared_ptr<RHI_Texture> m_default_tex_noise_normal;
-        std::shared_ptr<RHI_Texture> m_default_tex_noise_blue;
-        std::shared_ptr<RHI_Texture> m_default_tex_white;
-        std::shared_ptr<RHI_Texture> m_default_tex_black;
-        std::shared_ptr<RHI_Texture> m_default_tex_transparent;
-        std::shared_ptr<RHI_Texture> m_gizmo_tex_light_directional;
-        std::shared_ptr<RHI_Texture> m_gizmo_tex_light_point;
-        std::shared_ptr<RHI_Texture> m_gizmo_tex_light_spot;
+        std::shared_ptr<RHI_Texture> m_tex_environment;
+        std::shared_ptr<RHI_Texture> m_tex_default_noise_normal;
+        std::shared_ptr<RHI_Texture> m_tex_default_noise_blue;
+        std::shared_ptr<RHI_Texture> m_tex_default_white;
+        std::shared_ptr<RHI_Texture> m_tex_default_black;
+        std::shared_ptr<RHI_Texture> m_tex_default_transparent;
+        std::shared_ptr<RHI_Texture> m_tex_gizmo_light_directional;
+        std::shared_ptr<RHI_Texture> m_tex_gizmo_light_point;
+        std::shared_ptr<RHI_Texture> m_tex_gizmo_light_spot;
 
         // Shaders
         std::unordered_map<RendererShader, std::shared_ptr<RHI_Shader>> m_shaders;
@@ -276,7 +284,8 @@ namespace Spartan
         Math::Rectangle m_gizmo_light_rect;
 
         // Resolution & Viewport
-        Math::Vector2 m_resolution              = Math::Vector2::Zero;
+        Math::Vector2 m_resolution_render       = Math::Vector2::Zero;
+        Math::Vector2 m_resolution_output       = Math::Vector2::Zero;
         RHI_Viewport m_viewport                 = RHI_Viewport(0, 0, 1920, 1080);
         Math::Vector2 m_viewport_editor_offset  = Math::Vector2::Zero;
 

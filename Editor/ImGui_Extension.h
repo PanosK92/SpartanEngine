@@ -372,4 +372,32 @@ namespace ImGuiEx
             }
         }
     }
+
+    inline bool ComboBox(const char* label, const std::vector<std::string>& options, uint32_t* selection_index)
+    {
+        bool selection_made             = false;
+        std::string selection_string    = options[*selection_index];
+
+        if (ImGui::BeginCombo(label, selection_string.c_str()))
+        {
+            for (uint32_t i = 0; i < static_cast<uint32_t>(options.size()); i++)
+            {
+                const bool is_selected = *selection_index == i;
+
+                if (ImGui::Selectable(options[i].c_str(), is_selected))
+                {
+                    *selection_index    = i;
+                    selection_made      = true;
+                }
+
+                if (is_selected)
+                {
+                    ImGui::SetItemDefaultFocus();
+                }
+            }
+            ImGui::EndCombo();
+        }
+
+        return selection_made;
+    }
 }

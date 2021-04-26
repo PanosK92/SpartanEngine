@@ -64,10 +64,14 @@ namespace Spartan
 
         float shadow_resolution;
         float fog;
-        Math::Vector2 padding;
+        Math::Vector2 resolution_output;
 
         Math::Vector2 taa_jitter_offset_previous;
         Math::Vector2 taa_jitter_offset;
+
+        Math::Vector2 resolution_render;
+        float taa_upsample;
+        float padding;
 
         bool operator==(const BufferFrame& rhs) const
         {
@@ -97,8 +101,11 @@ namespace Spartan
                 ssr_enabled                 == rhs.ssr_enabled &&
                 shadow_resolution           == rhs.shadow_resolution &&
                 fog                         == rhs.fog &&
+                resolution_output           == rhs.resolution_output &&
+                resolution_render           == rhs.resolution_render &&
                 taa_jitter_offset_previous  == rhs.taa_jitter_offset_previous &&
-                taa_jitter_offset           == rhs.taa_jitter_offset;
+                taa_jitter_offset           == rhs.taa_jitter_offset &&
+                taa_upsample                == rhs.taa_upsample;
         }
         bool operator!=(const BufferFrame& rhs) const { return !(*this == rhs); }
     };

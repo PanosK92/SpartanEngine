@@ -97,6 +97,7 @@ namespace Spartan
         Texture_Point_P,
         Texture_Bilinear_P,
         Copy_C,
+        CopyBilinear_C,
         Fxaa_C,
         Fxaa_Luminance_C,
         FilmGrain_C,
@@ -150,7 +151,6 @@ namespace Spartan
         Gbuffer_Material,
         Gbuffer_Velocity,
         Gbuffer_Depth,
-        Brdf_Prefiltered_Environment,
         Brdf_Specular_Lut,
         Light_Diffuse,
         Light_Diffuse_Transparent,
@@ -158,48 +158,47 @@ namespace Spartan
         Light_Specular_Transparent,
         Light_Volumetric,
         Frame_Hdr,
-        Frame_Ldr,
         Frame_Hdr_2,
-        Frame_Ldr_2,
+        PostProcess_Ldr,
+        PostProcess_Ldr_2,
         Dof_Half,
         Dof_Half_2,
-        Bloom,
         Ssao,
         Ssao_Blurred,
         Ssgi,
         Ssr,
-        Accumulation_Taa,
-        Accumulation_Ssgi
+        TaaHistory,
+        Ssgi_Accumulation
     };
 
     // Renderer/graphics options
     enum Renderer_Option : uint64_t
     {
-        Render_Debug_Aabb               = 1 << 0,
-        Render_Debug_PickingRay         = 1 << 1,
-        Render_Debug_Grid               = 1 << 2,
-        Render_Debug_Transform          = 1 << 3,
-        Render_Debug_SelectionOutline   = 1 << 4,
-        Render_Debug_Lights             = 1 << 5,
-        Render_Debug_PerformanceMetrics = 1 << 6,
-        Render_Debug_Physics            = 1 << 7,
-        Render_Debug_Wireframe          = 1 << 8,
-        Render_Bloom                    = 1 << 9,
-        Render_VolumetricFog            = 1 << 10,
-        Render_AntiAliasing_Taa         = 1 << 11,
-        Render_AntiAliasing_Fxaa        = 1 << 12,
-        Render_Ssao                     = 1 << 13,
-        Render_Ssgi                     = 1 << 14,
-        Render_ScreenSpaceShadows       = 1 << 15,
-        Render_ScreenSpaceReflections   = 1 << 16,
-        Render_MotionBlur               = 1 << 17,
-        Render_DepthOfField             = 1 << 18,
-        Render_FilmGrain                = 1 << 19,
-        Render_Sharpening_LumaSharpen   = 1 << 20,
-        Render_ChromaticAberration      = 1 << 21,
-        Render_Dithering                = 1 << 22,
-        Render_ReverseZ                 = 1 << 23,
-        Render_DepthPrepass             = 1 << 24
+        Render_Debug_Aabb                   = 1 << 0,
+        Render_Debug_PickingRay             = 1 << 1,
+        Render_Debug_Grid                   = 1 << 2,
+        Render_Debug_Transform              = 1 << 3,
+        Render_Debug_SelectionOutline       = 1 << 4,
+        Render_Debug_Lights                 = 1 << 5,
+        Render_Debug_PerformanceMetrics     = 1 << 6,
+        Render_Debug_Physics                = 1 << 7,
+        Render_Debug_Wireframe              = 1 << 8,
+        Render_Bloom                        = 1 << 9,
+        Render_VolumetricFog                = 1 << 10,
+        Render_AntiAliasing_Taa             = 1 << 11,
+        Render_AntiAliasing_Fxaa            = 1 << 12,
+        Render_Ssao                         = 1 << 13,
+        Render_Ssgi                         = 1 << 14,
+        Render_ScreenSpaceShadows           = 1 << 15,
+        Render_ScreenSpaceReflections       = 1 << 16,
+        Render_MotionBlur                   = 1 << 17,
+        Render_DepthOfField                 = 1 << 18,
+        Render_FilmGrain                    = 1 << 19,
+        Render_Sharpening_LumaSharpen       = 1 << 20,
+        Render_ChromaticAberration          = 1 << 21,
+        Render_Dithering                    = 1 << 22,
+        Render_ReverseZ                     = 1 << 23,
+        Render_DepthPrepass                 = 1 << 24
     };
 
     // Renderer/graphics options values
@@ -211,7 +210,8 @@ namespace Spartan
         Gamma,
         Intensity,
         Sharpen_Strength,
-        Fog
+        Fog,
+        Taa_Upsample
     };
 
     // Tonemapping

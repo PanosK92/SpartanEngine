@@ -48,10 +48,8 @@ namespace Spartan
         });
 
         // Find preferred display mode
-        for (uint32_t i = 0; i < static_cast<uint32_t>(m_display_modes.size()); i++)
+        for (const DisplayMode & display_mode : m_display_modes)
         {
-            const DisplayMode& display_mode = m_display_modes[i];
-
             // Try to use higher resolution
             if (display_mode.width > m_display_mode_active.width || display_mode.height > m_display_mode_active.height)
             {
