@@ -105,21 +105,6 @@ namespace Spartan
         m_resource_cache    = m_context->GetSubsystem<ResourceCache>();
         m_profiler          = m_context->GetSubsystem<Profiler>();
 
-        // Resolution, viewport and swapchain default to whatever the window size is
-        const WindowData& window_data = m_context->m_engine->GetWindowData();
-
-        // Set resolution
-        m_resolution_render.x = window_data.width;
-        m_resolution_render.y = window_data.height;
-
-        // Set output resolution
-        m_resolution_output.x = m_resolution_render.x;
-        m_resolution_output.y = m_resolution_render.y;
-
-        // Set viewport
-        m_viewport.width    = m_resolution_output.x;
-        m_viewport.height   = m_resolution_output.y;
-
         // Create device
         m_rhi_device = make_shared<RHI_Device>(m_context);
         if (!m_rhi_device->IsInitialized())
@@ -134,14 +119,17 @@ namespace Spartan
         // Create descriptor set layout cache
         m_descriptor_set_layout_cache = make_shared<RHI_DescriptorSetLayoutCache>(m_rhi_device.get());
 
+        // Get window data
+        const WindowData& window_data = m_context->m_engine->GetWindowData();
+
         // Create swap chain
         {
             m_swap_chain = make_shared<RHI_SwapChain>
             (
                 window_data.handle,
                 m_rhi_device,
-                static_cast<uint32_t>(m_viewport.width),
-                static_cast<uint32_t>(m_viewport.height),
+                static_cast<uint32_t>(window_data.width),
+                static_cast<uint32_t>(window_data.height),
                 RHI_Format_R8G8B8A8_Unorm,
                 m_swap_chain_buffer_count,
                 RHI_Present_Immediate | RHI_Swap_Flip_Discard,
@@ -156,7 +144,7 @@ namespace Spartan
         }
 
         // Full-screen quad
-        m_viewport_quad = Math::Rectangle(0, 0, m_viewport.width, m_viewport.height);
+        m_viewport_quad = Math::Rectangle(0, 0, window_data.width, window_data.height);
         m_viewport_quad.CreateBuffers(this);
 
         // Line buffer
@@ -165,6 +153,11 @@ namespace Spartan
         // Editor specific
         m_gizmo_grid = make_unique<Grid>(m_rhi_device);
         m_gizmo_transform = make_unique<TransformGizmo>(m_context);
+
+        // Set render, output and viewport resolution/size to whatever the window is (initially)
+        SetResolutionRender(static_cast<uint32_t>(window_data.width), static_cast<uint32_t>(window_data.height));
+        SetResolutionOutput(static_cast<uint32_t>(m_resolution_render.x), static_cast<uint32_t>(m_resolution_render.y));
+        SetViewport(m_resolution_render.x, m_resolution_render.y, 0, 0);
 
         CreateConstantBuffers();
         CreateShaders();
@@ -336,7 +329,7 @@ namespace Spartan
     void Renderer::SetResolutionRender(uint32_t width, uint32_t height)
     {
         // Return if resolution is invalid
-        if (!m_rhi_device->ValidateResolution(width, height))
+        if (!RHI_Device::IsValidResolution(width, height))
         {
             LOG_WARNING("%dx%d is an invalid resolution", width, height);
             return;
@@ -373,7 +366,7 @@ namespace Spartan
     void Renderer::SetResolutionOutput(uint32_t width, uint32_t height)
     {
         // Return if resolution is invalid
-        if (!m_rhi_device->ValidateResolution(width, height))
+        if (!m_rhi_device->IsValidResolution(width, height))
         {
             LOG_WARNING("%dx%d is an invalid resolution", width, height);
             return;

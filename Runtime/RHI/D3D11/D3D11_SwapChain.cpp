@@ -63,7 +63,7 @@ namespace Spartan
         }
 
         // Validate resolution
-        if (!rhi_device->ValidateResolution(width, height))
+        if (!rhi_device->IsValidResolution(width, height))
         {
             LOG_WARNING("%dx%d is an invalid resolution", width, height);
             return;
@@ -174,7 +174,7 @@ namespace Spartan
         }
 
         // Validate resolution
-        m_present_enabled = m_rhi_device->ValidateResolution(width, height);
+        m_present_enabled = m_rhi_device->IsValidResolution(width, height);
         if (!m_present_enabled)
         {
             // Return true as when minimizing, a resolution
