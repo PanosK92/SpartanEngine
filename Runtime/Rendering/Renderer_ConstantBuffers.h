@@ -62,14 +62,14 @@ namespace Spartan
         float directional_light_intensity;
         float ssr_enabled;
 
-        float shadow_resolution;
-        float fog;
+        Math::Vector2 resolution_render;
         Math::Vector2 resolution_output;
 
         Math::Vector2 taa_jitter_offset_previous;
         Math::Vector2 taa_jitter_offset;
 
-        Math::Vector2 resolution_render;
+        float shadow_resolution;
+        float fog;
         float taa_upsample;
         float padding;
 

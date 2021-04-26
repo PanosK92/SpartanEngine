@@ -52,14 +52,14 @@ cbuffer BufferFrame : register(b0)
     float g_directional_light_intensity;
     float g_ssr_enabled;
     
-    float g_shadow_resolution;
-    float g_fog_density;
+    float2 g_resolution_render;
     float2 g_resolution_output;
 
     float2 g_taa_jitter_offset_previous;
     float2 g_taa_jitter_offset;
 
-    float2 g_resolution_render;
+    float g_shadow_resolution;
+    float g_fog_density;
     float g_taa_upsample;
     float g_padding;
 };
