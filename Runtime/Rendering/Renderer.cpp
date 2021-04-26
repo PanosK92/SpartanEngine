@@ -354,9 +354,14 @@ namespace Spartan
         m_resolution_render.x = static_cast<float>(width);
         m_resolution_render.y = static_cast<float>(height);
 
+        // Set as active display mode
+        DisplayMode display_mode    = Display::GetActiveDisplayMode();
+        display_mode.width          = width;
+        display_mode.height         = height;
+        Display::SetActiveDisplayMode(display_mode);
+
         // Register display mode (in case it doesn't exist)
-        const DisplayMode& display_mode = Display::GetActiveDisplayMode();
-        Display::SetActiveDisplayMode(DisplayMode(width, height, display_mode.numerator, display_mode.denominator));
+        Display::RegisterDisplayMode(display_mode, m_context);
 
         // Re-create render textures
         CreateRenderTextures();
