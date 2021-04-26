@@ -78,6 +78,7 @@ namespace Spartan
         Math::Vector2 m_resolution_output   = Math::Vector2::Zero;
         Math::Vector2 m_resolution_render   = Math::Vector2::Zero;
         uint32_t m_anisotropy               = 0;
+        uint32_t m_tonemapping              = 0;
         uint32_t m_max_thread_count         = 0;
         double m_fps_limit                  = 0;
         bool m_loaded                       = false;
