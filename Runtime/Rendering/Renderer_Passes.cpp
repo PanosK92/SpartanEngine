@@ -97,6 +97,10 @@ namespace Spartan
             }
         }
 
+        // Acquire render targets
+        RHI_Texture* rt1 = RENDER_TARGET(RendererRt::Frame_Hdr).get();
+        RHI_Texture* rt2 = RENDER_TARGET(RendererRt::Frame_Hdr_2).get();
+
         // G-Buffer and lighting
         {
             // G-buffer
@@ -114,30 +118,31 @@ namespace Spartan
             Pass_Ssgi_Inject(cmd_list);
 
             // Composition of the light buffers (including volumetric fog)
-            Pass_Light_Composition(cmd_list, m_render_targets[RendererRt::Frame_Hdr].get());
+            Pass_Light_Composition(cmd_list, rt1);
 
             // Image based lighting
-            Pass_Light_ImageBased(cmd_list, m_render_targets[RendererRt::Frame_Hdr].get());
+            Pass_Light_ImageBased(cmd_list, rt1);
 
             // If SSR is enabled, copy the frame so that SSR can use it to reflect from
             if ((m_options & Render_ScreenSpaceReflections) != 0)
             {
-                Pass_Copy(cmd_list, m_render_targets[RendererRt::Frame_Hdr].get(), m_render_targets[RendererRt::Frame_Hdr_2].get());
+                Pass_Copy(cmd_list, rt1, rt2);
             }
 
             // Reflections - SSR & Environment
-            Pass_Reflections(cmd_list, m_render_targets[RendererRt::Frame_Hdr].get(), m_render_targets[RendererRt::Frame_Hdr_2].get());
+            Pass_Reflections(cmd_list, rt1, rt2);
 
             // Lighting for transparent objects (a simpler version of the above)
             if (draw_transparent_objects)
             {
                 // Copy the frame so that refraction can sample from it
-                Pass_Copy(cmd_list, m_render_targets[RendererRt::Frame_Hdr].get(), m_render_targets[RendererRt::Frame_Hdr_2].get());
+                Pass_Copy(cmd_list, rt1, rt2);
 
-                Pass_GBuffer(cmd_list, true);
-                Pass_Light(cmd_list, true);
-                Pass_Light_Composition(cmd_list, m_render_targets[RendererRt::Frame_Hdr].get(), true);
-                Pass_Light_ImageBased(cmd_list, m_render_targets[RendererRt::Frame_Hdr].get(), true);
+                const bool is_trasparent_pass = true;
+                Pass_GBuffer(cmd_list, is_trasparent_pass);
+                Pass_Light(cmd_list, is_trasparent_pass);
+                Pass_Light_Composition(cmd_list, rt1, is_trasparent_pass);
+                Pass_Light_ImageBased(cmd_list, rt1, is_trasparent_pass);
             }
         }
 
@@ -278,7 +283,7 @@ namespace Spartan
                     {
                         // Bind material textures
                         RHI_Texture* tex_albedo = material->GetTexture_Ptr(Material_Color);
-                        cmd_list->SetTexture(RendererBindingsSrv::tex, tex_albedo ? tex_albedo : m_default_tex_white.get());
+                        cmd_list->SetTexture(RendererBindingsSrv::tex, tex_albedo ? tex_albedo : m_tex_default_white.get());
 
                         // Update uber buffer with material properties
                         m_buffer_uber_cpu.mat_albedo    = material->GetColorAlbedo();
@@ -315,7 +320,7 @@ namespace Spartan
 
         // Acquire required resources/data
         const auto& shader_depth    = m_shaders[RendererShader::Depth_V];
-        const auto& tex_depth       = m_render_targets[RendererRt::Gbuffer_Depth];
+        const auto& tex_depth       = RENDER_TARGET(RendererRt::Gbuffer_Depth);
         const auto& entities        = m_entities[Renderer_Object_Opaque];
 
         // Ensure the shader has compiled
@@ -387,11 +392,11 @@ namespace Spartan
     void Renderer::Pass_GBuffer(RHI_CommandList* cmd_list, const bool is_transparent_pass /*= false*/)
     {
         // Acquire required resources/shaders
-        RHI_Texture* tex_albedo       = m_render_targets[RendererRt::Gbuffer_Albedo].get();
-        RHI_Texture* tex_normal       = m_render_targets[RendererRt::Gbuffer_Normal].get();
-        RHI_Texture* tex_material     = m_render_targets[RendererRt::Gbuffer_Material].get();
-        RHI_Texture* tex_velocity     = m_render_targets[RendererRt::Gbuffer_Velocity].get();
-        RHI_Texture* tex_depth        = m_render_targets[RendererRt::Gbuffer_Depth].get();
+        RHI_Texture* tex_albedo       = RENDER_TARGET(RendererRt::Gbuffer_Albedo).get();
+        RHI_Texture* tex_normal       = RENDER_TARGET(RendererRt::Gbuffer_Normal).get();
+        RHI_Texture* tex_material     = RENDER_TARGET(RendererRt::Gbuffer_Material).get();
+        RHI_Texture* tex_velocity     = RENDER_TARGET(RendererRt::Gbuffer_Velocity).get();
+        RHI_Texture* tex_depth        = RENDER_TARGET(RendererRt::Gbuffer_Depth).get();
         RHI_Shader* shader_v          = m_shaders[RendererShader::Gbuffer_V].get();
         ShaderGBuffer* shader_p       = static_cast<ShaderGBuffer*>(m_shaders[RendererShader::Gbuffer_P].get());
 
@@ -572,8 +577,8 @@ namespace Spartan
             return;
 
         // Get render target
-        RHI_Texture* tex_out            = m_render_targets[RendererRt::Ssgi].get();
-        RHI_Texture* tex_accumulation   = m_render_targets[RendererRt::Accumulation_Ssgi].get();
+        RHI_Texture* tex_out            = RENDER_TARGET(RendererRt::Ssgi).get();
+        RHI_Texture* tex_accumulation   = RENDER_TARGET(RendererRt::Ssgi_Accumulation).get();
 
         // Set render state
         static RHI_PipelineState pso;
@@ -593,11 +598,11 @@ namespace Spartan
             const bool async                      = false;
 
             cmd_list->SetTexture(RendererBindingsUav::rgb,              tex_out);
-            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_albedo,   m_render_targets[RendererRt::Gbuffer_Albedo]);
-            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal,   m_render_targets[RendererRt::Gbuffer_Normal]);
-            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_velocity, m_render_targets[RendererRt::Gbuffer_Velocity]);
-            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    m_render_targets[RendererRt::Gbuffer_Depth]);
-            cmd_list->SetTexture(RendererBindingsSrv::light_diffuse,    m_render_targets[RendererRt::Light_Diffuse]);
+            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_albedo,   RENDER_TARGET(RendererRt::Gbuffer_Albedo));
+            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal,   RENDER_TARGET(RendererRt::Gbuffer_Normal));
+            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_velocity, RENDER_TARGET(RendererRt::Gbuffer_Velocity));
+            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    RENDER_TARGET(RendererRt::Gbuffer_Depth));
+            cmd_list->SetTexture(RendererBindingsSrv::light_diffuse,    RENDER_TARGET(RendererRt::Light_Diffuse));
             cmd_list->SetTexture(RendererBindingsSrv::tex,              tex_accumulation);
 
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
@@ -618,7 +623,7 @@ namespace Spartan
         if (!shader_c->IsCompiled())
             return;
 
-        RHI_Texture* tex_out = m_render_targets[RendererRt::Light_Diffuse].get();
+        RHI_Texture* tex_out = RENDER_TARGET(RendererRt::Light_Diffuse).get();
 
         // Set render state
         static RHI_PipelineState pso;
@@ -638,7 +643,7 @@ namespace Spartan
             const bool async                      = false;
 
             cmd_list->SetTexture(RendererBindingsUav::rgb, tex_out); // diffuse
-            cmd_list->SetTexture(RendererBindingsSrv::ssgi, m_render_targets[RendererRt::Ssgi]);
+            cmd_list->SetTexture(RendererBindingsSrv::ssgi, RENDER_TARGET(RendererRt::Ssgi));
 
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
@@ -656,10 +661,10 @@ namespace Spartan
             return;
 
         // Acquire textures
-        shared_ptr<RHI_Texture>& tex_ssao_noisy     = m_render_targets[RendererRt::Ssao];
-        shared_ptr<RHI_Texture>& tex_ssao_blurred   = m_render_targets[RendererRt::Ssao_Blurred];
-        RHI_Texture* tex_depth                      = m_render_targets[RendererRt::Gbuffer_Depth].get();
-        RHI_Texture* tex_normal                     = m_render_targets[RendererRt::Gbuffer_Normal].get();
+        shared_ptr<RHI_Texture>& tex_ssao_noisy     = RENDER_TARGET(RendererRt::Ssao);
+        shared_ptr<RHI_Texture>& tex_ssao_blurred   = RENDER_TARGET(RendererRt::Ssao_Blurred);
+        RHI_Texture* tex_depth                      = RENDER_TARGET(RendererRt::Gbuffer_Depth).get();
+        RHI_Texture* tex_normal                     = RENDER_TARGET(RendererRt::Gbuffer_Normal).get();
 
         // Set render state
         static RHI_PipelineState pso;
@@ -709,7 +714,7 @@ namespace Spartan
             return;
 
         // Acquire render targets
-        RHI_Texture* tex_out = m_render_targets[RendererRt::Ssr].get();
+        RHI_Texture* tex_out = RENDER_TARGET(RendererRt::Ssr).get();
 
         // Set render state
         static RHI_PipelineState pso;
@@ -729,11 +734,11 @@ namespace Spartan
             const bool async = false;
 
             cmd_list->SetTexture(RendererBindingsUav::rgba,             tex_out);
-            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal,   m_render_targets[RendererRt::Gbuffer_Normal]);
-            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    m_render_targets[RendererRt::Gbuffer_Depth]);
-            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_material, m_render_targets[RendererRt::Gbuffer_Material]);
-            cmd_list->SetTexture(RendererBindingsSrv::noise_normal,     m_default_tex_noise_normal);
-            cmd_list->SetTexture(RendererBindingsSrv::noise_blue,       m_default_tex_noise_blue);
+            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal,   RENDER_TARGET(RendererRt::Gbuffer_Normal));
+            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    RENDER_TARGET(RendererRt::Gbuffer_Depth));
+            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_material, RENDER_TARGET(RendererRt::Gbuffer_Material));
+            cmd_list->SetTexture(RendererBindingsSrv::noise_normal,     m_tex_default_noise_normal);
+            cmd_list->SetTexture(RendererBindingsSrv::noise_blue,       m_tex_default_noise_blue);
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
         }
@@ -771,11 +776,11 @@ namespace Spartan
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             UpdateUberBuffer(cmd_list);
 
-            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_albedo,   m_render_targets[RendererRt::Gbuffer_Albedo]);
-            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal,   m_render_targets[RendererRt::Gbuffer_Normal]);
-            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_material, m_render_targets[RendererRt::Gbuffer_Material]);
-            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    m_render_targets[RendererRt::Gbuffer_Depth]);
-            cmd_list->SetTexture(RendererBindingsSrv::ssr,              m_render_targets[RendererRt::Ssr]);
+            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_albedo,   RENDER_TARGET(RendererRt::Gbuffer_Albedo));
+            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal,   RENDER_TARGET(RendererRt::Gbuffer_Normal));
+            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_material, RENDER_TARGET(RendererRt::Gbuffer_Material));
+            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    RENDER_TARGET(RendererRt::Gbuffer_Depth));
+            cmd_list->SetTexture(RendererBindingsSrv::ssr,              RENDER_TARGET(RendererRt::Ssr));
             cmd_list->SetTexture(RendererBindingsSrv::frame,            tex_reflections);
             cmd_list->SetTexture(RendererBindingsSrv::environment,      GetEnvironmentTexture());
 
@@ -794,9 +799,9 @@ namespace Spartan
             return;
 
         // Acquire render targets
-        RHI_Texture* tex_diffuse    = is_transparent_pass ? m_render_targets[RendererRt::Light_Diffuse_Transparent].get()   : m_render_targets[RendererRt::Light_Diffuse].get();
-        RHI_Texture* tex_specular   = is_transparent_pass ? m_render_targets[RendererRt::Light_Specular_Transparent].get()  : m_render_targets[RendererRt::Light_Specular].get();
-        RHI_Texture* tex_volumetric = m_render_targets[RendererRt::Light_Volumetric].get();
+        RHI_Texture* tex_diffuse    = is_transparent_pass ? RENDER_TARGET(RendererRt::Light_Diffuse_Transparent).get()   : RENDER_TARGET(RendererRt::Light_Diffuse).get();
+        RHI_Texture* tex_specular   = is_transparent_pass ? RENDER_TARGET(RendererRt::Light_Specular_Transparent).get()  : RENDER_TARGET(RendererRt::Light_Specular).get();
+        RHI_Texture* tex_volumetric = RENDER_TARGET(RendererRt::Light_Volumetric).get();
 
         // Clear render targets
         cmd_list->ClearRenderTarget(tex_diffuse,    0, 0, true, Vector4::Zero);
@@ -830,18 +835,18 @@ namespace Spartan
                         cmd_list->SetTexture(RendererBindingsUav::rgb,              tex_diffuse);
                         cmd_list->SetTexture(RendererBindingsUav::rgb2,             tex_specular);
                         cmd_list->SetTexture(RendererBindingsUav::rgb3,             tex_volumetric);
-                        cmd_list->SetTexture(RendererBindingsSrv::gbuffer_albedo,   m_render_targets[RendererRt::Gbuffer_Albedo]);
-                        cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal,   m_render_targets[RendererRt::Gbuffer_Normal]);
-                        cmd_list->SetTexture(RendererBindingsSrv::gbuffer_material, m_render_targets[RendererRt::Gbuffer_Material]);
-                        cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    m_render_targets[RendererRt::Gbuffer_Depth]);
-                        cmd_list->SetTexture(RendererBindingsSrv::ssao,             (m_options & Render_Ssao) ? m_render_targets[RendererRt::Ssao_Blurred] : m_default_tex_white);
-                        cmd_list->SetTexture(RendererBindingsSrv::noise_blue,       m_default_tex_noise_blue);
+                        cmd_list->SetTexture(RendererBindingsSrv::gbuffer_albedo,   RENDER_TARGET(RendererRt::Gbuffer_Albedo));
+                        cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal,   RENDER_TARGET(RendererRt::Gbuffer_Normal));
+                        cmd_list->SetTexture(RendererBindingsSrv::gbuffer_material, RENDER_TARGET(RendererRt::Gbuffer_Material));
+                        cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    RENDER_TARGET(RendererRt::Gbuffer_Depth));
+                        cmd_list->SetTexture(RendererBindingsSrv::ssao,             (m_options & Render_Ssao) ? RENDER_TARGET(RendererRt::Ssao_Blurred) : m_tex_default_white);
+                        cmd_list->SetTexture(RendererBindingsSrv::noise_blue,       m_tex_default_noise_blue);
                         
                         // Set shadow map
                         if (light->GetShadowsEnabled())
                         {
                             RHI_Texture* tex_depth = light->GetDepthTexture();
-                            RHI_Texture* tex_color = light->GetShadowsTransparentEnabled() ? light->GetColorTexture() : m_default_tex_white.get();
+                            RHI_Texture* tex_color = light->GetShadowsTransparentEnabled() ? light->GetColorTexture() : m_tex_default_white.get();
 
                             if (light->GetLightType() == LightType::Directional)
                             {
@@ -908,13 +913,13 @@ namespace Spartan
 
             // Setup command list
             cmd_list->SetTexture(RendererBindingsUav::rgba,             tex_out);
-            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_albedo,   m_render_targets[RendererRt::Gbuffer_Albedo]);
-            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal,   m_render_targets[RendererRt::Gbuffer_Normal]);
-            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    m_render_targets[RendererRt::Gbuffer_Depth]);
-            cmd_list->SetTexture(RendererBindingsSrv::light_diffuse,    is_transparent_pass ? m_render_targets[RendererRt::Light_Diffuse_Transparent].get() : m_render_targets[RendererRt::Light_Diffuse].get());
-            cmd_list->SetTexture(RendererBindingsSrv::light_specular,   is_transparent_pass ? m_render_targets[RendererRt::Light_Specular_Transparent].get() : m_render_targets[RendererRt::Light_Specular].get());
-            cmd_list->SetTexture(RendererBindingsSrv::light_volumetric, m_render_targets[RendererRt::Light_Volumetric]);
-            cmd_list->SetTexture(RendererBindingsSrv::frame,            m_render_targets[RendererRt::Frame_Hdr_2]); // refraction
+            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_albedo,   RENDER_TARGET(RendererRt::Gbuffer_Albedo));
+            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal,   RENDER_TARGET(RendererRt::Gbuffer_Normal));
+            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    RENDER_TARGET(RendererRt::Gbuffer_Depth));
+            cmd_list->SetTexture(RendererBindingsSrv::light_diffuse,    is_transparent_pass ? RENDER_TARGET(RendererRt::Light_Diffuse_Transparent).get() : RENDER_TARGET(RendererRt::Light_Diffuse).get());
+            cmd_list->SetTexture(RendererBindingsSrv::light_specular,   is_transparent_pass ? RENDER_TARGET(RendererRt::Light_Specular_Transparent).get() : RENDER_TARGET(RendererRt::Light_Specular).get());
+            cmd_list->SetTexture(RendererBindingsSrv::light_volumetric, RENDER_TARGET(RendererRt::Light_Volumetric));
+            cmd_list->SetTexture(RendererBindingsSrv::frame,            RENDER_TARGET(RendererRt::Frame_Hdr_2)); // refraction
             cmd_list->SetTexture(RendererBindingsSrv::environment,      GetEnvironmentTexture());
 
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
@@ -935,7 +940,7 @@ namespace Spartan
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
-        RHI_Texture* tex_depth = m_render_targets[RendererRt::Gbuffer_Depth].get();
+        RHI_Texture* tex_depth = RENDER_TARGET(RendererRt::Gbuffer_Depth).get();
 
         // Set render state
         static RHI_PipelineState pso;
@@ -964,12 +969,12 @@ namespace Spartan
             UpdateUberBuffer(cmd_list);
 
             // Setup command list
-            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_albedo,   m_render_targets[RendererRt::Gbuffer_Albedo]);
-            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal,   m_render_targets[RendererRt::Gbuffer_Normal]);
-            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_material, m_render_targets[RendererRt::Gbuffer_Material]);
+            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_albedo,   RENDER_TARGET(RendererRt::Gbuffer_Albedo));
+            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal,   RENDER_TARGET(RendererRt::Gbuffer_Normal));
+            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_material, RENDER_TARGET(RendererRt::Gbuffer_Material));
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    tex_depth);
-            cmd_list->SetTexture(RendererBindingsSrv::ssao,             (m_options & Render_Ssao) ? m_render_targets[RendererRt::Ssao_Blurred] : m_default_tex_white);
-            cmd_list->SetTexture(RendererBindingsSrv::lutIbl,           m_render_targets[RendererRt::Brdf_Specular_Lut]);
+            cmd_list->SetTexture(RendererBindingsSrv::ssao,             (m_options & Render_Ssao) ? RENDER_TARGET(RendererRt::Ssao_Blurred) : m_tex_default_white);
+            cmd_list->SetTexture(RendererBindingsSrv::lutIbl,           RENDER_TARGET(RendererRt::Brdf_Specular_Lut));
             cmd_list->SetTexture(RendererBindingsSrv::environment,      GetEnvironmentTexture());
 
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
@@ -997,7 +1002,7 @@ namespace Spartan
         pso.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride();
         pso.render_target_color_textures[0]  = tex_out.get();
         pso.clear_color[0]                   = rhi_color_dont_care;
-        pso.render_target_depth_texture      = use_stencil ? m_render_targets[RendererRt::Gbuffer_Depth].get() : nullptr;
+        pso.render_target_depth_texture      = use_stencil ? RENDER_TARGET(RendererRt::Gbuffer_Depth).get() : nullptr;
         pso.viewport                         = tex_out->GetViewport();
         pso.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
         pso.pass_name                        = "Pass_Blur_Box";
@@ -1110,8 +1115,8 @@ namespace Spartan
             return;
 
         // Acquire render targets
-        RHI_Texture* tex_depth     = m_render_targets[RendererRt::Gbuffer_Depth].get();
-        RHI_Texture* tex_normal    = m_render_targets[RendererRt::Gbuffer_Normal].get();
+        RHI_Texture* tex_depth     = RENDER_TARGET(RendererRt::Gbuffer_Depth).get();
+        RHI_Texture* tex_normal    = RENDER_TARGET(RendererRt::Gbuffer_Normal).get();
 
         // Set render state for horizontal pass
         static RHI_PipelineState pso_horizontal;
@@ -1190,97 +1195,106 @@ namespace Spartan
         // OUT: RenderTarget_Composition_Ldr
 
         // Acquire render targets
-        shared_ptr<RHI_Texture>& tex_in_hdr     = m_render_targets[RendererRt::Frame_Hdr];
-        shared_ptr<RHI_Texture>& tex_out_hdr    = m_render_targets[RendererRt::Frame_Hdr_2];
-        shared_ptr<RHI_Texture>& tex_in_ldr     = m_render_targets[RendererRt::Frame_Ldr];
-        shared_ptr<RHI_Texture>& tex_out_ldr    = m_render_targets[RendererRt::Frame_Ldr_2];
-
-        // TAA
-        if (GetOption(Render_AntiAliasing_Taa))
-        {
-            Pass_PostProcess_TAA(cmd_list, tex_in_hdr, tex_out_hdr);
-            tex_in_hdr.swap(tex_out_hdr);
-        }
+        shared_ptr<RHI_Texture>& rt_frame_hdr           = RENDER_TARGET(RendererRt::Frame_Hdr);
+        shared_ptr<RHI_Texture>& rt_frame_hdr_2         = RENDER_TARGET(RendererRt::Frame_Hdr_2);
+        shared_ptr<RHI_Texture>& rt_post_process_ldr    = RENDER_TARGET(RendererRt::PostProcess_Ldr);
+        shared_ptr<RHI_Texture>& rt_post_process_ldr_2  = RENDER_TARGET(RendererRt::PostProcess_Ldr_2);
 
         // Depth of Field
         if (GetOption(Render_DepthOfField))
         {
-            Pass_PostProcess_DepthOfField(cmd_list, tex_in_hdr, tex_out_hdr);
-            tex_in_hdr.swap(tex_out_hdr);
+            Pass_PostProcess_DepthOfField(cmd_list, rt_frame_hdr, rt_frame_hdr_2);
+            rt_frame_hdr.swap(rt_frame_hdr_2);
         }
+
+        // TAA
+        if (GetOption(Render_AntiAliasing_Taa))
+        {
+            Pass_PostProcess_TAA(cmd_list, rt_frame_hdr, rt_frame_hdr_2);
+            rt_frame_hdr.swap(rt_frame_hdr_2);
+        }
+
+        // TAA upsamples the frame but if it's not enabled, we need to do regular dowsampling/upsampling
+        //bool taa_upsampled                  = GetOption(Render_AntiAliasing_Taa) && GetOptionValue<bool>(Renderer_Option_Value::Taa_Upsample);
+        //bool different_output_resolution    = m_resolution_render != m_resolution_output;
+        //bool do_upscale                     = different_output_resolution && !taa_upsampled;
+        //if (do_upscale)
+        //{
+        //    Pass_CopyBilinear(cmd_list, rt_frame_hdr.get(), rt_frame_hdr_2.get());
+        //}
 
         // Motion Blur
         if (GetOption(Render_MotionBlur))
         {
-            Pass_PostProcess_MotionBlur(cmd_list, tex_in_hdr, tex_out_hdr);
-            tex_in_hdr.swap(tex_out_hdr);
+            Pass_PostProcess_MotionBlur(cmd_list, rt_frame_hdr, rt_frame_hdr_2);
+            rt_frame_hdr.swap(rt_frame_hdr_2);
         }
 
         // Bloom
         if (GetOption(Render_Bloom))
         {
-            Pass_PostProcess_Bloom(cmd_list, tex_in_hdr, tex_out_hdr);
-            tex_in_hdr.swap(tex_out_hdr);
+            Pass_PostProcess_Bloom(cmd_list, rt_frame_hdr, rt_frame_hdr_2);
+            rt_frame_hdr.swap(rt_frame_hdr_2);
         }
 
         // Tone-Mapping
         if (m_option_values[Renderer_Option_Value::Tonemapping] != 0)
         {
-            Pass_PostProcess_ToneMapping(cmd_list, tex_in_hdr, tex_in_ldr); // HDR -> LDR
+            Pass_PostProcess_ToneMapping(cmd_list, rt_frame_hdr, rt_post_process_ldr); // HDR -> LDR
         }
         else
         {
-            Pass_Copy(cmd_list, tex_in_hdr.get(), tex_in_ldr.get()); // clipping
+            Pass_Copy(cmd_list, rt_frame_hdr.get(), rt_post_process_ldr.get()); // clipping
         }
 
         // Dithering
         if (GetOption(Render_Dithering))
         {
-            Pass_PostProcess_Dithering(cmd_list, tex_in_ldr, tex_out_ldr);
-            tex_in_ldr.swap(tex_out_ldr);
+            Pass_PostProcess_Dithering(cmd_list, rt_post_process_ldr, rt_post_process_ldr_2);
+            rt_post_process_ldr.swap(rt_post_process_ldr_2);
         }
 
         // FXAA
         if (GetOption(Render_AntiAliasing_Fxaa))
         {
-            Pass_PostProcess_Fxaa(cmd_list, tex_in_ldr, tex_out_ldr);
-            tex_in_ldr.swap(tex_out_ldr);
+            Pass_PostProcess_Fxaa(cmd_list, rt_post_process_ldr, rt_post_process_ldr_2);
+            rt_post_process_ldr.swap(rt_post_process_ldr_2);
         }
 
         // Sharpening
         if (GetOption(Render_Sharpening_LumaSharpen))
         {
-            Pass_PostProcess_Sharpening(cmd_list, tex_in_ldr, tex_out_ldr);
-            tex_in_ldr.swap(tex_out_ldr);
+            Pass_PostProcess_Sharpening(cmd_list, rt_post_process_ldr, rt_post_process_ldr_2);
+            rt_post_process_ldr.swap(rt_post_process_ldr_2);
         }
 
         // Film grain
         if (GetOption(Render_FilmGrain))
         {
-            Pass_PostProcess_FilmGrain(cmd_list, tex_in_ldr, tex_out_ldr);
-            tex_in_ldr.swap(tex_out_ldr);
+            Pass_PostProcess_FilmGrain(cmd_list, rt_post_process_ldr, rt_post_process_ldr_2);
+            rt_post_process_ldr.swap(rt_post_process_ldr_2);
         }
 
         // Chromatic aberration
         if (GetOption(Render_ChromaticAberration))
         {
-            Pass_PostProcess_ChromaticAberration(cmd_list, tex_in_ldr, tex_out_ldr);
-            tex_in_ldr.swap(tex_out_ldr);
+            Pass_PostProcess_ChromaticAberration(cmd_list, rt_post_process_ldr, rt_post_process_ldr_2);
+            rt_post_process_ldr.swap(rt_post_process_ldr_2);
         }
 
         // Gamma correction
-        Pass_PostProcess_GammaCorrection(cmd_list, tex_in_ldr, tex_out_ldr);
+        Pass_PostProcess_GammaCorrection(cmd_list, rt_post_process_ldr, rt_post_process_ldr_2);
 
         // Passes that render on top of each other
-        Pass_Outline(cmd_list, tex_out_ldr.get());
-        Pass_TransformHandle(cmd_list, tex_out_ldr.get());
-        Pass_Lines(cmd_list, tex_out_ldr.get());
-        Pass_Icons(cmd_list, tex_out_ldr.get());
-        Pass_DebugBuffer(cmd_list, tex_out_ldr.get());
-        Pass_Text(cmd_list, tex_out_ldr.get());
+        Pass_Outline(cmd_list, rt_post_process_ldr_2.get());
+        Pass_TransformHandle(cmd_list, rt_post_process_ldr_2.get());
+        Pass_Lines(cmd_list, rt_post_process_ldr_2.get());
+        Pass_Icons(cmd_list, rt_post_process_ldr_2.get());
+        Pass_DebugBuffer(cmd_list, rt_post_process_ldr_2.get());
+        Pass_Text(cmd_list, rt_post_process_ldr_2.get());
 
         // Swap textures
-        tex_in_ldr.swap(tex_out_ldr);
+        rt_post_process_ldr.swap(rt_post_process_ldr_2);
     }
 
     void Renderer::Pass_PostProcess_TAA(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
@@ -1291,7 +1305,7 @@ namespace Spartan
             return;
 
         // Acquire accumulation render target
-        auto& tex_accumulation = m_render_targets[RendererRt::Accumulation_Taa];
+        RHI_Texture* tex_accumulation = RENDER_TARGET(RendererRt::TaaHistory).get();
 
         // Set render state
         static RHI_PipelineState pso;
@@ -1313,14 +1327,14 @@ namespace Spartan
             cmd_list->SetTexture(RendererBindingsUav::rgba,             tex_out);
             cmd_list->SetTexture(RendererBindingsSrv::tex,              tex_accumulation);
             cmd_list->SetTexture(RendererBindingsSrv::tex2,             tex_in);
-            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_velocity, m_render_targets[RendererRt::Gbuffer_Velocity]);
-            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    m_render_targets[RendererRt::Gbuffer_Depth]);
+            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_velocity, RENDER_TARGET(RendererRt::Gbuffer_Velocity));
+            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    RENDER_TARGET(RendererRt::Gbuffer_Depth));
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
         }
 
         // Accumulate
-        Pass_Copy(cmd_list, tex_out.get(), tex_accumulation.get());
+        Pass_Copy(cmd_list, tex_out.get(), tex_accumulation);
     }
 
     void Renderer::Pass_PostProcess_Bloom(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
@@ -1623,8 +1637,8 @@ namespace Spartan
 
             cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out);
             cmd_list->SetTexture(RendererBindingsSrv::tex, tex_in);
-            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_velocity, m_render_targets[RendererRt::Gbuffer_Velocity]);
-            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth, m_render_targets[RendererRt::Gbuffer_Depth]);
+            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_velocity, RENDER_TARGET(RendererRt::Gbuffer_Velocity));
+            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    RENDER_TARGET(RendererRt::Gbuffer_Depth));
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
         }
@@ -1641,9 +1655,9 @@ namespace Spartan
             return;
 
         // Acquire render targets
-        RHI_Texture* tex_bokeh_half     = m_render_targets[RendererRt::Dof_Half].get();
-        RHI_Texture* tex_bokeh_half_2   = m_render_targets[RendererRt::Dof_Half_2].get();
-        RHI_Texture* tex_depth          = m_render_targets[RendererRt::Gbuffer_Depth].get();
+        RHI_Texture* tex_bokeh_half     = RENDER_TARGET(RendererRt::Dof_Half).get();
+        RHI_Texture* tex_bokeh_half_2   = RENDER_TARGET(RendererRt::Dof_Half_2).get();
+        RHI_Texture* tex_depth          = RENDER_TARGET(RendererRt::Gbuffer_Depth).get();
 
         // Downsample and compute circle of confusion
         {
@@ -1875,7 +1889,7 @@ namespace Spartan
             pso.depth_stencil_state              = m_depth_stencil_r_off.get();
             pso.vertex_buffer_stride             = m_gizmo_grid->GetVertexBuffer()->GetStride();
             pso.render_target_color_textures[0]  = tex_out;
-            pso.render_target_depth_texture      = m_render_targets[RendererRt::Gbuffer_Depth].get();
+            pso.render_target_depth_texture      = RENDER_TARGET(RendererRt::Gbuffer_Depth).get();
             pso.viewport                         = tex_out->GetViewport();
             pso.primitive_topology               = RHI_PrimitiveTopology_LineList;
             pso.pass_name                        = "Pass_Lines_Grid";
@@ -1884,7 +1898,7 @@ namespace Spartan
             if (cmd_list->BeginRenderPass(pso))
             {
                 // Update uber buffer
-                m_buffer_uber_cpu.resolution    = m_resolution;
+                m_buffer_uber_cpu.resolution    = m_resolution_render;
                 m_buffer_uber_cpu.transform     = m_gizmo_grid->ComputeWorldMatrix(m_camera->GetTransform()) * m_buffer_frame_cpu.view_projection_unjittered;
                 UpdateUberBuffer(cmd_list);
         
@@ -1968,7 +1982,7 @@ namespace Spartan
                 pso.depth_stencil_state              = m_depth_stencil_r_off.get();
                 pso.vertex_buffer_stride             = m_vertex_buffer_lines->GetStride();
                 pso.render_target_color_textures[0]  = tex_out;
-                pso.render_target_depth_texture      = m_render_targets[RendererRt::Gbuffer_Depth].get();
+                pso.render_target_depth_texture      = RENDER_TARGET(RendererRt::Gbuffer_Depth).get();
                 pso.viewport                         = tex_out->GetViewport();
                 pso.primitive_topology               = RHI_PrimitiveTopology_LineList;
                 pso.pass_name                        = "Pass_Lines";
@@ -2071,9 +2085,9 @@ namespace Spartan
                         // Choose texture based on light type
                         shared_ptr<RHI_Texture> light_tex = nullptr;
                         const LightType type = light->GetLightType();
-                        if (type == LightType::Directional) light_tex = m_gizmo_tex_light_directional;
-                        else if (type == LightType::Point)  light_tex = m_gizmo_tex_light_point;
-                        else if (type == LightType::Spot)   light_tex = m_gizmo_tex_light_spot;
+                        if (type == LightType::Directional) light_tex = m_tex_gizmo_light_directional;
+                        else if (type == LightType::Point)  light_tex = m_tex_gizmo_light_point;
+                        else if (type == LightType::Spot)   light_tex = m_tex_gizmo_light_spot;
 
                         // Construct appropriate rectangle
                         const float tex_width = light_tex->GetWidth() * scale;
@@ -2223,8 +2237,8 @@ namespace Spartan
             if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
                 return;
 
-            RHI_Texture* tex_depth  = m_render_targets[RendererRt::Gbuffer_Depth].get();
-            RHI_Texture* tex_normal = m_render_targets[RendererRt::Gbuffer_Normal].get();
+            RHI_Texture* tex_depth  = RENDER_TARGET(RendererRt::Gbuffer_Depth).get();
+            RHI_Texture* tex_normal = RENDER_TARGET(RendererRt::Gbuffer_Normal).get();
 
             // Set render state
             static RHI_PipelineState pso;
@@ -2329,7 +2343,7 @@ namespace Spartan
             return true;
 
         // Bind correct texture & shader pass
-        RHI_Texture* texture          = m_render_targets[m_render_target_debug].get();
+        RHI_Texture* texture          = RENDER_TARGET(m_render_target_debug).get();
         RendererShader shader_type    = RendererShader::Copy_C;
 
         if (m_render_target_debug == RendererRt::Gbuffer_Albedo)
@@ -2369,19 +2383,19 @@ namespace Spartan
 
         if (m_render_target_debug == RendererRt::Ssao_Blurred)
         {
-            texture     = m_options & Render_Ssao ? m_render_targets[RendererRt::Ssao_Blurred].get() : m_default_tex_white.get();
+            texture     = m_options & Render_Ssao ? RENDER_TARGET(RendererRt::Ssao_Blurred).get() : m_tex_default_white.get();
             shader_type = RendererShader::DebugChannelR_C;
         }
 
         if (m_render_target_debug == RendererRt::Ssao)
         {
-            texture = m_options & Render_Ssao ? m_render_targets[RendererRt::Ssao].get() : m_default_tex_white.get();
+            texture = m_options & Render_Ssao ? RENDER_TARGET(RendererRt::Ssao).get() : m_tex_default_white.get();
             shader_type = RendererShader::DebugChannelR_C;
         }
 
         if (m_render_target_debug == RendererRt::Ssgi)
         {
-            texture = m_options & Render_Ssgi ? m_render_targets[RendererRt::Ssgi].get() : m_default_tex_black.get();
+            texture = m_options & Render_Ssgi ? RENDER_TARGET(RendererRt::Ssgi).get() : m_tex_default_black.get();
             shader_type = RendererShader::DebugChannelRgbGammaCorrect_C;
         }
 
@@ -2390,21 +2404,15 @@ namespace Spartan
             shader_type = RendererShader::DebugChannelRgbGammaCorrect_C;
         }
 
-        if (m_render_target_debug == RendererRt::Bloom)
-        {
-            texture     = m_render_tex_bloom.front().get();
-            shader_type = RendererShader::DebugChannelRgbGammaCorrect_C;
-        }
-
         if (m_render_target_debug == RendererRt::Dof_Half)
         {
-            texture = m_render_targets[RendererRt::Dof_Half].get();
+            texture = RENDER_TARGET(RendererRt::Dof_Half).get();
             shader_type = RendererShader::DebugChannelRgbGammaCorrect_C;
         }
 
         if (m_render_target_debug == RendererRt::Dof_Half_2)
         {
-            texture = m_render_targets[RendererRt::Dof_Half_2].get();
+            texture = RENDER_TARGET(RendererRt::Dof_Half_2).get();
             shader_type = RendererShader::DebugChannelRgbGammaCorrect_C;
         }
 
@@ -2461,7 +2469,7 @@ namespace Spartan
             return;
 
         // Acquire render target
-        RHI_Texture* render_target = m_render_targets[RendererRt::Brdf_Specular_Lut].get();
+        RHI_Texture* render_target = RENDER_TARGET(RendererRt::Brdf_Specular_Lut).get();
 
         // Set render state
         static RHI_PipelineState pso;
@@ -2515,6 +2523,37 @@ namespace Spartan
         }
     }
 
+    void Renderer::Pass_CopyBilinear(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
+    {
+        // Acquire shaders
+        RHI_Shader* shader_c = m_shaders[RendererShader::CopyBilinear_C].get();
+        if (!shader_c->IsCompiled())
+            return;
+
+        // Set render state
+        static RHI_PipelineState pso;
+        pso.shader_compute  = shader_c;
+        pso.pass_name       = "Pass_CopyBilinear";
+
+        // Draw
+        if (cmd_list->BeginRenderPass(pso))
+        {
+            // Update uber buffer
+            m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+            UpdateUberBuffer(cmd_list);
+
+            const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
+            const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
+            const uint32_t thread_group_count_z = 1;
+            const bool async = false;
+
+            cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out);
+            cmd_list->SetTexture(RendererBindingsSrv::tex, tex_in);
+            cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
+            cmd_list->EndRenderPass();
+        }
+    }
+
     void Renderer::Pass_CopyToBackbuffer(RHI_CommandList* cmd_list)
     {
         // Acquire shaders
@@ -2544,7 +2583,7 @@ namespace Spartan
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(m_swap_chain->GetWidth()), static_cast<float>(m_swap_chain->GetHeight()));
             UpdateUberBuffer(cmd_list);
 
-            cmd_list->SetTexture(RendererBindingsSrv::tex, m_render_targets[RendererRt::Frame_Ldr].get());
+            cmd_list->SetTexture(RendererBindingsSrv::tex, RENDER_TARGET(RendererRt::PostProcess_Ldr).get());
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
             cmd_list->DrawIndexed(m_viewport_quad.GetIndexCount());

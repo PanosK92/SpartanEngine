@@ -324,8 +324,9 @@ namespace Spartan
             "Driver:\t%s\n"
             "\n"
             // Resolution
-            "Render resolution:\t\t%dx%d\n"
             "Output resolution:\t%dx%d\n"
+            "Render resolution:\t\t%dx%d\n"
+            "Viewport resolution:\t%dx%d\n"
             "\n"
             // Renderer
             "Meshes rendered:\t%d\n"
@@ -367,7 +368,8 @@ namespace Spartan
             m_gpu_driver.c_str(),
 
             // Resolution
-            static_cast<int>(m_renderer->GetResolution().x), static_cast<int>(m_renderer->GetResolution().y),
+            static_cast<int>(m_renderer->GetResolutionOutput().x), static_cast<int>(m_renderer->GetResolutionOutput().y),
+            static_cast<int>(m_renderer->GetResolutionRender().x), static_cast<int>(m_renderer->GetResolutionRender().y),
             static_cast<int>(m_renderer->GetViewport().width), static_cast<int>(m_renderer->GetViewport().height),
 
             // Renderer

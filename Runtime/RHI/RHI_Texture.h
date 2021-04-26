@@ -33,7 +33,7 @@ namespace Spartan
 {
     enum RHI_Texture_Flags : uint16_t
     {
-        RHI_Texture_Sampled                    = 1 << 0,
+        RHI_Texture_Sampled                 = 1 << 0,
         RHI_Texture_Storage                 = 1 << 1,
         RHI_Texture_RenderTarget            = 1 << 2,
         RHI_Texture_DepthStencil            = 1 << 3,

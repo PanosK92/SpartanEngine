@@ -99,7 +99,7 @@ namespace Spartan
             Save();
         }
 
-        LOG_INFO("Resolution: %dx%d", static_cast<int>(m_resolution.x), static_cast<int>(m_resolution.y));
+        LOG_INFO("Resolution: %dx%d", static_cast<int>(m_resolution_render.x), static_cast<int>(m_resolution_render.y));
         LOG_INFO("FPS Limit: %f", m_fps_limit);
         LOG_INFO("Shadow resolution: %d", m_shadow_map_resolution);
         LOG_INFO("Anisotropy: %d", m_anisotropy);
@@ -119,15 +119,17 @@ namespace Spartan
         _Settings::fout.open(_Settings::file_name, ofstream::out);
 
         // Write the settings
-        _Settings::write_setting(_Settings::fout, "bFullScreen",            m_is_fullscreen);
-        _Settings::write_setting(_Settings::fout, "bIsMouseVisible",        m_is_mouse_visible);
-        _Settings::write_setting(_Settings::fout, "fResolutionWidth",       m_resolution.x);
-        _Settings::write_setting(_Settings::fout, "fResolutionHeight",      m_resolution.y);
-        _Settings::write_setting(_Settings::fout, "iShadowMapResolution",   m_shadow_map_resolution);
-        _Settings::write_setting(_Settings::fout, "iAnisotropy",            m_anisotropy);
-        _Settings::write_setting(_Settings::fout, "fFPSLimit",              m_fps_limit);
-        _Settings::write_setting(_Settings::fout, "iMaxThreadCount",        m_max_thread_count);
-        _Settings::write_setting(_Settings::fout, "iRendererFlags",         m_renderer_flags);
+        _Settings::write_setting(_Settings::fout, "bFullScreen",                m_is_fullscreen);
+        _Settings::write_setting(_Settings::fout, "bIsMouseVisible",            m_is_mouse_visible);
+        _Settings::write_setting(_Settings::fout, "iResolutionOutputWidth",     m_resolution_output.x);
+        _Settings::write_setting(_Settings::fout, "iResolutionOutputHeight",    m_resolution_output.y);
+        _Settings::write_setting(_Settings::fout, "iResolutionRenderWidth",     m_resolution_render.x);
+        _Settings::write_setting(_Settings::fout, "iResolutionRenderHeight",    m_resolution_render.y);
+        _Settings::write_setting(_Settings::fout, "iShadowMapResolution",       m_shadow_map_resolution);
+        _Settings::write_setting(_Settings::fout, "iAnisotropy",                m_anisotropy);
+        _Settings::write_setting(_Settings::fout, "fFPSLimit",                  m_fps_limit);
+        _Settings::write_setting(_Settings::fout, "iMaxThreadCount",            m_max_thread_count);
+        _Settings::write_setting(_Settings::fout, "iRendererFlags",             m_renderer_flags);
 
         // Close the file.
         _Settings::fout.close();
@@ -139,15 +141,17 @@ namespace Spartan
         _Settings::fin.open(_Settings::file_name, ifstream::in);
 
         // Read the settings
-        _Settings::read_setting(_Settings::fin, "bFullScreen",          m_is_fullscreen);
-        _Settings::read_setting(_Settings::fin, "bIsMouseVisible",      m_is_mouse_visible);
-        _Settings::read_setting(_Settings::fin, "fResolutionWidth",     m_resolution.x);
-        _Settings::read_setting(_Settings::fin, "fResolutionHeight",    m_resolution.y);
-        _Settings::read_setting(_Settings::fin, "iShadowMapResolution", m_shadow_map_resolution);
-        _Settings::read_setting(_Settings::fin, "iAnisotropy",          m_anisotropy);
-        _Settings::read_setting(_Settings::fin, "fFPSLimit",            m_fps_limit);
-        _Settings::read_setting(_Settings::fin, "iMaxThreadCount",      m_max_thread_count);
-        _Settings::read_setting(_Settings::fin, "iRendererFlags",       m_renderer_flags);
+        _Settings::read_setting(_Settings::fin, "bFullScreen",              m_is_fullscreen);
+        _Settings::read_setting(_Settings::fin, "bIsMouseVisible",          m_is_mouse_visible);
+        _Settings::read_setting(_Settings::fin, "iResolutionOutputWidth",   m_resolution_output.x);
+        _Settings::read_setting(_Settings::fin, "iResolutionOutputHeight",  m_resolution_output.y);
+        _Settings::read_setting(_Settings::fin, "iResolutionRenderWidth",   m_resolution_render.x);
+        _Settings::read_setting(_Settings::fin, "iResolutionRenderHeight",  m_resolution_render.y);
+        _Settings::read_setting(_Settings::fin, "iShadowMapResolution",     m_shadow_map_resolution);
+        _Settings::read_setting(_Settings::fin, "iAnisotropy",              m_anisotropy);
+        _Settings::read_setting(_Settings::fin, "fFPSLimit",                m_fps_limit);
+        _Settings::read_setting(_Settings::fin, "iMaxThreadCount",          m_max_thread_count);
+        _Settings::read_setting(_Settings::fin, "iRendererFlags",           m_renderer_flags);
 
         // Close the file.
         _Settings::fin.close();
@@ -162,7 +166,8 @@ namespace Spartan
         m_fps_limit             = m_context->GetSubsystem<Timer>()->GetTargetFps();
         m_max_thread_count      = m_context->GetSubsystem<Threading>()->GetThreadCountSupport();
         m_is_fullscreen         = renderer->GetIsFullscreen();
-        m_resolution            = renderer->GetResolution();
+        m_resolution_output     = renderer->GetResolutionOutput();
+        m_resolution_render     = renderer->GetResolutionRender();
         m_shadow_map_resolution = renderer->GetOptionValue<uint32_t>(Renderer_Option_Value::ShadowResolution);
         m_anisotropy            = renderer->GetOptionValue<uint32_t>(Renderer_Option_Value::Anisotropy);
         m_renderer_flags        = renderer->GetOptions();
@@ -174,7 +179,8 @@ namespace Spartan
 
         m_context->GetSubsystem<Timer>()->SetTargetFps(m_fps_limit);
         renderer->SetIsFullscreen(m_is_fullscreen);
-        renderer->SetResolution(static_cast<uint32_t>(m_resolution.x), static_cast<uint32_t>(m_resolution.y));
+        renderer->SetResolutionOutput(static_cast<uint32_t>(m_resolution_output.x), static_cast<uint32_t>(m_resolution_output.y));
+        renderer->SetResolutionRender(static_cast<uint32_t>(m_resolution_render.x), static_cast<uint32_t>(m_resolution_render.y));
         renderer->SetOptionValue(Renderer_Option_Value::Anisotropy, static_cast<float>(m_anisotropy));
         renderer->SetOptionValue(Renderer_Option_Value::ShadowResolution, static_cast<float>(m_shadow_map_resolution));
         renderer->SetOptions(m_renderer_flags);

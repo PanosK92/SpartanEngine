@@ -72,9 +72,6 @@ namespace Spartan
         m_options |= Render_ScreenSpaceReflections;
         m_options |= Render_AntiAliasing_Taa;
         m_options |= Render_Sharpening_LumaSharpen;
-        m_options |= Render_FilmGrain;
-        m_options |= Render_ChromaticAberration;
-        m_options |= Render_Ssgi;
 
         // Option values
         m_option_values[Renderer_Option_Value::Anisotropy]          = 16.0f;
@@ -112,12 +109,16 @@ namespace Spartan
         const WindowData& window_data = m_context->m_engine->GetWindowData();
 
         // Set resolution
-        m_resolution.x = window_data.width;
-        m_resolution.y = window_data.height;
+        m_resolution_render.x = window_data.width;
+        m_resolution_render.y = window_data.height;
+
+        // Set output resolution
+        m_resolution_output.x = m_resolution_render.x;
+        m_resolution_output.y = m_resolution_render.y;
 
         // Set viewport
-        m_viewport.width    = window_data.width;
-        m_viewport.height   = window_data.height;
+        m_viewport.width    = m_resolution_output.x;
+        m_viewport.height   = m_resolution_output.y;
 
         // Create device
         m_rhi_device = make_shared<RHI_Device>(m_context);
@@ -216,14 +217,14 @@ namespace Spartan
             // If there is no camera, clear to black
             if (!m_camera)
             {
-                cmd_list->ClearRenderTarget(m_render_targets[RendererRt::Frame_Ldr].get(), 0, 0, false, Vector4(0.0f, 0.0f, 0.0f, 1.0f));
+                cmd_list->ClearRenderTarget(RENDER_TARGET(RendererRt::PostProcess_Ldr).get(), 0, 0, false, Vector4(0.0f, 0.0f, 0.0f, 1.0f));
                 return;
             }
             
             // If there is not camera but no other entities to render, clear to camera's color
             if (m_entities[Renderer_Object_Opaque].empty() && m_entities[Renderer_Object_Transparent].empty() && m_entities[Renderer_Object_Light].empty())
             {
-                cmd_list->ClearRenderTarget(m_render_targets[RendererRt::Frame_Ldr].get(), 0, 0, false, m_camera->GetClearColor());
+                cmd_list->ClearRenderTarget(RENDER_TARGET(RendererRt::PostProcess_Ldr).get(), 0, 0, false, m_camera->GetClearColor());
                 return;
             }
 
@@ -259,8 +260,8 @@ namespace Spartan
                     const uint8_t samples           = 16;
                     const uint64_t index            = m_frame_num % samples;
                     m_taa_jitter                    = Utility::Sampling::Halton2D(index, 2, 3) * 2.0f - 1.0f;
-                    m_taa_jitter.x                  = (m_taa_jitter.x / m_resolution.x) * scale;
-                    m_taa_jitter.y                  = (m_taa_jitter.y / m_resolution.y) * scale;
+                    m_taa_jitter.x                  = (m_taa_jitter.x / m_resolution_render.x) * scale;
+                    m_taa_jitter.y                  = (m_taa_jitter.y / m_resolution_render.y) * scale;
                     m_buffer_frame_cpu.projection   *= Matrix::CreateTranslation(Vector3(m_taa_jitter.x, m_taa_jitter.y, 0.0f));
                 }
                 else
@@ -281,17 +282,21 @@ namespace Spartan
                 m_buffer_frame_cpu.camera_far                   = m_camera->GetFarPlane();
                 m_buffer_frame_cpu.camera_position              = m_camera->GetTransform()->GetPosition();
                 m_buffer_frame_cpu.camera_direction             = m_camera->GetTransform()->GetForward();
-                m_buffer_frame_cpu.bloom_intensity              = m_option_values[Renderer_Option_Value::Intensity];
-                m_buffer_frame_cpu.sharpen_strength             = m_option_values[Renderer_Option_Value::Sharpen_Strength];
-                m_buffer_frame_cpu.fog                          = m_option_values[Renderer_Option_Value::Fog];
+
+                m_buffer_frame_cpu.resolution_output            = m_resolution_output;
+                m_buffer_frame_cpu.resolution_render            = m_resolution_render;
                 m_buffer_frame_cpu.taa_jitter_offset_previous   = m_buffer_frame_cpu_previous.taa_jitter_offset;
                 m_buffer_frame_cpu.taa_jitter_offset            = m_taa_jitter - m_taa_jitter_previous;
                 m_buffer_frame_cpu.delta_time                   = static_cast<float>(m_context->GetSubsystem<Timer>()->GetDeltaTimeSmoothedSec());
                 m_buffer_frame_cpu.time                         = static_cast<float>(m_context->GetSubsystem<Timer>()->GetTimeSec());
-                m_buffer_frame_cpu.tonemapping                  = m_option_values[Renderer_Option_Value::Tonemapping];
-                m_buffer_frame_cpu.gamma                        = m_option_values[Renderer_Option_Value::Gamma];
-                m_buffer_frame_cpu.ssr_enabled                  = GetOption(Render_ScreenSpaceReflections) ? 1.0f : 0.0f;
+                m_buffer_frame_cpu.bloom_intensity              = GetOptionValue<float>(Renderer_Option_Value::Intensity);
+                m_buffer_frame_cpu.sharpen_strength             = GetOptionValue<float>(Renderer_Option_Value::Sharpen_Strength);
+                m_buffer_frame_cpu.fog                          = GetOptionValue<float>(Renderer_Option_Value::Fog);
+                m_buffer_frame_cpu.tonemapping                  = GetOptionValue<float>(Renderer_Option_Value::Tonemapping);
+                m_buffer_frame_cpu.gamma                        = GetOptionValue<float>(Renderer_Option_Value::Gamma);
                 m_buffer_frame_cpu.shadow_resolution            = GetOptionValue<float>(Renderer_Option_Value::ShadowResolution);
+                m_buffer_frame_cpu.taa_upsample                 = GetOptionValue<float>(Renderer_Option_Value::Taa_Upsample) ? 1.0f : 0.0f;
+                m_buffer_frame_cpu.ssr_enabled                  = GetOption(Render_ScreenSpaceReflections) ? 1.0f : 0.0f;
                 m_buffer_frame_cpu.frame                        = static_cast<uint32_t>(m_frame_num);
             }
 
@@ -328,7 +333,7 @@ namespace Spartan
         m_viewport_editor_offset.y = offset_y;
     }
 
-    void Renderer::SetResolution(uint32_t width, uint32_t height)
+    void Renderer::SetResolutionRender(uint32_t width, uint32_t height)
     {
         // Return if resolution is invalid
         if (!m_rhi_device->ValidateResolution(width, height))
@@ -342,12 +347,12 @@ namespace Spartan
         height  -= (height    % 2 != 0) ? 1 : 0;
 
         // Silently return if resolution is already set
-        if (m_resolution.x == width && m_resolution.y == height)
+        if (m_resolution_render.x == width && m_resolution_render.y == height)
             return;
 
         // Set resolution
-        m_resolution.x = static_cast<float>(width);
-        m_resolution.y = static_cast<float>(height);
+        m_resolution_render.x = static_cast<float>(width);
+        m_resolution_render.y = static_cast<float>(height);
 
         // Register display mode (in case it doesn't exist)
         const DisplayMode& display_mode = Display::GetActiveDisplayMode();
@@ -358,6 +363,34 @@ namespace Spartan
 
         // Log
         LOG_INFO("Resolution set to %dx%d", width, height);
+    }
+
+    void Renderer::SetResolutionOutput(uint32_t width, uint32_t height)
+    {
+        // Return if resolution is invalid
+        if (!m_rhi_device->ValidateResolution(width, height))
+        {
+            LOG_WARNING("%dx%d is an invalid resolution", width, height);
+            return;
+        }
+
+        // Make sure we are pixel perfect
+        width -= (width % 2 != 0) ? 1 : 0;
+        height -= (height % 2 != 0) ? 1 : 0;
+
+        // Silently return if resolution is already set
+        if (m_resolution_output.x == width && m_resolution_output.y == height)
+            return;
+
+        // Set resolution
+        m_resolution_output.x = static_cast<float>(width);
+        m_resolution_output.y = static_cast<float>(height);
+
+        // Re-create render textures
+        CreateRenderTextures();
+
+        // Log
+        LOG_INFO("Resolution output set to %dx%d", width, height);
     }
 
     template<typename T>
@@ -611,15 +644,15 @@ namespace Spartan
 
     const shared_ptr<Spartan::RHI_Texture>& Renderer::GetEnvironmentTexture()
     {
-        if (m_render_targets.find(RendererRt::Brdf_Prefiltered_Environment) != m_render_targets.end())
-            return m_render_targets[RendererRt::Brdf_Prefiltered_Environment];
+        if (m_tex_environment != nullptr)
+            return m_tex_environment;
 
-        return m_default_tex_white;
+        return m_tex_default_white;
     }
 
-    void Renderer::SetEnvironmentTexture(const shared_ptr<RHI_Texture>& texture)
+    void Renderer::SetEnvironmentTexture(const shared_ptr<RHI_Texture> texture)
     {
-        m_render_targets[RendererRt::Brdf_Prefiltered_Environment] = texture;
+        m_tex_environment = texture;
     }
 
     void Renderer::SetOption(Renderer_Option option, bool enable)
@@ -631,10 +664,6 @@ namespace Spartan
         else if (!enable && GetOption(option))
         {
             m_options &= ~option;
-        }
-        else
-        {
-            return;
         }
     }
 
@@ -669,6 +698,13 @@ namespace Spartan
                     light->CreateShadowMap();
                 }
             }
+        }
+
+        // Taa upsampling handling
+        if (option == Renderer_Option_Value::Taa_Upsample)
+        {
+            // Re-create history buffer with appropriate size
+            CreateRenderTextures();
         }
     }
 

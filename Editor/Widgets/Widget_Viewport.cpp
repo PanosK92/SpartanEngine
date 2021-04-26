@@ -71,7 +71,7 @@ void Widget_Viewport::TickVisible()
     // This is to avoid a scenario were the resolution is much higher than what the user assumes, resulting in less performance.
     if (m_is_resolution_dirty && !m_settings->Loaded())
     {
-        m_renderer->SetResolution(static_cast<uint32_t>(m_width), static_cast<uint32_t>(m_height));
+        m_renderer->SetResolutionRender(static_cast<uint32_t>(m_width), static_cast<uint32_t>(m_height));
         m_is_resolution_dirty = false;
     }
 

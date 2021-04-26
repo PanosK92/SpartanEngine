@@ -77,9 +77,9 @@ namespace Spartan
         importer.SetPropertyFloat(AI_CONFIG_PP_GSN_MAX_SMOOTHING_ANGLE, params.max_normal_smoothing_angle);
         // Set tangent smoothing angle
         importer.SetPropertyFloat(AI_CONFIG_PP_CT_MAX_SMOOTHING_ANGLE, params.max_tangent_smoothing_angle);
-        // Maximum number of triangles in a mesh (before splitting)    
+        // Maximum number of triangles in a mesh (before splitting)
         importer.SetPropertyInteger(AI_CONFIG_PP_SLM_TRIANGLE_LIMIT, params.triangle_limit);
-        // Maximum number of vertices in a mesh (before splitting)    
+        // Maximum number of vertices in a mesh (before splitting)
         importer.SetPropertyInteger(AI_CONFIG_PP_SLM_VERTEX_LIMIT, params.vertex_limit);
         // Remove points and lines.
         importer.SetPropertyInteger(AI_CONFIG_PP_SBP_REMOVE, aiPrimitiveType_LINE | aiPrimitiveType_POINT);
@@ -100,7 +100,7 @@ namespace Spartan
             aiProcess_CalcTangentSpace |
             aiProcess_GenSmoothNormals |
             aiProcess_JoinIdenticalVertices |
-            aiProcess_OptimizeMeshes |              // reduce the number of meshes         
+            aiProcess_OptimizeMeshes |              // reduce the number of meshes
             aiProcess_ImproveCacheLocality |        // re-order triangles for better vertex cache locality.
             aiProcess_RemoveRedundantMaterials |    // remove redundant/unreferenced materials.
             aiProcess_LimitBoneWeights |

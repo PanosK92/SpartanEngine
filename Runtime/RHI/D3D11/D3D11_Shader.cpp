@@ -184,9 +184,10 @@ namespace Spartan
                     LOG_ERROR("Failed to create compute shader, %s", d3d11_utility::dxgi_error_to_string(result));
                 }
             }
+
+            d3d11_utility::release(shader_blob);
         }
 
-        d3d11_utility::release(shader_blob);
         return shader_view;
     }
 

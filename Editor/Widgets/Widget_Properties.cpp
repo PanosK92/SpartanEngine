@@ -293,7 +293,6 @@ void Widget_Properties::ShowLight(Light* light) const
     {
         //= REFLECT =========================================================================
         static vector<string> types = { "Directional", "Point", "Spot" };
-        const char* type_char_ptr   = types[static_cast<int>(light->GetLightType())].c_str();
         float intensity             = light->GetIntensity();
         float angle                 = light->GetAngle() * Math::Helper::RAD_TO_DEG;
         bool shadows                = light->GetShadowsEnabled();
@@ -312,22 +311,11 @@ void Widget_Properties::ShowLight(Light* light) const
         // Type
         ImGui::Text("Type");
         ImGui::PushItemWidth(110.0f);
-        ImGui::SameLine(ComponentProperty::g_column); if (ImGui::BeginCombo("##LightType", type_char_ptr))
+        ImGui::SameLine(ComponentProperty::g_column);
+        uint32_t selection_index = static_cast<uint32_t>(light->GetLightType());
+        if (ImGuiEx::ComboBox("##LightType", types, &selection_index))
         {
-            for (unsigned int i = 0; i < static_cast<unsigned int>(types.size()); i++)
-            {
-                const auto is_selected = (type_char_ptr == types[i]);
-                if (ImGui::Selectable(types[i].c_str(), is_selected))
-                {
-                    type_char_ptr = types[i].c_str();
-                    light->SetLightType(static_cast<LightType>(i));
-                }
-                if (is_selected)
-                {
-                    ImGui::SetItemDefaultFocus();
-                }
-            }
-            ImGui::EndCombo();
+            light->SetLightType(static_cast<LightType>(selection_index));
         }
         ImGui::PopItemWidth();
 
@@ -567,8 +555,8 @@ void Widget_Properties::ShowCollider(Collider* collider) const
 
     if (ComponentProperty::Begin("Collider", Icon_Component_Collider, collider))
     {
-        //= REFLECT ===============================================================================
-        static vector<string> type = {
+        //= REFLECT =================================================
+        static vector<string> shape_types = {
             "Box",
             "Sphere",
             "Static Plane",
@@ -577,11 +565,10 @@ void Widget_Properties::ShowCollider(Collider* collider) const
             "Cone",
             "Mesh"
         };
-        const char* shape_char_ptr      = type[static_cast<int>(collider->GetShapeType())].c_str();
         bool optimize                   = collider->GetOptimize();
         Vector3 collider_center         = collider->GetCenter();
         Vector3 collider_bounding_box   = collider->GetBoundingBox();
-        //=========================================================================================
+        //===========================================================
 
         const auto input_text_flags = ImGuiInputTextFlags_CharsDecimal;
         const auto step             = 0.1f;
@@ -591,22 +578,11 @@ void Widget_Properties::ShowCollider(Collider* collider) const
         // Type
         ImGui::Text("Type");
         ImGui::PushItemWidth(110);
-        ImGui::SameLine(ComponentProperty::g_column); if (ImGui::BeginCombo("##colliderType", shape_char_ptr))
+        ImGui::SameLine(ComponentProperty::g_column);
+        uint32_t selection_index = static_cast<uint32_t>(collider->GetShapeType());
+        if (ImGuiEx::ComboBox("##colliderType", shape_types, &selection_index))
         {
-            for (unsigned int i = 0; i < static_cast<unsigned int>(type.size()); i++)
-            {
-                const auto is_selected = (shape_char_ptr == type[i]);
-                if (ImGui::Selectable(type[i].c_str(), is_selected))
-                {
-                    shape_char_ptr = type[i].c_str();
-                    collider->SetShapeType(static_cast<ColliderShape>(i));
-                }
-                if (is_selected)
-                {
-                    ImGui::SetItemDefaultFocus();
-                }
-            }
-            ImGui::EndCombo();
+            collider->SetShapeType(static_cast<ColliderShape>(selection_index));
         }
         ImGui::PopItemWidth();
 
@@ -645,17 +621,16 @@ void Widget_Properties::ShowConstraint(Constraint* constraint) const
 
     if (ComponentProperty::Begin("Constraint", Icon_Component_AudioSource, constraint))
     {
-        //= REFLECT ===============================================================================
-        vector<string> types    = {"Point", "Hinge", "Slider", "ConeTwist" };
-        const char* type_str    = types[static_cast<int>(constraint->GetConstraintType())].c_str();
-        auto other_body         = constraint->GetBodyOther();
-        bool other_body_dirty   = false;
-        Vector3 position        = constraint->GetPosition();
-        Vector3 rotation        = constraint->GetRotation().ToEulerAngles();
-        Vector2 high_limit      = constraint->GetHighLimit();
-        Vector2 low_limit       = constraint->GetLowLimit();
-        string other_body_name  = other_body.expired() ? "N/A" : other_body.lock()->GetName();
-        //=========================================================================================
+        //= REFLECT ==================================================================================
+        vector<string> constraint_types = {"Point", "Hinge", "Slider", "ConeTwist" };
+        auto other_body                 = constraint->GetBodyOther();
+        bool other_body_dirty           = false;
+        Vector3 position                = constraint->GetPosition();
+        Vector3 rotation                = constraint->GetRotation().ToEulerAngles();
+        Vector2 high_limit              = constraint->GetHighLimit();
+        Vector2 low_limit               = constraint->GetLowLimit();
+        string other_body_name          = other_body.expired() ? "N/A" : other_body.lock()->GetName();
+        //============================================================================================
 
         const auto inputTextFlags   = ImGuiInputTextFlags_CharsDecimal;
         const float step            = 0.1f;
@@ -664,22 +639,11 @@ void Widget_Properties::ShowConstraint(Constraint* constraint) const
 
         // Type
         ImGui::Text("Type");
-        ImGui::SameLine(ComponentProperty::g_column); if (ImGui::BeginCombo("##constraintType", type_str))
+        ImGui::SameLine(ComponentProperty::g_column);
+        uint32_t selection_index = static_cast<uint32_t>(constraint->GetConstraintType());
+        if (ImGuiEx::ComboBox("##constraintType", constraint_types, &selection_index))
         {
-            for (unsigned int i = 0; i < (unsigned int)types.size(); i++)
-            {
-                const bool is_selected = (type_str == types[i]);
-                if (ImGui::Selectable(types[i].c_str(), is_selected))
-                {
-                    type_str = types[i].c_str();
-                    constraint->SetConstraintType(static_cast<ConstraintType>(i));
-                }
-                if (is_selected)
-                {
-                    ImGui::SetItemDefaultFocus();
-                }
-            }
-            ImGui::EndCombo();
+            constraint->SetConstraintType(static_cast<ConstraintType>(selection_index));
         }
 
         // Other body
@@ -869,18 +833,17 @@ void Widget_Properties::ShowCamera(Camera* camera) const
 
     if (ComponentProperty::Begin("Camera", Icon_Component_Camera, camera))
     {
-        //= REFLECT ==============================================================================================
-        vector<const char*> projection_types    = { "Perspective", "Orthographic" };
-        auto projection_char_ptr                = projection_types[static_cast<int>(camera->GetProjectionType())];
-        float aperture                          = camera->GetAperture();
-        float shutter_speed                     = camera->GetShutterSpeed();
-        float iso                               = camera->GetIso();
-        float fov                               = camera->GetFovHorizontalDeg();
-        float near_plane                        = camera->GetNearPlane();
-        float far_plane                         = camera->GetFarPlane();
-        bool fps_control_enabled                = camera->GetFpsControlEnabled();
+        //= REFLECT ========================================================
+        vector<string> projection_types = { "Perspective", "Orthographic" };
+        float aperture                  = camera->GetAperture();
+        float shutter_speed             = camera->GetShutterSpeed();
+        float iso                       = camera->GetIso();
+        float fov                       = camera->GetFovHorizontalDeg();
+        float near_plane                = camera->GetNearPlane();
+        float far_plane                 = camera->GetFarPlane();
+        bool fps_control_enabled        = camera->GetFpsControlEnabled();
         m_colorPicker_camera->SetColor(camera->GetClearColor());
-        //========================================================================================================
+        //==================================================================
 
         const auto input_text_flags = ImGuiInputTextFlags_CharsDecimal;
 
@@ -892,22 +855,10 @@ void Widget_Properties::ShowCamera(Camera* camera) const
         ImGui::Text("Projection");
         ImGui::SameLine(ComponentProperty::g_column);
         ImGui::PushItemWidth(115.0f);
-        if (ImGui::BeginCombo("##cameraProjection", projection_char_ptr))
+        uint32_t selection_index = static_cast<uint32_t>(camera->GetProjectionType());
+        if (ImGuiEx::ComboBox("##cameraProjection", projection_types, &selection_index))
         {
-            for (auto i = 0; i < projection_types.size(); i++)
-            {
-                const auto is_selected = (projection_char_ptr == projection_types[i]);
-                if (ImGui::Selectable(projection_types[i], is_selected))
-                {
-                    projection_char_ptr = projection_types[i];
-                    camera->SetProjection(static_cast<ProjectionType>(i));
-                }
-                if (is_selected)
-                {
-                    ImGui::SetItemDefaultFocus();
-                }
-            }
-            ImGui::EndCombo();
+            camera->SetProjection(static_cast<ProjectionType>(selection_index));
         }
         ImGui::PopItemWidth();
 
