@@ -1223,6 +1223,13 @@ namespace Spartan
             }
         }
 
+        // FXAA
+        if (GetOption(Render_AntiAliasing_Fxaa))
+        {
+            Pass_PostProcess_Fxaa(cmd_list, rt_frame, rt_frame_2);
+            rt_frame.swap(rt_frame_2);
+        }
+
         // If upsampling is disabled but the output resolution is different, do bilinear scaling
         if (copy_required)
         {
@@ -1254,13 +1261,6 @@ namespace Spartan
         if (GetOption(Render_Dithering))
         {
             Pass_PostProcess_Dithering(cmd_list, rt_frame_pp, rt_frame_pp_2);
-            rt_frame_pp.swap(rt_frame_pp_2);
-        }
-
-        // FXAA
-        if (GetOption(Render_AntiAliasing_Fxaa))
-        {
-            Pass_PostProcess_Fxaa(cmd_list, rt_frame_pp, rt_frame_pp_2);
             rt_frame_pp.swap(rt_frame_pp_2);
         }
 
