@@ -116,7 +116,7 @@ inline float compute_alpha(uint2 screen_pos, float2 hit_uv, float v_dot_r)
 [numthreads(thread_group_count_x, thread_group_count_y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    if (thread_id.x >= uint(g_resolution.x) || thread_id.y >= uint(g_resolution.y))
+    if (thread_id.x >= uint(g_resolution_rt.x) || thread_id.y >= uint(g_resolution_rt.y))
         return;
 
     float2 hit_uv   = 0.0f;

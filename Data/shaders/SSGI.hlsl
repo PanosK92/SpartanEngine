@@ -94,13 +94,13 @@ float3 ssgi(float2 uv, float3 position, float3 normal)
     float3 light        = 0.0f;
     uint light_samples  = 0;
     
-    float radius_pixels = max((g_ssgi_radius * g_resolution.x * 0.5f) / position.z, (float)g_ssgi_steps);
+    float radius_pixels = max((g_ssgi_radius * g_resolution_rt.x * 0.5f) / position.z, (float) g_ssgi_steps);
     radius_pixels       = radius_pixels / (g_ssgi_steps + 1); // divide by ao_steps + 1 so that the farthest samples are not fully attenuated
     float rotation_step = PI2 / (float)g_ssgi_directions;
 
     // Offsets (noise over space and time)
-    float noise_gradient_temporal   = get_noise_interleaved_gradient(uv * g_resolution);
-    float offset_spatial            = get_offset_non_temporal(uv * g_resolution);
+    float noise_gradient_temporal   = get_noise_interleaved_gradient(uv * g_resolution_rt);
+    float offset_spatial            = get_offset_non_temporal(uv * g_resolution_rt);
     float offset_temporal           = get_offset();
     float offset_rotation_temporal  = get_direction();
     float ray_offset                = frac(offset_spatial + offset_temporal) + (get_random(uv) * 2.0 - 1.0) * 0.25;
@@ -128,10 +128,10 @@ float3 ssgi(float2 uv, float3 position, float3 normal)
 [numthreads(thread_group_count_x, thread_group_count_y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    if (thread_id.x >= uint(g_resolution.x) || thread_id.y >= uint(g_resolution.y))
+    if (thread_id.x >= uint(g_resolution_rt.x) || thread_id.y >= uint(g_resolution_rt.y))
         return;
 
-    const float2 uv = (thread_id.xy + 0.5f) / g_resolution;
+    const float2 uv = (thread_id.xy + 0.5f) / g_resolution_rt;
     float3 position = get_position_view_space(thread_id.xy);
     float3 normal   = get_normal_view_space(thread_id.xy);
     float depth     = get_linear_depth(thread_id.xy);
@@ -160,4 +160,3 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     tex_out_rgb[thread_id.xy] = lerp(color_history, light, blend_factor);
 }
-

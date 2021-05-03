@@ -46,6 +46,28 @@ float3 reinhard_inverse(float3 sdr, float k = 1.0)
     return k * sdr / (k - sdr);
 }
 
+// Decrease blend factor when motion gets sub-pixel
+float compute_factor_velocity(const float2 uv, const float2 velocity)
+{
+    const float threshold   = 0.5f;
+    const float base        = 0.5f;
+    const float gather      = 0.05f;
+    
+    float depth             = get_linear_depth(uv);
+    float texel_vel_mag     = length(velocity * g_resolution_rt) * depth;
+    float subpixel_motion   = saturate(threshold / (texel_vel_mag + FLT_MIN));
+    return texel_vel_mag * base + subpixel_motion * gather;
+}
+
+// Decrease blend factor when contrast is high
+float compute_factor_contrast(const float3 color_current, const float3 color_history)
+{
+    float luminance_history = luminance(color_history);
+    float luminance_current = luminance(color_current);
+    float unbiased_difference = abs(luminance_current - luminance_history) / ((max(luminance_current, luminance_history) + 0.3));
+    return 1.0 - unbiased_difference;
+}
+
 // From "Temporal Reprojection Anti-Aliasing"
 // https://github.com/playdeadgames/temporal
 float3 clip_aabb(float3 aabb_min, float3 aabb_max, float3 p, float3 q)
@@ -72,7 +94,7 @@ float3 clip_aabb(float3 aabb_min, float3 aabb_max, float3 p, float3 q)
 }
 
 // Clip history to the neighbourhood of the current sample
-float3 clip_history(uint2 thread_id, uint group_index, uint3 group_id, Texture2D tex, float3 color_history)
+float3 clip_history(uint2 thread_id, uint group_index, uint3 group_id, Texture2D tex_input, float3 color_history)
 {
     #if LDS_HISTORY_CLIPPING
     
@@ -101,18 +123,15 @@ float3 clip_history(uint2 thread_id, uint group_index, uint3 group_id, Texture2D
 
     #else
 
-    uint2 du = uint2(1, 0);
-    uint2 dv = uint2(0, 1);
-
-    float3 ctl = tex[thread_id - dv - du].rgb;
-    float3 ctc = tex[thread_id - dv].rgb;
-    float3 ctr = tex[thread_id - dv + du].rgb;
-    float3 cml = tex[thread_id - du].rgb;
-    float3 cmc = tex[thread_id].rgb;
-    float3 cmr = tex[thread_id + du].rgb;
-    float3 cbl = tex[thread_id + dv - du].rgb;
-    float3 cbc = tex[thread_id + dv].rgb;
-    float3 cbr = tex[thread_id + dv + du].rgb;
+    float3 ctl = tex_input[thread_id + uint2(-1, -1)].rgb;
+    float3 ctc = tex_input[thread_id + uint2(0, -1)].rgb;
+    float3 ctr = tex_input[thread_id + uint2(1, -1)].rgb;
+    float3 cml = tex_input[thread_id + uint2(-1, 0)].rgb;
+    float3 cmc = tex_input[thread_id].rgb;
+    float3 cmr = tex_input[thread_id + uint2(1, 0)].rgb;
+    float3 cbl = tex_input[thread_id + uint2(-1, 1)].rgb;
+    float3 cbc = tex_input[thread_id + uint2(0, 1)].rgb;
+    float3 cbr = tex_input[thread_id + uint2(1, 1)].rgb;
 
     #endif
 
@@ -123,52 +142,39 @@ float3 clip_history(uint2 thread_id, uint group_index, uint3 group_id, Texture2D
     return saturate_16(clip_aabb(color_min, color_max, clamp(color_avg, color_min, color_max), color_history));
 }
 
-// Decrease blend factor when motion gets sub-pixel
-float compute_factor_velocity(const float2 uv, const float2 velocity)
+float3 get_input_sample(Texture2D tex_input, const uint2 pos)
 {
-    const float threshold   = 0.5f;
-    const float base        = 0.5f;
-    const float gather      = 0.05f;
-    
-    float depth             = get_linear_depth(uv);
-    float texel_vel_mag     = length(velocity * g_resolution) * depth;
-    float subpixel_motion   = saturate(threshold / (texel_vel_mag + FLT_MIN));
-    return texel_vel_mag * base + subpixel_motion * gather;
+    return tex_input[pos].rgb;
 }
 
-// Decrease blend factor when contrast is high
-float compute_factor_contrast(const float3 color_current, const float3 color_history)
+float4 temporal_antialiasing(uint2 pos, uint group_index, uint3 group_id, Texture2D tex_history, Texture2D tex_input)
 {
-    float luminance_history = luminance(color_history);
-    float luminance_current = luminance(color_current);
-    float unbiased_difference = abs(luminance_current - luminance_history) / ((max(luminance_current, luminance_history) + 0.3));
-    return 1.0 - unbiased_difference;
-}
+    const float2 uv = (pos + 0.5f) / g_resolution_rt;
+    const float2 pos_input = g_taa_upsample ? (uv * g_resolution_render) : pos;
 
-float4 temporal_antialiasing(uint2 thread_id, uint group_index, uint3 group_id, Texture2D tex_accumulation, Texture2D tex_current)
-{
-    // Get history and current colors
-    const float2 uv         = (thread_id + 0.5f) / g_resolution;
+    // Get history color (reprojection)
     float2 velocity         = get_velocity_closest_3x3(uv);
     float2 uv_reprojected   = uv - velocity;
-    float3 color_history    = tex_accumulation.SampleLevel(sampler_bilinear_clamp, uv_reprojected, 0).rgb;
-    float3 color_current    = tex_current[thread_id].rgb;
+    float3 color_history    = tex_history.SampleLevel(sampler_bilinear_clamp, uv_reprojected, 0).rgb;
+
+    // Get input color
+    float3 color_input = get_input_sample(tex_input, pos_input);
 
     // If re-projected UV is out of screen, converge to current color immediately
     if (!is_saturated(uv_reprojected))
-        return float4(color_current, 1.0f);
+        return float4(color_input, 1.0f);
 
     // Clip history to the neighbourhood of the current sample
-    color_history = clip_history(thread_id.xy, group_index, group_id, tex_current, color_history);
+    color_history = clip_history(pos_input, group_index, group_id, tex_input, color_history);
 
     // Compute blend factor
     float blend_factor = 1.0f;
-    {   
+    {
         // Decrease blend factor when motion gets sub-pixel
         blend_factor *= compute_factor_velocity(uv, velocity);
 
         // Decrease blend factor when contrast is high
-        blend_factor *= compute_factor_contrast(color_current, color_history);
+        blend_factor *= compute_factor_contrast(color_input, color_history);
 
         // Clamp
         blend_factor = clamp(blend_factor, g_taa_blend_min, g_taa_blend_max);
@@ -179,21 +185,23 @@ float4 temporal_antialiasing(uint2 thread_id, uint group_index, uint3 group_id, 
     {
         // Tonemap
         color_history = reinhard(color_history);
-        color_current = reinhard(color_current);
-    
+        color_input = reinhard(color_input);
+
         // Lerp/blend
-        color_resolved = lerp(color_history, color_current, blend_factor);
-    
+        color_resolved = lerp(color_history, color_input, blend_factor);
+
         // Inverse tonemap
         color_resolved = reinhard_inverse(color_resolved);
     }
-    
+
     return float4(color_resolved, 1.0f);
 }
 
 [numthreads(thread_group_count_x, thread_group_count_y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID, uint group_index : SV_GroupIndex, uint3 group_id : SV_GroupID)
 {
+    if (thread_id.x >= uint(g_resolution_rt.x) || thread_id.y >= uint(g_resolution_rt.y))
+        return;
+    
     tex_out_rgba[thread_id.xy] = temporal_antialiasing(thread_id.xy, group_index, group_id, tex, tex2);
 }
-

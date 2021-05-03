@@ -43,7 +43,7 @@ static const float FLT_MAX_11   = 65000.0f;
 static const float FLT_MAX_14   = 65500.0f;
 static const float FLT_MAX_16   = 65500.0f;
 
-#define g_texel_size            float2(1.0f / g_resolution.x, 1.0f / g_resolution.y)
+#define g_texel_size            float2(1.0f / g_resolution_rt.x, 1.0f / g_resolution_rt.y)
 #define g_shadow_texel_size     (1.0f / g_shadow_resolution)
 #define thread_group_count_x    8
 #define thread_group_count_y    8
@@ -273,7 +273,7 @@ float3 get_position(float2 uv)
 
 float3 get_position(uint2 pos)
 {
-    const float2 uv = (pos + 0.5f) / g_resolution;
+    const float2 uv = (pos + 0.5f) / g_resolution_rt;
     return get_position(get_depth(pos), uv);
 }
 
@@ -307,7 +307,7 @@ float3 get_view_direction(float2 uv)
 
 float3 get_view_direction(uint2 pos)
 {
-    const float2 uv = (pos + 0.5f) / g_resolution;
+    const float2 uv = (pos + 0.5f) / g_resolution_rt;
     return get_view_direction(uv);
 }
 
@@ -318,7 +318,7 @@ float3 get_view_direction_view_space(float2 uv)
 
 float3 get_view_direction_view_space(uint2 pos)
 {
-    const float2 uv = (pos + 0.5f) / g_resolution;
+    const float2 uv = (pos + 0.5f) / g_resolution_rt;
     return get_view_direction_view_space(uv);
 }
 
@@ -460,7 +460,7 @@ float microw_shadowing_cod(float n_dot_l, float visibility)
 float draw_line(float2 p1, float2 p2, float2 uv, float a)
 {
     float r = 0.0f;
-    float one_px = 1. / g_resolution.x; // not really one px
+    float one_px = 1. / g_resolution_rt.x; // not really one px
 
     // get dist between points
     float d = distance(p1, p2);
@@ -600,4 +600,3 @@ static const float3 hemisphere_samples[64] =
 };
 
 #endif // SPARTAN_COMMON
-

@@ -94,10 +94,10 @@ namespace Spartan
         Depth_V,
         Depth_P,
         Quad_V,
-        Texture_Point_P,
-        Texture_Bilinear_P,
-        Copy_C,
-        CopyBilinear_C,
+        Copy_Point_C,
+        Copy_Bilinear_C,
+        Copy_Point_P,
+        Copy_Bilinear_P,
         Fxaa_C,
         Fxaa_Luminance_C,
         FilmGrain_C,
@@ -157,10 +157,10 @@ namespace Spartan
         Light_Specular,
         Light_Specular_Transparent,
         Light_Volumetric,
-        Frame_Hdr,
-        Frame_Hdr_2,
-        PostProcess_Ldr,
-        PostProcess_Ldr_2,
+        Frame,
+        Frame_2,
+        Frame_PostProcess,
+        Frame_PostProcess_2,
         Dof_Half,
         Dof_Half_2,
         Ssao,
@@ -211,7 +211,7 @@ namespace Spartan
         Intensity,
         Sharpen_Strength,
         Fog,
-        Taa_Upsample
+        Taa_AllowUpsampling
     };
 
     // Tonemapping

@@ -84,7 +84,7 @@ cbuffer BufferUber : register(b2)
     float g_blur_sigma;
     
     float2 g_blur_direction;
-    float2 g_resolution;
+    float2 g_resolution_rt;
 
     float4 g_mat_color;
 

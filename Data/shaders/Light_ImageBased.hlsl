@@ -27,7 +27,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
     // Construct surface
     Surface surface;
-    surface.Build(input.uv * g_resolution);
+    surface.Build(input.uv * g_resolution_rt);
 
     // Discard sky pixels
     if (surface.is_sky())

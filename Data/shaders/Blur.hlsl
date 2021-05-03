@@ -49,10 +49,10 @@ float4 Blur_Gaussian_Fast(float2 uv, Texture2D tex)
     float2 off1   = float2(1.3846153846, 1.3846153846) * g_blur_direction;
     float2 off2   = float2(3.2307692308, 3.2307692308) * g_blur_direction;
     color += tex.SampleLevel(sampler_bilinear_clamp, uv, 0) * 0.2270270270;
-    color += tex.SampleLevel(sampler_bilinear_clamp, uv + (off1 / g_resolution), 0) * 0.3162162162;
-    color += tex.SampleLevel(sampler_bilinear_clamp, uv - (off1 / g_resolution), 0) * 0.3162162162;
-    color += tex.SampleLevel(sampler_bilinear_clamp, uv + (off2 / g_resolution), 0) * 0.0702702703;
-    color += tex.SampleLevel(sampler_bilinear_clamp, uv - (off2 / g_resolution), 0) * 0.0702702703;
+    color += tex.SampleLevel(sampler_bilinear_clamp, uv + (off1 / g_resolution_rt), 0) * 0.3162162162;
+    color += tex.SampleLevel(sampler_bilinear_clamp, uv - (off1 / g_resolution_rt), 0) * 0.3162162162;
+    color += tex.SampleLevel(sampler_bilinear_clamp, uv + (off2 / g_resolution_rt), 0) * 0.0702702703;
+    color += tex.SampleLevel(sampler_bilinear_clamp, uv - (off2 / g_resolution_rt), 0) * 0.0702702703;
     return color;
 }
 
@@ -98,7 +98,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 
     for (int i = -5; i < 5; i++)
     {
-        float2 sample_uv        = input.uv + (i * g_texel_size * g_blur_direction);    
+        float2 sample_uv        = input.uv + (i * g_texel_size * g_blur_direction);
         float sample_depth      = get_linear_depth(tex_depth.SampleLevel(sampler_bilinear_clamp, sample_uv, 0).r);
         float3 sample_normal    = normal_decode(tex_normal.SampleLevel(sampler_bilinear_clamp, sample_uv, 0).xyz);
         

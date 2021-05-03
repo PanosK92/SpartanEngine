@@ -98,8 +98,8 @@ namespace Spartan
         }
 
         // Acquire render targets
-        RHI_Texture* rt1 = RENDER_TARGET(RendererRt::Frame_Hdr).get();
-        RHI_Texture* rt2 = RENDER_TARGET(RendererRt::Frame_Hdr_2).get();
+        RHI_Texture* rt1 = RENDER_TARGET(RendererRt::Frame).get();
+        RHI_Texture* rt2 = RENDER_TARGET(RendererRt::Frame_2).get();
 
         // G-Buffer and lighting
         {
@@ -919,7 +919,7 @@ namespace Spartan
             cmd_list->SetTexture(RendererBindingsSrv::light_diffuse,    is_transparent_pass ? RENDER_TARGET(RendererRt::Light_Diffuse_Transparent).get() : RENDER_TARGET(RendererRt::Light_Diffuse).get());
             cmd_list->SetTexture(RendererBindingsSrv::light_specular,   is_transparent_pass ? RENDER_TARGET(RendererRt::Light_Specular_Transparent).get() : RENDER_TARGET(RendererRt::Light_Specular).get());
             cmd_list->SetTexture(RendererBindingsSrv::light_volumetric, RENDER_TARGET(RendererRt::Light_Volumetric));
-            cmd_list->SetTexture(RendererBindingsSrv::frame,            RENDER_TARGET(RendererRt::Frame_Hdr_2)); // refraction
+            cmd_list->SetTexture(RendererBindingsSrv::frame,            RENDER_TARGET(RendererRt::Frame_2)); // refraction
             cmd_list->SetTexture(RendererBindingsSrv::environment,      GetEnvironmentTexture());
 
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
@@ -1195,106 +1195,109 @@ namespace Spartan
         // OUT: RenderTarget_Composition_Ldr
 
         // Acquire render targets
-        shared_ptr<RHI_Texture>& rt_frame_hdr           = RENDER_TARGET(RendererRt::Frame_Hdr);
-        shared_ptr<RHI_Texture>& rt_frame_hdr_2         = RENDER_TARGET(RendererRt::Frame_Hdr_2);
-        shared_ptr<RHI_Texture>& rt_post_process_ldr    = RENDER_TARGET(RendererRt::PostProcess_Ldr);
-        shared_ptr<RHI_Texture>& rt_post_process_ldr_2  = RENDER_TARGET(RendererRt::PostProcess_Ldr_2);
+        shared_ptr<RHI_Texture>& rt_frame       = RENDER_TARGET(RendererRt::Frame);                 // render res
+        shared_ptr<RHI_Texture>& rt_frame_2     = RENDER_TARGET(RendererRt::Frame_2);               // render res
+        shared_ptr<RHI_Texture>& rt_frame_pp    = RENDER_TARGET(RendererRt::Frame_PostProcess);     // output res
+        shared_ptr<RHI_Texture>& rt_frame_pp_2  = RENDER_TARGET(RendererRt::Frame_PostProcess_2);   // output res
 
         // Depth of Field
         if (GetOption(Render_DepthOfField))
         {
-            Pass_PostProcess_DepthOfField(cmd_list, rt_frame_hdr, rt_frame_hdr_2);
-            rt_frame_hdr.swap(rt_frame_hdr_2);
+            Pass_PostProcess_DepthOfField(cmd_list, rt_frame, rt_frame_2);
+            rt_frame.swap(rt_frame_2);
         }
 
         // TAA
+        bool copy_required = true;
         if (GetOption(Render_AntiAliasing_Taa))
         {
-            Pass_PostProcess_TAA(cmd_list, rt_frame_hdr, rt_frame_hdr_2);
-            rt_frame_hdr.swap(rt_frame_hdr_2);
+            if (m_buffer_frame_cpu.taa_upsample)
+            {
+                Pass_PostProcess_TAA(cmd_list, rt_frame, rt_frame_pp);
+                copy_required = false; // taa writes directly in the high res buffer
+            }
+            else
+            {
+                Pass_PostProcess_TAA(cmd_list, rt_frame, rt_frame_2);
+                rt_frame.swap(rt_frame_2);
+            }
         }
 
-        // TAA upsamples the frame but if it's not enabled, we need to do regular dowsampling/upsampling
-        //bool taa_upsampled                  = GetOption(Render_AntiAliasing_Taa) && GetOptionValue<bool>(Renderer_Option_Value::Taa_Upsample);
-        //bool different_output_resolution    = m_resolution_render != m_resolution_output;
-        //bool do_upscale                     = different_output_resolution && !taa_upsampled;
-        //if (do_upscale)
-        //{
-        //    Pass_CopyBilinear(cmd_list, rt_frame_hdr.get(), rt_frame_hdr_2.get());
-        //}
+        // If upsampling is disabled but the output resolution is different, do bilinear scaling
+        if (copy_required)
+        {
+            Pass_CopyBilinear(cmd_list, rt_frame.get(), rt_frame_pp.get());
+        }
 
         // Motion Blur
         if (GetOption(Render_MotionBlur))
         {
-            Pass_PostProcess_MotionBlur(cmd_list, rt_frame_hdr, rt_frame_hdr_2);
-            rt_frame_hdr.swap(rt_frame_hdr_2);
+            Pass_PostProcess_MotionBlur(cmd_list, rt_frame_pp, rt_frame_pp_2);
+            rt_frame_pp.swap(rt_frame_pp_2);
         }
 
         // Bloom
         if (GetOption(Render_Bloom))
         {
-            Pass_PostProcess_Bloom(cmd_list, rt_frame_hdr, rt_frame_hdr_2);
-            rt_frame_hdr.swap(rt_frame_hdr_2);
+            Pass_PostProcess_Bloom(cmd_list, rt_frame_pp, rt_frame_pp_2);
+            rt_frame_pp.swap(rt_frame_pp_2);
         }
 
         // Tone-Mapping
         if (m_option_values[Renderer_Option_Value::Tonemapping] != 0)
         {
-            Pass_PostProcess_ToneMapping(cmd_list, rt_frame_hdr, rt_post_process_ldr); // HDR -> LDR
-        }
-        else
-        {
-            Pass_Copy(cmd_list, rt_frame_hdr.get(), rt_post_process_ldr.get()); // clipping
+            Pass_PostProcess_ToneMapping(cmd_list, rt_frame_pp, rt_frame_pp_2);
+            rt_frame_pp.swap(rt_frame_pp_2);
         }
 
         // Dithering
         if (GetOption(Render_Dithering))
         {
-            Pass_PostProcess_Dithering(cmd_list, rt_post_process_ldr, rt_post_process_ldr_2);
-            rt_post_process_ldr.swap(rt_post_process_ldr_2);
+            Pass_PostProcess_Dithering(cmd_list, rt_frame_pp, rt_frame_pp_2);
+            rt_frame_pp.swap(rt_frame_pp_2);
         }
 
         // FXAA
         if (GetOption(Render_AntiAliasing_Fxaa))
         {
-            Pass_PostProcess_Fxaa(cmd_list, rt_post_process_ldr, rt_post_process_ldr_2);
-            rt_post_process_ldr.swap(rt_post_process_ldr_2);
+            Pass_PostProcess_Fxaa(cmd_list, rt_frame_pp, rt_frame_pp_2);
+            rt_frame_pp.swap(rt_frame_pp_2);
         }
 
         // Sharpening
         if (GetOption(Render_Sharpening_LumaSharpen))
         {
-            Pass_PostProcess_Sharpening(cmd_list, rt_post_process_ldr, rt_post_process_ldr_2);
-            rt_post_process_ldr.swap(rt_post_process_ldr_2);
+            Pass_PostProcess_Sharpening(cmd_list, rt_frame_pp, rt_frame_pp_2);
+            rt_frame_pp.swap(rt_frame_pp_2);
         }
 
         // Film grain
         if (GetOption(Render_FilmGrain))
         {
-            Pass_PostProcess_FilmGrain(cmd_list, rt_post_process_ldr, rt_post_process_ldr_2);
-            rt_post_process_ldr.swap(rt_post_process_ldr_2);
+            Pass_PostProcess_FilmGrain(cmd_list, rt_frame_pp, rt_frame_pp_2);
+            rt_frame_pp.swap(rt_frame_pp_2);
         }
 
         // Chromatic aberration
         if (GetOption(Render_ChromaticAberration))
         {
-            Pass_PostProcess_ChromaticAberration(cmd_list, rt_post_process_ldr, rt_post_process_ldr_2);
-            rt_post_process_ldr.swap(rt_post_process_ldr_2);
+            Pass_PostProcess_ChromaticAberration(cmd_list, rt_frame_pp, rt_frame_pp_2);
+            rt_frame_pp.swap(rt_frame_pp_2);
         }
 
         // Gamma correction
-        Pass_PostProcess_GammaCorrection(cmd_list, rt_post_process_ldr, rt_post_process_ldr_2);
+        Pass_PostProcess_GammaCorrection(cmd_list, rt_frame_pp, rt_frame_pp_2);
 
         // Passes that render on top of each other
-        Pass_Outline(cmd_list, rt_post_process_ldr_2.get());
-        Pass_TransformHandle(cmd_list, rt_post_process_ldr_2.get());
-        Pass_Lines(cmd_list, rt_post_process_ldr_2.get());
-        Pass_Icons(cmd_list, rt_post_process_ldr_2.get());
-        Pass_DebugBuffer(cmd_list, rt_post_process_ldr_2.get());
-        Pass_Text(cmd_list, rt_post_process_ldr_2.get());
+        Pass_Outline(cmd_list, rt_frame_pp_2.get());
+        Pass_TransformHandle(cmd_list, rt_frame_pp_2.get());
+        Pass_Lines(cmd_list, rt_frame_pp_2.get());
+        Pass_Icons(cmd_list, rt_frame_pp_2.get());
+        Pass_DebugBuffer(cmd_list, rt_frame_pp_2.get());
+        Pass_Text(cmd_list, rt_frame_pp_2.get());
 
         // Swap textures
-        rt_post_process_ldr.swap(rt_post_process_ldr_2);
+        rt_frame_pp.swap(rt_frame_pp_2);
     }
 
     void Renderer::Pass_PostProcess_TAA(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
@@ -1304,8 +1307,8 @@ namespace Spartan
         if (!shader_c->IsCompiled())
             return;
 
-        // Acquire accumulation render target
-        RHI_Texture* tex_accumulation = RENDER_TARGET(RendererRt::TaaHistory).get();
+        // Acquire history texture
+        RHI_Texture* tex_history = RENDER_TARGET(RendererRt::TaaHistory).get();
 
         // Set render state
         static RHI_PipelineState pso;
@@ -1325,7 +1328,7 @@ namespace Spartan
             const bool async = false;
 
             cmd_list->SetTexture(RendererBindingsUav::rgba,             tex_out);
-            cmd_list->SetTexture(RendererBindingsSrv::tex,              tex_accumulation);
+            cmd_list->SetTexture(RendererBindingsSrv::tex,              tex_history);
             cmd_list->SetTexture(RendererBindingsSrv::tex2,             tex_in);
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_velocity, RENDER_TARGET(RendererRt::Gbuffer_Velocity));
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    RENDER_TARGET(RendererRt::Gbuffer_Depth));
@@ -1333,8 +1336,8 @@ namespace Spartan
             cmd_list->EndRenderPass();
         }
 
-        // Accumulate
-        Pass_Copy(cmd_list, tex_out.get(), tex_accumulation);
+        // Update history buffer
+        Pass_Copy(cmd_list, tex_out.get(), tex_history);
     }
 
     void Renderer::Pass_PostProcess_Bloom(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
@@ -2043,7 +2046,7 @@ namespace Spartan
         // Acquire resources
         auto& lights                    = m_entities[Renderer_Object_Light];
         const auto& shader_quad_v       = m_shaders[RendererShader::Quad_V];
-        const auto& shader_texture_p    = m_shaders[RendererShader::Texture_Bilinear_P];
+        const auto& shader_texture_p    = m_shaders[RendererShader::Copy_Bilinear_P];
         if (lights.empty() || !shader_quad_v->IsCompiled() || !shader_texture_p->IsCompiled())
             return;
 
@@ -2344,7 +2347,7 @@ namespace Spartan
 
         // Bind correct texture & shader pass
         RHI_Texture* texture          = RENDER_TARGET(m_render_target_debug).get();
-        RendererShader shader_type    = RendererShader::Copy_C;
+        RendererShader shader_type    = RendererShader::Copy_Point_C;
 
         if (m_render_target_debug == RendererRt::Gbuffer_Albedo)
         {
@@ -2358,7 +2361,7 @@ namespace Spartan
 
         if (m_render_target_debug == RendererRt::Gbuffer_Material)
         {
-            shader_type = RendererShader::Copy_C;
+            shader_type = RendererShader::Copy_Point_C;
         }
 
         if (m_render_target_debug == RendererRt::Light_Diffuse || m_render_target_debug == RendererRt::Light_Diffuse_Transparent)
@@ -2423,7 +2426,7 @@ namespace Spartan
 
         if (m_render_target_debug == RendererRt::Brdf_Specular_Lut)
         {
-            shader_type = RendererShader::Copy_C;
+            shader_type = RendererShader::Copy_Point_C;
         }
 
         // Acquire shaders
@@ -2499,7 +2502,7 @@ namespace Spartan
     void Renderer::Pass_Copy(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
         // Acquire shaders
-        RHI_Shader* shader_c = m_shaders[RendererShader::Copy_C].get();
+        RHI_Shader* shader_c = m_shaders[RendererShader::Copy_Point_C].get();
         if (!shader_c->IsCompiled())
             return;
 
@@ -2511,6 +2514,10 @@ namespace Spartan
         // Draw
         if (cmd_list->BeginRenderPass(pso))
         {
+            // Update uber buffer
+            m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+            UpdateUberBuffer(cmd_list);
+
             const uint32_t thread_group_count_x   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
             const uint32_t thread_group_count_y   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
             const uint32_t thread_group_count_z   = 1;
@@ -2526,7 +2533,7 @@ namespace Spartan
     void Renderer::Pass_CopyBilinear(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
         // Acquire shaders
-        RHI_Shader* shader_c = m_shaders[RendererShader::CopyBilinear_C].get();
+        RHI_Shader* shader_c = m_shaders[RendererShader::Copy_Bilinear_C].get();
         if (!shader_c->IsCompiled())
             return;
 
@@ -2558,7 +2565,7 @@ namespace Spartan
     {
         // Acquire shaders
         RHI_Shader* shader_v = m_shaders[RendererShader::Quad_V].get();
-        RHI_Shader* shader_p = m_shaders[RendererShader::Texture_Point_P].get();
+        RHI_Shader* shader_p = m_shaders[RendererShader::Copy_Point_P].get();
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
@@ -2583,7 +2590,7 @@ namespace Spartan
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(m_swap_chain->GetWidth()), static_cast<float>(m_swap_chain->GetHeight()));
             UpdateUberBuffer(cmd_list);
 
-            cmd_list->SetTexture(RendererBindingsSrv::tex, RENDER_TARGET(RendererRt::PostProcess_Ldr).get());
+            cmd_list->SetTexture(RendererBindingsSrv::tex, RENDER_TARGET(RendererRt::Frame_PostProcess).get());
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
             cmd_list->DrawIndexed(m_viewport_quad.GetIndexCount());

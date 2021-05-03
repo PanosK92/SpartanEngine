@@ -72,8 +72,8 @@ float2 get_velocity_closest_3x3(float2 texCoord)
         [unroll]
         for(int x = -1; x <= 1; ++x)
         {
-            float2 offset	= float2(x, y) * g_texel_size;
-            float depth = tex_depth.SampleLevel(sampler_point_clamp, texCoord + offset, 0).r;
+            float2 offset   = float2(x, y) * g_texel_size;
+            float depth     = tex_depth.SampleLevel(sampler_point_clamp, texCoord + offset, 0).r;
             if(depth > min_depth) // Reverse-z, so looking for max to find min depth
             {
                 min_depth   = depth;

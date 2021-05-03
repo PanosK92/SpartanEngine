@@ -23,11 +23,31 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common.hlsl"
 //====================
 
+#if COMPUTE
+
 [numthreads(thread_group_count_x, thread_group_count_y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    if (thread_id.x >= uint(g_resolution.x) || thread_id.y >= uint(g_resolution.y))
+    if (thread_id.x >= uint(g_resolution_rt.x) || thread_id.y >= uint(g_resolution_rt.y))
         return;
-    
+
+#if BILINEAR
+    const float2 uv = (thread_id.xy + 0.5f) / g_resolution_rt;
+    tex_out_rgba[thread_id.xy] = tex.SampleLevel(sampler_bilinear_clamp, uv, 0);
+#else
     tex_out_rgba[thread_id.xy] = tex[thread_id.xy];
+#endif
 }
+
+#elif PIXEL
+
+float4 mainPS(Pixel_PosUv input) : SV_TARGET
+{
+#if BILINEAR
+    return tex.Sample(sampler_bilinear_clamp, input.uv);
+#else
+    return tex.Sample(sampler_point_clamp, input.uv);
+#endif
+}
+
+#endif

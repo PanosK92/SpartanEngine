@@ -164,7 +164,7 @@ namespace Spartan
         CreateDepthStencilStates();
         CreateRasterizerStates();
         CreateBlendStates();
-        CreateRenderTextures();
+        CreateRenderTextures(false, false, true, true);
         CreateFonts();
         CreateSamplers();
         CreateTextures();
@@ -172,7 +172,7 @@ namespace Spartan
         if (!m_initialized)
         {
             // Log on-screen as the renderer is ready
-            LOG_TO_FILE(false); 
+            LOG_TO_FILE(false);
             m_initialized = true;
         }
 
@@ -210,14 +210,14 @@ namespace Spartan
             // If there is no camera, clear to black
             if (!m_camera)
             {
-                cmd_list->ClearRenderTarget(RENDER_TARGET(RendererRt::PostProcess_Ldr).get(), 0, 0, false, Vector4(0.0f, 0.0f, 0.0f, 1.0f));
+                cmd_list->ClearRenderTarget(RENDER_TARGET(RendererRt::Frame_PostProcess).get(), 0, 0, false, Vector4(0.0f, 0.0f, 0.0f, 1.0f));
                 return;
             }
             
             // If there is not camera but no other entities to render, clear to camera's color
             if (m_entities[Renderer_Object_Opaque].empty() && m_entities[Renderer_Object_Transparent].empty() && m_entities[Renderer_Object_Light].empty())
             {
-                cmd_list->ClearRenderTarget(RENDER_TARGET(RendererRt::PostProcess_Ldr).get(), 0, 0, false, m_camera->GetClearColor());
+                cmd_list->ClearRenderTarget(RENDER_TARGET(RendererRt::Frame_PostProcess).get(), 0, 0, false, m_camera->GetClearColor());
                 return;
             }
 
@@ -288,7 +288,7 @@ namespace Spartan
                 m_buffer_frame_cpu.tonemapping                  = GetOptionValue<float>(Renderer_Option_Value::Tonemapping);
                 m_buffer_frame_cpu.gamma                        = GetOptionValue<float>(Renderer_Option_Value::Gamma);
                 m_buffer_frame_cpu.shadow_resolution            = GetOptionValue<float>(Renderer_Option_Value::ShadowResolution);
-                m_buffer_frame_cpu.taa_upsample                 = GetOptionValue<float>(Renderer_Option_Value::Taa_Upsample) ? 1.0f : 0.0f;
+                m_buffer_frame_cpu.taa_upsample                 = (GetOptionValue<float>(Renderer_Option_Value::Taa_AllowUpsampling) && m_resolution_output != m_resolution_render) ? 1.0f : 0.0f;
                 m_buffer_frame_cpu.ssr_enabled                  = GetOption(Render_ScreenSpaceReflections) ? 1.0f : 0.0f;
                 m_buffer_frame_cpu.frame                        = static_cast<uint32_t>(m_frame_num);
             }
@@ -357,10 +357,10 @@ namespace Spartan
         Display::RegisterDisplayMode(display_mode, m_context);
 
         // Re-create render textures
-        CreateRenderTextures();
+        CreateRenderTextures(true, false, false, true);
 
         // Log
-        LOG_INFO("Resolution set to %dx%d", width, height);
+        LOG_INFO("Render resolution has been set to %dx%d", width, height);
     }
 
     void Renderer::SetResolutionOutput(uint32_t width, uint32_t height)
@@ -385,10 +385,10 @@ namespace Spartan
         m_resolution_output.y = static_cast<float>(height);
 
         // Re-create render textures
-        CreateRenderTextures();
+        CreateRenderTextures(false, true, false, true);
 
         // Log
-        LOG_INFO("Resolution output set to %dx%d", width, height);
+        LOG_INFO("Output resolution output has been set to %dx%d", width, height);
     }
 
     template<typename T>
@@ -698,11 +698,9 @@ namespace Spartan
             }
         }
 
-        // Taa upsampling handling
-        if (option == Renderer_Option_Value::Taa_Upsample)
+        if (option == Renderer_Option_Value::Taa_AllowUpsampling)
         {
-            // Re-create history buffer with appropriate size
-            CreateRenderTextures();
+            CreateRenderTextures(false, false, false, true);
         }
     }
 
