@@ -66,7 +66,7 @@ struct Surface
         float sample_depth      = tex_depth[position_screen].r;
 
         // Misc
-        uv      = (position_screen + 0.5f) / g_resolution;
+        uv      = (position_screen + 0.5f) / g_resolution_rt;
         depth   = sample_depth;
         id      = round(sample_normal.a * 65535);
         

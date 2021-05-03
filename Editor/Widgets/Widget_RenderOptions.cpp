@@ -69,7 +69,7 @@ void Widget_RenderOptions::TickVisible()
         bool do_ssgi                    = m_renderer->GetOption(Render_Ssgi);
         int resolution_shadow           = m_renderer->GetOptionValue<int>(Renderer_Option_Value::ShadowResolution);
         float fog_density               = m_renderer->GetOptionValue<float>(Renderer_Option_Value::Fog);
-        bool do_taa_upsample            = m_renderer->GetOptionValue<bool>(Renderer_Option_Value::Taa_Upsample);
+        bool allow_taa_upsampling       = m_renderer->GetOptionValue<bool>(Renderer_Option_Value::Taa_AllowUpsampling);
 
         // Show
         {
@@ -132,20 +132,20 @@ void Widget_RenderOptions::TickVisible()
                     return index;
                 };
 
-                // Output resolution
-                Vector2 resolution_output = m_renderer->GetResolutionOutput();
-                uint32_t output_index = get_display_mode_index(resolution_output);
-                if (ImGuiEx::ComboBox("Output resolution", display_modes_string, &output_index))
-                {
-                    m_renderer->SetResolutionOutput(display_modes[output_index].width, display_modes[output_index].height);
-                }
-
                 // Render resolution
                 Vector2 resolution_render = m_renderer->GetResolutionRender();
                 uint32_t render_index = get_display_mode_index(resolution_render);
                 if (ImGuiEx::ComboBox("Render resolution", display_modes_string, &render_index))
                 {
                     m_renderer->SetResolutionRender(display_modes[render_index].width, display_modes[render_index].height);
+                }
+
+                // Output resolution
+                Vector2 resolution_output = m_renderer->GetResolutionOutput();
+                uint32_t output_index = get_display_mode_index(resolution_output);
+                if (ImGuiEx::ComboBox("Output resolution", display_modes_string, &output_index))
+                {
+                    m_renderer->SetResolutionOutput(display_modes[output_index].width, display_modes[output_index].height);
                 }
 
                 ImGui::Separator();
@@ -211,9 +211,9 @@ void Widget_RenderOptions::TickVisible()
             // Temporal anti-aliasing
             ImGui::Checkbox("TAA - Temporal Anti-Aliasing", &do_taa);
             ImGuiEx::Tooltip("Used to improve many stochastic effects, you want this to always be enabled.");
-            //ImGui::SameLine();
-            //ImGui::Checkbox("Upsample", &do_taa_upsample);
-            //ImGuiEx::Tooltip("If the output resolution is bigger than the render resolution, TAA will be used to reconstruct the image.");
+            ImGui::SameLine();
+            ImGui::Checkbox("Allow upsampling (not ready)", &allow_taa_upsampling);
+            ImGuiEx::Tooltip("If the output resolution is bigger than the render resolution, TAA will be used to reconstruct the image.");
             ImGui::Separator();
 
             // FXAA
@@ -249,23 +249,23 @@ void Widget_RenderOptions::TickVisible()
         }
 
         // Map
-        m_renderer->SetOption(Render_Bloom,                                 do_bloom);
-        m_renderer->SetOption(Render_DepthOfField,                          do_dof);
-        m_renderer->SetOption(Render_VolumetricFog,                         do_volumetric_fog);
-        m_renderer->SetOption(Render_Ssao,                                  do_ssao);
-        m_renderer->SetOption(Render_ScreenSpaceShadows,                    do_sss);
-        m_renderer->SetOption(Render_ScreenSpaceReflections,                do_ssr);
-        m_renderer->SetOption(Render_Ssgi,                                  do_ssgi);
-        m_renderer->SetOption(Render_AntiAliasing_Taa,                      do_taa);
-        m_renderer->SetOption(Render_AntiAliasing_Fxaa,                     do_fxaa);
-        m_renderer->SetOption(Render_MotionBlur,                            do_motion_blur);
-        m_renderer->SetOption(Render_FilmGrain,                             do_film_grain);
-        m_renderer->SetOption(Render_Sharpening_LumaSharpen,                do_sharperning);
-        m_renderer->SetOption(Render_ChromaticAberration,                   do_chromatic_aberration);
-        m_renderer->SetOption(Render_Dithering,                             do_dithering);
-        m_renderer->SetOptionValue(Renderer_Option_Value::ShadowResolution, static_cast<float>(resolution_shadow));
-        m_renderer->SetOptionValue(Renderer_Option_Value::Fog,              fog_density);
-        m_renderer->SetOptionValue(Renderer_Option_Value::Taa_Upsample,     static_cast<float>(do_taa_upsample));
+        m_renderer->SetOption(Render_Bloom,                                     do_bloom);
+        m_renderer->SetOption(Render_DepthOfField,                              do_dof);
+        m_renderer->SetOption(Render_VolumetricFog,                             do_volumetric_fog);
+        m_renderer->SetOption(Render_Ssao,                                      do_ssao);
+        m_renderer->SetOption(Render_ScreenSpaceShadows,                        do_sss);
+        m_renderer->SetOption(Render_ScreenSpaceReflections,                    do_ssr);
+        m_renderer->SetOption(Render_Ssgi,                                      do_ssgi);
+        m_renderer->SetOption(Render_AntiAliasing_Taa,                          do_taa);
+        m_renderer->SetOption(Render_AntiAliasing_Fxaa,                         do_fxaa);
+        m_renderer->SetOption(Render_MotionBlur,                                do_motion_blur);
+        m_renderer->SetOption(Render_FilmGrain,                                 do_film_grain);
+        m_renderer->SetOption(Render_Sharpening_LumaSharpen,                    do_sharperning);
+        m_renderer->SetOption(Render_ChromaticAberration,                       do_chromatic_aberration);
+        m_renderer->SetOption(Render_Dithering,                                 do_dithering);
+        m_renderer->SetOptionValue(Renderer_Option_Value::ShadowResolution,     static_cast<float>(resolution_shadow));
+        m_renderer->SetOptionValue(Renderer_Option_Value::Fog,                  fog_density);
+        m_renderer->SetOptionValue(Renderer_Option_Value::Taa_AllowUpsampling,     static_cast<float>(allow_taa_upsampling));
     }
 
     if (ImGui::CollapsingHeader("Widgets", ImGuiTreeNodeFlags_None))

@@ -28,12 +28,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 [numthreads(thread_group_count_x, thread_group_count_y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    if (thread_id.x >= uint(g_resolution.x) || thread_id.y >= uint(g_resolution.y))
+    if (thread_id.x >= uint(g_resolution_rt.x) || thread_id.y >= uint(g_resolution_rt.y))
         return;
 
     // g_texel_size refers to the current render target, which is half the size of the input texture, so we multiply by 2.0
     float2 texel_size = g_texel_size * 2.0f;
-    const float2 uv = (thread_id.xy + 0.5f) / g_resolution;
+    const float2 uv = (thread_id.xy + 0.5f) / g_resolution_rt;
 
     tex_out_rgba[thread_id.xy] = Box_Filter_AntiFlicker(uv, tex, texel_size);
 }
@@ -43,13 +43,13 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 [numthreads(thread_group_count_x, thread_group_count_y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    if (thread_id.x >= uint(g_resolution.x) || thread_id.y >= uint(g_resolution.y))
+    if (thread_id.x >= uint(g_resolution_rt.x) || thread_id.y >= uint(g_resolution_rt.y))
         return;
 
     // g_texel_size refers to the current render target, which is half the size of the input texture, so we multiply by 2.0
     float2 texel_size = g_texel_size * 2.0f;
 
-    const float2 uv = (thread_id.xy + 0.5f) / g_resolution;
+    const float2 uv = (thread_id.xy + 0.5f) / g_resolution_rt;
     float4 color = Box_Filter_AntiFlicker(uv, tex, texel_size);
     tex_out_rgba[thread_id.xy] = saturate_16(luminance(color) * color);
 }
@@ -59,14 +59,14 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 [numthreads(thread_group_count_x, thread_group_count_y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    if (thread_id.x >= uint(g_resolution.x) || thread_id.y >= uint(g_resolution.y))
+    if (thread_id.x >= uint(g_resolution_rt.x) || thread_id.y >= uint(g_resolution_rt.y))
         return;
 
     // g_texel_size refers to the current render target, which is twice the size of the input texture.
     // so instead of multiplying it with 0.5, we will use it as is in order to get a "tent" filter, which helps reduce "blockiness".
     float2 texel_size = g_texel_size;
 
-    const float2 uv             = (thread_id.xy + 0.5f) / g_resolution;
+    const float2 uv             = (thread_id.xy + 0.5f) / g_resolution_rt;
     float4 upsampled_color      = Box_Filter(uv, tex, texel_size);
     tex_out_rgba[thread_id.xy]  = saturate_16(tex_out_rgba[thread_id.xy] + upsampled_color);
 }
@@ -76,14 +76,14 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 [numthreads(thread_group_count_x, thread_group_count_y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    if (thread_id.x >= uint(g_resolution.x) || thread_id.y >= uint(g_resolution.y))
+    if (thread_id.x >= uint(g_resolution_rt.x) || thread_id.y >= uint(g_resolution_rt.y))
         return;
 
     // g_texel_size refers to the current render target, which is twice the size of the input texture.
     // so instead of multiplying it with 0.5, we will use it as is in order to get a "tent" filter, which helps reduce "blockiness".
     float2 texel_size = g_texel_size;
 
-    const float2 uv     = (thread_id.xy + 0.5f) / g_resolution;
+    const float2 uv     = (thread_id.xy + 0.5f) / g_resolution_rt;
     float4 sourceColor2 = Box_Filter(uv, tex2, texel_size);
     float4 sourceColor  = tex[thread_id.xy];
     tex_out_rgba[thread_id.xy] = saturate_16(sourceColor + sourceColor2 * g_bloom_intensity);

@@ -36,7 +36,7 @@ static const float g_fxaa_edgeThresholdMin  = 0.0833f;  // Trims the algorithm f
 [numthreads(thread_group_count_x, thread_group_count_y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    const float2 uv = (thread_id.xy + 0.5f) / g_resolution;
+    const float2 uv = (thread_id.xy + 0.5f) / g_resolution_rt;
     float4 color    = 0.0f;
     
      // Encode luminance into alpha channel which is optimal for FXAA

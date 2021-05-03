@@ -49,7 +49,7 @@ float compute_occlusion(float3 position, float3 normal, float3 sample_position)
 
 float normal_oriented_hemisphere_ambient_occlusion(int2 pos)
 {
-    const float2 uv = (pos + 0.5f) / g_resolution;
+    const float2 uv = (pos + 0.5f) / g_resolution_rt;
     float3 position = get_position_view_space(pos);
     float3 normal   = get_normal_view_space(pos);
     float occlusion = 0.0f;
@@ -83,12 +83,12 @@ float normal_oriented_hemisphere_ambient_occlusion(int2 pos)
 
 float ground_truth_ambient_occlusion(int2 pos)
 {
-    const float2 uv = (pos + 0.5f) / g_resolution;
+    const float2 uv = (pos + 0.5f) / g_resolution_rt;
     float3 position = get_position_view_space(pos);
     float3 normal   = get_normal_view_space(pos);
     
     // Compute length and rotation steps
-    float step_length   = max((ao_radius * g_resolution.x * 0.5f) / position.z, (float)ao_steps);
+    float step_length   = max((ao_radius * g_resolution_rt.x * 0.5f) / position.z, (float) ao_steps);
     step_length         = step_length / (ao_steps + 1); // divide by ao_steps + 1 so that the farthest samples are not fully attenuated
     float step_angle    = PI2 / (float)ao_directions;
 
@@ -125,7 +125,7 @@ float ground_truth_ambient_occlusion(int2 pos)
 [numthreads(thread_group_count_x, thread_group_count_y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    if (thread_id.x >= uint(g_resolution.x) || thread_id.y >= uint(g_resolution.y))
+    if (thread_id.x >= uint(g_resolution_rt.x) || thread_id.y >= uint(g_resolution_rt.y))
         return;
 
     tex_out_r[thread_id.xy] = ground_truth_ambient_occlusion(thread_id.xy);

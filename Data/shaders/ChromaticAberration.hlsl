@@ -27,7 +27,7 @@ static const float g_chromatic_aberration_intensity = 5.0f;
 
 float4 ChromaticAberration(uint2 thread_id, Texture2D sourceTexture)
 {
-    const float2 uv     = (thread_id + 0.5f) / g_resolution;
+    const float2 uv     = (thread_id + 0.5f) / g_resolution_rt;
     float camera_error  = 1.0f / g_camera_aperture;
     float intensity     = clamp(camera_error * 50.0f, 0.0f, g_chromatic_aberration_intensity);
     float2 shift        = float2(intensity, -intensity);
@@ -48,8 +48,8 @@ float4 ChromaticAberration(uint2 thread_id, Texture2D sourceTexture)
 [numthreads(thread_group_count_x, thread_group_count_y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    if (thread_id.x >= uint(g_resolution.x) || thread_id.y >= uint(g_resolution.y))
+    if (thread_id.x >= uint(g_resolution_rt.x) || thread_id.y >= uint(g_resolution_rt.y))
         return;
-    
+
     tex_out_rgba[thread_id.xy] = ChromaticAberration(thread_id.xy, tex);
 }

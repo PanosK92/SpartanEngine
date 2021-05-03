@@ -154,7 +154,7 @@ namespace Spartan
         const std::shared_ptr<RHI_Device>& GetRhiDevice()           const { return m_rhi_device; }
         RHI_PipelineCache* GetPipelineCache()                       const { return m_pipeline_cache.get(); }
         RHI_DescriptorSetLayoutCache* GetDescriptorLayoutSetCache() const { return m_descriptor_set_layout_cache.get(); }
-        RHI_Texture* GetFrameTexture()                                    { return RENDER_TARGET(RendererRt::PostProcess_Ldr).get(); }
+        RHI_Texture* GetFrameTexture()                                    { return RENDER_TARGET(RendererRt::Frame_PostProcess).get(); }
         auto GetFrameNum()                                          const { return m_frame_num; }
         std::shared_ptr<Camera> GetCamera()                         const { return m_camera; }
         auto IsInitialized()                                        const { return m_initialized; }
@@ -175,7 +175,7 @@ namespace Spartan
         void CreateTextures();
         void CreateShaders();
         void CreateSamplers();
-        void CreateRenderTextures();
+        void CreateRenderTextures(const bool create_render, const bool create_output, const bool create_fixed, const bool create_dynamic);
 
         // Passes
         void Pass_Main(RHI_CommandList* cmd_list);

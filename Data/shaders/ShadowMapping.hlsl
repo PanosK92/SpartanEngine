@@ -153,7 +153,7 @@ float compute_penumbra(float vogel_angle, float3 uv, float compare)
 float Technique_Vogel(Surface surface, float3 uv, float compare)
 {
     float shadow            = 0.0f;
-    float temporal_offset   = get_noise_interleaved_gradient(surface.uv * g_resolution);
+    float temporal_offset   = get_noise_interleaved_gradient(surface.uv * g_resolution_rt);
     float temporal_angle    = temporal_offset * PI2;
     float penumbra          = compute_penumbra(temporal_angle, uv, compare);
     
@@ -170,7 +170,7 @@ float Technique_Vogel(Surface surface, float3 uv, float compare)
 float4 Technique_Vogel_Color(Surface surface, float3 uv)
 {
     float4 shadow       = 0.0f;
-    float vogel_angle   = get_noise_interleaved_gradient(surface.uv * g_resolution) * PI2;
+    float vogel_angle   = get_noise_interleaved_gradient(surface.uv * g_resolution_rt) * PI2;
 
     [unroll]
     for (uint i = 0; i < g_shadow_samples; i++)
