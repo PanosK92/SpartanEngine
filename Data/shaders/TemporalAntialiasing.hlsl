@@ -142,15 +142,72 @@ float3 clip_history(uint2 thread_id, uint group_index, uint3 group_id, Texture2D
     return saturate_16(clip_aabb(color_min, color_max, clamp(color_avg, color_min, color_max), color_history));
 }
 
-float3 get_input_sample(Texture2D tex_input, const uint2 pos)
+static const int2 kOffsets3x3[9] =
 {
-    return tex_input[pos].rgb;
+    int2(-1, -1),
+    int2(0, -1),
+    int2(1, -1),
+    int2(-1, 0),
+    int2(0, 0),
+    int2(1, 0),
+    int2(-1, 1),
+    int2(0, 1),
+    int2(1, 1),
+};
+
+float distance_squared(float2 a_to_b, float2 offset)
+{
+    float2 v = a_to_b ;
+    return dot(v, v);
 }
 
-float4 temporal_antialiasing(uint2 pos, uint group_index, uint3 group_id, Texture2D tex_history, Texture2D tex_input)
+float get_sample_weight(float distance_squared)
 {
-    const float2 uv = (pos + 0.5f) / g_resolution_rt;
-    const float2 pos_input = g_taa_upsample ? (uv * g_resolution_render) : pos;
+    const float std_dev = 0.18f;
+    const float dawa = 1.0f / (2.0f * std_dev * std_dev);
+    return exp(distance_squared - dawa);
+}
+
+float3 get_input_sample(Texture2D tex_input, const uint2 pos_out)
+{
+    if (!g_taa_upsample)
+        return tex_input[pos_out].rgb;
+
+    const float2 uv = (pos_out + 0.5f) / g_resolution_rt;
+    const float2 jitter_offset_pixels = g_taa_jitter_offset * g_resolution_render;
+    const float2 pos_input = uv * g_resolution_render;
+    const float2 pos_input_center = floor(pos_input) + 0.5f ;
+    const float2 pos_out_center = pos_out + 0.5f;
+    const float2 in_to_out = pos_out_center - pos_input_center;
+
+    // Compute sample weights
+    float weights[9];
+    float weight_sum = 0.0f;
+    float weight_normaliser = 1.0f;
+    [unroll]
+    for (uint i = 0; i < 9; i++)
+    {
+        weights[i] = get_sample_weight(distance_squared(pos_input_center, (float2)kOffsets3x3[i]));
+        weight_sum += weights[i];
+    }
+   weight_normaliser /= weight_sum;
+    
+    // Fetch color samples
+    float3 color = 0.0f;
+    [unroll]
+    for (uint j = 0; j < 9; j++)
+    {
+        float weigth = weights[j] * weight_normaliser;
+        color += tex_input[pos_input + (float2)kOffsets3x3[j]].rgb * weigth;
+    }
+
+    return color;
+}
+
+float4 temporal_antialiasing(uint2 pos_out, uint group_index, uint3 group_id, Texture2D tex_history, Texture2D tex_input)
+{
+    const float2 uv         = (pos_out + 0.5f) / g_resolution_rt;
+    const uint2 pos_input   = g_taa_upsample ? (uv * g_resolution_render) : pos_out;
 
     // Get history color (reprojection)
     float2 velocity         = get_velocity_closest_3x3(uv);
@@ -158,7 +215,7 @@ float4 temporal_antialiasing(uint2 pos, uint group_index, uint3 group_id, Textur
     float3 color_history    = tex_history.SampleLevel(sampler_bilinear_clamp, uv_reprojected, 0).rgb;
 
     // Get input color
-    float3 color_input = get_input_sample(tex_input, pos_input);
+    float3 color_input = get_input_sample(tex_input, pos_out);
 
     // If re-projected UV is out of screen, converge to current color immediately
     if (!is_saturated(uv_reprojected))
