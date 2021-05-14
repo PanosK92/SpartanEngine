@@ -76,7 +76,7 @@ namespace Spartan
         // Option values
         m_option_values[Renderer_Option_Value::Anisotropy]          = 16.0f;
         m_option_values[Renderer_Option_Value::ShadowResolution]    = 2048.0f;
-        m_option_values[Renderer_Option_Value::Tonemapping]         = static_cast<float>(Renderer_ToneMapping_ACES);
+        //m_option_values[Renderer_Option_Value::Tonemapping]         = static_cast<float>(Renderer_ToneMapping_ACES);
         m_option_values[Renderer_Option_Value::Gamma]               = 2.2f;
         m_option_values[Renderer_Option_Value::Sharpen_Strength]    = 1.0f;
         m_option_values[Renderer_Option_Value::Intensity]           = 0.1f;
@@ -275,7 +275,6 @@ namespace Spartan
                 m_buffer_frame_cpu.camera_far                   = m_camera->GetFarPlane();
                 m_buffer_frame_cpu.camera_position              = m_camera->GetTransform()->GetPosition();
                 m_buffer_frame_cpu.camera_direction             = m_camera->GetTransform()->GetForward();
-
                 m_buffer_frame_cpu.resolution_output            = m_resolution_output;
                 m_buffer_frame_cpu.resolution_render            = m_resolution_render;
                 m_buffer_frame_cpu.taa_jitter_offset_previous   = m_buffer_frame_cpu_previous.taa_jitter_offset;
