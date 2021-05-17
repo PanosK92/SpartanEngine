@@ -104,6 +104,12 @@ namespace Spartan
             m_name      = FileSystem::GetFileNameFromFilePath(shader);
             m_file_path = shader;
             ParseSource(shader);
+
+            // Reverse the vectors so they have the main shader before the subsequent include directives.
+            // This also helps with the editor's shader editor where you are interested more in the first source.
+            std::reverse(m_names.begin(), m_names.end());
+            std::reverse(m_file_paths.begin(), m_file_paths.end());
+            std::reverse(m_sources.begin(), m_sources.end());
         }
 
         // Compile

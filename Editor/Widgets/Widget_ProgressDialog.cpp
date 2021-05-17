@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include "Widget_ProgressDialog.h"
 #include "Resource/ProgressTracker.h"
+#include "Display/Display.h"
 //===================================
 
 //= NAMESPACES ===============
@@ -30,18 +31,17 @@ using namespace Spartan;
 using namespace Spartan::Math;
 //============================
 
-namespace _Widget_ProgressDialog
-{
-    static float width = 500.0f;
-}
-
 Widget_ProgressDialog::Widget_ProgressDialog(Editor* editor) : Widget(editor)
 {
     m_title         = "Hold on...";
     m_is_visible    = false;
     m_progress      = 0.0f;
-    m_size          = Vector2(_Widget_ProgressDialog::width, 83.0f);
+    m_size          = Vector2(500.0f, 83.0f);
     m_flags         |= ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoDocking;
+
+    // Default to the center of the screen
+    m_position.x = Spartan::Display::GetWidth() * 0.5f;
+    m_position.y = Spartan::Display::GetHeight() * 0.5f;
 }
 
 void Widget_ProgressDialog::TickAlways()
@@ -71,7 +71,7 @@ void Widget_ProgressDialog::TickAlways()
 void Widget_ProgressDialog::TickVisible()
 {
     ImGui::SetWindowFocus();
-    ImGui::PushItemWidth(_Widget_ProgressDialog::width - ImGui::GetStyle().WindowPadding.x * 2.0f);
+    ImGui::PushItemWidth(m_size.x - ImGui::GetStyle().WindowPadding.x * 2.0f);
     ImGui::ProgressBar(m_progress, ImVec2(0.0f, 0.0f));
     ImGui::Text(m_progressStatus.c_str());
     ImGui::PopItemWidth();
