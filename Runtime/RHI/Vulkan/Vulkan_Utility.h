@@ -218,7 +218,7 @@ namespace Spartan::vulkan_utility
                         device_properties.vendorID,                                             // vendor id
                         type,                                                                   // type
                         &device_properties.deviceName[0],                                       // name
-                        static_cast<uint32_t>(device_memory_properties.memoryHeaps[0].size),    // memory
+                        static_cast<uint64_t>(device_memory_properties.memoryHeaps[0].size),    // memory
                         static_cast<void*>(device_physical)                                     // data
                     ));
                 }

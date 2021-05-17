@@ -59,13 +59,10 @@ namespace Spartan
         if (!camera->IsFpsControlled())
         {
             // Create ray starting from the camera position and pointing towards where the mouse is pointing
-            const Vector2 mouse_pos             = m_input->GetMousePosition();
-            const RHI_Viewport& viewport        = m_renderer->GetViewport();
-            const Vector2& editor_offset        = m_renderer->GetViewportOffset();
-            const Vector2 mouse_pos_relative    = mouse_pos - editor_offset;
-            const Vector3 ray_start             = camera->GetTransform()->GetPosition();
-            Vector3 ray_end                     = camera->Unproject(mouse_pos_relative);
-            Ray camera_to_mouse                 = Ray(ray_start, ray_end);
+            const Vector2 mouse_position    = m_input->GetMousePositionRelativeToEditorViewport();
+            const Vector3 ray_start         = camera->GetTransform()->GetPosition();
+            Vector3 ray_end                 = camera->Unproject(mouse_position);
+            Ray camera_to_mouse             = Ray(ray_start, ray_end);
 
             // Check if the mouse ray hits and of the handle axes
             InteresectionTest(camera_to_mouse);
@@ -227,4 +224,22 @@ namespace Spartan
 
         return false;
     }
+
+    bool TransformHandle::IsHovered() const
+    {
+        if (m_handle_x.m_type != TransformHandleType::Unknown && m_handle_x.m_is_hovered)
+            return true;
+
+        if (m_handle_y.m_type != TransformHandleType::Unknown && m_handle_y.m_is_hovered)
+            return true;
+
+        if (m_handle_z.m_type != TransformHandleType::Unknown && m_handle_z.m_is_hovered)
+            return true;
+
+        if (m_handle_xyz.m_type != TransformHandleType::Unknown && m_handle_xyz.m_is_hovered)
+            return true;
+
+        return false;
+    }
+    
 }

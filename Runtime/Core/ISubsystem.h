@@ -36,8 +36,12 @@ namespace Spartan
     public:
         ISubsystem(Context* context) { m_context = context; }
         virtual ~ISubsystem() = default;
-        virtual bool Initialize() { return true; }
-        virtual void Tick(float delta_time) {}
+
+        virtual bool OnInitialise() { return true; }
+        virtual void OnPreTick() {}
+        virtual void OnTick(float delta_time) {}
+        virtual void OnPostTick() {}
+        virtual void OnShutdown() {}
 
         template <typename T>
         std::shared_ptr<T> GetPtrShared() { return std::dynamic_pointer_cast<T>(shared_from_this()); }

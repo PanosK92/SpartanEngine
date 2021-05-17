@@ -144,7 +144,7 @@ namespace Spartan
         std::atomic<bool> m_pipeline_active                         = false;
         std::atomic<bool> m_flushed                                 = false;
         std::atomic<RHI_CommandListState> m_state                   = RHI_CommandListState::Idle;
-        static bool memory_query_support;
+        static bool m_memory_query_support;
         std::mutex m_mutex_reset;
 
         // Profiling

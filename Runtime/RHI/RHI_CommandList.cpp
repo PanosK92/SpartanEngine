@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_CommandList.h"
 #include "RHI_Fence.h"
 #include "RHI_DescriptorSetLayoutCache.h"
+#include "RHI_Device.h"
 //=======================================
 
 namespace Spartan
@@ -94,5 +95,15 @@ namespace Spartan
         m_flushed = true;
 
         return true;
+    }
+
+    uint32_t RHI_CommandList::Gpu_GetMemory(RHI_Device* rhi_device)
+    {
+        if (const PhysicalDevice* physical_device = rhi_device->GetPrimaryPhysicalDevice())
+        {
+            return physical_device->GetMemory();
+        }
+    
+        return 0;
     }
 }

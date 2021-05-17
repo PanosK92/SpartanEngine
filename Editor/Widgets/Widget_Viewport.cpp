@@ -54,26 +54,20 @@ void Widget_Viewport::TickVisible()
     float width     = static_cast<float>(ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x);
     float height    = static_cast<float>(ImGui::GetWindowContentRegionMax().y - ImGui::GetWindowContentRegionMin().y);
 
-    // Get offset
-    Vector2 offset = Vector2(ImGui::GetWindowPos()) + m_window_padding;
-
     // Update engine's viewport
-    if (m_width != width || m_height != height || m_offset != offset)
+    if (m_width != width || m_height != height)
     {
-        m_renderer->SetViewport(width, height, offset.x, offset.y);
+        m_renderer->SetViewport(width, height);
 
         m_width     = width;
         m_height    = height;
-        m_offset    = offset;
     }
 
-    // If this is the first tick and the first time the engine runs (no settings file loaded), we set the resolution to match the viewport size.
-    // This is to avoid a scenario were the resolution is much higher than what the user assumes, resulting in less performance.
-    if (m_is_resolution_dirty && !m_settings->Loaded())
-    {
-        m_renderer->SetResolutionRender(static_cast<uint32_t>(m_width), static_cast<uint32_t>(m_height));
-        m_is_resolution_dirty = false;
-    }
+    // Let the input system know about the position of this viewport within the editor.
+    // This will allow the system to properly calculate a relative mouse position.
+    Vector2 offset = ImGui::GetCursorPos();
+    offset.y += 34; // TODO: this is probably the tab bar height, find a way to get it properly
+    m_input->SetEditorViewportOffset(offset);
 
     // Draw the image after a potential Renderer::SetResolution() call has been made
     ImGuiEx::Image

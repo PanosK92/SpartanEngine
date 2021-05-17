@@ -74,8 +74,8 @@ namespace Spartan
         ~Renderer();
 
         //= ISubsystem ======================
-        bool Initialize() override;
-        void Tick(float delta_time) override;
+        bool OnInitialise() override;
+        void OnTick(float delta_time) override;
         //===================================
 
         // Primitive rendering
@@ -87,9 +87,8 @@ namespace Spartan
         void DrawCircle(const Math::Vector3& center, const Math::Vector3& axis, const float radius, const uint32_t segmentCount, const Math::Vector4& color = DEBUG_COLOR, const float duration = 0.0f, const bool depth = true);
 
         // Viewport
-        const RHI_Viewport& GetViewport()           const { return m_viewport; }
-        const Math::Vector2& GetViewportOffset()    const { return m_viewport_editor_offset; }
-        void SetViewport(float width, float height, float offset_x = 0, float offset_y = 0);
+        const RHI_Viewport& GetViewport() const { return m_viewport; }
+        void SetViewport(float width, float height);
 
         // Resolution render
         const Math::Vector2& GetResolutionRender() const { return m_resolution_render; }
@@ -99,12 +98,9 @@ namespace Spartan
         const Math::Vector2& GetResolutionOutput() const { return m_resolution_output; }
         void SetResolutionOutput (uint32_t width, uint32_t height);
 
-        // Resolution
-        bool GetIsFullscreen() const { return m_is_fullscreen; }
-        void SetIsFullscreen(const bool is_fullscreen) { m_is_fullscreen = is_fullscreen; }
-
-        // Editor
-        std::weak_ptr<Entity> SnapTransformGizmoTo(const std::shared_ptr<Entity>& entity) const;
+        // Transform handle
+        std::weak_ptr<Entity> SnapTransformHandleToEntity(const std::shared_ptr<Entity>& entity) const;
+        bool IsTransformHandleEditing() const;
 
         // Debug/Visualise a render targets
         const auto& GetRenderTargets()                                  { return m_render_targets; }
@@ -157,7 +153,7 @@ namespace Spartan
         RHI_Texture* GetFrameTexture()                                    { return RENDER_TARGET(RendererRt::Frame_PostProcess).get(); }
         auto GetFrameNum()                                          const { return m_frame_num; }
         std::shared_ptr<Camera> GetCamera()                         const { return m_camera; }
-        auto IsInitialized()                                        const { return m_initialized; }
+        auto IsInitialised()                                        const { return m_initialised; }
         auto GetShaders()                                           const { return m_shaders; }
         uint32_t GetMaxResolution() const;
         void Clear();
@@ -279,15 +275,14 @@ namespace Spartan
         std::vector<float> m_lines_depth_enabled_duration;
 
         // Gizmos
-        std::unique_ptr<TransformGizmo> m_gizmo_transform;
+        std::unique_ptr<TransformGizmo> m_transform_handle;
         std::unique_ptr<Grid> m_gizmo_grid;
         Math::Rectangle m_gizmo_light_rect;
 
         // Resolution & Viewport
-        Math::Vector2 m_resolution_render       = Math::Vector2::Zero;
-        Math::Vector2 m_resolution_output       = Math::Vector2::Zero;
-        RHI_Viewport m_viewport                 = RHI_Viewport(0, 0, 1920, 1080);
-        Math::Vector2 m_viewport_editor_offset  = Math::Vector2::Zero;
+        Math::Vector2 m_resolution_render   = Math::Vector2::Zero;
+        Math::Vector2 m_resolution_output   = Math::Vector2::Zero;
+        RHI_Viewport m_viewport             = RHI_Viewport(0, 0, 0, 0);
 
         // Options
         uint64_t m_options = 0;
@@ -299,8 +294,7 @@ namespace Spartan
         Math::Vector2 m_taa_jitter                  = Math::Vector2::Zero;
         Math::Vector2 m_taa_jitter_previous         = Math::Vector2::Zero;
         RendererRt m_render_target_debug            = RendererRt::Undefined;
-        bool m_initialized                          = false;
-        bool m_is_fullscreen                        = false;
+        bool m_initialised                          = false;
         float m_near_plane                          = 0.0f;
         float m_far_plane                           = 0.0f;
         uint64_t m_frame_num                        = 0;

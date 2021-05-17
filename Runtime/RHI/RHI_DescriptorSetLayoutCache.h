@@ -62,7 +62,7 @@ namespace Spartan
         std::vector<RHI_Descriptor> m_descriptors;
 
         // Descriptor pool
-        uint32_t m_descriptor_set_capacity = 16;
+        uint32_t m_descriptor_set_capacity = 0;
         void* m_descriptor_pool = nullptr;
 
         // Misc

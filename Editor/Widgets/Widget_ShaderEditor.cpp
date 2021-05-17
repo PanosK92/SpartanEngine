@@ -61,81 +61,95 @@ void Widget_ShaderEditor::ShowShaderSource()
     {
         ImGui::Text(m_shader ? m_shader_name.c_str() : "Select a shader");
 
-        if (ImGui::BeginChild("##shader_source", ImVec2(m_size.x * 0.7f, 0.0f)))
+        if (m_shader)
         {
-            // Shader source
-            if (ImGui::BeginTabBar("#shader_tab_bar", ImGuiTabBarFlags_Reorderable))
+            if (ImGui::BeginChild("##shader_source", ImVec2(m_size.x * 0.7f, 0.0f)))
             {
-                for (uint32_t i = 0; i < static_cast<uint32_t>(m_shader_sources.size()); i++)
+                int edited_index = -1;
+
+                // Shader source
+                if (ImGui::BeginTabBar("#shader_tab_bar", ImGuiTabBarFlags_Reorderable))
                 {
-                    ShaderFile& shader_file = m_shader_sources[i];
+                    const std::vector<std::string>& names = m_shader->GetNames();
+                    const std::vector<std::string>& sources = m_shader->GetSources();
 
-                    if (ImGui::BeginTabItem(shader_file.name.c_str()))
+                    for (uint32_t i = 0; i < static_cast<uint32_t>(names.size()); i++)
                     {
-                        // Set text
-                        if (m_displayed_file_index != i)
+                        if (ImGui::BeginTabItem(names[i].c_str()))
                         {
-                            m_text_editor->SetText(shader_file.source);
-                            m_displayed_file_index = i;
+                            // Set text
+                            if (m_displayed_file_index != i)
+                            {
+                                m_text_editor->SetText(sources[i]);
+                                m_displayed_file_index = i;
+                            }
+
+                            // Handle keyboard shortcuts
+                            if (m_input->GetKeyDown(KeyCode::Ctrl_Left) && m_input->GetKeyDown(KeyCode::C))
+                            {
+                                m_text_editor->Copy();
+                            }
+
+                            if (m_input->GetKeyDown(KeyCode::Ctrl_Left) && m_input->GetKeyDown(KeyCode::X))
+                            {
+                                m_text_editor->Cut();
+                            }
+
+                            if (m_input->GetKeyDown(KeyCode::Ctrl_Left) && m_input->GetKeyDown(KeyCode::V))
+                            {
+                                m_text_editor->Paste();
+                            }
+
+                            if (m_input->GetKeyDown(KeyCode::Ctrl_Left) && m_input->GetKeyDown(KeyCode::Z))
+                            {
+                                m_text_editor->Undo();
+                            }
+
+                            if (m_input->GetKeyDown(KeyCode::Ctrl_Left) && m_input->GetKeyDown(KeyCode::Y))
+                            {
+                                m_text_editor->Redo();
+                            }
+
+                            // Render
+                            m_text_editor->Render("Title", ImVec2(0.0f, ImGui::GetContentRegionMax().y - 60.0f)); // shrink y to bring the compile button into view
+
+                            // Update shader
+                            if (m_text_editor->IsTextChanged())
+                            {
+                                m_shader->SetSource(i, m_text_editor->GetText());
+                                edited_index = static_cast<int>(i);
+                            }
+
+                            ImGui::EndTabItem();
+                        }
+                    }
+                    ImGui::EndTabBar();
+                }
+
+                if (ImGui::Button("Compile"))
+                {
+                    if (edited_index != -1)
+                    {
+                        const std::vector<std::string>& file_paths = m_shader->GetFilePaths();
+                        const std::vector<std::string>& sources = m_shader->GetSources();
+
+                        // Save all files
+                        for (uint32_t i = 0; i < static_cast<uint32_t>(file_paths.size()); i++)
+                        {
+                            ofstream out(file_paths[i]);
+                            out << sources[i];
+                            out.flush();
+                            out.close();
                         }
 
-                        // Handle keyboard shortcuts
-                        if (m_input->GetKeyDown(KeyCode::Ctrl_Left) && m_input->GetKeyDown(KeyCode::C))
-                        {
-                            m_text_editor->Copy();
-                        }
-
-                        if (m_input->GetKeyDown(KeyCode::Ctrl_Left) && m_input->GetKeyDown(KeyCode::X))
-                        {
-                            m_text_editor->Cut();
-                        }
-
-                        if (m_input->GetKeyDown(KeyCode::Ctrl_Left) && m_input->GetKeyDown(KeyCode::V))
-                        {
-                            m_text_editor->Paste();
-                        }
-
-                        if (m_input->GetKeyDown(KeyCode::Ctrl_Left) && m_input->GetKeyDown(KeyCode::Z))
-                        {
-                            m_text_editor->Undo();
-                        }
-
-                        if (m_input->GetKeyDown(KeyCode::Ctrl_Left) && m_input->GetKeyDown(KeyCode::Y))
-                        {
-                            m_text_editor->Redo();
-                        }
-
-                        // Render
-                        m_text_editor->Render("Title", ImVec2(0.0f, ImGui::GetContentRegionMax().y - 60.0f)); // shrink y to bring the compile button into view
-
-                        // Update shader
-                        if (m_text_editor->IsTextChanged())
-                        {
-                            shader_file.source = m_text_editor->GetText();
-                        }
-
-                        ImGui::EndTabItem();
+                        // Compile synchronously to make it obvious when the first rendered frame (with your changes) shows up
+                        bool async = false;
+                        m_shader->Compile(m_shader->GetShaderStage(), m_shader->GetFilePath(), async);
                     }
                 }
-                ImGui::EndTabBar();
-            }
-            
-            if (ImGui::Button("Compile"))
-            {
-                // Save all files
-                for (ShaderFile& shader_file : m_shader_sources)
-                {
-                    ofstream out(shader_file.path);
-                    out << shader_file.source;
-                    out.flush();
-                    out.close();
-                }
 
-                // Compile synchronously to make it obvious when the first rendered frame (with your changes) shows up
-                m_shader->Compile(m_shader->GetShaderStage(), m_shader->GetFilePath());
+                ImGui::EndChild();
             }
-
-            ImGui::EndChild();
         }
     }
     ImGui::EndGroup();
@@ -189,40 +203,12 @@ void Widget_ShaderEditor::ShowShaderList()
                     m_shader_name           = name;
                     m_displayed_file_index  = -1;
                     m_first_run             = false;
-
-                    GetShaderSource(m_shader->GetFilePath());
                 }
             }
             ImGui::EndChild();
         }
     }
     ImGui::EndGroup();
-}
-
-void Widget_ShaderEditor::GetShaderSource(const string& file_path)
-{
-    // Get all files included by the shader
-    vector<string> include_paths = { file_path };
-    FileSystem::GetIncludedFilePathsFromFilePath(file_path, include_paths);
-
-    // Save the path and the source of all those files
-    {
-        // Resize shader files to fit
-        m_shader_sources.clear();
-        if (include_paths.size() > m_shader_sources.capacity())
-        {
-            m_shader_sources.reserve(include_paths.size());
-        }
-
-        // Update shader files
-        for (const string& include_path : include_paths)
-        {
-            ifstream in(include_path);
-            stringstream buffer;
-            buffer << in.rdbuf();
-            m_shader_sources.emplace_back(include_path, buffer.str());
-        }
-    }
 }
 
 void Widget_ShaderEditor::GetShaderInstances()

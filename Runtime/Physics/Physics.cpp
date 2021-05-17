@@ -88,7 +88,7 @@ namespace Spartan
         sp_ptr_delete(m_debug_draw);
     }
 
-    bool Physics::Initialize()
+    bool Physics::OnInitialise()
     {
         // Get dependencies
         m_renderer = m_context->GetSubsystem<Renderer>();
@@ -112,7 +112,7 @@ namespace Spartan
         return true;
     }
 
-    void Physics::Tick(float delta_time_sec)
+    void Physics::OnTick(float delta_time_sec)
     {
         if (!m_world)
             return;

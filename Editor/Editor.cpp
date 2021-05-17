@@ -19,15 +19,18 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =====================================
+//= INCLUDES ===================================
 #include "Editor.h"
 #include "Core/Engine.h"
 #include "Core/Settings.h"
+#include "Core/Window.h"
+#include "Core/EventSystem.h"
+#include "SDL.h"
 #include "Rendering/Model.h"
 #include "Profiling/Profiler.h"
 #include "ImGui_Extension.h"
 #include "ImGui/Implementation/ImGui_RHI.h"
-#include "ImGui/Implementation/imgui_impl_win32.h"
+#include "ImGui/Implementation/imgui_impl_sdl.h"
 #include "Widgets/Widget_Assets.h"
 #include "Widgets/Widget_Console.h"
 #include "Widgets/Widget_MenuBar.h"
@@ -39,163 +42,250 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widgets/Widget_ResourceCache.h"
 #include "Widgets/Widget_Profiler.h"
 #include "Widgets/Widget_RenderOptions.h"
-//================================================
+//==============================================
 
 //= NAMESPACES ==========
 using namespace std;
 using namespace Spartan;
 //=======================
- 
+
+//= EDITOR OPTIONS =========================================================================================
+// Shapes
+const float k_roundness = 2.0f;
+// Font
+const float k_font_size     = 24.0f;
+const float k_font_scale    = 0.7f;
+// Color
+const ImVec4 k_color_text                 = ImVec4(0.810f, 0.810f, 0.810f, 1.000f);
+const ImVec4 k_color_text_disabled        = ImVec4(k_color_text.x, k_color_text.y, k_color_text.z, 0.5f);
+const ImVec4 k_color_interactive          = ImVec4(0.338f, 0.338f, 0.338f, 1.000f);
+const ImVec4 k_color_interactive_hovered  = ImVec4(0.450f, 0.450f, 0.450f, 1.000f);
+const ImVec4 k_color_interactive_clicked  = ImVec4(0.586f, 0.586f, 0.586f, 1.000f);
+const ImVec4 k_color_background           = ImVec4(50.0f  / 255.0f, 50.0f  / 255.0f, 50.0f  / 255.0f, 1.0f);
+const ImVec4 k_color_background_content   = ImVec4(35.0f  / 255.0f, 35.0f  / 255.0f, 35.0f  / 255.0f, 1.0f);
+const ImVec4 k_color_shadow               = ImVec4(0.0f, 0.0f, 0.0f, 0.5f);
+//==========================================================================================================
+
 namespace _editor
 {
-    const char* editor_name         = "SpartanEditor";
     Widget_MenuBar* widget_menu_bar = nullptr;
     Widget* widget_world            = nullptr;
     Renderer* renderer              = nullptr;
-    Profiler* profiler              = nullptr;
     RHI_SwapChain* swapchain        = nullptr;
+    Profiler* profiler              = nullptr;
+    Window* window                  = nullptr;
     shared_ptr<Spartan::RHI_Device> rhi_device;
 }
 
-Editor::~Editor()
+static void ImGui_Initialise(Context* context)
 {
-    m_widgets.clear();
-    m_widgets.shrink_to_fit();
-
-    if (ImGui::GetCurrentContext())
-    {
-        ImGui::RHI::Shutdown();
-        ImGui_ImplWin32_Shutdown();
-        ImGui::DestroyContext();
-    }
-}
-
-void Editor::OnWindowMessage(WindowData& window_data)
-{
-    // During window creation, Windows fire off a couple of messages, m_initializing is to prevent that spamming.
-    if (!m_initialised)
-    {
-        // Create engine
-        m_engine = make_unique<Engine>(window_data);
-
-        // Acquire useful engine subsystems
-        m_context           = m_engine->GetContext();
-        _editor::profiler   = m_context->GetSubsystem<Profiler>();
-        _editor::renderer   = m_context->GetSubsystem<Renderer>();
-        _editor::swapchain  = _editor::renderer->GetSwapChain();
-        _editor::rhi_device = _editor::renderer->GetRhiDevice();
-
-        if (_editor::renderer->IsInitialized())
-        {
-            Initialise(window_data);
-            m_initialised = true;
-        }
-    }
-    else if (m_initialised)
-    {
-        // Updated ImGui with message
-        ImGui_ImplWin32_WndProcHandler(
-            static_cast<HWND>(window_data.handle),
-            static_cast<uint32_t>(window_data.message),
-            static_cast<int64_t>(window_data.wparam),
-            static_cast<uint64_t>(window_data.lparam)
-        );
-
-        // Passing zero dimensions will cause the swapchain to not present at all
-        uint32_t width  = static_cast<uint32_t>(window_data.minimise ? 0 : window_data.width);
-        uint32_t height = static_cast<uint32_t>(window_data.minimise ? 0 : window_data.height);
-
-        if (!_editor::swapchain->PresentEnabled() || _editor::swapchain->GetWidth() != width || _editor::swapchain->GetHeight() != height)
-        {
-            _editor::swapchain->Resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
-        }
-
-        m_engine->SetWindowData(window_data);
-    }
-}
-
-void Editor::OnTick()
-{
-    // Verify a couple of things
-    if (!m_initialised || !m_engine || !_editor::renderer || !_editor::renderer->IsInitialized())
-        return;
-
-    // Engine - Tick
-    m_engine->Tick();
-
-    bool is_fullscreen = _editor::renderer->GetIsFullscreen();
-
-    // ImGui - Begin
-    if (!is_fullscreen)
-    {
-        ImGui_ImplWin32_NewFrame();
-        ImGui::NewFrame();
-    }
-
-    // Editor - Begin
-    if (!is_fullscreen)
-    {
-        BeginWindow();
-    }
-
-    // Editor - Tick
-    if (!is_fullscreen)
-    {
-        for (shared_ptr<Widget>& widget : m_widgets)
-        {
-            widget->Tick();
-        }
-    }
-    else
-    {
-        _editor::renderer->Pass_CopyToBackbuffer(_editor::swapchain->GetCmdList());
-    }
-
-    // Editor - End
-    if (!is_fullscreen && m_editor_begun)
-    {
-        ImGui::End();
-    }
-
-    // ImGui - End/Render
-    if (!is_fullscreen)
-    {
-        ImGui::Render();
-        ImGui::RHI::Render(ImGui::GetDrawData());
-    }
-
-    // Present
-    _editor::renderer->Present();
-
-    // ImGui - child windows
-    if (!is_fullscreen && ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-    {
-        ImGui::UpdatePlatformWindows();
-        ImGui::RenderPlatformWindowsDefault();
-    }
-}
-
-void Editor::Initialise(const WindowData& window_data)
-{
-    // ImGui version validation
+    // Version validation
     IMGUI_CHECKVERSION();
-    m_context->GetSubsystem<Settings>()->RegisterThirdPartyLib("Dear ImGui", IMGUI_VERSION, "https://github.com/ocornut/imgui");
+    context->GetSubsystem<Settings>()->RegisterThirdPartyLib("Dear ImGui", IMGUI_VERSION, "https://github.com/ocornut/imgui");
 
-    // ImGui context creation
+    // Context creation
     ImGui::CreateContext();
 
-    // ImGui configuration
+    // Configuration
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags                  |= ImGuiConfigFlags_NavEnableKeyboard;
     io.ConfigFlags                  |= ImGuiConfigFlags_DockingEnable;
     io.ConfigFlags                  |= ImGuiConfigFlags_ViewportsEnable;
     io.ConfigWindowsResizeFromEdges = true;
     io.ConfigViewportsNoTaskBarIcon = true;
-    ApplyStyle();
 
-    // ImGui backend setup
-    ImGui_ImplWin32_Init(window_data.handle);
-    ImGui::RHI::Initialize(m_context, static_cast<float>(window_data.width), static_cast<float>(window_data.height));
+    // Font
+    const string dir_fonts = context->GetSubsystem<ResourceCache>()->GetResourceDirectory(ResourceDirectory::Fonts) + "/";
+    io.Fonts->AddFontFromFileTTF((dir_fonts + "CalibriBold.ttf").c_str(), k_font_size);
+    io.FontGlobalScale = k_font_scale;
+
+    // Initialise SDL (windows, input) and RHI (rendering)
+    ImGui_ImplSDL2_Init(static_cast<SDL_Window*>(_editor::window->GetHandleSDL()));
+    ImGui::RHI::Initialize(context);
+}
+
+static void ImGui_ProcessEvent(const Variant& event_variant)
+{
+    SDL_Event* event_sdl = event_variant.Get<SDL_Event*>();
+    ImGui_ImplSDL2_ProcessEvent(event_sdl);
+}
+
+static void ImGui_Shutdown()
+{
+    if (ImGui::GetCurrentContext())
+    {
+        ImGui::RHI::Shutdown();
+        ImGui_ImplSDL2_Shutdown();
+        ImGui::DestroyContext();
+    }
+}
+
+static void ImGui_ApplyColors()
+{
+    // Use default dark style as a base
+    ImGui::StyleColorsDark();
+    ImVec4* colors = ImGui::GetStyle().Colors;
+
+    // Colors
+    colors[ImGuiCol_Text]                   = k_color_text;
+    colors[ImGuiCol_TextDisabled]           = k_color_text_disabled;
+    colors[ImGuiCol_WindowBg]               = k_color_background;             // Background of normal windows
+    colors[ImGuiCol_ChildBg]                = k_color_background;             // Background of child windows
+    colors[ImGuiCol_PopupBg]                = k_color_background;             // Background of popups, menus, tooltips windows
+    colors[ImGuiCol_Border]                 = k_color_interactive;
+    colors[ImGuiCol_BorderShadow]           = k_color_shadow;
+    colors[ImGuiCol_FrameBg]                = k_color_background_content;     // Background of checkbox, radio button, plot, slider, text input
+    colors[ImGuiCol_FrameBgHovered]         = k_color_interactive;
+    colors[ImGuiCol_FrameBgActive]          = k_color_interactive_clicked;
+    colors[ImGuiCol_TitleBg]                = k_color_background_content;
+    colors[ImGuiCol_TitleBgActive]          = k_color_interactive;
+    colors[ImGuiCol_TitleBgCollapsed]       = k_color_background;
+    colors[ImGuiCol_MenuBarBg]              = k_color_background_content;
+    colors[ImGuiCol_ScrollbarBg]            = k_color_background_content;
+    colors[ImGuiCol_ScrollbarGrab]          = k_color_interactive;
+    colors[ImGuiCol_ScrollbarGrabHovered]   = k_color_interactive_hovered;
+    colors[ImGuiCol_ScrollbarGrabActive]    = k_color_interactive_clicked;
+    colors[ImGuiCol_CheckMark]              = k_color_text;
+    colors[ImGuiCol_SliderGrab]             = k_color_interactive;
+    colors[ImGuiCol_SliderGrabActive]       = k_color_interactive_clicked;
+    colors[ImGuiCol_Button]                 = k_color_interactive;
+    colors[ImGuiCol_ButtonHovered]          = k_color_interactive_hovered;
+    colors[ImGuiCol_ButtonActive]           = k_color_interactive_clicked;
+    colors[ImGuiCol_Header]                 = k_color_interactive;            // Header* colors are used for CollapsingHeader, TreeNode, Selectable, MenuItem
+    colors[ImGuiCol_HeaderHovered]          = k_color_interactive_hovered;
+    colors[ImGuiCol_HeaderActive]           = k_color_interactive_clicked;
+    colors[ImGuiCol_Separator]              = k_color_interactive;
+    colors[ImGuiCol_SeparatorHovered]       = k_color_interactive_hovered;
+    colors[ImGuiCol_SeparatorActive]        = k_color_interactive_clicked;
+    colors[ImGuiCol_ResizeGrip]             = k_color_interactive;
+    colors[ImGuiCol_ResizeGripHovered]      = k_color_interactive_hovered;
+    colors[ImGuiCol_ResizeGripActive]       = k_color_interactive_clicked;
+    colors[ImGuiCol_Tab]                    = k_color_interactive;
+    colors[ImGuiCol_TabHovered]             = k_color_interactive_hovered;
+    colors[ImGuiCol_TabActive]              = k_color_interactive_clicked;
+    colors[ImGuiCol_TabUnfocused]           = k_color_interactive;
+    colors[ImGuiCol_TabUnfocusedActive]     = k_color_interactive;            // Might be called active, but it's active only because it's it's the only tab available, the user didn't really activate it
+    colors[ImGuiCol_DockingPreview]         = k_color_interactive_clicked;    // Preview overlay color when about to docking something
+    colors[ImGuiCol_DockingEmptyBg]         = k_color_interactive;            // Background color for empty node (e.g. CentralNode with no window docked into it)
+    colors[ImGuiCol_PlotLines]              = k_color_interactive;
+    colors[ImGuiCol_PlotLinesHovered]       = k_color_interactive_hovered;
+    colors[ImGuiCol_PlotHistogram]          = k_color_interactive;
+    colors[ImGuiCol_PlotHistogramHovered]   = k_color_interactive_hovered;
+    colors[ImGuiCol_TextSelectedBg]         = k_color_background;
+    colors[ImGuiCol_DragDropTarget]         = k_color_interactive_hovered;    // Color when hovering over target
+    colors[ImGuiCol_NavHighlight]           = k_color_background;             // Gamepad/keyboard: current highlighted item
+    colors[ImGuiCol_NavWindowingHighlight]  = k_color_background;             // Highlight window when using CTRL+TAB
+    colors[ImGuiCol_NavWindowingDimBg]      = k_color_background;             // Darken/colorize entire screen behind the CTRL+TAB window list, when active
+    colors[ImGuiCol_ModalWindowDimBg]       = k_color_background;             // Darken/colorize entire screen behind a modal window, when one is active
+}
+
+static void ImGui_ApplyStyle()
+{
+    ImGuiStyle& style = ImGui::GetStyle();
+
+    style.WindowBorderSize          = 1.0f;
+    style.FrameBorderSize           = 0.0f;
+    style.ScrollbarSize             = 20.0f;
+    style.FramePadding              = ImVec2(5, 5);
+    style.ItemSpacing               = ImVec2(6, 5);
+    style.WindowMenuButtonPosition  = ImGuiDir_Right;
+    style.WindowRounding            = k_roundness;
+    style.FrameRounding             = k_roundness;
+    style.PopupRounding             = k_roundness;
+    style.GrabRounding              = k_roundness;
+    style.ScrollbarRounding         = k_roundness;
+    style.Alpha                     = 1.0f;
+}
+
+Editor::Editor()
+{
+    // Create engine
+    m_engine = make_unique<Engine>();
+
+    // Acquire useful engine subsystems
+    m_context           = m_engine->GetContext();
+    _editor::profiler   = m_context->GetSubsystem<Profiler>();
+    _editor::renderer   = m_context->GetSubsystem<Renderer>();
+    _editor::window     = m_context->GetSubsystem<Window>();
+    _editor::rhi_device = _editor::renderer->GetRhiDevice();
+    _editor::swapchain  = _editor::renderer->GetSwapChain();
+    
+    // Initialise Editor/ImGui
+    if (_editor::renderer->IsInitialised())
+    {
+        Initialise();
+    }
+    else
+    {
+        LOG_ERROR("Editor failed to initialise, renderer subsystem is required but it has also failed to initialise.");
+    }
+
+    // Allow ImGui get event's from the engine's event processing loop
+    SUBSCRIBE_TO_EVENT(EventType::EventSDL, EVENT_HANDLER_VARIANT_STATIC(ImGui_ProcessEvent));
+}
+
+Editor::~Editor()
+{
+    ImGui_Shutdown();
+}
+
+void Editor::Tick()
+{
+    while (!_editor::window->WantsToClose())
+    {
+        // Engine - Tick
+        m_engine->Tick();
+
+        if (!_editor::renderer || !_editor::renderer->IsInitialised())
+            continue;
+
+        if (_editor::window->IsFullScreen())
+        {
+            _editor::renderer->Pass_CopyToBackbuffer(_editor::swapchain->GetCmdList());
+        }
+        else
+        {
+            // ImGui - Begin
+            ImGui_ImplSDL2_NewFrame(m_context);
+            ImGui::NewFrame();
+
+            // Editor - Begin
+            BeginWindow();
+
+            // Editor - Tick
+            for (shared_ptr<Widget>& widget : m_widgets)
+            {
+                widget->Tick();
+            }
+
+            // Editor - End
+            if (m_editor_begun)
+            {
+                ImGui::End();
+            }
+
+            // ImGui - End/Render
+            ImGui::Render();
+            ImGui::RHI::Render(ImGui::GetDrawData());
+        }
+
+        // Present
+        _editor::renderer->Present();
+
+        // ImGui - child windows
+        if (!_editor::window->IsFullScreen() && ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+        {
+            ImGui::UpdatePlatformWindows();
+            ImGui::RenderPlatformWindowsDefault();
+        }
+    }
+}
+
+void Editor::Initialise()
+{
+    ImGui_Initialise(m_context);
+    ImGui_ApplyColors();
+    ImGui_ApplyStyle();
 
     // Initialization of misc custom systems
     IconProvider::Get().Initialize(m_context);
@@ -213,101 +303,6 @@ void Editor::Initialise(const WindowData& window_data)
     m_widgets.emplace_back(make_shared<Widget_Properties>(this));
     m_widgets.emplace_back(make_shared<Widget_World>(this)); _editor::widget_world = m_widgets.back().get();
     m_widgets.emplace_back(make_shared<Widget_ProgressDialog>(this));
-}
-
-void Editor::ApplyStyle() const
-{
-    // Color settings
-    const auto color_text                   = ImVec4(0.810f, 0.810f, 0.810f, 1.000f);
-    const auto color_text_disabled          = ImVec4(color_text.x, color_text.y, color_text.z, 0.5f);
-    const auto color_interactive            = ImVec4(0.338f, 0.338f, 0.338f, 1.000f);
-    const auto color_interactive_hovered    = ImVec4(0.450f, 0.450f, 0.450f, 1.000f);
-    const auto color_interactive_clicked    = ImVec4(0.586f, 0.586f, 0.586f, 1.000f);
-    const auto color_background             = ImVec4(50.0f  / 255.0f, 50.0f  / 255.0f, 50.0f  / 255.0f, 1.0f);
-    const auto color_background_content     = ImVec4(35.0f  / 255.0f, 35.0f  / 255.0f, 35.0f  / 255.0f, 1.0f);
-    const auto color_shadow                 = ImVec4(0.0f, 0.0f, 0.0f, 0.5f);
-
-    // Use default dark style as a base
-    ImGui::StyleColorsDark();
-
-    // Colors
-    ImVec4* colors                          = ImGui::GetStyle().Colors;
-    colors[ImGuiCol_Text]                   = color_text;
-    colors[ImGuiCol_TextDisabled]           = color_text_disabled;
-    colors[ImGuiCol_WindowBg]               = color_background;             // Background of normal windows
-    colors[ImGuiCol_ChildBg]                = color_background;             // Background of child windows
-    colors[ImGuiCol_PopupBg]                = color_background;             // Background of popups, menus, tooltips windows
-    colors[ImGuiCol_Border]                 = color_interactive;
-    colors[ImGuiCol_BorderShadow]           = color_shadow;
-    colors[ImGuiCol_FrameBg]                = color_background_content;     // Background of checkbox, radio button, plot, slider, text input
-    colors[ImGuiCol_FrameBgHovered]         = color_interactive;
-    colors[ImGuiCol_FrameBgActive]          = color_interactive_clicked;
-    colors[ImGuiCol_TitleBg]                = color_background_content;
-    colors[ImGuiCol_TitleBgActive]          = color_interactive;
-    colors[ImGuiCol_TitleBgCollapsed]       = color_background;
-    colors[ImGuiCol_MenuBarBg]              = color_background_content;
-    colors[ImGuiCol_ScrollbarBg]            = color_background_content;
-    colors[ImGuiCol_ScrollbarGrab]          = color_interactive;
-    colors[ImGuiCol_ScrollbarGrabHovered]   = color_interactive_hovered;
-    colors[ImGuiCol_ScrollbarGrabActive]    = color_interactive_clicked;
-    colors[ImGuiCol_CheckMark]              = color_text;
-    colors[ImGuiCol_SliderGrab]             = color_interactive;
-    colors[ImGuiCol_SliderGrabActive]       = color_interactive_clicked;
-    colors[ImGuiCol_Button]                 = color_interactive;
-    colors[ImGuiCol_ButtonHovered]          = color_interactive_hovered;
-    colors[ImGuiCol_ButtonActive]           = color_interactive_clicked;
-    colors[ImGuiCol_Header]                 = color_interactive;            // Header* colors are used for CollapsingHeader, TreeNode, Selectable, MenuItem
-    colors[ImGuiCol_HeaderHovered]          = color_interactive_hovered;
-    colors[ImGuiCol_HeaderActive]           = color_interactive_clicked;
-    colors[ImGuiCol_Separator]              = color_interactive;
-    colors[ImGuiCol_SeparatorHovered]       = color_interactive_hovered;
-    colors[ImGuiCol_SeparatorActive]        = color_interactive_clicked;
-    colors[ImGuiCol_ResizeGrip]             = color_interactive;
-    colors[ImGuiCol_ResizeGripHovered]      = color_interactive_hovered;
-    colors[ImGuiCol_ResizeGripActive]       = color_interactive_clicked;
-    colors[ImGuiCol_Tab]                    = color_interactive;
-    colors[ImGuiCol_TabHovered]             = color_interactive_hovered;
-    colors[ImGuiCol_TabActive]              = color_interactive_clicked;
-    colors[ImGuiCol_TabUnfocused]           = color_interactive;
-    colors[ImGuiCol_TabUnfocusedActive]     = color_interactive;            // Might be called active, but it's active only because it's it's the only tab available, the user didn't really activate it
-    colors[ImGuiCol_DockingPreview]         = color_interactive_clicked;    // Preview overlay color when about to docking something
-    colors[ImGuiCol_DockingEmptyBg]         = color_interactive;            // Background color for empty node (e.g. CentralNode with no window docked into it)
-    colors[ImGuiCol_PlotLines]              = color_interactive;
-    colors[ImGuiCol_PlotLinesHovered]       = color_interactive_hovered;
-    colors[ImGuiCol_PlotHistogram]          = color_interactive;
-    colors[ImGuiCol_PlotHistogramHovered]   = color_interactive_hovered;
-    colors[ImGuiCol_TextSelectedBg]         = color_background;
-    colors[ImGuiCol_DragDropTarget]         = color_interactive_hovered;    // Color when hovering over target
-    colors[ImGuiCol_NavHighlight]           = color_background;             // Gamepad/keyboard: current highlighted item
-    colors[ImGuiCol_NavWindowingHighlight]  = color_background;             // Highlight window when using CTRL+TAB
-    colors[ImGuiCol_NavWindowingDimBg]      = color_background;             // Darken/colorize entire screen behind the CTRL+TAB window list, when active
-    colors[ImGuiCol_ModalWindowDimBg]       = color_background;             // Darken/colorize entire screen behind a modal window, when one is active
-
-    // Spatial settings
-    const auto font_size    = 24.0f;
-    const auto font_scale   = 0.7f;
-    const auto roundness    = 2.0f;
-
-    // Spatial
-    ImGuiStyle& style               = ImGui::GetStyle();
-    style.WindowBorderSize          = 1.0f;
-    style.FrameBorderSize           = 0.0f;
-    style.ScrollbarSize             = 20.0f;
-    style.FramePadding              = ImVec2(5, 5);
-    style.ItemSpacing               = ImVec2(6, 5);
-    style.WindowMenuButtonPosition  = ImGuiDir_Right;
-    style.WindowRounding            = roundness;
-    style.FrameRounding             = roundness;
-    style.PopupRounding             = roundness;
-    style.GrabRounding              = roundness;
-    style.ScrollbarRounding         = roundness;
-    style.Alpha                     = 1.0f;
-
-    // Font
-    auto& io = ImGui::GetIO();
-    const string dir_fonts = m_context->GetSubsystem<ResourceCache>()->GetResourceDirectory(ResourceDirectory::Fonts) + "/";
-    io.Fonts->AddFontFromFileTTF((dir_fonts + "CalibriBold.ttf").c_str(), font_size);
-    io.FontGlobalScale = font_scale;
 }
 
 void Editor::BeginWindow()
@@ -337,15 +332,16 @@ void Editor::BeginWindow()
     ImGui::SetNextWindowBgAlpha(0.0f);
 
     // Begin window
+    std::string name = "##main_window";
     bool open = true;
-    m_editor_begun = ImGui::Begin(_editor::editor_name, &open, window_flags);
+    m_editor_begun = ImGui::Begin(name.c_str(), &open, window_flags);
     ImGui::PopStyleVar(3);
 
     // Begin dock space
     if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable && m_editor_begun)
     {
         // Dock space
-        const auto window_id = ImGui::GetID(_editor::editor_name);
+        const auto window_id = ImGui::GetID(name.c_str());
         if (!ImGui::DockBuilderGetNode(window_id))
         {
             // Reset current docking state

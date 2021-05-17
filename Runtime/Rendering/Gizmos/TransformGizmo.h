@@ -53,7 +53,7 @@ namespace Spartan
         const RHI_IndexBuffer* GetIndexBuffer();
         const TransformHandle* GetHandle();
         bool DrawXYZ()                      const { return m_type == TransformHandleType::Scale; }
-        bool IsEntitySelected()             const { return m_is_editing; }
+        bool IsEditing()                    const { return m_is_editing; }
         const Entity* GetSelectedEntity()   const { return m_entity_selected.lock().get(); }
         
     private:

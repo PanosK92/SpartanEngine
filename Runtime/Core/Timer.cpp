@@ -36,7 +36,7 @@ namespace Spartan
         m_time_sleep_end    = chrono::high_resolution_clock::now();
     }
 
-    void Timer::Tick(float _delta_time)
+    void Timer::OnTick(float _delta_time)
     {
         // Compute delta time
         m_time_sleep_start = chrono::high_resolution_clock::now();

@@ -259,23 +259,13 @@ namespace Spartan
                 DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&m_compiler));;
             }
 
-            CComPtr<IDxcBlob> Compile(const string& shader, vector<string>& arguments)
+            CComPtr<IDxcBlob> Compile(const string& source, vector<string>& arguments)
             {
                 // Get shader source
                 DxcBuffer dxc_buffer;
                 CComPtr<IDxcBlobEncoding> blob_encoding = nullptr;
                 {
-                    HRESULT result;
-                    if (FileSystem::IsSupportedShaderFile(shader))
-                    {
-                        result = m_utils->LoadFile(FileSystem::StringToWstring(shader).c_str(), nullptr, &blob_encoding);
-                    }
-                    else // Source
-                    {
-                        result = m_utils->CreateBlobFromPinned(shader.c_str(), static_cast<uint32_t>(shader.size()), CP_UTF8, &blob_encoding);
-                    }
-
-                    if (FAILED(result))
+                    if (FAILED(m_utils->CreateBlobFromPinned(source.c_str(), static_cast<uint32_t>(source.size()), CP_UTF8, &blob_encoding)))
                     {
                         LOG_ERROR("Failed to load shader source.");
                         return nullptr;
@@ -301,10 +291,6 @@ namespace Spartan
                     arguments_lpcwstr.emplace_back(wstr.c_str());
                 }
 
-                // Create and include handler
-                CComPtr<IDxcIncludeHandler> include_handler;
-                m_utils->CreateDefaultIncludeHandler(&include_handler);
-
                 // Compile
                 CComPtr<IDxcResult> dxc_result = nullptr;
                 {
@@ -313,7 +299,7 @@ namespace Spartan
                         &dxc_buffer,                                        // Source text to compile
                         arguments_lpcwstr.data(),                           // Array of pointers to arguments
                         static_cast<uint32_t>(arguments_lpcwstr.size()),    // Number of arguments
-                        include_handler,                                    // user-provided interface to handle #include directives (optional)
+                        nullptr,                                            // don't use an include handler
                         IID_PPV_ARGS(&dxc_result)                           // IDxcResult: status, buffer, and errors
                     );
 
@@ -346,7 +332,7 @@ namespace Spartan
         }
     }
     
-    void* RHI_Shader::_Compile(const string& shader)
+    void* RHI_Shader::Compile3()
     {
         // Arguments (and defines)
         vector<string> arguments;
@@ -375,12 +361,6 @@ namespace Spartan
             {
                 arguments.emplace_back("-fvk-invert-y");
             }
-
-            // Add include directory
-            if (FileSystem::IsFile(shader))
-            {
-                arguments.emplace_back("-I"); arguments.emplace_back(FileSystem::GetDirectoryFromFilePath(shader));
-            }
         }
 
         // Defines
@@ -398,7 +378,7 @@ namespace Spartan
         }
 
         // Compile
-        if (CComPtr<IDxcBlob> shader_buffer = DxcHelper::Instance().Compile(shader, arguments))
+        if (CComPtr<IDxcBlob> shader_buffer = DxcHelper::Instance().Compile(m_source, arguments))
         {
             // Create shader module
             VkShaderModule shader_module            = nullptr;
@@ -414,7 +394,7 @@ namespace Spartan
             }
 
             // Reflect shader resources (so that descriptor sets can be created later)
-            _Reflect
+            Reflect
             (
                 m_shader_type,
                 reinterpret_cast<uint32_t*>(shader_buffer->GetBufferPointer()),
@@ -422,11 +402,11 @@ namespace Spartan
             );
             
             // Create input layout
-            if (m_vertex_type != RHI_Vertex_Type_Unknown)
+            if (m_vertex_type != RHI_Vertex_Type::Unknown)
             {
                 if (!m_input_layout->Create(m_vertex_type, nullptr))
                 {
-                    LOG_ERROR("Failed to create input layout for %s", FileSystem::GetFileNameFromFilePath(shader).c_str());
+                    LOG_ERROR("Failed to create input layout for %s", m_name.c_str());
                     return nullptr;
                 }
             }
@@ -434,11 +414,10 @@ namespace Spartan
             return static_cast<void*>(shader_module);
         }
 
-        LOG_ERROR("Failed to compile %s", shader.c_str());
         return nullptr;
     }
 
-    void RHI_Shader::_Reflect(const RHI_Shader_Type shader_type, const uint32_t* ptr, const uint32_t size)
+    void RHI_Shader::Reflect(const RHI_Shader_Type shader_type, const uint32_t* ptr, const uint32_t size)
     {
         // Initialize compiler with SPIR-V data
         const auto compiler = spirv_cross::CompilerHLSL(ptr, size);

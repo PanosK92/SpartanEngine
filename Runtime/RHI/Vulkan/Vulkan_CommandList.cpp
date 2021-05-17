@@ -664,17 +664,6 @@ namespace Spartan
         m_descriptor_set_layout_cache->SetTexture(slot, texture, storage);
     }
 
-    uint32_t RHI_CommandList::Gpu_GetMemory(RHI_Device* rhi_device)
-    {
-        if (!rhi_device || !rhi_device->GetContextRhi())
-            return 0;
-
-        VkPhysicalDeviceMemoryProperties device_memory_properties = {};
-        vkGetPhysicalDeviceMemoryProperties(static_cast<VkPhysicalDevice>(rhi_device->GetContextRhi()->device_physical), &device_memory_properties);
-
-        return static_cast<uint32_t>(device_memory_properties.memoryHeaps[0].size / 1024 / 1024); // MBs
-    }
-
     uint32_t RHI_CommandList::Gpu_GetMemoryUsed(RHI_Device* rhi_device)
     {
         if (!rhi_device || !rhi_device->GetContextRhi() || !vulkan_utility::functions::get_physical_device_memory_properties_2)

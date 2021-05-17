@@ -251,7 +251,7 @@ namespace Spartan
         m_window_handle = window_handle;
         m_flags         = flags;
 
-        m_initialized = swapchain_create
+        m_initialised = swapchain_create
         (
             m_rhi_device,
             &m_width,
@@ -339,7 +339,7 @@ namespace Spartan
         );
 
         // Create the swap chain with the new dimensions
-        m_initialized = swapchain_create
+        m_initialised = swapchain_create
         (
             m_rhi_device,
             &m_width,
@@ -357,12 +357,12 @@ namespace Spartan
 
         // The pipeline state used by the pipeline will now be invalid since it's referring to a destroyed swap chain view.
         // By generating a new ID, the pipeline cache will automatically generate a new pipeline for this swap chain.
-        if (m_initialized)
+        if (m_initialised)
         {
             m_id = GenerateId();
         }
 
-        return m_initialized;
+        return m_initialised;
     }
 
     bool RHI_SwapChain::AcquireNextImage()

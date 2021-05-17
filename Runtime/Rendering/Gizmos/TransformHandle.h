@@ -52,6 +52,7 @@ namespace Spartan
         const RHI_IndexBuffer* GetIndexBuffer();
         bool HasModel() const { return m_axis_model != nullptr; }
         bool IsEditing() const;
+        bool IsHovered() const;
 
     private:
         void ReflectEntityTransform(TransformHandleSpace space, Entity* entity, Camera* camera, float handle_size);

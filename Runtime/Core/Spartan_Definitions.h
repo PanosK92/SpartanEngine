@@ -1,7 +1,7 @@
 #pragma once
 
 // Version
-#define sp_version "v0.32 WIP"
+#define sp_version "v0.33"
 
 // Class
 #define SPARTAN_CLASS
@@ -36,7 +36,16 @@ namespace Spartan
 #define SP_WARNINGS_ON __pragma(warning(pop))
 
 // Assert
+#ifdef DEBUG
 #define SP_ASSERT(expression) assert(expression)
+#else
+#define SP_ASSERT(expression)   \
+if (!(##expression))            \
+{                               \
+    LOG_ERROR(#expression);     \
+    __debugbreak();             \
+}
+#endif
 
 // Platform 
 //#define API_GRAPHICS_D3D11    -> Defined by solution generation script

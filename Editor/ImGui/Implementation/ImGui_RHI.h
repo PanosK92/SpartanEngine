@@ -64,13 +64,13 @@ namespace ImGui::RHI
     static unique_ptr<RHI_Shader>                                           g_shader_vertex;
     static unique_ptr<RHI_Shader>                                           g_shader_pixel;
 
-    inline bool Initialize(Context* context, const float width, const float height)
+    inline bool Initialize(Context* context)
     {
         g_context       = context;
         g_renderer      = context->GetSubsystem<Renderer>();
         g_rhi_device    = g_renderer->GetRhiDevice();
         
-        if (!g_context || !g_rhi_device || !g_rhi_device->IsInitialized())
+        if (!g_context || !g_rhi_device || !g_rhi_device->IsInitialised())
         {
             LOG_ERROR_INVALID_PARAMETER();
             return false;
@@ -105,10 +105,11 @@ namespace ImGui::RHI
 
             // Compile shaders
             const std::string shader_path = g_context->GetSubsystem<ResourceCache>()->GetResourceDirectory(ResourceDirectory::Shaders) + "\\ImGui.hlsl";
-            g_shader_vertex = make_unique<RHI_Shader>(g_context);
-            g_shader_vertex->Compile<RHI_Vertex_Pos2dTexCol8>(RHI_Shader_Vertex, shader_path);
+            g_shader_vertex = make_unique<RHI_Shader>(g_context, RHI_Vertex_Type::Pos2dTexCol8);
+            bool async = false;
+            g_shader_vertex->Compile(RHI_Shader_Vertex, shader_path, async);
             g_shader_pixel = make_unique<RHI_Shader>(g_context);
-            g_shader_pixel->Compile(RHI_Shader_Pixel, shader_path);
+            g_shader_pixel->Compile(RHI_Shader_Pixel, shader_path, async);
         }
 
         // Font atlas
@@ -331,36 +332,17 @@ namespace ImGui::RHI
 
     inline RHI_SwapChain* GetSwapchain(ImGuiViewport* viewport)
     {
-        RHI_SwapChain* swapchain = nullptr;
-
-        if (!viewport)
-        {
-            LOG_ERROR("Invalid viewport");
-            return swapchain;
-        }
-
-        swapchain = static_cast<RHI_SwapChain*>(viewport->RendererUserData);
-
-        if (!swapchain)
-        {
-            LOG_ERROR("Invalid swapchain");
-            return swapchain;
-        }
-
-        return swapchain;
+        SP_ASSERT(viewport != nullptr);
+        return static_cast<RHI_SwapChain*>(viewport->RendererUserData);
     }
 
     static void RHI_Window_Create(ImGuiViewport* viewport)
     {
-        if (!viewport)
-        {
-            LOG_ERROR("Invalid viewport");
-            return;
-        }
+        SP_ASSERT(viewport != nullptr);
 
-        viewport->RendererUserData = new RHI_SwapChain
+        RHI_SwapChain* swapchain = new RHI_SwapChain
         (
-            viewport->PlatformHandle,
+            viewport->PlatformHandleRaw, // PlatformHandle is SDL_Window, PlatformHandleRaw is HWND
             g_rhi_device,
             static_cast<uint32_t>(viewport->Size.x),
             static_cast<uint32_t>(viewport->Size.y),
@@ -369,25 +351,31 @@ namespace ImGui::RHI
             g_renderer->GetSwapChain()->GetFlags(),
             (string("swapchain_child_") + string(to_string(viewport->ID))).c_str()
         );
+
+        SP_ASSERT(swapchain->IsInitialised());
+
+        viewport->RendererUserData = swapchain;
     }
 
     static void RHI_Window_Destroy(ImGuiViewport* viewport)
     {
-        RHI_SwapChain* swap_chain = GetSwapchain(viewport);
-        if (!swap_chain)
-            return;
+        SP_ASSERT(viewport != nullptr);
 
-        sp_ptr_delete(swap_chain);
+        if (RHI_SwapChain* swapchain = GetSwapchain(viewport))
+        {
+            delete swapchain;
+        }
+
         viewport->RendererUserData = nullptr;
     }
 
     static void RHI_Window_SetSize(ImGuiViewport* viewport, const ImVec2 size)
     {
-        RHI_SwapChain* swap_chain = GetSwapchain(viewport);
-        if (!swap_chain)
-            return;
+        SP_ASSERT(viewport != nullptr);
+        RHI_SwapChain* swapchain = GetSwapchain(viewport);
+        SP_ASSERT(swapchain != nullptr);
         
-        if (!swap_chain->Resize(static_cast<uint32_t>(size.x), static_cast<uint32_t>(size.y)))
+        if (!swapchain->Resize(static_cast<uint32_t>(size.x), static_cast<uint32_t>(size.y)))
         {
             LOG_ERROR("Failed to resize swap chain");
         }
@@ -395,13 +383,12 @@ namespace ImGui::RHI
 
     static void RHI_Window_Render(ImGuiViewport* viewport, void*)
     {
-        RHI_SwapChain* swap_chain = GetSwapchain(viewport);
-        if (!swap_chain)
-            return;
+        SP_ASSERT(viewport != nullptr);
+        RHI_SwapChain* swapchain = GetSwapchain(viewport);
+        SP_ASSERT(swapchain != nullptr);
 
-        RHI_CommandList* cmd_list = swap_chain->GetCmdList();
-        if (!cmd_list)
-            return;
+        RHI_CommandList* cmd_list = swapchain->GetCmdList();
+        SP_ASSERT(cmd_list != nullptr);
 
         if (!cmd_list->Begin())
         {
@@ -410,7 +397,7 @@ namespace ImGui::RHI
         }
 
         const bool clear = !(viewport->Flags & ImGuiViewportFlags_NoRendererClear);
-        Render(viewport->DrawData, swap_chain, clear);
+        Render(viewport->DrawData, swapchain, clear);
 
         // Get wait semaphore
         RHI_Semaphore* wait_semaphore = cmd_list->GetProcessedSemaphore();
@@ -424,7 +411,7 @@ namespace ImGui::RHI
             if (wait_semaphore->GetState() == RHI_Semaphore_State::Signaled)
             {
                 LOG_INFO("Dummy presenting to reset semaphore");
-                swap_chain->Present(wait_semaphore);
+                swapchain->Present(wait_semaphore);
             }
         }
 
@@ -442,11 +429,11 @@ namespace ImGui::RHI
 
     static void RHI_Window_Present(ImGuiViewport* viewport, void*)
     {
-        RHI_SwapChain* swap_chain = GetSwapchain(viewport);
-        if (!swap_chain)
-            return;
+        RHI_SwapChain* swapchain = GetSwapchain(viewport);
+        SP_ASSERT(swapchain != nullptr);
+        SP_ASSERT(swapchain->GetCmdList() != nullptr);
 
-        if (!swap_chain->Present(swap_chain->GetCmdList()->GetProcessedSemaphore()))
+        if (!swapchain->Present(swapchain->GetCmdList()->GetProcessedSemaphore()))
         {
             LOG_ERROR("Failed to present");
         }

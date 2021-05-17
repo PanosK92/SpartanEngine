@@ -36,7 +36,7 @@ public:
     Widget_MenuBar(Editor* editor);
 
     void TickAlways() override;
-    float GetPadding() { return 8.0f; }
+    static float GetPadding() { return 8.0f; }
 
 private:
     void ShowFileDialog() const;

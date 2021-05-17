@@ -44,7 +44,7 @@ namespace Spartan
         ~Timer() = default;
 
         //= ISybsystem ======================
-        void Tick(float delta_time) override;
+        void OnTick(float delta_time) override;
         //===================================
 
         //= FPS ==============================================

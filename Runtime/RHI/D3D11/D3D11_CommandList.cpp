@@ -49,7 +49,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    bool RHI_CommandList::memory_query_support = true;
+    bool RHI_CommandList::m_memory_query_support = true;
 
     RHI_CommandList::RHI_CommandList(uint32_t index, RHI_SwapChain* swap_chain, Context* context)
     {
@@ -756,28 +756,9 @@ namespace Spartan
         return static_cast<float>(duration_ms);
     }
 
-    uint32_t RHI_CommandList::Gpu_GetMemory(RHI_Device* rhi_device)
-    {
-        if (const PhysicalDevice* physical_device = rhi_device->GetPrimaryPhysicalDevice())
-        {
-            if (auto adapter = static_cast<IDXGIAdapter3*>(physical_device->GetData()))
-            {
-                DXGI_ADAPTER_DESC adapter_desc = {};
-                const auto result = adapter->GetDesc(&adapter_desc);
-                if (FAILED(result))
-                {
-                    LOG_ERROR("Failed to get adapter description, %s", d3d11_utility::dxgi_error_to_string(result));
-                    return 0;
-                }
-                return static_cast<uint32_t>(adapter_desc.DedicatedVideoMemory / 1024 / 1024); // convert to MBs
-            }
-        }
-        return 0;
-    }
-
     uint32_t RHI_CommandList::Gpu_GetMemoryUsed(RHI_Device* rhi_device)
     {
-        if (!memory_query_support)
+        if (!m_memory_query_support)
             return 0;
 
         if (const PhysicalDevice* physical_device = rhi_device->GetPrimaryPhysicalDevice())
@@ -796,7 +777,7 @@ namespace Spartan
                 {
                     // Some integrated or older dedicated GPUs might not support video memory queries, log the error once and don't query again.
                     LOG_ERROR("Failed to get adapter memory info, %s", d3d11_utility::dxgi_error_to_string(result));
-                    memory_query_support = false;
+                    m_memory_query_support = false;
                 }
             }
         }

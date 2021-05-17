@@ -30,13 +30,13 @@ namespace Spartan
     class PhysicalDevice
     {
     public:
-        PhysicalDevice(const uint32_t api_version, const uint32_t driver_version, const uint32_t vendor_id, const RHI_PhysicalDevice_Type type, const char* name, const uint32_t memory, void* data)
+        PhysicalDevice(const uint32_t api_version, const uint32_t driver_version, const uint32_t vendor_id, const RHI_PhysicalDevice_Type type, const char* name, const uint64_t memory, void* data)
         {
             this->vendor_id         = vendor_id;
             this->type              = type;
-            this->name                = name;
-            this->memory            = memory / 1024 / 1024; // mb
-            this->data                = data;
+            this->name              = name;
+            this->memory            = static_cast<uint32_t>(memory / 1024 / 1024); // mb
+            this->data              = data;
             this->api_version       = decode_driver_version(api_version);
             this->driver_version    = decode_driver_version(driver_version);
         }
@@ -107,10 +107,10 @@ namespace Spartan
 
         std::string api_version         = "Unknown"; // version of api supported by the device
         std::string driver_version      = "Unknown"; // vendor-specified version of the driver.
-        uint32_t vendor_id                = 0; // unique identifier of the vendor
+        uint32_t vendor_id              = 0; // unique identifier of the vendor
         RHI_PhysicalDevice_Type type    = RHI_PhysicalDevice_Unknown;
         std::string name                = "Unknown";
-        uint32_t memory                    = 0;
+        uint32_t memory                 = 0;
         void* data                      = nullptr;
     };
 }

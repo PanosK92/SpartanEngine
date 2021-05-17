@@ -31,35 +31,37 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Spartan_Definitions.h"
 //==============================
 
-//= FORWARD DECLARATIONS =
+//= FORWARD DECLARATIONS =========
 namespace Spartan
 {
     class Entity;
 }
-//========================
+typedef union SDL_Event SDL_Event;
+//================================
 
-#define _VARIANT_TYPES                                \
-    char,                                            \
-    unsigned char,                                    \
+#define _VARIANT_TYPES                              \
+    char,                                           \
+    unsigned char,                                  \
     int,                                            \
-    uint32_t,                                        \
-    bool,                                            \
-    float,                                            \
-    double,                                            \
-    void*,                                            \
-    Spartan::Entity*,                                \
-    std::shared_ptr<Spartan::Entity>,                \
-    std::weak_ptr<Spartan::Entity>,                    \
+    uint32_t,                                       \
+    bool,                                           \
+    float,                                          \
+    double,                                         \
+    void*,                                          \
+    Spartan::Entity*,                               \
+    std::shared_ptr<Spartan::Entity>,               \
+    std::weak_ptr<Spartan::Entity>,                 \
     std::vector<std::weak_ptr<Spartan::Entity>>,    \
-    std::vector<std::shared_ptr<Spartan::Entity>>,    \
-    Spartan::Math::Vector2,                            \
-    Spartan::Math::Vector3,                            \
-    Spartan::Math::Vector4,                            \
-    Spartan::Math::Matrix,                            \
-    Spartan::Math::Quaternion
+    std::vector<std::shared_ptr<Spartan::Entity>>,  \
+    Spartan::Math::Vector2,                         \
+    Spartan::Math::Vector3,                         \
+    Spartan::Math::Vector4,                         \
+    Spartan::Math::Matrix,                          \
+    Spartan::Math::Quaternion,                      \
+    SDL_Event*
 
 #define VARIANT_TYPES std::variant<_VARIANT_TYPES>
-typedef std::variant<_VARIANT_TYPES, VARIANT_TYPES> VariantInternal;
+typedef std::variant<_VARIANT_TYPES, VARIANT_TYPES> StdVariant;
 
 namespace Spartan
 {
@@ -82,14 +84,12 @@ namespace Spartan
         template <class T, class = std::enable_if<!std::is_same<T, Variant>::value>>
         Variant& operator =(T rhs) { return m_variant = rhs; }
 
-        const VariantInternal& GetVariantRaw() const { return m_variant; }
+        const StdVariant& GetVariantRaw() const { return m_variant; }
 
         template<class T>
         inline const T& Get() const { return std::get<T>(m_variant); }
 
     private:
-        VariantInternal m_variant;
+        StdVariant m_variant;
     };
-
-    
 }

@@ -55,8 +55,8 @@ namespace Spartan
         }
 
         // Validate window handle
-        const auto hwnd    = static_cast<HWND>(window_handle);
-        if (!hwnd|| !IsWindow(hwnd))
+        const auto hwnd = static_cast<HWND>(window_handle);
+        if (!hwnd || !IsWindow(hwnd))
         {
             LOG_ERROR_INVALID_PARAMETER();
             return;
@@ -145,7 +145,7 @@ namespace Spartan
             m_cmd_lists.emplace_back(make_shared<RHI_CommandList>(i, this, rhi_device->GetContext()));
         }
 
-        m_initialized = true;
+        m_initialised = true;
         m_cmd_index = 0;
     }
 

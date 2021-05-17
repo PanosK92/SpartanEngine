@@ -70,7 +70,7 @@ namespace Spartan
         UNSUBSCRIBE_FROM_EVENT(EventType::WorldLoad,    EVENT_HANDLER(LoadResourcesFromFiles));
     }
 
-    bool ResourceCache::Initialize()
+    bool ResourceCache::OnInitialise()
     {
         // Importers
         m_importer_image    = make_shared<ImageImporter>(m_context);

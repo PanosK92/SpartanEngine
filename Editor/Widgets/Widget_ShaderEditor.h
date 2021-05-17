@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widget.h"
 #include <vector>
 #include "../WidgetsDeferred/Widget_TextEditor.h"
-#include "Core/FileSystem.h"
 //===============================================
 
 namespace Spartan
@@ -34,21 +33,6 @@ namespace Spartan
     class Renderer;
     class Input;
 }
-
-struct ShaderFile
-{
-    ShaderFile() = default;
-    ShaderFile(const std::string& path, const std::string& source)
-    {
-        this->path      = path;
-        this->source    = source;
-        name = Spartan::FileSystem::GetFileNameFromFilePath(path);
-    }
-
-    std::string name;
-    std::string path;
-    std::string source;
-};
 
 class Widget_ShaderEditor : public Widget
 {
@@ -60,8 +44,6 @@ public:
 private:
     void ShowShaderSource();
     void ShowShaderList();
-
-    void GetShaderSource(const std::string& file_path);
     void GetShaderInstances();
 
     Spartan::RHI_Shader* m_shader   = nullptr;
@@ -72,5 +54,4 @@ private:
     bool m_first_run                = true;
     std::unique_ptr<Widget_TextEditor> m_text_editor;
     std::vector<Spartan::RHI_Shader*> m_shaders;
-    std::vector<ShaderFile> m_shader_sources;
 };

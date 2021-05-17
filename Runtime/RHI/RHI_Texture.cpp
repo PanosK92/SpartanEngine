@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Spartan.h"
 #include "RHI_Texture.h"
 #include "RHI_Device.h"
+#include "RHI_Implementation.h"
 #include "../IO/FileStream.h"
 #include "../Rendering/Renderer.h"
 #include "../Resource/ResourceCache.h"
@@ -37,7 +38,14 @@ namespace Spartan
 {
     RHI_Texture::RHI_Texture(Context* context) : IResource(context, ResourceType::Texture)
     {
+        SP_ASSERT(context != nullptr);
+
+        Renderer* renderer = m_context->GetSubsystem<Renderer>();
+        SP_ASSERT(renderer != nullptr);
+
         m_rhi_device = context->GetSubsystem<Renderer>()->GetRhiDevice();
+        SP_ASSERT(m_rhi_device != nullptr);
+        SP_ASSERT(m_rhi_device->GetContextRhi()->device != nullptr);
     }
 
     RHI_Texture::~RHI_Texture()
@@ -144,7 +152,7 @@ namespace Spartan
         m_mip_count = static_cast<uint32_t>(m_data.size());
 
         // Create GPU resource
-        if (!m_context->GetSubsystem<Renderer>()->GetRhiDevice()->IsInitialized() || !CreateResourceGpu())
+        if (!CreateResourceGpu())
         {
             LOG_ERROR("Failed to create shader resource for \"%s\".", GetResourceFilePathNative().c_str());
             m_load_state = LoadState::Failed;

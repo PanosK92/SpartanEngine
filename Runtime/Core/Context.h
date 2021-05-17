@@ -1,4 +1,4 @@
-/*
+#/*
 Copyright(c) 2016-2021 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -65,45 +65,16 @@ namespace Spartan
             m_subsystems.clear();
         }
 
-        // Register a subsystem
         template <class T>
-        void RegisterSubsystem(TickType tick_group = TickType::Variable)
+        void AddSubsystem(TickType tick_group = TickType::Variable)
         {
             validate_subsystem_type<T>();
 
             m_subsystems.emplace_back(std::make_shared<T>(this), tick_group);
         }
 
-        // Initialize subsystems
-        bool Initialize()
-        {
-            auto result = true;
-            for (const _subystem& subsystem : m_subsystems)
-            {
-                if (!subsystem.ptr->Initialize())
-                {
-                    LOG_ERROR("Failed to initialize %s", typeid(*subsystem.ptr).name());
-                    result = false;
-                }
-            }
-
-            return result;
-        }
-
-        // Tick
-        void Tick(TickType tick_group, float delta_time = 0.0f)
-        {
-            for (const _subystem& subsystem : m_subsystems)
-            {
-                if (subsystem.tick_group != tick_group)
-                    continue;
-
-                subsystem.ptr->Tick(delta_time);
-            }
-        }
-
         // Get a subsystem
-        template <class T> 
+        template <class T>
         T* GetSubsystem() const
         {
             validate_subsystem_type<T>();
@@ -118,6 +89,62 @@ namespace Spartan
             }
 
             return nullptr;
+        }
+
+        void OnInitialise()
+        {
+            std::vector<uint32_t> failed_indices;
+
+            // Initialise subsystems
+            for (uint32_t i = 0; i < static_cast<uint32_t>(m_subsystems.size()); i++)
+            {
+                if (!m_subsystems[i].ptr->OnInitialise())
+                {
+                    failed_indices.emplace_back(i);
+                    LOG_ERROR("Failed to initialize %s", typeid(*m_subsystems[i].ptr).name());
+                }
+            }
+
+            // Removes that ones that failed
+            for (const uint32_t failed_index : failed_indices)
+            {
+                m_subsystems.erase(m_subsystems.begin() + failed_index);
+            }
+        }
+
+        void OnPreTick()
+        {
+            for (const _subystem& subsystem : m_subsystems)
+            {
+                subsystem.ptr->OnPreTick();
+            }
+        }
+
+        void OnTick(TickType tick_group, float delta_time = 0.0f)
+        {
+            for (const _subystem& subsystem : m_subsystems)
+            {
+                if (subsystem.tick_group != tick_group)
+                    continue;
+
+                subsystem.ptr->OnTick(delta_time);
+            }
+        }
+
+        void OnPostTick()
+        {
+            for (const _subystem& subsystem : m_subsystems)
+            {
+                subsystem.ptr->OnPostTick();
+            }
+        }
+
+        void OnShutdown()
+        {
+            for (const _subystem& subsystem : m_subsystems)
+            {
+                subsystem.ptr->OnShutdown();
+            }
         }
 
         Engine* m_engine = nullptr;

@@ -37,11 +37,11 @@ namespace Spartan
         
         bool IsSuitable(const uint16_t flags)  { return m_flags == flags; }
 
-        static const ShaderGBuffer* GenerateVariation(Context* context, const uint16_t flags);
-        static const auto& GetVariations() { return m_variations; }
+        static void GenerateVariation(Context* context, const uint16_t flags);
+        static const std::unordered_map<uint16_t, std::shared_ptr<ShaderGBuffer>>& GetVariations() { return m_variations; }
 
     private:
-        static ShaderGBuffer* Compile(Context* context, const uint16_t flags);
+        static void CompileVariation(Context* context, const uint16_t flags);
 
         uint16_t m_flags = 0;
         static std::unordered_map<uint16_t, std::shared_ptr<ShaderGBuffer>> m_variations;

@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <array>
 #include "../Math/Vector2.h"
 #include "../Core/ISubsystem.h"
+#include "../Core/Variant.h"
 //=============================
 
 namespace Spartan
@@ -32,13 +33,13 @@ namespace Spartan
     enum class KeyCode
     {
         // Keyboard
-        F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15,/*Function*/ 
-        Alpha0, Alpha1, Alpha2, Alpha3, Alpha4, Alpha5, Alpha6, Alpha7, Alpha8, Alpha9,/*Numbers*/
-        Keypad0, Keypad1, Keypad2, Keypad3, Keypad4, Keypad5, Keypad6, Keypad7, Keypad8, Keypad9,/*Numpad*/
-        Q, W, E, R, T, Y, U, I, O, P,/*Letters*/
+        F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15,
+        Alpha0, Alpha1, Alpha2, Alpha3, Alpha4, Alpha5, Alpha6, Alpha7, Alpha8, Alpha9,
+        Keypad0, Keypad1, Keypad2, Keypad3, Keypad4, Keypad5, Keypad6, Keypad7, Keypad8, Keypad9,
+        Q, W, E, R, T, Y, U, I, O, P,
         A, S, D, F, G, H, J, K, L,
         Z, X, C, V, B, N, M,
-        Esc,/*Controls*/ 
+        Esc,
         Tab,
         Shift_Left, Shift_Right,
         Ctrl_Left, Ctrl_Right,
@@ -68,12 +69,19 @@ namespace Spartan
         Button_B,
         Button_X,
         Button_Y,
-        Start,
         Back,
-        Left_Thumb,
-        Right_Thumb,
+        Guide,
+        Start,
+        Left_Stick,
+        Right_Stick,
         Left_Shoulder,
-        Right_Shoulder
+        Right_Shoulder,
+        Misc1,    // Xbox Series X share button, PS5 microphone button, Nintendo Switch Pro capture button
+        Paddle1,  // Xbox Elite paddle P1
+        Paddle2,  // Xbox Elite paddle P3
+        Paddle3,  // Xbox Elite paddle P2
+        Paddle4,  // Xbox Elite paddle P4
+        Touchpad, // PS4/PS5 touchpad button
     };
 
     class SPARTAN_CLASS Input : public ISubsystem
@@ -82,58 +90,72 @@ namespace Spartan
         Input(Context* context);
         ~Input() = default;
 
-        void OnWindowData();
-        //= ISubsystem ======================
-        void Tick(float delta_time) override;
-        //===================================
-        
+        //= ISubsystem ========================
+        void OnTick(float delta_time) override;
+        void OnPostTick() override;
+        //=====================================
+
+        // Polling driven input
+        void PollMouse();
+        void PollKeyboard();
+
+        // Event driven input
+        void OnEvent(const Variant& event_variant);
+        void OnEventMouse(void* event_mouse);
+        void OnEventController(void* event_controller);
+
         // Keys
         bool GetKey(const KeyCode key)      { return m_keys[static_cast<uint32_t>(key)]; }                                  // Returns true while the button identified by KeyCode is held down.
         bool GetKeyDown(const KeyCode key)  { return GetKey(key) && !m_keys_previous_frame[static_cast<uint32_t>(key)]; }   // Returns true during the frame the user pressed down the button identified by KeyCode.
         bool GetKeyUp(const KeyCode key)    { return !GetKey(key) && m_keys_previous_frame[static_cast<uint32_t>(key)]; }   // Returns true the first frame the user releases the button identified by KeyCode.
 
         // Mouse
-        void SetMouseVisible(const bool visible);
+        void SetMouseCursorVisible(const bool visible);
+        bool GetMouseCursorVisible()                            const { return m_mouse_cursor_visible; }
         void SetMouseIsInViewport(const bool is_in_viewport)          { m_mouse_is_in_viewport = is_in_viewport; }
         bool GetMouseIsInViewport()                             const { return m_mouse_is_in_viewport; }
         const Math::Vector2& GetMousePosition()                 const { return m_mouse_position; }
         void SetMousePosition(const Math::Vector2& position);
         const Math::Vector2& GetMouseDelta()                    const { return m_mouse_delta; }
-        float GetMouseWheelDelta()                              const { return m_mouse_wheel_delta; }
+        const Math::Vector2& GetMouseWheelDelta()               const { return m_mouse_wheel_delta; }
+        void SetEditorViewportOffset(const Math::Vector2& offset)     { m_editor_viewport_offset = offset; }
+        const Math::Vector2 GetMousePositionRelativeToWindow() const;
+        const Math::Vector2 GetMousePositionRelativeToEditorViewport() const;
 
-        // Gamepad
-        bool GamepadIsConnected() const                         { return m_gamepad_connected; }
-        const Math::Vector2& GetGamepadThumbStickLeft() const   { return m_gamepad_thumb_left; }
-        const Math::Vector2& GetGamepadThumbStickRight() const  { return m_gamepad_thumb_right; }
-        float GetGamepadTriggerLeft() const                     { return m_gamepad_trigger_left; }
-        float GetGamepadTriggerRight() const                    { return m_gamepad_trigger_right; }
-        // Vibrate the gamepad. Motor speed range is from 0.0 to 1.0f
-        // The left motor is the low-frequency rumble motor. The right motor is the high-frequency rumble motor. 
+        // Controller
+        bool ControllerIsConnected()                        const { return m_controller_connected; }
+        const Math::Vector2& GetControllerThumbStickLeft()  const { return m_controller_thumb_left; }
+        const Math::Vector2& GetControllerThumbStickRight() const { return m_controller_thumb_right; }
+        float GetControllerTriggerLeft()                    const { return m_controller_trigger_left; }
+        float GetControllerTriggerRight()                   const { return m_gamepad_trigger_right; }
+        // Vibrate the gamepad.
+        // Motor speed range is from 0.0 to 1.0f.
+        // The left motor is the low-frequency rumble motor.
+        // The right motor is the high-frequency rumble motor. 
         // The two motors are not the same, and they create different vibration effects.
-        bool GamepadVibrate(float left_motor_speed, float right_motor_speed) const;
+        bool GamepadVibrate(const float left_motor_speed, const float right_motor_speed) const;
 
     private:
         // Keys
-        std::array<bool, 99> m_keys;
-        std::array<bool, 99> m_keys_previous_frame;
+        std::array<bool, 107> m_keys;
+        std::array<bool, 107> m_keys_previous_frame;
         uint32_t start_index_mouse      = 83;
         uint32_t start_index_gamepad    = 86;
 
         // Mouse
-        Math::Vector2 m_mouse_position  = Math::Vector2::Zero;
-        Math::Vector2 m_mouse_delta     = Math::Vector2::Zero;
-        float m_mouse_wheel_delta       = 0;
-        bool m_mouse_is_in_viewport     = true;
+        Math::Vector2 m_mouse_position          = Math::Vector2::Zero;
+        Math::Vector2 m_mouse_delta             = Math::Vector2::Zero;
+        Math::Vector2 m_mouse_wheel_delta       = Math::Vector2::Zero;
+        Math::Vector2 m_editor_viewport_offset  = Math::Vector2::Zero;
+        bool m_mouse_is_in_viewport             = true;
+        bool m_mouse_cursor_visible             = true;
 
-        // Gamepad   
-        bool m_gamepad_connected            = false;
-        Math::Vector2 m_gamepad_thumb_left  = Math::Vector2::Zero;
-        Math::Vector2 m_gamepad_thumb_right = Math::Vector2::Zero;
-        float m_gamepad_trigger_left        = 0.0f;
-        float m_gamepad_trigger_right       = 0.0f;
-
-        // Misc
-        bool m_is_new_frame         = false;
-        bool m_check_for_new_device = false;
+        // Controller
+        void* m_controller                      = nullptr;
+        bool m_controller_connected             = false;
+        Math::Vector2 m_controller_thumb_left   = Math::Vector2::Zero;
+        Math::Vector2 m_controller_thumb_right  = Math::Vector2::Zero;
+        float m_controller_trigger_left         = 0.0f;
+        float m_gamepad_trigger_right           = 0.0f;
     };
 }

@@ -437,7 +437,7 @@ namespace Spartan
 
     void Light::CreateShadowMap()
     {
-        if (!m_renderer || !m_renderer->IsInitialized())
+        if (!m_renderer || !m_renderer->IsInitialised())
             return;
 
         // Early exit if there is no change in shadow map resolution

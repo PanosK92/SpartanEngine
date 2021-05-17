@@ -151,7 +151,7 @@ namespace Spartan::d3d11_utility
                 adapter_desc.VendorId,                                      // vendor id
                 RHI_PhysicalDevice_Unknown,                                 // type
                 &name[0],                                                   // name
-                static_cast<uint32_t>(adapter_desc.DedicatedVideoMemory),   // memory
+                static_cast<uint64_t>(adapter_desc.DedicatedVideoMemory),   // memory
                 static_cast<void*>(display_adapter))                        // data
             );
         }
