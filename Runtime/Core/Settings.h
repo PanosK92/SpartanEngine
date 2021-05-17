@@ -61,12 +61,12 @@ namespace Spartan
         const auto& GetThirdPartyLibs() const { return m_third_party_libs; }
         //======================================================================================================
 
-        //= Properties ==================================================================
+        //= Properties =========================================================================
         bool GetIsFullScreen()                      const { return m_is_fullscreen; }
         bool GetIsMouseVisible()                    const { return m_is_mouse_visible; }
-        bool Loaded()                               const { return m_loaded; }
+        bool HasLoadedUserSettings()                const { return m_has_loaded_user_settings; }
         const Math::Vector2& GetResolutionOutput()  const { return m_resolution_output; }
-        //===============================================================================
+        //======================================================================================
 
     private:
         void Save() const;
@@ -85,7 +85,7 @@ namespace Spartan
         uint32_t m_tonemapping              = 0;
         uint32_t m_max_thread_count         = 0;
         double m_fps_limit                  = 0;
-        bool m_loaded                       = false;
+        bool m_has_loaded_user_settings     = false;
         Context* m_context                  = nullptr;
         std::vector<ThirdPartyLib> m_third_party_libs;
     };

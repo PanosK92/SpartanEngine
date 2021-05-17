@@ -164,7 +164,7 @@ namespace Spartan
         // Close the file.
         _Settings::fin.close();
 
-        m_loaded = true;
+        m_has_loaded_user_settings = true;
     }
 
     void Settings::Map() const
