@@ -72,18 +72,18 @@ Platform | API | Status | Quality | Binaries
 ##### v0.32-35 (WIP)
 Feature     					 	| Completion 	| Notes 
 :-          					 	| :-         	| :-
-SDL2 integration 					| 100%		  	| Use SDL2 for window creation and input (this also enables PlayStation controller support)
-Screen space global illumination 	| 100%		  	| One bounce of indirect diffuse and specular light
-Depth-of-field					 	| 90%       	| Controlled by Camera aperture (fix some remaining bugs)
-Temporal upsampling					| 10%		  	| Reconstruct a high resolution output from a low resolution input
-C# scripting (Replace AngelScript) 	| 50%			| Using Mono (no engine API exposed yet)
+SDL integration 					| 100%		  	| Use SDL for window creation and input (this also enables PlayStation controller support).
+Screen space global illumination 	| 100%		  	| One bounce of indirect diffuse and specular light.
+Depth-of-field					 	| 90%       	| Controlled by Camera aperture (fix some remaining bugs).
+Temporal upsampling					| 10%		  	| Reconstruct a high resolution output from a low resolution input.
+C# scripting (Replace AngelScript) 	| 50%			| Using Mono (no engine API exposed yet).
 Vulkan polishing 	 				| -		  		| Optimise to outperform D3D11 in all cases and improve stability, things which will also make the engine API better.
 DirectX 12						 	| -				| Low priority, after the engine API has matured thanks to Vulkan, D3D12 will take little time to add.
-Eye Adaptation 					 	| -          	| Low priority
-Subsurface Scattering 			 	| -          	| Low priority
+Eye Adaptation 					 	| -          	| Low priority.
+Subsurface Scattering 			 	| -          	| Low priority.
 Ray traced shadows				 	| -          	| -
 Ray traced reflections			 	| -          	| -
-Linux support			 	        | -          	| Setup a virtual machine, get Vulkan running. Might bring new people into the project.
+Linux support			 	        | -          	| Vulkan and SDL is there, working on a linx port is now possible.
 
 ###### Future
 - Skeletal Animation.
