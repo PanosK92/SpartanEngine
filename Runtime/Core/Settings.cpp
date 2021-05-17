@@ -74,19 +74,10 @@ namespace Spartan
         m_resolution_output.y   = static_cast<float>(Display::GetHeight());
         m_resolution_render     = m_resolution_output;
 
-        // Register third party libs
-        {
-            // Register pugixml
-            const auto major = to_string(PUGIXML_VERSION / 1000);
-            const auto minor = to_string(PUGIXML_VERSION).erase(0, 1).erase(1, 1);
-            RegisterThirdPartyLib("pugixml", major + "." + minor, "https://github.com/zeux/pugixml");
-
-            // Register SPIRV-Cross
-            RegisterThirdPartyLib("SPIRV-Cross", "2020-01-16", "https://github.com/KhronosGroup/SPIRV-Cross");
-
-            // Register DirectXShaderCompiler
-            RegisterThirdPartyLib("DirectXShaderCompiler", "1.6 - 1.5.0.2860", "https://github.com/microsoft/DirectXShaderCompiler");
-        }
+        // Register third party libs which don't register on their own as they are not part of some other initiliasation procedure
+        RegisterThirdPartyLib("pugixml", "1.11.46", "https://github.com/zeux/pugixml");
+        RegisterThirdPartyLib("SPIRV-Cross", "2020-01-16", "https://github.com/KhronosGroup/SPIRV-Cross");
+        RegisterThirdPartyLib("DirectXShaderCompiler", "1.6.2104", "https://github.com/microsoft/DirectXShaderCompiler");
     }
 
     Settings::~Settings()
