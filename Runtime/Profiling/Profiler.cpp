@@ -51,7 +51,7 @@ namespace Spartan
         ClearRhiMetrics();
     }
 
-    bool Profiler::Initialize()
+    bool Profiler::OnInitialise()
     {
         m_resource_manager    = m_context->GetSubsystem<ResourceCache>();
         m_renderer            = m_context->GetSubsystem<Renderer>();
@@ -60,7 +60,7 @@ namespace Spartan
         return true;
     }
 
-    void Profiler::Tick(float delta_time)
+    void Profiler::OnTick(float delta_time)
     {
         if (!m_renderer)
             return;

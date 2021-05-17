@@ -33,44 +33,26 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_Shader::RHI_Shader(Context* context) : SpartanObject(context)
+    RHI_Shader::RHI_Shader(Context* context, const RHI_Vertex_Type vertex_type) : SpartanObject(context)
     {
         m_rhi_device    = context->GetSubsystem<Renderer>()->GetRhiDevice();
         m_input_layout  = make_shared<RHI_InputLayout>(m_rhi_device);
+        m_vertex_type   = vertex_type;
     }
 
-    template <typename T>
-    void RHI_Shader::Compile(const RHI_Shader_Type type, const string& shader)
+    void RHI_Shader::Compile2()
     {
-        m_shader_type = type;
-        m_vertex_type = RHI_Vertex_Type_To_Enum<T>();
-
-        // Can also be the source
-        const bool is_file = FileSystem::IsFile(shader);
-
-        // Deduce name and file path
-        if (is_file)
-        {
-            m_name      = FileSystem::GetFileNameFromFilePath(shader);
-            m_file_path = shader;
-        }
-        else
-        {
-            m_name.clear();
-            m_file_path.clear();
-        }
-
         // Compile
         m_compilation_state = Shader_Compilation_State::Compiling;
-        m_resource          = _Compile(shader);
+        m_resource          = Compile3();
         m_compilation_state = m_resource ? Shader_Compilation_State::Succeeded : Shader_Compilation_State::Failed;
 
         // Log compilation result
         {
             string type_str = "unknown";
-            type_str        = type == RHI_Shader_Vertex     ? "vertex"   : type_str;
-            type_str        = type == RHI_Shader_Pixel      ? "pixel"    : type_str;
-            type_str        = type == RHI_Shader_Compute    ? "compute"  : type_str;
+            type_str        = m_shader_type == RHI_Shader_Vertex     ? "vertex"   : type_str;
+            type_str        = m_shader_type == RHI_Shader_Pixel      ? "pixel"    : type_str;
+            type_str        = m_shader_type == RHI_Shader_Compute    ? "compute"  : type_str;
 
             string defines;
             for (const auto& define : m_defines)
@@ -85,34 +67,109 @@ namespace Spartan
             {
                 if (defines.empty())
                 {
-                    LOG_INFO("Successfully compiled %s shader from \"%s\"", type_str.c_str(), shader.c_str());
+                    LOG_INFO("Successfully compiled %s shader \"%s\".", type_str.c_str(), m_name.c_str());
                 }
                 else
                 {
-                    LOG_INFO("Successfully compiled %s shader from \"%s\" with definitions \"%s\"", type_str.c_str(), shader.c_str(), defines.c_str());
+                    LOG_INFO("Successfully compiled %s shader \"%s\" with definitions \"%s\".", type_str.c_str(), m_name.c_str(), defines.c_str());
                 }
             }
             else if (m_compilation_state == Shader_Compilation_State::Failed)
             {
                 if (defines.empty())
                 {
-                    LOG_ERROR("Failed to compile %s shader from \"%s\"", type_str.c_str(), shader.c_str());
+                    LOG_ERROR("Failed to compile %s shader \"%s\".", type_str.c_str(), m_name.c_str());
                 }
                 else
                 {
-                    LOG_ERROR("Failed to compile %s shader from \"%s\" with definitions \"%s\"", type_str.c_str(), shader.c_str(), defines.c_str());
+                    LOG_ERROR("Failed to compile %s shader \"%s\" with definitions \"%s\".", type_str.c_str(), m_name.c_str(), defines.c_str());
                 }
             }
         }
     }
 
-    template <typename T>
-    void RHI_Shader::CompileAsync(const RHI_Shader_Type type, const string& shader)
+    void RHI_Shader::Compile(const RHI_Shader_Type type, const std::string& shader, bool async)
     {
-        m_context->GetSubsystem<Threading>()->AddTask([this, type, shader]()
+        m_shader_type = type;
+
+        // Source
+        if (!FileSystem::IsFile(shader))
         {
-            Compile<T>(type, shader);
-        });
+            m_name      = "N/A";
+            m_file_path = "N/A";
+            m_source    = shader;
+        }
+        else // File
+        {
+            m_name      = FileSystem::GetFileNameFromFilePath(shader);
+            m_file_path = shader;
+            ParseSource(shader);
+        }
+
+        // Compile
+        if (!async)
+        {
+            Compile2();
+        }
+        else
+        {
+            m_context->GetSubsystem<Threading>()->AddTask([this]()
+            {
+                Compile2();
+            });
+        }
+    }
+
+    void RHI_Shader::ParseSource(const string& file_path)
+    {
+        static string include_directive_prefix = "#include \"";
+
+        // Read the file
+        ifstream in(file_path);
+        stringstream buffer;
+        buffer << in.rdbuf();
+
+        // Skip already parsed include directives (avoid recursive include directives)
+        if (find(m_file_paths_multiple.begin(), m_file_paths_multiple.end(), file_path) == m_file_paths_multiple.end())
+        {
+            m_file_paths_multiple.emplace_back(file_path);
+        }
+        else
+        {
+            return;
+        }
+
+        string file_source = buffer.str();
+        string file_directory = FileSystem::GetDirectoryFromFilePath(file_path);
+        
+        
+        // Build combined source (go through every line)
+        istringstream stream(file_source);
+        string source_line;
+        while (getline(stream, source_line))
+        {
+            bool is_include_directive = source_line.find(include_directive_prefix) != string::npos;
+
+            if (!is_include_directive)
+            {
+                m_source += source_line + "\n";
+            }
+            else
+            {
+                string file_name = FileSystem::GetStringBetweenExpressions(source_line, include_directive_prefix, "\"");
+                string include_file_path = file_directory + file_name;
+                ParseSource(include_file_path);
+            }
+        }
+
+        // Get name
+        m_names.emplace_back(FileSystem::GetFileNameFromFilePath(file_path));
+
+        // Get file path
+        m_file_paths.emplace_back(file_path);
+
+        // Get source
+        m_sources.emplace_back(file_source);
     }
 
     void RHI_Shader::WaitForCompilation()
@@ -129,6 +186,17 @@ namespace Spartan
         {
             LOG_ERROR("Shader \"%s\" failed compile", m_name.c_str());
         }
+    }
+
+    void RHI_Shader::SetSource(const uint32_t index, const std::string& source)
+    {
+        if (index >= m_sources.size())
+        {
+            LOG_ERROR("No source with index %d exists.", index);
+            return;
+        }
+
+        m_sources[index] = source;
     }
 
     const char* RHI_Shader::GetEntryPoint() const
@@ -183,13 +251,4 @@ namespace Spartan
 
         return shader_model;
     }
-
-    //= Explicit template instantiation =======================================================================
-    template void RHI_Shader::CompileAsync<RHI_Vertex_Undefined>(const RHI_Shader_Type, const std::string&);
-    template void RHI_Shader::CompileAsync<RHI_Vertex_Pos>(const RHI_Shader_Type, const std::string&);
-    template void RHI_Shader::CompileAsync<RHI_Vertex_PosTex>(const RHI_Shader_Type, const std::string&);
-    template void RHI_Shader::CompileAsync<RHI_Vertex_PosCol>(const RHI_Shader_Type, const std::string&);
-    template void RHI_Shader::CompileAsync<RHI_Vertex_Pos2dTexCol8>(const RHI_Shader_Type, const std::string&);
-    template void RHI_Shader::CompileAsync<RHI_Vertex_PosTexNorTan>(const RHI_Shader_Type, const std::string&);
-    //=========================================================================================================
 }

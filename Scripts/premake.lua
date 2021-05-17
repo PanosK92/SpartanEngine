@@ -52,7 +52,7 @@ elseif API_GRAPHICS == "vulkan" then
 	IGNORE_FILES[1]				= RUNTIME_DIR .. "/RHI/D3D12/**"
 	ADDITIONAL_INCLUDES[0] 		= "../ThirdParty/DirectXShaderCompiler";
 	ADDITIONAL_INCLUDES[1] 		= "../ThirdParty/SPIRV-Cross-2020-09-17";
-	ADDITIONAL_INCLUDES[2] 		= "../ThirdParty/Vulkan_1.2.170.0";
+	ADDITIONAL_INCLUDES[2] 		= "../ThirdParty/Vulkan_1.2.176.1";
 	ADDITIONAL_LIBRARIES[0] 	= "dxcompiler";
 	ADDITIONAL_LIBRARIES[1] 	= "spirv-cross-core";
 	ADDITIONAL_LIBRARIES[2] 	= "spirv-cross-hlsl";
@@ -137,6 +137,7 @@ project (RUNTIME_NAME)
 	includedirs { "../ThirdParty/FreeType_2.10.4" }
 	includedirs { "../ThirdParty/pugixml_1.10" }
 	includedirs { "../ThirdParty/Mono_6.12.0.86" }
+	includedirs { "../ThirdParty/SDL2_2.0.14" }
     includedirs { "../Runtime/Core" }
 	includedirs { ADDITIONAL_INCLUDES[0], ADDITIONAL_INCLUDES[1], ADDITIONAL_INCLUDES[2] }
 
@@ -155,6 +156,7 @@ project (RUNTIME_NAME)
 		links { "pugixml_debug" }
 		links { "IrrXML_debug" }
 		links { "libmono-static-sgen_debug.lib" }
+		links { "SDL2_debug.lib" }
 		links { ADDITIONAL_LIBRARIES_DBG[0], ADDITIONAL_LIBRARIES_DBG[1], ADDITIONAL_LIBRARIES_DBG[2], ADDITIONAL_LIBRARIES_DBG[3] }
 
 	--	"Release"
@@ -172,6 +174,7 @@ project (RUNTIME_NAME)
 		links { "pugixml" }
 		links { "IrrXML" }
 		links { "libmono-static-sgen.lib" }
+		links { "SDL2.lib" }
 		links { ADDITIONAL_LIBRARIES[0], ADDITIONAL_LIBRARIES[1], ADDITIONAL_LIBRARIES[2], ADDITIONAL_LIBRARIES[3] }
 
 -- Editor --------------------------------------------------------------------------------------------------
@@ -201,6 +204,7 @@ project (EDITOR_NAME)
 	-- Includes
 	includedirs { "../" .. RUNTIME_NAME }
 	includedirs { "../ThirdParty/FreeType_2.10.4" } -- ImGui font atlas
+	includedirs { "../ThirdParty/SDL2_2.0.14" } -- ImGui window
 
 	-- Libraries
 	libdirs (LIBRARY_DIR)
@@ -209,8 +213,10 @@ project (EDITOR_NAME)
 	filter "configurations:Debug"
 		targetdir (TARGET_DIR_DEBUG)
 		debugdir (TARGET_DIR_DEBUG)
+		links { "SDL2_debug.lib" }
 
 	-- "Release"
 	filter "configurations:Release"
 		targetdir (TARGET_DIR_RELEASE)
 		debugdir (TARGET_DIR_RELEASE)
+		links { "SDL2.lib" }

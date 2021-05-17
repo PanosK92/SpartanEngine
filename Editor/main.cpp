@@ -19,30 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ======
-#include "Window.h"
+//= INCLUDES =======
 #include "Editor.h"
-//=================
+#include <Windows.h>
+//==================
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
-    // Create editor
     Editor editor;
-
-    // Create window
-    Window::Create(hInstance, "Spartan " + std::string(sp_version));
-    Window::Show();
-
-    // Hook it up with the editor
-    Window::g_on_message = [&editor](Spartan::WindowData& window_data) { editor.OnWindowMessage(window_data); };
-
-    // Tick
-    while (Window::Tick())
-    {
-        editor.OnTick();
-    }
-
-    // Exit
-    Window::Destroy();
+    editor.Tick();
     return 0;
 }

@@ -51,7 +51,7 @@ namespace Spartan
         mono_jit_cleanup(m_domain);
     }
 
-    bool Scripting::Initialize()
+    bool Scripting::OnInitialise()
     {
         ScriptingHelper::resource_cache = m_context->GetSubsystem<ResourceCache>();
 

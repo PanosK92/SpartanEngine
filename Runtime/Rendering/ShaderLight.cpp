@@ -57,10 +57,10 @@ namespace Spartan
             return m_variations.at(flags).get();
 
         // Compile new shader
-        return _Compile(context, flags);
+        return CompileVariation(context, flags);
     }
 
-    ShaderLight* ShaderLight::_Compile(Context* context, const uint16_t flags)
+    ShaderLight* ShaderLight::CompileVariation(Context* context, const uint16_t flags)
     {
         // Shader source file path
         const string file_path = context->GetSubsystem<ResourceCache>()->GetResourceDirectory(ResourceDirectory::Shaders) + "\\Light.hlsl";
@@ -78,7 +78,8 @@ namespace Spartan
         shader->AddDefine("VOLUMETRIC",                 (flags & Shader_Light_Volumetric)               ? "1" : "0");
 
         // Compile
-        shader->CompileAsync(RHI_Shader_Compute, file_path);
+        bool async = true;
+        shader->Compile(RHI_Shader_Compute, file_path, async);
 
         // Save
         m_variations[flags] = shader;

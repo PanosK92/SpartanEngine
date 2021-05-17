@@ -45,7 +45,6 @@ namespace Spartan
         static std::string ConvertToUppercase(const std::string& lower);
         static std::string ReplaceExpression(const std::string& str, const std::string& from, const std::string& to);
         static std::wstring StringToWstring(const std::string& str);
-        static void GetIncludedFilePathsFromFilePath(const std::string& file_path, std::vector<std::string>& file_paths);
 
         // Paths
         static void OpenDirectoryWindow(const std::string& path);

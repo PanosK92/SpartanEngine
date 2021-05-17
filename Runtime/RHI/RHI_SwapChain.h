@@ -58,7 +58,7 @@ namespace Spartan
         uint32_t GetFlags()                     const { return m_flags; }
         uint32_t GetCmdIndex()                  const { return m_cmd_index; }
         uint32_t GetImageIndex()                const { return m_image_index; }
-        bool IsInitialized()                    const { return m_initialized; }
+        bool IsInitialised()                    const { return m_initialised; }
         bool PresentEnabled()                   const { return m_present_enabled; }
         RHI_CommandList* GetCmdList()                 { return m_cmd_index < static_cast<uint32_t>(m_cmd_lists.size()) ? m_cmd_lists[m_cmd_index].get() : nullptr; }
         RHI_Semaphore* GetImageAcquiredSemaphore()    { return m_image_acquired_semaphore[m_cmd_index].get(); }
@@ -73,7 +73,7 @@ namespace Spartan
         bool AcquireNextImage();
 
         // Properties
-        bool m_initialized      = false;
+        bool m_initialised      = false;
         bool m_windowed         = false;
         uint32_t m_buffer_count = 0;
         uint32_t m_width        = 0;

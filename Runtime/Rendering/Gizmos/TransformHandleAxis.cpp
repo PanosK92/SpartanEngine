@@ -60,7 +60,7 @@ namespace Spartan
         // First press
         if (m_is_hovered && m_input->GetKeyDown(KeyCode::Click_Left))
         {
-            m_is_editing = m_is_hovered && m_input->GetKeyDown(KeyCode::Click_Left);
+            m_is_editing = true;
         }
 
         // Editing can happen here

@@ -40,14 +40,11 @@ namespace Spartan
     {
     public:
         RHI_Shader() = default;
-        RHI_Shader(Context* context);
+        RHI_Shader(Context* context, const RHI_Vertex_Type vertex_type = RHI_Vertex_Type::Unknown);
         ~RHI_Shader();
 
         // Compilation
-        template<typename T> void Compile(const RHI_Shader_Type type, const std::string& shader);
-        void Compile(const RHI_Shader_Type type, const std::string& shader) { Compile<RHI_Vertex_Undefined>(type, shader); }
-        template<typename T> void CompileAsync(const RHI_Shader_Type type, const std::string& shader);
-        void CompileAsync(const RHI_Shader_Type type, const std::string& shader) { CompileAsync<RHI_Vertex_Undefined>(type, shader); }
+        void Compile(const RHI_Shader_Type type, const std::string& shader, bool async);
         Shader_Compilation_State GetCompilationState()  const { return m_compilation_state; }
         bool IsCompiled()                               const { return m_compilation_state == Shader_Compilation_State::Succeeded; }
         void WaitForCompilation();
@@ -56,9 +53,11 @@ namespace Spartan
         void* GetResource() const { return m_resource; }
         bool HasResource()  const { return m_resource != nullptr; }
 
-        // Name
-        const std::string& GetName() const      { return m_name; }
-        void SetName(const std::string& name)   { m_name = name; }
+        // Source
+        const std::vector<std::string>& GetNames()      const { return m_names; }
+        const std::vector<std::string>& GetFilePaths()  const { return m_file_paths; }
+        const std::vector<std::string>& GetSources()    const { return m_sources; }
+        void SetSource(const uint32_t index, const std::string& source);
 
         // Defines
         void AddDefine(const std::string& define, const std::string& value = "1")   { m_defines[define] = value; }
@@ -67,7 +66,7 @@ namespace Spartan
         // Misc
         const std::vector<RHI_Descriptor>& GetDescriptors() const { return m_descriptors; }
         const auto& GetInputLayout()                        const { return m_input_layout; } // only valid for vertex shader
-        const auto& GetFilePath()                           const { return m_file_path; }
+        const auto& GetFilePath()                           const { return m_file_paths[0]; }
         RHI_Shader_Type GetShaderStage()                    const { return m_shader_type; }
         const char* GetEntryPoint()                         const;
         const char* GetTargetProfile()                      const;
@@ -77,18 +76,23 @@ namespace Spartan
         std::shared_ptr<RHI_Device> m_rhi_device;
 
     private:
-        // All compile functions resolve to this, and this is what the underlying API implements
-        void* _Compile(const std::string& shader);
-        void _Reflect(const RHI_Shader_Type shader_type, const uint32_t* ptr, uint32_t size);
+        void ParseSource(const std::string& file_path);
+        void Compile2();
+        void* Compile3();
+        void Reflect(const RHI_Shader_Type shader_type, const uint32_t* ptr, uint32_t size);
 
-        std::string m_name;
         std::string m_file_path;
+        std::string m_source;
+        std::vector<std::string> m_names;               // The names of the files from the include directives in the shader
+        std::vector<std::string> m_file_paths;          // The file paths of the files from the include directives in the shader
+        std::vector<std::string> m_sources;             // The source of the files from the include directives in the shader
+        std::vector<std::string> m_file_paths_multiple; // The file paths of include directives which are defined multiple times in the shader
         std::unordered_map<std::string, std::string> m_defines;
         std::vector<RHI_Descriptor> m_descriptors;
         std::shared_ptr<RHI_InputLayout> m_input_layout;
         std::atomic<Shader_Compilation_State> m_compilation_state   = Shader_Compilation_State::Idle;
         RHI_Shader_Type m_shader_type                               = RHI_Shader_Unknown;
-        RHI_Vertex_Type m_vertex_type                               = RHI_Vertex_Type_Unknown;
+        RHI_Vertex_Type m_vertex_type                               = RHI_Vertex_Type::Unknown;
 
         // API 
         void* m_resource = nullptr;

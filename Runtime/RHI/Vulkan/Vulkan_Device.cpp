@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include "Spartan.h"
+#include "Window.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Semaphore.h"
 #include "../RHI_Fence.h"
@@ -133,7 +134,7 @@ namespace Spartan
         }
 
         // Find a physical device
-        if (!vulkan_utility::device::choose_physical_device(context->m_engine->GetWindowData().handle))
+        if (!vulkan_utility::device::choose_physical_device(context->GetSubsystem<Window>()->GetHandle()))
         {
             LOG_ERROR("Failed to find a suitable physical device.");
             return;

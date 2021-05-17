@@ -31,22 +31,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= FORWARD DECLARATIONS =
 namespace Spartan 
 {
-    class Context; 
+    class Window;
     class Engine;
+    class Context;
     class Renderer;
     class Profiler;
-    struct WindowData;
 }
 //========================
 
 class Editor
 {
 public:
-    Editor() = default;
+    Editor();
     ~Editor();
 
-    void OnWindowMessage(Spartan::WindowData& window_data);
-    void OnTick();
+    void Tick();
     Spartan::Context* GetContext() { return m_context; }
 
     template<typename T>
@@ -64,16 +63,11 @@ public:
     }
 
 private:
-    void Initialise(const Spartan::WindowData& window_data);
-    void ApplyStyle() const;
+    void Initialise();
     void BeginWindow();
 
-    // Editor
-    std::vector<std::shared_ptr<Widget>> m_widgets;
-    bool m_initialised  = false;
     bool m_editor_begun = false;
-
-    // Engine
     std::unique_ptr<Spartan::Engine> m_engine;
+    std::vector<std::shared_ptr<Widget>> m_widgets;
     Spartan::Context* m_context = nullptr;
 };

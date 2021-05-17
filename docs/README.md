@@ -57,7 +57,7 @@ Platform | API | Status | Quality | Binaries
 - Physics (Rigid bodies, Constraints, Colliders)
 - Entity-component system
 - Event system
-- Input (Keyboard, Mouse, Xbox controller)
+- Input (Mouse, Keyboard, Controller)
 - Debug rendering (Transform gizmo, scene grid, bounding boxes, colliders, raycasts, g-buffer visualization etc)
 - Thread pool
 - Engine rendered platform agnostic editor
@@ -72,9 +72,10 @@ Platform | API | Status | Quality | Binaries
 ##### v0.32-35 (WIP)
 Feature     					 	| Completion 	| Notes 
 :-          					 	| :-         	| :-
-Temporal upsampling					| 10%		  	| Reconstruct a high resolution output from a low resolution input
+SDL2 integration 					| 100%		  	| Use SDL2 for window creation and input (this also enables PlayStation controller support)
 Screen space global illumination 	| 100%		  	| One bounce of indirect diffuse and specular light
-Depth-of-field					 	| 100%       	| Controlled by Camera aperture
+Depth-of-field					 	| 90%       	| Controlled by Camera aperture (fix some remaining bugs)
+Temporal upsampling					| 10%		  	| Reconstruct a high resolution output from a low resolution input
 C# scripting (Replace AngelScript) 	| 50%			| Using Mono (no engine API exposed yet)
 Vulkan polishing 	 				| -		  		| Optimise to outperform D3D11 in all cases and improve stability, things which will also make the engine API better.
 DirectX 12						 	| -				| Low priority, after the engine API has matured thanks to Vulkan, D3D12 will take little time to add.

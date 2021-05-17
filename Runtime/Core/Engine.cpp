@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =========================
 #include "Spartan.h"
+#include "Window.h"
 #include "../Audio/Audio.h"
 #include "../Input/Input.h"
 #include "../Physics/Physics.h"
@@ -39,11 +40,8 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    Engine::Engine(const WindowData& window_data)
+    Engine::Engine()
     {
-        // Window
-        m_window_data = window_data;
-
         // Flags
         m_flags |= Engine_Physics;
         m_flags |= Engine_Game;
@@ -52,39 +50,39 @@ namespace Spartan
         m_context = make_shared<Context>();
         m_context->m_engine = this;
 
-        // Register subsystems
-        m_context->RegisterSubsystem<Timer>();
-        m_context->RegisterSubsystem<Threading>();
-        m_context->RegisterSubsystem<ResourceCache>();
-        m_context->RegisterSubsystem<Audio>();
-        m_context->RegisterSubsystem<Physics>();
-        m_context->RegisterSubsystem<Input>(TickType::Smoothed);
-        m_context->RegisterSubsystem<Scripting>(TickType::Smoothed);
-        m_context->RegisterSubsystem<World>(TickType::Smoothed);
-        m_context->RegisterSubsystem<Renderer>();
-        m_context->RegisterSubsystem<Profiler>();
-        m_context->RegisterSubsystem<Settings>();
+        // Register subsystems (order matters)
+        m_context->AddSubsystem<Settings>();
+        m_context->AddSubsystem<Timer>();
+        m_context->AddSubsystem<Threading>();
+        m_context->AddSubsystem<Window>();
+        m_context->AddSubsystem<Input>(TickType::Smoothed);
+        m_context->AddSubsystem<ResourceCache>();
+        m_context->AddSubsystem<Audio>();
+        m_context->AddSubsystem<Physics>();
+        m_context->AddSubsystem<Scripting>(TickType::Smoothed);
+        m_context->AddSubsystem<World>(TickType::Smoothed);
+        m_context->AddSubsystem<Renderer>();
+        m_context->AddSubsystem<Profiler>();
 
         // Initialize above subsystems
-        m_context->Initialize();
-
-        m_timer = m_context->GetSubsystem<Timer>();
+        m_context->OnInitialise();
+        m_context->OnPreTick();
     }
 
     Engine::~Engine()
     {
-        EventSystem::Get().Clear(); // this must become a subsystem
+        m_context->OnShutdown();
+
+        // Does this need to become a subsystem ?
+        EventSystem::Get().Clear();
     }
 
     void Engine::Tick() const
     {
-        m_context->Tick(TickType::Variable, static_cast<float>(m_timer->GetDeltaTimeSec()));
-        m_context->Tick(TickType::Smoothed, static_cast<float>(m_timer->GetDeltaTimeSmoothedSec()));
-    }
+        Timer* timer = m_context->GetSubsystem<Timer>();
 
-    void Engine::SetWindowData(WindowData& window_data)
-    {
-        m_window_data = window_data;
-        FIRE_EVENT(EventType::WindowData);
+        m_context->OnTick(TickType::Variable, static_cast<float>(timer->GetDeltaTimeSec()));
+        m_context->OnTick(TickType::Smoothed, static_cast<float>(timer->GetDeltaTimeSmoothedSec()));
+        m_context->OnPostTick();
     }
 }

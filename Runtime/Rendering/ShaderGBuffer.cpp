@@ -39,17 +39,17 @@ namespace Spartan
         m_flags = flags;
     }
 
-    const ShaderGBuffer* ShaderGBuffer::GenerateVariation(Context* context, const uint16_t flags)
+    void ShaderGBuffer::GenerateVariation(Context* context, const uint16_t flags)
     {
-        // Return existing shader, if it's already compiled
+        // Check if this variation is already compiled
         if (m_variations.find(flags) != m_variations.end())
-            return m_variations.at(flags).get();
+            return;
 
         // Compile new shader
-        return Compile(context, flags);
+        CompileVariation(context, flags);
     }
 
-    ShaderGBuffer* ShaderGBuffer::Compile(Context* context, const uint16_t flags)
+    void ShaderGBuffer::CompileVariation(Context* context, const uint16_t flags)
     {
         // Shader source file path
         const string file_path = context->GetSubsystem<ResourceCache>()->GetResourceDirectory(ResourceDirectory::Shaders) + "\\GBuffer.hlsl";
@@ -68,11 +68,10 @@ namespace Spartan
         shader->AddDefine("MASK_MAP",       (flags & Material_Mask)       ? "1" : "0");
 
         // Compile
-        shader->CompileAsync(RHI_Shader_Pixel, file_path);
+        bool async = true;
+        shader->Compile(RHI_Shader_Pixel, file_path, async);
 
         // Save
         m_variations[flags] = shader;
-
-        return shader.get();
     }
 }

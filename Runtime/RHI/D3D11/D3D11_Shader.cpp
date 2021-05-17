@@ -39,20 +39,11 @@ namespace Spartan
         d3d11_utility::release(*reinterpret_cast<ID3D11VertexShader**>(&m_resource));
     }
 
-    void* RHI_Shader::_Compile(const string& shader)
+    void* RHI_Shader::Compile3()
     {
-        if (!m_rhi_device)
-        {
-            LOG_ERROR_INVALID_INTERNALS();
-            return nullptr;
-        }
-
-        auto d3d11_device = m_rhi_device->GetContextRhi()->device;
-        if (!d3d11_device)
-        {
-            LOG_ERROR_INVALID_INTERNALS();
-            return nullptr;
-        }
+        SP_ASSERT(m_rhi_device != nullptr);
+        ID3D11Device5* d3d11_device = m_rhi_device->GetContextRhi()->device;
+        SP_ASSERT(d3d11_device != nullptr);
 
         // Compile flags
         uint32_t compile_flags = 0;
@@ -77,46 +68,21 @@ namespace Spartan
 
         // Compile
         ID3DBlob* blob_error    = nullptr;
-        ID3DBlob* shader_blob    = nullptr;
-        HRESULT result;
-        if (FileSystem::IsFile(shader)) // From file ?
-        {
-            const auto file_path = FileSystem::StringToWstring(shader);
-            result = D3DCompileFromFile
-            (
-                file_path.c_str(),
-                defines.data(),
-                D3D_COMPILE_STANDARD_FILE_INCLUDE,
-                GetEntryPoint(),
-                GetTargetProfile(),
-                compile_flags,
-                0,
-                &shader_blob,
-                &blob_error
-            );
-        }
-        else if(shader.find("return") != std::string::npos) // From source ?
-        {
-            result = D3DCompile
-            (
-                shader.c_str(),
-                static_cast<SIZE_T>(shader.size()),
-                nullptr,
-                defines.data(),
-                nullptr,
-                GetEntryPoint(),
-                GetTargetProfile(),
-                compile_flags,
-                0,
-                &shader_blob,
-                &blob_error
-            );
-        }
-        else
-        {
-            LOG_ERROR("\"%s\" is not file or a source", shader.c_str());
-            return nullptr;
-        }
+        ID3DBlob* shader_blob   = nullptr;
+        HRESULT result = D3DCompile
+        (
+            m_source.c_str(),
+            static_cast<SIZE_T>(m_source.size()),
+            nullptr,
+            defines.data(),
+            nullptr,
+            GetEntryPoint(),
+            GetTargetProfile(),
+            compile_flags,
+            0,
+            &shader_blob,
+            &blob_error
+        );
 
         // Log any compilation possible warnings and/or errors
         if (blob_error)
@@ -128,11 +94,11 @@ namespace Spartan
                 const auto is_error = line.find("error") != string::npos;
                 if (is_error)
                 {
-                    LOG_ERROR(line);
+                    LOG_ERROR(m_name + "(" + FileSystem::GetStringAfterExpression(line, "("));
                 }
                 else
                 {
-                    LOG_WARNING(line);
+                    LOG_WARNING(m_name + "(" + FileSystem::GetStringAfterExpression(line, "("));
                 }
             }
 
@@ -142,15 +108,7 @@ namespace Spartan
         // Log compilation failure
         if (FAILED(result) || !shader_blob)
         {
-            const auto shader_name = FileSystem::GetFileNameFromFilePath(shader);
-            if (result == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
-            {
-                LOG_ERROR("Failed to find shader \"%s\" with path \"%s\".", shader_name.c_str(), shader.c_str());
-            }
-            else
-            {
-                LOG_ERROR("An error occurred when trying to load and compile \"%s\"", shader_name.c_str());
-            }
+            LOG_ERROR("An error occurred when trying to load and compile \"%s\"", m_name.c_str());
         }
 
         // Create shader
@@ -167,7 +125,7 @@ namespace Spartan
                 // Create input layout
                 if (!m_input_layout->Create(m_vertex_type, shader_blob))
                 {
-                    LOG_ERROR("Failed to create input layout for %s", FileSystem::GetFileNameFromFilePath(m_file_path).c_str());
+                    LOG_ERROR("Failed to create input layout for %s", FileSystem::GetFileNameFromFilePath(m_name).c_str());
                 }
             }
             else if (m_shader_type == RHI_Shader_Pixel)
@@ -191,7 +149,7 @@ namespace Spartan
         return shader_view;
     }
 
-    void RHI_Shader::_Reflect(const RHI_Shader_Type shader_type, const uint32_t* ptr, uint32_t size)
+    void RHI_Shader::Reflect(const RHI_Shader_Type shader_type, const uint32_t* ptr, uint32_t size)
     {
 
     }

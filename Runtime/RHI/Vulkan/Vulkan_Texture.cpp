@@ -198,7 +198,7 @@ namespace Spartan
 
     RHI_Texture2D::~RHI_Texture2D()
     {
-        if (!m_rhi_device || !m_rhi_device->IsInitialized())
+        if (!m_rhi_device || !m_rhi_device->IsInitialised())
         {
             LOG_ERROR("Invalid RHI Device.");
         }
@@ -252,6 +252,12 @@ namespace Spartan
 
     bool RHI_Texture2D::CreateResourceGpu()
     {
+        if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device)
+        {
+            LOG_ERROR_INVALID_PARAMETER();
+            return false;
+
+        }
         // Create image
         if (!vulkan_utility::image::create(this))
         {
@@ -343,7 +349,7 @@ namespace Spartan
 
     RHI_TextureCube::~RHI_TextureCube()
     {
-        if (!m_rhi_device->IsInitialized())
+        if (!m_rhi_device->IsInitialised())
             return;
 
         m_rhi_device->Queue_WaitAll();
@@ -361,6 +367,12 @@ namespace Spartan
 
     bool RHI_TextureCube::CreateResourceGpu()
     {
+        if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device)
+        {
+            LOG_ERROR_INVALID_PARAMETER();
+            return false;
+        }
+
         // Create image
         if (!vulkan_utility::image::create(this))
         {

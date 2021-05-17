@@ -51,25 +51,29 @@ namespace Spartan
         Settings(Context* context);
         ~Settings();
 
-        //= Subsystem =============
-        bool Initialize() override;
-        //=========================
+        //= Subsystem ==============
+        void OnPreTick() override;
+        void OnShutdown() override;
+        //==========================
 
-        //= MISC =======================================================
-        bool GetIsFullScreen()      const { return m_is_fullscreen; }
-        bool GetIsMouseVisible()    const { return m_is_mouse_visible; }
-        bool Loaded()               const { return m_loaded; }
-        //==============================================================
-
+        //= Third party libraries registration =================================================================
         void RegisterThirdPartyLib(const std::string& name, const std::string& version, const std::string& url);
         const auto& GetThirdPartyLibs() const { return m_third_party_libs; }
+        //======================================================================================================
+
+        //= Properties ==================================================================
+        bool GetIsFullScreen()                      const { return m_is_fullscreen; }
+        bool GetIsMouseVisible()                    const { return m_is_mouse_visible; }
+        bool Loaded()                               const { return m_loaded; }
+        const Math::Vector2& GetResolutionOutput()  const { return m_resolution_output; }
+        //===============================================================================
 
     private:
         void Save() const;
         void Load();
 
-        void Reflect();
         void Map() const;
+        void Reflect();
 
         bool m_is_fullscreen                = false;
         bool m_is_mouse_visible             = true;

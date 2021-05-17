@@ -55,7 +55,7 @@ namespace Spartan::ScriptingApi
     static bool Input_GetKeyUp(const KeyCode key)     { return g_input->GetKeyUp(key); }
     static _vector2 Input_GetMousePosition()          { return _vector2{ g_input->GetMousePosition().x, g_input->GetMousePosition().y }; }
     static _vector2 Input_GetMouseDelta()             { return _vector2{ g_input->GetMouseDelta().x, g_input->GetMouseDelta().y }; }
-    static float Input_GetMouseWheelDelta()           { return g_input->GetMouseWheelDelta(); }
+    static float Input_GetMouseWheelDelta()           { return g_input->GetMouseWheelDelta().y; }
 
     // Callbacks - World
     static bool World_Save(const std::string& file_path) { return g_world->SaveToFile(file_path); }

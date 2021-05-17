@@ -35,7 +35,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/World.h"
 #include "World/Components/Camera.h"
 #include <chrono>
-#include "Window.h"
 #include "Display/Display.h"
 //=======================================
 
@@ -97,6 +96,10 @@ public:
 
     void PickEntity()
     {
+        // If the transform handle hasn't finished editing don't do anything.
+        if (g_renderer->IsTransformHandleEditing())
+            return;
+
         // Get camera
         const auto& camera = g_renderer->GetCamera();
         if (!camera)
@@ -104,7 +107,7 @@ public:
 
         // Pick the world
         std::shared_ptr<Spartan::Entity> entity;
-        camera->Pick(g_input->GetMousePosition(), entity);
+        camera->Pick(entity);
 
         // Set the transform gizmo to the selected entity
         SetSelectedEntity(entity);
@@ -116,7 +119,7 @@ public:
     void SetSelectedEntity(const std::shared_ptr<Spartan::Entity>& entity)
     {
         // keep returned entity instead as the transform gizmo can decide to reject it
-        g_selected_entity = g_renderer->SnapTransformGizmoTo(entity);
+        g_selected_entity = g_renderer->SnapTransformHandleToEntity(entity);
     }
 
     Spartan::Context*               g_context               = nullptr;
@@ -220,8 +223,8 @@ namespace ImGuiEx
             ImVec2(size, size),
             ImVec2(0, 0),
             ImVec2(1, 1),
-            default_tint,            // tint
-            ImColor(0, 0, 0, 0)        // border
+            default_tint,       // tint
+            ImColor(0, 0, 0, 0) // border
         );
     }
 
@@ -343,19 +346,20 @@ namespace ImGuiEx
     // A drag float which will wrap the mouse cursor around the edges of the screen
     inline void DragFloatWrap(const char* label, float* v, float v_speed = 1.0f, float v_min = 0.0f, float v_max = 0.0f, const char* format = "%.3f", const ImGuiSliderFlags flags = 0)
     {
+        // Drag
         ImGui::DragFloat(label, v, v_speed, v_min, v_max, format, flags);
 
+        // Wrap
         if (ImGui::IsItemEdited() && ImGui::IsMouseDown(0))
         {
-            Spartan::Input* input       = EditorHelper::Get().g_input;
-            Spartan::Math::Vector2 pos  = input->GetMousePosition();
+            Spartan::Math::Vector2 pos  = EditorHelper::Get().g_input->GetMousePosition();
             uint32_t edge_padding       = 5;
 
             bool wrapped = false;
             if (pos.x >= Spartan::Display::GetWidth() - edge_padding)
             {
                 pos.x = static_cast<float>(edge_padding + 1);
-                wrapped = true;              
+                wrapped = true;
             }
             else if (pos.x <= edge_padding)
             {

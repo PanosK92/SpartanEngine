@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Camera.h"
 #include "Transform.h"
 #include "Renderable.h"
+#include "../Display/Display.h"
 #include "../Entity.h"
 #include "../World.h"
 #include "../../Input/Input.h"
@@ -165,21 +166,15 @@ namespace Spartan
         return m_frustrum.IsVisible(center, extents);
     }
 
-    bool Camera::Pick(const Vector2& mouse_position, shared_ptr<Entity>& picked)
+    bool Camera::Pick(shared_ptr<Entity>& picked)
     {
-        const RHI_Viewport& viewport            = m_renderer->GetViewport();
-        const Vector2& offset                   = m_renderer->GetViewportOffset();
-        const Vector2 mouse_position_relative   = mouse_position - offset;
-
-        // Ensure the ray is inside the viewport
-        const auto x_outside = (mouse_position.x < offset.x) || (mouse_position.x > offset.x + viewport.width);
-        const auto y_outside = (mouse_position.y < offset.y) || (mouse_position.y > offset.y + viewport.height);
-        if (x_outside || y_outside)
+        // Ensure the mouse is inside the viewport
+        if (!m_input->GetMouseIsInViewport())
             return false;
 
         // Create mouse ray
         Vector3 ray_start   = GetTransform()->GetPosition();
-        Vector3 ray_end     = Unproject(mouse_position_relative);
+        Vector3 ray_end     = Unproject(m_input->GetMousePositionRelativeToEditorViewport());
         m_ray               = Ray(ray_start, ray_end);
 
         // Traces ray against all AABBs in the world
@@ -347,13 +342,13 @@ namespace Spartan
             if (m_fps_control_assumed && !m_fps_control_cursor_hidden)
             {
                 m_mouse_last_position = m_input->GetMousePosition();
-                m_input->SetMouseVisible(false);
+                m_input->SetMouseCursorVisible(false);
                 m_fps_control_cursor_hidden = true;
             }
             else if (!m_fps_control_assumed && m_fps_control_cursor_hidden)
             {
                 m_input->SetMousePosition(m_mouse_last_position);
-                m_input->SetMouseVisible(true);
+                m_input->SetMouseCursorVisible(true);
                 m_fps_control_cursor_hidden = false;
             }
         }
@@ -363,6 +358,22 @@ namespace Spartan
         {
             // Mouse look
             {
+                // Wrap around left and right screen edges (to allow for infinite scrolling)
+                {
+                    uint32_t edge_padding = 5;
+                    Math::Vector2 mouse_position = m_input->GetMousePosition();
+                    if (mouse_position.x >= Display::GetWidth() - edge_padding)
+                    {
+                        mouse_position.x = static_cast<float>(edge_padding + 1);
+                        m_input->SetMousePosition(mouse_position);
+                    }
+                    else if (mouse_position.x <= edge_padding)
+                    {
+                        mouse_position.x = static_cast<float>(Spartan::Display::GetWidth() - edge_padding - 1);
+                        m_input->SetMousePosition(mouse_position);
+                    }
+                }
+
                 // Snap to initial camera rotation (if this is the first time running)
                 if (m_mouse_rotation == Vector2::Zero)
                 {
@@ -395,7 +406,7 @@ namespace Spartan
             // Keyboard movement
             {
                 // Compute max speed
-                m_movement_speed_max += m_input->GetMouseWheelDelta() / 2.0f;
+                m_movement_speed_max += m_input->GetMouseWheelDelta().y / 2.0f;
                 m_movement_speed_max = Helper::Clamp(m_movement_speed_max, m_movement_speed_min, numeric_limits<float>::max());
 
                 // Compute direction

@@ -21,10 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =================
+//= INCLUDES =====================
 #include "../RHI_Device.h"
 #include "../../Logging/Log.h"
-//============================
+#include "../../Display/Display.h"
+//================================
 
 namespace Spartan::d3d12_utility
 {

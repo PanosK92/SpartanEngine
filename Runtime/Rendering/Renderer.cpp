@@ -23,11 +23,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Spartan.h"
 #include "Renderer.h"
 #include "Model.h"
-#include "Font/Font.h"
-#include "../World/World.h"
-#include "../Display/Display.h"
+#include "Window.h"
 #include "Gizmos/Grid.h"
 #include "Gizmos/TransformGizmo.h"
+#include "Font/Font.h"
+#include "../World/World.h"
 #include "../Utilities/Sampling.h"
 #include "../Profiling/Profiler.h"
 #include "../Resource/ResourceCache.h"
@@ -99,7 +99,7 @@ namespace Spartan
         LOG_TO_FILE(true);
     }
 
-    bool Renderer::Initialize()
+    bool Renderer::OnInitialise()
     {
         // Get required systems
         m_resource_cache    = m_context->GetSubsystem<ResourceCache>();
@@ -107,9 +107,9 @@ namespace Spartan
 
         // Create device
         m_rhi_device = make_shared<RHI_Device>(m_context);
-        if (!m_rhi_device->IsInitialized())
+        if (!m_rhi_device->IsInitialised())
         {
-            LOG_ERROR("Failed to create device");
+            LOG_ERROR("Failed to create device.");
             return false;
         }
 
@@ -119,32 +119,34 @@ namespace Spartan
         // Create descriptor set layout cache
         m_descriptor_set_layout_cache = make_shared<RHI_DescriptorSetLayoutCache>(m_rhi_device.get());
 
-        // Get window data
-        const WindowData& window_data = m_context->m_engine->GetWindowData();
+        // Get window
+        Window* window          = m_context->GetSubsystem<Window>();
+        uint32_t window_width   = window->GetWidth();
+        uint32_t window_height  = window->GetHeight();
 
         // Create swap chain
         {
             m_swap_chain = make_shared<RHI_SwapChain>
             (
-                window_data.handle,
+                window->GetHandle(),
                 m_rhi_device,
-                static_cast<uint32_t>(window_data.width),
-                static_cast<uint32_t>(window_data.height),
+                window_width,
+                window_height,
                 RHI_Format_R8G8B8A8_Unorm,
                 m_swap_chain_buffer_count,
                 RHI_Present_Immediate | RHI_Swap_Flip_Discard,
                 "swapchain_main"
             );
 
-            if (!m_swap_chain->IsInitialized())
+            if (!m_swap_chain->IsInitialised())
             {
-                LOG_ERROR("Failed to create swap chain");
+                LOG_ERROR("Failed to create swap chain.");
                 return false;
             }
         }
 
         // Full-screen quad
-        m_viewport_quad = Math::Rectangle(0, 0, window_data.width, window_data.height);
+        m_viewport_quad = Math::Rectangle(0, 0, static_cast<float>(window_width), static_cast<float>(window_height));
         m_viewport_quad.CreateBuffers(this);
 
         // Line buffer
@@ -152,12 +154,12 @@ namespace Spartan
 
         // Editor specific
         m_gizmo_grid = make_unique<Grid>(m_rhi_device);
-        m_gizmo_transform = make_unique<TransformGizmo>(m_context);
+        m_transform_handle = make_unique<TransformGizmo>(m_context);
 
         // Set render, output and viewport resolution/size to whatever the window is (initially)
-        SetResolutionRender(static_cast<uint32_t>(window_data.width), static_cast<uint32_t>(window_data.height));
+        SetResolutionRender(window_width, window_height);
         SetResolutionOutput(static_cast<uint32_t>(m_resolution_render.x), static_cast<uint32_t>(m_resolution_render.y));
-        SetViewport(m_resolution_render.x, m_resolution_render.y, 0, 0);
+        SetViewport(m_resolution_render.x, m_resolution_render.y);
 
         CreateConstantBuffers();
         CreateShaders();
@@ -169,140 +171,158 @@ namespace Spartan
         CreateSamplers();
         CreateTextures();
 
-        if (!m_initialized)
+        if (!m_initialised)
         {
             // Log on-screen as the renderer is ready
             LOG_TO_FILE(false);
-            m_initialized = true;
+            m_initialised = true;
         }
 
         return true;
     }
 
-    std::weak_ptr<Spartan::Entity> Renderer::SnapTransformGizmoTo(const shared_ptr<Entity>& entity) const
+    std::weak_ptr<Spartan::Entity> Renderer::SnapTransformHandleToEntity(const shared_ptr<Entity>& entity) const
     {
-        return m_gizmo_transform->SetSelectedEntity(entity);
+        return m_transform_handle->SetSelectedEntity(entity);
     }
 
-    void Renderer::Tick(float delta_time)
+    bool Renderer::IsTransformHandleEditing() const
     {
-        if (!m_rhi_device || !m_rhi_device->IsInitialized())
-            return;
+        return m_transform_handle->IsEditing();
+    }
 
-        if (!m_is_allowed_to_render)
-            return;
+    void Renderer::OnTick(float delta_time)
+    {
+        SP_ASSERT(m_rhi_device != nullptr);
+        SP_ASSERT(m_rhi_device->IsInitialised());
 
-        // Don't do any work if the swapchain is not presenting
-        if (m_swap_chain && !m_swap_chain->PresentEnabled())
-            return;
+        // Only do work if the swapchain is presenting an we are allowed to render
+        if (m_swap_chain && m_swap_chain->PresentEnabled() && m_is_allowed_to_render)
+        { 
+            // Acquire command list
+            RHI_CommandList* cmd_list = m_swap_chain->GetCmdList();
 
-        // Acquire command list
-        RHI_CommandList* cmd_list = m_swap_chain->GetCmdList();
+            // Begin
+            cmd_list->Begin();
 
-        // Begin
-        cmd_list->Begin();
+            // Only render when the world is not loading, as the command list will get flushed by the loading thread.
+            if (!m_context->GetSubsystem<World>()->IsLoading())
+            {
+                m_is_rendering = true;
 
-        // Only render when the world is not loading, as the command list will get flushed by the loading thread.
-        if (!m_context->GetSubsystem<World>()->IsLoading())
+                // If there is no camera, clear to black
+                if (!m_camera)
+                {
+                    cmd_list->ClearRenderTarget(RENDER_TARGET(RendererRt::Frame_PostProcess).get(), 0, 0, false, Vector4(0.0f, 0.0f, 0.0f, 1.0f));
+                    return;
+                }
+                
+                // If there is not camera but no other entities to render, clear to camera's color
+                if (m_entities[Renderer_Object_Opaque].empty() && m_entities[Renderer_Object_Transparent].empty() && m_entities[Renderer_Object_Light].empty())
+                {
+                    cmd_list->ClearRenderTarget(RENDER_TARGET(RendererRt::Frame_PostProcess).get(), 0, 0, false, m_camera->GetClearColor());
+                    return;
+                }
+
+                // Reset dynamic buffer indices when the swapchain resets to first buffer/command list
+                if (m_swap_chain->GetCmdIndex() == 0)
+                {
+                    m_buffer_uber_offset_index      = 0;
+                    m_buffer_frame_offset_index     = 0;
+                    m_buffer_light_offset_index     = 0;
+                    m_buffer_material_offset_index  = 0;
+                }
+
+                // Update frame buffer
+                {
+                    if (m_update_ortho_proj || m_near_plane != m_camera->GetNearPlane() || m_far_plane != m_camera->GetFarPlane())
+                    {
+                        m_buffer_frame_cpu.projection_ortho         = Matrix::CreateOrthographicLH(m_viewport.width, m_viewport.height, m_near_plane, m_far_plane);
+                        m_buffer_frame_cpu.view_projection_ortho    = Matrix::CreateLookAtLH(Vector3(0, 0, -m_near_plane), Vector3::Forward, Vector3::Up) * m_buffer_frame_cpu.projection_ortho;
+                        m_update_ortho_proj                         = false;
+                    }
+
+                    m_near_plane                    = m_camera->GetNearPlane();
+                    m_far_plane                     = m_camera->GetFarPlane();
+                    m_buffer_frame_cpu.view         = m_camera->GetViewMatrix();
+                    m_buffer_frame_cpu.projection   = m_camera->GetProjectionMatrix();
+
+                    // TAA - Generate jitter
+                    if (GetOption(Render_AntiAliasing_Taa))
+                    {
+                        m_taa_jitter_previous = m_taa_jitter;
+                        
+                        const float scale               = 1.0f;
+                        const uint8_t samples           = 16;
+                        const uint64_t index            = m_frame_num % samples;
+                        m_taa_jitter                    = Utility::Sampling::Halton2D(index, 2, 3) * 2.0f - 1.0f;
+                        m_taa_jitter.x                  = (m_taa_jitter.x / m_resolution_render.x) * scale;
+                        m_taa_jitter.y                  = (m_taa_jitter.y / m_resolution_render.y) * scale;
+                        m_buffer_frame_cpu.projection   *= Matrix::CreateTranslation(Vector3(m_taa_jitter.x, m_taa_jitter.y, 0.0f));
+                    }
+                    else
+                    {
+                        m_taa_jitter            = Vector2::Zero;
+                        m_taa_jitter_previous   = Vector2::Zero;
+                    }
+
+                    // Update the remaining of the frame buffer
+                    m_buffer_frame_cpu.view_projection_previous     = m_buffer_frame_cpu.view_projection;
+                    m_buffer_frame_cpu.view_projection              = m_buffer_frame_cpu.view * m_buffer_frame_cpu.projection;
+                    m_buffer_frame_cpu.view_projection_inv          = Matrix::Invert(m_buffer_frame_cpu.view_projection);
+                    m_buffer_frame_cpu.view_projection_unjittered   = m_buffer_frame_cpu.view * m_camera->GetProjectionMatrix();
+                    m_buffer_frame_cpu.camera_aperture              = m_camera->GetAperture();
+                    m_buffer_frame_cpu.camera_shutter_speed         = m_camera->GetShutterSpeed();
+                    m_buffer_frame_cpu.camera_iso                   = m_camera->GetIso();
+                    m_buffer_frame_cpu.camera_near                  = m_camera->GetNearPlane();
+                    m_buffer_frame_cpu.camera_far                   = m_camera->GetFarPlane();
+                    m_buffer_frame_cpu.camera_position              = m_camera->GetTransform()->GetPosition();
+                    m_buffer_frame_cpu.camera_direction             = m_camera->GetTransform()->GetForward();
+                    m_buffer_frame_cpu.resolution_output            = m_resolution_output;
+                    m_buffer_frame_cpu.resolution_render            = m_resolution_render;
+                    m_buffer_frame_cpu.taa_jitter_offset_previous   = m_buffer_frame_cpu_previous.taa_jitter_offset;
+                    m_buffer_frame_cpu.taa_jitter_offset            = m_taa_jitter - m_taa_jitter_previous;
+                    m_buffer_frame_cpu.delta_time                   = static_cast<float>(m_context->GetSubsystem<Timer>()->GetDeltaTimeSmoothedSec());
+                    m_buffer_frame_cpu.time                         = static_cast<float>(m_context->GetSubsystem<Timer>()->GetTimeSec());
+                    m_buffer_frame_cpu.bloom_intensity              = GetOptionValue<float>(Renderer_Option_Value::Intensity);
+                    m_buffer_frame_cpu.sharpen_strength             = GetOptionValue<float>(Renderer_Option_Value::Sharpen_Strength);
+                    m_buffer_frame_cpu.fog                          = GetOptionValue<float>(Renderer_Option_Value::Fog);
+                    m_buffer_frame_cpu.tonemapping                  = GetOptionValue<float>(Renderer_Option_Value::Tonemapping);
+                    m_buffer_frame_cpu.gamma                        = GetOptionValue<float>(Renderer_Option_Value::Gamma);
+                    m_buffer_frame_cpu.shadow_resolution            = GetOptionValue<float>(Renderer_Option_Value::ShadowResolution);
+                    m_buffer_frame_cpu.taa_upsample                 = (GetOptionValue<float>(Renderer_Option_Value::Taa_AllowUpsampling) && m_resolution_output != m_resolution_render) ? 1.0f : 0.0f;
+                    m_buffer_frame_cpu.ssr_enabled                  = GetOption(Render_ScreenSpaceReflections) ? 1.0f : 0.0f;
+                    m_buffer_frame_cpu.frame                        = static_cast<uint32_t>(m_frame_num);
+                }
+
+                Pass_Main(cmd_list);
+
+                TickPrimitives(delta_time);
+
+                m_frame_num++;
+                m_is_odd_frame = (m_frame_num % 2) == 1;
+                m_is_rendering = false;
+            }
+        }
+
+        // Resize swapchain to window size (if needed)
         {
-            m_is_rendering = true;
+            // Passing zero dimensions will cause the swapchain to not present at all
+            Window* window  = m_context->GetSubsystem<Window>();
+            uint32_t width  = static_cast<uint32_t>(window->IsMinimised() ? 0 : window->GetWidth());
+            uint32_t height = static_cast<uint32_t>(window->IsMinimised() ? 0 : window->GetHeight());
 
-            // If there is no camera, clear to black
-            if (!m_camera)
+            if (!m_swap_chain->PresentEnabled() || m_swap_chain->GetWidth() != width || m_swap_chain->GetHeight() != height)
             {
-                cmd_list->ClearRenderTarget(RENDER_TARGET(RendererRt::Frame_PostProcess).get(), 0, 0, false, Vector4(0.0f, 0.0f, 0.0f, 1.0f));
-                return;
+                m_swap_chain->Resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+
+                // Log
+                LOG_INFO("Swapchain resolution has been set to %dx%d", width, height);
             }
-            
-            // If there is not camera but no other entities to render, clear to camera's color
-            if (m_entities[Renderer_Object_Opaque].empty() && m_entities[Renderer_Object_Transparent].empty() && m_entities[Renderer_Object_Light].empty())
-            {
-                cmd_list->ClearRenderTarget(RENDER_TARGET(RendererRt::Frame_PostProcess).get(), 0, 0, false, m_camera->GetClearColor());
-                return;
-            }
-
-            // Reset dynamic buffer indices when the swapchain resets to first buffer/command list
-            if (m_swap_chain->GetCmdIndex() == 0)
-            {
-                m_buffer_uber_offset_index      = 0;
-                m_buffer_frame_offset_index     = 0;
-                m_buffer_light_offset_index     = 0;
-                m_buffer_material_offset_index  = 0;
-            }
-
-            // Update frame buffer
-            {
-                if (m_update_ortho_proj || m_near_plane != m_camera->GetNearPlane() || m_far_plane != m_camera->GetFarPlane())
-                {
-                    m_buffer_frame_cpu.projection_ortho         = Matrix::CreateOrthographicLH(m_viewport.width, m_viewport.height, m_near_plane, m_far_plane);
-                    m_buffer_frame_cpu.view_projection_ortho    = Matrix::CreateLookAtLH(Vector3(0, 0, -m_near_plane), Vector3::Forward, Vector3::Up) * m_buffer_frame_cpu.projection_ortho;
-                    m_update_ortho_proj                         = false;
-                }
-
-                m_near_plane                    = m_camera->GetNearPlane();
-                m_far_plane                     = m_camera->GetFarPlane();
-                m_buffer_frame_cpu.view         = m_camera->GetViewMatrix();
-                m_buffer_frame_cpu.projection   = m_camera->GetProjectionMatrix();
-
-                // TAA - Generate jitter
-                if (GetOption(Render_AntiAliasing_Taa))
-                {
-                    m_taa_jitter_previous = m_taa_jitter;
-                    
-                    const float scale               = 1.0f;
-                    const uint8_t samples           = 16;
-                    const uint64_t index            = m_frame_num % samples;
-                    m_taa_jitter                    = Utility::Sampling::Halton2D(index, 2, 3) * 2.0f - 1.0f;
-                    m_taa_jitter.x                  = (m_taa_jitter.x / m_resolution_render.x) * scale;
-                    m_taa_jitter.y                  = (m_taa_jitter.y / m_resolution_render.y) * scale;
-                    m_buffer_frame_cpu.projection   *= Matrix::CreateTranslation(Vector3(m_taa_jitter.x, m_taa_jitter.y, 0.0f));
-                }
-                else
-                {
-                    m_taa_jitter            = Vector2::Zero;
-                    m_taa_jitter_previous   = Vector2::Zero;
-                }
-
-                // Update the remaining of the frame buffer
-                m_buffer_frame_cpu.view_projection_previous     = m_buffer_frame_cpu.view_projection;
-                m_buffer_frame_cpu.view_projection              = m_buffer_frame_cpu.view * m_buffer_frame_cpu.projection;
-                m_buffer_frame_cpu.view_projection_inv          = Matrix::Invert(m_buffer_frame_cpu.view_projection);
-                m_buffer_frame_cpu.view_projection_unjittered   = m_buffer_frame_cpu.view * m_camera->GetProjectionMatrix();
-                m_buffer_frame_cpu.camera_aperture              = m_camera->GetAperture();
-                m_buffer_frame_cpu.camera_shutter_speed         = m_camera->GetShutterSpeed();
-                m_buffer_frame_cpu.camera_iso                   = m_camera->GetIso();
-                m_buffer_frame_cpu.camera_near                  = m_camera->GetNearPlane();
-                m_buffer_frame_cpu.camera_far                   = m_camera->GetFarPlane();
-                m_buffer_frame_cpu.camera_position              = m_camera->GetTransform()->GetPosition();
-                m_buffer_frame_cpu.camera_direction             = m_camera->GetTransform()->GetForward();
-                m_buffer_frame_cpu.resolution_output            = m_resolution_output;
-                m_buffer_frame_cpu.resolution_render            = m_resolution_render;
-                m_buffer_frame_cpu.taa_jitter_offset_previous   = m_buffer_frame_cpu_previous.taa_jitter_offset;
-                m_buffer_frame_cpu.taa_jitter_offset            = m_taa_jitter - m_taa_jitter_previous;
-                m_buffer_frame_cpu.delta_time                   = static_cast<float>(m_context->GetSubsystem<Timer>()->GetDeltaTimeSmoothedSec());
-                m_buffer_frame_cpu.time                         = static_cast<float>(m_context->GetSubsystem<Timer>()->GetTimeSec());
-                m_buffer_frame_cpu.bloom_intensity              = GetOptionValue<float>(Renderer_Option_Value::Intensity);
-                m_buffer_frame_cpu.sharpen_strength             = GetOptionValue<float>(Renderer_Option_Value::Sharpen_Strength);
-                m_buffer_frame_cpu.fog                          = GetOptionValue<float>(Renderer_Option_Value::Fog);
-                m_buffer_frame_cpu.tonemapping                  = GetOptionValue<float>(Renderer_Option_Value::Tonemapping);
-                m_buffer_frame_cpu.gamma                        = GetOptionValue<float>(Renderer_Option_Value::Gamma);
-                m_buffer_frame_cpu.shadow_resolution            = GetOptionValue<float>(Renderer_Option_Value::ShadowResolution);
-                m_buffer_frame_cpu.taa_upsample                 = (GetOptionValue<float>(Renderer_Option_Value::Taa_AllowUpsampling) && m_resolution_output != m_resolution_render) ? 1.0f : 0.0f;
-                m_buffer_frame_cpu.ssr_enabled                  = GetOption(Render_ScreenSpaceReflections) ? 1.0f : 0.0f;
-                m_buffer_frame_cpu.frame                        = static_cast<uint32_t>(m_frame_num);
-            }
-
-            Pass_Main(cmd_list);
-
-            TickPrimitives(delta_time);
-
-            m_frame_num++;
-            m_is_odd_frame = (m_frame_num % 2) == 1;
-            m_is_rendering = false;
         }
     }
 
-    void Renderer::SetViewport(float width, float height, float offset_x /*= 0*/, float offset_y /*= 0*/)
+    void Renderer::SetViewport(float width, float height)
     {
         if (m_viewport.width != width || m_viewport.height != height)
         {
@@ -320,9 +340,6 @@ namespace Spartan
 
             m_update_ortho_proj = true;
         }
-
-        m_viewport_editor_offset.x = offset_x;
-        m_viewport_editor_offset.y = offset_y;
     }
 
     void Renderer::SetResolutionRender(uint32_t width, uint32_t height)

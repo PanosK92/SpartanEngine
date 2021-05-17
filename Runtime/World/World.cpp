@@ -56,7 +56,7 @@ namespace Spartan
         m_profiler  = nullptr;
     }
 
-    bool World::Initialize()
+    bool World::OnInitialise()
     {
         m_input     = m_context->GetSubsystem<Input>();
         m_profiler  = m_context->GetSubsystem<Profiler>();
@@ -68,7 +68,7 @@ namespace Spartan
         return true;
     }
 
-    void World::Tick(float delta_time)
+    void World::OnTick(float delta_time)
     {
         // If something is being loaded, don't tick as entities are probably being added
         if (IsLoading())

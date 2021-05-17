@@ -164,68 +164,6 @@ namespace Spartan
         return result;
     }
 
-    void FileSystem::GetIncludedFilePathsFromFilePath(const string& file_path, vector<string>& file_paths)
-    {
-        // Read the file
-        ifstream in(file_path);
-        stringstream buffer;
-        buffer << in.rdbuf();
-
-        string file_source = buffer.str();
-        string file_directory = GetDirectoryFromFilePath(file_path);
-        string include_directive_prefix = "#include \"";
-
-        // Early exit if there is no include directive
-        if (file_source.find(include_directive_prefix) == string::npos)
-            return;
-
-        // Scan for include directives
-        istringstream stream(file_source);
-        string source_line;
-        while (getline(stream, source_line))
-        {
-            if (source_line.find(include_directive_prefix) != string::npos)
-            {
-                string file_name = GetStringBetweenExpressions(source_line, include_directive_prefix, "\"");
-                string include_file_path = file_directory + file_name;
-
-                // Save file path if not already saved (to avoid recursive include directives)
-                if (find(file_paths.begin(), file_paths.end(), include_file_path) == file_paths.end())
-                {
-                    file_paths.emplace_back(include_file_path);
-                }
-            }
-        }
-
-        // Go through the source of the includes files
-        vector<string> file_paths_copy = file_paths; // copy the file paths to avoid modification while iterating
-        for (const string& _file_path : file_paths_copy)
-        {
-            // Get the file source
-            ifstream _in(_file_path);
-            stringstream _buffer;
-            _buffer << _in.rdbuf();
-            stream = istringstream(_buffer.str());
-
-            // Go through every line
-            while (getline(stream, source_line))
-            {
-                // Check for include directive
-                if (source_line.find(include_directive_prefix) != string::npos)
-                {
-                    string file_name = GetStringBetweenExpressions(source_line, include_directive_prefix, "\"");
-                    string include_file_path = file_directory + file_name;
-
-                    // Recursively resolve the file path, only if it hasn't been already processed (can happen with recursive includes directives)
-                    if (find(file_paths.begin(), file_paths.end(), include_file_path) == file_paths.end())
-                    {
-                        GetIncludedFilePathsFromFilePath(_file_path, file_paths);
-                    }
-                }
-            }
-        }
-    }
-
     void FileSystem::OpenDirectoryWindow(const string& directory)
     {
         ShellExecute(nullptr, nullptr, StringToWstring(directory).c_str(), nullptr, nullptr, SW_SHOW);

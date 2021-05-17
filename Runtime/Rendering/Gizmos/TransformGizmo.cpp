@@ -99,10 +99,15 @@ namespace Spartan
 
     weak_ptr<Spartan::Entity> TransformGizmo::SetSelectedEntity(const shared_ptr<Entity>& entity)
     {
-        // Set only when an entity is not already being edited
+        // Set a new entity only if another is not being edited
         if (!m_is_editing)
         {
-            m_entity_selected = entity;
+            // If in front of the entity the handles from the previous entity
+            // are actual being hovered, then a selection not selected the new entity.
+            if (!m_handles[m_type]->IsHovered())
+            {
+                m_entity_selected = entity;
+            }
         }
 
         return m_entity_selected;

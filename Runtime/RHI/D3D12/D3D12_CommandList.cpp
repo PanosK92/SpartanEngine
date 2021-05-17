@@ -169,11 +169,6 @@ namespace Spartan
         return 0.0f;
     }
 
-    uint32_t RHI_CommandList::Gpu_GetMemory(RHI_Device* rhi_device)
-    {
-        return 0;
-    }
-
     uint32_t RHI_CommandList::Gpu_GetMemoryUsed(RHI_Device* rhi_device)
     {
         return 0;

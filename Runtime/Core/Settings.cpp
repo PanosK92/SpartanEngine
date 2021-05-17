@@ -21,9 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ======================
 #include "Spartan.h"
+#include "Window.h"
 #include "../Core/FileSystem.h"
 #include "../Rendering/Renderer.h"
 #include "../Threading/Threading.h"
+#include "../Display/Display.h"
+#include "../Input/Input.h"
 //=================================
 
 //= NAMESPACES ================
@@ -66,27 +69,35 @@ namespace Spartan
     {
         m_context = context;
 
-        // Register pugixml
-        const auto major = to_string(PUGIXML_VERSION / 1000);
-        const auto minor = to_string(PUGIXML_VERSION).erase(0, 1).erase(1, 1);
-        RegisterThirdPartyLib("pugixml", major + "." + minor, "https://github.com/zeux/pugixml");
+        // In case no Spartan.ini file exists, set the resolution to whatever the display is using.
+        m_resolution_output.x   = static_cast<float>(Display::GetWidth());
+        m_resolution_output.y   = static_cast<float>(Display::GetHeight());
+        m_resolution_render     = m_resolution_output;
 
-        // Register SPIRV-Cross
-        RegisterThirdPartyLib("SPIRV-Cross", "2020-01-16", "https://github.com/KhronosGroup/SPIRV-Cross");
+        // Register third party libs
+        {
+            // Register pugixml
+            const auto major = to_string(PUGIXML_VERSION / 1000);
+            const auto minor = to_string(PUGIXML_VERSION).erase(0, 1).erase(1, 1);
+            RegisterThirdPartyLib("pugixml", major + "." + minor, "https://github.com/zeux/pugixml");
 
-        // Register DirectXShaderCompiler
-        RegisterThirdPartyLib("DirectXShaderCompiler", "1.6 - 1.5.0.2860", "https://github.com/microsoft/DirectXShaderCompiler");
+            // Register SPIRV-Cross
+            RegisterThirdPartyLib("SPIRV-Cross", "2020-01-16", "https://github.com/KhronosGroup/SPIRV-Cross");
+
+            // Register DirectXShaderCompiler
+            RegisterThirdPartyLib("DirectXShaderCompiler", "1.6 - 1.5.0.2860", "https://github.com/microsoft/DirectXShaderCompiler");
+        }
     }
 
     Settings::~Settings()
     {
-        Reflect();
-        Save();
+
     }
 
-    bool Settings::Initialize()
+    void Settings::OnPreTick()
     {
-        // Acquire default settings
+        // We are in initialising during OnPreTick() as
+        // we need all the subsystems to be initialised
         Reflect();
 
         if (FileSystem::Exists(_Settings::file_name))
@@ -99,13 +110,17 @@ namespace Spartan
             Save();
         }
 
-        LOG_INFO("Resolution: %dx%d", static_cast<int>(m_resolution_render.x), static_cast<int>(m_resolution_render.y));
-        LOG_INFO("FPS Limit: %f", m_fps_limit);
-        LOG_INFO("Shadow resolution: %d", m_shadow_map_resolution);
-        LOG_INFO("Anisotropy: %d", m_anisotropy);
-        LOG_INFO("Max threads: %d", m_max_thread_count);
-
-        return true;
+        LOG_INFO("Resolution: %dx%d.", static_cast<int>(m_resolution_render.x), static_cast<int>(m_resolution_render.y));
+        LOG_INFO("FPS Limit: %f.", m_fps_limit);
+        LOG_INFO("Shadow resolution: %d.", m_shadow_map_resolution);
+        LOG_INFO("Anisotropy: %d.", m_anisotropy);
+        LOG_INFO("Max threads: %d.", m_max_thread_count);
+    }
+    
+    void Settings::OnShutdown()
+    {
+        Reflect();
+        Save();
     }
 
     void Settings::RegisterThirdPartyLib(const std::string& name, const std::string& version, const std::string& url)
@@ -161,32 +176,57 @@ namespace Spartan
         m_loaded = true;
     }
 
+    void Settings::Map() const
+    {
+        if (Timer* timer = m_context->GetSubsystem<Timer>())
+        {
+            timer->SetTargetFps(m_fps_limit);
+        }
+
+        if (Window* window = m_context->GetSubsystem<Window>())
+        {
+            if (m_is_fullscreen)
+            {
+                window->FullScreen();
+            }
+        }
+
+        if (Input* input = m_context->GetSubsystem<Input>())
+        {
+            input->SetMouseCursorVisible(m_is_mouse_visible);
+        }
+
+        if (Renderer* renderer = m_context->GetSubsystem<Renderer>())
+        {
+            if (renderer->IsInitialised())
+            {
+                renderer->SetResolutionOutput(static_cast<uint32_t>(m_resolution_output.x), static_cast<uint32_t>(m_resolution_output.y));
+                renderer->SetResolutionRender(static_cast<uint32_t>(m_resolution_render.x), static_cast<uint32_t>(m_resolution_render.y));
+                renderer->SetOptionValue(Renderer_Option_Value::ShadowResolution, static_cast<float>(m_shadow_map_resolution));
+                renderer->SetOptionValue(Renderer_Option_Value::Anisotropy, static_cast<float>(m_anisotropy));
+                renderer->SetOptionValue(Renderer_Option_Value::Tonemapping, static_cast<float>(m_tonemapping));
+                renderer->SetOptions(m_renderer_flags);
+            }
+            else
+            {
+                LOG_ERROR("Renderer hasn't initialised, can't map any settings");
+            }
+        }
+    }
+
     void Settings::Reflect()
     {
         Renderer* renderer = m_context->GetSubsystem<Renderer>();
 
         m_fps_limit             = m_context->GetSubsystem<Timer>()->GetTargetFps();
         m_max_thread_count      = m_context->GetSubsystem<Threading>()->GetThreadCountSupport();
-        m_is_fullscreen         = renderer->GetIsFullscreen();
+        m_is_fullscreen         = m_context->GetSubsystem<Window>()->IsFullScreen();
+        m_is_mouse_visible      = m_context->GetSubsystem<Input>()->GetMouseCursorVisible();
         m_resolution_output     = renderer->GetResolutionOutput();
         m_resolution_render     = renderer->GetResolutionRender();
         m_shadow_map_resolution = renderer->GetOptionValue<uint32_t>(Renderer_Option_Value::ShadowResolution);
         m_anisotropy            = renderer->GetOptionValue<uint32_t>(Renderer_Option_Value::Anisotropy);
         m_tonemapping           = renderer->GetOptionValue<uint32_t>(Renderer_Option_Value::Tonemapping);
         m_renderer_flags        = renderer->GetOptions();
-    }
-
-    void Settings::Map() const
-    {
-        Renderer* renderer = m_context->GetSubsystem<Renderer>();
-
-        m_context->GetSubsystem<Timer>()->SetTargetFps(m_fps_limit);
-        renderer->SetIsFullscreen(m_is_fullscreen);
-        renderer->SetResolutionOutput(static_cast<uint32_t>(m_resolution_output.x), static_cast<uint32_t>(m_resolution_output.y));
-        renderer->SetResolutionRender(static_cast<uint32_t>(m_resolution_render.x), static_cast<uint32_t>(m_resolution_render.y));
-        renderer->SetOptionValue(Renderer_Option_Value::ShadowResolution, static_cast<float>(m_shadow_map_resolution));
-        renderer->SetOptionValue(Renderer_Option_Value::Anisotropy, static_cast<float>(m_anisotropy));
-        renderer->SetOptionValue(Renderer_Option_Value::Tonemapping, static_cast<float>(m_tonemapping));
-        renderer->SetOptions(m_renderer_flags);
     }
 }

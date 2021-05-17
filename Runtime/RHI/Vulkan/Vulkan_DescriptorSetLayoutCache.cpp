@@ -128,7 +128,7 @@ namespace Spartan
         pool_create_info.maxSets        = descriptor_set_capacity;
 
         // Pool
-        const auto descriptor_pool = reinterpret_cast<VkDescriptorPool*>(&m_descriptor_pool);
+        VkDescriptorPool* descriptor_pool = reinterpret_cast<VkDescriptorPool*>(&m_descriptor_pool);
         return vulkan_utility::error::check(vkCreateDescriptorPool(m_rhi_device->GetContextRhi()->device, &pool_create_info, nullptr, descriptor_pool));
     }
 }

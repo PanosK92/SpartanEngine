@@ -43,8 +43,8 @@ namespace Spartan
         ~World();
 
         //= ISubsystem ======================
-        bool Initialize() override;
-        void Tick(float delta_time) override;
+        bool OnInitialise() override;
+        void OnTick(float delta_time) override;
         //===================================
         
         void New();

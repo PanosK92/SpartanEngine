@@ -433,12 +433,12 @@ namespace Spartan
         // Iterate through all the G-Buffer shader variations
         for (const auto& it : ShaderGBuffer::GetVariations())
         {
-            // Skip the shader until it compiles or the users spots a compilation error
-            if (!it.second->IsCompiled())
-                continue;
-
             // Set pixel shader
             pso.shader_pixel = static_cast<RHI_Shader*>(it.second.get());
+
+            // Skip the shader it failed to compiled or hasn't compiled yet
+            if (!pso.shader_pixel->IsCompiled())
+                continue;
 
             // Set pass name
             pso.pass_name = is_transparent_pass ? "GBuffer_Transparent" : "GBuffer_Opaque";
@@ -822,7 +822,7 @@ namespace Spartan
                     // Set pixel shader
                     pso.shader_compute = static_cast<RHI_Shader*>(ShaderLight::GetVariation(m_context, light, m_options));
 
-                    // Skip the shader until it compiles or the users spots a compilation error
+                    // Skip the shader it failed to compiled or hasn't compiled yet
                     if (!pso.shader_compute->IsCompiled())
                         continue;
 
@@ -2137,7 +2137,7 @@ namespace Spartan
             return;
 
         // Transform
-        if (m_gizmo_transform->Tick(m_camera.get(), m_gizmo_transform_size, m_gizmo_transform_speed))
+        if (m_transform_handle->Tick(m_camera.get(), m_gizmo_transform_size, m_gizmo_transform_speed))
         {
             // Set render state
             static RHI_PipelineState pso;
@@ -2146,7 +2146,7 @@ namespace Spartan
             pso.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
             pso.blend_state                      = m_blend_alpha.get();
             pso.depth_stencil_state              = m_depth_stencil_off_off.get();
-            pso.vertex_buffer_stride             = m_gizmo_transform->GetVertexBuffer()->GetStride();
+            pso.vertex_buffer_stride             = m_transform_handle->GetVertexBuffer()->GetStride();
             pso.render_target_color_textures[0]  = tex_out;
             pso.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
             pso.viewport                         = tex_out->GetViewport();
@@ -2155,13 +2155,13 @@ namespace Spartan
             pso.pass_name = "Pass_Handle_Axis_X";
             if (cmd_list->BeginRenderPass(pso))
             {
-                m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle()->GetTransform(Vector3::Right);
-                m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle()->GetColor(Vector3::Right);
+                m_buffer_uber_cpu.transform         = m_transform_handle->GetHandle()->GetTransform(Vector3::Right);
+                m_buffer_uber_cpu.transform_axis    = m_transform_handle->GetHandle()->GetColor(Vector3::Right);
                 UpdateUberBuffer(cmd_list);
             
-                cmd_list->SetBufferIndex(m_gizmo_transform->GetIndexBuffer());
-                cmd_list->SetBufferVertex(m_gizmo_transform->GetVertexBuffer());
-                cmd_list->DrawIndexed(m_gizmo_transform->GetIndexCount());
+                cmd_list->SetBufferIndex(m_transform_handle->GetIndexBuffer());
+                cmd_list->SetBufferVertex(m_transform_handle->GetVertexBuffer());
+                cmd_list->DrawIndexed(m_transform_handle->GetIndexCount());
                 cmd_list->EndRenderPass();
             }
             
@@ -2169,13 +2169,13 @@ namespace Spartan
             pso.pass_name = "Pass_Handle_Axis_Y";
             if (cmd_list->BeginRenderPass(pso))
             {
-                m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle()->GetTransform(Vector3::Up);
-                m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle()->GetColor(Vector3::Up);
+                m_buffer_uber_cpu.transform         = m_transform_handle->GetHandle()->GetTransform(Vector3::Up);
+                m_buffer_uber_cpu.transform_axis    = m_transform_handle->GetHandle()->GetColor(Vector3::Up);
                 UpdateUberBuffer(cmd_list);
 
-                cmd_list->SetBufferIndex(m_gizmo_transform->GetIndexBuffer());
-                cmd_list->SetBufferVertex(m_gizmo_transform->GetVertexBuffer());
-                cmd_list->DrawIndexed(m_gizmo_transform->GetIndexCount());
+                cmd_list->SetBufferIndex(m_transform_handle->GetIndexBuffer());
+                cmd_list->SetBufferVertex(m_transform_handle->GetVertexBuffer());
+                cmd_list->DrawIndexed(m_transform_handle->GetIndexCount());
                 cmd_list->EndRenderPass();
             }
             
@@ -2183,29 +2183,29 @@ namespace Spartan
             pso.pass_name = "Pass_Handle_Axis_Z";
             if (cmd_list->BeginRenderPass(pso))
             {
-                m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle()->GetTransform(Vector3::Forward);
-                m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle()->GetColor(Vector3::Forward);
+                m_buffer_uber_cpu.transform         = m_transform_handle->GetHandle()->GetTransform(Vector3::Forward);
+                m_buffer_uber_cpu.transform_axis    = m_transform_handle->GetHandle()->GetColor(Vector3::Forward);
                 UpdateUberBuffer(cmd_list);
 
-                cmd_list->SetBufferIndex(m_gizmo_transform->GetIndexBuffer());
-                cmd_list->SetBufferVertex(m_gizmo_transform->GetVertexBuffer());
-                cmd_list->DrawIndexed(m_gizmo_transform->GetIndexCount());
+                cmd_list->SetBufferIndex(m_transform_handle->GetIndexBuffer());
+                cmd_list->SetBufferVertex(m_transform_handle->GetVertexBuffer());
+                cmd_list->DrawIndexed(m_transform_handle->GetIndexCount());
                 cmd_list->EndRenderPass();
             }
             
             // Axes - XYZ
-            if (m_gizmo_transform->DrawXYZ())
+            if (m_transform_handle->DrawXYZ())
             {
                 pso.pass_name = "Pass_Gizmos_Axis_XYZ";
                 if (cmd_list->BeginRenderPass(pso))
                 {
-                    m_buffer_uber_cpu.transform         = m_gizmo_transform->GetHandle()->GetTransform(Vector3::One);
-                    m_buffer_uber_cpu.transform_axis    = m_gizmo_transform->GetHandle()->GetColor(Vector3::One);
+                    m_buffer_uber_cpu.transform         = m_transform_handle->GetHandle()->GetTransform(Vector3::One);
+                    m_buffer_uber_cpu.transform_axis    = m_transform_handle->GetHandle()->GetColor(Vector3::One);
                     UpdateUberBuffer(cmd_list);
 
-                    cmd_list->SetBufferIndex(m_gizmo_transform->GetIndexBuffer());
-                    cmd_list->SetBufferVertex(m_gizmo_transform->GetVertexBuffer());
-                    cmd_list->DrawIndexed(m_gizmo_transform->GetIndexCount());
+                    cmd_list->SetBufferIndex(m_transform_handle->GetIndexBuffer());
+                    cmd_list->SetBufferVertex(m_transform_handle->GetVertexBuffer());
+                    cmd_list->DrawIndexed(m_transform_handle->GetIndexCount());
                     cmd_list->EndRenderPass();
                 }
             }
@@ -2217,7 +2217,7 @@ namespace Spartan
         if (!GetOption(Render_Debug_SelectionOutline))
             return;
 
-        if (const Entity* entity = m_gizmo_transform->GetSelectedEntity())
+        if (const Entity* entity = m_transform_handle->GetSelectedEntity())
         {
             // Get renderable
             const Renderable* renderable = entity->GetRenderable();

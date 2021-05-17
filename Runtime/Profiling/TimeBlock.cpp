@@ -119,7 +119,7 @@ namespace Spartan
         m_type              = TimeBlockType::Undefined;
         m_is_complete       = false;
 
-        if (m_rhi_device && m_rhi_device->IsInitialized())
+        if (m_rhi_device && m_rhi_device->IsInitialised())
         {
             RHI_CommandList::Gpu_QueryRelease(m_query_disjoint);
             RHI_CommandList::Gpu_QueryRelease(m_query_start);

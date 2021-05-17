@@ -130,27 +130,18 @@ namespace Spartan
     };
 
     static_assert(std::is_trivially_copyable<RHI_Vertex_Pos>::value,            "RHI_Vertex_Pos is not trivially copyable");
-    static_assert(std::is_trivially_copyable<RHI_Vertex_PosTex>::value,            "RHI_Vertex_PosTex is not trivially copyable");
-    static_assert(std::is_trivially_copyable<RHI_Vertex_PosCol>::value,            "RHI_Vertex_PosCol is not trivially copyable");
-    static_assert(std::is_trivially_copyable<RHI_Vertex_Pos2dTexCol8>::value,    "RHI_Vertex_Pos2dTexCol8 is not trivially copyable");
-    static_assert(std::is_trivially_copyable<RHI_Vertex_PosTexNorTan>::value,    "RHI_Vertex_PosTexNorTan is not trivially copyable");
+    static_assert(std::is_trivially_copyable<RHI_Vertex_PosTex>::value,         "RHI_Vertex_PosTex is not trivially copyable");
+    static_assert(std::is_trivially_copyable<RHI_Vertex_PosCol>::value,         "RHI_Vertex_PosCol is not trivially copyable");
+    static_assert(std::is_trivially_copyable<RHI_Vertex_Pos2dTexCol8>::value,   "RHI_Vertex_Pos2dTexCol8 is not trivially copyable");
+    static_assert(std::is_trivially_copyable<RHI_Vertex_PosTexNorTan>::value,   "RHI_Vertex_PosTexNorTan is not trivially copyable");
 
-    enum RHI_Vertex_Type
+    enum class RHI_Vertex_Type
     {
-        RHI_Vertex_Type_Unknown,
-        RHI_Vertex_Type_Position,
-        RHI_Vertex_Type_PositionColor,
-        RHI_Vertex_Type_PositionTexture,
-        RHI_Vertex_Type_PositionTextureNormalTangent,
-        RHI_Vertex_Type_Position2dTextureColor8
+        Unknown,
+        Pos,
+        PosCol,
+        PosTex,
+        PosTexNorTan,
+        Pos2dTexCol8
     };
-
-    template <typename T>
-    constexpr RHI_Vertex_Type RHI_Vertex_Type_To_Enum() { return RHI_Vertex_Type_Unknown; }
-    // Explicit template instantiation
-    template<> inline RHI_Vertex_Type RHI_Vertex_Type_To_Enum<RHI_Vertex_Pos>()                { return RHI_Vertex_Type_Position; }
-    template<> inline RHI_Vertex_Type RHI_Vertex_Type_To_Enum<RHI_Vertex_PosTex>()            { return RHI_Vertex_Type_PositionTexture; }
-    template<> inline RHI_Vertex_Type RHI_Vertex_Type_To_Enum<RHI_Vertex_PosCol>()            { return RHI_Vertex_Type_PositionColor; }
-    template<> inline RHI_Vertex_Type RHI_Vertex_Type_To_Enum<RHI_Vertex_Pos2dTexCol8>()    { return RHI_Vertex_Type_Position2dTextureColor8; }
-    template<> inline RHI_Vertex_Type RHI_Vertex_Type_To_Enum<RHI_Vertex_PosTexNorTan>()    { return RHI_Vertex_Type_PositionTextureNormalTangent; }
 }
