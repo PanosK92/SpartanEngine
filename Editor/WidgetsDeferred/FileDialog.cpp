@@ -32,6 +32,8 @@ using namespace Spartan;
 using namespace Spartan::Math;
 //============================
 
+static const Vector2 k_size = Vector2(640, 480);
+
 #define OPERATION_NAME  (m_operation == FileDialog_Op_Open)    ? "Open"         : (m_operation == FileDialog_Op_Load)   ? "Load"        : (m_operation == FileDialog_Op_Save) ? "Save" : "View"
 #define FILTER_NAME     (m_filter == FileDialog_Filter_All)    ? "All (*.*)"    : (m_filter == FileDialog_Filter_Model) ? "Model(*.*)"  : "World (*.world)"
 
@@ -50,6 +52,10 @@ FileDialog::FileDialog(Context* context, const bool standalone_window, const Fil
     m_callback_on_item_clicked          = nullptr;
     m_callback_on_item_double_clicked   = nullptr;
     m_navigation.Navigate(m_context->GetSubsystem<ResourceCache>()->GetProjectDirectory());
+
+    // Default to the center of the screen
+    m_position.x = Spartan::Display::GetWidth() * 0.5f;
+    m_position.y = Spartan::Display::GetHeight() * 0.5f;
 }
 
 void FileDialog::SetOperation(const FileDialog_Operation operation)
@@ -107,7 +113,15 @@ void FileDialog::ShowTop(bool* is_visible)
 {
     if (m_is_window)
     {
-        ImGui::SetNextWindowSize(ImVec2(400, 400), ImGuiCond_FirstUseEver);
+        // Set position
+        if (m_position.x != -1.0f && m_position.y != -1.0f)
+        {
+            ImVec2 pivot_center = ImVec2(0.5f, 0.5f);
+            ImGui::SetNextWindowPos(m_position, 0, pivot_center);
+            m_position = -1;
+        }
+
+        ImGui::SetNextWindowSize(k_size, ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSizeConstraints(ImVec2(350, 250), ImVec2(FLT_MAX, FLT_MAX));
         ImGui::Begin(m_title.c_str(), is_visible, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoDocking);
         ImGui::SetWindowFocus();

@@ -68,7 +68,7 @@ void Widget_ShaderEditor::ShowShaderSource()
                 int edited_index = -1;
 
                 // Shader source
-                if (ImGui::BeginTabBar("#shader_tab_bar", ImGuiTabBarFlags_Reorderable))
+                if (ImGui::BeginTabBar("#shader_tab_bar", ImGuiTabBarFlags_Reorderable | ImGuiTabBarFlags_FittingPolicyResizeDown))
                 {
                     const std::vector<std::string>& names = m_shader->GetNames();
                     const std::vector<std::string>& sources = m_shader->GetSources();

@@ -176,9 +176,9 @@ public:
 
     void Clicked()    
     {
-        const auto now            = std::chrono::high_resolution_clock::now();
-        m_time_since_last_click    = now - m_last_click_time;
-        m_last_click_time        = now;
+        const auto now          = std::chrono::high_resolution_clock::now();
+        m_time_since_last_click = now - m_last_click_time;
+        m_last_click_time       = now;
     }
     
 private:
@@ -225,16 +225,17 @@ private:
     void EmptyAreaContextMenu();
 
     // Options
-    const bool m_drop_shadow    = true;
-    const float m_item_size_min = 50.0f;
-    const float m_item_size_max = 200.0f;
+    Spartan::Math::Vector2 m_position   = Spartan::Math::Vector2(-1.0f, -1.0f);
+    const bool m_drop_shadow            = true;
+    const float m_item_size_min         = 50.0f;
+    const float m_item_size_max         = 200.0f;
     const Spartan::Math::Vector4 m_content_background_color = Spartan::Math::Vector4(0.0f, 0.0f, 0.0f, 50.0f);
 
     // Flags
     bool m_is_window;
     bool m_selection_made;
     bool m_is_dirty;
-    bool m_is_hovering_item;    
+    bool m_is_hovering_item;
     bool m_is_hovering_window;
     std::string m_title;
     FileDialogNavigation m_navigation;

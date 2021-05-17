@@ -21,9 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==============================
 #include "Widget.h"
-#include "Core/Context.h"
 #include "../Editor.h"
 #include "../ImGui/Source/imgui_internal.h"
+#include "Core/Context.h"
 #include "Profiling/Profiler.h"
 //=========================================
 
@@ -78,7 +78,9 @@ void Widget::Tick()
         // Position
         if (m_position.x != -1.0f && m_position.y != -1.0f)
         {
-            ImGui::SetNextWindowPos(m_position);
+            ImVec2 pivot_center = ImVec2(0.5f, 0.5f);
+            ImGui::SetNextWindowPos(m_position, 0, pivot_center);
+            m_position = -1;
         }
 
         // Padding
@@ -99,6 +101,7 @@ void Widget::Tick()
         if (m_size.x != -1.0f && m_size.y != -1.0f)
         {
             ImGui::SetNextWindowSize(m_size, ImGuiCond_FirstUseEver);
+            m_size = -1;
         }
 
         // Max size
