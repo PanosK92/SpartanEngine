@@ -158,7 +158,7 @@ namespace Spartan
                 }
             }
 
-            FIRE_EVENT_DATA(EventType::EventSDL, &sdl_event);
+            SP_FIRE_EVENT_DATA(EventType::EventSDL, &sdl_event);
         }
     }
 

@@ -47,7 +47,7 @@ namespace Spartan
     World::World(Context* context) : ISubsystem(context)
     {
         // Subscribe to events
-        SUBSCRIBE_TO_EVENT(EventType::WorldResolve, [this](Variant) { m_resolve = true; });
+        SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolve, [this](Variant) { m_resolve = true; });
     }
 
     World::~World()
@@ -125,7 +125,7 @@ namespace Spartan
             }
 
             // Notify Renderer
-            FIRE_EVENT_DATA(EventType::WorldResolved, m_entities);
+            SP_FIRE_EVENT_DATA(EventType::WorldResolved, m_entities);
             m_resolve = false;
         }
     }
@@ -152,7 +152,7 @@ namespace Spartan
         m_name = FileSystem::GetFileNameNoExtensionFromFilePath(file_path);
 
         // Notify subsystems that need to save data
-        FIRE_EVENT(EventType::WorldSave);
+        SP_FIRE_EVENT(EventType::WorldSave);
 
         // Create a prefab file
         auto file = make_unique<FileStream>(file_path, FileStream_Write);
@@ -189,7 +189,7 @@ namespace Spartan
         LOG_INFO("Saving took %.2f ms", timer.GetElapsedTimeMs());
 
         // Notify subsystems waiting for us to finish
-        FIRE_EVENT(EventType::WorldSaved);
+        SP_FIRE_EVENT(EventType::WorldSaved);
 
         return true;
     }
@@ -226,7 +226,7 @@ namespace Spartan
         m_name = FileSystem::GetFileNameNoExtensionFromFilePath(file_path);
 
         // Notify subsystems that need to load data
-        FIRE_EVENT(EventType::WorldLoad);
+        SP_FIRE_EVENT(EventType::WorldLoad);
 
         // Load root entity count
         const uint32_t root_entity_count = file->ReadAs<uint32_t>();
@@ -250,7 +250,7 @@ namespace Spartan
         ProgressTracker::Get().SetIsLoading(ProgressType::World, false);
         LOG_INFO("Loading took %.2f ms", timer.GetElapsedTimeMs());
 
-        FIRE_EVENT(EventType::WorldLoaded);
+        SP_FIRE_EVENT(EventType::WorldLoaded);
 
         return true;
     }
@@ -332,7 +332,7 @@ namespace Spartan
     void World::Clear()
     {
         // Notify any systems that the entities are about to be cleared
-        FIRE_EVENT(EventType::WorldClear);
+        SP_FIRE_EVENT(EventType::WorldClear);
         m_context->GetSubsystem<Renderer>()->Clear();
         m_context->GetSubsystem<ResourceCache>()->Clear();
 

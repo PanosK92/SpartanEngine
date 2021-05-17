@@ -83,7 +83,7 @@ namespace Spartan
             component->OnInitialize();
 
             // Make the scene resolve
-            FIRE_EVENT(EventType::WorldResolve);
+            SP_FIRE_EVENT(EventType::WorldResolve);
 
             return component.get();
         }
@@ -159,7 +159,7 @@ namespace Spartan
             }
 
             // Make the world resolve
-            FIRE_EVENT(EventType::WorldResolve);
+            SP_FIRE_EVENT(EventType::WorldResolve);
         }
 
         void RemoveComponentById(uint32_t id);

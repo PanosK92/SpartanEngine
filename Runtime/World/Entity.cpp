@@ -272,7 +272,7 @@ namespace Spartan
         }
 
         // Make the scene resolve
-        FIRE_EVENT(EventType::WorldResolve);
+        SP_FIRE_EVENT(EventType::WorldResolve);
     }
 
     IComponent* Entity::AddComponent(const ComponentType type, uint32_t id /*= 0*/)
@@ -336,6 +336,6 @@ namespace Spartan
         }
 
         // Make the scene resolve
-        FIRE_EVENT(EventType::WorldResolve);
+        SP_FIRE_EVENT(EventType::WorldResolve);
     }
 }

@@ -221,7 +221,7 @@ Editor::Editor()
     }
 
     // Allow ImGui get event's from the engine's event processing loop
-    SUBSCRIBE_TO_EVENT(EventType::EventSDL, EVENT_HANDLER_VARIANT_STATIC(ImGui_ProcessEvent));
+    SP_SUBSCRIBE_TO_EVENT(EventType::EventSDL, SP_EVENT_HANDLER_VARIANT_STATIC(ImGui_ProcessEvent));
 }
 
 Editor::~Editor()
