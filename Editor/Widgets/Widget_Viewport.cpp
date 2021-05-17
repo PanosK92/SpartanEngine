@@ -69,7 +69,16 @@ void Widget_Viewport::TickVisible()
     offset.y += 34; // TODO: this is probably the tab bar height, find a way to get it properly
     m_input->SetEditorViewportOffset(offset);
 
-    // Draw the image after a potential Renderer::SetResolution() call has been made
+    // If no user settings have been loaded (resolution defined in an .ini file) and this is the first
+    // run, set the render and output resolution to the size of this widget's viewport. Avoids supersampling.
+    if (!m_context->GetSubsystem<Settings>()->HasLoadedUserSettings() && !m_has_resolution_been_set)
+    {
+        m_renderer->SetResolutionRender(static_cast<uint32_t>(m_width), static_cast<uint32_t>(m_height));
+        m_renderer->SetResolutionOutput(static_cast<uint32_t>(m_width), static_cast<uint32_t>(m_height));
+        m_has_resolution_been_set = true;
+    }
+
+    // Draw the image after a potential resolution change call has been made
     ImGuiEx::Image
     (
         m_renderer->GetFrameTexture(),
