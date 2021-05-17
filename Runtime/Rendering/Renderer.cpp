@@ -83,14 +83,14 @@ namespace Spartan
         m_option_values[Renderer_Option_Value::Fog]                 = 0.1f;
 
         // Subscribe to events
-        SUBSCRIBE_TO_EVENT(EventType::WorldResolved,    EVENT_HANDLER_VARIANT(RenderablesAcquire));
-        SUBSCRIBE_TO_EVENT(EventType::WorldClear,       EVENT_HANDLER(Clear));
+        SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved,    SP_EVENT_HANDLER_VARIANT(RenderablesAcquire));
+        SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,       SP_EVENT_HANDLER(Clear));
     }
 
     Renderer::~Renderer()
     {
         // Unsubscribe from events
-        UNSUBSCRIBE_FROM_EVENT(EventType::WorldResolved, EVENT_HANDLER_VARIANT(RenderablesAcquire));
+        SP_UNSUBSCRIBE_FROM_EVENT(EventType::WorldResolved, SP_EVENT_HANDLER_VARIANT(RenderablesAcquire));
 
         m_entities.clear();
         m_camera = nullptr;

@@ -43,7 +43,7 @@ namespace Spartan
     Scripting::Scripting(Context* context) : ISubsystem(context)
     {
         // Subscribe to events
-        SUBSCRIBE_TO_EVENT(EventType::WorldClear, EVENT_HANDLER(Clear));
+        SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear, SP_EVENT_HANDLER(Clear));
     }
 
     Scripting::~Scripting()

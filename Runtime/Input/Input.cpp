@@ -58,7 +58,7 @@ namespace Spartan
         m_keys_previous_frame.fill(false);
 
         // Get events from the main Window's event processing loop
-        SUBSCRIBE_TO_EVENT(EventType::EventSDL, EVENT_HANDLER_VARIANT(OnEvent));
+        SP_SUBSCRIBE_TO_EVENT(EventType::EventSDL, SP_EVENT_HANDLER_VARIANT(OnEvent));
     }
 
     void Input::OnTick(float delta_time)

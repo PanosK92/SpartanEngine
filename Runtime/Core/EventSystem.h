@@ -30,14 +30,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /*
 HOW TO USE
-=================================================================================
-To subscribe a function to an event     -> SUBSCRIBE_TO_EVENT(EVENT_ID, Handler);
-To unsubscribe a function from an event -> SUBSCRIBE_TO_EVENT(EVENT_ID, Handler);
-To fire an event                        -> FIRE_EVENT(EVENT_ID);
-To fire an event with data              -> FIRE_EVENT_DATA(EVENT_ID, Variant);
+====================================================================================
+To subscribe a function to an event     -> SP_SUBSCRIBE_TO_EVENT(EVENT_ID, Handler);
+To unsubscribe a function from an event -> SP_SUBSCRIBE_TO_EVENT(EVENT_ID, Handler);
+To fire an event                        -> SP_FIRE_EVENT(EVENT_ID);
+To fire an event with data              -> SP_FIRE_EVENT_DATA(EVENT_ID, Variant);
 
 Note: Currently, this is a blocking event system
-=================================================================================
+====================================================================================
 */
 
 enum class EventType
@@ -53,22 +53,19 @@ enum class EventType
     EventSDL,           // An event
 };
 
-//= MACROS ====================================================================================================
-#define EVENT_HANDLER_EXPRESSION(expression)        [this](const Spartan::Variant& var)    { ##expression }
-#define EVENT_HANDLER_EXPRESSION_STATIC(expression) [](const Spartan::Variant& var)        { ##expression }
+//= MACROS =======================================================================================================
+#define SP_EVENT_HANDLER(function)                     [this](const Spartan::Variant& var)    { function(); }
+#define SP_EVENT_HANDLER_STATIC(function)              [](const Spartan::Variant& var)        { function(); }
 
-#define EVENT_HANDLER(function)                     [this](const Spartan::Variant& var)    { function(); }
-#define EVENT_HANDLER_STATIC(function)              [](const Spartan::Variant& var)        { function(); }
+#define SP_EVENT_HANDLER_VARIANT(function)             [this](const Spartan::Variant& var)    { function(var); }
+#define SP_EVENT_HANDLER_VARIANT_STATIC(function)      [](const Spartan::Variant& var)        { function(var); }
 
-#define EVENT_HANDLER_VARIANT(function)             [this](const Spartan::Variant& var)    { function(var); }
-#define EVENT_HANDLER_VARIANT_STATIC(function)      [](const Spartan::Variant& var)        { function(var); }
+#define SP_FIRE_EVENT(eventID)                         Spartan::EventSystem::Get().Fire(eventID)
+#define SP_FIRE_EVENT_DATA(eventID, data)              Spartan::EventSystem::Get().Fire(eventID, data)
 
-#define FIRE_EVENT(eventID)                         Spartan::EventSystem::Get().Fire(eventID)
-#define FIRE_EVENT_DATA(eventID, data)              Spartan::EventSystem::Get().Fire(eventID, data)
-
-#define SUBSCRIBE_TO_EVENT(eventID, function)       Spartan::EventSystem::Get().Subscribe(eventID, function);
-#define UNSUBSCRIBE_FROM_EVENT(eventID, function)   Spartan::EventSystem::Get().Unsubscribe(eventID, function);
-//=============================================================================================================
+#define SP_SUBSCRIBE_TO_EVENT(eventID, function)       Spartan::EventSystem::Get().Subscribe(eventID, function);
+#define SP_UNSUBSCRIBE_FROM_EVENT(eventID, function)   Spartan::EventSystem::Get().Unsubscribe(eventID, function);
+//================================================================================================================
 
 namespace Spartan
 {
