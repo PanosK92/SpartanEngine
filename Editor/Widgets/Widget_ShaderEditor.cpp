@@ -42,7 +42,7 @@ Widget_ShaderEditor::Widget_ShaderEditor(Editor* editor) : Widget(editor)
     m_text_editor   = make_unique<Widget_TextEditor>();
     m_renderer      = m_context->GetSubsystem<Renderer>();
     m_input         = m_context->GetSubsystem<Input>();
-    m_position      = k_position_screen_center;
+    m_position      = k_widget_position_screen_center;
 }
 
 void Widget_ShaderEditor::TickVisible()

@@ -33,8 +33,8 @@ class Editor;
 namespace Spartan { class Context; class Profiler; }
 //==================================================
 
-const float k_position_default          = -1.0f;
-const float k_position_screen_center    = -2.0f;
+const float k_widget_default_propery        = -1.0f;
+const float k_widget_position_screen_center = -2.0f;
 
 class Widget
 {
@@ -67,10 +67,10 @@ protected:
     int m_flags                         = ImGuiWindowFlags_NoCollapse;
     float m_height                      = 0;
     float m_alpha                       = -1.0f;
-    Spartan::Math::Vector2 m_position   = Spartan::Math::Vector2(-1.0f);
-    Spartan::Math::Vector2 m_size       = Spartan::Math::Vector2(-1.0f);
-    Spartan::Math::Vector2 m_size_max   = Spartan::Math::Vector2(FLT_MAX, FLT_MAX);
-    Spartan::Math::Vector2 m_padding    = Spartan::Math::Vector2(-1.0f);
+    Spartan::Math::Vector2 m_position   = k_widget_default_propery;
+    Spartan::Math::Vector2 m_size       = k_widget_default_propery;
+    Spartan::Math::Vector2 m_size_max   = k_widget_default_propery;
+    Spartan::Math::Vector2 m_padding    = k_widget_default_propery;
     Editor* m_editor                    = nullptr;
     Spartan::Context* m_context         = nullptr;
     Spartan::Profiler* m_profiler       = nullptr;
