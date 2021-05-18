@@ -54,6 +54,7 @@ namespace Spartan
         bool HasResource()  const { return m_resource != nullptr; }
 
         // Source
+        void LoadSource(const std::string& file_path);
         const std::vector<std::string>& GetNames()      const { return m_names; }
         const std::vector<std::string>& GetFilePaths()  const { return m_file_paths; }
         const std::vector<std::string>& GetSources()    const { return m_sources; }
@@ -66,7 +67,7 @@ namespace Spartan
         // Misc
         const std::vector<RHI_Descriptor>& GetDescriptors() const { return m_descriptors; }
         const auto& GetInputLayout()                        const { return m_input_layout; } // only valid for vertex shader
-        const auto& GetFilePath()                           const { return m_file_paths[0]; }
+        const auto& GetFilePath()                           const { return m_file_path; }
         RHI_Shader_Type GetShaderStage()                    const { return m_shader_type; }
         const char* GetEntryPoint()                         const;
         const char* GetTargetProfile()                      const;

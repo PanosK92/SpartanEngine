@@ -62,23 +62,21 @@ void Widget_ShaderEditor::ShowShaderSource()
         {
             if (ImGui::BeginChild("##shader_source", ImVec2(m_size.x * 0.7f, 0.0f)))
             {
-                int edited_index = -1;
-
                 // Shader source
                 if (ImGui::BeginTabBar("#shader_tab_bar", ImGuiTabBarFlags_Reorderable | ImGuiTabBarFlags_FittingPolicyResizeDown))
                 {
-                    const std::vector<std::string>& names = m_shader->GetNames();
-                    const std::vector<std::string>& sources = m_shader->GetSources();
+                    const std::vector<std::string>& names      = m_shader->GetNames();
+                    const std::vector<std::string>& sources    = m_shader->GetSources();
 
                     for (uint32_t i = 0; i < static_cast<uint32_t>(names.size()); i++)
                     {
                         if (ImGui::BeginTabItem(names[i].c_str()))
                         {
                             // Set text
-                            if (m_displayed_file_index != i)
+                            if (m_index_displayed != i)
                             {
                                 m_text_editor->SetText(sources[i]);
-                                m_displayed_file_index = i;
+                                m_index_displayed = i;
                             }
 
                             // Handle keyboard shortcuts
@@ -114,7 +112,6 @@ void Widget_ShaderEditor::ShowShaderSource()
                             if (m_text_editor->IsTextChanged())
                             {
                                 m_shader->SetSource(i, m_text_editor->GetText());
-                                edited_index = static_cast<int>(i);
                             }
 
                             ImGui::EndTabItem();
@@ -125,10 +122,10 @@ void Widget_ShaderEditor::ShowShaderSource()
 
                 if (ImGui::Button("Compile"))
                 {
-                    if (edited_index != -1)
+                    if (m_index_displayed != -1)
                     {
-                        const std::vector<std::string>& file_paths = m_shader->GetFilePaths();
-                        const std::vector<std::string>& sources = m_shader->GetSources();
+                        const std::vector<std::string>& file_paths  = m_shader->GetFilePaths();
+                        const std::vector<std::string>& sources     = m_shader->GetSources();
 
                         // Save all files
                         for (uint32_t i = 0; i < static_cast<uint32_t>(file_paths.size()); i++)
@@ -196,10 +193,13 @@ void Widget_ShaderEditor::ShowShaderList()
 
                 if (ImGui::Button(name.c_str()) || m_first_run)
                 {
-                    m_shader                = shader;
-                    m_shader_name           = name;
-                    m_displayed_file_index  = -1;
-                    m_first_run             = false;
+                    m_shader            = shader;
+                    m_shader_name       = name;
+                    m_index_displayed   = -1;
+                    m_first_run         = false;
+
+                    // Reload in case it has been modified
+                    m_shader->LoadSource(m_shader->GetFilePath());
                 }
             }
             ImGui::EndChild();

@@ -50,7 +50,7 @@ private:
     std::string m_shader_name       = "N/A";
     Spartan::Renderer* m_renderer   = nullptr;
     Spartan::Input* m_input         = nullptr;
-    int32_t m_displayed_file_index  = -1;
+    int32_t m_index_displayed       = -1;
     bool m_first_run                = true;
     std::unique_ptr<Widget_TextEditor> m_text_editor;
     std::vector<Spartan::RHI_Shader*> m_shaders;

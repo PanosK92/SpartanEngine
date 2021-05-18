@@ -101,18 +101,11 @@ namespace Spartan
         }
         else // File
         {
-            m_name      = FileSystem::GetFileNameFromFilePath(shader);
-            m_file_path = shader;
-            ParseSource(shader);
-
-            // Reverse the vectors so they have the main shader before the subsequent include directives.
-            // This also helps with the editor's shader editor where you are interested more in the first source.
-            std::reverse(m_names.begin(), m_names.end());
-            std::reverse(m_file_paths.begin(), m_file_paths.end());
-            std::reverse(m_sources.begin(), m_sources.end());
+            LoadSource(shader);
         }
 
         // Compile
+        m_compilation_state = Shader_Compilation_State::Idle;
         if (!async)
         {
             Compile2();
@@ -192,6 +185,27 @@ namespace Spartan
         {
             LOG_ERROR("Shader \"%s\" failed compile", m_name.c_str());
         }
+    }
+
+    void RHI_Shader::LoadSource(const std::string& file_path)
+    {
+        // Get name and file path
+        m_name = FileSystem::GetFileNameFromFilePath(file_path);
+        m_file_path = file_path;
+
+        // Parse source
+        m_source.clear();
+        m_names.clear();
+        m_file_paths.clear();
+        m_sources.clear();
+        m_file_paths_multiple.clear();
+        ParseSource(file_path);
+
+        // Reverse the vectors so they have the main shader before the subsequent include directives.
+        // This also helps with the editor's shader editor where you are interested more in the first source.
+        std::reverse(m_names.begin(), m_names.end());
+        std::reverse(m_file_paths.begin(), m_file_paths.end());
+        std::reverse(m_sources.begin(), m_sources.end());
     }
 
     void RHI_Shader::SetSource(const uint32_t index, const std::string& source)
