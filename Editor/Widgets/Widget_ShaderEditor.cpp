@@ -19,18 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =====================================
+//= INCLUDES =======================
 #include "Widget_ShaderEditor.h"
-#include "Core/Context.h"
 #include "Input/Input.h"
-#include "RHI/RHI_Shader.h"
 #include "Rendering/Renderer.h"
 #include "Rendering/ShaderLight.h"
 #include "Rendering/ShaderGBuffer.h"
 #include <fstream>
-#include <sstream>
-#include "../ImGui/Source/misc/cpp/imgui_stdlib.h"
-//================================================
+//==================================
 
 //= NAMESPACES =========
 using namespace std;
@@ -46,6 +42,7 @@ Widget_ShaderEditor::Widget_ShaderEditor(Editor* editor) : Widget(editor)
     m_text_editor   = make_unique<Widget_TextEditor>();
     m_renderer      = m_context->GetSubsystem<Renderer>();
     m_input         = m_context->GetSubsystem<Input>();
+    m_position      = k_position_screen_center;
 }
 
 void Widget_ShaderEditor::TickVisible()

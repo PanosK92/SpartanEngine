@@ -11,9 +11,9 @@
 // - FAQ                   http://dearimgui.org/faq
 // - Homepage & latest     https://github.com/ocornut/imgui
 // - Releases & changelog  https://github.com/ocornut/imgui/releases
-// - Gallery               https://github.com/ocornut/imgui/issues/3488 (please post your screenshots/video there!)
+// - Gallery               https://github.com/ocornut/imgui/issues/3793 (please post your screenshots/video there!)
+// - Wiki                  https://github.com/ocornut/imgui/wiki (lots of good stuff there)
 // - Glossary              https://github.com/ocornut/imgui/wiki/Glossary
-// - Wiki                  https://github.com/ocornut/imgui/wiki
 // - Issues & support      https://github.com/ocornut/imgui/issues
 // - Discussions           https://github.com/ocornut/imgui/discussions
 
@@ -62,7 +62,7 @@ Index of this file:
 // Version
 // (Integer encoded as XYYZZ for use in #if preprocessor conditionals. Work in progress versions typically starts at XYY99 then bounce up to XYY00, XYY01 etc. when release tagging happens)
 #define IMGUI_VERSION               "1.83 WIP"
-#define IMGUI_VERSION_NUM           18201
+#define IMGUI_VERSION_NUM           18209
 #define IMGUI_CHECKVERSION()        ImGui::DebugCheckVersionAndDataLayout(IMGUI_VERSION, sizeof(ImGuiIO), sizeof(ImGuiStyle), sizeof(ImVec2), sizeof(ImVec4), sizeof(ImDrawVert), sizeof(ImDrawIdx))
 #define IMGUI_HAS_TABLE
 #define IMGUI_HAS_VIEWPORT          // Viewport WIP branch
@@ -104,6 +104,10 @@ Index of this file:
 #endif
 
 // Warnings
+#ifdef _MSC_VER
+#pragma warning (push)
+#pragma warning (disable: 26495)    // [Static Analyzer] Variable 'XXX' is uninitialized. Always initialize a member variable (type.6).
+#endif
 #if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wold-style-cast"
@@ -386,7 +390,7 @@ namespace ImGui
     IMGUI_API void          PushStyleVar(ImGuiStyleVar idx, float val);                     // modify a style float variable. always use this if you modify the style after NewFrame().
     IMGUI_API void          PushStyleVar(ImGuiStyleVar idx, const ImVec2& val);             // modify a style ImVec2 variable. always use this if you modify the style after NewFrame().
     IMGUI_API void          PopStyleVar(int count = 1);
-    IMGUI_API void          PushAllowKeyboardFocus(bool allow_keyboard_focus);              // allow focusing using TAB/Shift-TAB, enabled by default but you can disable it for certain widgets
+    IMGUI_API void          PushAllowKeyboardFocus(bool allow_keyboard_focus);              // == tab stop enable. Allow focusing using TAB/Shift-TAB, enabled by default but you can disable it for certain widgets
     IMGUI_API void          PopAllowKeyboardFocus();
     IMGUI_API void          PushButtonRepeat(bool repeat);                                  // in 'repeat' mode, Button*() functions return repeated true in a typematic manner (using io.KeyRepeatDelay/io.KeyRepeatRate setting). Note that you can call IsItemActive() after any Button() to tell if the button is held in the current frame.
     IMGUI_API void          PopButtonRepeat();
@@ -624,13 +628,14 @@ namespace ImGui
     // - Use BeginMenuBar() on a window ImGuiWindowFlags_MenuBar to append to its menu bar.
     // - Use BeginMainMenuBar() to create a menu bar at the top of the screen and append to it.
     // - Use BeginMenu() to create a menu. You can call BeginMenu() multiple time with the same identifier to append more items to it.
+    // - Not that MenuItem() keyboardshortcuts are displayed as a convenience but _not processed_ by Dear ImGui at the moment.
     IMGUI_API bool          BeginMenuBar();                                                     // append to menu-bar of current window (requires ImGuiWindowFlags_MenuBar flag set on parent window).
     IMGUI_API void          EndMenuBar();                                                       // only call EndMenuBar() if BeginMenuBar() returns true!
     IMGUI_API bool          BeginMainMenuBar();                                                 // create and append to a full screen menu-bar.
     IMGUI_API void          EndMainMenuBar();                                                   // only call EndMainMenuBar() if BeginMainMenuBar() returns true!
     IMGUI_API bool          BeginMenu(const char* label, bool enabled = true);                  // create a sub-menu entry. only call EndMenu() if this returns true!
     IMGUI_API void          EndMenu();                                                          // only call EndMenu() if BeginMenu() returns true!
-    IMGUI_API bool          MenuItem(const char* label, const char* shortcut = NULL, bool selected = false, bool enabled = true);  // return true when activated. shortcuts are displayed for convenience but not processed by ImGui at the moment
+    IMGUI_API bool          MenuItem(const char* label, const char* shortcut = NULL, bool selected = false, bool enabled = true);  // return true when activated.
     IMGUI_API bool          MenuItem(const char* label, const char* shortcut, bool* p_selected, bool enabled = true);              // return true when activated + toggle (*p_selected) if p_selected != NULL
 
     // Tooltips
@@ -660,18 +665,20 @@ namespace ImGui
     //  - CloseCurrentPopup(): use inside the BeginPopup()/EndPopup() scope to close manually.
     //  - CloseCurrentPopup() is called by default by Selectable()/MenuItem() when activated (FIXME: need some options).
     //  - Use ImGuiPopupFlags_NoOpenOverExistingPopup to avoid opening a popup if there's already one at the same level. This is equivalent to e.g. testing for !IsAnyPopupOpen() prior to OpenPopup().
+    //  - Use IsWindowAppearing() after BeginPopup() to tell if a window just opened.
     IMGUI_API void          OpenPopup(const char* str_id, ImGuiPopupFlags popup_flags = 0);                     // call to mark popup as open (don't call every frame!).
-    IMGUI_API void          OpenPopupOnItemClick(const char* str_id = NULL, ImGuiPopupFlags popup_flags = 1);   // helper to open popup when clicked on last item. return true when just opened. (note: actually triggers on the mouse _released_ event to be consistent with popup behaviors)
+    IMGUI_API void          OpenPopup(ImGuiID id, ImGuiPopupFlags popup_flags = 0);                             // id overload to facilitate calling from nested stacks
+    IMGUI_API void          OpenPopupOnItemClick(const char* str_id = NULL, ImGuiPopupFlags popup_flags = 1);   // helper to open popup when clicked on last item. Default to ImGuiPopupFlags_MouseButtonRight == 1. (note: actually triggers on the mouse _released_ event to be consistent with popup behaviors)
     IMGUI_API void          CloseCurrentPopup();                                                                // manually close the popup we have begin-ed into.
     // Popups: open+begin combined functions helpers
     //  - Helpers to do OpenPopup+BeginPopup where the Open action is triggered by e.g. hovering an item and right-clicking.
     //  - They are convenient to easily create context menus, hence the name.
     //  - IMPORTANT: Notice that BeginPopupContextXXX takes ImGuiPopupFlags just like OpenPopup() and unlike BeginPopup(). For full consistency, we may add ImGuiWindowFlags to the BeginPopupContextXXX functions in the future.
     //  - IMPORTANT: we exceptionally default their flags to 1 (== ImGuiPopupFlags_MouseButtonRight) for backward compatibility with older API taking 'int mouse_button = 1' parameter, so if you add other flags remember to re-add the ImGuiPopupFlags_MouseButtonRight.
-    IMGUI_API bool          BeginPopupContextItem(const char* str_id = NULL, ImGuiPopupFlags popup_flags = 1);  // open+begin popup when clicked on last item. if you can pass a NULL str_id only if the previous item had an id. If you want to use that on a non-interactive item such as Text() you need to pass in an explicit ID here. read comments in .cpp!
+    IMGUI_API bool          BeginPopupContextItem(const char* str_id = NULL, ImGuiPopupFlags popup_flags = 1);  // open+begin popup when clicked on last item. Use str_id==NULL to associate the popup to previous item. If you want to use that on a non-interactive item such as Text() you need to pass in an explicit ID here. read comments in .cpp!
     IMGUI_API bool          BeginPopupContextWindow(const char* str_id = NULL, ImGuiPopupFlags popup_flags = 1);// open+begin popup when clicked on current window.
     IMGUI_API bool          BeginPopupContextVoid(const char* str_id = NULL, ImGuiPopupFlags popup_flags = 1);  // open+begin popup when clicked in void (where there are no windows).
-    // Popups: test function
+    // Popups: query functions
     //  - IsPopupOpen(): return true if the popup is open at the current BeginPopup() level of the popup stack.
     //  - IsPopupOpen() with ImGuiPopupFlags_AnyPopupId: return true if any popup is open at the current BeginPopup() level of the popup stack.
     //  - IsPopupOpen() with ImGuiPopupFlags_AnyPopupId + ImGuiPopupFlags_AnyPopupLevel: return true if any popup is open.
@@ -733,6 +740,7 @@ namespace ImGui
     IMGUI_API int                   TableGetRowIndex();                         // return current row index.
     IMGUI_API const char*           TableGetColumnName(int column_n = -1);      // return "" if column didn't have a name declared by TableSetupColumn(). Pass -1 to use current column.
     IMGUI_API ImGuiTableColumnFlags TableGetColumnFlags(int column_n = -1);     // return column flags so you can query their Enabled/Visible/Sorted/Hovered status flags. Pass -1 to use current column.
+    IMGUI_API void                  TableSetColumnEnabled(int column_n, bool v);// change enabled/disabled state of a column, set to false to hide the column. Note that end-user can use the context menu to change this themselves (right-click in headers, or right-click in columns body with ImGuiTableFlags_ContextMenuInBody)
     IMGUI_API void                  TableSetBgColor(ImGuiTableBgTarget target, ImU32 color, int column_n = -1);  // change the color of a cell, row, or column. See ImGuiTableBgTarget_ flags for details.
 
     // Legacy Columns API (2020: prefer using Tables!)
@@ -758,12 +766,12 @@ namespace ImGui
     // Docking
     // [BETA API] Enable with io.ConfigFlags |= ImGuiConfigFlags_DockingEnable.
     // Note: You can use most Docking facilities without calling any API. You DO NOT need to call DockSpace() to use Docking!
-    // - To dock windows: if io.ConfigDockingWithShift == false (default) drag window from their title bar.
-    // - To dock windows: if io.ConfigDockingWithShift == true: hold SHIFT anywhere while moving windows.
+    // - Drag from window title bar or their tab to dock/undock. Hold SHIFT to disable docking.
+    // - Drag from window menu button (upper-left button) to undock an entire node (all windows).
     // About DockSpace:
     // - Use DockSpace() to create an explicit dock node _within_ an existing window. See Docking demo for details.
     // - DockSpace() needs to be submitted _before_ any window they can host. If you use a dockspace, submit it early in your app.
-    IMGUI_API void          DockSpace(ImGuiID id, const ImVec2& size = ImVec2(0, 0), ImGuiDockNodeFlags flags = 0, const ImGuiWindowClass* window_class = NULL);
+    IMGUI_API ImGuiID       DockSpace(ImGuiID id, const ImVec2& size = ImVec2(0, 0), ImGuiDockNodeFlags flags = 0, const ImGuiWindowClass* window_class = NULL);
     IMGUI_API ImGuiID       DockSpaceOverViewport(const ImGuiViewport* viewport = NULL, ImGuiDockNodeFlags flags = 0, const ImGuiWindowClass* window_class = NULL);
     IMGUI_API void          SetNextWindowDockID(ImGuiID dock_id, ImGuiCond cond = 0);           // set next window dock id (FIXME-DOCK)
     IMGUI_API void          SetNextWindowClass(const ImGuiWindowClass* window_class);           // set next window class (rare/advanced uses: provide hints to the platform backend via altered viewport flags and parent/child info)
@@ -803,7 +811,7 @@ namespace ImGui
     IMGUI_API void          SetItemDefaultFocus();                                              // make last item the default focused item of a window.
     IMGUI_API void          SetKeyboardFocusHere(int offset = 0);                               // focus keyboard on the next widget. Use positive 'offset' to access sub components of a multiple component widget. Use -1 to access previous widget.
 
-    // Item/Widgets Utilities
+    // Item/Widgets Utilities and Query Functions
     // - Most of the functions are referring to the previous Item that has been submitted.
     // - See Demo Window under "Widgets->Querying Status" for an interactive visualization of most of those functions.
     IMGUI_API bool          IsItemHovered(ImGuiHoveredFlags flags = 0);                         // is the last item hovered? (and usable, aka not blocked by a popup, etc.). See ImGuiHoveredFlags for more options.
@@ -828,7 +836,7 @@ namespace ImGui
     // - Currently represents the Platform Window created by the application which is hosting our Dear ImGui windows.
     // - In 'docking' branch with multi-viewport enabled, we extend this concept to have multiple active viewports.
     // - In the future we will extend this concept further to also represent Platform Monitor and support a "no main platform window" operation mode.
-    IMGUI_API ImGuiViewport* GetMainViewport();                                                 // return primary/default viewport.
+    IMGUI_API ImGuiViewport* GetMainViewport();                                                 // return primary/default viewport. This can never be NULL.
 
     // Miscellaneous Utilities
     IMGUI_API bool          IsRectVisible(const ImVec2& size);                                  // test if rectangle (of given size, starting from cursor position) is visible / not clipped.
@@ -900,6 +908,7 @@ namespace ImGui
     IMGUI_API const char*   SaveIniSettingsToMemory(size_t* out_ini_size = NULL);               // return a zero-terminated string with the .ini data which you can save by your own mean. call when io.WantSaveIniSettings is set, then save data by your own mean and clear io.WantSaveIniSettings.
 
     // Debug Utilities
+    // - This is used by the IMGUI_CHECKVERSION() macro.
     IMGUI_API bool          DebugCheckVersionAndDataLayout(const char* version_str, size_t sz_io, size_t sz_style, size_t sz_vec2, size_t sz_vec4, size_t sz_drawvert, size_t sz_drawidx); // This is called by IMGUI_CHECKVERSION() macro.
 
     // Memory Allocators
@@ -993,10 +1002,7 @@ enum ImGuiInputTextFlags_
     ImGuiInputTextFlags_NoUndoRedo          = 1 << 16,  // Disable undo/redo. Note that input text owns the text data while active, if you want to provide your own undo/redo stack you need e.g. to call ClearActiveID().
     ImGuiInputTextFlags_CharsScientific     = 1 << 17,  // Allow 0123456789.+-*/eE (Scientific notation input)
     ImGuiInputTextFlags_CallbackResize      = 1 << 18,  // Callback on buffer capacity changes request (beyond 'buf_size' parameter value), allowing the string to grow. Notify when the string wants to be resized (for string types which hold a cache of their Size). You will be provided a new BufSize in the callback and NEED to honor it. (see misc/cpp/imgui_stdlib.h for an example of using this)
-    ImGuiInputTextFlags_CallbackEdit        = 1 << 19,  // Callback on any edit (note that InputText() already returns true on edit, the callback is useful mainly to manipulate the underlying buffer while focus is active)
-    // [Internal]
-    ImGuiInputTextFlags_Multiline           = 1 << 20,  // For internal use by InputTextMultiline()
-    ImGuiInputTextFlags_NoMarkEdited        = 1 << 21   // For internal use by functions using InputText() before reformatting data
+    ImGuiInputTextFlags_CallbackEdit        = 1 << 19   // Callback on any edit (note that InputText() already returns true on edit, the callback is useful mainly to manipulate the underlying buffer while focus is active)
 
     // Obsolete names (will be removed soon)
 #ifndef IMGUI_DISABLE_OBSOLETE_FUNCTIONS
@@ -1853,7 +1859,6 @@ struct ImGuiIO
 
     // Docking options (when ImGuiConfigFlags_DockingEnable is set)
     bool        ConfigDockingNoSplit;           // = false          // Simplified docking mode: disable window splitting, so docking is limited to merging multiple windows together into tab-bars.
-    bool        ConfigDockingWithShift;         // = false          // Enable docking with holding Shift key (reduce visual noise, allows dropping in wider space)
     bool        ConfigDockingAlwaysTabBar;      // = false          // [BETA] [FIXME: This currently creates regression with auto-sizing and general overhead] Make every single floating window display within a docking node.
     bool        ConfigDockingTransparentPayload;// = false          // [BETA] Make window or viewport transparent when docking and only display docking boxes on the target viewport. Useful if rendering of multiple viewport cannot be synced. Best used with ConfigViewportsNoAutoMerge.
 
@@ -3068,6 +3073,10 @@ enum ImDrawCornerFlags_
 #pragma clang diagnostic pop
 #elif defined(__GNUC__)
 #pragma GCC diagnostic pop
+#endif
+
+#ifdef _MSC_VER
+#pragma warning (pop)
 #endif
 
 // Include imgui_user.h at the end of imgui.h (convenient for user to only explicitly include vanilla imgui.h)

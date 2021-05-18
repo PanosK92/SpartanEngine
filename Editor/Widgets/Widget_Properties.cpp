@@ -19,11 +19,11 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =====================================
+//= INCLUDES ====================================
 #include "Widget_Properties.h"
 #include "../ImGui_Extension.h"
 #include "../WidgetsDeferred/ButtonColorPicker.h"
-#include "../ImGui/Source/misc/cpp/imgui_stdlib.h"
+#include "../ImGui/Source/imgui_stdlib.h"
 #include "Core/Engine.h"
 #include "Rendering/Model.h"
 #include "World/Entity.h"
@@ -39,7 +39,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Script.h"
 #include "World/Components/Environment.h"
 #include "World/Components/Terrain.h"
-//================================================
+//===============================================
 
 //= NAMESPACES =========
 using namespace std;

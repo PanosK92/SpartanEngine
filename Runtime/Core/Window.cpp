@@ -106,7 +106,7 @@ namespace Spartan
                     m_shown = true;
                     break;
                 case SDL_WINDOWEVENT_HIDDEN:
-                    m_hidden = true;
+                    m_shown = false;
                     break;
                 case SDL_WINDOWEVENT_EXPOSED:
                     //Window has been exposed and should be redrawn
@@ -124,9 +124,11 @@ namespace Spartan
                     break;
                 case SDL_WINDOWEVENT_MINIMIZED:
                     m_minimised = true;
+                    m_maximised = false;
                     break;
                 case SDL_WINDOWEVENT_MAXIMIZED:
                     m_maximised = true;
+                    m_minimised = false;
                     break;
                 case SDL_WINDOWEVENT_RESTORED:
                     //SDL_Log("Window %d restored", event->window.windowID);

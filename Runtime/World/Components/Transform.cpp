@@ -44,12 +44,12 @@ namespace Spartan
         m_matrix_previous  = Matrix::Identity;
         m_parent        = nullptr;
 
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_positionLocal, Vector3);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_rotationLocal, Quaternion);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_scaleLocal,    Vector3);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_matrix,        Matrix);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_matrixLocal,   Matrix);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_lookAt,        Vector3);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_positionLocal, Vector3);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_rotationLocal, Quaternion);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_scaleLocal,    Vector3);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_matrix,        Matrix);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_matrixLocal,   Matrix);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_lookAt,        Vector3);
     }
 
     void Transform::OnInitialize()

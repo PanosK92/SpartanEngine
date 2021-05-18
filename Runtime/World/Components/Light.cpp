@@ -41,16 +41,16 @@ namespace Spartan
 {
     Light::Light(Context* context, Entity* entity, uint32_t id /*= 0*/) : IComponent(context, entity, id)
     {
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_shadows_enabled, bool);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_shadows_screen_space_enabled, bool);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_shadows_transparent_enabled, bool);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_range, float);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_intensity, float);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_angle_rad, float);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_color_rgb, Vector4);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_bias, float);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_normal_bias, float);
-        REGISTER_ATTRIBUTE_GET_SET(GetLightType, SetLightType, LightType);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_shadows_enabled, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_shadows_screen_space_enabled, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_shadows_transparent_enabled, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_range, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_intensity, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_angle_rad, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_color_rgb, Vector4);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bias, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_normal_bias, float);
+        SP_REGISTER_ATTRIBUTE_GET_SET(GetLightType, SetLightType, LightType);
 
         m_renderer = m_context->GetSubsystem<Renderer>();
     }

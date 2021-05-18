@@ -40,19 +40,6 @@ Note: Currently, this is a blocking event system
 ====================================================================================
 */
 
-enum class EventType
-{
-    FrameEnd,           // A frame ends
-    WorldSave,          // The world must be saved to file
-    WorldSaved,         // The world finished saving to file
-    WorldLoad,          // The world must be loaded from file
-    WorldLoaded,        // The world finished loading from file
-    WorldClear,         // The world should clear everything
-    WorldResolve,       // The world should resolve
-    WorldResolved,      // The world has finished resolving
-    EventSDL,           // An event
-};
-
 //= MACROS =======================================================================================================
 #define SP_EVENT_HANDLER(function)                     [this](const Spartan::Variant& var)    { function(); }
 #define SP_EVENT_HANDLER_STATIC(function)              [](const Spartan::Variant& var)        { function(); }
@@ -66,6 +53,19 @@ enum class EventType
 #define SP_SUBSCRIBE_TO_EVENT(eventID, function)       Spartan::EventSystem::Get().Subscribe(eventID, function);
 #define SP_UNSUBSCRIBE_FROM_EVENT(eventID, function)   Spartan::EventSystem::Get().Unsubscribe(eventID, function);
 //================================================================================================================
+
+enum class EventType
+{
+    FrameEnd,           // A frame ends
+    WorldSave,          // The world must be saved to file
+    WorldSaved,         // The world finished saving to file
+    WorldLoad,          // The world must be loaded from file
+    WorldLoaded,        // The world finished loading from file
+    WorldClear,         // The world should clear everything
+    WorldResolve,       // The world should resolve
+    WorldResolved,      // The world has finished resolving
+    EventSDL,           // An event
+};
 
 namespace Spartan
 {

@@ -189,8 +189,12 @@ namespace Spartan
         {
             const Light* light = entities_light[light_index]->GetComponent<Light>();
 
-            // Skip some obvious cases
-            if (!light || !light->GetShadowsEnabled())
+            // Can happen when loading a new scene and the lights get deleted
+            if (!light)
+                continue;
+
+            // Skip lights which don't cast shadows or have an intensity of zero
+            if (!light->GetShadowsEnabled() || light->GetIntensity() == 0.0f)
                 continue;
 
             // Skip lights that don't cast transparent shadows (if this is a transparent pass)

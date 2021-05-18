@@ -100,17 +100,17 @@ namespace Spartan
         m_material_default      = false;
         m_cast_shadows          = true;
 
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_material_default,      bool);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_material,              Material*);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_cast_shadows,          bool);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryIndexOffset,   uint32_t);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryIndexCount,    uint32_t);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryVertexOffset,  uint32_t);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryVertexCount,   uint32_t);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryName,          string);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_model,                 Model*);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box,          BoundingBox);
-        REGISTER_ATTRIBUTE_GET_SET(Geometry_Type, GeometrySet,  Geometry_Type);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material_default,      bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material,              Material*);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_cast_shadows,          bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryIndexOffset,   uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryIndexCount,    uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryVertexOffset,  uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryVertexCount,   uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryName,          string);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_model,                 Model*);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box,          BoundingBox);
+        SP_REGISTER_ATTRIBUTE_GET_SET(Geometry_Type, GeometrySet,  Geometry_Type);
     }
 
     void Renderable::Serialize(FileStream* stream)
