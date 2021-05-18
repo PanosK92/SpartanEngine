@@ -45,7 +45,6 @@ namespace Spartan
         uint32_t m_width            = 640;
         uint32_t m_height           = 480;
         bool m_shown                = false;
-        bool m_hidden               = false;
         bool m_minimised            = false;
         bool m_maximised            = false;
         bool m_close                = false;

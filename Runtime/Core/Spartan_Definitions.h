@@ -13,20 +13,6 @@
 #endif
 #endif
 
-// Common functions
-namespace Spartan
-{
-    template <typename T>
-    constexpr void sp_ptr_delete(T*& ptr)
-    {
-        if (ptr)
-        {
-            delete ptr;
-            ptr = nullptr;
-        }
-    }
-}
-
 // Optimisation
 #define SP_OPTIMISE_OFF __pragma(optimize("", off))
 #define SP_OPTIMISE_ON __pragma(optimize("", on))
@@ -34,6 +20,9 @@ namespace Spartan
 // Warnings
 #define SP_WARNINGS_OFF __pragma(warning(push, 0))
 #define SP_WARNINGS_ON __pragma(warning(pop))
+
+// Debug break
+#define SP_DEBUG_BREAK() __debugbreak()
 
 // Assert
 #ifdef DEBUG
@@ -43,9 +32,17 @@ namespace Spartan
 if (!(##expression))            \
 {                               \
     LOG_ERROR(#expression);     \
-    __debugbreak();             \
+    SP_DEBUG_BREAK();           \
 }
 #endif
+
+// Delete
+#define SP_DELETE(x)    \
+if (x)                  \
+{                       \
+    delete x;           \
+    x = nullptr;        \
+}
 
 // Platform 
 //#define API_GRAPHICS_D3D11    -> Defined by solution generation script

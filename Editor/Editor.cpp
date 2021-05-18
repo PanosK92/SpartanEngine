@@ -96,7 +96,7 @@ static void ImGui_Initialise(Context* context)
 
     // Font
     const string dir_fonts = context->GetSubsystem<ResourceCache>()->GetResourceDirectory(ResourceDirectory::Fonts) + "/";
-    io.Fonts->AddFontFromFileTTF((dir_fonts + "CalibriBold.ttf").c_str(), k_font_size);
+    io.Fonts->AddFontFromFileTTF((dir_fonts + "Calibri.ttf").c_str(), k_font_size);
     io.FontGlobalScale = k_font_scale;
 
     // Initialise SDL (windows, input) and RHI (rendering)

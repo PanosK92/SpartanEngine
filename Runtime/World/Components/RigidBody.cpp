@@ -89,16 +89,16 @@ namespace Spartan
         m_collision_shape    = nullptr;
         m_rigidBody            = nullptr;
 
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_mass, float);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_friction, float);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_friction_rolling, float);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_restitution, float);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_use_gravity, bool);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_is_kinematic, bool);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_gravity, Vector3);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_position_lock, Vector3);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_rotation_lock, Vector3);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_center_of_mass, Vector3);    
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mass, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_friction, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_friction_rolling, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_restitution, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_use_gravity, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_is_kinematic, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_gravity, Vector3);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_position_lock, Vector3);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_rotation_lock, Vector3);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_center_of_mass, Vector3);    
     }
 
     RigidBody::~RigidBody()

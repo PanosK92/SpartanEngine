@@ -27,9 +27,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../ImGui/Source/imgui.h"
 //================================
 
+//= FORWARD DECLARATIONS ===========================
 struct ImGuiWindow;
 class Editor;
 namespace Spartan { class Context; class Profiler; }
+//==================================================
+
+const float k_position_default          = -1.0f;
+const float k_position_screen_center    = -2.0f;
 
 class Widget
 {

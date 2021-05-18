@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include "Widget_ProgressDialog.h"
 #include "Resource/ProgressTracker.h"
-#include "Display/Display.h"
 //===================================
 
 //= NAMESPACES ===============
@@ -38,10 +37,7 @@ Widget_ProgressDialog::Widget_ProgressDialog(Editor* editor) : Widget(editor)
     m_progress      = 0.0f;
     m_size          = Vector2(500.0f, 83.0f);
     m_flags         |= ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoDocking;
-
-    // Default to the center of the screen
-    m_position.x = Spartan::Display::GetWidth() * 0.5f;
-    m_position.y = Spartan::Display::GetHeight() * 0.5f;
+    m_position      = k_position_screen_center;
 }
 
 void Widget_ProgressDialog::TickAlways()

@@ -48,15 +48,15 @@ namespace Spartan
         m_constraintType            = ConstraintType_Point;
         m_physics                    = GetContext()->GetSubsystem<Physics>();
 
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_errorReduction, float);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_constraintForceMixing, float);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_enabledEffective, bool);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_collisionWithLinkedBody, bool);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_position, Vector3);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_rotation, Quaternion);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_highLimit, Vector2);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_lowLimit, Vector2);
-        REGISTER_ATTRIBUTE_VALUE_SET(m_constraintType, SetConstraintType, ConstraintType);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_errorReduction, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_constraintForceMixing, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_enabledEffective, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_collisionWithLinkedBody, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_position, Vector3);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_rotation, Quaternion);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_highLimit, Vector2);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_lowLimit, Vector2);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_constraintType, SetConstraintType, ConstraintType);
     }
 
     Constraint::~Constraint()

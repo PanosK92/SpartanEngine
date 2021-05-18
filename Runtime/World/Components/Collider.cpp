@@ -45,11 +45,11 @@ namespace Spartan
         m_size        = Vector3::One;
         m_shape        = nullptr;
 
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_size, Vector3);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_center, Vector3);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_vertexLimit, uint32_t);
-        REGISTER_ATTRIBUTE_VALUE_VALUE(m_optimize, bool);
-        REGISTER_ATTRIBUTE_VALUE_SET(m_shapeType, SetShapeType, ColliderShape);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_size, Vector3);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_center, Vector3);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_vertexLimit, uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_optimize, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_shapeType, SetShapeType, ColliderShape);
     }
 
     void Collider::OnInitialize()
@@ -58,7 +58,7 @@ namespace Spartan
         if (auto renderable = GetEntity()->GetRenderable())
         {
             m_center    = Vector3::Zero;
-            m_size        = renderable->GetAabb().GetSize();
+            m_size      = renderable->GetAabb().GetSize();
         }
 
         Shape_Update();
@@ -216,7 +216,7 @@ namespace Spartan
     void Collider::Shape_Release()
     {
         RigidBody_SetShape(nullptr);
-        sp_ptr_delete(m_shape);
+        SP_DELETE(m_shape);
     }
 
     void Collider::RigidBody_SetShape(btCollisionShape* shape) const

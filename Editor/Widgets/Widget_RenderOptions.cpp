@@ -44,6 +44,7 @@ Widget_RenderOptions::Widget_RenderOptions(Editor* editor) : Widget(editor)
     m_is_visible    = false;
     m_renderer      = m_context->GetSubsystem<Renderer>();
     m_alpha         = 1.0f;
+    m_position      = k_position_screen_center;
 }
 
 void Widget_RenderOptions::TickVisible()

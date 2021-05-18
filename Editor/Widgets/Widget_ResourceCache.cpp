@@ -38,6 +38,7 @@ Widget_ResourceCache::Widget_ResourceCache(Editor* editor) : Widget(editor)
     m_title         = "Resource Cache";
     m_size          = ImVec2(1366, 768);
     m_is_visible    = false;
+    m_position      = k_position_screen_center;
 }
 
 inline void print_memory(uint64_t memory)

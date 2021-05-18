@@ -112,20 +112,20 @@ namespace Spartan
         }
 
         // Entity
-        Entity* GetEntity()    const { return m_entity; }
+        Entity* GetEntity() const { return m_entity; }
         std::string GetEntityName() const;
         //============================================================================================
         
     protected:
-        #define REGISTER_ATTRIBUTE_GET_SET(getter, setter, type) RegisterAttribute(     \
+        #define SP_REGISTER_ATTRIBUTE_GET_SET(getter, setter, type) RegisterAttribute(  \
         [this]()                        { return getter(); },                           \
         [this](const std::any& valueIn) { setter(std::any_cast<type>(valueIn)); });     \
 
-        #define REGISTER_ATTRIBUTE_VALUE_SET(value, setter, type) RegisterAttribute(    \
+        #define SP_REGISTER_ATTRIBUTE_VALUE_SET(value, setter, type) RegisterAttribute( \
         [this]()                        { return value; },                              \
         [this](const std::any& valueIn) { setter(std::any_cast<type>(valueIn)); });     \
 
-        #define REGISTER_ATTRIBUTE_VALUE_VALUE(value, type) RegisterAttribute(          \
+        #define SP_REGISTER_ATTRIBUTE_VALUE_VALUE(value, type) RegisterAttribute(       \
         [this]()                        { return value; },                              \
         [this](const std::any& valueIn) { value = std::any_cast<type>(valueIn); });     \
 
