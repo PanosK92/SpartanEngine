@@ -39,7 +39,7 @@ Widget_Profiler::Widget_Profiler(Editor* editor) : Widget(editor)
     m_is_visible    = false;
     m_profiler      = m_context->GetSubsystem<Profiler>();
     m_size          = Vector2(1000, 715);
-    m_position      = k_position_screen_center;
+    m_position      = k_widget_position_screen_center;
 }
 
 void Widget_Profiler::OnShow()

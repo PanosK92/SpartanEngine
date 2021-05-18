@@ -37,7 +37,7 @@ Widget_ProgressDialog::Widget_ProgressDialog(Editor* editor) : Widget(editor)
     m_progress      = 0.0f;
     m_size          = Vector2(500.0f, 83.0f);
     m_flags         |= ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoDocking;
-    m_position      = k_position_screen_center;
+    m_position      = k_widget_position_screen_center;
 }
 
 void Widget_ProgressDialog::TickAlways()

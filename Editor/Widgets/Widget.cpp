@@ -77,50 +77,42 @@ void Widget::Tick()
         TIME_BLOCK_START_NAMED(m_profiler, m_title.c_str());
 
         // Size
-        if (m_size.x != -1.0f && m_size.y != -1.0f)
+        if (m_size != k_widget_default_propery)
         {
             ImGui::SetNextWindowSize(m_size, ImGuiCond_FirstUseEver);
-            m_size = -1;
         }
 
         // Max size
-        if ((m_size.x != -1.0f && m_size.y != -1.0f) || (m_size_max.x != FLT_MAX && m_size_max.y != FLT_MAX))
+        if (m_size != k_widget_default_propery && m_size_max != k_widget_default_propery)
         {
             ImGui::SetNextWindowSizeConstraints(m_size, m_size_max);
         }
 
         // Padding
-        if (m_padding.x != -1.0f && m_padding.y != -1.0f)
+        if (m_padding != k_widget_default_propery)
         {
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, m_padding);
             m_var_pushes++;
         }
 
         // Alpha
-        if (m_alpha != -1.0f)
+        if (m_alpha != k_widget_default_propery)
         {
             ImGui::PushStyleVar(ImGuiStyleVar_Alpha, m_alpha);
             m_var_pushes++;
         }
 
         // Position
-        if (m_position != k_position_default)
+        if (m_position != k_widget_default_propery)
         {
+            if (m_position == k_widget_position_screen_center)
+            {
+                m_position.x = Spartan::Display::GetWidth() * 0.5f;
+                m_position.y = Spartan::Display::GetHeight() * 0.5f;
+            }
+
             ImVec2 pivot_center = ImVec2(0.5f, 0.5f);
-
-            if (m_position == k_position_screen_center)
-            {
-                Spartan::Math::Vector2 position;
-                position.x = Spartan::Display::GetWidth() * 0.5f;
-                position.y = Spartan::Display::GetHeight() * 0.5f;
-                ImGui::SetNextWindowPos(position, 0, pivot_center);
-            }
-            else
-            {
-                ImGui::SetNextWindowPos(m_position, 0, pivot_center);
-            }
-
-            m_position = k_position_default;
+            ImGui::SetNextWindowPos(m_position, ImGuiCond_FirstUseEver, pivot_center);
         }
 
         // Callback
