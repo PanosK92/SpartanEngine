@@ -23,14 +23,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common.hlsl"
 //====================
 
-static const uint g_ao_directions       = 2;
-static const uint g_ao_steps            = 2;
-static const float g_ao_radius          = 0.3f;
-static const float g_ao_intensity       = 3.3f;
-static const float g_ao_occlusion_bias  = 0.0f;
+static const uint ao_directions     = 1;
+static const uint ao_steps          = 4;
+static const float ao_radius        = 0.3f;
+static const float ao_intensity     = 3.3f;
+static const float ao_n_dot_v_bias  = 0.0f;
 
-static const float ao_samples       = (float) (g_ao_directions * g_ao_steps);
-static const float ao_radius2       = g_ao_radius * g_ao_radius;
+static const float ao_samples       = (float)(ao_directions * ao_steps);
+static const float ao_radius2       = ao_radius * ao_radius;
 static const float ao_negInvRadius2 = -1.0f / ao_radius2;
 
 float falloff(float distance_squared)
@@ -38,13 +38,13 @@ float falloff(float distance_squared)
     return distance_squared * ao_negInvRadius2 + 1.0f;
 }
 
-float compute_occlusion(float3 origin_position, float3 origin_normal, float3 sample_position)
+float compute_occlusion(float3 position, float3 normal, float3 sample_position)
 {
-    float3 origin_to_sample = sample_position - origin_position;
-    float distance_squared  = dot(origin_to_sample, origin_to_sample);
-    float n_dot_v           = dot(origin_normal, origin_to_sample) * rsqrt(distance_squared);
+    float3 v        = sample_position - position;
+    float v_dot_v   = dot(v, v);
+    float n_dot_v   = dot(normal, v) * rsqrt(v_dot_v);
 
-    return saturate(n_dot_v - g_ao_occlusion_bias) * saturate(falloff(distance_squared));
+    return saturate(n_dot_v - ao_n_dot_v_bias) * saturate(falloff(v_dot_v));
 }
 
 float normal_oriented_hemisphere_ambient_occlusion(int2 pos)
@@ -62,11 +62,11 @@ float normal_oriented_hemisphere_ambient_occlusion(int2 pos)
     random_vector           = float3(length(random_vector.xy) * normalize(rotation.xy), random_vector.z);
     
     [unroll]
-    for (uint i = 0; i < g_ao_directions; i++)
+    for (uint i = 0; i < ao_directions; i++)
     {
         // Compute offset
         float3 offset   = reflect(hemisphere_samples[i], random_vector);
-        offset          *= g_ao_radius;                 // Scale by radius
+        offset          *= ao_radius;                   // Scale by radius
         offset          *= sign(dot(offset, normal));   // Flip if behind normal
         
         // Compute sample pos
@@ -78,49 +78,48 @@ float normal_oriented_hemisphere_ambient_occlusion(int2 pos)
         occlusion += compute_occlusion(position, normal, sample_pos);
     }
 
-    return 1.0f - saturate(occlusion * g_ao_intensity / float(g_ao_directions));
+    return 1.0f - saturate(occlusion * ao_intensity / float(ao_directions));
 }
 
 float ground_truth_ambient_occlusion(int2 pos)
 {
-    const float2 origin_uv          = (pos + 0.5f) / g_resolution_rt;
-    const float3 origin_position    = get_position_view_space(pos);
-    const float3 origin_normal      = get_normal_view_space(pos);
+    const float2 uv = (pos + 0.5f) / g_resolution_rt;
+    float3 position = get_position_view_space(pos);
+    float3 normal   = get_normal_view_space(pos);
     
-    // Compute step in pixels
-    float pixel_offset  = max((g_ao_radius * g_resolution_rt.x * 0.5f) / origin_position.z, (float)g_ao_steps);
-    float step_offset   = pixel_offset / (g_ao_steps + 1); // divide by steps + 1 so that the farthest samples are not fully attenuated
-
-    // Comute rotation step
-    const float step_direction = PI2 / (float)g_ao_directions;
+    // Compute length and rotation steps
+    float step_length   = max((ao_radius * g_resolution_rt.x * 0.5f) / position.z, (float) ao_steps);
+    step_length         = step_length / (ao_steps + 1); // divide by ao_steps + 1 so that the farthest samples are not fully attenuated
+    float step_angle    = PI2 / (float)ao_directions;
 
     // Offsets (noise over space and time)
-    const float noise_gradient_temporal     = get_noise_interleaved_gradient(pos);
-    const float offset_spatial              = get_offset_non_temporal(pos);
-    const float offset_temporal             = get_offset();
-    const float offset_rotation_temporal    = get_direction();
-    const float ray_offset                  = frac(offset_spatial + offset_temporal) + (get_random(origin_uv) * 2.0 - 1.0) * 0.25;
+    float noise_gradient_temporal   = get_noise_interleaved_gradient(pos);
+    float offset_spatial            = get_offset_non_temporal(pos);
+    float offset_temporal           = get_offset();
+    float offset_rotation_temporal  = get_direction();
+    float ray_offset                = frac(offset_spatial + offset_temporal) + (get_random(uv) * 2.0 - 1.0) * 0.25;
 
-    // Compute occlusion
     float occlusion = 0;
+    
     [unroll]
-    for (uint direction_index = 0; direction_index < g_ao_directions; direction_index++)
+    for (uint direction_index = 0; direction_index < ao_directions; direction_index++)
     {
-        float rotation_angle        = (direction_index + noise_gradient_temporal + offset_rotation_temporal) * step_direction;
+        float rotation_angle        = (direction_index + noise_gradient_temporal + offset_rotation_temporal) * step_angle;
         float2 rotation_direction   = float2(cos(rotation_angle), sin(rotation_angle)) * g_texel_size;
 
         [unroll]
-        for (uint step_index = 0; step_index < g_ao_steps; ++step_index)
+        for (uint step_index = 0; step_index < ao_steps; ++step_index)
         {
-            float2 uv_offset        = max(step_offset * (step_index + ray_offset), 1 + step_index) * rotation_direction;
-            float2 sample_uv        = origin_uv + uv_offset;
+            float2 uv_offset        = max(step_length * (step_index + ray_offset), 1 + step_index) * rotation_direction;
+            float2 sample_uv        = uv + uv_offset;
             float3 sample_position  = get_position_view_space(sample_uv);
 
-            occlusion += compute_occlusion(origin_position, origin_normal, sample_position);
+            // Occlusion
+            occlusion += compute_occlusion(position, normal, sample_position);
         }
     }
 
-    return 1.0f - saturate(occlusion * g_ao_intensity / ao_samples);
+    return 1.0f - saturate(occlusion * ao_intensity / ao_samples);
 }
 
 [numthreads(thread_group_count_x, thread_group_count_y, 1)]

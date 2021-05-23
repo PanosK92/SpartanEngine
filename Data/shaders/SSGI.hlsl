@@ -19,77 +19,106 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========
+//= INCLUDES ===========
 #include "Common.hlsl"
-//====================
+#include "Velocity.hlsl"
+//======================
 
-static const uint g_ssgi_directions         = 2;
+static const uint g_ssgi_directions         = 1;
 static const uint g_ssgi_steps              = 2;
-static const float g_ssgi_radius            = 2.0f;
-static const float g_ssgi_bounce_intensity  = 1.0f;
-static const float g_ssgi_occlusion_bias    = 0.0f;
-static const float g_ssgi_samples           = (float)(g_ssgi_directions * g_ssgi_steps);
-static const float g_ssgi_radius2           = g_ssgi_radius * g_ssgi_radius;
-static const float g_ssgi_negInvRadius2     = -1.0f / g_ssgi_radius2;
+static const float g_ssgi_radius            = 1.5f;
+static const float g_ssgi_bounce_intensity  = 20.0f;
+static const float g_ssgi_blend_min         = 0.0f;
+static const float g_ssgi_blend_max         = 0.1f;
 
-float compute_falloff(float distance_squared)
+static const float g_ssgi_samples       = (float)(g_ssgi_directions * g_ssgi_steps);
+static const float g_ssgi_radius2       = g_ssgi_radius * g_ssgi_radius;
+static const float g_ssgi_negInvRadius2 = -1.0f / g_ssgi_radius2;
+
+float3 sample_light(float2 uv)
 {
-    return saturate(distance_squared * g_ssgi_negInvRadius2 + 1.0f);
+    return tex_light_diffuse.SampleLevel(sampler_bilinear_clamp, uv, 0).rgb;
 }
 
-float compute_occlusion(float3 origin_position, float3 origin_normal, float3 sample_position)
+float falloff(float distance_squared)
 {
-    float3 origin_to_sample = sample_position - origin_position;
-    float distance_squared  = dot(origin_to_sample, origin_to_sample);
-    float n_dot_v           = dot(origin_normal, origin_to_sample) * rsqrt(distance_squared);
-    float falloff           = compute_falloff(distance_squared);
-
-    return saturate(n_dot_v - g_ssgi_occlusion_bias) * falloff;
+    return distance_squared * g_ssgi_negInvRadius2 + 1.0f;
 }
 
-float3 ground_truth_global_illumination(uint2 pos)
+float compute_occlusion(float3 position, float3 normal, float3 sample_position)
 {
-    // Get some useful things
-    const float2 origin_uv          = (pos + 0.5f) / g_resolution_rt;
-    const float3 origin_position    = get_position_view_space(pos);
-    const float3 origin_normal      = get_normal_view_space(pos);
+  float3 v      = sample_position - position;
+  float v_dot_v = dot(v, v);
+  float n_dot_v = dot(normal, v) * 1.0f / fast_sqrt(v_dot_v);
+  return saturate(n_dot_v) * saturate(falloff(v_dot_v));
+}
 
-    // Compute radius in pixels
-    float step_offset   = max((g_ssgi_radius * g_resolution_rt.x * 0.5f) / origin_position.z, (float)g_ssgi_steps);
-    step_offset         = step_offset / (g_ssgi_steps + 1); // divide by steps + 1 so that the farthest samples are not fully attenuated
+float3 compute_light(float3 position, float3 normal, float2 sample_uv, inout uint indirect_light_samples)
+{
+    float3 sample_position  = get_position_view_space(sample_uv);
+    float3 center_to_sample = sample_position - position;
+    float distance_squared  = dot(center_to_sample, center_to_sample);
+    center_to_sample        = normalize(center_to_sample);
+    float3 indirect = 0.0f;
+    
+    [branch]
+    if (screen_fade(sample_uv) > 0.0f)
+    {
+        // First bounce
+        float3 light = sample_light(sample_uv);
 
-    // Compute rotation step
-    const float step_direction = PI2 / (float)g_ssgi_directions;
+        // Transport
+        [branch]
+        if (luminance(light) > 0.0f)
+        {
+             float3 sample_position = get_position_view_space(sample_uv);
+            float occlusion         = compute_occlusion(position, normal, sample_position);
+            
+            [branch]
+            if (occlusion > 0.0f)
+            {
+                float3 sample_normal    = get_normal_view_space(sample_uv);
+                float visibility        = saturate(dot(sample_normal, -center_to_sample));
+                
+                indirect = light * visibility * occlusion;
+                indirect_light_samples++;
+            }
+        }
+    }
+
+    return indirect;
+}
+
+float3 ssgi(float2 uv, float3 position, float3 normal)
+{
+    float3 light        = 0.0f;
+    uint light_samples  = 0;
+    
+    float radius_pixels = max((g_ssgi_radius * g_resolution_rt.x * 0.5f) / position.z, (float) g_ssgi_steps);
+    radius_pixels       = radius_pixels / (g_ssgi_steps + 1); // divide by ao_steps + 1 so that the farthest samples are not fully attenuated
+    float rotation_step = PI2 / (float)g_ssgi_directions;
 
     // Offsets (noise over space and time)
-    const float noise_gradient_temporal     = get_noise_interleaved_gradient(pos);
-    const float offset_spatial              = get_offset_non_temporal(pos);
-    const float offset_temporal             = get_offset();
-    const float offset_rotation_temporal    = get_direction();
-    const float ray_offset                  = frac(offset_spatial + offset_temporal) + (get_random(origin_uv) * 2.0 - 1.0) * 0.25;
-
-    // Compute
-    float3 light = 0.0f;
-    uint light_samples = 0;
+    float noise_gradient_temporal   = get_noise_interleaved_gradient(uv * g_resolution_rt);
+    float offset_spatial            = get_offset_non_temporal(uv * g_resolution_rt);
+    float offset_temporal           = get_offset();
+    float offset_rotation_temporal  = get_direction();
+    float ray_offset                = frac(offset_spatial + offset_temporal) + (get_random(uv) * 2.0 - 1.0) * 0.25;
+    
     [unroll]
     for (uint direction_index = 0; direction_index < g_ssgi_directions; direction_index++)
     {
-        float rotation_angle        = (direction_index + noise_gradient_temporal + offset_rotation_temporal) * step_direction;
+        float rotation_angle        = (direction_index + noise_gradient_temporal + offset_rotation_temporal) * rotation_step;
         float2 rotation_direction   = float2(cos(rotation_angle), sin(rotation_angle)) * g_texel_size;
 
         [unroll]
-        for (uint step_index = 0; step_index < g_ssgi_steps; step_index++)
+        for (uint step_index = 0; step_index < g_ssgi_steps; ++step_index)
         {
-            float2 uv_offset = max(step_offset * (step_index + ray_offset), 1 + step_index) * rotation_direction;
-            float2 sample_uv = origin_uv + uv_offset;
+            float2 uv_offset = max(radius_pixels * (step_index + ray_offset), 1 + step_index) * rotation_direction;
+            float2 sample_uv = uv + uv_offset;
 
-            float3 diffuse  = tex_light_diffuse.SampleLevel(sampler_bilinear_clamp, sample_uv, 0).rgb;
-            float3 albedo   = tex_albedo.SampleLevel(sampler_bilinear_clamp, sample_uv, 0).rgb;
-            float3 position = get_position_view_space(sample_uv);
-            float transport = compute_occlusion(origin_position, origin_normal, position);
-
-            light += diffuse * transport * albedo * screen_fade(sample_uv);
-            light_samples++;
+            light += compute_light(position, normal, sample_uv, light_samples);
+            light *= tex_albedo.SampleLevel(sampler_bilinear_clamp, sample_uv, 0).rgb;
         }
     }
 
@@ -102,8 +131,32 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     if (thread_id.x >= uint(g_resolution_rt.x) || thread_id.y >= uint(g_resolution_rt.y))
         return;
 
-    tex_out_rgb[thread_id.xy] = ground_truth_global_illumination(thread_id.xy);
+    const float2 uv = (thread_id.xy + 0.5f) / g_resolution_rt;
+    float3 position = get_position_view_space(thread_id.xy);
+    float3 normal   = get_normal_view_space(thread_id.xy);
+    float depth     = get_linear_depth(thread_id.xy);
+    
+    // Diffuse
+    float3 light = ssgi(uv, position, normal);
+   
+    // Reproject
+    float2 velocity         = get_velocity_closest_3x3(uv);
+    float2 uv_reprojected   = uv - velocity;
+    float3 color_history    = tex.SampleLevel(sampler_bilinear_clamp, uv_reprojected, 0).rgb;
+
+    // Decrease blend factor when motion gets sub-pixel
+    const float threshold   = 0.5f;
+    const float base        = 0.5f;
+    const float gather      = 0.1666;
+    float texel_vel_mag     = length(velocity / g_texel_size) * depth;
+    float subpixel_motion   = saturate(threshold / (FLT_MIN + texel_vel_mag));
+    float blend_factor      = texel_vel_mag * base + subpixel_motion * gather;
+
+    // Clamp
+    blend_factor = clamp(blend_factor, g_ssgi_blend_min, g_ssgi_blend_max);
+
+    // Override blend factor if the re-projected uv is out of screen
+    blend_factor = is_saturated(uv_reprojected) ? blend_factor : 1.0f;
+
+    tex_out_rgb[thread_id.xy] = lerp(color_history, light, blend_factor);
 }
-
-
-
