@@ -291,7 +291,7 @@ void Widget_RenderOptions::TickVisible()
                 if (WidgetHelper::CheckBox("TAA - Temporal anti-aliasing", do_taa, "Used to improve many stochastic effects, you want this to always be enabled."))
                 {
                     // Upsampling
-                    WidgetHelper::CheckBox("TAA upsampling - Not ready", allow_taa_upsampling, "If the output resolution is bigger than the render resolution, TAA will be used to reconstruct the image.");
+                    WidgetHelper::CheckBox("TAA upsampling - WIP", allow_taa_upsampling, "If the output resolution is bigger than the render resolution, TAA will be used to reconstruct the image.");
                 }
 
                 // FXAA
@@ -318,16 +318,16 @@ void Widget_RenderOptions::TickVisible()
                 }
 
                 // Motion blur
-                WidgetHelper::CheckBox("Motion Blur (controlled by the camera's shutter speed)", do_motion_blur);
+                WidgetHelper::CheckBox("Motion blur (controlled by the camera's shutter speed)", do_motion_blur);
 
                 // Depth of Field
-                WidgetHelper::CheckBox("Depth of Field (controlled by the camera's aperture) - WIP", do_dof);
+                WidgetHelper::CheckBox("Depth of field (controlled by the camera's aperture) - WIP", do_dof);
 
                 // Chromatic aberration
-                WidgetHelper::CheckBox("Chromatic Aberration", do_chromatic_aberration, "Emulates the inability of old cameras to focus all colors in the same focal point.");
+                WidgetHelper::CheckBox("Chromatic aberration", do_chromatic_aberration, "Emulates the inability of old cameras to focus all colors in the same focal point.");
 
                 // Film grain
-                WidgetHelper::CheckBox("Film Grain", do_film_grain);
+                WidgetHelper::CheckBox("Film grain", do_film_grain);
             }
 
             if (WidgetHelper::Option("Lights"))
@@ -340,7 +340,7 @@ void Widget_RenderOptions::TickVisible()
                 }
 
                 // Screen space shadows
-                WidgetHelper::CheckBox("Screen Space Shadows", do_sss);
+                WidgetHelper::CheckBox("Screen space shadows", do_sss);
 
                 // Shadow resolution
                 WidgetHelper::Int("Shadow resolution", resolution_shadow);
@@ -378,10 +378,10 @@ void Widget_RenderOptions::TickVisible()
                 }
 
                 // Depth-PrePass
-                WidgetHelper::CheckBox("Depth-PrePass", do_depth_prepass);
+                WidgetHelper::CheckBox("Depth - PrePass", do_depth_prepass);
 
                 // Reverse-Z
-                WidgetHelper::CheckBox("Reverse-Z", do_reverse_z);
+                WidgetHelper::CheckBox("Reverse - Z", do_reverse_z);
             }
 
             if (WidgetHelper::Option("Editor"))
