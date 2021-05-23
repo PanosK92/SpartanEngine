@@ -131,6 +131,7 @@ namespace Spartan
         Font_P,
         Ssao_C,
         Ssgi_C,
+        Ssgi_Accumulate_C,
         SsgiInject_C,
         SsrTrace_C,
         Reflections_P,
@@ -165,10 +166,11 @@ namespace Spartan
         Dof_Half_2,
         Ssao,
         Ssao_Blurred,
-        Ssgi,
+        Ssgi_Raw,
+        Ssgi_History,
+        Ssgi_History_Blurred,
         Ssr,
-        TaaHistory,
-        Ssgi_Accumulation
+        Taa_History 
     };
 
     // Renderer/graphics options
