@@ -25,8 +25,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 static const uint g_ssgi_directions         = 2;
 static const uint g_ssgi_steps              = 2;
-static const float g_ssgi_radius            = 2.0f;
-static const float g_ssgi_bounce_intensity  = 1.0f;
+static const float g_ssgi_radius            = 0.5f;
+static const float g_ssgi_bounce_intensity  = 10.0f;
 static const float g_ssgi_occlusion_bias    = 0.0f;
 static const float g_ssgi_samples           = (float)(g_ssgi_directions * g_ssgi_steps);
 static const float g_ssgi_radius2           = g_ssgi_radius * g_ssgi_radius;
@@ -104,6 +104,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     tex_out_rgb[thread_id.xy] = ground_truth_global_illumination(thread_id.xy);
 }
+
 
 
 

@@ -137,8 +137,8 @@ namespace Spartan
             RENDER_TARGET(RendererRt::Ssao_Blurred)                 = make_unique<RHI_Texture2D>(m_context, width_render, height_render, RHI_Format_R8_Unorm,               1, 0,                                   "rt_ssao_blurred");
             RENDER_TARGET(RendererRt::Ssr)                          = make_shared<RHI_Texture2D>(m_context, width_render, height_render, RHI_Format_R16G16B16A16_Snorm,     1, RHI_Texture_Storage,                 "rt_ssr");
             RENDER_TARGET(RendererRt::Ssgi_Raw)                     = make_unique<RHI_Texture2D>(m_context, width_render, height_render, RHI_Format_R11G11B10_Float,        1, 0,                                   "rt_ssgi_raw");
-            RENDER_TARGET(RendererRt::Ssgi_History)                 = make_unique<RHI_Texture2D>(m_context, width_render, height_render, RHI_Format_R11G11B10_Float,        1, 0,                                   "rt_ssgi_history");
-            RENDER_TARGET(RendererRt::Ssgi_History_Blurred)         = make_unique<RHI_Texture2D>(m_context, width_render, height_render, RHI_Format_R11G11B10_Float,        1, 0,                                   "rt_ssgi_history_blurred");
+            RENDER_TARGET(RendererRt::Ssgi_History_1)               = make_unique<RHI_Texture2D>(m_context, width_render, height_render, RHI_Format_R11G11B10_Float,        1, 0,                                   "rt_ssgi_history_1");
+            RENDER_TARGET(RendererRt::Ssgi_History_2)               = make_unique<RHI_Texture2D>(m_context, width_render, height_render, RHI_Format_R11G11B10_Float,        1, 0,                                   "rt_ssgi_history_2");
 
             // Half resolution
             RENDER_TARGET(RendererRt::Dof_Half)     = make_unique<RHI_Texture2D>(m_context, width_render * 0.5f, height_render * 0.5f, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_dof_half");

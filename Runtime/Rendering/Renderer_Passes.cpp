@@ -583,8 +583,8 @@ namespace Spartan
 
         // Get render targets
         shared_ptr<RHI_Texture> tex_ssgi_raw               = RENDER_TARGET(RendererRt::Ssgi_Raw);
-        shared_ptr<RHI_Texture> tex_ssgi_history           = RENDER_TARGET(RendererRt::Ssgi_History);
-        shared_ptr<RHI_Texture> tex_ssgi_history_blurred   = RENDER_TARGET(RendererRt::Ssgi_History_Blurred);
+        shared_ptr<RHI_Texture> tex_ssgi_history           = RENDER_TARGET(RendererRt::Ssgi_History_1);
+        shared_ptr<RHI_Texture> tex_ssgi_history_blurred   = RENDER_TARGET(RendererRt::Ssgi_History_2);
 
         // Set render state
         static RHI_PipelineState pso;
@@ -667,7 +667,7 @@ namespace Spartan
             const bool async                      = false;
 
             cmd_list->SetTexture(RendererBindingsUav::rgb, tex_out); // diffuse
-            cmd_list->SetTexture(RendererBindingsSrv::ssgi, RENDER_TARGET(RendererRt::Ssgi_History_Blurred));
+            cmd_list->SetTexture(RendererBindingsSrv::ssgi, RENDER_TARGET(RendererRt::Ssgi_History_1));
 
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
