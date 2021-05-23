@@ -70,13 +70,14 @@ void Widget_Viewport::TickVisible()
     m_input->SetEditorViewportOffset(offset);
 
     // If no user settings have been loaded (resolution defined in an .ini file) and this is the first
-    // run, set the render and output resolution to the size of this widget's viewport. Avoids supersampling.
-    if (!m_context->GetSubsystem<Settings>()->HasLoadedUserSettings() && !m_has_resolution_been_set)
+    // run, set the render and output resolution to the size of this widget's viewport. Avoids unnecessary supersampling.
+    if (!m_context->GetSubsystem<Settings>()->HasLoadedUserSettings() && !m_has_resolution_been_set && m_frames_count > 2)
     {
         m_renderer->SetResolutionRender(static_cast<uint32_t>(m_width), static_cast<uint32_t>(m_height));
         m_renderer->SetResolutionOutput(static_cast<uint32_t>(m_width), static_cast<uint32_t>(m_height));
         m_has_resolution_been_set = true;
     }
+    m_frames_count++;
 
     // Draw the image after a potential resolution change call has been made
     ImGuiEx::Image
