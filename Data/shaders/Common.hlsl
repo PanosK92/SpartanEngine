@@ -499,7 +499,7 @@ float draw_circle_view_space(float3 origin, float radius, float2 uv)
 float3 compute_diffuse_energy(float3 F, float metallic)
 {
     float3 kS = F;          // The energy of light that gets reflected - Equal to Fresnel
-    float3 kD = 1.0f - kS;  // Remaining energy, light that gets refracted
+    float3 kD = 1.0f - kS;  // Remaining energy, light that gets refracted          
     kD *= 1.0f - metallic;  // Multiply kD by the inverse metalness such that only non-metals have diffuse lighting
     
     return kD;
@@ -507,8 +507,8 @@ float3 compute_diffuse_energy(float3 F, float metallic)
 
 float screen_fade(float2 uv)
 {
-    float2 fade = max(0.0f, 12.0f * abs(uv - 0.5f) - 5.0f);
-    return saturate(1.0f - dot(fade, fade));
+    float2 fade = max(12.0f * abs(uv - 0.5f) - 5.0f, 0.0f);
+    return saturate(1.0 - dot(fade, fade));
 }
 
 // Find good arbitrary axis vectors to represent U and V axes of a plane,
@@ -600,4 +600,3 @@ static const float3 hemisphere_samples[64] =
 };
 
 #endif // SPARTAN_COMMON
-

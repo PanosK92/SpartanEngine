@@ -576,65 +576,45 @@ namespace Spartan
             return;
 
         // Acquire shaders
-        RHI_Shader* shader_ssgi             = m_shaders[RendererShader::Ssgi_C].get();
-        RHI_Shader* shader_ssgi_accumulate  = m_shaders[RendererShader::Ssgi_Accumulate_C].get();
-        if (!shader_ssgi->IsCompiled() || !shader_ssgi_accumulate->IsCompiled())
+        RHI_Shader* shader_c = m_shaders[RendererShader::Ssgi_C].get();
+        if (!shader_c->IsCompiled())
             return;
 
-        // Get render targets
-        shared_ptr<RHI_Texture> tex_ssgi_raw               = RENDER_TARGET(RendererRt::Ssgi_Raw);
-        shared_ptr<RHI_Texture> tex_ssgi_history           = RENDER_TARGET(RendererRt::Ssgi_History);
-        shared_ptr<RHI_Texture> tex_ssgi_history_blurred   = RENDER_TARGET(RendererRt::Ssgi_History_Blurred);
+        // Get render target
+        RHI_Texture* tex_out            = RENDER_TARGET(RendererRt::Ssgi).get();
+        RHI_Texture* tex_accumulation   = RENDER_TARGET(RendererRt::Ssgi_Accumulation).get();
 
         // Set render state
         static RHI_PipelineState pso;
-        pso.shader_compute   = shader_ssgi;
+        pso.shader_compute   = shader_c;
         pso.pass_name        = "Pass_Ssgi";
 
-        // SSGI
+        // Draw
         if (cmd_list->BeginRenderPass(pso))
         {
             // Update uber buffer
-            m_buffer_uber_cpu.resolution = Vector2(tex_ssgi_raw->GetWidth(), tex_ssgi_raw->GetHeight());
+            m_buffer_uber_cpu.resolution = Vector2(tex_out->GetWidth(), tex_out->GetHeight());
             UpdateUberBuffer(cmd_list);
 
-            const uint32_t thread_group_count_x   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_ssgi_raw->GetWidth()) / m_thread_group_count));
-            const uint32_t thread_group_count_y   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_ssgi_raw->GetHeight()) / m_thread_group_count));
+            const uint32_t thread_group_count_x   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
+            const uint32_t thread_group_count_y   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
             const uint32_t thread_group_count_z   = 1;
             const bool async                      = false;
 
+            cmd_list->SetTexture(RendererBindingsUav::rgb,              tex_out);
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_albedo,   RENDER_TARGET(RendererRt::Gbuffer_Albedo));
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal,   RENDER_TARGET(RendererRt::Gbuffer_Normal));
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_velocity, RENDER_TARGET(RendererRt::Gbuffer_Velocity));
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    RENDER_TARGET(RendererRt::Gbuffer_Depth));
             cmd_list->SetTexture(RendererBindingsSrv::light_diffuse,    RENDER_TARGET(RendererRt::Light_Diffuse));
-            cmd_list->SetTexture(RendererBindingsUav::rgb,              tex_ssgi_raw);
+            cmd_list->SetTexture(RendererBindingsSrv::tex,              tex_accumulation);
 
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
         }
 
         // Accumulate
-        pso.shader_compute  = shader_ssgi_accumulate;
-        pso.pass_name       = "Pass_Ssgi_Accumulate";
-        if (cmd_list->BeginRenderPass(pso))
-        {
-            const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_ssgi_history->GetWidth()) / m_thread_group_count));
-            const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_ssgi_history->GetHeight()) / m_thread_group_count));
-            const uint32_t thread_group_count_z = 1;
-            const bool async = false;
-
-            cmd_list->SetTexture(RendererBindingsSrv::tex,  tex_ssgi_raw);
-            cmd_list->SetTexture(RendererBindingsSrv::tex2, tex_ssgi_history_blurred);
-            cmd_list->SetTexture(RendererBindingsUav::rgb,  tex_ssgi_history);
-            cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
-            cmd_list->EndRenderPass();
-        }
-
-        // Update history buffer with blurred version
-        const auto sigma = 2.0f;
-        const auto pixel_stride = 2.0f;
-        Pass_Blur_BilateralGaussian(cmd_list, tex_ssgi_history, tex_ssgi_history_blurred, sigma, pixel_stride, false);
+        Pass_Copy(cmd_list, tex_out, tex_accumulation);
     }
 
     void Renderer::Pass_Ssgi_Inject(RHI_CommandList* cmd_list)
@@ -667,7 +647,7 @@ namespace Spartan
             const bool async                      = false;
 
             cmd_list->SetTexture(RendererBindingsUav::rgb, tex_out); // diffuse
-            cmd_list->SetTexture(RendererBindingsSrv::ssgi, RENDER_TARGET(RendererRt::Ssgi_History_Blurred));
+            cmd_list->SetTexture(RendererBindingsSrv::ssgi, RENDER_TARGET(RendererRt::Ssgi));
 
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
@@ -707,17 +687,24 @@ namespace Spartan
             const uint32_t thread_group_count_z = 1;
             const bool async = false;
 
+            cmd_list->SetTexture(RendererBindingsUav::r, tex_ssao_noisy);
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal, tex_normal);
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth, tex_depth);
-            cmd_list->SetTexture(RendererBindingsUav::r, tex_ssao_noisy);
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
-        }
 
-        // Bilateral blur
-        const auto sigma = 2.0f;
-        const auto pixel_stride = 2.0f;
-        Pass_Blur_BilateralGaussian(cmd_list, tex_ssao_noisy, tex_ssao_blurred, sigma, pixel_stride, false);
+            // Bilateral blur
+            const auto sigma = 2.0f;
+            const auto pixel_stride = 2.0f;
+            Pass_Blur_BilateralGaussian(
+                cmd_list,
+                tex_ssao_noisy,
+                tex_ssao_blurred,
+                sigma,
+                pixel_stride,
+                false
+            );
+        }
     }
 
     void Renderer::Pass_Reflections_SsrTrace(RHI_CommandList* cmd_list)
@@ -1136,23 +1123,23 @@ namespace Spartan
         RHI_Texture* tex_normal    = RENDER_TARGET(RendererRt::Gbuffer_Normal).get();
 
         // Set render state for horizontal pass
-        static RHI_PipelineState pso;
-        pso.shader_vertex                     = shader_v.get();
-        pso.shader_pixel                      = shader_p.get();
-        pso.rasterizer_state                  = m_rasterizer_cull_back_solid.get();
-        pso.blend_state                       = m_blend_disabled.get();
-        pso.depth_stencil_state               = use_stencil ? m_depth_stencil_off_r.get() : m_depth_stencil_off_off.get();
-        pso.vertex_buffer_stride              = m_viewport_quad.GetVertexBuffer()->GetStride();
-        pso.render_target_color_textures[0]   = tex_out.get();
-        pso.clear_color[0]                    = rhi_color_dont_care;
-        pso.render_target_depth_texture       = use_stencil ? tex_depth : nullptr;
-        pso.clear_stencil                     = use_stencil ? rhi_stencil_load : rhi_stencil_dont_care;
-        pso.viewport                          = tex_out->GetViewport();
-        pso.primitive_topology                = RHI_PrimitiveTopology_TriangleList;
-        pso.pass_name                         = "Pass_Blur_BilateralGaussian_Horizontal";
+        static RHI_PipelineState pso_horizontal;
+        pso_horizontal.shader_vertex                     = shader_v.get();
+        pso_horizontal.shader_pixel                      = shader_p.get();
+        pso_horizontal.rasterizer_state                  = m_rasterizer_cull_back_solid.get();
+        pso_horizontal.blend_state                       = m_blend_disabled.get();
+        pso_horizontal.depth_stencil_state               = use_stencil ? m_depth_stencil_off_r.get() : m_depth_stencil_off_off.get();
+        pso_horizontal.vertex_buffer_stride              = m_viewport_quad.GetVertexBuffer()->GetStride();
+        pso_horizontal.render_target_color_textures[0]   = tex_out.get();
+        pso_horizontal.clear_color[0]                    = rhi_color_dont_care;
+        pso_horizontal.render_target_depth_texture       = use_stencil ? tex_depth : nullptr;
+        pso_horizontal.clear_stencil                     = use_stencil ? rhi_stencil_load : rhi_stencil_dont_care;
+        pso_horizontal.viewport                          = tex_out->GetViewport();
+        pso_horizontal.primitive_topology                = RHI_PrimitiveTopology_TriangleList;
+        pso_horizontal.pass_name                         = "Pass_Blur_BilateralGaussian_Horizontal";
 
         // Record commands for horizontal pass
-        if (cmd_list->BeginRenderPass(pso))
+        if (cmd_list->BeginRenderPass(pso_horizontal))
         {
             // Update uber buffer
             m_buffer_uber_cpu.resolution        = Vector2(static_cast<float>(tex_in->GetWidth()), static_cast<float>(tex_in->GetHeight()));
@@ -1170,12 +1157,23 @@ namespace Spartan
         }
 
         // Set render state for vertical pass
-        pso.render_target_color_textures[0] = tex_in.get();
-        pso.viewport                        = tex_in->GetViewport();
-        pso.pass_name                       = "Pass_Blur_BilateralGaussian_Vertical";
+        static RHI_PipelineState pso_vertical;
+        pso_vertical.shader_vertex                   = shader_v.get();
+        pso_vertical.shader_pixel                    = shader_p.get();
+        pso_vertical.rasterizer_state                = m_rasterizer_cull_back_solid.get();
+        pso_vertical.blend_state                     = m_blend_disabled.get();
+        pso_vertical.depth_stencil_state             = use_stencil ? m_depth_stencil_off_r.get() : m_depth_stencil_off_off.get();
+        pso_vertical.vertex_buffer_stride            = m_viewport_quad.GetVertexBuffer()->GetStride();
+        pso_vertical.render_target_color_textures[0] = tex_in.get();
+        pso_vertical.clear_color[0]                  = rhi_color_dont_care;
+        pso_vertical.render_target_depth_texture     = use_stencil ? tex_depth : nullptr;
+        pso_vertical.clear_stencil                   = use_stencil ? rhi_stencil_load : rhi_stencil_dont_care;
+        pso_vertical.viewport                        = tex_in->GetViewport();
+        pso_vertical.primitive_topology              = RHI_PrimitiveTopology_TriangleList;
+        pso_vertical.pass_name                       = "Pass_Blur_BilateralGaussian_Vertical";
 
         // Record commands for vertical pass
-        if (cmd_list->BeginRenderPass(pso))
+        if (cmd_list->BeginRenderPass(pso_vertical))
         {
             // Update uber buffer
             m_buffer_uber_cpu.blur_direction    = Vector2(0.0f, pixel_stride);
@@ -1314,7 +1312,7 @@ namespace Spartan
             return;
 
         // Acquire history texture
-        RHI_Texture* tex_history = RENDER_TARGET(RendererRt::Taa_History).get();
+        RHI_Texture* tex_history = RENDER_TARGET(RendererRt::TaaHistory).get();
 
         // Set render state
         static RHI_PipelineState pso;
@@ -1333,11 +1331,11 @@ namespace Spartan
             const uint32_t thread_group_count_z = 1;
             const bool async = false;
 
+            cmd_list->SetTexture(RendererBindingsUav::rgba,             tex_out);
             cmd_list->SetTexture(RendererBindingsSrv::tex,              tex_history);
             cmd_list->SetTexture(RendererBindingsSrv::tex2,             tex_in);
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_velocity, RENDER_TARGET(RendererRt::Gbuffer_Velocity));
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    RENDER_TARGET(RendererRt::Gbuffer_Depth));
-            cmd_list->SetTexture(RendererBindingsUav::rgba,             tex_out);
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
         }
@@ -2402,9 +2400,9 @@ namespace Spartan
             shader_type = RendererShader::DebugChannelR_C;
         }
 
-        if (m_render_target_debug == RendererRt::Ssgi_Raw)
+        if (m_render_target_debug == RendererRt::Ssgi)
         {
-            texture = m_options & Render_Ssgi ? RENDER_TARGET(RendererRt::Ssgi_Raw).get() : m_tex_default_black.get();
+            texture = m_options & Render_Ssgi ? RENDER_TARGET(RendererRt::Ssgi).get() : m_tex_default_black.get();
             shader_type = RendererShader::DebugChannelRgbGammaCorrect_C;
         }
 
