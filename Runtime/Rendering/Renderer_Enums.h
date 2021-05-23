@@ -167,8 +167,8 @@ namespace Spartan
         Ssao,
         Ssao_Blurred,
         Ssgi_Raw,
-        Ssgi_History,
-        Ssgi_History_Blurred,
+        Ssgi_History_1,
+        Ssgi_History_2,
         Ssr,
         Taa_History 
     };
