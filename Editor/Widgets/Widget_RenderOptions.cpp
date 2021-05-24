@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ====================
+//= INCLUDES ==============================
 #include "Widget_RenderOptions.h"
 #include "Rendering/Renderer.h"
 #include "Core/Context.h"
@@ -27,9 +27,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Math/MathHelper.h"
 #include "Rendering/Model.h"
 #include "../ImGui_Extension.h"
+#include "../ImGui/Source/imgui_internal.h"
 #include "RHI/RHI_Device.h"
 #include "Profiling/Profiler.h"
-//===============================
+//=========================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -37,31 +38,23 @@ using namespace Spartan;
 using namespace Spartan::Math;
 //============================
 
-Widget_RenderOptions::Widget_RenderOptions(Editor* editor) : Widget(editor)
-{
-    m_title         = "Renderer Options";
-    m_flags         |= ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoScrollbar;
-    m_is_visible    = false;
-    m_renderer      = m_context->GetSubsystem<Renderer>();
-    m_alpha         = 1.0f;
-    m_size          = Vector2(600, 800);
-    m_position      = k_widget_position_screen_center;
-}
-
 namespace WidgetHelper
 {
     static Renderer* renderer;
+
+    static const float k_width_input_numeric    = 120.0f;
+    static const float k_width_combo_box        = 120.0f;
 
     void Initialise(Renderer* _renderer)
     {
         renderer = _renderer;
     }
 
-    bool Option(const char* title)
+    bool Option(const char* title, bool default_open = true)
     {
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
-        return ImGui::CollapsingHeader(title, ImGuiTreeNodeFlags_DefaultOpen);
+        return ImGui::CollapsingHeader(title, default_open ? ImGuiTreeNodeFlags_DefaultOpen : ImGuiTreeNodeFlags_None);
     }
 
     void FirstColumn()
@@ -103,7 +96,9 @@ namespace WidgetHelper
 
         SecondColumn();
         ImGui::PushID(static_cast<int>(ImGui::GetCursorPosY()));
+        ImGui::PushItemWidth(k_width_combo_box);
         bool result = ImGuiEx::ComboBox("", options, &selection_index);
+        ImGui::PopItemWidth();
         ImGui::PopID();
         return result;
     }
@@ -122,7 +117,7 @@ namespace WidgetHelper
             float value = renderer->GetOptionValue<float>(render_option);
 
             ImGui::PushID(static_cast<int>(ImGui::GetCursorPosY()));
-            ImGui::PushItemWidth(120);
+            ImGui::PushItemWidth(k_width_input_numeric);
             ImGui::InputFloat("", &value, step, 0.0f, format);
             ImGui::PopItemWidth();
             ImGui::PopID();
@@ -144,7 +139,7 @@ namespace WidgetHelper
         SecondColumn();
         {
             ImGui::PushID(static_cast<int>(ImGui::GetCursorPosY()));
-            ImGui::PushItemWidth(120);
+            ImGui::PushItemWidth(k_width_input_numeric);
             ImGui::InputFloat("", &option, step, 0.0f, format);
             ImGui::PopItemWidth();
             ImGui::PopID();
@@ -157,9 +152,22 @@ namespace WidgetHelper
         ImGui::Text(label);
         WidgetHelper::SecondColumn();
         ImGui::PushID(static_cast<int>(ImGui::GetCursorPosY()));
+        ImGui::PushItemWidth(k_width_input_numeric);
         ImGui::InputInt("##shadow_resolution", &option, step);
+        ImGui::PopItemWidth();
         ImGui::PopID();
     }
+}
+
+Widget_RenderOptions::Widget_RenderOptions(Editor* editor) : Widget(editor)
+{
+    m_title         = "Renderer Options";
+    m_flags         |= ImGuiWindowFlags_AlwaysAutoResize;
+    m_is_visible    = false;
+    m_renderer      = m_context->GetSubsystem<Renderer>();
+    m_alpha         = 1.0f;
+    m_position      = k_widget_position_screen_center;
+    m_size          = Vector2(600.0f, 1000.0f);
 }
 
 void Widget_RenderOptions::TickVisible()
@@ -229,26 +237,18 @@ void Widget_RenderOptions::TickVisible()
             return index;
         };
 
-        ImGui::SliderFloat("Opacity", &m_alpha, 0.1f, 1.0f, "%.1f");
-
-        static ImVec2 size              = ImVec2(-1.0f);
+        static ImVec2 size              = ImVec2(0.0f);
         static int column_count         = 2;
         static ImGuiTableFlags flags    =
-            ImGuiTableFlags_SizingFixedFit      | // Columns default to _WidthFixed or _WidthAuto (if resizable or not resizable), matching contents width.
-            ImGuiTableFlags_SizingFixedSame     | // Columns default to _WidthFixed or _WidthAuto (if resizable or not resizable), matching the maximum contents width of all columns. Implicitly enable ImGuiTableFlags_NoKeepColumnsVisible.
-            ImGuiTableFlags_SizingStretchProp   | // Columns default to _WidthStretch with default weights proportional to each columns contents widths.
-            ImGuiTableFlags_SizingStretchSame   | // Columns default to _WidthStretch with default weights all equal, unless overridden by TableSetupColumn().
-            ImGuiTableFlags_Resizable           | // Allow resizing columns.
-            ImGuiTableFlags_ContextMenuInBody   | // Right-click on columns body/contents will display table context menu. By default it is available in TableHeadersRow().
-            ImGuiTableFlags_ScrollX             | // Enable horizontal scrolling. Require 'outer_size' parameter of BeginTable() to specify the container size. Changes default sizing policy. Because this create a child window, ScrollY is currently generally recommended when using ScrollX.
-            ImGuiTableFlags_ScrollY;              // Enable vertical scrolling. Require 'outer_size' parameter of BeginTable() to specify the container size.
+            ImGuiTableFlags_NoHostExtendX   |   // Make outer width auto-fit to columns, overriding outer_size.x value. Only available when ScrollX/ScrollY are disabled and Stretch columns are not used.
+            ImGuiTableFlags_BordersInnerV   |   // Draw vertical borders between columns.
+            ImGuiTableFlags_SizingFixedFit;     // Columns default to _WidthFixed or _WidthAuto (if resizable or not resizable), matching contents width.
 
         WidgetHelper::Initialise(m_renderer);
 
         // Table
         if (ImGui::BeginTable("##render_options", column_count, flags, size))
         {
-            // Headers
             ImGui::TableSetupColumn("Option");
             ImGui::TableSetupColumn("Value");
             ImGui::TableHeadersRow();
@@ -360,20 +360,20 @@ void Widget_RenderOptions::TickVisible()
 
                 // FPS Limit
                 {
+                    Timer* timer = m_context->GetSubsystem<Timer>();
+                    
                     WidgetHelper::FirstColumn();
-                    ImGui::Text("FPS Limit");
+                    const FpsLimitType fps_limit_type = timer->GetFpsLimitType();
+                    string label = "FPS Limit - " + (fps_limit_type == FpsLimitType::FixedToMonitor) ? "Fixed to monitor" : (fps_limit_type == FpsLimitType::Unlocked ? "Unlocked" : "Fixed");
+                    ImGui::Text(label.c_str());
 
                     WidgetHelper::SecondColumn();
                     {
-                        Timer* timer = m_context->GetSubsystem<Timer>();
                         double fps_target = timer->GetTargetFps();
-                        ImGui::InputDouble("##fps_target", &fps_target);
-
+                        ImGui::PushItemWidth(WidgetHelper::k_width_input_numeric);
+                        ImGui::InputDouble("##fps_target", &fps_target, 0.0, 0.0f, "%.1f");
+                        ImGui::PopItemWidth();
                         timer->SetTargetFps(fps_target);
-                        const FpsLimitType fps_limit_type = timer->GetFpsLimitType();
-
-                        ImGui::SameLine();
-                        ImGui::Text(fps_limit_type == FpsLimitType::FixedToMonitor ? "Fixed to monitor" : (fps_limit_type == FpsLimitType::Unlocked ? "Unlocked" : "Fixed"));
                     }
                 }
 
@@ -384,7 +384,7 @@ void Widget_RenderOptions::TickVisible()
                 WidgetHelper::CheckBox("Reverse - Z", do_reverse_z);
             }
 
-            if (WidgetHelper::Option("Editor"))
+            if (WidgetHelper::Option("Editor", false))
             {
                 if (WidgetHelper::CheckBox("Transform", debug_transform))
                 {
@@ -401,7 +401,7 @@ void Widget_RenderOptions::TickVisible()
                 WidgetHelper::CheckBox("Wireframe", debug_wireframe);
             }
 
-            if (WidgetHelper::Option("Debug"))
+            if (WidgetHelper::Option("Debug", false))
             {
                 // Performance metrics
                 if (WidgetHelper::CheckBox("Performance Metrics", debug_performance_metrics) && !m_renderer->GetOption(Render_Debug_PerformanceMetrics))
@@ -437,6 +437,11 @@ void Widget_RenderOptions::TickVisible()
 
             ImGui::EndTable();
         }
+
+        // Opacity
+        ImGui::PushItemWidth(m_window->ContentSize.x - 60);
+        ImGui::SliderFloat("Opacity", &m_alpha, 0.1f, 1.0f, "%.1f");
+        ImGui::PopItemWidth();
     }
 
     // Map options to engine

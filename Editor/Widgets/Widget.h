@@ -69,6 +69,7 @@ protected:
     float m_alpha                       = -1.0f;
     Spartan::Math::Vector2 m_position   = k_widget_default_propery;
     Spartan::Math::Vector2 m_size       = k_widget_default_propery;
+    Spartan::Math::Vector2 m_size_min   = k_widget_default_propery;
     Spartan::Math::Vector2 m_size_max   = k_widget_default_propery;
     Spartan::Math::Vector2 m_padding    = k_widget_default_propery;
     Editor* m_editor                    = nullptr;

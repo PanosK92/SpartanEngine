@@ -83,9 +83,9 @@ void Widget::Tick()
         }
 
         // Max size
-        if (m_size != k_widget_default_propery && m_size_max != k_widget_default_propery)
+        if (m_size_min != k_widget_default_propery || m_size_max != k_widget_default_propery)
         {
-            ImGui::SetNextWindowSizeConstraints(m_size, m_size_max);
+            ImGui::SetNextWindowSizeConstraints(m_size_min, m_size_max);
         }
 
         // Padding
