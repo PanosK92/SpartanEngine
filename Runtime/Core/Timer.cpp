@@ -82,7 +82,8 @@ namespace Spartan
         if (m_fps_target == fps_in)
             return;
 
-        m_fps_target = fps_in;
+
+        m_fps_target = Math::Helper::Clamp(fps_in, 0.0, m_fps_max);
         m_user_selected_fps_target = true;
         LOG_INFO("Set to %.2f FPS", m_fps_target);
     }
