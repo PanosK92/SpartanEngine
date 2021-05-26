@@ -233,8 +233,13 @@ namespace ImGuiEx
         );
     }
 
-    inline void Image(Spartan::RHI_Texture* texture, const float size)
+    inline void Image(Spartan::RHI_Texture* texture, const float size, bool border = false)
     {
+        if (!border)
+        {
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+        }
+
         ImGui::Image(
             static_cast<ImTextureID>(texture),
             ImVec2(size, size),
@@ -243,6 +248,11 @@ namespace ImGuiEx
             default_tint,       // tint
             ImColor(0, 0, 0, 0) // border
         );
+
+        if (!border)
+        {
+            ImGui::PopStyleVar();
+        }
     }
 
     inline void Image(Spartan::RHI_Texture* texture, const ImVec2& size, const ImColor& tint = default_tint, const ImColor& border = ImColor(0, 0, 0, 0))
