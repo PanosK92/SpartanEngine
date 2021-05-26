@@ -80,7 +80,6 @@ void Widget_Viewport::TickVisible()
     m_frames_count++;
 
     // Draw the image after a potential resolution change call has been made
-    
     ImGuiEx::Image(m_renderer->GetFrameTexture(), ImVec2(static_cast<float>(m_width), static_cast<float>(m_height)));
 
     // Let the input system now if the mouse is within the viewport

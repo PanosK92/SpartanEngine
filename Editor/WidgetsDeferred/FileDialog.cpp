@@ -262,7 +262,7 @@ void FileDialog::ShowMiddle()
                     ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0, 0, 0, 0));
                     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0f, 1.0f, 1.0f, 0.25f));
 
-                    if (ImGui::Button("##dummy", m_item_size))
+                    if (ImGuiEx::Button("##dummy", m_item_size))
                     {
                         // Determine type of click
                         item.Clicked();
@@ -340,7 +340,7 @@ void FileDialog::ShowMiddle()
                         }
 
                         ImGui::SetCursorScreenPos(ImVec2(rect_button.Min.x + style.FramePadding.x + image_size_delta.x * 0.5f, rect_button.Min.y + style.FramePadding.y + image_size_delta.y * 0.5f));
-                        ImGui::Image(item.GetTexture(), image_size);
+                        ImGuiEx::Image(item.GetTexture(), image_size);
                     }
 
                     ImGui::PopStyleColor(2);
