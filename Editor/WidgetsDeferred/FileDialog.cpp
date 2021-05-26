@@ -130,14 +130,14 @@ void FileDialog::ShowTop(bool* is_visible)
     // Directory navigation buttons
     {
         // Backwards
-        if (ImGui::Button("<"))
+        if (ImGuiEx::Button("<"))
         {
             m_is_dirty = m_navigation.Backward();
         }
 
         // Forwards
         ImGui::SameLine();
-        if (ImGui::Button(">"))
+        if (ImGuiEx::Button(">"))
         {
             m_is_dirty = m_navigation.Forward();
         }
@@ -146,7 +146,7 @@ void FileDialog::ShowTop(bool* is_visible)
         for (uint32_t i = 0; i < m_navigation.m_path_hierarchy.size(); i++)
         {
             ImGui::SameLine();
-            if (ImGui::Button(m_navigation.m_path_hierarchy_labels[i].c_str()))
+            if (ImGuiEx::Button(m_navigation.m_path_hierarchy_labels[i].c_str()))
             {
                 m_is_dirty = m_navigation.Navigate(m_navigation.m_path_hierarchy[i]);
             }
@@ -420,13 +420,13 @@ void FileDialog::ShowBottom(bool* is_visible)
         ImGui::Text(FILTER_NAME);
 
         ImGui::SameLine();
-        if (ImGui::Button(OPERATION_NAME))
+        if (ImGuiEx::Button(OPERATION_NAME))
         {
             m_selection_made = true;
         }
 
         ImGui::SameLine();
-        if (ImGui::Button("Cancel"))
+        if (ImGuiEx::Button("Cancel"))
         {
             m_selection_made = false;
             (*is_visible) = false;

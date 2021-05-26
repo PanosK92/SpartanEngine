@@ -47,7 +47,7 @@ Widget_Console::Widget_Console(Editor* editor) : Widget(editor)
 void Widget_Console::TickVisible()
 {
     // Clear Button
-    if (ImGui::Button("Clear")) { Clear();} ImGui::SameLine();
+    if (ImGuiEx::Button("Clear")) { Clear();} ImGui::SameLine();
 
     // Lambda for info, warning, error filter buttons
     const auto button_log_type_visibility_toggle = [this](const Icon_Type icon, uint32_t index)
