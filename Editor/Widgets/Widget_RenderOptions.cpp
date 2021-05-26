@@ -54,7 +54,7 @@ namespace WidgetHelper
     {
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
-        return ImGui::CollapsingHeader(title, default_open ? ImGuiTreeNodeFlags_DefaultOpen : ImGuiTreeNodeFlags_None);
+        return ImGuiEx::CollapsingHeader(title, default_open ? ImGuiTreeNodeFlags_DefaultOpen : ImGuiTreeNodeFlags_None);
     }
 
     void FirstColumn()

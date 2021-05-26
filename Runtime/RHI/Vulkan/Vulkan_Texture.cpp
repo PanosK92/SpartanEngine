@@ -139,7 +139,7 @@ namespace Spartan
     {
         // Copy the texture's data to a staging buffer
         void* staging_buffer = nullptr;
-        std::vector<VkBufferImageCopy> buffer_image_copies(texture->GetMipCount());
+        vector<VkBufferImageCopy> buffer_image_copies(texture->GetMipCount());
         if (!copy_to_staging_buffer(texture, buffer_image_copies, staging_buffer))
             return false;
 

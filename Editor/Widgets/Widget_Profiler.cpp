@@ -19,12 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===============
+//= INCLUDES ==================
 #include "Widget_Profiler.h"
 #include "Math/Vector3.h"
 #include "Core/Context.h"
 #include "Math/Vector2.h"
-//==========================
+#include "../ImGui_Extension.h"
+//=============================
 
 //= NAMESPACES =========
 using namespace std;
@@ -124,7 +125,7 @@ void Widget_Profiler::TickVisible()
 
         // Cur, Avg, Min, Max
         {
-            if (ImGui::Button("Clear")) { m_timings.Clear(); }
+            if (ImGuiEx::Button("Clear")) { m_timings.Clear(); }
             ImGui::SameLine();
             ImGui::Text("Cur:%.2f, Avg:%.2f, Min:%.2f, Max:%.2f", time_last, m_timings.m_avg, m_timings.m_min, m_timings.m_max);
             bool is_stuttering = type == TimeBlockType::Cpu ? m_profiler->IsCpuStuttering() : m_profiler->IsGpuStuttering();

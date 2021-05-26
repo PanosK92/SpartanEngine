@@ -468,7 +468,7 @@ void Widget_World::PopupEntityRename() const
         ImGui::InputText("##edit", &name);
         selectedentity->SetName(string(name));
 
-        if (ImGui::Button("Ok")) 
+        if (ImGuiEx::Button("Ok"))
         { 
             ImGui::CloseCurrentPopup();
             ImGui::EndPopup();

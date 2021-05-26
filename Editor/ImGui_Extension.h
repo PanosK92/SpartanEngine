@@ -136,6 +136,24 @@ namespace ImGuiEx
 {
     static const ImVec4 default_tint(255, 255, 255, 255);
 
+    // Collapsing header
+    inline bool CollapsingHeader(const char* label, ImGuiTreeNodeFlags flags = 0)
+    {
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+        bool result = ImGui::CollapsingHeader(label, flags);
+        ImGui::PopStyleVar();
+        return result;
+    }
+
+    // Button
+    inline bool Button(const char* label, const Spartan::Math::Vector2& size = Spartan::Math::Vector2(0, 0))
+    {
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+        bool result = ImGui::Button(label, size);
+        ImGui::PopStyleVar();
+        return result;
+    }
+
     // Images & Image buttons
     inline bool ImageButton(Spartan::RHI_Texture* texture, const ImVec2& size)
     {
@@ -151,9 +169,14 @@ namespace ImGuiEx
         );
     }
 
-    inline bool ImageButton(const Icon_Type icon, const float size)
+    inline bool ImageButton(const Icon_Type icon, const float size, bool border = false)
     {
-        return ImGui::ImageButton(
+        if (!border)
+        {
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+        }
+
+        bool result = ImGui::ImageButton(
             static_cast<ImTextureID>(IconProvider::Get().GetTextureByType(icon)),
             ImVec2(size, size),
             ImVec2(0, 0),           // uv0
@@ -162,10 +185,22 @@ namespace ImGuiEx
             ImColor(0, 0, 0, 0),    // background
             default_tint            // tint
         );
+
+        if (!border)
+        {
+            ImGui::PopStyleVar();
+        }
+
+        return result;
     }
 
-    inline bool ImageButton(const char* id, const Icon_Type icon, const float size)
+    inline bool ImageButton(const char* id, const Icon_Type icon, const float size, bool border = false)
     {
+        if (!border)
+        {
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+        }
+
         ImGui::PushID(id);
         const auto pressed = ImGui::ImageButton(
             static_cast<ImTextureID>(IconProvider::Get().GetTextureByType(icon)),
@@ -177,6 +212,12 @@ namespace ImGuiEx
             default_tint            // tint
         );
         ImGui::PopID();
+
+        if (!border)
+        {
+            ImGui::PopStyleVar();
+        }
+
         return pressed;
     }
 
@@ -289,7 +330,7 @@ namespace ImGuiEx
             {
                 ImGui::SetCursorPos(pos_button);
                 ImGui::PushID(static_cast<int>(pos_button.x + pos_button.y));
-                if (ImGuiEx::ImageButton("", Icon_Component_Material_RemoveTexture, button_size))
+                if (ImGuiEx::ImageButton("", Icon_Component_Material_RemoveTexture, button_size, true))
                 {
                     texture = nullptr;
                     setter(nullptr);
@@ -311,7 +352,7 @@ namespace ImGuiEx
             if (texture != nullptr)
             {
                 ImGui::SetCursorPos(pos_button);
-                ImGuiEx::ImageButton("", Icon_Component_Material_RemoveTexture, button_size);
+                ImGuiEx::ImageButton("", Icon_Component_Material_RemoveTexture, button_size, true);
             }
         }
         ImGui::EndGroup();

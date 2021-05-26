@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Rendering/ShaderLight.h"
 #include "Rendering/ShaderGBuffer.h"
 #include <fstream>
+#include "../ImGui_Extension.h"
 //==================================
 
 //= NAMESPACES =========
@@ -120,7 +121,7 @@ void Widget_ShaderEditor::ShowShaderSource()
                     ImGui::EndTabBar();
                 }
 
-                if (ImGui::Button("Compile"))
+                if (ImGuiEx::Button("Compile"))
                 {
                     if (m_index_displayed != -1)
                     {
@@ -191,7 +192,7 @@ void Widget_ShaderEditor::ShowShaderList()
                     }
                 }
 
-                if (ImGui::Button(name.c_str()) || m_first_run)
+                if (ImGuiEx::Button(name.c_str()) || m_first_run)
                 {
                     m_shader            = shader;
                     m_shader_name       = name;

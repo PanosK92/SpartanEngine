@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <unordered_map>
 #include "IResource.h"
 #include "../Core/ISubsystem.h"
+#include "../Rendering/Model.h"
 //=============================
 
 namespace Spartan

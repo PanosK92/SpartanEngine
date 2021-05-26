@@ -22,8 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ====================================
 #include "Widget_Properties.h"
 #include "../ImGui_Extension.h"
-#include "../WidgetsDeferred/ButtonColorPicker.h"
 #include "../ImGui/Source/imgui_stdlib.h"
+#include "../ImGui/Source/imgui_internal.h"
+#include "../WidgetsDeferred/ButtonColorPicker.h"
 #include "Core/Engine.h"
 #include "Rendering/Model.h"
 #include "World/Entity.h"
@@ -102,20 +103,21 @@ namespace ComponentProperty
     inline bool Begin(const string& name, const Icon_Type icon_enum, IComponent* component_instance, bool options = true, const bool removable = true)
     {
         // Collapsible contents
-        const auto collapsed = ImGui::CollapsingHeader(name.c_str(), ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_DefaultOpen);
+        const bool collapsed = ImGuiEx::CollapsingHeader(name.c_str(), ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_DefaultOpen);
 
         // Component Icon - Top left
         ImGui::SameLine();
         ImGui::Spacing();
         ImGui::SameLine();
-        const auto original_pen_y = ImGui::GetCursorPosY();
-        ImGui::SetCursorPosY(original_pen_y + 5.0f);
-        ImGuiEx::Image(icon_enum, 15);
 
         // Component Options - Top right
         if (options)
         {
             const float icon_width = 16.0f;
+            const auto original_pen_y = ImGui::GetCursorPosY();
+
+            ImGui::SetCursorPosY(original_pen_y + 5.0f);
+            ImGuiEx::Image(icon_enum, 15);
             ImGui::SameLine(ImGui::GetWindowContentRegionWidth() - icon_width + 1.0f); ImGui::SetCursorPosY(original_pen_y);
             if (ImGuiEx::ImageButton(name.c_str(), Icon_Component_Options, icon_width))
             {
@@ -219,6 +221,13 @@ void Widget_Properties::Inspect(const weak_ptr<Material>& material)
 
 void Widget_Properties::ShowTransform(Transform* transform) const
 {
+    enum class Axis
+    {
+        x,
+        y,
+        z
+    };
+
     if (ComponentProperty::Begin("Transform", Icon_Component_Transform, transform, true, false))
     {
         const bool is_playing = m_context->m_engine->EngineMode_IsSet(Engine_Game);
@@ -229,15 +238,16 @@ void Widget_Properties::ShowTransform(Transform* transform) const
         Vector3 scale       = transform->GetScaleLocal();
         //====================================================================================================================
 
-        const auto show_float = [](const char* label, float* value) 
+        const auto show_float = [](Axis axis, float* value)
         {
             const float label_float_spacing = 15.0f;
             const float step                = 0.01f;
             const string format             = "%.4f";
 
             // Label
-            ImGui::TextUnformatted(label);
+            ImGui::TextUnformatted(axis == Axis::x ? "x" : axis == Axis::y ? "y" : "z");
             ImGui::SameLine(label_float_spacing);
+            Vector2 pos_post_label = ImGui::GetCursorScreenPos();
 
             // Float
             ImGui::PushItemWidth(128.0f);
@@ -245,6 +255,16 @@ void Widget_Properties::ShowTransform(Transform* transform) const
             ImGuiEx::DragFloatWrap("##no_label", value, step, numeric_limits<float>::lowest(), numeric_limits<float>::max(), format.c_str());
             ImGui::PopID();
             ImGui::PopItemWidth();
+
+            // Axis color
+            static const ImU32 color_x  = IM_COL32(168, 46, 2, 255);
+            static const ImU32 color_y  = IM_COL32(112, 162, 22, 255);
+            static const ImU32 color_z  = IM_COL32(51, 122, 210, 255);
+            static const Vector2 size   = Vector2(4.0f, 19.0f);
+            static const Vector2 offset = Vector2(5.0f, 4.0);
+            pos_post_label += offset;
+            ImRect axis_color_rect      = ImRect(pos_post_label.x, pos_post_label.y, pos_post_label.x + size.x, pos_post_label.y + size.y);
+            ImGui::GetWindowDrawList()->AddRectFilled(axis_color_rect.Min, axis_color_rect.Max, axis == Axis::x ? color_x : axis == Axis::y ? color_y : color_z);
         };
 
         const auto show_vector = [&show_float](const char* label, Vector3& vector)
@@ -255,9 +275,9 @@ void Widget_Properties::ShowTransform(Transform* transform) const
             ImGui::Indent(label_indetation);
             ImGui::TextUnformatted(label);
             ImGui::Unindent(label_indetation);
-            show_float("X", &vector.x);
-            show_float("Y", &vector.y);
-            show_float("Z", &vector.z);
+            show_float(Axis::x, &vector.x);
+            show_float(Axis::y, &vector.y);
+            show_float(Axis::z, &vector.z);
             ImGui::EndGroup();
         };
        
@@ -940,7 +960,7 @@ void Widget_Properties::ShowTerrain(Terrain* terrain) const
 
             ImGuiEx::ImageSlot(terrain->GetHeightMap(), [&terrain](const shared_ptr<RHI_Texture>& texture) { terrain->SetHeightMap(static_pointer_cast<RHI_Texture2D>(texture)); });
 
-            if (ImGui::Button("Generate", ImVec2(82, 0)))
+            if (ImGuiEx::Button("Generate", ImVec2(82, 0)))
             {
                 terrain->GenerateAsync();
             }
@@ -1078,7 +1098,7 @@ void Widget_Properties::ShowAddComponentButton() const
 {
     ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 5);
     ImGui::SetCursorPosX(ImGui::GetWindowWidth() * 0.5f - 50);
-    if (ImGui::Button("Add Component"))
+    if (ImGuiEx::Button("Add Component"))
     {
         ImGui::OpenPopup("##ComponentContextMenu_Add");
     }

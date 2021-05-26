@@ -165,7 +165,7 @@ void Widget_MenuBar::ShowAboutWindow() const
     ImGui::SameLine(ImGui::GetWindowContentRegionWidth());
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() - 55);
     ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 5);
-    if (ImGui::Button("GitHub"))
+    if (ImGuiEx::Button("GitHub"))
     {
         FileSystem::OpenDirectoryWindow("https://github.com/PanosK92/SpartanEngine");
     }    
@@ -204,7 +204,7 @@ void Widget_MenuBar::ShowAboutWindow() const
         {
             ImGui::BulletText(lib.name.c_str());
             ImGui::SameLine(col_a); ImGui::Text(lib.version.c_str());
-            ImGui::SameLine(col_b); ImGui::PushID(lib.url.c_str());  if (ImGui::Button(lib.url.c_str())) { FileSystem::OpenDirectoryWindow(lib.url); } ImGui::PopID();
+            ImGui::SameLine(col_b); ImGui::PushID(lib.url.c_str());  if (ImGuiEx::Button(lib.url.c_str())) { FileSystem::OpenDirectoryWindow(lib.url); } ImGui::PopID();
         }
     }
 
