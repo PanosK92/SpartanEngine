@@ -210,7 +210,7 @@ namespace Spartan
         ShadowResolution,
         Tonemapping,
         Gamma,
-        Intensity,
+        Bloom_Intensity,
         Sharpen_Strength,
         Fog,
         Taa_AllowUpsampling

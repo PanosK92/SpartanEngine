@@ -76,11 +76,11 @@ namespace Spartan
         // Option values
         m_option_values[Renderer_Option_Value::Anisotropy]          = 16.0f;
         m_option_values[Renderer_Option_Value::ShadowResolution]    = 2048.0f;
-        //m_option_values[Renderer_Option_Value::Tonemapping]         = static_cast<float>(Renderer_ToneMapping_ACES);
+        m_option_values[Renderer_Option_Value::Tonemapping]         = static_cast<float>(Renderer_ToneMapping_Off);
         m_option_values[Renderer_Option_Value::Gamma]               = 2.2f;
         m_option_values[Renderer_Option_Value::Sharpen_Strength]    = 1.0f;
-        m_option_values[Renderer_Option_Value::Intensity]           = 0.1f;
-        m_option_values[Renderer_Option_Value::Fog]                 = 0.1f;
+        m_option_values[Renderer_Option_Value::Bloom_Intensity]     = 0.1f;
+        m_option_values[Renderer_Option_Value::Fog]                 = 1.0;
 
         // Subscribe to events
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved,    SP_EVENT_HANDLER_VARIANT(RenderablesAcquire));
@@ -283,7 +283,7 @@ namespace Spartan
                     m_buffer_frame_cpu.taa_jitter_offset            = m_taa_jitter - m_taa_jitter_previous;
                     m_buffer_frame_cpu.delta_time                   = static_cast<float>(m_context->GetSubsystem<Timer>()->GetDeltaTimeSmoothedSec());
                     m_buffer_frame_cpu.time                         = static_cast<float>(m_context->GetSubsystem<Timer>()->GetTimeSec());
-                    m_buffer_frame_cpu.bloom_intensity              = GetOptionValue<float>(Renderer_Option_Value::Intensity);
+                    m_buffer_frame_cpu.bloom_intensity              = GetOptionValue<float>(Renderer_Option_Value::Bloom_Intensity);
                     m_buffer_frame_cpu.sharpen_strength             = GetOptionValue<float>(Renderer_Option_Value::Sharpen_Strength);
                     m_buffer_frame_cpu.fog                          = GetOptionValue<float>(Renderer_Option_Value::Fog);
                     m_buffer_frame_cpu.tonemapping                  = GetOptionValue<float>(Renderer_Option_Value::Tonemapping);

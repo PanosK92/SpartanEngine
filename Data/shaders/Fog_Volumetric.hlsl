@@ -20,8 +20,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 static const uint g_vl_steps                    = 16;
-static const float g_vl_scattering              = 0.5f;
-static const float g_vl_pow                     = 100.0f;
+static const float g_vl_scattering              = 0.8f; // [0, 1]
+static const float g_vl_pow                     = 1000.0f;
 static const float g_vl_cascade_blend_threshold = 0.1f;
 
 static const float g_vl_scattering2 = g_vl_scattering * g_vl_scattering;
@@ -145,5 +145,3 @@ float3 VolumetricLighting(Surface surface, Light light)
 
     return fog;
 }
-
-
