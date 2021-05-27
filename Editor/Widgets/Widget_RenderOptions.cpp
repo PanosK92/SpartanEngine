@@ -314,7 +314,7 @@ void Widget_RenderOptions::TickVisible()
                 // Bloom
                 if (WidgetHelper::CheckBox("Bloom", do_bloom))
                 {
-                    WidgetHelper::RenderOptionValue("Bloom intensity", Renderer_Option_Value::Intensity, "", 0.001f);
+                    WidgetHelper::RenderOptionValue("Bloom intensity", Renderer_Option_Value::Bloom_Intensity, "", 0.001f);
                 }
 
                 // Motion blur
@@ -378,10 +378,10 @@ void Widget_RenderOptions::TickVisible()
                 }
 
                 // Depth-PrePass
-                WidgetHelper::CheckBox("Depth - PrePass", do_depth_prepass);
+                WidgetHelper::CheckBox("Depth PrePass - WIP", do_depth_prepass);
 
                 // Reverse-Z
-                WidgetHelper::CheckBox("Reverse - Z", do_reverse_z);
+                WidgetHelper::CheckBox("Depth Reverse-Z", do_reverse_z);
             }
 
             if (WidgetHelper::Option("Editor", false))

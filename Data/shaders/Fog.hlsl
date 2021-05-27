@@ -26,10 +26,12 @@ static const float fog_end_height   = 7.0f;
 
 float get_fog_factor(const float pixel_y, const float pixel_z)
 {
-    float depth_factor  = saturate(1.0f - (fog_end - pixel_z)           / (fog_end - fog_start + FLT_MIN));
-    float height_factor = saturate(1.0f - (fog_end_height - pixel_y)    / (fog_end_height - fog_start_height + FLT_MIN));
-    
-    return depth_factor * height_factor * g_fog_density;
+    //float depth_factor  = saturate(1.0f - (fog_end - pixel_z)           / (fog_end - fog_start + FLT_MIN));
+    //float height_factor = saturate(1.0f - (fog_end_height - pixel_y)    / (fog_end_height - fog_start_height + FLT_MIN));
+
+    // I'm better off introducing fog volumes so te user can define depth
+    // and height factors instead of using some hardcoded values here (which don't work all that well).
+    return g_fog_density;
 }
 
 
