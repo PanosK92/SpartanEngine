@@ -281,7 +281,7 @@ void Widget_RenderOptions::TickVisible()
                 WidgetHelper::CheckBox("SSAO - Screen space ambient occlusion", do_ssao);
 
                 // SSGI
-                WidgetHelper::CheckBox("SSGI - Screen space global illumination", do_ssgi);
+                WidgetHelper::CheckBox("SSGI - Screen space global illumination - WIP", do_ssgi);
             }
 
             // Anti-aliasing

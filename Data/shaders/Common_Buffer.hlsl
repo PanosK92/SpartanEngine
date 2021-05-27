@@ -50,19 +50,19 @@ cbuffer BufferFrame : register(b0)
     float g_gamma;
     float g_toneMapping;
     float g_directional_light_intensity;
-    float g_ssr_enabled;
+    float g_shadow_resolution;
     
     float2 g_resolution_render;
     float2 g_resolution_output;
 
-    float2 g_taa_jitter_offset_previous;
     float2 g_taa_jitter_offset;
-
-    float g_shadow_resolution;
     float g_fog_density;
-    float g_taa_upsample;
-    float g_padding;
+    uint g_options;
 };
+
+bool is_taa_enabled()               { return any(g_taa_jitter_offset); }
+bool is_ssr_enabled()               { return g_options & (1 << 0);}
+bool is_taa_upsampling_enabled()    { return g_options & (1 << 1);}
 
 // Low frequency - Updates once per frame
 static const int g_max_materials = 1024;
