@@ -280,7 +280,6 @@ namespace Spartan
                     m_buffer_frame_cpu.camera_direction             = m_camera->GetTransform()->GetForward();
                     m_buffer_frame_cpu.resolution_output            = m_resolution_output;
                     m_buffer_frame_cpu.resolution_render            = m_resolution_render;
-                    m_buffer_frame_cpu.taa_jitter_offset_previous   = m_buffer_frame_cpu_previous.taa_jitter_offset;
                     m_buffer_frame_cpu.taa_jitter_offset            = m_taa_jitter - m_taa_jitter_previous;
                     m_buffer_frame_cpu.delta_time                   = static_cast<float>(m_context->GetSubsystem<Timer>()->GetDeltaTimeSmoothedSec());
                     m_buffer_frame_cpu.time                         = static_cast<float>(m_context->GetSubsystem<Timer>()->GetTimeSec());
@@ -290,9 +289,11 @@ namespace Spartan
                     m_buffer_frame_cpu.tonemapping                  = GetOptionValue<float>(Renderer_Option_Value::Tonemapping);
                     m_buffer_frame_cpu.gamma                        = GetOptionValue<float>(Renderer_Option_Value::Gamma);
                     m_buffer_frame_cpu.shadow_resolution            = GetOptionValue<float>(Renderer_Option_Value::ShadowResolution);
-                    m_buffer_frame_cpu.taa_upsample                 = (GetOptionValue<float>(Renderer_Option_Value::Taa_AllowUpsampling) && m_resolution_output != m_resolution_render) ? 1.0f : 0.0f;
-                    m_buffer_frame_cpu.ssr_enabled                  = GetOption(Render_ScreenSpaceReflections) ? 1.0f : 0.0f;
                     m_buffer_frame_cpu.frame                        = static_cast<uint32_t>(m_frame_num);
+
+                    // These must match what Common_Buffer.hlsl is reading
+                    m_buffer_frame_cpu.set_bit(GetOption(Render_ScreenSpaceReflections), 1 << 0);
+                    m_buffer_frame_cpu.set_bit(GetOptionValue<bool>(Renderer_Option_Value::Taa_AllowUpsampling), 1 << 1);
                 }
 
                 Pass_Main(cmd_list);

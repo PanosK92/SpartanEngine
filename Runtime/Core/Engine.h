@@ -33,8 +33,8 @@ namespace Spartan
 
     enum Engine_Mode : uint32_t
     {
-        Engine_Physics  = 1UL << 0, // Should the physics tick ?
-        Engine_Game     = 1UL << 1, // Is the engine running in game or editor mode ?
+        Engine_Physics  = 1 << 0, // Should the physics tick ?
+        Engine_Game     = 1 << 1, // Is the engine running in game or editor mode ?
     };
 
     class SPARTAN_CLASS Engine

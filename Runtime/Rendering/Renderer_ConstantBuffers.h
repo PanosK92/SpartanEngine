@@ -60,52 +60,51 @@ namespace Spartan
         float gamma;
         float tonemapping;
         float directional_light_intensity;
-        float ssr_enabled;
+        float shadow_resolution;
 
         Math::Vector2 resolution_render;
         Math::Vector2 resolution_output;
 
-        Math::Vector2 taa_jitter_offset_previous;
         Math::Vector2 taa_jitter_offset;
-
-        float shadow_resolution;
         float fog;
-        float taa_upsample;
-        float padding;
+        uint32_t options;
+
+        void set_bit(const bool set, const uint32_t bit)
+        {
+            options = set ? (options |= bit) : (options & ~bit);
+        }
 
         bool operator==(const BufferFrame& rhs) const
         {
             return
-                view                        == rhs.view &&
-                projection                  == rhs.projection &&
-                projection_ortho            == rhs.projection_ortho &&
-                view_projection             == rhs.view_projection &&
-                view_projection_inv         == rhs.view_projection_inv &&
-                view_projection_ortho       == rhs.view_projection_ortho &&
-                view_projection_unjittered  == rhs.view_projection_unjittered &&
-                view_projection_previous    == rhs.view_projection_previous &&
-                delta_time                  == rhs.delta_time &&
-                time                        == rhs.time &&
-                frame                       == rhs.frame &&
-                camera_aperture             == rhs.camera_aperture &&
-                camera_shutter_speed        == rhs.camera_shutter_speed &&
-                camera_iso                  == rhs.camera_iso &&
-                camera_near                 == rhs.camera_near &&
-                camera_far                  == rhs.camera_far &&
-                camera_position             == rhs.camera_position &&
-                sharpen_strength            == rhs.sharpen_strength &&
-                camera_direction            == rhs.camera_direction &&
-                gamma                       == rhs.gamma &&
-                tonemapping                 == rhs.tonemapping &&
+                view == rhs.view &&
+                projection == rhs.projection &&
+                projection_ortho == rhs.projection_ortho &&
+                view_projection == rhs.view_projection &&
+                view_projection_inv == rhs.view_projection_inv &&
+                view_projection_ortho == rhs.view_projection_ortho &&
+                view_projection_unjittered == rhs.view_projection_unjittered &&
+                view_projection_previous == rhs.view_projection_previous &&
+                delta_time == rhs.delta_time &&
+                time == rhs.time &&
+                frame == rhs.frame &&
+                camera_aperture == rhs.camera_aperture &&
+                camera_shutter_speed == rhs.camera_shutter_speed &&
+                camera_iso == rhs.camera_iso &&
+                camera_near == rhs.camera_near &&
+                camera_far == rhs.camera_far &&
+                camera_position == rhs.camera_position &&
+                sharpen_strength == rhs.sharpen_strength &&
+                camera_direction == rhs.camera_direction &&
+                gamma == rhs.gamma &&
+                tonemapping == rhs.tonemapping &&
                 directional_light_intensity == rhs.directional_light_intensity &&
-                ssr_enabled                 == rhs.ssr_enabled &&
-                shadow_resolution           == rhs.shadow_resolution &&
-                fog                         == rhs.fog &&
-                resolution_output           == rhs.resolution_output &&
-                resolution_render           == rhs.resolution_render &&
-                taa_jitter_offset_previous  == rhs.taa_jitter_offset_previous &&
-                taa_jitter_offset           == rhs.taa_jitter_offset &&
-                taa_upsample                == rhs.taa_upsample;
+                shadow_resolution == rhs.shadow_resolution &&
+                fog == rhs.fog &&
+                resolution_output == rhs.resolution_output &&
+                resolution_render == rhs.resolution_render &&
+                taa_jitter_offset == rhs.taa_jitter_offset &&
+                options == rhs.options;
         }
         bool operator!=(const BufferFrame& rhs) const { return !(*this == rhs); }
     };

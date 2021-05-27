@@ -396,21 +396,21 @@ float get_offset_non_temporal(uint2 screen_pos)
 static const float offsets[] = { 0.0f, 0.5f, 0.25f, 0.75f };
 float get_offset()
 {
-    return offsets[(g_frame % 4) * any(g_taa_jitter_offset)];
+    return offsets[(g_frame % 4) * is_taa_enabled()];
 }
 
 // Based on Activision GTAO paper: https://www.activision.com/cdn/research/s2016_pbs_activision_occlusion.pptx
 static const float rotations[] = { 60.0f, 300.0f, 180.0f, 240.0f, 120.0f, 0.0f };
 float get_direction()
 {
-    return (rotations[(g_frame % 6) * any(g_taa_jitter_offset)] / 360.0f);
+    return (rotations[(g_frame % 6) * is_taa_enabled()] / 360.0f);
 }
 
 // Derived from the interleaved gradient function from Jimenez 2014 http://goo.gl/eomGso
 float get_noise_interleaved_gradient(float2 screen_pos)
 {
     // Temporal factor
-    float taaOn         = (float)any(g_taa_jitter_offset);
+    float taaOn         = (float)is_taa_enabled();
     float frameCount    = (float)g_frame;
     float frameStep     = taaOn * frameCount / 60.0f;
     screen_pos.x        += frameStep * 4.7526;
@@ -423,8 +423,8 @@ float get_noise_interleaved_gradient(float2 screen_pos)
 float get_noise_blue(float2 screen_pos)
 {
     // Temporal factor
-    screen_pos.x += frac((screen_pos.x / 64.0) + g_time * 4.7526) * any(g_taa_jitter_offset);
-    screen_pos.y +=  frac((screen_pos.y / 64.0) + g_time * 3.1914) * any(g_taa_jitter_offset);
+    screen_pos.x += frac((screen_pos.x / 64.0) + g_time * 4.7526) * is_taa_enabled();
+    screen_pos.y +=  frac((screen_pos.y / 64.0) + g_time * 3.1914) * is_taa_enabled();
     
     float2 uv = (screen_pos + 0.5f) * g_tex_noise_blue_scale;
     return tex_noise_blue.SampleLevel(sampler_point_wrap, uv, 0).r;

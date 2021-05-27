@@ -33,7 +33,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     if (is_transparent)
         discard;
 
-    const float3 ssr_sample = g_ssr_enabled ? tex_ssr.SampleLevel(sampler_point_clamp, uv, 0).rgb : 0.0f;
+    const float3 ssr_sample = is_ssr_enabled() ? tex_ssr.SampleLevel(sampler_point_clamp, uv, 0).rgb : 0.0f;
     const float2 ssr_uv     = ssr_sample.rg;
     const float ssr_alpha   = ssr_sample.b;
 

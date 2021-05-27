@@ -19,13 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ================
+//= INCLUDES =================
 #include "Common.hlsl"
 #include "BRDF.hlsl"
 #include "ShadowMapping.hlsl"
-#include "VolumetricFog.hlsl"
+#include "Fog_Volumetric.hlsl"
 #include "Fog.hlsl"
-//===========================
+//============================
 
 [numthreads(thread_group_count_x, thread_group_count_y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
@@ -39,7 +39,9 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     surface.Build(thread_id.xy, use_albedo);
 
     // If this is a transparent pass, ignore all opaque pixels, and vice versa.
-    if ((g_is_transparent_pass && surface.is_opaque()) || (!g_is_transparent_pass && surface.is_transparent()))
+    bool early_exit_1 = g_is_transparent_pass && surface.is_opaque();
+    bool early_exit_2 = !g_is_transparent_pass && surface.is_transparent() && !surface.is_sky(); // do shade sky pixels (volumetric lighting)
+    if (early_exit_1 || early_exit_2)
         return;
 
     // Create light
@@ -152,3 +154,5 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     tex_out_rgb2[thread_id.xy]  += saturate_16(light_specular * light.radiance);
     tex_out_rgb3[thread_id.xy]  += saturate_16(light_volumetric);
 }
+
+

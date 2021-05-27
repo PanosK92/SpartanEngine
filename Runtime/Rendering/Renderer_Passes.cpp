@@ -1217,7 +1217,7 @@ namespace Spartan
         bool copy_required = true;
         if (GetOption(Render_AntiAliasing_Taa))
         {
-            if (m_buffer_frame_cpu.taa_upsample)
+            if (GetOptionValue<bool>(Renderer_Option_Value::Taa_AllowUpsampling))
             {
                 Pass_PostProcess_TAA(cmd_list, rt_frame, rt_frame_pp);
                 copy_required = false; // taa writes directly in the high res buffer

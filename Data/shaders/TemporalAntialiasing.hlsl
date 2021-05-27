@@ -170,7 +170,7 @@ float get_sample_weight(float distance_squared)
 
 float3 get_input_sample(Texture2D tex_input, const uint2 pos_out)
 {
-    if (!g_taa_upsample)
+    if (!is_taa_upsampling_enabled())
         return tex_input[pos_out].rgb;
 
     const float2 uv = (pos_out + 0.5f) / g_resolution_rt;
@@ -207,7 +207,7 @@ float3 get_input_sample(Texture2D tex_input, const uint2 pos_out)
 float4 temporal_antialiasing(uint2 pos_out, uint group_index, uint3 group_id, Texture2D tex_history, Texture2D tex_input)
 {
     const float2 uv         = (pos_out + 0.5f) / g_resolution_rt;
-    const uint2 pos_input   = g_taa_upsample ? (uv * g_resolution_render) : pos_out;
+    const uint2 pos_input   = is_taa_upsampling_enabled() ? (uv * g_resolution_render) : pos_out;
 
     // Get history color (reprojection)
     float2 velocity         = get_velocity_closest_3x3(uv);
