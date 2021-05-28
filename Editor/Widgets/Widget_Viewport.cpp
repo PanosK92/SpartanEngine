@@ -38,7 +38,7 @@ Widget_Viewport::Widget_Viewport(Editor* editor) : Widget(editor)
     m_title     = "Viewport";
     m_size      = Vector2(400, 250);
     m_flags     |= ImGuiWindowFlags_NoScrollbar;
-    m_padding   = Vector2(4.0f);
+    m_padding   = Vector2(2.0f);
     m_world     = m_context->GetSubsystem<World>();
     m_renderer  = m_context->GetSubsystem<Renderer>();
     m_settings  = m_context->GetSubsystem<Settings>();
