@@ -55,6 +55,8 @@ Widget_MenuBar::Widget_MenuBar(Editor* editor) : Widget(editor)
 void Widget_MenuBar::TickAlways()
 {
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(GetPadding(), GetPadding()));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+
     if (ImGui::BeginMainMenuBar())
     {
         if (ImGui::BeginMenu("World"))
@@ -110,7 +112,8 @@ void Widget_MenuBar::TickAlways()
 
         ImGui::EndMainMenuBar();
     }
-    ImGui::PopStyleVar();
+
+    ImGui::PopStyleVar(2);
 
     if (_Widget_MenuBar::imgui_metrics) { ImGui::ShowMetricsWindow(); }
     if (_Widget_MenuBar::imgui_style)   { ImGui::Begin("Style Editor", nullptr, ImGuiWindowFlags_NoDocking); ImGui::ShowStyleEditor(); ImGui::End(); }

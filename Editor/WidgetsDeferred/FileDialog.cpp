@@ -164,7 +164,9 @@ void FileDialog::ShowTop(bool* is_visible)
 
     // Search filter
     const float label_width = 37.0f; //ImGui::CalcTextSize("Filter", nullptr, true).x;
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 12);
     m_search_filter.Draw("Filter", ImGui::GetContentRegionAvail().x - label_width);
+    ImGui::PopStyleVar();
 
     ImGui::Separator();
 }

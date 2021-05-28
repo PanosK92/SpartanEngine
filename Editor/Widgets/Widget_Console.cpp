@@ -72,7 +72,9 @@ void Widget_Console::TickVisible()
 
     // Text filter
     const float label_width = 37.0f; //ImGui::CalcTextSize("Filter", nullptr, true).x;
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 12);
     m_log_filter.Draw("Filter", ImGui::GetContentRegionAvail().x - label_width);
+    ImGui::PopStyleVar();
     ImGui::Separator();
 
     // Wait for reading to finish

@@ -139,10 +139,10 @@ static void ImGui_ApplyColors()
     colors[ImGuiCol_FrameBg]                = k_color_dark_very;     // Background of checkbox, radio button, plot, slider, text input
     colors[ImGuiCol_FrameBgHovered]         = k_color_interactive;
     colors[ImGuiCol_FrameBgActive]          = k_color_dark_very;
-    colors[ImGuiCol_TitleBg]                = k_color_mid;
-    colors[ImGuiCol_TitleBgActive]          = k_color_interactive;
-    colors[ImGuiCol_TitleBgCollapsed]       = k_color_dark;
-    colors[ImGuiCol_MenuBarBg]              = k_color_mid;
+    colors[ImGuiCol_TitleBg]                = k_color_dark;
+    colors[ImGuiCol_TitleBgActive]          = k_color_dark;
+    colors[ImGuiCol_TitleBgCollapsed]       = k_color_light;
+    colors[ImGuiCol_MenuBarBg]              = k_color_dark;
     colors[ImGuiCol_ScrollbarBg]            = k_color_mid;
     colors[ImGuiCol_ScrollbarGrab]          = k_color_interactive;
     colors[ImGuiCol_ScrollbarGrabHovered]   = k_color_interactive_hovered;
@@ -156,9 +156,9 @@ static void ImGui_ApplyColors()
     colors[ImGuiCol_Header]                 = k_color_light;            // Header* colors are used for CollapsingHeader, TreeNode, Selectable, MenuItem
     colors[ImGuiCol_HeaderHovered]          = k_color_interactive_hovered;
     colors[ImGuiCol_HeaderActive]           = k_color_dark_very;
-    colors[ImGuiCol_Separator]              = k_color_interactive;
-    colors[ImGuiCol_SeparatorHovered]       = k_color_interactive_hovered;
-    colors[ImGuiCol_SeparatorActive]        = k_color_dark_very;
+    colors[ImGuiCol_Separator]              = k_color_dark_very;
+    colors[ImGuiCol_SeparatorHovered]       = k_color_light;
+    colors[ImGuiCol_SeparatorActive]        = k_color_light;
     colors[ImGuiCol_ResizeGrip]             = k_color_interactive;
     colors[ImGuiCol_ResizeGripHovered]      = k_color_interactive_hovered;
     colors[ImGuiCol_ResizeGripActive]       = k_color_dark_very;
@@ -368,6 +368,8 @@ void Editor::BeginWindow()
             ImGui::DockBuilderFinish(dock_main_id);
         }
 
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
         ImGui::DockSpace(window_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
+        ImGui::PopStyleVar();
     }
 }
