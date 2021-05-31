@@ -113,7 +113,8 @@ struct Light
     // Properties
     float3  color;
     float3  position;
-    float3  direction;
+    float3  to_pixel;
+    float3  forward;
     float   distance_to_pixel;
     float   angle;
     float   bias;
@@ -135,12 +136,12 @@ struct Light
     }
 
     // Attenuation over angle (approaching the outer cone)
-    float compute_attenuation_angle(const float3 direction)
+    float compute_attenuation_angle()
     {
-        float light_dot_pixel   = dot(direction, direction);
+        float f_dot_l           = dot(to_pixel, forward);
         float cutoffAngle       = 1.0f - angle;
         float epsilon           = cutoffAngle - cutoffAngle * 0.9f;
-        float attenuation       = saturate((light_dot_pixel - cutoffAngle) / epsilon);
+        float attenuation       = saturate((f_dot_l - cutoffAngle) / epsilon);
         return attenuation * attenuation;
     }
 
@@ -150,11 +151,11 @@ struct Light
         float attenuation = 0.0f;
         
         #if DIRECTIONAL
-        attenuation   = saturate(dot(-cb_light_direction.xyz, float3(0.0f, 1.0f, 0.0f)));
+        attenuation   = saturate(dot(-forward.xyz, float3(0.0f, 1.0f, 0.0f)));
         #elif POINT
         attenuation   = compute_attenuation_distance(surface_position);
         #elif SPOT
-        attenuation   = compute_attenuation_distance(surface_position) * compute_attenuation_angle(cb_light_direction.xyz);
+        attenuation   = compute_attenuation_distance(surface_position) * compute_attenuation_angle();
         #endif
     
         return attenuation;
@@ -165,7 +166,7 @@ struct Light
         float3 direction = 0.0f;
         
         #if DIRECTIONAL
-        direction   = normalize(cb_light_direction.xyz);
+        direction   = normalize(forward.xyz);
         #elif POINT
         direction   = normalize(surface.position - light_position);
         #elif SPOT
@@ -177,19 +178,20 @@ struct Light
     
     void Build(Surface surface)
     {
-        color             = cb_light_color.rgb;
-        position          = cb_light_position.xyz;
-        near              = 0.1f;
-        intensity         = cb_light_intensity_range_angle_bias.x;
-        far               = cb_light_intensity_range_angle_bias.y;
-        angle             = cb_light_intensity_range_angle_bias.z;
-        bias              = cb_light_intensity_range_angle_bias.w;
-        normal_bias       = cb_light_normal_bias;
-        distance_to_pixel = length(surface.position - position);
-        direction         = compute_direction(position, surface);
-        attenuation       = compute_attenuation(surface.position);
-        n_dot_l           = saturate(dot(surface.normal, -direction)); // Pre-compute n_dot_l since it's used in many places
-        radiance          = color * intensity * attenuation * n_dot_l * surface.occlusion;
+        color               = cb_light_color.rgb;
+        position            = cb_light_position.xyz;
+        intensity           = cb_light_intensity_range_angle_bias.x;
+        far                 = cb_light_intensity_range_angle_bias.y;
+        angle               = cb_light_intensity_range_angle_bias.z;
+        bias                = cb_light_intensity_range_angle_bias.w;
+        forward             = cb_light_direction.xyz;
+        normal_bias         = cb_light_normal_bias;
+        near                = 0.1f;
+        distance_to_pixel   = length(surface.position - position);
+        to_pixel            = compute_direction(position, surface);
+        n_dot_l             = saturate(dot(surface.normal, -to_pixel)); // Pre-compute n_dot_l since it's used in many places
+        attenuation         = compute_attenuation(surface.position);
+        radiance            = color * intensity * attenuation * n_dot_l * surface.occlusion;
         #if DIRECTIONAL
         array_size = 4;
         #else
@@ -197,3 +199,4 @@ struct Light
         #endif
     }
 };
+

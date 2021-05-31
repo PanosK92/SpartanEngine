@@ -104,7 +104,3 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     tex_out_rgb[thread_id.xy] = ground_truth_global_illumination(thread_id.xy);
 }
-
-
-
-
