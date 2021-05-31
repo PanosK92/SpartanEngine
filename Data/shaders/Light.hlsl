@@ -84,7 +84,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     if (any(light.radiance) && !surface.is_sky())
     {
         // Compute some vectors and dot products
-        float3 l        = -light.direction;
+        float3 l        = -light.to_pixel;
         float3 v        = -surface.camera_to_pixel;
         float3 h        = normalize(v + l);
         float l_dot_h   = saturate(dot(l, h));
@@ -120,8 +120,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         // Diffuse
         light_diffuse += BRDF_Diffuse(surface, n_dot_v, light.n_dot_l, v_dot_h);
 
-        /* Light - Subsurface scattering fast approximation - Will activate soon
-        if (g_is_transprent_pass)
+        /* Subsurface scattering from LIDL
         {
             const float thickness_edge  = 0.1f;
             const float thickness_face  = 1.0f;
@@ -143,16 +142,16 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         light_diffuse *= diffuse_energy;
     }
 
-    // Volumetric lighting
-    #if VOLUMETRIC
-    {
-        light_volumetric += VolumetricLighting(surface, light) * light.color * light.intensity * get_fog_factor(surface);
-    }
-    #endif
-    
+    // Diffuse and specular
     tex_out_rgb[thread_id.xy]   += saturate_16(light_diffuse * light.radiance + surface.emissive);
     tex_out_rgb2[thread_id.xy]  += saturate_16(light_specular * light.radiance);
-    tex_out_rgb3[thread_id.xy]  += saturate_16(light_volumetric);
+    
+    // Volumetric
+    #if VOLUMETRIC
+    {
+        light_volumetric += VolumetricLighting(surface, light) * get_fog_factor(surface);
+        tex_out_rgb3[thread_id.xy]  += saturate_16(light_volumetric);
+    }
+    #endif
 }
-
 

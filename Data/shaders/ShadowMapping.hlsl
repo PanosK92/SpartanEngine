@@ -386,16 +386,16 @@ float4 Shadow_Map(Surface surface, Light light)
         [branch]
         if (light.distance_to_pixel < light.far)
         {
-            uint projection_index = direction_to_cube_face_index(light.direction);
+            uint projection_index = direction_to_cube_face_index(light.to_pixel);
             float3 pos_ndc = world_to_ndc(position_world, cb_light_view_projection[projection_index]);
             auto_bias(surface, pos_ndc, light);
-            shadow.a = SampleShadowMap(surface, light.direction, pos_ndc.z);
+            shadow.a = SampleShadowMap(surface, light.to_pixel, pos_ndc.z);
             
             #if (SHADOWS_TRANSPARENT == 1)
             [branch]
             if (shadow.a > 0.0f && surface.is_opaque())
             {
-                shadow *= Technique_Vogel_Color(surface, light.direction);
+                shadow *= Technique_Vogel_Color(surface, light.to_pixel);
             }
             #endif
         }
@@ -419,7 +419,7 @@ float4 Shadow_Map(Surface surface, Light light)
                 [branch]
                 if (shadow.a > 0.0f && surface.is_opaque())
                 {
-                    shadow *= Technique_Vogel_Color(surface, light.direction);
+                    shadow *= Technique_Vogel_Color(surface, light.to_pixel);
                 }
                 #endif
             }

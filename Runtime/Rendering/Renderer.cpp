@@ -80,7 +80,7 @@ namespace Spartan
         m_option_values[Renderer_Option_Value::Gamma]               = 2.2f;
         m_option_values[Renderer_Option_Value::Sharpen_Strength]    = 1.0f;
         m_option_values[Renderer_Option_Value::Bloom_Intensity]     = 0.1f;
-        m_option_values[Renderer_Option_Value::Fog]                 = 1.0;
+        m_option_values[Renderer_Option_Value::Fog]                 = 0.15f;
 
         // Subscribe to events
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved,    SP_EVENT_HANDLER_VARIANT(RenderablesAcquire));
