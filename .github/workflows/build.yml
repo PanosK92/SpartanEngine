@@ -19,7 +19,7 @@ jobs:
           
       - name: Build
         shell: cmd
-        run: '"%MSBUILD_PATH%\MSBuild.exe" /p:Platform=x64 /p:Configuration=Release /m Spartan.sln'
+        run: '"%MSBUILD_PATH%\MSBuild.exe" /p:Platform=Windows /p:Configuration=Release /m Spartan.sln'
           
       - name: Clean up for artifact upload
         shell: bash
@@ -46,7 +46,7 @@ jobs:
             
         - name: Build
           shell: cmd
-          run: '"%MSBUILD_PATH%\MSBuild.exe" /p:Platform=x64 /p:Configuration=Release /m Spartan.sln'
+          run: '"%MSBUILD_PATH%\MSBuild.exe" /p:Platform=Windows /p:Configuration=Release /m Spartan.sln'
             
         - name: Clean up for artifact upload
           shell: bash
@@ -73,7 +73,7 @@ jobs:
           
       - name: Build
         shell: cmd
-        run: '"%MSBUILD_PATH%\MSBuild.exe" /p:Platform=x64 /p:Configuration=Release /m Spartan.sln'
+        run: '"%MSBUILD_PATH%\MSBuild.exe" /p:Platform=Windows /p:Configuration=Release /m Spartan.sln'
           
       - name: Clean up for artifact upload
         shell: bash
