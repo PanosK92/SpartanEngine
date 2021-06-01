@@ -69,7 +69,7 @@ solution (SOLUTION_NAME)
 	systemversion "latest"
 	cppdialect "C++17"
 	language "C++"
-	platforms {"x64", "linux"}
+	platforms { "Windows", "Linux" }
 	configurations { "Debug", "Release" }
 
 	-- Defines
@@ -79,11 +79,11 @@ solution (SOLUTION_NAME)
 		"SPARTAN_RUNTIME_SHARED=0"
 	}
 
-	filter { "platforms:x64" }
+	filter { "platforms:Windows" }
 		system "Windows"
 		architecture "x64"
 
-    filter { "platforms:linux" }
+    filter { "platforms:Linux" }
 		system "Linux"
 		architecture "x86_64"
 
