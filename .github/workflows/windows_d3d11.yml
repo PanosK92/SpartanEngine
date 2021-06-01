@@ -1,4 +1,4 @@
-name: build
+name: windows_d3d11
 
 on: [push, pull_request]
 
