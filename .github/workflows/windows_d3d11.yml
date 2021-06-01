@@ -1,0 +1,31 @@
+name: build
+
+on: [push, pull_request]
+
+jobs:
+  job_vs2019_d3d11:
+    runs-on: [windows-2019]    
+    env:
+      MSBUILD_PATH: C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
+
+    steps:
+      - uses: actions/checkout@v1
+        with:
+          fetch-depth: 1
+   
+      - name: Generate project files
+        shell: cmd
+        run: 'Generate_VS2019_D3D11'
+          
+      - name: Build
+        shell: cmd
+        run: '"%MSBUILD_PATH%\MSBuild.exe" /p:Platform=Windows /p:Configuration=Release /m Spartan.sln'
+          
+      - name: Clean up for artifact upload
+        shell: bash
+        run: ./Scripts/clean.sh
+ 
+      - uses: actions/upload-artifact@master  
+        with:
+          name: windows_d3d11
+          path: Binaries\Release
