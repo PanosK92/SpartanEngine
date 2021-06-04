@@ -107,10 +107,10 @@ namespace Spartan::Math
         static inline Vector3 Normalize(const Vector3& v) { return v.Normalized(); }
 
         // Returns the dot product
-        static inline float Dot(const Vector3& v1, const Vector3& v2)    { return (v1.x * v2.x + v1.y * v2.y + v1.z * v2.z); }
+        static inline float Dot(const Vector3& v1, const Vector3& v2) { return (v1.x * v2.x + v1.y * v2.y + v1.z * v2.z); }
 
         // Returns the dot product
-        [[nodiscard]] float Dot(const Vector3& rhs) const       { return x * rhs.x + y * rhs.y + z * rhs.z; }
+        [[nodiscard]] float Dot(const Vector3& rhs) const { return x * rhs.x + y * rhs.y + z * rhs.z; }
 
         // Returns the cross product
         static inline Vector3 Cross(const Vector3& v1, const Vector3& v2)
