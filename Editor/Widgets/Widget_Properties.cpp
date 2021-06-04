@@ -392,7 +392,7 @@ void Widget_Properties::ShowLight(Light* light) const
         {
             ImGui::Text("Range");
             ImGui::SameLine(WidgetHelper::g_column);
-            ImGui::PushItemWidth(300); ImGuiEx::DragFloatWrap("##lightRange", &range, 0.01f, 0.0f, 100.0f); ImGui::PopItemWidth();
+            ImGui::PushItemWidth(300); ImGuiEx::DragFloatWrap("##lightRange", &range, 0.01f, 0.0f, 1000.0f); ImGui::PopItemWidth();
         }
 
         // Angle

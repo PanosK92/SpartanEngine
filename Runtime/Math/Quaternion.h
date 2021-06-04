@@ -133,7 +133,7 @@ namespace Spartan::Math
 
         static inline Quaternion FromToRotation(const Vector3& start, const Vector3& end)
         {
-            const Vector3 normStart    = start.Normalized();
+            const Vector3 normStart = start.Normalized();
             const Vector3 normEnd   = end.Normalized();
             const float d           = normStart.Dot(normEnd);
 

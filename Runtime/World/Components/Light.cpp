@@ -180,7 +180,6 @@ namespace Spartan
             CreateShadowMap();
         }
 
-        
         m_context->GetSubsystem<World>()->Resolve();
     }
 
@@ -224,7 +223,7 @@ namespace Spartan
 
     void Light::SetAngle(float angle)
     {
-        m_angle_rad = Helper::Clamp(angle, 0.0f, Helper::PI_2);
+        m_angle_rad = Helper::Clamp(angle, 0.0f, Math::Helper::PI_2);
         m_is_dirty  = true;
     }
 

@@ -127,6 +127,9 @@ struct Light
     float   n_dot_l;
     uint    array_size;
 
+    // attenuations are derived mainly from Frostbite
+    // https://media.contentapi.ea.com/content/dam/eacom/frostbite/files/course-notes-moving-frostbite-to-pbr-v2.pdf
+
     // Attenuation over distance
     float compute_attenuation_distance(const float3 surface_position)
     {
@@ -138,10 +141,14 @@ struct Light
     // Attenuation over angle (approaching the outer cone)
     float compute_attenuation_angle()
     {
-        float f_dot_l           = dot(to_pixel, forward);
-        float cutoffAngle       = 1.0f - angle;
-        float epsilon           = cutoffAngle - cutoffAngle * 0.9f;
-        float attenuation       = saturate((f_dot_l - cutoffAngle) / epsilon);
+        float cos_outer         = cos(angle);
+        float cos_inner         = cos(angle * 0.9f);
+        float cos_outer_squared = cos_outer * cos_outer;
+        float scale             = 1.0f / max(0.001f, cos_inner - cos_outer);
+        float offset            = -cos_outer * scale;
+
+        float cd            = dot(to_pixel, forward);
+        float attenuation   = saturate(cd * scale + offset);
         return attenuation * attenuation;
     }
 
@@ -151,11 +158,11 @@ struct Light
         float attenuation = 0.0f;
         
         #if DIRECTIONAL
-        attenuation   = saturate(dot(-forward.xyz, float3(0.0f, 1.0f, 0.0f)));
+        attenuation     = saturate(dot(-forward.xyz, float3(0.0f, 1.0f, 0.0f)));
         #elif POINT
-        attenuation   = compute_attenuation_distance(surface_position);
+        attenuation     = compute_attenuation_distance(surface_position);
         #elif SPOT
-        attenuation   = compute_attenuation_distance(surface_position) * compute_attenuation_angle();
+        attenuation     =  compute_attenuation_distance(surface_position) * compute_attenuation_angle();
         #endif
     
         return attenuation;
@@ -199,4 +206,3 @@ struct Light
         #endif
     }
 };
-

@@ -79,7 +79,7 @@ cbuffer BufferUber : register(b2)
     matrix g_transform_previous;
 
     float4 g_color;
-    
+
     float3 g_transform_axis;
     float g_blur_sigma;
     
