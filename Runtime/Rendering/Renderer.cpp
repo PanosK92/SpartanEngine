@@ -181,7 +181,7 @@ namespace Spartan
         return true;
     }
 
-    std::weak_ptr<Spartan::Entity> Renderer::SnapTransformHandleToEntity(const shared_ptr<Entity>& entity) const
+    weak_ptr<Spartan::Entity> Renderer::SnapTransformHandleToEntity(const shared_ptr<Entity>& entity) const
     {
         return m_transform_handle->SetSelectedEntity(entity);
     }
