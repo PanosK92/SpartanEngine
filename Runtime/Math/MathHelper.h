@@ -100,6 +100,12 @@ namespace Spartan::Math::Helper
     template <class T>
     constexpr T Tan(T x) { return tan(x); }
 
+    template <class T>
+    constexpr T Cos(T x) { return cos(x); }
+
+    template <class T>
+    constexpr T Sin(T x) { return sin(x); }
+
     template <typename T>
     constexpr int Sign(T x) { return (static_cast<T>(0) < x) - (x < static_cast<T>(0)); }
 

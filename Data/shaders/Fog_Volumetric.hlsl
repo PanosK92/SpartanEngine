@@ -140,7 +140,7 @@ float3 VolumetricLighting(Surface surface, Light light)
         {
             uint projection_index = 0;
             #if POINT
-            projection_index = direction_to_cube_face_index(light.direction);
+            projection_index = direction_to_cube_face_index(light.to_pixel);
             #endif
             fog = vl_raymarch(light, ray_pos, ray_step, ray_dir, projection_index);
         }

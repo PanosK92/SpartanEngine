@@ -1937,22 +1937,22 @@ namespace Spartan
 
                     if (light->GetLightType() == LightType::Spot)
                     {
-                        Vector3 pos_start   = light->GetTransform()->GetPosition();
-                        float range         = light->GetRange();
-                        float angle_half    = light->GetAngle() * 0.5f;
-                        float angle_tan     = Math::Helper::Tan(angle_half);
+                        // tan(angle) = opposite/adjacent
+                        // opposite = adjacent * tan(angle)
+                        float opposite  = light->GetRange() * Math::Helper::Tan(light->GetAngle() * 0.5f);
 
-                        Vector3 forward = light->GetTransform()->GetForward() * range;
-                        Vector3 up      = forward * range  + light->GetTransform()->GetUp()     * angle_tan;
-                        Vector3 right   = forward * range  + light->GetTransform()->GetRight()  * angle_tan;
-                        Vector3 down    = forward * range  + light->GetTransform()->GetDown()   * angle_tan;
-                        Vector3 left    = forward * range  + light->GetTransform()->GetLeft()   * angle_tan;
+                        Vector3 pos_end_center  = light->GetTransform()->GetForward() * light->GetRange();
+                        Vector3 pos_end_up      = pos_end_center + light->GetTransform()->GetUp()      * opposite;
+                        Vector3 pos_end_right   = pos_end_center + light->GetTransform()->GetRight()   * opposite;
+                        Vector3 pos_end_down    = pos_end_center + light->GetTransform()->GetDown()    * opposite;
+                        Vector3 pos_end_left    = pos_end_center + light->GetTransform()->GetLeft()    * opposite;
 
-                        DrawLine(pos_start, pos_start + forward, Vector4(0, 1, 0, 1));
-                        DrawLine(pos_start, pos_start + up     , Vector4(0, 0, 1, 1));
-                        DrawLine(pos_start, pos_start + right  , Vector4(0, 0, 1, 1));
-                        DrawLine(pos_start, pos_start + down   , Vector4(0, 0, 1, 1));
-                        DrawLine(pos_start, pos_start + left   , Vector4(0, 0, 1, 1));
+                        Vector3 pos_start = light->GetTransform()->GetPosition();
+                        DrawLine(pos_start, pos_start + pos_end_center, Vector4(0, 1, 0, 1));
+                        DrawLine(pos_start, pos_start + pos_end_up    , Vector4(0, 0, 1, 1));
+                        DrawLine(pos_start, pos_start + pos_end_right , Vector4(0, 0, 1, 1));
+                        DrawLine(pos_start, pos_start + pos_end_down  , Vector4(0, 0, 1, 1));
+                        DrawLine(pos_start, pos_start + pos_end_left  , Vector4(0, 0, 1, 1));
                     }
                 }
             }
