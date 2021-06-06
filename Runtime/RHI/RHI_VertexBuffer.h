@@ -45,27 +45,27 @@ namespace Spartan
         template<typename T>
         bool Create(const std::vector<T>& vertices)
         {
-            m_stride        = static_cast<uint32_t>(sizeof(T));
-            m_vertex_count    = static_cast<uint32_t>(vertices.size());
-            m_size_gpu      = static_cast<uint64_t>(m_stride * m_vertex_count);
+            m_stride            = static_cast<uint32_t>(sizeof(T));
+            m_vertex_count      = static_cast<uint32_t>(vertices.size());
+            m_object_size_gpu   = static_cast<uint64_t>(m_stride * m_vertex_count);
             return _create(static_cast<const void*>(vertices.data()));
         }
 
         template<typename T>
         bool Create(const T* vertices, const uint32_t vertex_count)
         {
-            m_stride        = static_cast<uint32_t>(sizeof(T));
-            m_vertex_count    = vertex_count;
-            m_size_gpu      = static_cast<uint64_t>(m_stride * m_vertex_count);
+            m_stride            = static_cast<uint32_t>(sizeof(T));
+            m_vertex_count      = vertex_count;
+            m_object_size_gpu   = static_cast<uint64_t>(m_stride * m_vertex_count);
             return _create(static_cast<const void*>(vertices));
         }
 
         template<typename T>
         bool CreateDynamic(const uint32_t vertex_count)
         {
-            m_stride        = static_cast<uint32_t>(sizeof(T));
-            m_vertex_count  = vertex_count;
-            m_size_gpu      = static_cast<uint64_t>(m_stride * m_vertex_count);
+            m_stride            = static_cast<uint32_t>(sizeof(T));
+            m_vertex_count      = vertex_count;
+            m_object_size_gpu   = static_cast<uint64_t>(m_stride * m_vertex_count);
             return _create(nullptr);
         }
 
@@ -82,12 +82,12 @@ namespace Spartan
 
         bool m_persistent_mapping   = true; // only affects Vulkan
         void* m_mapped              = nullptr;
-        uint32_t m_stride            = 0;
-        uint32_t m_vertex_count        = 0;
+        uint32_t m_stride           = 0;
+        uint32_t m_vertex_count     = 0;
 
         // API
         std::shared_ptr<RHI_Device> m_rhi_device;
-        void* m_buffer        = nullptr;
+        void* m_buffer      = nullptr;
         void* m_allocation  = nullptr;
         bool m_is_mappable  = true;
     };

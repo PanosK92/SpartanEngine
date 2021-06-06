@@ -97,7 +97,7 @@ namespace Spartan::vulkan_utility
         texture->Set_Resource(resource);
 
         // Keep allocation reference
-        globals::rhi_context->allocations[texture->GetId()] = allocation;
+        globals::rhi_context->allocations[texture->GetObjectId()] = allocation;
 
         return true;
     }
@@ -105,7 +105,7 @@ namespace Spartan::vulkan_utility
     void image::destroy(RHI_Texture* texture)
     {
         void* resource          = texture->Get_Resource();
-        uint64_t allocation_id  = texture->GetId();
+        uint64_t allocation_id  = texture->GetObjectId();
 
         auto it = globals::rhi_context->allocations.find(allocation_id);
         if (it != globals::rhi_context->allocations.end())

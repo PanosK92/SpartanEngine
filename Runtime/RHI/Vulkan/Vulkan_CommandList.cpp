@@ -518,7 +518,7 @@ namespace Spartan
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
-        if (m_vertex_buffer_id == buffer->GetId() && m_vertex_buffer_offset == offset)
+        if (m_vertex_buffer_id == buffer->GetObjectId() && m_vertex_buffer_offset == offset)
             return;
 
         VkBuffer vertex_buffers[]    = { static_cast<VkBuffer>(buffer->GetResource()) };
@@ -533,7 +533,7 @@ namespace Spartan
         );
 
         m_profiler->m_rhi_bindings_buffer_vertex++;
-        m_vertex_buffer_id      = buffer->GetId();
+        m_vertex_buffer_id      = buffer->GetObjectId();
         m_vertex_buffer_offset  = offset;
     }
 
@@ -542,7 +542,7 @@ namespace Spartan
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
-        if (m_index_buffer_id == buffer->GetId() && m_index_buffer_offset == offset)
+        if (m_index_buffer_id == buffer->GetObjectId() && m_index_buffer_offset == offset)
             return;
 
         vkCmdBindIndexBuffer(
@@ -553,7 +553,7 @@ namespace Spartan
         );
 
         m_profiler->m_rhi_bindings_buffer_index++;
-        m_index_buffer_id       = buffer->GetId();
+        m_index_buffer_id       = buffer->GetObjectId();
         m_index_buffer_offset   = offset;
     }
 
@@ -564,7 +564,7 @@ namespace Spartan
 
         if (!m_descriptor_set_layout_cache->GetCurrentDescriptorSetLayout())
         {
-            LOG_WARNING("Descriptor layout not set, try setting constant buffer \"%s\" within a render pass", constant_buffer->GetName().c_str());
+            LOG_WARNING("Descriptor layout not set, try setting constant buffer \"%s\" within a render pass", constant_buffer->GetObjectName().c_str());
             return false;
         }
 
@@ -579,7 +579,7 @@ namespace Spartan
 
         if (!m_descriptor_set_layout_cache->GetCurrentDescriptorSetLayout())
         {
-            LOG_WARNING("Descriptor layout not set, try setting sampler \"%s\" within a render pass", sampler->GetName().c_str());
+            LOG_WARNING("Descriptor layout not set, try setting sampler \"%s\" within a render pass", sampler->GetObjectName().c_str());
             return;
         }
 
@@ -594,7 +594,7 @@ namespace Spartan
 
         if (!m_descriptor_set_layout_cache->GetCurrentDescriptorSetLayout())
         {
-            LOG_WARNING("Descriptor layout not set, try setting texture \"%s\" within a render pass", texture->GetName().c_str());
+            LOG_WARNING("Descriptor layout not set, try setting texture \"%s\" within a render pass", texture->GetObjectName().c_str());
             return;
         }
 
@@ -619,7 +619,7 @@ namespace Spartan
             {
                 if (!texture->IsStorage())
                 {
-                    LOG_ERROR("Texture %s doesn't support storage", texture->GetName().c_str());
+                    LOG_ERROR("Texture %s doesn't support storage", texture->GetObjectName().c_str());
                 }
                 else
                 {

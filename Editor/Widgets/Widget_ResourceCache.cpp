@@ -101,7 +101,7 @@ void Widget_ResourceCache::TickVisible()
 
                 // ID
                 ImGui::TableSetColumnIndex(1);
-                ImGui::Text(to_string(object->GetId()).c_str());
+                ImGui::Text(to_string(object->GetObjectId()).c_str());
 
                 // Name
                 ImGui::TableSetColumnIndex(2);
@@ -117,11 +117,11 @@ void Widget_ResourceCache::TickVisible()
                 
                 // Memory CPU
                 ImGui::TableSetColumnIndex(5);
-                print_memory(object->GetSizeCpu());
+                print_memory(object->GetObjectSizeCpu());
                 
                 // Memory GPU
                 ImGui::TableSetColumnIndex(6);
-                print_memory(object->GetSizeGpu());
+                print_memory(object->GetObjectSizeGpu());
             }
         }
 

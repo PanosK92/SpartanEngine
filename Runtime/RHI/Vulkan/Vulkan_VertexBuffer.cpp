@@ -71,7 +71,7 @@ namespace Spartan
         {
             VkMemoryPropertyFlags flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
             flags |= !m_persistent_mapping ? VK_MEMORY_PROPERTY_HOST_COHERENT_BIT : 0;
-            VmaAllocation allocation = vulkan_utility::buffer::create(m_buffer, m_size_gpu, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, flags, true);
+            VmaAllocation allocation = vulkan_utility::buffer::create(m_buffer, m_object_size_gpu, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, flags, true);
             if (!allocation)
                 return false;
 
@@ -84,13 +84,13 @@ namespace Spartan
 
             // Create staging/source buffer and copy the vertices to it
             void* staging_buffer = nullptr;
-            VmaAllocation allocation_staging = vulkan_utility::buffer::create(staging_buffer, m_size_gpu, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, false, vertices);
+            VmaAllocation allocation_staging = vulkan_utility::buffer::create(staging_buffer, m_object_size_gpu, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, false, vertices);
             if (!allocation_staging)
                 return false;
 
             // Create destination buffer
             bool written_frequently = false;
-            VmaAllocation allocation = vulkan_utility::buffer::create(m_buffer, m_size_gpu, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, written_frequently, nullptr);
+            VmaAllocation allocation = vulkan_utility::buffer::create(m_buffer, m_object_size_gpu, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, written_frequently, nullptr);
             if (!allocation)
                 return false;
 
@@ -104,7 +104,7 @@ namespace Spartan
 
                 // Copy
                 VkBufferCopy copy_region = {};
-                copy_region.size         = m_size_gpu;
+                copy_region.size         = m_object_size_gpu;
                 vkCmdCopyBuffer(cmd_buffer, *buffer_staging_vk, *buffer_vk, 1, &copy_region);
 
                 // Flush and free command buffer
@@ -173,7 +173,7 @@ namespace Spartan
 
         if (m_persistent_mapping)
         {
-            if (!vulkan_utility::error::check(vmaFlushAllocation(m_rhi_device->GetContextRhi()->allocator, static_cast<VmaAllocation>(m_allocation), 0, m_size_gpu)))
+            if (!vulkan_utility::error::check(vmaFlushAllocation(m_rhi_device->GetContextRhi()->allocator, static_cast<VmaAllocation>(m_allocation), 0, m_object_size_gpu)))
             {
                 LOG_ERROR("Failed to flush memory");
                 return false;

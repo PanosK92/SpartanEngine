@@ -74,7 +74,7 @@ namespace WidgetHelper
                     {
                         if (component)
                         {
-                            entity->RemoveComponentById(component->GetId());
+                            entity->RemoveComponentById(component->GetObjectId());
                         }
                     }
                 }
@@ -638,7 +638,7 @@ void Widget_Properties::ShowConstraint(Constraint* constraint) const
 
     if (WidgetHelper::ComponentBegin("Constraint", Icon_Component_AudioSource, constraint))
     {
-        //= REFLECT ==================================================================================
+        //= REFLECT ========================================================================================
         vector<string> constraint_types = {"Point", "Hinge", "Slider", "ConeTwist" };
         auto other_body                 = constraint->GetBodyOther();
         bool other_body_dirty           = false;
@@ -647,7 +647,7 @@ void Widget_Properties::ShowConstraint(Constraint* constraint) const
         Vector2 high_limit              = constraint->GetHighLimit();
         Vector2 low_limit               = constraint->GetLowLimit();
         string other_body_name          = other_body.expired() ? "N/A" : other_body.lock()->GetObjectName();
-        //============================================================================================
+        //==================================================================================================
 
         const auto inputTextFlags   = ImGuiInputTextFlags_CharsDecimal;
         const float step            = 0.1f;

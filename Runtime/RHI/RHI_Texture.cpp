@@ -111,7 +111,7 @@ namespace Spartan
         file->Write(static_cast<uint32_t>(m_format));
         file->Write(m_channel_count);
         file->Write(m_flags);
-        file->Write(GetId());
+        file->Write(GetObjectId());
         file->Write(GetResourceFilePath());
 
         return true;
@@ -169,15 +169,15 @@ namespace Spartan
 
         // Compute memory usage
         {
-            m_size_cpu = 0;
-            m_size_gpu = 0;
+            m_object_size_cpu = 0;
+            m_object_size_gpu = 0;
             for (uint8_t mip_index = 0; mip_index < m_mip_count; mip_index++)
             {
                 const uint32_t mip_width  = m_width >> mip_index;
                 const uint32_t mip_height = m_height >> mip_index;
 
-                m_size_cpu += mip_index < m_data.size() ? m_data[mip_index].size() * sizeof(std::byte) : 0;
-                m_size_gpu += mip_width * mip_height * (m_bits_per_channel / 8);
+                m_object_size_cpu += mip_index < m_data.size() ? m_data[mip_index].size() * sizeof(std::byte) : 0;
+                m_object_size_gpu += mip_width * mip_height * (m_bits_per_channel / 8);
             }
         }
 
@@ -277,7 +277,7 @@ namespace Spartan
         file->Read(reinterpret_cast<uint32_t*>(&m_format));
         file->Read(&m_channel_count);
         file->Read(&m_flags);
-        SetId(file->ReadAs<uint32_t>());
+        SetObjectId(file->ReadAs<uint32_t>());
         SetResourceFilePath(file->ReadAs<string>());
 
         return true;

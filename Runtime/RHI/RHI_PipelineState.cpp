@@ -142,7 +142,7 @@ namespace Spartan
         Utility::Hash::hash_combine(m_hash, vertex_buffer_stride);
         Utility::Hash::hash_combine(m_hash, render_target_color_texture_array_index);
         Utility::Hash::hash_combine(m_hash, render_target_depth_stencil_texture_array_index);
-        Utility::Hash::hash_combine(m_hash, render_target_swapchain ? render_target_swapchain->GetId() : 0);
+        Utility::Hash::hash_combine(m_hash, render_target_swapchain ? render_target_swapchain->GetObjectId() : 0);
 
         if (!dynamic_scissor)
         {
@@ -154,34 +154,34 @@ namespace Spartan
 
         if (rasterizer_state)
         {
-            Utility::Hash::hash_combine(m_hash, rasterizer_state->GetId());
+            Utility::Hash::hash_combine(m_hash, rasterizer_state->GetObjectId());
         }
 
         if (blend_state)
         {
-            Utility::Hash::hash_combine(m_hash, blend_state->GetId());
+            Utility::Hash::hash_combine(m_hash, blend_state->GetObjectId());
         }
 
         if (depth_stencil_state)
         {
-            Utility::Hash::hash_combine(m_hash, depth_stencil_state->GetId());
+            Utility::Hash::hash_combine(m_hash, depth_stencil_state->GetObjectId());
         }
 
         // Shaders
         {
             if (shader_compute)
             {
-                Utility::Hash::hash_combine(m_hash, shader_compute->GetId());
+                Utility::Hash::hash_combine(m_hash, shader_compute->GetObjectId());
             }
 
             if (shader_vertex)
             {
-                Utility::Hash::hash_combine(m_hash, shader_vertex->GetId());
+                Utility::Hash::hash_combine(m_hash, shader_vertex->GetObjectId());
             }
 
             if (shader_pixel)
             {
-                Utility::Hash::hash_combine(m_hash, shader_pixel->GetId());
+                Utility::Hash::hash_combine(m_hash, shader_pixel->GetObjectId());
             }
         }
 
@@ -195,7 +195,7 @@ namespace Spartan
             {
                 if (RHI_Texture* texture = render_target_color_textures[i])
                 {
-                    Utility::Hash::hash_combine(m_hash, texture->GetId());
+                    Utility::Hash::hash_combine(m_hash, texture->GetObjectId());
 
                     load_op = clear_color[i] == rhi_color_dont_care ? 0 : clear_color[i] == rhi_color_load ? 1 : 2;
                     Utility::Hash::hash_combine(m_hash, load_op);
@@ -207,7 +207,7 @@ namespace Spartan
             // Depth
             if (render_target_depth_texture)
             {
-                Utility::Hash::hash_combine(m_hash, render_target_depth_texture->GetId());
+                Utility::Hash::hash_combine(m_hash, render_target_depth_texture->GetObjectId());
 
                 load_op = clear_depth == rhi_depth_dont_care ? 0 : clear_depth == rhi_depth_load ? 1 : 2;
                 Utility::Hash::hash_combine(m_hash, load_op);

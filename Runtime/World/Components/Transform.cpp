@@ -63,7 +63,7 @@ namespace Spartan
         stream->Write(m_rotationLocal);
         stream->Write(m_scaleLocal);
         stream->Write(m_lookAt);
-        stream->Write(m_parent ? m_parent->GetEntity()->GetId() : 0);
+        stream->Write(m_parent ? m_parent->GetEntity()->GetObjectId() : 0);
     }
 
     void Transform::Deserialize(FileStream* stream)
@@ -233,13 +233,13 @@ namespace Spartan
         }
 
         // make sure the new parent is not this transform
-        if (GetId() == new_parent->GetId())
+        if (GetObjectId() == new_parent->GetObjectId())
             return;
 
         // make sure the new parent is different from the existing parent
         if (HasParent())
         {
-            if (GetParent()->GetId() == new_parent->GetId())
+            if (GetParent()->GetObjectId() == new_parent->GetObjectId())
                 return;
         }
 
@@ -284,7 +284,7 @@ namespace Spartan
         if (!child)
             return;
 
-        if (GetId() == child->GetId())
+        if (GetObjectId() == child->GetObjectId())
             return;
 
         child->SetParent(this);
@@ -341,7 +341,7 @@ namespace Spartan
                 continue;
 
             // if it's parent matches this transform
-            if (possible_child->GetParent()->GetId() == GetId())
+            if (possible_child->GetParent()->GetObjectId() == GetObjectId())
             {
                 // welcome home son
                 m_children.emplace_back(possible_child);
@@ -356,7 +356,7 @@ namespace Spartan
     {
         for (const Transform* child : transform->GetChildren())
         {
-            if (GetId() == child->GetId())
+            if (GetObjectId() == child->GetObjectId())
                 return true;
 
             if (child->HasChildren())
