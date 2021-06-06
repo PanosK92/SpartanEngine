@@ -113,6 +113,7 @@ struct Light
     // Properties
     float3  color;
     float3  position;
+    float   intensity;
     float3  to_pixel;
     float3  forward;
     float   distance_to_pixel;
@@ -121,8 +122,6 @@ struct Light
     float   normal_bias;
     float   near;
     float   far;
-    float   attenuation;
-    float   intensity;
     float3  radiance;
     float   n_dot_l;
     uint    array_size;
@@ -141,9 +140,8 @@ struct Light
     // Attenuation over angle (approaching the outer cone)
     float compute_attenuation_angle()
     {
-        float angle_half        = angle * 0.5f;
-        float cos_outer         = cos(angle_half);
-        float cos_inner         = cos(angle_half * 0.9f);
+        float cos_outer         = cos(angle);
+        float cos_inner         = cos(angle * 0.9f);
         float cos_outer_squared = cos_outer * cos_outer;
         float scale             = 1.0f / max(0.001f, cos_inner - cos_outer);
         float offset            = -cos_outer * scale;
@@ -198,8 +196,7 @@ struct Light
         distance_to_pixel   = length(surface.position - position);
         to_pixel            = compute_direction(position, surface);
         n_dot_l             = saturate(dot(surface.normal, -to_pixel)); // Pre-compute n_dot_l since it's used in many places
-        attenuation         = compute_attenuation(surface.position);
-        radiance            = color * intensity * attenuation * n_dot_l * surface.occlusion;
+        radiance            = color * intensity * compute_attenuation(surface.position) * surface.occlusion * n_dot_l;
         #if DIRECTIONAL
         array_size = 4;
         #else

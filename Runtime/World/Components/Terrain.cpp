@@ -418,7 +418,7 @@ namespace Spartan
 
             // Set a file path so the model can be used by the resource cache
             ResourceCache* resource_cache = m_context->GetSubsystem<ResourceCache>();
-            m_model->SetResourceFilePath(resource_cache->GetProjectDirectory() + m_entity->GetName() + "_terrain_" + to_string(m_id) + string(EXTENSION_MODEL));
+            m_model->SetResourceFilePath(resource_cache->GetProjectDirectory() + m_entity->GetObjectName() + "_terrain_" + to_string(m_id) + string(EXTENSION_MODEL));
             m_model = resource_cache->Cache(m_model);
         }
         else

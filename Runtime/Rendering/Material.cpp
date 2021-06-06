@@ -113,20 +113,20 @@ namespace Spartan
 
         auto xml = make_unique<XmlDocument>();
         xml->AddNode("Material");
-        xml->AddAttribute("Material", "Color",                            m_color_albedo);
-        xml->AddAttribute("Material", "Roughness_Multiplier",            GetProperty(Material_Roughness));
+        xml->AddAttribute("Material", "Color",                          m_color_albedo);
+        xml->AddAttribute("Material", "Roughness_Multiplier",           GetProperty(Material_Roughness));
         xml->AddAttribute("Material", "Metallic_Multiplier",            GetProperty(Material_Metallic));
-        xml->AddAttribute("Material", "Normal_Multiplier",                GetProperty(Material_Normal));
-        xml->AddAttribute("Material", "Height_Multiplier",                GetProperty(Material_Height));
+        xml->AddAttribute("Material", "Normal_Multiplier",              GetProperty(Material_Normal));
+        xml->AddAttribute("Material", "Height_Multiplier",              GetProperty(Material_Height));
         xml->AddAttribute("Material", "Clearcoat_Multiplier",           GetProperty(Material_Clearcoat));
         xml->AddAttribute("Material", "Clearcoat_Roughness_Multiplier", GetProperty(Material_Clearcoat_Roughness));
         xml->AddAttribute("Material", "Anisotropi_Multiplier",          GetProperty(Material_Anisotropic));
         xml->AddAttribute("Material", "Anisotropic_Rotatio_Multiplier", GetProperty(Material_Anisotropic_Rotation));
         xml->AddAttribute("Material", "Sheen_Multiplier",               GetProperty(Material_Sheen));
         xml->AddAttribute("Material", "Sheen_Tint_Multiplier",          GetProperty(Material_Sheen_Tint));
-        xml->AddAttribute("Material", "UV_Tiling",                        m_uv_tiling);
-        xml->AddAttribute("Material", "UV_Offset",                        m_uv_offset);
-        xml->AddAttribute("Material", "IsEditable",                        m_is_editable);
+        xml->AddAttribute("Material", "UV_Tiling",                      m_uv_tiling);
+        xml->AddAttribute("Material", "UV_Offset",                      m_uv_offset);
+        xml->AddAttribute("Material", "IsEditable",                     m_is_editable);
 
         xml->AddChildNode("Material", "Textures");
         xml->AddAttribute("Textures", "Count", static_cast<uint32_t>(m_textures.size()));

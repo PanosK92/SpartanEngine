@@ -48,7 +48,7 @@ namespace Spartan
     Entity::Entity(Context* context, uint32_t transform_id /*= 0*/)
     {
         m_context               = context;
-        m_name                  = "Entity";
+        m_object_name                  = "Entity";
         m_is_active             = true;
         m_hierarchy_visibility  = true;
         AddComponent<Transform>(transform_id);
@@ -61,7 +61,7 @@ namespace Spartan
         m_transform             = nullptr;
         m_renderable            = nullptr;
         m_context               = nullptr;
-        m_name.clear();
+        m_object_name.clear();
         m_component_mask = 0;
         for (auto it = m_components.begin(); it != m_components.end();)
         {
@@ -83,7 +83,7 @@ namespace Spartan
             // Clone the name and the ID
             auto clone = scene->EntityCreate().get();
             clone->SetId(GenerateId());
-            clone->SetName(entity->GetName());
+            clone->SetName(entity->GetObjectName());
             clone->SetActive(entity->IsActive());
             clone->SetHierarchyVisibility(entity->IsVisibleInHierarchy());
 
@@ -158,7 +158,7 @@ namespace Spartan
             stream->Write(m_is_active);
             stream->Write(m_hierarchy_visibility);
             stream->Write(GetId());
-            stream->Write(m_name);
+            stream->Write(m_object_name);
         }
 
         // COMPONENTS
@@ -212,7 +212,7 @@ namespace Spartan
             stream->Read(&m_is_active);
             stream->Read(&m_hierarchy_visibility);
             stream->Read(&m_id);
-            stream->Read(&m_name);
+            stream->Read(&m_object_name);
         }
 
         // COMPONENTS

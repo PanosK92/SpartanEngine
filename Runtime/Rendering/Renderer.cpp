@@ -80,7 +80,7 @@ namespace Spartan
         m_option_values[Renderer_Option_Value::Gamma]               = 2.2f;
         m_option_values[Renderer_Option_Value::Sharpen_Strength]    = 1.0f;
         m_option_values[Renderer_Option_Value::Bloom_Intensity]     = 0.1f;
-        m_option_values[Renderer_Option_Value::Fog]                 = 0.15f;
+        m_option_values[Renderer_Option_Value::Fog]                 = 0.03f;
 
         // Subscribe to events
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved,    SP_EVENT_HANDLER_VARIANT(RenderablesAcquire));
@@ -426,10 +426,10 @@ namespace Spartan
                 const uint32_t new_size = Math::Helper::NextPowerOfTwo(offset_index + 1);
                 if (!buffer_gpu->Create<T>(new_size))
                 {
-                    LOG_ERROR("Failed to re-allocate %s buffer with %d offsets", buffer_gpu->GetName().c_str(), new_size);
+                    LOG_ERROR("Failed to re-allocate %s buffer with %d offsets", buffer_gpu->GetObjectName().c_str(), new_size);
                     return false;
                 }
-                LOG_INFO("Increased %s buffer offsets to %d, that's %d kb", buffer_gpu->GetName().c_str(), new_size, (new_size * buffer_gpu->GetStride()) / 1000);
+                LOG_INFO("Increased %s buffer offsets to %d, that's %d kb", buffer_gpu->GetObjectName().c_str(), new_size, (new_size * buffer_gpu->GetStride()) / 1000);
             }
         }
 

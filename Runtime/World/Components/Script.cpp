@@ -82,7 +82,7 @@ namespace Spartan
         // Initialise
         m_script_instance   = m_scripting->GetScript(id);
         m_file_path         = file_path;
-        m_name              = FileSystem::GetFileNameNoExtensionFromFilePath(file_path);
+        m_object_name              = FileSystem::GetFileNameNoExtensionFromFilePath(file_path);
 
         return true;
     }
@@ -92,8 +92,8 @@ namespace Spartan
         return m_file_path;
     }
 
-    string Script::GetName() const
+    string Script::GetObjectName() const
     {
-        return m_name;
+        return m_object_name;
     }
 }

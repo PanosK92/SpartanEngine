@@ -159,7 +159,7 @@ namespace Spartan
         }
 
         // Update progress tracking
-        ProgressTracker::Get().SetStatus(ProgressType::ModelImporter, "Creating entity for " + new_entity->GetName());
+        ProgressTracker::Get().SetStatus(ProgressType::ModelImporter, "Creating entity for " + new_entity->GetObjectName());
 
         // Set the transform of parent_node as the parent of the new_entity's transform
         const auto parent_trans = parent_node ? parent_node->GetTransform() : nullptr;
@@ -339,7 +339,7 @@ namespace Spartan
 
         // Set the geometry
         renderable->GeometrySet(
-            entity_parent->GetName(),
+            entity_parent->GetObjectName(),
             index_offset,
             static_cast<uint32_t>(indices.size()),
             vertex_offset,

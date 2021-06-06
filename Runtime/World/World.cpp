@@ -309,7 +309,7 @@ namespace Spartan
     {
         for (const auto& entity : m_entities)
         {
-            if (entity->GetName() == name)
+            if (entity->GetObjectName() == name)
                 return entity;
         }
 

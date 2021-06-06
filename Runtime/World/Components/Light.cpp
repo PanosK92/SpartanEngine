@@ -295,7 +295,7 @@ namespace Spartan
             const uint32_t width        = m_shadow_map.texture_depth->GetWidth();
             const uint32_t height       = m_shadow_map.texture_depth->GetHeight();
             const float aspect_ratio    = static_cast<float>(width) / static_cast<float>(height);
-            const float fov             = m_light_type == LightType::Spot ? m_angle_rad : 1.57079633f; // 90 deg
+            const float fov             = m_light_type == LightType::Spot ? m_angle_rad * 2.0f : Math::Helper::PI_DIV_2;
             const float near_plane      = reverse_z ? m_range : 0.3f;
             const float far_plane       = reverse_z ? 0.3f : m_range;
             m_matrix_projection[index]  = Matrix::CreatePerspectiveFieldOfViewLH(fov, aspect_ratio, near_plane, far_plane);

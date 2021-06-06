@@ -57,7 +57,7 @@ namespace Spartan
         if (!m_entity)
             return "";
 
-        return m_entity->GetName();
+        return m_entity->GetObjectName();
     }
 
     template <typename T>

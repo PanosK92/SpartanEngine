@@ -1939,7 +1939,7 @@ namespace Spartan
                     {
                         // tan(angle) = opposite/adjacent
                         // opposite = adjacent * tan(angle)
-                        float opposite  = light->GetRange() * Math::Helper::Tan(light->GetAngle() * 0.5f);
+                        float opposite  = light->GetRange() * Math::Helper::Tan(light->GetAngle());
 
                         Vector3 pos_end_center  = light->GetTransform()->GetForward() * light->GetRange();
                         Vector3 pos_end_up      = pos_end_center + light->GetTransform()->GetUp()      * opposite;

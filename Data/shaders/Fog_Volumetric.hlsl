@@ -42,19 +42,19 @@ float vl_raymarch(Light light, float3 ray_pos, float3 ray_step, float3 ray_dir, 
     for (uint i = 0; i < g_vl_steps; i++)
     {
         float attenuation = 1.0f;
-        
+
         // Attenuate
         #if DIRECTIONAL
         //attenuation *= compute_mie_scattering(dot(light.to_pixel, ray_dir));
         #else
         float3 to_light = normalize(light.position - ray_pos);
-       // attenuation *= compute_mie_scattering(dot(light.to_pixel, -to_light));
+        attenuation *= compute_mie_scattering(dot(light.to_pixel, -to_light));
         #endif
 
         #if SHADOWS == 1 ||  SHADOWS_TRANSPARENT == 1
         float3 pos_ndc = world_to_ndc(ray_pos, cb_light_view_projection[cascade_index]);
         #endif
-        
+
         // Shadows - Opaque
         #if SHADOWS
         {
@@ -89,66 +89,57 @@ float vl_raymarch(Light light, float3 ray_pos, float3 ray_step, float3 ray_dir, 
 
 float3 VolumetricLighting(Surface surface, Light light)
 {
-    float fog = 1.0f;
+    float fog = 0.0f;
 
     // Only ray march if this pixel is within the light's radius
-    if (light.distance_to_pixel < light.far)
-    {
-        float3 ray_pos      = surface.position;
-        float3 ray_dir      = -surface.camera_to_pixel;
-        float step_length   = surface.camera_to_pixel_length / (float)g_vl_steps;
-        float3 ray_step     = ray_dir * step_length;
+    float3 ray_pos      = surface.position;
+    float3 ray_dir      = -surface.camera_to_pixel;
+    float step_length   = surface.camera_to_pixel_length / (float)g_vl_steps;
+    float3 ray_step     = ray_dir * step_length;
+    
+    // Offset ray to get away with way less steps and great detail
+    float offset = get_noise_interleaved_gradient(surface.uv * g_shadow_resolution);
+    ray_pos += ray_step * offset;
+#if DIRECTIONAL
+    { 
+        [unroll]
+        for (uint cascade_index = 0; cascade_index < light.array_size; cascade_index++)
+        {
+            // Project into light space
+            float3 pos_ndc  = world_to_ndc(ray_pos, cb_light_view_projection[cascade_index]);
+            float2 pos_uv   = ndc_to_uv(pos_ndc);
 
-        // Offset ray to get away with way less steps and great detail
-        float offset = get_noise_interleaved_gradient(surface.uv * g_shadow_resolution);
-        ray_pos += ray_step * offset;
-        
-        #if DIRECTIONAL
-        { 
-            [unroll]
-            for (uint cascade_index = 0; cascade_index < light.array_size; cascade_index++)
+            // Ensure not out of bound
+            [branch]
+            if (is_saturated(pos_uv))
             {
-                // Project into light space
-                float3 pos_ndc  = world_to_ndc(ray_pos, cb_light_view_projection[cascade_index]);
-                float2 pos_uv   = ndc_to_uv(pos_ndc);
+                // Ray-march
+                fog += vl_raymarch(light, ray_pos, ray_step, ray_dir, cascade_index);
 
-                // Ensure not out of bound
+                // If we are close to the edge a secondary cascade exists, lerp with it.
+                float cascade_fade = (max2(abs(pos_ndc.xy)) - g_shadow_cascade_blend_threshold) * 4.0f;
+                cascade_index++;
                 [branch]
-                if (is_saturated(pos_uv))
+                if (cascade_fade > 0.0f && cascade_index < light.array_size - 1)
                 {
-                    // Ray-march
-                    fog += vl_raymarch(light, ray_pos, ray_step, ray_dir, cascade_index);
-
-                    // If we are close to the edge a secondary cascade exists, lerp with it.
-                    float cascade_fade = (max2(abs(pos_ndc.xy)) - g_shadow_cascade_blend_threshold) * 4.0f;
-                    cascade_index++;
-                    [branch]
-                    if (cascade_fade > 0.0f && cascade_index < light.array_size - 1)
-                    {
-                        // Ray-march using the next cascade
-                        float fog_secondary = vl_raymarch(light, ray_pos, ray_step, ray_dir, cascade_index);
-                        
-                        // Blend cascades
-                        fog = lerp(fog, fog_secondary, cascade_fade);
-                        break;
-                    }
+                    // Ray-march using the next cascade
+                    float fog_secondary = vl_raymarch(light, ray_pos, ray_step, ray_dir, cascade_index);
+    
+                    // Blend cascades
+                    fog = lerp(fog, fog_secondary, cascade_fade);
                     break;
                 }
+                break;
             }
         }
-        #else
-        {
-            uint projection_index = 0;
-            #if POINT
-            projection_index = direction_to_cube_face_index(light.to_pixel);
-            #endif
-            fog = vl_raymarch(light, ray_pos, ray_step, ray_dir, projection_index);
-        }
-        #endif
-
-        // Attenuate fog according to how the light attenuates
-        fog *= light.attenuation;
     }
-
+#else // POINT/SPOT
+    uint projection_index = 0;
+#if POINT
+    projection_index = direction_to_cube_face_index(light.to_pixel);
+ #endif
+    fog = vl_raymarch(light, ray_pos, ray_step, ray_dir, projection_index);
+#endif
+    
     return fog * light.color * light.intensity;
 }
