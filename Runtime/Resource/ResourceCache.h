@@ -130,7 +130,7 @@ namespace Spartan
                 std::remove_if(
                     m_resources.begin(),
                     m_resources.end(),
-                    [](std::shared_ptr<IResource> resource) { return dynamic_cast<SpartanObject*>(resource.get())->GetId() == resource->GetId(); }),
+                    [](std::shared_ptr<IResource> resource) { return dynamic_cast<SpartanObject*>(resource.get())->GetObjectId() == resource->GetObjectId(); }),
                 m_resources.end()
             );
         }

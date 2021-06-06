@@ -283,7 +283,7 @@ namespace Spartan
                     }
 
                     // Bind material
-                    if (transparent_pass && m_set_material_id != material->GetId())
+                    if (transparent_pass && m_set_material_id != material->GetObjectId())
                     {
                         // Bind material textures
                         RHI_Texture* tex_albedo = material->GetTexture_Ptr(Material_Color);
@@ -294,7 +294,7 @@ namespace Spartan
                         m_buffer_uber_cpu.mat_tiling_uv = material->GetTiling();
                         m_buffer_uber_cpu.mat_offset_uv = material->GetOffset();
 
-                        m_set_material_id = material->GetId();
+                        m_set_material_id = material->GetObjectId();
                     }
 
                     // Bind geometry
@@ -370,11 +370,11 @@ namespace Spartan
                         continue;
 
                     // Bind geometry
-                    if (currently_bound_geometry != model->GetId())
+                    if (currently_bound_geometry != model->GetObjectId())
                     {
                         cmd_list->SetBufferIndex(model->GetIndexBuffer());
                         cmd_list->SetBufferVertex(model->GetVertexBuffer());
-                        currently_bound_geometry = model->GetId();
+                        currently_bound_geometry = model->GetObjectId();
                     }
 
                     // Update uber buffer with entity transform
@@ -501,10 +501,10 @@ namespace Spartan
 
                 // Bind material
                 const bool firs_run       = material_index == 0;
-                const bool new_material   = material_bound_id != material->GetId();
+                const bool new_material   = material_bound_id != material->GetObjectId();
                 if (firs_run || new_material)
                 {
-                    material_bound_id = material->GetId();
+                    material_bound_id = material->GetObjectId();
 
                     // Keep track of used material instances (they get mapped to shaders)
                     if (material_index + 1 < m_material_instances.size())

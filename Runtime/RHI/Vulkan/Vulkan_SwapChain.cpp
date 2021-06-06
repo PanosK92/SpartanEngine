@@ -218,7 +218,7 @@ namespace Spartan
         const char* name            /*= nullptr */
     )
     {
-        m_name = name;
+        m_object_name = name;
 
         // Validate device
         if (!rhi_device || !rhi_device->GetContextRhi()->device)
@@ -359,7 +359,7 @@ namespace Spartan
         // By generating a new ID, the pipeline cache will automatically generate a new pipeline for this swap chain.
         if (m_initialised)
         {
-            m_id = GenerateId();
+            m_object_id = GenerateObjectId();
         }
 
         return m_initialised;

@@ -102,7 +102,7 @@ namespace Spartan
         // Ensure an a suitable shader exists
         ShaderGBuffer::GenerateVariation(m_context, m_flags);
 
-        m_size_cpu = sizeof(*this);
+        m_object_size_cpu = sizeof(*this);
 
         return true;
     }

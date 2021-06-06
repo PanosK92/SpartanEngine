@@ -103,7 +103,7 @@ RHI_Texture* IconProvider::GetTextureByThumbnail(const Thumbnail& thumbnail)
         if (thumbnailTemp.texture->GetLoadState() != LoadState::Completed)
             continue;
 
-        if (thumbnailTemp.texture->GetId() == thumbnail.texture->GetId())
+        if (thumbnailTemp.texture->GetObjectId() == thumbnail.texture->GetObjectId())
         {
             return thumbnailTemp.texture.get();
         }

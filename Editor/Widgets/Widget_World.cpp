@@ -80,7 +80,7 @@ void Widget_World::TickVisible()
     if (ImGui::IsMouseReleased(0) && _Widget_World::g_entity_clicked)
     {
         // Make sure that the mouse was released while on the same entity
-        if (_Widget_World::g_entity_hovered && _Widget_World::g_entity_hovered->GetId() == _Widget_World::g_entity_clicked->GetId())
+        if (_Widget_World::g_entity_hovered && _Widget_World::g_entity_hovered->GetObjectId() == _Widget_World::g_entity_clicked->GetObjectId())
         {
             SetSelectedEntity(_Widget_World::g_entity_clicked->GetPtrShared());
         }
@@ -171,7 +171,7 @@ void Widget_World::TreeAddEntity(Entity* entity)
     // Flag - Is selected?
     if (const auto selected_entity = EditorHelper::Get().g_selected_entity.lock())
     {
-        node_flags |= selected_entity->GetId() == entity->GetId() ? ImGuiTreeNodeFlags_Selected : node_flags;
+        node_flags |= selected_entity->GetObjectId() == entity->GetObjectId() ? ImGuiTreeNodeFlags_Selected : node_flags;
 
         if (m_expand_to_selection)
         {
@@ -184,7 +184,7 @@ void Widget_World::TreeAddEntity(Entity* entity)
         }
     }
 
-    const bool is_node_open = ImGui::TreeNodeEx(reinterpret_cast<void*>(static_cast<intptr_t>(entity->GetId())), node_flags, entity->GetObjectName().c_str());
+    const bool is_node_open = ImGui::TreeNodeEx(reinterpret_cast<void*>(static_cast<intptr_t>(entity->GetObjectId())), node_flags, entity->GetObjectName().c_str());
 
     // Keep a copy of the selected item's rect so that we can scroll to bring it into view
     if ((node_flags & ImGuiTreeNodeFlags_Selected) && m_expand_to_selection)
@@ -258,7 +258,7 @@ void Widget_World::EntityHandleDragDrop(Entity* entity_ptr) const
     // Drag
     if (ImGui::BeginDragDropSource())
     {
-        _Widget_World::g_payload.data = entity_ptr->GetId();
+        _Widget_World::g_payload.data = entity_ptr->GetObjectId();
         _Widget_World::g_payload.type = ImGuiEx::DragPayload_Entity;
         ImGuiEx::CreateDragPayload(_Widget_World::g_payload);
         ImGui::EndDragDropSource();
@@ -269,7 +269,7 @@ void Widget_World::EntityHandleDragDrop(Entity* entity_ptr) const
         const auto entity_id = get<unsigned int>(payload->data);
         if (const auto dropped_entity = _Widget_World::g_world->EntityGetById(entity_id))
         {
-            if (dropped_entity->GetId() != entity_ptr->GetId())
+            if (dropped_entity->GetObjectId() != entity_ptr->GetObjectId())
             {
                 dropped_entity->GetTransform()->SetParent(entity_ptr->GetTransform());
             }

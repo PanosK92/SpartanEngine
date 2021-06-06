@@ -99,7 +99,7 @@ namespace Spartan
         stream->Write(m_rotation);
         stream->Write(m_highLimit);
         stream->Write(m_lowLimit);
-        stream->Write(!m_bodyOther.expired() ? m_bodyOther.lock()->GetId() : static_cast<uint32_t>(0));
+        stream->Write(!m_bodyOther.expired() ? m_bodyOther.lock()->GetObjectId() : static_cast<uint32_t>(0));
     }
 
     void Constraint::Deserialize(FileStream* stream)
@@ -168,7 +168,7 @@ namespace Spartan
         if (body_other.expired())
             return;
 
-        if (!body_other.expired() && body_other.lock()->GetId() == m_entity->GetId())
+        if (!body_other.expired() && body_other.lock()->GetObjectId() == m_entity->GetObjectId())
         {
             LOG_WARNING("You can't connect a body to itself.");
             return;

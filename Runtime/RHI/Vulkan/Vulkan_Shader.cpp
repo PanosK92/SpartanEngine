@@ -406,7 +406,7 @@ namespace Spartan
             {
                 if (!m_input_layout->Create(m_vertex_type, nullptr))
                 {
-                    LOG_ERROR("Failed to create input layout for %s", m_name.c_str());
+                    LOG_ERROR("Failed to create input layout for %s", m_object_name.c_str());
                     return nullptr;
                 }
             }

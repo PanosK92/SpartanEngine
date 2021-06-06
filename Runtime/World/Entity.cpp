@@ -82,7 +82,7 @@ namespace Spartan
         {
             // Clone the name and the ID
             auto clone = scene->EntityCreate().get();
-            clone->SetId(GenerateId());
+            clone->SetObjectId(GenerateObjectId());
             clone->SetName(entity->GetObjectName());
             clone->SetActive(entity->IsActive());
             clone->SetHierarchyVisibility(entity->IsVisibleInHierarchy());
@@ -157,7 +157,7 @@ namespace Spartan
         {
             stream->Write(m_is_active);
             stream->Write(m_hierarchy_visibility);
-            stream->Write(GetId());
+            stream->Write(GetObjectId());
             stream->Write(m_object_name);
         }
 
@@ -167,7 +167,7 @@ namespace Spartan
             for (const auto& component : m_components)
             {
                 stream->Write(static_cast<uint32_t>(component->GetType()));
-                stream->Write(component->GetId());
+                stream->Write(component->GetObjectId());
             }
 
             for (const auto& component : m_components)
@@ -186,7 +186,7 @@ namespace Spartan
             // Children IDs
             for (const auto& child : children)
             {
-                stream->Write(child->GetId());
+                stream->Write(child->GetObjectId());
             }
 
             // Children
@@ -211,7 +211,7 @@ namespace Spartan
         {
             stream->Read(&m_is_active);
             stream->Read(&m_hierarchy_visibility);
-            stream->Read(&m_id);
+            stream->Read(&m_object_id);
             stream->Read(&m_object_name);
         }
 
@@ -255,7 +255,7 @@ namespace Spartan
             for (uint32_t i = 0; i < children_count; i++)
             {
                 auto child = scene->EntityCreate();
-                child->SetId(stream->ReadAs<uint32_t>());
+                child->SetObjectId(stream->ReadAs<uint32_t>());
                 children.emplace_back(child);
             }
 
@@ -309,7 +309,7 @@ namespace Spartan
         for (auto it = m_components.begin(); it != m_components.end(); ) 
         {
             auto component = *it;
-            if (id == component->GetId())
+            if (id == component->GetObjectId())
             {
                 component_type = component->GetType();
                 component->OnRemove();

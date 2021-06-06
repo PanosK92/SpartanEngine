@@ -174,7 +174,7 @@ namespace Spartan
         // Save root entity IDs
         for (const auto& root : root_actors)
         {
-            file->Write(root->GetId());
+            file->Write(root->GetObjectId());
         }
 
         // Save root entities
@@ -237,7 +237,7 @@ namespace Spartan
         for (uint32_t i = 0; i < root_entity_count; i++)
         {
             shared_ptr<Entity> entity = EntityCreate();
-            entity->SetId(file->ReadAs<uint32_t>());
+            entity->SetObjectId(file->ReadAs<uint32_t>());
         }
 
         // Serialize root entities
@@ -277,7 +277,7 @@ namespace Spartan
         if (!entity)
             return false;
 
-        return EntityGetById(entity->GetId()) != nullptr;
+        return EntityGetById(entity->GetObjectId()) != nullptr;
     }
 
     void World::EntityRemove(const shared_ptr<Entity>& entity)
@@ -321,7 +321,7 @@ namespace Spartan
     {
         for (const auto& entity : m_entities)
         {
-            if (entity->GetId() == id)
+            if (entity->GetObjectId() == id)
                 return entity;
         }
 
@@ -359,7 +359,7 @@ namespace Spartan
         for (auto it = m_entities.begin(); it < m_entities.end();)
         {
             const auto temp = *it;
-            if (temp->GetId() == entity->GetId())
+            if (temp->GetObjectId() == entity->GetObjectId())
             {
                 it = m_entities.erase(it);
                 break;

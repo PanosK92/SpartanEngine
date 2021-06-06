@@ -37,9 +37,9 @@ namespace Spartan
         template<typename T>
         bool Create(const uint32_t offset_count = 1)
         {
-            m_stride        = static_cast<uint32_t>(sizeof(T));
-            m_offset_count  = offset_count;
-            m_size_gpu      = static_cast<uint64_t>(m_stride * m_offset_count);
+            m_stride            = static_cast<uint32_t>(sizeof(T));
+            m_offset_count      = offset_count;
+            m_object_size_gpu   = static_cast<uint64_t>(m_stride * m_offset_count);
 
             return _create();
         }

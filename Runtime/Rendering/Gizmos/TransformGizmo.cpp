@@ -66,7 +66,7 @@ namespace Spartan
         }
 
         // If the selected entity is the camera itself, ignore input
-        if (selected_entity->GetId() == camera->GetTransform()->GetEntity()->GetId())
+        if (selected_entity->GetObjectId() == camera->GetTransform()->GetEntity()->GetObjectId())
         {
             m_is_editing = false;
             return false;

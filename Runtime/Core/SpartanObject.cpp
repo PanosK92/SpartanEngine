@@ -31,6 +31,6 @@ namespace Spartan
     SpartanObject::SpartanObject(Context* context /*= nullptr*/)
     {
         m_context   = context;
-        m_id        = GenerateId();
+        m_object_id        = GenerateObjectId();
     }
 }

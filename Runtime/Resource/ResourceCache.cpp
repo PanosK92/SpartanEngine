@@ -134,7 +134,7 @@ namespace Spartan
             {
                 if (SpartanObject* object = dynamic_cast<SpartanObject*>(resource.get()))
                 {
-                    size += object->GetSizeCpu();
+                    size += object->GetObjectSizeCpu();
                 }
             }
         }
@@ -152,7 +152,7 @@ namespace Spartan
             {
                 if (SpartanObject* object = dynamic_cast<SpartanObject*>(resource.get()))
                 {
-                    size += object->GetSizeGpu();
+                    size += object->GetObjectSizeGpu();
                 }
             }
         }

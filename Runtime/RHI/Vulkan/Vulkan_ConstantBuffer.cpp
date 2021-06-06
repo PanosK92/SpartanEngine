@@ -52,7 +52,7 @@ namespace Spartan
     RHI_ConstantBuffer::RHI_ConstantBuffer(const std::shared_ptr<RHI_Device>& rhi_device, const string& name, bool is_dynamic /*= false*/)
     {
         m_rhi_device    = rhi_device;
-        m_name          = name;
+        m_object_name   = name;
         m_is_dynamic    = is_dynamic;
     }
 
@@ -73,13 +73,13 @@ namespace Spartan
         {
             m_stride = static_cast<uint32_t>((m_stride + min_ubo_alignment - 1) & ~(min_ubo_alignment - 1));
         }
-        m_size_gpu = m_offset_count * m_stride;
+        m_object_size_gpu = m_offset_count * m_stride;
 
         // Create buffer
         VkMemoryPropertyFlags flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
         flags |= !m_persistent_mapping ? VK_MEMORY_PROPERTY_HOST_COHERENT_BIT : 0;
         bool written_frequently = true;
-        VmaAllocation allocation = vulkan_utility::buffer::create(m_buffer, m_size_gpu, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, flags, written_frequently, nullptr);
+        VmaAllocation allocation = vulkan_utility::buffer::create(m_buffer, m_object_size_gpu, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, flags, written_frequently, nullptr);
         if (!allocation)
         {
             LOG_ERROR("Failed to allocate buffer");

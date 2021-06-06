@@ -44,22 +44,22 @@ namespace Spartan
         const std::string& GetObjectName() const { return m_object_name; }
 
         // Id
-        const uint32_t GetId()          const { return m_id; }
-        void SetId(const uint32_t id)         { m_id = id; }
-        static uint32_t GenerateId()          { return ++g_id; }
+        const uint32_t GetObjectId()          const { return m_object_id; }
+        void SetObjectId(const uint32_t id)         { m_object_id = id; }
+        static uint32_t GenerateObjectId()          { return ++g_id; }
 
         // CPU & GPU sizes
-        const uint64_t GetSizeCpu()     const { return m_size_cpu; }
-        const uint64_t GetSizeGpu()     const { return m_size_gpu; }
+        const uint64_t GetObjectSizeCpu()     const { return m_object_size_cpu; }
+        const uint64_t GetObjectSizeGpu()     const { return m_object_size_gpu; }
 
         // Execution context.
         Context* GetContext()           const { return m_context; }
 
     protected:
         std::string m_object_name;
-        uint32_t m_id       = 0;
-        uint64_t m_size_cpu = 0;
-        uint64_t m_size_gpu = 0;
+        uint32_t m_object_id       = 0;
+        uint64_t m_object_size_cpu = 0;
+        uint64_t m_object_size_gpu = 0;
 
         // Execution context
         Context* m_context = nullptr;

@@ -185,7 +185,7 @@ namespace ImGui::RHI
         RHI_VertexBuffer* vertex_buffer = nullptr;
         RHI_IndexBuffer* index_buffer   = nullptr;
         {
-            const uint32_t swapchain_id         = swap_chain->GetId();
+            const uint32_t swapchain_id         = swap_chain->GetObjectId();
             const uint32_t swapchain_cmd_index  = swap_chain->GetCmdIndex();
 
             const uint32_t gap =  Math::Helper::Clamp<uint32_t>((swapchain_cmd_index + 1) - static_cast<uint32_t>(g_vertex_buffers[swapchain_id].size()), 0, 10);
