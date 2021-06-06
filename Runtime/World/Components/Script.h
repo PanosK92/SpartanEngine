@@ -47,10 +47,10 @@ namespace Spartan
 
         bool SetScript(const std::string& file_path);
         std::string GetScriptPath() const;
-        std::string GetName() const;
+        std::string GetObjectName() const;
 
     private:
-        std::string m_name;
+        std::string m_object_name;
         std::string m_file_path;
         Scripting* m_scripting              = nullptr;
         ScriptInstance* m_script_instance   = nullptr;

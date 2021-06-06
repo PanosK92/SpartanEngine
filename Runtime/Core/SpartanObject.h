@@ -41,7 +41,7 @@ namespace Spartan
         SpartanObject(Context* context = nullptr);
 
         // Name
-        const std::string& GetName()    const { return m_name; }
+        const std::string& GetObjectName() const { return m_object_name; }
 
         // Id
         const uint32_t GetId()          const { return m_id; }
@@ -56,7 +56,7 @@ namespace Spartan
         Context* GetContext()           const { return m_context; }
 
     protected:
-        std::string m_name;
+        std::string m_object_name;
         uint32_t m_id       = 0;
         uint64_t m_size_cpu = 0;
         uint64_t m_size_gpu = 0;

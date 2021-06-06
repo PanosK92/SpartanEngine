@@ -58,9 +58,9 @@ namespace Spartan
         if (it == m_descriptor_set_layouts.end())
         {
             // Create a name for the descriptor set layout, very useful for Vulkan debugging
-            string name = "CS:"     + (pipeline_state.shader_compute    ? pipeline_state.shader_compute->GetName()  : "null");
-            name        += "-VS:"   + (pipeline_state.shader_vertex     ? pipeline_state.shader_vertex->GetName()   : "null");
-            name        += "-PS:"   + (pipeline_state.shader_pixel      ? pipeline_state.shader_pixel->GetName()    : "null");
+            string name = "CS:"     + (pipeline_state.shader_compute    ? pipeline_state.shader_compute->GetObjectName()  : "null");
+            name        += "-VS:"   + (pipeline_state.shader_vertex     ? pipeline_state.shader_vertex->GetObjectName()   : "null");
+            name        += "-PS:"   + (pipeline_state.shader_pixel      ? pipeline_state.shader_pixel->GetObjectName()    : "null");
 
             // Emplace a new descriptor set layout
             it = m_descriptor_set_layouts.emplace(make_pair(hash, make_shared<RHI_DescriptorSetLayout>(m_rhi_device, m_descriptors, name.c_str()))).first;

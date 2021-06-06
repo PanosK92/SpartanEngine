@@ -421,7 +421,7 @@ void Widget_RenderOptions::TickVisible()
                         {
                             if (render_target)
                             {
-                                render_target_options.emplace_back(render_target->GetName());
+                                render_target_options.emplace_back(render_target->GetObjectName());
                             }
                         }
                     }

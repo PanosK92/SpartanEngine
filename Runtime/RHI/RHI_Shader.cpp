@@ -67,22 +67,22 @@ namespace Spartan
             {
                 if (defines.empty())
                 {
-                    LOG_INFO("Successfully compiled %s shader \"%s\".", type_str.c_str(), m_name.c_str());
+                    LOG_INFO("Successfully compiled %s shader \"%s\".", type_str.c_str(), m_object_name.c_str());
                 }
                 else
                 {
-                    LOG_INFO("Successfully compiled %s shader \"%s\" with definitions \"%s\".", type_str.c_str(), m_name.c_str(), defines.c_str());
+                    LOG_INFO("Successfully compiled %s shader \"%s\" with definitions \"%s\".", type_str.c_str(), m_object_name.c_str(), defines.c_str());
                 }
             }
             else if (m_compilation_state == Shader_Compilation_State::Failed)
             {
                 if (defines.empty())
                 {
-                    LOG_ERROR("Failed to compile %s shader \"%s\".", type_str.c_str(), m_name.c_str());
+                    LOG_ERROR("Failed to compile %s shader \"%s\".", type_str.c_str(), m_object_name.c_str());
                 }
                 else
                 {
-                    LOG_ERROR("Failed to compile %s shader \"%s\" with definitions \"%s\".", type_str.c_str(), m_name.c_str(), defines.c_str());
+                    LOG_ERROR("Failed to compile %s shader \"%s\" with definitions \"%s\".", type_str.c_str(), m_object_name.c_str(), defines.c_str());
                 }
             }
         }
@@ -95,7 +95,7 @@ namespace Spartan
         // Source
         if (!FileSystem::IsFile(shader))
         {
-            m_name      = "N/A";
+            m_object_name      = "N/A";
             m_file_path = "N/A";
             m_source    = shader;
         }
@@ -176,21 +176,21 @@ namespace Spartan
         // Wait
         while (m_compilation_state == Shader_Compilation_State::Compiling)
         {
-            LOG_INFO("Waiting for shader \"%s\" to compile...", m_name.c_str());
+            LOG_INFO("Waiting for shader \"%s\" to compile...", m_object_name.c_str());
             std::this_thread::sleep_for(std::chrono::milliseconds(16));
         }
         
         // Log error in case of failure
         if (m_compilation_state != Shader_Compilation_State::Succeeded)
         {
-            LOG_ERROR("Shader \"%s\" failed compile", m_name.c_str());
+            LOG_ERROR("Shader \"%s\" failed compile", m_object_name.c_str());
         }
     }
 
     void RHI_Shader::LoadSource(const std::string& file_path)
     {
         // Get name and file path
-        m_name = FileSystem::GetFileNameFromFilePath(file_path);
+        m_object_name = FileSystem::GetFileNameFromFilePath(file_path);
         m_file_path = file_path;
 
         // Parse source

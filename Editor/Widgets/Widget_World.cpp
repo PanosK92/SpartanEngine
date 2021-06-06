@@ -184,7 +184,7 @@ void Widget_World::TreeAddEntity(Entity* entity)
         }
     }
 
-    const bool is_node_open = ImGui::TreeNodeEx(reinterpret_cast<void*>(static_cast<intptr_t>(entity->GetId())), node_flags, entity->GetName().c_str());
+    const bool is_node_open = ImGui::TreeNodeEx(reinterpret_cast<void*>(static_cast<intptr_t>(entity->GetId())), node_flags, entity->GetObjectName().c_str());
 
     // Keep a copy of the selected item's rect so that we can scroll to bring it into view
     if ((node_flags & ImGuiTreeNodeFlags_Selected) && m_expand_to_selection)
@@ -462,7 +462,7 @@ void Widget_World::PopupEntityRename() const
             return;
         }
 
-        auto name = selectedentity->GetName();
+        auto name = selectedentity->GetObjectName();
 
         ImGui::Text("Name:");
         ImGui::InputText("##edit", &name);

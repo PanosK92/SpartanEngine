@@ -94,11 +94,11 @@ namespace Spartan
                 const auto is_error = line.find("error") != string::npos;
                 if (is_error)
                 {
-                    LOG_ERROR(m_name + "(" + FileSystem::GetStringAfterExpression(line, "("));
+                    LOG_ERROR(m_object_name + "(" + FileSystem::GetStringAfterExpression(line, "("));
                 }
                 else
                 {
-                    LOG_WARNING(m_name + "(" + FileSystem::GetStringAfterExpression(line, "("));
+                    LOG_WARNING(m_object_name + "(" + FileSystem::GetStringAfterExpression(line, "("));
                 }
             }
 
@@ -108,7 +108,7 @@ namespace Spartan
         // Log compilation failure
         if (FAILED(result) || !shader_blob)
         {
-            LOG_ERROR("An error occurred when trying to load and compile \"%s\"", m_name.c_str());
+            LOG_ERROR("An error occurred when trying to load and compile \"%s\"", m_object_name.c_str());
         }
 
         // Create shader
@@ -125,7 +125,7 @@ namespace Spartan
                 // Create input layout
                 if (!m_input_layout->Create(m_vertex_type, shader_blob))
                 {
-                    LOG_ERROR("Failed to create input layout for %s", FileSystem::GetFileNameFromFilePath(m_name).c_str());
+                    LOG_ERROR("Failed to create input layout for %s", FileSystem::GetFileNameFromFilePath(m_object_name).c_str());
                 }
             }
             else if (m_shader_type == RHI_Shader_Pixel)

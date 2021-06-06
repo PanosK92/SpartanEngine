@@ -39,7 +39,7 @@ namespace Spartan
     {
         m_rhi_device    = rhi_device;
         m_descriptors   = descriptors;
-        m_name          = name;
+        m_object_name          = name;
         CreateResource(m_descriptors);
         m_dynamic_offsets.fill(rhi_dynamic_offset_empty);
 

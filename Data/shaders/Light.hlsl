@@ -147,11 +147,8 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     tex_out_rgb2[thread_id.xy]  += saturate_16(light_specular * light.radiance);
     
     // Volumetric
-    #if VOLUMETRIC
-    {
-        light_volumetric += VolumetricLighting(surface, light) * get_fog_factor(surface);
-        tex_out_rgb3[thread_id.xy]  += saturate_16(light_volumetric);
-    }
-    #endif
+#if VOLUMETRIC
+    light_volumetric += VolumetricLighting(surface, light) * get_fog_factor(surface);
+    tex_out_rgb3[thread_id.xy]  += saturate_16(light_volumetric);
+#endif
 }
-

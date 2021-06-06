@@ -72,12 +72,12 @@ namespace Spartan
         bool SaveToFile(const std::string& filePath) override;
         //======================================================
 
-        void SetName(const std::string& name)   { m_name = name; }
+        void SetName(const std::string& name)   { m_object_name = name; }
         void SetDuration(double duration)       { m_duration = duration; }
         void SetTicksPerSec(double ticksPerSec) { m_ticksPerSec = ticksPerSec; }
 
     private:
-        std::string m_name;
+        std::string m_object_name;
         double m_duration       = 0;
         double m_ticksPerSec    = 0;
 

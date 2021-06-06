@@ -47,8 +47,8 @@ namespace Spartan
         void Deserialize(FileStream* stream, Transform* parent);
 
         //= PROPERTIES ===================================================================================================
-        const std::string& GetName() const                              { return m_name; }
-        void SetName(const std::string& name)                           { m_name = name; }
+        const std::string& GetObjectName() const                              { return m_object_name; }
+        void SetName(const std::string& name)                           { m_object_name = name; }
 
         bool IsActive() const                                           { return m_is_active; }
         void SetActive(const bool active)                               { m_is_active = active; }
@@ -176,7 +176,7 @@ namespace Spartan
     private:
         constexpr uint32_t GetComponentMask(ComponentType type) { return static_cast<uint32_t>(1) << static_cast<uint32_t>(type); }
 
-        std::string m_name          = "Entity";
+        std::string m_object_name          = "Entity";
         bool m_is_active            = true;
         bool m_hierarchy_visibility = true;
         Transform* m_transform      = nullptr;

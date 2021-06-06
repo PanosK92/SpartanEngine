@@ -308,10 +308,10 @@ void Widget_Properties::ShowLight(Light* light) const
 
     if (WidgetHelper::ComponentBegin("Light", Icon_Component_Light, light))
     {
-        //= REFLECT ===============================================================
+        //= REFLECT ======================================================================
         static vector<string> types = { "Directional", "Point", "Spot" };
         float intensity             = light->GetIntensity();
-        float angle                 = light->GetAngle() * Math::Helper::RAD_TO_DEG;
+        float angle                 = light->GetAngle() * Math::Helper::RAD_TO_DEG * 2.0f;
         bool shadows                = light->GetShadowsEnabled();
         bool shadows_screen_space   = light->GetShadowsScreenSpaceEnabled();
         bool shadows_transparent    = light->GetShadowsTransparentEnabled();
@@ -323,7 +323,7 @@ void Widget_Properties::ShowLight(Light* light) const
         m_colorPicker_light->SetColor(light->GetColor());
 
         bool is_directional = light->GetLightType() == LightType::Directional;
-        //=========================================================================
+        //================================================================================
 
         // Type
         ImGui::Text("Type");
@@ -411,7 +411,7 @@ void Widget_Properties::ShowLight(Light* light) const
         if (volumetric != light->GetVolumetricEnabled())                    light->SetVolumetricEnabled(volumetric);
         if (bias != light->GetBias())                                       light->SetBias(bias);
         if (normal_bias != light->GetNormalBias())                          light->SetNormalBias(normal_bias);
-        if (angle != light->GetAngle() * Math::Helper::RAD_TO_DEG)          light->SetAngle(angle * Math::Helper::DEG_TO_RAD);
+        if (angle != light->GetAngle() * Math::Helper::RAD_TO_DEG * 0.5f)   light->SetAngle(angle * Math::Helper::DEG_TO_RAD * 0.5f);
         if (range != light->GetRange())                                     light->SetRange(range);
         if (time_of_day != light->GetTimeOfDay())                           light->SetTimeOfDay(time_of_day);
         if (m_colorPicker_light->GetColor() != light->GetColor())           light->SetColor(m_colorPicker_light->GetColor());
@@ -646,7 +646,7 @@ void Widget_Properties::ShowConstraint(Constraint* constraint) const
         Vector3 rotation                = constraint->GetRotation().ToEulerAngles();
         Vector2 high_limit              = constraint->GetHighLimit();
         Vector2 low_limit               = constraint->GetLowLimit();
-        string other_body_name          = other_body.expired() ? "N/A" : other_body.lock()->GetName();
+        string other_body_name          = other_body.expired() ? "N/A" : other_body.lock()->GetObjectName();
         //============================================================================================
 
         const auto inputTextFlags   = ImGuiInputTextFlags_CharsDecimal;
@@ -1050,8 +1050,8 @@ void Widget_Properties::ShowAudioSource(AudioSource* audio_source) const
         if (loop != audio_source->GetLoop())                    audio_source->SetLoop(loop);
         if (priority != audio_source->GetPriority())            audio_source->SetPriority(priority);
         if (volume != audio_source->GetVolume())                audio_source->SetVolume(volume);
-        if (pitch != audio_source->GetPitch())                    audio_source->SetPitch(pitch);
-        if (pan != audio_source->GetPan())                        audio_source->SetPan(pan);
+        if (pitch != audio_source->GetPitch())                  audio_source->SetPitch(pitch);
+        if (pan != audio_source->GetPan())                      audio_source->SetPan(pan);
         //==================================================================================================
     }
     WidgetHelper::ComponentEnd();
@@ -1074,10 +1074,10 @@ void Widget_Properties::ShowScript(Script* script) const
     if (!script)
         return;
 
-    if (WidgetHelper::ComponentBegin(script->GetName(), Icon_Component_Script, script))
+    if (WidgetHelper::ComponentBegin(script->GetObjectName(), Icon_Component_Script, script))
     {
         //= REFLECT =========================
-        auto script_name = script->GetName();
+        auto script_name = script->GetObjectName();
         //===================================
 
         ImGui::Text("Script");

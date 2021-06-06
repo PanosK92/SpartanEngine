@@ -146,7 +146,7 @@ inline float3 Diffuse_OrenNayar(float3 diffuse_color, float Roughness, float NoV
 
 inline float3 BRDF_Diffuse(Surface surface, float n_dot_v, float n_dot_l, float v_dot_h)
 {
-    return Diffuse_Burley(surface.albedo.rgb, surface.roughness, n_dot_v, n_dot_l, v_dot_h);
+    return Diffuse_OrenNayar(surface.albedo.rgb, surface.roughness, n_dot_v, n_dot_l, v_dot_h);
 }
 
 /*------------------------------------------------------------------------------
@@ -303,3 +303,5 @@ inline float3 Brdf_Specular_Ibl(Surface surface, float3 normal, float3 camera_to
 
     return prefiltered_color * specular_energy;
 }
+
+
