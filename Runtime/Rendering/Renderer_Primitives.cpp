@@ -122,18 +122,18 @@ namespace Spartan
         DrawLine(Vector3(min.x, max.y, max.z), Vector3(min.x, min.y, max.z), color, color, duration, depth);
     }
 
-    void Renderer::DrawCircle(const Math::Vector3& center, const Math::Vector3& axis, const float radius, const uint32_t segmentCount, const Math::Vector4& color /*= DEBUG_COLOR*/, const float duration /*= 0.0f*/, const bool depth /*= true*/)
+    void Renderer::DrawCircle(const Math::Vector3& center, const Math::Vector3& axis, const float radius, const uint32_t segment_count, const Math::Vector4& color /*= DEBUG_COLOR*/, const float duration /*= 0.0f*/, const bool depth /*= true*/)
     {
-        if (radius <= 0.0f || segmentCount <= 0)
+        if (radius <= 0.0f || segment_count <= 0)
             return;
 
         vector<Vector3> points;
-        points.reserve(segmentCount + 1);
-        points.resize(segmentCount + 1);
+        points.reserve(segment_count + 1);
+        points.resize(segment_count + 1);
 
         // Compute points on circle
-        float angle_step = Math::Helper::PI_2 / (float)segmentCount;
-        for (uint32_t i = 0; i <= segmentCount; i++)
+        float angle_step = Math::Helper::PI_2 / (float)segment_count;
+        for (uint32_t i = 0; i <= segment_count; i++)
         {
             float angle = (float)i * angle_step;
             if (axis.x != 0.0f)
@@ -151,7 +151,7 @@ namespace Spartan
         }
 
         // Draw
-        for (uint32_t i = 0; i <= segmentCount - 1; i++)
+        for (uint32_t i = 0; i <= segment_count - 1; i++)
         {
             DrawLine(points[i], points[i + 1], color, color, duration, depth);
         }
