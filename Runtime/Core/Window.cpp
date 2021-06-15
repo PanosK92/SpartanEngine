@@ -67,8 +67,8 @@ namespace Spartan
             m_title.c_str(),            // window title
             SDL_WINDOWPOS_UNDEFINED,    // initial x position
             SDL_WINDOWPOS_UNDEFINED,    // initial y position
-            m_width,                    // width, in pixels
-            m_height,                   // height, in pixels
+            m_width,                    // width in pixels
+            m_height,                   // height in pixels
             flags                       // flags - see below
         );
 
