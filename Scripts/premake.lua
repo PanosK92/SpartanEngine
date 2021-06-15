@@ -219,4 +219,5 @@ project (EDITOR_NAME)
 	filter "configurations:Release"
 		targetdir (TARGET_DIR_RELEASE)
 		debugdir (TARGET_DIR_RELEASE)
+		links { "freetype" }
 		links { "SDL2.lib" }
