@@ -213,6 +213,7 @@ project (EDITOR_NAME)
 	filter "configurations:Debug"
 		targetdir (TARGET_DIR_DEBUG)
 		debugdir (TARGET_DIR_DEBUG)
+		links { "freetype_debug" }
 		links { "SDL2_debug.lib" }
 
 	-- "Release"
