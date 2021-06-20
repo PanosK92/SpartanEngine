@@ -131,7 +131,7 @@ project (RUNTIME_NAME)
 
 	-- Includes
 	includedirs { "../ThirdParty/Assimp_5.0.1" }
-	includedirs { "../ThirdParty/Bullet_2.89" }
+	includedirs { "../ThirdParty/Bullet_3.17" }
 	includedirs { "../ThirdParty/FMOD_1.10.10" }
 	includedirs { "../ThirdParty/FreeImage_3.18.0" }
 	includedirs { "../ThirdParty/FreeType_2.10.4" }
