@@ -30,7 +30,7 @@ ADDITIONAL_LIBRARIES		= {}
 ADDITIONAL_LIBRARIES_DBG	= {}
 LIBRARY_DIR					= "../ThirdParty/libraries"
 OBJ_DIR						= "../Binaries/Obj"
-TARGET_DIR  				= "../Binaries/Exe"
+TARGET_DIR  				= "../Binaries"
 API_GRAPHICS				= _ARGS[1]
 
 -- Graphics api specific variables
