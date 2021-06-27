@@ -177,6 +177,7 @@ void Widget_RenderOptions::TickVisible()
     bool do_dof                     = m_renderer->GetOption(Render_DepthOfField);
     bool do_volumetric_fog          = m_renderer->GetOption(Render_VolumetricFog);
     bool do_ssao                    = m_renderer->GetOption(Render_Ssao);
+    bool ssao_gi                    = m_renderer->GetOptionValue<bool>(Renderer_Option_Value::Ssao_Gi);
     bool do_sss                     = m_renderer->GetOption(Render_ScreenSpaceShadows);
     bool do_ssr                     = m_renderer->GetOption(Render_ScreenSpaceReflections);
     bool do_taa                     = m_renderer->GetOption(Render_AntiAliasing_Taa);
@@ -186,7 +187,6 @@ void Widget_RenderOptions::TickVisible()
     bool do_sharperning             = m_renderer->GetOption(Render_Sharpening_LumaSharpen);
     bool do_chromatic_aberration    = m_renderer->GetOption(Render_ChromaticAberration);
     bool do_dithering               = m_renderer->GetOption(Render_Dithering);
-    bool do_ssgi                    = m_renderer->GetOption(Render_Ssgi);
     int resolution_shadow           = m_renderer->GetOptionValue<int>(Renderer_Option_Value::ShadowResolution);
     bool allow_taa_upsampling       = m_renderer->GetOptionValue<bool>(Renderer_Option_Value::Taa_AllowUpsampling);
     bool debug_physics              = m_renderer->GetOption(Render_Debug_Physics);
@@ -280,8 +280,11 @@ void Widget_RenderOptions::TickVisible()
                 // SSAO
                 WidgetHelper::CheckBox("SSAO - Screen space ambient occlusion", do_ssao);
 
-                // SSGI
-                WidgetHelper::CheckBox("SSGI - Screen space global illumination - WIP", do_ssgi);
+                // SSAO + GI
+                if (do_ssao)
+                {
+                    WidgetHelper::CheckBox("SSGI - Screen space global illumination", ssao_gi, "Use SSAO to compute diffuse global illumination");
+                }
             }
 
             // Anti-aliasing
@@ -451,7 +454,7 @@ void Widget_RenderOptions::TickVisible()
     m_renderer->SetOption(Render_Ssao, do_ssao);
     m_renderer->SetOption(Render_ScreenSpaceShadows, do_sss);
     m_renderer->SetOption(Render_ScreenSpaceReflections, do_ssr);
-    m_renderer->SetOption(Render_Ssgi, do_ssgi);
+    m_renderer->SetOptionValue(Renderer_Option_Value::Ssao_Gi, static_cast<float>(ssao_gi));
     m_renderer->SetOption(Render_AntiAliasing_Taa, do_taa);
     m_renderer->SetOption(Render_AntiAliasing_Fxaa, do_fxaa);
     m_renderer->SetOption(Render_MotionBlur, do_motion_blur);

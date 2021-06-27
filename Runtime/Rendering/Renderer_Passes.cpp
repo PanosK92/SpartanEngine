@@ -106,18 +106,14 @@ namespace Spartan
             // G-buffer
             Pass_GBuffer(cmd_list);
 
-            // Passes which really on the G-buffer
+            // Passes which rely on the G-buffer
             Pass_Ssao(cmd_list);
             Pass_Reflections_SsrTrace(cmd_list);
-            Pass_Ssgi(cmd_list);
 
             // Lighting
             Pass_Light(cmd_list);
 
-            // Injection of SSGI into the light buffers
-            Pass_Ssgi_Inject(cmd_list);
-
-            // Composition of the light buffers (including volumetric fog)
+            // Composition of the light buffers + ssao and volumetric fog
             Pass_Light_Composition(cmd_list, rt1);
 
             // Image based lighting
@@ -570,117 +566,15 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_Ssgi(RHI_CommandList* cmd_list)
-    {
-        if ((m_options & Render_Ssgi) == 0)
-            return;
-
-        // Acquire shaders
-        RHI_Shader* shader_ssgi             = m_shaders[RendererShader::Ssgi_C].get();
-        RHI_Shader* shader_ssgi_accumulate  = m_shaders[RendererShader::Ssgi_Accumulate_C].get();
-        if (!shader_ssgi->IsCompiled() || !shader_ssgi_accumulate->IsCompiled())
-            return;
-
-        // Get render targets
-        shared_ptr<RHI_Texture> tex_ssgi_raw               = RENDER_TARGET(RendererRt::Ssgi_Raw);
-        shared_ptr<RHI_Texture> tex_ssgi_history           = RENDER_TARGET(RendererRt::Ssgi_History_1);
-        shared_ptr<RHI_Texture> tex_ssgi_history_blurred   = RENDER_TARGET(RendererRt::Ssgi_History_2);
-
-        // Set render state
-        static RHI_PipelineState pso;
-        pso.shader_compute   = shader_ssgi;
-        pso.pass_name        = "Pass_Ssgi";
-
-        // SSGI
-        if (cmd_list->BeginRenderPass(pso))
-        {
-            // Update uber buffer
-            m_buffer_uber_cpu.resolution = Vector2(tex_ssgi_raw->GetWidth(), tex_ssgi_raw->GetHeight());
-            UpdateUberBuffer(cmd_list);
-
-            const uint32_t thread_group_count_x   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_ssgi_raw->GetWidth()) / m_thread_group_count));
-            const uint32_t thread_group_count_y   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_ssgi_raw->GetHeight()) / m_thread_group_count));
-            const uint32_t thread_group_count_z   = 1;
-            const bool async                      = false;
-
-            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_albedo,   RENDER_TARGET(RendererRt::Gbuffer_Albedo));
-            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal,   RENDER_TARGET(RendererRt::Gbuffer_Normal));
-            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_velocity, RENDER_TARGET(RendererRt::Gbuffer_Velocity));
-            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    RENDER_TARGET(RendererRt::Gbuffer_Depth));
-            cmd_list->SetTexture(RendererBindingsSrv::light_diffuse,    RENDER_TARGET(RendererRt::Light_Diffuse));
-            cmd_list->SetTexture(RendererBindingsUav::rgb,              tex_ssgi_raw);
-
-            cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
-            cmd_list->EndRenderPass();
-        }
-
-        // Accumulate
-        pso.shader_compute  = shader_ssgi_accumulate;
-        pso.pass_name       = "Pass_Ssgi_Accumulate";
-        if (cmd_list->BeginRenderPass(pso))
-        {
-            const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_ssgi_history->GetWidth()) / m_thread_group_count));
-            const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_ssgi_history->GetHeight()) / m_thread_group_count));
-            const uint32_t thread_group_count_z = 1;
-            const bool async = false;
-
-            cmd_list->SetTexture(RendererBindingsSrv::tex,  tex_ssgi_raw);
-            cmd_list->SetTexture(RendererBindingsSrv::tex2, tex_ssgi_history_blurred);
-            cmd_list->SetTexture(RendererBindingsUav::rgb,  tex_ssgi_history);
-            cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
-            cmd_list->EndRenderPass();
-        }
-
-        // Update history buffer with blurred version
-        const auto sigma = 2.0f;
-        const auto pixel_stride = 2.0f;
-        Pass_Blur_BilateralGaussian(cmd_list, tex_ssgi_history, tex_ssgi_history_blurred, sigma, pixel_stride, false);
-    }
-
-    void Renderer::Pass_Ssgi_Inject(RHI_CommandList* cmd_list)
-    {
-        if ((m_options & Render_Ssgi) == 0)
-            return;
-
-        // Acquire shaders
-        RHI_Shader* shader_c = m_shaders[RendererShader::SsgiInject_C].get();
-        if (!shader_c->IsCompiled())
-            return;
-
-        RHI_Texture* tex_out = RENDER_TARGET(RendererRt::Light_Diffuse).get();
-
-        // Set render state
-        static RHI_PipelineState pso;
-        pso.shader_compute   = shader_c;
-        pso.pass_name        = "Pass_Ssgi_Inject";
-
-        // Draw
-        if (cmd_list->BeginRenderPass(pso))
-        {
-            // Update uber buffer
-            m_buffer_uber_cpu.resolution = Vector2(tex_out->GetWidth(), tex_out->GetHeight());
-            UpdateUberBuffer(cmd_list);
-
-            const uint32_t thread_group_count_x   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
-            const uint32_t thread_group_count_y   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
-            const uint32_t thread_group_count_z   = 1;
-            const bool async                      = false;
-
-            cmd_list->SetTexture(RendererBindingsUav::rgb, tex_out); // diffuse
-            cmd_list->SetTexture(RendererBindingsSrv::ssgi, RENDER_TARGET(RendererRt::Ssgi_History_1));
-
-            cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
-            cmd_list->EndRenderPass();
-        }
-    }
-
     void Renderer::Pass_Ssao(RHI_CommandList* cmd_list)
     {
         if ((m_options & Render_Ssao) == 0)
             return;
 
+        bool do_gi = GetOptionValue<bool>(Renderer_Option_Value::Ssao_Gi);
+
         // Acquire shaders
-        RHI_Shader* shader_c = m_shaders[RendererShader::Ssao_C].get();
+        RHI_Shader* shader_c = m_shaders[do_gi ? RendererShader::Ssao_Gi_C : RendererShader::Ssao_C].get();
         if (!shader_c->IsCompiled())
             return;
 
@@ -689,6 +583,9 @@ namespace Spartan
         shared_ptr<RHI_Texture>& tex_ssao_blurred   = RENDER_TARGET(RendererRt::Ssao_Blurred);
         RHI_Texture* tex_depth                      = RENDER_TARGET(RendererRt::Gbuffer_Depth).get();
         RHI_Texture* tex_normal                     = RENDER_TARGET(RendererRt::Gbuffer_Normal).get();
+        RHI_Texture* tex_albedo                     = RENDER_TARGET(RendererRt::Gbuffer_Albedo).get();
+        RHI_Texture* tex_velocity                   = RENDER_TARGET(RendererRt::Gbuffer_Velocity).get();
+        RHI_Texture* tex_diffuse                    = RENDER_TARGET(RendererRt::Light_Diffuse).get();
 
         // Set render state
         static RHI_PipelineState pso;
@@ -707,9 +604,16 @@ namespace Spartan
             const uint32_t thread_group_count_z = 1;
             const bool async = false;
 
+            cmd_list->SetTexture(do_gi ? RendererBindingsUav::rgba : RendererBindingsUav::r, tex_ssao_noisy);
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal, tex_normal);
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth, tex_depth);
-            cmd_list->SetTexture(RendererBindingsUav::r, tex_ssao_noisy);
+            if (do_gi)
+            {
+                cmd_list->SetTexture(RendererBindingsSrv::gbuffer_albedo,   tex_albedo);
+                cmd_list->SetTexture(RendererBindingsSrv::gbuffer_velocity, tex_velocity);
+                cmd_list->SetTexture(RendererBindingsSrv::light_diffuse,    tex_diffuse);
+            }
+
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
         }
@@ -2424,22 +2328,18 @@ namespace Spartan
             shader_type = RendererShader::DebugChannelR_C;
         }
 
-        if (m_render_target_debug == RendererRt::Ssao_Blurred)
-        {
-            texture     = m_options & Render_Ssao ? RENDER_TARGET(RendererRt::Ssao_Blurred).get() : m_tex_default_white.get();
-            shader_type = RendererShader::DebugChannelR_C;
-        }
-
         if (m_render_target_debug == RendererRt::Ssao)
         {
             texture = m_options & Render_Ssao ? RENDER_TARGET(RendererRt::Ssao).get() : m_tex_default_white.get();
-            shader_type = RendererShader::DebugChannelR_C;
+            bool do_gi = GetOptionValue<bool>(Renderer_Option_Value::Ssao_Gi);
+            shader_type = do_gi ? RendererShader::DebugChannelRgbGammaCorrect_C : RendererShader::DebugChannelR_C;
         }
 
-        if (m_render_target_debug == RendererRt::Ssgi_Raw)
+        if (m_render_target_debug == RendererRt::Ssao_Blurred)
         {
-            texture = m_options & Render_Ssgi ? RENDER_TARGET(RendererRt::Ssgi_Raw).get() : m_tex_default_black.get();
-            shader_type = RendererShader::DebugChannelRgbGammaCorrect_C;
+            texture = m_options & Render_Ssao ? RENDER_TARGET(RendererRt::Ssao_Blurred).get() : m_tex_default_white.get();
+            bool do_gi = GetOptionValue<bool>(Renderer_Option_Value::Ssao_Gi);
+            shader_type = do_gi ? RendererShader::DebugChannelRgbGammaCorrect_C : RendererShader::DebugChannelR_C;
         }
 
         if (m_render_target_debug == RendererRt::Ssr)

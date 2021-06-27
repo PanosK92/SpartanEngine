@@ -63,7 +63,6 @@ Texture2D tex_frame         : register(t30);
 Texture2D tex               : register(t31);
 Texture2D tex2              : register(t32);
 Texture2D tex_font_atlas    : register(t33);
-Texture2D tex_ssgi          : register(t34);
 
 // Compute
 RWTexture2D<float> tex_out_r                : register(u0);

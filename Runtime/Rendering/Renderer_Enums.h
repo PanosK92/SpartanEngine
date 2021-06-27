@@ -70,8 +70,7 @@ namespace Spartan
         frame       = 30,
         tex         = 31,
         tex2        = 32,
-        font_atlas  = 33,
-        ssgi        = 34
+        font_atlas  = 33
     };
 
     // Unordered access views bindings
@@ -130,9 +129,7 @@ namespace Spartan
         Font_V,
         Font_P,
         Ssao_C,
-        Ssgi_C,
-        Ssgi_Accumulate_C,
-        SsgiInject_C,
+        Ssao_Gi_C,
         SsrTrace_C,
         Reflections_P,
         Entity_V,
@@ -166,11 +163,8 @@ namespace Spartan
         Dof_Half_2,
         Ssao,
         Ssao_Blurred,
-        Ssgi_Raw,
-        Ssgi_History_1,
-        Ssgi_History_2,
         Ssr,
-        Taa_History 
+        Taa_History
     };
 
     // Renderer/graphics options
@@ -190,17 +184,16 @@ namespace Spartan
         Render_AntiAliasing_Taa             = 1 << 11,
         Render_AntiAliasing_Fxaa            = 1 << 12,
         Render_Ssao                         = 1 << 13,
-        Render_Ssgi                         = 1 << 14,
-        Render_ScreenSpaceShadows           = 1 << 15,
-        Render_ScreenSpaceReflections       = 1 << 16,
-        Render_MotionBlur                   = 1 << 17,
-        Render_DepthOfField                 = 1 << 18,
-        Render_FilmGrain                    = 1 << 19,
-        Render_Sharpening_LumaSharpen       = 1 << 20,
-        Render_ChromaticAberration          = 1 << 21,
-        Render_Dithering                    = 1 << 22,
-        Render_ReverseZ                     = 1 << 23,
-        Render_DepthPrepass                 = 1 << 24
+        Render_ScreenSpaceShadows           = 1 << 14,
+        Render_ScreenSpaceReflections       = 1 << 15,
+        Render_MotionBlur                   = 1 << 16,
+        Render_DepthOfField                 = 1 << 17,
+        Render_FilmGrain                    = 1 << 18,
+        Render_Sharpening_LumaSharpen       = 1 << 19,
+        Render_ChromaticAberration          = 1 << 20,
+        Render_Dithering                    = 1 << 21,
+        Render_ReverseZ                     = 1 << 22,
+        Render_DepthPrepass                 = 1 << 23
     };
 
     // Renderer/graphics options values
@@ -213,7 +206,8 @@ namespace Spartan
         Bloom_Intensity,
         Sharpen_Strength,
         Fog,
-        Taa_AllowUpsampling
+        Taa_AllowUpsampling,
+        Ssao_Gi
     };
 
     // Tonemapping
