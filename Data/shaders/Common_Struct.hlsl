@@ -84,11 +84,29 @@ struct Surface
         sheen                   = mat_sheen_sheenTint_pad[id].x;
         sheen_tint              = mat_sheen_sheenTint_pad[id].y;
 
-        // Occlusion
-        float occlusion_ssao    = !g_is_transparent_pass ? tex_ssao.SampleLevel(sampler_point_clamp, uv, 0).r : 1.0f; // if ssao is disabled, the texture will be 1x1 white pixel, so we use a sampler
-        float occlusion_tex     = sample_material.a;
-        float _occlusion        = min(occlusion_tex, occlusion_ssao);
-        occlusion               = multi_bounce_ao(_occlusion, sample_albedo.rgb);
+        // Occlusion + GI
+        {
+            // Determine what we can do
+            bool do_ssao    = is_ssao_enabled() && !g_is_transparent_pass;
+            bool do_ssao_gi = do_ssao && is_ssao_gi_enabled();
+            
+            // Sample ssao texture
+            float4 ssao = do_ssao ? tex_ssao[position_screen] : float4(0.0f, 0.0f, 0.0f, 1.0f);
+
+            // Combine ssao with material ao
+            float visibility = min(sample_material.a, ssao.a);
+
+            if (do_ssao_gi)
+            {
+                occlusion   = visibility;
+                emissive    += ssao.rgb;
+            }
+            else
+            {
+                // If ssao gi is not enabled, approximate some light bouncing
+                occlusion = multi_bounce_ao(visibility, sample_albedo.rgb);
+            }
+        }
         
         // Reconstruct position from depth
         float x             = uv.x * 2.0f - 1.0f;
@@ -204,3 +222,5 @@ struct Light
         #endif
     }
 };
+
+

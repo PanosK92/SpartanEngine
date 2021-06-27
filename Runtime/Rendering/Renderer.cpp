@@ -81,6 +81,7 @@ namespace Spartan
         m_option_values[Renderer_Option_Value::Sharpen_Strength]    = 1.0f;
         m_option_values[Renderer_Option_Value::Bloom_Intensity]     = 0.1f;
         m_option_values[Renderer_Option_Value::Fog]                 = 0.03f;
+        m_option_values[Renderer_Option_Value::Ssao_Gi]             = 1.0f;
 
         // Subscribe to events
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved,    SP_EVENT_HANDLER_VARIANT(RenderablesAcquire));
@@ -293,7 +294,9 @@ namespace Spartan
 
                     // These must match what Common_Buffer.hlsl is reading
                     m_buffer_frame_cpu.set_bit(GetOption(Render_ScreenSpaceReflections), 1 << 0);
-                    m_buffer_frame_cpu.set_bit(GetOptionValue<bool>(Renderer_Option_Value::Taa_AllowUpsampling), 1 << 1);
+                    m_buffer_frame_cpu.set_bit(GetOptionValue<bool>(Renderer_Option_Value::Taa_AllowUpsampling),    1 << 1);
+                    m_buffer_frame_cpu.set_bit(GetOption(Render_Ssao),                                              1 << 2);
+                    m_buffer_frame_cpu.set_bit(GetOptionValue<bool>(Renderer_Option_Value::Ssao_Gi),                1 << 3);
                 }
 
                 Pass_Main(cmd_list);

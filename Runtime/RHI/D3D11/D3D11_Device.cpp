@@ -91,13 +91,13 @@ namespace Spartan
                     adapter,                                    // pAdapter: If nullptr, the default adapter will be used
                     driver_type,                                // DriverType
                     nullptr,                                    // HMODULE: nullptr because DriverType = D3D_DRIVER_TYPE_HARDWARE
-                    device_flags,                                // Flags
-                    feature_levels.data(),                        // pFeatureLevels
-                    static_cast<UINT>(feature_levels.size()),    // FeatureLevels
-                    D3D11_SDK_VERSION,                            // SDKVersion
-                    &temp_device,                                // ppDevice
+                    device_flags,                               // Flags
+                    feature_levels.data(),                      // pFeatureLevels
+                    static_cast<UINT>(feature_levels.size()),   // FeatureLevels
+                    D3D11_SDK_VERSION,                          // SDKVersion
+                    &temp_device,                               // ppDevice
                     nullptr,                                    // pFeatureLevel
-                    &temp_context                                // ppImmediateContext
+                    &temp_context                               // ppImmediateContext
                 );
 
                 if (SUCCEEDED(result))

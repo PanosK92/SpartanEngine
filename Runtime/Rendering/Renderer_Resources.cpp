@@ -116,6 +116,7 @@ namespace Spartan
         // rt_gbuffer_depth:    Stencil is used to mask transparent objects and also has a read only version
         // rt_gbuffer_normal:   From and below Texture_Format_R8G8B8A8_UNORM, normals have noticeable banding.
         // rt_hdr/rt_hdr_2/rt_dof_half/rt_dof_half_2/rt_post_process_hdr/rt_post_process_hdr_2/rt_post_process_ldr/rt_post_process_ldr_2: Investigate using less bits but have an alpha channel
+        // rt_ssao/rt_ssao_blurred: If gi is disabled, the texture format could just be RHI_Format_R8_Unorm, but calling CreateRenderTextures() dynamically will re-create a lot of textures. Find an elegant solution to improve CreateRenderTextures().
 
         // Render resolution
         if (create_render)
@@ -133,18 +134,15 @@ namespace Spartan
             RENDER_TARGET(RendererRt::Light_Specular)               = make_unique<RHI_Texture2D>(m_context, width_render, height_render, RHI_Format_R11G11B10_Float,        1, 0,                                   "rt_light_specular");
             RENDER_TARGET(RendererRt::Light_Specular_Transparent)   = make_unique<RHI_Texture2D>(m_context, width_render, height_render, RHI_Format_R11G11B10_Float,        1, 0,                                   "rt_light_specular_transparent");
             RENDER_TARGET(RendererRt::Light_Volumetric)             = make_unique<RHI_Texture2D>(m_context, width_render, height_render, RHI_Format_R11G11B10_Float,        1, 0,                                   "rt_light_volumetric");
-            RENDER_TARGET(RendererRt::Ssao)                         = make_unique<RHI_Texture2D>(m_context, width_render, height_render, RHI_Format_R8_Unorm,               1, 0,                                   "rt_ssao");
-            RENDER_TARGET(RendererRt::Ssao_Blurred)                 = make_unique<RHI_Texture2D>(m_context, width_render, height_render, RHI_Format_R8_Unorm,               1, 0,                                   "rt_ssao_blurred");
+            RENDER_TARGET(RendererRt::Ssao)                         = make_unique<RHI_Texture2D>(m_context, width_render, height_render, RHI_Format_R16G16B16A16_Snorm,     1, 0,                                   "rt_ssao");
+            RENDER_TARGET(RendererRt::Ssao_Blurred)                 = make_unique<RHI_Texture2D>(m_context, width_render, height_render, RHI_Format_R16G16B16A16_Snorm,     1, 0,                                   "rt_ssao_blurred");
             RENDER_TARGET(RendererRt::Ssr)                          = make_shared<RHI_Texture2D>(m_context, width_render, height_render, RHI_Format_R16G16B16A16_Snorm,     1, RHI_Texture_Storage,                 "rt_ssr");
-            RENDER_TARGET(RendererRt::Ssgi_Raw)                     = make_unique<RHI_Texture2D>(m_context, width_render, height_render, RHI_Format_R11G11B10_Float,        1, 0,                                   "rt_ssgi_raw");
-            RENDER_TARGET(RendererRt::Ssgi_History_1)               = make_unique<RHI_Texture2D>(m_context, width_render, height_render, RHI_Format_R11G11B10_Float,        1, 0,                                   "rt_ssgi_history_1");
-            RENDER_TARGET(RendererRt::Ssgi_History_2)               = make_unique<RHI_Texture2D>(m_context, width_render, height_render, RHI_Format_R11G11B10_Float,        1, 0,                                   "rt_ssgi_history_2");
 
             // Half resolution
             RENDER_TARGET(RendererRt::Dof_Half)     = make_unique<RHI_Texture2D>(m_context, width_render * 0.5f, height_render * 0.5f, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_dof_half");
             RENDER_TARGET(RendererRt::Dof_Half_2)   = make_unique<RHI_Texture2D>(m_context, width_render * 0.5f, height_render * 0.5f, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_dof_half_2");
 
-            // Bloom (todo, just make it a mip chain)
+            // Bloom (todo: just make it a mip chain)
             {
                 // Create as many bloom textures as required to scale down to or below 16px (in any dimension)
                 m_render_tex_bloom.clear();
@@ -351,9 +349,15 @@ namespace Spartan
         m_shaders[RendererShader::Dithering_C] = make_shared<RHI_Shader>(m_context);
         m_shaders[RendererShader::Dithering_C]->Compile(RHI_Shader_Compute, dir_shaders + "Dithering.hlsl", async);
 
-        // HBAO
-        m_shaders[RendererShader::Ssao_C] = make_shared<RHI_Shader>(m_context);
-        m_shaders[RendererShader::Ssao_C]->Compile(RHI_Shader_Compute, dir_shaders + "SSAO.hlsl", async);
+        // SSAO
+        {
+            m_shaders[RendererShader::Ssao_C] = make_shared<RHI_Shader>(m_context);
+            m_shaders[RendererShader::Ssao_C]->Compile(RHI_Shader_Compute, dir_shaders + "SSAO.hlsl", async);
+
+            m_shaders[RendererShader::Ssao_Gi_C] = make_shared<RHI_Shader>(m_context);
+            m_shaders[RendererShader::Ssao_Gi_C]->AddDefine("GI");
+            m_shaders[RendererShader::Ssao_Gi_C]->Compile(RHI_Shader_Compute, dir_shaders + "SSAO.hlsl", async);
+        }
 
         // Light
         {
@@ -362,18 +366,6 @@ namespace Spartan
 
             m_shaders[RendererShader::Light_ImageBased_P] = make_shared<RHI_Shader>(m_context);
             m_shaders[RendererShader::Light_ImageBased_P]->Compile(RHI_Shader_Pixel, dir_shaders + "Light_ImageBased.hlsl", async);
-        }
-
-        // SSGI
-        {
-            m_shaders[RendererShader::Ssgi_C] = make_shared<RHI_Shader>(m_context);
-            m_shaders[RendererShader::Ssgi_C]->Compile(RHI_Shader_Compute, dir_shaders + "SSGI.hlsl", async);
-
-            m_shaders[RendererShader::Ssgi_Accumulate_C] = make_shared<RHI_Shader>(m_context);
-            m_shaders[RendererShader::Ssgi_Accumulate_C]->Compile(RHI_Shader_Compute, dir_shaders + "SSGI_Accumulate.hlsl", async);
-
-            m_shaders[RendererShader::SsgiInject_C] = make_shared<RHI_Shader>(m_context);
-            m_shaders[RendererShader::SsgiInject_C]->Compile(RHI_Shader_Compute, dir_shaders + "SSGI_Inject.hlsl", async);
         }
 
         // Reflections

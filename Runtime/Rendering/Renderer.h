@@ -179,8 +179,6 @@ namespace Spartan
         void Pass_Depth_Light(RHI_CommandList* cmd_list, const Renderer_Object_Type object_type);
         void Pass_Depth_Prepass(RHI_CommandList* cmd_list);
         void Pass_GBuffer(RHI_CommandList* cmd_list, const bool is_transparent_pass = false);
-        void Pass_Ssgi(RHI_CommandList* cmd_list);
-        void Pass_Ssgi_Inject(RHI_CommandList* cmd_list);
         void Pass_Ssao(RHI_CommandList* cmd_list);
         void Pass_Reflections_SsrTrace(RHI_CommandList* cmd_list);
         void Pass_Reflections(RHI_CommandList* cmd_list, RHI_Texture* tex_out, RHI_Texture* tex_reflections);
