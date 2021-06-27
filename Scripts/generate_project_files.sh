@@ -23,18 +23,14 @@ echo "==========================================================================
 # Copy engine data to the binary directory
 echo
 echo "3. Copying required data to the binary directory..."
-mkdir -p Binaries/Debug/Data
-cp -r Data Binaries/Debug
-mkdir -p Binaries/Release/Data
-cp -r Data Binaries/Release
+mkdir -p Binaries/Exe/Data
+cp -r Data Binaries/Exe
 
 # Copy engine DLLs to the binary directory
 echo
 echo "4. Copying required DLLs to the binary directory..."
-cp ThirdParty/libraries/dxcompiler.dll Binaries/Debug/
-cp ThirdParty/libraries/fmodL64.dll	Binaries/Debug/
-cp ThirdParty/libraries/dxcompiler.dll Binaries/Release/
-cp ThirdParty/libraries/fmod64.dll Binaries/Release/
+cp ThirdParty/libraries/dxcompiler.dll Binaries/Exe/
+cp ThirdParty/libraries/fmodL64.dll	Binaries/Exe/
 
 # Generate project files
 echo

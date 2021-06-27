@@ -30,8 +30,7 @@ ADDITIONAL_LIBRARIES		= {}
 ADDITIONAL_LIBRARIES_DBG	= {}
 LIBRARY_DIR					= "../ThirdParty/libraries"
 OBJ_DIR						= "../Binaries/Obj"
-TARGET_DIR_RELEASE  		= "../Binaries/Release"
-TARGET_DIR_DEBUG    		= "../Binaries/Debug"
+TARGET_DIR  				= "../Binaries/Exe"
 API_GRAPHICS				= _ARGS[1]
 
 -- Graphics api specific variables
@@ -146,8 +145,8 @@ project (RUNTIME_NAME)
 
 	--	"Debug"
 	filter "configurations:Debug"
-		targetdir (TARGET_DIR_DEBUG)
-		debugdir (TARGET_DIR_DEBUG)
+		targetdir (TARGET_DIR)
+		debugdir (TARGET_DIR)
 		links { "assimp_debug" }
 		links { "fmodL64_vc" }
 		links { "FreeImageLib_debug" }
@@ -161,8 +160,8 @@ project (RUNTIME_NAME)
 
 	--	"Release"
 	filter "configurations:Release"
-		targetdir (TARGET_DIR_RELEASE)
-		debugdir (TARGET_DIR_RELEASE)
+		targetdir (TARGET_DIR)
+		debugdir (TARGET_DIR)
 		if API_GRAPHICS == "vulkan" then
 			links { "dxcompiler", "spirv-cross-core", "spirv-cross-hlsl", "spirv-cross-glsl" }
 		end
@@ -182,7 +181,6 @@ project (EDITOR_NAME)
 	location (EDITOR_DIR)
 	links { RUNTIME_NAME }
 	dependson { RUNTIME_NAME }
-	targetname ( TARGET_NAME )
 	objdir (OBJ_DIR)
 	kind "WindowedApp"
 	staticruntime "On"
@@ -211,14 +209,16 @@ project (EDITOR_NAME)
 
 	-- "Debug"
 	filter "configurations:Debug"
-		targetdir (TARGET_DIR_DEBUG)
-		debugdir (TARGET_DIR_DEBUG)
+		targetname ( TARGET_NAME .. "_debug" )
+		targetdir (TARGET_DIR)
+		debugdir (TARGET_DIR)
 		links { "freetype_debug" }
 		links { "SDL2_debug.lib" }
 
 	-- "Release"
 	filter "configurations:Release"
-		targetdir (TARGET_DIR_RELEASE)
-		debugdir (TARGET_DIR_RELEASE)
+		targetname ( TARGET_NAME )
+		targetdir (TARGET_DIR)
+		debugdir (TARGET_DIR)
 		links { "freetype" }
 		links { "SDL2.lib" }

@@ -1,14 +1,10 @@
 #!/bin/bash
 
-# delete intermediate directory
-rm -rf Binaries/intermediate
+# delete obj directory
+rm -rf Binaries/Obj
 
-# delete binary directory files (that don't need to be part of build artifacts)
-rm -f Binaries/Debug/*.exp
-rm -f Binaries/Debug/*.ilk
-rm -f Binaries/Debug/*.lib
-rm -f Binaries/Debug/*.pdb
-rm -f Binaries/Release/*.exp
-rm -f Binaries/Release/*.ilk
-rm -f Binaries/Release/*.lib
-rm -f Binaries/Release/*.pdb
+# delete exe directory files (that don't need to be part of build artifacts)
+rm -f Binaries/Exe/*.exp
+rm -f Binaries/Exe/*.ilk
+rm -f Binaries/Exe/*.lib
+rm -f Binaries/Exe/*.pdb
