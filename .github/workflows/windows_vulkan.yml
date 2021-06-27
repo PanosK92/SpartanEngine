@@ -28,4 +28,4 @@ jobs:
       - uses: actions/upload-artifact@master  
         with:
           name: windows_vulkan
-          path: Binaries\Release
+          path: Binaries\Exe

@@ -74,16 +74,13 @@ namespace Spartan
             const DisplayMode& display_mode = Display::GetActiveDisplayMode();
             fps_in = display_mode.hz;
         }
-        else if (fps_in >= 0.0f && fps_in < 10.0f) // zero or very small -> unlock to avoid unresponsiveness
-        {
-            fps_in = m_fps_max;
-        }
+
+        // Clamp to a minimum of 10 FPS to avoid unresponsiveness
+        fps_in = Math::Helper::Clamp(fps_in, 10.0, m_fps_max);
 
         if (m_fps_target == fps_in)
             return;
 
-
-        m_fps_target = Math::Helper::Clamp(fps_in, 0.0, m_fps_max);
         m_user_selected_fps_target = true;
         LOG_INFO("Set to %.2f FPS", m_fps_target);
     }
