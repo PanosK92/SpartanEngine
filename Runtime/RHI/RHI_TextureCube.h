@@ -33,18 +33,18 @@ namespace Spartan
         RHI_TextureCube(Context* context) : RHI_Texture(context) { m_resource_type = ResourceType::TextureCube; }
 
         // Creates a cubemap with initial data, 6 textures containing (possibly) mip-levels.
-        RHI_TextureCube(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const std::vector<std::vector<std::vector<std::byte>>>& data) : RHI_Texture(context)
+        RHI_TextureCube(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const std::vector<RHI_Texture_Slice>& data) : RHI_Texture(context)
         {
             m_resource_type = ResourceType::TextureCube;
-            m_width            = width;
+            m_width         = width;
             m_height        = height;
-            m_viewport        = RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
+            m_viewport      = RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
             m_channel_count = GetChannelCountFromFormat(format);
             m_format        = format;
-            m_data_cube        = data;
+            m_data          = data;
             m_array_size    = 6;
-            m_flags    = RHI_Texture_Sampled;
-            m_mip_count    = static_cast<uint32_t>(m_data.front().size());
+            m_mip_count     = GetSlice(0).GetMipCount();
+            m_flags         = RHI_Texture_Sampled;
 
             RHI_TextureCube::CreateResourceGpu();
         }
@@ -53,15 +53,15 @@ namespace Spartan
         RHI_TextureCube(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format) : RHI_Texture(context)
         {
             m_resource_type = ResourceType::TextureCube;
-            m_width            = width;
+            m_width         = width;
             m_height        = height;
             m_channel_count = GetChannelCountFromFormat(format);
-            m_viewport        = RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
+            m_viewport      = RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
             m_format        = format;
             m_array_size    = 6;
-            m_flags    = RHI_Texture_Sampled;
-            m_flags    |= IsDepthFormat() ? RHI_Texture_DepthStencil : RHI_Texture_RenderTarget;
-            m_mip_count    = 1;
+            m_mip_count     = 1;
+            m_flags         = RHI_Texture_Sampled;
+            m_flags         |= IsDepthFormat() ? RHI_Texture_DepthStencil : RHI_Texture_RenderTarget;
 
             RHI_TextureCube::CreateResourceGpu();
         }
@@ -70,8 +70,5 @@ namespace Spartan
 
         // RHI_Texture
         bool CreateResourceGpu() override;
-
-    private:
-        std::vector<std::vector<std::vector<std::byte>>> m_data_cube;
     };
 }

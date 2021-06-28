@@ -283,7 +283,7 @@ void Widget_RenderOptions::TickVisible()
                 // SSAO + GI
                 if (do_ssao)
                 {
-                    WidgetHelper::CheckBox("SSGI - Screen space global illumination", ssao_gi, "Use SSAO to compute diffuse global illumination");
+                    WidgetHelper::CheckBox("SSAO GI - Screen space global illumination", ssao_gi, "Use SSAO to compute diffuse global illumination");
                 }
             }
 
@@ -355,11 +355,9 @@ void Widget_RenderOptions::TickVisible()
                 WidgetHelper::CheckBox("Dithering", do_dithering, "Reduces color banding");
 
                 // Sharpen
-                if (WidgetHelper::CheckBox("Sharpening (AMD FidelityFX CAS)", do_sharperning, "Contrast adaptive sharpening. Areas of the image that are already sharp are sharpened less, while areas that lack detail are sharpened more."))
-                {
-                    // Strength
-                    WidgetHelper::RenderOptionValue("Sharpening strength", Renderer_Option_Value::Sharpen_Strength, "", 0.1f, 0.0f, 1.0f);
-                }
+                WidgetHelper::CheckBox("Sharpening (AMD FidelityFX CAS)", do_sharperning, "Contrast adaptive sharpening. Areas of the image that are already sharp are sharpened less, while areas that lack detail are sharpened more.");
+                // Sharpen strength
+                WidgetHelper::RenderOptionValue("Sharpening strength", Renderer_Option_Value::Sharpen_Strength, "", 0.1f, 0.0f, 1.0f);
 
                 // FPS Limit
                 {

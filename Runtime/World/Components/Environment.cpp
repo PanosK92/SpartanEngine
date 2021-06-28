@@ -19,16 +19,17 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ============================
+//= INCLUDES ===================================
 #include "Spartan.h"
 #include "Environment.h"
 #include "../../IO/FileStream.h"
 #include "../../Threading/Threading.h"
-#include "../../Resource/ResourceCache.h"
 #include "../../Rendering/Renderer.h"
 #include "../../RHI/RHI_Texture2D.h"
 #include "../../RHI/RHI_TextureCube.h"
-//=======================================
+#include "../../Resource/ResourceCache.h"
+#include "../../Resource/Import/ImageImporter.h"
+//==============================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -125,37 +126,22 @@ namespace Spartan
 
         LOG_INFO("Creating sky box...");
 
-        // Load all textures (sides)
-        vector<vector<vector<std::byte>>> cubemapData;
+        // Todo: Make RHI_TextureCube simply have a constructor that can read a vector of file paths
 
-        // Load all the cubemap sides
-        auto m_generate_mipmaps = false;
-        auto loaderTex = make_shared<RHI_Texture2D>(GetContext(), m_generate_mipmaps);
+        // Load all textures (sides) using an RHI_Texture2D
+        ResourceCache* resource_cache = m_context->GetSubsystem<ResourceCache>();
+        ImageImporter* image_importer = resource_cache->GetImageImporter();
+        shared_ptr<RHI_Texture2D> scratch_tex = make_shared<RHI_Texture2D>(GetContext(), false);
+        for (uint32_t slice_index = 0; static_cast<uint32_t>(file_paths.size()); slice_index++)
         {
-            loaderTex->LoadFromFile(file_paths[0]);
-            cubemapData.emplace_back(loaderTex->GetMips());
-
-            loaderTex->LoadFromFile(file_paths[1]);
-            cubemapData.emplace_back(loaderTex->GetMips());
-
-            loaderTex->LoadFromFile(file_paths[2]);
-            cubemapData.emplace_back(loaderTex->GetMips());
-
-            loaderTex->LoadFromFile(file_paths[3]);
-            cubemapData.emplace_back(loaderTex->GetMips());
-
-            loaderTex->LoadFromFile(file_paths[4]);
-            cubemapData.emplace_back(loaderTex->GetMips());
-
-            loaderTex->LoadFromFile(file_paths[5]);
-            cubemapData.emplace_back(loaderTex->GetMips());
+            image_importer->Load(file_paths[slice_index], scratch_tex.get(), slice_index);
         }
 
-        // Texture
-        auto texture = make_shared<RHI_TextureCube>(GetContext(), loaderTex->GetWidth(), loaderTex->GetHeight(), loaderTex->GetFormat(), cubemapData);
-        texture->SetResourceFilePath(m_context->GetSubsystem<ResourceCache>()->GetProjectDirectory() + "environment" + EXTENSION_TEXTURE);
-        texture->SetWidth(loaderTex->GetWidth());
-        texture->SetHeight(loaderTex->GetHeight());
+        // Create a RHI_TextureCube from RHI_Texture2D's data
+        shared_ptr<RHI_TextureCube> texture = make_shared<RHI_TextureCube>(GetContext(), scratch_tex->GetWidth(), scratch_tex->GetHeight(), scratch_tex->GetFormat(), scratch_tex->GetData());
+        texture->SetResourceFilePath(resource_cache->GetProjectDirectory() + "environment" + EXTENSION_TEXTURE);
+        texture->SetWidth(scratch_tex->GetWidth());
+        texture->SetHeight(scratch_tex->GetHeight());
         texture->SetGrayscale(false);
 
         // Apply sky sphere to renderer

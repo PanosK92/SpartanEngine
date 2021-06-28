@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Rendering/Font/Font.h"
 #include "../Rendering/Animation.h"
 #include "../RHI/RHI_Texture2D.h"
+#include "../RHI/RHI_Texture2DArray.h"
 #include "../RHI/RHI_TextureCube.h"
 //=======================================
 
@@ -52,11 +53,12 @@ inline constexpr void validate_resource_type() { static_assert(std::is_base_of<I
 #define INSTANTIATE_TO_RESOURCE_TYPE(T, enumT) template<> SPARTAN_CLASS ResourceType IResource::TypeToEnum<T>() { validate_resource_type<T>(); return enumT; }
 
 // To add a new resource to the engine, simply register it here
-INSTANTIATE_TO_RESOURCE_TYPE(RHI_Texture,       ResourceType::Texture)
-INSTANTIATE_TO_RESOURCE_TYPE(RHI_Texture2D,     ResourceType::Texture2d)
-INSTANTIATE_TO_RESOURCE_TYPE(RHI_TextureCube,   ResourceType::TextureCube)
-INSTANTIATE_TO_RESOURCE_TYPE(AudioClip,         ResourceType::Audio)
-INSTANTIATE_TO_RESOURCE_TYPE(Material,          ResourceType::Material)
-INSTANTIATE_TO_RESOURCE_TYPE(Model,             ResourceType::Model)
-INSTANTIATE_TO_RESOURCE_TYPE(Animation,         ResourceType::Animation)
-INSTANTIATE_TO_RESOURCE_TYPE(Font,              ResourceType::Font)
+INSTANTIATE_TO_RESOURCE_TYPE(RHI_Texture,           ResourceType::Texture)
+INSTANTIATE_TO_RESOURCE_TYPE(RHI_Texture2D,         ResourceType::Texture2d)
+INSTANTIATE_TO_RESOURCE_TYPE(RHI_Texture2DArray,    ResourceType::Texture2dArray)
+INSTANTIATE_TO_RESOURCE_TYPE(RHI_TextureCube,       ResourceType::TextureCube)
+INSTANTIATE_TO_RESOURCE_TYPE(AudioClip,             ResourceType::Audio)
+INSTANTIATE_TO_RESOURCE_TYPE(Material,              ResourceType::Material)
+INSTANTIATE_TO_RESOURCE_TYPE(Model,                 ResourceType::Model)
+INSTANTIATE_TO_RESOURCE_TYPE(Animation,             ResourceType::Animation)
+INSTANTIATE_TO_RESOURCE_TYPE(Font,                  ResourceType::Font)

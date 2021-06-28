@@ -124,7 +124,7 @@ namespace Spartan
                 for (uint32_t mip_index = 0; mip_index < mip_levels; mip_index++)
                 {
                     uint64_t buffer_size = (width >> mip_index) * (height >> mip_index) * bytes_per_pixel;
-                    memcpy(static_cast<std::byte*>(data) + buffer_offset, texture->GetMip(array_index + mip_index).data(), buffer_size);
+                    memcpy(static_cast<std::byte*>(data) + buffer_offset, texture->GetMip(array_index, mip_index).bytes.data(), buffer_size);
                     buffer_offset += buffer_size;
                 }
             }

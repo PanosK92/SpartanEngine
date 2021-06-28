@@ -34,7 +34,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    inline UINT GetBindFlags(uint16_t flags)
+    static UINT GetBindFlags(uint16_t flags)
     {
         UINT flags_d3d11 = 0;
 
@@ -46,35 +46,29 @@ namespace Spartan
         return flags_d3d11;
     }
 
-    inline DXGI_FORMAT GetDepthFormat(RHI_Format format)
+    static DXGI_FORMAT GetDepthFormat(RHI_Format format)
     {
         if (format == RHI_Format_D32_Float_S8X24_Uint)
-        {
             return DXGI_FORMAT_R32G8X24_TYPELESS;
-        }
-        else if (format == RHI_Format_D32_Float)
-        {
+
+        if (format == RHI_Format_D32_Float)
             return DXGI_FORMAT_R32_TYPELESS;
-        }
 
         return d3d11_format[format];
     }
 
-    inline DXGI_FORMAT GetDepthFormatDsv(RHI_Format format)
+    static DXGI_FORMAT GetDepthFormatDsv(RHI_Format format)
     {
         if (format == RHI_Format_D32_Float_S8X24_Uint)
-        {
             return DXGI_FORMAT_D32_FLOAT_S8X24_UINT;
-        }
-        else if (format == RHI_Format_D32_Float)
-        {
+
+        if (format == RHI_Format_D32_Float)
             return DXGI_FORMAT_D32_FLOAT;
-        }
 
         return d3d11_format[format];
     }
 
-    inline DXGI_FORMAT GetDepthFormatSrv(RHI_Format format)
+    static DXGI_FORMAT GetDepthFormatSrv(RHI_Format format)
     {
         if (format == RHI_Format_D32_Float_S8X24_Uint)
         {
@@ -90,28 +84,28 @@ namespace Spartan
 
     // TEXTURE 2D
 
-    inline bool CreateTexture2d(
+    static bool CreateTexture2d(
         void*& texture,
         const uint32_t width,
         const uint32_t height,
         const uint32_t channels,
         const uint32_t bits_per_channel,
         const uint32_t array_size,
-        const uint8_t mip_count,
+        const uint32_t mip_count,
         const DXGI_FORMAT format,
         const UINT bind_flags,
-        vector<vector<std::byte>>& data,
+        vector<RHI_Texture_Slice>& data,
         const shared_ptr<RHI_Device>& rhi_device
     )
     {
-        const bool has_initial_data = data.size() == mip_count;
+        const bool has_initial_data = !data.empty() && !data[0].mips.empty() && !data[0].mips[0].bytes.empty();
 
         // Describe
         D3D11_TEXTURE2D_DESC texture_desc   = {};
         texture_desc.Width                  = static_cast<UINT>(width);
         texture_desc.Height                 = static_cast<UINT>(height);
-        texture_desc.MipLevels              = mip_count;
         texture_desc.ArraySize              = static_cast<UINT>(array_size);
+        texture_desc.MipLevels              = static_cast<UINT>(mip_count);
         texture_desc.Format                 = format;
         texture_desc.SampleDesc.Count       = 1;
         texture_desc.SampleDesc.Quality     = 0;
@@ -123,13 +117,18 @@ namespace Spartan
         // Set initial data
         vector<D3D11_SUBRESOURCE_DATA> vec_subresource_data;
         if (has_initial_data)
-        { 
-            for (uint8_t i = 0; i < mip_count; i++)
+        {
+            for (uint32_t index_array = 0; index_array < array_size; index_array++)
             {
-                D3D11_SUBRESOURCE_DATA& subresource_data    = vec_subresource_data.emplace_back(D3D11_SUBRESOURCE_DATA{});
-                subresource_data.pSysMem                    = i < data.size()? data[i].data() : nullptr;        // Data pointer
-                subresource_data.SysMemPitch                = (width >> i) * channels * (bits_per_channel / 8); // Line width in bytes
-                subresource_data.SysMemSlicePitch           = 0;                                                // This is only used for 3D textures
+                for (uint32_t index_mip = 0; index_mip < mip_count; index_mip++)
+                {
+                    uint32_t mip_width = width >> index_mip;
+
+                    D3D11_SUBRESOURCE_DATA& subresource_data    = vec_subresource_data.emplace_back(D3D11_SUBRESOURCE_DATA{});
+                    subresource_data.pSysMem                    = data[index_array].mips[index_mip].bytes.data();   // Data pointer
+                    subresource_data.SysMemPitch                = mip_width * channels * (bits_per_channel / 8);    // Line width in bytes
+                    subresource_data.SysMemSlicePitch           = 0;                                                // This is only used for 3D textures
+                }
             }
         }
 
@@ -137,32 +136,28 @@ namespace Spartan
          return d3d11_utility::error_check(rhi_device->GetContextRhi()->device->CreateTexture2D(&texture_desc, vec_subresource_data.data(), reinterpret_cast<ID3D11Texture2D**>(&texture)));
     }
 
-    inline bool CreateRenderTargetView2d(void* texture, array<void*, rhi_max_render_target_count>& views, const DXGI_FORMAT format, const unsigned array_size, const shared_ptr<RHI_Device>& rhi_device)
+    static bool CreateRenderTargetView2d(void* texture, array<void*, rhi_max_render_target_count>& views, const DXGI_FORMAT format, const unsigned array_size, const shared_ptr<RHI_Device>& rhi_device)
     {
         // Describe
-        D3D11_RENDER_TARGET_VIEW_DESC view_desc     = {};
-        view_desc.Format                            = format;
-        view_desc.ViewDimension                     = (array_size == 1) ? D3D11_RTV_DIMENSION_TEXTURE2D : D3D11_RTV_DIMENSION_TEXTURE2DARRAY;
-        view_desc.Texture2DArray.MipSlice           = 0;
-        view_desc.Texture2DArray.ArraySize          = 1;
-        view_desc.Texture2DArray.FirstArraySlice    = 0;
+        D3D11_RENDER_TARGET_VIEW_DESC view_desc = {};
+        view_desc.Format                        = format;
+        view_desc.ViewDimension                 = (array_size == 1) ? D3D11_RTV_DIMENSION_TEXTURE2D : D3D11_RTV_DIMENSION_TEXTURE2DARRAY;
+        view_desc.Texture2DArray.MipSlice       = 0;
+        view_desc.Texture2DArray.ArraySize      = 1;
 
         // Create
         for (uint32_t i = 0; i < array_size; i++)
         {
             view_desc.Texture2DArray.FirstArraySlice = i;
-            const auto result = rhi_device->GetContextRhi()->device->CreateRenderTargetView(static_cast<ID3D11Resource*>(texture), &view_desc, reinterpret_cast<ID3D11RenderTargetView**>(&views[i]));
-            if (FAILED(result))
-            {
-                LOG_ERROR("Failed, %s.", d3d11_utility::dxgi_error_to_string(result));
+
+            if (!d3d11_utility::error_check(rhi_device->GetContextRhi()->device->CreateRenderTargetView(static_cast<ID3D11Resource*>(texture), &view_desc, reinterpret_cast<ID3D11RenderTargetView**>(&views[i]))))
                 return false;
-            }
         }
 
         return true;
     }
 
-    inline bool CreateDepthStencilView2d(void* texture, array<void*, rhi_max_render_target_count>& views, const uint32_t array_size, const DXGI_FORMAT format, bool read_only, const shared_ptr<RHI_Device>& rhi_device)
+    static bool CreateDepthStencilView2d(void* texture, array<void*, rhi_max_render_target_count>& views, const uint32_t array_size, const DXGI_FORMAT format, const bool read_only, const shared_ptr<RHI_Device>& rhi_device)
     {
         // Describe
         D3D11_DEPTH_STENCIL_VIEW_DESC dsv_desc  = {};
@@ -170,25 +165,21 @@ namespace Spartan
         dsv_desc.ViewDimension                  = (array_size == 1) ? D3D11_DSV_DIMENSION_TEXTURE2D : D3D11_DSV_DIMENSION_TEXTURE2DARRAY;
         dsv_desc.Texture2DArray.MipSlice        = 0;
         dsv_desc.Texture2DArray.ArraySize       = 1;
-        dsv_desc.Texture2DArray.FirstArraySlice = 0;
         dsv_desc.Flags                          = read_only ? D3D11_DSV_READ_ONLY_DEPTH | D3D11_DSV_READ_ONLY_STENCIL : 0;
 
         // Create
         for (uint32_t i = 0; i < array_size; i++)
         {
             dsv_desc.Texture2DArray.FirstArraySlice = i;
-            const auto result = rhi_device->GetContextRhi()->device->CreateDepthStencilView(static_cast<ID3D11Resource*>(texture), &dsv_desc, reinterpret_cast<ID3D11DepthStencilView**>(&views[i]));
-            if (FAILED(result))
-            {
-                LOG_ERROR("Failed, %s.", d3d11_utility::dxgi_error_to_string(result));
+
+            if(!d3d11_utility::error_check(rhi_device->GetContextRhi()->device->CreateDepthStencilView(static_cast<ID3D11Resource*>(texture), &dsv_desc, reinterpret_cast<ID3D11DepthStencilView**>(&views[i]))))
                 return false;
-            }
         }
 
         return true;
     }
 
-    inline bool CreateShaderResourceView2d(void* texture, void*& view, DXGI_FORMAT format, uint32_t array_size, vector<vector<std::byte>>& data, const shared_ptr<RHI_Device>& rhi_device)
+    static bool CreateShaderResourceView2d(void* texture, void*& view, const DXGI_FORMAT format, const uint32_t array_size, const uint32_t mip_count, const shared_ptr<RHI_Device>& rhi_device)
     {
         // Describe
         D3D11_SHADER_RESOURCE_VIEW_DESC shader_resource_view_desc   = {};
@@ -196,21 +187,21 @@ namespace Spartan
         shader_resource_view_desc.ViewDimension                     = (array_size == 1) ? D3D11_SRV_DIMENSION_TEXTURE2D : D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
         shader_resource_view_desc.Texture2DArray.FirstArraySlice    = 0;
         shader_resource_view_desc.Texture2DArray.MostDetailedMip    = 0;
-        shader_resource_view_desc.Texture2DArray.MipLevels          = data.empty() ? 1 : static_cast<UINT>(data.size());
-        shader_resource_view_desc.Texture2DArray.ArraySize          = array_size;
+        shader_resource_view_desc.Texture2DArray.MipLevels          = static_cast<UINT>(mip_count);
+        shader_resource_view_desc.Texture2DArray.ArraySize          = static_cast<UINT>(array_size);
 
         // Create
         return d3d11_utility::error_check(rhi_device->GetContextRhi()->device->CreateShaderResourceView(static_cast<ID3D11Resource*>(texture), &shader_resource_view_desc, reinterpret_cast<ID3D11ShaderResourceView**>(&view)));
     }
 
-    inline bool CreateUnorderedAccessView2d(void* texture, void*& view, DXGI_FORMAT format, int32_t array_size, const shared_ptr<RHI_Device>& rhi_device)
+    static bool CreateUnorderedAccessView2d(void* texture, void*& view, const DXGI_FORMAT format, const uint32_t array_size, const shared_ptr<RHI_Device>& rhi_device)
     {
         // Describe
         D3D11_UNORDERED_ACCESS_VIEW_DESC unorderd_access_view_desc  = {};
         unorderd_access_view_desc.Format                            = format;
         unorderd_access_view_desc.ViewDimension                     = (array_size == 1) ? D3D11_UAV_DIMENSION_TEXTURE2D : D3D11_UAV_DIMENSION_TEXTURE2DARRAY;
         unorderd_access_view_desc.Texture2DArray.FirstArraySlice    = 0;
-        unorderd_access_view_desc.Texture2DArray.ArraySize          = array_size;
+        unorderd_access_view_desc.Texture2DArray.ArraySize          = static_cast<UINT>(array_size);
 
         // Create
         return d3d11_utility::error_check(rhi_device->GetContextRhi()->device->CreateUnorderedAccessView(static_cast<ID3D11Resource*>(texture), &unorderd_access_view_desc, reinterpret_cast<ID3D11UnorderedAccessView**>(&view)));
@@ -286,7 +277,7 @@ namespace Spartan
                 m_resource_view[0],
                 format_srv,
                 m_array_size,
-                m_data,
+                m_mip_count,
                 m_rhi_device
             );
         }
@@ -348,12 +339,13 @@ namespace Spartan
         void*& texture,
         const uint32_t width,
         const uint32_t height,
-        uint32_t channels,
-        uint32_t array_size,
-        uint32_t bits_per_channel,
-        DXGI_FORMAT format,
+        const uint32_t channel_count,
+        const uint32_t array_size,
+        const uint32_t mip_count,
+        const uint32_t bits_per_channel,
+        const DXGI_FORMAT format,
         const UINT flags,
-        vector<vector<vector<std::byte>>>& data,
+        vector<RHI_Texture_Slice>& data,
         const shared_ptr<RHI_Device>& rhi_device
     )
     {
@@ -361,8 +353,8 @@ namespace Spartan
         D3D11_TEXTURE2D_DESC texture_desc   = {};
         texture_desc.Width                  = static_cast<UINT>(width);
         texture_desc.Height                 = static_cast<UINT>(height);
-        texture_desc.MipLevels              = static_cast<UINT>(data.empty() || data[0].empty() ? 1 : data[0].size());
-        texture_desc.ArraySize              = array_size;
+        texture_desc.ArraySize              = static_cast<UINT>(array_size);
+        texture_desc.MipLevels              = static_cast<UINT>(mip_count);
         texture_desc.Format                 = format;
         texture_desc.SampleDesc.Count       = 1;
         texture_desc.SampleDesc.Quality     = 0;
@@ -378,29 +370,17 @@ namespace Spartan
         { 
             for (uint32_t face_index = 0; face_index < array_size; face_index++)
             {
-                const auto& face_data = data[face_index];
+                RHI_Texture_Slice& face_data = data[face_index];
 
-                if (face_data.empty())
+                for (uint32_t mip_level = 0; mip_level < face_data.GetMipCount(); mip_level++)
                 {
-                    LOG_ERROR("A side contains no data");
-                    continue;
-                }
-
-                for (uint32_t mip_level = 0; mip_level < static_cast<uint32_t>(face_data.size()); mip_level++)
-                {
-                    const auto& mip_data = face_data[mip_level];
-
-                    if (mip_data.empty())
-                    {
-                        LOG_ERROR("A mip-map contains invalid data.");
-                        continue;
-                    }
+                    RHI_Texture_Mip& mip_data = face_data.mips[mip_level];
 
                     // D3D11_SUBRESOURCE_DATA
                     auto & subresource_data             = vec_subresource_data.emplace_back(D3D11_SUBRESOURCE_DATA{});
-                    subresource_data.pSysMem            = mip_data.data();                                          // Data pointer
-                    subresource_data.SysMemPitch        = (width >> mip_level) * channels * (bits_per_channel / 8); // Line width in bytes
-                    subresource_data.SysMemSlicePitch   = 0;                                                        // This is only used for 3D textures
+                    subresource_data.pSysMem            = mip_data.bytes.data();                                            // Data pointer
+                    subresource_data.SysMemPitch        = (width >> mip_level) * channel_count * (bits_per_channel / 8);    // Line width in bytes
+                    subresource_data.SysMemSlicePitch   = 0;                                                                // This is only used for 3D textures
                 }
 
                 vec_texture_desc.emplace_back(texture_desc);
@@ -415,18 +395,18 @@ namespace Spartan
         return d3d11_utility::error_check(rhi_device->GetContextRhi()->device->CreateTexture2D(vec_texture_desc.data(), vec_subresource_data.data(), reinterpret_cast<ID3D11Texture2D**>(&texture)));
     }
 
-    inline bool CreateShaderResourceViewCube(void* texture, void*& view, DXGI_FORMAT format, uint32_t array_size, vector<vector<vector<std::byte>>>& data, const shared_ptr<RHI_Device>& rhi_device)
+    inline bool CreateShaderResourceViewCube(void* texture, void*& view, const DXGI_FORMAT format, const uint32_t array_size, const uint32_t mip_count, const shared_ptr<RHI_Device>& rhi_device)
     {
         // Describe
         D3D11_SHADER_RESOURCE_VIEW_DESC srv_desc    = {};
         srv_desc.Format                             = format;
         srv_desc.ViewDimension                      = D3D11_SRV_DIMENSION_TEXTURECUBE;
-        srv_desc.TextureCube.MipLevels              = static_cast<UINT>(data.empty() || data[0].empty() ? 1 : data[0].size());
+        srv_desc.TextureCube.MipLevels              = static_cast<UINT>(mip_count);
         srv_desc.TextureCube.MostDetailedMip        = 0;
         srv_desc.Texture2DArray.FirstArraySlice     = 0;
         srv_desc.Texture2DArray.MostDetailedMip     = 0;
         srv_desc.Texture2DArray.MipLevels           = 1;
-        srv_desc.Texture2DArray.ArraySize           = array_size;
+        srv_desc.Texture2DArray.ArraySize           = static_cast<UINT>(array_size);
 
         // Create
         return d3d11_utility::error_check(rhi_device->GetContextRhi()->device->CreateShaderResourceView(static_cast<ID3D11Resource*>(texture), &srv_desc, reinterpret_cast<ID3D11ShaderResourceView**>(&view)));
@@ -541,11 +521,12 @@ namespace Spartan
             m_width,
             m_height,
             m_channel_count,
-            m_bits_per_channel,
             m_array_size,
+            m_mip_count,
+            m_bits_per_channel,
             format,
             flags,
-            m_data_cube,
+            m_data,
             m_rhi_device
         );
 
@@ -557,7 +538,7 @@ namespace Spartan
                 m_resource_view[0],
                 format_srv,
                 m_array_size,
-                m_data_cube,
+                m_mip_count,
                 m_rhi_device
             );
         }

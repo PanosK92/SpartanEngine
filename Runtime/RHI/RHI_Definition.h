@@ -50,10 +50,13 @@ namespace Spartan
     class RHI_Viewport;
     class RHI_Texture;
     class RHI_Texture2D;
+    class RHI_Texture2DArray;
     class RHI_TextureCube;
     class RHI_Shader;
     class RHI_Semaphore;
     class RHI_Fence;
+    struct RHI_Texture_Mip;
+    struct RHI_Texture_Slice;
     struct RHI_Vertex_Undefined;
     struct RHI_Vertex_PosTex;
     struct RHI_Vertex_PosCol;
