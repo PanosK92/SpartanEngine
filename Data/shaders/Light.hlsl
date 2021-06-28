@@ -120,23 +120,22 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         // Diffuse
         light_diffuse += BRDF_Diffuse(surface, n_dot_v, light.n_dot_l, v_dot_h);
 
-        /* Subsurface scattering from LIDL
+        // Subsurface scattering from LIDL
         {
-            const float thickness_edge  = 0.1f;
-            const float thickness_face  = 1.0f;
-            const float distortion      = 0.65f;
-            const float ambient         = 1.0f - surface.albedo.a;
-            const float scale           = 1.0f;
-            const float power           = 0.8f;
+            //const float thickness_edge  = 0.1f;
+            //const float thickness_face  = 1.0f;
+            //const float distortion      = 0.65f;
+            //const float ambient         = 1.0f - surface.alpha;
+            //const float scale           = 1.0f;
+            //const float power           = 0.8f;
             
-            float thickness = lerp(thickness_edge, thickness_face, n_dot_v);
-            float3 h        = normalize(l + surface.normal * distortion);
-            float v_dot_h   = pow(saturate(dot(v, -h)), power) * scale;
-            float intensity = (v_dot_h + ambient) * thickness;
+            //float thickness = lerp(thickness_edge, thickness_face, n_dot_v);
+            //float3 h        = normalize(l + surface.normal * distortion);
+            //float v_dot_h   = pow(saturate(dot(v, -h)), power) * scale;
+            //float intensity = (v_dot_h + ambient) * thickness;
             
-            light_diffuse += surface.albedo.rgb * light.color * intensity;
+            //light_diffuse += surface.albedo.rgb * light.color * intensity;
         }
-        */
 
         // Tone down diffuse such as that only non metals have it
         light_diffuse *= diffuse_energy;

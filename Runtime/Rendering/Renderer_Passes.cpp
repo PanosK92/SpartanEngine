@@ -108,7 +108,7 @@ namespace Spartan
 
             // Passes which rely on the G-buffer
             Pass_Ssao(cmd_list);
-            Pass_Reflections_SsrTrace(cmd_list);
+            Pass_Reflections_Ssr(cmd_list);
 
             // Lighting
             Pass_Light(cmd_list);
@@ -624,13 +624,13 @@ namespace Spartan
         Pass_Blur_BilateralGaussian(cmd_list, tex_ssao_noisy, tex_ssao_blurred, sigma, pixel_stride, false);
     }
 
-    void Renderer::Pass_Reflections_SsrTrace(RHI_CommandList* cmd_list)
+    void Renderer::Pass_Reflections_Ssr(RHI_CommandList* cmd_list)
     {
         if ((m_options & Render_ScreenSpaceReflections) == 0)
             return;
 
         // Acquire shaders
-        RHI_Shader* shader_c = m_shaders[RendererShader::SsrTrace_C].get();
+        RHI_Shader* shader_c = m_shaders[RendererShader::Ssr_C].get();
         if (!shader_c->IsCompiled())
             return;
 
@@ -640,7 +640,7 @@ namespace Spartan
         // Set render state
         static RHI_PipelineState pso;
         pso.shader_compute   = shader_c;
-        pso.pass_name        = "Pass_Reflections_SsrTrace";
+        pso.pass_name        = "Pass_Reflections_Ssr";
 
         // Draw
         if (cmd_list->BeginRenderPass(pso))

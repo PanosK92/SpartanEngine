@@ -130,7 +130,7 @@ namespace Spartan
         Font_P,
         Ssao_C,
         Ssao_Gi_C,
-        SsrTrace_C,
+        Ssr_C,
         Reflections_P,
         Entity_V,
         Entity_Transform_P,
