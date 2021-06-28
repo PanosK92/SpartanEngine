@@ -370,8 +370,8 @@ namespace Spartan
 
         // Reflections
         {
-            m_shaders[RendererShader::SsrTrace_C] = make_shared<RHI_Shader>(m_context);
-            m_shaders[RendererShader::SsrTrace_C]->Compile(RHI_Shader_Compute, dir_shaders + "SSR_Trace.hlsl", async);
+            m_shaders[RendererShader::Ssr_C] = make_shared<RHI_Shader>(m_context);
+            m_shaders[RendererShader::Ssr_C]->Compile(RHI_Shader_Compute, dir_shaders + "SSR.hlsl", async);
 
             m_shaders[RendererShader::Reflections_P] = make_shared<RHI_Shader>(m_context);
             m_shaders[RendererShader::Reflections_P]->Compile(RHI_Shader_Pixel, dir_shaders + "Reflections.hlsl", async);
