@@ -139,8 +139,8 @@ namespace Spartan
             RENDER_TARGET(RendererRt::Ssr)                          = make_shared<RHI_Texture2D>(m_context, width_render, height_render, RHI_Format_R16G16B16A16_Snorm,     1, RHI_Texture_Storage,                 "rt_ssr");
 
             // Half resolution
-            RENDER_TARGET(RendererRt::Dof_Half)     = make_unique<RHI_Texture2D>(m_context, width_render * 0.5f, height_render * 0.5f, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_dof_half");
-            RENDER_TARGET(RendererRt::Dof_Half_2)   = make_unique<RHI_Texture2D>(m_context, width_render * 0.5f, height_render * 0.5f, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_dof_half_2");
+            RENDER_TARGET(RendererRt::Dof_Half)     = make_unique<RHI_Texture2D>(m_context, width_render / 2, height_render / 2, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_dof_half");
+            RENDER_TARGET(RendererRt::Dof_Half_2)   = make_unique<RHI_Texture2D>(m_context, width_render / 2, height_render / 2, RHI_Format_R16G16B16A16_Float, 1, 0, "rt_dof_half_2");
 
             // Bloom (todo: just make it a mip chain)
             {
@@ -446,7 +446,7 @@ namespace Spartan
         // Get standard texture directory
         const auto dir_texture = m_resource_cache->GetResourceDirectory(ResourceDirectory::Textures) + "/";
 
-        auto generate_mipmaps = false;
+        bool generate_mipmaps = false;
 
         m_tex_default_noise_normal = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
         m_tex_default_noise_normal->LoadFromFile(dir_texture + "noise_normal.png");

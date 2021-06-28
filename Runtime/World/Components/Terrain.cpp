@@ -104,19 +104,33 @@ namespace Spartan
             m_is_generating = true;
 
             // Get height map data
-            const vector<std::byte> height_map_data = m_height_map->GetOrLoadMip(0);
-            if (height_map_data.empty())
+            vector<std::byte> height_data;
             {
-                LOG_ERROR("Height map has no data");
+                height_data = m_height_map->GetMip(0, 0).bytes;
+
+                // If not the data is not there, load it
+                if (height_data.empty())
+                {
+                    if (m_height_map->LoadFromFile(m_height_map->GetResourceFilePathNative()))
+                    {
+                        height_data = m_height_map->GetMip(0, 0).bytes;
+
+                        if (height_data.empty())
+                        {
+                            LOG_ERROR("Failed to load height map");
+                            return;
+                        }
+                    }
+                }
             }
 
             // Deduce some stuff
-            m_height                            = m_height_map->GetHeight();
-            m_width                             = m_height_map->GetWidth();
-            m_vertex_count                      = m_height * m_width;
-            m_face_count                        = (m_height - 1) * (m_width - 1) * 2;
-            m_progress_jobs_done                = 0;
-            m_progress_job_count                = m_vertex_count * 2 + m_face_count + m_vertex_count * m_face_count;
+            m_height                = m_height_map->GetHeight();
+            m_width                 = m_height_map->GetWidth();
+            m_vertex_count          = m_height * m_width;
+            m_face_count            = (m_height - 1) * (m_width - 1) * 2;
+            m_progress_jobs_done    = 0;
+            m_progress_job_count    = m_vertex_count * 2 + m_face_count + m_vertex_count * m_face_count;
 
             // Pre-allocate memory for the calculations that follow
             vector<Vector3> positions                 = vector<Vector3>(m_height * m_width);
@@ -125,7 +139,7 @@ namespace Spartan
 
             // Read height map and construct positions
             m_progress_desc = "Generating positions...";
-            if (GeneratePositions(positions, height_map_data))
+            if (GeneratePositions(positions, height_data))
             {
                 // Compute the vertices (without the normals) and the indices
                 m_progress_desc = "Generating terrain vertices and indices...";

@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ======================
+//= INCLUDES =========================
 #include "Spartan.h"
 #include "ResourceCache.h"
 #include "ProgressTracker.h"
@@ -30,10 +30,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Entity.h"
 #include "../IO/FileStream.h"
 #include "../RHI/RHI_Texture2D.h"
+#include "../RHI/RHI_Texture2DArray.h"
 #include "../RHI/RHI_TextureCube.h"
 #include "../Audio/AudioClip.h"
 #include "../Rendering/Model.h"
-//=================================
+//====================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -235,6 +236,9 @@ namespace Spartan
                 break;
             case ResourceType::Texture2d:
                 Load<RHI_Texture2D>(file_path);
+                break;
+            case ResourceType::Texture2dArray:
+                Load<RHI_Texture2DArray>(file_path);
                 break;
             case ResourceType::TextureCube:
                 Load<RHI_TextureCube>(file_path);

@@ -438,15 +438,18 @@ namespace Spartan
         ft_helper::get_texture_atlas_dimensions(&atlas_width, &atlas_height, &atlas_cell_width, &atlas_cell_height, ft_font, outline_size);
 
         // Atlas for text
-        vector<std::byte> atlas_text(atlas_width * atlas_height);
-        atlas_text.reserve(atlas_text.size());
+        vector<RHI_Texture_Slice> texture_data_atlas;
+        vector<std::byte>& mip_atlas = texture_data_atlas.emplace_back().mips.emplace_back().bytes;
+        mip_atlas.resize(atlas_width * atlas_height);
+        mip_atlas.reserve(mip_atlas.size());
 
         // Atlas for outline (if needed)
-        vector<std::byte> atlas_outline;
+        vector<RHI_Texture_Slice> texture_data_atlas_outline;
+        vector<std::byte>& mip_atlas_outline = texture_data_atlas_outline.emplace_back().mips.emplace_back().bytes;
         if (outline_size != 0)
         {
-            atlas_outline.resize(atlas_text.size());
-            atlas_outline.reserve(atlas_text.size());
+            mip_atlas_outline.resize(mip_atlas.size());
+            mip_atlas_outline.reserve(mip_atlas.size());
         }
 
         // Go through each glyph
@@ -483,11 +486,11 @@ namespace Spartan
             // Copy to atlas buffers
             if (bitmap_text.buffer)
             {
-                ft_helper::copy_to_atlas(atlas_text, bitmap_text, pen, atlas_width, outline_size);
+                ft_helper::copy_to_atlas(mip_atlas, bitmap_text, pen, atlas_width, outline_size);
 
                 if (bitmap_outline.buffer)
                 {
-                    ft_helper::copy_to_atlas(atlas_outline, bitmap_outline, pen, atlas_width, 0);
+                    ft_helper::copy_to_atlas(mip_atlas_outline, bitmap_outline, pen, atlas_width, 0);
                 }
 
                 writting_started = true;
@@ -502,11 +505,11 @@ namespace Spartan
 
         // Create a texture with of font atlas and a texture of the font outline atlas
         {
-            font->SetAtlas(move(static_pointer_cast<RHI_Texture>(make_shared<RHI_Texture2D>(m_context, atlas_width, atlas_height, RHI_Format_R8_Unorm, atlas_text))));
+            font->SetAtlas(move(static_pointer_cast<RHI_Texture>(make_shared<RHI_Texture2D>(m_context, atlas_width, atlas_height, RHI_Format_R8_Unorm, texture_data_atlas))));
 
             if (outline_size != 0)
             {
-                font->SetAtlasOutline(move(static_pointer_cast<RHI_Texture>(make_shared<RHI_Texture2D>(m_context, atlas_width, atlas_height, RHI_Format_R8_Unorm, atlas_outline))));
+                font->SetAtlasOutline(move(static_pointer_cast<RHI_Texture>(make_shared<RHI_Texture2D>(m_context, atlas_width, atlas_height, RHI_Format_R8_Unorm, texture_data_atlas_outline))));
             }
         }
 

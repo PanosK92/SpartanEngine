@@ -120,13 +120,15 @@ namespace ImGui::RHI
             io.Fonts->GetTexDataAsRGBA32(&pixels, &atlas_width, &atlas_height, &bpp);
 
             // Copy pixel data
-            const unsigned int size = atlas_width * atlas_height * bpp;
-            vector<std::byte> data(size);
-            data.reserve(size);
-            memcpy(&data[0], reinterpret_cast<std::byte*>(pixels), size);
+            const uint32_t size = atlas_width * atlas_height * bpp;
+            vector<RHI_Texture_Slice> texture_data;
+            vector<std::byte>& mip = texture_data.emplace_back().mips.emplace_back().bytes;
+            mip.resize(size);
+            mip.reserve(size);
+            memcpy(&mip[0], reinterpret_cast<std::byte*>(pixels), size);
 
             // Upload texture to graphics system
-            g_texture = make_unique<RHI_Texture2D>(g_context, atlas_width, atlas_height, RHI_Format_R8G8B8A8_Unorm, data);
+            g_texture = make_unique<RHI_Texture2D>(g_context, atlas_width, atlas_height, RHI_Format_R8G8B8A8_Unorm, texture_data);
             io.Fonts->TexID = static_cast<ImTextureID>(g_texture.get());
         }
 

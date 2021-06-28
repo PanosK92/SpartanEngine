@@ -186,9 +186,9 @@ namespace Spartan
         //==============================================================================
 
         // Importers
-        auto GetModelImporter() const { return m_importer_model.get(); }
-        auto GetImageImporter() const { return m_importer_image.get(); }
-        auto GetFontImporter()  const { return m_importer_font.get(); }
+        ModelImporter* GetModelImporter()   const { return m_importer_model.get(); }
+        ImageImporter* GetImageImporter()   const { return m_importer_image.get(); }
+        FontImporter* GetFontImporter()     const { return m_importer_font.get(); }
 
     private:
         // Event handlers

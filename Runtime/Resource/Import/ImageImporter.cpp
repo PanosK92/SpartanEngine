@@ -40,11 +40,11 @@ namespace Spartan::freeimage_helper
     // A struct that rescaling threads will work with
     struct RescaleJob
     {
-        uint32_t width           = 0;
-        uint32_t height          = 0;
-        uint32_t channel_count   = 0;
-        vector<std::byte>* data  = nullptr;
-        bool done                = false;
+        uint32_t width          = 0;
+        uint32_t height         = 0;
+        uint32_t channel_count  = 0;
+        RHI_Texture_Mip* mip    = nullptr;
+        bool done               = false;
 
         RescaleJob(const uint32_t width, const uint32_t height, const uint32_t channel_count)
         {
@@ -150,7 +150,7 @@ namespace Spartan
         FreeImage_DeInitialise();
     }
 
-    bool ImageImporter::Load(const string& file_path, RHI_Texture* texture, const bool generate_mipmaps /*= true*/)
+    bool ImageImporter::Load(const string& file_path, RHI_Texture* texture, const uint32_t slice_index)
     {
         if (!texture)
         {
@@ -209,11 +209,11 @@ namespace Spartan
         const unsigned int image_height = FreeImage_GetHeight(bitmap);
 
         // Fill RGBA vector with the data from the FIBITMAP
-        std::vector<std::byte>& mip = texture->AddMip();
+        RHI_Texture_Mip& mip = texture->CreateMip(slice_index);
         GetBitsFromFibitmap(&mip, bitmap, image_width, image_height, image_channel_count);
 
         // If the texture supports mipmaps, generate them
-        if (generate_mipmaps)
+        if (texture->GetFlags() & RHI_Texture_GenerateMipsWhenLoading)
         {
             GenerateMipmaps(bitmap, texture, image_width, image_height, image_channel_count);
         }
@@ -233,26 +233,26 @@ namespace Spartan
         return true;
     }
 
-    bool ImageImporter::GetBitsFromFibitmap(vector<std::byte>* data, FIBITMAP* bitmap, const uint32_t width, const uint32_t height, const uint32_t channels) const
+    bool ImageImporter::GetBitsFromFibitmap(RHI_Texture_Mip* mip, FIBITMAP* bitmap, const uint32_t width, const uint32_t height, const uint32_t channels) const
     {
-        if (!data || width == 0 || height == 0 || channels == 0)
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return false;
-        }
+        // Validate input
+        SP_ASSERT(mip != nullptr);
+        SP_ASSERT(width != 0);
+        SP_ASSERT(height != 0);
+        SP_ASSERT(channels != 0);
 
         // Compute expected data size and reserve enough memory
         const size_t size_bytes = width * height * channels * freeimage_helper::get_bytes_per_channel(bitmap);
-        if (size_bytes != data->size())
+        if (size_bytes != mip->bytes.size())
         {
-            data->clear();
-            data->reserve(size_bytes);
-            data->resize(size_bytes);
+            mip->bytes.clear();
+            mip->bytes.reserve(size_bytes);
+            mip->bytes.resize(size_bytes);
         }
 
         // Copy the data over to our vector
         const auto bits = FreeImage_GetBits(bitmap);
-        memcpy(&(*data)[0], bits, size_bytes);
+        memcpy(&mip->bytes[0], bits, size_bytes);
 
         return true;
     }
@@ -275,16 +275,16 @@ namespace Spartan
             
             // Resize the RHI_Texture vector accordingly
             const auto size = width * height * channels;
-            std::vector<std::byte>& mip = texture->AddMip();
-            mip.reserve(size);
-            mip.resize(size);
+            RHI_Texture_Mip& mip = texture->CreateMip(0);
+            mip.bytes.reserve(size);
+            mip.bytes.resize(size);
         }
 
         // Pass data pointers (now that the RHI_Texture mip vector has been constructed)
         for (uint32_t i = 0; i < jobs.size(); i++)
         {
             // reminder: i + 1 because the 0 mip is the default image size
-            jobs[i].data = &texture->GetMip(i + 1);
+            jobs[i].mip = &texture->GetMip(0, i + 1);
         }
 
         // Parallelize mipmap generation using multiple threads (because FreeImage_Rescale() is expensive)
@@ -294,7 +294,7 @@ namespace Spartan
             threading->AddTask([this, &job, &bitmap]()
             {
                 FIBITMAP* bitmap_scaled = FreeImage_Rescale(bitmap, job.width, job.height, freeimage_helper::rescale_filter);
-                if (!GetBitsFromFibitmap(job.data, bitmap_scaled, job.width, job.height, job.channel_count))
+                if (!GetBitsFromFibitmap(job.mip, bitmap_scaled, job.width, job.height, job.channel_count))
                 {
                     LOG_ERROR("Failed to create mip level %dx%d", job.width, job.height);
                 }

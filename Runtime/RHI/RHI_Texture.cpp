@@ -56,7 +56,7 @@ namespace Spartan
 
     bool RHI_Texture::SaveToFile(const string& file_path)
     {
-        // Check to see if the file already exists (if so, get the byte count)
+        // If a file already exists, get the byte count
         uint32_t byte_count = 0;
         {
             if (FileSystem::Exists(file_path))
@@ -69,19 +69,20 @@ namespace Spartan
             }
         }
 
-        auto append = true;
+        bool append = true;
         auto file = make_unique<FileStream>(file_path, FileStream_Write | FileStream_Append);
         if (!file->IsOpen())
             return false;
 
-        // If the existing file has a byte count but we 
-        // hold no data, don't overwrite the file's bytes.
-        if (byte_count != 0 && m_data.empty())
+        // If the existing file has texture data but we don't, don't overwrite them
+        bool dont_overwrite_data = byte_count != 0 && !HasData();
+        if (dont_overwrite_data)
         {
             file->Skip
             (
                 sizeof(uint32_t) +    // byte count
-                sizeof(uint32_t) +    // mipmap count
+                sizeof(uint32_t) +    // array size
+                sizeof(uint32_t) +    // mip count
                 byte_count            // bytes
             );
         }
@@ -89,14 +90,16 @@ namespace Spartan
         {
             byte_count = GetByteCount();
 
-            // Write byte count
+            // Write data
             file->Write(byte_count);
-            // Write mipmap count
-            file->Write(static_cast<uint32_t>(m_data.size()));
-            // Write bytes
-            for (auto& mip : m_data)
+            file->Write(m_array_size);
+            file->Write(m_mip_count);
+            for (RHI_Texture_Slice& slice : m_data)
             {
-                file->Write(mip);
+                for (RHI_Texture_Mip& mip : slice.mips)
+                {
+                    file->Write(mip.bytes);
+                }
             }
 
             // The bytes have been saved, so we can now free some memory
@@ -131,14 +134,14 @@ namespace Spartan
         m_load_state = LoadState::Started;
 
         // Load from disk
-        auto texture_data_loaded = false;
+        bool texture_data_loaded = false;
         if (FileSystem::IsEngineTextureFile(path)) // engine format (binary)
         {
             texture_data_loaded = LoadFromFile_NativeFormat(path);
-        }    
+        }
         else if (FileSystem::IsSupportedImageFile(path)) // foreign format (most known image formats)
         {
-            texture_data_loaded = LoadFromFile_ForeignFormat(path, m_flags & RHI_Texture_GenerateMipsWhenLoading);
+            texture_data_loaded = LoadFromFile_ForeignFormat(path);
         }
 
         // Ensure that we have the data
@@ -148,8 +151,6 @@ namespace Spartan
             m_load_state = LoadState::Failed;
             return false;
         }
-
-        m_mip_count = static_cast<uint32_t>(m_data.size());
 
         // Create GPU resource
         if (!CreateResourceGpu())
@@ -165,83 +166,73 @@ namespace Spartan
             m_data.clear();
             m_data.shrink_to_fit();
         }
-        m_load_state = LoadState::Completed;
 
         // Compute memory usage
         {
             m_object_size_cpu = 0;
             m_object_size_gpu = 0;
-            for (uint8_t mip_index = 0; mip_index < m_mip_count; mip_index++)
+            for (uint32_t array_index = 0; array_index < m_array_size; array_index++)
             {
-                const uint32_t mip_width  = m_width >> mip_index;
-                const uint32_t mip_height = m_height >> mip_index;
+                for (uint32_t mip_index = 0; mip_index < m_mip_count; mip_index++)
+                {
+                    const uint32_t mip_width    = m_width >> mip_index;
+                    const uint32_t mip_height   = m_height >> mip_index;
 
-                m_object_size_cpu += mip_index < m_data.size() ? m_data[mip_index].size() * sizeof(std::byte) : 0;
-                m_object_size_gpu += mip_width * mip_height * (m_bits_per_channel / 8);
+                    if (HasData())
+                    {
+                        m_object_size_cpu += m_data[array_index].mips[mip_index].bytes.size() * sizeof(std::byte);
+                    }
+                    m_object_size_gpu += mip_width * mip_height * (m_bits_per_channel / 8);
+                }
             }
         }
+
+        m_load_state = LoadState::Completed;
 
         return true;
     }
 
-    vector<std::byte>& RHI_Texture::GetMip(const uint8_t index)
+    RHI_Texture_Mip& RHI_Texture::CreateMip(const uint32_t array_index)
     {
-        static vector<std::byte> empty;
-
-        if (index >= m_data.size())
+        // Grow if needed
+        while (array_index >= m_data.size())
         {
-            LOG_WARNING("Index out of range");
+            m_array_size++;
+            m_data.emplace_back();
+        }
+
+        m_mip_count++;
+        return m_data[array_index].mips.emplace_back();
+    }
+
+    RHI_Texture_Mip& RHI_Texture::GetMip(const uint32_t array_index, const uint32_t mip_index)
+    {
+        static RHI_Texture_Mip empty;
+
+        if (array_index >= m_data.size())
             return empty;
-        }
 
-        return m_data[index];
+        if (mip_index >= m_data[array_index].mips.size())
+            return empty;
+
+        return m_data[array_index].mips[mip_index];
     }
 
-    vector<std::byte> RHI_Texture::GetOrLoadMip(const uint8_t index)
+    Spartan::RHI_Texture_Slice& RHI_Texture::GetSlice(const uint32_t array_index)
     {
-        vector<std::byte> data;
+        static RHI_Texture_Slice empty;
 
-        // Use existing data, if it's there
-        if (index < m_data.size())
-        {
-            data = m_data[index];
-        }
-        // Else attempt to load the data
-        else
-        {
-            auto file = make_unique<FileStream>(GetResourceFilePathNative(), FileStream_Read);
-            if (file->IsOpen())
-            {
-                auto byte_count = file->ReadAs<uint32_t>();
-                const uint32_t mip_count  = file->ReadAs<uint32_t>();
+        if (array_index >= m_data.size())
+            return empty;
 
-                if (index < mip_count)
-                {
-                    for (uint8_t i = 0; i <= index; i++)
-                    {
-                        file->Read(&data);
-                    }
-                }
-                else
-                {
-                    LOG_ERROR("Invalid index");
-                }
-                file->Close();
-            }
-            else
-            {
-                LOG_ERROR("Unable to retreive data");
-            }
-        }
-
-        return data;
+        return m_data[array_index];
     }
 
-    bool RHI_Texture::LoadFromFile_ForeignFormat(const string& file_path, const bool generate_mipmaps)
+    bool RHI_Texture::LoadFromFile_ForeignFormat(const string& file_path)
     {
         // Load texture
-        ImageImporter* importer = m_context->GetSubsystem<ResourceCache>()->GetImageImporter();    
-        if (!importer->Load(file_path, this, generate_mipmaps))
+        ImageImporter* importer = m_context->GetSubsystem<ResourceCache>()->GetImageImporter();
+        if (!importer->Load(file_path, this, 0))
             return false;
 
         // Set resource file path so it can be used by the resource cache
@@ -259,15 +250,18 @@ namespace Spartan
         m_data.clear();
         m_data.shrink_to_fit();
 
-        // Read byte and mipmap count
-        auto byte_count = file->ReadAs<uint32_t>();
-        const auto mip_count  = file->ReadAs<uint32_t>();
-
-        // Read bytes
-        m_data.resize(mip_count);
-        for (auto& mip : m_data)
+        // Read data
+        uint32_t byte_count = file->ReadAs<uint32_t>();
+        m_array_size        = file->ReadAs<uint32_t>();
+        m_mip_count         = file->ReadAs<uint32_t>();
+        m_data.resize(m_array_size);
+        for (RHI_Texture_Slice& slice : m_data)
         {
-            file->Read(&mip);
+            slice.mips.resize(m_mip_count);
+            for (RHI_Texture_Mip& mip : slice.mips)
+            {
+                file->Read(&mip.bytes);
+            }
         }
 
         // Read properties
@@ -312,9 +306,12 @@ namespace Spartan
     {
         uint32_t byte_count = 0;
 
-        for (auto& mip : m_data)
+        for (const RHI_Texture_Slice& slice : m_data)
         {
-            byte_count += static_cast<uint32_t>(mip.size());
+            for (const RHI_Texture_Mip& mip : slice.mips)
+            {
+                byte_count += static_cast<uint32_t>(mip.bytes.size());
+            }
         }
 
         return byte_count;

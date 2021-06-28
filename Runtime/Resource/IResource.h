@@ -36,6 +36,7 @@ namespace Spartan
         Unknown,
         Texture,
         Texture2d,
+        Texture2dArray,
         TextureCube,
         Audio,
         Material,
@@ -115,8 +116,8 @@ namespace Spartan
         static constexpr ResourceType TypeToEnum();
 
     protected:
-        ResourceType m_resource_type    = ResourceType::Unknown;
-        LoadState m_load_state          = LoadState::Idle;
+        ResourceType m_resource_type        = ResourceType::Unknown;
+        std::atomic<LoadState> m_load_state = LoadState::Idle;
 
     private:
         std::string m_resource_name;
