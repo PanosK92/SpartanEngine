@@ -126,23 +126,17 @@ namespace Spartan
 
         LOG_INFO("Creating sky box...");
 
-        // Todo: Make RHI_TextureCube simply have a constructor that can read a vector of file paths
-
-        // Load all textures (sides) using an RHI_Texture2D
         ResourceCache* resource_cache = m_context->GetSubsystem<ResourceCache>();
-        ImageImporter* image_importer = resource_cache->GetImageImporter();
-        shared_ptr<RHI_Texture2D> scratch_tex = make_shared<RHI_Texture2D>(GetContext(), false);
+
+        // Load all textures (sides)
+        shared_ptr<RHI_TextureCube> texture = make_shared<RHI_TextureCube>(GetContext());
         for (uint32_t slice_index = 0; static_cast<uint32_t>(file_paths.size()); slice_index++)
         {
-            image_importer->Load(file_paths[slice_index], scratch_tex.get(), slice_index);
+            resource_cache->GetImageImporter()->Load(file_paths[slice_index], slice_index, static_cast<RHI_Texture*>(texture.get()));
         }
 
-        // Create a RHI_TextureCube from RHI_Texture2D's data
-        shared_ptr<RHI_TextureCube> texture = make_shared<RHI_TextureCube>(GetContext(), scratch_tex->GetWidth(), scratch_tex->GetHeight(), scratch_tex->GetFormat(), scratch_tex->GetData());
+        // Set resource file path
         texture->SetResourceFilePath(resource_cache->GetProjectDirectory() + "environment" + EXTENSION_TEXTURE);
-        texture->SetWidth(scratch_tex->GetWidth());
-        texture->SetHeight(scratch_tex->GetHeight());
-        texture->SetGrayscale(false);
 
         // Apply sky sphere to renderer
         SetTexture(static_pointer_cast<RHI_Texture>(texture));

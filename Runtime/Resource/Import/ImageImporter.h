@@ -40,7 +40,7 @@ namespace Spartan
         ImageImporter(Context* context);
         ~ImageImporter();
 
-        bool Load(const std::string& file_path, RHI_Texture* texture, const uint32_t slice_index);
+        bool Load(const std::string& file_path, const uint32_t slice_index, RHI_Texture* texture);
 
     private:
         bool GetBitsFromFibitmap(RHI_Texture_Mip* mip, FIBITMAP* bitmap, uint32_t width, uint32_t height, uint32_t channels) const;

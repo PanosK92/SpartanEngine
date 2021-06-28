@@ -231,8 +231,8 @@ namespace Spartan
     bool RHI_Texture::LoadFromFile_ForeignFormat(const string& file_path)
     {
         // Load texture
-        ImageImporter* importer = m_context->GetSubsystem<ResourceCache>()->GetImageImporter();
-        if (!importer->Load(file_path, this, 0))
+        ImageImporter* image_importer = m_context->GetSubsystem<ResourceCache>()->GetImageImporter();
+        if (!image_importer->Load(file_path, 0, this))
             return false;
 
         // Set resource file path so it can be used by the resource cache
