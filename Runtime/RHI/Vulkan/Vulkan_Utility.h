@@ -780,7 +780,7 @@ namespace Spartan::vulkan_utility
             return true;
         }
 
-        inline bool set_layout(void* cmd_buffer, const RHI_Texture* texture, const RHI_Image_Layout layout_new)
+        inline bool set_layout(void* cmd_buffer, RHI_Texture* texture, const RHI_Image_Layout layout_new)
         {
             return set_layout(cmd_buffer, texture->Get_Resource(), get_aspect_mask(texture), texture->GetMipCount(), texture->GetArraySize(), texture->GetLayout(), layout_new);
         }

@@ -28,8 +28,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World.h"
 #include "../../IO/FileStream.h"
 #include "../../Rendering/Renderer.h"
-#include "../../RHI/RHI_Texture2D.h"
-#include "../../RHI/RHI_TextureCube.h"
+#include "../RHI/RHI_Texture2D.h"
+#include "../RHI/RHI_TextureCube.h"
+#include "../RHI/RHI_Texture2DArray.h"
 //====================================
 
 //= NAMESPACES ===============
@@ -459,33 +460,33 @@ namespace Spartan
 
         if (GetLightType() == LightType::Directional)
         {
-            m_shadow_map.texture_depth = make_unique<RHI_Texture2D>(m_context, resolution, resolution, RHI_Format_D32_Float, m_cascade_count);
+            m_shadow_map.texture_depth = make_unique<RHI_Texture2DArray>(m_context, resolution, resolution, RHI_Format_D32_Float, m_cascade_count, 0, "shadow_map_directional");
 
             if (m_shadows_transparent_enabled)
             {
-                m_shadow_map.texture_color = make_unique<RHI_Texture2D>(m_context, resolution, resolution, RHI_Format_R8G8B8A8_Unorm, m_cascade_count);
+                m_shadow_map.texture_color = make_unique<RHI_Texture2DArray>(m_context, resolution, resolution, RHI_Format_R8G8B8A8_Unorm, m_cascade_count, 0, "shadow_map_directional_color");
             }
 
             m_shadow_map.slices = vector<ShadowSlice>(m_cascade_count);
         }
         else if (GetLightType() == LightType::Point)
         {
-            m_shadow_map.texture_depth = make_unique<RHI_TextureCube>(m_context, resolution, resolution, RHI_Format_D32_Float);
+            m_shadow_map.texture_depth = make_unique<RHI_TextureCube>(m_context, resolution, resolution, RHI_Format_D32_Float, 0, "shadow_map_point_color");
 
             if (m_shadows_transparent_enabled)
             {
-                m_shadow_map.texture_color = make_unique<RHI_TextureCube>(m_context, resolution, resolution, RHI_Format_R8G8B8A8_Unorm);
+                m_shadow_map.texture_color = make_unique<RHI_TextureCube>(m_context, resolution, resolution, RHI_Format_R8G8B8A8_Unorm, 0, "shadow_map_point_color");
             }
 
             m_shadow_map.slices = vector<ShadowSlice>(6);
         }
         else if (GetLightType() == LightType::Spot)
         {
-            m_shadow_map.texture_depth  = make_unique<RHI_Texture2D>(m_context, resolution, resolution, RHI_Format_D32_Float, 1);
+            m_shadow_map.texture_depth  = make_unique<RHI_Texture2D>(m_context, resolution, resolution, RHI_Format_D32_Float, 0, "shadow_map_spot_color");
 
             if (m_shadows_transparent_enabled)
             {
-                m_shadow_map.texture_color = make_unique<RHI_Texture2D>(m_context, resolution, resolution, RHI_Format_R8G8B8A8_Unorm, 1);
+                m_shadow_map.texture_color = make_unique<RHI_Texture2D>(m_context, resolution, resolution, RHI_Format_R8G8B8A8_Unorm, 0, "shadow_map_spot_color");
             }
 
             m_shadow_map.slices = vector<ShadowSlice>(1);

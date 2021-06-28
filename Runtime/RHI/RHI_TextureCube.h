@@ -32,7 +32,7 @@ namespace Spartan
     public:
         RHI_TextureCube(Context* context) : RHI_Texture(context) { m_resource_type = ResourceType::TextureCube; }
 
-        // Creates a cubemap with initial data, 6 textures containing (possibly) mip-levels.
+        // Creates a texture from data (intended for sampling)
         RHI_TextureCube(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const std::vector<RHI_Texture_Slice>& data) : RHI_Texture(context)
         {
             m_resource_type = ResourceType::TextureCube;
@@ -49,9 +49,10 @@ namespace Spartan
             RHI_TextureCube::CreateResourceGpu();
         }
 
-        // Creates a cubemap without any initial data, to be used as a render target
-        RHI_TextureCube(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format) : RHI_Texture(context)
+        // Creates a texture without data (intended for use as a render target)
+        RHI_TextureCube(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const uint16_t flags = 0, std::string name = "") : RHI_Texture(context)
         {
+            m_object_name   = name;
             m_resource_type = ResourceType::TextureCube;
             m_width         = width;
             m_height        = height;
@@ -60,15 +61,13 @@ namespace Spartan
             m_format        = format;
             m_array_size    = 6;
             m_mip_count     = 1;
-            m_flags         = RHI_Texture_Sampled;
+            m_flags         = flags;
+            m_flags         |= RHI_Texture_Sampled;
             m_flags         |= IsDepthFormat() ? RHI_Texture_DepthStencil : RHI_Texture_RenderTarget;
 
-            RHI_TextureCube::CreateResourceGpu();
+            CreateResourceGpu();
         }
 
-        ~RHI_TextureCube();
-
-        // RHI_Texture
-        bool CreateResourceGpu() override;
+        ~RHI_TextureCube() = default;
     };
 }

@@ -34,30 +34,18 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    RHI_Texture2D::~RHI_Texture2D()
-    {
-       
-    }
-
     void RHI_Texture::SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* command_list /*= nullptr*/)
     {
-        
+
     }
 
-	bool RHI_Texture2D::CreateResourceGpu()
-	{
-        return true;
-	}
-
-	// TEXTURE CUBE
-
-    RHI_TextureCube::~RHI_TextureCube()
+    bool RHI_Texture::CreateResourceGpu()
     {
-       
+        return false;
     }
 
-	bool RHI_TextureCube::CreateResourceGpu()
-	{
-        return true;
-	}
+    void RHI_Texture::DestroyResourceGpu()
+    {
+
+    }
 }

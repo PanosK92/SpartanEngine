@@ -96,6 +96,6 @@ namespace Spartan
 
     RHI_DepthStencilState::~RHI_DepthStencilState()
     {
-        d3d11_utility::release(*reinterpret_cast<ID3D11DepthStencilState**>(&m_buffer));
+        d3d11_utility::release(static_cast<ID3D11DepthStencilState*>(m_buffer));
     }
 }

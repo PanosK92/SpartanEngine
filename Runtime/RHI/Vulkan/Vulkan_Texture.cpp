@@ -196,39 +196,6 @@ namespace Spartan
         return target_layout;
     }
 
-    RHI_Texture2D::~RHI_Texture2D()
-    {
-        if (!m_rhi_device || !m_rhi_device->IsInitialised())
-        {
-            LOG_ERROR("Invalid RHI Device.");
-        }
-
-        // Wait in case it's still in use by the GPU
-        m_rhi_device->Queue_WaitAll();
-        
-        // Make sure that no descriptor sets refer to this texture.
-        // Right now I just reset the descriptor set layout cache, which works but it's not ideal.
-        // Todo: Get only the referring descriptor sets, and simply update the slot this texture is bound to.
-        if (Renderer* renderer = m_rhi_device->GetContext()->GetSubsystem<Renderer>())
-        {
-            if (RHI_DescriptorSetLayoutCache* descriptor_set_layout_cache = renderer->GetDescriptorLayoutSetCache())
-            {
-                descriptor_set_layout_cache->Reset();
-            }
-        }
-
-        // De-allocate everything
-        m_data.clear();
-        vulkan_utility::image::view::destroy(m_resource_view[0]);
-        vulkan_utility::image::view::destroy(m_resource_view[1]);
-        for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
-        {
-            vulkan_utility::image::view::destroy(m_resource_view_depthStencil[i]);
-            vulkan_utility::image::view::destroy(m_resource_view_renderTarget[i]);
-        }
-        vulkan_utility::image::destroy(this);
-    }
-
     void RHI_Texture::SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* command_list /*= nullptr*/)
     {
         // The texture is most likely still initialising
@@ -238,7 +205,7 @@ namespace Spartan
         if (m_layout == new_layout)
             return;
 
-         // If a command list is provided, this means we should insert a pipeline barrier
+        // If a command list is provided, this means we should insert a pipeline barrier
         if (command_list)
         {
             if (!vulkan_utility::image::set_layout(static_cast<VkCommandBuffer>(command_list->GetResource_CommandBuffer()), this, new_layout))
@@ -250,7 +217,7 @@ namespace Spartan
         m_layout = new_layout;
     }
 
-    bool RHI_Texture2D::CreateResourceGpu()
+    bool RHI_Texture::CreateResourceGpu()
     {
         if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device)
         {
@@ -345,16 +312,29 @@ namespace Spartan
         return true;
     }
 
-    // TEXTURE CUBE
-
-    RHI_TextureCube::~RHI_TextureCube()
+    void RHI_Texture::DestroyResourceGpu()
     {
-        if (!m_rhi_device->IsInitialised())
-            return;
+        if (!m_rhi_device || !m_rhi_device->IsInitialised())
+        {
+            LOG_ERROR("Invalid RHI Device.");
+        }
 
+        // Wait in case it's still in use by the GPU
         m_rhi_device->Queue_WaitAll();
-        m_data.clear();
 
+        // Make sure that no descriptor sets refer to this texture.
+        // Right now I just reset the descriptor set layout cache, which works but it's not ideal.
+        // Todo: Get only the referring descriptor sets, and simply update the slot this texture is bound to.
+        if (Renderer* renderer = m_rhi_device->GetContext()->GetSubsystem<Renderer>())
+        {
+            if (RHI_DescriptorSetLayoutCache* descriptor_set_layout_cache = renderer->GetDescriptorLayoutSetCache())
+            {
+                descriptor_set_layout_cache->Reset();
+            }
+        }
+
+        // De-allocate everything
+        m_data.clear();
         vulkan_utility::image::view::destroy(m_resource_view[0]);
         vulkan_utility::image::view::destroy(m_resource_view[1]);
         for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
@@ -363,91 +343,5 @@ namespace Spartan
             vulkan_utility::image::view::destroy(m_resource_view_renderTarget[i]);
         }
         vulkan_utility::image::destroy(this);
-    }
-
-    bool RHI_TextureCube::CreateResourceGpu()
-    {
-        if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device)
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return false;
-        }
-
-        // Create image
-        if (!vulkan_utility::image::create(this))
-        {
-            LOG_ERROR("Failed to create image");
-            return false;
-        }
-
-        // If the texture has any data, stage it
-        if (HasData())
-        {
-            if (!stage(this, m_layout))
-                return false;
-        }
-
-        // Transition to target layout
-        if (VkCommandBuffer cmd_buffer = vulkan_utility::command_buffer_immediate::begin(RHI_Queue_Graphics))
-        {
-            RHI_Image_Layout target_layout = GetAppropriateLayout(this);
-
-            // Transition to the final layout
-            if (!vulkan_utility::image::set_layout(cmd_buffer, this, target_layout))
-                return false;
-
-            // Flush
-            if (!vulkan_utility::command_buffer_immediate::end(RHI_Queue_Graphics))
-                return false;
-
-            // Update this texture with the new layout
-            m_layout = target_layout;
-        }
-
-        // Create image views
-        {
-            // Shader resource views
-            if (IsSampled())
-            {
-                if (IsColorFormat())
-                {
-                    if (!vulkan_utility::image::view::create(m_resource, m_resource_view[0], this))
-                        return false;
-                }
-
-                if (IsDepthFormat())
-                {
-                    if (!vulkan_utility::image::view::create(m_resource, m_resource_view[0], this, 0, m_array_size, true, false))
-                        return false;
-                }
-
-                if (IsStencilFormat())
-                {
-                    if (!vulkan_utility::image::view::create(m_resource, m_resource_view[1], this, 0, m_array_size, false, true))
-                        return false;
-                }
-            }
-
-            // Render target views
-            for (uint32_t i = 0; i < m_array_size; i++)
-            {
-                if (IsRenderTarget())
-                {
-                    if (!vulkan_utility::image::view::create(m_resource, m_resource_view_renderTarget[i], this, i, 1))
-                        return false;
-                }
-
-                if (IsDepthStencil())
-                {
-                    if (!vulkan_utility::image::view::create(m_resource, m_resource_view_depthStencil[i], this, i, 1, true))
-                        return false;
-                }
-            }
-
-            // Name the image and image view(s)
-            set_debug_name(this);
-        }
-
-        return true;
     }
 }

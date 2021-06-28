@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Spartan.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Texture2D.h"
+#include "../RHI_Texture2DArray.h"
 #include "../RHI_TextureCube.h"
 #include "../RHI_CommandList.h"
 //================================
@@ -82,18 +83,17 @@ namespace Spartan
         return d3d11_format[format];
     }
 
-    // TEXTURE 2D
-
-    static bool CreateTexture2d(
-        void*& texture,
+    static bool CreateTexture(
+        ID3D11Texture2D*& texture,
+        const ResourceType resource_type,
         const uint32_t width,
         const uint32_t height,
-        const uint32_t channels,
-        const uint32_t bits_per_channel,
+        const uint32_t channel_count,
         const uint32_t array_size,
         const uint32_t mip_count,
+        const uint32_t bits_per_channel,
         const DXGI_FORMAT format,
-        const UINT bind_flags,
+        const UINT flags,
         vector<RHI_Texture_Slice>& data,
         const shared_ptr<RHI_Device>& rhi_device
     )
@@ -110,9 +110,15 @@ namespace Spartan
         texture_desc.SampleDesc.Count       = 1;
         texture_desc.SampleDesc.Quality     = 0;
         texture_desc.Usage                  = has_initial_data ? D3D11_USAGE_IMMUTABLE : D3D11_USAGE_DEFAULT;
-        texture_desc.BindFlags              = bind_flags;
+        texture_desc.BindFlags              = flags;
         texture_desc.MiscFlags              = 0;
         texture_desc.CPUAccessFlags         = 0;
+
+        if (resource_type == ResourceType::TextureCube)
+        {
+            texture_desc.Usage      = (flags & D3D11_BIND_RENDER_TARGET) || (flags & D3D11_BIND_DEPTH_STENCIL) ? D3D11_USAGE_DEFAULT : D3D11_USAGE_IMMUTABLE;
+            texture_desc.MiscFlags  = D3D11_RESOURCE_MISC_TEXTURECUBE;
+        }
 
         // Set initial data
         vector<D3D11_SUBRESOURCE_DATA> vec_subresource_data;
@@ -125,105 +131,104 @@ namespace Spartan
                     uint32_t mip_width = width >> index_mip;
 
                     D3D11_SUBRESOURCE_DATA& subresource_data    = vec_subresource_data.emplace_back(D3D11_SUBRESOURCE_DATA{});
-                    subresource_data.pSysMem                    = data[index_array].mips[index_mip].bytes.data();   // Data pointer
-                    subresource_data.SysMemPitch                = mip_width * channels * (bits_per_channel / 8);    // Line width in bytes
-                    subresource_data.SysMemSlicePitch           = 0;                                                // This is only used for 3D textures
+                    subresource_data.pSysMem                    = data[index_array].mips[index_mip].bytes.data();       // Data pointer
+                    subresource_data.SysMemPitch                = mip_width * channel_count * (bits_per_channel / 8);   // Line width in bytes
+                    subresource_data.SysMemSlicePitch           = 0;                                                    // This is only used for 3D textures
                 }
             }
         }
 
         // Create
-         return d3d11_utility::error_check(rhi_device->GetContextRhi()->device->CreateTexture2D(&texture_desc, vec_subresource_data.data(), reinterpret_cast<ID3D11Texture2D**>(&texture)));
+        return d3d11_utility::error_check(rhi_device->GetContextRhi()->device->CreateTexture2D(&texture_desc, vec_subresource_data.data(), &texture));
     }
 
-    static bool CreateRenderTargetView2d(void* texture, array<void*, rhi_max_render_target_count>& views, const DXGI_FORMAT format, const unsigned array_size, const shared_ptr<RHI_Device>& rhi_device)
+    static bool CreateRenderTargetView(void* texture, array<void*, rhi_max_render_target_count>& views, const ResourceType resource_type, const DXGI_FORMAT format, const uint32_t array_size, const shared_ptr<RHI_Device>& rhi_device)
     {
         // Describe
-        D3D11_RENDER_TARGET_VIEW_DESC view_desc = {};
-        view_desc.Format                        = format;
-        view_desc.ViewDimension                 = (array_size == 1) ? D3D11_RTV_DIMENSION_TEXTURE2D : D3D11_RTV_DIMENSION_TEXTURE2DARRAY;
-        view_desc.Texture2DArray.MipSlice       = 0;
-        view_desc.Texture2DArray.ArraySize      = 1;
+        D3D11_RENDER_TARGET_VIEW_DESC desc = {};
+        desc.Format                        = format;
+        desc.ViewDimension                 = resource_type == ResourceType::Texture2d ? D3D11_RTV_DIMENSION_TEXTURE2D : D3D11_RTV_DIMENSION_TEXTURE2DARRAY;
+        desc.Texture2DArray.MipSlice       = 0;
+        desc.Texture2DArray.ArraySize      = 1;
 
         // Create
         for (uint32_t i = 0; i < array_size; i++)
         {
-            view_desc.Texture2DArray.FirstArraySlice = i;
+            desc.Texture2DArray.FirstArraySlice = i;
 
-            if (!d3d11_utility::error_check(rhi_device->GetContextRhi()->device->CreateRenderTargetView(static_cast<ID3D11Resource*>(texture), &view_desc, reinterpret_cast<ID3D11RenderTargetView**>(&views[i]))))
+            if (!d3d11_utility::error_check(rhi_device->GetContextRhi()->device->CreateRenderTargetView(static_cast<ID3D11Resource*>(texture), &desc, reinterpret_cast<ID3D11RenderTargetView**>(&views[i]))))
                 return false;
         }
 
         return true;
     }
 
-    static bool CreateDepthStencilView2d(void* texture, array<void*, rhi_max_render_target_count>& views, const uint32_t array_size, const DXGI_FORMAT format, const bool read_only, const shared_ptr<RHI_Device>& rhi_device)
+    static bool CreateDepthStencilView(void* texture, array<void*, rhi_max_render_target_count>& views, const ResourceType resource_type, const DXGI_FORMAT format, const uint32_t array_size, const bool read_only, const shared_ptr<RHI_Device>& rhi_device)
     {
         // Describe
-        D3D11_DEPTH_STENCIL_VIEW_DESC dsv_desc  = {};
-        dsv_desc.Format                         = format;
-        dsv_desc.ViewDimension                  = (array_size == 1) ? D3D11_DSV_DIMENSION_TEXTURE2D : D3D11_DSV_DIMENSION_TEXTURE2DARRAY;
-        dsv_desc.Texture2DArray.MipSlice        = 0;
-        dsv_desc.Texture2DArray.ArraySize       = 1;
-        dsv_desc.Flags                          = read_only ? D3D11_DSV_READ_ONLY_DEPTH | D3D11_DSV_READ_ONLY_STENCIL : 0;
+        D3D11_DEPTH_STENCIL_VIEW_DESC desc  = {};
+        desc.Format                         = format;
+        desc.ViewDimension                  = resource_type == ResourceType::Texture2d ? D3D11_DSV_DIMENSION_TEXTURE2D : D3D11_DSV_DIMENSION_TEXTURE2DARRAY;
+        desc.Texture2DArray.MipSlice        = 0;
+        desc.Texture2DArray.ArraySize       = 1;
+        desc.Flags                          = read_only ? D3D11_DSV_READ_ONLY_DEPTH | D3D11_DSV_READ_ONLY_STENCIL : 0;
 
         // Create
         for (uint32_t i = 0; i < array_size; i++)
         {
-            dsv_desc.Texture2DArray.FirstArraySlice = i;
+            desc.Texture2DArray.FirstArraySlice = i;
 
-            if(!d3d11_utility::error_check(rhi_device->GetContextRhi()->device->CreateDepthStencilView(static_cast<ID3D11Resource*>(texture), &dsv_desc, reinterpret_cast<ID3D11DepthStencilView**>(&views[i]))))
+            if(!d3d11_utility::error_check(rhi_device->GetContextRhi()->device->CreateDepthStencilView(static_cast<ID3D11Resource*>(texture), &desc, reinterpret_cast<ID3D11DepthStencilView**>(&views[i]))))
                 return false;
         }
 
         return true;
     }
 
-    static bool CreateShaderResourceView2d(void* texture, void*& view, const DXGI_FORMAT format, const uint32_t array_size, const uint32_t mip_count, const shared_ptr<RHI_Device>& rhi_device)
+    static bool CreateShaderResourceView(void* texture, void*& view, const ResourceType resource_type, const DXGI_FORMAT format, const uint32_t array_size, const uint32_t mip_count, const shared_ptr<RHI_Device>& rhi_device)
     {
         // Describe
-        D3D11_SHADER_RESOURCE_VIEW_DESC shader_resource_view_desc   = {};
-        shader_resource_view_desc.Format                            = format;
-        shader_resource_view_desc.ViewDimension                     = (array_size == 1) ? D3D11_SRV_DIMENSION_TEXTURE2D : D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
-        shader_resource_view_desc.Texture2DArray.FirstArraySlice    = 0;
-        shader_resource_view_desc.Texture2DArray.MostDetailedMip    = 0;
-        shader_resource_view_desc.Texture2DArray.MipLevels          = static_cast<UINT>(mip_count);
-        shader_resource_view_desc.Texture2DArray.ArraySize          = static_cast<UINT>(array_size);
+        D3D11_SHADER_RESOURCE_VIEW_DESC desc   = {};
+        desc.Format                            = format;
+
+        if (resource_type == ResourceType::Texture2d)
+        {
+            desc.ViewDimension                  = D3D11_SRV_DIMENSION_TEXTURE2D;
+            desc.Texture2DArray.FirstArraySlice = 0;
+            desc.Texture2DArray.MostDetailedMip = 0;
+            desc.Texture2DArray.MipLevels       = static_cast<UINT>(mip_count);
+            desc.Texture2DArray.ArraySize       = static_cast<UINT>(array_size);
+        }
+        else if (resource_type == ResourceType::Texture2dArray)
+        {
+            desc.ViewDimension                  = D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
+            desc.Texture2DArray.FirstArraySlice = 0;
+            desc.Texture2DArray.MostDetailedMip = 0;
+            desc.Texture2DArray.MipLevels       = static_cast<UINT>(mip_count);
+            desc.Texture2DArray.ArraySize       = static_cast<UINT>(array_size);
+        }
+        else if (resource_type == ResourceType::TextureCube)
+        {
+            desc.ViewDimension               = D3D11_SRV_DIMENSION_TEXTURECUBE;
+            desc.TextureCube.MipLevels       = static_cast<UINT>(mip_count);
+            desc.TextureCube.MostDetailedMip = 0;
+        }
 
         // Create
-        return d3d11_utility::error_check(rhi_device->GetContextRhi()->device->CreateShaderResourceView(static_cast<ID3D11Resource*>(texture), &shader_resource_view_desc, reinterpret_cast<ID3D11ShaderResourceView**>(&view)));
+        return d3d11_utility::error_check(rhi_device->GetContextRhi()->device->CreateShaderResourceView(static_cast<ID3D11Resource*>(texture), &desc, reinterpret_cast<ID3D11ShaderResourceView**>(&view)));
     }
 
-    static bool CreateUnorderedAccessView2d(void* texture, void*& view, const DXGI_FORMAT format, const uint32_t array_size, const shared_ptr<RHI_Device>& rhi_device)
+    static bool CreateUnorderedAccessView(void* texture, void*& view, const ResourceType resource_type, const DXGI_FORMAT format, const uint32_t array_size, const shared_ptr<RHI_Device>& rhi_device)
     {
         // Describe
-        D3D11_UNORDERED_ACCESS_VIEW_DESC unorderd_access_view_desc  = {};
-        unorderd_access_view_desc.Format                            = format;
-        unorderd_access_view_desc.ViewDimension                     = (array_size == 1) ? D3D11_UAV_DIMENSION_TEXTURE2D : D3D11_UAV_DIMENSION_TEXTURE2DARRAY;
-        unorderd_access_view_desc.Texture2DArray.FirstArraySlice    = 0;
-        unorderd_access_view_desc.Texture2DArray.ArraySize          = static_cast<UINT>(array_size);
+        D3D11_UNORDERED_ACCESS_VIEW_DESC desc  = {};
+        desc.Format                            = format;
+        desc.ViewDimension                     = resource_type == ResourceType::Texture2d ? D3D11_UAV_DIMENSION_TEXTURE2D : D3D11_UAV_DIMENSION_TEXTURE2DARRAY;
+        desc.Texture2DArray.FirstArraySlice    = 0;
+        desc.Texture2DArray.ArraySize          = static_cast<UINT>(array_size);
 
         // Create
-        return d3d11_utility::error_check(rhi_device->GetContextRhi()->device->CreateUnorderedAccessView(static_cast<ID3D11Resource*>(texture), &unorderd_access_view_desc, reinterpret_cast<ID3D11UnorderedAccessView**>(&view)));
-    }
-
-    RHI_Texture2D::~RHI_Texture2D()
-    {
-        d3d11_utility::release(*reinterpret_cast<ID3D11ShaderResourceView**>(&m_resource_view[0]));
-        d3d11_utility::release(*reinterpret_cast<ID3D11UnorderedAccessView**>(&m_resource_view_unorderedAccess));
-        d3d11_utility::release(*reinterpret_cast<ID3D11Texture2D**>(&m_resource));
-        for (void*& render_target : m_resource_view_renderTarget)
-        {
-            d3d11_utility::release(*reinterpret_cast<ID3D11RenderTargetView**>(&render_target));
-        }
-        for (void*& depth_stencil : m_resource_view_depthStencil)
-        {
-            d3d11_utility::release(*reinterpret_cast<ID3D11DepthStencilView**>(&depth_stencil));
-        }
-        for (void*& depth_stencil : m_resource_view_depthStencilReadOnly)
-        {
-            d3d11_utility::release(*reinterpret_cast<ID3D11DepthStencilView**>(&depth_stencil));
-        }
+        return d3d11_utility::error_check(rhi_device->GetContextRhi()->device->CreateUnorderedAccessView(static_cast<ID3D11Resource*>(texture), &desc, reinterpret_cast<ID3D11UnorderedAccessView**>(&view)));
     }
 
     void RHI_Texture::SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* command_list /*= nullptr*/)
@@ -231,13 +236,11 @@ namespace Spartan
         m_layout = new_layout;
     }
 
-    bool RHI_Texture2D::CreateResourceGpu()
+    bool RHI_Texture::CreateResourceGpu()
     {
-        if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device)
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return false;
-        }
+        // Validate
+        SP_ASSERT(m_rhi_device != nullptr);
+        SP_ASSERT(m_rhi_device->GetContextRhi()->device != nullptr);
     
         bool result_tex = true;
         bool result_srv = true;
@@ -253,271 +256,13 @@ namespace Spartan
         const DXGI_FORMAT format_dsv    = GetDepthFormatDsv(m_format);
         const DXGI_FORMAT format_srv    = GetDepthFormatSrv(m_format);
 
-        // TEXTURE
-        result_tex = CreateTexture2d
-        (
-            m_resource,
-            m_width,
-            m_height,
-            m_channel_count,
-            m_bits_per_channel,
-            m_array_size,
-            m_mip_count,
-            format,
-            flags,
-            m_data,
-            m_rhi_device
-        );
-
-        // RESOURCE VIEW
-        if (IsSampled())
-        {
-            result_srv = CreateShaderResourceView2d(
-                m_resource,
-                m_resource_view[0],
-                format_srv,
-                m_array_size,
-                m_mip_count,
-                m_rhi_device
-            );
-        }
-
-        // UNORDERED ACCESS VIEW
-        if (IsStorage())
-        {
-            result_uav = CreateUnorderedAccessView2d(m_resource, m_resource_view_unorderedAccess, format, m_array_size, m_rhi_device);
-        }
-
-        // DEPTH-STENCIL VIEW
-        if (IsDepthStencil())
-        {
-            result_ds = CreateDepthStencilView2d
-            (
-                m_resource,
-                m_resource_view_depthStencil,
-                m_array_size,
-                format_dsv,
-                false,
-                m_rhi_device
-            );
-
-            if (m_flags & RHI_Texture_DepthStencilReadOnly)
-            {
-                result_ds = CreateDepthStencilView2d
-                (
-                    m_resource,
-                    m_resource_view_depthStencilReadOnly,
-                    m_array_size,
-                    format_dsv,
-                    true,
-                    m_rhi_device
-                );
-            }
-        }
-
-        // RENDER TARGET VIEW
-        if (IsRenderTarget())
-        {
-            result_rt = CreateRenderTargetView2d
-            (
-                m_resource,
-                m_resource_view_renderTarget,
-                format,
-                m_array_size,
-                m_rhi_device
-            );
-        }
-
-        d3d11_utility::release(*reinterpret_cast<ID3D11Texture2D**>(&m_resource));
-
-        return result_tex && result_srv && result_uav && result_rt && result_ds;
-    }
-
-    // TEXTURE CUBE
-
-    inline bool CreateTextureCube(
-        void*& texture,
-        const uint32_t width,
-        const uint32_t height,
-        const uint32_t channel_count,
-        const uint32_t array_size,
-        const uint32_t mip_count,
-        const uint32_t bits_per_channel,
-        const DXGI_FORMAT format,
-        const UINT flags,
-        vector<RHI_Texture_Slice>& data,
-        const shared_ptr<RHI_Device>& rhi_device
-    )
-    {
-        // Describe
-        D3D11_TEXTURE2D_DESC texture_desc   = {};
-        texture_desc.Width                  = static_cast<UINT>(width);
-        texture_desc.Height                 = static_cast<UINT>(height);
-        texture_desc.ArraySize              = static_cast<UINT>(array_size);
-        texture_desc.MipLevels              = static_cast<UINT>(mip_count);
-        texture_desc.Format                 = format;
-        texture_desc.SampleDesc.Count       = 1;
-        texture_desc.SampleDesc.Quality     = 0;
-        texture_desc.Usage                  = (flags & D3D11_BIND_RENDER_TARGET) || (flags & D3D11_BIND_DEPTH_STENCIL) ? D3D11_USAGE_DEFAULT : D3D11_USAGE_IMMUTABLE;
-        texture_desc.BindFlags              = flags;
-        texture_desc.MiscFlags              = D3D11_RESOURCE_MISC_TEXTURECUBE;
-        texture_desc.CPUAccessFlags         = 0;
-
-        vector<D3D11_SUBRESOURCE_DATA> vec_subresource_data;
-        vector<D3D11_TEXTURE2D_DESC> vec_texture_desc;
-
-        if (!data.empty())
-        { 
-            for (uint32_t face_index = 0; face_index < array_size; face_index++)
-            {
-                RHI_Texture_Slice& face_data = data[face_index];
-
-                for (uint32_t mip_level = 0; mip_level < face_data.GetMipCount(); mip_level++)
-                {
-                    RHI_Texture_Mip& mip_data = face_data.mips[mip_level];
-
-                    // D3D11_SUBRESOURCE_DATA
-                    auto & subresource_data             = vec_subresource_data.emplace_back(D3D11_SUBRESOURCE_DATA{});
-                    subresource_data.pSysMem            = mip_data.bytes.data();                                            // Data pointer
-                    subresource_data.SysMemPitch        = (width >> mip_level) * channel_count * (bits_per_channel / 8);    // Line width in bytes
-                    subresource_data.SysMemSlicePitch   = 0;                                                                // This is only used for 3D textures
-                }
-
-                vec_texture_desc.emplace_back(texture_desc);
-            }
-        }
-        else
-        {
-            vec_texture_desc.emplace_back(texture_desc);
-        }
-
-        // Create
-        return d3d11_utility::error_check(rhi_device->GetContextRhi()->device->CreateTexture2D(vec_texture_desc.data(), vec_subresource_data.data(), reinterpret_cast<ID3D11Texture2D**>(&texture)));
-    }
-
-    inline bool CreateShaderResourceViewCube(void* texture, void*& view, const DXGI_FORMAT format, const uint32_t array_size, const uint32_t mip_count, const shared_ptr<RHI_Device>& rhi_device)
-    {
-        // Describe
-        D3D11_SHADER_RESOURCE_VIEW_DESC srv_desc    = {};
-        srv_desc.Format                             = format;
-        srv_desc.ViewDimension                      = D3D11_SRV_DIMENSION_TEXTURECUBE;
-        srv_desc.TextureCube.MipLevels              = static_cast<UINT>(mip_count);
-        srv_desc.TextureCube.MostDetailedMip        = 0;
-        srv_desc.Texture2DArray.FirstArraySlice     = 0;
-        srv_desc.Texture2DArray.MostDetailedMip     = 0;
-        srv_desc.Texture2DArray.MipLevels           = 1;
-        srv_desc.Texture2DArray.ArraySize           = static_cast<UINT>(array_size);
-
-        // Create
-        return d3d11_utility::error_check(rhi_device->GetContextRhi()->device->CreateShaderResourceView(static_cast<ID3D11Resource*>(texture), &srv_desc, reinterpret_cast<ID3D11ShaderResourceView**>(&view)));
-    }
-
-    inline bool CreateDepthStencilViewCube(void* texture, array<void*, rhi_max_render_target_count>& views, const uint32_t array_size, const DXGI_FORMAT format, bool read_only, const shared_ptr<RHI_Device>& rhi_device)
-    {
-        // DSV
-        D3D11_DEPTH_STENCIL_VIEW_DESC dsv_desc  = {};
-        dsv_desc.Format                         = format;
-        dsv_desc.ViewDimension                  = D3D11_DSV_DIMENSION_TEXTURE2DARRAY;
-        dsv_desc.Texture2DArray.MipSlice        = 0;
-        dsv_desc.Texture2DArray.ArraySize       = 1;
-        dsv_desc.Texture2DArray.FirstArraySlice = 0;
-
-        // Create
-        for (uint32_t i = 0; i < array_size; i++)
-        {
-            dsv_desc.Texture2DArray.FirstArraySlice = i;
-            const auto result = rhi_device->GetContextRhi()->device->CreateDepthStencilView(static_cast<ID3D11Resource*>(texture), &dsv_desc, reinterpret_cast<ID3D11DepthStencilView**>(&views[i]));
-            if (FAILED(result))
-            {
-                LOG_ERROR("Failed, %s.", d3d11_utility::dxgi_error_to_string(result));
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    inline bool CreateRenderTargetViewCube(void* texture, array<void*, rhi_max_render_target_count>& views, const DXGI_FORMAT format, const unsigned array_size, const shared_ptr<RHI_Device>& rhi_device)
-    {
-        // Describe
-        D3D11_RENDER_TARGET_VIEW_DESC view_desc     = {};
-        view_desc.Format                            = format;
-        view_desc.ViewDimension                     = D3D11_RTV_DIMENSION_TEXTURE2DARRAY;
-        view_desc.Texture2DArray.MipSlice           = 0;
-        view_desc.Texture2DArray.ArraySize          = 1;
-        view_desc.Texture2DArray.FirstArraySlice    = 0;
-
-        // Create
-        for (uint32_t i = 0; i < array_size; i++)
-        {
-            view_desc.Texture2DArray.FirstArraySlice = i;
-            const auto result = rhi_device->GetContextRhi()->device->CreateRenderTargetView(static_cast<ID3D11Resource*>(texture), &view_desc, reinterpret_cast<ID3D11RenderTargetView**>(&views[i]));
-            if (FAILED(result))
-            {
-                LOG_ERROR("Failed, %s.", d3d11_utility::dxgi_error_to_string(result));
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    inline bool CreateUnorderedAccessViewCube(void* texture, void*& view, DXGI_FORMAT format, const shared_ptr<RHI_Device>& rhi_device)
-    {
-        // Describe
-        D3D11_UNORDERED_ACCESS_VIEW_DESC unorderd_access_view_desc  = {};
-        unorderd_access_view_desc.ViewDimension                     = D3D11_UAV_DIMENSION_TEXTURE2DARRAY;
-        unorderd_access_view_desc.Format                            = format;
-
-        // Create
-        return d3d11_utility::error_check(rhi_device->GetContextRhi()->device->CreateUnorderedAccessView(static_cast<ID3D11Resource*>(texture), &unorderd_access_view_desc, reinterpret_cast<ID3D11UnorderedAccessView**>(&view)));
-    }
-
-    RHI_TextureCube::~RHI_TextureCube()
-    {
-        d3d11_utility::release(*reinterpret_cast<ID3D11ShaderResourceView**>(&m_resource_view));
-        d3d11_utility::release(*reinterpret_cast<ID3D11UnorderedAccessView**>(&m_resource_view_unorderedAccess));
-        d3d11_utility::release(*reinterpret_cast<ID3D11Texture2D**>(&m_resource));
-        for (void*& render_target : m_resource_view_renderTarget)
-        {
-            d3d11_utility::release(*reinterpret_cast<ID3D11RenderTargetView**>(&render_target));
-        }
-        for (void*& depth_stencil : m_resource_view_depthStencil)
-        {
-            d3d11_utility::release(*reinterpret_cast<ID3D11DepthStencilView**>(&depth_stencil));
-        }
-        for (void*& depth_stencil : m_resource_view_depthStencilReadOnly)
-        {
-            d3d11_utility::release(*reinterpret_cast<ID3D11DepthStencilView**>(&depth_stencil));
-        }
-    }
-
-    bool RHI_TextureCube::CreateResourceGpu()
-    {
-        if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device)
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return false;
-        }
-
-        bool result_tex = true;
-        bool result_srv = true;
-        bool result_uav = true;
-        bool result_rt  = true;
-        bool result_ds  = true;
-
-        // Get texture flags
-        const UINT flags = GetBindFlags(m_flags);
-
-        // Resolve formats
-        const DXGI_FORMAT format      = GetDepthFormat(m_format);
-        const DXGI_FORMAT format_dsv  = GetDepthFormatDsv(m_format);
-        const DXGI_FORMAT format_srv  = GetDepthFormatSrv(m_format);
+        ID3D11Texture2D* resource = nullptr;
 
         // TEXTURE
-        result_tex = CreateTextureCube
+        result_tex = CreateTexture
         (
-            m_resource,
+            resource,
+            m_resource_type,
             m_width,
             m_height,
             m_channel_count,
@@ -533,9 +278,10 @@ namespace Spartan
         // RESOURCE VIEW
         if (IsSampled())
         {
-            result_srv = CreateShaderResourceViewCube(
-                m_resource,
+            result_srv = CreateShaderResourceView(
+                resource,
                 m_resource_view[0],
+                m_resource_type,
                 format_srv,
                 m_array_size,
                 m_mip_count,
@@ -546,30 +292,32 @@ namespace Spartan
         // UNORDERED ACCESS VIEW
         if (IsStorage())
         {
-            result_uav = CreateUnorderedAccessViewCube(m_resource, m_resource_view_unorderedAccess, format, m_rhi_device);
+            result_uav = CreateUnorderedAccessView(resource, m_resource_view_unorderedAccess, m_resource_type, format, m_array_size, m_rhi_device);
         }
 
         // DEPTH-STENCIL VIEW
         if (IsDepthStencil())
         {
-            result_ds = CreateDepthStencilViewCube
+            result_ds = CreateDepthStencilView
             (
-                m_resource,
+                resource,
                 m_resource_view_depthStencil,
-                m_array_size,
+                m_resource_type,
                 format_dsv,
+                m_array_size,
                 false,
                 m_rhi_device
             );
 
             if (m_flags & RHI_Texture_DepthStencilReadOnly)
             {
-                result_ds = CreateDepthStencilViewCube
+                result_ds = CreateDepthStencilView
                 (
-                    m_resource,
+                    resource,
                     m_resource_view_depthStencilReadOnly,
-                    m_array_size,
+                    m_resource_type,
                     format_dsv,
+                    m_array_size,
                     true,
                     m_rhi_device
                 );
@@ -579,18 +327,41 @@ namespace Spartan
         // RENDER TARGET VIEW
         if (IsRenderTarget())
         {
-            result_rt = CreateRenderTargetViewCube
+            result_rt = CreateRenderTargetView
             (
-                m_resource,
+                resource,
                 m_resource_view_renderTarget,
+                m_resource_type,
                 format,
                 m_array_size,
                 m_rhi_device
             );
         }
 
-        d3d11_utility::release(*reinterpret_cast<ID3D11Texture2D**>(&m_resource));
+        d3d11_utility::release(resource);
 
         return result_tex && result_srv && result_uav && result_rt && result_ds;
+    }
+
+    void RHI_Texture::DestroyResourceGpu()
+    {
+        d3d11_utility::release(static_cast<ID3D11ShaderResourceView*>(m_resource_view[0]));
+        d3d11_utility::release(static_cast<ID3D11ShaderResourceView*>(m_resource_view[1]));
+        d3d11_utility::release(static_cast<ID3D11UnorderedAccessView*>(m_resource_view_unorderedAccess));
+
+        for (void*& resource : m_resource_view_renderTarget)
+        {
+            d3d11_utility::release(static_cast<ID3D11RenderTargetView*>(resource));
+        }
+
+        for (void*& resource : m_resource_view_depthStencil)
+        {
+            d3d11_utility::release(static_cast<ID3D11DepthStencilView*>(resource));
+        }
+
+        for (void*& resource : m_resource_view_depthStencilReadOnly)
+        {
+            d3d11_utility::release(static_cast<ID3D11DepthStencilView*>(resource));
+        }
     }
 }

@@ -86,12 +86,11 @@ namespace Spartan::d3d11_utility
     }
 
     template <typename T>
-    constexpr void release(T*& ptr)
+    constexpr void release(T* ptr)
     {
         if (ptr)
         {
             ptr->Release();
-            ptr = nullptr;
         }
     }
 

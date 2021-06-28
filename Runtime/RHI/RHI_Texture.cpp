@@ -52,6 +52,8 @@ namespace Spartan
     {
         m_data.clear();
         m_data.shrink_to_fit();
+
+        DestroyResourceGpu();
     }
 
     bool RHI_Texture::SaveToFile(const string& file_path)
