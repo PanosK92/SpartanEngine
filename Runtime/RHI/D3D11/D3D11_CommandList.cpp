@@ -813,7 +813,8 @@ namespace Spartan
         if (!query_object)
             return;
 
-        d3d11_utility::release(*reinterpret_cast<ID3D11Query**>(&query_object));
+        static_cast<ID3D11Query*>(query_object)->Release();
+        query_object = nullptr;
     }
 
     void RHI_CommandList::Timeblock_Start(const RHI_PipelineState* pipeline_state)

@@ -41,7 +41,7 @@ namespace Spartan
             m_flags         |= generate_mipmaps ? RHI_Texture_GenerateMipsWhenLoading : 0;
         }
 
-        // Creates a texture from data
+        // Creates a texture from data (intended for sampling)
         RHI_Texture2D(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const std::vector<RHI_Texture_Slice>& data) : RHI_Texture(context)
         {
             m_resource_type = ResourceType::Texture2d;
@@ -51,7 +51,7 @@ namespace Spartan
             m_channel_count = GetChannelCountFromFormat(format);
             m_format        = format;
             m_data          = data;
-            m_array_size    = static_cast<uint32_t>(data.size());
+            m_array_size    = 1;
             m_mip_count     = GetSlice(0).GetMipCount();
             m_flags         = RHI_Texture_Sampled;
 
@@ -59,7 +59,7 @@ namespace Spartan
         }
 
         // Creates a texture without any data (intended for usage as a render target)
-        RHI_Texture2D(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const uint32_t array_size = 1, const uint16_t flags = 0, std::string name = "") : RHI_Texture(context)
+        RHI_Texture2D(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const uint16_t flags = 0, std::string name = "") : RHI_Texture(context)
         {
             m_object_name   = name;
             m_resource_type = ResourceType::Texture2d;
@@ -68,18 +68,15 @@ namespace Spartan
             m_channel_count = GetChannelCountFromFormat(format);
             m_viewport      = RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
             m_format        = format;
-            m_array_size    = array_size;
+            m_array_size    = 1;
             m_mip_count     = 1;
             m_flags         = flags;
             m_flags         |= RHI_Texture_Sampled;
             m_flags         |= IsDepthFormat() ? RHI_Texture_DepthStencil : (RHI_Texture_RenderTarget | RHI_Texture_Storage); // Need to optimize that, not every rt is used in a compute shader
 
-            RHI_Texture2D::CreateResourceGpu();
+            CreateResourceGpu();
         }
 
-        ~RHI_Texture2D();
-
-        // RHI_Texture
-        bool CreateResourceGpu() override;
+        ~RHI_Texture2D() = default;
     };
 }

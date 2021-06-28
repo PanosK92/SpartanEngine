@@ -125,8 +125,7 @@ namespace Spartan
         uint16_t GetFlags()         const { return m_flags; }
 
         // GPU resources
-        void* Get_Resource()                                                const { return m_resource; }
-        void  Set_Resource(void* resource)                                        { m_resource = resource; }
+        void*& Get_Resource()                                                     { return m_resource; }
         void* Get_Resource_View(const uint32_t i = 0)                       const { return m_resource_view[i]; }
         void* Get_Resource_View_UnorderedAccess()                           const { return m_resource_view_unorderedAccess; }
         void* Get_Resource_View_DepthStencil(const uint32_t i = 0)          const { return i < m_resource_view_depthStencil.size() ? m_resource_view_depthStencil[i] : nullptr; }
@@ -137,7 +136,8 @@ namespace Spartan
         bool LoadFromFile_NativeFormat(const std::string& file_path);
         bool LoadFromFile_ForeignFormat(const std::string& file_path);
         static uint32_t GetChannelCountFromFormat(RHI_Format format);
-        virtual bool CreateResourceGpu() { LOG_ERROR("Function not implemented by API"); return false; }
+        bool CreateResourceGpu();
+        void DestroyResourceGpu();
 
         uint32_t m_bits_per_channel = 8;
         uint32_t m_width            = 0;
@@ -153,12 +153,13 @@ namespace Spartan
         std::shared_ptr<RHI_Device> m_rhi_device;
 
         // API
+        void* m_resource                        = nullptr;
         void* m_resource_view[2]                = { nullptr, nullptr }; // color/depth, stencil
         void* m_resource_view_unorderedAccess   = nullptr;
-        void* m_resource                        = nullptr;
         std::array<void*, rhi_max_render_target_count> m_resource_view_renderTarget           = { nullptr };
         std::array<void*, rhi_max_render_target_count> m_resource_view_depthStencil           = { nullptr };
         std::array<void*, rhi_max_render_target_count> m_resource_view_depthStencilReadOnly   = { nullptr };
+
     private:
         uint32_t GetByteCount();
     };

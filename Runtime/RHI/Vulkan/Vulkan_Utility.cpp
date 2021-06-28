@@ -90,11 +90,9 @@ namespace Spartan::vulkan_utility
 
         // Create image, allocate memory and bind memory to image
         VmaAllocation allocation;
-        void* resource = nullptr;
+        void*& resource = texture->Get_Resource();
         if (!error::check(vmaCreateImage(globals::rhi_context->allocator, &create_info, &allocation_info, reinterpret_cast<VkImage*>(&resource), &allocation, nullptr)))
             return false;
-
-        texture->Set_Resource(resource);
 
         // Keep allocation reference
         globals::rhi_context->allocations[texture->GetObjectId()] = allocation;
@@ -104,7 +102,7 @@ namespace Spartan::vulkan_utility
 
     void image::destroy(RHI_Texture* texture)
     {
-        void* resource          = texture->Get_Resource();
+        void*& resource         = texture->Get_Resource();
         uint64_t allocation_id  = texture->GetObjectId();
 
         auto it = globals::rhi_context->allocations.find(allocation_id);
@@ -113,7 +111,6 @@ namespace Spartan::vulkan_utility
             VmaAllocation allocation = it->second;
             vmaDestroyImage(globals::rhi_context->allocator, static_cast<VkImage>(resource), allocation);
             globals::rhi_context->allocations.erase(allocation_id);
-            texture->Set_Resource(nullptr);
         }
     }
 

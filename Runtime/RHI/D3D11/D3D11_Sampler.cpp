@@ -55,6 +55,6 @@ namespace Spartan
 
     RHI_Sampler::~RHI_Sampler()
     {
-        d3d11_utility::release(*reinterpret_cast<ID3D11SamplerState**>(&m_resource));
+        d3d11_utility::release(static_cast<ID3D11SamplerState*>(m_resource));
     }
 }
