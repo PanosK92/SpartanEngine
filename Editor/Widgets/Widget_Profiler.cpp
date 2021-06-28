@@ -64,7 +64,7 @@ static void ShowTimeBlock(const TimeBlock& time_block, float total_time)
     const float duration    = time_block.GetDuration();
     const float fraction    = duration / total_time;
     const float width       = fraction * ImGui::GetWindowContentRegionWidth();
-    const auto& color       = ImGui::GetStyle().Colors[ImGuiCol_FrameBgActive];
+    const auto& color       = ImGui::GetStyle().Colors[ImGuiCol_CheckMark];
     const ImVec2 pos_screen = ImGui::GetCursorScreenPos();
     const ImVec2 pos        = ImGui::GetCursorPos();
     const float text_height = ImGui::CalcTextSize(name, nullptr, true).y;

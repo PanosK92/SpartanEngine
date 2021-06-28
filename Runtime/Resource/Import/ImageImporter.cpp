@@ -150,7 +150,7 @@ namespace Spartan
         FreeImage_DeInitialise();
     }
 
-    bool ImageImporter::Load(const string& file_path, RHI_Texture* texture, const uint32_t slice_index)
+    bool ImageImporter::Load(const string& file_path, const uint32_t slice_index, RHI_Texture* texture)
     {
         if (!texture)
         {
