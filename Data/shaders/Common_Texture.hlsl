@@ -51,8 +51,8 @@ Texture2D tex_light_spot_depth              : register(t22);
 Texture2D tex_light_spot_color              : register(t23);
 
 // Noise
-Texture2D tex_noise_normal  : register(t24);
-Texture2D tex_noise_blue    : register(t25);
+Texture2D tex_noise_normal      : register(t24);
+Texture2DArray tex_noise_blue   : register(t25);
 
 // Misc
 Texture2D tex_lutIbl        : register(t26);

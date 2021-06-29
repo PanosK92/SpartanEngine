@@ -205,7 +205,7 @@ namespace Spartan
         bitmap                              = scale ? _FreeImage_Rescale(bitmap, texture->GetWidth(), texture->GetHeight()) : bitmap;
 
         // Deduce image properties
-        const unsigned int image_width    = FreeImage_GetWidth(bitmap);
+        const unsigned int image_width  = FreeImage_GetWidth(bitmap);
         const unsigned int image_height = FreeImage_GetHeight(bitmap);
 
         // Fill RGBA vector with the data from the FIBITMAP
@@ -215,7 +215,7 @@ namespace Spartan
         // If the texture supports mipmaps, generate them
         if (texture->GetFlags() & RHI_Texture_GenerateMipsWhenLoading)
         {
-            GenerateMipmaps(bitmap, texture, image_width, image_height, image_channel_count);
+            GenerateMipmaps(bitmap, texture, image_width, image_height, image_channel_count, slice_index);
         }
 
         // Free memory 
@@ -235,7 +235,7 @@ namespace Spartan
 
     bool ImageImporter::GetBitsFromFibitmap(RHI_Texture_Mip* mip, FIBITMAP* bitmap, const uint32_t width, const uint32_t height, const uint32_t channels) const
     {
-        // Validate input
+        // Validate
         SP_ASSERT(mip != nullptr);
         SP_ASSERT(width != 0);
         SP_ASSERT(height != 0);
@@ -257,13 +257,10 @@ namespace Spartan
         return true;
     }
 
-    void ImageImporter::GenerateMipmaps(FIBITMAP* bitmap, RHI_Texture* texture, uint32_t width, uint32_t height, uint32_t channels)
+    void ImageImporter::GenerateMipmaps(FIBITMAP* bitmap, RHI_Texture* texture, uint32_t width, uint32_t height, uint32_t channels, const uint32_t slice_index)
     {
-        if (!texture)
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return;
-        }
+        // Validate
+        SP_ASSERT(texture != nullptr);
     
         // Create a RescaleJob for every mip that we need
         vector<freeimage_helper::RescaleJob> jobs;
@@ -275,7 +272,7 @@ namespace Spartan
             
             // Resize the RHI_Texture vector accordingly
             const auto size = width * height * channels;
-            RHI_Texture_Mip& mip = texture->CreateMip(0);
+            RHI_Texture_Mip& mip = texture->CreateMip(slice_index);
             mip.bytes.reserve(size);
             mip.bytes.resize(size);
         }

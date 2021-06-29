@@ -142,7 +142,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
                 // Compute jitter
                 float random    = get_noise_interleaved_gradient(thread_id.xy);
                 float3 jitter   = hemisphere_samples[random * 63];
-                jitter          *= roughness * roughness;                   // Adjust with roughness
+                jitter          *= roughness * roughness; // Adjust with roughness
 
                 // Apply jitter to reflection
                 reflection += jitter;

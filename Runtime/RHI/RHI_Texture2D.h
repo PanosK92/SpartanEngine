@@ -32,7 +32,7 @@ namespace Spartan
     {
     public:
         // Creates a texture without data (intended for manual loading)
-        RHI_Texture2D(Context* context, const bool generate_mipmaps = true) : RHI_Texture(context)
+        RHI_Texture2D(Context* context, const bool generate_mipmaps = false) : RHI_Texture(context)
         {
             m_resource_type = ResourceType::Texture2d;
             m_array_size    = 0;

@@ -200,7 +200,7 @@ namespace Spartan
         }
 
         // Try to get the texture
-        const auto tex_name = FileSystem::GetFileNameNoExtensionFromFilePath(file_path);
+        const auto tex_name = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
         if (auto texture = m_context->GetSubsystem<ResourceCache>()->GetByName<RHI_Texture2D>(tex_name))
         {
             material->SetTextureSlot(texture_type, texture);
@@ -209,7 +209,7 @@ namespace Spartan
         else
         {
             // Load texture
-            auto generate_mipmaps = true;
+            bool generate_mipmaps = true;
             texture = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
             texture->LoadFromFile(file_path);
 

@@ -149,7 +149,7 @@ namespace Spartan
         {
             file_path += EXTENSION_WORLD;
         }
-        m_name = FileSystem::GetFileNameNoExtensionFromFilePath(file_path);
+        m_name = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
 
         // Notify subsystems that need to save data
         SP_FIRE_EVENT(EventType::WorldSave);
@@ -223,7 +223,7 @@ namespace Spartan
 
         renderer->Start();
 
-        m_name = FileSystem::GetFileNameNoExtensionFromFilePath(file_path);
+        m_name = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
 
         // Notify subsystems that need to load data
         SP_FIRE_EVENT(EventType::WorldLoad);

@@ -146,7 +146,7 @@ namespace Spartan
             }
 
             // Check if the resource is already loaded
-            const auto name = FileSystem::GetFileNameNoExtensionFromFilePath(file_path);
+            const auto name = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
             if (IsCached(name, IResource::TypeToEnum<T>()))
                 return GetByName<T>(name);
 

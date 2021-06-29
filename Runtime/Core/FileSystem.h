@@ -55,7 +55,7 @@ namespace Spartan
         static bool IsFile(const std::string& path);
         static bool CopyFileFromTo(const std::string& source, const std::string& destination);
         static std::string GetFileNameFromFilePath(const std::string& path);
-        static std::string GetFileNameNoExtensionFromFilePath(const std::string& path);
+        static std::string GetFileNameWithoutExtensionFromFilePath(const std::string& path);
         static std::string GetDirectoryFromFilePath(const std::string& path);
         static std::string GetFilePathWithoutExtension(const std::string& path);
         static std::string ReplaceExtension(const std::string& path, const std::string& extension);
