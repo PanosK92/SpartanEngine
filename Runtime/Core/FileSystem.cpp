@@ -274,7 +274,7 @@ namespace Spartan
         return filesystem::path(path).filename().generic_string();
     }
 
-    string FileSystem::GetFileNameNoExtensionFromFilePath(const string& path)
+    string FileSystem::GetFileNameWithoutExtensionFromFilePath(const string& path)
     {
         const auto file_name        = GetFileNameFromFilePath(path);
         const size_t last_index    = file_name.find_last_of('.');
@@ -297,12 +297,12 @@ namespace Spartan
 
     string FileSystem::GetFilePathWithoutExtension(const string& path)
     {
-        return GetDirectoryFromFilePath(path) + GetFileNameNoExtensionFromFilePath(path);
+        return GetDirectoryFromFilePath(path) + GetFileNameWithoutExtensionFromFilePath(path);
     }
 
     string FileSystem::ReplaceExtension(const string& path, const string& extension)
     {
-        return GetDirectoryFromFilePath(path) + GetFileNameNoExtensionFromFilePath(path) + extension;
+        return GetDirectoryFromFilePath(path) + GetFileNameWithoutExtensionFromFilePath(path) + extension;
     }
 
     string FileSystem::GetExtensionFromFilePath(const string& path)

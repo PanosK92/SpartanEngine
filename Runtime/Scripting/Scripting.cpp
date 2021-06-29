@@ -96,7 +96,7 @@ namespace Spartan
         }
 
         ScriptInstance script;
-        const string class_name = FileSystem::GetFileNameNoExtensionFromFilePath(file_path);
+        const string class_name = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
 
         script.assembly = ScriptingHelper::compile_and_load_assembly(m_domain, file_path);
         if (!script.assembly)

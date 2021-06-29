@@ -196,15 +196,23 @@ namespace Spartan
 
     RHI_Texture_Mip& RHI_Texture::CreateMip(const uint32_t array_index)
     {
-        // Grow if needed
+        // Grow data if needed
         while (array_index >= m_data.size())
         {
-            m_array_size++;
             m_data.emplace_back();
         }
 
-        m_mip_count++;
-        return m_data[array_index].mips.emplace_back();
+        // Create mip
+        RHI_Texture_Mip& mip = m_data[array_index].mips.emplace_back();
+
+        // Update array index and mip count
+        if (!m_data.empty())
+        {
+            m_array_size    = static_cast<uint32_t>(m_data.size());
+            m_mip_count     = m_data[0].GetMipCount();
+        }
+
+        return mip;
     }
 
     RHI_Texture_Mip& RHI_Texture::GetMip(const uint32_t array_index, const uint32_t mip_index)
@@ -232,10 +240,31 @@ namespace Spartan
 
     bool RHI_Texture::LoadFromFile_ForeignFormat(const string& file_path)
     {
+        vector<string> file_paths = { file_path };
+
+        // If this is an array, try to find all the textures
+        if (m_resource_type == ResourceType::Texture2dArray)
+        {
+            string file_path_extension      = FileSystem::GetExtensionFromFilePath(file_path);
+            string file_path_no_extension   = FileSystem::GetFilePathWithoutExtension(file_path);
+            string file_path_no_digit       = file_path_no_extension.substr(0, file_path_no_extension.size() - 1);
+
+            uint32_t index = 1;
+            string file_path_guess = file_path_no_digit + to_string(index) + file_path_extension;
+            while (FileSystem::Exists(file_path_guess))
+            {
+                file_paths.emplace_back(file_path_guess);
+                file_path_guess = file_path_no_digit + to_string(++index) + file_path_extension;
+            }
+        }
+
         // Load texture
         ImageImporter* image_importer = m_context->GetSubsystem<ResourceCache>()->GetImageImporter();
-        if (!image_importer->Load(file_path, 0, this))
-            return false;
+        for (uint32_t slice_index = 0; slice_index < static_cast<uint32_t>(file_paths.size()); slice_index++)
+        {
+            if (!image_importer->Load(file_paths[slice_index], slice_index, this))
+                return false;
+        }
 
         // Set resource file path so it can be used by the resource cache
         SetResourceFilePath(file_path);

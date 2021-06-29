@@ -422,12 +422,9 @@ float get_noise_interleaved_gradient(float2 screen_pos)
 
 float get_noise_blue(float2 screen_pos)
 {
-    // Temporal factor
-    screen_pos.x += frac((screen_pos.x / 64.0) + g_time * 4.7526) * is_taa_enabled();
-    screen_pos.y +=  frac((screen_pos.y / 64.0) + g_time * 3.1914) * is_taa_enabled();
-    
     float2 uv = (screen_pos + 0.5f) * g_tex_noise_blue_scale;
-    return tex_noise_blue.SampleLevel(sampler_point_wrap, uv, 0).r;
+    float slice = (g_frame % 8) * (float)is_taa_enabled();
+    return tex_noise_blue.SampleLevel(sampler_point_wrap, float3(uv.x, uv.y, slice), 0).r;
 }
 
 float3 get_noise_normal(uint2 screen_pos)

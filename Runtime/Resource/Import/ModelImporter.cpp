@@ -68,7 +68,7 @@ namespace Spartan
         params.max_normal_smoothing_angle   = 80.0f; // Normals exceeding this limit are not smoothed.
         params.max_tangent_smoothing_angle  = 80.0f; // Tangents exceeding this limit are not smoothed. Default is 45, max is 175
         params.file_path                    = file_path;
-        params.name                         = FileSystem::GetFileNameNoExtensionFromFilePath(file_path);
+        params.name                         = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
         params.model                        = model;
 
         // Set up an Assimp importer

@@ -90,7 +90,7 @@ namespace Spartan
                 m_resource_file_path_foreign.clear();
                 m_resource_file_path_native = file_path_relative;
             }
-            m_resource_name                 = FileSystem::GetFileNameNoExtensionFromFilePath(file_path_relative);
+            m_resource_name                 = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path_relative);
             m_resource_directory            = FileSystem::GetDirectoryFromFilePath(file_path_relative);
         }
         

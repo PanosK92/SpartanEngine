@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Font/Font.h"
 #include "../Resource/ResourceCache.h"
 #include "../RHI/RHI_Texture2D.h"
+#include "../RHI/RHI_Texture2DArray.h"
 #include "../RHI/RHI_Shader.h"
 #include "../RHI/RHI_Sampler.h"
 #include "../RHI/RHI_BlendState.h"
@@ -451,8 +452,8 @@ namespace Spartan
         m_tex_default_noise_normal = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
         m_tex_default_noise_normal->LoadFromFile(dir_texture + "noise_normal.png");
 
-        m_tex_default_noise_blue = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
-        m_tex_default_noise_blue->LoadFromFile(dir_texture + "noise_blue.png");
+        m_tex_default_noise_blue = static_pointer_cast<RHI_Texture>(make_shared<RHI_Texture2DArray>(m_context, generate_mipmaps));
+        m_tex_default_noise_blue->LoadFromFile(dir_texture + "noise_blue_0.png");
 
         m_tex_default_white = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
         m_tex_default_white->LoadFromFile(dir_texture + "white.png");
