@@ -158,7 +158,7 @@ namespace Spartan
                     // Name the image
                     vulkan_utility::debug::set_name(images[i], string(string("swapchain_image_") + to_string(i)).c_str());
 
-                    if (!vulkan_utility::image::view::create(static_cast<void*>(images[i]), resource_views[i], VK_IMAGE_VIEW_TYPE_2D, rhi_context->surface_format, VK_IMAGE_ASPECT_COLOR_BIT))
+                    if (!vulkan_utility::image::view::create(static_cast<void*>(images[i]), resource_views[i], VK_IMAGE_VIEW_TYPE_2D, rhi_context->surface_format, VK_IMAGE_ASPECT_COLOR_BIT, 1, 0, 1))
                         return false;
                 }
             }

@@ -102,13 +102,13 @@ float4 shadow_sample_color(float3 uv)
 ------------------------------------------------------------------------------*/
 float2 vogel_disk_sample(uint sample_index, uint sample_count, float angle)
 {
-  float golden_angle    = 2.4f;
-  float r               = sqrt(sample_index + 0.5f) / sqrt(sample_count);
-  float theta           = sample_index * golden_angle + angle;
+  const float golden_angle	= 2.399963f; // radians
+  float r               	= sqrt(sample_index + 0.5f) / sqrt(sample_count);
+  float theta           	= sample_index * golden_angle + angle;
   float sine, cosine;
   sincos(theta, sine, cosine);
   
-  return float2(r * cosine, r * sine);
+  return float2(cosine, sine) * r;
 }
 
 float compute_penumbra(float vogel_angle, float3 uv, float compare)

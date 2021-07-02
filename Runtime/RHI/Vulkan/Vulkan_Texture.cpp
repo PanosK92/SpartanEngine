@@ -70,7 +70,7 @@ namespace Spartan
         }
     }
 
-    inline bool copy_to_staging_buffer(RHI_Texture* texture, std::vector<VkBufferImageCopy>& buffer_image_copies, void*& staging_buffer)
+    inline bool copy_to_staging_buffer(RHI_Texture* texture, std::vector<VkBufferImageCopy>& regions, void*& staging_buffer)
     {
         if (!texture->HasData())
         {
@@ -81,33 +81,35 @@ namespace Spartan
         const uint32_t width            = texture->GetWidth();
         const uint32_t height           = texture->GetHeight();
         const uint32_t array_size       = texture->GetArraySize();
-        const uint32_t mip_levels       = texture->GetMipCount();
+        const uint32_t mip_count        = texture->GetMipCount();
         const uint32_t bytes_per_pixel  = texture->GetBytesPerPixel();
 
-        // Fill out VkBufferImageCopy structs describing the array and the mip levels   
+        const uint32_t region_count = array_size * mip_count;
+        regions.resize(region_count);
+        regions.reserve(region_count);
+
+        // Fill out VkBufferImageCopy structs describing the array and the mip levels
         VkDeviceSize buffer_offset = 0;
         for (uint32_t array_index = 0; array_index < array_size; array_index++)
         {
-            for (uint32_t mip_index = 0; mip_index < mip_levels; mip_index++)
+            for (uint32_t mip_index = 0; mip_index < mip_count; mip_index++)
             {
-                uint32_t mip_width  = width >> mip_index;
-                uint32_t mip_height = height >> mip_index;
+                uint32_t region_index   = mip_index + array_index * mip_count;
+                uint32_t mip_width      = width >> mip_index;
+                uint32_t mip_height     = height >> mip_index;
 
-                VkBufferImageCopy region                = {};
-                region.bufferOffset                     = buffer_offset;
-                region.bufferRowLength                  = 0;
-                region.bufferImageHeight                = 0;
-                region.imageSubresource.aspectMask      = vulkan_utility::image::get_aspect_mask(texture);
-                region.imageSubresource.mipLevel        = mip_index;
-                region.imageSubresource.baseArrayLayer  = array_index;
-                region.imageSubresource.layerCount      = array_size;
-                region.imageOffset                      = { 0, 0, 0 };
-                region.imageExtent                      = { mip_width, mip_height, 1 };
-
-                buffer_image_copies[mip_index] = region;
+                regions[region_index].bufferOffset                      = buffer_offset;
+                regions[region_index].bufferRowLength                   = 0;
+                regions[region_index].bufferImageHeight                 = 0;
+                regions[region_index].imageSubresource.aspectMask       = vulkan_utility::image::get_aspect_mask(texture);
+                regions[region_index].imageSubresource.mipLevel         = mip_index;
+                regions[region_index].imageSubresource.baseArrayLayer   = array_index;
+                regions[region_index].imageSubresource.layerCount       = 1;
+                regions[region_index].imageOffset                       = { 0, 0, 0 };
+                regions[region_index].imageExtent                       = { mip_width, mip_height, 1 };
 
                 // Update staging buffer memory requirement (in bytes)
-                buffer_offset += mip_width * mip_height * bytes_per_pixel;
+                buffer_offset += static_cast<uint64_t>(mip_width) * static_cast<uint64_t>(mip_height) * static_cast<uint64_t>(bytes_per_pixel);
             }
         }
 
@@ -121,9 +123,9 @@ namespace Spartan
         {
             for (uint32_t array_index = 0; array_index < array_size; array_index++)
             {
-                for (uint32_t mip_index = 0; mip_index < mip_levels; mip_index++)
+                for (uint32_t mip_index = 0; mip_index < mip_count; mip_index++)
                 {
-                    uint64_t buffer_size = (width >> mip_index) * (height >> mip_index) * bytes_per_pixel;
+                    uint64_t buffer_size = static_cast<uint64_t>(width >> mip_index) * static_cast<uint64_t>(height >> mip_index) * static_cast<uint64_t>(bytes_per_pixel);
                     memcpy(static_cast<std::byte*>(data) + buffer_offset, texture->GetMip(array_index, mip_index).bytes.data(), buffer_size);
                     buffer_offset += buffer_size;
                 }
@@ -139,8 +141,8 @@ namespace Spartan
     {
         // Copy the texture's data to a staging buffer
         void* staging_buffer = nullptr;
-        vector<VkBufferImageCopy> buffer_image_copies(texture->GetMipCount());
-        if (!copy_to_staging_buffer(texture, buffer_image_copies, staging_buffer))
+        vector<VkBufferImageCopy> regions;
+        if (!copy_to_staging_buffer(texture, regions, staging_buffer))
             return false;
 
         // Copy the staging buffer into the image
@@ -159,8 +161,8 @@ namespace Spartan
                 static_cast<VkBuffer>(staging_buffer),
                 static_cast<VkImage>(texture->Get_Resource()),
                 vulkan_image_layout[static_cast<uint8_t>(layout)],
-                static_cast<uint32_t>(buffer_image_copies.size()),
-                buffer_image_copies.data()
+                static_cast<uint32_t>(regions.size()),
+                regions.data()
             );
 
             // End/flush
@@ -272,7 +274,7 @@ namespace Spartan
             {
                 if (IsColorFormat())
                 {
-                    if (!vulkan_utility::image::view::create(m_resource, m_resource_view[0], this))
+                    if (!vulkan_utility::image::view::create(m_resource, m_resource_view[0], this, 0, m_array_size, false, false))
                         return false;
                 }
 
@@ -294,13 +296,13 @@ namespace Spartan
             {
                 if (IsRenderTarget())
                 {
-                    if (!vulkan_utility::image::view::create(m_resource, m_resource_view_renderTarget[i], this, i, 1))
+                    if (!vulkan_utility::image::view::create(m_resource, m_resource_view_renderTarget[i], this, i, 1, false, false))
                         return false;
                 }
 
                 if (IsDepthStencil())
                 {
-                    if (!vulkan_utility::image::view::create(m_resource, m_resource_view_depthStencil[i], this, i, 1, true))
+                    if (!vulkan_utility::image::view::create(m_resource, m_resource_view_depthStencil[i], this, i, 1, true, false))
                         return false;
                 }
             }

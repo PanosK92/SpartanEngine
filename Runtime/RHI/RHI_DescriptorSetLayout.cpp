@@ -150,7 +150,7 @@ namespace Spartan
             if (descriptor_set_layout_cache->HasEnoughCapacity())
             {
                 // Create descriptor set
-                m_descriptor_sets[hash] = RHI_DescriptorSet(m_rhi_device, descriptor_set_layout_cache, m_descriptors);
+                m_descriptor_sets[hash] = RHI_DescriptorSet(m_rhi_device, descriptor_set_layout_cache, m_descriptors, m_object_name.c_str());
 
                 // Out
                 descriptor_set = &m_descriptor_sets[hash];

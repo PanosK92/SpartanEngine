@@ -54,7 +54,7 @@ namespace Spartan
                 // Get driver version
                 uint32_t driver_version = 0;
                 {
-                    // Per to LunarG, if vkEnumerateInstanceVersion is not present, we are running on Vulkan 1.0
+                    // Per LunarG, if vkEnumerateInstanceVersion is not present, we are running on Vulkan 1.0
                     // https://www.lunarg.com/wp-content/uploads/2019/02/Vulkan-1.1-Compatibility-Statement_01_19.pdf
                     auto eiv = reinterpret_cast<PFN_vkEnumerateInstanceVersion>(vkGetInstanceProcAddr(nullptr, "vkEnumerateInstanceVersion"));
 
