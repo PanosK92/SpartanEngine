@@ -805,6 +805,8 @@ namespace Spartan
             LOG_INFO("Waiting for rendering to finish...");
             this_thread::sleep_for(chrono::milliseconds(16));
         }
+
+        Flush();
     }
 
     void Renderer::Start()

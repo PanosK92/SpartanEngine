@@ -59,10 +59,12 @@ float3 Sharpen(uint2 thread_id)
 #define A_GPU 1
 #define A_HLSL 1
 #include "ffx_a.h"
-float3 CasLoad(float2 pos) {return tex[pos].rgb;}
-// Lets you transform input from the load into a linear color space between 0 and 1. See ffx_cas.h. In this case, our input is already linear and between 0 and 1.
-void CasInput(inout float r, inout float g, inout float b){}
+
+// Functions ffx_cas.h wants defined
+float3 CasLoad(float2 pos) { return tex[pos].rgb; }
+void CasInput(inout float r, inout float g, inout float b) { }
 #include "ffx_cas.h"
+
 float3 Sharpen(uint2 thread_id)
 {
     float4 const0;

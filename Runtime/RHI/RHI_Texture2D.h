@@ -32,13 +32,18 @@ namespace Spartan
     {
     public:
         // Creates a texture without data (intended for manual loading)
-        RHI_Texture2D(Context* context, const bool generate_mipmaps = false) : RHI_Texture(context)
+        RHI_Texture2D(Context* context, const bool generate_mipmaps = false, const char* name = nullptr) : RHI_Texture(context)
         {
             m_resource_type = ResourceType::Texture2d;
             m_array_size    = 0;
             m_mip_count     = 0;
             m_flags         = RHI_Texture_Sampled;
             m_flags         |= generate_mipmaps ? RHI_Texture_GenerateMipsWhenLoading : 0;
+
+            if (name != nullptr)
+            {
+                m_object_name = name;
+            }
         }
 
         // Creates a texture from data (intended for sampling)
@@ -59,9 +64,8 @@ namespace Spartan
         }
 
         // Creates a texture without any data (intended for usage as a render target)
-        RHI_Texture2D(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const uint16_t flags = 0, std::string name = "") : RHI_Texture(context)
+        RHI_Texture2D(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const uint16_t flags = 0, const char* name = nullptr) : RHI_Texture(context)
         {
-            m_object_name   = name;
             m_resource_type = ResourceType::Texture2d;
             m_width         = width;
             m_height        = height;
@@ -73,6 +77,11 @@ namespace Spartan
             m_flags         = flags;
             m_flags         |= RHI_Texture_Sampled;
             m_flags         |= IsDepthFormat() ? RHI_Texture_DepthStencil : (RHI_Texture_RenderTarget | RHI_Texture_Storage); // Need to optimize that, not every rt is used in a compute shader
+
+            if (name != nullptr)
+            {
+                m_object_name = name;
+            }
 
             CreateResourceGpu();
         }

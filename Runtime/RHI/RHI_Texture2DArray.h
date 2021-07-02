@@ -31,11 +31,16 @@ namespace Spartan
     class SPARTAN_CLASS RHI_Texture2DArray : public RHI_Texture
     {
     public:
-        RHI_Texture2DArray(Context* context, const bool generate_mipmaps = false) : RHI_Texture(context)
+        RHI_Texture2DArray(Context* context, const bool generate_mipmaps = false, const char* name = nullptr) : RHI_Texture(context)
         {
             m_resource_type = ResourceType::Texture2dArray;
             m_flags         = RHI_Texture_Sampled;
             m_flags         |= generate_mipmaps ? RHI_Texture_GenerateMipsWhenLoading : 0;
+
+            if (name != nullptr)
+            {
+                m_object_name = name;
+            }
         }
 
         // Creates a texture without any data (intended for usage as a render target)

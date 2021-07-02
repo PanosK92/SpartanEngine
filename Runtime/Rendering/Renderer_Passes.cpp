@@ -760,9 +760,9 @@ namespace Spartan
                         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal,   RENDER_TARGET(RendererRt::Gbuffer_Normal));
                         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_material, RENDER_TARGET(RendererRt::Gbuffer_Material));
                         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    RENDER_TARGET(RendererRt::Gbuffer_Depth));
-                        cmd_list->SetTexture(RendererBindingsSrv::ssao,             (m_options & Render_Ssao) ? RENDER_TARGET(RendererRt::Ssao_Blurred) : m_tex_default_white);
+                        cmd_list->SetTexture(RendererBindingsSrv::ssao,             RENDER_TARGET(RendererRt::Ssao_Blurred));
                         cmd_list->SetTexture(RendererBindingsSrv::noise_blue,       m_tex_default_noise_blue);
-                        
+
                         // Set shadow map
                         if (light->GetShadowsEnabled())
                         {
@@ -841,6 +841,7 @@ namespace Spartan
             cmd_list->SetTexture(RendererBindingsSrv::light_specular,   is_transparent_pass ? RENDER_TARGET(RendererRt::Light_Specular_Transparent).get() : RENDER_TARGET(RendererRt::Light_Specular).get());
             cmd_list->SetTexture(RendererBindingsSrv::light_volumetric, RENDER_TARGET(RendererRt::Light_Volumetric));
             cmd_list->SetTexture(RendererBindingsSrv::frame,            RENDER_TARGET(RendererRt::Frame_2)); // refraction
+            cmd_list->SetTexture(RendererBindingsSrv::ssao,             RENDER_TARGET(RendererRt::Ssao_Blurred));
             cmd_list->SetTexture(RendererBindingsSrv::environment,      GetEnvironmentTexture());
 
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);

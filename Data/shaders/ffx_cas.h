@@ -551,7 +551,7 @@ A_STATIC void CasSetup(
   //  |  j..|..k  |
   //  |     |     |
   //  +-----+-----+
-  AF2 pp=ip*AF2_AU2(const0.xy)+AF2_AU2(const0.zw);
+  AF2 pp=AF2(ip)*AF2_AU2(const0.xy)+AF2_AU2(const0.zw);
   AF2 fp=floor(pp);
   pp-=fp;
   ASU2 sp=ASU2(fp);
@@ -1064,7 +1064,7 @@ A_STATIC void CasSetup(
    return;}
 //------------------------------------------------------------------------------------------------------------------------------
   // Scaling algorithm adaptively interpolates between nearest 4 results of the non-scaling algorithm.
-  AF2 pp=ip*AF2_AU2(const0.xy)+AF2_AU2(const0.zw);
+  AF2 pp=AF2(ip)*AF2_AU2(const0.xy)+AF2_AU2(const0.zw);
   // Tile 0.
   // Fractional position is needed in high precision here.
   AF2 fp0=floor(pp);

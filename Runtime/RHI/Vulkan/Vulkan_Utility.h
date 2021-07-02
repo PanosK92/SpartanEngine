@@ -787,7 +787,7 @@ namespace Spartan::vulkan_utility
 
         namespace view
         {
-            inline bool create(void* image, void*& image_view, VkImageViewType type, const VkFormat format, const VkImageAspectFlags aspect_mask, const uint32_t level_count = 1, const uint32_t layer_index = 0, const uint32_t layer_count = 1)
+            inline bool create(void* image, void*& image_view, VkImageViewType type, const VkFormat format, const VkImageAspectFlags aspect_mask, const uint32_t level_count, const uint32_t layer_index, const uint32_t layer_count)
             {
                 VkImageViewCreateInfo create_info           = {};
                 create_info.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -804,17 +804,20 @@ namespace Spartan::vulkan_utility
                 create_info.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;
                 create_info.components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY;
 
-                VkImageView* image_view_vk = reinterpret_cast<VkImageView*>(&image_view);
-                return error::check(vkCreateImageView(globals::rhi_context->device, &create_info, nullptr, image_view_vk));
+                return error::check(vkCreateImageView(globals::rhi_context->device, &create_info, nullptr, reinterpret_cast<VkImageView*>(&image_view)));
             }
 
-            inline bool create(void* image, void*& image_view, const RHI_Texture* texture, const uint32_t array_index = 0, const uint32_t array_length = 1, const bool only_depth = false, const bool only_stencil = false)
+            inline bool create(void* image, void*& image_view, const RHI_Texture* texture, const uint32_t array_index, const uint32_t array_length, const bool only_depth, const bool only_stencil)
             {
                 VkImageViewType type = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
 
                 if (texture->GetResourceType() == ResourceType::Texture2d)
                 {
-                    type = (texture->GetArraySize() == 1) ? VK_IMAGE_VIEW_TYPE_2D : VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+                    type = VK_IMAGE_VIEW_TYPE_2D;
+                }
+                else if (texture->GetResourceType() == ResourceType::Texture2dArray)
+                {
+                    type = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
                 }
                 else if (texture->GetResourceType() == ResourceType::TextureCube)
                 {
