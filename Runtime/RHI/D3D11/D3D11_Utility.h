@@ -261,7 +261,7 @@ namespace Spartan::d3d11_utility
         {
             UINT d3d11_flags = 0;
 
-            d3d11_flags |= flags & RHI_SwapChain_Allow_Mode_Switch    ? DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH    : 0;
+            d3d11_flags |= flags & RHI_SwapChain_Allow_Mode_Switch  ? DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH    : 0;
             d3d11_flags |= flags & RHI_Present_Immediate            ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING        : 0;
 
             return d3d11_flags;

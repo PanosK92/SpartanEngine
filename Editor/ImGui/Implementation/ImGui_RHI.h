@@ -68,8 +68,10 @@ namespace ImGui::RHI
 
     struct WindowData
     {
+        int cmd_index = -1;
+        static const uint32_t buffer_count = 2;
         RHI_SwapChain* swapchain;
-        RHI_CommandList* cmd_list;
+        array<RHI_CommandList*, buffer_count> cmd_lists;
         bool image_acquired = false;
     };
 
@@ -174,7 +176,7 @@ namespace ImGui::RHI
         // Get swap chain and cmd list
         bool is_child_window        = window_data != nullptr;
         RHI_SwapChain* swap_chain   = is_child_window ? window_data->swapchain : g_renderer->GetSwapChain();
-        g_used_cmd_list             = is_child_window ? window_data->cmd_list : g_renderer->GetCmdList();
+        g_used_cmd_list             = is_child_window ? window_data->cmd_lists[window_data->cmd_index]: g_renderer->GetCmdList();
 
         // The Renderer gets flushed during world loading, so rendering might not be allowed by the time this function executes.
         // In this case, we use our own command list so we can keep the editor rendering (specifically, the loading bar) active.
@@ -363,14 +365,17 @@ namespace ImGui::RHI
             static_cast<uint32_t>(viewport->Size.x),
             static_cast<uint32_t>(viewport->Size.y),
             RHI_Format_R8G8B8A8_Unorm,
-            1,
-            g_renderer->GetSwapChain()->GetFlags(),
+            window->buffer_count,
+            RHI_Present_Immediate | RHI_Swap_Flip_Discard,
             (string("swapchain_child_") + string(to_string(viewport->ID))).c_str()
         );
 
         SP_ASSERT(window->swapchain->IsInitialised());
 
-        window->cmd_list = new RHI_CommandList(g_context);
+        for (uint32_t i = 0; i < window->buffer_count; i++)
+        {
+            window->cmd_lists[i] = new RHI_CommandList(g_context);
+        }
 
         viewport->RendererUserData = window;
     }
@@ -382,7 +387,12 @@ namespace ImGui::RHI
         if (WindowData* window = RHI_GetWindowData(viewport))
         {
             delete window->swapchain;
-            delete window->cmd_list;
+
+            for (uint32_t i = 0; i < window->buffer_count; i++)
+            {
+                delete window->cmd_lists[i];
+            }
+
             delete window;
         }
 
@@ -409,7 +419,9 @@ namespace ImGui::RHI
         WindowData* window = RHI_GetWindowData(viewport);
         SP_ASSERT(window != nullptr);
 
-        if (!window->cmd_list->Begin())
+        window->cmd_index = (window->cmd_index + 1) % window->buffer_count;
+
+        if (!window->cmd_lists[window->cmd_index]->Begin())
         {
             LOG_ERROR("Failed to begin command list");
             return;
@@ -418,14 +430,14 @@ namespace ImGui::RHI
         const bool clear = !(viewport->Flags & ImGuiViewportFlags_NoRendererClear);
         Render(viewport->DrawData, window, clear);
 
-        if (!window->cmd_list->End())
+        if (!window->cmd_lists[window->cmd_index]->End())
         {
             LOG_ERROR("Failed to end command list");
             return;
         }
 
         RHI_Semaphore* wait_semaphore = window->image_acquired ? nullptr : window->swapchain->GetImageAcquiredSemaphore();
-        if (!window->cmd_list->Submit(wait_semaphore))
+        if (!window->cmd_lists[window->cmd_index]->Submit(wait_semaphore))
         {
             LOG_ERROR("Failed to submit command list");
             return;
@@ -444,10 +456,10 @@ namespace ImGui::RHI
         SP_ASSERT(window != nullptr);
 
         // Validate cmd list state
-        SP_ASSERT(window->cmd_list->GetState() == Spartan::RHI_CommandListState::Submitted);
+        SP_ASSERT(window->cmd_lists[window->cmd_index]->GetState() == Spartan::RHI_CommandListState::Submitted);
 
         // Present
-        if (!window->swapchain->Present(window->cmd_list->GetProcessedSemaphore()))
+        if (!window->swapchain->Present(window->cmd_lists[window->cmd_index]->GetProcessedSemaphore()))
         {
             LOG_ERROR("Failed to present");
         }
