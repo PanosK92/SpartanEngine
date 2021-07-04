@@ -429,7 +429,6 @@ namespace Spartan
         pso.vertex_buffer_stride            = static_cast<uint32_t>(sizeof(RHI_Vertex_PosTexNorTan)); // assume all vertex buffers have the same stride (which they do)
         pso.primitive_topology              = RHI_PrimitiveTopology_TriangleList;
 
-        bool cleared = false;
         uint32_t material_index = 0;
         uint32_t material_bound_id = 0;
         m_material_instances.fill(nullptr);
@@ -451,121 +450,111 @@ namespace Spartan
             auto& entities = m_entities[is_transparent_pass ? Renderer_ObjectType::GeometryTransparent : Renderer_ObjectType::GeometryOpaque];
 
             // Record commands
-            for (uint32_t i = 0; i < static_cast<uint32_t>(entities.size()); i++)
-            {
-                Entity* entity = entities[i];
-
-                // Get renderable
-                Renderable* renderable = entity->GetRenderable();
-                if (!renderable)
-                    continue;
-
-                // Get material
-                Material* material = renderable->GetMaterial();
-                if (!material)
-                    continue;
-
-                // Skip objects with different shader requirements
-                if (!static_cast<ShaderGBuffer*>(pso.shader_pixel)->IsSuitable(material->GetFlags()))
-                    continue;
-
-                // Skip transparent objects that won't contribute
-                if (material->GetColorAlbedo().w == 0 && is_transparent_pass)
-                    continue;
-
-                // Get geometry
-                Model* model = renderable->GeometryModel();
-                if (!model || !model->GetVertexBuffer() || !model->GetIndexBuffer())
-                    continue;
-
-                // Skip objects outside of the view frustum
-                if (!m_camera->IsInViewFrustrum(renderable))
-                    continue;
-
-                if (!render_pass_active)
+            if (cmd_list->BeginRenderPass(pso))
+            { 
+                for (uint32_t i = 0; i < static_cast<uint32_t>(entities.size()); i++)
                 {
-                    // Reset clear values after the first render pass
-                    if (cleared)
-                    {
-                        pso.ResetClearValues();
-                    }
+                    Entity* entity = entities[i];
 
-                    render_pass_active = cmd_list->BeginRenderPass(pso);
-
-                    cleared = true;
-                }
-
-                // Set geometry (will only happen if not already set)
-                cmd_list->SetBufferIndex(model->GetIndexBuffer());
-                cmd_list->SetBufferVertex(model->GetVertexBuffer());
-
-                // Bind material
-                const bool firs_run       = material_index == 0;
-                const bool new_material   = material_bound_id != material->GetObjectId();
-                if (firs_run || new_material)
-                {
-                    material_bound_id = material->GetObjectId();
-
-                    // Keep track of used material instances (they get mapped to shaders)
-                    if (material_index + 1 < m_material_instances.size())
-                    {
-                        // Advance index (0 is reserved for the sky)
-                        material_index++;
-
-                        // Keep reference
-                        m_material_instances[material_index] = material;
-                    }
-                    else
-                    {
-                        LOG_ERROR("Material instance array has reached it's maximum capacity of %d elements. Consider increasing the size.", m_max_material_instances);
-                    }
-
-                    // Bind material textures
-                    cmd_list->SetTexture(RendererBindingsSrv::material_albedo,      material->GetTexture_Ptr(Material_Color));
-                    cmd_list->SetTexture(RendererBindingsSrv::material_roughness,   material->GetTexture_Ptr(Material_Roughness));
-                    cmd_list->SetTexture(RendererBindingsSrv::material_metallic,    material->GetTexture_Ptr(Material_Metallic));
-                    cmd_list->SetTexture(RendererBindingsSrv::material_normal,      material->GetTexture_Ptr(Material_Normal));
-                    cmd_list->SetTexture(RendererBindingsSrv::material_height,      material->GetTexture_Ptr(Material_Height));
-                    cmd_list->SetTexture(RendererBindingsSrv::material_occlusion,   material->GetTexture_Ptr(Material_Occlusion));
-                    cmd_list->SetTexture(RendererBindingsSrv::material_emission,    material->GetTexture_Ptr(Material_Emission));
-                    cmd_list->SetTexture(RendererBindingsSrv::material_mask,        material->GetTexture_Ptr(Material_Mask));
-                
-                    // Update uber buffer with material properties
-                    m_buffer_uber_cpu.mat_id            = static_cast<float>(material_index);
-                    m_buffer_uber_cpu.mat_albedo        = material->GetColorAlbedo();
-                    m_buffer_uber_cpu.mat_tiling_uv     = material->GetTiling();
-                    m_buffer_uber_cpu.mat_offset_uv     = material->GetOffset();
-                    m_buffer_uber_cpu.mat_roughness_mul = material->GetProperty(Material_Roughness);
-                    m_buffer_uber_cpu.mat_metallic_mul  = material->GetProperty(Material_Metallic);
-                    m_buffer_uber_cpu.mat_normal_mul    = material->GetProperty(Material_Normal);
-                    m_buffer_uber_cpu.mat_height_mul    = material->GetProperty(Material_Height);
-
-                    // Update constant buffer
-                    UpdateUberBuffer(cmd_list);
-                }
-                
-                // Update uber buffer with entity transform
-                if (Transform* transform = entity->GetTransform())
-                {
-                    m_buffer_uber_cpu.transform             = transform->GetMatrix();
-                    m_buffer_uber_cpu.transform_previous    = transform->GetMatrixPrevious();
-
-                    // Save matrix for velocity computation
-                    transform->SetWvpLastFrame(m_buffer_uber_cpu.transform);
-
-                    // Update object buffer
-                    if (!UpdateUberBuffer(cmd_list))
+                    // Get renderable
+                    Renderable* renderable = entity->GetRenderable();
+                    if (!renderable)
                         continue;
-                }
-                
-                // Render
-                cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
-                m_profiler->m_renderer_meshes_rendered++;
-            }
 
-            if (render_pass_active)
-            {
+                    // Get material
+                    Material* material = renderable->GetMaterial();
+                    if (!material)
+                        continue;
+
+                    // Skip objects with different shader requirements
+                    if (!static_cast<ShaderGBuffer*>(pso.shader_pixel)->IsSuitable(material->GetFlags()))
+                        continue;
+
+                    // Skip transparent objects that won't contribute
+                    if (material->GetColorAlbedo().w == 0 && is_transparent_pass)
+                        continue;
+
+                    // Get geometry
+                    Model* model = renderable->GeometryModel();
+                    if (!model || !model->GetVertexBuffer() || !model->GetIndexBuffer())
+                        continue;
+
+                    // Skip objects outside of the view frustum
+                    if (!m_camera->IsInViewFrustrum(renderable))
+                        continue;
+
+                    // Set geometry (will only happen if not already set)
+                    cmd_list->SetBufferIndex(model->GetIndexBuffer());
+                    cmd_list->SetBufferVertex(model->GetVertexBuffer());
+
+                    // Bind material
+                    const bool firs_run       = material_index == 0;
+                    const bool new_material   = material_bound_id != material->GetObjectId();
+                    if (firs_run || new_material)
+                    {
+                        material_bound_id = material->GetObjectId();
+
+                        // Keep track of used material instances (they get mapped to shaders)
+                        if (material_index + 1 < m_material_instances.size())
+                        {
+                            // Advance index (0 is reserved for the sky)
+                            material_index++;
+
+                            // Keep reference
+                            m_material_instances[material_index] = material;
+                        }
+                        else
+                        {
+                            LOG_ERROR("Material instance array has reached it's maximum capacity of %d elements. Consider increasing the size.", m_max_material_instances);
+                        }
+
+                        // Bind material textures
+                        cmd_list->SetTexture(RendererBindingsSrv::material_albedo,      material->GetTexture_Ptr(Material_Color));
+                        cmd_list->SetTexture(RendererBindingsSrv::material_roughness,   material->GetTexture_Ptr(Material_Roughness));
+                        cmd_list->SetTexture(RendererBindingsSrv::material_metallic,    material->GetTexture_Ptr(Material_Metallic));
+                        cmd_list->SetTexture(RendererBindingsSrv::material_normal,      material->GetTexture_Ptr(Material_Normal));
+                        cmd_list->SetTexture(RendererBindingsSrv::material_height,      material->GetTexture_Ptr(Material_Height));
+                        cmd_list->SetTexture(RendererBindingsSrv::material_occlusion,   material->GetTexture_Ptr(Material_Occlusion));
+                        cmd_list->SetTexture(RendererBindingsSrv::material_emission,    material->GetTexture_Ptr(Material_Emission));
+                        cmd_list->SetTexture(RendererBindingsSrv::material_mask,        material->GetTexture_Ptr(Material_Mask));
+                    
+                        // Update uber buffer with material properties
+                        m_buffer_uber_cpu.mat_id            = static_cast<float>(material_index);
+                        m_buffer_uber_cpu.mat_albedo        = material->GetColorAlbedo();
+                        m_buffer_uber_cpu.mat_tiling_uv     = material->GetTiling();
+                        m_buffer_uber_cpu.mat_offset_uv     = material->GetOffset();
+                        m_buffer_uber_cpu.mat_roughness_mul = material->GetProperty(Material_Roughness);
+                        m_buffer_uber_cpu.mat_metallic_mul  = material->GetProperty(Material_Metallic);
+                        m_buffer_uber_cpu.mat_normal_mul    = material->GetProperty(Material_Normal);
+                        m_buffer_uber_cpu.mat_height_mul    = material->GetProperty(Material_Height);
+
+                        // Update constant buffer
+                        UpdateUberBuffer(cmd_list);
+                    }
+
+                    // Update uber buffer with entity transform
+                    if (Transform* transform = entity->GetTransform())
+                    {
+                        m_buffer_uber_cpu.transform             = transform->GetMatrix();
+                        m_buffer_uber_cpu.transform_previous    = transform->GetMatrixPrevious();
+
+                        // Save matrix for velocity computation
+                        transform->SetWvpLastFrame(m_buffer_uber_cpu.transform);
+
+                        // Update object buffer
+                        if (!UpdateUberBuffer(cmd_list))
+                            continue;
+                    }
+
+                    // Render
+                    cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
+                    m_profiler->m_renderer_meshes_rendered++;
+                }
+
                 cmd_list->EndRenderPass();
+
+                // Reset clear values after the first render pass // TODO: Vulkan won't clear if there are not objects, as it clears during the first DrawIndexed()
+                pso.ResetClearValues();
             }
         }
     }
