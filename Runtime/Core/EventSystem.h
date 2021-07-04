@@ -56,15 +56,16 @@ Note: Currently, this is a blocking event system
 
 enum class EventType
 {
-    FrameEnd,           // A frame ends
-    WorldSave,          // The world must be saved to file
-    WorldSaved,         // The world finished saving to file
-    WorldLoad,          // The world must be loaded from file
-    WorldLoaded,        // The world finished loading from file
-    WorldClear,         // The world should clear everything
-    WorldResolve,       // The world should resolve
-    WorldResolved,      // The world has finished resolving
-    EventSDL,           // An event
+    FrameEnd,       // A frame ends
+    WorldSaveStart, // The world is about to be saved to a file
+    WorldSavedEnd,  // The world finished saving to file
+    WorldLoadStart, // The world is about to be loaded from a file
+    WorldLoadEnd,   // The world finished loading from file
+    WorldPreClear,  // The world is about to clear everything
+    WorldClear,     // The world is clear everything
+    WorldResolve,   // The world is resolving
+    WorldResolved,  // The world has finished resolving
+    EventSDL,       // An SDL event
 };
 
 namespace Spartan

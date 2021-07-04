@@ -255,6 +255,9 @@ namespace Spartan
         // Initialise the memory allocator
         m_rhi_context->initalise_allocator();
 
+        // Create command pool
+        vulkan_utility::command_pool::create(m_cmd_pool, RHI_Queue_Graphics);
+
         // Detect and log version
         string version_major    = to_string(VK_VERSION_MAJOR(app_info.apiVersion));
         string version_minor    = to_string(VK_VERSION_MINOR(app_info.apiVersion));
@@ -271,6 +274,9 @@ namespace Spartan
     {
         if (!m_rhi_context || !m_rhi_context->queue_graphics)
             return;
+
+        // Command pool
+        vulkan_utility::command_pool::destroy(m_cmd_pool);
 
         // Release resources
         if (Queue_WaitAll())

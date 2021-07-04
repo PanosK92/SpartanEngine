@@ -45,9 +45,8 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    RHI_CommandList::RHI_CommandList(uint32_t index, RHI_SwapChain* swap_chain, Context* context)
+    RHI_CommandList::RHI_CommandList(Context* context)
     {
-        m_swap_chain                    = swap_chain;
         m_renderer                      = context->GetSubsystem<Renderer>();
         m_profiler                      = context->GetSubsystem<Profiler>();
         m_rhi_device                    = m_renderer->GetRhiDevice().get();
@@ -57,7 +56,7 @@ namespace Spartan
         RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
 
         // Command buffer
-        vulkan_utility::command_buffer::create(m_swap_chain->GetCmdPool(), m_cmd_buffer, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+        vulkan_utility::command_buffer::create(m_rhi_device->GetCmdPool(), m_cmd_buffer, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
         vulkan_utility::debug::set_name(static_cast<VkCommandBuffer>(m_cmd_buffer), "cmd_buffer");
 
         // Sync - Fence
@@ -83,18 +82,16 @@ namespace Spartan
 
     RHI_CommandList::~RHI_CommandList()
     {
-        RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
-
         // Wait in case it's still in use by the GPU
         m_rhi_device->Queue_WaitAll();
 
         // Command buffer
-        vulkan_utility::command_buffer::destroy(m_swap_chain->GetCmdPool(), m_cmd_buffer);
+        vulkan_utility::command_buffer::destroy(m_rhi_device->GetCmdPool(), m_cmd_buffer);
 
         // Query pool
         if (m_query_pool)
         {
-            vkDestroyQueryPool(rhi_context->device, static_cast<VkQueryPool>(m_query_pool), nullptr);
+            vkDestroyQueryPool(m_rhi_device->GetContextRhi()->device, static_cast<VkQueryPool>(m_query_pool), nullptr);
             m_query_pool = nullptr;
         }
     }
@@ -151,7 +148,7 @@ namespace Spartan
 
         vkCmdResetQueryPool(static_cast<VkCommandBuffer>(m_cmd_buffer), static_cast<VkQueryPool>(m_query_pool), 0, m_max_timestamps);
 
-        m_state = RHI_CommandListState::Recording;
+        m_state     = RHI_CommandListState::Recording;
         m_flushed   = false;
 
         return true;
@@ -169,17 +166,13 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_CommandList::Submit()
+    bool RHI_CommandList::Submit(RHI_Semaphore* wait_semaphore)
     {
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Ended);
 
-        // Ensure the processed semaphore can be used
-        SP_ASSERT(m_processed_semaphore->GetState() == RHI_Semaphore_State::Idle);
-
-        // Get wait and signal semaphores
-        RHI_Semaphore* wait_semaphore    = nullptr;
-        RHI_Semaphore* signal_semaphore  = nullptr;
+        // Get signal semaphore
+        RHI_Semaphore* signal_semaphore = nullptr;
         if (m_pipeline)
         {
             if (RHI_PipelineState* state = m_pipeline->GetPipelineState())
@@ -193,18 +186,20 @@ namespace Spartan
                         return true;
                     }
 
-                    // Wait semaphore
-                    if (state->render_target_swapchain->GetImageAcquiredSemaphore()->GetState() == RHI_Semaphore_State::Signaled)
-                    {
-                        wait_semaphore = state->render_target_swapchain->GetImageAcquiredSemaphore();
-                    }
+                    // Ensure the processed semaphore can be used
+                    SP_ASSERT(m_processed_semaphore->GetState() == RHI_Semaphore_State::Idle);
 
-                    signal_semaphore = m_processed_semaphore.get(); // swapchain waits for this when presenting
+                    // Swapchain waits for this when presenting
+                    signal_semaphore = m_processed_semaphore.get(); 
                 }
             }
         }
 
-        m_processed_fence->Reset();
+        // Reset fence if it wasn't waited for
+        if (m_processed_fence->IsSignaled())
+        {
+            m_processed_fence->Reset();
+        }
 
         if (!m_rhi_device->Queue_Submit(
             RHI_Queue_Graphics,                             // queue
@@ -271,7 +266,7 @@ namespace Spartan
             m_index_buffer_id   = 0;
 
             // Vulkan doesn't have a persistent state so global resources have to be set
-            m_renderer->SetGlobalSamplersAndConstantBuffers(this);
+            m_renderer->SetGlobalShaderResources(this);
         }
 
         return true;

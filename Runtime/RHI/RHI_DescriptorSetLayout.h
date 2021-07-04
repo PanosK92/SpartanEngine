@@ -41,6 +41,7 @@ namespace Spartan
         bool SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer);
         void SetSampler(const uint32_t slot, RHI_Sampler* sampler);
         void SetTexture(const uint32_t slot, RHI_Texture* texture, const bool storage);
+        void RemoveTexture(RHI_Texture* texture);
 
         bool GetDescriptorSet(RHI_DescriptorSetLayoutCache* descriptor_set_layout_cache, RHI_DescriptorSet*& descriptor_set);
         const std::array<uint32_t, rhi_max_constant_buffer_count> GetDynamicOffsets() const;

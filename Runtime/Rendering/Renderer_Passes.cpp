@@ -49,7 +49,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    void Renderer::SetGlobalSamplersAndConstantBuffers(RHI_CommandList* cmd_list) const
+    void Renderer::SetGlobalShaderResources(RHI_CommandList* cmd_list) const
     {
         // Constant buffers
         cmd_list->SetConstantBuffer(0, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, m_buffer_frame_gpu);
@@ -65,6 +65,10 @@ namespace Spartan
         cmd_list->SetSampler(4, m_sampler_bilinear_wrap);
         cmd_list->SetSampler(5, m_sampler_trilinear_clamp);
         cmd_list->SetSampler(6, m_sampler_anisotropic_wrap);
+
+        // Textures
+        cmd_list->SetTexture(RendererBindingsSrv::noise_normal, m_tex_default_noise_normal);
+        cmd_list->SetTexture(RendererBindingsSrv::noise_blue, m_tex_default_noise_blue);
     }
 
     void Renderer::Pass_Main(RHI_CommandList* cmd_list)
@@ -81,14 +85,14 @@ namespace Spartan
         // Generate brdf specular lut (only runs once)
         Pass_BrdfSpecularLut(cmd_list);
 
-        const bool draw_transparent_objects = !m_entities[Renderer_Object_Transparent].empty();
+        const bool draw_transparent_objects = !m_entities[Renderer_ObjectType::GeometryTransparent].empty();
 
         // Depth
         {
-            Pass_Depth_Light(cmd_list, Renderer_Object_Opaque);
+            Pass_Depth_Light(cmd_list, Renderer_ObjectType::GeometryOpaque);
             if (draw_transparent_objects)
             {
-                Pass_Depth_Light(cmd_list, Renderer_Object_Transparent);
+                Pass_Depth_Light(cmd_list, Renderer_ObjectType::GeometryTransparent);
             }
         
             if (GetOption(Render_DepthPrepass))
@@ -160,7 +164,7 @@ namespace Spartan
 
     }
 
-    void Renderer::Pass_Depth_Light(RHI_CommandList* cmd_list, const Renderer_Object_Type object_type)
+    void Renderer::Pass_Depth_Light(RHI_CommandList* cmd_list, const Renderer_ObjectType object_type)
     {
         // All opaque objects are rendered from the lights point of view.
         // Opaque objects write their depth information to a depth buffer, using just a vertex shader.
@@ -177,10 +181,10 @@ namespace Spartan
         if (entities.empty())
             return;
 
-        const bool transparent_pass = object_type == Renderer_Object_Transparent;
+        const bool transparent_pass = object_type == Renderer_ObjectType::GeometryTransparent;
 
         // Go through all of the lights
-        const auto& entities_light = m_entities[Renderer_Object_Light];
+        const auto& entities_light = m_entities[Renderer_ObjectType::Light];
         for (uint32_t light_index = 0; light_index < entities_light.size(); light_index++)
         {
             const Light* light = entities_light[light_index]->GetComponent<Light>();
@@ -321,7 +325,7 @@ namespace Spartan
         // Acquire required resources/data
         const auto& shader_depth    = m_shaders[RendererShader::Depth_V];
         const auto& tex_depth       = RENDER_TARGET(RendererRt::Gbuffer_Depth);
-        const auto& entities        = m_entities[Renderer_Object_Opaque];
+        const auto& entities        = m_entities[Renderer_ObjectType::GeometryOpaque];
 
         // Ensure the shader has compiled
         if (!shader_depth->IsCompiled())
@@ -444,7 +448,7 @@ namespace Spartan
             pso.pass_name = is_transparent_pass ? "GBuffer_Transparent" : "GBuffer_Opaque";
 
             bool render_pass_active = false;
-            auto& entities = m_entities[is_transparent_pass ? Renderer_Object_Transparent : Renderer_Object_Opaque];
+            auto& entities = m_entities[is_transparent_pass ? Renderer_ObjectType::GeometryTransparent : Renderer_ObjectType::GeometryOpaque];
 
             // Record commands
             for (uint32_t i = 0; i < static_cast<uint32_t>(entities.size()); i++)
@@ -658,8 +662,6 @@ namespace Spartan
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal,   RENDER_TARGET(RendererRt::Gbuffer_Normal));
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    RENDER_TARGET(RendererRt::Gbuffer_Depth));
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_material, RENDER_TARGET(RendererRt::Gbuffer_Material));
-            cmd_list->SetTexture(RendererBindingsSrv::noise_normal,     m_tex_default_noise_normal);
-            cmd_list->SetTexture(RendererBindingsSrv::noise_blue,       m_tex_default_noise_blue);
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
         }
@@ -715,7 +717,7 @@ namespace Spartan
     void Renderer::Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass /*= false*/)
     {
         // Acquire lights
-        const vector<Entity*>& entities = m_entities[Renderer_Object_Light];
+        const vector<Entity*>& entities = m_entities[Renderer_ObjectType::Light];
         if (entities.empty())
             return;
 
@@ -761,7 +763,6 @@ namespace Spartan
                         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_material, RENDER_TARGET(RendererRt::Gbuffer_Material));
                         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    RENDER_TARGET(RendererRt::Gbuffer_Depth));
                         cmd_list->SetTexture(RendererBindingsSrv::ssao,             RENDER_TARGET(RendererRt::Ssao_Blurred));
-                        cmd_list->SetTexture(RendererBindingsSrv::noise_blue,       m_tex_default_noise_blue);
 
                         // Set shadow map
                         if (light->GetShadowsEnabled())
@@ -1835,7 +1836,7 @@ namespace Spartan
             // Lights
             if (draw_lights)
             {
-                auto& lights = m_entities[Renderer_Object_Light];
+                auto& lights = m_entities[Renderer_ObjectType::Light];
                 for (const auto& entity : lights)
                 {
                     const Entity* entity_selected = m_transform_handle->GetSelectedEntity();
@@ -1886,7 +1887,7 @@ namespace Spartan
             // AABBs
             if (draw_aabb)
             {
-                for (const auto& entity : m_entities[Renderer_Object_Opaque])
+                for (const auto& entity : m_entities[Renderer_ObjectType::GeometryOpaque])
                 {
                     if (auto renderable = entity->GetRenderable())
                     {
@@ -1894,7 +1895,7 @@ namespace Spartan
                     }
                 }
 
-                for (const auto& entity : m_entities[Renderer_Object_Transparent])
+                for (const auto& entity : m_entities[Renderer_ObjectType::GeometryTransparent])
                 {
                     if (auto renderable = entity->GetRenderable())
                     {
@@ -1989,7 +1990,7 @@ namespace Spartan
             return;
 
         // Acquire resources
-        auto& lights                    = m_entities[Renderer_Object_Light];
+        auto& lights                    = m_entities[Renderer_ObjectType::Light];
         const auto& shader_quad_v       = m_shaders[RendererShader::Quad_V];
         const auto& shader_texture_p    = m_shaders[RendererShader::Copy_Bilinear_P];
         if (lights.empty() || !shader_quad_v->IsCompiled() || !shader_texture_p->IsCompiled())

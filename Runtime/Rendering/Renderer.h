@@ -128,8 +128,8 @@ namespace Spartan
 
         // Swapchain
         RHI_SwapChain* GetSwapChain() const { return m_swap_chain.get(); }
-        bool Present();
-        bool Flush();
+        bool Present(RHI_CommandList* cmd_list);
+        void Flush();
 
         // Default textures
         RHI_Texture* GetDefaultTextureWhite()       const { return m_tex_default_white.get(); }
@@ -138,13 +138,10 @@ namespace Spartan
 
         // Global shader resources
         void SetGlobalShaderObjectTransform(RHI_CommandList* cmd_list, const Math::Matrix& transform);
-        void SetGlobalSamplersAndConstantBuffers(RHI_CommandList* cmd_list) const;
+        void SetGlobalShaderResources(RHI_CommandList* cmd_list) const;
 
         // Rendering
-        void Stop();
-        void Start();
-        bool IsAllowedToRender()    const { return m_is_allowed_to_render; }
-        bool IsRendering()          const { return m_is_rendering; }
+        bool IsRenderingAllowed() const { return m_is_rendering_allowed; }
 
         // Misc
         const std::shared_ptr<RHI_Device>& GetRhiDevice()           const { return m_rhi_device; }
@@ -155,8 +152,9 @@ namespace Spartan
         std::shared_ptr<Camera> GetCamera()                         const { return m_camera; }
         auto IsInitialised()                                        const { return m_initialised; }
         auto GetShaders()                                           const { return m_shaders; }
+        RHI_CommandList* GetCmdList()                               const { return m_cmd_current; }
+        uint32_t GetCmdIndex()                                      const { return m_cmd_index;  }
         uint32_t GetMaxResolution() const;
-        void Clear();
 
         // Passes
         void Pass_CopyToBackbuffer(RHI_CommandList* cmd_list);
@@ -176,7 +174,7 @@ namespace Spartan
         // Passes
         void Pass_Main(RHI_CommandList* cmd_list);
         void Pass_UpdateFrameBuffer(RHI_CommandList* cmd_list);
-        void Pass_Depth_Light(RHI_CommandList* cmd_list, const Renderer_Object_Type object_type);
+        void Pass_Depth_Light(RHI_CommandList* cmd_list, const Renderer_ObjectType object_type);
         void Pass_Depth_Prepass(RHI_CommandList* cmd_list);
         void Pass_GBuffer(RHI_CommandList* cmd_list, const bool is_transparent_pass = false);
         void Pass_Ssao(RHI_CommandList* cmd_list);
@@ -216,8 +214,10 @@ namespace Spartan
         bool UpdateUberBuffer(RHI_CommandList* cmd_list);
         bool UpdateLightBuffer(RHI_CommandList* cmd_list, const Light* light);
 
-        // Misc
-        void RenderablesAcquire(const Variant& renderables);
+        // Event handlers
+        void OnRenderablesAcquire(const Variant& renderables);
+        void OnClear();
+        void OnWorldLoaded();
         void RenderablesSort(std::vector<Entity*>* renderables);
 
         // Render targets
@@ -299,13 +299,17 @@ namespace Spartan
         bool m_is_odd_frame                         = false;
         bool m_brdf_specular_lut_rendered           = false;
         bool m_update_ortho_proj                    = true;
-        std::atomic<bool> m_is_allowed_to_render    = true;
-        std::atomic<bool> m_is_rendering            = false;
+        std::atomic<bool> m_is_rendering_allowed    = true;
+        std::atomic<bool> m_flush_requested         = false;
+        uint32_t m_cmd_index                        = std::numeric_limits<uint32_t>::max();
+        std::thread::id m_render_thread_id;
 
         // RHI Core
         std::shared_ptr<RHI_Device> m_rhi_device;
         std::shared_ptr<RHI_PipelineCache> m_pipeline_cache;
         std::shared_ptr<RHI_DescriptorSetLayoutCache> m_descriptor_set_layout_cache;
+        std::vector<std::shared_ptr<RHI_CommandList>> m_cmd_lists;
+        RHI_CommandList* m_cmd_current = nullptr;
 
         // Swapchain
         static const uint8_t m_swap_chain_buffer_count = 3;
@@ -334,7 +338,7 @@ namespace Spartan
         //========================================================
 
         // Entities and material references
-        std::unordered_map<Renderer_Object_Type, std::vector<Entity*>> m_entities;
+        std::unordered_map<Renderer_ObjectType, std::vector<Entity*>> m_entities;
         std::array<Material*, m_max_material_instances> m_material_instances;
         std::shared_ptr<Camera> m_camera;
 

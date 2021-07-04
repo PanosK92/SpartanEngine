@@ -51,16 +51,16 @@ namespace Spartan
     class SPARTAN_CLASS RHI_CommandList : public SpartanObject
     {
     public:
-        RHI_CommandList(uint32_t index, RHI_SwapChain* swap_chain, Context* context);
+        RHI_CommandList(Context* context);
         ~RHI_CommandList();
     
         // Command list
         bool Begin();
         bool End();
-        bool Submit();
+        bool Submit(RHI_Semaphore* wait_semaphore);
         bool Wait();
         bool Reset();
-        bool Flush();
+        bool Flush(const bool restore_pipeline_state_after_flush);
 
         // Render pass
         bool BeginRenderPass(RHI_PipelineState& pipeline_state);
@@ -109,6 +109,7 @@ namespace Spartan
         bool Timestamp_End(void* query_disjoint = nullptr, void* query_end = nullptr);
         float Timestamp_GetDuration(void* query_disjoint, void* query_start, void* query_end, const uint32_t pass_index);
 
+        // GPU
         static uint32_t Gpu_GetMemory(RHI_Device* rhi_device);
         static uint32_t Gpu_GetMemoryUsed(RHI_Device* rhi_device);
         static bool Gpu_QueryCreate(RHI_Device* rhi_device, void** query = nullptr, RHI_Query_Type type = RHI_Query_Timestamp);
@@ -129,7 +130,6 @@ namespace Spartan
         bool OnDraw();
 
         RHI_Pipeline* m_pipeline                                    = nullptr; 
-        RHI_SwapChain* m_swap_chain                                 = nullptr;
         Renderer* m_renderer                                        = nullptr;
         RHI_PipelineCache* m_pipeline_cache                         = nullptr;
         RHI_DescriptorSetLayoutCache* m_descriptor_set_layout_cache = nullptr;

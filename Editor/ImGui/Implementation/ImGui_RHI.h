@@ -63,13 +63,23 @@ namespace ImGui::RHI
     static unique_ptr<RHI_BlendState>                                       g_blend_state;
     static unique_ptr<RHI_Shader>                                           g_shader_vertex;
     static unique_ptr<RHI_Shader>                                           g_shader_pixel;
+    static shared_ptr<RHI_CommandList>                                      g_cmd_list;
+    static RHI_CommandList* g_used_cmd_list                                 = nullptr;
+
+    struct WindowData
+    {
+        RHI_SwapChain* swapchain;
+        RHI_CommandList* cmd_list;
+        bool image_acquired = false;
+    };
 
     inline bool Initialize(Context* context)
     {
         g_context       = context;
         g_renderer      = context->GetSubsystem<Renderer>();
         g_rhi_device    = g_renderer->GetRhiDevice();
-        
+        g_cmd_list      = g_renderer->GetSwapChain()->CreateCmdList();
+
         if (!g_context || !g_rhi_device || !g_rhi_device->IsInitialised())
         {
             LOG_ERROR_INVALID_PARAMETER();
@@ -150,7 +160,7 @@ namespace ImGui::RHI
         DestroyPlatformWindows();
     }
 
-    inline void Render(ImDrawData* draw_data, RHI_SwapChain* swap_chain_other = nullptr, const bool clear = true)
+    inline void Render(ImDrawData* draw_data, WindowData* window_data = nullptr, const bool clear = true)
     {
         // Validate draw data
         SP_ASSERT(draw_data != nullptr);
@@ -161,34 +171,31 @@ namespace ImGui::RHI
         if (fb_width <= 0 || fb_height <= 0 || draw_data->TotalVtxCount == 0)
             return;
 
-        // Get swap chain
-        bool is_child_window        = swap_chain_other != nullptr;
-        RHI_SwapChain* swap_chain   = is_child_window ? swap_chain_other : g_renderer->GetSwapChain();
-        RHI_CommandList* cmd_list   = swap_chain->GetCmdList();
+        // Get swap chain and cmd list
+        bool is_child_window        = window_data != nullptr;
+        RHI_SwapChain* swap_chain   = is_child_window ? window_data->swapchain : g_renderer->GetSwapChain();
+        g_used_cmd_list             = is_child_window ? window_data->cmd_list : g_renderer->GetCmdList();
+
+        // The Renderer gets flushed during world loading, so rendering might not be allowed by the time this function executes.
+        // In this case, we use our own command list so we can keep the editor rendering (specifically, the loading bar) active.
+        if (!is_child_window && !g_renderer->IsRenderingAllowed())
+        {
+            g_used_cmd_list = g_cmd_list.get();
+            g_used_cmd_list->Begin();
+        }
 
         // Validate command list
-        SP_ASSERT(cmd_list != nullptr);
+        SP_ASSERT(g_used_cmd_list != nullptr);
 
-        // Wait until the Renderer is able to render (it can get flushed and stopped during world loading)
-        while (!g_renderer->IsAllowedToRender())
-        {
-            LOG_INFO("Waiting for the Renderer to be ready...");
-            this_thread::sleep_for(chrono::milliseconds(16));
-        }
-
-        // Don't render if the the command list is not recording (can happen when the Renderer is not allowed to render)
-        if (cmd_list->GetState() != Spartan::RHI_CommandListState::Recording)
-        {
-            LOG_INFO("Waiting for command list to be ready...");
+        if (g_used_cmd_list->GetState() != Spartan::RHI_CommandListState::Recording)
             return;
-        }
 
         // Update vertex and index buffers
         RHI_VertexBuffer* vertex_buffer = nullptr;
         RHI_IndexBuffer* index_buffer   = nullptr;
         {
             const uint32_t swapchain_id         = swap_chain->GetObjectId();
-            const uint32_t swapchain_cmd_index  = swap_chain->GetCmdIndex();
+            const uint32_t swapchain_cmd_index  = g_renderer->GetCmdIndex();
 
             const uint32_t gap =  Math::Helper::Clamp<uint32_t>((swapchain_cmd_index + 1) - static_cast<uint32_t>(g_vertex_buffers[swapchain_id].size()), 0, 10);
             for (uint32_t i = 0; i < gap; i++)
@@ -252,7 +259,7 @@ namespace ImGui::RHI
         pipeline_state.pass_name                = is_child_window ? "pass_imgui_window_child" : "pass_imgui_window_main";
 
         // Record commands
-        if (cmd_list->BeginRenderPass(pipeline_state))
+        if (g_used_cmd_list->BeginRenderPass(pipeline_state))
         {
             // Setup orthographic projection matrix into our constant buffer
             // Our visible ImGui space lies from draw_data->DisplayPos (top left) to 
@@ -270,7 +277,7 @@ namespace ImGui::RHI
                     0.0f, 0.0f, 0.0f, 1.0f
                 );
 
-                g_renderer->SetGlobalShaderObjectTransform(cmd_list, wvp);
+                g_renderer->SetGlobalShaderObjectTransform(g_used_cmd_list, wvp);
             }
 
             // Transition layouts
@@ -282,13 +289,13 @@ namespace ImGui::RHI
                     const auto pcmd = &cmd_list_imgui->CmdBuffer[cmd_i];
                     if (RHI_Texture* texture = static_cast<RHI_Texture*>(pcmd->TextureId))
                     {
-                        texture->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
+                        texture->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, g_used_cmd_list);
                     }
                 }
             }
 
-            cmd_list->SetBufferVertex(vertex_buffer);
-            cmd_list->SetBufferIndex(index_buffer);
+            g_used_cmd_list->SetBufferVertex(vertex_buffer);
+            g_used_cmd_list->SetBufferIndex(index_buffer);
 
             // Render command lists
             int global_vtx_offset   = 0;
@@ -314,9 +321,9 @@ namespace ImGui::RHI
                         scissor_rect.bottom    = pcmd->ClipRect.w - clip_off.y;
 
                         // Apply scissor rectangle, bind texture and draw
-                        cmd_list->SetScissorRectangle(scissor_rect);
-                        cmd_list->SetTexture(RendererBindingsSrv::tex, static_cast<RHI_Texture*>(pcmd->TextureId));
-                        cmd_list->DrawIndexed(pcmd->ElemCount, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset);
+                        g_used_cmd_list->SetScissorRectangle(scissor_rect);
+                        g_used_cmd_list->SetTexture(RendererBindingsSrv::tex, static_cast<RHI_Texture*>(pcmd->TextureId));
+                        g_used_cmd_list->DrawIndexed(pcmd->ElemCount, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset);
                     }
 
                 }
@@ -324,48 +331,59 @@ namespace ImGui::RHI
                 global_vtx_offset += cmd_list_imgui->VtxBuffer.Size;
             }
 
-            cmd_list->EndRenderPass();
+            g_used_cmd_list->EndRenderPass();
         }
+    }
+
+    inline RHI_CommandList* GetUsedCmdList()
+    {
+        return g_used_cmd_list;
     }
 
     //--------------------------------------------
     // MULTI-VIEWPORT / PLATFORM INTERFACE SUPPORT
     //--------------------------------------------
 
-    inline RHI_SwapChain* GetSwapchain(ImGuiViewport* viewport)
+    inline WindowData* RHI_GetWindowData(ImGuiViewport* viewport)
     {
         SP_ASSERT(viewport != nullptr);
-        return static_cast<RHI_SwapChain*>(viewport->RendererUserData);
+        return static_cast<WindowData*>(viewport->RendererUserData);
     }
 
     static void RHI_Window_Create(ImGuiViewport* viewport)
     {
         SP_ASSERT(viewport != nullptr);
 
-        RHI_SwapChain* swapchain = new RHI_SwapChain
+        WindowData* window = new WindowData();
+
+        window->swapchain = new RHI_SwapChain
         (
             viewport->PlatformHandleRaw, // PlatformHandle is SDL_Window, PlatformHandleRaw is HWND
             g_rhi_device,
             static_cast<uint32_t>(viewport->Size.x),
             static_cast<uint32_t>(viewport->Size.y),
             RHI_Format_R8G8B8A8_Unorm,
-            g_renderer->GetSwapChain()->GetBufferCount(),
+            1,
             g_renderer->GetSwapChain()->GetFlags(),
             (string("swapchain_child_") + string(to_string(viewport->ID))).c_str()
         );
 
-        SP_ASSERT(swapchain->IsInitialised());
+        SP_ASSERT(window->swapchain->IsInitialised());
 
-        viewport->RendererUserData = swapchain;
+        window->cmd_list = new RHI_CommandList(g_context);
+
+        viewport->RendererUserData = window;
     }
 
     static void RHI_Window_Destroy(ImGuiViewport* viewport)
     {
         SP_ASSERT(viewport != nullptr);
 
-        if (RHI_SwapChain* swapchain = GetSwapchain(viewport))
+        if (WindowData* window = RHI_GetWindowData(viewport))
         {
-            delete swapchain;
+            delete window->swapchain;
+            delete window->cmd_list;
+            delete window;
         }
 
         viewport->RendererUserData = nullptr;
@@ -374,10 +392,11 @@ namespace ImGui::RHI
     static void RHI_Window_SetSize(ImGuiViewport* viewport, const ImVec2 size)
     {
         SP_ASSERT(viewport != nullptr);
-        RHI_SwapChain* swapchain = GetSwapchain(viewport);
-        SP_ASSERT(swapchain != nullptr);
+
+        WindowData* window = RHI_GetWindowData(viewport);
+        SP_ASSERT(window != nullptr);
         
-        if (!swapchain->Resize(static_cast<uint32_t>(size.x), static_cast<uint32_t>(size.y)))
+        if (!window->swapchain->Resize(static_cast<uint32_t>(size.x), static_cast<uint32_t>(size.y)))
         {
             LOG_ERROR("Failed to resize swap chain");
         }
@@ -386,56 +405,49 @@ namespace ImGui::RHI
     static void RHI_Window_Render(ImGuiViewport* viewport, void*)
     {
         SP_ASSERT(viewport != nullptr);
-        RHI_SwapChain* swapchain = GetSwapchain(viewport);
-        SP_ASSERT(swapchain != nullptr);
 
-        RHI_CommandList* cmd_list = swapchain->GetCmdList();
-        SP_ASSERT(cmd_list != nullptr);
+        WindowData* window = RHI_GetWindowData(viewport);
+        SP_ASSERT(window != nullptr);
 
-        if (!cmd_list->Begin())
+        if (!window->cmd_list->Begin())
         {
             LOG_ERROR("Failed to begin command list");
             return;
         }
 
         const bool clear = !(viewport->Flags & ImGuiViewportFlags_NoRendererClear);
-        Render(viewport->DrawData, swapchain, clear);
+        Render(viewport->DrawData, window, clear);
 
-        // Get wait semaphore
-        RHI_Semaphore* wait_semaphore = cmd_list->GetProcessedSemaphore();
-
-        // When moving a window outside of the main viewport for the first time
-        // it skips presenting every other time, hence the semaphore will be signaled
-        // because it was never waited for by present. So we do a dummy present here.
-        // Not sure why this behavior is occurring yet.
-        if (wait_semaphore) // Semaphore is null for D3D11
-        {
-            if (wait_semaphore->GetState() == RHI_Semaphore_State::Signaled)
-            {
-                LOG_INFO("Dummy presenting to reset semaphore");
-                swapchain->Present(wait_semaphore);
-            }
-        }
-
-        if (!cmd_list->End())
+        if (!window->cmd_list->End())
         {
             LOG_ERROR("Failed to end command list");
             return;
         }
 
-        if (!cmd_list->Submit())
+        RHI_Semaphore* wait_semaphore = window->image_acquired ? nullptr : window->swapchain->GetImageAcquiredSemaphore();
+        if (!window->cmd_list->Submit(wait_semaphore))
         {
             LOG_ERROR("Failed to submit command list");
+            return;
+        }
+
+        if (window->swapchain->GetBufferCount() == 1)
+        {
+            window->image_acquired = true;
         }
     }
 
     static void RHI_Window_Present(ImGuiViewport* viewport, void*)
     {
-        RHI_SwapChain* swapchain = GetSwapchain(viewport);
-        SP_ASSERT(swapchain != nullptr);
-        SP_ASSERT(swapchain->GetCmdList() != nullptr);
+        // Validate window
+        WindowData* window = RHI_GetWindowData(viewport);
+        SP_ASSERT(window != nullptr);
 
-        if (!swapchain->Present(swapchain->GetCmdList()->GetProcessedSemaphore()))
+        // Validate cmd list state
+        SP_ASSERT(window->cmd_list->GetState() == Spartan::RHI_CommandListState::Submitted);
+
+        // Present
+        if (!window->swapchain->Present(window->cmd_list->GetProcessedSemaphore()))
         {
             LOG_ERROR("Failed to present");
         }

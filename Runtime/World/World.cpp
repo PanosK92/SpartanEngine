@@ -152,7 +152,7 @@ namespace Spartan
         m_name = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
 
         // Notify subsystems that need to save data
-        SP_FIRE_EVENT(EventType::WorldSave);
+        SP_FIRE_EVENT(EventType::WorldSaveStart);
 
         // Create a prefab file
         auto file = make_unique<FileStream>(file_path, FileStream_Write);
@@ -189,7 +189,7 @@ namespace Spartan
         LOG_INFO("Saving took %.2f ms", timer.GetElapsedTimeMs());
 
         // Notify subsystems waiting for us to finish
-        SP_FIRE_EVENT(EventType::WorldSaved);
+        SP_FIRE_EVENT(EventType::WorldSavedEnd);
 
         return true;
     }
@@ -213,20 +213,13 @@ namespace Spartan
         ProgressTracker::Get().SetStatus(ProgressType::World, "Loading world...");
         const Stopwatch timer;
 
-        // The Renderer will detect the world loading progress and stop (to avoid entity race conditions).
-        // Because this loading function can be called by a different thread, we wait for it to stop first.
-        Renderer* renderer = m_context->GetSubsystem<Renderer>();
-        renderer->Stop();
-        
         // Clear current entities
         Clear();
-
-        renderer->Start();
 
         m_name = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
 
         // Notify subsystems that need to load data
-        SP_FIRE_EVENT(EventType::WorldLoad);
+        SP_FIRE_EVENT(EventType::WorldLoadStart);
 
         // Load root entity count
         const uint32_t root_entity_count = file->ReadAs<uint32_t>();
@@ -250,7 +243,7 @@ namespace Spartan
         ProgressTracker::Get().SetIsLoading(ProgressType::World, false);
         LOG_INFO("Loading took %.2f ms", timer.GetElapsedTimeMs());
 
-        SP_FIRE_EVENT(EventType::WorldLoaded);
+        SP_FIRE_EVENT(EventType::WorldLoadEnd);
 
         return true;
     }
@@ -331,10 +324,11 @@ namespace Spartan
 
     void World::Clear()
     {
-        // Notify any systems that the entities are about to be cleared
+        // Notify subsystems that need to flush (like the Renderer)
+        SP_FIRE_EVENT(EventType::WorldPreClear);
+
+        // Notify any systems that need to clear (like the ResourceCache)
         SP_FIRE_EVENT(EventType::WorldClear);
-        m_context->GetSubsystem<Renderer>()->Clear();
-        m_context->GetSubsystem<ResourceCache>()->Clear();
 
         // Clear the entities
         m_entities.clear();

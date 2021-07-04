@@ -57,11 +57,13 @@ namespace Spartan
         RHI_Context* GetContextRhi()        const { return m_rhi_context.get(); }
         Context* GetContext()               const { return m_context; }
         uint32_t GetEnabledGraphicsStages() const { return m_enabled_graphics_shader_stages; }
+        void*& GetCmdPool()                       { return m_cmd_pool; }
 
-    private:    
+    private:
         std::vector<PhysicalDevice> m_physical_devices;
         uint32_t m_physical_device_index            = 0;
         uint32_t m_enabled_graphics_shader_stages   = 0;
+        void* m_cmd_pool                            = nullptr;
         bool m_initialized                          = false;
         mutable std::mutex m_queue_mutex;
         std::shared_ptr<RHI_Context> m_rhi_context;

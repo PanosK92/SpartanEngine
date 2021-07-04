@@ -321,19 +321,17 @@ namespace Spartan
             LOG_ERROR("Invalid RHI Device.");
         }
 
-        // Wait in case it's still in use by the GPU
-        m_rhi_device->Queue_WaitAll();
-
         // Make sure that no descriptor sets refer to this texture.
-        // Right now I just reset the descriptor set layout cache, which works but it's not ideal.
-        // Todo: Get only the referring descriptor sets, and simply update the slot this texture is bound to.
         if (Renderer* renderer = m_rhi_device->GetContext()->GetSubsystem<Renderer>())
         {
             if (RHI_DescriptorSetLayoutCache* descriptor_set_layout_cache = renderer->GetDescriptorLayoutSetCache())
             {
-                descriptor_set_layout_cache->Reset();
+                descriptor_set_layout_cache->RemoveTexture(this);
             }
         }
+
+        // Wait in case it's still in use by the GPU
+        m_rhi_device->Queue_WaitAll();
 
         // De-allocate everything
         m_data.clear();

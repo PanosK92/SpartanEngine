@@ -267,15 +267,6 @@ namespace Spartan
             m_image_acquired_semaphore
         );
 
-        // Create command pool
-        vulkan_utility::command_pool::create(m_cmd_pool, RHI_Queue_Graphics);
-
-        // Create command lists
-        for (uint32_t i = 0; i < m_buffer_count; i++)
-        {
-            m_cmd_lists.emplace_back(make_shared<RHI_CommandList>(i, this, rhi_device->GetContext()));
-        }
-
         AcquireNextImage();
     }
 
@@ -283,12 +274,6 @@ namespace Spartan
     {
         // Wait in case any command buffer is still in use
         m_rhi_device->Queue_WaitAll();
-
-        // Command buffers
-        m_cmd_lists.clear();
-
-        // Command pool
-        vulkan_utility::command_pool::destroy(m_cmd_pool);
 
         // Resources
         swapchain_destroy
@@ -370,14 +355,21 @@ namespace Spartan
         if (!m_present_enabled)
             return true;
 
-        // Get next cmd index
-        uint32_t next_cmd_index = (m_cmd_index + 1) % m_buffer_count;
+        // Return if the swapchain has a single buffer and it has already been acquired
+        if (m_buffer_count == 1 && m_image_index != numeric_limits<uint32_t>::max())
+            return true;
+
+        m_buffer_index = (m_buffer_index + 1) % m_buffer_count;
 
         // Get signal semaphore
-        RHI_Semaphore* signal_semaphore = m_image_acquired_semaphore[next_cmd_index].get();
+        RHI_Semaphore* signal_semaphore = m_image_acquired_semaphore[m_buffer_index].get();
 
-        // Validate semaphore state
-        SP_ASSERT(signal_semaphore->GetState() == RHI_Semaphore_State::Idle);
+        // Reset semaphore if it wasn't waited for
+        if (signal_semaphore->GetState() != RHI_Semaphore_State::Idle)
+        {
+            LOG_INFO("Reseting signal semaphore...");
+            signal_semaphore->Reset();
+        }
 
         // Acquire next image
         VkResult result = vkAcquireNextImageKHR(
@@ -410,9 +402,6 @@ namespace Spartan
             return false;
         }
 
-        // Save cmd index
-        m_cmd_index = next_cmd_index;
-
         // Update semaphore state
         signal_semaphore->SetState(RHI_Semaphore_State::Signaled);
 
@@ -423,9 +412,6 @@ namespace Spartan
     {
         // Validate swapchain state
         SP_ASSERT(m_present_enabled);
-
-        // Validate semaphore state
-        SP_ASSERT(wait_semaphore->GetState() == RHI_Semaphore_State::Signaled);
 
         // Acquire next image
         if (!AcquireNextImage())

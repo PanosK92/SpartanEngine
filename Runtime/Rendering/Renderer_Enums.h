@@ -220,11 +220,11 @@ namespace Spartan
     };
 
     // Renderable object types
-    enum Renderer_Object_Type
+    enum class Renderer_ObjectType
     {
-        Renderer_Object_Opaque,
-        Renderer_Object_Transparent,
-        Renderer_Object_Light,
-        Renderer_Object_Camera
+        GeometryOpaque,
+        GeometryTransparent,
+        Light,
+        Camera
     };
 }

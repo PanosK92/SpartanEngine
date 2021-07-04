@@ -89,6 +89,12 @@ namespace Spartan
         m_descriptor_layout_current->SetTexture(slot, texture, storage);
     }
 
+    void RHI_DescriptorSetLayoutCache::RemoveTexture(RHI_Texture* texture)
+    {
+        SP_ASSERT(texture != nullptr);
+        m_descriptor_layout_current->RemoveTexture(texture);
+    }
+
     bool RHI_DescriptorSetLayoutCache::GetDescriptorSet(RHI_DescriptorSet*& descriptor_set)
     {
         SP_ASSERT(m_descriptor_layout_current != nullptr);
