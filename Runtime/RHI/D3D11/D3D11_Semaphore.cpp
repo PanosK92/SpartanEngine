@@ -40,4 +40,9 @@ namespace Spartan
     {
 
     }
+
+    void RHI_Semaphore::Reset()
+    {
+
+    }
 }

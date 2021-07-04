@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2020 Panos Karabelas
+Copyright(c) 2016-2021 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,10 +19,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ================
+//= INCLUDES ===============
 #include "Spartan.h"
-#include "../RHI_Semaphore.h"
-//===========================
+#include "RHI_SwapChain.h"
+#include "RHI_Device.h"
+#include "RHI_CommandList.h"
+//==========================
 
 //= NAMESPACES =====
 using namespace std;
@@ -30,19 +32,8 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_Semaphore::RHI_Semaphore(RHI_Device* rhi_device, bool is_timeline /*= false*/, const char* name /*= nullptr*/)
+    shared_ptr<Spartan::RHI_CommandList> RHI_SwapChain::CreateCmdList()
     {
-        m_is_timeline   = is_timeline;
-        m_rhi_device    = rhi_device;
-    }
-
-    RHI_Semaphore::~RHI_Semaphore()
-    {
-
-    }
-
-    void RHI_Semaphore::Reset()
-    {
-
+        return make_shared<RHI_CommandList>(m_rhi_device->GetContext());
     }
 }

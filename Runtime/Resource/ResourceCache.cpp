@@ -60,15 +60,17 @@ namespace Spartan
         SetProjectDirectory("Project/");
 
         // Subscribe to events
-        SP_SUBSCRIBE_TO_EVENT(EventType::WorldSave,    SP_EVENT_HANDLER(SaveResourcesToFiles));
-        SP_SUBSCRIBE_TO_EVENT(EventType::WorldLoad,    SP_EVENT_HANDLER(LoadResourcesFromFiles));
+        SP_SUBSCRIBE_TO_EVENT(EventType::WorldSaveStart,    SP_EVENT_HANDLER(SaveResourcesToFiles));
+        SP_SUBSCRIBE_TO_EVENT(EventType::WorldLoadStart,    SP_EVENT_HANDLER(LoadResourcesFromFiles));
+        SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,        SP_EVENT_HANDLER(Clear));
     }
 
     ResourceCache::~ResourceCache()
     {
         // Unsubscribe from events
-        SP_UNSUBSCRIBE_FROM_EVENT(EventType::WorldSave,    SP_EVENT_HANDLER(SaveResourcesToFiles));
-        SP_UNSUBSCRIBE_FROM_EVENT(EventType::WorldLoad,    SP_EVENT_HANDLER(LoadResourcesFromFiles));
+        SP_UNSUBSCRIBE_FROM_EVENT(EventType::WorldSaveStart,    SP_EVENT_HANDLER(SaveResourcesToFiles));
+        SP_UNSUBSCRIBE_FROM_EVENT(EventType::WorldLoadStart,    SP_EVENT_HANDLER(LoadResourcesFromFiles));
+        SP_UNSUBSCRIBE_FROM_EVENT(EventType::WorldClear,        SP_EVENT_HANDLER(Clear));
     }
 
     bool ResourceCache::OnInitialise()

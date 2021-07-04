@@ -243,7 +243,7 @@ void Editor::Tick()
 
         if (_editor::window->IsFullScreen())
         {
-            _editor::renderer->Pass_CopyToBackbuffer(_editor::swapchain->GetCmdList());
+            _editor::renderer->Pass_CopyToBackbuffer(_editor::renderer->GetCmdList());
         }
         else
         {
@@ -272,7 +272,7 @@ void Editor::Tick()
         }
 
         // Present
-        _editor::renderer->Present();
+        _editor::renderer->Present(ImGui::RHI::GetUsedCmdList());
 
         // ImGui - child windows
         if (!_editor::window->IsFullScreen() && ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)

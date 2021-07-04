@@ -22,9 +22,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ============================
 #include "Spartan.h"
 #include "RHI_CommandList.h"
-#include "RHI_Fence.h"
-#include "RHI_DescriptorSetLayoutCache.h"
 #include "RHI_Device.h"
+#include "RHI_Fence.h"
+#include "RHI_Semaphore.h"
+#include "RHI_DescriptorSetLayoutCache.h"
 //=======================================
 
 namespace Spartan
@@ -33,8 +34,12 @@ namespace Spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Submitted);
 
+        // Wait on the fence
         if (!m_processed_fence->Wait())
             return false;
+
+        // Reset the semaphore
+        m_processed_semaphore->Reset();
 
         m_descriptor_set_layout_cache->GrowIfNeeded();
         m_state = RHI_CommandListState::Idle;
@@ -42,7 +47,7 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_CommandList::Flush()
+    bool RHI_CommandList::Flush(const bool restore_pipeline_state_after_flush)
     {
         if (m_state == RHI_CommandListState::Idle)
             return true;
@@ -69,15 +74,15 @@ namespace Spartan
         // If ended, submit
         if (m_state == RHI_CommandListState::Ended)
         {
-            if (!Submit())
+            if (!Submit(nullptr))
                 return false;
         }
 
         // Flush
         Wait();
-        
+
         // If idle, restore state (if any)
-        if (m_state == RHI_CommandListState::Idle)
+        if (restore_pipeline_state_after_flush && m_state == RHI_CommandListState::Idle)
         {
             if (was_recording)
             {

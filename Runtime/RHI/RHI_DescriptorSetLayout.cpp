@@ -133,6 +133,23 @@ namespace Spartan
         }
     }
 
+    void RHI_DescriptorSetLayout::RemoveTexture(RHI_Texture* texture)
+    {
+        for (RHI_Descriptor& descriptor : m_descriptors)
+        {
+            if (descriptor.resource == texture->Get_Resource_View())
+            {
+                m_needs_to_bind = true; // affects vkUpdateDescriptorSets
+
+                // Update
+                descriptor.resource = nullptr;
+                descriptor.layout   = RHI_Image_Layout::Undefined;
+
+                break;
+            }
+        }
+    }
+    
     bool RHI_DescriptorSetLayout::GetDescriptorSet(RHI_DescriptorSetLayoutCache* descriptor_set_layout_cache, RHI_DescriptorSet*& descriptor_set)
     {
         // Integrate resource into the hash

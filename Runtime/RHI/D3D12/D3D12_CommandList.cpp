@@ -49,7 +49,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    RHI_CommandList::RHI_CommandList(uint32_t index, RHI_SwapChain* swap_chain, Context* context)
+    RHI_CommandList::RHI_CommandList(Context* context)
     {
     
     }
@@ -66,7 +66,7 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_CommandList::Submit()
+    bool RHI_CommandList::Submit(RHI_Semaphore* wait_semaphore)
     {
         return true;
     }

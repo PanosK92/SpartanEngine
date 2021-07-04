@@ -27,10 +27,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    RHI_Semaphore::RHI_Semaphore(RHI_Device* rhi_device, bool is_timeline /*= false*/, const char* name /*= nullptr*/)
+    static bool create(VkDevice device, const bool is_timeline, void*& resource)
     {
-        m_is_timeline   = is_timeline;
-        m_rhi_device    = rhi_device;
+        SP_ASSERT(resource == nullptr);
 
         VkSemaphoreTypeCreateInfo semaphore_type_create_info = {};
         semaphore_type_create_info.sType                     = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO;
@@ -40,12 +39,28 @@ namespace Spartan
 
         VkSemaphoreCreateInfo semaphore_create_info = {};
         semaphore_create_info.sType                 = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-        semaphore_create_info.pNext                 = m_is_timeline ? &semaphore_type_create_info : nullptr;
+        semaphore_create_info.pNext                 = is_timeline ? &semaphore_type_create_info : nullptr;
         semaphore_create_info.flags                 = 0;
 
         // Create
-        if (!vulkan_utility::error::check(vkCreateSemaphore(m_rhi_device->GetContextRhi()->device, &semaphore_create_info, nullptr, reinterpret_cast<VkSemaphore*>(&m_resource))))
+        return vulkan_utility::error::check(vkCreateSemaphore(device, &semaphore_create_info, nullptr, reinterpret_cast<VkSemaphore*>(&resource)));
+    }
+
+    static void destroy(VkDevice device, void*& resource)
+    {
+        if (!resource)
             return;
+
+        vkDestroySemaphore(device, static_cast<VkSemaphore>(resource), nullptr);
+        resource = nullptr;
+    }
+
+    RHI_Semaphore::RHI_Semaphore(RHI_Device* rhi_device, bool is_timeline /*= false*/, const char* name /*= nullptr*/)
+    {
+        m_is_timeline   = is_timeline;
+        m_rhi_device    = rhi_device;
+
+        create(m_rhi_device->GetContextRhi()->device, m_is_timeline, m_resource);
 
         // Name
         if (name)
@@ -63,8 +78,17 @@ namespace Spartan
         // Wait in case it's still in use by the GPU
         m_rhi_device->Queue_WaitAll();
 
-        vkDestroySemaphore(m_rhi_device->GetContextRhi()->device, static_cast<VkSemaphore>(m_resource), nullptr);
-        m_resource = nullptr;
+        destroy(m_rhi_device->GetContextRhi()->device, m_resource);
+    }
+
+    void RHI_Semaphore::Reset()
+    {
+        if (m_state != RHI_Semaphore_State::Idle);
+            return;
+
+        destroy(m_rhi_device->GetContextRhi()->device, m_resource);
+        create(m_rhi_device->GetContextRhi()->device, m_is_timeline, m_resource);
+        m_state = RHI_Semaphore_State::Idle;
     }
 
     bool RHI_Semaphore::Wait(const uint64_t value, uint64_t timeout /*= std::numeric_limits<uint64_t>::max()*/)

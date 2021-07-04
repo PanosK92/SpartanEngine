@@ -51,9 +51,8 @@ namespace Spartan
 {
     bool RHI_CommandList::m_memory_query_support = true;
 
-    RHI_CommandList::RHI_CommandList(uint32_t index, RHI_SwapChain* swap_chain, Context* context)
+    RHI_CommandList::RHI_CommandList(Context* context)
     {
-        m_swap_chain                    = swap_chain;
         m_renderer                      = context->GetSubsystem<Renderer>();
         m_profiler                      = context->GetSubsystem<Profiler>();
         m_rhi_device                    = m_renderer->GetRhiDevice().get();
@@ -76,7 +75,7 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_CommandList::Submit()
+    bool RHI_CommandList::Submit(RHI_Semaphore* wait_semaphore)
     {
         m_state = RHI_CommandListState::Submitted;
         return true;
@@ -323,7 +322,7 @@ namespace Spartan
         // Clear render target(s)
         ClearPipelineStateRenderTargets(pipeline_state);
 
-        m_renderer->SetGlobalSamplersAndConstantBuffers(this);
+        m_renderer->SetGlobalShaderResources(this);
         m_profiler->m_rhi_bindings_pipeline++;
 
         return true;
