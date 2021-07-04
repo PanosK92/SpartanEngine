@@ -553,7 +553,7 @@ namespace Spartan
 
                 cmd_list->EndRenderPass();
 
-                // Reset clear values after the first render pass // TODO: Vulkan won't clear if there are not objects, as it clears during the first DrawIndexed()
+                // Reset clear values after the first render pass
                 pso.ResetClearValues();
             }
         }

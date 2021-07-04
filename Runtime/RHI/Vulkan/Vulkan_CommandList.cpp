@@ -274,9 +274,18 @@ namespace Spartan
 
     bool RHI_CommandList::EndRenderPass()
     {
-        // Render pass
+        // If the render pass is about to end, there are clear values, but there have been no draw calls,
+        // then Deferred_BeginRenderPass() was never called, and any render targets were never cleared.
+        // In this case we manually clear it them
+        if (m_pipeline_state->HasClearValues() && !m_render_pass_active)
+        {
+            Deferred_BeginRenderPass();
+            ClearPipelineStateRenderTargets(*m_pipeline_state);
+        }
+
         if (m_render_pass_active)
         {
+            // Render pass
             vkCmdEndRenderPass(static_cast<VkCommandBuffer>(m_cmd_buffer));
             m_render_pass_active = false;
         }
@@ -289,64 +298,61 @@ namespace Spartan
 
     void RHI_CommandList::ClearPipelineStateRenderTargets(RHI_PipelineState& pipeline_state)
     {
-        // Validate command list state
+        // Validate state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        SP_ASSERT(m_render_pass_active == true);
 
-        if (m_render_pass_active)
-        {
-            uint32_t attachment_count = 0;
-            array<VkClearAttachment, rhi_max_render_target_count + 1> attachments; // +1 for depth-stencil
+        uint32_t attachment_count = 0;
+        array<VkClearAttachment, rhi_max_render_target_count + 1> attachments; // +1 for depth-stencil
 
-            for (uint8_t i = 0; i < rhi_max_render_target_count; i++)
-            { 
-                if (!m_pipeline_state->render_target_color_textures[i])
-                    continue;
-            
-                if (pipeline_state.clear_color[i] != rhi_color_load)
-                {
-                    attachments[i].aspectMask                   = VK_IMAGE_ASPECT_COLOR_BIT;
-                    attachments[i].colorAttachment              = attachment_count++;
-                    attachments[i].clearValue.color.float32[0]  = pipeline_state.clear_color[i].x;
-                    attachments[i].clearValue.color.float32[1]  = pipeline_state.clear_color[i].y;
-                    attachments[i].clearValue.color.float32[2]  = pipeline_state.clear_color[i].z;
-                    attachments[i].clearValue.color.float32[3]  = pipeline_state.clear_color[i].w;
-                }
-            }
-
-            bool clear_depth    = pipeline_state.clear_depth    != rhi_depth_load;
-            bool clear_stencil  = pipeline_state.clear_stencil  != rhi_stencil_load;
-
-            if (clear_depth || clear_stencil)
+        for (uint8_t i = 0; i < rhi_max_render_target_count; i++)
+        { 
+            if (pipeline_state.clear_color[i] != rhi_color_load)
             {
                 VkClearAttachment& attachment = attachments[attachment_count++];
 
-                if (clear_depth)
-                {
-                    attachment.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
-                }
+                attachment.aspectMask                   = VK_IMAGE_ASPECT_COLOR_BIT;
+                attachment.colorAttachment              = 0;
+                attachment.clearValue.color.float32[0]  = pipeline_state.clear_color[i].x;
+                attachment.clearValue.color.float32[1]  = pipeline_state.clear_color[i].y;
+                attachment.clearValue.color.float32[2]  = pipeline_state.clear_color[i].z;
+                attachment.clearValue.color.float32[3]  = pipeline_state.clear_color[i].w;
+            }
+        }
 
-                if (clear_stencil)
-                {
-                    attachment.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
-                }
+        bool clear_depth    = pipeline_state.clear_depth    != rhi_depth_load   && pipeline_state.clear_depth   != rhi_depth_dont_care;
+        bool clear_stencil  = pipeline_state.clear_stencil  != rhi_stencil_load && pipeline_state.clear_stencil != rhi_stencil_dont_care;
 
-                attachment.clearValue.depthStencil.depth    = pipeline_state.clear_depth;
-                attachment.clearValue.depthStencil.stencil  = pipeline_state.clear_stencil;
+        if (clear_depth || clear_stencil)
+        {
+            VkClearAttachment& attachment = attachments[attachment_count++];
+
+            attachment.aspectMask = 0;
+
+            if (clear_depth)
+            {
+                attachment.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
             }
 
-            VkClearRect clear_rect           = {};
-            clear_rect.baseArrayLayer        = 0;
-            clear_rect.layerCount            = 1;
-            clear_rect.rect.extent.width     = pipeline_state.GetWidth();
-            clear_rect.rect.extent.height    = pipeline_state.GetHeight();
+            if (clear_stencil)
+            {
+                attachment.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+            }
+        
+            attachment.clearValue.depthStencil.depth    = pipeline_state.clear_depth;
+            attachment.clearValue.depthStencil.stencil  = pipeline_state.clear_stencil;
+        }
 
-            vkCmdClearAttachments(static_cast<VkCommandBuffer>(m_cmd_buffer), attachment_count, attachments.data(), 1, &clear_rect);
-        }
-        else if (BeginRenderPass(pipeline_state))
-        {
-            OnDraw();
-            EndRenderPass();
-        }
+        VkClearRect clear_rect           = {};
+        clear_rect.baseArrayLayer        = 0;
+        clear_rect.layerCount            = 1;
+        clear_rect.rect.extent.width     = pipeline_state.GetWidth();
+        clear_rect.rect.extent.height    = pipeline_state.GetHeight();
+
+        if (attachment_count == 0)
+            return;
+
+        vkCmdClearAttachments(static_cast<VkCommandBuffer>(m_cmd_buffer), attachment_count, attachments.data(), 1, &clear_rect);
     }
 
     void RHI_CommandList::ClearRenderTarget(RHI_Texture* texture,
