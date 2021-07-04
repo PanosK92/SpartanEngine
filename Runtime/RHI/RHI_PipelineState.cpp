@@ -129,6 +129,23 @@ namespace Spartan
         clear_stencil = rhi_stencil_load;
     }
 
+    bool RHI_PipelineState::HasClearValues()
+    {
+        if (clear_depth != rhi_depth_load && clear_depth != rhi_depth_dont_care)
+            return true;
+
+        if (clear_stencil != rhi_stencil_load && clear_stencil != rhi_stencil_dont_care)
+            return true;
+
+        for (const Math::Vector4& color : clear_color)
+        {
+            if (color != rhi_color_load && color != rhi_color_dont_care)
+                return true;
+        }
+
+        return false;
+    }
+    
     uint32_t RHI_PipelineState::ComputeHash()
     {
         m_hash = 0;
