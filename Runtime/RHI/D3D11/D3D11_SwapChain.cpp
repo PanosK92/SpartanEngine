@@ -140,7 +140,7 @@ namespace Spartan
         }
 
         m_initialised = true;
-        m_buffer_index = 0;
+        m_semaphore_index = 0;
     }
 
     RHI_SwapChain::~RHI_SwapChain()
