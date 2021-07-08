@@ -366,8 +366,8 @@ namespace Spartan
         }
 
         // Make sure we are pixel perfect
-        width   -= (width    % 2 != 0) ? 1 : 0;
-        height  -= (height    % 2 != 0) ? 1 : 0;
+        width   -= (width   % 2 != 0) ? 1 : 0;
+        height  -= (height  % 2 != 0) ? 1 : 0;
 
         // Silently return if resolution is already set
         if (m_resolution_render.x == width && m_resolution_render.y == height)

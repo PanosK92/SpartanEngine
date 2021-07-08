@@ -455,14 +455,13 @@ namespace ImGui::RHI
         WindowData* window = RHI_GetWindowData(viewport);
         SP_ASSERT(window != nullptr);
 
+        RHI_CommandList* cmd_list = window->cmd_lists[window->cmd_index];
+
         // Validate cmd list state
-        SP_ASSERT(window->cmd_lists[window->cmd_index]->GetState() == Spartan::RHI_CommandListState::Submitted);
+        SP_ASSERT(cmd_list->GetState() == Spartan::RHI_CommandListState::Submitted);
 
         // Present
-        if (!window->swapchain->Present(window->cmd_lists[window->cmd_index]->GetProcessedSemaphore()))
-        {
-            LOG_ERROR("Failed to present");
-        }
+        window->swapchain->Present(cmd_list->GetProcessedSemaphore());
     }
 
     inline void InitializePlatformInterface()

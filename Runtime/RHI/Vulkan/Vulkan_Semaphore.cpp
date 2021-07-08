@@ -83,8 +83,8 @@ namespace Spartan
 
     void RHI_Semaphore::Reset()
     {
-        if (m_state != RHI_Semaphore_State::Idle);
-            return;
+        // Wait in case it's still in use by the GPU
+        m_rhi_device->Queue_WaitAll();
 
         destroy(m_rhi_device->GetContextRhi()->device, m_resource);
         create(m_rhi_device->GetContextRhi()->device, m_is_timeline, m_resource);

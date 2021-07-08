@@ -359,10 +359,9 @@ namespace Spartan
         if (m_buffer_count == 1 && m_image_index != numeric_limits<uint32_t>::max())
             return true;
 
-        m_buffer_index = (m_buffer_index + 1) % m_buffer_count;
-
         // Get signal semaphore
-        RHI_Semaphore* signal_semaphore = m_image_acquired_semaphore[m_buffer_index].get();
+        m_semaphore_index = (m_semaphore_index + 1) % m_buffer_count;
+        RHI_Semaphore* signal_semaphore = m_image_acquired_semaphore[m_semaphore_index].get();
 
         // Reset semaphore if it wasn't waited for
         if (signal_semaphore->GetState() != RHI_Semaphore_State::Idle)
@@ -395,6 +394,12 @@ namespace Spartan
             return AcquireNextImage();
         }
 
+        if (result == VK_NOT_READY)
+        {
+            LOG_INFO("vkAcquireNextImageKHR() not ready");
+            return false;
+        }
+
         // Check result
         if (!vulkan_utility::error::check(result))
         {
@@ -413,17 +418,17 @@ namespace Spartan
         // Validate swapchain state
         SP_ASSERT(m_present_enabled);
 
-        // Acquire next image
-        if (!AcquireNextImage())
-        {
-            LOG_ERROR("Failed to acquire next image");
-            return false;
-        }
-
         // Present
         if (!m_rhi_device->Queue_Present(m_swap_chain_view, &m_image_index, wait_semaphore))
         {
             LOG_ERROR("Failed to present");
+            return false;
+        }
+
+        // Acquire next image
+        if (!AcquireNextImage())
+        {
+            LOG_ERROR("Failed to acquire next image");
             return false;
         }
 

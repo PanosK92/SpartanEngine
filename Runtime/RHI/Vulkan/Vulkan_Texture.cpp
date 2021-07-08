@@ -322,11 +322,14 @@ namespace Spartan
         }
 
         // Make sure that no descriptor sets refer to this texture.
-        if (Renderer* renderer = m_rhi_device->GetContext()->GetSubsystem<Renderer>())
+        if (IsSampled())
         {
-            if (RHI_DescriptorSetLayoutCache* descriptor_set_layout_cache = renderer->GetDescriptorLayoutSetCache())
+            if (Renderer* renderer = m_rhi_device->GetContext()->GetSubsystem<Renderer>())
             {
-                descriptor_set_layout_cache->RemoveTexture(this);
+                if (RHI_DescriptorSetLayoutCache* descriptor_set_layout_cache = renderer->GetDescriptorLayoutSetCache())
+                {
+                    descriptor_set_layout_cache->RemoveTexture(this);
+                }
             }
         }
 
