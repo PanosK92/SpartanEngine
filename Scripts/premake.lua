@@ -49,7 +49,7 @@ elseif API_GRAPHICS == "vulkan" then
 	TARGET_NAME					= TARGET_NAME .. "_vulkan"
 	IGNORE_FILES[0]				= RUNTIME_DIR .. "/RHI/D3D11/**"
 	IGNORE_FILES[1]				= RUNTIME_DIR .. "/RHI/D3D12/**"
-	ADDITIONAL_INCLUDES[0] 		= "../ThirdParty/DirectXShaderCompiler_1.6.2104";
+	ADDITIONAL_INCLUDES[0] 		= "../ThirdParty/DirectXShaderCompiler_1.6.2106";
 	ADDITIONAL_INCLUDES[1] 		= "../ThirdParty/SPIRV-Cross-2020-09-17";
 	ADDITIONAL_INCLUDES[2] 		= "../ThirdParty/Vulkan_1.2.176.1";
 	ADDITIONAL_LIBRARIES[0] 	= "dxcompiler";
