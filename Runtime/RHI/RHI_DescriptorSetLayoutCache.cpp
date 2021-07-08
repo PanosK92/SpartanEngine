@@ -38,7 +38,7 @@ namespace Spartan
         m_rhi_device = rhi_device;
 
         // Set the descriptor set capacity to an initial value
-        SetDescriptorSetCapacity(16);
+        SetDescriptorSetCapacity(256);
     }
 
     void RHI_DescriptorSetLayoutCache::SetPipelineState(RHI_PipelineState& pipeline_state)
