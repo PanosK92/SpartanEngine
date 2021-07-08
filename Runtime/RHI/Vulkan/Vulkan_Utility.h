@@ -565,11 +565,11 @@ namespace Spartan::vulkan_utility
 
             while (access_flags != 0)
             {
-                VkAccessFlagBits AccessFlag = static_cast<VkAccessFlagBits>(access_flags & (~(access_flags - 1)));
-                SP_ASSERT(AccessFlag != 0 && (AccessFlag & (AccessFlag - 1)) == 0);
-                access_flags &= ~AccessFlag;
+                VkAccessFlagBits access_flag = static_cast<VkAccessFlagBits>(access_flags & (~(access_flags - 1)));
+                SP_ASSERT(access_flag != 0 && (access_flag & (access_flag - 1)) == 0);
+                access_flags &= ~access_flag;
 
-                switch (AccessFlag)
+                switch (access_flag)
                 {
                 case VK_ACCESS_INDIRECT_COMMAND_READ_BIT:
                     stages |= VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;

@@ -80,25 +80,41 @@ namespace Spartan
     void RHI_DescriptorSetLayoutCache::SetSampler(const uint32_t slot, RHI_Sampler* sampler)
     {
         SP_ASSERT(m_descriptor_layout_current != nullptr);
-        m_descriptor_layout_current->SetSampler(slot, sampler);
+
+        if (m_descriptor_layout_current)
+        {
+            m_descriptor_layout_current->SetSampler(slot, sampler);
+        }
     }
 
     void RHI_DescriptorSetLayoutCache::SetTexture(const uint32_t slot, RHI_Texture* texture, const bool storage)
     {
         SP_ASSERT(m_descriptor_layout_current != nullptr);
-        m_descriptor_layout_current->SetTexture(slot, texture, storage);
+
+        if (m_descriptor_layout_current)
+        {
+            m_descriptor_layout_current->SetTexture(slot, texture, storage);
+        }
     }
 
     void RHI_DescriptorSetLayoutCache::RemoveTexture(RHI_Texture* texture)
     {
         SP_ASSERT(texture != nullptr);
-        m_descriptor_layout_current->RemoveTexture(texture);
+
+        if (m_descriptor_layout_current)
+        {
+            m_descriptor_layout_current->RemoveTexture(texture);
+        }
     }
 
     bool RHI_DescriptorSetLayoutCache::GetDescriptorSet(RHI_DescriptorSet*& descriptor_set)
     {
-        SP_ASSERT(m_descriptor_layout_current != nullptr);
-        return m_descriptor_layout_current->GetDescriptorSet(this, descriptor_set);
+        if (m_descriptor_layout_current)
+        {
+            return m_descriptor_layout_current->GetDescriptorSet(this, descriptor_set);
+        }
+
+        return false;
     }
 
     void RHI_DescriptorSetLayoutCache::GrowIfNeeded()

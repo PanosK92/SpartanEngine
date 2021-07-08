@@ -204,13 +204,13 @@ namespace Spartan
         // If this is a swapchain, return the appropriate buffer
         if (render_target_swapchain)
         {
-            if (render_target_swapchain->GetBufferIndex() >= rhi_max_render_target_count)
+            if (render_target_swapchain->GetImageIndex() >= rhi_max_render_target_count)
             {
                 LOG_ERROR("Invalid image index, %d", render_target_swapchain->GetImageIndex());
                 return nullptr;
             }
 
-            return m_frame_buffers[render_target_swapchain->GetBufferIndex()];
+            return m_frame_buffers[render_target_swapchain->GetImageIndex()];
         }
 
         // If this is a render texture, return the first buffer 

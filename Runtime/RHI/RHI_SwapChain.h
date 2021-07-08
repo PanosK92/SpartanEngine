@@ -57,10 +57,9 @@ namespace Spartan
         uint32_t GetBufferCount()               const { return m_buffer_count; }
         uint32_t GetFlags()                     const { return m_flags; }
         uint32_t GetImageIndex()                const { return m_image_index; }
-        uint32_t GetBufferIndex()               const { return m_buffer_index; }
         bool IsInitialised()                    const { return m_initialised; }
         bool PresentEnabled()                   const { return m_present_enabled; }
-        RHI_Semaphore* GetImageAcquiredSemaphore()    { return m_image_acquired_semaphore[m_buffer_index].get(); }
+        RHI_Semaphore* GetImageAcquiredSemaphore()    { return m_image_acquired_semaphore[m_semaphore_index].get(); }
         std::shared_ptr<RHI_CommandList> CreateCmdList();
 
         // GPU Resources
@@ -86,7 +85,7 @@ namespace Spartan
         void* m_surface                     = nullptr;
         void* m_window_handle               = nullptr;
         bool m_present_enabled              = true;
-        uint32_t m_buffer_index             = std::numeric_limits<uint32_t>::max();
+        uint32_t m_semaphore_index          = std::numeric_limits<uint32_t>::max();
         uint32_t m_image_index              = std::numeric_limits<uint32_t>::max();
         RHI_Device* m_rhi_device            = nullptr;
 
