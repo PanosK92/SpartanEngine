@@ -459,6 +459,45 @@ namespace Spartan
         return true;
     }
 
+    void RHI_CommandList::Blit(RHI_Texture* source, RHI_Texture* destination)
+    {
+        // Ensure restrictions based on: https://docs.microsoft.com/en-us/windows/win32/api/d3d11/nf-d3d11-id3d11devicecontext-copyresource
+        SP_ASSERT(source != nullptr);
+        SP_ASSERT(destination != nullptr);
+        SP_ASSERT(source->Get_Resource() != nullptr);
+        SP_ASSERT(destination->Get_Resource() != nullptr);
+        SP_ASSERT(source->GetObjectId() != destination->GetObjectId());
+        SP_ASSERT(source->GetFormat() == destination->GetFormat());
+        SP_ASSERT(source->GetWidth() == destination->GetWidth());
+        SP_ASSERT(source->GetHeight() == destination->GetHeight());
+        SP_ASSERT(source->GetArraySize() == destination->GetArraySize());
+        SP_ASSERT(source->GetMipCount() == destination->GetMipCount());
+
+        VkOffset3D blit_size    = {};
+        blit_size.x             = source->GetWidth();
+        blit_size.y             = source->GetHeight();
+        blit_size.z             = 1;
+
+        VkImageBlit blit_region                 = {};
+        blit_region.srcSubresource.aspectMask   = VK_IMAGE_ASPECT_COLOR_BIT;
+        blit_region.srcSubresource.layerCount   = 1;
+        blit_region.srcOffsets[1]               = blit_size;
+        blit_region.dstSubresource.aspectMask   = VK_IMAGE_ASPECT_COLOR_BIT;
+        blit_region.dstSubresource.layerCount   = 1;
+        blit_region.dstOffsets[1]               = blit_size;
+
+        source->SetLayout(RHI_Image_Layout::Transfer_Src_Optimal, this);
+        destination->SetLayout(RHI_Image_Layout::Transfer_Dst_Optimal, this);
+
+        vkCmdBlitImage(
+            static_cast<VkCommandBuffer>(m_cmd_buffer),
+            static_cast<VkImage>(source->Get_Resource()),       VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            static_cast<VkImage>(destination->Get_Resource()),  VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            1,
+            &blit_region,
+            VK_FILTER_NEAREST);
+    }
+
     bool RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z, bool async /*= false*/)
     {
         // Validate command list state
@@ -488,10 +527,10 @@ namespace Spartan
         vk_viewport.maxDepth    = viewport.depth_max;
 
         vkCmdSetViewport(
-            static_cast<VkCommandBuffer>(m_cmd_buffer),     // commandBuffer
-            0,              // firstViewport
-            1,              // viewportCount
-            &vk_viewport    // pViewports
+            static_cast<VkCommandBuffer>(m_cmd_buffer), // commandBuffer
+            0,                                          // firstViewport
+            1,                                          // viewportCount
+            &vk_viewport                                // pViewports
         );
     }
 

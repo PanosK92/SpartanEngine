@@ -44,7 +44,7 @@ namespace Spartan
             return _create();
         }
 
-        void* Map();  
+        void* Map();
         bool Unmap(const uint64_t offset = 0, const uint64_t size = 0);
 
         void* GetResource()         const { return m_buffer; }

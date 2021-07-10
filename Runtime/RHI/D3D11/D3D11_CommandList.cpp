@@ -454,6 +454,23 @@ namespace Spartan
         return true;
     }
 
+    void RHI_CommandList::Blit(RHI_Texture* source, RHI_Texture* destination)
+    {
+        // Ensure restrictions based on: https://docs.microsoft.com/en-us/windows/win32/api/d3d11/nf-d3d11-id3d11devicecontext-copyresource
+        SP_ASSERT(source != nullptr);
+        SP_ASSERT(destination != nullptr);
+        SP_ASSERT(source->Get_Resource() != nullptr);
+        SP_ASSERT(destination->Get_Resource() != nullptr);
+        SP_ASSERT(source->GetObjectId() != destination->GetObjectId());
+        SP_ASSERT(source->GetFormat() == destination->GetFormat());
+        SP_ASSERT(source->GetWidth() == destination->GetWidth());
+        SP_ASSERT(source->GetHeight() == destination->GetHeight());
+        SP_ASSERT(source->GetArraySize() == destination->GetArraySize());
+        SP_ASSERT(source->GetMipCount() == destination->GetMipCount());
+
+        m_rhi_device->GetContextRhi()->device_context->CopyResource(static_cast<ID3D11Resource*>(destination->Get_Resource()), static_cast<ID3D11Resource*>(source->Get_Resource()));
+    }
+
     bool RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z, bool async /*= false*/)
     {
         ID3D11Device5* device = m_rhi_device->GetContextRhi()->device;
