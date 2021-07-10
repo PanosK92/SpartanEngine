@@ -113,12 +113,17 @@ namespace Spartan
     {
         return true;
     }
-    
+  
     bool RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z, bool async /*= false*/)
     {
         return true;
     }
-    
+
+    void RHI_CommandList::Blit(RHI_Texture* source, RHI_Texture* destination)
+    {
+
+    }
+
     void RHI_CommandList::SetViewport(const RHI_Viewport& viewport) const
     {
        

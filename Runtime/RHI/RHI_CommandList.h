@@ -74,13 +74,13 @@ namespace Spartan
         bool Draw(uint32_t vertex_count);
         bool DrawIndexed(uint32_t index_count, uint32_t index_offset = 0, uint32_t vertex_offset = 0);
 
+        // Dispatch
+        bool Dispatch(uint32_t x, uint32_t y, uint32_t z, bool async = false);
+
         // Blit
         void Blit(RHI_Texture* source, RHI_Texture* destination);
         void Blit(const std::shared_ptr<RHI_Texture>& source, const std::shared_ptr<RHI_Texture>& destination) { Blit(source.get(), destination.get()); }
 
-        // Dispatch
-        bool Dispatch(uint32_t x, uint32_t y, uint32_t z, bool async = false);
-        
         // Viewport
         void SetViewport(const RHI_Viewport& viewport) const;
         
