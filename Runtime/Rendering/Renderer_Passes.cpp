@@ -126,7 +126,7 @@ namespace Spartan
             // If SSR is enabled, copy the frame so that SSR can use it to reflect from
             if ((m_options & Render_ScreenSpaceReflections) != 0)
             {
-                Pass_Copy(cmd_list, rt1, rt2);
+                cmd_list->Blit(rt1, rt2);
             }
 
             // Reflections - SSR & Environment
@@ -136,7 +136,7 @@ namespace Spartan
             if (draw_transparent_objects)
             {
                 // Copy the frame so that refraction can sample from it
-                Pass_Copy(cmd_list, rt1, rt2);
+                cmd_list->Blit(rt1, rt2);
 
                 const bool is_trasparent_pass = true;
                 Pass_GBuffer(cmd_list, is_trasparent_pass);
@@ -1238,7 +1238,7 @@ namespace Spartan
         }
 
         // Update history buffer
-        Pass_Copy(cmd_list, tex_out.get(), tex_history);
+        cmd_list->Blit(tex_out.get(), tex_history);
     }
 
     void Renderer::Pass_PostProcess_Bloom(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
@@ -2427,37 +2427,6 @@ namespace Spartan
             cmd_list->EndRenderPass();
 
             m_brdf_specular_lut_rendered = true;
-        }
-    }
-
-    void Renderer::Pass_Copy(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
-    {
-        // Acquire shaders
-        RHI_Shader* shader_c = m_shaders[RendererShader::Copy_Point_C].get();
-        if (!shader_c->IsCompiled())
-            return;
-
-        // Set render state
-        static RHI_PipelineState pso;
-        pso.shader_compute = shader_c;
-        pso.pass_name      = "Pass_Copy";
-
-        // Draw
-        if (cmd_list->BeginRenderPass(pso))
-        {
-            // Update uber buffer
-            m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-            UpdateUberBuffer(cmd_list);
-
-            const uint32_t thread_group_count_x   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
-            const uint32_t thread_group_count_y   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
-            const uint32_t thread_group_count_z   = 1;
-            const bool async                      = false;
-
-            cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out);
-            cmd_list->SetTexture(RendererBindingsSrv::tex,  tex_in);
-            cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
-            cmd_list->EndRenderPass();
         }
     }
 

@@ -339,13 +339,14 @@ namespace Spartan
             );
         }
 
-        d3d11_utility::release(resource);
+        m_resource = static_cast<void*>(resource);
 
         return result_tex && result_srv && result_uav && result_rt && result_ds;
     }
 
     void RHI_Texture::DestroyResourceGpu()
     {
+        d3d11_utility::release(static_cast<ID3D11Texture2D*>(m_resource));
         d3d11_utility::release(static_cast<ID3D11ShaderResourceView*>(m_resource_view[0]));
         d3d11_utility::release(static_cast<ID3D11ShaderResourceView*>(m_resource_view[1]));
         d3d11_utility::release(static_cast<ID3D11UnorderedAccessView*>(m_resource_view_unorderedAccess));

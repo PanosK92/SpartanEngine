@@ -509,8 +509,9 @@ namespace Spartan::vulkan_utility
             flags |= (texture->GetFlags() & RHI_Texture_DepthStencil)   ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT   : 0;
             flags |= (texture->GetFlags() & RHI_Texture_RenderTarget)   ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT           : 0;
 
-            // If the texture has data, it will be staged
-            if (texture->HasData())
+            // If the texture has data, it will be staged.
+            // If the texture is a render target, it can be blitted.
+            if (texture->HasData() || texture->IsRenderTarget())
             {
                 flags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT; // source of a transfer command.
                 flags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT; // destination of a transfer command.
@@ -722,8 +723,8 @@ namespace Spartan::vulkan_utility
             VkImageMemoryBarrier image_barrier              = {};
             image_barrier.sType                             = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
             image_barrier.pNext                             = nullptr;
-            image_barrier.oldLayout                         = vulkan_image_layout[static_cast<uint8_t>(layout_old)];
-            image_barrier.newLayout                         = vulkan_image_layout[static_cast<uint8_t>(layout_new)];
+            image_barrier.oldLayout                         = vulkan_image_layout[static_cast<VkImageLayout>(layout_old)];
+            image_barrier.newLayout                         = vulkan_image_layout[static_cast<VkImageLayout>(layout_new)];
             image_barrier.srcQueueFamilyIndex               = VK_QUEUE_FAMILY_IGNORED;
             image_barrier.dstQueueFamilyIndex               = VK_QUEUE_FAMILY_IGNORED;
             image_barrier.image                             = static_cast<VkImage>(image);

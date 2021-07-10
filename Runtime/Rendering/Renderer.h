@@ -205,7 +205,6 @@ namespace Spartan
         void Pass_TransformHandle(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         void Pass_Text(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         void Pass_BrdfSpecularLut(RHI_CommandList* cmd_list);
-        void Pass_Copy(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         void Pass_CopyBilinear(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
 
         // Constant buffers
