@@ -454,6 +454,22 @@ namespace Spartan
         return true;
     }
 
+    bool RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z, bool async /*= false*/)
+    {
+        ID3D11Device5* device = m_rhi_device->GetContextRhi()->device;
+        ID3D11DeviceContext4* device_context = m_rhi_device->GetContextRhi()->device_context;
+
+        device_context->Dispatch(x, y, z);
+        m_profiler->m_rhi_dispatch++;
+
+        // Make sure to clean the compute shader UAV slots after dispatching.
+        // If we try to bind the resource but it's still bound as a computer shader output the runtime will automatically set the ID3D11ShaderResourceView to null.
+        const void* resource_array[8] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
+        device_context->CSSetUnorderedAccessViews(0, 8, reinterpret_cast<ID3D11UnorderedAccessView* const*>(&resource_array), nullptr);
+
+        return true;
+    }
+
     void RHI_CommandList::Blit(RHI_Texture* source, RHI_Texture* destination)
     {
         // Ensure restrictions based on: https://docs.microsoft.com/en-us/windows/win32/api/d3d11/nf-d3d11-id3d11devicecontext-copyresource
@@ -469,22 +485,6 @@ namespace Spartan
         SP_ASSERT(source->GetMipCount() == destination->GetMipCount());
 
         m_rhi_device->GetContextRhi()->device_context->CopyResource(static_cast<ID3D11Resource*>(destination->Get_Resource()), static_cast<ID3D11Resource*>(source->Get_Resource()));
-    }
-
-    bool RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z, bool async /*= false*/)
-    {
-        ID3D11Device5* device = m_rhi_device->GetContextRhi()->device;
-        ID3D11DeviceContext4* device_context = m_rhi_device->GetContextRhi()->device_context;
-
-        device_context->Dispatch(x, y, z);
-        m_profiler->m_rhi_dispatch++;
-
-        // Make sure to clean the compute shader UAV slots after dispatching.
-        // If we try to bind the resource but it's still bound as a computer shader output the runtime will automatically set the ID3D11ShaderResourceView to null.
-        const void* resource_array[8] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
-        device_context->CSSetUnorderedAccessViews(0, 8, reinterpret_cast<ID3D11UnorderedAccessView* const*>(&resource_array), nullptr);
-
-        return true;
     }
 
     void RHI_CommandList::SetViewport(const RHI_Viewport& viewport) const

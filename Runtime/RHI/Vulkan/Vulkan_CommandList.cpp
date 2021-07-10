@@ -459,6 +459,21 @@ namespace Spartan
         return true;
     }
 
+    bool RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z, bool async /*= false*/)
+    {
+        // Validate command list state
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
+
+        // Ensure correct state before attempting to draw
+        if (!OnDraw())
+            return false;
+
+        vkCmdDispatch(static_cast<VkCommandBuffer>(m_cmd_buffer), x, y, z);
+        m_profiler->m_rhi_dispatch++;
+
+        return true;
+    }
+
     void RHI_CommandList::Blit(RHI_Texture* source, RHI_Texture* destination)
     {
         // Ensure restrictions based on: https://docs.microsoft.com/en-us/windows/win32/api/d3d11/nf-d3d11-id3d11devicecontext-copyresource
@@ -496,21 +511,6 @@ namespace Spartan
             1,
             &blit_region,
             VK_FILTER_NEAREST);
-    }
-
-    bool RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z, bool async /*= false*/)
-    {
-        // Validate command list state
-        SP_ASSERT(m_state == RHI_CommandListState::Recording);
-
-        // Ensure correct state before attempting to draw
-        if (!OnDraw())
-            return false;
-
-        vkCmdDispatch(static_cast<VkCommandBuffer>(m_cmd_buffer), x, y, z);
-        m_profiler->m_rhi_dispatch++;
-
-        return true;
     }
 
     void RHI_CommandList::SetViewport(const RHI_Viewport& viewport) const
