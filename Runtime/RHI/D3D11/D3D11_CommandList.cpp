@@ -395,7 +395,15 @@ namespace Spartan
                 return;
 
             // TODO: Assuming the UAV is a float, which almost always is, but I should fix it anyway
-            m_rhi_device->GetContextRhi()->device_context->ClearUnorderedAccessViewFloat(static_cast<ID3D11UnorderedAccessView*>(texture->Get_Resource_View_UnorderedAccess()), clear_color.Data());
+            m_rhi_device->GetContextRhi()->device_context->ClearUnorderedAccessViewFloat(static_cast<ID3D11UnorderedAccessView*>(texture->Get_Resource_View_Uav()), clear_color.Data());
+
+            if (texture->HasPerMipView())
+            {
+                for (uint32_t i = 0; i < texture->GetMipCount(); i++)
+                {
+                    m_rhi_device->GetContextRhi()->device_context->ClearUnorderedAccessViewFloat(static_cast<ID3D11UnorderedAccessView*>(texture->Get_Resource_Views_Uav(i)), clear_color.Data());
+                }
+            }
         }
         else if (texture->IsRenderTarget())
         {
@@ -481,7 +489,7 @@ namespace Spartan
         SP_ASSERT(source->GetFormat() == destination->GetFormat());
         SP_ASSERT(source->GetWidth() == destination->GetWidth());
         SP_ASSERT(source->GetHeight() == destination->GetHeight());
-        SP_ASSERT(source->GetArraySize() == destination->GetArraySize());
+        SP_ASSERT(source->GetArrayLength() == destination->GetArrayLength());
         SP_ASSERT(source->GetMipCount() == destination->GetMipCount());
 
         m_rhi_device->GetContextRhi()->device_context->CopyResource(static_cast<ID3D11Resource*>(destination->Get_Resource()), static_cast<ID3D11Resource*>(source->Get_Resource()));
@@ -639,18 +647,19 @@ namespace Spartan
         }
     }
 
-    void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const bool storage /*= false*/)
+    void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const int mip /*= -1*/, const bool storage /*= false*/)
     {
+        bool set_individual_mip             = mip != -1;
         const uint8_t scope                 = m_pipeline_state->IsCompute() ? RHI_Shader_Compute : RHI_Shader_Pixel;
         const UINT start_slot               = slot;
         const UINT range                    = 1;
         ID3D11DeviceContext* device_context = m_rhi_device->GetContextRhi()->device_context;
 
-        // Unordered access views
+        // UAV
         if (storage)
         {
             // Get resource
-            const void* uav_array[1] = { texture ? texture->Get_Resource_View_UnorderedAccess() : nullptr };
+            const void* uav_array[1] = { texture ? (set_individual_mip ? texture->Get_Resource_Views_Uav(mip) : texture->Get_Resource_View_Uav()) : nullptr };
 
             // Set if not already set
             ID3D11UnorderedAccessView* set_uav = nullptr;
@@ -661,11 +670,12 @@ namespace Spartan
                 m_profiler->m_rhi_bindings_texture_storage++;
             }
         }
-        // Textures
+        // SRV
         else
         {
             // Get resource
-            const void* srv_array[1] = { texture ? texture->Get_Resource_View() : nullptr };
+
+            const void* srv_array[1] = { texture ? (set_individual_mip ? texture->Get_Resource_Views_Srv(mip) : texture->Get_Resource_View_Srv() ): nullptr };
 
             if (scope & RHI_Shader_Pixel)
             {

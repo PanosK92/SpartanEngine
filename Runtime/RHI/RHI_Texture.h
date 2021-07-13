@@ -38,9 +38,10 @@ namespace Spartan
         RHI_Texture_RenderTarget            = 1 << 2,
         RHI_Texture_DepthStencil            = 1 << 3,
         RHI_Texture_DepthStencilReadOnly    = 1 << 4,
-        RHI_Texture_Grayscale               = 1 << 5,
-        RHI_Texture_Transparent             = 1 << 6,
-        RHI_Texture_GenerateMipsWhenLoading = 1 << 7
+        RHI_Texture_PerMipView              = 1 << 5,
+        RHI_Texture_Grayscale               = 1 << 6,
+        RHI_Texture_Transparent             = 1 << 7,
+        RHI_Texture_GenerateMipsWhenLoading = 1 << 8
     };
 
     enum RHI_Shader_View_Type : uint8_t
@@ -96,7 +97,7 @@ namespace Spartan
         void SetFormat(const RHI_Format format)                   { m_format = format; }
 
         // Data
-        uint32_t GetArraySize()                             const { return m_array_size; }
+        uint32_t GetArrayLength()                           const { return m_array_length; }
         uint32_t GetMipCount()                              const { return m_mip_count; }
         bool HasData()                                      const { return !m_data.empty() && !m_data[0].mips.empty() && !m_data[0].mips[0].bytes.empty(); };
         std::vector<RHI_Texture_Slice>& GetData()                 { return m_data; }
@@ -115,7 +116,7 @@ namespace Spartan
         bool IsStencilFormat()          const { return m_format == RHI_Format_D32_Float_S8X24_Uint; }
         bool IsDepthStencilFormat()     const { return IsDepthFormat() || IsStencilFormat(); }
         bool IsColorFormat()            const { return !IsDepthStencilFormat(); }
-        
+
         // Layout
         void SetLayout(const RHI_Image_Layout layout, RHI_CommandList* command_list = nullptr);
         RHI_Image_Layout GetLayout() const { return m_layout; }
@@ -123,11 +124,14 @@ namespace Spartan
         // Misc
         const auto& GetViewport()   const { return m_viewport; }
         uint16_t GetFlags()         const { return m_flags; }
+        bool HasPerMipView()        const { return m_flags & RHI_Texture_PerMipView; }
 
         // GPU resources
         void*& Get_Resource()                                                     { return m_resource; }
-        void* Get_Resource_View(const uint32_t i = 0)                       const { return m_resource_view[i]; }
-        void* Get_Resource_View_UnorderedAccess()                           const { return m_resource_view_unorderedAccess; }
+        void* Get_Resource_View_Srv()                                       const { return m_resource_view_srv; }
+        void* Get_Resource_View_Uav()                                       const { return m_resource_view_uav; }
+        void* Get_Resource_Views_Srv(const uint32_t i)                      const { return m_resource_views_srv[i]; }
+        void* Get_Resource_Views_Uav(const uint32_t i)                      const { return m_resource_views_uav[i]; }
         void* Get_Resource_View_DepthStencil(const uint32_t i = 0)          const { return i < m_resource_view_depthStencil.size() ? m_resource_view_depthStencil[i] : nullptr; }
         void* Get_Resource_View_DepthStencilReadOnly(const uint32_t i = 0)  const { return i < m_resource_view_depthStencilReadOnly.size() ? m_resource_view_depthStencilReadOnly[i] : nullptr; }
         void* Get_Resource_View_RenderTarget(const uint32_t i = 0)          const { return i < m_resource_view_renderTarget.size() ? m_resource_view_renderTarget[i] : nullptr; }
@@ -143,7 +147,7 @@ namespace Spartan
         uint32_t m_width            = 0;
         uint32_t m_height           = 0;
         uint32_t m_channel_count    = 4;
-        uint32_t m_array_size       = 0;
+        uint32_t m_array_length     = 0;
         uint32_t m_mip_count        = 0;
         RHI_Format m_format         = RHI_Format_Undefined;
         RHI_Image_Layout m_layout   = RHI_Image_Layout::Undefined;
@@ -153,9 +157,11 @@ namespace Spartan
         std::shared_ptr<RHI_Device> m_rhi_device;
 
         // API
-        void* m_resource                        = nullptr;
-        void* m_resource_view[2]                = { nullptr, nullptr }; // color/depth, stencil
-        void* m_resource_view_unorderedAccess   = nullptr;
+        void* m_resource                = nullptr;
+        void* m_resource_view_srv       = nullptr;
+        void* m_resource_view_uav       = nullptr;
+        void* m_resource_views_srv[12]  = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
+        void* m_resource_views_uav[12]  = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
         std::array<void*, rhi_max_render_target_count> m_resource_view_renderTarget           = { nullptr };
         std::array<void*, rhi_max_render_target_count> m_resource_view_depthStencil           = { nullptr };
         std::array<void*, rhi_max_render_target_count> m_resource_view_depthStencilReadOnly   = { nullptr };

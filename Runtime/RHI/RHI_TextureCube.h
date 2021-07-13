@@ -42,7 +42,7 @@ namespace Spartan
             m_channel_count = GetChannelCountFromFormat(format);
             m_format        = format;
             m_data          = data;
-            m_array_size    = 6;
+            m_array_length  = 6;
             m_mip_count     = GetSlice(0).GetMipCount();
             m_flags         = RHI_Texture_Sampled;
 
@@ -59,7 +59,7 @@ namespace Spartan
             m_channel_count = GetChannelCountFromFormat(format);
             m_viewport      = RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
             m_format        = format;
-            m_array_size    = 6;
+            m_array_length  = 6;
             m_mip_count     = 1;
             m_flags         = flags;
             m_flags         |= RHI_Texture_Sampled;

@@ -128,7 +128,7 @@ namespace Spartan
             // Compute projection matrix
             if (m_shadow_map.texture_depth)
             {
-                for (uint32_t i = 0; i < m_shadow_map.texture_depth->GetArraySize(); i++)
+                for (uint32_t i = 0; i < m_shadow_map.texture_depth->GetArrayLength(); i++)
                 {
                     ComputeProjectionMatrix(i);
                 }
@@ -274,7 +274,7 @@ namespace Spartan
 
     bool Light::ComputeProjectionMatrix(uint32_t index /*= 0*/)
     {
-        if (index >= m_shadow_map.texture_depth->GetArraySize())
+        if (index >= m_shadow_map.texture_depth->GetArrayLength())
         {
             LOG_ERROR_INVALID_PARAMETER();
             return false;
@@ -432,7 +432,7 @@ namespace Spartan
 
     uint32_t Light::GetShadowArraySize() const
     {
-        return m_shadow_map.texture_depth ? m_shadow_map.texture_depth->GetArraySize() : 0;
+        return m_shadow_map.texture_depth ? m_shadow_map.texture_depth->GetArrayLength() : 0;
     }
 
     void Light::CreateShadowMap()
@@ -482,11 +482,11 @@ namespace Spartan
         }
         else if (GetLightType() == LightType::Spot)
         {
-            m_shadow_map.texture_depth  = make_unique<RHI_Texture2D>(m_context, resolution, resolution, RHI_Format_D32_Float, 0, "shadow_map_spot_color");
+            m_shadow_map.texture_depth  = make_unique<RHI_Texture2D>(m_context, resolution, resolution, 1, RHI_Format_D32_Float, 0, "shadow_map_spot_color");
 
             if (m_shadows_transparent_enabled)
             {
-                m_shadow_map.texture_color = make_unique<RHI_Texture2D>(m_context, resolution, resolution, RHI_Format_R8G8B8A8_Unorm, 0, "shadow_map_spot_color");
+                m_shadow_map.texture_color = make_unique<RHI_Texture2D>(m_context, resolution, resolution, 1, RHI_Format_R8G8B8A8_Unorm, 0, "shadow_map_spot_color");
             }
 
             m_shadow_map.slices = vector<ShadowSlice>(1);

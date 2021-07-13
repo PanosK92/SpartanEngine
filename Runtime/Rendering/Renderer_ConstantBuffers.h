@@ -136,7 +136,7 @@ namespace Spartan
     
         Math::Vector3 transform_axis;
         float blur_sigma;
-    
+
         Math::Vector2 blur_direction;
         Math::Vector2 resolution;
 

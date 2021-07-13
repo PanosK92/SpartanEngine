@@ -783,12 +783,12 @@ namespace Spartan::vulkan_utility
 
         inline bool set_layout(void* cmd_buffer, RHI_Texture* texture, const RHI_Image_Layout layout_new)
         {
-            return set_layout(cmd_buffer, texture->Get_Resource(), get_aspect_mask(texture), texture->GetMipCount(), texture->GetArraySize(), texture->GetLayout(), layout_new);
+            return set_layout(cmd_buffer, texture->Get_Resource(), get_aspect_mask(texture), texture->GetMipCount(), texture->GetArrayLength(), texture->GetLayout(), layout_new);
         }
 
         namespace view
         {
-            inline bool create(void* image, void*& image_view, VkImageViewType type, const VkFormat format, const VkImageAspectFlags aspect_mask, const uint32_t level_count, const uint32_t layer_index, const uint32_t layer_count)
+            inline bool create(void* image, void*& image_view, VkImageViewType type, const VkFormat format, const VkImageAspectFlags aspect_mask, const uint32_t array_index, const uint32_t array_length, const uint32_t mip_index, const uint32_t mip_count)
             {
                 VkImageViewCreateInfo create_info           = {};
                 create_info.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -796,10 +796,10 @@ namespace Spartan::vulkan_utility
                 create_info.viewType                        = type;
                 create_info.format                          = format;
                 create_info.subresourceRange.aspectMask     = aspect_mask;
-                create_info.subresourceRange.baseMipLevel   = 0;
-                create_info.subresourceRange.levelCount     = level_count;
-                create_info.subresourceRange.baseArrayLayer = layer_index;
-                create_info.subresourceRange.layerCount     = layer_count;
+                create_info.subresourceRange.baseMipLevel   = mip_index;
+                create_info.subresourceRange.levelCount     = mip_count;
+                create_info.subresourceRange.baseArrayLayer = array_index;
+                create_info.subresourceRange.layerCount     = array_length;
                 create_info.components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY;
                 create_info.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY;
                 create_info.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;
@@ -808,7 +808,7 @@ namespace Spartan::vulkan_utility
                 return error::check(vkCreateImageView(globals::rhi_context->device, &create_info, nullptr, reinterpret_cast<VkImageView*>(&image_view)));
             }
 
-            inline bool create(void* image, void*& image_view, const RHI_Texture* texture, const uint32_t array_index, const uint32_t array_length, const bool only_depth, const bool only_stencil)
+            inline bool create(void* image, void*& image_view, const RHI_Texture* texture, const uint32_t array_index, const uint32_t array_length, const uint32_t mip_index, const uint32_t mip_count, const bool only_depth, const bool only_stencil)
             {
                 VkImageViewType type = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
 
@@ -825,7 +825,7 @@ namespace Spartan::vulkan_utility
                     type = VK_IMAGE_VIEW_TYPE_CUBE;
                 }
 
-                return create(image, image_view, type, vulkan_format[texture->GetFormat()], get_aspect_mask(texture, only_depth, only_stencil), texture->GetMipCount(), array_index, array_length);
+                return create(image, image_view, type, vulkan_format[texture->GetFormat()], get_aspect_mask(texture, only_depth, only_stencil), array_index, array_length, mip_index, mip_count);
             }
 
             inline void destroy(void*& image_view)

@@ -100,13 +100,13 @@ namespace Spartan
         // Sampler
         void SetSampler(const uint32_t slot, RHI_Sampler* sampler) const;
         inline void SetSampler(const uint32_t slot, const std::shared_ptr<RHI_Sampler>& sampler) const { SetSampler(slot, sampler.get()); }
-        
+
         // Texture
-        void SetTexture(const uint32_t slot, RHI_Texture* texture, const bool storage = false);
-        inline void SetTexture(const RendererBindingsUav slot, RHI_Texture* texture)                        { SetTexture(static_cast<uint32_t>(slot), texture, true); }
-        inline void SetTexture(const RendererBindingsUav slot, const std::shared_ptr<RHI_Texture>& texture) { SetTexture(static_cast<uint32_t>(slot), texture.get(), true); }
-        inline void SetTexture(const RendererBindingsSrv slot, RHI_Texture* texture)                        { SetTexture(static_cast<uint32_t>(slot), texture, false); }
-        inline void SetTexture(const RendererBindingsSrv slot, const std::shared_ptr<RHI_Texture>& texture) { SetTexture(static_cast<uint32_t>(slot), texture.get(), false); }
+        void SetTexture(const uint32_t slot, RHI_Texture* texture, const int mip = -1, const bool storage = false);
+        inline void SetTexture(const RendererBindingsUav slot, RHI_Texture* texture, const int mip = -1)                        { SetTexture(static_cast<uint32_t>(slot), texture, mip, true); }
+        inline void SetTexture(const RendererBindingsUav slot, const std::shared_ptr<RHI_Texture>& texture, const int mip = -1) { SetTexture(static_cast<uint32_t>(slot), texture.get(), mip, true); }
+        inline void SetTexture(const RendererBindingsSrv slot, RHI_Texture* texture, const int mip = -1)                        { SetTexture(static_cast<uint32_t>(slot), texture, mip, false); }
+        inline void SetTexture(const RendererBindingsSrv slot, const std::shared_ptr<RHI_Texture>& texture, const int mip = -1) { SetTexture(static_cast<uint32_t>(slot), texture.get(), mip, false); }
         
         // Timestamps
         bool Timestamp_Start(void* query_disjoint = nullptr, void* query_start = nullptr);

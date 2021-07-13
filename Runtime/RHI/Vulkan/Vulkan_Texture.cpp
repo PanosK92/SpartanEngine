@@ -19,17 +19,17 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ========================
+//= INCLUDES ===============================
 #include "Spartan.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Device.h"
 #include "../RHI_Texture2D.h"
 #include "../RHI_TextureCube.h"
 #include "../RHI_CommandList.h"
+#include "../RHI_DescriptorSetLayoutCache.h"
 #include "../../Profiling/Profiler.h"
 #include "../../Rendering/Renderer.h"
-#include "../RHI_DescriptorSetLayoutCache.h"
-//===================================
+//==========================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -59,14 +59,17 @@ namespace Spartan
             {
                 name += name.empty() ? "render_target" : "-render_target";
             }
-
         }
 
         vulkan_utility::debug::set_name(static_cast<VkImage>(texture->Get_Resource()), name.c_str());
-        vulkan_utility::debug::set_name(static_cast<VkImageView>(texture->Get_Resource_View(0)), name.c_str());
-        if (texture->IsSampled() && texture->IsStencilFormat())
+        vulkan_utility::debug::set_name(static_cast<VkImageView>(texture->Get_Resource_View_Srv()), name.c_str());
+
+        if (texture->HasPerMipView())
         {
-            vulkan_utility::debug::set_name(static_cast<VkImageView>(texture->Get_Resource_View(1)), name.c_str());
+            for (uint32_t i = 0; i < texture->GetMipCount(); i++)
+            {
+                vulkan_utility::debug::set_name(static_cast<VkImageView>(texture->Get_Resource_Views_Srv(i)), name.c_str());
+            }
         }
     }
 
@@ -80,17 +83,17 @@ namespace Spartan
 
         const uint32_t width            = texture->GetWidth();
         const uint32_t height           = texture->GetHeight();
-        const uint32_t array_size       = texture->GetArraySize();
+        const uint32_t array_length     = texture->GetArrayLength();
         const uint32_t mip_count        = texture->GetMipCount();
         const uint32_t bytes_per_pixel  = texture->GetBytesPerPixel();
 
-        const uint32_t region_count = array_size * mip_count;
+        const uint32_t region_count = array_length * mip_count;
         regions.resize(region_count);
         regions.reserve(region_count);
 
         // Fill out VkBufferImageCopy structs describing the array and the mip levels
         VkDeviceSize buffer_offset = 0;
-        for (uint32_t array_index = 0; array_index < array_size; array_index++)
+        for (uint32_t array_index = 0; array_index < array_length; array_index++)
         {
             for (uint32_t mip_index = 0; mip_index < mip_count; mip_index++)
             {
@@ -121,7 +124,7 @@ namespace Spartan
         buffer_offset = 0;
         if (vulkan_utility::error::check(vmaMapMemory(vulkan_utility::globals::rhi_context->allocator, allocation, &data)))
         {
-            for (uint32_t array_index = 0; array_index < array_size; array_index++)
+            for (uint32_t array_index = 0; array_index < array_length; array_index++)
             {
                 for (uint32_t mip_index = 0; mip_index < mip_count; mip_index++)
                 {
@@ -246,9 +249,9 @@ namespace Spartan
 
         // Transition to target layout
         if (VkCommandBuffer cmd_buffer = vulkan_utility::command_buffer_immediate::begin(RHI_Queue_Graphics))
-        {    
+        {
             RHI_Image_Layout target_layout = GetAppropriateLayout(this);
-                
+
             // Transition to the final layout
             if (!vulkan_utility::image::set_layout(cmd_buffer, this, target_layout))
             {
@@ -272,37 +275,31 @@ namespace Spartan
             // Shader resource views
             if (IsSampled())
             {
-                if (IsColorFormat())
-                {
-                    if (!vulkan_utility::image::view::create(m_resource, m_resource_view[0], this, 0, m_array_size, false, false))
-                        return false;
-                }
+                if (!vulkan_utility::image::view::create(m_resource, m_resource_view_srv, this, 0, m_array_length, 0, m_mip_count, IsDepthFormat(), IsStencilFormat()))
+                    return false;
 
-                if (IsDepthFormat())
+                if (HasPerMipView())
                 {
-                    if (!vulkan_utility::image::view::create(m_resource, m_resource_view[0], this, 0, m_array_size, true, false))
-                        return false;
-                }
-
-                if (IsStencilFormat())
-                {
-                    if (!vulkan_utility::image::view::create(m_resource, m_resource_view[1], this, 0, m_array_size, false, true))
-                        return false;
+                    for (uint32_t i = 0; i < m_mip_count; i++)
+                    {
+                        if (!vulkan_utility::image::view::create(m_resource, m_resource_views_srv[i], this, 0, m_array_length, i, 1, IsDepthFormat(), IsStencilFormat()))
+                            return false;
+                    }
                 }
             }
 
             // Render target views
-            for (uint32_t i = 0; i < m_array_size; i++)
+            for (uint32_t i = 0; i < m_array_length; i++)
             {
                 if (IsRenderTarget())
                 {
-                    if (!vulkan_utility::image::view::create(m_resource, m_resource_view_renderTarget[i], this, i, 1, false, false))
+                    if (!vulkan_utility::image::view::create(m_resource, m_resource_view_renderTarget[i], this, i, 1, 0, m_mip_count, false, false))
                         return false;
                 }
 
                 if (IsDepthStencil())
                 {
-                    if (!vulkan_utility::image::view::create(m_resource, m_resource_view_depthStencil[i], this, i, 1, true, false))
+                    if (!vulkan_utility::image::view::create(m_resource, m_resource_view_depthStencil[i], this, i, 1, 0, m_mip_count, true, false))
                         return false;
                 }
             }
@@ -328,7 +325,12 @@ namespace Spartan
             {
                 if (RHI_DescriptorSetLayoutCache* descriptor_set_layout_cache = renderer->GetDescriptorLayoutSetCache())
                 {
-                    descriptor_set_layout_cache->RemoveTexture(this);
+                    descriptor_set_layout_cache->RemoveTexture(this, -1);
+
+                    for (uint32_t i = 0; i < m_mip_count; i++)
+                    {
+                        descriptor_set_layout_cache->RemoveTexture(this, i);
+                    }
                 }
             }
         }
@@ -338,8 +340,14 @@ namespace Spartan
 
         // De-allocate everything
         m_data.clear();
-        vulkan_utility::image::view::destroy(m_resource_view[0]);
-        vulkan_utility::image::view::destroy(m_resource_view[1]);
+
+        vulkan_utility::image::view::destroy(m_resource_view_srv);
+
+        for (uint32_t i = 0; i < m_mip_count; i++)
+        {
+            vulkan_utility::image::view::destroy(m_resource_views_srv[i]);
+        }
+
         for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
         {
             vulkan_utility::image::view::destroy(m_resource_view_depthStencil[i]);
