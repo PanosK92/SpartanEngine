@@ -44,7 +44,7 @@ namespace Spartan
         }
 
         // Creates a texture without any data (intended for usage as a render target)
-        RHI_Texture2DArray(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const uint32_t array_size, const uint16_t flags = 0, std::string name = "") : RHI_Texture(context)
+        RHI_Texture2DArray(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const uint32_t array_length, const uint16_t flags = 0, std::string name = "") : RHI_Texture(context)
         {
             m_object_name   = name;
             m_resource_type = ResourceType::Texture2dArray;
@@ -53,7 +53,7 @@ namespace Spartan
             m_channel_count = GetChannelCountFromFormat(format);
             m_viewport      = RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
             m_format        = format;
-            m_array_size    = array_size;
+            m_array_length  = array_length;
             m_mip_count     = 1;
             m_flags         = flags;
             m_flags         |= RHI_Texture_Sampled;

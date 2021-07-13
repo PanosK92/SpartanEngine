@@ -108,9 +108,9 @@ namespace Spartan
         Dof_UpscaleBlend_C,
         Sharpening_C,
         ChromaticAberration_C,
-        BloomDownsampleLuminance_C,
+        BloomLuminance_C,
         BloomDownsample_C,
-        BloomUpsampleBlendFrame_C,
+        BloomBlendFrame_C,
         BloomUpsampleBlendMip_C,
         ToneMapping_C,
         GammaCorrection_C,
@@ -164,7 +164,8 @@ namespace Spartan
         Ssao,
         Ssao_Blurred,
         Ssr,
-        Taa_History
+        Taa_History,
+        Bloom
     };
 
     // Renderer/graphics options

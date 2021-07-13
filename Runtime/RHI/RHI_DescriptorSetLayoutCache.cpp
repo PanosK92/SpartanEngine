@@ -87,23 +87,23 @@ namespace Spartan
         }
     }
 
-    void RHI_DescriptorSetLayoutCache::SetTexture(const uint32_t slot, RHI_Texture* texture, const bool storage)
+    void RHI_DescriptorSetLayoutCache::SetTexture(const uint32_t slot, RHI_Texture* texture, const int mip, const bool storage)
     {
         SP_ASSERT(m_descriptor_layout_current != nullptr);
 
         if (m_descriptor_layout_current)
         {
-            m_descriptor_layout_current->SetTexture(slot, texture, storage);
+            m_descriptor_layout_current->SetTexture(slot, texture, mip, storage);
         }
     }
 
-    void RHI_DescriptorSetLayoutCache::RemoveTexture(RHI_Texture* texture)
+    void RHI_DescriptorSetLayoutCache::RemoveTexture(RHI_Texture* texture, const int mip)
     {
         SP_ASSERT(texture != nullptr);
 
         if (m_descriptor_layout_current)
         {
-            m_descriptor_layout_current->RemoveTexture(texture);
+            m_descriptor_layout_current->RemoveTexture(texture, mip);
         }
     }
 

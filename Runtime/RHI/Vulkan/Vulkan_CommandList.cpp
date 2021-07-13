@@ -373,7 +373,7 @@ namespace Spartan
             return;
         }
 
-        if (!texture || !texture->Get_Resource_View())
+        if (!texture || !texture->Get_Resource_View_Srv())
         {
             LOG_ERROR("Texture is null.");
             return;
@@ -485,7 +485,7 @@ namespace Spartan
         SP_ASSERT(source->GetFormat() == destination->GetFormat());
         SP_ASSERT(source->GetWidth() == destination->GetWidth());
         SP_ASSERT(source->GetHeight() == destination->GetHeight());
-        SP_ASSERT(source->GetArraySize() == destination->GetArraySize());
+        SP_ASSERT(source->GetArrayLength() == destination->GetArrayLength());
         SP_ASSERT(source->GetMipCount() == destination->GetMipCount());
 
         VkOffset3D blit_size    = {};
@@ -627,7 +627,7 @@ namespace Spartan
         m_descriptor_set_layout_cache->SetSampler(slot, sampler);
     }
 
-    void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const bool storage /*= false*/)
+    void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const int mip /*= -1*/, const bool storage /*= false*/)
     {
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
@@ -639,7 +639,7 @@ namespace Spartan
         }
 
         // Null textures are allowed, and get replaced with a black texture here
-        if (!texture || !texture->Get_Resource_View())
+        if (!texture || !texture->Get_Resource_View_Srv())
         {
             texture = m_renderer->GetDefaultTextureTransparent();
         }
@@ -701,7 +701,7 @@ namespace Spartan
         }
 
         // Set (will only happen if it's not already set)
-        m_descriptor_set_layout_cache->SetTexture(slot, texture, storage);
+        m_descriptor_set_layout_cache->SetTexture(slot, texture, mip, storage);
     }
 
     uint32_t RHI_CommandList::Gpu_GetMemoryUsed(RHI_Device* rhi_device)

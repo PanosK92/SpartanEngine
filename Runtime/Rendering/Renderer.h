@@ -220,8 +220,7 @@ namespace Spartan
         void RenderablesSort(std::vector<Entity*>* renderables);
 
         // Render targets
-        std::array<std::shared_ptr<RHI_Texture>, 25> m_render_targets;
-        std::vector<std::shared_ptr<RHI_Texture>> m_render_tex_bloom;
+        std::array<std::shared_ptr<RHI_Texture>, 26> m_render_targets;
 
         // Standard textures
         std::shared_ptr<RHI_Texture> m_tex_environment;

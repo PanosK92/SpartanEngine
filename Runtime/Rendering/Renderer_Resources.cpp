@@ -123,57 +123,55 @@ namespace Spartan
         if (create_render)
         { 
             // Full resolution
-            RENDER_TARGET(RendererRt::Frame)                        = make_unique<RHI_Texture2D>(m_context, width_render, height_render, RHI_Format_R16G16B16A16_Float,   0,                                   "rt_frame");
-            RENDER_TARGET(RendererRt::Frame_2)                      = make_unique<RHI_Texture2D>(m_context, width_render, height_render, RHI_Format_R16G16B16A16_Float,   0,                                   "rt_frame_2");
-            RENDER_TARGET(RendererRt::Gbuffer_Albedo)               = make_shared<RHI_Texture2D>(m_context, width_render, height_render, RHI_Format_R8G8B8A8_Unorm,       0,                                   "rt_gbuffer_albedo");
-            RENDER_TARGET(RendererRt::Gbuffer_Normal)               = make_shared<RHI_Texture2D>(m_context, width_render, height_render, RHI_Format_R16G16B16A16_Float,   0,                                   "rt_gbuffer_normal");
-            RENDER_TARGET(RendererRt::Gbuffer_Material)             = make_shared<RHI_Texture2D>(m_context, width_render, height_render, RHI_Format_R8G8B8A8_Unorm,       0,                                   "rt_gbuffer_material");
-            RENDER_TARGET(RendererRt::Gbuffer_Velocity)             = make_shared<RHI_Texture2D>(m_context, width_render, height_render, RHI_Format_R16G16_Float,         0,                                   "rt_gbuffer_velocity");
-            RENDER_TARGET(RendererRt::Gbuffer_Depth)                = make_shared<RHI_Texture2D>(m_context, width_render, height_render, RHI_Format_D32_Float_S8X24_Uint, RHI_Texture_DepthStencilReadOnly,    "rt_gbuffer_depth");
-            RENDER_TARGET(RendererRt::Light_Diffuse)                = make_unique<RHI_Texture2D>(m_context, width_render, height_render, RHI_Format_R11G11B10_Float,      0,                                   "rt_light_diffuse");
-            RENDER_TARGET(RendererRt::Light_Diffuse_Transparent)    = make_unique<RHI_Texture2D>(m_context, width_render, height_render, RHI_Format_R11G11B10_Float,      0,                                   "rt_light_diffuse_transparent");
-            RENDER_TARGET(RendererRt::Light_Specular)               = make_unique<RHI_Texture2D>(m_context, width_render, height_render, RHI_Format_R11G11B10_Float,      0,                                   "rt_light_specular");
-            RENDER_TARGET(RendererRt::Light_Specular_Transparent)   = make_unique<RHI_Texture2D>(m_context, width_render, height_render, RHI_Format_R11G11B10_Float,      0,                                   "rt_light_specular_transparent");
-            RENDER_TARGET(RendererRt::Light_Volumetric)             = make_unique<RHI_Texture2D>(m_context, width_render, height_render, RHI_Format_R11G11B10_Float,      0,                                   "rt_light_volumetric");
-            RENDER_TARGET(RendererRt::Ssao)                         = make_unique<RHI_Texture2D>(m_context, width_render, height_render, RHI_Format_R16G16B16A16_Snorm,   0,                                   "rt_ssao");
-            RENDER_TARGET(RendererRt::Ssao_Blurred)                 = make_unique<RHI_Texture2D>(m_context, width_render, height_render, RHI_Format_R16G16B16A16_Snorm,   0,                                   "rt_ssao_blurred");
-            RENDER_TARGET(RendererRt::Ssr)                          = make_shared<RHI_Texture2D>(m_context, width_render, height_render, RHI_Format_R16G16B16A16_Snorm,   RHI_Texture_Storage,                 "rt_ssr");
+            RENDER_TARGET(RendererRt::Frame)                        = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16B16A16_Float,     0,                                      "rt_frame");
+            RENDER_TARGET(RendererRt::Frame_2)                      = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16B16A16_Float,     0,                                      "rt_frame_2");
+            RENDER_TARGET(RendererRt::Gbuffer_Albedo)               = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R8G8B8A8_Unorm,         0,                                      "rt_gbuffer_albedo");
+            RENDER_TARGET(RendererRt::Gbuffer_Normal)               = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16B16A16_Float,     0,                                      "rt_gbuffer_normal");
+            RENDER_TARGET(RendererRt::Gbuffer_Material)             = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R8G8B8A8_Unorm,         0,                                      "rt_gbuffer_material");
+            RENDER_TARGET(RendererRt::Gbuffer_Velocity)             = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16_Float,           0,                                      "rt_gbuffer_velocity");
+            RENDER_TARGET(RendererRt::Gbuffer_Depth)                = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_D32_Float_S8X24_Uint,   RHI_Texture_DepthStencilReadOnly,       "rt_gbuffer_depth");
+            RENDER_TARGET(RendererRt::Light_Diffuse)                = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R11G11B10_Float,        0,                                      "rt_light_diffuse");
+            RENDER_TARGET(RendererRt::Light_Diffuse_Transparent)    = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R11G11B10_Float,        0,                                      "rt_light_diffuse_transparent");
+            RENDER_TARGET(RendererRt::Light_Specular)               = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R11G11B10_Float,        0,                                      "rt_light_specular");
+            RENDER_TARGET(RendererRt::Light_Specular_Transparent)   = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R11G11B10_Float,        0,                                      "rt_light_specular_transparent");
+            RENDER_TARGET(RendererRt::Light_Volumetric)             = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R11G11B10_Float,        0,                                      "rt_light_volumetric");
+            RENDER_TARGET(RendererRt::Ssao)                         = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16B16A16_Snorm,     0,                                      "rt_ssao");
+            RENDER_TARGET(RendererRt::Ssao_Blurred)                 = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16B16A16_Snorm,     0,                                      "rt_ssao_blurred");
+            RENDER_TARGET(RendererRt::Ssr)                          = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16B16A16_Snorm,     RHI_Texture_Storage,                    "rt_ssr");
+            
 
             // Half resolution
-            RENDER_TARGET(RendererRt::Dof_Half)     = make_unique<RHI_Texture2D>(m_context, width_render / 2, height_render / 2, RHI_Format_R16G16B16A16_Float, 0, "rt_dof_half");
-            RENDER_TARGET(RendererRt::Dof_Half_2)   = make_unique<RHI_Texture2D>(m_context, width_render / 2, height_render / 2, RHI_Format_R16G16B16A16_Float, 0, "rt_dof_half_2");
+            RENDER_TARGET(RendererRt::Dof_Half)     = make_unique<RHI_Texture2D>(m_context, width_render / 2, height_render / 2, 1, RHI_Format_R16G16B16A16_Float, 0, "rt_dof_half");
+            RENDER_TARGET(RendererRt::Dof_Half_2)   = make_unique<RHI_Texture2D>(m_context, width_render / 2, height_render / 2, 1, RHI_Format_R16G16B16A16_Float, 0, "rt_dof_half_2");
 
-            // Bloom (todo: just make it a mip chain)
+            // Bloom
             {
-                // Create as many bloom textures as required to scale down to or below 16px (in any dimension)
-                m_render_tex_bloom.clear();
-                m_render_tex_bloom.emplace_back(make_unique<RHI_Texture2D>(m_context, width_render / 2, height_render / 2, RHI_Format_R11G11B10_Float, 0, "rt_bloom"));
-                while (m_render_tex_bloom.back()->GetWidth() > 16 && m_render_tex_bloom.back()->GetHeight() > 16)
+                // Deduce how many mips are required to scale down to or below 16px (in any dimension)
+                uint32_t mip_count  = 1;
+                uint32_t width      = width_render;
+                uint32_t height     = height_render;
+                while (width > 16 && height > 16)
                 {
-                    m_render_tex_bloom.emplace_back(
-                        make_unique<RHI_Texture2D>(
-                            m_context,
-                            m_render_tex_bloom.back()->GetWidth() / 2,
-                            m_render_tex_bloom.back()->GetHeight() / 2,
-                            RHI_Format_R11G11B10_Float,
-                            0, "rt_bloom_downscaled"
-                            )
-                    );
+                    width /= 2;
+                    height /= 2;
+                    mip_count++;
                 }
+
+                RENDER_TARGET(RendererRt::Bloom) = make_shared<RHI_Texture2D>(m_context, width_render, height_render, mip_count, RHI_Format_R11G11B10_Float, RHI_Texture_Storage | RHI_Texture_PerMipView, "rt_bloom");
             }
         }
 
         // Output resolution
         if (create_output)
         {
-            RENDER_TARGET(RendererRt::Frame_PostProcess)    = make_unique<RHI_Texture2D>(m_context, width_output, height_output, RHI_Format_R16G16B16A16_Float, 0, "rt_frame_post_process");
-            RENDER_TARGET(RendererRt::Frame_PostProcess_2)  = make_unique<RHI_Texture2D>(m_context, width_output, height_output, RHI_Format_R16G16B16A16_Float, 0, "rt_frame_post_process_2");
+            RENDER_TARGET(RendererRt::Frame_PostProcess)    = make_unique<RHI_Texture2D>(m_context, width_output, height_output, 1, RHI_Format_R16G16B16A16_Float, 0, "rt_frame_post_process");
+            RENDER_TARGET(RendererRt::Frame_PostProcess_2)  = make_unique<RHI_Texture2D>(m_context, width_output, height_output, 1, RHI_Format_R16G16B16A16_Float, 0, "rt_frame_post_process_2");
         }
 
         // Fixed resolution
         if (create_fixed)
         {
-            RENDER_TARGET(RendererRt::Brdf_Specular_Lut) = make_unique<RHI_Texture2D>(m_context, 400, 400, RHI_Format_R8G8_Unorm, 0, "rt_brdf_specular_lut");
+            RENDER_TARGET(RendererRt::Brdf_Specular_Lut) = make_unique<RHI_Texture2D>(m_context, 400, 400, 1, RHI_Format_R8G8_Unorm, 0, "rt_brdf_specular_lut");
             m_brdf_specular_lut_rendered = false;
         }
 
@@ -186,7 +184,7 @@ namespace Spartan
 
             if (!RENDER_TARGET(RendererRt::Taa_History) || (RENDER_TARGET(RendererRt::Taa_History)->GetWidth() != width && RENDER_TARGET(RendererRt::Taa_History)->GetHeight() != height))
             {
-                RENDER_TARGET(RendererRt::Taa_History) = make_unique<RHI_Texture2D>(m_context, width, height, RHI_Format_R16G16B16A16_Float, 0, "rt_taa_history");
+                RENDER_TARGET(RendererRt::Taa_History) = make_unique<RHI_Texture2D>(m_context, width, height, 1, RHI_Format_R16G16B16A16_Float, 0, "rt_taa_history");
                 LOG_INFO("Taa history resolution has been set to %dx%d", width, height);
             }
         }
@@ -265,9 +263,9 @@ namespace Spartan
         // Bloom
         {
             // Downsample luminance
-            m_shaders[RendererShader::BloomDownsampleLuminance_C] = make_shared<RHI_Shader>(m_context);
-            m_shaders[RendererShader::BloomDownsampleLuminance_C]->AddDefine("DOWNSAMPLE_LUMINANCE");
-            m_shaders[RendererShader::BloomDownsampleLuminance_C]->Compile(RHI_Shader_Compute, dir_shaders + "Bloom.hlsl", async);
+            m_shaders[RendererShader::BloomLuminance_C] = make_shared<RHI_Shader>(m_context);
+            m_shaders[RendererShader::BloomLuminance_C]->AddDefine("LUMINANCE");
+            m_shaders[RendererShader::BloomLuminance_C]->Compile(RHI_Shader_Compute, dir_shaders + "Bloom.hlsl", async);
 
             // Downsample anti-flicker
             m_shaders[RendererShader::BloomDownsample_C] = make_shared<RHI_Shader>(m_context);
@@ -280,9 +278,9 @@ namespace Spartan
             m_shaders[RendererShader::BloomUpsampleBlendMip_C]->Compile(RHI_Shader_Compute, dir_shaders + "Bloom.hlsl", async);
 
             // Upsample blend (with frame)
-            m_shaders[RendererShader::BloomUpsampleBlendFrame_C] = make_shared<RHI_Shader>(m_context);
-            m_shaders[RendererShader::BloomUpsampleBlendFrame_C]->AddDefine("UPSAMPLE_BLEND_FRAME");
-            m_shaders[RendererShader::BloomUpsampleBlendFrame_C]->Compile(RHI_Shader_Compute, dir_shaders + "Bloom.hlsl", async);
+            m_shaders[RendererShader::BloomBlendFrame_C] = make_shared<RHI_Shader>(m_context);
+            m_shaders[RendererShader::BloomBlendFrame_C]->AddDefine("BLEND_FRAME");
+            m_shaders[RendererShader::BloomBlendFrame_C]->Compile(RHI_Shader_Compute, dir_shaders + "Bloom.hlsl", async);
         }
 
         // Film grain

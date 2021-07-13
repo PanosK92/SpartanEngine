@@ -186,7 +186,7 @@ namespace Spartan
         return true;
     }
 
-    static bool CreateShaderResourceView(void* texture, void*& view, const ResourceType resource_type, const DXGI_FORMAT format, const uint32_t array_size, const uint32_t mip_count, const shared_ptr<RHI_Device>& rhi_device)
+    static bool CreateShaderResourceView(void* texture, void*& view, const ResourceType resource_type, const DXGI_FORMAT format, const uint32_t array_size, const uint32_t mip_count, const uint32_t top_mip, const shared_ptr<RHI_Device>& rhi_device)
     {
         // Describe
         D3D11_SHADER_RESOURCE_VIEW_DESC desc   = {};
@@ -196,7 +196,7 @@ namespace Spartan
         {
             desc.ViewDimension                  = D3D11_SRV_DIMENSION_TEXTURE2D;
             desc.Texture2DArray.FirstArraySlice = 0;
-            desc.Texture2DArray.MostDetailedMip = 0;
+            desc.Texture2DArray.MostDetailedMip = top_mip;
             desc.Texture2DArray.MipLevels       = static_cast<UINT>(mip_count);
             desc.Texture2DArray.ArraySize       = static_cast<UINT>(array_size);
         }
@@ -219,14 +219,24 @@ namespace Spartan
         return d3d11_utility::error_check(rhi_device->GetContextRhi()->device->CreateShaderResourceView(static_cast<ID3D11Resource*>(texture), &desc, reinterpret_cast<ID3D11ShaderResourceView**>(&view)));
     }
 
-    static bool CreateUnorderedAccessView(void* texture, void*& view, const ResourceType resource_type, const DXGI_FORMAT format, const uint32_t array_size, const shared_ptr<RHI_Device>& rhi_device)
+    static bool CreateUnorderedAccessView(void* texture, void*& view, const ResourceType resource_type, const DXGI_FORMAT format, const uint32_t array_size, const uint32_t mip, const shared_ptr<RHI_Device>& rhi_device)
     {
         // Describe
-        D3D11_UNORDERED_ACCESS_VIEW_DESC desc  = {};
-        desc.Format                            = format;
-        desc.ViewDimension                     = resource_type == ResourceType::Texture2d ? D3D11_UAV_DIMENSION_TEXTURE2D : D3D11_UAV_DIMENSION_TEXTURE2DARRAY;
-        desc.Texture2DArray.FirstArraySlice    = 0;
-        desc.Texture2DArray.ArraySize          = static_cast<UINT>(array_size);
+        D3D11_UNORDERED_ACCESS_VIEW_DESC desc   = {};
+        desc.Format                             = format;
+
+        if (resource_type == ResourceType::Texture2d)
+        {
+            desc.ViewDimension      = D3D11_UAV_DIMENSION_TEXTURE2D;
+            desc.Texture2D.MipSlice = mip;
+        }
+        else if (resource_type == ResourceType::Texture2dArray)
+        {
+            desc.ViewDimension                      = D3D11_UAV_DIMENSION_TEXTURE2DARRAY;
+            desc.Texture2DArray.MipSlice            = mip;
+            desc.Texture2DArray.FirstArraySlice     = 0;
+            desc.Texture2DArray.ArraySize           = static_cast<UINT>(array_size);
+        }
 
         // Create
         return d3d11_utility::error_check(rhi_device->GetContextRhi()->device->CreateUnorderedAccessView(static_cast<ID3D11Resource*>(texture), &desc, reinterpret_cast<ID3D11UnorderedAccessView**>(&view)));
@@ -267,7 +277,7 @@ namespace Spartan
             m_width,
             m_height,
             m_channel_count,
-            m_array_size,
+            m_array_length,
             m_mip_count,
             m_bits_per_channel,
             format,
@@ -281,19 +291,65 @@ namespace Spartan
         {
             result_srv = CreateShaderResourceView(
                 resource,
-                m_resource_view[0],
+                m_resource_view_srv,
                 m_resource_type,
                 format_srv,
-                m_array_size,
+                m_array_length,
                 m_mip_count,
+                0,
                 m_rhi_device
             );
+
+            if (HasPerMipView())
+            {
+                for (uint32_t i = 0; i < m_mip_count; i++)
+                {
+                    bool result = CreateShaderResourceView(
+                        resource,
+                        m_resource_views_srv[i],
+                        m_resource_type,
+                        format_srv,
+                        m_array_length,
+                        1,
+                        i,
+                        m_rhi_device
+                    );
+
+                    result_srv = !result ? false : result_srv;
+                }
+            }
         }
 
         // UNORDERED ACCESS VIEW
         if (IsStorage())
         {
-            result_uav = CreateUnorderedAccessView(resource, m_resource_view_unorderedAccess, m_resource_type, format, m_array_size, m_rhi_device);
+            result_uav = CreateUnorderedAccessView(
+                resource,
+                m_resource_view_uav,
+                m_resource_type,
+                format,
+                m_array_length,
+                0,
+                m_rhi_device
+            );
+
+            if (HasPerMipView())
+            {
+                for (uint32_t i = 0; i < m_mip_count; i++)
+                {
+                    bool result = CreateUnorderedAccessView(
+                        resource,
+                        m_resource_views_uav[i],
+                        m_resource_type,
+                        format,
+                        1,
+                        i,
+                        m_rhi_device
+                    );
+
+                    result_uav = !result ? false : result_uav;
+                }
+            }
         }
 
         // DEPTH-STENCIL VIEW
@@ -305,7 +361,7 @@ namespace Spartan
                 m_resource_view_depthStencil,
                 m_resource_type,
                 format_dsv,
-                m_array_size,
+                m_array_length,
                 false,
                 m_rhi_device
             );
@@ -318,7 +374,7 @@ namespace Spartan
                     m_resource_view_depthStencilReadOnly,
                     m_resource_type,
                     format_dsv,
-                    m_array_size,
+                    m_array_length,
                     true,
                     m_rhi_device
                 );
@@ -334,7 +390,7 @@ namespace Spartan
                 m_resource_view_renderTarget,
                 m_resource_type,
                 format,
-                m_array_size,
+                m_array_length,
                 m_rhi_device
             );
         }
@@ -347,9 +403,15 @@ namespace Spartan
     void RHI_Texture::DestroyResourceGpu()
     {
         d3d11_utility::release(static_cast<ID3D11Texture2D*>(m_resource));
-        d3d11_utility::release(static_cast<ID3D11ShaderResourceView*>(m_resource_view[0]));
-        d3d11_utility::release(static_cast<ID3D11ShaderResourceView*>(m_resource_view[1]));
-        d3d11_utility::release(static_cast<ID3D11UnorderedAccessView*>(m_resource_view_unorderedAccess));
+
+        d3d11_utility::release(static_cast<ID3D11ShaderResourceView*>(m_resource_view_srv));
+        d3d11_utility::release(static_cast<ID3D11UnorderedAccessView*>(m_resource_view_uav));
+
+        for (uint32_t i = 0; i < m_mip_count; i++)
+        {
+            d3d11_utility::release(static_cast<ID3D11ShaderResourceView*>(m_resource_views_srv[i]));
+            d3d11_utility::release(static_cast<ID3D11UnorderedAccessView*>(m_resource_views_uav[i]));
+        }
 
         for (void*& resource : m_resource_view_renderTarget)
         {

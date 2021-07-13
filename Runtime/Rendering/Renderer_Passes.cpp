@@ -221,7 +221,7 @@ namespace Spartan
             pso.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
             pso.pass_name                        = transparent_pass ? "Pass_Depth_Light_Transparent" : "Pass_Depth_Light";
 
-            for (uint32_t array_index = 0; array_index < tex_depth->GetArraySize(); array_index++)
+            for (uint32_t array_index = 0; array_index < tex_depth->GetArrayLength(); array_index++)
             {
                 // Set render target texture array index
                 pso.render_target_color_texture_array_index          = array_index;
@@ -1244,46 +1244,45 @@ namespace Spartan
     void Renderer::Pass_PostProcess_Bloom(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
         // Acquire shaders
-        RHI_Shader* shader_downsampleLuminance  = m_shaders[RendererShader::BloomDownsampleLuminance_C].get();
-        RHI_Shader* shader_downsample           = m_shaders[RendererShader::BloomDownsample_C].get();
-        RHI_Shader* shader_upsampleBlendMip     = m_shaders[RendererShader::BloomUpsampleBlendMip_C].get();
-        RHI_Shader* shader_upsampleBlendFrame   = m_shaders[RendererShader::BloomUpsampleBlendFrame_C].get();
-        if (!shader_downsampleLuminance->IsCompiled() || !shader_upsampleBlendMip->IsCompiled() || !shader_downsample->IsCompiled() || !shader_upsampleBlendFrame->IsCompiled())
+        RHI_Shader* shader_luminance        = m_shaders[RendererShader::BloomLuminance_C].get();
+        RHI_Shader* shader_downsample       = m_shaders[RendererShader::BloomDownsample_C].get();
+        RHI_Shader* shader_upsampleBlendMip = m_shaders[RendererShader::BloomUpsampleBlendMip_C].get();
+        RHI_Shader* shader_blendFrame       = m_shaders[RendererShader::BloomBlendFrame_C].get();
+        if (!shader_luminance->IsCompiled() || !shader_upsampleBlendMip->IsCompiled() || !shader_downsample->IsCompiled() || !shader_blendFrame->IsCompiled())
             return;
+
+        // Acquire render target
+        RHI_Texture* tex_bloom = RENDER_TARGET(RendererRt::Bloom).get();
 
         // Luminance
         {
             // Set render state
             static RHI_PipelineState pso;
-            pso.shader_compute = shader_downsampleLuminance;
-            pso.pass_name      = "Pass_PostProcess_BloomDownsampleLuminance";
+            pso.shader_compute = shader_luminance;
+            pso.pass_name      = "Pass_PostProcess_BloomLuminance";
 
             // Draw
             if (cmd_list->BeginRenderPass(pso))
             {
                 // Update uber buffer
-                m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(m_render_tex_bloom[0].get()->GetWidth()), static_cast<float>(m_render_tex_bloom[0].get()->GetHeight()));
+                m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(tex_bloom->GetWidth()), static_cast<float>(tex_bloom->GetHeight()));
                 UpdateUberBuffer(cmd_list);
 
-                const uint32_t thread_group_count_x   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(m_render_tex_bloom[0].get()->GetWidth()) / m_thread_group_count));
-                const uint32_t thread_group_count_y   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(m_render_tex_bloom[0].get()->GetHeight()) / m_thread_group_count));
+                const uint32_t thread_group_count_x   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_bloom->GetWidth()) / m_thread_group_count));
+                const uint32_t thread_group_count_y   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_bloom->GetHeight()) / m_thread_group_count));
                 const uint32_t thread_group_count_z   = 1;
                 const bool async                      = false;
 
-                cmd_list->SetTexture(RendererBindingsUav::rgba, m_render_tex_bloom[0].get());
+                cmd_list->SetTexture(RendererBindingsUav::rgba, tex_bloom);
                 cmd_list->SetTexture(RendererBindingsSrv::tex, tex_in);
                 cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
                 cmd_list->EndRenderPass();
             }
         }
-        
-        // Downsample
-        // The last bloom texture is the same size as the previous one (it's used for the Gaussian pass below), so we skip it
-        for (int i = 0; i < static_cast<int>(m_render_tex_bloom.size() - 1); i++)
-        {
-            RHI_Texture* mip_small = m_render_tex_bloom[i + 1].get();
-            RHI_Texture* mip_large = m_render_tex_bloom[i].get();
 
+        // Downsample
+        for (uint32_t i = 1; i < tex_bloom->GetMipCount(); i++)
+        {
             // Set render state
             static RHI_PipelineState pso;
             pso.shader_compute   = shader_downsample;
@@ -1292,28 +1291,30 @@ namespace Spartan
             // Draw
             if (cmd_list->BeginRenderPass(pso))
             {
+                int mip_index_small    = i;
+                int mip_index_big      = i - 1;
+                int mip_width_small    = tex_bloom->GetWidth() >> i;
+                int mip_height_small   = tex_bloom->GetHeight() >> i;
+
                 // Update uber buffer
-                m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(mip_small->GetWidth()), static_cast<float>(mip_small->GetHeight()));
+                m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(mip_width_small), static_cast<float>(mip_height_small));
                 UpdateUberBuffer(cmd_list);
 
-                const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(mip_small->GetWidth()) / m_thread_group_count));
-                const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(mip_small->GetHeight()) / m_thread_group_count));
+                const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(mip_width_small) / m_thread_group_count));
+                const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(mip_height_small) / m_thread_group_count));
                 const uint32_t thread_group_count_z = 1;
                 const bool async = false;
 
-                cmd_list->SetTexture(RendererBindingsUav::rgba, mip_small);
-                cmd_list->SetTexture(RendererBindingsSrv::tex, mip_large);
+                cmd_list->SetTexture(RendererBindingsUav::rgba, tex_bloom, mip_index_small);
+                cmd_list->SetTexture(RendererBindingsSrv::tex, tex_bloom, mip_index_big);
                 cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
                 cmd_list->EndRenderPass();
             }
         }
-        
-        // Starting from the smallest mip, upsample and blend with the higher one
-        for (int i = static_cast<int>(m_render_tex_bloom.size() - 1); i > 0; i--)
-        {
-            RHI_Texture* mip_small = m_render_tex_bloom[i].get();
-            RHI_Texture* mip_large = m_render_tex_bloom[i - 1].get();
 
+        // Starting from the lowest mip, upsample and blend with the higher one
+        for (int i = static_cast<int>(tex_bloom->GetMipCount() - 1); i > 0; i--)
+        {
             // Set render state
             static RHI_PipelineState pso;
             pso.shader_compute   = shader_upsampleBlendMip;
@@ -1322,27 +1323,32 @@ namespace Spartan
             // Draw
             if (cmd_list->BeginRenderPass(pso))
             {
+                int mip_index_small    = i;
+                int mip_index_big      = i - 1;
+                int mip_width_large    = tex_bloom->GetWidth() >> mip_index_big;
+                int mip_width_height   = tex_bloom->GetHeight() >> mip_index_big;
+
                 // Update uber buffer
-                m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(mip_large->GetWidth()), static_cast<float>(mip_large->GetHeight()));
+                m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(mip_width_large), static_cast<float>(mip_width_height));
                 UpdateUberBuffer(cmd_list);
 
-                const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(mip_large->GetWidth()) / m_thread_group_count));
-                const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(mip_large->GetHeight()) / m_thread_group_count));
+                const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(mip_width_large) / m_thread_group_count));
+                const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(mip_width_height) / m_thread_group_count));
                 const uint32_t thread_group_count_z = 1;
                 const bool async = false;
 
-                cmd_list->SetTexture(RendererBindingsUav::rgba, mip_large);
-                cmd_list->SetTexture(RendererBindingsSrv::tex, mip_small);
+                cmd_list->SetTexture(RendererBindingsUav::rgba, tex_bloom, mip_index_big);
+                cmd_list->SetTexture(RendererBindingsSrv::tex, tex_bloom, mip_index_small);
                 cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
                 cmd_list->EndRenderPass();
             }
         }
-        
-        // Upsample mip 2 and blend with mip 1, then blend with the frame
+
+        // Blend with the current frame
         {
             // Set render state
             static RHI_PipelineState pso;
-            pso.shader_compute   = shader_upsampleBlendFrame;
+            pso.shader_compute   = shader_blendFrame;
             pso.pass_name        = "Pass_PostProcess_BloomUpsampleBlendFrame";
 
             // Draw
@@ -1359,7 +1365,7 @@ namespace Spartan
 
                 cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out.get());
                 cmd_list->SetTexture(RendererBindingsSrv::tex, tex_in);
-                cmd_list->SetTexture(RendererBindingsSrv::tex2, m_render_tex_bloom.front());
+                cmd_list->SetTexture(RendererBindingsSrv::tex2, tex_bloom, 0);
                 cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
                 cmd_list->EndRenderPass();
             }

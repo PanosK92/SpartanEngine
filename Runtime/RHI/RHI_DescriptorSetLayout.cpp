@@ -101,7 +101,7 @@ namespace Spartan
         }
     }
 
-    void RHI_DescriptorSetLayout::SetTexture(const uint32_t slot, RHI_Texture* texture, const bool storage)
+    void RHI_DescriptorSetLayout::SetTexture(const uint32_t slot, RHI_Texture* texture, const int mip, const bool storage)
     {
         if (!texture->IsSampled())
         {
@@ -115,6 +115,10 @@ namespace Spartan
             return;
         }
 
+        // Get resource
+        bool set_individual_mip = mip != -1;
+        void* resource = set_individual_mip ? texture->Get_Resource_Views_Srv(mip) : texture->Get_Resource_View_Srv();
+
         for (RHI_Descriptor& descriptor : m_descriptors)
         {
             const uint32_t slot_match = slot + (storage ? rhi_shader_shift_storage_texture : rhi_shader_shift_texture);
@@ -122,10 +126,10 @@ namespace Spartan
             if (descriptor.type == RHI_Descriptor_Type::Texture && descriptor.slot == slot_match)
             {
                 // Determine if the descriptor set needs to bind
-                m_needs_to_bind = descriptor.resource != texture->Get_Resource_View() ? true : m_needs_to_bind; // affects vkUpdateDescriptorSets
+                m_needs_to_bind = descriptor.resource != resource ? true : m_needs_to_bind; // affects vkUpdateDescriptorSets
 
                 // Update
-                descriptor.resource = texture->Get_Resource_View();
+                descriptor.resource = resource;
                 descriptor.layout   = texture->GetLayout();
 
                 break;
@@ -133,11 +137,15 @@ namespace Spartan
         }
     }
 
-    void RHI_DescriptorSetLayout::RemoveTexture(RHI_Texture* texture)
+    void RHI_DescriptorSetLayout::RemoveTexture(RHI_Texture* texture, const int mip)
     {
+        // Get resource
+        bool set_individual_mip = mip != -1;
+        void* resource = set_individual_mip ? texture->Get_Resource_Views_Srv(mip) : texture->Get_Resource_View_Srv();
+
         for (RHI_Descriptor& descriptor : m_descriptors)
         {
-            if (descriptor.resource == texture->Get_Resource_View())
+            if (descriptor.resource == resource)
             {
                 m_needs_to_bind = true; // affects vkUpdateDescriptorSets
 

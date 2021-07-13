@@ -94,7 +94,7 @@ namespace Spartan
 
             // Write data
             file->Write(byte_count);
-            file->Write(m_array_size);
+            file->Write(m_array_length);
             file->Write(m_mip_count);
             for (RHI_Texture_Slice& slice : m_data)
             {
@@ -173,7 +173,7 @@ namespace Spartan
         {
             m_object_size_cpu = 0;
             m_object_size_gpu = 0;
-            for (uint32_t array_index = 0; array_index < m_array_size; array_index++)
+            for (uint32_t array_index = 0; array_index < m_array_length; array_index++)
             {
                 for (uint32_t mip_index = 0; mip_index < m_mip_count; mip_index++)
                 {
@@ -208,7 +208,7 @@ namespace Spartan
         // Update array index and mip count
         if (!m_data.empty())
         {
-            m_array_size    = static_cast<uint32_t>(m_data.size());
+            m_array_length    = static_cast<uint32_t>(m_data.size());
             m_mip_count     = m_data[0].GetMipCount();
         }
 
@@ -283,9 +283,9 @@ namespace Spartan
 
         // Read data
         uint32_t byte_count = file->ReadAs<uint32_t>();
-        m_array_size        = file->ReadAs<uint32_t>();
+        m_array_length        = file->ReadAs<uint32_t>();
         m_mip_count         = file->ReadAs<uint32_t>();
-        m_data.resize(m_array_size);
+        m_data.resize(m_array_length);
         for (RHI_Texture_Slice& slice : m_data)
         {
             slice.mips.resize(m_mip_count);
