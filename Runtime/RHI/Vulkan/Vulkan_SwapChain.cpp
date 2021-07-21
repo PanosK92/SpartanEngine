@@ -140,7 +140,7 @@ namespace Spartan
                 {
                     for (VkImage& image : images)
                     {
-                        vulkan_utility::image::set_layout(reinterpret_cast<void*>(cmd_buffer), reinterpret_cast<void*>(image), VK_IMAGE_ASPECT_COLOR_BIT, 1, 1, RHI_Image_Layout::Undefined, RHI_Image_Layout::Present_Src);
+                        vulkan_utility::image::set_layout(reinterpret_cast<void*>(cmd_buffer), reinterpret_cast<void*>(image), VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 1, RHI_Image_Layout::Undefined, RHI_Image_Layout::Present_Src);
                     }
 
                     // End/flush

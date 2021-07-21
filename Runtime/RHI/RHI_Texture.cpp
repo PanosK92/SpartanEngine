@@ -46,6 +46,8 @@ namespace Spartan
         m_rhi_device = context->GetSubsystem<Renderer>()->GetRhiDevice();
         SP_ASSERT(m_rhi_device != nullptr);
         SP_ASSERT(m_rhi_device->GetContextRhi()->device != nullptr);
+
+        m_layout.fill(RHI_Image_Layout::Undefined);
     }
 
     RHI_Texture::~RHI_Texture()

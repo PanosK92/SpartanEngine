@@ -40,7 +40,7 @@ namespace Spartan
         {
             _destroy();
         }
-    
+
         template<typename T>
         bool Create(const std::vector<T>& indices)
         {
@@ -71,12 +71,12 @@ namespace Spartan
         void* Map();
         bool Unmap();
 
-        void* GetResource()         const { return m_buffer; }
+        void* GetResource()         const { return m_resource; }
         uint32_t GetIndexCount()    const { return m_index_count; }
         bool Is16Bit()              const { return sizeof(uint16_t) == m_stride; }
         bool Is32Bit()              const { return sizeof(uint32_t) == m_stride; }
 
-    protected:
+    private:
         bool _create(const void* indices);
         void _destroy();
 
@@ -87,7 +87,7 @@ namespace Spartan
         
         // API
         std::shared_ptr<RHI_Device> m_rhi_device;
-        void* m_buffer      = nullptr;
+        void* m_resource      = nullptr;
         void* m_allocation  = nullptr;
         bool m_is_mappable  = true;
     };

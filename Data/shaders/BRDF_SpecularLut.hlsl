@@ -95,8 +95,8 @@ float2 IntegrateBRDF(float n_dot_v, float roughness)
     float3 n = float3(0.0, 0.0, 1.0);
 
     float A = 0.0;
-    float B = 0.0; 
-   
+    float B = 0.0;
+
     const uint SAMPLE_COUNT = 1024u;
     for(uint i = 0u; i < SAMPLE_COUNT; ++i)
     {

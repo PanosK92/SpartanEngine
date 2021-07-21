@@ -46,7 +46,7 @@ namespace Spartan
         }
 
         // Destroy
-        vulkan_utility::buffer::destroy(m_buffer);
+        vulkan_utility::buffer::destroy(m_resource);
     }
 
     bool RHI_IndexBuffer::_create(const void* indices)
@@ -72,7 +72,7 @@ namespace Spartan
         {
             VkMemoryPropertyFlags flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
             flags |= !m_persistent_mapping ? VK_MEMORY_PROPERTY_HOST_COHERENT_BIT : 0;
-            VmaAllocation allocation = vulkan_utility::buffer::create(m_buffer, m_object_size_gpu, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, flags, true);
+            VmaAllocation allocation = vulkan_utility::buffer::create(m_resource, m_object_size_gpu, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, flags, true);
             if (!allocation)
                 return false;
 
@@ -90,7 +90,7 @@ namespace Spartan
                 return false;
 
             // Create destination buffer
-            VmaAllocation allocation = vulkan_utility::buffer::create(m_buffer, m_object_size_gpu, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+            VmaAllocation allocation = vulkan_utility::buffer::create(m_resource, m_object_size_gpu, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
             if (!allocation)
                 return false;
 
@@ -99,7 +99,7 @@ namespace Spartan
                 // Create command buffer
                 VkCommandBuffer cmd_buffer = vulkan_utility::command_buffer_immediate::begin(RHI_Queue_Transfer);
 
-                VkBuffer* buffer_vk         = reinterpret_cast<VkBuffer*>(&m_buffer);
+                VkBuffer* buffer_vk         = reinterpret_cast<VkBuffer*>(&m_resource);
                 VkBuffer* buffer_staging_vk = reinterpret_cast<VkBuffer*>(&staging_buffer);
 
                 // Copy
@@ -120,7 +120,7 @@ namespace Spartan
         }
 
         // Set debug name
-        vulkan_utility::debug::set_name(static_cast<VkBuffer>(m_buffer), "index_buffer");
+        vulkan_utility::debug::set_name(static_cast<VkBuffer>(m_resource), "index_buffer");
 
         return true;
     }

@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_ConstantBuffer.h"
 #include "../RHI_VertexBuffer.h"
 #include "../RHI_IndexBuffer.h"
+#include "../RHI_StructuredBuffer.h"
 #include "../RHI_BlendState.h"
 #include "../RHI_DepthStencilState.h"
 #include "../RHI_RasterizerState.h"
@@ -570,7 +571,7 @@ namespace Spartan
         m_profiler->m_rhi_bindings_buffer_index++;
     }
 
-    bool RHI_CommandList::SetConstantBuffer(const uint32_t slot, const uint8_t scope, RHI_ConstantBuffer* constant_buffer) const
+    void RHI_CommandList::SetConstantBuffer(const uint32_t slot, const uint8_t scope, RHI_ConstantBuffer* constant_buffer) const
     {
         void* buffer                        = static_cast<ID3D11Buffer*>(constant_buffer ? constant_buffer->GetResource() : nullptr);
         const void* buffer_array[1]         = { buffer };
@@ -612,8 +613,6 @@ namespace Spartan
                 m_profiler->m_rhi_bindings_buffer_constant++;
             }
         }
-
-        return true;
     }
 
     void RHI_CommandList::SetSampler(const uint32_t slot, RHI_Sampler* sampler) const
@@ -647,58 +646,96 @@ namespace Spartan
         }
     }
 
-    void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const int mip /*= -1*/, const bool storage /*= false*/)
+    void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const int mip /*= -1*/, const bool ranged /*= false*/, const bool uav /*= false*/)
     {
-        bool set_individual_mip             = mip != -1;
-        const uint8_t scope                 = m_pipeline_state->IsCompute() ? RHI_Shader_Compute : RHI_Shader_Pixel;
-        const UINT start_slot               = slot;
-        const UINT range                    = 1;
+        bool mip_requested                  = mip != -1;
+        const UINT range                    = ranged ? (texture->GetMipCount() - (mip_requested ? mip : 0)): 1;
+        const uint8_t range_max             = 12;
         ID3D11DeviceContext* device_context = m_rhi_device->GetContextRhi()->device_context;
 
-        // UAV
-        if (storage)
+        // Build resource array
+        array<void*, range_max> view_array;
+        view_array.fill(nullptr);
+        if (texture)
         {
-            // Get resource
-            const void* uav_array[1] = { texture ? (set_individual_mip ? texture->Get_Resource_Views_Uav(mip) : texture->Get_Resource_View_Uav()) : nullptr };
-
-            // Set if not already set
-            ID3D11UnorderedAccessView* set_uav = nullptr;
-            device_context->CSGetUnorderedAccessViews(slot, range, &set_uav);
-            if (set_uav != uav_array[0])
+            if (!ranged)
             {
-                device_context->CSSetUnorderedAccessViews(start_slot, range, reinterpret_cast<ID3D11UnorderedAccessView* const*>(&uav_array), nullptr);
+                if (uav)
+                {
+                    view_array[0] = mip_requested ? texture->Get_Resource_Views_Uav(mip) : texture->Get_Resource_View_Uav();
+                }
+                else
+                {
+                    view_array[0] = mip_requested ? texture->Get_Resource_Views_Srv(mip) : texture->Get_Resource_View_Srv();
+                }
+            }
+            else
+            {
+                for (uint32_t i = 0; i < range; i++)
+                {
+                    uint32_t mip_offset = mip + i;
+                    view_array[i] = uav ? texture->Get_Resource_Views_Uav(mip_offset) : texture->Get_Resource_Views_Srv(mip_offset);
+                }
+            }
+        }
+
+        // UAV
+        if (uav)
+        {
+            // Set if not already set
+            array<ID3D11UnorderedAccessView*, range_max> set_uavs;
+            set_uavs.fill(nullptr);
+            device_context->CSGetUnorderedAccessViews(slot, range, &set_uavs[0]);
+            if (set_uavs[0] != view_array[0])
+            {
+                device_context->CSSetUnorderedAccessViews(slot, range, reinterpret_cast<ID3D11UnorderedAccessView* const*>(view_array.data()), nullptr);
                 m_profiler->m_rhi_bindings_texture_storage++;
             }
         }
         // SRV
         else
         {
-            // Get resource
+            const uint8_t scope = m_pipeline_state->IsCompute() ? RHI_Shader_Compute : RHI_Shader_Pixel;
 
-            const void* srv_array[1] = { texture ? (set_individual_mip ? texture->Get_Resource_Views_Srv(mip) : texture->Get_Resource_View_Srv() ): nullptr };
+            array<ID3D11ShaderResourceView*, range_max> set_srvs;
+            set_srvs.fill(nullptr);
 
             if (scope & RHI_Shader_Pixel)
             {
                 // Set if not already set
-                ID3D11ShaderResourceView* set_srv = nullptr;
-                device_context->PSGetShaderResources(slot, range, &set_srv);
-                if (set_srv != srv_array[0])
+                device_context->PSGetShaderResources(slot, range, &set_srvs[0]);
+                if (set_srvs[0] != view_array[0])
                 {
-                    device_context->PSSetShaderResources(start_slot, range, reinterpret_cast<ID3D11ShaderResourceView* const*>(&srv_array));
+                    device_context->PSSetShaderResources(slot, range, reinterpret_cast<ID3D11ShaderResourceView* const*>(view_array.data()));
                     m_profiler->m_rhi_bindings_texture_sampled++;
                 }
             }
             else if (scope & RHI_Shader_Compute)
             {
                 // Set if not already set
-                ID3D11ShaderResourceView* set_srv = nullptr;
-                device_context->CSGetShaderResources(slot, range, &set_srv);
-                if (set_srv != srv_array[0])
+                device_context->CSGetShaderResources(slot, range, &set_srvs[0]);
+                if (set_srvs[0] != view_array[0])
                 {
-                    device_context->CSSetShaderResources(start_slot, range, reinterpret_cast<ID3D11ShaderResourceView* const*>(&srv_array));
+                    device_context->CSSetShaderResources(slot, range, reinterpret_cast<ID3D11ShaderResourceView* const*>(view_array.data()));
                     m_profiler->m_rhi_bindings_texture_sampled++;
                 }
             }
+        }
+    }
+
+    void RHI_CommandList::SetStructuredBuffer(const uint32_t slot, RHI_StructuredBuffer* structured_buffer) const
+    {
+        array<void*, 1> view_array          = { structured_buffer ? structured_buffer->GetResource() : nullptr };
+        const UINT range                    = 1;
+        ID3D11DeviceContext* device_context = m_rhi_device->GetContextRhi()->device_context;
+
+        // Set only if not set
+        ID3D11UnorderedAccessView* set_uav = nullptr;
+        device_context->CSGetUnorderedAccessViews(slot, range, &set_uav);
+        if (set_uav != view_array[0])
+        {
+            device_context->CSSetUnorderedAccessViews(slot, range, reinterpret_cast<ID3D11UnorderedAccessView* const*>(&view_array), nullptr);
+            m_profiler->m_rhi_bindings_buffer_structured++;
         }
     }
 

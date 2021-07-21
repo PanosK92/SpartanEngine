@@ -38,9 +38,11 @@ namespace Spartan
         void Reset(uint32_t descriptor_set_capacity = 0);
 
         // Descriptor resource updating
-        bool SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer);
+        void SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer);
         void SetSampler(const uint32_t slot, RHI_Sampler* sampler);
-        void SetTexture(const uint32_t slot, RHI_Texture* texture, const int mip, const bool storage);
+        void SetTexture(const uint32_t slot, RHI_Texture* texture, const int mip, const bool ranged);
+        void SetStructuredBuffer(const uint32_t slot, RHI_StructuredBuffer* structured_buffer);
+        void RemoveConstantBuffer(RHI_ConstantBuffer* constant_buffer);
         void RemoveTexture(RHI_Texture* texture, const int mip);
 
         RHI_DescriptorSetLayout* GetCurrentDescriptorSetLayout() const { return m_descriptor_layout_current; }

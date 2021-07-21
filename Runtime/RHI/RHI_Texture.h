@@ -118,8 +118,8 @@ namespace Spartan
         bool IsColorFormat()            const { return !IsDepthStencilFormat(); }
 
         // Layout
-        void SetLayout(const RHI_Image_Layout layout, RHI_CommandList* command_list = nullptr);
-        RHI_Image_Layout GetLayout() const { return m_layout; }
+        void SetLayout(const RHI_Image_Layout layout, RHI_CommandList* cmd_list, const int mip = -1, const bool ranged = true);
+        RHI_Image_Layout GetLayout(const uint32_t mip) const { return m_layout[mip]; }
 
         // Misc
         const auto& GetViewport()   const { return m_viewport; }
@@ -150,8 +150,8 @@ namespace Spartan
         uint32_t m_array_length     = 0;
         uint32_t m_mip_count        = 0;
         RHI_Format m_format         = RHI_Format_Undefined;
-        RHI_Image_Layout m_layout   = RHI_Image_Layout::Undefined;
         uint16_t m_flags            = 0;
+        std::array<RHI_Image_Layout, 12> m_layout;
         RHI_Viewport m_viewport;
         std::vector<RHI_Texture_Slice> m_data;
         std::shared_ptr<RHI_Device> m_rhi_device;

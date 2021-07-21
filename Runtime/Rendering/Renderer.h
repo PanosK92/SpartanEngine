@@ -169,6 +169,7 @@ namespace Spartan
         void CreateTextures();
         void CreateShaders();
         void CreateSamplers();
+        void CreateStructuredBuffers();
         void CreateRenderTextures(const bool create_render, const bool create_output, const bool create_fixed, const bool create_dynamic);
 
         // Passes
@@ -220,7 +221,7 @@ namespace Spartan
         void RenderablesSort(std::vector<Entity*>* renderables);
 
         // Render targets
-        std::array<std::shared_ptr<RHI_Texture>, 26> m_render_targets;
+        std::array<std::shared_ptr<RHI_Texture>, 23> m_render_targets;
 
         // Standard textures
         std::shared_ptr<RHI_Texture> m_tex_environment;
@@ -262,6 +263,9 @@ namespace Spartan
         std::shared_ptr<RHI_Sampler> m_sampler_bilinear_wrap;
         std::shared_ptr<RHI_Sampler> m_sampler_trilinear_clamp;
         std::shared_ptr<RHI_Sampler> m_sampler_anisotropic_wrap;
+
+        // Structured buffers
+        std::shared_ptr<RHI_StructuredBuffer> m_structured_buffer_counter;
 
         // Line rendering
         std::shared_ptr<RHI_VertexBuffer> m_vertex_buffer_lines;

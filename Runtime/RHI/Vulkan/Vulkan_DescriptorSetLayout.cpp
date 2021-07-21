@@ -52,6 +52,7 @@ namespace Spartan
         // Layout bindings
         static const uint8_t descriptors_max = 255;
         array<VkDescriptorSetLayoutBinding, descriptors_max> layout_bindings;
+        array<VkDescriptorBindingFlags, descriptors_max> layout_binding_flags;
 
         for (uint32_t i = 0; i < static_cast<uint32_t>(descriptors.size()); i++)
         {
@@ -62,19 +63,31 @@ namespace Spartan
             stage_flags |= (descriptor.stage & RHI_Shader_Vertex)   ? VK_SHADER_STAGE_VERTEX_BIT    : 0;
             stage_flags |= (descriptor.stage & RHI_Shader_Pixel)    ? VK_SHADER_STAGE_FRAGMENT_BIT  : 0;
             stage_flags |= (descriptor.stage & RHI_Shader_Compute)  ? VK_SHADER_STAGE_COMPUTE_BIT   : 0;
-        
-            layout_bindings[i].binding              = descriptor.slot;
+
             layout_bindings[i].descriptorType       = vulkan_utility::ToVulkanDescriptorType(descriptor);
-            layout_bindings[i].descriptorCount      = 1;
+            layout_bindings[i].binding              = descriptor.slot;
+            layout_bindings[i].descriptorCount      = descriptor.array_size;
             layout_bindings[i].stageFlags           = stage_flags;
             layout_bindings[i].pImmutableSamplers   = nullptr;
+
+            // Enable partially bound descriptors.
+            // Say we have an array of textures with a length of 10, but we only want to bind the first 5.
+            // Vulkan will print a validation error about the rest, we don't want that.
+            bool is_array = descriptor.array_size > 1;
+            layout_binding_flags[i] = is_array ? VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT : 0;
         }
+
+        VkDescriptorSetLayoutBindingFlagsCreateInfoEXT flags_info   = {};
+        flags_info.sType                                            = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT;
+        flags_info.pNext                                            = nullptr;
+        flags_info.bindingCount                                     = static_cast<uint32_t>(descriptors.size());
+        flags_info.pBindingFlags                                    = layout_binding_flags.data();
 
         // Create info
         VkDescriptorSetLayoutCreateInfo create_info = {};
         create_info.sType                           = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         create_info.flags                           = 0;
-        create_info.pNext                           = nullptr;
+        create_info.pNext                           = &flags_info;
         create_info.bindingCount                    = static_cast<uint32_t>(descriptors.size());
         create_info.pBindings                       = layout_bindings.data();
 

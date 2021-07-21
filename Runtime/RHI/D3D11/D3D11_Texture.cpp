@@ -242,9 +242,9 @@ namespace Spartan
         return d3d11_utility::error_check(rhi_device->GetContextRhi()->device->CreateUnorderedAccessView(static_cast<ID3D11Resource*>(texture), &desc, reinterpret_cast<ID3D11UnorderedAccessView**>(&view)));
     }
 
-    void RHI_Texture::SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* command_list /*= nullptr*/)
+    void RHI_Texture::SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* cmd_list, const int mip /*= -1*/, const bool ranged /*= true*/)
     {
-        m_layout = new_layout;
+
     }
 
     bool RHI_Texture::CreateResourceGpu()

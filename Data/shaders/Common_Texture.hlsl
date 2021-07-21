@@ -64,14 +64,17 @@ Texture2D tex               : register(t31);
 Texture2D tex2              : register(t32);
 Texture2D tex_font_atlas    : register(t33);
 
-// Compute
-RWTexture2D<float> tex_out_r                : register(u0);
-RWTexture2D<float2> tex_out_rg              : register(u1);
-RWTexture2D<float3> tex_out_rgb             : register(u2);
-RWTexture2D<float4> tex_out_rgba            : register(u3);
-RWTexture2D<float3> tex_out_rgb2            : register(u4);
-RWTexture2D<float3> tex_out_rgb3            : register(u5);
-RWTexture2DArray<float4> uav_array_rgba     : register(u6);
+// RWTexture2D
+RWTexture2D<float> tex_out_r                                : register(u0);
+RWTexture2D<float2> tex_out_rg                              : register(u1);
+RWTexture2D<float3> tex_out_rgb                             : register(u2);
+RWTexture2D<float3> tex_out_rgb2                            : register(u3);
+RWTexture2D<float3> tex_out_rgb3                            : register(u4);
+RWTexture2D<float4> tex_out_rgba                            : register(u5);
+globallycoherent RWTexture2D<float4> tex_out_rgba_mips[12]  : register(u6);
+
+// Structured buffers
+globallycoherent RWStructuredBuffer<uint> g_atomic_counter : register(u18); // u6 + 12 mips = u18
 
 // Misc
 static const float2 g_tex_noise_normal_scale    = float2(g_resolution_render.x / 256.0f, g_resolution_render.y / 256.0f);

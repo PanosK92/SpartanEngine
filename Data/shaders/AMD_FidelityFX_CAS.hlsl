@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2020 Panos Karabelas
+Copyright(c) 2016-2021 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,33 +19,42 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =====================
-#include "Spartan.h"
-#include "../RHI_Implementation.h"
-#include "../RHI_Texture2D.h"
-#include "../RHI_TextureCube.h"
-#include "../RHI_CommandList.h"
-//================================
+//= INCLUDES =========
+#include "Common.hlsl"
+//====================
 
-//= NAMESPACES ===============
-using namespace std;
-using namespace Spartan::Math;
-//============================
+#define A_GPU
+#define A_HLSL
 
-namespace Spartan
+#include "ffx_a.h"
+
+// Functions ffx_cas.h wants defined
+float3 CasLoad(float2 pos)
 {
-    void RHI_Texture::SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* cmd_list, const int mip /*= -1*/, const bool ranged /*= true*/)
-    {
+    return tex[pos].rgb;
+}
 
-    }
+// Lets you transform input from the load into a linear color space between 0 and 1.
+void CasInput(inout float r, inout float g, inout float b)
+{
+}
 
-    bool RHI_Texture::CreateResourceGpu()
-    {
-        return false;
-    }
+#include "ffx_cas.h"
 
-    void RHI_Texture::DestroyResourceGpu()
-    {
+[numthreads(thread_group_count_x, thread_group_count_y, 1)]
+void mainCS(uint3 thread_id : SV_DispatchThreadID)
+{
+    if (thread_id.x >= uint(g_resolution_rt.x) || thread_id.y >= uint(g_resolution_rt.y))
+        return;
 
-    }
+    float4 const0;
+    float4 const1;
+    CasSetup(const0, const1, g_sharpen_strength, g_resolution_rt.x, g_resolution_rt.y, g_resolution_rt.x, g_resolution_rt.y);
+    
+    float3 color = 0.0f;
+    CasFilter(color.r, color.g, color.b, thread_id.xy, const0, const1, true);
+
+    const float a = tex[thread_id.xy].a;
+
+    tex_out_rgba[thread_id.xy] = float4(color, a);
 }
