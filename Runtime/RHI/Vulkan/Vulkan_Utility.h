@@ -718,7 +718,7 @@ namespace Spartan::vulkan_utility
             return access_mask;
         }
 
-        inline bool set_layout(void* cmd_buffer, void* image, const VkImageAspectFlags aspect_mask, const uint32_t level_count, const uint32_t layer_count, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new)
+        inline void set_layout(void* cmd_buffer, void* image, const VkImageAspectFlags aspect_mask, const uint32_t mip_start, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new)
         {
             VkImageMemoryBarrier image_barrier              = {};
             image_barrier.sType                             = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -729,10 +729,10 @@ namespace Spartan::vulkan_utility
             image_barrier.dstQueueFamilyIndex               = VK_QUEUE_FAMILY_IGNORED;
             image_barrier.image                             = static_cast<VkImage>(image);
             image_barrier.subresourceRange.aspectMask       = aspect_mask;
-            image_barrier.subresourceRange.baseMipLevel     = 0;
-            image_barrier.subresourceRange.levelCount       = level_count;
+            image_barrier.subresourceRange.baseMipLevel     = mip_start;
+            image_barrier.subresourceRange.levelCount       = mip_range;
             image_barrier.subresourceRange.baseArrayLayer   = 0;
-            image_barrier.subresourceRange.layerCount       = layer_count;
+            image_barrier.subresourceRange.layerCount       = array_length;
             image_barrier.srcAccessMask                     = layout_to_access_mask(image_barrier.oldLayout, false);
             image_barrier.dstAccessMask                     = layout_to_access_mask(image_barrier.newLayout, true);
 
@@ -770,20 +770,22 @@ namespace Spartan::vulkan_utility
 
             vkCmdPipelineBarrier
             (
-                static_cast<VkCommandBuffer>(cmd_buffer),
-                source_stage, destination_stage,
-                0,
-                0, nullptr,
-                0, nullptr,
-                1, &image_barrier
+                static_cast<VkCommandBuffer>(cmd_buffer),   // commandBuffer
+                source_stage,                               // srcStageMask
+                destination_stage,                          // dstStageMask
+                0,                                          // dependencyFlags
+                0,                                          // memoryBarrierCount
+                nullptr,                                    // pMemoryBarriers
+                0,                                          // bufferMemoryBarrierCount
+                nullptr,                                    // pBufferMemoryBarriers
+                1,                                          // imageMemoryBarrierCount
+                &image_barrier                              // pImageMemoryBarriers
             );
-
-            return true;
         }
 
-        inline bool set_layout(void* cmd_buffer, RHI_Texture* texture, const RHI_Image_Layout layout_new)
+        inline void set_layout(void* cmd_buffer, RHI_Texture* texture, const uint32_t mip_start, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new)
         {
-            return set_layout(cmd_buffer, texture->Get_Resource(), get_aspect_mask(texture), texture->GetMipCount(), texture->GetArrayLength(), texture->GetLayout(), layout_new);
+            set_layout(cmd_buffer, texture->Get_Resource(), get_aspect_mask(texture), mip_start, mip_range, array_length, layout_old, layout_new);
         }
 
         namespace view
@@ -1318,16 +1320,22 @@ namespace Spartan::vulkan_utility
 
     static VkDescriptorType ToVulkanDescriptorType(const RHI_Descriptor& descriptor)
     {
-        if (descriptor.type == RHI_Descriptor_Type::ConstantBuffer)
-            return descriptor.is_dynamic_constant_buffer ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        if (descriptor.type == RHI_Descriptor_Type::Sampler)
+            return VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLER;
 
         if (descriptor.type == RHI_Descriptor_Type::Texture)
-            return descriptor.is_storage ? VK_DESCRIPTOR_TYPE_STORAGE_IMAGE : VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+            return VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 
-        if (descriptor.type == RHI_Descriptor_Type::Sampler)
-            return VK_DESCRIPTOR_TYPE_SAMPLER;
+        if (descriptor.type == RHI_Descriptor_Type::TextureStorage)
+            return VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+
+        if (descriptor.type == RHI_Descriptor_Type::StructuredBuffer)
+            return VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+
+        if (descriptor.type == RHI_Descriptor_Type::ConstantBuffer)
+            return descriptor.is_dynamic_constant_buffer ? VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC : VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 
         LOG_ERROR("Invalid descriptor type");
-        return VK_DESCRIPTOR_TYPE_MAX_ENUM;
+        return VkDescriptorType::VK_DESCRIPTOR_TYPE_MAX_ENUM;
     }
 }

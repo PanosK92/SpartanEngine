@@ -65,10 +65,10 @@ namespace Spartan::vulkan_utility
             LOG_ERROR("Format %s does not support optimal tiling, considering switching to a more efficient format.", rhi_format_to_string(format));
             return false;
         }
-        
+
         // Set layout to preinitialised (required by Vulkan)
-        texture->SetLayout(RHI_Image_Layout::Preinitialized);
-        
+        texture->SetLayout(RHI_Image_Layout::Preinitialized, nullptr);
+
         VkImageCreateInfo create_info   = {};
         create_info.sType               = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         create_info.imageType           = VK_IMAGE_TYPE_2D;
@@ -80,7 +80,7 @@ namespace Spartan::vulkan_utility
         create_info.arrayLayers         = texture->GetArrayLength();
         create_info.format              = vulkan_format[format];
         create_info.tiling              = VK_IMAGE_TILING_OPTIMAL;
-        create_info.initialLayout       = vulkan_image_layout[static_cast<uint8_t>(texture->GetLayout())];
+        create_info.initialLayout       = vulkan_image_layout[static_cast<uint8_t>(texture->GetLayout(0))];
         create_info.usage               = get_usage_flags(texture);
         create_info.samples             = VK_SAMPLE_COUNT_1_BIT;
         create_info.sharingMode         = VK_SHARING_MODE_EXCLUSIVE;

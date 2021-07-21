@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_VertexBuffer.h"
 #include "../RHI_IndexBuffer.h"
 #include "../RHI_ConstantBuffer.h"
+#include "../RHI_StructuredBuffer.h"
 #include "../RHI_Sampler.h"
 #include "../RHI_DescriptorSet.h"
 #include "../RHI_DescriptorSetLayout.h"
@@ -476,7 +477,7 @@ namespace Spartan
 
     void RHI_CommandList::Blit(RHI_Texture* source, RHI_Texture* destination)
     {
-        // Ensure restrictions based on: https://docs.microsoft.com/en-us/windows/win32/api/d3d11/nf-d3d11-id3d11devicecontext-copyresource
+        // D3D11 luggage: https://docs.microsoft.com/en-us/windows/win32/api/d3d11/nf-d3d11-id3d11devicecontext-copyresource
         SP_ASSERT(source != nullptr);
         SP_ASSERT(destination != nullptr);
         SP_ASSERT(source->Get_Resource() != nullptr);
@@ -501,6 +502,9 @@ namespace Spartan
         blit_region.dstSubresource.layerCount   = 1;
         blit_region.dstOffsets[1]               = blit_size;
 
+        RHI_Image_Layout layout_initial_source      = source->GetLayout(0);
+        RHI_Image_Layout layout_initial_destination = destination->GetLayout(0);
+
         source->SetLayout(RHI_Image_Layout::Transfer_Src_Optimal, this);
         destination->SetLayout(RHI_Image_Layout::Transfer_Dst_Optimal, this);
 
@@ -511,6 +515,10 @@ namespace Spartan
             1,
             &blit_region,
             VK_FILTER_NEAREST);
+
+        // Set the image layouts back to what they were
+        source->SetLayout(layout_initial_source, this);
+        destination->SetLayout(layout_initial_destination, this);
     }
 
     void RHI_CommandList::SetViewport(const RHI_Viewport& viewport) const
@@ -587,8 +595,8 @@ namespace Spartan
 
         vkCmdBindIndexBuffer(
             static_cast<VkCommandBuffer>(m_cmd_buffer),                     // commandBuffer
-            static_cast<VkBuffer>(buffer->GetResource()),                    // buffer
-            offset,                                                            // offset
+            static_cast<VkBuffer>(buffer->GetResource()),                   // buffer
+            offset,                                                         // offset
             buffer->Is16Bit() ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32 // indexType
         );
 
@@ -597,7 +605,7 @@ namespace Spartan
         m_index_buffer_offset   = offset;
     }
 
-    bool RHI_CommandList::SetConstantBuffer(const uint32_t slot, const uint8_t scope, RHI_ConstantBuffer* constant_buffer) const
+    void RHI_CommandList::SetConstantBuffer(const uint32_t slot, const uint8_t scope, RHI_ConstantBuffer* constant_buffer) const
     {
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
@@ -605,11 +613,11 @@ namespace Spartan
         if (!m_descriptor_set_layout_cache->GetCurrentDescriptorSetLayout())
         {
             LOG_WARNING("Descriptor layout not set, try setting constant buffer \"%s\" within a render pass", constant_buffer->GetObjectName().c_str());
-            return false;
+            return;
         }
 
         // Set (will only happen if it's not already set)
-        return m_descriptor_set_layout_cache->SetConstantBuffer(slot, constant_buffer);
+        m_descriptor_set_layout_cache->SetConstantBuffer(slot, constant_buffer);
     }
 
     void RHI_CommandList::SetSampler(const uint32_t slot, RHI_Sampler* sampler) const
@@ -627,7 +635,7 @@ namespace Spartan
         m_descriptor_set_layout_cache->SetSampler(slot, sampler);
     }
 
-    void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const int mip /*= -1*/, const bool storage /*= false*/)
+    void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const int mip /*= -1*/, const bool ranged /*= false*/, const bool storage /*= false*/)
     {
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
@@ -638,17 +646,29 @@ namespace Spartan
             return;
         }
 
-        // Null textures are allowed, and get replaced with a black texture here
+        // Null textures are allowed, and get replaced with a default texture here
         if (!texture || !texture->Get_Resource_View_Srv())
         {
             texture = m_renderer->GetDefaultTextureTransparent();
         }
 
-        // If the image has an invalid layout (can happen for a few frames during staging), replace with black
-        if (texture->GetLayout() == RHI_Image_Layout::Undefined || texture->GetLayout() == RHI_Image_Layout::Preinitialized)
+        const bool individual_mip = mip != -1;
+        RHI_Image_Layout current_layout = texture->GetLayout(individual_mip ? mip : 0);
+
+        // If the image has an invalid layout (can happen for a few frames during staging), replace with a default texture
+        if (current_layout == RHI_Image_Layout::Undefined || current_layout == RHI_Image_Layout::Preinitialized)
         {
-            LOG_WARNING("Can't set texture without a layout");
+            LOG_ERROR("Can't set texture without a layout, replacing with a default texture");
             texture = m_renderer->GetDefaultTextureTransparent();
+            current_layout = texture->GetLayout(0);
+        }
+
+        // If the image is not storage and a binding to a storage slot has been requested, replace with a default texture
+        if (storage && !texture->IsStorage())
+        {
+            LOG_ERROR("Texture %s doesn't support storage, replacing with a default texture", texture->GetObjectName().c_str());
+            texture = m_renderer->GetDefaultTextureTransparent();
+            current_layout = texture->GetLayout(0);
         }
 
         // Transition to appropriate layout (if needed)
@@ -657,30 +677,23 @@ namespace Spartan
 
             if (storage)
             {
-                if (!texture->IsStorage())
+                // According to section 13.1 of the Vulkan spec, storage textures have to be in a general layout.
+                // https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/vkspec.html#descriptorsets-storageimage
+                if (current_layout != RHI_Image_Layout::General)
                 {
-                    LOG_ERROR("Texture %s doesn't support storage", texture->GetObjectName().c_str());
-                }
-                else
-                {
-                    // According to section 13.1 of the Vulkan spec, storage textures have to be in a general layout.
-                    // https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/vkspec.html#descriptorsets-storageimage
-                    if (texture->GetLayout() != RHI_Image_Layout::General)
-                    {
-                        target_layout = RHI_Image_Layout::General;
-                    }
+                    target_layout = RHI_Image_Layout::General;
                 }
             }
             else
             {
                 // Color
-                if (texture->IsColorFormat() && texture->GetLayout() != RHI_Image_Layout::Shader_Read_Only_Optimal)
+                if (texture->IsColorFormat() && current_layout != RHI_Image_Layout::Shader_Read_Only_Optimal)
                 {
                     target_layout = RHI_Image_Layout::Shader_Read_Only_Optimal;
                 }
 
                 // Depth
-                if (texture->IsDepthFormat() && texture->GetLayout() != RHI_Image_Layout::Depth_Stencil_Read_Only_Optimal)
+                if (texture->IsDepthFormat() && current_layout != RHI_Image_Layout::Depth_Stencil_Read_Only_Optimal)
                 {
                     target_layout = RHI_Image_Layout::Depth_Stencil_Read_Only_Optimal;
                 }
@@ -691,17 +704,31 @@ namespace Spartan
             // Transition
             if (transition_required && !m_render_pass_active)
             {
-                texture->SetLayout(target_layout, this);
+                texture->SetLayout(target_layout, this, mip, ranged);
             }
             else if (transition_required && m_render_pass_active)
             {
-                LOG_WARNING("Can't transition texture to target layout while a render pass is active");
+                LOG_ERROR("Can't transition texture to target layout while a render pass is active, replacing with a default texture");
                 texture = m_renderer->GetDefaultTextureTransparent();
             }
         }
 
         // Set (will only happen if it's not already set)
-        m_descriptor_set_layout_cache->SetTexture(slot, texture, mip, storage);
+        m_descriptor_set_layout_cache->SetTexture(slot, texture, mip, ranged);
+    }
+
+    void RHI_CommandList::SetStructuredBuffer(const uint32_t slot, RHI_StructuredBuffer* structured_buffer) const
+    {
+        // Validate command list state
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
+
+        if (!m_descriptor_set_layout_cache->GetCurrentDescriptorSetLayout())
+        {
+            LOG_WARNING("Descriptor layout not set, try setting structured buffer \"%s\" within a render pass", structured_buffer->GetObjectName().c_str());
+            return;
+        }
+
+        m_descriptor_set_layout_cache->SetStructuredBuffer(slot, structured_buffer);
     }
 
     uint32_t RHI_CommandList::Gpu_GetMemoryUsed(RHI_Device* rhi_device)
@@ -911,11 +938,11 @@ namespace Spartan
         if (result && descriptor_set != nullptr)
         {
             // Bind point
-            VkPipelineBindPoint pipeline_bind_point = m_pipeline_state->IsCompute() ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS;
+            VkPipelineBindPoint pipeline_bind_point = m_pipeline_state->IsCompute() ? VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE : VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS;
 
             // Dynamic offsets
             RHI_DescriptorSetLayout* descriptor_set_layout = m_descriptor_set_layout_cache->GetCurrentDescriptorSetLayout();
-            const std::array<uint32_t, rhi_max_constant_buffer_count> dynamic_offsets = descriptor_set_layout->GetDynamicOffsets();
+            const array<uint32_t, rhi_max_constant_buffer_count> dynamic_offsets = descriptor_set_layout->GetDynamicOffsets();
             uint32_t dynamic_offset_count = descriptor_set_layout->GetDynamicOffsetCount();
 
             // Validate descriptor sets

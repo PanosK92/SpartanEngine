@@ -35,6 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_RasterizerState.h"
 #include "../RHI/RHI_DepthStencilState.h"
 #include "../RHI/RHI_SwapChain.h"
+#include "../RHI/RHI_StructuredBuffer.h"
 //=======================================
 
 //= NAMESPACES ===============
@@ -46,19 +47,20 @@ namespace Spartan
 {
     void Renderer::CreateConstantBuffers()
     {
-        bool is_dynamic = true;
+        const bool is_dynamic       = true;
+        const uint32_t offset_count = 64;
 
         m_buffer_frame_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device, "frame", is_dynamic);
-        m_buffer_frame_gpu->Create<BufferFrame>(m_swap_chain_buffer_count);
+        m_buffer_frame_gpu->Create<BufferFrame>(offset_count);
 
         m_buffer_material_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device, "material", is_dynamic);
-        m_buffer_material_gpu->Create<BufferMaterial>(m_swap_chain_buffer_count);
+        m_buffer_material_gpu->Create<BufferMaterial>(offset_count);
 
         m_buffer_uber_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device, "uber", is_dynamic);
-        m_buffer_uber_gpu->Create<BufferUber>(64);
+        m_buffer_uber_gpu->Create<BufferUber>(offset_count);
 
         m_buffer_light_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device, "light", is_dynamic);
-        m_buffer_light_gpu->Create<BufferLight>(m_swap_chain_buffer_count);
+        m_buffer_light_gpu->Create<BufferLight>(offset_count);
     }
 
     void Renderer::CreateDepthStencilStates()
@@ -92,13 +94,21 @@ namespace Spartan
 
     void Renderer::CreateSamplers()
     {
-        m_sampler_compare_depth     = make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_BILINEAR,  RHI_Sampler_Address_Clamp,  GetOption(Render_ReverseZ) ? RHI_Comparison_Greater : RHI_Comparison_Less, false, true);
-        m_sampler_point_clamp       = make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_POINT,     RHI_Sampler_Address_Clamp,  RHI_Comparison_Always);
-        m_sampler_point_wrap        = make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_POINT,     RHI_Sampler_Address_Wrap,   RHI_Comparison_Always);
-        m_sampler_bilinear_clamp    = make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_BILINEAR,  RHI_Sampler_Address_Clamp,  RHI_Comparison_Always);
-        m_sampler_bilinear_wrap     = make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_BILINEAR,  RHI_Sampler_Address_Wrap,   RHI_Comparison_Always);
-        m_sampler_trilinear_clamp   = make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_TRILINEAR, RHI_Sampler_Address_Clamp,  RHI_Comparison_Always);
-        m_sampler_anisotropic_wrap  = make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_TRILINEAR, RHI_Sampler_Address_Wrap,   RHI_Comparison_Always, true);
+        //                                                                   Minification,          Magnification,      Mip,                        Sampler Address Mode,       Comparison
+        m_sampler_compare_depth     = make_shared<RHI_Sampler>(m_rhi_device, RHI_Filter_Linear,     RHI_Filter_Linear,  RHI_Sampler_Mipmap_Nearest, RHI_Sampler_Address_Clamp,  GetOption(Render_ReverseZ) ? RHI_Comparison_Greater : RHI_Comparison_Less, false, true);
+        m_sampler_point_clamp       = make_shared<RHI_Sampler>(m_rhi_device, RHI_Filter_Nearest,    RHI_Filter_Nearest, RHI_Sampler_Mipmap_Nearest, RHI_Sampler_Address_Clamp,  RHI_Comparison_Always);
+        m_sampler_point_wrap        = make_shared<RHI_Sampler>(m_rhi_device, RHI_Filter_Nearest,    RHI_Filter_Nearest, RHI_Sampler_Mipmap_Nearest, RHI_Sampler_Address_Wrap,   RHI_Comparison_Always);
+        m_sampler_bilinear_clamp    = make_shared<RHI_Sampler>(m_rhi_device, RHI_Filter_Linear,     RHI_Filter_Linear,  RHI_Sampler_Mipmap_Nearest, RHI_Sampler_Address_Clamp,  RHI_Comparison_Always);
+        m_sampler_bilinear_wrap     = make_shared<RHI_Sampler>(m_rhi_device, RHI_Filter_Linear,     RHI_Filter_Linear,  RHI_Sampler_Mipmap_Nearest, RHI_Sampler_Address_Wrap,   RHI_Comparison_Always);
+        m_sampler_trilinear_clamp   = make_shared<RHI_Sampler>(m_rhi_device, RHI_Filter_Linear,     RHI_Filter_Linear,  RHI_Sampler_Mipmap_Linear,  RHI_Sampler_Address_Clamp,  RHI_Comparison_Always);
+        m_sampler_anisotropic_wrap  = make_shared<RHI_Sampler>(m_rhi_device, RHI_Filter_Linear,     RHI_Filter_Linear,  RHI_Sampler_Mipmap_Linear,  RHI_Sampler_Address_Wrap,   RHI_Comparison_Always, true);
+    }
+
+    void Renderer::CreateStructuredBuffers()
+    {
+        static uint32_t counter = 0;
+        uint32_t element_count  = 1;
+        m_structured_buffer_counter = make_shared<RHI_StructuredBuffer>(m_rhi_device, static_cast<uint32_t>(sizeof(uint32_t)), element_count, static_cast<void*>(&counter));
     }
 
     void Renderer::CreateRenderTextures(const bool create_render, const bool create_output, const bool create_fixed, const bool create_dynamic)
@@ -123,22 +133,21 @@ namespace Spartan
         if (create_render)
         { 
             // Full resolution
-            RENDER_TARGET(RendererRt::Frame)                        = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16B16A16_Float,     0,                                      "rt_frame");
-            RENDER_TARGET(RendererRt::Frame_2)                      = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16B16A16_Float,     0,                                      "rt_frame_2");
-            RENDER_TARGET(RendererRt::Gbuffer_Albedo)               = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R8G8B8A8_Unorm,         0,                                      "rt_gbuffer_albedo");
-            RENDER_TARGET(RendererRt::Gbuffer_Normal)               = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16B16A16_Float,     0,                                      "rt_gbuffer_normal");
-            RENDER_TARGET(RendererRt::Gbuffer_Material)             = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R8G8B8A8_Unorm,         0,                                      "rt_gbuffer_material");
-            RENDER_TARGET(RendererRt::Gbuffer_Velocity)             = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16_Float,           0,                                      "rt_gbuffer_velocity");
-            RENDER_TARGET(RendererRt::Gbuffer_Depth)                = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_D32_Float_S8X24_Uint,   RHI_Texture_DepthStencilReadOnly,       "rt_gbuffer_depth");
-            RENDER_TARGET(RendererRt::Light_Diffuse)                = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R11G11B10_Float,        0,                                      "rt_light_diffuse");
-            RENDER_TARGET(RendererRt::Light_Diffuse_Transparent)    = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R11G11B10_Float,        0,                                      "rt_light_diffuse_transparent");
-            RENDER_TARGET(RendererRt::Light_Specular)               = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R11G11B10_Float,        0,                                      "rt_light_specular");
-            RENDER_TARGET(RendererRt::Light_Specular_Transparent)   = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R11G11B10_Float,        0,                                      "rt_light_specular_transparent");
-            RENDER_TARGET(RendererRt::Light_Volumetric)             = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R11G11B10_Float,        0,                                      "rt_light_volumetric");
-            RENDER_TARGET(RendererRt::Ssao)                         = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16B16A16_Snorm,     0,                                      "rt_ssao");
-            RENDER_TARGET(RendererRt::Ssao_Blurred)                 = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16B16A16_Snorm,     0,                                      "rt_ssao_blurred");
-            RENDER_TARGET(RendererRt::Ssr)                          = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16B16A16_Snorm,     RHI_Texture_Storage,                    "rt_ssr");
-            
+            RENDER_TARGET(RendererRt::Frame)                        = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16B16A16_Float,     0,                                "rt_frame");
+            RENDER_TARGET(RendererRt::Frame_2)                      = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16B16A16_Float,     0,                                "rt_frame_2");
+            RENDER_TARGET(RendererRt::Gbuffer_Albedo)               = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R8G8B8A8_Unorm,         0,                                "rt_gbuffer_albedo");
+            RENDER_TARGET(RendererRt::Gbuffer_Normal)               = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16B16A16_Float,     0,                                "rt_gbuffer_normal");
+            RENDER_TARGET(RendererRt::Gbuffer_Material)             = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R8G8B8A8_Unorm,         0,                                "rt_gbuffer_material");
+            RENDER_TARGET(RendererRt::Gbuffer_Velocity)             = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16_Float,           0,                                "rt_gbuffer_velocity");
+            RENDER_TARGET(RendererRt::Gbuffer_Depth)                = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_D32_Float_S8X24_Uint,   RHI_Texture_DepthStencilReadOnly, "rt_gbuffer_depth");
+            RENDER_TARGET(RendererRt::Light_Diffuse)                = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R11G11B10_Float,        0,                                "rt_light_diffuse");
+            RENDER_TARGET(RendererRt::Light_Diffuse_Transparent)    = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R11G11B10_Float,        0,                                "rt_light_diffuse_transparent");
+            RENDER_TARGET(RendererRt::Light_Specular)               = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R11G11B10_Float,        0,                                "rt_light_specular");
+            RENDER_TARGET(RendererRt::Light_Specular_Transparent)   = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R11G11B10_Float,        0,                                "rt_light_specular_transparent");
+            RENDER_TARGET(RendererRt::Light_Volumetric)             = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R11G11B10_Float,        0,                                "rt_light_volumetric");
+            RENDER_TARGET(RendererRt::Ssao)                         = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16B16A16_Snorm,     0,                                "rt_ssao");
+            RENDER_TARGET(RendererRt::Ssao_Blurred)                 = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16B16A16_Snorm,     0,                                "rt_ssao_blurred");
+            RENDER_TARGET(RendererRt::Ssr)                          = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16B16A16_Snorm,     RHI_Texture_Storage,              "rt_ssr");
 
             // Half resolution
             RENDER_TARGET(RendererRt::Dof_Half)     = make_unique<RHI_Texture2D>(m_context, width_render / 2, height_render / 2, 1, RHI_Format_R16G16B16A16_Float, 0, "rt_dof_half");
@@ -267,11 +276,6 @@ namespace Spartan
             m_shaders[RendererShader::BloomLuminance_C]->AddDefine("LUMINANCE");
             m_shaders[RendererShader::BloomLuminance_C]->Compile(RHI_Shader_Compute, dir_shaders + "Bloom.hlsl", async);
 
-            // Downsample anti-flicker
-            m_shaders[RendererShader::BloomDownsample_C] = make_shared<RHI_Shader>(m_context);
-            m_shaders[RendererShader::BloomDownsample_C]->AddDefine("DOWNSAMPLE");
-            m_shaders[RendererShader::BloomDownsample_C]->Compile(RHI_Shader_Compute, dir_shaders + "Bloom.hlsl", async);
-
             // Upsample blend (with previous mip)
             m_shaders[RendererShader::BloomUpsampleBlendMip_C] = make_shared<RHI_Shader>(m_context);
             m_shaders[RendererShader::BloomUpsampleBlendMip_C]->AddDefine("UPSAMPLE_BLEND_MIP");
@@ -286,10 +290,6 @@ namespace Spartan
         // Film grain
         m_shaders[RendererShader::FilmGrain_C] = make_shared<RHI_Shader>(m_context);
         m_shaders[RendererShader::FilmGrain_C]->Compile(RHI_Shader_Compute, dir_shaders + "FilmGrain.hlsl", async);
-
-        // Sharpening
-        m_shaders[RendererShader::Sharpening_C] = make_shared<RHI_Shader>(m_context);
-        m_shaders[RendererShader::Sharpening_C]->Compile(RHI_Shader_Compute, dir_shaders + "Sharpening.hlsl", async);
 
         // Chromatic aberration
         m_shaders[RendererShader::ChromaticAberration_C] = make_shared<RHI_Shader>(m_context);
@@ -401,6 +401,17 @@ namespace Spartan
         m_shaders[RendererShader::Color_V]->Compile(RHI_Shader_Vertex, dir_shaders + "Color.hlsl", async);
         m_shaders[RendererShader::Color_P] = make_shared<RHI_Shader>(m_context);
         m_shaders[RendererShader::Color_P]->Compile(RHI_Shader_Pixel, dir_shaders + "Color.hlsl", async);
+
+        // AMD FidelityFX
+        {
+            // Sharpening
+            m_shaders[RendererShader::Sharpening_C] = make_shared<RHI_Shader>(m_context);
+            m_shaders[RendererShader::Sharpening_C]->Compile(RHI_Shader_Compute, dir_shaders + "AMD_FidelityFX_CAS.hlsl", async);
+
+            // Mip generation
+            m_shaders[RendererShader::MipGeneration_C] = make_shared<RHI_Shader>(m_context);
+            m_shaders[RendererShader::MipGeneration_C]->Compile(RHI_Shader_Compute, dir_shaders + "AMD_FidelityFX_SPD.hlsl", async);
+        }
 
         // Debug
         {

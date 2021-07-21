@@ -110,11 +110,12 @@ namespace Spartan
     bool RHI_DescriptorSetLayoutCache::CreateDescriptorPool(uint32_t descriptor_set_capacity)
     {
         // Pool sizes
-        std::array<VkDescriptorPoolSize, 5> pool_sizes =
+        array<VkDescriptorPoolSize, 6> pool_sizes =
         {
             VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLER,                   rhi_descriptor_max_samplers },
             VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,             rhi_descriptor_max_textures },
             VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,             rhi_descriptor_max_storage_textures },
+            VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,            rhi_descriptor_max_storage_buffers },
             VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,            rhi_descriptor_max_constant_buffers },
             VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,    rhi_descriptor_max_constant_buffers_dynamic }
         };

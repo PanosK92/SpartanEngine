@@ -38,11 +38,17 @@ namespace Spartan
         RHI_DescriptorSetLayout(const RHI_Device* rhi_device, const std::vector<RHI_Descriptor>& descriptors, const std::string& name);
         ~RHI_DescriptorSetLayout();
 
-        bool SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer);
+        // Set
+        void SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer);
         void SetSampler(const uint32_t slot, RHI_Sampler* sampler);
-        void SetTexture(const uint32_t slot, RHI_Texture* texture, const int mip, const bool storage);
+        void SetTexture(const uint32_t slot, RHI_Texture* texture, const int mip, const bool ranged);
+        void SetStructuredBuffer(const uint32_t slot, RHI_StructuredBuffer* structured_buffer);
+
+        // Remove
+        void RemoveConstantBuffer(RHI_ConstantBuffer* constant_buffer);
         void RemoveTexture(RHI_Texture* texture, const int mip);
 
+        void ClearDescriptorData();
         bool GetDescriptorSet(RHI_DescriptorSetLayoutCache* descriptor_set_layout_cache, RHI_DescriptorSet*& descriptor_set);
         const std::array<uint32_t, rhi_max_constant_buffer_count> GetDynamicOffsets() const;
         uint32_t GetDynamicOffsetCount()    const;

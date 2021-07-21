@@ -29,10 +29,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    #define SAMPLER_POINT       RHI_Filter_Nearest, RHI_Filter_Nearest, RHI_Sampler_Mipmap_Nearest
-    #define SAMPLER_BILINEAR    RHI_Filter_Linear,  RHI_Filter_Linear,  RHI_Sampler_Mipmap_Nearest
-    #define SAMPLER_TRILINEAR   RHI_Filter_Linear,  RHI_Filter_Linear,  RHI_Sampler_Mipmap_Linear
-
     class RHI_Sampler : public SpartanObject
     {
     public:

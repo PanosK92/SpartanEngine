@@ -140,7 +140,7 @@ namespace Spartan
         return true;
     }
 
-    inline bool stage(RHI_Texture* texture, RHI_Image_Layout& texture_layout)
+    inline bool stage(RHI_Texture* texture)
     {
         // Copy the texture's data to a staging buffer
         void* staging_buffer = nullptr;
@@ -154,9 +154,8 @@ namespace Spartan
             // Optimal layout for images which are the destination of a transfer format
             RHI_Image_Layout layout = RHI_Image_Layout::Transfer_Dst_Optimal;
 
-            // Transition to layout
-            if (!vulkan_utility::image::set_layout(cmd_buffer, texture, layout))
-                return false;
+            // Insert memory barrier
+            vulkan_utility::image::set_layout(cmd_buffer, texture, 0, texture->GetMipCount(), texture->GetArrayLength(), texture->GetLayout(0), layout);
 
             // Copy the staging buffer to the image
             vkCmdCopyBufferToImage(
@@ -175,8 +174,8 @@ namespace Spartan
             // Free staging buffer
             vulkan_utility::buffer::destroy(staging_buffer);
 
-            // Let the texture know about it's new layout
-            texture_layout = layout;
+            // Update texture layout
+            texture->SetLayout(layout, nullptr);
         }
 
         return true;
@@ -201,25 +200,39 @@ namespace Spartan
         return target_layout;
     }
 
-    void RHI_Texture::SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* command_list /*= nullptr*/)
+    void RHI_Texture::SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* cmd_list, const int mip /*= -1*/, const bool ranged /*= true*/)
     {
-        // The texture is most likely still initialising
-        if (m_layout == RHI_Image_Layout::Undefined)
-            return;
+        bool individual_mip_requested = mip != -1;
 
-        if (m_layout == new_layout)
-            return;
-
-        // If a command list is provided, this means we should insert a pipeline barrier
-        if (command_list)
+        if (individual_mip_requested)
         {
-            if (!vulkan_utility::image::set_layout(static_cast<VkCommandBuffer>(command_list->GetResource_CommandBuffer()), this, new_layout))
-                return;
+            SP_ASSERT(HasPerMipView());
+        }
 
+        const uint32_t mip_start        = individual_mip_requested ? mip : 0;
+        const uint32_t mip_range        = ranged ? (individual_mip_requested ? (m_mip_count - mip) : m_mip_count) : 1;
+        RHI_Image_Layout current_layout = m_layout[mip_start];
+
+        // Check if this texture is still initialising (can happen due to multithreading)
+        if (current_layout == RHI_Image_Layout::Undefined)
+            return;
+
+        // Check if already set
+        if (current_layout == new_layout)
+            return;
+
+        // Insert memory barrier
+        if (cmd_list)
+        {
+            vulkan_utility::image::set_layout(static_cast<VkCommandBuffer>(cmd_list->GetResource_CommandBuffer()), this, mip_start, mip_range, m_array_length, current_layout, new_layout);
             m_context->GetSubsystem<Profiler>()->m_rhi_pipeline_barriers++;
         }
 
-        m_layout = new_layout;
+        // Update layout
+        for (uint32_t i = mip_start; i < mip_start + mip_range; i++)
+        {
+            m_layout[i] = new_layout;
+        }
     }
 
     bool RHI_Texture::CreateResourceGpu()
@@ -240,7 +253,7 @@ namespace Spartan
         // If the texture has any data, stage it
         if (HasData())
         {
-            if (!stage(this, m_layout))
+            if (!stage(this))
             {
                 LOG_ERROR("Failed to stage");
                 return false;
@@ -253,11 +266,7 @@ namespace Spartan
             RHI_Image_Layout target_layout = GetAppropriateLayout(this);
 
             // Transition to the final layout
-            if (!vulkan_utility::image::set_layout(cmd_buffer, this, target_layout))
-            {
-                LOG_ERROR("Failed to transition layout");
-                return false;
-            }
+            vulkan_utility::image::set_layout(cmd_buffer, this, 0, m_mip_count, m_array_length, m_layout[0], target_layout);
         
             // Flush
             if (!vulkan_utility::command_buffer_immediate::end(RHI_Queue_Graphics))
@@ -267,7 +276,7 @@ namespace Spartan
             }
 
             // Update this texture with the new layout
-            m_layout = target_layout;
+            m_layout.fill(target_layout);
         }
 
         // Create image views
@@ -275,17 +284,19 @@ namespace Spartan
             // Shader resource views
             if (IsSampled())
             {
-                if (!vulkan_utility::image::view::create(m_resource, m_resource_view_srv, this, 0, m_array_length, 0, m_mip_count, IsDepthFormat(), IsStencilFormat()))
+                if (!vulkan_utility::image::view::create(m_resource, m_resource_view_srv, this, 0, m_array_length, 0, m_mip_count, IsDepthFormat(), false))
                     return false;
 
                 if (HasPerMipView())
                 {
                     for (uint32_t i = 0; i < m_mip_count; i++)
                     {
-                        if (!vulkan_utility::image::view::create(m_resource, m_resource_views_srv[i], this, 0, m_array_length, i, 1, IsDepthFormat(), IsStencilFormat()))
+                        if (!vulkan_utility::image::view::create(m_resource, m_resource_views_srv[i], this, 0, m_array_length, i, 1, IsDepthFormat(), false))
                             return false;
                     }
                 }
+
+                // todo: stencil requires a separate view
             }
 
             // Render target views
@@ -318,7 +329,7 @@ namespace Spartan
             LOG_ERROR("Invalid RHI Device.");
         }
 
-        // Make sure that no descriptor sets refer to this texture.
+        // Make sure that no descriptor sets refers to this texture
         if (IsSampled())
         {
             if (Renderer* renderer = m_rhi_device->GetContext()->GetSubsystem<Renderer>())

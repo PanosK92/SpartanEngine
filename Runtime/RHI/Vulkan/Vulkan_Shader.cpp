@@ -341,19 +341,19 @@ namespace Spartan
         {
             arguments.emplace_back("-E"); arguments.emplace_back(GetEntryPoint());
             arguments.emplace_back("-T"); arguments.emplace_back(GetTargetProfile());
-            arguments.emplace_back("-spirv");                                                                                                               // Generate SPIR-V code
-            arguments.emplace_back("-fspv-reflect");                                                                                                        // Emit additional SPIR-V instructions to aid reflection
-            arguments.emplace_back("-fspv-target-env=vulkan1.1");                                                                                           // Specify the target environment: vulkan1.0 (default) or vulkan1.1
-            arguments.emplace_back("-fvk-b-shift"); arguments.emplace_back(to_string(rhi_shader_shift_buffer));             arguments.emplace_back("all");  // Specify Vulkan binding number shift for b-type (buffer) register
-            arguments.emplace_back("-fvk-t-shift"); arguments.emplace_back(to_string(rhi_shader_shift_texture));            arguments.emplace_back("all");  // Specify Vulkan binding number shift for t-type (texture) register
-            arguments.emplace_back("-fvk-s-shift"); arguments.emplace_back(to_string(rhi_shader_shift_sampler));            arguments.emplace_back("all");  // Specify Vulkan binding number shift for s-type (sampler) register
-            arguments.emplace_back("-fvk-u-shift"); arguments.emplace_back(to_string(rhi_shader_shift_storage_texture));    arguments.emplace_back("all");  // Specify Vulkan binding number shift for u-type (read/write buffer) register
-            arguments.emplace_back("-fvk-use-dx-position-w");                                                                                               // Reciprocate SV_Position.w after reading from stage input in PS to accommodate the difference between Vulkan and DirectX
-            arguments.emplace_back("-fvk-use-dx-layout");                                                                                                   // Use DirectX memory layout for Vulkan resources
-            arguments.emplace_back("-flegacy-macro-expansion");                                                                                             // Expand the operands before performing token-pasting operation (fxc behavior)
+            arguments.emplace_back("-spirv");                                                                                                      // Generate SPIR-V code
+            arguments.emplace_back("-fspv-reflect");                                                                                               // Emit additional SPIR-V instructions to aid reflection
+            arguments.emplace_back("-fspv-target-env=vulkan1.1");                                                                                  // Specify the target environment: vulkan1.0 (default) or vulkan1.1
+            arguments.emplace_back("-fvk-b-shift"); arguments.emplace_back(to_string(rhi_shader_shift_register_b)); arguments.emplace_back("all"); // Specify Vulkan binding number shift for b-type (buffer) register
+            arguments.emplace_back("-fvk-t-shift"); arguments.emplace_back(to_string(rhi_shader_shift_register_t)); arguments.emplace_back("all"); // Specify Vulkan binding number shift for t-type (texture) register
+            arguments.emplace_back("-fvk-s-shift"); arguments.emplace_back(to_string(rhi_shader_shift_register_s)); arguments.emplace_back("all"); // Specify Vulkan binding number shift for s-type (sampler) register
+            arguments.emplace_back("-fvk-u-shift"); arguments.emplace_back(to_string(rhi_shader_shift_register_u)); arguments.emplace_back("all"); // Specify Vulkan binding number shift for u-type (read/write buffer) register
+            arguments.emplace_back("-fvk-use-dx-position-w");                                                                                      // Reciprocate SV_Position.w after reading from stage input in PS to accommodate the difference between Vulkan and DirectX
+            arguments.emplace_back("-fvk-use-dx-layout");                                                                                          // Use DirectX memory layout for Vulkan resources
+            arguments.emplace_back("-flegacy-macro-expansion");                                                                                    // Expand the operands before performing token-pasting operation (fxc behavior)
             #ifdef DEBUG
-            arguments.emplace_back("-Od");                                                                                                                  // Disable optimizations
-            arguments.emplace_back("-Zi");                                                                                                                  // Enable debug information
+            arguments.emplace_back("-Od");                                                                                                         // Disable optimizations
+            arguments.emplace_back("-Zi");                                                                                                         // Enable debug information
             #endif
 
             // Negate SV_Position.y before writing to stage output in VS/DS/GS to accommodate Vulkan's coordinate system
@@ -425,17 +425,51 @@ namespace Spartan
         // The SPIR-V is now parsed, and we can perform reflection on it
         spirv_cross::ShaderResources resources = compiler.get_shader_resources();
 
+        // Get textures
+        for (const auto& resource : resources.separate_images)
+        {
+            m_descriptors.emplace_back
+            (
+                resource.name,                                                                                                      // name
+                RHI_Descriptor_Type::Texture,                                                                                       // type
+                RHI_Image_Layout::Shader_Read_Only_Optimal,                                                                         // layout
+                compiler.get_decoration(resource.id, spv::DecorationBinding),                                                       // slot
+                Math::Helper::Clamp<uint32_t>(compiler.get_type(resource.type_id).array[0], 1, numeric_limits<uint32_t>::max()),    // array size
+                shader_type,                                                                                                        // stage
+                false,                                                                                                              // is_storage
+                false                                                                                                               // is_dynamic_constant_buffer
+            );
+        }
+
         // Get storage images
         for (const auto& resource : resources.storage_images)
         {
             m_descriptors.emplace_back
             (
-                resource.name,                                                  // name
-                RHI_Descriptor_Type::Texture,                                   // type
-                compiler.get_decoration(resource.id, spv::DecorationBinding),   // slot
-                shader_type,                                                    // stage
-                true,                                                           // is_storage
-                false                                                           // is_dynamic_constant_buffer
+                resource.name,                                                                                                      // name
+                RHI_Descriptor_Type::TextureStorage,                                                                                // type
+                RHI_Image_Layout::General,                                                                                          // layout
+                compiler.get_decoration(resource.id, spv::DecorationBinding),                                                       // slot
+                Math::Helper::Clamp<uint32_t>(compiler.get_type(resource.type_id).array[0], 1, numeric_limits<uint32_t>::max()),    // array size
+                shader_type,                                                                                                        // stage
+                true,                                                                                                               // is_storage
+                false                                                                                                               // is_dynamic_constant_buffer
+            );
+        }
+
+        // Get storage buffers
+        for (const auto& resource : resources.storage_buffers)
+        {
+            m_descriptors.emplace_back
+            (
+                resource.name,                                                                                                      // name
+                RHI_Descriptor_Type::StructuredBuffer,                                                                              // type
+                RHI_Image_Layout::Undefined,                                                                                        // layout
+                compiler.get_decoration(resource.id, spv::DecorationBinding),                                                       // slot
+                Math::Helper::Clamp<uint32_t>(compiler.get_type(resource.type_id).array[0], 1, numeric_limits<uint32_t>::max()),    // array size
+                shader_type,                                                                                                        // stage
+                true,                                                                                                               // is_storage
+                false                                                                                                               // is_dynamic_constant_buffer
             );
         }
 
@@ -444,26 +478,14 @@ namespace Spartan
         {
             m_descriptors.emplace_back
             (
-                resource.name,                                                  // name
-                RHI_Descriptor_Type::ConstantBuffer,                            // type
-                compiler.get_decoration(resource.id, spv::DecorationBinding),   // slot
-                shader_type,                                                    // stage
-                false,                                                          // is_storage
-                false                                                           // is_dynamic_constant_buffer
-            );
-        }
-
-        // Get textures
-        for (const auto& resource : resources.separate_images)
-        {
-            m_descriptors.emplace_back
-            (
-                resource.name,                                                  // name
-                RHI_Descriptor_Type::Texture,                                   // type
-                compiler.get_decoration(resource.id, spv::DecorationBinding),   // slot
-                shader_type,                                                    // stage
-                false,                                                          // is_storage
-                false                                                           // is_dynamic_constant_buffer
+                resource.name,                                                                                                      // name
+                RHI_Descriptor_Type::ConstantBuffer,                                                                                // type
+                RHI_Image_Layout::Undefined,                                                                                        // layout
+                compiler.get_decoration(resource.id, spv::DecorationBinding),                                                       // slot
+                Math::Helper::Clamp<uint32_t>(compiler.get_type(resource.type_id).array[0], 1, numeric_limits<uint32_t>::max()),    // array size
+                shader_type,                                                                                                        // stage
+                false,                                                                                                              // is_storage
+                false                                                                                                               // is_dynamic_constant_buffer
             );
         }
 
@@ -472,12 +494,14 @@ namespace Spartan
         {
             m_descriptors.emplace_back
             (
-                resource.name,                                                  // name
-                RHI_Descriptor_Type::Sampler,                                   // type
-                compiler.get_decoration(resource.id, spv::DecorationBinding),   // slot
-                shader_type,                                                    // stage
-                false,                                                          // is_storage
-                false                                                           // is_dynamic_constant_buffer
+                resource.name,                                                                                                      // name
+                RHI_Descriptor_Type::Sampler,                                                                                       // type
+                RHI_Image_Layout::Undefined,                                                                                        // layout
+                compiler.get_decoration(resource.id, spv::DecorationBinding),                                                       // slot
+                Math::Helper::Clamp<uint32_t>(compiler.get_type(resource.type_id).array[1], 1, numeric_limits<uint32_t>::max()),    // array size
+                shader_type,                                                                                                        // stage
+                false,                                                                                                              // is_storage
+                false                                                                                                               // is_dynamic_constant_buffer
             );
         }
     }

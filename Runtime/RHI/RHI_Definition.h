@@ -45,6 +45,7 @@ namespace Spartan
     class RHI_InputLayout;
     class RHI_VertexBuffer;
     class RHI_IndexBuffer;
+    class RHI_StructuredBuffer;
     class RHI_ConstantBuffer;
     class RHI_Sampler;
     class RHI_Viewport;
@@ -239,7 +240,9 @@ namespace Spartan
     {
         Sampler,
         Texture,
+        TextureStorage,
         ConstantBuffer,
+        StructuredBuffer,
         Undefined
     };
 
@@ -304,14 +307,15 @@ namespace Spartan
         Failed
     };
 
-    // Shader resource slot shifts (required to produce spirv from hlsl)
-    static const uint32_t rhi_shader_shift_storage_texture  = 000;
-    static const uint32_t rhi_shader_shift_buffer           = 100;
-    static const uint32_t rhi_shader_shift_texture          = 200;
-    static const uint32_t rhi_shader_shift_sampler          = 300;
-    
+    // Shader register slot shifts (required to produce spirv from hlsl)
+    static const uint32_t rhi_shader_shift_register_u = 000;
+    static const uint32_t rhi_shader_shift_register_b = 100;
+    static const uint32_t rhi_shader_shift_register_t = 200;
+    static const uint32_t rhi_shader_shift_register_s = 300;
+
     // Descriptor set limits
     static const uint8_t rhi_descriptor_max_storage_textures            = 10;
+    static const uint8_t rhi_descriptor_max_storage_buffers             = 10;
     static const uint8_t rhi_descriptor_max_constant_buffers            = 10;
     static const uint8_t rhi_descriptor_max_constant_buffers_dynamic    = 10;
     static const uint8_t rhi_descriptor_max_samplers                    = 10;

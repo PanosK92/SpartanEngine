@@ -23,10 +23,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Spartan.h"
 #include "RHI_DescriptorSetLayout.h"
 #include "RHI_ConstantBuffer.h"
+#include "RHI_StructuredBuffer.h"
 #include "RHI_Sampler.h"
 #include "RHI_Texture.h"
-#include "RHI_DescriptorSetLayoutCache.h"
 #include "RHI_DescriptorSet.h"
+#include "RHI_DescriptorSetLayoutCache.h"
 //=======================================
 
 //= NAMESPACES =====
@@ -39,7 +40,7 @@ namespace Spartan
     {
         m_rhi_device    = rhi_device;
         m_descriptors   = descriptors;
-        m_object_name          = name;
+        m_object_name   = name;
         CreateResource(m_descriptors);
         m_dynamic_offsets.fill(rhi_dynamic_offset_empty);
 
@@ -49,16 +50,16 @@ namespace Spartan
         }
     }
 
-    bool RHI_DescriptorSetLayout::SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer)
+    void RHI_DescriptorSetLayout::SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer)
     {
         for (RHI_Descriptor& descriptor : m_descriptors)
         {
-            if ((descriptor.type == RHI_Descriptor_Type::ConstantBuffer) && descriptor.slot == slot + rhi_shader_shift_buffer)
+            if ((descriptor.type == RHI_Descriptor_Type::ConstantBuffer) && descriptor.slot == slot + rhi_shader_shift_register_b)
             {
-                // Determine if the descriptor set needs to bind
-                m_needs_to_bind = descriptor.resource   != constant_buffer->GetResource()   ? true : m_needs_to_bind; // affects vkUpdateDescriptorSets
-                m_needs_to_bind = descriptor.offset     != constant_buffer->GetOffset()     ? true : m_needs_to_bind; // affects vkUpdateDescriptorSets
-                m_needs_to_bind = descriptor.range      != constant_buffer->GetStride()     ? true : m_needs_to_bind; // affects vkUpdateDescriptorSets
+                // Determine if the descriptor set needs to bind (affects vkUpdateDescriptorSets)
+                m_needs_to_bind = descriptor.data   != constant_buffer              ? true : m_needs_to_bind;
+                m_needs_to_bind = descriptor.offset != constant_buffer->GetOffset() ? true : m_needs_to_bind;
+                m_needs_to_bind = descriptor.range  != constant_buffer->GetStride() ? true : m_needs_to_bind;
 
                 // Keep track of dynamic offsets
                 if (constant_buffer->IsDynamic())
@@ -73,98 +74,150 @@ namespace Spartan
                 }
 
                 // Update
-                descriptor.resource = constant_buffer->GetResource();
+                descriptor.data     = static_cast<void*>(constant_buffer);
                 descriptor.offset   = constant_buffer->GetOffset();
                 descriptor.range    = constant_buffer->GetStride();
 
-                return true;
+                return;
             }
         }
-
-        return false;
     }
 
     void RHI_DescriptorSetLayout::SetSampler(const uint32_t slot, RHI_Sampler* sampler)
     {
         for (RHI_Descriptor& descriptor : m_descriptors)
         {
-            if (descriptor.type == RHI_Descriptor_Type::Sampler && descriptor.slot == slot + rhi_shader_shift_sampler)
+            if (descriptor.type == RHI_Descriptor_Type::Sampler && descriptor.slot == slot + rhi_shader_shift_register_s)
             {
-                // Determine if the descriptor set needs to bind
-                m_needs_to_bind = descriptor.resource != sampler->GetResource() ? true : m_needs_to_bind; // affects vkUpdateDescriptorSets
+                // Determine if the descriptor set needs to bind (affects vkUpdateDescriptorSets)
+                m_needs_to_bind = descriptor.data != sampler ? true : m_needs_to_bind;
 
                 // Update
-                descriptor.resource = sampler->GetResource();
+                descriptor.data = static_cast<void*>(sampler);
 
-                break;
+                return;
             }
         }
     }
 
-    void RHI_DescriptorSetLayout::SetTexture(const uint32_t slot, RHI_Texture* texture, const int mip, const bool storage)
+    void RHI_DescriptorSetLayout::SetTexture(const uint32_t slot, RHI_Texture* texture, const int mip, const bool ranged)
     {
-        if (!texture->IsSampled())
-        {
-            LOG_ERROR("Texture can't be used for sampling");
-            return;
-        }
-
-        if (texture->GetLayout() == RHI_Image_Layout::Undefined || texture->GetLayout() == RHI_Image_Layout::Preinitialized)
-        {
-            LOG_ERROR("Texture has an invalid layout");
-            return;
-        }
-
-        // Get resource
         bool set_individual_mip = mip != -1;
-        void* resource = set_individual_mip ? texture->Get_Resource_Views_Srv(mip) : texture->Get_Resource_View_Srv();
+        RHI_Image_Layout layout = texture->GetLayout(set_individual_mip ? mip : 0);
+        uint32_t mip_count      = ranged ? texture->GetMipCount() : 1; // will be bound as an array of textures if larger than 1
+
+         // Validate layout
+        SP_ASSERT(layout == RHI_Image_Layout::General || layout == RHI_Image_Layout::Shader_Read_Only_Optimal || layout == RHI_Image_Layout::Depth_Stencil_Read_Only_Optimal);
+
+        // Validate type
+        SP_ASSERT(texture->IsSampled());
 
         for (RHI_Descriptor& descriptor : m_descriptors)
         {
-            const uint32_t slot_match = slot + (storage ? rhi_shader_shift_storage_texture : rhi_shader_shift_texture);
+            bool is_storage = layout == RHI_Image_Layout::General;
+            bool match_type = descriptor.type == (is_storage ? RHI_Descriptor_Type::TextureStorage : RHI_Descriptor_Type::Texture);
+            uint32_t shift  = is_storage ? rhi_shader_shift_register_u : rhi_shader_shift_register_t;
+            bool match_slot = descriptor.slot == (slot + shift);
 
-            if (descriptor.type == RHI_Descriptor_Type::Texture && descriptor.slot == slot_match)
+            if (match_type && match_slot)
             {
-                // Determine if the descriptor set needs to bind
-                m_needs_to_bind = descriptor.resource != resource ? true : m_needs_to_bind; // affects vkUpdateDescriptorSets
+                // Determine if the descriptor set needs to bind (affects vkUpdateDescriptorSets)
+                m_needs_to_bind = descriptor.data   != texture  ? true : m_needs_to_bind;
+                m_needs_to_bind = descriptor.layout != layout   ? true : m_needs_to_bind;
+                m_needs_to_bind = descriptor.mip    != mip      ? true : m_needs_to_bind;
 
                 // Update
-                descriptor.resource = resource;
-                descriptor.layout   = texture->GetLayout();
+                descriptor.data         = static_cast<void*>(texture);
+                descriptor.layout       = layout;
+                descriptor.mip          = mip;
+                descriptor.array_size   = mip_count;
 
-                break;
+                return;
+            }
+        }
+    }
+
+    void RHI_DescriptorSetLayout::SetStructuredBuffer(const uint32_t slot, RHI_StructuredBuffer* structured_buffer)
+    {
+        for (RHI_Descriptor& descriptor : m_descriptors)
+        {
+            if ((descriptor.type == RHI_Descriptor_Type::StructuredBuffer) && descriptor.slot == slot + rhi_shader_shift_register_u)
+            {
+                // Determine if the descriptor set needs to bind (affects vkUpdateDescriptorSets)
+                m_needs_to_bind = descriptor.data   != structured_buffer                        ? true : m_needs_to_bind;
+                m_needs_to_bind = descriptor.range  != structured_buffer->GetObjectSizeGpu()    ? true : m_needs_to_bind;
+
+                // Update
+                descriptor.data     = static_cast<void*>(structured_buffer);
+                descriptor.offset   = 0;
+                descriptor.range    = structured_buffer->GetObjectSizeGpu();
+
+                return;
+            }
+        }
+    }
+
+    void RHI_DescriptorSetLayout::RemoveConstantBuffer(RHI_ConstantBuffer* constant_buffer)
+    {
+        for (RHI_Descriptor& descriptor : m_descriptors)
+        {
+            if (descriptor.type == RHI_Descriptor_Type::ConstantBuffer)
+            {
+                if (descriptor.data == constant_buffer)
+                {
+                    // Determine if the descriptor set needs to bind (affects vkUpdateDescriptorSets)
+                    m_needs_to_bind = true;
+
+                    // Update
+                    descriptor.data     = nullptr;
+                    descriptor.offset   = 0;
+                    descriptor.range    = 0;
+
+                    return;
+                }
             }
         }
     }
 
     void RHI_DescriptorSetLayout::RemoveTexture(RHI_Texture* texture, const int mip)
     {
-        // Get resource
-        bool set_individual_mip = mip != -1;
-        void* resource = set_individual_mip ? texture->Get_Resource_Views_Srv(mip) : texture->Get_Resource_View_Srv();
-
         for (RHI_Descriptor& descriptor : m_descriptors)
         {
-            if (descriptor.resource == resource)
+            if (descriptor.type == RHI_Descriptor_Type::Texture)
             {
-                m_needs_to_bind = true; // affects vkUpdateDescriptorSets
+                if (descriptor.data == texture)
+                {
+                    // Determine if the descriptor set needs to bind (affects vkUpdateDescriptorSets)
+                    m_needs_to_bind = true;
 
-                // Update
-                descriptor.resource = nullptr;
-                descriptor.layout   = RHI_Image_Layout::Undefined;
+                    // Update
+                    descriptor.data     = nullptr;
+                    descriptor.layout   = RHI_Image_Layout::Undefined;
+                    descriptor.mip      = 0;
 
-                break;
+                    return;
+                }
             }
         }
     }
-    
+
+    void RHI_DescriptorSetLayout::ClearDescriptorData()
+    {
+        for (RHI_Descriptor& descriptor : m_descriptors)
+        {
+            descriptor.data = nullptr;
+            descriptor.mip  = 0;
+        }
+    }
+
     bool RHI_DescriptorSetLayout::GetDescriptorSet(RHI_DescriptorSetLayoutCache* descriptor_set_layout_cache, RHI_DescriptorSet*& descriptor_set)
     {
-        // Integrate resource into the hash
+        // Integrate descriptor data into the hash
         uint32_t hash = m_hash;
         for (const RHI_Descriptor& descriptor : m_descriptors)
         {
-            Utility::Hash::hash_combine(hash, descriptor.resource);
+            Utility::Hash::hash_combine(hash, descriptor.data);
+            Utility::Hash::hash_combine(hash, descriptor.mip);
         }
 
         // If we don't have a descriptor set to match that state, create one
@@ -197,11 +250,11 @@ namespace Spartan
         return true;
     }
 
-    const std::array<uint32_t, Spartan::rhi_max_constant_buffer_count> RHI_DescriptorSetLayout::GetDynamicOffsets() const
+    const array<uint32_t, Spartan::rhi_max_constant_buffer_count> RHI_DescriptorSetLayout::GetDynamicOffsets() const
     {
         // vkCmdBindDescriptorSets expects an array without empty values
 
-        std::array<uint32_t, Spartan::rhi_max_constant_buffer_count> dynamic_offsets;
+        array<uint32_t, Spartan::rhi_max_constant_buffer_count> dynamic_offsets;
         dynamic_offsets.fill(0);
 
         uint32_t j = 0;

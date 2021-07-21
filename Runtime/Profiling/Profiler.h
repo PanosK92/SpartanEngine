@@ -76,21 +76,22 @@ namespace Spartan
         bool IsGpuStuttering()                          const { return m_is_stuttering_gpu; }
         
         // Metrics - RHI
-        uint32_t m_rhi_draw                     = 0;
-        uint32_t m_rhi_dispatch                 = 0;
-        uint32_t m_rhi_bindings_buffer_index    = 0;
-        uint32_t m_rhi_bindings_buffer_vertex   = 0;
-        uint32_t m_rhi_bindings_buffer_constant = 0;
-        uint32_t m_rhi_bindings_sampler         = 0;
-        uint32_t m_rhi_bindings_texture_sampled = 0;
-        uint32_t m_rhi_bindings_shader_vertex   = 0;
-        uint32_t m_rhi_bindings_shader_pixel    = 0;
-        uint32_t m_rhi_bindings_shader_compute  = 0;
-        uint32_t m_rhi_bindings_render_target   = 0;
-        uint32_t m_rhi_bindings_texture_storage = 0;
-        uint32_t m_rhi_bindings_descriptor_set  = 0;
-        uint32_t m_rhi_bindings_pipeline        = 0;
-        uint32_t m_rhi_pipeline_barriers        = 0;
+        uint32_t m_rhi_draw                         = 0;
+        uint32_t m_rhi_dispatch                     = 0;
+        uint32_t m_rhi_bindings_buffer_index        = 0;
+        uint32_t m_rhi_bindings_buffer_vertex       = 0;
+        uint32_t m_rhi_bindings_buffer_constant     = 0;
+        uint32_t m_rhi_bindings_buffer_structured   = 0;
+        uint32_t m_rhi_bindings_sampler             = 0;
+        uint32_t m_rhi_bindings_texture_sampled     = 0;
+        uint32_t m_rhi_bindings_shader_vertex       = 0;
+        uint32_t m_rhi_bindings_shader_pixel        = 0;
+        uint32_t m_rhi_bindings_shader_compute      = 0;
+        uint32_t m_rhi_bindings_render_target       = 0;
+        uint32_t m_rhi_bindings_texture_storage     = 0;
+        uint32_t m_rhi_bindings_descriptor_set      = 0;
+        uint32_t m_rhi_bindings_pipeline            = 0;
+        uint32_t m_rhi_pipeline_barriers            = 0;
 
         // Metrics - Renderer
         uint32_t m_renderer_meshes_rendered = 0;
@@ -112,22 +113,23 @@ namespace Spartan
     private:
         void ClearRhiMetrics()
         {
-            m_rhi_draw                      = 0;
-            m_rhi_dispatch                  = 0;
-            m_renderer_meshes_rendered      = 0;
-            m_rhi_bindings_buffer_index     = 0;
-            m_rhi_bindings_buffer_vertex    = 0;
-            m_rhi_bindings_buffer_constant  = 0;
-            m_rhi_bindings_sampler          = 0;
-            m_rhi_bindings_texture_sampled  = 0;
-            m_rhi_bindings_shader_vertex    = 0;
-            m_rhi_bindings_shader_pixel     = 0;
-            m_rhi_bindings_shader_compute   = 0;
-            m_rhi_bindings_render_target    = 0;
-            m_rhi_bindings_texture_storage  = 0;
-            m_rhi_bindings_descriptor_set   = 0;
-            m_rhi_bindings_pipeline         = 0;
-            m_rhi_pipeline_barriers         = 0;
+            m_rhi_draw                          = 0;
+            m_rhi_dispatch                      = 0;
+            m_renderer_meshes_rendered          = 0;
+            m_rhi_bindings_buffer_index         = 0;
+            m_rhi_bindings_buffer_vertex        = 0;
+            m_rhi_bindings_buffer_constant      = 0;
+            m_rhi_bindings_buffer_structured    = 0;
+            m_rhi_bindings_sampler              = 0;
+            m_rhi_bindings_texture_sampled      = 0;
+            m_rhi_bindings_shader_vertex        = 0;
+            m_rhi_bindings_shader_pixel         = 0;
+            m_rhi_bindings_shader_compute       = 0;
+            m_rhi_bindings_render_target        = 0;
+            m_rhi_bindings_texture_storage      = 0;
+            m_rhi_bindings_descriptor_set       = 0;
+            m_rhi_bindings_pipeline             = 0;
+            m_rhi_pipeline_barriers             = 0;
         }
 
         TimeBlock* GetNewTimeBlock();

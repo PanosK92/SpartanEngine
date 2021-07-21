@@ -36,21 +36,6 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 }
 #endif
 
-#if DOWNSAMPLE
-[numthreads(thread_group_count_x, thread_group_count_y, 1)]
-void mainCS(uint3 thread_id : SV_DispatchThreadID)
-{
-    if (thread_id.x >= uint(g_resolution_rt.x) || thread_id.y >= uint(g_resolution_rt.y))
-        return;
-
-    // g_texel_size refers to the current render target, which is half the size of the input texture, so we multiply by 2.0
-    float2 texel_size = g_texel_size * 2.0f;
-    const float2 uv = (thread_id.xy + 0.5f) / g_resolution_rt;
-
-    tex_out_rgba[thread_id.xy] = Box_Filter_AntiFlicker(uv, tex, texel_size);
-}
-#endif
-
 #if UPSAMPLE_BLEND_MIP
 [numthreads(thread_group_count_x, thread_group_count_y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)

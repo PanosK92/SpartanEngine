@@ -151,9 +151,9 @@ namespace Spartan
         float mat_height_mul;
 
         float mat_id;
-        uint32_t mip_index;
         float is_transparent_pass;
-        float padding;
+        uint32_t mip_count;
+        uint32_t work_group_count;
 
         bool operator==(const BufferUber& rhs) const
         {
@@ -172,9 +172,10 @@ namespace Spartan
                 transform_axis      == rhs.transform_axis       &&
                 blur_sigma          == rhs.blur_sigma           &&
                 blur_direction      == rhs.blur_direction       &&
-                mip_index           == rhs.mip_index            &&
                 is_transparent_pass == rhs.is_transparent_pass  &&
-                resolution          == rhs.resolution;
+                resolution          == rhs.resolution           &&
+                mip_count           == rhs.mip_count            &&
+                work_group_count    == rhs.work_group_count;
         }
 
         bool operator!=(const BufferUber& rhs) const { return !(*this == rhs); }

@@ -53,9 +53,12 @@ namespace Spartan
             Utility::Hash::hash_combine(hash, descriptor.ComputeHash(false));
         }
 
-        // If there is no descriptor set layout for this particular hash, create one
+        // Search for a descriptor set layout which matches this hash
         auto it = m_descriptor_set_layouts.find(hash);
-        if (it == m_descriptor_set_layouts.end())
+        bool cached = it != m_descriptor_set_layouts.end();
+
+        // If there is no descriptor set layout for this particular hash, create one
+        if (!cached)
         {
             // Create a name for the descriptor set layout, very useful for Vulkan debugging
             string name = "CS:"     + (pipeline_state.shader_compute    ? pipeline_state.shader_compute->GetObjectName()  : "null");
@@ -68,32 +71,52 @@ namespace Spartan
 
         // Get the descriptor set layout we will be using
         m_descriptor_layout_current = it->second.get();
+
+        // Clear any data data the the descriptors might contain from previous uses (and hence can possibly be invalid by now)
+        if (cached)
+        {
+            m_descriptor_layout_current->ClearDescriptorData();
+        }
+
+        // Make it bind
         m_descriptor_layout_current->NeedsToBind();
     }
-    
-    bool RHI_DescriptorSetLayoutCache::SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer)
+
+    void RHI_DescriptorSetLayoutCache::SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer)
     {
         SP_ASSERT(m_descriptor_layout_current != nullptr);
-        return m_descriptor_layout_current->SetConstantBuffer(slot, constant_buffer);
+
+        m_descriptor_layout_current->SetConstantBuffer(slot, constant_buffer);
     }
 
     void RHI_DescriptorSetLayoutCache::SetSampler(const uint32_t slot, RHI_Sampler* sampler)
     {
         SP_ASSERT(m_descriptor_layout_current != nullptr);
 
-        if (m_descriptor_layout_current)
-        {
-            m_descriptor_layout_current->SetSampler(slot, sampler);
-        }
+        m_descriptor_layout_current->SetSampler(slot, sampler);
     }
 
-    void RHI_DescriptorSetLayoutCache::SetTexture(const uint32_t slot, RHI_Texture* texture, const int mip, const bool storage)
+    void RHI_DescriptorSetLayoutCache::SetTexture(const uint32_t slot, RHI_Texture* texture, const int mip, const bool ranged)
     {
         SP_ASSERT(m_descriptor_layout_current != nullptr);
 
+        m_descriptor_layout_current->SetTexture(slot, texture, mip, ranged);
+    }
+
+    void RHI_DescriptorSetLayoutCache::SetStructuredBuffer(const uint32_t slot, RHI_StructuredBuffer* structured_buffer)
+    {
+        SP_ASSERT(m_descriptor_layout_current != nullptr);
+
+        m_descriptor_layout_current->SetStructuredBuffer(slot, structured_buffer);
+    }
+
+    void RHI_DescriptorSetLayoutCache::RemoveConstantBuffer(RHI_ConstantBuffer* constant_buffer)
+    {
+        SP_ASSERT(constant_buffer != nullptr);
+
         if (m_descriptor_layout_current)
         {
-            m_descriptor_layout_current->SetTexture(slot, texture, mip, storage);
+            m_descriptor_layout_current->RemoveConstantBuffer(constant_buffer);
         }
     }
 
@@ -158,6 +181,8 @@ namespace Spartan
             return;
         }
 
+        descriptors.clear();
+
         bool descriptors_acquired = false;
 
         if (pipeline_state.IsCompute())
@@ -220,7 +245,7 @@ namespace Spartan
                 {
                     if (descriptor.type == RHI_Descriptor_Type::ConstantBuffer)
                     {
-                        if (descriptor.slot == pipeline_state.dynamic_constant_buffer_slots[i] + rhi_shader_shift_buffer)
+                        if (descriptor.slot == pipeline_state.dynamic_constant_buffer_slots[i] + rhi_shader_shift_register_b)
                         {
                             descriptor.is_dynamic_constant_buffer = true;
                         }

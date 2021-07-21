@@ -19,13 +19,15 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =====================
+//= INCLUDES ===============================
 #include "Spartan.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_ConstantBuffer.h"
 #include "../RHI_Device.h"
 #include "../RHI_CommandList.h"
-//================================
+#include "../Rendering/Renderer.h"
+#include "../RHI_DescriptorSetLayoutCache.h"
+//==========================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -35,6 +37,18 @@ namespace Spartan
 {
     void RHI_ConstantBuffer::_destroy()
     {
+        if (!m_buffer)
+            return;
+
+        // Make sure that no descriptor sets refers to this buffer.
+        if (Renderer* renderer = m_rhi_device->GetContext()->GetSubsystem<Renderer>())
+        {
+            if (RHI_DescriptorSetLayoutCache* descriptor_set_layout_cache = renderer->GetDescriptorLayoutSetCache())
+            {
+                descriptor_set_layout_cache->RemoveConstantBuffer(this);
+            }
+        }
+
         // Wait in case it's still in use by the GPU
         m_rhi_device->Queue_WaitAll();
 
@@ -89,7 +103,7 @@ namespace Spartan
         m_allocation = static_cast<void*>(allocation);
 
         // Set debug name
-        vulkan_utility::debug::set_name(static_cast<VkBuffer>(m_buffer), "constant_buffer");
+        vulkan_utility::debug::set_name(static_cast<VkBuffer>(m_buffer), m_object_name.c_str());
 
         return true;
     }

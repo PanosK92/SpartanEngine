@@ -197,11 +197,11 @@ namespace Spartan
                 vkGetPhysicalDeviceFeatures2(m_rhi_context->device_physical, &m_rhi_context->device_features);
 
                 // Enable
-                ENABLE_FEATURE(m_rhi_context->device_features.features, device_features_enabled.features, samplerAnisotropy)
-                ENABLE_FEATURE(m_rhi_context->device_features.features, device_features_enabled.features, fillModeNonSolid)
-                ENABLE_FEATURE(m_rhi_context->device_features.features, device_features_enabled.features, wideLines)
-                ENABLE_FEATURE(m_rhi_context->device_features.features, device_features_enabled.features, imageCubeArray)
-                ENABLE_FEATURE(m_rhi_context->device_features_1_2, device_features_1_2_enabled, timelineSemaphore)
+                ENABLE_FEATURE(m_rhi_context->device_features.features, device_features_enabled.features,   samplerAnisotropy)
+                ENABLE_FEATURE(m_rhi_context->device_features.features, device_features_enabled.features,   fillModeNonSolid)
+                ENABLE_FEATURE(m_rhi_context->device_features.features, device_features_enabled.features,   wideLines)
+                ENABLE_FEATURE(m_rhi_context->device_features.features, device_features_enabled.features,   imageCubeArray)
+                ENABLE_FEATURE(m_rhi_context->device_features_1_2,      device_features_1_2_enabled,        timelineSemaphore)
             }
 
             // Determine enabled graphics shader stages
@@ -213,6 +213,14 @@ namespace Spartan
             if (device_features_enabled.features.tessellationShader)
             {
                 m_enabled_graphics_shader_stages = VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT | VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT;
+            }
+
+            // Enable partially bound descriptors
+            VkPhysicalDeviceDescriptorIndexingFeatures descriptor_indexing_features = {};
+            {
+                descriptor_indexing_features.sType                              = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
+                descriptor_indexing_features.descriptorBindingPartiallyBound    = true;
+                device_features_enabled.pNext = &descriptor_indexing_features;
             }
 
             // Get the supported extensions out of the requested extensions

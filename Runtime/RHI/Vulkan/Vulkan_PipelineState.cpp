@@ -121,7 +121,7 @@ namespace Spartan
                         if (!texture)
                             continue;
 
-                        VkImageLayout layout = vulkan_image_layout[static_cast<uint8_t>(texture->GetLayout())];
+                        VkImageLayout layout = vulkan_image_layout[static_cast<uint8_t>(texture->GetLayout(0))];
 
                         VkAttachmentDescription attachment_desc  = {};
                         attachment_desc.format                   = vulkan_format[texture->GetFormat()];
@@ -144,7 +144,7 @@ namespace Spartan
             // Depth
             if (render_target_depth_texture)
             {
-                VkImageLayout layout = vulkan_image_layout[static_cast<uint8_t>(render_target_depth_texture->GetLayout())];
+                VkImageLayout layout = vulkan_image_layout[static_cast<uint8_t>(render_target_depth_texture->GetLayout(0))];
 
                 VkAttachmentDescription attachment_desc  = {};
                 attachment_desc.format                   = vulkan_format[render_target_depth_texture->GetFormat()];

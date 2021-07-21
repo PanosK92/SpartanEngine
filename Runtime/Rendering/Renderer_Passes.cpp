@@ -56,7 +56,7 @@ namespace Spartan
         cmd_list->SetConstantBuffer(1, RHI_Shader_Compute, m_buffer_material_gpu);
         cmd_list->SetConstantBuffer(2, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, m_buffer_uber_gpu);
         cmd_list->SetConstantBuffer(3, RHI_Shader_Compute, m_buffer_light_gpu);
-        
+
         // Samplers
         cmd_list->SetSampler(0, m_sampler_compare_depth);
         cmd_list->SetSampler(1, m_sampler_point_clamp);
@@ -825,6 +825,7 @@ namespace Spartan
             // Setup command list
             cmd_list->SetTexture(RendererBindingsUav::rgba,             tex_out);
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_albedo,   RENDER_TARGET(RendererRt::Gbuffer_Albedo));
+            cmd_list->SetTexture(RendererBindingsSrv::gbuffer_material, RENDER_TARGET(RendererRt::Gbuffer_Material));
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal,   RENDER_TARGET(RendererRt::Gbuffer_Normal));
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    RENDER_TARGET(RendererRt::Gbuffer_Depth));
             cmd_list->SetTexture(RendererBindingsSrv::light_diffuse,    is_transparent_pass ? RENDER_TARGET(RendererRt::Light_Diffuse_Transparent).get() : RENDER_TARGET(RendererRt::Light_Diffuse).get());
@@ -1131,10 +1132,24 @@ namespace Spartan
             rt_frame.swap(rt_frame_2);
         }
 
-        // If upsampling is disabled but the output resolution is different, do bilinear scaling
+        // If TAA didn't write into the output res buffer (upsampling), copy now.
         if (copy_required)
         {
-            Pass_CopyBilinear(cmd_list, rt_frame.get(), rt_frame_pp.get());
+            if (m_resolution_render == m_resolution_output)
+            {
+                cmd_list->Blit(rt_frame, rt_frame_pp);
+            }
+            else
+            {
+                Pass_CopyBilinear(cmd_list, rt_frame.get(), rt_frame_pp.get());
+            }
+        }
+
+        // Sharpening
+        if (GetOption(Render_Sharpening))
+        {
+            Pass_PostProcess_Sharpening(cmd_list, rt_frame_pp, rt_frame_pp_2);
+            rt_frame_pp.swap(rt_frame_pp_2);
         }
 
         // Motion Blur
@@ -1162,13 +1177,6 @@ namespace Spartan
         if (GetOption(Render_Dithering))
         {
             Pass_PostProcess_Dithering(cmd_list, rt_frame_pp, rt_frame_pp_2);
-            rt_frame_pp.swap(rt_frame_pp_2);
-        }
-
-        // Sharpening
-        if (GetOption(Render_Sharpening_LumaSharpen))
-        {
-            Pass_PostProcess_Sharpening(cmd_list, rt_frame_pp, rt_frame_pp_2);
             rt_frame_pp.swap(rt_frame_pp_2);
         }
 
@@ -1245,10 +1253,10 @@ namespace Spartan
     {
         // Acquire shaders
         RHI_Shader* shader_luminance        = m_shaders[RendererShader::BloomLuminance_C].get();
-        RHI_Shader* shader_downsample       = m_shaders[RendererShader::BloomDownsample_C].get();
+        RHI_Shader* shader_mipGeneration    = m_shaders[RendererShader::MipGeneration_C].get();
         RHI_Shader* shader_upsampleBlendMip = m_shaders[RendererShader::BloomUpsampleBlendMip_C].get();
         RHI_Shader* shader_blendFrame       = m_shaders[RendererShader::BloomBlendFrame_C].get();
-        if (!shader_luminance->IsCompiled() || !shader_upsampleBlendMip->IsCompiled() || !shader_downsample->IsCompiled() || !shader_blendFrame->IsCompiled())
+        if (!shader_luminance->IsCompiled() || !shader_upsampleBlendMip->IsCompiled() || !shader_mipGeneration->IsCompiled() || !shader_blendFrame->IsCompiled())
             return;
 
         // Acquire render target
@@ -1281,75 +1289,86 @@ namespace Spartan
         }
 
         // Downsample
-        for (uint32_t i = 1; i < tex_bloom->GetMipCount(); i++)
         {
+            // AMD FidelityFX Single Pass Downsampler.
+            // Provides an RDNA™-optimized solution for generating up to 12 MIP levels of a texture.
+            // GitHub:          https://github.com/GPUOpen-Effects/FidelityFX-SPD
+            // Documentation:   https://github.com/GPUOpen-Effects/FidelityFX-SPD/blob/master/docs/FidelityFX_SPD.pdf
+
             // Set render state
             static RHI_PipelineState pso;
-            pso.shader_compute   = shader_downsample;
-            pso.pass_name        = "Pass_PostProcess_BloomDownsample";
+            pso.shader_compute   = shader_mipGeneration;
+            pso.pass_name        = "Pass_PostProcess_BloomMipGeneration";
 
             // Draw
             if (cmd_list->BeginRenderPass(pso))
             {
-                int mip_index_small    = i;
-                int mip_index_big      = i - 1;
-                int mip_width_small    = tex_bloom->GetWidth() >> i;
-                int mip_height_small   = tex_bloom->GetHeight() >> i;
+                uint32_t remaining_mip_count = tex_bloom->GetMipCount() - 1; // all mips but the top
+
+                // As per documentation (page 22)
+                SP_ASSERT(remaining_mip_count <= 12);
+
+                // As per documentation (page 22)
+                const uint32_t thread_group_count_x = (tex_bloom->GetWidth() + 63) >> 6;
+                const uint32_t thread_group_count_y = (tex_bloom->GetHeight() + 63) >> 6;
+                const uint32_t thread_group_count_z = 1;
+                const bool async                    = false;
 
                 // Update uber buffer
-                m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(mip_width_small), static_cast<float>(mip_height_small));
+                m_buffer_uber_cpu.resolution        = Vector2(static_cast<float>(tex_bloom->GetWidth()), static_cast<float>(tex_bloom->GetHeight()));
+                m_buffer_uber_cpu.mip_count         = remaining_mip_count;
+                m_buffer_uber_cpu.work_group_count  = thread_group_count_x * thread_group_count_y * thread_group_count_z;
                 UpdateUberBuffer(cmd_list);
 
-                const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(mip_width_small) / m_thread_group_count));
-                const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(mip_height_small) / m_thread_group_count));
-                const uint32_t thread_group_count_z = 1;
-                const bool async = false;
-
-                cmd_list->SetTexture(RendererBindingsUav::rgba, tex_bloom, mip_index_small);
-                cmd_list->SetTexture(RendererBindingsSrv::tex, tex_bloom, mip_index_big);
+                cmd_list->SetTexture(RendererBindingsSrv::tex, tex_bloom, 0); // top mip
+                cmd_list->SetTexture(RendererBindingsUav::rgba_mips, tex_bloom, 1, true); // rest of the mips
+                cmd_list->SetStructuredBuffer(RendererBindingsStructuredBuffer::counter, m_structured_buffer_counter);
                 cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
                 cmd_list->EndRenderPass();
             }
         }
 
         // Starting from the lowest mip, upsample and blend with the higher one
-        for (int i = static_cast<int>(tex_bloom->GetMipCount() - 1); i > 0; i--)
         {
             // Set render state
             static RHI_PipelineState pso;
-            pso.shader_compute   = shader_upsampleBlendMip;
-            pso.pass_name        = "Pass_PostProcess_BloomUpsampleBlendMip";
+            pso.shader_compute  = shader_upsampleBlendMip;
+            pso.pass_name       = "Pass_PostProcess_BloomUpsampleBlendMip";
 
             // Draw
             if (cmd_list->BeginRenderPass(pso))
             {
-                int mip_index_small    = i;
-                int mip_index_big      = i - 1;
-                int mip_width_large    = tex_bloom->GetWidth() >> mip_index_big;
-                int mip_width_height   = tex_bloom->GetHeight() >> mip_index_big;
+                for (int i = static_cast<int>(tex_bloom->GetMipCount() - 1); i > 0; i--)
+                {
+                    int mip_index_small     = i;
+                    int mip_index_big       = i - 1;
+                    int mip_width_large     = tex_bloom->GetWidth() >> mip_index_big;
+                    int mip_height_height   = tex_bloom->GetHeight() >> mip_index_big;
 
-                // Update uber buffer
-                m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(mip_width_large), static_cast<float>(mip_width_height));
-                UpdateUberBuffer(cmd_list);
+                    // Update uber buffer
+                    m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(mip_width_large), static_cast<float>(mip_height_height));
+                    UpdateUberBuffer(cmd_list);
 
-                const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(mip_width_large) / m_thread_group_count));
-                const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(mip_width_height) / m_thread_group_count));
-                const uint32_t thread_group_count_z = 1;
-                const bool async = false;
+                    const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(mip_width_large) / m_thread_group_count));
+                    const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(mip_height_height) / m_thread_group_count));
+                    const uint32_t thread_group_count_z = 1;
+                    const bool async = false;
 
-                cmd_list->SetTexture(RendererBindingsUav::rgba, tex_bloom, mip_index_big);
-                cmd_list->SetTexture(RendererBindingsSrv::tex, tex_bloom, mip_index_small);
-                cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
+                    cmd_list->SetTexture(RendererBindingsSrv::tex, tex_bloom, mip_index_small);
+                    cmd_list->SetTexture(RendererBindingsUav::rgba, tex_bloom, mip_index_big);
+                    cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
+                }
+
                 cmd_list->EndRenderPass();
             }
         }
 
-        // Blend with the current frame
+        // Blend with the frame
         {
             // Set render state
             static RHI_PipelineState pso;
             pso.shader_compute   = shader_blendFrame;
-            pso.pass_name        = "Pass_PostProcess_BloomUpsampleBlendFrame";
+            pso.pass_name        = "Pass_PostProcess_BloomBlendFrame";
 
             // Draw
             if (cmd_list->BeginRenderPass(pso))

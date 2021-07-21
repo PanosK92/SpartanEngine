@@ -70,7 +70,7 @@ namespace Spartan
         m_options |= Render_ScreenSpaceShadows;
         m_options |= Render_ScreenSpaceReflections;
         m_options |= Render_AntiAliasing_Taa;
-        m_options |= Render_Sharpening_LumaSharpen;
+        m_options |= Render_Sharpening;
 
         // Option values
         m_option_values[Renderer_Option_Value::Anisotropy]          = 16.0f;
@@ -180,6 +180,7 @@ namespace Spartan
         CreateRenderTextures(false, false, true, true);
         CreateFonts();
         CreateSamplers();
+        CreateStructuredBuffers();
         CreateTextures();
 
         if (!m_initialised)
@@ -424,6 +425,8 @@ namespace Spartan
     template<typename T>
     bool update_dynamic_buffer(RHI_CommandList* cmd_list, RHI_ConstantBuffer* buffer_gpu, T& buffer_cpu, T& buffer_cpu_previous, uint32_t& offset_index)
     {
+        SP_ASSERT(cmd_list != nullptr);
+
         // Only update if needed
         if (buffer_cpu == buffer_cpu_previous)
             return true;
@@ -452,7 +455,7 @@ namespace Spartan
             buffer_gpu->SetOffsetIndexDynamic(offset_index);
         }
 
-        // Map  
+        // Map
         T* buffer = static_cast<T*>(buffer_gpu->Map());
         if (!buffer)
         {
@@ -480,6 +483,8 @@ namespace Spartan
 
     bool Renderer::UpdateFrameBuffer(RHI_CommandList* cmd_list)
     {
+        SP_ASSERT(cmd_list != nullptr);
+
         // Update directional light intensity, just grab the first one
         for (const auto& entity : m_entities[Renderer_ObjectType::Light])
         {
@@ -492,26 +497,18 @@ namespace Spartan
             }
         }
 
-        if (!cmd_list)
-        {
-            LOG_ERROR("Invalid command list");
-            return false;
-        }
-
         if (!update_dynamic_buffer<BufferFrame>(cmd_list, m_buffer_frame_gpu.get(), m_buffer_frame_cpu, m_buffer_frame_cpu_previous, m_buffer_frame_offset_index))
             return false;
 
         // Dynamic buffers with offsets have to be rebound whenever the offset changes
-        return cmd_list->SetConstantBuffer(0, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, m_buffer_frame_gpu);
+        cmd_list->SetConstantBuffer(0, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, m_buffer_frame_gpu);
+
+        return true;
     }
 
     bool Renderer::UpdateMaterialBuffer(RHI_CommandList* cmd_list)
     {
-        if (!cmd_list)
-        {
-            LOG_ERROR("Invalid command list");
-            return false;
-        }
+        SP_ASSERT(cmd_list != nullptr);
 
         // Update
         for (uint32_t i = 0; i < m_max_material_instances; i++)
@@ -532,31 +529,27 @@ namespace Spartan
             return false;
 
         // Dynamic buffers with offsets have to be rebound whenever the offset changes
-        return cmd_list->SetConstantBuffer(1, RHI_Shader_Pixel, m_buffer_material_gpu);
+        cmd_list->SetConstantBuffer(1, RHI_Shader_Pixel, m_buffer_material_gpu);
+
+        return true;
     }
 
     bool Renderer::UpdateUberBuffer(RHI_CommandList* cmd_list)
     {
-        if (!cmd_list)
-        {
-            LOG_ERROR("Invalid command list");
-            return false;
-        }
+        SP_ASSERT(cmd_list != nullptr);
 
         if (!update_dynamic_buffer<BufferUber>(cmd_list, m_buffer_uber_gpu.get(), m_buffer_uber_cpu, m_buffer_uber_cpu_previous, m_buffer_uber_offset_index))
             return false;
 
         // Dynamic buffers with offsets have to be rebound whenever the offset changes
-        return cmd_list->SetConstantBuffer(2, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, m_buffer_uber_gpu);
+        cmd_list->SetConstantBuffer(2, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, m_buffer_uber_gpu);
+
+        return true;
     }
 
     bool Renderer::UpdateLightBuffer(RHI_CommandList* cmd_list, const Light* light)
     {
-        if (!cmd_list)
-        {
-            LOG_ERROR("Invalid command list");
-            return false;
-        }
+        SP_ASSERT(cmd_list != nullptr);
 
         if (!light)
         {
@@ -592,7 +585,9 @@ namespace Spartan
             return false;
 
         // Dynamic buffers with offsets have to be rebound whenever the offset changes
-        return cmd_list->SetConstantBuffer(4, RHI_Shader_Pixel, m_buffer_light_gpu);
+        cmd_list->SetConstantBuffer(4, RHI_Shader_Pixel, m_buffer_light_gpu);
+
+        return true;
     }
 
     void Renderer::OnRenderablesAcquire(const Variant& entities_variant)

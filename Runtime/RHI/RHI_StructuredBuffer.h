@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2020 Panos Karabelas
+Copyright(c) 2016-2021 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,33 +19,26 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =====================
-#include "Spartan.h"
-#include "../RHI_Implementation.h"
-#include "../RHI_Texture2D.h"
-#include "../RHI_TextureCube.h"
-#include "../RHI_CommandList.h"
-//================================
+#pragma once
 
-//= NAMESPACES ===============
-using namespace std;
-using namespace Spartan::Math;
-//============================
+//= INCLUDES =====================
+#include "../Core/SpartanObject.h"
+//================================
 
 namespace Spartan
 {
-    void RHI_Texture::SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* cmd_list, const int mip /*= -1*/, const bool ranged /*= true*/)
+    class RHI_StructuredBuffer : public SpartanObject
     {
+    public:
+        RHI_StructuredBuffer(const std::shared_ptr<RHI_Device>& rhi_device, const uint32_t stride, const uint32_t element_count, const void* data = nullptr);
+        ~RHI_StructuredBuffer();
 
-    }
+        void* GetResource() { return m_resource; }
 
-    bool RHI_Texture::CreateResourceGpu()
-    {
-        return false;
-    }
-
-    void RHI_Texture::DestroyResourceGpu()
-    {
-
-    }
+    private:
+        std::shared_ptr<RHI_Device> m_rhi_device;
+        void* m_resource            = nullptr;
+        uint32_t m_stride           = 0; // size of an individual element (in bytes)
+        uint32_t m_element_count    = 0; // number of elements
+    };
 }

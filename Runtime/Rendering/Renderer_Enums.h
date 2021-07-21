@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    // Shader resource view bindings
+    // SRV bindings
     enum class RendererBindingsSrv
     {
         // Material
@@ -73,16 +73,22 @@ namespace Spartan
         font_atlas  = 33
     };
 
-    // Unordered access views bindings
+    // UAV Bindings
     enum class RendererBindingsUav
     {
         r           = 0,
         rg          = 1,
         rgb         = 2,
-        rgba        = 3,
-        rgb2        = 4,
-        rgb3        = 5,
-        array_rgba  = 6
+        rgb2        = 3,
+        rgb3        = 4,
+        rgba        = 5,
+        rgba_mips   = 6
+    };
+
+    // Structured buffer bindings
+    enum class RendererBindingsStructuredBuffer
+    {
+        counter = 18
     };
 
     // Shaders
@@ -137,7 +143,8 @@ namespace Spartan
         BlurBox_P,
         BlurGaussian_P,
         BlurGaussianBilateral_P,
-        Entity_Outline_P
+        Entity_Outline_P,
+        MipGeneration_C
     };
 
     // Render targets
@@ -190,7 +197,7 @@ namespace Spartan
         Render_MotionBlur                   = 1 << 16,
         Render_DepthOfField                 = 1 << 17,
         Render_FilmGrain                    = 1 << 18,
-        Render_Sharpening_LumaSharpen       = 1 << 19,
+        Render_Sharpening                   = 1 << 19,
         Render_ChromaticAberration          = 1 << 20,
         Render_Dithering                    = 1 << 21,
         Render_ReverseZ                     = 1 << 22,
