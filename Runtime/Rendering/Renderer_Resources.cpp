@@ -48,7 +48,7 @@ namespace Spartan
     void Renderer::CreateConstantBuffers()
     {
         const bool is_dynamic       = true;
-        const uint32_t offset_count = 64;
+        const uint32_t offset_count = 512; // should be big enough (buffers can dynamically reallocate anyway)
 
         m_buffer_frame_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device, "frame", is_dynamic);
         m_buffer_frame_gpu->Create<BufferFrame>(offset_count);
