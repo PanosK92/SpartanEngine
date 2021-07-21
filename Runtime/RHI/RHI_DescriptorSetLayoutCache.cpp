@@ -114,9 +114,9 @@ namespace Spartan
     {
         SP_ASSERT(constant_buffer != nullptr);
 
-        if (m_descriptor_layout_current)
+        for (const auto& it : m_descriptor_set_layouts)
         {
-            m_descriptor_layout_current->RemoveConstantBuffer(constant_buffer);
+            it.second->RemoveConstantBuffer(constant_buffer);
         }
     }
 
@@ -124,9 +124,9 @@ namespace Spartan
     {
         SP_ASSERT(texture != nullptr);
 
-        if (m_descriptor_layout_current)
+        for (const auto& it : m_descriptor_set_layouts)
         {
-            m_descriptor_layout_current->RemoveTexture(texture, mip);
+            it.second->RemoveTexture(texture, mip);
         }
     }
 
