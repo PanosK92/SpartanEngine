@@ -92,11 +92,11 @@ namespace Spartan
 
         // Resolution render
         const Math::Vector2& GetResolutionRender() const { return m_resolution_render; }
-        void SetResolutionRender(uint32_t width, uint32_t height);
+        void SetResolutionRender(uint32_t width, uint32_t height, bool recreate_resources = true);
 
         // Resolution output
         const Math::Vector2& GetResolutionOutput() const { return m_resolution_output; }
-        void SetResolutionOutput (uint32_t width, uint32_t height);
+        void SetResolutionOutput (uint32_t width, uint32_t height, bool recreate_resources = true);
 
         // Transform handle
         std::weak_ptr<Entity> SnapTransformHandleToEntity(const std::shared_ptr<Entity>& entity) const;
@@ -168,7 +168,7 @@ namespace Spartan
         void CreateFonts();
         void CreateTextures();
         void CreateShaders();
-        void CreateSamplers();
+        void CreateSamplers(const bool create_standard, const bool create_dynamic);
         void CreateStructuredBuffers();
         void CreateRenderTextures(const bool create_render, const bool create_output, const bool create_fixed, const bool create_dynamic);
 
@@ -189,8 +189,7 @@ namespace Spartan
         void Pass_PostProcess_ToneMapping(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
         void Pass_PostProcess_GammaCorrection(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
         void Pass_PostProcess_Fxaa(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
-        void Pass_PostProcess_FilmGrain(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
-        void Pass_PostProcess_Sharpening(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
+        void Pass_PostProcess_FilmGrain(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out); 
         void Pass_PostProcess_ChromaticAberration(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
         void Pass_PostProcess_MotionBlur(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
         void Pass_PostProcess_DepthOfField(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
@@ -199,6 +198,9 @@ namespace Spartan
         void Pass_Blur_Box(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out, const float sigma, const float pixel_stride, const bool use_stencil);
         void Pass_Blur_Gaussian(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out, const float sigma, const float pixel_stride = 1.0f);
         void Pass_Blur_BilateralGaussian(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out, const float sigma, const float pixel_stride = 1.0f, const bool use_stencil = false);
+        void Pass_AMD_FidelityFX_ContrastAdaptiveSharpening(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
+        void Pass_AMD_FidelityFX_SinglePassDowsnampler(RHI_CommandList* cmd_list, RHI_Texture* tex);
+        void Pass_AMD_FidelityFX_SuperResolution(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, RHI_Texture* tex_out_scratch);
         bool Pass_DebugBuffer(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         void Pass_Lines(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         void Pass_Outline(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
@@ -260,6 +262,7 @@ namespace Spartan
         std::shared_ptr<RHI_Sampler> m_sampler_point_clamp;
         std::shared_ptr<RHI_Sampler> m_sampler_point_wrap;
         std::shared_ptr<RHI_Sampler> m_sampler_bilinear_clamp;
+        std::shared_ptr<RHI_Sampler> m_sampler_bilinear_clamp_amd_fidelityfx_fsr;
         std::shared_ptr<RHI_Sampler> m_sampler_bilinear_wrap;
         std::shared_ptr<RHI_Sampler> m_sampler_trilinear_clamp;
         std::shared_ptr<RHI_Sampler> m_sampler_anisotropic_wrap;

@@ -44,6 +44,7 @@ namespace Spartan
         void SetStructuredBuffer(const uint32_t slot, RHI_StructuredBuffer* structured_buffer);
         void RemoveConstantBuffer(RHI_ConstantBuffer* constant_buffer);
         void RemoveTexture(RHI_Texture* texture, const int mip);
+        void RemoveSampler(RHI_Sampler* sampler);
 
         RHI_DescriptorSetLayout* GetCurrentDescriptorSetLayout() const { return m_descriptor_layout_current; }
         bool GetDescriptorSet(RHI_DescriptorSet*& descriptor_set);

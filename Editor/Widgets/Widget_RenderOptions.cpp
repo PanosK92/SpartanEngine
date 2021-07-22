@@ -184,11 +184,10 @@ void Widget_RenderOptions::TickVisible()
     bool do_fxaa                    = m_renderer->GetOption(Render_AntiAliasing_Fxaa);
     bool do_motion_blur             = m_renderer->GetOption(Render_MotionBlur);
     bool do_film_grain              = m_renderer->GetOption(Render_FilmGrain);
-    bool do_sharperning             = m_renderer->GetOption(Render_Sharpening);
+    bool do_sharperning             = m_renderer->GetOption(Render_Sharpening_AMD_FidelityFX_ContrastAdaptiveSharpening);
     bool do_chromatic_aberration    = m_renderer->GetOption(Render_ChromaticAberration);
     bool do_dithering               = m_renderer->GetOption(Render_Dithering);
     int resolution_shadow           = m_renderer->GetOptionValue<int>(Renderer_Option_Value::ShadowResolution);
-    bool allow_taa_upsampling       = m_renderer->GetOptionValue<bool>(Renderer_Option_Value::Taa_AllowUpsampling);
     bool debug_physics              = m_renderer->GetOption(Render_Debug_Physics);
     bool debug_aabb                 = m_renderer->GetOption(Render_Debug_Aabb);
     bool debug_light                = m_renderer->GetOption(Render_Debug_Lights);
@@ -200,6 +199,8 @@ void Widget_RenderOptions::TickVisible()
     bool debug_wireframe            = m_renderer->GetOption(Render_Debug_Wireframe);
     bool do_depth_prepass           = m_renderer->GetOption(Render_DepthPrepass);
     bool do_reverse_z               = m_renderer->GetOption(Render_ReverseZ);
+    bool do_upsample_taa            = m_renderer->GetOption(Render_Upsample_TAA);
+    bool do_upsample_amd            = m_renderer->GetOption(Render_Upsample_AMD_FidelityFX_SuperResolution);
 
     // Present options (with a table)
     {
@@ -245,7 +246,7 @@ void Widget_RenderOptions::TickVisible()
             ImGuiTableFlags_SizingFixedFit;     // Columns default to _WidthFixed or _WidthAuto (if resizable or not resizable), matching contents width.
 
         WidgetHelper::Initialise(m_renderer);
-
+        
         // Table
         if (ImGui::BeginTable("##render_options", column_count, flags, size))
         {
@@ -257,18 +258,43 @@ void Widget_RenderOptions::TickVisible()
             {
                 // Render
                 Vector2 resolution_render = m_renderer->GetResolutionRender();
-                uint32_t render_index = get_display_mode_index(resolution_render);
-                if (WidgetHelper::ComboBox("Render resolution", display_modes_string, render_index))
+                uint32_t resolution_render_index = get_display_mode_index(resolution_render);
+                if (WidgetHelper::ComboBox("Render resolution", display_modes_string, resolution_render_index))
                 {
-                    m_renderer->SetResolutionRender(display_modes[render_index].width, display_modes[render_index].height);
+                    m_renderer->SetResolutionRender(display_modes[resolution_render_index].width, display_modes[resolution_render_index].height);
                 }
 
                 // Output
                 Vector2 resolution_output = m_renderer->GetResolutionOutput();
-                uint32_t output_index = get_display_mode_index(resolution_output);
-                if (WidgetHelper::ComboBox("Output resolution", display_modes_string, output_index))
+                uint32_t resolution_output_index = get_display_mode_index(resolution_output);
+                if (WidgetHelper::ComboBox("Output resolution", display_modes_string, resolution_output_index))
                 {
-                    m_renderer->SetResolutionOutput(display_modes[output_index].width, display_modes[output_index].height);
+                    m_renderer->SetResolutionOutput(display_modes[resolution_output_index].width, display_modes[resolution_output_index].height);
+                }
+
+                // Upsampling
+                {
+                    static vector<string> upsampling_modes = { "Disabled", "TAA upsampling - WIP", "AMD FidelityFX Super Resolution" };
+                    uint32_t upsampling_mode_index = do_upsample_taa ? 1 : (do_upsample_amd ? 2 : 0);
+
+                    if (WidgetHelper::ComboBox("Upsampling", upsampling_modes, upsampling_mode_index))
+                    {
+                        if (upsampling_mode_index == 0)
+                        {
+                            do_upsample_taa = false;
+                            do_upsample_amd = false;
+                        }
+                        else if (upsampling_mode_index == 1)
+                        {
+                            do_upsample_taa = true;
+                            do_upsample_amd = false;
+                        }
+                        else if (upsampling_mode_index == 2)
+                        {
+                            do_upsample_taa = false;
+                            do_upsample_amd = true;
+                        }
+                    }
                 }
             }
 
@@ -287,15 +313,10 @@ void Widget_RenderOptions::TickVisible()
                 }
             }
 
-            // Anti-aliasing
             if (WidgetHelper::Option("Anti-Aliasing"))
             {
                 // TAA
-                if (WidgetHelper::CheckBox("TAA - Temporal anti-aliasing", do_taa, "Used to improve many stochastic effects, you want this to always be enabled."))
-                {
-                    // Upsampling
-                    WidgetHelper::CheckBox("TAA upsampling - WIP", allow_taa_upsampling, "If the output resolution is bigger than the render resolution, TAA will be used to reconstruct the image.");
-                }
+                WidgetHelper::CheckBox("TAA - Temporal anti-aliasing", do_taa, "Used to improve many stochastic effects, you want this to always be enabled.");
 
                 // FXAA
                 WidgetHelper::CheckBox("FXAA - Fast approximate anti-aliasing", do_fxaa);
@@ -365,7 +386,7 @@ void Widget_RenderOptions::TickVisible()
                     
                     WidgetHelper::FirstColumn();
                     const FpsLimitType fps_limit_type = timer->GetFpsLimitType();
-                    string label = "FPS Limit - " + (fps_limit_type == FpsLimitType::FixedToMonitor) ? "Fixed to monitor" : (fps_limit_type == FpsLimitType::Unlocked ? "Unlocked" : "Fixed");
+                    string label = "FPS Limit - " + string((fps_limit_type == FpsLimitType::FixedToMonitor) ? "Fixed to monitor" : (fps_limit_type == FpsLimitType::Unlocked ? "Unlocked" : "Fixed"));
                     ImGui::Text(label.c_str());
 
                     WidgetHelper::SecondColumn();
@@ -438,7 +459,7 @@ void Widget_RenderOptions::TickVisible()
 
             ImGui::EndTable();
         }
-
+        
         // Opacity
         ImGui::PushItemWidth(m_window->ContentSize.x - 60);
         ImGui::SliderFloat("Opacity", &m_alpha, 0.1f, 1.0f, "%.1f");
@@ -457,11 +478,10 @@ void Widget_RenderOptions::TickVisible()
     m_renderer->SetOption(Render_AntiAliasing_Fxaa, do_fxaa);
     m_renderer->SetOption(Render_MotionBlur, do_motion_blur);
     m_renderer->SetOption(Render_FilmGrain, do_film_grain);
-    m_renderer->SetOption(Render_Sharpening, do_sharperning);
+    m_renderer->SetOption(Render_Sharpening_AMD_FidelityFX_ContrastAdaptiveSharpening, do_sharperning);
     m_renderer->SetOption(Render_ChromaticAberration, do_chromatic_aberration);
     m_renderer->SetOption(Render_Dithering, do_dithering);
     m_renderer->SetOptionValue(Renderer_Option_Value::ShadowResolution, static_cast<float>(resolution_shadow));
-    m_renderer->SetOptionValue(Renderer_Option_Value::Taa_AllowUpsampling, static_cast<float>(allow_taa_upsampling));
     m_renderer->SetOption(Render_Debug_Transform, debug_transform);
     m_renderer->SetOption(Render_Debug_SelectionOutline, debug_selection_outline);
     m_renderer->SetOption(Render_Debug_Physics, debug_physics);
@@ -473,4 +493,6 @@ void Widget_RenderOptions::TickVisible()
     m_renderer->SetOption(Render_Debug_Wireframe, debug_wireframe);
     m_renderer->SetOption(Render_DepthPrepass, do_depth_prepass);
     m_renderer->SetOption(Render_ReverseZ, do_reverse_z);
+    m_renderer->SetOption(Render_Upsample_TAA, do_upsample_taa);
+    m_renderer->SetOption(Render_Upsample_AMD_FidelityFX_SuperResolution, do_upsample_amd);
 }
