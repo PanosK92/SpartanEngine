@@ -179,7 +179,7 @@ namespace Spartan
         CreateBlendStates();
         CreateRenderTextures(true, true, true, true);
         CreateFonts();
-        CreateSamplers(true, true);
+        CreateSamplers(false);
         CreateStructuredBuffers();
         CreateTextures();
 
@@ -393,7 +393,7 @@ namespace Spartan
             CreateRenderTextures(true, false, false, true);
 
             // Re-create samplers
-            CreateSamplers(false, true);
+            CreateSamplers(true);
         }
 
         // Log
@@ -427,7 +427,7 @@ namespace Spartan
             CreateRenderTextures(false, true, false, true);
 
             // Re-create samplers
-            CreateSamplers(false, true);
+            CreateSamplers(true);
         }
 
         // Log

@@ -92,27 +92,22 @@ namespace Spartan
         m_blend_additive    = make_shared<RHI_BlendState>(m_rhi_device, true, RHI_Blend_One,        RHI_Blend_One,              RHI_Blend_Operation_Add, RHI_Blend_One, RHI_Blend_One, RHI_Blend_Operation_Add);
     }
 
-    void Renderer::CreateSamplers(const bool create_standard, const bool create_dynamic)
+    void Renderer::CreateSamplers(const bool create_only_dynamic /*= false*/)
     {
         RHI_Comparison_Function depth_comparison    = GetOption(Render_ReverseZ) ? RHI_Comparison_Greater : RHI_Comparison_Less;
         float amd_fidelityfx_fsr                    = -log2(m_resolution_output.x / m_resolution_render.x); // a negative mip lod bias will generate an upscaled image with better texture detail
-        LOG_INFO("%f", amd_fidelityfx_fsr);
-                                                    /*                                       Minification,          Magnification,      Mip,                        Sampler Address Mode,       Comparison              Anisotropy, Comparison, Mip Lod Bias */
-        if (create_standard)
-        { 
-            m_sampler_compare_depth                     = make_shared<RHI_Sampler>(m_rhi_device, RHI_Filter_Linear,     RHI_Filter_Linear,  RHI_Sampler_Mipmap_Nearest, RHI_Sampler_Address_Clamp,  depth_comparison,       false,      true);
-            m_sampler_point_clamp                       = make_shared<RHI_Sampler>(m_rhi_device, RHI_Filter_Nearest,    RHI_Filter_Nearest, RHI_Sampler_Mipmap_Nearest, RHI_Sampler_Address_Clamp,  RHI_Comparison_Always);
-            m_sampler_point_wrap                        = make_shared<RHI_Sampler>(m_rhi_device, RHI_Filter_Nearest,    RHI_Filter_Nearest, RHI_Sampler_Mipmap_Nearest, RHI_Sampler_Address_Wrap,   RHI_Comparison_Always);
-            m_sampler_bilinear_clamp                    = make_shared<RHI_Sampler>(m_rhi_device, RHI_Filter_Linear,     RHI_Filter_Linear,  RHI_Sampler_Mipmap_Nearest, RHI_Sampler_Address_Clamp,  RHI_Comparison_Always);
-            m_sampler_bilinear_wrap                     = make_shared<RHI_Sampler>(m_rhi_device, RHI_Filter_Linear,     RHI_Filter_Linear,  RHI_Sampler_Mipmap_Nearest, RHI_Sampler_Address_Wrap,   RHI_Comparison_Always);
-            m_sampler_trilinear_clamp                   = make_shared<RHI_Sampler>(m_rhi_device, RHI_Filter_Linear,     RHI_Filter_Linear,  RHI_Sampler_Mipmap_Linear,  RHI_Sampler_Address_Clamp,  RHI_Comparison_Always);
-            m_sampler_anisotropic_wrap                  = make_shared<RHI_Sampler>(m_rhi_device, RHI_Filter_Linear,     RHI_Filter_Linear,  RHI_Sampler_Mipmap_Linear,  RHI_Sampler_Address_Wrap,   RHI_Comparison_Always,  true);
-        }
 
-        if (create_dynamic)
+                                        /*                                       Minification,         Magnification,      Mip,                        Sampler Address Mode,       Comparison              Anisotropy, Comparison, Mip Lod Bias */
+        if (!create_only_dynamic)
         {
-            m_sampler_bilinear_clamp_amd_fidelityfx_fsr = make_shared<RHI_Sampler>(m_rhi_device, RHI_Filter_Linear,     RHI_Filter_Linear,  RHI_Sampler_Mipmap_Nearest, RHI_Sampler_Address_Clamp,  RHI_Comparison_Always,  false,      false,  amd_fidelityfx_fsr);
+            m_sampler_compare_depth     = make_shared<RHI_Sampler>(m_rhi_device, RHI_Filter_Linear,     RHI_Filter_Linear,  RHI_Sampler_Mipmap_Nearest, RHI_Sampler_Address_Clamp,  depth_comparison,       false,      true);
+            m_sampler_point_clamp       = make_shared<RHI_Sampler>(m_rhi_device, RHI_Filter_Nearest,    RHI_Filter_Nearest, RHI_Sampler_Mipmap_Nearest, RHI_Sampler_Address_Clamp,  RHI_Comparison_Always);
+            m_sampler_point_wrap        = make_shared<RHI_Sampler>(m_rhi_device, RHI_Filter_Nearest,    RHI_Filter_Nearest, RHI_Sampler_Mipmap_Nearest, RHI_Sampler_Address_Wrap,   RHI_Comparison_Always);
+            m_sampler_bilinear_clamp    = make_shared<RHI_Sampler>(m_rhi_device, RHI_Filter_Linear,     RHI_Filter_Linear,  RHI_Sampler_Mipmap_Nearest, RHI_Sampler_Address_Clamp,  RHI_Comparison_Always);
+            m_sampler_bilinear_wrap     = make_shared<RHI_Sampler>(m_rhi_device, RHI_Filter_Linear,     RHI_Filter_Linear,  RHI_Sampler_Mipmap_Nearest, RHI_Sampler_Address_Wrap,   RHI_Comparison_Always);
+            m_sampler_trilinear_clamp   = make_shared<RHI_Sampler>(m_rhi_device, RHI_Filter_Linear,     RHI_Filter_Linear,  RHI_Sampler_Mipmap_Linear,  RHI_Sampler_Address_Clamp,  RHI_Comparison_Always);
         }
+        m_sampler_anisotropic_wrap      = make_shared<RHI_Sampler>(m_rhi_device, RHI_Filter_Linear,     RHI_Filter_Linear,  RHI_Sampler_Mipmap_Linear,  RHI_Sampler_Address_Wrap,   RHI_Comparison_Always,  true,       false,      amd_fidelityfx_fsr);
     }
 
     void Renderer::CreateStructuredBuffers()
