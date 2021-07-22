@@ -19,13 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ========================
+//= INCLUDES ===============================
 #include "Spartan.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Sampler.h"
 #include "../RHI_Device.h"
+#include "../RHI_DescriptorSetLayoutCache.h"
 #include "../../Rendering/Renderer.h"
-//===================================
+//==========================================
 
 namespace Spartan
 {
@@ -44,7 +45,7 @@ namespace Spartan
         sampler_info.compareEnable          = m_comparison_enabled ? VK_TRUE : VK_FALSE;
         sampler_info.compareOp              = vulkan_compare_operator[m_comparison_function];
         sampler_info.borderColor            = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
-        sampler_info.mipLodBias             = 0.0f;
+        sampler_info.mipLodBias             = m_mip_lod_bias;
         sampler_info.minLod                 = 0.0f;
         sampler_info.maxLod                 = FLT_MAX;
     
@@ -56,6 +57,15 @@ namespace Spartan
 
     RHI_Sampler::~RHI_Sampler()
     {
+        // Make sure that no descriptor sets refers to this sampler
+        if (Renderer* renderer = m_rhi_device->GetContext()->GetSubsystem<Renderer>())
+        {
+            if (RHI_DescriptorSetLayoutCache* descriptor_set_layout_cache = renderer->GetDescriptorLayoutSetCache())
+            {
+                descriptor_set_layout_cache->RemoveSampler(this);
+            }
+        }
+
         // Wait in case it's still in use by the GPU
         m_rhi_device->Queue_WaitAll();
 

@@ -36,7 +36,7 @@ namespace Spartan
         sampler_desc.AddressU           = d3d11_sampler_address_mode[m_sampler_address_mode];
         sampler_desc.AddressV           = d3d11_sampler_address_mode[m_sampler_address_mode];
         sampler_desc.AddressW           = d3d11_sampler_address_mode[m_sampler_address_mode];
-        sampler_desc.MipLODBias         = 0.0f;
+        sampler_desc.MipLODBias         = m_mip_lod_bias;
         sampler_desc.MaxAnisotropy      = m_rhi_device->GetContext()->GetSubsystem<Renderer>()->GetOptionValue<UINT>(Renderer_Option_Value::Anisotropy);
         sampler_desc.ComparisonFunc     = d3d11_comparison_function[m_comparison_function];
         sampler_desc.BorderColor[0]     = 0;
@@ -47,10 +47,7 @@ namespace Spartan
         sampler_desc.MaxLOD             = FLT_MAX;
     
         // Create sampler state.
-        if (FAILED(m_rhi_device->GetContextRhi()->device->CreateSamplerState(&sampler_desc, reinterpret_cast<ID3D11SamplerState**>(&m_resource))))
-        {
-            LOG_ERROR("Failed to create sampler state");
-        }
+        d3d11_utility::error_check(m_rhi_device->GetContextRhi()->device->CreateSamplerState(&sampler_desc, reinterpret_cast<ID3D11SamplerState**>(&m_resource)));
     }
 
     RHI_Sampler::~RHI_Sampler()

@@ -36,7 +36,8 @@ namespace Spartan
         const RHI_Sampler_Address_Mode sampler_address_mode /* = RHI_Sampler_Address_Wrap */,
         const RHI_Comparison_Function comparison_function   /* = RHI_Comparison_Always */,
         const bool anisotropy_enabled                       /* = false */,
-        const bool comparison_enabled                       /* = false */
+        const bool comparison_enabled                       /* = false */,
+        const float mip_lod_bias                            /* = 0.0f */
     )
     {
         if (!rhi_device || !rhi_device->GetContextRhi()->device)
@@ -54,6 +55,7 @@ namespace Spartan
         m_comparison_function   = comparison_function;
         m_anisotropy_enabled    = anisotropy_enabled;
         m_comparison_enabled    = comparison_enabled;
+        m_mip_lod_bias          = mip_lod_bias;
 
         CreateResource();
     }

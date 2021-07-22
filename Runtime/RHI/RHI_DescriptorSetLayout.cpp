@@ -201,6 +201,26 @@ namespace Spartan
         }
     }
 
+    void RHI_DescriptorSetLayout::RemoveSampler(RHI_Sampler* sampler)
+    {
+        for (RHI_Descriptor& descriptor : m_descriptors)
+        {
+            if (descriptor.type == RHI_Descriptor_Type::Sampler)
+            {
+                if (descriptor.data == sampler)
+                {
+                    // Determine if the descriptor set needs to bind (affects vkUpdateDescriptorSets)
+                    m_needs_to_bind = true;
+
+                    // Update
+                    descriptor.data = nullptr;
+
+                    return;
+                }
+            }
+        }
+    }
+
     void RHI_DescriptorSetLayout::ClearDescriptorData()
     {
         for (RHI_Descriptor& descriptor : m_descriptors)

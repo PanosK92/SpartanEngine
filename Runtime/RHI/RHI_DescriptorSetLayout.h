@@ -47,6 +47,7 @@ namespace Spartan
         // Remove
         void RemoveConstantBuffer(RHI_ConstantBuffer* constant_buffer);
         void RemoveTexture(RHI_Texture* texture, const int mip);
+        void RemoveSampler(RHI_Sampler* sampler);
 
         void ClearDescriptorData();
         bool GetDescriptorSet(RHI_DescriptorSetLayoutCache* descriptor_set_layout_cache, RHI_DescriptorSet*& descriptor_set);

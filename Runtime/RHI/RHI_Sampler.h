@@ -40,7 +40,8 @@ namespace Spartan
             const RHI_Sampler_Address_Mode sampler_address_mode = RHI_Sampler_Address_Wrap,
             const RHI_Comparison_Function comparison_function   = RHI_Comparison_Always,
             const bool anisotropy_enabled                       = false,
-            const bool comparison_enabled                       = false
+            const bool comparison_enabled                       = false,
+            const float mip_bias                                = 0.0f
             );
         ~RHI_Sampler();
 
@@ -63,6 +64,7 @@ namespace Spartan
         RHI_Comparison_Function m_comparison_function   = RHI_Comparison_Always;
         bool m_anisotropy_enabled                       = false;
         bool m_comparison_enabled                       = false;
+        float m_mip_lod_bias                                = 0.0f;
 
         // API
         void* m_resource = nullptr;

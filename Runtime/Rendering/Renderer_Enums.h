@@ -112,7 +112,6 @@ namespace Spartan
         Dof_Bokeh_C,
         Dof_Tent_C,
         Dof_UpscaleBlend_C,
-        Sharpening_C,
         ChromaticAberration_C,
         BloomLuminance_C,
         BloomDownsample_C,
@@ -144,7 +143,10 @@ namespace Spartan
         BlurGaussian_P,
         BlurGaussianBilateral_P,
         Entity_Outline_P,
-        MipGeneration_C
+        AMD_FidelityFX_CAS_C,
+        AMD_FidelityFX_SPD_C,
+        AMD_FidelityFX_FSR_Upsample_C,
+        AMD_FidelityFX_FSR_Sharpen_C
     };
 
     // Render targets
@@ -178,30 +180,32 @@ namespace Spartan
     // Renderer/graphics options
     enum Renderer_Option : uint64_t
     {
-        Render_Debug_Aabb                   = 1 << 0,
-        Render_Debug_PickingRay             = 1 << 1,
-        Render_Debug_Grid                   = 1 << 2,
-        Render_Debug_Transform              = 1 << 3,
-        Render_Debug_SelectionOutline       = 1 << 4,
-        Render_Debug_Lights                 = 1 << 5,
-        Render_Debug_PerformanceMetrics     = 1 << 6,
-        Render_Debug_Physics                = 1 << 7,
-        Render_Debug_Wireframe              = 1 << 8,
-        Render_Bloom                        = 1 << 9,
-        Render_VolumetricFog                = 1 << 10,
-        Render_AntiAliasing_Taa             = 1 << 11,
-        Render_AntiAliasing_Fxaa            = 1 << 12,
-        Render_Ssao                         = 1 << 13,
-        Render_ScreenSpaceShadows           = 1 << 14,
-        Render_ScreenSpaceReflections       = 1 << 15,
-        Render_MotionBlur                   = 1 << 16,
-        Render_DepthOfField                 = 1 << 17,
-        Render_FilmGrain                    = 1 << 18,
-        Render_Sharpening                   = 1 << 19,
-        Render_ChromaticAberration          = 1 << 20,
-        Render_Dithering                    = 1 << 21,
-        Render_ReverseZ                     = 1 << 22,
-        Render_DepthPrepass                 = 1 << 23
+        Render_Debug_Aabb                                               = 1 << 0,
+        Render_Debug_PickingRay                                         = 1 << 1,
+        Render_Debug_Grid                                               = 1 << 2,
+        Render_Debug_Transform                                          = 1 << 3,
+        Render_Debug_SelectionOutline                                   = 1 << 4,
+        Render_Debug_Lights                                             = 1 << 5,
+        Render_Debug_PerformanceMetrics                                 = 1 << 6,
+        Render_Debug_Physics                                            = 1 << 7,
+        Render_Debug_Wireframe                                          = 1 << 8,
+        Render_Bloom                                                    = 1 << 9,
+        Render_VolumetricFog                                            = 1 << 10,
+        Render_AntiAliasing_Taa                                         = 1 << 11,
+        Render_AntiAliasing_Fxaa                                        = 1 << 12,
+        Render_Ssao                                                     = 1 << 13,
+        Render_ScreenSpaceShadows                                       = 1 << 14,
+        Render_ScreenSpaceReflections                                   = 1 << 15,
+        Render_MotionBlur                                               = 1 << 16,
+        Render_DepthOfField                                             = 1 << 17,
+        Render_FilmGrain                                                = 1 << 18,
+        Render_Sharpening_AMD_FidelityFX_ContrastAdaptiveSharpening     = 1 << 19,
+        Render_ChromaticAberration                                      = 1 << 20,
+        Render_Dithering                                                = 1 << 21,
+        Render_ReverseZ                                                 = 1 << 22,
+        Render_DepthPrepass                                             = 1 << 23,
+        Render_Upsample_TAA                                             = 1 << 24,
+        Render_Upsample_AMD_FidelityFX_SuperResolution                  = 1 << 25
     };
 
     // Renderer/graphics options values
@@ -214,7 +218,6 @@ namespace Spartan
         Bloom_Intensity,
         Sharpen_Strength,
         Fog,
-        Taa_AllowUpsampling,
         Ssao_Gi
     };
 

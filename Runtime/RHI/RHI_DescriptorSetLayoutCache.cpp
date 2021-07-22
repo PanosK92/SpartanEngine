@@ -130,6 +130,16 @@ namespace Spartan
         }
     }
 
+    void RHI_DescriptorSetLayoutCache::RemoveSampler(RHI_Sampler* sampler)
+    {
+        SP_ASSERT(sampler != nullptr);
+
+        for (const auto& it : m_descriptor_set_layouts)
+        {
+            it.second->RemoveSampler(sampler);
+        }
+    }
+
     bool RHI_DescriptorSetLayoutCache::GetDescriptorSet(RHI_DescriptorSet*& descriptor_set)
     {
         if (m_descriptor_layout_current)

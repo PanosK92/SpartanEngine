@@ -53,7 +53,6 @@ Platform | API | Status | Quality | Binaries
 - Custom mip chain generation (Higher texture fidelity using Lanczos3 scaling)
 - Font rendering
 - Frustum culling
-- Post-process effects (Tone-Mapping, FXAA, Sharpening, Dithering, Chromatic aberration etc.)
 - Physics (Rigid bodies, Constraints, Colliders)
 - Entity-component system
 - Event system
@@ -66,6 +65,9 @@ Platform | API | Status | Quality | Binaries
 - XML files
 - Windows 10 and a modern/dedicated GPU (The target is high-end machines, old setups or mobile devices are not officially supported)
 - Easy to build (Single click project generation which includes editor and runtime)
+- AMD FidelityFX Contrast Adaptive Sharpening
+- AMD FidelityFX Single Pass Downsampler
+- AMD FidelityFX Super Resolution
 
 # Roadmap
 

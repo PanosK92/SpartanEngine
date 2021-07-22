@@ -70,7 +70,7 @@ namespace Spartan
         m_options |= Render_ScreenSpaceShadows;
         m_options |= Render_ScreenSpaceReflections;
         m_options |= Render_AntiAliasing_Taa;
-        m_options |= Render_Sharpening;
+        m_options |= Render_Sharpening_AMD_FidelityFX_ContrastAdaptiveSharpening;
 
         // Option values
         m_option_values[Renderer_Option_Value::Anisotropy]          = 16.0f;
@@ -168,18 +168,18 @@ namespace Spartan
         m_transform_handle = make_unique<TransformGizmo>(m_context);
 
         // Set render, output and viewport resolution/size to whatever the window is (initially)
-        SetResolutionRender(window_width, window_height);
-        SetResolutionOutput(static_cast<uint32_t>(m_resolution_render.x), static_cast<uint32_t>(m_resolution_render.y));
-        SetViewport(m_resolution_render.x, m_resolution_render.y);
+        SetResolutionRender(window_width, window_height, false);
+        SetResolutionOutput(window_width, window_height, false);
+        SetViewport(static_cast<float>(window_width), static_cast<float>(window_height));
 
         CreateConstantBuffers();
         CreateShaders();
         CreateDepthStencilStates();
         CreateRasterizerStates();
         CreateBlendStates();
-        CreateRenderTextures(false, false, true, true);
+        CreateRenderTextures(true, true, true, true);
         CreateFonts();
-        CreateSamplers();
+        CreateSamplers(true, true);
         CreateStructuredBuffers();
         CreateTextures();
 
@@ -323,10 +323,10 @@ namespace Spartan
             m_buffer_frame_cpu.frame                        = static_cast<uint32_t>(m_frame_num);
 
             // These must match what Common_Buffer.hlsl is reading
-            m_buffer_frame_cpu.set_bit(GetOption(Render_ScreenSpaceReflections), 1 << 0);
-            m_buffer_frame_cpu.set_bit(GetOptionValue<bool>(Renderer_Option_Value::Taa_AllowUpsampling),    1 << 1);
-            m_buffer_frame_cpu.set_bit(GetOption(Render_Ssao),                                              1 << 2);
-            m_buffer_frame_cpu.set_bit(GetOptionValue<bool>(Renderer_Option_Value::Ssao_Gi),                1 << 3);
+            m_buffer_frame_cpu.set_bit(GetOption(Render_ScreenSpaceReflections),                1 << 0);
+            m_buffer_frame_cpu.set_bit(GetOption(Render_Upsample_TAA),                          1 << 1);
+            m_buffer_frame_cpu.set_bit(GetOption(Render_Ssao),                                  1 << 2);
+            m_buffer_frame_cpu.set_bit(GetOptionValue<bool>(Renderer_Option_Value::Ssao_Gi),    1 << 3);
         }
 
         Pass_Main(m_cmd_current);
@@ -357,7 +357,7 @@ namespace Spartan
         }
     }
 
-    void Renderer::SetResolutionRender(uint32_t width, uint32_t height)
+    void Renderer::SetResolutionRender(uint32_t width, uint32_t height, bool recreate_resources /*= true*/)
     {
         // Return if resolution is invalid
         if (!RHI_Device::IsValidResolution(width, height))
@@ -387,14 +387,20 @@ namespace Spartan
         // Register display mode (in case it doesn't exist)
         Display::RegisterDisplayMode(display_mode, m_context);
 
-        // Re-create render textures
-        CreateRenderTextures(true, false, false, true);
+        if (recreate_resources)
+        {
+            // Re-create render textures
+            CreateRenderTextures(true, false, false, true);
+
+            // Re-create samplers
+            CreateSamplers(false, true);
+        }
 
         // Log
         LOG_INFO("Render resolution has been set to %dx%d", width, height);
     }
 
-    void Renderer::SetResolutionOutput(uint32_t width, uint32_t height)
+    void Renderer::SetResolutionOutput(uint32_t width, uint32_t height, bool recreate_resources /*= true*/)
     {
         // Return if resolution is invalid
         if (!m_rhi_device->IsValidResolution(width, height))
@@ -415,8 +421,14 @@ namespace Spartan
         m_resolution_output.x = static_cast<float>(width);
         m_resolution_output.y = static_cast<float>(height);
 
-        // Re-create render textures
-        CreateRenderTextures(false, true, false, true);
+        if (recreate_resources)
+        {
+            // Re-create render textures
+            CreateRenderTextures(false, true, false, true);
+
+            // Re-create samplers
+            CreateSamplers(false, true);
+        }
 
         // Log
         LOG_INFO("Output resolution output has been set to %dx%d", width, height);
@@ -481,7 +493,7 @@ namespace Spartan
         return buffer_gpu->Unmap(offset, size);
     }
 
-    bool Renderer::UpdateFrameBuffer(RHI_CommandList* cmd_list)
+	bool Renderer::UpdateFrameBuffer(RHI_CommandList* cmd_list)
     {
         SP_ASSERT(cmd_list != nullptr);
 
@@ -685,13 +697,25 @@ namespace Spartan
 
     void Renderer::SetOption(Renderer_Option option, bool enable)
     {
+        bool toggled = false;
+
         if (enable && !GetOption(option))
         {
             m_options |= option;
+            toggled = true;
         }
         else if (!enable && GetOption(option))
         {
             m_options &= ~option;
+            toggled = true;
+        }
+
+        if (toggled)
+        {
+            if (option == Renderer_Option::Render_Upsample_TAA || option == Renderer_Option::Render_Upsample_AMD_FidelityFX_SuperResolution)
+            {
+                CreateRenderTextures(false, false, false, true);
+            }
         }
     }
 
@@ -726,11 +750,6 @@ namespace Spartan
                     light->CreateShadowMap();
                 }
             }
-        }
-
-        if (option == Renderer_Option_Value::Taa_AllowUpsampling)
-        {
-            CreateRenderTextures(false, false, false, true);
         }
     }
 

@@ -62,9 +62,10 @@ namespace Spartan
         cmd_list->SetSampler(1, m_sampler_point_clamp);
         cmd_list->SetSampler(2, m_sampler_point_wrap);
         cmd_list->SetSampler(3, m_sampler_bilinear_clamp);
-        cmd_list->SetSampler(4, m_sampler_bilinear_wrap);
-        cmd_list->SetSampler(5, m_sampler_trilinear_clamp);
-        cmd_list->SetSampler(6, m_sampler_anisotropic_wrap);
+        cmd_list->SetSampler(4, m_sampler_bilinear_clamp_amd_fidelityfx_fsr);
+        cmd_list->SetSampler(5, m_sampler_bilinear_wrap);
+        cmd_list->SetSampler(6, m_sampler_trilinear_clamp);
+        cmd_list->SetSampler(7, m_sampler_anisotropic_wrap);
 
         // Textures
         cmd_list->SetTexture(RendererBindingsSrv::noise_normal, m_tex_default_noise_normal);
@@ -1109,14 +1110,18 @@ namespace Spartan
             rt_frame.swap(rt_frame_2);
         }
 
+        // Upsampling vars
+        bool upsampled                      = false;
+        bool resolution_output_larger       = m_resolution_output.x > m_resolution_render.x;
+        bool resolution_output_different    = m_resolution_output != m_resolution_render;
+
         // TAA
-        bool copy_required = true;
         if (GetOption(Render_AntiAliasing_Taa))
         {
-            if (GetOptionValue<bool>(Renderer_Option_Value::Taa_AllowUpsampling))
+            if (resolution_output_larger && GetOption(Render_Upsample_TAA))
             {
                 Pass_PostProcess_TAA(cmd_list, rt_frame, rt_frame_pp);
-                copy_required = false; // taa writes directly in the high res buffer
+                upsampled = true; // taa writes directly in the high res buffer
             }
             else
             {
@@ -1125,30 +1130,30 @@ namespace Spartan
             }
         }
 
-        // FXAA
-        if (GetOption(Render_AntiAliasing_Fxaa))
+        // Upsample - AMD FidelityFX SuperResolution - TODO: This needs to be in perceptual space and normalised to 0, 1 range.
+        if (resolution_output_larger && GetOption(Render_Upsample_AMD_FidelityFX_SuperResolution))
         {
-            Pass_PostProcess_Fxaa(cmd_list, rt_frame, rt_frame_2);
-            rt_frame.swap(rt_frame_2);
+            Pass_AMD_FidelityFX_SuperResolution(cmd_list, rt_frame.get(), rt_frame_pp.get(), rt_frame_pp_2.get());
+            upsampled = true;
         }
 
-        // If TAA didn't write into the output res buffer (upsampling), copy now.
-        if (copy_required)
+        // If we haven't upsampled, do a bilinear upscale (different output resolution) or a blit (same output resolution)
+        if (!upsampled)
         {
-            if (m_resolution_render == m_resolution_output)
+            if (resolution_output_different)
             {
-                cmd_list->Blit(rt_frame, rt_frame_pp);
+                Pass_CopyBilinear(cmd_list, rt_frame.get(), rt_frame_pp.get());
             }
             else
             {
-                Pass_CopyBilinear(cmd_list, rt_frame.get(), rt_frame_pp.get());
+                cmd_list->Blit(rt_frame, rt_frame_pp);
             }
         }
 
         // Sharpening
-        if (GetOption(Render_Sharpening))
+        if (GetOption(Render_Sharpening_AMD_FidelityFX_ContrastAdaptiveSharpening))
         {
-            Pass_PostProcess_Sharpening(cmd_list, rt_frame_pp, rt_frame_pp_2);
+            Pass_AMD_FidelityFX_ContrastAdaptiveSharpening(cmd_list, rt_frame_pp, rt_frame_pp_2);
             rt_frame_pp.swap(rt_frame_pp_2);
         }
 
@@ -1170,6 +1175,13 @@ namespace Spartan
         if (m_option_values[Renderer_Option_Value::Tonemapping] != 0)
         {
             Pass_PostProcess_ToneMapping(cmd_list, rt_frame_pp, rt_frame_pp_2);
+            rt_frame_pp.swap(rt_frame_pp_2);
+        }
+
+        // FXAA
+        if (GetOption(Render_AntiAliasing_Fxaa))
+        {
+            Pass_PostProcess_Fxaa(cmd_list, rt_frame_pp, rt_frame_pp_2);
             rt_frame_pp.swap(rt_frame_pp_2);
         }
 
@@ -1246,17 +1258,24 @@ namespace Spartan
         }
 
         // Update history buffer
-        cmd_list->Blit(tex_out.get(), tex_history);
+        if (tex_out->GetViewport() == tex_history->GetViewport())
+        {
+            cmd_list->Blit(tex_out.get(), tex_history);
+        }
+        else
+        {
+            Pass_CopyBilinear(cmd_list, tex_in.get(), tex_out.get());
+        }
     }
 
     void Renderer::Pass_PostProcess_Bloom(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
         // Acquire shaders
         RHI_Shader* shader_luminance        = m_shaders[RendererShader::BloomLuminance_C].get();
-        RHI_Shader* shader_mipGeneration    = m_shaders[RendererShader::MipGeneration_C].get();
         RHI_Shader* shader_upsampleBlendMip = m_shaders[RendererShader::BloomUpsampleBlendMip_C].get();
         RHI_Shader* shader_blendFrame       = m_shaders[RendererShader::BloomBlendFrame_C].get();
-        if (!shader_luminance->IsCompiled() || !shader_upsampleBlendMip->IsCompiled() || !shader_mipGeneration->IsCompiled() || !shader_blendFrame->IsCompiled())
+
+        if (!shader_luminance->IsCompiled() || !shader_upsampleBlendMip->IsCompiled() || !shader_blendFrame->IsCompiled())
             return;
 
         // Acquire render target
@@ -1288,45 +1307,8 @@ namespace Spartan
             }
         }
 
-        // Downsample
-        {
-            // AMD FidelityFX Single Pass Downsampler.
-            // Provides an RDNA™-optimized solution for generating up to 12 MIP levels of a texture.
-            // GitHub:          https://github.com/GPUOpen-Effects/FidelityFX-SPD
-            // Documentation:   https://github.com/GPUOpen-Effects/FidelityFX-SPD/blob/master/docs/FidelityFX_SPD.pdf
-
-            // Set render state
-            static RHI_PipelineState pso;
-            pso.shader_compute   = shader_mipGeneration;
-            pso.pass_name        = "Pass_PostProcess_BloomMipGeneration";
-
-            // Draw
-            if (cmd_list->BeginRenderPass(pso))
-            {
-                uint32_t remaining_mip_count = tex_bloom->GetMipCount() - 1; // all mips but the top
-
-                // As per documentation (page 22)
-                SP_ASSERT(remaining_mip_count <= 12);
-
-                // As per documentation (page 22)
-                const uint32_t thread_group_count_x = (tex_bloom->GetWidth() + 63) >> 6;
-                const uint32_t thread_group_count_y = (tex_bloom->GetHeight() + 63) >> 6;
-                const uint32_t thread_group_count_z = 1;
-                const bool async                    = false;
-
-                // Update uber buffer
-                m_buffer_uber_cpu.resolution        = Vector2(static_cast<float>(tex_bloom->GetWidth()), static_cast<float>(tex_bloom->GetHeight()));
-                m_buffer_uber_cpu.mip_count         = remaining_mip_count;
-                m_buffer_uber_cpu.work_group_count  = thread_group_count_x * thread_group_count_y * thread_group_count_z;
-                UpdateUberBuffer(cmd_list);
-
-                cmd_list->SetTexture(RendererBindingsSrv::tex, tex_bloom, 0); // top mip
-                cmd_list->SetTexture(RendererBindingsUav::rgba_mips, tex_bloom, 1, true); // rest of the mips
-                cmd_list->SetStructuredBuffer(RendererBindingsStructuredBuffer::counter, m_structured_buffer_counter);
-                cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
-                cmd_list->EndRenderPass();
-            }
-        }
+        // Generate mips
+        Pass_AMD_FidelityFX_SinglePassDowsnampler(cmd_list, tex_bloom);
 
         // Starting from the lowest mip, upsample and blend with the higher one
         {
@@ -1758,17 +1740,17 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_PostProcess_Sharpening(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    void Renderer::Pass_AMD_FidelityFX_ContrastAdaptiveSharpening(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
         // Acquire shaders
-        RHI_Shader* shader_c = m_shaders[RendererShader::Sharpening_C].get();
+        RHI_Shader* shader_c = m_shaders[RendererShader::AMD_FidelityFX_CAS_C].get();
         if (!shader_c->IsCompiled())
             return;
 
         // Set render state
         static RHI_PipelineState pso;
         pso.shader_compute = shader_c;
-        pso.pass_name      = "Pass_PostProcess_Sharpening";
+        pso.pass_name      = "Pass_AMD_FidelityFX_ContrastAdaptiveSharpening";
 
         // Draw
         if (cmd_list->BeginRenderPass(pso))
@@ -1786,6 +1768,107 @@ namespace Spartan
             cmd_list->SetTexture(RendererBindingsSrv::tex, tex_in);
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
+        }
+    }
+
+    void Renderer::Pass_AMD_FidelityFX_SinglePassDowsnampler(RHI_CommandList* cmd_list, RHI_Texture* tex)
+    {
+        // AMD FidelityFX Single Pass Downsampler.
+        // Provides an RDNA™-optimized solution for generating up to 12 MIP levels of a texture.
+        // GitHub:          https://github.com/GPUOpen-Effects/FidelityFX-SPD
+        // Documentation:   https://github.com/GPUOpen-Effects/FidelityFX-SPD/blob/master/docs/FidelityFX_SPD.pdf
+
+        SP_ASSERT(tex->HasPerMipView());
+
+        // Acquire shader
+        RHI_Shader* shader = m_shaders[RendererShader::AMD_FidelityFX_SPD_C].get();
+
+        if (!shader->IsCompiled())
+            return;
+
+        // Set render state
+        static RHI_PipelineState pso;
+        pso.shader_compute  = shader;
+        pso.pass_name       = "Pass_AMD_FidelityFX_SinglePassDowsnampler";
+
+        // Draw
+        if (cmd_list->BeginRenderPass(pso))
+        {
+            uint32_t generated_mips_count = tex->GetMipCount() - 1; // all mips but the top
+
+            // As per documentation (page 22)
+            SP_ASSERT(generated_mips_count <= 12);
+
+            // As per documentation (page 22)
+            const uint32_t thread_group_count_x = (tex->GetWidth() + 63) >> 6;
+            const uint32_t thread_group_count_y = (tex->GetHeight() + 63) >> 6;
+            const uint32_t thread_group_count_z = 1;
+            const bool async                    = false;
+        
+            // Update uber buffer
+            m_buffer_uber_cpu.resolution        = Vector2(static_cast<float>(tex->GetWidth()), static_cast<float>(tex->GetHeight()));
+            m_buffer_uber_cpu.mip_count         = generated_mips_count;
+            m_buffer_uber_cpu.work_group_count  = thread_group_count_x * thread_group_count_y * thread_group_count_z;
+            UpdateUberBuffer(cmd_list);
+        
+            cmd_list->SetTexture(RendererBindingsSrv::tex, tex, 0); // top mip
+            cmd_list->SetTexture(RendererBindingsUav::rgba_mips, tex, 1, true); // rest of the mips
+            cmd_list->SetStructuredBuffer(RendererBindingsStructuredBuffer::counter, m_structured_buffer_counter);
+            cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
+            cmd_list->EndRenderPass();
+        }
+    }
+
+    void Renderer::Pass_AMD_FidelityFX_SuperResolution(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, RHI_Texture* tex_out_scratch)
+    {
+        // Acquire shaders
+        RHI_Shader* shader_upsample_c   = m_shaders[RendererShader::AMD_FidelityFX_FSR_Upsample_C].get();
+        RHI_Shader* shader_sharpen_c    = m_shaders[RendererShader::AMD_FidelityFX_FSR_Sharpen_C].get();
+        if (!shader_upsample_c->IsCompiled() || !shader_sharpen_c->IsCompiled())
+            return;
+
+        // Upsample
+        {
+            // Set render state
+            static RHI_PipelineState pso;
+            pso.shader_compute = shader_upsample_c;
+            pso.pass_name      = "Pass_AMD_FidelityFX_SuperResolution_Upsample";
+
+            if (cmd_list->BeginRenderPass(pso))
+            {
+                static const int thread_group_work_region_dim   = 16;
+                const uint32_t thread_group_count_x             = (tex_out->GetWidth() + (thread_group_work_region_dim - 1)) / thread_group_work_region_dim;
+                const uint32_t thread_group_count_y             = (tex_out->GetHeight() + (thread_group_work_region_dim - 1)) / thread_group_work_region_dim;
+                const uint32_t thread_group_count_z             = 1;
+                const bool async                                = false;
+
+                cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out_scratch);
+                cmd_list->SetTexture(RendererBindingsSrv::tex, tex_in);
+                cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
+                cmd_list->EndRenderPass();
+            }
+        }
+
+        // Sharpen
+        {
+            // Set render state
+            static RHI_PipelineState pso;
+            pso.shader_compute  = shader_sharpen_c;
+            pso.pass_name       = "Pass_AMD_FidelityFX_SuperResolution_Sharpen";
+
+            if (cmd_list->BeginRenderPass(pso))
+            {
+                static const int thread_group_work_region_dim   = 16;
+                const uint32_t thread_group_count_x             = (tex_out->GetWidth() + (thread_group_work_region_dim - 1)) / thread_group_work_region_dim;
+                const uint32_t thread_group_count_y             = (tex_out->GetHeight() + (thread_group_work_region_dim - 1)) / thread_group_work_region_dim;
+                const uint32_t thread_group_count_z             = 1;
+                const bool async                                = false;
+
+                cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out);
+                cmd_list->SetTexture(RendererBindingsSrv::tex, tex_out_scratch);
+                cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
+                cmd_list->EndRenderPass();
+            }
         }
     }
 
@@ -2319,11 +2402,6 @@ namespace Spartan
             shader_type = RendererShader::DebugNormal_C;
         }
 
-        if (m_render_target_debug == RendererRt::Gbuffer_Material)
-        {
-            shader_type = RendererShader::Copy_Point_C;
-        }
-
         if (m_render_target_debug == RendererRt::Light_Diffuse || m_render_target_debug == RendererRt::Light_Diffuse_Transparent)
         {
             shader_type = RendererShader::DebugChannelRgbGammaCorrect_C;
@@ -2378,11 +2456,6 @@ namespace Spartan
         if (m_render_target_debug == RendererRt::Light_Volumetric)
         {
             shader_type = RendererShader::DebugChannelRgbGammaCorrect_C;
-        }
-
-        if (m_render_target_debug == RendererRt::Brdf_Specular_Lut)
-        {
-            shader_type = RendererShader::Copy_Point_C;
         }
 
         // Acquire shaders
