@@ -31,9 +31,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ffx_a.h"
 
 // Functions required by ffx_fsr1.h
-AF4 FsrEasuRF(AF2 p) { AF4 res = tex.GatherRed(sampler_bilinear_clamp_amd_fidelityfx_fsr,      p, int2(0, 0)); return res; }
-AF4 FsrEasuGF(AF2 p) { AF4 res = tex.GatherGreen(sampler_bilinear_clamp_amd_fidelityfx_fsr,    p, int2(0, 0)); return res; }
-AF4 FsrEasuBF(AF2 p) { AF4 res = tex.GatherBlue(sampler_bilinear_clamp_amd_fidelityfx_fsr,     p, int2(0, 0)); return res; }
+AF4 FsrEasuRF(AF2 p) { AF4 res = tex.GatherRed(sampler_bilinear_clamp,      p, int2(0, 0)); return res; }
+AF4 FsrEasuGF(AF2 p) { AF4 res = tex.GatherGreen(sampler_bilinear_clamp,    p, int2(0, 0)); return res; }
+AF4 FsrEasuBF(AF2 p) { AF4 res = tex.GatherBlue(sampler_bilinear_clamp,     p, int2(0, 0)); return res; }
 AF4 FsrRcasLoadF(ASU2 p) { return tex.Load(int3(ASU2(p), 0)); }
 void FsrRcasInputF(inout AF1 r, inout AF1 g, inout AF1 b) {}
 
@@ -114,3 +114,4 @@ void mainCS(uint3 LocalThreadId : SV_GroupThreadID, uint3 WorkGroupId : SV_Group
     pos.x -= 8u;
     filter(pos, const0, const1, const2, const3);
 }
+

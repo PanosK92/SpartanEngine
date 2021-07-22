@@ -62,10 +62,9 @@ namespace Spartan
         cmd_list->SetSampler(1, m_sampler_point_clamp);
         cmd_list->SetSampler(2, m_sampler_point_wrap);
         cmd_list->SetSampler(3, m_sampler_bilinear_clamp);
-        cmd_list->SetSampler(4, m_sampler_bilinear_clamp_amd_fidelityfx_fsr);
-        cmd_list->SetSampler(5, m_sampler_bilinear_wrap);
-        cmd_list->SetSampler(6, m_sampler_trilinear_clamp);
-        cmd_list->SetSampler(7, m_sampler_anisotropic_wrap);
+        cmd_list->SetSampler(4, m_sampler_bilinear_wrap);
+        cmd_list->SetSampler(5, m_sampler_trilinear_clamp);
+        cmd_list->SetSampler(6, m_sampler_anisotropic_wrap);
 
         // Textures
         cmd_list->SetTexture(RendererBindingsSrv::noise_normal, m_tex_default_noise_normal);

@@ -168,7 +168,7 @@ namespace Spartan
         void CreateFonts();
         void CreateTextures();
         void CreateShaders();
-        void CreateSamplers(const bool create_standard, const bool create_dynamic);
+        void CreateSamplers(const bool create_only_dynamic = false);
         void CreateStructuredBuffers();
         void CreateRenderTextures(const bool create_render, const bool create_output, const bool create_fixed, const bool create_dynamic);
 
@@ -262,7 +262,6 @@ namespace Spartan
         std::shared_ptr<RHI_Sampler> m_sampler_point_clamp;
         std::shared_ptr<RHI_Sampler> m_sampler_point_wrap;
         std::shared_ptr<RHI_Sampler> m_sampler_bilinear_clamp;
-        std::shared_ptr<RHI_Sampler> m_sampler_bilinear_clamp_amd_fidelityfx_fsr;
         std::shared_ptr<RHI_Sampler> m_sampler_bilinear_wrap;
         std::shared_ptr<RHI_Sampler> m_sampler_trilinear_clamp;
         std::shared_ptr<RHI_Sampler> m_sampler_anisotropic_wrap;
