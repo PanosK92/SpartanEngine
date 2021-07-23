@@ -229,10 +229,10 @@ namespace Spartan
         }
 
         // Primitive topology
-        if (pipeline_state.primitive_topology != RHI_PrimitiveTopology_Unknown)
+        if (pipeline_state.primitive_topology != RHI_PrimitiveTopology_Mode::RHI_PrimitiveTopology_Unknown)
         {
             // New state
-            const D3D11_PRIMITIVE_TOPOLOGY topology = d3d11_primitive_topology[pipeline_state.primitive_topology];
+            const D3D11_PRIMITIVE_TOPOLOGY topology = d3d11_primitive_topology[static_cast<uint32_t>(pipeline_state.primitive_topology)];
 
             // Current state
             D3D11_PRIMITIVE_TOPOLOGY topology_set;
@@ -241,7 +241,7 @@ namespace Spartan
             // Set if dirty
             if (topology_set != topology)
             {
-                device_context->IASetPrimitiveTopology(d3d11_primitive_topology[pipeline_state.primitive_topology]);
+                device_context->IASetPrimitiveTopology(d3d11_primitive_topology[static_cast<uint32_t>(pipeline_state.primitive_topology)]);
             }
         }
 
@@ -859,7 +859,7 @@ namespace Spartan
         }
 
         D3D11_QUERY_DESC desc   = {};
-        desc.Query              = (type == RHI_Query_Timestamp_Disjoint) ? D3D11_QUERY_TIMESTAMP_DISJOINT : D3D11_QUERY_TIMESTAMP;
+        desc.Query              = (type == RHI_Query_Type::Timestamp_Disjoint) ? D3D11_QUERY_TIMESTAMP_DISJOINT : D3D11_QUERY_TIMESTAMP;
         desc.MiscFlags          = 0;
         const auto result = rhi_context->device->CreateQuery(&desc, reinterpret_cast<ID3D11Query**>(query));
         if (FAILED(result))

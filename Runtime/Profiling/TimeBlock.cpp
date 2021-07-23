@@ -58,9 +58,9 @@ namespace Spartan
             // Create required queries
             if (!m_query_disjoint)
             {
-                RHI_CommandList::Gpu_QueryCreate(m_rhi_device, &m_query_disjoint, RHI_Query_Timestamp_Disjoint);
-                RHI_CommandList::Gpu_QueryCreate(m_rhi_device, &m_query_start, RHI_Query_Timestamp);
-                RHI_CommandList::Gpu_QueryCreate(m_rhi_device, &m_query_end, RHI_Query_Timestamp);
+                RHI_CommandList::Gpu_QueryCreate(m_rhi_device, &m_query_disjoint, RHI_Query_Type::Timestamp_Disjoint);
+                RHI_CommandList::Gpu_QueryCreate(m_rhi_device, &m_query_start, RHI_Query_Type::Timestamp);
+                RHI_CommandList::Gpu_QueryCreate(m_rhi_device, &m_query_end, RHI_Query_Type::Timestamp);
             }
 
             if (cmd_list)

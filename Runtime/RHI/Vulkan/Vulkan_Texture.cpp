@@ -149,7 +149,7 @@ namespace Spartan
             return false;
 
         // Copy the staging buffer into the image
-        if (VkCommandBuffer cmd_buffer = vulkan_utility::command_buffer_immediate::begin(RHI_Queue_Graphics))
+        if (VkCommandBuffer cmd_buffer = vulkan_utility::command_buffer_immediate::begin(RHI_Queue_Type::Graphics))
         {
             // Optimal layout for images which are the destination of a transfer format
             RHI_Image_Layout layout = RHI_Image_Layout::Transfer_Dst_Optimal;
@@ -168,7 +168,7 @@ namespace Spartan
             );
 
             // End/flush
-            if (!vulkan_utility::command_buffer_immediate::end(RHI_Queue_Graphics))
+            if (!vulkan_utility::command_buffer_immediate::end(RHI_Queue_Type::Graphics))
                 return false;
 
             // Free staging buffer
@@ -261,7 +261,7 @@ namespace Spartan
         }
 
         // Transition to target layout
-        if (VkCommandBuffer cmd_buffer = vulkan_utility::command_buffer_immediate::begin(RHI_Queue_Graphics))
+        if (VkCommandBuffer cmd_buffer = vulkan_utility::command_buffer_immediate::begin(RHI_Queue_Type::Graphics))
         {
             RHI_Image_Layout target_layout = GetAppropriateLayout(this);
 
@@ -269,7 +269,7 @@ namespace Spartan
             vulkan_utility::image::set_layout(cmd_buffer, this, 0, m_mip_count, m_array_length, m_layout[0], target_layout);
         
             // Flush
-            if (!vulkan_utility::command_buffer_immediate::end(RHI_Queue_Graphics))
+            if (!vulkan_utility::command_buffer_immediate::end(RHI_Queue_Type::Graphics))
             {
                 LOG_ERROR("Failed to end command buffer");
                 return false;

@@ -19,26 +19,25 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ========================
+//= INCLUDES =====================
 #include "Spartan.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Sampler.h"
 #include "../RHI_Device.h"
-#include "../../Rendering/Renderer.h"
-//===================================
+//================================
 
 namespace Spartan
 {
     void RHI_Sampler::CreateResource()
     {    
         D3D11_SAMPLER_DESC sampler_desc = {};
-        sampler_desc.Filter             = d3d11_utility::sampler::get_filter(m_filter_min, m_filter_mag, m_filter_mipmap, m_anisotropy_enabled, m_comparison_enabled);
-        sampler_desc.AddressU           = d3d11_sampler_address_mode[m_sampler_address_mode];
-        sampler_desc.AddressV           = d3d11_sampler_address_mode[m_sampler_address_mode];
-        sampler_desc.AddressW           = d3d11_sampler_address_mode[m_sampler_address_mode];
+        sampler_desc.Filter             = d3d11_utility::sampler::get_filter(m_filter_min, m_filter_mag, m_filter_mipmap, m_anisotropy != 0, m_comparison_enabled);
+        sampler_desc.AddressU           = d3d11_sampler_address_mode[static_cast<uint32_t>(m_sampler_address_mode)];
+        sampler_desc.AddressV           = d3d11_sampler_address_mode[static_cast<uint32_t>(m_sampler_address_mode)];
+        sampler_desc.AddressW           = d3d11_sampler_address_mode[static_cast<uint32_t>(m_sampler_address_mode)];
         sampler_desc.MipLODBias         = m_mip_lod_bias;
-        sampler_desc.MaxAnisotropy      = m_rhi_device->GetContext()->GetSubsystem<Renderer>()->GetOptionValue<UINT>(Renderer_Option_Value::Anisotropy);
-        sampler_desc.ComparisonFunc     = d3d11_comparison_function[m_comparison_function];
+        sampler_desc.MaxAnisotropy      = static_cast<UINT>(m_anisotropy);
+        sampler_desc.ComparisonFunc     = d3d11_comparison_function[static_cast<uint32_t>(m_comparison_function)];
         sampler_desc.BorderColor[0]     = 0;
         sampler_desc.BorderColor[1]     = 0;
         sampler_desc.BorderColor[2]     = 0;

@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Sampler.h"
 #include "../RHI_Device.h"
 #include "../RHI_DescriptorSetLayoutCache.h"
-#include "../../Rendering/Renderer.h"
+#include "../Rendering/Renderer.h"
 //==========================================
 
 namespace Spartan
@@ -34,16 +34,16 @@ namespace Spartan
     {
         VkSamplerCreateInfo sampler_info    = {};
         sampler_info.sType                  = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-        sampler_info.magFilter              = vulkan_filter[m_filter_mag];
-        sampler_info.minFilter              = vulkan_filter[m_filter_min];
-        sampler_info.mipmapMode             = vulkan_mipmap_mode[m_filter_mipmap];
-        sampler_info.addressModeU           = vulkan_sampler_address_mode[m_sampler_address_mode];
-        sampler_info.addressModeV           = vulkan_sampler_address_mode[m_sampler_address_mode];
-        sampler_info.addressModeW           = vulkan_sampler_address_mode[m_sampler_address_mode];
-        sampler_info.anisotropyEnable       = m_anisotropy_enabled;
-        sampler_info.maxAnisotropy          = m_rhi_device->GetContext()->GetSubsystem<Renderer>()->GetOptionValue<float>(Renderer_Option_Value::Anisotropy);
+        sampler_info.magFilter              = vulkan_filter[static_cast<uint32_t>(m_filter_mag)];
+        sampler_info.minFilter              = vulkan_filter[static_cast<uint32_t>(m_filter_min)];
+        sampler_info.mipmapMode             = vulkan_mipmap_mode[static_cast<uint32_t>(m_filter_mipmap)];
+        sampler_info.addressModeU           = vulkan_sampler_address_mode[static_cast<uint32_t>(m_sampler_address_mode)];
+        sampler_info.addressModeV           = vulkan_sampler_address_mode[static_cast<uint32_t>(m_sampler_address_mode)];
+        sampler_info.addressModeW           = vulkan_sampler_address_mode[static_cast<uint32_t>(m_sampler_address_mode)];
+        sampler_info.anisotropyEnable       = m_anisotropy != 0;
+        sampler_info.maxAnisotropy          = m_anisotropy;
         sampler_info.compareEnable          = m_comparison_enabled ? VK_TRUE : VK_FALSE;
-        sampler_info.compareOp              = vulkan_compare_operator[m_comparison_function];
+        sampler_info.compareOp              = vulkan_compare_operator[static_cast<uint32_t>(m_comparison_function)];
         sampler_info.borderColor            = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
         sampler_info.mipLodBias             = m_mip_lod_bias;
         sampler_info.minLod                 = 0.0f;

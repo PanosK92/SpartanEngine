@@ -90,13 +90,13 @@ namespace ImGui::RHI
 
         // Create required RHI objects
         {
-            g_depth_stencil_state = make_unique<RHI_DepthStencilState>(g_rhi_device, false, g_renderer->GetComparisonFunction());
+            g_depth_stencil_state = make_unique<RHI_DepthStencilState>(g_rhi_device, false, false, g_renderer->GetComparisonFunction());
 
             g_rasterizer_state = make_unique<RHI_RasterizerState>
             (
                 g_rhi_device,
-                RHI_Cull_None,
-                RHI_Fill_Solid,
+                RHI_Cull_Mode::None,
+                RHI_Fill_Mode::Solid,
                 true,    // depth clip
                 true,    // scissor
                 false,   // multi-sample
@@ -107,12 +107,12 @@ namespace ImGui::RHI
             (
                 g_rhi_device,
                 true,
-                RHI_Blend_Src_Alpha,        // source blend
-                RHI_Blend_Inv_Src_Alpha,    // destination blend
-                RHI_Blend_Operation_Add,    // blend op
-                RHI_Blend_Inv_Src_Alpha,    // source blend alpha
-                RHI_Blend_Zero,             // destination blend alpha
-                RHI_Blend_Operation_Add     // destination op alpha
+                RHI_Blend::Src_Alpha,       // source blend
+                RHI_Blend::Inv_Src_Alpha,   // destination blend
+                RHI_Blend_Operation::Add,   // blend op
+                RHI_Blend::Inv_Src_Alpha,   // source blend alpha
+                RHI_Blend::Zero,            // destination blend alpha
+                RHI_Blend_Operation::Add    // destination op alpha
             );
 
             // Compile shaders
@@ -257,7 +257,7 @@ namespace ImGui::RHI
         pipeline_state.viewport.width           = draw_data->DisplaySize.x;
         pipeline_state.viewport.height          = draw_data->DisplaySize.y;
         pipeline_state.dynamic_scissor          = true;
-        pipeline_state.primitive_topology       = RHI_PrimitiveTopology_TriangleList;
+        pipeline_state.primitive_topology       = RHI_PrimitiveTopology_Mode::TriangleList;
         pipeline_state.pass_name                = is_child_window ? "pass_imgui_window_child" : "pass_imgui_window_main";
 
         // Record commands

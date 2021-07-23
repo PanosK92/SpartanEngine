@@ -64,20 +64,20 @@ namespace Spartan
     struct RHI_Vertex_PosUvCol;
     struct RHI_Vertex_PosTexNorTan;
 
-    enum RHI_PhysicalDevice_Type
+    enum class RHI_PhysicalDevice_Type
     {
-        RHI_PhysicalDevice_Unknown,
-        RHI_PhysicalDevice_Integrated,
-        RHI_PhysicalDevice_Discrete,
-        RHI_PhysicalDevice_Virtual,
-        RHI_PhysicalDevice_Cpu
+        Unknown,
+        Integrated,
+        Discrete,
+        Virtual,
+        Cpu
     };
 
-    enum RHI_Api_Type
+    enum class RHI_Api_Type
     {
-        RHI_Api_D3d11,
-        RHI_Api_D3d12,
-        RHI_Api_Vulkan
+        D3d11,
+        D3d12,
+        Vulkan
     };
 
     enum RHI_Present_Mode : uint32_t
@@ -97,85 +97,85 @@ namespace Spartan
         RHI_SwapChain_Allow_Mode_Switch = 1 << 10
     };
 
-    enum RHI_Queue_Type
+    enum class RHI_Queue_Type
     {
-        RHI_Queue_Graphics,
-        RHI_Queue_Transfer,
-        RHI_Queue_Compute,
-        RHI_Queue_Undefined
+        Graphics,
+        Transfer,
+        Compute,
+        Undefined
     };
 
-    enum RHI_Query_Type
+    enum class RHI_Query_Type
     {
-        RHI_Query_Timestamp,
-        RHI_Query_Timestamp_Disjoint
+        Timestamp,
+        Timestamp_Disjoint
     };
 
-    enum RHI_PrimitiveTopology_Mode
+    enum class RHI_PrimitiveTopology_Mode
     {
-        RHI_PrimitiveTopology_TriangleList,
-        RHI_PrimitiveTopology_LineList,
+        TriangleList,
+        LineList,
         RHI_PrimitiveTopology_Unknown
     };
 
-    enum RHI_Cull_Mode
+    enum class RHI_Cull_Mode
     {
-        RHI_Cull_None,
-        RHI_Cull_Front,
-        RHI_Cull_Back,
-        RHI_Cull_Undefined
+        None,
+        Front,
+        Back,
+        Undefined
     };
 
-    enum RHI_Fill_Mode
+    enum class RHI_Fill_Mode
     {
-        RHI_Fill_Solid,
-        RHI_Fill_Wireframe,
-        RHI_Fill_Undefined
+        Solid,
+        Wireframe,
+        Undefined
     };
 
-    enum RHI_Filter
+    enum class RHI_Filter
     {
-        RHI_Filter_Nearest,
-        RHI_Filter_Linear,
+        Nearest,
+        Linear,
     };
 
-    enum RHI_Sampler_Mipmap_Mode
+    enum class RHI_Sampler_Mipmap_Mode
     {
-        RHI_Sampler_Mipmap_Nearest,
-        RHI_Sampler_Mipmap_Linear,
+        Nearest,
+        Linear,
     };
 
-    enum RHI_Sampler_Address_Mode
+    enum class RHI_Sampler_Address_Mode
     {
-        RHI_Sampler_Address_Wrap,
-        RHI_Sampler_Address_Mirror,
-        RHI_Sampler_Address_Clamp,
-        RHI_Sampler_Address_Border,
-        RHI_Sampler_Address_MirrorOnce,
+        Wrap,
+        Mirror,
+        Clamp,
+        Border,
+        MirrorOnce,
     };
 
-    enum RHI_Comparison_Function
+    enum class RHI_Comparison_Function
     {
-        RHI_Comparison_Never,
-        RHI_Comparison_Less,
-        RHI_Comparison_Equal,
-        RHI_Comparison_LessEqual,
-        RHI_Comparison_Greater,
-        RHI_Comparison_NotEqual,
-        RHI_Comparison_GreaterEqual,
-        RHI_Comparison_Always
+        Never,
+        Less,
+        Equal,
+        LessEqual,
+        Greater,
+        NotEqual,
+        GreaterEqual,
+        Always
     };
 
-    enum RHI_Stencil_Operation
+    enum class RHI_Stencil_Operation
     {
-        RHI_Stencil_Keep,
-        RHI_Stencil_Zero,
-        RHI_Stencil_Replace,
-        RHI_Stencil_Incr_Sat,
-        RHI_Stencil_Decr_Sat,
-        RHI_Stencil_Invert,
-        RHI_Stencil_Incr,
-        RHI_Stencil_Decr
+        Keep,
+        Zero,
+        Replace,
+        Incr_Sat,
+        Decr_Sat,
+        Invert,
+        Incr,
+        Decr
     };
 
     enum RHI_Format : uint32_t // gets serialized so better be explicit
@@ -206,34 +206,34 @@ namespace Spartan
         RHI_Format_Undefined
     };
 
-    enum RHI_Blend
+    enum class RHI_Blend
     {
-        RHI_Blend_Zero,
-        RHI_Blend_One,
-        RHI_Blend_Src_Color,
-        RHI_Blend_Inv_Src_Color,
-        RHI_Blend_Src_Alpha,
-        RHI_Blend_Inv_Src_Alpha,
-        RHI_Blend_Dest_Alpha,
-        RHI_Blend_Inv_Dest_Alpha,
-        RHI_Blend_Dest_Color,
-        RHI_Blend_Inv_Dest_Color,
-        RHI_Blend_Src_Alpha_Sat,
-        RHI_Blend_Blend_Factor,
-        RHI_Blend_Inv_Blend_Factor,
-        RHI_Blend_Src1_Color,
-        RHI_Blend_Inv_Src1_Color,
-        RHI_Blend_Src1_Alpha,
-        RHI_Blend_Inv_Src1_Alpha
+        Zero,
+        One,
+        Src_Color,
+        Inv_Src_Color,
+        Src_Alpha,
+        Inv_Src_Alpha,
+        Dest_Alpha,
+        Inv_Dest_Alpha,
+        Dest_Color,
+        Inv_Dest_Color,
+        Src_Alpha_Sat,
+        Blend_Factor,
+        Inv_Blend_Factor,
+        Src1_Color,
+        Inv_Src1_Color,
+        Src1_Alpha,
+        Inv_Src1_Alpha
     };
 
-    enum RHI_Blend_Operation
+    enum class RHI_Blend_Operation
     {
-        RHI_Blend_Operation_Add,
-        RHI_Blend_Operation_Subtract,
-        RHI_Blend_Operation_Rev_Subtract,
-        RHI_Blend_Operation_Min,
-        RHI_Blend_Operation_Max
+        Add,
+        Subtract,
+        Rev_Subtract,
+        Min,
+        Max
     };
 
     enum class RHI_Descriptor_Type

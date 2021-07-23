@@ -203,7 +203,7 @@ namespace Spartan
         }
 
         if (!m_rhi_device->Queue_Submit(
-            RHI_Queue_Graphics,                             // queue
+            RHI_Queue_Type::Graphics,                       // queue
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,  // wait flags
             static_cast<VkCommandBuffer>(m_cmd_buffer),     // cmd buffer
             wait_semaphore,                                 // wait semaphore

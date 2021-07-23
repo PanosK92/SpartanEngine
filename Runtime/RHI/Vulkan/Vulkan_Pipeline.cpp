@@ -239,7 +239,7 @@ namespace Spartan
             VkPipelineInputAssemblyStateCreateInfo input_assembly_state = {};
             {
                 input_assembly_state.sType                  = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-                input_assembly_state.topology               = vulkan_primitive_topology[m_state.primitive_topology];
+                input_assembly_state.topology               = vulkan_primitive_topology[static_cast<uint32_t>(m_state.primitive_topology)];
                 input_assembly_state.primitiveRestartEnable = VK_FALSE;
             }
             
@@ -256,9 +256,9 @@ namespace Spartan
                 rasterizer_state.pNext                      = &rasterizer_state_depth_clip;
                 rasterizer_state.depthClampEnable           = VK_FALSE;
                 rasterizer_state.rasterizerDiscardEnable    = VK_FALSE;
-                rasterizer_state.polygonMode                = vulkan_polygon_mode[m_state.rasterizer_state->GetFillMode()];
+                rasterizer_state.polygonMode                = vulkan_polygon_mode[static_cast<uint32_t>(m_state.rasterizer_state->GetFillMode())];
                 rasterizer_state.lineWidth                  = m_rhi_device->GetContextRhi()->device_features.features.wideLines ? m_state.rasterizer_state->GetLineWidth() : 1.0f;
-                rasterizer_state.cullMode                   = vulkan_cull_mode[m_state.rasterizer_state->GetCullMode()];
+                rasterizer_state.cullMode                   = vulkan_cull_mode[static_cast<uint32_t>(m_state.rasterizer_state->GetCullMode())];
                 rasterizer_state.frontFace                  = VK_FRONT_FACE_CLOCKWISE;
                 rasterizer_state.depthBiasEnable            = m_state.rasterizer_state->GetDepthBias() != 0.0f ? VK_TRUE : VK_FALSE;
                 rasterizer_state.depthBiasConstantFactor    = Math::Helper::Floor(m_state.rasterizer_state->GetDepthBias() * (float)(1 << 24));
@@ -283,12 +283,12 @@ namespace Spartan
                     VkPipelineColorBlendAttachmentState blend_state_attachment  = {};
                     blend_state_attachment.colorWriteMask                       = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
                     blend_state_attachment.blendEnable                          = m_state.blend_state->GetBlendEnabled() ? VK_TRUE : VK_FALSE;
-                    blend_state_attachment.srcColorBlendFactor                  = vulkan_blend_factor[m_state.blend_state->GetSourceBlend()];
-                    blend_state_attachment.dstColorBlendFactor                  = vulkan_blend_factor[m_state.blend_state->GetDestBlend()];
-                    blend_state_attachment.colorBlendOp                         = vulkan_blend_operation[m_state.blend_state->GetBlendOp()];
-                    blend_state_attachment.srcAlphaBlendFactor                  = vulkan_blend_factor[m_state.blend_state->GetSourceBlendAlpha()];
-                    blend_state_attachment.dstAlphaBlendFactor                  = vulkan_blend_factor[m_state.blend_state->GetDestBlendAlpha()];
-                    blend_state_attachment.alphaBlendOp                         = vulkan_blend_operation[m_state.blend_state->GetBlendOpAlpha()];
+                    blend_state_attachment.srcColorBlendFactor                  = vulkan_blend_factor[static_cast<uint32_t>(m_state.blend_state->GetSourceBlend())];
+                    blend_state_attachment.dstColorBlendFactor                  = vulkan_blend_factor[static_cast<uint32_t>(m_state.blend_state->GetDestBlend())];
+                    blend_state_attachment.colorBlendOp                         = vulkan_blend_operation[static_cast<uint32_t>(m_state.blend_state->GetBlendOp())];
+                    blend_state_attachment.srcAlphaBlendFactor                  = vulkan_blend_factor[static_cast<uint32_t>(m_state.blend_state->GetSourceBlendAlpha())];
+                    blend_state_attachment.dstAlphaBlendFactor                  = vulkan_blend_factor[static_cast<uint32_t>(m_state.blend_state->GetDestBlendAlpha())];
+                    blend_state_attachment.alphaBlendOp                         = vulkan_blend_operation[static_cast<uint32_t>(m_state.blend_state->GetBlendOpAlpha())];
 
                     // Swapchain
                     if (m_state.render_target_swapchain)
@@ -323,12 +323,12 @@ namespace Spartan
                 depth_stencil_state.sType               = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
                 depth_stencil_state.depthTestEnable     = m_state.depth_stencil_state->GetDepthTestEnabled();
                 depth_stencil_state.depthWriteEnable    = m_state.depth_stencil_state->GetDepthWriteEnabled();
-                depth_stencil_state.depthCompareOp      = vulkan_compare_operator[m_state.depth_stencil_state->GetDepthComparisonFunction()];
+                depth_stencil_state.depthCompareOp      = vulkan_compare_operator[static_cast<uint32_t>(m_state.depth_stencil_state->GetDepthComparisonFunction())];
                 depth_stencil_state.stencilTestEnable   = m_state.depth_stencil_state->GetStencilTestEnabled();
-                depth_stencil_state.front.compareOp     = vulkan_compare_operator[m_state.depth_stencil_state->GetStencilComparisonFunction()];
-                depth_stencil_state.front.failOp        = vulkan_stencil_operation[m_state.depth_stencil_state->GetStencilFailOperation()];
-                depth_stencil_state.front.depthFailOp   = vulkan_stencil_operation[m_state.depth_stencil_state->GetStencilDepthFailOperation()];
-                depth_stencil_state.front.passOp        = vulkan_stencil_operation[m_state.depth_stencil_state->GetStencilPassOperation()];
+                depth_stencil_state.front.compareOp     = vulkan_compare_operator[static_cast<uint32_t>(m_state.depth_stencil_state->GetStencilComparisonFunction())];
+                depth_stencil_state.front.failOp        = vulkan_stencil_operation[static_cast<uint32_t>(m_state.depth_stencil_state->GetStencilFailOperation())];
+                depth_stencil_state.front.depthFailOp   = vulkan_stencil_operation[static_cast<uint32_t>(m_state.depth_stencil_state->GetStencilDepthFailOperation())];
+                depth_stencil_state.front.passOp        = vulkan_stencil_operation[static_cast<uint32_t>(m_state.depth_stencil_state->GetStencilPassOperation())];
                 depth_stencil_state.front.compareMask   = m_state.depth_stencil_state->GetStencilReadMask();
                 depth_stencil_state.front.writeMask     = m_state.depth_stencil_state->GetStencilWriteMask();
                 depth_stencil_state.front.reference     = 1;

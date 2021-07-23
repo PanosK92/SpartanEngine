@@ -136,7 +136,7 @@ namespace Spartan
                 vkGetSwapchainImagesKHR(rhi_context->device, swap_chain, &image_count, images.data());
 
                 // Transition layouts to VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
-                if (VkCommandBuffer cmd_buffer = vulkan_utility::command_buffer_immediate::begin(RHI_Queue_Graphics))
+                if (VkCommandBuffer cmd_buffer = vulkan_utility::command_buffer_immediate::begin(RHI_Queue_Type::Graphics))
                 {
                     for (VkImage& image : images)
                     {
@@ -144,7 +144,7 @@ namespace Spartan
                     }
 
                     // End/flush
-                    if (!vulkan_utility::command_buffer_immediate::end(RHI_Queue_Graphics))
+                    if (!vulkan_utility::command_buffer_immediate::end(RHI_Queue_Type::Graphics))
                         return false;
                 }
             }

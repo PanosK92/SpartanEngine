@@ -61,7 +61,7 @@ namespace Spartan
         RHI_BlendState* blend_state                     = nullptr;
         RHI_DepthStencilState* depth_stencil_state      = nullptr;
         RHI_SwapChain* render_target_swapchain          = nullptr;
-        RHI_PrimitiveTopology_Mode primitive_topology   = RHI_PrimitiveTopology_Unknown;
+        RHI_PrimitiveTopology_Mode primitive_topology   = RHI_PrimitiveTopology_Mode::RHI_PrimitiveTopology_Unknown;
         RHI_Viewport viewport                           = RHI_Viewport::Undefined;
         Math::Rectangle scissor                         = Math::Rectangle::Zero;
         bool dynamic_scissor                            = false;

@@ -37,13 +37,13 @@ namespace Spartan
             const std::shared_ptr<RHI_Device>& rhi_device,
             const bool depth_test                                       = true,
             const bool depth_write                                      = true,
-            const RHI_Comparison_Function depth_comparison_function     = RHI_Comparison_LessEqual,
+            const RHI_Comparison_Function depth_comparison_function     = RHI_Comparison_Function::LessEqual,
             const bool stencil_test                                     = false,
             const bool stencil_write                                    = false,
-            const RHI_Comparison_Function stencil_comparison_function   = RHI_Comparison_Always,
-            const RHI_Stencil_Operation stencil_fail_op                 = RHI_Stencil_Keep,
-            const RHI_Stencil_Operation stencil_depth_fail_op           = RHI_Stencil_Keep,
-            const RHI_Stencil_Operation stencil_pass_op                 = RHI_Stencil_Replace
+            const RHI_Comparison_Function stencil_comparison_function   = RHI_Comparison_Function::Always,
+            const RHI_Stencil_Operation stencil_fail_op                 = RHI_Stencil_Operation::Keep,
+            const RHI_Stencil_Operation stencil_depth_fail_op           = RHI_Stencil_Operation::Keep,
+            const RHI_Stencil_Operation stencil_pass_op                 = RHI_Stencil_Operation::Replace
         );
         ~RHI_DepthStencilState();
 
@@ -63,13 +63,13 @@ namespace Spartan
     private:
         bool m_depth_test_enabled                               = false;
         bool m_depth_write_enabled                              = false;
-        RHI_Comparison_Function m_depth_comparison_function     = RHI_Comparison_Never;
+        RHI_Comparison_Function m_depth_comparison_function     = RHI_Comparison_Function::Never;
         bool m_stencil_test_enabled                             = false;
         bool m_stencil_write_enabled                            = false;
-        RHI_Comparison_Function m_stencil_comparison_function   = RHI_Comparison_Never;
-        RHI_Stencil_Operation m_stencil_fail_op                 = RHI_Stencil_Keep;
-        RHI_Stencil_Operation m_stencil_depth_fail_op           = RHI_Stencil_Keep;
-        RHI_Stencil_Operation m_stencil_pass_op                 = RHI_Stencil_Replace;
+        RHI_Comparison_Function m_stencil_comparison_function   = RHI_Comparison_Function::Never;
+        RHI_Stencil_Operation m_stencil_fail_op                 = RHI_Stencil_Operation::Keep;
+        RHI_Stencil_Operation m_stencil_depth_fail_op           = RHI_Stencil_Operation::Keep;
+        RHI_Stencil_Operation m_stencil_pass_op                 = RHI_Stencil_Operation::Replace;
         uint8_t m_stencil_read_mask                             = 1;
         uint8_t m_stencil_write_mask                            = 1;
         bool m_initialized                                      = false;

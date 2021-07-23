@@ -264,7 +264,7 @@ namespace Spartan
         m_rhi_context->initalise_allocator();
 
         // Create command pool
-        vulkan_utility::command_pool::create(m_cmd_pool, RHI_Queue_Graphics);
+        vulkan_utility::command_pool::create(m_cmd_pool, RHI_Queue_Type::Graphics);
 
         // Detect and log version
         string version_major    = to_string(VK_VERSION_MAJOR(app_info.apiVersion));

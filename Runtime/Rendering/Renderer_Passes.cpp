@@ -218,7 +218,7 @@ namespace Spartan
             pso.render_target_depth_texture      = tex_depth;
             pso.clear_stencil                    = rhi_stencil_dont_care;
             pso.viewport                         = tex_depth->GetViewport();
-            pso.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
+            pso.primitive_topology               = RHI_PrimitiveTopology_Mode::TriangleList;
             pso.pass_name                        = transparent_pass ? "Pass_Depth_Light_Transparent" : "Pass_Depth_Light";
 
             for (uint32_t array_index = 0; array_index < tex_depth->GetArrayLength(); array_index++)
@@ -341,7 +341,7 @@ namespace Spartan
         pso.render_target_depth_texture  = tex_depth.get();
         pso.clear_depth                  = GetClearDepth();
         pso.viewport                     = tex_depth->GetViewport();
-        pso.primitive_topology           = RHI_PrimitiveTopology_TriangleList;
+        pso.primitive_topology           = RHI_PrimitiveTopology_Mode::TriangleList;
         pso.pass_name                    = "Pass_Depth_Prepass";
 
         // Record commands
@@ -427,7 +427,7 @@ namespace Spartan
         pso.clear_stencil                   = !is_transparent_pass ? 0 : rhi_stencil_dont_care;
         pso.viewport                        = tex_albedo->GetViewport();
         pso.vertex_buffer_stride            = static_cast<uint32_t>(sizeof(RHI_Vertex_PosTexNorTan)); // assume all vertex buffers have the same stride (which they do)
-        pso.primitive_topology              = RHI_PrimitiveTopology_TriangleList;
+        pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
 
         uint32_t material_index = 0;
         uint32_t material_bound_id = 0;
@@ -678,7 +678,7 @@ namespace Spartan
         pso.clear_stencil                   = rhi_stencil_dont_care;
         pso.viewport                        = tex_out->GetViewport();
         pso.vertex_buffer_stride            = m_viewport_quad.GetVertexBuffer()->GetStride();
-        pso.primitive_topology              = RHI_PrimitiveTopology_TriangleList;
+        pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
         pso.pass_name                       = "Pass_Reflections";
 
         // Draw
@@ -870,7 +870,7 @@ namespace Spartan
         pso.clear_stencil                           = rhi_stencil_load;
         pso.viewport                                = tex_out->GetViewport();
         pso.vertex_buffer_stride                    = m_viewport_quad.GetVertexBuffer()->GetStride();
-        pso.primitive_topology                      = RHI_PrimitiveTopology_TriangleList;
+        pso.primitive_topology                      = RHI_PrimitiveTopology_Mode::TriangleList;
         pso.pass_name                               = is_transparent_pass ? "Pass_Light_ImageBased_Transparent" : "Pass_Light_ImageBased_Opaque";
 
         // Begin commands
@@ -917,7 +917,7 @@ namespace Spartan
         pso.clear_color[0]                   = rhi_color_dont_care;
         pso.render_target_depth_texture      = use_stencil ? RENDER_TARGET(RendererRt::Gbuffer_Depth).get() : nullptr;
         pso.viewport                         = tex_out->GetViewport();
-        pso.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
+        pso.primitive_topology               = RHI_PrimitiveTopology_Mode::TriangleList;
         pso.pass_name                        = "Pass_Blur_Box";
 
         // Record commands
@@ -962,7 +962,7 @@ namespace Spartan
         pso_horizontal.render_target_color_textures[0]   = tex_out.get();
         pso_horizontal.clear_color[0]                    = rhi_color_dont_care;
         pso_horizontal.viewport                          = tex_out->GetViewport();
-        pso_horizontal.primitive_topology                = RHI_PrimitiveTopology_TriangleList;
+        pso_horizontal.primitive_topology                = RHI_PrimitiveTopology_Mode::TriangleList;
         pso_horizontal.pass_name                         = "Pass_Blur_Gaussian_Horizontal";
 
         // Record commands for horizontal pass
@@ -992,7 +992,7 @@ namespace Spartan
         pso_vertical.render_target_color_textures[0] = tex_in.get();
         pso_vertical.clear_color[0]                  = rhi_color_dont_care;
         pso_vertical.viewport                        = tex_in->GetViewport();
-        pso_vertical.primitive_topology              = RHI_PrimitiveTopology_TriangleList;
+        pso_vertical.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
         pso_vertical.pass_name                       = "Pass_Blur_Gaussian_Vertical";
 
         // Record commands for vertical pass
@@ -1044,7 +1044,7 @@ namespace Spartan
         pso.render_target_depth_texture       = use_stencil ? tex_depth : nullptr;
         pso.clear_stencil                     = use_stencil ? rhi_stencil_load : rhi_stencil_dont_care;
         pso.viewport                          = tex_out->GetViewport();
-        pso.primitive_topology                = RHI_PrimitiveTopology_TriangleList;
+        pso.primitive_topology                = RHI_PrimitiveTopology_Mode::TriangleList;
         pso.pass_name                         = "Pass_Blur_BilateralGaussian_Horizontal";
 
         // Record commands for horizontal pass
@@ -1902,7 +1902,7 @@ namespace Spartan
             pso.render_target_color_textures[0]  = tex_out;
             pso.render_target_depth_texture      = RENDER_TARGET(RendererRt::Gbuffer_Depth).get();
             pso.viewport                         = tex_out->GetViewport();
-            pso.primitive_topology               = RHI_PrimitiveTopology_LineList;
+            pso.primitive_topology               = RHI_PrimitiveTopology_Mode::LineList;
             pso.pass_name                        = "Pass_Lines_Grid";
         
             // Create and submit command list
@@ -2029,7 +2029,7 @@ namespace Spartan
                 pso.render_target_color_textures[0]  = tex_out;
                 pso.render_target_depth_texture      = RENDER_TARGET(RendererRt::Gbuffer_Depth).get();
                 pso.viewport                         = tex_out->GetViewport();
-                pso.primitive_topology               = RHI_PrimitiveTopology_LineList;
+                pso.primitive_topology               = RHI_PrimitiveTopology_Mode::LineList;
                 pso.pass_name                        = "Pass_Lines";
 
                 // Create and submit command list
@@ -2066,7 +2066,7 @@ namespace Spartan
                 pso.vertex_buffer_stride             = m_vertex_buffer_lines->GetStride();
                 pso.render_target_color_textures[0]  = tex_out;
                 pso.viewport                         = tex_out->GetViewport();
-                pso.primitive_topology               = RHI_PrimitiveTopology_LineList;
+                pso.primitive_topology               = RHI_PrimitiveTopology_Mode::LineList;
                 pso.pass_name                        = "Pass_Lines_No_Depth";
 
                 // Create and submit command list
@@ -2101,7 +2101,7 @@ namespace Spartan
         pso.depth_stencil_state              = m_depth_stencil_off_off.get();
         pso.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride(); // stride matches rect
         pso.render_target_color_textures[0]  = tex_out;
-        pso.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
+        pso.primitive_topology               = RHI_PrimitiveTopology_Mode::TriangleList;
         pso.viewport                         = tex_out->GetViewport();
         pso.pass_name                        = "Pass_Icons";
 
@@ -2190,7 +2190,7 @@ namespace Spartan
             pso.depth_stencil_state              = m_depth_stencil_off_off.get();
             pso.vertex_buffer_stride             = m_transform_handle->GetVertexBuffer()->GetStride();
             pso.render_target_color_textures[0]  = tex_out;
-            pso.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
+            pso.primitive_topology               = RHI_PrimitiveTopology_Mode::TriangleList;
             pso.viewport                         = tex_out->GetViewport();
 
             // Axis - X
@@ -2296,7 +2296,7 @@ namespace Spartan
             pso.render_target_color_textures[0]          = tex_out;
             pso.render_target_depth_texture              = tex_depth;
             pso.render_target_depth_texture_read_only    = true;
-            pso.primitive_topology                       = RHI_PrimitiveTopology_TriangleList;
+            pso.primitive_topology                       = RHI_PrimitiveTopology_Mode::TriangleList;
             pso.viewport                                 = tex_out->GetViewport();
             pso.pass_name                                = "Pass_Outline";
 
@@ -2340,7 +2340,7 @@ namespace Spartan
         pso.depth_stencil_state              = m_depth_stencil_off_off.get();
         pso.vertex_buffer_stride             = m_font->GetVertexBuffer()->GetStride();
         pso.render_target_color_textures[0]  = tex_out;
-        pso.primitive_topology               = RHI_PrimitiveTopology_TriangleList;
+        pso.primitive_topology               = RHI_PrimitiveTopology_Mode::TriangleList;
         pso.viewport                         = tex_out->GetViewport();
         pso.pass_name                        = "Pass_Text";
 
@@ -2576,7 +2576,7 @@ namespace Spartan
         pso.vertex_buffer_stride     = m_viewport_quad.GetVertexBuffer()->GetStride();
         pso.render_target_swapchain  = m_swap_chain.get();
         pso.clear_color[0]           = rhi_color_dont_care;
-        pso.primitive_topology       = RHI_PrimitiveTopology_TriangleList;
+        pso.primitive_topology       = RHI_PrimitiveTopology_Mode::TriangleList;
         pso.viewport                 = m_viewport;
         pso.pass_name                = "Pass_CopyToBackbuffer";
 

@@ -315,19 +315,19 @@ namespace Spartan
     struct RHI_Context
     {
         #if defined(API_GRAPHICS_D3D11)
-            RHI_Api_Type api_type                   = RHI_Api_D3d11;
+            RHI_Api_Type api_type                   = RHI_Api_Type::D3d11;
             ID3D11Device5* device                   = nullptr;
             ID3D11DeviceContext4* device_context    = nullptr;
             ID3DUserDefinedAnnotation* annotation   = nullptr;
         #endif
 
         #if defined(API_GRAPHICS_D3D12)
-            RHI_Api_Type api_type   = RHI_Api_D3d12;
+            RHI_Api_Type api_type   = RHI_Api_Type::D3d12;
             ID3D12Device* device    = nullptr;
         #endif
 
         #if defined(API_GRAPHICS_VULKAN)
-            RHI_Api_Type api_type                                   = RHI_Api_Vulkan;
+            RHI_Api_Type api_type                                   = RHI_Api_Type::Vulkan;
             uint32_t api_version                                    = 0;
             VkInstance instance                                     = nullptr;
             VkPhysicalDevice device_physical                        = nullptr;
