@@ -120,7 +120,7 @@ namespace Spartan
         // GPU
         static uint32_t Gpu_GetMemory(RHI_Device* rhi_device);
         static uint32_t Gpu_GetMemoryUsed(RHI_Device* rhi_device);
-        static bool Gpu_QueryCreate(RHI_Device* rhi_device, void** query = nullptr, RHI_Query_Type type = RHI_Query_Timestamp);
+        static bool Gpu_QueryCreate(RHI_Device* rhi_device, void** query = nullptr, RHI_Query_Type type = RHI_Query_Type::Timestamp);
         static void Gpu_QueryRelease(void*& query_object);
         
         // Misc

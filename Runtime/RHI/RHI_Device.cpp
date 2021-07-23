@@ -71,20 +71,20 @@ namespace Spartan
 
     bool RHI_Device::Queue_WaitAll() const
     {
-        return Queue_Wait(RHI_Queue_Graphics) && Queue_Wait(RHI_Queue_Transfer) && Queue_Wait(RHI_Queue_Compute);
+        return Queue_Wait(RHI_Queue_Type::Graphics) && Queue_Wait(RHI_Queue_Type::Transfer) && Queue_Wait(RHI_Queue_Type::Compute);
     }
 
     void* RHI_Device::Queue_Get(const RHI_Queue_Type type) const
     {
-        if (type == RHI_Queue_Graphics)
+        if (type == RHI_Queue_Type::Graphics)
         {
             return m_rhi_context->queue_graphics;
         }
-        else if (type == RHI_Queue_Transfer)
+        else if (type == RHI_Queue_Type::Transfer)
         {
             return m_rhi_context->queue_transfer;
         }
-        else if (type == RHI_Queue_Compute)
+        else if (type == RHI_Queue_Type::Compute)
         {
             return m_rhi_context->queue_compute;
         }
@@ -94,15 +94,15 @@ namespace Spartan
 
     uint32_t RHI_Device::Queue_Index(const RHI_Queue_Type type) const
     {
-        if (type == RHI_Queue_Graphics)
+        if (type == RHI_Queue_Type::Graphics)
         {
             return m_rhi_context->queue_graphics_index;
         }
-        else if (type == RHI_Queue_Transfer)
+        else if (type == RHI_Queue_Type::Transfer)
         {
             return m_rhi_context->queue_transfer_index;
         }
-        else if (type == RHI_Queue_Compute)
+        else if (type == RHI_Queue_Type::Compute)
         {
             return m_rhi_context->queue_compute_index;
         }

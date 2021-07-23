@@ -292,7 +292,7 @@ namespace Spartan
             return;
 
         // Wait in case the buffer is still in use by the graphics queue
-        m_rhi_device->Queue_Wait(RHI_Queue_Graphics);
+        m_rhi_device->Queue_Wait(RHI_Queue_Type::Graphics);
 
         for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
         {

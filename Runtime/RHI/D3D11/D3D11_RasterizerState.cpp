@@ -70,8 +70,8 @@ namespace Spartan
 
         // Create rasterizer description
         D3D11_RASTERIZER_DESC desc  = {};
-        desc.CullMode               = d3d11_cull_mode[cull_mode];
-        desc.FillMode               = d3d11_polygon_mode[fill_mode];
+        desc.CullMode               = d3d11_cull_mode[static_cast<uint32_t>(cull_mode)];
+        desc.FillMode               = d3d11_polygon_mode[static_cast<uint32_t>(fill_mode)];
         desc.FrontCounterClockwise  = false;
         desc.DepthBias              = static_cast<UINT>(Math::Helper::Floor(depth_bias * (float)(1 << 24)));
         desc.DepthBiasClamp         = depth_bias_clamp;

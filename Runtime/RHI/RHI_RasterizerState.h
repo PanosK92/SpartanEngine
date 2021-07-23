@@ -74,8 +74,8 @@ namespace Spartan
 
     private:
         // Properties
-        RHI_Cull_Mode m_cull_mode       = RHI_Cull_Undefined;
-        RHI_Fill_Mode m_fill_mode       = RHI_Fill_Undefined;
+        RHI_Cull_Mode m_cull_mode       = RHI_Cull_Mode::Undefined;
+        RHI_Fill_Mode m_fill_mode       = RHI_Fill_Mode::Undefined;
         bool m_depth_clip_enabled       = false;
         bool m_scissor_enabled          = false;
         bool m_antialised_line_enabled  = false;

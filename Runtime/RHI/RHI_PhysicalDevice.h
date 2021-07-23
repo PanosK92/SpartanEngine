@@ -108,7 +108,7 @@ namespace Spartan
         std::string api_version         = "Unknown"; // version of api supported by the device
         std::string driver_version      = "Unknown"; // vendor-specified version of the driver.
         uint32_t vendor_id              = 0; // unique identifier of the vendor
-        RHI_PhysicalDevice_Type type    = RHI_PhysicalDevice_Unknown;
+        RHI_PhysicalDevice_Type type    = RHI_PhysicalDevice_Type::Unknown;
         std::string name                = "Unknown";
         uint32_t memory                 = 0;
         void* data                      = nullptr;

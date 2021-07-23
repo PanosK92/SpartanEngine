@@ -72,12 +72,12 @@ namespace Spartan
         desc.AlphaToCoverageEnable                  = false;
         desc.IndependentBlendEnable                 = false;
         desc.RenderTarget[0].BlendEnable            = blend_enabled;
-        desc.RenderTarget[0].SrcBlend               = d3d11_blend_factor[source_blend];
-        desc.RenderTarget[0].DestBlend              = d3d11_blend_factor[dest_blend];
-        desc.RenderTarget[0].BlendOp                = d3d11_blend_operation[blend_op];
-        desc.RenderTarget[0].SrcBlendAlpha          = d3d11_blend_factor[source_blend_alpha];
-        desc.RenderTarget[0].DestBlendAlpha         = d3d11_blend_factor[dest_blend_alpha];
-        desc.RenderTarget[0].BlendOpAlpha           = d3d11_blend_operation[blend_op_alpha];
+        desc.RenderTarget[0].SrcBlend               = d3d11_blend_factor[static_cast<uint32_t>(source_blend)];
+        desc.RenderTarget[0].DestBlend              = d3d11_blend_factor[static_cast<uint32_t>(dest_blend)];
+        desc.RenderTarget[0].BlendOp                = d3d11_blend_operation[static_cast<uint32_t>(blend_op)];
+        desc.RenderTarget[0].SrcBlendAlpha          = d3d11_blend_factor[static_cast<uint32_t>(source_blend_alpha)];
+        desc.RenderTarget[0].DestBlendAlpha         = d3d11_blend_factor[static_cast<uint32_t>(dest_blend_alpha)];
+        desc.RenderTarget[0].BlendOpAlpha           = d3d11_blend_operation[static_cast<uint32_t>(blend_op_alpha)];
         desc.RenderTarget[0].RenderTargetWriteMask  = D3D11_COLOR_WRITE_ENABLE_ALL;
         desc.RenderTarget[0].BlendEnable            = blend_enabled;
 

@@ -61,7 +61,7 @@ namespace Spartan
         bool has_shader_pixel       = shader_pixel      ? shader_pixel->IsCompiled()    : false;
         bool has_render_target      = render_target_color_textures[0] || render_target_depth_texture;   // Check that there is at least one render target
         bool has_backbuffer         = render_target_swapchain;                                          // Check that no both the swapchain and the color render target are active
-        bool has_graphics_states    = rasterizer_state && blend_state && depth_stencil_state && primitive_topology != RHI_PrimitiveTopology_Unknown;
+        bool has_graphics_states    = rasterizer_state && blend_state && depth_stencil_state && primitive_topology != RHI_PrimitiveTopology_Mode::RHI_PrimitiveTopology_Unknown;
         bool is_graphics_pso        = (has_shader_vertex || has_shader_pixel) && !has_shader_compute;
         bool is_compute_pso         = has_shader_compute && (!has_shader_vertex && !has_shader_pixel);
 

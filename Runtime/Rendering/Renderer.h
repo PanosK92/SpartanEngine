@@ -109,7 +109,7 @@ namespace Spartan
 
         // Depth
         auto GetClearDepth()                { return GetOption(Render_ReverseZ) ? m_viewport.depth_min : m_viewport.depth_max; }
-        auto GetComparisonFunction() const  { return GetOption(Render_ReverseZ) ? RHI_Comparison_GreaterEqual : RHI_Comparison_LessEqual; }
+        auto GetComparisonFunction() const  { return GetOption(Render_ReverseZ) ? RHI_Comparison_Function::GreaterEqual : RHI_Comparison_Function::LessEqual; }
 
         // Environment
         const std::shared_ptr<RHI_Texture>& GetEnvironmentTexture();
@@ -168,7 +168,7 @@ namespace Spartan
         void CreateFonts();
         void CreateTextures();
         void CreateShaders();
-        void CreateSamplers(const bool create_only_dynamic = false);
+        void CreateSamplers(const bool create_only_anisotropic = false);
         void CreateStructuredBuffers();
         void CreateRenderTextures(const bool create_render, const bool create_output, const bool create_fixed, const bool create_dynamic);
 

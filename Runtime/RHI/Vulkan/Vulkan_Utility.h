@@ -204,11 +204,11 @@ namespace Spartan::vulkan_utility
                     VkPhysicalDeviceMemoryProperties device_memory_properties = {};
                     vkGetPhysicalDeviceMemoryProperties(device_physical, &device_memory_properties);
 
-                    RHI_PhysicalDevice_Type type = RHI_PhysicalDevice_Unknown;
-                    if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) type = RHI_PhysicalDevice_Integrated;
-                    if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)   type = RHI_PhysicalDevice_Discrete;
-                    if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU)    type = RHI_PhysicalDevice_Virtual;
-                    if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU)            type = RHI_PhysicalDevice_Cpu;
+                    RHI_PhysicalDevice_Type type = RHI_PhysicalDevice_Type::Unknown;
+                    if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) type = RHI_PhysicalDevice_Type::Integrated;
+                    if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)   type = RHI_PhysicalDevice_Type::Discrete;
+                    if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU)    type = RHI_PhysicalDevice_Type::Virtual;
+                    if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU)            type = RHI_PhysicalDevice_Type::Cpu;
 
                     // Let the engine know about it as it will sort all of the devices from best to worst
                     globals::rhi_device->RegisterPhysicalDevice(PhysicalDevice
@@ -436,7 +436,7 @@ namespace Spartan::vulkan_utility
 
             void* cmd_pool                  = nullptr;
             void* cmd_buffer                = nullptr;
-            RHI_Queue_Type queue_type       = RHI_Queue_Undefined;
+            RHI_Queue_Type queue_type       = RHI_Queue_Type::Undefined;
             std::atomic<bool> initialised   = false;
             std::atomic<bool> recording     = false;
         };
@@ -456,11 +456,11 @@ namespace Spartan::vulkan_utility
         static bool end(const RHI_Queue_Type queue_type)
         {
             uint32_t wait_flags;
-            if (queue_type == RHI_Queue_Graphics)
+            if (queue_type == RHI_Queue_Type::Graphics)
             {
                 wait_flags = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
             }
-            else if (queue_type == RHI_Queue_Transfer)
+            else if (queue_type == RHI_Queue_Type::Transfer)
             {
                 wait_flags = VK_PIPELINE_STAGE_TRANSFER_BIT;
             }
