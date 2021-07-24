@@ -24,18 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Velocity.hlsl"
 //======================
 
-static const float g_taa_blend_min = 0.0f;
-static const float g_taa_blend_max = 0.4f;
-#define LDS_HISTORY_CLIPPING 0 // slower on some GPUs, faster on others
-
-#if LDS_HISTORY_CLIPPING
-#define BORDER_SIZE         1
-#define TILE_SIZE_X         (thread_group_count_x + 2 * BORDER_SIZE)
-#define TILE_SIZE_Y         (thread_group_count_y + 2 * BORDER_SIZE)
-#define TILE_PIXEL_COUNT    (TILE_SIZE_X * TILE_SIZE_Y)
-groupshared float3 colors_current[TILE_SIZE_X][TILE_SIZE_Y];
-#endif
-
 float3 reinhard(float3 hdr, float k = 1.0f)
 {
     return hdr / (hdr + k);
@@ -46,35 +34,13 @@ float3 reinhard_inverse(float3 sdr, float k = 1.0)
     return k * sdr / (k - sdr);
 }
 
-// Decrease blend factor when motion gets sub-pixel
-float compute_factor_velocity(const float2 uv, const float2 velocity)
-{
-    const float threshold   = 0.5f;
-    const float base        = 0.5f;
-    const float gather      = 0.05f;
-    
-    float depth             = get_linear_depth(uv);
-    float texel_vel_mag     = length(velocity * g_resolution_rt) * depth;
-    float subpixel_motion   = saturate(threshold / (texel_vel_mag + FLT_MIN));
-    return texel_vel_mag * base + subpixel_motion * gather;
-}
-
-// Decrease blend factor when contrast is high
-float compute_factor_contrast(const float3 color_current, const float3 color_history)
-{
-    float luminance_history = luminance(color_history);
-    float luminance_current = luminance(color_current);
-    float unbiased_difference = abs(luminance_current - luminance_history) / ((max(luminance_current, luminance_history) + 0.3));
-    return 1.0 - unbiased_difference;
-}
-
 // From "Temporal Reprojection Anti-Aliasing"
 // https://github.com/playdeadgames/temporal
-float3 clip_aabb(float3 aabb_min, float3 aabb_max, float3 p, float3 q)
+float3 clip_aabb(float3 aabb_min, float3 aabb_max, float3 p, float3 q, float box_size)
 {
     float3 r = q - p;
-    float3 rmax = aabb_max - p.xyz;
-    float3 rmin = aabb_min - p.xyz;
+    float3 rmax = (aabb_max - p.xyz) * box_size;
+    float3 rmin = (aabb_min - p.xyz) * box_size;
 
     if (r.x > rmax.x + FLT_MIN)
         r *= (rmax.x / r.x);
@@ -94,35 +60,8 @@ float3 clip_aabb(float3 aabb_min, float3 aabb_max, float3 p, float3 q)
 }
 
 // Clip history to the neighbourhood of the current sample
-float3 clip_history(uint2 thread_id, uint group_index, uint3 group_id, Texture2D tex_input, float3 color_history)
+float3 clip_history(uint2 thread_id, uint group_index, uint3 group_id, Texture2D tex_input, float3 color_history, float2 velocity)
 {
-    #if LDS_HISTORY_CLIPPING
-    
-    uint2 pos_upper_left = group_id.xy * uint2(thread_group_count_x, thread_group_count_y) - BORDER_SIZE;
-    [unroll]
-    for (uint i = group_index; i < TILE_PIXEL_COUNT; i += thread_group_count)
-    {
-        uint2 pos_array = uint2(i % TILE_SIZE_X, i / TILE_SIZE_X);
-        uint2 pos_tex   = pos_upper_left + pos_array;
-        colors_current[pos_array.x][pos_array.y] = tex[pos_upper_left + pos_array].rgb;
-    }
- 
-    GroupMemoryBarrierWithGroupSync();
-
-    uint2 array_pos = uint2(group_index % thread_group_count_x, group_index / thread_group_count_x) + 1;
-    
-    float3 ctl = colors_current[array_pos.x - 1][array_pos.y - 1];
-    float3 ctc = colors_current[array_pos.x][array_pos.y - 1];
-    float3 ctr = colors_current[array_pos.x + 1][array_pos.y - 1];
-    float3 cml = colors_current[array_pos.x - 1][array_pos.y];
-    float3 cmc = colors_current[array_pos.x][array_pos.y];
-    float3 cmr = colors_current[array_pos.x + 1][array_pos.y];
-    float3 cbl = colors_current[array_pos.x - 1][array_pos.y + 1];
-    float3 cbc = colors_current[array_pos.x][array_pos.y + 1];
-    float3 cbr = colors_current[array_pos.x + 1][array_pos.y + 1];
-
-    #else
-
     float3 ctl = tex_input[thread_id + uint2(-1, -1)].rgb;
     float3 ctc = tex_input[thread_id + uint2(0, -1)].rgb;
     float3 ctr = tex_input[thread_id + uint2(1, -1)].rgb;
@@ -133,13 +72,67 @@ float3 clip_history(uint2 thread_id, uint group_index, uint3 group_id, Texture2D
     float3 cbc = tex_input[thread_id + uint2(0, 1)].rgb;
     float3 cbr = tex_input[thread_id + uint2(1, 1)].rgb;
 
-    #endif
-
     float3 color_min = min(ctl, min(ctc, min(ctr, min(cml, min(cmc, min(cmr, min(cbl, min(cbc, cbr))))))));
     float3 color_max = max(ctl, max(ctc, max(ctr, max(cml, max(cmc, max(cmr, max(cbl, max(cbc, cbr))))))));
     float3 color_avg = (ctl + ctc + ctr + cml + cmc + cmr + cbl + cbc + cbr) / 9.0f;
 
-    return saturate_16(clip_aabb(color_min, color_max, clamp(color_avg, color_min, color_max), color_history));
+    const float box_size = lerp(0.5f, 2.5f, smoothstep(0.02f, 0.0f, length(velocity)));
+    
+    return saturate_16(clip_aabb(color_min, color_max, clamp(color_avg, color_min, color_max), color_history, box_size));
+}
+
+float3 sample_history_catmull_rom(in float2 uv, in float2 texelSize, Texture2D tex_history)
+{
+    // Source: https://gist.github.com/TheRealMJP/c83b8c0f46b63f3a88a5986f4fa982b1
+    // License: https://gist.github.com/TheRealMJP/bc503b0b87b643d3505d41eab8b332ae
+
+    // We're going to sample a a 4x4 grid of texels surrounding the target UV coordinate. We'll do this by rounding
+    // down the sample location to get the exact center of our "starting" texel. The starting texel will be at
+    // location [1, 1] in the grid, where [0, 0] is the top left corner.
+    float2 samplePos = uv / texelSize;
+    float2 texPos1 = floor(samplePos - 0.5f) + 0.5f;
+
+    // Compute the fractional offset from our starting texel to our original sample location, which we'll
+    // feed into the Catmull-Rom spline function to get our filter weights.
+    float2 f = samplePos - texPos1;
+
+    // Compute the Catmull-Rom weights using the fractional offset that we calculated earlier.
+    // These equations are pre-expanded based on our knowledge of where the texels will be located,
+    // which lets us avoid having to evaluate a piece-wise function.
+    float2 w0 = f * (-0.5f + f * (1.0f - 0.5f * f));
+    float2 w1 = 1.0f + f * f * (-2.5f + 1.5f * f);
+    float2 w2 = f * (0.5f + f * (2.0f - 1.5f * f));
+    float2 w3 = f * f * (-0.5f + 0.5f * f);
+
+    // Work out weighting factors and sampling offsets that will let us use bilinear filtering to
+    // simultaneously evaluate the middle 2 samples from the 4x4 grid.
+    float2 w12 = w1 + w2;
+    float2 offset12 = w2 / (w1 + w2);
+
+    // Compute the final UV coordinates we'll use for sampling the texture
+    float2 texPos0 = texPos1 - 1.0f;
+    float2 texPos3 = texPos1 + 2.0f;
+    float2 texPos12 = texPos1 + offset12;
+
+    texPos0 *= texelSize;
+    texPos3 *= texelSize;
+    texPos12 *= texelSize;
+
+    float3 result = float3(0.0f, 0.0f, 0.0f);
+
+    result += tex_history.SampleLevel(sampler_bilinear_clamp, float2(texPos0.x, texPos0.y), 0.0f).xyz * w0.x * w0.y;
+    result += tex_history.SampleLevel(sampler_bilinear_clamp, float2(texPos12.x, texPos0.y), 0.0f).xyz * w12.x * w0.y;
+    result += tex_history.SampleLevel(sampler_bilinear_clamp, float2(texPos3.x, texPos0.y), 0.0f).xyz * w3.x * w0.y;
+
+    result += tex_history.SampleLevel(sampler_bilinear_clamp, float2(texPos0.x, texPos12.y), 0.0f).xyz * w0.x * w12.y;
+    result += tex_history.SampleLevel(sampler_bilinear_clamp, float2(texPos12.x, texPos12.y), 0.0f).xyz * w12.x * w12.y;
+    result += tex_history.SampleLevel(sampler_bilinear_clamp, float2(texPos3.x, texPos12.y), 0.0f).xyz * w3.x * w12.y;
+
+    result += tex_history.SampleLevel(sampler_bilinear_clamp, float2(texPos0.x, texPos3.y), 0.0f).xyz * w0.x * w3.y;
+    result += tex_history.SampleLevel(sampler_bilinear_clamp, float2(texPos12.x, texPos3.y), 0.0f).xyz * w12.x * w3.y;
+    result += tex_history.SampleLevel(sampler_bilinear_clamp, float2(texPos3.x, texPos3.y), 0.0f).xyz * w3.x * w3.y;
+
+    return max(result, 0.0f);
 }
 
 static const int2 kOffsets3x3[9] =
@@ -209,32 +202,31 @@ float4 temporal_antialiasing(uint2 pos_out, uint group_index, uint3 group_id, Te
     const float2 uv         = (pos_out + 0.5f) / g_resolution_rt;
     const uint2 pos_input   = is_taa_upsampling_enabled() ? (uv * g_resolution_render) : pos_out;
 
-    // Get history color (reprojection)
+    // Get reprojected uv
     float2 velocity         = get_velocity_closest_3x3(uv);
     float2 uv_reprojected   = uv - velocity;
-    float3 color_history    = tex_history.SampleLevel(sampler_bilinear_clamp, uv_reprojected, 0).rgb;
-
-    // Get input color
-    float3 color_input = get_input_sample(tex_input, pos_out);
 
     // If re-projected UV is out of screen, converge to current color immediately
     if (!is_saturated(uv_reprojected))
-        return float4(color_input, 1.0f);
+        return float4(get_input_sample(tex_input, pos_out), 1.0f);
+
+    // Get input color
+    float3 color_input = get_input_sample(tex_input, pos_out);
+    
+    // Get history color (removes a lot of the blurring that you get under motion)
+    float3 color_history = sample_history_catmull_rom(uv_reprojected, g_texel_size, tex_history);
 
     // Clip history to the neighbourhood of the current sample
-    color_history = clip_history(pos_input, group_index, group_id, tex_input, color_history);
+    color_history = clip_history(pos_input, group_index, group_id, tex_input, color_history, velocity);
 
     // Compute blend factor
-    float blend_factor = 1.0f;
+    float blend_factor = 1.0f / 16.0f;
     {
-        // Decrease blend factor when motion gets sub-pixel
-        blend_factor *= compute_factor_velocity(uv, velocity);
-
         // Decrease blend factor when contrast is high
-        blend_factor *= compute_factor_contrast(color_input, color_history);
-
-        // Clamp
-        blend_factor = clamp(blend_factor, g_taa_blend_min, g_taa_blend_max);
+        float luminance_history   = luminance(color_history);
+        float luminance_current   = luminance(color_input);
+        float unbiased_difference = abs(luminance_current - luminance_history) / ((max(luminance_current, luminance_history) + 0.5f));
+        blend_factor *= 1.0 - unbiased_difference;
     }
 
     // Resolve
@@ -257,8 +249,8 @@ float4 temporal_antialiasing(uint2 pos_out, uint group_index, uint3 group_id, Te
 [numthreads(thread_group_count_x, thread_group_count_y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID, uint group_index : SV_GroupIndex, uint3 group_id : SV_GroupID)
 {
-    if (thread_id.x >= uint(g_resolution_rt.x) || thread_id.y >= uint(g_resolution_rt.y))
-        return;
+    if (any(int2(thread_id.xy) >= g_resolution_rt.xy))
+        return; // out of bounds
     
     tex_out_rgba[thread_id.xy] = temporal_antialiasing(thread_id.xy, group_index, group_id, tex, tex2);
 }
