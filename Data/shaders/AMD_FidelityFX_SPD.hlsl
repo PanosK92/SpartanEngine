@@ -28,6 +28,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define SPD_NO_WAVE_OPERATIONS
 #define SPD_LINEAR_SAMPLER
 
+#define ANTIFLICKER 1
+
 #include "ffx_a.h"
 
 groupshared AF4 spd_intermediate[16][16];
@@ -61,9 +63,19 @@ void SpdStoreIntermediate(AU1 x, AU1 y, AF4 value)
     spd_intermediate[x][y] = value;
 }
 
-AF4 SpdReduce4(AF4 v0, AF4 v1, AF4 v2, AF4 v3)
+AF4 SpdReduce4(AF4 s1, AF4 s2, AF4 s3, AF4 s4)
 {
-    return (v0 + v1 + v2 + v3) * 0.25;
+#if ANTIFLICKER
+    // Karis's luma weighted average
+    float s1w = 1 / (luminance(s1) + 1);
+    float s2w = 1 / (luminance(s2) + 1);
+    float s3w = 1 / (luminance(s3) + 1);
+    float s4w = 1 / (luminance(s4) + 1);
+    float one_div_wsum = 1.0 / (s1w + s2w + s3w + s4w);
+    return (s1 * s1w + s2 * s2w + s3 * s3w + s4 * s4w) * one_div_wsum;
+#else
+    return (s1 + s2 + s3 + s4) * 0.25;
+#endif
 }
 
 void SpdIncreaseAtomicCounter(AU1 slice)

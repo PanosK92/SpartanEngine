@@ -45,7 +45,7 @@ Platform | API | Status | Quality | Binaries
 - SSAO (Screen space ambient occlusion)
 - SSR (Screen space reflections)
 - SSS (Screen space shadows)
-- TAA (Temporal anti-aliasing based on Uncharted 4)
+- TAA (Temporal anti-aliasing)
 - Physically based camera (Aperture, Shutter Speed, ISO)
 - Depth of field (controlled by the aperture of the camera)
 - Motion blur (controlled by the shutter speed of the camera)
