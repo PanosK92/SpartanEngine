@@ -1149,13 +1149,6 @@ namespace Spartan
             }
         }
 
-        // Sharpening
-        if (GetOption(Render_Sharpening_AMD_FidelityFX_ContrastAdaptiveSharpening))
-        {
-            Pass_AMD_FidelityFX_ContrastAdaptiveSharpening(cmd_list, rt_frame_pp, rt_frame_pp_2);
-            rt_frame_pp.swap(rt_frame_pp_2);
-        }
-
         // Motion Blur
         if (GetOption(Render_MotionBlur))
         {
@@ -1167,6 +1160,13 @@ namespace Spartan
         if (GetOption(Render_Bloom))
         {
             Pass_PostProcess_Bloom(cmd_list, rt_frame_pp, rt_frame_pp_2);
+            rt_frame_pp.swap(rt_frame_pp_2);
+        }
+
+        // Sharpening
+        if (GetOption(Render_Sharpening_AMD_FidelityFX_ContrastAdaptiveSharpening))
+        {
+            Pass_AMD_FidelityFX_ContrastAdaptiveSharpening(cmd_list, rt_frame_pp, rt_frame_pp_2);
             rt_frame_pp.swap(rt_frame_pp_2);
         }
 
