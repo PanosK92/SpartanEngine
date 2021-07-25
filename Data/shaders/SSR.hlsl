@@ -24,8 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //===================
 
 static const float g_ssr_max_distance               = 80.0f;
-static const uint g_ssr_max_steps                   = 64;
-static const uint g_ssr_binary_search_steps         = 32;
+static const uint g_ssr_max_steps                   = 32;
+static const uint g_ssr_binary_search_steps         = 25;
 static const float g_ssr_thickness                  = 0.0001f;
 static const float g_ssr_camera_facing_threshold    = 0.8f; // Higher values allow for more camera facing rays to be traced.
 
@@ -48,7 +48,7 @@ float2 trace_ray(uint2 screen_pos, float3 ray_start_vs, float3 ray_dir_vs)
     float ray_length        = length(ray_start_to_end);
     float2 ray_step         = (ray_start_to_end) / (float)g_ssr_max_steps;
     float2 ray_pos          = ray_start;
-    
+
     // Adjust position with some temporal noise (TAA will do some magic later)
     float offset = get_noise_interleaved_gradient(screen_pos);
     ray_pos += ray_step * offset;
@@ -59,6 +59,10 @@ float2 trace_ray(uint2 screen_pos, float3 ray_start_vs, float3 ray_dir_vs)
         // Step ray
         ray_pos += ray_step;
 
+        // Early exit if the ray is out of screen
+        if (ray_pos.x < 0 || ray_pos.x > 1 || ray_pos.y < 0 || ray_pos.y > 1)
+            return 0.0f;
+        
         // Intersect depth buffer
         float depth_delta = 0.0f;
         if (intersect_depth_buffer(ray_pos, ray_start, ray_length, ray_start_vs.z, ray_end_vs.z, depth_delta))
