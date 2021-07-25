@@ -81,7 +81,7 @@ float3 clip_history(uint2 thread_id, uint group_index, uint3 group_id, Texture2D
     return saturate_16(clip_aabb(color_min, color_max, clamp(color_avg, color_min, color_max), color_history, box_size));
 }
 
-float3 sample_history_catmull_rom(in float2 uv, in float2 texelSize, Texture2D tex_history)
+float3 sample_catmull_rom_9(Texture2D stex, float2 uv, float2 resolution)
 {
     // Source: https://gist.github.com/TheRealMJP/c83b8c0f46b63f3a88a5986f4fa982b1
     // License: https://gist.github.com/TheRealMJP/bc503b0b87b643d3505d41eab8b332ae
@@ -89,7 +89,7 @@ float3 sample_history_catmull_rom(in float2 uv, in float2 texelSize, Texture2D t
     // We're going to sample a a 4x4 grid of texels surrounding the target UV coordinate. We'll do this by rounding
     // down the sample location to get the exact center of our "starting" texel. The starting texel will be at
     // location [1, 1] in the grid, where [0, 0] is the top left corner.
-    float2 samplePos = uv / texelSize;
+    float2 samplePos = uv * resolution;
     float2 texPos1 = floor(samplePos - 0.5f) + 0.5f;
 
     // Compute the fractional offset from our starting texel to our original sample location, which we'll
@@ -114,23 +114,23 @@ float3 sample_history_catmull_rom(in float2 uv, in float2 texelSize, Texture2D t
     float2 texPos3 = texPos1 + 2.0f;
     float2 texPos12 = texPos1 + offset12;
 
-    texPos0 *= texelSize;
-    texPos3 *= texelSize;
-    texPos12 *= texelSize;
+    texPos0  /= resolution;
+    texPos3  /= resolution;
+    texPos12 /= resolution;
 
     float3 result = float3(0.0f, 0.0f, 0.0f);
 
-    result += tex_history.SampleLevel(sampler_bilinear_clamp, float2(texPos0.x, texPos0.y), 0.0f).xyz * w0.x * w0.y;
-    result += tex_history.SampleLevel(sampler_bilinear_clamp, float2(texPos12.x, texPos0.y), 0.0f).xyz * w12.x * w0.y;
-    result += tex_history.SampleLevel(sampler_bilinear_clamp, float2(texPos3.x, texPos0.y), 0.0f).xyz * w3.x * w0.y;
+    result += stex.SampleLevel(sampler_bilinear_clamp, float2(texPos0.x, texPos0.y), 0.0f).xyz * w0.x * w0.y;
+    result += stex.SampleLevel(sampler_bilinear_clamp, float2(texPos12.x, texPos0.y), 0.0f).xyz * w12.x * w0.y;
+    result += stex.SampleLevel(sampler_bilinear_clamp, float2(texPos3.x, texPos0.y), 0.0f).xyz * w3.x * w0.y;
 
-    result += tex_history.SampleLevel(sampler_bilinear_clamp, float2(texPos0.x, texPos12.y), 0.0f).xyz * w0.x * w12.y;
-    result += tex_history.SampleLevel(sampler_bilinear_clamp, float2(texPos12.x, texPos12.y), 0.0f).xyz * w12.x * w12.y;
-    result += tex_history.SampleLevel(sampler_bilinear_clamp, float2(texPos3.x, texPos12.y), 0.0f).xyz * w3.x * w12.y;
+    result += stex.SampleLevel(sampler_bilinear_clamp, float2(texPos0.x, texPos12.y), 0.0f).xyz * w0.x * w12.y;
+    result += stex.SampleLevel(sampler_bilinear_clamp, float2(texPos12.x, texPos12.y), 0.0f).xyz * w12.x * w12.y;
+    result += stex.SampleLevel(sampler_bilinear_clamp, float2(texPos3.x, texPos12.y), 0.0f).xyz * w3.x * w12.y;
 
-    result += tex_history.SampleLevel(sampler_bilinear_clamp, float2(texPos0.x, texPos3.y), 0.0f).xyz * w0.x * w3.y;
-    result += tex_history.SampleLevel(sampler_bilinear_clamp, float2(texPos12.x, texPos3.y), 0.0f).xyz * w12.x * w3.y;
-    result += tex_history.SampleLevel(sampler_bilinear_clamp, float2(texPos3.x, texPos3.y), 0.0f).xyz * w3.x * w3.y;
+    result += stex.SampleLevel(sampler_bilinear_clamp, float2(texPos0.x, texPos3.y), 0.0f).xyz * w0.x * w3.y;
+    result += stex.SampleLevel(sampler_bilinear_clamp, float2(texPos12.x, texPos3.y), 0.0f).xyz * w12.x * w3.y;
+    result += stex.SampleLevel(sampler_bilinear_clamp, float2(texPos3.x, texPos3.y), 0.0f).xyz * w3.x * w3.y;
 
     return max(result, 0.0f);
 }
@@ -213,8 +213,8 @@ float4 temporal_antialiasing(uint2 pos_out, uint group_index, uint3 group_id, Te
     // Get input color
     float3 color_input = get_input_sample(tex_input, pos_out);
     
-    // Get history color (removes a lot of the blurring that you get under motion)
-    float3 color_history = sample_history_catmull_rom(uv_reprojected, g_texel_size, tex_history);
+    // Get history color (catmull-rom reduces a lot of the blurring that you get under motion)
+    float3 color_history = sample_catmull_rom_9(tex_history, uv_reprojected, g_resolution_rt).rgb;
 
     // Clip history to the neighbourhood of the current sample
     color_history = clip_history(pos_input, group_index, group_id, tex_input, color_history, velocity);

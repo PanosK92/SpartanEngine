@@ -74,7 +74,7 @@ struct Surface
         alpha       = sample_albedo.a;
         roughness   = sample_material.r;
         metallic    = sample_material.g;
-        emissive    = sample_material.b * sample_albedo.rgb;
+        emissive    = sample_material.b * sample_albedo.rgb * 10.0f;
         F0          = lerp(0.04f, albedo, metallic);
         
         clearcoat               = mat_clearcoat_clearcoatRough_aniso_anisoRot[id].x;

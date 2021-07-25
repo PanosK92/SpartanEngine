@@ -102,8 +102,8 @@ namespace Spartan
         }
 
         // Acquire render targets
-        RHI_Texture* rt1 = RENDER_TARGET(RendererRt::Frame).get();
-        RHI_Texture* rt2 = RENDER_TARGET(RendererRt::Frame_2).get();
+        RHI_Texture* rt1 = RENDER_TARGET(RendererRt::Frame_Render).get();
+        RHI_Texture* rt2 = RENDER_TARGET(RendererRt::Frame_Render_2).get();
 
         // G-Buffer and lighting
         {
@@ -831,7 +831,7 @@ namespace Spartan
             cmd_list->SetTexture(RendererBindingsSrv::light_diffuse,    is_transparent_pass ? RENDER_TARGET(RendererRt::Light_Diffuse_Transparent).get() : RENDER_TARGET(RendererRt::Light_Diffuse).get());
             cmd_list->SetTexture(RendererBindingsSrv::light_specular,   is_transparent_pass ? RENDER_TARGET(RendererRt::Light_Specular_Transparent).get() : RENDER_TARGET(RendererRt::Light_Specular).get());
             cmd_list->SetTexture(RendererBindingsSrv::light_volumetric, RENDER_TARGET(RendererRt::Light_Volumetric));
-            cmd_list->SetTexture(RendererBindingsSrv::frame,            RENDER_TARGET(RendererRt::Frame_2)); // refraction
+            cmd_list->SetTexture(RendererBindingsSrv::frame,            RENDER_TARGET(RendererRt::Frame_Render_2)); // refraction
             cmd_list->SetTexture(RendererBindingsSrv::ssao,             RENDER_TARGET(RendererRt::Ssao_Blurred));
             cmd_list->SetTexture(RendererBindingsSrv::environment,      GetEnvironmentTexture());
 
@@ -1097,42 +1097,42 @@ namespace Spartan
         // OUT: RenderTarget_Composition_Ldr
 
         // Acquire render targets
-        shared_ptr<RHI_Texture>& rt_frame       = RENDER_TARGET(RendererRt::Frame);                 // render res
-        shared_ptr<RHI_Texture>& rt_frame_2     = RENDER_TARGET(RendererRt::Frame_2);               // render res
-        shared_ptr<RHI_Texture>& rt_frame_pp    = RENDER_TARGET(RendererRt::Frame_PostProcess);     // output res
-        shared_ptr<RHI_Texture>& rt_frame_pp_2  = RENDER_TARGET(RendererRt::Frame_PostProcess_2);   // output res
+        shared_ptr<RHI_Texture>& rt_frame_render_in         = RENDER_TARGET(RendererRt::Frame_Render);   // render res
+        shared_ptr<RHI_Texture>& rt_frame_render_out        = RENDER_TARGET(RendererRt::Frame_Render_2); // render res
+        shared_ptr<RHI_Texture>& rt_frame_render_output_in  = RENDER_TARGET(RendererRt::Frame_Output);   // output res
+        shared_ptr<RHI_Texture>& rt_frame_render_output_out = RENDER_TARGET(RendererRt::Frame_Output_2); // output res
 
         // Depth of Field
         if (GetOption(Render_DepthOfField))
         {
-            Pass_PostProcess_DepthOfField(cmd_list, rt_frame, rt_frame_2);
-            rt_frame.swap(rt_frame_2);
+            Pass_PostProcess_DepthOfField(cmd_list, rt_frame_render_in, rt_frame_render_out);
+            rt_frame_render_in.swap(rt_frame_render_out);
         }
 
         // Upsampling vars
-        bool upsampled                      = false;
-        bool resolution_output_larger       = m_resolution_output.x > m_resolution_render.x;
-        bool resolution_output_different    = m_resolution_output != m_resolution_render;
+        bool upsampled                   = false;
+        bool resolution_output_larger    = m_resolution_output.x > m_resolution_render.x || m_resolution_output.y > m_resolution_render.y;
+        bool resolution_output_different = m_resolution_output != m_resolution_render;
 
         // TAA
         if (GetOption(Render_AntiAliasing_Taa))
         {
-            if (resolution_output_larger && GetOption(Render_Upsample_TAA))
+            if (GetOption(Render_Upsample_TAA) && resolution_output_larger)
             {
-                Pass_PostProcess_TAA(cmd_list, rt_frame, rt_frame_pp);
+                Pass_PostProcess_TAA(cmd_list, rt_frame_render_in, rt_frame_render_output_in);
                 upsampled = true; // taa writes directly in the high res buffer
             }
             else
             {
-                Pass_PostProcess_TAA(cmd_list, rt_frame, rt_frame_2);
-                rt_frame.swap(rt_frame_2);
+                Pass_PostProcess_TAA(cmd_list, rt_frame_render_in, rt_frame_render_out);
+                rt_frame_render_in.swap(rt_frame_render_out);
             }
         }
 
         // Upsample - AMD FidelityFX SuperResolution - TODO: This needs to be in perceptual space and normalised to 0, 1 range.
-        if (resolution_output_larger && GetOption(Render_Upsample_AMD_FidelityFX_SuperResolution))
+        if (GetOption(Render_Upsample_AMD_FidelityFX_SuperResolution) && resolution_output_larger)
         {
-            Pass_AMD_FidelityFX_SuperResolution(cmd_list, rt_frame.get(), rt_frame_pp.get(), rt_frame_pp_2.get());
+            Pass_AMD_FidelityFX_SuperResolution(cmd_list, rt_frame_render_in.get(), rt_frame_render_output_in.get(), rt_frame_render_output_out.get());
             upsampled = true;
         }
 
@@ -1141,83 +1141,84 @@ namespace Spartan
         {
             if (resolution_output_different)
             {
-                Pass_CopyBilinear(cmd_list, rt_frame.get(), rt_frame_pp.get());
+                // D3D11 luggage, can't blit to different resolution
+                Pass_CopyBilinear(cmd_list, rt_frame_render_in.get(), rt_frame_render_output_in.get());
             }
             else
             {
-                cmd_list->Blit(rt_frame, rt_frame_pp);
+                cmd_list->Blit(rt_frame_render_in, rt_frame_render_output_in);
             }
         }
 
         // Motion Blur
         if (GetOption(Render_MotionBlur))
         {
-            Pass_PostProcess_MotionBlur(cmd_list, rt_frame_pp, rt_frame_pp_2);
-            rt_frame_pp.swap(rt_frame_pp_2);
+            Pass_PostProcess_MotionBlur(cmd_list, rt_frame_render_output_in, rt_frame_render_output_out);
+            rt_frame_render_output_in.swap(rt_frame_render_output_out);
         }
 
         // Bloom
         if (GetOption(Render_Bloom))
         {
-            Pass_PostProcess_Bloom(cmd_list, rt_frame_pp, rt_frame_pp_2);
-            rt_frame_pp.swap(rt_frame_pp_2);
+            Pass_PostProcess_Bloom(cmd_list, rt_frame_render_output_in, rt_frame_render_output_out);
+            rt_frame_render_output_in.swap(rt_frame_render_output_out);
         }
 
         // Sharpening
         if (GetOption(Render_Sharpening_AMD_FidelityFX_ContrastAdaptiveSharpening))
         {
-            Pass_AMD_FidelityFX_ContrastAdaptiveSharpening(cmd_list, rt_frame_pp, rt_frame_pp_2);
-            rt_frame_pp.swap(rt_frame_pp_2);
+            Pass_AMD_FidelityFX_ContrastAdaptiveSharpening(cmd_list, rt_frame_render_output_in, rt_frame_render_output_out);
+            rt_frame_render_output_in.swap(rt_frame_render_output_out);
         }
 
         // Tone-Mapping
         if (m_option_values[Renderer_Option_Value::Tonemapping] != 0)
         {
-            Pass_PostProcess_ToneMapping(cmd_list, rt_frame_pp, rt_frame_pp_2);
-            rt_frame_pp.swap(rt_frame_pp_2);
+            Pass_PostProcess_ToneMapping(cmd_list, rt_frame_render_output_in, rt_frame_render_output_out);
+            rt_frame_render_output_in.swap(rt_frame_render_output_out);
         }
 
         // FXAA
         if (GetOption(Render_AntiAliasing_Fxaa))
         {
-            Pass_PostProcess_Fxaa(cmd_list, rt_frame_pp, rt_frame_pp_2);
-            rt_frame_pp.swap(rt_frame_pp_2);
+            Pass_PostProcess_Fxaa(cmd_list, rt_frame_render_output_in, rt_frame_render_output_out);
+            rt_frame_render_output_in.swap(rt_frame_render_output_out);
         }
 
         // Dithering
         if (GetOption(Render_Dithering))
         {
-            Pass_PostProcess_Dithering(cmd_list, rt_frame_pp, rt_frame_pp_2);
-            rt_frame_pp.swap(rt_frame_pp_2);
+            Pass_PostProcess_Dithering(cmd_list, rt_frame_render_output_in, rt_frame_render_output_out);
+            rt_frame_render_output_in.swap(rt_frame_render_output_out);
         }
 
         // Film grain
         if (GetOption(Render_FilmGrain))
         {
-            Pass_PostProcess_FilmGrain(cmd_list, rt_frame_pp, rt_frame_pp_2);
-            rt_frame_pp.swap(rt_frame_pp_2);
+            Pass_PostProcess_FilmGrain(cmd_list, rt_frame_render_output_in, rt_frame_render_output_out);
+            rt_frame_render_output_in.swap(rt_frame_render_output_out);
         }
 
         // Chromatic aberration
         if (GetOption(Render_ChromaticAberration))
         {
-            Pass_PostProcess_ChromaticAberration(cmd_list, rt_frame_pp, rt_frame_pp_2);
-            rt_frame_pp.swap(rt_frame_pp_2);
+            Pass_PostProcess_ChromaticAberration(cmd_list, rt_frame_render_output_in, rt_frame_render_output_out);
+            rt_frame_render_output_in.swap(rt_frame_render_output_out);
         }
 
         // Gamma correction
-        Pass_PostProcess_GammaCorrection(cmd_list, rt_frame_pp, rt_frame_pp_2);
+        Pass_PostProcess_GammaCorrection(cmd_list, rt_frame_render_output_in, rt_frame_render_output_out);
 
         // Passes that render on top of each other
-        Pass_Outline(cmd_list, rt_frame_pp_2.get());
-        Pass_TransformHandle(cmd_list, rt_frame_pp_2.get());
-        Pass_Lines(cmd_list, rt_frame_pp_2.get());
-        Pass_Icons(cmd_list, rt_frame_pp_2.get());
-        Pass_DebugBuffer(cmd_list, rt_frame_pp_2.get());
-        Pass_Text(cmd_list, rt_frame_pp_2.get());
+        Pass_Outline(cmd_list, rt_frame_render_output_out.get());
+        Pass_TransformHandle(cmd_list, rt_frame_render_output_out.get());
+        Pass_Lines(cmd_list, rt_frame_render_output_out.get());
+        Pass_Icons(cmd_list, rt_frame_render_output_out.get());
+        Pass_DebugBuffer(cmd_list, rt_frame_render_output_out.get());
+        Pass_Text(cmd_list, rt_frame_render_output_out.get());
 
         // Swap textures
-        rt_frame_pp.swap(rt_frame_pp_2);
+        rt_frame_render_output_in.swap(rt_frame_render_output_out);
     }
 
     void Renderer::Pass_PostProcess_TAA(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
@@ -2587,7 +2588,7 @@ namespace Spartan
             m_buffer_uber_cpu.resolution = Vector2(static_cast<float>(m_swap_chain->GetWidth()), static_cast<float>(m_swap_chain->GetHeight()));
             UpdateUberBuffer(cmd_list);
 
-            cmd_list->SetTexture(RendererBindingsSrv::tex, RENDER_TARGET(RendererRt::Frame_PostProcess).get());
+            cmd_list->SetTexture(RendererBindingsSrv::tex, RENDER_TARGET(RendererRt::Frame_Output).get());
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
             cmd_list->DrawIndexed(m_viewport_quad.GetIndexCount());

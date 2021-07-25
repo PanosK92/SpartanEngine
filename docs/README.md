@@ -85,7 +85,7 @@ Eye Adaptation 					 	| -          	| Low priority.
 Subsurface Scattering 			 	| -          	| Low priority.
 Ray traced shadows				 	| -          	| -
 Ray traced reflections			 	| -          	| -
-Linux support			 	        | -          	| Vulkan and SDL is there, working on a linx port is now possible.
+Linux support			 	        | -          	| Vulkan and SDL is there, working on a linux port is now possible.
 
 ###### Future
 - Skeletal Animation.

@@ -141,8 +141,8 @@ namespace Spartan
         if (create_render)
         { 
             // Full resolution
-            RENDER_TARGET(RendererRt::Frame)                        = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16B16A16_Float,     0,                                "rt_frame");
-            RENDER_TARGET(RendererRt::Frame_2)                      = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16B16A16_Float,     0,                                "rt_frame_2");
+            RENDER_TARGET(RendererRt::Frame_Render)                 = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16B16A16_Float,     0,                                "rt_frame_render");
+            RENDER_TARGET(RendererRt::Frame_Render_2)               = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16B16A16_Float,     0,                                "rt_frame_render_2");
             RENDER_TARGET(RendererRt::Gbuffer_Albedo)               = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R8G8B8A8_Unorm,         0,                                "rt_gbuffer_albedo");
             RENDER_TARGET(RendererRt::Gbuffer_Normal)               = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16B16A16_Float,     0,                                "rt_gbuffer_normal");
             RENDER_TARGET(RendererRt::Gbuffer_Material)             = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R8G8B8A8_Unorm,         0,                                "rt_gbuffer_material");
@@ -165,8 +165,8 @@ namespace Spartan
         // Output resolution
         if (create_output)
         {
-            RENDER_TARGET(RendererRt::Frame_PostProcess)    = make_unique<RHI_Texture2D>(m_context, width_output, height_output, 1, RHI_Format_R16G16B16A16_Float, 0, "rt_frame_post_process");
-            RENDER_TARGET(RendererRt::Frame_PostProcess_2)  = make_unique<RHI_Texture2D>(m_context, width_output, height_output, 1, RHI_Format_R16G16B16A16_Float, 0, "rt_frame_post_process_2");
+            RENDER_TARGET(RendererRt::Frame_Output)    = make_unique<RHI_Texture2D>(m_context, width_output, height_output, 1, RHI_Format_R16G16B16A16_Float, 0, "rt_frame_output");
+            RENDER_TARGET(RendererRt::Frame_Output_2)  = make_unique<RHI_Texture2D>(m_context, width_output, height_output, 1, RHI_Format_R16G16B16A16_Float, 0, "rt_frame_output_2");
 
             // Bloom
             {
@@ -195,11 +195,12 @@ namespace Spartan
         // Dynamic resolution
         if (create_dynamic)
         {
-            bool upsampling_enabled = GetOption(Render_Upsample_TAA);
-            uint32_t width          = upsampling_enabled ? width_output  : width_render;
-            uint32_t height         = upsampling_enabled ? height_output : height_render;
+            RHI_Texture* rt_taa_history = RENDER_TARGET(RendererRt::Taa_History).get();
+            bool upsampling_enabled     = GetOption(Render_Upsample_TAA);
+            uint32_t width              = upsampling_enabled ? width_output  : width_render;
+            uint32_t height             = upsampling_enabled ? height_output : height_render;
 
-            if (!RENDER_TARGET(RendererRt::Taa_History) || (RENDER_TARGET(RendererRt::Taa_History)->GetWidth() != width && RENDER_TARGET(RendererRt::Taa_History)->GetHeight() != height))
+            if (!rt_taa_history || (rt_taa_history->GetWidth() != width || rt_taa_history->GetHeight() != height))
             {
                 RENDER_TARGET(RendererRt::Taa_History) = make_unique<RHI_Texture2D>(m_context, width, height, 1, RHI_Format_R16G16B16A16_Float, 0, "rt_taa_history");
                 LOG_INFO("Taa history resolution has been set to %dx%d", width, height);

@@ -39,4 +39,4 @@ I will probaly update and adds things to this page, but for now, here are few si
 - Rules are rarely perfect, if you stumble upon some special case, let me know and we'll discuss about what might be best.
 
 # Pull Requests
-You don't have to make the perfect pull request, I don't write perfect code either. However, it will be appreciated if you try to check for serious bugs that can cause things like crashes. This is to maintain a clean/functioning source for everyone to enjoy, and of course for you and me to spend less revising the pull request.
+You don't have to make the perfect pull request, I don't write perfect code either. However, it will be appreciated if you try to check for serious bugs that can cause things like crashes. This is to maintain a clean/functioning source for everyone to enjoy, and of course for you and me to spend less time revising the pull request.
