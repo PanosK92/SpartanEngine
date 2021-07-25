@@ -249,8 +249,9 @@ float4 temporal_antialiasing(uint2 pos_out, uint group_index, uint3 group_id, Te
 [numthreads(thread_group_count_x, thread_group_count_y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID, uint group_index : SV_GroupIndex, uint3 group_id : SV_GroupID)
 {
-    if (any(int2(thread_id.xy) >= g_resolution_rt.xy))
-        return; // out of bounds
-    
+    if (thread_id.x >= uint(g_resolution_rt.x) || thread_id.y >= uint(g_resolution_rt.y))
+        return;
+
     tex_out_rgba[thread_id.xy] = temporal_antialiasing(thread_id.xy, group_index, group_id, tex, tex2);
 }
+
