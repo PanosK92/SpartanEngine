@@ -147,7 +147,7 @@ namespace Spartan
         const std::shared_ptr<RHI_Device>& GetRhiDevice()           const { return m_rhi_device; }
         RHI_PipelineCache* GetPipelineCache()                       const { return m_pipeline_cache.get(); }
         RHI_DescriptorSetLayoutCache* GetDescriptorLayoutSetCache() const { return m_descriptor_set_layout_cache.get(); }
-        RHI_Texture* GetFrameTexture()                                    { return RENDER_TARGET(RendererRt::Frame_PostProcess).get(); }
+        RHI_Texture* GetFrameTexture()                                    { return RENDER_TARGET(RendererRt::Frame_Output).get(); }
         auto GetFrameNum()                                          const { return m_frame_num; }
         std::shared_ptr<Camera> GetCamera()                         const { return m_camera; }
         auto IsInitialised()                                        const { return m_initialised; }

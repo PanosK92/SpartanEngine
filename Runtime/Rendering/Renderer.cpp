@@ -78,7 +78,7 @@ namespace Spartan
         m_option_values[Renderer_Option_Value::Tonemapping]         = static_cast<float>(Renderer_ToneMapping_Off);
         m_option_values[Renderer_Option_Value::Gamma]               = 2.2f;
         m_option_values[Renderer_Option_Value::Sharpen_Strength]    = 1.0f;
-        m_option_values[Renderer_Option_Value::Bloom_Intensity]     = 0.2f;
+        m_option_values[Renderer_Option_Value::Bloom_Intensity]     = 0.1f;
         m_option_values[Renderer_Option_Value::Fog]                 = 0.03f;
         m_option_values[Renderer_Option_Value::Ssao_Gi]             = 1.0f;
 
@@ -253,14 +253,14 @@ namespace Spartan
         // If there is no camera, clear to black
         if (!m_camera)
         {
-            m_cmd_current->ClearRenderTarget(RENDER_TARGET(RendererRt::Frame_PostProcess).get(), 0, 0, false, Vector4(0.0f, 0.0f, 0.0f, 1.0f));
+            m_cmd_current->ClearRenderTarget(RENDER_TARGET(RendererRt::Frame_Output).get(), 0, 0, false, Vector4(0.0f, 0.0f, 0.0f, 1.0f));
             return;
         }
 
         // If there is not camera but no other entities to render, clear to camera's color
         if (m_entities[Renderer_ObjectType::GeometryOpaque].empty() && m_entities[Renderer_ObjectType::GeometryTransparent].empty() && m_entities[Renderer_ObjectType::Light].empty())
         {
-            m_cmd_current->ClearRenderTarget(RENDER_TARGET(RendererRt::Frame_PostProcess).get(), 0, 0, false, m_camera->GetClearColor());
+            m_cmd_current->ClearRenderTarget(RENDER_TARGET(RendererRt::Frame_Output).get(), 0, 0, false, m_camera->GetClearColor());
             return;
         }
 
