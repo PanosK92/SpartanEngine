@@ -64,7 +64,6 @@ namespace Spartan
     void* RHI_StructuredBuffer::Map()
     {
         SP_ASSERT(m_rhi_device != nullptr);
-        SP_ASSERT(m_rhi_device->GetContextRhi()->device_context != nullptr);
         SP_ASSERT(m_resource != nullptr);
 
         LOG_ERROR("Not implemented");
@@ -75,7 +74,6 @@ namespace Spartan
     void RHI_StructuredBuffer::Unmap()
     {
         SP_ASSERT(m_rhi_device != nullptr);
-        SP_ASSERT(m_rhi_device->GetContextRhi()->device_context != nullptr);
         SP_ASSERT(m_resource != nullptr);
 
         LOG_ERROR("Not implemented");
