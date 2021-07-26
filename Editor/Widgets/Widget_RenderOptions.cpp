@@ -400,7 +400,7 @@ void Widget_RenderOptions::TickVisible()
                 }
 
                 // Depth-PrePass
-                WidgetHelper::CheckBox("Depth PrePass - WIP", do_depth_prepass);
+                WidgetHelper::CheckBox("Depth PrePass", do_depth_prepass);
 
                 // Reverse-Z
                 WidgetHelper::CheckBox("Depth Reverse-Z", do_reverse_z);

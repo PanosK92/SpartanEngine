@@ -69,4 +69,30 @@ namespace Spartan
         d3d11_utility::release(static_cast<ID3D11Buffer*>(m_resource));
         d3d11_utility::release(static_cast<ID3D11UnorderedAccessView*>(m_resource));
     }
+
+    void* RHI_StructuredBuffer::Map()
+    {
+        SP_ASSERT(m_rhi_device != nullptr);
+        SP_ASSERT(m_rhi_device->GetContextRhi()->device_context != nullptr);
+        SP_ASSERT(m_resource != nullptr);
+
+        D3D11_MAPPED_SUBRESOURCE mapped_resource;
+        const auto result = m_rhi_device->GetContextRhi()->device_context->Map(static_cast<ID3D11Resource*>(m_resource), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
+        if (FAILED(result))
+        {
+            LOG_ERROR("Failed to map structured buffer.");
+            return nullptr;
+        }
+
+        return mapped_resource.pData;
+    }
+
+    void RHI_StructuredBuffer::Unmap()
+    {
+        SP_ASSERT(m_rhi_device != nullptr);
+        SP_ASSERT(m_rhi_device->GetContextRhi()->device_context != nullptr);
+        SP_ASSERT(m_resource != nullptr);
+
+        m_rhi_device->GetContextRhi()->device_context->Unmap(static_cast<ID3D11Buffer*>(m_resource), 0);
+    }
 }

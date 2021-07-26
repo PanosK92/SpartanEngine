@@ -60,22 +60,8 @@ cbuffer BufferFrame : register(b0)
     uint g_options;
 };
 
-bool is_taa_enabled()               { return any(g_taa_jitter_offset); }
-bool is_ssr_enabled()               { return g_options & (1 << 0);}
-bool is_taa_upsampling_enabled()    { return g_options & (1 << 1);}
-bool is_ssao_enabled()              { return g_options & (1 << 2);}
-bool is_ssao_gi_enabled()           { return g_options & (1 << 3);}
-
-// Low frequency - Updates once per frame
-static const int g_max_materials = 1024;
-cbuffer BufferMaterial : register(b1)
-{
-    float4 mat_clearcoat_clearcoatRough_aniso_anisoRot[g_max_materials];
-    float4 mat_sheen_sheenTint_pad[g_max_materials];
-}
-
 // Medium frequency - Updates per render pass
-cbuffer BufferUber : register(b2)
+cbuffer BufferUber : register(b1)
 {
     matrix g_transform;
     matrix g_transform_previous;
@@ -105,7 +91,7 @@ cbuffer BufferUber : register(b2)
 };
 
 // High frequency - Updates per light
-cbuffer LightBuffer : register(b3)
+cbuffer LightBuffer : register(b2)
 {
     matrix cb_light_view_projection[6];
     float4 cb_light_intensity_range_angle_bias;
@@ -114,3 +100,17 @@ cbuffer LightBuffer : register(b3)
     float4 cb_light_position;
     float4 cb_light_direction;
 };
+
+// Low frequency - Updates once per frame
+static const int g_max_materials = 1024;
+cbuffer BufferMaterial : register(b3)
+{
+    float4 mat_clearcoat_clearcoatRough_aniso_anisoRot[g_max_materials];
+    float4 mat_sheen_sheenTint_pad[g_max_materials];
+}
+
+bool is_taa_enabled()            { return any(g_taa_jitter_offset); }
+bool is_ssr_enabled()            { return g_options & (1 << 0);}
+bool is_taa_upsampling_enabled() { return g_options & (1 << 1);}
+bool is_ssao_enabled()           { return g_options & (1 << 2);}
+bool is_ssao_gi_enabled()        { return g_options & (1 << 3);}

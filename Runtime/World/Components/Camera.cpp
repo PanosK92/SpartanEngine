@@ -80,7 +80,7 @@ namespace Spartan
         m_view              = ComputeViewMatrix();
         m_projection        = ComputeProjection(m_renderer->GetOption(Render_ReverseZ));
         m_view_projection   = m_view * m_projection;
-        m_frustrum          = Frustum(GetViewMatrix(), GetProjectionMatrix(), m_renderer->GetOption(Render_ReverseZ) ? GetNearPlane() : GetFarPlane());
+        m_frustum          = Frustum(GetViewMatrix(), GetProjectionMatrix(), m_renderer->GetOption(Render_ReverseZ) ? GetNearPlane() : GetFarPlane());
 
         m_is_dirty = false;
     }
@@ -152,18 +152,18 @@ namespace Spartan
         return m_renderer ? m_renderer->GetViewport() : RHI_Viewport::Undefined;
     }
 
-    bool Camera::IsInViewFrustrum(Renderable* renderable) const
+    bool Camera::IsInViewFrustum(Renderable* renderable) const
     {
         const BoundingBox& box  = renderable->GetAabb();
         const Vector3 center    = box.GetCenter();
         const Vector3 extents   = box.GetExtents();
 
-        return m_frustrum.IsVisible(center, extents);
+        return m_frustum.IsVisible(center, extents);
     }
 
-    bool Camera::IsInViewFrustrum(const Vector3& center, const Vector3& extents) const
+    bool Camera::IsInViewFrustum(const Vector3& center, const Vector3& extents) const
     {
-        return m_frustrum.IsVisible(center, extents);
+        return m_frustum.IsVisible(center, extents);
     }
 
     bool Camera::Pick(shared_ptr<Entity>& picked)

@@ -22,13 +22,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef SPARTAN_COMMON
 #define SPARTAN_COMMON
 
-//= INCLUDES =================
-#include "Common_Vertex.hlsl"
-#include "Common_Buffer.hlsl"
-#include "Common_Sampler.hlsl"
-#include "Common_Texture.hlsl"
-#include "Common_Struct.hlsl"
-//============================
+//= INCLUDES ======================
+#include "common_vertex_pixel.hlsl"
+#include "common_buffer.hlsl"
+#include "common_sampler.hlsl"
+#include "common_texture.hlsl"
+#include "common_struct.hlsl"
+//=================================
 
 /*------------------------------------------------------------------------------
     CONSTANTS
@@ -48,6 +48,8 @@ static const float FLT_MAX_16   = 65500.0f;
 #define thread_group_count_x    8
 #define thread_group_count_y    8
 #define thread_group_count      64
+
+static const float alpha_mask_threshold = 0.6f;
 
 /*------------------------------------------------------------------------------
     MATH

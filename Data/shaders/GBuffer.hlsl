@@ -42,10 +42,12 @@ struct PixelOutputType
 PixelInputType mainVS(Vertex_PosUvNorTan input)
 {
     PixelInputType output;
-    
+
+    // position computation has to be an exact match to depth_prepass.hlsl
     input.position.w            = 1.0f;
     output.position             = mul(input.position, g_transform);
     output.position             = mul(output.position, g_view_projection);
+    
     output.position_ss_current  = output.position;
     output.position_ss_previous = mul(input.position, g_transform_previous);
     output.position_ss_previous = mul(output.position_ss_previous, g_view_projection_previous);
@@ -87,17 +89,15 @@ PixelOutputType mainPS(PixelInputType input)
         uv                      = ParallaxMapping(tex_material_height, sampler_anisotropic_wrap, uv, camera_to_pixel, TBN, height_scale);
     #endif
     
-    float mask_threshold = 0.6f;
-    
-    #if MASK_MAP
-        float3 maskSample = tex_material_mask.Sample(sampler_anisotropic_wrap, uv).rgb;
-        if (maskSample.r <= mask_threshold && maskSample.g <= mask_threshold && maskSample.b <= mask_threshold)
+    #if ALPHA_MASK_MAP
+        float alpha_mask = tex_material_mask.Sample(sampler_anisotropic_wrap, uv).r;
+        if (alpha_mask <= alpha_mask_threshold)
             discard;
     #endif
 
     #if ALBEDO_MAP
         float4 albedo_sample = tex_material_albedo.Sample(sampler_anisotropic_wrap, uv);
-        if (albedo_sample.a <= mask_threshold)
+        if (albedo_sample.a <= alpha_mask_threshold)
             discard;
 
         albedo_sample.a     = 1.0f;

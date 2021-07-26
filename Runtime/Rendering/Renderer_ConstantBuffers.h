@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Spartan
 {
     // Low frequency buffer - Updates once per frame
-    struct BufferFrame
+    struct Cb_Frame
     {
         Math::Matrix view;
         Math::Matrix projection;
@@ -74,7 +74,7 @@ namespace Spartan
             options = set ? (options |= bit) : (options & ~bit);
         }
 
-        bool operator==(const BufferFrame& rhs) const
+        bool operator==(const Cb_Frame& rhs) const
         {
             return
                 view == rhs.view &&
@@ -106,28 +106,11 @@ namespace Spartan
                 taa_jitter_offset == rhs.taa_jitter_offset &&
                 options == rhs.options;
         }
-        bool operator!=(const BufferFrame& rhs) const { return !(*this == rhs); }
+        bool operator!=(const Cb_Frame& rhs) const { return !(*this == rhs); }
     };
     
-    // Low frequency buffer - Updates once per frame
-    static const uint32_t m_max_material_instances = 1024; // must match the shader
-    struct BufferMaterial
-    {
-        std::array<Math::Vector4, m_max_material_instances> mat_clearcoat_clearcoatRough_anis_anisRot;
-        std::array<Math::Vector4, m_max_material_instances> mat_sheen_sheenTint_pad;
-
-        bool operator==(const BufferMaterial& rhs) const
-        {
-            return
-                mat_clearcoat_clearcoatRough_anis_anisRot == rhs.mat_clearcoat_clearcoatRough_anis_anisRot &&
-                mat_sheen_sheenTint_pad == rhs.mat_sheen_sheenTint_pad;
-        }
-
-        bool operator!=(const BufferMaterial& rhs) const { return !(*this == rhs); }
-    };
-
     // High frequency - Updates like crazy
-    struct BufferUber
+    struct Cb_Uber
     {
         Math::Matrix transform;
         Math::Matrix transform_previous;
@@ -155,7 +138,7 @@ namespace Spartan
         uint32_t mip_count;
         uint32_t work_group_count;
 
-        bool operator==(const BufferUber& rhs) const
+        bool operator==(const Cb_Uber& rhs) const
         {
             return
                 transform           == rhs.transform            &&
@@ -178,11 +161,11 @@ namespace Spartan
                 work_group_count    == rhs.work_group_count;
         }
 
-        bool operator!=(const BufferUber& rhs) const { return !(*this == rhs); }
+        bool operator!=(const Cb_Uber& rhs) const { return !(*this == rhs); }
     };
     
     // Light buffer
-    struct BufferLight
+    struct Cb_Light
     {
         Math::Matrix view_projection[6];
         Math::Vector4 intensity_range_angle_bias;
@@ -191,7 +174,7 @@ namespace Spartan
         Math::Vector4 position;
         Math::Vector4 direction;
     
-        bool operator==(const BufferLight& rhs)
+        bool operator==(const Cb_Light& rhs)
         {
             return
                 view_projection             == rhs.view_projection              &&
@@ -201,5 +184,22 @@ namespace Spartan
                 position                    == rhs.position                     &&
                 direction                   == rhs.direction;
         }
+    };
+
+    // Material buffer
+    static const uint32_t m_max_material_instances = 1024; // must match the shader
+    struct Cb_Material
+    {
+        std::array<Math::Vector4, m_max_material_instances> mat_clearcoat_clearcoatRough_anis_anisRot;
+        std::array<Math::Vector4, m_max_material_instances> mat_sheen_sheenTint_pad;
+
+        bool operator==(const Cb_Material& rhs) const
+        {
+            return
+                mat_clearcoat_clearcoatRough_anis_anisRot == rhs.mat_clearcoat_clearcoatRough_anis_anisRot &&
+                mat_sheen_sheenTint_pad == rhs.mat_sheen_sheenTint_pad;
+        }
+
+        bool operator!=(const Cb_Material& rhs) const { return !(*this == rhs); }
     };
 }

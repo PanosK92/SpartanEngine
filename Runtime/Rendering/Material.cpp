@@ -211,7 +211,7 @@ namespace Spartan
         return paths;
     }
 
-    shared_ptr<Spartan::RHI_Texture>& Material::GetTexture_PtrShared(const Material_Property type)
+    shared_ptr<RHI_Texture>& Material::GetTexture_PtrShared(const Material_Property type)
     {
         static shared_ptr<RHI_Texture> texture_empty;
         return HasTexture(type) ? m_textures.at(type) : texture_empty;

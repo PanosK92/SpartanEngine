@@ -73,16 +73,16 @@ namespace Spartan
         bool LoadFromFile(const std::string& file_path) override;
         //=======================================================
 
-        auto GetWidth()                                     const { return m_width; }
+        uint32_t GetWidth()                                 const { return m_width; }
         void SetWidth(const uint32_t width)                       { m_width = width; }
                                                                   
-        auto GetHeight()                                    const { return m_height; }
+        uint32_t GetHeight()                                const { return m_height; }
         void SetHeight(const uint32_t height)                     { m_height = height; }
                                                                   
-        auto GetGrayscale()                                 const { return m_flags & RHI_Texture_Grayscale; }
+        bool GetGrayscale()                                 const { return m_flags & RHI_Texture_Grayscale; }
         void SetGrayscale(const bool is_grayscale)                { is_grayscale ? m_flags |= RHI_Texture_Grayscale : m_flags &= ~RHI_Texture_Grayscale; }
                                                                   
-        auto GetTransparency()                              const { return m_flags & RHI_Texture_Transparent; }
+        bool GetTransparency()                              const { return m_flags & RHI_Texture_Transparent; }
         void SetTransparency(const bool is_transparent)           { is_transparent ? m_flags |= RHI_Texture_Transparent : m_flags &= ~RHI_Texture_Transparent; }
                                                                   
         uint32_t GetBitsPerChannel()                        const { return m_bits_per_channel; }
@@ -93,7 +93,7 @@ namespace Spartan
         uint32_t GetChannelCount()                          const { return m_channel_count; }
         void SetChannelCount(const uint32_t channel_count)        { m_channel_count = channel_count; }
                                                                   
-        auto GetFormat()                                    const { return m_format; }
+        RHI_Format GetFormat()                              const { return m_format; }
         void SetFormat(const RHI_Format format)                   { m_format = format; }
 
         // Data

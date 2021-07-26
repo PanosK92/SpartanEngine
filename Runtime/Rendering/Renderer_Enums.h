@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Spartan
 {
     // SRV bindings
-    enum class RendererBindingsSrv
+    enum class RendererBindings_Srv
     {
         // Material
         material_albedo    = 0,
@@ -74,7 +74,7 @@ namespace Spartan
     };
 
     // UAV Bindings
-    enum class RendererBindingsUav
+    enum class RendererBindings_Uav
     {
         r           = 0,
         rg          = 1,
@@ -85,10 +85,20 @@ namespace Spartan
         rgba_mips   = 6
     };
 
-    // Structured buffer bindings
-    enum class RendererBindingsStructuredBuffer
+    // Constant buffer bindings
+    enum class RendererBindings_Cb
     {
-        counter = 18
+        frame       = 0,
+        uber        = 1,
+        light       = 2,
+        material    = 3
+    };
+
+    // Structured buffer bindings
+    enum class RendererBindings_Sb
+    {
+        counter     = 18,
+        material    = 19
     };
 
     // Shaders
@@ -96,8 +106,10 @@ namespace Spartan
     {
         Gbuffer_V,
         Gbuffer_P,
-        Depth_V,
-        Depth_P,
+        Depth_Prepass_V,
+        Depth_Prepass_P,
+        Depth_Light_V,
+        Depth_Light_P,
         Quad_V,
         Copy_Point_C,
         Copy_Bilinear_C,

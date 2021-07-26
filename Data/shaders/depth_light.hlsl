@@ -19,51 +19,24 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-struct Vertex_Pos
-{
-    float4 position : POSITION0;
-};
+//= INCLUDES =========
+#include "Common.hlsl"
+//====================
 
-struct Vertex_PosUv
+Pixel_PosUv mainVS(Vertex_PosUv input)
 {
-    float4 position : POSITION0;
-    float2 uv       : TEXCOORD0;
-};
+    Pixel_PosUv output;
 
-struct Vertex_PosColor
-{
-    float4 position : POSITION0;
-    float4 color    : COLOR0;
-};
+    input.position.w = 1.0f;
+    output.position = mul(input.position, g_transform);
+    output.uv = input.uv;
 
-struct Vertex_PosUvNorTan
-{
-    float4 position     : POSITION0;
-    float2 uv           : TEXCOORD0;
-    float3 normal       : NORMAL0;
-    float3 tangent      : TANGENT0;
-};
+    return output;
+}
 
-struct Vertex_Pos2dUvColor
+// Translucent shadows
+float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
-    float2 position     : POSITION0;
-    float2 uv           : TEXCOORD0;
-    float4 color        : COLOR0;
-};
-
-struct Pixel_Pos
-{
-    float4 position : SV_POSITION;
-};
-
-struct Pixel_PosUv
-{
-    float4 position : SV_POSITION;
-    float2 uv       : TEXCOORD;
-};
-
-struct Pixel_PosColor
-{
-    float4 position : SV_POSITION;
-    float4 color    : COLOR;
-};
+    float2 uv = float2(input.uv.x * g_mat_tiling.x + g_mat_offset.x, input.uv.y * g_mat_offset.y + g_mat_tiling.y);
+    return degamma(tex.SampleLevel(sampler_anisotropic_wrap, uv, 0)) * g_mat_color;
+}

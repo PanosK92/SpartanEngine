@@ -807,7 +807,7 @@ void Widget_Properties::ShowMaterial(Material* material) const
                 show_property("Height",                 "Perceived depth for parallax mapping",                                                 Material_Height,                true, true);
                 show_property("Occlusion",              "Amount of light loss, can be complementary to SSAO",                                   Material_Occlusion,             true, false);
                 show_property("Emission",               "Light emission from the surface, works nice with bloom",                               Material_Emission,              true, false);
-                show_property("Mask",                   "Discards pixels",                                                                      Material_Mask,                  true, false);
+                show_property("Alpha mask",             "Discards pixels",                                                                      Material_AlphaMask,             true, false);
             }
 
             // UV

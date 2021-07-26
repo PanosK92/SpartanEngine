@@ -32,14 +32,14 @@ using namespace std;
 
 namespace Spartan
 {
-    unordered_map<uint16_t, shared_ptr<ShaderGBuffer>> ShaderGBuffer::m_variations;
+    unordered_map<uint32_t, shared_ptr<ShaderGBuffer>> ShaderGBuffer::m_variations;
 
-    ShaderGBuffer::ShaderGBuffer(Context* context, const uint16_t flags /*= 0*/) : RHI_Shader(context)
+    ShaderGBuffer::ShaderGBuffer(Context* context, const uint32_t flags /*= 0*/) : RHI_Shader(context)
     {
         m_flags = flags;
     }
 
-    void ShaderGBuffer::GenerateVariation(Context* context, const uint16_t flags)
+    void ShaderGBuffer::GenerateVariation(Context* context, const uint32_t flags)
     {
         // Check if this variation is already compiled
         if (m_variations.find(flags) != m_variations.end())
@@ -49,7 +49,7 @@ namespace Spartan
         CompileVariation(context, flags);
     }
 
-    void ShaderGBuffer::CompileVariation(Context* context, const uint16_t flags)
+    void ShaderGBuffer::CompileVariation(Context* context, const uint32_t flags)
     {
         // Shader source file path
         const string file_path = context->GetSubsystem<ResourceCache>()->GetResourceDirectory(ResourceDirectory::Shaders) + "\\GBuffer.hlsl";
@@ -65,7 +65,7 @@ namespace Spartan
         shader->AddDefine("HEIGHT_MAP",     (flags & Material_Height)     ? "1" : "0");
         shader->AddDefine("OCCLUSION_MAP",  (flags & Material_Occlusion)  ? "1" : "0");
         shader->AddDefine("EMISSION_MAP",   (flags & Material_Emission)   ? "1" : "0");
-        shader->AddDefine("MASK_MAP",       (flags & Material_Mask)       ? "1" : "0");
+        shader->AddDefine("ALPHA_MASK_MAP", (flags & Material_AlphaMask)  ? "1" : "0");
 
         // Compile
         bool async = true;
