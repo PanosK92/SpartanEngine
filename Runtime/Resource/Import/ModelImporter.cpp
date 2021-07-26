@@ -485,7 +485,7 @@ namespace Spartan
         load_mat_tex(Material_Occlusion, aiTextureType_LIGHTMAP,             aiTextureType_LIGHTMAP);
         load_mat_tex(Material_Emission,  aiTextureType_EMISSION_COLOR,       aiTextureType_EMISSIVE);
         load_mat_tex(Material_Height,    aiTextureType_HEIGHT,               aiTextureType_NONE);
-        load_mat_tex(Material_Mask,      aiTextureType_OPACITY,              aiTextureType_NONE);
+        load_mat_tex(Material_AlphaMask, aiTextureType_OPACITY,              aiTextureType_NONE);
 
         return material;
     }

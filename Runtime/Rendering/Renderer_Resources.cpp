@@ -50,27 +50,36 @@ namespace Spartan
         const bool is_dynamic       = true;
         const uint32_t offset_count = 1024; // should be big enough (buffers can dynamically reallocate anyway)
 
-        m_buffer_frame_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device, "frame", is_dynamic);
-        m_buffer_frame_gpu->Create<BufferFrame>(offset_count);
+        m_cb_frame_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device, "frame", is_dynamic);
+        m_cb_frame_gpu->Create<Cb_Frame>(offset_count);
 
-        m_buffer_material_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device, "material", is_dynamic);
-        m_buffer_material_gpu->Create<BufferMaterial>(offset_count);
+        m_cb_uber_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device, "uber", is_dynamic);
+        m_cb_uber_gpu->Create<Cb_Uber>(offset_count);
 
-        m_buffer_uber_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device, "uber", is_dynamic);
-        m_buffer_uber_gpu->Create<BufferUber>(offset_count);
+        m_cb_light_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device, "light", is_dynamic);
+        m_cb_light_gpu->Create<Cb_Light>(offset_count);
 
-        m_buffer_light_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device, "light", is_dynamic);
-        m_buffer_light_gpu->Create<BufferLight>(offset_count);
+        m_cb_material_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device, "material", is_dynamic);
+        m_cb_material_gpu->Create<Cb_Material>(offset_count);
+    }
+
+    void Renderer::CreateStructuredBuffers()
+    {
+        static uint32_t counter = 0;
+        uint32_t element_count = 1;
+        m_sb_counter = make_shared<RHI_StructuredBuffer>(m_rhi_device, static_cast<uint32_t>(sizeof(uint32_t)), element_count, static_cast<void*>(&counter));
     }
 
     void Renderer::CreateDepthStencilStates()
     {
+        RHI_Comparison_Function reverse_z_aware_comp_func = GetComparisonFunction();
+
         // arguments: depth_test, depth_write, depth_function, stencil_test, stencil_write, stencil_function
         m_depth_stencil_off_off = make_shared<RHI_DepthStencilState>(m_rhi_device, false, false, RHI_Comparison_Function::Never,    false, false, RHI_Comparison_Function::Never);  // no depth or stencil
-        m_depth_stencil_rw_off  = make_shared<RHI_DepthStencilState>(m_rhi_device, true,  true,  GetComparisonFunction(),           false, false, RHI_Comparison_Function::Never);  // depth
-        m_depth_stencil_r_off   = make_shared<RHI_DepthStencilState>(m_rhi_device, true,  false, GetComparisonFunction(),           false, false, RHI_Comparison_Function::Never);  // depth
+        m_depth_stencil_rw_off  = make_shared<RHI_DepthStencilState>(m_rhi_device, true,  true,  reverse_z_aware_comp_func,         false, false, RHI_Comparison_Function::Never);  // depth
+        m_depth_stencil_r_off   = make_shared<RHI_DepthStencilState>(m_rhi_device, true,  false, reverse_z_aware_comp_func,         false, false, RHI_Comparison_Function::Never);  // depth
         m_depth_stencil_off_r   = make_shared<RHI_DepthStencilState>(m_rhi_device, false, false, RHI_Comparison_Function::Never,    true,  false, RHI_Comparison_Function::Equal);  // depth + stencil
-        m_depth_stencil_rw_w    = make_shared<RHI_DepthStencilState>(m_rhi_device, true,  true,  GetComparisonFunction(),           false, true,  RHI_Comparison_Function::Always); // depth + stencil
+        m_depth_stencil_rw_w    = make_shared<RHI_DepthStencilState>(m_rhi_device, true,  true,  reverse_z_aware_comp_func,         false, true,  RHI_Comparison_Function::Always); // depth + stencil
     }
 
     void Renderer::CreateRasterizerStates()
@@ -110,13 +119,6 @@ namespace Spartan
         }
 
         m_sampler_anisotropic_wrap = make_shared<RHI_Sampler>(m_rhi_device, RHI_Filter::Linear, RHI_Filter::Linear, RHI_Sampler_Mipmap_Mode::Linear, RHI_Sampler_Address_Mode::Wrap, RHI_Comparison_Function::Always, anisotropy, false, mip_lod_bias);
-    }
-
-    void Renderer::CreateStructuredBuffers()
-    {
-        static uint32_t counter = 0;
-        uint32_t element_count  = 1;
-        m_structured_buffer_counter = make_shared<RHI_StructuredBuffer>(m_rhi_device, static_cast<uint32_t>(sizeof(uint32_t)), element_count, static_cast<void*>(&counter));
     }
 
     void Renderer::CreateRenderTextures(const bool create_render, const bool create_output, const bool create_fixed, const bool create_dynamic)
@@ -228,11 +230,23 @@ namespace Spartan
         m_shaders[RendererShader::Quad_V] = make_shared<RHI_Shader>(m_context, RHI_Vertex_Type::PosTex);
         m_shaders[RendererShader::Quad_V]->Compile(RHI_Shader_Vertex, dir_shaders + "Quad.hlsl", async);
 
-        // Depth Vertex
-        m_shaders[RendererShader::Depth_V] = make_shared<RHI_Shader>(m_context, RHI_Vertex_Type::PosTex);
-        m_shaders[RendererShader::Depth_V]->Compile(RHI_Shader_Vertex, dir_shaders + "Depth.hlsl", async);
-        m_shaders[RendererShader::Depth_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[RendererShader::Depth_P]->Compile(RHI_Shader_Pixel, dir_shaders + "Depth.hlsl", async);
+        // Depth prepass
+        {
+            m_shaders[RendererShader::Depth_Prepass_V] = make_shared<RHI_Shader>(m_context, RHI_Vertex_Type::PosTex);
+            m_shaders[RendererShader::Depth_Prepass_V]->Compile(RHI_Shader_Vertex, dir_shaders + "depth_prepass.hlsl", async);
+
+            m_shaders[RendererShader::Depth_Prepass_P] = make_shared<RHI_Shader>(m_context);
+            m_shaders[RendererShader::Depth_Prepass_P]->Compile(RHI_Shader_Pixel, dir_shaders + "depth_prepass.hlsl", async);
+        }
+
+        // Depth light
+        {
+            m_shaders[RendererShader::Depth_Light_V] = make_shared<RHI_Shader>(m_context, RHI_Vertex_Type::PosTex);
+            m_shaders[RendererShader::Depth_Light_V]->Compile(RHI_Shader_Vertex, dir_shaders + "depth_light.hlsl", async);
+
+            m_shaders[RendererShader::Depth_Light_P] = make_shared<RHI_Shader>(m_context);
+            m_shaders[RendererShader::Depth_Light_P]->Compile(RHI_Shader_Pixel, dir_shaders + "depth_light.hlsl", async);
+        }
 
         // BRDF - Specular Lut
         m_shaders[RendererShader::BrdfSpecularLut_C] = make_shared<RHI_Shader>(m_context);

@@ -19,31 +19,29 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#pragma once
+//= INCLUDES =========
+#include "Common.hlsl"
+//====================
 
-//= INCLUDES =================
-#include <memory>
-#include <unordered_map>
-#include "../RHI/RHI_Shader.h"
-//============================
-
-namespace Spartan
+Pixel_PosUv mainVS(Vertex_PosUv input)
 {
-    class SPARTAN_CLASS ShaderGBuffer : public RHI_Shader, public std::enable_shared_from_this<ShaderGBuffer>
-    {
-    public:
-        ShaderGBuffer(Context* context, const uint32_t flags = 0);
-        ~ShaderGBuffer() = default;
-        
-        bool IsSuitable(const uint32_t flags)  { return m_flags == flags; }
+    Pixel_PosUv output;
 
-        static void GenerateVariation(Context* context, const uint32_t flags);
-        static const std::unordered_map<uint32_t, std::shared_ptr<ShaderGBuffer>>& GetVariations() { return m_variations; }
+    // position computation has to be an exact match to gbuffer.hlsl
+    input.position.w    = 1.0f; 
+    output.position     = mul(input.position, g_transform);
+    output.position     = mul(output.position, g_view_projection);
 
-    private:
-        static void CompileVariation(Context* context, const uint32_t flags);
+    output.uv = input.uv;
 
-        uint32_t m_flags = 0;
-        static std::unordered_map<uint32_t, std::shared_ptr<ShaderGBuffer>> m_variations;
-    };
+    return output;
+}
+
+void mainPS(Pixel_PosUv input)
+{
+    if (g_is_transparent_pass && tex_material_mask.Sample(sampler_anisotropic_wrap, input.uv).r <= alpha_mask_threshold)
+        discard;
+
+    if (g_color.a == 1.0f && tex_material_albedo.Sample(sampler_anisotropic_wrap, input.uv).a <= alpha_mask_threshold)
+        discard;
 }

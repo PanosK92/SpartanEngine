@@ -112,9 +112,12 @@ namespace Spartan
         const RHI_Viewport& GetViewport() const;
         //================================================================
 
+        //= FRUSTUM ==========================================================================
+        bool IsInViewFrustum(Renderable* renderable) const;
+        bool IsInViewFrustum(const Math::Vector3& center, const Math::Vector3& extents) const;
+        //====================================================================================
+        // 
         //= MISC =================================================================================
-        bool IsInViewFrustrum(Renderable* renderable) const;
-        bool IsInViewFrustrum(const Math::Vector3& center, const Math::Vector3& extents) const;
         const Math::Vector4& GetClearColor() const            { return m_clear_color; }
         void SetClearColor(const Math::Vector4& color)        { m_clear_color = color; }
         bool GetFpsControlEnabled()                     const { return m_fps_control_enabled; }
@@ -157,7 +160,7 @@ namespace Spartan
         float m_mouse_smoothing             = 0.5f;
         RHI_Viewport m_last_known_viewport;
         Math::Ray m_ray;
-        Math::Frustum m_frustrum;
+        Math::Frustum m_frustum;
 
         // Dependencies
         Renderer* m_renderer    = nullptr;

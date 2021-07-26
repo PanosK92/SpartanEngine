@@ -162,6 +162,7 @@ namespace Spartan
     private:
         // Resource creation
         void CreateConstantBuffers();
+        void CreateStructuredBuffers();
         void CreateDepthStencilStates();
         void CreateRasterizerStates();
         void CreateBlendStates();
@@ -169,7 +170,6 @@ namespace Spartan
         void CreateTextures();
         void CreateShaders();
         void CreateSamplers(const bool create_only_anisotropic = false);
-        void CreateStructuredBuffers();
         void CreateRenderTextures(const bool create_render, const bool create_output, const bool create_fixed, const bool create_dynamic);
 
         // Passes
@@ -211,10 +211,10 @@ namespace Spartan
         void Pass_CopyBilinear(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
 
         // Constant buffers
-        bool UpdateFrameBuffer(RHI_CommandList* cmd_list);
-        bool UpdateMaterialBuffer(RHI_CommandList* cmd_list);
-        bool UpdateUberBuffer(RHI_CommandList* cmd_list);
-        bool UpdateLightBuffer(RHI_CommandList* cmd_list, const Light* light);
+        bool Update_Cb_Frame(RHI_CommandList* cmd_list);
+        bool Update_Cb_Uber(RHI_CommandList* cmd_list);
+        bool Update_Cb_Light(RHI_CommandList* cmd_list, const Light* light);
+        bool Update_Cb_Material(RHI_CommandList* cmd_list);
 
         // Event handlers
         void OnRenderablesAcquire(const Variant& renderables);
@@ -266,8 +266,30 @@ namespace Spartan
         std::shared_ptr<RHI_Sampler> m_sampler_trilinear_clamp;
         std::shared_ptr<RHI_Sampler> m_sampler_anisotropic_wrap;
 
+        //= CONSTANT BUFFERS =================================
+        Cb_Frame m_cb_frame_cpu;
+        Cb_Frame m_cb_frame_cpu_previous;
+        std::shared_ptr<RHI_ConstantBuffer> m_cb_frame_gpu;
+        uint32_t m_cb_frame_offset_index = 0;
+
+        Cb_Uber m_cb_uber_cpu;
+        Cb_Uber m_cb_uber_cpu_previous;
+        std::shared_ptr<RHI_ConstantBuffer> m_cb_uber_gpu;
+        uint32_t m_cb_uber_offset_index = 0;
+
+        Cb_Light m_cb_light_cpu;
+        Cb_Light m_cb_light_cpu_previous;
+        std::shared_ptr<RHI_ConstantBuffer> m_cb_light_gpu;
+        uint32_t m_cb_light_offset_index = 0;
+
+        Cb_Material m_cb_material_cpu;
+        Cb_Material m_cb_material_cpu_previous;
+        std::shared_ptr<RHI_ConstantBuffer> m_cb_material_gpu;
+        uint32_t m_cb_material_offset_index = 0;
+        //====================================================
+
         // Structured buffers
-        std::shared_ptr<RHI_StructuredBuffer> m_structured_buffer_counter;
+        std::shared_ptr<RHI_StructuredBuffer> m_sb_counter;
 
         // Line rendering
         std::shared_ptr<RHI_VertexBuffer> m_vertex_buffer_lines;
@@ -319,29 +341,7 @@ namespace Spartan
         static const uint8_t m_swap_chain_buffer_count = 3;
         std::shared_ptr<RHI_SwapChain> m_swap_chain;
 
-        //= CONSTANT BUFFERS =====================================
-        BufferFrame m_buffer_frame_cpu;
-        BufferFrame m_buffer_frame_cpu_previous;
-        std::shared_ptr<RHI_ConstantBuffer> m_buffer_frame_gpu;
-        uint32_t m_buffer_frame_offset_index = 0;
-
-        BufferMaterial m_buffer_material_cpu;
-        BufferMaterial m_buffer_material_cpu_previous;
-        std::shared_ptr<RHI_ConstantBuffer> m_buffer_material_gpu;
-        uint32_t m_buffer_material_offset_index = 0;
-
-        BufferUber m_buffer_uber_cpu;
-        BufferUber m_buffer_uber_cpu_previous;
-        std::shared_ptr<RHI_ConstantBuffer> m_buffer_uber_gpu;
-        uint32_t m_buffer_uber_offset_index = 0;
-
-        BufferLight m_buffer_light_cpu;
-        BufferLight m_buffer_light_cpu_previous;
-        std::shared_ptr<RHI_ConstantBuffer> m_buffer_light_gpu;
-        uint32_t m_buffer_light_offset_index = 0;
-        //========================================================
-
-        // Entities and material references
+        // Entity references
         std::unordered_map<Renderer_ObjectType, std::vector<Entity*>> m_entities;
         std::array<Material*, m_max_material_instances> m_material_instances;
         std::shared_ptr<Camera> m_camera;

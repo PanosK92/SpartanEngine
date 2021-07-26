@@ -33,6 +33,9 @@ namespace Spartan
         RHI_StructuredBuffer(const std::shared_ptr<RHI_Device>& rhi_device, const uint32_t stride, const uint32_t element_count, const void* data = nullptr);
         ~RHI_StructuredBuffer();
 
+        void* Map();
+        void Unmap();
+
         void* GetResource() { return m_resource; }
 
     private:

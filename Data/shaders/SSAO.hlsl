@@ -27,7 +27,7 @@ static const uint g_ao_directions           = 2;
 static const uint g_ao_steps                = 2;
 static const float g_ao_radius              = 0.3f;
 static const float g_ao_intensity_occlusion = 3.3f;
-static const float g_ao_intensity_gi        = 5.0f;
+static const float g_ao_intensity_gi        = 10.0f;
 static const float g_ao_occlusion_bias      = 0.0f;
 
 static const float ao_samples       = (float)(g_ao_directions * g_ao_steps);
@@ -112,4 +112,3 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     tex_out_r[thread_id.xy] = ground_truth_ambient_occlusion(thread_id.xy).a;
 #endif
 }
-

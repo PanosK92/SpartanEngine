@@ -38,6 +38,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Device.h"
 #include "../RHI/RHI_PipelineCache.h"
 #include "../RHI/RHI_ConstantBuffer.h"
+#include "../RHI/RHI_StructuredBuffer.h"
 #include "../RHI/RHI_CommandList.h"
 #include "../RHI/RHI_Texture2D.h"
 #include "../RHI/RHI_SwapChain.h"
@@ -71,6 +72,7 @@ namespace Spartan
         m_options |= Render_ScreenSpaceReflections;
         m_options |= Render_AntiAliasing_Taa;
         m_options |= Render_Sharpening_AMD_FidelityFX_ContrastAdaptiveSharpening;
+        m_options |= Render_DepthPrepass;
 
         // Option values
         m_option_values[Renderer_Option_Value::Anisotropy]          = 16.0f;
@@ -240,10 +242,10 @@ namespace Spartan
         // Reset dynamic buffer indices when we come back to the first command list
         if (m_cmd_index == 0)
         {
-            m_buffer_uber_offset_index      = 0;
-            m_buffer_frame_offset_index     = 0;
-            m_buffer_light_offset_index     = 0;
-            m_buffer_material_offset_index  = 0;
+            m_cb_uber_offset_index      = 0;
+            m_cb_frame_offset_index     = 0;
+            m_cb_light_offset_index     = 0;
+            m_cb_material_offset_index  = 0;
 
         }
 
@@ -268,28 +270,28 @@ namespace Spartan
         {
             if (m_update_ortho_proj || m_near_plane != m_camera->GetNearPlane() || m_far_plane != m_camera->GetFarPlane())
             {
-                m_buffer_frame_cpu.projection_ortho         = Matrix::CreateOrthographicLH(m_viewport.width, m_viewport.height, m_near_plane, m_far_plane);
-                m_buffer_frame_cpu.view_projection_ortho    = Matrix::CreateLookAtLH(Vector3(0, 0, -m_near_plane), Vector3::Forward, Vector3::Up) * m_buffer_frame_cpu.projection_ortho;
-                m_update_ortho_proj                         = false;
+                m_cb_frame_cpu.projection_ortho         = Matrix::CreateOrthographicLH(m_viewport.width, m_viewport.height, m_near_plane, m_far_plane);
+                m_cb_frame_cpu.view_projection_ortho    = Matrix::CreateLookAtLH(Vector3(0, 0, -m_near_plane), Vector3::Forward, Vector3::Up) * m_cb_frame_cpu.projection_ortho;
+                m_update_ortho_proj                     = false;
             }
             
-            m_near_plane                    = m_camera->GetNearPlane();
-            m_far_plane                     = m_camera->GetFarPlane();
-            m_buffer_frame_cpu.view         = m_camera->GetViewMatrix();
-            m_buffer_frame_cpu.projection   = m_camera->GetProjectionMatrix();
+            m_near_plane                = m_camera->GetNearPlane();
+            m_far_plane                 = m_camera->GetFarPlane();
+            m_cb_frame_cpu.view         = m_camera->GetViewMatrix();
+            m_cb_frame_cpu.projection   = m_camera->GetProjectionMatrix();
             
             // TAA - Generate jitter
             if (GetOption(Render_AntiAliasing_Taa))
             {
                 m_taa_jitter_previous = m_taa_jitter;
                 
-                const float scale               = 1.0f;
-                const uint8_t samples           = 16;
-                const uint64_t index            = m_frame_num % samples;
-                m_taa_jitter                    = Utility::Sampling::Halton2D(index, 2, 3) * 2.0f - 1.0f;
-                m_taa_jitter.x                  = (m_taa_jitter.x / m_resolution_render.x) * scale;
-                m_taa_jitter.y                  = (m_taa_jitter.y / m_resolution_render.y) * scale;
-                m_buffer_frame_cpu.projection   *= Matrix::CreateTranslation(Vector3(m_taa_jitter.x, m_taa_jitter.y, 0.0f));
+                const float scale           = 1.0f;
+                const uint8_t samples       = 16;
+                const uint64_t index        = m_frame_num % samples;
+                m_taa_jitter                = Utility::Sampling::Halton2D(index, 2, 3) * 2.0f - 1.0f;
+                m_taa_jitter.x              = (m_taa_jitter.x / m_resolution_render.x) * scale;
+                m_taa_jitter.y              = (m_taa_jitter.y / m_resolution_render.y) * scale;
+                m_cb_frame_cpu.projection   *= Matrix::CreateTranslation(Vector3(m_taa_jitter.x, m_taa_jitter.y, 0.0f));
             }
             else
             {
@@ -298,35 +300,35 @@ namespace Spartan
             }
             
             // Update the remaining of the frame buffer
-            m_buffer_frame_cpu.view_projection_previous     = m_buffer_frame_cpu.view_projection;
-            m_buffer_frame_cpu.view_projection              = m_buffer_frame_cpu.view * m_buffer_frame_cpu.projection;
-            m_buffer_frame_cpu.view_projection_inv          = Matrix::Invert(m_buffer_frame_cpu.view_projection);
-            m_buffer_frame_cpu.view_projection_unjittered   = m_buffer_frame_cpu.view * m_camera->GetProjectionMatrix();
-            m_buffer_frame_cpu.camera_aperture              = m_camera->GetAperture();
-            m_buffer_frame_cpu.camera_shutter_speed         = m_camera->GetShutterSpeed();
-            m_buffer_frame_cpu.camera_iso                   = m_camera->GetIso();
-            m_buffer_frame_cpu.camera_near                  = m_camera->GetNearPlane();
-            m_buffer_frame_cpu.camera_far                   = m_camera->GetFarPlane();
-            m_buffer_frame_cpu.camera_position              = m_camera->GetTransform()->GetPosition();
-            m_buffer_frame_cpu.camera_direction             = m_camera->GetTransform()->GetForward();
-            m_buffer_frame_cpu.resolution_output            = m_resolution_output;
-            m_buffer_frame_cpu.resolution_render            = m_resolution_render;
-            m_buffer_frame_cpu.taa_jitter_offset            = m_taa_jitter - m_taa_jitter_previous;
-            m_buffer_frame_cpu.delta_time                   = static_cast<float>(m_context->GetSubsystem<Timer>()->GetDeltaTimeSmoothedSec());
-            m_buffer_frame_cpu.time                         = static_cast<float>(m_context->GetSubsystem<Timer>()->GetTimeSec());
-            m_buffer_frame_cpu.bloom_intensity              = GetOptionValue<float>(Renderer_Option_Value::Bloom_Intensity);
-            m_buffer_frame_cpu.sharpen_strength             = GetOptionValue<float>(Renderer_Option_Value::Sharpen_Strength);
-            m_buffer_frame_cpu.fog                          = GetOptionValue<float>(Renderer_Option_Value::Fog);
-            m_buffer_frame_cpu.tonemapping                  = GetOptionValue<float>(Renderer_Option_Value::Tonemapping);
-            m_buffer_frame_cpu.gamma                        = GetOptionValue<float>(Renderer_Option_Value::Gamma);
-            m_buffer_frame_cpu.shadow_resolution            = GetOptionValue<float>(Renderer_Option_Value::ShadowResolution);
-            m_buffer_frame_cpu.frame                        = static_cast<uint32_t>(m_frame_num);
+            m_cb_frame_cpu.view_projection_previous     = m_cb_frame_cpu.view_projection;
+            m_cb_frame_cpu.view_projection              = m_cb_frame_cpu.view * m_cb_frame_cpu.projection;
+            m_cb_frame_cpu.view_projection_inv          = Matrix::Invert(m_cb_frame_cpu.view_projection);
+            m_cb_frame_cpu.view_projection_unjittered   = m_cb_frame_cpu.view * m_camera->GetProjectionMatrix();
+            m_cb_frame_cpu.camera_aperture              = m_camera->GetAperture();
+            m_cb_frame_cpu.camera_shutter_speed         = m_camera->GetShutterSpeed();
+            m_cb_frame_cpu.camera_iso                   = m_camera->GetIso();
+            m_cb_frame_cpu.camera_near                  = m_camera->GetNearPlane();
+            m_cb_frame_cpu.camera_far                   = m_camera->GetFarPlane();
+            m_cb_frame_cpu.camera_position              = m_camera->GetTransform()->GetPosition();
+            m_cb_frame_cpu.camera_direction             = m_camera->GetTransform()->GetForward();
+            m_cb_frame_cpu.resolution_output            = m_resolution_output;
+            m_cb_frame_cpu.resolution_render            = m_resolution_render;
+            m_cb_frame_cpu.taa_jitter_offset            = m_taa_jitter - m_taa_jitter_previous;
+            m_cb_frame_cpu.delta_time                   = static_cast<float>(m_context->GetSubsystem<Timer>()->GetDeltaTimeSmoothedSec());
+            m_cb_frame_cpu.time                         = static_cast<float>(m_context->GetSubsystem<Timer>()->GetTimeSec());
+            m_cb_frame_cpu.bloom_intensity              = GetOptionValue<float>(Renderer_Option_Value::Bloom_Intensity);
+            m_cb_frame_cpu.sharpen_strength             = GetOptionValue<float>(Renderer_Option_Value::Sharpen_Strength);
+            m_cb_frame_cpu.fog                          = GetOptionValue<float>(Renderer_Option_Value::Fog);
+            m_cb_frame_cpu.tonemapping                  = GetOptionValue<float>(Renderer_Option_Value::Tonemapping);
+            m_cb_frame_cpu.gamma                        = GetOptionValue<float>(Renderer_Option_Value::Gamma);
+            m_cb_frame_cpu.shadow_resolution            = GetOptionValue<float>(Renderer_Option_Value::ShadowResolution);
+            m_cb_frame_cpu.frame                        = static_cast<uint32_t>(m_frame_num);
 
             // These must match what Common_Buffer.hlsl is reading
-            m_buffer_frame_cpu.set_bit(GetOption(Render_ScreenSpaceReflections),                1 << 0);
-            m_buffer_frame_cpu.set_bit(GetOption(Render_Upsample_TAA),                          1 << 1);
-            m_buffer_frame_cpu.set_bit(GetOption(Render_Ssao),                                  1 << 2);
-            m_buffer_frame_cpu.set_bit(GetOptionValue<bool>(Renderer_Option_Value::Ssao_Gi),    1 << 3);
+            m_cb_frame_cpu.set_bit(GetOption(Render_ScreenSpaceReflections),                1 << 0);
+            m_cb_frame_cpu.set_bit(GetOption(Render_Upsample_TAA),                          1 << 1);
+            m_cb_frame_cpu.set_bit(GetOption(Render_Ssao),                                  1 << 2);
+            m_cb_frame_cpu.set_bit(GetOptionValue<bool>(Renderer_Option_Value::Ssao_Gi),    1 << 3);
         }
 
         Pass_Main(m_cmd_current);
@@ -493,7 +495,7 @@ namespace Spartan
         return buffer_gpu->Unmap(offset, size);
     }
 
-	bool Renderer::UpdateFrameBuffer(RHI_CommandList* cmd_list)
+	bool Renderer::Update_Cb_Frame(RHI_CommandList* cmd_list)
     {
         SP_ASSERT(cmd_list != nullptr);
 
@@ -504,62 +506,34 @@ namespace Spartan
             {
                 if (light->GetLightType() == LightType::Directional)
                 {
-                    m_buffer_frame_cpu.directional_light_intensity = light->GetIntensity();
+                    m_cb_frame_cpu.directional_light_intensity = light->GetIntensity();
                 }
             }
         }
 
-        if (!update_dynamic_buffer<BufferFrame>(cmd_list, m_buffer_frame_gpu.get(), m_buffer_frame_cpu, m_buffer_frame_cpu_previous, m_buffer_frame_offset_index))
+        if (!update_dynamic_buffer<Cb_Frame>(cmd_list, m_cb_frame_gpu.get(), m_cb_frame_cpu, m_cb_frame_cpu_previous, m_cb_frame_offset_index))
             return false;
 
         // Dynamic buffers with offsets have to be rebound whenever the offset changes
-        cmd_list->SetConstantBuffer(0, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, m_buffer_frame_gpu);
+        cmd_list->SetConstantBuffer(RendererBindings_Cb::frame, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, m_cb_frame_gpu);
 
         return true;
     }
 
-    bool Renderer::UpdateMaterialBuffer(RHI_CommandList* cmd_list)
+    bool Renderer::Update_Cb_Uber(RHI_CommandList* cmd_list)
     {
         SP_ASSERT(cmd_list != nullptr);
 
-        // Update
-        for (uint32_t i = 0; i < m_max_material_instances; i++)
-        {
-            Material* material = m_material_instances[i];
-            if (!material)
-                continue;
-
-            m_buffer_material_cpu.mat_clearcoat_clearcoatRough_anis_anisRot[i].x = material->GetProperty(Material_Clearcoat);
-            m_buffer_material_cpu.mat_clearcoat_clearcoatRough_anis_anisRot[i].y = material->GetProperty(Material_Clearcoat_Roughness);
-            m_buffer_material_cpu.mat_clearcoat_clearcoatRough_anis_anisRot[i].z = material->GetProperty(Material_Anisotropic);
-            m_buffer_material_cpu.mat_clearcoat_clearcoatRough_anis_anisRot[i].w = material->GetProperty(Material_Anisotropic_Rotation);
-            m_buffer_material_cpu.mat_sheen_sheenTint_pad[i].x = material->GetProperty(Material_Sheen);
-            m_buffer_material_cpu.mat_sheen_sheenTint_pad[i].y = material->GetProperty(Material_Sheen_Tint);
-        }
-
-        if (!update_dynamic_buffer<BufferMaterial>(cmd_list, m_buffer_material_gpu.get(), m_buffer_material_cpu, m_buffer_material_cpu_previous, m_buffer_material_offset_index))
+        if (!update_dynamic_buffer<Cb_Uber>(cmd_list, m_cb_uber_gpu.get(), m_cb_uber_cpu, m_cb_uber_cpu_previous, m_cb_uber_offset_index))
             return false;
 
         // Dynamic buffers with offsets have to be rebound whenever the offset changes
-        cmd_list->SetConstantBuffer(1, RHI_Shader_Pixel, m_buffer_material_gpu);
+        cmd_list->SetConstantBuffer(RendererBindings_Cb::uber, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, m_cb_uber_gpu);
 
         return true;
     }
 
-    bool Renderer::UpdateUberBuffer(RHI_CommandList* cmd_list)
-    {
-        SP_ASSERT(cmd_list != nullptr);
-
-        if (!update_dynamic_buffer<BufferUber>(cmd_list, m_buffer_uber_gpu.get(), m_buffer_uber_cpu, m_buffer_uber_cpu_previous, m_buffer_uber_offset_index))
-            return false;
-
-        // Dynamic buffers with offsets have to be rebound whenever the offset changes
-        cmd_list->SetConstantBuffer(2, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, m_buffer_uber_gpu);
-
-        return true;
-    }
-
-    bool Renderer::UpdateLightBuffer(RHI_CommandList* cmd_list, const Light* light)
+    bool Renderer::Update_Cb_Light(RHI_CommandList* cmd_list, const Light* light)
     {
         SP_ASSERT(cmd_list != nullptr);
 
@@ -571,7 +545,7 @@ namespace Spartan
 
         for (uint32_t i = 0; i < light->GetShadowArraySize(); i++)
         {
-            m_buffer_light_cpu.view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
+            m_cb_light_cpu.view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
         }
 
         // Convert luminous power to luminous intensity
@@ -583,21 +557,49 @@ namespace Spartan
         }
         else if (light->GetLightType() == LightType::Spot)
         {
-            luminous_intensity /= Math::Helper::PI; // lumens to candelas
+            luminous_intensity /= Math::Helper::PI; // lumen s to candelas
             luminous_intensity *= 255.0f; // this is a hack, must fix whats my color units
         }
 
-        m_buffer_light_cpu.intensity_range_angle_bias   = Vector4(luminous_intensity, light->GetRange(), light->GetAngle(), GetOption(Render_ReverseZ) ? light->GetBias() : -light->GetBias());
-        m_buffer_light_cpu.color                        = light->GetColor();
-        m_buffer_light_cpu.normal_bias                  = light->GetNormalBias();
-        m_buffer_light_cpu.position                     = light->GetTransform()->GetPosition();
-        m_buffer_light_cpu.direction                    = light->GetTransform()->GetForward();
+        m_cb_light_cpu.intensity_range_angle_bias   = Vector4(luminous_intensity, light->GetRange(), light->GetAngle(), GetOption(Render_ReverseZ) ? light->GetBias() : -light->GetBias());
+        m_cb_light_cpu.color                        = light->GetColor();
+        m_cb_light_cpu.normal_bias                  = light->GetNormalBias();
+        m_cb_light_cpu.position                     = light->GetTransform()->GetPosition();
+        m_cb_light_cpu.direction                    = light->GetTransform()->GetForward();
 
-        if (!update_dynamic_buffer<BufferLight>(cmd_list, m_buffer_light_gpu.get(), m_buffer_light_cpu, m_buffer_light_cpu_previous, m_buffer_light_offset_index))
+        if (!update_dynamic_buffer<Cb_Light>(cmd_list, m_cb_light_gpu.get(), m_cb_light_cpu, m_cb_light_cpu_previous, m_cb_light_offset_index))
             return false;
 
         // Dynamic buffers with offsets have to be rebound whenever the offset changes
-        cmd_list->SetConstantBuffer(4, RHI_Shader_Pixel, m_buffer_light_gpu);
+        cmd_list->SetConstantBuffer(RendererBindings_Cb::light, RHI_Shader_Compute, m_cb_light_gpu);
+
+        return true;
+    }
+
+    bool Renderer::Update_Cb_Material(RHI_CommandList* cmd_list)
+    {
+        SP_ASSERT(cmd_list != nullptr);
+
+        // Update
+        for (uint32_t i = 0; i < m_max_material_instances; i++)
+        {
+            Material* material = m_material_instances[i];
+            if (!material)
+                continue;
+
+            m_cb_material_cpu.mat_clearcoat_clearcoatRough_anis_anisRot[i].x = material->GetProperty(Material_Clearcoat);
+            m_cb_material_cpu.mat_clearcoat_clearcoatRough_anis_anisRot[i].y = material->GetProperty(Material_Clearcoat_Roughness);
+            m_cb_material_cpu.mat_clearcoat_clearcoatRough_anis_anisRot[i].z = material->GetProperty(Material_Anisotropic);
+            m_cb_material_cpu.mat_clearcoat_clearcoatRough_anis_anisRot[i].w = material->GetProperty(Material_Anisotropic_Rotation);
+            m_cb_material_cpu.mat_sheen_sheenTint_pad[i].x = material->GetProperty(Material_Sheen);
+            m_cb_material_cpu.mat_sheen_sheenTint_pad[i].y = material->GetProperty(Material_Sheen_Tint);
+        }
+
+        if (!update_dynamic_buffer<Cb_Material>(cmd_list, m_cb_material_gpu.get(), m_cb_material_cpu, m_cb_material_cpu_previous, m_cb_material_offset_index))
+            return false;
+
+        // Dynamic buffers with offsets have to be rebound whenever the offset changes
+        cmd_list->SetConstantBuffer(RendererBindings_Cb::material, RHI_Shader_Pixel, m_cb_material_gpu);
 
         return true;
     }
@@ -824,7 +826,7 @@ namespace Spartan
 
     void Renderer::SetGlobalShaderObjectTransform(RHI_CommandList* cmd_list, const Math::Matrix& transform)
     {
-        m_buffer_uber_cpu.transform = transform;
-        UpdateUberBuffer(cmd_list);
+        m_cb_uber_cpu.transform = transform;
+        Update_Cb_Uber(cmd_list);
     }
 }

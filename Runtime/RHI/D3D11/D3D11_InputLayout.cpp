@@ -39,30 +39,21 @@ namespace Spartan
 
     bool RHI_InputLayout::_CreateResource(void* vertex_shader_blob)
     {
-        if (!vertex_shader_blob)
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return false;
-        }
-
-        if (m_vertex_attributes.empty())
-        {
-            LOG_ERROR_INVALID_INTERNALS();
-            return false;
-        }
+        SP_ASSERT(vertex_shader_blob != nullptr);
+        SP_ASSERT(!m_vertex_attributes.empty());
 
         vector<D3D11_INPUT_ELEMENT_DESC> vertex_attributes;
         for (const auto& vertex_attribute : m_vertex_attributes)
         {
             vertex_attributes.emplace_back(D3D11_INPUT_ELEMENT_DESC
             { 
-                vertex_attribute.name.c_str(),            // SemanticName
-                0,                                        // SemanticIndex
-                d3d11_format[vertex_attribute.format],    // Format
-                0,                                        // InputSlot
+                vertex_attribute.name.c_str(),          // SemanticName
+                0,                                      // SemanticIndex
+                d3d11_format[vertex_attribute.format],  // Format
+                0,                                      // InputSlot
                 vertex_attribute.offset,                // AlignedByteOffset
                 D3D11_INPUT_PER_VERTEX_DATA,            // InputSlotClass
-                0                                        // InstanceDataStepRate
+                0                                       // InstanceDataStepRate
             });
         }
 

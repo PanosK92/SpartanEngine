@@ -152,11 +152,7 @@ namespace Spartan
 
     bool ImageImporter::Load(const string& file_path, const uint32_t slice_index, RHI_Texture* texture)
     {
-        if (!texture)
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return false;
-        }
+        SP_ASSERT(texture != nullptr);
 
         if (!FileSystem::Exists(file_path))
         {

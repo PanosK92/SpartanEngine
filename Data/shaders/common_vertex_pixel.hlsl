@@ -19,24 +19,53 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========
-#include "Common.hlsl"
-//====================
-
-Pixel_PosUv mainVS(Vertex_PosUv input)
+// Vertex
+struct Vertex_Pos
 {
-    Pixel_PosUv output;
+    float4 position : POSITION0;
+};
 
-    input.position.w    = 1.0f; 
-    output.position     = mul(input.position, g_transform);
-    output.uv           = input.uv;
-
-    return output;
-}
-
-// Translucent shadows
-float4 mainPS(Pixel_PosUv input) : SV_TARGET
+struct Vertex_PosUv
 {
-    float2 uv = float2(input.uv.x * g_mat_tiling.x + g_mat_offset.x, input.uv.y * g_mat_offset.y + g_mat_tiling.y);
-    return degamma(tex.SampleLevel(sampler_anisotropic_wrap, uv, 0)) * g_mat_color;
-}
+    float4 position : POSITION0;
+    float2 uv       : TEXCOORD0;
+};
+
+struct Vertex_PosColor
+{
+    float4 position : POSITION0;
+    float4 color    : COLOR0;
+};
+
+struct Vertex_PosUvNorTan
+{
+    float4 position     : POSITION0;
+    float2 uv           : TEXCOORD0;
+    float3 normal       : NORMAL0;
+    float3 tangent      : TANGENT0;
+};
+
+struct Vertex_Pos2dUvColor
+{
+    float2 position     : POSITION0;
+    float2 uv           : TEXCOORD0;
+    float4 color        : COLOR0;
+};
+
+// Pixel
+struct Pixel_Pos
+{
+    float4 position : SV_POSITION;
+};
+
+struct Pixel_PosUv
+{
+    float4 position : SV_POSITION;
+    float2 uv       : TEXCOORD;
+};
+
+struct Pixel_PosColor
+{
+    float4 position : SV_POSITION;
+    float4 color    : COLOR;
+};

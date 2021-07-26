@@ -47,7 +47,7 @@ namespace Spartan
         void Deserialize(FileStream* stream, Transform* parent);
 
         //= PROPERTIES ===================================================================================================
-        const std::string& GetObjectName() const                              { return m_object_name; }
+        const std::string& GetObjectName() const                        { return m_object_name; }
         void SetName(const std::string& name)                           { m_object_name = name; }
 
         bool IsActive() const                                           { return m_is_active; }

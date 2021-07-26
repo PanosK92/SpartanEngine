@@ -32,10 +32,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    // Should I split these into properties and multipliers ?
-    enum Material_Property : uint16_t
+    enum Material_Property : uint32_t
     {
-        Material_Unknown                = 0,
+        Material_Unknown                = 0 << 0,
         Material_Clearcoat              = 1 << 0,   // Extra white specular layer on top of others
         Material_Clearcoat_Roughness    = 1 << 1,   // Roughness of clearcoat specular
         Material_Anisotropic            = 1 << 2,   // Amount of anisotropy for specular reflection
@@ -49,7 +48,7 @@ namespace Spartan
         Material_Height                 = 1 << 10,  // Perceived depth for parallax mapping
         Material_Occlusion              = 1 << 11,  // Amount of light loss, can be complementary to SSAO
         Material_Emission               = 1 << 12,  // Light emission from the surface, works nice with bloom
-        Material_Mask                   = 1 << 13   // Discards pixels
+        Material_AlphaMask              = 1 << 13   // Discards pixels
     };
 
     class SPARTAN_CLASS Material : public IResource
@@ -91,7 +90,7 @@ namespace Spartan
         auto& GetProperty(const Material_Property type)                     { return m_properties[type]; }
         void SetProperty(const Material_Property type, const float value)   { m_properties[type] = value; }
 
-        uint16_t GetFlags()                                                 const { return m_flags; }
+        uint32_t GetFlags()                                                 const { return m_flags; }
         //==================================================================================================
 
     private:
@@ -99,7 +98,7 @@ namespace Spartan
         Math::Vector2 m_uv_tiling       = Math::Vector2(1.0f, 1.0f);
         Math::Vector2 m_uv_offset       = Math::Vector2(0.0f, 0.0f);
         bool m_is_editable              = true;
-        uint16_t m_flags                = 0;
+        uint32_t m_flags                = 0;
         std::unordered_map<Material_Property, std::shared_ptr<RHI_Texture>> m_textures;
         std::unordered_map<Material_Property, float> m_properties;
         std::shared_ptr<RHI_Device> m_rhi_device;
