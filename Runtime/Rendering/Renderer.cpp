@@ -72,7 +72,7 @@ namespace Spartan
         m_options |= Render_ScreenSpaceReflections;
         m_options |= Render_AntiAliasing_Taa;
         m_options |= Render_Sharpening_AMD_FidelityFX_ContrastAdaptiveSharpening;
-        m_options |= Render_DepthPrepass;
+        //m_options |= Render_DepthPrepass; // todo: fix for vulkan
 
         // Option values
         m_option_values[Renderer_Option_Value::Anisotropy]          = 16.0f;
