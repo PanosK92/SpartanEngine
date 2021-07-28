@@ -92,7 +92,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     float weightSum         = 0.0f;
     float4 color            = 0.0f;
     float center_depth      = get_linear_depth(tex_depth.SampleLevel(sampler_point_clamp, input.uv, 0).r);
-    float3 center_normal    = normal_decode(tex_normal.SampleLevel(sampler_point_clamp, input.uv, 0).xyz);
+    float3 center_normal    = get_normal(input.uv);
     float threshold         = 0.1f;
     
 
@@ -100,7 +100,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     {
         float2 sample_uv        = input.uv + (i * g_texel_size * g_blur_direction);
         float sample_depth      = get_linear_depth(tex_depth.SampleLevel(sampler_bilinear_clamp, sample_uv, 0).r);
-        float3 sample_normal    = normal_decode(tex_normal.SampleLevel(sampler_bilinear_clamp, sample_uv, 0).xyz);
+        float3 sample_normal    = get_normal(sample_uv);
         
         // Depth-awareness
         float awareness_depth   = saturate(threshold - abs(center_depth - sample_depth));

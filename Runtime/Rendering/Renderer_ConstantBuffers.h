@@ -134,7 +134,7 @@ namespace Spartan
         float mat_height_mul;
 
         uint32_t mat_id;
-        float is_transparent_pass;
+        uint32_t is_transparent_pass;
         uint32_t mip_count;
         uint32_t work_group_count;
 
