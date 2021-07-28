@@ -79,10 +79,10 @@ float4 mainPS(PixelInputType input) : SV_TARGET
     float halfScaleCeil     = ceil(scale * 0.5f);
 
     // Sample X pattern
-    float3 normal0 = tex_normal.Sample(sampler_point_clamp, uv - g_texel_size * halfScaleFloor).rgb;                                             // bottom left
-    float3 normal1 = tex_normal.Sample(sampler_point_clamp, uv + g_texel_size * halfScaleCeil).rgb;                                              // top right
-    float3 normal2 = tex_normal.Sample(sampler_point_clamp, uv + float2(g_texel_size.x * halfScaleCeil, -g_texel_size.y * halfScaleFloor)).rgb;  // bottom right
-    float3 normal3 = tex_normal.Sample(sampler_point_clamp, uv + float2(-g_texel_size.x * halfScaleFloor, g_texel_size.y * halfScaleCeil)).rgb;  // top left
+    float3 normal0 = get_normal(uv - g_texel_size * halfScaleFloor);                                             // bottom left
+    float3 normal1 = get_normal(uv + g_texel_size * halfScaleCeil);                                              // top right
+    float3 normal2 = get_normal(uv + float2(g_texel_size.x * halfScaleCeil, -g_texel_size.y * halfScaleFloor));  // bottom right
+    float3 normal3 = get_normal(uv + float2(-g_texel_size.x * halfScaleFloor, g_texel_size.y * halfScaleCeil));  // top left
 
     // Compute edge normal
     float3 normalFiniteDifference0 = normal1 - normal0;
@@ -91,7 +91,7 @@ float4 mainPS(PixelInputType input) : SV_TARGET
 
     // Compute view direction bias
     float3 view         = get_view_direction(uv);
-    float3 normal       = tex_normal.Sample(sampler_point_clamp, uv).rgb;
+    float3 normal       = get_normal(uv);
     float view_dir_bias = dot(view, normal) * 0.5f + 0.5f;
 
     if (edge_normal * view_dir_bias < normal_threshold)

@@ -85,7 +85,7 @@ cbuffer BufferUber : register(b1)
     float g_mat_height;
 
     uint g_mat_id;
-    float g_is_transparent_pass;
+    uint g_is_transparent_pass;
     uint g_mip_count;
     uint g_work_group_count;
 };

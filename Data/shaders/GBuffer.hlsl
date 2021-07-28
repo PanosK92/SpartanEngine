@@ -130,7 +130,7 @@ PixelOutputType mainPS(PixelInputType input)
 
     // Write to G-Buffer
     g_buffer.albedo     = albedo;
-    g_buffer.normal     = float4(normal_encode(normal), pack_uint32_to_float16(g_mat_id));
+    g_buffer.normal     = float4(normal, pack_uint32_to_float16(g_mat_id));
     g_buffer.material   = float4(roughness, metallic, emission, occlusion);
     g_buffer.velocity   = velocity;
 

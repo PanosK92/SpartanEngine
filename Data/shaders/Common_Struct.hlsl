@@ -115,7 +115,7 @@ struct Surface
         float4 pos_world    = mul(pos_clip, g_view_projection_inverted);
         position            = pos_world.xyz / pos_world.w;
 
-        normal                  = normalize(sample_normal.xyz);
+        normal                  = sample_normal.xyz;
         camera_to_pixel         = position - g_camera_position.xyz;
         camera_to_pixel_length  = length(camera_to_pixel);
         camera_to_pixel         = normalize(camera_to_pixel);

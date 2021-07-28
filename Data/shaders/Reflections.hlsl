@@ -50,7 +50,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     if (ssr_alpha != 1.0f)
     {
         const float4 material_sample    = tex_material.SampleLevel(sampler_point_clamp, uv, 0);
-        const float3 normal             = tex_normal.SampleLevel(sampler_point_clamp, uv, 0).xyz;
+        const float3 normal             = get_normal(uv);
 
         Surface surface;
         surface.roughness  = material_sample.r;

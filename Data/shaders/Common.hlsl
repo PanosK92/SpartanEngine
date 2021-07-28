@@ -212,11 +212,6 @@ float2 ndc_to_uv(float3 x)
 /*------------------------------------------------------------------------------
     NORMAL
 ------------------------------------------------------------------------------*/
-// No decoding required (just normalise)
-float3 normal_decode(float3 normal)  { return normalize(normal); }
-// No encoding required (just normalise)
-float3 normal_encode(float3 normal)  { return normalize(normal); }
-
 float3 get_normal(uint2 pos)
 {
     return tex_normal[pos].xyz;
