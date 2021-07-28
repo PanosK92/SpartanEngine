@@ -23,14 +23,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common.hlsl"
 //=====================
 
-float4 tent_antiflicker_filter(float2 uv, Texture2D tex, float2 texel_size)
+float3 tent_antiflicker_filter(float2 uv, Texture2D tex, float2 texel_size)
 {
     // Tent
     float4 d  = texel_size.xyxy * float4(-1.0f, -1.0f, 1.0f, 1.0f) * 2.0f;
-    float4 s1 = tex.SampleLevel(sampler_bilinear_clamp, uv + d.xy, 0.0f);
-    float4 s2 = tex.SampleLevel(sampler_bilinear_clamp, uv + d.zy, 0.0f);
-    float4 s3 = tex.SampleLevel(sampler_bilinear_clamp, uv + d.xw, 0.0f);
-    float4 s4 = tex.SampleLevel(sampler_bilinear_clamp, uv + d.zw, 0.0f);
+    float3 s1 = tex.SampleLevel(sampler_bilinear_clamp, uv + d.xy, 0.0f).rgb;
+    float3 s2 = tex.SampleLevel(sampler_bilinear_clamp, uv + d.zy, 0.0f).rgb;
+    float3 s3 = tex.SampleLevel(sampler_bilinear_clamp, uv + d.xw, 0.0f).rgb;
+    float3 s4 = tex.SampleLevel(sampler_bilinear_clamp, uv + d.zw, 0.0f).rgb;
 
     // Luma weighted average
     float s1w = 1 / (luminance(s1) + 1);
@@ -49,8 +49,8 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     if (thread_id.x >= uint(g_resolution_rt.x) || thread_id.y >= uint(g_resolution_rt.y))
         return;
 
-    float4 color = tex[thread_id.xy];
-    tex_out_rgba[thread_id.xy] = saturate_16(luminance(color) * color);
+    float3 color = tex[thread_id.xy].rgb;
+    tex_out_rgb[thread_id.xy] = saturate_16(luminance(color) * color);
 }
 #endif
 
@@ -61,9 +61,9 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     if (thread_id.x >= uint(g_resolution_rt.x) || thread_id.y >= uint(g_resolution_rt.y))
         return;
 
-    const float2 uv             = (thread_id.xy + 0.5f) / g_resolution_rt;
-    float4 upsampled_color      = tent_antiflicker_filter(uv, tex, g_texel_size * 0.5f);
-    tex_out_rgba[thread_id.xy]  = saturate_16(tex_out_rgba[thread_id.xy] + upsampled_color);
+    const float2 uv            = (thread_id.xy + 0.5f) / g_resolution_rt;
+    float3 upsampled_color     = tent_antiflicker_filter(uv, tex, g_texel_size * 0.5f);
+    tex_out_rgb[thread_id.xy]  = saturate_16(tex_out_rgb[thread_id.xy] + upsampled_color);
 }
 #endif
 
@@ -74,9 +74,8 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     if (thread_id.x >= uint(g_resolution_rt.x) || thread_id.y >= uint(g_resolution_rt.y))
         return;
 
-    float4 color_frame  = tex[thread_id.xy];
-    float4 color_mip    = tex2[thread_id.xy];
-    tex_out_rgba[thread_id.xy] = saturate_16(color_frame + color_mip * g_bloom_intensity);
+    float3 color_frame  = tex[thread_id.xy].rgb;
+    float3 color_mip    = tex2[thread_id.xy].rgb;
+    tex_out_rgb[thread_id.xy] = saturate_16(color_frame + color_mip * g_bloom_intensity);
 }
 #endif
-

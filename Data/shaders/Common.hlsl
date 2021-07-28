@@ -22,14 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef SPARTAN_COMMON
 #define SPARTAN_COMMON
 
-//= INCLUDES ======================
-#include "common_vertex_pixel.hlsl"
-#include "common_buffer.hlsl"
-#include "common_sampler.hlsl"
-#include "common_texture.hlsl"
-#include "common_struct.hlsl"
-//=================================
-
 /*------------------------------------------------------------------------------
     CONSTANTS
 ------------------------------------------------------------------------------*/
@@ -43,13 +35,15 @@ static const float FLT_MAX_11   = 65000.0f;
 static const float FLT_MAX_14   = 65500.0f;
 static const float FLT_MAX_16   = 65500.0f;
 
+static const float alpha_mask_threshold = 0.6f;
+
 #define g_texel_size            float2(1.0f / g_resolution_rt.x, 1.0f / g_resolution_rt.y)
 #define g_shadow_texel_size     (1.0f / g_shadow_resolution)
 #define thread_group_count_x    8
 #define thread_group_count_y    8
 #define thread_group_count      64
-
-static const float alpha_mask_threshold = 0.6f;
+#define degamma(color)          pow(abs(color), g_gamma)
+#define gamma(color)            pow(abs(color), 1.0f / g_gamma)
 
 /*------------------------------------------------------------------------------
     MATH
@@ -79,15 +73,7 @@ float3   saturate_16(float3 x)   { return clamp(x, FLT_MIN, FLT_MAX_16); }
 float4   saturate_16(float4 x)   { return clamp(x, FLT_MIN, FLT_MAX_16); }
 
 /*------------------------------------------------------------------------------
-    GAMMA CORRECTION
-------------------------------------------------------------------------------*/
-float4 degamma(float4 color) { return pow(abs(color), g_gamma); }
-float3 degamma(float3 color) { return pow(abs(color), g_gamma); }
-float4 gamma(float4 color)   { return pow(abs(color), 1.0f / g_gamma); }
-float3 gamma(float3 color)   { return pow(abs(color), 1.0f / g_gamma); }
-
-/*------------------------------------------------------------------------------
-    PACKING
+    PACKING/UNPACKING
 ------------------------------------------------------------------------------*/
 float3 unpack(float3 value)  { return value * 2.0f - 1.0f; }
 float3 pack(float3 value)    { return value * 0.5f + 0.5f; }
@@ -95,6 +81,40 @@ float2 unpack(float2 value)  { return value * 2.0f - 1.0f; }
 float2 pack(float2 value)    { return value * 0.5f + 0.5f; }
 float unpack(float value)    { return value * 2.0f - 1.0f; }
 float pack(float value)      { return value * 0.5f + 0.5f; }
+
+float pack_uint32_to_float16(uint i)    { return (float)i / float(FLT_MAX_16); }
+uint unpack_float16_to_uint32(float f)  { return round(f * 65535); }
+
+float pack_float_int(float f, uint i, uint numBitI, uint numBitTarget)
+{
+    // Constant optimize by compiler
+    float precision         = float(1 << numBitTarget);
+    float maxi              = float(1 << numBitI);
+    float precisionMinusOne = precision - 1.0;
+    float t1                = ((precision / maxi) - 1.0) / precisionMinusOne;
+    float t2                = (precision / maxi) / precisionMinusOne;
+
+    // Code
+    return t1 * f + t2 * float(i);
+}
+
+void unpack_float_int(float val, uint numBitI, uint numBitTarget, out float f, out uint i)
+{
+    // Constant optimize by compiler
+    float precision         = float(1 << numBitTarget);
+    float maxi              = float(1 << numBitI);
+    float precisionMinusOne = precision - 1.0;
+    float t1                = ((precision / maxi) - 1.0) / precisionMinusOne;
+    float t2                = (precision / maxi) / precisionMinusOne;
+
+    // Code
+    // extract integer part
+    // + rcp(precisionMinusOne) to deal with precision issue
+    i = int((val / t2) + rcp(precisionMinusOne));
+    // Now that we have i, solve formula in PackFloatInt for f
+    //f = (val - t2 * float(i)) / t1 => convert in mads form
+    f = saturate((-t2 * float(i) + val) / t1); // Saturate in case of precision issue
+}
 
 /*------------------------------------------------------------------------------
     FAST MATH APPROXIMATIONS
@@ -131,6 +151,14 @@ float fast_cos(float x)
 {
    return abs(abs(x)  /PI2 % 4 - 2) - 1;
 }
+
+//= INCLUDES ======================
+#include "common_vertex_pixel.hlsl"
+#include "common_buffer.hlsl"
+#include "common_sampler.hlsl"
+#include "common_texture.hlsl"
+#include "common_struct.hlsl"
+//=================================
 
 /*------------------------------------------------------------------------------
     TRANSFORMATIONS
@@ -414,7 +442,7 @@ float get_noise_interleaved_gradient(float2 screen_pos)
     // Temporal factor
     float taaOn         = (float)is_taa_enabled();
     float frameCount    = (float)g_frame;
-    float frameStep     = taaOn * frameCount / 60.0f;
+    float frameStep     = taaOn * float(frameCount % 16) / 16.0f;
     screen_pos.x        += frameStep * 4.7526;
     screen_pos.y        += frameStep * 3.1914;
 

@@ -246,7 +246,6 @@ namespace Spartan
             m_cb_frame_offset_index     = 0;
             m_cb_light_offset_index     = 0;
             m_cb_material_offset_index  = 0;
-
         }
 
         // Begin

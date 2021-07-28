@@ -56,5 +56,5 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     const float a = tex[thread_id.xy].a;
 
-    tex_out_rgba[thread_id.xy] = float4(color, a);
+    tex_out_rgb[thread_id.xy] = color;
 }
