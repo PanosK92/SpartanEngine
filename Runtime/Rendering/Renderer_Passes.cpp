@@ -135,7 +135,7 @@ namespace Spartan
             // Lighting for transparent objects (a simpler version of the above)
             if (draw_transparent_objects)
             {
-                // Copy the frame so that refraction can sample from it
+                // Blit the frame so that refraction can sample from it
                 cmd_list->Blit(rt1, rt2);
 
                 const bool is_trasparent_pass = true;
@@ -530,7 +530,7 @@ namespace Spartan
                         cmd_list->SetTexture(RendererBindings_Srv::material_mask,        material->GetTexture_Ptr(Material_AlphaMask));
                     
                         // Update uber buffer with material properties
-                        m_cb_uber_cpu.mat_id            = static_cast<float>(material_index);
+                        m_cb_uber_cpu.mat_id            = material_index;
                         m_cb_uber_cpu.mat_albedo        = material->GetColorAlbedo();
                         m_cb_uber_cpu.mat_tiling_uv     = material->GetTiling();
                         m_cb_uber_cpu.mat_offset_uv     = material->GetOffset();
@@ -538,7 +538,6 @@ namespace Spartan
                         m_cb_uber_cpu.mat_metallic_mul  = material->GetProperty(Material_Metallic);
                         m_cb_uber_cpu.mat_normal_mul    = material->GetProperty(Material_Normal);
                         m_cb_uber_cpu.mat_height_mul    = material->GetProperty(Material_Height);
-
                     }
 
                     // Update uber buffer with entity transform
@@ -1261,7 +1260,7 @@ namespace Spartan
             cmd_list->SetTexture(RendererBindings_Srv::tex2,             tex_in);
             cmd_list->SetTexture(RendererBindings_Srv::gbuffer_velocity, RENDER_TARGET(RendererRt::Gbuffer_Velocity));
             cmd_list->SetTexture(RendererBindings_Srv::gbuffer_depth,    RENDER_TARGET(RendererRt::Gbuffer_Depth));
-            cmd_list->SetTexture(RendererBindings_Uav::rgba,             tex_out);
+            cmd_list->SetTexture(RendererBindings_Uav::rgb,              tex_out);
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
         }
@@ -1309,7 +1308,7 @@ namespace Spartan
                 const uint32_t thread_group_count_z   = 1;
                 const bool async                      = false;
 
-                cmd_list->SetTexture(RendererBindings_Uav::rgba, tex_bloom);
+                cmd_list->SetTexture(RendererBindings_Uav::rgb, tex_bloom);
                 cmd_list->SetTexture(RendererBindings_Srv::tex, tex_in);
                 cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
                 cmd_list->EndRenderPass();
@@ -1346,7 +1345,7 @@ namespace Spartan
                     const bool async = false;
 
                     cmd_list->SetTexture(RendererBindings_Srv::tex, tex_bloom, mip_index_small);
-                    cmd_list->SetTexture(RendererBindings_Uav::rgba, tex_bloom, mip_index_big);
+                    cmd_list->SetTexture(RendererBindings_Uav::rgb, tex_bloom, mip_index_big);
                     cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
                 }
 
@@ -1373,7 +1372,7 @@ namespace Spartan
                 const uint32_t thread_group_count_z = 1;
                 const bool async = false;
 
-                cmd_list->SetTexture(RendererBindings_Uav::rgba, tex_out.get());
+                cmd_list->SetTexture(RendererBindings_Uav::rgb, tex_out.get());
                 cmd_list->SetTexture(RendererBindings_Srv::tex, tex_in);
                 cmd_list->SetTexture(RendererBindings_Srv::tex2, tex_bloom, 0);
                 cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
@@ -1406,7 +1405,7 @@ namespace Spartan
             const uint32_t thread_group_count_z = 1;
             const bool async = false;
 
-            cmd_list->SetTexture(RendererBindings_Uav::rgba, tex_out);
+            cmd_list->SetTexture(RendererBindings_Uav::rgb, tex_out);
             cmd_list->SetTexture(RendererBindings_Srv::tex, tex_in);
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
@@ -1437,7 +1436,7 @@ namespace Spartan
             const uint32_t thread_group_count_z   = 1;
             const bool async                      = false;
 
-            cmd_list->SetTexture(RendererBindings_Uav::rgba, tex_out);
+            cmd_list->SetTexture(RendererBindings_Uav::rgb, tex_out);
             cmd_list->SetTexture(RendererBindings_Srv::tex, tex_in);
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
@@ -1447,57 +1446,33 @@ namespace Spartan
     void Renderer::Pass_PostProcess_Fxaa(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
         // Acquire shaders
-        RHI_Shader* shader_p_luma   = m_shaders[RendererShader::Fxaa_Luminance_C].get();
-        RHI_Shader* shader_p_fxaa   = m_shaders[RendererShader::Fxaa_C].get();
-        if (!shader_p_luma->IsCompiled() || !shader_p_fxaa->IsCompiled())
+        RHI_Shader* shader_c = m_shaders[RendererShader::Fxaa_C].get();
+        if (!shader_c->IsCompiled())
             return;
 
-        // Update uber buffer
-        m_cb_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-        Update_Cb_Uber(cmd_list);
+        // Set render state
+        static RHI_PipelineState pso;
+        pso.shader_compute   = shader_c;
+        pso.pass_name        = "Pass_PostProcess_FXAA";
 
-        // Compute thread count
-        const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
-        const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
-        const uint32_t thread_group_count_z = 1;
-        const bool async = false;
-
-        // Luminance
+        // Draw
+        if (cmd_list->BeginRenderPass(pso))
         {
-            // Set render state
-            static RHI_PipelineState pso;
-            pso.shader_compute   = shader_p_luma;
-            pso.pass_name        = "Pass_PostProcess_FXAA_Luminance";
+            // Compute thread count
+            const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
+            const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
+            const uint32_t thread_group_count_z = 1;
+            const bool async = false;
 
-            // Draw
-            if (cmd_list->BeginRenderPass(pso))
-            {
-                cmd_list->SetTexture(RendererBindings_Uav::rgba, tex_out);
-                cmd_list->SetTexture(RendererBindings_Srv::tex, tex_in);
-                cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
-                cmd_list->EndRenderPass();
-            }
+            // Update uber buffer
+            m_cb_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+            Update_Cb_Uber(cmd_list);
+
+            cmd_list->SetTexture(RendererBindings_Srv::tex, tex_in);
+            cmd_list->SetTexture(RendererBindings_Uav::rgb, tex_out);
+            cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
+            cmd_list->EndRenderPass();
         }
-
-        // FXAA
-        {
-            // Set render state
-            static RHI_PipelineState pso;
-            pso.shader_compute   = shader_p_fxaa;
-            pso.pass_name        = "Pass_PostProcess_FXAA";
-
-            // Draw
-            if (cmd_list->BeginRenderPass(pso))
-            {
-                cmd_list->SetTexture(RendererBindings_Uav::rgba, tex_in);
-                cmd_list->SetTexture(RendererBindings_Srv::tex, tex_out);
-                cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
-                cmd_list->EndRenderPass();
-            }
-        }
-
-        // Swap the textures
-        tex_in.swap(tex_out);
     }
 
     void Renderer::Pass_PostProcess_ChromaticAberration(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
@@ -1524,7 +1499,7 @@ namespace Spartan
             const uint32_t thread_group_count_z   = 1;
             const bool async                      = false;
 
-            cmd_list->SetTexture(RendererBindings_Uav::rgba, tex_out);
+            cmd_list->SetTexture(RendererBindings_Uav::rgb, tex_out);
             cmd_list->SetTexture(RendererBindings_Srv::tex, tex_in);
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
@@ -1555,7 +1530,7 @@ namespace Spartan
             const uint32_t thread_group_count_z   = 1;
             const bool async                      = false;
 
-            cmd_list->SetTexture(RendererBindings_Uav::rgba, tex_out);
+            cmd_list->SetTexture(RendererBindings_Uav::rgb, tex_out);
             cmd_list->SetTexture(RendererBindings_Srv::tex, tex_in);
             cmd_list->SetTexture(RendererBindings_Srv::gbuffer_velocity, RENDER_TARGET(RendererRt::Gbuffer_Velocity));
             cmd_list->SetTexture(RendererBindings_Srv::gbuffer_depth,    RENDER_TARGET(RendererRt::Gbuffer_Depth));
@@ -1711,7 +1686,7 @@ namespace Spartan
             const uint32_t thread_group_count_z = 1;
             const bool async = false;
 
-            cmd_list->SetTexture(RendererBindings_Uav::rgba, tex_out);
+            cmd_list->SetTexture(RendererBindings_Uav::rgb, tex_out);
             cmd_list->SetTexture(RendererBindings_Srv::tex, tex_in);
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
@@ -1742,7 +1717,7 @@ namespace Spartan
             const uint32_t thread_group_count_z   = 1;
             const bool async                      = false;
 
-            cmd_list->SetTexture(RendererBindings_Uav::rgba, tex_out);
+            cmd_list->SetTexture(RendererBindings_Uav::rgb, tex_out);
             cmd_list->SetTexture(RendererBindings_Srv::tex, tex_in);
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
@@ -1773,7 +1748,7 @@ namespace Spartan
             const uint32_t thread_group_count_z   = 1;
             const bool async                      = false;
 
-            cmd_list->SetTexture(RendererBindings_Uav::rgba, tex_out);
+            cmd_list->SetTexture(RendererBindings_Uav::rgb, tex_out);
             cmd_list->SetTexture(RendererBindings_Srv::tex, tex_in);
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
@@ -1851,7 +1826,7 @@ namespace Spartan
                 const uint32_t thread_group_count_z             = 1;
                 const bool async                                = false;
 
-                cmd_list->SetTexture(RendererBindings_Uav::rgba, tex_out_scratch);
+                cmd_list->SetTexture(RendererBindings_Uav::rgb, tex_out_scratch);
                 cmd_list->SetTexture(RendererBindings_Srv::tex, tex_in);
                 cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
                 cmd_list->EndRenderPass();
@@ -1873,7 +1848,7 @@ namespace Spartan
                 const uint32_t thread_group_count_z             = 1;
                 const bool async                                = false;
 
-                cmd_list->SetTexture(RendererBindings_Uav::rgba, tex_out);
+                cmd_list->SetTexture(RendererBindings_Uav::rgb, tex_out);
                 cmd_list->SetTexture(RendererBindings_Srv::tex, tex_out_scratch);
                 cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
                 cmd_list->EndRenderPass();
@@ -2467,6 +2442,11 @@ namespace Spartan
             shader_type = RendererShader::DebugChannelRgbGammaCorrect_C;
         }
 
+        if (m_render_target_debug == RendererRt::Bloom)
+        {
+            shader_type = RendererShader::DebugChannelRgbGammaCorrect_C;
+        }
+
         // Acquire shaders
         RHI_Shader* shader = m_shaders[shader_type].get();
         if (!shader->IsCompiled())
@@ -2561,7 +2541,7 @@ namespace Spartan
             const uint32_t thread_group_count_z = 1;
             const bool async = false;
 
-            cmd_list->SetTexture(RendererBindings_Uav::rgba, tex_out);
+            cmd_list->SetTexture(RendererBindings_Uav::rgb, tex_out);
             cmd_list->SetTexture(RendererBindings_Srv::tex, tex_in);
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();

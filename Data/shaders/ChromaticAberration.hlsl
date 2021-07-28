@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 static const float g_chromatic_aberration_intensity = 5.0f;
 
-float4 ChromaticAberration(uint2 thread_id, Texture2D sourceTexture)
+float3 ChromaticAberration(uint2 thread_id, Texture2D sourceTexture)
 {
     const float2 uv     = (thread_id + 0.5f) / g_resolution_rt;
     float camera_error  = 1.0f / g_camera_aperture;
@@ -37,9 +37,9 @@ float4 ChromaticAberration(uint2 thread_id, Texture2D sourceTexture)
     shift.y *= abs(uv.y * 2.0f - 1.0f);
     
     // Sample color
-	float4 color    = 0.0f; 
+	float3 color    = 0.0f; 
     color.r         = sourceTexture.SampleLevel(sampler_bilinear_clamp, uv + (g_texel_size * shift), 0).r;
-    color.ga        = sourceTexture[thread_id].ga;
+    color.g         = sourceTexture[thread_id].g;
     color.b         = sourceTexture.SampleLevel(sampler_bilinear_clamp, uv - (g_texel_size * shift), 0).b;
 
     return color;
@@ -51,5 +51,5 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     if (thread_id.x >= uint(g_resolution_rt.x) || thread_id.y >= uint(g_resolution_rt.y))
         return;
 
-    tex_out_rgba[thread_id.xy] = ChromaticAberration(thread_id.xy, tex);
+    tex_out_rgb[thread_id.xy] = ChromaticAberration(thread_id.xy, tex);
 }

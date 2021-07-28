@@ -33,7 +33,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         return;
     
     const float2 uv = (thread_id.xy + 0.5f) / g_resolution_rt;
-    float4 color    = tex[thread_id.xy];
+    float3 color    = tex[thread_id.xy].rgb;
     float2 velocity = get_velocity_max_3x3(uv, tex_velocity, tex_depth);
 
     // Compute motion blur strength from camera's shutter speed
@@ -47,14 +47,14 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     
     // Early exit
     if (abs(velocity.x) + abs(velocity.y) < FLT_MIN)
-        tex_out_rgba[thread_id.xy] = color;
+        tex_out_rgb[thread_id.xy] = color;
     
     [unroll]
     for (uint i = 1; i < g_motion_blur_samples; ++i)
     {
         float2 offset = velocity * (float(i) / float(g_motion_blur_samples - 1) - 0.5f);
-        color += tex.SampleLevel(sampler_bilinear_clamp, uv + offset, 0);
+        color += tex.SampleLevel(sampler_bilinear_clamp, uv + offset, 0).rgb;
     }
 
-    tex_out_rgba[thread_id.xy] = color / float(g_motion_blur_samples);
+    tex_out_rgb[thread_id.xy] = color / float(g_motion_blur_samples);
 }

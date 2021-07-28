@@ -68,7 +68,7 @@ struct Surface
         // Misc
         uv      = (position_screen + 0.5f) / g_resolution_rt;
         depth   = sample_depth;
-        id      = round(sample_normal.a * 65535);
+        id      = unpack_float16_to_uint32(sample_normal.a);
         
         albedo      = use_albedo ? sample_albedo.rgb : 1.0f;
         alpha       = sample_albedo.a;

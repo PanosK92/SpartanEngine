@@ -116,7 +116,6 @@ namespace Spartan
         Copy_Point_P,
         Copy_Bilinear_P,
         Fxaa_C,
-        Fxaa_Luminance_C,
         FilmGrain_C,
         Taa_C,
         MotionBlur_C,

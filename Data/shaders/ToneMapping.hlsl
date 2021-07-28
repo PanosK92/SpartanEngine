@@ -123,7 +123,6 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     if (thread_id.x >= uint(g_resolution_rt.x) || thread_id.y >= uint(g_resolution_rt.y))
         return;
     
-    float4 color = tex[thread_id.xy];
-    color = float4(ToneMap(color.rgb), color.a);
-    tex_out_rgba[thread_id.xy] = color;
+    float3 color = tex[thread_id.xy].rgb;
+    tex_out_rgb[thread_id.xy] = ToneMap(color);
 }

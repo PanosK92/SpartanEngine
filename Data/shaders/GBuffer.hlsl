@@ -69,8 +69,7 @@ PixelOutputType mainPS(PixelInputType input)
     float3 normal       = input.normal.xyz;
     float emission      = 0.0f;
     float occlusion     = 1.0f;
-    float material_id   = g_mat_id / float(FLT_MAX_16);
-    
+
     // Velocity
     float2 position_current     = (input.position_ss_current.xy / input.position_ss_current.w);
     float2 position_previous    = (input.position_ss_previous.xy / input.position_ss_previous.w);
@@ -131,7 +130,7 @@ PixelOutputType mainPS(PixelInputType input)
 
     // Write to G-Buffer
     g_buffer.albedo     = albedo;
-    g_buffer.normal     = float4(normal_encode(normal), material_id);
+    g_buffer.normal     = float4(normal_encode(normal), pack_uint32_to_float16(g_mat_id));
     g_buffer.material   = float4(roughness, metallic, emission, occlusion);
     g_buffer.velocity   = velocity;
 

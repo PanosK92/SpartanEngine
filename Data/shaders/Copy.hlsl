@@ -33,9 +33,9 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
 #if BILINEAR
     const float2 uv = (thread_id.xy + 0.5f) / g_resolution_rt;
-    tex_out_rgba[thread_id.xy] = tex.SampleLevel(sampler_bilinear_clamp, uv, 0);
+    tex_out_rgb[thread_id.xy] = tex.SampleLevel(sampler_bilinear_clamp, uv, 0).rgb;
 #else
-    tex_out_rgba[thread_id.xy] = tex[thread_id.xy];
+    tex_out_rgb[thread_id.xy] = tex[thread_id.xy].rgb;
 #endif
 }
 

@@ -21,12 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================
 #include "Common.hlsl"
-#if FXAA
 #define FXAA_PC 1
 #define FXAA_HLSL_5 1
 #define FXAA_QUALITY__PRESET 39
+#define FXAA_GREEN_AS_LUMA 1
 #include "Fxaa3_11.h"
-#endif
 //=============================
 
 static const float g_fxaa_subPix            = 0.75f;    // The amount of sub-pixel aliasing removal. This can effect sharpness.
@@ -37,20 +36,11 @@ static const float g_fxaa_edgeThresholdMin  = 0.0833f;  // Trims the algorithm f
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
     const float2 uv = (thread_id.xy + 0.5f) / g_resolution_rt;
-    float4 color    = 0.0f;
-    
-     // Encode luminance into alpha channel which is optimal for FXAA
-#if LUMINANCE
-    color.rgb   = tex[thread_id.xy].rgb;
-    color.a     = luminance(color.rgb);  
-#endif
 
-     // Actual FXAA
-#if FXAA
     FxaaTex fxaa_tex = { sampler_bilinear_clamp, tex };
     float2 fxaaQualityRcpFrame = g_texel_size;
 
-    color.rgb = FxaaPixelShader
+    float3 color = FxaaPixelShader
     (
         uv, 0, fxaa_tex, fxaa_tex, fxaa_tex,
         fxaaQualityRcpFrame, 0, 0, 0,
@@ -59,8 +49,6 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         g_fxaa_edgeThresholdMin,
         0, 0, 0, 0
     ).rgb;
-    color.a = 1.0f; 
-#endif
-    
-    tex_out_rgba[thread_id.xy] = color;
+
+    tex_out_rgb[thread_id.xy] = color;
 }

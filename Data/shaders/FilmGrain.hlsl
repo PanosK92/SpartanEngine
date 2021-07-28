@@ -39,22 +39,22 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         return;
     
     const float2 uv = (thread_id.xy + 0.5f) / g_resolution_rt;
-    float4 color    = tex[thread_id.xy];
+    float3 color    = tex[thread_id.xy].rgb;
 
     // Film grain
     float t             = g_time * float(g_film_grain_speed);
     float seed          = dot(uv, float2(12.9898, 78.233));
     float noise         = frac(sin(seed) * 43758.5453 + t);
     noise               = gaussian(noise, float(g_film_grain_mean), float(g_film_grain_variance) * float(g_film_grain_variance));
-    float3 film_grain   =  noise * (1.0f - color.rgb) * g_film_grain_intensity;
+    float3 film_grain   =  noise * (1.0f - color) * g_film_grain_intensity;
 
     // Iso noise
     noise               = get_random(frac(uv.x * uv.y * g_time));
     noise               *= g_camera_iso * 0.00001f;
-    float3 iso_noise    = noise * (1.0f - color.rgb);
+    float3 iso_noise    = noise * (1.0f - color);
     
     // Additive blending
     color.rgb += (film_grain + iso_noise) * 0.5f;
 
-    tex_out_rgba[thread_id.xy] = saturate(color);
+    tex_out_rgb[thread_id.xy] = saturate(color);
 }

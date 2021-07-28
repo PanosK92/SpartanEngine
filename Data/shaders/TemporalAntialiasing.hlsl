@@ -197,7 +197,7 @@ float3 get_input_sample(Texture2D tex_input, const uint2 pos_out)
     return color;
 }
 
-float4 temporal_antialiasing(uint2 pos_out, uint group_index, uint3 group_id, Texture2D tex_history, Texture2D tex_input)
+float3 temporal_antialiasing(uint2 pos_out, uint group_index, uint3 group_id, Texture2D tex_history, Texture2D tex_input)
 {
     const float2 uv         = (pos_out + 0.5f) / g_resolution_rt;
     const uint2 pos_input   = is_taa_upsampling_enabled() ? (uv * g_resolution_render) : pos_out;
@@ -208,7 +208,7 @@ float4 temporal_antialiasing(uint2 pos_out, uint group_index, uint3 group_id, Te
 
     // If re-projected UV is out of screen, converge to current color immediately
     if (!is_saturated(uv_reprojected))
-        return float4(get_input_sample(tex_input, pos_out), 1.0f);
+        return get_input_sample(tex_input, pos_out);
 
     // Get input color
     float3 color_input = get_input_sample(tex_input, pos_out);
@@ -243,7 +243,7 @@ float4 temporal_antialiasing(uint2 pos_out, uint group_index, uint3 group_id, Te
         color_resolved = reinhard_inverse(color_resolved);
     }
 
-    return float4(color_resolved, 1.0f);
+    return color_resolved;
 }
 
 [numthreads(thread_group_count_x, thread_group_count_y, 1)]
@@ -252,6 +252,5 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID, uint group_index : SV_GroupIn
     if (thread_id.x >= uint(g_resolution_rt.x) || thread_id.y >= uint(g_resolution_rt.y))
         return;
 
-    tex_out_rgba[thread_id.xy] = temporal_antialiasing(thread_id.xy, group_index, group_id, tex, tex2);
+    tex_out_rgb[thread_id.xy] = temporal_antialiasing(thread_id.xy, group_index, group_id, tex, tex2);
 }
-
