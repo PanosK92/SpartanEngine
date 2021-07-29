@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =========
-#include "Common.hlsl"
+#include "common.hlsl"
 //====================
 
 struct Surface
@@ -63,7 +63,7 @@ struct Surface
         float4 sample_albedo    = tex_albedo[position_screen];
         float4 sample_normal    = tex_normal[position_screen];
         float4 sample_material  = tex_material[position_screen];
-        float sample_depth      = tex_depth[position_screen].r;
+        float sample_depth      = get_depth(position_screen);
 
         // Misc
         uv      = (position_screen + 0.5f) / g_resolution_rt;

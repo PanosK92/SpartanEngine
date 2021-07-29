@@ -22,6 +22,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef SPARTAN_COMMON
 #define SPARTAN_COMMON
 
+//= INCLUDES ======================
+#include "common_vertex_pixel.hlsl"
+#include "common_buffer.hlsl"
+#include "common_sampler.hlsl"
+#include "common_texture.hlsl"
+//=================================
+
 /*------------------------------------------------------------------------------
     CONSTANTS
 ------------------------------------------------------------------------------*/
@@ -39,13 +46,16 @@ static const float alpha_mask_threshold = 0.6f;
 /*------------------------------------------------------------------------------
     MACROS
 ------------------------------------------------------------------------------*/
-#define g_texel_size            float2(1.0f / g_resolution_rt.x, 1.0f / g_resolution_rt.y)
-#define g_shadow_texel_size     (1.0f / g_shadow_resolution)
-#define thread_group_count_x    8
-#define thread_group_count_y    8
-#define thread_group_count      64
-#define degamma(color)          pow(abs(color), g_gamma)
-#define gamma(color)            pow(abs(color), 1.0f / g_gamma)
+#define g_texel_size             float2(1.0f / g_resolution_rt.x, 1.0f / g_resolution_rt.y)
+#define g_shadow_texel_size      (1.0f / g_shadow_resolution)
+#define thread_group_count_x     8
+#define thread_group_count_y     8
+#define thread_group_count       64
+#define degamma(color)           pow(abs(color), g_gamma)
+#define gamma(color)             pow(abs(color), 1.0f / g_gamma)
+#define g_tex_noise_normal_scale float2(g_resolution_render.x / 256.0f, g_resolution_render.y / 256.0f)
+#define g_tex_noise_blue_scale   float2(g_resolution_render.x / 470.0f, g_resolution_render.y / 470.0f)
+#define g_envrionement_max_mip   11.0f
 
 /*------------------------------------------------------------------------------
     MATH
@@ -154,14 +164,6 @@ float fast_cos(float x)
    return abs(abs(x)  /PI2 % 4 - 2) - 1;
 }
 
-//= INCLUDES ======================
-#include "common_vertex_pixel.hlsl"
-#include "common_buffer.hlsl"
-#include "common_sampler.hlsl"
-#include "common_texture.hlsl"
-#include "common_struct.hlsl"
-//=================================
-
 /*------------------------------------------------------------------------------
     TRANSFORMATIONS
 ------------------------------------------------------------------------------*/
@@ -216,6 +218,10 @@ float2 ndc_to_uv(float3 x)
 ------------------------------------------------------------------------------*/
 float3 get_normal(uint2 pos)
 {
+    // Load returns 0 for any value accessed out of bounds, so clamp.
+    pos.x = clamp(pos.x, 0, g_resolution_render.x);
+    pos.y = clamp(pos.y, 0, g_resolution_render.y);
+    
     return tex_normal[pos].xyz;
 }
 
@@ -249,7 +255,10 @@ float3x3 makeTBN(float3 n, float3 t)
 ------------------------------------------------------------------------------*/
 float get_depth(uint2 pos)
 {
-    // Load returns 0 for any value accessed out of bounds
+    // Load returns 0 for any value accessed out of bounds, so clamp.
+    pos.x = clamp(pos.x, 0, g_resolution_render.x);
+    pos.y = clamp(pos.y, 0, g_resolution_render.y);
+    
     return tex_depth.Load(int3(pos, 0)).r;
 }
 
@@ -623,5 +632,8 @@ static const float3 hemisphere_samples[64] =
     float3(-0.44272, -0.67928, 0.1865)
 };
 
-#endif // SPARTAN_COMMON
+//= INCLUDES ================
+#include "common_struct.hlsl"
+//===========================
 
+#endif // SPARTAN_COMMON

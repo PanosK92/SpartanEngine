@@ -36,6 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Camera.h"
 #include <chrono>
 #include "Display/Display.h"
+#include "ImGui/Source/imgui_internal.h"
 //=======================================
 
 class EditorHelper
@@ -135,6 +136,22 @@ public:
 namespace ImGuiEx
 {
     static const ImVec4 default_tint(255, 255, 255, 255);
+
+    inline void PushDisabled(const bool is_disabled)
+    {
+        if (is_disabled)
+        {
+            ImGui::PushDisabled();
+        }
+    }
+
+    inline void PopDisabled(const bool is_disabled)
+    {
+        if (is_disabled)
+        {
+            ImGui::PopDisabled();
+        }
+    }
 
     // Collapsing header
     inline bool CollapsingHeader(const char* label, ImGuiTreeNodeFlags flags = 0)
