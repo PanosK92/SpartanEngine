@@ -128,6 +128,19 @@ PixelOutputType mainPS(PixelInputType input)
         emission = luminance(tex_material_emission.Sample(sampler_anisotropic_wrap, uv).rgb);
     #endif
 
+    // Specular anti-aliasing
+    #if ROUGHNESS_MAP
+        #if NORMAL_MAP
+            static const float strength = 2.0f;
+            float roughness2            = roughness * roughness;
+            float3 dndu                 = ddx(normal) , dndv = ddy(normal);
+            float variance              = (dot(dndu , dndu) + dot(dndv , dndv)) * strength;
+            float kernelRoughness2      = min(2.0 * variance , 0.18);
+            float filteredRoughness2    = saturate (roughness2 + kernelRoughness2);
+            roughness                   = fast_sqrt(filteredRoughness2);
+        #endif
+    #endif
+    
     // Write to G-Buffer
     g_buffer.albedo     = albedo;
     g_buffer.normal     = float4(normal, pack_uint32_to_float16(g_mat_id));

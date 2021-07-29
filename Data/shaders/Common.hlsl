@@ -25,18 +25,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /*------------------------------------------------------------------------------
     CONSTANTS
 ------------------------------------------------------------------------------*/
-static const float PI           = 3.14159265f;
-static const float PI2          = PI * 2;
-static const float PI4          = PI * 4;
-static const float INV_PI       = 0.31830988f;
-static const float FLT_MIN      = 0.00000001f;
-static const float FLT_MAX_10   = 65000.0f;
-static const float FLT_MAX_11   = 65000.0f;
-static const float FLT_MAX_14   = 65500.0f;
-static const float FLT_MAX_16   = 65500.0f;
-
+static const float PI                   = 3.14159265f;
+static const float PI2                  = PI * 2;
+static const float PI4                  = PI * 4;
+static const float INV_PI               = 0.31830988f;
+static const float FLT_MIN              = 0.00000001f;
+static const float FLT_MAX_10           = 65000.0f;
+static const float FLT_MAX_11           = 65000.0f;
+static const float FLT_MAX_14           = 65500.0f;
+static const float FLT_MAX_16           = 65500.0f;
 static const float alpha_mask_threshold = 0.6f;
 
+/*------------------------------------------------------------------------------
+    MACROS
+------------------------------------------------------------------------------*/
 #define g_texel_size            float2(1.0f / g_resolution_rt.x, 1.0f / g_resolution_rt.y)
 #define g_shadow_texel_size     (1.0f / g_shadow_resolution)
 #define thread_group_count_x    8
